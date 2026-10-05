@@ -6,7 +6,7 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  autoName,
+  autoNameIgnoreCase,
   FormatColumnOptions,
   formatDefault,
   FormatIndexOptions,
@@ -23,6 +23,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  tableNamePart,
   toOrderName,
   toStringLiteral,
   unique,
@@ -143,7 +144,7 @@ export function formatUnique(
   uniqueColumns(columns).forEach(column => {
     buffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
     buffer.push(
-      `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
+      `  ADD CONSTRAINT ${bracket}UQ_${tableNamePart(table.name, bracketType)}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
     );
     buffer.push('');
   });
@@ -198,8 +199,9 @@ function formatRelation(
     buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
     // FK
-    let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
-    fkName = autoName(fkNames, '', fkName);
+    const startName = tableNamePart(startTable.name, bracketType);
+    const endName = tableNamePart(endTable.name, bracketType);
+    const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
     fkNames.push({
       id: nanoid(),
       name: fkName,
@@ -270,8 +272,8 @@ export function formatIndex(
   if (columnNames.length !== 0) {
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${table.name}`;
-      indexName = autoName(indexNames, '', indexName);
+      const tableName = tableNamePart(table.name, bracketType);
+      indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
         id: nanoid(),
         name: indexName,

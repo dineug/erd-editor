@@ -258,6 +258,126 @@ describe('SQLite createSchema', () => {
   });
 });
 
+describe('SQLite dotted table names', () => {
+  it('references the parent without its schema and puts the schema on the index name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+
+    expect(createSchema(state)).toBe(
+      [
+        '',
+        'CREATE TABLE sales.posts',
+        '(',
+        '  id      INT NULL    ,',
+        '  user_id INT NOT NULL,',
+        '  PRIMARY KEY (id),',
+        '  FOREIGN KEY (user_id) REFERENCES users (id)',
+        ');',
+        '',
+        '-- user table',
+        'CREATE TABLE sales.users',
+        '(',
+        '  -- user id',
+        '  id    INT          NOT NULL,',
+        '  -- email address',
+        "  email VARCHAR(255) NOT NULL UNIQUE DEFAULT 'a@b.c',",
+        "  name  VARCHAR(50)  NULL     DEFAULT 'guest',",
+        '  PRIMARY KEY (id AUTOINCREMENT)',
+        ');',
+        '',
+        'CREATE INDEX sales.IDX_posts',
+        '  ON posts (user_id ASC);',
+        '',
+        'CREATE UNIQUE INDEX sales.IDX_EMAIL',
+        '  ON users (email DESC);',
+        '',
+      ].join('\n')
+    );
+  });
+
+  // The index name takes the table part without its quotes; the schema and the
+  // table it qualifies or references keep theirs.
+  it('names the index after the table part of "sales"."users" and references the table as written', () => {
+    const { state, users, posts, usersIndex } = createFixture();
+    users.name = '"sales"."users"';
+    posts.name = '"sales"."posts"';
+    usersIndex.name = '';
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  FOREIGN KEY (user_id) REFERENCES "users" (id)\n');
+    expect(sql).toContain('CREATE INDEX "sales".IDX_posts\n  ON "posts"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX "sales".IDX_users\n  ON "users" (email DESC);'
+    );
+  });
+
+  it('leaves an index name the user already qualified as written', () => {
+    const { state, users, usersIndex } = createFixture();
+    users.name = 'sales.users';
+    usersIndex.name = 'sales.idx_email';
+
+    expect(createSchema(state)).toContain(
+      'CREATE UNIQUE INDEX sales.idx_email\n  ON users (email DESC);'
+    );
+  });
+
+  it('numbers an index name that repeats an earlier one but for case', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    // The hr table borrows the sales key column, which the DDL reads by id alone.
+    const hrUsers = createTable({
+      id: 't-hr-users',
+      name: 'hr.Users',
+      columnIds: ['c-user-id'],
+    });
+    const hrRelationship = createRelationship({
+      id: 'r-hr',
+      start: { tableId: hrUsers.id, columnIds: ['c-user-id'] },
+      end: { tableId: posts.id, columnIds: ['c-post-user-id'] },
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: '',
+      tableId: hrUsers.id,
+      indexColumnIds: ['ic-1'],
+    });
+    state.collections.tableEntities[hrUsers.id] = hrUsers;
+    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexEntities[hrIndex.id] = hrIndex;
+    state.collections.indexEntities['i-2'].name = '';
+    state.doc.tableIds.push(hrUsers.id);
+    state.doc.relationshipIds.push(hrRelationship.id);
+    state.doc.indexIds = ['i-2', hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  FOREIGN KEY (user_id) REFERENCES users (id),\n');
+    expect(sql).toContain('  FOREIGN KEY (user_id) REFERENCES Users (id)\n');
+    expect(sql).toContain('CREATE UNIQUE INDEX sales.IDX_users\n  ON users');
+    expect(sql).toContain('CREATE INDEX hr.IDX_Users1\n  ON Users');
+  });
+
+  it('keeps a quoted dotted name whole', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain(
+      '  FOREIGN KEY ("user_id") REFERENCES "sales.users" ("id")'
+    );
+    expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX "IDX_EMAIL"\n  ON "sales.users"'
+    );
+  });
+});
+
 describe('SQLite formatTable', () => {
   it('adds AUTOINCREMENT and a trailing comma when a relationship follows the single primary key', () => {
     const state = createState();

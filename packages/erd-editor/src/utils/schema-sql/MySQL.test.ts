@@ -114,6 +114,41 @@ function createFixture() {
   return { state, users, posts, index, relationship };
 }
 
+/**
+ * Adds a second users table that posts also references, and an unnamed index on
+ * users and on it that the document does not list yet. The table borrows the
+ * users key column, which the DDL reads by id alone.
+ */
+function addSecondUsers(state: RootState, name: string) {
+  const table = createTable({
+    id: 'tbl-users-2',
+    name,
+    columnIds: ['col-id'],
+  });
+  const relationship = createRelationship({
+    id: 'rel-users-2',
+    start: { tableId: table.id, columnIds: ['col-id'] },
+    end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
+  });
+  const usersIndex = createIndex({
+    id: 'idx-users',
+    tableId: 'tbl-users',
+    indexColumnIds: ['idx-col-1'],
+  });
+  const index = createIndex({
+    id: 'idx-users-2',
+    tableId: table.id,
+    indexColumnIds: ['idx-col-1'],
+  });
+  state.collections.tableEntities[table.id] = table;
+  state.collections.relationshipEntities[relationship.id] = relationship;
+  state.collections.indexEntities[usersIndex.id] = usersIndex;
+  state.collections.indexEntities[index.id] = index;
+  state.doc.tableIds.push(table.id);
+  state.doc.relationshipIds.push(relationship.id);
+  return { usersIndex, index };
+}
+
 describe('schema-sql/MySQL', () => {
   describe('formatTable', () => {
     it('aligns columns, emits AUTO_INCREMENT, PRIMARY KEY and the table comment', () => {
@@ -432,5 +467,94 @@ describe('schema-sql/MySQL', () => {
       expect(sql).toContain('  ADD CONSTRAINT UQ_users_name UNIQUE (name);\n');
       expect(sql).toContain('  ADD CONSTRAINT UQ_posts_name UNIQUE (name);\n');
     });
+  });
+});
+
+describe('schema-sql/MySQL dotted table names', () => {
+  it('names constraints and indexes after the table part of an unquoted schema.table', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+
+    expect(createSchema(state).split('\n')).toEqual([
+      '',
+      'CREATE TABLE sales.posts',
+      '(',
+      '  title   VARCHAR(20) NOT NULL,',
+      '  user_id INT         NULL    ',
+      ');',
+      '',
+      'CREATE TABLE sales.users',
+      '(',
+      '  id   INT         NOT NULL AUTO_INCREMENT,',
+      "  name VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',",
+      '  age  INT         NULL    ,',
+      '  PRIMARY KEY (id)',
+      ") COMMENT 'user table';",
+      '',
+      'ALTER TABLE sales.users',
+      '  ADD CONSTRAINT UQ_users_name UNIQUE (name);',
+      '',
+      'ALTER TABLE sales.posts',
+      '  ADD CONSTRAINT FK_users_TO_posts',
+      '    FOREIGN KEY (user_id)',
+      '    REFERENCES sales.users (id);',
+      '',
+      'CREATE INDEX IDX_posts',
+      '  ON sales.posts (title ASC);',
+      '',
+    ]);
+  });
+
+  it('names keys after the table part of "sales"."users" without its quotes', () => {
+    const { state, users } = createFixture();
+    users.name = '"sales"."users"';
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT UQ_users_name UNIQUE (name);\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+  });
+
+  it('numbers a foreign key and an index name that repeat an earlier one but for case', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    const { usersIndex, index } = addSecondUsers(state, 'hr.Users');
+    state.doc.indexIds = [usersIndex.id, index.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_Users_TO_posts1\n');
+    expect(sql).toContain('CREATE INDEX IDX_users\n  ON sales.users');
+    expect(sql).toContain('CREATE INDEX IDX_Users1\n  ON hr.Users');
+  });
+
+  it('keeps a quoted dotted name whole in every automatic name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.backtick;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT `UQ_sales.users_name` UNIQUE');
+    expect(sql).toContain('  ADD CONSTRAINT `FK_sales.users_TO_sales.posts`');
+    expect(sql).toContain('CREATE INDEX `IDX_sales.posts`\n  ON `sales.posts`');
+  });
+
+  it('numbers a quoted name repeating an earlier one but for case too', () => {
+    const { state } = createFixture();
+    state.settings.bracketType = BracketType.backtick;
+    const { usersIndex, index } = addSecondUsers(state, 'Users');
+    state.doc.indexIds = [usersIndex.id, index.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT `FK_users_TO_posts`\n');
+    expect(sql).toContain('  ADD CONSTRAINT `FK_Users_TO_posts1`\n');
+    expect(sql).toContain('CREATE INDEX `IDX_users`\n  ON `users`');
+    expect(sql).toContain('CREATE INDEX `IDX_Users1`\n  ON `Users`');
   });
 });

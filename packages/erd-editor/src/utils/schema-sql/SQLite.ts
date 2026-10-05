@@ -6,7 +6,7 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  autoName,
+  autoNameIgnoreCase,
   FormatColumnOptions,
   formatDefault,
   FormatIndexOptions,
@@ -22,6 +22,8 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  splitTableName,
+  tableNamePart,
   toOrderName,
 } from './utils';
 
@@ -162,13 +164,16 @@ export function formatTable(
       const actions = formatReferentialActions(relationship, ACTION_SUPPORT)
         .map(clause => ` ${clause}`)
         .join('');
+      // SQLite resolves a foreign key in the child table's own schema and
+      // refuses a qualified name there.
+      const [, referenced] = splitTableName(startTable.name, bracketType);
 
       if (relationships.length - 1 > i) {
         buffer.push(
           `  FOREIGN KEY (${formatNames(
             columns.end,
             bracket
-          )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+          )}) REFERENCES ${bracket}${referenced}${bracket} (${formatNames(
             columns.start,
             bracket
           )})${actions},`
@@ -178,7 +183,7 @@ export function formatTable(
           `  FOREIGN KEY (${formatNames(
             columns.end,
             bracket
-          )}) REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+          )}) REFERENCES ${bracket}${referenced}${bracket} (${formatNames(
             columns.start,
             bracket
           )})${actions}`
@@ -255,23 +260,29 @@ export function formatIndex(
     .filter(columnName => columnName !== null) as { name: string }[];
 
   if (columnNames.length !== 0) {
+    const [schema, tableName] = splitTableName(table.name, bracketType);
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${table.name}`;
-      indexName = autoName(indexNames, '', indexName);
+      const namePart = tableNamePart(table.name, bracketType);
+      indexName = autoNameIgnoreCase(indexNames, `IDX_${namePart}`);
       indexNames.push({
         id: nanoid(),
         name: indexName,
       });
     }
+    // SQLite takes the schema on the index name and the table bare after ON;
+    // a name the user already qualified keeps the schema it names.
+    const indexSchema =
+      schema === '' || indexName.includes('.') ? '' : `${schema}.`;
+    const indexRef = `${indexSchema}${bracket}${indexName}${bracket}`;
 
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(`CREATE UNIQUE INDEX ${indexRef}`);
     } else {
-      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(`CREATE INDEX ${indexRef}`);
     }
     buffer.push(
-      `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
+      `  ON ${bracket}${tableName}${bracket} (${formatNames(columnNames)});`
     );
   }
 }

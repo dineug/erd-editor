@@ -3,7 +3,7 @@ import { AnyAction, observer } from '@dineug/r-html';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { flush } from '@/__test-utils__';
-import { ColumnOption } from '@/constants/schema';
+import { BracketType, ColumnOption, Database } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { createHistory } from '@/engine/history';
 import { pushHistory } from '@/engine/history.actions';
@@ -20,6 +20,7 @@ import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   getAlternateKeyMarks,
   getAlternateKeys,
@@ -110,6 +111,65 @@ describe('getColumnKeys', () => {
         columnIds: ['d'],
       },
     ]);
+  });
+
+  it('names the keys after the table part of an unquoted dotted name, as the DDL does', () => {
+    const { state, table } = createState({
+      a: ColumnOption.primaryKey,
+      b: ColumnOption.unique,
+    });
+    table.name = 'sales.region';
+
+    expect(getColumnKeys(state, table).map(({ name }) => name)).toEqual([
+      'PK_region',
+      'UQ_region_col_b',
+    ]);
+
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    expect(getColumnKeys(state, table).map(({ name }) => name)).toEqual([
+      'PK_sales.region',
+      'UQ_sales.region_col_b',
+    ]);
+  });
+
+  it('takes the brackets off the table part of [sales].[region], as the DDL does', () => {
+    const { state, table } = createState({
+      a: ColumnOption.primaryKey,
+      b: ColumnOption.unique,
+    });
+    table.name = '[sales].[region]';
+    state.settings.database = Database.MSSQL;
+
+    expect(getColumnKeys(state, table).map(({ name }) => name)).toEqual([
+      'PK_region',
+      'UQ_region_col_b',
+    ]);
+    expect(createSchemaSQL(state)).toContain('  CONSTRAINT PK_region PRIMARY');
+  });
+
+  it('gives the primary key the name each database writes for a dotted table', () => {
+    const cases = [
+      [Database.MSSQL, 'PK_region'],
+      [Database.Oracle, 'PK_region'],
+      [Database.Databricks, 'PK_sales.region'],
+      [Database.Snowflake, 'PK_sales.region'],
+    ] as const;
+
+    for (const [database, name] of cases) {
+      const { state, table } = createState({
+        a: ColumnOption.primaryKey,
+        b: ColumnOption.unique,
+      });
+      table.name = 'sales.region';
+      state.settings.database = database;
+
+      const [primaryKey, unique] = getColumnKeys(state, table);
+
+      expect(primaryKey.name).toBe(name);
+      expect(unique.name).toBe(name.replace('PK_', 'UQ_') + '_col_b');
+      expect(createSchemaSQL(state)).toContain(name);
+    }
   });
 
   it('lists nothing for a table whose columns declare no key', () => {

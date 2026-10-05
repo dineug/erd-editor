@@ -142,6 +142,39 @@ function createFixture() {
   };
 }
 
+/**
+ * Adds an hr users table that posts also references, and an unnamed index on it
+ * that the document does not list yet. The table borrows the fixture's columns,
+ * which the DDL reads by id alone.
+ */
+function addHrUsers(
+  { state, posts, userId, postUserId }: ReturnType<typeof createFixture>,
+  {
+    name,
+    columnIds,
+    indexColumnId,
+  }: { name: string; columnIds: string[]; indexColumnId: string }
+) {
+  const hrUsers = createTable({ id: 't-hr-users', name, columnIds });
+  const hrRelationship = createRelationship({
+    id: 'r-hr',
+    start: { tableId: hrUsers.id, columnIds: [userId.id] },
+    end: { tableId: posts.id, columnIds: [postUserId.id] },
+  });
+  const hrIndex = createIndex({
+    id: 'i-hr',
+    name: '',
+    tableId: hrUsers.id,
+    indexColumnIds: [indexColumnId],
+  });
+  state.collections.tableEntities[hrUsers.id] = hrUsers;
+  state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+  state.collections.indexEntities[hrIndex.id] = hrIndex;
+  state.doc.tableIds.push(hrUsers.id);
+  state.doc.relationshipIds.push(hrRelationship.id);
+  return hrIndex;
+}
+
 describe('MSSQL createSchema', () => {
   it('emits tables sorted by name, unique constraints, comments, FKs and indexes', () => {
     const { state } = createFixture();
@@ -500,6 +533,144 @@ describe('MSSQL createSchema', () => {
     expect(createSchema(state)).toContain(
       "  'user table', 'schema', 'o''sales', 'table', 'o''users'\nGO"
     );
+  });
+});
+
+describe('MSSQL dotted table names', () => {
+  it('names constraints and indexes after the table part of an unquoted schema.table', () => {
+    const { state, users, posts, userId, userEmail } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    users.comment = '';
+    userId.comment = '';
+    userEmail.comment = '';
+
+    expect(createSchema(state)).toBe(
+      [
+        '',
+        'CREATE TABLE sales.posts',
+        '(',
+        '  id      INT,',
+        '  user_id INT NOT NULL,',
+        '  CONSTRAINT PK_posts PRIMARY KEY (id)',
+        ')',
+        'GO',
+        '',
+        'CREATE TABLE sales.users',
+        '(',
+        '  id    INT          NOT NULL IDENTITY(1,1),',
+        "  email VARCHAR(255) NOT NULL DEFAULT 'a@b.c',",
+        "  name  VARCHAR(50)  DEFAULT 'guest',",
+        '  CONSTRAINT PK_users PRIMARY KEY (id)',
+        ')',
+        'GO',
+        '',
+        'ALTER TABLE sales.users',
+        '  ADD CONSTRAINT UQ_users_email UNIQUE (email)',
+        'GO',
+        '',
+        'ALTER TABLE sales.posts',
+        '  ADD CONSTRAINT FK_users_TO_posts',
+        '    FOREIGN KEY (user_id)',
+        '    REFERENCES sales.users (id)',
+        'GO',
+        '',
+        'CREATE INDEX IDX_posts',
+        '  ON sales.posts (user_id ASC)',
+        'GO',
+        '',
+        'CREATE UNIQUE INDEX IDX_EMAIL',
+        '  ON sales.users (email DESC)',
+        'GO',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('repeats the primary key and unique names in each schema and numbers the foreign key and index names', () => {
+    const fixture = createFixture();
+    const { state, users, posts, userId, userEmail, usersIndex } = fixture;
+    users.name = 'sales.users';
+    posts.name = 'hr.posts';
+    const hrIndex = addHrUsers(fixture, {
+      name: 'hr.users',
+      columnIds: [userId.id, userEmail.id],
+      indexColumnId: 'ic-2',
+    });
+    usersIndex.name = '';
+    state.doc.indexIds = [usersIndex.id, hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql.match(/CONSTRAINT PK_users PRIMARY KEY/g)).toHaveLength(2);
+    expect(sql.match(/ADD CONSTRAINT UQ_users_email UNIQUE/g)).toHaveLength(2);
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts1\n');
+    expect(sql).toContain('CREATE UNIQUE INDEX IDX_users\n  ON sales.users');
+    expect(sql).toContain('CREATE INDEX IDX_users1\n  ON hr.users');
+  });
+
+  it('numbers a foreign key and an index name that repeat an earlier one but for case', () => {
+    const fixture = createFixture();
+    const { state, users, posts, userId, usersIndex } = fixture;
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    const hrIndex = addHrUsers(fixture, {
+      name: 'hr.Users',
+      columnIds: [userId.id],
+      indexColumnId: 'ic-1',
+    });
+    usersIndex.name = '';
+    state.doc.indexIds = [usersIndex.id, hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_Users_TO_posts1\n');
+    expect(sql).toContain('CREATE UNIQUE INDEX IDX_users\n  ON sales.users');
+    expect(sql).toContain('CREATE INDEX IDX_Users1\n  ON hr.Users');
+  });
+
+  // The key names take the table part the MS_Description calls name at level
+  // 1, split outside brackets and quotes with one pair taken off.
+  it.each([
+    ['[sales].[users]', 'users'],
+    ['"sales"."users"', 'users'],
+    ['shop.sales.users', 'users'],
+    ['[sales.v2].[users]', 'users'],
+    ['[Order]', 'Order'],
+  ])(
+    'names constraints and indexes after the table part of the unquoted name %s',
+    (name, part) => {
+      const { state, users, usersIndex } = createFixture();
+      users.name = name;
+      usersIndex.name = '';
+
+      const sql = createSchema(state);
+
+      expect(sql).toContain(`  CONSTRAINT PK_${part} PRIMARY KEY (id)\n`);
+      expect(sql).toContain(
+        `  ADD CONSTRAINT UQ_${part}_email UNIQUE (email)\nGO`
+      );
+      expect(sql).toContain(`  ADD CONSTRAINT FK_${part}_TO_posts\n`);
+      expect(sql).toContain(
+        `CREATE UNIQUE INDEX IDX_${part}\n  ON ${name} (email DESC)\nGO`
+      );
+    }
+  );
+
+  it('keeps a quoted dotted name whole in every automatic name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  CONSTRAINT "PK_sales.users" PRIMARY KEY ("id")');
+    expect(sql).toContain('  ADD CONSTRAINT "UQ_sales.users_email" UNIQUE');
+    expect(sql).toContain('  ADD CONSTRAINT "FK_sales.users_TO_sales.posts"');
+    expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
   });
 });
 

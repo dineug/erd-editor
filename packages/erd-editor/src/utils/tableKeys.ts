@@ -4,6 +4,7 @@ import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { IndexEntities, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { splitsTableName, tableNamePart } from '@/utils/schema-sql/utils';
 
 type KeyState = Pick<RootState, 'doc' | 'collections'>;
 
@@ -97,9 +98,12 @@ export type AlternateKey = UniqueIndexKey;
  * beside the index entities shows them read only.
  */
 export function getColumnKeys(
-  { collections }: KeyState,
+  { collections, settings }: Pick<RootState, 'collections' | 'settings'>,
   table: Table
 ): ColumnKey[] {
+  const tableName = splitsTableName(settings.database)
+    ? tableNamePart(table.name, settings.bracketType)
+    : table.name;
   const columns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
@@ -111,7 +115,7 @@ export function getColumnKeys(
         {
           id: `primaryKey:${table.id}`,
           kind: 'primaryKey',
-          name: `PK_${table.name}`,
+          name: `PK_${tableName}`,
           columnIds: primaryKeyColumns.map(column => column.id),
         },
       ]
@@ -123,7 +127,7 @@ export function getColumnKeys(
     keys.push({
       id: `unique:${column.id}`,
       kind: 'unique',
-      name: `UQ_${table.name}_${column.name}`,
+      name: `UQ_${tableName}_${column.name}`,
       columnIds: [column.id],
     });
   }

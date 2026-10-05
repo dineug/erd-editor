@@ -6,7 +6,7 @@ import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
 import {
-  autoName,
+  autoNameIgnoreCase,
   FormatColumnOptions,
   FormatCommentOptions,
   FormatIndexOptions,
@@ -17,16 +17,20 @@ import {
   formatSpace,
   FormatTableOptions,
   getBracket,
+  isDelimitedPart,
   KeyColumn,
   Name,
   orderByNameASC,
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  splitNameParts,
+  tableNamePart,
   toOrderName,
   toStringLiteral,
   unique,
   uniqueColumns,
+  unquoteNamePart,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.MSSQL);
@@ -122,10 +126,9 @@ export function formatTable(
 
   if (pk) {
     const pkColumns = primaryKeyColumns(columns);
+    const pkName = `PK_${tableNamePart(table.name, bracketType)}`;
     buffer.push(
-      `  CONSTRAINT ${bracket}PK_${
-        table.name
-      }${bracket} PRIMARY KEY (${formatNames(pkColumns, bracket)})`
+      `  CONSTRAINT ${bracket}${pkName}${bracket} PRIMARY KEY (${formatNames(pkColumns, bracket)})`
     );
   }
   buffer.push(`)\nGO`);
@@ -149,7 +152,7 @@ export function formatUnique(
   uniqueColumns(columns).forEach(column => {
     buffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
     buffer.push(
-      `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket})\nGO`
+      `  ADD CONSTRAINT ${bracket}UQ_${tableNamePart(table.name, bracketType)}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket})\nGO`
     );
     buffer.push('');
   });
@@ -183,42 +186,12 @@ function formatColumn(
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }
 
-// A part of an unquoted name: bracketed or double-quoted runs, whose dots and
-// doubled closing characters stay inside them, or any character but a dot.
-const NAME_PART = /(?:\[(?:[^\]]|\]\])*\]|"(?:[^"]|"")*"|[^.])*/y;
-
 // A part SQL Server reads as one name: in one pair of brackets or double
-// quotes, the closing character doubled inside, or a regular identifier.
-const DELIMITED_PART = /^(?:\[((?:[^\]]|\]\])*)\]|"((?:[^"]|"")*)")$/;
+// quotes (isDelimitedPart), or a regular identifier.
 const REGULAR_PART = /^[\p{L}_@#][\p{L}\p{N}_@#$]*$/u;
 
-function splitName(name: string): string[] {
-  const parts: string[] = [];
-  let index = 0;
-
-  do {
-    NAME_PART.lastIndex = index;
-    const [part] = NAME_PART.exec(name)!;
-    parts.push(part);
-    index += part.length + 1;
-  } while (index <= name.length);
-
-  return parts;
-}
-
-/** The name SQL Server reads in a part written in brackets or double quotes. */
-function unquotePart(part: string): string {
-  const match = DELIMITED_PART.exec(part);
-  if (!match) return part;
-
-  const [, bracketed, quoted] = match;
-  return bracketed === undefined
-    ? quoted.replaceAll('""', '"')
-    : bracketed.replaceAll(']]', ']');
-}
-
 function isOneName(part: string): boolean {
-  return DELIMITED_PART.test(part) || REGULAR_PART.test(part);
+  return isDelimitedPart(part) || REGULAR_PART.test(part);
 }
 
 /**
@@ -232,9 +205,9 @@ function formatLevels(
 ): { procedure: string; levels: string } {
   const [table, schema = '', database = ''] = bracket
     ? [name]
-    : splitName(name).reverse();
-  const level0 = unquotePart(schema) || DEFAULT_SCHEMA;
-  const level1 = bracket ? table : unquotePart(table);
+    : splitNameParts(name).reverse();
+  const level0 = unquoteNamePart(schema) || DEFAULT_SCHEMA;
+  const level1 = bracket ? table : unquoteNamePart(table);
   // A database part SQL Server reads as no one name fails its CREATE TABLE
   // too, and written before the procedure it could open a quote or bracket
   // that swallows every batch after it, so it is dropped.
@@ -288,8 +261,9 @@ function formatRelation(
     buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
     // FK
-    let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
-    fkName = autoName(fkNames, '', fkName);
+    const startName = tableNamePart(startTable.name, bracketType);
+    const endName = tableNamePart(endTable.name, bracketType);
+    const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
     fkNames.push({
       id: nanoid(),
       name: fkName,
@@ -360,8 +334,8 @@ export function formatIndex(
   if (columnNames.length !== 0) {
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${table.name}`;
-      indexName = autoName(indexNames, '', indexName);
+      const tableName = tableNamePart(table.name, bracketType);
+      indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
         id: nanoid(),
         name: indexName,

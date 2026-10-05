@@ -257,6 +257,114 @@ describe('PostgreSQL createSchema', () => {
   });
 });
 
+describe('PostgreSQL dotted table names', () => {
+  it('names foreign keys and indexes after the table part of an unquoted schema.table', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+
+    expect(createSchema(state)).toBe(
+      [
+        '',
+        'CREATE TABLE sales.posts',
+        '(',
+        '  id      INT,',
+        '  user_id INT NOT NULL,',
+        '  PRIMARY KEY (id)',
+        ');',
+        '',
+        'CREATE TABLE sales.users',
+        '(',
+        '  id    INT          NOT NULL GENERATED ALWAYS AS IDENTITY,',
+        "  email VARCHAR(255) NOT NULL DEFAULT 'a@b.c' UNIQUE,",
+        "  name  VARCHAR(50)  DEFAULT 'guest',",
+        '  PRIMARY KEY (id)',
+        ');',
+        '',
+        "COMMENT ON TABLE sales.users IS 'user table';",
+        '',
+        "COMMENT ON COLUMN sales.users.id IS 'user id';",
+        '',
+        "COMMENT ON COLUMN sales.users.email IS 'email address';",
+        '',
+        'ALTER TABLE sales.posts',
+        '  ADD CONSTRAINT FK_users_TO_posts',
+        '    FOREIGN KEY (user_id)',
+        '    REFERENCES sales.users (id);',
+        '',
+        'CREATE INDEX IDX_posts',
+        '  ON sales.posts (user_id ASC);',
+        '',
+        'CREATE UNIQUE INDEX IDX_EMAIL',
+        '  ON sales.users (email DESC);',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('names keys after the table part of "sales"."users" without its quotes', () => {
+    const { state, users, usersIndex } = createFixture();
+    users.name = '"sales"."users"';
+    usersIndex.name = '';
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IDX_users\n  ON "sales"."users" (email DESC);'
+    );
+  });
+
+  it('numbers a foreign key and an index name that repeat an earlier one but for case', () => {
+    const { state, users, posts, userId, postUserId } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    // The hr table borrows the sales key column, which the DDL reads by id alone.
+    const hrUsers = createTable({
+      id: 't-hr-users',
+      name: 'hr.Users',
+      columnIds: [userId.id],
+    });
+    const hrRelationship = createRelationship({
+      id: 'r-hr',
+      start: { tableId: hrUsers.id, columnIds: [userId.id] },
+      end: { tableId: posts.id, columnIds: [postUserId.id] },
+    });
+    const hrIndex = createIndex({
+      id: 'i-hr',
+      name: '',
+      tableId: hrUsers.id,
+      indexColumnIds: ['ic-1'],
+    });
+    state.collections.tableEntities[hrUsers.id] = hrUsers;
+    state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexEntities[hrIndex.id] = hrIndex;
+    state.collections.indexEntities['i-2'].name = '';
+    state.doc.tableIds.push(hrUsers.id);
+    state.doc.relationshipIds.push(hrRelationship.id);
+    state.doc.indexIds = ['i-2', hrIndex.id];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_Users_TO_posts1\n');
+    expect(sql).toContain('CREATE UNIQUE INDEX IDX_users\n  ON sales.users');
+    expect(sql).toContain('CREATE INDEX IDX_Users1\n  ON hr.Users');
+  });
+
+  it('keeps a quoted dotted name whole in every automatic name', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    posts.name = 'sales.posts';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT "FK_sales.users_TO_sales.posts"');
+    expect(sql).toContain('CREATE INDEX "IDX_sales.posts"\n  ON "sales.posts"');
+  });
+});
+
 describe('PostgreSQL formatTable', () => {
   it('omits the primary key clause and the trailing comma without a primary key', () => {
     const state = createState();

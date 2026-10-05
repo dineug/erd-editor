@@ -7,6 +7,7 @@ import { bHas } from '@/utils/bit';
 
 import {
   autoName,
+  autoNameIgnoreCase,
   FormatColumnOptions,
   FormatCommentOptions,
   FormatIndexOptions,
@@ -23,6 +24,8 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  splitTableName,
+  tableNamePart,
   toOrderName,
   toStringLiteral,
   unique,
@@ -34,6 +37,7 @@ const ACTION_SUPPORT = referentialActionSupport(Database.Oracle);
 export function createSchema(state: RootState): string {
   const {
     doc: { tableIds, relationshipIds, indexIds },
+    settings: { bracketType },
     collections,
   } = state;
   const fkNames: Name[] = [];
@@ -61,33 +65,36 @@ export function createSchema(state: RootState): string {
     const columns = query(collections)
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds);
+    // The sequence and its trigger go beside the table, as an index does.
+    const [schema] = splitTableName(table.name, bracketType);
+    const tableName = tableNamePart(table.name, bracketType);
+    const owner = schema === '' ? '' : `${schema}.`;
 
     // Sequence
     columns.forEach(column => {
       if (bHas(column.options, ColumnOption.autoIncrement)) {
-        let aiName = `SEQ_${table.name}`;
-        aiName = autoName(aiNames, '', aiName);
+        const aiName = autoName(aiNames, '', `SEQ_${tableName}`);
         aiNames.push({
           id: nanoid(),
           name: aiName,
         });
+        const sequence = `${owner}${aiName}`;
 
-        stringBuffer.push(`CREATE SEQUENCE ${aiName}`);
+        stringBuffer.push(`CREATE SEQUENCE ${sequence}`);
         stringBuffer.push(`START WITH 1`);
         stringBuffer.push(`INCREMENT BY 1;`);
         stringBuffer.push('');
 
-        let trgName = `SEQ_TRG_${table.name}`;
-        trgName = autoName(aiNames, '', trgName);
+        const trgName = autoName(aiNames, '', `SEQ_TRG_${tableName}`);
         trgNames.push({
           id: nanoid(),
           name: trgName,
         });
-        stringBuffer.push(`CREATE OR REPLACE TRIGGER ${trgName}`);
+        stringBuffer.push(`CREATE OR REPLACE TRIGGER ${owner}${trgName}`);
         stringBuffer.push(`BEFORE INSERT ON ${table.name}`);
         stringBuffer.push(`REFERENCING NEW AS NEW FOR EACH ROW`);
         stringBuffer.push(`BEGIN`);
-        stringBuffer.push(`  SELECT ${aiName}.NEXTVAL`);
+        stringBuffer.push(`  SELECT ${sequence}.NEXTVAL`);
         stringBuffer.push(`  INTO: NEW.${column.name}`);
         stringBuffer.push(`  FROM DUAL;`);
         stringBuffer.push(`END;`);
@@ -157,10 +164,9 @@ export function formatTable(
 
   if (pk) {
     const pkColumns = primaryKeyColumns(columns);
+    const pkName = `PK_${tableNamePart(table.name, bracketType)}`;
     buffer.push(
-      `  CONSTRAINT ${bracket}PK_${
-        table.name
-      }${bracket} PRIMARY KEY (${formatNames(pkColumns, bracket)})`
+      `  CONSTRAINT ${bracket}${pkName}${bracket} PRIMARY KEY (${formatNames(pkColumns, bracket)})`
     );
   }
   buffer.push(`);`);
@@ -184,7 +190,7 @@ export function formatUnique(
   uniqueColumns(columns).forEach(column => {
     buffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
     buffer.push(
-      `  ADD CONSTRAINT ${bracket}UQ_${table.name}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
+      `  ADD CONSTRAINT ${bracket}UQ_${tableNamePart(table.name, bracketType)}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
     );
     buffer.push('');
   });
@@ -253,8 +259,9 @@ function formatRelation(
     buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
     // FK
-    let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
-    fkName = autoName(fkNames, '', fkName);
+    const startName = tableNamePart(startTable.name, bracketType);
+    const endName = tableNamePart(endTable.name, bracketType);
+    const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
     fkNames.push({
       id: nanoid(),
       name: fkName,
@@ -323,20 +330,27 @@ export function formatIndex(
     .filter(columnName => columnName !== null) as { name: string }[];
 
   if (columnNames.length !== 0) {
+    const [schema] = splitTableName(table.name, bracketType);
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = `IDX_${table.name}`;
-      indexName = autoName(indexNames, '', indexName);
+      const tableName = tableNamePart(table.name, bracketType);
+      indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
         id: nanoid(),
         name: indexName,
       });
     }
+    // Unqualified, the index lands in the current user's schema, where one name
+    // given in two schemas clashes; a name the user already qualified keeps the
+    // schema it names.
+    const indexSchema =
+      schema === '' || indexName.includes('.') ? '' : `${schema}.`;
+    const indexRef = `${indexSchema}${bracket}${indexName}${bracket}`;
 
     if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(`CREATE UNIQUE INDEX ${indexRef}`);
     } else {
-      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
+      buffer.push(`CREATE INDEX ${indexRef}`);
     }
     buffer.push(
       `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
