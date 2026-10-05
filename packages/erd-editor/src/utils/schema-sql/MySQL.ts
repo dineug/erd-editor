@@ -8,6 +8,7 @@ import { bHas } from '@/utils/bit';
 import {
   autoName,
   FormatColumnOptions,
+  formatDefault,
   FormatIndexOptions,
   formatNames,
   formatReferentialActions,
@@ -172,7 +173,9 @@ function formatColumn(
     stringBuffer.push(`AUTO_INCREMENT`);
   } else {
     if (column.default.trim() !== '') {
-      stringBuffer.push(`DEFAULT ${column.default}`);
+      stringBuffer.push(
+        `DEFAULT ${formatDefault(column.default, Database.MySQL, column.dataType)}`
+      );
     }
   }
   if (column.comment.trim() !== '') {

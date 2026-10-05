@@ -282,6 +282,33 @@ describe('schemaSQLParser', () => {
     ]);
   });
 
+  // SQL Server stores a default with no spaces around its operators, and the
+  // quote after +N once opened a literal that ran to the end of the source.
+  it('keeps the statements behind a literal glued to an operator', () => {
+    const ast = schemaSQLParser(
+      [
+        "CREATE TABLE [dbo].[U]([Label] [nvarchar](40) NULL DEFAULT (N'a'+N' (b)'), [Id] [int] NOT NULL) ON [PRIMARY]",
+        'GO',
+        'CREATE TABLE [dbo].[V]([UId] [int] NULL) ON [PRIMARY]',
+        'GO',
+        'ALTER TABLE [dbo].[V]  WITH CHECK ADD  CONSTRAINT [FK_V_U] FOREIGN KEY([UId]) REFERENCES [dbo].[U] ([Id])',
+        'GO',
+      ].join('\n')
+    );
+
+    expect(ast.map(statement => statement.type)).toEqual([
+      'create.table',
+      'create.table',
+      'alter.table.add.foreignKey',
+    ]);
+    expect(ast[0]).toMatchObject({
+      columns: [
+        { name: 'Label', default: "N'a' + N' (b)'" },
+        { name: 'Id', default: '' },
+      ],
+    });
+  });
+
   it('keeps parsing after a statement that consumes no closing semicolon', () => {
     const ast = schemaSQLParser(
       'CREATE TABLE a (id INT) CREATE TABLE b (id INT)'

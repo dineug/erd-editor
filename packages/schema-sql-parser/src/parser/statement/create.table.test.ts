@@ -356,7 +356,7 @@ describe('createTableParser - column options', () => {
         unique: true,
         comment: 'Second',
       }),
-      column({ name: 'c', dataType: 'INT', unique: true }),
+      column({ name: 'c', dataType: 'INT', unique: true, default: '0' }),
       column({
         name: 'd',
         dataType: 'VARCHAR(255)',
@@ -428,14 +428,163 @@ describe('createTableParser - column options', () => {
     ]);
   });
 
-  it('skips a DEFAULT written as a parenthesised function call', () => {
+  it('reads a DEFAULT written as a parenthesised function call without its parens', () => {
     const { ast } = parse(
       'CREATE TABLE t (a INT DEFAULT (CURRENT_TIMESTAMP()), b INT);'
     );
 
     expect(ast.columns).toEqual([
-      column({ name: 'a', dataType: 'INT' }),
+      column({ name: 'a', dataType: 'INT', default: 'CURRENT_TIMESTAMP()' }),
       column({ name: 'b', dataType: 'INT' }),
+    ]);
+  });
+
+  it('reads the whole DEFAULT expression up to the next column keyword', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a timestamp DEFAULT now() NOT NULL,\n' +
+        ' b numeric(3,2) DEFAULT 0.5,\n' +
+        ' c bit DEFAULT ((0)) NOT NULL,\n' +
+        " d varchar(10) DEFAULT 'draft'::character varying,\n" +
+        " e integer DEFAULT nextval('t_e_seq'::regclass) NOT NULL,\n" +
+        " f timestamp DEFAULT (now() AT TIME ZONE 'utc'::text) COMMENT 'x',\n" +
+        ' g text[] DEFAULT ARRAY[]::text[]\n' +
+        ');'
+    );
+
+    expect(
+      ast.columns.map(column => [column.name, column.default, column.nullable])
+    ).toEqual([
+      ['a', 'now()', false],
+      ['b', '0.5', true],
+      ['c', '0', false],
+      ['d', "'draft'", true],
+      ['e', "nextval('t_e_seq'::regclass)", false],
+      ['f', "now() AT TIME ZONE 'utc'::text", true],
+      ['g', 'ARRAY[]::text[]', true],
+    ]);
+    expect(ast.columns[5].comment).toBe('x');
+  });
+
+  it('reads a prefixed literal whole and the columns after it', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a nvarchar(10) DEFAULT (N'(none)'), b nvarchar(10) DEFAULT (N'a,b'), c int);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({ name: 'a', dataType: 'nvarchar(10)', default: "N'(none)'" }),
+      column({ name: 'b', dataType: 'nvarchar(10)', default: "N'a,b'" }),
+      column({ name: 'c', dataType: 'int' }),
+    ]);
+  });
+
+  it('reads a literal glued to the operator before it, as SQL Server stores one', () => {
+    const { ast } = parse(
+      "CREATE TABLE [dbo].[U]([Label] [nvarchar](40) NULL DEFAULT (N'a'+N' (b)'), [Id] [int] NOT NULL)"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'Label',
+        dataType: 'nvarchar(40)',
+        default: "N'a' + N' (b)'",
+      }),
+      column({ name: 'Id', dataType: 'int', nullable: false }),
+    ]);
+  });
+
+  it('ends a DEFAULT at the column options MariaDB and SQL Server write after it', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a int DEFAULT NULL WITHOUT SYSTEM VERSIONING,\n' +
+        ' b int DEFAULT 5 WITHOUT SYSTEM VERSIONING,\n' +
+        ' c int NOT NULL DEFAULT 0 INDEX ix_c,\n' +
+        ' d timestamp DEFAULT now()::timestamp without time zone,\n' +
+        ' e int\n' +
+        ') WITH SYSTEM VERSIONING;'
+    );
+
+    expect(ast.columns.map(column => [column.name, column.default])).toEqual([
+      ['a', 'NULL'],
+      ['b', '5'],
+      ['c', '0'],
+      ['d', 'now()::timestamp without time zone'],
+      ['e', ''],
+    ]);
+  });
+
+  it('reads a bare CASE default up to its END', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a text DEFAULT CASE WHEN (x IS NULL) THEN 'a' ELSE NULL END NOT NULL, b int);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: 'text',
+        default: "CASE WHEN(x IS NULL) THEN 'a' ELSE NULL END",
+        nullable: false,
+      }),
+      column({ name: 'b', dataType: 'int' }),
+    ]);
+  });
+
+  it('reads a prefixed COMMENT as its text alone', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (a int COMMENT N'hello world', b int COMMENT _utf8mb4'x') COMMENT=_utf8mb4'tbl';"
+    );
+
+    expect(ast.comment).toBe('tbl');
+    expect(ast.columns.map(column => column.comment)).toEqual([
+      'hello world',
+      'x',
+    ]);
+  });
+
+  it('reads the expression after the ON NULL of an Oracle DEFAULT', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a NUMBER DEFAULT ON NULL 0 NOT NULL ENABLE,\n' +
+        " b VARCHAR2(10) DEFAULT ON NULL FOR INSERT ONLY 'x',\n" +
+        ' c NUMBER DEFAULT ON NULL FOR INSERT AND UPDATE 1,\n' +
+        ' d NUMBER DEFAULT ON NULL FOR INSERT\n' +
+        ');'
+    );
+
+    expect(
+      ast.columns.map(column => [column.name, column.default, column.nullable])
+    ).toEqual([
+      ['a', '0', false],
+      ['b', "'x'", true],
+      ['c', '1', true],
+      ['d', 'FOR INSERT', true],
+    ]);
+  });
+
+  it('reads an ON NULL at the end of the source as no default', () => {
+    const { ast } = parse('CREATE TABLE t (a NUMBER DEFAULT ON NULL');
+
+    expect(ast.columns).toEqual([column({ name: 'a', dataType: 'NUMBER' })]);
+  });
+
+  it('reads GENERATED BY DEFAULT AS IDENTITY as an identity with no default', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        ' a INT GENERATED BY DEFAULT AS IDENTITY (START WITH 1 INCREMENT BY 1) NOT NULL,\n' +
+        ' b NUMBER GENERATED BY DEFAULT ON NULL AS IDENTITY,\n' +
+        ' c INT\n' +
+        ');'
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'a',
+        dataType: 'INT',
+        autoIncrement: true,
+        nullable: false,
+      }),
+      column({ name: 'b', dataType: 'NUMBER', autoIncrement: true }),
+      column({ name: 'c', dataType: 'INT' }),
     ]);
   });
 
@@ -1707,6 +1856,23 @@ describe('createTableParser - constraint and index items', () => {
       expect(ast.foreignKeys).toEqual([]);
       expect(ast.columns[0]).toEqual(column({ name: 'a_id', dataType: 'INT' }));
     }
+  });
+
+  it('drops the ON UPDATE of a MySQL timestamp and keeps what follows it', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (ts DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT 'x', z INT);"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'ts',
+        dataType: 'DATETIME(3)',
+        default: 'CURRENT_TIMESTAMP(3)',
+        comment: 'x',
+        nullable: false,
+      }),
+      column({ name: 'z', dataType: 'INT' }),
+    ]);
   });
 
   it('still skips the value of an ON UPDATE that is no referential action', () => {

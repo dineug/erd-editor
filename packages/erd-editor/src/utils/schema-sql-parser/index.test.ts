@@ -1771,6 +1771,191 @@ GO
     );
   });
 
+  // The importer keeps a whole DEFAULT expression without the parentheses
+  // around it, and an export puts them back where its database needs them.
+  describe('expression default round trip', () => {
+    const defaultsOf = (schema: Schema) =>
+      Object.fromEntries(
+        tablesOf(schema).flatMap(table =>
+          columnsOf(schema, table).map(column => [column.name, column.default])
+        )
+      );
+
+    it.each<[string, number, string, Record<string, string>, string[]]>([
+      [
+        'pg_dump',
+        Database.PostgreSQL,
+        `CREATE TABLE public.orders (
+    id integer DEFAULT nextval('public.orders_id_seq'::regclass) NOT NULL,
+    status character varying(20) DEFAULT 'draft'::character varying NOT NULL,
+    created_at timestamp without time zone DEFAULT (now() AT TIME ZONE 'utc'::text),
+    tags text[] DEFAULT ARRAY[]::text[],
+    ratio numeric(3,2) DEFAULT 0.5,
+    picked boolean DEFAULT ('x'::text = ANY (ARRAY['a'::text, 'x'::text])),
+    level integer DEFAULT CASE WHEN (1 >= 0) THEN 1 ELSE 0 END,
+    fallback text DEFAULT CASE WHEN (now() IS NULL) THEN 'a'::text ELSE NULL::text END NOT NULL,
+    flag bit(1) DEFAULT B'0'::"bit",
+    placed_at timestamp with time zone DEFAULT ('now'::text)::timestamp with time zone NOT NULL
+);`,
+        {
+          id: "nextval('public.orders_id_seq'::regclass)",
+          status: "'draft'",
+          created_at: "now() AT TIME ZONE 'utc'::text",
+          tags: 'ARRAY[]::text[]',
+          ratio: '0.5',
+          picked: "'x'::text = ANY(ARRAY['a'::text, 'x'::text])",
+          level: 'CASE WHEN(1 >= 0) THEN 1 ELSE 0 END',
+          fallback:
+            "CASE WHEN(now() IS NULL) THEN 'a'::text ELSE NULL::text END",
+          flag: "B'0'",
+          placed_at: "('now'::text)::timestamp with time zone",
+        },
+        [
+          "DEFAULT nextval('public.orders_id_seq'::regclass)",
+          "DEFAULT (now() AT TIME ZONE 'utc'::text)",
+          'DEFAULT ARRAY[]::text[]',
+          "DEFAULT ('x'::text = ANY(ARRAY['a'::text, 'x'::text]))",
+          'DEFAULT CASE WHEN(1 >= 0) THEN 1 ELSE 0 END',
+          "DEFAULT CASE WHEN(now() IS NULL) THEN 'a'::text ELSE NULL::text END",
+          "DEFAULT B'0'",
+          "DEFAULT ('now'::text)::timestamp with time zone",
+        ],
+      ],
+      [
+        'SQL Server',
+        Database.MSSQL,
+        `CREATE TABLE [dbo].[Users](
+	[Id] [uniqueidentifier] NOT NULL DEFAULT (newid()),
+	[Active] [bit] NOT NULL DEFAULT ((0)),
+	[Created] [datetime2](7) NOT NULL DEFAULT (getdate()),
+	[Label] [nvarchar](20) NULL DEFAULT (N'(none)'),
+	[Next] [int] NULL DEFAULT (NEXT VALUE FOR [dbo].[seq]),
+	[Title] [nvarchar](40) NULL DEFAULT (N'a'+N' (b)')
+) ON [PRIMARY]
+GO`,
+        {
+          Id: 'newid()',
+          Active: '0',
+          Created: 'getdate()',
+          Label: "N'(none)'",
+          Next: 'NEXT VALUE FOR [dbo].[seq]',
+          Title: "N'a' + N' (b)'",
+        },
+        [
+          'DEFAULT newid()',
+          'DEFAULT 0',
+          'DEFAULT getdate()',
+          "DEFAULT N'(none)'",
+          'DEFAULT NEXT VALUE FOR [dbo].[seq]',
+          "DEFAULT N'a' + N' (b)'",
+        ],
+      ],
+      [
+        'mysqldump',
+        Database.MySQL,
+        `CREATE TABLE \`events\` (
+  \`id\` binary(16) NOT NULL DEFAULT (uuid_to_bin(uuid())),
+  \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  \`expires_at\` datetime DEFAULT ((now() + interval 1 day)),
+  \`price\` decimal(5,2) NOT NULL DEFAULT '4.99',
+  \`label\` varchar(20) DEFAULT (concat(_utf8mb4'a',_utf8mb4'b')),
+  \`flag\` bit(1) DEFAULT b'0',
+  \`notes\` text DEFAULT (_utf8mb4''),
+  \`meta\` json DEFAULT (_utf8mb4'{}'),
+  \`seen_on\` date DEFAULT (now())
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+        {
+          id: 'uuid_to_bin(uuid())',
+          updated_at: 'CURRENT_TIMESTAMP',
+          expires_at: 'now() + interval 1 day',
+          price: "'4.99'",
+          label: "concat(_utf8mb4'a', _utf8mb4'b')",
+          flag: "b'0'",
+          notes: "_utf8mb4''",
+          meta: "_utf8mb4'{}'",
+          seen_on: 'now()',
+        },
+        [
+          'DEFAULT (uuid_to_bin(uuid()))',
+          'DEFAULT CURRENT_TIMESTAMP',
+          'DEFAULT (now() + interval 1 day)',
+          "DEFAULT (concat(_utf8mb4'a', _utf8mb4'b'))",
+          "DEFAULT b'0'",
+          "DEFAULT (_utf8mb4'')",
+          "DEFAULT (_utf8mb4'{}')",
+          'DEFAULT (now())',
+        ],
+      ],
+      [
+        'MariaDB',
+        Database.MariaDB,
+        `CREATE TABLE \`events\` (
+  \`id\` uuid NOT NULL DEFAULT uuid(),
+  \`expires_at\` datetime DEFAULT (current_timestamp() + interval 1 day),
+  \`note\` int(11) DEFAULT NULL WITHOUT SYSTEM VERSIONING
+) WITH SYSTEM VERSIONING;`,
+        {
+          id: 'uuid()',
+          expires_at: 'current_timestamp() + interval 1 day',
+          note: 'NULL',
+        },
+        [
+          'DEFAULT uuid()',
+          'DEFAULT (current_timestamp() + interval 1 day)',
+          'DEFAULT NULL',
+        ],
+      ],
+      [
+        'SQLite',
+        Database.SQLite,
+        `CREATE TABLE log (
+  id INTEGER PRIMARY KEY,
+  created TEXT DEFAULT (datetime('now')),
+  stamp INTEGER DEFAULT (strftime('%s', 'now')),
+  level INTEGER DEFAULT 0,
+  rank INTEGER DEFAULT (CASE WHEN 1 >= 0 THEN 1 END)
+);`,
+        {
+          id: '',
+          created: "datetime('now')",
+          stamp: "strftime('%s', 'now')",
+          level: '0',
+          rank: 'CASE WHEN 1 >= 0 THEN 1 END',
+        },
+        [
+          "DEFAULT (datetime('now'))",
+          "DEFAULT (strftime('%s', 'now'))",
+          'DEFAULT 0',
+          'DEFAULT (CASE WHEN 1 >= 0 THEN 1 END)',
+        ],
+      ],
+    ])(
+      'keeps the defaults of %s DDL through its export',
+      (_, database, sql, defaults, snippets) => {
+        const imported = parse(sql, undefined, database);
+        const exported = createSchemaSQL(stateOf(imported), database);
+        const again = parse(exported, undefined, database);
+
+        expect(defaultsOf(imported)).toEqual(defaults);
+        for (const snippet of snippets) {
+          expect(exported).toContain(snippet);
+        }
+        expect(defaultsOf(again)).toEqual(defaults);
+        expect(createSchemaSQL(stateOf(again), database)).toBe(exported);
+      }
+    );
+
+    it('reads GENERATED BY DEFAULT AS IDENTITY as an auto increment column', () => {
+      const schema = parse(
+        'CREATE TABLE t (id integer GENERATED BY DEFAULT AS IDENTITY NOT NULL, n integer);'
+      );
+      const [id] = columnsOf(schema, tableByName(schema, 't'));
+
+      expect(id.default).toBe('');
+      expect(bHas(id.options, ColumnOption.autoIncrement)).toBe(true);
+    });
+  });
+
   describe('unique round trip', () => {
     type IndexSpec = [string, boolean, Array<[string, number]>];
 

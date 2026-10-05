@@ -253,3 +253,165 @@ export function formatReferentialActions(
 export function toStringLiteral(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
+
+// A default's text in the pieces its parentheses and words are read from: a
+// quoted run whole, so a paren or a word inside a literal counts for nothing.
+const DEFAULT_PIECE =
+  /'(?:[^']|'')*'?|"(?:[^"]|"")*"?|`(?:[^`]|``)*`?|\[[^\]]*\]?|[a-z_][\w$]*|\d[\w.]*|[^]/giu;
+
+// Whether one pair of parentheses holds the whole of the text.
+function isWrapped(text: string): boolean {
+  const pieces = text.match(DEFAULT_PIECE) ?? [];
+  let depth = 0;
+
+  return (
+    pieces[0] === '(' &&
+    pieces.every((piece, index) => {
+      if (piece === '(') depth++;
+      else if (piece === ')') depth--;
+      return depth > 0 || index === pieces.length - 1;
+    })
+  );
+}
+
+// The words outside every pair of parentheses, in upper case.
+function topLevelWords(text: string): string[] {
+  const words: string[] = [];
+  let depth = 0;
+
+  for (const piece of text.match(DEFAULT_PIECE) ?? []) {
+    if (piece === '(') depth++;
+    else if (piece === ')') depth--;
+    else if (depth === 0 && /^[a-z_]/i.test(piece)) {
+      words.push(piece.toUpperCase());
+    }
+  }
+
+  return words;
+}
+
+// A call of a function by its name, possibly qualified: uuid(), s.nextval().
+function isCall(text: string): boolean {
+  const name = /^[a-z_][\w$]*(?:\.[a-z_][\w$]*)*\s*(?=\()/i.exec(text);
+  return !!name && isWrapped(text.slice(name[0].length));
+}
+
+const NUMBER = String.raw`[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?`;
+
+// The names MySQL gives the current time, called or not.
+const MYSQL_NOW = '(?:current_timestamp|now|localtime|localtimestamp)';
+
+// What MySQL may take after DEFAULT without parentheses: a literal or the
+// current time, which may carry an ON UPDATE written into the default by hand.
+const MYSQL_BARE = new RegExp(
+  '^(?:' +
+    [
+      NUMBER,
+      String.raw`0x[\da-f]+`,
+      String.raw`0b[01]+`,
+      String.raw`(?:_\w+\s*|n)?'(?:[^'\\]|''|\\.)*'`,
+      String.raw`(?:_\w+\s*|n)?"(?:[^"\\]|""|\\.)*"`,
+      String.raw`x'[\da-f]*'`,
+      String.raw`b'[01]*'`,
+      String.raw`(?:date|time|timestamp)\s*'[^']*'`,
+      'null|true|false',
+      String.raw`${MYSQL_NOW}(?:\s*\(\s*\d*\s*\))?`,
+    ].join('|') +
+    String.raw`)(\s+on\s+update\s.*)?$`,
+  'is'
+);
+
+// The types whose default MySQL reads only in parentheses, a literal's too.
+// Every type it takes that opens with the word LONG (LONG, LONG VARCHAR, LONG
+// VARBINARY, LONG BINARY, ...) is a MEDIUMTEXT or MEDIUMBLOB to it.
+const MYSQL_EXPRESSION_TYPE =
+  /^(?:(?:tiny|medium|long)?(?:blob|text)|long|json|geometry|geom(?:etry)?collection|(?:multi)?(?:point|linestring|polygon))\b/i;
+
+const MYSQL_CURRENT_TIME = new RegExp(String.raw`^${MYSQL_NOW}\b`, 'i');
+
+// MySQL takes a literal bare but on the types above, NULL whatever the type,
+// and the current time only on a TIMESTAMP or DATETIME column, or with an ON
+// UPDATE written by hand.
+function takesBareMySQL(text: string, dataType: string): boolean {
+  const bare = MYSQL_BARE.exec(text);
+
+  if (!bare) return false;
+  if (bare[1] || /^null$/i.test(text)) return true;
+  if (MYSQL_EXPRESSION_TYPE.test(dataType)) return false;
+
+  return (
+    !MYSQL_CURRENT_TIME.test(text) ||
+    /^(?:timestamp|datetime)\b/i.test(dataType)
+  );
+}
+
+// What SQLite takes after DEFAULT without parentheses: a signed number, a
+// string or blob literal, or one name, CURRENT_TIMESTAMP and NULL among them.
+const SQLITE_BARE = new RegExp(
+  '^(?:' +
+    [
+      NUMBER,
+      String.raw`[+-]?0x[\da-f]+`,
+      `'(?:[^']|'')*'`,
+      String.raw`x'[\da-f]*'`,
+      String.raw`[a-z_][\w$]*`,
+      `"(?:[^"]|"")*"`,
+      '`(?:[^`]|``)*`',
+      String.raw`\[[^\]]*\]`,
+    ].join('|') +
+    ')$',
+  'i'
+);
+
+// The words PostgreSQL reads only in a full expression, never in the shorter
+// one its DEFAULT takes: now() AT TIME ZONE 'utc' needs its parentheses.
+const POSTGRESQL_EXPRESSION_WORDS: ReadonlyArray<string> = [
+  'ALL',
+  'AND',
+  'ANY',
+  'AT',
+  'BETWEEN',
+  'COLLATE',
+  'ILIKE',
+  'IN',
+  'IS',
+  'ISNULL',
+  'LIKE',
+  'NOT',
+  'NOTNULL',
+  'OR',
+  'OVERLAPS',
+  'SIMILAR',
+  'SOME',
+];
+
+type TakesBare = (text: string, dataType: string) => boolean;
+
+const TAKES_BARE: Record<number, TakesBare> = {
+  // MariaDB also takes a function call and a name bare, but no operator.
+  [Database.MariaDB]: text =>
+    MYSQL_BARE.test(text) || isCall(text) || /^[a-z_][\w$]*$/i.test(text),
+  [Database.MySQL]: takesBareMySQL,
+  [Database.PostgreSQL]: text =>
+    !topLevelWords(text).some(word =>
+      POSTGRESQL_EXPRESSION_WORDS.includes(word)
+    ),
+  [Database.SQLite]: text => SQLITE_BARE.test(text),
+};
+
+/**
+ * A column default as the DDL of a database writes it after DEFAULT: in
+ * parentheses where its grammar reads that expression only inside them.
+ */
+export function formatDefault(
+  value: string,
+  database: number,
+  dataType = ''
+): string {
+  const text = value.trim();
+  const takesBare = TAKES_BARE[database];
+
+  return !takesBare || isWrapped(text) || takesBare(text, dataType.trim())
+    ? value
+    : `(${text})`;
+}

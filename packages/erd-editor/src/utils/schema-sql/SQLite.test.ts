@@ -421,6 +421,38 @@ describe('SQLite formatTable', () => {
     ]);
   });
 
+  it('wraps a DEFAULT expression in the parentheses SQLite needs', () => {
+    const state = createState();
+    const created = createColumn({
+      id: 'c-created',
+      name: 'created',
+      dataType: 'TEXT',
+      default: "datetime('now')",
+    });
+    const flag = createColumn({
+      id: 'c-flag',
+      name: 'flag',
+      dataType: 'INT',
+      default: '-1',
+    });
+    const table = createTable({
+      id: 't-log',
+      name: 'log',
+      columnIds: [created.id, flag.id],
+    });
+    state.collections.tableColumnEntities[created.id] = created;
+    state.collections.tableColumnEntities[flag.id] = flag;
+    state.collections.tableEntities[table.id] = table;
+
+    const buffer: string[] = [];
+    formatTable(state, { table, buffer });
+
+    expect(buffer.slice(2, 4)).toEqual([
+      "  created TEXT NULL     DEFAULT (datetime('now')),",
+      '  flag    INT  NULL     DEFAULT -1',
+    ]);
+  });
+
   it('suppresses the default value on auto increment columns', () => {
     const state = createState();
     const column = createColumn({

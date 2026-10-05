@@ -324,6 +324,38 @@ describe('PostgreSQL formatTable', () => {
     ]);
   });
 
+  it('wraps a DEFAULT expression PostgreSQL reads only in parentheses', () => {
+    const state = createState();
+    const created = createColumn({
+      id: 'c-created',
+      name: 'created',
+      dataType: 'TIMESTAMP',
+      default: "now() AT TIME ZONE 'utc'::text",
+    });
+    const seq = createColumn({
+      id: 'c-seq',
+      name: 'seq',
+      dataType: 'INT',
+      default: "nextval('s'::regclass)",
+    });
+    const table = createTable({
+      id: 't-log',
+      name: 'log',
+      columnIds: [created.id, seq.id],
+    });
+    state.collections.tableColumnEntities[created.id] = created;
+    state.collections.tableColumnEntities[seq.id] = seq;
+    state.collections.tableEntities[table.id] = table;
+
+    const buffer: string[] = [];
+    formatTable(state, { table, buffer });
+
+    expect(buffer.slice(2, 4)).toEqual([
+      "  created TIMESTAMP DEFAULT (now() AT TIME ZONE 'utc'::text),",
+      "  seq     INT       DEFAULT nextval('s'::regclass)",
+    ]);
+  });
+
   it('prefers the identity clause over the default value', () => {
     const state = createState();
     const column = createColumn({

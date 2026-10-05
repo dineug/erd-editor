@@ -34,6 +34,12 @@ describe('commentOnTableParser', () => {
     expect(ast.name).toBe('users');
   });
 
+  it('reads a prefixed comment as its text alone', () => {
+    const { ast } = parse("COMMENT ON TABLE users IS N'user table';");
+
+    expect(ast.comment).toBe('user table');
+  });
+
   it('keeps punctuation the comment contains', () => {
     const { ast } = parse("COMMENT ON TABLE users IS '(a, b); c';");
 

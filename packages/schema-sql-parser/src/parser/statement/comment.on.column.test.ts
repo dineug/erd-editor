@@ -37,6 +37,15 @@ describe('commentOnColumnParser', () => {
     expect(ast.columnName).toBe('id');
   });
 
+  it('reads a prefixed comment as its text alone', () => {
+    expect(parse("COMMENT ON COLUMN users.id IS N'user id';").ast.comment).toBe(
+      'user id'
+    );
+    expect(parse("COMMENT ON COLUMN users.id IS E'a b';").ast.comment).toBe(
+      'a b'
+    );
+  });
+
   it('keeps punctuation the comment contains', () => {
     const { ast } = parse("COMMENT ON COLUMN users.id IS '(a, b); c';");
 

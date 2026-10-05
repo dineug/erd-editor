@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   BracketType,
   ColumnOption,
+  Database,
   OrderType,
   ReferentialAction,
 } from '@/constants/schema';
@@ -10,6 +11,7 @@ import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   ALL_REFERENTIAL_ACTIONS,
   autoName,
+  formatDefault,
   formatNames,
   formatReferentialActions,
   formatSize,
@@ -259,6 +261,190 @@ describe('schema-sql/utils', () => {
       expect(toStringLiteral('user id')).toBe("'user id'");
       expect(toStringLiteral("it's the 'id'")).toBe("'it''s the ''id'''");
       expect(toStringLiteral('')).toBe("''");
+    });
+  });
+
+  describe('formatDefault', () => {
+    const bare = (database: number, values: string[], dataType?: string) =>
+      values.map(value => formatDefault(value, database, dataType));
+    const wrapped = (values: string[]) => values.map(value => `(${value})`);
+
+    it('keeps what MySQL takes bare and wraps any other expression', () => {
+      const literals = [
+        '0',
+        '-1.5',
+        '1e3',
+        '.5',
+        '0x1F',
+        '0b101',
+        "'it''s'",
+        "'it\\'s'",
+        "N'abc'",
+        "_utf8mb4'abc'",
+        '"x"',
+        "X'1F'",
+        "b'1'",
+        "DATE '2026-10-04'",
+        'NULL',
+        'true',
+        'CURRENT_TIMESTAMP',
+        'CURRENT_TIMESTAMP(3)',
+        'now()',
+        'LOCALTIMESTAMP',
+        'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        'NULL ON UPDATE now(6)',
+        '(uuid())',
+      ];
+      const expressions = [
+        'uuid()',
+        'CURRENT_DATE',
+        'now() + interval 1 day',
+        '(a) + (b)',
+        "concat('a', 'b')",
+      ];
+
+      expect(bare(Database.MySQL, literals, 'DATETIME')).toEqual(literals);
+      expect(bare(Database.MySQL, expressions, 'DATETIME')).toEqual(
+        wrapped(expressions)
+      );
+    });
+
+    it('wraps any MySQL default but NULL on a type that reads one only in parentheses', () => {
+      const types = [
+        'TEXT',
+        'tinytext',
+        'MEDIUMBLOB',
+        'longtext',
+        'json',
+        'GEOMETRY',
+        'point',
+        'MultiPolygon',
+        'geomcollection',
+      ];
+      const values = ["''", "_utf8mb4'{}'", '0x00', '0', 'CURRENT_TIMESTAMP'];
+
+      for (const dataType of types) {
+        expect(bare(Database.MySQL, values, dataType)).toEqual(wrapped(values));
+        expect(formatDefault('NULL', Database.MySQL, dataType)).toBe('NULL');
+      }
+      expect(bare(Database.MySQL, values, ' VARCHAR(20) ')).toEqual([
+        "''",
+        "_utf8mb4'{}'",
+        '0x00',
+        '0',
+        '(CURRENT_TIMESTAMP)',
+      ]);
+    });
+
+    it('wraps a MySQL literal default on a LONG type, which MySQL reads as MEDIUMTEXT or MEDIUMBLOB', () => {
+      const types = [
+        'LONG',
+        'long varchar',
+        'LONG VARBINARY',
+        'Long Char Varying',
+        'LONG CHARACTER SET latin1',
+      ];
+      const values = ["''", "'x'", '0x00', '0'];
+
+      for (const dataType of types) {
+        expect(bare(Database.MySQL, values, dataType)).toEqual(wrapped(values));
+        expect(formatDefault('NULL', Database.MySQL, dataType)).toBe('NULL');
+      }
+    });
+
+    it('keeps the current time bare for MySQL only on a TIMESTAMP or DATETIME column', () => {
+      const times = ['now()', 'CURRENT_TIMESTAMP(3)', 'localtime'];
+
+      expect(bare(Database.MySQL, times, 'timestamp')).toEqual(times);
+      expect(bare(Database.MySQL, times, 'datetime(3)')).toEqual(times);
+      expect(bare(Database.MySQL, times, 'date')).toEqual(wrapped(times));
+      expect(bare(Database.MySQL, times, 'INT')).toEqual(wrapped(times));
+      expect(bare(Database.MySQL, times)).toEqual(wrapped(times));
+      expect(
+        formatDefault(
+          'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+          Database.MySQL,
+          'INT'
+        )
+      ).toBe('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+    });
+
+    it('keeps the calls and names MariaDB takes bare and wraps an operator', () => {
+      const values = [
+        "'a'",
+        'current_timestamp()',
+        'uuid()',
+        'seq.nextval()',
+        'b',
+      ];
+      const expressions = ['1 + 1', 'uuid() + 1', 'NEXT VALUE FOR s'];
+
+      expect(bare(Database.MariaDB, values)).toEqual(values);
+      expect(bare(Database.MariaDB, expressions)).toEqual(wrapped(expressions));
+    });
+
+    it('keeps what SQLite takes bare and wraps any other expression', () => {
+      const literals = [
+        '-1',
+        '1.5',
+        '0x1F',
+        "'C:\\'",
+        "x'00'",
+        'CURRENT_TIMESTAMP',
+        'NULL',
+        'abc',
+        '"x"',
+        '`x`',
+        '[x]',
+        "(datetime('now'))",
+      ];
+      const expressions = ["datetime('now')", '1 + 1', "strftime('%s', 'now')"];
+
+      expect(bare(Database.SQLite, literals)).toEqual(literals);
+      expect(bare(Database.SQLite, expressions)).toEqual(wrapped(expressions));
+    });
+
+    it('wraps only what PostgreSQL reads in a full expression', () => {
+      const values = [
+        'now()',
+        "nextval('s'::regclass)",
+        "now() + '1 day'::interval",
+        "'a' || 'b'",
+        "'at the end'",
+        "lower('x' IS NULL)",
+        'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+        "(now() AT TIME ZONE 'utc')",
+      ];
+      const expressions = [
+        "now() AT TIME ZONE 'utc'::text",
+        'a IS NOT NULL',
+        '\'a\' COLLATE "C"',
+        'x BETWEEN 1 AND 2',
+        "'x'::text = ANY (ARRAY['a'::text])",
+        '1 > ALL (ARRAY[0])',
+        '1 = SOME (ARRAY[1])',
+      ];
+
+      expect(bare(Database.PostgreSQL, values)).toEqual(values);
+      expect(bare(Database.PostgreSQL, expressions)).toEqual(
+        wrapped(expressions)
+      );
+    });
+
+    it('writes the default as it is for the other databases', () => {
+      for (const database of [
+        Database.MSSQL,
+        Database.Oracle,
+        Database.Snowflake,
+        Database.Databricks,
+      ]) {
+        expect(formatDefault('getdate() + 1', database)).toBe('getdate() + 1');
+      }
+    });
+
+    it('wraps the default without the spaces around it', () => {
+      expect(formatDefault('  uuid() ', Database.MySQL)).toBe('(uuid())');
+      expect(formatDefault(' 0 ', Database.MySQL)).toBe(' 0 ');
     });
   });
 });

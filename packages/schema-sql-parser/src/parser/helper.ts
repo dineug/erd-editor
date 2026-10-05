@@ -87,6 +87,7 @@ export const isUsingValue = createValueEqual('USING');
 export const isAndValue = createValueEqual('AND');
 export const isOrValue = createValueEqual('OR');
 export const isArrayValue = createValueEqual('ARRAY');
+export const isGeneratedValue = createValueEqual('GENERATED');
 
 // A string literal the vendor reads back as the value, its quotes doubled.
 // Spark escapes a quote and a backslash with a backslash instead: all but its
@@ -99,12 +100,12 @@ export const toStringLiteral = (value: string, database?: DatabaseVendor) =>
 // Writes a quoted token back inside the delimiters it came in, doubling the
 // quotes its value holds: ENUM('it''s') is valid DDL only with them.
 export const requote = (
-  { value, quoted }: Token,
+  { value, quoted, prefix = '' }: Token,
   database?: DatabaseVendor
 ) => {
   if (!quoted) return value;
   if (quoted === '[') return `[${value}]`;
-  if (quoted === "'") return toStringLiteral(value, database);
+  if (quoted === "'") return prefix + toStringLiteral(value, database);
 
   return `${quoted}${value.replaceAll(quoted, quoted + quoted)}${quoted}`;
 };
@@ -862,6 +863,10 @@ const isKeyword = (value: string) =>
 
 const isColumnKeyword = (token: Token | undefined) =>
   !!token && !token.quoted && isKeyword(token.value);
+
+// Whether the token at pos is a word that opens a column constraint or option.
+export const isColumnKeywordValue = (tokens: Token[]) => (pos: number) =>
+  isColumnKeyword(tokens[pos]);
 
 // A listed type sheds its quotes, [int] being how T-SQL writes INT, but not
 // PostgreSQL's "char" and "bit": its grammar reads char as character(1) and
