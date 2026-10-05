@@ -171,6 +171,27 @@ describe('commands over a Bridge', () => {
     });
   });
 
+  it('round-trips the mode of a host import file payload, through JSON too', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(hostImportFileCommand, listener);
+    const action = Bridge.executeCommand(hostImportFileCommand, {
+      type: 'sql',
+      op: 'set',
+      accept: '.sql',
+      mode: 'append',
+    });
+
+    bridge.executeAction(JSON.parse(JSON.stringify(action)));
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'sql',
+      op: 'set',
+      accept: '.sql',
+      mode: 'append',
+    });
+  });
+
   it('round-trips the payload-less host initial command', () => {
     const bridge = new Bridge();
     const listener = vi.fn();
@@ -358,6 +379,27 @@ describe('commands over a Bridge', () => {
       type: 'aml',
       op: 'set',
       value: 'users\n  id int pk',
+    });
+  });
+
+  it('round-trips the mode of a webview import file payload, through JSON too', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(webviewImportFileCommand, listener);
+    const action = Bridge.executeCommand(webviewImportFileCommand, {
+      type: 'json',
+      op: 'set',
+      value: '{}',
+      mode: 'append',
+    });
+
+    bridge.executeAction(JSON.parse(JSON.stringify(action)));
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'json',
+      op: 'set',
+      value: '{}',
+      mode: 'append',
     });
   });
 });

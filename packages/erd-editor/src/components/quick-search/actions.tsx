@@ -50,6 +50,7 @@ import {
   importDBML,
   importGraphQL,
   importJSON,
+  type ImportMode,
   importSchemaSQL,
 } from '@/utils/file/importFile';
 import {
@@ -174,6 +175,50 @@ function rankHangulActions(
   ];
 }
 
+/** The five formats under Import, or under Import and Add for an append. */
+function createImportActions(mode: ImportMode): Action[] {
+  return [
+    {
+      icon: <Icon name="braces" size={16} />,
+      name: 'json',
+      perform: app => {
+        importJSON(app, mode);
+      },
+    },
+    {
+      icon: <Icon name="database" size={16} />,
+      name: 'Schema SQL',
+      perform: app => {
+        importSchemaSQL(app, mode);
+      },
+    },
+    {
+      icon: <Icon name="code" size={16} />,
+      name: 'GraphQL',
+      keywords: 'graphql sdl gql schema',
+      perform: app => {
+        importGraphQL(app, mode);
+      },
+    },
+    {
+      icon: <Icon name="code" size={16} />,
+      name: 'DBML',
+      keywords: 'dbml dbdiagram dbdocs schema',
+      perform: app => {
+        importDBML(app, mode);
+      },
+    },
+    {
+      icon: <Icon name="code" size={16} />,
+      name: 'AML',
+      keywords: 'aml azimutt markup language schema',
+      perform: app => {
+        importAML(app, mode);
+      },
+    },
+  ];
+}
+
 /** The palette's top level: the commands of every tab, then a jump to each table, which only the # prefix lists. */
 export function createScopeActions(app: AppContext): Action[] {
   const { store, keyBindingMap } = app;
@@ -208,48 +253,20 @@ export function createScopeActions(app: AppContext): Action[] {
     {
       icon: <Icon name="file-input" size={16} />,
       name: 'Import',
-      next: [
-        {
-          icon: <Icon name="braces" size={16} />,
-          name: 'json',
-          perform: app => {
-            importJSON(app);
-          },
-        },
-        {
-          icon: <Icon name="database" size={16} />,
-          name: 'Schema SQL',
-          perform: app => {
-            importSchemaSQL(app);
-          },
-        },
-        {
-          icon: <Icon name="code" size={16} />,
-          name: 'GraphQL',
-          keywords: 'graphql sdl gql schema',
-          perform: app => {
-            importGraphQL(app);
-          },
-        },
-        {
-          icon: <Icon name="code" size={16} />,
-          name: 'DBML',
-          keywords: 'dbml dbdiagram dbdocs schema',
-          perform: app => {
-            importDBML(app);
-          },
-        },
-        {
-          icon: <Icon name="code" size={16} />,
-          name: 'AML',
-          keywords: 'aml azimutt markup language schema',
-          perform: app => {
-            importAML(app);
-          },
-        },
-      ],
+      next: createImportActions('replace'),
       filter: ({ store }) => {
         return store.state.settings.canvasType === CanvasType.ERD;
+      },
+    },
+    {
+      icon: <Icon name="file-input" size={16} />,
+      name: 'Import and Add',
+      next: createImportActions('append'),
+      filter: ({ store }) => {
+        return (
+          store.state.settings.canvasType === CanvasType.ERD &&
+          !store.getReadonly()
+        );
       },
     },
     {

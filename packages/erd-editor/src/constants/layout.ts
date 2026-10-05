@@ -5,6 +5,15 @@ export const START_ADD = 50;
 /** The corner the grid an import lands in starts at, on both axes. */
 export const TABLE_SORT_START = 50;
 
+/** The room the grid an import lands in keeps right of and below each table. */
+export const TABLE_SORT_MARGIN = 80;
+
+/**
+ * How far below the diagram the block an append brings starts, the gap the
+ * grid an import lands in keeps between its rows.
+ */
+export const APPEND_GAP = TABLE_SORT_MARGIN;
+
 export const DUPLICATE_MIN_MOVE = 4;
 
 /**

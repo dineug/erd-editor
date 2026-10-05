@@ -1,7 +1,7 @@
 import { AnyAction } from '@dineug/r-html';
 import { nanoid } from 'nanoid';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, OrderType } from '@/constants/schema';
 import {
   addIndexAction,
   changeIndexNameAction,
@@ -56,13 +56,26 @@ export type CreateEntityActions = {
   memoIds: string[];
 };
 
+export type CreateEntityOptions = {
+  /**
+   * Whether a field is set only when it holds something other than what a new
+   * entity starts with, an empty text, a flag off or an ascending order, which
+   * leaves the same entities in fewer actions.
+   */
+  valuesOnly?: boolean;
+};
+
 // changeColor/memo.resize are in pushStreamHistoryMap and would land as a
 // second, debounced history command, so colour and size ride the add payload.
 export function toCreateEntityActions(
   { tables, columns, memos, relationships, indexes }: CreateEntityInput,
-  placement: Map<string, PlacementPoint>
+  placement: Map<string, PlacementPoint>,
+  { valuesOnly = false }: CreateEntityOptions = {}
 ): CreateEntityActions {
   const actions: AnyAction[] = [];
+  const set = (holds: boolean, action: AnyAction) => {
+    (holds || !valuesOnly) && actions.push(action);
+  };
   const tableIds: string[] = [];
   const memoIds: string[] = [];
   const columnBySourceId = new Map(
@@ -88,8 +101,14 @@ export function toCreateEntityActions(
           zIndex: point.zIndex,
           color: table.ui.color,
         },
-      }),
-      changeTableNameAction({ id: tableId, value: table.name }),
+      })
+    );
+    set(
+      !!table.name,
+      changeTableNameAction({ id: tableId, value: table.name })
+    );
+    set(
+      !!table.comment,
       changeTableCommentAction({ id: tableId, value: table.comment })
     );
 
@@ -100,28 +119,37 @@ export function toCreateEntityActions(
       const payload = { id: nanoid(), tableId };
       columnIdBySourceId.set(sourceColumnId, payload.id);
 
-      actions.push(
-        addColumnAction(payload),
-        changeColumnNameAction({ ...payload, value: column.name }),
-        changeColumnDataTypeAction({ ...payload, value: column.dataType }),
-        changeColumnDefaultAction({ ...payload, value: column.default }),
-        changeColumnCommentAction({ ...payload, value: column.comment }),
-        changeColumnPrimaryKeyAction({
-          ...payload,
-          value: bHas(column.options, ColumnOption.primaryKey),
-        }),
-        changeColumnNotNullAction({
-          ...payload,
-          value: bHas(column.options, ColumnOption.notNull),
-        }),
-        changeColumnUniqueAction({
-          ...payload,
-          value: bHas(column.options, ColumnOption.unique),
-        }),
-        changeColumnAutoIncrementAction({
-          ...payload,
-          value: bHas(column.options, ColumnOption.autoIncrement),
-        })
+      const primaryKey = bHas(column.options, ColumnOption.primaryKey);
+      const notNull = bHas(column.options, ColumnOption.notNull);
+      const unique = bHas(column.options, ColumnOption.unique);
+      const autoIncrement = bHas(column.options, ColumnOption.autoIncrement);
+
+      actions.push(addColumnAction(payload));
+      set(
+        !!column.name,
+        changeColumnNameAction({ ...payload, value: column.name })
+      );
+      set(
+        !!column.dataType,
+        changeColumnDataTypeAction({ ...payload, value: column.dataType })
+      );
+      set(
+        !!column.default,
+        changeColumnDefaultAction({ ...payload, value: column.default })
+      );
+      set(
+        !!column.comment,
+        changeColumnCommentAction({ ...payload, value: column.comment })
+      );
+      set(
+        primaryKey,
+        changeColumnPrimaryKeyAction({ ...payload, value: primaryKey })
+      );
+      set(notNull, changeColumnNotNullAction({ ...payload, value: notNull }));
+      set(unique, changeColumnUniqueAction({ ...payload, value: unique }));
+      set(
+        autoIncrement,
+        changeColumnAutoIncrementAction({ ...payload, value: autoIncrement })
       );
     }
   }
@@ -168,9 +196,13 @@ export function toCreateEntityActions(
 
     const indexId = nanoid();
 
-    actions.push(
-      addIndexAction({ id: indexId, tableId }),
-      changeIndexNameAction({ id: indexId, tableId, value: index.name }),
+    actions.push(addIndexAction({ id: indexId, tableId }));
+    set(
+      !!index.name,
+      changeIndexNameAction({ id: indexId, tableId, value: index.name })
+    );
+    set(
+      index.unique,
       changeIndexUniqueAction({ id: indexId, tableId, value: index.unique })
     );
 
@@ -178,8 +210,9 @@ export function toCreateEntityActions(
       const id = nanoid();
       const columnId = columnIds[i];
 
-      actions.push(
-        addIndexColumnAction({ id, indexId, tableId, columnId }),
+      actions.push(addIndexColumnAction({ id, indexId, tableId, columnId }));
+      set(
+        orderType !== OrderType.ASC,
         changeIndexColumnOrderTypeAction({
           id,
           indexId,
@@ -208,9 +241,9 @@ export function toCreateEntityActions(
           width: memo.ui.width,
           height: memo.ui.height,
         },
-      }),
-      changeMemoValueAction({ id: memoId, value: memo.value })
+      })
     );
+    set(!!memo.value, changeMemoValueAction({ id: memoId, value: memo.value }));
   }
 
   return { actions, tableIds, memoIds };

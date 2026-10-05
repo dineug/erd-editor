@@ -142,8 +142,14 @@ const loadedDocument = (x = 0) =>
     },
   });
 
-async function setup(initialProps: Partial<ErdEditorProps> = {}) {
-  const app = createTestAppContext();
+/**
+ * Mounts the hook on a store of its own. Wired, the store reads readonly from
+ * the props, as ErdEditor builds it, so the store's own guards answer for it.
+ */
+async function setup(
+  initialProps: Partial<ErdEditorProps> = {},
+  { wired = false } = {}
+) {
   const props = observable<ErdEditorProps>(
     {
       readonly: false,
@@ -152,6 +158,9 @@ async function setup(initialProps: Partial<ErdEditorProps> = {}) {
       ...initialProps,
     },
     { shallow: true }
+  );
+  const app = createTestAppContext(
+    wired ? { getReadonly: () => props.readonly } : undefined
   );
   const ctx = document.createElement('div') as unknown as ErdEditorElement;
   document.body.append(ctx);
@@ -715,13 +724,104 @@ describe('useErdEditorAttachElement', () => {
   });
 
   it('asks no layout for an auto import a readonly editor would refuse', async () => {
-    const { app, ctx } = await setup({ readonly: true });
+    const { app, ctx } = await setup({ readonly: true }, { wired: true });
 
     await expect(
       ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto' })
     ).resolves.toBeUndefined();
+    await expect(
+      ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto', mode: 'append' })
+    ).resolves.toBeUndefined();
     expect(hoisted.requests).toEqual([]);
     expect(app.store.state.doc.tableIds).toEqual([]);
+    expect(app.store.history.size).toBe(0);
+  });
+
+  /** The names of the tables the document holds, in order. */
+  const namesOf = ({ store }: AppContext) =>
+    store.state.doc.tableIds.map(
+      id => store.state.collections.tableEntities[id].name
+    );
+
+  it('adds an import below the diagram for an append, returning nothing', async () => {
+    const { app, ctx } = await setup();
+    ctx.setSchemaSQL('CREATE TABLE users (id INT);');
+
+    expect(
+      ctx.setSchemaGraphQL('type Post { id: ID! }', { mode: 'append' })
+    ).toBeUndefined();
+    expect(
+      ctx.setSchemaDBML('Table tags {\n  id int\n}', {
+        mode: 'append',
+        placement: 'grid',
+      })
+    ).toBeUndefined();
+    ctx.setSchemaAML('roles\n  id int pk', { mode: 'append' });
+    ctx.setSchemaSQL('   ', { mode: 'append' });
+
+    expect(namesOf(app)).toEqual(['users', 'Post', 'tags', 'roles']);
+    expect(hoisted.requests).toEqual([]);
+  });
+
+  it('places an import by its relationships before adding it for auto', async () => {
+    const { app, ctx } = await setup();
+    ctx.setSchemaSQL('CREATE TABLE old (id INT);');
+    hoisted.elkLayout = async ({ nodes }) =>
+      nodes.map((node, index) => ({ id: node.id, x: index * 700, y: 0 }));
+
+    const landing = ctx.setSchemaSQL(RELATED_SQL, {
+      placement: 'auto',
+      mode: 'append',
+    });
+    expect(landing).toBeInstanceOf(Promise);
+    expect(namesOf(app)).toEqual(['old']);
+    await landing;
+
+    expect(hoisted.requests).toHaveLength(1);
+    expect(namesOf(app)).toEqual(['old', 'users', 'posts']);
+    expect(app.store.history.size).toBe(2);
+  });
+
+  it('adds nothing to a readonly editor, which it would refuse', async () => {
+    const { app, ctx, props } = await setup({}, { wired: true });
+    ctx.setSchemaSQL('CREATE TABLE old (id INT);');
+    props.readonly = true;
+    await flush();
+
+    ctx.setSchemaSQL('CREATE TABLE more (id INT);', { mode: 'append' });
+    await expect(
+      ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto', mode: 'append' })
+    ).resolves.toBeUndefined();
+    ctx.setSchemaJSON(JSON.stringify(app.store.state), { mode: 'append' });
+
+    expect(namesOf(app)).toEqual(['old']);
+    expect(hoisted.requests).toEqual([]);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('replaces the document with setSchemaJSON, an edit undo takes back', async () => {
+    const { app, ctx } = await setup();
+    ctx.setSchemaSQL('CREATE TABLE old (id INT);');
+    const json = loadedDocument(40);
+
+    ctx.setSchemaJSON(json);
+    expect(namesOf(app)).toEqual(['loaded']);
+    ctx.setSchemaJSON('  ');
+    expect(namesOf(app)).toEqual(['loaded']);
+
+    app.store.undo();
+    expect(namesOf(app)).toEqual(['old']);
+  });
+
+  it('adds a document with setSchemaJSON for an append, keeping the settings', async () => {
+    const { app, ctx } = await setup();
+    ctx.setSchemaSQL('CREATE TABLE old (id INT);');
+    const { databaseName } = app.store.state.settings;
+
+    ctx.setSchemaJSON(loadedDocument(40), { mode: 'append' });
+
+    expect(namesOf(app)).toEqual(['old', 'loaded']);
+    expect(app.store.state.settings.databaseName).toBe(databaseName);
   });
 
   it('loads an empty document when the SDL declares no object type', async () => {

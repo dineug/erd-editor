@@ -17,6 +17,7 @@ import {
 import { type CompositionAction, compositionActionsFlat } from '@dineug/r-html';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
 
+import { TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import { createSeededPeer, SEED } from '@/__test-utils__/seed';
 import { actionTools, toolByName } from '@/tools/registry';
 
@@ -177,6 +178,9 @@ const EDITOR_GENERATORS: Record<string, string> = {
   loadSchemaGraphQLAction$: 'wrapped by erd_import_graphql',
   loadSchemaDBMLAction$: 'wrapped by erd_import_dbml',
   loadSchemaAMLAction$: 'wrapped by erd_import_aml',
+  appendSchemaAction$:
+    'adds for erd_import_sql, erd_import_graphql, erd_import_dbml and erd_import_aml with mode append',
+  appendSchemaJsonAction$: 'adds for erd_import_json with mode append',
   dragstartColumnAction$: 'starts a column drag',
   dragoverColumnAction$:
     'moves the dragged columns under a pointer; erd_move_column names the target',
@@ -275,6 +279,36 @@ describe('generator or atom (AC-E4)', () => {
         emit([(generator as (value: string) => CompositionAction)('{}')])
       );
     }
+  });
+
+  it('keeps each import tool’s append on the editor generator it adds with', () => {
+    const emit = (actions: CompositionAction[]) =>
+      compositionActionsFlat(peer.state, context, actions).map(
+        ({ type }) => type
+      );
+    const value = (name: string) => TOOL_SCENARIOS[name].value as string;
+
+    for (const [name, type] of [
+      ['erd_import_sql', 'sql'],
+      ['erd_import_graphql', 'graphql'],
+      ['erd_import_dbml', 'dbml'],
+      ['erd_import_aml', 'aml'],
+    ] as const) {
+      const tool = toolByName.get(name)!;
+      expect(
+        emit([...tool.toActions({ value: value(name), mode: 'append' })]),
+        name
+      ).toEqual(emit([editorActions$.appendSchemaAction$(type, value(name))]));
+    }
+    expect(
+      emit([
+        ...toolByName
+          .get('erd_import_json')!
+          .toActions({ value: value('erd_import_json'), mode: 'append' }),
+      ])
+    ).toEqual(
+      emit([editorActions$.appendSchemaJsonAction$(value('erd_import_json'))])
+    );
   });
 
   it('names, in the atom tool’s reason, every generator that emits its type', () => {

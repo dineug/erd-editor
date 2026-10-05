@@ -4,12 +4,21 @@ import { AppContext } from '@/components/appContext';
 import Toast from '@/components/primitives/toast/Toast';
 import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { openDiffViewerAction, openToastAction } from '@/utils/emitter';
-import { importSchemaPlaced } from '@/utils/file/importSchema';
+import {
+  appendSchemaJSON,
+  appendSchemaPlaced,
+  importSchemaPlaced,
+} from '@/utils/file/importSchema';
+
+/** Whether an import takes the document's place or joins it below the diagram. */
+export type ImportMode = 'replace' | 'append';
 
 type ImportOptions = {
   type: 'json' | 'sql' | 'graphql' | 'dbml' | 'aml';
   op: 'set' | 'diff';
   accept: string;
+  /** Named only for an append, so a host that knows no mode replaces as before. */
+  mode?: ImportMode;
 };
 
 type ImportFileCallback = (options: ImportOptions) => void;
@@ -27,13 +36,34 @@ export function setImportFileCallback(callback: ImportFileCallback | null) {
   performImportFileExtra = callback;
 }
 
-export function importJSON({ store, emitter }: AppContext) {
+/** What a host is asked for, the mode named only when it is an append. */
+function toImportOptions(
+  type: ImportOptions['type'],
+  accept: string,
+  mode: ImportMode
+): ImportOptions {
+  return mode === 'append'
+    ? { type, op: 'set', accept, mode }
+    : { type, op: 'set', accept };
+}
+
+/** Lands a schema file read in, replacing the document or joining it as the mode says. */
+function landSchema(
+  app: AppContext,
+  type: Exclude<ImportOptions['type'], 'json'>,
+  value: string,
+  mode: ImportMode
+): Promise<void> {
+  return mode === 'append'
+    ? appendSchemaPlaced(app, type, value)
+    : importSchemaPlaced(app, type, value);
+}
+
+export function importJSON(app: AppContext, mode: ImportMode = 'replace') {
+  const { store, emitter } = app;
+
   if (performImportFileExtra) {
-    performImportFileExtra({
-      type: 'json',
-      op: 'set',
-      accept: '.json',
-    });
+    performImportFileExtra(toImportOptions('json', '.json', mode));
     return;
   }
 
@@ -61,17 +91,21 @@ export function importJSON({ store, emitter }: AppContext) {
         return;
       }
 
-      store.dispatch(loadJsonAction$(value));
+      if (mode === 'append') {
+        appendSchemaJSON(app, value);
+      } else {
+        store.dispatch(loadJsonAction$(value));
+      }
     };
   });
   input.click();
 }
 
-export function importSchemaSQL(app: AppContext) {
+export function importSchemaSQL(app: AppContext, mode: ImportMode = 'replace') {
   const { emitter } = app;
 
   if (performImportFileExtra) {
-    performImportFileExtra({ type: 'sql', op: 'set', accept: '.sql' });
+    performImportFileExtra(toImportOptions('sql', '.sql', mode));
     return;
   }
 
@@ -99,21 +133,17 @@ export function importSchemaSQL(app: AppContext) {
         return;
       }
 
-      importSchemaPlaced(app, 'sql', value);
+      landSchema(app, 'sql', value, mode);
     };
   });
   input.click();
 }
 
-export function importGraphQL(app: AppContext) {
+export function importGraphQL(app: AppContext, mode: ImportMode = 'replace') {
   const { emitter } = app;
 
   if (performImportFileExtra) {
-    performImportFileExtra({
-      type: 'graphql',
-      op: 'set',
-      accept: GRAPHQL_ACCEPT,
-    });
+    performImportFileExtra(toImportOptions('graphql', GRAPHQL_ACCEPT, mode));
     return;
   }
 
@@ -141,21 +171,17 @@ export function importGraphQL(app: AppContext) {
         return;
       }
 
-      importSchemaPlaced(app, 'graphql', value);
+      landSchema(app, 'graphql', value, mode);
     };
   });
   input.click();
 }
 
-export function importDBML(app: AppContext) {
+export function importDBML(app: AppContext, mode: ImportMode = 'replace') {
   const { emitter } = app;
 
   if (performImportFileExtra) {
-    performImportFileExtra({
-      type: 'dbml',
-      op: 'set',
-      accept: '.dbml',
-    });
+    performImportFileExtra(toImportOptions('dbml', '.dbml', mode));
     return;
   }
 
@@ -183,21 +209,17 @@ export function importDBML(app: AppContext) {
         return;
       }
 
-      importSchemaPlaced(app, 'dbml', value);
+      landSchema(app, 'dbml', value, mode);
     };
   });
   input.click();
 }
 
-export function importAML(app: AppContext) {
+export function importAML(app: AppContext, mode: ImportMode = 'replace') {
   const { emitter } = app;
 
   if (performImportFileExtra) {
-    performImportFileExtra({
-      type: 'aml',
-      op: 'set',
-      accept: '.aml',
-    });
+    performImportFileExtra(toImportOptions('aml', '.aml', mode));
     return;
   }
 
@@ -225,7 +247,7 @@ export function importAML(app: AppContext) {
         return;
       }
 
-      importSchemaPlaced(app, 'aml', value);
+      landSchema(app, 'aml', value, mode);
     };
   });
   input.click();

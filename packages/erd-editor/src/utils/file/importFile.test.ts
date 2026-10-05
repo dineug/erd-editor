@@ -19,13 +19,19 @@ import {
   importSchemaSQL,
   setImportFileCallback,
 } from '@/utils/file/importFile';
-import { importSchemaPlaced } from '@/utils/file/importSchema';
+import {
+  appendSchemaJSON,
+  appendSchemaPlaced,
+  importSchemaPlaced,
+} from '@/utils/file/importSchema';
 
 /**
  * Where a schema file goes once read, which importSchema.test.ts holds to its
  * placement; these specs hold only that the file reaches it.
  */
 vi.mock('@/utils/file/importSchema', () => ({
+  appendSchemaJSON: vi.fn(),
+  appendSchemaPlaced: vi.fn(),
   importSchemaPlaced: vi.fn(),
 }));
 
@@ -95,6 +101,8 @@ describe('importFile', () => {
     setImportFileCallback(null);
     vi.restoreAllMocks();
     vi.mocked(importSchemaPlaced).mockClear();
+    vi.mocked(appendSchemaPlaced).mockClear();
+    vi.mocked(appendSchemaJSON).mockClear();
   });
 
   describe('setImportFileCallback', () => {
@@ -195,6 +203,77 @@ describe('importFile', () => {
       expect(harness.inputs).toHaveLength(1);
       expect(harness.clicks).toBe(1);
     });
+  });
+
+  describe('Import and Add', () => {
+    it.each([
+      ['json', importJSON, '.json'],
+      ['sql', importSchemaSQL, '.sql'],
+      ['graphql', importGraphQL, '.graphql,.gql,.graphqls'],
+      ['dbml', importDBML, '.dbml'],
+      ['aml', importAML, '.aml'],
+    ] as const)(
+      'asks the host for a %s file to add, naming the mode',
+      (type, importFile, accept) => {
+        const callback = vi.fn();
+        setImportFileCallback(callback);
+
+        importFile(harness.app, 'append');
+
+        expect(callback).toHaveBeenCalledExactlyOnceWith({
+          type,
+          op: 'set',
+          accept,
+          mode: 'append',
+        });
+      }
+    );
+
+    it('names no mode to the host for a replace', () => {
+      const callback = vi.fn();
+      setImportFileCallback(callback);
+
+      importSchemaSQL(harness.app, 'replace');
+
+      expect(callback.mock.calls[0][0]).not.toHaveProperty('mode');
+    });
+
+    it('adds a json file read in to the document', async () => {
+      importJSON(harness.app, 'append');
+      const [input] = harness.inputs;
+      attachFile(input, 'schema.json', '{"version":"3.0.0"}');
+
+      await change(input);
+
+      expect(appendSchemaJSON).toHaveBeenCalledExactlyOnceWith(
+        harness.app,
+        '{"version":"3.0.0"}'
+      );
+      expect(harness.dispatch).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['sql', importSchemaSQL, 'dump.sql', 'CREATE TABLE a (id int);'],
+      ['graphql', importGraphQL, 'schema.gql', 'type A { id: ID! }'],
+      ['dbml', importDBML, 'schema.dbml', 'Table a {\n  id int\n}'],
+      ['aml', importAML, 'schema.aml', 'a\n  id int pk'],
+    ] as const)(
+      'adds a %s file read in, placed by its relationships',
+      async (type, importFile, name, content) => {
+        importFile(harness.app, 'append');
+        const [input] = harness.inputs;
+        attachFile(input, name, content);
+
+        await change(input);
+
+        expect(appendSchemaPlaced).toHaveBeenCalledExactlyOnceWith(
+          harness.app,
+          type,
+          content
+        );
+        expect(importSchemaPlaced).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('importJSON', () => {

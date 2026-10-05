@@ -55,6 +55,7 @@ export const ARG_COPY: Readonly<Record<string, string>> = {
   color: COLOR,
   x: X,
   y: Y,
+  mode: 'replace, the default, discards the document and loads the import in its place; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
 };
 
 const setting = (subject: string, value: string): ToolCopy => ({
@@ -68,7 +69,7 @@ const flag = (subject: string): ToolCopy => ({
 });
 
 const importer = (language: string): ToolCopy => ({
-  description: `Replaces the whole document with the schema parsed from ${language}. Everything in the document is discarded; erd_undo restores it.`,
+  description: `Replaces the whole document with the schema parsed from ${language}. Everything in the document is discarded; erd_undo restores it. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.`,
   args: { value: `The ${language} source text.` },
 });
 
@@ -380,9 +381,10 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   erd_import_aml: importer('AML'),
   erd_import_json: {
     description:
-      'Replaces the whole document with an erd-editor JSON document, such as another .erd.json file. erd_undo restores the previous one.',
+      "Replaces the whole document with an erd-editor JSON document, such as another .erd.json file. erd_undo restores the previous one. With mode append it instead adds that document's tables, relationships, indexes and memos as new ones below the diagram, apart as the file places them, and keeps this document's settings.",
     args: {
-      value: 'The .erd.json document text; empty gives an empty document.',
+      value:
+        'The .erd.json document text; empty gives an empty document, and is refused with mode append.',
     },
   },
 };

@@ -94,7 +94,13 @@ sealed class HostBridgeCommand {
     }
 }
 data class HostExportFileCommandPayload(val value: String, val fileName: String)
-data class HostImportFileCommandPayload(val type: String, val op: String, val accept: String)
+/** mode is "append" for Import and Add; the page names none for a replace, and this host reads neither. */
+data class HostImportFileCommandPayload(
+    val type: String,
+    val op: String,
+    val accept: String,
+    val mode: String? = null
+)
 /** changed is false for a change that left the value as it was; a page that sends none means true. */
 data class HostSaveValueCommandPayload(val value: String, val changed: Boolean = true)
 // A tree, not Any: Any reads objects as maps, whose null entries the NON_NULL mapper then drops.
@@ -133,7 +139,13 @@ sealed class WebviewBridgeCommand {
         val type = "webviewReplicationCommand"
     }
 }
-data class WebviewImportFileCommandPayload(val type: String, val op: String, val value: String)
+/** mode left null is left out, which a page reads as a replace. */
+data class WebviewImportFileCommandPayload(
+    val type: String,
+    val op: String,
+    val value: String,
+    val mode: String? = null
+)
 data class WebviewInitialValueCommandPayload(val value: String)
 data class WebviewUpdateThemeCommandPayload(
     val appearance: String?,

@@ -1921,6 +1921,8 @@ describe('actions$', () => {
   it('exposes every generator action of the editor module', () => {
     expect(Object.keys(actions$).sort()).toEqual(
       [
+        'appendSchemaAction$',
+        'appendSchemaJsonAction$',
         'changeColorAllAction$',
         'columnKeyHoverEndAction$',
         'columnKeyHoverStartAction$',

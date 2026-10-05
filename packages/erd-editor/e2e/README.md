@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-39 spec files. Ten of the groups exist because the DOM scene got their subject
+40 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -91,6 +91,14 @@ one drawn over it in coordinates the document never keeps:
 `shared-workers.spec.ts` holds down what those two and every export stand on:
 that each of the four shared workers starts on the dev server, which serves a
 worker the same component boundaries, Vite client included, that it serves the page.
+
+`import-and-add.spec.ts` holds down what an import lands beside the diagram
+rather than in its place: Import and Add's SQL file placed by Flow below the
+tables already there, which stay where they were, selected and taken back by one
+undo, a json file's tables and memo standing apart as the file has them with
+its settings left out, the ERD tab an append brings up from a Flow view, Graph
+mode, Schema SQL and Code Generator with the added table selected and on screen,
+and a read-only editor whose palette and menu offer no Import and Add.
 
 Two more hold down a frame the rest never look at, one on the canvas and one in
 a DOM panel the port left on native drag and drop:

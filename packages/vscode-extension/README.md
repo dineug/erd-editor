@@ -22,6 +22,8 @@ On the empty canvas, `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to i
 from a schema you already have, right-click the canvas and choose **Import → Schema SQL**
 for a `.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file.
 Either one replaces the diagram in one undoable step, its tables laid out by their relationships.
+**Import and Add** beside it takes the same formats and adds the file to the diagram instead,
+its tables placed as new ones below the ones already there, in one undoable step.
 
 Use the icon in the editor title bar to switch between the diagram and its JSON source — hold
 `Alt` while clicking to open the other view to the side instead. These are title-bar actions
@@ -45,6 +47,9 @@ only; they do not appear in the Command Palette.
 - **AML import** — bring in an `.aml` file written for [Azimutt](https://azimutt.app), in either
   the v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every
   relation arrow arrive; a check, a struct type and a view are skipped rather than refused
+- **Import and Add** — add a `.sql`, GraphQL, DBML, AML or `.erd.json` file to the diagram
+  rather than replacing it: its tables arrive below the ones already there, which stay where
+  they are, and one undo takes them away. A foreign key to a table outside the file is dropped
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid

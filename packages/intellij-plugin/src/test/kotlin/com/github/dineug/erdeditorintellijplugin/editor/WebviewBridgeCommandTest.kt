@@ -119,6 +119,39 @@ class WebviewBridgeCommandTest {
     }
 
     @Test
+    fun `an import request carries the mode Import and Add names, and none for a replace`() {
+        val append = mapper.readValue(
+            """{"type":"hostImportFileCommand","payload":""" +
+                """{"type":"sql","op":"set","accept":".sql","mode":"append"}}""",
+            HostBridgeCommand::class.java
+        ) as HostBridgeCommand.ImportFile
+        assertEquals("append", append.payload.mode)
+
+        val replace = mapper.readValue(
+            """{"type":"hostImportFileCommand","payload":{"type":"sql","op":"set","accept":".sql"}}""",
+            HostBridgeCommand::class.java
+        ) as HostBridgeCommand.ImportFile
+        assertEquals(null, replace.payload.mode)
+    }
+
+    @Test
+    fun `an imported file goes back with its mode, and with no mode key for a replace`() {
+        val append = mapper.readTree(
+            mapper.writeValueAsString(
+                WebviewBridgeCommand.ImportFile(WebviewImportFileCommandPayload("json", "set", "{}", "append"))
+            )
+        ).get("payload")
+        assertEquals("append", append.get("mode").asText())
+
+        val replace = mapper.readTree(
+            mapper.writeValueAsString(
+                WebviewBridgeCommand.ImportFile(WebviewImportFileCommandPayload("json", "set", "{}"))
+            )
+        ).get("payload")
+        assertFalse(replace.has("mode"))
+    }
+
+    @Test
     fun `unknown fields are tolerated but unknown commands are rejected`() {
         // The web app may add fields ahead of the host; that must not break parsing.
         val withExtra = mapper.readValue(

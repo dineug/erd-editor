@@ -74,12 +74,31 @@ export type SchemaImportOptions = {
    * menu does, and 'grid', the default, replaces it at once with them in rows.
    */
   placement?: 'auto' | 'grid';
+  /**
+   * Whether the import takes the document's place, 'replace', the default, or
+   * joins it below the diagram as new tables, 'append', as Import and Add does.
+   */
+  mode?: 'replace' | 'append';
 };
 
-/** Replaces the document with an import, returning a Promise when it places first. */
+export type SchemaJSONImportOptions = {
+  /**
+   * Whether the document takes this one's place, 'replace', the default, or
+   * joins it below the diagram as new tables and memos, 'append'.
+   */
+  mode?: 'replace' | 'append';
+};
+
+/**
+ * Replaces the document with an import, or adds the import to it for an
+ * append, returning a Promise when it places first.
+ */
 export type SetSchema = {
-  (value: string, options: { placement: 'auto' }): Promise<void>;
-  (value: string, options?: { placement?: 'grid' }): void;
+  (
+    value: string,
+    options: SchemaImportOptions & { placement: 'auto' }
+  ): Promise<void>;
+  (value: string, options?: SchemaImportOptions & { placement?: 'grid' }): void;
   (value: string, options?: SchemaImportOptions): Promise<void> | void;
 };
 
@@ -112,6 +131,7 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   setSchemaGraphQL: SetSchema;
   setSchemaDBML: SetSchema;
   setSchemaAML: SetSchema;
+  setSchemaJSON: (value: string, options?: SchemaJSONImportOptions) => void;
   getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
   getSharedStore: (
     config?: SharedStoreConfig & {

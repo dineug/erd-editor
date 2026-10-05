@@ -91,7 +91,12 @@ const Wrapper: FC<WrapperProps> = (props, ctx) => {
 let app: AppContext;
 let mounted: Mounted | null = null;
 let onClose: ReturnType<typeof vi.fn>;
-let importRequests: Array<{ type: string; op: string; accept: string }>;
+let importRequests: Array<{
+  type: string;
+  op: string;
+  accept: string;
+  mode?: string;
+}>;
 let exportedFiles: string[];
 
 type MountOptions = {
@@ -207,6 +212,7 @@ describe('ErdContextMenu / ERD type', () => {
       'View Option',
       'Database',
       'Import',
+      'Import and Add',
       'Export',
       'Auto Layout',
       'Diff Viewer',
@@ -390,6 +396,46 @@ describe('ErdContextMenu / ERD type', () => {
 
     expect(importRequests).toEqual([
       { type: 'json', op: 'set', accept: '.json' },
+    ]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves Import and Add out of a readonly editor, Import kept', async () => {
+    app = createTestAppContext({ getReadonly: () => true });
+    await mountMenu();
+
+    expect(labelsOf(rootItems())).toEqual([
+      'New TableAlt + N',
+      'New MemoAlt + M',
+      'Find and ReplaceCtrl + F',
+      'Relationship',
+      'View Option',
+      'Database',
+      'Import',
+      'Export',
+      'Auto Layout',
+      'Diff Viewer',
+    ]);
+  });
+
+  it('requests an sql file to add from the Import and Add submenu', async () => {
+    await mountMenu();
+
+    const sub = await openSubMenu(findItem(rootItems(), 'Import and Add'));
+    const items = itemsOf(sub);
+
+    expect(labelsOf(items)).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
+
+    await click(items[1]);
+
+    expect(importRequests).toEqual([
+      { type: 'sql', op: 'set', accept: '.sql', mode: 'append' },
     ]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });

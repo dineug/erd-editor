@@ -45,6 +45,11 @@ run **Create new diagram** from the command palette. In Google Drive, choose
   undo puts the previous diagram back. A SQL, DBML, AML or GraphQL file imported into
   erd-editor.io's schema list or the Google Drive editor becomes a new diagram laid out the
   same way
+- **Import and Add** — the menu beside Import, and its five formats in the command palette, add
+  a file to the diagram instead of replacing it: its tables arrive as new ones below everything
+  already there, laid out the same way (a `.erd.json` file keeps its own placement), selected,
+  and one undo takes them away. Tables of the same name are kept side by side, and a foreign
+  key to a table outside the file is dropped
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid

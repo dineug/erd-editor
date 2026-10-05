@@ -58,6 +58,21 @@ describe('@dineug/erd-editor entry point', () => {
     ).returns.toEqualTypeOf<Promise<void> | void>();
   });
 
+  it('types the import mode on every schema setter and on setSchemaJSON', () => {
+    const editor = document.createElement('erd-editor');
+
+    expectTypeOf(() =>
+      editor.setSchemaSQL('', { mode: 'append', placement: 'auto' })
+    ).returns.toEqualTypeOf<Promise<void>>();
+    expectTypeOf(() =>
+      editor.setSchemaDBML('', { mode: 'append' })
+    ).returns.toEqualTypeOf<void>();
+    expectTypeOf(editor.setSchemaJSON).parameters.toEqualTypeOf<
+      [value: string, options?: { mode?: 'replace' | 'append' }]
+    >();
+    expectTypeOf(editor.setSchemaJSON).returns.toEqualTypeOf<void>();
+  });
+
   it('exports the default key bindings, a fresh map on every call', () => {
     const keyBindingMap = index.createKeyBindingMap();
 
