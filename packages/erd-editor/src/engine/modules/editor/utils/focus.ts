@@ -168,6 +168,30 @@ export function getRemoveFirstColumnId(state: RootState, columnIds: string[]) {
   return columnId;
 }
 
+/**
+ * The columns a command on the focused column reaches: the selection still in
+ * the table when the focused column is one of two or more of it, else that
+ * column alone. A column removed by a peer, an agent or an undo stays selected.
+ */
+export function getFocusedColumnIds({
+  editor: { focusTable },
+  collections,
+}: RootState): string[] {
+  if (!focusTable?.columnId) return [];
+
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(focusTable.tableId);
+  if (!table) return [];
+
+  const { columnId } = focusTable;
+  const selected = focusTable.selectColumnIds.filter(arrayHas(table.columnIds));
+
+  return selected.length > 1 && selected.includes(columnId)
+    ? selected
+    : [columnId];
+}
+
 function getTableTypes({ settings: { show } }: RootState): FocusType[] {
   return bHas(show, Show.tableComment)
     ? TableFocusTypes

@@ -242,24 +242,39 @@ export const changeColumnValueAction$ = (
     }
   };
 
+/**
+ * Makes every named column still in the table a primary key, or none once all
+ * are, and no other; it sends no relationship action, and none for a column
+ * already there, as its undo records the negation.
+ */
+export const changeColumnsPrimaryKeyAction$ = (
+  tableId: string,
+  columnIds: string[]
+): GeneratorAction =>
+  function* ({ collections }) {
+    const table = query(collections)
+      .collection('tableEntities')
+      .selectById(tableId);
+    if (!table) return;
+
+    // A removed column keeps its entity, which a selection can still name.
+    const columns = query(collections)
+      .collection('tableColumnEntities')
+      .selectByIds(columnIds.filter(arrayHas(table.columnIds)));
+    const isPrimaryKey = ({ options }: { options: number }) =>
+      bHas(options, ColumnOption.primaryKey);
+    const value = !columns.every(isPrimaryKey);
+
+    yield columns
+      .filter(column => isPrimaryKey(column) !== value)
+      .map(({ id }) => changeColumnPrimaryKeyAction({ tableId, id, value }));
+  };
+
+/** Toggles one column's primary key, the rule above over a single column. */
 export const changeColumnPrimaryKeyAction$ = (
   tableId: string,
   columnId: string
-): GeneratorAction =>
-  function* ({ collections }) {
-    const column = query(collections)
-      .collection('tableColumnEntities')
-      .selectById(columnId);
-    if (!column) return;
-
-    const value = bHas(column.options, ColumnOption.primaryKey);
-
-    yield changeColumnPrimaryKeyAction({
-      tableId,
-      id: columnId,
-      value: !value,
-    });
-  };
+): GeneratorAction => changeColumnsPrimaryKeyAction$(tableId, [columnId]);
 
 export const actions$ = {
   addColumnAction$,
@@ -268,4 +283,5 @@ export const actions$ = {
   changeColumnDataTypeAction$,
   changeColumnValueAction$,
   changeColumnPrimaryKeyAction$,
+  changeColumnsPrimaryKeyAction$,
 };

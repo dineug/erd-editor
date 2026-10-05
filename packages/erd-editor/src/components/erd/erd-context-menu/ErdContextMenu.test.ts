@@ -52,7 +52,11 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+  removeColumnAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import { setImportFileCallback } from '@/utils/file/importFile';
@@ -451,6 +455,97 @@ describe('ErdContextMenu / table type', () => {
       .selectById(COLUMN_ID);
     expect(bHas(column?.options ?? 0, ColumnOption.primaryKey)).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  describe('over a column selection', () => {
+    const SECOND_ID = 'column-2';
+    const THIRD_ID = 'column-3';
+
+    const keys = () =>
+      [COLUMN_ID, SECOND_ID, THIRD_ID].map(columnId =>
+        bHas(
+          query(app.store.state.collections)
+            .collection('tableColumnEntities')
+            .selectById(columnId)?.options ?? 0,
+          ColumnOption.primaryKey
+        )
+      );
+
+    /** Three columns, the focus on the second with the first selected too. */
+    function seedSelection() {
+      seedTable();
+      app.store.dispatchSync(
+        addColumnAction({ id: SECOND_ID, tableId: TABLE_ID }),
+        addColumnAction({ id: THIRD_ID, tableId: TABLE_ID })
+      );
+      focusColumn();
+      app.store.dispatchSync(
+        focusColumnAction({
+          tableId: TABLE_ID,
+          columnId: SECOND_ID,
+          focusType: FocusType.columnName,
+          $mod: true,
+          shiftKey: false,
+        })
+      );
+    }
+
+    it('names the selection while the focused column is one of several', async () => {
+      seedSelection();
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      expect(labelsOf(rootItems())[0]).toBe(
+        'Primary Key on selected columnsAlt + K'
+      );
+    });
+
+    it('keys every selected column and closes', async () => {
+      seedSelection();
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      await click(findItem(rootItems(), 'Primary Key on selected columns'));
+
+      expect(keys()).toEqual([true, true, false]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('goes back to the one column once the selection is that column alone', async () => {
+      seedSelection();
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      focusColumn();
+      await flush();
+
+      expect(labelsOf(rootItems())[0]).toBe('Primary KeyAlt + K');
+      await click(findItem(rootItems(), 'Primary Key'));
+      expect(keys()).toEqual([true, false, false]);
+    });
+
+    it('goes back to the one column once a selected column leaves the table', async () => {
+      seedSelection();
+      app.store.dispatchSync(
+        changeColumnPrimaryKeyAction({
+          tableId: TABLE_ID,
+          id: SECOND_ID,
+          value: true,
+        })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+      expect(labelsOf(rootItems())[0]).toBe(
+        'Primary Key on selected columnsAlt + K'
+      );
+
+      // The bare atom a peer, an agent or the undo of an add sends, which
+      // leaves the column in the selection.
+      app.store.dispatchSync(
+        removeColumnAction({ id: COLUMN_ID, tableId: TABLE_ID })
+      );
+      await flush();
+
+      expect(labelsOf(rootItems())[0]).toBe('Primary KeyAlt + K');
+      await click(findItem(rootItems(), 'Primary Key'));
+      expect(keys()).toEqual([false, false, false]);
+    });
   });
 
   it('does nothing for primary key when no column is focused', async () => {

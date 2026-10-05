@@ -8,6 +8,7 @@ import {
   RelationshipType,
   twoTables,
 } from '../support/schema';
+import { MOD_KEY } from '../support/shortcuts';
 
 // AC-I4. The menu itself stayed dom, so what the port has to prove is the
 // routing: a right click reaches the same three answers a closest chain gave —
@@ -110,6 +111,58 @@ test.describe('context menu routing', () => {
 
     await erd.contextMenu.getByText('Color', { exact: true }).click();
     await expect(erd.host.locator('.color-picker')).toBeVisible();
+  });
+
+  test('right-clicking a selected row keeps the selection and keys every column in it', async ({
+    erd,
+  }) => {
+    await erd.seed(oneTable());
+    const idName = erd.cell(erd.columnEl('users_id'), 'columnName');
+    const nameName = erd.cell(erd.columnEl('users_name'), 'columnName');
+
+    await erd.focusCell(nameName);
+    await expect(erd.selectedColumns()).toHaveCount(1);
+
+    await erd.page.keyboard.down(MOD_KEY);
+    await erd.clickAt(await erd.centerOf(idName));
+    await erd.page.keyboard.up(MOD_KEY);
+    await expect(erd.selectedColumns()).toHaveCount(2);
+    await expect(erd.focusRing(idName)).toBeVisible();
+
+    await erd.clickAt(await erd.centerOf(nameName), { button: 'right' });
+
+    const item = erd.contextMenu.getByText('Primary Key on selected columns', {
+      exact: true,
+    });
+    await expect(item).toBeVisible();
+    await expect(erd.selectedColumns()).toHaveCount(2);
+    await expect(erd.focusRing(nameName)).toBeVisible();
+
+    await item.click();
+    await expect(erd.columnKey('users_id', 'pk')).toHaveCount(1);
+    await expect(erd.columnKey('users_name', 'pk')).toHaveCount(1);
+  });
+
+  test('right-clicking the key of a row outside the selection selects that row alone', async ({
+    erd,
+  }) => {
+    await erd.seed(oneTable());
+    await erd.focusCell(erd.cell(erd.columnEl('users_id'), 'columnName'));
+
+    const key = await erd.sceneBox(['#column-users_name', '.column-key']);
+    await erd.clickAt(
+      { x: key.x + key.width / 2, y: key.y + key.height / 2 },
+      { button: 'right' }
+    );
+
+    const item = erd.contextMenu.getByText('Primary Key', { exact: true });
+    await expect(item).toBeVisible();
+    await expect(erd.selectedColumns()).toHaveCount(1);
+    await expect(erd.columnEl('users_name')).toHaveAttribute('data-selected');
+
+    await item.click();
+    await expect(erd.columnKey('users_name', 'pk')).toHaveCount(1);
+    await expect(erd.columnKey('users_id', 'pk')).toHaveCount(0);
   });
 
   test('right-clicking a relationship offers its type and deletes it', async ({

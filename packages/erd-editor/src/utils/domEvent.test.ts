@@ -5,6 +5,7 @@ import {
   isMainButtonPress,
   isMiddleButtonPress,
   isMouseEvent,
+  isSecondaryButtonPress,
   isTouchEvent,
   onNumberOnly,
   onPrevent,
@@ -98,6 +99,29 @@ describe('isMouseEvent', () => {
   it('is false for a plain event and for a TouchEvent', () => {
     expect(isMouseEvent(new Event('mousedown'))).toBe(false);
     expect(isMouseEvent(new TouchEvent('touchstart'))).toBe(false);
+  });
+});
+
+describe('isSecondaryButtonPress', () => {
+  it('is true for the secondary mouse button alone', () => {
+    expect(
+      isSecondaryButtonPress(new MouseEvent('mousedown', { button: 2 }))
+    ).toBe(true);
+    expect(
+      isSecondaryButtonPress(new MouseEvent('mousedown', { button: 0 }))
+    ).toBe(false);
+    expect(
+      isSecondaryButtonPress(new MouseEvent('mousedown', { button: 1 }))
+    ).toBe(false);
+  });
+
+  it('is false for a macOS Ctrl+click and for a touch', () => {
+    expect(
+      isSecondaryButtonPress(
+        new MouseEvent('mousedown', { button: 0, ctrlKey: true })
+      )
+    ).toBe(false);
+    expect(isSecondaryButtonPress(new TouchEvent('touchstart'))).toBe(false);
   });
 });
 

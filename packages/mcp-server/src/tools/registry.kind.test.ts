@@ -102,6 +102,10 @@ const CENSUS: Census = {
       SEED.userName
     ),
   ],
+  changeColumnsPrimaryKeyAction$: () =>
+    [[SEED.userId, SEED.userName], [SEED.userId], ['gone']].map(columnIds =>
+      tableColumnActions$.changeColumnsPrimaryKeyAction$(SEED.users, columnIds)
+    ),
   addRelationshipAction$: () =>
     [
       [SEED.users, SEED.orders],
@@ -290,6 +294,9 @@ describe('generator or atom (AC-E4)', () => {
 
   it('finds the toggles the flag tools decline in the census', () => {
     expect([...emittedBy('changeColumnPrimaryKeyAction$')]).toEqual([
+      'column.changePrimaryKey',
+    ]);
+    expect([...emittedBy('changeColumnsPrimaryKeyAction$')]).toEqual([
       'column.changePrimaryKey',
     ]);
     expect(emittedBy('toggleColumnValueAction$')).toEqual(

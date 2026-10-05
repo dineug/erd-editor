@@ -40,6 +40,10 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  changeColumnPrimaryKeyAction,
+  removeColumnAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { toScenePoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
@@ -529,6 +533,90 @@ describe('useErdShortcut - column shortcuts', () => {
     expect(
       bHas(getColumn(app, columnId)!.options, ColumnOption.primaryKey)
     ).toBe(false);
+  });
+
+  describe('over a column selection', () => {
+    const keys = (app: AppContext, columnIds: string[]) =>
+      columnIds.map(id =>
+        bHas(getColumn(app, id)!.options, ColumnOption.primaryKey)
+      );
+
+    /** Three columns, the focus on the last with the first selected beside it. */
+    async function seedSelection() {
+      const app = await setup();
+      const tableId = seedTable(app);
+      const columnIds = [
+        seedColumn(app, tableId),
+        seedColumn(app, tableId),
+        seedColumn(app, tableId),
+      ];
+      for (const columnId of [columnIds[0], columnIds[2]]) {
+        app.store.dispatchSync(
+          focusColumnAction({
+            tableId,
+            columnId,
+            focusType: FocusType.columnName,
+            $mod: true,
+            shiftKey: false,
+          })
+        );
+      }
+      return { app, tableId, columnIds };
+    }
+
+    it('makes every selected column a key, leaving the rest', async () => {
+      const { app, columnIds } = await seedSelection();
+      expect(app.store.state.editor.focusTable?.selectColumnIds).toEqual([
+        columnIds[2],
+        columnIds[0],
+      ]);
+
+      shortcut(app, KeyBindingName.primaryKey);
+      await flush();
+
+      expect(keys(app, columnIds)).toEqual([true, false, true]);
+    });
+
+    it('clears them all on the next press, in one undo each', async () => {
+      const { app, columnIds } = await seedSelection();
+
+      shortcut(app, KeyBindingName.primaryKey);
+      await flush();
+      shortcut(app, KeyBindingName.primaryKey);
+      await flush();
+      expect(keys(app, columnIds)).toEqual([false, false, false]);
+
+      app.store.undo();
+      expect(keys(app, columnIds)).toEqual([true, false, true]);
+    });
+
+    it('keys the focused column alone while the selection leaves it out', async () => {
+      const { app, columnIds } = await seedSelection();
+      app.store.state.editor.focusTable!.selectColumnIds = [
+        columnIds[0],
+        columnIds[1],
+      ];
+
+      shortcut(app, KeyBindingName.primaryKey);
+      await flush();
+
+      expect(keys(app, columnIds)).toEqual([false, false, true]);
+    });
+
+    it('toggles the focused column alone once the rest of the selection leaves the table', async () => {
+      const { app, tableId, columnIds } = await seedSelection();
+      app.store.dispatchSync(
+        changeColumnPrimaryKeyAction({ tableId, id: columnIds[2], value: true })
+      );
+      // The bare atom a peer, an agent or the undo of an add sends, which
+      // leaves the column in the selection.
+      app.store.dispatchSync(removeColumnAction({ id: columnIds[0], tableId }));
+
+      shortcut(app, KeyBindingName.primaryKey);
+      await flush();
+
+      expect(keys(app, columnIds)).toEqual([false, false, false]);
+    });
   });
 });
 
