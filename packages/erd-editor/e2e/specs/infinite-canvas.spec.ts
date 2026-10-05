@@ -720,7 +720,7 @@ test.describe('an export of a canvas with no edges', () => {
     // both memos have to stay clear of it.
     await erd.openContextMenuAt(600, 400);
     await erd.contextMenu.getByText('Export', { exact: true }).hover();
-    const image = erd.contextMenu.getByText('Image…', { exact: true });
+    const image = erd.contextMenu.getByText('Image', { exact: true });
     await expect(image).toBeVisible();
     await image.click();
     await erd.host

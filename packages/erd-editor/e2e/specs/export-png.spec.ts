@@ -86,7 +86,7 @@ async function openExportDialog(erd: ErdEditorPage) {
   await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
 
   await erd.contextMenu.getByText('Export', { exact: true }).hover();
-  const image = erd.contextMenu.getByText('Image…', { exact: true });
+  const image = erd.contextMenu.getByText('Image', { exact: true });
   await expect(image).toBeVisible();
   await image.click();
 

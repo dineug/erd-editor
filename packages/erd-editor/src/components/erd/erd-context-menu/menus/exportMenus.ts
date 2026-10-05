@@ -38,7 +38,7 @@ export function createExportMenus(
     },
     {
       icon: 'file-image',
-      name: 'Image…',
+      name: 'Image',
       onClick: () => {
         onClose();
         emitter.emit(openExportImageAction());

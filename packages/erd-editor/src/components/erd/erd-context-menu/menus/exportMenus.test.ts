@@ -30,13 +30,13 @@ afterEach(() => {
 });
 
 describe('exportMenus', () => {
-  it('exposes json, Schema SQL and Image… entries with their icons', () => {
+  it('exposes json, Schema SQL and Image entries with their icons', () => {
     const result = createExportMenus(app, () => {});
 
     expect(result.map(menu => menu.name)).toEqual([
       'json',
       'Schema SQL',
-      'Image…',
+      'Image',
     ]);
     expect(result.map(menu => menu.icon)).toEqual([
       'braces',

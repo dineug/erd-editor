@@ -620,7 +620,7 @@ describe('createScopeActions / Import and Export', () => {
     expect(await calls[0].blob.text()).toContain('users');
   });
 
-  it('lists Image… last under Export, which opens the export image dialog', () => {
+  it('lists Image last under Export, which opens the export image dialog', () => {
     const calls: ExportCall[] = [];
     setExportFileCallback((blob, options) =>
       calls.push({ blob, fileName: options.fileName })
@@ -629,19 +629,19 @@ describe('createScopeActions / Import and Export', () => {
     const off = app.emitter.on({ openExportImage: opened });
     const entries = find(scope(), 'Export').next ?? [];
 
-    expect(names(entries)).toEqual(['json', 'Schema SQL', 'Image…']);
+    expect(names(entries)).toEqual(['json', 'Schema SQL', 'Image']);
 
-    find(entries, 'Image…').perform?.(app);
+    find(entries, 'Image').perform?.(app);
 
     expect(opened).toHaveBeenCalledTimes(1);
     expect(calls).toEqual([]);
     off();
   });
 
-  it('finds the Image… export entry by its png keyword', () => {
+  it('finds the Image export entry by its png keyword', () => {
     const entries = find(scope(), 'Export').next ?? [];
 
-    expect(names(searchActions(entries, 'png'))).toContain('Image…');
+    expect(names(searchActions(entries, 'png'))).toContain('Image');
   });
 
   it('hides Import and Export outside the ERD canvas', () => {

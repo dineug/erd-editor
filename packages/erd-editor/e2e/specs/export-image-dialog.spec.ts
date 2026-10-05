@@ -74,7 +74,7 @@ const button = (dialog: Locator, name: string) =>
 async function openFromMenu(erd: ErdEditorPage, at = MENU_ORIGIN) {
   await erd.openContextMenuAt(at.x, at.y);
   await erd.contextMenu.getByText('Export', { exact: true }).hover();
-  const image = erd.contextMenu.getByText('Image…', { exact: true });
+  const image = erd.contextMenu.getByText('Image', { exact: true });
   await expect(image).toBeVisible();
   await image.click();
 
@@ -159,14 +159,14 @@ test.describe('the export image dialog', () => {
     await erd.expectKeyboardFocusInside();
   });
 
-  test('opens from the palette, as Image… under Export', async ({ erd }) => {
+  test('opens from the palette, as Image under Export', async ({ erd }) => {
     await erd.seed(document());
     await erd.focusCanvas();
     const quickSearch = erd.host.locator('.quick-search');
 
     await erd.press(Shortcut.search);
     await quickSearch.getByText('Export', { exact: true }).click();
-    await quickSearch.getByText('Image…', { exact: true }).click();
+    await quickSearch.getByText('Image', { exact: true }).click();
 
     await expect(dialogOf(erd)).toBeVisible();
     await expect(quickSearch).toHaveCount(0);
