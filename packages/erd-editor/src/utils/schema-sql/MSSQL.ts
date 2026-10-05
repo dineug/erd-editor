@@ -183,27 +183,76 @@ function formatColumn(
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }
 
-/**
- * The level 0 and 1 arguments of an extended property, its schema and table. An
- * unquoted name splits at each dot, the last part the table and the one before
- * it the schema, a database part dropped; a quoted one is one table in dbo.
- */
-function formatLevels(name: string, bracket: string): string {
-  const parts = bracket ? [name] : name.split('.');
-  const table = parts[parts.length - 1];
-  const schema = parts[parts.length - 2] || DEFAULT_SCHEMA;
+// A part of an unquoted name: bracketed or double-quoted runs, whose dots and
+// doubled closing characters stay inside them, or any character but a dot.
+const NAME_PART = /(?:\[(?:[^\]]|\]\])*\]|"(?:[^"]|"")*"|[^.])*/y;
 
-  return `'schema', ${toStringLiteral(schema)}, 'table', ${toStringLiteral(table)}`;
+// A part SQL Server reads as one name: in one pair of brackets or double
+// quotes, the closing character doubled inside, or a regular identifier.
+const DELIMITED_PART = /^(?:\[((?:[^\]]|\]\])*)\]|"((?:[^"]|"")*)")$/;
+const REGULAR_PART = /^[\p{L}_@#][\p{L}\p{N}_@#$]*$/u;
+
+function splitName(name: string): string[] {
+  const parts: string[] = [];
+  let index = 0;
+
+  do {
+    NAME_PART.lastIndex = index;
+    const [part] = NAME_PART.exec(name)!;
+    parts.push(part);
+    index += part.length + 1;
+  } while (index <= name.length);
+
+  return parts;
+}
+
+/** The name SQL Server reads in a part written in brackets or double quotes. */
+function unquotePart(part: string): string {
+  const match = DELIMITED_PART.exec(part);
+  if (!match) return part;
+
+  const [, bracketed, quoted] = match;
+  return bracketed === undefined
+    ? quoted.replaceAll('""', '"')
+    : bracketed.replaceAll(']]', ']');
+}
+
+const isOneName = (part: string) =>
+  DELIMITED_PART.test(part) || REGULAR_PART.test(part);
+
+/**
+ * The procedure that adds a table's extended properties and their level 0 and 1
+ * arguments. An unquoted name splits at each dot outside brackets or quotes into
+ * table, schema and the database whose procedure acts there; quoted, a dbo table.
+ */
+function formatLevels(name: string, bracket: string) {
+  const [table, schema = '', database = ''] = bracket
+    ? [name]
+    : splitName(name).reverse();
+  const level0 = unquotePart(schema) || DEFAULT_SCHEMA;
+  const level1 = bracket ? table : unquotePart(table);
+  // A database part SQL Server reads as no one name fails its CREATE TABLE
+  // too, and written before the procedure it could open a quote or bracket
+  // that swallows every batch after it, so it is dropped.
+  const prefix = isOneName(database) ? `${database}.` : '';
+
+  return {
+    procedure: `${prefix}sys.sp_addextendedproperty`,
+    levels: `'schema', ${toStringLiteral(level0)}, 'table', ${toStringLiteral(level1)}`,
+  };
 }
 
 function formatComment(
   { settings: { bracketType }, collections }: RootState,
   { table, buffer }: FormatCommentOptions
 ) {
-  const levels = formatLevels(table.name, getBracket(bracketType));
+  const { procedure, levels } = formatLevels(
+    table.name,
+    getBracket(bracketType)
+  );
 
   if (table.comment.trim() !== '') {
-    buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
+    buffer.push(`EXECUTE ${procedure} 'MS_Description',`);
     buffer.push(`  ${toStringLiteral(table.comment)}, ${levels}\nGO`);
     buffer.push('');
   }
@@ -212,7 +261,7 @@ function formatComment(
     .selectByIds(table.columnIds)
     .forEach(column => {
       if (column.comment.trim() !== '') {
-        buffer.push(`EXECUTE sys.sp_addextendedproperty 'MS_Description',`);
+        buffer.push(`EXECUTE ${procedure} 'MS_Description',`);
         buffer.push(
           `  ${toStringLiteral(column.comment)}, ${levels}, 'column', ${toStringLiteral(column.name)}\nGO`
         );

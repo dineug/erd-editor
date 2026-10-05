@@ -2452,6 +2452,37 @@ CREATE TABLE \`refs\` (
       }
     );
 
+    // An unquoted name's brackets, quotes and database part are SQL that names
+    // the table, which reads back as its last part bare, as the calls name it,
+    // a dot inside brackets or quotes included.
+    it.each([
+      ['[sales].[users]', 'users'],
+      ['"sales"."users"', 'users'],
+      ['shop.sales.users', 'users'],
+      ['[shop].[sales].[users]', 'users'],
+      ['[my shop].[sales].[users]', 'users'],
+      ['"shop"."sales"."users"', 'users'],
+      ['[my.db].sales.users', 'users'],
+      ['srv.shop.sales.users', 'users'],
+      ['[sales.v2].users', 'users'],
+      ['"sales.v2".users', 'users'],
+      ['[x.y.z]', 'x.y.z'],
+      ['"x""y"', 'x"y'],
+      ['[Order]', 'Order'],
+    ])(
+      'keeps the comments of a MSSQL export of the unquoted table name %s',
+      (typed, name) => {
+        const state = commentedState();
+        state.collections.tableEntities['tbl-users'].name = typed;
+
+        const schema = parse(createSchemaSQL(state, Database.MSSQL));
+        const table = tableByName(schema, name);
+
+        expect(table.comment).toBe('user table');
+        expect(columnByName(schema, table, 'id').comment).toBe('user id');
+      }
+    );
+
     // Older MSSQL exports wrote an unquoted table dbo.users whole at level 1,
     // beside a CREATE TABLE dbo.users that reads back as users: its last part
     // matches, so those saved files keep their comments.
