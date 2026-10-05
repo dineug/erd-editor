@@ -217,15 +217,19 @@ function unquotePart(part: string): string {
     : bracketed.replaceAll(']]', ']');
 }
 
-const isOneName = (part: string) =>
-  DELIMITED_PART.test(part) || REGULAR_PART.test(part);
+function isOneName(part: string): boolean {
+  return DELIMITED_PART.test(part) || REGULAR_PART.test(part);
+}
 
 /**
  * The procedure that adds a table's extended properties and their level 0 and 1
  * arguments. An unquoted name splits at each dot outside brackets or quotes into
  * table, schema and the database whose procedure acts there; quoted, a dbo table.
  */
-function formatLevels(name: string, bracket: string) {
+function formatLevels(
+  name: string,
+  bracket: string
+): { procedure: string; levels: string } {
   const [table, schema = '', database = ''] = bracket
     ? [name]
     : splitName(name).reverse();
