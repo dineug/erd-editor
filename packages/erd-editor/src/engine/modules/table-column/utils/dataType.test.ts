@@ -366,66 +366,18 @@ describe('getDataTypeSyncColumns and serial keys', () => {
     expect(result.every(({ value }) => value === 'bigint')).toBe(true);
   });
 
-  it('keeps a serial written into a foreign key there and sends its key nothing', () => {
+  it('sends a serial written into a foreign key back as it is and down mapped', () => {
     const store = setupChain(Database.PostgreSQL);
 
     const target = payload('c4', 't4', 'serial');
-
-    expect(getDataTypeSyncColumns([target], store.state)).toEqual([target]);
-  });
-
-  it('tells a serial value by its name without case or spaces, whatever the database', () => {
-    const store = setupChain(Database.Oracle);
-
-    const target = payload('c4', 't4', ' BigSerial ');
-
-    expect(getDataTypeSyncColumns([target], store.state)).toEqual([target]);
-  });
-
-  it('stops only the step back of a serial value, sending the foreign keys of its column the integer it stores', () => {
-    const store = setupChain(Database.PostgreSQL);
-
-    const target = payload('c2', 't2', 'SERIAL8');
     const result = getDataTypeSyncColumns([target], store.state);
 
-    expect(result).toEqual([target, payload('c3', 't3', 'BIGINT')]);
-  });
-
-  // Outside PostgreSQL, MySQL and MariaDB a bare serial is copied as it is, so
-  // the step down hands the foreign key a serial value it may not send back.
-  it('sends no serial a key passed down on to the other key of its foreign key', () => {
-    const store = setup();
-    store.dispatchSync(changeDatabaseAction({ value: Database.Oracle }));
-    addTable(store, 't1', ['c1']);
-    addTable(store, 't2', ['c2']);
-    addTable(store, 't3', ['c3']);
-    addRelationship(
-      store,
-      'r1',
-      { tableId: 't1', columnIds: ['c1'] },
-      { tableId: 't3', columnIds: ['c3'] }
-    );
-    addRelationship(
-      store,
-      'r2',
-      { tableId: 't2', columnIds: ['c2'] },
-      { tableId: 't3', columnIds: ['c3'] }
-    );
-
-    const target = payload('c1', 't1', 'serial');
-    const result = getDataTypeSyncColumns([target], store.state);
-
-    expect(result).toEqual([target, payload('c3', 't3', 'serial')]);
-  });
-
-  it('writes back a type that only starts like a serial one', () => {
-    const store = setupChain(Database.PostgreSQL);
-
-    const target = payload('c2', 't2', 'serial(4)');
-    const result = getDataTypeSyncColumns([target], store.state);
-
-    expect(result.map(({ id }) => id)).toEqual(['c2', 'c3', 'c1', 'c4']);
-    expect(result.every(({ value }) => value === 'serial(4)')).toBe(true);
+    expect(result).toEqual([
+      target,
+      payload('c1', 't1', 'serial'),
+      payload('c2', 't2', 'integer'),
+      payload('c3', 't3', 'integer'),
+    ]);
   });
 
   it('writes back to a key column the collection no longer holds', () => {

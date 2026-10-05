@@ -9,8 +9,8 @@ import { RootState } from '@/engine/state';
 
 /**
  * Drains the stack, listing each column its relationships reach once: a key
- * sends its foreign keys toReferenceDataType of its value, and a foreign key
- * sends its key its value, but no serial value and nothing to a serial key.
+ * sends its foreign keys toReferenceDataType of its value, a foreign key sends
+ * its key its value, unless the key is serial, which keeps it and stops there.
  */
 export function getDataTypeSyncColumns(
   stack: ChangeColumnValuePayload[],
@@ -33,7 +33,6 @@ export function getDataTypeSyncColumns(
 
     payloads.push(target);
     const foreignKeyValue = toReferenceDataType(value, database);
-    const isSerialValue = isSerialType(value);
 
     for (const { start, end } of relationships) {
       const startIndex = start.columnIds.indexOf(targetId);
@@ -47,7 +46,7 @@ export function getDataTypeSyncColumns(
       }
 
       const endIndex = end.columnIds.indexOf(targetId);
-      if (endIndex === -1 || isSerialValue) continue;
+      if (endIndex === -1) continue;
 
       const id = start.columnIds[endIndex];
       if (id === undefined) continue;
