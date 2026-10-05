@@ -752,6 +752,181 @@ describe('generator-code/mermaid', () => {
     });
   });
 
+  describe('mermaid directives and direction statements', () => {
+    it('writes the brace of %%{ as U+FF5B in a table comment, a column comment, a backtick word and a label', () => {
+      const state = createRelationshipState({}, 'x %%{ y');
+      state.collections.tableEntities.c1.comment =
+        'see %%{init: {"theme":"forest"}}%%';
+      state.collections.tableColumnEntities.fk.comment = '100%%{ off';
+      state.collections.tableColumnEntities.pk.name = 'a %%%{b';
+      state.collections.tableColumnEntities.pk.dataType = '%%{{';
+
+      expect(createCode(state).split('\n')).toEqual([
+        '',
+        'erDiagram',
+        '  %% see %%\uff5binit: {"theme":"forest"}}%%',
+        '  "child" {',
+        '    int `x %%\uff5b y` FK "100%%\uff5b off"',
+        '  }',
+        '',
+        '  "parent" {',
+        '    `%%\uff5b{` `a %%%\uff5bb` PK',
+        '  }',
+        '',
+        '  "parent" ||..o{ "child" : "x %%\uff5b y"',
+        '',
+      ]);
+    });
+
+    it('writes every %%{ of a text', () => {
+      const state = createRelationshipState({}, '%%{a} %%{b}');
+      state.collections.tableEntities.c1.comment = 'x %%{y} %%{z}';
+      state.collections.tableColumnEntities.fk.comment = 'a %%{x} b %%{y}';
+
+      expect(createCode(state).split('\n').slice(2, 5)).toEqual([
+        '  %% x %%\uff5by} %%\uff5bz}',
+        '  "child" {',
+        '    int `%%\uff5ba} %%\uff5bb}` FK "a %%\uff5bx} b %%\uff5by}"',
+      ]);
+      expect(relationshipLines(state)).toEqual([
+        '  "parent" ||..o{ "child" : "%%\uff5ba} %%\uff5bb}"',
+      ]);
+    });
+
+    it('keeps a %% before anything but a brace as written', () => {
+      expect(
+        attributeLines(
+          createColumnState([
+            { comment: '%% {x' },
+            { comment: '%%}' },
+            { name: '%{%', comment: '%%\uff5b' },
+          ])
+        )
+      ).toEqual([
+        '    int id "%% {x"',
+        '    int id "%%}"',
+        '    int `%{%` "%%\uff5b"',
+      ]);
+    });
+
+    it('writes U+200B after direction before whitespace and TB, BT, RL or LR in a table name', () => {
+      const state = createState({
+        tables: [
+          ['t1', 'sort direction LR'],
+          ['t2', 'x DIRECTION tb'],
+          ['t3', 'tab direction\tBt'],
+          ['t4', 'nbsp direction\u00a0rl'],
+          ['t5', 'directiondirection   TBL'],
+          ['t6', 'line direction\nLR'],
+          ['t7', 'twice direction LR direction TB'],
+        ].map(([id, name]) => createTable({ id, name })),
+      });
+
+      expect(
+        createCode(state)
+          .split('\n')
+          .filter(line => line.endsWith('{'))
+      ).toEqual([
+        '  "directiondirection\u200b   TBL" {',
+        '  "line directionLR" {',
+        '  "nbsp direction\u200b\u00a0rl" {',
+        '  "sort direction\u200b LR" {',
+        '  "tab direction\u200b\tBt" {',
+        '  "twice direction\u200b LR direction\u200b TB" {',
+        '  "x DIRECTION\u200b tb" {',
+      ]);
+    });
+
+    it('writes U+200B after direction in a relationship label and in the names of its line', () => {
+      const state = createRelationshipState({}, 'sort direction\nTBL');
+      state.collections.tableEntities.p1.name = 'by direction RL';
+      addParentCode(state);
+
+      expect(relationshipLines(state)).toEqual([
+        '  "by direction\u200b RL" ||..o{ "child" : "sort direction\u200b TBL, parent_code"',
+      ]);
+      expect(createCode(state)).toContain('  "by direction\u200b RL" {');
+    });
+
+    it('writes U+200B after a direction a semicolon splits, which mermaid can drop before its lexer runs', () => {
+      const state = createState({
+        tables: [
+          ['t1', 'style:#x direction; LR'],
+          ['t2', 'classDef:#a direc;tion RL'],
+          ['t3', 'style:#a direction T;B'],
+          ['t4', 'style:#a direction ;bt'],
+          ['t5', 'style:#a classDef:#b d;;irection L;R'],
+          ['t6', 'style:#a direction; XY'],
+        ].map(([id, name]) => createTable({ id, name })),
+      });
+
+      expect(
+        createCode(state)
+          .split('\n')
+          .filter(line => line.endsWith('{'))
+      ).toEqual([
+        '  "classDef:#a direc;tion\u200b RL" {',
+        '  "style:#a classDef:#b d;;irection\u200b L;R" {',
+        '  "style:#a direction\u200b ;bt" {',
+        '  "style:#a direction\u200b T;B" {',
+        '  "style:#a direction; XY" {',
+        '  "style:#x direction\u200b; LR" {',
+      ]);
+    });
+
+    it('writes U+200B after a direction a semicolon splits in a relationship label', () => {
+      const state = createRelationshipState({}, 'style:#x direction; LR');
+
+      expect(relationshipLines(state)).toEqual([
+        '  "parent" ||..o{ "child" : "style:#x direction\u200b; LR"',
+      ]);
+    });
+
+    it('numbers a table name the U+200B makes the same as another', () => {
+      const state = createState({
+        tables: [
+          createTable({ id: 't1', name: 'a direction LR' }),
+          createTable({ id: 't2', name: 'a direction\u200b LR' }),
+        ],
+      });
+
+      expect(
+        createCode(state)
+          .split('\n')
+          .filter(line => line.endsWith('{'))
+      ).toEqual(['  "a direction\u200b LR" {', '  "a direction\u200b LR2" {']);
+    });
+
+    it('keeps direction as written where the direction rule reads nothing', () => {
+      const state = createRelationshipState({}, 'direction: LR');
+      state.collections.tableEntities.p1.name = 'directions TB';
+      state.collections.tableEntities.c1.name = 'direction XY';
+
+      expect(relationshipLines(state)).toEqual([
+        '  "directions TB" ||..o{ "direction XY" : "direction: LR"',
+      ]);
+    });
+
+    it('keeps direction as written in an attribute word, a column comment and a table comment', () => {
+      const state = createColumnState(
+        [
+          {
+            name: 'sort direction LR',
+            dataType: 'direction\u3000TB',
+            comment: 'direction BT',
+          },
+        ],
+        { comment: 'flows direction RL' }
+      );
+
+      expect(createCode(state).split('\n').slice(2, 5)).toEqual([
+        '  %% flows direction RL',
+        '  "user" {',
+        '    direction\u3000TB `sort direction LR` "direction BT"',
+      ]);
+    });
+  });
+
   describe('formatTable', () => {
     function render(state: RootState, table: Table): string[] {
       const buffer: string[] = [];

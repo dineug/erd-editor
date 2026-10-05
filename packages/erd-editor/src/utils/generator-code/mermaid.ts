@@ -42,6 +42,23 @@ const GENERIC_TYPE_RUN = /^\S*~.*~/;
 const TILDE = /~/g;
 /** U+FF5E, which no rule of that lexer reads as a tilde. */
 const FULLWIDTH_TILDE = '\uff5e';
+/**
+ * What can open a directive: mermaid applies one a word follows wherever it
+ * stands, a comment or a quoted string included, before its lexer runs, and
+ * the generator rewrites every one, the rest too.
+ */
+const DIRECTIVE_OPEN = /%%\{/g;
+/** U+FF5B, which the directive pattern of that release does not read as a brace. */
+const DIRECTIVE_OPEN_FULLWIDTH = '%%\uff5b';
+/**
+ * The direction rule of that lexer, flags included, tried ahead of a quoted
+ * string outside an entity block, with semicolons anywhere in it: mermaid drops
+ * one from a line holding style or classDef, a colon and a hash before it lexes.
+ */
+const DIRECTION_STATEMENT =
+  /d;*i;*r;*e;*c;*t;*i;*o;*n(?=[\s;]*\s[\s;]*(?:T;*B|B;*T|R;*L|L;*R))/gi;
+/** U+200B, which \s does not match, as it does the no-break space. */
+const ZERO_WIDTH_SPACE = '\u200b';
 const UNNAMED = 'unnamed';
 const UNKNOWN_TYPE = 'unknown';
 
@@ -116,7 +133,7 @@ function formatEntity(
   name: string
 ) {
   if (table.comment.trim() !== '') {
-    buffer.push(`  %% ${table.comment.replace(LINE_TERMINATOR, ' ')}`);
+    buffer.push(`  %% ${toText(table.comment)}`);
   }
 
   buffer.push(`  "${name}" {`);
@@ -227,7 +244,7 @@ function formatRelationships(
       const lineStyle = relationship.identification ? '--' : '..';
 
       return [
-        `  "${parent}" ${parentCardinality}${lineStyle}${childCardinality} "${child}" : "${toQuoted(label)}"`,
+        `  "${parent}" ${parentCardinality}${lineStyle}${childCardinality} "${child}" : "${breakDirection(toQuoted(label))}"`,
       ];
     });
 }
@@ -239,7 +256,7 @@ function columnName({ name }: Column): string {
 function toEntityName(name: string): string {
   const value = name.replace(ENTITY_NAME_EXCLUDED, '');
 
-  return value.trim() === '' ? UNNAMED : value;
+  return value.trim() === '' ? UNNAMED : breakDirection(value);
 }
 
 function toAttributeWord(value: string): string {
@@ -251,11 +268,23 @@ function toAttributeWord(value: string): string {
     return value;
   }
 
-  return `\`${value.replace(LINE_TERMINATOR, ' ').replace(BACKTICK, "'")}\``;
+  return `\`${toText(value).replace(BACKTICK, "'")}\``;
 }
 
 function toQuoted(value: string): string {
-  return value.replace(LINE_TERMINATOR, ' ').replace(DOUBLE_QUOTE, "'");
+  return toText(value).replace(DOUBLE_QUOTE, "'");
+}
+
+/** Text on one line that opens no directive, for a comment, a label or a backtick word. */
+function toText(value: string): string {
+  return value
+    .replace(LINE_TERMINATOR, ' ')
+    .replace(DIRECTIVE_OPEN, DIRECTIVE_OPEN_FULLWIDTH);
+}
+
+/** U+200B after each direction that rule would read, for a table name or a label. */
+function breakDirection(value: string): string {
+  return value.replace(DIRECTION_STATEMENT, `$&${ZERO_WIDTH_SPACE}`);
 }
 
 function uniqueName(used: Set<string>, name: string): string {

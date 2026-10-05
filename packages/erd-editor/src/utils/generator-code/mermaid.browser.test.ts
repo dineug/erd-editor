@@ -36,6 +36,7 @@ type ParsedEntity = { id: string; attributes: ParsedAttribute[] };
 type ParsedDiagram = {
   entities: Map<string, ParsedEntity>;
   relationships: ParsedRelationship[];
+  direction: string;
 };
 
 const NOT_NULL = ColumnOption.notNull;
@@ -197,14 +198,15 @@ function createDocument(): RootState {
 }
 
 /**
- * What mermaid itself reads from the text: its entities by name, and its
- * relationships, which name an entity by the id mermaid gave it.
+ * What mermaid itself reads from the text: its entities by name, its
+ * relationships, which name an entity by the id mermaid gave it, and its direction.
  */
 async function read(code: string): Promise<ParsedDiagram> {
   const diagram = await mermaid.mermaidAPI.getDiagramFromText(code);
   const db = diagram.db as unknown as {
     getEntities(): Map<string, ParsedEntity>;
     getRelationships(): ParsedRelationship[];
+    getDirection(): string;
   };
   const entities = db.getEntities();
   const names = new Map(
@@ -218,6 +220,7 @@ async function read(code: string): Promise<ParsedDiagram> {
       entityA: names.get(relationship.entityA) ?? relationship.entityA,
       entityB: names.get(relationship.entityB) ?? relationship.entityB,
     })),
+    direction: db.getDirection(),
   };
 }
 
@@ -410,5 +413,199 @@ describe('generator-code/mermaid in mermaid 11.17.2', () => {
       { type: 'int', name: ' PK', keys: [], comment: '' },
     ]);
     expect(diagram.relationships.map(({ roleA }) => roleA)).toEqual(['x %%y']);
+  });
+
+  it('applies no directive and keeps every relationship where a text holds %%{', async () => {
+    const state = createState(
+      [
+        createTable({
+          id: 'p',
+          name: 'p',
+          comment: 'see %%{init: {"theme":"forest"}}%%',
+          columnIds: ['p1'],
+        }),
+        createTable({
+          id: 'c',
+          name: 'c',
+          comment: 'up to 100%%{ off',
+          columnIds: ['c1', 'c2'],
+        }),
+      ],
+      [
+        column('p1', 'p', {
+          name: 'id',
+          options: ColumnOption.primaryKey | NOT_NULL,
+          comment: '100%%{ off',
+        }),
+        column('c1', 'c', { name: 'x %%{ y', options: NOT_NULL }),
+        column('c2', 'c', {
+          name: 'z',
+          dataType: '%%{wrap}%%',
+          options: NOT_NULL,
+        }),
+      ],
+      [
+        relationship('r1', ['p', ['p1']], ['c', ['c1']], {
+          relationshipType: RelationshipType.ZeroN,
+        }),
+        relationship('r2', ['p', ['p1']], ['c', ['c2']], {
+          relationshipType: RelationshipType.OneOnly,
+        }),
+      ]
+    );
+    const code = createCode(state);
+
+    await expect(mermaid.parse(code)).resolves.toEqual({
+      diagramType: 'er',
+      config: {},
+    });
+
+    const diagram = await read(code);
+
+    expect(attributesOf(diagram, 'p')).toEqual([
+      { type: 'int', name: 'id', keys: ['PK'], comment: '100%%\uff5b off' },
+    ]);
+    expect(attributesOf(diagram, 'c')).toEqual([
+      { type: 'int', name: 'x %%\uff5b y', keys: [], comment: '' },
+      { type: '%%\uff5bwrap}%%', name: 'z', keys: [], comment: '' },
+    ]);
+    expect(diagram.relationships.map(({ roleA }) => roleA)).toEqual([
+      'x %%\uff5b y',
+      'z',
+    ]);
+  });
+
+  it('keeps every relationship and the default direction where a table name or label holds direction', async () => {
+    const state = createState(
+      [
+        createTable({ id: 'p', name: 'sort direction LR', columnIds: ['p1'] }),
+        createTable({
+          id: 'c',
+          name: 'x DIRECTION\u00a0bt',
+          columnIds: ['c1', 'c2'],
+        }),
+      ],
+      [
+        column('p1', 'p', { name: 'id', options: NOT_NULL }),
+        column('c1', 'c', { name: 'by direction RL', options: NOT_NULL }),
+        column('c2', 'c', {
+          name: 'directiondirection\ttbl',
+          options: NOT_NULL,
+        }),
+      ],
+      [
+        relationship('r1', ['p', ['p1']], ['c', ['c1']], {
+          relationshipType: RelationshipType.ZeroN,
+        }),
+        relationship('r2', ['p', ['p1']], ['c', ['c2']], {
+          relationshipType: RelationshipType.OneOnly,
+        }),
+      ]
+    );
+    const diagram = await read(createCode(state));
+    const parent = 'sort direction\u200b LR';
+    const child = 'x DIRECTION\u200b\u00a0bt';
+
+    expect([...diagram.entities.keys()].sort()).toEqual([parent, child].sort());
+    expect(
+      diagram.relationships.map(({ entityA, entityB, roleA }) => [
+        entityA,
+        entityB,
+        roleA,
+      ])
+    ).toEqual([
+      [parent, child, 'by direction\u200b RL'],
+      [parent, child, 'directiondirection\u200b\ttbl'],
+    ]);
+    expect(diagram.direction).toBe('TB');
+  });
+
+  it('keeps every relationship and the default direction where a semicolon mermaid drops splits a direction', async () => {
+    const named = createState(
+      [
+        createTable({
+          id: 'p',
+          name: 'style:#x direction; LR',
+          columnIds: ['p1'],
+        }),
+        createTable({ id: 'c', name: 'c', columnIds: ['c1'] }),
+      ],
+      [
+        column('p1', 'p', { name: 'id', options: NOT_NULL }),
+        column('c1', 'c', { name: 'ref', options: NOT_NULL }),
+      ],
+      [relationship('r1', ['p', ['p1']], ['c', ['c1']])]
+    );
+    const labelled = createState(
+      [
+        createTable({ id: 'p', name: 'p', columnIds: ['p1'] }),
+        createTable({ id: 'c', name: 'c', columnIds: ['c1', 'c2'] }),
+      ],
+      [
+        column('p1', 'p', { name: 'id', options: NOT_NULL }),
+        column('c1', 'c', {
+          name: 'style:#y direc;tion RL',
+          options: NOT_NULL,
+        }),
+        column('c2', 'c', {
+          name: 'twice direction LR direction BT',
+          options: NOT_NULL,
+        }),
+      ],
+      [
+        relationship('r1', ['p', ['p1']], ['c', ['c1']], {
+          relationshipType: RelationshipType.ZeroN,
+        }),
+        relationship('r2', ['p', ['p1']], ['c', ['c2']], {
+          relationshipType: RelationshipType.OneOnly,
+        }),
+      ]
+    );
+    const byName = await read(createCode(named));
+    const byLabel = await read(createCode(labelled));
+    const parent = 'style:#x direction\u200b LR';
+
+    expect([...byName.entities.keys()].sort()).toEqual(['c', parent].sort());
+    expect(
+      byName.relationships.map(({ entityA, entityB }) => [entityA, entityB])
+    ).toEqual([[parent, 'c']]);
+    expect(byName.direction).toBe('TB');
+    expect(byLabel.relationships.map(({ roleA }) => roleA)).toEqual([
+      'style:#y direction\u200b RL',
+      'twice direction\u200b LR direction\u200b BT',
+    ]);
+    expect(byLabel.direction).toBe('TB');
+  });
+
+  it('reads back direction as written in an attribute word, a column comment and a table comment', async () => {
+    const state = createState(
+      [
+        createTable({
+          id: 't',
+          name: 't',
+          comment: 'flows direction RL',
+          columnIds: ['a'],
+        }),
+      ],
+      [
+        column('a', 't', {
+          name: 'sort direction LR',
+          dataType: 'direction\u3000TB',
+          options: NOT_NULL,
+          comment: 'direction BT',
+        }),
+      ]
+    );
+    const diagram = await read(createCode(state));
+
+    expect(attributesOf(diagram, 't')).toEqual([
+      {
+        type: 'direction\u3000TB',
+        name: 'sort direction LR',
+        keys: [],
+        comment: 'direction BT',
+      },
+    ]);
+    expect(diagram.direction).toBe('TB');
   });
 });
