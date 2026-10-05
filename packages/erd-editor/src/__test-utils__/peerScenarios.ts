@@ -8,11 +8,11 @@ import {
   ColumnType,
   Database,
   Language,
+  LockSettingType,
   NameCase,
   OrderType,
   ReferentialAction,
   RelationshipType,
-  SaveSettingType,
   Show,
 } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
@@ -62,7 +62,6 @@ import {
   changeColumnOrderAction,
   changeDatabaseAction,
   changeDatabaseNameAction,
-  changeIgnoreSaveSettingsAction,
   changeLanguageAction,
   changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
@@ -70,6 +69,7 @@ import {
   changeShowAction,
   changeTableNameCaseAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   changeTableColorAction,
   changeTableCommentAction,
@@ -517,12 +517,9 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
     ]),
   setMaxWidthComment: () =>
     edit('setMaxWidthComment', [changeMaxWidthCommentAction({ value: 120 })]),
-  setIgnoreSaveSettings: () =>
-    edit('setIgnoreSaveSettings', [
-      changeIgnoreSaveSettingsAction({
-        saveSettingType: SaveSettingType.scroll,
-        value: false,
-      }),
+  setLockSettings: () =>
+    edit('setLockSettings', [
+      changeLockSettingsAction$(LockSettingType.language, false),
     ]),
 
   importSql: () =>

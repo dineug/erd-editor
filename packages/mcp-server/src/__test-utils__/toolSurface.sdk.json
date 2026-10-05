@@ -1039,31 +1039,6 @@
     "hasOutputSchema": false
   },
   {
-    "name": "erd_set_ignore_save_settings",
-    "args": [
-      {
-        "name": "path",
-        "type": "string",
-        "required": true
-      },
-      {
-        "name": "saveSettingType",
-        "type": "string",
-        "required": true,
-        "enum": [
-          "scroll",
-          "zoomLevel"
-        ]
-      },
-      {
-        "name": "value",
-        "type": "boolean",
-        "required": true
-      }
-    ],
-    "hasOutputSchema": false
-  },
-  {
     "name": "erd_set_index_column_order",
     "args": [
       {
@@ -1142,6 +1117,35 @@
           "TypeScript",
           "csharp"
         ]
+      }
+    ],
+    "hasOutputSchema": false
+  },
+  {
+    "name": "erd_set_lock_settings",
+    "args": [
+      {
+        "name": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "lockSettingType",
+        "type": "string",
+        "required": true,
+        "enum": [
+          "bracketType",
+          "canvasType",
+          "columnNameCase",
+          "language",
+          "tableNameCase",
+          "viewport"
+        ]
+      },
+      {
+        "name": "value",
+        "type": "boolean",
+        "required": true
       }
     ],
     "hasOutputSchema": false

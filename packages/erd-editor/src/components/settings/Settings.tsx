@@ -15,18 +15,19 @@ import Separator from '@/components/primitives/separator/Separator';
 import Switch from '@/components/primitives/switch/Switch';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import Toast from '@/components/primitives/toast/Toast';
+import { lockSettingRows } from '@/components/settings/lockSettingRows';
 import SettingsLnb, {
   Lnb,
 } from '@/components/settings/settings-lnb/SettingsLnb';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
-import { ColumnTypeToName, SaveSettingType } from '@/constants/schema';
+import { CanvasType, ColumnTypeToName } from '@/constants/schema';
 import {
   changeColumnOrderAction,
-  changeIgnoreSaveSettingsAction,
   changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import { fontSize6 } from '@/styles/typography.styles';
 import { bHas } from '@/utils/bit';
 import { recalculateTableWidth } from '@/utils/calcTable';
@@ -138,32 +139,24 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     store.dispatch(changeMaxWidthCommentAction({ value: maxWidthComment }));
   };
 
-  const handleChangeScrollSaveSettings = (value: boolean) => {
+  const handleChangeLock = (lockSettingType: number, value: boolean) => {
     const { store } = app.value;
-
-    store.dispatch(
-      changeIgnoreSaveSettingsAction({
-        saveSettingType: SaveSettingType.scroll,
-        value: !value,
-      })
-    );
-  };
-
-  const handleChangeZoomLevelSaveSettings = (value: boolean) => {
-    const { store } = app.value;
-
-    store.dispatch(
-      changeIgnoreSaveSettingsAction({
-        saveSettingType: SaveSettingType.zoomLevel,
-        value: !value,
-      })
-    );
+    store.dispatch(changeLockSettingsAction$(lockSettingType, value));
   };
 
   return () => {
     const { store } = app.value;
     const { settings } = store.state;
     const maxWidthCommentDisabled = settings.maxWidthComment === -1;
+    // On the Settings tab an unlocked row names the tab a lock would take,
+    // the one the reader came from, as changeLockSettingsAction$ reads it.
+    const liveValues = {
+      ...settings,
+      canvasType:
+        settings.canvasType === CanvasType.settings
+          ? store.state.editor.lastCanvasType
+          : settings.canvasType,
+    };
 
     return (
       <div class={styles.root} use:ref={ref(root)}>
@@ -182,31 +175,6 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   <Switch
                     value={settings.relationshipDataTypeSync}
                     onChange={handleChangeRelationshipDataTypeSync}
-                  />
-                </div>
-
-                <div class={styles.row}>
-                  <div>Save Scroll Information</div>
-                  <div class={styles.vertical(16)}></div>
-                  <Switch
-                    value={
-                      !bHas(settings.ignoreSaveSettings, SaveSettingType.scroll)
-                    }
-                    onChange={handleChangeScrollSaveSettings}
-                  />
-                </div>
-
-                <div class={styles.row}>
-                  <div>Save Zoom Information</div>
-                  <div class={styles.vertical(16)}></div>
-                  <Switch
-                    value={
-                      !bHas(
-                        settings.ignoreSaveSettings,
-                        SaveSettingType.zoomLevel
-                      )
-                    }
-                    onChange={handleChangeZoomLevelSaveSettings}
                   />
                 </div>
 
@@ -249,6 +217,48 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                     onClick={handleRecalculationTableWidth}
                   />
                 </div>
+                <div class={styles.lockSection}>
+                  <div>Lock</div>
+                  <Separator space={12} />
+                  {lockSettingRows.map(row => {
+                    const locked = bHas(
+                      settings.lockSettings,
+                      row.lockSettingType
+                    );
+
+                    return (
+                      <div class={styles.lockRow}>
+                        <div class={styles.lockName}>{row.name}</div>
+                        <div
+                          class={styles.lockValue}
+                          bool:data-locked={locked}
+                          title={locked ? 'Locked value' : 'Current value'}
+                        >
+                          {row.toText(
+                            locked ? settings.lockedValues : liveValues
+                          )}
+                        </div>
+                        <button
+                          class={styles.lockButton}
+                          type="button"
+                          title={`${locked ? 'Unlock' : 'Lock'} ${row.name}`}
+                          aria-pressed={locked ? 'true' : 'false'}
+                          bool:data-locked={locked}
+                          on:click={() =>
+                            handleChangeLock(row.lockSettingType, !locked)
+                          }
+                        >
+                          {locked ? (
+                            <Icon name="lock" size={14} />
+                          ) : (
+                            <Icon name="lock-open" size={14} />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
                 <div class={styles.columnOrderSection}>
                   <div>Column Order</div>
                   <Separator space={12} />

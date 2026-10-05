@@ -15,10 +15,10 @@ describe('createEmptyDocument', () => {
     expect(json.doc.tableIds).toEqual([]);
   });
 
-  it('saves neither the scroll nor the zoom, as a new diagram in the editor', () => {
+  it('locks every setting, the view at the start, as a new diagram in the editor', () => {
     const { settings } = JSON.parse(createEmptyDocument());
 
-    expect(settings.ignoreSaveSettings).toBe(3);
+    expect(settings).toMatchObject({ ignoreSaveSettings: 3, lockSettings: 63 });
     expect(settings).toMatchObject({ originX: 0, originY: 0, zoomLevel: 1 });
   });
 

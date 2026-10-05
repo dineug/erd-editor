@@ -2,7 +2,7 @@ import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, Language, LockSettingType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
@@ -21,7 +21,12 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
+  changeBracketTypeAction,
   changeCanvasTypeAction,
+  changeColumnNameCaseAction,
+  changeLanguageAction,
+  changeLockSettingsAction,
+  changeTableNameCaseAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
@@ -44,6 +49,9 @@ import {
 import { createRxStore, HISTORY_LIMIT, RxStore } from '@/engine/rx-store';
 import { attachActionTag, Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
+
+const unlock = (lockSettingType: number) =>
+  changeLockSettingsAction({ lockSettingType, value: false, values: {} });
 
 const addTable = (id: string) =>
   addTableAction({ id, ui: { x: 200, y: 100, zIndex: 2 } });
@@ -383,7 +391,11 @@ describe('createRxStore', () => {
 
     it('filters readonly-ignored actions when readonly', () => {
       vi.useFakeTimers();
-      const store = make(createContext(), { getReadonly: () => true });
+      let readonly = false;
+      const store = make(createContext(), { getReadonly: () => readonly });
+      store.dispatchSync(unlock(LockSettingType.viewport));
+      vi.advanceTimersByTime(250);
+      readonly = true;
       const seen: Array<Array<AnyAction>> = [];
       const subscription = store.change$.subscribe(actions =>
         seen.push(actions)
@@ -397,6 +409,83 @@ describe('createRxStore', () => {
         'settings.changeZoomLevel',
       ]);
 
+      subscription.unsubscribe();
+    });
+  });
+
+  /**
+   * The element's change event: a locked setting's change moves the screen
+   * and never the file, so it leaves no change behind, the lock read as the
+   * batch passes.
+   */
+  describe('change$ with the locks', () => {
+    const lockedChanges = [
+      scrollToAction({ originX: 40, originY: 40 }),
+      streamScrollToAction({ movementX: 4, movementY: 4 }),
+      changeZoomLevelAction({ value: 0.5 }),
+      streamZoomLevelAction({ value: 0.1 }),
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeTableNameCaseAction({ value: 8 }),
+      changeColumnNameCaseAction({ value: 8 }),
+      changeBracketTypeAction({ value: 8 }),
+    ];
+
+    function watch(store: RxStore) {
+      const seen: string[][] = [];
+      const subscription = store.change$.subscribe(actions =>
+        seen.push(actions.map(({ type }) => type))
+      );
+      return { seen, subscription };
+    }
+
+    it('leaves out every change of a locked setting', () => {
+      vi.useFakeTimers();
+      const store = make(createContext());
+      const { seen, subscription } = watch(store);
+
+      for (const action of lockedChanges) store.dispatchSync(action);
+      vi.advanceTimersByTime(250);
+
+      expect(seen).toEqual([]);
+      expect(store.state.settings).toMatchObject({
+        zoomLevel: 0.6,
+        canvasType: CanvasType.schemaSQL,
+        language: Language.Kotlin,
+      });
+      subscription.unsubscribe();
+    });
+
+    it('keeps the edit a locked change rides with', () => {
+      vi.useFakeTimers();
+      const store = make(createContext());
+      const { seen, subscription } = watch(store);
+
+      store.dispatchSync(
+        scrollToAction({ originX: 9, originY: 9 }),
+        addTable('t1')
+      );
+      vi.advanceTimersByTime(250);
+
+      expect(seen).toEqual([['table.add']]);
+      subscription.unsubscribe();
+    });
+
+    it('reports the lock itself and every change of the setting once unlocked', () => {
+      vi.useFakeTimers();
+      const store = make(createContext());
+      const { seen, subscription } = watch(store);
+
+      store.dispatchSync(unlock(LockSettingType.language));
+      vi.advanceTimersByTime(250);
+      store.dispatchSync(changeLanguageAction({ value: Language.Go }));
+      store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+      vi.advanceTimersByTime(250);
+
+      expect(seen).toEqual([
+        ['settings.changeLockSettings'],
+        ['settings.changeLanguage'],
+      ]);
       subscription.unsubscribe();
     });
   });
@@ -439,8 +528,9 @@ describe('createRxStore', () => {
 
   describe('while a view is active', () => {
     /** A store holding one table and one column, standing in a view on the table. */
-    function makeWithView() {
+    function makeWithView(unlocked = 0) {
       const store = make(createContext());
+      if (unlocked) store.dispatchSync(unlock(unlocked));
       store.dispatchSync(
         addTable('t1'),
         addColumnAction({ id: 'c1', tableId: 't1' }),
@@ -647,7 +737,7 @@ describe('createRxStore', () => {
 
     it('lets the tab change through, which is how a view is left from another tab', () => {
       vi.useFakeTimers();
-      const store = makeWithView();
+      const store = makeWithView(LockSettingType.canvasType);
       const { seen, subscription } = collectChanges(store);
 
       store.dispatchSync(

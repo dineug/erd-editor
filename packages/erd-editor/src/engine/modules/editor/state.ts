@@ -1,6 +1,7 @@
 import { uuid25 } from '@dineug/uuid';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
+import { CanvasType } from '@/constants/schema';
 import { Point, ValuesType } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { Rect } from '@/utils/dragSelect';
@@ -49,6 +50,11 @@ export type Editor = {
   views: EditorViews;
   /** Which of its two modes the visualization tab shows. Remembered for the session. */
   visualizationMode: VisualizationMode;
+  /**
+   * The last tab the reader left for another, Settings never among them: the
+   * one a canvas type lock taken on the Settings tab holds.
+   */
+  lastCanvasType: string;
 };
 
 export type Viewport = {
@@ -221,4 +227,5 @@ export const createEditor = (): Editor => ({
   dragSelect: null,
   views: { flow: null },
   visualizationMode: VisualizationMode.graph,
+  lastCanvasType: CanvasType.ERD,
 });

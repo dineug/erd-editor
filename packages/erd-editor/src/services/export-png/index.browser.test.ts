@@ -97,6 +97,7 @@ function createDoc({
       originY,
       zoomLevel,
       databaseName: 'export',
+      lockSettings: 0,
       ...(show === undefined ? {} : { show }),
     },
     doc: {

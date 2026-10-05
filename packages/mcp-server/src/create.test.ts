@@ -1,4 +1,4 @@
-import { SaveSettingType } from '@dineug/erd-editor/peer.js';
+import { LockSettingType, SaveSettingType } from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
   beforeEach,
@@ -14,8 +14,9 @@ import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { createEmptyDocument } from '@/session/disk';
 
-/** A new document saves neither the scroll nor the zoom. */
+/** A new document locks every setting, so a release before the locks saves no view. */
 const NEW_SWITCHES = SaveSettingType.scroll | SaveSettingType.zoomLevel;
+const NEW_LOCKS = Object.values(LockSettingType).reduce((a, b) => a | b, 0);
 
 let io: MemoryHost;
 let mcp: McpHarness;
@@ -57,7 +58,10 @@ describe('erd_open_document with create (AC-M7)', () => {
     });
     expect(bytes).toBe(createEmptyDocument());
     expect(JSON.parse(bytes).$schema).toMatch(/json-schema\/schema\.json$/);
-    expect(JSON.parse(bytes).settings.ignoreSaveSettings).toBe(NEW_SWITCHES);
+    expect(JSON.parse(bytes).settings).toMatchObject({
+      ignoreSaveSettings: NEW_SWITCHES,
+      lockSettings: NEW_LOCKS,
+    });
   });
 
   it('opens an existing document as it is, creating nothing', async () => {
@@ -138,9 +142,10 @@ describe('erd_open_document with create (AC-M7)', () => {
     });
     expect(io.read('/work/live.erd.json')).toBe(createEmptyDocument());
     expect(hub.webview('/work/live.erd.json').value).toContain('"$schema"');
-    expect(
-      JSON.parse(io.read('/work/live.erd.json')).settings.ignoreSaveSettings
-    ).toBe(NEW_SWITCHES);
+    expect(JSON.parse(io.read('/work/live.erd.json')).settings).toMatchObject({
+      ignoreSaveSettings: NEW_SWITCHES,
+      lockSettings: NEW_LOCKS,
+    });
     hub.destroy();
   });
 

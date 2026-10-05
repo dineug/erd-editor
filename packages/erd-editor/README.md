@@ -63,10 +63,15 @@ editor.addEventListener('change', () => {
 });
 ```
 
-`setInitialValue('')` starts a new document, as an element given no value shows: it saves neither
-the scroll nor the zoom (Save Scroll Information and Save Zoom Information off), so looking around
-leaves `value` as it was. A document loaded from text keeps the switches it names, and one that
-names none saves both.
+`setInitialValue('')` starts a new document, as an element given no value shows: every setting the
+Settings tab lists under **Lock** (the scroll and zoom together, the tab, the code generator's
+language and name cases, and the SQL bracket type) is locked at its default, so looking around
+leaves `value` as it was. A locked setting is saved as it stood when it was locked, whatever the
+screen does after. A document loaded from text keeps the locks it names; one saved before the
+locks opens with all of them on, its scroll, zoom and tab at the start. Replacing the document
+while it is open (setting `value`, an import, an undo) keeps the tab and the code generator
+settings the reader had under their locks; the scroll and zoom land where the new document
+puts them.
 
 ### Server-side rendering
 
@@ -161,7 +166,7 @@ erd-editor {
 | `setKeyBindingMap(map)` | Remap shortcuts, `search` and `findReplace` among them. `edit`, `stop`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
 | `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport. `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
 | `focus()` / `blur()` | Move focus in and out of the editor. |
-| `clear()` | Empty the document. Its settings stay, the save switches included, so a cleared file keeps saving what it saved. |
+| `clear()` | Empty the document. Its settings stay, the locks included, so a cleared file keeps saving what it saved. |
 | `destroy()` | Tear the editor down and release its listeners, subscriptions and shared stores. |
 
 The four `setSchema*` methods take `{ placement?: 'auto' | 'grid' }` as their second argument.
@@ -195,7 +200,7 @@ and Add.
 
 | Event | Description |
 | --- | --- |
-| `change` | The document changed. Debounced, and never fired while `readonly`. Read `editor.value`. A scroll or a zoom fires it too. A scroll leaves `value` as it was with Save Scroll Information off; a zoom moves the scroll position too, so it leaves `value` as it was only with Save Zoom Information and Save Scroll Information both off. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
+| `change` | The document changed. Debounced, and never fired while `readonly`, nor for a change to a locked setting alone: a scroll, a zoom, a tab switch or a code generator setting under its lock leaves `value` as it was. Read `editor.value`. With the viewport unlocked a scroll or a zoom fires it, and `value` holds both. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options, whose `appearance` is `system` when the theme builder's System is picked. |
 
 ## Key bindings
@@ -300,12 +305,11 @@ store.on({ change: ({ value, changed }) => changed && persist(value) });
 store.dispatch(actions); // actions relayed from a live editor's shared store
 ```
 
-`change` comes 200 ms after the last action that can change the document. `changed` is false
-when those actions left `value` as it was, such as a scroll with Save Scroll Information off, or a
-zoom with Save Zoom Information and Save Scroll Information both off: a zoom moves the scroll
-position too, so with only the scroll saved it changes `value`. It compares with the value the
-store last reported, or loaded, never with your file: a file another release or machine wrote
-serializes differently from the start.
+`change` comes 200 ms after the last action that can change the document, a locked setting's
+change included. `changed` is false when those actions left `value` as it was, such as a scroll,
+a zoom or a tab switch while its lock is on. It compares with the value the store last reported,
+or loaded, never with your file: a file another release or machine wrote serializes differently
+from the start.
 
 ## Development
 

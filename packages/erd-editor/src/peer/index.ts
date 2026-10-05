@@ -10,6 +10,7 @@ export {
   ColumnType,
   Database,
   Language,
+  LockSettingType,
   NameCase,
   OrderType,
   ReferentialAction,

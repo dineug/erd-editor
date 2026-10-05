@@ -489,10 +489,12 @@ cost when you hit them blind.
   the ctrl bit through CDP without a key press opens the menu too, so the user
   agent is the only place this can be fixed.
 - `toJson()` — which backs the `value` getter — serialises a copy, so reading
-  `value` never moves the live view. With the `ignoreSaveSettings` scroll bit
-  set it writes the origin pair out as zero, and with the zoom bit the zoom as
-  1. Every seed keeps the field at `0`; the unseeded element is a new document,
-  which sets both bits, so a spec that reads the view from `value` seeds first.
+  `value` never moves the live view. While the viewport lock of
+  `lockSettings` is on it writes the origin and the zoom the lock holds, not
+  the live ones. Every seed keeps `lockSettings` at `0`, all unlocked; the
+  unseeded element is a new document, every lock on, so a spec that reads the
+  view from `value` seeds first. A seed without the field would open as a
+  file saved before the locks, its view reset to the origin at zoom 1.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root
   `.root` div, with bubble-phase listeners. Dispatching at `document` or at the
   host element will not reach them.

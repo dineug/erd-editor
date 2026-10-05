@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { createSchema, parser } from '@/v3/parser';
 import { OrderType } from '@/v3/schema/indexColumn.entity';
-import { Database, SaveSettingType } from '@/v3/schema/settings';
+import {
+  BracketType,
+  CanvasType,
+  Database,
+  Language,
+  LockSettingTypeList,
+  NameCase,
+} from '@/v3/schema/settings';
 
 const SCHEMA_URL =
   'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
@@ -53,6 +60,7 @@ describe('parser', () => {
         width: 3000,
         database: Database.PostgreSQL,
         zoomLevel: 0.7,
+        lockSettings: 63,
       },
       doc: {
         tableIds: ['t1'],
@@ -113,35 +121,37 @@ describe('parser', () => {
 });
 
 describe('createSchema', () => {
-  it('saves neither the scroll nor the zoom of a document created from nothing', () => {
-    expect(createSchema().settings.ignoreSaveSettings).toBe(
-      SaveSettingType.scroll | SaveSettingType.zoomLevel
+  it('locks every lockable setting of a document created from nothing', () => {
+    const { lockSettings, lockedValues } = createSchema().settings;
+
+    expect(lockSettings).toBe(
+      LockSettingTypeList.reduce((acc, bit) => acc | bit, 0)
     );
+    expect(lockedValues).toEqual({
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+      canvasType: CanvasType.ERD,
+      language: Language.GraphQL,
+      tableNameCase: NameCase.pascalCase,
+      columnNameCase: NameCase.camelCase,
+      bracketType: BracketType.none,
+    });
   });
 
-  it('is otherwise the empty source the parser defaults', () => {
-    const created = createSchema();
-    const parsed = parser({});
-
-    expect({
-      ...created,
-      settings: { ...created.settings, ignoreSaveSettings: 0 },
-    }).toEqual(parsed);
-  });
-
-  it('leaves the parser defaulting a missing field to saving both', () => {
-    createSchema();
-
-    expect(parser({}).settings.ignoreSaveSettings).toBe(0);
-    expect(parser({ settings: {} }).settings.ignoreSaveSettings).toBe(0);
+  it('is the empty source the parser defaults', () => {
+    expect(createSchema()).toEqual(parser({}));
+    expect(parser({ settings: {} }).settings).toEqual(createSchema().settings);
   });
 
   it('hands out a new document each time', () => {
     const first = createSchema();
-    first.settings.ignoreSaveSettings = 0;
+    first.settings.lockSettings = 0;
+    first.settings.lockedValues.originX = 40;
     first.doc.tableIds.push('t1');
 
-    expect(createSchema().settings.ignoreSaveSettings).toBe(3);
+    expect(createSchema().settings.lockSettings).toBe(63);
+    expect(createSchema().settings.lockedValues.originX).toBe(0);
     expect(createSchema().doc.tableIds).toEqual([]);
   });
 });

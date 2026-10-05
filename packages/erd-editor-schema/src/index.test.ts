@@ -34,14 +34,11 @@ describe('public entry point', () => {
   });
 
   it('exposes the factory of a document created from nothing', () => {
-    const { ignoreSaveSettings } = createSchema().settings;
+    const { lockSettings } = createSchema().settings;
 
-    expect(ignoreSaveSettings).toBe(
-      SchemaV3Constants.SaveSettingType.scroll |
-        SchemaV3Constants.SaveSettingType.zoomLevel
-    );
-    expect(parser(toJson(createSchema())).settings.ignoreSaveSettings).toBe(
-      ignoreSaveSettings
+    expect(lockSettings).toBe(63);
+    expect(parser(toJson(createSchema())).settings.lockSettings).toBe(
+      lockSettings
     );
   });
 
@@ -83,7 +80,7 @@ describe('public entry point', () => {
   it('exposes both constant bundles', () => {
     expect(SchemaV2Constants.CanvasType.ERD).toBe('ERD');
     expect(SchemaV3Constants.CanvasType.ERD).toBe('ERD');
-    expect(SchemaV3Constants.SaveSettingType.scroll).toBe(1);
+    expect(SchemaV3Constants.LockSettingType.viewport).toBe(1);
     expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(1.5);
   });
 

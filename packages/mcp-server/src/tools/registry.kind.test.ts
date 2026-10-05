@@ -6,6 +6,7 @@ import {
   FocusType,
   indexActions$,
   indexColumnActions$,
+  LockSettingType,
   memoActions$,
   relationshipActions$,
   RelationshipType,
@@ -146,6 +147,9 @@ const CENSUS: Census = {
   selectMemoAction$: () => [memoActions$.selectMemoAction$(SEED.memo, false)],
   changeZoomLevelAction$: () => [settingsActions$.changeZoomLevelAction$(0.5)],
   streamZoomLevelAction$: () => [settingsActions$.streamZoomLevelAction$(0.1)],
+  changeLockSettingsAction$: () => [
+    settingsActions$.changeLockSettingsAction$(LockSettingType.language, false),
+  ],
 };
 
 /**

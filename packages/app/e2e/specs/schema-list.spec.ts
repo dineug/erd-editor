@@ -43,7 +43,7 @@ test.describe('the schema list', () => {
     await app.zoomIn();
     await expect(app.zoomLevel()).not.toHaveText('100%');
     // The zoom is stored like an edit is, so once the value is there the list
-    // has had every chance to move. A new schema saves no zoom, so it reads 1.
+    // has had every chance to move. A new schema locks its zoom, so it reads 1.
     await expect
       .poll(async () => (await app.storedSchema('second')).value)
       .not.toBe('');

@@ -125,8 +125,15 @@ describe('the agent snapshot', () => {
         hideReferentialAction: false,
       },
       maxWidthComment: -1,
-      // The seed starts as a new document, which saves neither half of the view.
-      ignoreSaveSettings: { scroll: true, zoomLevel: true },
+      // The seed starts as a new document, every setting locked.
+      lockSettings: {
+        viewport: true,
+        canvasType: true,
+        language: true,
+        tableNameCase: true,
+        columnNameCase: true,
+        bracketType: true,
+      },
     });
   });
 

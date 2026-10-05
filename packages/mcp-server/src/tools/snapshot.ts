@@ -6,12 +6,12 @@ import {
   ColumnType,
   Database,
   Language,
+  LockSettingType,
   NameCase,
   OrderType,
   ReferentialAction,
   RelationshipType,
   type RootState,
-  SaveSettingType,
   Show,
 } from '@dineug/erd-editor/peer.js';
 import { query } from '@dineug/erd-editor-schema';
@@ -82,7 +82,7 @@ export type AgentSnapshotSettings = {
   columnOrder: string[];
   show: Record<string, boolean>;
   maxWidthComment: number;
-  ignoreSaveSettings: Record<string, boolean>;
+  lockSettings: Record<string, boolean>;
 };
 
 /**
@@ -138,7 +138,7 @@ export function toSnapshotSettings(
     columnOrder: settings.columnOrder.map(type => nameOf(ColumnType, type)),
     show: flagsOf(Show, settings.show),
     maxWidthComment: settings.maxWidthComment,
-    ignoreSaveSettings: flagsOf(SaveSettingType, settings.ignoreSaveSettings),
+    lockSettings: flagsOf(LockSettingType, settings.lockSettings),
   };
 }
 

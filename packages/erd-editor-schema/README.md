@@ -14,10 +14,11 @@ conversion in both directions, a query layer over the v3 collections, and the LW
 
 No field can fail a parse: every field is validated and falls back to its default, so
 `schemaV3Parser({})` yields a complete empty document. (`parser` still throws on a string that
-is not JSON at all.) `createSchema()` is that document with `ignoreSaveSettings` set to both
-bits, a diagram created from nothing, which saves neither the scroll nor the zoom — that is
-how the editor seeds its store and what it loads for an empty value. A file without the field
-still parses as 0, saving both, as the release that wrote it did. Every v3 document a
+is not JSON at all.) `createSchema()` is that document, a diagram created from nothing with
+every setting `lockSettings` names locked at its default — that is how the editor seeds its
+store and what it loads for an empty value. A file without `lockSettings` was saved before the
+locks: it parses with all of them on, its `originX`, `originY`, `zoomLevel` and `canvasType`
+at the defaults and the code settings as it saved them. Every v3 document a
 parser returns is stamped with a `$schema` pointing at
 [`json-schema/schema.json`](../../json-schema/schema.json), the JSON Schema for the format.
 
@@ -39,9 +40,11 @@ const source = toJson(schema); // JSON string, ready to write back
 ```
 
 `parserV2(source)` is the mirror image: it also accepts either version and returns
-`ERDEditorSchemaV2`. `toJson` honours the document's `ignoreSaveSettings` bits, resetting
-the view origin and zoom level before serializing when they are not meant to persist. It
-never mutates the schema it is handed — the settings it writes are a copy.
+`ERDEditorSchemaV2`. `toJson` writes each setting `lockSettings` locks at the value it was
+locked at (`settings.lockedValues`, which a parse takes from the saved fields and which is
+never written), every other one as it stands, and `ignoreSaveSettings`, which releases before
+the locks read, as both bits while the viewport is locked and 0 otherwise. It never mutates
+the schema it is handed — the settings it writes are a copy.
 
 `settings.originX` / `originY` are the view: the screen point scene `(0, 0)` lands on.
 `settings.scrollLeft` / `scrollTop` are the older spelling of the same idea, measured from
@@ -54,7 +57,7 @@ pair it arrived with, so an editor from before this release still opens where it
 
 - `parser`, `parserV2`, `toJson` — read and write a document from/to a JSON string.
 - `schemaV3Parser`, `schemaV2Parser` — the same fold, but over an already-parsed object.
-- `createSchema` — a new v3 document, both save switches off.
+- `createSchema` — a new v3 document, every lock on.
 - `ERDEditorSchemaV3`, `ERDEditorSchemaV2` — the document types.
 - `SchemaV3Constants`, `SchemaV2Constants` — the constant sets (`Database`, `NameCase`,
   `RelationshipType`, canvas bounds, …) each version allows.

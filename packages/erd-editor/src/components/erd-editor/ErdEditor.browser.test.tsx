@@ -40,7 +40,7 @@ const document$ = JSON.stringify({
     relationshipOptimization: false,
     columnOrder: [1, 2, 4, 8, 16, 32, 64],
     maxWidthComment: -1,
-    ignoreSaveSettings: 0,
+    lockSettings: 0,
   },
   doc: {
     tableIds: [TABLE_ID],

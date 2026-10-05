@@ -1,3 +1,4 @@
+import { LockSettingType } from '@/constants/schema';
 import {
   pushStreamHistoryMap,
   pushUndoHistoryMap,
@@ -138,7 +139,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'settings.changeRelationshipOptimization',
   'settings.changeColumnOrder',
   'settings.changeMaxWidthComment',
-  'settings.changeIgnoreSaveSettings',
+  'settings.changeLockSettings',
   // editor
   'editor.loadJson',
   'editor.clear',
@@ -174,6 +175,24 @@ const hasViewIgnorePass = arrayHas<ActionType>([
 export const ViewIgnoreActionTypes: ReadonlyArray<ActionType> = [
   ...ReadonlyIgnoreActionTypes.filter(type => !hasViewIgnorePass(type)),
 ];
+
+/**
+ * The lock that holds each setting action out of the element's change event:
+ * while it is on, the action changes the screen and never the file.
+ */
+export const LockSettingActionTypes: Readonly<
+  Partial<Record<ActionType, number>>
+> = {
+  'settings.changeZoomLevel': LockSettingType.viewport,
+  'settings.streamZoomLevel': LockSettingType.viewport,
+  'settings.scrollTo': LockSettingType.viewport,
+  'settings.streamScrollTo': LockSettingType.viewport,
+  'settings.changeCanvasType': LockSettingType.canvasType,
+  'settings.changeLanguage': LockSettingType.language,
+  'settings.changeTableNameCase': LockSettingType.tableNameCase,
+  'settings.changeColumnNameCase': LockSettingType.columnNameCase,
+  'settings.changeBracketType': LockSettingType.bracketType,
+};
 
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
   'editor.sharedMouseTracker',

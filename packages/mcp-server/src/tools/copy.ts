@@ -63,6 +63,16 @@ const setting = (subject: string, value: string): ToolCopy => ({
   args: { value },
 });
 
+/** A setting the file keeps at its lock, which every document starts with on. */
+const lockedSetting = (
+  subject: string,
+  value: string,
+  lock: string
+): ToolCopy => ({
+  description: `Sets ${subject}. ${NO_UNDO} While its ${lock} lock is on, as it is by default, the saved file keeps the value it was locked at; erd_set_lock_settings unlocks it.`,
+  args: { value },
+});
+
 const flag = (subject: string): ToolCopy => ({
   description: `Sets whether the column is ${subject}. Setting the value it already has changes nothing.`,
   args: { value: `True to make the column ${subject}, false to clear it.` },
@@ -323,21 +333,25 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     'the database vendor, which picks the data types and the default DDL of erd_read sql',
     'The database vendor.'
   ),
-  erd_set_language: setting(
+  erd_set_language: lockedSetting(
     'the code generation language of the document',
-    'The language or framework. An ERD Editor extension or plugin released before the Mermaid generator ignores Mermaid, so the user should update it.'
+    'The language or framework. An ERD Editor extension or plugin released before the Mermaid generator ignores Mermaid, so the user should update it.',
+    'language'
   ),
-  erd_set_table_name_case: setting(
+  erd_set_table_name_case: lockedSetting(
     'the name case used when generating code for table names',
-    'The case style.'
+    'The case style.',
+    'tableNameCase'
   ),
-  erd_set_column_name_case: setting(
+  erd_set_column_name_case: lockedSetting(
     'the name case used when generating code for column names',
-    'The case style.'
+    'The case style.',
+    'columnNameCase'
   ),
-  erd_set_bracket_type: setting(
+  erd_set_bracket_type: lockedSetting(
     'how generated SQL quotes names',
-    'The quote style.'
+    'The quote style.',
+    'bracketType'
   ),
   erd_set_relationship_data_type_sync: {
     description: `Sets relationship data type sync. ${NO_UNDO} When it is on, a change to the data type of a column ${DATA_TYPE_SYNC}.`,
@@ -358,11 +372,11 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     'the widest a comment is drawn in a table',
     'Width in pixels, or -1 for no limit.'
   ),
-  erd_set_ignore_save_settings: {
-    description: `Sets whether a viewport setting is left out of the saved file. ${NO_UNDO}`,
+  erd_set_lock_settings: {
+    description: `Locks or unlocks a setting the file keeps as it stood when locked: viewport (the scroll and zoom together), canvasType (the open tab), language, tableNameCase, columnNameCase or bracketType. Every one starts locked, so a change to a locked setting changes what the editors show but not the saved file. A lock holds the value the document has now, so locking a locked setting again moves its lock there. Only the user can lock viewport or canvasType, in the editor Settings tab; an agent may unlock them. ${NO_UNDO}`,
     args: {
-      saveSettingType: 'scroll or zoomLevel.',
-      value: 'True to leave it out of the file.',
+      lockSettingType: 'The setting to lock or unlock.',
+      value: 'True to lock it at its current value, false to unlock it.',
     },
   },
   erd_set_show: {

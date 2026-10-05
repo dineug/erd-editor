@@ -22,6 +22,9 @@ import {
   DirectionList,
   Language,
   LanguageList,
+  LockSettingFields,
+  LockSettingType,
+  LockSettingTypeList,
   NameCase,
   NameCaseList,
   OrderType,
@@ -62,6 +65,9 @@ describe('schema constant re-exports', () => {
     expect(OrderType).toBe(SchemaV3Constants.OrderType);
     expect(OrderTypeList).toBe(SchemaV3Constants.OrderTypeList);
     expect(SaveSettingType).toBe(SchemaV3Constants.SaveSettingType);
+    expect(LockSettingType).toBe(SchemaV3Constants.LockSettingType);
+    expect(LockSettingTypeList).toBe(SchemaV3Constants.LockSettingTypeList);
+    expect(LockSettingFields).toBe(SchemaV3Constants.LockSettingFields);
   });
 
   it('re-exports the canvas bounds as plain numbers', () => {
@@ -106,6 +112,7 @@ describe('schema constant re-exports', () => {
       ColumnUIKey,
       OrderType,
       SaveSettingType,
+      LockSettingType,
     ];
 
     for (const group of flagGroups) {

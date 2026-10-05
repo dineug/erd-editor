@@ -1,3 +1,4 @@
+import { omit } from 'es-toolkit';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { parser, parserV2, toJson } from '@/parser';
@@ -6,6 +7,43 @@ import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 
 const V3_SCHEMA_URL =
   'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
+
+const {
+  BracketType,
+  CanvasType,
+  Language,
+  LockSettingFields,
+  LockSettingType,
+  NameCase,
+} = SchemaV3Constants;
+const LOCK_ALL = 63;
+
+const DEFAULT_VIEW = {
+  originX: 0,
+  originY: 0,
+  zoomLevel: 1,
+  canvasType: CanvasType.ERD,
+};
+const DEFAULTS = {
+  ...DEFAULT_VIEW,
+  language: Language.GraphQL,
+  tableNameCase: NameCase.pascalCase,
+  columnNameCase: NameCase.camelCase,
+  bracketType: BracketType.none,
+};
+const SAVED_VIEW = {
+  originX: -40,
+  originY: 90,
+  zoomLevel: 0.5,
+  canvasType: CanvasType.schemaSQL,
+};
+const SAVED_CODE = {
+  language: Language.TypeScript,
+  tableNameCase: NameCase.snakeCase,
+  columnNameCase: NameCase.snakeCase,
+  bracketType: BracketType.backtick,
+};
+const LIVE = { ...SAVED_VIEW, originY: -60, ...SAVED_CODE };
 
 describe('parser', () => {
   it('parses a v3 document through the v3 parser', () => {
@@ -69,6 +107,7 @@ describe('parser', () => {
       zoomLevel: 0.4,
       scrollLeft: -120,
       scrollTop: 340,
+      lockSettings: LOCK_ALL,
     };
     const schema = parser(JSON.stringify({ version: '3.0.0', settings }));
 
@@ -152,8 +191,8 @@ describe('toJson', () => {
     expect(toJson(schema)).toContain('\n  "version": "3.0.0"');
   });
 
-  it('writes both pairs when nothing is ignored', () => {
-    const schema = parser('{"version":"3.0.0"}');
+  it('writes both pairs as they stand while the viewport is unlocked', () => {
+    const schema = parser('{"version":"3.0.0","settings":{"lockSettings":0}}');
     schema.settings.scrollTop = 100;
     schema.settings.scrollLeft = 200;
     schema.settings.originX = -40;
@@ -176,6 +215,7 @@ describe('toJson', () => {
       zoomLevel: 0.4,
       scrollLeft: -120,
       scrollTop: 340,
+      lockSettings: LOCK_ALL,
     };
     const source = JSON.stringify({ version: '3.0.0', settings });
 
@@ -195,6 +235,7 @@ describe('toJson', () => {
         zoomLevel: 1.5,
         scrollLeft: -137.25,
         scrollTop: 1234.5,
+        lockSettings: LOCK_ALL,
       },
       doc: { tableIds: ['t1'] },
       collections: { tableEntities: { t1: { id: 't1', name: 'users' } } },
@@ -204,89 +245,81 @@ describe('toJson', () => {
     expect(parser(toJson(schema))).toEqual(schema);
   });
 
-  it('zeroes only the origin pair when the scroll setting is ignored', () => {
-    const schema = parser('{"version":"3.0.0"}');
-    schema.settings.scrollTop = 100;
-    schema.settings.scrollLeft = 200;
-    schema.settings.originX = -40;
-    schema.settings.originY = -60;
-    schema.settings.zoomLevel = 0.5;
-    schema.settings.ignoreSaveSettings =
-      SchemaV3Constants.SaveSettingType.scroll;
+  it('writes each locked setting at its lock, leaving the live one alone', () => {
+    const schema = parser('{"version":"3.0.0","settings":{"lockSettings":63}}');
+    Object.assign(schema.settings, LIVE);
 
     const json = JSON.parse(toJson(schema));
 
-    expect(json.settings.originX).toBe(0);
-    expect(json.settings.originY).toBe(0);
-    expect(json.settings.scrollTop).toBe(100);
-    expect(json.settings.scrollLeft).toBe(200);
-    expect(json.settings.zoomLevel).toBe(0.5);
+    expect(json.settings).toMatchObject(DEFAULTS);
+    expect(schema.settings).toMatchObject(LIVE);
   });
 
-  it('reloads a scroll-ignoring export at the origin it wrote', () => {
-    const schema = parser('{"version":"3.0.0"}');
-    schema.settings.scrollTop = 100;
-    schema.settings.scrollLeft = 200;
+  it.each(
+    Object.entries(LockSettingType).map(([name, bit]) => [
+      name,
+      bit,
+      LockSettingFields[bit],
+    ])
+  )('writes %s alone at its lock when only it is locked', (_, bit, fields) => {
+    const schema = parser(
+      JSON.stringify({ version: '3.0.0', settings: { lockSettings: bit } })
+    );
+    Object.assign(schema.settings, LIVE);
+
+    const { settings } = JSON.parse(toJson(schema));
+
+    for (const field of Object.keys(LIVE) as Array<keyof typeof LIVE>) {
+      expect(settings[field]).toBe(
+        fields.includes(field) ? DEFAULTS[field] : LIVE[field]
+      );
+    }
+  });
+
+  it('locks the origin and the zoom together as the viewport', () => {
+    expect(LockSettingFields[LockSettingType.viewport]).toEqual([
+      'originX',
+      'originY',
+      'zoomLevel',
+    ]);
+  });
+
+  it('writes the lockedValues it held, not a later lock or the live value', () => {
+    const schema = createSchema();
+    Object.assign(schema.settings.lockedValues, {
+      originX: 12,
+      zoomLevel: 0.8,
+    });
     schema.settings.originX = -40;
-    schema.settings.originY = -60;
-    schema.settings.ignoreSaveSettings =
-      SchemaV3Constants.SaveSettingType.scroll;
 
-    const reloaded = parser(toJson(schema)).settings;
+    const { settings } = JSON.parse(toJson(schema));
 
-    expect(reloaded.originX).toBe(0);
-    expect(reloaded.originY).toBe(0);
+    expect(settings).toMatchObject({ originX: 12, zoomLevel: 0.8 });
+    expect(settings).not.toHaveProperty('lockedValues');
+    expect(Object.keys(settings).slice(-2)).toEqual([
+      'ignoreSaveSettings',
+      'lockSettings',
+    ]);
+    expect(parser(toJson(schema)).settings.lockedValues).toMatchObject({
+      originX: 12,
+      zoomLevel: 0.8,
+    });
   });
 
-  it('resets the zoom level when the zoom save setting is ignored', () => {
-    const schema = parser('{"version":"3.0.0"}');
-    schema.settings.scrollTop = 100;
-    schema.settings.originY = 100;
-    schema.settings.zoomLevel = 0.5;
-    schema.settings.ignoreSaveSettings =
-      SchemaV3Constants.SaveSettingType.zoomLevel;
+  it('writes the fields of a document no parser built as they stand', () => {
+    const raw = JSON.parse(toJson(createSchema()));
+    raw.settings.originX = 77;
 
-    const json = JSON.parse(toJson(schema));
-
-    expect(json.settings.scrollTop).toBe(100);
-    expect(json.settings.originY).toBe(100);
-    expect(json.settings.zoomLevel).toBe(1);
-  });
-
-  it('resets both when both bits are set, leaving the live settings alone', () => {
-    const schema = parser('{"version":"3.0.0"}');
-    schema.settings.scrollTop = 100;
-    schema.settings.scrollLeft = 200;
-    schema.settings.originX = -40;
-    schema.settings.originY = -60;
-    schema.settings.zoomLevel = 0.5;
-    schema.settings.ignoreSaveSettings =
-      SchemaV3Constants.SaveSettingType.scroll |
-      SchemaV3Constants.SaveSettingType.zoomLevel;
-
-    const json = JSON.parse(toJson(schema));
-
-    expect(json.settings.originX).toBe(0);
-    expect(json.settings.originY).toBe(0);
-    expect(json.settings.zoomLevel).toBe(1);
-    expect(schema.settings.originX).toBe(-40);
-    expect(schema.settings.originY).toBe(-60);
-    expect(schema.settings.zoomLevel).toBe(0.5);
+    expect(JSON.parse(toJson(raw)).settings).toMatchObject({
+      originX: 77,
+      lockSettings: LOCK_ALL,
+    });
   });
 
   it('never mutates the settings it is handed', () => {
-    const schema = parser(
-      JSON.stringify({
-        version: '3.0.0',
-        settings: { width: 3000, height: 5000, zoomLevel: 0.4 },
-      })
-    );
-    schema.settings.originX = -40;
-    schema.settings.originY = -60;
-    schema.settings.ignoreSaveSettings =
-      SchemaV3Constants.SaveSettingType.scroll |
-      SchemaV3Constants.SaveSettingType.zoomLevel;
-    const before = { ...schema.settings };
+    const schema = createSchema();
+    Object.assign(schema.settings, LIVE);
+    const before = structuredClone(schema.settings);
 
     toJson(schema);
 
@@ -295,57 +328,117 @@ describe('toJson', () => {
 });
 
 /**
- * A new document saves neither half of the view, while a file keeps what it
- * says: one without the field was written with the view saved, so it parses so.
+ * The save switches a release before the locks reads: off while the viewport is
+ * locked, so it never saves where a reader scrolls, on while it follows them.
  */
-describe('the save switches of a new document and of a file', () => {
-  const { scroll, zoomLevel } = SchemaV3Constants.SaveSettingType;
+describe('the save switches toJson writes for releases before the locks', () => {
+  it.each([
+    ['locked', LOCK_ALL, 3],
+    ['locked alone', LockSettingType.viewport, 3],
+    ['unlocked', LOCK_ALL & ~LockSettingType.viewport, 0],
+    ['unlocked with nothing locked', 0, 0],
+  ])('writes the viewport %s as %i', (_, lockSettings, ignoreSaveSettings) => {
+    const schema = parser(
+      JSON.stringify({ version: '3.0.0', settings: { lockSettings } })
+    );
 
-  it('writes a new document with both switches off and the view at its reset', () => {
+    expect(JSON.parse(toJson(schema)).settings.ignoreSaveSettings).toBe(
+      ignoreSaveSettings
+    );
+  });
+
+  it('reads none of it back, the locks alone saying what is saved', () => {
+    const source = JSON.stringify({
+      version: '3.0.0',
+      settings: { lockSettings: 0, ignoreSaveSettings: 3, originX: -40 },
+    });
+    const schema = parser(source);
+    schema.settings.originX = 80;
+
+    expect(schema.settings).not.toHaveProperty('ignoreSaveSettings');
+    expect(JSON.parse(toJson(schema)).settings).toMatchObject({
+      ignoreSaveSettings: 0,
+      originX: 80,
+    });
+  });
+});
+
+/**
+ * A new document locks every lockable setting at its default, while a file
+ * keeps the locks it names; one saved before them locks all of them too.
+ */
+describe('the locks of a new document and of a file', () => {
+  it('writes a new document with every lock on and the defaults in place', () => {
     const schema = createSchema();
-    schema.settings.originX = -320;
-    schema.settings.originY = 180;
-    schema.settings.zoomLevel = 0.5;
+    Object.assign(schema.settings, LIVE);
 
     const { settings } = JSON.parse(toJson(schema));
 
-    expect(settings.ignoreSaveSettings).toBe(scroll | zoomLevel);
-    expect(settings).toMatchObject({ originX: 0, originY: 0, zoomLevel: 1 });
+    expect(settings.lockSettings).toBe(LOCK_ALL);
+    expect(settings).toMatchObject(DEFAULTS);
     expect(settings).toMatchObject({ scrollLeft: 0, scrollTop: 0 });
   });
 
-  it('reads a new document back with both switches still off', () => {
+  it('reads a new document back as it wrote it', () => {
     const schema = createSchema();
 
     expect(parser(toJson(schema))).toEqual(schema);
   });
 
   it.each([
-    ['a v3 file without the field', '{"version":"3.0.0","settings":{}}'],
     [
-      'a v3 file with the field 0',
-      '{"version":"3.0.0","settings":{"ignoreSaveSettings":0}}',
+      'a v3 file without the field',
+      { version: '3.0.0', settings: { ...SAVED_VIEW, ...SAVED_CODE } },
     ],
-    ['a v2 file', '{"canvas":{"width":3000}}'],
-  ])('keeps saving both halves of the view of %s', (_, source) => {
-    const schema = parser(source);
-    schema.settings.originX = -40;
-    schema.settings.zoomLevel = 0.5;
+    [
+      'a v3 file that saved its view',
+      {
+        version: '3.0.0',
+        settings: { ...SAVED_VIEW, ...SAVED_CODE, ignoreSaveSettings: 0 },
+      },
+    ],
+    [
+      'a v2 file',
+      {
+        canvas: {
+          zoomLevel: 0.5,
+          scrollLeft: -40,
+          scrollTop: 90,
+          language: 'TypeScript',
+          tableCase: 'snakeCase',
+          columnCase: 'snakeCase',
+          bracketType: 'backtick',
+        },
+      },
+    ],
+  ])('locks every setting of %s, its view and tab at the start', (_, json) => {
+    const { settings } = parser(JSON.stringify(json));
 
-    expect(schema.settings.ignoreSaveSettings).toBe(0);
-    expect(JSON.parse(toJson(schema)).settings).toMatchObject({
-      ignoreSaveSettings: 0,
-      originX: -40,
-      zoomLevel: 0.5,
-    });
+    expect(settings.lockSettings).toBe(LOCK_ALL);
+    expect(settings).toMatchObject({ ...DEFAULT_VIEW, ...SAVED_CODE });
+    expect(settings.lockedValues).toEqual({ ...DEFAULT_VIEW, ...SAVED_CODE });
   });
 
-  it('keeps the switches a file names', () => {
+  it('keeps the locks a file names and the values it saved', () => {
+    const settings = {
+      lockSettings: LockSettingType.language | LockSettingType.viewport,
+      ...SAVED_VIEW,
+      ...SAVED_CODE,
+    };
+    const source = JSON.stringify({ version: '3.0.0', settings });
+
+    const parsed = parser(source).settings;
+
+    expect(parsed).toMatchObject(settings);
+    expect(parsed.lockedValues).toEqual(omit(settings, ['lockSettings']));
+  });
+
+  it('drops the bits no lock owns', () => {
     const source = JSON.stringify({
       version: '3.0.0',
-      settings: { ignoreSaveSettings: zoomLevel },
+      settings: { lockSettings: 1024 | LockSettingType.language },
     });
 
-    expect(parser(source).settings.ignoreSaveSettings).toBe(zoomLevel);
+    expect(parser(source).settings.lockSettings).toBe(LockSettingType.language);
   });
 });

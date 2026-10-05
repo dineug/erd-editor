@@ -1,5 +1,11 @@
+import { pick } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
+import {
+  CanvasType,
+  LockSettingFields,
+  LockSettingTypeList,
+} from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
   viewChangeZoomLevelAction,
@@ -15,10 +21,12 @@ import {
   toScenePoint,
   toScreenPoint,
 } from '@/konva/scene/viewport';
+import { bHas } from '@/utils/bit';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { zoomLevelInRange } from '@/utils/validation';
 
 import {
+  changeLockSettingsAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
@@ -158,7 +166,31 @@ export const pinchZoomAction$ = (
     }
   };
 
+/**
+ * Locks the settings named at what they hold now, or unlocks them. A canvas
+ * type locked on the Settings tab holds the tab the reader came from.
+ */
+export const changeLockSettingsAction$ = (
+  lockSettingType: number,
+  value: boolean
+): GeneratorAction =>
+  function* ({ settings, editor }) {
+    const fields = LockSettingTypeList.filter(bit =>
+      bHas(lockSettingType, bit)
+    ).flatMap(bit => LockSettingFields[bit]);
+    const values: Partial<RootState['settings']['lockedValues']> = value
+      ? pick(settings, fields)
+      : {};
+
+    if (values.canvasType === CanvasType.settings) {
+      values.canvasType = editor.lastCanvasType;
+    }
+
+    yield changeLockSettingsAction({ lockSettingType, value, values });
+  };
+
 export const actions$ = {
   changeZoomLevelAction$,
   streamZoomLevelAction$,
+  changeLockSettingsAction$,
 };

@@ -5,14 +5,16 @@ import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
 import {
   CanvasType,
   ColumnUIKey,
-  SaveSettingType,
+  Language,
+  LockSettingType,
   StartRelationshipType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { unselectAllAction } from '@/engine/modules/editor/atom.actions';
 import {
   changeCanvasTypeAction,
-  changeIgnoreSaveSettingsAction,
+  changeLanguageAction,
+  changeLockSettingsAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
@@ -31,7 +33,11 @@ import { createStore } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 
 const DAY = 24 * 60 * 60 * 1000;
-const OFF = SaveSettingType.scroll | SaveSettingType.zoomLevel;
+const LOCK_ALL = 63;
+const { viewport } = LockSettingType;
+
+const unlock = (lockSettingType: number) =>
+  changeLockSettingsAction({ lockSettingType, value: false, values: {} });
 
 const addTable = (id: string) =>
   addTableAction({ id, ui: { x: 200, y: 100, zIndex: 2 } });
@@ -97,8 +103,8 @@ describe('createReplicationStore', () => {
     expect(Object.isFrozen(store)).toBe(true);
   });
 
-  it('starts as a new document, which saves neither the scroll nor the zoom', () => {
-    expect(parse(make()).settings.ignoreSaveSettings).toBe(OFF);
+  it('starts as a new document, every setting locked', () => {
+    expect(parse(make()).settings.lockSettings).toBe(LOCK_ALL);
   });
 
   it('setInitialValue falls back to an empty document for blank input', async () => {
@@ -108,7 +114,7 @@ describe('createReplicationStore', () => {
     await settle();
 
     expect(parse(store).doc.tableIds).toEqual([]);
-    expect(parse(store).settings.ignoreSaveSettings).toBe(OFF);
+    expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
   });
 
   it('setInitialValue coerces non-string input to an empty document', async () => {
@@ -118,22 +124,25 @@ describe('createReplicationStore', () => {
     await settle();
 
     expect(parse(store).doc.tableIds).toEqual([]);
-    expect(parse(store).settings.ignoreSaveSettings).toBe(OFF);
+    expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
   });
 
   it.each([
     ['a v3 file without the field', '{"version":"3.0.0"}'],
     ['a v2 file', '{"canvas":{"width":3000}}'],
-  ])('setInitialValue keeps saving the view of %s', async (_, file) => {
+  ])('setInitialValue locks every setting of %s', async (_, file) => {
     const store = make();
 
     store.setInitialValue(file);
     await settle();
 
-    expect(parse(store).settings.ignoreSaveSettings).toBe(0);
+    expect(parse(store).settings).toMatchObject({
+      lockSettings: LOCK_ALL,
+      ignoreSaveSettings: 3,
+    });
   });
 
-  it('setInitialValue shows text it cannot read as a new document, since it names no switch', async () => {
+  it('setInitialValue shows text it cannot read as a new document, every setting locked', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const store = make();
 
@@ -142,7 +151,7 @@ describe('createReplicationStore', () => {
 
     expect(error).toHaveBeenCalled();
     expect(parse(store).doc.tableIds).toEqual([]);
-    expect(parse(store).settings.ignoreSaveSettings).toBe(OFF);
+    expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
     error.mockRestore();
   });
 
@@ -345,12 +354,10 @@ describe('createReplicationStore', () => {
    * would be pulled onto it against a frame nobody looks through and drift from the source.
    */
   describe('the view of a replica', () => {
-    /** A replica of a file that saves its view, so the value shows the origin. */
+    /** A replica of a file whose viewport is unlocked, so the value shows the origin. */
     function makeSavingView(): ReplicationStore {
       const store = make();
-      store.dispatchSync(
-        changeIgnoreSaveSettingsAction({ saveSettingType: OFF, value: false })
-      );
+      store.dispatchSync(unlock(viewport));
       return store;
     }
 
@@ -384,9 +391,9 @@ describe('createReplicationStore', () => {
   });
 
   /**
-   * What a host is handed after a scroll or a zoom. The change still comes, as
-   * every hub waits for one save per change, and changed says whether the value
-   * holds anything new: with both save switches off, a view change holds nothing.
+   * What a host is handed after a scroll, a zoom or another locked setting's
+   * change. The change still comes, as every hub waits for one save per change,
+   * and changed says whether the value holds anything new: locked, it does not.
    */
   describe('a view change', () => {
     const view = [
@@ -398,48 +405,51 @@ describe('createReplicationStore', () => {
 
     /**
      * A replica holding one table, whose own debounced change has gone out,
-     * with the switches given, or a new document's when none are.
+     * with the locks given unlocked, or a new document's when none are.
      */
-    function loaded(ignoreSaveSettings?: number) {
+    function loaded(unlocked = 0) {
       vi.useFakeTimers();
       const store = make();
       store.dispatchSync(addTable('t1'));
-      if (ignoreSaveSettings !== undefined) {
-        store.dispatchSync([
-          changeIgnoreSaveSettingsAction({
-            saveSettingType: OFF,
-            value: false,
-          }),
-          changeIgnoreSaveSettingsAction({
-            saveSettingType: ignoreSaveSettings,
-            value: true,
-          }),
-        ]);
-      }
+      if (unlocked) store.dispatchSync(unlock(unlocked));
       vi.advanceTimersByTime(250);
       const change = vi.fn();
       store.on({ change });
       return { store, change };
     }
 
-    it('changes nothing for a new document, whose switches both start off', () => {
+    /** What an editor relays for a zoom: the zoom, then the scroll holding the middle of its screen. */
+    function relayedZoom() {
+      const editor = createStore({
+        toWidth: text => text.length * 10,
+        clock: new Clock(),
+      });
+      const zoom = compositionActionsFlat(editor.state, editor.context, [
+        changeZoomLevelAction$(0.5),
+      ]);
+      editor.destroy();
+      return zoom;
+    }
+
+    it('changes nothing for a new document, whose locks all start on, and is still reported', () => {
       const { store, change } = loaded();
       const before = store.value;
 
       store.dispatchSync(view);
       vi.advanceTimersByTime(250);
 
+      expect(change).toHaveBeenCalledTimes(1);
       expect(change).toHaveBeenCalledWith({ value: before, changed: false });
       expect(parse(store).settings).toMatchObject({
-        ignoreSaveSettings: OFF,
+        lockSettings: LOCK_ALL,
         originX: 0,
         originY: 0,
         zoomLevel: 1,
       });
     });
 
-    it('is saved with both switches on, as a file keeps where the diagram was left', () => {
-      const { store, change } = loaded(0);
+    it('is saved with the viewport unlocked, as a file keeps where the diagram was left', () => {
+      const { store, change } = loaded(viewport);
       const before = store.value;
 
       store.dispatchSync(view);
@@ -458,52 +468,35 @@ describe('createReplicationStore', () => {
       });
     });
 
-    it('changes nothing with both switches off, and is still reported', () => {
-      const { store, change } = loaded(OFF);
-      const before = store.value;
+    it('keeps the origin and the zoom of the lock wherever a locked view goes', () => {
+      const { store, change } = loaded(viewport);
+      store.dispatchSync(
+        changeLockSettingsAction({
+          lockSettingType: viewport,
+          value: true,
+          values: { originX: 64, originY: -32, zoomLevel: 0.8 },
+        })
+      );
+      vi.advanceTimersByTime(250);
+      const locked = store.value;
 
-      store.dispatchSync(view);
+      store.dispatchSync([...view, ...relayedZoom()]);
       vi.advanceTimersByTime(250);
 
-      expect(change).toHaveBeenCalledTimes(1);
-      expect(change).toHaveBeenCalledWith({ value: before, changed: false });
-      expect(store.value).toBe(before);
-    });
-
-    it('saves only the half of the view whose switch is still on', () => {
-      const { store, change } = loaded(SaveSettingType.scroll);
-      const before = store.value;
-
-      store.dispatchSync(view.slice(0, 2));
-      vi.advanceTimersByTime(250);
       expect(change).toHaveBeenLastCalledWith({
-        value: before,
+        value: locked,
         changed: false,
       });
-
-      store.dispatchSync(view.slice(2));
-      vi.advanceTimersByTime(250);
-      expect(change).toHaveBeenLastCalledWith({
-        value: store.value,
-        changed: true,
+      expect(parse(store).settings).toMatchObject({
+        originX: 64,
+        originY: -32,
+        zoomLevel: 0.8,
       });
-      expect(parse(store).settings.zoomLevel).toBe(0.75);
-      expect(parse(store).settings.originX).toBe(0);
     });
 
-    it('saves the origin a zoom moves with only the scroll switch on, though not the zoom', () => {
-      const { store, change } = loaded(SaveSettingType.zoomLevel);
-      const before = store.value;
-      // What an editor relays for a zoom: the zoom, then the scroll that keeps
-      // the scene point under the middle of its 1200 by 675 screen in place.
-      const editor = createStore({
-        toWidth: text => text.length * 10,
-        clock: new Clock(),
-      });
-      const zoom = compositionActionsFlat(editor.state, editor.context, [
-        changeZoomLevelAction$(0.5),
-      ]);
-      editor.destroy();
+    it('saves the zoom and the origin it moves together once unlocked', () => {
+      const { store, change } = loaded(viewport);
+      const zoom = relayedZoom();
 
       store.dispatchSync(zoom);
       vi.advanceTimersByTime(250);
@@ -516,33 +509,54 @@ describe('createReplicationStore', () => {
         value: store.value,
         changed: true,
       });
-      expect(store.value).not.toBe(before);
       expect(parse(store).settings).toMatchObject({
-        zoomLevel: 1,
+        zoomLevel: 0.5,
         originX: 300,
         originY: 168.75,
       });
     });
 
-    it('still saves a tab switch, which neither switch covers', () => {
-      const { store, change } = loaded(OFF);
+    it.each([
+      ['a tab switch', changeCanvasTypeAction({ value: CanvasType.settings })],
+      ['a language', changeLanguageAction({ value: Language.Kotlin })],
+    ])('changes nothing for %s while locked', (_, action) => {
+      const { store, change } = loaded();
       const before = store.value;
 
-      store.dispatchSync(
-        changeCanvasTypeAction({ value: CanvasType.settings })
-      );
+      store.dispatchSync(action);
+      vi.advanceTimersByTime(250);
+
+      expect(change).toHaveBeenCalledWith({ value: before, changed: false });
+    });
+
+    it.each([
+      [
+        'a tab switch',
+        LockSettingType.canvasType,
+        changeCanvasTypeAction({ value: CanvasType.settings }),
+        { canvasType: CanvasType.settings },
+      ],
+      [
+        'a language',
+        LockSettingType.language,
+        changeLanguageAction({ value: Language.Kotlin }),
+        { language: Language.Kotlin },
+      ],
+    ])('saves %s once unlocked', (_, bit, action, saved) => {
+      const { store, change } = loaded(bit);
+
+      store.dispatchSync(action);
       vi.advanceTimersByTime(250);
 
       expect(change).toHaveBeenCalledWith({
         value: store.value,
         changed: true,
       });
-      expect(store.value).not.toBe(before);
-      expect(parse(store).settings.canvasType).toBe(CanvasType.settings);
+      expect(parse(store).settings).toMatchObject(saved);
     });
 
     it('measures each change against the one before it', () => {
-      const { store, change } = loaded(OFF);
+      const { store, change } = loaded();
 
       store.dispatchSync(changeTableNameAction({ id: 't1', value: 'users' }));
       vi.advanceTimersByTime(250);
@@ -569,13 +583,12 @@ describe('createReplicationStore', () => {
     const winWidth = (text: string) => Math.round(text.length * 6.6) + 2;
     const scroll = scrollToAction({ originX: -100, originY: 50 });
 
-    /** One named table, both switches off, as a replica measuring with toWidth saves it. */
+    /** One named table, every setting locked, as a replica measuring with toWidth saves it. */
     function savedWith(toWidth: (text: string) => number) {
       const store = make(toWidth);
       store.dispatchSync([
         addTable('t1'),
         changeTableNameAction({ id: 't1', value: 'customer_accounts' }),
-        changeIgnoreSaveSettingsAction({ saveSettingType: OFF, value: true }),
       ]);
       return store.value;
     }
@@ -638,7 +651,7 @@ describe('createReplicationStore', () => {
       expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
     });
 
-    it('changes nothing for a view change on a new empty file, whose first edit writes both switches off', async () => {
+    it('changes nothing for a view change on a new empty file, whose first edit writes every lock on', async () => {
       const { store, change } = await open('');
       const opened = store.value;
 
@@ -653,32 +666,51 @@ describe('createReplicationStore', () => {
         changed: true,
       });
       expect(parse(store).settings).toMatchObject({
-        ignoreSaveSettings: OFF,
+        lockSettings: LOCK_ALL,
         originX: 0,
         originY: 0,
         zoomLevel: 1,
       });
     });
 
-    it('saves a view change on a file without the field, as the release that wrote it did', async () => {
-      const { store, change } = await open('{"version":"3.0.0"}');
+    it('changes nothing for a view change on a file saved before the locks, whose first edit writes them on', async () => {
+      const file = JSON.stringify({
+        version: '3.0.0',
+        settings: {
+          ignoreSaveSettings: 0,
+          originX: -100,
+          originY: 50,
+          zoomLevel: 0.5,
+          canvasType: CanvasType.schemaSQL,
+          language: Language.Kotlin,
+        },
+      });
+      const { store, change } = await open(file);
+      const opened = store.value;
 
-      store.dispatchSync(scroll);
+      store.dispatchSync([scroll, changeZoomLevelAction({ value: 0.8 })]);
       vi.advanceTimersByTime(250);
+      expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
 
-      expect(change).toHaveBeenCalledWith({
+      store.dispatchSync(addTable('t1'));
+      vi.advanceTimersByTime(250);
+      expect(change).toHaveBeenLastCalledWith({
         value: store.value,
         changed: true,
       });
       expect(parse(store).settings).toMatchObject({
-        ignoreSaveSettings: 0,
-        originX: -100,
-        originY: 50,
+        lockSettings: LOCK_ALL,
+        originX: 0,
+        originY: 0,
+        zoomLevel: 1,
+        canvasType: CanvasType.ERD,
+        language: Language.Kotlin,
       });
+      expect(parse(store).settings.ignoreSaveSettings).toBe(3);
     });
 
     /**
-     * The seed saved with both switches off, by a machine with other fonts and
+     * The seed saved with every lock on, by a machine with other fonts and
      * a release whose relationship and key flags fell behind its columns, with
      * a table removed long enough ago for the schema GC.
      */
@@ -688,7 +720,6 @@ describe('createReplicationStore', () => {
         json.collections.relationshipEntities[SEED.relationship];
       const userColumn = json.collections.tableColumnEntities[SEED.orderUser];
 
-      json.settings.ignoreSaveSettings = OFF;
       // The relationship ends on orders.user_id, a nullable column outside the
       // primary key, which makes it non-identifying and ringed.
       relationship.identification = true;

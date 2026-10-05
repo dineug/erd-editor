@@ -150,8 +150,8 @@ test.describe('the origin pair and the legacy scroll pair', () => {
 });
 
 /**
- * An element given no value is a new document, which saves neither half of the
- * view: the reader's scroll and zoom move the scene and leave the value alone.
+ * An element given no value is a new document, every setting locked: the
+ * reader's scroll and zoom move the scene and leave the value alone.
  */
 test.describe('a new document', () => {
   test('keeps the scroll and the zoom a reader makes out of the value', async ({
@@ -170,6 +170,7 @@ test.describe('a new document', () => {
 
     expect(before.settings).toMatchObject({
       ignoreSaveSettings: 3,
+      lockSettings: 63,
       originX: 0,
       originY: 0,
       zoomLevel: 1,

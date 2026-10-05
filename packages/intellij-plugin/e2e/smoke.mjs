@@ -179,7 +179,7 @@ for (const name of [
   writeFileSync(at(name), '');
 }
 cpSync(LEGACY_FIXTURE, at('legacy.vuerd.json'));
-// Both save switches off and no origin, as releases before the origin wrote it:
+// No locks and no origin, as releases before both wrote it, so it opens locked:
 // the bytes are not the replica's, and a zoom or a scroll must not rewrite them.
 const VIEW_ONLY = JSON.stringify({
   version: '3.0.0',
@@ -921,7 +921,7 @@ async function phaseA() {
     step(name, opened.json?.opened === true && fresh.length === 1, opened.text.slice(0, 200));
   });
 
-  await run('A15', 'a zoom and a scroll with both save switches off leave a file an older release wrote as it was', async name => {
+  await run('A15', 'a zoom and a scroll under the viewport lock leave a file an older release wrote as it was', async name => {
     const { page } = await openThroughAgent('view-only.erd');
     await sleep(REPLICA_SETTLE_MS);
     const before = page ? await zoomReadout(page) : null;

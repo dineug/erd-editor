@@ -180,6 +180,7 @@ export type ErdDocument = {
     columnOrder: number[];
     maxWidthComment: number;
     ignoreSaveSettings: number;
+    lockSettings: number;
   };
   doc: {
     tableIds: string[];
@@ -460,6 +461,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       columnOrder: [...DEFAULT_COLUMN_ORDER],
       maxWidthComment: -1,
       ignoreSaveSettings: 0,
+      lockSettings: 0,
     },
     doc: {
       tableIds: tables.map(table => table.id),

@@ -107,6 +107,7 @@ function createDoc(zoomLevel = 1, memoValue = 'first line\nsecond line') {
       originY: 0,
       zoomLevel,
       databaseName: 'svg',
+      lockSettings: 0,
     },
     doc: {
       tableIds: ['users', 'orders'],

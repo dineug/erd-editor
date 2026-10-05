@@ -83,12 +83,13 @@ of them.
 
 ### Keeping diffs clean
 
-A new diagram leaves the canvas scroll position and zoom level out of the file, so panning around
-never changes it. An existing file keeps storing whatever it was saved with, and older files store
-both: turn off **Save Scroll Information** and **Save Zoom Information** in the editor's settings
-to keep changes, and a git history of the vault, limited to the schema, or turn them on for a
-diagram that should open where you left it. Zooming moves the scroll position too, so with only
-**Save Scroll Information** on, zooming still changes the file.
+The canvas scroll position and zoom level, the open tab and the code generator's language, name
+cases and quotes are locked in every diagram: the file keeps the values they had when locked, so
+panning around or switching tabs never changes it, and a git history of the vault stays limited to
+the schema. The editor's settings list each under **Lock** with the value the file keeps. Unlock
+the viewport for a diagram that should open where you left it, or unlock and lock it again to fix
+a new starting view. Files saved before the locks open with all of them on, their scroll, zoom and
+tab at the start.
 
 ## Coding agents
 

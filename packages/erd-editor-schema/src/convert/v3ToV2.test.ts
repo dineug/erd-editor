@@ -27,6 +27,7 @@ const {
 function createSchemaV3(): ERDEditorSchemaV3 {
   return schemaV3Parser({
     settings: {
+      lockSettings: 63,
       width: 3000,
       height: 4000,
       scrollTop: -100,

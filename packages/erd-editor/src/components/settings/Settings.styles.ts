@@ -56,6 +56,61 @@ export const vertical = (size: number) => css`
   height: 100%;
 `;
 
+export const lockSection = css`
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+`;
+
+export const lockRow = css`
+  display: flex;
+  align-items: center;
+  height: 28px;
+  white-space: nowrap;
+`;
+
+export const lockName = css`
+  width: 140px;
+  flex-shrink: 0;
+`;
+
+/* The value the file keeps, dimmed while unlocked, when it follows the screen. */
+export const lockValue = css`
+  min-width: 120px;
+  margin-right: 8px;
+  color: var(--placeholder);
+
+  &[data-locked] {
+    color: var(--foreground);
+  }
+`;
+
+/* A 24px square tool, its lock in the accent while on. */
+export const lockButton = css`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--placeholder);
+  cursor: pointer;
+
+  &[data-locked] {
+    color: var(--active);
+  }
+
+  &:hover {
+    background-color: var(--context-menu-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--input-active);
+    outline-offset: 1px;
+  }
+`;
+
 export const columnOrderSection = css`
   display: flex;
   flex-direction: column;

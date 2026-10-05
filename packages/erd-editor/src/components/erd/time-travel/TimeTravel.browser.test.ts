@@ -21,7 +21,6 @@ import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import * as styles from '@/components/erd/time-travel/TimeTravel.styles';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import * as sliderStyles from '@/components/primitives/slider/Slider.styles';
-import { SaveSettingType } from '@/constants/schema';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
@@ -258,14 +257,12 @@ describe('TimeTravel', () => {
       expect(parseFloat(viewport.style.height)).toBeCloseTo(handle.height, 3);
     });
 
-    it('opens on the scroll and zoom the reader left a new document at, which its file leaves out', async () => {
+    it('opens on the scroll and zoom the reader left a new document at, which its locked file leaves out', async () => {
       const { originApp } = await setup({
         tableIds: ['t1'],
         view: { originX: 120, originY: 80, zoomLevel: 1.5 },
       });
-      expect(originApp.store.state.settings.ignoreSaveSettings).toBe(
-        SaveSettingType.scroll | SaveSettingType.zoomLevel
-      );
+      expect(originApp.store.state.settings.lockSettings).toBe(63);
 
       const stages: Record<string, Stage> = Reflect.get(
         globalThis,

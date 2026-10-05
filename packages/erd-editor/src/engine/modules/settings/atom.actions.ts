@@ -1,8 +1,14 @@
 import { replaceOperator } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { clamp, isNil } from 'es-toolkit';
+import { clamp, isNil, isNumber, pick } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
+import {
+  CanvasType,
+  LockSettingFields,
+  LockSettingType,
+  LockSettingTypeList,
+} from '@/constants/schema';
 import { Viewport } from '@/engine/modules/editor/state';
 import {
   viewScrollToAction,
@@ -17,11 +23,13 @@ import { bHas } from '@/utils/bit';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import {
   hasBracketType,
+  hasCanvasType,
   hasColumnType,
   hasDatabase,
   hasLanguage,
   hasNameCase,
   maxWidthCommentInRange,
+  zoomInRange,
   zoomLevelInRange,
 } from '@/utils/validation';
 
@@ -301,19 +309,27 @@ const changeDatabase: ReducerType<typeof ActionType.changeDatabase> = (
   }
 };
 
+/** The tab the reader stands on, which a canvas type lock taken on Settings holds. */
+export function rememberCanvasType({ settings, editor }: RootState): void {
+  if (settings.canvasType !== CanvasType.settings) {
+    editor.lastCanvasType = settings.canvasType;
+  }
+}
+
 export const changeCanvasTypeAction = createAction<
   ActionMap[typeof ActionType.changeCanvasType]
 >(ActionType.changeCanvasType);
 
 const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
-  { settings },
+  state,
   { payload: { value }, tags }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
-  settings.canvasType = value;
+  rememberCanvasType(state);
+  state.settings.canvasType = value;
 };
 
 export const changeLanguageAction = createAction<
@@ -419,17 +435,102 @@ const changeMaxWidthComment: ReducerType<
     value === -1 ? value : maxWidthCommentInRange(value);
 };
 
-export const changeIgnoreSaveSettingsAction = createAction<
-  ActionMap[typeof ActionType.changeIgnoreSaveSettings]
->(ActionType.changeIgnoreSaveSettings);
+export const changeLockSettingsAction = createAction<
+  ActionMap[typeof ActionType.changeLockSettings]
+>(ActionType.changeLockSettings);
 
-const changeIgnoreSaveSettings: ReducerType<
-  typeof ActionType.changeIgnoreSaveSettings
-> = ({ settings }, { payload: { saveSettingType, value } }) => {
-  settings.ignoreSaveSettings = value
-    ? settings.ignoreSaveSettings | saveSettingType
-    : settings.ignoreSaveSettings & ~saveSettingType;
+type LockedValues = RootState['settings']['lockedValues'];
+
+/** What each locked field may hold, as the setter of its setting would take it. */
+const isLockedValue: Record<keyof LockedValues, (value: any) => boolean> = {
+  originX: Number.isFinite,
+  originY: Number.isFinite,
+  zoomLevel: value => isNumber(value) && zoomInRange(value) === value,
+  canvasType: value => hasCanvasType(value) && value !== CanvasType.settings,
+  language: hasLanguage,
+  tableNameCase: hasNameCase,
+  columnNameCase: hasNameCase,
+  bracketType: hasBracketType,
 };
+
+/**
+ * Locks each setting named at the values the payload carries, the last lock
+ * or unlock of it winning on every peer, and leaves one sent wrong as it was.
+ */
+const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
+  { settings, lww },
+  { payload: { lockSettingType, value, values }, version },
+  { clock }
+) => {
+  const safeVersion = version ?? clock.getVersion();
+
+  LockSettingTypeList.forEach(bit => {
+    if (!bHas(lockSettingType, bit)) return;
+
+    const fields = LockSettingFields[bit];
+    const lockedValues = pick(values, fields);
+    if (
+      value &&
+      fields.some(field => !isLockedValue[field](lockedValues[field]))
+    ) {
+      return;
+    }
+
+    replaceOperator(
+      lww,
+      safeVersion,
+      'settings.lockSettings',
+      'settings',
+      String(bit),
+      () => {
+        if (value) {
+          Object.assign(settings.lockedValues, lockedValues);
+          settings.lockSettings |= bit;
+        } else {
+          settings.lockSettings &= ~bit;
+        }
+      }
+    );
+  });
+};
+
+/**
+ * Lands the settings of a load that replaces the document: each lock through
+ * its register, so the latest lock wins on every peer, and each setting locked
+ * once it lands but the view, which lands where any load puts it, keeps the screen.
+ */
+export function landLoadedSettings(
+  { settings, lww }: RootState,
+  loaded: RootState['settings'],
+  version: number
+): void {
+  const { lockSettings, lockedValues, ...screen } = settings;
+  Object.assign(settings, loaded, {
+    lockSettings,
+    lockedValues: { ...lockedValues },
+  });
+
+  LockSettingTypeList.forEach(bit => {
+    const fields = LockSettingFields[bit];
+
+    replaceOperator(
+      lww,
+      version,
+      'settings.lockSettings',
+      'settings',
+      String(bit),
+      () => {
+        settings.lockSettings = bHas(loaded.lockSettings, bit)
+          ? settings.lockSettings | bit
+          : settings.lockSettings & ~bit;
+        Object.assign(settings.lockedValues, pick(loaded.lockedValues, fields));
+      }
+    );
+    if (bit !== LockSettingType.viewport && bHas(settings.lockSettings, bit)) {
+      Object.assign(settings, pick(screen, fields));
+    }
+  });
+}
 
 export const settingsReducers = {
   [ActionType.changeDatabaseName]: changeDatabaseName,
@@ -448,7 +549,7 @@ export const settingsReducers = {
   [ActionType.changeRelationshipOptimization]: changeRelationshipOptimization,
   [ActionType.changeColumnOrder]: changeColumnOrder,
   [ActionType.changeMaxWidthComment]: changeMaxWidthComment,
-  [ActionType.changeIgnoreSaveSettings]: changeIgnoreSaveSettings,
+  [ActionType.changeLockSettings]: changeLockSettings,
 };
 
 export const actions = {
@@ -468,5 +569,5 @@ export const actions = {
   changeRelationshipOptimizationAction,
   changeColumnOrderAction,
   changeMaxWidthCommentAction,
-  changeIgnoreSaveSettingsAction,
+  changeLockSettingsAction,
 };

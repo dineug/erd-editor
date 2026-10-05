@@ -14,7 +14,12 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { CanvasType, Show } from '@/constants/schema';
+import {
+  CanvasType,
+  Language,
+  LockSettingType,
+  Show,
+} from '@/constants/schema';
 import { ChangeActionTypes, SharedActionTypes } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
 import {
@@ -63,6 +68,10 @@ import {
   type SharedFocus,
 } from '@/engine/modules/editor/state';
 import {
+  changeCanvasTypeAction,
+  changeLanguageAction,
+  changeLockSettingsAction,
+  changeZoomLevelAction,
   getContentScrollRanges,
   scrollToAction,
   streamScrollToAction,
@@ -263,7 +272,7 @@ const documentAt = (
 ) =>
   JSON.stringify({
     version: '3.0.0',
-    settings: { zoomLevel, originX, originY },
+    settings: { zoomLevel, originX, originY, lockSettings: 0 },
     doc: { tableIds: tables.map(([id]) => id) },
     collections: {
       tableEntities: Object.fromEntries(
@@ -285,7 +294,7 @@ const legacyDocumentAt = (
 ) =>
   JSON.stringify({
     version: '3.0.0',
-    settings: { zoomLevel, scrollLeft, scrollTop },
+    settings: { zoomLevel, scrollLeft, scrollTop, lockSettings: 0 },
     doc: { tableIds: tables.map(([id]) => id) },
     collections: {
       tableEntities: Object.fromEntries(
@@ -618,11 +627,94 @@ describe('editor.clear / initialClear', () => {
   });
 });
 
+/**
+ * A load that replaces the document while it is open keeps the reader's screen
+ * of each locked setting, while one that opens it takes what the file holds.
+ */
+describe('the locked settings a load lands', () => {
+  const fileOf = (lockSettings: number) =>
+    JSON.stringify({
+      version: '3.0.0',
+      settings: {
+        lockSettings,
+        canvasType: CanvasType.ERD,
+        language: Language.Java,
+        zoomLevel: 0.5,
+        originX: 0,
+        originY: 0,
+      },
+    });
+
+  beforeEach(() => {
+    store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeZoomLevelAction({ value: 1.2 })
+    );
+  });
+
+  it('keeps the screen of a locked setting but the view, and takes the lock from the load', () => {
+    store.dispatchSync(loadJsonAction({ value: fileOf(63) }));
+
+    const { settings } = store.state;
+    expect([
+      settings.canvasType,
+      settings.language,
+      settings.zoomLevel,
+    ]).toEqual([CanvasType.schemaSQL, Language.Kotlin, 0.5]);
+    expect(settings.lockedValues).toMatchObject({
+      canvasType: CanvasType.ERD,
+      language: Language.Java,
+      zoomLevel: 0.5,
+    });
+  });
+
+  it('takes the file value of a setting the load leaves unlocked', () => {
+    store.dispatchSync(
+      loadJsonAction({ value: fileOf(63 & ~LockSettingType.language) })
+    );
+
+    expect(store.state.settings.language).toBe(Language.Java);
+    expect(store.state.settings.canvasType).toBe(CanvasType.schemaSQL);
+  });
+
+  it('takes every value of the file when it opens the document', () => {
+    store.dispatchSync(initialLoadJsonAction({ value: fileOf(63) }));
+
+    expect(store.state.settings).toMatchObject({
+      canvasType: CanvasType.ERD,
+      language: Language.Java,
+      zoomLevel: 0.5,
+    });
+  });
+
+  it('leaves a lock newer than the load where it is', () => {
+    store.dispatchSync({
+      ...changeLockSettingsAction({
+        lockSettingType: LockSettingType.language,
+        value: false,
+        values: {},
+      }),
+      version: 50,
+    });
+
+    store.dispatchSync({
+      ...loadJsonAction({ value: fileOf(63) }),
+      version: 40,
+    });
+
+    const { settings } = store.state;
+    expect(settings.lockSettings).toBe(63 & ~LockSettingType.language);
+    expect(settings.language).toBe(Language.Java);
+    expect(settings.canvasType).toBe(CanvasType.schemaSQL);
+  });
+});
+
 describe('editor.loadJson / initialLoadJson', () => {
   const buildJson = (canvasType: string) =>
     JSON.stringify({
       version: '3.0.0',
-      settings: { canvasType, databaseName: 'loaded' },
+      settings: { canvasType, databaseName: 'loaded', lockSettings: 0 },
       doc: { tableIds: ['t1'], relationshipIds: [], indexIds: [], memoIds: [] },
       collections: {
         tableEntities: {
@@ -647,6 +739,32 @@ describe('editor.loadJson / initialLoadJson', () => {
     store.dispatchSync(loadJsonAction({ value: buildJson('nope') }));
 
     expect(store.state.settings.canvasType).toBe(CanvasType.ERD);
+  });
+
+  it.each([
+    ['loadJson', loadJsonAction],
+    ['initialLoadJson', initialLoadJsonAction],
+  ])('remembers the tab %s lands on, unless it is Settings', (_, load) => {
+    store.dispatchSync(load({ value: buildJson(CanvasType.generatorCode) }));
+    expect(store.state.editor.lastCanvasType).toBe(CanvasType.generatorCode);
+
+    store.dispatchSync(load({ value: buildJson(CanvasType.settings) }));
+    expect(store.state.settings.canvasType).toBe(CanvasType.settings);
+    expect(store.state.editor.lastCanvasType).toBe(CanvasType.generatorCode);
+  });
+
+  it('remembers the tab the reader left when a load moves them onto Settings', () => {
+    store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.generatorCode }),
+      changeCanvasTypeAction({ value: CanvasType.visualization })
+    );
+
+    store.dispatchSync(
+      loadJsonAction({ value: buildJson(CanvasType.settings) })
+    );
+
+    expect(store.state.settings.canvasType).toBe(CanvasType.settings);
+    expect(store.state.editor.lastCanvasType).toBe(CanvasType.visualization);
   });
 
   it('loads through initialLoadJson as well', () => {
