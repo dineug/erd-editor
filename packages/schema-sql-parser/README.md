@@ -91,6 +91,15 @@ table's `name` and its `comment`, `CommentOnColumn` carries `tableName`, `column
 PostgreSQL and Oracle attach comments with a statement of their own instead of a table option, so those
 two arrive separately from the `create.table` they belong to.
 
+SQL Server keeps a comment as the `MS_Description` extended property, and `EXEC
+[sys.]sp_addextendedproperty` setting one comes back as the same two statements: on a `TABLE` at
+level 1 as `comment.on.table`, on a `COLUMN` of it at level 2 as `comment.on.column`. Its arguments are
+read by name (`@name = N'MS_Description'`) or by position, as SSMS and the editor's own MSSQL export
+write them; the value has to be a string literal, `N'...'` or `'...'`, and a `NULL` or `DEFAULT`
+argument counts as not given, so one at level 2 still gives the table comment. Any other property,
+level or value (a view's, an index's, a variable for any argument but level 0's) gives no statement,
+and the schema at level 0 is not kept.
+
 ## Support DataType
 
 <details>
@@ -823,6 +832,17 @@ COMMENT ON TABLE users IS 'user table';
 COMMENT ON COLUMN users.id IS 'user id';
 
 COMMENT ON COLUMN public.users.email IS 'email address';
+```
+
+### SQL Server sp_addextendedproperty MS_Description
+
+```sql
+EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'user table' ,
+  @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'users'
+GO
+EXECUTE sys.sp_addextendedproperty 'MS_Description',
+  'user id', 'user', dbo, 'table', 'users', 'column', 'id'
+GO
 ```
 
 ### Column FOREIGN KEY

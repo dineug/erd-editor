@@ -2,6 +2,7 @@ import { ERDEditorSchemaV3, schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  BracketType,
   ColumnOption,
   ColumnUIKey,
   Database,
@@ -294,6 +295,79 @@ describe('schemaSQLParserToSchemaJson', () => {
       );
 
       expect(tableByName(schema, 't').comment).toBe('(test)bug here!!');
+    });
+  });
+
+  // SQL Server keeps a comment as the MS_Description extended property, which
+  // SSMS scripts after the table and its defaults with named arguments.
+  describe('MS_Description merging', () => {
+    it('applies the table and column comments an SSMS script adds', () => {
+      const schema = parse(
+        `
+        CREATE TABLE [dbo].[Orders](
+          [Id] [int] IDENTITY(1,1) NOT NULL,
+          [Qty] [int] NOT NULL
+        ) ON [PRIMARY]
+        GO
+        ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [Qty]
+        GO
+        EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'How many' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders', @level2type=N'COLUMN',@level2name=N'Qty'
+        GO
+        EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Order header' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders'
+        GO
+      `,
+        undefined,
+        Database.MSSQL
+      );
+      const orders = tableByName(schema, 'Orders');
+      const qty = columnByName(schema, orders, 'Qty');
+
+      expect(commentsOf(schema)).toEqual(['Order header', '', 'How many']);
+      expect(qty.default).toBe('0');
+      // 'Order header'.length * 10 === 120, 'How many'.length * 10 === 80
+      expect(orders.ui.widthComment).toBe(120);
+      expect(qty.ui.widthComment).toBe(80);
+    });
+
+    it('ignores another property, level or name the source never created', () => {
+      const schema = parse(`
+        CREATE TABLE t (id INT)
+        GO
+        EXEC sys.sp_addextendedproperty @name=N'Caption', @value=N'nope', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N't'
+        GO
+        EXEC sys.sp_addextendedproperty N'MS_Description', N'nope', N'SCHEMA', N'dbo', N'TABLE', N'missing'
+        GO
+        EXEC sys.sp_addextendedproperty N'MS_Description', N'nope', N'SCHEMA', N'dbo', N'TABLE', N't', N'COLUMN', N'missing'
+        GO
+        EXEC sys.sp_addextendedproperty N'MS_Description', N'nope', N'SCHEMA', N'dbo', N'TABLE', N't', N'INDEX', N'id'
+        GO
+      `);
+
+      expect(commentsOf(schema)).toEqual(['', '']);
+    });
+
+    it('gives a comment the table its whole name names before the one its last part names', () => {
+      const schema = parse(
+        `
+        CREATE TABLE "dbo.users" (id INT)
+        GO
+        CREATE TABLE users (id INT)
+        GO
+        EXEC sys.sp_addextendedproperty N'MS_Description', N'x', N'SCHEMA', N'dbo', N'TABLE', N'dbo.users'
+        GO
+        EXEC sys.sp_addextendedproperty N'MS_Description', N'y', N'SCHEMA', N'dbo', N'TABLE', N'dbo.users', N'COLUMN', N'id'
+        GO
+      `,
+        undefined,
+        Database.MSSQL
+      );
+      const dotted = tableByName(schema, 'dbo.users');
+      const users = tableByName(schema, 'users');
+
+      expect(dotted.comment).toBe('x');
+      expect(columnByName(schema, dotted, 'id').comment).toBe('y');
+      expect(users.comment).toBe('');
+      expect(columnByName(schema, users, 'id').comment).toBe('');
     });
   });
 
@@ -1663,11 +1737,36 @@ GO
       return state;
     }
 
-    it.each([Database.PostgreSQL, Database.Oracle, Database.MySQL])(
+    it.each([
+      Database.PostgreSQL,
+      Database.Oracle,
+      Database.MySQL,
+      Database.MSSQL,
+    ])(
       'keeps the comments of a %s export when the SQL is imported back',
       database => {
         const schema = parse(createSchemaSQL(commentedState(), database));
         const users = tableByName(schema, 'users');
+
+        expect(users.comment).toBe('user table');
+        expect(columnByName(schema, users, 'id').comment).toBe('user id');
+      }
+    );
+
+    // With no quotes CREATE TABLE dbo.users reads back as users, while the
+    // comment calls name the table dbo.users whole; quoted, both keep it.
+    it.each<[string, number, string]>([
+      ['no quotes', BracketType.none, 'users'],
+      ['double quotes', BracketType.doubleQuote, 'dbo.users'],
+    ])(
+      'keeps the comments of a MSSQL export of a dotted table name with %s',
+      (_, bracketType, name) => {
+        const state = commentedState();
+        state.settings.bracketType = bracketType;
+        state.collections.tableEntities['tbl-users'].name = 'dbo.users';
+
+        const schema = parse(createSchemaSQL(state, Database.MSSQL));
+        const users = tableByName(schema, name);
 
         expect(users.comment).toBe('user table');
         expect(columnByName(schema, users, 'id').comment).toBe('user id');
@@ -1717,6 +1816,13 @@ GO
         Database.Snowflake,
         "CREATE TABLE t (a INT COMMENT 'it''s', b INT) COMMENT = 'o''k';",
       ],
+      [
+        'MSSQL',
+        Database.MSSQL,
+        'CREATE TABLE t (a INT, b INT)\nGO\n' +
+          "EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'o''k', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N't'\nGO\n" +
+          "EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'it''s', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N't', @level2type=N'COLUMN', @level2name=N'a'\nGO",
+      ],
     ])(
       'keeps a quote in a %s comment through its export',
       (_, database, sql) => {
@@ -1729,6 +1835,64 @@ GO
         expect(commentsOf(parse(exported))).toEqual(["o'k", "it's", '']);
       }
     );
+
+    // SQL Server's export writes every comment as an sp_addextendedproperty
+    // call after its table's unique key ALTER, and the foreign keys after them.
+    it('re-imports a MSSQL export to the comments, keys and defaults it was written from', () => {
+      const state = commentedState();
+      const columns = state.collections.tableColumnEntities;
+      const tables = state.collections.tableEntities;
+
+      columns['col-email'] = createColumn({
+        id: 'col-email',
+        tableId: 'tbl-users',
+        name: 'email',
+        dataType: 'VARCHAR(255)',
+        default: "'a@b.c'",
+        comment: "it's mail",
+        options: ColumnOption.unique | ColumnOption.notNull,
+      });
+      columns['col-user-id'] = createColumn({
+        id: 'col-user-id',
+        tableId: 'tbl-posts',
+        name: 'user_id',
+        dataType: 'INT',
+        comment: 'author',
+      });
+      tables['tbl-users'].columnIds.push('col-email');
+      tables['tbl-posts'] = createTable({
+        id: 'tbl-posts',
+        name: 'posts',
+        comment: 'post table',
+        columnIds: ['col-user-id'],
+      });
+      state.collections.relationshipEntities = {
+        'rel-1': createRelationship({
+          id: 'rel-1',
+          start: { tableId: 'tbl-users', columnIds: ['col-id'] },
+          end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
+        }),
+      };
+      state.doc.tableIds.push('tbl-posts');
+      state.doc.relationshipIds = ['rel-1'];
+
+      const sql = createSchemaSQL(state, Database.MSSQL);
+      const schema = parse(sql, undefined, Database.MSSQL);
+      const users = tableByName(schema, 'users');
+
+      expect(sql).toContain("'it''s mail', 'user', dbo, 'table', 'users'");
+      expect(commentsOf(schema)).toEqual([
+        'post table',
+        'author',
+        'user table',
+        'user id',
+        "it's mail",
+      ]);
+      expect(uniqueColumnNamesOf(schema, users)).toEqual(['email']);
+      expect(columnByName(schema, users, 'email').default).toBe("'a@b.c'");
+      expect(relationshipsOf(schema)).toHaveLength(1);
+      expect(createSchemaSQL(stateOf(schema), Database.MSSQL)).toBe(sql);
+    });
   });
 
   describe('referential action round trip', () => {

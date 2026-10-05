@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  isAddExtendedProperty,
   isAddValue,
   isAlterTable,
   isAlterTableAdd,
@@ -36,9 +37,12 @@ import {
   isDescValue,
   isDropValue,
   isEqualToken,
+  isExecuteValue,
+  isExecValue,
   isExistsValue,
   isForeignValue,
   isForValue,
+  isGoValue,
   isIfValue,
   isIndexKind,
   isIndexValue,
@@ -69,6 +73,7 @@ import {
   isUniqueValue,
   isUseValue,
   isWhereValue,
+  matchAddExtendedProperty,
   matchCreateIndex,
   matchCreateTable,
   matchDataType,
@@ -178,6 +183,9 @@ describe('token value predicates', () => {
     ['isOrValue', isOrValue, 'OR'],
     ['isArrayValue', isArrayValue, 'ARRAY'],
     ['isForValue', isForValue, 'FOR'],
+    ['isExecValue', isExecValue, 'EXEC'],
+    ['isExecuteValue', isExecuteValue, 'EXECUTE'],
+    ['isGoValue', isGoValue, 'GO'],
   ];
 
   it.each(cases)(
@@ -433,6 +441,21 @@ describe('isNewStatement', () => {
     expect(test(0)).toBe(false);
     expect(test(1)).toBe(false);
     expect(test(2)).toBe(false);
+  });
+
+  // An ALTER the editor's MSSQL export writes right before its comments would
+  // otherwise run on through them to the next ALTER.
+  it('treats the sp_addextendedproperty call as one, and no other EXEC', () => {
+    const newStatement = (sql: string) => isNewStatement(tokenizer(sql))(0);
+
+    expect(
+      newStatement("EXECUTE sys.sp_addextendedproperty 'MS_Description'")
+    ).toBe(true);
+    expect(newStatement("EXEC sp_addextendedproperty N'MS_Description'")).toBe(
+      true
+    );
+    expect(newStatement("EXEC sys.sp_updateextendedproperty N'x'")).toBe(false);
+    expect(newStatement("EXEC (N'SELECT 1')")).toBe(false);
   });
 });
 
@@ -1078,6 +1101,35 @@ describe('isAlterTableAddDefault', () => {
     ['CREATE TABLE t (c INT DEFAULT 0);'],
   ])('rejects %s', sql => {
     expect(isAlterTableAddDefault(tokenizer(sql))(0)).toBe(false);
+  });
+});
+
+describe('matchAddExtendedProperty', () => {
+  it.each([
+    ["EXECUTE sys.sp_addextendedproperty 'MS_Description'", 4],
+    ["EXEC sys.sp_addextendedproperty @name=N'MS_Description'", 4],
+    ["exec sp_addextendedproperty N'MS_Description'", 2],
+    ["EXEC [sys].[sp_addextendedproperty] N'MS_Description'", 4],
+    ["EXEC [master].[sys].[SP_ADDEXTENDEDPROPERTY] N'MS_Description'", 6],
+  ])('spans the call head of %s', (sql, length) => {
+    const tokens = tokenizer(sql);
+
+    expect(matchAddExtendedProperty(tokens)(0)).toBe(length);
+    expect(isAddExtendedProperty(tokens)(0)).toBe(true);
+  });
+
+  it.each([
+    "sys.sp_addextendedproperty N'MS_Description'",
+    "EXEC sys.sp_dropextendedproperty N'MS_Description'",
+    "EXEC sp_addextendedproperty_x N'MS_Description'",
+    "EXEC @rc = sys.sp_addextendedproperty N'MS_Description'",
+    "EXEC ('sp_addextendedproperty')",
+    'EXEC',
+  ])('rejects %s', sql => {
+    const tokens = tokenizer(sql);
+
+    expect(matchAddExtendedProperty(tokens)(0)).toBe(0);
+    expect(isAddExtendedProperty(tokens)(0)).toBe(false);
   });
 });
 
