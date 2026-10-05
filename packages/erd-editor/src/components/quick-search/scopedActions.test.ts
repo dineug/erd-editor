@@ -1,5 +1,14 @@
 import { AnyAction } from '@dineug/r-html';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import { disassembleToGroups } from 'es-hangul';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vite-plus/test';
 
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
@@ -16,6 +25,7 @@ import {
   createScopeActions,
   searchActions,
 } from '@/components/quick-search/actions';
+import { clearHangulForms } from '@/components/quick-search/hangul';
 import {
   PaletteScope,
   parsePaletteQuery,
@@ -53,6 +63,14 @@ import {
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { FindField } from '@/utils/find-replace';
+
+/** Counts each text the palette spells into jamo, the work that grows with the document. */
+vi.mock('es-hangul', async importOriginal => {
+  const actual = await importOriginal<typeof import('es-hangul')>();
+  return { ...actual, disassembleToGroups: vi.fn(actual.disassembleToGroups) };
+});
+
+const spellings = vi.mocked(disassembleToGroups);
 
 let app: AppContext;
 
@@ -797,14 +815,26 @@ describe('paletteRows / Hangul', () => {
     ]);
   });
 
-  it('stays quick over hundreds of Korean tables and thousands of columns', () => {
+  it('spells each text of two hundred Korean tables once, and again only the rows a field list shows', () => {
+    onTestFinished(() => {
+      clearHangulForms();
+      spellings.mockClear();
+    });
     const actions: AnyAction[] = [];
+    const texts = new Set<string>();
+    const named = (value: string) => {
+      texts.add(value);
+      return value;
+    };
     // Every text differs, so the first keystroke spells them all afresh.
-    for (let table = 0; table < 600; table++) {
+    for (let table = 0; table < 200; table++) {
       const tableId = `ko${table}`;
       actions.push(
         addTableAction({ id: tableId, ui: { x: 0, y: 0, zIndex: 1 } }),
-        changeTableNameAction({ id: tableId, value: `주문_${table}_내역` })
+        changeTableNameAction({
+          id: tableId,
+          value: named(`주문_${table}_내역`),
+        })
       );
       for (let column = 0; column < 10; column++) {
         const id = `${tableId}c${column}`;
@@ -813,29 +843,40 @@ describe('paletteRows / Hangul', () => {
           changeColumnNameAction({
             id,
             tableId,
-            value: `사용자_${table}_${column}`,
+            value: named(`사용자_${table}_${column}`),
           }),
           changeColumnCommentAction({
             id,
             tableId,
-            value: `${table}번 표 ${column}번 사용자 설명`,
+            value: named(`${table}번 표 ${column}번 사용자 설명`),
           })
         );
       }
     }
     app.store.dispatchSync(actions);
 
-    const started = performance.now();
+    clearHangulForms();
+    spellings.mockClear();
+    let listed = 0;
     for (const prefix of ['', '#', '@', ':']) {
       for (const step of [...STEPS, 'ㅈㅁ']) {
         rowsFor(`${prefix}${step}`);
+        // Only the column and text lists place a hit in its text.
+        if (prefix === '@' || prefix === ':') listed++;
       }
     }
-    const elapsed = performance.now() - started;
+    const spelled = spellings.mock.calls
+      .map(([text]) => text)
+      .filter(text => texts.has(text));
 
+    // A count, not a clock, which a loaded machine stretches: every text is
+    // spelled once for its forms, then a list spells again only the rows it
+    // shows, for where each hit lies.
+    expect(new Set(spelled).size).toBe(texts.size);
+    expect(spelled.length).toBeLessThanOrEqual(
+      texts.size + listed * SCOPED_ACTION_LIMIT
+    );
     expect(rowsFor('#ㅈㅁ')).toHaveLength(SCOPED_ACTION_LIMIT);
     expect(rowsFor('@ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
-    // Not a benchmark, only a guard against a search that grows past linear.
-    expect(elapsed).toBeLessThan(5000);
   });
 });
