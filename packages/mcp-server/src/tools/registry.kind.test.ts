@@ -171,6 +171,8 @@ const EDITOR_GENERATORS: Record<string, string> = {
     'starts a pointer draw from a table; erd_add_relationship relates two named tables',
   changeColorAllAction$:
     'colors the selection; erd_change_table_color and erd_change_memo_color color one',
+  removeColorAllAction$:
+    'clears the selection’s colors; erd_change_table_color and erd_change_memo_color given an empty color clear one',
   loadSchemaSQLAction$: 'wrapped by erd_import_sql',
   loadSchemaGraphQLAction$: 'wrapped by erd_import_graphql',
   loadSchemaDBMLAction$: 'wrapped by erd_import_dbml',

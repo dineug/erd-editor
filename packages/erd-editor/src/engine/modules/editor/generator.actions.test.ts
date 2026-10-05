@@ -43,6 +43,7 @@ import {
   loadSchemaSQLAction$,
   moveAllAction$,
   pasteEntitiesAction$,
+  removeColorAllAction$,
   removeSelectedAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
@@ -759,6 +760,109 @@ describe('changeColorAllAction$', () => {
     seedTable(store, 't1');
 
     expect(typesOf(store, changeColorAllAction$('#ff0000'))).toEqual([]);
+  });
+});
+
+describe('removeColorAllAction$', () => {
+  function seedColored(colors: Record<string, string>) {
+    seedTable(store, 't1');
+    seedTable(store, 't2');
+    seedTable(store, 't3');
+    seedMemo(store, 'm1');
+    seedMemo(store, 'm2');
+    store.dispatchSync(
+      Object.entries(colors).map(([id, color]) =>
+        id.startsWith('t')
+          ? changeTableColorAction({ id, color, prevColor: '' })
+          : changeMemoColorAction({ id, color, prevColor: '' })
+      )
+    );
+  }
+
+  it('clears the color of every selected table and memo', () => {
+    seedColored({ t1: '#ff0000', t2: '#00ff00', m1: '#0000ff', m2: '#123' });
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+
+    store.dispatchSync(removeColorAllAction$());
+
+    expect(tableOf(store, 't1').ui.color).toBe('');
+    expect(memoOf(store, 'm1').ui.color).toBe('');
+    expect(tableOf(store, 't2').ui.color).toBe('#00ff00');
+    expect(memoOf(store, 'm2').ui.color).toBe('#123');
+  });
+
+  it('sends nothing for a selected entity that has no color', () => {
+    seedColored({ t1: '#ff0000' });
+    store.dispatchSync(
+      selectAction({
+        t1: SelectType.table,
+        t3: SelectType.table,
+        m1: SelectType.memo,
+      })
+    );
+
+    expect(flatten(store, removeColorAllAction$())).toMatchObject([
+      {
+        type: 'table.changeColor',
+        payload: { id: 't1', color: '', prevColor: '#ff0000' },
+      },
+    ]);
+  });
+
+  it('emits nothing when no selected entity has a color', () => {
+    seedColored({ t2: '#00ff00' });
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+
+    expect(typesOf(store, removeColorAllAction$())).toEqual([]);
+  });
+});
+
+describe('removeColorAllAction$ history', () => {
+  let rxStore: RxStore;
+
+  afterEach(() => {
+    vi.useRealTimers();
+    rxStore.destroy();
+  });
+
+  it('records one entry, whose undo gives every color back', () => {
+    vi.useFakeTimers();
+    rxStore = createRxStore({ toWidth, clock: new Clock() });
+    rxStore.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 2 } }),
+      addTableAction({ id: 't2', ui: { x: 400, y: 0, zIndex: 2 } }),
+      addMemoAction({ id: 'm1', ui: { x: 0, y: 400, zIndex: 2 } }),
+      changeTableColorAction({ id: 't1', color: '#ff0000', prevColor: '' }),
+      changeTableColorAction({ id: 't2', color: '#00ff00', prevColor: '' }),
+      changeMemoColorAction({ id: 'm1', color: '#0000ff', prevColor: '' }),
+      selectAction({
+        t1: SelectType.table,
+        t2: SelectType.table,
+        m1: SelectType.memo,
+      })
+    );
+    vi.advanceTimersByTime(300);
+    const size = rxStore.history.size;
+
+    rxStore.dispatchSync(removeColorAllAction$());
+    vi.advanceTimersByTime(300);
+
+    expect(rxStore.history.size).toBe(size + 1);
+    expect(rxStore.state.collections.tableEntities.t2.ui.color).toBe('');
+
+    rxStore.undo();
+
+    expect(
+      [
+        rxStore.state.collections.tableEntities.t1,
+        rxStore.state.collections.tableEntities.t2,
+        rxStore.state.collections.memoEntities.m1,
+      ].map(entity => entity.ui.color)
+    ).toEqual(['#ff0000', '#00ff00', '#0000ff']);
   });
 });
 
@@ -1836,6 +1940,7 @@ describe('actions$', () => {
         'loadSchemaSQLAction$',
         'moveAllAction$',
         'pasteEntitiesAction$',
+        'removeColorAllAction$',
         'removeSelectedAction$',
         'unselectAllAction$',
       ].sort()

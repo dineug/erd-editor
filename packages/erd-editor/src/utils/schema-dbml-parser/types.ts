@@ -43,6 +43,8 @@ export type DBMLTable = {
   name: string;
   alias: string;
   comment: string;
+  /** headercolor as written when it is #rgb or #rrggbb; '' otherwise. */
+  color: string;
   columns: DBMLColumn[];
   indexes: DBMLIndex[];
 };

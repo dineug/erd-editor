@@ -175,6 +175,7 @@ function convertEntity(
     ui: {
       widthName: textInRange(toWidth(name)),
       widthComment: textInRange(toWidth(comment)),
+      color: source.color,
     },
   });
   const context: TableContext = { source, table: newTable, columns: [] };
@@ -413,6 +414,7 @@ function appendJunctionTable(
       name,
       alias: '',
       comment,
+      color: '',
       attributes: [],
     },
     table: newTable,

@@ -58,7 +58,10 @@ import {
   changeDatabaseAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableColorAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
@@ -882,6 +885,69 @@ describe('ErdContextMenu / table type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  describe('Remove color', () => {
+    const MEMO_ID = 'memo-1';
+
+    function seedColors() {
+      seedTable();
+      app.store.dispatchSync(
+        addTableAction({ id: 'table-2', ui: { x: 400, y: 0, zIndex: 2 } }),
+        addMemoAction({ id: MEMO_ID, ui: { x: 0, y: 400, zIndex: 3 } }),
+        changeTableColorAction({
+          id: TABLE_ID,
+          color: '#ff0000',
+          prevColor: '',
+        }),
+        changeMemoColorAction({ id: MEMO_ID, color: '#00ff00', prevColor: '' })
+      );
+    }
+
+    it('shows under Color while the selection holds a color, without an icon', async () => {
+      seedColors();
+      app.store.dispatchSync(selectAction({ [TABLE_ID]: SelectType.table }));
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      expect(labelsOf(rootItems())).toEqual([
+        'Primary KeyAlt + K',
+        'Table PropertiesAlt + Space',
+        'Focus on this tableAlt + F',
+        'Color',
+        'Remove color',
+        'DeleteDelete',
+      ]);
+      expect(findItem(rootItems(), 'Remove color').querySelector('svg')).toBe(
+        null
+      );
+    });
+
+    it('clears the color of every selected table and memo, and closes', async () => {
+      seedColors();
+      app.store.dispatchSync(
+        selectAction({
+          [TABLE_ID]: SelectType.table,
+          'table-2': SelectType.table,
+          [MEMO_ID]: SelectType.memo,
+        })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      await click(findItem(rootItems(), 'Remove color'));
+
+      const { tableEntities, memoEntities } = app.store.state.collections;
+      expect(tableEntities[TABLE_ID].ui.color).toBe('');
+      expect(memoEntities[MEMO_ID].ui.color).toBe('');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays out while no selected table or memo has a color', async () => {
+      seedColors();
+      app.store.dispatchSync(selectAction({ 'table-2': SelectType.table }));
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'table-2' });
+
+      expect(labelsOf(rootItems())).not.toContain('Remove color');
+    });
+  });
+
   it('does not open the color picker for an unknown table', async () => {
     const openColorPicker = vi.fn();
     app.emitter.on({ openColorPicker });
@@ -945,6 +1011,22 @@ describe('ErdContextMenu / memo type', () => {
       y: 78,
       color: '#ff8800',
     });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers Remove color under Color while the memo is a colored selection, and clears it', async () => {
+    seedMemo();
+    app.store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+
+    expect(labelsOf(rootItems())).toEqual([
+      'Color',
+      'Remove color',
+      'DeleteDelete',
+    ]);
+    await click(findItem(rootItems(), 'Remove color'));
+
+    expect(app.store.state.collections.memoEntities[MEMO_ID].ui.color).toBe('');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

@@ -54,7 +54,7 @@ editor's own history.
 - **GraphQL SDL import** — object types become tables, scalars map to the diagram's own dialect,
   and the fields pointing at another type become the relationships
 - **DBML and AML import** — `.dbml` files written for dbdiagram.io or dbdocs.io, and `.aml` files
-  written for [Azimutt](https://azimutt.app)
+  written for [Azimutt](https://azimutt.app), table colors included
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid

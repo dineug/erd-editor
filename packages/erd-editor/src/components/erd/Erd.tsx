@@ -1,6 +1,7 @@
 import {
   createRef,
   FC,
+  nextTick,
   observable,
   onMounted,
   ref,
@@ -42,6 +43,7 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import {
   changeColorAllAction$,
+  removeColorAllAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { Viewport } from '@/engine/modules/editor/state';
@@ -76,6 +78,7 @@ import {
   moveEnd$,
 } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
+import { focusEvent } from '@/utils/internalEvents';
 import { isMod } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Erd.styles';
@@ -339,6 +342,19 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   /**
+   * No color clears what the picker colors and closes it. The button held the
+   * keyboard and leaves with the picker, so the editor takes the focus back.
+   */
+  const handleClearColorPicker = () => {
+    const { store } = app.value;
+    store.dispatch(removeColorAllAction$());
+    state.colorPickerShow = false;
+    nextTick(() => {
+      ctx.host.dispatchEvent(focusEvent());
+    });
+  };
+
+  /**
    * The moves and the view centred on where they land go out as one dispatch,
    * so the history holds them as one entry and a single undo puts the tables
    * and the view back together. The box is read off the points before the move.
@@ -542,6 +558,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             y={state.colorPickerY}
             viewport={state.colorPickerViewport}
             onChange={handleChangeColorPicker}
+            onClear={handleClearColorPicker}
           />
         ) : null}
         {showAutomaticTablePlacement ? (

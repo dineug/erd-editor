@@ -13,6 +13,8 @@ export type Token = {
   kind: number;
   value: string;
   line: number;
+  /** The token's start in the source, which tells touching tokens from spaced ones. */
+  offset: number;
 };
 
 const SPACE = /[ \t\f\v]/;
@@ -33,13 +35,14 @@ const ESCAPE_MAP: Record<string, string> = {
 export function tokenize(source: string): Token[] {
   const tokens: Token[] = [];
   let index = 0;
+  let start = 0;
   let line = 1;
   // Only [ and ( suppress a line terminator. A { opens an element body,
   // whose entries are line-delimited: Table t { a int b varchar } is an error.
   let depth = 0;
 
   const push = (kind: number, value: string) => {
-    tokens.push({ kind, value, line });
+    tokens.push({ kind, value, line, offset: start });
   };
 
   const pushNewline = () => {
@@ -50,6 +53,7 @@ export function tokenize(source: string): Token[] {
 
   while (index < source.length) {
     const char = source[index];
+    start = index;
 
     if (SPACE.test(char)) {
       index += 1;

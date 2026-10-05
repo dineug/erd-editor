@@ -308,16 +308,70 @@ describe('schema-aml-parser/parser', () => {
     });
 
     it('drops every other property and records its key', () => {
-      expect(parse('users {color: "#ccc", tags: [a, b]}').skipped).toEqual([
-        'color',
+      expect(parse('users {icon: star, tags: [a, b]}').skipped).toEqual([
+        'icon',
         'tags',
       ]);
     });
 
     it('records a skipped label once', () => {
-      expect(parse('a {color: red}\nb {color: blue}').skipped).toEqual([
-        'color',
+      expect(parse('a {tags: [x]}\nb {tags: [y]}').skipped).toEqual(['tags']);
+    });
+
+    it('reads a color name, bare or quoted, as its Tailwind 500 hex', () => {
+      const model = parse(
+        'users {color: red, tags: [a]}\nposts {color: "gray"}'
+      );
+
+      expect(model.entities.map(entry => entry.color)).toEqual([
+        '#ef4444',
+        '#6b7280',
       ]);
+      expect(model.skipped).toEqual(['tags']);
+    });
+
+    it('reads a color name in any letter case', () => {
+      const model = parse(
+        'a {color: Red}\nb {color: "GRAY"}\nc {color: InDiGo}'
+      );
+
+      expect(model.entities.map(entry => entry.color)).toEqual([
+        '#ef4444',
+        '#6b7280',
+        '#6366f1',
+      ]);
+      expect(model.skipped).toEqual([]);
+    });
+
+    it('keeps a quoted hex color as written', () => {
+      expect(
+        parse(
+          'a {color: "#ccc"}\nb {color: "#FF8800"}\nc {color: "#ff880080"}'
+        ).entities.map(entry => entry.color)
+      ).toEqual(['#ccc', '#FF8800', '#ff880080']);
+    });
+
+    it('drops a color it does not know and records the key', () => {
+      const model = parse(
+        'a {color: magenta}\nb {color: "#abcd"}\nc {color: Magenta}'
+      );
+
+      expect(model.entities.map(entry => entry.color)).toEqual(['', '', '']);
+      expect(model.skipped).toEqual(['color']);
+    });
+
+    it('reads no color from a bare hex, whose mark opens a comment', () => {
+      const model = parse('users {color: #ccc}');
+
+      expect(model.entities[0].color).toBe('');
+      expect(model.skipped).toEqual(['color']);
+    });
+
+    it('leaves the color of an attribute to the skipped keys', () => {
+      const model = parse('users\n  id int {color: red}');
+
+      expect(model.entities[0].color).toBe('');
+      expect(model.skipped).toEqual(['color']);
     });
 
     it('drops an entity whose name is a keyword', () => {
@@ -949,7 +1003,10 @@ describe('schema-aml-parser/parser', () => {
     });
 
     it('reads = as the property separator', () => {
-      expect(parse('t {color=red}').skipped).toEqual(['color']);
+      const model = parse('t {color=red}');
+
+      expect(model.entities[0].color).toBe('#ef4444');
+      expect(model.skipped).toEqual([]);
     });
 
     it('reads a quoted check predicate', () => {
@@ -978,7 +1035,8 @@ describe('schema-aml-parser/parser', () => {
     });
 
     it('tolerates an unclosed property list', () => {
-      expect(parse('t {color: red').skipped).toEqual(['color']);
+      expect(parse('t {tags: [a').skipped).toEqual(['tags']);
+      expect(firstEntity('t {color: red').color).toBe('#ef4444');
     });
 
     it('tolerates a namespace with no name', () => {
@@ -1163,11 +1221,14 @@ describe('schema-aml-parser/parser', () => {
       expect(model.skipped).toEqual([
         'check',
         'tags',
-        'color',
         'view',
         'struct type',
         'custom type',
       ]);
+    });
+
+    it('reads the color of the comments entity', () => {
+      expect(namedEntity(model, 'comments').color).toBe('#ccc');
     });
   });
 

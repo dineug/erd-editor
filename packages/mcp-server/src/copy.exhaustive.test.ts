@@ -127,6 +127,16 @@ describe('the words sent before any editor is found', () => {
   });
 });
 
+describe('the words on a color', () => {
+  it('say on both color tools that an empty string removes the color', () => {
+    for (const name of ['erd_change_table_color', 'erd_change_memo_color']) {
+      expect(describeArg(name, 'color')).toContain(
+        'an empty string removes the color'
+      );
+    }
+  });
+});
+
 describe('the words on a referential action', () => {
   const ACTION_ARGS = ['onDelete', 'onUpdate'];
   const texts = [

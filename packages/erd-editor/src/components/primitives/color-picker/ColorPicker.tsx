@@ -14,10 +14,13 @@ export type ColorPickerProps = {
   viewport?: Viewport | null;
   onChange?: (color: string) => void;
   onLastUpdate?: (color: string) => void;
+  /** Shows a No color button under the picker, which calls this when pressed. */
+  onClear?: () => void;
 };
 
 const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
   const container = createRef<HTMLDivElement>();
+  const pickerHost = createRef<HTMLDivElement>();
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     x: props.x,
@@ -26,8 +29,9 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
 
   onMounted(() => {
     const $container = container.value;
+    const $pickerHost = pickerHost.value;
     const colorPicker = ColorPickerUI.create({
-      container: $container,
+      container: $pickerHost,
       type: 'sketch',
       position: 'inline',
       color: props.color || '',
@@ -60,9 +64,20 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
 
     addUnsubscribe(() => {
       colorPicker.destroy();
-      $container.removeChild(colorPicker.$root.el);
+      $pickerHost.removeChild(colorPicker.$root.el);
     });
   });
+
+  /**
+   * Space is the hand tool's key wherever no caret is, and the editor cancels
+   * its keydown, which takes the click from a native button; Enter would open
+   * a focused table's cell editor too. Kept here, both press the button alone.
+   */
+  const handleClearKeydown = (event: KeyboardEvent) => {
+    if (event.code === 'Space' || event.key === 'Enter') {
+      event.stopPropagation();
+    }
+  };
 
   return () => (
     <div
@@ -72,7 +87,19 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
         left: `${state.x}px`,
       }}
       use:ref={ref(container)}
-    ></div>
+    >
+      <div class={styles.picker} use:ref={ref(pickerHost)}></div>
+      {props.onClear ? (
+        <button
+          class={styles.clear}
+          type="button"
+          on:click={props.onClear}
+          on:keydown={handleClearKeydown}
+        >
+          No color
+        </button>
+      ) : null}
+    </div>
   );
 };
 

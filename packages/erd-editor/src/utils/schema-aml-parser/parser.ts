@@ -1,3 +1,5 @@
+import { fromAMLColor } from '@/utils/tableColor';
+
 import { Token, tokenize, TokenKind } from './tokenizer';
 import {
   AMLAttribute,
@@ -25,12 +27,16 @@ type Reader = {
 
 type Skip = (label: string) => void;
 
+/** The line a property list sits on, which decides the keys it reads. */
+type PropertyOwner = 'entity' | 'relation' | 'other';
+
 type Extra = {
   autoIncrement: boolean;
   doc: string;
   comment: string;
   onDelete: string;
   onUpdate: string;
+  color: string;
 };
 
 type Segment = { name: string } | null;
@@ -202,13 +208,14 @@ function parseEntity(
   }
 
   const alias = readAlias(reader);
-  const extra = readExtra(reader, skip);
+  const extra = readExtra(reader, skip, 'entity');
 
   return {
     namespace: mergeNamespace(namespace, ref.namespace),
     name: ref.name,
     alias,
     comment: extra.doc || extra.comment,
+    color: extra.color,
     attributes: [],
   };
 }
@@ -405,7 +412,7 @@ function parseRelation(
 ): AMLRelation | null {
   const src = readAttributeRef(reader);
   const tail = readRelationTail(reader);
-  const { onDelete, onUpdate } = readExtra(reader, skip, true);
+  const { onDelete, onUpdate } = readExtra(reader, skip, 'relation');
 
   if (!tail || src.entityName === '') {
     return null;
@@ -699,13 +706,18 @@ function readAlias(reader: Reader): string {
  * The {props} / | doc / # comment tail. It runs to the end of the line, so
  * anything a rule above could not read degrades to nothing rather than throwing.
  */
-function readExtra(reader: Reader, skip: Skip, relation = false): Extra {
+function readExtra(
+  reader: Reader,
+  skip: Skip,
+  owner: PropertyOwner = 'other'
+): Extra {
   const extra: Extra = {
     autoIncrement: false,
     doc: '',
     comment: '',
     onDelete: '',
     onUpdate: '',
+    color: '',
   };
 
   while (!reader.atEnd()) {
@@ -713,7 +725,7 @@ function readExtra(reader: Reader, skip: Skip, relation = false): Extra {
     if (!token) break;
 
     if (isPunctuation(token, '{')) {
-      readProperties(reader, extra, skip, relation);
+      readProperties(reader, extra, skip, owner);
       continue;
     }
     if (token.kind === TokenKind.doc && extra.doc === '') {
@@ -728,11 +740,15 @@ function readExtra(reader: Reader, skip: Skip, relation = false): Extra {
   return extra;
 }
 
+/**
+ * A color the entity names, or quotes as a hex, is its table's; one AML does
+ * not know is dropped like a key no rule reads.
+ */
 function readProperties(
   reader: Reader,
   extra: Extra,
   skip: Skip,
-  relation: boolean
+  owner: PropertyOwner
 ) {
   while (!reader.atEnd()) {
     const token = reader.next();
@@ -756,13 +772,17 @@ function readProperties(
     }
 
     const key = token.value.toLowerCase();
+    const color =
+      owner === 'entity' && key === 'color' ? fromAMLColor(value) : '';
 
-    if (relation && key === 'ondelete') {
+    if (owner === 'relation' && key === 'ondelete') {
       extra.onDelete = value;
-    } else if (relation && key === 'onupdate') {
+    } else if (owner === 'relation' && key === 'onupdate') {
       extra.onUpdate = value;
     } else if (key === 'autoincrement') {
       extra.autoIncrement = true;
+    } else if (color !== '') {
+      extra.color = color;
     } else {
       skip(token.value);
     }

@@ -100,8 +100,76 @@ describe('ColorPicker', () => {
     expect(options.type).toBe('sketch');
     expect(options.position).toBe('inline');
     expect(options.color).toBe('#00ff00');
-    expect(options.container).toBe(getPicker(mounted));
+    expect(options.container.parentElement).toBe(getPicker(mounted));
+    expect(getPicker(mounted).firstElementChild).toBe(options.container);
     expect(getPicker(mounted).querySelector('.mock-colorpicker')).toBeTruthy();
+  });
+
+  it('shows no No color button without a clear handler', async () => {
+    mounted = await mountAndFlush(
+      html`<${ColorPicker} x=${0} y=${0} color=${'#00ff00'} />`
+    );
+
+    expect(getPicker(mounted).querySelector('button')).toBeNull();
+  });
+
+  it('shows a No color button under the picker that calls the clear handler', async () => {
+    const onClear = vi.fn();
+    mounted = await mountAndFlush(
+      html`<${ColorPicker}
+        x=${0}
+        y=${0}
+        color=${'#00ff00'}
+        .onClear=${onClear}
+      />`
+    );
+
+    const button = getPicker(mounted).lastElementChild as HTMLButtonElement;
+    expect(button.tagName).toBe('BUTTON');
+    expect(button.type).toBe('button');
+    expect(button.textContent?.trim()).toBe('No color');
+    expect(button.previousElementSibling).toBe(
+      lastInstance().options.container
+    );
+
+    button.click();
+
+    expect(onClear).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a Space or an Enter on the No color button from the editor, and lets Escape through', async () => {
+    mounted = await mountAndFlush(
+      html`<${ColorPicker}
+        x=${0}
+        y=${0}
+        color=${'#00ff00'}
+        .onClear=${vi.fn()}
+      />`
+    );
+    const button = getPicker(mounted).querySelector('button') as HTMLElement;
+    const reached: string[] = [];
+    mounted.container.addEventListener('keydown', event =>
+      reached.push(event.code)
+    );
+    const press = (code: string, key: string) => {
+      const event = new KeyboardEvent('keydown', {
+        code,
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      button.dispatchEvent(event);
+      return event;
+    };
+
+    const space = press('Space', ' ');
+    const enter = press('Enter', 'Enter');
+    press('NumpadEnter', 'Enter');
+    press('Escape', 'Escape');
+
+    expect(reached).toEqual(['Escape']);
+    expect(space.defaultPrevented).toBe(false);
+    expect(enter.defaultPrevented).toBe(false);
   });
 
   it('falls back to an empty color when none is provided', async () => {

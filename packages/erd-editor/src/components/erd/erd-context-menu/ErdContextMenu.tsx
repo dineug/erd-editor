@@ -9,8 +9,12 @@ import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { GeneratorAction } from '@/engine/generator.actions';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
-import { removeSelectedAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  removeColorAllAction$,
+  removeSelectedAction$,
+} from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import { hasColoredSelection } from '@/engine/modules/editor/utils/color';
 import {
   getFocusedColumnIds,
   getRemovableColumns,
@@ -195,6 +199,13 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     openColorPicker(event, table.ui.color);
   };
 
+  /** The colors of the selection the menu was raised over, as the picker's No color clears them. */
+  const handleRemoveColor = () => {
+    const { store } = app.value;
+    store.dispatch(removeColorAllAction$());
+    props.onClose();
+  };
+
   const handleOpenMemoColorPicker = (event: MouseEvent) => {
     if (!props.memoId) return;
 
@@ -280,6 +291,12 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
       focusCentersOf(store.state.editor.selectedMap, props.tableId).length > 1;
     const keysSelection = getFocusedColumnIds(store.state).length > 1;
     const removeShortcut = keyBindingMap.removeSelection[0]?.shortcut;
+    const removeColorItem = hasColoredSelection(store.state) ? (
+      <ContextMenu.Item
+        onClick={handleRemoveColor}
+        children={<ContextMenu.Menu name="Remove color" />}
+      />
+    ) : null;
 
     return (
       <ContextMenu.Root
@@ -341,6 +358,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
+              {removeColorItem}
               <ContextMenu.Item
                 onClick={handleRemoveTable}
                 children={
@@ -366,6 +384,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
+              {removeColorItem}
               <ContextMenu.Item
                 onClick={handleRemoveMemo}
                 children={

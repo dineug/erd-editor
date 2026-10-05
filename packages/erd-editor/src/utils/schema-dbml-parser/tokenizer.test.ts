@@ -227,6 +227,19 @@ describe('schema-dbml-parser/tokenizer', () => {
     expect(tokenize('')).toEqual([]);
   });
 
+  it('records where in the source each token starts', () => {
+    expect(
+      tokenize("#3498DB  'a b' \n x").map(token => [token.value, token.offset])
+    ).toEqual([
+      ['#', 0],
+      ['3498', 1],
+      ['DB', 5],
+      ['a b', 9],
+      ['\n', 15],
+      ['x', 17],
+    ]);
+  });
+
   it('numbers the line each token was read on', () => {
     expect(
       tokenize('a\nb\n\nc')

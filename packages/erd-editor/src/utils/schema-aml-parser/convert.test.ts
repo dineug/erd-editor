@@ -66,6 +66,7 @@ const entity = (name: string, source: Partial<AMLEntity> = {}): AMLEntity => ({
   name,
   alias: '',
   comment: '',
+  color: '',
   attributes: [],
   ...source,
 });
@@ -193,6 +194,15 @@ describe('schema-aml-parser/convert', () => {
       });
 
       expect(tableOf(schema, 'users').comment).toBe('people');
+    });
+
+    it('carries the entity color as the table color', () => {
+      const schema = convert({
+        entities: [entity('users', { color: '#ef4444' }), entity('posts')],
+      });
+
+      expect(tableOf(schema, 'users').ui.color).toBe('#ef4444');
+      expect(tableOf(schema, 'posts').ui.color).toBe('');
     });
 
     it('measures the name and the comment', () => {
@@ -1154,6 +1164,15 @@ describe('schema-aml-parser/convert', () => {
       expect(tableOf(convert(MANY), 'organizations_users').comment).toBe(
         'Junction table inferred from organizations <-> users'
       );
+    });
+
+    it('leaves the invented junction uncolored', () => {
+      const schema = convert({
+        ...MANY,
+        entities: MANY.entities.map(source => ({ ...source, color: '#ccc' })),
+      });
+
+      expect(tableOf(schema, 'organizations_users').ui.color).toBe('');
     });
 
     it('gives the junction a key column per parent key', () => {
