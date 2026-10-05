@@ -2541,6 +2541,95 @@ GO
 }
 ```
 
+### SQL Server ALTER TABLE ADD PRIMARY KEY CLUSTERED
+
+Script Key as CREATE output of SMO 17.100.0.0 (SQL Server Management Objects, the scripting
+engine of SSMS, from the SqlServer PowerShell module 22.4.5.1) against SQL Server 2022
+16.0.4295.3: `Index.Script()` with Object Explorer's scripting defaults for each primary key of
+one database, then for a key whose name SQL Server generated, which SMO writes without
+`CONSTRAINT`. SMO, run on Linux, wrote ASCII with LF line endings, kept here byte for byte, the
+space after `CLUSTERED` included; the harness that ran it put GO and a blank line after each
+batch, as SSMS does in a query window. Generate Scripts and Script Table as CREATE declared the
+same keys inside `CREATE TABLE` instead.
+
+```sql
+USE [p2r_pk]
+GO
+
+/****** Object:  Index [PK_Roles]    Script Date: 10/4/2026 12:21:50 PM ******/
+ALTER TABLE [dbo].[Roles] ADD  CONSTRAINT [PK_Roles] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+
+USE [p2r_pk]
+GO
+
+/****** Object:  Index [PK_UserRoles]    Script Date: 10/4/2026 12:21:50 PM ******/
+ALTER TABLE [dbo].[UserRoles] ADD  CONSTRAINT [PK_UserRoles] PRIMARY KEY NONCLUSTERED 
+(
+	[UserId] ASC,
+	[RoleId] DESC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+
+USE [p2r_pk]
+GO
+
+/****** Object:  Index [PK_Users]    Script Date: 10/4/2026 12:21:50 PM ******/
+ALTER TABLE [dbo].[Users] ADD  CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+
+USE [p2r_defaults]
+GO
+
+/****** Object:  Index [PK__Drafts__3214EC072E0F6FD4]    Script Date: 10/4/2026 12:18:22 PM ******/
+ALTER TABLE [dbo].[Drafts] ADD PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Roles",
+      "constraintName": "PK_Roles",
+      "usingIndexName": "",
+      "columnNames": ["Id"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "UserRoles",
+      "constraintName": "PK_UserRoles",
+      "usingIndexName": "",
+      "columnNames": ["UserId", "RoleId"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Users",
+      "constraintName": "PK_Users",
+      "usingIndexName": "",
+      "columnNames": ["Id"]
+    },
+    {
+      "type": "alter.table.add.primaryKey",
+      "name": "Drafts",
+      "constraintName": "",
+      "usingIndexName": "",
+      "columnNames": ["Id"]
+    }
+  ]
+}
+```
+
 ### PostgreSQL user-defined types, domains and arrays
 
 ```sql

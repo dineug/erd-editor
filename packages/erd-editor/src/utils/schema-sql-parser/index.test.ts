@@ -316,6 +316,126 @@ describe('schemaSQLParserToSchemaJson', () => {
       expect(columnByName(schema, t, 'c').options).toBe(0);
     });
 
+    it('applies the keys SMO scripts as ALTER TABLE after tables scripted without them', () => {
+      // SMO's Table.Script with primary keys and indexes off, then Script Key as CREATE per key.
+      const schema = parse(`USE [p2r_pk]
+GO
+
+/****** Object:  Table [dbo].[Roles]    Script Date: 10/4/2026 12:21:50 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[Roles](
+	[Id] [int] NOT NULL,
+	[Title] [nvarchar](50) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL
+) ON [PRIMARY]
+GO
+
+USE [p2r_pk]
+GO
+
+/****** Object:  Table [dbo].[UserRoles]    Script Date: 10/4/2026 12:21:50 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[UserRoles](
+	[UserId] [int] NOT NULL,
+	[RoleId] [int] NOT NULL,
+	[Granted] [datetime2](7) NULL
+) ON [PRIMARY]
+GO
+
+USE [p2r_pk]
+GO
+
+/****** Object:  Table [dbo].[Users]    Script Date: 10/4/2026 12:21:50 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[Users](
+	[Id] [int] NOT NULL,
+	[Name] [nvarchar](50) COLLATE SQL_Latin1_General_CP1_CI_AS NULL
+) ON [PRIMARY]
+GO
+
+USE [p2r_pk]
+GO
+
+/****** Object:  Index [PK_Roles]    Script Date: 10/4/2026 12:21:50 PM ******/
+ALTER TABLE [dbo].[Roles] ADD  CONSTRAINT [PK_Roles] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+
+USE [p2r_pk]
+GO
+
+/****** Object:  Index [PK_UserRoles]    Script Date: 10/4/2026 12:21:50 PM ******/
+ALTER TABLE [dbo].[UserRoles] ADD  CONSTRAINT [PK_UserRoles] PRIMARY KEY NONCLUSTERED 
+(
+	[UserId] ASC,
+	[RoleId] DESC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+
+USE [p2r_pk]
+GO
+
+/****** Object:  Index [PK_Users]    Script Date: 10/4/2026 12:21:50 PM ******/
+ALTER TABLE [dbo].[Users] ADD  CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+
+`);
+      const shapes = tablesOf(schema).map(table => [
+        table.name,
+        columnsOf(schema, table).map(column => [
+          column.name,
+          column.options,
+          column.ui.keys,
+        ]),
+      ]);
+      const primaryKeyOptions = ColumnOption.primaryKey | ColumnOption.notNull;
+
+      expect(shapes).toEqual([
+        [
+          'Roles',
+          [
+            ['Id', primaryKeyOptions, ColumnUIKey.primaryKey],
+            ['Title', ColumnOption.notNull, 0],
+          ],
+        ],
+        [
+          'UserRoles',
+          [
+            ['UserId', primaryKeyOptions, ColumnUIKey.primaryKey],
+            ['RoleId', primaryKeyOptions, ColumnUIKey.primaryKey],
+            ['Granted', 0, 0],
+          ],
+        ],
+        [
+          'Users',
+          [
+            ['Id', primaryKeyOptions, ColumnUIKey.primaryKey],
+            ['Name', 0, 0],
+          ],
+        ],
+      ]);
+      expect(indexesOf(schema)).toEqual([]);
+    });
+
     it('flags no column by the CHECK after the UNIQUE of a column an ALTER adds', () => {
       const schema = parse(`
         CREATE TABLE orders (id INT, price INT);

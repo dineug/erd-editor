@@ -65,6 +65,30 @@ describe('alterTableAddPrimaryKeyParser', () => {
     expect(ast.columnNames).toEqual(['id', 'b']);
   });
 
+  it('reads the key list after the clustering SSMS scripts and the index type MySQL writes', () => {
+    const clustered = parse(
+      'ALTER TABLE [dbo].[Users] ADD  CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED \n' +
+        '(\n\t[Id] ASC\n)WITH (PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]\nGO'
+    );
+    const nonclustered = parse(
+      'ALTER TABLE t ADD PRIMARY KEY NONCLUSTERED ([a], [b] DESC);'
+    );
+    const btree = parse(
+      'ALTER TABLE `t` ADD PRIMARY KEY USING BTREE (`a`, `b`) USING BTREE;'
+    );
+
+    expect(clustered.ast).toEqual({
+      type: StatementType.alterTableAddPrimaryKey,
+      name: 'Users',
+      constraintName: 'PK_Users',
+      usingIndexName: '',
+      columnNames: ['Id'],
+    });
+    expect(clustered.$pos.value).toBe(clustered.tokens.length);
+    expect(nonclustered.ast.columnNames).toEqual(['a', 'b']);
+    expect(btree.ast.columnNames).toEqual(['a', 'b']);
+  });
+
   it('reads the key after a CONSTRAINT that has no symbol', () => {
     const { ast } = parse('ALTER TABLE users ADD CONSTRAINT PRIMARY KEY (id);');
 

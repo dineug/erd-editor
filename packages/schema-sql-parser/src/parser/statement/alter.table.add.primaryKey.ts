@@ -11,6 +11,7 @@ import {
   isSemicolonToken,
   isStringToken,
   isTableValue,
+  matchKeyModifiers,
   matchUsingIndexName,
 } from '@/parser/helper';
 import {
@@ -33,6 +34,7 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
   const isTable = isTableValue(tokens);
   const isComma = isCommaToken(tokens);
   const isAdd = isAddValue(tokens);
+  const keyModifiers = matchKeyModifiers(tokens);
   const usingIndexName = matchUsingIndexName(tokens);
   const isOnly = isAlterTableAddOnly(tokens)($pos.value);
 
@@ -127,6 +129,10 @@ export function alterTableAddPrimaryKeyParser(tokens: Token[], $pos: RefPos) {
 
       if (isKey($pos.value)) {
         token = tokens[++$pos.value];
+
+        // A modifier may stand before the key list: SSMS writes PRIMARY KEY
+        // CLUSTERED, MySQL PRIMARY KEY USING BTREE.
+        $pos.value += keyModifiers($pos.value);
 
         // A key part's first word names its column: the sort after it is not
         // one, and a key named by it would never match the index of the key.
