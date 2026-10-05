@@ -76,15 +76,29 @@ function pngSize(path: string) {
   return { width: header.readUInt32BE(16), height: header.readUInt32BE(20) };
 }
 
-async function exportPng(erd: ErdEditorPage) {
+/**
+ * The export image dialog at one image pixel per scene unit, the scale every
+ * size below is stated in; the 2x default has a spec of its own.
+ */
+async function openExportDialog(erd: ErdEditorPage) {
   // Named rather than swept for: the menu opens downward from the click, and
   // an empty point low on a tall canvas puts Export below the viewport.
   await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
 
   await erd.contextMenu.getByText('Export', { exact: true }).hover();
-  const png = erd.contextMenu.getByText('png', { exact: true });
-  await expect(png).toBeVisible();
-  await png.click();
+  const image = erd.contextMenu.getByText('Image', { exact: true });
+  await expect(image).toBeVisible();
+  await image.click();
+
+  const dialog = erd.host.getByRole('dialog', { name: 'Export image' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '1x', exact: true }).click();
+  return dialog;
+}
+
+async function exportPng(erd: ErdEditorPage) {
+  const dialog = await openExportDialog(erd);
+  await dialog.getByRole('button', { name: 'PNG', exact: true }).click();
 }
 
 /**
@@ -168,12 +182,14 @@ test.describe('exporting the document as a png', () => {
       }
     });
     await erd.seed(document(spanFor(1080)));
+    // The dialog stays open after a button, so every export is a press of it.
+    const dialog = await openExportDialog(erd);
 
     for (let run = 0; run < 3; run++) {
       const download = erd.page.waitForEvent('download', {
         timeout: EXPORT_TIMEOUT,
       });
-      await exportPng(erd);
+      await dialog.getByRole('button', { name: 'PNG', exact: true }).click();
       const file = await download;
 
       expect(pngSize(await file.path())).toEqual({ width: 1080, height: 1080 });
@@ -210,7 +226,7 @@ test.describe('exporting the document as a png', () => {
 
     await expect(reduced(erd)).toBeVisible();
     await expect(reduced(erd)).toContainText(
-      `The document is ${OVER_LIMIT}x${OVER_LIMIT}, past what a browser canvas can hold, so the PNG is ${CLAMPED}x${CLAMPED}`
+      `Reduced from ${OVER_LIMIT} × ${OVER_LIMIT} px to ${CLAMPED} × ${CLAMPED} px, past what a browser canvas can hold`
     );
     await expect(generating(erd)).toHaveCount(0);
 
@@ -222,7 +238,7 @@ test.describe('exporting the document as a png', () => {
     expect(shown[1]).toHaveLength(1);
     expect(shown[1][0]).toContain('Exported at a reduced resolution');
     expect(shown[1][0]).toContain(
-      `The document is ${OVER_LIMIT}x${OVER_LIMIT}, past what a browser canvas can hold, so the PNG is ${CLAMPED}x${CLAMPED}`
+      `Reduced from ${OVER_LIMIT} × ${OVER_LIMIT} px to ${CLAMPED} × ${CLAMPED} px, past what a browser canvas can hold`
     );
 
     expect(pngSize(await file.path())).toEqual({

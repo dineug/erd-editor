@@ -36,7 +36,7 @@ function selectorOf(cssText: string): string {
   return cssText.slice(0, cssText.indexOf('{')).trim();
 }
 
-/** Every rule adopted when all 62 modules share one module registry. */
+/** Every rule adopted when all 63 modules share one module registry. */
 let cumulative: string[] = [];
 /** The css.global half of cumulative, which the bucket keeps in front. */
 let globalRules: string[] = [];
@@ -117,27 +117,27 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 61 style modules', () => {
+  it('loads 63 style modules', () => {
     // A new style module is meant to move this number, which is why it is
     // pinned rather than derived. P6-51 took six with the dom scene and the
     // off-canvas marker one more; six came back with the chrome since.
-    expect(modulePaths).toHaveLength(61);
+    expect(modulePaths).toHaveLength(63);
   });
 
-  it('adopts 709 rules, none of them a duplicate', () => {
+  it('adopts 732 rules, none of them a duplicate', () => {
     // Pinned rather than derived, so a rule added or lost anywhere in the
     // package has to be accounted for here.
-    expect(cumulative).toHaveLength(709);
-    expect(new Set(cumulative).size).toBe(709);
+    expect(cumulative).toHaveLength(732);
+    expect(new Set(cumulative).size).toBe(732);
   });
 
-  it('splits into 327 global rules ahead of 382 component rules', () => {
+  it('splits into 327 global rules ahead of 405 component rules', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 212 });
+    expect(sheetsOfEachKind).toEqual({ global: 5, component: 226 });
     expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(382);
+    expect(componentRules).toHaveLength(405);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -152,9 +152,9 @@ describe('rule-count invariance', () => {
     );
 
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
-    // rendered alone or with the other 60 — which is exactly what makes this comparison mean
+    // rendered alone or with the other 62 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(709);
+    expect(union.size).toBe(732);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

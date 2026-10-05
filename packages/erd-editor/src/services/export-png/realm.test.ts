@@ -51,6 +51,9 @@ const result = (width: number, height: number) => ({
   blob: new Blob(['png']),
   width,
   height,
+  documentWidth: width * 2,
+  documentHeight: height * 2,
+  zoomLevel: 0.5,
   reduction: null,
 });
 
@@ -214,8 +217,8 @@ describe('what the realm that drew reports back', () => {
 
   it('carries a reduction the worker made back to the caller', async () => {
     const reduction = {
-      documentWidth: 20_000,
-      documentHeight: 20_000,
+      askedWidth: 20_000,
+      askedHeight: 20_000,
       width: 16_384,
       height: 16_384,
     };
@@ -241,5 +244,49 @@ describe('what the realm that drew reports back', () => {
     });
 
     expect(reductions).toEqual([]);
+  });
+});
+
+describe('the preview the export dialog shows', () => {
+  it('asks the worker for the export capped at a side, one pixel per unit', async () => {
+    const { createDocumentPreview } = await load();
+
+    await createDocumentPreview({ ...options(), zoomLevel: 0.8, maxSide: 960 });
+
+    const [request] = state.render.mock.calls[0];
+    expect(request).toMatchObject({
+      doc: '{}',
+      pixelRatio: 1,
+      zoomLevel: 0.8,
+      maxSide: 960,
+    });
+    expect(request.fontProbe).toEqual([21, 10, 10]);
+    expect(mainRender).not.toHaveBeenCalled();
+  });
+
+  it('hands back the picture and the box the export itself will be measured by', async () => {
+    const { createDocumentPreview } = await load();
+
+    const preview = await createDocumentPreview({ ...options(), maxSide: 960 });
+
+    expect(preview).toEqual({
+      blob: expect.any(Blob),
+      width: 10,
+      height: 20,
+      documentWidth: 20,
+      documentHeight: 40,
+      zoomLevel: 0.5,
+    });
+  });
+
+  it('draws the preview on the main thread when the worker hands it back', async () => {
+    state.render.mockRejectedValue(new Error('no'));
+    const { createDocumentPreview } = await load();
+
+    const preview = await createDocumentPreview({ ...options(), maxSide: 960 });
+
+    expect(mainRender).toHaveBeenCalledTimes(1);
+    expect(mainRender.mock.calls[0][0]).toMatchObject({ maxSide: 960 });
+    expect(preview.width).toBe(30);
   });
 });

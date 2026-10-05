@@ -13,12 +13,17 @@ export const TAKEOVERS = [
 export const isTakenOver = ({ editor }: RootState) =>
   TAKEOVERS.some(key => editor.openMap[key]);
 
-/** Whether the panel is drawn: it stands aside, still open, while a dialog it would paint over is up. */
+/**
+ * Whether the panel is drawn: it stands aside, still open, while a dialog its
+ * opening closes is up, so its chord trades that dialog for it rather than
+ * bring the caret back to a field under the dialog.
+ */
 export const isPanelShown = (state: RootState) =>
   Boolean(state.editor.openMap[Open.findReplace]) &&
   state.settings.canvasType === CanvasType.ERD &&
   !state.editor.openMap[Open.themeBuilder] &&
   !state.editor.openMap[Open.tableProperties] &&
+  !state.editor.openMap[Open.exportImage] &&
   !isTakenOver(state);
 
 /** How far in from the left of the canvas the panel stands, and how wide it is at most, as FindReplace.styles draws it. */

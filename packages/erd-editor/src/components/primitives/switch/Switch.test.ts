@@ -63,6 +63,16 @@ describe('Switch', () => {
     );
   });
 
+  it('tells assistive technology it is a switch, and whether it is on', async () => {
+    const off = await setup({ value: false });
+    expect(off.button.getAttribute('role')).toBe('switch');
+    expect(off.button.getAttribute('aria-checked')).toBe('false');
+    mounted?.unmount();
+
+    const on = await setup({ value: true });
+    expect(on.button.getAttribute('aria-checked')).toBe('true');
+  });
+
   it('reflects a checked value onto both the button attribute and the thumb flag', async () => {
     const { button, thumb } = await setup({ value: true });
 

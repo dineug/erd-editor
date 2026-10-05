@@ -8,5 +8,6 @@ export const Open = {
   diffViewer: 'diffViewer',
   timeTravel: 'timeTravel',
   findReplace: 'findReplace',
+  exportImage: 'exportImage',
 } as const;
 export type Open = ValuesType<typeof Open>;

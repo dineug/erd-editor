@@ -7,7 +7,9 @@ import type { Rect } from '@/konva/scene/metrics';
 import { bHas } from '@/utils/bit';
 import { getRouteBBox } from '@/utils/draw-relationship';
 
-import { CANVAS_AREA_MAX, CANVAS_SIDE_MAX } from './pixelRatio';
+import { CANVAS_AREA_MAX, CANVAS_SIDE_MAX, fitPixelRatio } from './pixelRatio';
+
+type Size = Pick<Rect, 'width' | 'height'>;
 
 /**
  * The breathing room around the drawn document, in scene units, and nothing
@@ -80,4 +82,58 @@ export function getExportScale(
     CANVAS_SIDE_MAX / side,
     Math.sqrt(CANVAS_AREA_MAX / area)
   );
+}
+
+/** The raster an export comes out at, and the one it was asked for. */
+export type ExportSize = {
+  width: number;
+  height: number;
+  /** The box times the zoom times the scale, which a canvas ceiling may cut. */
+  askedWidth: number;
+  askedHeight: number;
+  /** Whether a ceiling cut the raster below what was asked for. */
+  reduced: boolean;
+};
+
+/**
+ * The Stage a box drawn at the scale takes, a pixel each way at least: a canvas
+ * truncates a side under one to none, from which no image can be drawn, and a
+ * document far longer than it is thick is cut that thin by a preview's side.
+ *
+ * @example
+ * const { width, height } = getStageSize(box, scale);
+ */
+export function getStageSize(box: Size, scale: number): Size {
+  return {
+    width: Math.max(box.width * scale, 1),
+    height: Math.max(box.height * scale, 1),
+  };
+}
+
+/**
+ * The pixels a png of the box comes out at, worked out the way the render
+ * works them out: the Stage fitted to the ceilings first, then its raster at
+ * the scale. A dialog reads it to say what a file will hold before it exists.
+ *
+ * @example
+ * const { width, height, reduced } = getExportSize(box, zoomLevel, 2);
+ */
+export function getExportSize(
+  box: Size,
+  zoomLevel: number,
+  pixelRatio: number
+): ExportSize {
+  const zoom = zoomLevel > 0 ? zoomLevel : 1;
+  const scale = getExportScale({ x: 0, y: 0, ...box }, zoom);
+  const stage = getStageSize(box, scale);
+  const ratio = fitPixelRatio(pixelRatio, stage.width, stage.height);
+
+  // A canvas truncates the side it is given, which is what the file holds.
+  return {
+    width: Math.floor(stage.width * ratio),
+    height: Math.floor(stage.height * ratio),
+    askedWidth: Math.floor(box.width * zoom * pixelRatio),
+    askedHeight: Math.floor(box.height * zoom * pixelRatio),
+    reduced: scale * ratio < zoom * pixelRatio,
+  };
 }

@@ -446,13 +446,27 @@ describe('ErdContextMenu / ERD type', () => {
     const sub = await openSubMenu(findItem(rootItems(), 'Export'));
     const items = itemsOf(sub);
 
-    expect(labelsOf(items)).toEqual(['json', 'Schema SQL', 'png']);
+    expect(labelsOf(items)).toEqual(['json', 'Schema SQL', 'Image']);
 
     await click(items[0]);
 
     expect(exportedFiles).toHaveLength(1);
     expect(exportedFiles[0]).toMatch(/\.erd\.json$/);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the export image dialog from Image and writes no file', async () => {
+    const opened = vi.fn();
+    const off = app.emitter.on({ openExportImage: opened });
+    await mountMenu();
+
+    const sub = await openSubMenu(findItem(rootItems(), 'Export'));
+    await click(findItem(itemsOf(sub), 'Image'));
+
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(exportedFiles).toEqual([]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    off();
   });
 
   it('closes the menu on the stop shortcut only', async () => {

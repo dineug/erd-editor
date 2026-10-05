@@ -10,6 +10,8 @@ import {
   EXPORT_MARGIN,
   getExportRect,
   getExportScale,
+  getExportSize,
+  getStageSize,
 } from '@/services/export-png/exportBox';
 import {
   CANVAS_AREA_MAX,
@@ -184,5 +186,86 @@ describe('getExportScale', () => {
 
   it('keeps a box with no area at one image pixel per scene unit', () => {
     expect(getExportScale({ x: 0, y: 0, width: 0, height: 0 })).toBe(1);
+  });
+});
+
+describe('getExportSize', () => {
+  it('is the box times the zoom times the scale for a box a canvas can hold', () => {
+    expect(getExportSize({ width: 2_160, height: 1_080 }, 1, 2)).toEqual({
+      width: 4_320,
+      height: 2_160,
+      askedWidth: 4_320,
+      askedHeight: 2_160,
+      reduced: false,
+    });
+    expect(getExportSize({ width: 2_160, height: 2_160 }, 0.4, 3)).toEqual({
+      width: 2_592,
+      height: 2_592,
+      askedWidth: 2_592,
+      askedHeight: 2_592,
+      reduced: false,
+    });
+  });
+
+  it('truncates a fractional side the way a canvas does', () => {
+    const size = getExportSize({ width: 100.9, height: 50.5 }, 1, 1);
+
+    expect([size.width, size.height]).toEqual([100, 50]);
+  });
+
+  it('says a scale cut by the area ceiling is reduced, and what was asked', () => {
+    const size = getExportSize({ width: 10_000, height: 10_000 }, 1, 2);
+
+    expect(size.reduced).toBe(true);
+    expect([size.askedWidth, size.askedHeight]).toEqual([20_000, 20_000]);
+    expect(size.width).toBe(Math.floor(Math.sqrt(CANVAS_AREA_MAX)));
+    expect(size.width * size.height).toBeLessThanOrEqual(CANVAS_AREA_MAX);
+  });
+
+  it('says a zoom cut by the side ceiling is reduced', () => {
+    const size = getExportSize({ width: 400_000, height: 360 }, 1, 1);
+
+    expect(size.reduced).toBe(true);
+    expect(size.width).toBeLessThanOrEqual(CANVAS_SIDE_MAX);
+  });
+
+  it('reads a zoom of zero or less as no zoom at all', () => {
+    expect(getExportSize({ width: 300, height: 200 }, 0, 2)).toMatchObject({
+      width: 600,
+      height: 400,
+      reduced: false,
+    });
+  });
+
+  it('keeps a side the ceilings cut under a pixel at one, as the Stage it is drawn on keeps it', () => {
+    const box = { width: 6_000_000, height: 160 };
+    const scale = getExportScale({ x: 0, y: 0, ...box }, 1);
+    expect(box.height * scale).toBeLessThan(1);
+
+    const size = getExportSize(box, 1, 1);
+
+    expect(size.height).toBe(1);
+    expect(size.width).toBeLessThanOrEqual(CANVAS_SIDE_MAX);
+    expect(size.reduced).toBe(true);
+  });
+});
+
+describe('getStageSize', () => {
+  it('is the box at the scale', () => {
+    expect(getStageSize({ width: 2_000, height: 500 }, 0.5)).toEqual({
+      width: 1_000,
+      height: 250,
+    });
+  });
+
+  it('keeps each side at a pixel at least, since a canvas truncates a side under one to none', () => {
+    expect(getStageSize({ width: 400_000, height: 160 }, 0.0025)).toEqual({
+      width: 1_000,
+      height: 1,
+    });
+    expect(getStageSize({ width: 49, height: 49 }, 1 / 49)).toEqual({
+      width: 1,
+      height: 1,
+    });
   });
 });

@@ -12,7 +12,7 @@ import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { delay } from '@/utils/promise';
 
-import { getExportRect, getExportScale } from './exportBox';
+import { getExportRect, getExportScale, getStageSize } from './exportBox';
 import ExportScene from './ExportScene';
 
 export type DocumentSceneOptions = {
@@ -24,6 +24,12 @@ export type DocumentSceneOptions = {
    * not carry. Left out, the document's own zoom is what the image is drawn at.
    */
   zoomLevel?: number;
+  /**
+   * The longest side the Stage may take, in pixels, which caps the scale below
+   * the zoom for a preview. The zoom still decides how a table is drawn, so a
+   * preview shows the same shapes as the export, only smaller.
+   */
+  maxSide?: number;
 };
 
 export type DocumentScene = {
@@ -57,6 +63,7 @@ export async function renderDocumentScene({
   theme,
   toWidth,
   zoomLevel,
+  maxSide,
 }: DocumentSceneOptions): Promise<DocumentScene> {
   const app = createAppContext({ toWidth }, { devtools: false });
   app.store.dispatchSync(initialLoadJsonAction$(doc));
@@ -75,7 +82,11 @@ export async function renderDocumentScene({
   // then getRouteBBox answers the anchors inflated by MAX_STUB, a box the union holds.
   const zoom = app.store.state.settings.zoomLevel;
   const box = getExportRect(app.store.state);
-  const scale = getExportScale(box, zoom);
+  const fitted = getExportScale(box, zoom);
+  const scale = isNumber(maxSide)
+    ? Math.min(fitted, maxSide / Math.max(box.width, box.height))
+    : fitted;
+  const stageSize = getStageSize(box, scale);
 
   // Detached on purpose: konva needs a container, and one outside the document
   // is never laid out, never painted and never reachable from the editor. No
@@ -84,8 +95,8 @@ export async function renderDocumentScene({
     app,
     container: document.createElement('div'),
     scene: <ExportScene box={box} scale={scale} />,
-    width: box.width * scale,
-    height: box.height * scale,
+    width: stageSize.width,
+    height: stageSize.height,
     theme,
   });
 

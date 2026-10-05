@@ -1,16 +1,15 @@
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
+import { type ExportSize, getExportSize } from './exportBox';
 import { fitPixelRatio } from './pixelRatio';
 import type { ToWidth } from './textWidth';
 
-/** The box that was asked for and the raster that fitted inside a canvas. */
-export type ResolutionReduction = {
-  documentWidth: number;
-  documentHeight: number;
-  width: number;
-  height: number;
-};
+/**
+ * The raster the zoom and scale asked for and the one that fitted inside a
+ * canvas, in the very fields the export dialog reads its warning from.
+ */
+export type ResolutionReduction = Omit<ExportSize, 'reduced'>;
 
 /** Everything a png needs that survives a structured clone to another realm. */
 export type RenderPngRequest = {
@@ -19,12 +18,22 @@ export type RenderPngRequest = {
   pixelRatio: number;
   /** The zoom to draw at; the document's own when the caller names none. */
   zoomLevel?: number;
+  /**
+   * The longest side the drawn box may take, in pixels, for an image that only
+   * previews an export. Left out, the box is drawn at the zoom asked for.
+   */
+  maxSide?: number;
 };
 
 export type RenderPngResult = {
   blob: Blob;
   width: number;
   height: number;
+  /** The box the image holds, in scene units, margin included. */
+  documentWidth: number;
+  documentHeight: number;
+  /** The zoom the box was asked to be drawn at, which the scene read once loaded. */
+  zoomLevel: number;
   /**
    * Null when the box kept every pixel it was written with. A realm that drew
    * the image is the only one that knows this, so it is carried back rather
@@ -62,9 +71,16 @@ export async function renderDocumentPng({
   theme,
   pixelRatio,
   zoomLevel,
+  maxSide,
   toWidth,
 }: RenderPngRequest & { toWidth: ToWidth }): Promise<RenderPngResult> {
-  const scene = await renderDocumentScene({ doc, theme, toWidth, zoomLevel });
+  const scene = await renderDocumentScene({
+    doc,
+    theme,
+    toWidth,
+    zoomLevel,
+    maxSide,
+  });
 
   try {
     // A stage rasterises at its own box times the ratio, so the ratio is fitted
@@ -87,19 +103,27 @@ export async function renderDocumentPng({
     // per scene unit.
     const asked = pixelRatio * scene.zoomLevel;
 
+    let reduction: ResolutionReduction | null = null;
+
+    if (drawn < asked) {
+      // Worked out as the dialog works out its warning before the file exists,
+      // so the message after it names the very pixels the dialog named.
+      const { askedWidth, askedHeight } = getExportSize(
+        scene.box,
+        scene.zoomLevel,
+        pixelRatio
+      );
+      reduction = { askedWidth, askedHeight, width, height };
+    }
+
     return {
       blob,
       width,
       height,
-      reduction:
-        drawn < asked
-          ? {
-              documentWidth: scene.box.width,
-              documentHeight: scene.box.height,
-              width,
-              height,
-            }
-          : null,
+      documentWidth: scene.box.width,
+      documentHeight: scene.box.height,
+      zoomLevel: scene.zoomLevel,
+      reduction,
     };
   } finally {
     scene.destroy();

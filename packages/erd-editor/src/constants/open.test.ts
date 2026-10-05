@@ -12,6 +12,7 @@ describe('Open', () => {
       diffViewer: 'diffViewer',
       timeTravel: 'timeTravel',
       findReplace: 'findReplace',
+      exportImage: 'exportImage',
     });
   });
 
@@ -31,6 +32,7 @@ describe('Open', () => {
       'diffViewer',
       'timeTravel',
       'findReplace',
+      'exportImage',
     ]);
   });
 

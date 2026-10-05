@@ -5,7 +5,6 @@ import { useAppContext } from '@/components/appContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
-import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { GeneratorAction } from '@/engine/generator.actions';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
@@ -104,7 +103,6 @@ const isOneOfSelection = (
 
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
-  const themeRef = useThemeContext(ctx);
   const chevronRightIcon = <Icon name="chevron-right" size={14} />;
   const { addUnsubscribe } = useUnmounted();
 
@@ -664,11 +662,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 }
                 subChildren={
                   <>
-                    {createExportMenus(
-                      app.value,
-                      props.onClose,
-                      themeRef.value
-                    ).map(menu => (
+                    {createExportMenus(app.value, props.onClose).map(menu => (
                       <ContextMenu.Item
                         onClick={menu.onClick}
                         children={

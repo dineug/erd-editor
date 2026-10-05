@@ -15,6 +15,7 @@ import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import ExportImage from '@/components/export-image/ExportImage';
 import FindReplace from '@/components/find-replace/FindReplace';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
@@ -424,6 +425,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           {props.enableThemeBuilder ? (
             <ThemeBuilder theme={themeState.options} />
           ) : null}
+          <ExportImage
+            themeOptions={themeState.options}
+            isDarkMode={isDarkMode}
+          />
           <FindReplace readonly={props.readonly} />
           <QuickSearch />
           {text.span}

@@ -74,6 +74,39 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
     expect(result.reduction).toBeNull();
   });
 
+  it('hands back the box it drew and the zoom, and passes the side cap to the scene', async () => {
+    const canvas: FakeCanvas = {
+      width: 50,
+      height: 50,
+      convertToBlob: vi.fn(async () => new Blob(['offscreen'])),
+    };
+    mocks.renderDocumentScene.mockResolvedValueOnce(
+      fakeScene(canvas, { zoomLevel: 0.6 })
+    );
+
+    const result = await renderDocumentPng({
+      doc: '{}',
+      theme,
+      pixelRatio: 1,
+      zoomLevel: 0.6,
+      maxSide: 960,
+      toWidth,
+    });
+
+    expect(mocks.renderDocumentScene).toHaveBeenLastCalledWith({
+      doc: '{}',
+      theme,
+      toWidth,
+      zoomLevel: 0.6,
+      maxSide: 960,
+    });
+    expect(result).toMatchObject({
+      documentWidth: 400,
+      documentHeight: 300,
+      zoomLevel: 0.6,
+    });
+  });
+
   it('falls back to toBlob and reports the pixels lost when the canvas caps the raster', async () => {
     const canvas: FakeCanvas = {
       width: 60,
@@ -83,22 +116,24 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
     const scene = fakeScene(canvas, {
       stageWidth: 100_000,
       stageHeight: 100_000,
+      zoomLevel: 0.5,
     });
     mocks.renderDocumentScene.mockResolvedValueOnce(scene);
 
     const result = await renderDocumentPng({
       doc: '{}',
       theme,
-      pixelRatio: 2,
+      pixelRatio: 3,
       toWidth,
     });
 
     expect(result.blob).toBeInstanceOf(Blob);
     expect(result.width).toBe(60);
     expect(result.height).toBe(60);
+    // What was asked is the 400 by 300 box times the zoom times the scale.
     expect(result.reduction).toEqual({
-      documentWidth: 400,
-      documentHeight: 300,
+      askedWidth: 600,
+      askedHeight: 450,
       width: 60,
       height: 60,
     });
