@@ -15,15 +15,6 @@ const toSourcePath = (path: string) =>
     ? path.replace(/^\.\//, 'src/styles/')
     : path.replace(/^\.\.\//, 'src/');
 
-const COLOR_PICKER = 'src/styles/colorPicker.style.ts';
-
-/**
- * The one module allowed a fill: colorPicker's fills are all scoped under a
- * subtree this package renders no Icon into. The claim is asserted below rather
- * than trusted, and the marquee that once shared the list is konva now.
- */
-const FILL_ALLOW_LIST = [COLOR_PICKER];
-
 type FillRule = { module: string; selector: string; value: string };
 
 /** Every rule reachable from a sheet, flattening @keyframes and any other grouping rule. */
@@ -84,18 +75,10 @@ beforeAll(async () => {
 });
 
 describe('icon paint', () => {
-  it('declares fill in no module but the two that paint a non-icon shape', () => {
+  it('declares fill in no module', () => {
     // The whole point of the file. An icon is stroked from currentColor, so a fill aimed at one
     // renders it invisible while failing nothing else — reach for color instead.
-    expect(
-      fills.filter(fill => !FILL_ALLOW_LIST.includes(fill.module))
-    ).toEqual([]);
-
-    // …and the allow-list is exactly true, so an entry that stops being needed gets deleted rather
-    // than left standing as licence for the next one.
-    expect([...new Set(fills.map(fill => fill.module))].sort()).toEqual(
-      [...FILL_ALLOW_LIST].sort()
-    );
+    expect(fills).toEqual([]);
   });
 
   it('leaves the marquee out of the fills, now that konva draws it', () => {
@@ -104,20 +87,6 @@ describe('icon paint', () => {
     expect(fills.filter(fill => fill.module.includes('drag-select'))).toEqual(
       []
     );
-  });
-
-  it('keeps every color picker fill under the upstream class name', () => {
-    // Six of these end in .icon svg path, the exact shape Icon renders, and are
-    // inert only because of the head of the selector. Never simplify one:
-    // dropping the ancestor turns it into a fill over every icon in the editor.
-    const colorPicker = fills.filter(fill => fill.module === COLOR_PICKER);
-
-    expect(colorPicker).not.toEqual([]);
-    expect(
-      colorPicker.filter(
-        fill => !fill.selector.startsWith('.easylogic-colorpicker')
-      )
-    ).toEqual([]);
   });
 });
 

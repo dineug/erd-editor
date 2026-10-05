@@ -46,7 +46,8 @@ import {
   removeColorAllAction$,
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
-import { Viewport } from '@/engine/modules/editor/state';
+import { isEditingText, Viewport } from '@/engine/modules/editor/state';
+import { getDocumentColors } from '@/engine/modules/editor/utils/color';
 import {
   scrollToAction,
   streamScrollToAction,
@@ -78,8 +79,7 @@ import {
   moveEnd$,
 } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
-import { focusEvent } from '@/utils/internalEvents';
-import { isMod } from '@/utils/keyboard-shortcut';
+import { isMod, KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';
@@ -128,6 +128,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     colorPickerY: 0,
     colorPickerViewport: null as Viewport | null,
     colorPickerInitialColor: '',
+    colorPickerDocumentColors: [] as string[],
     tablePropertiesId: '',
     tablePropertiesIds: [] as string[],
     grabCursor: 'grab',
@@ -341,17 +342,38 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     store.dispatch(changeColorAllAction$(color));
   };
 
+  const handleCloseColorPicker = () => {
+    state.colorPickerShow = false;
+  };
+
   /**
-   * No color clears what the picker colors and closes it. The button held the
-   * keyboard and leaves with the picker, so the editor takes the focus back.
+   * No color clears what the picker colors and closes it; the picker hands the
+   * keyboard back as it goes.
    */
   const handleClearColorPicker = () => {
     const { store } = app.value;
     store.dispatch(removeColorAllAction$());
     state.colorPickerShow = false;
-    nextTick(() => {
-      ctx.host.dispatchEvent(focusEvent());
-    });
+  };
+
+  /**
+   * Escape pressed while the keyboard is elsewhere closes the picker unless something takes it
+   * first, as Find and Replace reads it; removeSelection or removeTable (Delete or Backspace,
+   * bare or with the mod key) closes it too, since either may just have taken its paint.
+   */
+  const handleColorPickerShortcut = ({ type }: { type: KeyBindingName }) => {
+    const { editor } = app.value.store.state;
+
+    if (
+      type === KeyBindingName.removeSelection ||
+      type === KeyBindingName.removeTable ||
+      (type === KeyBindingName.stop &&
+        !editor.openMap[Open.search] &&
+        !isEditingText(editor) &&
+        !editor.drawRelationship)
+    ) {
+      state.colorPickerShow = false;
+    }
   };
 
   /**
@@ -430,7 +452,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   onMounted(() => {
-    const { store, emitter, keydown$ } = app.value;
+    const { store, emitter, shortcut$ } = app.value;
     const $root = root.value;
 
     if (props.mouseTracking) {
@@ -445,16 +467,28 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           ? handleMouseTrackerStart()
           : handleMouseTrackerEnd();
       }),
+      shortcut$.subscribe(handleColorPickerShortcut),
       emitter.on({
         openColorPicker: ({ payload: { x, y, color } }) => {
-          const { editor } = store.state;
-          const rect = $root.getBoundingClientRect();
+          const open = () => {
+            const rect = $root.getBoundingClientRect();
 
-          state.colorPickerX = x - rect.x;
-          state.colorPickerY = y - rect.y;
-          state.colorPickerViewport = editor.viewport;
-          state.colorPickerInitialColor = color;
-          state.colorPickerShow = true;
+            state.colorPickerX = x - rect.x;
+            state.colorPickerY = y - rect.y;
+            state.colorPickerViewport = store.state.editor.viewport;
+            state.colorPickerInitialColor = color;
+            state.colorPickerDocumentColors = getDocumentColors(store.state);
+            state.colorPickerShow = true;
+          };
+
+          // The picker reads its props once as it mounts, so one already open
+          // goes away first and the next tick mounts it again on the new color.
+          if (state.colorPickerShow) {
+            state.colorPickerShow = false;
+            nextTick(open);
+          } else {
+            open();
+          }
         },
         closeColorPicker: () => {
           state.colorPickerShow = false;
@@ -557,8 +591,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             x={state.colorPickerX}
             y={state.colorPickerY}
             viewport={state.colorPickerViewport}
+            keyBindingMap={app.value.keyBindingMap}
+            documentColors={state.colorPickerDocumentColors}
             onChange={handleChangeColorPicker}
             onClear={handleClearColorPicker}
+            onClose={handleCloseColorPicker}
           />
         ) : null}
         {showAutomaticTablePlacement ? (

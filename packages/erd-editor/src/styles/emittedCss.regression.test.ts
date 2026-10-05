@@ -36,7 +36,7 @@ function selectorOf(cssText: string): string {
   return cssText.slice(0, cssText.indexOf('{')).trim();
 }
 
-/** Every rule adopted when all 63 modules share one module registry. */
+/** Every rule adopted when all 62 modules share one module registry. */
 let cumulative: string[] = [];
 /** The css.global half of cumulative, which the bucket keeps in front. */
 let globalRules: string[] = [];
@@ -104,12 +104,12 @@ describe('selector-list scope widening', () => {
   });
 
   it('leaves the global bucket lists unscoped, which is the whole point of css.global', () => {
-    // These lists are type selectors, pseudo elements, the universal selector
-    // and the picker's own runtime class names. A scope class on any of them
-    // would stop it matching, which is what this assertion is about.
+    // These lists are type selectors, pseudo elements and the universal
+    // selector. A scope class on any of them would stop it matching, which is
+    // what this assertion is about.
     const lists = globalRules.filter(text => selectorOf(text).includes(','));
 
-    expect(lists).toHaveLength(46);
+    expect(lists).toHaveLength(8);
     for (const list of lists) {
       expect(list).not.toMatch(SCOPE_CLASS);
     }
@@ -117,27 +117,26 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 63 style modules', () => {
-    // A new style module is meant to move this number, which is why it is
-    // pinned rather than derived. P6-51 took six with the dom scene and the
-    // off-canvas marker one more; six came back with the chrome since.
-    expect(modulePaths).toHaveLength(63);
+  it('loads 62 style modules', () => {
+    // A style module added or removed is meant to move this number, which is
+    // why it is pinned rather than derived.
+    expect(modulePaths).toHaveLength(62);
   });
 
-  it('adopts 736 rules, none of them a duplicate', () => {
+  it('adopts 455 rules, none of them a duplicate', () => {
     // Pinned rather than derived, so a rule added or lost anywhere in the
     // package has to be accounted for here.
-    expect(cumulative).toHaveLength(736);
-    expect(new Set(cumulative).size).toBe(736);
+    expect(cumulative).toHaveLength(455);
+    expect(new Set(cumulative).size).toBe(455);
   });
 
-  it('splits into 327 global rules ahead of 409 component rules', () => {
+  it('splits into 20 global rules ahead of 435 component rules', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 5, component: 228 });
-    expect(globalRules).toHaveLength(327);
-    expect(componentRules).toHaveLength(409);
+    expect(sheetsOfEachKind).toEqual({ global: 4, component: 246 });
+    expect(globalRules).toHaveLength(20);
+    expect(componentRules).toHaveLength(435);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -152,9 +151,9 @@ describe('rule-count invariance', () => {
     );
 
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
-    // rendered alone or with the other 62 — which is exactly what makes this comparison mean
+    // rendered alone or with the other 61 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(736);
+    expect(union.size).toBe(455);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

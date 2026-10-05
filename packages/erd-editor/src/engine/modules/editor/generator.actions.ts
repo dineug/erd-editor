@@ -692,16 +692,30 @@ export const drawStartAddRelationshipAction$ = (
     yield drawStartAddRelationshipAction({ tableId });
   };
 
+/**
+ * Paints every selected table and memo the color, sending nothing for one that
+ * already is, in any letter case, so a color pressed again adds no undo entry
+ * while one an undo took back is painted again; one stream group, one entry.
+ */
 export const changeColorAllAction$ = (color: string): GeneratorAction =>
   function* (state) {
     const { tables, memos } = getColorTargets(state);
+    const target = color.toLowerCase();
 
-    yield tables.map(table =>
-      changeTableColorAction({ id: table.id, color, prevColor: table.ui.color })
-    );
-    yield memos.map(memo =>
-      changeMemoColorAction({ id: memo.id, color, prevColor: memo.ui.color })
-    );
+    yield tables
+      .filter(table => table.ui.color.toLowerCase() !== target)
+      .map(table =>
+        changeTableColorAction({
+          id: table.id,
+          color,
+          prevColor: table.ui.color,
+        })
+      );
+    yield memos
+      .filter(memo => memo.ui.color.toLowerCase() !== target)
+      .map(memo =>
+        changeMemoColorAction({ id: memo.id, color, prevColor: memo.ui.color })
+      );
   };
 
 /**

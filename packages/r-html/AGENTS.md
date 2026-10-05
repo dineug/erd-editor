@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-03 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-05 -->
 
 # r-html
 
@@ -51,7 +51,7 @@
 
 - `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test` (happy-dom).
 - **Read a coverage drop in `src/css/` as a rule class no longer run**: the CSS compiler is reached through one narrow seam (`template/css.ts` calls `compileToRules`), so a whole rule class can stop being exercised without a test going red, and `test:coverage`'s `perFile` 80% gate is the only signal; cover it with a case that runs that class.
-- **The specs that predate the host seam are frozen**: they are the only proof the seam refactor preserved DOM behaviour. Add specs or cases freely, never change or delete an existing one. `git diff --numstat --diff-filter=MD 3a524e6e -- 'packages/r-html/src/**/*.test.ts'` must show zero deletions.
+- **The specs that predate the host seam are frozen**: they are the only proof the seam refactor preserved DOM behaviour. Add specs or cases freely, never change or delete an existing one. `git diff --numstat --diff-filter=MD 3a524e6e -- 'packages/r-html/src/**/*.test.ts' ':!packages/r-html/src/css/compile.behaviour.test.ts'` must show zero deletions. That file alone has lost cases since: its three 69 KB real-stylesheet cases, with the helper that found their input, went with the vendored stylesheet erd-editor dropped (an owner decision of 2026-10-05).
 - happy-dom has no style engine, so `vCSSStyleSheet.ts`'s `adoptedStyleSheets` behaviour is pinned only by the e2e specs: `pnpm --filter @dineug/r-html e2e` after touching it (`vp dev` on :5176, no build step; see `e2e/README.md`). `app`'s e2e relay takes :5176 too, so run the two apart or move one (`E2E_PORT` here, `E2E_RELAY_PORT` there). CI runs `e2e` and `e2e:typecheck`, the only program covering `e2e/`.
 
 ### Common Patterns

@@ -6,15 +6,18 @@ import { SelectType } from '@/engine/modules/editor/state';
 import {
   getColoredSelection,
   getColorTargets,
+  getDocumentColors,
   hasColoredSelection,
 } from '@/engine/modules/editor/utils/color';
 import {
   addMemoAction,
   changeMemoColorAction,
+  removeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import {
   addTableAction,
   changeTableColorAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { createStore, Store } from '@/engine/store';
 
@@ -92,5 +95,68 @@ describe('hasColoredSelection', () => {
     );
 
     expect(hasColoredSelection(store.state)).toBe(false);
+  });
+});
+
+describe('getDocumentColors', () => {
+  /** Paints each entity named, the base t1 and m1 included. */
+  const paint = (colors: Record<string, string>) =>
+    store.dispatchSync(
+      Object.entries(colors).map(([id, color]) =>
+        id.startsWith('t')
+          ? changeTableColorAction({ id, color, prevColor: '' })
+          : changeMemoColorAction({ id, color, prevColor: '' })
+      )
+    );
+
+  it('lists the tables before the memos, each in document order', () => {
+    paint({ m2: '#0000ff', t2: '#ffff00' });
+
+    expect(getDocumentColors(store.state)).toEqual([
+      '#ff0000',
+      '#ffff00',
+      '#00ff00',
+      '#0000ff',
+    ]);
+  });
+
+  it('puts the most used first and keeps a tie in the order it first shows', () => {
+    paint({ t2: '#0000ff', m2: '#0000ff' });
+
+    expect(getDocumentColors(store.state)).toEqual([
+      '#0000ff',
+      '#ff0000',
+      '#00ff00',
+    ]);
+  });
+
+  it('reads three spellings of one color as one entry, which then leads', () => {
+    paint({ t2: '#FF8800', m1: 'rgb(255, 136, 0)', m2: '#ff880080' });
+
+    expect(getDocumentColors(store.state)).toEqual(['#ff8800', '#ff0000']);
+  });
+
+  it('leaves out an empty color and one it cannot read', () => {
+    paint({ t1: 'red' });
+
+    expect(store.state.collections.tableEntities.t2.ui.color).toBe('');
+    expect(getDocumentColors(store.state)).toEqual(['#00ff00']);
+  });
+
+  it('leaves out a table or memo the document no longer lists', () => {
+    store.dispatchSync(
+      removeTableAction({ id: 't1' }),
+      removeMemoAction({ id: 'm1' })
+    );
+
+    expect(store.state.collections.tableEntities.t1.ui.color).toBe('#ff0000');
+    expect(store.state.collections.memoEntities.m1.ui.color).toBe('#00ff00');
+    expect(getDocumentColors(store.state)).toEqual([]);
+  });
+
+  it('is empty for a document with no color', () => {
+    paint({ t1: '', m1: '' });
+
+    expect(getDocumentColors(store.state)).toEqual([]);
   });
 });

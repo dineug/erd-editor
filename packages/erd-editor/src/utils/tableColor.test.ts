@@ -6,6 +6,7 @@ import {
   fromDBMLColor,
   toAMLColor,
   toDBMLColor,
+  toOpaqueHex,
 } from '@/utils/tableColor';
 
 describe('AML_COLORS', () => {
@@ -188,5 +189,28 @@ describe('toAMLColor', () => {
     expect(toAMLColor('red')).toBeNull();
     expect(toAMLColor('hsl(x, 1%, 1%)')).toBeNull();
     expect(toAMLColor('hsl(1e999, 50%, 50%)')).toBeNull();
+  });
+});
+
+describe('toOpaqueHex', () => {
+  it('writes every hex length as lower-case #rrggbb, its alpha dropped', () => {
+    expect(toOpaqueHex('#F80')).toBe('#ff8800');
+    expect(toOpaqueHex('#f808')).toBe('#ff8800');
+    expect(toOpaqueHex('#FF8800')).toBe('#ff8800');
+    expect(toOpaqueHex('#ff880080')).toBe('#ff8800');
+    expect(toOpaqueHex(' #ABCDEF ')).toBe('#abcdef');
+  });
+
+  it('reads the rgb() and hsl() forms as their hex, alpha dropped', () => {
+    expect(toOpaqueHex('rgba(255, 136, 0, .5)')).toBe('#ff8800');
+    expect(toOpaqueHex('rgb(255 136 0)')).toBe('#ff8800');
+    expect(toOpaqueHex('hsl(32 100% 50%)')).toBe('#ff8800');
+    expect(toOpaqueHex('hsla(32, 100%, 50%, 0.5)')).toBe('#ff8800');
+  });
+
+  it('is null for a color it cannot read', () => {
+    expect(toOpaqueHex('')).toBeNull();
+    expect(toOpaqueHex('red')).toBeNull();
+    expect(toOpaqueHex('#12345')).toBeNull();
   });
 });

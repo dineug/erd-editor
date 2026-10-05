@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
 import { Memo, Table } from '@/internal-types';
+import { toOpaqueHex } from '@/utils/tableColor';
 
 import { getSelectTypeIds } from './selection';
 
@@ -39,4 +40,25 @@ export function getColoredSelection(state: RootState): ColorTargets {
 export function hasColoredSelection(state: RootState): boolean {
   const { tables, memos } = getColoredSelection(state);
   return tables.length !== 0 || memos.length !== 0;
+}
+
+/**
+ * The colors the document's tables and memos carry as opaque #rrggbb, the most
+ * used first and a tie in document order; one it cannot read is left out.
+ */
+export function getDocumentColors({ doc, collections }: RootState): string[] {
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds);
+  const memos = query(collections)
+    .collection('memoEntities')
+    .selectByIds(doc.memoIds);
+  const counts = new Map<string, number>();
+
+  for (const { ui } of [...tables, ...memos]) {
+    const color = toOpaqueHex(ui.color);
+    if (color) counts.set(color, (counts.get(color) ?? 0) + 1);
+  }
+
+  return [...counts].sort(([, a], [, b]) => b - a).map(([color]) => color);
 }

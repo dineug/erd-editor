@@ -40,6 +40,13 @@ async function colorsOf(erd: ErdEditorPage): Promise<string[]> {
   ].map(color => color.toLowerCase());
 }
 
+/** Opens the picker from the users table's colour edge, which also selects that table. */
+async function openUsersPicker(erd: ErdEditorPage) {
+  const bar = await erd.sceneBox(['#table-users', '.table-header-color']);
+  await erd.clickAt({ x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 });
+  await expect(erd.colorPicker).toBeVisible();
+}
+
 /** A point on the memo's header strip, clear of its colour bar and remove button. */
 async function memoHeaderPoint(erd: ErdEditorPage) {
   const box = await erd.sceneBox('#memo-note');
@@ -212,6 +219,128 @@ test.describe('entity colour', () => {
       .poll(() => colorsOf(erd))
       .toEqual([COLOR.toLowerCase(), '#3b82f6', '']);
     await expect(canvas).toHaveCSS('pointer-events', 'auto');
+  });
+
+  test('a preset puts its colour on the table', async ({ erd }) => {
+    await erd.seed(twoTables());
+    await openUsersPicker(erd);
+
+    await erd.colorPicker
+      .getByRole('radio', { name: 'Blue', exact: true })
+      .click();
+
+    await expect
+      .poll(async () => (await erd.table('users')).ui.color)
+      .toBe('#0090ff');
+  });
+
+  test('a drag on the area keeps going past its edge and leaves the picker open', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(twoTables());
+    await openUsersPicker(erd);
+
+    const area = erd.colorPicker.getByRole('slider', {
+      name: 'Saturation and brightness',
+    });
+    const box = await area.boundingBox();
+    if (!box) throw new Error('the area has no box');
+    const { x, y, width, height } = box;
+
+    // The release lands 60px below the area, which still reads the move through
+    // its pointer capture and clamps it to the foot, where every colour is black.
+    await page.mouse.move(x + width / 2, y + height / 2);
+    await page.mouse.down();
+    await page.mouse.move(x + width / 2, y + height + 60, { steps: 4 });
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await erd.table('users')).ui.color)
+      .toBe('#000000');
+    await expect(erd.colorPicker).toBeVisible();
+    await expect(erd.selectedTables()).toHaveCount(1);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+  });
+
+  test('Escape closes the picker, keeps the selection and the colour, and hands the undo key back', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await openUsersPicker(erd);
+    await erd.pickColor(COLOR);
+
+    await erd.press(Shortcut.stop);
+
+    await expect(erd.colorPicker).toHaveCount(0);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+    await expect
+      .poll(async () => (await erd.table('users')).ui.color.toLowerCase())
+      .toBe(COLOR.toLowerCase());
+
+    // The typed colour and its Enter are one history entry, so one undo
+    // reaches the editor the picker handed the keyboard back to.
+    await expect(erd.toolbarButton('Undo')).toHaveClass(/\bactive\b/);
+    await erd.press(Shortcut.undo);
+
+    await expect.poll(async () => (await erd.table('users')).ui.color).toBe('');
+  });
+
+  test('Tab goes round the picker in order, and an arrow on a preset puts that colour on', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(twoTables());
+    await openUsersPicker(erd);
+
+    const picker = erd.colorPicker;
+    await expect(
+      picker.getByRole('dialog', { name: 'Color', exact: true })
+    ).toBeFocused();
+
+    // The pipette shows only where the browser has EyeDropper.
+    const hasEyeDropper = await page.evaluate(() => 'EyeDropper' in window);
+    const area = picker.getByRole('slider', {
+      name: 'Saturation and brightness',
+    });
+    const order = [
+      area,
+      ...(hasEyeDropper
+        ? [
+            picker.getByRole('button', {
+              name: 'Pick a color from the screen',
+              exact: true,
+            }),
+          ]
+        : []),
+      picker.getByRole('slider', { name: 'Hue', exact: true }),
+      picker.getByRole('textbox', { name: 'Hex', exact: true }),
+      picker.getByRole('textbox', { name: 'R', exact: true }),
+      picker.getByRole('textbox', { name: 'G', exact: true }),
+      picker.getByRole('textbox', { name: 'B', exact: true }),
+      picker.getByRole('radio', { name: 'Red', exact: true }),
+    ];
+    for (const control of order) {
+      await erd.press('Tab');
+      await expect(control).toBeFocused();
+    }
+
+    await erd.press('ArrowRight');
+    await expect(
+      picker.getByRole('radio', { name: 'Orange', exact: true })
+    ).toBeFocused();
+    await expect
+      .poll(async () => (await erd.table('users')).ui.color)
+      .toBe('#f76b15');
+
+    // A radio group is one stop, and the document held no colour as the picker
+    // opened, so No color is next and the last, and Tab turns round from it.
+    await erd.press('Tab');
+    await expect(
+      picker.getByRole('button', { name: 'No color', exact: true })
+    ).toBeFocused();
+    await erd.press('Tab');
+    await expect(area).toBeFocused();
   });
 
   test('the table menu offers Remove color only while the selection holds a colour', async ({

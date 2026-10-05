@@ -113,9 +113,8 @@ async function collect(): Promise<Emitted> {
     }
   }
 
-  // GlobalStyles into the same shadow root. It renders nothing now — the color picker was the
-  // last /* css */ factory and is a css.global sheet as of this phase — but it still pins the
-  // global bucket's order, so it has to run before the adopted list is read back.
+  // GlobalStyles renders nothing but pins the global bucket's order, so it runs before the
+  // adopted list is read back.
   const GlobalStyles = (await import('@/components/global-styles/GlobalStyles'))
     .default;
   render(host as any, html`<${GlobalStyles} />`);
@@ -170,7 +169,7 @@ beforeAll(async () => {
 
 describe('emitted CSS', () => {
   it('reaches a shadow root from every style module', () => {
-    expect(actual.moduleCount).toBe(64);
+    expect(actual.moduleCount).toBe(63);
     expect(actual.ruleCount).toBe(
       actual.treeStyleRuleCount + actual.adoptedRuleCount
     );
@@ -218,10 +217,8 @@ describe('emitted CSS', () => {
     // watches it. Read positionally rather than by module: a rule belongs to
     // whichever module first pulled it in, which need not be its own.
     const adopted = actual.rules.slice(actual.treeStyleRuleCount);
-    // 12 reset + 1 fonts + 1 typography + 6 scrollbar + 307 color picker. The
-    // four positional checks below do not move with the picker, because
-    // setGlobalStyleOrder pins it last.
-    const BUCKET = 327;
+    // 12 reset + 1 fonts + 1 typography + 6 scrollbar.
+    const BUCKET = 20;
 
     expect(adopted.findIndex(rule => SCOPE_CLASS.test(rule.selector))).toBe(
       BUCKET

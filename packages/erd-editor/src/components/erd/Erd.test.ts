@@ -1,7 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { AnyAction, FC, html, observable } from '@dineug/r-html';
+import {
+  AnyAction,
+  createRef,
+  FC,
+  html,
+  observable,
+  ref,
+} from '@dineug/r-html';
 import { config as rxjsConfig } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
@@ -28,8 +35,14 @@ import {
   changeOpenMapAction,
   changeZenModeAction,
   drawStartRelationshipAction,
+  editTableAction,
+  focusTableAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
+import {
+  addMemoAction,
+  changeMemoColorAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeCanvasTypeAction,
@@ -37,11 +50,13 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableColorAction,
   changeTableNameAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import type { Rect } from '@/konva/scene/metrics';
 import {
@@ -51,23 +66,6 @@ import {
 } from '@/utils/emitter';
 import { getRelationshipIcon } from '@/utils/icon';
 import { InternalEventType } from '@/utils/internalEvents';
-
-const colorPicker = vi.hoisted(() => {
-  const instances: Array<{ options: any; destroy: () => void }> = [];
-  const create = vi.fn((options: any) => {
-    const el = document.createElement('div');
-    el.className = 'mock-colorpicker';
-    options.container.appendChild(el);
-    const instance = { options, destroy: vi.fn(), $root: { el } };
-    instances.push(instance);
-    return instance;
-  });
-  return { instances, create };
-});
-
-vi.mock('@easylogic/colorpicker', () => ({
-  default: { create: colorPicker.create },
-}));
 
 let mounted: Mounted | null = null;
 
@@ -80,7 +78,6 @@ afterEach(() => {
   window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   mounted?.unmount();
   mounted = null;
-  colorPicker.instances.length = 0;
   vi.restoreAllMocks();
 });
 
@@ -103,12 +100,21 @@ async function setup(
     ...initial,
   });
 
-  const Wrapper: FC = () => () =>
-    html`<${Erd}
-      isDarkMode=${props.isDarkMode}
-      mouseTracking=${props.mouseTracking}
-      readonly=${props.readonly}
-    />`;
+  // The element binds the keys around this root, which is how a press reaches
+  // shortcut$; bound here too, a key a spec presses takes the real path.
+  const Wrapper: FC = (_, ctx) => {
+    const keys = createRef<HTMLDivElement>();
+    useKeyBindingMap(ctx, keys);
+
+    return () =>
+      html`<div ${ref(keys)}>
+        <${Erd}
+          isDarkMode=${props.isDarkMode}
+          mouseTracking=${props.mouseTracking}
+          readonly=${props.readonly}
+        />
+      </div>`;
+  };
 
   const actions: AnyAction[] = [];
   app.store.subscribe(dispatched => actions.push(...dispatched));
@@ -186,11 +192,26 @@ const dispatchMouse = (
   return event;
 };
 
-const pressKeydown = (app: AppContext, target: Element, code: string) => {
+/** The modifier $mod resolves to, read off the platform the way tinykeys reads it. */
+const MOD = /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+  ? { metaKey: true }
+  : { ctrlKey: true };
+
+const pressKeydown = (
+  app: AppContext,
+  target: Element,
+  code: string,
+  init: KeyboardEventInit = {}
+) => {
   const forward = (event: Event) => app.keydown$.next(event as KeyboardEvent);
   target.addEventListener('keydown', forward);
   target.dispatchEvent(
-    new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true })
+    new KeyboardEvent('keydown', {
+      code,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    })
   );
   target.removeEventListener('keydown', forward);
 };
@@ -875,57 +896,201 @@ describe('Erd - drag select and grab move', () => {
 });
 
 describe('Erd - color picker', () => {
+  const pickerOf = (root: HTMLElement) =>
+    root.querySelector('.color-picker') as HTMLElement | null;
+
+  const hexOf = (root: HTMLElement) =>
+    root.querySelector(
+      '.color-picker input[aria-label="Hex"]'
+    ) as HTMLInputElement;
+
+  /** Types a whole hex into the open picker's Hex field, which applies it as typed. */
+  const typeHex = async (root: HTMLElement, text: string) => {
+    const hex = hexOf(root);
+    hex.value = text;
+    hex.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+  };
+
+  const openPicker = async (app: AppContext, color = '#ffffff') => {
+    app.emitter.emit(openColorPickerAction({ x: 10, y: 10, color }));
+    await flush();
+  };
+
   it('positions the color picker where the emitter asked for it', async () => {
     const { app, root } = await setup();
 
     app.emitter.emit(openColorPickerAction({ x: 40, y: 50, color: '#ff0000' }));
     await flush();
 
-    const picker = root.querySelector('.color-picker') as HTMLElement;
+    const picker = pickerOf(root) as HTMLElement;
     expect(picker.style.left).toBe('40px');
     expect(picker.style.top).toBe('50px');
-    expect(colorPicker.create).toHaveBeenCalled();
   });
 
   it('applies the picked color to every selected table', async () => {
     const { app, root } = await setup();
     const tableId = seedTable(app);
-    app.emitter.emit(openColorPickerAction({ x: 10, y: 10, color: '#ffffff' }));
-    await flush();
+    await openPicker(app);
 
-    const instance = colorPicker.instances[colorPicker.instances.length - 1];
-    instance.options.onChange('#123456');
-    await flush();
+    await typeHex(root, '123456');
 
     const table = app.store.state.collections.tableEntities[tableId];
     expect(table.ui.color).toBe('#123456');
-    expect(root.querySelector('.color-picker')).toBeTruthy();
+    expect(pickerOf(root)).toBeTruthy();
   });
 
   it('clears the selection color on No color, closes and hands the focus back', async () => {
     const { app, root } = await setup();
     const tableId = seedTable(app);
-    app.emitter.emit(openColorPickerAction({ x: 10, y: 10, color: '#ffffff' }));
-    await flush();
-    colorPicker.instances.at(-1)?.options.onChange('#123456');
-    await flush();
+    await openPicker(app);
+    await typeHex(root, '123456');
     const onFocus = vi.fn();
     document.body.addEventListener(InternalEventType.focus, onFocus);
 
     try {
-      const button = root.querySelector('.color-picker button') as HTMLElement;
-      expect(button.textContent?.trim()).toBe('No color');
-      button.click();
+      const button = findByText(root, '.color-picker button', 'No color');
+      button!.click();
       await flush();
 
       expect(app.store.state.collections.tableEntities[tableId].ui.color).toBe(
         ''
       );
-      expect(root.querySelector('.color-picker')).toBeNull();
+      expect(pickerOf(root)).toBeNull();
       expect(onFocus).toHaveBeenCalledTimes(1);
     } finally {
       document.body.removeEventListener(InternalEventType.focus, onFocus);
     }
+  });
+
+  it('offers the colors the document holds, the most used first', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 2 } }),
+      addTableAction({ id: 't2', ui: { x: 400, y: 0, zIndex: 2 } }),
+      addMemoAction({ id: 'm1', ui: { x: 0, y: 400, zIndex: 2 } }),
+      changeTableColorAction({ id: 't1', color: '#ff0000', prevColor: '' }),
+      changeTableColorAction({ id: 't2', color: '#00ff00', prevColor: '' }),
+      changeMemoColorAction({ id: 'm1', color: '#00ff00', prevColor: '' })
+    );
+    const { root } = await setup({}, app);
+    await openPicker(app);
+
+    const swatches = Array.from(
+      root.querySelectorAll(
+        '.color-picker [role="radiogroup"][aria-label="Document colors"] [role="radio"]'
+      )
+    ).map(swatch => swatch.getAttribute('aria-label'));
+
+    expect(swatches).toEqual(['#00FF00', '#FF0000']);
+  });
+
+  it('closes on an Escape pressed inside it and keeps the selection', async () => {
+    const { app, root } = await setup();
+    const tableId = seedTable(app);
+    await openPicker(app);
+
+    const panel = root.querySelector(
+      '.color-picker [role="dialog"]'
+    ) as HTMLElement;
+    panel.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+    await flush();
+
+    expect(pickerOf(root)).toBeNull();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      [tableId]: expect.anything(),
+    });
+  });
+
+  it('closes on an Escape the canvas hears, which also unselects', async () => {
+    const { app, root } = await setup();
+    seedTable(app);
+    await openPicker(app);
+
+    pressKeydown(app, root, 'Escape');
+    await flush();
+
+    expect(pickerOf(root)).toBeNull();
+    expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('leaves that Escape to the palette, a cell editor or a relationship draw, which take it first', async () => {
+    const { app, root } = await setup();
+    const tableId = seedTable(app);
+    await openPicker(app);
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.search]: true }));
+    pressKeydown(app, root, 'Escape');
+    await flush();
+    expect(pickerOf(root)).toBeTruthy();
+
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.search]: false }),
+      focusTableAction({ tableId }),
+      editTableAction()
+    );
+    pressKeydown(app, root, 'Escape');
+    await flush();
+    expect(pickerOf(root)).toBeTruthy();
+
+    app.store.dispatchSync(
+      drawStartRelationshipAction({ relationshipType: RelationshipType.ZeroN })
+    );
+    pressKeydown(app, root, 'Escape');
+    await flush();
+    expect(app.store.state.editor.drawRelationship).toBeNull();
+    expect(pickerOf(root)).toBeTruthy();
+  });
+
+  it.each([
+    ['Delete', 'Delete', {}],
+    ['$mod+Backspace', 'Backspace', { key: 'Backspace', ...MOD }],
+    ['$mod+Delete', 'Delete', { key: 'Delete', ...MOD }],
+  ] as const)(
+    'closes on %s, which takes away what it paints',
+    async (_, code, init) => {
+      const { app, root } = await setup();
+      const tableId = seedTable(app);
+      await openPicker(app);
+
+      pressKeydown(app, root, code, init);
+      await flush();
+
+      expect(app.store.state.doc.tableIds).not.toContain(tableId);
+      expect(pickerOf(root)).toBeNull();
+    }
+  );
+
+  it('stays open for the undo key', async () => {
+    const { app, root } = await setup();
+    const tableId = seedTable(app);
+    await openPicker(app);
+
+    pressKeydown(app, root, 'KeyZ', { key: 'z', ...MOD });
+    await flush();
+
+    expect(app.store.state.doc.tableIds).not.toContain(tableId);
+    expect(pickerOf(root)).toBeTruthy();
+  });
+
+  it('mounts again on the new color when opened while it is open', async () => {
+    const { app, root } = await setup();
+    await openPicker(app, '#ff0000');
+    const panel = root.querySelector('.color-picker [role="dialog"]');
+    expect(hexOf(root).value).toBe('FF0000');
+
+    await openPicker(app, '#00ff00');
+
+    expect(hexOf(root).value).toBe('00FF00');
+    expect(root.querySelector('.color-picker [role="dialog"]')).not.toBe(panel);
+    expect(root.querySelectorAll('.color-picker')).toHaveLength(1);
   });
 });
 

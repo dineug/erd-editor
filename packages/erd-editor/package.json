@@ -62,7 +62,6 @@
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.8",
-    "@easylogic/colorpicker": "^1.10.11",
     "@egjs/agent": "^2.4.3",
     "@radix-ui/colors": "^3.0.0",
     "@shikijs/langs": "^4.4.3",

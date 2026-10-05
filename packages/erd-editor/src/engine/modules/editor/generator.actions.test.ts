@@ -761,6 +761,69 @@ describe('changeColorAllAction$', () => {
 
     expect(typesOf(store, changeColorAllAction$('#ff0000'))).toEqual([]);
   });
+
+  it('sends nothing for a selected table or memo already that color', () => {
+    seedTable(store, 't1');
+    seedMemo(store, 'm1');
+    store.dispatchSync(
+      changeTableColorAction({ id: 't1', color: '#ff0000', prevColor: '' }),
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+
+    expect(flatten(store, changeColorAllAction$('#ff0000'))).toMatchObject([
+      {
+        type: 'memo.changeColor',
+        payload: { id: 'm1', color: '#ff0000', prevColor: '' },
+      },
+    ]);
+  });
+
+  it('emits nothing when every selected entity is already that color', () => {
+    seedTable(store, 't1');
+    seedMemo(store, 'm1');
+    store.dispatchSync(
+      changeTableColorAction({ id: 't1', color: '#ff0000', prevColor: '' }),
+      changeMemoColorAction({ id: 'm1', color: '#ff0000', prevColor: '' }),
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+
+    expect(typesOf(store, changeColorAllAction$('#ff0000'))).toEqual([]);
+  });
+
+  it('sends nothing for one holding that color in upper case, as the old picker wrote it', () => {
+    seedTable(store, 't1');
+    seedMemo(store, 'm1');
+    seedMemo(store, 'm2');
+    store.dispatchSync(
+      changeTableColorAction({ id: 't1', color: '#FF0000', prevColor: '' }),
+      changeMemoColorAction({ id: 'm1', color: '#FF0000', prevColor: '' }),
+      changeMemoColorAction({ id: 'm2', color: '#ff000080', prevColor: '' }),
+      selectAction({
+        t1: SelectType.table,
+        m1: SelectType.memo,
+        m2: SelectType.memo,
+      })
+    );
+
+    expect(flatten(store, changeColorAllAction$('#ff0000'))).toMatchObject([
+      {
+        type: 'memo.changeColor',
+        payload: { id: 'm2', color: '#ff0000', prevColor: '#ff000080' },
+      },
+    ]);
+  });
+
+  it('sends nothing when the color it is given differs only in letter case', () => {
+    seedTable(store, 't1');
+    seedMemo(store, 'm1');
+    store.dispatchSync(
+      changeTableColorAction({ id: 't1', color: '#ff0000', prevColor: '' }),
+      changeMemoColorAction({ id: 'm1', color: '#ff0000', prevColor: '' }),
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+
+    expect(typesOf(store, changeColorAllAction$('#FF0000'))).toEqual([]);
+  });
 });
 
 describe('removeColorAllAction$', () => {
@@ -863,6 +926,44 @@ describe('removeColorAllAction$ history', () => {
         rxStore.state.collections.memoEntities.m1,
       ].map(entity => entity.ui.color)
     ).toEqual(['#ff0000', '#00ff00', '#0000ff']);
+  });
+});
+
+describe('changeColorAllAction$ history', () => {
+  let rxStore: RxStore;
+
+  afterEach(() => {
+    vi.useRealTimers();
+    rxStore.destroy();
+  });
+
+  it('records no entry for a color pressed again, and paints one an undo took back', () => {
+    vi.useFakeTimers();
+    rxStore = createRxStore({ toWidth, clock: new Clock() });
+    rxStore.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 2 } }),
+      selectAction({ t1: SelectType.table })
+    );
+    vi.advanceTimersByTime(300);
+    const size = rxStore.history.size;
+    const color = () => rxStore.state.collections.tableEntities.t1.ui.color;
+
+    rxStore.dispatchSync(changeColorAllAction$('#ff0000'));
+    vi.advanceTimersByTime(300);
+    rxStore.dispatchSync(changeColorAllAction$('#ff0000'));
+    vi.advanceTimersByTime(300);
+
+    expect(rxStore.history.size).toBe(size + 1);
+
+    rxStore.undo();
+    expect(color()).toBe('');
+
+    rxStore.dispatchSync(changeColorAllAction$('#ff0000'));
+    vi.advanceTimersByTime(300);
+
+    expect(color()).toBe('#ff0000');
+    rxStore.undo();
+    expect(color()).toBe('');
   });
 });
 
