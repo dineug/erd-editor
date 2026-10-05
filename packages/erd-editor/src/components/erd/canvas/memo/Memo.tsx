@@ -50,7 +50,6 @@ import {
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import type { Memo } from '@/internal-types';
 import { getMemoRect } from '@/konva/scene/metrics';
-import { isSecondaryButtonPress } from '@/utils/domEvent';
 import { openColorPickerAction } from '@/utils/emitter';
 import { isMod } from '@/utils/keyboard-shortcut';
 import { isPinchWheel } from '@/utils/pinch';
@@ -93,18 +92,12 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     setSceneCursor(event, CURSOR_INHERIT);
   };
 
-  // Konva clicks on every button: each target here leaves a right one to the
-  // memo menu, which the same press raises.
-  const handleRemoveMemo = (event: SceneMouseEvent) => {
-    if (isSecondaryButtonPress(event.evt)) return;
-
+  const handleRemoveMemo = () => {
     const { store } = app.value;
     store.dispatch(removeMemoAction$(props.memo.id));
   };
 
   const handleOpenColorPicker = (event: SceneMouseEvent) => {
-    if (isSecondaryButtonPress(event.evt)) return;
-
     const { emitter } = app.value;
     emitter.emit(
       openColorPickerAction({
@@ -121,7 +114,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
    * body is scrolled, which is where it was folded, so the mapping holds anywhere.
    */
   const handleEditValue = (event: SceneMouseEvent) => {
-    if (props.preview || isSecondaryButtonPress(event.evt)) return;
+    if (props.preview) return;
 
     const { store } = app.value;
     const { memo } = props;
