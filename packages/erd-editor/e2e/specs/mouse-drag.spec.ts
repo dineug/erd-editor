@@ -1054,9 +1054,7 @@ test.describe('mouse drag', () => {
     // right press above landed where a press pins.
     const start = await graphDotCenter(erd, 'users');
     const end = { x: start.x + 60, y: start.y + 40 };
-    await erd.page.mouse.move(start.x, start.y);
-    await erd.page.mouse.down();
-    await erd.page.mouse.move(end.x, end.y, { steps: 8 });
+    await holdAlong(erd, [start, end]);
     await expect
       .poll(async () => distance(await graphDotCenter(erd, 'users'), end))
       .toBeLessThan(LAYOUT_DRIFT);
