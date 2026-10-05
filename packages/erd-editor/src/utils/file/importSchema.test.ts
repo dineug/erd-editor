@@ -1,3 +1,4 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction, DOMTemplateLiterals, html } from '@dineug/r-html';
 import {
   afterEach,
@@ -18,7 +19,7 @@ import { AppContext } from '@/components/appContext';
 import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType, Database } from '@/constants/schema';
+import { CanvasType, Database, Language } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeViewportAction,
@@ -44,6 +45,7 @@ import {
   changeCanvasTypeAction,
   changeDatabaseAction,
   changeDatabaseNameAction,
+  changeLanguageAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -217,6 +219,34 @@ afterEach(() => {
   toastContainer = null;
 });
 
+/**
+ * A new document, every lock on, whose reader moved the tab and the language
+ * off the values the locks hold.
+ */
+function moveOffTheLocks(app: AppContext) {
+  app.store.dispatchSync(
+    changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+    changeLanguageAction({ value: Language.Kotlin })
+  );
+}
+
+/** The screen and the file of each setting the move touched. */
+function screenAndFile(app: AppContext) {
+  const { settings } = app.store.state;
+  const saved = JSON.parse(toJson(app.store.state)).settings;
+  return {
+    screen: [settings.canvasType, settings.language],
+    locked: [settings.lockedValues.canvasType, settings.lockedValues.language],
+    file: [saved.canvasType, saved.language],
+  };
+}
+
+const KEPT_LOCKS = {
+  screen: [CanvasType.schemaSQL, Language.Kotlin],
+  locked: [CanvasType.ERD, Language.GraphQL],
+  file: [CanvasType.ERD, Language.GraphQL],
+};
+
 describe('importSchema', () => {
   it('replaces the document at once with the tables in the grid', () => {
     const app = createApp();
@@ -228,6 +258,48 @@ describe('importSchema', () => {
     const corners = [cornerOf(app, 'users'), cornerOf(app, 'posts')];
     expect(corners.every(({ y }) => y === TABLE_SORT_START)).toBe(true);
   });
+
+  it('keeps the screen of each locked setting and the value the lock holds', () => {
+    const app = createApp();
+    moveOffTheLocks(app);
+
+    importSchema(app, 'sql', UNRELATED_SQL);
+
+    expect(screenAndFile(app)).toEqual(KEPT_LOCKS);
+  });
+
+  it('keeps the screen of each locked setting through an undo of the import', () => {
+    const app = createApp();
+    moveOffTheLocks(app);
+    importSchema(app, 'sql', UNRELATED_SQL);
+
+    app.store.undo();
+
+    expect(tableNames(app)).toEqual(['old']);
+    expect(screenAndFile(app)).toEqual(KEPT_LOCKS);
+  });
+
+  it.each([
+    ['graphql', 'type Row { id: ID! at: DateTime! }'],
+    ['dbml', 'Enum status { created }\nTable orders {\n  state status\n}'],
+    ['aml', 'type state (created, shipped)\n\norders\n  status state'],
+  ] as const)(
+    'reads %s by the database of the document it lands in',
+    (type, value) => {
+      const typesUnder = (database: number) => {
+        const app = createApp();
+        app.store.dispatchSync(changeDatabaseAction({ value: database }));
+        importSchema(app, type, value);
+        return Object.values(
+          app.store.state.collections.tableColumnEntities
+        ).map(column => column.dataType);
+      };
+
+      expect(typesUnder(Database.PostgreSQL)).not.toEqual(
+        typesUnder(Database.MySQL)
+      );
+    }
+  );
 
   it.each([
     ['graphql', 'type Account { id: ID! }', 'Account'],
@@ -308,6 +380,16 @@ describe('importSchemaPlaced', () => {
     expect(settings.databaseName).toBe('shop');
     expect(settings.database).toBe(Database.PostgreSQL);
     expect([settings.originX, settings.originY]).not.toEqual([-700, -700]);
+  });
+
+  it('keeps the screen of each locked setting and the value the lock holds', async () => {
+    const app = createApp();
+    moveOffTheLocks(app);
+    hoisted.elkLayout = columnLayout;
+
+    await importSchemaPlaced(app, 'sql', FAN_SQL);
+
+    expect(screenAndFile(app)).toEqual(KEPT_LOCKS);
   });
 
   it('keeps a setting changed while it places, the tab the reader moved to included', async () => {

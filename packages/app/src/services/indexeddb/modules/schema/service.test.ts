@@ -51,10 +51,10 @@ function createFakeDatabase() {
 }
 
 /**
- * A stored schema, as every one saved before new documents stopped saving the
- * view is: a file that names no save switch, so it keeps its scroll and zoom.
+ * A stored schema whose locks are all off, so it saves the scroll and the zoom
+ * as a reader leaves them, as every one did before new documents locked them.
  */
-const SAVED_WITH_THE_VIEW = '{"version":"3.0.0"}';
+const SAVED_WITH_THE_VIEW = '{"version":"3.0.0","settings":{"lockSettings":0}}';
 
 function valueOf(actions: any[] = []) {
   const store = createReplicationStore({ toWidth });
@@ -328,12 +328,14 @@ describe('SchemaService', () => {
       await settle();
 
       expect(rows.get(row.id)!.updateAt).toBe(CREATED);
-      expect(JSON.parse(rows.get(row.id)!.value).settings.canvasType).toBe(
-        'SQL'
-      );
+      // Stored as JSON now, the tab at its lock: a new schema locks it.
+      expect(JSON.parse(rows.get(row.id)!.value).settings).toMatchObject({
+        canvasType: 'ERD',
+        lockSettings: 63,
+      });
     });
 
-    it('keeps the view out of a new schema, which saves neither the scroll nor the zoom', async () => {
+    it('keeps the view out of a new schema, whose viewport is locked', async () => {
       const row = seed(rows, { value: '' });
 
       await service.replication(row.id, zoomAndScroll);

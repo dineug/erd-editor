@@ -117,7 +117,7 @@ for (const name of [
   writeFileSync(join(vault, name), '');
 }
 writeFileSync(join(vault, 'notes.md'), '# notes');
-// Both save switches off and no origin, as releases before the origin wrote it:
+// No locks and no origin, as releases before both wrote it, so it opens locked:
 // the bytes are not the replica's, and a zoom or a scroll must not rewrite them.
 const VIEW_ONLY = JSON.stringify({
   version: '3.0.0',
@@ -2014,7 +2014,7 @@ try {
   await sleep(1_000);
   const viewOnlyClosed = readFileSync(real('view-only.erd'), 'utf8');
   step(
-    'a zoom and a scroll with both save switches off leave a file an older release wrote as it was, saved and closed',
+    'a zoom and a scroll under the viewport lock leave a file an older release wrote as it was, saved and closed',
     zoomed &&
       Boolean(zoomShown) &&
       zoomShown !== '100%' &&

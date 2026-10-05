@@ -114,7 +114,7 @@ test.describe('import and export', () => {
     expect(storedTableCount(await app.storedSchema('shop'))).toBe(2);
     // Read straight after parsing, before the engine placed any connector.
     expect(storedAnchors(blog)).toEqual([[0, 0, 0, 0]]);
-    // A source converts to a new document, which saves neither half of the view.
+    // A source converts to a new document, every setting locked.
     expect(storedSettings(blog).ignoreSaveSettings).toBe(3);
 
     await app.page.reload();

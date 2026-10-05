@@ -15,6 +15,9 @@ import {
   DatabaseList,
   Language,
   LanguageList,
+  LockSettingFields,
+  LockSettingType,
+  LockSettingTypeList,
   NameCase,
   NameCaseList,
   SaveSettingType,
@@ -200,16 +203,45 @@ describe('v3/schema/settings', () => {
   });
 
   describe('SaveSettingType', () => {
-    it('exposes only scroll and zoomLevel flags', () => {
+    it('keeps the two bits releases before the locks read', () => {
       expect(SaveSettingType).toEqual({ scroll: 1, zoomLevel: 2 });
-      expect(Object.keys(SaveSettingType)).toHaveLength(2);
+    });
+  });
+
+  describe('LockSettingType', () => {
+    it('pins the stored bit of every lock, the viewport first', () => {
+      expect(LockSettingType).toEqual({
+        viewport: 1,
+        canvasType: 2,
+        language: 4,
+        tableNameCase: 8,
+        columnNameCase: 16,
+        bracketType: 32,
+      });
+      expect(LockSettingTypeList).toEqual(Object.values(LockSettingType));
     });
 
-    it('supports ignoring a subset of settings through bit masking', () => {
-      const ignore = SaveSettingType.scroll;
+    it('names the fields each lock holds, every lockable field once', () => {
+      const fields = LockSettingTypeList.flatMap(bit => LockSettingFields[bit]);
 
-      expect(Boolean(ignore & SaveSettingType.scroll)).toBe(true);
-      expect(Boolean(ignore & SaveSettingType.zoomLevel)).toBe(false);
+      expect(LockSettingFields[LockSettingType.viewport]).toEqual([
+        'originX',
+        'originY',
+        'zoomLevel',
+      ]);
+      expect(new Set(fields).size).toBe(fields.length);
+      expect(fields.sort()).toEqual(
+        [
+          'bracketType',
+          'canvasType',
+          'columnNameCase',
+          'language',
+          'originX',
+          'originY',
+          'tableNameCase',
+          'zoomLevel',
+        ].sort()
+      );
     });
   });
 
@@ -252,7 +284,17 @@ describe('v3/schema/settings', () => {
       relationshipOptimization: false,
       columnOrder: [...ColumnTypeList],
       maxWidthComment: -1,
-      ignoreSaveSettings: SaveSettingType.scroll,
+      lockSettings: LockSettingType.language,
+      lockedValues: {
+        originX: 0,
+        originY: 0,
+        zoomLevel: CANVAS_ZOOM_MAX,
+        canvasType: CanvasType.ERD,
+        language: Language.Java,
+        tableNameCase: NameCase.pascalCase,
+        columnNameCase: NameCase.camelCase,
+        bracketType: BracketType.backtick,
+      },
     };
 
     expect(CanvasTypeList).toContain(settings.canvasType);

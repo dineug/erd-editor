@@ -27,6 +27,9 @@ import {
   DatabaseList,
   Language,
   LanguageList,
+  LockSettingFields,
+  LockSettingType,
+  LockSettingTypeList,
   NameCase,
   NameCaseList,
   SaveSettingType,
@@ -57,6 +60,9 @@ describe('v3/schema/index', () => {
           'DirectionList',
           'Language',
           'LanguageList',
+          'LockSettingFields',
+          'LockSettingType',
+          'LockSettingTypeList',
           'NameCase',
           'NameCaseList',
           'OrderType',
@@ -106,6 +112,9 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants.OrderType).toBe(OrderType);
       expect(SchemaV3Constants.OrderTypeList).toBe(OrderTypeList);
       expect(SchemaV3Constants.SaveSettingType).toBe(SaveSettingType);
+      expect(SchemaV3Constants.LockSettingType).toBe(LockSettingType);
+      expect(SchemaV3Constants.LockSettingTypeList).toBe(LockSettingTypeList);
+      expect(SchemaV3Constants.LockSettingFields).toBe(LockSettingFields);
     });
 
     it('carries the canvas boundary scalars by value', () => {
@@ -121,7 +130,7 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants).not.toHaveProperty('Doc');
       expect(SchemaV3Constants).not.toHaveProperty('Table');
       expect(SchemaV3Constants).not.toHaveProperty('Memo');
-      expect(Object.keys(SchemaV3Constants)).toHaveLength(30);
+      expect(Object.keys(SchemaV3Constants)).toHaveLength(33);
     });
   });
 
@@ -151,7 +160,17 @@ describe('v3/schema/index', () => {
           relationshipOptimization: false,
           columnOrder: [...ColumnTypeList],
           maxWidthComment: -1,
-          ignoreSaveSettings: 0,
+          lockSettings: LockSettingType.viewport,
+          lockedValues: {
+            originX: 0,
+            originY: 0,
+            zoomLevel: CANVAS_ZOOM_MIN,
+            canvasType: CanvasType.ERD,
+            language: Language.Java,
+            tableNameCase: NameCase.pascalCase,
+            columnNameCase: NameCase.camelCase,
+            bracketType: BracketType.doubleQuote,
+          },
         },
         doc: {
           tableIds: ['table-1'],

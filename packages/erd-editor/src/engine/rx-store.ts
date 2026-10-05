@@ -32,6 +32,7 @@ import {
   ignoreTagFilter,
 } from '@/engine/rx-operators';
 import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
+import { lockIgnoreFilter } from '@/engine/rx-operators/lockIgnoreFilter';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
 import { viewActionRedirect } from '@/engine/rx-operators/viewActionRedirect';
 import { viewIgnoreFilter } from '@/engine/rx-operators/viewIgnoreFilter';
@@ -123,6 +124,7 @@ export function createRxStore(
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(
     actionsFilter(ChangeActionTypes),
+    lockIgnoreFilter(() => store.state.settings.lockSettings),
     readonlyIgnoreFilter(getReadonly, [Tag.shared]),
     debounceTime(200)
   );

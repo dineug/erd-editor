@@ -255,6 +255,7 @@ export function createCorpus(options: CorpusOptions): Corpus {
         columnOrder: [...DEFAULT_COLUMN_ORDER],
         maxWidthComment: -1,
         ignoreSaveSettings: 0,
+        lockSettings: 0,
       },
       doc: {
         tableIds,

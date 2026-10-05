@@ -28,8 +28,29 @@ export type Settings = {
   relationshipOptimization: boolean;
   columnOrder: number[];
   maxWidthComment: number;
-  ignoreSaveSettings: number;
+  /**
+   * The LockSettingType bits of the settings a document saves as they stood
+   * when locked; every other setting is saved as it stands.
+   */
+  lockSettings: number;
+  /**
+   * What each locked setting saves, held in memory alone: toJson writes it over
+   * the live value, and a parse takes it from the saved fields.
+   */
+  lockedValues: LockedValues;
 };
+
+export type LockedValues = Pick<
+  Settings,
+  | 'originX'
+  | 'originY'
+  | 'zoomLevel'
+  | 'canvasType'
+  | 'language'
+  | 'tableNameCase'
+  | 'columnNameCase'
+  | 'bracketType'
+>;
 
 export const CanvasType = {
   ERD: 'ERD',
@@ -121,10 +142,39 @@ export const BracketType = {
 export const BracketTypeList: ReadonlyArray<number> =
   Object.values(BracketType);
 
+/**
+ * The bits of ignoreSaveSettings, the field releases before the locks read:
+ * toJson writes both while the viewport is locked and neither while it is not.
+ */
 export const SaveSettingType = {
   scroll: 1,
   zoomLevel: 2,
 } as const;
+
+// Append only, like the lists above. The viewport locks the origin and the zoom
+// together, since an origin saved without its zoom opens on another place.
+export const LockSettingType = {
+  viewport: 1,
+  canvasType: 2,
+  language: 4,
+  tableNameCase: 8,
+  columnNameCase: 16,
+  bracketType: 32,
+} as const;
+export const LockSettingTypeList: ReadonlyArray<number> =
+  Object.values(LockSettingType);
+
+/** The fields each lock holds. */
+export const LockSettingFields: Readonly<
+  Record<number, ReadonlyArray<keyof LockedValues>>
+> = {
+  [LockSettingType.viewport]: ['originX', 'originY', 'zoomLevel'],
+  [LockSettingType.canvasType]: ['canvasType'],
+  [LockSettingType.language]: ['language'],
+  [LockSettingType.tableNameCase]: ['tableNameCase'],
+  [LockSettingType.columnNameCase]: ['columnNameCase'],
+  [LockSettingType.bracketType]: ['bracketType'],
+};
 
 export const CANVAS_ZOOM_MIN = 0.1;
 export const CANVAS_ZOOM_MAX = 1.5;

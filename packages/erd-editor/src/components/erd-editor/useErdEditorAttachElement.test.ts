@@ -30,7 +30,6 @@ import {
 } from '@/components/erd-editor/ErdEditor';
 import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
 import { TABLE_SORT_START } from '@/constants/layout';
-import { SaveSettingType } from '@/constants/schema';
 import {
   dragSelectRectAction,
   editTableAction,
@@ -506,33 +505,33 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof app.store.state.settings.databaseName).toBe('string');
   });
 
-  describe('the save switches of what a host loads', () => {
-    const OFF = SaveSettingType.scroll | SaveSettingType.zoomLevel;
-    const file = '{"version":"3.0.0"}';
+  describe('the locks of what a host loads', () => {
+    const LOCK_ALL = 63;
+    const file = '{"version":"3.0.0","settings":{"lockSettings":0}}';
 
-    it('shows an element given no value a new document, both switches off', async () => {
+    it('shows an element given no value a new document, every lock on', async () => {
       const { app, ctx } = await setup();
 
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
-      expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(OFF);
+      expect(app.store.state.settings.lockSettings).toBe(LOCK_ALL);
+      expect(JSON.parse(ctx.value).settings.lockSettings).toBe(LOCK_ALL);
     });
 
     it('loads an empty initial value, a new file, as a new document', async () => {
       const { app, ctx } = await setup();
       ctx.setInitialValue(file);
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+      expect(app.store.state.settings.lockSettings).toBe(0);
 
       ctx.setInitialValue('');
 
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+      expect(app.store.state.settings.lockSettings).toBe(LOCK_ALL);
     });
 
-    it('keeps a file without the field saving its view', async () => {
+    it('keeps the locks a file names', async () => {
       const { app, ctx } = await setup();
 
       ctx.setInitialValue(file);
 
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+      expect(app.store.state.settings.lockSettings).toBe(0);
     });
 
     it('sends the new document an empty value loads, which any peer parses', async () => {
@@ -545,7 +544,7 @@ describe('useErdEditorAttachElement', () => {
 
       const load = sent.find(({ type }) => type === 'editor.loadJson');
       expect(load?.payload).toEqual({ value: toJson(createSchema()) });
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
+      expect(app.store.state.settings.lockSettings).toBe(LOCK_ALL);
     });
 
     it.each([
@@ -561,21 +560,21 @@ describe('useErdEditorAttachElement', () => {
         ctx[method](source);
 
         expect(app.store.state.doc.tableIds).toHaveLength(1);
-        expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(OFF);
+        expect(JSON.parse(ctx.value).settings.lockSettings).toBe(LOCK_ALL);
       }
     );
 
-    it('keeps the switches of the file a source is imported into', async () => {
+    it('keeps the locks of the file a source is imported into', async () => {
       const { app, ctx } = await setup();
       ctx.setInitialValue(file);
 
       ctx.setSchemaSQL('CREATE TABLE a (id INT);');
 
       expect(app.store.state.doc.tableIds).toHaveLength(1);
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
+      expect(app.store.state.settings.lockSettings).toBe(0);
     });
 
-    it('keeps the switches of the file clear() empties, which stays that file', async () => {
+    it('keeps the locks of the file clear() empties, which stays that file', async () => {
       const { app, ctx } = await setup();
       ctx.setInitialValue(file);
       ctx.setSchemaSQL('CREATE TABLE a (id INT);');
@@ -583,7 +582,7 @@ describe('useErdEditorAttachElement', () => {
       ctx.clear();
 
       expect(app.store.state.doc.tableIds).toEqual([]);
-      expect(JSON.parse(ctx.value).settings.ignoreSaveSettings).toBe(0);
+      expect(JSON.parse(ctx.value).settings.lockSettings).toBe(0);
     });
   });
 

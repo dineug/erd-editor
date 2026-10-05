@@ -323,8 +323,8 @@ describe('ErdEditor', () => {
         const dirtied = vi.fn();
         document.onDidChangeContent(dirtied);
 
-        // A scroll in a view of a file whose Save Scroll Information is on:
-        // the value changed, but nothing can write such a view back.
+        // A scroll in a view of a file whose viewport is unlocked: the value
+        // changed, but nothing can write such a view back.
         webview.__receive(
           Bridge.executeCommand(hostSaveValueCommand, {
             value: '{"scrollTop":120}',

@@ -65,12 +65,12 @@ only; they do not appear in the Command Palette.
 
 ### Keeping diffs clean
 
-A new document leaves the canvas scroll position and zoom level out of the file, so panning
-around never shows up in `git diff`. An existing file keeps storing whatever it was saved with,
-and older files store both: turn off **Save Scroll Information** and **Save Zoom Information**
-in the editor's settings to keep their diffs limited to schema changes, or turn them on for a
-document that should open where you left it. Zooming moves the scroll position too, so with only
-**Save Scroll Information** on, zooming still changes the file.
+The canvas scroll position and zoom level, the open tab and the code generator's language, name
+cases and quotes are locked in every document: the file keeps the values they had when locked, so
+panning around or switching tabs never shows up in `git diff`. The editor's settings list each
+under **Lock** with the value the file keeps. Unlock the viewport for a document that should open
+where you left it, or unlock and lock it again to fix a new starting view. Files saved before the
+locks open with all of them on, their scroll, zoom and tab at the start.
 
 ### Multiple editors per document
 

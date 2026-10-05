@@ -14,6 +14,8 @@ import { CanvasType } from '@/constants/schema';
 import {
   getOpeningOrigin,
   hasViewport,
+  landLoadedSettings,
+  rememberCanvasType,
 } from '@/engine/modules/settings/atom.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
@@ -156,19 +158,26 @@ export const loadJsonAction = createAction<
   ActionMap[typeof ActionType.loadJson]
 >(ActionType.loadJson);
 
+/**
+ * Replaces the document while it is open, an import, an undo or a peer's load,
+ * the screen of every locked setting staying the reader's own.
+ */
 const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
-  { payload: { value } }
+  { payload: { value }, version: actionVersion },
+  { clock }
 ) => {
   const { version, settings, doc, collections } = parser(value);
   if (!hasCanvasType(settings.canvasType)) {
     settings.canvasType = CanvasType.ERD;
   }
 
-  Object.assign(state.settings, settings);
+  rememberCanvasType(state);
+  landLoadedSettings(state, settings, actionVersion ?? clock.getVersion());
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  rememberCanvasType(state);
   clearViews(state.editor);
   pullScrollIntoRange(state);
 };
@@ -198,10 +207,12 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
     settings.canvasType = CanvasType.ERD;
   }
 
+  rememberCanvasType(state);
   Object.assign(state.settings, settings);
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  rememberCanvasType(state);
   clearViews(state.editor);
   pullScrollIntoRange(state);
 };

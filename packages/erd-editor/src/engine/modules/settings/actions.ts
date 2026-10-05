@@ -21,7 +21,7 @@ export const ActionType = {
   changeRelationshipOptimization: 'settings.changeRelationshipOptimization',
   changeColumnOrder: 'settings.changeColumnOrder',
   changeMaxWidthComment: 'settings.changeMaxWidthComment',
-  changeIgnoreSaveSettings: 'settings.changeIgnoreSaveSettings',
+  changeLockSettings: 'settings.changeLockSettings',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -78,9 +78,14 @@ export type ActionMap = {
   [ActionType.changeMaxWidthComment]: {
     value: number;
   };
-  [ActionType.changeIgnoreSaveSettings]: {
-    saveSettingType: number;
+  [ActionType.changeLockSettings]: {
+    lockSettingType: number;
     value: boolean;
+    /**
+     * What a lock holds, read from the settings of the store that took it, so
+     * every peer locks the same values; unread when unlocking.
+     */
+    values: Partial<RootState['settings']['lockedValues']>;
   };
 };
 

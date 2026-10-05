@@ -501,7 +501,12 @@ describe('<erd-editor>', () => {
     el.setInitialValue(
       JSON.stringify({
         version: '3.0.0',
-        settings: { zoomLevel: 1, originX: 40_000, originY: -40_000 },
+        settings: {
+          zoomLevel: 1,
+          originX: 40_000,
+          originY: -40_000,
+          lockSettings: 0,
+        },
         doc: { tableIds: ['t1'] },
         collections: {
           tableEntities: {

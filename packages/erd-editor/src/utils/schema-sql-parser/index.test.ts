@@ -2309,12 +2309,12 @@ CREATE TABLE \`refs\` (
     it('is applied before serialization', () => {
       const schema = parse('CREATE TABLE t (a INT);', schema => {
         schema.settings.databaseName = 'prepared';
-        schema.settings.zoomLevel = 0.5;
+        schema.settings.width = 4000;
         return schema;
       });
 
       expect(schema.settings.databaseName).toBe('prepared');
-      expect(schema.settings.zoomLevel).toBe(0.5);
+      expect(schema.settings.width).toBe(4000);
       expect(schema.doc.tableIds).toHaveLength(1);
     });
 

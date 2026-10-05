@@ -5,6 +5,8 @@ import {
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
   CanvasType,
+  Language,
+  LockSettingType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
@@ -18,6 +20,8 @@ import {
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
   changeCanvasTypeAction,
+  changeLanguageAction,
+  changeLockSettingsAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
@@ -25,6 +29,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   actions$,
+  changeLockSettingsAction$,
   changeZoomLevelAction$,
   pinchZoomAction$,
   streamZoomLevelAction$,
@@ -87,13 +92,81 @@ describe('settings/generator.actions', () => {
     store = createTestStore();
   });
 
-  it('exposes both generator actions through actions$', () => {
+  it('exposes its generator actions through actions$', () => {
     expect(Object.keys(actions$).sort()).toEqual([
+      'changeLockSettingsAction$',
       'changeZoomLevelAction$',
       'streamZoomLevelAction$',
     ]);
     expect(actions$.changeZoomLevelAction$).toBe(changeZoomLevelAction$);
     expect(actions$.streamZoomLevelAction$).toBe(streamZoomLevelAction$);
+    expect(actions$.changeLockSettingsAction$).toBe(changeLockSettingsAction$);
+  });
+
+  describe('changeLockSettingsAction$', () => {
+    const { viewport, canvasType, language } = LockSettingType;
+
+    it('locks at what the settings named hold now, and only those', () => {
+      store.dispatchSync(scrollToAction({ originX: -40, originY: 90 }));
+      store.dispatchSync(changeLanguageAction({ value: Language.Kotlin }));
+
+      expect(
+        flatten(store, changeLockSettingsAction$(viewport | language, true))
+      ).toEqual([
+        changeLockSettingsAction({
+          lockSettingType: viewport | language,
+          value: true,
+          values: {
+            originX: -40,
+            originY: 90,
+            zoomLevel: 1,
+            language: Language.Kotlin,
+          },
+        }),
+      ]);
+    });
+
+    it('sends no values to unlock', () => {
+      expect(
+        flatten(store, changeLockSettingsAction$(language, false))
+      ).toEqual([
+        changeLockSettingsAction({
+          lockSettingType: language,
+          value: false,
+          values: {},
+        }),
+      ]);
+    });
+
+    it('locks the tab the reader came from when taken on the Settings tab', () => {
+      store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+      );
+      store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.settings })
+      );
+      store.dispatchSync(changeLockSettingsAction$(canvasType, false));
+
+      store.dispatchSync(changeLockSettingsAction$(canvasType, true));
+
+      expect(store.state.settings.lockedValues.canvasType).toBe(
+        CanvasType.schemaSQL
+      );
+      expect(store.state.settings.canvasType).toBe(CanvasType.settings);
+    });
+
+    it('locks the tab shown when taken on any other tab', () => {
+      store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.generatorCode })
+      );
+      store.dispatchSync(changeLockSettingsAction$(canvasType, false));
+
+      store.dispatchSync(changeLockSettingsAction$(canvasType, true));
+
+      expect(store.state.settings.lockedValues.canvasType).toBe(
+        CanvasType.generatorCode
+      );
+    });
   });
 
   describe('changeZoomLevelAction$', () => {

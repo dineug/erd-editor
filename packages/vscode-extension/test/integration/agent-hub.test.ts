@@ -401,9 +401,9 @@ describe('document hub for coding agents', () => {
   }
 
   it('leaves a file an older release wrote clean and unwritten after a view change it does not save', async () => {
-    // Both save switches off and no origin, as releases before the origin wrote
-    // it: the replica's value never has these bytes, so only its changed flag
-    // keeps the tab clean.
+    // No locks and no origin, as releases before both wrote it, so it opens
+    // locked: the replica's value never has these bytes, so only its changed
+    // flag keeps the tab clean.
     const bytes = JSON.stringify({
       version: '3.0.0',
       settings: { ignoreSaveSettings: 3, zoomLevel: 1 },

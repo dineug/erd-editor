@@ -9,8 +9,8 @@ import {
   ColumnType,
   Database,
   Language,
+  LockSettingType,
   NameCase,
-  SaveSettingType,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
@@ -31,8 +31,8 @@ import {
   changeColumnOrderAction,
   changeDatabaseAction,
   changeDatabaseNameAction,
-  changeIgnoreSaveSettingsAction,
   changeLanguageAction,
+  changeLockSettingsAction,
   changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
   changeRelationshipOptimizationAction,
@@ -57,6 +57,7 @@ import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { freezeView, thawView } from '@/konva/scene/viewFreeze';
+import { bHas } from '@/utils/bit';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -747,6 +748,30 @@ describe('settings/atom.actions', () => {
       );
       expect(store.state.settings.canvasType).toBe(CanvasType.ERD);
     });
+
+    it('remembers the tab left for another, Settings never among them', () => {
+      const go = (value: string) => {
+        store.dispatchSync(changeCanvasTypeAction({ value }));
+        return store.state.editor.lastCanvasType;
+      };
+
+      expect(store.state.editor.lastCanvasType).toBe(CanvasType.ERD);
+      expect(go(CanvasType.schemaSQL)).toBe(CanvasType.ERD);
+      expect(go(CanvasType.settings)).toBe(CanvasType.schemaSQL);
+      expect(go(CanvasType.ERD)).toBe(CanvasType.schemaSQL);
+      expect(go(CanvasType.generatorCode)).toBe(CanvasType.ERD);
+    });
+
+    it('remembers nothing for a following-tagged switch', () => {
+      store.dispatchSync(
+        tag(
+          changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+          Tag.following
+        )
+      );
+
+      expect(store.state.editor.lastCanvasType).toBe(CanvasType.ERD);
+    });
   });
 
   describe('changeLanguage', () => {
@@ -945,25 +970,141 @@ describe('settings/atom.actions', () => {
     });
   });
 
-  describe('changeIgnoreSaveSettings', () => {
-    const { scroll, zoomLevel } = SaveSettingType;
-    const change = (saveSettingType: number, value: boolean) => {
+  describe('changeLockSettings', () => {
+    const { viewport, language, bracketType } = LockSettingType;
+    const lock = (
+      lockSettingType: number,
+      value: boolean,
+      values: Record<string, unknown> = {}
+    ) => {
       store.dispatchSync(
-        changeIgnoreSaveSettingsAction({ saveSettingType, value })
+        changeLockSettingsAction({ lockSettingType, value, values })
       );
-      return store.state.settings.ignoreSaveSettings;
+      return store.state.settings;
     };
 
-    it('starts a new document with both bits set', () => {
-      expect(store.state.settings.ignoreSaveSettings).toBe(scroll | zoomLevel);
+    it('starts a new document with every lock on', () => {
+      expect(store.state.settings.lockSettings).toBe(63);
     });
 
-    it('sets and clears the requested bit', () => {
-      expect(change(scroll, false)).toBe(zoomLevel);
-      expect(change(zoomLevel, false)).toBe(0);
-      expect(change(scroll, true)).toBe(scroll);
-      expect(change(zoomLevel, true)).toBe(scroll | zoomLevel);
-      expect(change(scroll, false)).toBe(zoomLevel);
+    it('unlocks what it names and leaves the locked values be', () => {
+      const before = { ...store.state.settings.lockedValues };
+      const settings = lock(language | bracketType, false);
+
+      expect(settings.lockSettings).toBe(63 & ~(language | bracketType));
+      expect(settings.lockedValues).toEqual(before);
+    });
+
+    it('locks at the values sent, not at the live ones', () => {
+      lock(language, false);
+      store.dispatchSync(changeLanguageAction({ value: Language.Kotlin }));
+
+      const settings = lock(language, true, { language: Language.Java });
+
+      expect(bHas(settings.lockSettings, language)).toBe(true);
+      expect(settings.lockedValues.language).toBe(Language.Java);
+      expect(settings.language).toBe(Language.Kotlin);
+    });
+
+    it('takes only the fields of the locks it names', () => {
+      lock(language | viewport, false);
+      const settings = lock(language, true, {
+        language: Language.Go,
+        originX: 400,
+        tableNameCase: NameCase.snakeCase,
+      });
+
+      expect(settings.lockedValues).toMatchObject({
+        language: Language.Go,
+        originX: 0,
+        tableNameCase: NameCase.pascalCase,
+      });
+    });
+
+    it('locks the origin and the zoom together', () => {
+      lock(viewport, false);
+      const settings = lock(viewport, true, {
+        originX: -12.5,
+        originY: 40,
+        zoomLevel: 0.8,
+      });
+
+      expect(bHas(settings.lockSettings, viewport)).toBe(true);
+      expect(settings.lockedValues).toMatchObject({
+        originX: -12.5,
+        originY: 40,
+        zoomLevel: 0.8,
+      });
+    });
+
+    it.each([
+      ['a missing field', { originX: 1, zoomLevel: 1 }],
+      [
+        'an origin that is no number',
+        { originX: NaN, originY: 0, zoomLevel: 1 },
+      ],
+      [
+        'a zoom past the canvas range',
+        { originX: 0, originY: 0, zoomLevel: 9 },
+      ],
+    ])('leaves the viewport unlocked for %s', (_, values) => {
+      lock(viewport, false);
+      const settings = lock(viewport, true, values);
+
+      expect(bHas(settings.lockSettings, viewport)).toBe(false);
+      expect(settings.lockedValues).toMatchObject({
+        originX: 0,
+        originY: 0,
+        zoomLevel: 1,
+      });
+    });
+
+    it('lets the latest lock or unlock of a setting win, whatever order they arrive in', () => {
+      const send = (value: boolean, version: number, language?: number) =>
+        store.dispatchSync({
+          ...changeLockSettingsAction({
+            lockSettingType: LockSettingType.language,
+            value,
+            values: { language },
+          }),
+          version,
+        });
+
+      send(true, 9, Language.Java);
+      send(false, 5);
+      send(true, 7, Language.Go);
+
+      expect(bHas(store.state.settings.lockSettings, language)).toBe(true);
+      expect(store.state.settings.lockedValues.language).toBe(Language.Java);
+
+      send(false, 12);
+      send(true, 10, Language.Go);
+
+      expect(bHas(store.state.settings.lockSettings, language)).toBe(false);
+    });
+
+    it.each([
+      [LockSettingType.canvasType, { canvasType: CanvasType.settings }],
+      [LockSettingType.canvasType, { canvasType: 'not-a-canvas' }],
+      [LockSettingType.language, { language: 3 }],
+      [LockSettingType.tableNameCase, { tableNameCase: 3 }],
+      [LockSettingType.columnNameCase, { columnNameCase: 0 }],
+      [LockSettingType.bracketType, { bracketType: '2' }],
+    ])('refuses a value its setter would refuse (lock %s)', (bit, values) => {
+      lock(bit, false);
+
+      expect(bHas(lock(bit, true, values).lockSettings, bit)).toBe(false);
+    });
+
+    it('locks a value at the bottom of the zoom range', () => {
+      lock(viewport, false);
+      const settings = lock(viewport, true, {
+        originX: 0,
+        originY: 0,
+        zoomLevel: 0.1,
+      });
+
+      expect(settings.lockedValues.zoomLevel).toBe(0.1);
     });
   });
 
@@ -1062,8 +1203,8 @@ describe('settings/atom.actions', () => {
         'changeColumnOrderAction',
         'changeDatabaseAction',
         'changeDatabaseNameAction',
-        'changeIgnoreSaveSettingsAction',
         'changeLanguageAction',
+        'changeLockSettingsAction',
         'changeMaxWidthCommentAction',
         'changeRelationshipDataTypeSyncAction',
         'changeRelationshipOptimizationAction',

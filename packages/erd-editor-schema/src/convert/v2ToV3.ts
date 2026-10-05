@@ -13,6 +13,7 @@ import { createIndexColumn } from '@/v3/parser/indexColumn.entity';
 import { createMemo } from '@/v3/parser/memo.entity';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import { createRelationship } from '@/v3/parser/relationship.entity';
+import { toLockedValues } from '@/v3/parser/settings';
 import { createTable } from '@/v3/parser/table.entity';
 import { createColumn } from '@/v3/parser/tableColumn.entity';
 
@@ -96,6 +97,8 @@ function assignCanvas(
   ) {
     target.columnOrder = newColumnOrder;
   }
+
+  target.lockedValues = toLockedValues(target);
 }
 
 function assignTable(

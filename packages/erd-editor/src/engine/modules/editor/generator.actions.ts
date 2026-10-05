@@ -762,8 +762,8 @@ const IMPORT_OMIT_SETTINGS = [
 
 /**
  * Writes the settings of the document an import replaces over the parser's,
- * all but the view and the canvas size. A placed import writes them again as
- * it lands, so a setting changed while it placed is not undone.
+ * all but the view and the canvas size, locks included, the view locked where
+ * the parser left it. A placed import writes them again as it lands.
  *
  * @example
  * withImportSettings(schema, store.state.settings);
@@ -772,9 +772,13 @@ export function withImportSettings(
   schema: Pick<ERDEditorSchemaV3, 'settings'>,
   settings: RootState['settings']
 ): void {
+  const kept = omit(cloneDeep(settings), IMPORT_OMIT_SETTINGS);
+  const { originX, originY, zoomLevel } = schema.settings;
+
   schema.settings = {
     ...schema.settings,
-    ...omit(cloneDeep(settings), IMPORT_OMIT_SETTINGS),
+    ...kept,
+    lockedValues: { ...kept.lockedValues, originX, originY, zoomLevel },
   };
 }
 

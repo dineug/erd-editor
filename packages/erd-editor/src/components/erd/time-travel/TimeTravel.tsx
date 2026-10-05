@@ -37,8 +37,8 @@ export type TimeTravelProps = {
 };
 
 /**
- * The reader's document at the scroll and zoom they are looking at, either of
- * which the file leaves out while its switch is off, as both are in a new one.
+ * The reader's document at the scroll and zoom they are looking at, which the
+ * file holds at the values it was locked at while the viewport is locked.
  */
 function toPreviewJson(state: RootState): string {
   const { originX, originY, zoomLevel } = state.settings;

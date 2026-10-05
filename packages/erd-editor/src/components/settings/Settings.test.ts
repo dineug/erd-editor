@@ -8,15 +8,23 @@ import { Lnb } from '@/components/settings/settings-lnb/SettingsLnb';
 import * as lnbStyles from '@/components/settings/settings-lnb/SettingsLnb.styles';
 import * as shortcutsStyles from '@/components/settings/shortcuts/Shortcuts.styles';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
-import { ColumnType, SaveSettingType } from '@/constants/schema';
+import {
+  BracketType,
+  CanvasType,
+  ColumnType,
+  Language,
+  LockSettingType,
+} from '@/constants/schema';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
-  changeIgnoreSaveSettingsAction,
+  changeCanvasTypeAction,
+  changeLanguageAction,
   changeMaxWidthCommentAction,
+  changeZoomLevelAction,
+  scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { fontSize6 } from '@/styles/typography.styles';
-import { bHas } from '@/utils/bit';
 
 let mounted: Mounted | null = null;
 
@@ -34,6 +42,18 @@ const rows = () =>
 
 const switchIn = (rowIndex: number) =>
   rows()[rowIndex].querySelector('button') as HTMLButtonElement;
+
+const lockRows = () =>
+  Array.from<HTMLDivElement>(root().querySelectorAll(`.${styles.lockRow}`));
+
+const lockName = (row: Element) =>
+  row.querySelector(`.${styles.lockName}`)?.textContent?.trim();
+
+const lockValue = (row: Element) =>
+  row.querySelector(`.${styles.lockValue}`) as HTMLDivElement;
+
+const lockButton = (row: Element) =>
+  row.querySelector('button') as HTMLButtonElement;
 
 const maxWidthInput = () =>
   root().querySelector(
@@ -94,15 +114,13 @@ describe('Settings', () => {
       expect(root().querySelector(`.${styles.section}`)).toBeTruthy();
     });
 
-    it('renders the five preference rows in order', async () => {
+    it('renders the three preference rows in order', async () => {
       await setup();
 
       expect(
         rows().map(row => row.firstElementChild?.textContent?.trim())
       ).toEqual([
         'Relationship DataType Sync',
-        'Save Scroll Information',
-        'Save Zoom Information',
         'Maximum comment width',
         'Recalculation table width',
       ]);
@@ -160,91 +178,144 @@ describe('Settings', () => {
     });
   });
 
-  describe('save settings switches', () => {
-    const OFF = SaveSettingType.scroll | SaveSettingType.zoomLevel;
+  describe('lock rows', () => {
+    const { viewport, canvasType, language, bracketType } = LockSettingType;
 
-    /** A file that names no switch, as every one saved before new documents turned both off. */
-    async function setupFile() {
+    /** A file whose locks are all off, its view and code settings named. */
+    async function setupUnlocked() {
       const opened = await setup();
       opened.app.store.dispatchSync(
-        initialLoadJsonAction$('{"version":"3.0.0"}')
+        initialLoadJsonAction$(
+          JSON.stringify({
+            version: '3.0.0',
+            settings: {
+              lockSettings: 0,
+              originX: -40.4,
+              originY: 90.6,
+              zoomLevel: 0.5,
+              language: Language.Kotlin,
+              bracketType: BracketType.backtick,
+            },
+          })
+        )
       );
       await flush();
       return opened;
     }
 
-    it('shows both switches off for a new document', async () => {
-      const { app } = await setup();
+    it('lists one row per lock, in the order of the bits', async () => {
+      await setup();
 
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(OFF);
-      expect(switchIn(1).getAttribute('data-checked')).toBe('false');
-      expect(switchIn(2).getAttribute('data-checked')).toBe('false');
+      expect(lockRows().map(row => lockName(row))).toEqual([
+        'Viewport',
+        'Canvas Type',
+        'Language',
+        'Table Name Case',
+        'Column Name Case',
+        'Bracket Type',
+      ]);
     });
 
-    it('turns on saving the scroll of a new document alone', async () => {
-      const { app } = await setup();
+    it('shows every lock of a new document on, at its value', async () => {
+      await setup();
 
-      click(switchIn(1));
-      await flush();
-
-      const { ignoreSaveSettings } = app.store.state.settings;
-      expect(bHas(ignoreSaveSettings, SaveSettingType.scroll)).toBe(false);
-      expect(bHas(ignoreSaveSettings, SaveSettingType.zoomLevel)).toBe(true);
-      expect(switchIn(1).getAttribute('data-checked')).toBe('true');
-      expect(switchIn(2).getAttribute('data-checked')).toBe('false');
-    });
-
-    it('shows scroll and zoom as saved for a file without the field', async () => {
-      const { app } = await setupFile();
-
-      expect(app.store.state.settings.ignoreSaveSettings).toBe(0);
-      expect(switchIn(1).getAttribute('data-checked')).toBe('true');
-      expect(switchIn(2).getAttribute('data-checked')).toBe('true');
-    });
-
-    it('sets the scroll ignore bit when the scroll switch is turned off', async () => {
-      const { app } = await setupFile();
-
-      click(switchIn(1));
-      await flush();
-
-      const { ignoreSaveSettings } = app.store.state.settings;
-      expect(bHas(ignoreSaveSettings, SaveSettingType.scroll)).toBe(true);
-      expect(bHas(ignoreSaveSettings, SaveSettingType.zoomLevel)).toBe(false);
-      expect(switchIn(1).getAttribute('data-checked')).toBe('false');
-    });
-
-    it('clears the scroll ignore bit again when turned back on', async () => {
-      const { app } = await setupFile();
-      app.store.dispatchSync(
-        changeIgnoreSaveSettingsAction({
-          saveSettingType: SaveSettingType.scroll,
-          value: true,
-        })
+      expect(lockRows().map(row => lockValue(row).textContent?.trim())).toEqual(
+        ['100% · 0, 0', 'ERD', 'GraphQL', 'Pascal', 'Camel', 'None']
       );
-      await flush();
-      expect(switchIn(1).getAttribute('data-checked')).toBe('false');
-
-      click(switchIn(1));
-      await flush();
-
-      expect(
-        bHas(
-          app.store.state.settings.ignoreSaveSettings,
-          SaveSettingType.scroll
-        )
-      ).toBe(false);
+      for (const row of lockRows()) {
+        expect(lockButton(row).getAttribute('aria-pressed')).toBe('true');
+        expect(lockValue(row).hasAttribute('data-locked')).toBe(true);
+      }
+      expect(lockButton(lockRows()[0]).title).toBe('Unlock Viewport');
     });
 
-    it('sets only the zoom ignore bit when the zoom switch is turned off', async () => {
-      const { app } = await setupFile();
+    it('shows the locked value, not the live one', async () => {
+      const { app } = await setup();
 
-      click(switchIn(2));
+      app.store.dispatchSync([
+        changeZoomLevelAction({ value: 0.5 }),
+        scrollToAction({ originX: 300, originY: -20 }),
+        changeLanguageAction({ value: Language.Go }),
+      ]);
       await flush();
 
-      const { ignoreSaveSettings } = app.store.state.settings;
-      expect(bHas(ignoreSaveSettings, SaveSettingType.zoomLevel)).toBe(true);
-      expect(bHas(ignoreSaveSettings, SaveSettingType.scroll)).toBe(false);
+      expect(lockValue(lockRows()[0]).textContent?.trim()).toBe('100% · 0, 0');
+      expect(lockValue(lockRows()[2]).textContent?.trim()).toBe('GraphQL');
+    });
+
+    it('shows the live value, dimmed, of an unlocked setting', async () => {
+      await setupUnlocked();
+
+      const [view, , code, , , bracket] = lockRows();
+      expect(lockValue(view).textContent?.trim()).toBe('50% · -40, 91');
+      expect(lockValue(code).textContent?.trim()).toBe('Kotlin');
+      expect(lockValue(bracket).textContent?.trim()).toBe('Backtick');
+      expect(lockValue(view).hasAttribute('data-locked')).toBe(false);
+      expect(lockButton(view).getAttribute('aria-pressed')).toBe('false');
+      expect(lockButton(view).title).toBe('Lock Viewport');
+    });
+
+    it('locks a setting at its value when its button is pressed', async () => {
+      const { app } = await setupUnlocked();
+
+      click(lockButton(lockRows()[2]));
+      await flush();
+
+      const { lockSettings, lockedValues } = app.store.state.settings;
+      expect(lockSettings).toBe(language);
+      expect(lockedValues.language).toBe(Language.Kotlin);
+      expect(lockButton(lockRows()[2]).getAttribute('aria-pressed')).toBe(
+        'true'
+      );
+    });
+
+    it('locks the origin and the zoom together', async () => {
+      const { app } = await setupUnlocked();
+
+      click(lockButton(lockRows()[0]));
+      await flush();
+
+      expect(app.store.state.settings.lockSettings).toBe(viewport);
+      expect(app.store.state.settings.lockedValues).toMatchObject({
+        originX: -40.4,
+        originY: 90.6,
+        zoomLevel: 0.5,
+      });
+    });
+
+    it('names and locks the tab the reader came from, never Settings', async () => {
+      const { app } = await setupUnlocked();
+      app.store.dispatchSync([
+        changeCanvasTypeAction({ value: CanvasType.generatorCode }),
+        changeCanvasTypeAction({ value: CanvasType.settings }),
+      ]);
+      await flush();
+      expect(lockValue(lockRows()[1]).textContent?.trim()).toBe(
+        'Code Generator'
+      );
+
+      click(lockButton(lockRows()[1]));
+      await flush();
+
+      expect(app.store.state.settings.lockSettings).toBe(canvasType);
+      expect(app.store.state.settings.lockedValues.canvasType).toBe(
+        CanvasType.generatorCode
+      );
+      expect(lockValue(lockRows()[1]).textContent?.trim()).toBe(
+        'Code Generator'
+      );
+    });
+
+    it('unlocks one setting alone', async () => {
+      const { app } = await setup();
+
+      click(lockButton(lockRows()[5]));
+      await flush();
+
+      expect(app.store.state.settings.lockSettings).toBe(63 & ~bracketType);
+      expect(lockButton(lockRows()[5]).getAttribute('aria-pressed')).toBe(
+        'false'
+      );
     });
   });
 
@@ -253,7 +324,7 @@ describe('Settings', () => {
       const { app } = await setup();
 
       expect(app.store.state.settings.maxWidthComment).toBe(-1);
-      expect(switchIn(3).getAttribute('data-checked')).toBe('false');
+      expect(switchIn(1).getAttribute('data-checked')).toBe('false');
       expect(maxWidthInput().disabled).toBe(true);
       expect(maxWidthInput().value).toBe(`${COLUMN_MIN_WIDTH}px`);
     });
@@ -261,11 +332,11 @@ describe('Settings', () => {
     it('enables the input with the column minimum when switched on', async () => {
       const { app } = await setup();
 
-      click(switchIn(3));
+      click(switchIn(1));
       await flush();
 
       expect(app.store.state.settings.maxWidthComment).toBe(COLUMN_MIN_WIDTH);
-      expect(switchIn(3).getAttribute('data-checked')).toBe('true');
+      expect(switchIn(1).getAttribute('data-checked')).toBe('true');
       expect(maxWidthInput().disabled).toBe(false);
       expect(maxWidthInput().value).toBe('60px');
     });
@@ -276,7 +347,7 @@ describe('Settings', () => {
       await flush();
       expect(maxWidthInput().value).toBe('120px');
 
-      click(switchIn(3));
+      click(switchIn(1));
       await flush();
 
       expect(app.store.state.settings.maxWidthComment).toBe(-1);
@@ -337,7 +408,7 @@ describe('Settings', () => {
       table.ui.widthName = 1;
       await flush();
 
-      const button = rows()[4].querySelector('button') as HTMLButtonElement;
+      const button = rows()[2].querySelector('button') as HTMLButtonElement;
       click(button);
       await flush();
 
@@ -349,7 +420,7 @@ describe('Settings', () => {
       const openToast = vi.fn();
       app.emitter.on({ openToast });
 
-      click(rows()[4].querySelector('button') as HTMLButtonElement);
+      click(rows()[2].querySelector('button') as HTMLButtonElement);
       await flush();
 
       expect(openToast).toHaveBeenCalledTimes(1);

@@ -1,4 +1,4 @@
-import type { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
+import { type ERDEditorSchemaV3, toJson } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { placeByFlow } from '@/components/erd/automatic-table-placement/flowPlacement';
@@ -142,7 +142,7 @@ function toLandingJson(
     tables[id].ui.y = TABLE_SORT_START + y;
   });
 
-  return JSON.stringify(schema);
+  return toJson(schema as ERDEditorSchemaV3);
 }
 
 /**

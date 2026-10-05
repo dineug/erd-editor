@@ -1,17 +1,29 @@
+import { isPlainObject } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { DeepPartial } from '@/internal-types';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
-import { createAndMergeSettings } from '@/v3/parser/settings';
+import { createAndMergeSettings as mergeSettings } from '@/v3/parser/settings';
 import {
   BracketType,
   CanvasType,
   ColumnType,
   Database,
   Language,
+  LockSettingType,
   NameCase,
+  Settings,
   Show,
 } from '@/v3/schema/settings';
+
+const LOCK_ALL = 63;
+
+/** A file that names its locks, so the view and the tab it saved stay. */
+const createAndMergeSettings = (json?: DeepPartial<Settings>) =>
+  mergeSettings(
+    isPlainObject(json) ? { lockSettings: LOCK_ALL, ...json } : json
+  );
 
 const defaultShow =
   Show.tableComment |
@@ -54,7 +66,17 @@ describe('createAndMergeSettings', () => {
       relationshipOptimization: false,
       columnOrder: defaultColumnOrder,
       maxWidthComment: -1,
-      ignoreSaveSettings: 0,
+      lockSettings: LOCK_ALL,
+      lockedValues: {
+        originX: 0,
+        originY: 0,
+        zoomLevel: 1,
+        canvasType: CanvasType.ERD,
+        language: Language.GraphQL,
+        tableNameCase: NameCase.pascalCase,
+        columnNameCase: NameCase.camelCase,
+        bracketType: BracketType.none,
+      },
     });
   });
 
@@ -175,7 +197,7 @@ describe('createAndMergeSettings', () => {
         scrollTop: 12,
         scrollLeft: -34,
         show: Show.relationship,
-        ignoreSaveSettings: 3,
+        lockSettings: LockSettingType.language,
         databaseName: 'sakila',
         canvasType: CanvasType.schemaSQL,
         relationshipDataTypeSync: false,
@@ -185,7 +207,7 @@ describe('createAndMergeSettings', () => {
       expect(settings.scrollTop).toBe(12);
       expect(settings.scrollLeft).toBe(-34);
       expect(settings.show).toBe(Show.relationship);
-      expect(settings.ignoreSaveSettings).toBe(3);
+      expect(settings.lockSettings).toBe(LockSettingType.language);
       expect(settings.databaseName).toBe('sakila');
       expect(settings.canvasType).toBe(CanvasType.schemaSQL);
       expect(settings.relationshipDataTypeSync).toBe(false);
@@ -438,5 +460,100 @@ describe('the legacy scroll migration', () => {
     const settings = createAndMergeSettings(json);
 
     expect(settings).toMatchObject(migrateScrollToOrigin(settings));
+  });
+});
+
+describe('a document saved before the locks', () => {
+  const saved = {
+    originX: -11,
+    originY: 22.5,
+    zoomLevel: 0.5,
+    canvasType: CanvasType.schemaSQL,
+    language: Language.Java,
+    tableNameCase: NameCase.snakeCase,
+    columnNameCase: NameCase.none,
+    bracketType: BracketType.doubleQuote,
+  };
+
+  it.each([
+    ['without a switch', saved],
+    ['that saved its view', { ...saved, ignoreSaveSettings: 0 }],
+    ['that saved none of it', { ...saved, ignoreSaveSettings: 3 }],
+  ])('locks every setting of a file %s', (_label, json) => {
+    expect(mergeSettings(json as DeepPartial<Settings>).lockSettings).toBe(
+      LOCK_ALL
+    );
+  });
+
+  it('opens its view and tab where a new document does and locks them there', () => {
+    const settings = mergeSettings(saved);
+    const start = {
+      originX: 0,
+      originY: 0,
+      zoomLevel: 1,
+      canvasType: CanvasType.ERD,
+    };
+
+    expect(settings).toMatchObject(start);
+    expect(settings.lockedValues).toMatchObject(start);
+  });
+
+  it('locks the code settings at what it saved', () => {
+    const { lockedValues, ...settings } = mergeSettings(saved);
+    const code = {
+      language: Language.Java,
+      tableNameCase: NameCase.snakeCase,
+      columnNameCase: NameCase.none,
+      bracketType: BracketType.doubleQuote,
+    };
+
+    expect(settings).toMatchObject(code);
+    expect(lockedValues).toMatchObject(code);
+  });
+
+  it('keeps everything a file that names its locks saved, unlocked or not', () => {
+    const settings = mergeSettings({ ...saved, lockSettings: 0 });
+
+    expect(settings.lockSettings).toBe(0);
+    expect(settings).toMatchObject(saved);
+    expect(settings.lockedValues).toEqual(saved);
+  });
+});
+
+describe('the view and the tab a lock can hold', () => {
+  it.each([
+    ['an infinite originX', { originX: Infinity, originY: 0 }],
+    ['a NaN originY', { originX: 0, originY: NaN }],
+  ])('migrates the origin of %s rather than locking it', (_label, origin) => {
+    const settings = mergeSettings({
+      ...origin,
+      scrollLeft: -10,
+      scrollTop: 20,
+      lockSettings: LOCK_ALL,
+    });
+
+    expect(Number.isFinite(settings.originX)).toBe(true);
+    expect(Number.isFinite(settings.originY)).toBe(true);
+    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
+    expect(settings.lockedValues.originX).toBe(settings.originX);
+  });
+
+  it('opens a tab locked at Settings, which only a hand edit writes, on the ERD', () => {
+    const settings = mergeSettings({
+      canvasType: CanvasType.settings,
+      lockSettings: LockSettingType.canvasType,
+    });
+
+    expect(settings.canvasType).toBe(CanvasType.ERD);
+    expect(settings.lockedValues.canvasType).toBe(CanvasType.ERD);
+  });
+
+  it('keeps the Settings tab a file saved with its tab unlocked', () => {
+    const settings = mergeSettings({
+      canvasType: CanvasType.settings,
+      lockSettings: 0,
+    });
+
+    expect(settings.canvasType).toBe(CanvasType.settings);
   });
 });

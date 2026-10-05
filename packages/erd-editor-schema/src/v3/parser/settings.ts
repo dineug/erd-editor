@@ -6,10 +6,12 @@ import {
   isNumber,
   isPlainObject,
   isString,
+  pick,
 } from 'es-toolkit';
 
 import { assign, validNumber } from '@/helper';
 import { DeepPartial } from '@/internal-types';
+import { bHas } from '@/utils/bit';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import {
   BracketType,
@@ -25,6 +27,10 @@ import {
   DatabaseList,
   Language,
   LanguageList,
+  LockedValues,
+  LockSettingFields,
+  LockSettingType,
+  LockSettingTypeList,
   NameCase,
   NameCaseList,
   Settings,
@@ -40,36 +46,55 @@ const defaultShow =
   Show.columnNotNull |
   Show.relationship;
 
-const createSettings = (): Settings => ({
-  width: 2000,
-  height: 2000,
-  scrollTop: 0,
-  scrollLeft: 0,
-  originX: 0,
-  originY: 0,
-  zoomLevel: 1,
-  show: defaultShow,
-  database: Database.MySQL,
-  databaseName: '',
-  canvasType: CanvasType.ERD,
-  language: Language.GraphQL,
-  tableNameCase: NameCase.pascalCase,
-  columnNameCase: NameCase.camelCase,
-  bracketType: BracketType.none,
-  relationshipDataTypeSync: true,
-  relationshipOptimization: false,
-  columnOrder: [
-    ColumnType.columnName,
-    ColumnType.columnDataType,
-    ColumnType.columnNotNull,
-    ColumnType.columnUnique,
-    ColumnType.columnAutoIncrement,
-    ColumnType.columnDefault,
-    ColumnType.columnComment,
-  ],
-  maxWidthComment: -1,
-  ignoreSaveSettings: 0,
-});
+const LOCK_ALL = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
+
+const LOCKED_FIELDS = LockSettingTypeList.flatMap(
+  bit => LockSettingFields[bit]
+);
+
+/**
+ * What the lockable settings hold now, which is what a document saved them as
+ * when it was just parsed.
+ */
+export const toLockedValues = (settings: LockedValues): LockedValues =>
+  pick(settings, LOCKED_FIELDS);
+
+const createSettings = (): Settings => {
+  const settings: Omit<Settings, 'lockedValues'> = {
+    width: 2000,
+    height: 2000,
+    scrollTop: 0,
+    scrollLeft: 0,
+    originX: 0,
+    originY: 0,
+    zoomLevel: 1,
+    show: defaultShow,
+    database: Database.MySQL,
+    databaseName: '',
+    canvasType: CanvasType.ERD,
+    language: Language.GraphQL,
+    tableNameCase: NameCase.pascalCase,
+    columnNameCase: NameCase.camelCase,
+    bracketType: BracketType.none,
+    relationshipDataTypeSync: true,
+    relationshipOptimization: false,
+    columnOrder: [
+      ColumnType.columnName,
+      ColumnType.columnDataType,
+      ColumnType.columnNotNull,
+      ColumnType.columnUnique,
+      ColumnType.columnAutoIncrement,
+      ColumnType.columnDefault,
+      ColumnType.columnComment,
+    ],
+    maxWidthComment: -1,
+    lockSettings: LOCK_ALL,
+  };
+  return { ...settings, lockedValues: toLockedValues(settings) };
+};
+
+const isFiniteNumber = (value: unknown): value is number =>
+  Number.isFinite(value);
 
 const sizeInRange = (value: number) =>
   clamp(value, CANVAS_SIZE_MIN, CANVAS_SIZE_MAX);
@@ -101,7 +126,6 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   assignNumber('scrollTop');
   assignNumber('scrollLeft');
   assignNumber('show');
-  assignNumber('ignoreSaveSettings');
   assignString('databaseName');
   assignString('canvasType');
   assignBoolean('relationshipDataTypeSync');
@@ -121,7 +145,7 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     settings.columnOrder = json.columnOrder as number[];
   }
 
-  if (isNumber(json.originX) && isNumber(json.originY)) {
+  if (isFiniteNumber(json.originX) && isFiniteNumber(json.originY)) {
     settings.originX = json.originX;
     settings.originY = json.originY;
   } else {
@@ -130,5 +154,30 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     settings.originY = originY;
   }
 
+  if (isNumber(json.lockSettings)) {
+    settings.lockSettings = json.lockSettings & LOCK_ALL;
+    // A tab no editor locks, which only a hand edit can have written.
+    if (
+      bHas(settings.lockSettings, LockSettingType.canvasType) &&
+      settings.canvasType === CanvasType.settings
+    ) {
+      settings.canvasType = CanvasType.ERD;
+    }
+    settings.lockedValues = toLockedValues(settings);
+  } else {
+    resetPreLockView(settings);
+  }
+
   return settings;
+}
+
+/**
+ * A document saved before the locks, every one of which it opens with on:
+ * its view and tab start where a new document's do, since what it saved of
+ * them was only where its last reader stood.
+ */
+export function resetPreLockView(settings: Settings): void {
+  const { originX, originY, zoomLevel, canvasType } = createSettings();
+  Object.assign(settings, { originX, originY, zoomLevel, canvasType });
+  settings.lockedValues = toLockedValues(settings);
 }

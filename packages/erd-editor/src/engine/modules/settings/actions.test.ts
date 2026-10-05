@@ -50,8 +50,6 @@ describe('settings/actions', () => {
     expect(ActionType.changeDatabaseName).toBe('settings.changeDatabaseName');
     expect(ActionType.streamScrollTo).toBe('settings.streamScrollTo');
     expect(ActionType.streamZoomLevel).toBe('settings.streamZoomLevel');
-    expect(ActionType.changeIgnoreSaveSettings).toBe(
-      'settings.changeIgnoreSaveSettings'
-    );
+    expect(ActionType.changeLockSettings).toBe('settings.changeLockSettings');
   });
 });

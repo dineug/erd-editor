@@ -7,9 +7,10 @@ import {
   Database,
   type GeneratorAction,
   Language,
+  LockSettingType,
   NameCase,
-  SaveSettingType,
   settingsActions,
+  settingsActions$,
   Show,
 } from '@dineug/erd-editor/peer.js';
 import type { AnyAction } from '@dineug/r-html';
@@ -22,6 +23,13 @@ import type {
 } from '@/tools/registry';
 
 const MAX_WIDTH_COMMENT = 200;
+
+// What a peer holds of these is the view it loaded, since every receiver drops
+// a scroll, a zoom and a tab switch, so a lock it took would hold a stale view.
+const VIEWER_LOCKS: readonly number[] = [
+  LockSettingType.viewport,
+  LockSettingType.canvasType,
+];
 
 const ATOM_REASON =
   'The settings module has no generator for this setting: changeZoomLevelAction$ and streamZoomLevelAction$ only zoom the canvas. The settings panel and menus dispatch this atom themselves.';
@@ -187,20 +195,28 @@ export const settingsTools: readonly ActionTool[] = [
     toAction: ({ value }) =>
       settingsActions.changeMaxWidthCommentAction({ value }),
   }),
-  settingTool({
-    name: 'erd_set_ignore_save_settings',
-    actionType: 'settings.changeIgnoreSaveSettings',
-    field: 'ignoreSaveSettings',
+  {
+    name: 'erd_set_lock_settings',
+    kind: 'generator',
+    actionTypes: ['settings.changeLockSettings'],
+    undoable: false,
+    undoableReason: UNDOABLE_REASON,
+    stream: false,
+    expectedBatches: 1,
+    expectedHistory: 0,
+    snapshotPaths: ['settings.lockSettings'],
     args: [
-      arg('saveSettingType', enumKind(SaveSettingType)),
+      arg('lockSettingType', enumKind(LockSettingType)),
       arg('value', { type: 'boolean' }),
     ],
-    toAction: ({ saveSettingType, value }) =>
-      settingsActions.changeIgnoreSaveSettingsAction({
-        saveSettingType,
-        value,
-      }),
-  }),
+    refine: ({ lockSettingType, value }) =>
+      value && VIEWER_LOCKS.includes(lockSettingType)
+        ? 'an agent has no screen to lock the viewport or the canvas type at; the user locks them in the editor Settings tab'
+        : undefined,
+    toActions: ({ lockSettingType, value }) => [
+      settingsActions$.changeLockSettingsAction$(lockSettingType, value),
+    ],
+  },
   {
     name: 'erd_set_show',
     kind: 'atom',

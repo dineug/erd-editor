@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { LockSettingType, LockSettingTypeList } from '@/constants/schema';
 import {
   actions,
+  type ActionType,
   ChangeActionTypes,
   HistoryActionTypes,
+  LockSettingActionTypes,
   ReadonlyIgnoreActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
@@ -168,6 +171,38 @@ describe('ReadonlyIgnoreActionTypes', () => {
     expect(ReadonlyIgnoreActionTypes).toContain('table.add');
     expect(ReadonlyIgnoreActionTypes).toContain('column.remove');
     expect(ReadonlyIgnoreActionTypes).toContain('editor.loadJson');
+  });
+});
+
+describe('LockSettingActionTypes', () => {
+  it('names the change of each lockable setting, under the lock that holds it', () => {
+    expect(LockSettingActionTypes).toEqual({
+      'settings.changeZoomLevel': LockSettingType.viewport,
+      'settings.streamZoomLevel': LockSettingType.viewport,
+      'settings.scrollTo': LockSettingType.viewport,
+      'settings.streamScrollTo': LockSettingType.viewport,
+      'settings.changeCanvasType': LockSettingType.canvasType,
+      'settings.changeLanguage': LockSettingType.language,
+      'settings.changeTableNameCase': LockSettingType.tableNameCase,
+      'settings.changeColumnNameCase': LockSettingType.columnNameCase,
+      'settings.changeBracketType': LockSettingType.bracketType,
+    });
+  });
+
+  it('holds out only change actions, every lock among them', () => {
+    const types = Object.keys(LockSettingActionTypes) as ActionType[];
+
+    for (const type of types) expect(ChangeActionTypes).toContain(type);
+    expect(new Set(Object.values(LockSettingActionTypes))).toEqual(
+      new Set(LockSettingTypeList)
+    );
+  });
+
+  it('leaves the lock itself a change, which the file holds', () => {
+    expect(ChangeActionTypes).toContain('settings.changeLockSettings');
+    expect(LockSettingActionTypes).not.toHaveProperty(
+      'settings.changeLockSettings'
+    );
   });
 });
 

@@ -1,4 +1,4 @@
-import { type RootState, SaveSettingType } from '@dineug/erd-editor/peer.js';
+import { type RootState } from '@dineug/erd-editor/peer.js';
 import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -327,9 +327,7 @@ describe('what an import refuses or mirrors from the element', () => {
     expect(run.batches).toBe(1);
     for (const peer of [session.agent, session.other]) {
       expect(peer.state.doc.tableIds).toEqual([]);
-      expect(peer.state.settings.ignoreSaveSettings).toBe(
-        SaveSettingType.scroll | SaveSettingType.zoomLevel
-      );
+      expect(peer.state.settings.lockSettings).toBe(63);
     }
   });
 });

@@ -48,7 +48,7 @@ export function stripBom(text: string): string {
 
 /**
  * The bytes of a new document: an empty peer's value, $schema stamp included,
- * which saves neither the scroll nor the zoom, as a new diagram in an editor.
+ * every setting locked, as a new diagram in an editor.
  */
 export function createEmptyDocument(): string {
   const peer = createPeerStore({ nickname: '', presence: false });

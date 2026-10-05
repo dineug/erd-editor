@@ -148,7 +148,11 @@
           "type": "integer"
         },
         "ignoreSaveSettings": {
-          "description": "bit value (scroll: 1) | (zoomLevel: 2)",
+          "description": "bit value (scroll: 1) | (zoomLevel: 2), read by releases before lockSettings; written as both bits while the viewport is locked and as 0 otherwise",
+          "type": "integer"
+        },
+        "lockSettings": {
+          "description": "bit value (viewport: 1) | (canvasType: 2) | (language: 4) | (tableNameCase: 8) | (columnNameCase: 16) | (bracketType: 32); a locked setting is saved as it stood when locked, the viewport being originX, originY and zoomLevel. A document without it opens with every setting locked",
           "type": "integer"
         }
       },
