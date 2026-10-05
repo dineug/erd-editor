@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-04 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-05 -->
 
 # erd-editor
 
@@ -204,13 +204,13 @@ The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/
 
 ### Internal
 
-`@dineug/r-html`, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR).
+`@dineug/r-html`, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` and `@dineug/uuid`, whose `uuid25` mints every id the editor makes (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR).
 
 ### External
 
 - `konva` `^10.3.2` via `konva/lib/*` only; a caret so a consumer dedupes to one copy, since `batchDraw.ts` patches the namespace. `@chenglou/pretext` lays out memo text. `imports.test.ts` keeps `html-to-image` out.
 - `elkjs` only from the elk-layout worker, `shiki` + `@shikijs/langs` / `themes` only from the shiki worker (`createHighlighterCore`, JavaScript regex engine, so no `wasm-unsafe-eval`); `comlink` on all four worker boundaries; `d3-force` for Graph mode and automatic placement.
-- `rxjs`, `nanoid`, `graphql` (only in `schema-graphql-parser/parser.ts`, which sits in the `loadValue` chunk all three entries share, so `peer.js` carries it too), `tinykeys`, `fuse.js`, `es-hangul` (the quick search's Hangul matching, `disassembleToGroups` alone, from `quick-search/hangul.ts`, which the peer graph never reaches), `luxon`, `lucide`, `@radix-ui/colors`, `@egjs/agent`, `deepmerge`, `highlight-words-core`, `@easylogic/colorpicker`; `stylis` for the inlined r-html.
+- `rxjs`, `graphql` (only in `schema-graphql-parser/parser.ts`, which sits in the `loadValue` chunk all three entries share, so `peer.js` carries it too), `tinykeys`, `fuse.js`, `es-hangul` (the quick search's Hangul matching, `disassembleToGroups` alone, from `quick-search/hangul.ts`, which the peer graph never reaches), `luxon`, `lucide`, `@radix-ui/colors`, `@egjs/agent`, `deepmerge`, `highlight-words-core`, `@easylogic/colorpicker`; `stylis` for the inlined r-html.
 - `es-toolkit`: `get`, `set`, `isEmpty`, `round` come from `es-toolkit/compat` on purpose — the main entry lacks the first three and rounds exact `.xx5` ties down into persisted LWW state. Neither entry has an integer guard, so `clock.ts` and `tag.ts` spell `isNumber(x) && Number.isInteger(x)`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

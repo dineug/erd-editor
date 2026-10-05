@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -55,7 +55,7 @@ export const addTableAction$ = (): GeneratorAction =>
       .collection('memoEntities')
       .selectByIds(memoIds);
     const point = nextPoint(settings, tables, memos);
-    const id = nanoid();
+    const id = uuid25();
 
     yield unselectAllAction();
     yield selectAction({ [id]: SelectType.table });
@@ -163,7 +163,7 @@ export const selectTableAction$ = (
         .filter(({ options }) => bHas(options, ColumnOption.primaryKey));
       if (!startColumns.length) return;
 
-      const endColumnIds = startColumns.map(() => nanoid());
+      const endColumnIds = startColumns.map(() => uuid25());
 
       yield toForeignKeyActions(startColumns, endTable.id, endColumnIds, {
         startTableName: startTable.name,
@@ -173,7 +173,7 @@ export const selectTableAction$ = (
         database,
       });
       yield addRelationshipAction({
-        id: nanoid(),
+        id: uuid25(),
         relationshipType: drawRelationship.relationshipType,
         start: {
           tableId: startTable.id,
@@ -204,7 +204,7 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
 
     for (const tableId of selectedTableIds) {
       for (const column of columns) {
-        const id = nanoid();
+        const id = uuid25();
         const payload = {
           id,
           tableId,
@@ -331,7 +331,7 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
     const addColumns = columns.slice(columnIdsRange.length);
 
     for (const column of addColumns) {
-      const id = nanoid();
+      const id = uuid25();
       const payload = {
         id,
         tableId: table.id,

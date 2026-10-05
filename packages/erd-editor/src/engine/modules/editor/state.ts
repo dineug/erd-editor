@@ -1,4 +1,4 @@
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { Point, ValuesType } from '@/internal-types';
@@ -194,7 +194,7 @@ export const isEditingText = (editor: Editor): boolean =>
   isEditingMemo(editor) || Boolean(editor.focusTable?.edit);
 
 export const createEditor = (): Editor => ({
-  id: nanoid(),
+  id: uuid25(),
   selectedMap: {},
   hasUndo: false,
   hasRedo: false,

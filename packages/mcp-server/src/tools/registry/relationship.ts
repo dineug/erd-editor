@@ -5,7 +5,7 @@ import {
   relationshipActions$,
   RelationshipType,
 } from '@dineug/erd-editor/peer.js';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import type { ActionTool, ToolArg } from '@/tools/registry';
 
@@ -66,7 +66,7 @@ const linkColumnsAction$ = (values: Record<string, any>): GeneratorAction =>
     } = values;
 
     yield relationshipActions.addRelationshipAction({
-      id: nanoid(),
+      id: uuid25(),
       relationshipType,
       ...referentialActionsOf(values),
       start: { tableId: startTableId, columnIds: startColumnIds },

@@ -1,5 +1,5 @@
+import { uuid25 } from '@dineug/uuid';
 import { difference } from 'es-toolkit';
-import { nanoid } from 'nanoid';
 
 import { propOr } from '@/helper';
 import { type ERDEditorSchemaV2 } from '@/v2';
@@ -174,7 +174,7 @@ function assignTable(
     newIndex.unique = index.unique;
 
     for (const indexColumn of index.columns) {
-      const id = nanoid();
+      const id = uuid25();
       const newIndexColumn = createIndexColumn();
 
       newIndex.indexColumnIds.push(id);

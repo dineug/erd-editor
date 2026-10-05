@@ -6,7 +6,7 @@ import {
   ref,
   repeat,
 } from '@dineug/r-html';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { useAppContext } from '@/components/appContext';
 import { useFlipAnimation } from '@/hooks/useFlipAnimation';
@@ -55,7 +55,7 @@ const ToastContainer: FC<ToastContainerProps> = (props, ctx) => {
               close: delay(DEFAULT_TIME),
             },
             payload,
-            { id: nanoid() }
+            { id: uuid25() }
           );
           toasts.push(toast);
           toast.close.finally(() => handleClose(toast.id));

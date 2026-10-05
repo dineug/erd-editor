@@ -1,5 +1,5 @@
+import { uuid25 } from '@dineug/uuid';
 import merge from 'deepmerge';
-import { nanoid } from 'nanoid';
 
 import {
   Direction,
@@ -15,7 +15,7 @@ export const createRelationship = (
 ): Relationship =>
   merge(
     {
-      id: nanoid(),
+      id: uuid25(),
       identification: false,
       relationshipType: RelationshipType.ZeroN,
       startRelationshipType: StartRelationshipType.dash,

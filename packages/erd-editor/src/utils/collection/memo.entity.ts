@@ -1,5 +1,5 @@
+import { uuid25 } from '@dineug/uuid';
 import merge from 'deepmerge';
-import { nanoid } from 'nanoid';
 
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { DeepPartial, Memo } from '@/internal-types';
@@ -8,7 +8,7 @@ import { getDefaultEntityMeta } from '@/utils';
 export const createMemo = (value?: DeepPartial<Memo>): Memo =>
   merge(
     {
-      id: nanoid(),
+      id: uuid25(),
       value: '',
       ui: {
         x: 200,

@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import { OrderType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -35,7 +35,7 @@ export const addIndexColumnAction$ = (
       });
     } else {
       yield addIndexColumnAction({
-        id: nanoid(),
+        id: uuid25(),
         indexId,
         tableId: index.tableId,
         columnId,

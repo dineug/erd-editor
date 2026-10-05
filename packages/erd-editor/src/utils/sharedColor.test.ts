@@ -1,3 +1,4 @@
+import { uuid25 } from '@dineug/uuid';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { Palette } from '@/themes/radix-ui-theme';
@@ -86,8 +87,8 @@ describe('toSharedColor', () => {
     }
   });
 
-  it('spreads nanoid-shaped ids across every slot', () => {
-    const ids = Array.from({ length: 400 }, (_, index) => `editor-${index}`);
+  it('spreads editor ids minted together across every slot', () => {
+    const ids = Array.from({ length: 400 }, () => uuid25());
     const used = new Set(ids.map(toSharedColor));
 
     expect(used.size).toBe(SharedColors.length);

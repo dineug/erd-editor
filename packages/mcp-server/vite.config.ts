@@ -27,6 +27,7 @@ const sharedInput: Array<
   { pattern: 'packages/erd-editor/dist/**/*.d.ts', base: 'workspace' },
   { pattern: 'packages/erd-editor-schema/dist/**/*.d.ts', base: 'workspace' },
   { pattern: 'packages/r-html/dist/**/*.d.ts', base: 'workspace' },
+  { pattern: 'packages/uuid/dist/**/*.d.ts', base: 'workspace' },
   '!**/*.tsbuildinfo',
 ];
 

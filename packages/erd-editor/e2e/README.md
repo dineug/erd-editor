@@ -453,9 +453,9 @@ cost when you hit them blind.
 
 **Selectors**
 
-- Every entity id is a `nanoid()`. Seed deterministic ids (`users`, `posts`) or
-  read them back; never hard-code a generated one.
-- Context-menu item `data-id` is a fresh nanoid per render. Select menu items by
+- Every entity id is a `uuid25()` (`@dineug/uuid`). Seed deterministic ids
+  (`users`, `posts`) or read them back; never hard-code a generated one.
+- Context-menu item `data-id` is a fresh id per render. Select menu items by
   their text.
 - `HighLevelTable` is named `table high-level-table`, so `.table[data-id]`
   silently changes meaning below `zoomLevel <= 0.7`. Tell the modes apart by

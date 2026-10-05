@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
+import { uuid25 } from '@dineug/uuid';
 import { last } from 'es-toolkit';
-import { nanoid } from 'nanoid';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -46,7 +46,7 @@ export const isChangeColumnTypes = arrayHas<FocusType>([
 export const addColumnAction$ = (tableId?: string): GeneratorAction =>
   function* ({ editor: { selectedMap } }) {
     if (tableId) {
-      const id = nanoid();
+      const id = uuid25();
       yield addColumnAction({
         id,
         tableId,
@@ -63,7 +63,7 @@ export const addColumnAction$ = (tableId?: string): GeneratorAction =>
 
     const addColumnActions = Object.entries(selectedMap)
       .filter(([, type]) => type === SelectType.table)
-      .map(([tableId]) => ({ tableId, id: nanoid() }));
+      .map(([tableId]) => ({ tableId, id: uuid25() }));
 
     for (const payload of addColumnActions) {
       yield addColumnAction(payload);

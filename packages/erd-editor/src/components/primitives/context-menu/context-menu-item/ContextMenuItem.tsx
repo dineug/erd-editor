@@ -6,7 +6,7 @@ import {
   onMounted,
   ref,
 } from '@dineug/r-html';
-import { nanoid } from 'nanoid';
+import { uuid25 } from '@dineug/uuid';
 
 import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
 import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
@@ -24,7 +24,7 @@ export type ContextMenuItemProps = {
 
 const ContextMenuItem: FC<ContextMenuItemProps> = (props, ctx) => {
   const root = useContextMenuRootContext(ctx);
-  const id = nanoid();
+  const id = uuid25();
   const $div = createRef<HTMLDivElement>();
   const state = observable({
     selected: false,

@@ -3,9 +3,9 @@ import {
   parser,
   query,
 } from '@dineug/erd-editor-schema';
+import { uuid25 } from '@dineug/uuid';
 import { cloneDeep, isEqual, omit, uniq } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
-import { nanoid } from 'nanoid';
 
 import { APPEND_GAP, START_ADD, TABLE_SORT_START } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
@@ -670,7 +670,7 @@ export const drawStartAddRelationshipAction$ = (
     if (
       !columns.some(column => bHas(column.options, ColumnOption.primaryKey))
     ) {
-      const columnId = nanoid();
+      const columnId = uuid25();
       yield addColumnAction({
         tableId,
         id: columnId,
@@ -912,7 +912,7 @@ export const dragoverColumnAction$ = (
     if (columns.length === 0) return;
 
     yield removeColumnAction$(tableId, columnIds);
-    const newColumnIds = columns.map(() => nanoid());
+    const newColumnIds = columns.map(() => uuid25());
 
     for (let i = 0; i < columns.length; i++) {
       const column = columns[i];

@@ -49,6 +49,10 @@
       "path": "packages/schema-sql-parser",
     },
     {
+      "name": "uuid",
+      "path": "packages/uuid",
+    },
+    {
       "name": "r-html",
       "path": "packages/r-html",
     },
