@@ -1,55 +1,61 @@
 import { query } from '@dineug/erd-editor-schema';
 
+import {
+  isSerialType,
+  toReferenceDataType,
+} from '@/engine/modules/relationship/referenceType';
 import { ChangeColumnValuePayload } from '@/engine/modules/table-column/actions';
 import { RootState } from '@/engine/state';
 
+/**
+ * Drains the stack, listing each column its relationships reach once: a key
+ * sends its foreign keys toReferenceDataType of its value, a foreign key sends
+ * its key its value, unless the key is serial, which keeps it and stops there.
+ */
 export function getDataTypeSyncColumns(
   stack: ChangeColumnValuePayload[],
   state: RootState,
-  payload: ChangeColumnValuePayload,
   payloads: ChangeColumnValuePayload[] = []
 ): ChangeColumnValuePayload[] {
   const {
     doc: { relationshipIds },
     collections,
+    settings: { database },
   } = state;
-  const target = stack.pop();
+  const relationships = query(collections)
+    .collection('relationshipEntities')
+    .selectByIds(relationshipIds);
+  const columns = query(collections).collection('tableColumnEntities');
 
-  if (target) {
-    if (!payloads.some(({ id }) => id === target.id)) {
-      payloads.push(target);
+  for (let target = stack.pop(); target; target = stack.pop()) {
+    const { id: targetId, value } = target;
+    if (payloads.some(({ id }) => id === targetId)) continue;
 
-      query(collections)
-        .collection('relationshipEntities')
-        .selectByIds(relationshipIds)
-        .forEach(({ start, end }) => {
-          const index = start.columnIds.indexOf(target.id);
+    payloads.push(target);
+    const foreignKeyValue = toReferenceDataType(value, database);
 
-          if (index !== -1) {
-            const columnId = end.columnIds[index];
+    for (const { start, end } of relationships) {
+      const startIndex = start.columnIds.indexOf(targetId);
 
-            stack.push({
-              id: columnId,
-              tableId: end.tableId,
-              value: payload.value,
-            });
-          } else {
-            const index = end.columnIds.indexOf(target.id);
+      if (startIndex !== -1) {
+        const id = end.columnIds[startIndex];
+        if (id === undefined) continue;
 
-            if (index !== -1) {
-              const columnId = start.columnIds[index];
+        stack.push({ id, tableId: end.tableId, value: foreignKeyValue });
+        continue;
+      }
 
-              stack.push({
-                id: columnId,
-                tableId: start.tableId,
-                value: payload.value,
-              });
-            }
-          }
-        });
+      const endIndex = end.columnIds.indexOf(targetId);
+      if (endIndex === -1) continue;
+
+      const id = start.columnIds[endIndex];
+      if (id === undefined) continue;
+
+      const column = columns.selectById(id);
+      if (column && isSerialType(column.dataType)) continue;
+
+      stack.push({ id, tableId: start.tableId, value });
     }
-
-    getDataTypeSyncColumns(stack, state, payload, payloads);
   }
 
   return payloads;

@@ -30,7 +30,7 @@ export const addRelationshipAction$ = (
   relationshipType: number,
   referentialActions: ReferentialActions = {}
 ): GeneratorAction =>
-  function* ({ doc: { tableIds }, collections }) {
+  function* ({ doc: { tableIds }, collections, settings: { database } }) {
     const tables = query(collections)
       .collection('tableEntities')
       .selectByIds(tableIds);
@@ -69,6 +69,7 @@ export const addRelationshipAction$ = (
         endColumnNames: columnCollection
           .selectByIds(endTable.columnIds)
           .map(({ name }) => name),
+        database,
       }),
       addRelationshipAction({
         id: nanoid(),

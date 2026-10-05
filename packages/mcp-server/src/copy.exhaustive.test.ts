@@ -157,3 +157,48 @@ describe('the words on a referential action', () => {
     }
   });
 });
+
+describe('the words on a foreign key data type', () => {
+  it('give erd_add_relationship the integer each serial key copies as', () => {
+    const text = describeTool('erd_add_relationship');
+
+    for (const phrase of [
+      'serial4 integer',
+      'smallserial and serial2 smallint',
+      'bigserial and serial8 bigint',
+      'serial integer under PostgreSQL',
+      'bigint unsigned under MySQL and MariaDB',
+      'serial elsewhere',
+    ]) {
+      expect(text).toContain(phrase);
+    }
+  });
+
+  it('say the sync of erd_change_column_data_type runs both ways and stops at a serial key', () => {
+    const text = describeTool('erd_change_column_data_type');
+
+    expect(text).toContain('both ways');
+    expect(text).toContain('into the foreign keys that copy the column');
+    expect(text).toContain('from a foreign key back to the key it copies');
+    expect(text).toContain(
+      'except a serial key, which keeps its type and stops the change there'
+    );
+  });
+
+  it('say erd_undo cannot revert erd_set_relationship_data_type_sync, whose sync runs both ways, maps a serial key and stops at one', () => {
+    const text = describeTool('erd_set_relationship_data_type_sync');
+
+    expect(text).toMatch(
+      /^Sets relationship data type sync\. erd_undo cannot revert it: /
+    );
+    for (const phrase of [
+      'a change to the data type of a column spreads along relationships both ways',
+      'into the foreign keys that copy the column, a serial type as the integer it stores',
+      'from a foreign key back to the key it copies',
+      'except a serial key, which keeps its type and stops the change there',
+    ]) {
+      expect(text).toContain(phrase);
+    }
+    expect(text).not.toContain('follow the data type of the columns');
+  });
+});

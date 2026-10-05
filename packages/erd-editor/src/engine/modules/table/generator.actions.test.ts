@@ -2,7 +2,12 @@ import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
-import { ColumnOption, RelationshipType, Show } from '@/constants/schema';
+import {
+  ColumnOption,
+  Database,
+  RelationshipType,
+  Show,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   drawStartAddRelationshipAction,
@@ -15,7 +20,11 @@ import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeDatabaseAction,
+  changeRelationshipDataTypeSyncAction,
+  changeShowAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   sortTableAction,
@@ -341,6 +350,26 @@ describe('selectTableAction$', () => {
     expect(relationship.end.tableId).toBe('t2');
     expect(relationship.end.columnIds).toEqual([endColumns[0].id]);
     expect(store.state.editor.drawRelationship).toBeNull();
+  });
+
+  it('draws the foreign key of a serial key with the integer it stores, sync off too', () => {
+    store.dispatchSync(changeDatabaseAction({ value: Database.PostgreSQL }));
+    store.dispatchSync(changeRelationshipDataTypeSyncAction({ value: false }));
+    seedTable(store, 't1');
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(
+      changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c1', value: true }),
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c1', value: 'SERIAL' })
+    );
+    seedTable(store, 't2');
+    startDrawingFrom('t1');
+
+    store.dispatchSync(selectTableAction$('t2', false));
+
+    expect(columnsOf(store, 't2').map(({ dataType }) => dataType)).toEqual([
+      'INTEGER',
+    ]);
+    expect(columnOf(store, 'c1').dataType).toBe('SERIAL');
   });
 
   it('stops after focusing when the end table does not exist', () => {

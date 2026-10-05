@@ -27,6 +27,8 @@ const OLDER_EDITOR =
   'An ERD Editor extension or plugin released before referential actions ignores this setting, so the user should update it.';
 const REFERENTIAL_ACTION = `What the database does to the child rows: none (no clause, the database default), noAction, cascade, setNull, setDefault or restrict. A vendor that lacks the action drops it from its DDL. ${OLDER_EDITOR}`;
 const COLOR = 'CSS hex color such as #3b82f6.';
+const DATA_TYPE_SYNC =
+  'spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
 
@@ -186,8 +188,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { columnIds: 'Column ids in that table, from erd_get.' },
   },
   erd_change_column_data_type: {
-    description:
-      'Sets the data type of a column, such as INT or VARCHAR(255); foreign keys that copy it follow when relationship data type sync is on.',
+    description: `Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change ${DATA_TYPE_SYNC}.`,
     args: { value: 'The data type text.' },
   },
   erd_change_column_name: {
@@ -216,7 +217,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
 
   erd_add_relationship: {
     description:
-      'Relates two tables: copies the parent primary key into the child as foreign key columns, creating an unnamed primary key column first if the parent has none (its foreign key column is unnamed too). Each foreign key column is named from its key: a key of one word, only letters and digits with no camelCase break and no switch between cased letters and caseless ones such as Hangul or kana (id, ID, uuid, id2), gets the parent table and an underscore in front (users_id for the key id of users), any other key (member_id, userId, UserID, 회원ID, _id, order-no) or one equal to the table name stays as it is, and a name the child already has is numbered (users_id_2). Name the parent table first: an unnamed parent gives the key name alone (id), and a later rename leaves these names as they are. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.',
+      'Relates two tables: copies the parent primary key into the child as foreign key columns, creating an unnamed primary key column first if the parent has none (its foreign key column is unnamed too). Each foreign key column is named from its key: a key of one word, only letters and digits with no camelCase break and no switch between cased letters and caseless ones such as Hangul or kana (id, ID, uuid, id2), gets the parent table and an underscore in front (users_id for the key id of users), any other key (member_id, userId, UserID, 회원ID, _id, order-no) or one equal to the table name stays as it is, and a name the child already has is numbered (users_id_2). Each foreign key column copies the data type of its key, but a serial key gives the integer it stores: serial4 integer, smallserial and serial2 smallint, bigserial and serial8 bigint, and a bare serial integer under PostgreSQL, bigint unsigned under MySQL and MariaDB and serial elsewhere, written in capitals when the type of the key is. Name the parent table first: an unnamed parent gives the key name alone (id), and a later rename leaves these names as they are. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.',
     args: {
       startTableId:
         'Parent table id, the referenced side that holds the primary key.',
@@ -336,10 +337,10 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     'how generated SQL quotes names',
     'The quote style.'
   ),
-  erd_set_relationship_data_type_sync: setting(
-    'whether foreign key columns follow the data type of the columns they reference',
-    'True to keep them in step.'
-  ),
+  erd_set_relationship_data_type_sync: {
+    description: `Sets relationship data type sync. ${NO_UNDO} When it is on, a change to the data type of a column ${DATA_TYPE_SYNC}.`,
+    args: { value: 'True to spread data type changes along relationships.' },
+  },
   erd_set_relationship_optimization: setting(
     'the relationship optimization flag stored in the document',
     'True to turn it on.'
