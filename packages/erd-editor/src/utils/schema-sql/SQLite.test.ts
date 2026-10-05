@@ -296,6 +296,23 @@ describe('SQLite dotted table names', () => {
     );
   });
 
+  // The index name takes the table part without its quotes; the schema and the
+  // table it qualifies or references keep theirs.
+  it('names the index after the table part of "sales"."users" and references the table as written', () => {
+    const { state, users, posts, usersIndex } = createFixture();
+    users.name = '"sales"."users"';
+    posts.name = '"sales"."posts"';
+    usersIndex.name = '';
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  FOREIGN KEY (user_id) REFERENCES "users" (id)\n');
+    expect(sql).toContain('CREATE INDEX "sales".IDX_posts\n  ON "posts"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX "sales".IDX_users\n  ON "users" (email DESC);'
+    );
+  });
+
   it('leaves an index name the user already qualified as written', () => {
     const { state, users, usersIndex } = createFixture();
     users.name = 'sales.users';

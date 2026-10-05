@@ -631,6 +631,34 @@ describe('MSSQL dotted table names', () => {
     expect(sql).toContain('CREATE INDEX IDX_Users1\n  ON hr.Users');
   });
 
+  // The key names take the table part the MS_Description calls name at level
+  // 1, split outside brackets and quotes with one pair taken off.
+  it.each([
+    ['[sales].[users]', 'users'],
+    ['"sales"."users"', 'users'],
+    ['shop.sales.users', 'users'],
+    ['[sales.v2].[users]', 'users'],
+    ['[Order]', 'Order'],
+  ])(
+    'names constraints and indexes after the table part of the unquoted name %s',
+    (name, part) => {
+      const { state, users, usersIndex } = createFixture();
+      users.name = name;
+      usersIndex.name = '';
+
+      const sql = createSchema(state);
+
+      expect(sql).toContain(`  CONSTRAINT PK_${part} PRIMARY KEY (id)\n`);
+      expect(sql).toContain(
+        `  ADD CONSTRAINT UQ_${part}_email UNIQUE (email)\nGO`
+      );
+      expect(sql).toContain(`  ADD CONSTRAINT FK_${part}_TO_posts\n`);
+      expect(sql).toContain(
+        `CREATE UNIQUE INDEX IDX_${part}\n  ON ${name} (email DESC)\nGO`
+      );
+    }
+  );
+
   it('keeps a quoted dotted name whole in every automatic name', () => {
     const { state, users, posts } = createFixture();
     users.name = 'sales.users';

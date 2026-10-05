@@ -302,6 +302,19 @@ describe('PostgreSQL dotted table names', () => {
     );
   });
 
+  it('names keys after the table part of "sales"."users" without its quotes', () => {
+    const { state, users, usersIndex } = createFixture();
+    users.name = '"sales"."users"';
+    usersIndex.name = '';
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IDX_users\n  ON "sales"."users" (email DESC);'
+    );
+  });
+
   it('numbers a foreign key and an index name that repeat an earlier one but for case', () => {
     const { state, users, posts, userId, postUserId } = createFixture();
     users.name = 'sales.users';

@@ -133,6 +133,21 @@ describe('getColumnKeys', () => {
     ]);
   });
 
+  it('takes the brackets off the table part of [sales].[region], as the DDL does', () => {
+    const { state, table } = createState({
+      a: ColumnOption.primaryKey,
+      b: ColumnOption.unique,
+    });
+    table.name = '[sales].[region]';
+    state.settings.database = Database.MSSQL;
+
+    expect(getColumnKeys(state, table).map(({ name }) => name)).toEqual([
+      'PK_region',
+      'UQ_region_col_b',
+    ]);
+    expect(createSchemaSQL(state)).toContain('  CONSTRAINT PK_region PRIMARY');
+  });
+
   it('gives the primary key the name each database writes for a dotted table', () => {
     const cases = [
       [Database.MSSQL, 'PK_region'],

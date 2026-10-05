@@ -166,7 +166,7 @@ export function formatTable(
         .join('');
       // SQLite resolves a foreign key in the child table's own schema and
       // refuses a qualified name there.
-      const referenced = tableNamePart(startTable.name, bracketType);
+      const [, referenced] = splitTableName(startTable.name, bracketType);
 
       if (relationships.length - 1 > i) {
         buffer.push(
@@ -263,7 +263,8 @@ export function formatIndex(
     const [schema, tableName] = splitTableName(table.name, bracketType);
     let indexName = index.name;
     if (index.name.trim() === '') {
-      indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
+      const namePart = tableNamePart(table.name, bracketType);
+      indexName = autoNameIgnoreCase(indexNames, `IDX_${namePart}`);
       indexNames.push({
         id: nanoid(),
         name: indexName,

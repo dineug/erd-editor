@@ -66,7 +66,8 @@ export function createSchema(state: RootState): string {
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds);
     // The sequence and its trigger go beside the table, as an index does.
-    const [schema, tableName] = splitTableName(table.name, bracketType);
+    const [schema] = splitTableName(table.name, bracketType);
+    const tableName = tableNamePart(table.name, bracketType);
     const owner = schema === '' ? '' : `${schema}.`;
 
     // Sequence
@@ -329,9 +330,10 @@ export function formatIndex(
     .filter(columnName => columnName !== null) as { name: string }[];
 
   if (columnNames.length !== 0) {
-    const [schema, tableName] = splitTableName(table.name, bracketType);
+    const [schema] = splitTableName(table.name, bracketType);
     let indexName = index.name;
     if (index.name.trim() === '') {
+      const tableName = tableNamePart(table.name, bracketType);
       indexName = autoNameIgnoreCase(indexNames, `IDX_${tableName}`);
       indexNames.push({
         id: nanoid(),

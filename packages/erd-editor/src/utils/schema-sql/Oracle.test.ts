@@ -572,6 +572,28 @@ describe('Oracle dotted table names', () => {
     expect(indexNames).toEqual([]);
   });
 
+  // A quoted schema is case sensitive, so it qualifies the index, sequence and
+  // trigger as written while the names take the table part without its quotes.
+  it('names keys and the sequence after the table part of "sales"."users", keeping its schema as written', () => {
+    const { state, users, usersIndex } = createFixture();
+    users.name = '"sales"."users"';
+    usersIndex.name = '';
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('  CONSTRAINT PK_users PRIMARY KEY (id)\n');
+    expect(sql).toContain('  ADD CONSTRAINT UQ_users_email UNIQUE (email);\n');
+    expect(sql).toContain('CREATE SEQUENCE "sales".SEQ_users\n');
+    expect(sql).toContain(
+      'CREATE OR REPLACE TRIGGER "sales".SEQ_TRG_users\nBEFORE INSERT ON "sales"."users"\n'
+    );
+    expect(sql).toContain('  SELECT "sales".SEQ_users.NEXTVAL\n');
+    expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts\n');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX "sales".IDX_users\n  ON "sales"."users" (email DESC);'
+    );
+  });
+
   it('leaves an index name the user already qualified as written', () => {
     const { state, users, usersIndex } = createFixture();
     users.name = 'sales.users';

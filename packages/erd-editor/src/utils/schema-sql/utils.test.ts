@@ -183,6 +183,35 @@ describe('schema-sql/utils', () => {
     it('splits under an unknown bracket type, which writes the name unquoted', () => {
       expect(tableNamePart('sales.users', 9999)).toBe('users');
     });
+
+    // A dot inside brackets or double quotes belongs to the name, and the table
+    // part loses one enclosing pair, as the MSSQL comment levels read a name.
+    it.each([
+      ['[sales].[users]', '[sales]', '[users]', 'users'],
+      ['"sales"."users"', '"sales"', '"users"', 'users'],
+      ['shop.[sales].[users]', 'shop.[sales]', '[users]', 'users'],
+      ['[sales.v2].users', '[sales.v2]', 'users', 'users'],
+      ['[x.y.z]', '', '[x.y.z]', 'x.y.z'],
+      ['[x]]y]', '', '[x]]y]', 'x]y'],
+      ['"x""y"', '', '"x""y"', 'x"y'],
+      ['[Order]', '', '[Order]', 'Order'],
+      ['[sales.users', '[sales', 'users', 'users'],
+    ])(
+      'splits the unquoted name %s outside brackets and quotes',
+      (name, schema, table, part) => {
+        expect(splitTableName(name, BracketType.none)).toEqual([schema, table]);
+        expect(tableNamePart(name, BracketType.none)).toBe(part);
+      }
+    );
+
+    it('keeps a quoted name holding brackets whole', () => {
+      expect(
+        splitTableName('[sales].[users]', BracketType.doubleQuote)
+      ).toEqual(['', '[sales].[users]']);
+      expect(tableNamePart('[sales].[users]', BracketType.doubleQuote)).toBe(
+        '[sales].[users]'
+      );
+    });
   });
 
   describe('splitsTableName', () => {

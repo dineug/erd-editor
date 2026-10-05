@@ -123,25 +123,74 @@ export function getBracket(bracketType: number) {
   return BracketTypeMap[bracketType] ?? '';
 }
 
+// A part of an unquoted name: bracketed or double-quoted runs, whose dots and
+// doubled closing characters stay inside them, or any character but a dot.
+const NAME_PART = /(?:\[(?:[^\]]|\]\])*\]|"(?:[^"]|"")*"|[^.])*/y;
+
+// A part in one pair of brackets or double quotes, the closing character
+// doubled inside.
+const DELIMITED_PART = /^(?:\[((?:[^\]]|\]\])*)\]|"((?:[^"]|"")*)")$/;
+
 /**
- * A table name split at its last dot into schema and table where it is written
- * unquoted, the dot then qualifying the table; quoted, the whole name is one
- * identifier and the schema is empty.
+ * The parts of an unquoted name, split at each dot outside brackets or double
+ * quotes as SQL Server reads it, so [sales.v2].users is two parts.
+ */
+export function splitNameParts(name: string): string[] {
+  const parts: string[] = [];
+  let index = 0;
+
+  do {
+    NAME_PART.lastIndex = index;
+    const [part] = NAME_PART.exec(name)!;
+    parts.push(part);
+    index += part.length + 1;
+  } while (index <= name.length);
+
+  return parts;
+}
+
+/** Whether a name part is written in one pair of brackets or double quotes. */
+export function isDelimitedPart(part: string): boolean {
+  return DELIMITED_PART.test(part);
+}
+
+/** The name a part in brackets or double quotes holds; any other part as is. */
+export function unquoteNamePart(part: string): string {
+  const match = DELIMITED_PART.exec(part);
+  if (!match) return part;
+
+  const [, bracketed, quoted] = match;
+  return bracketed === undefined
+    ? quoted.replaceAll('""', '"')
+    : bracketed.replaceAll(']]', ']');
+}
+
+/**
+ * A table name split at its last dot outside brackets or double quotes into
+ * schema and table, both as written, where it is unquoted; quoted, the whole
+ * name is one identifier and the schema is empty.
  */
 export function splitTableName(
   name: string,
   bracketType: number
 ): [schema: string, table: string] {
-  const dot = getBracket(bracketType) === '' ? name.lastIndexOf('.') : -1;
-  return dot === -1 ? ['', name] : [name.slice(0, dot), name.slice(dot + 1)];
+  if (getBracket(bracketType) !== '') return ['', name];
+
+  const parts = splitNameParts(name);
+  const table = parts[parts.length - 1];
+  return parts.length === 1
+    ? ['', name]
+    : [name.slice(0, name.length - table.length - 1), table];
 }
 
 /**
- * The part of a table name that automatic constraint and index names take, so
- * sales.users gives PK_users, which every database reads as one identifier.
+ * The part of a table name that automatic constraint and index names take, one
+ * pair of brackets or quotes off where unquoted, so sales.users and
+ * [sales].[users] give PK_users, which every database reads as one identifier.
  */
 export function tableNamePart(name: string, bracketType: number): string {
-  return splitTableName(name, bracketType)[1];
+  const [, table] = splitTableName(name, bracketType);
+  return getBracket(bracketType) === '' ? unquoteNamePart(table) : table;
 }
 
 const TABLE_NAME_PART_DATABASES: ReadonlySet<number> = new Set([
