@@ -350,7 +350,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
   // A Promise only where the import places first, so a setter called as it
   // always was still lands before it returns. A readonly editor refuses the
-  // load, so it is spared the layout too, and an append, its selection.
+  // load, and the placed imports check that before they lay anything out.
   const setSchema = (type: SchemaImportType) =>
     ((value: string, options?: SchemaImportOptions) => {
       const safeValue = toSafeString(value);
@@ -367,7 +367,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
         return;
       }
 
-      if (isEmpty(safeValue) || getReadonly()) return Promise.resolve();
+      if (isEmpty(safeValue)) return Promise.resolve();
 
       return append
         ? appendSchemaPlaced(app, type, safeValue)

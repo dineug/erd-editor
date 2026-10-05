@@ -142,8 +142,14 @@ const loadedDocument = (x = 0) =>
     },
   });
 
-async function setup(initialProps: Partial<ErdEditorProps> = {}) {
-  const app = createTestAppContext();
+/**
+ * Mounts the hook on a store of its own. Wired, the store reads readonly from
+ * the props, as ErdEditor builds it, so the store's own guards answer for it.
+ */
+async function setup(
+  initialProps: Partial<ErdEditorProps> = {},
+  { wired = false } = {}
+) {
   const props = observable<ErdEditorProps>(
     {
       readonly: false,
@@ -152,6 +158,9 @@ async function setup(initialProps: Partial<ErdEditorProps> = {}) {
       ...initialProps,
     },
     { shallow: true }
+  );
+  const app = createTestAppContext(
+    wired ? { getReadonly: () => props.readonly } : undefined
   );
   const ctx = document.createElement('div') as unknown as ErdEditorElement;
   document.body.append(ctx);
@@ -715,13 +724,17 @@ describe('useErdEditorAttachElement', () => {
   });
 
   it('asks no layout for an auto import a readonly editor would refuse', async () => {
-    const { app, ctx } = await setup({ readonly: true });
+    const { app, ctx } = await setup({ readonly: true }, { wired: true });
 
     await expect(
       ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto' })
     ).resolves.toBeUndefined();
+    await expect(
+      ctx.setSchemaSQL(RELATED_SQL, { placement: 'auto', mode: 'append' })
+    ).resolves.toBeUndefined();
     expect(hoisted.requests).toEqual([]);
     expect(app.store.state.doc.tableIds).toEqual([]);
+    expect(app.store.history.size).toBe(0);
   });
 
   /** The names of the tables the document holds, in order. */
@@ -770,7 +783,7 @@ describe('useErdEditorAttachElement', () => {
   });
 
   it('adds nothing to a readonly editor, which it would refuse', async () => {
-    const { app, ctx, props } = await setup();
+    const { app, ctx, props } = await setup({}, { wired: true });
     ctx.setSchemaSQL('CREATE TABLE old (id INT);');
     props.readonly = true;
     await flush();
