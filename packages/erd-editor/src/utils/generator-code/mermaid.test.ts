@@ -156,6 +156,13 @@ function addParentCode(state: RootState): void {
   state.collections.relationshipEntities.r1.end.columnIds.push('fk2');
 }
 
+/** The opening line of each entity, its quoted name and brace. */
+function entityLines(state: RootState): string[] {
+  return createCode(state)
+    .split('\n')
+    .filter(line => line.endsWith('{'));
+}
+
 function relationshipLines(state: RootState): string[] {
   return createCode(state)
     .split('\n')
@@ -822,11 +829,7 @@ describe('generator-code/mermaid', () => {
         ].map(([id, name]) => createTable({ id, name })),
       });
 
-      expect(
-        createCode(state)
-          .split('\n')
-          .filter(line => line.endsWith('{'))
-      ).toEqual([
+      expect(entityLines(state)).toEqual([
         '  "directiondirection\u200b   TBL" {',
         '  "line directionLR" {',
         '  "nbsp direction\u200b\u00a0rl" {',
@@ -860,11 +863,7 @@ describe('generator-code/mermaid', () => {
         ].map(([id, name]) => createTable({ id, name })),
       });
 
-      expect(
-        createCode(state)
-          .split('\n')
-          .filter(line => line.endsWith('{'))
-      ).toEqual([
+      expect(entityLines(state)).toEqual([
         '  "classDef:#a direc;tion\u200b RL" {',
         '  "style:#a classDef:#b d;;irection\u200b L;R" {',
         '  "style:#a direction\u200b ;bt" {',
@@ -890,11 +889,10 @@ describe('generator-code/mermaid', () => {
         ],
       });
 
-      expect(
-        createCode(state)
-          .split('\n')
-          .filter(line => line.endsWith('{'))
-      ).toEqual(['  "a direction\u200b LR" {', '  "a direction\u200b LR2" {']);
+      expect(entityLines(state)).toEqual([
+        '  "a direction\u200b LR" {',
+        '  "a direction\u200b LR2" {',
+      ]);
     });
 
     it('keeps direction as written where the direction rule reads nothing', () => {
