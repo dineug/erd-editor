@@ -202,3 +202,17 @@ describe('the words on a foreign key data type', () => {
     expect(text).not.toContain('follow the data type of the columns');
   });
 });
+
+describe('the words on the Mermaid language', () => {
+  const text = describeArg('erd_set_language', 'value');
+
+  it('say an editor released before the generator drops it, so the user updates it', () => {
+    expect(text).toContain(
+      'An ERD Editor extension or plugin released before the Mermaid generator ignores Mermaid, so the user should update it.'
+    );
+  });
+
+  it('name no release, which the next one would make wrong', () => {
+    expect(text).not.toMatch(/\d+\.\d+/);
+  });
+});

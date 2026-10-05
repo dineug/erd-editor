@@ -65,6 +65,10 @@ export const menus: Menu[] = [
     name: 'GraphQL',
     value: Language.GraphQL,
   },
+  {
+    name: 'Mermaid',
+    value: Language.Mermaid,
+  },
 ];
 
 export function createLanguageMenus({ store }: AppContext) {

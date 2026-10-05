@@ -26,6 +26,7 @@ const meta = {
         'scala',
         'go',
         'python',
+        'mermaid',
       ],
     },
     theme: {

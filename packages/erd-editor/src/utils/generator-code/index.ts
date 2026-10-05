@@ -36,6 +36,10 @@ import {
   formatTable as formatTableKotlin,
 } from './kotlin';
 import {
+  createCode as createCodeMermaid,
+  formatTable as formatTableMermaid,
+} from './mermaid';
+import {
   createCode as createCodeScala,
   formatTable as formatTableScala,
 } from './scala';
@@ -90,6 +94,8 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeDBML(state);
     case Language.AML:
       return createCodeAML(state);
+    case Language.Mermaid:
+      return createCodeMermaid(state);
   }
 
   return '';
@@ -159,6 +165,10 @@ export function createGeneratorCodeTable(
       break;
     case Language.AML:
       formatTableAML(state, { buffer, table });
+      buffer.push('');
+      break;
+    case Language.Mermaid:
+      formatTableMermaid(state, { buffer, table });
       buffer.push('');
       break;
   }

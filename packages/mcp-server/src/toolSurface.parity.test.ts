@@ -52,6 +52,15 @@ const declarations = (surface: readonly ToolSurface[]) =>
 const outputSchemas = (surface: readonly ToolSurface[]) =>
   surface.map(({ name, hasOutputSchema }) => ({ name, hasOutputSchema }));
 
+const enumOf = (
+  surface: readonly ToolSurface[],
+  name: string,
+  argName: string
+) =>
+  surface
+    .find(tool => tool.name === name)!
+    .args.find(arg => arg.name === argName)!.enum!;
+
 /** The optional arguments a recorded tool gained after the recording was made. */
 const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_read: ['tableIds', 'tableNames'],
@@ -59,15 +68,31 @@ const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_link_columns: ['onDelete', 'onUpdate'],
 };
 
-/** The recorded tools as the server lists them, the arguments added since left out. */
+/** The values a recorded argument's enum gained after the recording was made. */
+const ADDED_ENUM_VALUES: Readonly<
+  Record<string, Readonly<Record<string, readonly string[]>>>
+> = {
+  erd_set_language: { value: ['Mermaid'] },
+};
+
+/**
+ * The recorded tools as the server lists them, the arguments and the enum
+ * values added since left out.
+ */
 const recorded = () =>
   live
     .filter(({ name }) => !ADDED_TOOLS.includes(name))
     .map(tool => ({
       ...tool,
-      args: tool.args.filter(
-        ({ name }) => !ADDED_ARGS[tool.name]?.includes(name)
-      ),
+      args: tool.args
+        .filter(({ name }) => !ADDED_ARGS[tool.name]?.includes(name))
+        .map(arg => {
+          const added = ADDED_ENUM_VALUES[tool.name]?.[arg.name];
+
+          return added && arg.enum
+            ? { ...arg, enum: arg.enum.filter(value => !added.includes(value)) }
+            : arg;
+        }),
     }));
 
 describe('the tool surface against the SDK-based server recording', () => {
@@ -94,6 +119,18 @@ describe('the tool surface against the SDK-based server recording', () => {
       expect(
         args.filter(arg => added.includes(arg.name)).map(arg => arg.required)
       ).toEqual(added.map(() => false));
+    }
+  });
+
+  it('lists each enum value added to a recorded argument, which the recording lacks', () => {
+    for (const [name, args] of Object.entries(ADDED_ENUM_VALUES)) {
+      for (const [argName, added] of Object.entries(args)) {
+        const listed = enumOf(live, name, argName);
+        const before = enumOf(fixture, name, argName);
+
+        expect(added.filter(value => listed.includes(value))).toEqual(added);
+        expect(added.filter(value => before.includes(value))).toEqual([]);
+      }
     }
   });
 

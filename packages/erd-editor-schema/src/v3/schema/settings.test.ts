@@ -161,9 +161,10 @@ describe('v3/schema/settings', () => {
         Drizzle: 2048,
         DBML: 4096,
         AML: 8192,
+        Mermaid: 16384,
       });
       expect(LanguageList).toEqual([
-        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
       ]);
       expect(Object.values(Language).every(isPowerOfTwo)).toBe(true);
     });

@@ -180,6 +180,11 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
     ['', 'Table "user" {', '  "created_at" INT [not null]', '}', ''],
   ],
   ['AML', Language.AML, ['', 'user', '  created_at INT', '']],
+  [
+    'Mermaid',
+    Language.Mermaid,
+    ['', 'erDiagram', '  "user" {', '    INT created_at', '  }', ''],
+  ],
 ];
 
 describe('generator-code/index', () => {

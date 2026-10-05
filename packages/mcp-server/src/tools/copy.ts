@@ -323,7 +323,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   ),
   erd_set_language: setting(
     'the code generation language of the document',
-    'The language or framework.'
+    'The language or framework. An ERD Editor extension or plugin released before the Mermaid generator ignores Mermaid, so the user should update it.'
   ),
   erd_set_table_name_case: setting(
     'the name case used when generating code for table names',

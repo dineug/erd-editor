@@ -25,6 +25,7 @@ import {
   getAlternateKeys,
   getColumnKeys,
   getTableIndexIds,
+  getUniqueIndexKeys,
 } from '@/utils/tableKeys';
 
 type IndexSpec = {
@@ -115,6 +116,24 @@ describe('getColumnKeys', () => {
     const { state, table } = createState({ a: ColumnOption.notNull });
 
     expect(getColumnKeys(state, table)).toEqual([]);
+  });
+});
+
+describe('getUniqueIndexKeys', () => {
+  it('lists every unique index of the table in list order, over the columns still in it', () => {
+    const { state, table } = createState({}, [
+      { id: 'i1', unique: true, columnIds: ['d', 'e'] },
+      { id: 'i2', unique: false, columnIds: ['a'] },
+      { id: 'i3', unique: true, columnIds: ['gone', 'b'] },
+      { id: 'i4', unique: true, columnIds: ['a'], tableId: 'other' },
+      { id: 'i5', unique: true, columnIds: [] },
+    ]);
+
+    expect(getUniqueIndexKeys(state, table)).toEqual([
+      { indexId: 'i1', columnIds: ['d', 'e'] },
+      { indexId: 'i3', columnIds: ['b'] },
+      { indexId: 'i5', columnIds: [] },
+    ]);
   });
 });
 

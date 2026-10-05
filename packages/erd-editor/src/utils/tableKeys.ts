@@ -82,11 +82,14 @@ export type ColumnKey = {
   columnIds: string[];
 };
 
-/** One alternate key: a unique index of the table and the columns it keys, in key order. */
-export type AlternateKey = {
+/** A unique index of the table and the columns of the table it keys, in key order. */
+export type UniqueIndexKey = {
   indexId: string;
   columnIds: string[];
 };
+
+/** One alternate key: a unique index over two or more of the table's columns. */
+export type AlternateKey = UniqueIndexKey;
 
 /**
  * The keys a table's columns declare, primary key first and then each unique
@@ -129,15 +132,15 @@ export function getColumnKeys(
 }
 
 /**
- * The table's alternate keys, AK1 first: its unique indexes over two or more
- * of its columns, ordered by where those columns stand in the table. Neither
- * an undo nor a peer's concurrent add reorders them, as the index list would.
+ * Each unique index of the table in index list order, with the columns of the
+ * table it keys in key order: over two or more an alternate key, over one the
+ * unique key of that column.
  */
-export function getAlternateKeys(
+export function getUniqueIndexKeys(
   state: KeyState,
   table: Table
-): AlternateKey[] {
-  const positions = new Map(table.columnIds.map((id, index) => [id, index]));
+): UniqueIndexKey[] {
+  const tableColumnIds = new Set(table.columnIds);
   const indexColumns = query(state.collections).collection(
     'indexColumnEntities'
   );
@@ -151,8 +154,22 @@ export function getAlternateKeys(
       columnIds: indexColumns
         .selectByIds(index.indexColumnIds)
         .map(indexColumn => indexColumn.columnId)
-        .filter(columnId => positions.has(columnId)),
-    }))
+        .filter(columnId => tableColumnIds.has(columnId)),
+    }));
+}
+
+/**
+ * The table's alternate keys, AK1 first: its unique indexes over two or more
+ * of its columns, ordered by where those columns stand in the table. Neither
+ * an undo nor a peer's concurrent add reorders them, as the index list would.
+ */
+export function getAlternateKeys(
+  state: KeyState,
+  table: Table
+): AlternateKey[] {
+  const positions = new Map(table.columnIds.map((id, index) => [id, index]));
+
+  return getUniqueIndexKeys(state, table)
     .filter(key => key.columnIds.length > 1)
     .sort((a, b) => compareKeys(a, b, positions));
 }

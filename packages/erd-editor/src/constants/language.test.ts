@@ -20,6 +20,7 @@ describe('LanguageToLangMap', () => {
       [Language.Drizzle]: 'typescript',
       [Language.DBML]: 'sql',
       [Language.AML]: 'sql',
+      [Language.Mermaid]: 'mermaid',
     });
   });
 
@@ -81,6 +82,10 @@ describe('LanguageToLangMap', () => {
     expect(LanguageToLangMap[Language.AML]).toBe(
       LanguageToLangMap[Language.DBML]
     );
+  });
+
+  it('renders Mermaid with the Mermaid highlighter', () => {
+    expect(LanguageToLangMap[Language.Mermaid]).toBe('mermaid');
   });
 
   it('returns undefined for a language flag that does not exist', () => {

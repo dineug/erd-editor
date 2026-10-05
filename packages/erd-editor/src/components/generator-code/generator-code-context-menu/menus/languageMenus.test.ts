@@ -25,6 +25,7 @@ describe('languageMenus', () => {
       { name: 'AML', value: Language.AML },
       { name: 'DBML', value: Language.DBML },
       { name: 'GraphQL', value: Language.GraphQL },
+      { name: 'Mermaid', value: Language.Mermaid },
     ]);
   });
 
@@ -48,6 +49,7 @@ describe('languageMenus', () => {
       'AML',
       'DBML',
       'GraphQL',
+      'Mermaid',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });
