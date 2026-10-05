@@ -10,6 +10,7 @@ import {
 } from '../support/graph';
 import {
   ColumnOption,
+  type ColumnSeed,
   ColumnUIKey,
   createSchema,
   type ErdDocument,
@@ -101,6 +102,43 @@ const targetDocument = (): ErdDocument =>
       },
     ],
   });
+
+/**
+ * Every field holds a character HTML reads as markup. Written unescaped, a tag
+ * a value holds parses as an element and drops out of its cell text, and an
+ * entity typed in a default or a comment comes back decoded.
+ */
+const MARKUP_COLUMNS: ColumnSeed[] = [
+  {
+    id: 'markup_label',
+    name: '<label>',
+    dataType: 'varchar(20)',
+    default: `'R&D' "x"`,
+    comment: 'shown as <b>bold</b>',
+    options: 0,
+  },
+  {
+    id: 'markup_note',
+    name: 'a&b',
+    dataType: 'enum("<", "&")',
+    default: '"&amp;"',
+    comment: 'typed &lt; stays typed',
+    options: ColumnOption.notNull,
+  },
+];
+
+const markupDocument = (): ErdDocument =>
+  createSchema({
+    tables: [
+      { id: 'markup', name: 'markup', x: 180, y: 160, columns: MARKUP_COLUMNS },
+    ],
+  });
+
+/** The grid a copy of MARKUP_COLUMNS shows under the default show bits. */
+const MARKUP_CELLS = [
+  ['<label>', 'varchar(20)', 'NULL', `'R&D' "x"`, 'shown as <b>bold</b>'],
+  ['a&b', 'enum("<", "&")', 'NOT NULL', '"&amp;"', 'typed &lt; stays typed'],
+];
 
 // ── clipboard driving ─────────────────────────────────────────────────────
 
@@ -214,6 +252,20 @@ function visibleTable(erd: ErdEditorPage, html: string) {
     const template = document.createElement('template');
     template.innerHTML = source;
     return template.content.querySelector('table')?.outerHTML ?? '';
+  }, html);
+}
+
+/**
+ * The text of every cell in a text/html flavour as a browser parses it, the
+ * grid a spreadsheet or a stranger's paste reads.
+ */
+function visibleCells(erd: ErdEditorPage, html: string) {
+  return erd.page.evaluate(source => {
+    const template = document.createElement('template');
+    template.innerHTML = source;
+    return Array.from(template.content.querySelectorAll('tr'), row =>
+      Array.from(row.querySelectorAll('td'), cell => cell.textContent ?? '')
+    );
   }, html);
 }
 
@@ -504,6 +556,85 @@ test.describe('clipboard paste ladder', () => {
     // The original is left exactly as it was — no columns appended to it.
     expect(await tableShape(erd, 'users')).toEqual(shape);
     expect((await erd.table('users')).ui).toEqual(original.ui);
+  });
+});
+
+/**
+ * Pastes a text/html flavour alone into the selected orders table and returns
+ * the fields of the columns it appended, in the order a paste reads them.
+ */
+async function pasteHtmlIntoOrders(erd: ErdEditorPage, html: string) {
+  await erd.seed(targetDocument());
+  await seedClipboard(erd, { 'text/html': html });
+  await erd.clickTableHeader('orders');
+
+  const record = await paste(erd);
+  expect(record.types).not.toContain(CLIPBOARD_MIME);
+  expect(record.defaultPrevented).toBe(true);
+
+  await expect
+    .poll(() => erd.columnIds('orders'))
+    .toHaveLength(1 + MARKUP_COLUMNS.length);
+  const appended = (await erd.columnIds('orders')).slice(1);
+
+  return Promise.all(
+    appended.map(async id => htmlFields(await erd.column(id)))
+  );
+}
+
+/** The fields a paste from a text/html table is compared on. */
+function htmlFields(column: ColumnSeed) {
+  return {
+    name: column.name,
+    dataType: column.dataType,
+    default: column.default,
+    comment: column.comment,
+    options: column.options,
+  };
+}
+
+test.describe('the html table a copy writes', () => {
+  // A copy of whole tables: the visible table under the wrapper is the grid
+  // another app reads, and the rung a paste without the hidden JSON reaches.
+  test('keeps the markup of a table copy as typed, cell for cell', async ({
+    erd,
+  }) => {
+    await erd.seed(markupDocument());
+    await erd.clickTableHeader('markup');
+    await expect(erd.selectedTables()).toHaveCount(1);
+
+    const flavours = await copy(erd);
+    expect(JSON.parse(flavours[CLIPBOARD_MIME]).kind).toBe('tables');
+    expect(await visibleCells(erd, flavours['text/html'])).toEqual(
+      MARKUP_CELLS
+    );
+
+    const table = await visibleTable(erd, flavours['text/html']);
+    expect(await pasteHtmlIntoOrders(erd, table)).toEqual(
+      MARKUP_COLUMNS.map(htmlFields)
+    );
+  });
+
+  // A copy of columns writes its table with no wrapper and no JSON hidden in
+  // it, so the html alone is what another app, or a paste that loses the
+  // custom flavour, reads.
+  test('keeps the markup of a column copy as typed, cell for cell', async ({
+    erd,
+  }) => {
+    await erd.seed(markupDocument());
+    await erd.focusCell(erd.cell(erd.columnEl('markup_label'), 'columnName'));
+    await erd.press(Shortcut.selectAllColumn);
+    await expect(erd.selectedColumns()).toHaveCount(2);
+
+    const flavours = await copy(erd);
+    expect(JSON.parse(flavours[CLIPBOARD_MIME]).kind).toBe('columns');
+    expect(await visibleCells(erd, flavours['text/html'])).toEqual(
+      MARKUP_CELLS
+    );
+
+    expect(await pasteHtmlIntoOrders(erd, flavours['text/html'])).toEqual(
+      MARKUP_COLUMNS.map(htmlFields)
+    );
   });
 });
 

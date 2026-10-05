@@ -32,17 +32,7 @@ export function tableCopyToText(state: RootState): string {
 }
 
 export function tableCopyToHtml(state: RootState): string {
-  const rows = getTableData(state);
-  return rows.length === 0
-    ? ''
-    : `<table><tbody>${rows
-        .map(
-          row =>
-            `<tr>${row
-              .map(([type, value]) => `<td data-type="${type}">${value}</td>`)
-              .join('')}</tr>`
-        )
-        .join('')}</tbody></table>`;
+  return rowsToHtmlTable(getTableData(state));
 }
 
 function getTableData({
@@ -267,25 +257,14 @@ export function entitiesToHtmlTable(
   payload: ClipboardPayload,
   settings: Settings
 ): string {
-  const rows = toEntityRows(payload, settings);
-
-  return rows.length === 0
-    ? ''
-    : `<table><tbody>${rows
-        .map(
-          row =>
-            `<tr>${row
-              .map(([type, value]) => `<td data-type="${type}">${value}</td>`)
-              .join('')}</tr>`
-        )
-        .join('')}</tbody></table>`;
+  return rowsToHtmlTable(toEntityRows(payload, settings));
 }
 
 export function payloadToHtml(
   payload: ClipboardPayload,
   tableHtml: string
 ): string {
-  const json = escapeHtmlAttribute(JSON.stringify(payload));
+  const json = escapeHtml(JSON.stringify(payload));
 
   return byteLength(json) > HTML_PAYLOAD_MAX_BYTES
     ? `<span ${CLIPBOARD_HTML_TRUNCATED_ATTR}="1">${tableHtml}</span>`
@@ -341,6 +320,24 @@ function toClipboardMemo(memo: Memo): ClipboardMemo {
       color: memo.ui.color,
     },
   };
+}
+
+/**
+ * Each cell value and type is escaped, so a value holding markup reaches another
+ * app, and a paste reading textContent, as the text it is.
+ */
+function rowsToHtmlTable(rows: Row[]): string {
+  if (rows.length === 0) return '';
+
+  const body = rows
+    .map(row => `<tr>${row.map(cellToHtml).join('')}</tr>`)
+    .join('');
+
+  return `<table><tbody>${body}</tbody></table>`;
+}
+
+function cellToHtml([type, value]: Cell): string {
+  return `<td data-type="${escapeHtml(type)}">${escapeHtml(value)}</td>`;
 }
 
 function toEntityRows(
@@ -400,7 +397,7 @@ const HTML_ESCAPE_MAP: Record<string, string> = {
   "'": '&#39;',
 };
 
-function escapeHtmlAttribute(value: string): string {
+function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, char => HTML_ESCAPE_MAP[char]);
 }
 
