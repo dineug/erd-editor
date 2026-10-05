@@ -75,6 +75,65 @@ test.describe('keyboard shortcuts', () => {
     expect(await erd.tableIds()).toEqual(['posts']);
   });
 
+  test('Delete removes the selected table and memo, and one undo brings both back', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    const memo = await erd.sceneBox(`#memo-${MEMO_ID}`);
+
+    await erd.clickAt(await erd.tableHeaderPoint('users'));
+    await erd.modClickAt({ x: memo.x + 20, y: memo.y + 8 });
+    await expect(erd.selectedTables()).toHaveCount(1);
+    await expect(erd.canvas.locator('.memo[data-selected]')).toHaveCount(1);
+
+    await erd.press(Shortcut.removeSelection);
+    await expect.poll(() => erd.tableIds()).toEqual([]);
+    expect(await erd.memoIds()).toEqual([]);
+
+    await erd.press(Shortcut.undo);
+    await expect.poll(() => erd.tableIds()).toEqual(['users']);
+    expect(await erd.memoIds()).toEqual([MEMO_ID]);
+  });
+
+  test('Backspace removes the selected columns of the one selected table, and one undo brings them back', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+    await erd.press(Shortcut.selectAllColumn);
+    await expect(erd.selectedColumns()).toHaveCount(2);
+    await expect(erd.selectedTables()).toHaveCount(1);
+
+    await erd.press('Backspace');
+    await expect.poll(() => erd.columnIds('users')).toEqual([]);
+    expect(await erd.tableIds()).toEqual(['users', 'posts']);
+    expect(await erd.columnIds('posts')).toEqual(['posts_id', 'posts_title']);
+
+    await erd.press(Shortcut.undo);
+    await expect
+      .poll(async () => [...(await erd.columnIds('users'))].sort())
+      .toEqual(['users_id', 'users_name']);
+  });
+
+  test('Backspace in the cell editor erases a character and removes nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(oneTable());
+    const nameCell = erd.cell(erd.columnEl('users_name'), 'columnName');
+    await nameCell.dblclick();
+    await expect(erd.editInput(nameCell)).toBeFocused();
+    await expect(erd.selectedTables()).toHaveCount(1);
+
+    await erd.page.keyboard.press('End');
+    await erd.press('Backspace');
+
+    await expect(erd.editInput(nameCell)).toHaveValue('nam');
+    await expect(erd.editInput(nameCell)).toBeFocused();
+    expect(await erd.tableIds()).toEqual(['users']);
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+  });
+
   test('undo/redo round-trip an add, and fire from inside an open edit input', async ({
     erd,
   }) => {
@@ -624,9 +683,9 @@ const binding = (name: string, chord: string): Press => ({
 });
 
 /**
- * Every canvas shortcut that has to stand down while a text editor owns the
- * keyboard, then the traversal keys keydown carries rather than a binding.
- * Both chords of each removal binding are here, not just the pressed one.
+ * Every canvas shortcut that stands down while a text editor owns the keyboard,
+ * then the traversal keys keydown carries. Both chords of each removal binding
+ * are here but removeSelection's, which erase text and have cases of their own.
  */
 const PRESSES: Press[] = [
   binding('addTable', Shortcut.addTable),
@@ -831,6 +890,26 @@ test.describe('shortcuts while a text editor owns the keyboard', () => {
     expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
     await expect(erd.memoEditor).toBeFocused();
     await expect(erd.memoEditor).toHaveValue(MEMO_VALUE);
+  });
+
+  test('Backspace and Delete erase text in the memo editor over a focused column, and remove nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(tableAndMemo());
+    await openMemoEditorOverFocus(erd);
+    await erd.memoEditor.evaluate((element: HTMLTextAreaElement) => {
+      element.setSelectionRange(1, 1);
+    });
+
+    await erd.press('Backspace');
+    await erd.press('Delete');
+
+    await expect
+      .poll(async () => (await erd.memo(MEMO_ID)).value)
+      .toBe(MEMO_VALUE.slice(2));
+    await expect(erd.memoEditor).toBeFocused();
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+    expect(await erd.tableIds()).toEqual(['users']);
   });
 
   test('Enter types a newline and arms no cell edit underneath', async ({

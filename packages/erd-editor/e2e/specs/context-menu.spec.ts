@@ -3,6 +3,7 @@ import type { Locator } from '@playwright/test';
 import type { Box, ErdEditorPage, Point } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import {
+  createSchema,
   type ErdDocument,
   oneTable,
   RelationshipType,
@@ -15,6 +16,33 @@ import { MOD_KEY } from '../support/shortcuts';
 // the table under the pointer, the connector under it, or neither.
 
 const RELATIONSHIP_ID = 'users_posts';
+
+const MEMO_ID = 'note';
+
+/** twoTables with a memo beside them. */
+function tablesAndMemo(): ErdDocument {
+  const document = twoTables();
+  const { collections, doc } = createSchema({
+    memos: [{ id: MEMO_ID, value: 'a note', x: 160, y: 520 }],
+  });
+  document.collections.memoEntities = collections.memoEntities;
+  document.doc.memoIds = doc.memoIds;
+
+  return document;
+}
+
+/** A point on a memo's header strip, clear of its colour bar and remove button. */
+async function memoHeaderPoint(erd: ErdEditorPage) {
+  const box = await erd.sceneBox(`#memo-${MEMO_ID}`);
+  return { x: box.x + 20, y: box.y + 8 };
+}
+
+/** The last row of the open root menu, which holds Delete. */
+const lastRootRow = (erd: ErdEditorPage) =>
+  erd.host
+    .locator('.context-menu-content[data-id="root"]')
+    .locator(':scope > div:not(.context-menu-content)')
+    .last();
 
 /** twoTables with one connector between them, laid out side by side. */
 function linkedTables(): ErdDocument {
@@ -163,6 +191,117 @@ test.describe('context menu routing', () => {
     await item.click();
     await expect(erd.columnKey('users_name', 'pk')).toHaveCount(1);
     await expect(erd.columnKey('users_id', 'pk')).toHaveCount(0);
+  });
+
+  test('right-clicking a table ends its menu with Delete, which deletes that table', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+
+    await erd.clickAt(await erd.tableHeaderPoint('users'), { button: 'right' });
+
+    const row = lastRootRow(erd);
+    await expect(row).toHaveText(/^\s*Delete\s*Delete\s*$/);
+    await expect(row.locator('.kbd')).toHaveText('Delete');
+
+    await row.click();
+    await expect.poll(() => erd.tableIds()).toEqual(['posts']);
+    await expect(erd.contextMenu).toHaveCount(0);
+  });
+
+  test('right-clicking a table in a selection deletes the whole selection', async ({
+    erd,
+  }) => {
+    await erd.seed(tablesAndMemo());
+
+    await erd.clickAt(await erd.tableHeaderPoint('users'));
+    await erd.modClickAt(await memoHeaderPoint(erd));
+    await erd.clickAt(await erd.tableHeaderPoint('users'), { button: 'right' });
+
+    const item = erd.contextMenu.getByText('Delete selected', { exact: true });
+    await expect(item).toBeVisible();
+    await item.click();
+
+    await expect.poll(() => erd.tableIds()).toEqual(['posts']);
+    expect(await erd.memoIds()).toEqual([]);
+  });
+
+  test('right-clicking the one selected row deletes that column', async ({
+    erd,
+  }) => {
+    await erd.seed(oneTable());
+    const nameName = erd.cell(erd.columnEl('users_name'), 'columnName');
+    await erd.focusCell(nameName);
+
+    await erd.clickAt(await erd.centerOf(nameName), { button: 'right' });
+
+    const item = erd.contextMenu.getByText('Delete column', { exact: true });
+    await expect(item).toBeVisible();
+    await item.click();
+
+    await expect.poll(() => erd.columnIds('users')).toEqual(['users_id']);
+    expect(await erd.tableIds()).toEqual(['users']);
+  });
+
+  test('right-clicking a row of a column selection deletes every selected column', async ({
+    erd,
+  }) => {
+    await erd.seed(oneTable());
+    const idName = erd.cell(erd.columnEl('users_id'), 'columnName');
+    const nameName = erd.cell(erd.columnEl('users_name'), 'columnName');
+
+    await erd.focusCell(nameName);
+    await erd.page.keyboard.down(MOD_KEY);
+    await erd.clickAt(await erd.centerOf(idName));
+    await erd.page.keyboard.up(MOD_KEY);
+    await expect(erd.selectedColumns()).toHaveCount(2);
+
+    await erd.clickAt(await erd.centerOf(nameName), { button: 'right' });
+
+    const item = erd.contextMenu.getByText('Delete columns', { exact: true });
+    await expect(item).toBeVisible();
+    await item.click();
+
+    await expect.poll(() => erd.columnIds('users')).toEqual([]);
+    expect(await erd.tableIds()).toEqual(['users']);
+  });
+
+  test('right-clicking a memo offers its own menu, whose Color opens the picker and Delete removes it', async ({
+    erd,
+  }) => {
+    await erd.seed(tablesAndMemo());
+
+    await erd.clickAt(await memoHeaderPoint(erd), { button: 'right' });
+
+    await expect(erd.contextMenu.first()).toBeVisible();
+    await expect(erd.contextMenuItem('New Table')).toHaveCount(0);
+    await expect(erd.contextMenuItem('Primary Key')).toHaveCount(0);
+    await erd.contextMenu.getByText('Color', { exact: true }).click();
+    await expect(erd.colorPicker).toBeVisible();
+
+    await erd.clickAt(await memoHeaderPoint(erd), { button: 'right' });
+    await expect(lastRootRow(erd)).toHaveText(/^\s*Delete\s*Delete\s*$/);
+    await lastRootRow(erd).click();
+
+    await expect.poll(() => erd.memoIds()).toEqual([]);
+    expect(await erd.tableIds()).toEqual(['users', 'posts']);
+  });
+
+  test('right-clicking a memo in a selection deletes the whole selection', async ({
+    erd,
+  }) => {
+    await erd.seed(tablesAndMemo());
+
+    await erd.clickAt(await erd.tableHeaderPoint('users'));
+    await erd.modClickAt(await memoHeaderPoint(erd));
+    await erd.clickAt(await memoHeaderPoint(erd), { button: 'right' });
+
+    const item = erd.contextMenu.getByText('Delete selected', { exact: true });
+    await expect(item).toBeVisible();
+    await item.click();
+
+    await expect.poll(() => erd.memoIds()).toEqual([]);
+    expect(await erd.tableIds()).toEqual(['posts']);
   });
 
   test('right-clicking a relationship offers its type and deletes it', async ({

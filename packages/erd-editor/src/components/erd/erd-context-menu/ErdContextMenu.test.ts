@@ -49,8 +49,15 @@ import {
   SelectType,
   VisualizationMode,
 } from '@/engine/modules/editor/state';
+import {
+  addMemoAction,
+  changeMemoColorAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeDatabaseAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -88,9 +95,17 @@ type MountOptions = {
   type?: ErdContextMenuType;
   relationshipId?: string;
   tableId?: string;
+  columnId?: string;
+  memoId?: string;
 };
 
-async function mountMenu({ type, relationshipId, tableId }: MountOptions = {}) {
+async function mountMenu({
+  type,
+  relationshipId,
+  tableId,
+  columnId,
+  memoId,
+}: MountOptions = {}) {
   mounted = await mountAndFlush(
     html`
       <${Wrapper}
@@ -99,6 +114,8 @@ async function mountMenu({ type, relationshipId, tableId }: MountOptions = {}) {
             type=${type ?? ErdContextMenuType.ERD}
             relationshipId=${relationshipId}
             tableId=${tableId}
+            columnId=${columnId}
+            memoId=${memoId}
             .onClose=${onClose}
           />
         `}
@@ -404,6 +421,17 @@ describe('ErdContextMenu / ERD type', () => {
     });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('closes the menu on the key its Delete row names, which takes away what it was raised over', async () => {
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: 'memo-1' });
+
+    app.shortcut$.next({
+      type: KeyBindingName.removeSelection,
+      event: new KeyboardEvent('keydown', { key: 'Delete' }),
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('ErdContextMenu / table type', () => {
@@ -440,7 +468,217 @@ describe('ErdContextMenu / table type', () => {
       'Table PropertiesAlt + Space',
       'Focus on this tableAlt + F',
       'Color',
+      'DeleteDelete',
     ]);
+  });
+
+  it('draws no icon beside Delete and names the key that does the same', async () => {
+    seedTable();
+    await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+    const item = findItem(rootItems(), 'Delete');
+    expect(item.querySelector('svg')).toBeNull();
+    expect(item.querySelector('.kbd')?.textContent?.trim()).toBe('Delete');
+  });
+
+  describe('Delete', () => {
+    const SECOND_TABLE_ID = 'table-2';
+    const MEMO_ID = 'memo-1';
+
+    const tableIds = () => app.store.state.doc.tableIds;
+    const memoIds = () => app.store.state.doc.memoIds;
+    const columnIds = () =>
+      query(app.store.state.collections)
+        .collection('tableEntities')
+        .selectById(TABLE_ID)?.columnIds;
+
+    function seedNeighbors() {
+      seedTable();
+      app.store.dispatchSync(
+        addTableAction({
+          id: SECOND_TABLE_ID,
+          ui: { x: 400, y: 0, zIndex: 2 },
+        }),
+        addMemoAction({ id: MEMO_ID, ui: { x: 0, y: 400, zIndex: 3 } })
+      );
+    }
+
+    it('deletes the table it was raised over alone, and closes', async () => {
+      seedNeighbors();
+      app.store.dispatchSync(
+        selectAction({
+          [SECOND_TABLE_ID]: SelectType.table,
+          [MEMO_ID]: SelectType.memo,
+        })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      await click(findItem(rootItems(), 'Delete'));
+
+      expect(tableIds()).toEqual([SECOND_TABLE_ID]);
+      expect(memoIds()).toEqual([MEMO_ID]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('names the selection the table is one of and deletes all of it', async () => {
+      seedNeighbors();
+      app.store.dispatchSync(
+        selectAction({
+          [TABLE_ID]: SelectType.table,
+          [MEMO_ID]: SelectType.memo,
+        })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete selectedDelete');
+      await click(findItem(rootItems(), 'Delete selected'));
+
+      expect(tableIds()).toEqual([SECOND_TABLE_ID]);
+      expect(memoIds()).toEqual([]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    /** Three columns, the first and the last selected, their table the whole selection. */
+    function seedColumnSelection() {
+      seedTable();
+      app.store.dispatchSync(
+        addColumnAction({ id: 'column-2', tableId: TABLE_ID }),
+        addColumnAction({ id: 'column-3', tableId: TABLE_ID }),
+        selectAction({ [TABLE_ID]: SelectType.table })
+      );
+      focusColumn();
+      app.store.dispatchSync(
+        focusColumnAction({
+          tableId: TABLE_ID,
+          columnId: 'column-3',
+          focusType: FocusType.columnName,
+          $mod: true,
+          shiftKey: false,
+        })
+      );
+    }
+
+    it('names the selected columns when raised over one of them and deletes them', async () => {
+      seedColumnSelection();
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: TABLE_ID,
+        columnId: 'column-3',
+      });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete columnsDelete');
+      await click(findItem(rootItems(), 'Delete columns'));
+
+      expect(tableIds()).toEqual([TABLE_ID]);
+      expect(columnIds()).toEqual(['column-2']);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('names a lone selected column in the singular when raised over it, and deletes it', async () => {
+      seedTable();
+      app.store.dispatchSync(
+        addColumnAction({ id: 'column-2', tableId: TABLE_ID }),
+        selectAction({ [TABLE_ID]: SelectType.table })
+      );
+      focusColumn();
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: TABLE_ID,
+        columnId: COLUMN_ID,
+      });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete columnDelete');
+      await click(findItem(rootItems(), 'Delete column'));
+
+      expect(tableIds()).toEqual([TABLE_ID]);
+      expect(columnIds()).toEqual(['column-2']);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('counts only the selected columns still in the table', async () => {
+      seedColumnSelection();
+      // The bare atom a peer, an agent or the undo of an add sends, which
+      // leaves the column in the selection.
+      app.store.dispatchSync(
+        removeColumnAction({ id: COLUMN_ID, tableId: TABLE_ID })
+      );
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: TABLE_ID,
+        columnId: 'column-3',
+      });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete columnDelete');
+      await click(findItem(rootItems(), 'Delete column'));
+
+      expect(columnIds()).toEqual(['column-2']);
+    });
+
+    it.each([
+      ['off the rows', undefined],
+      ['over a row outside the selection', 'column-2'],
+    ])(
+      'names the table, not its selected columns, when raised %s',
+      async (_, columnId) => {
+        seedColumnSelection();
+        await mountMenu({
+          type: ErdContextMenuType.table,
+          tableId: TABLE_ID,
+          columnId,
+        });
+
+        expect(labelsOf(rootItems()).at(-1)).toBe('DeleteDelete');
+        await click(findItem(rootItems(), 'Delete'));
+
+        expect(tableIds()).toEqual([]);
+      }
+    );
+
+    it('goes back to the table at a zoom that draws names alone', async () => {
+      seedTable();
+      app.store.dispatchSync(selectAction({ [TABLE_ID]: SelectType.table }));
+      focusColumn();
+      app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: TABLE_ID,
+        columnId: COLUMN_ID,
+      });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('DeleteDelete');
+      await click(findItem(rootItems(), 'Delete'));
+
+      expect(tableIds()).toEqual([]);
+    });
+
+    it('leaves the columns of another focused table to the key', async () => {
+      seedNeighbors();
+      app.store.dispatchSync(
+        addColumnAction({ id: 'column-9', tableId: SECOND_TABLE_ID }),
+        selectAction({ [SECOND_TABLE_ID]: SelectType.table }),
+        focusColumnAction({
+          tableId: SECOND_TABLE_ID,
+          columnId: 'column-9',
+          focusType: FocusType.columnName,
+          $mod: false,
+          shiftKey: false,
+        })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('DeleteDelete');
+      await click(findItem(rootItems(), 'Delete'));
+
+      expect(tableIds()).toEqual([SECOND_TABLE_ID]);
+    });
+
+    it('follows the key when it is remapped', async () => {
+      seedTable();
+      app.keyBindingMap.removeSelection = [{ shortcut: 'Alt+KeyD' }];
+      await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('DeleteAlt + D');
+    });
   });
 
   it('toggles the focused column primary key', async () => {
@@ -668,6 +906,113 @@ describe('ErdContextMenu / table type', () => {
     expect(openColorPicker).not.toHaveBeenCalled();
     expect(openTableProperties).not.toHaveBeenCalled();
     expect(app.store.state.editor.views.flow).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('ErdContextMenu / memo type', () => {
+  const MEMO_ID = 'memo-1';
+  const TABLE_ID = 'table-1';
+
+  function seedMemo() {
+    app.store.dispatchSync(
+      addMemoAction({ id: MEMO_ID, ui: { x: 0, y: 0, zIndex: 1 } }),
+      changeMemoColorAction({ id: MEMO_ID, color: '#ff8800', prevColor: '' }),
+      addTableAction({ id: TABLE_ID, ui: { x: 400, y: 0, zIndex: 2 } })
+    );
+  }
+
+  it('renders the memo level menu entries', async () => {
+    seedMemo();
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+
+    expect(labelsOf(rootItems())).toEqual(['Color', 'DeleteDelete']);
+    expect(iconNameOf(findItem(rootItems(), 'Color'))).toBe('palette');
+    expect(findItem(rootItems(), 'Delete').querySelector('svg')).toBeNull();
+  });
+
+  it('opens the color picker on the memo color at the pointer position', async () => {
+    seedMemo();
+    const openColorPicker = vi.fn();
+    app.emitter.on({ openColorPicker });
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+
+    await click(findItem(rootItems(), 'Color'), { clientX: 56, clientY: 78 });
+
+    expect(openColorPicker).toHaveBeenCalledTimes(1);
+    expect(openColorPicker.mock.calls[0][0].payload).toEqual({
+      x: 56,
+      y: 78,
+      color: '#ff8800',
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not open the color picker for an unknown memo', async () => {
+    const openColorPicker = vi.fn();
+    app.emitter.on({ openColorPicker });
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: 'missing' });
+
+    await click(findItem(rootItems(), 'Color'));
+
+    expect(openColorPicker).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('deletes the memo it was raised over alone, and closes', async () => {
+    seedMemo();
+    app.store.dispatchSync(selectAction({ [TABLE_ID]: SelectType.table }));
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+
+    await click(findItem(rootItems(), 'Delete'));
+
+    expect(app.store.state.doc.memoIds).toEqual([]);
+    expect(app.store.state.doc.tableIds).toEqual([TABLE_ID]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the memo alone while it is the whole selection', async () => {
+    seedMemo();
+    app.store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+
+    expect(labelsOf(rootItems()).at(-1)).toBe('DeleteDelete');
+    await click(findItem(rootItems(), 'Delete'));
+
+    expect(app.store.state.doc.memoIds).toEqual([]);
+    expect(app.store.state.doc.tableIds).toEqual([TABLE_ID]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the selection the memo is one of and deletes all of it', async () => {
+    const OTHER_MEMO_ID = 'memo-2';
+    seedMemo();
+    app.store.dispatchSync(
+      addMemoAction({ id: OTHER_MEMO_ID, ui: { x: 0, y: 400, zIndex: 3 } }),
+      selectAction({ [MEMO_ID]: SelectType.memo, [TABLE_ID]: SelectType.table })
+    );
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+
+    expect(labelsOf(rootItems()).at(-1)).toBe('Delete selectedDelete');
+    await click(findItem(rootItems(), 'Delete selected'));
+
+    expect(app.store.state.doc.memoIds).toEqual([OTHER_MEMO_ID]);
+    expect(app.store.state.doc.tableIds).toEqual([]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores every memo action when no memo id is given', async () => {
+    seedMemo();
+    const openColorPicker = vi.fn();
+    app.emitter.on({ openColorPicker });
+    await mountMenu({ type: ErdContextMenuType.memo });
+
+    for (const item of rootItems()) {
+      await click(item);
+    }
+
+    expect(openColorPicker).not.toHaveBeenCalled();
+    expect(app.store.state.doc.memoIds).toEqual([MEMO_ID]);
     expect(onClose).not.toHaveBeenCalled();
   });
 });

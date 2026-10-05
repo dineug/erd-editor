@@ -30,7 +30,10 @@ import {
   MoveKey,
   SelectType,
 } from '@/engine/modules/editor/state';
-import { getFocusedColumnIds } from '@/engine/modules/editor/utils/focus';
+import {
+  getFocusedColumnIds,
+  getRemovableColumns,
+} from '@/engine/modules/editor/utils/focus';
 import {
   focusCentersOf,
   focusFlowTableAction$,
@@ -180,6 +183,18 @@ export function useErdShortcut(ctx: Ctx) {
       if (type === KeyBindingName.removeTable) {
         ctx.host.dispatchEvent(focusEvent());
         store.dispatch(removeSelectedAction$());
+      }
+
+      // A held key removes once: the press after a column removal reaches the
+      // column above it, or the table once the first column is gone.
+      if (type === KeyBindingName.removeSelection && !event.repeat) {
+        const columns = getRemovableColumns(store.state);
+        ctx.host.dispatchEvent(focusEvent());
+        store.dispatch(
+          columns
+            ? removeColumnAction$(columns.tableId, columns.columnIds)
+            : removeSelectedAction$()
+        );
       }
 
       if (type === KeyBindingName.tableProperties) {

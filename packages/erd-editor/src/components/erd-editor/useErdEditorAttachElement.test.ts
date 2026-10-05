@@ -349,6 +349,22 @@ describe('useErdEditorAttachElement', () => {
     expect(app.keyBindingMap.search).toBe(search);
   });
 
+  it('lets a host remap the delete key, or hand Delete and Backspace back to the page', async () => {
+    const { app, ctx } = await setup();
+    const removeTable = app.keyBindingMap.removeTable;
+
+    ctx.setKeyBindingMap({
+      removeSelection: [{ shortcut: 'Alt+KeyD', preventDefault: true }],
+    } as any);
+    expect(app.keyBindingMap.removeSelection).toEqual([
+      { shortcut: 'Alt+KeyD', preventDefault: true },
+    ]);
+
+    ctx.setKeyBindingMap({ removeSelection: [] } as any);
+    expect(app.keyBindingMap.removeSelection).toEqual([]);
+    expect(app.keyBindingMap.removeTable).toBe(removeTable);
+  });
+
   it('loads an initial value and emits a schema GC request', async () => {
     const { app, ctx } = await setup();
     const schemaGC = vi.fn();

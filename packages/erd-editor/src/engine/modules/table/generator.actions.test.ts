@@ -27,6 +27,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  removeTableAction,
   sortTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -233,6 +234,22 @@ describe('removeTableAction$', () => {
 
     expect(typesOf(store, removeTableAction$())).toEqual([]);
     expect(store.state.doc.tableIds).toEqual(['t1', 't2', 't3']);
+  });
+
+  it('leaves out a selected table already gone from the document', () => {
+    seedTable(store, 't1');
+    seedTable(store, 't2');
+    store.dispatchSync(
+      selectAction({ t1: SelectType.table, t2: SelectType.table })
+    );
+    // The bare atom a peer, an agent or the undo of an add sends, which
+    // leaves the table selected and its entity in the collection.
+    store.dispatchSync(removeTableAction({ id: 't2' }));
+
+    const flat = flatten(store, removeTableAction$());
+
+    expect(flat.map(({ type }) => type)).toEqual(['table.remove']);
+    expect(flat[0].payload).toEqual({ id: 't1' });
   });
 
   it('ignores memo selections when resolving the tables to remove', () => {

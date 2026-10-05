@@ -21,6 +21,7 @@ import {
   editTableAction,
   focusColumnAction,
   focusTableAction,
+  selectAction,
   selectAllAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -32,7 +33,11 @@ import {
 } from '@/engine/modules/editor/state';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
-import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
+import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  addMemoAction$,
+  selectMemoAction$,
+} from '@/engine/modules/memo/generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeZoomLevelAction,
@@ -279,6 +284,175 @@ describe('useErdShortcut - removal and stop', () => {
     expect(app.store.state.editor.selectedMap).toEqual({});
     expect(app.store.state.editor.focusTable).toBeNull();
     document.body.removeEventListener(forceFocusEvent.type, listener);
+  });
+});
+
+describe('useErdShortcut - remove selection', () => {
+  const seedMemo = (app: AppContext) => {
+    app.store.dispatchSync(addMemoAction$());
+    const { memoIds } = app.store.state.doc;
+    return memoIds[memoIds.length - 1];
+  };
+
+  /** One table holding three columns, the first and the last selected. */
+  async function seedColumnSelection() {
+    const app = await setup();
+    const tableId = seedTable(app);
+    const columnIds = [
+      seedColumn(app, tableId),
+      seedColumn(app, tableId),
+      seedColumn(app, tableId),
+    ];
+    app.store.dispatchSync(
+      focusColumnAction({
+        tableId,
+        columnId: columnIds[0],
+        focusType: FocusType.columnName,
+        $mod: true,
+        shiftKey: false,
+      })
+    );
+    return { app, tableId, columnIds };
+  }
+
+  it('removes every selected table and memo in one undo step, asking the host for focus', async () => {
+    const app = await setup();
+    const listener = vi.fn();
+    document.body.addEventListener(focusEvent.type, listener);
+    const kept = seedTable(app);
+    const memoId = seedMemo(app);
+    const tableId = seedTable(app);
+    app.store.dispatchSync(selectAction({ [memoId]: SelectType.memo }));
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(app.store.state.doc.tableIds).toEqual([kept]);
+    expect(app.store.state.doc.memoIds).toEqual([]);
+
+    app.store.undo();
+    expect(app.store.state.doc.tableIds).toEqual([kept, tableId]);
+    expect(app.store.state.doc.memoIds).toEqual([memoId]);
+    document.body.removeEventListener(focusEvent.type, listener);
+  });
+
+  it('removes the selected columns while their table is the whole selection, in one undo step', async () => {
+    const { app, tableId, columnIds } = await seedColumnSelection();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      [tableId]: SelectType.table,
+    });
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toEqual([tableId]);
+    expect(getTable(app, tableId)?.columnIds).toEqual([columnIds[1]]);
+
+    app.store.undo();
+    expect([...getTable(app, tableId)!.columnIds].sort()).toEqual(
+      [...columnIds].sort()
+    );
+  });
+
+  it('removes once while the key is held, and the press after takes the table its columns left', async () => {
+    const { app, tableId, columnIds } = await seedColumnSelection();
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+    app.shortcut$.next({
+      type: KeyBindingName.removeSelection,
+      event: new KeyboardEvent('keydown', { key: 'Delete', repeat: true }),
+    });
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toEqual([tableId]);
+    expect(getTable(app, tableId)?.columnIds).toEqual([columnIds[1]]);
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toEqual([]);
+  });
+
+  it('removes the table and the memo beside it rather than its columns', async () => {
+    const { app, tableId } = await seedColumnSelection();
+    const memoId = 'memo-beside';
+    app.store.dispatchSync(
+      addMemoAction({ id: memoId, ui: { x: 0, y: 600, zIndex: 9 } }),
+      selectAction({ [memoId]: SelectType.memo })
+    );
+    expect(app.store.state.editor.focusTable?.selectColumnIds).toHaveLength(2);
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toEqual([]);
+    expect(app.store.state.doc.memoIds).toEqual([]);
+  });
+
+  it('removes the table rather than its columns at a zoom that draws names alone', async () => {
+    const { app } = await seedColumnSelection();
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toEqual([]);
+  });
+
+  it('removes nothing while nothing is selected', async () => {
+    const app = await setup();
+    seedTable(app);
+    seedMemo(app);
+    app.store.dispatchSync(unselectAllAction());
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toHaveLength(1);
+    expect(app.store.state.doc.memoIds).toHaveLength(1);
+  });
+
+  it('removes the table once the add of its selected column is undone, and one undo brings it back bare', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    const columnId = seedColumn(app, tableId);
+    app.store.undo();
+    expect(app.store.state.editor.focusTable?.selectColumnIds).toEqual([
+      columnId,
+    ]);
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+    expect(app.store.state.doc.tableIds).toEqual([]);
+
+    app.store.undo();
+    expect(app.store.state.doc.tableIds).toEqual([tableId]);
+    expect(getTable(app, tableId)?.columnIds).toEqual([]);
+  });
+
+  it('records nothing for a table or memo whose add was undone, so no undo brings it back', async () => {
+    const app = await setup();
+    const kept = seedTable(app);
+    const memoId = seedMemo(app);
+    const tableId = seedTable(app);
+    app.store.dispatchSync(selectAction({ [memoId]: SelectType.memo }));
+    app.store.undo();
+    app.store.undo();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      [tableId]: SelectType.table,
+      [memoId]: SelectType.memo,
+    });
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+    expect(app.store.state.doc.tableIds).toEqual([kept]);
+    expect(app.store.history.hasRedo()).toBe(true);
+
+    app.store.undo();
+    expect(app.store.state.doc.tableIds).toEqual([]);
+    expect(app.store.state.doc.memoIds).toEqual([]);
   });
 });
 
@@ -1326,6 +1500,7 @@ const BLOCKED_SHORTCUTS = [
   KeyBindingName.addMemo,
   KeyBindingName.removeTable,
   KeyBindingName.removeColumn,
+  KeyBindingName.removeSelection,
   KeyBindingName.primaryKey,
   KeyBindingName.selectAllTable,
   KeyBindingName.selectAllColumn,

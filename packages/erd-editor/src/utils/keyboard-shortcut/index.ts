@@ -21,6 +21,7 @@ export const KeyBindingName = {
   addMemo: 'addMemo',
   removeTable: 'removeTable',
   removeColumn: 'removeColumn',
+  removeSelection: 'removeSelection',
   primaryKey: 'primaryKey',
   selectAllTable: 'selectAllTable',
   selectAllColumn: 'selectAllColumn',
@@ -73,6 +74,10 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.removeColumn]: [
     { shortcut: 'Alt+Backspace', preventDefault: true },
     { shortcut: 'Alt+Delete', preventDefault: true },
+  ],
+  [KeyBindingName.removeSelection]: [
+    { shortcut: 'Delete', preventDefault: true },
+    { shortcut: 'Backspace', preventDefault: true },
   ],
   [KeyBindingName.primaryKey]: [{ shortcut: 'Alt+KeyK', preventDefault: true }],
   [KeyBindingName.selectAllTable]: [

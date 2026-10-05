@@ -6,6 +6,7 @@ import { FocusType, MoveKey } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
+import { isHighLevelTable } from '@/utils/validation';
 
 import { appendSelectColumns } from './selectRangeColumn';
 
@@ -190,6 +191,46 @@ export function getFocusedColumnIds({
   return selected.length > 1 && selected.includes(columnId)
     ? selected
     : [columnId];
+}
+
+export type RemovableColumns = {
+  tableId: string;
+  columnIds: string[];
+};
+
+/**
+ * The columns Delete removes: those selected and still in the focused table
+ * while it is the one table or memo selected in the document and the zoom draws
+ * its rows. Null otherwise, where the selected tables and memos go instead.
+ */
+export function getRemovableColumns({
+  doc: { tableIds, memoIds },
+  editor: { focusTable, selectedMap },
+  settings: { zoomLevel },
+  collections,
+}: RootState): RemovableColumns | null {
+  if (!focusTable?.selectColumnIds.length || isHighLevelTable(zoomLevel)) {
+    return null;
+  }
+
+  // A table, memo or column a peer, an agent or an undo removes stays selected.
+  const selectedIds = Object.keys(selectedMap).filter(
+    arrayHas([...tableIds, ...memoIds])
+  );
+  if (selectedIds.length !== 1 || selectedIds[0] !== focusTable.tableId) {
+    return null;
+  }
+
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(focusTable.tableId);
+  if (!table) return null;
+
+  const columnIds = focusTable.selectColumnIds.filter(
+    arrayHas(table.columnIds)
+  );
+
+  return columnIds.length ? { tableId: focusTable.tableId, columnIds } : null;
 }
 
 function getTableTypes({ settings: { show } }: RootState): FocusType[] {

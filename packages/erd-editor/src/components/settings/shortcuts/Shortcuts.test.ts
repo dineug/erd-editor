@@ -25,6 +25,7 @@ const EXPECTED_COMMANDS = [
   'Add Memo',
   'Remove Table, Memo',
   'Remove Column',
+  'Delete Selection',
   'Primary Key',
   'Select All Table, Memo',
   'Select All Column',
@@ -109,6 +110,17 @@ describe('Shortcuts', () => {
 
     const stopRow = rowByCommand('Stop');
     expect(stopRow.querySelector('.kbd')?.textContent?.trim()).toBe('ESC');
+  });
+
+  it('shows Delete Selection on both of its chords', async () => {
+    await setup();
+
+    const kbds = rowByCommand('Delete Selection').querySelectorAll('.kbd');
+
+    expect(Array.from(kbds, kbd => kbd.textContent?.trim())).toEqual([
+      'Delete',
+      '⌫',
+    ]);
   });
 
   it('shows Find and Replace on $mod+F', async () => {

@@ -865,7 +865,7 @@ describe('the buttons a memo owns', () => {
     expect(app.store.state.doc.memoIds).not.toContain(MEMO_ID);
   });
 
-  it('answers a right click on neither button, which the context menu owns', async () => {
+  it('opens no colour picker for a right click on the colour bar, which raises the memo menu', async () => {
     const { app, stage } = await mountStoredMemo();
     const openColorPicker = vi.fn();
     app.emitter.on({ openColorPicker });
@@ -873,10 +873,16 @@ describe('the buttons a memo owns', () => {
     fireScenePointer(nodeNamed(stage, 'memo-header-color'), 'click', {
       button: 2,
     });
+
+    expect(openColorPicker).not.toHaveBeenCalled();
+  });
+
+  it('keeps the memo under a right click on the remove icon, which raises the memo menu', async () => {
+    const { app, stage } = await mountStoredMemo();
+
     fireScenePointer(nodeNamed(stage, 'memo-remove'), 'click', { button: 2 });
     await settle();
 
-    expect(openColorPicker).not.toHaveBeenCalled();
     expect(app.store.state.doc.memoIds).toContain(MEMO_ID);
   });
 });

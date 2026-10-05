@@ -11,13 +11,14 @@ import { isEditableTarget } from '@/utils/validation';
 import { useUnmounted } from './useUnmounted';
 
 /**
- * The bindings a caret owns first. $mod+A is select all text wherever one is
- * and Space is a space, so a binding that swallowed either there would spend
- * the press on the canvas while somebody was typing.
+ * The bindings a caret owns first. $mod+A selects all text wherever one is,
+ * Space is a space and Delete and Backspace erase a character, so a binding
+ * that swallowed one there would spend the press while somebody was typing.
  */
 const YIELDS_TO_A_CARET = new Set<KeyBindingName>([
   KeyBindingName.selectAllTable,
   KeyBindingName.handTool,
+  KeyBindingName.removeSelection,
 ]);
 
 /**
