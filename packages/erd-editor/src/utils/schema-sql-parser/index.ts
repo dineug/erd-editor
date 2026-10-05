@@ -5,6 +5,7 @@ import {
   toJson,
 } from '@dineug/erd-editor-schema';
 import {
+  AlterTableAddDefault,
   AlterTableAddForeignKey,
   AlterTableAddPrimaryKey,
   AlterTableAddUnique,
@@ -49,6 +50,7 @@ type StatementMap = {
   primaryKeys: AlterTableAddPrimaryKey[];
   foreignKeys: AlterTableAddForeignKey[];
   uniques: AlterTableAddUnique[];
+  defaults: AlterTableAddDefault[];
   tableComments: CommentOnTable[];
   columnComments: CommentOnColumn[];
 };
@@ -89,6 +91,7 @@ function getStatementMap(statements: Statement[]): StatementMap {
     primaryKeys: [],
     foreignKeys: [],
     uniques: [],
+    defaults: [],
     tableComments: [],
     columnComments: [],
   };
@@ -126,6 +129,11 @@ function getStatementMap(statements: Statement[]): StatementMap {
           map.uniques.push(statement);
         }
         break;
+      case StatementType.alterTableAddDefault:
+        if (statement.name && statement.columnName && statement.default) {
+          map.defaults.push(statement);
+        }
+        break;
       case StatementType.commentOnTable:
         if (statement.name) {
           map.tableComments.push(statement);
@@ -148,6 +156,7 @@ function mergeTables({
   primaryKeys,
   foreignKeys,
   uniques,
+  defaults,
   tableComments,
   columnComments,
 }: StatementMap): CreateTable[] {
@@ -254,6 +263,18 @@ function mergeTables({
       onDelete: foreignKey.onDelete,
       onUpdate: foreignKey.onUpdate,
     });
+  });
+
+  // SSMS scripts each default as ALTER TABLE ... ADD DEFAULT ... FOR column
+  // after the table, and the constraint's name has no place in the document.
+  defaults.forEach(({ name, columnName, default: value }) => {
+    const table = findByName(tables, name);
+    if (!table) return;
+
+    const column = findByName(table.columns, columnName);
+    if (!column) return;
+
+    column.default = value;
   });
 
   // PostgreSQL and Oracle carry comments as their own statement rather than as

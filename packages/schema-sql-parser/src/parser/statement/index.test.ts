@@ -11,16 +11,17 @@ describe('StatementType', () => {
       alterTableAddUnique: 'alter.table.add.unique',
       alterTableAddPrimaryKey: 'alter.table.add.primaryKey',
       alterTableAddForeignKey: 'alter.table.add.foreignKey',
+      alterTableAddDefault: 'alter.table.add.default',
       commentOnTable: 'comment.on.table',
       commentOnColumn: 'comment.on.column',
     });
   });
 
-  it('exposes exactly seven distinct discriminators', () => {
+  it('exposes exactly eight distinct discriminators', () => {
     const values = Object.values(StatementType);
 
-    expect(values).toHaveLength(7);
-    expect(new Set(values).size).toBe(7);
+    expect(values).toHaveLength(8);
+    expect(new Set(values).size).toBe(8);
   });
 
   it('names alter statements after their ALTER TABLE ADD prefix', () => {
@@ -32,6 +33,7 @@ describe('StatementType', () => {
       'alter.table.add.unique',
       'alter.table.add.primaryKey',
       'alter.table.add.foreignKey',
+      'alter.table.add.default',
     ]);
     for (const value of alterValues) {
       expect(value.startsWith('alter.table.add.')).toBe(true);

@@ -5,7 +5,7 @@
 Internal to the erd-editor monorepo — this package is private and is never published to npm.
 
 `schemaSQLParser(source)` tokenizes SQL of any dialect and returns a flat array of statements:
-`create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey}` and
+`create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey,default}` and
 `comment.on.{table,column}`. It is permissive
 by design — anything it does not recognize is skipped instead of rejected, so a real dump full of
 dialect quirks imports partially rather than failing outright. `--` and `/* */` comments are dropped by
@@ -66,6 +66,12 @@ consumed and not reported. `alter.table.add.unique` carries the table's `name`, 
 `ALTER TABLE` that adds several keys yields one per UNIQUE clause. The primary key carries its
 `constraintName` too, and both carry a `usingIndexName`: the existing index Oracle's `USING INDEX` names,
 else `''`.
+
+`alter.table.add.default` is SQL Server's `ALTER TABLE ... ADD [CONSTRAINT <id>] DEFAULT <expression> FOR
+<column>`, the form SSMS scripts every default in: it carries the table's `name`, the `columnName` after
+`FOR` and the `default`, written back as a column's is (`DEFAULT ((0)) FOR [Qty]` gives `0`) but running
+to that `FOR` past the column keywords a column's stops at (`DEFAULT 'a' COLLATE Latin1_General_CI_AS FOR c`
+keeps its `COLLATE`); the constraint's name is not reported. Only the statement's first clause is read.
 
 A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
 named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's
@@ -868,6 +874,15 @@ GO
 ALTER TABLE [dbo].[UserRoles] ADD CONSTRAINT [PK_UserRoles] PRIMARY KEY NONCLUSTERED ([UserId], [RoleId])
 GO
 ALTER TABLE `t` ADD PRIMARY KEY USING BTREE (`a`, `b`);
+```
+
+### Alter Table Add DEFAULT FOR
+
+```sql
+ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Status]  DEFAULT ('draft') FOR [Status]
+GO
+ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [Qty]
+GO
 ```
 
 ### Alter database.Table Add PRIMARY KEY

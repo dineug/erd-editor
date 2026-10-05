@@ -162,6 +162,65 @@ describe('schemaSQLParser', () => {
     ]);
   });
 
+  it('parses the ALTER TABLE ADD DEFAULT FOR an SSMS script writes', () => {
+    const ast = schemaSQLParser(
+      'ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Qty]  DEFAULT ((0)) FOR [Qty]\n' +
+        'GO\n' +
+        'ALTER TABLE [dbo].[Orders] ADD  DEFAULT (getdate()) FOR [Created]\n' +
+        'GO\n'
+    );
+
+    expect(ast).toEqual([
+      {
+        type: 'alter.table.add.default',
+        name: 'Orders',
+        columnName: 'Qty',
+        default: '0',
+      },
+      {
+        type: 'alter.table.add.default',
+        name: 'Orders',
+        columnName: 'Created',
+        default: 'getdate()',
+      },
+    ]);
+  });
+
+  it('keeps the statement after an ADD DEFAULT that names no column', () => {
+    const ast = schemaSQLParser(
+      'ALTER TABLE t ADD DEFAULT 0\nGO\nCREATE TABLE x (a INT)\nGO',
+      { database: 'MSSQL' }
+    );
+
+    expect(ast).toContainEqual(
+      expect.objectContaining({ type: 'create.table', name: 'x' })
+    );
+  });
+
+  it('still reads a unique key the ALTER adds after its DEFAULT clause', () => {
+    const ast = schemaSQLParser(
+      "ALTER TABLE t ADD CONSTRAINT df DEFAULT ('UNIQUE') FOR a, CONSTRAINT uq UNIQUE (b);" +
+        "COMMENT ON TABLE t IS 'x';"
+    );
+
+    expect(ast).toEqual([
+      {
+        type: 'alter.table.add.default',
+        name: 't',
+        columnName: 'a',
+        default: "'UNIQUE'",
+      },
+      {
+        type: 'alter.table.add.unique',
+        name: 't',
+        constraintName: 'uq',
+        usingIndexName: '',
+        columns: [{ name: 'b', sort: 'ASC' }],
+      },
+      { type: 'comment.on.table', name: 't', comment: 'x' },
+    ]);
+  });
+
   it('collects every statement of a multi statement source in order', () => {
     const ast = schemaSQLParser(`
       USE my_db;

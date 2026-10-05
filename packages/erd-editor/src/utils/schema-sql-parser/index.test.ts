@@ -436,6 +436,106 @@ GO
       expect(indexesOf(schema)).toEqual([]);
     });
 
+    describe('ADD DEFAULT FOR', () => {
+      const defaultsOf = (schema: Schema, table: Table) =>
+        Object.fromEntries(
+          columnsOf(schema, table).map(column => [column.name, column.default])
+        );
+
+      it('applies each DEFAULT an SSMS script adds after its table to the column', () => {
+        const schema = parse(
+          `
+          CREATE TABLE [dbo].[Orders](
+            [Id] [int] IDENTITY(1,1) NOT NULL,
+            [Status] [nvarchar](20) NOT NULL,
+            [Qty] [int] NOT NULL,
+            [Created] [datetime2](7) NOT NULL,
+            [Note] [nvarchar](50) NULL DEFAULT (N'x')
+          ) ON [PRIMARY]
+          GO
+          ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Status]  DEFAULT ('draft') FOR [Status]
+          GO
+          ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [qty]
+          GO
+          ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Created]  DEFAULT (getdate()) FOR [Created]
+          GO
+        `,
+          undefined,
+          Database.MSSQL
+        );
+        const orders = tableByName(schema, 'Orders');
+
+        expect(defaultsOf(schema, orders)).toEqual({
+          Id: '',
+          Status: "'draft'",
+          Qty: '0',
+          Created: 'getdate()',
+          Note: "N'x'",
+        });
+        expect(columnByName(schema, orders, 'Created').ui.widthDefault).toBe(
+          90
+        );
+        expect(indexesOf(schema)).toEqual([]);
+        expect(JSON.stringify(schema)).not.toContain('DF_Orders');
+      });
+
+      it('writes the defaults it applied into an SQL Server export', () => {
+        const schema = parse(`
+          CREATE TABLE [dbo].[t]([a] [int] NOT NULL, [b] [datetime] NULL)
+          GO
+          ALTER TABLE [dbo].[t] ADD  DEFAULT ((0)) FOR [a]
+          GO
+          ALTER TABLE [dbo].[t] ADD  CONSTRAINT [DF_t_b]  DEFAULT (getdate()) FOR [b]
+          GO
+        `);
+        const exported = createSchemaSQL(stateOf(schema), Database.MSSQL);
+        const again = parse(exported, undefined, Database.MSSQL);
+
+        expect(exported).toContain('DEFAULT 0');
+        expect(exported).toContain('DEFAULT getdate()');
+        expect(defaultsOf(again, tableByName(again, 't'))).toEqual({
+          a: '0',
+          b: 'getdate()',
+        });
+      });
+
+      it('applies the whole of a DEFAULT written without its parentheses, column keywords and all', () => {
+        const schema = parse(
+          `
+          CREATE TABLE t (a VARCHAR(10), b INT)
+          GO
+          ALTER TABLE t ADD DEFAULT 'x' COLLATE Latin1_General_CI_AS FOR a
+          GO
+          ALTER TABLE t ADD CONSTRAINT df_b DEFAULT CASE WHEN 1 = 1 THEN NULL ELSE 0 END FOR b
+          GO
+        `,
+          undefined,
+          Database.MSSQL
+        );
+
+        expect(defaultsOf(schema, tableByName(schema, 't'))).toEqual({
+          a: "'x' COLLATE Latin1_General_CI_AS",
+          b: 'CASE WHEN 1 = 1 THEN NULL ELSE 0 END',
+        });
+      });
+
+      it('drops a DEFAULT with no column or expression, or for a table or column not created', () => {
+        const schema = parse(`
+          CREATE TABLE t (a INT, b INT DEFAULT 1);
+          ALTER TABLE t ADD DEFAULT 0 FOR missing;
+          ALTER TABLE other ADD DEFAULT 0 FOR a;
+          ALTER TABLE t ADD DEFAULT 2;
+          ALTER TABLE t ADD DEFAULT () FOR b;
+        `);
+
+        expect(defaultsOf(schema, tableByName(schema, 't'))).toEqual({
+          a: '',
+          b: '1',
+        });
+        expect(tablesOf(schema).map(table => table.name)).toEqual(['t']);
+      });
+    });
+
     it('flags no column by the CHECK after the UNIQUE of a column an ALTER adds', () => {
       const schema = parse(`
         CREATE TABLE orders (id INT, price INT);

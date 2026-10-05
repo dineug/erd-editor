@@ -76,6 +76,13 @@ const word = (token: Token | undefined) =>
     ? token.value.toUpperCase()
     : '';
 
+// The FOR of the sequence call NEXT VALUE FOR s, which SQL Server and MariaDB
+// take as one expression: unlike any other FOR, it ends no default.
+export const isNextValueFor = (tokens: Token[]) => (pos: number) =>
+  word(tokens[pos]) === 'FOR' &&
+  word(tokens[pos - 1]) === 'VALUE' &&
+  word(tokens[pos - 2]) === 'NEXT';
+
 /**
  * How many tokens the DEFAULT expression at pos spans: up to the next column
  * keyword, comma, closing paren or unpaired closing bracket at depth 0, or to
@@ -90,23 +97,20 @@ export const matchDefaultExpression = (tokens: Token[]) => {
   const isColumnKeyword = isColumnKeywordValue(tokens);
   const constraintState = isConstraintState(tokens);
   const characterSet = isCharacterSet(tokens);
+  const nextValueFor = isNextValueFor(tokens);
 
   const isTimeZone = (pos: number): boolean => {
     if (word(tokens[pos]) === 'LOCAL') return isTimeZone(pos + 1);
     return word(tokens[pos]) === 'TIME' && word(tokens[pos + 1]) === 'ZONE';
   };
 
-  // FOR ends a default, except in the sequence call NEXT VALUE FOR s that SQL
-  // Server and MariaDB take as one, and so do WITH and WITHOUT, except before
-  // the [LOCAL] TIME ZONE of a cast; TAG ends one only before its list.
+  // FOR ends a default, except in NEXT VALUE FOR s, and so do WITH and
+  // WITHOUT, except before the [LOCAL] TIME ZONE of a cast; TAG ends one only
+  // before its list.
   const endsAt = (pos: number) => {
     const keyword = word(tokens[pos]);
 
-    if (keyword === 'FOR') {
-      return !(
-        word(tokens[pos - 1]) === 'VALUE' && word(tokens[pos - 2]) === 'NEXT'
-      );
-    }
+    if (keyword === 'FOR') return !nextValueFor(pos);
 
     if (keyword === 'WITH' || keyword === 'WITHOUT') {
       return !isTimeZone(pos + 1);
@@ -300,19 +304,14 @@ const uncast = (pieces: Piece[]) => {
 };
 
 /**
- * Reads the DEFAULT expression at $pos as raw SQL, without the parens around
- * the whole of it or a cast of a literal, and leaves $pos on what ends it.
+ * Writes the tokens of a DEFAULT expression, all of them, back as raw SQL,
+ * without the parens around the whole of it or a cast of a literal.
  */
-export function defaultExpressionParser(
+export function writeDefaultExpression(
   tokens: Token[],
-  $pos: RefPos,
   database?: DatabaseVendor
 ): string {
-  const span = matchDefaultExpression(tokens)($pos.value);
-  const pieces = uncast(
-    unwrap(toPieces(tokens.slice($pos.value, $pos.value + span), database))
-  );
-  $pos.value += span;
+  const pieces = uncast(unwrap(toPieces(tokens, database)));
 
   // A lone quoted value is a string literal in any quotes, MySQL's "x" too:
   // the lexer has stripped them, and PENDING would read back as a name.
@@ -323,4 +322,20 @@ export function defaultExpressionParser(
   }
 
   return render(pieces);
+}
+
+/**
+ * Reads the DEFAULT expression at $pos as raw SQL, without the parens around
+ * the whole of it or a cast of a literal, and leaves $pos on what ends it.
+ */
+export function defaultExpressionParser(
+  tokens: Token[],
+  $pos: RefPos,
+  database?: DatabaseVendor
+): string {
+  const span = matchDefaultExpression(tokens)($pos.value);
+  const expression = tokens.slice($pos.value, $pos.value + span);
+  $pos.value += span;
+
+  return writeDefaultExpression(expression, database);
 }

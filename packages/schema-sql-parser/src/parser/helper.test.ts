@@ -4,6 +4,7 @@ import {
   isAddValue,
   isAlterTable,
   isAlterTableAdd,
+  isAlterTableAddDefault,
   isAlterTableAddForeignKey,
   isAlterTableAddOnly,
   isAlterTableAddPrimaryKey,
@@ -37,6 +38,7 @@ import {
   isEqualToken,
   isExistsValue,
   isForeignValue,
+  isForValue,
   isIfValue,
   isIndexKind,
   isIndexValue,
@@ -175,6 +177,7 @@ describe('token value predicates', () => {
     ['isAndValue', isAndValue, 'AND'],
     ['isOrValue', isOrValue, 'OR'],
     ['isArrayValue', isArrayValue, 'ARRAY'],
+    ['isForValue', isForValue, 'FOR'],
   ];
 
   it.each(cases)(
@@ -1055,6 +1058,29 @@ describe('isAlterTableAdd', () => {
   });
 });
 
+describe('isAlterTableAddDefault', () => {
+  it.each([
+    ['ALTER TABLE t ADD DEFAULT 0 FOR c;'],
+    [
+      "ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_Status]  DEFAULT ('draft') FOR [Status]",
+    ],
+    ['ALTER TABLE ONLY s.t ADD CONSTRAINT df DEFAULT 0 FOR c;'],
+    ['ALTER TABLE t WITH CHECK ADD DEFAULT 0 FOR c;'],
+  ])('matches %s', sql => {
+    expect(isAlterTableAddDefault(tokenizer(sql))(0)).toBe(true);
+  });
+
+  it.each([
+    ['ALTER TABLE t ADD c INT DEFAULT 0;'],
+    ['ALTER TABLE t ADD COLUMN c INT DEFAULT 0;'],
+    ['ALTER TABLE t ADD "DEFAULT" INT;'],
+    ['ALTER TABLE t ALTER COLUMN c SET DEFAULT 0;'],
+    ['CREATE TABLE t (c INT DEFAULT 0);'],
+  ])('rejects %s', sql => {
+    expect(isAlterTableAddDefault(tokenizer(sql))(0)).toBe(false);
+  });
+});
+
 describe('a CONSTRAINT keyword with no symbol', () => {
   it.each([
     [
@@ -1065,6 +1091,7 @@ describe('a CONSTRAINT keyword with no symbol', () => {
       'ALTER TABLE t ADD CONSTRAINT FOREIGN KEY (a) REFERENCES o (b);',
       isAlterTableAddForeignKey,
     ],
+    ['ALTER TABLE t ADD CONSTRAINT DEFAULT 0 FOR c;', isAlterTableAddDefault],
   ])('leaves the key it opens to be matched: %s', (sql, matcher) => {
     expect(matcher(tokenizer(sql))(0)).toBe(true);
   });
