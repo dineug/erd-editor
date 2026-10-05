@@ -14,10 +14,12 @@ import {
   describeAskedSize,
   describeReduction,
   exportImagePng,
+  exportImageSvg,
   type ImageRequest,
 } from '@/components/export-image/exportImageActions';
 import {
   createDocumentPng,
+  createDocumentSvg,
   type ResolutionReduction,
 } from '@/services/export-png';
 import type { Theme } from '@/themes/tokens';
@@ -28,6 +30,7 @@ vi.mock('@/services/export-png', () => ({
   createDocumentPng: vi.fn(
     async () => new Blob(['png-bytes'], { type: 'image/png' })
   ),
+  createDocumentSvg: vi.fn(async () => '<svg/>'),
 }));
 
 vi.mock('@/utils/clipboard', () => ({
@@ -72,6 +75,7 @@ beforeEach(() => {
   log = [];
   stopRecording = recordToasts(log);
   vi.mocked(createDocumentPng).mockClear();
+  vi.mocked(createDocumentSvg).mockClear();
   vi.mocked(copyImageToClipboard).mockClear();
 });
 
@@ -204,6 +208,67 @@ describe('exportImagePng', () => {
       'close Exporting PNG…',
       `open Exported at a reduced resolution | ${REDUCED_TEXT}`,
     ]);
+    expect(exported).toHaveLength(1);
+  });
+});
+
+describe('exportImageSvg', () => {
+  it('draws the request at the zoom, the scale left out, into an svg named after the database', async () => {
+    await exportImageSvg(app, request(), 'shop');
+
+    expect(vi.mocked(createDocumentSvg).mock.calls[0][0]).toEqual({
+      doc: '{"doc":{}}',
+      theme,
+      toWidth: app.toWidth,
+      zoomLevel: 0.75,
+    });
+    expect(createDocumentPng).not.toHaveBeenCalled();
+    expect(exported).toEqual([
+      {
+        type: 'image/svg+xml',
+        fileName: expect.stringMatching(/^shop-.*\.svg$/),
+      },
+    ]);
+  });
+
+  it('says nothing when the svg is written quickly', async () => {
+    await exportImageSvg(app, request(), 'shop');
+    await flush();
+
+    expect(log).toEqual([]);
+  });
+
+  it('reports a failure in place of the file', async () => {
+    const broken = new Error('no scene');
+    vi.mocked(createDocumentSvg).mockRejectedValueOnce(broken);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await exportImageSvg(app, request(), 'shop');
+
+    expect(exported).toEqual([]);
+    expect(error).toHaveBeenCalledWith(
+      '[export-svg] the document could not be exported',
+      broken
+    );
+    expect(log).toEqual([
+      "open Couldn't export the SVG | See the browser console for the error",
+    ]);
+  });
+
+  it('says it is exporting while the svg runs long, and takes that away once written', async () => {
+    vi.useFakeTimers();
+    const render = createDeferred<string>();
+    vi.mocked(createDocumentSvg).mockReturnValueOnce(render.promise);
+
+    const done = exportImageSvg(app, request(), 'shop');
+    await vi.advanceTimersByTimeAsync(400);
+    expect(log).toEqual(['open Exporting SVG…']);
+
+    render.resolve('<svg/>');
+    await vi.advanceTimersByTimeAsync(1000);
+    await done;
+
+    expect(log).toEqual(['open Exporting SVG…', 'close Exporting SVG…']);
     expect(exported).toHaveLength(1);
   });
 });

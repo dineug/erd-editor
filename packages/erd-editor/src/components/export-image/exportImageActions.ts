@@ -10,13 +10,16 @@ import {
 } from '@/services/export-png';
 import { copyImageToClipboard } from '@/utils/clipboard';
 import { Emitter, openToastAction } from '@/utils/emitter';
-import { exportPNG } from '@/utils/file/exportFile';
+import { exportPNG, exportSVG } from '@/utils/file/exportFile';
 
 /** What an image is drawn from; each action hooks up the reporters itself. */
 export type ImageRequest = Omit<
   DocumentPngOptions,
   'onResolutionReduced' | 'onProgress'
 >;
+
+/** What an svg is drawn from: the request less the scale, which a vector has no use for. */
+export type SvgRequest = Omit<ImageRequest, 'pixelRatio'>;
 
 type AskedPixels = Pick<ResolutionReduction, 'askedWidth' | 'askedHeight'>;
 
@@ -76,6 +79,35 @@ async function settleUnderBusyToast(
 }
 
 /**
+ * Writes a file under the busy toast and reports a failure in its place,
+ * answering whether the file was written. The busy toast goes first, so
+ * whatever is said after it replaces it rather than piling on it.
+ */
+async function writeImageFile(
+  emitter: Emitter,
+  format: 'PNG' | 'SVG',
+  writing: Promise<void>
+): Promise<boolean> {
+  const failure = await settleUnderBusyToast(
+    emitter,
+    writing,
+    `Exporting ${format}…`
+  );
+  if (!failure) return true;
+
+  console.error(
+    `[export-${format.toLowerCase()}] the document could not be exported`,
+    failure.error
+  );
+  openToast(
+    emitter,
+    `Couldn't export the ${format}`,
+    'See the browser console for the error'
+  );
+  return false;
+}
+
+/**
  * Draws the document into a png file, saying so while it draws and reporting
  * afterwards. The two messages are sequenced rather than stacked, so what
  * became of the file replaces the message about making it.
@@ -90,43 +122,49 @@ export async function exportImagePng(
 ) {
   let reduction: ResolutionReduction | null = null;
 
-  const exporting = exportPNG(
-    {
-      ...request,
-      // Held, not shown: the file does not exist yet, and this message belongs
-      // after the one saying the editor is still drawing it.
-      onResolutionReduced: value => {
-        reduction = value;
-      },
-    },
-    databaseName
-  );
-  const failure = await settleUnderBusyToast(
+  const written = await writeImageFile(
     emitter,
-    exporting,
-    'Exporting PNG…'
+    'PNG',
+    exportPNG(
+      {
+        ...request,
+        // Held, not shown: the file does not exist yet, and this message belongs
+        // after the one saying the editor is still drawing it.
+        onResolutionReduced: value => {
+          reduction = value;
+        },
+      },
+      databaseName
+    )
   );
 
-  if (failure) {
-    console.error(
-      '[export-png] the document could not be exported',
-      failure.error
-    );
-    openToast(
-      emitter,
-      "Couldn't export the PNG",
-      'See the browser console for the error'
-    );
-    return;
-  }
-
-  if (reduction) {
+  if (written && reduction) {
     openToast(
       emitter,
       'Exported at a reduced resolution',
       describeReduction(reduction)
     );
   }
+}
+
+/**
+ * Draws the document into an svg file at the zoom, the scale left out, saying
+ * so while it draws. An svg holds no canvas, so nothing is ever reduced, and
+ * only a failure is reported once the file is done.
+ *
+ * @example
+ * await exportImageSvg(app, { doc, theme, toWidth, zoomLevel }, databaseName);
+ */
+export async function exportImageSvg(
+  { emitter }: AppContext,
+  { doc, theme, toWidth, zoomLevel }: SvgRequest,
+  databaseName: string
+) {
+  await writeImageFile(
+    emitter,
+    'SVG',
+    exportSVG({ doc, theme, toWidth, zoomLevel }, databaseName)
+  );
 }
 
 /**

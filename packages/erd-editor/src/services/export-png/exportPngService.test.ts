@@ -28,11 +28,17 @@ vi.mock('./renderPng', () => ({
   })),
 }));
 
+vi.mock('./renderSvg', () => ({
+  renderDocumentSvg: vi.fn(async () => '<svg/>'),
+}));
+
 const { ExportPngService } = await import('./exportPngService');
 const { renderDocumentPng } = await import('./renderPng');
+const { renderDocumentSvg } = await import('./renderSvg');
 const { FONT_PROBE_TEXTS } = await import('./textWidth');
 
 const mockRender = vi.mocked(renderDocumentPng);
+const mockRenderSvg = vi.mocked(renderDocumentSvg);
 
 const theme = {} as Theme;
 
@@ -41,6 +47,7 @@ const probeWidths = () => FONT_PROBE_TEXTS.map(text => text.length);
 beforeEach(() => {
   state.toWidth = text => text.length;
   mockRender.mockClear();
+  mockRenderSvg.mockClear();
 });
 
 describe('ExportPngService.probeFontWidths', () => {
@@ -100,5 +107,36 @@ describe('ExportPngService.render', () => {
       service.render({ doc: '{}', theme, pixelRatio: 1, fontProbe: [] })
     ).rejects.toThrow('this realm has no 2d context to measure by');
     expect(mockRender).not.toHaveBeenCalled();
+  });
+});
+
+describe('ExportPngService.renderSvg', () => {
+  it('writes the svg once the caller is proven to measure the same way', async () => {
+    const service = new ExportPngService();
+
+    const svg = await service.renderSvg({
+      doc: '{}',
+      theme,
+      zoomLevel: 0.5,
+      fontProbe: probeWidths(),
+    });
+
+    expect(svg).toBe('<svg/>');
+    const [request] = mockRenderSvg.mock.calls[0];
+    expect(request).toMatchObject({ doc: '{}', theme, zoomLevel: 0.5 });
+    expect(typeof request.toWidth).toBe('function');
+  });
+
+  it('refuses to write it when the caller measured text differently', async () => {
+    const service = new ExportPngService();
+
+    await expect(
+      service.renderSvg({
+        doc: '{}',
+        theme,
+        fontProbe: probeWidths().map(width => width + 1),
+      })
+    ).rejects.toThrow('this realm measures text differently');
+    expect(mockRenderSvg).not.toHaveBeenCalled();
   });
 });

@@ -68,11 +68,12 @@ export const loading = css`
   }
 `;
 
+/* Wide enough for PNG, SVG and Copy to clipboard to share one row. */
 export const panel = css`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 0 0 260px;
+  flex: 0 0 328px;
   padding: 20px;
   border-left: 1px solid var(--context-menu-border);
   color: var(--foreground);

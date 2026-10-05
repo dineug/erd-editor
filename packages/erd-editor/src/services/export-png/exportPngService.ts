@@ -3,6 +3,7 @@ import {
   type RenderPngRequest,
   type RenderPngResult,
 } from './renderPng';
+import { renderDocumentSvg, type RenderSvgRequest } from './renderSvg';
 import {
   createOffscreenToWidth,
   measureFontProbe,
@@ -16,6 +17,11 @@ import {
  * strings and the answering realm has to reproduce them.
  */
 export type ExportPngRequest = RenderPngRequest & {
+  fontProbe: number[];
+};
+
+/** An svg request as it crosses a realm boundary, gated by the same probe. */
+export type ExportSvgRequest = RenderSvgRequest & {
   fontProbe: number[];
 };
 
@@ -35,15 +41,35 @@ export class ExportPngService {
   }
 
   async render(request: ExportPngRequest): Promise<RenderPngResult> {
+    const toWidth = this.createMatchingToWidth(request.fontProbe);
+
+    return renderDocumentPng({ ...request, toWidth });
+  }
+
+  /**
+   * The document as an svg, laid out by the same measure the png is. Its text
+   * is placed where this realm wrapped and cut it, so the probe gates it too.
+   */
+  async renderSvg(request: ExportSvgRequest): Promise<string> {
+    const toWidth = this.createMatchingToWidth(request.fontProbe);
+
+    return renderDocumentSvg({ ...request, toWidth });
+  }
+
+  /**
+   * This realm's measure, once it is shown to lay the probe out as the asking
+   * realm did. Every drawing a request asks for goes through it first.
+   */
+  private createMatchingToWidth(fontProbe: number[]): ToWidth {
     const toWidth = this.createToWidth();
     const probe = measureFontProbe(toWidth);
-    if (!sameFontProbe(probe, request.fontProbe)) {
+    if (!sameFontProbe(probe, fontProbe)) {
       throw new Error(
-        `[export-png] this realm measures text differently: ${probe.join()} against ${request.fontProbe.join()}`
+        `[export-png] this realm measures text differently: ${probe.join()} against ${fontProbe.join()}`
       );
     }
 
-    return renderDocumentPng({ ...request, toWidth });
+    return toWidth;
   }
 
   private createToWidth(): ToWidth {

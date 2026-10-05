@@ -23,6 +23,7 @@ import * as styles from '@/components/export-image/ExportImage.styles';
 import {
   copyImagePng,
   exportImagePng,
+  exportImageSvg,
 } from '@/components/export-image/exportImageActions';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
@@ -63,7 +64,12 @@ vi.mock(
       await importOriginal<
         typeof import('@/components/export-image/exportImageActions')
       >();
-    return { ...actual, exportImagePng: vi.fn(), copyImagePng: vi.fn() };
+    return {
+      ...actual,
+      exportImagePng: vi.fn(),
+      exportImageSvg: vi.fn(),
+      copyImagePng: vi.fn(),
+    };
   }
 );
 
@@ -209,6 +215,7 @@ beforeEach(() => {
   urls = 0;
   preview.mockReset().mockImplementation(async () => drawn());
   vi.mocked(exportImagePng).mockReset();
+  vi.mocked(exportImageSvg).mockReset();
   vi.mocked(copyImagePng).mockReset();
   vi.spyOn(URL, 'createObjectURL').mockImplementation(
     () => `blob:preview-${++urls}`
@@ -246,8 +253,8 @@ describe('ExportImage opening', () => {
     expect(document.activeElement).toBe(buttonOf('PNG'));
   });
 
-  /** An owner decision: the options, PNG and the clipboard alone, with no close button, since Escape and the dim close it. */
-  it('holds the options, PNG and the clipboard and nothing else, no close button among them', async () => {
+  /** An owner decision: the options, PNG, SVG and the clipboard alone, with no close button, since Escape and the dim close it. */
+  it('holds the options, PNG, SVG and the clipboard and nothing else, no close button among them', async () => {
     const app = await setup();
 
     await open(app);
@@ -268,6 +275,7 @@ describe('ExportImage opening', () => {
       '2x',
       '3x',
       'PNG',
+      'SVG',
       'Copy to clipboard',
     ]);
   });
@@ -332,18 +340,18 @@ describe('ExportImage preview', () => {
     expect(image()?.getAttribute('src')).toBe('blob:preview-1');
   });
 
-  it('says how many pixels the file will hold, at the scale picked', async () => {
+  it('says how many pixels the png will hold, at the scale picked', async () => {
     const app = await setup();
     await open(app);
 
-    expect(sizeText()).toBe('4320 × 2160 px');
+    expect(sizeText()).toBe('PNG 4320 × 2160 px');
 
     await click(buttonOf('1x'));
-    expect(sizeText()).toBe('2160 × 1080 px');
+    expect(sizeText()).toBe('PNG 2160 × 1080 px');
     expect(buttonOf('1x')?.getAttribute('aria-pressed')).toBe('true');
 
     await click(buttonOf('3x'));
-    expect(sizeText()).toBe('6480 × 3240 px');
+    expect(sizeText()).toBe('PNG 6480 × 3240 px');
 
     // The scale changes only the size, so no preview is drawn for it.
     expect(preview).toHaveBeenCalledTimes(1);
@@ -358,7 +366,7 @@ describe('ExportImage preview', () => {
 
     await open(app);
 
-    expect(sizeText()).toBe('16384 × 16384 px');
+    expect(sizeText()).toBe('PNG 16384 × 16384 px');
     expect(reducedNote()?.textContent).toBe(
       'Reduced from 20000 × 20000 px, past what a browser canvas can hold'
     );
@@ -621,6 +629,32 @@ describe('ExportImage buttons', () => {
 
     const [, request] = vi.mocked(exportImagePng).mock.calls[0];
     expect(request.theme).toEqual(sceneTheme);
+  });
+
+  it('writes the svg at the zoom it opened at, the scale left to the png, and stays open', async () => {
+    const app = await setup();
+    app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.6 }));
+    const doc = toJson(app.store.state);
+    await open(app);
+
+    await click(switchOf('Background'));
+    await click(buttonOf('3x'));
+    await click(buttonOf('SVG'));
+
+    expect(exportImageSvg).toHaveBeenCalledTimes(1);
+    expect(exportImagePng).not.toHaveBeenCalled();
+    const [given, request, databaseName] =
+      vi.mocked(exportImageSvg).mock.calls[0];
+    expect(given).toBe(app);
+    expect(request).toMatchObject({
+      doc,
+      theme: { ...sceneTheme, canvasBackground: TRANSPARENT_BACKGROUND },
+      toWidth: app.toWidth,
+      zoomLevel: 0.6,
+    });
+    expect(databaseName).toBe('shop');
+    expect(dialog()).not.toBeNull();
   });
 
   it('copies with the options set, the background off and the other appearance', async () => {

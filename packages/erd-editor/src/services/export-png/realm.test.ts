@@ -14,6 +14,7 @@ const state = {
   close: vi.fn(),
   probe: vi.fn(),
   render: vi.fn(),
+  renderSvg: vi.fn(),
   onerror: null as null | (() => void),
 };
 
@@ -32,6 +33,7 @@ vi.mock('comlink', () => ({
   wrap: () => ({
     probeFontWidths: (...args: unknown[]) => state.probe(...args),
     render: (...args: unknown[]) => state.render(...args),
+    renderSvg: (...args: unknown[]) => state.renderSvg(...args),
   }),
 }));
 
@@ -39,9 +41,15 @@ vi.mock('./renderPng', () => ({
   renderDocumentPng: vi.fn(),
 }));
 
+vi.mock('./renderSvg', () => ({
+  renderDocumentSvg: vi.fn(),
+}));
+
 const { renderDocumentPng } = await import('./renderPng');
+const { renderDocumentSvg } = await import('./renderSvg');
 
 const mainRender = vi.mocked(renderDocumentPng);
+const mainRenderSvg = vi.mocked(renderDocumentSvg);
 
 const theme = {} as Theme;
 
@@ -71,7 +79,9 @@ beforeEach(() => {
   state.onerror = null;
   state.probe.mockReset().mockResolvedValue([1, 2, 3]);
   state.render.mockReset().mockResolvedValue(result(10, 20));
+  state.renderSvg.mockReset().mockResolvedValue('<svg>worker</svg>');
   mainRender.mockReset().mockResolvedValue(result(30, 40));
+  mainRenderSvg.mockReset().mockResolvedValue('<svg>main</svg>');
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
@@ -288,5 +298,47 @@ describe('the preview the export dialog shows', () => {
     expect(mainRender).toHaveBeenCalledTimes(1);
     expect(mainRender.mock.calls[0][0]).toMatchObject({ maxSide: 960 });
     expect(preview.width).toBe(30);
+  });
+});
+
+describe('the svg the export dialog writes', () => {
+  it('asks the worker at the zoom, with no scale and the probe widths', async () => {
+    const { createDocumentSvg } = await load();
+
+    const svg = await createDocumentSvg({ ...options(), zoomLevel: 0.8 });
+
+    expect(svg).toBe('<svg>worker</svg>');
+    const [request] = state.renderSvg.mock.calls[0];
+    expect(request).toEqual({
+      doc: '{}',
+      theme,
+      zoomLevel: 0.8,
+      fontProbe: [21, 10, 10],
+    });
+    expect(request.theme).not.toBe(theme);
+    expect(state.render).not.toHaveBeenCalled();
+    expect(mainRenderSvg).not.toHaveBeenCalled();
+  });
+
+  it('writes it on the main thread when the worker hands it back', async () => {
+    state.renderSvg.mockRejectedValue(new Error('measures differently'));
+    const { createDocumentSvg } = await load();
+
+    const svg = await createDocumentSvg(options());
+
+    expect(svg).toBe('<svg>main</svg>');
+    const [request] = mainRenderSvg.mock.calls[0];
+    expect(request).toMatchObject({ doc: '{}', toWidth });
+    expect(Reflect.has(request, 'pixelRatio')).toBe(false);
+  });
+
+  it('writes it on the main thread when the host builds no shared worker', async () => {
+    Reflect.deleteProperty(globalThis, 'SharedWorker');
+    const { createDocumentSvg } = await load();
+
+    await createDocumentSvg(options());
+
+    expect(state.construct).not.toHaveBeenCalled();
+    expect(mainRenderSvg).toHaveBeenCalledTimes(1);
   });
 });

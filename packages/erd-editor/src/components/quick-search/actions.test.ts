@@ -644,6 +644,13 @@ describe('createScopeActions / Import and Export', () => {
     expect(names(searchActions(entries, 'png'))).toContain('Image');
   });
 
+  it('finds the Image export entry by its svg and vector keywords', () => {
+    const entries = find(scope(), 'Export').next ?? [];
+
+    expect(names(searchActions(entries, 'svg'))).toContain('Image');
+    expect(names(searchActions(entries, 'vector'))).toContain('Image');
+  });
+
   it('hides Import and Export outside the ERD canvas', () => {
     const actions = scope();
     const importAction = find(actions, 'Import');
