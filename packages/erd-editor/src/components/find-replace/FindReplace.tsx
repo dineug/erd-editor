@@ -47,6 +47,7 @@ import {
   KeyBindingName,
   KeyBindingNameList,
   matchesShortcut,
+  PANEL_PASSING_BINDINGS,
   toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
 
@@ -85,17 +86,6 @@ const PANEL_MARGIN = 16;
 
 /** How far up from the bottom of the canvas the floating toolbar reaches: 24 px off it, 36 px tall. */
 const FLOATING_TOOLBAR_REACH = 60;
-
-/** The chords a press in the panel still carries to the editor: its own, search, the document's undo and redo, and the zoom. */
-const PASSING = [
-  KeyBindingName.findReplace,
-  KeyBindingName.search,
-  KeyBindingName.undo,
-  KeyBindingName.redo,
-  KeyBindingName.zoomIn,
-  KeyBindingName.zoomOut,
-  KeyBindingName.zoomReset,
-];
 
 const SCOPE_LABEL: Record<FindField, string> = {
   [FindField.tableName]: 'Table names',
@@ -472,7 +462,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
   /**
    * Keeps from the canvas what it would read as an edit of the ringed cell,
-   * its shortcuts bar PASSING and the arrows and Tab, and closes on Escape. Any
+   * its shortcuts bar PANEL_PASSING_BINDINGS and the arrows and Tab, and closes on Escape. Any
    * other press goes on to the host, so its save or command palette works here.
    */
   const handleKeydown = (event: KeyboardEvent) => {
@@ -487,7 +477,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       event.stopPropagation();
       close();
     } else if (
-      !PASSING.some(matches) &&
+      !PANEL_PASSING_BINDINGS.some(matches) &&
       (hasMoveKeys(event.key) || KeyBindingNameList.some(matches))
     ) {
       event.stopPropagation();

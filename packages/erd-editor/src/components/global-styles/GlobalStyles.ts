@@ -1,6 +1,5 @@
 import { FC, html, setGlobalStyleOrder } from '@dineug/r-html';
 
-import { colorPickerStyle } from '@/styles/colorPicker.style';
 import { fontsStyle } from '@/styles/fonts.styles';
 import { resetStyle } from '@/styles/reset.styles';
 import { scrollbarStyle } from '@/styles/scrollbar.styles';
@@ -13,13 +12,7 @@ export type GlobalStylesProps = {};
  * sorted alphabetically and evaluation order follows them, which would put the
  * reset behind the tokens it resets; this array is the one place that decides.
  */
-setGlobalStyleOrder([
-  resetStyle,
-  fontsStyle,
-  typographyStyle,
-  scrollbarStyle,
-  colorPickerStyle,
-]);
+setGlobalStyleOrder([resetStyle, fontsStyle, typographyStyle, scrollbarStyle]);
 
 /**
  * Renders nothing, and stays anyway. What is left is the setGlobalStyleOrder

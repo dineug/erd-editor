@@ -1024,15 +1024,13 @@ export class ErdEditorPage {
     await this.page.keyboard.up(modifier);
   }
 
-  /**
-   * Types a colour into the open picker. The widget reads its hex field on the
-   * keystroke rather than on a value assignment, so the colour is typed a
-   * character at a time into a cleared field.
-   */
+  /** Types a colour into the open picker's Hex field and commits it with Enter. */
   async pickColor(color: string) {
-    const hex = this.colorPicker.locator('input[ref="$hexCode"]');
-    await hex.fill('');
-    await hex.pressSequentially(color);
+    const hex = this.colorPicker.getByRole('textbox', {
+      name: 'Hex',
+      exact: true,
+    });
+    await hex.fill(color);
     await hex.press('Enter');
   }
 

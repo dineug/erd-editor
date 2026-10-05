@@ -104,6 +104,15 @@ export function toAMLColor(color: string): string | null {
   return nearest;
 }
 
+/**
+ * A color as an opaque lower-case #rrggbb, any alpha dropped: a hex of 3, 4, 6
+ * or 8 digits, an rgb(), rgba(), hsl() or hsla(); null for one it cannot read.
+ */
+export function toOpaqueHex(color: string): string | null {
+  const channels = channelsOf(color.trim());
+  return channels ? toHex(channels) : null;
+}
+
 function channelsOf(value: string): Channels | null {
   if (ANY_HEX.test(value)) {
     return hexChannels(value.slice(1));

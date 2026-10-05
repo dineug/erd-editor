@@ -40,6 +40,20 @@ export const KeyBindingName = {
 export type KeyBindingName = ValuesType<typeof KeyBindingName>;
 export const KeyBindingNameList = Object.values(KeyBindingName);
 
+/**
+ * The chords a press inside a floating panel still carries to the editor:
+ * Find and Replace's own, search, the document's undo and redo, and the zoom.
+ */
+export const PANEL_PASSING_BINDINGS: ReadonlyArray<KeyBindingName> = [
+  KeyBindingName.findReplace,
+  KeyBindingName.search,
+  KeyBindingName.undo,
+  KeyBindingName.redo,
+  KeyBindingName.zoomIn,
+  KeyBindingName.zoomOut,
+  KeyBindingName.zoomReset,
+];
+
 export type KeyBindingMap = Record<KeyBindingName, ShortcutOption[]>;
 
 export const createKeyBindingMap = (): KeyBindingMap => ({

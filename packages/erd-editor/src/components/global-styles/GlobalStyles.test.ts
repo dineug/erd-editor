@@ -15,14 +15,12 @@ afterEach(() => {
 
 /**
  * Which sheet is which. A global sheet is the one kind carrying no generated
- * class, after which a marker is unambiguous — except that the vendored picker
- * declares the reset's marker itself and has to be identified first.
+ * class, after which a marker is unambiguous.
  */
 function kindOf(rules: CSSStyleRule[]): string {
   const text = rules.map(rule => rule.cssText).join('');
   if (rules.some(rule => SCOPE_CLASS.test(rule.cssText))) return 'component';
 
-  if (text.includes('.easylogic-colorpicker')) return 'colorPicker';
   if (text.includes('box-sizing: border-box')) return 'reset';
   if (text.includes('--text-font-family:')) return 'fonts';
   if (text.includes('--font-size-1:')) return 'typography';
@@ -38,29 +36,22 @@ beforeAll(() => {
 
 describe('GlobalStyles', () => {
   describe('cascade order of the global bucket', () => {
-    it('adopts the five global sheets in the pinned order', () => {
+    it('adopts the four global sheets in the pinned order', () => {
       // Registration order is module evaluation order, which follows the alphabetically sorted
-      // import list in GlobalStyles.ts — colorPicker, fonts, reset, scrollbar, typography. The
-      // explicit array passed to setGlobalStyleOrder is what produces this sequence instead.
-      expect(sheetKinds.slice(0, 5)).toEqual([
+      // import list in GlobalStyles.ts — fonts, reset, scrollbar, typography. The explicit array
+      // passed to setGlobalStyleOrder is what produces this sequence instead.
+      expect(sheetKinds.slice(0, 4)).toEqual([
         'reset',
         'fonts',
         'typography',
         'scrollbar',
-        'colorPicker',
       ]);
     });
 
     it('is not the order the imports would have produced', () => {
-      const registrationOrder = [
-        'colorPicker',
-        'fonts',
-        'reset',
-        'scrollbar',
-        'typography',
-      ];
+      const registrationOrder = ['fonts', 'reset', 'scrollbar', 'typography'];
 
-      expect(sheetKinds.slice(0, 5)).not.toEqual(registrationOrder);
+      expect(sheetKinds.slice(0, 4)).not.toEqual(registrationOrder);
     });
 
     it('puts every global sheet ahead of every component sheet', () => {
@@ -72,15 +63,15 @@ describe('GlobalStyles', () => {
       );
       const firstComponent = sheetKinds.indexOf('component');
 
-      expect(lastGlobal).toBe(4);
-      expect(firstComponent).toBe(5);
-      expect(sheetKinds.slice(5).every(kind => kind === 'component')).toBe(
+      expect(lastGlobal).toBe(3);
+      expect(firstComponent).toBe(4);
+      expect(sheetKinds.slice(4).every(kind => kind === 'component')).toBe(
         true
       );
     });
   });
 
-  describe('what the five sheets carry', () => {
+  describe('what the four sheets carry', () => {
     it('includes the reset', () => {
       const rules = adoptedSheets()[0];
       const text = rules.map(rule => rule.cssText).join('');
@@ -115,38 +106,28 @@ describe('GlobalStyles', () => {
     });
   });
 
-  describe('the color picker is adopted, not a tree <style>', () => {
+  describe('renders no markup and adds no sheet twice', () => {
     it('renders no markup at all', async () => {
       // The component is nothing but the setGlobalStyleOrder call at module
-      // scope. Rendering a <style> again would put the vendored rules back in
-      // front of the whole adopted pool, which a shadow root applies second.
+      // scope; a <style> would put the global rules in front of the whole
+      // adopted pool, which a shadow root applies second.
       mounted = await mountAndFlush(html`<${GlobalStyles} />`);
 
       expect(mounted.container.querySelectorAll('style')).toHaveLength(0);
     });
 
-    it('adopts one sheet for the picker however many instances mount', async () => {
+    it('adopts each global sheet once however many instances mount', async () => {
       const before = adoptedSheets().length;
       const first = await mountAndFlush(html`<${GlobalStyles} />`);
       const second = await mountAndFlush(html`<${GlobalStyles} />`);
 
-      // The sheet is keyed by the template's content hash, so mounting cannot register it twice —
-      // which is the property that made folding it cheap in the first place.
+      // Each sheet is keyed by its template's content hash, so mounting cannot register one twice.
       expect(adoptedSheets()).toHaveLength(before);
       expect(first.container.querySelector('style')).toBeNull();
       expect(second.container.querySelector('style')).toBeNull();
 
       first.unmount();
       second.unmount();
-    });
-
-    it('carries the picker rules in the last global sheet', () => {
-      const rules = adoptedSheets()[4];
-      const selectors = rules.map(rule => rule.selectorText).join(' ');
-
-      expect(rules.length).toBeGreaterThan(300);
-      expect(selectors).toContain('.easylogic-colorpicker');
-      expect(selectors).toContain('.colorsets-contextmenu');
     });
   });
 });

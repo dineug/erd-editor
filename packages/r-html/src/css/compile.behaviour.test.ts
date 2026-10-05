@@ -1,6 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, parse as parsePath } from 'node:path';
-
 import { compile as stylisCompile, serialize, stringify } from 'stylis';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -103,33 +100,6 @@ function expectEquivalent(input: string) {
   expect(serialize(ours as any, stringify)).toBe(
     serialize(theirs as any, stringify)
   );
-}
-
-const COLOR_PICKER_STYLE = join(
-  'packages',
-  'erd-editor',
-  'src',
-  'styles',
-  'colorPicker.style.ts'
-);
-
-/**
- * Resolves a workspace-relative path by walking up from the working directory.
- * happy-dom leaves import.meta.url a non-file URL, and walking up also works
- * whether the suite started from the package or from the repo root.
- */
-function resolveFromWorkspace(relative: string): string {
-  const { root } = parsePath(process.cwd());
-  let dir = process.cwd();
-
-  for (;;) {
-    const candidate = join(dir, relative);
-    if (existsSync(candidate)) return candidate;
-    if (dir === root) break;
-    dir = dirname(dir);
-  }
-
-  throw new Error(`Could not locate "${relative}" from ${process.cwd()}`);
 }
 
 const CORPUS: Array<[label: string, input: string]> = [
@@ -334,44 +304,5 @@ describe('unseeded compile() is indistinguishable from stylis compile()', () => 
 
   it.each(CORPUS)('%s', (_label, input) => {
     expectEquivalent(input);
-  });
-});
-
-describe('unseeded compile() over a real 69KB stylesheet', () => {
-  /**
-   * The largest real CSS in the repo, a vendored stylesheet in one template
-   * literal with no interpolations. Read out of the sibling package rather than
-   * imported, because r-html must not depend on erd-editor.
-   */
-  const colorPickerCss = (() => {
-    const source = readFileSync(
-      resolveFromWorkspace(COLOR_PICKER_STYLE),
-      'utf8'
-    );
-    const first = source.indexOf('`');
-    const last = source.lastIndexOf('`');
-    return source.slice(first + 1, last);
-  })();
-
-  it('reads a large stylesheet with no template interpolations', () => {
-    expect(colorPickerCss.length).toBeGreaterThan(50_000);
-    expect(colorPickerCss).not.toContain('${');
-  });
-
-  it('produces a byte-identical serialization', () => {
-    expectEquivalent(colorPickerCss);
-  });
-
-  it('preserves the brace count of the source', () => {
-    const count = (value: string, pattern: RegExp) =>
-      (value.match(pattern) ?? []).length;
-
-    const output = serialize(compile(colorPickerCss) as any, stringify);
-
-    const open = count(colorPickerCss, /\{/g);
-    expect(open).toBeGreaterThan(0);
-    expect(count(colorPickerCss, /\}/g)).toBe(open);
-    expect(count(output, /\{/g)).toBe(open);
-    expect(count(output, /\}/g)).toBe(open);
   });
 });

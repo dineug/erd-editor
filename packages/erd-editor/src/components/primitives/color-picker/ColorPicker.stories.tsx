@@ -1,6 +1,8 @@
 import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
 
+import { createKeyBindingMap } from '@/utils/keyboard-shortcut';
+
 import ColorPicker, { ColorPickerProps } from './ColorPicker';
 
 const meta = {
@@ -23,8 +25,11 @@ const meta = {
     onChange: {
       action: 'onChange',
     },
-    onLastUpdate: {
-      action: 'onLastUpdate',
+    onClear: {
+      action: 'onClear',
+    },
+    onClose: {
+      action: 'onClose',
     },
   },
 } satisfies Meta<ColorPickerProps>;
@@ -36,5 +41,7 @@ export const Normal: Story = {
   args: {
     x: 0,
     y: 0,
+    keyBindingMap: createKeyBindingMap(),
+    documentColors: ['#3b82f6', '#22c55e'],
   },
 };
