@@ -48,6 +48,12 @@ const MENU_ORIGIN = { x: 400, y: 400 };
 /** Bare canvas clear of the Find and Replace panel, which stands 396 px in from the canvas edge. */
 const CLEAR_OF_PANEL = { x: 700, y: 400 };
 
+/** ExportImage.styles.ts — the title row's padding and the box's border, the close button's offset from the corner. */
+const CORNER_INSET = 21;
+
+/** The dialog's focus ring, a 2 px outline 2 px out, reaches this far past a button. */
+const RING_REACH = 4;
+
 /** One memo at scene zero and one whose far corner lands on the span. */
 function document(span = SPAN, zoomLevel = 1): ErdDocument {
   return createSchema({
@@ -382,14 +388,99 @@ test.describe('the export image dialog', () => {
     await erd.seed(document());
     const dialog = await openFromMenu(erd);
     const copy = button(dialog, 'Copy to clipboard');
-    const background = dialog.getByRole('switch', { name: 'Background' });
+    const close = button(dialog, 'Close');
 
     await copy.focus();
     await erd.press('Tab');
-    await expect(background).toBeFocused();
+    await expect(close).toBeFocused();
 
     await erd.press('Shift+Tab');
     await expect(copy).toBeFocused();
+  });
+
+  test('closes on its close button in the top right corner, as Escape does, handing the keyboard back', async ({
+    erd,
+  }) => {
+    await erd.seed(document());
+    const dialog = await openFromMenu(erd);
+    const close = button(dialog, 'Close');
+
+    await expect(close).toBeVisible();
+    await expect(close).toHaveAttribute('title', 'Close (ESC)');
+    await expect(button(dialog, 'PNG')).toBeFocused();
+    const box = (await dialog.boundingBox())!;
+    const corner = (await close.boundingBox())!;
+    expect(box.x + box.width - (corner.x + corner.width)).toBeCloseTo(
+      CORNER_INSET,
+      0
+    );
+    expect(corner.y - box.y).toBeCloseTo(CORNER_INSET, 0);
+
+    await close.click();
+
+    await expect(dialog).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
+  });
+
+  test('keeps its close button in the top right corner in a narrow editor, over the preview, ringed for the keyboard, and Enter on it closes', async ({
+    erd,
+  }) => {
+    await erd.seed(document());
+    const dialog = await openFromMenu(erd);
+    const close = button(dialog, 'Close');
+
+    // Narrow enough to stack the preview above the options.
+    await erd.page.setViewportSize({ width: 600, height: 800 });
+    await expect(dialog.locator('.export-image.stacked')).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    const title = (await dialog.getByRole('heading').boundingBox())!;
+    const preview = (await dialog
+      .locator('.export-image-preview')
+      .boundingBox())!;
+    const corner = (await close.boundingBox())!;
+    expect(box.x + box.width - (corner.x + corner.width)).toBeCloseTo(
+      CORNER_INSET,
+      0
+    );
+    expect(corner.y - box.y).toBeCloseTo(CORNER_INSET, 0);
+    expect(corner.y + corner.height / 2).toBeCloseTo(
+      title.y + title.height / 2,
+      0
+    );
+    expect(preview.y).toBeGreaterThan(corner.y + corner.height);
+
+    await button(dialog, 'Copy to clipboard').focus();
+    await erd.press('Tab');
+    await expect(close).toBeFocused();
+    await expect(close).toHaveCSS('outline-style', 'solid');
+    await expect(close).toHaveCSS('outline-width', '2px');
+
+    await erd.press('Enter');
+
+    await expect(dialog).toHaveCount(0);
+    await erd.expectKeyboardFocusInside();
+  });
+
+  test('brings the whole focus ring of its close button into a short box scrolled down', async ({
+    erd,
+  }) => {
+    await erd.seed(document());
+    const dialog = await openFromMenu(erd);
+    const close = button(dialog, 'Close');
+
+    // Wide enough to keep the preview beside the options, too short for the box.
+    await erd.page.setViewportSize({ width: 1200, height: 360 });
+    await expect(dialog.locator('.export-image.stacked')).toHaveCount(0);
+    await button(dialog, 'Copy to clipboard').focus();
+    expect(await dialog.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+
+    await erd.press('Tab');
+
+    await expect(close).toBeFocused();
+    const box = (await dialog.boundingBox())!;
+    const ring = (await close.boundingBox())!;
+    // The box's 1 px border is where its scrolled content is cut.
+    expect(ring.y - RING_REACH).toBeGreaterThanOrEqual(box.y + 1);
   });
 
   test('gives way to Find and Replace on its chord, the panel open beneath it already', async ({

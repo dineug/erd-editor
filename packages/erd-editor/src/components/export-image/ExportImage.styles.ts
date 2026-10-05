@@ -5,13 +5,29 @@ import { fontSize4, typography } from '@/styles/typography.styles';
 /**
  * The preview beside the options, or above them once the editor is narrow,
  * kept at its own height so a short editor scrolls the box rather than cut it.
+ * The title row heads the options, and the whole box once the preview stacks.
  */
 export const layout = css`
-  display: flex;
+  display: grid;
   flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) 328px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'preview header'
+    'preview panel';
 
   &.stacked {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      'header'
+      'preview'
+      'panel';
+  }
+
+  & button:focus-visible {
+    outline: 2px solid var(--input-active);
+    outline-offset: 2px;
   }
 `;
 
@@ -20,8 +36,8 @@ export const layout = css`
  * The image is fitted inside a fixed inset whatever its proportions.
  */
 export const preview = css`
+  grid-area: preview;
   position: relative;
-  flex: 1 1 0;
   min-width: 0;
   min-height: 320px;
   background-color: var(--gray-color-2);
@@ -34,7 +50,6 @@ export const preview = css`
   background-size: 16px 16px;
 
   .stacked > & {
-    flex: 0 0 auto;
     min-height: 0;
     height: 200px;
   }
@@ -70,32 +85,70 @@ export const loading = css`
 
 /* Wide enough for PNG, SVG and Copy to clipboard to share one row. */
 export const panel = css`
+  grid-area: panel;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 0 0 328px;
-  padding: 20px;
+  padding: 16px 20px 20px;
   border-left: 1px solid var(--context-menu-border);
   color: var(--foreground);
   ${typography.normal};
 
   .stacked > & {
-    flex: 0 0 auto;
+    padding-top: 20px;
     border-left: none;
     border-top: 1px solid var(--context-menu-border);
   }
+`;
 
-  & button:focus-visible {
-    outline: 2px solid var(--input-active);
-    outline-offset: 2px;
+/**
+ * The title and the close button, over the options while the preview is beside
+ * them and over the preview once it stacks, so the button keeps the box's top
+ * right corner either way.
+ */
+export const header = css`
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 0;
+  border-left: 1px solid var(--context-menu-border);
+
+  .stacked > & {
+    padding-bottom: 20px;
+    border-left: none;
+    border-bottom: 1px solid var(--context-menu-border);
   }
 `;
 
 export const title = css`
-  margin: 0 0 4px;
+  margin: 0;
   color: var(--active);
   font-weight: var(--font-weight-medium);
   ${fontSize4};
+`;
+
+/**
+ * A 26px square tool tinted under the pointer, as Table Properties and Find and
+ * Replace close. Tab brings its whole focus ring into a box scrolled down.
+ */
+export const close = css`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  color: var(--foreground);
+  cursor: pointer;
+  scroll-margin: 6px;
+
+  &:hover {
+    color: var(--active);
+    background-color: var(--context-menu-hover);
+  }
 `;
 
 /* A label and its control on one line, the label taking what is left. */

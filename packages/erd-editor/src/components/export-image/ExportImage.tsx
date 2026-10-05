@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 import { useAppContext } from '@/components/appContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import Dialog from '@/components/primitives/dialog/Dialog';
+import Icon from '@/components/primitives/icon/Icon';
 import Switch from '@/components/primitives/switch/Switch';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
@@ -15,7 +16,7 @@ import { getExportSize } from '@/services/export-png/exportBox';
 import { createExportTheme } from '@/services/export-png/exportTheme';
 import type { ThemeOptions } from '@/themes/radix-ui-theme';
 import type { Theme } from '@/themes/tokens';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 import * as styles from './ExportImage.styles';
 import {
@@ -64,9 +65,9 @@ type Session = {
 };
 
 /**
- * The export image dialog: a preview, the options, and the buttons that write
- * a png or an svg or copy a png. The options last for the element's life, and
- * the dialog stays open after a button, whose outcome is told in a toast.
+ * The export image dialog: a preview, the options, the buttons that write a png
+ * or an svg or copy a png, and a close button. The options last for the
+ * element's life, and an export leaves the dialog open, its outcome in a toast.
  */
 const ExportImage: FC<ExportImageProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -290,7 +291,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
   return () => {
     if (!isOpen()) return null;
 
-    const { store } = app.value;
+    const { store, keyBindingMap } = app.value;
     const stacked = store.state.editor.viewport.width < STACK_BELOW;
     const size = view.measured
       ? getExportSize(
@@ -307,6 +308,22 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
         onClose={close}
         children={
           <div class={['export-image', styles.layout, { stacked }]}>
+            <div class={styles.header}>
+              <h2 class={styles.title}>Export image</h2>
+              <button
+                class={['export-image-close', styles.close]}
+                type="button"
+                aria-label="Close"
+                title={toShortcutTitle(
+                  keyBindingMap,
+                  'Close',
+                  KeyBindingName.stop
+                )}
+                on:click={close}
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
             <div
               class={['export-image-preview', styles.preview]}
               aria-busy={view.loading ? 'true' : 'false'}
@@ -323,7 +340,6 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
               ) : null}
             </div>
             <div class={styles.panel}>
-              <h2 class={styles.title}>Export image</h2>
               <label class={styles.row}>
                 <span>Background</span>
                 <Switch

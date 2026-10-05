@@ -6,6 +6,7 @@ import {
   describe,
   expect,
   it,
+  onTestFinished,
   vi,
 } from 'vite-plus/test';
 
@@ -50,6 +51,7 @@ import {
 } from '@/themes/radix-ui-theme';
 import type { Theme } from '@/themes/tokens';
 import { openExportImageAction } from '@/utils/emitter';
+import { focusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 vi.mock('@/services/export-png', () => ({
@@ -171,6 +173,10 @@ const buttonOf = (text: string) =>
     mounted!.container.querySelectorAll<HTMLButtonElement>('button')
   ).find(el => el.textContent?.trim() === text) ?? null;
 
+const closeButton = () =>
+  dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]') ??
+  null;
+
 const click = async (el: HTMLElement | null) => {
   el!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await flush();
@@ -253,8 +259,8 @@ describe('ExportImage opening', () => {
     expect(document.activeElement).toBe(buttonOf('PNG'));
   });
 
-  /** An owner decision: the options, PNG, SVG and the clipboard alone, with no close button, since Escape and the dim close it. */
-  it('holds the options, PNG, SVG and the clipboard and nothing else, no close button among them', async () => {
+  /** Owner decisions: the options, PNG, SVG and the clipboard alone, and a close button beside them since 2026-10-05. */
+  it('holds a close button, the options, PNG, SVG and the clipboard and nothing else', async () => {
     const app = await setup();
 
     await open(app);
@@ -266,9 +272,10 @@ describe('ExportImage opening', () => {
     ).map(control =>
       control.getAttribute('role') === 'switch'
         ? control.closest('label')?.textContent?.trim()
-        : control.textContent?.trim()
+        : (control.getAttribute('aria-label') ?? control.textContent?.trim())
     );
     expect(controls).toEqual([
+      'Close',
       'Background',
       'Dark mode',
       '1x',
@@ -280,6 +287,38 @@ describe('ExportImage opening', () => {
     ]);
   });
 
+  it('puts its close button beside the title, named for the stop key, and leaves the first focus to PNG', async () => {
+    const app = await setup();
+
+    await open(app);
+
+    const close = closeButton()!;
+    expect(close.getAttribute('type')).toBe('button');
+    expect(close.getAttribute('title')).toBe('Close (ESC)');
+    expect(close.querySelector('svg')).not.toBeNull();
+    expect(close.parentElement?.querySelector('h2')?.textContent).toBe(
+      'Export image'
+    );
+    expect(close.classList.contains(String(styles.close))).toBe(true);
+    expect(document.activeElement).toBe(buttonOf('PNG'));
+  });
+
+  /** The title row is a grid item of the layout's own, which is what lets it head the options or the whole box. */
+  it('heads the layout with the title row, ahead of the preview and the options', async () => {
+    const app = await setup();
+
+    await open(app);
+
+    const header = closeButton()!.parentElement!;
+    const layout = mounted!.container.querySelector('.export-image')!;
+    expect(header.classList.contains(String(styles.header))).toBe(true);
+    expect(Array.from(layout.children)).toEqual([
+      header,
+      layout.querySelector('.export-image-preview'),
+      layout.querySelector(`.${String(styles.panel)}`),
+    ]);
+  });
+
   it('starts dark mode at the appearance the editor shows', async () => {
     const app = await setup({ isDarkMode: true });
 
@@ -288,10 +327,12 @@ describe('ExportImage opening', () => {
     expect(switchOf('Dark mode')?.getAttribute('aria-checked')).toBe('true');
   });
 
-  it('stacks the preview above the options in a narrow editor', async () => {
+  it('stacks the preview above the options in a narrow editor, the focused close button kept', async () => {
     const app = await setup();
     await open(app);
     const layout = () => mounted!.container.querySelector('.export-image')!;
+    const close = closeButton()!;
+    close.focus();
 
     expect(layout().classList.contains('stacked')).toBe(false);
 
@@ -300,6 +341,8 @@ describe('ExportImage opening', () => {
 
     expect(layout().classList.contains('stacked')).toBe(true);
     expect(layout().classList.contains(String(styles.layout))).toBe(true);
+    expect(closeButton()).toBe(close);
+    expect(document.activeElement).toBe(close);
   });
 });
 
@@ -686,6 +729,54 @@ describe('ExportImage closing', () => {
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
     expect(dialog()).toBeNull();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview-1');
+  });
+
+  it('closes on its close button as Escape does, the keyboard handed back either way', async () => {
+    const app = await setup();
+    const focused = vi.fn();
+    document.body.addEventListener(focusEvent.type, focused);
+    const dispatched: unknown[] = [];
+    const unsubscribe = app.store.subscribe(actions =>
+      dispatched.push(
+        ...actions.map(({ type, payload }) => ({ type, payload }))
+      )
+    );
+    onTestFinished(() => {
+      unsubscribe();
+      document.body.removeEventListener(focusEvent.type, focused);
+    });
+
+    /** What one way of closing dispatches, and whether the editor took the keyboard back after it. */
+    const closeBy = async (press: () => Promise<void>) => {
+      await open(app);
+      dispatched.length = 0;
+      focused.mockClear();
+
+      await press();
+
+      expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
+      expect(dialog()).toBeNull();
+      expect(focused).toHaveBeenCalledTimes(1);
+      return [...dispatched];
+    };
+
+    // A whole press, so the dim's own press check runs and closes nothing more.
+    const byButton = await closeBy(() => {
+      closeButton()!.dispatchEvent(
+        new MouseEvent('mousedown', { bubbles: true })
+      );
+      return click(closeButton());
+    });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview-1');
+    const byEscape = await closeBy(pressEscape);
+
+    expect(byButton).toEqual([
+      {
+        type: changeOpenMapAction.type,
+        payload: { [Open.exportImage]: false },
+      },
+    ]);
+    expect(byEscape).toEqual(byButton);
   });
 
   it('closes on the stop shortcut heard from elsewhere in the element', async () => {
