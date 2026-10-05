@@ -188,6 +188,19 @@ describe('schema-sql/MySQL', () => {
       );
     });
 
+    it('wraps a literal DEFAULT on a LONG VARCHAR column, a MEDIUMTEXT to MySQL', () => {
+      const { state, users } = createFixture();
+      state.collections.tableColumnEntities['col-name'].dataType =
+        'LONG VARCHAR';
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table: users });
+
+      expect(buffer[3]).toBe(
+        "  name LONG VARCHAR NOT NULL DEFAULT ('guest') COMMENT 'user name',"
+      );
+    });
+
     it('prefers AUTO_INCREMENT over a DEFAULT value on the same column', () => {
       const { state, users } = createFixture();
       state.collections.tableColumnEntities['col-id'].default = '1';

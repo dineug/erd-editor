@@ -322,8 +322,10 @@ const MYSQL_BARE = new RegExp(
 );
 
 // The types whose default MySQL reads only in parentheses, a literal's too.
+// Every type it takes that opens with the word LONG (LONG, LONG VARCHAR, LONG
+// VARBINARY, LONG BINARY, ...) is a MEDIUMTEXT or MEDIUMBLOB to it.
 const MYSQL_EXPRESSION_TYPE =
-  /^(?:(?:tiny|medium|long)?(?:blob|text)|json|geometry|geom(?:etry)?collection|(?:multi)?(?:point|linestring|polygon))\b/i;
+  /^(?:(?:tiny|medium|long)?(?:blob|text)|long|json|geometry|geom(?:etry)?collection|(?:multi)?(?:point|linestring|polygon))\b/i;
 
 const MYSQL_CURRENT_TIME = new RegExp(String.raw`^${MYSQL_NOW}\b`, 'i');
 

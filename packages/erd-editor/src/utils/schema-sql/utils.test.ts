@@ -336,6 +336,22 @@ describe('schema-sql/utils', () => {
       ]);
     });
 
+    it('wraps a MySQL literal default on a LONG type, which MySQL reads as MEDIUMTEXT or MEDIUMBLOB', () => {
+      const types = [
+        'LONG',
+        'long varchar',
+        'LONG VARBINARY',
+        'Long Char Varying',
+        'LONG CHARACTER SET latin1',
+      ];
+      const values = ["''", "'x'", '0x00', '0'];
+
+      for (const dataType of types) {
+        expect(bare(Database.MySQL, values, dataType)).toEqual(wrapped(values));
+        expect(formatDefault('NULL', Database.MySQL, dataType)).toBe('NULL');
+      }
+    });
+
     it('keeps the current time bare for MySQL only on a TIMESTAMP or DATETIME column', () => {
       const times = ['now()', 'CURRENT_TIMESTAMP(3)', 'localtime'];
 
