@@ -459,11 +459,58 @@ describe('createTableParser - column options', () => {
       ['b', '0.5', true],
       ['c', '0', false],
       ['d', "'draft'", true],
-      ['e', "nextval('t_e_seq'::regclass)", false],
+      ['e', '', false],
       ['f', "now() AT TIME ZONE 'utc'::text", true],
       ['g', 'ARRAY[]::text[]', true],
     ]);
     expect(ast.columns[5].comment).toBe('x');
+  });
+
+  it('reads a default that is one call of nextval as auto increment with no default', () => {
+    const { ast } = parse(
+      'CREATE TABLE t (\n' +
+        " a integer DEFAULT nextval('public.t_a_seq'::regclass) NOT NULL,\n" +
+        " b bigint NOT NULL DEFAULT (nextval('t_b_seq'::regclass)),\n" +
+        " c integer DEFAULT nextval('t_c_seq'::regclass) + 1,\n" +
+        ' d integer,\n' +
+        " e integer DEFAULT nextval(('public.t_e_seq'::text)::regclass) NOT NULL\n" +
+        ');'
+    );
+
+    expect(
+      ast.columns.map(column => [
+        column.name,
+        column.default,
+        column.autoIncrement,
+        column.nullable,
+      ])
+    ).toEqual([
+      ['a', '', true, false],
+      ['b', '', true, false],
+      ['c', "nextval('t_c_seq'::regclass) + 1", false, true],
+      ['d', '', false, true],
+      ['e', '', true, false],
+    ]);
+  });
+
+  it('keeps a MariaDB call of nextval on a bare sequence name as the default', () => {
+    const { ast } = parse(
+      'CREATE TABLE `orders` (\n' +
+        '  `id` int(11) NOT NULL DEFAULT nextval(`shop`.`order_seq`),\n' +
+        '  `ref` bigint DEFAULT (NEXTVAL(order_seq))\n' +
+        ');'
+    );
+
+    expect(
+      ast.columns.map(column => [
+        column.name,
+        column.default,
+        column.autoIncrement,
+      ])
+    ).toEqual([
+      ['id', 'nextval(`shop`.`order_seq`)', false],
+      ['ref', 'NEXTVAL(order_seq)', false],
+    ]);
   });
 
   it('reads a prefixed literal whole and the columns after it', () => {

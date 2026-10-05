@@ -221,6 +221,90 @@ describe('schemaSQLParser', () => {
     ]);
   });
 
+  it('reads the serial and identity columns pg_dump sets apart from their table', () => {
+    const ast = schemaSQLParser(`
+      CREATE TABLE public.users (
+          id integer NOT NULL,
+          code integer NOT NULL,
+          name text
+      );
+      ALTER TABLE public.users OWNER TO postgres;
+      CREATE SEQUENCE public.users_id_seq
+          AS integer
+          START WITH 1
+          INCREMENT BY 1
+          NO MINVALUE
+          NO MAXVALUE
+          CACHE 1;
+      ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+      ALTER TABLE public.users ALTER COLUMN code ADD GENERATED ALWAYS AS IDENTITY (
+          SEQUENCE NAME public.users_code_seq
+          START WITH 1
+          INCREMENT BY 1
+          NO MINVALUE
+          NO MAXVALUE
+          CACHE 1
+      );
+      ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+      ALTER TABLE ONLY public.users
+          ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+    `);
+
+    expect(ast.map(statement => statement.type)).toEqual([
+      'create.table',
+      'alter.table.alter.column.autoIncrement',
+      'alter.table.alter.column.autoIncrement',
+      'alter.table.add.primaryKey',
+    ]);
+    expect(ast.slice(1, 3)).toEqual([
+      {
+        type: 'alter.table.alter.column.autoIncrement',
+        name: 'users',
+        columnName: 'code',
+      },
+      {
+        type: 'alter.table.alter.column.autoIncrement',
+        name: 'users',
+        columnName: 'id',
+      },
+    ]);
+  });
+
+  it('reads on past an ALTER TABLE the source cut off before its action', () => {
+    const ast = schemaSQLParser(
+      'ALTER TABLE t ALTER COLUMN c\n' +
+        'CREATE TABLE x (a INT);\n' +
+        'ALTER TABLE t\n' +
+        'ALTER TABLE u ADD PRIMARY KEY (id);\n' +
+        'ALTER TABLE v ALTER COLUMN a DROP NOT NULL,\n' +
+        'ALTER TABLE w ALTER COLUMN b ADD GENERATED ALWAYS AS IDENTITY;\n' +
+        'ALTER TABLE t ALTER COLUMN\n' +
+        'CREATE TABLE y (b INT);\n' +
+        'ALTER TABLE t ALTER\n' +
+        'ALTER TABLE y ADD PRIMARY KEY (b);\n' +
+        'ALTER TABLE t ALTER COLUMN\n' +
+        'CREATE INDEX i ON y (b);\n' +
+        'ALTER TABLE t ALTER\n' +
+        "COMMENT ON TABLE y IS 'note';"
+    );
+
+    expect(ast.map(statement => statement.type)).toEqual([
+      'create.table',
+      'alter.table.add.primaryKey',
+      'alter.table.alter.column.autoIncrement',
+      'create.table',
+      'alter.table.add.primaryKey',
+      'create.index',
+      'comment.on.table',
+    ]);
+    expect(ast[1]).toMatchObject({ name: 'u', columnNames: ['id'] });
+    expect(ast[2]).toMatchObject({ name: 'w', columnName: 'b' });
+    expect(ast[3]).toMatchObject({ name: 'y' });
+    expect(ast[4]).toMatchObject({ name: 'y', columnNames: ['b'] });
+    expect(ast[5]).toMatchObject({ name: 'i', tableName: 'y' });
+    expect(ast[6]).toMatchObject({ name: 'y', comment: 'note' });
+  });
+
   it('reads the MS_Description extended properties as table and column comments', () => {
     const ast = schemaSQLParser(
       "EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Order header' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'Orders'\n" +

@@ -4,6 +4,7 @@ import {
   isAlterTableAddDefault,
   isAlterTableAddForeignKey,
   isAlterTableAddPrimaryKey,
+  isAlterTableAlter,
   isCommentOnColumn,
   isCommentOnTable,
   isCreateIndex,
@@ -20,6 +21,7 @@ import { alterTableAddDefaultParser } from '@/parser/statement/alter.table.add.d
 import { alterTableAddForeignKeyParser } from '@/parser/statement/alter.table.add.foreignKey';
 import { alterTableAddPrimaryKeyParser } from '@/parser/statement/alter.table.add.primaryKey';
 import { alterTableAddUniqueParser } from '@/parser/statement/alter.table.add.unique';
+import { alterTableAlterColumnParser } from '@/parser/statement/alter.table.alter.column';
 import { commentOnColumnParser } from '@/parser/statement/comment.on.column';
 import { commentOnTableParser } from '@/parser/statement/comment.on.table';
 import { createIndexParser } from '@/parser/statement/create.index';
@@ -37,6 +39,7 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
   const alterTableAddForeignKey = isAlterTableAddForeignKey(tokens);
   const alterTableAddDefault = isAlterTableAddDefault(tokens);
   const alterTableAdd = isAlterTableAdd(tokens);
+  const alterTableAlter = isAlterTableAlter(tokens);
   const commentOnTable = isCommentOnTable(tokens);
   const commentOnColumn = isCommentOnColumn(tokens);
   const addExtendedProperty = isAddExtendedProperty(tokens);
@@ -69,6 +72,13 @@ function parser(tokens: Token[], database?: DatabaseVendor) {
       const $unique: RefPos = { value: start };
       ast.push(...alterTableAddUniqueParser(tokens, $unique));
       $pos.value = Math.max($pos.value, $unique.value);
+      continue;
+    }
+
+    // pg_dump sets a serial column's default and an identity column's
+    // identity apart from its table, each in an ALTER COLUMN of its own.
+    if (alterTableAlter($pos.value)) {
+      ast.push(...alterTableAlterColumnParser(tokens, $pos));
       continue;
     }
 

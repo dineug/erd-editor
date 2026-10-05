@@ -280,10 +280,9 @@ const isLiteral = (pieces: Piece[]) => {
   return NUMBER.test(text) || /^(?:null|true|false)$/i.test(text);
 };
 
-// Drops a cast of the whole expression off a literal, as pg_dump writes one:
-// 'draft'::character varying is 'draft'. Off anything else, ARRAY[]::text[]
-// or ('now'::text)::date, the cast is part of what the default means.
-const uncast = (pieces: Piece[]) => {
+// The index of the last :: at depth 0, which casts the whole expression when a
+// type name follows it, -1 where none does.
+const lastCastOf = (pieces: Piece[]) => {
   let depth = 0;
   let cast = -1;
 
@@ -296,6 +295,15 @@ const uncast = (pieces: Piece[]) => {
       cast = index;
     }
   });
+
+  return cast;
+};
+
+// Drops a cast of the whole expression off a literal, as pg_dump writes one:
+// 'draft'::character varying is 'draft'. Off anything else, ARRAY[]::text[]
+// or ('now'::text)::date, the cast is part of what the default means.
+const uncast = (pieces: Piece[]) => {
+  const cast = lastCastOf(pieces);
 
   if (cast === -1 || !isTypeName(pieces.slice(cast + 1))) return pieces;
 
@@ -339,3 +347,60 @@ export function defaultExpressionParser(
 
   return writeDefaultExpression(expression, database);
 }
+
+// The function's name unquoted in any case, or in double quotes, which make it
+// case-sensitive, as pg_dump --quote-all-identifiers writes it.
+const isNextvalName = ({ kind, text, token }: Piece) =>
+  kind === 'word' &&
+  (token
+    ? token.quoted === '"' && token.value === 'nextval'
+    : /^nextval$/i.test(text));
+
+// No prefix, E or U&: the PostgreSQL string constants nextval reads a name
+// from, unlike N'', B'' and X'', which are typed values.
+const SEQUENCE_PREFIX = /^(?:e|u&)?$/i;
+
+// PostgreSQL's one argument, the sequence's name in a string literal under any
+// casts and parens: ('s'::text)::regclass. MariaDB names its sequence bare, as
+// in nextval(db.seq), which stays a default.
+const isSequenceArgument = (pieces: Piece[]): boolean => {
+  const operand = unwrap(pieces);
+  const cast = lastCastOf(operand);
+
+  if (cast !== -1) {
+    return (
+      isTypeName(operand.slice(cast + 1)) &&
+      isSequenceArgument(operand.slice(0, cast))
+    );
+  }
+
+  const [name] = operand;
+  return (
+    operand.length === 1 &&
+    name.kind === 'string' &&
+    SEQUENCE_PREFIX.test(name.token?.prefix ?? '')
+  );
+};
+
+/**
+ * Whether the DEFAULT expression at pos is one call of nextval('s'), in parens
+ * or not: the sequence a PostgreSQL serial column takes its values from.
+ */
+export const isNextvalDefault = (tokens: Token[]) => {
+  const defaultExpression = matchDefaultExpression(tokens);
+
+  return (pos: number) => {
+    const pieces = unwrap(
+      toPieces(tokens.slice(pos, pos + defaultExpression(pos)))
+    );
+    const [name, open] = pieces;
+
+    return (
+      !!name &&
+      isNextvalName(name) &&
+      open?.kind === 'open' &&
+      closeOf(pieces, 1) === pieces.length - 1 &&
+      isSequenceArgument(pieces.slice(2, -1))
+    );
+  };
+};
