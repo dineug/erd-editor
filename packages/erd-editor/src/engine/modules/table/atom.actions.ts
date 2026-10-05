@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { round } from 'es-toolkit/compat';
 
+import { TABLE_SORT_START } from '@/constants/layout';
 import { arrayHas } from '@/utils/arrayHas';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
@@ -177,8 +178,8 @@ const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
 
   tables.sort((a, b) => a.columnIds.length - b.columnIds.length);
 
-  let widthSum = 50;
-  let currentHeight = 50;
+  let widthSum = TABLE_SORT_START;
+  let currentHeight = TABLE_SORT_START;
   let maxHeight = 50;
 
   tables.forEach(table => {
@@ -188,7 +189,7 @@ const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
     if (widthSum + width > canvasWidth) {
       currentHeight += maxHeight;
       maxHeight = 0;
-      widthSum = 50;
+      widthSum = TABLE_SORT_START;
     }
 
     if (maxHeight < height) {

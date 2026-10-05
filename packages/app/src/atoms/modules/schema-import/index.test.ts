@@ -14,6 +14,7 @@ import { collectUnhandledRejections } from '@/__test-utils__/rejections';
 import { renderHook } from '@/__test-utils__/renderHook';
 import { schemaEntitiesAtom } from '@/atoms/modules/schema';
 import {
+  importingFilesAtom,
   importNoticeAtom,
   useExportBackup,
   useImportFiles,
@@ -88,7 +89,7 @@ describe('schema import', () => {
       Reflect.deleteProperty(service, key);
     }
     service.importSchemaEntities = importInto(stored);
-    vi.mocked(convertSource).mockImplementation(({ type, value }) =>
+    vi.mocked(convertSource).mockImplementation(async ({ type, value }) =>
       parsed(type, value)
     );
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -144,7 +145,7 @@ describe('schema import', () => {
     });
 
     it('counts a source the editor fails on as an invalid file', async () => {
-      vi.mocked(convertSource).mockImplementation(({ type, value }) => {
+      vi.mocked(convertSource).mockImplementation(async ({ type, value }) => {
         if (type === 'aml') throw new Error('unreadable');
         return parsed(type, value);
       });
@@ -160,6 +161,36 @@ describe('schema import', () => {
         message: 'Imported 1 schema · Skipped 1 invalid file',
         tone: 'warning',
       });
+    });
+
+    it('stores nothing until every source has been placed, one at a time', async () => {
+      const placing: Array<() => void> = [];
+      vi.mocked(convertSource).mockImplementation(
+        ({ type, value }) =>
+          new Promise(resolve => {
+            placing.push(() => resolve(parsed(type, value)));
+          })
+      );
+      const { result } = renderHook(useImportFiles, store);
+
+      const importing = result.current([
+        file('a.sql', 'create table a (id int);'),
+        file('b.dbml', 'Table b {}'),
+      ]);
+      await vi.waitFor(() => expect(placing).toHaveLength(1));
+      store.set(selectedSchemaIdAtom, 'elsewhere');
+      placing[0]();
+      await vi.waitFor(() => expect(placing).toHaveLength(2));
+      expect(stored).toEqual([]);
+      placing[1]();
+      await importing;
+
+      expect(stored.map(({ name, value }) => [name, value])).toEqual([
+        ['a', parsed('sql', 'create table a (id int);')],
+        ['b', parsed('dbml', 'Table b {}')],
+      ]);
+      // Opened elsewhere while the tables were placed, so that stays open.
+      expect(store.get(selectedSchemaIdAtom)).toBe('elsewhere');
     });
 
     it('leaves another schema the user opened meanwhile open', async () => {
@@ -179,6 +210,46 @@ describe('schema import', () => {
 
       expect(names(store)).toEqual(['shop']);
       expect(store.get(selectedSchemaIdAtom)).toBe('elsewhere');
+    });
+  });
+
+  describe('one import at a time', () => {
+    it('marks files importing until the import ends, refusing more meanwhile', async () => {
+      let place: () => void = () => {};
+      vi.mocked(convertSource).mockImplementation(
+        ({ type, value }) =>
+          new Promise(resolve => {
+            place = () => resolve(parsed(type, value));
+          })
+      );
+      const { result } = renderHook(useImportFiles, store);
+      const refused = file('more.dbml', 'Table more {}');
+      const text = vi.spyOn(refused, 'text');
+
+      const importing = result.current([file('shop.sql', 'create table a;')]);
+      expect(store.get(importingFilesAtom)).toBe(true);
+      await vi.waitFor(() => expect(convertSource).toHaveBeenCalledTimes(1));
+      await expect(result.current([refused])).resolves.toBeUndefined();
+      expect(text).not.toHaveBeenCalled();
+      expect(store.get(importingFilesAtom)).toBe(true);
+
+      place();
+      await importing;
+
+      expect(store.get(importingFilesAtom)).toBe(false);
+      expect(convertSource).toHaveBeenCalledTimes(1);
+      expect(names(store)).toEqual(['shop']);
+      expect(store.get(importNoticeAtom)?.message).toBe('Imported 1 schema');
+    });
+
+    it('takes files again once the import before has ended', async () => {
+      const { result } = renderHook(useImportFiles, store);
+
+      await result.current([file('shop.erd', DOCUMENT)]);
+      await result.current([file('more.erd', DOCUMENT)]);
+
+      expect(names(store)).toEqual(['shop', 'more']);
+      expect(store.get(importingFilesAtom)).toBe(false);
     });
   });
 
@@ -249,6 +320,7 @@ describe('schema import', () => {
       tone: 'warning',
     });
     expect(Sentry.captureException).toHaveBeenCalledWith(FAILURE);
+    expect(store.get(importingFilesAtom)).toBe(false);
   });
 
   it('imports what the file chooser gives', async () => {

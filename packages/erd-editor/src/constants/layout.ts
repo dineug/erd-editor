@@ -2,6 +2,9 @@ export const START_X = 200;
 export const START_Y = 100;
 export const START_ADD = 50;
 
+/** The corner the grid an import lands in starts at, on both axes. */
+export const TABLE_SORT_START = 50;
+
 export const DUPLICATE_MIN_MOVE = 4;
 
 /**

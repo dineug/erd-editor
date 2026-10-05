@@ -19,7 +19,8 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
 - Visual schema design — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
 - Import — a `.sql` dump, a GraphQL SDL schema from any tool that emits one, a `.dbml` file, or
-  an `.aml` file
+  an `.aml` file; one picked from the editor's own Import menu lands with its tables laid out by
+  their relationships
 - SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
@@ -146,10 +147,10 @@ erd-editor {
 | --- | --- |
 | `setInitialValue(value: string)` | Load the initial document. Does not create a history entry, and clears the undo history, so nothing done before the load can be undone or redone onto it. |
 | `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `Snowflake`, `SQLite`; omit it to use the document's own setting. |
-| `setSchemaSQL(value: string)` | Parse a DDL string and **replace** the current document with it. Lands in the undo history; an empty string is ignored. |
-| `setSchemaGraphQL(value: string)` | Parse a GraphQL SDL string and **replace** the current document with it. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. |
-| `setSchemaDBML(value: string)` | Parse a DBML string and **replace** the current document with it. Tables, columns, indexes, header colors and every `Ref` spelling are read; a `Project`, `TableGroup` or sticky `Note` is skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. |
-| `setSchemaAML(value: string)` | Parse an [AML](https://azimutt.app) string and **replace** the current document with it. Entities, attributes, indexes, colors and every relation arrow are read, in the v2 and the legacy v1 spelling; a check, a struct type and a view are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. |
+| `setSchemaSQL(value: string, options?)` | Parse a DDL string and **replace** the current document with it. Lands in the undo history; an empty string is ignored. `options` takes `placement`, below. |
+| `setSchemaGraphQL(value: string, options?)` | Parse a GraphQL SDL string and **replace** the current document with it. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. `options` takes `placement`, below. |
+| `setSchemaDBML(value: string, options?)` | Parse a DBML string and **replace** the current document with it. Tables, columns, indexes, header colors and every `Ref` spelling are read; a `Project`, `TableGroup` or sticky `Note` is skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement`, below. |
+| `setSchemaAML(value: string, options?)` | Parse an [AML](https://azimutt.app) string and **replace** the current document with it. Entities, attributes, indexes, colors and every relation arrow are read, in the v2 and the legacy v1 spelling; a check, a struct type and a view are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement`, below. |
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance` (`light`, `dark` or `system`), `grayColor` and `accentColor`. `system` follows the OS color scheme, or what `setSystemAppearance` names. |
 | `setSystemAppearance(appearance)` | Name the light or dark `system` shows, for a host with its own theme (an IDE's light or dark); `null` hands it back to the OS color scheme. It changes nothing on screen unless the appearance is `system`. |
@@ -159,6 +160,17 @@ erd-editor {
 | `focus()` / `blur()` | Move focus in and out of the editor. |
 | `clear()` | Empty the document. Its settings stay, the save switches included, so a cleared file keeps saving what it saved. |
 | `destroy()` | Tear the editor down and release its listeners, subscriptions and shared stores. |
+
+The four `setSchema*` methods take `{ placement?: 'auto' | 'grid' }` as their second argument.
+`'grid'`, the default, replaces the document at once with the tables in rows, as these methods
+always did. `'auto'` lays the tables out first, as an import from the editor's own menu does: by
+their relationships (the Flow layout) when at least two tables and one relationship arrive, and in
+rows otherwise, or when the layout fails, the page runs no `SharedWorker`, or the reader presses
+Cancel on the toast a slow layout shows. It returns a `Promise` that resolves once the document is
+replaced, still in one undo step, keeping any setting changed meanwhile. A load before then —
+another import, `value`, `setInitialValue`, `clear()`, a peer's load or an undo of one —
+supersedes it, so the import started last is the one that lands, and its `Promise` resolves with
+nothing loaded. A readonly editor places nothing and resolves at once.
 
 ### Events
 
@@ -229,13 +241,13 @@ setImportFileCallback(async ({ type, op, accept }) => {
   } else if (type === 'json') {
     editor.value = text;
   } else if (type === 'sql') {
-    editor.setSchemaSQL(text);
+    editor.setSchemaSQL(text, { placement: 'auto' });
   } else if (type === 'graphql') {
-    editor.setSchemaGraphQL(text);
+    editor.setSchemaGraphQL(text, { placement: 'auto' });
   } else if (type === 'dbml') {
-    editor.setSchemaDBML(text);
+    editor.setSchemaDBML(text, { placement: 'auto' });
   } else if (type === 'aml') {
-    editor.setSchemaAML(text);
+    editor.setSchemaAML(text, { placement: 'auto' });
   }
 });
 ```
@@ -245,6 +257,7 @@ document before it parses, so routing a payload there that is not an `.erd.json`
 through a catch-all `else`, or because a `type` added later fell through — empties the
 diagram instead of importing anything. `accept` carries the extensions for that type
 (`.json`, `.sql`, or `.graphql,.gql,.graphqls`), ready to hand to a host file dialog.
+`placement: 'auto'` lays the schema out as the editor's own file picker would.
 
 Left unset, the editor uses the browser's own download and file-picker behavior.
 

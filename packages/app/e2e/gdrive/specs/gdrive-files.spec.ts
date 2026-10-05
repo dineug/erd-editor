@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { dateGroupLabel, daysAgo } from '../../support/backup';
+import { holdConversion } from '../../support/conversion';
 import {
   documentWithTable,
   FOREIGN_ERD,
@@ -17,6 +18,7 @@ import {
   resetOAuthServer,
 } from '../../support/gdrive/fakeGoogle';
 import { GdrivePage } from '../../support/gdrive/GdrivePage';
+import { expectFanPlaced, FAN_SQL } from '../../support/placement';
 import { expectResourceLinks } from '../../support/resourceLinks';
 
 let google: FakeGoogle;
@@ -433,6 +435,84 @@ test.describe('the sidebar', () => {
     await expect
       .poll(async () => (await app.fileNames()).sort())
       .toEqual(['bar.erd.json', 'foo.erd.json', 'shop.erd.json']);
+  });
+
+  test('imports an SQL source with its tables placed by their relationships', async ({
+    context,
+  }) => {
+    const app = await signedIn(context);
+
+    await app.sidebar().getByRole('button', { name: 'Import' }).click();
+    const chooser = app.page.waitForEvent('filechooser');
+    await app.page.getByRole('menuitem', { name: 'Import files' }).click();
+    await (
+      await chooser
+    ).setFiles({
+      name: 'fan.sql',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(FAN_SQL),
+    });
+
+    await expect(
+      app.page
+        .getByRole('status')
+        .filter({ hasText: 'Imported 1 file to Google Drive' })
+    ).toBeVisible();
+    const fan = [...google.files.values()].find(
+      file => file.name === 'fan.erd.json'
+    );
+    expect(fan, 'fan.erd.json uploaded').toBeDefined();
+    expectFanPlaced(fan!.content);
+  });
+
+  test('shows an import under way on both Import files until it ends', async ({
+    context,
+  }) => {
+    const app = await signedIn(context);
+    const conversion = await holdConversion(app.page);
+    // Not exact: while loading, Radix keeps a hidden copy of the label beside it.
+    const importButton = app.page.getByRole('button', { name: 'Import files' });
+    const importItem = async () => {
+      await app.sidebar().getByRole('button', { name: 'Import' }).click();
+      return app.page.getByRole('menuitem', { name: 'Import files' });
+    };
+
+    const chooser = app.page.waitForEvent('filechooser');
+    await importButton.click();
+    await (
+      await chooser
+    ).setFiles({
+      name: 'fan.sql',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(FAN_SQL),
+    });
+    await conversion.requested;
+
+    await expect(importButton).toBeDisabled();
+    await expect(importButton.locator('.rt-Spinner')).toBeVisible();
+    await expect(await importItem()).toHaveAttribute('aria-disabled', 'true');
+    await app.page.keyboard.press('Escape');
+
+    conversion.release();
+    await expect(
+      app.page
+        .getByRole('status')
+        .filter({ hasText: 'Imported 1 file to Google Drive' })
+    ).toBeVisible();
+    await app.waitForEditor();
+    await expect(app.page).toHaveURL(/\/gdrive\?file=/);
+
+    // Back on no file, the empty viewer shows its Import files again.
+    await app.page.goBack();
+    await expect(
+      app.page.getByRole('heading', { name: 'No file open' })
+    ).toBeVisible();
+    await expect(importButton).toBeEnabled();
+    await expect(importButton.locator('.rt-Spinner')).toHaveCount(0);
+    await expect(await importItem()).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
   test('shows the account, Sign out and the policy links, and links to nothing of /', async ({

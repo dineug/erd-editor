@@ -3,6 +3,7 @@ import { BookOpen, FileUp, Plus } from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
 
 import {
+  useImportingFiles,
   useOpenImportDialog,
   useOpenSample,
 } from '@/atoms/modules/schema-import';
@@ -18,6 +19,7 @@ const LazyEditor = lazy(() => import('@/components/viewer/editor/Editor'));
 const EmptyViewer: React.FC = () => {
   const startAddingSchema = useStartAddingSchema();
   const openImportDialog = useOpenImportDialog();
+  const importingFiles = useImportingFiles();
   const openSample = useOpenSample();
   const [openingSample, setOpeningSample] = useState(false);
 
@@ -51,6 +53,7 @@ const EmptyViewer: React.FC = () => {
           size="2"
           variant="outline"
           color="gray"
+          loading={importingFiles}
           onClick={() => openImportDialog()}
         >
           <FileUp size={16} />

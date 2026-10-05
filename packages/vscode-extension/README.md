@@ -21,7 +21,7 @@ Undo and redo are the diagram editor's own history, not VS Code's.
 On the empty canvas, `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to it. To start
 from a schema you already have, right-click the canvas and choose **Import → Schema SQL**
 for a `.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file.
-Either one replaces the diagram in one undoable step.
+Either one replaces the diagram in one undoable step, its tables laid out by their relationships.
 
 Use the icon in the editor title bar to switch between the diagram and its JSON source — hold
 `Alt` while clicking to open the other view to the side instead. These are title-bar actions

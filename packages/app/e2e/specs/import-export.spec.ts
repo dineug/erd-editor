@@ -1,8 +1,10 @@
 import { readFile } from 'node:fs/promises';
 
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 import { AppPage, type StoredSchema } from '../support/AppPage';
+import { holdConversion } from '../support/conversion';
+import { expectFanPlaced, FAN_SQL } from '../support/placement';
 
 const DBML = `Table users {
   id integer [pk]
@@ -36,6 +38,35 @@ const storedAnchors = ({ value }: StoredSchema): number[][] => {
     return [start.x, start.y, end.x, end.y];
   });
 };
+
+/**
+ * Drags a file over the window and hands back the drop effect the app chose
+ * and the drop. The transfer stands in for a DataTransfer, on which Chrome
+ * ignores a drop effect set outside a real drag; the app reads no more of it.
+ */
+async function dragFile(page: Page, name: string, text: string) {
+  const transfer = await page.evaluateHandle(
+    ([name, text]) => ({
+      types: ['Files'],
+      files: [new File([text], name, { type: 'text/plain' })],
+      dropEffect: '',
+    }),
+    [name, text]
+  );
+  const fire = (type: string) =>
+    transfer.evaluate((transfer, type) => {
+      const event = new DragEvent(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: transfer });
+      document.body.dispatchEvent(event);
+    }, type);
+  await fire('dragenter');
+  await fire('dragover');
+
+  return {
+    dropEffect: () => transfer.evaluate(transfer => transfer.dropEffect),
+    drop: () => fire('drop'),
+  };
+}
 
 test.describe('import and export', () => {
   test('keeps what an imported DBML file parsed to across a reload', async ({
@@ -101,6 +132,84 @@ test.describe('import and export', () => {
       ignoreSaveSettings: 3,
       zoomLevel: 1,
     });
+  });
+
+  test('stores an SQL source with its tables placed by their relationships', async ({
+    context,
+  }) => {
+    const app = await AppPage.open(context);
+    await app.importFiles([
+      { name: 'fan.sql', mimeType: 'text/plain', buffer: Buffer.from(FAN_SQL) },
+    ]);
+
+    await expect(app.importNotice()).toHaveText('Imported 1 schema');
+    expectFanPlaced((await app.storedSchema('fan')).value);
+  });
+
+  test('shows an import under way on its controls and refuses a drop until it ends', async ({
+    context,
+  }) => {
+    const app = await AppPage.open(context);
+    const conversion = await holdConversion(app.page);
+    // Not exact: while loading, Radix keeps a hidden copy of the label beside it.
+    const importButton = app.page.getByRole('button', { name: 'Import files' });
+    const importItem = async () => {
+      await app
+        .sidebar()
+        .getByRole('button', { name: 'Import and export' })
+        .click();
+      return app.page.getByRole('menuitem', { name: 'Import files' });
+    };
+
+    const chooser = app.page.waitForEvent('filechooser');
+    await importButton.click();
+    await (
+      await chooser
+    ).setFiles({
+      name: 'fan.sql',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(FAN_SQL),
+    });
+    await conversion.requested;
+
+    await expect(importButton).toBeDisabled();
+    await expect(importButton.locator('.rt-Spinner')).toBeVisible();
+    await expect(await importItem()).toHaveAttribute('aria-disabled', 'true');
+    await app.page.keyboard.press('Escape');
+
+    const early = await dragFile(app.page, 'extra.dbml', DBML);
+    await expect(app.page.getByText('Importing files…')).toBeVisible();
+    expect(await early.dropEffect()).toBe('none');
+    await early.drop();
+    await expect(app.page.getByText('Importing files…')).toHaveCount(0);
+
+    conversion.release();
+    await expect(app.importNotice()).toHaveText('Imported 1 schema');
+    await expect(app.schemaItem('fan')).toHaveAttribute('aria-current', 'page');
+    await expect(app.page).toHaveURL(/\?schema=/);
+    await app.waitForEditor();
+
+    // Back on no schema, the empty viewer shows its Import files again.
+    await app.page.goBack();
+    await expect(app.page).not.toHaveURL(/\?schema=/);
+    await expect(app.page.getByText('No schema open')).toBeVisible();
+    await expect(importButton).toBeEnabled();
+    await expect(importButton.locator('.rt-Spinner')).toHaveCount(0);
+    await expect(await importItem()).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    await app.page.keyboard.press('Escape');
+
+    const late = await dragFile(app.page, 'extra.dbml', DBML);
+    await expect(app.page.getByText('Drop to import')).toBeVisible();
+    expect(await late.dropEffect()).toBe('copy');
+    await late.drop();
+
+    // The file dropped while fan.sql was imported was refused, not queued.
+    await expect
+      .poll(async () => (await app.schemaNames()).sort())
+      .toEqual(['extra', 'fan']);
   });
 
   test('exports a backup that imports back as copies', async ({ context }) => {

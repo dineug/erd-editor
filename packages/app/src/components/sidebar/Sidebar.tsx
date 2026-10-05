@@ -13,6 +13,7 @@ import {
 } from '@/atoms/modules/schema';
 import {
   useExportBackup,
+  useImportingFiles,
   useOpenImportDialog,
 } from '@/atoms/modules/schema-import';
 import {
@@ -41,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
   const updateCollaborativeSessionAll = useUpdateCollaborativeSessionAll();
   const addSchemaEntity = useAddSchemaEntity();
   const openImportDialog = useOpenImportDialog();
+  const importingFiles = useImportingFiles();
   const exportBackup = useExportBackup();
   const [isEditing, setIsEditing] = useAtom(addingSchemaAtom);
   const selectedId = useAtomValue(selectedSchemaIdAtom);
@@ -75,7 +77,10 @@ const Sidebar: React.FC<SidebarProps> = () => {
             menuLabel="Import and export"
             menuItems={
               <>
-                <DropdownMenu.Item onSelect={() => openImportDialog()}>
+                <DropdownMenu.Item
+                  disabled={importingFiles}
+                  onSelect={() => openImportDialog()}
+                >
                   <FileUp size={16} />
                   Import files
                 </DropdownMenu.Item>

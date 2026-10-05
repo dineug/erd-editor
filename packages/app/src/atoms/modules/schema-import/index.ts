@@ -32,6 +32,9 @@ const SAMPLE_NAME = 'bookstore sample';
 
 export const importNoticeAtom = atom<ImportNotice | null>(null);
 
+/** Whether files given to the file chooser or dropped are being imported. */
+export const importingFilesAtom = atom(false);
+
 const addImportedSchemasAtom = atom(
   null,
   async (get, set, list: NewSchemaEntity[]) => {
@@ -62,9 +65,9 @@ const showImportNoticeAtom = atom(null, (get, set, result: ImportResult) => {
 });
 
 /**
- * Converts every source into the document it parses to; one the editor fails
- * on is counted as an invalid file. Loaded on demand, since it brings in the
- * whole editor.
+ * Converts every source into the document it parses to, its tables placed,
+ * one after another; one the editor fails on is counted as an invalid file.
+ * Loaded on demand, since it brings in the whole editor.
  */
 async function convertSources(
   sources: Array<{ name: string; source: SourceImport }>
@@ -75,7 +78,7 @@ async function convertSources(
 
   for (const { name, source } of sources) {
     try {
-      documents.push({ name, value: convertSource(source) });
+      documents.push({ name, value: await convertSource(source) });
     } catch (error) {
       console.error(error);
       failed += 1;
@@ -173,20 +176,33 @@ async function runImport(store: Store, read: () => Promise<ImportItem[]>) {
 
 export const useImportNotice = () => useAtomValue(importNoticeAtom);
 
+export const useImportingFiles = () => useAtomValue(importingFilesAtom);
+
 export const useDismissImportNotice = () => {
   const setNotice = useSetAtom(importNoticeAtom);
   return useCallback(() => setNotice(null), [setNotice]);
 };
 
+/**
+ * Imports files one import at a time, as /gdrive does: files given while one
+ * runs are refused, and the controls that start one read importingFilesAtom.
+ */
 export const useImportFiles = () => {
   const store = useStore();
 
   return useCallback(
-    (files: File[]) => {
-      const now = Date.now();
-      return runImport(store, () =>
-        Promise.all(files.map(file => readImportFile(file, now)))
-      );
+    async (files: File[]) => {
+      if (store.get(importingFilesAtom)) return undefined;
+      store.set(importingFilesAtom, true);
+
+      try {
+        const now = Date.now();
+        return await runImport(store, () =>
+          Promise.all(files.map(file => readImportFile(file, now)))
+        );
+      } finally {
+        store.set(importingFilesAtom, false);
+      }
     },
     [store]
   );

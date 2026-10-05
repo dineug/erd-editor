@@ -85,7 +85,7 @@ one drawn over it in coordinates the document never keeps:
 
 | Spec                            | What it holds down                                                |
 | ------------------------------- | ---------------------------------------------------------------- |
-| `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker   |
+| `automatic-table-placement.spec.ts` | The placement ELK lands in the document, through the worker, from Auto Layout and from an SQL import |
 | `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
 
 `shared-workers.spec.ts` holds down what those two and every export stand on:

@@ -12,7 +12,7 @@ import {
 import { MAX_IMPORT_FILE_SIZE } from '@/utils/importFile';
 
 vi.mock('@/utils/convertSource', () => ({
-  convertSource: ({ value }: { value: string }) => {
+  convertSource: async ({ value }: { value: string }) => {
     if (value.includes('broken')) throw new Error('parse error');
     return `converted:${value}`;
   },

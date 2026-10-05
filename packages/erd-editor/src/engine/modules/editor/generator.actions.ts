@@ -1,10 +1,11 @@
-import { query } from '@dineug/erd-editor-schema';
+import { type ERDEditorSchemaV3, query } from '@dineug/erd-editor-schema';
 import { cloneDeep, isEqual, omit, uniq } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 import { nanoid } from 'nanoid';
 
 import { START_ADD } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
+import type { EngineContext } from '@/engine/context';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
   changeMemoColorAction,
@@ -532,98 +533,102 @@ export const removeColorAllAction$ = (): GeneratorAction =>
     );
   };
 
-export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
-  function* ({ settings }, ctx) {
-    yield loadJsonAction$(
-      schemaSQLParserToSchemaJson(
+/** The four text formats an import parses into a document of its own. */
+export type SchemaImportType = 'sql' | 'graphql' | 'dbml' | 'aml';
+
+/**
+ * The settings an import takes from the parser rather than from the document
+ * it replaces: the view, the legacy scroll pair, and the canvas size its grid
+ * wraps at, which the parser sizes to the tables.
+ */
+const IMPORT_OMIT_SETTINGS = [
+  'width',
+  'height',
+  'originX',
+  'originY',
+  'scrollTop',
+  'scrollLeft',
+  'zoomLevel',
+] as const;
+
+/**
+ * Writes the settings of the document an import replaces over the parser's,
+ * all but the view and the canvas size. A placed import writes them again as
+ * it lands, so a setting changed while it placed is not undone.
+ *
+ * @example
+ * withImportSettings(schema, store.state.settings);
+ */
+export function withImportSettings(
+  schema: Pick<ERDEditorSchemaV3, 'settings'>,
+  settings: RootState['settings']
+): void {
+  schema.settings = {
+    ...schema.settings,
+    ...omit(cloneDeep(settings), IMPORT_OMIT_SETTINGS),
+  };
+}
+
+/**
+ * The document an import parses to, carrying the settings of the one it
+ * replaces. Its tables still stand where the parser left them: the grid or a
+ * placement decides where they go.
+ *
+ * @example
+ * const json = toSchemaImportJson('sql', value, store.state, ctx);
+ */
+export function toSchemaImportJson(
+  type: SchemaImportType,
+  value: string,
+  { settings }: RootState,
+  ctx: EngineContext
+): string {
+  const prepare = (schema: ERDEditorSchemaV3) => {
+    withImportSettings(schema, settings);
+    return schema;
+  };
+
+  switch (type) {
+    case 'sql':
+      return schemaSQLParserToSchemaJson(
         value,
         ctx,
-        schema => {
-          schema.settings = {
-            ...schema.settings,
-            ...omit(cloneDeep(settings), [
-              'width',
-              'height',
-              'originX',
-              'originY',
-              'scrollTop',
-              'scrollLeft',
-              'zoomLevel',
-            ]),
-          };
-          return schema;
-        },
+        prepare,
         settings.database
-      )
-    );
+      );
+    case 'graphql':
+      return schemaGraphQLParserToSchemaJson(value, ctx, prepare);
+    case 'dbml':
+      return schemaDBMLParserToSchemaJson(value, ctx, prepare);
+    case 'aml':
+      return schemaAMLParserToSchemaJson(value, ctx, prepare);
+  }
+}
+
+/**
+ * The load each of the four text imports runs: the parsed document replaces
+ * this one, then its tables are sorted into the grid.
+ */
+export const loadSchemaAction$ = (
+  type: SchemaImportType,
+  value: string
+): GeneratorAction =>
+  function* (state, ctx) {
+    yield loadJsonAction$(toSchemaImportJson(type, value, state, ctx));
     yield sortTableAction();
   };
+
+export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>
+  loadSchemaAction$('sql', value);
 
 export const loadSchemaGraphQLAction$ = (value: string): GeneratorAction =>
-  function* ({ settings }, ctx) {
-    yield loadJsonAction$(
-      schemaGraphQLParserToSchemaJson(value, ctx, schema => {
-        schema.settings = {
-          ...schema.settings,
-          ...omit(cloneDeep(settings), [
-            'width',
-            'height',
-            'originX',
-            'originY',
-            'scrollTop',
-            'scrollLeft',
-            'zoomLevel',
-          ]),
-        };
-        return schema;
-      })
-    );
-    yield sortTableAction();
-  };
+  loadSchemaAction$('graphql', value);
 
 export const loadSchemaDBMLAction$ = (value: string): GeneratorAction =>
-  function* ({ settings }, ctx) {
-    yield loadJsonAction$(
-      schemaDBMLParserToSchemaJson(value, ctx, schema => {
-        schema.settings = {
-          ...schema.settings,
-          ...omit(cloneDeep(settings), [
-            'width',
-            'height',
-            'originX',
-            'originY',
-            'scrollTop',
-            'scrollLeft',
-            'zoomLevel',
-          ]),
-        };
-        return schema;
-      })
-    );
-    yield sortTableAction();
-  };
+  loadSchemaAction$('dbml', value);
 
 export const loadSchemaAMLAction$ = (value: string): GeneratorAction =>
-  function* ({ settings }, ctx) {
-    yield loadJsonAction$(
-      schemaAMLParserToSchemaJson(value, ctx, schema => {
-        schema.settings = {
-          ...schema.settings,
-          ...omit(cloneDeep(settings), [
-            'width',
-            'height',
-            'originX',
-            'originY',
-            'scrollTop',
-            'scrollLeft',
-            'zoomLevel',
-          ]),
-        };
-        return schema;
-      })
-    );
-    yield sortTableAction();
-  };
+  loadSchemaAction$('aml', value);
 
 export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
   function* ({ editor: { focusTable } }) {

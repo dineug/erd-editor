@@ -54,12 +54,14 @@ interface GdriveViewerProps {
 
 interface EmptyViewerProps {
   hasFiles: boolean;
+  importing: boolean;
   onNewFile: () => void;
   onImport: () => void;
 }
 
 const EmptyViewer: React.FC<EmptyViewerProps> = ({
   hasFiles,
+  importing,
   onNewFile,
   onImport,
 }) => (
@@ -76,7 +78,13 @@ const EmptyViewer: React.FC<EmptyViewerProps> = ({
       <Plus size={16} />
       New file
     </Button>
-    <Button size="2" variant="outline" color="gray" onClick={onImport}>
+    <Button
+      size="2"
+      variant="outline"
+      color="gray"
+      loading={importing}
+      onClick={onImport}
+    >
       <FileUp size={16} />
       Import files
     </Button>
@@ -243,6 +251,7 @@ const GdriveViewer: React.FC<GdriveViewerProps> = ({
           hasFiles={
             snapshot.files.length > 0 || snapshot.filesState === 'failed'
           }
+          importing={snapshot.importing}
           onNewFile={onNewFile}
           onImport={onImport}
         />

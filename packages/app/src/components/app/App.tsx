@@ -2,7 +2,10 @@ import { useEffect } from 'react';
 
 import { useCollaborativeHost } from '@/atoms/modules/collaborative';
 import { useSelectedSchemaListEntity } from '@/atoms/modules/schema';
-import { useImportFiles } from '@/atoms/modules/schema-import';
+import {
+  useImportFiles,
+  useImportingFiles,
+} from '@/atoms/modules/schema-import';
 import DropOverlay from '@/components/app/drop-overlay/DropOverlay';
 import ImportNotice from '@/components/app/import-notice/ImportNotice';
 import { useFileDrop } from '@/components/app/useFileDrop';
@@ -19,7 +22,8 @@ const App: React.FC<AppProps> = () => {
   useCollaborativeHost();
   useSchemaSearchParam();
   const importFiles = useImportFiles();
-  const dragging = useFileDrop(importFiles);
+  const importingFiles = useImportingFiles();
+  const dragging = useFileDrop(importFiles, importingFiles);
   const selectedName = useSelectedSchemaListEntity()?.name;
 
   useEffect(() => {
@@ -40,7 +44,7 @@ const App: React.FC<AppProps> = () => {
       <Sidebar />
       <Viewer />
       <SidebarSash />
-      {dragging ? <DropOverlay /> : null}
+      {dragging ? <DropOverlay importing={importingFiles} /> : null}
       <ImportNotice />
     </>
   );
