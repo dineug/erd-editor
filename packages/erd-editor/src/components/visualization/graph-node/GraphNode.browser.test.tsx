@@ -8,9 +8,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import {
   createTestAppContext,
   createTestTheme,
+  createTouch,
   fireScenePointer,
+  fireSceneTouch,
   flush,
   movePointer,
+  moveTouch,
   releasePointer,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
@@ -316,6 +319,54 @@ describe('a graph node', () => {
       releasePointer();
       await settle();
       expect(state.drag).toBe(false);
+    });
+
+    it('pins nothing, moves nothing and pans nothing from a right press and its drag', async () => {
+      const { stage, graph, state, settle } = await setup();
+      const [table] = graph.nodes;
+      const { x, y } = state;
+
+      const press = fireScenePointer(dotOf(stage, 't1'), 'mousedown', {
+        button: 2,
+        clientX: 10,
+        clientY: 10,
+      });
+      movePointer(40, 30);
+      await settle();
+
+      expect(press.defaultPrevented).toBe(false);
+      expect(table.fx ?? null).toBeNull();
+      expect(table.fy ?? null).toBeNull();
+      expect(graph.simulation.alphaTarget()).toBe(0);
+      expect([state.x, state.y]).toEqual([x, y]);
+      expect(state.drag).toBe(false);
+    });
+
+    it('pins and moves the node from one finger, which no button gate holds back', async () => {
+      const { stage, graph, state, settle } = await setup();
+      const [table] = graph.nodes;
+      const { x, y } = table;
+
+      fireSceneTouch(dotOf(stage, 't1'), 'touchstart', 10, 10);
+      await settle();
+
+      expect(table.fx).toBe(x);
+      expect(table.fy).toBe(y);
+      expect(state.drag).toBe(true);
+      expect(graph.simulation.alphaTarget()).toBe(0.3);
+
+      moveTouch(30, 25);
+      await settle();
+
+      expect(table.fx).toBeCloseTo(x + 20 / state.scale, 10);
+      expect(table.fy).toBeCloseTo(y + 15 / state.scale, 10);
+
+      window.dispatchEvent(createTouch('touchend'));
+      await settle();
+
+      expect(table.fx).toBeNull();
+      expect(state.drag).toBe(false);
+      expect(graph.simulation.alphaTarget()).toBe(0);
     });
 
     it('follows a changed position prop onto the dot', async () => {

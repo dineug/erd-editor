@@ -158,6 +158,51 @@ async function openDiffViewer(erd: ErdEditorPage) {
   return toast;
 }
 
+/**
+ * The viewport middle of one Graph mode dot, read off the visualization stage,
+ * since a dot carries no id the scene projection could find it by.
+ */
+async function graphDotCenter(erd: ErdEditorPage, id: string): Promise<Point> {
+  const handle = await erd.page.waitForFunction(nodeId => {
+    const stage = Reflect.get(window, '__erdStages')?.visualization;
+    const node = stage?.findOne(`.${nodeId}`);
+    if (!node) return null;
+
+    const rect = node.getClientRect({ relativeTo: stage });
+    const origin = stage.container().getBoundingClientRect();
+    return {
+      x: origin.x + rect.x + rect.width / 2,
+      y: origin.y + rect.y + rect.height / 2,
+    };
+  }, id);
+
+  return (await handle.jsonValue()) as Point;
+}
+
+const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * How far a dot may still drift while the force layout runs out, in px. A dot
+ * a press pinned sits under the pointer instead, the whole drag away.
+ */
+const LAYOUT_DRIFT = 8;
+
+/**
+ * Resolves once the force layout has all but stopped, under a pixel of travel
+ * between two reads, so a press at a dot's middle lands on the dot.
+ */
+async function graphSettled(erd: ErdEditorPage, id: string) {
+  let last: Point | null = null;
+  await expect
+    .poll(async () => {
+      const now = await graphDotCenter(erd, id);
+      const still = last !== null && distance(now, last) < 1;
+      last = now;
+      return still;
+    })
+    .toBe(true);
+}
+
 const threeTables = () =>
   createSchema({
     tables: [
@@ -772,6 +817,33 @@ test.describe('mouse drag', () => {
       .not.toContain('users');
   });
 
+  test('a right click on a memo body opens a context menu and no memo editor', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        memos: [{ id: 'note', value: 'a note', x: 320, y: 240 }],
+      })
+    );
+
+    const hit = await erd.sceneBox(['#memo-note', '.memo-textarea-hit']);
+    const at = { x: hit.x + 24, y: hit.y + 24 };
+    await erd.clickAt(at, { button: 'right' });
+    await expect(erd.contextMenu.first()).toBeVisible();
+    await erd.whenDrawn();
+
+    // The menu stands and the scene has drawn since the lift, so an editor the
+    // lift's konva click opened would be showing by now.
+    await expect(erd.memoEditor).toHaveCount(0);
+
+    // A main press on bare canvas closes the menu, and the main button at the
+    // same point is the editor, so the right click went where it answers.
+    await erd.focusCanvas();
+    await expect(erd.contextMenu).toHaveCount(0);
+    await erd.clickAt(at);
+    await expect(erd.memoEditor).toBeVisible();
+  });
+
   test('under the hand tool a middle-button drag pans too, and keeps the selection', async ({
     erd,
   }) => {
@@ -958,6 +1030,37 @@ test.describe('mouse drag', () => {
       width: note.ui.width,
       height: note.ui.height,
     });
+  });
+
+  test('a right-button drag on a Graph mode dot moves it nowhere, where a main drag carries it', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.toolbarButton('Visualization').click();
+    await graphSettled(erd, 'users');
+
+    const from = await graphDotCenter(erd, 'users');
+    await erd.page.mouse.move(from.x, from.y);
+    await erd.page.mouse.down({ button: 'right' });
+    await erd.page.mouse.move(from.x + 60, from.y + 40, { steps: 8 });
+    await erd.whenDrawn();
+
+    expect(distance(await graphDotCenter(erd, 'users'), from)).toBeLessThan(
+      LAYOUT_DRIFT
+    );
+    await erd.page.mouse.up({ button: 'right' });
+
+    // The main button at the same dot carries it under the pointer, so the
+    // right press above landed where a press pins.
+    const start = await graphDotCenter(erd, 'users');
+    const end = { x: start.x + 60, y: start.y + 40 };
+    await erd.page.mouse.move(start.x, start.y);
+    await erd.page.mouse.down();
+    await erd.page.mouse.move(end.x, end.y, { steps: 8 });
+    await expect
+      .poll(async () => distance(await graphDotCenter(erd, 'users'), end))
+      .toBeLessThan(LAYOUT_DRIFT);
+    await erd.page.mouse.up();
   });
 
   test('a middle-button drag that ends off the canvas has its lift prevented too', async ({

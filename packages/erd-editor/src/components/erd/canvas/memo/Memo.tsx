@@ -273,7 +273,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             clipY={0}
             clipWidth={memo.ui.width}
             clipHeight={memo.ui.height}
-            on:click={handleEditValue}
+            on:click={mainButtonClick(handleEditValue)}
             on:mouseenter={handleValueMouseenter}
             on:mouseleave={handleValueMouseleave}
             on:wheel={handleValueWheel}

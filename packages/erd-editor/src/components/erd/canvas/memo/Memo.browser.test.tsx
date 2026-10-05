@@ -339,6 +339,24 @@ describe('the memo scene', () => {
     expect(app.store.state.editor.editMemoId).toBe(MEMO_ID);
   });
 
+  it('opens the body editor for the main button alone, never a right or middle click', async () => {
+    const { app, stage } = await mountStoredMemo();
+    const hit = nodeNamed(stage, 'memo-textarea-hit');
+
+    fireScenePointer(hit, 'click', { button: 2 });
+    fireScenePointer(hit, 'click', { button: 1 });
+    await flush();
+
+    expect(app.store.state.editor.editMemoId).toBeNull();
+
+    // The main button at the same node is the editor, so the clicks above
+    // reached the listener that opens it.
+    fireScenePointer(hit, 'click', { button: 0 });
+    await flush();
+
+    expect(app.store.state.editor.editMemoId).toBe(MEMO_ID);
+  });
+
   it('hides the drawn body while the overlay editor holds it', async () => {
     const { app, stage } = await mountStoredMemo();
     expect(nodeNamed(stage, 'memo-textarea').visible()).toBe(true);
