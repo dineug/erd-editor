@@ -2,6 +2,7 @@ import { expect, test } from '../support/fixtures';
 import {
   ColumnOption,
   ColumnUIKey,
+  relatedTables,
   RelationshipType,
   twoTables,
 } from '../support/schema';
@@ -431,6 +432,67 @@ test.describe('inline editing', () => {
     expect((await erd.column('users_name')).name).toBe('nickname');
     // The column was renamed, not replaced.
     expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+  });
+
+  test('keeps a serial typed into a foreign key there and never sends it to the key', async ({
+    erd,
+  }) => {
+    const schema = relatedTables();
+    schema.settings.database = POSTGRESQL;
+    await erd.seed(schema);
+
+    const dataTypeCell = erd.cell(
+      erd.columnEl('posts_user_id'),
+      'columnDataType'
+    );
+    await erd.editCell(dataTypeCell, 'serial4');
+    await erd.press(Shortcut.stop);
+    await expect(erd.editInput()).toHaveCount(0);
+
+    // Every keystroke is a dispatch of its own, so the key took each one up to
+    // the last before the name was a serial type, and none after it.
+    expect((await erd.column('posts_user_id')).dataType).toBe('serial4');
+    expect((await erd.column('users_id')).dataType).toBe('seria');
+
+    // Escape left the cell focused, so Enter opens it again with no second
+    // double click, whose two presses konva pairs only within 400 ms.
+    await erd.press(Shortcut.edit);
+    const input = erd.editInput(dataTypeCell);
+    await expect(input).toBeVisible();
+    await input.selectText();
+    await erd.page.keyboard.type('bigint');
+    await erd.press(Shortcut.stop);
+    await expect(erd.editInput()).toHaveCount(0);
+
+    expect((await erd.column('posts_user_id')).dataType).toBe('bigint');
+    expect((await erd.column('users_id')).dataType).toBe('bigint');
+  });
+
+  test('leaves the key the text typed before a hint completes a serial name', async ({
+    erd,
+  }) => {
+    const schema = relatedTables();
+    schema.settings.database = POSTGRESQL;
+    await erd.seed(schema);
+
+    const dataTypeCell = erd.cell(
+      erd.columnEl('posts_user_id'),
+      'columnDataType'
+    );
+    await erd.editCell(dataTypeCell, 'big');
+    const row = erd.host
+      .locator('.edit-overlay .data-type-hint-item')
+      .filter({ has: erd.page.locator('span', { hasText: /^bigserial$/ }) });
+    await expect(row).toHaveCount(1);
+    const box = await row.boundingBox();
+    if (!box) throw new Error('the bigserial hint row has no box');
+    await erd.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await erd.page.mouse.down();
+    await erd.page.mouse.up();
+
+    // The hint sends the whole name in one dispatch, after one per keystroke.
+    expect((await erd.column('posts_user_id')).dataType).toBe('bigserial');
+    expect((await erd.column('users_id')).dataType).toBe('big');
   });
 
   test('Escape ends edit mode without reverting the typed value', async ({

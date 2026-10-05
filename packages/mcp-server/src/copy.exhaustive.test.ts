@@ -174,18 +174,19 @@ describe('the words on a foreign key data type', () => {
     }
   });
 
-  it('say the sync of erd_change_column_data_type runs both ways and stops at a serial key', () => {
+  it('say the sync of erd_change_column_data_type runs both ways and stops at a serial key or a serial type', () => {
     const text = describeTool('erd_change_column_data_type');
 
     expect(text).toContain('both ways');
     expect(text).toContain('into the foreign keys that copy the column');
     expect(text).toContain('from a foreign key back to the key it copies');
     expect(text).toContain(
-      'except a serial key, which keeps its type and stops the change there'
+      'but never a serial type, which stays in the foreign key, and never into a serial key, which keeps its type; neither the key nor its other foreign keys change then'
     );
+    expect(text).not.toContain('except a serial key');
   });
 
-  it('say erd_undo cannot revert erd_set_relationship_data_type_sync, whose sync runs both ways, maps a serial key and stops at one', () => {
+  it('say erd_undo cannot revert erd_set_relationship_data_type_sync, whose sync runs both ways, maps a serial key and stops at a serial key or a serial type', () => {
     const text = describeTool('erd_set_relationship_data_type_sync');
 
     expect(text).toMatch(
@@ -195,10 +196,11 @@ describe('the words on a foreign key data type', () => {
       'a change to the data type of a column spreads along relationships both ways',
       'into the foreign keys that copy the column, a serial type as the integer it stores',
       'from a foreign key back to the key it copies',
-      'except a serial key, which keeps its type and stops the change there',
+      'but never a serial type, which stays in the foreign key, and never into a serial key, which keeps its type; neither the key nor its other foreign keys change then',
     ]) {
       expect(text).toContain(phrase);
     }
+    expect(text).not.toContain('except a serial key');
     expect(text).not.toContain('follow the data type of the columns');
   });
 });

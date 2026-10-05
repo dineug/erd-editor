@@ -515,4 +515,15 @@ describe('the foreign key data types the descriptions of erd_add_relationship, e
     expect(dataTypeOf(peer, SEED.userId)).toBe('SERIAL');
     expect(dataTypeOf(peer, SEED.orderUser)).toBe('BIGINT');
   });
+
+  it('keeps a serial type set on a foreign key there, its key as it was', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_set_database', { value: 'PostgreSQL' });
+    runTool(peer, 'erd_set_relationship_data_type_sync', { value: true });
+
+    setDataType(peer, SEED.orders, SEED.orderUser, ' BigSerial ');
+
+    expect(dataTypeOf(peer, SEED.orderUser)).toBe(' BigSerial ');
+    expect(dataTypeOf(peer, SEED.userId)).toBe('INT');
+  });
 });

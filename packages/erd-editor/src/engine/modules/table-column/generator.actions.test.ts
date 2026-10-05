@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, Database } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   focusColumnAction,
@@ -11,9 +11,15 @@ import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeRelationshipDataTypeSyncAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeDatabaseAction,
+  changeRelationshipDataTypeSyncAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnDataTypeAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   actions$,
   addColumnAction$,
@@ -446,6 +452,133 @@ describe('changeColumnDataTypeAction$', () => {
     );
 
     expect(column(store, 'c1').ui.widthDataType).toBe(120);
+  });
+});
+
+describe('changeColumnDataTypeAction$ and a serial type set on a foreign key', () => {
+  const COLUMN_IDS = ['users_id', 'orders_user_id', 'posts_user_id'];
+
+  /** users.id keys orders.user_id and posts.user_id under PostgreSQL, sync on. */
+  function setupKey(keyType: string, foreignKeyType: string) {
+    const store = setup();
+    store.dispatchSync(
+      changeDatabaseAction({ value: Database.PostgreSQL }),
+      changeRelationshipDataTypeSyncAction({ value: true })
+    );
+    addTable(store, 'users', ['users_id']);
+    addTable(store, 'orders', ['orders_user_id']);
+    addTable(store, 'posts', ['posts_user_id']);
+    const key = { tableId: 'users', columnIds: ['users_id'] };
+    addRelationship(store, 'r1', key, {
+      tableId: 'orders',
+      columnIds: ['orders_user_id'],
+    });
+    addRelationship(store, 'r2', key, {
+      tableId: 'posts',
+      columnIds: ['posts_user_id'],
+    });
+    store.dispatchSync(
+      changeColumnDataTypeAction({
+        tableId: 'users',
+        id: 'users_id',
+        value: keyType,
+      }),
+      changeColumnDataTypeAction({
+        tableId: 'orders',
+        id: 'orders_user_id',
+        value: foreignKeyType,
+      }),
+      changeColumnDataTypeAction({
+        tableId: 'posts',
+        id: 'posts_user_id',
+        value: foreignKeyType,
+      })
+    );
+    return store;
+  }
+
+  const dataTypes = (store: Store) =>
+    COLUMN_IDS.map(id => column(store, id).dataType);
+
+  /** Sets the type of orders.user_id once per value, as the canvas cell does per keystroke. */
+  const setForeignKey = (store: Store, values: string[]) => {
+    for (const value of values) {
+      store.dispatchSync(
+        changeColumnDataTypeAction$({
+          tableId: 'orders',
+          id: 'orders_user_id',
+          value,
+        })
+      );
+    }
+  };
+
+  const typed = (text: string) =>
+    [...text].map((_, index) => text.slice(0, index + 1));
+
+  const erased = (text: string) => [...typed(text).reverse().slice(1), ''];
+
+  it('keeps a serial set in one dispatch in the foreign key, leaving the key and its other foreign keys as they were', () => {
+    const store = setupKey('int', 'int');
+
+    setForeignKey(store, ['serial4']);
+
+    expect(dataTypes(store)).toEqual(['int', 'serial4', 'int']);
+  });
+
+  it('never writes a serial typed letter by letter back to the key, which keeps the keystroke before the name was whole', () => {
+    const store = setupKey('int', 'int');
+    const keyTypes: string[] = [];
+
+    for (const value of typed('serial4')) {
+      setForeignKey(store, [value]);
+      keyTypes.push(column(store, 'users_id').dataType);
+    }
+
+    expect(keyTypes).toEqual([
+      's',
+      'se',
+      'ser',
+      'seri',
+      'seria',
+      'seria',
+      'seria',
+    ]);
+    expect(dataTypes(store)).toEqual(['seria', 'serial4', 'seria']);
+  });
+
+  it('leaves the key the text typed before a data type hint completes a serial name', () => {
+    const store = setupKey('int', 'int');
+
+    setForeignKey(store, [...typed('big'), 'bigserial']);
+
+    expect(dataTypes(store)).toEqual(['big', 'bigserial', 'big']);
+  });
+
+  it('ends a serial typed and then replaced letter by letter where one dispatch of the new type ends', () => {
+    const typedStore = setupKey('int', 'int');
+    const oneShot = setupKey('int', 'int');
+
+    setForeignKey(typedStore, [
+      ...typed('serial'),
+      ...erased('serial'),
+      ...typed('bigint'),
+    ]);
+    setForeignKey(oneShot, ['bigint']);
+
+    expect(dataTypes(oneShot)).toEqual(['bigint', 'bigint', 'bigint']);
+    expect(dataTypes(typedStore)).toEqual(dataTypes(oneShot));
+  });
+
+  it('keeps a serial key whatever is typed letter by letter into its foreign key, as one dispatch does', () => {
+    const typedStore = setupKey('serial', 'integer');
+    const oneShot = setupKey('serial', 'integer');
+
+    setForeignKey(typedStore, typed('bigserial'));
+    setForeignKey(oneShot, ['bigserial']);
+
+    expect(dataTypes(oneShot)).toEqual(['serial', 'bigserial', 'integer']);
+    expect(dataTypes(typedStore)).toEqual(dataTypes(oneShot));
   });
 });
 
