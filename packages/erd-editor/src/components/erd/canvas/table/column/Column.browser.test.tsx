@@ -731,6 +731,18 @@ describe('what a column pointer start owns', () => {
     expect(table.columnIds).not.toContain(column.id);
   });
 
+  it('keeps the column through a right click on its remove button', async () => {
+    const { app, stage, column } = await setup();
+
+    fireScenePointer(named(rowOf(stage), 'column-remove'), 'click', {
+      button: 2,
+    });
+    await settle();
+
+    const table = app.store.state.collections.tableEntities[column.tableId];
+    expect(table.columnIds).toContain(column.id);
+  });
+
   it('focuses the cell a mousedown lands on', async () => {
     const { app, stage, column } = await setup();
 

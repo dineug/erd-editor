@@ -518,8 +518,8 @@ describe('Erd - routing what the scene answered', () => {
     expect(point.y).toBeGreaterThan(table.y);
     expect(point.y).toBeLessThan(table.y + table.height);
 
-    // The press lifts the table into the drag layer, so the menu that follows
-    // reads a hit canvas still holding the torn down card over the connector.
+    // The press raises the table, which renders the scene again, so the menu
+    // that follows reads a hit canvas the press invalidated over the connector.
     pressOn(editor, 'mousedown', point, { button: 2, buttons: 2 });
     await flush();
     pressOn(editor, 'contextmenu', point, { button: 2, buttons: 2 });

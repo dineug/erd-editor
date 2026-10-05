@@ -208,7 +208,7 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
   };
 
   return () => (
-    <div class={styles.root}>
+    <div class={['diff-viewer-tree', styles.root]}>
       {listedTables.map(table => {
         const tableName = table.name.trim() ? table.name : 'unnamed';
         const isInsert = bHas(table.diff, Diff.insert);

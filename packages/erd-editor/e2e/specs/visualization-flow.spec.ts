@@ -359,14 +359,19 @@ async function pressCard(erd: ErdEditorPage, id: string, mod = false) {
 }
 
 /** Hovers a card so its header buttons are drawn, then presses one of them. */
-async function pressCardButton(erd: ErdEditorPage, id: string, name: string) {
+async function pressCardButton(
+  erd: ErdEditorPage,
+  id: string,
+  name: string,
+  button: 'left' | 'right' = 'left'
+) {
   await erd.hoverScene(`#table-${id}`);
   await erd.whenDrawn();
 
   const box = await erd.sceneBox([`#table-${id}`, `.${name}`]);
   await erd.hoverAt({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
-  await erd.page.mouse.down();
-  await erd.page.mouse.up();
+  await erd.page.mouse.down({ button });
+  await erd.page.mouse.up({ button });
 }
 
 /** Stands the reader in the Flow mode of the Visualization tab, placed. */
@@ -577,6 +582,64 @@ test.describe('the visualization tab and the flow view over the document', () =>
     });
   });
 
+  /**
+   * The middle button pans from anywhere on the scene, a card included, and
+   * the card neither moves in the view nor leaves the document where it was.
+   */
+  test('pans the flow view on a middle drag over a card, and moves no card', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+    const ids = ['customers', 'orders', 'products', 'order_items'];
+    const placed = await placementsOf(erd, ids);
+    const document = await erd.settings();
+    const before = (await flowTable(erd, 'customers').boundingBox())!;
+
+    const box = await erd.sceneBox('#table-customers');
+    const from = { x: box.x + box.width * 0.3, y: box.y + box.height * 0.6 };
+    await erd.drag(
+      from,
+      { x: from.x + 120, y: from.y + 80 },
+      { button: 'middle' }
+    );
+    await erd.whenDrawn();
+
+    await expect
+      .poll(async () => {
+        const after = (await flowTable(erd, 'customers').boundingBox())!;
+        return [Math.round(after.x - before.x), Math.round(after.y - before.y)];
+      })
+      .toEqual([120, 80]);
+    expect(await placementsOf(erd, ids)).toEqual(placed);
+    expect(await erd.settings()).toMatchObject({
+      originX: document.originX,
+      originY: document.originY,
+    });
+  });
+
+  /** The middle button closes the row display menu as the main one does. */
+  test('closes the row display menu on a middle press over a card', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+    const menu = erd.host.locator(
+      '.visualization-show-mode-menu .context-menu-content'
+    );
+    await showModeTrigger(erd).click();
+    await expect(menu).toBeVisible();
+
+    const box = await erd.sceneBox('#table-customers');
+    await erd.page.mouse.click(
+      box.x + box.width * 0.3,
+      box.y + box.height * 0.6,
+      { button: 'middle' }
+    );
+
+    await expect(menu).toHaveCount(0);
+  });
+
   /** AC-44. The body click pins the highlight; it never narrows what the view shows. */
   test('leaves the display set alone on a click of a flow box', async ({
     erd,
@@ -696,6 +759,27 @@ test.describe('the visualization tab and the flow view over the document', () =>
     expect(after.originX).not.toBe(before.originX);
     expect(after.originY).not.toBe(before.originY);
     await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  /** A card button answers the main button alone, and the view opens no menu for a right one. */
+  test('narrows nothing and stays in the view on a right click of Related or Go to ERD', async ({
+    erd,
+  }) => {
+    await erd.seed(shop());
+    await enterFlow(erd);
+
+    await pressCardButton(erd, 'orders', 'table-related', 'right');
+    await pressCardButton(erd, 'orders', 'table-go-to-erd', 'right');
+    await erd.whenDrawn();
+
+    await expect(modeButton(erd, 'Show all')).toHaveCount(0);
+    await expect(erd.contextMenu).toHaveCount(0);
+
+    // The main button at the same point is the button, so the right clicks
+    // above went where it answers, and by now Go to ERD would have left.
+    await pressCardButton(erd, 'orders', 'table-related');
+    await expect(modeButton(erd, 'Show all')).toBeVisible();
+    expect((await erd.settings()).canvasType).toContain('visualization');
   });
 
   /** A card button owns its whole press, so Related narrows and selects or raises nothing. */

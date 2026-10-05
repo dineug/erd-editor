@@ -26,6 +26,7 @@ import {
   CURSOR_POINTER,
   documentCardShadow,
   FOCUS_BORDER_HEIGHT,
+  mainButtonClick,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
@@ -881,7 +882,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           data={getColorEdgePath(rect.height)}
           fill={table.ui.color}
           listening={!view}
-          on:click={handleOpenColorPicker}
+          on:click={mainButtonClick(handleOpenColorPicker)}
           on:mouseenter={(event: SceneMouseEvent) => {
             setSceneCursor(event, CURSOR_POINTER);
           }}

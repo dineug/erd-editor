@@ -1017,6 +1017,38 @@ describe('the header buttons a table owns', () => {
     expect(app.store.state.doc.tableIds).not.toContain(table.id);
   });
 
+  it('answers a right click on none of its buttons, which the context menu owns', async () => {
+    const { app, stage, table } = await setup();
+    const openColorPicker = vi.fn();
+    app.emitter.on({ openColorPicker });
+    const right = { button: 2 };
+
+    fireScenePointer(
+      named(rootOf(stage), 'table-header-color'),
+      'click',
+      right
+    );
+    fireScenePointer(named(rootOf(stage), 'table-add-column'), 'click', right);
+    fireScenePointer(named(rootOf(stage), 'table-remove'), 'click', right);
+    await settle();
+
+    expect(openColorPicker).not.toHaveBeenCalled();
+    expect(table.columnIds).toHaveLength(0);
+    expect(app.store.state.doc.tableIds).toContain(table.id);
+  });
+
+  it('removes the table on a Mac control click, which is the main button', async () => {
+    const { app, stage, table } = await setup();
+
+    fireScenePointer(named(rootOf(stage), 'table-remove'), 'click', {
+      button: 0,
+      ctrlKey: true,
+    });
+    await settle();
+
+    expect(app.store.state.doc.tableIds).not.toContain(table.id);
+  });
+
   it('reveals the header icons once the pointer is over the table itself', async () => {
     const { stage, theme } = await setup();
 

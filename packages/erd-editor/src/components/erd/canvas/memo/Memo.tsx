@@ -26,6 +26,7 @@ import {
   CURSOR_TEXT,
   documentCardShadow,
   HIT_FILL,
+  mainButtonClick,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
@@ -239,7 +240,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             height={MEMO_HEADER_COLOR_HEIGHT}
             cornerRadius={[MEMO_CORNER_RADIUS, MEMO_CORNER_RADIUS, 0, 0]}
             fill={memo.ui.color}
-            on:click={handleOpenColorPicker}
+            on:click={mainButtonClick(handleOpenColorPicker)}
             on:mouseenter={(event: SceneMouseEvent) => {
               setSceneCursor(event, CURSOR_POINTER);
             }}
@@ -272,7 +273,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             clipY={0}
             clipWidth={memo.ui.width}
             clipHeight={memo.ui.height}
-            on:click={handleEditValue}
+            on:click={mainButtonClick(handleEditValue)}
             on:mouseenter={handleValueMouseenter}
             on:mouseleave={handleValueMouseleave}
             on:wheel={handleValueWheel}

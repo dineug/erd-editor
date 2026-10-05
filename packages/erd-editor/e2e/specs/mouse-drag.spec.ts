@@ -121,6 +121,88 @@ async function pressTableHeader(
   if (options.mod) await erd.page.keyboard.up(MOD_KEY);
 }
 
+/**
+ * Records whether each middle press and lift reached the window prevented. The
+ * window hears them last, after every listener in the editor has had its say.
+ */
+async function recordMiddleButton(erd: ErdEditorPage) {
+  await erd.page.evaluate(() => {
+    const heard: string[] = [];
+    Reflect.set(window, '__middleButton', heard);
+    for (const type of ['mousedown', 'mouseup']) {
+      window.addEventListener(type, event => {
+        const { button, defaultPrevented } = event as MouseEvent;
+        if (button !== 1) return;
+        heard.push(`${type} ${defaultPrevented ? 'prevented' : 'unprevented'}`);
+      });
+    }
+  });
+
+  return () =>
+    erd.page.evaluate(() => Reflect.get(window, '__middleButton') as string[]);
+}
+
+/** Opens the diff viewer on the document against itself, as a host hands it a value. */
+async function openDiffViewer(erd: ErdEditorPage) {
+  await erd.host.evaluate(element => {
+    const editor = element as HTMLElement & {
+      value: string;
+      setDiffValue: (value: string) => void;
+    };
+    editor.setDiffValue(editor.value);
+  });
+  const toast = erd.host.locator('.toast-container', {
+    hasText: 'Diff Viewer',
+  });
+  await expect(toast).toBeVisible();
+  return toast;
+}
+
+/**
+ * The viewport middle of one Graph mode dot, read off the visualization stage,
+ * since a dot carries no id the scene projection could find it by.
+ */
+async function graphDotCenter(erd: ErdEditorPage, id: string): Promise<Point> {
+  const handle = await erd.page.waitForFunction(nodeId => {
+    const stage = Reflect.get(window, '__erdStages')?.visualization;
+    const node = stage?.findOne(`.${nodeId}`);
+    if (!node) return null;
+
+    const rect = node.getClientRect({ relativeTo: stage });
+    const origin = stage.container().getBoundingClientRect();
+    return {
+      x: origin.x + rect.x + rect.width / 2,
+      y: origin.y + rect.y + rect.height / 2,
+    };
+  }, id);
+
+  return (await handle.jsonValue()) as Point;
+}
+
+const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * How far a dot may still drift while the force layout runs out, in px. A dot
+ * a press pinned sits under the pointer instead, the whole drag away.
+ */
+const LAYOUT_DRIFT = 8;
+
+/**
+ * Resolves once the force layout has all but stopped, under a pixel of travel
+ * between two reads, so a press at a dot's middle lands on the dot.
+ */
+async function graphSettled(erd: ErdEditorPage, id: string) {
+  let last: Point | null = null;
+  await expect
+    .poll(async () => {
+      const now = await graphDotCenter(erd, id);
+      const still = last !== null && distance(now, last) < 1;
+      last = now;
+      return still;
+    })
+    .toBe(true);
+}
+
 const threeTables = () =>
   createSchema({
     tables: [
@@ -653,6 +735,377 @@ test.describe('mouse drag', () => {
 
     await erd.page.mouse.up();
     expect(await columnNames(erd, 'tags')).toEqual(['name']);
+  });
+
+  test('a middle-button drag over a table pans the canvas and leaves the table and the selection alone', async ({
+    erd,
+  }) => {
+    await erd.seed(threeTables());
+    await pressTableHeader(erd, 'b');
+    await expect(erd.selectedTables()).toHaveCount(1);
+
+    // The press before this one landed on b, far to the right: a pan that
+    // measured its first step from there would jump by that distance.
+    const from = await erd.tableHeaderPoint('a');
+    await erd.drag(
+      from,
+      { x: from.x - 120, y: from.y - 60 },
+      { button: 'middle' }
+    );
+
+    const settings = await erd.settings();
+    expectClose(settings.originX, -120, PIXEL_TOLERANCE);
+    expectClose(settings.originY, -60, PIXEL_TOLERANCE);
+
+    const a = await erd.table('a');
+    expect([a.ui.x, a.ui.y]).toEqual([160, 160]);
+    await expect(erd.tableEl('b')).toHaveAttribute('data-selected', '');
+    await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  test('a middle click on a table remove button removes nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.hoverScene('#table-users');
+
+    const remove = await erd.sceneBox(['#table-users', '.table-remove']);
+    const at = {
+      x: remove.x + remove.width / 2,
+      y: remove.y + remove.height / 2,
+    };
+    await erd.page.mouse.click(at.x, at.y, { button: 'middle' });
+    await erd.whenDrawn();
+
+    expect((await erd.value()).doc.tableIds).toContain('users');
+    await expect(erd.selectedTables()).toHaveCount(0);
+
+    // The main button at the same point is the button, so the middle click
+    // above went where the button answers.
+    await erd.clickAt(at);
+    await expect
+      .poll(async () => (await erd.value()).doc.tableIds)
+      .not.toContain('users');
+  });
+
+  test('a right click on a table remove button removes nothing and opens the table menu', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.hoverScene('#table-users');
+
+    const remove = await erd.sceneBox(['#table-users', '.table-remove']);
+    const at = {
+      x: remove.x + remove.width / 2,
+      y: remove.y + remove.height / 2,
+    };
+    await erd.clickAt(at, { button: 'right' });
+    await erd.whenDrawn();
+
+    // The table's own menu answers, so the right click landed on the table.
+    await expect(erd.contextMenuItem('Table Properties')).toBeVisible();
+    expect((await erd.value()).doc.tableIds).toContain('users');
+
+    // A main press on bare canvas closes the menu, and the main button at the
+    // same point is the button, so the right click went where it answers.
+    await erd.focusCanvas();
+    await expect(erd.contextMenu).toHaveCount(0);
+    await erd.hoverScene('#table-users');
+    await erd.clickAt(at);
+    await expect
+      .poll(async () => (await erd.value()).doc.tableIds)
+      .not.toContain('users');
+  });
+
+  test('a right click on a memo body opens a context menu and no memo editor', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        memos: [{ id: 'note', value: 'a note', x: 320, y: 240 }],
+      })
+    );
+
+    const hit = await erd.sceneBox(['#memo-note', '.memo-textarea-hit']);
+    const at = { x: hit.x + 24, y: hit.y + 24 };
+    await erd.clickAt(at, { button: 'right' });
+    await expect(erd.contextMenu.first()).toBeVisible();
+    await erd.whenDrawn();
+
+    // The menu stands and the scene has drawn since the lift, so an editor the
+    // lift's konva click opened would be showing by now.
+    await expect(erd.memoEditor).toHaveCount(0);
+
+    // A main press on bare canvas closes the menu, and the main button at the
+    // same point is the editor, so the right click went where it answers.
+    await erd.focusCanvas();
+    await expect(erd.contextMenu).toHaveCount(0);
+    await erd.clickAt(at);
+    await expect(erd.memoEditor).toBeVisible();
+  });
+
+  test('under the hand tool a middle-button drag pans too, and keeps the selection', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await pressTableHeader(erd, 'users');
+    await expect(erd.selectedTables()).toHaveCount(1);
+    await erd.press(Shortcut.handTool);
+    await expect(canvasController(erd)).toHaveCSS('pointer-events', 'none');
+
+    const from = await erd.tableHeaderPoint('posts');
+    await erd.drag(
+      from,
+      { x: from.x - 120, y: from.y - 60 },
+      { button: 'middle' }
+    );
+    await erd.press(Shortcut.handTool);
+    await expect(canvasController(erd)).toHaveCSS('pointer-events', 'auto');
+
+    const settings = await erd.settings();
+    expectClose(settings.originX, -120, PIXEL_TOLERANCE);
+    expectClose(settings.originY, -60, PIXEL_TOLERANCE);
+
+    const posts = await erd.table('posts');
+    expect([posts.ui.x, posts.ui.y]).toEqual([760, 420]);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+    await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  test('a middle-button drag over the diff viewer keeps the selection under it, press and lift prevented', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await pressTableHeader(erd, 'users');
+    await expect(erd.selectedTables()).toHaveCount(1);
+    const heard = await recordMiddleButton(erd);
+
+    const toast = await openDiffViewer(erd);
+    const pane = erd.host.locator('.diff-viewer-insert');
+
+    const box = await boxOf(pane);
+    const from = { x: box.x + box.width / 2, y: box.y + box.height / 3 };
+    await erd.drag(
+      from,
+      { x: from.x - 80, y: from.y - 40 },
+      { button: 'middle' }
+    );
+    expect(await heard()).toEqual(['mousedown prevented', 'mouseup prevented']);
+
+    // The toast stands outside the ERD tab, whose presses take the selection
+    // off, so what is selected once it closes is what the middle drag left.
+    await toast.locator('button', { hasText: 'Close' }).click();
+    await expect(pane).toHaveCount(0);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+    await expect(erd.selectedTables()).toHaveCount(1);
+  });
+
+  test('a middle click on the diff tree keeps its default, press and lift', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await openDiffViewer(erd);
+    const heard = await recordMiddleButton(erd);
+
+    // The tree scrolls, so a middle press there is left the browser's own.
+    const box = await boxOf(erd.host.locator('.diff-viewer-tree'));
+    await erd.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+      button: 'middle',
+    });
+
+    expect(await heard()).toEqual([
+      'mousedown unprevented',
+      'mouseup unprevented',
+    ]);
+  });
+
+  test('a middle click over time travel is prevented, press and lift', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    // An edit, so time travel has a history to open on.
+    await erd.focusHost();
+    await erd.press(Shortcut.addTable);
+    await erd.toolbarButton('Time Travel').click();
+    await expect(erd.toolbarButton('Undo')).toHaveCount(0);
+    const heard = await recordMiddleButton(erd);
+
+    // The ERD tab's own stage, first in the tree, lies under the preview.
+    const box = await boxOf(
+      erd.host.locator('[data-testid="erd-canvas"]').first()
+    );
+    await erd.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+      button: 'middle',
+    });
+
+    expect(await heard()).toEqual(['mousedown prevented', 'mouseup prevented']);
+  });
+
+  test('a middle click over the automatic placement preview is prevented, press and lift', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.openContextMenuAt(60, 60);
+    await erd.contextMenu.getByText('Auto Layout', { exact: true }).hover();
+    await erd.contextMenu.getByText('Force', { exact: true }).click();
+    const toast = erd.host.locator('.toast-container', {
+      hasText: 'Placing tables',
+    });
+    await expect(toast).toBeVisible();
+    const heard = await recordMiddleButton(erd);
+
+    const box = await boxOf(
+      erd.host.locator('[data-testid="erd-canvas"]').first()
+    );
+    await erd.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+      button: 'middle',
+    });
+
+    // Still settling, so the click landed on the preview rather than on the
+    // canvas it gives back once it has applied.
+    await expect(toast).toBeVisible();
+    expect(await heard()).toEqual(['mousedown prevented', 'mouseup prevented']);
+    await toast.locator('button', { hasText: 'Cancel' }).click();
+    await expect(toast).toHaveCount(0);
+  });
+
+  test('a right-button drag moves neither a table nor a memo, and selects each alone', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'users',
+            name: 'users',
+            x: 160,
+            y: 160,
+            columns: [{ id: 'users_id', name: 'id', dataType: 'int' }],
+          },
+        ],
+        memos: [{ id: 'note', value: 'a note', x: 700, y: 160 }],
+      })
+    );
+
+    const from = await erd.tableHeaderPoint('users');
+    await erd.drag(
+      from,
+      { x: from.x + 120, y: from.y + 60 },
+      { button: 'right' }
+    );
+
+    const users = await erd.table('users');
+    expect([users.ui.x, users.ui.y]).toEqual([160, 160]);
+    await expect(erd.tableEl('users')).toHaveAttribute('data-selected', '');
+
+    const memo = await erd.sceneBox('#memo-note');
+    const grab = { x: memo.x + 20, y: memo.y + 8 };
+    await erd.drag(
+      grab,
+      { x: grab.x + 120, y: grab.y + 60 },
+      { button: 'right' }
+    );
+
+    const note = await erd.memo('note');
+    expect([note.ui.x, note.ui.y]).toEqual([700, 160]);
+    await expect.poll(() => erd.sceneAttr('#memo-note', 'selected')).toBe(true);
+    await expect(erd.selectedTables()).toHaveCount(0);
+
+    // An edge is part of the memo too: from the left sash a main drag widens
+    // the memo leftward and moves its x, and a right one does neither.
+    await erd.focusCanvas();
+    await expect(erd.contextMenu).toHaveCount(0);
+    const sash = await erd.sceneBox(['#memo-note', '.memo-sash-left']);
+    const edge = { x: sash.x + sash.width / 2, y: sash.y + sash.height / 2 };
+    await erd.drag(
+      edge,
+      { x: edge.x - 120, y: edge.y + 40 },
+      { button: 'right' }
+    );
+
+    const after = await erd.memo('note');
+    expect(after.ui).toMatchObject({
+      x: note.ui.x,
+      y: note.ui.y,
+      width: note.ui.width,
+      height: note.ui.height,
+    });
+  });
+
+  test('a right-button drag on a Graph mode dot moves it nowhere, where a main drag carries it', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.toolbarButton('Visualization').click();
+    await graphSettled(erd, 'users');
+
+    const from = await graphDotCenter(erd, 'users');
+    await erd.page.mouse.move(from.x, from.y);
+    await erd.page.mouse.down({ button: 'right' });
+    await erd.page.mouse.move(from.x + 60, from.y + 40, { steps: 8 });
+    await erd.whenDrawn();
+
+    expect(distance(await graphDotCenter(erd, 'users'), from)).toBeLessThan(
+      LAYOUT_DRIFT
+    );
+    await erd.page.mouse.up({ button: 'right' });
+
+    // The main button at the same dot carries it under the pointer, so the
+    // right press above landed where a press pins.
+    const start = await graphDotCenter(erd, 'users');
+    const end = { x: start.x + 60, y: start.y + 40 };
+    await holdAlong(erd, [start, end]);
+    await expect
+      .poll(async () => distance(await graphDotCenter(erd, 'users'), end))
+      .toBeLessThan(LAYOUT_DRIFT);
+    await erd.page.mouse.up();
+  });
+
+  test('a middle-button drag that ends off the canvas has its lift prevented too', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    const heard = await recordMiddleButton(erd);
+
+    // Chromium on Linux pastes the selection on a middle lift left unprevented,
+    // and the toolbar the drag ends over stands beside the stage container.
+    const from = await erd.tableHeaderPoint('users');
+    const toolbar = await boxOf(erd.toolbar);
+    await erd.drag(
+      from,
+      { x: from.x, y: toolbar.y + toolbar.height / 2 },
+      { button: 'middle' }
+    );
+
+    // The pan stops its press at the stage container, so the window hears the
+    // lift alone, which landed on the toolbar.
+    expect(await heard()).toEqual(['mouseup prevented']);
+    const users = await erd.table('users');
+    expect([users.ui.x, users.ui.y]).toEqual([160, 160]);
+  });
+
+  test('a middle-button drag takes the keyboard into the editor, as a main press does', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    // A field of the page's own, outside the element, holds the keyboard.
+    await erd.page.evaluate(() => {
+      const field = window.document.createElement('input');
+      field.id = 'outside-field';
+      field.style.cssText = 'position: fixed; right: 0; bottom: 0';
+      window.document.body.append(field);
+      field.focus();
+    });
+    await expect(erd.page.locator('#outside-field')).toBeFocused();
+
+    const from = await erd.tableHeaderPoint('users');
+    await erd.drag(
+      from,
+      { x: from.x - 80, y: from.y - 40 },
+      { button: 'middle' }
+    );
+
+    await erd.expectKeyboardFocusInside();
   });
 
   test('a whole move drag collapses into a single undo step', async ({

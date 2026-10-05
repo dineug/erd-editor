@@ -297,7 +297,7 @@ The fixture publishes two globals, and the page object wraps both.
 
 | Handle                    | What it answers                                             |
 | ------------------------- | ----------------------------------------------------------- |
-| `window.__erdStages`      | `{ canvas, minimap }` — the live stages, newest claim wins   |
+| `window.__erdStages`      | `{ canvas, minimap, visualization }` — the live stages, newest claim wins; `visualization` is Graph mode's, which `mouse-drag.spec.ts` reads its dots off |
 | `window.__erdWhenDrawn`   | Resolves once tweens are done and the gate has flushed       |
 
 | Page object                       | Use it for                                          |
@@ -323,7 +323,13 @@ Verified against the running editor, not inferred:
 | plain drag on empty canvas    | **pans** the canvas                                 |
 | `$mod` + drag on empty canvas | marquee-selects (`handleDragSelect` checks `isMod`) |
 | hold `Space` + drag           | grab-pans, even when the drag starts over a table   |
+| middle-button drag            | pans from anywhere on the scene, a table included, under the hand tool too; selects, moves and clicks nothing, its lift is prevented wherever it lands, and the editor takes the keyboard as on a main press (`drag(…, { button: 'middle' })`) |
+| middle press over a takeover  | over the scene of the diff viewer, time travel or the placement preview: the press and its lift prevented, and the diff viewer keeps the selection under it; the diff tree keeps its default |
 | drag a table header           | moves it, and every other selected table with it    |
+| right-button drag on a table or memo | selects it, keeping a selection it lands in, and moves nothing; from a memo's edge it resizes nothing |
+| right click on a scene button | clicks nothing: a table's remove button, a colour edge and the Flow card's Related and Go to ERD answer the main button alone; on the ERD tab it opens the table's context menu, and the Visualization tab opens none |
+| right click on a memo body    | opens the context menu and no memo editor, which the main button alone opens |
+| right-button drag on a Graph mode dot | pins and moves nothing, where a main drag carries the dot under the pointer |
 | drag a simplified table       | anywhere on its body — zoomed out there is no header |
 | plain wheel                   | scrolls; `Shift`+wheel scrolls horizontally         |
 | `$mod` + wheel                | zooms in 0.03 steps                                 |

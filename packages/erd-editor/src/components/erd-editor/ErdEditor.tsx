@@ -45,7 +45,9 @@ import { getSchemaGCService } from '@/services/schema-gc';
 import { procGC } from '@/services/schema-gc/procGC';
 import { Appearance, ThemeOptions } from '@/themes/radix-ui-theme';
 import { Theme as ThemeType } from '@/themes/tokens';
+import { isMiddleButtonPress } from '@/utils/domEvent';
 import { copyAction, pasteAction } from '@/utils/emitter';
+import { middlePanPress$ } from '@/utils/globalEventObservable';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
 import { createText } from '@/utils/text';
@@ -294,11 +296,21 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
       fromEvent(ctx, focusEvent.type)
         .pipe(throttleTime(50, undefined, { leading: true, trailing: true }))
         .subscribe(checkAndFocus),
-      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus)
+      fromEvent(ctx, forceFocusEvent.type).subscribe(ctx.focus),
+      // A middle press on the scene reaches this root as a main press does,
+      // though the pan stops it below and hands it on only as the forward.
+      middlePanPress$($root).subscribe(handlePress)
     );
   });
 
-  const handleOutsideClick = (event: MouseEvent) => {
+  /**
+   * A press outside the theme builder closes it, and a middle press takes the
+   * keyboard in, since every pan prevents that press, and with it the default
+   * that focuses this root on any other press.
+   */
+  const handlePress = (event: MouseEvent) => {
+    if (isMiddleButtonPress(event)) checkAndFocus();
+
     const el = event.target as HTMLElement | null;
     if (!el) return;
 
@@ -336,7 +348,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           on:focusout={handleFocusout}
           on:copy={handleCopy}
           on:paste={handlePaste}
-          on:mousedown={handleOutsideClick}
+          on:mousedown={handlePress}
         >
           {hasToolbar(store.state) ? (
             <Toolbar

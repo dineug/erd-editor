@@ -5,6 +5,7 @@ import type { DOMTemplateLiterals } from '@dineug/r-html';
 import { iconHit } from '@/components/erd/canvas/sceneHit';
 import {
   ICON_VIEW_SIZE,
+  mainButtonClick,
   type SceneMouseEvent,
 } from '@/components/erd/canvas/sceneTokens';
 import {
@@ -60,8 +61,8 @@ const shape = ([tag, attrs]: IconNodeChild, color: string, hit: boolean) =>
 
 /**
  * A lucide icon drawn at size, by scaling its own 24 unit box. The scale carries
- * the stroke with it, which is what keeps the weight the same as the svg the DOM
- * scene rendered at that size.
+ * the stroke with it, which keeps the weight of the svg the DOM scene drew, and
+ * a click answers the main button alone (mainButtonClick).
  */
 export function sceneIcon({
   icon,
@@ -88,7 +89,7 @@ export function sceneIcon({
       y={y}
       scaleX={scale}
       scaleY={scale}
-      on:click={click}
+      on:click={click && mainButtonClick(click)}
       on:mouseenter={mouseenter}
       on:mouseleave={mouseleave}
     >

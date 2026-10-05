@@ -892,23 +892,27 @@ export class ErdEditorPage {
   async drag(
     from: Point,
     to: Point,
-    options: { steps?: number; modifiers?: string[] } = {}
+    options: {
+      steps?: number;
+      modifiers?: string[];
+      button?: 'left' | 'middle' | 'right';
+    } = {}
   ) {
-    const { steps = 12, modifiers = [] } = options;
+    const { steps = 12, modifiers = [], button = 'left' } = options;
 
     for (const modifier of modifiers) {
       await this.page.keyboard.down(modifier);
     }
 
     await this.page.mouse.move(from.x, from.y);
-    await this.page.mouse.down();
+    await this.page.mouse.down({ button });
     for (let step = 1; step <= steps; step++) {
       await this.page.mouse.move(
         from.x + ((to.x - from.x) * step) / steps,
         from.y + ((to.y - from.y) * step) / steps
       );
     }
-    await this.page.mouse.up();
+    await this.page.mouse.up({ button });
 
     for (const modifier of [...modifiers].reverse()) {
       await this.page.keyboard.up(modifier);

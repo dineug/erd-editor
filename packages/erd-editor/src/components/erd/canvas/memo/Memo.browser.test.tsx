@@ -339,6 +339,24 @@ describe('the memo scene', () => {
     expect(app.store.state.editor.editMemoId).toBe(MEMO_ID);
   });
 
+  it('opens the body editor for the main button alone, never a right or middle click', async () => {
+    const { app, stage } = await mountStoredMemo();
+    const hit = nodeNamed(stage, 'memo-textarea-hit');
+
+    fireScenePointer(hit, 'click', { button: 2 });
+    fireScenePointer(hit, 'click', { button: 1 });
+    await flush();
+
+    expect(app.store.state.editor.editMemoId).toBeNull();
+
+    // The main button at the same node is the editor, so the clicks above
+    // reached the listener that opens it.
+    fireScenePointer(hit, 'click', { button: 0 });
+    await flush();
+
+    expect(app.store.state.editor.editMemoId).toBe(MEMO_ID);
+  });
+
   it('hides the drawn body while the overlay editor holds it', async () => {
     const { app, stage } = await mountStoredMemo();
     expect(nodeNamed(stage, 'memo-textarea').visible()).toBe(true);
@@ -711,6 +729,37 @@ describe('the move a memo pointer start owns', () => {
       [MEMO_ID]: SelectType.memo,
     });
   });
+
+  it('moves nothing from a right press, and keeps the selection it lands in', async () => {
+    const { app, memo, stage } = await mountStoredMemo();
+    const selected = { [MEMO_ID]: SelectType.memo, other: SelectType.table };
+    app.store.dispatchSync(selectAction(selected));
+
+    fireScenePointer(nodeNamed(stage, 'memo-body'), 'mousedown', {
+      button: 2,
+      clientX: 100,
+      clientY: 100,
+    });
+    movePointer(140, 160);
+    await settle();
+
+    expect([memo.ui.x, memo.ui.y]).toEqual([30, 40]);
+    expect({ ...app.store.state.editor.selectedMap }).toEqual(selected);
+  });
+
+  it('selects the memo alone from a right press outside the selection', async () => {
+    const { app, stage } = await mountStoredMemo();
+    app.store.dispatchSync(selectAction({ other: SelectType.table }));
+
+    fireScenePointer(nodeNamed(stage, 'memo-body'), 'mousedown', {
+      button: 2,
+    });
+    await settle();
+
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      [MEMO_ID]: SelectType.memo,
+    });
+  });
 });
 
 describe('the duplicate an Alt drag hands off', () => {
@@ -772,7 +821,8 @@ describe('the duplicate an Alt drag hands off', () => {
     await settle();
 
     expect(duplicateDragStart).not.toHaveBeenCalled();
-    expect(memo.ui.x).toBe(60);
+    // Nor a move: only the main button carries a memo.
+    expect(memo.ui.x).toBe(30);
   });
 
   it('never starts a duplicate from a touch start', async () => {
@@ -813,6 +863,21 @@ describe('the buttons a memo owns', () => {
     await settle();
 
     expect(app.store.state.doc.memoIds).not.toContain(MEMO_ID);
+  });
+
+  it('answers a right click on neither button, which the context menu owns', async () => {
+    const { app, stage } = await mountStoredMemo();
+    const openColorPicker = vi.fn();
+    app.emitter.on({ openColorPicker });
+
+    fireScenePointer(nodeNamed(stage, 'memo-header-color'), 'click', {
+      button: 2,
+    });
+    fireScenePointer(nodeNamed(stage, 'memo-remove'), 'click', { button: 2 });
+    await settle();
+
+    expect(openColorPicker).not.toHaveBeenCalled();
+    expect(app.store.state.doc.memoIds).toContain(MEMO_ID);
   });
 });
 

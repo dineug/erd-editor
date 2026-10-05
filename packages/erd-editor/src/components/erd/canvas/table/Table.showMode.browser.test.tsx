@@ -1297,8 +1297,13 @@ const buttonOf = (stage: Stage, id: string, name: string) =>
  * names a press for the shape under the pointer and bubbles it from there, so
  * the card behind the button sees it go past, which is half of what it means.
  */
-async function pressButton(stage: Stage, id: string, name: string) {
-  const at = { clientX: 20, clientY: 20 };
+async function pressButton(
+  stage: Stage,
+  id: string,
+  name: string,
+  init: MouseEventInit = {}
+) {
+  const at = { clientX: 20, clientY: 20, ...init };
   const shape = buttonOf(stage, id, name)?.getChildren()[0];
   // A press on nothing reads like a button that did nothing, so an unhovered
   // card would pass the cases below for the wrong reason.
@@ -1429,6 +1434,20 @@ describe('the two buttons a view card header carries', () => {
     expect(Boolean(app.store.state.editor.selectedMap.a)).toBe(true);
     expect(types.filter(type => type === 'settings.scrollTo')).toHaveLength(0);
     expect(app.store.state.settings.originX).toBe(0);
+  });
+
+  /** A right click is the context menu's, so neither button acts on one. */
+  it('narrows nothing and leaves the tab be on a right click of either button', async () => {
+    const { app, stage } = await mountViewScene();
+    await enterTable(stage, 'a');
+    const right = { button: 2 };
+
+    await pressButton(stage, 'a', 'table-related', right);
+    await pressButton(stage, 'a', 'table-go-to-erd', right);
+
+    expect(app.store.state.editor.views.flow?.centerIds).toEqual([]);
+    expect(app.store.state.settings.canvasType).not.toBe(CanvasType.ERD);
+    expect(Boolean(app.store.state.editor.selectedMap.a)).toBe(false);
   });
 });
 

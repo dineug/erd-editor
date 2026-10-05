@@ -6,13 +6,13 @@ import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import { useThemeContext } from '@/components/themeContext';
-import { captureDrag } from '@/components/visualization/captureDrag';
 import {
   Group,
   linkEnds,
   type Visualization,
 } from '@/components/visualization/createVisualization';
 import GraphNode from '@/components/visualization/graph-node/GraphNode';
+import { captureGraphPan } from '@/components/visualization/graphPan';
 import {
   DIM_OPACITY,
   hasName,
@@ -24,8 +24,6 @@ import {
 } from '@/components/visualization/visualizationView';
 import { renderKonva } from '@/konva/host';
 import { TextFontFamily } from '@/styles/fonts.styles';
-import { isMultiTouch } from '@/utils/domEvent';
-import type { DragMove } from '@/utils/globalEventObservable';
 
 export type VisualizationSceneProps = {
   graph: Visualization;
@@ -60,26 +58,8 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
 
-  const handleMove = ({ event, movementX, movementY }: DragMove) => {
-    event.type === 'mousemove' && event.preventDefault();
-    props.state.x += movementX;
-    props.state.y += movementY;
-  };
-
-  // A pan is a drag too: a dot the pointer crosses on the way would otherwise
-  // open its preview under a hand that is busy moving the view.
   const handlePanStart = (event: KonvaEventObject<Event>) => {
-    if (isMultiTouch(event.evt)) return;
-
-    const { state } = props;
-
-    state.drag = true;
-    captureDrag(event, {
-      next: handleMove,
-      complete: () => {
-        state.drag = false;
-      },
-    });
+    captureGraphPan(event, props.state);
   };
 
   return () => {

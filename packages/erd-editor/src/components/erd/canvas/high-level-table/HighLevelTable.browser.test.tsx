@@ -353,6 +353,20 @@ describe('what a simplified table pointer start owns', () => {
     });
   });
 
+  it('leaves the color picker closed on a right click of the colour edge, which the context menu owns', async () => {
+    const { app, stage } = await setup();
+    const openColorPicker = vi.fn();
+    app.emitter.on({ openColorPicker });
+
+    fireScenePointer(named(rootOf(stage), 'table-header-color'), 'click', {
+      button: 2,
+      clientX: 90,
+      clientY: 35,
+    });
+
+    expect(openColorPicker).not.toHaveBeenCalled();
+  });
+
   it('selects the table on mousedown and drags it with the pointer', async () => {
     const { app, stage, table } = await setup();
     const startX = table.ui.x;

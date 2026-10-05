@@ -70,6 +70,7 @@ import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import { tableRowHeight } from '@/utils/calcTable';
+import { isMainButtonPress } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -234,7 +235,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
    * moves stays a click, so a button and a cell focus still work.
    */
   const handleDragstart = (event: SceneMouseEvent) => {
-    if (props.preview || props.ghost || event.evt.button !== 0) return;
+    if (props.preview || props.ghost || !isMainButtonPress(event.evt)) return;
     // A view reorders no row, and a second subscriber to the pointer stream
     // reads no movement, so an armed row would hold still the card it drags.
     if (props.source !== 'document') return;

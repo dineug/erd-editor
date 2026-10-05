@@ -15,7 +15,11 @@ import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
 import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeViewportAction,
+  selectAction,
+} from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 
@@ -272,6 +276,39 @@ describe('ErdViewer', () => {
     expect(emitted).toEqual(['closeColorPicker']);
     expect(Object.keys(app.store.state.editor.selectedMap)).toHaveLength(0);
     expect(root.style.cursor).toBe('grabbing');
+  });
+
+  it('keeps the selection on a middle press, and pans for it as for any other', async () => {
+    const app = createApp();
+    app.store.dispatchSync(selectAction({ near: SelectType.table }));
+    const { root } = await mountViewer(Diff.insert, new Map(), app);
+
+    root.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true, button: 1 })
+    );
+    await flush();
+    window.dispatchEvent(
+      new MouseEvent('mousemove', { clientX: -30, clientY: -50 })
+    );
+    await flush();
+
+    expect(Object.keys(app.store.state.editor.selectedMap)).toEqual(['near']);
+    expect(app.store.state.settings.originX).toBe(-30);
+    expect(app.store.state.settings.originY).toBe(-50);
+  });
+
+  it('takes the selection off on a middle press on its minimap, as on a main one', async () => {
+    const app = createApp();
+    app.store.dispatchSync(selectAction({ near: SelectType.table }));
+    const { root } = await mountViewer(Diff.insert, new Map(), app);
+
+    root
+      .querySelector('.minimap')!
+      .dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 1 }));
+    await flush();
+
+    expect(Object.keys(app.store.state.editor.selectedMap)).toHaveLength(0);
+    expect(root.style.cursor).toBe('grab');
   });
 
   it('asks no dom ancestor for a table or a memo', () => {

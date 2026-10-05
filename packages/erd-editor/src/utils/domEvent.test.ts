@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   editorRootOf,
+  isMainButtonPress,
+  isMiddleButtonPress,
   isMouseEvent,
   isTouchEvent,
   onNumberOnly,
   onPrevent,
   onStop,
   onStopImmediate,
+  preventMiddleLift,
   suppressSelection,
 } from '@/utils/domEvent';
 
@@ -105,6 +108,75 @@ describe('isTouchEvent', () => {
 
   it('is false for a MouseEvent', () => {
     expect(isTouchEvent(new MouseEvent('mousedown'))).toBe(false);
+  });
+});
+
+/** A press of one mouse button, built and not dispatched. */
+const pressOf = (button: number) => new MouseEvent('mousedown', { button });
+
+describe('isMainButtonPress', () => {
+  it('is true for the main mouse button and for a touch', () => {
+    expect(isMainButtonPress(pressOf(0))).toBe(true);
+    expect(isMainButtonPress(new TouchEvent('touchstart'))).toBe(true);
+  });
+
+  it('is false for the middle and the right button', () => {
+    expect(isMainButtonPress(pressOf(1))).toBe(false);
+    expect(isMainButtonPress(pressOf(2))).toBe(false);
+  });
+});
+
+describe('isMiddleButtonPress', () => {
+  it('is true for the middle mouse button alone', () => {
+    expect(isMiddleButtonPress(pressOf(1))).toBe(true);
+    expect(isMiddleButtonPress(pressOf(0))).toBe(false);
+    expect(isMiddleButtonPress(pressOf(2))).toBe(false);
+  });
+
+  it('is false for a touch, which has no button', () => {
+    expect(isMiddleButtonPress(new TouchEvent('touchstart'))).toBe(false);
+  });
+});
+
+/** A lift of one button, dispatched on an element so it reaches the window. */
+const liftOf = (button: number) => {
+  const lift = new MouseEvent('mouseup', {
+    bubbles: true,
+    cancelable: true,
+    button,
+  });
+  document.body.dispatchEvent(lift);
+  return lift;
+};
+
+describe('preventMiddleLift', () => {
+  it('prevents the next middle lift alone, passing over the lift of another button', () => {
+    const release = preventMiddleLift();
+
+    try {
+      expect(liftOf(0).defaultPrevented).toBe(false);
+      expect(liftOf(1).defaultPrevented).toBe(true);
+      expect(liftOf(1).defaultPrevented).toBe(false);
+    } finally {
+      release();
+    }
+  });
+
+  it('prevents nothing once released before the lift', () => {
+    preventMiddleLift()();
+
+    expect(liftOf(1).defaultPrevented).toBe(false);
+  });
+
+  it('prevents the lift ahead of a listener that ends the gesture on the window', () => {
+    const release = preventMiddleLift();
+    const end = vi.fn(release);
+    window.addEventListener('mouseup', end, { once: true });
+
+    const lift = liftOf(1);
+
+    expect(end).toHaveBeenCalledOnce();
+    expect(lift.defaultPrevented).toBe(true);
   });
 });
 

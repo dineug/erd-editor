@@ -1,7 +1,11 @@
 import { take } from 'rxjs';
 
 import type { Point } from '@/internal-types';
-import { isMouseEvent, isMultiTouch } from '@/utils/domEvent';
+import {
+  isMainButtonPress,
+  isMouseEvent,
+  isMultiTouch,
+} from '@/utils/domEvent';
 import { moveEnd$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
@@ -39,7 +43,7 @@ export function isClick(from: Point, to: Point): boolean {
 
 /** A press with the main button and no modifier, the only one a view reads as a click. */
 export function isPlainPress(evt: MouseEvent | TouchEvent): boolean {
-  return !isMod(evt) && (!isMouseEvent(evt) || evt.button === 0);
+  return !isMod(evt) && isMainButtonPress(evt);
 }
 
 /**

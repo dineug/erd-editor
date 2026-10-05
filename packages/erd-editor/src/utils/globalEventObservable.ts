@@ -10,7 +10,7 @@ import {
   takeUntil,
 } from 'rxjs';
 
-import { isMouseEvent } from '@/utils/domEvent';
+import { isMiddleButtonPress, isMouseEvent } from '@/utils/domEvent';
 import { forwardMoveStartEvent } from '@/utils/internalEvents';
 
 /**
@@ -47,6 +47,24 @@ export const moveStart$ = merge(
   touchstart$,
   forwardMoveStartEvent$
 );
+
+/**
+ * The middle presses a scene pan stopped below a target, read off the forward
+ * each one hands the move stream: a listener above the stage container that
+ * closes on any press hears a middle press there only this way.
+ *
+ * @example
+ * addUnsubscribe(middlePanPress$(root).subscribe(handleOutsidePress));
+ */
+export function middlePanPress$(target: EventTarget): Observable<MouseEvent> {
+  return fromEvent<ReturnType<typeof forwardMoveStartEvent>>(
+    target,
+    forwardMoveStartEvent.type
+  ).pipe(
+    map(({ detail }) => detail.originEvent),
+    filter(isMiddleButtonPress)
+  );
+}
 
 /**
  * A gesture also ends wherever the browser takes the pointer away: a native

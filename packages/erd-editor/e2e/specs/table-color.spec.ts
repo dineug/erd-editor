@@ -41,6 +41,22 @@ test.describe('entity colour', () => {
     expect(box?.y ?? 0).toBeGreaterThan(point.y - 40);
   });
 
+  test('a right click on the colour edge opens the table menu and no picker', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+
+    const bar = await erd.sceneBox(['#table-users', '.table-header-color']);
+    const point = { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 };
+    await erd.clickAt(point, { button: 'right' });
+    await erd.whenDrawn();
+
+    // The table's own menu answers, so the right click landed on the table,
+    // whose edge answers the main button alone.
+    await expect(erd.contextMenuItem('Table Properties')).toBeVisible();
+    await expect(erd.colorPicker).toHaveCount(0);
+  });
+
   test('a colour picked for a table reaches the node and the store', async ({
     erd,
   }) => {

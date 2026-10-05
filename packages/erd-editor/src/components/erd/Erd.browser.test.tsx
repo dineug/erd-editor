@@ -2,8 +2,9 @@
 // editor sits beside the stage container, so the konva hit test cannot answer
 // for it and only a class on an ancestor can.
 
+import { toJson } from '@dineug/erd-editor-schema';
 import { createRef, useProvider } from '@dineug/r-html';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
@@ -12,10 +13,17 @@ import {
   flush,
   mount,
   type Mounted,
+  movePointer,
+  releasePointer,
 } from '@/__test-utils__';
+import { type AppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import { TAKEOVERS } from '@/components/find-replace/panelLayout';
 import { themeContext } from '@/components/themeContext';
+import { Open } from '@/constants/open';
 import {
+  changeHandToolAction,
+  changeOpenMapAction,
   changeViewportAction,
   editMemoAction,
   selectAction,
@@ -25,7 +33,29 @@ import {
   addMemoAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
+import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { whenDrawn } from '@/konva/batchDraw';
+import { openColorPickerAction, openDiffViewerAction } from '@/utils/emitter';
+import { CURSOR_GRABBING } from '@/utils/stageCursor';
+
+vi.mock(
+  '@/components/erd/automatic-table-placement/createAutomaticTablePlacement',
+  async importOriginal => {
+    const actual =
+      await importOriginal<
+        typeof import('@/components/erd/automatic-table-placement/createAutomaticTablePlacement')
+      >();
+
+    return {
+      ...actual,
+      // Stopped at once: a preview that never settles is all a press needs, and
+      // the d3 timer would otherwise apply the layout after the spec unmounted.
+      createAutomaticTablePlacement: (
+        ...args: Parameters<typeof actual.createAutomaticTablePlacement>
+      ) => actual.createAutomaticTablePlacement(...args).stop(),
+    };
+  }
+);
 
 const MEMO_ID = 'note';
 
@@ -41,8 +71,8 @@ afterEach(async () => {
   await whenDrawn();
 });
 
-/** An Erd with one memo, selected, with its editor open over the scene. */
-async function mountEditingMemo(): Promise<Mounted> {
+/** An Erd with one memo, selected, with its editor open over the scene unless told otherwise. */
+async function mountEditingMemo({ editing = true } = {}): Promise<Mounted> {
   const app = createTestAppContext();
   const mounted = mount(
     <Erd isDarkMode={false} mouseTracking={false} readonly={false} />,
@@ -72,7 +102,7 @@ async function mountEditingMemo(): Promise<Mounted> {
   );
   store.dispatchSync(changeMemoValueAction({ id: MEMO_ID, value: BODY }));
   store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
-  store.dispatchSync(editMemoAction({ id: MEMO_ID }));
+  if (editing) store.dispatchSync(editMemoAction({ id: MEMO_ID }));
 
   await flush();
   await whenDrawn();
@@ -153,5 +183,257 @@ describe('Erd - a canvas pan', () => {
     window.dispatchEvent(new Event('dragstart'));
 
     expect(root.style.userSelect).toBe('');
+  });
+});
+
+/** A press of one button, the way a mouse delivers it to whatever lies under the point. */
+const pressWith = (
+  target: Element,
+  button: number,
+  init: MouseEventInit = {}
+) => {
+  const event = new MouseEvent('mousedown', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button,
+    clientX: 400,
+    clientY: 300,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+};
+
+/** The lift of one button, dispatched where the pointer went up. */
+const liftWith = (
+  target: EventTarget,
+  button: number,
+  init: MouseEventInit = {}
+) => {
+  const event = new MouseEvent('mouseup', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+};
+
+const MIDDLE = 1;
+
+describe('Erd - a middle button press', () => {
+  it('closes the context menu and the colour picker, and keeps the selection', async () => {
+    const mounted = await mountEditingMemo();
+    const root = rootOf(mounted);
+    root.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 600,
+        clientY: 400,
+      })
+    );
+    mounted.app.emitter.emit(
+      openColorPickerAction({ x: 200, y: 200, color: '#ffffff' })
+    );
+    await flush(6);
+    expect(root.querySelector('.context-menu-content')).toBeTruthy();
+    expect(root.querySelector('.color-picker')).toBeTruthy();
+
+    const press = pressWith(canvasOf(mounted).querySelector('canvas')!, MIDDLE);
+    await flush(6);
+
+    expect(press.defaultPrevented).toBe(true);
+    expect(root.querySelector('.context-menu-content')).toBeNull();
+    expect(root.querySelector('.color-picker')).toBeNull();
+    expect(selectedIds(mounted)).toEqual([MEMO_ID]);
+  });
+
+  it('shows the grabbing hand over the scene until the release', async () => {
+    const mounted = await mountEditingMemo();
+    const container = canvasOf(mounted);
+
+    pressWith(container.querySelector('canvas')!, MIDDLE);
+    expect(container.style.cursor).toBe(CURSOR_GRABBING);
+
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(container.style.cursor).not.toBe(CURSOR_GRABBING);
+  });
+
+  it('leaves a press on the editor over the scene to the editor', async () => {
+    const mounted = await mountEditingMemo();
+
+    const press = pressWith(memoEditorOf(mounted), MIDDLE);
+    await flush();
+
+    expect(press.defaultPrevented).toBe(false);
+    expect(mounted.app.store.state.editor.editMemoId).toBe(MEMO_ID);
+    expect(selectedIds(mounted)).toEqual([MEMO_ID]);
+  });
+
+  /**
+   * The hand tool takes the pointer off the stage container, so its root pans
+   * for the press instead; the middle button still reads the same there.
+   */
+  it('pans under the hand tool too, press and lift prevented, keeping the selection, and draws no marquee for a held modifier', async () => {
+    const mounted = await mountEditingMemo();
+    const { store, emitter } = mounted.app;
+    store.dispatchSync(changeHandToolAction({ value: true }));
+    await flush();
+    const dragSelectStart = vi.fn();
+    emitter.on({ dragSelectStart });
+
+    const press = pressWith(rootOf(mounted), MIDDLE, {
+      ctrlKey: true,
+      metaKey: true,
+    });
+    movePointer(430, 350);
+    const lift = liftWith(rootOf(mounted), MIDDLE, {
+      clientX: 430,
+      clientY: 350,
+    });
+    await flush();
+
+    expect(press.defaultPrevented).toBe(true);
+    expect(lift.defaultPrevented).toBe(true);
+    expect(dragSelectStart).not.toHaveBeenCalled();
+    expect(store.state.settings.originX).toBe(30);
+    expect(store.state.settings.originY).toBe(50);
+    expect(selectedIds(mounted)).toEqual([MEMO_ID]);
+  });
+
+  it('takes the selection off on a main press under the hand tool', async () => {
+    const mounted = await mountEditingMemo();
+    mounted.app.store.dispatchSync(changeHandToolAction({ value: true }));
+    await flush();
+
+    const press = pressWith(rootOf(mounted), 0);
+    releasePointer();
+    await flush();
+
+    expect(press.defaultPrevented).toBe(false);
+    expect(selectedIds(mounted)).toEqual([]);
+  });
+});
+
+const openDiffViewer = ({ emitter, store }: AppContext) =>
+  emitter.emit(openDiffViewerAction({ value: toJson(store.state) }));
+
+const openTimeTravel = ({ store }: AppContext) =>
+  store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
+
+const openPlacementPreview = ({ store }: AppContext) =>
+  store.dispatchSync(
+    changeOpenMapAction({ [Open.automaticTablePlacement]: true })
+  );
+
+/** The takeovers that stand a scene of their own over the canvas, each opened the way the editor opens it. */
+const OPENED_TAKEOVERS: Array<[string, Open, (app: AppContext) => void]> = [
+  ['the diff viewer', Open.diffViewer, openDiffViewer],
+  ['time travel', Open.timeTravel, openTimeTravel],
+  [
+    'the automatic placement preview',
+    Open.automaticTablePlacement,
+    openPlacementPreview,
+  ],
+];
+
+/** The chrome each takeover lays over its scene, which keeps its own presses. */
+const TAKEOVER_CHROME: Array<[string, (app: AppContext) => void, string]> = [
+  ['the diff tree', openDiffViewer, '.diff-viewer-tree'],
+  ["a diff pane's minimap", openDiffViewer, '.diff-viewer-insert .minimap'],
+  ['the time travel slider', openTimeTravel, '.time-travel-slider'],
+];
+
+/**
+ * An Erd with a memo selected and a table to place, under one takeover, and
+ * where a pointer over its scene lands: the nearest box above the takeover's
+ * canvas shell that takes a pointer, a diff pane or the takeover's own root.
+ */
+async function mountTakeover(open: (app: AppContext) => void) {
+  const mounted = await mountEditingMemo({ editing: false });
+  const { store } = mounted.app;
+  store.dispatchSync(
+    addTableAction({ id: 'users', ui: { x: 400, y: 80, zIndex: 1 } })
+  );
+  open(mounted.app);
+  await flush(6);
+  await whenDrawn();
+
+  const stages = rootOf(mounted).querySelectorAll('[data-testid="erd-canvas"]');
+  const shell = stages[stages.length - 1].parentElement as HTMLElement;
+  let target = shell.parentElement as HTMLElement;
+  while (getComputedStyle(target).pointerEvents === 'none') {
+    target = target.parentElement as HTMLElement;
+  }
+  const point = { clientX: 300, clientY: 240 };
+
+  return { mounted, point, shell, target };
+}
+
+describe('Erd - a middle button press over a takeover', () => {
+  it('runs every takeover the editor knows', () => {
+    const keys = OPENED_TAKEOVERS.map(([, key]) => key);
+    expect(new Set(keys)).toEqual(new Set(TAKEOVERS));
+  });
+
+  it.each(OPENED_TAKEOVERS)(
+    'keeps the selection under %s, the press and its lift prevented',
+    async (_, __, open) => {
+      const { mounted, point, shell, target } = await mountTakeover(open);
+      expect(shell.style.pointerEvents).toBe('none');
+      expect(target.contains(canvasOf(mounted))).toBe(false);
+
+      const press = pressWith(target, MIDDLE, point);
+      movePointer(point.clientX - 40, point.clientY - 20);
+      const lift = liftWith(target, MIDDLE);
+      await flush();
+
+      expect(press.defaultPrevented).toBe(true);
+      expect(lift.defaultPrevented).toBe(true);
+      expect(selectedIds(mounted)).toEqual([MEMO_ID]);
+    }
+  );
+
+  it.each(TAKEOVER_CHROME)(
+    'leaves %s its own presses: a middle one is unprevented and unselects, as a main one does',
+    async (_, open, selector) => {
+      const { mounted, point } = await mountTakeover(open);
+      const chrome = rootOf(mounted).querySelector(selector) as HTMLElement;
+      expect(chrome).toBeTruthy();
+
+      const press = pressWith(chrome, MIDDLE, point);
+      const lift = liftWith(chrome, MIDDLE);
+      await flush();
+
+      expect(press.defaultPrevented).toBe(false);
+      expect(lift.defaultPrevented).toBe(false);
+      expect(selectedIds(mounted)).toEqual([]);
+    }
+  );
+
+  it('still takes the selection off on a main press there', async () => {
+    const { mounted, point, target } = await mountTakeover(openTimeTravel);
+
+    const press = pressWith(target, 0, point);
+    releasePointer();
+    await flush();
+
+    expect(press.defaultPrevented).toBe(false);
+    expect(selectedIds(mounted)).toEqual([]);
+  });
+
+  it('prevents no lift once the press has ended without one', async () => {
+    const { point, target } = await mountTakeover(openTimeTravel);
+
+    const press = pressWith(target, MIDDLE, point);
+    expect(press.defaultPrevented).toBe(true);
+    window.dispatchEvent(new FocusEvent('blur'));
+    const lift = liftWith(window, MIDDLE);
+
+    expect(lift.defaultPrevented).toBe(false);
   });
 });

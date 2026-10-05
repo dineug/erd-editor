@@ -10,12 +10,17 @@ import {
   type Visualization,
   type VisualizationNode,
 } from '@/components/visualization/createVisualization';
+import { captureGraphPan } from '@/components/visualization/graphPan';
 import {
   DIM_OPACITY,
   nodeRadius,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
-import { isMultiTouch } from '@/utils/domEvent';
+import {
+  isMainButtonPress,
+  isMiddleButtonPress,
+  isMultiTouch,
+} from '@/utils/domEvent';
 import type { DragMove } from '@/utils/globalEventObservable';
 
 export type GraphNodeProps = {
@@ -59,8 +64,8 @@ function setCursor(event: NodeMouseEvent, cursor: string): void {
 
 /**
  * One dot, owning its own hover and drag. A hovered table opens its preview
- * and lights its neighbourhood, a hovered column only wears a ring, and a
- * press pins the node under the pointer and reheats the layout around it.
+ * and lights its neighbourhood, a hovered column only wears a ring, a main
+ * press pins the node and reheats the layout, and a middle one pans the view.
  */
 const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
@@ -97,6 +102,12 @@ const GraphNode: FC<GraphNodeProps> = (props, ctx) => {
   // again as it ends: where the pointer let go, not where it entered the dot.
   const handleDragStart = (event: KonvaEventObject<Event>) => {
     if (isMultiTouch(event.evt)) return;
+    if (isMiddleButtonPress(event.evt)) {
+      captureGraphPan(event, props.state);
+      return;
+    }
+    // Only the main button carries a dot, as it carries a table on the ERD tab.
+    if (!isMainButtonPress(event.evt)) return;
 
     const { node, graph, state } = props;
     let last: DragMove | null = null;
