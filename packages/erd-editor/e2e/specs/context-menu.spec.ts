@@ -398,6 +398,7 @@ type MenuBoxes = {
 /**
  * Samples every menu box on each animation frame until the call it returns
  * stops it, so a menu painted once where it opened before it moves is caught.
+ * Stopping waits a frame first, so the menu as the test left it is sampled too.
  */
 async function recordMenuFrames(erd: ErdEditorPage) {
   await erd.page.evaluate(() => {
@@ -421,7 +422,10 @@ async function recordMenuFrames(erd: ErdEditorPage) {
   });
 
   return async () => {
-    const frames = await erd.page.evaluate(() => {
+    const frames = await erd.page.evaluate(async () => {
+      // A menu that opened since the last frame has no sample yet. The tick
+      // asked for the next frame before this did, so it runs first.
+      await new Promise(resolve => requestAnimationFrame(resolve));
       const recorded = Reflect.get(window, '__menuFrames') as MenuBoxes[];
       Reflect.set(window, '__menuFrames', null);
       return recorded;

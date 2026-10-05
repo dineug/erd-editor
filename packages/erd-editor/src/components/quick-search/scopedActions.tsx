@@ -19,7 +19,13 @@ import {
   keywordHolder,
   searchActions,
 } from './actions';
-import { hangulQueryOf, matchText, rankHits, TextHit } from './hangul';
+import {
+  hangulQueryOf,
+  hitRange,
+  matchText,
+  rankHits,
+  TextHit,
+} from './hangul';
 import { PALETTE_PREFIXES, PaletteQuery, PaletteScope } from './paletteQuery';
 import * as styles from './QuickSearch.styles';
 
@@ -129,7 +135,7 @@ export function rankTableActions(
 }
 
 /** A field a search found, and how it holds the keyword. */
-type FieldHit = { match: FindMatch; hit: TextHit };
+type FieldHit = { field: Omit<FindMatch, 'start' | 'end'>; hit: TextHit };
 
 /** Whether a table is one a column search names: any without a table part, else those whose name holds it, Hangul letters too. */
 function tableFilter(
@@ -173,16 +179,19 @@ export function createFieldActions(
 
     const hit = matchText(field.text, matcher, hangul);
     if (!hit) continue;
-    found.push({ match: { ...field, start: hit.start, end: hit.end }, hit });
+    found.push({ field, hit });
     // Without Hangul every hit is one the panel finds, so one past the limit
     // settles the last row; a Hangul search ranks them all before it cuts.
     if (!hangul && found.length > SCOPED_ACTION_LIMIT) break;
   }
 
   const ranked = hangul ? rankHits(found) : found;
-  const rows = ranked
-    .slice(0, SCOPED_ACTION_LIMIT)
-    .map(({ match }) => createMatchAction(state, match));
+  const rows = ranked.slice(0, SCOPED_ACTION_LIMIT).map(({ field, hit }) =>
+    createMatchAction(state, {
+      ...field,
+      ...hitRange(field.text, hit, hangul),
+    })
+  );
   if (!ranked.slice(SCOPED_ACTION_LIMIT).some(({ hit }) => hit.literal)) {
     return rows;
   }
