@@ -126,7 +126,12 @@ jobs:
         with:
           distribution: zulu
           java-version: 21
+      # Only build writes the Gradle cache, as in JetBrains' plugin template: a
+      # copy of the IDE per job, packed and unpacked, ran past GitHub's 10 GB. A
+      # Windows job reads no Linux entry, so this one downloads the IDE each run.
       - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
 
       # gradlew.bat: the runner checks gradlew out with CRLF, as no .gitattributes
       # keeps its LF. Gradle writes no report of a run the bound stops, so the init
@@ -188,19 +193,14 @@ jobs:
         with:
           distribution: zulu
           java-version: 21
+      # Read only, as test-windows: the IDEs of the range arrive through Gradle,
+      # unpacked into its transforms, which this job wrote as one 4.5 GB entry,
+      # so each run downloads them, as the template's verify job does.
       - uses: gradle/actions/setup-gradle@v6
-
-      # The IDE set is derived from gradle.properties, so that is what should
-      # invalidate this cache. The path prefix is not optional: hashFiles ignores
-      # working-directory and returns an empty string for a path it cannot find.
-      - uses: actions/cache@v6
         with:
-          path: ~/.pluginVerifier/ides
-          key: plugin-verifier-${{ hashFiles('packages/intellij-plugin/gradle.properties') }}
-          restore-keys: plugin-verifier-
+          cache-read-only: true
 
-      # $HOME rather than a tilde: bash does not expand one inside -Dkey=~/value.
-      - run: ./gradlew verifyPlugin -Dplugin.verifier.home.dir=$HOME/.pluginVerifier
+      - run: ./gradlew verifyPlugin
         working-directory: packages/intellij-plugin
 
       - uses: actions/upload-artifact@v7
