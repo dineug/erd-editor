@@ -3371,9 +3371,10 @@ GO
 
 ### SQL Server sp_addextendedproperty by position
 
-The editor's MSSQL export has written each comment by position, level 0 as `'user', dbo`, a form
-SMO never writes. `MS_DiagramPane1`, which SSMS's view designer keeps on a view, is no
-description, and its value, cut short here, holds brackets.
+The editor's MSSQL export writes each comment by position, a form SMO never writes: its level 0
+is `'schema'` with the schema's name, as in the two calls it writes for an unquoted `sales.users`,
+and in files exported before it named the schema, `'user', dbo`. `MS_DiagramPane1`, which SSMS's
+view designer keeps on a view, is no description, and its value, cut short here, holds brackets.
 
 ```sql
 EXECUTE sys.sp_addextendedproperty 'MS_Description',
@@ -3382,6 +3383,14 @@ GO
 
 EXECUTE sys.sp_addextendedproperty 'MS_Description',
   'order id', 'user', dbo, 'table', 'Orders', 'column', 'Id'
+GO
+
+EXECUTE sys.sp_addextendedproperty 'MS_Description',
+  'sales users table', 'schema', 'sales', 'table', 'users'
+GO
+
+EXECUTE sys.sp_addextendedproperty 'MS_Description',
+  'sales users name', 'schema', 'sales', 'table', 'users', 'column', 'name'
 GO
 
 EXEC sys.sp_addextendedproperty @name=N'MS_DiagramPane1', @value=N'[0E232FF0-B466-11cf-A24F-00AA00A3EFFF, 1.00]' , @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'VIEW',@level1name=N'OrderView'
@@ -3401,6 +3410,17 @@ GO
       "tableName": "Orders",
       "columnName": "Id",
       "comment": "order id"
+    },
+    {
+      "type": "comment.on.table",
+      "name": "users",
+      "comment": "sales users table"
+    },
+    {
+      "type": "comment.on.column",
+      "tableName": "users",
+      "columnName": "name",
+      "comment": "sales users name"
     }
   ]
 }

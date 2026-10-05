@@ -108,7 +108,7 @@ PostgreSQL and Oracle attach comments with a statement of their own instead of a
 two arrive separately from the `create.table` they belong to.
 
 SQL Server keeps a comment as the `MS_Description` extended property, and `EXEC
-[sys.]sp_addextendedproperty` setting one comes back as the same two statements: on a `TABLE` at
+[[db.]sys.]sp_addextendedproperty` setting one comes back as the same two statements: on a `TABLE` at
 level 1 as `comment.on.table`, on a `COLUMN` of it at level 2 as `comment.on.column`. Its arguments are
 read by name (`@name = N'MS_Description'`) or by position, as SSMS and the editor's own MSSQL export
 write them; the value has to be a string literal, `N'...'` or `'...'`, and a `NULL` or `DEFAULT`
@@ -857,7 +857,7 @@ EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'user table' ,
   @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'users'
 GO
 EXECUTE sys.sp_addextendedproperty 'MS_Description',
-  'user id', 'user', dbo, 'table', 'users', 'column', 'id'
+  'user id', 'schema', 'dbo', 'table', 'users', 'column', 'id'
 GO
 ```
 

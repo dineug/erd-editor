@@ -323,9 +323,9 @@ function mergeTables({
 }
 
 /**
- * The table a comment names, else the one its last part names: SQL Server's
- * export writes a table name dbo.users whole into sp_addextendedproperty,
- * where its CREATE TABLE dbo.users reads back as users.
+ * The table a comment names, else the one its last part names: older MSSQL
+ * exports wrote dbo.users whole at level 1, which SQL Server refuses, beside
+ * an unquoted CREATE TABLE dbo.users that reads back as users.
  */
 function findCommentTable(tables: CreateTable[], name: string) {
   return (

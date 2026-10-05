@@ -171,15 +171,15 @@ describe('MSSQL createSchema', () => {
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'user table', 'user', dbo, 'table', 'users'",
+        "  'user table', 'schema', 'dbo', 'table', 'users'",
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'user id', 'user', dbo, 'table', 'users', 'column', 'id'",
+        "  'user id', 'schema', 'dbo', 'table', 'users', 'column', 'id'",
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'email address', 'user', dbo, 'table', 'users', 'column', 'email'",
+        "  'email address', 'schema', 'dbo', 'table', 'users', 'column', 'email'",
         'GO',
         '',
         'ALTER TABLE posts',
@@ -308,10 +308,197 @@ describe('MSSQL createSchema', () => {
     const sql = createSchema(state);
 
     expect(sql).toContain(
-      "  'user''s table', 'user', dbo, 'table', 'o''users'\nGO"
+      "  'user''s table', 'schema', 'dbo', 'table', 'o''users'\nGO"
     );
     expect(sql).toContain(
-      "  'it''s the id', 'user', dbo, 'table', 'o''users', 'column', 'user''s id'\nGO"
+      "  'it''s the id', 'schema', 'dbo', 'table', 'o''users', 'column', 'user''s id'\nGO"
+    );
+  });
+
+  // SQL Server refuses a property on a table named sales.users in schema dbo
+  // when its unquoted CREATE TABLE put a table users in schema sales.
+  it('names the schema of an unquoted dotted table name at level 0 and the table at level 1', () => {
+    const { state, users } = createFixture();
+    users.name = 'sales.users';
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('CREATE TABLE sales.users\n');
+    expect(sql).toContain(
+      "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+        "  'user table', 'schema', 'sales', 'table', 'users'\nGO"
+    );
+    expect(sql).toContain(
+      "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+        "  'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
+    );
+  });
+
+  // The levels name no database, and a call acts on the database its procedure
+  // belongs to: shop's own finds shop.sales.users from any connected database.
+  it('runs the procedure of the database a three-part unquoted name gives', () => {
+    const { state, users } = createFixture();
+    users.name = 'shop.sales.users';
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('CREATE TABLE shop.sales.users\n');
+    expect(sql).toContain(
+      "EXECUTE shop.sys.sp_addextendedproperty 'MS_Description',\n" +
+        "  'user table', 'schema', 'sales', 'table', 'users'\nGO"
+    );
+    expect(sql).toContain(
+      "EXECUTE shop.sys.sp_addextendedproperty 'MS_Description',\n" +
+        "  'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
+    );
+    expect(sql).not.toContain('EXECUTE sys.');
+  });
+
+  // The database part goes before the procedure as typed, where a space or a
+  // dot inside its brackets stays legal, and a server part before it is
+  // dropped, since CREATE TABLE refuses a four-part name.
+  it.each([
+    ['[my shop].[sales].[users]', '[my shop]', 'sales'],
+    ['"shop"."sales"."users"', '"shop"', 'sales'],
+    ['[my.db].sales.users', '[my.db]', 'sales'],
+    ['shop..users', 'shop', 'dbo'],
+    ['srv.shop.sales.users', 'shop', 'sales'],
+  ])(
+    'runs the procedure of the database the unquoted name %s gives',
+    (name, database, schema) => {
+      const { state, users } = createFixture();
+      users.name = name;
+      state.doc.tableIds = [users.id];
+      state.doc.relationshipIds = [];
+      state.doc.indexIds = [];
+
+      const sql = createSchema(state);
+
+      expect(sql).toContain(
+        `EXECUTE ${database}.sys.sp_addextendedproperty 'MS_Description',\n` +
+          `  'user table', 'schema', '${schema}', 'table', 'users'\nGO`
+      );
+      expect(sql).toContain(
+        `EXECUTE ${database}.sys.sp_addextendedproperty 'MS_Description',\n` +
+          `  'user id', 'schema', '${schema}', 'table', 'users', 'column', 'id'\nGO`
+      );
+    }
+  );
+
+  // Such a database part fails its CREATE TABLE too, and before the procedure
+  // it would open a quote or a bracket that swallows every later batch.
+  it.each([
+    ["o'shop.o'sales.users", "o''sales"],
+    ['[shop.sales.users', 'sales'],
+    ['my shop.sales.users', 'sales'],
+  ])(
+    'drops the database part of %s, which SQL Server reads as no one name',
+    (name, schema) => {
+      const { state, users } = createFixture();
+      users.name = name;
+      state.doc.tableIds = [users.id];
+      state.doc.relationshipIds = [];
+      state.doc.indexIds = [];
+
+      const sql = createSchema(state);
+
+      expect(sql).toContain(
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+          `  'user table', 'schema', '${schema}', 'table', 'users'\nGO`
+      );
+      expect(sql).not.toContain('.sys.sp_addextendedproperty');
+    }
+  );
+
+  // SQL Server reads [sales].[users] and "sales"."users" as a table users in
+  // schema sales, a dot inside the pair as part of the name and a doubled
+  // closing character as one, so the literals naming it hold no delimiters.
+  it.each([
+    ['[sales].[users]', 'sales', 'users'],
+    ['"sales"."users"', 'sales', 'users'],
+    ['[sales].users', 'sales', 'users'],
+    ['[Order]', 'dbo', 'Order'],
+    ['[].users', 'dbo', 'users'],
+    ['[sales.v2].users', 'sales.v2', 'users'],
+    ['"sales.v2".users', 'sales.v2', 'users'],
+    ['[x.y.z]', 'dbo', 'x.y.z'],
+    ['[x]]y]', 'dbo', 'x]y'],
+    ['"x""y"', 'dbo', 'x"y'],
+  ])(
+    'takes one pair of brackets or quotes off each part of the unquoted name %s',
+    (name, schema, table) => {
+      const { state, users } = createFixture();
+      users.name = name;
+      state.doc.tableIds = [users.id];
+      state.doc.relationshipIds = [];
+      state.doc.indexIds = [];
+
+      const sql = createSchema(state);
+
+      expect(sql).toContain(
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+          `  'user table', 'schema', '${schema}', 'table', '${table}'\nGO`
+      );
+      expect(sql).toContain(
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+          `  'user id', 'schema', '${schema}', 'table', '${table}', 'column', 'id'\nGO`
+      );
+    }
+  );
+
+  it('keeps a quoted dotted table name whole, in the dbo schema its CREATE TABLE puts it in', () => {
+    const { state, users } = createFixture();
+    state.settings.bracketType = BracketType.doubleQuote;
+    users.name = 'sales.users';
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    const sql = createSchema(state);
+
+    expect(sql).toContain('CREATE TABLE "sales.users"\n');
+    expect(sql).toContain(
+      "  'user table', 'schema', 'dbo', 'table', 'sales.users'\nGO"
+    );
+    expect(sql).toContain(
+      "  'user id', 'schema', 'dbo', 'table', 'sales.users', 'column', 'id'\nGO"
+    );
+  });
+
+  // CREATE TABLE "[Order]" and "shop.sales.users" each make one dbo table of
+  // that whole name, brackets and dots included.
+  it.each(['[Order]', 'shop.sales.users'])(
+    'keeps the quoted table name %s whole, brackets and database part included',
+    name => {
+      const { state, users } = createFixture();
+      state.settings.bracketType = BracketType.doubleQuote;
+      users.name = name;
+      state.doc.tableIds = [users.id];
+      state.doc.relationshipIds = [];
+      state.doc.indexIds = [];
+
+      expect(createSchema(state)).toContain(
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
+          `  'user table', 'schema', 'dbo', 'table', '${name}'\nGO`
+      );
+    }
+  );
+
+  it('doubles the quotes of a schema it splits from the table name', () => {
+    const { state, users } = createFixture();
+    users.name = "o'sales.o'users";
+    state.doc.tableIds = [users.id];
+    state.doc.relationshipIds = [];
+    state.doc.indexIds = [];
+
+    expect(createSchema(state)).toContain(
+      "  'user table', 'schema', 'o''sales', 'table', 'o''users'\nGO"
     );
   });
 });

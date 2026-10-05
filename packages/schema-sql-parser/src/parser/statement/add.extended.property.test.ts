@@ -43,6 +43,28 @@ describe('addExtendedPropertyParser', () => {
   it("reads the positional arguments the editor's MSSQL export writes", () => {
     expect(
       parse(
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n  'user table', 'schema', 'sales', 'table', 'users'\nGO"
+      ).ast
+    ).toEqual({
+      type: StatementType.commentOnTable,
+      name: 'users',
+      comment: 'user table',
+    });
+    expect(
+      parse(
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n  'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
+      ).ast
+    ).toEqual({
+      type: StatementType.commentOnColumn,
+      tableName: 'users',
+      columnName: 'id',
+      comment: 'user id',
+    });
+  });
+
+  it('reads a positional call at level 0 user dbo, a bare word for its name', () => {
+    expect(
+      parse(
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n  'user table', 'user', dbo, 'table', 'users'\nGO"
       ).ast
     ).toEqual({
