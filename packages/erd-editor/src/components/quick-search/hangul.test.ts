@@ -11,6 +11,7 @@ import {
   hangulRanges,
   HangulTier,
   hangulTier,
+  hitRange,
   matchText,
   rankHits,
   TextHit,
@@ -262,9 +263,9 @@ describe('matchText', () => {
   it('falls back on the Hangul letters, which only the palette reads', () => {
     expect(
       matchText('주문한 사용자', matcherOf('사요'), queryOf('사요'))
-    ).toEqual({ start: 4, end: 6, literal: false, tier: HangulTier.inside });
+    ).toEqual({ literal: false, tier: HangulTier.inside });
     expect(matchText('사용자', matcherOf('ㅅㅇㅈ'), queryOf('ㅅㅇㅈ'))).toEqual(
-      { start: 0, end: 3, literal: false, tier: HangulTier.exact }
+      { literal: false, tier: HangulTier.exact }
     );
   });
 
@@ -274,12 +275,35 @@ describe('matchText', () => {
   });
 });
 
+describe('hitRange', () => {
+  /** Where the hit for a keyword lies, as the text it covers. */
+  const coveredBy = (text: string, keyword: string) => {
+    const hangul = hangulQueryOf(keyword);
+    const hit = matchText(text, matcherOf(keyword), hangul);
+    if (!hit) throw new Error(`${keyword} is not in ${text}`);
+    const { start, end } = hitRange(text, hit, hangul);
+    return text.slice(start, end);
+  };
+
+  it('lies where the keyword is as typed', () => {
+    expect(coveredBy('주문한 사용자', '사용')).toBe('사용');
+    expect(coveredBy('users.email', 'EMAIL')).toBe('email');
+  });
+
+  it('lies on the first syllables the Hangul letters spell, as the highlight does', () => {
+    expect(coveredBy('주문한 사용자', '사요')).toBe('사용');
+    expect(coveredBy('사용자 사용', '상')).toBe('사용');
+    expect(coveredBy('주문 내역.사용자', 'ㅅㅇㅈ')).toBe('사용자');
+    expect(coveredBy(nfd('사용자'), '상')).toBe(nfd('사용'));
+  });
+});
+
 describe('rankHits', () => {
   const hitOf = (name: string, hit: TextHit) => ({ name, hit });
   const typed = (name: string) =>
     hitOf(name, { start: 0, end: 1, literal: true });
   const spelled = (name: string, tier: HangulTier) =>
-    hitOf(name, { start: 0, end: 1, literal: false, tier });
+    hitOf(name, { literal: false, tier });
 
   it('puts the hits as typed first as they came, then the spelled ones closest first', () => {
     const hits = [

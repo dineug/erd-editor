@@ -253,13 +253,15 @@ export function hangulRanges(text: string, query: HangulQuery): TextRange[] {
   return ranges.sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
-/** Where a text holds the keyword: as typed, which Find and Replace finds too, or by its Hangul letters alone, and how closely. */
-export type TextHit = TextRange &
-  ({ literal: true } | { literal: false; tier: HangulTier });
+/** How a text holds the keyword: as typed, which Find and Replace finds too, and where; or by its Hangul letters alone, and how closely. */
+export type TextHit =
+  | (TextRange & { literal: true })
+  | { literal: false; tier: HangulTier };
 
 /**
- * The first place a text holds the keyword: as typed, or failing that by its
- * Hangul letters, which only the palette reads.
+ * Whether a text holds the keyword: as typed, or failing that by its Hangul
+ * letters, which only the palette reads. Where those letters lie waits for
+ * hitRange, which spells the text again.
  */
 export function matchText(
   text: string,
@@ -271,10 +273,23 @@ export function matchText(
   if (!hangul) return null;
 
   const tier = hangulTier(text, hangul);
-  if (tier === null) return null;
+  return tier === null ? null : { literal: false, tier };
+}
 
-  const [spelled] = hangulRanges(text, hangul);
-  return { ...spelled, literal: false, tier };
+/**
+ * The first place a text holds a hit, which for one its Hangul letters hold
+ * spells the text again, so a list reads it only for the rows it shows.
+ */
+export function hitRange(
+  text: string,
+  hit: TextHit,
+  hangul: HangulQuery | null
+): TextRange {
+  if (hit.literal) return { start: hit.start, end: hit.end };
+
+  // Only a Hangul keyword makes a hit that is not literal.
+  const [range] = hangulRanges(text, hangul as HangulQuery);
+  return range;
 }
 
 /**
