@@ -18,7 +18,6 @@ import { runElkPlacement } from '@/components/erd/automatic-table-placement/runE
 import Canvas from '@/components/erd/canvas/Canvas';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import DrawTargetButtons from '@/components/erd/draw-target/DrawTargetButtons';
-import { clearTouchDrawTarget } from '@/components/erd/draw-target/drawTargetState';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
@@ -71,7 +70,6 @@ import {
   editorRootOf,
   isMiddleButtonPress,
   isMouseEvent,
-  isTouchPress,
   preventMiddleLift,
   suppressSelection,
 } from '@/utils/domEvent';
@@ -300,13 +298,6 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (canUnselectAll && !middlePan && !middleOverTakeover) {
       const { store } = app.value;
       store.dispatch(unselectAllAction$());
-    }
-
-    // A tap off every table lets go of the one a first tap named while a
-    // relationship is drawn. A tap on its buttons reaches here before its
-    // click, so the guard above keeps them where they are.
-    if (canUnselectAll && isTouchPress(event)) {
-      clearTouchDrawTarget(app.value.store.state);
     }
 
     if (canHideColorPicker) {

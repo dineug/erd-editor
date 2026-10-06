@@ -17,8 +17,6 @@ export type DrawTarget = {
   selfArmed: boolean;
   /** The table the pointer points the draw at. */
   targetId: string | null;
-  /** The table a first tap named, which a touch has no hover to point at. */
-  touchTargetId: string | null;
 };
 
 /**
@@ -37,7 +35,6 @@ const EMPTY: DrawTarget = {
   pressPoint: null,
   selfArmed: false,
   targetId: null,
-  touchTargetId: null,
 };
 
 const isPoint = (value: unknown): value is Point =>
@@ -78,16 +75,4 @@ export function updateDrawTarget(
 export function clearDrawTarget(root: RootState): void {
   if (!(keyOf(root) in state.targets)) return;
   Reflect.deleteProperty(state.targets, keyOf(root));
-}
-
-export const getTouchDrawTargetId = (root: RootState) =>
-  getDrawTarget(root).touchTargetId;
-
-export function setTouchDrawTarget(root: RootState, tableId: string): void {
-  updateDrawTarget(root, { touchTargetId: tableId });
-}
-
-export function clearTouchDrawTarget(root: RootState): void {
-  if (getDrawTarget(root).touchTargetId === null) return;
-  updateDrawTarget(root, { touchTargetId: null });
 }

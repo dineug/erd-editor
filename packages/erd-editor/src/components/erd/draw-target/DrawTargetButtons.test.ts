@@ -25,12 +25,9 @@ import {
 import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
 import DrawTargetButtons, {
-  getPillSize,
+  PILL_SIZE,
 } from '@/components/erd/draw-target/DrawTargetButtons';
-import {
-  getDrawTarget,
-  setTouchDrawTarget,
-} from '@/components/erd/draw-target/drawTargetState';
+import { getDrawTarget } from '@/components/erd/draw-target/drawTargetState';
 import { PILL_MARGIN } from '@/components/erd/draw-target/placePill';
 import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
@@ -206,7 +203,7 @@ describe('DrawTargetButtons', () => {
 
     const buttons = buttonsOf(root)!;
     const card = screenRectOf(app, 'orders');
-    const pill = getPillSize(false);
+    const pill = PILL_SIZE;
 
     expect(buttons.dataset.side).toBe('left');
     expect(pxOf(buttons.style.left)).toBe(card.x - PILL_MARGIN - pill.width);
@@ -632,44 +629,136 @@ describe('DrawTargetButtons', () => {
     });
   });
 
-  describe('after a first tap', () => {
+  describe('under touch', () => {
+    /**
+     * A finger's press as a browser sends it, the pointer event and then the
+     * touch, which some pens send as well.
+     */
+    const pressWith = (pointerType: string, target: EventTarget) => {
+      target.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerType })
+      );
+      target.dispatchEvent(
+        new TouchEvent('touchstart', { bubbles: true, cancelable: true })
+      );
+    };
+
+    const touchDown = (target: EventTarget) => pressWith('touch', target);
+
+    /** A move a mouse, a pen or a finger makes: its pointer event, then the mouse event. */
+    const hoverWith = async (pointerType: string, point: Point) => {
+      harness.root.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerType })
+      );
+      await hover(harness, point);
+    };
+
     beforeEach(async () => {
       await startDraw(harness);
     });
 
-    it('stands the buttons beside the table it named, with no strip', async () => {
+    it('reads no pointer from the mouse events a browser makes up after a tap', async () => {
       const { app, root } = harness;
-      setTouchDrawTarget(app.store.state, 'orders');
-      await flush();
+      touchDown(root);
+      await hover(harness, insideOf(app, 'orders'));
 
+      expect(getDrawTarget(app.store.state).pointer).toBeNull();
+      expect(buttonsOf(root)).toBeNull();
+      expect(outlineOf(root)).toBeNull();
+    });
+
+    it('reads none from a finger moving over the canvas either', async () => {
+      const { app, root } = harness;
+      await hoverWith('touch', insideOf(app, 'orders'));
+
+      expect(getDrawTarget(app.store.state).pointer).toBeNull();
+      expect(buttonsOf(root)).toBeNull();
+    });
+
+    it('lets go of the pointer a mouse left once a finger touches the canvas', async () => {
+      const { app, root } = harness;
+      await hover(harness, insideOf(app, 'orders'));
       expect(buttonsOf(root)).toBeTruthy();
+
+      touchDown(root);
+      await flush();
+
+      expect(getDrawTarget(app.store.state).pointer).toBeNull();
+      expect(buttonsOf(root)).toBeNull();
       expect(gutterOf(root)).toBeNull();
-      expect(pxOf(outlineOf(root)!.style.left)).toBe(
-        screenRectOf(app, 'orders').x
-      );
+      expect(outlineOf(root)).toBeNull();
     });
 
-    it('forgets the table once it is removed', async () => {
+    it('shows nothing on a table a pan brings under the point a tap left', async () => {
       const { app, root } = harness;
-      setTouchDrawTarget(app.store.state, 'orders');
-      await flush();
-      app.store.dispatchSync(removeTableAction({ id: 'orders' }));
-      await flush();
+      const empty = { x: 1000, y: 600 };
+      touchDown(root);
+      await hover(harness, empty);
 
-      expect(getDrawTarget(app.store.state).touchTargetId).toBeNull();
-      expect(buttonsOf(root)).toBeNull();
-    });
-
-    it('stands no buttons beside a table scrolled out of the canvas', async () => {
-      const { app, root } = harness;
+      const card = screenRectOf(app, 'orders');
       app.store.dispatchSync(
-        moveToTableAction({ id: 'orders', x: 5000, y: 100 })
+        moveToTableAction({
+          id: 'orders',
+          x: 600 + empty.x - card.x - 6,
+          y: 100 + empty.y - card.y - 6,
+        })
       );
-      setTouchDrawTarget(app.store.state, 'orders');
       await flush();
 
+      expect(insideOf(app, 'orders')).toEqual(empty);
+      expect(getDrawTarget(app.store.state).targetId).toBeNull();
       expect(buttonsOf(root)).toBeNull();
+      expect(gutterOf(root)).toBeNull();
+      expect(outlineOf(root)).toBeNull();
     });
+
+    it('reads the pointer again once a mouse or a pen moves', async () => {
+      const { app, root } = harness;
+      touchDown(root);
+      await hoverWith('mouse', insideOf(app, 'orders'));
+      expect(buttonsOf(root)).toBeTruthy();
+
+      touchDown(root);
+      await flush();
+      expect(buttonsOf(root)).toBeNull();
+
+      await hoverWith('pen', insideOf(app, 'orders'));
+      expect(buttonsOf(root)).toBeTruthy();
+    });
+
+    it('keeps the buttons under a pen that sends touch events as it presses them', async () => {
+      const { app, root } = harness;
+      const openMapColumns = vi.fn();
+      app.emitter.on({ openMapColumns });
+      await hoverWith('pen', insideOf(app, 'orders'));
+      const pointer = getDrawTarget(app.store.state).pointer;
+
+      pressWith('pen', mapOf(root));
+      await flush();
+
+      expect(getDrawTarget(app.store.state).pointer).toEqual(pointer);
+      expect(buttonsOf(root)).toBeTruthy();
+
+      mapOf(root).click();
+      await flush();
+
+      expect(openMapColumns).toHaveBeenCalledOnce();
+      expect(app.store.state.editor.drawRelationship).toBeNull();
+    });
+  });
+
+  it('stands no buttons beside a table past the edge of a canvas that shrank under the pointer', async () => {
+    const { app, root } = harness;
+    await startDraw(harness);
+    await hover(harness, insideOf(app, 'orders'));
+    expect(buttonsOf(root)).toBeTruthy();
+
+    app.store.dispatchSync(changeViewportAction({ width: 500, height: 800 }));
+    await flush();
+
+    expect(getDrawTarget(app.store.state).targetId).toBe('orders');
+    expect(buttonsOf(root)).toBeNull();
+    expect(outlineOf(root)).toBeNull();
   });
 
   it('forgets the draw it followed when it unmounts', async () => {
@@ -686,9 +775,8 @@ describe('DrawTargetButtons', () => {
   });
 });
 
-describe('getPillSize', () => {
-  it('fits two buttons and their padding, larger for a coarse pointer', () => {
-    expect(getPillSize(false)).toEqual({ width: 36, height: 64 });
-    expect(getPillSize(true)).toEqual({ width: 50, height: 98 });
+describe('PILL_SIZE', () => {
+  it('fits two buttons, the gap between them and their padding', () => {
+    expect(PILL_SIZE).toEqual({ width: 36, height: 64 });
   });
 });

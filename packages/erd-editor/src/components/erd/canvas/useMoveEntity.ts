@@ -8,22 +8,13 @@ import {
 } from '@/components/erd/canvas/entityDrag';
 import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
-import {
-  clearTouchDrawTarget,
-  getTouchDrawTargetId,
-  setTouchDrawTarget,
-} from '@/components/erd/draw-target/drawTargetState';
 import { CLICK_DRAG_MIN_MOVE } from '@/constants/layout';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import type { Ctx } from '@/internal-types';
-import {
-  isMainButtonPress,
-  isMultiTouch,
-  isTouchPress,
-} from '@/utils/domEvent';
+import { isMainButtonPress, isMultiTouch } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -70,24 +61,6 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     const { store } = app.value;
     const entityId = options.entityId();
     const source = options.source.value;
-
-    // A finger has no hover, so while a relationship is drawn the first tap on
-    // a table names it and shows the buttons beside it, and a second tap on it
-    // draws as a press does. A view's tables and a memo keep their own taps.
-    if (
-      isTouchPress(event.evt) &&
-      source === 'document' &&
-      store.state.editor.drawRelationship?.start &&
-      !store.getReadonly()
-    ) {
-      if (options.selectType !== SelectType.table) {
-        clearTouchDrawTarget(store.state);
-      } else if (getTouchDrawTargetId(store.state) !== entityId) {
-        setTouchDrawTarget(store.state, entityId);
-        return;
-      }
-    }
-
     // Only the main button carries an entity: a right press picks what the
     // context menu it opens is for, by the selection rule below, and moves
     // nothing however far the pointer then travels.

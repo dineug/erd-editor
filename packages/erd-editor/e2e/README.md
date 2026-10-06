@@ -190,20 +190,22 @@ keeps following the pointer over them; the strip between them and the table
 spends a press that would reach a neighbour or the start table, which shows
 them only once the pointer travels 24 px from the press that started the draw.
 Plus draws what a press on the table draws, which a press on the table still
-does. Map
-links existing columns in one undo and renames nothing, row by row for a
-composite key, prefilled where exactly one name matches, References offering a
-unique column only where the parent has one, and a self reference sharing its
-tenant column; the relationship menu changes a relationship's columns in place,
-its id, type and ON DELETE kept, a column it no longer uses kept without its FK
-mark, a removed column shown as `(removed)` until another is picked; with data
-type sync on the child takes the parent's type in the same undo. Readonly shows
-neither, the chords of Find and Replace and the palette close the dialog for
-them, Escape closes it writing nothing, opening it from the menu ends an armed
-draw, and under touch a first tap names the table and a second mints new
-columns. `shared-presence.spec.ts` sends a mapping made in the dialog and one
-edited from the menu to a wired peer, and closes the dialog with a toast once
-the peer removes its relationship.
+does. Map links existing columns in one undo and renames nothing, row by row
+for a composite key, prefilled where exactly one name matches, References
+offering a unique column only where the parent has one, and a self reference
+sharing its tenant column; the relationship menu changes a relationship's
+columns in place, its id, type and ON DELETE kept, a column it no longer uses
+kept without its FK mark, a removed column shown as `(removed)` until another
+is picked; with data type sync on the child takes the parent's type in the same
+undo. Readonly shows neither, the chords of Find and Replace and the palette
+close the dialog for them, Escape closes it writing nothing, opening it from
+the menu ends an armed draw, and under touch a tap on a table mints new columns
+at once, as it always has, with no buttons ever shown: not after a tap on empty
+canvas and a pan or a zoom from the keyboard that brings a table under it, and
+not for a pinch whose first finger lands on a table, which draws to that table
+as a tap there does and still zooms. `shared-presence.spec.ts` sends a mapping
+made in the dialog and one edited from the menu to a wired peer, and closes the
+dialog with a toast once the peer removes its relationship.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

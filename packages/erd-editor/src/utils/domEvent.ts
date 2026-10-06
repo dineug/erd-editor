@@ -42,11 +42,6 @@ export function isMultiTouch(event: Event): boolean {
   return ((event as Partial<TouchEvent>).touches?.length ?? 0) > 1;
 }
 
-/** A press a finger made, read off its type, since desktop Safari defines no TouchEvent to test against. */
-export function isTouchPress(event: Event): boolean {
-  return event.type.startsWith('touch');
-}
-
 /** The button a mouse event reports for the main press, the one that carries what it lands on. */
 const MAIN_BUTTON = 0;
 

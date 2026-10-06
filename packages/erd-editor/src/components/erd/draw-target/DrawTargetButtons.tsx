@@ -65,17 +65,13 @@ const CANVAS_CHROME = [
 /** The chrome painted over the buttons, which they stand clear of. */
 const OBSTACLES = '.minimap, .floating-toolbar';
 
-/** The pill at the size the stylesheet gives it, coarse pointers taking the larger buttons. */
-export function getPillSize(coarse: boolean): PillSize {
-  const button = coarse ? styles.PILL_COARSE_BUTTON : styles.PILL_BUTTON;
-  const gap = coarse ? styles.PILL_COARSE_GAP : styles.PILL_GAP;
-  const inset = styles.PILL_PADDING + styles.PILL_BORDER;
+const PILL_INSET = styles.PILL_PADDING + styles.PILL_BORDER;
 
-  return { width: button + inset * 2, height: button * 2 + gap + inset * 2 };
-}
-
-const isCoarsePointer = () =>
-  globalThis.matchMedia?.('(pointer: coarse)').matches ?? false;
+/** The pill at the size the stylesheet gives it: two buttons, the gap and the padding. */
+export const PILL_SIZE: PillSize = {
+  width: styles.PILL_BUTTON + PILL_INSET * 2,
+  height: styles.PILL_BUTTON * 2 + styles.PILL_GAP + PILL_INSET * 2,
+};
 
 /** A table's box on screen, its two corners read through the canvas placement. */
 function toScreenRect(state: RootState, rect: Rect): Rect {
@@ -121,6 +117,8 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
   let lastPress: Point | null = null;
   /** The start of the draw followed here, a press on a table setting a new one each time. */
   let followed: object | null = null;
+  /** Whether a finger made the last press or move on the canvas, which leaves no pointer to read. */
+  let touched = false;
 
   const canOffer = (state: RootState) => {
     const { editor, settings } = state;
@@ -162,11 +160,7 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
     });
   };
 
-  const layoutOf = (
-    state: RootState,
-    tableId: string,
-    withGutter: boolean
-  ): TargetLayout | null => {
+  const layoutOf = (state: RootState, tableId: string): TargetLayout | null => {
     const table = query(state.collections)
       .collection('tableEntities')
       .selectById(tableId);
@@ -181,7 +175,7 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
       card.y + card.height > 0;
     if (!shown) return null;
 
-    const pill = getPillSize(isCoarsePointer());
+    const pill = PILL_SIZE;
     const placement = placePill({
       card,
       viewport,
@@ -189,9 +183,7 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
       obstacles: readObstacles(),
       pill,
     });
-    const gutter = withGutter
-      ? getGutterRect({ card, viewport, placement, pill })
-      : null;
+    const gutter = getGutterRect({ card, viewport, placement, pill });
 
     return { card, placement, pill, gutter };
   };
@@ -222,7 +214,6 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
         pressPoint: lastPress,
         selfArmed: false,
         targetId: null,
-        touchTargetId: null,
       });
     }
 
@@ -235,18 +226,13 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
       return;
     }
 
-    const { touchTargetId } = target;
-    if (touchTargetId && !state.doc.tableIds.includes(touchTargetId)) {
-      updateDrawTarget(state, { touchTargetId: null });
-    }
-
     if (!target.pointer || !canOffer(state)) {
       updateDrawTarget(state, { targetId: null });
       return;
     }
 
     const current = target.targetId;
-    const layout = current ? layoutOf(state, current, true) : null;
+    const layout = current ? layoutOf(state, current) : null;
 
     updateDrawTarget(state, {
       targetId: findDrawTarget(state, {
@@ -264,9 +250,31 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
     lastPress = point ? toRootPoint(point) : null;
   };
 
+  const dropPointer = () => {
+    const { state } = app.value.store;
+    if (getDrawTarget(state).pointer === null) return;
+
+    updateDrawTarget(state, { pointer: null });
+  };
+
+  /**
+   * A browser sends a pointer event ahead of each mouse event a mouse or a pen
+   * makes, and none ahead of those it makes up after a tap, so the kind of the
+   * last one tells a hover from a finger.
+   */
+  const handlePointerKind = (event: PointerEvent) => {
+    touched = event.pointerType === 'touch';
+  };
+
+  /** A finger has no hover, so its press lets go of the pointer a mouse left; a pen's keeps it. */
+  const handlePointerDown = (event: PointerEvent) => {
+    handlePointerKind(event);
+    if (touched) dropPointer();
+  };
+
   const handlePointerMove = (event: MouseEvent) => {
     const { state } = app.value.store;
-    if (!state.editor.drawRelationship?.start) return;
+    if (touched || !state.editor.drawRelationship?.start) return;
 
     const over = event.target as Element | null;
     if (over?.closest?.(CANVAS_CHROME)) {
@@ -285,13 +293,6 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
       pressPoint: from,
       selfArmed: selfArmed || hasTravelled(from, pointer),
     });
-  };
-
-  const handlePointerLeave = () => {
-    const { state } = app.value.store;
-    if (getDrawTarget(state).pointer === null) return;
-
-    updateDrawTarget(state, { pointer: null });
   };
 
   /** Keeps the keyboard on the editor and lets the press reach the root, which closes an open menu. */
@@ -377,8 +378,14 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
       fromEvent<TouchEvent>($root, 'touchstart', { capture: true }).subscribe(
         handlePress
       ),
+      fromEvent<PointerEvent>($root, 'pointerdown', {
+        capture: true,
+      }).subscribe(handlePointerDown),
+      fromEvent<PointerEvent>($root, 'pointermove', {
+        capture: true,
+      }).subscribe(handlePointerKind),
       fromEvent<MouseEvent>($root, 'mousemove').subscribe(handlePointerMove),
-      fromEvent<MouseEvent>($root, 'mouseleave').subscribe(handlePointerLeave),
+      fromEvent<MouseEvent>($root, 'mouseleave').subscribe(dropPointer),
       observer(follow),
       () => clearDrawTarget(store.state)
     );
@@ -388,13 +395,10 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
     const { state } = app.value.store;
     if (!canOffer(state)) return null;
 
-    const target = getDrawTarget(state);
-    const touch = target.touchTargetId !== null;
-    const tableId = target.touchTargetId ?? target.targetId;
+    const tableId = getDrawTarget(state).targetId;
     if (!tableId) return null;
 
-    // A first tap has no pointer hovering a neighbour, so it takes no strip.
-    const layout = layoutOf(state, tableId, !touch);
+    const layout = layoutOf(state, tableId);
     if (!layout) return null;
 
     const { card, placement, pill, gutter } = layout;

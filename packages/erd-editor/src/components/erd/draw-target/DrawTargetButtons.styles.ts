@@ -2,11 +2,9 @@ import { css } from '@dineug/r-html';
 
 /** The buttons' own size on screen at any zoom, read by the placement too. */
 export const PILL_BUTTON = 26;
-export const PILL_COARSE_BUTTON = 40;
 export const PILL_PADDING = 4;
 export const PILL_BORDER = 1;
 export const PILL_GAP = 2;
-export const PILL_COARSE_GAP = 8;
 
 /** The canvas-sized layer the outline, the gutter and the buttons stand in. */
 export const layer = css`
@@ -50,10 +48,6 @@ export const pill = css`
   background-color: var(--toast-background);
   box-shadow: 0 1px 6px -3px var(--minimap-shadow);
   pointer-events: auto;
-
-  @media (pointer: coarse) {
-    gap: ${PILL_COARSE_GAP}px;
-  }
 `;
 
 export const button = css`
@@ -78,10 +72,5 @@ export const button = css`
     opacity: 0.4;
     color: var(--foreground);
     background-color: transparent;
-  }
-
-  @media (pointer: coarse) {
-    width: ${PILL_COARSE_BUTTON}px;
-    height: ${PILL_COARSE_BUTTON}px;
   }
 `;

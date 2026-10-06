@@ -21,11 +21,6 @@ import {
 } from '@/__test-utils__/index';
 import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
-import {
-  getDrawTarget,
-  getTouchDrawTargetId,
-  setTouchDrawTarget,
-} from '@/components/erd/draw-target/drawTargetState';
 import Erd from '@/components/erd/Erd';
 import * as styles from '@/components/erd/Erd.styles';
 import {
@@ -1687,17 +1682,6 @@ describe('Erd - draw target buttons', () => {
     return { ...harness, buttons };
   };
 
-  const touchOn = (target: EventTarget) => {
-    const event = new TouchEvent('touchstart', {
-      bubbles: true,
-      cancelable: true,
-      touches: [{ clientX: 1, clientY: 1 }] as any,
-    });
-    target.dispatchEvent(event);
-    window.dispatchEvent(new TouchEvent('touchend'));
-    return event;
-  };
-
   it('mounts them over the canvas and under the chrome drawn after it', async () => {
     const { root, buttons } = await showButtons();
     const layer = buttons.closest('.draw-target-layer') as HTMLElement;
@@ -1724,30 +1708,5 @@ describe('Erd - draw target buttons', () => {
     expect(Object.keys(app.store.state.editor.selectedMap)).toEqual(['users']);
     expect(app.store.state.settings.originX).toBe(0);
     expect(root.querySelector('.draw-target-buttons')).toBeTruthy();
-  });
-
-  it('lets go of a tapped table on a tap on the empty canvas', async () => {
-    const { app, root } = await setup({}, appDrawing());
-    setTouchDrawTarget(app.store.state, 'orders');
-    await flush();
-    expect(root.querySelector('.draw-target-buttons')).toBeTruthy();
-
-    touchOn(root);
-    await flush();
-
-    expect(getTouchDrawTargetId(app.store.state)).toBeNull();
-    expect(root.querySelector('.draw-target-buttons')).toBeNull();
-  });
-
-  it('keeps it on a tap on its buttons, so the click that follows reaches them', async () => {
-    const { app, root } = await setup({}, appDrawing());
-    setTouchDrawTarget(app.store.state, 'orders');
-    await flush();
-
-    touchOn(root.querySelector('.draw-target-buttons')!);
-    await flush();
-
-    expect(getTouchDrawTargetId(app.store.state)).toBe('orders');
-    expect(getDrawTarget(app.store.state).targetId).toBeNull();
   });
 });

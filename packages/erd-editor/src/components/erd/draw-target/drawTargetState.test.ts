@@ -4,10 +4,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import {
   clearDrawTarget,
-  clearTouchDrawTarget,
   getDrawTarget,
-  getTouchDrawTargetId,
-  setTouchDrawTarget,
   updateDrawTarget,
 } from '@/components/erd/draw-target/drawTargetState';
 
@@ -26,20 +23,15 @@ describe('drawTargetState', () => {
       pressPoint: null,
       selfArmed: false,
       targetId: null,
-      touchTargetId: null,
     });
   });
 
   it('keeps each editor on a page to its own record', () => {
     updateDrawTarget(first.store.state, { targetId: 'orders' });
-    setTouchDrawTarget(second.store.state, 'users');
+    updateDrawTarget(second.store.state, { targetId: 'users' });
 
-    expect(getDrawTarget(first.store.state)).toMatchObject({
-      targetId: 'orders',
-      touchTargetId: null,
-    });
-    expect(getTouchDrawTargetId(second.store.state)).toBe('users');
-    expect(getDrawTarget(second.store.state).targetId).toBeNull();
+    expect(getDrawTarget(first.store.state).targetId).toBe('orders');
+    expect(getDrawTarget(second.store.state).targetId).toBe('users');
   });
 
   it('writes the fields given and leaves the rest', () => {
@@ -75,16 +67,6 @@ describe('drawTargetState', () => {
     await flush();
     expect(runs).toBe(2);
     stop();
-  });
-
-  it('lets go of a tapped table, and of nothing when none was tapped', () => {
-    const { state } = first.store;
-    clearTouchDrawTarget(state);
-    expect(getDrawTarget(state).touchTargetId).toBeNull();
-
-    setTouchDrawTarget(state, 'orders');
-    clearTouchDrawTarget(state);
-    expect(getTouchDrawTargetId(state)).toBeNull();
   });
 
   it('forgets the whole record, and clears one that was never written', () => {

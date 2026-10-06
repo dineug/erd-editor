@@ -17,13 +17,13 @@ import {
   RelationshipType,
   type TableSeed,
 } from '../support/schema';
-import { Shortcut } from '../support/shortcuts';
+import { Shortcut, ZOOM_STEP } from '../support/shortcuts';
 
 // The buttons a relationship draw shows beside the table it would end on, and
 // Map Columns, which links a parent's key to columns the child already has and
 // changes a relationship's columns later from the relationship menu.
 
-/** Both buttons and their padding, the size the stylesheet gives them on a mouse. */
+/** Both buttons and their padding, the size the stylesheet gives them. */
 const PILL = { width: 36, height: 64 };
 
 /** Room between the buttons and the table. */
@@ -1053,51 +1053,175 @@ test.describe('what holds the buttons and the dialog back', () => {
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 
-  /** A real tap: the browser delivers the press and its lift. */
+  /** A real tap: the browser delivers the press, the lift and the mouse events it makes up after them. */
   async function tap(erd: ErdEditorPage, point: Point) {
     await erd.touchStart(point);
     await erd.touchEnd();
   }
 
-  async function tapToTarget(erd: ErdEditorPage) {
-    await erd.seed(usersAndPosts());
-    await erd.focusCanvas();
-    await erd.press(Shortcut.relationshipZeroN);
-    await tap(erd, await erd.tableHeaderPoint('users'));
+  /** Arms Zero N from the floating toolbar and taps the table the draw starts from. */
+  async function startDrawByTap(erd: ErdEditorPage, startId: string) {
+    const notation = erd.floatingToolbar.locator('[title^="Zero N"]');
+    await tap(erd, centre(await boxOf(notation)));
+    await expect(notation).toHaveClass(/active/);
+
+    await tap(erd, await erd.tableHeaderPoint(startId));
     await expect(erd.drawPreview).toBeVisible();
-
-    await tap(erd, await erd.tableHeaderPoint('posts'));
-
-    await expect(pillOf(erd)).toBeVisible();
-    expectBoxClose(await boxOf(outlineOf(erd)), await tableBox(erd, 'posts'));
-    expect(await erd.relationshipIds()).toEqual([]);
   }
 
-  test('the first tap on a table shows the buttons and a second tap mints new columns', async ({
-    erd,
-  }) => {
-    await tapToTarget(erd);
+  /** Records whether the buttons or the outline ever show, which a look at the end would miss. */
+  async function watchDrawTarget(erd: ErdEditorPage) {
+    await erd.page.evaluate(() => {
+      const root = window.document.querySelector('erd-editor')!.shadowRoot!;
+      const seen = () => Boolean(root.querySelector('.draw-target-layer'));
+      Reflect.set(window, '__drawTargetShown', seen());
 
-    // On a row rather than the header, so the two taps are no double tap.
-    await tap(erd, await erd.columnPoint('posts_title'));
+      new MutationObserver(() => {
+        if (seen()) Reflect.set(window, '__drawTargetShown', true);
+      }).observe(root, { childList: true, subtree: true });
+    });
+  }
 
+  const drawTargetShown = (erd: ErdEditorPage) =>
+    erd.page.evaluate(
+      () => Reflect.get(window, '__drawTargetShown') as boolean
+    );
+
+  const gutterOf = (erd: ErdEditorPage) =>
+    erd.host.locator('.draw-target-gutter');
+
+  /** The new key column a draw added to posts, the last of its columns. */
+  async function expectNewColumnOnPosts(erd: ErdEditorPage) {
+    await expect.poll(() => erd.relationshipIds()).toHaveLength(1);
     const [relationship] = await addedRelationships(erd, []);
     const columnIds = await erd.columnIds('posts');
+
+    expect(relationship.start.tableId).toBe('users');
+    expect(relationship.end.tableId).toBe('posts');
     expect(columnIds).toHaveLength(5);
     expect(relationship.end.columnIds).toEqual([
       columnIds[columnIds.length - 1],
     ]);
-    await expect(pillOf(erd)).toHaveCount(0);
+  }
+
+  test('a tap on the target table mints new columns at once and no buttons ever show', async ({
+    erd,
+  }) => {
+    await erd.seed(usersAndPosts());
+    await watchDrawTarget(erd);
+    await startDrawByTap(erd, 'users');
+
+    await tap(erd, await erd.tableHeaderPoint('posts'));
+
+    await expectNewColumnOnPosts(erd);
+    await expect(erd.drawPreview).toHaveCount(0);
+    await erd.whenDrawn();
+    expect(await drawTargetShown(erd)).toBe(false);
   });
 
-  test('a tap on Map opens the dialog', async ({ erd }) => {
-    await tapToTarget(erd);
+  test('a tap on empty canvas leaves no pointer, so a pan that brings a table under it shows nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(usersAndPosts());
+    await startDrawByTap(erd, 'users');
+    const canvas = await boxOf(erd.host.locator('[data-testid="erd-canvas"]'));
+    const empty = {
+      x: Math.round(canvas.x + 30),
+      y: Math.round(canvas.y + canvas.height - 220),
+    };
+    await tap(erd, empty);
+    await erd.whenDrawn();
+    await watchDrawTarget(erd);
 
-    const target = centre(await boxOf(mapButtonOf(erd)));
-    await erd.page.touchscreen.tap(target.x, target.y);
+    const posts = centre(await tableBox(erd, 'posts'));
+    const from = { x: empty.x + 10, y: empty.y - 10 };
+    await erd.touchDrag(from, {
+      x: from.x + empty.x - posts.x,
+      y: from.y + empty.y - posts.y,
+    });
+    await erd.whenDrawn();
 
-    await expect(dialogOf(erd)).toBeVisible();
+    expect(
+      overlaps(await tableBox(erd, 'posts'), { ...empty, width: 1, height: 1 })
+    ).toBe(true);
+    expect(await drawTargetShown(erd)).toBe(false);
     await expect(pillOf(erd)).toHaveCount(0);
+    await expect(outlineOf(erd)).toHaveCount(0);
+    await expect(gutterOf(erd)).toHaveCount(0);
     expect(await erd.relationshipIds()).toEqual([]);
+
+    // The draw is still armed: a mouse over the table shows the buttons.
+    await hoverTarget(erd, 'posts');
+  });
+
+  test('a tap on empty canvas leaves no pointer, so a zoom from the keyboard that brings a table under it shows nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(usersAndPosts());
+    await startDrawByTap(erd, 'users');
+    const before = (await erd.settings()).zoomLevel;
+    const canvas = await boxOf(erd.host.locator('[data-testid="erd-canvas"]'));
+    const posts = await tableBox(erd, 'posts');
+
+    // Just past the side of posts farther from the centre a zoom holds, which
+    // a zoom in pushes over the point. No touch moves the canvas here, so only
+    // the mouse events the browser makes up after the tap could leave a pointer.
+    const right = posts.x + posts.width / 2 > canvas.x + canvas.width / 2;
+    const beside = {
+      x: Math.round(right ? posts.x + posts.width + 8 : posts.x - 8),
+      y: Math.round(posts.y + posts.height / 2),
+    };
+    await tap(erd, beside);
+    await erd.whenDrawn();
+    await watchDrawTarget(erd);
+
+    await erd.focusHost();
+    for (let press = 0; press < 3; press++) {
+      await erd.press(Shortcut.zoomIn);
+    }
+    await expect
+      .poll(async () => (await erd.settings()).zoomLevel)
+      .toBeCloseTo(before + 3 * ZOOM_STEP, 5);
+    await erd.whenDrawn();
+
+    expect(
+      overlaps(await tableBox(erd, 'posts'), { ...beside, width: 1, height: 1 })
+    ).toBe(true);
+    expect(await drawTargetShown(erd)).toBe(false);
+    await expect(pillOf(erd)).toHaveCount(0);
+    await expect(outlineOf(erd)).toHaveCount(0);
+    expect(await erd.relationshipIds()).toEqual([]);
+  });
+
+  test('a pinch whose first finger lands on a table draws to it with new columns, as a tap there does, and still zooms', async ({
+    erd,
+  }) => {
+    await erd.seed(usersAndPosts());
+    await watchDrawTarget(erd);
+    await startDrawByTap(erd, 'users');
+    const before = await erd.value();
+
+    const first = await erd.tableHeaderPoint('posts');
+    const second = { x: first.x + 140, y: first.y + 200 };
+    await erd.touchPinch(
+      [first, second],
+      [
+        { x: first.x - 60, y: first.y - 80 },
+        { x: second.x + 60, y: second.y + 80 },
+      ]
+    );
+    await erd.whenDrawn();
+
+    await expectNewColumnOnPosts(erd);
+    await expect
+      .poll(async () => (await erd.settings()).zoomLevel)
+      .toBeGreaterThan(before.settings.zoomLevel);
+    const { ui } = await erd.table('posts');
+    expect([ui.x, ui.y]).toEqual([
+      before.collections.tableEntities.posts.ui.x,
+      before.collections.tableEntities.posts.ui.y,
+    ]);
+    await expect(erd.drawPreview).toHaveCount(0);
+    expect(await drawTargetShown(erd)).toBe(false);
   });
 });
