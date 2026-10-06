@@ -149,7 +149,7 @@ test.describe('exporting the document as a png', () => {
     expect(pngSize(await file.path())).toEqual({ width: 2160, height: 2160 });
   });
 
-  test('draws the png at the zoom the editor is showing it at', async ({
+  test('draws the png at 100% whatever zoom the editor is showing it at', async ({
     erd,
   }) => {
     await erd.seed(document(spanFor(2160)));
@@ -164,9 +164,9 @@ test.describe('exporting the document as a png', () => {
     await exportPng(erd);
     const file = await download;
 
-    // The image holds the whole document either way. What the zoom decides is
-    // how many image pixels one scene unit was drawn with.
-    expect(pngSize(await file.path())).toEqual({ width: 864, height: 864 });
+    // The size the default zoom gives the image above: one image pixel per
+    // scene unit at 1x, which the zoom on screen has no say in.
+    expect(pngSize(await file.path())).toEqual({ width: 2160, height: 2160 });
   });
 
   test('draws every png in the shared worker, export after export', async ({

@@ -42,17 +42,11 @@ export type DocumentPngOptions = {
    * than to be called across a boundary a function does not cross.
    */
   toWidth: ToWidth;
-  /** Image pixels per scene unit at that zoom: the scale a dialog picks, 1 when left out. */
+  /** Image pixels per scene unit: the scale a dialog picks, 1 when left out. */
   pixelRatio?: number;
   /**
-   * The zoom the image is drawn at, which is the editor's own rather than the
-   * document's whenever the author asked for the zoom not to be saved. Left
-   * out, the image is drawn at the zoom the document carries.
-   */
-  zoomLevel?: number;
-  /**
-   * Called once, after a file exists, when the pixels the zoom and scale asked
-   * for outran what a canvas holds, with those and the pixels written. A caller
+   * Called once, after a file exists, when the pixels the scale asked for
+   * outran what a canvas holds, with those and the pixels written. A caller
    * with somewhere to put it tells the author of a loss that is otherwise silent.
    */
   onResolutionReduced?: (reduction: ResolutionReduction) => void;
@@ -61,8 +55,8 @@ export type DocumentPngOptions = {
 };
 
 /**
- * One image pixel per scene unit at the zoom it is drawn at, so the png is
- * exactly the box the document draws for every box a canvas can hold.
+ * One image pixel per scene unit, so the png is exactly the box the document
+ * draws for every box a canvas can hold.
  */
 const DEFAULT_PIXEL_RATIO = 1;
 
@@ -195,9 +189,9 @@ function renderInRealm(
 }
 
 /**
- * A png of everything the document draws, at the zoom it is being read at. The
- * scene is drawn again from the document rather than read off the screen, so
- * the image holds the whole document however far it was scrolled away.
+ * A png of everything the document draws, at 100% whatever zoom it is being
+ * read at. The scene is drawn again from the document rather than read off the
+ * screen, so the image holds the whole document however far it was scrolled away.
  *
  * @example
  * const blob = await createDocumentPng({ doc: toJson(store.state), theme, toWidth });
@@ -207,14 +201,13 @@ export async function createDocumentPng({
   theme,
   toWidth,
   pixelRatio = DEFAULT_PIXEL_RATIO,
-  zoomLevel,
   onResolutionReduced,
   onProgress,
 }: DocumentPngOptions): Promise<Blob> {
   // Copied, not passed on: the editor hands out its palette as an observable
   // proxy, and a proxy is what structuredClone refuses, so a worker sent the
   // live object gets a DataCloneError instead of an image.
-  const request = { doc, theme: { ...theme }, pixelRatio, zoomLevel };
+  const request = { doc, theme: { ...theme }, pixelRatio };
   const { result, realm } = await renderInRealm(request, toWidth, onProgress);
 
   return report(result, realm, { onResolutionReduced, onProgress });
@@ -222,7 +215,7 @@ export async function createDocumentPng({
 
 export type DocumentPreviewOptions = Pick<
   DocumentPngOptions,
-  'doc' | 'theme' | 'toWidth' | 'zoomLevel'
+  'doc' | 'theme' | 'toWidth'
 > & {
   /** The longest side the preview may take, in pixels. */
   maxSide: number;
@@ -236,8 +229,6 @@ export type DocumentPreview = {
   /** The box the export holds, in scene units, margin included. */
   documentWidth: number;
   documentHeight: number;
-  /** The zoom the export is drawn at. */
-  zoomLevel: number;
 };
 
 /**
@@ -252,14 +243,12 @@ export async function createDocumentPreview({
   doc,
   theme,
   toWidth,
-  zoomLevel,
   maxSide,
 }: DocumentPreviewOptions): Promise<DocumentPreview> {
   const request = {
     doc,
     theme: { ...theme },
     pixelRatio: DEFAULT_PIXEL_RATIO,
-    zoomLevel,
     maxSide,
   };
   const { result } = await renderInRealm(request, toWidth);
@@ -270,31 +259,29 @@ export async function createDocumentPreview({
     height: result.height,
     documentWidth: result.documentWidth,
     documentHeight: result.documentHeight,
-    zoomLevel: result.zoomLevel,
   };
 }
 
 export type DocumentSvgOptions = Pick<
   DocumentPngOptions,
-  'doc' | 'theme' | 'toWidth' | 'zoomLevel'
+  'doc' | 'theme' | 'toWidth'
 >;
 
 /**
- * An svg of everything the document draws, at the zoom it is being read at.
- * It takes the png's path, worker first, and leaves the scale out, since a
- * vector is sized by the zoom alone and holds no canvas ceiling to cut it.
+ * An svg of everything the document draws, at 100% as the png is. It takes
+ * the png's path, worker first, and leaves the scale out, since a vector is
+ * sized by the box alone and holds no canvas ceiling to cut it.
  *
  * @example
- * const svg = await createDocumentSvg({ doc, theme, toWidth, zoomLevel });
+ * const svg = await createDocumentSvg({ doc, theme, toWidth });
  */
 export async function createDocumentSvg({
   doc,
   theme,
   toWidth,
-  zoomLevel,
 }: DocumentSvgOptions): Promise<string> {
   // Copied for the reason the png copies it: a proxy does not clone.
-  const request = { doc, theme: { ...theme }, zoomLevel };
+  const request = { doc, theme: { ...theme } };
   const { result } = await drawInRealm(
     {
       inWorker: (remote, fontProbe) =>

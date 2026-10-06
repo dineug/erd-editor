@@ -32,7 +32,7 @@ import type { Theme } from '@/themes/tokens';
 import { createText } from '@/utils/text';
 
 // The svg of a whole document: the scene the png draws, read off its nodes,
-// sized by the zoom alone and holding nothing konva paints only to be hit.
+// sized by the box at 100% and holding nothing konva paints only to be hit.
 
 const theme: Theme = createTestTheme();
 
@@ -203,9 +203,9 @@ const texts = (root: Element) =>
 /** The box the export of that document holds, as the png measures it. */
 async function exportBox(doc: string) {
   const scene = await renderDocumentScene({ doc, theme, toWidth });
-  const { box, zoomLevel } = scene;
+  const { box } = scene;
   scene.destroy();
-  return { box, zoomLevel };
+  return { box };
 }
 
 afterEach(() => {
@@ -213,7 +213,7 @@ afterEach(() => {
 });
 
 describe('the svg of a document', () => {
-  it('is the export box as the viewBox, sized by the zoom with no scale', async () => {
+  it('is the export box as the viewBox and its size, at 100% with no scale', async () => {
     const doc = createDoc(0.8);
     const { box } = await exportBox(doc);
 
@@ -222,23 +222,28 @@ describe('the svg of a document', () => {
     expect(root.getAttribute('viewBox')).toBe(
       [box.x, box.y, box.width, box.height].join(' ')
     );
-    expect(Number(root.getAttribute('width'))).toBeCloseTo(box.width * 0.8, 3);
-    expect(Number(root.getAttribute('height'))).toBeCloseTo(
-      box.height * 0.8,
-      3
-    );
+    expect(Number(root.getAttribute('width'))).toBeCloseTo(box.width, 3);
+    expect(Number(root.getAttribute('height'))).toBeCloseTo(box.height, 3);
   });
 
-  it('draws at the zoom it is handed over the one the document saved', async () => {
-    const doc = createDoc(1);
-    const { box } = await exportBox(doc);
+  it.each([0.4, 1.5])(
+    'draws at 100% over the zoom %s the document saved',
+    async zoomLevel => {
+      const atFull = await renderDocumentSvg({
+        doc: createDoc(1),
+        theme,
+        toWidth,
+      });
 
-    const root = parse(
-      await renderDocumentSvg({ doc, theme, toWidth, zoomLevel: 1.5 })
-    );
+      const saved = await renderDocumentSvg({
+        doc: createDoc(zoomLevel),
+        theme,
+        toWidth,
+      });
 
-    expect(Number(root.getAttribute('width'))).toBeCloseTo(box.width * 1.5, 3);
-  });
+      expect(saved).toBe(atFull);
+    }
+  );
 
   it('holds the tables, the rows, the label and the memo as text', async () => {
     const root = parse(
@@ -312,23 +317,16 @@ describe('the svg of a document', () => {
     expect(svg).not.toContain('shadow');
   });
 
-  it('draws a table by its name alone at a zoom that does', async () => {
+  it('draws every table in full at a zoom the canvas draws one by name alone', async () => {
     const root = parse(
       await renderDocumentSvg({ doc: createDoc(0.5), theme, toWidth })
     );
-    const names = Array.from(root.querySelectorAll('text')).filter(
-      text => text.getAttribute('font-weight') === 'bold'
-    );
 
-    expect(names.map(name => name.textContent).sort()).toEqual([
-      'orders',
-      'users',
-    ]);
-    expect(
-      names.every(name => name.getAttribute('text-anchor') === 'middle')
-    ).toBe(true);
-    expect(texts(root)).not.toContain('user_id');
-    expect(texts(root)).not.toContain('D:C');
+    // A table drawn by its name alone writes that name bold, and nothing else.
+    expect(root.querySelector('text[font-weight="bold"]')).toBeNull();
+    expect(texts(root)).toEqual(
+      expect.arrayContaining(['users', 'orders', 'id', 'user_id', 'INT', 'D:C'])
+    );
   });
 });
 
@@ -346,7 +344,7 @@ describe('the attributes konva holds for the export scene', () => {
   }
 
   it.each([1, 0.5])(
-    'are all written or skipped by name, at zoom %s',
+    'are all written or skipped by name, for a document saved at zoom %s',
     async zoomLevel => {
       const scene = await renderDocumentScene({
         doc: createDoc(zoomLevel),
@@ -424,7 +422,7 @@ describe('the svg of a document against the png konva paints', () => {
   }
 
   it.each([1, 0.5])(
-    'sets every table, row, label and memo where konva paints them, at zoom %s',
+    'sets every table, row, label and memo where konva paints them, for a document saved at zoom %s',
     async zoomLevel => {
       const scene = await renderDocumentScene({
         doc: createDoc(zoomLevel),
@@ -438,7 +436,6 @@ describe('the svg of a document against the png konva paints', () => {
       const svg = toSceneSvg(scene.stage, {
         box: scene.box,
         scale: scene.scale,
-        zoomLevel: scene.zoomLevel,
       });
       const width = scene.stage.width();
       const height = scene.stage.height();
@@ -450,7 +447,7 @@ describe('the svg of a document against the png konva paints', () => {
       await image.decode();
 
       // The png at its own size and the svg at the Stage's, which a fractional
-      // zoom leaves between two pixels: stretching the png would blur each edge.
+      // box leaves between two pixels: stretching the png would blur each edge.
       const { ink, apart } = compare(
         channelsOf(context => context.drawImage(canvas, 0, 0), width, height),
         channelsOf(
@@ -464,6 +461,19 @@ describe('the svg of a document against the png konva paints', () => {
       expect(apart).toBeLessThan(ink * 0.02);
     }
   );
+
+  it('is the very svg a Stage the size of the box writes, though read off a small one', async () => {
+    const doc = createDoc();
+    const scene = await renderDocumentScene({ doc, theme, toWidth });
+    const { stage, box, scale } = scene;
+    const atFull = toSceneSvg(stage, { box, scale });
+    scene.destroy();
+
+    const svg = await renderDocumentSvg({ doc, theme, toWidth });
+
+    expect(scale).toBe(1);
+    expect(svg).toBe(atFull);
+  });
 });
 
 describe('the svg in the shared worker', () => {

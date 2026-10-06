@@ -137,12 +137,19 @@ describe('what the export scene sets, against what the svg writer reads', () => 
         'services/export-png/ExportScene.tsx',
         'components/erd/canvas/table/Table.tsx',
         'components/erd/canvas/table/column/Column.tsx',
-        'components/erd/canvas/high-level-table/HighLevelTable.tsx',
         'components/erd/canvas/memo/Memo.tsx',
         'components/erd/canvas/relationship-group/relationship/Relationship.tsx',
         'components/erd/canvas/relationship-group/relationship/RelationshipActionLabel.tsx',
         'components/erd/canvas/SceneIcon.template.tsx',
       ])
+    );
+  });
+
+  it('never reaches the table drawn by its name alone, since every table is drawn in full', () => {
+    const modules = sceneModules().map(posix);
+
+    expect(modules).not.toContain(
+      'components/erd/canvas/high-level-table/HighLevelTable.tsx'
     );
   });
 

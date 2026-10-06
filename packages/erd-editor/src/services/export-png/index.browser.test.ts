@@ -227,17 +227,22 @@ const theme: Theme = createTestTheme();
 /** One table, whose rows are what the high level spelling drops. */
 const TABLE: TableSeed = { id: 't-1', name: 'users', x: 0, y: 0 };
 
+/**
+ * A zoom under the high level threshold, at which the editor draws a table as
+ * a named box, and which the export never draws at.
+ */
+const ZOOMED_OUT = 0.4;
+
 describe('renderDocumentScene', () => {
   /**
-   * The zoom decides the spelling as well as the scale, so an image taken while
-   * the editor shows named boxes is one of named boxes.
+   * A document saved while the editor showed named boxes is still drawn in
+   * full, and at a scale of one.
    */
   const drawnTables = async (zoomLevel: number) => {
     const scene = await renderDocumentScene({
-      doc: createDoc({ memos: [], tables: [TABLE] }),
+      doc: createDoc({ memos: [], tables: [TABLE], zoomLevel }),
       theme,
       toWidth,
-      zoomLevel,
     });
 
     try {
@@ -257,12 +262,11 @@ describe('renderDocumentScene', () => {
     expect(drawn).toEqual({ tables: 1, highLevel: 0, scale: 1 });
   });
 
-  it('caps the scale at the side it is given, still spelling the table for its zoom', async () => {
+  it('caps the scale at the side it is given, still drawing the table in full', async () => {
     const scene = await renderDocumentScene({
-      doc: createDoc({ memos: [], tables: [TABLE] }),
+      doc: createDoc({ memos: [], tables: [TABLE], zoomLevel: ZOOMED_OUT }),
       theme,
       toWidth,
-      zoomLevel: 1,
       maxSide: 100,
     });
 
@@ -280,28 +284,27 @@ describe('renderDocumentScene', () => {
     }
   });
 
-  it('leaves the zoom alone when the side it is given is larger than the box', async () => {
+  it('draws at 100% when the side it is given is larger than the box, whatever zoom the document carries', async () => {
     const drawn = await renderDocumentScene({
-      doc: createDoc({ memos: [], tables: [TABLE] }),
+      doc: createDoc({ memos: [], tables: [TABLE], zoomLevel: 0.8 }),
       theme,
       toWidth,
-      zoomLevel: 0.8,
       maxSide: 100_000,
     });
 
     try {
-      expect(drawn.scale).toBe(0.8);
+      expect(drawn.scale).toBe(1);
     } finally {
       drawn.destroy();
     }
   });
 
-  it('draws a table as a named box under the high level threshold', async () => {
-    const drawn = await drawnTables(0.5);
+  it('draws a table in full and at 100% for a document saved under the high level threshold', async () => {
+    const drawn = await drawnTables(ZOOMED_OUT);
 
-    // The high level group carries both names, so it is one table drawn in the
-    // other spelling rather than a second node beside it.
-    expect(drawn).toEqual({ tables: 1, highLevel: 1, scale: 0.5 });
+    // The high level group carries both names, so a table drawn in the other
+    // spelling would still count once here, and once more under its own name.
+    expect(drawn).toEqual({ tables: 1, highLevel: 0, scale: 1 });
   });
 
   /**
@@ -365,51 +368,39 @@ describe('createDocumentPng', () => {
     expect(await bytesOf(moved)).toEqual(await bytesOf(plain));
   });
 
-  it('draws the document at the zoom it is being read at', async () => {
+  it('draws a document saved zoomed out at 100%, one image pixel per scene unit', async () => {
     const box = expectedBox();
     const image = await decode(
       await createDocumentPng({
-        doc: createDoc({ zoomLevel: 0.5 }),
+        doc: createDoc({ zoomLevel: ZOOMED_OUT }),
         theme,
         toWidth,
       })
     );
 
-    // The box the image holds is the whole document either way; what the zoom
-    // decides is how many image pixels one scene unit is drawn with.
-    expect([image.width, image.height]).toEqual([
-      Math.round(box.width * 0.5),
-      Math.round(box.height * 0.5),
-    ]);
+    // The box the image holds is the whole document whatever the zoom, and the
+    // zoom the editor was at decides nothing about the pixels it is drawn with.
+    expect([image.width, image.height]).toEqual([box.width, box.height]);
   });
 
-  it('draws at the zoom the caller names, over the one the document carries', async () => {
-    const box = expectedBox();
-    const image = await decode(
-      await createDocumentPng({
-        // A document saved with the zoom left out arrives at 1, so the editor's
-        // own zoom is what the caller has to be able to name.
-        doc: createDoc({ zoomLevel: 1 }),
-        theme,
-        toWidth,
-        zoomLevel: 0.5,
-      })
-    );
+  it('draws the same image whatever zoom the editor is at', async () => {
+    const plain = await createDocumentPng({ doc: createDoc(), theme, toWidth });
+    const zoomed = await createDocumentPng({
+      doc: createDoc({ zoomLevel: ZOOMED_OUT }),
+      theme,
+      toWidth,
+    });
 
-    expect([image.width, image.height]).toEqual([
-      Math.round(box.width * 0.5),
-      Math.round(box.height * 0.5),
-    ]);
+    expect(await bytesOf(zoomed)).toEqual(await bytesOf(plain));
   });
 
-  it('says nothing about resolution for an image the zoom alone made smaller', async () => {
+  it('says nothing about resolution for a document saved zoomed out', async () => {
     const reductions: unknown[] = [];
 
     await createDocumentPng({
-      doc: createDoc(),
+      doc: createDoc({ zoomLevel: ZOOMED_OUT }),
       theme,
       toWidth,
-      zoomLevel: 0.5,
       onResolutionReduced: reduction => reductions.push(reduction),
     });
 
@@ -553,7 +544,7 @@ describe('createDocumentPng', () => {
       },
     ]);
     // The dialog states these very pixels, and warns, before the file exists.
-    expect(getExportSize(box, 1, 2)).toEqual({
+    expect(getExportSize(box, 2)).toEqual({
       ...reductions[0],
       reduced: true,
     });
@@ -642,23 +633,22 @@ describe('createDocumentPng', () => {
     }
   });
 
-  it('draws every scene unit with as many pixels as the scale asks for', async () => {
+  it('draws every scene unit with as many pixels as the scale asks for, whatever the zoom', async () => {
     const box = expectedBox();
     const image = await decode(
       await createDocumentPng({
-        doc: createDoc(),
+        doc: createDoc({ zoomLevel: ZOOMED_OUT }),
         theme,
         toWidth,
-        zoomLevel: 0.5,
         pixelRatio: 3,
       })
     );
 
     expect([image.width, image.height]).toEqual([
-      Math.round(box.width * 0.5 * 3),
-      Math.round(box.height * 0.5 * 3),
+      Math.round(box.width * 3),
+      Math.round(box.height * 3),
     ]);
-    const size = getExportSize(box, 0.5, 3);
+    const size = getExportSize(box, 3);
     expect([size.width, size.height]).toEqual([image.width, image.height]);
     expect(size.reduced).toBe(false);
   });
@@ -702,7 +692,6 @@ describe('createDocumentPreview', () => {
       doc: createDoc(),
       theme,
       toWidth,
-      zoomLevel: 1,
       maxSide: 200,
     });
     const image = await decode(preview.blob);
@@ -713,8 +702,22 @@ describe('createDocumentPreview', () => {
       box.width,
       box.height,
     ]);
-    expect(preview.zoomLevel).toBe(1);
     expect(image.at(1, 1)).toBe(theme.canvasBackground);
+  });
+
+  it('previews a document saved zoomed out at the size its export takes at 100%', async () => {
+    const box = expectedBox();
+    const preview = await createDocumentPreview({
+      doc: createDoc({ zoomLevel: ZOOMED_OUT }),
+      theme,
+      toWidth,
+      maxSide: 100_000,
+    });
+    const image = await decode(preview.blob);
+
+    // A side larger than the box caps nothing, so the preview is the png itself.
+    expect([image.width, image.height]).toEqual([box.width, box.height]);
+    expect([preview.width, preview.height]).toEqual([box.width, box.height]);
   });
 
   it('draws a document far longer than it is thick, its short side kept at a pixel', async () => {
@@ -729,7 +732,6 @@ describe('createDocumentPreview', () => {
       doc: createDoc({ memos }),
       theme,
       toWidth,
-      zoomLevel: 1,
       maxSide,
     });
     const image = await decode(preview.blob);
