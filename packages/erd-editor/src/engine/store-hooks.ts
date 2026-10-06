@@ -62,7 +62,7 @@ export function createHooks(store: Store) {
 }
 
 /**
- * Writes at once what the hooks a load wakes write over the next 10 ms, which
+ * Writes at once what the hooks a load wakes write over the next 5 ms, which
  * then find nothing left to write, so a replica measuring changes from its load
  * does not take them for an edit.
  */

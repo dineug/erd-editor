@@ -68,7 +68,7 @@ const rxStores: RxStore[] = [];
 const subscriptions: Subscription[] = [];
 
 const tick = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
-/** throttle window is 10ms (5ms for a drag's sort) with trailing only. */
+/** Past every window: a drag's sort waits 5 ms, the other hooks a microtask or two. */
 const settle = () => tick(50);
 /** The microtasks a trigger queues and the ones those queue, with no task between. */
 const microtasks = async () => {

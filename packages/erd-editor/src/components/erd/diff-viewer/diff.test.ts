@@ -116,8 +116,8 @@ function createState(tables: TableSeed[]): RootState {
     });
   });
 
-  // The relationship hooks recalculate on a 10 ms throttle, which fires after
-  // the file's environment is gone unless the store lets go of them.
+  // Lets go of the store, so nothing its edits set running outlives the
+  // file's environment.
   const { state } = app.store;
   app.store.destroy();
   return state;

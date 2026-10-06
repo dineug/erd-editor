@@ -1,14 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { isNil } from 'es-toolkit';
-import {
-  asapScheduler,
-  filter,
-  tap,
-  throttle,
-  throttleTime,
-  timer,
-} from 'rxjs';
+import { asapScheduler, filter, observeOn, tap, throttle, timer } from 'rxjs';
 
 import { ColumnOption, Show, StartRelationshipType } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
@@ -161,14 +154,35 @@ export function recalculateStartRelationshipType(state: RootState) {
   }
 }
 
+/**
+ * Reads the flag once per batch, in the microtask after it, as the foreign key
+ * bits are read: a headless peer writes its file one scheduler turn after a
+ * batch, and a flag read on a timer reached that file only with the next write.
+ */
 const identificationHook: HookEffect = (action$, getState) =>
   action$
-    .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
+    .pipe(
+      throttle(() => timer(0, asapScheduler), {
+        leading: false,
+        trailing: true,
+      })
+    )
     .subscribe(() => recalculateIdentification(getState()));
 
+/**
+ * The same one microtask later, behind the not null a key turned on sets in the
+ * microtask after its batch: read before it, a batch keying two end columns at
+ * once left the relationship ringed.
+ */
 const startRelationshipHook: HookEffect = (action$, getState) =>
   action$
-    .pipe(throttleTime(10, undefined, { leading: false, trailing: true }))
+    .pipe(
+      throttle(() => timer(0, asapScheduler), {
+        leading: false,
+        trailing: true,
+      }),
+      observeOn(asapScheduler)
+    )
     .subscribe(() => recalculateStartRelationshipType(getState()));
 
 /**

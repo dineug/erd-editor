@@ -870,7 +870,7 @@ describe('createReplicationStore', () => {
     }
 
     it.each([0, 3, 7])(
-      'changes nothing for a view change %i ms into a load, before its hooks would have run',
+      'changes nothing for a view change %i ms into a load, whichever of its hooks have run',
       async delay => {
         vi.useFakeTimers();
         const store = make(winWidth);

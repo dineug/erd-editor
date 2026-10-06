@@ -477,9 +477,9 @@ cost when you hit them blind.
 - The outward `change` event is `debounceTime(200)`. It is not an assertion
   target; `el.value` is.
 - Relationship side effects land on later ticks: the FK `ui.keys` bit arrives on
-  the next channel tick, `identification` / `startRelationshipType` on a 10ms
-  trailing throttle, and the relationship's start/end geometry on a 5ms one
-  after a dragged table or memo, or a microtask after anything else.
+  the next channel tick, `identification` / `startRelationshipType` in the
+  microtasks after the batch, and the relationship's start/end geometry on a
+  5ms throttle after a dragged table or memo, or a microtask after anything else.
   Poll for all four.
 - A column reorder plays a 0.3s FLIP tween on the scene (`FLIP_DURATION`).
   Assert the settled `columnIds` order or the settled projected order, never a

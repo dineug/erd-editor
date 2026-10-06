@@ -412,7 +412,7 @@ describe('relationship.changeColumns converges', () => {
   const meshes: Mesh[] = [];
   const cleanups: Array<() => void> = [];
 
-  /** Lets every hook a batch woke run: the 10 ms windows and the microtasks. */
+  /** Lets every hook a batch woke run: the 5 ms windows and the microtasks. */
   const settleHooks = async () => {
     await vi.advanceTimersByTimeAsync(20);
   };
