@@ -95,12 +95,13 @@ export const SVG_SKIPPED_ATTRIBUTES: readonly string[] = [
 ];
 
 export type SceneSvgOptions = {
-  /** What the image holds, in scene units, which the viewBox is. */
+  /**
+   * What the image holds, in scene units, which the viewBox is and, an export
+   * being drawn at 100%, its width and height too.
+   */
   box: Rect;
   /** The factor the layers place that box onto the Stage by. */
   scale: number;
-  /** The zoom the image is drawn at, which its width and height are the box times. */
-  zoomLevel: number;
 };
 
 /**
@@ -616,11 +617,11 @@ function writeNode(node: KonvaNode, writer: Writer): string {
  * embedded, and the shadows are left out, as the export dialog promises.
  *
  * @example
- * const { stage, box, scale, zoomLevel } = scene;
- * const svg = toSceneSvg(stage, { box, scale, zoomLevel });
+ * const { stage, box, scale } = scene;
+ * const svg = toSceneSvg(stage, { box, scale });
  */
 export function toSceneSvg(stage: Stage, options: SceneSvgOptions): string {
-  const { box, zoomLevel } = options;
+  const { box } = options;
   const writer: Writer = { ...options, clips: [] };
   const body = stage
     .getChildren()
@@ -637,8 +638,8 @@ export function toSceneSvg(stage: Stage, options: SceneSvgOptions): string {
   // unless it names another, and so does the whitespace konva draws as typed.
   const root =
     attr('xmlns', SVG_NAMESPACE) +
-    attr('width', num(box.width * zoomLevel)) +
-    attr('height', num(box.height * zoomLevel)) +
+    attr('width', num(box.width)) +
+    attr('height', num(box.height)) +
     attr('viewBox', viewBox) +
     attr('font-family', TextFontFamily) +
     attr('font-size', num(CELL_FONT_SIZE)) +

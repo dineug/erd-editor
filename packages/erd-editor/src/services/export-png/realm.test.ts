@@ -62,7 +62,6 @@ const result = (width: number, height: number) => ({
   height,
   documentWidth: width * 2,
   documentHeight: height * 2,
-  zoomLevel: 0.5,
   reduction: null,
 });
 
@@ -259,18 +258,18 @@ describe('what the realm that drew reports back', () => {
 });
 
 describe('the preview the export dialog shows', () => {
-  it('asks the worker for the export capped at a side, one pixel per unit', async () => {
+  it('asks the worker for the export capped at a side, one pixel per unit and no zoom', async () => {
     const { createDocumentPreview } = await load();
 
-    await createDocumentPreview({ ...options(), zoomLevel: 0.8, maxSide: 960 });
+    await createDocumentPreview({ ...options(), maxSide: 960 });
 
     const [request] = state.render.mock.calls[0];
     expect(request).toMatchObject({
       doc: '{}',
       pixelRatio: 1,
-      zoomLevel: 0.8,
       maxSide: 960,
     });
+    expect(Reflect.has(request, 'zoomLevel')).toBe(false);
     expect(request.fontProbe).toEqual([21, 10, 10]);
     expect(mainRender).not.toHaveBeenCalled();
   });
@@ -286,7 +285,6 @@ describe('the preview the export dialog shows', () => {
       height: 20,
       documentWidth: 20,
       documentHeight: 40,
-      zoomLevel: 0.5,
     });
   });
 
@@ -303,19 +301,19 @@ describe('the preview the export dialog shows', () => {
 });
 
 describe('the svg the export dialog writes', () => {
-  it('asks the worker at the zoom, with no scale and the probe widths', async () => {
+  it('asks the worker with no zoom, no scale and the probe widths', async () => {
     const { createDocumentSvg } = await load();
 
-    const svg = await createDocumentSvg({ ...options(), zoomLevel: 0.8 });
+    const svg = await createDocumentSvg(options());
 
     expect(svg).toBe('<svg>worker</svg>');
     const [request] = state.renderSvg.mock.calls[0];
     expect(request).toEqual({
       doc: '{}',
       theme,
-      zoomLevel: 0.8,
       fontProbe: [21, 10, 10],
     });
+    expect(Reflect.has(request, 'zoomLevel')).toBe(false);
     expect(request.theme).not.toBe(theme);
     expect(state.render).not.toHaveBeenCalled();
     expect(mainRenderSvg).not.toHaveBeenCalled();

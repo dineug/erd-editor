@@ -157,7 +157,7 @@ describe('exportFile', () => {
       const calls: Array<[Blob, { fileName: string }]> = [];
       setExportFileCallback((blob, options) => calls.push([blob, options]));
 
-      const request = { ...pngRequest(), zoomLevel: 0.75 };
+      const request = pngRequest();
       await exportSVG(request, 'diagram');
 
       expect(createDocumentSvgMock).toHaveBeenCalledWith(request);

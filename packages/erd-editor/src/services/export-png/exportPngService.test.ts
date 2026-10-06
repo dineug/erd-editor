@@ -117,13 +117,12 @@ describe('ExportPngService.renderSvg', () => {
     const svg = await service.renderSvg({
       doc: '{}',
       theme,
-      zoomLevel: 0.5,
       fontProbe: probeWidths(),
     });
 
     expect(svg).toBe('<svg/>');
     const [request] = mockRenderSvg.mock.calls[0];
-    expect(request).toMatchObject({ doc: '{}', theme, zoomLevel: 0.5 });
+    expect(request).toMatchObject({ doc: '{}', theme });
     expect(typeof request.toWidth).toBe('function');
   });
 

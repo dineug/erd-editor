@@ -139,7 +139,6 @@ const drawn = (overrides: Partial<DocumentPreview> = {}): DocumentPreview => ({
   height: 240,
   documentWidth: 2_160,
   documentHeight: 1_080,
-  zoomLevel: 1,
   ...overrides,
 });
 
@@ -365,7 +364,7 @@ describe('ExportImage opening', () => {
 });
 
 describe('ExportImage preview', () => {
-  it('draws the document as it was when the dialog opened, at the live zoom', async () => {
+  it('draws the document as it was when the dialog opened, at 100% whatever the live zoom', async () => {
     const app = await setup();
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.8 }));
     const doc = toJson(app.store.state);
@@ -379,10 +378,12 @@ describe('ExportImage preview', () => {
     expect(preview).toHaveBeenCalledTimes(1);
     const [options] = preview.mock.calls[0];
     expect(options.doc).toBe(doc);
-    expect(options.zoomLevel).toBe(0.8);
+    expect(options).not.toHaveProperty('zoomLevel');
     expect(options.maxSide).toBe(PREVIEW_MAX_SIDE);
     expect(options.toWidth).toBe(app.toWidth);
     expect(options.theme).toEqual(sceneTheme);
+    // The box the preview measured times the scale.
+    expect(sizeText()).toBe('PNG 4320 × 2160 px');
   });
 
   it('shows a loading ring until the preview lands, then the picture', async () => {
@@ -655,7 +656,7 @@ describe('ExportImage preview', () => {
 });
 
 describe('ExportImage buttons', () => {
-  it('writes the png from the document as it opened, at the scale picked, and stays open', async () => {
+  it('writes the png from the document as it opened, at 100% and the scale picked, and stays open', async () => {
     const app = await setup();
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.6 }));
@@ -673,7 +674,6 @@ describe('ExportImage buttons', () => {
       doc,
       theme: sceneTheme,
       toWidth: app.toWidth,
-      zoomLevel: 0.6,
       pixelRatio: 3,
       i18n: { locale: 'en', messages: en },
     });
@@ -693,7 +693,7 @@ describe('ExportImage buttons', () => {
     expect(request.theme).toEqual(sceneTheme);
   });
 
-  it('writes the svg at the zoom it opened at, the scale left to the png, and stays open', async () => {
+  it('writes the svg at 100% whatever the zoom it opened at, the scale left to the png, and stays open', async () => {
     const app = await setup();
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.6 }));
@@ -713,8 +713,8 @@ describe('ExportImage buttons', () => {
       doc,
       theme: { ...sceneTheme, canvasBackground: TRANSPARENT_BACKGROUND },
       toWidth: app.toWidth,
-      zoomLevel: 0.6,
     });
+    expect(request).not.toHaveProperty('zoomLevel');
     expect(databaseName).toBe('shop');
     expect(dialog()).not.toBeNull();
   });

@@ -28,17 +28,17 @@ type AskedPixels = Pick<ResolutionReduction, 'askedWidth' | 'askedHeight'>;
 type ImageFormat = 'PNG' | 'SVG';
 
 /**
- * The dialog's warning before any file exists: the pixels the zoom times the
- * scale asks for, which a canvas ceiling cuts. The toast after it opens alike.
+ * The dialog's warning before any file exists: the pixels the scale asks for,
+ * which a canvas ceiling cuts. The toast after it opens alike.
  */
 export function describeAskedSize({ askedWidth, askedHeight }: AskedPixels) {
   return localized('exportImage.reducedFrom', { askedWidth, askedHeight });
 }
 
 /**
- * Says what was lost and why, in the pixels the dialog warned of: what the zoom
- * times the scale asked for, then what was written. A box that fits at 1x can
- * still outrun a canvas at 2x, so the document's own size explains nothing.
+ * Says what was lost and why, in the pixels the dialog warned of: what the
+ * scale asked for, then what was written. A box that fits at 1x can still
+ * outrun a canvas at 2x, so the document's own size explains nothing.
  */
 export function describeReduction({
   askedWidth,
@@ -124,7 +124,7 @@ async function writeImageFile(
  * became of the file replaces the message about making it.
  *
  * @example
- * await exportImagePng(app, { doc, theme, toWidth, zoomLevel, pixelRatio: 2 }, databaseName);
+ * await exportImagePng(app, { doc, theme, toWidth, pixelRatio: 2 }, databaseName);
  */
 export async function exportImagePng(
   { emitter }: AppContext,
@@ -159,22 +159,22 @@ export async function exportImagePng(
 }
 
 /**
- * Draws the document into an svg file at the zoom, the scale left out, saying
- * so while it draws. An svg holds no canvas, so nothing is ever reduced, and
- * only a failure is reported once the file is done.
+ * Draws the document into an svg file at 100%, the scale left out, saying so
+ * while it draws. An svg holds no canvas, so nothing is ever reduced, and only
+ * a failure is reported once the file is done.
  *
  * @example
- * await exportImageSvg(app, { doc, theme, toWidth, zoomLevel, i18n }, databaseName);
+ * await exportImageSvg(app, { doc, theme, toWidth, i18n }, databaseName);
  */
 export async function exportImageSvg(
   { emitter }: AppContext,
-  { doc, theme, toWidth, zoomLevel, i18n }: SvgRequest,
+  { doc, theme, toWidth, i18n }: SvgRequest,
   databaseName: string
 ) {
   await writeImageFile(
     emitter,
     'SVG',
-    exportSVG({ doc, theme, toWidth, zoomLevel, i18n }, databaseName)
+    exportSVG({ doc, theme, toWidth, i18n }, databaseName)
   );
 }
 
@@ -184,7 +184,7 @@ export async function exportImageSvg(
  * itself; a host that refuses is told to save a PNG instead.
  *
  * @example
- * copyImagePng(app, { doc, theme, toWidth, zoomLevel, pixelRatio: 2 });
+ * copyImagePng(app, { doc, theme, toWidth, pixelRatio: 2 });
  */
 export async function copyImagePng(
   { emitter }: AppContext,

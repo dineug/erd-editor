@@ -71,7 +71,6 @@ const request = (): ImageRequest => ({
   doc: '{"doc":{}}',
   theme,
   toWidth: app.toWidth,
-  zoomLevel: 0.75,
   pixelRatio: 2,
 });
 
@@ -183,7 +182,6 @@ describe('exportImagePng', () => {
     expect(options).toMatchObject({
       doc: '{"doc":{}}',
       theme,
-      zoomLevel: 0.75,
       pixelRatio: 2,
     });
     expect(options.toWidth).toBe(app.toWidth);
@@ -258,14 +256,13 @@ describe('exportImagePng', () => {
 });
 
 describe('exportImageSvg', () => {
-  it('draws the request at the zoom, the scale left out, into an svg named after the database', async () => {
+  it('draws the request, the scale left out, into an svg named after the database', async () => {
     await exportImageSvg(app, request(), 'shop');
 
     expect(vi.mocked(createDocumentSvg).mock.calls[0][0]).toEqual({
       doc: '{"doc":{}}',
       theme,
       toWidth: app.toWidth,
-      zoomLevel: 0.75,
     });
     expect(createDocumentPng).not.toHaveBeenCalled();
     expect(exported).toEqual([
@@ -338,7 +335,6 @@ describe('copyImagePng', () => {
     expect(vi.mocked(createDocumentPng).mock.calls[0][0]).toMatchObject({
       doc: '{"doc":{}}',
       theme,
-      zoomLevel: 0.75,
       pixelRatio: 2,
     });
   });
