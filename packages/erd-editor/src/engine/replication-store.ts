@@ -3,7 +3,7 @@ import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
-import { ChangeActionTypes } from '@/engine/actions';
+import { ReplicaActionTypes } from '@/engine/actions';
 import {
   createEngineContext,
   type InjectEngineContext,
@@ -72,7 +72,7 @@ export function createReplicationStore(
   const dispatch$ = new Subject<Array<AnyAction>>();
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
-  ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
+  ).pipe(actionsFilter(ReplicaActionTypes), debounceTime(200));
   const observers = new Set<Partial<ListenerRecord>>();
   // What a change is measured against: the value the last one handed out, or
   // after a load the value the first change action finds, which holds the
@@ -140,7 +140,7 @@ export function createReplicationStore(
   subscriptionSet.add(change$.subscribe(handleChange)).add(
     dispatch$
       .pipe(
-        actionsFilter(ChangeActionTypes),
+        actionsFilter(ReplicaActionTypes),
         map(actions => actions.map(action => omit(action, ['tags'])))
       )
       .subscribe(actions => {

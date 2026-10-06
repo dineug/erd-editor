@@ -556,4 +556,33 @@ describe('the view and the tab a lock can hold', () => {
 
     expect(settings.canvasType).toBe(CanvasType.settings);
   });
+
+  it.each([
+    ['locked', LockSettingType.canvasType, CanvasType.ERD],
+    ['unlocked', 0, CanvasType.settings],
+  ])(
+    'keeps a bit no lock owns beside a tab %s at Settings',
+    (_label, bit, canvasType) => {
+      const lockSettings = 64 | bit;
+      const settings = mergeSettings({
+        canvasType: CanvasType.settings,
+        lockSettings,
+      });
+
+      expect(settings.lockSettings).toBe(lockSettings);
+      expect(settings.canvasType).toBe(canvasType);
+      expect(settings.lockedValues.canvasType).toBe(canvasType);
+    }
+  );
+
+  it.each([
+    [4.5, LockSettingType.language],
+    [NaN, 0],
+    [Infinity, 0],
+  ])(
+    'reads a lockSettings of %d as the int32 a bit test sees',
+    (value, bits) => {
+      expect(mergeSettings({ lockSettings: value }).lockSettings).toBe(bits);
+    }
+  );
 });

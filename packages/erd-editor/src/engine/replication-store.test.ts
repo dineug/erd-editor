@@ -1,12 +1,18 @@
-import { compositionActionsFlat } from '@dineug/r-html';
+import { toJson } from '@dineug/erd-editor-schema';
+import { type AnyAction, compositionActionsFlat } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
+import {
+  createSeedValue,
+  createUserStore,
+  SEED,
+} from '@/__test-utils__/peerSeed';
 import {
   CanvasType,
   ColumnUIKey,
   Language,
   LockSettingType,
+  NameCase,
   StartRelationshipType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
@@ -15,16 +21,21 @@ import {
   changeCanvasTypeAction,
   changeLanguageAction,
   changeLockSettingsAction,
+  changeTableNameCaseAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import {
+  changeLockSettingsAction$,
+  changeZoomLevelAction$,
+} from '@/engine/modules/settings/generator.actions';
 import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { createPeerStore } from '@/engine/peer-store';
 import {
   createReplicationStore,
   ReplicationStore,
@@ -288,6 +299,28 @@ describe('createReplicationStore', () => {
 
       vi.advanceTimersByTime(250);
       expect(change).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports a batch of the save switch the locks replaced, which changes nothing', () => {
+      vi.useFakeTimers();
+      const store = make();
+      store.dispatchSync(unlock(viewport));
+      vi.advanceTimersByTime(250);
+      const change = vi.fn();
+      store.on({ change });
+      const before = store.value;
+
+      store.dispatchSync({
+        type: 'settings.changeIgnoreSaveSettings',
+        payload: { saveSettingType: 3, value: true },
+        tags: Tag.shared,
+        version: 5,
+      });
+      vi.advanceTimersByTime(250);
+
+      expect(change).toHaveBeenCalledTimes(1);
+      expect(change).toHaveBeenCalledWith({ value: before, changed: false });
+      expect(parse(store).settings).toMatchObject({ ignoreSaveSettings: 0 });
     });
 
     it('reports no change for a load, which a host has just read', async () => {
@@ -802,6 +835,132 @@ describe('createReplicationStore', () => {
       expect(parse(store).collections.tableEntities.t1.name).toBe(
         'customer_accounts'
       );
+    });
+  });
+
+  /**
+   * A code setting changed while locked reaches only the readers open then; one
+   * that joins later from the file shows the value the lock holds. An unlock
+   * carries the unlocker's values, so every store saves one value after it.
+   */
+  describe('an unlock after a reader joined from the file', () => {
+    const codeLocks = LockSettingType.language | LockSettingType.tableNameCase;
+    const onScreen = {
+      language: Language.Kotlin,
+      tableNameCase: NameCase.snakeCase,
+    };
+    const inFile = {
+      language: Language.GraphQL,
+      tableNameCase: NameCase.pascalCase,
+    };
+
+    type Reader = {
+      receive: (actions: AnyAction[]) => void;
+      values: () => string[];
+    };
+    const readers: Reader[] = [];
+    const closers: Array<() => void> = [];
+
+    afterEach(() => {
+      readers.splice(0);
+      closers.splice(0).forEach(close => close());
+    });
+
+    /** What a host does with the batch a reader sent: hands it to every other reader. */
+    const relay = (from: Reader, actions: AnyAction[]) =>
+      readers.forEach(reader => reader !== from && reader.receive(actions));
+
+    /** An editor window: the element's stores and the replica saving for it, fed what it sends. */
+    function openEditor(value: string) {
+      const user = createUserStore(value);
+      const replica = make();
+      replica.setInitialValue(value);
+      const reader: Reader = {
+        receive: actions => {
+          user.sharedStore.dispatchSync(actions);
+          replica.dispatchSync(actions);
+        },
+        values: () => [toJson(user.rxStore.state), replica.value],
+      };
+      readers.push(reader);
+      closers.push(
+        user.sharedStore.subscribe(actions => {
+          replica.dispatchSync(actions);
+          relay(reader, actions);
+        }),
+        user.destroy
+      );
+      return { rxStore: user.rxStore, replica };
+    }
+
+    /** A coding agent's headless peer, which joins from the file as a window does. */
+    function openAgent(value: string) {
+      const peer = createPeerStore({ nickname: 'agent', presence: false });
+      peer.setInitialValue(value);
+      const reader: Reader = {
+        receive: actions => peer.receive(actions),
+        values: () => [peer.value],
+      };
+      readers.push(reader);
+      closers.push(
+        peer.subscribe(actions => relay(reader, actions)),
+        peer.destroy
+      );
+      return peer;
+    }
+
+    /**
+     * A window that changed both settings while they were locked, and the
+     * file it leaves, which an editor and an agent joining after it open.
+     */
+    async function joinedLater() {
+      const first = openEditor(createSeedValue());
+      first.rxStore.dispatchSync(
+        changeLanguageAction({ value: onScreen.language }),
+        changeTableNameCaseAction({ value: onScreen.tableNameCase })
+      );
+      const file = first.replica.value;
+      openEditor(file);
+      const agent = openAgent(file);
+      await settle();
+
+      expect(JSON.parse(file).settings).toMatchObject(inFile);
+      return { first, agent };
+    }
+
+    /** The settings every editor, the agent and every replica would save. */
+    const savedSettings = () =>
+      readers
+        .flatMap(reader => reader.values())
+        .map(value => JSON.parse(value).settings);
+
+    const expectOneValue = (values: object) => {
+      const [first, ...rest] = savedSettings();
+
+      expect(rest).toHaveLength(4);
+      for (const settings of rest) expect(settings).toEqual(first);
+      expect(first).toMatchObject({
+        ...values,
+        lockSettings: LOCK_ALL & ~codeLocks,
+      });
+    };
+
+    it('saves the values the window that unlocked showed, on every store', async () => {
+      const { first } = await joinedLater();
+
+      first.rxStore.dispatchSync(changeLockSettingsAction$(codeLocks, false));
+      await settle();
+
+      expectOneValue(onScreen);
+    });
+
+    it('saves the values of the agent that joined later, when it unlocks', async () => {
+      const { agent } = await joinedLater();
+
+      agent.dispatch([changeLockSettingsAction$(codeLocks, false)]);
+      await settle();
+
+      expectOneValue(inFile);
     });
   });
 

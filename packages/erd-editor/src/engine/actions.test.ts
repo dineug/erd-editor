@@ -8,6 +8,7 @@ import {
   HistoryActionTypes,
   LockSettingActionTypes,
   ReadonlyIgnoreActionTypes,
+  ReplicaActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
   SharedStreamActionTypes,
@@ -147,6 +148,21 @@ describe('ChangeActionTypes', () => {
     expect(ChangeActionTypes).not.toContain('editor.changeViewport');
     expect(ChangeActionTypes).not.toContain('editor.sharedMouseTracker');
     expect(ChangeActionTypes).not.toContain('memo.changeZIndex');
+  });
+});
+
+describe('ReplicaActionTypes', () => {
+  it('is ChangeActionTypes plus the save switch the locks replaced, a change of no other list', () => {
+    expect(ReplicaActionTypes).toEqual([
+      ...ChangeActionTypes,
+      'settings.changeIgnoreSaveSettings',
+    ]);
+    expect(SharedActionTypes).not.toContain(
+      'settings.changeIgnoreSaveSettings'
+    );
+    expect(HistoryActionTypes).not.toContain(
+      'settings.changeIgnoreSaveSettings'
+    );
   });
 });
 

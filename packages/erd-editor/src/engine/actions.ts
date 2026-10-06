@@ -145,6 +145,15 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'editor.clear',
 ];
 
+/**
+ * What a replica applies and reports: every change, and the save switch the
+ * locks replaced, which changes nothing yet owes the hub that relayed it a save.
+ */
+export const ReplicaActionTypes: ReadonlyArray<ActionType> = [
+  ...ChangeActionTypes,
+  'settings.changeIgnoreSaveSettings',
+];
+
 const hasReadonlyIgnore = arrayHas([
   'settings.changeZoomLevel',
   'settings.streamZoomLevel',

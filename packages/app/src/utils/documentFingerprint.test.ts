@@ -1,6 +1,10 @@
 import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import {
+  CanvasType,
   createPeerStore,
+  LockSettingType,
+  settingsActions,
+  settingsActions$,
   tableActions,
   tableActions$,
 } from '@dineug/erd-editor/peer.js';
@@ -76,14 +80,22 @@ const LIVE = changed(({ doc }) => {
   doc.memoIds.push('note');
 }, TOMBSTONES);
 
-const viewChanges: Array<[string, (json: any) => void]> = [
+const legacyScrollChanges: Array<[string, (json: any) => void]> = [
   ['scrollTop', json => (json.settings.scrollTop += 10)],
   ['scrollLeft', json => (json.settings.scrollLeft += 10)],
+];
+
+const lockableViewChanges: Array<[string, (json: any) => void]> = [
   ['originX', json => (json.settings.originX += 10)],
   ['originY', json => (json.settings.originY -= 10)],
   ['zoomLevel', json => (json.settings.zoomLevel = 0.5)],
   ['canvasType', json => (json.settings.canvasType = 'settings')],
 ];
+
+const viewChanges = [...legacyScrollChanges, ...lockableViewChanges];
+
+/** VALUE with no lock on, where a new document has every one. */
+const UNLOCKED = changed(json => (json.settings.lockSettings = 0));
 
 const derivedChanges: Array<[string, (json: any) => void]> = [
   [
@@ -136,9 +148,49 @@ describe('toFingerprint', () => {
 });
 
 describe('toDriveFingerprint', () => {
-  it.each(viewChanges)('ignores %s', (_name, change) => {
-    expect(toDriveFingerprint(changed(change))).toBe(toDriveFingerprint(VALUE));
+  it.each(viewChanges)('ignores %s while no lock holds it', (_name, change) => {
+    expect(toDriveFingerprint(changed(change, UNLOCKED))).toBe(
+      toDriveFingerprint(UNLOCKED)
+    );
   });
+
+  it.each(legacyScrollChanges)(
+    'ignores %s with every lock on',
+    (_name, change) => {
+      expect(toDriveFingerprint(changed(change))).toBe(
+        toDriveFingerprint(VALUE)
+      );
+    }
+  );
+
+  it.each(lockableViewChanges)(
+    'tells %s apart while a lock holds it',
+    (_name, change) => {
+      expect(toDriveFingerprint(changed(change))).not.toBe(
+        toDriveFingerprint(VALUE)
+      );
+    }
+  );
+
+  it.each([
+    ['viewport', 'originX', 'canvasType'],
+    ['canvasType', 'canvasType', 'originX'],
+  ] as const)(
+    'reads the %s lock alone by the bit the engine saves',
+    (lock, held, free) => {
+      const change = Object.fromEntries(lockableViewChanges);
+      const locked = changed(
+        json => (json.settings.lockSettings = LockSettingType[lock])
+      );
+
+      expect(toDriveFingerprint(changed(change[held], locked))).not.toBe(
+        toDriveFingerprint(locked)
+      );
+      expect(toDriveFingerprint(changed(change[free], locked))).toBe(
+        toDriveFingerprint(locked)
+      );
+    }
+  );
 
   it.each(derivedChanges)('ignores %s the engine derives', (_name, change) => {
     expect(toDriveFingerprint(changed(change))).toBe(toDriveFingerprint(VALUE));
@@ -150,11 +202,117 @@ describe('toDriveFingerprint', () => {
     );
   });
 
-  it('ignores every view setting at once', () => {
-    const viewed = changed(json =>
-      viewChanges.forEach(([, change]) => change(json))
+  it('ignores every view setting at once while no lock holds it', () => {
+    const viewed = changed(
+      json => viewChanges.forEach(([, change]) => change(json)),
+      UNLOCKED
     );
-    expect(toDriveFingerprint(viewed)).toBe(toDriveFingerprint(VALUE));
+    expect(toDriveFingerprint(viewed)).toBe(toDriveFingerprint(UNLOCKED));
+  });
+
+  describe('a view a lock holds, on a replica', () => {
+    const { viewport, canvasType } = LockSettingType;
+    const moves: Array<[string, number, unknown[]]> = [
+      [
+        'viewport',
+        viewport,
+        [
+          settingsActions.scrollToAction({ originX: -800, originY: -400 }),
+          settingsActions.changeZoomLevelAction({ value: 0.5 }),
+        ],
+      ],
+      [
+        'tab',
+        canvasType,
+        [
+          settingsActions.changeCanvasTypeAction({
+            value: CanvasType.schemaSQL,
+          }),
+        ],
+      ],
+    ];
+    const opened: Array<{ destroy(): void }> = [];
+
+    afterEach(() => opened.splice(0).forEach(store => store.destroy()));
+
+    function open(value: string) {
+      const store = createPeerStore({ nickname: 'reader', presence: false });
+      store.setInitialValue(value);
+      opened.push(store);
+      return store;
+    }
+
+    const lock = (bits: number, value: boolean) =>
+      settingsActions$.changeLockSettingsAction$(bits, value);
+
+    it.each(moves)(
+      'tells a locked %s moved by an unlock and a lock again apart',
+      (_name, bit, move) => {
+        const store = open(VALUE);
+        const base = toDriveFingerprint(store.value);
+
+        store.dispatch(move as any);
+        store.dispatch([lock(bit, false)]);
+        store.dispatch([lock(bit, true)]);
+
+        expect(JSON.parse(store.value).settings.lockSettings).toBe(
+          JSON.parse(VALUE).settings.lockSettings
+        );
+        expect(toDriveFingerprint(store.value)).not.toBe(base);
+      }
+    );
+
+    it.each(moves)(
+      'ignores the %s moved while locked, which the value holds where it was locked',
+      (_name, _bit, move) => {
+        const store = open(VALUE);
+        const base = toDriveFingerprint(store.value);
+
+        store.dispatch(move as any);
+
+        expect(toDriveFingerprint(store.value)).toBe(base);
+      }
+    );
+
+    it.each(moves)(
+      'ignores the %s moved while unlocked, which the value holds as it moves',
+      (_name, bit, move) => {
+        const store = open(VALUE);
+        store.dispatch([lock(bit, false)]);
+        const before = store.value;
+
+        store.dispatch(move as any);
+
+        expect(store.value).not.toBe(before);
+        expect(toDriveFingerprint(store.value)).toBe(
+          toDriveFingerprint(before)
+        );
+      }
+    );
+
+    it('opens a file saved before the locks at one fingerprint no view move changes', () => {
+      const preLock = changed(({ settings }) => {
+        delete settings.lockSettings;
+        Object.assign(settings, {
+          ignoreSaveSettings: 0,
+          originX: -500,
+          originY: -300,
+          zoomLevel: 0.7,
+          canvasType: CanvasType.schemaSQL,
+        });
+      });
+      const here = open(preLock);
+      const there = open(preLock);
+      const base = toDriveFingerprint(here.value);
+
+      expect(toDriveFingerprint(there.value)).toBe(base);
+      here.dispatch(moves.flatMap(([, , move]) => move) as any);
+
+      expect(JSON.parse(here.value).settings.lockSettings).toBe(
+        JSON.parse(VALUE).settings.lockSettings
+      );
+      expect(toDriveFingerprint(here.value)).toBe(base);
+    });
   });
 
   describe('what no longer hangs off the document', () => {

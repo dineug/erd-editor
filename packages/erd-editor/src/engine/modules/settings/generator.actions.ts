@@ -28,6 +28,7 @@ import { zoomLevelInRange } from '@/utils/validation';
 import {
   changeLockSettingsAction,
   changeZoomLevelAction,
+  CodeLockSettings,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
@@ -167,20 +168,23 @@ export const pinchZoomAction$ = (
   };
 
 /**
- * Locks the settings named at what they hold now, or unlocks them. A canvas
- * type locked on the Settings tab holds the tab the reader came from.
+ * Locks the settings named at what they hold now, or unlocks them carrying the
+ * code settings among them as they show here. A canvas type locked on the
+ * Settings tab holds the tab the reader came from.
  */
 export const changeLockSettingsAction$ = (
   lockSettingType: number,
   value: boolean
 ): GeneratorAction =>
   function* ({ settings, editor }) {
-    const fields = LockSettingTypeList.filter(bit =>
-      bHas(lockSettingType, bit)
-    ).flatMap(bit => LockSettingFields[bit]);
-    const values: Partial<RootState['settings']['lockedValues']> = value
-      ? pick(settings, fields)
-      : {};
+    const named = value ? lockSettingType : lockSettingType & CodeLockSettings;
+    const fields = LockSettingTypeList.filter(bit => bHas(named, bit)).flatMap(
+      bit => LockSettingFields[bit]
+    );
+    const values: Partial<RootState['settings']['lockedValues']> = pick(
+      settings,
+      fields
+    );
 
     if (values.canvasType === CanvasType.settings) {
       values.canvasType = editor.lastCanvasType;

@@ -2,6 +2,7 @@ import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
+  BracketType,
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
   CanvasType,
@@ -19,6 +20,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
+  changeBracketTypeAction,
   changeCanvasTypeAction,
   changeLanguageAction,
   changeLockSettingsAction,
@@ -104,7 +106,7 @@ describe('settings/generator.actions', () => {
   });
 
   describe('changeLockSettingsAction$', () => {
-    const { viewport, canvasType, language } = LockSettingType;
+    const { viewport, canvasType, language, bracketType } = LockSettingType;
 
     it('locks at what the settings named hold now, and only those', () => {
       store.dispatchSync(scrollToAction({ originX: -40, originY: 90 }));
@@ -126,12 +128,35 @@ describe('settings/generator.actions', () => {
       ]);
     });
 
-    it('sends no values to unlock', () => {
+    it('carries the code settings named, as they show, to unlock them', () => {
+      store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin }),
+        changeBracketTypeAction({ value: BracketType.backtick })
+      );
+      const lockSettingType = viewport | canvasType | language | bracketType;
+
       expect(
-        flatten(store, changeLockSettingsAction$(language, false))
+        flatten(store, changeLockSettingsAction$(lockSettingType, false))
       ).toEqual([
         changeLockSettingsAction({
-          lockSettingType: language,
+          lockSettingType,
+          value: false,
+          values: {
+            language: Language.Kotlin,
+            bracketType: BracketType.backtick,
+          },
+        }),
+      ]);
+    });
+
+    it('carries nothing to unlock the viewport or the tab, each reader’s own', () => {
+      store.dispatchSync(scrollToAction({ originX: -40, originY: 90 }));
+
+      expect(
+        flatten(store, changeLockSettingsAction$(viewport | canvasType, false))
+      ).toEqual([
+        changeLockSettingsAction({
+          lockSettingType: viewport | canvasType,
           value: false,
           values: {},
         }),
