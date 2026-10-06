@@ -96,6 +96,7 @@ describe('bindKeys', () => {
   it('reads $mod as Control off an apple device and Meta on one', () => {
     bind('$mod+KeyK');
     press('k', 'KeyK', ['Meta']);
+    expect(calls).toEqual([]);
     press('k', 'KeyK', ['Control']);
     expect(calls).toEqual(['$mod+KeyK']);
     unbind();
@@ -104,6 +105,7 @@ describe('bindKeys', () => {
     calls = [];
     bind('$mod+KeyK');
     press('k', 'KeyK', ['Control']);
+    expect(calls).toEqual([]);
     press('k', 'KeyK', ['Meta']);
     expect(calls).toEqual(['$mod+KeyK']);
   });
@@ -143,6 +145,19 @@ describe('bindKeys', () => {
     expect(calls).toEqual(['KeyG KeyH']);
   });
 
+  it('starts no sequence on the press that sends one back, its first press included', () => {
+    bind('KeyG KeyH');
+
+    press('g', 'KeyG');
+    press('g', 'KeyG');
+    press('h', 'KeyH');
+    expect(calls).toEqual([]);
+
+    press('g', 'KeyG');
+    press('h', 'KeyH');
+    expect(calls).toEqual(['KeyG KeyH']);
+  });
+
   it('keeps a sequence going through the keydown of a modifier it then holds', () => {
     bind('KeyG Shift+KeyH');
 
@@ -151,6 +166,21 @@ describe('bindKeys', () => {
     press('H', 'KeyH', ['Shift']);
 
     expect(calls).toEqual(['KeyG Shift+KeyH']);
+  });
+
+  it('keeps a sequence going through an AltGraph or CapsLock keydown that holds it', () => {
+    device.windows = true;
+    bind('KeyG KeyH');
+
+    press('g', 'KeyG');
+    press('AltGraph', 'AltRight', ['AltGraph']);
+    press('h', 'KeyH');
+    expect(calls).toEqual(['KeyG KeyH']);
+
+    press('g', 'KeyG');
+    press('CapsLock', 'CapsLock', ['CapsLock']);
+    press('H', 'KeyH', ['CapsLock']);
+    expect(calls).toEqual(['KeyG KeyH', 'KeyG KeyH']);
   });
 
   it('fires a chord whose key is a modifier on that key alone', () => {

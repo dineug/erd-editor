@@ -226,6 +226,28 @@ describe('findAll', () => {
     expect(ranges[0]).toEqual({ start: 30, end: 38 });
   });
 
+  it('merges ranges without Array.prototype.at, which the chrome91 browser floor lacks', () => {
+    const at = Object.getOwnPropertyDescriptor(Array.prototype, 'at')!;
+    let chunks: unknown;
+
+    Reflect.deleteProperty(Array.prototype, 'at');
+    try {
+      chunks = findAll({
+        searchWords: ['thi', 'is', ' a'],
+        textToHighlight: TEXT,
+      });
+    } finally {
+      Object.defineProperty(Array.prototype, 'at', at);
+    }
+
+    expect(chunks).toEqual([
+      { start: 0, end: 4, highlight: true },
+      { start: 4, end: 5, highlight: false },
+      { start: 5, end: 9, highlight: true },
+      { start: 9, end: 38, highlight: false },
+    ]);
+  });
+
   it('starts and ends on a lit chunk where a word opens or closes the text', () => {
     expect(lit(TEXT, ['this', 'search.'])).toEqual(['This', 'search.']);
     expect(findAll({ searchWords: ['abc'], textToHighlight: 'abc' })).toEqual([

@@ -241,9 +241,8 @@ describe('SchemaGCService', () => {
   describe('at a fixed time', () => {
     const NOW = Date.UTC(2026, 0, 15, 12, 0, 0);
 
-    const collectMemos = async (memos: Record<string, number>) => {
-      vi.useFakeTimers({ now: NOW });
-      const source = JSON.stringify({
+    const memoSource = (memos: Record<string, number>) =>
+      JSON.stringify({
         version: '3.0.0',
         collections: {
           memoEntities: toEntities(
@@ -251,8 +250,14 @@ describe('SchemaGCService', () => {
           ),
         },
       });
+
+    const collect = async (source: string) => {
+      vi.useFakeTimers({ now: NOW });
       return sorted((await new SchemaGCService().run(source)).memoIds);
     };
+
+    const collectMemos = (memos: Record<string, number>) =>
+      collect(memoSource(memos));
 
     afterEach(() => {
       vi.useRealTimers();
@@ -275,6 +280,25 @@ describe('SchemaGCService', () => {
       });
 
       expect(result).toEqual([]);
+    });
+
+    it('collects an entity stamped before the earliest time a Date holds', async () => {
+      const result = await collectMemos({
+        'm-1ms-before-date-range': -8640000000000001,
+        'm-minus-1e300': -1e300,
+        'm-plus-1e300': 1e300,
+      });
+
+      expect(result).toEqual(['m-1ms-before-date-range', 'm-minus-1e300']);
+    });
+
+    it('collects an entity whose stamp parses to minus infinity', async () => {
+      const source = memoSource({ 'm-minus-1e400': NOW }).replace(
+        `"updateAt":${NOW}`,
+        '"updateAt":-1e400'
+      );
+
+      expect(await collect(source)).toEqual(['m-minus-1e400']);
     });
   });
 

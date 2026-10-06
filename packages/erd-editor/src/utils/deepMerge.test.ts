@@ -269,6 +269,27 @@ describe('deepMerge', () => {
       expect(({} as Record<string, unknown>).admin).toBeUndefined();
     });
 
+    it('over a primitive or null-prototype target swaps only the copy, as deepmerge does', () => {
+      const target = { name: '', none: null, bare: Object.create(null) };
+
+      const result = merge(
+        target,
+        JSON.parse(
+          '{"name": {"__proto__": {"admin": 1}}, "none": {"__proto__": {"admin": 2}}, "bare": {"__proto__": {"admin": 3}}}'
+        )
+      );
+
+      expect(Object.getPrototypeOf(result.name)).toEqual({ admin: 1 });
+      expect(Object.getPrototypeOf(result.none)).toEqual({ admin: 2 });
+      expect(Object.getPrototypeOf(result.bare)).toEqual({ admin: 3 });
+      expect(Object.keys(result.name)).toEqual([]);
+      expect(target.name).toBe('');
+      expect(target.none).toBeNull();
+      expect(Object.getPrototypeOf(target.bare)).toBeNull();
+      expect(Object.keys(target.bare)).toEqual([]);
+      expect(({} as Record<string, unknown>).admin).toBeUndefined();
+    });
+
     it('drops a key every object inherits, such as constructor', () => {
       const result = merge(
         { name: '' },

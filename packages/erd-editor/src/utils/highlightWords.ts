@@ -20,8 +20,9 @@ export type FindAllArgs = FindChunksArgs & {
 };
 
 /**
- * Every place the text holds a word, word by word and each in order: a word is
- * read as typed, never as a regular expression, and an empty one holds nothing.
+ * Where the text holds each word, word by word and left to right, a match
+ * starting only past the end of that word's last one: a word is read as typed,
+ * never as a regular expression, and an empty one holds nothing.
  */
 export function findChunks({
   searchWords,
@@ -51,7 +52,7 @@ function combineRanges(ranges: TextRange[]): TextRange[] {
   const combined: TextRange[] = [];
 
   for (const range of [...ranges].sort((a, b) => a.start - b.start)) {
-    const last = combined.at(-1);
+    const last = combined[combined.length - 1];
     if (last && range.start <= last.end) {
       combined[combined.length - 1] = {
         start: last.start,

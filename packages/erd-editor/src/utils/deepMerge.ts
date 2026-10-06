@@ -11,8 +11,8 @@ const hasKey = (target: unknown, key: string): boolean =>
 
 /**
  * A key the target reaches only through its prototype, or holds as
- * non-enumerable, is never written, so a parsed __proto__ key cannot swap a
- * prototype.
+ * non-enumerable, is never written. Over a primitive or null-prototype target
+ * a parsed __proto__ key still swaps the copy's prototype, as in deepmerge.
  */
 const isUnsafeKey = (target: unknown, key: string): boolean =>
   hasKey(target, key) &&
