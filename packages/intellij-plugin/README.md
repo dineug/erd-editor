@@ -18,7 +18,7 @@ a `.sql` dump or a GraphQL SDL file, and take one back out as DDL.
 ## Getting started
 
 Create an empty file with a `.erd.json` extension and open it. The diagram opens in the ERD Editor
-instead of the text editor.
+instead of the text editor, on a welcome guide with the ways to start.
 
 To start from a schema you already have, right-click the canvas and choose **Import → Schema SQL**
 for a `.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. The editor
@@ -57,8 +57,19 @@ tables placed as new ones below the ones already there, in one undoable step.
   `:`, **find and replace** across names, comments and memos, **time travel** through this
   session's edit history, and **undo / redo**
 - **Theming** — pick the appearance, gray color and accent color on the canvas or under
-  **Settings | Tools | ERD Editor**, remembered across restarts. Auto, the default appearance and
-  the theme builder's System, follows the IDE's light or dark theme and switches with it
+  **Settings | Tools | ERD Editor**, remembered across restarts; **Theme** in the command palette
+  picks the appearance too. Auto, the default appearance and the theme builder's System, follows
+  the IDE's light or dark theme and switches with it
+- **Display language** — the editor's menus, panels and messages in English or 24 other languages,
+  picked from the language button in the editor's toolbar, **Display Language** in the command
+  palette or **Settings | Tools | ERD Editor**, remembered across restarts. Auto, the default and
+  the language picker's System, follows the IDE's language, and English when the editor does not
+  offer it. Arabic, Hebrew and Persian run the menus and panels right to left; the diagram is never
+  mirrored
+- **Welcome guide** — an empty diagram you can edit opens on a short menu to add the first table or
+  memo, import a schema, open the command palette or look up the shortcuts, with hints at the
+  toolbar's search, theme and language buttons and at the floating toolbar where the canvas has
+  room; the first table or memo takes it away
 
 Edits are written to the file a fraction of a second after you stop changing it; the tab never shows as modified.
 
@@ -188,7 +199,7 @@ to check the hub on Windows.
 | --- | --- |
 | `src/main/kotlin/.../editor/` | The file editor, JCEF webview, scheme handler and the webview ↔ IDE bridge |
 | `src/main/kotlin/.../files/` | `.erd`, `.vuerd`, `.erd.json` and `.vuerd.json` recognition, in any letter case, and the file icon |
-| `src/main/kotlin/.../settings/` | The theme and Coding agents settings, and the settings page that edits them |
+| `src/main/kotlin/.../settings/` | The theme, display language and Coding agents settings, and the settings page that edits them |
 | `src/main/kotlin/.../hub/` | The coding-agent hub, free of IntelliJ API: the wire format, the lock file, the socket and named pipe, the document registry and the request handlers |
 | `src/main/kotlin/.../agents/` | The hub's IDE side: its service, the folders and trust of the open projects, opening files, the platform events |
 | `e2e/` | The live smoke and `mcp-probe.mjs`, which checks a running IDE's hub with the MCP server |

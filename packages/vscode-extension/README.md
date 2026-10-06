@@ -61,6 +61,13 @@ only; they do not appear in the Command Palette.
 - **Find and replace** — `Ctrl`/`Cmd`+`F` across table and column names, comments and memos,
   with match case, whole word and regular expressions; one undo takes back a Replace All
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it
+- **Display language** — the editor's menus, dialogs and panels in 25 languages, with Arabic,
+  Hebrew and Persian laid out right to left while the diagram stays left to right. It follows VS
+  Code's display language until you pick one from the language button in the toolbar or
+  **Display Language** in `Ctrl`/`Cmd`+`K`
+- **Welcome guide** — an empty diagram shows where to start: New Table, New Memo, Import, the
+  command palette and the shortcuts, with hints pointing at the toolbar's search, theme and
+  language buttons and at the floating toolbar. The first table or memo takes it away
 - **Undo / redo** and a built-in theme builder
 
 ### Keeping diffs clean
@@ -134,6 +141,7 @@ arguments.
 | `dineug.erd-editor.theme.appearance` | `auto` | `auto`, `light`, `dark` |
 | `dineug.erd-editor.theme.grayColor` | `slate` | `gray`, `mauve`, `slate`, `sage`, `olive`, `sand` |
 | `dineug.erd-editor.theme.accentColor` | `indigo` | 26 [Radix](https://www.radix-ui.com/colors) accents — `gray`, `gold`, `bronze`, `brown`, `yellow`, `amber`, `orange`, `tomato`, `red`, `ruby`, `crimson`, `pink`, `plum`, `purple`, `violet`, `iris`, `indigo`, `blue`, `cyan`, `teal`, `jade`, `green`, `grass`, `lime`, `mint`, `sky` |
+| `dineug.erd-editor.locale` | `auto` | `auto`, or one of 25 languages, each listed by its own name — `en`, `id-ID`, `de-DE`, `es-ES`, `eu-ES`, `fr-FR`, `it-IT`, `nl-NL`, `pl-PL`, `pt-PT`, `pt-BR`, `ro-RO`, `sk-SK`, `sl-SI`, `sv-SE`, `tr-TR`, `ru-RU`, `uk-UA`, `he-IL`, `ar-SA`, `fa-IR`, `ja-JP`, `zh-CN`, `zh-TW`, `ko-KR` |
 | `dineug.erd-editor.agentHub.enabled` | `true` | `true`, `false` |
 
 Changing any of the three theme settings re-themes every open diagram immediately. `auto`
@@ -141,7 +149,15 @@ follows your VS Code color theme and switches with it.
 
 The theme builder inside the editor changes these same three values and writes them back
 here, so a theme you pick on the canvas persists. Its System is `auto`, and picking a color
-there keeps the appearance as it is.
+there keeps the appearance as it is. **Theme** in `Ctrl`/`Cmd`+`K` picks System, Light or Dark
+the same way.
+
+`dineug.erd-editor.locale` sets the language of the editor itself; table and column names, SQL
+keywords, data types and generated code stay as they are. `auto` follows VS Code's display
+language (**Configure Display Language**), and shows English when the editor has no translation
+for it. Changing the setting switches every open diagram immediately. The language button in the
+editor's toolbar and **Display Language** in `Ctrl`/`Cmd`+`K` write the language you pick back
+here; their System is `auto`.
 
 ## Documentation
 

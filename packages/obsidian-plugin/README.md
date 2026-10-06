@@ -25,10 +25,11 @@ Run **ERD Editor: Create new diagram** from the command palette, or right-click 
 file explorer and choose **New ERD**. Either one creates an empty `.erd` file and opens it in the
 diagram view.
 
-On the empty canvas, `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to it. To start from
-a schema you already have, right-click the canvas and choose **Import → Schema SQL** for a `.sql`
-dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. Either one replaces the
-diagram in one undoable step, its tables laid out by their relationships.
+An empty diagram opens on a welcome guide with the ways to start, which stays until its first table
+or memo. On the empty canvas, `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to it. To start
+from a schema you already have, right-click the canvas and choose **Import → Schema SQL** for a
+`.sql` dump, or **Import → GraphQL** for a `.graphql`, `.gql` or `.graphqls` file. Either one
+replaces the diagram in one undoable step, its tables laid out by their relationships.
 **Import and Add** beside it takes the same formats and adds the file to the diagram instead, its
 tables placed as new ones below the ones already there, in one undoable step.
 
@@ -75,6 +76,13 @@ editor's own history.
 - **Undo / redo**
 - **Light and dark** — by default the editor follows Obsidian's theme and switches with it; you can
   also keep it light or dark and pick its gray and accent colors (see [Settings](#settings))
+- **Display language** — the editor's menus, panels, dialogs and command palette in 25 languages,
+  Arabic, Hebrew and Persian laid out right to left while the diagram itself is never mirrored; by
+  default the editor follows Obsidian's language (see [Settings](#settings)). Data types, SQL
+  keywords and generated code stay as they are
+- **Welcome guide** — an empty diagram opens on the ways to start: a new table or memo, an
+  import, the command palette and the shortcuts, with hints pointing at the toolbar's search, theme
+  and language buttons and at the floating toolbar. The first table or memo takes it away
 
 ### Split panes
 
@@ -172,6 +180,7 @@ these files and removes none.
 | **Appearance** | Auto | Auto, Light, Dark |
 | **Gray color** | Slate | Gray, Mauve, Slate, Sage, Olive, Sand |
 | **Accent color** | Indigo | 26 [Radix](https://www.radix-ui.com/colors) accents — Gray, Gold, Bronze, Brown, Yellow, Amber, Orange, Tomato, Red, Ruby, Crimson, Pink, Plum, Purple, Violet, Iris, Indigo, Blue, Cyan, Teal, Jade, Green, Grass, Lime, Mint, Sky |
+| **Display language** | Auto | Auto, then 25 languages, each listed by its own name (Deutsch, 日本語) — English, Arabic, Basque, Brazilian Portuguese, Dutch, French, German, Hebrew, Indonesian, Italian, Japanese, Korean, Persian, Polish, Portuguese, Romanian, Russian, Simplified Chinese, Slovak, Slovenian, Spanish, Swedish, Traditional Chinese, Turkish, Ukrainian |
 | **Coding agents** | on | on, off — lets coding agents edit the diagrams open in this vault live, through the MCP server |
 
 Changing any of the three theme settings re-themes every open diagram immediately. Auto follows
@@ -179,7 +188,13 @@ Obsidian's light or dark theme and switches with it.
 
 The theme builder in the editor's toolbar changes these same three values and saves them here, so a
 theme you pick on the canvas persists. Its System is Auto: picking a color there keeps the
-appearance as it is, and Light, Dark or System sets it.
+appearance as it is, and Light, Dark or System sets it. **Theme** in the editor's command palette
+picks System, Light or Dark the same way.
+
+Changing **Display language** changes every open diagram immediately. Auto follows the language
+Obsidian shows, and English stands in for one the editor does not offer. The language button in
+the editor's toolbar and **Display Language** in its command palette change this same setting and
+save it here; their System is Auto. The plugin's own settings and notices stay in English.
 
 ## Documentation
 

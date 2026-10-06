@@ -14,6 +14,8 @@
 - Backup export and import of every schema, plus import of `.erd`, `.vuerd`, `.json`, SQL, DBML, AML and GraphQL files, from the menu or by dropping them anywhere, one import at a time: while one runs, Import files is disabled and a drop is refused; a SQL, DBML, AML or GraphQL file lands with its tables laid out by their relationships, in the Google Drive editor's import too.
 - A link per schema: the open one is in the URL as `/?schema=<id>`.
 - Light, dark or system theme.
+- The editor in 25 languages, picked from its toolbar or command palette and shared by every tab; until you pick one it follows your browser's language, or English when it is not among them. The app's own screens stay in English.
+- A welcome screen on an empty diagram, with its first steps: a new table or memo, import, the command palette and the shortcuts.
 - A Google Drive editor at `/gdrive`, installed from the [Google Workspace Marketplace](https://workspace.google.com/marketplace/app/erd_editor/428467403360): it opens diagrams from Drive's Open with and New menus and saves back to the same file.
 
 The React shell around the `<erd-editor>` custom element: diagrams are stored in IndexedDB

@@ -45,17 +45,23 @@ The host is the mirror image: its own `Bridge`, `registerCommand(hostInitialComm
 and `webview.postMessage(Bridge.executeCommand(webviewInitialValueCommand, { value }))`.
 `registerCommand` returns a `Dispose`; `Bridge.mergeRegister(...disposes)` collapses many.
 
-## Commands and theme
+## Commands, theme and display language
 
 `src/commands.ts` is the shared catalogue, and the prefix encodes direction: `host*` is
-handled by the host (initial, save value, save theme, save replication, import/export file),
-`webview*` by the webview (initial value, import file, update theme, update readonly,
-replication). Mint your own with `createCommand<Payload>('someType')` — listeners are keyed
-by that string, not by token identity. `ThemeOptions` is what `hostSaveThemeCommand` carries
-and `webviewUpdateThemeCommand` a `Partial` of; `Appearance` (`appearance` also takes
-`'auto'`), `GrayColor` and `AccentColor` are the maps of its allowed values. A host that knows
-outside the page what `'auto'` shows adds it to `webviewUpdateThemeCommand` as
-`systemAppearance`.
+handled by the host (initial, save value, save theme, save locale, save replication,
+import/export file), `webview*` by the webview (initial value, import file, update theme,
+update locale, update readonly, replication). Mint your own with
+`createCommand<Payload>('someType')` — listeners are keyed by that string, not by token
+identity. `ThemeOptions` is what `hostSaveThemeCommand` carries and
+`webviewUpdateThemeCommand` a `Partial` of; `Appearance` (`appearance` also takes `'auto'`),
+`GrayColor` and `AccentColor` are the maps of its allowed values. A host that knows outside
+the page what `'auto'` shows adds it to `webviewUpdateThemeCommand` as `systemAppearance`.
+
+`hostSaveLocaleCommand` and `webviewUpdateLocaleCommand` carry the display language as a
+`LocaleSetting`: one of the 25 codes `LocaleLabel` maps to its native name, in the editor's
+picker order, or `'auto'`, which follows the host's own UI language. A host names that
+language as a BCP 47 tag in `webviewUpdateLocaleCommand`'s `systemLocale`; left out, the page
+keeps the one it has. Neither command touches the document or its replica.
 
 ## Development
 

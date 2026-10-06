@@ -30,6 +30,11 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
 - Force-directed visualization of table relationships
 - Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `:`,
   find and replace, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
+- Display language — the editor's menus, panels, command palette and messages in 25 languages,
+  Arabic, Hebrew and Persian laid out right to left while the diagram stays left to right;
+  English until you [turn the picker on or call `setLocale`](#display-language)
+- Welcome screen — opt-in: an empty diagram shows a start menu (New Table, New Memo, Import, the
+  command palette, the shortcuts) and arrows at the tools, until its first table or memo
 - Collaboration hooks — the editor emits and applies actions; you supply the transport
 
 ## Install
@@ -140,7 +145,9 @@ erd-editor {
 | --- | --- | --- |
 | `readonly` | `readonly` | Blocks editing and suppresses the `change` event. Assigning `value`, `setSchemaSQL()`, `setSchemaGraphQL()`, `setSchemaDBML()`, `setSchemaAML()`, `setSchemaJSON()` and `clear()` are ignored while it is set — load with `setInitialValue()` instead. Viewport actions and the SQL/code output settings still apply. |
 | `system-dark-mode` | `systemDarkMode` | Sets the appearance to `system` when it turns on; turned off, the appearance stays the light or dark `system` shows. |
-| `enable-theme-builder` | `enableThemeBuilder` | Shows the built-in theme builder |
+| `enable-theme-builder` | `enableThemeBuilder` | Shows the built-in theme builder, and the command palette's Theme command (System, Light, Dark) |
+| `enable-locale-picker` | `enableLocalePicker` | Shows the toolbar's language button, whose picker lists System and the 25 languages, and the command palette's Display Language command. Until `setLocale` is called or the reader picks a language, the editor follows System while it is on and shows English while it is off; see [Display language](#display-language). |
+| `enable-welcome-screen` | `enableWelcomeScreen` | Shows a welcome screen over an empty diagram on the ERD tab: the ERD Editor logo and name, a menu of New Table, New Memo, Import, Command Palette and Shortcuts, and, where the canvas has room, arrows at the toolbar's Search, theme and language buttons and at the floating toolbar. The first table or memo takes it away, and an undo back to an empty diagram brings it again. It never shows while `readonly` is set. |
 
 ### Properties
 
@@ -162,6 +169,8 @@ erd-editor {
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance` (`light`, `dark` or `system`), `grayColor` and `accentColor`. `system` follows the OS color scheme, or what `setSystemAppearance` names. |
 | `setSystemAppearance(appearance)` | Name the light or dark `system` shows, for a host with its own theme (an IDE's light or dark); `null` hands it back to the OS color scheme. It changes nothing on screen unless the appearance is `system`. |
+| `setLocale(locale)` | Set the display language: `'system'`, or one of the codes under [Display language](#display-language). Emits nothing, and any other value is ignored. Until it is called, or the reader picks a language, the editor shows English, or follows `system` while `enableLocalePicker` is on. |
+| `setSystemLocale(tag)` | Name the language `system` shows, as a BCP 47 tag, for a host with its own UI language (an IDE's); `null` hands it back to the browser's `navigator.languages`. A tag the editor has no language for shows English. It changes the language shown only while the option in force is `system`. |
 | `setTheme(theme)` | Override individual theme tokens. |
 | `setKeyBindingMap(map)` | Remap shortcuts, `search` and `findReplace` among them. `edit`, `stop`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
 | `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport. `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
@@ -202,6 +211,7 @@ and Add.
 | --- | --- |
 | `change` | The document changed. Debounced, and never fired while `readonly`, nor for a change to a locked setting alone: a scroll, a zoom, a tab switch or a code generator setting under its lock leaves `value` as it was. Read `editor.value`. With the viewport unlocked a scroll or a zoom fires it, and `value` holds both. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options, whose `appearance` is `system` when the theme builder's System is picked. |
+| `changeLocale` | A display language was picked from inside the editor, in the toolbar's picker or the command palette, the one already in force included. `event.detail.locale` is the option picked, `system` or a language code. `setLocale` fires none. |
 
 ## Key bindings
 
@@ -226,6 +236,41 @@ opens its Find and Replace, bringing the ERD tab up, and is prevented, so the br
 bar; while the diff viewer, time travel or the automatic placement preview covers the ERD tab, the
 press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the page on every
 tab, and the toolbar button, the quick search and the context menu still open Find and Replace.
+
+## Display language
+
+The editor's own text, from its menus, panels, dialogs, command palette and messages to the
+placeholders the canvas draws in an empty name, type, default or comment, comes in 25 languages:
+`en`, `ar-SA`, `de-DE`, `es-ES`, `eu-ES`, `fa-IR`, `fr-FR`, `he-IL`, `id-ID`, `it-IT`, `ja-JP`,
+`ko-KR`, `nl-NL`, `pl-PL`, `pt-BR`, `pt-PT`, `ro-RO`, `ru-RU`, `sk-SK`, `sl-SI`, `sv-SE`, `tr-TR`,
+`uk-UA`, `zh-CN` and `zh-TW`. Arabic, Hebrew and Persian lay the editor out right to left, while the
+diagram, the minimap and the SQL and code panels stay left to right. What the document holds is
+never translated, nor is generated SQL or code, a database, code language or file format name, an
+SQL keyword or a data type.
+
+An element that neither turns `enable-locale-picker` on nor calls `setLocale` shows English,
+whatever the browser's language. With the picker on and nothing set, it follows **System**. A
+`setLocale` call wins either way, and `setLocale('system')` follows System with the picker off
+too. Toggling the picker with nothing set switches between System and English. Both setters take
+effect before they return, so an element given its language before it is appended paints its
+first frame in it.
+
+System reads `navigator.languages` in the browser's order of preference and takes the first
+language the editor has, matching a tag by its language (`de-AT` shows Deutsch). Chinese goes by
+its script, then by its region: `zh-Hant`, `zh-TW`, `zh-HK` and `zh-MO` show 繁體中文, any other
+`zh` 简体中文. Portuguese is Português Brasileiro unless a region other than Brazil is named. With
+no match it shows English. The editor follows the browser's `languagechange`. A host with its own
+UI language, such as an IDE, names it with `setSystemLocale(tag)` instead.
+
+The editor stores nothing: keep the option the reader picks, as you keep the theme.
+
+```js
+editor.enableLocalePicker = true;
+editor.setLocale(localStorage.getItem('locale') ?? 'system');
+editor.addEventListener('changeLocale', event => {
+  localStorage.setItem('locale', event.detail.locale);
+});
+```
 
 ## Syntax highlighting
 
