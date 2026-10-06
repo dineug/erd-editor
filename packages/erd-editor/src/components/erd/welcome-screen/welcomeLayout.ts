@@ -5,15 +5,22 @@ import { editorRootOf } from '@/utils/domEvent';
 /** The narrowest canvas that shows the welcome screen at all. */
 export const WELCOME_MIN_WIDTH = 320;
 
-/** The least height that shows the logo, the name and the heading over the menu. */
-export const WELCOME_FULL_MIN_HEIGHT = 440;
+/**
+ * The least height that shows the heading over the menu: a heading of two
+ * lines over the six rows of Import's formats, clear of the floating toolbar.
+ */
+export const WELCOME_FULL_MIN_HEIGHT = 342;
 
-/** The least height that still shows the menu alone. */
-export const WELCOME_MENU_MIN_HEIGHT = 260;
+/** The least height that shows the menu alone: Import's six rows, clear of the floating toolbar. */
+export const WELCOME_MENU_MIN_HEIGHT = 294;
 
-/** The least canvas the hints at the tools take room on, beside the centre block. */
+/**
+ * The least canvas the hints at the tools take room on, beside the centre
+ * block: the height keeps them clear of the block, Import's formats in it, in
+ * the language whose labels wrap the most.
+ */
 export const WELCOME_HINTS_MIN_WIDTH = 720;
-export const WELCOME_HINTS_MIN_HEIGHT = 660;
+export const WELCOME_HINTS_MIN_HEIGHT = 562;
 
 /** The narrowest canvas whose menu rows still show their chords. */
 export const WELCOME_KBD_MIN_WIDTH = 480;

@@ -1,6 +1,6 @@
 import { css } from '@dineug/r-html';
 
-import { fontSize7, typography } from '@/styles/typography.styles';
+import { typography } from '@/styles/typography.styles';
 
 /**
  * The layer over the empty canvas, which lets every press and wheel through
@@ -28,12 +28,6 @@ export const center = css`
   justify-content: center;
   gap: 8px;
   padding: 8px 16px;
-`;
-
-export const name = css`
-  ${fontSize7};
-  font-weight: var(--font-weight-medium);
-  color: var(--active);
 `;
 
 export const heading = css`

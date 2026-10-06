@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import * as hintStyles from '@/components/erd/welcome-screen/welcome-hints/WelcomeHints.styles';
 import * as styles from '@/components/erd/welcome-screen/WelcomeScreen.styles';
-import { fontSize7, typography } from '@/styles/typography.styles';
+import { typography } from '@/styles/typography.styles';
 
 const source = (template: { strings: ArrayLike<string> }) =>
   Array.from(template.strings).join('');
@@ -34,12 +34,10 @@ describe('WelcomeScreen.styles', () => {
     expect(takers).toEqual([styles.menu]);
   });
 
-  it('centres the block over the floating toolbar, with the name large and the heading in the body size', () => {
+  it('centres the block over the floating toolbar, with the heading in the body size', () => {
     expect(source(styles.center)).toContain('justify-content: center');
     expect(source(styles.center)).toContain('align-items: center');
     expect(source(styles.center)).toContain('inset-block: 0 60px');
-    expect(styles.name.values).toContain(fontSize7);
-    expect(source(styles.name)).toContain('var(--font-weight-medium)');
     expect(styles.heading.values).toContain(typography.normal);
   });
 
@@ -72,7 +70,7 @@ describe('WelcomeScreen.styles', () => {
     }
   });
 
-  it('declares no fill, the logo and the arrows taking theirs from attributes', () => {
+  it('declares no fill, the arrows taking theirs from attributes', () => {
     for (const template of all) {
       expect(source(template)).not.toMatch(/(^|[^-])fill\s*:/);
     }

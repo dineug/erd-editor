@@ -42,7 +42,7 @@ describe('welcomeTiers', () => {
     });
   });
 
-  it('drops the logo and heading one pixel under the full height, and the menu under its own', () => {
+  it('drops the heading one pixel under the full height, and the menu under its own', () => {
     const width = ROOMY.width;
 
     expect(

@@ -9,10 +9,9 @@ import {
   pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext, appContext } from '@/components/appContext';
-import { ARROW_UP } from '@/components/erd/welcome-screen/welcomeArt';
+import { ARROW_UP } from '@/components/erd/welcome-screen/welcome-hints/hintArrows';
 import { ARROW_UP_BOX } from '@/components/erd/welcome-screen/welcomeLayout';
 import WelcomeScreen, {
-  PRODUCT_NAME,
   rowIcon,
 } from '@/components/erd/welcome-screen/WelcomeScreen';
 import { coveredWidth } from '@/components/find-replace/panelLayout';
@@ -518,24 +517,24 @@ describe('WelcomeScreen menu', () => {
 });
 
 describe('WelcomeScreen layout', () => {
-  it('shows the mark, the name, the heading and the menu on a roomy canvas', async () => {
+  it('shows the heading and the menu alone on a roomy canvas, with no logo and no name', async () => {
     const { root } = await setup();
+    const heading = root.querySelector('.welcome-screen-heading');
 
-    expect(root.querySelector('.welcome-screen-logo')).not.toBeNull();
-    expect(root.querySelector('.welcome-screen-name')?.textContent).toBe(
-      PRODUCT_NAME
+    expect(heading?.textContent?.trim()).toBe(
+      'Right-click the canvas for every action.'
     );
     expect(
-      root.querySelector('.welcome-screen-heading')?.textContent?.trim()
-    ).toBe('Right-click the canvas for every action.');
-    expect(root.querySelector('.welcome-screen-menu')).not.toBeNull();
+      Array.from(heading?.parentElement?.children ?? []).map(
+        child => child.classList[0]
+      )
+    ).toEqual(['welcome-screen-heading', 'welcome-screen-menu']);
   });
 
   it('keeps the menu alone on a low canvas, drops the chords on a narrow one, and shows nothing on a tiny one', async () => {
     const low = await setup({ viewport: { width: 1200, height: 300 } });
 
     expect(low.root.querySelector('.welcome-screen-heading')).toBeNull();
-    expect(low.root.querySelector('.welcome-screen-logo')).toBeNull();
     expect(low.rows()).toHaveLength(5);
     expect(low.chords()[0]).not.toBeNull();
 
@@ -556,14 +555,11 @@ describe('WelcomeScreen layout', () => {
     expect(low.root.querySelector('.welcome-screen-menu')).toBeNull();
   });
 
-  it('keeps the product name as written in any language', async () => {
+  it('reads the heading and the rows in the language it mounts in', async () => {
     const { root, labels } = await setup({
       i18n: createTestI18n('ko-KR', pseudoMessages('ko')),
     });
 
-    expect(root.querySelector('.welcome-screen-name')?.textContent).toBe(
-      'ERD Editor'
-    );
     expect(
       root.querySelector('.welcome-screen-heading')?.textContent?.trim()
     ).toBe('ko:Right-click the canvas for every action.');
@@ -581,21 +577,6 @@ describe('WelcomeScreen layout', () => {
     expect(covered).toBeGreaterThan(0);
     expect(screen()?.style.left).toBe(`${covered}px`);
     expect(hint('tools')).toBeNull();
-  });
-
-  it('paints the logo from inline styles, the theme reaching every shape', async () => {
-    const { root } = await setup();
-    const shapes = Array.from(
-      root.querySelectorAll<SVGElement>(
-        '.welcome-screen-logo path, .welcome-screen-logo rect'
-      )
-    );
-
-    expect(shapes).toHaveLength(7);
-    for (const shape of shapes) {
-      expect(shape.getAttribute('style')).toMatch(/fill: var\(--[a-z-0-9]+\)/);
-      expect(shape.hasAttribute('fill')).toBe(false);
-    }
   });
 });
 
@@ -708,9 +689,6 @@ describe('WelcomeScreen hints', () => {
     expect(
       root.querySelector('.welcome-screen-menu')?.getAttribute('aria-label')
     ).toBe('ar:Get started');
-    expect(root.querySelector('.welcome-screen-name')?.textContent).toBe(
-      PRODUCT_NAME
-    );
     expect(hint('palette')?.textContent?.trim()).toBe(
       'ar:Search commands and tables'
     );

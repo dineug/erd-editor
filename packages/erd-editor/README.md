@@ -147,7 +147,7 @@ erd-editor {
 | `system-dark-mode` | `systemDarkMode` | Sets the appearance to `system` when it turns on; turned off, the appearance stays the light or dark `system` shows. |
 | `enable-theme-builder` | `enableThemeBuilder` | Shows the built-in theme builder, and the command palette's Theme command (System, Light, Dark) |
 | `enable-locale-picker` | `enableLocalePicker` | Shows the toolbar's language button, whose picker lists System and the 25 languages, and the command palette's Display Language command. Until `setLocale` is called or the reader picks a language, the editor follows System while it is on and shows English while it is off; see [Display language](#display-language). |
-| `enable-welcome-screen` | `enableWelcomeScreen` | Shows a welcome screen over an empty diagram on the ERD tab: the ERD Editor logo and name, a menu of New Table, New Memo, Import, Command Palette and Shortcuts, and, where the canvas has room, arrows at the toolbar's Search, theme and language buttons and at the floating toolbar. The first table or memo takes it away, and an undo back to an empty diagram brings it again. It never shows while `readonly` is set. |
+| `enable-welcome-screen` | `enableWelcomeScreen` | Shows a welcome screen over an empty diagram on the ERD tab: a line pointing to the canvas's right-click menu, a menu of New Table, New Memo, Import, Command Palette and Shortcuts, and, where the canvas has room, arrows at the toolbar's Search, theme and language buttons and at the floating toolbar. The first table or memo takes it away, and an undo back to an empty diagram brings it again. It never shows while `readonly` is set. |
 
 ### Properties
 

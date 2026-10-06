@@ -12,7 +12,6 @@ import {
 import { useAppContext } from '@/components/appContext';
 import { createImportMenus } from '@/components/erd/erd-context-menu/menus/importMenus';
 import WelcomeHints from '@/components/erd/welcome-screen/welcome-hints/WelcomeHints';
-import { welcomeLogo } from '@/components/erd/welcome-screen/welcomeArt';
 import {
   measureAnchors,
   welcomeTiers,
@@ -39,9 +38,6 @@ import { KeyBindingName, matchesShortcut } from '@/utils/keyboard-shortcut';
 
 import * as styles from './WelcomeScreen.styles';
 
-/** The product's own name, which stays as written in every language. */
-export const PRODUCT_NAME = 'ERD Editor';
-
 export type WelcomeScreenProps = {
   enableThemeBuilder?: boolean;
   enableLocalePicker?: boolean;
@@ -64,9 +60,9 @@ export const rowIcon = (icon: IconName, dir: TextDirection): IconName =>
   icon === 'arrow-left' && dir === 'rtl' ? 'arrow-right' : icon;
 
 /**
- * What an empty diagram shows over its canvas: the mark, the product's name, a
- * heading and a menu of the ways to start, which Import swaps in place for its
- * formats, with hints at the tools around it where the canvas has room.
+ * What an empty diagram shows over its canvas: a heading and a menu of the
+ * ways to start, which Import swaps in place for its formats, with hints at
+ * the tools around it where the canvas has room.
  */
 const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -315,15 +311,9 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
         {tiers.center === 'none' ? null : (
           <div class={styles.center}>
             {tiers.center === 'full' ? (
-              <>
-                {welcomeLogo()}
-                <div class={['welcome-screen-name', styles.name]}>
-                  {PRODUCT_NAME}
-                </div>
-                <div class={['welcome-screen-heading', styles.heading]}>
-                  {t('welcome.heading')}
-                </div>
-              </>
+              <div class={['welcome-screen-heading', styles.heading]}>
+                {t('welcome.heading')}
+              </div>
             ) : null}
             <div
               class={['welcome-screen-menu', styles.menu]}

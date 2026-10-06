@@ -57,8 +57,8 @@ test.describe('the welcome screen', () => {
     await erd.enable({ enableWelcomeScreen: true });
 
     await expect(welcome(erd)).toHaveCount(1);
-    await expect(erd.host.locator('.welcome-screen-name')).toHaveText(
-      'ERD Editor'
+    await expect(erd.host.locator('.welcome-screen-heading')).toHaveText(
+      'Right-click the canvas for every action.'
     );
     await expect(erd.host.locator('.welcome-screen-item')).toHaveCount(5);
     await expect(hint(erd, 'palette')).toBeVisible();

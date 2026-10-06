@@ -1,6 +1,9 @@
 import { FC } from '@dineug/r-html';
 
-import { arrowDown, arrowUp } from '@/components/erd/welcome-screen/welcomeArt';
+import {
+  arrowDown,
+  arrowUp,
+} from '@/components/erd/welcome-screen/welcome-hints/hintArrows';
 import {
   hintPlacement,
   HintSide,

@@ -1,10 +1,10 @@
-// Where the welcome screen's arrows land and what a pointer over it reaches,
-// laid out by its real stylesheets in a shadow root as the element has one,
-// under a toolbar whose buttons stand where the real one puts them.
+// Where the welcome screen's arrows land, what a pointer over it reaches and
+// the room each tier needs, in its real stylesheets in a shadow root as the
+// element has one, under a toolbar laid out as the real one is.
 
 import { addCSSHost, html, render, useProvider } from '@dineug/r-html';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
-import { page } from 'vite-plus/test/browser/context';
+import { page, server } from 'vite-plus/test/browser/context';
 
 import {
   createTestAppContext,
@@ -15,12 +15,19 @@ import {
 } from '@/__test-utils__';
 import { appContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import {
+  WELCOME_FULL_MIN_HEIGHT,
+  WELCOME_HINTS_MIN_HEIGHT,
+  WELCOME_HINTS_MIN_WIDTH,
+  WELCOME_MENU_MIN_HEIGHT,
+  WELCOME_MIN_WIDTH,
+} from '@/components/erd/welcome-screen/welcomeLayout';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import { themeContext } from '@/components/themeContext';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
-import type { LocaleCode } from '@/i18n/locales';
+import { type LocaleCode, LOCALES } from '@/i18n/locales';
 import { whenDrawn } from '@/konva/batchDraw';
 import { InternalEventType } from '@/utils/internalEvents';
 
@@ -29,6 +36,16 @@ const HEIGHT = 760;
 
 /** How far off its anchor an arrow's tip may land, for the stroke's rounding. */
 const TOLERANCE = 2;
+
+// Gated on the Vitest server's platform, as fit.browser.test.ts is: Linux and
+// Windows set the stack in other fonts, which wrap the heading and the labels
+// elsewhere, so they measure English alone and leave the bounds' tightness out.
+const ON_MAC = server.platform === 'darwin';
+const TIER_LOCALES: LocaleCode[] = ON_MAC
+  ? LOCALES.map(({ code }) => code)
+  : ['en'];
+
+type Canvas = { width: number; height: number };
 
 const teardowns: Array<() => void> = [];
 
@@ -40,7 +57,14 @@ afterEach(async () => {
   await whenDrawn();
 });
 
-const TOOLBAR_STYLE = `display: flex; align-items: center; height: ${TOOLBAR_HEIGHT}px; min-height: ${TOOLBAR_HEIGHT}px; padding: 0 15px;`;
+/** An object, since r-html's style binding sets the entries of one and ignores a string. */
+const TOOLBAR_STYLE = {
+  display: 'flex',
+  'align-items': 'center',
+  height: `${TOOLBAR_HEIGHT}px`,
+  'min-height': `${TOOLBAR_HEIGHT}px`,
+  padding: '0 15px',
+};
 
 /** A toolbar laid out as the real one is, its three buttons where the hints point. */
 const toolbar = html`<div class="toolbar" style=${TOOLBAR_STYLE}>
@@ -60,14 +84,17 @@ const toolbar = html`<div class="toolbar" style=${TOOLBAR_STYLE}>
   ></div>
 </div>`;
 
-async function setup(locale: LocaleCode) {
+async function setup(
+  locale: LocaleCode,
+  canvas: Canvas = { width: WIDTH, height: HEIGHT - TOOLBAR_HEIGHT }
+) {
   const app = createTestAppContext();
   const i18n = createTestI18n(locale);
 
   const host = document.createElement('div');
   host.setAttribute(
     'style',
-    `display: block; width: ${WIDTH}px; height: ${HEIGHT}px;`
+    `display: block; width: ${canvas.width}px; height: ${canvas.height + TOOLBAR_HEIGHT}px;`
   );
   document.body.append(host);
   const shadow = host.attachShadow({ mode: 'open' });
@@ -87,9 +114,7 @@ async function setup(locale: LocaleCode) {
     provideI18n(container, i18n),
   ];
 
-  app.store.dispatchSync(
-    changeViewportAction({ width: WIDTH, height: HEIGHT - TOOLBAR_HEIGHT })
-  );
+  app.store.dispatchSync(changeViewportAction(canvas));
   render(globals, html`<${GlobalStyles} />`);
   render(
     container,
@@ -220,6 +245,156 @@ describe.each<LocaleCode>(['en', 'ar-SA'])('WelcomeScreen in %s', locale => {
     expect(underRow).not.toBeNull();
     expect(underHeading!.closest('[data-testid="erd-canvas"]')).not.toBeNull();
     expect(underRow!.closest('.welcome-screen-item')).toBe(item);
+  });
+});
+
+/** Unmounts what setup mounted, so a loop over languages lays out one screen at a time. */
+async function release() {
+  teardowns.splice(0).forEach(teardown => teardown());
+  await whenDrawn();
+}
+
+/** Reads the screen at the top level of its menu, then again with Import's formats swapped in. */
+async function eachLevel(
+  shadow: ShadowRoot,
+  read: (level: 'top' | 'import') => void
+) {
+  read('top');
+  shadow.querySelectorAll<HTMLElement>('.welcome-screen-item')[2].click();
+  await flush();
+  expect(shadow.querySelectorAll('.welcome-screen-item')).toHaveLength(6);
+  read('import');
+}
+
+describe('WelcomeScreen tiers', () => {
+  it('fits the heading over either level of the menu from the full height on, at the narrowest width', async () => {
+    const outside: string[] = [];
+    let worst = 0;
+    let line = 0;
+
+    for (const locale of TIER_LOCALES) {
+      const { shadow, box } = await setup(locale, {
+        width: WELCOME_MIN_WIDTH,
+        height: WELCOME_FULL_MIN_HEIGHT,
+      });
+
+      await eachLevel(shadow, level => {
+        const $heading = shadow.querySelector('.welcome-screen-heading')!;
+        const $center = $heading.parentElement!;
+        const { paddingBlockStart, paddingBlockEnd } =
+          getComputedStyle($center);
+        const room =
+          $center.getBoundingClientRect().height -
+          parseFloat(paddingBlockStart) -
+          parseFloat(paddingBlockEnd);
+        const heading = box('.welcome-screen-heading');
+        const menu = box('.welcome-screen-menu');
+
+        line = parseFloat(getComputedStyle($heading).lineHeight);
+        worst = Math.max(
+          worst,
+          WELCOME_FULL_MIN_HEIGHT - room + menu.bottom - heading.top
+        );
+        if (
+          heading.top < box('.welcome-screen').top ||
+          menu.bottom > box('.floating-toolbar').top
+        ) {
+          outside.push(`${locale} ${level}`);
+        }
+      });
+      await release();
+    }
+
+    expect(outside).toEqual([]);
+    expect(worst).toBeLessThanOrEqual(WELCOME_FULL_MIN_HEIGHT);
+    // The block fills its room in the language that needs the most, so the
+    // heading shows wherever it fits; another platform's fonts wrap elsewhere.
+    if (ON_MAC) expect(WELCOME_FULL_MIN_HEIGHT - worst).toBeLessThan(line);
+  });
+
+  it('fits either level of the menu alone from the menu height on, at the narrowest width', async () => {
+    const outside: string[] = [];
+    let worst = 0;
+
+    for (const locale of TIER_LOCALES) {
+      const { shadow, box } = await setup(locale, {
+        width: WELCOME_MIN_WIDTH,
+        height: WELCOME_MENU_MIN_HEIGHT,
+      });
+
+      await eachLevel(shadow, level => {
+        const $menu = shadow.querySelector('.welcome-screen-menu')!;
+        const $center = $menu.parentElement!;
+        const { paddingBlockStart, paddingBlockEnd } =
+          getComputedStyle($center);
+        const room =
+          $center.getBoundingClientRect().height -
+          parseFloat(paddingBlockStart) -
+          parseFloat(paddingBlockEnd);
+        const menu = box('.welcome-screen-menu');
+
+        expect(shadow.querySelector('.welcome-screen-heading')).toBeNull();
+        worst = Math.max(
+          worst,
+          WELCOME_MENU_MIN_HEIGHT -
+            room +
+            parseFloat(getComputedStyle($menu).marginBlockStart) +
+            menu.height
+        );
+        if (
+          menu.top < box('.welcome-screen').top ||
+          menu.bottom > box('.floating-toolbar').top
+        ) {
+          outside.push(`${locale} ${level}`);
+        }
+      });
+      await release();
+    }
+
+    expect(outside).toEqual([]);
+    // A row keeps its height in every language and font, so Import's six rows
+    // fill the room exactly on every platform.
+    expect(worst).toBe(WELCOME_MENU_MIN_HEIGHT);
+  });
+
+  it('keeps every hint clear of the block from the least height the hints show at', async () => {
+    const overlapping: string[] = [];
+    let closest = Infinity;
+    let line = 0;
+
+    for (const locale of TIER_LOCALES) {
+      const { shadow, box } = await setup(locale, {
+        width: WELCOME_HINTS_MIN_WIDTH,
+        height: WELCOME_HINTS_MIN_HEIGHT,
+      });
+      expect(shadow.querySelectorAll('.welcome-screen-hint')).toHaveLength(3);
+
+      await eachLevel(shadow, level => {
+        const heading = box('.welcome-screen-heading');
+        const above = Math.max(
+          box('.welcome-screen-hint-palette').bottom,
+          box('.welcome-screen-hint-preferences').bottom
+        );
+        const gap = Math.min(
+          heading.top - above,
+          box('.welcome-screen-hint-tools').top -
+            box('.welcome-screen-menu').bottom
+        );
+
+        line = parseFloat(
+          getComputedStyle(shadow.querySelector('.welcome-screen-heading')!)
+            .lineHeight
+        );
+        closest = Math.min(closest, gap);
+        gap < 0 && overlapping.push(`${locale} ${level}: ${gap}`);
+      });
+      await release();
+    }
+
+    expect(overlapping).toEqual([]);
+    // The language whose hints and block need the most room leaves less than a
+    // line between them, so the hints show wherever they fit.
+    if (ON_MAC) expect(closest).toBeLessThan(line);
   });
 });
 

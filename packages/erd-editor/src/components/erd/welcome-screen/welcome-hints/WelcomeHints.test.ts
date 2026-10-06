@@ -7,11 +7,11 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__/index';
+import { ARROW_DOWN } from '@/components/erd/welcome-screen/welcome-hints/hintArrows';
 import WelcomeHints, {
   preferencesHintKey,
   WelcomeHintsProps,
 } from '@/components/erd/welcome-screen/welcome-hints/WelcomeHints';
-import { ARROW_DOWN } from '@/components/erd/welcome-screen/welcomeArt';
 import { ARROW_UP_BOX } from '@/components/erd/welcome-screen/welcomeLayout';
 import type { I18n } from '@/i18n/translate';
 
