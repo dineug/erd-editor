@@ -1138,7 +1138,7 @@ describe('settings/atom.actions', () => {
       expect(settings.lockedValues).toEqual(before);
     });
 
-    it('shows nothing an older unlock carries once a later lock won', () => {
+    it('shows what an older unlock carries through the code register, though a later lock won', () => {
       store.dispatchSync({
         ...changeLockSettingsAction({
           lockSettingType: language,
@@ -1157,7 +1157,42 @@ describe('settings/atom.actions', () => {
       });
 
       expect(bHas(store.state.settings.lockSettings, language)).toBe(true);
-      expect(store.state.settings.language).toBe(Language.GraphQL);
+      expect(store.state.settings.lockedValues.language).toBe(Language.Java);
+      expect(store.state.settings.language).toBe(Language.Go);
+    });
+
+    it('shows one language whichever order an unlock meets a newer relock in', () => {
+      const unlock = {
+        ...changeLockSettingsAction({
+          lockSettingType: language,
+          value: false,
+          values: { language: Language.Kotlin },
+        }),
+        version: 10,
+      };
+      const relock = {
+        ...changeLockSettingsAction({
+          lockSettingType: language,
+          value: true,
+          values: { language: Language.Go },
+        }),
+        version: 11,
+      };
+
+      const peers = [
+        [unlock, relock],
+        [relock, unlock],
+      ].map(order => {
+        const peer = createTestStore();
+        order.forEach(action => peer.dispatchSync(action));
+        return peer.state.settings;
+      });
+
+      for (const settings of peers) {
+        expect(bHas(settings.lockSettings, language)).toBe(true);
+        expect(settings.lockedValues.language).toBe(Language.Go);
+        expect(settings.language).toBe(Language.Kotlin);
+      }
     });
 
     it.each([

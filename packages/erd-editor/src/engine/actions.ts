@@ -146,12 +146,21 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
 ];
 
 /**
- * What a replica applies and reports: every change, and the save switch the
+ * What a replica reports as a change: every change, and the save switch the
  * locks replaced, which changes nothing yet owes the hub that relayed it a save.
  */
-export const ReplicaActionTypes: ReadonlyArray<ActionType> = [
+export const ReplicaChangeActionTypes: ReadonlyArray<ActionType> = [
   ...ChangeActionTypes,
   'settings.changeIgnoreSaveSettings',
+];
+
+/**
+ * What a replica applies: what it reports, and the registers a window answers
+ * a join with, which change no saved byte and so owe no hub a save.
+ */
+export const ReplicaActionTypes: ReadonlyArray<ActionType> = [
+  ...ReplicaChangeActionTypes,
+  'editor.mergeLWW',
 ];
 
 const hasReadonlyIgnore = arrayHas([

@@ -9,6 +9,7 @@ import {
   LockSettingActionTypes,
   ReadonlyIgnoreActionTypes,
   ReplicaActionTypes,
+  ReplicaChangeActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
   SharedStreamActionTypes,
@@ -151,9 +152,9 @@ describe('ChangeActionTypes', () => {
   });
 });
 
-describe('ReplicaActionTypes', () => {
+describe('ReplicaChangeActionTypes', () => {
   it('is ChangeActionTypes plus the save switch the locks replaced, a change of no other list', () => {
-    expect(ReplicaActionTypes).toEqual([
+    expect(ReplicaChangeActionTypes).toEqual([
       ...ChangeActionTypes,
       'settings.changeIgnoreSaveSettings',
     ]);
@@ -163,6 +164,16 @@ describe('ReplicaActionTypes', () => {
     expect(HistoryActionTypes).not.toContain(
       'settings.changeIgnoreSaveSettings'
     );
+  });
+});
+
+describe('ReplicaActionTypes', () => {
+  it('is what a replica reports plus the registers a window answers a join with, never reported', () => {
+    expect(ReplicaActionTypes).toEqual([
+      ...ReplicaChangeActionTypes,
+      'editor.mergeLWW',
+    ]);
+    expect(ReplicaChangeActionTypes).not.toContain('editor.mergeLWW');
   });
 });
 

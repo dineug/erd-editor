@@ -504,7 +504,7 @@ export const CodeLockSettings =
 /**
  * Locks each setting named at the values the payload carries, the last lock
  * or unlock of it winning on every peer, and leaves one sent wrong as it was.
- * An unlock that wins sets each valid code value it carries, as a setter would.
+ * An unlock sets each valid code value it carries as a setter would, won or not.
  */
 const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
   state,
@@ -532,21 +532,22 @@ const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
         if (value) {
           Object.assign(settings.lockedValues, carried);
           settings.lockSettings |= bit;
-          return;
+        } else {
+          settings.lockSettings &= ~bit;
         }
-
-        settings.lockSettings &= ~bit;
-        if (!bHas(CodeLockSettings, bit)) return;
-
-        valid.forEach(field =>
-          replaceCodeSetting(
-            state,
-            safeVersion,
-            field as CodeSetting,
-            carried[field] as number
-          )
-        );
       }
+    );
+
+    // Outside the lock's register, so an unlock that crosses a newer relock
+    // shows the same value on every peer whichever of the two comes first.
+    if (value || !bHas(CodeLockSettings, bit)) return;
+    valid.forEach(field =>
+      replaceCodeSetting(
+        state,
+        safeVersion,
+        field as CodeSetting,
+        carried[field] as number
+      )
     );
   });
 };
@@ -557,8 +558,8 @@ export const changeIgnoreSaveSettingsAction = createAction<
 
 /**
  * Changes nothing, the locks having replaced the switch. Only a replica takes
- * it (ReplicaActionTypes), so a batch an agent written before the locks sends
- * still gets the save its hub waits on, and the element reports no change.
+ * it (ReplicaChangeActionTypes), so a batch an agent written before the locks
+ * sends still gets the save its hub waits on, and the element reports none.
  */
 const changeIgnoreSaveSettings: ReducerType<
   typeof ActionType.changeIgnoreSaveSettings

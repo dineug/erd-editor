@@ -6,6 +6,7 @@ import {
   createSeedValue,
   createUserStore,
   SEED,
+  type SeededStore,
 } from '@/__test-utils__/peerSeed';
 import {
   CanvasType,
@@ -16,7 +17,12 @@ import {
   StartRelationshipType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
-import { unselectAllAction } from '@/engine/modules/editor/atom.actions';
+import {
+  getLWWAction,
+  mergeLWWAction,
+  unselectAllAction,
+} from '@/engine/modules/editor/atom.actions';
+import { changeMemoColorAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeCanvasTypeAction,
   changeLanguageAction,
@@ -33,6 +39,7 @@ import {
 } from '@/engine/modules/settings/generator.actions';
 import {
   addTableAction,
+  changeTableColorAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { createPeerStore } from '@/engine/peer-store';
@@ -63,6 +70,29 @@ function make(toWidth = (text: string) => text.length * 10): ReplicationStore {
 
 function parse(store: ReplicationStore) {
   return JSON.parse(store.value);
+}
+
+/** A batch as a worker receives it: postMessage hands over a copy. */
+const copy = (actions: AnyAction[]) => structuredClone(actions);
+
+/** Paints the seed's users table and memo, and sends the stroke at once. */
+function paint({ rxStore, sharedStore }: SeededStore, color: string) {
+  rxStore.dispatchSync(
+    changeTableColorAction({ id: SEED.users, color, prevColor: '' }),
+    changeMemoColorAction({ id: SEED.memo, color, prevColor: '' })
+  );
+  sharedStore.flushStreamBuffers();
+}
+
+/** The colours of the users table and the memo, as a store would save them. */
+function colours(store: ReplicationStore | SeededStore) {
+  const { collections } = JSON.parse(
+    'value' in store ? store.value : toJson(store.rxStore.state)
+  );
+  return [
+    collections.tableEntities[SEED.users].ui.color,
+    collections.memoEntities[SEED.memo].ui.color,
+  ];
 }
 
 /** Let the schema GC promise chain settle. */
@@ -255,7 +285,7 @@ describe('createReplicationStore', () => {
     expect(json.collections.tableEntities.t1.name).toBe('users');
   });
 
-  it('dispatchSync ignores actions outside of ChangeActionTypes', () => {
+  it('dispatchSync ignores actions outside of ReplicaActionTypes', () => {
     const store = make();
     const before = store.value;
 
@@ -321,6 +351,26 @@ describe('createReplicationStore', () => {
       expect(change).toHaveBeenCalledTimes(1);
       expect(change).toHaveBeenCalledWith({ value: before, changed: false });
       expect(parse(store).settings).toMatchObject({ ignoreSaveSettings: 0 });
+    });
+
+    it('reports no change for the registers a window answers a join with', () => {
+      vi.useFakeTimers();
+      const store = make();
+      const change = vi.fn();
+      store.on({ change });
+      const before = store.value;
+
+      store.dispatchSync({
+        ...mergeLWWAction({
+          lww: { 'settings.code': ['settings', -1, -1, { language: 8 }] },
+        }),
+        tags: Tag.shared,
+        version: 8,
+      });
+      vi.advanceTimersByTime(250);
+
+      expect(change).not.toHaveBeenCalled();
+      expect(store.value).toBe(before);
     });
 
     it('reports no change for a load, which a host has just read', async () => {
@@ -669,6 +719,35 @@ describe('createReplicationStore', () => {
       });
     });
 
+    it('measures from the first change action, not from the registers a join brings in before it', async () => {
+      vi.useFakeTimers();
+      let measure = macWidth;
+      const store = make(text => measure(text));
+      store.setInitialValue(savedWith(macWidth));
+      const change = vi.fn();
+      store.on({ change });
+
+      store.dispatchSync({
+        ...mergeLWWAction({
+          lww: { 'settings.code': ['settings', -1, -1, { language: 1 }] },
+        }),
+        tags: Tag.shared,
+        version: 1,
+      });
+      // The widths the load's hook measures again come out other than the ones
+      // settleLoad wrote, a write no change action made.
+      measure = winWidth;
+      await vi.advanceTimersByTimeAsync(10);
+      const opened = store.value;
+      store.dispatchSync(scroll);
+      vi.advanceTimersByTime(250);
+
+      expect(parse(store).collections.tableEntities.t1.ui.widthName).toBe(
+        winWidth('customer_accounts')
+      );
+      expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
+    });
+
     it('changes nothing for a view change on a file an older release saved without the origin', async () => {
       const legacy = JSON.parse(savedWith(macWidth));
       delete legacy.settings.originX;
@@ -961,6 +1040,214 @@ describe('createReplicationStore', () => {
       await settle();
 
       expectOneValue(inFile);
+    });
+  });
+
+  /**
+   * An unlock and a newer relock of the same setting reach the readers in
+   * either order. The relock holds the file, and the code register alone
+   * decides what the unlock shows, so every screen ends on one value.
+   */
+  describe('an unlock crossing a newer relock', () => {
+    const { language } = LockSettingType;
+    const lockLanguage = (
+      value: boolean,
+      version: number,
+      carried: object
+    ) => ({
+      ...changeLockSettingsAction({
+        lockSettingType: language,
+        value,
+        values: carried,
+      }),
+      tags: Tag.shared,
+      version,
+    });
+    const unlocked = lockLanguage(false, 10, { language: Language.Kotlin });
+    // The relocker never saw the unlock, so it locks at the value it shows.
+    const relocked = lockLanguage(true, 11, { language: Language.Go });
+    const closers: Array<() => void> = [];
+
+    afterEach(() => {
+      closers.splice(0).forEach(close => close());
+    });
+
+    /** An editor window on the file, its element's stores and its replica. */
+    function openWindow(file: string) {
+      const user = createUserStore(file);
+      const replica = make();
+      replica.setInitialValue(file);
+      closers.push(user.destroy);
+
+      return {
+        receive: (actions: AnyAction[]) => {
+          user.sharedStore.dispatchSync(actions);
+          replica.dispatchSync(actions);
+        },
+        screen: () => user.rxStore.state.settings.language,
+        values: () =>
+          [toJson(user.rxStore.state), replica.value].map(
+            value => JSON.parse(value).settings
+          ),
+      };
+    }
+
+    /** One window per delivery order, each handed both batches in it. */
+    async function crossed() {
+      const file = createSeedValue();
+      const windows = [
+        [unlocked, relocked],
+        [relocked, unlocked],
+      ].map(order => {
+        const editor = openWindow(file);
+        order.forEach(action => editor.receive([{ ...action }]));
+        return editor;
+      });
+      await settle();
+      return windows;
+    }
+
+    const savedSettings = (windows: Array<ReturnType<typeof openWindow>>) =>
+      windows.flatMap(editor => editor.values());
+
+    it('saves one value on every store, the one the relock carries', async () => {
+      const [first, ...rest] = savedSettings(await crossed());
+
+      expect(rest).toHaveLength(3);
+      for (const settings of rest) expect(settings).toEqual(first);
+      expect(first).toMatchObject({
+        language: Language.Go,
+        lockSettings: LOCK_ALL,
+      });
+    });
+
+    it('shows the value the unlock carries on every screen, the replicas included', async () => {
+      const windows = await crossed();
+
+      expect(windows.map(editor => editor.screen())).toEqual([
+        Language.Kotlin,
+        Language.Kotlin,
+      ]);
+
+      // An unlock carrying no value saves the screen each store shows.
+      windows.forEach(editor => editor.receive([lockLanguage(false, 12, {})]));
+      const [first, ...rest] = savedSettings(windows);
+
+      for (const settings of rest) expect(settings).toEqual(first);
+      expect(first).toMatchObject({
+        language: Language.Kotlin,
+        lockSettings: LOCK_ALL & ~language,
+      });
+    });
+  });
+
+  /**
+   * A window opened on a file another window holds starts with no registers,
+   * which no file saves: its first subscribe asks for them, and the answer
+   * reaches its element and its replica alike, as webview-client relays it.
+   */
+  describe('a replica of a window joining one already open', () => {
+    const closers: Array<() => void> = [];
+
+    afterEach(() => {
+      closers.splice(0).forEach(close => close());
+    });
+
+    /** The open window's edits, the file they leave, and a window joining it. */
+    async function joinOpenWindow() {
+      const open = createUserStore(createSeedValue());
+      const toJoined: Array<(actions: AnyAction[]) => void> = [];
+      closers.push(
+        open.sharedStore.subscribe(actions =>
+          toJoined.forEach(send => send(actions))
+        ),
+        open.destroy
+      );
+      open.rxStore.dispatchSync(
+        changeLockSettingsAction$(LockSettingType.language, false),
+        changeLanguageAction({ value: Language.Kotlin }),
+        changeTableNameAction({ id: SEED.users, value: 'members' })
+      );
+      paint(open, '#111111');
+      await settle();
+
+      const file = toJson(open.rxStore.state);
+      const joined = createUserStore(file);
+      const replica = make();
+      replica.setInitialValue(file);
+      toJoined.push(actions => {
+        joined.sharedStore.dispatchSync(copy(actions));
+        replica.dispatchSync(copy(actions));
+      });
+      closers.push(
+        joined.sharedStore.subscribe(actions => {
+          replica.dispatchSync(copy(actions));
+          open.sharedStore.dispatchSync(copy(actions));
+        }),
+        joined.destroy
+      );
+      await settle();
+
+      const { lww } = open.rxStore.state;
+      const older =
+        Math.min(lww['settings.code'][3].language, lww[SEED.users][3].name) - 1;
+      return { open, joined, replica, older };
+    }
+
+    it('refuses a setter older than the registers the open window answered with', async () => {
+      const { joined, replica, older } = await joinOpenWindow();
+      const stale = [
+        changeLanguageAction({ value: Language.Java }),
+        changeTableNameAction({ id: SEED.users, value: 'people' }),
+      ].map(action => ({ ...action, tags: Tag.shared, version: older }));
+
+      joined.sharedStore.dispatchSync(stale);
+      replica.dispatchSync(stale);
+      await settle();
+
+      const saved = parse(replica);
+      expect(saved.settings.language).toBe(Language.Kotlin);
+      expect(saved.collections.tableEntities[SEED.users].name).toBe('members');
+      expect(saved.settings).toEqual(
+        JSON.parse(toJson(joined.rxStore.state)).settings
+      );
+    });
+
+    it('saves a colour the open window paints after the join, which travels with no version', async () => {
+      const { open, joined, replica } = await joinOpenWindow();
+
+      paint(open, '#222222');
+      await settle();
+
+      expect(colours(replica)).toEqual(['#222222', '#222222']);
+      expect(colours(replica)).toEqual(colours(joined));
+    });
+  });
+
+  /**
+   * A window answers a join with its registers on the way out, which reach its
+   * own replica too, as webview-client hands that replica every batch its
+   * element sends.
+   */
+  describe('a replica of a window answering a join', () => {
+    it('saves a colour its window paints after the answer', async () => {
+      const file = createSeedValue();
+      const user = createUserStore(file);
+      const replica = make();
+      replica.setInitialValue(file);
+      const stop = user.sharedStore.subscribe(actions =>
+        replica.dispatchSync(copy(actions))
+      );
+
+      paint(user, '#111111');
+      user.sharedStore.dispatchSync({ ...getLWWAction(), tags: Tag.shared });
+      paint(user, '#222222');
+      await settle();
+
+      expect(colours(replica)).toEqual(['#222222', '#222222']);
+      expect(colours(replica)).toEqual(colours(user));
+      stop();
+      user.destroy();
     });
   });
 
