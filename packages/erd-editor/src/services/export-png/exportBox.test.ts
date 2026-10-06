@@ -8,6 +8,7 @@ import { getContentRect } from '@/konva/scene/contentBounds';
 import { getMemoRect, type Rect } from '@/konva/scene/metrics';
 import {
   EXPORT_MARGIN,
+  EXPORT_ZOOM_LEVEL,
   getExportRect,
   getExportScale,
   getExportSize,
@@ -138,27 +139,19 @@ describe('getExportScale', () => {
     expect(getExportScale({ x: 0, y: 0, width: 2_000, height: 2_000 })).toBe(1);
   });
 
-  it('is the zoom the image was asked for, for a box a canvas can hold', () => {
-    const box = { x: 0, y: 0, width: 2_000, height: 2_000 };
-
-    expect(getExportScale(box, 0.5)).toBe(0.5);
-    expect(getExportScale(box, 1.5)).toBe(1.5);
+  it('draws at 100% and never above it, however small the box', () => {
+    expect(EXPORT_ZOOM_LEVEL).toBe(1);
+    expect(getExportScale({ x: 0, y: 0, width: 10, height: 10 })).toBe(
+      EXPORT_ZOOM_LEVEL
+    );
   });
 
-  it('is the ceiling rather than the zoom where the two disagree', () => {
-    const box = { x: 0, y: 0, width: 400_000, height: 360 };
-    const ceiling = CANVAS_SIDE_MAX / box.width;
+  it('is 100% up to the side ceiling and the ceiling past it', () => {
+    const atCeiling = { x: 0, y: 0, width: CANVAS_SIDE_MAX, height: 360 };
+    const pastCeiling = { ...atCeiling, width: CANVAS_SIDE_MAX * 2 };
 
-    // A zoom under the ceiling is honoured; one over it is what the ceiling cuts.
-    expect(getExportScale(box, ceiling / 2)).toBeCloseTo(ceiling / 2, 12);
-    expect(getExportScale(box, 1.5)).toBeCloseTo(ceiling, 12);
-  });
-
-  it('reads a zoom of zero or less as no zoom at all, which only a torn state reports', () => {
-    const box = { x: 0, y: 0, width: 2_000, height: 2_000 };
-
-    expect(getExportScale(box, 0)).toBe(1);
-    expect(getExportScale(box, -1)).toBe(1);
+    expect(getExportScale(atCeiling)).toBe(EXPORT_ZOOM_LEVEL);
+    expect(getExportScale(pastCeiling)).toBeCloseTo(0.5, 12);
   });
 
   it('is what brings the longest side back under the side ceiling', () => {
@@ -186,35 +179,36 @@ describe('getExportScale', () => {
 
   it('keeps a box with no area at one image pixel per scene unit', () => {
     expect(getExportScale({ x: 0, y: 0, width: 0, height: 0 })).toBe(1);
+    expect(getExportScale({ x: 0, y: 0, width: 2_000, height: 0 })).toBe(1);
   });
 });
 
 describe('getExportSize', () => {
-  it('is the box times the zoom times the scale for a box a canvas can hold', () => {
-    expect(getExportSize({ width: 2_160, height: 1_080 }, 1, 2)).toEqual({
+  it('is the box times the scale for a box a canvas can hold', () => {
+    expect(getExportSize({ width: 2_160, height: 1_080 }, 2)).toEqual({
       width: 4_320,
       height: 2_160,
       askedWidth: 4_320,
       askedHeight: 2_160,
       reduced: false,
     });
-    expect(getExportSize({ width: 2_160, height: 2_160 }, 0.4, 3)).toEqual({
-      width: 2_592,
-      height: 2_592,
-      askedWidth: 2_592,
-      askedHeight: 2_592,
+    expect(getExportSize({ width: 2_160, height: 2_160 }, 3)).toEqual({
+      width: 6_480,
+      height: 6_480,
+      askedWidth: 6_480,
+      askedHeight: 6_480,
       reduced: false,
     });
   });
 
   it('truncates a fractional side the way a canvas does', () => {
-    const size = getExportSize({ width: 100.9, height: 50.5 }, 1, 1);
+    const size = getExportSize({ width: 100.9, height: 50.5 }, 1);
 
     expect([size.width, size.height]).toEqual([100, 50]);
   });
 
   it('says a scale cut by the area ceiling is reduced, and what was asked', () => {
-    const size = getExportSize({ width: 10_000, height: 10_000 }, 1, 2);
+    const size = getExportSize({ width: 10_000, height: 10_000 }, 2);
 
     expect(size.reduced).toBe(true);
     expect([size.askedWidth, size.askedHeight]).toEqual([20_000, 20_000]);
@@ -222,27 +216,29 @@ describe('getExportSize', () => {
     expect(size.width * size.height).toBeLessThanOrEqual(CANVAS_AREA_MAX);
   });
 
-  it('says a zoom cut by the side ceiling is reduced', () => {
-    const size = getExportSize({ width: 400_000, height: 360 }, 1, 1);
+  it('says a box cut by the side ceiling is reduced', () => {
+    const size = getExportSize({ width: 400_000, height: 360 }, 1);
 
     expect(size.reduced).toBe(true);
     expect(size.width).toBeLessThanOrEqual(CANVAS_SIDE_MAX);
   });
 
-  it('reads a zoom of zero or less as no zoom at all', () => {
-    expect(getExportSize({ width: 300, height: 200 }, 0, 2)).toMatchObject({
-      width: 600,
-      height: 400,
+  it('asks for the box itself at a scale of one, a pixel per scene unit', () => {
+    expect(getExportSize({ width: 300, height: 200 }, 1)).toMatchObject({
+      width: 300,
+      height: 200,
+      askedWidth: 300,
+      askedHeight: 200,
       reduced: false,
     });
   });
 
   it('keeps a side the ceilings cut under a pixel at one, as the Stage it is drawn on keeps it', () => {
     const box = { width: 6_000_000, height: 160 };
-    const scale = getExportScale({ x: 0, y: 0, ...box }, 1);
+    const scale = getExportScale({ x: 0, y: 0, ...box });
     expect(box.height * scale).toBeLessThan(1);
 
-    const size = getExportSize(box, 1, 1);
+    const size = getExportSize(box, 1);
 
     expect(size.height).toBe(1);
     expect(size.width).toBeLessThanOrEqual(CANVAS_SIDE_MAX);

@@ -38,7 +38,6 @@ afterEach(() => {
 type WriteOptions = {
   box?: typeof BOX;
   scale?: number;
-  zoomLevel?: number;
   layer?: ConstructorParameters<typeof Layer>[0];
 };
 
@@ -60,8 +59,8 @@ function createStage(
 }
 
 function write(nodes: KonvaNode[], options: WriteOptions = {}): string {
-  const { box = BOX, scale = 1, zoomLevel = 1 } = options;
-  return toSceneSvg(createStage(nodes, options), { box, scale, zoomLevel });
+  const { box = BOX, scale = 1 } = options;
+  return toSceneSvg(createStage(nodes, options), { box, scale });
 }
 
 /** The layer placement ExportScene gives a box at a scale, which the viewBox maps. */
@@ -126,16 +125,18 @@ function baselineOf(fontFamily: string, fontSize: number, lineHeight = 1) {
 const rounded = (value: number) => Number(value.toFixed(3));
 
 describe('the svg root', () => {
-  it('is the box in scene units as the viewBox, sized by the zoom', () => {
+  it('is the box in scene units as the viewBox and its size, whatever the scale', () => {
+    const box = { x: -40, y: 12.5, width: 300, height: 150 };
     const root = read([new Rect({ width: 10, height: 10, fill: '#ff0000' })], {
-      box: { x: -40, y: 12.5, width: 300, height: 150 },
-      zoomLevel: 0.5,
+      box,
+      scale: 0.5,
+      layer: placedBy(box, 0.5),
     });
 
     expect(root.namespaceURI).toBe(SVG_NAMESPACE);
     expect(root.getAttribute('viewBox')).toBe('-40 12.5 300 150');
-    expect(root.getAttribute('width')).toBe('150');
-    expect(root.getAttribute('height')).toBe('75');
+    expect(root.getAttribute('width')).toBe('300');
+    expect(root.getAttribute('height')).toBe('150');
   });
 
   it('names the scene face and size once, for every text to inherit', () => {
@@ -763,7 +764,7 @@ describe('the svg against the canvas it stands in for', () => {
 
   /** The alpha konva paints the Stage with, beside the alpha of the svg written off it. */
   async function paintedAndWritten(stage: Stage, box: typeof BOX) {
-    const svg = toSceneSvg(stage, { box, scale: 1, zoomLevel: 1 });
+    const svg = toSceneSvg(stage, { box, scale: 1 });
     const image = new Image();
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
     await image.decode();

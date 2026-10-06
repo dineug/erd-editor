@@ -4,7 +4,11 @@ import type { Locator } from '@playwright/test';
 
 import type { ErdEditorPage } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
-import { createSchema, type ErdDocument } from '../support/schema';
+import {
+  createSchema,
+  type ErdDocument,
+  type TableSeed,
+} from '../support/schema';
 import { Shortcut } from '../support/shortcuts';
 
 // The dialog every image export goes through: what it opens on, what its
@@ -54,11 +58,34 @@ const CORNER_INSET = 21;
 /** The dialog's focus ring, a 2 px outline 2 px out, reaches this far past a button. */
 const RING_REACH = 4;
 
-/** One memo at scene zero and one whose far corner lands on the span. */
-function document(span = SPAN, zoomLevel = 1): ErdDocument {
+/**
+ * A zoom under the 0.7 of utils/validation.ts isHighLevelTable, where the
+ * canvas draws a table as a box with its name alone.
+ */
+const HIGH_LEVEL_ZOOM = 0.5;
+
+/** A table clear of both memos and of the menu's point, so the box is still BOX. */
+const USERS: TableSeed = {
+  id: 'users',
+  name: 'users',
+  x: 160,
+  y: 560,
+  columns: [
+    { id: 'users_id', name: 'id', dataType: 'int' },
+    { id: 'users_email', name: 'email', dataType: 'varchar(255)' },
+  ],
+};
+
+/** One memo at scene zero and one whose far corner lands on the span, and the tables given. */
+function document(
+  span = SPAN,
+  zoomLevel = 1,
+  tables: TableSeed[] = []
+): ErdDocument {
   return createSchema({
     databaseName: 'shop',
     zoomLevel,
+    tables,
     memos: [
       { id: 'origin', value: 'origin', x: 0, y: 0, ...MEMO_BOX },
       {
@@ -227,7 +254,7 @@ test.describe('the export image dialog', () => {
     await expect(button(dialogOf(erd), 'PNG')).toBeFocused();
   });
 
-  test('writes a png at the zoom times the scale, two by default, and stays open', async ({
+  test('writes a png at 100% times the scale, two by default, and stays open', async ({
     erd,
   }) => {
     await erd.seed(document());
@@ -309,26 +336,52 @@ test.describe('the export image dialog', () => {
     expect(await alphaAt(erd, bare.bytes, points)).toEqual([0, 255]);
   });
 
-  test('writes an svg at the zoom, the scale left to the png, and stays open', async ({
+  test('writes an svg at 100% whatever the zoom, the scale left to the png, and stays open', async ({
     erd,
   }) => {
-    const zoomLevel = 0.8;
-    await erd.seed(document(SPAN, zoomLevel));
+    await erd.seed(document(SPAN, 0.8));
     const dialog = await openFromMenu(erd);
 
     await button(dialog, '3x').click();
     const file = await downloadSvg(erd, dialog);
 
     expect(file.name).toMatch(/^shop-.*\.svg$/);
+    // One unit of width per scene unit, the editor's 80% left out.
     expect(svgRoot(file.text)).toEqual({
-      width: String(BOX * zoomLevel),
-      height: String(BOX * zoomLevel),
+      width: String(BOX),
+      height: String(BOX),
       viewBox: `${-EXPORT_MARGIN} ${-EXPORT_MARGIN} ${BOX} ${BOX}`,
     });
     // The memos are written as text a viewer can select, never as pixels.
     expect(file.text).toContain('>origin</text>');
     expect(file.text).toContain('>far</text>');
     await expect(dialog).toBeVisible();
+  });
+
+  test('exports a document zoomed out to simplified tables at 100%, every table in full', async ({
+    erd,
+  }) => {
+    await erd.seed(document(SPAN, HIGH_LEVEL_ZOOM, [USERS]));
+    await expect(erd.canvas.locator('.high-level-table')).toHaveCount(1);
+    const dialog = await openFromMenu(erd);
+
+    await expect(dialog.locator('.export-image-size')).toHaveText(
+      `PNG ${BOX * DEFAULT_SCALE} × ${BOX * DEFAULT_SCALE} px`
+    );
+    const png = await downloadPng(erd, dialog);
+    expect(pngSize(png.bytes)).toEqual({
+      width: BOX * DEFAULT_SCALE,
+      height: BOX * DEFAULT_SCALE,
+    });
+
+    const svg = await downloadSvg(erd, dialog);
+    expect(svgRoot(svg.text)).toEqual({
+      width: String(BOX),
+      height: String(BOX),
+      viewBox: `${-EXPORT_MARGIN} ${-EXPORT_MARGIN} ${BOX} ${BOX}`,
+    });
+    // A column is drawn by the full table alone, never by the simplified one.
+    expect(svg.text).toContain('>email</text>');
   });
 
   test('leaves the canvas out of the svg with the background off', async ({

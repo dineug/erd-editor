@@ -103,18 +103,20 @@ and a read-only editor whose palette and menu offer no Import and Add.
 `export-image-dialog.spec.ts` holds down the dialog every image export goes
 through, from the canvas menu and the palette: it opens on its defaults with
 the PNG button focused and hands the keyboard back on Escape, the png is the
-zoom times the scale (two by default), a canvas ceiling the 2x default runs
-into is told in the toast in the pixels the dialog warned of, the svg is the
-box in scene units sized by the zoom alone with its text kept as text, the
-background switch leaves the canvas transparent in the png and in the svg, the
-clipboard receives the png (Chromium with clipboard permissions granted), Tab
-turns round inside the box, the close button in its top right corner (over the
-preview once the preview stacks above the options) closes it as Escape does and
-shows its whole focus ring for the keyboard, a short box scrolled down
-included, a short editor scrolls it to its buttons, Find and Replace's chord
-trades it for the panel open beneath it, a press on the dim closes it while a
-text selection let go over the dim does not, and while it is open the canvas
-shortcuts stay off and Space presses the focused button.
+box times the scale (two by default) at 100% whatever the zoom, a canvas
+ceiling the 2x default runs into is told in the toast in the pixels the dialog
+warned of, the svg is the box in scene units, its width and height that box
+whatever the zoom, with its text kept as text, a document zoomed out to the
+simplified tables exports every table in full, the background switch leaves
+the canvas transparent in the png and in the svg, the clipboard receives the
+png (Chromium with clipboard permissions granted), Tab turns round inside the
+box, the close button in its top right corner (over the preview once the
+preview stacks above the options) closes it as Escape does and shows its whole
+focus ring for the keyboard, a short box scrolled down included, a short editor
+scrolls it to its buttons, Find and Replace's chord trades it for the panel
+open beneath it, a press on the dim closes it while a text selection let go
+over the dim does not, and while it is open the canvas shortcuts stay off and
+Space presses the focused button.
 `export-png.spec.ts` drives the same dialog at 1x.
 
 Two more hold down a frame the rest never look at, one on the canvas and one in

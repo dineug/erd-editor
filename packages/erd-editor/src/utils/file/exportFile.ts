@@ -54,12 +54,12 @@ export function exportSchemaSQL(sql: string, name?: string) {
 }
 
 /**
- * Writes the whole document out as an image, at the zoom the author is reading
- * it at. The scene is rendered again off screen rather than captured, so the
- * file holds the whole document however far it was scrolled away from.
+ * Writes the whole document out as an image, at 100% whatever zoom the author
+ * is reading it at. The scene is rendered again off screen rather than captured,
+ * so the file holds the whole document however far it was scrolled away from.
  *
  * @example
- * exportPNG({ doc: toJson(store.state), theme, toWidth, zoomLevel }, databaseName);
+ * exportPNG({ doc: toJson(store.state), theme, toWidth }, databaseName);
  */
 export function exportPNG(
   options: DocumentPngOptions,
@@ -73,11 +73,11 @@ export function exportPNG(
 }
 
 /**
- * Writes the whole document out as an svg, at the zoom the author is reading
- * it at and with no scale, drawn again off screen the way the png is.
+ * Writes the whole document out as an svg, at 100% and with no scale, drawn
+ * again off screen the way the png is.
  *
  * @example
- * exportSVG({ doc: toJson(store.state), theme, toWidth, zoomLevel }, databaseName);
+ * exportSVG({ doc: toJson(store.state), theme, toWidth }, databaseName);
  */
 export function exportSVG(
   options: DocumentSvgOptions,

@@ -34,7 +34,7 @@ export type ExportImageProps = {
   isDarkMode: boolean;
 };
 
-/** Image pixels per scene unit at the zoom, the factor the size is multiplied by. */
+/** Image pixels per scene unit, the factor the size is multiplied by. */
 export const EXPORT_SCALES = [1, 2, 3] as const;
 export type ExportScale = (typeof EXPORT_SCALES)[number];
 
@@ -52,7 +52,6 @@ const DIALOG_MAX_WIDTH = 888;
 /** One opening of the dialog: the document and palette as they were then, and its previews. */
 type Session = {
   doc: string;
-  zoomLevel: number;
   databaseName: string;
   sceneTheme: Theme;
   themeOptions: ThemeOptions;
@@ -87,7 +86,6 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     loading: false,
     documentWidth: 0,
     documentHeight: 0,
-    zoomLevel: 1,
     measured: false,
   });
 
@@ -116,7 +114,6 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
         doc: current.doc,
         theme: createTheme(current),
         toWidth: app.value.toWidth,
-        zoomLevel: current.zoomLevel,
         maxSide: PREVIEW_MAX_SIDE,
       });
       if (session !== current) return;
@@ -132,7 +129,6 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
       if (!view.measured) {
         view.documentWidth = preview.documentWidth;
         view.documentHeight = preview.documentHeight;
-        view.zoomLevel = preview.zoomLevel;
         view.measured = true;
       }
 
@@ -210,7 +206,6 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     // document and the palette as they were when the dialog opened.
     session = {
       doc: toJson(store.state),
-      zoomLevel: settings.zoomLevel,
       databaseName: settings.databaseName,
       sceneTheme: { ...themeRef.value },
       themeOptions: { ...props.themeOptions },
@@ -234,7 +229,6 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     doc: current.doc,
     theme: createTheme(current),
     toWidth: app.value.toWidth,
-    zoomLevel: current.zoomLevel,
     pixelRatio: options.scale,
   });
 
@@ -296,7 +290,6 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     const size = view.measured
       ? getExportSize(
           { width: view.documentWidth, height: view.documentHeight },
-          view.zoomLevel,
           options.scale
         )
       : null;

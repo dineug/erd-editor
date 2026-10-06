@@ -32,7 +32,7 @@ const { toWidth } = createText();
  * Text in three scripts, so a realm that resolved the family list differently
  * would draw glyphs of a different width and the comparison would see it.
  */
-function createDoc() {
+function createDoc(zoomLevel = 1) {
   return JSON.stringify({
     version: '3.0.0',
     settings: {
@@ -40,7 +40,10 @@ function createDoc() {
       height: CANVAS,
       originX: 0,
       originY: 0,
-      zoomLevel: 1,
+      zoomLevel,
+      // Nothing locked, which is how an editor that saves the zoom it is read
+      // at writes it; one saved before the locks opens at 100% whatever it saved.
+      lockSettings: 0,
       databaseName: 'worker',
     },
     doc: {
@@ -124,7 +127,7 @@ type MemoSeed = {
  * A document of memos and nothing else, so the box the image holds is the memo
  * frames and the margin around them, both of which the seed states outright.
  */
-function createMemoDoc(memos: MemoSeed[]) {
+function createMemoDoc(memos: MemoSeed[], zoomLevel = 1) {
   return JSON.stringify({
     version: '3.0.0',
     settings: {
@@ -132,7 +135,8 @@ function createMemoDoc(memos: MemoSeed[]) {
       height: CANVAS,
       originX: 0,
       originY: 0,
-      zoomLevel: 1,
+      zoomLevel,
+      lockSettings: 0,
       databaseName: 'worker',
     },
     doc: {
@@ -428,4 +432,82 @@ describe('a box past what a canvas holds', () => {
     expect([drawn.width, drawn.height]).toEqual([box.width, box.height]);
     expect(reductions).toEqual([]);
   }, 60_000);
+});
+
+describe('a document saved zoomed out', () => {
+  /**
+   * Under the zoom the canvas swaps a table for a named box at, so an export
+   * that read the zoom the document carries would draw it smaller and boxed.
+   */
+  const ZOOMED_OUT = 0.4;
+
+  const MEMOS: MemoSeed[] = [
+    { id: 'm-1', x: 0, y: 0, width: 240, height: 160 },
+    { id: 'm-2', x: 400, y: 300, width: 240, height: 160 },
+  ];
+
+  it('exports at 100% all the same, a pixel per scene unit of the box', async () => {
+    const box = memoDocBox(MEMOS);
+    const reductions: unknown[] = [];
+    const progress: ExportPngProgress[] = [];
+
+    const blob = await createDocumentPng({
+      doc: createMemoDoc(MEMOS, ZOOMED_OUT),
+      theme,
+      toWidth,
+      onResolutionReduced: reduction => reductions.push(reduction),
+      onProgress: event => progress.push(event),
+    });
+
+    const drawn = await createImageBitmap(blob);
+
+    expect(progress.at(-1)).toMatchObject({
+      phase: 'finished',
+      realm: 'worker',
+    });
+    expect([drawn.width, drawn.height]).toEqual([box.width, box.height]);
+    expect(reductions).toEqual([]);
+  });
+
+  it('draws every table in full, the very pixels the document saved at 100% draws', async () => {
+    const zoomedOut = await exportPng(toWidth, createDoc(ZOOMED_OUT));
+    const atFull = await exportPng(toWidth, createDoc(1));
+
+    const [a, b] = await Promise.all([
+      pixelsOf(zoomedOut.blob),
+      pixelsOf(atFull.blob),
+    ]);
+
+    expect(realmOf(zoomedOut)).toEqual(['worker']);
+    expect([a.width, a.height]).toEqual([b.width, b.height]);
+    expect(differingBytes(a, b)).toBe(0);
+  });
+
+  it('is drawn at 100% on the main thread too, the realm a worker hands it back to', async () => {
+    const main = await renderDocumentPng({
+      doc: createDoc(ZOOMED_OUT),
+      theme,
+      pixelRatio: 1,
+      toWidth,
+    });
+    const atFull = await renderDocumentPng({
+      doc: createDoc(1),
+      theme,
+      pixelRatio: 1,
+      toWidth,
+    });
+
+    const [a, b] = await Promise.all([
+      pixelsOf(main.blob),
+      pixelsOf(atFull.blob),
+    ]);
+
+    // A canvas truncates the side it is given, so a box measured in fractions
+    // comes out at the whole pixels under it.
+    expect([main.width, main.height]).toEqual([
+      Math.floor(main.documentWidth),
+      Math.floor(main.documentHeight),
+    ]);
+    expect(differingBytes(a, b)).toBe(0);
+  });
 });
