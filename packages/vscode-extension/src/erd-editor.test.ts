@@ -3,6 +3,7 @@ import {
   hostExportFileCommand,
   hostImportFileCommand,
   hostInitialCommand,
+  hostSaveLocaleCommand,
   hostSaveReplicationCommand,
   hostSaveThemeCommand,
   hostSaveValueCommand,
@@ -18,6 +19,7 @@ import {
   createExtensionContext,
   createWebview,
   createWorkspaceConfiguration,
+  env,
   fireConfigurationChange,
   resetVscodeMock,
   Uri,
@@ -153,16 +155,18 @@ describe('ErdEditor', () => {
   });
 
   describe('hostInitialCommand', () => {
-    it('answers the handshake with theme, readonly and value, in that order', async () => {
+    it('answers the handshake with theme, locale, readonly and value, in that order', async () => {
       workspace.getConfiguration.mockReturnValue(
         createWorkspaceConfiguration({
           values: {
             appearance: 'light',
             grayColor: 'sand',
             accentColor: 'ruby',
+            locale: 'ja-JP',
           },
         })
       );
+      env.language = 'ko';
       const { webview, others } = await bootstrap({
         content: '{"version":"3.0.0"}',
         siblings: 1,
@@ -181,6 +185,10 @@ describe('ErdEditor', () => {
             grayColor: 'sand',
             accentColor: 'ruby',
           },
+        },
+        {
+          type: 'webviewUpdateLocaleCommand',
+          payload: { locale: 'ja-JP', systemLocale: 'ko' },
         },
         { type: 'webviewUpdateReadonlyCommand', payload: false },
         {
@@ -205,6 +213,23 @@ describe('ErdEditor', () => {
       });
     });
 
+    it("sends auto with VS Code's display language when no locale is configured", async () => {
+      const config = createWorkspaceConfiguration();
+      workspace.getConfiguration.mockReturnValue(config);
+      const { webview } = await bootstrap();
+
+      webview.__receive(Bridge.executeCommand(hostInitialCommand, undefined));
+
+      expect(webview.postMessage.mock.calls[1][0]).toEqual({
+        type: 'webviewUpdateLocaleCommand',
+        payload: { locale: 'auto', systemLocale: 'en' },
+      });
+      expect(workspace.getConfiguration).toHaveBeenCalledWith(
+        'dineug.erd-editor'
+      );
+      expect(config.get).toHaveBeenCalledWith('locale', 'auto');
+    });
+
     it('reports readonly for a git-scheme document — that file cannot be written', async () => {
       const { webview } = await bootstrap({
         uri: Uri.parse('git:/workspace/sample.erd'),
@@ -212,13 +237,13 @@ describe('ErdEditor', () => {
 
       webview.__receive(Bridge.executeCommand(hostInitialCommand, undefined));
 
-      expect(webview.postMessage.mock.calls[1][0]).toEqual({
+      expect(webview.postMessage.mock.calls[2][0]).toEqual({
         type: 'webviewUpdateReadonlyCommand',
         payload: true,
       });
     });
 
-    it('reports the webview ready to the registry after the three answers, never before', async () => {
+    it('reports the webview ready to the registry after the four answers, never before', async () => {
       const { webview, document, registry } = await bootstrap();
       // Recorded, not asserted, inside: the bridge swallows a listener's throw.
       let postedFirst = -1;
@@ -228,7 +253,7 @@ describe('ErdEditor', () => {
 
       webview.__receive(Bridge.executeCommand(hostInitialCommand, undefined));
 
-      expect(postedFirst).toBe(3);
+      expect(postedFirst).toBe(4);
       expect(registry.onWebviewReady).toHaveBeenCalledTimes(1);
       expect(registry.onWebviewReady).toHaveBeenCalledWith(document, webview);
     });
@@ -240,7 +265,7 @@ describe('ErdEditor', () => {
 
       webview.__receive(Bridge.executeCommand(hostInitialCommand, undefined));
 
-      expect(webview.postMessage.mock.calls[2][0]).toEqual({
+      expect(webview.postMessage.mock.calls[3][0]).toEqual({
         type: 'webviewInitialValueCommand',
         payload: { value: '{"name":"주문 테이블"}' },
       });
@@ -853,6 +878,30 @@ describe('ErdEditor', () => {
     });
   });
 
+  describe('hostSaveLocaleCommand', () => {
+    it('persists the picked display language through the configuration api', async () => {
+      const config = createWorkspaceConfiguration();
+      workspace.getConfiguration.mockReturnValue(config);
+      const { webview } = await bootstrap();
+
+      webview.__receive(
+        Bridge.executeCommand(hostSaveLocaleCommand, { locale: 'he-IL' })
+      );
+      webview.__receive(
+        Bridge.executeCommand(hostSaveLocaleCommand, { locale: 'auto' })
+      );
+
+      expect(workspace.getConfiguration).toHaveBeenCalledWith(
+        'dineug.erd-editor'
+      );
+      expect(config.update.mock.calls).toEqual([
+        ['locale', 'he-IL', ConfigurationTarget.Global],
+        ['locale', 'auto', ConfigurationTarget.Global],
+      ]);
+      expect(webview.postMessage).not.toHaveBeenCalled();
+    });
+  });
+
   describe('configuration changes', () => {
     it('pushes a fresh theme when a theme key changes', async () => {
       const { webview } = await bootstrap();
@@ -879,7 +928,39 @@ describe('ErdEditor', () => {
       });
     });
 
-    it('asks about every theme key, scoped to the document uri', async () => {
+    it('pushes the display language when the locale setting changes, and no theme', async () => {
+      const { webview } = await bootstrap();
+      workspace.getConfiguration.mockReturnValue(
+        createWorkspaceConfiguration({ values: { locale: 'ar-SA' } })
+      );
+      env.language = 'de';
+
+      fireConfigurationChange(['dineug.erd-editor.locale']);
+
+      expect(webview.postMessage.mock.calls).toEqual([
+        [
+          {
+            type: 'webviewUpdateLocaleCommand',
+            payload: { locale: 'ar-SA', systemLocale: 'de' },
+          },
+        ],
+      ]);
+    });
+
+    it('pushes the theme and then the display language for an event that changes both', async () => {
+      const { webview } = await bootstrap();
+
+      fireConfigurationChange([
+        'dineug.erd-editor.locale',
+        'dineug.erd-editor.theme.accentColor',
+      ]);
+
+      expect(
+        webview.postMessage.mock.calls.map(([action]) => action.type)
+      ).toEqual(['webviewUpdateThemeCommand', 'webviewUpdateLocaleCommand']);
+    });
+
+    it('asks about every theme key and the locale, scoped to the document uri', async () => {
       const { document } = await bootstrap();
       const affectsConfiguration = vi.fn(
         (_section: string, _scope?: unknown) => false
@@ -896,6 +977,7 @@ describe('ErdEditor', () => {
         ['dineug.erd-editor.theme.grayColor', document.uri],
         ['dineug.erd-editor.theme.accentColor', document.uri],
         ['workbench.colorTheme', document.uri],
+        ['dineug.erd-editor.locale', document.uri],
       ]);
     });
 
@@ -934,13 +1016,14 @@ describe('ErdEditor', () => {
       expect(webview.postMessage).not.toHaveBeenCalled();
     });
 
-    it('stops pushing theme updates on configuration changes', async () => {
+    it('stops pushing theme and locale updates on configuration changes', async () => {
       const { webview, disposable } = await bootstrap();
 
       disposable.dispose();
       fireConfigurationChange([
         'workbench.colorTheme',
         'dineug.erd-editor.theme.appearance',
+        'dineug.erd-editor.locale',
       ]);
 
       expect(webview.postMessage).not.toHaveBeenCalled();

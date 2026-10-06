@@ -135,7 +135,7 @@ describe('applyActions never opens an editor', () => {
       code: HubErrorCode.notOpen,
       message: `Join ${PATH} before applying actions to it`,
     });
-    expect(editor.webview.postMessage).toHaveBeenCalledTimes(3);
+    expect(editor.webview.postMessage).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -184,7 +184,7 @@ describe('openDocument', () => {
 
     harness.ready(opened[0]);
     expect(commands.executeCommand).toHaveBeenCalledTimes(1);
-    expect(opened[0].webview.postMessage).toHaveBeenCalledTimes(3);
+    expect(opened[0].webview.postMessage).toHaveBeenCalledTimes(4);
   });
 
   it('answers at once, opening nothing, when a ready editor already shows the document', async () => {

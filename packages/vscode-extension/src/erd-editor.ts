@@ -5,12 +5,14 @@ import {
   hostExportFileCommand,
   hostImportFileCommand,
   hostInitialCommand,
+  hostSaveLocaleCommand,
   hostSaveReplicationCommand,
   hostSaveThemeCommand,
   hostSaveValueCommand,
   webviewImportFileCommand,
   webviewInitialValueCommand,
   webviewReplicationCommand,
+  webviewUpdateLocaleCommand,
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-webview-bridge';
@@ -18,7 +20,13 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-import { getTheme, saveTheme } from '@/configuration';
+import {
+  getLocale,
+  getTheme,
+  LOCALE_SETTING,
+  saveLocale,
+  saveTheme,
+} from '@/configuration';
 import { Editor } from '@/editor';
 import { textDecoder, textEncoder } from '@/utils';
 
@@ -47,6 +55,13 @@ const THEME_KEYS = [
   'workbench.colorTheme',
 ];
 
+/** The saved display language, and VS Code's own for auto to follow. */
+const localeUpdate = () =>
+  Bridge.executeCommand(webviewUpdateLocaleCommand, {
+    locale: getLocale(),
+    systemLocale: vscode.env.language,
+  });
+
 export class ErdEditor extends Editor {
   assetsDir = 'public';
 
@@ -72,6 +87,7 @@ export class ErdEditor extends Editor {
     const dispose = Bridge.mergeRegister(
       this.bridge.registerCommand(hostInitialCommand, () => {
         dispatch(Bridge.executeCommand(webviewUpdateThemeCommand, getTheme()));
+        dispatch(localeUpdate());
         dispatch(
           Bridge.executeCommand(webviewUpdateReadonlyCommand, this.readonly)
         );
@@ -162,6 +178,9 @@ export class ErdEditor extends Editor {
       ),
       this.bridge.registerCommand(hostSaveThemeCommand, payload => {
         saveTheme(payload);
+      }),
+      this.bridge.registerCommand(hostSaveLocaleCommand, ({ locale }) => {
+        saveLocale(locale);
       })
     );
 
@@ -173,14 +192,17 @@ export class ErdEditor extends Editor {
       // single event that can report several keys at once, and a listener per
       // key pushed the same theme up to four times.
       vscode.workspace.onDidChangeConfiguration(event => {
-        const affected = THEME_KEYS.some(key =>
+        const affectsTheme = THEME_KEYS.some(key =>
           event.affectsConfiguration(key, this.document.uri)
         );
-        if (!affected) {
-          return;
+        if (affectsTheme) {
+          dispatch(
+            Bridge.executeCommand(webviewUpdateThemeCommand, getTheme())
+          );
         }
-
-        dispatch(Bridge.executeCommand(webviewUpdateThemeCommand, getTheme()));
+        if (event.affectsConfiguration(LOCALE_SETTING, this.document.uri)) {
+          dispatch(localeUpdate());
+        }
       }),
     ];
 

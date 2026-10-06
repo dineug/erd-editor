@@ -4,11 +4,18 @@ import {
   AccentColor,
   Appearance,
   GrayColor,
+  LocaleLabel,
   ThemeOptions,
 } from '@dineug/erd-editor-webview-bridge';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { getTheme, saveTheme } from '@/configuration';
+import {
+  getLocale,
+  getTheme,
+  LOCALE_SETTING,
+  saveLocale,
+  saveTheme,
+} from '@/configuration';
 
 import {
   ConfigurationInspect,
@@ -28,6 +35,8 @@ const theme: ThemeOptions = {
 };
 
 function arrangeConfiguration(options?: {
+  /** The section the code under test reads, which inspect names each key under. */
+  section?: string;
   values?: Record<string, unknown>;
   /**
    * Per-scope values only. The real inspect always reports the full setting
@@ -40,7 +49,10 @@ function arrangeConfiguration(options?: {
       Object.entries(options?.inspect ?? {}).map(
         ([key, scopes]): [string, ConfigurationInspect | undefined] => [
           key,
-          scopes && { key: `${SECTION}.${key}`, ...scopes },
+          scopes && {
+            key: `${options?.section ?? SECTION}.${key}`,
+            ...scopes,
+          },
         ]
       )
     );
@@ -63,7 +75,11 @@ function updateCalls(config: MockWorkspaceConfiguration): UpdateCall[] {
   return config.update.mock.calls as unknown as UpdateCall[];
 }
 
-type ManifestSetting = { default?: unknown; enum?: string[] };
+type ManifestSetting = {
+  default?: unknown;
+  enum?: string[];
+  enumItemLabels?: string[];
+};
 
 const manifest = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf-8')
@@ -423,6 +439,89 @@ describe('configuration', () => {
         'appearance',
         'grayColor',
         'accentColor',
+      ]);
+    });
+  });
+
+  describe('locale', () => {
+    const localeSetting = (): ManifestSetting => {
+      const setting = manifestSettings[LOCALE_SETTING];
+      if (!setting) {
+        throw new Error(`package.json contributes no "${LOCALE_SETTING}"`);
+      }
+      return setting;
+    };
+
+    it('reads dineug.erd-editor.locale, auto when nothing is stored, as the manifest defaults', () => {
+      const config = arrangeConfiguration();
+
+      expect(LOCALE_SETTING).toBe('dineug.erd-editor.locale');
+      expect(getLocale()).toBe('auto');
+      expect(getLocale()).toBe(localeSetting().default);
+      expect(workspace.getConfiguration).toHaveBeenCalledWith(
+        'dineug.erd-editor'
+      );
+      expect(config.get).toHaveBeenCalledWith('locale', 'auto');
+    });
+
+    it('hands a stored language back as it is', () => {
+      arrangeConfiguration({ values: { locale: 'zh-TW' } });
+
+      expect(getLocale()).toBe('zh-TW');
+    });
+
+    it('reads a value settings.json holds that names no language as auto', () => {
+      for (const locale of ['ko', 'xx-XX', 'toString', 42, null]) {
+        arrangeConfiguration({ values: { locale } });
+
+        expect(getLocale()).toBe('auto');
+      }
+    });
+
+    it('lists auto and every language the bridge names, with their native names', () => {
+      expect(localeSetting().enum).toEqual([
+        'auto',
+        ...Object.keys(LocaleLabel),
+      ]);
+      expect(localeSetting().enumItemLabels).toEqual([
+        'Auto',
+        ...Object.values(LocaleLabel),
+      ]);
+    });
+
+    it('writes the locale key of dineug.erd-editor to Global when no narrower scope holds it', () => {
+      const config = arrangeConfiguration();
+
+      expect(saveLocale('fa-IR')).toBeUndefined();
+
+      expect(workspace.getConfiguration).toHaveBeenCalledWith(
+        'dineug.erd-editor'
+      );
+      expect(config.inspect.mock.calls).toEqual([['locale']]);
+      expect(updateCalls(config)).toEqual([
+        ['locale', 'fa-IR', ConfigurationTarget.Global],
+      ]);
+    });
+
+    it('writes to the narrowest scope that already holds the setting', () => {
+      const workspaceConfig = arrangeConfiguration({
+        section: 'dineug.erd-editor',
+        inspect: { locale: { workspaceValue: 'de-DE' } },
+      });
+      saveLocale('auto');
+      const folderConfig = arrangeConfiguration({
+        section: 'dineug.erd-editor',
+        inspect: {
+          locale: { workspaceValue: 'de-DE', workspaceFolderValue: 'en' },
+        },
+      });
+      saveLocale('ko-KR');
+
+      expect(updateCalls(workspaceConfig)).toEqual([
+        ['locale', 'auto', ConfigurationTarget.Workspace],
+      ]);
+      expect(updateCalls(folderConfig)).toEqual([
+        ['locale', 'ko-KR', ConfigurationTarget.WorkspaceFolder],
       ]);
     });
   });
