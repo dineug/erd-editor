@@ -1,7 +1,6 @@
 import {
   bHas,
   BracketType,
-  CanvasType,
   ColumnOption,
   ColumnType,
   Database,
@@ -72,7 +71,6 @@ export type AgentSnapshotMemo = {
 export type AgentSnapshotSettings = {
   databaseName: string;
   database: string;
-  canvasType: string;
   language: string;
   tableNameCase: string;
   columnNameCase: string;
@@ -86,9 +84,9 @@ export type AgentSnapshotSettings = {
 };
 
 /**
- * What an agent reads to edit: every value a tool can change, under the ids
- * and the enum names the tools take. Render derived widths and the viewport
- * are left out, since no tool sets them and they differ between replicas.
+ * What an agent reads to edit: every entity under its id and the settings as
+ * the file saves them, each by its enum name. Render derived widths, the
+ * viewport and the tab are left out, since they differ per reader.
  */
 export type AgentSnapshot = {
   settings: AgentSnapshotSettings;
@@ -122,13 +120,40 @@ type RelationshipEntity =
 type IndexEntity = RootState['collections']['indexEntities'][string];
 type MemoEntity = RootState['collections']['memoEntities'][string];
 
-export function toSnapshotSettings(
+/** The field each code setting's lock holds, the view's and the tab's aside. */
+const CODE_LOCK_FIELDS = [
+  [LockSettingType.language, 'language'],
+  [LockSettingType.tableNameCase, 'tableNameCase'],
+  [LockSettingType.columnNameCase, 'columnNameCase'],
+  [LockSettingType.bracketType, 'bracketType'],
+] as const;
+
+/**
+ * The settings with each locked code setting at the value its lock holds, which
+ * is what toJson writes and every reader of the file opens on, the screen of
+ * the peer aside.
+ */
+export function toSavedSettings(
   settings: RootState['settings']
+): RootState['settings'] {
+  const saved = { ...settings };
+
+  for (const [bit, field] of CODE_LOCK_FIELDS) {
+    if (bHas(settings.lockSettings, bit)) {
+      saved[field] = settings.lockedValues[field];
+    }
+  }
+  return saved;
+}
+
+export function toSnapshotSettings(
+  live: RootState['settings']
 ): AgentSnapshotSettings {
+  const settings = toSavedSettings(live);
+
   return {
     databaseName: settings.databaseName,
     database: nameOf(Database, settings.database),
-    canvasType: nameOf(CanvasType, settings.canvasType),
     language: nameOf(Language, settings.language),
     tableNameCase: nameOf(NameCase, settings.tableNameCase),
     columnNameCase: nameOf(NameCase, settings.columnNameCase),

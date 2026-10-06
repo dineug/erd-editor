@@ -1,8 +1,4 @@
-export {
-  COLUMN_MIN_WIDTH,
-  MEMO_MIN_HEIGHT,
-  MEMO_MIN_WIDTH,
-} from '@/constants/layout';
+export { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 export {
   BracketType,
   CanvasType,

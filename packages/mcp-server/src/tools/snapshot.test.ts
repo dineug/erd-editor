@@ -1,7 +1,14 @@
 import {
+  BracketType,
+  CanvasType,
   createPeerStore,
+  Language,
+  LockSettingType,
   MEMO_MIN_HEIGHT,
   MEMO_MIN_WIDTH,
+  NameCase,
+  settingsActions,
+  settingsActions$,
 } from '@dineug/erd-editor/peer.js';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
 
@@ -91,11 +98,10 @@ describe('the agent snapshot', () => {
     ]);
   });
 
-  it('names each setting as the tools take it', () => {
+  it('names each setting by its enum name, the tab left out', () => {
     expect(snapshot.settings).toEqual({
       databaseName: '',
       database: 'MySQL',
-      canvasType: 'ERD',
       language: 'GraphQL',
       tableNameCase: 'pascalCase',
       columnNameCase: 'camelCase',
@@ -160,8 +166,21 @@ describe('the agent snapshot', () => {
       'scrollTop',
       'scrollLeft',
       'zoomLevel',
+      'canvasType',
+      'lockedValues',
     ]) {
       expect(settings, view).not.toContain(view);
+    }
+  });
+
+  it('reads the same whichever tab its reader stands on', () => {
+    for (const canvasType of [CanvasType.schemaSQL, CanvasType.settings]) {
+      const tabbed = toAgentSnapshot({
+        ...peer.state,
+        settings: { ...peer.state.settings, canvasType },
+      });
+
+      expect(tabbed, canvasType).toEqual(snapshot);
     }
   });
 
@@ -178,11 +197,10 @@ describe('the agent snapshot', () => {
   it('shows a stored value no enum names as the value itself', () => {
     const { settings } = toAgentSnapshot({
       ...peer.state,
-      settings: { ...peer.state.settings, database: 1024, canvasType: 'x' },
+      settings: { ...peer.state.settings, database: 1024 },
     });
 
     expect(settings.database).toBe('1024');
-    expect(settings.canvasType).toBe('x');
   });
 
   it('hands out copies, so a reader cannot reach into the live state', () => {
@@ -203,5 +221,79 @@ describe('the agent snapshot', () => {
 
     expect([tables, relationships, indexes, memos]).toEqual([[], [], [], []]);
     empty.destroy();
+  });
+});
+
+describe('the code settings a snapshot reads', () => {
+  type Peer = ReturnType<typeof createPeerStore>;
+
+  const code = (peer: Peer) => {
+    const { language, tableNameCase, columnNameCase, bracketType } =
+      toAgentSnapshot(peer.state).settings;
+    return { language, tableNameCase, columnNameCase, bracketType };
+  };
+
+  /** What a reader that opens the file the peer saves reads of the four. */
+  const opened = (peer: Peer) => {
+    const reader = createPeerStore({ nickname: 'reader', presence: false });
+    try {
+      reader.setInitialValue(peer.value);
+      return code(reader);
+    } finally {
+      reader.destroy();
+    }
+  };
+
+  it('reads a locked one at the value the file saves, not the one on screen', () => {
+    const other = createSeededPeer();
+    other.dispatch([
+      settingsActions.changeLanguageAction({ value: Language.TypeScript }),
+      settingsActions.changeTableNameCaseAction({ value: NameCase.snakeCase }),
+      settingsActions.changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+      settingsActions.changeBracketTypeAction({ value: BracketType.backtick }),
+    ]);
+
+    expect(other.state.settings.language).toBe(Language.TypeScript);
+    expect(code(other)).toEqual({
+      language: 'GraphQL',
+      tableNameCase: 'pascalCase',
+      columnNameCase: 'camelCase',
+      bracketType: 'none',
+    });
+    expect(code(other)).toEqual(opened(other));
+
+    other.destroy();
+  });
+
+  it('reads an unlocked one as it stands, the value it was locked at aside', () => {
+    const other = createSeededPeer();
+    other.dispatch([
+      settingsActions.changeLanguageAction({ value: Language.TypeScript }),
+      settingsActions.changeBracketTypeAction({ value: BracketType.backtick }),
+    ]);
+    // A generator reads the state its dispatch starts from, so it goes after.
+    other.dispatch([
+      settingsActions$.changeLockSettingsAction$(
+        LockSettingType.language | LockSettingType.bracketType,
+        false
+      ),
+    ]);
+
+    expect(other.state.settings.lockedValues.language).toBe(Language.GraphQL);
+    expect(code(other)).toEqual({
+      language: 'TypeScript',
+      tableNameCase: 'pascalCase',
+      columnNameCase: 'camelCase',
+      bracketType: 'backtick',
+    });
+    expect(code(other)).toEqual(opened(other));
+    expect(toAgentSnapshot(other.state).settings.lockSettings).toMatchObject({
+      language: false,
+      tableNameCase: true,
+      columnNameCase: true,
+      bracketType: false,
+    });
+
+    other.destroy();
   });
 });

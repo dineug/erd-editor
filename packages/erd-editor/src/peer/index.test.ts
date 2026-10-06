@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vite-plus/test';
 
-import { COLUMN_MIN_WIDTH, MEMO_MIN_HEIGHT } from '@/constants/layout';
+import { MEMO_MIN_HEIGHT } from '@/constants/layout';
 import { Database, Show } from '@/constants/schema';
 import { DatabaseVendorList } from '@/constants/sql/database';
 import { ChangeActionTypes } from '@/engine/actions';
@@ -24,7 +24,7 @@ import { measureTableSize } from '@/utils/calcTable';
 import { createSchemaSQL } from '@/utils/schema-sql';
 
 describe('peer barrel (AC-B2)', () => {
-  it('exposes exactly the 46 values the headless peer needs', () => {
+  it('exposes exactly the 45 values the headless peer needs', () => {
     expect(Object.keys(peer).sort()).toEqual(
       [
         'createPeerStore',
@@ -67,7 +67,6 @@ describe('peer barrel (AC-B2)', () => {
         'Show',
         'MEMO_MIN_WIDTH',
         'MEMO_MIN_HEIGHT',
-        'COLUMN_MIN_WIDTH',
         'createSchemaSQL',
         'DatabaseVendorList',
         'DatabaseVendorToDatabase',
@@ -75,7 +74,7 @@ describe('peer barrel (AC-B2)', () => {
         'measureTableSize',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(46);
+    expect(Object.keys(peer)).toHaveLength(45);
   });
 
   it('re-exports each name from the module that owns it', () => {
@@ -93,7 +92,6 @@ describe('peer barrel (AC-B2)', () => {
     expect(peer.Database).toBe(Database);
     expect(peer.Show).toBe(Show);
     expect(peer.MEMO_MIN_HEIGHT).toBe(MEMO_MIN_HEIGHT);
-    expect(peer.COLUMN_MIN_WIDTH).toBe(COLUMN_MIN_WIDTH);
     expect(peer.createSchemaSQL).toBe(createSchemaSQL);
     expect(peer.DatabaseVendorList).toBe(DatabaseVendorList);
     expect(peer.bHas).toBe(bHas);

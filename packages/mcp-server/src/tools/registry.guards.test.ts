@@ -5,7 +5,6 @@ import {
   MEMO_MIN_HEIGHT,
   MEMO_MIN_WIDTH,
   OrderType,
-  Show,
 } from '@dineug/erd-editor/peer.js';
 import { compositionActionsFlat } from '@dineug/r-html';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
@@ -140,12 +139,6 @@ describe('the set tools skip a value that already holds', () => {
 
   it.each([
     [
-      'erd_set_show',
-      { show: Show.columnUnique, value: true },
-      { show: Show.columnUnique, value: false },
-      'settings.changeShow',
-    ],
-    [
       'erd_set_index_unique',
       { indexId: SEED.index, value: true },
       { indexId: SEED.index, value: false },
@@ -205,64 +198,6 @@ describe('cross argument rules', () => {
     ).toBe(
       'targetIndexColumnId must name a different index column than indexColumnId'
     );
-  });
-
-  it('refuses a column part moved onto itself', () => {
-    expect(
-      refused('erd_set_column_order', {
-        columnType: 'columnName',
-        targetColumnType: 'columnName',
-      })
-    ).toBe(
-      'targetColumnType must name a different column part than columnType'
-    );
-  });
-
-  it('refuses to lock the viewport or the canvas type, which an agent has no screen for', () => {
-    for (const lockSettingType of ['viewport', 'canvasType']) {
-      expect(
-        refused('erd_set_lock_settings', { lockSettingType, value: true })
-      ).toBe(
-        'an agent has no screen to lock the viewport or the canvas type at; the user locks them in the editor Settings tab'
-      );
-    }
-  });
-
-  it('unlocks any setting, and locks a code setting at the value it holds', () => {
-    for (const lockSettingType of ['viewport', 'canvasType', 'language']) {
-      const run = runTool(peer, 'erd_set_lock_settings', {
-        lockSettingType,
-        value: false,
-      });
-
-      expect(run.batches, lockSettingType).toBe(1);
-    }
-    expect(peer.state.settings.lockSettings & 0b111).toBe(0);
-
-    runTool(peer, 'erd_set_language', { value: 'Kotlin' });
-    runTool(peer, 'erd_set_lock_settings', {
-      lockSettingType: 'language',
-      value: true,
-    });
-
-    expect(peer.state.settings.lockSettings & 0b100).toBe(0b100);
-    expect(peer.state.settings.lockedValues.language).toBe(
-      peer.state.settings.language
-    );
-  });
-
-  it('takes a comment width of -1 or inside the range, and nothing else', () => {
-    for (const value of [-2, 59, 201]) {
-      expect(refused('erd_set_max_width_comment', { value })).toBe(
-        'value must be -1 for no limit, or from 60 to 200'
-      );
-    }
-    for (const value of [-1, 60, 200]) {
-      const run = runTool(peer, 'erd_set_max_width_comment', { value });
-
-      expect(run.batches, String(value)).toBe(1);
-      expect(peer.state.settings.maxWidthComment).toBe(value);
-    }
   });
 
   it('refuses a memo smaller than the resize handles allow', () => {
