@@ -54,6 +54,8 @@ const BUTTON_WIDTH = 26;
 
 const ROOMY: Size = { width: 1200, height: 800 };
 
+const REACH = ARROW_UP_BOX.width - ARROW_UP_BOX.tipX;
+
 const teardowns: Array<() => void> = [];
 
 afterEach(() => {
@@ -584,13 +586,12 @@ describe('WelcomeScreen hints', () => {
   it('points the palette hint at Search and the tools hint at the floating toolbar', async () => {
     const { hint } = await setup();
     const search = 330 + BUTTON_WIDTH / 2;
-    const reach = ARROW_UP_BOX.width - ARROW_UP_BOX.tipX;
 
     expect(hint('palette')?.textContent?.trim()).toBe(
       'Search commands and tables'
     );
     expect(hint('palette')?.style.right).toBe(
-      `${ROOMY.width - search - reach}px`
+      `${ROOMY.width - search - REACH}px`
     );
     expect(hint('tools')?.textContent?.trim()).toBe(
       'Pan, zoom and draw relationships'
@@ -643,12 +644,11 @@ describe('WelcomeScreen hints', () => {
   it('measures again as the canvas, the tab and the language change', async () => {
     const i18n = createTestI18n('en');
     const { app, buttons, hint } = await setup({ i18n });
-    const reach = ARROW_UP_BOX.width - ARROW_UP_BOX.tipX;
 
     buttons['toolbar-search'] = 500;
     app.store.dispatchSync(changeViewportAction({ width: 1000, height: 800 }));
     await flush();
-    expect(hint('palette')?.style.right).toBe(`${1000 - 513 - reach}px`);
+    expect(hint('palette')?.style.right).toBe(`${1000 - 513 - REACH}px`);
 
     buttons['toolbar-search'] = 520;
     app.store.dispatchSync(
@@ -656,13 +656,13 @@ describe('WelcomeScreen hints', () => {
     );
     app.store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
     await flush();
-    expect(hint('palette')?.style.right).toBe(`${1000 - 533 - reach}px`);
+    expect(hint('palette')?.style.right).toBe(`${1000 - 533 - REACH}px`);
 
     // A right-to-left language turns the toolbar round, Search to the right.
     buttons['toolbar-search'] = 600;
     Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
     await flush();
-    expect(hint('palette')?.style.left).toBe(`${613 - reach}px`);
+    expect(hint('palette')?.style.left).toBe(`${613 - REACH}px`);
   });
 
   it('turns every word to a language switched to while it is up', async () => {
@@ -708,18 +708,17 @@ describe('WelcomeScreen hints', () => {
         'toolbar-locale': 792,
       },
     });
-    const reach = ARROW_UP_BOX.width - ARROW_UP_BOX.tipX;
     const palette = hint('palette')!;
     const preferences = hint('preferences')!;
 
-    expect(palette.style.left).toBe(`${857 - reach}px`);
+    expect(palette.style.left).toBe(`${857 - REACH}px`);
     expect(palette.firstElementChild?.tagName.toLowerCase()).toBe('svg');
     expect(palette.querySelector('g')?.getAttribute('transform')).toBe(
       `matrix(-1 0 0 1 ${ARROW_UP_BOX.width} 0)`
     );
     expect(palette.querySelector('span')?.getAttribute('dir')).toBe('rtl');
 
-    expect(preferences.style.right).toBe(`${ROOMY.width - 805 - reach}px`);
+    expect(preferences.style.right).toBe(`${ROOMY.width - 805 - REACH}px`);
     expect(preferences.firstElementChild?.tagName.toLowerCase()).toBe('span');
     expect(preferences.querySelector('g')?.getAttribute('transform')).toBe('');
     expect(preferences.textContent?.trim()).toBe('ar:Pick a language');

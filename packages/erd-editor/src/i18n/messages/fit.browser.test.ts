@@ -8,9 +8,9 @@ import {
   COLUMN_MIN_WIDTH,
   TOOLBAR_DATABASE_NAME_WIDTH,
 } from '@/constants/layout';
-import { LOCALES } from '@/i18n/locales';
-import { messagesOf } from '@/i18n/messages';
+import { LocaleCodeList } from '@/i18n/locales';
 import { en } from '@/i18n/messages/en';
+import { messagesOf } from '@/i18n/messages/index';
 import type { PlainMessageKey } from '@/i18n/translate';
 import { TextFontFamily } from '@/styles/fonts.styles';
 import { createText } from '@/utils/text';
@@ -19,8 +19,6 @@ import { createText } from '@/utils/text';
 const PLACEHOLDERS = Object.keys(en).filter(key =>
   key.startsWith('common.placeholder.')
 ) as PlainMessageKey[];
-
-const CODES = LOCALES.map(({ code }) => code);
 
 // Gated on the Vitest server's process.platform, since Linux and Windows set
 // the stack in other fonts the bounds were not fitted to; messages.test.ts's
@@ -38,7 +36,7 @@ describe('text the editor gives a fixed width', () => {
     ]);
   });
 
-  it.runIf(ON_MAC).each(CODES)(
+  it.runIf(ON_MAC).each(LocaleCodeList)(
     '%s: each placeholder is no wider than an empty column, as a value is measured',
     code => {
       const { toWidth } = createText();
@@ -52,7 +50,7 @@ describe('text the editor gives a fixed width', () => {
     }
   );
 
-  it.runIf(ON_MAC).each(CODES)(
+  it.runIf(ON_MAC).each(LocaleCodeList)(
     "%s: the database name placeholder fits the toolbar's input",
     code => {
       const input = document.createElement('input');

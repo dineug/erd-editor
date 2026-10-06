@@ -254,6 +254,16 @@ async function release() {
   await whenDrawn();
 }
 
+/** The height inside an element's block padding, the room the centre block lays its content out in. */
+function contentHeight(el: Element): number {
+  const { paddingBlockStart, paddingBlockEnd } = getComputedStyle(el);
+  return (
+    el.getBoundingClientRect().height -
+    parseFloat(paddingBlockStart) -
+    parseFloat(paddingBlockEnd)
+  );
+}
+
 /** Reads the screen at the top level of its menu, then again with Import's formats swapped in. */
 async function eachLevel(
   shadow: ShadowRoot,
@@ -280,13 +290,7 @@ describe('WelcomeScreen tiers', () => {
 
       await eachLevel(shadow, level => {
         const $heading = shadow.querySelector('.welcome-screen-heading')!;
-        const $center = $heading.parentElement!;
-        const { paddingBlockStart, paddingBlockEnd } =
-          getComputedStyle($center);
-        const room =
-          $center.getBoundingClientRect().height -
-          parseFloat(paddingBlockStart) -
-          parseFloat(paddingBlockEnd);
+        const room = contentHeight($heading.parentElement!);
         const heading = box('.welcome-screen-heading');
         const menu = box('.welcome-screen-menu');
 
@@ -324,13 +328,7 @@ describe('WelcomeScreen tiers', () => {
 
       await eachLevel(shadow, level => {
         const $menu = shadow.querySelector('.welcome-screen-menu')!;
-        const $center = $menu.parentElement!;
-        const { paddingBlockStart, paddingBlockEnd } =
-          getComputedStyle($center);
-        const room =
-          $center.getBoundingClientRect().height -
-          parseFloat(paddingBlockStart) -
-          parseFloat(paddingBlockEnd);
+        const room = contentHeight($menu.parentElement!);
         const menu = box('.welcome-screen-menu');
 
         expect(shadow.querySelector('.welcome-screen-heading')).toBeNull();

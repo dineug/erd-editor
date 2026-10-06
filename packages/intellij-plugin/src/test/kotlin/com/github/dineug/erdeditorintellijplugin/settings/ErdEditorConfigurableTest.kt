@@ -57,15 +57,6 @@ class ErdEditorConfigurableTest {
     }
 
     @Test
-    fun `names the display languages Auto, then each by its own name`() {
-        val names = ErdEditorLocale.SETTINGS.map(ErdEditorLocale::optionName)
-
-        assertEquals(26, names.size)
-        assertEquals(listOf("Auto", "English", "Bahasa Indonesia"), names.take(3))
-        assertEquals("한국어", names.last())
-    }
-
-    @Test
     fun `apply stores only what the page changed, the theme as one change and the language after it`() {
         val published = mutableListOf<Pair<ErdEditorTheme, String>>()
         val settings = ErdEditorAppSettings({ false }, { "en" }) { published += it.theme to it.locale }

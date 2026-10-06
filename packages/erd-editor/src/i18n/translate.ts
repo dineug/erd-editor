@@ -48,8 +48,6 @@ export type Messages = {
     : PluralMessage;
 };
 
-export type MessageParams<K extends MessageKey> = MessageParamsOf<typeof en, K>;
-
 export type MessageArgs<K extends MessageKey> = MessageArgsOf<typeof en, K>;
 
 /** The keys t() takes with no parameters: the type every label map and labelKey uses. */
@@ -72,7 +70,7 @@ export type I18n = {
 /** What the export worker is handed to draw a scene in the reader's language. */
 export type LocaleMessages = Pick<I18n, 'locale' | 'messages'>;
 
-type MessageValues = Readonly<Record<string, string | number>>;
+export type MessageValues = Readonly<Record<string, string | number>>;
 
 const PLACEHOLDER = /\{(\w+)\}/g;
 

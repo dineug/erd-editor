@@ -30,7 +30,8 @@ export type ThemeBuilderProps = {
   theme: ThemeOptions;
 };
 
-const APPEARANCE_BUTTONS: ReadonlyArray<{
+/** The three appearances in the order the builder's buttons and the palette's Theme rows list them. */
+export const APPEARANCE_BUTTONS: ReadonlyArray<{
   appearance: AppearanceOption;
   icon: IconName;
   labelKey: PlainMessageKey;

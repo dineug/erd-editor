@@ -1,9 +1,7 @@
 import { DOMTemplateLiterals, FC } from '@dineug/r-html';
 
 import { useI18n } from '@/components/localeContext';
-import type { MessageArgs, MessageKey } from '@/i18n/translate';
-
-type MessageValues = Readonly<Record<string, string | number>>;
+import type { MessageArgs, MessageKey, MessageValues } from '@/i18n/translate';
 
 export type LocalizedProps = {
   messageKey: MessageKey;

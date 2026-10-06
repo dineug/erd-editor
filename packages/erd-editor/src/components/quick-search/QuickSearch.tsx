@@ -76,11 +76,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     Boolean(app.value.store.state.editor.openMap[Open.search]);
 
   /** The top level in the language shown, Theme and Display Language with it while the element offers those pickers. */
-  const createTopLevel = () =>
-    createScopeActions(app.value, i18n.value, {
-      appearance: props.appearance,
-      locale: props.locale,
-    });
+  const createTopLevel = () => createScopeActions(app.value, i18n.value, props);
 
   /** What the list shows: the level's commands or their fuzzy hits, at the top level the prefixes offered below them, or a scope's rows. */
   const getActions = () => byFilter(state.rows);
@@ -156,13 +152,6 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     if (state.index !== -1) scrollIntoView();
   };
 
-  const openSubmenu = (actions: Action[]) => {
-    setLevel(actions);
-    state.submenu = true;
-    clearKeyword();
-    selectChecked();
-  };
-
   /**
    * Builds the level shown again, after the language or an option in force
    * changed while the palette is open, keeping what is typed: the submenu
@@ -176,12 +165,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       state.submenu && state.parent
         ? top.find(action => action.id === state.parent)?.next
         : undefined;
-    const keyword = state.keyword;
 
     state.submenu = Boolean(submenu);
     setLevel(submenu ?? top);
-    if (keyword) {
-      setActions(keyword);
+    if (state.keyword) {
+      setActions(state.keyword);
     } else if (submenu) {
       selectChecked();
     } else {
@@ -222,7 +210,10 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       handleClose();
     } else if (action.next) {
       if (!state.submenu) state.parent = action.id;
-      openSubmenu(action.next);
+      setLevel(action.next);
+      state.submenu = true;
+      clearKeyword();
+      selectChecked();
 
       const input = root.value?.querySelector('input');
       input && lastCursorFocus(input);

@@ -95,12 +95,12 @@ const manifestSettings: Record<string, ManifestSetting> = Object.fromEntries(
     .flatMap((entry: any) => Object.entries<any>(entry.properties ?? {}))
 );
 
-function manifestSetting(key: string): ManifestSetting {
-  const setting = manifestSettings[`${SECTION}.${key}`];
+function manifestSetting(key: string, section = SECTION): ManifestSetting {
+  const setting = manifestSettings[`${section}.${key}`];
   // A missing id means the extension reads and writes a setting VSCode was
   // never told about: no default, no validation, nothing in the settings UI.
   if (!setting) {
-    throw new Error(`package.json contributes no "${SECTION}.${key}"`);
+    throw new Error(`package.json contributes no "${section}.${key}"`);
   }
   return setting;
 }
@@ -444,13 +444,7 @@ describe('configuration', () => {
   });
 
   describe('locale', () => {
-    const localeSetting = (): ManifestSetting => {
-      const setting = manifestSettings[LOCALE_SETTING];
-      if (!setting) {
-        throw new Error(`package.json contributes no "${LOCALE_SETTING}"`);
-      }
-      return setting;
-    };
+    const localeSetting = () => manifestSetting('locale', 'dineug.erd-editor');
 
     it('reads dineug.erd-editor.locale, auto when nothing is stored, as the manifest defaults', () => {
       const config = arrangeConfiguration();

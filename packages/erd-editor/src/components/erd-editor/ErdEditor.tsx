@@ -372,11 +372,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
     const el = event.target as HTMLElement | null;
     if (!el) return;
+    if (el.closest('.toolbar')) return;
 
     const { store } = appContextValue;
     const { openMap } = store.state.editor;
-    if (el.closest('.toolbar')) return;
-
     if (openMap[Open.themeBuilder] && !el.closest('.theme-builder')) {
       store.dispatch(changeOpenMapAction({ [Open.themeBuilder]: false }));
     }

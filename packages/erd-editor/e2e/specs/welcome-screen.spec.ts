@@ -1,6 +1,6 @@
 import type { Locator } from '@playwright/test';
 
-import type { ErdEditorPage, Point } from '../support/ErdEditorPage';
+import type { ErdEditorPage } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import { createSchema, twoTables } from '../support/schema';
 import { MOD_KEY, Shortcut } from '../support/shortcuts';
@@ -22,12 +22,6 @@ const row = (erd: ErdEditorPage, label: string) =>
 const hint = (erd: ErdEditorPage, name: string) =>
   erd.host.locator(`.welcome-screen-hint-${name}`);
 
-async function centerOf(locator: Locator): Promise<Point> {
-  const box = await locator.boundingBox();
-  if (!box) throw new Error('the element is not laid out');
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-}
-
 /** Where an arrow's shaft ends on the page, which is its tip. */
 const tipOf = (hint: Locator) =>
   hint
@@ -41,7 +35,7 @@ const tipOf = (hint: Locator) =>
       return { x: point.x, y: point.y };
     });
 
-/** Where the scene's origin stands on the page, which a pan moves and a zoom keeps. */
+/** How many page pixels one scene unit spans, which a zoom changes and a pan keeps. */
 const sceneScale = async (erd: ErdEditorPage) => {
   const origin = await erd.pointAt(0, 0);
   const across = await erd.pointAt(100, 0);
@@ -93,7 +87,9 @@ test.describe('the welcome screen', () => {
     await erd.enable({ enableWelcomeScreen: true });
     await expect(welcome(erd)).toHaveCount(1);
 
-    const from = await centerOf(erd.host.locator('.welcome-screen-heading'));
+    const from = await erd.centerOf(
+      erd.host.locator('.welcome-screen-heading')
+    );
     await erd.drag(from, { x: from.x - 120, y: from.y - 80 });
 
     await expect
@@ -104,7 +100,7 @@ test.describe('the welcome screen', () => {
       .toBeLessThanOrEqual(1);
 
     const before = await sceneScale(erd);
-    const over = await centerOf(row(erd, 'New Memo'));
+    const over = await erd.centerOf(row(erd, 'New Memo'));
     await erd.page.mouse.move(over.x, over.y);
     await erd.page.keyboard.down(MOD_KEY);
     await erd.page.mouse.wheel(0, -100);
@@ -232,9 +228,9 @@ test.describe('the welcome screen', () => {
       });
       await expect(hint(erd, 'preferences')).toBeVisible();
 
-      const search = await centerOf(erd.host.locator('.toolbar-search'));
-      const theme = await centerOf(erd.host.locator('.toolbar-theme'));
-      const language = await centerOf(erd.host.locator('.toolbar-locale'));
+      const search = await erd.centerOf(erd.host.locator('.toolbar-search'));
+      const theme = await erd.centerOf(erd.host.locator('.toolbar-theme'));
+      const language = await erd.centerOf(erd.host.locator('.toolbar-locale'));
       const palette = await tipOf(hint(erd, 'palette'));
       const preferences = await tipOf(hint(erd, 'preferences'));
 

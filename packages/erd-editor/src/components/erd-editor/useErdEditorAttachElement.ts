@@ -282,7 +282,6 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   const destroySet = new Set<Unsubscribe>([
-    // On, it picks system; off, it keeps the appearance system shows now.
     watch(props).subscribe(propName => {
       if (propName === 'enableLocalePicker') {
         applyLocale();
@@ -290,6 +289,7 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
       }
       if (propName !== 'systemDarkMode') return;
 
+      // On, it picks system; off, it keeps the appearance system shows now.
       if (props.systemDarkMode) {
         themeState.options.appearance = SYSTEM_APPEARANCE;
       } else if (followsSystem()) {

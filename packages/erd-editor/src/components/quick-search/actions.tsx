@@ -22,7 +22,9 @@ import { menus as columnNameCaseMenus } from '@/components/generator-code/genera
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
 import Icon from '@/components/primitives/icon/Icon';
+import type { IconName } from '@/components/primitives/icon/icons';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
+import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
 import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
@@ -43,11 +45,7 @@ import { type LabeledMenu, menuLabel } from '@/i18n/menuLabel';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import { getOriginToPlace } from '@/konva/scene/viewport';
-import {
-  Appearance,
-  type AppearanceOption,
-  SYSTEM_APPEARANCE,
-} from '@/themes/radix-ui-theme';
+import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import {
   FindReplaceQuery,
   openAutomaticTablePlacementAction,
@@ -525,16 +523,6 @@ export function createScopeActions(
   ];
 }
 
-/** The theme's three appearances, in the theme builder's order. */
-const APPEARANCES: ReadonlyArray<{
-  appearance: AppearanceOption;
-  labelKey: PlainMessageKey;
-}> = [
-  { appearance: SYSTEM_APPEARANCE, labelKey: 'common.system' },
-  { appearance: Appearance.light, labelKey: 'common.light' },
-  { appearance: Appearance.dark, labelKey: 'common.dark' },
-];
-
 /**
  * Theme and Display Language, each only while the element offers its picker,
  * with a check on the option in force. A pick goes through the emitter as the
@@ -550,7 +538,7 @@ export function createPreferenceActions(
     actions.push({
       icon: <Icon name="contrast" size={16} />,
       ...submenuNamed(i18n, 'common.theme'),
-      next: APPEARANCES.map<Action>(option => ({
+      next: APPEARANCE_BUTTONS.map<Action>(option => ({
         ...checkOf(option.appearance === appearance),
         ...named(i18n, option.labelKey),
         perform: ({ emitter }) => {
@@ -663,62 +651,45 @@ function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
     }));
 }
 
+/** The five tabs in the toolbar's order. */
+const TABS: ReadonlyArray<{
+  canvasType: string;
+  icon: IconName;
+  labelKey: PlainMessageKey;
+}> = [
+  { canvasType: CanvasType.ERD, icon: 'workflow', labelKey: 'common.tab.erd' },
+  {
+    canvasType: CanvasType.visualization,
+    icon: 'share-2',
+    labelKey: 'common.tab.visualization',
+  },
+  {
+    canvasType: CanvasType.schemaSQL,
+    icon: 'database',
+    labelKey: 'common.tab.schemaSql',
+  },
+  {
+    canvasType: CanvasType.generatorCode,
+    icon: 'code',
+    labelKey: 'common.tab.codeGenerator',
+  },
+  {
+    canvasType: CanvasType.settings,
+    icon: 'settings',
+    labelKey: 'common.tab.settings',
+  },
+];
+
 /** The five tabs the Tab row opens, each but the one shown. */
 export function createTabActions(i18n: I18n = sourceI18n): Action[] {
-  return [
-    {
-      icon: <Icon name="workflow" size={16} />,
-      ...named(i18n, 'common.tab.erd'),
-      perform: ({ store }) => {
-        store.dispatch(changeCanvasTypeAction({ value: CanvasType.ERD }));
-      },
-      filter: ({ store }) => {
-        return store.state.settings.canvasType !== CanvasType.ERD;
-      },
+  return TABS.map<Action>(({ canvasType, icon, labelKey }) => ({
+    icon: <Icon name={icon} size={16} />,
+    ...named(i18n, labelKey),
+    perform: ({ store }) => {
+      store.dispatch(changeCanvasTypeAction({ value: canvasType }));
     },
-    {
-      icon: <Icon name="share-2" size={16} />,
-      ...named(i18n, 'common.tab.visualization'),
-      perform: ({ store }) => {
-        store.dispatch(
-          changeCanvasTypeAction({ value: CanvasType.visualization })
-        );
-      },
-      filter: ({ store }) => {
-        return store.state.settings.canvasType !== CanvasType.visualization;
-      },
+    filter: ({ store }) => {
+      return store.state.settings.canvasType !== canvasType;
     },
-    {
-      icon: <Icon name="database" size={16} />,
-      ...named(i18n, 'common.tab.schemaSql'),
-      perform: ({ store }) => {
-        store.dispatch(changeCanvasTypeAction({ value: CanvasType.schemaSQL }));
-      },
-      filter: ({ store }) => {
-        return store.state.settings.canvasType !== CanvasType.schemaSQL;
-      },
-    },
-    {
-      icon: <Icon name="code" size={16} />,
-      ...named(i18n, 'common.tab.codeGenerator'),
-      perform: ({ store }) => {
-        store.dispatch(
-          changeCanvasTypeAction({ value: CanvasType.generatorCode })
-        );
-      },
-      filter: ({ store }) => {
-        return store.state.settings.canvasType !== CanvasType.generatorCode;
-      },
-    },
-    {
-      icon: <Icon name="settings" size={16} />,
-      ...named(i18n, 'common.tab.settings'),
-      perform: ({ store }) => {
-        store.dispatch(changeCanvasTypeAction({ value: CanvasType.settings }));
-      },
-      filter: ({ store }) => {
-        return store.state.settings.canvasType !== CanvasType.settings;
-      },
-    },
-  ];
+  }));
 }

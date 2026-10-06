@@ -154,15 +154,6 @@ export class ErdEditorPage {
     }, option);
   }
 
-  /** What System means, as an IDE host names its own language; null reads the browser's. */
-  async setSystemLocale(tag: string | null) {
-    await this.page.evaluate(value => {
-      const editor = window.document.querySelector('erd-editor');
-      if (!editor) throw new Error('erd-editor is not mounted');
-      editor.setSystemLocale(value);
-    }, tag);
-  }
-
   /**
    * Loads a document through the element's public setInitialValue, which
    * clears undo history and records nothing — a seeded editor starts with
