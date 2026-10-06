@@ -62,6 +62,7 @@ import {
 import {
   openDiffViewerAction,
   schemaGCAction,
+  setLocaleOptionAction,
   setThemeOptionsAction,
 } from '@/utils/emitter';
 
@@ -154,6 +155,8 @@ async function setup(
       readonly: false,
       systemDarkMode: false,
       enableThemeBuilder: false,
+      enableLocalePicker: false,
+      enableWelcomeScreen: false,
       ...initialProps,
     },
     { shallow: true }
@@ -1556,6 +1559,304 @@ describe('useErdEditorAttachElement', () => {
     await flush();
 
     expect(api.themeState.options.appearance).toBe('dark');
+  });
+});
+
+describe('useErdEditorAttachElement display language', () => {
+  /** Chromium's navigator.languages: a frozen array, changed with a languagechange event. */
+  function spyLanguages(initial: string[]) {
+    let languages: readonly string[] = Object.freeze([...initial]);
+    vi.spyOn(window.navigator, 'languages', 'get').mockImplementation(
+      () => languages as string[]
+    );
+
+    return (next: string[]) => {
+      languages = Object.freeze([...next]);
+      window.dispatchEvent(new Event('languagechange'));
+    };
+  }
+
+  it('shows English with nothing set while the picker is off, whatever the browser language', async () => {
+    spyLanguages(['ko-KR']);
+    const { api } = await setup();
+
+    expect(api.localeState.option).toBeNull();
+    expect(api.resolveLocaleOption()).toBe('en');
+    expect(api.resolveSystemLocale()).toBe('ko-KR');
+    expect(api.i18n.locale).toBe('en');
+    expect(api.i18n.dir).toBe('ltr');
+    expect(api.i18n.t('common.close')).toBe('Close');
+  });
+
+  it('keeps English while the picker is off when a host only names the system language', async () => {
+    const change = spyLanguages(['ko-KR']);
+    const { api, ctx } = await setup();
+
+    ctx.setSystemLocale('ja');
+    change(['pl-PL']);
+    await flush();
+
+    expect(api.resolveSystemLocale()).toBe('ja-JP');
+    expect(api.resolveLocaleOption()).toBe('en');
+    expect(api.i18n.locale).toBe('en');
+  });
+
+  it('follows the browser language with nothing set while the picker is on, from setup', async () => {
+    spyLanguages(['ko', 'en']);
+    const { api } = await setup({ enableLocalePicker: true });
+
+    expect(api.localeState.option).toBeNull();
+    expect(api.resolveLocaleOption()).toBe('system');
+    expect(api.i18n.locale).toBe('ko-KR');
+    expect(api.resolveSystemLocale()).toBe('ko-KR');
+  });
+
+  it('follows the system language once the picker is turned on, and English once it is off again', async () => {
+    spyLanguages(['ko-KR']);
+    const { api, props } = await setup();
+    const i18n = api.i18n;
+
+    props.enableLocalePicker = true;
+    await flush();
+
+    expect(api.resolveLocaleOption()).toBe('system');
+    expect(api.i18n).toBe(i18n);
+    expect(api.i18n.locale).toBe('ko-KR');
+
+    props.enableLocalePicker = false;
+    await flush();
+
+    expect(api.resolveLocaleOption()).toBe('en');
+    expect(api.i18n.locale).toBe('en');
+  });
+
+  it('turns the picker on into the language a host names for system', async () => {
+    spyLanguages(['ko-KR']);
+    const { api, ctx, props } = await setup();
+    ctx.setSystemLocale('ja');
+    await flush();
+    expect(api.i18n.locale).toBe('en');
+
+    props.enableLocalePicker = true;
+    await flush();
+
+    expect(api.i18n.locale).toBe('ja-JP');
+  });
+
+  it('keeps a language a host sets whether the picker is on or off', async () => {
+    spyLanguages(['ko-KR']);
+    const { api, ctx, props } = await setup();
+
+    ctx.setLocale('ja-JP');
+    expect(api.i18n.locale).toBe('ja-JP');
+
+    props.enableLocalePicker = true;
+    await flush();
+    expect(api.resolveLocaleOption()).toBe('ja-JP');
+    expect(api.i18n.locale).toBe('ja-JP');
+
+    props.enableLocalePicker = false;
+    await flush();
+    expect(api.resolveLocaleOption()).toBe('ja-JP');
+    expect(api.i18n.locale).toBe('ja-JP');
+  });
+
+  it('follows the system language a host asks for while the picker is off', async () => {
+    spyLanguages(['ko-KR']);
+    const { api, ctx } = await setup();
+
+    ctx.setLocale('system');
+
+    expect(api.resolveLocaleOption()).toBe('system');
+    expect(api.i18n.locale).toBe('ko-KR');
+
+    ctx.setSystemLocale('ja');
+    expect(api.i18n.locale).toBe('ja-JP');
+  });
+
+  it('switches the language in place before setLocale returns, with no event', async () => {
+    const { api, ctx } = await setup();
+    const onChangeLocale = vi.fn();
+    ctx.addEventListener('changeLocale', onChangeLocale);
+    const i18n = api.i18n;
+
+    ctx.setLocale('ko-KR');
+
+    expect(api.i18n).toBe(i18n);
+    expect(api.i18n.locale).toBe('ko-KR');
+    expect(api.localeState.option).toBe('ko-KR');
+
+    ctx.setLocale('ar-SA');
+
+    expect(api.i18n.locale).toBe('ar-SA');
+    expect(api.i18n.dir).toBe('rtl');
+
+    await flush();
+    expect(onChangeLocale).not.toHaveBeenCalled();
+  });
+
+  it('ignores a value that names no option', async () => {
+    const { api, ctx } = await setup();
+    ctx.setLocale('ja-JP');
+
+    ctx.setLocale('ko' as any);
+    ctx.setLocale('KO-KR' as any);
+    ctx.setLocale(42 as any);
+    ctx.setLocale(null as any);
+
+    expect(api.localeState.option).toBe('ja-JP');
+    expect(api.i18n.locale).toBe('ja-JP');
+  });
+
+  it('assigns nothing when the language resolves to the one shown', async () => {
+    spyLanguages(['de-AT']);
+    const { api, ctx } = await setup({ enableLocalePicker: true });
+    const messages = api.i18n.messages;
+    const t = api.i18n.t;
+
+    ctx.setLocale('de-DE');
+    ctx.setLocale('system');
+
+    expect(api.i18n.locale).toBe('de-DE');
+    expect(api.i18n.messages).toBe(messages);
+    expect(api.i18n.t).toBe(t);
+  });
+
+  it('reads the language a host names for system, over the browser', async () => {
+    spyLanguages(['de-DE']);
+    const { api, ctx } = await setup({ enableLocalePicker: true });
+    expect(api.i18n.locale).toBe('de-DE');
+
+    ctx.setSystemLocale('ja');
+
+    expect(api.localeState.systemTag).toBe('ja');
+    expect(api.i18n.locale).toBe('ja-JP');
+    expect(api.resolveSystemLocale()).toBe('ja-JP');
+  });
+
+  it('hands system back to the browser for null, a blank or a non-string tag', async () => {
+    spyLanguages(['de-DE']);
+    const { api, ctx } = await setup({ enableLocalePicker: true });
+
+    for (const tag of [null, '', '   ', 7 as any]) {
+      ctx.setSystemLocale('ja');
+      expect(api.i18n.locale).toBe('ja-JP');
+
+      ctx.setSystemLocale(tag);
+
+      expect(api.localeState.systemTag).toBeNull();
+      expect(api.i18n.locale).toBe('de-DE');
+    }
+  });
+
+  it('keeps a trimmed tag', async () => {
+    const { api, ctx } = await setup({ enableLocalePicker: true });
+
+    ctx.setSystemLocale('  zh-Hant  ');
+
+    expect(api.localeState.systemTag).toBe('zh-Hant');
+    expect(api.i18n.locale).toBe('zh-TW');
+  });
+
+  it('keeps a language picked whatever the host names for system', async () => {
+    const { api, ctx } = await setup();
+    ctx.setLocale('fr-FR');
+
+    ctx.setSystemLocale('ja');
+
+    expect(api.i18n.locale).toBe('fr-FR');
+    expect(api.resolveSystemLocale()).toBe('ja-JP');
+
+    ctx.setLocale('system');
+    expect(api.i18n.locale).toBe('ja-JP');
+  });
+
+  it('follows a browser language change under system, once the scheduler runs', async () => {
+    const change = spyLanguages(['en-US']);
+    const { api } = await setup({ enableLocalePicker: true });
+
+    change(['pl-PL', 'en']);
+    await flush();
+
+    expect(api.i18n.locale).toBe('pl-PL');
+  });
+
+  it('leaves a picked language as it is when the browser language changes', async () => {
+    const change = spyLanguages(['en-US']);
+    const { api, ctx } = await setup({ enableLocalePicker: true });
+    ctx.setLocale('sv-SE');
+
+    change(['pl-PL']);
+    await flush();
+
+    expect(api.i18n.locale).toBe('sv-SE');
+  });
+
+  it('lets a host-named system language stand when the browser language changes', async () => {
+    const change = spyLanguages(['en-US']);
+    const { api, ctx } = await setup({ enableLocalePicker: true });
+    ctx.setSystemLocale('tr');
+
+    change(['pl-PL']);
+    await flush();
+
+    expect(api.i18n.locale).toBe('tr-TR');
+  });
+
+  it('stops following the browser and the picker once destroyed', async () => {
+    const change = spyLanguages(['en-US']);
+    const { api, ctx, props } = await setup();
+
+    ctx.destroy();
+    props.enableLocalePicker = true;
+    change(['pl-PL']);
+    await flush();
+
+    expect(api.i18n.locale).toBe('en');
+  });
+
+  it('applies a pick from the picker and tells the host once', async () => {
+    const { api, app, ctx } = await setup();
+    const onChangeLocale = vi.fn();
+    ctx.addEventListener('changeLocale', onChangeLocale);
+
+    app.emitter.emit(setLocaleOptionAction({ locale: 'uk-UA' }));
+
+    expect(api.i18n.locale).toBe('uk-UA');
+    expect(onChangeLocale).toHaveBeenCalledTimes(1);
+
+    const event = onChangeLocale.mock.calls[0][0] as CustomEvent;
+    expect(event.detail).toEqual({ locale: 'uk-UA' });
+    expect(event.bubbles).toBe(false);
+    expect(event.composed).toBe(false);
+  });
+
+  it('tells the host of a pick that changes nothing, system included', async () => {
+    const { api, app, ctx } = await setup({ enableLocalePicker: true });
+    const onChangeLocale = vi.fn();
+    ctx.addEventListener('changeLocale', onChangeLocale);
+    const locale = api.i18n.locale;
+
+    app.emitter.emit(setLocaleOptionAction({ locale: 'system' }));
+    app.emitter.emit(setLocaleOptionAction({ locale: 'system' }));
+
+    expect(api.i18n.locale).toBe(locale);
+    expect(onChangeLocale).toHaveBeenCalledTimes(2);
+    expect(
+      onChangeLocale.mock.calls.map(([event]) => (event as CustomEvent).detail)
+    ).toEqual([{ locale: 'system' }, { locale: 'system' }]);
+  });
+
+  it('tells the host nothing of a pick that names no option', async () => {
+    const { api, app, ctx } = await setup();
+    const onChangeLocale = vi.fn();
+    ctx.addEventListener('changeLocale', onChangeLocale);
+
+    app.emitter.emit(setLocaleOptionAction({ locale: 'ko' as any }));
+
+    expect(api.localeState.option).toBeNull();
+    expect(api.i18n.locale).toBe('en');
+    expect(onChangeLocale).not.toHaveBeenCalled();
   });
 });
 

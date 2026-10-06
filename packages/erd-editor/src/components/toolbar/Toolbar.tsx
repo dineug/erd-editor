@@ -2,8 +2,9 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { isTakenOver } from '@/components/find-replace/panelLayout';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
-import TextInput from '@/components/primitives/text-input/TextInput';
+import { TOOLBAR_DATABASE_NAME_WIDTH } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
@@ -14,6 +15,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   openFindReplaceAction,
+  openLocalePickerAction,
   openThemeBuilderAction,
   toggleSearchAction,
 } from '@/utils/emitter';
@@ -23,11 +25,13 @@ import * as styles from './Toolbar.styles';
 
 export type ToolbarProps = {
   enableThemeBuilder: boolean;
+  enableLocalePicker?: boolean;
   readonly: boolean;
 };
 
 const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   const handleChangeDatabaseName = (event: InputEvent) => {
     const el = event.target as HTMLInputElement | null;
@@ -76,6 +80,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     emitter.emit(openThemeBuilderAction());
   };
 
+  const handleLocale = () => {
+    const { emitter } = app.value;
+    emitter.emit(openLocalePickerAction());
+  };
+
   const handleOpenTimeTravel = () => {
     const { store } = app.value;
     const { editor } = store.state;
@@ -88,8 +97,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   return () => {
     const { store, keyBindingMap } = app.value;
     const { settings, editor, doc } = store.state;
+    const { t, dir } = i18n.value;
     const title = (name: string, keyBindingName: KeyBindingName) =>
       toShortcutTitle(keyBindingMap, name, keyBindingName);
+    // A right-to-left reader goes back to the right, so the two arrows swap.
+    const mirrored = dir === 'rtl';
 
     const showAutomaticTablePlacement =
       editor.openMap[Open.automaticTablePlacement];
@@ -111,12 +123,15 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         on:mousedown={handleUnselectAll}
         on:touchstart={handleUnselectAll}
       >
-        <TextInput
-          title="database name"
-          placeholder="database name"
-          width={150}
-          value={settings.databaseName}
-          onInput={handleChangeDatabaseName}
+        <input
+          title={t('toolbar.databaseName')}
+          placeholder={t('toolbar.databaseName')}
+          style={{ width: `${TOOLBAR_DATABASE_NAME_WIDTH}px` }}
+          type="text"
+          spellcheck="false"
+          prop:dir="auto"
+          prop:value={settings.databaseName ?? ''}
+          on:input={handleChangeDatabaseName}
         />
         <div class={styles.vertical}></div>
         <div
@@ -124,7 +139,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             styles.menu,
             { active: settings.canvasType === CanvasType.ERD },
           ]}
-          title="Entity Relationship Diagram"
+          title={t('common.tab.erd')}
           on:click={() => handleChangeCanvasType(CanvasType.ERD)}
         >
           <Icon name="workflow" size={16} />
@@ -134,7 +149,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             styles.menu,
             { active: settings.canvasType === CanvasType.visualization },
           ]}
-          title="Visualization"
+          title={t('common.tab.visualization')}
           on:click={() => handleChangeCanvasType(CanvasType.visualization)}
         >
           <Icon name="share-2" size={16} />
@@ -144,7 +159,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             styles.menu,
             { active: settings.canvasType === CanvasType.schemaSQL },
           ]}
-          title="Schema SQL"
+          title={t('common.tab.schemaSql')}
           on:click={() => handleChangeCanvasType(CanvasType.schemaSQL)}
         >
           <Icon name="database" size={16} />
@@ -154,7 +169,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             styles.menu,
             { active: settings.canvasType === CanvasType.generatorCode },
           ]}
-          title="Code Generator"
+          title={t('common.tab.codeGenerator')}
           on:click={() => handleChangeCanvasType(CanvasType.generatorCode)}
         >
           <Icon name="code" size={16} />
@@ -164,15 +179,15 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             styles.menu,
             { active: settings.canvasType === CanvasType.settings },
           ]}
-          title="Settings"
+          title={t('common.tab.settings')}
           on:click={() => handleChangeCanvasType(CanvasType.settings)}
         >
           <Icon name="settings" size={16} />
         </div>
         <div class={styles.vertical}></div>
         <div
-          class={styles.menu}
-          title={title('Search', KeyBindingName.search)}
+          class={['toolbar-search', styles.menu]}
+          title={title(t('common.search'), KeyBindingName.search)}
           on:click={handleSearch}
         >
           <Icon name="search" size={16} />
@@ -180,7 +195,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         <div
           class={[styles.menu, { disabled: isTakenOver(store.state) }]}
           title={title(
-            props.readonly ? 'Find' : 'Find and Replace',
+            props.readonly ? t('common.find') : t('common.findAndReplace'),
             KeyBindingName.findReplace
           )}
           on:mousedown={keepSelection}
@@ -190,8 +205,21 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           <Icon name="text-search" size={16} />
         </div>
         {props.enableThemeBuilder ? (
-          <div class={styles.menu} title="Theme" on:click={handleTheme}>
+          <div
+            class={['toolbar-theme', styles.menu]}
+            title={t('common.theme')}
+            on:click={handleTheme}
+          >
             <Icon name="contrast" size={16} />
+          </div>
+        ) : null}
+        {props.enableLocalePicker ? (
+          <div
+            class={['toolbar-locale', styles.menu]}
+            title={t('common.displayLanguage')}
+            on:click={handleLocale}
+          >
+            <Icon name="languages" size={16} />
           </div>
         ) : null}
         <div class={styles.vertical}></div>
@@ -205,10 +233,14 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                   active: editor.hasUndo,
                 },
               ]}
-              title={title('Undo', KeyBindingName.undo)}
+              title={title(t('toolbar.undo'), KeyBindingName.undo)}
               on:click={handleUndo}
             >
-              <Icon name="undo-2" size={16} />
+              {mirrored ? (
+                <Icon name="redo-2" size={16} />
+              ) : (
+                <Icon name="undo-2" size={16} />
+              )}
             </div>
             <div
               class={[
@@ -218,10 +250,14 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                   active: editor.hasRedo,
                 },
               ]}
-              title={title('Redo', KeyBindingName.redo)}
+              title={title(t('toolbar.redo'), KeyBindingName.redo)}
               on:click={handleRedo}
             >
-              <Icon name="redo-2" size={16} />
+              {mirrored ? (
+                <Icon name="undo-2" size={16} />
+              ) : (
+                <Icon name="redo-2" size={16} />
+              )}
             </div>
             <div
               class={[
@@ -231,7 +267,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                   active: editor.hasUndo || editor.hasRedo,
                 },
               ]}
-              title="Time Travel"
+              title={t('toolbar.timeTravel')}
               style={{
                 'max-width': '26px',
               }}
@@ -241,7 +277,9 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             </div>
           </>
         ) : null}
-        <div class={styles.tableCount}>Table: {doc.tableIds.length}</div>
+        <div class={styles.tableCount}>
+          {t('toolbar.tableCount', { count: doc.tableIds.length })}
+        </div>
       </div>
     );
   };

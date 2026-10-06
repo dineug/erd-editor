@@ -3,9 +3,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as styles from '@/components/table-view/column/Column.styles';
@@ -29,6 +32,7 @@ import {
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import type { Column as ColumnEntity } from '@/internal-types';
 
 const TABLE_ID = 't1';
@@ -276,6 +280,37 @@ describe('visualization Column', () => {
 
       expect(nameCell.classList.contains('placeholder')).toBe(true);
       expect(nameCell.textContent?.trim()).toBe('column');
+    });
+
+    it('draws the placeholders and titles in the language the element shows, following a switch', async () => {
+      const i18n = createTestI18n('en');
+      const provider = provideI18n(document.body, i18n);
+
+      try {
+        showAll();
+        mounted = await mountAndFlush(columnTemplate(column), app);
+
+        Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+        await flush();
+
+        expect(cellTexts(mounted)).toEqual([
+          'ko:column',
+          'ko:dataType',
+          'NULL',
+          'UQ',
+          'AI',
+          'ko:default',
+          'ko:comment',
+        ]);
+        const [, , notNull, unique, autoIncrement] = cellsOf(mounted).map(
+          cell => cell.firstElementChild as HTMLElement
+        );
+        expect(notNull.getAttribute('title')).toBe('ko:Not Null');
+        expect(unique.getAttribute('title')).toBe('ko:Unique');
+        expect(autoIncrement.getAttribute('title')).toBe('ko:Auto Increment');
+      } finally {
+        provider.destroy();
+      }
     });
 
     it('re-renders the name cell when the column name changes in the store', async () => {

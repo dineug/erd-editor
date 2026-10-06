@@ -21,6 +21,7 @@ import { getColorEdgePath } from '@/components/erd/canvas/table/colorEdge';
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
 import { useSharedFocusTable } from '@/components/erd/canvas/table/useSharedFocusTable';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { useI18n } from '@/components/localeContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_BORDER } from '@/constants/layout';
@@ -53,6 +54,7 @@ const nameFontSize = (zoomLevel: number) => {
 const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
   const { sharedFocusTableColor } = useSharedFocusTable(ctx, props.table.id);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
@@ -141,7 +143,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           y={TABLE_INSET}
           width={rect.width - TABLE_BORDER * 2}
           height={rect.height - TABLE_INSET * 2}
-          text={isEmptyName ? 'unnamed' : table.name}
+          text={isEmptyName ? i18n.value.t('common.unnamed') : table.name}
           fill={isEmptyName ? theme.placeholder : theme.active}
           fontFamily={SCENE_FONT_FAMILY}
           fontSize={nameFontSize(zoomLevel)}

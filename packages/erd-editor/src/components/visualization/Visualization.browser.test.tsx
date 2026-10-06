@@ -333,6 +333,15 @@ describe('the visualization shell', () => {
     expect(canvasOf(mounted).style.height).toBe(`${viewport.height}px`);
   });
 
+  it('keeps the graph left to right inside a right-to-left editor', async () => {
+    const mounted = await mountVisualization();
+    mounted.container.dir = 'rtl';
+    const root = canvasOf(mounted).parentElement!;
+
+    expect(root.getAttribute('dir')).toBe('ltr');
+    expect(getComputedStyle(stageOf().content).direction).toBe('ltr');
+  });
+
   it('centres the view on the stage at scale one', async () => {
     const app = createTestAppContext();
     await mountVisualization(app);

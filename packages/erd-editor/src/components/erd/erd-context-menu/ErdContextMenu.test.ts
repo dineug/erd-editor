@@ -19,9 +19,12 @@ import {
 import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import ErdContextMenu, {
@@ -67,6 +70,7 @@ import {
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import { bHas } from '@/utils/bit';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import { setImportFileCallback } from '@/utils/file/importFile';
@@ -656,6 +660,39 @@ describe('ErdContextMenu / table type', () => {
       expect(tableIds()).toEqual([TABLE_ID]);
       expect(columnIds()).toEqual(['column-2']);
       expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('names twenty-one selected columns in the plural, as it names two', async () => {
+      seedTable();
+      const ids = Array.from(
+        { length: 21 },
+        (_, index) => `column-${index + 2}`
+      );
+      app.store.dispatchSync(
+        ...ids.map(id => addColumnAction({ id, tableId: TABLE_ID })),
+        selectAction({ [TABLE_ID]: SelectType.table })
+      );
+      ids.forEach((columnId, index) => {
+        app.store.dispatchSync(
+          focusColumnAction({
+            tableId: TABLE_ID,
+            columnId,
+            focusType: FocusType.columnName,
+            $mod: index > 0,
+            shiftKey: false,
+          })
+        );
+      });
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: TABLE_ID,
+        columnId: ids[0],
+      });
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete columnsDelete');
+      await click(findItem(rootItems(), 'Delete columns'));
+
+      expect(columnIds()).toEqual([COLUMN_ID]);
     });
 
     it('counts only the selected columns still in the table', async () => {
@@ -1342,5 +1379,189 @@ describe('ErdContextMenu / relationship type', () => {
 
     expect(app.store.state.doc.relationshipIds).toContain(RELATIONSHIP_ID);
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('ErdContextMenu / language', () => {
+  let teardown: (() => void) | null = null;
+
+  afterEach(() => {
+    teardown?.();
+    teardown = null;
+  });
+
+  /** The language the element would provide, English until a spec switches it. */
+  function provideLanguage() {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+    teardown = () => provider.destroy();
+
+    return async () => {
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+    };
+  }
+
+  it('names every canvas row in the language the element shows, following a switch', async () => {
+    const switchLanguage = provideLanguage();
+    await mountMenu();
+
+    expect(labelsOf(rootItems())[0]).toBe('New TableAlt + N');
+    await switchLanguage();
+
+    expect(labelsOf(rootItems())).toEqual([
+      'ko:New TableAlt + N',
+      'ko:New MemoAlt + M',
+      'ko:Find and ReplaceCtrl + F',
+      'ko:Relationship',
+      'ko:View Option',
+      'ko:Database',
+      'ko:Import',
+      'ko:Import and Add',
+      'ko:Export',
+      'ko:Auto Layout',
+      'ko:Diff Viewer',
+    ]);
+  });
+
+  it('translates the submenus a shared list names, keeping vendors and formats as written', async () => {
+    const switchLanguage = provideLanguage();
+    await mountMenu();
+    await switchLanguage();
+
+    const labelsUnder = async (label: string) =>
+      labelsOf(itemsOf(await openSubMenu(findItem(rootItems(), label))));
+
+    expect(await labelsUnder('ko:Relationship')).toEqual([
+      'ko:Zero OneCtrl + Alt + 1',
+      'ko:Zero NCtrl + Alt + 2',
+      'ko:One OnlyCtrl + Alt + 3',
+      'ko:One NCtrl + Alt + 4',
+    ]);
+    expect((await labelsUnder('ko:View Option')).slice(0, 3)).toEqual([
+      'ko:Table Comment',
+      'ko:Column Comment',
+      'ko:DataType',
+    ]);
+    expect(await labelsUnder('ko:Database')).toContain('PostgreSQL');
+    expect(await labelsUnder('ko:Import')).toEqual([
+      'json',
+      'ko:Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
+    expect(await labelsUnder('ko:Import and Add')).toContain('ko:Schema SQL');
+    expect(await labelsUnder('ko:Export')).toEqual([
+      'json',
+      'ko:Schema SQL',
+      'ko:Image',
+    ]);
+    expect(await labelsUnder('ko:Auto Layout')).toEqual([
+      'ko:Force',
+      'ko:Flow',
+      'ko:Tree - vertical',
+      'ko:Tree - horizontal',
+    ]);
+  });
+
+  it('names a table row and its Delete in the language the element shows', async () => {
+    const switchLanguage = provideLanguage();
+    app.store.dispatchSync(
+      addTableAction({ id: 'table-1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addColumnAction({ id: 'column-1', tableId: 'table-1' }),
+      addColumnAction({ id: 'column-2', tableId: 'table-1' }),
+      selectAction({ 'table-1': SelectType.table })
+    );
+    for (const [columnId, $mod] of [
+      ['column-1', false],
+      ['column-2', true],
+    ] as const) {
+      app.store.dispatchSync(
+        focusColumnAction({
+          tableId: 'table-1',
+          columnId,
+          focusType: FocusType.columnName,
+          $mod,
+          shiftKey: false,
+        })
+      );
+    }
+    await mountMenu({
+      type: ErdContextMenuType.table,
+      tableId: 'table-1',
+      columnId: 'column-1',
+    });
+    await switchLanguage();
+
+    expect(labelsOf(rootItems())).toEqual([
+      'ko:Primary Key on selected columnsAlt + K',
+      'ko:Table PropertiesAlt + Space',
+      'ko:Focus on this tableAlt + F',
+      'ko:Color',
+      'ko:Delete columnsDelete',
+    ]);
+  });
+
+  it('names the rows over a colored selection of tables in the language the element shows', async () => {
+    const switchLanguage = provideLanguage();
+    app.store.dispatchSync(
+      addTableAction({ id: 'table-1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addTableAction({ id: 'table-2', ui: { x: 400, y: 0, zIndex: 2 } }),
+      changeTableColorAction({
+        id: 'table-1',
+        color: '#ff0000',
+        prevColor: '',
+      }),
+      selectAction({
+        'table-1': SelectType.table,
+        'table-2': SelectType.table,
+      })
+    );
+    await mountMenu({ type: ErdContextMenuType.table, tableId: 'table-1' });
+    await switchLanguage();
+
+    expect(labelsOf(rootItems())).toEqual([
+      'ko:Primary KeyAlt + K',
+      'ko:Table PropertiesAlt + Space',
+      'ko:Focus on selected tablesAlt + F',
+      'ko:Color',
+      'ko:Remove color',
+      'ko:Delete selectedDelete',
+    ]);
+  });
+
+  it('names a memo row and a relationship row in the language the element shows', async () => {
+    const switchLanguage = provideLanguage();
+    app.store.dispatchSync(
+      addMemoAction({ id: 'memo-1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addRelationshipAction({
+        id: 'relationship-1',
+        relationshipType: RelationshipType.ZeroOne,
+        start: { tableId: 'table-a', columnIds: ['column-a'] },
+        end: { tableId: 'table-b', columnIds: ['column-b'] },
+      })
+    );
+    await switchLanguage();
+
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: 'memo-1' });
+    expect(labelsOf(rootItems())).toEqual(['ko:Color', 'ko:DeleteDelete']);
+    mounted?.unmount();
+
+    await mountMenu({
+      type: ErdContextMenuType.relationship,
+      relationshipId: 'relationship-1',
+    });
+    expect(labelsOf(rootItems())).toEqual([
+      'ko:Relationship Type',
+      'ko:On Delete',
+      'ko:On Update',
+      'ko:Delete',
+    ]);
+    expect(
+      labelsOf(
+        itemsOf(await openSubMenu(findItem(rootItems(), 'ko:On Delete')))
+      )[0]
+    ).toBe('ko:Not set');
   });
 });

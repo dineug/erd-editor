@@ -1,10 +1,12 @@
 import { AppContext } from '@/components/appContext';
 import { Show } from '@/constants/schema';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import { sourceI18n } from '@/i18n/source';
+import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import { bHas } from '@/utils/bit';
 
 type Menu = {
-  name: string;
+  labelKey: PlainMessageKey;
   show: number;
   /** A bit that hides what the menu shows, so the menu is checked while it is off. */
   hides?: boolean;
@@ -12,49 +14,53 @@ type Menu = {
 
 const menus: Menu[] = [
   {
-    name: 'Table Comment',
+    labelKey: 'contextMenu.show.tableComment',
     show: Show.tableComment,
   },
   {
-    name: 'Column Comment',
+    labelKey: 'contextMenu.show.columnComment',
     show: Show.columnComment,
   },
   {
-    name: 'DataType',
+    labelKey: 'common.column.dataType',
     show: Show.columnDataType,
   },
   {
-    name: 'Default',
+    labelKey: 'common.column.default',
     show: Show.columnDefault,
   },
   {
-    name: 'Not Null',
+    labelKey: 'common.column.notNull',
     show: Show.columnNotNull,
   },
   {
-    name: 'Unique',
+    labelKey: 'common.column.unique',
     show: Show.columnUnique,
   },
   {
-    name: 'Alternate Key',
+    labelKey: 'contextMenu.show.alternateKey',
     show: Show.columnAlternateKey,
   },
   {
-    name: 'Auto Increment',
+    labelKey: 'common.column.autoIncrement',
     show: Show.columnAutoIncrement,
   },
   {
-    name: 'Relationship',
+    labelKey: 'common.relationship',
     show: Show.relationship,
   },
   {
-    name: 'Referential Actions',
+    labelKey: 'contextMenu.show.referentialActions',
     show: Show.hideReferentialAction,
     hides: true,
   },
 ];
 
-export function createShowMenus({ store }: AppContext) {
+/** The View Option rows, each named in the reader's language and checked while it shows. */
+export function createShowMenus(
+  { store }: AppContext,
+  i18n: Pick<I18n, 't'> = sourceI18n
+) {
   const { settings } = store.state;
 
   return menus.map(menu => {
@@ -62,7 +68,7 @@ export function createShowMenus({ store }: AppContext) {
 
     return {
       checked,
-      name: menu.name,
+      name: i18n.t(menu.labelKey),
       onClick: () => {
         store.dispatch(
           changeShowAction({

@@ -151,6 +151,13 @@ describe('VirtualScroll', () => {
     ).toBeTruthy();
   });
 
+  it('keeps both tracks left to right in every language, as the canvas they scroll', () => {
+    expect(tracks().map(track => track.getAttribute('dir'))).toEqual([
+      'ltr',
+      'ltr',
+    ]);
+  });
+
   it('renders nothing over an empty document, which has no travel', async () => {
     mounted?.unmount();
     app = createTestAppContext();

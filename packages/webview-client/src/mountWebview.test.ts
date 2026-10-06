@@ -4,12 +4,14 @@ import {
   hostExportFileCommand,
   hostImportFileCommand,
   hostInitialCommand,
+  hostSaveLocaleCommand,
   hostSaveReplicationCommand,
   hostSaveThemeCommand,
   hostSaveValueCommand,
   webviewImportFileCommand,
   webviewInitialValueCommand,
   webviewReplicationCommand,
+  webviewUpdateLocaleCommand,
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-webview-bridge';
@@ -55,6 +57,8 @@ function fakeEditor() {
     value: '',
     readonly: false,
     enableThemeBuilder: false,
+    enableLocalePicker: false,
+    enableWelcomeScreen: false,
     setInitialValue: vi.fn(),
     setDiffValue: vi.fn(),
     setSchemaSQL: vi.fn(),
@@ -64,6 +68,8 @@ function fakeEditor() {
     setSchemaJSON: vi.fn(),
     setPresetTheme: vi.fn(),
     setSystemAppearance: vi.fn(),
+    setLocale: vi.fn(),
+    setSystemLocale: vi.fn(),
     getSharedStore: () => sharedStore,
   });
 
@@ -152,6 +158,29 @@ describe('mountWebview', () => {
     );
     expect(document.body.contains(editor.element)).toBe(true);
     expect(onMounted).toHaveBeenCalledTimes(1);
+  });
+
+  it('turns the language picker and the welcome screen on before the editor joins the page', () => {
+    mount();
+    const appended = vi.spyOn(document.body, 'appendChild');
+    let propsAtAppend: unknown;
+    appended.mockImplementation(node => {
+      propsAtAppend = {
+        enableLocalePicker: editor.element.enableLocalePicker,
+        enableWelcomeScreen: editor.element.enableWelcomeScreen,
+      };
+      return node;
+    });
+
+    fromHost(
+      Bridge.executeCommand(webviewInitialValueCommand, { value: '{}' })
+    );
+
+    expect(appended).toHaveBeenCalledWith(editor.element);
+    expect(propsAtAppend).toEqual({
+      enableLocalePicker: true,
+      enableWelcomeScreen: true,
+    });
   });
 
   it('sends what the editor changes to the replica and to the host', () => {
@@ -441,6 +470,76 @@ describe('mountWebview', () => {
     expect(dispatch).toHaveBeenCalledWith(
       Bridge.executeCommand(hostSaveThemeCommand, detail)
     );
+  });
+
+  it('hands auto to the editor as system, after what system means', () => {
+    mount();
+
+    fromHost(
+      Bridge.executeCommand(webviewUpdateLocaleCommand, {
+        locale: 'auto',
+        systemLocale: 'ko',
+      })
+    );
+
+    expect(editor.element.setSystemLocale).toHaveBeenCalledExactlyOnceWith(
+      'ko'
+    );
+    expect(editor.element.setLocale).toHaveBeenCalledExactlyOnceWith('system');
+    expect(
+      editor.element.setSystemLocale.mock.invocationCallOrder[0]
+    ).toBeLessThan(editor.element.setLocale.mock.invocationCallOrder[0]);
+  });
+
+  it('passes a named locale through and leaves system alone when the host names none', () => {
+    mount();
+
+    fromHost(
+      Bridge.executeCommand(webviewUpdateLocaleCommand, { locale: 'ja-JP' })
+    );
+
+    expect(editor.element.setLocale).toHaveBeenCalledExactlyOnceWith('ja-JP');
+    expect(editor.element.setSystemLocale).not.toHaveBeenCalled();
+  });
+
+  it('saves a system pick of the language as auto and a code as it is', () => {
+    mount();
+    fromHost(
+      Bridge.executeCommand(webviewInitialValueCommand, { value: '{}' })
+    );
+    const pick = (locale: string) =>
+      editor.element.dispatchEvent(
+        new CustomEvent('changeLocale', { detail: { locale } })
+      );
+
+    pick('system');
+    pick('he-IL');
+
+    expect(dispatch).toHaveBeenCalledWith(
+      Bridge.executeCommand(hostSaveLocaleCommand, { locale: 'auto' })
+    );
+    expect(dispatch).toHaveBeenLastCalledWith(
+      Bridge.executeCommand(hostSaveLocaleCommand, { locale: 'he-IL' })
+    );
+  });
+
+  it('saves no language pick once disposed', () => {
+    const client = mount();
+    fromHost(
+      Bridge.executeCommand(webviewInitialValueCommand, { value: '{}' })
+    );
+    client.dispose();
+    dispatch.mockClear();
+
+    editor.element.dispatchEvent(
+      new CustomEvent('changeLocale', { detail: { locale: 'ko-KR' } })
+    );
+    fromHost(
+      Bridge.executeCommand(webviewUpdateLocaleCommand, { locale: 'ko-KR' })
+    );
+
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(editor.element.setLocale).not.toHaveBeenCalled();
   });
 
   it('toggles readonly', () => {

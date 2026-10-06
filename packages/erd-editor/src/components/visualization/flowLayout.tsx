@@ -6,6 +6,7 @@ import {
   getScrollToCenter,
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
+import { localized } from '@/components/localized/Localized';
 import Toast from '@/components/primitives/toast/Toast';
 import { CANVAS_ZOOM_MAX } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
@@ -312,7 +313,9 @@ async function requestFlowLayout(
 
     emitter.emit(
       openToastAction({
-        message: <Toast description="Could not place tables" />,
+        message: (
+          <Toast description={localized('common.toast.couldNotPlaceTables')} />
+        ),
       })
     );
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { pseudoMessages } from '@/__test-utils__/i18n';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import {
   createColumnNameCaseMenus,
@@ -10,6 +11,9 @@ import {
   changeLanguageAction,
   changeTableNameCaseAction,
 } from '@/engine/modules/settings/atom.actions';
+import { menuLabel } from '@/i18n/menuLabel';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 
 describe('columnNameCaseMenus', () => {
   it('exposes the four name cases in a stable order', () => {
@@ -17,8 +21,20 @@ describe('columnNameCaseMenus', () => {
       { name: 'Pascal', value: NameCase.pascalCase },
       { name: 'Camel', value: NameCase.camelCase },
       { name: 'Snake', value: NameCase.snakeCase },
-      { name: 'None', value: NameCase.none },
+      { name: 'None', labelKey: 'common.none', value: NameCase.none },
     ]);
+  });
+
+  it('translates None alone, the case names reading the same in every language', () => {
+    const app = createTestAppContext();
+    const pseudo = createI18n('ko-KR', pseudoMessages('ko'));
+
+    expect(
+      createColumnNameCaseMenus(app).map(menu => menuLabel(sourceI18n, menu))
+    ).toEqual(['Pascal', 'Camel', 'Snake', 'None']);
+    expect(
+      createColumnNameCaseMenus(app).map(menu => menuLabel(pseudo, menu))
+    ).toEqual(['Pascal', 'Camel', 'Snake', 'ko:None']);
   });
 
   it('mirrors the menu names and keeps one entry per name case', () => {

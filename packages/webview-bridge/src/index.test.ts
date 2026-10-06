@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import * as bridgeModule from '@/bridge';
 import * as commandsModule from '@/commands';
 import * as publicApi from '@/index';
+import * as localeModule from '@/locale';
 import * as themeModule from '@/theme';
 
 describe('public api surface', () => {
@@ -23,6 +24,10 @@ describe('public api surface', () => {
     expect(publicApi.AccentColor).toBe(themeModule.AccentColor);
   });
 
+  it('re-exports the locale labels by identity', () => {
+    expect(publicApi.LocaleLabel).toBe(localeModule.LocaleLabel);
+  });
+
   it('exports exactly the runtime members of the barrel', () => {
     expect(Object.keys(publicApi).sort()).toEqual(
       [
@@ -31,6 +36,7 @@ describe('public api surface', () => {
         'Appearance',
         'GrayColor',
         'AccentColor',
+        'LocaleLabel',
         ...Object.keys(commandsModule),
       ].sort()
     );

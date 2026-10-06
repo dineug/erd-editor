@@ -1,4 +1,4 @@
-import { DOMTemplateLiterals, html } from '@dineug/r-html';
+import { DOMTemplateLiterals, html, render } from '@dineug/r-html';
 import {
   afterEach,
   beforeEach,
@@ -10,9 +10,12 @@ import {
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mount,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
@@ -22,6 +25,7 @@ import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import type { I18n } from '@/i18n/translate';
 import type { ElkLayoutPoint } from '@/services/elk-layout';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -84,6 +88,23 @@ async function renderToast(toast: Toast) {
   return toastContainer.container;
 }
 
+const cleanups: Array<() => void> = [];
+
+/** A captured toast rendered under a language, as the toast stack renders it. */
+async function renderToastIn(toast: Toast, i18n: I18n) {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const provider = provideI18n(container, i18n);
+  render(container, toast.message);
+  await flush();
+  cleanups.push(() => {
+    render(container, null);
+    provider.destroy();
+    container.remove();
+  });
+  return container;
+}
+
 function clickButton(container: HTMLElement, text: string) {
   const button = Array.from(container.querySelectorAll('button')).find(
     el => el.textContent?.trim() === text
@@ -99,6 +120,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanups.splice(0).forEach(cleanup => cleanup());
   contexts.splice(0).forEach(app => app.store.destroy());
   toastContainer?.unmount();
   toastContainer = null;
@@ -251,5 +273,51 @@ describe('runElkPlacement', () => {
     expect(onChange).not.toHaveBeenCalled();
     const container = await renderToast(toasts[0]);
     expect(container.textContent).toContain('No tables to place');
+  });
+});
+
+describe('runElkPlacement in the language the editor shows', () => {
+  const swedish = () => createTestI18n('sv-SE', pseudoMessages('sv'));
+
+  it('says it is placing, and offers Cancel, in that language', async () => {
+    const app = createApp();
+    addTable(app, 't1');
+    const toasts = listenToasts(app);
+    hoisted.elkLayout = () => new Promise(() => {});
+
+    runElkPlacement(app, TablePlacement.flow, vi.fn());
+    await flush();
+
+    const container = await renderToastIn(toasts[0], swedish());
+    expect(container.textContent).toContain('sv:Placing tables…');
+    expect(
+      Array.from(container.querySelectorAll('button')).map(el =>
+        el.textContent?.trim()
+      )
+    ).toEqual(['sv:Cancel']);
+  });
+
+  it('says no layout came back in that language', async () => {
+    const app = createApp();
+    addTable(app, 't1');
+    const toasts = listenToasts(app);
+    hoisted.elkLayout = async () => {
+      throw new Error('no worker');
+    };
+
+    await runElkPlacement(app, TablePlacement.flow, vi.fn());
+
+    const container = await renderToastIn(toasts.at(-1)!, swedish());
+    expect(container.textContent?.trim()).toBe('sv:Could not place tables');
+  });
+
+  it('says there are no tables in that language', async () => {
+    const app = createApp();
+    const toasts = listenToasts(app);
+
+    await runElkPlacement(app, TablePlacement.flow, vi.fn());
+
+    const container = await renderToastIn(toasts[0], swedish());
+    expect(container.textContent?.trim()).toBe('sv:No tables to place');
   });
 });

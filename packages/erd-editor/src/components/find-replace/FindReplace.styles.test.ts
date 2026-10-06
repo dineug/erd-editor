@@ -52,4 +52,11 @@ describe('FindReplace.styles', () => {
     expect(staticText(styles.input)).toContain('var(--focus)');
     expect(staticText(styles.mark)).toContain('var(--accent-color-5)');
   });
+
+  it("aligns a match in its own direction to the panel's side, beside its icon", () => {
+    const text = staticText(styles.text);
+
+    expect(text).toContain('text-align: left');
+    expect(text).toMatch(/\[dir='rtl'\] &\s*\{\s*text-align: right;/);
+  });
 });

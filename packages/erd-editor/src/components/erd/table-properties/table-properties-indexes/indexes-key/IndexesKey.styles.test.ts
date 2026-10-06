@@ -22,7 +22,7 @@ describe('IndexesKey.styles', () => {
   it('pushes the lock to the end of the row, in the box an index keeps its remove button in', () => {
     const text = staticText(styles.lock);
 
-    expect(text).toContain('margin-left: auto');
+    expect(text).toContain('margin-inline-start: auto');
     expect(text).toContain('flex-shrink: 0');
     expect(text).toContain('width: 20px');
     expect(text).toContain('justify-content: center');
@@ -76,7 +76,7 @@ describe('IndexesKey.styles', () => {
   it('starts the name where an index name starts and cuts it short on one line', () => {
     const text = staticText(styles.name);
 
-    expect(text).toContain('padding-left: 4px');
+    expect(text).toContain('padding-inline-start: 4px');
     expect(text).toContain('min-width: 0');
     expect(text).toContain('text-overflow: ellipsis');
     expect(text).toContain('white-space: nowrap');

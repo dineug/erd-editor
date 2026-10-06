@@ -68,7 +68,7 @@ export const orderType = css`
 
 /* The mark the canvas draws on this column, AK1.2 for the second of AK1, at the end of the row. */
 export const mark = css`
-  margin-left: auto;
+  margin-inline-start: auto;
   color: var(--accent-color-11);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

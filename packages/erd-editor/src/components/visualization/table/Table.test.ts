@@ -3,9 +3,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as styles from '@/components/table-view/Table.styles';
@@ -27,6 +30,7 @@ import {
   addColumnAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import type { Table as TableEntity } from '@/internal-types';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 
@@ -209,6 +213,30 @@ describe('visualization Table', () => {
       expect(inputs).toHaveLength(2);
       expect(inputs[1].textContent?.trim()).toBe('main table');
       expect(inputs[1].style.width).toBe(`${table.ui.widthComment}px`);
+    });
+
+    it('draws the placeholders of an empty header in the language the element shows', async () => {
+      const i18n = createTestI18n('en');
+      const provider = provideI18n(document.body, i18n);
+
+      try {
+        app.store.dispatchSync(
+          changeTableNameAction({ id: TABLE_ID, value: '' })
+        );
+        mounted = await mountAndFlush(tableTemplate(table), app);
+        expect(headerInputs(mounted).map(el => el.textContent?.trim())).toEqual(
+          ['table', 'comment']
+        );
+
+        Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+        await flush();
+
+        expect(headerInputs(mounted).map(el => el.textContent?.trim())).toEqual(
+          ['ko:table', 'ko:comment']
+        );
+      } finally {
+        provider.destroy();
+      }
     });
 
     it('drops the comment input when table comments are hidden', async () => {

@@ -29,7 +29,7 @@ const settle = (promise: Promise<unknown>) =>
  * a caller report the outcome after this toast rather than on top of it.
  *
  * @example
- * await openToastWhileRunning(emitter, running, html`<${Toast} description=${'Working'} />`);
+ * await openToastWhileRunning(emitter, running, html`<${Toast} busy=${true} description=${localized('exportImage.copying')} />`);
  */
 export function openToastWhileRunning(
   emitter: Emitter,

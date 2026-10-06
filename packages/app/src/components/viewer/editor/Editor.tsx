@@ -5,6 +5,10 @@ import { useAtomValue } from 'jotai';
 import { useLayoutEffect, useRef } from 'react';
 
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
+import {
+  useApplyPickedLocale,
+  useLocalePreference,
+} from '@/atoms/modules/locale';
 import { useReplicationSchemaEntity } from '@/atoms/modules/sidebar';
 import { useApplyPresetTheme, useThemeState } from '@/atoms/modules/theme';
 import { SchemaEntity } from '@/services/indexeddb/modules/schema';
@@ -21,6 +25,8 @@ const Editor: React.FC<EditorProps> = props => {
   const editorRef = useRef<ErdEditorElement | null>(null);
   const theme = useThemeState();
   const applyPresetTheme = useApplyPresetTheme();
+  const locale = useLocalePreference();
+  const applyPickedLocale = useApplyPickedLocale();
   const replicationSchemaEntity = useReplicationSchemaEntity();
   const nickname = useAtomValue(nicknameStorageAtom);
   const nicknameRef = useRef(nickname);
@@ -37,7 +43,9 @@ const Editor: React.FC<EditorProps> = props => {
     });
     editorRef.current = editor;
     editor.enableThemeBuilder = true;
+    editor.enableLocalePicker = true;
     editor.setInitialValue(props.entity.value);
+    editor.enableWelcomeScreen = true;
 
     unsubscribeSet
       .add(
@@ -62,12 +70,18 @@ const Editor: React.FC<EditorProps> = props => {
       applyPresetTheme((event as CustomEvent).detail);
     };
 
+    const handleChangeLocale = (event: Event) => {
+      applyPickedLocale((event as CustomEvent).detail);
+    };
+
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
+    editor.addEventListener('changeLocale', handleChangeLocale);
     $viewer.appendChild(editor);
 
     return () => {
       $viewer.removeChild(editor);
       editor.removeEventListener('changePresetTheme', handleChangePresetTheme);
+      editor.removeEventListener('changeLocale', handleChangeLocale);
       Array.from(unsubscribeSet).forEach(unsubscribe => unsubscribe());
       unsubscribeSet.clear();
       editor.destroy();
@@ -75,6 +89,7 @@ const Editor: React.FC<EditorProps> = props => {
     };
   }, [
     applyPresetTheme,
+    applyPickedLocale,
     replicationSchemaEntity,
     props.entity.id,
     props.entity.value,
@@ -90,6 +105,10 @@ const Editor: React.FC<EditorProps> = props => {
       grayColor: theme.grayColor as any,
     });
   }, [theme]);
+
+  useLayoutEffect(() => {
+    editorRef.current?.setLocale(locale);
+  }, [locale]);
 
   return <div css={styles.scope} ref={viewerRef} />;
 };

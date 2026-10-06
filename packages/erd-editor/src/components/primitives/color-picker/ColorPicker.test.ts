@@ -1,10 +1,25 @@
 import { html } from '@dineug/r-html';
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { stubCanvasColors } from '@/__test-utils__/canvas';
 import { iconNameOf } from '@/__test-utils__/icon';
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
+import { createI18n, I18n } from '@/i18n/translate';
 import { focusEvent } from '@/utils/internalEvents';
 import { createKeyBindingMap } from '@/utils/keyboard-shortcut';
 
@@ -1360,5 +1375,129 @@ describe('ColorPicker pipette', () => {
     await flush();
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('ColorPicker in the language the editor shows', () => {
+  let i18n: I18n;
+  let provider: ReturnType<typeof provideI18n> | null = null;
+
+  const byLabel = (label: string) => q(`[aria-label="${label}"]`);
+
+  beforeEach(() => {
+    i18n = createTestI18n('de-DE', pseudoMessages('de'));
+    provider = provideI18n(document.body, i18n);
+  });
+
+  afterEach(() => {
+    provider?.destroy();
+    provider = null;
+  });
+
+  it('names the dialog, the sliders, the fields and the swatches in that language', async () => {
+    vi.stubGlobal(
+      'EyeDropper',
+      class {
+        open = vi.fn(() => new Promise(() => {}));
+      }
+    );
+    await setup({ color: '#ff0000', documentColors: ['#3b82f6'] });
+
+    expect(panel().getAttribute('aria-label')).toBe('de:Color');
+    const slider = byLabel('de:Saturation and brightness');
+    expect(slider.getAttribute('aria-roledescription')).toBe('de:2D slider');
+    expect(slider.getAttribute('aria-valuetext')).toBe(
+      'de:Saturation 100%, brightness 100%'
+    );
+    expect(byLabel('de:Hue').getAttribute('aria-valuetext')).toBe(
+      'de:0 degrees'
+    );
+    expect(byLabel('de:Pick a color from the screen').title).toBe(
+      'de:Pick a color from the screen'
+    );
+    expect(['R', 'G', 'B'].map(label => field(label as 'R').title)).toEqual([
+      'de:Red, 0 to 255',
+      'de:Green, 0 to 255',
+      'de:Blue, 0 to 255',
+    ]);
+    expect(field('Hex')).not.toBeNull();
+    const presets = Array.from(
+      group('de:Presets').querySelectorAll('button')
+    ).map(radio => radio.getAttribute('aria-label'));
+    expect(presets).toHaveLength(16);
+    expect(presets[0]).toBe('de:Red');
+    expect(presets[15]).toBe('de:Gray');
+    expect(group('de:Document colors')).not.toBeNull();
+    expect(panel().textContent).toContain('de:Document colors');
+    expect(
+      Array.from(panel().querySelectorAll('button')).some(
+        button => button.textContent?.trim() === 'de:No color'
+      )
+    ).toBe(true);
+  });
+
+  it('says no color in that language while it shows none', async () => {
+    await setup({ color: '' });
+
+    expect(field('Hex').placeholder).toBe('de:None');
+    expect(area()).toBeNull();
+    expect(
+      byLabel('de:Saturation and brightness').getAttribute('aria-valuetext')
+    ).toBe('de:No color');
+    expect(byLabel('de:Hue').getAttribute('aria-valuetext')).toBe(
+      'de:No color'
+    );
+  });
+
+  it('reads its names again once another language is put in', async () => {
+    await setup({ color: '#ff0000' });
+
+    Object.assign(i18n, createI18n('fr-FR', pseudoMessages('fr')));
+    await flush();
+
+    expect(panel().getAttribute('aria-label')).toBe('fr:Color');
+    expect(byLabel('fr:Hue').getAttribute('aria-valuetext')).toBe(
+      'fr:0 degrees'
+    );
+  });
+
+  it('picks the form of the hue it speaks by its number, as a language with several forms needs', async () => {
+    Object.assign(
+      i18n,
+      createI18n('ru-RU', {
+        ...pseudoMessages('ru'),
+        'colorPicker.degrees': {
+          one: 'ru:{count} one',
+          few: 'ru:{count} few',
+          many: 'ru:{count} many',
+          other: 'ru:{count} other',
+        },
+      })
+    );
+    await setup({ color: '#ff0000' });
+    const slider = byLabel('ru:Hue');
+    expect(slider.getAttribute('aria-valuetext')).toBe('ru:0 many');
+
+    await press(slider, { key: 'ArrowRight' });
+    expect(slider.getAttribute('aria-valuetext')).toBe('ru:1 one');
+
+    await press(slider, { key: 'ArrowRight' });
+    expect(slider.getAttribute('aria-valuetext')).toBe('ru:2 few');
+  });
+
+  it('isolates the numbers it speaks in a right-to-left language', async () => {
+    Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
+    await setup({ color: '#ff0000' });
+
+    expect(byLabel('ar:Hue').getAttribute('aria-valuetext')).toBe(
+      'ar:\u20680\u2069 degrees'
+    );
+  });
+
+  it('lays itself out left to right in every language, as its pointer geometry is', async () => {
+    Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
+    await setup();
+
+    expect(picker().getAttribute('dir')).toBe('ltr');
   });
 });

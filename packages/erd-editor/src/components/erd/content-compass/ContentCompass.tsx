@@ -7,6 +7,7 @@ import {
   getContentCompass,
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { useSceneSource } from '@/components/sceneSourceContext';
 
@@ -21,6 +22,7 @@ export type ContentCompassProps = {};
  */
 const ContentCompass: FC<ContentCompassProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
 
   const handleClick = () => {
@@ -36,7 +38,8 @@ const ContentCompass: FC<ContentCompassProps> = (props, ctx) => {
         {compass ? (
           <div
             class={['content-compass', styles.compass]}
-            title="go to the nearest content"
+            title={i18n.value.t('floatingToolbar.goToNearestContent')}
+            prop:dir="ltr"
             on:click={handleClick}
           >
             <Icon

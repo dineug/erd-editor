@@ -76,6 +76,7 @@ describe('coveredWidth', () => {
       Open.tableProperties,
       Open.themeBuilder,
       Open.exportImage,
+      Open.localePicker,
     ]) {
       app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
       expect(isPanelShown(app.store.state)).toBe(false);

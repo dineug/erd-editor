@@ -1,4 +1,5 @@
 import { AppContext } from '@/components/appContext';
+import { localized } from '@/components/localized/Localized';
 import Toast from '@/components/primitives/toast/Toast';
 import {
   createElkLayoutRequest,
@@ -28,7 +29,11 @@ export async function runElkPlacement(
 
   if (!request.nodes.length) {
     emitter.emit(
-      openToastAction({ message: <Toast description="No tables to place" /> })
+      openToastAction({
+        message: (
+          <Toast description={localized('common.toast.noTablesToPlace')} />
+        ),
+      })
     );
     return;
   }
@@ -46,7 +51,9 @@ export async function runElkPlacement(
   console.warn('[automatic-table-placement] no layout came back', answer.error);
   emitter.emit(
     openToastAction({
-      message: <Toast description="Could not place tables" />,
+      message: (
+        <Toast description={localized('common.toast.couldNotPlaceTables')} />
+      ),
     })
   );
 }

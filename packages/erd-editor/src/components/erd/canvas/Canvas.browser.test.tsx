@@ -152,6 +152,18 @@ describe('the canvas shell', () => {
     expect(stage.height()).toBe(480);
   });
 
+  it('keeps the scene left to right inside a right-to-left editor', async () => {
+    const mounted = await mountCanvas();
+    // The shell the canvas hangs in reads right to left, as the editor's root
+    // does under Arabic, Hebrew or Persian.
+    mounted.container.dir = 'rtl';
+    const stage = stageRegistry().canvas;
+
+    expect(controllerOf(mounted).getAttribute('dir')).toBe('ltr');
+    expect(getComputedStyle(mounted.container).direction).toBe('rtl');
+    expect(getComputedStyle(stage.content).direction).toBe('ltr');
+  });
+
   it('drops the Stage and its registry entry on unmount', async () => {
     const mounted = await mountCanvas();
     const stage = stageRegistry().canvas;

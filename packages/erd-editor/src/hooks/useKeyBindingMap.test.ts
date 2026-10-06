@@ -315,7 +315,11 @@ describe('useKeyBindingMap', () => {
   });
 
   it('takes $mod+KeyF under a dialog that only stands the panel aside', () => {
-    for (const key of [Open.tableProperties, Open.themeBuilder]) {
+    for (const key of [
+      Open.tableProperties,
+      Open.themeBuilder,
+      Open.localePicker,
+    ]) {
       app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
       expect(
         press({ key: 'f', code: 'KeyF', mod: true }).defaultPrevented
@@ -324,6 +328,7 @@ describe('useKeyBindingMap', () => {
     }
 
     expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.findReplace,
       KeyBindingName.findReplace,
       KeyBindingName.findReplace,
     ]);

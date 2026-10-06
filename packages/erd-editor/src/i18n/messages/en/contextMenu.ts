@@ -1,0 +1,22 @@
+/** The canvas menu's own words: its rows, the View Option list and the relationship choices. */
+export const contextMenu = {
+  'contextMenu.delete': 'Delete',
+  'contextMenu.deleteSelected': 'Delete selected',
+  'contextMenu.deleteColumn': 'Delete column',
+  'contextMenu.deleteColumns': 'Delete columns',
+  'contextMenu.removeColor': 'Remove color',
+  'contextMenu.primaryKeyOnSelectedColumns': 'Primary Key on selected columns',
+  'contextMenu.focusOnThisTable': 'Focus on this table',
+  'contextMenu.focusOnSelectedTables': 'Focus on selected tables',
+  'contextMenu.relationshipType': 'Relationship Type',
+  'contextMenu.onDelete': 'On Delete',
+  'contextMenu.onUpdate': 'On Update',
+  'contextMenu.notSet': 'Not set',
+  'contextMenu.notInDatabase': 'not in {database}',
+  'contextMenu.viewOption': 'View Option',
+  'contextMenu.diffViewer': 'Diff Viewer',
+  'contextMenu.show.tableComment': 'Table Comment',
+  'contextMenu.show.columnComment': 'Column Comment',
+  'contextMenu.show.alternateKey': 'Alternate Key',
+  'contextMenu.show.referentialActions': 'Referential Actions',
+} as const;

@@ -5,11 +5,13 @@ import {
   observable,
   onMounted,
   ref,
+  watch,
 } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import TextInput from '@/components/primitives/text-input/TextInput';
@@ -22,7 +24,12 @@ import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import { Action, createScopeActions, searchActions } from './actions';
+import {
+  Action,
+  createScopeActions,
+  PalettePreferences,
+  searchActions,
+} from './actions';
 import { clearHangulForms, findPaletteChunks } from './hangul';
 import {
   PALETTE_PREFIXES,
@@ -33,7 +40,7 @@ import {
 import * as styles from './QuickSearch.styles';
 import { paletteRows, scopeBase } from './scopedActions';
 
-export type QuickSearchProps = {};
+export type QuickSearchProps = PalettePreferences;
 
 const hasAutocompleteKey = arrayHas([
   'ArrowUp',
@@ -45,6 +52,7 @@ const hasAutocompleteKey = arrayHas([
 
 const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
   const root = createRef<HTMLDivElement>();
 
@@ -54,6 +62,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     level: [] as Action[],
     rows: [] as Action[],
     submenu: false,
+    /** The id of the top-level row whose submenu is shown, so a rebuild finds it again wherever it now sits, or not at all. */
+    parent: undefined as Action['id'],
     /** Whether the search with no prefix finds no command of the level. */
     missed: false,
     index: -1,
@@ -61,6 +71,12 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
   const byFilter = (actions: Action[]) =>
     actions.filter(action => (action.filter ? action.filter(app.value) : true));
+
+  const isOpen = () =>
+    Boolean(app.value.store.state.editor.openMap[Open.search]);
+
+  /** The top level in the language shown, Theme and Display Language with it while the element offers those pickers. */
+  const createTopLevel = () => createScopeActions(app.value, i18n.value, props);
 
   /** What the list shows: the level's commands or their fuzzy hits, at the top level the prefixes offered below them, or a scope's rows. */
   const getActions = () => byFilter(state.rows);
@@ -94,7 +110,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
     state.index = -1;
     // Rows read from the document are looked up only at the top level.
-    state.rows = state.submenu ? found : paletteRows(app.value, found, query);
+    state.rows = state.submenu
+      ? found
+      : paletteRows(app.value, found, query, i18n.value);
     state.missed =
       !state.submenu && query.scope === null && !noKeyword && !found.length;
   };
@@ -128,6 +146,48 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     });
   };
 
+  /** Stands the keyboard on a submenu's option in force, as the locale picker does, scrolled into view. */
+  const selectChecked = () => {
+    state.index = getActions().findIndex(action => action.checked);
+    if (state.index !== -1) scrollIntoView();
+  };
+
+  /**
+   * Builds the level shown again, after the language or an option in force
+   * changed while the palette is open, keeping what is typed: the submenu
+   * shown comes back in the new language while its row is offered, else the top level.
+   */
+  const rebuild = () => {
+    if (!isOpen()) return;
+
+    const top = createTopLevel();
+    const submenu =
+      state.submenu && state.parent
+        ? top.find(action => action.id === state.parent)?.next
+        : undefined;
+
+    state.submenu = Boolean(submenu);
+    setLevel(submenu ?? top);
+    if (state.keyword) {
+      setActions(state.keyword);
+    } else if (submenu) {
+      selectChecked();
+    } else {
+      state.index = -1;
+    }
+  };
+
+  let rebuildQueued = false;
+  /** One rebuild for a switch, which sets the language's fields one by one, read once every field is in. */
+  const queueRebuild = () => {
+    if (rebuildQueued) return;
+    rebuildQueued = true;
+    nextTick(() => {
+      rebuildQueued = false;
+      rebuild();
+    });
+  };
+
   const emitFocus = () => {
     nextTick(() => {
       ctx.host.dispatchEvent(focusEvent());
@@ -149,12 +209,14 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       action.perform(app.value);
       handleClose();
     } else if (action.next) {
+      if (!state.submenu) state.parent = action.id;
       setLevel(action.next);
       state.submenu = true;
+      clearKeyword();
+      selectChecked();
 
       const input = root.value?.querySelector('input');
       input && lastCursorFocus(input);
-      clearKeyword();
     } else if (action.insert !== undefined) {
       insertText(action.insert);
     } else {
@@ -230,14 +292,16 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       clearHangulForms();
 
       if (opened) {
-        setLevel(createScopeActions(app.value));
+        setLevel(createTopLevel());
         state.submenu = false;
+        state.parent = undefined;
         clearKeyword();
         store.dispatch(
           changeOpenMapAction({
             [Open.tableProperties]: false,
             [Open.themeBuilder]: false,
             [Open.exportImage]: false,
+            [Open.localePicker]: false,
           })
         );
       } else {
@@ -265,6 +329,12 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
         .pipe(filter(({ type }) => type === KeyBindingName.search))
         .subscribe(handleToggleSearch),
       emitter.on({ toggleSearch: handleToggleSearch }),
+      watch(i18n.value).subscribe(name => {
+        name === 'locale' && queueRebuild();
+      }),
+      watch(props).subscribe(name => {
+        (name === 'appearance' || name === 'locale') && queueRebuild();
+      }),
       clearHangulForms
     );
   });
@@ -276,6 +346,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     } = store.state;
     if (!openMap[Open.search]) return null;
 
+    const { t } = i18n.value;
     const query = readQuery(state.keyword);
     const searchWords = getSearchWords(query);
     const topLevel = !state.submenu;
@@ -286,7 +357,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
           <div class={styles.field}>
             <TextInput
               class={styles.search}
-              placeholder="Search"
+              placeholder={t('common.search')}
+              dir="auto"
               autofocus={true}
               value={state.keyword}
               onInput={handleInputKeyword}
@@ -294,31 +366,31 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
             />
             {query.scope ? (
               <span class={['quick-search-scope', styles.scope]}>
-                {scopeLabel(query.scope)}
+                {scopeLabel(query.scope, i18n.value)}
               </span>
             ) : null}
           </div>
           {topLevel && !state.keyword ? (
             <div class={['quick-search-hint', styles.hint]}>
-              {PALETTE_PREFIXES.map(({ prefix, label, description }) => (
+              {PALETTE_PREFIXES.map(({ prefix, labelKey, descriptionKey }) => (
                 <button
                   class={styles.hintItem}
                   type="button"
-                  title={description}
+                  title={t(descriptionKey)}
                   on:click={(event: MouseEvent) => {
                     event.stopPropagation();
                     insertText(prefix);
                   }}
                 >
                   <span class={styles.prefix}>{prefix}</span>
-                  {label}
+                  {t(labelKey)}
                 </button>
               ))}
             </div>
           ) : null}
           {state.missed ? (
             <div class={['quick-search-empty', styles.empty]}>
-              No commands match
+              {t('palette.noCommandsMatch')}
             </div>
           ) : null}
           <div class={['scrollbar', styles.list]}>
@@ -333,7 +405,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                 {action.icon ? (
                   <div class={styles.icon}>{action.icon}</div>
                 ) : null}
-                <span class={styles.name}>
+                <span class={styles.name} prop:dir="auto">
                   <HighlightedText
                     searchWords={searchWords}
                     textToHighlight={action.name}
@@ -343,7 +415,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                 {action.keywords ? (
                   <>
                     <div class={styles.vertical}></div>
-                    <span class={styles.keyword}>
+                    <span
+                      class={styles.keyword}
+                      prop:dir="auto"
+                      title={action.keywords}
+                    >
                       <HighlightedText
                         searchWords={searchWords}
                         textToHighlight={action.keywords}

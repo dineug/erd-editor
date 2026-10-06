@@ -195,11 +195,20 @@ export const body = css`
   white-space: nowrap;
 `;
 
+/*
+ * Runs in its own direction, yet sits on the panel's side, by its icon, either
+ * way the panel reads: Chromium drops match-parent, so the side is named.
+ */
 export const text = css`
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
   color: var(--foreground);
   ${typography.normal};
+
+  [dir='rtl'] & {
+    text-align: right;
+  }
 `;
 
 export const mark = css`

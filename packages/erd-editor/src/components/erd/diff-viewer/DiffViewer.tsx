@@ -8,6 +8,7 @@ import {
 } from '@/components/appContext';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import TreeViewer from '@/components/erd/diff-viewer/tree-viewer/TreeViewer';
+import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { DIFF_TREE_WIDTH } from '@/constants/layout';
@@ -78,8 +79,14 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
       close,
       message: (
         <Toast
-          description="Diff Viewer..."
-          action={<Button size="1" text="Close" onClick={handleClose} />}
+          description={localized('feedback.diffViewer')}
+          action={
+            <Button
+              size="1"
+              text={localized('common.close')}
+              onClick={handleClose}
+            />
+          }
         />
       ),
     })
@@ -103,7 +110,7 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
   });
 
   return () => (
-    <div class={styles.root}>
+    <div class={styles.root} prop:dir="ltr">
       <div class={styles.container}>
         <TreeViewer
           prevApp={prevApp}

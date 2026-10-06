@@ -1,9 +1,11 @@
 import { AppContext } from '@/components/appContext';
 import { NameCase } from '@/constants/schema';
 import { changeTableNameCaseAction } from '@/engine/modules/settings/atom.actions';
+import type { PlainMessageKey } from '@/i18n/translate';
 
 type Menu = {
   name: string;
+  labelKey?: PlainMessageKey;
   value: number;
 };
 
@@ -22,6 +24,7 @@ export const menus: Menu[] = [
   },
   {
     name: 'None',
+    labelKey: 'common.none',
     value: NameCase.none,
   },
 ];
@@ -35,6 +38,7 @@ export function createTableNameCaseMenus({ store }: AppContext) {
     return {
       checked,
       name: menu.name,
+      labelKey: menu.labelKey,
       onClick: () => {
         store.dispatch(
           changeTableNameCaseAction({

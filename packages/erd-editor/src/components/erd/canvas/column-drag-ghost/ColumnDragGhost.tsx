@@ -15,9 +15,11 @@ import {
   getColumnTextHeight,
   getColumnTextY,
 } from '@/components/erd/canvas/table/cellLayout';
+import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import { COLUMN_HEIGHT, TABLE_BORDER } from '@/constants/layout';
 import { ColumnType } from '@/constants/schema';
+import type { I18n } from '@/i18n/translate';
 import type { Column } from '@/internal-types';
 import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
 import type { Theme } from '@/themes/tokens';
@@ -28,15 +30,23 @@ const GHOST_OPACITY = 0.6;
 export type ColumnDragGhostProps = {};
 
 /** The text of the two cells a dragged row is told apart by, placeholder included. */
-const cellText = (theme: Theme, column: Column, columnType: number) => {
-  const [value, placeholder] =
-    columnType === ColumnType.columnName
-      ? [column.name, 'column']
-      : [column.dataType, 'dataType'];
+const cellText = (
+  theme: Theme,
+  column: Column,
+  columnType: number,
+  i18n: Pick<I18n, 't'>
+) => {
+  const isName = columnType === ColumnType.columnName;
+  const value = isName ? column.name : column.dataType;
 
   return value.trim()
     ? { text: value, fill: theme.active }
-    : { text: placeholder, fill: theme.placeholder };
+    : {
+        text: i18n.t(
+          isName ? 'common.placeholder.column' : 'common.placeholder.dataType'
+        ),
+        fill: theme.placeholder,
+      };
 };
 
 /**
@@ -47,6 +57,7 @@ const cellText = (theme: Theme, column: Column, columnType: number) => {
 const ColumnDragGhost: FC<ColumnDragGhostProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const i18n = useI18n(ctx);
 
   return () => {
     const { store } = app.value;
@@ -112,7 +123,8 @@ const ColumnDragGhost: FC<ColumnDragGhostProps> = (props, ctx) => {
                   const { text, fill } = cellText(
                     theme,
                     column,
-                    slot.columnType
+                    slot.columnType,
+                    i18n.value
                   );
 
                   return (

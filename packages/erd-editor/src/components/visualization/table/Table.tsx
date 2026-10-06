@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import Icon from '@/components/primitives/icon/Icon';
 import * as styles from '@/components/table-view/Table.styles';
@@ -21,9 +22,11 @@ export type TableProps = {
 
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   return () => {
     const { store } = app.value;
+    const { t } = i18n.value;
     const { settings, collections } = store.state;
     const { table, x, y } = props;
     const tableWidths = calcTableWidths(table, store.state);
@@ -59,7 +62,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           <div class={styles.headerInputWrap}>
             <div class="input-padding">
               <EditInput
-                placeholder="table"
+                placeholder={t('common.placeholder.table')}
                 width={table.ui.widthName}
                 value={table.name}
               />
@@ -67,7 +70,7 @@ const Table: FC<TableProps> = (props, ctx) => {
             {bHas(settings.show, Show.tableComment) ? (
               <div class="input-padding">
                 <EditInput
-                  placeholder="comment"
+                  placeholder={t('common.placeholder.comment')}
                   width={table.ui.widthComment}
                   value={table.comment}
                 />

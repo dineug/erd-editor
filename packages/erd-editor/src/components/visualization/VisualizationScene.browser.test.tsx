@@ -12,11 +12,14 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   createTestTheme,
   fireScenePointer,
   flush,
   movePointer,
   moveScenePointer,
+  provideI18n,
+  pseudoMessages,
   releasePointer,
   whenPainted,
 } from '@/__test-utils__';
@@ -44,6 +47,7 @@ import {
   addColumnAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n, type I18n } from '@/i18n/translate';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { TextFontFamily } from '@/styles/fonts.styles';
@@ -107,7 +111,7 @@ function seedRelated(app: AppContext) {
  * The seeded document laid out by d3 and then held still, so a position read
  * here is the one drawn.
  */
-async function setup(seed = seedGraph): Promise<Fixture> {
+async function setup(seed = seedGraph, i18n?: I18n): Promise<Fixture> {
   const app = createTestAppContext();
   seed(app);
 
@@ -121,6 +125,9 @@ async function setup(seed = seedGraph): Promise<Fixture> {
   const theme = createTestTheme();
   const container = document.createElement('div');
   document.body.append(container);
+  // On the Stage container, which the scene's providers hang from too, and
+  // before the render, since a component subscribes as it is set up.
+  const i18nProvider = i18n ? provideI18n(container, i18n) : null;
 
   const rendered = renderScene({
     app,
@@ -134,6 +141,7 @@ async function setup(seed = seedGraph): Promise<Fixture> {
   teardowns.push(() => {
     graph.simulation.stop();
     rendered.destroy();
+    i18nProvider?.destroy();
     container.remove();
   });
 
@@ -330,6 +338,20 @@ describe('the visualization scene', () => {
       expect(textsOf(stage)).toEqual([
         LONG_NAME.slice(0, NAME_MAX_LENGTH) + '…',
         'table',
+      ]);
+    });
+
+    it('names a table without a name in the language the element shows, following a switch', async () => {
+      const i18n = createTestI18n('en');
+      const { stage, settle } = await setup(seedGraph, i18n);
+      expect(textsOf(stage)[1]).toBe('table');
+
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await settle();
+
+      expect(textsOf(stage)).toEqual([
+        LONG_NAME.slice(0, NAME_MAX_LENGTH) + '…',
+        'ko:table',
       ]);
     });
 

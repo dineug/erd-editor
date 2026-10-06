@@ -275,6 +275,9 @@ export const window = {
   },
 };
 
+/** VS Code's display language; specs set it and resetVscodeMock puts English back. */
+export const env = { language: 'en' };
+
 export const commands = {
   registerCommand: vi.fn(
     (_command: string, _callback: (...args: any[]) => any) =>
@@ -470,6 +473,7 @@ export function resetVscodeMock() {
   );
   workspace.workspaceFolders = undefined;
   workspace.isTrusted = true;
+  env.language = 'en';
   workspace.onDidGrantWorkspaceTrust.mockImplementation(listener =>
     grantWorkspaceTrustEmitter.event(listener)
   );

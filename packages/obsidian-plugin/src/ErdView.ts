@@ -21,7 +21,12 @@ import {
 import { type DocumentRegistry, type HubTab } from '@/hub';
 import { ERD_ICON } from '@/icon';
 import { type ScopeKey } from '@/keys';
-import { type EditorTheme, type ThemeHost } from '@/settings';
+import {
+  type EditorLocale,
+  type EditorTheme,
+  type LocaleHost,
+  type ThemeHost,
+} from '@/settings';
 import {
   currentValue,
   type ExitSave,
@@ -113,6 +118,7 @@ export class ErdView extends TextFileView implements HubTab {
     leaf: WorkspaceLeaf,
     private readonly registry: DocumentRegistry<ErdView>,
     private readonly theme: ThemeHost,
+    private readonly locale: LocaleHost,
     editorKeys: readonly ScopeKey[]
   ) {
     super(leaf);
@@ -150,6 +156,10 @@ export class ErdView extends TextFileView implements HubTab {
     editor.enableThemeBuilder = true;
     editor.addEventListener('changePresetTheme', this.handlePickedTheme);
     this.applyTheme(this.theme.current());
+    // In the task that created the editor, so its first paint is in this language.
+    editor.enableLocalePicker = true;
+    editor.addEventListener('changeLocale', this.handlePickedLocale);
+    this.applyLocale(this.locale.current());
 
     this.registerEvent(
       this.app.workspace.on('active-leaf-change', leaf => {
@@ -172,6 +182,7 @@ export class ErdView extends TextFileView implements HubTab {
       'changePresetTheme',
       this.handlePickedTheme
     );
+    this.editor?.removeEventListener('changeLocale', this.handlePickedLocale);
     this.editor?.destroy();
     this.editor?.remove();
     this.editor = null;
@@ -284,8 +295,18 @@ export class ErdView extends TextFileView implements HubTab {
     this.editor?.setPresetTheme(theme);
   }
 
+  /** The display language every open diagram shows; one the tab's own picker picked is on screen already. */
+  applyLocale({ locale, systemLocale }: EditorLocale): void {
+    this.editor?.setSystemLocale(systemLocale);
+    this.editor?.setLocale(locale);
+  }
+
   private readonly handlePickedTheme = (event: Event): void => {
     this.theme.picked((event as CustomEvent<unknown>).detail);
+  };
+
+  private readonly handlePickedLocale = (event: Event): void => {
+    this.locale.picked((event as CustomEvent<unknown>).detail);
   };
 
   private saveState(): SaveState {
@@ -482,6 +503,8 @@ export class ErdView extends TextFileView implements HubTab {
       this.startReplica(value);
     }
     editor.setInitialValue(value);
+    // Only once a document is in, so the guide never shows over a file still loading.
+    editor.enableWelcomeScreen = true;
     this.loadedData = data;
     this.replicaValue = null;
 

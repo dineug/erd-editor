@@ -1,5 +1,6 @@
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
+import type { PlainMessageKey } from '@/i18n/translate';
 import {
   importAML,
   importDBML,
@@ -12,6 +13,7 @@ import {
 type Menu = {
   icon: IconName;
   name: string;
+  labelKey?: PlainMessageKey;
   onClick: () => void;
 };
 
@@ -33,6 +35,7 @@ export function createImportMenus(
     {
       icon: 'database',
       name: 'Schema SQL',
+      labelKey: 'common.tab.schemaSql',
       onClick: () => {
         importSchemaSQL(app, mode);
         onClose();

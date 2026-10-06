@@ -17,13 +17,20 @@ describe('Shortcuts.styles', () => {
     const css = source(styles.table);
 
     expect(css).toContain('width: 100%');
-    expect(css).toContain('text-align: left');
+    expect(css).toContain('text-align: start');
+    expect(css).not.toContain('text-align: left');
     expect(css).toContain('vertical-align: top');
     expect(css).toContain('border-collapse: collapse');
     expect(css).toContain(
       'border-radius: calc(var(--table-border-radius) - 1px)'
     );
     expect(css).toContain('border-spacing: 0');
+  });
+
+  it('aligns the headings to the start, since a th centres under the initial start alignment', () => {
+    const css = source(styles.table);
+
+    expect(css).toMatch(/th \{[^}]*text-align: start;/);
   });
 
   it('interpolates the shared cell rules into both th and td', () => {

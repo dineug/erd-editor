@@ -6,12 +6,14 @@ import {
   hostExportFileCommand,
   hostImportFileCommand,
   hostInitialCommand,
+  hostSaveLocaleCommand,
   hostSaveReplicationCommand,
   hostSaveThemeCommand,
   hostSaveValueCommand,
   webviewImportFileCommand,
   webviewInitialValueCommand,
   webviewReplicationCommand,
+  webviewUpdateLocaleCommand,
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
 } from '@/commands';
@@ -23,9 +25,11 @@ const allCommands = [
   hostSaveValueCommand,
   hostSaveReplicationCommand,
   hostSaveThemeCommand,
+  hostSaveLocaleCommand,
   webviewImportFileCommand,
   webviewInitialValueCommand,
   webviewUpdateThemeCommand,
+  webviewUpdateLocaleCommand,
   webviewUpdateReadonlyCommand,
   webviewReplicationCommand,
 ];
@@ -37,7 +41,7 @@ describe('command definitions', () => {
     }
   });
 
-  it('exports exactly the eleven known commands', () => {
+  it('exports exactly the thirteen known commands', () => {
     expect(Object.keys(commands).sort()).toEqual(
       [
         'hostExportFileCommand',
@@ -46,9 +50,11 @@ describe('command definitions', () => {
         'hostSaveValueCommand',
         'hostSaveReplicationCommand',
         'hostSaveThemeCommand',
+        'hostSaveLocaleCommand',
         'webviewImportFileCommand',
         'webviewInitialValueCommand',
         'webviewUpdateThemeCommand',
+        'webviewUpdateLocaleCommand',
         'webviewUpdateReadonlyCommand',
         'webviewReplicationCommand',
       ].sort()
@@ -64,8 +70,8 @@ describe('command definitions', () => {
   it('splits the commands into a host and a webview namespace', () => {
     const names = Object.keys(commands);
 
-    expect(names.filter(name => name.startsWith('host'))).toHaveLength(6);
-    expect(names.filter(name => name.startsWith('webview'))).toHaveLength(5);
+    expect(names.filter(name => name.startsWith('host'))).toHaveLength(7);
+    expect(names.filter(name => name.startsWith('webview'))).toHaveLength(6);
   });
 });
 
@@ -252,6 +258,62 @@ describe('commands over a Bridge', () => {
       appearance: 'auto',
       systemAppearance: 'light',
     });
+  });
+
+  it('round-trips a host save locale payload through JSON', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(hostSaveLocaleCommand, listener);
+    const auto = Bridge.executeCommand(hostSaveLocaleCommand, {
+      locale: 'auto',
+    });
+    const named = Bridge.executeCommand(hostSaveLocaleCommand, {
+      locale: 'ko-KR',
+    });
+
+    bridge.executeAction(JSON.parse(JSON.stringify(auto)));
+    bridge.executeAction(JSON.parse(JSON.stringify(named)));
+
+    expect(listener.mock.calls).toEqual([
+      [{ locale: 'auto' }],
+      [{ locale: 'ko-KR' }],
+    ]);
+  });
+
+  it('round-trips a webview locale update with and without a system locale through JSON', () => {
+    const bridge = new Bridge();
+    const listener = vi.fn();
+    bridge.registerCommand(webviewUpdateLocaleCommand, listener);
+    const auto = Bridge.executeCommand(webviewUpdateLocaleCommand, {
+      locale: 'auto',
+      systemLocale: 'pt-PT',
+    });
+    const named = Bridge.executeCommand(webviewUpdateLocaleCommand, {
+      locale: 'ar-SA',
+    });
+
+    bridge.executeAction(JSON.parse(JSON.stringify(auto)));
+    bridge.executeAction(JSON.parse(JSON.stringify(named)));
+
+    expect(listener.mock.calls).toEqual([
+      [{ locale: 'auto', systemLocale: 'pt-PT' }],
+      [{ locale: 'ar-SA' }],
+    ]);
+  });
+
+  it('keeps the locale save and locale update commands distinct', () => {
+    const bridge = new Bridge();
+    const save = vi.fn();
+    const update = vi.fn();
+    bridge.registerCommand(hostSaveLocaleCommand, save);
+    bridge.registerCommand(webviewUpdateLocaleCommand, update);
+
+    bridge.executeAction(
+      Bridge.executeCommand(webviewUpdateLocaleCommand, { locale: 'en' })
+    );
+
+    expect(update).toHaveBeenCalledWith({ locale: 'en' });
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('round-trips a primitive readonly payload', () => {

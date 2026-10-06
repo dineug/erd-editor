@@ -35,6 +35,7 @@ import { SCOPED_ACTION_LIMIT } from '@/components/quick-search/scopedActions';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnNameAction,
@@ -195,6 +196,45 @@ describe('Find and Replace on a real keyboard', () => {
     expect(document.activeElement).toBe(inputOf(fixture, 'find-input'));
     expect(presses).toHaveLength(1);
     expect(presses[0].defaultPrevented).toBe(true);
+  });
+
+  it("sits a match's left-to-right name by its icon in a right-to-left panel", async () => {
+    const fixture = await setup({ styled: true });
+    fixture.root.dir = 'rtl';
+    await press(OPEN_FIND);
+    await press('user');
+
+    const row = panelOf(fixture)!.querySelector('.find-replace-match')!;
+    const icon = row.firstElementChild!.getBoundingClientRect();
+    const text = row.querySelector('span')!;
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    const name = range.getBoundingClientRect();
+
+    expect(getComputedStyle(text).direction).toBe('ltr');
+    expect(name.right).toBeLessThanOrEqual(icon.left);
+    expect(icon.left - name.right).toBeLessThan(24);
+  });
+
+  it('sets an empty field the way the page reads and a filled one the way its text runs', async () => {
+    const fixture = await setup();
+    fixture.root.dir = 'rtl';
+    await press(OPEN_FIND);
+    const find = inputOf(fixture, 'find-input')!;
+    const replace = inputOf(fixture, 'replace-input')!;
+
+    expect(getComputedStyle(find).direction).toBe('rtl');
+    expect(getComputedStyle(replace).direction).toBe('rtl');
+
+    await press('user');
+
+    expect(getComputedStyle(find).direction).toBe('ltr');
+    expect(getComputedStyle(replace).direction).toBe('rtl');
+
+    await press('{Backspace>4/}');
+
+    expect(find.value).toBe('');
+    expect(getComputedStyle(find).direction).toBe('rtl');
   });
 
   it('brings the caret back to the find field on its chord, as every host find does', async () => {
@@ -485,6 +525,84 @@ describe('quick search prefixes on a real keyboard', () => {
   const scopeOf = (fixture: Fixture) =>
     paletteOf(fixture)?.querySelector('.quick-search-scope')?.textContent ??
     null;
+
+  /** The first row's rule and the box its keywords' text takes, laid out. */
+  const keywordOf = (fixture: Fixture) => {
+    const row = paletteOf(fixture)!.querySelector(
+      `.${quickSearchStyles.action}`
+    )!;
+    const keyword = row.querySelector<HTMLElement>(
+      `.${quickSearchStyles.keyword}`
+    )!;
+    const range = document.createRange();
+    range.selectNodeContents(keyword);
+    return {
+      rule: row
+        .querySelector(`.${quickSearchStyles.vertical}`)!
+        .getBoundingClientRect(),
+      text: range.getBoundingClientRect(),
+      direction: getComputedStyle(keyword).direction,
+    };
+  };
+
+  it("sits a column match's left-to-right keywords by the rule in a right-to-left palette", async () => {
+    const fixture = await setup({ styled: true });
+    fixture.root.dir = 'rtl';
+    await press(OPEN_SEARCH);
+    await press('@users.em');
+
+    const { rule, text, direction } = keywordOf(fixture);
+
+    expect(direction).toBe('ltr');
+    expect(Math.abs(rule.left - text.right)).toBeLessThan(1);
+  });
+
+  it("sits a column match's right-to-left keywords by the rule in a left-to-right palette", async () => {
+    const fixture = await setup({ styled: true });
+    fixture.mounted.app.store.dispatchSync(
+      changeTableNameAction({ id: 'users', value: 'משתמשים' })
+    );
+    await press(OPEN_SEARCH);
+    await press('@email');
+
+    const { rule, text, direction } = keywordOf(fixture);
+
+    expect(direction).toBe('rtl');
+    expect(Math.abs(text.left - rule.right)).toBeLessThan(1);
+  });
+
+  it('cuts a help row in a narrow palette in its description, never in its name', async () => {
+    const fixture = await setup({ styled: true, width: 300 });
+    await press(OPEN_SEARCH);
+    await press('?');
+
+    const rows = Array.from(
+      paletteOf(fixture)!.querySelectorAll(`.${quickSearchStyles.action}`)
+    );
+    const cut = (row: Element, style: object) => {
+      const box = row.querySelector<HTMLElement>(`.${style}`)!;
+      return box.scrollWidth > box.clientWidth;
+    };
+
+    expect(rows.map(row => cut(row, quickSearchStyles.name))).toEqual([
+      false,
+      false,
+      false,
+    ]);
+    expect(cut(rows[2], quickSearchStyles.keyword)).toBe(true);
+  });
+
+  it('sets its empty input the way the page reads and what is typed the way it runs', async () => {
+    const fixture = await setup();
+    fixture.root.dir = 'rtl';
+    await press(OPEN_SEARCH);
+
+    expect(getComputedStyle(searchInput(fixture)!).direction).toBe('rtl');
+
+    await press('@users');
+
+    expect(getComputedStyle(searchInput(fixture)!).direction).toBe('ltr');
+  });
 
   it('goes to a column named by table and column', async () => {
     const fixture = await setup();

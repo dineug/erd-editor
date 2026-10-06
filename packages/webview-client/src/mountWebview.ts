@@ -11,13 +11,16 @@ import {
   hostExportFileCommand,
   hostImportFileCommand,
   hostInitialCommand,
+  hostSaveLocaleCommand,
   hostSaveReplicationCommand,
   hostSaveThemeCommand,
   hostSaveValueCommand,
+  type LocaleSetting,
   type ThemeOptions,
   webviewImportFileCommand,
   webviewInitialValueCommand,
   webviewReplicationCommand,
+  webviewUpdateLocaleCommand,
   webviewUpdateReadonlyCommand,
   webviewUpdateThemeCommand,
 } from '@dineug/erd-editor-webview-bridge';
@@ -52,6 +55,19 @@ const toHostAppearance = (
   appearance: EditorAppearance
 ): ThemeOptions['appearance'] =>
   appearance === 'system' ? 'auto' : appearance;
+
+/**
+ * The editor spells the host's auto locale as system too. Both mappings type
+ * the bridge's code list against the editor's, so a code one side lacks fails
+ * the build.
+ */
+type EditorLocale = Parameters<ErdEditorElement['setLocale']>[0];
+
+const toEditorLocale = (locale: LocaleSetting): EditorLocale =>
+  locale === 'auto' ? 'system' : locale;
+
+const toHostLocale = (locale: EditorLocale): LocaleSetting =>
+  locale === 'system' ? 'auto' : locale;
 
 /** How a host's import is placed, the rule the editor's own import menu follows. */
 const HOST_IMPORT = { placement: 'auto' } as const;
@@ -121,6 +137,15 @@ export function mountWebview(host: WebviewHost): WebviewClient {
     );
   };
 
+  const handleChangeLocale = (event: Event) => {
+    const { detail } = event as CustomEvent<{ locale: EditorLocale }>;
+    dispatch(
+      Bridge.executeCommand(hostSaveLocaleCommand, {
+        locale: toHostLocale(detail.locale),
+      })
+    );
+  };
+
   const disposeCommands = Bridge.mergeRegister(
     bridge.registerCommand(
       webviewImportFileCommand,
@@ -167,8 +192,11 @@ export function mountWebview(host: WebviewHost): WebviewClient {
       );
 
       editor.addEventListener('changePresetTheme', handleChangePresetTheme);
+      editor.addEventListener('changeLocale', handleChangeLocale);
       editor.setInitialValue(value);
       editor.enableThemeBuilder = true;
+      editor.enableLocalePicker = true;
+      editor.enableWelcomeScreen = true;
       sharedStore.subscribe(actions => {
         dispatchWorker(
           Bridge.executeCommand(webviewReplicationCommand, { actions })
@@ -196,6 +224,14 @@ export function mountWebview(host: WebviewHost): WebviewClient {
           appearance:
             payload.appearance && toEditorAppearance(payload.appearance),
         });
+      }
+    ),
+    bridge.registerCommand(
+      webviewUpdateLocaleCommand,
+      ({ locale, systemLocale }) => {
+        // What system means goes first, so a switch to system shows it at once.
+        if (systemLocale !== undefined) editor.setSystemLocale(systemLocale);
+        editor.setLocale(toEditorLocale(locale));
       }
     ),
     bridge.registerCommand(webviewUpdateReadonlyCommand, readonly => {
@@ -231,6 +267,7 @@ export function mountWebview(host: WebviewHost): WebviewClient {
       );
       replicationStoreWorker.terminate();
       editor.removeEventListener('changePresetTheme', handleChangePresetTheme);
+      editor.removeEventListener('changeLocale', handleChangeLocale);
     },
   };
 }

@@ -9,8 +9,10 @@ import {
 } from '@dineug/r-html';
 import { clamp } from 'es-toolkit';
 
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { hasMoveKeys, Viewport } from '@/engine/modules/editor/state';
+import type { PlainMessageKey } from '@/i18n/translate';
 import { onNumberOnly, onStop } from '@/utils/domEvent';
 import { focusEvent } from '@/utils/internalEvents';
 import {
@@ -89,10 +91,14 @@ type ActiveKey = 'presetActive' | 'documentActive';
 type Ratio = { x: number; y: number };
 
 const CHANNELS = [
-  { field: 'r', label: 'R', title: 'Red, 0 to 255' },
-  { field: 'g', label: 'G', title: 'Green, 0 to 255' },
-  { field: 'b', label: 'B', title: 'Blue, 0 to 255' },
-] as const;
+  { field: 'r', label: 'R', titleKey: 'colorPicker.channel.red' },
+  { field: 'g', label: 'G', titleKey: 'colorPicker.channel.green' },
+  { field: 'b', label: 'B', titleKey: 'colorPicker.channel.blue' },
+] as const satisfies ReadonlyArray<{
+  field: Field;
+  label: string;
+  titleKey: PlainMessageKey;
+}>;
 
 const CHANNEL_INDEX: Record<Exclude<Field, 'hex'>, number> = {
   r: 0,
@@ -136,6 +142,7 @@ const stepSwatch = (index: number, count: number, key: string) => {
 };
 
 const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
+  const i18n = useI18n(ctx);
   const container = createRef<HTMLDivElement>();
   const panel = createRef<HTMLDivElement>();
   const hue = createRef<HTMLDivElement>();
@@ -503,6 +510,7 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
   };
 
   return () => {
+    const { t } = i18n.value;
     const { empty } = state;
     const saturation = Math.round(state.s * 100);
     const brightness = Math.round(state.v * 100);
@@ -510,10 +518,16 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
     const documentColors = (props.documentColors ?? [])
       .slice(0, DOCUMENT_COLOR_LIMIT)
       .map(color => ({ color, label: color.toUpperCase() }));
+    const presets = PRESET_COLORS.map(({ color, labelKey }) => ({
+      color,
+      label: t(labelKey),
+    }));
+    const noColor = t('colorPicker.noColor');
 
     return (
       <div
         class={['color-picker', styles.container]}
+        prop:dir="ltr"
         style={{
           top: `${state.y}px`,
           left: `${state.x}px`,
@@ -523,7 +537,7 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
         <div
           class={styles.panel}
           role="dialog"
-          aria-label="Color"
+          aria-label={t('common.color')}
           tabindex="-1"
           use:ref={ref(panel)}
           on:keydown={handleKeydown}
@@ -538,15 +552,15 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
               class={styles.area}
               role="slider"
               tabindex="0"
-              aria-label="Saturation and brightness"
-              aria-roledescription="2D slider"
+              aria-label={t('colorPicker.saturationAndBrightness')}
+              aria-roledescription={t('colorPicker.slider2d')}
               aria-valuemin="0"
               aria-valuemax="100"
               aria-valuenow={saturation}
               aria-valuetext={
                 empty
-                  ? 'No color'
-                  : `Saturation ${saturation}%, brightness ${brightness}%`
+                  ? noColor
+                  : t('colorPicker.areaValue', { saturation, brightness })
               }
               style={{
                 'background-color': hsvToHex({ h: state.h, s: 1, v: 1 }),
@@ -568,8 +582,8 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
                 <button
                   class={styles.iconButton}
                   type="button"
-                  aria-label="Pick a color from the screen"
-                  title="Pick a color from the screen"
+                  aria-label={t('colorPicker.eyeDropper')}
+                  title={t('colorPicker.eyeDropper')}
                   use:ref={ref(eyeDropperButton)}
                   on:click={handleEyeDropper}
                 >
@@ -580,11 +594,13 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
                 class={styles.hue}
                 role="slider"
                 tabindex="0"
-                aria-label="Hue"
+                aria-label={t('colorPicker.hue')}
                 aria-valuemin="0"
                 aria-valuemax="360"
                 aria-valuenow={degrees}
-                aria-valuetext={empty ? 'No color' : `${degrees} degrees`}
+                aria-valuetext={
+                  empty ? noColor : t('colorPicker.degrees', { count: degrees })
+                }
                 use:ref={ref(hue)}
                 on:pointerdown={handleHuePointerdown}
                 on:pointermove={handleHuePointermove}
@@ -608,7 +624,7 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
                 class={styles.input}
                 type="text"
                 aria-label="Hex"
-                placeholder={empty ? 'None' : ''}
+                placeholder={empty ? t('common.none') : ''}
                 spellcheck="false"
                 autocomplete="off"
                 prop:value={valueOf('hex')}
@@ -621,13 +637,13 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
                 Hex
               </span>
             </label>
-            {CHANNELS.map(({ field, label, title }) => (
+            {CHANNELS.map(({ field, label, titleKey }) => (
               <label class={styles.field}>
                 <input
                   class={styles.input}
                   type="text"
                   aria-label={label}
-                  title={title}
+                  title={t(titleKey)}
                   inputmode="numeric"
                   maxlength={3}
                   spellcheck="false"
@@ -645,14 +661,14 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
             ))}
           </div>
           <div class={styles.swatchArea}>
-            {renderSwatches('Presets', PRESET_COLORS, 'presetActive')}
+            {renderSwatches(t('colorPicker.presets'), presets, 'presetActive')}
             {documentColors.length ? (
               <>
                 <div class={styles.caption} aria-hidden="true">
-                  Document colors
+                  {t('colorPicker.documentColors')}
                 </div>
                 {renderSwatches(
-                  'Document colors',
+                  t('colorPicker.documentColors'),
                   documentColors,
                   'documentActive'
                 )}
@@ -661,7 +677,7 @@ const ColorPicker: FC<ColorPickerProps> = (props, ctx) => {
           </div>
           {props.onClear ? (
             <button class={styles.clear} type="button" on:click={props.onClear}>
-              No color
+              {noColor}
             </button>
           ) : null}
         </div>

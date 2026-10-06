@@ -1,3 +1,5 @@
+import { sourceI18n } from '@/i18n/source';
+import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import { ValuesType } from '@/internal-types';
 
 export const PaletteScope = {
@@ -11,8 +13,8 @@ export type PaletteScope = ValuesType<typeof PaletteScope>;
 export type PalettePrefix = {
   prefix: string;
   scope: PaletteScope;
-  label: string;
-  description: string;
+  labelKey: PlainMessageKey;
+  descriptionKey: PlainMessageKey;
 };
 
 /** The characters that, typed first, narrow the palette to one kind of row, in the order its hint lists them. */
@@ -20,26 +22,26 @@ export const PALETTE_PREFIXES: ReadonlyArray<PalettePrefix> = [
   {
     prefix: '#',
     scope: PaletteScope.tables,
-    label: 'Tables',
-    description: 'Go to a table by its name',
+    labelKey: 'palette.scope.tables',
+    descriptionKey: 'palette.scopeDescription.tables',
   },
   {
     prefix: '@',
     scope: PaletteScope.columns,
-    label: 'Columns',
-    description: 'Go to a column by its name, or by table.column',
+    labelKey: 'palette.scope.columns',
+    descriptionKey: 'palette.scopeDescription.columns',
   },
   {
     prefix: ':',
     scope: PaletteScope.text,
-    label: 'Comments & memos',
-    description: 'Search table comments, column comments and memos',
+    labelKey: 'palette.scope.text',
+    descriptionKey: 'palette.scopeDescription.text',
   },
   {
     prefix: '?',
     scope: PaletteScope.help,
-    label: 'Help',
-    description: 'List the prefixes that narrow the search',
+    labelKey: 'palette.scope.help',
+    descriptionKey: 'palette.scopeDescription.help',
   },
 ];
 
@@ -69,9 +71,14 @@ const scopeOf = (value: string) => {
   return PALETTE_PREFIXES.find(found => found.prefix === prefix);
 };
 
-/** The label the palette shows beside its input while a prefix narrows the list. */
-export const scopeLabel = (scope: PaletteScope): string =>
-  PALETTE_PREFIXES.find(prefix => prefix.scope === scope)?.label ?? '';
+/** The label the palette shows beside its input while a prefix narrows the list, in the reader's language. */
+export function scopeLabel(
+  scope: PaletteScope,
+  i18n: Pick<I18n, 't'> = sourceI18n
+): string {
+  const found = PALETTE_PREFIXES.find(prefix => prefix.scope === scope);
+  return found ? i18n.t(found.labelKey) : '';
+}
 
 /**
  * Reads what is typed into the palette: a prefix counts only as the first

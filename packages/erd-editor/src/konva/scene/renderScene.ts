@@ -3,7 +3,9 @@ import { Stage } from 'konva/lib/Stage';
 
 import { type AppContext, appContext } from '@/components/appContext';
 import { trackSceneHits } from '@/components/erd/hitTest';
+import { localeContext } from '@/components/localeContext';
 import { themeContext } from '@/components/themeContext';
+import type { I18n } from '@/i18n/translate';
 import { renderKonva } from '@/konva/host';
 import type { Theme } from '@/themes/tokens';
 
@@ -28,6 +30,11 @@ export type RenderSceneOptions = {
    * what an editor's own canvas wants and what a realm without one has none of.
    */
   theme?: Theme;
+  /**
+   * The language the scene's own words are drawn in. Left out, it is the one a
+   * DOM ancestor of the container provides, or English where none does.
+   */
+  i18n?: I18n;
 };
 
 export type RenderedScene = {
@@ -36,9 +43,9 @@ export type RenderedScene = {
 };
 
 /**
- * One Stage, one scene, one provider. The provider goes up before the render
- * because a component resolves its context on its first pass, and it targets
- * what the host resolves to, so provider and consumers meet on one object.
+ * One Stage, one scene, and the providers it is given, each up before the render
+ * since a component resolves its context on its first pass, and each on what the
+ * host resolves to, so a provider and its consumers meet on one object.
  */
 export function renderScene({
   app,
@@ -47,6 +54,7 @@ export function renderScene({
   width,
   height,
   theme,
+  i18n,
 }: RenderSceneOptions): RenderedScene {
   const stage = new Stage({ container, width, height });
   // The adapter hands a component this same target, and useProvider types only
@@ -58,6 +66,10 @@ export function renderScene({
     ? // oxlint-disable-next-line react-hooks/rules-of-hooks
       useProvider(target, themeContext, theme)
     : null;
+  const localeProvider = i18n
+    ? // oxlint-disable-next-line react-hooks/rules-of-hooks
+      useProvider(target, localeContext, i18n)
+    : null;
 
   const untrack = trackSceneHits(stage);
 
@@ -68,6 +80,7 @@ export function renderScene({
     destroy: () => {
       untrack();
       renderKonva(stage, null);
+      localeProvider?.destroy();
       themeProvider?.destroy();
       appProvider.destroy();
       stage.destroy();

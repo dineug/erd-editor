@@ -6,12 +6,14 @@ import { installSceneMirror, SCENE_MIRROR_FLAG } from '../support/sceneMirror';
 
 /**
  * Deterministic mount for the e2e suite: no stats.js loop, no HMR, no theme
- * builder, and systemDarkMode pinned off so the runner's prefers-color-scheme
- * cannot change what is rendered.
+ * builder, locale picker or welcome screen, and systemDarkMode pinned off so
+ * the runner's prefers-color-scheme cannot change what is rendered.
  */
 const editor = document.createElement('erd-editor');
 editor.systemDarkMode = false;
 editor.enableThemeBuilder = false;
+editor.enableLocalePicker = false;
+editor.enableWelcomeScreen = false;
 editor.setAttribute('style', 'display: block; width: 100%; height: 100%;');
 
 const app = document.getElementById('app');

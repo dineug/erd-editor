@@ -5,6 +5,7 @@ export const Open = {
   tableProperties: 'tableProperties',
   search: 'search',
   themeBuilder: 'themeBuilder',
+  localePicker: 'localePicker',
   diffViewer: 'diffViewer',
   timeTravel: 'timeTravel',
   findReplace: 'findReplace',

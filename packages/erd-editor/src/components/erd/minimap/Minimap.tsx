@@ -168,6 +168,7 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
         ></div>
         <div
           class={['minimap', styles.minimap]}
+          prop:dir="ltr"
           style={styleMap(layout)}
           use:ref={ref(minimap)}
           on:mousedown={handleMove}

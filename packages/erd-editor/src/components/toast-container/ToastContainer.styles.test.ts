@@ -10,13 +10,14 @@ describe('ToastContainer.styles', () => {
     expect(styles.root.values).toEqual([]);
   });
 
-  it('pins the stack to the bottom right above everything else', () => {
+  it('pins the stack to the bottom corner the editor reads towards, above everything else', () => {
     const source = styles.root.strings.join('');
 
     expect(source).toContain('position: absolute');
     expect(source).toContain('z-index: 2147483647');
     expect(source).toContain('bottom: 0');
-    expect(source).toContain('right: 0');
+    expect(source).toContain('inset-inline-end: 0');
+    expect(source).not.toMatch(/(^|[\s;])(left|right):/);
     expect(source).toContain('max-width: 390px');
     expect(source).toContain('flex-direction: column');
   });

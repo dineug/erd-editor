@@ -16,6 +16,7 @@ import {
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
 import { showAllFlowView } from '@/components/flowCenters';
+import { useI18n } from '@/components/localeContext';
 import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
@@ -48,6 +49,7 @@ import {
   viewChangeShowModeAction,
 } from '@/engine/modules/editor/view.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import type { PlainMessageKey } from '@/i18n/translate';
 import { getSceneTransform } from '@/konva/scene/viewport';
 import { middlePanPress$ } from '@/utils/globalEventObservable';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
@@ -66,10 +68,13 @@ const MENU_GAP = 8;
 
 /** The three steps of a card, in the order the menu offers them. */
 const SHOW_MODES = [
-  { value: ShowMode.nameOnly, title: 'Name only' },
-  { value: ShowMode.keysOnly, title: 'Keys only' },
-  { value: ShowMode.allFields, title: 'All fields' },
-] as const;
+  { value: ShowMode.nameOnly, titleKey: 'visualization.showMode.nameOnly' },
+  { value: ShowMode.keysOnly, titleKey: 'visualization.showMode.keysOnly' },
+  { value: ShowMode.allFields, titleKey: 'visualization.showMode.allFields' },
+] as const satisfies ReadonlyArray<{
+  value: ShowMode;
+  titleKey: PlainMessageKey;
+}>;
 
 const showModeOf = (value?: ShowMode) =>
   SHOW_MODES.find(mode => mode.value === value) ?? SHOW_MODES[0];
@@ -81,6 +86,7 @@ const showModeOf = (value?: ShowMode) =>
  */
 const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
   const $bar = createRef<HTMLDivElement>();
   const $trigger = createRef<HTMLDivElement>();
@@ -234,9 +240,10 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
+    const { t } = i18n.value;
     const { editor } = store.state;
-    const title = (name: string, keyBindingName: KeyBindingName) =>
-      toShortcutTitle(keyBindingMap, name, keyBindingName);
+    const title = (labelKey: PlainMessageKey, keyBindingName: KeyBindingName) =>
+      toShortcutTitle(keyBindingMap, t(labelKey), keyBindingName);
     const flow = editor.visualizationMode === VisualizationMode.flow;
     const view = editor.views.flow;
     const graph = getGraphView(editor.id);
@@ -254,17 +261,18 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
         <div
           use:ref={ref($bar)}
           class={['visualization-toolbar', floating.root]}
+          prop:dir="ltr"
         >
           <div
             class={[floating.menu, { active: !flow }]}
-            title="Graph"
+            title={t('visualization.graph')}
             on:click={handleMode(VisualizationMode.graph)}
           >
             <Icon name="atom" size={ICON_SIZE} />
           </div>
           <div
             class={[floating.menu, { active: flow }]}
-            title="Flow"
+            title={t('common.placement.flow')}
             on:click={handleMode(VisualizationMode.flow)}
           >
             <Icon name="waypoints" size={ICON_SIZE} />
@@ -272,34 +280,38 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           <div class={floating.divider}></div>
           <div
             class={floating.menu}
-            title={title('Zoom out', KeyBindingName.zoomOut)}
+            title={title('floatingToolbar.zoomOut', KeyBindingName.zoomOut)}
             on:click={handleZoom(-ZOOM_STEP)}
           >
             <Icon name="minus" size={ICON_SIZE} />
           </div>
           <div
             class={['zoom-level', floating.readout]}
-            title={title('Reset zoom', KeyBindingName.zoomReset)}
+            title={title('floatingToolbar.resetZoom', KeyBindingName.zoomReset)}
             on:click={handleZoomReset}
           >
             {toZoomFormat(zoomLevel)}
           </div>
           <div
             class={floating.menu}
-            title={title('Zoom in', KeyBindingName.zoomIn)}
+            title={title('floatingToolbar.zoomIn', KeyBindingName.zoomIn)}
             on:click={handleZoom(ZOOM_STEP)}
           >
             <Icon name="plus" size={ICON_SIZE} />
           </div>
           <div class={floating.divider}></div>
-          <div class={floating.menu} title="Fit" on:click={handleFit}>
+          <div
+            class={floating.menu}
+            title={t('visualization.fit')}
+            on:click={handleFit}
+          >
             <Icon name="fullscreen" size={ICON_SIZE} />
           </div>
           {flow ? (
             <>
               <div
                 class={floating.menu}
-                title="Tidy Up"
+                title={t('visualization.tidyUp')}
                 on:click={handleTidyUp}
               >
                 <Icon name="wand-sparkles" size={ICON_SIZE} />
@@ -308,10 +320,12 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
               <div
                 use:ref={ref($trigger)}
                 class={[styles.showModeTrigger, { active: state.showModeOpen }]}
-                title={`Row display: ${showMode.title}`}
+                title={t('visualization.rowDisplay', {
+                  mode: t(showMode.titleKey),
+                })}
                 on:click={handleShowModeTrigger}
               >
-                <div class={styles.showModeLabel}>{showMode.title}</div>
+                <div class={styles.showModeLabel}>{t(showMode.titleKey)}</div>
                 <Icon name="chevron-down" size={CHEVRON_SIZE} />
               </div>
             </>
@@ -321,14 +335,18 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
               <div class={floating.divider}></div>
               <div
                 class={floating.menu}
-                title="Show all"
+                title={t('visualization.showAll')}
                 on:click={handleShowAll}
               >
                 <Icon name="maximize" size={ICON_SIZE} />
               </div>
             </>
           ) : null}
-          {toolbarCompass({ compass, onClick: handleCompass })}
+          {toolbarCompass({
+            compass,
+            title: t('floatingToolbar.goToContent'),
+            onClick: handleCompass,
+          })}
         </div>
         {flow && state.showModeOpen ? (
           <div
@@ -351,7 +369,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
                               <Icon name="check" size={MENU_ICON_SIZE} />
                             ) : null
                           }
-                          name={mode.title}
+                          name={t(mode.titleKey)}
                         />
                       }
                     />

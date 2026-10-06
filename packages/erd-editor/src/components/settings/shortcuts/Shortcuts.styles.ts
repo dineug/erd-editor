@@ -8,7 +8,7 @@ const cell = css`
 
 export const table = css`
   width: 100%;
-  text-align: left;
+  text-align: start;
   vertical-align: top;
   border-collapse: collapse;
   border-radius: calc(var(--table-border-radius) - 1px);
@@ -18,6 +18,7 @@ export const table = css`
 
   th {
     font-weight: var(--font-weight-bold);
+    text-align: start;
     ${cell};
   }
 

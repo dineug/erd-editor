@@ -19,6 +19,7 @@ async function setup(props: Partial<TextInputProps> = {}) {
       class=${props.class}
       title=${props.title}
       placeholder=${props.placeholder}
+      dir=${props.dir}
       readonly=${props.readonly}
       disabled=${props.disabled}
       width=${props.width}
@@ -115,6 +116,21 @@ describe('TextInput', () => {
 
     expect(input.hasAttribute('title')).toBe(false);
     expect(input.hasAttribute('placeholder')).toBe(false);
+  });
+
+  it('lets what is typed take its own direction only when asked to', async () => {
+    const typed = await setup({ value: 'abc', dir: 'auto' });
+    expect(typed.getAttribute('dir')).toBe('auto');
+
+    mounted?.unmount();
+    const inherited = await setup({ value: 'abc' });
+    expect(inherited.hasAttribute('dir')).toBe(false);
+  });
+
+  it("leaves an empty field asked for auto the page's direction", async () => {
+    const empty = await setup({ value: '', dir: 'auto' });
+
+    expect(empty.getAttribute('dir')).toBe('');
   });
 
   it('renders the readonly and disabled boolean attributes when enabled', async () => {

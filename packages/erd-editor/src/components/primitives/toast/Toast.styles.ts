@@ -22,7 +22,7 @@ export const indicator = css`
   flex: none;
   width: 16px;
   height: 16px;
-  margin-right: 12px;
+  margin-inline-end: 12px;
   color: var(--active);
 
   & svg {
@@ -75,13 +75,13 @@ export const description = css`
 
 export const action = css`
   display: flex;
-  margin-left: 15px;
+  margin-inline-start: 15px;
 
   & > button {
-    margin-left: 8px;
+    margin-inline-start: 8px;
   }
 
   & > button:first-child {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 `;

@@ -30,6 +30,8 @@ import {
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
+import { isEmptyDocument } from '@/components/erd/welcome-screen/welcomeLayout';
+import WelcomeScreen from '@/components/erd/welcome-screen/WelcomeScreen';
 import { isTakenOver } from '@/components/find-replace/panelLayout';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
@@ -88,6 +90,9 @@ export type ErdProps = {
   isDarkMode: boolean;
   mouseTracking: boolean;
   readonly: boolean;
+  enableWelcomeScreen?: boolean;
+  enableThemeBuilder?: boolean;
+  enableLocalePicker?: boolean;
 };
 
 /**
@@ -269,6 +274,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !el.closest('.minimap') &&
       !el.closest('.minimap-viewport') &&
       !el.closest('.virtual-scroll') &&
+      !el.closest('.welcome-screen-menu') &&
       !showOverLayout;
 
     const middlePress = isMiddleButtonPress(event);
@@ -550,6 +556,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     // An open overlay stands a scene of its own over this canvas, so the tools
     // that drive this one step aside rather than float over it.
     const showFloatingToolbar = !getShowOverLayout();
+    // Only for a host that asks for it, over a document still empty that the
+    // reader may edit, so the first table or memo takes it away and an undo
+    // brings it again, and never after appDestroy, whose clear empties it too.
+    const showWelcomeScreen =
+      Boolean(props.enableWelcomeScreen) &&
+      !app.value.lifecycle.destroyed &&
+      !props.readonly &&
+      !zenMode &&
+      !getShowOverLayout() &&
+      isEmptyDocument(store.state);
 
     const cursor = handTool
       ? state.grabCursor
@@ -574,6 +590,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <Canvas root={root} canvas={canvas} grabMove={handTool} />
         {zenMode ? null : <VirtualScroll />}
         {hasContent && !zenMode ? <Minimap /> : null}
+        {showWelcomeScreen ? (
+          <WelcomeScreen
+            enableThemeBuilder={props.enableThemeBuilder}
+            enableLocalePicker={props.enableLocalePicker}
+          />
+        ) : null}
         {showFloatingToolbar ? <FloatingToolbar /> : null}
         {contextMenu.state.show ? (
           <ErdContextMenu

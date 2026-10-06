@@ -31,17 +31,19 @@ describe('Menu.styles', () => {
     expect(css).toContain('width: 100%;');
   });
 
-  it('reserves a fixed gutter for the icon slot', () => {
+  it('reserves a fixed gutter for the icon slot, on the side the text follows it', () => {
     const css = source(styles.icon);
 
     expect(css).toContain('min-width: 14px;');
-    expect(css).toContain('margin-right: 8px;');
+    expect(css).toContain('margin-inline-end: 8px;');
+    expect(css).not.toMatch(/margin-(left|right)/);
   });
 
-  it('pushes the right slot to the end of the row', () => {
+  it('pushes the right slot to the end of the row, whichever way the row reads', () => {
     const css = source(styles.right);
 
-    expect(css).toContain('margin-left: auto;');
-    expect(css).toContain('padding-left: 24px;');
+    expect(css).toContain('margin-inline-start: auto;');
+    expect(css).toContain('padding-inline-start: 24px;');
+    expect(css).not.toMatch(/(margin|padding)-(left|right)/);
   });
 });

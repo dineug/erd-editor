@@ -1,7 +1,11 @@
 import { query } from '@dineug/erd-editor-schema';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, flush } from '@/__test-utils__/index';
+import {
+  createTestAppContext,
+  flush,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
   createReferentialActionMenus,
@@ -14,6 +18,8 @@ import {
 } from '@/constants/schema';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 
 let app: AppContext;
 
@@ -47,7 +53,7 @@ describe('relationshipMenus', () => {
   it('exposes the four relationship types with icons', () => {
     addRelationship(RelationshipType.ZeroOne);
 
-    const result = createRelationshipMenus(app, RELATIONSHIP_ID);
+    const result = createRelationshipMenus(app, RELATIONSHIP_ID, sourceI18n);
 
     expect(result.map(menu => menu.name)).toEqual([
       'Zero One',
@@ -63,10 +69,25 @@ describe('relationshipMenus', () => {
     ]);
   });
 
+  it('names each type in the language it is handed, English where none is', () => {
+    addRelationship(RelationshipType.ZeroOne);
+
+    expect(
+      createRelationshipMenus(app, RELATIONSHIP_ID).map(menu => menu.name)
+    ).toEqual(['Zero One', 'Zero N', 'One Only', 'One N']);
+    expect(
+      createRelationshipMenus(
+        app,
+        RELATIONSHIP_ID,
+        createI18n('ko-KR', pseudoMessages('ko'))
+      ).map(menu => menu.name)
+    ).toEqual(['ko:Zero One', 'ko:Zero N', 'ko:One Only', 'ko:One N']);
+  });
+
   it('checks only the current relationship type', () => {
     addRelationship(RelationshipType.OneOnly);
 
-    const result = createRelationshipMenus(app, RELATIONSHIP_ID);
+    const result = createRelationshipMenus(app, RELATIONSHIP_ID, sourceI18n);
 
     expect(result.filter(menu => menu.checked).map(menu => menu.name)).toEqual([
       'One Only',
@@ -76,7 +97,7 @@ describe('relationshipMenus', () => {
   it('dispatches changeRelationshipTypeAction on click', async () => {
     addRelationship(RelationshipType.ZeroOne);
 
-    createRelationshipMenus(app, RELATIONSHIP_ID)
+    createRelationshipMenus(app, RELATIONSHIP_ID, sourceI18n)
       .find(menu => menu.name === 'One N')
       ?.onClick();
     await flush();
@@ -90,10 +111,10 @@ describe('relationshipMenus', () => {
   it('re-derives the checked flag after a type change', async () => {
     addRelationship(RelationshipType.ZeroOne);
 
-    createRelationshipMenus(app, RELATIONSHIP_ID)[1].onClick();
+    createRelationshipMenus(app, RELATIONSHIP_ID, sourceI18n)[1].onClick();
     await flush();
 
-    const result = createRelationshipMenus(app, RELATIONSHIP_ID);
+    const result = createRelationshipMenus(app, RELATIONSHIP_ID, sourceI18n);
     expect(result[0].checked).toBe(false);
     expect(result[1].checked).toBe(true);
   });
@@ -118,7 +139,8 @@ describe('referentialActionMenus', () => {
     const result = createReferentialActionMenus(
       app,
       'onDelete',
-      RELATIONSHIP_ID
+      RELATIONSHIP_ID,
+      sourceI18n
     );
 
     expect(result.map(menu => menu.name)).toEqual([
@@ -138,7 +160,12 @@ describe('referentialActionMenus', () => {
     addRelationship(RelationshipType.ZeroN);
     const notes = (database: number) => {
       app.store.dispatchSync(changeDatabaseAction({ value: database }));
-      return createReferentialActionMenus(app, 'onDelete', RELATIONSHIP_ID)
+      return createReferentialActionMenus(
+        app,
+        'onDelete',
+        RELATIONSHIP_ID,
+        sourceI18n
+      )
         .filter(menu => menu.note)
         .map(menu => `${menu.name} ${menu.note}`);
     };
@@ -155,9 +182,12 @@ describe('referentialActionMenus', () => {
     // No menu names a database the settings cannot hold, so none is noted.
     app.store.state.settings.database = 0;
     expect(
-      createReferentialActionMenus(app, 'onDelete', RELATIONSHIP_ID).map(
-        menu => menu.note
-      )
+      createReferentialActionMenus(
+        app,
+        'onDelete',
+        RELATIONSHIP_ID,
+        sourceI18n
+      ).map(menu => menu.note)
     ).toEqual(Array(6).fill(null));
   });
 
@@ -169,7 +199,7 @@ describe('referentialActionMenus', () => {
     async (field, other) => {
       addRelationship(RelationshipType.ZeroN);
 
-      createReferentialActionMenus(app, field, RELATIONSHIP_ID)
+      createReferentialActionMenus(app, field, RELATIONSHIP_ID, sourceI18n)
         .find(menu => menu.name === 'SET NULL')
         ?.onClick();
       await flush();
@@ -177,7 +207,7 @@ describe('referentialActionMenus', () => {
       expect(relationship()?.[field]).toBe(ReferentialAction.setNull);
       expect(relationship()?.[other]).toBe(ReferentialAction.none);
       expect(
-        createReferentialActionMenus(app, field, RELATIONSHIP_ID)
+        createReferentialActionMenus(app, field, RELATIONSHIP_ID, sourceI18n)
           .filter(menu => menu.checked)
           .map(menu => menu.name)
       ).toEqual(['SET NULL']);
@@ -187,11 +217,50 @@ describe('referentialActionMenus', () => {
   it('goes back to Not set', async () => {
     addRelationship(RelationshipType.ZeroN);
 
-    createReferentialActionMenus(app, 'onUpdate', RELATIONSHIP_ID)[2].onClick();
+    createReferentialActionMenus(
+      app,
+      'onUpdate',
+      RELATIONSHIP_ID,
+      sourceI18n
+    )[2].onClick();
     await flush();
-    createReferentialActionMenus(app, 'onUpdate', RELATIONSHIP_ID)[0].onClick();
+    createReferentialActionMenus(
+      app,
+      'onUpdate',
+      RELATIONSHIP_ID,
+      sourceI18n
+    )[0].onClick();
     await flush();
 
     expect(relationship()?.onUpdate).toBe(ReferentialAction.none);
+  });
+
+  it('translates Not set and the note, never the SQL an action is written as', () => {
+    addRelationship(RelationshipType.ZeroN);
+    app.store.dispatchSync(changeDatabaseAction({ value: Database.MSSQL }));
+
+    const result = createReferentialActionMenus(
+      app,
+      'onDelete',
+      RELATIONSHIP_ID,
+      createI18n('ko-KR', pseudoMessages('ko'))
+    );
+
+    expect(result.map(menu => menu.name)).toEqual([
+      'ko:Not set',
+      'NO ACTION',
+      'CASCADE',
+      'SET NULL',
+      'SET DEFAULT',
+      'RESTRICT',
+    ]);
+    expect(result.filter(menu => menu.note).map(menu => menu.note)).toEqual([
+      'ko:not in MSSQL',
+    ]);
+    expect(
+      createReferentialActionMenus(app, 'onDelete', RELATIONSHIP_ID).map(
+        menu => menu.name
+      )[0]
+    ).toBe('Not set');
   });
 });

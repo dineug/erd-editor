@@ -33,7 +33,9 @@ describe('ThemeBuilder.styles', () => {
 
     expect(source).toContain('position: absolute');
     expect(source).toContain('top: 46px');
-    expect(source).toContain('left: 16px');
+    // On the side a line starts from, so a right-to-left editor hangs it at the right.
+    expect(source).toContain('inset-inline-start: 16px');
+    expect(source).not.toMatch(/\b(left|right):/);
     // A raised descendant of the tab wrapper would otherwise paint over this
     // panel, which that wrapper holds in no stacking context of its own.
     expect(source).toContain('z-index: 1');
@@ -88,12 +90,15 @@ describe('ThemeBuilder.styles', () => {
     expect(styles.color.values).toEqual([]);
   });
 
-  it('lays the three appearance buttons out as a three column grid', () => {
+  it('lays the three appearance buttons out as a three column grid that never wraps a label', () => {
     const source = styles.appearanceButtonGroup.strings.join('');
 
     expect(source).toContain('display: grid');
     expect(source).toContain(
-      'grid-template-columns: repeat(3, minmax(0, 1fr))'
+      'grid-template-columns: repeat(3, minmax(max-content, 1fr))'
+    );
+    expect(styles.appearanceButton.strings.join('')).toContain(
+      'padding-inline: 8px'
     );
     expect(source).toContain('gap: 8px');
     expect(styles.appearanceButtonGroup.values).toEqual([]);

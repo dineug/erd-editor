@@ -11,7 +11,7 @@ import { fontSize5, typography } from '@/styles/typography.styles';
 export const root = css`
   position: absolute;
   top: 46px;
-  left: 16px;
+  inset-inline-start: 16px;
   z-index: 1;
   padding: 24px;
   background-color: var(--context-menu-background);
@@ -52,10 +52,11 @@ export const color = css`
   }
 `;
 
+/* Equal thirds, except that a label longer than its third widens its own button rather than wrap. */
 export const appearanceButtonGroup = css`
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(max-content, 1fr));
   gap: 8px;
 `;
 
@@ -67,6 +68,7 @@ export const appearanceButton = css`
   border: 1px solid var(--context-menu-border);
   border-radius: 6px;
   height: 32px;
+  padding-inline: 8px;
   ${typography.paragraph};
 
   &:hover {

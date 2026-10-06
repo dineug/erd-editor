@@ -3,14 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import GeneratorCodeContextMenu from '@/components/generator-code/generator-code-context-menu/GeneratorCodeContextMenu';
 import * as itemStyles from '@/components/primitives/context-menu/context-menu-item/ContextMenuItem.styles';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { Language, NameCase } from '@/constants/schema';
+import { createI18n } from '@/i18n/translate';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 type Api = ReturnType<typeof useContextMenuRootProvider>;
@@ -104,6 +108,39 @@ describe('GeneratorCodeContextMenu', () => {
     ]);
   });
 
+  it('names its entries and None in the language the element shows, the rest as written', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      await openMenu();
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      const [root] = contentsOf(mounted as Mounted);
+      expect(namesOf(root)).toEqual([
+        'ko:Language',
+        'ko:Table Name Case',
+        'ko:Column Name Case',
+      ]);
+      expect(namesOf(await openSubmenu('ko:Table Name Case'))).toEqual([
+        'Pascal',
+        'Camel',
+        'Snake',
+        'ko:None',
+      ]);
+      expect(namesOf(await openSubmenu('ko:Column Name Case'))).toEqual([
+        'Pascal',
+        'Camel',
+        'Snake',
+        'ko:None',
+      ]);
+      expect(namesOf(await openSubmenu('ko:Language'))).toContain('TypeScript');
+    } finally {
+      provider.destroy();
+    }
+  });
+
   it('gives each entry a leading icon and a trailing chevron', async () => {
     await openMenu();
 
@@ -137,6 +174,18 @@ describe('GeneratorCodeContextMenu', () => {
       'Mermaid',
     ]);
     expect(checkedNameOf(submenu)).toEqual(['GraphQL']);
+  });
+
+  it('keeps each language name left to right, so C# reads as C# in a right-to-left menu', async () => {
+    await openMenu();
+
+    const submenu = await openSubmenu('Language');
+    const names = rowsOf(submenu).map(row =>
+      Array.from(row.querySelectorAll('[dir="ltr"]'), el => el.textContent)
+    );
+
+    expect(names[0]).toEqual(['C#']);
+    expect(names.every(found => found.length === 1)).toBe(true);
   });
 
   it('changes the language and moves the check when a language row is clicked', async () => {

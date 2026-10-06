@@ -10,12 +10,12 @@ export const icon = css`
   display: flex;
   align-items: center;
   min-width: 14px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 `;
 
 export const right = css`
   display: flex;
   align-items: center;
-  margin-left: auto;
-  padding-left: 24px;
+  margin-inline-start: auto;
+  padding-inline-start: 24px;
 `;

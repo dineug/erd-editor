@@ -3,9 +3,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as checkboxStyles from '@/components/erd/table-properties/table-properties-indexes/indexes-checkbox-column/IndexesCheckboxColumn.styles';
@@ -15,18 +18,25 @@ import * as keyStyles from '@/components/erd/table-properties/table-properties-i
 import TablePropertiesIndexes from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes';
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/TablePropertiesIndexes.styles';
 import * as separatorStyles from '@/components/primitives/separator/Separator.styles';
+import { OrderType, Show } from '@/constants/schema';
 import {
   addIndexAction,
   changeIndexUniqueAction,
   removeIndexAction,
 } from '@/engine/modules/index/atom.actions';
-import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
+import {
+  addIndexColumnAction,
+  changeIndexColumnOrderTypeAction,
+} from '@/engine/modules/index-column/atom.actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
+import type { LocaleCode } from '@/i18n/locales';
+import { createI18n, I18n } from '@/i18n/translate';
 
 const TABLE_ID = 't1';
 const OTHER_TABLE_ID = 't2';
@@ -916,5 +926,204 @@ describe('TablePropertiesIndexes', () => {
         'This index has no columns',
       ]);
     });
+  });
+});
+
+describe('TablePropertiesIndexes in the language the editor shows', () => {
+  let i18n: I18n;
+  let provider: ReturnType<typeof provideI18n> | null = null;
+
+  const provide = (locale: LocaleCode, tag: string) => {
+    i18n = createTestI18n(locale, pseudoMessages(tag));
+    provider = provideI18n(document.body, i18n);
+  };
+
+  const readonlyTemplate = (tableId = TABLE_ID) =>
+    html`<${TablePropertiesIndexes} tableId=${tableId} readonly=${true} />`;
+
+  const titlesOf = (mounted: Mounted) =>
+    Array.from(mounted.container.querySelectorAll('[title]')).map(el =>
+      el.getAttribute('title')
+    );
+
+  /** A primary key on c1, a unique c3, and a unique index over both, AK1. */
+  const declareKeysAndIndex = () => {
+    app.store.dispatchSync(addColumnAction({ id: 'c3', tableId: TABLE_ID }));
+    app.store.dispatchSync(
+      changeColumnPrimaryKeyAction({
+        id: 'c1',
+        tableId: TABLE_ID,
+        value: true,
+      }),
+      changeColumnUniqueAction({ id: 'c3', tableId: TABLE_ID, value: true }),
+      addIndexAction({ id: 'i1', tableId: TABLE_ID }),
+      ...['c1', 'c3'].map(columnId =>
+        addIndexColumnAction({
+          id: `i1-${columnId}`,
+          indexId: 'i1',
+          tableId: TABLE_ID,
+          columnId,
+        })
+      ),
+      changeIndexUniqueAction({ id: 'i1', tableId: TABLE_ID, value: true }),
+      ...[
+        Show.columnDefault,
+        Show.columnComment,
+        Show.columnUnique,
+        Show.columnAutoIncrement,
+      ].map(show => changeShowAction({ show, value: true }))
+    );
+  };
+
+  afterEach(() => {
+    provider?.destroy();
+    provider = null;
+  });
+
+  it('names its groups, rows and controls in that language, the key tags as the diagram writes them', async () => {
+    declareKeysAndIndex();
+    app.store.dispatchSync(
+      changeIndexColumnOrderTypeAction({
+        id: 'i1-c3',
+        indexId: 'i1',
+        columnId: 'c3',
+        value: OrderType.DESC,
+      })
+    );
+    provide('de-DE', 'de');
+    mounted = await mountAndFlush(template(), app);
+
+    expect(labelsOf(leftOf(mounted))).toEqual(['de:Keys', 'de:Indexes']);
+    expect(labelsOf(rightOf(mounted))).toEqual(['de:Columns']);
+    expect(statusOf(mounted).text).toBe('de:Select a key or an index');
+    expect(
+      keyRowsOf(mounted).map(row => [
+        row.getAttribute('title'),
+        row.querySelector(`.${String(keyStyles.tag)}`)?.textContent,
+      ])
+    ).toEqual([
+      ['de:Primary Key', 'PK'],
+      ['de:Unique Column', 'UQ'],
+    ]);
+    expect(titlesOf(mounted)).toEqual(
+      expect.arrayContaining([
+        'de:Read Only',
+        'de:Unique',
+        'de:Alternate Key 1',
+        'de:Remove',
+        'de:Add Index',
+        'de:Auto Increment',
+      ])
+    );
+    expect(
+      rightOf(mounted).querySelector('[title="de:Unique"]')
+    ).not.toBeNull();
+    expect(addButtonOf(mounted).textContent).toBe('de:Add Index');
+    expect(indexRowsOf(mounted)[0].querySelector('input')?.placeholder).toBe(
+      'de:name'
+    );
+    const columnsText = rightOf(mounted).textContent ?? '';
+    expect(columnsText).toContain('de:column');
+    expect(columnsText).toContain('de:default');
+    expect(columnsText).toContain('de:comment');
+
+    click(indexRowsOf(mounted)[0]);
+    await flush();
+
+    expect(statusOf(mounted).text).toBe('de:2 of 2 selected');
+    const order = orderOf(mounted) as HTMLElement;
+    expect(order.textContent).toContain('de:Index order');
+    expect(order.textContent).toContain('de:Drag to reorder');
+    expect(
+      Array.from(
+        indexColumnRootOf(mounted)?.querySelectorAll('[title]') ?? []
+      ).map(el => el.getAttribute('title'))
+    ).toEqual(['de:Ascending', 'de:Descending']);
+
+    click(keyRowsOf(mounted)[0]);
+    await flush();
+    expect(statusOf(mounted).text).toBe(
+      'de:Read only: set by the PK flag on its columns'
+    );
+
+    click(keyRowsOf(mounted)[1]);
+    await flush();
+    expect(statusOf(mounted).text).toBe(
+      'de:Read only: set by the UQ flag on its column'
+    );
+  });
+
+  it('says what an empty table or index lacks in that language, editable or read only', async () => {
+    app.store.dispatchSync(
+      addTableAction({ id: 't3', ui: { x: 0, y: 0, zIndex: 4 } }),
+      addIndexAction({ id: 'i1', tableId: TABLE_ID })
+    );
+    provide('de-DE', 'de');
+
+    mounted = await mountAndFlush(template('t3'), app);
+    expect(hintsOf(leftOf(mounted))).toEqual(['de:No indexes yet']);
+    expect(hintsOf(rightOf(mounted))).toEqual(['de:This table has no columns']);
+    expect(statusOf(mounted).text).toBe(
+      'de:Add an index to choose its columns'
+    );
+    mounted.unmount();
+
+    mounted = await mountAndFlush(readonlyTemplate('t3'), app);
+    expect(hintsOf(leftOf(mounted))).toEqual(['de:No indexes']);
+    expect(statusOf(mounted).text).toBe('de:This table has no keys or indexes');
+    mounted.unmount();
+
+    mounted = await mountAndFlush(template(), app);
+    expect(statusOf(mounted).text).toBe(
+      'de:Select an index to edit its columns'
+    );
+    click(indexRowsOf(mounted)[0]);
+    await flush();
+    expect(hintsOf(rightOf(mounted))).toContain(
+      'de:Check columns above to add them'
+    );
+    mounted.unmount();
+
+    mounted = await mountAndFlush(readonlyTemplate(), app);
+    expect(statusOf(mounted).text).toBe(
+      'de:Select an index to see its columns'
+    );
+    click(indexRowsOf(mounted)[0]);
+    await flush();
+    expect(hintsOf(rightOf(mounted))).toContain('de:This index has no columns');
+  });
+
+  it('reads them again once another language is put in, the picked key staying', async () => {
+    declareKeysAndIndex();
+    provide('de-DE', 'de');
+    mounted = await mountAndFlush(template(), app);
+    click(keyRowsOf(mounted)[0]);
+    await flush();
+
+    Object.assign(i18n, createI18n('fr-FR', pseudoMessages('fr')));
+    await flush();
+
+    expect(labelsOf(leftOf(mounted))).toEqual(['fr:Keys', 'fr:Indexes']);
+    expect(statusOf(mounted).text).toBe(
+      'fr:Read only: set by the PK flag on its columns'
+    );
+  });
+
+  it('isolates the counts and the key flag in a right-to-left language', async () => {
+    declareKeysAndIndex();
+    provide('ar-SA', 'ar');
+    mounted = await mountAndFlush(template(), app);
+
+    click(indexRowsOf(mounted)[0]);
+    await flush();
+    expect(statusOf(mounted).text).toBe(
+      'ar:\u20682\u2069 of \u20682\u2069 selected'
+    );
+
+    click(keyRowsOf(mounted)[1]);
+    await flush();
+    expect(statusOf(mounted).text).toBe(
+      'ar:Read only: set by the \u2068UQ\u2069 flag on its column'
+    );
   });
 });

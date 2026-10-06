@@ -72,6 +72,12 @@ describe('Slider', () => {
       expect(root.contains(thumb)).toBe(true);
     });
 
+    it('runs left to right in a right-to-left editor, as the pointer maths reads it', async () => {
+      const { root } = await setup();
+
+      expect(root.getAttribute('dir')).toBe('ltr');
+    });
+
     it('clips the range and offsets the thumb for a mid value', async () => {
       const { range, thumb } = await setup({ min: 0, max: 100, value: 50 });
 

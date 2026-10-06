@@ -2,9 +2,12 @@ import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { createDatabaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
+import { useI18n } from '@/components/localeContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
+import SubmenuChevron from '@/components/primitives/context-menu/submenu-chevron/SubmenuChevron';
 import Icon from '@/components/primitives/icon/Icon';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { menuLabel } from '@/i18n/menuLabel';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import { createBracketMenus } from './menus/bracketMenus';
@@ -15,7 +18,8 @@ export type SchemaSQLContextMenuProps = {
 
 const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
-  const chevronRightIcon = <Icon name="chevron-right" size={14} />;
+  const i18n = useI18n(ctx);
+  const chevronRightIcon = <SubmenuChevron />;
   const { addUnsubscribe } = useUnmounted();
 
   onMounted(() => {
@@ -28,66 +32,75 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
     );
   });
 
-  return () => (
-    <ContextMenu.Root
-      children={
-        <>
-          <ContextMenu.Item
-            children={
-              <ContextMenu.Menu
-                icon={<Icon name="database" size={14} />}
-                name="Database"
-                right={chevronRightIcon}
-              />
-            }
-            subChildren={
-              <>
-                {createDatabaseMenus(app.value).map(menu => (
-                  <ContextMenu.Item
-                    onClick={menu.onClick}
-                    children={
-                      <ContextMenu.Menu
-                        icon={
-                          menu.checked ? <Icon name="check" size={14} /> : null
-                        }
-                        name={menu.name}
-                      />
-                    }
-                  />
-                ))}
-              </>
-            }
-          />
-          <ContextMenu.Item
-            children={
-              <ContextMenu.Menu
-                icon={<Icon name="brackets" size={14} />}
-                name="Bracket"
-                right={chevronRightIcon}
-              />
-            }
-            subChildren={
-              <>
-                {createBracketMenus(app.value).map(menu => (
-                  <ContextMenu.Item
-                    onClick={menu.onClick}
-                    children={
-                      <ContextMenu.Menu
-                        icon={
-                          menu.checked ? <Icon name="check" size={14} /> : null
-                        }
-                        name={menu.name}
-                      />
-                    }
-                  />
-                ))}
-              </>
-            }
-          />
-        </>
-      }
-    />
-  );
+  return () => {
+    const { t } = i18n.value;
+
+    return (
+      <ContextMenu.Root
+        children={
+          <>
+            <ContextMenu.Item
+              children={
+                <ContextMenu.Menu
+                  icon={<Icon name="database" size={14} />}
+                  name={t('common.database')}
+                  right={chevronRightIcon}
+                />
+              }
+              subChildren={
+                <>
+                  {createDatabaseMenus(app.value).map(menu => (
+                    <ContextMenu.Item
+                      onClick={menu.onClick}
+                      children={
+                        <ContextMenu.Menu
+                          icon={
+                            menu.checked ? (
+                              <Icon name="check" size={14} />
+                            ) : null
+                          }
+                          name={menu.name}
+                          literal={true}
+                        />
+                      }
+                    />
+                  ))}
+                </>
+              }
+            />
+            <ContextMenu.Item
+              children={
+                <ContextMenu.Menu
+                  icon={<Icon name="brackets" size={14} />}
+                  name={t('common.bracket')}
+                  right={chevronRightIcon}
+                />
+              }
+              subChildren={
+                <>
+                  {createBracketMenus(app.value).map(menu => (
+                    <ContextMenu.Item
+                      onClick={menu.onClick}
+                      children={
+                        <ContextMenu.Menu
+                          icon={
+                            menu.checked ? (
+                              <Icon name="check" size={14} />
+                            ) : null
+                          }
+                          name={menuLabel(i18n.value, menu)}
+                        />
+                      }
+                    />
+                  ))}
+                </>
+              }
+            />
+          </>
+        }
+      />
+    );
+  };
 };
 
 export default SchemaSQLContextMenu;

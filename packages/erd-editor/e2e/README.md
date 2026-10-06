@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-41 spec files. Ten of the groups exist because the DOM scene got their subject
+43 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -159,6 +159,26 @@ pressed mid-syllable is left to the IME and picks nothing, and `@사` goes to a
 column by an unfinished syllable.
 `zoom-overlay.spec.ts` holds the quick search's list without a prefix to the
 commands, `memo` to New Memo alone, the seeded tables showing only after `#`.
+
+`locale-picker.spec.ts` holds down the display language: no language button
+while the element leaves the picker off, English then even under a Korean
+browser, which the picker once on follows; the picker opening from the toolbar
+on System and the 25 languages with System checked, moved by the arrows, picked
+with Enter, closed by Escape, by a press outside it and by the theme builder it
+trades places with; a pick that tells the host and hands the keyboard back;
+Arabic laying the editor out right to left while the canvas stays left to
+right; System returning to the browser's language; and the palette's Display
+Language and Theme rows, the theme row leaving its gray and accent alone.
+
+`welcome-screen.spec.ts` holds down the screen over an empty document: off until
+the host turns it on, gone in a read-only editor and in zen mode, gone with the
+first table New Table adds and back on its undo; a drag over the heading that
+pans and a modifier wheel over a row that zooms; the formats Import swaps in,
+left on Escape or Back, a json import that steps it aside, and the keyboard
+kept in the editor when the first table comes from a file or from a chord
+pressed on a focused row; the command palette and the Shortcuts page it opens;
+the menu kept and the hints dropped on a small screen; and each toolbar arrow
+landing on its button in English and in Arabic.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

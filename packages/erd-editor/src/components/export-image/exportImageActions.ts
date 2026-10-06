@@ -1,6 +1,7 @@
-import { html } from '@dineug/r-html';
+import { DOMTemplateLiterals, html } from '@dineug/r-html';
 
 import type { AppContext } from '@/components/appContext';
+import { localized } from '@/components/localized/Localized';
 import Toast from '@/components/primitives/toast/Toast';
 import { openToastWhileRunning } from '@/components/toast-container/openToastWhileRunning';
 import {
@@ -23,16 +24,15 @@ export type SvgRequest = Omit<ImageRequest, 'pixelRatio'>;
 
 type AskedPixels = Pick<ResolutionReduction, 'askedWidth' | 'askedHeight'>;
 
-function reducedFrom({ askedWidth, askedHeight }: AskedPixels, written = '') {
-  return `Reduced from ${askedWidth} × ${askedHeight} px${written}, past what a browser canvas can hold`;
-}
+/** The image formats a file is written in, which no language translates. */
+type ImageFormat = 'PNG' | 'SVG';
 
 /**
  * The dialog's warning before any file exists: the pixels the scale asks for,
  * which a canvas ceiling cuts. The toast after it opens alike.
  */
-export function describeAskedSize(size: AskedPixels) {
-  return reducedFrom(size);
+export function describeAskedSize({ askedWidth, askedHeight }: AskedPixels) {
+  return localized('exportImage.reducedFrom', { askedWidth, askedHeight });
 }
 
 /**
@@ -40,14 +40,25 @@ export function describeAskedSize(size: AskedPixels) {
  * scale asked for, then what was written. A box that fits at 1x can still
  * outrun a canvas at 2x, so the document's own size explains nothing.
  */
-export function describeReduction(reduction: ResolutionReduction) {
-  return reducedFrom(
-    reduction,
-    ` to ${reduction.width} × ${reduction.height} px`
-  );
+export function describeReduction({
+  askedWidth,
+  askedHeight,
+  width,
+  height,
+}: ResolutionReduction) {
+  return localized('exportImage.reducedFromTo', {
+    askedWidth,
+    askedHeight,
+    width,
+    height,
+  });
 }
 
-function openToast(emitter: Emitter, title: string, description?: string) {
+function openToast(
+  emitter: Emitter,
+  title: DOMTemplateLiterals,
+  description?: DOMTemplateLiterals
+) {
   emitter.emit(
     openToastAction({
       message: html`<${Toast} title=${title} description=${description} />`,
@@ -62,7 +73,7 @@ function openToast(emitter: Emitter, title: string, description?: string) {
 async function settleUnderBusyToast(
   emitter: Emitter,
   work: Promise<unknown>,
-  description: string
+  description: DOMTemplateLiterals
 ): Promise<{ error: unknown } | null> {
   const outcome = work.then(
     () => null,
@@ -85,13 +96,13 @@ async function settleUnderBusyToast(
  */
 async function writeImageFile(
   emitter: Emitter,
-  format: 'PNG' | 'SVG',
+  format: ImageFormat,
   writing: Promise<void>
 ): Promise<boolean> {
   const failure = await settleUnderBusyToast(
     emitter,
     writing,
-    `Exporting ${format}…`
+    localized('exportImage.exporting', { format })
   );
   if (!failure) return true;
 
@@ -101,8 +112,8 @@ async function writeImageFile(
   );
   openToast(
     emitter,
-    `Couldn't export the ${format}`,
-    'See the browser console for the error'
+    localized('exportImage.exportFailed', { format }),
+    localized('exportImage.seeConsole')
   );
   return false;
 }
@@ -141,7 +152,7 @@ export async function exportImagePng(
   if (written && reduction) {
     openToast(
       emitter,
-      'Exported at a reduced resolution',
+      localized('exportImage.exportedReduced'),
       describeReduction(reduction)
     );
   }
@@ -153,17 +164,17 @@ export async function exportImagePng(
  * a failure is reported once the file is done.
  *
  * @example
- * await exportImageSvg(app, { doc, theme, toWidth }, databaseName);
+ * await exportImageSvg(app, { doc, theme, toWidth, i18n }, databaseName);
  */
 export async function exportImageSvg(
   { emitter }: AppContext,
-  { doc, theme, toWidth }: SvgRequest,
+  { doc, theme, toWidth, i18n }: SvgRequest,
   databaseName: string
 ) {
   await writeImageFile(
     emitter,
     'SVG',
-    exportSVG({ doc, theme, toWidth }, databaseName)
+    exportSVG({ doc, theme, toWidth, i18n }, databaseName)
   );
 }
 
@@ -198,7 +209,7 @@ export async function copyImagePng(
   const failure = await settleUnderBusyToast(
     emitter,
     copying,
-    'Copying image…'
+    localized('exportImage.copying')
   );
 
   if (failure) {
@@ -206,18 +217,22 @@ export async function copyImagePng(
       '[export-png] the image could not be copied',
       renderError ?? failure.error
     );
-    openToast(emitter, "Couldn't copy the image", 'Save it as a PNG instead');
+    openToast(
+      emitter,
+      localized('exportImage.copyFailed'),
+      localized('exportImage.saveAsPng')
+    );
     return;
   }
 
   if (reduction) {
     openToast(
       emitter,
-      'Copied at a reduced resolution',
+      localized('exportImage.copiedReduced'),
       describeReduction(reduction)
     );
     return;
   }
 
-  openToast(emitter, 'Copied the image to the clipboard');
+  openToast(emitter, localized('exportImage.copied'));
 }

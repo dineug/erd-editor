@@ -1,11 +1,19 @@
 import { FC, html, observable } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import ColumnNotNull from '@/components/table-view/column/column-not-null/ColumnNotNull';
 import * as styles from '@/components/table-view/column/column-not-null/ColumnNotNull.styles';
 import { COLUMN_NOT_NULL_WIDTH } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
+import { createI18n } from '@/i18n/translate';
 
 let mounted: Mounted | null = null;
 
@@ -29,6 +37,24 @@ describe('ColumnNotNull', () => {
 
     expect(el).toBeTruthy();
     expect(el.textContent?.trim()).toBe('NULL');
+  });
+
+  it('names itself in the language the element shows, keeping N-N and NULL as written', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      const el = await mountNotNull(ColumnOption.notNull);
+      expect(el.title).toBe('Not Null');
+
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(el.title).toBe('ko:Not Null');
+      expect(el.textContent?.trim()).toBe('N-N');
+    } finally {
+      provider.destroy();
+    }
   });
 
   it('renders N-N when the notNull option bit is set', async () => {

@@ -21,6 +21,8 @@ import {
   getScrollToCenter,
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
+import { useI18n } from '@/components/localeContext';
+import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
@@ -35,6 +37,8 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { sourceI18n } from '@/i18n/source';
+import type { I18n } from '@/i18n/translate';
 import { Point } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
@@ -80,33 +84,44 @@ type PlacementToastProps = {
   onCancel: () => void;
 };
 
-export function placementDescription({
-  progress,
-}: PlacementToastState): string {
-  return `Placing tables… ${Math.round(progress * 100)}%`;
+export function placementDescription(
+  { progress }: PlacementToastState,
+  i18n: I18n = sourceI18n
+): string {
+  return i18n.t('feedback.placingProgress', {
+    percent: Math.round(progress * 100),
+  });
 }
 
 /**
  * The message up while the tables settle, following the simulation as it
  * cools. Apply takes the layout as it stands, Cancel puts every table back.
  */
-const PlacementToast: FC<PlacementToastProps> = props => () => (
-  <Toast
-    progress={props.state.progress}
-    description={placementDescription(props.state)}
-    action={
-      <>
-        <Button size="1" text="Apply" onClick={props.onApply} />
-        <Button
-          variant="soft"
-          size="1"
-          text="Cancel"
-          onClick={props.onCancel}
-        />
-      </>
-    }
-  />
-);
+const PlacementToast: FC<PlacementToastProps> = (props, ctx) => {
+  const i18n = useI18n(ctx);
+
+  return () => (
+    <Toast
+      progress={props.state.progress}
+      description={placementDescription(props.state, i18n.value)}
+      action={
+        <>
+          <Button
+            size="1"
+            text={i18n.value.t('common.apply')}
+            onClick={props.onApply}
+          />
+          <Button
+            variant="soft"
+            size="1"
+            text={i18n.value.t('common.cancel')}
+            onClick={props.onCancel}
+          />
+        </>
+      }
+    />
+  );
+};
 
 const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   props,
@@ -184,7 +199,9 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     handleClose();
     originApp.emitter.emit(
       openToastAction({
-        message: <Toast description="No tables to place" />,
+        message: (
+          <Toast description={localized('common.toast.noTablesToPlace')} />
+        ),
       })
     );
     return () => null;
@@ -243,7 +260,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   }
 
   return () => (
-    <div class={styles.root}>
+    <div class={styles.root} prop:dir="ltr">
       <div class={styles.container} use:ref={ref(root)}>
         <Canvas root={root} canvas={canvas} grabMove={true} />
         <Minimap />

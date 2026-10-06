@@ -7,6 +7,7 @@ import {
   DiffMap,
   getNameToTableMap,
 } from '@/components/erd/diff-viewer/diff';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { START_X, START_Y } from '@/constants/layout';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
@@ -42,6 +43,7 @@ type DiffColumn = {
 
 const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
   const { prevApp, prevDiffMap, app, diffMap } = props;
+  const i18n = useI18n(ctx);
   const prevNameToTableMap = getNameToTableMap(prevApp.store.state);
   const nameToTableMap = getNameToTableMap(app.store.state);
   const prevTableCollection = query(prevApp.store.state.collections).collection(
@@ -207,64 +209,68 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
     table.id && move(app, table.id);
   };
 
-  return () => (
-    <div class={['diff-viewer-tree', styles.root]}>
-      {listedTables.map(table => {
-        const tableName = table.name.trim() ? table.name : 'unnamed';
-        const isInsert = bHas(table.diff, Diff.insert);
-        const isDelete = bHas(table.diff, Diff.delete);
-        const classMap = {
-          'diff-cross': isInsert && isDelete,
-          'diff-insert': isInsert && !isDelete,
-          'diff-delete': !isInsert && isDelete,
-        };
+  return () => {
+    const unnamed = i18n.value.t('common.unnamed');
 
-        return (
-          <>
-            <div class={styles.table} on:click={() => handleMove(table)}>
-              <div class={[styles.icon, classMap]}>
-                {isInsert && isDelete ? (
-                  <Icon name="diff" size={14} />
-                ) : isInsert ? (
-                  <Icon name="plus" size={14} />
-                ) : isDelete ? (
-                  <Icon name="minus" size={14} />
-                ) : (
-                  <Icon name="table-2" size={14} />
-                )}
-              </div>
-              <span class={styles.ellipsis}>{tableName}</span>
-            </div>
-            {table.columns.map(column => {
-              const columnName = column.name.trim() ? column.name : 'unnamed';
-              const isInsert = bHas(column.diff, Diff.insert);
-              const isDelete = bHas(column.diff, Diff.delete);
-              const classMap = {
-                'diff-cross': isInsert && isDelete,
-                'diff-insert': isInsert && !isDelete,
-                'diff-delete': !isInsert && isDelete,
-              };
+    return (
+      <div class={['diff-viewer-tree', styles.root]}>
+        {listedTables.map(table => {
+          const tableName = table.name.trim() ? table.name : unnamed;
+          const isInsert = bHas(table.diff, Diff.insert);
+          const isDelete = bHas(table.diff, Diff.delete);
+          const classMap = {
+            'diff-cross': isInsert && isDelete,
+            'diff-insert': isInsert && !isDelete,
+            'diff-delete': !isInsert && isDelete,
+          };
 
-              return (
-                <div class={styles.column} on:click={() => handleMove(table)}>
-                  <div class={[styles.icon, classMap]}>
-                    {isInsert && isDelete ? (
-                      <Icon name="diff" size={14} />
-                    ) : isInsert ? (
-                      <Icon name="plus" size={14} />
-                    ) : isDelete ? (
-                      <Icon name="minus" size={14} />
-                    ) : null}
-                  </div>
-                  <span class={styles.ellipsis}>{columnName}</span>
+          return (
+            <>
+              <div class={styles.table} on:click={() => handleMove(table)}>
+                <div class={[styles.icon, classMap]}>
+                  {isInsert && isDelete ? (
+                    <Icon name="diff" size={14} />
+                  ) : isInsert ? (
+                    <Icon name="plus" size={14} />
+                  ) : isDelete ? (
+                    <Icon name="minus" size={14} />
+                  ) : (
+                    <Icon name="table-2" size={14} />
+                  )}
                 </div>
-              );
-            })}
-          </>
-        );
-      })}
-    </div>
-  );
+                <span class={styles.ellipsis}>{tableName}</span>
+              </div>
+              {table.columns.map(column => {
+                const columnName = column.name.trim() ? column.name : unnamed;
+                const isInsert = bHas(column.diff, Diff.insert);
+                const isDelete = bHas(column.diff, Diff.delete);
+                const classMap = {
+                  'diff-cross': isInsert && isDelete,
+                  'diff-insert': isInsert && !isDelete,
+                  'diff-delete': !isInsert && isDelete,
+                };
+
+                return (
+                  <div class={styles.column} on:click={() => handleMove(table)}>
+                    <div class={[styles.icon, classMap]}>
+                      {isInsert && isDelete ? (
+                        <Icon name="diff" size={14} />
+                      ) : isInsert ? (
+                        <Icon name="plus" size={14} />
+                      ) : isDelete ? (
+                        <Icon name="minus" size={14} />
+                      ) : null}
+                    </div>
+                    <span class={styles.ellipsis}>{columnName}</span>
+                  </div>
+                );
+              })}
+            </>
+          );
+        })}
+      </div>
+    );
+  };
 };
 
 export default TreeViewer;

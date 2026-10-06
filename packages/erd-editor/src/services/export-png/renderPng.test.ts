@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 
+import { en } from '@/i18n/messages/en';
 import type { Theme } from '@/themes/tokens';
 
 import type { ToWidth } from './textWidth';
@@ -71,7 +72,7 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
     expect(result.reduction).toBeNull();
   });
 
-  it('hands back the box it drew, and passes the scene the side cap and no zoom', async () => {
+  it('hands back the box it drew, and passes the scene the side cap, the language and no zoom', async () => {
     const canvas: FakeCanvas = {
       width: 50,
       height: 50,
@@ -79,16 +80,18 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
     };
     mocks.renderDocumentScene.mockResolvedValueOnce(fakeScene(canvas));
 
+    const i18n = { locale: 'ja-JP' as const, messages: en };
     const result = await renderDocumentPng({
       doc: '{}',
       theme,
       pixelRatio: 1,
       maxSide: 960,
+      i18n,
       toWidth,
     });
 
     const [options] = mocks.renderDocumentScene.mock.lastCall ?? [];
-    expect(options).toEqual({ doc: '{}', theme, toWidth, maxSide: 960 });
+    expect(options).toEqual({ doc: '{}', theme, toWidth, maxSide: 960, i18n });
     expect(Reflect.has(options, 'zoomLevel')).toBe(false);
     expect(result).toMatchObject({ documentWidth: 400, documentHeight: 300 });
     expect(Reflect.has(result, 'zoomLevel')).toBe(false);

@@ -102,13 +102,14 @@ const BROKEN = '{"doc": <<<<<<< HEAD';
 writeFileSync(join(vault, 'broken.erd'), BROKEN);
 writeFileSync(join(vault, 'untitled.erd'), '');
 // What the tab seed, the slow close, the outside conflict, the theme, the
-// coding agent and the keys work on; notes.md is no diagram and never listed.
+// welcome screen, the coding agent and the keys work on; notes.md is no diagram.
 for (const name of [
   'deferred.erd',
   'slow-close.erd',
   'conflict.erd',
   'theme-a.erd',
   'theme-b.erd',
+  'welcome.erd',
   'agent.erd',
   'closed.erd',
   'background.erd',
@@ -464,6 +465,42 @@ async function themedAs(page, paths, theme, timeout = 3_000) {
   return { ok: Boolean(ok), shown: shown[0] };
 }
 
+/**
+ * The languages the run may give Obsidian, each with the one the editor shows
+ * for it; the plugin reads Obsidian's pt as European Portuguese, where the
+ * editor alone would read a bare pt as Brazilian.
+ */
+const OBSIDIAN_LANGUAGES = { pt: 'pt-PT', ja: 'ja-JP' };
+
+/** The lang each file's first tab carries on its editor's root, one file after the other. */
+async function shownLangs(page, paths) {
+  const langs = [];
+  for (const path of paths) {
+    langs.push(
+      await inEditor(
+        page,
+        path,
+        root => root.querySelector('[lang]')?.getAttribute('lang') ?? null
+      )
+    );
+  }
+  return langs;
+}
+
+/** Waits until the editor of every file shows the language. */
+async function langsAs(page, paths, lang, timeout = 3_000) {
+  let shown = [];
+  const ok = await waitFor(
+    async () => {
+      shown = await shownLangs(page, paths);
+      return shown.every(shownLang => shownLang === lang);
+    },
+    timeout,
+    100
+  );
+  return { ok: Boolean(ok), shown };
+}
+
 const obsidianDark = page =>
   page.evaluate(() => document.body.classList.contains('theme-dark'));
 
@@ -643,6 +680,37 @@ try {
   );
   console.log(
     `obsidian ${version} (${ASAR ? `from ${ASAR}` : `bundled with ${OBSIDIAN}`})`
+  );
+
+  // Obsidian reads its language once, as its window loads, so the run gives it
+  // one the system's own list lacks: only the plugin's getLanguage can bring it
+  // to the editor, which then never shows the language it would find alone.
+  const obsidianLanguage = await page.evaluate(languages => {
+    const own = navigator.languages.map(tag => tag.split('-')[0]);
+    const language =
+      languages.find(code => !own.includes(code)) ?? languages[0];
+    localStorage.setItem('language', language);
+    return language;
+  }, Object.keys(OBSIDIAN_LANGUAGES));
+  await detach();
+  await rawEval(
+    "setTimeout(() => window.app.commands.executeCommandById('app:reload'), 100); 'reloading'"
+  );
+  await sleep(1_500);
+  page = await connect();
+  let obsidianShown = null;
+  const obsidianTook = await waitFor(
+    async () => {
+      obsidianShown = await page.evaluate(() => window.i18next?.language);
+      return obsidianShown === obsidianLanguage;
+    },
+    5_000,
+    100
+  );
+  step(
+    "Obsidian shows the language the run gave it, which the system's lacks",
+    Boolean(obsidianTook),
+    JSON.stringify({ obsidianLanguage, obsidianShown })
   );
 
   await page.evaluate(async () => {
@@ -1460,7 +1528,7 @@ try {
 
   // The builder of one diagram: a color keeps auto, the other appearance replaces it, System is auto.
   const builderOpened = await clickInEditor(page, 'theme-a.erd', root =>
-    root.querySelector('div[title="Theme"]')
+    root.querySelector('.toolbar-theme')
   );
   await sleep(300);
   const accentPicked = await clickInEditor(
@@ -1478,15 +1546,15 @@ try {
     appearance: 'auto',
     accentColor: 'grass',
   });
+  // By place, as every label is in the editor's language: the builder's only
+  // icons are those of its appearance buttons, System, Light and Dark in turn.
   const pickAppearance = label =>
     clickInEditor(
       page,
       'theme-a.erd',
-      (root, label) =>
-        [...root.querySelectorAll('.theme-builder span')].find(
-          span => span.textContent === label
-        )?.parentElement,
-      label
+      (root, index) =>
+        root.querySelectorAll('.theme-builder .icon')[index]?.parentElement,
+      ['System', 'Light', 'Dark'].indexOf(label)
     );
   const appearancePicked = await pickAppearance(firstDark ? 'Light' : 'Dark');
   const appearanceShown = await themedAs(page, ['theme-b.erd'], {
@@ -1557,6 +1625,65 @@ try {
     fromSync.ok && JSON.stringify(syncedSettings) === JSON.stringify(synced),
     JSON.stringify({ fromSync, syncedSettings })
   );
+
+  // ---- The display language, on the root of each editor, and the welcome screen ----
+  // The language the run gave Obsidian, which the editor finds through the plugin alone.
+  const defaultLang = OBSIDIAN_LANGUAGES[obsidianLanguage];
+  const langByDefault = await langsAs(page, themePaths, defaultLang);
+  step(
+    "by default every diagram shows Obsidian's language, not the system's",
+    (pluginData()?.locale ?? 'auto') === 'auto' && langByDefault.ok,
+    JSON.stringify({ obsidianLanguage, langByDefault })
+  );
+
+  const pickedLang = 'de-DE';
+  const shownLanguage = await pickInSettings(page, {
+    'Display language': pickedLang,
+  });
+  const langFromSettings = await langsAs(page, themePaths, pickedLang);
+  const savedLang = await savedAs({ locale: pickedLang });
+  await pickInSettings(page, { 'Display language': 'auto' });
+  const langAutoAgain = await langsAs(page, themePaths, defaultLang);
+  const savedLangAuto = await savedAs({ locale: 'auto' });
+  step(
+    "the settings tab's Display language changes every open diagram at once and saves to data.json; Auto follows Obsidian again",
+    shownLanguage['Display language'] === 'auto' &&
+      langFromSettings.ok &&
+      savedLang.ok &&
+      langAutoAgain.ok &&
+      savedLangAuto.ok,
+    JSON.stringify({
+      shownLanguage,
+      langFromSettings,
+      savedLang,
+      langAutoAgain,
+      savedLangAuto,
+    })
+  );
+
+  await openDiagram(page, 'welcome.erd');
+  const welcomeShown = () =>
+    inEditor(page, 'welcome.erd', root =>
+      Boolean(root.querySelector('.welcome-screen'))
+    );
+  const welcomeOpened = await waitFor(welcomeShown, 3_000, 100);
+  await pressAddTableIn(page, 'welcome.erd');
+  const welcomeGone = await waitFor(
+    async () => (await welcomeShown()) === false,
+    3_000,
+    100
+  );
+  step(
+    'a new empty diagram shows the welcome screen, and Alt+N takes it away',
+    Boolean(welcomeOpened) && Boolean(welcomeGone),
+    JSON.stringify({
+      welcomeOpened,
+      welcomeGone,
+      tables: JSON.parse((await editorValue(page, 'welcome.erd')) ?? '{}').doc
+        ?.tableIds.length,
+    })
+  );
+  await closeDiagram(page, 'welcome.erd');
   await page.evaluate(
     theme => window.app.changeTheme(theme),
     obsidianTheme ?? 'system'
@@ -1984,7 +2111,8 @@ try {
   // changed, so a zoom and a scroll leave view-only.erd's bytes as they were.
   await openDiagram(page, 'view-only.erd');
   await sleep(REPLICA_SETTLE_MS);
-  const zoomIn = root => root.querySelector('[title^="Zoom in"]');
+  // Zoom in sits right after the zoom readout; its title is in the editor's language.
+  const zoomIn = root => root.querySelector('.zoom-level')?.nextElementSibling;
   const zoomed =
     (await clickInEditor(page, 'view-only.erd', zoomIn)) &&
     (await clickInEditor(page, 'view-only.erd', zoomIn));
@@ -2000,10 +2128,9 @@ try {
       .getBoundingClientRect();
     return { x, y, width, height };
   });
-  await page.mouse.move(
-    viewBox.x + viewBox.width / 2,
-    viewBox.y + viewBox.height / 2
-  );
+  // Left of the welcome screen's menu, which this empty diagram shows at its
+  // centre and which takes the pointer, so the wheel reaches the canvas.
+  await page.mouse.move(viewBox.x + 60, viewBox.y + viewBox.height / 2);
   for (let i = 0; i < 3; i++) {
     await page.mouse.wheel(0, 240);
     await sleep(50);

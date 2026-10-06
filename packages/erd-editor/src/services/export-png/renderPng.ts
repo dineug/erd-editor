@@ -1,3 +1,4 @@
+import type { LocaleMessages } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
@@ -21,6 +22,8 @@ export type RenderPngRequest = {
    * previews an export. Left out, the box is drawn at the export's zoom.
    */
   maxSide?: number;
+  /** The language the scene's own words are drawn in; English when left out. */
+  i18n?: LocaleMessages;
 };
 
 export type RenderPngResult = {
@@ -67,9 +70,16 @@ export async function renderDocumentPng({
   theme,
   pixelRatio,
   maxSide,
+  i18n,
   toWidth,
 }: RenderPngRequest & { toWidth: ToWidth }): Promise<RenderPngResult> {
-  const scene = await renderDocumentScene({ doc, theme, toWidth, maxSide });
+  const scene = await renderDocumentScene({
+    doc,
+    theme,
+    toWidth,
+    maxSide,
+    i18n,
+  });
 
   try {
     // A stage rasterises at its own box times the ratio, so the ratio is fitted

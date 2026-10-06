@@ -2,12 +2,15 @@ import {
   createRef,
   FC,
   observable,
+  onBeforeMount,
   onUpdated,
   ref,
   repeat,
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
+import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
 import Menu from '@/components/primitives/context-menu/menu/Menu';
 import Icon from '@/components/primitives/icon/Icon';
@@ -15,13 +18,16 @@ import Separator from '@/components/primitives/separator/Separator';
 import Switch from '@/components/primitives/switch/Switch';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import Toast from '@/components/primitives/toast/Toast';
+import { ColumnTypeToMessageKey } from '@/components/settings/columnTypeLabels';
 import { lockSettingRows } from '@/components/settings/lockSettingRows';
 import SettingsLnb, {
   Lnb,
+  LnbLabelKey,
 } from '@/components/settings/settings-lnb/SettingsLnb';
+import { takeSettingsPage } from '@/components/settings/settingsPage';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
-import { CanvasType, ColumnTypeToName } from '@/constants/schema';
+import { CanvasType } from '@/constants/schema';
 import {
   changeColumnOrderAction,
   changeMaxWidthCommentAction,
@@ -49,6 +55,7 @@ export type SettingsProps = {};
 
 const Settings: FC<SettingsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const root = createRef<HTMLDivElement>();
   // The held row is left out: it snaps to its slot on each reorder, and only
   // the rows it pushes aside slide, so the list never paints out of order.
@@ -60,6 +67,12 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
 
   const state = observable({
     lnb: Lnb.preferences as Lnb,
+  });
+
+  // A page asked for from outside, the welcome screen's Shortcuts row say,
+  // is where the tab opens; otherwise it opens on Preferences.
+  onBeforeMount(() => {
+    state.lnb = takeSettingsPage(app.value.store) ?? Lnb.preferences;
   });
 
   const handleChangeRelationshipDataTypeSync = (value: boolean) => {
@@ -74,7 +87,9 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     emitter.emit(
       openToastAction({
         close: delay(2000),
-        message: <Toast title="Recalculated table width" />,
+        message: (
+          <Toast title={localized('settings.toast.tableWidthRecalculated')} />
+        ),
       })
     );
   };
@@ -147,6 +162,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const { settings } = store.state;
+    const { t } = i18n.value;
     const maxWidthCommentDisabled = settings.maxWidthComment === -1;
     // On the Settings tab an unlocked row names the tab a lock would take,
     // the one the reader came from, as changeLockSettingsAction$ reads it.
@@ -164,13 +180,13 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
           <SettingsLnb value={state.lnb} onChange={handleChangeLnb} />
         </div>
         <div class={styles.contentArea}>
-          <div class={fontSize6}>{state.lnb}</div>
+          <div class={fontSize6}>{t(LnbLabelKey[state.lnb])}</div>
           <Separator space={12} />
           <div class={['scrollbar', styles.content]}>
             {state.lnb === Lnb.preferences ? (
               <div class={styles.section}>
                 <div class={styles.row}>
-                  <div>Relationship DataType Sync</div>
+                  <div>{t('settings.relationshipDataTypeSync')}</div>
                   <div class={styles.vertical(16)}></div>
                   <Switch
                     value={settings.relationshipDataTypeSync}
@@ -179,7 +195,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                 </div>
 
                 <div class={styles.row}>
-                  <div>Maximum comment width</div>
+                  <div>{t('settings.maxCommentWidth')}</div>
                   <div class={styles.vertical(16)}></div>
                   <Switch
                     value={!maxWidthCommentDisabled}
@@ -187,8 +203,8 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   />
                   <div class={styles.vertical(8)}></div>
                   <TextInput
-                    title="Maximum comment width"
-                    placeholder="Maximum comment width"
+                    title={t('settings.maxCommentWidth')}
+                    placeholder={t('settings.maxCommentWidth')}
                     width={45}
                     value={
                       maxWidthCommentDisabled
@@ -202,7 +218,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                 </div>
 
                 <div class={styles.row}>
-                  <div>Recalculation table width</div>
+                  <div>{t('settings.recalculateTableWidth')}</div>
                   <div class={styles.vertical(16)}></div>
                   <Button
                     variant="soft"
@@ -211,56 +227,72 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                       <>
                         <Icon size={14} name="refresh-cw" />
                         <div class={styles.vertical(8)}></div>
-                        <span>Sync</span>
+                        <span>{t('settings.sync')}</span>
                       </>
                     }
                     onClick={handleRecalculationTableWidth}
                   />
                 </div>
                 <div class={styles.lockSection}>
-                  <div>Lock</div>
+                  <div>{t('settings.lockHeading')}</div>
                   <Separator space={12} />
-                  {lockSettingRows.map(row => {
-                    const locked = bHas(
-                      settings.lockSettings,
-                      row.lockSettingType
-                    );
+                  <div class={styles.lockList}>
+                    {lockSettingRows.map(row => {
+                      const locked = bHas(
+                        settings.lockSettings,
+                        row.lockSettingType
+                      );
+                      const name = t(row.nameKey);
 
-                    return (
-                      <div class={styles.lockRow}>
-                        <div class={styles.lockName}>{row.name}</div>
-                        <div
-                          class={styles.lockValue}
-                          bool:data-locked={locked}
-                          title={locked ? 'Locked value' : 'Current value'}
-                        >
-                          {row.toText(
-                            locked ? settings.lockedValues : liveValues
-                          )}
+                      return (
+                        <div class={styles.lockRow}>
+                          <div class={styles.lockName}>{name}</div>
+                          <div class={styles.lockControl}>
+                            <div
+                              class={styles.lockValue}
+                              bool:data-locked={locked}
+                              title={
+                                locked
+                                  ? t('settings.lockedValue')
+                                  : t('settings.currentValue')
+                              }
+                            >
+                              <span prop:dir="auto">
+                                {row.toText(
+                                  locked ? settings.lockedValues : liveValues,
+                                  i18n.value
+                                )}
+                              </span>
+                            </div>
+                            <button
+                              class={styles.lockButton}
+                              type="button"
+                              title={
+                                locked
+                                  ? t('settings.unlockSetting', { name })
+                                  : t('settings.lockSetting', { name })
+                              }
+                              aria-pressed={locked ? 'true' : 'false'}
+                              bool:data-locked={locked}
+                              on:click={() =>
+                                handleChangeLock(row.lockSettingType, !locked)
+                              }
+                            >
+                              {locked ? (
+                                <Icon name="lock" size={14} />
+                              ) : (
+                                <Icon name="lock-open" size={14} />
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          class={styles.lockButton}
-                          type="button"
-                          title={`${locked ? 'Unlock' : 'Lock'} ${row.name}`}
-                          aria-pressed={locked ? 'true' : 'false'}
-                          bool:data-locked={locked}
-                          on:click={() =>
-                            handleChangeLock(row.lockSettingType, !locked)
-                          }
-                        >
-                          {locked ? (
-                            <Icon name="lock" size={14} />
-                          ) : (
-                            <Icon name="lock-open" size={14} />
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div class={styles.columnOrderSection}>
-                  <div>Column Order</div>
+                  <div>{t('settings.columnOrder')}</div>
                   <Separator space={12} />
                   <div
                     class={styles.columnOrderList}
@@ -279,7 +311,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                         >
                           <Menu
                             icon={<Icon name="grip-vertical" size={14} />}
-                            name={ColumnTypeToName[columnType]}
+                            name={t(ColumnTypeToMessageKey[columnType])}
                           />
                         </div>
                       )

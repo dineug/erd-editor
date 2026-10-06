@@ -90,13 +90,13 @@ export const panel = css`
   flex-direction: column;
   gap: 12px;
   padding: 16px 20px 20px;
-  border-left: 1px solid var(--context-menu-border);
+  border-inline-start: 1px solid var(--context-menu-border);
   color: var(--foreground);
   ${typography.normal};
 
   .stacked > & {
     padding-top: 20px;
-    border-left: none;
+    border-inline-start: none;
     border-top: 1px solid var(--context-menu-border);
   }
 `;
@@ -104,7 +104,7 @@ export const panel = css`
 /**
  * The title and the close button, over the options while the preview is beside
  * them and over the preview once it stacks, so the button keeps the box's top
- * right corner either way.
+ * corner on the side the title row ends at, either way.
  */
 export const header = css`
   grid-area: header;
@@ -113,11 +113,11 @@ export const header = css`
   justify-content: space-between;
   gap: 12px;
   padding: 20px 20px 0;
-  border-left: 1px solid var(--context-menu-border);
+  border-inline-start: 1px solid var(--context-menu-border);
 
   .stacked > & {
     padding-bottom: 20px;
-    border-left: none;
+    border-inline-start: none;
     border-bottom: 1px solid var(--context-menu-border);
   }
 `;
@@ -177,7 +177,7 @@ export const scale = css`
   ${typography.paragraph};
 
   & + & {
-    border-left: 1px solid var(--context-menu-border);
+    border-inline-start: 1px solid var(--context-menu-border);
   }
 
   &:hover {

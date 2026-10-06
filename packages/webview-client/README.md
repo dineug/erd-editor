@@ -26,7 +26,11 @@ client.refreshAppearance();
 
 The host's `'auto'` is the theme builder's System: `mountWebview` hands it to the editor as
 `'system'`, shown as `resolveAppearance()` answers (or as the `systemAppearance` a theme update
-names), and saves a System pick back as `'auto'`.
+names), and saves a System pick back as `'auto'`. The display language's `'auto'` is the
+language picker's System the same way: it follows the `systemLocale` a locale update names, the
+host's own UI language, or else the browser's languages, and a System pick is saved back as
+`'auto'`. Every mounted editor has the theme builder and the language picker turned on, and greets
+an empty, editable diagram with its welcome screen.
 
 The editor joins the document when the host answers `hostInitialCommand` with
 `webviewInitialValueCommand`; until then nothing is rendered. `dispose()` drops the listeners

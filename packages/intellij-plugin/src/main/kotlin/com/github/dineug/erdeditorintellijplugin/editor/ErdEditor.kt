@@ -105,7 +105,7 @@ class ErdEditor(
             bridge.subscribe(coroutineScope) { action ->
                 when (action) {
                     is HostBridgeCommand.Initial -> {
-                        webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(ErdEditorAppSettings.instance))
+                        sendSettings(ErdEditorAppSettings.instance)
                         webviewPanel.dispatch(
                             WebviewBridgeCommand.UpdateReadonly(file.isWritable.not())
                         )
@@ -183,6 +183,10 @@ class ErdEditor(
                             action.payload.grayColor,
                             action.payload.accentColor
                         )
+                    }
+
+                    is HostBridgeCommand.SaveLocale -> {
+                        ErdEditorAppSettings.instance.updateLocale(action.payload.locale)
                     }
                 }
             }
@@ -361,8 +365,14 @@ class ErdEditor(
 
     override fun onSettingsChange(settings: ErdEditorAppSettings) {
         if (this::webviewPanel.isInitialized) {
-            webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(settings))
+            sendSettings(settings)
         }
+    }
+
+    /** The theme and the display language, each with what its auto follows in the IDE. */
+    private fun sendSettings(settings: ErdEditorAppSettings) {
+        webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(settings))
+        webviewPanel.dispatch(WebviewBridgeCommand.UpdateLocale.of(settings))
     }
 
     override fun getComponent(): JComponent = toolbarAndWebView

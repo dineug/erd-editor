@@ -7,6 +7,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { pseudoMessages } from '@/__test-utils__/i18n';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
@@ -15,6 +16,9 @@ import {
 } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
 import { Open } from '@/constants/open';
 import { TablePlacement } from '@/constants/tablePlacement';
+import { menuLabel } from '@/i18n/menuLabel';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 
 let app: AppContext;
 
@@ -53,6 +57,30 @@ describe('tablePlacementMenus', () => {
     expect(
       createTablePlacementMenus(app, vi.fn()).map(menu => menu.name)
     ).toEqual(['Force', 'Flow', 'Tree - vertical', 'Tree - horizontal']);
+  });
+
+  it('names each placement through its key, which reads as its name in English', () => {
+    const created = createTablePlacementMenus(app, vi.fn());
+
+    expect(created.map(menu => menu.labelKey)).toEqual([
+      'common.placement.force',
+      'common.placement.flow',
+      'common.placement.treeVertical',
+      'common.placement.treeHorizontal',
+    ]);
+    expect(created.map(menu => menuLabel(sourceI18n, menu))).toEqual(
+      created.map(menu => menu.name)
+    );
+    expect(
+      created.map(menu =>
+        menuLabel(createI18n('ko-KR', pseudoMessages('ko')), menu)
+      )
+    ).toEqual([
+      'ko:Force',
+      'ko:Flow',
+      'ko:Tree - vertical',
+      'ko:Tree - horizontal',
+    ]);
   });
 
   it('draws the two tree placements as one icon and the rest apart', () => {

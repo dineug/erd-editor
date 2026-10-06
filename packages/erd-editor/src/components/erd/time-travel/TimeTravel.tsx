@@ -18,6 +18,7 @@ import {
 } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import Minimap from '@/components/erd/minimap/Minimap';
+import { useI18n } from '@/components/localeContext';
 import Button from '@/components/primitives/button/Button';
 import Slider from '@/components/primitives/slider/Slider';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
@@ -62,6 +63,7 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
   const { store } = app;
   const { history } = store;
   const { addUnsubscribe } = useUnmounted();
+  const i18n = useI18n(ctx);
   const provider = useProvider(ctx, appContext, app);
   // A replayed history is a document of its own, so it names the document
   // source rather than inheriting whatever scene it was opened over.
@@ -124,13 +126,13 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
 
   return () => (
     <>
-      <div class={styles.root}>
+      <div class={styles.root} prop:dir="ltr">
         <div class={styles.container} use:ref={ref(root)}>
           <Canvas root={root} canvas={canvas} grabMove={true} />
           <Minimap />
         </div>
       </div>
-      <div class={['time-travel-slider', styles.slider]}>
+      <div class={['time-travel-slider', styles.slider]} prop:dir="ltr">
         <Slider
           min={-1}
           max={history.size - 1}
@@ -138,8 +140,17 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
           onChange={handleChange}
         />
         <div class={styles.vertical}></div>
-        <Button size="1" text="Apply" onClick={handleApply} />
-        <Button variant="soft" size="1" text="Cancel" onClick={handleClose} />
+        <Button
+          size="1"
+          text={i18n.value.t('common.apply')}
+          onClick={handleApply}
+        />
+        <Button
+          variant="soft"
+          size="1"
+          text={i18n.value.t('common.cancel')}
+          onClick={handleClose}
+        />
       </div>
     </>
   );

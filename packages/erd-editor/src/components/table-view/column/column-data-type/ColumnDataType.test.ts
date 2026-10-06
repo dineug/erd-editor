@@ -10,9 +10,12 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mount,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext, appContext, appDestroy } from '@/components/appContext';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
@@ -25,6 +28,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 
 const TABLE_ID = 'table-1';
 const COLUMN_ID = 'column-1';
@@ -167,6 +171,24 @@ describe('ColumnDataType', () => {
       expect(h.input()?.getAttribute('placeholder')).toBe('dataType');
       expect(h.mounted.container.querySelector(`.${styles.hint}`)).toBeTruthy();
       expect(h.hintRows()).toHaveLength(0);
+    });
+
+    it('shows the placeholder in the language the element shows, the type itself left to right', async () => {
+      const i18n = createTestI18n('en');
+      const provider = provideI18n(document.body, i18n);
+
+      try {
+        const h = await setup({ edit: true });
+        expect(h.root().getAttribute('dir')).toBe('ltr');
+
+        Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
+        await flush();
+
+        expect(h.input()?.getAttribute('placeholder')).toBe('ar:dataType');
+        expect(h.root().getAttribute('dir')).toBe('ltr');
+      } finally {
+        provider.destroy();
+      }
     });
 
     it('sizes the input from the width prop', async () => {

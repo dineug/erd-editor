@@ -37,6 +37,12 @@ describe('Switch', () => {
     expect(thumb.classList.contains(String(styles.switchThumb))).toBe(true);
   });
 
+  it('stays left to right in a right-to-left editor, its thumb on the side its value says', async () => {
+    const { button } = await setup();
+
+    expect(button.getAttribute('dir')).toBe('ltr');
+  });
+
   it('always applies the base switchButton class', async () => {
     const { button } = await setup();
 

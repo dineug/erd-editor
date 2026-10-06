@@ -34,7 +34,7 @@ describe('IndexesIndex.styles', () => {
     expect(text).toContain('display: inline-flex');
     expect(text).toContain('height: 16px');
     expect(text).toContain('padding: 0 6px');
-    expect(text).toContain('margin-left: 4px');
+    expect(text).toContain('margin-inline-start: 4px');
     expect(text).toContain('border: 1px solid var(--accent-color-8)');
     expect(text).toContain('border-radius: 9999px');
     expect(text).toContain('background-color: var(--accent-color-3)');
@@ -110,7 +110,7 @@ describe('IndexesIndex.styles', () => {
 
     const iconButton = staticText(styles.iconButton);
     expect(iconButton).toContain('cursor: pointer');
-    expect(iconButton).toContain('margin-left: auto');
+    expect(iconButton).toContain('margin-inline-start: auto');
     expect(iconButton).toContain('flex-shrink: 0');
     expect(iconButton).toContain('width: 20px');
     expect(iconButton).toContain('height: 20px');

@@ -30,6 +30,7 @@ export default defineConfig({
         'src/utils/crypto.ts',
         'src/utils/documentFingerprint.ts',
         'src/utils/importFile.ts',
+        'src/utils/locale.ts',
         'src/utils/reportError.ts',
         'src/utils/schemaList.ts',
         'src/utils/sentryScrub.ts',

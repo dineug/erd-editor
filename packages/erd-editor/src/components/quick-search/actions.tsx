@@ -22,7 +22,9 @@ import { menus as columnNameCaseMenus } from '@/components/generator-code/genera
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
 import Icon from '@/components/primitives/icon/Icon';
+import type { IconName } from '@/components/primitives/icon/icons';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
+import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
 import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
@@ -38,12 +40,19 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { RootState } from '@/engine/state';
+import { type LocaleOption, LOCALES, SYSTEM_LOCALE } from '@/i18n/locales';
+import { type LabeledMenu, menuLabel } from '@/i18n/menuLabel';
+import { sourceI18n } from '@/i18n/source';
+import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import { getOriginToPlace } from '@/konva/scene/viewport';
+import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import {
   FindReplaceQuery,
   openAutomaticTablePlacementAction,
   openExportImageAction,
   openFindReplaceAction,
+  setLocaleOptionAction,
+  setThemeOptionsAction,
 } from '@/utils/emitter';
 import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
 import {
@@ -74,14 +83,69 @@ export type Action = {
   tableId?: string;
   /** What choosing the row types into the input, which stays open, instead of running a command. */
   insert?: string;
+  /** The English of a translated name and keywords, each its own text, which a search also reads and the list never shows. */
+  alias?: string[];
+  /** The option in force among a submenu's rows, which the submenu opens on. */
+  checked?: boolean;
+  /** The message key of a row opening a submenu, by which an open palette finds that submenu again in a rebuilt level. */
+  id?: PlainMessageKey;
   filter?: (app: AppContext) => boolean;
   perform?: (app: AppContext) => void;
   next?: Action[];
 };
 
-/** The texts of a row a search reads: its name, and the keywords of a row that is no table. */
-const textsOf = ({ name, keywords, tableId }: Action): string[] =>
-  tableId || !keywords ? [name] : [name, keywords];
+const isNonEmpty = (text: string | undefined): text is string => Boolean(text);
+
+/** The texts of a row a search reads: its name, and the keywords and English alias of a row that is no table. */
+const textsOf = ({ name, keywords, alias = [], tableId }: Action): string[] =>
+  tableId ? [name] : [name, keywords, ...alias].filter(isNonEmpty);
+
+/** What names a row: a message key, or a shared menu whose name stays as written where it has no key. */
+type RowLabel = PlainMessageKey | LabeledMenu;
+
+type RowTexts = Pick<Action, 'name' | 'keywords'>;
+
+function textsIn(
+  i18n: Pick<I18n, 't'>,
+  label: RowLabel,
+  keywordsKey?: PlainMessageKey
+): RowTexts {
+  const name =
+    typeof label === 'string' ? i18n.t(label) : menuLabel(i18n, label);
+  return keywordsKey ? { name, keywords: i18n.t(keywordsKey) } : { name };
+}
+
+/**
+ * A row's name and keywords in the reader's language. The English of each one
+ * a translation changes goes into its alias apart, so a search scores it as in
+ * English and a command is found by its English words too; English has none.
+ */
+export function named(
+  i18n: Pick<I18n, 't'>,
+  label: RowLabel,
+  keywordsKey?: PlainMessageKey
+): Pick<Action, 'name' | 'keywords' | 'alias'> {
+  const row = textsIn(i18n, label, keywordsKey);
+  const english = textsIn(sourceI18n, label, keywordsKey);
+  const alias = [
+    [row.name, english.name],
+    [row.keywords, english.keywords],
+  ]
+    .filter(([shown, source]) => shown !== source)
+    .map(([, source]) => source)
+    .filter(isNonEmpty);
+
+  return alias.length ? { ...row, alias } : row;
+}
+
+/** A row opening a submenu, named as named() names it and known by its message key in any language. */
+const submenuNamed = (
+  i18n: Pick<I18n, 't'>,
+  key: PlainMessageKey
+): Pick<Action, 'id' | 'name' | 'keywords' | 'alias'> => ({
+  id: key,
+  ...named(i18n, key),
+});
 
 /** Whether a row holds the keyword as typed, in any case, in a text a search reads: what Find and Replace would find. */
 const holdsAsTyped = (action: Action, keyword: string): boolean => {
@@ -123,6 +187,10 @@ export function searchActions(actions: Action[], keyword: string): Action[] {
       {
         name: 'keywords',
         getFn: action => (action.tableId ? [] : (action.keywords ?? [])),
+      },
+      {
+        name: 'alias',
+        getFn: action => (action.tableId ? [] : (action.alias ?? [])),
       },
     ],
     threshold: SEARCH_THRESHOLD,
@@ -177,7 +245,7 @@ function rankHangulActions(
 }
 
 /** The five formats under Import, or under Import and Add for an append. */
-function createImportActions(mode: ImportMode): Action[] {
+function createImportActions(mode: ImportMode, i18n: I18n): Action[] {
   return [
     {
       icon: <Icon name="braces" size={16} />,
@@ -188,31 +256,28 @@ function createImportActions(mode: ImportMode): Action[] {
     },
     {
       icon: <Icon name="database" size={16} />,
-      name: 'Schema SQL',
+      ...named(i18n, 'common.tab.schemaSql'),
       perform: app => {
         importSchemaSQL(app, mode);
       },
     },
     {
       icon: <Icon name="code" size={16} />,
-      name: 'GraphQL',
-      keywords: 'graphql sdl gql schema',
+      ...named(i18n, { name: 'GraphQL' }, 'palette.keywords.graphql'),
       perform: app => {
         importGraphQL(app, mode);
       },
     },
     {
       icon: <Icon name="code" size={16} />,
-      name: 'DBML',
-      keywords: 'dbml dbdiagram dbdocs schema',
+      ...named(i18n, { name: 'DBML' }, 'palette.keywords.dbml'),
       perform: app => {
         importDBML(app, mode);
       },
     },
     {
       icon: <Icon name="code" size={16} />,
-      name: 'AML',
-      keywords: 'aml azimutt markup language schema',
+      ...named(i18n, { name: 'AML' }, 'palette.keywords.aml'),
       perform: app => {
         importAML(app, mode);
       },
@@ -220,21 +285,41 @@ function createImportActions(mode: ImportMode): Action[] {
   ];
 }
 
-/** The palette's top level: the commands of every tab, then a jump to each table, which only the # prefix lists. */
-export function createScopeActions(app: AppContext): Action[] {
+/** The theme and the display language the element holds, each given only while it offers that picker. */
+export type PalettePreferences = {
+  appearance?: AppearanceOption;
+  locale?: LocaleOption;
+};
+
+/** A submenu row's check, drawn beside the option in force, which the submenu opens on. */
+const checkOf = (checked: boolean): Pick<Action, 'icon' | 'checked'> => ({
+  icon: checked ? <Icon name="check" size={16} /> : null,
+  checked,
+});
+
+/**
+ * The palette's top level: the commands of every tab, then a jump to each
+ * table, which only the # prefix lists, each in the reader's language. Theme
+ * and Display Language show on every tab, each only while its picker is given.
+ */
+export function createScopeActions(
+  app: AppContext,
+  i18n: I18n = sourceI18n,
+  preferences: PalettePreferences = {}
+): Action[] {
   const { store, keyBindingMap } = app;
   const { settings } = store.state;
 
   return [
-    ...allScopeActions,
+    {
+      ...submenuNamed(i18n, 'palette.tab'),
+      next: createTabActions(i18n),
+    },
     {
       icon: <Icon name="database" size={16} />,
-      name: 'Database',
+      ...submenuNamed(i18n, 'common.database'),
       next: databaseMenus.map<Action>(menu => ({
-        icon:
-          menu.value === settings.database ? (
-            <Icon name="check" size={16} />
-          ) : null,
+        ...checkOf(menu.value === settings.database),
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -253,16 +338,16 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="file-input" size={16} />,
-      name: 'Import',
-      next: createImportActions('replace'),
+      ...submenuNamed(i18n, 'common.import'),
+      next: createImportActions('replace', i18n),
       filter: ({ store }) => {
         return store.state.settings.canvasType === CanvasType.ERD;
       },
     },
     {
       icon: <Icon name="file-input" size={16} />,
-      name: 'Import and Add',
-      next: createImportActions('append'),
+      ...submenuNamed(i18n, 'common.importAndAdd'),
+      next: createImportActions('append', i18n),
       filter: ({ store }) => {
         return (
           store.state.settings.canvasType === CanvasType.ERD &&
@@ -272,7 +357,7 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="file-output" size={16} />,
-      name: 'Export',
+      ...submenuNamed(i18n, 'common.export'),
       next: [
         {
           icon: <Icon name="braces" size={16} />,
@@ -283,7 +368,7 @@ export function createScopeActions(app: AppContext): Action[] {
         },
         {
           icon: <Icon name="database" size={16} />,
-          name: 'Schema SQL',
+          ...named(i18n, 'common.tab.schemaSql'),
           perform: ({ store }) => {
             exportSchemaSQL(
               createSchemaSQL(store.state),
@@ -293,8 +378,7 @@ export function createScopeActions(app: AppContext): Action[] {
         },
         {
           icon: <Icon name="file-image" size={16} />,
-          name: 'Image',
-          keywords: 'image png svg vector picture clipboard',
+          ...named(i18n, 'common.image', 'palette.keywords.image'),
           perform: ({ emitter }) => {
             emitter.emit(openExportImageAction());
           },
@@ -306,7 +390,7 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="table-2" size={16} />,
-      name: 'New Table',
+      ...named(i18n, 'common.newTable'),
       shortcut: keyBindingMap.addTable[0]?.shortcut,
       perform: ({ store }) => {
         store.dispatch(addTableAction$());
@@ -317,7 +401,7 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="sticky-note" size={16} />,
-      name: 'New Memo',
+      ...named(i18n, 'common.newMemo'),
       shortcut: keyBindingMap.addMemo[0]?.shortcut,
       perform: ({ store }) => {
         store.dispatch(addMemoAction$());
@@ -328,8 +412,7 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     ...drawRelationshipMenus.map<Action>(menu => ({
       icon: <Icon name={menu.iconName} size={16} />,
-      name: menu.name,
-      keywords: 'Relationship',
+      ...named(i18n, menu, 'common.relationship'),
       shortcut: keyBindingMap[menu.keyBindingName][0]?.shortcut,
       perform: ({ store }) => {
         store.dispatch(drawStartRelationshipAction$(menu.relationshipType));
@@ -340,10 +423,10 @@ export function createScopeActions(app: AppContext): Action[] {
     })),
     {
       icon: <Icon name="wand-sparkles" size={16} />,
-      name: 'Auto Layout',
+      ...submenuNamed(i18n, 'common.autoLayout'),
       next: tablePlacementMenus.map<Action>(menu => ({
         icon: <Icon name={menu.iconName} size={16} />,
-        name: menu.name,
+        ...named(i18n, menu),
         perform: ({ emitter }) => {
           emitter.emit(
             openAutomaticTablePlacementAction({ placement: menu.placement })
@@ -356,13 +439,10 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="brackets" size={16} />,
-      name: 'Bracket',
+      ...submenuNamed(i18n, 'common.bracket'),
       next: bracketMenus.map<Action>(menu => ({
-        icon:
-          menu.value === settings.bracketType ? (
-            <Icon name="check" size={16} />
-          ) : null,
-        name: menu.name,
+        ...checkOf(menu.value === settings.bracketType),
+        ...named(i18n, menu),
         perform: ({ store }) => {
           store.dispatch(
             changeBracketTypeAction({
@@ -377,12 +457,9 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="code" size={16} />,
-      name: 'Language',
+      ...submenuNamed(i18n, 'common.codeLanguage'),
       next: languageMenus.map<Action>(menu => ({
-        icon:
-          menu.value === settings.language ? (
-            <Icon name="check" size={16} />
-          ) : null,
+        ...checkOf(menu.value === settings.language),
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -398,13 +475,10 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="case-sensitive" size={16} />,
-      name: 'Table Name Case',
+      ...submenuNamed(i18n, 'common.tableNameCase'),
       next: tableNameCaseMenus.map<Action>(menu => ({
-        icon:
-          menu.value === settings.tableNameCase ? (
-            <Icon name="check" size={16} />
-          ) : null,
-        name: menu.name,
+        ...checkOf(menu.value === settings.tableNameCase),
+        ...named(i18n, menu),
         perform: ({ store }) => {
           store.dispatch(
             changeTableNameCaseAction({
@@ -419,13 +493,10 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="case-sensitive" size={16} />,
-      name: 'Column Name Case',
+      ...submenuNamed(i18n, 'common.columnNameCase'),
       next: columnNameCaseMenus.map<Action>(menu => ({
-        icon:
-          menu.value === settings.columnNameCase ? (
-            <Icon name="check" size={16} />
-          ) : null,
-        name: menu.name,
+        ...checkOf(menu.value === settings.columnNameCase),
+        ...named(i18n, menu),
         perform: ({ store }) => {
           store.dispatch(
             changeColumnNameCaseAction({
@@ -440,24 +511,84 @@ export function createScopeActions(app: AppContext): Action[] {
     },
     {
       icon: <Icon name="text-search" size={16} />,
-      name: 'Find and Replace',
-      keywords: 'find replace rename',
+      ...named(i18n, 'common.findAndReplace', 'palette.keywords.findReplace'),
       shortcut: keyBindingMap.findReplace[0]?.shortcut,
       perform: ({ emitter }) => {
         emitter.emit(openFindReplaceAction());
       },
       filter: canOpenFindReplace,
     },
-    ...createTableActions(app),
+    ...createPreferenceActions(i18n, preferences),
+    ...createTableActions(app, i18n),
   ];
 }
 
+/**
+ * Theme and Display Language, each only while the element offers its picker,
+ * with a check on the option in force. A pick goes through the emitter as the
+ * pickers' own do, so the host hears it; a language is named in itself.
+ */
+export function createPreferenceActions(
+  i18n: I18n,
+  { appearance, locale }: PalettePreferences
+): Action[] {
+  const actions: Action[] = [];
+
+  if (appearance !== undefined) {
+    actions.push({
+      icon: <Icon name="contrast" size={16} />,
+      ...submenuNamed(i18n, 'common.theme'),
+      next: APPEARANCE_BUTTONS.map<Action>(option => ({
+        ...checkOf(option.appearance === appearance),
+        ...named(i18n, option.labelKey),
+        perform: ({ emitter }) => {
+          emitter.emit(
+            setThemeOptionsAction({ appearance: option.appearance })
+          );
+        },
+      })),
+    });
+  }
+
+  if (locale !== undefined) {
+    const pick =
+      (option: LocaleOption): Action['perform'] =>
+      ({ emitter }) => {
+        emitter.emit(setLocaleOptionAction({ locale: option }));
+      };
+
+    actions.push({
+      icon: <Icon name="languages" size={16} />,
+      ...submenuNamed(i18n, 'common.displayLanguage'),
+      next: [
+        {
+          ...checkOf(locale === SYSTEM_LOCALE),
+          ...named(i18n, 'common.system'),
+          perform: pick(SYSTEM_LOCALE),
+        },
+        ...LOCALES.map<Action>(({ code, label, english }) => ({
+          ...checkOf(locale === code),
+          name: label,
+          alias: [english, code],
+          perform: pick(code),
+        })),
+      ],
+    });
+  }
+
+  return actions;
+}
+
 /** The row for one field a search found, saying where it is, which stands the reader on it when chosen. */
-export function createMatchAction(state: RootState, match: FindMatch): Action {
+export function createMatchAction(
+  state: RootState,
+  match: FindMatch,
+  i18n: I18n = sourceI18n
+): Action {
   return {
     icon: fieldIcon(match.field, 16),
-    name: snippetOf(match, 16, 64).text || 'unnamed',
-    keywords: describeMatch(state, match),
+    name: snippetOf(match, 16, 64).text || i18n.t('common.unnamed'),
+    keywords: describeMatch(state, match, i18n),
     perform: ({ store }) => {
       goToErdTarget(store, toErdTarget(match));
     },
@@ -470,14 +601,12 @@ const canOpenFindReplace = ({ store }: AppContext) => !isTakenOver(store.state);
 /** The row handing a search to Find and Replace, named with the count the panel opens on. */
 export function createShowAllAction(
   count: number,
-  payload: FindReplaceQuery
+  payload: FindReplaceQuery,
+  i18n: I18n = sourceI18n
 ): Action {
   return {
     icon: <Icon name="search" size={16} />,
-    name:
-      count === 1
-        ? 'Show 1 match in Find and Replace'
-        : `Show all ${count} matches in Find and Replace`,
+    name: i18n.t('palette.showMatches', { count }),
     perform: ({ emitter }) => {
       emitter.emit(openFindReplaceAction(payload));
     },
@@ -485,11 +614,13 @@ export function createShowAllAction(
   };
 }
 
-function createTableActions({ store }: AppContext): Action[] {
+function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
   const {
     doc: { tableIds },
     collections,
   } = store.state;
+  const unnamed = i18n.t('common.unnamed');
+  const keywords = i18n.t('common.table');
 
   return query(collections)
     .collection('tableEntities')
@@ -497,8 +628,8 @@ function createTableActions({ store }: AppContext): Action[] {
     .sort(orderByNameASC)
     .map<Action>(table => ({
       icon: fieldIcon(FindField.tableName, 16),
-      name: isEmpty(table.name.trim()) ? 'unnamed' : table.name,
-      keywords: 'Table',
+      name: isEmpty(table.name.trim()) ? unnamed : table.name,
+      keywords,
       tableId: table.id,
       perform: ({ store }) => {
         showErdTab(store);
@@ -520,68 +651,45 @@ function createTableActions({ store }: AppContext): Action[] {
     }));
 }
 
-export const allScopeActions: Action[] = [
+/** The five tabs in the toolbar's order. */
+const TABS: ReadonlyArray<{
+  canvasType: string;
+  icon: IconName;
+  labelKey: PlainMessageKey;
+}> = [
+  { canvasType: CanvasType.ERD, icon: 'workflow', labelKey: 'common.tab.erd' },
   {
-    name: 'Tab',
-    next: [
-      {
-        icon: <Icon name="workflow" size={16} />,
-        name: 'Entity Relationship Diagram',
-        perform: ({ store }) => {
-          store.dispatch(changeCanvasTypeAction({ value: CanvasType.ERD }));
-        },
-        filter: ({ store }) => {
-          return store.state.settings.canvasType !== CanvasType.ERD;
-        },
-      },
-      {
-        icon: <Icon name="share-2" size={16} />,
-        name: 'Visualization',
-        perform: ({ store }) => {
-          store.dispatch(
-            changeCanvasTypeAction({ value: CanvasType.visualization })
-          );
-        },
-        filter: ({ store }) => {
-          return store.state.settings.canvasType !== CanvasType.visualization;
-        },
-      },
-      {
-        icon: <Icon name="database" size={16} />,
-        name: 'Schema SQL',
-        perform: ({ store }) => {
-          store.dispatch(
-            changeCanvasTypeAction({ value: CanvasType.schemaSQL })
-          );
-        },
-        filter: ({ store }) => {
-          return store.state.settings.canvasType !== CanvasType.schemaSQL;
-        },
-      },
-      {
-        icon: <Icon name="code" size={16} />,
-        name: 'Generator Code',
-        perform: ({ store }) => {
-          store.dispatch(
-            changeCanvasTypeAction({ value: CanvasType.generatorCode })
-          );
-        },
-        filter: ({ store }) => {
-          return store.state.settings.canvasType !== CanvasType.generatorCode;
-        },
-      },
-      {
-        icon: <Icon name="settings" size={16} />,
-        name: 'Settings',
-        perform: ({ store }) => {
-          store.dispatch(
-            changeCanvasTypeAction({ value: CanvasType.settings })
-          );
-        },
-        filter: ({ store }) => {
-          return store.state.settings.canvasType !== CanvasType.settings;
-        },
-      },
-    ],
+    canvasType: CanvasType.visualization,
+    icon: 'share-2',
+    labelKey: 'common.tab.visualization',
+  },
+  {
+    canvasType: CanvasType.schemaSQL,
+    icon: 'database',
+    labelKey: 'common.tab.schemaSql',
+  },
+  {
+    canvasType: CanvasType.generatorCode,
+    icon: 'code',
+    labelKey: 'common.tab.codeGenerator',
+  },
+  {
+    canvasType: CanvasType.settings,
+    icon: 'settings',
+    labelKey: 'common.tab.settings',
   },
 ];
+
+/** The five tabs the Tab row opens, each but the one shown. */
+export function createTabActions(i18n: I18n = sourceI18n): Action[] {
+  return TABS.map<Action>(({ canvasType, icon, labelKey }) => ({
+    icon: <Icon name={icon} size={16} />,
+    ...named(i18n, labelKey),
+    perform: ({ store }) => {
+      store.dispatch(changeCanvasTypeAction({ value: canvasType }));
+    },
+    filter: ({ store }) => {
+      return store.state.settings.canvasType !== canvasType;
+    },
+  }));
+}

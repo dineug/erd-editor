@@ -74,7 +74,7 @@ export const alternateKey = css`
   align-items: center;
   height: 16px;
   padding: 0 6px;
-  margin-left: 4px;
+  margin-inline-start: 4px;
   border: 1px solid var(--accent-color-8);
   border-radius: 9999px;
   background-color: var(--accent-color-3);
@@ -89,7 +89,7 @@ export const alternateKey = css`
 /* A 20px square tool at the end of the row, tinted under the pointer as the close button is. */
 export const iconButton = css`
   flex-shrink: 0;
-  margin-left: auto;
+  margin-inline-start: auto;
   width: 20px;
   height: 20px;
   justify-content: center;

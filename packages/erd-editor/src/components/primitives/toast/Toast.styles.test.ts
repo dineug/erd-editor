@@ -31,6 +31,12 @@ describe('Toast.styles', () => {
     expect(text).toContain('border-radius: 6px');
   });
 
+  it('spaces the ring from the text on the side the text follows it', () => {
+    const text = staticText(styles.indicator);
+    expect(text).toContain('margin-inline-end: 12px');
+    expect(text).not.toMatch(/margin-(left|right)/);
+  });
+
   it('paints the ring in the active color over the toast border, turning while busy', () => {
     const text = staticText(styles.indicator);
     expect(text).toContain('color: var(--active)');
@@ -58,10 +64,13 @@ describe('Toast.styles', () => {
     expect(styles.description.values).toContain(typography.paragraph);
   });
 
-  it('gaps the action buttons apart from the text', () => {
+  it('gaps the action buttons apart from the text, whichever way the toast reads', () => {
     const text = staticText(styles.action);
-    expect(text).toContain('margin-left: 15px');
+    expect(text).toContain('margin-inline-start: 15px');
     expect(text).toContain('& > button');
+    expect(text).toContain('margin-inline-start: 8px');
     expect(text).toContain('& > button:first-child');
+    expect(text).toContain('margin-inline-start: 0');
+    expect(text).not.toMatch(/margin-(left|right)/);
   });
 });

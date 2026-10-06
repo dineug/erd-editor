@@ -18,7 +18,11 @@ import {
   seedClusterTables,
   seedHangulDocument,
 } from '@/__test-utils__/hangulSeed';
-import { createTestAppContext, flush } from '@/__test-utils__/index';
+import {
+  createTestAppContext,
+  flush,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
   Action,
@@ -60,6 +64,7 @@ import {
   changeColumnCommentAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n, type I18n } from '@/i18n/translate';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { FindField } from '@/utils/find-replace';
@@ -878,5 +883,101 @@ describe('paletteRows / Hangul', () => {
     );
     expect(rowsFor('#ㅈㅁ')).toHaveLength(SCOPED_ACTION_LIMIT);
     expect(rowsFor('@ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
+  });
+});
+
+describe('paletteRows / translated', () => {
+  const pseudo = createI18n('de-DE', pseudoMessages('de'));
+
+  /** What rowsFor lists, every row read in the language given. */
+  const translatedRowsFor = (value: string, i18n: I18n = pseudo) => {
+    const query = parsePaletteQuery(value);
+    const level = createScopeActions(app, i18n).filter(
+      action => action.filter?.(app) ?? true
+    );
+    const base = scopeBase(level, query.scope);
+    const found = query.keyword ? searchActions(base, query.keyword) : base;
+    return paletteRows(app, found, query, i18n);
+  };
+
+  it('offers the keyword to each prefix in one sentence of the language given', () => {
+    expect(
+      translatedRowsFor('orders').map(({ name, insert }) => [name, insert])
+    ).toEqual([
+      ['de:Search tables for "orders"', '#orders'],
+      ['de:Search columns for "orders"', '@orders'],
+      ['de:Search comments & memos for "orders"', ':orders'],
+    ]);
+  });
+
+  it('isolates the keyword inside a right-to-left sentence, and types it in as typed', () => {
+    const rows = createPrefixActions(
+      'users',
+      createI18n('ar-SA', pseudoMessages('ar'))
+    );
+
+    expect(rows[0].name).toBe('ar:Search tables for "\u2068users\u2069"');
+    expect(rows.map(row => row.insert)).toEqual(['#users', '@users', ':users']);
+  });
+
+  it('names the prefixes after ? in the language given, their English kept to search by', () => {
+    expect(
+      translatedRowsFor('?').map(({ name, keywords, alias }) => [
+        name,
+        keywords,
+        alias,
+      ])
+    ).toEqual([
+      [
+        'de:Tables',
+        'de:Go to a table by its name',
+        ['Tables', 'Go to a table by its name'],
+      ],
+      [
+        'de:Columns',
+        'de:Go to a column by its name, or by table.column',
+        ['Columns', 'Go to a column by its name, or by table.column'],
+      ],
+      [
+        'de:Comments & memos',
+        'de:Search table comments, column comments and memos',
+        [
+          'Comments & memos',
+          'Search table comments, column comments and memos',
+        ],
+      ],
+    ]);
+    expect(names(createHelpActions('memos', pseudo))).toContain(
+      'de:Comments & memos'
+    );
+  });
+
+  it('names a field with no name, where a field sits and the hand-off past the cap in the language given', () => {
+    addColumns('users', 1, () => '');
+    const [, unnamed] = translatedRowsFor('@users.').slice(-2);
+    expect(unnamed.name).toBe('de:unnamed');
+    expect(unnamed.keywords).toContain('de:');
+
+    const [comment] = translatedRowsFor(':login');
+    expect(comment.keywords).toContain('de:');
+
+    addColumns('users', SCOPED_ACTION_LIMIT + 5, index => `col_${index}`);
+    expect(translatedRowsFor('@col').at(-1)?.name).toBe(
+      `de:Show all ${SCOPED_ACTION_LIMIT + 5} matches in Find and Replace`
+    );
+    expect(translatedRowsFor('@').at(-1)?.keywords).toContain('de:');
+  });
+
+  it('names the hand-off past the cap of the tables in the language given', () => {
+    addTables(SCOPED_ACTION_LIMIT + 20, index => `item_${index}`);
+
+    expect(translatedRowsFor('#item').at(-1)?.name).toBe(
+      `de:Show all ${SCOPED_ACTION_LIMIT + 20} matches in Find and Replace`
+    );
+    expect(
+      translatedRowsFor('#item')
+        .filter(row => row.tableId)
+        .every(row => row.keywords === 'de:Table')
+    ).toBe(true);
   });
 });

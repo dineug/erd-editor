@@ -24,9 +24,6 @@ export const NAME_MAX_LENGTH = 15;
 
 const ELLIPSIS = '…';
 
-/** What a label reads where a table has no name, the word its input shows. */
-const PLACEHOLDER = 'table';
-
 /**
  * A name as its label shows it. The cut counts code points rather than UTF-16
  * units, so a name ending in an emoji or a CJK glyph is never split inside one.
@@ -41,11 +38,14 @@ export function truncateName(name: string): string {
   return chars.slice(0, NAME_MAX_LENGTH).join('') + ELLIPSIS;
 }
 
-/** The text a table's label draws: its name cut to length, or a placeholder. */
-export function labelOf(node: Pick<VisualizationNode, 'name'>): string {
+/** The text a table's label draws: its name cut to length, or the placeholder its input shows. */
+export function labelOf(
+  node: Pick<VisualizationNode, 'name'>,
+  placeholder: string
+): string {
   const name = node.name.trim();
 
-  return name ? truncateName(name) : PLACEHOLDER;
+  return name ? truncateName(name) : placeholder;
 }
 
 /** Whether a table has a name of its own, which is what its label is painted by. */

@@ -1,6 +1,7 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
@@ -30,6 +31,7 @@ export type IndexesIndexProps = {
 
 const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   const handleSelect = () => {
     props.onSelect(props.index);
@@ -72,6 +74,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
 
   return () => {
     const { index, readonly } = props;
+    const { t } = i18n.value;
 
     return (
       <div
@@ -84,13 +87,13 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
             checked={index.unique}
             width={COLUMN_UNIQUE_WIDTH}
             text="UQ"
-            title="Unique"
+            title={t('common.column.unique')}
           />
         </div>
         <div class={['column-col', styles.nameCell]}>
           <TextInput
             class={styles.input}
-            placeholder="name"
+            placeholder={t('tableProperties.indexName')}
             readonly={readonly}
             value={index.name}
             onInput={handleChangeIndexName}
@@ -99,7 +102,9 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
         {props.alternateKey ? (
           <div
             class={styles.alternateKey}
-            title={`Alternate Key ${props.alternateKey}`}
+            title={t('tableProperties.alternateKeyN', {
+              n: props.alternateKey,
+            })}
           >
             {`AK${props.alternateKey}`}
           </div>
@@ -109,7 +114,7 @@ const IndexesIndex: FC<IndexesIndexProps> = (props, ctx) => {
             class={styles.iconButton}
             size={12}
             name="x"
-            title="Remove"
+            title={t('tableProperties.remove')}
             onClick={handleRemoveIndex}
           />
         )}

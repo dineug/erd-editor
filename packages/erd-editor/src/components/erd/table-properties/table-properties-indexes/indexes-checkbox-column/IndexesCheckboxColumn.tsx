@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { DOMTemplateLiterals, FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import * as columnStyles from '@/components/table-view/column/Column.styles';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
@@ -50,6 +51,7 @@ type ColumnOrderTpl = {
 
 const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   const getColumnOrder = (
     column: Column,
@@ -57,6 +59,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
   ): ColumnOrderTpl[] => {
     const { store } = app.value;
     const { settings } = store.state;
+    const { t } = i18n.value;
 
     return settings.columnOrder
       .map((columnType: number) => {
@@ -67,7 +70,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
             template = (
               <div class="column-col">
                 <EditInput
-                  placeholder="column"
+                  placeholder={t('common.placeholder.column')}
                   width={columnWidth.name}
                   value={column.name}
                 />
@@ -78,7 +81,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
             template = bHas(settings.show, Show.columnDefault) ? (
               <div class="column-col">
                 <EditInput
-                  placeholder="default"
+                  placeholder={t('common.placeholder.default')}
                   width={columnWidth.default}
                   value={column.default}
                 />
@@ -89,7 +92,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
             template = bHas(settings.show, Show.columnComment) ? (
               <div class="column-col">
                 <EditInput
-                  placeholder="comment"
+                  placeholder={t('common.placeholder.comment')}
                   width={columnWidth.comment}
                   value={column.comment}
                 />
@@ -122,7 +125,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
                   checked={bHas(column.options, ColumnOptionType.unique)}
                   width={COLUMN_UNIQUE_WIDTH}
                   text="UQ"
-                  title="Unique"
+                  title={t('common.column.unique')}
                 />
               </div>
             ) : null;
@@ -134,7 +137,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
                   checked={bHas(column.options, ColumnOptionType.autoIncrement)}
                   width={COLUMN_AUTO_INCREMENT_WIDTH}
                   text="AI"
-                  title="Auto Increment"
+                  title={t('common.column.autoIncrement')}
                 />
               </div>
             ) : null;

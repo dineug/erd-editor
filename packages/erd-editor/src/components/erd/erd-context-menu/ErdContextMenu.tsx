@@ -2,7 +2,9 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
+import SubmenuChevron from '@/components/primitives/context-menu/submenu-chevron/SubmenuChevron';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { Open } from '@/constants/open';
@@ -36,6 +38,8 @@ import {
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { menuLabel } from '@/i18n/menuLabel';
+import type { PlainMessageKey } from '@/i18n/translate';
 import { ValuesType } from '@/internal-types';
 import {
   openColorPickerAction,
@@ -67,10 +71,10 @@ export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
 
 const referentialActionItems: Array<{
   field: ReferentialActionField;
-  name: string;
+  labelKey: PlainMessageKey;
 }> = [
-  { field: 'onDelete', name: 'On Delete' },
-  { field: 'onUpdate', name: 'On Update' },
+  { field: 'onDelete', labelKey: 'contextMenu.onDelete' },
+  { field: 'onUpdate', labelKey: 'contextMenu.onUpdate' },
 ];
 
 export type ErdContextMenuProps = {
@@ -85,13 +89,13 @@ export type ErdContextMenuProps = {
 
 /** What a menu's Delete reads and what it dispatches when picked. */
 type Removal = {
-  name: string;
+  labelKey: PlainMessageKey;
   action: () => GeneratorAction;
 };
 
 /** Every selected table and memo, which Delete reaches inside a multi-selection. */
 const selectionRemoval: Removal = {
-  name: 'Delete selected',
+  labelKey: 'contextMenu.deleteSelected',
   action: removeSelectedAction$,
 };
 
@@ -103,7 +107,8 @@ const isOneOfSelection = (
 
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
-  const chevronRightIcon = <Icon name="chevron-right" size={14} />;
+  const i18n = useI18n(ctx);
+  const chevronRightIcon = <SubmenuChevron />;
   const { addUnsubscribe } = useUnmounted();
 
   const handleAddTable = () => {
@@ -230,15 +235,23 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
       props.columnId &&
       columns.columnIds.includes(props.columnId)
     ) {
+      // Two words chosen by whether there are several, since the row shows no
+      // number for a plural rule to pick a form by.
       return {
-        name: columns.columnIds.length > 1 ? 'Delete columns' : 'Delete column',
+        labelKey:
+          columns.columnIds.length > 1
+            ? 'contextMenu.deleteColumns'
+            : 'contextMenu.deleteColumn',
         action: () => removeColumnAction$(tableId, columns.columnIds),
       };
     }
 
     return isOneOfSelection(state.editor.selectedMap, tableId)
       ? selectionRemoval
-      : { name: 'Delete', action: () => removeTableAction$(tableId) };
+      : {
+          labelKey: 'contextMenu.delete',
+          action: () => removeTableAction$(tableId),
+        };
   };
 
   const handleRemoveTable = () => {
@@ -256,7 +269,10 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const getMemoRemoval = (memoId: string): Removal =>
     isOneOfSelection(app.value.store.state.editor.selectedMap, memoId)
       ? selectionRemoval
-      : { name: 'Delete', action: () => removeMemoAction$(memoId) };
+      : {
+          labelKey: 'contextMenu.delete',
+          action: () => removeMemoAction$(memoId),
+        };
 
   const handleRemoveMemo = () => {
     if (!props.memoId) return;
@@ -284,6 +300,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
 
   return () => {
     const { keyBindingMap, store } = app.value;
+    const { t } = i18n.value;
     const focusesGroup =
       Boolean(props.tableId) &&
       focusCentersOf(store.state.editor.selectedMap, props.tableId).length > 1;
@@ -292,7 +309,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     const removeColorItem = hasColoredSelection(store.state) ? (
       <ContextMenu.Item
         onClick={handleRemoveColor}
-        children={<ContextMenu.Menu name="Remove color" />}
+        children={<ContextMenu.Menu name={t('contextMenu.removeColor')} />}
       />
     ) : null;
 
@@ -308,8 +325,8 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     icon={<Icon name="key-round" size={14} />}
                     name={
                       keysSelection
-                        ? 'Primary Key on selected columns'
-                        : 'Primary Key'
+                        ? t('contextMenu.primaryKeyOnSelectedColumns')
+                        : t('common.primaryKey')
                     }
                     right={
                       <Kbd shortcut={keyBindingMap.primaryKey[0]?.shortcut} />
@@ -322,7 +339,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="table-properties" size={14} />}
-                    name="Table Properties"
+                    name={t('common.tableProperties')}
                     right={
                       <Kbd
                         shortcut={keyBindingMap.tableProperties[0]?.shortcut}
@@ -338,8 +355,8 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     icon={<Icon name="waypoints" size={14} />}
                     name={
                       focusesGroup
-                        ? 'Focus on selected tables'
-                        : 'Focus on this table'
+                        ? t('contextMenu.focusOnSelectedTables')
+                        : t('contextMenu.focusOnThisTable')
                     }
                     right={
                       <Kbd shortcut={keyBindingMap.focusView[0]?.shortcut} />
@@ -352,7 +369,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="palette" size={14} />}
-                    name="Color"
+                    name={t('common.color')}
                   />
                 }
               />
@@ -361,11 +378,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleRemoveTable}
                 children={
                   <ContextMenu.Menu
-                    name={
+                    name={t(
                       props.tableId
-                        ? getTableRemoval(props.tableId).name
-                        : 'Delete'
-                    }
+                        ? getTableRemoval(props.tableId).labelKey
+                        : 'contextMenu.delete'
+                    )}
                     right={<Kbd shortcut={removeShortcut} />}
                   />
                 }
@@ -378,7 +395,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="palette" size={14} />}
-                    name="Color"
+                    name={t('common.color')}
                   />
                 }
               />
@@ -387,11 +404,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleRemoveMemo}
                 children={
                   <ContextMenu.Menu
-                    name={
+                    name={t(
                       props.memoId
-                        ? getMemoRemoval(props.memoId).name
-                        : 'Delete'
-                    }
+                        ? getMemoRemoval(props.memoId).labelKey
+                        : 'contextMenu.delete'
+                    )}
                     right={<Kbd shortcut={removeShortcut} />}
                   />
                 }
@@ -403,7 +420,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="spline" size={14} />}
-                    name="Relationship Type"
+                    name={t('contextMenu.relationshipType')}
                     right={chevronRightIcon}
                   />
                 }
@@ -411,7 +428,8 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   <>
                     {createRelationshipMenus(
                       app.value,
-                      props.relationshipId
+                      props.relationshipId,
+                      i18n.value
                     ).map(menu => (
                       <ContextMenu.Item
                         onClick={menu.onClick}
@@ -435,17 +453,21 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
-              {referentialActionItems.map(({ field, name }) => (
+              {referentialActionItems.map(({ field, labelKey }) => (
                 <ContextMenu.Item
                   children={
-                    <ContextMenu.Menu name={name} right={chevronRightIcon} />
+                    <ContextMenu.Menu
+                      name={t(labelKey)}
+                      right={chevronRightIcon}
+                    />
                   }
                   subChildren={
                     <>
                       {createReferentialActionMenus(
                         app.value,
                         field,
-                        props.relationshipId
+                        props.relationshipId,
+                        i18n.value
                       ).map(menu => (
                         <ContextMenu.Item
                           onClick={menu.onClick}
@@ -457,6 +479,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                                 ) : null
                               }
                               name={menu.name}
+                              literal={true}
                               right={
                                 menu.note ? (
                                   <span style={{ color: 'var(--placeholder)' }}>
@@ -474,7 +497,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               ))}
               <ContextMenu.Item
                 onClick={handleRemoveRelationship}
-                children={<ContextMenu.Menu name="Delete" />}
+                children={<ContextMenu.Menu name={t('contextMenu.delete')} />}
               />
             </>
           ) : (
@@ -484,7 +507,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="table-2" size={14} />}
-                    name="New Table"
+                    name={t('common.newTable')}
                     right={
                       <Kbd shortcut={keyBindingMap.addTable[0]?.shortcut} />
                     }
@@ -496,7 +519,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="sticky-note" size={14} />}
-                    name="New Memo"
+                    name={t('common.newMemo')}
                     right={
                       <Kbd shortcut={keyBindingMap.addMemo[0]?.shortcut} />
                     }
@@ -508,7 +531,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="text-search" size={14} />}
-                    name="Find and Replace"
+                    name={t('common.findAndReplace')}
                     right={
                       <Kbd shortcut={keyBindingMap.findReplace[0]?.shortcut} />
                     }
@@ -519,7 +542,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="spline" size={14} />}
-                    name="Relationship"
+                    name={t('common.relationship')}
                     right={chevronRightIcon}
                   />
                 }
@@ -532,7 +555,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                           children={
                             <ContextMenu.Menu
                               icon={<Icon name={menu.iconName} size={14} />}
-                              name={menu.name}
+                              name={menuLabel(i18n.value, menu)}
                               right={<Kbd shortcut={menu.shortcut} />}
                             />
                           }
@@ -546,13 +569,13 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="eye" size={14} />}
-                    name="View Option"
+                    name={t('contextMenu.viewOption')}
                     right={chevronRightIcon}
                   />
                 }
                 subChildren={
                   <>
-                    {createShowMenus(app.value).map(menu => (
+                    {createShowMenus(app.value, i18n.value).map(menu => (
                       <ContextMenu.Item
                         onClick={menu.onClick}
                         children={
@@ -574,7 +597,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="database" size={14} />}
-                    name="Database"
+                    name={t('common.database')}
                     right={chevronRightIcon}
                   />
                 }
@@ -591,6 +614,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                               ) : null
                             }
                             name={menu.name}
+                            literal={true}
                           />
                         }
                       />
@@ -602,7 +626,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="file-input" size={14} />}
-                    name="Import"
+                    name={t('common.import')}
                     right={chevronRightIcon}
                   />
                 }
@@ -614,7 +638,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                         children={
                           <ContextMenu.Menu
                             icon={<Icon name={menu.icon} size={14} />}
-                            name={menu.name}
+                            name={menuLabel(i18n.value, menu)}
                           />
                         }
                       />
@@ -627,7 +651,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   children={
                     <ContextMenu.Menu
                       icon={<Icon name="file-input" size={14} />}
-                      name="Import and Add"
+                      name={t('common.importAndAdd')}
                       right={chevronRightIcon}
                     />
                   }
@@ -643,7 +667,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                           children={
                             <ContextMenu.Menu
                               icon={<Icon name={menu.icon} size={14} />}
-                              name={menu.name}
+                              name={menuLabel(i18n.value, menu)}
                             />
                           }
                         />
@@ -656,13 +680,17 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="file-output" size={14} />}
-                    name="Export"
+                    name={t('common.export')}
                     right={chevronRightIcon}
                   />
                 }
                 subChildren={
                   <>
-                    {createExportMenus(app.value, props.onClose).map(menu => (
+                    {createExportMenus(
+                      app.value,
+                      props.onClose,
+                      i18n.value
+                    ).map(menu => (
                       <ContextMenu.Item
                         onClick={menu.onClick}
                         children={
@@ -680,7 +708,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="wand-sparkles" size={14} />}
-                    name="Auto Layout"
+                    name={t('common.autoLayout')}
                     right={chevronRightIcon}
                   />
                 }
@@ -693,7 +721,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                           children={
                             <ContextMenu.Menu
                               icon={<Icon name={menu.iconName} size={14} />}
-                              name={menu.name}
+                              name={menuLabel(i18n.value, menu)}
                             />
                           }
                         />
@@ -707,7 +735,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="file-diff" size={14} />}
-                    name="Diff Viewer"
+                    name={t('contextMenu.diffViewer')}
                   />
                 }
               />

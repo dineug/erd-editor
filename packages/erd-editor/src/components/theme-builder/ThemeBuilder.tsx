@@ -3,11 +3,13 @@ import { get } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { IconName } from '@/components/primitives/icon/icons';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import type { PlainMessageKey } from '@/i18n/translate';
 import {
   AccentColor,
   AccentColorList,
@@ -28,18 +30,20 @@ export type ThemeBuilderProps = {
   theme: ThemeOptions;
 };
 
-const APPEARANCE_BUTTONS: ReadonlyArray<{
+/** The three appearances in the order the builder's buttons and the palette's Theme rows list them. */
+export const APPEARANCE_BUTTONS: ReadonlyArray<{
   appearance: AppearanceOption;
   icon: IconName;
-  label: string;
+  labelKey: PlainMessageKey;
 }> = [
-  { appearance: SYSTEM_APPEARANCE, icon: 'monitor', label: 'System' },
-  { appearance: Appearance.light, icon: 'sun', label: 'Light' },
-  { appearance: Appearance.dark, icon: 'moon-star', label: 'Dark' },
+  { appearance: SYSTEM_APPEARANCE, icon: 'monitor', labelKey: 'common.system' },
+  { appearance: Appearance.light, icon: 'sun', labelKey: 'common.light' },
+  { appearance: Appearance.dark, icon: 'moon-star', labelKey: 'common.dark' },
 ];
 
 const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
 
   const handleClose = () => {
@@ -57,7 +61,12 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
     store.dispatch(changeOpenMapAction({ [Open.themeBuilder]: opened }));
 
     if (opened) {
-      store.dispatch(changeOpenMapAction({ [Open.tableProperties]: false }));
+      store.dispatch(
+        changeOpenMapAction({
+          [Open.tableProperties]: false,
+          [Open.localePicker]: false,
+        })
+      );
     }
   };
 
@@ -95,11 +104,12 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
     if (!openMap[Open.themeBuilder]) return null;
 
     const { theme } = props;
+    const { t } = i18n.value;
 
     return (
       <div class={['theme-builder', styles.root]}>
-        <div class={styles.title}>Theme</div>
-        <div class={styles.subTitle}>Accent color</div>
+        <div class={styles.title}>{t('common.theme')}</div>
+        <div class={styles.subTitle}>{t('themeBuilder.accentColor')}</div>
         <div class={styles.palette}>
           {AccentColorList.map(key => (
             <span
@@ -112,7 +122,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
             />
           ))}
         </div>
-        <div class={styles.subTitle}>Gray color</div>
+        <div class={styles.subTitle}>{t('themeBuilder.grayColor')}</div>
         <div class={styles.palette}>
           {GrayColorList.map(key => (
             <span
@@ -125,9 +135,9 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
             />
           ))}
         </div>
-        <div class={styles.subTitle}>Appearance</div>
+        <div class={styles.subTitle}>{t('themeBuilder.appearance')}</div>
         <div class={styles.appearanceButtonGroup}>
-          {APPEARANCE_BUTTONS.map(({ appearance, icon, label }) => (
+          {APPEARANCE_BUTTONS.map(({ appearance, icon, labelKey }) => (
             <div
               class={[
                 styles.appearanceButton,
@@ -137,7 +147,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
             >
               <Icon name={icon} />
               <span class={styles.vertical} />
-              <span>{label}</span>
+              <span>{t(labelKey)}</span>
             </div>
           ))}
         </div>

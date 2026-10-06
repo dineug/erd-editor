@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { pseudoMessages } from '@/__test-utils__/i18n';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
@@ -7,6 +8,9 @@ import {
   menus,
 } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
 import { RelationshipType } from '@/constants/schema';
+import { menuLabel } from '@/i18n/menuLabel';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 let app: AppContext;
@@ -35,6 +39,25 @@ describe('drawRelationshipMenus', () => {
       RelationshipType.OneOnly,
       RelationshipType.OneN,
     ]);
+  });
+
+  it('names each type through its key, which reads as its name in English', () => {
+    const result = createDrawRelationshipMenus(app, () => {});
+
+    expect(result.map(menu => menu.labelKey)).toEqual([
+      'common.relationshipType.zeroOne',
+      'common.relationshipType.zeroN',
+      'common.relationshipType.oneOnly',
+      'common.relationshipType.oneN',
+    ]);
+    expect(result.map(menu => menuLabel(sourceI18n, menu))).toEqual(
+      menus.map(menu => menu.name)
+    );
+    expect(
+      result.map(menu =>
+        menuLabel(createI18n('ko-KR', pseudoMessages('ko')), menu)
+      )
+    ).toEqual(['ko:Zero One', 'ko:Zero N', 'ko:One Only', 'ko:One N']);
   });
 
   it('reads each shortcut from the key binding map', () => {

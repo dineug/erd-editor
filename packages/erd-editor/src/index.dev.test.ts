@@ -59,10 +59,12 @@ describe('index.dev', () => {
     expect(frames.length).toBe(framesBefore + 1);
   });
 
-  it('mounts a single erd-editor with the theme builder enabled', () => {
+  it('mounts a single erd-editor with the theme builder, locale picker and welcome screen enabled', () => {
     const editors = document.body.querySelectorAll('erd-editor');
 
     expect(editors).toHaveLength(1);
-    expect((editors[0] as any).enableThemeBuilder).toBe(true);
+    expect(editors[0].enableThemeBuilder).toBe(true);
+    expect(editors[0].enableLocalePicker).toBe(true);
+    expect(editors[0].enableWelcomeScreen).toBe(true);
   });
 });

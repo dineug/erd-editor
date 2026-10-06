@@ -15,7 +15,7 @@ const Kbd: FC<KbdProps> = (props, ctx) => {
     const shortcuts = keys.map(([mods, key]) => [...mods, key].join(' + '));
 
     return (
-      <div class={['kbd', styles.root]}>
+      <div class={['kbd', styles.root]} prop:dir="ltr">
         {shortcuts.map(shortcut => (
           <div class={props.mini ? styles.mini : styles.kbd}>{shortcut}</div>
         ))}

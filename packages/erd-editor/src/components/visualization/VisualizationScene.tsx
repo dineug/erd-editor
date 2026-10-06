@@ -5,6 +5,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
   Group,
@@ -57,6 +58,7 @@ const DIMMED_LINK_OPACITY = LINK_OPACITY * DIM_OPACITY;
 const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const i18n = useI18n(ctx);
 
   const handlePanStart = (event: KonvaEventObject<Event>) => {
     captureGraphPan(event, props.state);
@@ -70,6 +72,11 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
     const { x, y, scale, hoveredTableId } = state;
     const opacity = labelOpacity(scale);
     const tables = graph.nodes.filter(node => node.group === Group.table);
+    // Read here rather than in the labels, which repeat draws outside this
+    // pass, and only while a table without a name has a label to put it in.
+    const placeholder = tables.every(hasName)
+      ? ''
+      : i18n.value.t('common.placeholder.table');
     const highlight = hoveredTableId
       ? highlightOf(graph.links, hoveredTableId)
       : null;
@@ -156,7 +163,7 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
                   x={node.x - LABEL_WIDTH / 2}
                   y={node.y + TABLE_RADIUS + LABEL_GAP}
                   width={LABEL_WIDTH}
-                  text={labelOf(node)}
+                  text={labelOf(node, placeholder)}
                   fill={hasName(node) ? theme.foreground : theme.placeholder}
                   fontFamily={TextFontFamily}
                   fontSize={LABEL_FONT_SIZE}

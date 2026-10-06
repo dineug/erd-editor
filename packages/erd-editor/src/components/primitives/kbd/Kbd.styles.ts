@@ -2,8 +2,10 @@ import { css } from '@dineug/r-html';
 
 import { typography } from '@/styles/typography.styles';
 
+/* As wide as its keys, so a block left to right inside a right-to-left line still starts where that line does. */
 export const root = css`
   display: flex;
+  width: fit-content;
 `;
 
 export const kbd = css`

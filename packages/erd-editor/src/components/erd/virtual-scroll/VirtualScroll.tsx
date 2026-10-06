@@ -88,6 +88,7 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
         {horizontalTrack.scrollable ? (
           <div
             class={['virtual-scroll', styles.horizontal]}
+            prop:dir="ltr"
             use:ref={ref(horizontal)}
             on:mousedown={handleMoveLeft}
           >
@@ -108,6 +109,7 @@ const VirtualScroll: FC<VirtualScrollProps> = (props, ctx) => {
         {verticalTrack.scrollable ? (
           <div
             class={['virtual-scroll', styles.vertical]}
+            prop:dir="ltr"
             use:ref={ref(vertical)}
             on:mousedown={handleMoveTop}
           >

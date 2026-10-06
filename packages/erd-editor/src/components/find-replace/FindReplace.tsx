@@ -13,6 +13,7 @@ import { debounceTime, filter, Observable } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import { goToErdTarget, showErdTab } from '@/components/erd/goToErdTarget';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
@@ -20,6 +21,7 @@ import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { hasMoveKeys, isEditingText } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import { arrayHas } from '@/utils/arrayHas';
 import { FindReplaceQuery, toggleSearchAction } from '@/utils/emitter';
 import {
@@ -87,16 +89,25 @@ const PANEL_MARGIN = 16;
 /** How far up from the bottom of the canvas the floating toolbar reaches: 24 px off it, 36 px tall. */
 const FLOATING_TOOLBAR_REACH = 60;
 
-const SCOPE_LABEL: Record<FindField, string> = {
-  [FindField.tableName]: 'Table names',
-  [FindField.tableComment]: 'Table comments',
-  [FindField.columnName]: 'Column names',
-  [FindField.columnComment]: 'Column comments',
-  [FindField.memo]: 'Memos',
+const SCOPE_LABEL: Record<FindField, PlainMessageKey> = {
+  [FindField.tableName]: 'findReplace.scope.tableName',
+  [FindField.tableComment]: 'findReplace.scope.tableComment',
+  [FindField.columnName]: 'findReplace.scope.columnName',
+  [FindField.columnComment]: 'findReplace.scope.columnComment',
+  [FindField.memo]: 'findReplace.scope.memo',
 };
 
-const matchCount = (count: number) =>
-  `${count} ${count === 1 ? 'match' : 'matches'}`;
+/**
+ * What the last press of Replace or Replace All said, kept as what it means
+ * rather than as text, so a switch of language reads it again in the new one.
+ */
+type PressStatus = 'noMoreMatches' | 'noChanges' | { replaced: number };
+
+function statusText(status: PressStatus, { t }: Pick<I18n, 't'>): string {
+  if (status === 'noMoreMatches') return t('findReplace.noMoreMatches');
+  if (status === 'noChanges') return t('findReplace.noChanges');
+  return t('findReplace.replaced', { count: status.replaced });
+}
 
 const isTextAction = arrayHas<string>(FindTextActionTypes);
 
@@ -111,16 +122,25 @@ type CountInput = {
 };
 
 /** What the line under the fields says: the place in the matches, how many there are, or why none. */
-function countText({ query, error, matches, current }: CountInput): string {
-  if (error === 'invalid') return 'Invalid regular expression';
+function countText(
+  { query, error, matches, current }: CountInput,
+  { t }: Pick<I18n, 't'>
+): string {
+  if (error === 'invalid') return t('findReplace.invalidRegex');
   if (!query) return '';
-  if (!matches.length) return 'No results';
-  if (current === -1) return matchCount(matches.length);
-  return `${current + 1} of ${matches.length}`;
+  if (!matches.length) return t('findReplace.noResults');
+  if (current === -1) {
+    return t('findReplace.matchCount', { count: matches.length });
+  }
+  return t('findReplace.position', {
+    current: current + 1,
+    total: matches.length,
+  });
 }
 
 const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
   const root = createRef<HTMLDivElement>();
   const controls = createRef<HTMLDivElement>();
@@ -133,7 +153,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     regex: false,
     fields: [...DEFAULT_FIND_FIELDS] as FindField[],
     current: -1,
-    status: '',
+    status: null as PressStatus | null,
   });
   const result = observable(
     {
@@ -213,7 +233,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
   /** Searches again for an edit, whose list the count then speaks for rather than what the last press said. */
   const searchEdited = () => {
-    state.status = '';
+    state.status = null;
     refresh(true);
   };
 
@@ -277,6 +297,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         [Open.tableProperties]: false,
         [Open.themeBuilder]: false,
         [Open.exportImage]: false,
+        [Open.localePicker]: false,
       })
     );
 
@@ -289,7 +310,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         handed.fields.includes(field)
       );
     }
-    state.status = '';
+    state.status = null;
     newRun();
     refresh();
     nextTick(focusQuery);
@@ -325,7 +346,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
     const { store } = app.value;
     state.current = index;
-    state.status = '';
+    state.status = null;
     newRun();
     goToErdTarget(store, toErdTarget(match));
     nextTick(scrollToCurrent);
@@ -364,7 +385,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     if (!match || !matcher) {
       // A run back where it began holds there, rather than go round to what it wrote.
       if (stopped && began) {
-        state.status = 'No more matches';
+        state.status = 'noMoreMatches';
         return;
       }
       // Nothing is current yet, so the first press shows what it would replace.
@@ -404,7 +425,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     run = step.run;
     // Past the place the presses began, every match there was is replaced.
     stopped = !next && after.length > 0;
-    state.status = stopped ? 'No more matches' : '';
+    state.status = stopped ? 'noMoreMatches' : null;
     state.current = step.index;
     nextTick(scrollToCurrent);
   };
@@ -426,14 +447,14 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
     refresh();
     // A match the replacement writes back as it was is no change to count.
-    state.status = replaced ? `Replaced ${matchCount(replaced)}` : 'No changes';
+    state.status = replaced ? { replaced } : 'noChanges';
   };
 
   /** Searches plain text at once, as it is quick, and a regular expression once typing pauses, as one can be slow. */
   const handleQueryInput = (event: InputEvent) => {
     const input = event.target as HTMLInputElement;
     state.query = input.value;
-    state.status = '';
+    state.status = null;
     newRun();
     if (!state.regex) return search();
 
@@ -505,7 +526,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
   const toggleOption = (key: 'matchCase' | 'wholeWord' | 'regex') => {
     state[key] = !state[key];
-    state.status = '';
+    state.status = null;
     search();
   };
 
@@ -515,7 +536,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       : FindFieldList.filter(
           value => value === field || state.fields.includes(value)
         );
-    state.status = '';
+    state.status = null;
     search();
   };
 
@@ -576,10 +597,13 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const { store, keyBindingMap } = app.value;
     if (!isPanelShown(store.state)) return null;
 
+    const { t } = i18n.value;
     const { matches, error } = result;
-    const { current } = state;
+    const { current, status } = state;
     const [from, to] = rowWindow(current, matches.length);
-    const count = state.status || countText({ ...state, error, matches });
+    const count = status
+      ? statusText(status, i18n.value)
+      : countText({ ...state, error, matches }, i18n.value);
     const top =
       (store.state.editor.zenMode ? 0 : TOOLBAR_HEIGHT) + PANEL_MARGIN;
     // On a short canvas the list gives up its height before the panel reaches
@@ -603,13 +627,15 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       >
         <div class={styles.controls} use:ref={ref(controls)}>
           <div class={styles.header}>
-            <span>{props.readonly ? 'Find' : 'Find and Replace'}</span>
+            <span>
+              {props.readonly ? t('common.find') : t('common.findAndReplace')}
+            </span>
             <button
               class={['find-replace-close', styles.toggle]}
               type="button"
               title={toShortcutTitle(
                 keyBindingMap,
-                'Close',
+                t('common.close'),
                 KeyBindingName.stop
               )}
               on:click={close}
@@ -624,8 +650,9 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                 styles.input,
                 { invalid: error === 'invalid' },
               ]}
-              title="Find"
-              placeholder="Find"
+              title={t('common.find')}
+              placeholder={t('common.find')}
+              dir="auto"
               value={state.query}
               onInput={handleQueryInput}
               onKeydown={handleQueryKeydown}
@@ -638,7 +665,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                   { active: state.matchCase },
                 ]}
                 type="button"
-                title="Match Case"
+                title={t('findReplace.matchCase')}
                 aria-pressed={String(state.matchCase)}
                 on:click={() => toggleOption('matchCase')}
               >
@@ -651,7 +678,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                   { active: state.wholeWord },
                 ]}
                 type="button"
-                title="Match Whole Word"
+                title={t('findReplace.wholeWord')}
                 aria-pressed={String(state.wholeWord)}
                 on:click={() => toggleOption('wholeWord')}
               >
@@ -660,7 +687,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
               <button
                 class={['find-regex', styles.toggle, { active: state.regex }]}
                 type="button"
-                title="Use Regular Expression"
+                title={t('findReplace.regex')}
                 aria-pressed={String(state.regex)}
                 on:click={() => toggleOption('regex')}
               >
@@ -672,8 +699,9 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
             <div class={styles.row}>
               <TextInput
                 class={['replace-input', styles.input]}
-                title="Replace"
-                placeholder="Replace"
+                title={t('findReplace.replace')}
+                placeholder={t('findReplace.replace')}
+                dir="auto"
                 value={state.replacement}
                 onInput={handleReplacementInput}
                 onKeydown={handleReplacementKeydown}
@@ -682,7 +710,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                 <button
                   class={['find-replace-one', styles.toggle]}
                   type="button"
-                  title="Replace (Enter)"
+                  title={`${t('findReplace.replace')} (Enter)`}
                   bool:disabled={!replaceable}
                   on:click={handleReplace}
                 >
@@ -691,7 +719,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                 <button
                   class={['find-replace-all', styles.toggle]}
                   type="button"
-                  title="Replace All"
+                  title={t('findReplace.replaceAll')}
                   bool:disabled={!replaceable}
                   on:click={handleReplaceAll}
                 >
@@ -713,7 +741,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                 aria-pressed={String(state.fields.includes(field))}
                 on:click={() => toggleField(field)}
               >
-                {SCOPE_LABEL[field]}
+                {t(SCOPE_LABEL[field])}
               </button>
             ))}
           </div>
@@ -730,7 +758,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
             <button
               class={['find-previous', styles.toggle]}
               type="button"
-              title="Previous Match (Shift+Enter)"
+              title={`${t('findReplace.previousMatch')} (Shift+Enter)`}
               bool:disabled={!matches.length}
               on:click={goToPrevious}
             >
@@ -739,7 +767,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
             <button
               class={['find-next', styles.toggle]}
               type="button"
-              title="Next Match (Enter)"
+              title={`${t('findReplace.nextMatch')} (Enter)`}
               bool:disabled={!matches.length}
               on:click={goToNext}
             >
@@ -766,7 +794,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                 >
                   <div class={styles.icon}>{fieldIcon(match.field)}</div>
                   <div class={styles.body}>
-                    <span class={styles.text}>
+                    <span class={styles.text} prop:dir="auto">
                       {snippet.text.slice(0, snippet.start)}
                       <mark class={styles.mark}>
                         {snippet.text.slice(snippet.start, snippet.end)}
@@ -774,7 +802,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                       {snippet.text.slice(snippet.end)}
                     </span>
                     <span class={styles.location}>
-                      {describeMatch(store.state, match)}
+                      {describeMatch(store.state, match, i18n.value)}
                     </span>
                   </div>
                 </div>
@@ -782,7 +810,11 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
             })}
             {matches.length > to - from ? (
               <div class={styles.more}>
-                {`Showing ${from + 1}–${to} of ${matches.length}`}
+                {t('findReplace.showing', {
+                  from: from + 1,
+                  to,
+                  total: matches.length,
+                })}
               </div>
             ) : null}
           </div>

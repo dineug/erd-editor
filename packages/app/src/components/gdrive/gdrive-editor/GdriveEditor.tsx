@@ -3,6 +3,10 @@ import '@dineug/erd-editor';
 import type { ErdEditorElement } from '@dineug/erd-editor';
 import { useLayoutEffect, useRef } from 'react';
 
+import {
+  useApplyPickedLocale,
+  useLocalePreference,
+} from '@/atoms/modules/locale';
 import { useApplyPresetTheme, useThemeState } from '@/atoms/modules/theme';
 import type { DocumentController, EditorAdapter } from '@/services/gdrive';
 import { reportError } from '@/utils/reportError';
@@ -29,6 +33,8 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
   readonlyRef.current = readonly;
   const theme = useThemeState();
   const applyPresetTheme = useApplyPresetTheme();
+  const locale = useLocalePreference();
+  const applyPickedLocale = useApplyPickedLocale();
 
   useLayoutEffect(() => {
     const $viewer = viewerRef.current;
@@ -42,6 +48,7 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
     });
     editorRef.current = editor;
     editor.enableThemeBuilder = true;
+    editor.enableLocalePicker = true;
     editor.readonly = readonlyRef.current;
 
     const adapter: EditorAdapter = {
@@ -85,6 +92,7 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
     if (controller.getSnapshot().phase === 'ready') {
       try {
         detach = controller.attach(adapter);
+        editor.enableWelcomeScreen = true;
       } catch (error) {
         reportError(error);
       }
@@ -93,17 +101,22 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
     const handleChangePresetTheme = (event: Event) => {
       applyPresetTheme((event as CustomEvent).detail);
     };
+    const handleChangeLocale = (event: Event) => {
+      applyPickedLocale((event as CustomEvent).detail);
+    };
     editor.addEventListener('changePresetTheme', handleChangePresetTheme);
+    editor.addEventListener('changeLocale', handleChangeLocale);
     $viewer.appendChild(editor);
 
     return () => {
       detach();
       $viewer.removeChild(editor);
       editor.removeEventListener('changePresetTheme', handleChangePresetTheme);
+      editor.removeEventListener('changeLocale', handleChangeLocale);
       editor.destroy();
       editorRef.current = null;
     };
-  }, [controller, applyPresetTheme]);
+  }, [controller, applyPresetTheme, applyPickedLocale]);
 
   useLayoutEffect(() => {
     if (editorRef.current) editorRef.current.readonly = readonly;
@@ -116,6 +129,10 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
       grayColor: theme.grayColor as any,
     });
   }, [theme]);
+
+  useLayoutEffect(() => {
+    editorRef.current?.setLocale(locale);
+  }, [locale]);
 
   return <div css={styles.scope} ref={viewerRef} />;
 };

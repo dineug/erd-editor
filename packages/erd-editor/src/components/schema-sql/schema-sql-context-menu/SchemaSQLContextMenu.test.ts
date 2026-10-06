@@ -3,14 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-menu/SchemaSQLContextMenu';
 import { BracketType, Database } from '@/constants/schema';
+import { createI18n } from '@/i18n/translate';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 type Api = ReturnType<typeof useContextMenuRootProvider>;
@@ -94,6 +98,35 @@ describe('SchemaSQLContextMenu', () => {
       'Database',
       'Bracket',
     ]);
+  });
+
+  it('names its entries and None in the language the element shows, the rest as written', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      await open();
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(topItems().map(el => el.textContent?.trim())).toEqual([
+        'ko:Database',
+        'ko:Bracket',
+      ]);
+      const brackets = await openSubmenu('ko:Bracket');
+      expect(subItems(brackets).map(el => el.textContent?.trim())).toEqual([
+        'SingleQuote',
+        'DoubleQuote',
+        'Backtick',
+        'ko:None',
+      ]);
+      const vendors = await openSubmenu('ko:Database');
+      expect(subItems(vendors).map(el => el.textContent?.trim())).toContain(
+        'PostgreSQL'
+      );
+    } finally {
+      provider.destroy();
+    }
   });
 
   it('gives both top level entries an icon and a chevron affordance', async () => {

@@ -8,6 +8,8 @@ export type TextInputProps = {
   class?: any;
   title?: string;
   placeholder?: string;
+  /** auto for what a reader types, which runs in its own direction whatever the page's, once there is some. */
+  dir?: 'auto';
   readonly?: boolean;
   disabled?: boolean;
   width?: number;
@@ -23,6 +25,14 @@ export type TextInputProps = {
   onKeyup?: (event: KeyboardEvent) => void;
   onKeydown?: (event: KeyboardEvent) => void;
 };
+
+/**
+ * The direction asked for while the field holds text, else '', which follows
+ * the page as no attribute does: Chromium sets an empty auto field left to
+ * right, and a spread leaves a key it no longer gets on the element.
+ */
+const directionOf = ({ dir, value }: TextInputProps) =>
+  dir ? { dir: value ? dir : '' } : {};
 
 const TextInput: FC<TextInputProps> = (props, ctx) => {
   const input = createRef<HTMLInputElement>();
@@ -41,10 +51,13 @@ const TextInput: FC<TextInputProps> = (props, ctx) => {
       use:ref={ref(input)}
       class={props.class}
       style={{ width: props.width ? `${props.width}px` : '' }}
-      {...restAttrs({
-        title: props.title,
-        placeholder: props.placeholder,
-      })}
+      {...{
+        ...restAttrs({
+          title: props.title,
+          placeholder: props.placeholder,
+        }),
+        ...directionOf(props),
+      }}
       type="text"
       spellcheck="false"
       bool:readonly={props.readonly}
