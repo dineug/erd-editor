@@ -287,6 +287,48 @@ describe('view action types', () => {
   });
 });
 
+describe('the mapping edit', () => {
+  const MAPPING_EDIT = 'relationship.changeColumns';
+
+  it('is a change every list derived from the change types carries', () => {
+    expect(ChangeActionTypes).toContain(MAPPING_EDIT);
+    expect(ReadonlyIgnoreActionTypes).toContain(MAPPING_EDIT);
+    expect(ViewIgnoreActionTypes).toContain(MAPPING_EDIT);
+    expect(SharedActionTypes).toContain(MAPPING_EDIT);
+    expect(HistoryActionTypes).toContain(MAPPING_EDIT);
+    expect(LockSettingActionTypes).not.toHaveProperty(MAPPING_EDIT);
+  });
+
+  it('stands with the other relationship changes', () => {
+    expect(
+      ChangeActionTypes.filter(type => type.startsWith('relationship.'))
+    ).toEqual([
+      'relationship.add',
+      'relationship.remove',
+      'relationship.changeType',
+      'relationship.changeOnDelete',
+      'relationship.changeOnUpdate',
+      MAPPING_EDIT,
+    ]);
+  });
+
+  it('leaves the draw and the open dialogs to the reader, in no list', () => {
+    for (const type of [
+      'editor.drawStartRelationship',
+      'editor.drawStartAddRelationship',
+      'editor.drawEndRelationship',
+      'editor.drawRelationship',
+      'editor.changeOpenMap',
+    ]) {
+      expect(allActionTypes.has(type)).toBe(true);
+      expect(ChangeActionTypes).not.toContain(type);
+      expect(HistoryActionTypes).not.toContain(type);
+      expect(SharedActionTypes).not.toContain(type);
+      expect(ReadonlyIgnoreActionTypes).not.toContain(type);
+    }
+  });
+});
+
 describe('shared action types', () => {
   it('SharedStreamActionTypes tracks the ephemeral presence streams', () => {
     expect(SharedStreamActionTypes).toEqual([

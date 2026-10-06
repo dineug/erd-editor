@@ -108,6 +108,13 @@ export const changeColumnDataTypeAction = createAction<
   ActionMap[typeof ActionType.changeColumnDataType]
 >(ActionType.changeColumnDataType);
 
+const DATA_TYPE = 'dataType';
+
+/**
+ * Of two writes at one version the greater type wins, as a mapping's lists do:
+ * Map Columns writes a child's type unasked, so two peers can write one column
+ * at one version with no one typing, and the later arrival differed per peer.
+ */
 const changeColumnDataType: ReducerType<
   typeof ActionType.changeColumnDataType
 > = (
@@ -117,9 +124,16 @@ const changeColumnDataType: ReducerType<
 ) => {
   const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableColumnEntities');
-  collection.getOrCreate(id, id => createColumn({ id }));
+  const column = collection.getOrCreate(id, id => createColumn({ id }));
 
-  collection.replaceOperator(lww, safeVersion, id, 'dataType', () => {
+  if (
+    (lww[id]?.[3][DATA_TYPE] ?? -1) === safeVersion &&
+    value <= column.dataType
+  ) {
+    return;
+  }
+
+  collection.replaceOperator(lww, safeVersion, id, DATA_TYPE, () => {
     collection.updateOne(id, column => {
       column.dataType = value;
       column.ui.widthDataType = textInRange(toWidth(value));

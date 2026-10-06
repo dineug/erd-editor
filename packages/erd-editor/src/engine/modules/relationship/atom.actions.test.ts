@@ -12,11 +12,13 @@ import { Clock } from '@/engine/clock';
 import { ActionType } from '@/engine/modules/relationship/actions';
 import {
   addRelationshipAction,
+  changeRelationshipColumnsAction,
   changeRelationshipOnDeleteAction,
   changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
+import { relationshipPushUndoHistoryMap } from '@/engine/modules/relationship/history';
 import { createStore, Store } from '@/engine/store';
 
 const stores: Store[] = [];
@@ -456,6 +458,283 @@ describe.each([
 
     expect(store.state.lww['r1'][3]).toEqual({ [path]: 11 });
     expect(relationship(store, 'r1')![path]).toBe(ReferentialAction.setDefault);
+  });
+});
+
+describe('relationship/atom.actions changeRelationshipColumns', () => {
+  type Ends = [startColumnIds: string[], endColumnIds: string[]];
+
+  function changeColumns(
+    [startColumnIds, endColumnIds]: Ends,
+    version?: number
+  ) {
+    const action = changeRelationshipColumnsAction({
+      id: 'r1',
+      start: { tableId: 't1', columnIds: startColumnIds },
+      end: { tableId: 't2', columnIds: endColumnIds },
+    });
+    return version === undefined ? action : versioned(action, version);
+  }
+
+  function seeded(): Store {
+    const store = createTestStore();
+    store.dispatchSync(versioned(addRelationshipAction(addPayload), 1));
+    return store;
+  }
+
+  function endsOf(store: Store, id = 'r1'): Ends {
+    const entity = relationship(store, id)!;
+    return [entity.start.columnIds, entity.end.columnIds];
+  }
+
+  function permutations<T>(items: T[]): T[][] {
+    if (items.length <= 1) return [items];
+    return items.flatMap((item, index) =>
+      permutations([...items.slice(0, index), ...items.slice(index + 1)]).map(
+        rest => [item, ...rest]
+      )
+    );
+  }
+
+  it('replaces both lists under one register named columns', () => {
+    const store = seeded();
+
+    store.dispatchSync(
+      changeColumns(
+        [
+          ['c1', 'c5'],
+          ['c2', 'c6'],
+        ],
+        3
+      )
+    );
+
+    expect(endsOf(store)).toEqual([
+      ['c1', 'c5'],
+      ['c2', 'c6'],
+    ]);
+    expect(store.state.lww['r1'][3]).toEqual({ columns: 3 });
+  });
+
+  it('ignores a write older than the register', () => {
+    const store = seeded();
+
+    store.dispatchSync(changeColumns([['c1'], ['c7']], 5));
+    store.dispatchSync(changeColumns([['c1'], ['c9']], 3));
+
+    expect(endsOf(store)).toEqual([['c1'], ['c7']]);
+    expect(store.state.lww['r1'][3]).toEqual({ columns: 5 });
+  });
+
+  it('lets a newer write win whatever its lists', () => {
+    const store = seeded();
+
+    store.dispatchSync(changeColumns([['c1'], ['c9']], 3));
+    store.dispatchSync(changeColumns([['c1'], ['c0']], 4));
+
+    expect(endsOf(store)).toEqual([['c1'], ['c0']]);
+    expect(store.state.lww['r1'][3]).toEqual({ columns: 4 });
+  });
+
+  it('settles two writes at one version on the greater lists in either order', () => {
+    const writes: Ends[] = [
+      [['c1'], ['c7']],
+      [['c1'], ['c2']],
+    ];
+
+    for (const order of permutations(writes)) {
+      const store = seeded();
+      for (const write of order) store.dispatchSync(changeColumns(write, 3));
+
+      expect(endsOf(store)).toEqual([['c1'], ['c7']]);
+      expect(store.state.lww['r1'][3]).toEqual({ columns: 3 });
+    }
+  });
+
+  it('settles three writes at one version on one state in all six orders', () => {
+    const writes: Ends[] = [
+      [['c1'], ['c7']],
+      [
+        ['c1', 'c5'],
+        ['c2', 'c6'],
+      ],
+      [['c1'], ['c10']],
+    ];
+    const greatest = writes
+      .map(ends => JSON.stringify(ends))
+      .sort()
+      .at(-1);
+    const ends = new Set<string>();
+
+    for (const order of permutations(writes)) {
+      const store = seeded();
+      for (const write of order) store.dispatchSync(changeColumns(write, 3));
+      ends.add(JSON.stringify(endsOf(store)));
+    }
+
+    expect([...ends]).toEqual([greatest]);
+    expect(greatest).toBe(JSON.stringify([['c1'], ['c7']]));
+  });
+
+  it('compares the lists as JSON text, so a code unit decides between two names', () => {
+    const store = seeded();
+
+    store.dispatchSync(changeColumns([['c1'], ['ä']], 3));
+    store.dispatchSync(changeColumns([['c1'], ['z']], 3));
+
+    expect(endsOf(store)).toEqual([['c1'], ['ä']]);
+  });
+
+  it('ignores a write naming other tables before the register moves', () => {
+    for (const [start, end] of [
+      ['tX', 't2'],
+      ['t1', 'tX'],
+    ]) {
+      const store = seeded();
+
+      store.dispatchSync(
+        versioned(
+          changeRelationshipColumnsAction({
+            id: 'r1',
+            start: { tableId: start, columnIds: ['c1'] },
+            end: { tableId: end, columnIds: ['c9'] },
+          }),
+          5
+        )
+      );
+
+      expect(endsOf(store)).toEqual([['c1'], ['c2']]);
+      expect(store.state.lww['r1'][3]).toEqual({});
+
+      store.dispatchSync(changeColumns([['c1'], ['c3']], 4));
+
+      expect(endsOf(store)).toEqual([['c1'], ['c3']]);
+      expect(store.state.lww['r1'][3]).toEqual({ columns: 4 });
+
+      store.dispatchSync(changeColumns([['c1'], ['c0']], 5));
+
+      expect(endsOf(store)).toEqual([['c1'], ['c0']]);
+    }
+  });
+
+  it('records the register alone for a relationship it does not hold', () => {
+    const store = createTestStore();
+
+    expect(() =>
+      store.dispatchSync(
+        versioned(
+          changeRelationshipColumnsAction({
+            id: 'ghost',
+            start: { tableId: 't1', columnIds: ['c1'] },
+            end: { tableId: 't2', columnIds: ['c9'] },
+          }),
+          2
+        )
+      )
+    ).not.toThrow();
+
+    expect(relationship(store, 'ghost')).toBeUndefined();
+    expect(store.state.doc.relationshipIds).toEqual([]);
+    expect(store.state.lww['ghost']).toEqual([
+      'relationshipEntities',
+      -1,
+      -1,
+      { columns: 2 },
+    ]);
+  });
+
+  it('lets the add that follows an edit it overtook build the entity from its own payload', () => {
+    const store = createTestStore();
+
+    store.dispatchSync(changeColumns([['c1'], ['c9']], 3));
+    store.dispatchSync(versioned(addRelationshipAction(addPayload), 2));
+
+    expect(endsOf(store)).toEqual([['c1'], ['c2']]);
+    expect(store.state.lww['r1'][3]).toEqual({ columns: 3 });
+  });
+
+  it('keeps the id, the place in the document and the other registers', () => {
+    const store = createTestStore();
+    store.dispatchSync(
+      versioned(addRelationshipAction({ ...addPayload, id: 'r0' }), 1)
+    );
+    store.dispatchSync(versioned(addRelationshipAction(addPayload), 1));
+    store.dispatchSync(
+      versioned(addRelationshipAction({ ...addPayload, id: 'r2' }), 1)
+    );
+    store.dispatchSync(
+      versioned(
+        changeRelationshipOnDeleteAction({
+          id: 'r1',
+          value: ReferentialAction.cascade,
+        }),
+        2
+      )
+    );
+
+    store.dispatchSync(changeColumns([['c1'], ['c9']], 3));
+
+    const entity = relationship(store, 'r1')!;
+    expect(entity.id).toBe('r1');
+    expect(store.state.doc.relationshipIds).toEqual(['r0', 'r1', 'r2']);
+    expect(entity.relationshipType).toBe(RelationshipType.ZeroN);
+    expect(entity.onDelete).toBe(ReferentialAction.cascade);
+    expect(entity.start.tableId).toBe('t1');
+    expect(entity.end.tableId).toBe('t2');
+    expect(store.state.lww['r1'][3]).toEqual({ onDelete: 2, columns: 3 });
+  });
+
+  it('writes new arrays, leaving the lists an undo entry captured as they were', () => {
+    const store = seeded();
+    const undoActions: AnyAction[] = [];
+    relationshipPushUndoHistoryMap[ActionType.removeRelationship](
+      undoActions,
+      removeRelationshipAction({ id: 'r1' }),
+      store.state
+    );
+    const action = changeColumns([['c1'], ['c9']], 2);
+
+    store.dispatchSync(action);
+
+    expect(undoActions[0].payload.start.columnIds).toEqual(['c1']);
+    expect(undoActions[0].payload.end.columnIds).toEqual(['c2']);
+    expect(relationship(store, 'r1')!.end.columnIds).not.toBe(
+      action.payload.end.columnIds
+    );
+    expect(relationship(store, 'r1')!.start.columnIds).not.toBe(
+      action.payload.start.columnIds
+    );
+  });
+
+  it('edits a removed relationship, which the undo of the remove brings back edited', () => {
+    const store = seeded();
+    const undoActions: AnyAction[] = [];
+    relationshipPushUndoHistoryMap[ActionType.removeRelationship](
+      undoActions,
+      removeRelationshipAction({ id: 'r1' }),
+      store.state
+    );
+    store.dispatchSync(versioned(removeRelationshipAction({ id: 'r1' }), 2));
+
+    store.dispatchSync(changeColumns([['c1'], ['c9']], 3));
+
+    expect(store.state.doc.relationshipIds).toEqual([]);
+    expect(endsOf(store)).toEqual([['c1'], ['c9']]);
+
+    store.dispatchSync(undoActions.map(action => versioned(action, 4)));
+
+    expect(store.state.doc.relationshipIds).toEqual(['r1']);
+    expect(endsOf(store)).toEqual([['c1'], ['c9']]);
+  });
+
+  it('falls back to the clock version', () => {
+    const store = seeded();
+    store.context.clock.merge(11);
+
+    store.dispatchSync(changeColumns([['c1'], ['c9']]));
+
+    expect(store.state.lww['r1'][3]).toEqual({ columns: 11 });
+    expect(endsOf(store)).toEqual([['c1'], ['c9']]);
   });
 });
 

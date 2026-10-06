@@ -104,6 +104,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'relationship.changeType',
   'relationship.changeOnDelete',
   'relationship.changeOnUpdate',
+  'relationship.changeColumns',
   // index
   'index.add',
   'index.remove',

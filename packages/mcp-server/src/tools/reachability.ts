@@ -19,6 +19,7 @@ export const NOT_EMITTED: ReadonlyArray<ActionType> = Object.freeze([
   'settings.changeLockSettings',
   'table.move',
   'memo.move',
+  'relationship.changeColumns',
 ]);
 
 /** Change types a tool emits only inside another op's batch, never on their own. */
@@ -62,6 +63,8 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
       'A relative drag step; table.moveTo places a table where the agent names.',
     'memo.move':
       'A relative drag step; memo.moveTo places a memo where the agent names.',
+    'relationship.changeColumns':
+      "The editor's Map Columns dialog emits it; an agent re-maps a relationship with erd_batch of erd_remove_relationship and erd_link_columns, which every editor applies.",
     'editor.clear':
       'Emitted by the import tools, which clear the document before loading the new one.',
   });

@@ -6,6 +6,7 @@ import { PushUndoHistory } from '@/engine/history.actions';
 import { ActionType } from './actions';
 import {
   addRelationshipAction,
+  changeRelationshipColumnsAction,
   changeRelationshipOnDeleteAction,
   changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
@@ -95,10 +96,49 @@ const changeRelationshipOnUpdate: PushUndoHistory = (
   );
 };
 
+/**
+ * Undoes with the lists the relationship holds before the batch, copied, and
+ * records nothing for a payload the reducer ignores, whose undo would only
+ * write the present lists over a later edit.
+ */
+const changeRelationshipColumns: PushUndoHistory = (
+  undoActions,
+  {
+    payload: { id, start, end },
+  }: ReturnType<typeof changeRelationshipColumnsAction>,
+  { collections }
+) => {
+  const relationship = query(collections)
+    .collection('relationshipEntities')
+    .selectById(id);
+  if (
+    !relationship ||
+    relationship.start.tableId !== start.tableId ||
+    relationship.end.tableId !== end.tableId
+  ) {
+    return;
+  }
+
+  undoActions.push(
+    changeRelationshipColumnsAction({
+      id,
+      start: {
+        tableId: relationship.start.tableId,
+        columnIds: [...relationship.start.columnIds],
+      },
+      end: {
+        tableId: relationship.end.tableId,
+        columnIds: [...relationship.end.columnIds],
+      },
+    })
+  );
+};
+
 export const relationshipPushUndoHistoryMap = {
   [ActionType.addRelationship]: addRelationship,
   [ActionType.removeRelationship]: removeRelationship,
   [ActionType.changeRelationshipType]: changeRelationshipType,
   [ActionType.changeRelationshipOnDelete]: changeRelationshipOnDelete,
   [ActionType.changeRelationshipOnUpdate]: changeRelationshipOnUpdate,
+  [ActionType.changeRelationshipColumns]: changeRelationshipColumns,
 };

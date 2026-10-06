@@ -320,6 +320,44 @@ describe('table-column atom.actions', () => {
     });
   }
 
+  describe('changeColumnDataType at one version', () => {
+    const typeAt = (value: string, version: number) => ({
+      ...changeColumnDataTypeAction({ id: 'c1', tableId: 't1', value }),
+      version,
+    });
+
+    it.each([
+      ['INT', 'TEXT'],
+      ['TEXT', 'INT'],
+    ])(
+      'keeps the greater of two types written at one version, %s landing before %s',
+      (first, second) => {
+        const { store } = setup();
+        store.dispatchSync(addColumnAction({ id: 'c1', tableId: 't1' }));
+
+        store.dispatchSync(typeAt(first, 5));
+        store.dispatchSync(typeAt(second, 5));
+
+        expect(selectColumn(store, 'c1')).toMatchObject({
+          dataType: 'TEXT',
+          ui: { widthDataType: COLUMN_MIN_WIDTH },
+        });
+        expect(lwwOf(store, 'c1')[3].dataType).toBe(5);
+      }
+    );
+
+    it('takes a lesser type at a later version', () => {
+      const { store } = setup();
+      store.dispatchSync(addColumnAction({ id: 'c1', tableId: 't1' }));
+
+      store.dispatchSync(typeAt('TEXT', 5));
+      store.dispatchSync(typeAt('INT', 6));
+
+      expect(selectColumn(store, 'c1')?.dataType).toBe('INT');
+      expect(lwwOf(store, 'c1')[3].dataType).toBe(6);
+    });
+  });
+
   const optionCases = [
     {
       label: 'changeColumnAutoIncrement',
