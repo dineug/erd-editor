@@ -1,3 +1,4 @@
+import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -7,6 +8,9 @@ import {
   OrderType,
   ReferentialAction,
 } from '@/constants/schema';
+import { RootState } from '@/engine/state';
+import { createRelationship } from '@/utils/collection/relationship.entity';
+import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   ALL_REFERENTIAL_ACTIONS,
@@ -24,6 +28,7 @@ import {
   splitsTableName,
   splitTableName,
   tableNamePart,
+  toForeignKeyPairs,
   toOrderName,
   toStringLiteral,
   unique,
@@ -132,6 +137,208 @@ describe('schema-sql/utils', () => {
       expect(uniqueColumns(columns).map(column => column.name)).toEqual([
         'email',
       ]);
+    });
+  });
+
+  describe('toForeignKeyPairs', () => {
+    const KEY = ColumnOption.primaryKey | ColumnOption.notNull;
+
+    // A parent keyed on (b, a) in that order, with a unique code and a plain
+    // note, and a child with a column for each.
+    function createDocument() {
+      const state = schemaV3Parser({}) as unknown as RootState;
+      [
+        createColumn({ id: 'b', tableId: 'p', name: 'b', options: KEY }),
+        createColumn({ id: 'a', tableId: 'p', name: 'a', options: KEY }),
+        createColumn({
+          id: 'code',
+          tableId: 'p',
+          name: 'code',
+          options: ColumnOption.unique,
+        }),
+        createColumn({ id: 'note', tableId: 'p', name: 'note' }),
+        createColumn({ id: 'cb', tableId: 'c', name: 'cb' }),
+        createColumn({ id: 'ca', tableId: 'c', name: 'ca' }),
+        createColumn({ id: 'ccode', tableId: 'c', name: 'ccode' }),
+        createColumn({ id: 'cnote', tableId: 'c', name: 'cnote' }),
+      ].forEach(column => {
+        state.collections.tableColumnEntities[column.id] = column;
+      });
+      state.collections.tableEntities = {
+        p: createTable({
+          id: 'p',
+          name: 'parent',
+          columnIds: ['b', 'a', 'code', 'note'],
+        }),
+        c: createTable({
+          id: 'c',
+          name: 'child',
+          columnIds: ['cb', 'ca', 'ccode', 'cnote'],
+        }),
+      };
+      state.doc.tableIds = ['p', 'c'];
+      return state;
+    }
+
+    const relationship = (start: string[], end: string[]) =>
+      createRelationship({
+        start: { tableId: 'p', columnIds: start },
+        end: { tableId: 'c', columnIds: end },
+      });
+
+    const namesOf = (state: RootState, start: string[], end: string[]) => {
+      const pairs = toForeignKeyPairs(state, relationship(start, end));
+      return (
+        pairs && [
+          pairs.start.map(column => column.name),
+          pairs.end.map(column => column.name),
+        ]
+      );
+    };
+
+    it.each([
+      [
+        'the key in declaration order',
+        ['b', 'a'],
+        ['cb', 'ca'],
+        [
+          ['b', 'a'],
+          ['cb', 'ca'],
+        ],
+      ],
+      [
+        'the key in another order',
+        ['a', 'b'],
+        ['ca', 'cb'],
+        [
+          ['b', 'a'],
+          ['cb', 'ca'],
+        ],
+      ],
+      [
+        'the key with its pairs crossed',
+        ['a', 'b'],
+        ['cb', 'ca'],
+        [
+          ['b', 'a'],
+          ['ca', 'cb'],
+        ],
+      ],
+      ['part of the key', ['a'], ['ca'], [['a'], ['ca']]],
+      [
+        'the key and one more column',
+        ['note', 'a', 'b'],
+        ['cnote', 'ca', 'cb'],
+        [
+          ['note', 'a', 'b'],
+          ['cnote', 'ca', 'cb'],
+        ],
+      ],
+      ['a unique column', ['code'], ['ccode'], [['code'], ['ccode']]],
+      [
+        'columns that are no key',
+        ['note', 'code'],
+        ['cnote', 'ccode'],
+        [
+          ['note', 'code'],
+          ['cnote', 'ccode'],
+        ],
+      ],
+      [
+        'more start columns than end columns',
+        ['a', 'b'],
+        ['ca'],
+        [['a'], ['ca']],
+      ],
+      [
+        'more end columns than start columns',
+        ['b'],
+        ['cb', 'ca'],
+        [['b'], ['cb']],
+      ],
+      [
+        'a start column that does not exist',
+        ['a', 'ghost'],
+        ['ca', 'cb'],
+        [['a'], ['ca']],
+      ],
+      [
+        'an end column that does not exist',
+        ['b', 'a'],
+        ['ghost', 'ca'],
+        [['a'], ['ca']],
+      ],
+      ['no column that exists', ['ghost'], ['ghost'], null],
+      ['no column', [], [], null],
+    ])('reads %s', (_, start, end, expected) => {
+      expect(namesOf(createDocument(), start, end)).toEqual(expected);
+    });
+
+    it('drops a pair whose start column has left its table, the entity kept', () => {
+      const state = createDocument();
+      state.collections.tableEntities.p.columnIds = ['a', 'code', 'note'];
+
+      expect(namesOf(state, ['a', 'b', 'code'], ['ca', 'cb', 'ccode'])).toEqual(
+        [
+          ['a', 'code'],
+          ['ca', 'ccode'],
+        ]
+      );
+    });
+
+    it('drops a pair whose end column has left its table, the entity kept', () => {
+      const state = createDocument();
+      state.collections.tableEntities.c.columnIds = ['cb', 'ccode'];
+
+      expect(namesOf(state, ['b', 'a'], ['cb', 'ca'])).toEqual([['b'], ['cb']]);
+    });
+
+    it('drops a pair whose column its table lists without an entity', () => {
+      const state = createDocument();
+      state.collections.tableEntities.c.columnIds.push('ghost');
+
+      expect(namesOf(state, ['b', 'a'], ['ghost', 'ca'])).toEqual([
+        ['a'],
+        ['ca'],
+      ]);
+    });
+
+    it('follows the key as the table orders it now', () => {
+      const state = createDocument();
+      state.collections.tableEntities.p.columnIds = ['a', 'note', 'code', 'b'];
+
+      expect(namesOf(state, ['b', 'a'], ['cb', 'ca'])).toEqual([
+        ['a', 'b'],
+        ['ca', 'cb'],
+      ]);
+    });
+
+    it.each([
+      ['start', ['c']],
+      ['end', ['p']],
+    ])(
+      'gives nothing when the %s table is gone from the document',
+      (_, tableIds) => {
+        const state = createDocument();
+        state.doc.tableIds = tableIds;
+
+        expect(namesOf(state, ['b', 'a'], ['cb', 'ca'])).toBeNull();
+      }
+    );
+
+    it('gives nothing when a listed table has no entity', () => {
+      const state = createDocument();
+      Reflect.deleteProperty(state.collections.tableEntities, 'p');
+
+      expect(namesOf(state, ['b', 'a'], ['cb', 'ca'])).toBeNull();
+    });
+
+    it('hands back both tables with the pairs', () => {
+      const state = createDocument();
+      const pairs = toForeignKeyPairs(state, relationship(['code'], ['ccode']));
+
+      expect(pairs?.startTable).toBe(state.collections.tableEntities.p);
+      expect(pairs?.endTable).toBe(state.collections.tableEntities.c);
     });
   });
 

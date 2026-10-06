@@ -18,37 +18,27 @@ import {
   formatSpace,
   FormatTableOptions,
   getBracket,
-  KeyColumn,
   Name,
-  orderByNameASC,
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
   tableNamePart,
+  toForeignKeyPairs,
   toOrderName,
+  toSchemaEntities,
   toStringLiteral,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.PostgreSQL);
 
-export function createSchema(state: RootState): string {
-  const {
-    doc: { tableIds, relationshipIds, indexIds },
-    collections,
-  } = state;
+export function createSchema(
+  state: RootState,
+  tableIds?: readonly string[]
+): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
-  const tables = query(collections)
-    .collection('tableEntities')
-    .selectByIds(tableIds)
-    .sort(orderByNameASC);
-  const relationships = query(collections)
-    .collection('relationshipEntities')
-    .selectByIds(relationshipIds);
-  const indexes = query(collections)
-    .collection('indexEntities')
-    .selectByIds(indexIds);
+  const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
     formatTable(state, { table, buffer: stringBuffer });
@@ -57,12 +47,12 @@ export function createSchema(state: RootState): string {
   });
 
   relationships.forEach(relationship => {
-    formatRelation(state, {
+    const written = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
     });
-    stringBuffer.push('');
+    if (written) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -179,58 +169,41 @@ function formatComment(
 }
 
 function formatRelation(
-  { settings: { bracketType }, collections }: RootState,
+  state: RootState,
   { buffer, relationship, fkNames }: FormatRelationOptions
-) {
+): boolean {
+  const {
+    settings: { bracketType },
+  } = state;
+  const columns = toForeignKeyPairs(state, relationship);
+  if (!columns) return false;
+
+  const { startTable, endTable } = columns;
   const bracket = getBracket(bracketType);
-  const tableCollection = query(collections).collection('tableEntities');
-  const columnCollection = query(collections).collection('tableColumnEntities');
-  const startTable = tableCollection.selectById(relationship.start.tableId);
-  const endTable = tableCollection.selectById(relationship.end.tableId);
+  buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
-  if (startTable && endTable) {
-    buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
+  const startName = tableNamePart(startTable.name, bracketType);
+  const endName = tableNamePart(endTable.name, bracketType);
+  const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
+  fkNames.push({
+    id: uuid25(),
+    name: fkName,
+  });
 
-    const startName = tableNamePart(startTable.name, bracketType);
-    const endName = tableNamePart(endTable.name, bracketType);
-    const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
-    fkNames.push({
-      id: uuid25(),
-      name: fkName,
-    });
+  buffer.push(`  ADD CONSTRAINT ${bracket}${fkName}${bracket}`);
 
-    buffer.push(`  ADD CONSTRAINT ${bracket}${fkName}${bracket}`);
-
-    // key
-    const columns: KeyColumn = {
-      start: [],
-      end: [],
-    };
-    relationship.end.columnIds.forEach(columnId => {
-      const column = columnCollection.selectById(columnId);
-      if (column) {
-        columns.end.push(column);
-      }
-    });
-    relationship.start.columnIds.forEach(columnId => {
-      const column = columnCollection.selectById(columnId);
-      if (column) {
-        columns.start.push(column);
-      }
-    });
-
-    buffer.push(`    FOREIGN KEY (${formatNames(columns.end, bracket)})`);
-    buffer.push(
-      `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
-        columns.start,
-        bracket
-      )})`,
-      ...formatReferentialActions(relationship, ACTION_SUPPORT).map(
-        clause => `    ${clause}`
-      )
-    );
-    buffer[buffer.length - 1] += ';';
-  }
+  buffer.push(`    FOREIGN KEY (${formatNames(columns.end, bracket)})`);
+  buffer.push(
+    `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
+      columns.start,
+      bracket
+    )})`,
+    ...formatReferentialActions(relationship, ACTION_SUPPORT).map(
+      clause => `    ${clause}`
+    )
+  );
+  buffer[buffer.length - 1] += ';';
+  return true;
 }
 
 export function formatIndex(

@@ -155,6 +155,31 @@ describe('schema-sql/index', () => {
       expect(createSchemaSQL(state, 0)).toContain('AUTOINCREMENT');
     });
 
+    it.each([
+      ['MySQL', Database.MySQL],
+      ['MariaDB', Database.MariaDB],
+      ['PostgreSQL', Database.PostgreSQL],
+      ['MSSQL', Database.MSSQL],
+      ['Oracle', Database.Oracle],
+      ['Snowflake', Database.Snowflake],
+      ['Databricks', Database.Databricks],
+      ['SQLite', Database.SQLite],
+    ])(
+      'writes only the tables named and their indexes in %s',
+      (_, database) => {
+        const { state } = createFixture();
+
+        const users = createSchemaSQL(state, database, ['tbl-users']);
+        const posts = createSchemaSQL(state, database, ['tbl-posts']);
+
+        expect(users).toMatch(/CREATE TABLE \W?users/);
+        expect(users).not.toMatch(/CREATE TABLE \W?posts/);
+        expect(users).not.toContain('IDX_posts');
+        expect(posts).not.toMatch(/CREATE TABLE \W?users/);
+        expect(posts).toContain('IDX_posts');
+      }
+    );
+
     it('returns an empty string when settings.database is unsupported', () => {
       const { state } = createFixture();
       state.settings.database = 0;

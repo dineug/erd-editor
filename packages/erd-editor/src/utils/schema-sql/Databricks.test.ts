@@ -461,7 +461,7 @@ describe('schema-sql/Databricks', () => {
       expect(sql).toContain('  ADD CONSTRAINT `FK_users_TO_posts1`\n');
     });
 
-    it('emits empty key lists when the relationship columns cannot be resolved', () => {
+    it('skips a relationship none of whose columns resolve, blank line and all', () => {
       const { state } = createFixture();
       const relationship = state.collections.relationshipEntities['rel-1'];
       relationship.start.columnIds = ['ghost-start'];
@@ -469,8 +469,11 @@ describe('schema-sql/Databricks', () => {
 
       const sql = createSchema(state);
 
-      expect(sql).toContain('    FOREIGN KEY ()\n');
-      expect(sql).toContain('    REFERENCES `users` () NOT ENFORCED RELY;\n');
+      expect(sql).not.toContain('FOREIGN KEY');
+      expect(sql).toContain(
+        '-- Databricks does not support UNIQUE constraints: `users`.`name`\n\n' +
+          '-- Databricks has no secondary indexes.'
+      );
     });
 
     it('skips a relationship whose tables cannot be resolved', () => {

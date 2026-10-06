@@ -419,7 +419,7 @@ describe('schema-sql/MySQL', () => {
       expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts1\n');
     });
 
-    it('emits empty key lists when the relationship columns cannot be resolved', () => {
+    it('skips a relationship none of whose columns resolve, blank line and all', () => {
       const { state } = createFixture();
       const relationship = state.collections.relationshipEntities['rel-1'];
       relationship.start.columnIds = ['ghost-start'];
@@ -427,8 +427,10 @@ describe('schema-sql/MySQL', () => {
 
       const sql = createSchema(state);
 
-      expect(sql).toContain('    FOREIGN KEY ()\n');
-      expect(sql).toContain('    REFERENCES users ();\n');
+      expect(sql).not.toContain('FOREIGN KEY');
+      expect(sql).toContain(
+        '  ADD CONSTRAINT UQ_users_name UNIQUE (name);\n\nCREATE INDEX IDX_posts\n'
+      );
     });
 
     it('skips a relationship whose tables cannot be resolved', () => {
