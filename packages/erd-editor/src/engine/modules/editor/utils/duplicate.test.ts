@@ -454,7 +454,8 @@ describe('toCreateEntityActions', () => {
     );
 
     // The clipboard payload does carry ui.keys, so this is what keeps the
-    // foreign key badge on a copy coming from addColumnForeignKeyHook alone.
+    // foreign key badge on a copy stamped by validationForeignKeyHook alone,
+    // reading the relationships the document holds.
     const [add] = filterActions(actions, 'column.add');
 
     expect(add.payload).toEqual({ id: add.payload.id, tableId: tableIds[0] });

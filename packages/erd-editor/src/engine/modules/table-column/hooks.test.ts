@@ -1,8 +1,9 @@
 import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { Subject } from 'rxjs';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { createTestAppContext } from '@/__test-utils__';
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
@@ -11,34 +12,45 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import {
   addRelationshipAction,
+  changeRelationshipColumnsAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
+  removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { hooks } from '@/engine/modules/table-column/hooks';
+import type { RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
 import { bHas } from '@/utils/bit';
 
 const HookIndex = {
   changeColumnNotNull: 0,
-  addColumnForeignKey: 1,
-  removeColumnForeignKey: 2,
-  validationForeignKey: 3,
+  validationForeignKey: 1,
 } as const;
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 40));
+/** The microtasks a dispatch queues and the ones those queue, with no task between. */
+const microtasks = async () => {
+  for (let index = 0; index < 5; index++) await Promise.resolve();
+};
 
 type Runner = {
   store: Store;
   send: (index: number, action: AnyAction) => void;
+  /** How many times the hook at an index has read the state, once per run. */
+  runs: (index: number) => number;
   destroy: () => void;
 };
 
 const runners: Runner[] = [];
+const rxStores: RxStore[] = [];
 
 function setup(): Runner {
   const store = createStore({
@@ -46,8 +58,9 @@ function setup(): Runner {
     clock: new Clock(),
   });
   const subjects = hooks.map(() => new Subject<AnyAction>());
+  const reads = hooks.map(() => vi.fn(() => store.state));
   const subscriptions = hooks.map(([, effect], index) =>
-    effect(subjects[index], () => store.state, store.context)
+    effect(subjects[index], reads[index], store.context)
   );
   const patterns = hooks.map(([pattern]) => pattern.map(String));
 
@@ -64,6 +77,7 @@ function setup(): Runner {
   const runner: Runner = {
     store,
     send: (index, action) => subjects[index].next(action),
+    runs: index => reads[index].mock.calls.length,
     destroy: () => {
       subscriptions.forEach(subscription => subscription.unsubscribe());
       subjects.forEach(subject => subject.complete());
@@ -93,16 +107,25 @@ const isForeignKey = (store: Store, id: string) =>
 
 afterEach(() => {
   runners.splice(0, runners.length).forEach(runner => runner.destroy());
+  rxStores.splice(0).forEach(store => store.destroy());
 });
 
 describe('table-column hooks registration', () => {
-  it('registers four hooks against their trigger actions', () => {
-    expect(hooks).toHaveLength(4);
+  it('registers two hooks against their trigger actions', () => {
+    expect(hooks).toHaveLength(2);
     expect(hooks.map(([pattern]) => pattern.map(String))).toEqual([
       [String(changeColumnPrimaryKeyAction)],
-      [String(addRelationshipAction)],
-      [String(removeRelationshipAction)],
-      [String(loadJsonAction), String(initialLoadJsonAction)],
+      [
+        'relationship.add',
+        'relationship.remove',
+        'relationship.changeColumns',
+        'column.add',
+        'column.remove',
+        'table.add',
+        'table.remove',
+        String(loadJsonAction),
+        String(initialLoadJsonAction),
+      ],
     ]);
   });
 });
@@ -172,7 +195,7 @@ describe('changeColumnNotNullHook', () => {
   });
 });
 
-describe('addColumnForeignKeyHook', () => {
+describe('validationForeignKeyHook as a relationship is added', () => {
   it('marks the end columns of a new relationship as foreign keys', async () => {
     const { store } = setup();
     addTable(store, 't1', ['c1']);
@@ -199,7 +222,7 @@ describe('addColumnForeignKeyHook', () => {
     addTable(runner.store, 't2', ['c2']);
 
     runner.send(
-      HookIndex.addColumnForeignKey,
+      HookIndex.validationForeignKey,
       addRelationshipAction({
         id: 'unregistered',
         relationshipType: 4,
@@ -213,7 +236,7 @@ describe('addColumnForeignKeyHook', () => {
   });
 });
 
-describe('removeColumnForeignKeyHook', () => {
+describe('validationForeignKeyHook as a relationship is removed', () => {
   it('clears the foreign-key flag once the relationship is gone', async () => {
     const { store } = setup();
     addTable(store, 't1', ['c1']);
@@ -252,7 +275,7 @@ describe('removeColumnForeignKeyHook', () => {
     await settle();
 
     runner.send(
-      HookIndex.removeColumnForeignKey,
+      HookIndex.validationForeignKey,
       removeRelationshipAction({ id: 'r1' })
     );
     await settle();
@@ -265,7 +288,7 @@ describe('removeColumnForeignKeyHook', () => {
     addTable(runner.store, 't1', ['c1']);
 
     runner.send(
-      HookIndex.removeColumnForeignKey,
+      HookIndex.validationForeignKey,
       removeRelationshipAction({ id: 'ghost' })
     );
     await settle();
@@ -274,7 +297,7 @@ describe('removeColumnForeignKeyHook', () => {
   });
 });
 
-describe('validationForeignKeyHook', () => {
+describe('validationForeignKeyHook on load', () => {
   it('repairs stale and missing foreign-key flags on load', async () => {
     const runner = setup();
     const { store } = runner;
@@ -346,5 +369,198 @@ describe('validationForeignKeyHook', () => {
 
     expect(isForeignKey(store, 'c1')).toBe(false);
     expect(isForeignKey(store, 'c2')).toBe(true);
+  });
+});
+
+describe('validationForeignKeyHook reading the document whole', () => {
+  const relate = (id: string, startColumnId: string, endColumnId: string) =>
+    addRelationshipAction({
+      id,
+      relationshipType: 4,
+      start: { tableId: 't1', columnIds: [startColumnId] },
+      end: { tableId: 't2', columnIds: [endColumnId] },
+    });
+
+  const remap = (id: string, startColumnId: string, endColumnId: string) =>
+    changeRelationshipColumnsAction({
+      id,
+      start: { tableId: 't1', columnIds: [startColumnId] },
+      end: { tableId: 't2', columnIds: [endColumnId] },
+    });
+
+  /**
+   * A store whose dispatches take the next version, as an editor's do, so a
+   * table or column removed and added back lands in its table again.
+   */
+  function createVersionedStore() {
+    const { store } = createTestAppContext();
+    rxStores.push(store);
+    const isKey = (id: string) =>
+      bHas(
+        store.state.collections.tableColumnEntities[id].ui.keys,
+        ColumnUIKey.foreignKey
+      );
+    store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addColumnAction({ id: 'p1', tableId: 't1' }),
+      addColumnAction({ id: 'p2', tableId: 't1' }),
+      addTableAction({ id: 't2', ui: { x: 600, y: 0, zIndex: 2 } }),
+      addColumnAction({ id: 'c1', tableId: 't2' })
+    );
+    return { store, isKey };
+  }
+
+  it('keeps a column two relationships end on a foreign key once one of them is removed', async () => {
+    const { store } = setup();
+    addTable(store, 't1', ['p1', 'p2']);
+    addTable(store, 't2', ['shared']);
+    store.dispatchSync(
+      relate('r1', 'p1', 'shared'),
+      relate('r2', 'p2', 'shared')
+    );
+    await settle();
+
+    store.dispatchSync(removeRelationshipAction({ id: 'r1' }));
+    await settle();
+
+    expect(isForeignKey(store, 'shared')).toBe(true);
+  });
+
+  it('moves the flag with a remap, off the column left behind and onto the new one', async () => {
+    const { store } = setup();
+    addTable(store, 't1', ['p1']);
+    addTable(store, 't2', ['old', 'new']);
+    store.dispatchSync(relate('r1', 'p1', 'old'));
+    await settle();
+
+    store.dispatchSync(remap('r1', 'p1', 'new'));
+    await settle();
+
+    expect(isForeignKey(store, 'old')).toBe(false);
+    expect(isForeignKey(store, 'new')).toBe(true);
+  });
+
+  it('keeps a shared end column a foreign key through a remap onto a new column and its undo', async () => {
+    // The undo of such a remap removes the new column and puts the lists back
+    // in one batch; reading one relationship's ends at a time, a peer cleared
+    // the column the other relationship still ended on.
+    const { store, isKey } = createVersionedStore();
+    store.dispatchSync(relate('r1', 'p1', 'c1'), relate('r2', 'p2', 'c1'));
+    await settle();
+
+    store.dispatchSync(
+      addColumnAction({ id: 'new', tableId: 't2' }),
+      remap('r1', 'p1', 'new')
+    );
+    await settle();
+    expect([isKey('c1'), isKey('new')]).toEqual([true, true]);
+
+    store.undo();
+    await settle();
+
+    expect(store.state.collections.tableEntities.t2.columnIds).toEqual(['c1']);
+    expect(
+      store.state.collections.relationshipEntities.r1.end.columnIds
+    ).toEqual(['c1']);
+    expect(isKey('c1')).toBe(true);
+  });
+
+  it('marks a column a relationship came to end on while it was out of its table once it is back', async () => {
+    // A peer's relationship can reach a column another peer has just removed,
+    // whose undo then brings the column back under it.
+    const { store, isKey } = createVersionedStore();
+    store.dispatchSync(removeColumnAction({ id: 'c1', tableId: 't2' }));
+    store.dispatchSync(relate('r1', 'p1', 'c1'));
+    await settle();
+    expect(isKey('c1')).toBe(false);
+
+    store.dispatchSync(addColumnAction({ id: 'c1', tableId: 't2' }));
+    await settle();
+
+    expect(isKey('c1')).toBe(true);
+  });
+
+  it('marks the columns of a table a relationship ends on once the table is back', async () => {
+    const { store, isKey } = createVersionedStore();
+    store.dispatchSync(removeTableAction({ id: 't2' }));
+    store.dispatchSync(relate('r1', 'p1', 'c1'));
+    await settle();
+    expect(isKey('c1')).toBe(false);
+
+    store.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 600, y: 0, zIndex: 2 } })
+    );
+    await settle();
+
+    expect(isKey('c1')).toBe(true);
+  });
+
+  it('clears the flag of a column taken out of its table while a relationship still ends on it', async () => {
+    // The removed column stays in the file until the next load; a bit kept
+    // as it was hung on whether a peer heard the removal before the link.
+    const { store } = setup();
+    addTable(store, 't1', ['p1']);
+    addTable(store, 't2', ['c1']);
+    store.dispatchSync(relate('r1', 'p1', 'c1'));
+    await settle();
+    expect(isForeignKey(store, 'c1')).toBe(true);
+
+    store.dispatchSync(removeColumnAction({ id: 'c1', tableId: 't2' }));
+    await settle();
+
+    expect(store.state.doc.relationshipIds).toEqual(['r1']);
+    expect(isForeignKey(store, 'c1')).toBe(false);
+  });
+
+  it('clears the flags of the columns of a removed table while a relationship still ends on them', async () => {
+    const { store } = setup();
+    addTable(store, 't1', ['p1']);
+    addTable(store, 't2', ['c1']);
+    store.dispatchSync(relate('r1', 'p1', 'c1'));
+    await settle();
+
+    store.dispatchSync(removeTableAction({ id: 't2' }));
+    await settle();
+
+    expect(store.state.doc.relationshipIds).toEqual(['r1']);
+    expect(isForeignKey(store, 'c1')).toBe(false);
+  });
+
+  it('marks only the column a relationship ends on in its own end table', async () => {
+    const { store } = setup();
+    addTable(store, 't1', ['p1']);
+    addTable(store, 't2', ['c1']);
+    store.dispatchSync(
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: 4,
+        start: { tableId: 't2', columnIds: ['c1'] },
+        end: { tableId: 't1', columnIds: ['c1'] },
+      })
+    );
+    await settle();
+
+    expect(isForeignKey(store, 'c1')).toBe(false);
+  });
+
+  it('reads the document once for a paste of five hundred columns, in the microtask after it', async () => {
+    const runner = setup();
+    const { store } = runner;
+    addTable(store, 't1', ['p1']);
+    await settle();
+    const before = runner.runs(HookIndex.validationForeignKey);
+    const columnIds = Array.from({ length: 500 }, (_, index) => `c${index}`);
+    const related = columnIds.slice(0, 10);
+
+    store.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 0, y: 0, zIndex: 2 } }),
+      ...columnIds.map(id => addColumnAction({ id, tableId: 't2' })),
+      ...related.map(id => relate(`r-${id}`, 'p1', id))
+    );
+    expect(runner.runs(HookIndex.validationForeignKey)).toBe(before);
+    await microtasks();
+
+    expect(runner.runs(HookIndex.validationForeignKey)).toBe(before + 1);
+    expect(columnIds.filter(id => isForeignKey(store, id))).toEqual(related);
   });
 });

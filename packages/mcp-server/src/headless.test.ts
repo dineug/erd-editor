@@ -362,9 +362,9 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
     const session = JSON.parse(
       await mcp.text('erd_read', { path: DOCUMENT, format: 'json' })
     );
-    // The placement alone: identification and startRelationshipType follow the
-    // session's load too, behind a 10 ms throttle, so a link inside that window
-    // gets them changed in the session after its write.
+    // The placement alone: a link wakes identification and
+    // startRelationshipType behind a 10 ms throttle, so the session recomputes
+    // them after its write; the file keeps the defaults until the next write.
     expect(placements(onDisk())).toEqual(placements(session));
 
     await mcp.ok('erd_undo', { path: DOCUMENT });

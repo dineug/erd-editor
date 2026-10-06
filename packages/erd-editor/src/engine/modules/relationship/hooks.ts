@@ -43,6 +43,7 @@ import {
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   addRelationshipAction,
+  changeRelationshipColumnsAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import {
@@ -79,11 +80,18 @@ import { invalidateTableWidths } from '@/utils/calcTable';
 import type { ViewSource } from '@/utils/draw-relationship/geometrySource';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-/** The columns a relationship ends on that its end table still holds. */
+/**
+ * The columns a relationship ends on that are still in the document: its end
+ * table is in the document and holds them. A removed table keeps its entity,
+ * and the columns it held with it.
+ */
 function selectEndColumns(
   collections: Collections,
+  hasTable: (id: string) => boolean,
   { end }: Relationship
 ): Column[] {
+  if (!hasTable(end.tableId)) return [];
+
   const table = query(collections)
     .collection('tableEntities')
     .selectById(end.tableId);
@@ -96,21 +104,31 @@ function selectEndColumns(
     .filter(column => has(column.id));
 }
 
-/**
- * Marks each relationship identifying when every column it ends on is a primary
- * key. A load reads it off the columns again, as a key edit or a removal does.
- */
-export function recalculateIdentification({ doc, collections }: RootState) {
-  const collection = query(collections).collection('relationshipEntities');
-  const relationships = collection.selectByIds(doc.relationshipIds);
+/** Each relationship in the document with the columns it still ends on. */
+function* endColumnsOf({ doc, collections }: RootState) {
+  const hasTable = arrayHas(doc.tableIds);
+  const relationships = query(collections)
+    .collection('relationshipEntities')
+    .selectByIds(doc.relationshipIds);
 
   for (const relationship of relationships) {
-    const columns = selectEndColumns(collections, relationship);
-    if (!columns.length) continue;
+    yield [
+      relationship,
+      selectEndColumns(collections, hasTable, relationship),
+    ] as const;
+  }
+}
 
-    const value = columns.every(column =>
-      bHas(column.options, ColumnOption.primaryKey)
-    );
+/**
+ * Marks each relationship identifying when every column it ends on is a primary
+ * key, and not identifying, as a new one starts, once none of them is left, so
+ * the value follows the document whatever order a peer's actions arrive in.
+ */
+export function recalculateIdentification(state: RootState) {
+  for (const [relationship, columns] of endColumnsOf(state)) {
+    const value =
+      columns.length !== 0 &&
+      columns.every(column => bHas(column.options, ColumnOption.primaryKey));
 
     if (value !== relationship.identification) {
       relationship.identification = value;
@@ -120,19 +138,11 @@ export function recalculateIdentification({ doc, collections }: RootState) {
 
 /**
  * Starts each relationship dashed when every column it ends on is not null and
- * ringed otherwise, read off the columns as the identification is.
+ * ringed otherwise, read off the columns as the identification is; one with no
+ * end column left is dashed, as a new one starts.
  */
-export function recalculateStartRelationshipType({
-  doc,
-  collections,
-}: RootState) {
-  const collection = query(collections).collection('relationshipEntities');
-  const relationships = collection.selectByIds(doc.relationshipIds);
-
-  for (const relationship of relationships) {
-    const columns = selectEndColumns(collections, relationship);
-    if (!columns.length) continue;
-
+export function recalculateStartRelationshipType(state: RootState) {
+  for (const [relationship, columns] of endColumnsOf(state)) {
     const value = columns.every(column =>
       bHas(column.options, ColumnOption.notNull)
     )
@@ -280,6 +290,11 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [changeTableCommentAction.type]: idOf,
   [addRelationshipAction.type]: idOf,
   [removeRelationshipAction.type]: idOf,
+  [changeRelationshipColumnsAction.type]: ({ id, start, end }) => [
+    id,
+    start.tableId,
+    end.tableId,
+  ],
   [moveTableAction.type]: idsOf,
   [viewMoveTableAction.type]: idsOf,
   [addColumnAction.type]: tableIdOf,
@@ -371,6 +386,7 @@ const layoutActions = [
   changeMaxWidthCommentAction,
   addRelationshipAction,
   removeRelationshipAction,
+  changeRelationshipColumnsAction,
   moveMemoAction,
   // Routing reads every table in the document, not only the two a
   // relationship connects, so the set of tables is part of its input: a
@@ -416,25 +432,43 @@ const viewLayoutActions = [
   viewSetCentersAction,
 ];
 
+/**
+ * What can change the columns a relationship ends on or the flags it reads off
+ * them: an end column or its table removed or back by an undo, a peer or an
+ * agent, a relationship made or remapped, a key flag, and a load.
+ */
+const identificationActions = [
+  addColumnAction,
+  removeColumnAction,
+  changeColumnPrimaryKeyAction,
+  addRelationshipAction,
+  changeRelationshipColumnsAction,
+  addTableAction,
+  removeTableAction,
+  loadJsonAction,
+  initialLoadJsonAction,
+];
+
+/**
+ * The same with the not null flag added. The key flag stays, since a key
+ * turned on turns not null on with no action of its own.
+ */
+const startRelationshipActions = [
+  addColumnAction,
+  removeColumnAction,
+  changeColumnNotNullAction,
+  changeColumnPrimaryKeyAction,
+  addRelationshipAction,
+  changeRelationshipColumnsAction,
+  addTableAction,
+  removeTableAction,
+  loadJsonAction,
+  initialLoadJsonAction,
+];
+
 export const hooks: Hook[] = [
-  [
-    [
-      removeColumnAction,
-      changeColumnPrimaryKeyAction,
-      loadJsonAction,
-      initialLoadJsonAction,
-    ],
-    identificationHook,
-  ],
-  [
-    [
-      removeColumnAction,
-      changeColumnNotNullAction,
-      loadJsonAction,
-      initialLoadJsonAction,
-    ],
-    startRelationshipHook,
-  ],
+  [identificationActions, identificationHook],
+  [startRelationshipActions, startRelationshipHook],
   [layoutActions, relationshipSortHook],
   [
     [...layoutActions, ...viewRowActions, ...viewLayoutActions],

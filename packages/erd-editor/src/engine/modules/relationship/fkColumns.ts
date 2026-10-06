@@ -1,5 +1,7 @@
+import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 
+import { ColumnOption } from '@/constants/schema';
 import {
   addColumnAction,
   changeColumnCommentAction,
@@ -8,7 +10,9 @@ import {
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { Column } from '@/internal-types';
+import type { RootState } from '@/engine/state';
+import { Column, Table } from '@/internal-types';
+import { bHas } from '@/utils/bit';
 
 import { toReferenceDataType } from './referenceType';
 
@@ -24,7 +28,22 @@ export type ForeignKeyContext = {
   database: number;
 };
 
-const toNameKey = (name: string) => name.trim().toLowerCase();
+/**
+ * The columns a relationship drawn from a table copies into the table it ends
+ * on, the start table's primary key in column order, which a press on a table
+ * and the + button beside it both read.
+ */
+export const getStartKeyColumns = (
+  collections: RootState['collections'],
+  startTable: Table
+): Column[] =>
+  query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(startTable.columnIds)
+    .filter(({ options }) => bHas(options, ColumnOption.primaryKey));
+
+/** A name as two names compare: trimmed, without case. */
+export const toNameKey = (name: string) => name.trim().toLowerCase();
 
 /** Letters, marks and digits only; any other character splits words. */
 const WORD_CHARACTERS = /^[\p{L}\p{M}\p{N}]+$/u;
@@ -54,7 +73,7 @@ export const isSingleWord = (name: string) =>
  * is a single word other than the table name, compared without case; a blank
  * table name, or a key name of several words, leaves the key name alone.
  */
-function prefixKeyName(tableName: string, keyName: string): string {
+export function prefixKeyName(tableName: string, keyName: string): string {
   const table = tableName.trim();
   const key = keyName.trim();
   if (!table || !isSingleWord(key) || toNameKey(key) === toNameKey(table)) {

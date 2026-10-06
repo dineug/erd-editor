@@ -20,7 +20,10 @@ import {
   addRelationshipAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
-import { toForeignKeyActions } from '@/engine/modules/relationship/fkColumns';
+import {
+  getStartKeyColumns,
+  toForeignKeyActions,
+} from '@/engine/modules/relationship/fkColumns';
 import {
   addColumnAction,
   changeColumnAutoIncrementAction,
@@ -153,15 +156,21 @@ export const selectTableAction$ = (
         drawRelationship.start.tableId
       );
       const endTable = tableCollection.selectById(id);
-      if (!startTable || !endTable) return;
+      // A draw left armed with no table or key to start from would hold the
+      // pointer in draw mode until Escape, so a press it cannot close ends it.
+      if (!startTable || !endTable) {
+        yield drawEndRelationshipAction();
+        return;
+      }
 
       const columnCollection = query(collections).collection(
         'tableColumnEntities'
       );
-      const startColumns = columnCollection
-        .selectByIds(startTable.columnIds)
-        .filter(({ options }) => bHas(options, ColumnOption.primaryKey));
-      if (!startColumns.length) return;
+      const startColumns = getStartKeyColumns(collections, startTable);
+      if (!startColumns.length) {
+        yield drawEndRelationshipAction();
+        return;
+      }
 
       const endColumnIds = startColumns.map(() => uuid25());
 

@@ -177,6 +177,9 @@ afterEach(() => {
   mounted?.unmount();
   mounted = null;
   api = null;
+  // A table add wakes the relationship hooks' 10 ms throttle, which would
+  // otherwise fire after the file's environment is gone.
+  app.store.destroy();
 });
 
 describe('useMinimapScroll', () => {

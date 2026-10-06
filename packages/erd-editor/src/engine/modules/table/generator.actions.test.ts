@@ -389,7 +389,7 @@ describe('selectTableAction$', () => {
     expect(columnOf(store, 'c1').dataType).toBe('SERIAL');
   });
 
-  it('stops after focusing when the end table does not exist', () => {
+  it('ends the draw after focusing when the end table does not exist', () => {
     seedTable(store, 't1');
     seedColumn(store, 't1', 'c1');
     store.dispatchSync(
@@ -402,10 +402,16 @@ describe('selectTableAction$', () => {
       'editor.select',
       'table.changeZIndex',
       'editor.focusTable',
+      'editor.drawEndRelationship',
     ]);
+
+    store.dispatchSync(selectTableAction$('ghost', false));
+
+    expect(store.state.editor.drawRelationship).toBeNull();
+    expect(store.state.doc.relationshipIds).toEqual([]);
   });
 
-  it('stops after focusing when the start table does not exist', () => {
+  it('ends the draw after focusing when the start table does not exist', () => {
     seedTable(store, 't1');
     seedColumn(store, 't1', 'c1');
     store.dispatchSync(
@@ -430,10 +436,11 @@ describe('selectTableAction$', () => {
       'editor.select',
       'table.changeZIndex',
       'editor.focusTable',
+      'editor.drawEndRelationship',
     ]);
   });
 
-  it('stops after focusing when the start table has no primary key', () => {
+  it('ends the draw after focusing when the start table has no primary key', () => {
     seedTable(store, 't1');
     seedColumn(store, 't1', 'c1');
     seedTable(store, 't2');
@@ -444,12 +451,36 @@ describe('selectTableAction$', () => {
       'editor.select',
       'table.changeZIndex',
       'editor.focusTable',
+      'editor.drawEndRelationship',
     ]);
 
     store.dispatchSync(selectTableAction$('t2', false));
 
     expect(tableOf(store, 't2').columnIds).toEqual([]);
     expect(store.state.doc.relationshipIds).toEqual([]);
+    expect(store.state.editor.drawRelationship).toBeNull();
+  });
+
+  it('ends the draw when the start key goes after the draw started', () => {
+    seedTable(store, 't1');
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(
+      changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c1', value: true })
+    );
+    seedTable(store, 't2');
+    startDrawingFrom('t1');
+    // A peer, an undo or Alt+K takes the key away while the draw is armed.
+    store.dispatchSync(
+      changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c1', value: false })
+    );
+    expect(store.state.editor.drawRelationship?.start?.tableId).toBe('t1');
+
+    store.dispatchSync(selectTableAction$('t2', false));
+
+    expect(store.state.editor.drawRelationship).toBeNull();
+    expect(tableOf(store, 't2').columnIds).toEqual([]);
+    expect(store.state.doc.relationshipIds).toEqual([]);
+    expect(store.state.editor.selectedMap).toEqual({ t2: SelectType.table });
   });
 });
 

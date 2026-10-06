@@ -23,7 +23,11 @@ import {
   changeIndexUniqueAction,
 } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
-import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  changeRelationshipColumnsAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
 import {
   changeCanvasTypeAction,
@@ -157,6 +161,7 @@ describe('the view sort hook registration', () => {
     const [viewPattern, effect] = hooks[3];
 
     expect(typeof effect).toBe('function');
+    expect(documentPattern.map(String)).toContain('relationship.changeColumns');
     expect(viewPattern.map(String)).toEqual([
       ...documentPattern.map(String),
       'column.changePrimaryKey',
@@ -435,6 +440,75 @@ describe('the view sort hook on the document actions', () => {
       expect(sorts('document')).toBe(documentSorts);
     }
   );
+
+  /**
+   * A view on the key rows shows every column a relationship ends on, so a
+   * remap onto more columns of a shown table adds rows to its box.
+   */
+  it('sorts the view when a remap changes the key rows of a table it shows', async () => {
+    const store = createScene();
+    const { state } = store;
+    for (const id of ['t1', 't2']) {
+      state.collections.tableColumnEntities[`c-${id}-b`] = createColumn({
+        id: `c-${id}-b`,
+        tableId: id,
+        name: `c-${id}-b`,
+      });
+      state.collections.tableEntities[id].columnIds.push(`c-${id}-b`);
+    }
+    await openFocused(store);
+    const relationship = relationshipOf(store);
+    const before = getAnchors(relationship, 'flow').end.y;
+
+    store.dispatchSync(
+      shared(
+        changeRelationshipColumnsAction({
+          id: 'r12',
+          start: { tableId: 't1', columnIds: ['c-t1', 'c-t1-b'] },
+          end: { tableId: 't2', columnIds: ['c-t2', 'c-t2-b'] },
+        })
+      )
+    );
+    await settle();
+
+    expect(sorts('flow')).toBe(1);
+    expect(sorts('document')).toBe(1);
+    expect(getAnchors(relationship, 'flow').end.y).toBeGreaterThan(before);
+  });
+
+  it('does not sort the view for a remap between tables outside it', async () => {
+    const store = createScene();
+    const { state } = store;
+    state.collections.tableColumnEntities['c-t3-b'] = createColumn({
+      id: 'c-t3-b',
+      tableId: 't3',
+      name: 'c-t3-b',
+    });
+    state.collections.tableEntities.t3.columnIds.push('c-t3-b');
+    store.dispatchSync(
+      addRelationshipAction({
+        id: 'r33',
+        relationshipType: 4,
+        start: { tableId: 't3', columnIds: ['c-t3'] },
+        end: { tableId: 't3', columnIds: ['c-t3'] },
+      })
+    );
+    await openFocused(store);
+
+    store.dispatchSync(
+      shared(
+        changeRelationshipColumnsAction({
+          id: 'r33',
+          start: { tableId: 't3', columnIds: ['c-t3'] },
+          end: { tableId: 't3', columnIds: ['c-t3-b'] },
+        })
+      )
+    );
+    await settle();
+
+    expect(sorts('flow')).toBe(0);
+    expect(sorts('document')).toBe(1);
+  });
 
   /** AC-13. A neighbour leaving the view is a change to what it shows, though its id has already left. */
   it('sorts the view when a connector it showed is removed', async () => {
