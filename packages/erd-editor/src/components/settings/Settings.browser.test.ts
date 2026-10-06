@@ -77,20 +77,26 @@ async function setup(locale?: 'de-DE') {
 }
 
 describe('Settings lock rows in the browser', () => {
-  it("moves only a long value's own button along, the names' column at 140px", async () => {
-    const [view, ...rest] = await setup();
+  it("moves only a long value's own button along, the names sharing one column", async () => {
+    const rows = await setup();
+    const [view, ...rest] = rows;
     const start = view.name.left;
+    const column = view.name.width;
+    // The font the platform resolves sets the longest English name, which
+    // fits 140px on a Mac and runs past it in the Linux CI fonts.
+    const longest = Math.max(...rows.map(row => row.nameText.width));
 
+    expect(column).toBeCloseTo(Math.max(140, longest + 12), 0);
     expect(view.value.textContent?.trim()).toBe('150% · -1.2k, -3.5k');
     expect(view.value.getBoundingClientRect().width).toBeGreaterThan(120);
-    for (const row of [view, ...rest]) {
-      expect(row.name.width).toBe(140);
-      expect(row.value.getBoundingClientRect().left).toBe(start + 140);
+    for (const row of rows) {
+      expect(row.name.width).toBe(column);
+      expect(row.value.getBoundingClientRect().left).toBe(start + column);
     }
     for (const row of rest) {
-      expect(row.button.left).toBe(start + 140 + 120 + 8);
+      expect(row.button.left).toBe(start + column + 120 + 8);
     }
-    expect(view.button.left).toBeGreaterThan(start + 140 + 120 + 8);
+    expect(view.button.left).toBeGreaterThan(start + column + 120 + 8);
   });
 
   it('widens the names to the longest in a longer language, so no name runs into its value', async () => {
