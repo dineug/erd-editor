@@ -1,4 +1,5 @@
 import { createCommand } from './bridge';
+import { type LocaleSetting } from './locale';
 import { type Appearance, type ThemeOptions } from './theme';
 
 type Base64 = string;
@@ -36,6 +37,9 @@ export const hostSaveReplicationCommand = createCommand<{
 export const hostSaveThemeCommand = createCommand<ThemeOptions>(
   'hostSaveThemeCommand'
 );
+export const hostSaveLocaleCommand = createCommand<{
+  locale: LocaleSetting;
+}>('hostSaveLocaleCommand');
 
 export const webviewImportFileCommand = createCommand<{
   type: 'json' | 'sql' | 'graphql' | 'dbml' | 'aml';
@@ -52,6 +56,11 @@ export const webviewUpdateThemeCommand = createCommand<
     systemAppearance?: Appearance;
   }
 >('webviewUpdateThemeCommand');
+export const webviewUpdateLocaleCommand = createCommand<{
+  locale: LocaleSetting;
+  /** What auto follows, the host's UI language as a BCP 47 tag; left out, the page keeps the one it has. */
+  systemLocale?: string;
+}>('webviewUpdateLocaleCommand');
 export const webviewUpdateReadonlyCommand = createCommand<boolean>(
   'webviewUpdateReadonlyCommand'
 );
