@@ -417,3 +417,76 @@ describe('getDataTypeSyncColumns and serial keys', () => {
     expect(result).toEqual([target, payload('c1', 't1', 'bigint')]);
   });
 });
+
+describe('getDataTypeSyncColumns over the relationships it is handed', () => {
+  it('follows a relationship the document does not hold yet', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    addTable(store, 't2', ['c2']);
+
+    const target = payload('c1', 't1', 'int');
+    const result = getDataTypeSyncColumns(
+      [target],
+      store.state,
+      [],
+      [
+        {
+          start: { tableId: 't1', columnIds: ['c1'] },
+          end: { tableId: 't2', columnIds: ['c2'] },
+        },
+      ]
+    );
+
+    expect(result).toEqual([target, payload('c2', 't2', 'int')]);
+  });
+
+  it('follows no relationship of the document left out of the list', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    addTable(store, 't2', ['c2', 'c3']);
+    addRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] }
+    );
+    const relationship = store.state.collections.relationshipEntities.r1;
+
+    const target = payload('c1', 't1', 'int');
+    const result = getDataTypeSyncColumns(
+      [target],
+      store.state,
+      [],
+      [
+        {
+          start: relationship.start,
+          end: { ...relationship.end, columnIds: ['c3'] },
+        },
+      ]
+    );
+
+    expect(result).toEqual([target, payload('c3', 't2', 'int')]);
+  });
+
+  it('reads the document relationships when the list is left out', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    addTable(store, 't2', ['c2']);
+    addRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] }
+    );
+
+    const target = payload('c1', 't1', 'int');
+
+    expect(getDataTypeSyncColumns([target], store.state, [], [])).toEqual([
+      target,
+    ]);
+    expect(getDataTypeSyncColumns([target], store.state)).toEqual([
+      target,
+      payload('c2', 't2', 'int'),
+    ]);
+  });
+});

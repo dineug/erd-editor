@@ -19,6 +19,19 @@ export type FindReplaceQuery = {
   fields: FindField[];
 };
 
+/**
+ * What Map Columns opens on: a relationship drawn between two tables and not
+ * made yet, or one the document holds whose columns it changes.
+ */
+export type MapColumnsOpening =
+  | {
+      mode: 'create';
+      startTableId: string;
+      endTableId: string;
+      relationshipType: number;
+    }
+  | { mode: 'edit'; relationshipId: string };
+
 const InternalActionType = {
   openColorPicker: 'openColorPicker',
   closeColorPicker: 'closeColorPicker',
@@ -31,6 +44,7 @@ const InternalActionType = {
   toggleSearch: 'toggleSearch',
   openFindReplace: 'openFindReplace',
   openExportImage: 'openExportImage',
+  openMapColumns: 'openMapColumns',
   openThemeBuilder: 'openThemeBuilder',
   setThemeOptions: 'setThemeOptions',
   openLocalePicker: 'openLocalePicker',
@@ -69,6 +83,7 @@ type InternalActionMap = {
   [InternalActionType.toggleSearch]: void;
   [InternalActionType.openFindReplace]: FindReplaceQuery | void;
   [InternalActionType.openExportImage]: void;
+  [InternalActionType.openMapColumns]: MapColumnsOpening;
   [InternalActionType.openThemeBuilder]: void;
   [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
   [InternalActionType.openLocalePicker]: void;
@@ -166,6 +181,10 @@ export const openFindReplaceAction = createAction<
 export const openExportImageAction = createAction<
   InternalActionMap[typeof InternalActionType.openExportImage]
 >(InternalActionType.openExportImage);
+
+export const openMapColumnsAction = createAction<
+  InternalActionMap[typeof InternalActionType.openMapColumns]
+>(InternalActionType.openMapColumns);
 
 export const openThemeBuilderAction = createAction<
   InternalActionMap[typeof InternalActionType.openThemeBuilder]

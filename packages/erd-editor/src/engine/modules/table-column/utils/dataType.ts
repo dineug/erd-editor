@@ -7,24 +7,34 @@ import {
 import { ChangeColumnValuePayload } from '@/engine/modules/table-column/actions';
 import { RootState } from '@/engine/state';
 
+type DataTypeSyncEnd = { tableId: string; columnIds: string[] };
+
+/** The two ends of a relationship, all the data type sync reads of one. */
+export type DataTypeSyncRelationship = {
+  start: DataTypeSyncEnd;
+  end: DataTypeSyncEnd;
+};
+
 /**
  * Drains the stack, listing each column its relationships reach once: a key
  * sends its foreign keys toReferenceDataType of its value, a foreign key sends
  * its key its value, unless the key is serial, which keeps it and stops there.
+ *
+ * @param relationships The relationships to follow, the document's by default;
+ * a caller about to change one hands the list as it will stand.
  */
 export function getDataTypeSyncColumns(
   stack: ChangeColumnValuePayload[],
   state: RootState,
-  payloads: ChangeColumnValuePayload[] = []
+  payloads: ChangeColumnValuePayload[] = [],
+  relationships: DataTypeSyncRelationship[] = query(state.collections)
+    .collection('relationshipEntities')
+    .selectByIds(state.doc.relationshipIds)
 ): ChangeColumnValuePayload[] {
   const {
-    doc: { relationshipIds },
     collections,
     settings: { database },
   } = state;
-  const relationships = query(collections)
-    .collection('relationshipEntities')
-    .selectByIds(relationshipIds);
   const columns = query(collections).collection('tableColumnEntities');
 
   for (let target = stack.pop(); target; target = stack.pop()) {

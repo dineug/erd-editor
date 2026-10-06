@@ -82,6 +82,7 @@ describe('the state the overlay stood on is gone', () => {
       'timeTravel',
       'findReplace',
       'exportImage',
+      'mapColumns',
     ]);
   });
 

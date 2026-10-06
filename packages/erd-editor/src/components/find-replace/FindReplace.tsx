@@ -298,6 +298,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
         [Open.themeBuilder]: false,
         [Open.exportImage]: false,
         [Open.localePicker]: false,
+        [Open.mapColumns]: false,
       })
     );
 

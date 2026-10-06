@@ -315,11 +315,14 @@ describe('useKeyBindingMap', () => {
   });
 
   it('takes $mod+KeyF under a dialog that only stands the panel aside', () => {
-    for (const key of [
+    const dialogs = [
       Open.tableProperties,
       Open.themeBuilder,
+      Open.exportImage,
       Open.localePicker,
-    ]) {
+      Open.mapColumns,
+    ];
+    for (const key of dialogs) {
       app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
       expect(
         press({ key: 'f', code: 'KeyF', mod: true }).defaultPrevented
@@ -327,11 +330,9 @@ describe('useKeyBindingMap', () => {
       app.store.dispatchSync(changeOpenMapAction({ [key]: false }));
     }
 
-    expect(shortcuts.map(({ type }) => type)).toEqual([
-      KeyBindingName.findReplace,
-      KeyBindingName.findReplace,
-      KeyBindingName.findReplace,
-    ]);
+    expect(shortcuts.map(({ type }) => type)).toEqual(
+      dialogs.map(() => KeyBindingName.findReplace)
+    );
   });
 
   it('reads Alt+KeyF as the Flow focus, never as find and replace', () => {

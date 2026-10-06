@@ -3,28 +3,44 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTouch,
   flush,
   mountAndFlush,
   Mounted,
   movePointer,
   releasePointer,
 } from '@/__test-utils__/index';
+import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
 import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import {
+  clearDrawTarget,
+  getTouchDrawTargetId,
+  setTouchDrawTarget,
+} from '@/components/erd/draw-target/drawTargetState';
+import {
   sceneSourceContext,
   useSceneSource,
 } from '@/components/sceneSourceContext';
-import { selectAction } from '@/engine/modules/editor/atom.actions';
+import { RelationshipType } from '@/constants/schema';
+import {
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  selectAction,
+} from '@/engine/modules/editor/atom.actions';
 import { SelectType, ViewKind } from '@/engine/modules/editor/state';
 import {
   viewChangeZoomLevelAction,
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  addTableAction,
+  moveToTableAction,
+} from '@/engine/modules/table/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import {
@@ -314,5 +330,183 @@ describe('useMoveEntity', () => {
     expect(selectedIds()).toEqual(['t2']);
     expect(isEntityDragActive(app.store.state)).toBe(false);
     expect(isViewFrozen(app.store.state)).toBe(false);
+  });
+});
+
+describe('useMoveEntity - a tap while a relationship is drawn', () => {
+  type TapProbeOptions = { entityId: string; selectType: SelectType };
+
+  let tapApi: Api;
+  let tapMounted: Mounted | null = null;
+
+  const TapProbe: FC<TapProbeOptions> = (props, ctx) => {
+    tapApi = useMoveEntity(ctx, {
+      entityId: () => props.entityId,
+      selectType: props.selectType,
+      blockedKinds: () => ['column'],
+      source: useSceneSource(ctx),
+    });
+
+    return () => html`<div class="tap-probe"></div>`;
+  };
+
+  const mountTap = async (
+    entityId = 't1',
+    selectType: SelectType = SelectType.table,
+    flow = false
+  ) => {
+    tapMounted?.unmount();
+    const probe = html`<${TapProbe}
+      .entityId=${entityId}
+      .selectType=${selectType}
+    />`;
+    tapMounted = await mountAndFlush(
+      flow
+        ? html`<div><${ViewScope} .children=${probe} /></div>`
+        : html`<div>${probe}</div>`,
+      app
+    );
+  };
+
+  /** A one finger tap the way the stage hands it on, reaching the window too. */
+  const tap = (): ScenePointerEvent => {
+    const evt = new TouchEvent('touchstart', {
+      touches: [{ clientX: 0, clientY: 0 }] as any,
+    });
+    window.dispatchEvent(evt);
+    return { target: sceneNode(), evt } as unknown as ScenePointerEvent;
+  };
+
+  /** A parent with a key the draw starts from, and the draw armed from it. */
+  const armDraw = () => {
+    seedMapTable(app.store, 'users', 'users', [
+      { id: 'users.id', name: 'id', primaryKey: true },
+    ]);
+    app.store.dispatchSync(
+      moveToTableAction({ id: 'users', x: 0, y: 600 }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.ZeroN }),
+      drawStartAddRelationshipAction({ tableId: 'users' })
+    );
+  };
+
+  afterEach(() => {
+    window.dispatchEvent(createTouch('touchend'));
+    tapMounted?.unmount();
+    tapMounted = null;
+    clearDrawTarget(app.store.state);
+  });
+
+  it('names the table on the first tap and neither selects nor lifts it', async () => {
+    armDraw();
+    await mountTap();
+
+    tapApi.onMoveStart(tap());
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBe('t1');
+    expect(selectedIds()).toEqual([]);
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+    expect(app.store.state.doc.relationshipIds).toEqual([]);
+  });
+
+  it('draws as a press does on a second tap on the same table', async () => {
+    armDraw();
+    await mountTap();
+
+    tapApi.onMoveStart(tap());
+    tapApi.onMoveStart(tap());
+    await flush();
+
+    expect(app.store.state.doc.relationshipIds).toHaveLength(1);
+    expect(app.store.state.editor.drawRelationship).toBeNull();
+  });
+
+  it('names another table instead on a tap on it', async () => {
+    armDraw();
+    await mountTap();
+    setTouchDrawTarget(app.store.state, 'users');
+
+    tapApi.onMoveStart(tap());
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBe('t1');
+    expect(app.store.state.doc.relationshipIds).toEqual([]);
+  });
+
+  it('selects as always while no draw has a table to start from', async () => {
+    app.store.dispatchSync(
+      drawStartRelationshipAction({ relationshipType: RelationshipType.ZeroN })
+    );
+    await mountTap();
+
+    tapApi.onMoveStart(tap());
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBeNull();
+    expect(selectedIds()).toEqual(['t1']);
+  });
+
+  it('draws at once for a mouse press, which has a hover to show the buttons', async () => {
+    armDraw();
+    await mountTap();
+
+    tapApi.onMoveStart(press());
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBeNull();
+    expect(app.store.state.doc.relationshipIds).toHaveLength(1);
+  });
+
+  it('lets a memo take its tap as always, letting go of a named table', async () => {
+    app.store.dispatchSync(
+      addMemoAction({
+        id: 'm1',
+        ui: { x: 0, y: 0, width: 100, height: 100, zIndex: 2 },
+      })
+    );
+    armDraw();
+    await mountTap('m1', SelectType.memo);
+    setTouchDrawTarget(app.store.state, 't1');
+
+    tapApi.onMoveStart(tap());
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBeNull();
+    expect(selectedIds()).toEqual(['m1']);
+  });
+
+  it('takes the tap as always in a read-only editor, which shows no buttons', async () => {
+    let readonly = false;
+    app = createTestAppContext({ getReadonly: () => readonly });
+    app.store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 300, y: 200, zIndex: 2 } })
+    );
+    armDraw();
+    await mountTap();
+    readonly = true;
+
+    tapApi.onMoveStart(tap());
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBeNull();
+    expect(selectedIds()).toEqual(['t1']);
+  });
+
+  it("leaves a Flow view's tables to their own taps while a draw is armed", async () => {
+    armDraw();
+    app.store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow, centerIds: ['t1'] }),
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: { t1: { x: 10, y: 20 } },
+      })
+    );
+    await mountTap('t1', SelectType.table, true);
+
+    tapApi.onMoveStart(tap());
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBeNull();
+    expect(app.store.state.doc.relationshipIds).toHaveLength(1);
   });
 });

@@ -19,7 +19,13 @@ import {
   mountAndFlush,
   Mounted,
 } from '@/__test-utils__/index';
+import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
+import {
+  getDrawTarget,
+  getTouchDrawTargetId,
+  setTouchDrawTarget,
+} from '@/components/erd/draw-target/drawTargetState';
 import Erd from '@/components/erd/Erd';
 import * as styles from '@/components/erd/Erd.styles';
 import {
@@ -34,11 +40,14 @@ import {
   changeHandToolAction,
   changeOpenMapAction,
   changeZenModeAction,
+  drawStartAddRelationshipAction,
   drawStartRelationshipAction,
   editTableAction,
   focusTableAction,
+  selectAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import {
   addMemoAction,
   changeMemoColorAction,
@@ -178,6 +187,7 @@ const DOM_GUARDS = [
   'edit-overlay',
   'edit-input',
   'context-menu-content',
+  'draw-target',
   'content-compass',
   'floating-toolbar',
   'minimap',
@@ -1638,5 +1648,106 @@ describe('Erd - welcome screen', () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(app.store.state.settings.zoomLevel).toBe(0.97);
+  });
+});
+
+describe('Erd - draw target buttons', () => {
+  /** A parent with a key, a child beside it and a draw started from the parent. */
+  const appDrawing = () => {
+    const app = createTestAppContext();
+    const { store } = app;
+    seedMapTable(store, 'users', 'users', [
+      { id: 'users.id', name: 'id', primaryKey: true },
+    ]);
+    seedMapTable(store, 'orders', 'orders');
+    store.dispatchSync(
+      moveToTableAction({ id: 'users', x: 100, y: 100 }),
+      moveToTableAction({ id: 'orders', x: 600, y: 100 }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.ZeroN }),
+      drawStartAddRelationshipAction({ tableId: 'users' })
+    );
+    return app;
+  };
+
+  /** A point just inside the child's top left corner, where the canvas root reads it. */
+  const overOrders = (app: AppContext) => {
+    const { ui } = app.store.state.collections.tableEntities.orders;
+    return { clientX: ui.x + 6, clientY: ui.y + 6 };
+  };
+
+  const showButtons = async () => {
+    const harness = await setup({}, appDrawing());
+    dispatchMouse(harness.root, 'mousemove', overOrders(harness.app));
+    await flush();
+
+    const buttons = harness.root.querySelector(
+      '.draw-target-buttons'
+    ) as HTMLElement;
+    expect(buttons).toBeTruthy();
+    return { ...harness, buttons };
+  };
+
+  const touchOn = (target: EventTarget) => {
+    const event = new TouchEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+      touches: [{ clientX: 1, clientY: 1 }] as any,
+    });
+    target.dispatchEvent(event);
+    window.dispatchEvent(new TouchEvent('touchend'));
+    return event;
+  };
+
+  it('mounts them over the canvas and under the chrome drawn after it', async () => {
+    const { root, buttons } = await showButtons();
+    const layer = buttons.closest('.draw-target-layer') as HTMLElement;
+    const children = Array.from(root.children);
+
+    expect(children.indexOf(layer)).toBeGreaterThan(
+      children.indexOf(
+        root.querySelector('[data-testid="erd-canvas"]')!.parentElement!
+      )
+    );
+    expect(children.indexOf(layer)).toBeLessThan(
+      children.indexOf(root.querySelector('.floating-toolbar')!)
+    );
+  });
+
+  it('keeps the selection and starts no pan on a press on them', async () => {
+    const { app, root, buttons } = await showButtons();
+    app.store.dispatchSync(selectAction({ users: SelectType.table }));
+
+    dispatchMouse(buttons, 'mousedown', { clientX: 10, clientY: 10 });
+    dispatchMouse(window, 'mousemove', { clientX: 90, clientY: 80 });
+    await flush();
+
+    expect(Object.keys(app.store.state.editor.selectedMap)).toEqual(['users']);
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(root.querySelector('.draw-target-buttons')).toBeTruthy();
+  });
+
+  it('lets go of a tapped table on a tap on the empty canvas', async () => {
+    const { app, root } = await setup({}, appDrawing());
+    setTouchDrawTarget(app.store.state, 'orders');
+    await flush();
+    expect(root.querySelector('.draw-target-buttons')).toBeTruthy();
+
+    touchOn(root);
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBeNull();
+    expect(root.querySelector('.draw-target-buttons')).toBeNull();
+  });
+
+  it('keeps it on a tap on its buttons, so the click that follows reaches them', async () => {
+    const { app, root } = await setup({}, appDrawing());
+    setTouchDrawTarget(app.store.state, 'orders');
+    await flush();
+
+    touchOn(root.querySelector('.draw-target-buttons')!);
+    await flush();
+
+    expect(getTouchDrawTargetId(app.store.state)).toBe('orders');
+    expect(getDrawTarget(app.store.state).targetId).toBeNull();
   });
 });

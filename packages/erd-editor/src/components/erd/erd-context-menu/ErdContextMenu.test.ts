@@ -44,6 +44,7 @@ import {
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import {
+  drawStartRelationshipAction,
   focusColumnAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -1221,8 +1222,84 @@ describe('ErdContextMenu / relationship type', () => {
       'Relationship Type',
       'On Delete',
       'On Update',
+      'Map Columns',
       'Delete',
     ]);
+  });
+
+  it('leaves Map Columns out of a readonly editor', async () => {
+    app = createTestAppContext({ getReadonly: () => true });
+    seedRelationship();
+    await mountMenu({
+      type: ErdContextMenuType.relationship,
+      relationshipId: RELATIONSHIP_ID,
+    });
+
+    expect(labelsOf(rootItems())).toEqual([
+      'Relationship Type',
+      'On Delete',
+      'On Update',
+      'Delete',
+    ]);
+  });
+
+  it('opens Map Columns on the relationship: the session first, then the open map', async () => {
+    seedRelationship();
+    const openings: unknown[] = [];
+    app.emitter.on({
+      openMapColumns: ({ payload }) => {
+        openings.push(payload);
+        expect(app.store.state.editor.openMap[Open.mapColumns]).toBeFalsy();
+      },
+    });
+    await mountMenu({
+      type: ErdContextMenuType.relationship,
+      relationshipId: RELATIONSHIP_ID,
+    });
+
+    await click(findItem(rootItems(), 'Map Columns'));
+
+    expect(openings).toEqual([
+      { mode: 'edit', relationshipId: RELATIONSHIP_ID },
+    ]);
+    expect(app.store.state.editor.openMap[Open.mapColumns]).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ends a draw still armed before it opens Map Columns, so its buttons do not come back once it closes', async () => {
+    seedRelationship();
+    app.store.dispatchSync(
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+    let armedAtOpening: unknown = 'not opened';
+    app.emitter.on({
+      openMapColumns: () => {
+        armedAtOpening = app.store.state.editor.drawRelationship;
+      },
+    });
+    await mountMenu({
+      type: ErdContextMenuType.relationship,
+      relationshipId: RELATIONSHIP_ID,
+    });
+
+    await click(findItem(rootItems(), 'Map Columns'));
+
+    expect(armedAtOpening).toBeNull();
+    expect(app.store.state.editor.drawRelationship).toBeNull();
+    expect(app.store.state.editor.openMap[Open.mapColumns]).toBe(true);
+  });
+
+  it('opens nothing from Map Columns without a relationship id', async () => {
+    seedRelationship();
+    const openings = vi.fn();
+    app.emitter.on({ openMapColumns: openings });
+    await mountMenu({ type: ErdContextMenuType.relationship });
+
+    await click(findItem(rootItems(), 'Map Columns'));
+
+    expect(openings).not.toHaveBeenCalled();
+    expect(app.store.state.editor.openMap[Open.mapColumns]).toBeFalsy();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -1556,6 +1633,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Relationship Type',
       'ko:On Delete',
       'ko:On Update',
+      'Map Columns',
       'ko:Delete',
     ]);
     expect(

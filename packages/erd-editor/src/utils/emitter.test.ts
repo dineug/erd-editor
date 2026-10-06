@@ -14,6 +14,7 @@ import {
   openExportImageAction,
   openFindReplaceAction,
   openLocalePickerAction,
+  openMapColumnsAction,
   openTablePropertiesAction,
   openThemeBuilderAction,
   openToastAction,
@@ -205,6 +206,12 @@ describe('action creators', () => {
       type: 'openExportImage',
       payload: undefined,
     });
+    expect(openMapColumnsAction({ mode: 'edit', relationshipId: 'r' })).toEqual(
+      {
+        type: 'openMapColumns',
+        payload: { mode: 'edit', relationshipId: 'r' },
+      }
+    );
     expect(openThemeBuilderAction()).toEqual({
       type: 'openThemeBuilder',
       payload: undefined,

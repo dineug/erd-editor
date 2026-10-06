@@ -7,6 +7,7 @@ import {
   isMouseEvent,
   isSecondaryButtonPress,
   isTouchEvent,
+  isTouchPress,
   onNumberOnly,
   onPrevent,
   onStop,
@@ -132,6 +133,13 @@ describe('isTouchEvent', () => {
 
   it('is false for a MouseEvent', () => {
     expect(isTouchEvent(new MouseEvent('mousedown'))).toBe(false);
+  });
+});
+
+describe('isTouchPress', () => {
+  it('reads a touch by its type, whatever constructed it', () => {
+    expect(isTouchPress(new Event('touchstart'))).toBe(true);
+    expect(isTouchPress(new MouseEvent('mousedown'))).toBe(false);
   });
 });
 

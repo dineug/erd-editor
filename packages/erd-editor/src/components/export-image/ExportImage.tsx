@@ -5,7 +5,9 @@ import { filter } from 'rxjs';
 import { useAppContext } from '@/components/appContext';
 import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
-import Dialog from '@/components/primitives/dialog/Dialog';
+import Dialog, {
+  DIALOG_STACK_BELOW,
+} from '@/components/primitives/dialog/Dialog';
 import Icon from '@/components/primitives/icon/Icon';
 import Switch from '@/components/primitives/switch/Switch';
 import { useThemeContext } from '@/components/themeContext';
@@ -45,9 +47,6 @@ export const PREVIEW_MAX_SIDE = 960;
 
 /** How long the toggles rest before the preview is drawn again. */
 export const PREVIEW_DEBOUNCE_MS = 200;
-
-/** The editor width under which the preview stands above the options. */
-export const STACK_BELOW = 640;
 
 const DIALOG_MAX_WIDTH = 888;
 
@@ -295,7 +294,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
 
     const { store, keyBindingMap } = app.value;
     const { t } = i18n.value;
-    const stacked = store.state.editor.viewport.width < STACK_BELOW;
+    const stacked = store.state.editor.viewport.width < DIALOG_STACK_BELOW;
     const size = view.measured
       ? getExportSize(
           { width: view.documentWidth, height: view.documentHeight },

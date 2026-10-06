@@ -258,6 +258,7 @@ describe('FindReplace opening and closing', () => {
         [Open.themeBuilder]: true,
         [Open.exportImage]: true,
         [Open.localePicker]: true,
+        [Open.mapColumns]: true,
       })
     );
 
@@ -272,6 +273,7 @@ describe('FindReplace opening and closing', () => {
     expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
     expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
+    expect(app.store.state.editor.openMap[Open.mapColumns]).toBe(false);
   });
 
   it('opens with the query it is handed, already searched', async () => {
