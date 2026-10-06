@@ -77,15 +77,16 @@ export function findAll({
   caseSensitive,
   findChunks: find = findChunks,
 }: FindAllArgs): Chunk[] {
+  const lit = combineRanges(
+    find({ searchWords, textToHighlight, caseSensitive })
+  );
   const chunks: Chunk[] = [];
   const append = (start: number, end: number, highlight: boolean) => {
     if (end > start) chunks.push({ start, end, highlight });
   };
   let lastIndex = 0;
 
-  for (const { start, end } of combineRanges(
-    find({ searchWords, textToHighlight, caseSensitive })
-  )) {
+  for (const { start, end } of lit) {
     append(lastIndex, start, false);
     append(start, end, true);
     lastIndex = end;

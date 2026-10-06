@@ -28,8 +28,11 @@ export function parseKeybinding(str: string): KeyBindingPress[] {
 }
 
 /** What AltGraph holds: Control and Alt on Windows, Option on an Apple device. */
-const altGraphAliases = (): string[] =>
-  hasWindows() ? ['Control', 'Alt'] : hasAppleDevice() ? ['Alt'] : [];
+function altGraphAliases(): string[] {
+  if (hasWindows()) return ['Control', 'Alt'];
+  if (hasAppleDevice()) return ['Alt'];
+  return [];
+}
 
 /**
  * Whether the modifier is held, AltGraph counting as the ones it aliases. A

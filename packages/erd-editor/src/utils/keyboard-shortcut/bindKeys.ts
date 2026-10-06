@@ -20,8 +20,8 @@ export function bindKeys(
   target: EventTarget,
   handlers: KeyBindingHandlers
 ): () => void {
-  const bindings = Object.keys(handlers).map(
-    shortcut => [parseKeybinding(shortcut), handlers[shortcut]] as const
+  const bindings = Object.entries(handlers).map(
+    ([shortcut, handler]) => [parseKeybinding(shortcut), handler] as const
   );
   const pending = new Map<KeyBindingPress[], KeyBindingPress[]>();
   let timer: ReturnType<typeof setTimeout> | undefined;
