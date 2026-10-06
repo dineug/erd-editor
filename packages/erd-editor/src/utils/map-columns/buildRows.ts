@@ -8,6 +8,7 @@ import { getColumnKeys } from '@/utils/tableKeys';
 import {
   CandidateKey,
   CURRENT_KEY_ID,
+  findColumnKey,
   getCandidateKeys,
   toCurrentKey,
 } from './candidateKeys';
@@ -23,6 +24,7 @@ import {
   repeatedIds,
   sameMembers,
   sameSet,
+  toColumnMapping,
 } from './mapping';
 import { prefillPicks } from './prefill';
 import { hasMappingIssues, MappingIssues, validateMapping } from './validate';
@@ -109,15 +111,24 @@ type MapState = Pick<RootState, 'doc' | 'collections' | 'settings'>;
 
 type RowsAndKey = { keyId: string | null; rows: MappingRow[] };
 
+/** The rows and key a dialog on a relationship shows, which always has a key. */
+type EditRowsAndKey = { keyId: string; rows: MappingRow[] };
+
+/** How a dialog opens on a stored mapping, with the References choices it offers. */
+type OpenedMapping = EditRowsAndKey & { keys: CandidateKey[] };
+
 const existing = (columnId: string): ColumnPick => ({
   kind: 'existing',
   columnId,
 });
 
-const toMapping = ({ start, end }: Relationship): ColumnMapping => ({
-  start: start.columnIds,
-  end: end.columnIds,
-});
+/** A row with no invalid field unless it is invalid. */
+const toMappingRow = (
+  parentColumnId: string | null,
+  pick: ColumnPick | null,
+  invalid: boolean | undefined
+): MappingRow =>
+  invalid ? { parentColumnId, pick, invalid } : { parentColumnId, pick };
 
 /**
  * The places of a stored mapping in their order, each place past the end of
@@ -139,9 +150,7 @@ function toPlaceRows({ start, end }: ColumnMapping): MappingRow[] {
         repeatedEnd.has(childId);
       const pick = childId === undefined ? null : existing(childId);
 
-      return invalid
-        ? { parentColumnId, pick, invalid }
-        : { parentColumnId, pick };
+      return toMappingRow(parentColumnId, pick, invalid);
     }
   );
 }
@@ -166,7 +175,7 @@ function toStoredPick(
 function openOnMapping(
   mapping: ColumnMapping,
   keys: CandidateKey[]
-): RowsAndKey & { keys: CandidateKey[] } {
+): OpenedMapping {
   const key = isNormalMapping(mapping)
     ? keys.find(({ columnIds }) => sameMembers(columnIds, mapping.start))
     : undefined;
@@ -237,8 +246,8 @@ function createRows(
 function editRows(
   session: EditMapColumnsSession,
   relationship: Relationship,
-  opened: RowsAndKey & { keys: CandidateKey[] }
-): RowsAndKey {
+  opened: OpenedMapping
+): EditRowsAndKey {
   if (!session.touched) return opened;
 
   const { picks } = session;
@@ -247,7 +256,7 @@ function editRows(
   const key =
     opened.keys.find(({ id }) => id === session.keyId) ??
     (opened.keys.find(({ id }) => id === opened.keyId) as CandidateKey);
-  const mapping = toMapping(relationship);
+  const mapping = toColumnMapping(relationship);
   const rows =
     key.id === CURRENT_KEY_ID
       ? toPlaceRows(mapping).map(row =>
@@ -278,7 +287,7 @@ function keyChanged(
   const opened = base.keys[keyId];
   if (keyId === CURRENT_KEY_ID || !opened) return false;
 
-  const key = getColumnKeys(state, parentTable).find(({ id }) => id === keyId);
+  const key = findColumnKey(state, parentTable, keyId);
   return !key || !sameSet(key.columnIds, opened);
 }
 
@@ -390,7 +399,7 @@ function toView(
   }));
   const draft = toDraft(
     rows.map(({ parentColumnId, pick, invalid }) =>
-      invalid ? { parentColumnId, pick, invalid } : { parentColumnId, pick }
+      toMappingRow(parentColumnId, pick, invalid)
     )
   );
   const issues = validateMapping(state, draft);
@@ -416,17 +425,18 @@ function buildCreate(
   state: MapState,
   session: CreateMapColumnsSession
 ): MapColumnsView | MapColumnsClosedView {
-  for (const tableId of [session.startTableId, session.endTableId]) {
-    if (!getLiveTable(state, tableId)) {
-      return { closed: { reason: 'tableRemoved', tableId } };
-    }
+  const { startTableId, endTableId, relationshipType } = session;
+  const parentTable = getLiveTable(state, startTableId);
+  if (!parentTable) {
+    return { closed: { reason: 'tableRemoved', tableId: startTableId } };
+  }
+  const childTable = getLiveTable(state, endTableId);
+  if (!childTable) {
+    return { closed: { reason: 'tableRemoved', tableId: endTableId } };
   }
 
-  const parentTable = getLiveTable(state, session.startTableId) as Table;
-  const childTable = getLiveTable(state, session.endTableId) as Table;
   const keys = getCandidateKeys(state, parentTable);
   const { keyId, rows } = createRows(session, keys, childTable);
-  const { startTableId, endTableId, relationshipType } = session;
 
   return toView(state, {
     parentTable,
@@ -472,7 +482,7 @@ function buildEdit(
   const parentTable = getLiveTable(state, relationship.start.tableId) as Table;
   const childTable = getLiveTable(state, relationship.end.tableId) as Table;
   const opened = openOnMapping(
-    toMapping(relationship),
+    toColumnMapping(relationship),
     getCandidateKeys(state, parentTable)
   );
   const { keyId, rows } = editRows(session, relationship, opened);
@@ -493,7 +503,7 @@ function buildEdit(
     toDraft: draftRows => ({
       mode: 'edit',
       relationshipId,
-      keyId: keyId as string,
+      keyId,
       rows: draftRows,
     }),
   });
@@ -554,7 +564,7 @@ export function openEditSession(
   const parentTable =
     relationship && getLiveTable(state, relationship.start.tableId);
   const mapping = relationship
-    ? toMapping(relationship)
+    ? toColumnMapping(relationship)
     : { start: [], end: [] };
   const keys = parentTable ? getCandidateKeys(state, parentTable) : [];
   const { keyId } = openOnMapping(mapping, keys);
@@ -565,7 +575,7 @@ export function openEditSession(
     base: {
       startColumnIds: [...mapping.start],
       endColumnIds: [...mapping.end],
-      keyId: keyId as string,
+      keyId,
       keys: Object.fromEntries(
         (parentTable ? getColumnKeys(state, parentTable) : []).map(
           ({ id, columnIds }) => [id, [...columnIds]]
@@ -573,7 +583,7 @@ export function openEditSession(
       ),
     },
     touched: false,
-    keyId: keyId as string,
+    keyId,
     picks: {},
   };
 }
@@ -630,9 +640,8 @@ function changeKey(
     state,
     session.relationshipId
   ) as Relationship;
-  const mapping = toMapping(relationship);
+  const mapping = toColumnMapping(relationship);
   const picks: Record<string, ColumnPick | null> = {};
-
   const isCurrent = key.id === CURRENT_KEY_ID;
 
   for (const parentColumnId of key.columnIds) {

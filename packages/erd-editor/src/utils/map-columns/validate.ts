@@ -7,13 +7,13 @@ import { CURRENT_KEY_ID, findColumnKey } from './candidateKeys';
 import {
   getLiveRelationship,
   getLiveTable,
+  holdsPairs,
   isLiveColumn,
   isNormalMapping,
   MapColumnsDraft,
   MappingRow,
   repeatedIds,
   sameMembers,
-  samePairs,
   sameSet,
 } from './mapping';
 
@@ -176,12 +176,12 @@ export function validateMapping(
     }
   }
 
-  if (ends?.relationship && isComplete(rows)) {
-    const { start, end } = ends.relationship;
-    const live = { start: start.columnIds, end: end.columnIds };
-    if (isNormalMapping(live) && samePairs(live, toColumnIds(rows))) {
-      set.push('unchanged');
-    }
+  if (
+    ends?.relationship &&
+    isComplete(rows) &&
+    holdsPairs(ends.relationship, toColumnIds(rows))
+  ) {
+    set.push('unchanged');
   }
 
   return { rows: validateRows(rows, startTable, endTable), set };
@@ -238,12 +238,7 @@ export function isSameResult(
     return false;
   }
 
-  const holds = ({ start, end }: Relationship) => {
-    const live = { start: start.columnIds, end: end.columnIds };
-    return isNormalMapping(live) && samePairs(live, mapping);
-  };
-
-  if (ends.relationship) return holds(ends.relationship);
+  if (ends.relationship) return holdsPairs(ends.relationship, mapping);
 
   return query(state.collections)
     .collection('relationshipEntities')
@@ -252,6 +247,6 @@ export function isSameResult(
       relationship =>
         relationship.start.tableId === ends.startTableId &&
         relationship.end.tableId === ends.endTableId &&
-        holds(relationship)
+        holdsPairs(relationship, mapping)
     );
 }

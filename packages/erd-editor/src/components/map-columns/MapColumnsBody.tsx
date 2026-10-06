@@ -36,19 +36,17 @@ const NEW_VALUE = 'new';
 const COLUMN_PREFIX = 'column:';
 
 /** A pick as an option's value, which a column id never collides with. */
-export const toOptionValue = (pick: ColumnPick | null) =>
-  !pick
-    ? EMPTY_VALUE
-    : pick.kind === 'new'
-      ? NEW_VALUE
-      : COLUMN_PREFIX + pick.columnId;
+export function toOptionValue(pick: ColumnPick | null): string {
+  if (!pick) return EMPTY_VALUE;
+  if (pick.kind === 'new') return NEW_VALUE;
+  return COLUMN_PREFIX + pick.columnId;
+}
 
-export const toPick = (value: string): ColumnPick | null =>
-  value === NEW_VALUE
-    ? { kind: 'new' }
-    : value.startsWith(COLUMN_PREFIX)
-      ? { kind: 'existing', columnId: value.slice(COLUMN_PREFIX.length) }
-      : null;
+export function toPick(value: string): ColumnPick | null {
+  if (value === NEW_VALUE) return { kind: 'new' };
+  if (!value.startsWith(COLUMN_PREFIX)) return null;
+  return { kind: 'existing', columnId: value.slice(COLUMN_PREFIX.length) };
+}
 
 const isBlank = (name: string) => !name.trim();
 
@@ -141,29 +139,20 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
   const parentCell = (row: MappingRowView, index: number) => {
     const { t } = i18n.value;
     const nameId = parentNameId(index);
-    if (row.invalid) {
-      return (
-        <div class={styles.parent}>
-          <span id={nameId} class={styles.dim}>
-            {t('mapColumns.invalid')}
-          </span>
-        </div>
-      );
-    }
+    const dimCell = (text: string) => (
+      <div class={styles.parent}>
+        <span id={nameId} class={styles.dim}>
+          {text}
+        </span>
+      </div>
+    );
+    if (row.invalid) return dimCell(t('mapColumns.invalid'));
 
     const column =
       row.parentColumnId === null
         ? undefined
         : columnsOf().selectById(row.parentColumnId);
-    if (row.removedParent || !column) {
-      return (
-        <div class={styles.parent}>
-          <span id={nameId} class={styles.dim}>
-            {t('mapColumns.removed')}
-          </span>
-        </div>
-      );
-    }
+    if (row.removedParent || !column) return dimCell(t('mapColumns.removed'));
 
     return (
       <div class={styles.parent}>

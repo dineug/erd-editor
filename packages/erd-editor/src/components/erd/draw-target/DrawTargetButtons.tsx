@@ -4,21 +4,6 @@ import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import {
-  clearDrawTarget,
-  getDrawTarget,
-  updateDrawTarget,
-} from '@/components/erd/draw-target/drawTargetState';
-import {
-  findDrawTarget,
-  hasTravelled,
-} from '@/components/erd/draw-target/findDrawTarget';
-import {
-  getGutterRect,
-  type PillPlacement,
-  type PillSize,
-  placePill,
-} from '@/components/erd/draw-target/placePill';
-import {
   coveredWidth,
   isTakenOver,
 } from '@/components/find-replace/panelLayout';
@@ -38,8 +23,21 @@ import type { Point } from '@/internal-types';
 import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import { getSceneTransform, toScreenPoint } from '@/konva/scene/viewport';
 import { isMainButtonPress } from '@/utils/domEvent';
+import { getLiveTable } from '@/utils/map-columns';
 
 import * as styles from './DrawTargetButtons.styles';
+import {
+  clearDrawTarget,
+  getDrawTarget,
+  updateDrawTarget,
+} from './drawTargetState';
+import { findDrawTarget, hasTravelled } from './findDrawTarget';
+import {
+  getGutterRect,
+  type PillPlacement,
+  type PillSize,
+  placePill,
+} from './placePill';
 
 export type DrawTargetButtonsProps = {
   root: Ref<HTMLDivElement>;
@@ -98,7 +96,6 @@ const boxStyle = ({ x, y, width, height }: Rect) => ({
 type TargetLayout = {
   card: Rect;
   placement: PillPlacement;
-  pill: PillSize;
   gutter: Rect | null;
 };
 
@@ -160,10 +157,8 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
   };
 
   const layoutOf = (state: RootState, tableId: string): TargetLayout | null => {
-    const table = query(state.collections)
-      .collection('tableEntities')
-      .selectById(tableId);
-    if (!table || !state.doc.tableIds.includes(tableId)) return null;
+    const table = getLiveTable(state, tableId);
+    if (!table) return null;
 
     const card = toScreenRect(state, getTableRect(state, table));
     const { viewport } = state.editor;
@@ -174,21 +169,31 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
       card.y + card.height > 0;
     if (!shown) return null;
 
-    const pill = PILL_SIZE;
     const placement = placePill({
       card,
       viewport,
       covered: coveredWidth(state),
       obstacles: readObstacles(),
-      pill,
+      pill: PILL_SIZE,
     });
-    const gutter = getGutterRect({ card, viewport, placement, pill });
+    const gutter = getGutterRect({
+      card,
+      viewport,
+      placement,
+      pill: PILL_SIZE,
+    });
 
-    return { card, placement, pill, gutter };
+    return { card, placement, gutter };
   };
 
-  const keepRects = ({ placement, pill, gutter }: TargetLayout): Rect[] => {
-    const buttons = { x: placement.x, y: placement.y, ...pill };
+  const toPillRect = ({ x, y }: PillPlacement): Rect => ({
+    x,
+    y,
+    ...PILL_SIZE,
+  });
+
+  const keepRects = ({ placement, gutter }: TargetLayout): Rect[] => {
+    const buttons = toPillRect(placement);
     return gutter ? [buttons, gutter] : [buttons];
   };
 
@@ -400,7 +405,7 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
     const layout = layoutOf(state, tableId);
     if (!layout) return null;
 
-    const { card, placement, pill, gutter } = layout;
+    const { card, placement, gutter } = layout;
     const start = startKeyOf(state);
     const { t } = i18n.value;
     const mapTitle = t('mapColumns.mapToExisting');
@@ -427,7 +432,7 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
         <div
           class={['draw-target', 'draw-target-buttons', styles.pill]}
           data-side={placement.side}
-          style={boxStyle({ x: placement.x, y: placement.y, ...pill })}
+          style={boxStyle(toPillRect(placement))}
           on:mousedown={handleButtonsPress}
           on:contextmenu={handleContextmenu}
         >

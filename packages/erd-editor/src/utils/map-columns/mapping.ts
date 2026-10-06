@@ -43,6 +43,15 @@ export type MapColumnsDraft =
 /** A relationship's two column lists, end[i] referencing start[i]. */
 export type ColumnMapping = { start: string[]; end: string[] };
 
+/** The two column lists the relationship holds, as they stand. */
+export const toColumnMapping = ({
+  start,
+  end,
+}: Relationship): ColumnMapping => ({
+  start: start.columnIds,
+  end: end.columnIds,
+});
+
 /** The table, while the document holds it; a removed one stays an entity a while. */
 export function getLiveTable(
   { doc, collections }: Pick<RootState, 'doc' | 'collections'>,
@@ -106,6 +115,15 @@ const toPairKeys = ({ start, end }: ColumnMapping) =>
 /** Two mappings pairing the same columns, in whatever order they list the pairs. */
 export const samePairs = (a: ColumnMapping, b: ColumnMapping) =>
   sameSet(toPairKeys(a), toPairKeys(b));
+
+/** Whether the relationship's own lists are normal and pair what the mapping pairs. */
+export function holdsPairs(
+  relationship: Relationship,
+  mapping: ColumnMapping
+): boolean {
+  const stored = toColumnMapping(relationship);
+  return isNormalMapping(stored) && samePairs(stored, mapping);
+}
 
 /** The child column each picked row maps to, in row order. */
 export const toPickedColumnIds = (rows: MappingRow[]) =>

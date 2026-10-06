@@ -7,7 +7,6 @@ import {
 } from '@/engine/modules/relationship/atom.actions';
 import { toForeignKeyActions } from '@/engine/modules/relationship/fkColumns';
 import { RootState } from '@/engine/state';
-import { Column } from '@/internal-types';
 
 import { toAlignTypeActions } from './alignTypes';
 import { CURRENT_KEY_ID, findColumnKey } from './candidateKeys';
@@ -62,7 +61,7 @@ export function toMapColumnsActions(
   });
   const newColumnIds = newParents.map(() => createId());
   const newIdOf = new Map(
-    newParents.map(({ id }: Column, index) => [id, newColumnIds[index]])
+    newParents.map(({ id }, index) => [id, newColumnIds[index]])
   );
   const startColumnIds = rows.map(({ parentColumnId }) => parentColumnId ?? '');
   const endColumnIds = rows.map(({ parentColumnId, pick }) =>

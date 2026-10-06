@@ -10,6 +10,7 @@ import {
   changeRelationshipOnDeleteAction,
   changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
+  namesOtherTables,
   removeRelationshipAction,
 } from './atom.actions';
 
@@ -111,13 +112,7 @@ const changeRelationshipColumns: PushUndoHistory = (
   const relationship = query(collections)
     .collection('relationshipEntities')
     .selectById(id);
-  if (
-    !relationship ||
-    relationship.start.tableId !== start.tableId ||
-    relationship.end.tableId !== end.tableId
-  ) {
-    return;
-  }
+  if (!relationship || namesOtherTables(relationship, { start, end })) return;
 
   undoActions.push(
     changeRelationshipColumnsAction({

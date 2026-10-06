@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
 import { ReferentialAction } from '@/constants/schema';
+import { Relationship } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 
@@ -125,6 +126,16 @@ const COLUMNS = 'columns';
 const toColumnsKey = (startColumnIds: string[], endColumnIds: string[]) =>
   JSON.stringify([startColumnIds, endColumnIds]);
 
+type ColumnsPayload = ActionMap[typeof ActionType.changeRelationshipColumns];
+
+/** Whether the payload names other tables than the relationship's, which the reducer ignores. */
+export const namesOtherTables = (
+  relationship: Relationship,
+  { start, end }: Pick<ColumnsPayload, 'start' | 'end'>
+) =>
+  relationship.start.tableId !== start.tableId ||
+  relationship.end.tableId !== end.tableId;
+
 /**
  * Both ends share the one register, so a mapping never mixes two writers. A
  * payload naming other tables than the entity's is ignored before the register
@@ -141,13 +152,7 @@ const changeRelationshipColumns: ReducerType<
   const collection = query(collections).collection('relationshipEntities');
   const relationship = collection.selectById(id);
 
-  if (
-    relationship &&
-    (relationship.start.tableId !== start.tableId ||
-      relationship.end.tableId !== end.tableId)
-  ) {
-    return;
-  }
+  if (relationship && namesOtherTables(relationship, { start, end })) return;
 
   if (
     relationship &&
