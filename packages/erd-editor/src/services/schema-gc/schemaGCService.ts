@@ -1,5 +1,4 @@
 import { query, schemaV3Parser } from '@dineug/erd-editor-schema';
-import { DateTime } from 'luxon';
 
 import type { GCIds } from '@/services/schema-gc';
 import { arrayHas } from '@/utils/arrayHas';
@@ -7,6 +6,7 @@ import { arrayHas } from '@/utils/arrayHas';
 import { procGC } from './procGC';
 
 const GC_DAYS = 3;
+const DAY = 24 * 60 * 60 * 1000;
 
 export class SchemaGCService {
   async run(source: string): Promise<GCIds> {
@@ -30,7 +30,7 @@ export function collectGCIds(source: string): GCIds {
   const hasMemoIds = arrayHas(memoIds);
   const hasIndexIds = arrayHas(indexIds);
   const hasRelationshipIds = arrayHas(relationshipIds);
-  const isGC = createIsGC(DateTime.now());
+  const isGC = createIsGC(Date.now());
 
   const tableCollection = query(collections).collection('tableEntities');
   const tableColumnCollection = query(collections).collection(
@@ -148,14 +148,16 @@ type EntityType = {
   };
 };
 
+/**
+ * An entity's age is the whole days of elapsed time since its last update, not
+ * calendar days, so a change of UTC offset moves no age.
+ */
 const createIsGC =
-  (now: DateTime) =>
+  (now: number) =>
   (has: (value: string) => boolean) =>
   ({ id, meta }: EntityType) => {
     if (has(id)) return false;
 
-    const days = Math.floor(
-      now.diff(DateTime.fromMillis(meta.updateAt), 'days').toObject().days ?? 0
-    );
+    const days = Math.floor((now - meta.updateAt) / DAY);
     return GC_DAYS < days;
   };

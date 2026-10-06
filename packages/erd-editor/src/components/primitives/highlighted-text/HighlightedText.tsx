@@ -1,16 +1,14 @@
 import { FC } from '@dineug/r-html';
-import { findAll } from 'highlight-words-core';
+
+import { findAll, FindAllArgs } from '@/utils/highlightWords';
 
 import * as styles from './HighlightedText.styles';
 
-export type HighlightedTextProps = Parameters<typeof findAll>[0] & {
-  searchWords: string[];
-  textToHighlight: string;
-};
+export type HighlightedTextProps = FindAllArgs;
 
 const HighlightedText: FC<HighlightedTextProps> = (props, ctx) => {
   return () => {
-    const chunks = findAll({ ...props, autoEscape: true });
+    const chunks = findAll(props);
 
     return chunks.map(({ end, highlight, start }) => {
       const text = props.textToHighlight.substring(start, end);

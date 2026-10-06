@@ -23,11 +23,9 @@ const USAGE = `Usage: node scripts/check-peer-graph.mjs [--export <key>]
  * half of this gate in src/peer/imports.test.ts. Keep the two equal.
  */
 const BARE_ALLOWLIST = new Set([
-  'deepmerge',
   'es-toolkit',
   'es-toolkit/compat',
   'graphql',
-  'luxon',
   'rxjs',
 ]);
 

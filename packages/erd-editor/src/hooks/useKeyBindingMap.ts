@@ -1,11 +1,14 @@
 import { onMounted, Ref, watch } from '@dineug/r-html';
-// @ts-ignore
-import { tinykeys } from 'tinykeys';
 
 import { useAppContext } from '@/components/appContext';
 import { isTakenOver } from '@/components/find-replace/panelLayout';
 import { Ctx } from '@/internal-types';
-import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
+import {
+  bindKeys,
+  isComposing,
+  KeyBindingHandlers,
+  KeyBindingName,
+} from '@/utils/keyboard-shortcut';
 import { isEditableTarget } from '@/utils/validation';
 
 import { useUnmounted } from './useUnmounted';
@@ -50,11 +53,9 @@ export function useKeyBindingMap(ctx: Ctx, root: Ref<HTMLDivElement>) {
     const $root = root.value;
 
     unbinding();
-    unbinding = tinykeys(
+    unbinding = bindKeys(
       $root,
-      Object.keys(keyBindingMap).reduce<
-        Record<string, (event: KeyboardEvent) => void>
-      >((acc, key) => {
+      Object.keys(keyBindingMap).reduce<KeyBindingHandlers>((acc, key) => {
         const type = key as KeyBindingName;
         const options = keyBindingMap[type];
 

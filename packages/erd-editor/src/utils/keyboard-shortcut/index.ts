@@ -1,7 +1,14 @@
 import { ValuesType } from '@/internal-types';
 import { hasAppleDevice } from '@/utils/device-detect';
 
-import { KeyBindingPress, parseKeybinding } from './utils';
+import {
+  KeyBindingPress,
+  matchesPress,
+  ModifierKey,
+  parseKeybinding,
+} from './utils';
+
+export { bindKeys, type KeyBindingHandlers } from './bindKeys';
 
 export type ShortcutOption = {
   shortcut: string;
@@ -134,20 +141,10 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   ],
 });
 
-const ModifierKey = {
-  Shift: 'Shift',
-  Meta: 'Meta',
-  Alt: 'Alt',
-  Control: 'Control',
-} as const;
-type ModifierKey = ValuesType<typeof ModifierKey>;
-
-const MODIFIER_KEYS: ReadonlyArray<ModifierKey> = Object.values(ModifierKey);
-
 /**
- * Whether the press is one of the chords given, read the way tinykeys reads a
- * binding: the key by its code or its value, every modifier named held down and
- * no other. A sequence of presses never matches a single one.
+ * Whether the press is one of the chords given, matched as bindKeys matches a
+ * press, so a panel reads a binding as the editor root does. A sequence of
+ * presses never matches a single one.
  */
 export function matchesShortcut(
   event: KeyboardEvent,
@@ -155,16 +152,7 @@ export function matchesShortcut(
 ): boolean {
   return options.some(({ shortcut }) => {
     const presses = parseKeybinding(shortcut);
-    if (presses.length !== 1) return false;
-
-    const [mods, key] = presses[0];
-    return (
-      (key === event.code || key.toUpperCase() === event.key.toUpperCase()) &&
-      mods.every(mod => event.getModifierState(mod)) &&
-      !MODIFIER_KEYS.some(
-        mod => !mods.includes(mod) && event.getModifierState(mod)
-      )
-    );
+    return presses.length === 1 && matchesPress(event, presses[0]);
   });
 }
 

@@ -200,7 +200,7 @@ const dispatchMouse = (
   return event;
 };
 
-/** The modifier $mod resolves to, read off the platform the way tinykeys reads it. */
+/** The modifier $mod resolves to, read off the platform the way hasAppleDevice reads it. */
 const MOD = /Mac|iPod|iPhone|iPad/.test(navigator.platform)
   ? { metaKey: true }
   : { ctrlKey: true };

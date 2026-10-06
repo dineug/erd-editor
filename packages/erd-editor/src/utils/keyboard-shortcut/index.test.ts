@@ -9,17 +9,20 @@ import {
   matchesShortcut,
   shortcutToTuple,
   simpleShortcutToString,
+  toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
 
-const device = vi.hoisted(() => ({ apple: false }));
+const device = vi.hoisted(() => ({ apple: false, windows: false }));
 
 vi.mock('@/utils/device-detect', () => ({
   hasAppleDevice: () => device.apple,
+  hasWindows: () => device.windows,
 }));
 
 describe('keyboard-shortcut', () => {
   beforeEach(() => {
     device.apple = false;
+    device.windows = false;
   });
 
   describe('KeyBindingName', () => {
@@ -183,6 +186,18 @@ describe('keyboard-shortcut', () => {
       ).toBe(false);
     });
 
+    it('reads AltGraph on windows as the Control and Alt a chord names, as the binder does', () => {
+      device.windows = true;
+      const altGr = press({ key: '¡', code: 'Digit1' });
+      Object.defineProperty(altGr, 'getModifierState', {
+        value: (mod: string) => mod === 'AltGraph',
+      });
+      const map = createKeyBindingMap();
+
+      expect(matchesShortcut(altGr, map.relationshipZeroOne)).toBe(true);
+      expect(matchesShortcut(altGr, [{ shortcut: 'Digit1' }])).toBe(false);
+    });
+
     it('tries every option and never matches a sequence of presses', () => {
       const event = press({ key: 'Delete', code: 'Delete', altKey: true });
 
@@ -194,6 +209,9 @@ describe('keyboard-shortcut', () => {
       ).toBe(true);
       expect(
         matchesShortcut(event, [{ shortcut: 'Alt+KeyG Alt+Delete' }])
+      ).toBe(false);
+      expect(
+        matchesShortcut(event, [{ shortcut: 'Alt+Delete Alt+KeyG' }])
       ).toBe(false);
       expect(matchesShortcut(event, [])).toBe(false);
     });
@@ -427,6 +445,27 @@ describe('keyboard-shortcut', () => {
 
       expect(event.isComposing).toBe(false);
       expect(isComposing(event)).toBe(true);
+    });
+  });
+
+  describe('toShortcutTitle', () => {
+    it('names the first chord bound to the command', () => {
+      expect(
+        toShortcutTitle(createKeyBindingMap(), 'Delete', 'removeTable')
+      ).toBe('Delete (Ctrl + ⌫)');
+    });
+
+    it('gives the name alone for a command bound to nothing', () => {
+      const map = { ...createKeyBindingMap(), undo: [] };
+
+      expect(toShortcutTitle(map, 'Undo', 'undo')).toBe('Undo');
+      expect(
+        toShortcutTitle(
+          {} as ReturnType<typeof createKeyBindingMap>,
+          'Undo',
+          'undo'
+        )
+      ).toBe('Undo');
     });
   });
 

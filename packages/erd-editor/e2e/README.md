@@ -497,19 +497,19 @@ cost when you hit them blind.
 
 **Platform**
 
-- `hasAppleDevice()` is refined asynchronously once `getAccurateAgent` resolves,
-  and it decides `isMod` for _mouse_ paths. Keyboard paths are safe
-  (`ControlOrMeta` matches tinykeys' synchronous check). For a mouse modifier
-  read `erd.pointerModKey()`, which asks the page's own user agent; `MOD_KEY` is
-  the same answer taken from `process.platform`, for gestures that hold the key
-  across several events.
+- `hasAppleDevice()` reads `navigator.platform` on every call and decides both
+  `$mod` in the key bindings and `isMod` on _mouse_ paths, so the two agree, and
+  `ControlOrMeta` follows the same host. For a mouse modifier read
+  `erd.pointerModKey()`, which asks the page's own `navigator.platform`;
+  `MOD_KEY` is the same answer taken from `process.platform`, for gestures that
+  hold the key across several events.
 - The chromium project clears the Windows `userAgent` that
-  `devices['Desktop Chrome']` pins, so `isMod` and the host agree. With it in
-  place a mod-click on a mac was `Ctrl`, which is a right click there: the
-  memo-over-focus states were measured with a context menu open, and CI — where
-  `Ctrl` opens nothing — tested a different state from a workstation. Sending
-  the ctrl bit through CDP without a key press opens the menu too, so the user
-  agent is the only place this can be fixed.
+  `devices['Desktop Chrome']` pins, so the page names the host it runs on, as
+  its platform does. The modifier a spec holds has to be the one the page reads
+  as `$mod`: a mod-click sent as `Ctrl` on a mac is a right click there, and the
+  memo-over-focus states were once measured with a context menu open, while CI
+  — where `Ctrl` opens nothing — tested a different state from a workstation.
+  Sending the ctrl bit through CDP without a key press opens the menu too.
 - `toJson()` — which backs the `value` getter — serialises a copy, so reading
   `value` never moves the live view. While the viewport lock of
   `lockSettings` is on it writes the origin and the zoom the lock holds, not

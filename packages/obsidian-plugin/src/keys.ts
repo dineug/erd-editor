@@ -3,7 +3,7 @@ import type { Modifier } from 'obsidian';
 /** A press as Obsidian's Scope.register takes it: the modifiers, and the key it compares with the event's. */
 export type ScopeKey = { modifiers: Modifier[]; key: string };
 
-/** The tinykeys modifiers Obsidian can name; $mod is Cmd on macOS and Ctrl elsewhere, as Mod is. */
+/** The editor's chord modifiers Obsidian can name; $mod is Cmd on macOS and Ctrl elsewhere, as Mod is. */
 const MODIFIERS: Readonly<Record<string, Modifier>> = {
   $mod: 'Mod',
   Alt: 'Alt',
@@ -26,7 +26,7 @@ function toKey(code: string): string {
   return CHARACTER_KEYS[code] ?? code;
 }
 
-/** One tinykeys press, $mod+KeyK say, as a scope key; null for no key or a modifier Obsidian cannot name. */
+/** One press of an editor shortcut, $mod+KeyK say, as a scope key; null for no key or a modifier Obsidian cannot name. */
 export function toScopeKey(press: string): ScopeKey | null {
   const names = press.split(/\b\+/);
   const code = names.pop();

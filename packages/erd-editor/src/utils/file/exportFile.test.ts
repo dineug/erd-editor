@@ -1,4 +1,3 @@
-import { DateTime } from 'luxon';
 import {
   afterEach,
   beforeEach,
@@ -32,10 +31,7 @@ const pngRequest = () => ({
 });
 
 const FIXED_TIME = new Date(2024, 2, 9, 4, 5, 6);
-
-function nowPrefix() {
-  return DateTime.now().toFormat(`yyyy-MM-dd'T'HH_mm_ss`);
-}
+const STAMP = '2024-03-09T04_05_06';
 
 async function readBlob(blob: Blob) {
   return await blob.text();
@@ -66,7 +62,7 @@ describe('exportFile', () => {
       const [blob, options] = calls[0];
       expect(await readBlob(blob)).toBe('{"a":1}');
       expect(blob.type).toBe('application/json');
-      expect(options.fileName).toBe(`my-schema-${nowPrefix()}.erd.json`);
+      expect(options.fileName).toBe(`my-schema-${STAMP}.erd.json`);
     });
 
     it('falls back to "unnamed" when no name is given', () => {
@@ -75,7 +71,7 @@ describe('exportFile', () => {
 
       exportJSON('{}');
 
-      expect(calls[0].fileName).toBe(`unnamed-${nowPrefix()}.erd.json`);
+      expect(calls[0].fileName).toBe(`unnamed-${STAMP}.erd.json`);
     });
 
     it('falls back to "unnamed" when the name is only whitespace', () => {
@@ -84,7 +80,7 @@ describe('exportFile', () => {
 
       exportJSON('{}', '   ');
 
-      expect(calls[0].fileName).toBe(`unnamed-${nowPrefix()}.erd.json`);
+      expect(calls[0].fileName).toBe(`unnamed-${STAMP}.erd.json`);
     });
 
     it('keeps the untrimmed name when it has non-whitespace content', () => {
@@ -93,7 +89,29 @@ describe('exportFile', () => {
 
       exportJSON('{}', ' a ');
 
-      expect(calls[0].fileName).toBe(` a -${nowPrefix()}.erd.json`);
+      expect(calls[0].fileName).toBe(` a -${STAMP}.erd.json`);
+    });
+  });
+
+  describe('file name', () => {
+    it('writes two-digit fields as they stand and drops the milliseconds', () => {
+      vi.setSystemTime(new Date(2025, 11, 31, 23, 59, 58, 999));
+      const calls: Array<{ fileName: string }> = [];
+      setExportFileCallback((_blob, options) => calls.push(options));
+
+      exportJSON('{}', 'a');
+
+      expect(calls[0].fileName).toBe('a-2025-12-31T23_59_58.erd.json');
+    });
+
+    it('pads a year below 1000 to four digits', () => {
+      vi.setSystemTime(new Date(987, 0, 2, 3, 4, 5));
+      const calls: Array<{ fileName: string }> = [];
+      setExportFileCallback((_blob, options) => calls.push(options));
+
+      exportJSON('{}', 'a');
+
+      expect(calls[0].fileName).toBe('a-0987-01-02T03_04_05.erd.json');
     });
   });
 
@@ -107,7 +125,7 @@ describe('exportFile', () => {
       const [blob, options] = calls[0];
       expect(await readBlob(blob)).toBe('CREATE TABLE a;');
       expect(blob.type).toBe('');
-      expect(options.fileName).toBe(`db-${nowPrefix()}.sql`);
+      expect(options.fileName).toBe(`db-${STAMP}.sql`);
     });
   });
 
@@ -123,7 +141,7 @@ describe('exportFile', () => {
 
       expect(createDocumentPngMock).toHaveBeenCalledWith(request);
       expect(calls[0][0]).toBe(png);
-      expect(calls[0][1].fileName).toBe(`diagram-${nowPrefix()}.png`);
+      expect(calls[0][1].fileName).toBe(`diagram-${STAMP}.png`);
     });
 
     it('renders from the document rather than from anything on screen', async () => {
@@ -164,7 +182,7 @@ describe('exportFile', () => {
       const [blob, options] = calls[0];
       expect(blob.type).toBe('image/svg+xml');
       expect(await readBlob(blob)).toBe('<svg/>');
-      expect(options.fileName).toBe(`diagram-${nowPrefix()}.svg`);
+      expect(options.fileName).toBe(`diagram-${STAMP}.svg`);
     });
 
     it('rejects rather than writing a file when the render fails', async () => {
@@ -196,7 +214,7 @@ describe('exportFile', () => {
         '{"a":1}'
       );
       expect(anchor.getAttribute('href')).toBe('blob:mock-url');
-      expect(anchor.download).toBe(`built-in-${nowPrefix()}.erd.json`);
+      expect(anchor.download).toBe(`built-in-${STAMP}.erd.json`);
       expect(click).toHaveBeenCalledTimes(1);
     });
 
@@ -213,7 +231,7 @@ describe('exportFile', () => {
       exportSchemaSQL('select 1;');
 
       expect(callback).not.toHaveBeenCalled();
-      expect(anchor.download).toBe(`unnamed-${nowPrefix()}.sql`);
+      expect(anchor.download).toBe(`unnamed-${STAMP}.sql`);
     });
   });
 });

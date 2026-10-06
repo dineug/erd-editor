@@ -25,9 +25,9 @@ test.describe('keyboard shortcuts', () => {
   }) => {
     await erd.seed(oneTable());
     await erd.focusCanvas();
-    // tinykeys is bound to the editor root, so every press below is meaningful
-    // only while DOM focus is inside the element. Asserting the precondition
-    // turns a lost-focus regression into a clear failure.
+    // The key bindings listen on the editor root, so every press below is
+    // meaningful only while DOM focus is inside the element. Asserting the
+    // precondition turns a lost-focus regression into a clear failure.
     await erd.expectKeyboardFocusInside();
 
     await erd.press(Shortcut.addTable);
@@ -493,8 +493,9 @@ test.describe('keyboard shortcuts', () => {
     });
     await page.locator('#outside').focus();
 
-    // tinykeys is bound to the editor root, and the editor dims itself the
-    // moment focus leaves it — that class is the signal the keys are gone too.
+    // The key bindings listen on the editor root, and the editor dims itself
+    // the moment focus leaves it — that class is the signal the keys are gone
+    // too.
     await expect(erd.host.locator('.root')).toHaveClass(/\bnone-focus\b/);
 
     await erd.press(Shortcut.addTable);

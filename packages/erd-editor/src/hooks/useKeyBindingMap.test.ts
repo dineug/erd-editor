@@ -39,7 +39,7 @@ type KeyInit = {
   keyCode?: number;
 };
 
-/** The modifier $mod resolves to, read off the platform the way tinykeys reads it. */
+/** The modifier $mod resolves to, read off the platform the way hasAppleDevice reads it. */
 const APPLE = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
 let mounted: Mounted | null = null;
@@ -360,6 +360,21 @@ describe('useKeyBindingMap', () => {
     const event = press({ key: 'q', code: 'KeyQ' });
     expect(shortcuts.map(({ type }) => type)).toEqual([KeyBindingName.edit]);
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('reads a sequence a host binds, emitting on its last press alone', async () => {
+    app.keyBindingMap.addMemo = [
+      { shortcut: 'KeyG KeyM', preventDefault: true },
+    ];
+    await flush();
+
+    const first = press({ key: 'g', code: 'KeyG' });
+    expect(shortcuts).toHaveLength(0);
+    expect(first.defaultPrevented).toBe(false);
+
+    const last = press({ key: 'm', code: 'KeyM' });
+    expect(shortcuts.map(({ type }) => type)).toEqual([KeyBindingName.addMemo]);
+    expect(last.defaultPrevented).toBe(true);
   });
 
   it('leaves $mod+KeyF to the page on the ERD tab too once a host empties findReplace', async () => {

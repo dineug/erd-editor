@@ -11,9 +11,6 @@ const meta = {
     return fragment;
   },
   argTypes: {
-    autoEscape: {
-      type: 'boolean',
-    },
     caseSensitive: {
       type: 'boolean',
     },
@@ -31,7 +28,6 @@ type Story = StoryObj<HighlightedTextProps>;
 
 export const Normal: Story = {
   args: {
-    autoEscape: false,
     caseSensitive: false,
     searchWords: ['and', 'or', 'the'],
     textToHighlight:

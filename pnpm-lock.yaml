@@ -257,9 +257,6 @@ importers:
       '@chenglou/pretext':
         specifier: ^0.0.8
         version: 0.0.8
-      '@egjs/agent':
-        specifier: ^2.4.3
-        version: 2.4.3
       '@radix-ui/colors':
         specifier: ^3.0.0
         version: 3.0.0
@@ -275,9 +272,6 @@ importers:
       d3-force:
         specifier: ^3.0.0
         version: 3.0.0
-      deepmerge:
-        specifier: ^4.3.1
-        version: 4.3.1
       elkjs:
         specifier: ^0.12.0
         version: 0.12.0
@@ -293,18 +287,12 @@ importers:
       graphql:
         specifier: ^17.0.2
         version: 17.0.2
-      highlight-words-core:
-        specifier: ^1.2.2
-        version: 1.2.2
       konva:
         specifier: ^10.3.2
         version: 10.3.2
       lucide:
         specifier: ^1.35.0
         version: 1.35.0
-      luxon:
-        specifier: ^3.4.4
-        version: 3.4.4
       rxjs:
         specifier: ^7.8.1
         version: 7.8.1
@@ -314,9 +302,6 @@ importers:
       stylis:
         specifier: ^4.4.0
         version: 4.4.0
-      tinykeys:
-        specifier: ^2.1.0
-        version: 2.1.0
     devDependencies:
       '@dbml/parse':
         specifier: 10.1.1
@@ -351,12 +336,6 @@ importers:
       '@types/d3-force':
         specifier: 3.0.9
         version: 3.0.9
-      '@types/highlight-words-core':
-        specifier: ^1.2.3
-        version: 1.2.3
-      '@types/luxon':
-        specifier: ^3.4.2
-        version: 3.4.2
       '@types/node':
         specifier: ^22.20.1
         version: 22.20.1
@@ -2035,9 +2014,6 @@ packages:
     peerDependenciesMeta:
       redis:
         optional: true
-
-  '@egjs/agent@2.4.3':
-    resolution: {integrity: sha512-XvksSENe8wPeFlEVouvrOhKdx8HMniJ3by7sro2uPF3M6QqWwjzVcmvwoPtdjiX8O1lfRoLhQMp1a7NGlVTdIA==}
 
   '@emnapi/core@1.11.2':
     resolution: {integrity: sha512-TC8MkTuZUtcTSiFeuC0ksCh9QIJ5+F21MvZ4Wn4ORfYaFJ/0dsiudv5tVkejgwZlwQ39jL9WWDe2lz8x0WglOA==}
@@ -4268,9 +4244,6 @@ packages:
   '@types/hast@3.0.5':
     resolution: {integrity: sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==}
 
-  '@types/highlight-words-core@1.2.3':
-    resolution: {integrity: sha512-PWNU/NR0CaYEsK38mcCTyDzeS2TlEGK9kRhRMz1i86jVAe836ZlA3gl6QYpu+CG6IpfNKTgWpEnJuRededvC0g==}
-
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
 
@@ -6118,9 +6091,6 @@ packages:
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
-  highlight-words-core@1.2.2:
-    resolution: {integrity: sha512-BXUKIkUuh6cmmxzi5OIbUJxrG8OAk2MqoL1DtO3Wo9D2faJg2ph5ntyuQeLqaHJmzER6H5tllCDA9ZnNe9BVGg==}
-
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
@@ -6677,10 +6647,6 @@ packages:
 
   lucide@1.35.0:
     resolution: {integrity: sha512-wsO/gl+aXKQ5SHuQB2t0O2b5t8Qw6q8I2qltdSh40UzGYrnG+5tDp+sHYbtN76ZCYHnus5q3xaAFjP9QLmj/1Q==}
-
-  luxon@3.4.4:
-    resolution: {integrity: sha512-zobTr7akeGHnv7eBOXcRgMeCP6+uyYsczwmeRCauvpvaAltgNyTbLH/+VaEAPUeWBT+1GuNmz4wC/6jtQzbbVA==}
-    engines: {node: '>=12'}
 
   luxon@3.7.2:
     resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
@@ -7644,9 +7610,6 @@ packages:
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
-
-  tinykeys@2.1.0:
-    resolution: {integrity: sha512-/MESnqBD1xItZJn5oGQ4OsNORQgJfPP96XSGoyu4eLpwpL0ifO0SYR5OD76u0YMhMXsqkb0UqvI9+yXTh4xv8Q==}
 
   tinypool@2.1.2:
     resolution: {integrity: sha512-9YodfrxS9g9IbFr/KOjE5bAeJ0p61n3bW6mqvy0jtoeKd1kTW1Cxm0oulm6KX2lyM9Gl6WIe8nEbY7LWv5ZJww==}
@@ -9749,8 +9712,6 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@egjs/agent@2.4.3': {}
-
   '@emnapi/core@1.11.2':
     dependencies:
       '@emnapi/wasi-threads': 1.2.2
@@ -11738,8 +11699,6 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
-  '@types/highlight-words-core@1.2.3': {}
-
   '@types/istanbul-lib-coverage@2.0.6': {}
 
   '@types/json-schema@7.0.15': {}
@@ -13635,8 +13594,6 @@ snapshots:
 
   help-me@5.0.0: {}
 
-  highlight-words-core@1.2.2: {}
-
   hoist-non-react-statics@3.3.2:
     dependencies:
       react-is: 16.13.1
@@ -14097,8 +14054,6 @@ snapshots:
       react: 19.2.8
 
   lucide@1.35.0: {}
-
-  luxon@3.4.4: {}
 
   luxon@3.7.2: {}
 
@@ -15385,8 +15340,6 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.5)
       picomatch: 4.0.5
-
-  tinykeys@2.1.0: {}
 
   tinypool@2.1.2: {}
 
