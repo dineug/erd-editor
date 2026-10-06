@@ -206,20 +206,22 @@ describe('the words on an import', () => {
 
   it('say the four schema imports keep the settings but the view, and none that it discards the document', () => {
     for (const name of schemaImports) {
-      expect(describeTool(name), name).toContain(
+      const text = describeTool(name);
+
+      expect(text, name).toContain(
         'Replaces every table, relationship, index and memo of the document'
       );
-      expect(describeTool(name), name).toContain(
+      expect(text, name).toContain(
         'keeping its settings but the view, which goes to the start of the canvas'
       );
       expect(describeArg(name, 'mode'), name).toContain(
         'keeps the settings but the view, which goes to the start of the canvas'
       );
     }
-    for (const text of Object.values(TOOL_COPY).flatMap(
-      ({ description, args }) => [description, ...Object.values(args ?? {})]
-    )) {
-      expect(text).not.toMatch(/discard/i);
+    for (const { description, args } of Object.values(TOOL_COPY)) {
+      for (const prose of [description, ...Object.values(args ?? {})]) {
+        expect(prose).not.toMatch(/discard/i);
+      }
     }
   });
 

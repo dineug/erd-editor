@@ -435,12 +435,9 @@ describe('the locks of a new document and of a file', () => {
 
   it('keeps the bits no lock owns and writes them back', () => {
     const lockSettings = 1024 | LockSettingType.language;
-    const source = JSON.stringify({
-      version: '3.0.0',
-      settings: { lockSettings },
-    });
-
-    const schema = parser(source);
+    const schema = parser(
+      JSON.stringify({ version: '3.0.0', settings: { lockSettings } })
+    );
 
     expect(schema.settings.lockSettings).toBe(lockSettings);
     expect(JSON.parse(toJson(schema)).settings.lockSettings).toBe(lockSettings);

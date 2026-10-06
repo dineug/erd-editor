@@ -332,10 +332,6 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   state.settings.canvasType = value;
 };
 
-export const changeLanguageAction = createAction<
-  ActionMap[typeof ActionType.changeLanguage]
->(ActionType.changeLanguage);
-
 type CodeSetting =
   | 'language'
   | 'tableNameCase'
@@ -351,19 +347,24 @@ function replaceCodeSetting(
   version: number,
   field: CodeSetting,
   value: number
-) {
+): void {
   replaceOperator(lww, version, 'settings.code', 'settings', field, () => {
     settings[field] = value;
   });
 }
+
+export const changeLanguageAction = createAction<
+  ActionMap[typeof ActionType.changeLanguage]
+>(ActionType.changeLanguage);
 
 const changeLanguage: ReducerType<typeof ActionType.changeLanguage> = (
   state,
   { payload: { value }, version },
   { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasLanguage(value)) {
-    replaceCodeSetting(state, version ?? clock.getVersion(), 'language', value);
+    replaceCodeSetting(state, safeVersion, 'language', value);
   }
 };
 
@@ -374,13 +375,9 @@ export const changeTableNameCaseAction = createAction<
 const changeTableNameCase: ReducerType<
   typeof ActionType.changeTableNameCase
 > = (state, { payload: { value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasNameCase(value)) {
-    replaceCodeSetting(
-      state,
-      version ?? clock.getVersion(),
-      'tableNameCase',
-      value
-    );
+    replaceCodeSetting(state, safeVersion, 'tableNameCase', value);
   }
 };
 
@@ -391,13 +388,9 @@ export const changeColumnNameCaseAction = createAction<
 const changeColumnNameCase: ReducerType<
   typeof ActionType.changeColumnNameCase
 > = (state, { payload: { value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasNameCase(value)) {
-    replaceCodeSetting(
-      state,
-      version ?? clock.getVersion(),
-      'columnNameCase',
-      value
-    );
+    replaceCodeSetting(state, safeVersion, 'columnNameCase', value);
   }
 };
 
@@ -410,13 +403,9 @@ const changeBracketType: ReducerType<typeof ActionType.changeBracketType> = (
   { payload: { value }, version },
   { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasBracketType(value)) {
-    replaceCodeSetting(
-      state,
-      version ?? clock.getVersion(),
-      'bracketType',
-      value
-    );
+    replaceCodeSetting(state, safeVersion, 'bracketType', value);
   }
 };
 

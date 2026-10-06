@@ -7,6 +7,7 @@ import {
   MEMO_MIN_HEIGHT,
   MEMO_MIN_WIDTH,
   NameCase,
+  type PeerStore,
   settingsActions,
   settingsActions$,
 } from '@dineug/erd-editor/peer.js';
@@ -225,16 +226,14 @@ describe('the agent snapshot', () => {
 });
 
 describe('the code settings a snapshot reads', () => {
-  type Peer = ReturnType<typeof createPeerStore>;
-
-  const code = (peer: Peer) => {
+  const code = (peer: PeerStore) => {
     const { language, tableNameCase, columnNameCase, bracketType } =
       toAgentSnapshot(peer.state).settings;
     return { language, tableNameCase, columnNameCase, bracketType };
   };
 
   /** What a reader that opens the file the peer saves reads of the four. */
-  const opened = (peer: Peer) => {
+  const opened = (peer: PeerStore) => {
     const reader = createPeerStore({ nickname: 'reader', presence: false });
     try {
       reader.setInitialValue(peer.value);

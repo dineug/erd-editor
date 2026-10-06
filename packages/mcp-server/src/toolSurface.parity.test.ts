@@ -70,6 +70,10 @@ const declarations = (surface: readonly ToolSurface[]) =>
 const outputSchemas = (surface: readonly ToolSurface[]) =>
   surface.map(({ name, hasOutputSchema }) => ({ name, hasOutputSchema }));
 
+/** The tools of a surface that a list names, in the surface's order. */
+const namesIn = (surface: readonly ToolSurface[], names: readonly string[]) =>
+  surface.filter(({ name }) => names.includes(name)).map(({ name }) => name);
+
 /** The optional arguments a recorded tool gained after the recording was made. */
 const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_read: ['tableIds', 'tableNames'],
@@ -100,20 +104,10 @@ describe('the tool surface against the SDK-based server recording', () => {
   it('holds the 59 recorded tools less the 10 removed, and the 6 added since', () => {
     expect(fixture).toHaveLength(59);
     expect(tools).toHaveLength(55);
-    expect(fixture.filter(({ name }) => ADDED_TOOLS.includes(name))).toEqual(
-      []
-    );
-    expect(
-      live
-        .filter(({ name }) => ADDED_TOOLS.includes(name))
-        .map(({ name }) => name)
-    ).toEqual(ADDED_TOOLS);
-    expect(
-      fixture
-        .filter(({ name }) => REMOVED_TOOLS.includes(name))
-        .map(({ name }) => name)
-    ).toEqual(REMOVED_TOOLS);
-    expect(live.filter(({ name }) => REMOVED_TOOLS.includes(name))).toEqual([]);
+    expect(namesIn(fixture, ADDED_TOOLS)).toEqual([]);
+    expect(namesIn(live, ADDED_TOOLS)).toEqual(ADDED_TOOLS);
+    expect(namesIn(fixture, REMOVED_TOOLS)).toEqual(REMOVED_TOOLS);
+    expect(namesIn(live, REMOVED_TOOLS)).toEqual([]);
   });
 
   it('keeps every recorded tool name, argument name, JSON type and required flag', () => {

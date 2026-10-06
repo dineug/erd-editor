@@ -990,6 +990,29 @@ describe('settings/atom.actions', () => {
       );
       return store.state.settings;
     };
+    const lockLanguage = (
+      value: boolean,
+      version: number,
+      carried: number
+    ) => ({
+      ...changeLockSettingsAction({
+        lockSettingType: language,
+        value,
+        values: { language: carried },
+      }),
+      version,
+    });
+
+    /** The settings of two peers handed both actions, one in each order. */
+    const inBothOrders = (a: AnyAction, b: AnyAction) =>
+      [
+        [a, b],
+        [b, a],
+      ].map(order => {
+        const peer = createTestStore();
+        order.forEach(action => peer.dispatchSync(action));
+        return peer.state.settings;
+      });
 
     it('starts a new document with every lock on', () => {
       expect(store.state.settings.lockSettings).toBe(63);
@@ -1139,22 +1162,8 @@ describe('settings/atom.actions', () => {
     });
 
     it('shows what an older unlock carries through the code register, though a later lock won', () => {
-      store.dispatchSync({
-        ...changeLockSettingsAction({
-          lockSettingType: language,
-          value: true,
-          values: { language: Language.Java },
-        }),
-        version: 9,
-      });
-      store.dispatchSync({
-        ...changeLockSettingsAction({
-          lockSettingType: language,
-          value: false,
-          values: { language: Language.Go },
-        }),
-        version: 5,
-      });
+      store.dispatchSync(lockLanguage(true, 9, Language.Java));
+      store.dispatchSync(lockLanguage(false, 5, Language.Go));
 
       expect(bHas(store.state.settings.lockSettings, language)).toBe(true);
       expect(store.state.settings.lockedValues.language).toBe(Language.Java);
@@ -1162,31 +1171,10 @@ describe('settings/atom.actions', () => {
     });
 
     it('shows one language whichever order an unlock meets a newer relock in', () => {
-      const unlock = {
-        ...changeLockSettingsAction({
-          lockSettingType: language,
-          value: false,
-          values: { language: Language.Kotlin },
-        }),
-        version: 10,
-      };
-      const relock = {
-        ...changeLockSettingsAction({
-          lockSettingType: language,
-          value: true,
-          values: { language: Language.Go },
-        }),
-        version: 11,
-      };
-
-      const peers = [
-        [unlock, relock],
-        [relock, unlock],
-      ].map(order => {
-        const peer = createTestStore();
-        order.forEach(action => peer.dispatchSync(action));
-        return peer.state.settings;
-      });
+      const peers = inBothOrders(
+        lockLanguage(false, 10, Language.Kotlin),
+        lockLanguage(true, 11, Language.Go)
+      );
 
       for (const settings of peers) {
         expect(bHas(settings.lockSettings, language)).toBe(true);
@@ -1228,29 +1216,15 @@ describe('settings/atom.actions', () => {
     ])(
       'lands one language whichever order an unlock meets a setter %s than it in',
       (_, setterVersion, landed) => {
-        const unlock = {
-          ...changeLockSettingsAction({
-            lockSettingType: language,
-            value: false,
-            values: { language: Language.Kotlin },
-          }),
-          version: 10,
-        };
-        const set = {
+        const peers = inBothOrders(lockLanguage(false, 10, Language.Kotlin), {
           ...changeLanguageAction({ value: Language.Java }),
           version: setterVersion,
-        };
-
-        const peers = [
-          [unlock, set],
-          [set, unlock],
-        ].map(order => {
-          const peer = createTestStore();
-          order.forEach(action => peer.dispatchSync(action));
-          return peer.state.settings.language;
         });
 
-        expect(peers).toEqual([landed, landed]);
+        expect(peers.map(settings => settings.language)).toEqual([
+          landed,
+          landed,
+        ]);
       }
     );
   });

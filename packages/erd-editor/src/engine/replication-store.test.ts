@@ -61,6 +61,8 @@ const addTable = (id: string) =>
   addTableAction({ id, ui: { x: 200, y: 100, zIndex: 2 } });
 
 const stores: ReplicationStore[] = [];
+/** The element stores and subscriptions a spec leaves open, closed after it. */
+const closers: Array<() => void> = [];
 
 function make(toWidth = (text: string) => text.length * 10): ReplicationStore {
   const store = createReplicationStore({ toWidth });
@@ -70,6 +72,27 @@ function make(toWidth = (text: string) => text.length * 10): ReplicationStore {
 
 function parse(store: ReplicationStore) {
   return JSON.parse(store.value);
+}
+
+/** An editor window on the file: its element's stores and the replica saving for it. */
+function openWindow(file: string) {
+  const user = createUserStore(file);
+  const replica = make();
+  replica.setInitialValue(file);
+  closers.push(user.destroy);
+
+  return {
+    user,
+    replica,
+    receive: (actions: AnyAction[]) => {
+      user.sharedStore.dispatchSync(actions);
+      replica.dispatchSync(actions);
+    },
+    savedSettings: () =>
+      [toJson(user.rxStore.state), replica.value].map(
+        value => JSON.parse(value).settings
+      ),
+  };
 }
 
 /** A batch as a worker receives it: postMessage hands over a copy. */
@@ -123,6 +146,7 @@ function createTableJson(id: string, updateAt: number) {
 
 afterEach(() => {
   vi.useRealTimers();
+  closers.splice(0).forEach(close => close());
   while (stores.length) {
     const store = stores.pop();
     try {
@@ -935,41 +959,29 @@ describe('createReplicationStore', () => {
 
     type Reader = {
       receive: (actions: AnyAction[]) => void;
-      values: () => string[];
+      savedSettings: () => object[];
     };
     const readers: Reader[] = [];
-    const closers: Array<() => void> = [];
 
     afterEach(() => {
       readers.splice(0);
-      closers.splice(0).forEach(close => close());
     });
 
     /** What a host does with the batch a reader sent: hands it to every other reader. */
     const relay = (from: Reader, actions: AnyAction[]) =>
       readers.forEach(reader => reader !== from && reader.receive(actions));
 
-    /** An editor window: the element's stores and the replica saving for it, fed what it sends. */
+    /** An editor window whose replica and every other reader take what it sends. */
     function openEditor(value: string) {
-      const user = createUserStore(value);
-      const replica = make();
-      replica.setInitialValue(value);
-      const reader: Reader = {
-        receive: actions => {
-          user.sharedStore.dispatchSync(actions);
-          replica.dispatchSync(actions);
-        },
-        values: () => [toJson(user.rxStore.state), replica.value],
-      };
-      readers.push(reader);
+      const editor = openWindow(value);
+      readers.push(editor);
       closers.push(
-        user.sharedStore.subscribe(actions => {
-          replica.dispatchSync(actions);
-          relay(reader, actions);
-        }),
-        user.destroy
+        editor.user.sharedStore.subscribe(actions => {
+          editor.replica.dispatchSync(actions);
+          relay(editor, actions);
+        })
       );
-      return { rxStore: user.rxStore, replica };
+      return editor;
     }
 
     /** A coding agent's headless peer, which joins from the file as a window does. */
@@ -978,7 +990,7 @@ describe('createReplicationStore', () => {
       peer.setInitialValue(value);
       const reader: Reader = {
         receive: actions => peer.receive(actions),
-        values: () => [peer.value],
+        savedSettings: () => [JSON.parse(peer.value).settings],
       };
       readers.push(reader);
       closers.push(
@@ -994,7 +1006,7 @@ describe('createReplicationStore', () => {
      */
     async function joinedLater() {
       const first = openEditor(createSeedValue());
-      first.rxStore.dispatchSync(
+      first.user.rxStore.dispatchSync(
         changeLanguageAction({ value: onScreen.language }),
         changeTableNameCaseAction({ value: onScreen.tableNameCase })
       );
@@ -1009,9 +1021,7 @@ describe('createReplicationStore', () => {
 
     /** The settings every editor, the agent and every replica would save. */
     const savedSettings = () =>
-      readers
-        .flatMap(reader => reader.values())
-        .map(value => JSON.parse(value).settings);
+      readers.flatMap(reader => reader.savedSettings());
 
     const expectOneValue = (values: object) => {
       const [first, ...rest] = savedSettings();
@@ -1027,7 +1037,9 @@ describe('createReplicationStore', () => {
     it('saves the values the window that unlocked showed, on every store', async () => {
       const { first } = await joinedLater();
 
-      first.rxStore.dispatchSync(changeLockSettingsAction$(codeLocks, false));
+      first.user.rxStore.dispatchSync(
+        changeLockSettingsAction$(codeLocks, false)
+      );
       await settle();
 
       expectOneValue(onScreen);
@@ -1066,31 +1078,6 @@ describe('createReplicationStore', () => {
     const unlocked = lockLanguage(false, 10, { language: Language.Kotlin });
     // The relocker never saw the unlock, so it locks at the value it shows.
     const relocked = lockLanguage(true, 11, { language: Language.Go });
-    const closers: Array<() => void> = [];
-
-    afterEach(() => {
-      closers.splice(0).forEach(close => close());
-    });
-
-    /** An editor window on the file, its element's stores and its replica. */
-    function openWindow(file: string) {
-      const user = createUserStore(file);
-      const replica = make();
-      replica.setInitialValue(file);
-      closers.push(user.destroy);
-
-      return {
-        receive: (actions: AnyAction[]) => {
-          user.sharedStore.dispatchSync(actions);
-          replica.dispatchSync(actions);
-        },
-        screen: () => user.rxStore.state.settings.language,
-        values: () =>
-          [toJson(user.rxStore.state), replica.value].map(
-            value => JSON.parse(value).settings
-          ),
-      };
-    }
 
     /** One window per delivery order, each handed both batches in it. */
     async function crossed() {
@@ -1108,7 +1095,7 @@ describe('createReplicationStore', () => {
     }
 
     const savedSettings = (windows: Array<ReturnType<typeof openWindow>>) =>
-      windows.flatMap(editor => editor.values());
+      windows.flatMap(editor => editor.savedSettings());
 
     it('saves one value on every store, the one the relock carries', async () => {
       const [first, ...rest] = savedSettings(await crossed());
@@ -1124,10 +1111,9 @@ describe('createReplicationStore', () => {
     it('shows the value the unlock carries on every screen, the replicas included', async () => {
       const windows = await crossed();
 
-      expect(windows.map(editor => editor.screen())).toEqual([
-        Language.Kotlin,
-        Language.Kotlin,
-      ]);
+      expect(
+        windows.map(({ user }) => user.rxStore.state.settings.language)
+      ).toEqual([Language.Kotlin, Language.Kotlin]);
 
       // An unlock carrying no value saves the screen each store shows.
       windows.forEach(editor => editor.receive([lockLanguage(false, 12, {})]));
@@ -1147,12 +1133,6 @@ describe('createReplicationStore', () => {
    * reaches its element and its replica alike, as webview-client relays it.
    */
   describe('a replica of a window joining one already open', () => {
-    const closers: Array<() => void> = [];
-
-    afterEach(() => {
-      closers.splice(0).forEach(close => close());
-    });
-
     /** The open window's edits, the file they leave, and a window joining it. */
     async function joinOpenWindow() {
       const open = createUserStore(createSeedValue());
@@ -1171,10 +1151,7 @@ describe('createReplicationStore', () => {
       paint(open, '#111111');
       await settle();
 
-      const file = toJson(open.rxStore.state);
-      const joined = createUserStore(file);
-      const replica = make();
-      replica.setInitialValue(file);
+      const { user: joined, replica } = openWindow(toJson(open.rxStore.state));
       toJoined.push(actions => {
         joined.sharedStore.dispatchSync(copy(actions));
         replica.dispatchSync(copy(actions));
@@ -1183,8 +1160,7 @@ describe('createReplicationStore', () => {
         joined.sharedStore.subscribe(actions => {
           replica.dispatchSync(copy(actions));
           open.sharedStore.dispatchSync(copy(actions));
-        }),
-        joined.destroy
+        })
       );
       await settle();
 
@@ -1231,12 +1207,11 @@ describe('createReplicationStore', () => {
    */
   describe('a replica of a window answering a join', () => {
     it('saves a colour its window paints after the answer', async () => {
-      const file = createSeedValue();
-      const user = createUserStore(file);
-      const replica = make();
-      replica.setInitialValue(file);
-      const stop = user.sharedStore.subscribe(actions =>
-        replica.dispatchSync(copy(actions))
+      const { user, replica } = openWindow(createSeedValue());
+      closers.push(
+        user.sharedStore.subscribe(actions =>
+          replica.dispatchSync(copy(actions))
+        )
       );
 
       paint(user, '#111111');
@@ -1246,8 +1221,6 @@ describe('createReplicationStore', () => {
 
       expect(colours(replica)).toEqual(['#222222', '#222222']);
       expect(colours(replica)).toEqual(colours(user));
-      stop();
-      user.destroy();
     });
   });
 

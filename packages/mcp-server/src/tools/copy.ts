@@ -28,8 +28,6 @@ const OLDER_EDITOR =
 const REFERENTIAL_ACTION = `What the database does to the child rows: none (no clause, the database default), noAction, cascade, setNull, setDefault or restrict. A vendor that lacks the action drops it from its DDL. ${OLDER_EDITOR}`;
 const COLOR =
   'CSS hex color such as #3b82f6; an empty string removes the color.';
-const DATA_TYPE_SYNC =
-  'spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
 
@@ -190,7 +188,8 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { columnIds: 'Column ids in that table, from erd_get.' },
   },
   erd_change_column_data_type: {
-    description: `Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change ${DATA_TYPE_SYNC}.`,
+    description:
+      'Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there.',
     args: { value: 'The data type text.' },
   },
   erd_change_column_name: {

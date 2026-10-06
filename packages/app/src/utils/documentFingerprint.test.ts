@@ -3,6 +3,7 @@ import {
   CanvasType,
   createPeerStore,
   LockSettingType,
+  type PeerStore,
   settingsActions,
   settingsActions$,
   tableActions,
@@ -211,8 +212,10 @@ describe('toDriveFingerprint', () => {
   });
 
   describe('a view a lock holds, on a replica', () => {
+    type Actions = Parameters<PeerStore['dispatch']>[0];
+
     const { viewport, canvasType } = LockSettingType;
-    const moves: Array<[string, number, unknown[]]> = [
+    const moves: Array<[string, number, Actions]> = [
       [
         'viewport',
         viewport,
@@ -231,7 +234,7 @@ describe('toDriveFingerprint', () => {
         ],
       ],
     ];
-    const opened: Array<{ destroy(): void }> = [];
+    const opened: PeerStore[] = [];
 
     afterEach(() => opened.splice(0).forEach(store => store.destroy()));
 
@@ -245,19 +248,20 @@ describe('toDriveFingerprint', () => {
     const lock = (bits: number, value: boolean) =>
       settingsActions$.changeLockSettingsAction$(bits, value);
 
+    const lockSettingsOf = (value: string) =>
+      JSON.parse(value).settings.lockSettings;
+
     it.each(moves)(
       'tells a locked %s moved by an unlock and a lock again apart',
       (_name, bit, move) => {
         const store = open(VALUE);
         const base = toDriveFingerprint(store.value);
 
-        store.dispatch(move as any);
+        store.dispatch(move);
         store.dispatch([lock(bit, false)]);
         store.dispatch([lock(bit, true)]);
 
-        expect(JSON.parse(store.value).settings.lockSettings).toBe(
-          JSON.parse(VALUE).settings.lockSettings
-        );
+        expect(lockSettingsOf(store.value)).toBe(lockSettingsOf(VALUE));
         expect(toDriveFingerprint(store.value)).not.toBe(base);
       }
     );
@@ -268,7 +272,7 @@ describe('toDriveFingerprint', () => {
         const store = open(VALUE);
         const base = toDriveFingerprint(store.value);
 
-        store.dispatch(move as any);
+        store.dispatch(move);
 
         expect(toDriveFingerprint(store.value)).toBe(base);
       }
@@ -281,7 +285,7 @@ describe('toDriveFingerprint', () => {
         store.dispatch([lock(bit, false)]);
         const before = store.value;
 
-        store.dispatch(move as any);
+        store.dispatch(move);
 
         expect(store.value).not.toBe(before);
         expect(toDriveFingerprint(store.value)).toBe(
@@ -306,11 +310,9 @@ describe('toDriveFingerprint', () => {
       const base = toDriveFingerprint(here.value);
 
       expect(toDriveFingerprint(there.value)).toBe(base);
-      here.dispatch(moves.flatMap(([, , move]) => move) as any);
+      here.dispatch(moves.flatMap(([, , move]) => move));
 
-      expect(JSON.parse(here.value).settings.lockSettings).toBe(
-        JSON.parse(VALUE).settings.lockSettings
-      );
+      expect(lockSettingsOf(here.value)).toBe(lockSettingsOf(VALUE));
       expect(toDriveFingerprint(here.value)).toBe(base);
     });
   });
