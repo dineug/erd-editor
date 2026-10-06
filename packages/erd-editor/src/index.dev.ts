@@ -24,6 +24,8 @@ function runStats() {
 function runEditor() {
   const editor = document.createElement('erd-editor');
   editor.enableThemeBuilder = true;
+  editor.enableLocalePicker = true;
+  editor.enableWelcomeScreen = true;
   // editor.setAttribute('style', 'display: block; height: 50%;');
   document.body.appendChild(editor);
 

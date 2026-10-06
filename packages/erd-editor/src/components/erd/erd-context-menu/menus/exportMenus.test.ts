@@ -7,11 +7,17 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { createTestAppContext, flush } from '@/__test-utils__/index';
+import {
+  createTestAppContext,
+  flush,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { createExportMenus } from '@/components/erd/erd-context-menu/menus/exportMenus';
 import { changeDatabaseNameAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 
 let app: AppContext;
@@ -31,7 +37,7 @@ afterEach(() => {
 
 describe('exportMenus', () => {
   it('exposes json, Schema SQL and Image entries with their icons', () => {
-    const result = createExportMenus(app, () => {});
+    const result = createExportMenus(app, () => {}, sourceI18n);
 
     expect(result.map(menu => menu.name)).toEqual([
       'json',
@@ -45,11 +51,26 @@ describe('exportMenus', () => {
     ]);
   });
 
+  it('names Schema SQL and Image in the language it is handed, json in none', () => {
+    expect(createExportMenus(app, () => {}).map(menu => menu.name)).toEqual([
+      'json',
+      'Schema SQL',
+      'Image',
+    ]);
+    expect(
+      createExportMenus(
+        app,
+        () => {},
+        createI18n('ko-KR', pseudoMessages('ko'))
+      ).map(menu => menu.name)
+    ).toEqual(['json', 'ko:Schema SQL', 'ko:Image']);
+  });
+
   it('exports the document as json named after the database', () => {
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
     const onClose = vi.fn();
 
-    createExportMenus(app, onClose)[0].onClick();
+    createExportMenus(app, onClose, sourceI18n)[0].onClick();
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(exported).toHaveLength(1);
@@ -58,7 +79,7 @@ describe('exportMenus', () => {
   });
 
   it('falls back to an unnamed file when the database name is blank', () => {
-    createExportMenus(app, () => {})[0].onClick();
+    createExportMenus(app, () => {}, sourceI18n)[0].onClick();
 
     expect(exported[0].fileName).toMatch(/^unnamed-.*\.erd\.json$/);
   });
@@ -71,7 +92,7 @@ describe('exportMenus', () => {
     await flush();
     const onClose = vi.fn();
 
-    createExportMenus(app, onClose)[1].onClick();
+    createExportMenus(app, onClose, sourceI18n)[1].onClick();
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(exported).toHaveLength(1);
@@ -84,7 +105,11 @@ describe('exportMenus', () => {
       openExportImage: () => order.push('open dialog'),
     });
 
-    createExportMenus(app, () => order.push('close menu'))[2].onClick();
+    createExportMenus(
+      app,
+      () => order.push('close menu'),
+      sourceI18n
+    )[2].onClick();
 
     expect(order).toEqual(['close menu', 'open dialog']);
     expect(exported).toEqual([]);
@@ -92,7 +117,7 @@ describe('exportMenus', () => {
   });
 
   it('captures the database name at creation time', () => {
-    const menus = createExportMenus(app, () => {});
+    const menus = createExportMenus(app, () => {}, sourceI18n);
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'later' }));
 
     menus[0].onClick();

@@ -3,9 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
@@ -41,6 +44,7 @@ import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import { PREVIEW_ZOOM_MAX } from '@/konva/scene/fitZoom';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -294,6 +298,62 @@ describe('VisualizationToolbar', () => {
     await flush();
 
     expect(byTitle(root, 'Tidy Up')).toBeNull();
+  });
+
+  it('names its tools and the row display in the language the element shows, left to right under any', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      const app = seedFlow(createTestAppContext(), ['t1']);
+      const { container, root } = await setup(app);
+      expect(root.getAttribute('dir')).toBe('ltr');
+
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(titles(root).slice(0, 7)).toEqual([
+        'ko:Graph',
+        'ko:Flow',
+        expect.stringMatching(/^ko:Zoom out \(/),
+        expect.stringMatching(/^ko:Zoom in \(/),
+        'ko:Fit',
+        'ko:Tidy Up',
+        'ko:Row display: ko:Keys only',
+      ]);
+      expect(byTitle(root, 'ko:Reset zoom')).not.toBeNull();
+      expect(byTitle(root, 'ko:Show all')).not.toBeNull();
+      expect(labelTextOf(root)).toBe('ko:Keys only');
+
+      app.store.dispatchSync(
+        viewScrollToAction({
+          originX: -90_000,
+          originY: -90_000,
+          kind: ViewKind.flow,
+        })
+      );
+      await flush();
+      expect(titles(root).at(-1)).toBe('ko:Go to content');
+
+      click(triggerOf(root));
+      await flush();
+      expect(optionLabels(container)).toEqual([
+        'ko:Name only',
+        'ko:Keys only',
+        'ko:All fields',
+      ]);
+
+      // A right-to-left sentence keeps the mode it names in a direction of
+      // its own, while the bar itself stays left to right.
+      Object.assign(i18n, createI18n('he-IL', pseudoMessages('he')));
+      await flush();
+      expect(triggerOf(root)?.getAttribute('title')).toBe(
+        'he:Row display: \u2068he:Keys only\u2069'
+      );
+      expect(root.getAttribute('dir')).toBe('ltr');
+    } finally {
+      provider.destroy();
+    }
   });
 
   // A guard rather than a measurement: the bar has never carried the centre's

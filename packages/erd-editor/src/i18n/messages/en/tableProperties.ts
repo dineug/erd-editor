@@ -1,1 +1,35 @@
-export const tableProperties = {} as const;
+/** The Table Properties dialog: its header, its tabs and the keys, indexes and columns of the Indexes tab. */
+export const tableProperties = {
+  'tableProperties.readOnly': 'Read only',
+  'tableProperties.indexes': 'Indexes',
+  'tableProperties.keys': 'Keys',
+  'tableProperties.columns': 'Columns',
+  'tableProperties.indexOrder': 'Index order',
+  'tableProperties.dragToReorder': 'Drag to reorder',
+  'tableProperties.addIndex': 'Add Index',
+  'tableProperties.noIndexes': 'No indexes',
+  'tableProperties.noIndexesYet': 'No indexes yet',
+  'tableProperties.noColumns': 'This table has no columns',
+  'tableProperties.indexHasNoColumns': 'This index has no columns',
+  'tableProperties.checkColumnsToAdd': 'Check columns above to add them',
+  'tableProperties.selectedCount': {
+    one: '{count} of {total} selected',
+    other: '{count} of {total} selected',
+  },
+  'tableProperties.readOnlyByPrimaryKey':
+    'Read only: set by the {flag} flag on its columns',
+  'tableProperties.readOnlyByUnique':
+    'Read only: set by the {flag} flag on its column',
+  'tableProperties.selectKeyOrIndex': 'Select a key or an index',
+  'tableProperties.selectIndexToSee': 'Select an index to see its columns',
+  'tableProperties.selectIndexToEdit': 'Select an index to edit its columns',
+  'tableProperties.noKeysOrIndexes': 'This table has no keys or indexes',
+  'tableProperties.addIndexToChoose': 'Add an index to choose its columns',
+  'tableProperties.uniqueColumn': 'Unique Column',
+  'tableProperties.readOnlyKey': 'Read Only',
+  'tableProperties.indexName': 'name',
+  'tableProperties.alternateKeyN': 'Alternate Key {n}',
+  'tableProperties.remove': 'Remove',
+  'tableProperties.ascending': 'Ascending',
+  'tableProperties.descending': 'Descending',
+} as const;

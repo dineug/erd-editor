@@ -98,14 +98,15 @@ describe('QuickSearch.styles', () => {
     expect(styles.search.values).toContain(fontSize3);
   });
 
-  it('gives the input the row and the scope label only the room it needs on its right', () => {
+  it('gives the input the row and the scope label only the room it needs after it', () => {
     expect(staticText(styles.field)).toContain('display: flex');
     expect(staticText(styles.search)).toContain('flex: 1');
     expect(staticText(styles.search)).toContain('min-width: 0');
 
     const scope = staticText(styles.scope);
     expect(scope).toContain('flex-shrink: 0');
-    expect(scope).toContain('margin-right: 16px');
+    expect(scope).toContain('margin-inline-end: 16px');
+    expect(scope).not.toContain('margin-right');
     expect(scope).toContain('color: var(--accent-color-11)');
     expect(scope).toContain('background-color: var(--accent-color-3)');
     expect(styles.scope.values).toContain(typography.paragraph);
@@ -159,11 +160,12 @@ describe('QuickSearch.styles', () => {
     expect(text).toContain('background-color: var(--column-select)');
   });
 
-  it('reserves a fixed gutter for the row icon', () => {
+  it('reserves a fixed gutter after the row icon, on its left under a right-to-left language', () => {
     const text = staticText(styles.icon);
 
     expect(text).toContain('min-width: 14px');
-    expect(text).toContain('margin-right: 8px');
+    expect(text).toContain('margin-inline-end: 8px');
+    expect(text).not.toContain('margin-right');
     expect(text).toContain('align-items: center');
   });
 
@@ -190,11 +192,12 @@ describe('QuickSearch.styles', () => {
     expect(text).toContain('height: 100%');
   });
 
-  it('pushes the shortcut to the far right of the row', () => {
+  it('pushes the shortcut to the far end of the row, its left under a right-to-left language', () => {
     const text = staticText(styles.shortcut);
 
-    expect(text).toContain('margin-left: auto');
-    expect(text).toContain('padding-left: 24px');
+    expect(text).toContain('margin-inline-start: auto');
+    expect(text).toContain('padding-inline-start: 24px');
+    expect(text).not.toMatch(/(margin|padding)-left/);
     expect(text).toContain('align-items: center');
   });
 });

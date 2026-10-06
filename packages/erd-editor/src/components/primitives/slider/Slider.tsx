@@ -59,6 +59,7 @@ const Slider: FC<SliderProps> = (props, ctx) => {
     return (
       <div
         class={styles.root}
+        prop:dir="ltr"
         use:ref={ref(root)}
         on:mousedown={handleMousedown}
       >

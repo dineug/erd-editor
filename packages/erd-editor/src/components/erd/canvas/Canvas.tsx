@@ -120,6 +120,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
     return (
       <div
         class={styles.controller}
+        prop:dir="ltr"
         style={{
           ...size,
           'pointer-events': props.grabMove ? 'none' : 'auto',

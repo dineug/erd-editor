@@ -11,9 +11,12 @@ import {
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mount,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { getColumnCellSlots } from '@/components/erd/canvas/table/cellLayout';
@@ -61,6 +64,7 @@ import {
   changeColumnCommentAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n, I18n } from '@/i18n/translate';
 import {
   getColumnRect,
   getTableRect,
@@ -253,6 +257,7 @@ describe('FindReplace opening and closing', () => {
         [Open.tableProperties]: true,
         [Open.themeBuilder]: true,
         [Open.exportImage]: true,
+        [Open.localePicker]: true,
       })
     );
 
@@ -266,6 +271,7 @@ describe('FindReplace opening and closing', () => {
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(false);
     expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
+    expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
   });
 
   it('opens with the query it is handed, already searched', async () => {
@@ -534,6 +540,24 @@ describe('FindReplace opening and closing', () => {
 
     expect(panel()).not.toBeNull();
     expect(findInput().value).toBe('user');
+  });
+
+  it('stands aside, still open, while the display language picker is up, and closes it on an opening', async () => {
+    await openWith('user');
+    const pickerOpen = () => app.store.state.editor.openMap[Open.localePicker];
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.localePicker]: true }));
+    await flush();
+
+    expect(isOpen()).toBe(true);
+    expect(panel()).toBeNull();
+
+    await openWith();
+
+    expect(pickerOpen()).toBe(false);
+    expect(panel()).not.toBeNull();
+    expect(findInput().value).toBe('user');
+    expect(document.activeElement).toBe(findInput());
   });
 
   /** An owner decision: the export image dialog closes once Find and Replace opens, open already under it or not. */
@@ -1718,5 +1742,144 @@ describe('FindReplace keyboard isolation', () => {
     expect(escaped).toEqual([]);
     expect(isOpen()).toBe(false);
     expect(focusEvents).toBe(1);
+  });
+});
+
+describe('FindReplace in the language the editor shows', () => {
+  let i18n: I18n;
+  let provider: ReturnType<typeof provideI18n> | null = null;
+
+  /** Puts another language into the one provided, as the element does on a switch. */
+  const switchTo = async (locale: 'de-DE' | 'fr-FR' | 'ar-SA', tag: string) => {
+    Object.assign(i18n, createI18n(locale, pseudoMessages(tag)));
+    await flush();
+  };
+
+  beforeEach(async () => {
+    i18n = createTestI18n('en');
+    provider = provideI18n(document.body, i18n);
+    await setup();
+  });
+
+  afterEach(() => {
+    provider?.destroy();
+    provider = null;
+  });
+
+  it('names its controls in the language provided', async () => {
+    await switchTo('de-DE', 'de');
+    await openWith();
+
+    expect(panel()?.textContent).toContain('de:Find and Replace');
+    expect(button('find-replace-close').title).toMatch(/^de:Close \(.+\)$/);
+    expect(findInput().title).toBe('de:Find');
+    expect(findInput().placeholder).toBe('de:Find');
+    expect(replaceInput()?.title).toBe('de:Replace');
+    expect(replaceInput()?.placeholder).toBe('de:Replace');
+    expect(button('find-match-case').title).toBe('de:Match Case');
+    expect(button('find-whole-word').title).toBe('de:Match Whole Word');
+    expect(button('find-regex').title).toBe('de:Use Regular Expression');
+    expect(button('find-replace-one').title).toBe('de:Replace (Enter)');
+    expect(button('find-replace-all').title).toBe('de:Replace All');
+    expect(button('find-previous').title).toBe(
+      'de:Previous Match (Shift+Enter)'
+    );
+    expect(button('find-next').title).toBe('de:Next Match (Enter)');
+    expect(scope(FindField.tableName).textContent?.trim()).toBe(
+      'de:Table names'
+    );
+    expect(scope(FindField.memo).textContent?.trim()).toBe('de:Memos');
+  });
+
+  it('calls itself Find in a read-only editor', async () => {
+    mounted?.unmount();
+    mounted = mount(html`<${FindReplace} readonly=${true} />`, app);
+    await switchTo('de-DE', 'de');
+    await openWith();
+
+    expect(panel()?.querySelector('span')?.textContent?.trim()).toBe('de:Find');
+  });
+
+  it('counts, places and lists the matches in that language, and reads them again after a switch', async () => {
+    await switchTo('de-DE', 'de');
+    await openWith('user');
+
+    expect(countText()).toBe('de:5 matches');
+    expect(rowTexts()[0]).toBe('user_id | de:orders.user_id · de:Column');
+
+    await keydown(findInput(), { key: 'Enter' });
+    expect(countText()).toBe('de:1 of 5');
+
+    await switchTo('fr-FR', 'fr');
+
+    expect(countText()).toBe('fr:1 of 5');
+    expect(rowTexts()[0]).toBe('user_id | fr:orders.user_id · fr:Column');
+
+    await type(findInput(), 'login');
+    expect(countText()).toBe('fr:1 match');
+
+    await type(findInput(), 'nothing like it');
+    expect(countText()).toBe('fr:No results');
+  });
+
+  it('keeps what a press said as its meaning, which a switch reads again', async () => {
+    await openWith('user');
+    await type(replaceInput() as HTMLInputElement, 'member');
+    await click(button('find-replace-all'));
+    expect(countText()).toBe('Replaced 5 matches');
+
+    await switchTo('de-DE', 'de');
+    expect(countText()).toBe('de:Replaced 5 matches');
+
+    await type(findInput(), 'member');
+    await type(replaceInput() as HTMLInputElement, 'member');
+    await click(button('find-replace-all'));
+    expect(countText()).toBe('de:No changes');
+  });
+
+  it('says which part of a long list it draws, and why a pattern finds nothing, in that language', async () => {
+    for (let index = 0; index < MATCH_ROW_LIMIT; index++) {
+      app.store.dispatchSync(
+        addMemoAction({ id: `m${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeMemoValueAction({ id: `m${index}`, value: 'user' })
+      );
+    }
+    await switchTo('de-DE', 'de');
+    await openWith('user');
+
+    expect(panel()?.textContent).toContain(
+      `de:Showing 1–${MATCH_ROW_LIMIT} of ${MATCH_ROW_LIMIT + 5}`
+    );
+
+    await click(button('find-regex'));
+    await type(findInput(), 'user(');
+    await pause();
+
+    expect(countText()).toBe('de:Invalid regular expression');
+  });
+
+  it('says a run of Replace is back where it began in that language', async () => {
+    await switchTo('de-DE', 'de');
+    await openWith('Customer');
+    await type(replaceInput() as HTMLInputElement, 'Big Customer');
+    await keydown(findInput(), { key: 'Enter' });
+
+    await click(button('find-replace-one'));
+
+    expect(countText()).toBe('de:No more matches');
+  });
+
+  it('isolates the numbers it counts in a right-to-left language', async () => {
+    await switchTo('ar-SA', 'ar');
+    await openWith('user');
+
+    expect(countText()).toBe('ar:\u20685\u2069 matches');
+  });
+
+  it('lets each excerpt take the direction of its own text', async () => {
+    await openWith('user');
+
+    const excerpt = rows()[0].querySelector('span');
+    expect(excerpt?.getAttribute('dir')).toBe('auto');
   });
 });

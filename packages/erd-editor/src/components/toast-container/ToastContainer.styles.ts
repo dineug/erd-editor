@@ -4,7 +4,7 @@ export const root = css`
   position: absolute;
   z-index: 2147483647;
   bottom: 0;
-  right: 0;
+  inset-inline-end: 0;
   display: flex;
   flex-direction: column;
   max-width: 390px;

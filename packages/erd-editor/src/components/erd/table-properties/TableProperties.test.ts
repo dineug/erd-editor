@@ -10,9 +10,12 @@ import {
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as tabStyles from '@/components/erd/table-properties/table-properties-tabs/TablePropertiesTabs.styles';
@@ -25,6 +28,7 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { createI18n, I18n } from '@/i18n/translate';
 import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -485,5 +489,69 @@ describe('TableProperties', () => {
       expect(outside).toHaveBeenCalledTimes(1);
       mounted.container.removeEventListener('click', outside);
     });
+  });
+});
+
+describe('TableProperties in the language the editor shows', () => {
+  let i18n: I18n;
+  let provider: ReturnType<typeof provideI18n> | null = null;
+
+  beforeEach(() => {
+    i18n = createTestI18n('de-DE', pseudoMessages('de'));
+    provider = provideI18n(document.body, i18n);
+  });
+
+  afterEach(() => {
+    provider?.destroy();
+    provider = null;
+  });
+
+  it('names the dialog, its badge, a blank table, the close button and the tabs in that language', async () => {
+    mounted = await mountAndFlush(readonlyTemplate(), app);
+
+    expect(dialogOf(mounted).getAttribute('aria-label')).toBe(
+      'de:Table Properties'
+    );
+    expect(headerOf(mounted).firstElementChild?.textContent).toBe(
+      'de:Table Properties'
+    );
+    expect(badgeOf(mounted)?.textContent).toBe('de:Read only');
+    expect(tableTabsOf(mounted).map(tab => tab.textContent?.trim())).toEqual([
+      'users',
+      'de:unnamed',
+    ]);
+    expect(closeButtonOf(mounted).getAttribute('title')).toBe('de:Close (ESC)');
+    expect(propertyTabsOf(mounted).map(tab => tab.textContent?.trim())).toEqual(
+      ['de:Indexes', 'de:Schema SQL', 'de:Code Generator']
+    );
+  });
+
+  it('reads them again once another language is put in, the tab picked staying', async () => {
+    mounted = await mountAndFlush(template(), app);
+    click(propertyTabsOf(mounted)[2]);
+    await flush();
+
+    Object.assign(i18n, createI18n('fr-FR', pseudoMessages('fr')));
+    await flush();
+
+    expect(dialogOf(mounted).getAttribute('aria-label')).toBe(
+      'fr:Table Properties'
+    );
+    const tabs = propertyTabsOf(mounted);
+    expect(tabs.map(tab => tab.textContent?.trim())).toEqual([
+      'fr:Indexes',
+      'fr:Schema SQL',
+      'fr:Code Generator',
+    ]);
+    expect(tabs[2].classList.contains('selected')).toBe(true);
+  });
+
+  it('lets each table chip take the direction of its own name', async () => {
+    mounted = await mountAndFlush(template(), app);
+
+    expect(tableTabsOf(mounted).map(tab => tab.getAttribute('dir'))).toEqual([
+      'auto',
+      'auto',
+    ]);
   });
 });

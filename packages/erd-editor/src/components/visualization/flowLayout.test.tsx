@@ -2,10 +2,18 @@
 // each display set asks ELK for (AC-46), the landing a return to the whole
 // stands back on (AC-47), and the loop that asks again for what went stale.
 
-import type { AnyAction } from '@dineug/r-html';
+import type { AnyAction, DOMTemplateLiterals } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { createTestAppContext } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  type Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import { focusFlowView, showAllFlowView } from '@/components/flowCenters';
 import {
@@ -39,6 +47,7 @@ import {
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { Tag } from '@/engine/tag';
+import { createI18n } from '@/i18n/translate';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
@@ -50,6 +59,8 @@ const hoisted = vi.hoisted(() => ({
   release: [] as Array<() => void>,
   /** How far apart the row stands the tables, so a later landing is one the spec can tell apart. */
   stride: 400,
+  /** Set to have the next ask fail, as one does with no worker to answer it. */
+  fail: false,
 }));
 
 /** ELK stood in for by a row, so a request is something the spec can count and a landing something it can predict. */
@@ -64,6 +75,8 @@ vi.mock('@/services/elk-layout', async importOriginal => {
     ...actual,
     createElkLayout: (request: any) => {
       hoisted.requests.push(request);
+      if (hoisted.fail) return Promise.reject(new Error('no worker'));
+
       const points = flatten(request.nodes).map((node, index) => ({
         id: node.id,
         x: index * hoisted.stride,
@@ -90,6 +103,7 @@ afterEach(() => {
   hoisted.hold = false;
   hoisted.release.splice(0);
   hoisted.stride = 400;
+  hoisted.fail = false;
 });
 
 const link = (id: string, start: string, end: string) =>
@@ -512,5 +526,54 @@ describe('the loop that keeps the Flow view placed', () => {
 
     expect(hoisted.requests).toHaveLength(1);
     expect(positionsOf(app)).toEqual(whole);
+  });
+});
+
+describe('a Flow placement that fails', () => {
+  let mounted: Mounted | null = null;
+
+  afterEach(() => {
+    mounted?.unmount();
+    mounted = null;
+    vi.restoreAllMocks();
+  });
+
+  it('says it could not place the tables, in the language the element shows, and places nothing', async () => {
+    const app = seed();
+    const messages: DOMTemplateLiterals[] = [];
+    app.emitter.on({
+      openToast: ({ payload }) => {
+        messages.push(payload.message);
+      },
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    hoisted.fail = true;
+
+    mountFlow(app);
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(positionsOf(app)).toEqual({});
+    expect(messages).toHaveLength(1);
+
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      mounted = await mountAndFlush(messages[0], app);
+      expect(mounted.container.textContent?.trim()).toBe(
+        'Could not place tables'
+      );
+
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(mounted.container.textContent?.trim()).toBe(
+        'ko:Could not place tables'
+      );
+    } finally {
+      provider.destroy();
+    }
   });
 });

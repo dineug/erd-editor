@@ -10,6 +10,7 @@ import {
 } from '@dineug/r-html';
 
 import { AppContext, useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
@@ -36,6 +37,7 @@ export type ColumnDataTypeProps = {
 
 const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
   const app = useAppContext(ctx, props.app?.value);
+  const i18n = useI18n(ctx);
   const { state, setHints, handleSelectHint, handleKeydown } = useColumnCell(
     props,
     app
@@ -167,13 +169,14 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
     <div
       class={styles.root}
       use:ref={ref(root)}
+      prop:dir="ltr"
       tabindex="-1"
       on:focus={handleFocus}
       on:focusin={handleFocus}
       on:focusout={handleFocusout}
     >
       <EditInput
-        placeholder="dataType"
+        placeholder={i18n.value.t('common.placeholder.dataType')}
         width={props.width}
         value={props.value}
         focus={props.focus}

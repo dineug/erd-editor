@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 
+import { en } from '@/i18n/messages/en';
 import type { Theme } from '@/themes/tokens';
 
 import type { ToWidth } from './textWidth';
@@ -74,7 +75,7 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
     expect(result.reduction).toBeNull();
   });
 
-  it('hands back the box it drew and the zoom, and passes the side cap to the scene', async () => {
+  it('hands back the box it drew and the zoom, and passes the side cap and the language to the scene', async () => {
     const canvas: FakeCanvas = {
       width: 50,
       height: 50,
@@ -84,12 +85,14 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
       fakeScene(canvas, { zoomLevel: 0.6 })
     );
 
+    const i18n = { locale: 'ja-JP' as const, messages: en };
     const result = await renderDocumentPng({
       doc: '{}',
       theme,
       pixelRatio: 1,
       zoomLevel: 0.6,
       maxSide: 960,
+      i18n,
       toWidth,
     });
 
@@ -99,6 +102,7 @@ describe('renderDocumentPng rasterizes through whichever canvas it is handed', (
       toWidth,
       zoomLevel: 0.6,
       maxSide: 960,
+      i18n,
     });
     expect(result).toMatchObject({
       documentWidth: 400,

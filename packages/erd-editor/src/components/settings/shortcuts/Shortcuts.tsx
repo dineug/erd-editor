@@ -1,147 +1,69 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import Kbd from '@/components/primitives/kbd/Kbd';
-import { ShortcutOption } from '@/utils/keyboard-shortcut';
+import type { PlainMessageKey } from '@/i18n/translate';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Shortcuts.styles';
 
 export type ShortcutsProps = {};
 
-type ShortcutItem = {
-  command: string;
-  shortcuts: ShortcutOption[];
-};
+/** Each command's name as the key of its message, in the order the page lists them. */
+const ShortcutNameKey = {
+  [KeyBindingName.edit]: 'shortcuts.name.edit',
+  [KeyBindingName.stop]: 'shortcuts.name.stop',
+  [KeyBindingName.search]: 'shortcuts.name.search',
+  [KeyBindingName.findReplace]: 'shortcuts.name.findReplace',
+  [KeyBindingName.undo]: 'shortcuts.name.undo',
+  [KeyBindingName.redo]: 'shortcuts.name.redo',
+  [KeyBindingName.addTable]: 'shortcuts.name.addTable',
+  [KeyBindingName.addColumn]: 'shortcuts.name.addColumn',
+  [KeyBindingName.addMemo]: 'shortcuts.name.addMemo',
+  [KeyBindingName.removeTable]: 'shortcuts.name.removeTable',
+  [KeyBindingName.removeColumn]: 'shortcuts.name.removeColumn',
+  [KeyBindingName.removeSelection]: 'shortcuts.name.removeSelection',
+  [KeyBindingName.primaryKey]: 'shortcuts.name.primaryKey',
+  [KeyBindingName.selectAllTable]: 'shortcuts.name.selectAllTable',
+  [KeyBindingName.selectAllColumn]: 'shortcuts.name.selectAllColumn',
+  [KeyBindingName.relationshipZeroOne]: 'shortcuts.name.relationshipZeroOne',
+  [KeyBindingName.relationshipZeroN]: 'shortcuts.name.relationshipZeroN',
+  [KeyBindingName.relationshipOneOnly]: 'shortcuts.name.relationshipOneOnly',
+  [KeyBindingName.relationshipOneN]: 'shortcuts.name.relationshipOneN',
+  [KeyBindingName.tableProperties]: 'shortcuts.name.tableProperties',
+  [KeyBindingName.focusView]: 'shortcuts.name.focusView',
+  [KeyBindingName.zoomIn]: 'shortcuts.name.zoomIn',
+  [KeyBindingName.zoomOut]: 'shortcuts.name.zoomOut',
+  [KeyBindingName.zoomReset]: 'shortcuts.name.zoomReset',
+  [KeyBindingName.handTool]: 'shortcuts.name.handTool',
+  [KeyBindingName.zenMode]: 'shortcuts.name.zenMode',
+} as const satisfies Record<KeyBindingName, PlainMessageKey>;
+
+const ShortcutNameList = Object.keys(ShortcutNameKey) as KeyBindingName[];
 
 const Shortcuts: FC<ShortcutsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
-
-  const getItems = (): ShortcutItem[] => {
-    const { keyBindingMap } = app.value;
-
-    return [
-      {
-        command: 'Editing',
-        shortcuts: keyBindingMap.edit,
-      },
-      {
-        command: 'Stop',
-        shortcuts: keyBindingMap.stop,
-      },
-      {
-        command: 'Search',
-        shortcuts: keyBindingMap.search,
-      },
-      {
-        command: 'Find and Replace',
-        shortcuts: keyBindingMap.findReplace,
-      },
-      {
-        command: 'Undo',
-        shortcuts: keyBindingMap.undo,
-      },
-      {
-        command: 'Redo',
-        shortcuts: keyBindingMap.redo,
-      },
-      {
-        command: 'Add Table',
-        shortcuts: keyBindingMap.addTable,
-      },
-      {
-        command: 'Add Column',
-        shortcuts: keyBindingMap.addColumn,
-      },
-      {
-        command: 'Add Memo',
-        shortcuts: keyBindingMap.addMemo,
-      },
-      {
-        command: 'Remove Table, Memo',
-        shortcuts: keyBindingMap.removeTable,
-      },
-      {
-        command: 'Remove Column',
-        shortcuts: keyBindingMap.removeColumn,
-      },
-      {
-        command: 'Delete Selection',
-        shortcuts: keyBindingMap.removeSelection,
-      },
-      {
-        command: 'Primary Key',
-        shortcuts: keyBindingMap.primaryKey,
-      },
-      {
-        command: 'Select All Table, Memo',
-        shortcuts: keyBindingMap.selectAllTable,
-      },
-      {
-        command: 'Select All Column',
-        shortcuts: keyBindingMap.selectAllColumn,
-      },
-      {
-        command: 'Relationship Zero One',
-        shortcuts: keyBindingMap.relationshipZeroOne,
-      },
-      {
-        command: 'Relationship Zero N',
-        shortcuts: keyBindingMap.relationshipZeroN,
-      },
-      {
-        command: 'Relationship One Only',
-        shortcuts: keyBindingMap.relationshipOneOnly,
-      },
-      {
-        command: 'Relationship One N',
-        shortcuts: keyBindingMap.relationshipOneN,
-      },
-      {
-        command: 'Table Properties',
-        shortcuts: keyBindingMap.tableProperties,
-      },
-      {
-        command: 'Focus on this table',
-        shortcuts: keyBindingMap.focusView,
-      },
-      {
-        command: 'Zoom In',
-        shortcuts: keyBindingMap.zoomIn,
-      },
-      {
-        command: 'Zoom Out',
-        shortcuts: keyBindingMap.zoomOut,
-      },
-      {
-        command: 'Zoom Reset',
-        shortcuts: keyBindingMap.zoomReset,
-      },
-      {
-        command: 'Hand Tool',
-        shortcuts: keyBindingMap.handTool,
-      },
-      {
-        command: 'Zen Mode',
-        shortcuts: keyBindingMap.zenMode,
-      },
-    ];
-  };
+  const i18n = useI18n(ctx);
 
   return () => {
+    const { keyBindingMap } = app.value;
+    const { t } = i18n.value;
+
     return (
       <table class={styles.table}>
         <thead>
           <tr>
-            <th>Command</th>
-            <th>Keybinding</th>
+            <th>{t('shortcuts.command')}</th>
+            <th>{t('shortcuts.keybinding')}</th>
           </tr>
         </thead>
         <tbody>
-          {getItems().map(({ command, shortcuts }) => (
+          {ShortcutNameList.map(name => (
             <tr>
-              <td>{command}</td>
+              <td>{t(ShortcutNameKey[name])}</td>
               <td>
-                {shortcuts.map(({ shortcut }) => (
+                {keyBindingMap[name].map(({ shortcut }) => (
                   <div class={styles.shortcutGroup}>
                     <Kbd shortcut={shortcut} />
                   </div>

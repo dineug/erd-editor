@@ -28,7 +28,10 @@ import {
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
-import { openThemeBuilderAction } from '@/utils/emitter';
+import {
+  openLocalePickerAction,
+  openThemeBuilderAction,
+} from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 
 const { appContexts, gcState } = vi.hoisted(() => ({
@@ -1133,5 +1136,145 @@ describe('<erd-editor>', () => {
       .map(el => el.textContent)
       .filter(Boolean);
     expect(selected).toEqual(['System']);
+  });
+
+  describe('locale picker', () => {
+    const picker = (shadow: ShadowRoot) =>
+      shadow.querySelector<HTMLElement>('.locale-picker');
+    const pickerRow = (shadow: ShadowRoot, option: string) =>
+      shadow.querySelector<HTMLButtonElement>(
+        `.locale-picker button[data-locale="${option}"]`
+      );
+    const checked = (shadow: ShadowRoot) =>
+      Array.from(
+        shadow.querySelectorAll<HTMLElement>(
+          '.locale-picker [aria-selected="true"]'
+        )
+      ).map(row => row.dataset.locale);
+    const systemHint = (shadow: ShadowRoot) =>
+      pickerRow(shadow, 'system')?.querySelector('[lang]');
+
+    const openPicker = async (shadow: ShadowRoot) => {
+      shadow
+        .querySelector('.toolbar-locale')!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flush();
+    };
+
+    it('mounts the picker only while enableLocalePicker is set', async () => {
+      const { el, app, shadow } = await createEditor();
+      app.store.dispatchSync(
+        changeOpenMapAction({ [Open.localePicker]: true })
+      );
+      await flush();
+      expect(picker(shadow)).toBeNull();
+
+      el.enableLocalePicker = true;
+      await flush();
+      expect(picker(shadow)).toBeTruthy();
+
+      el.enableLocalePicker = false;
+      await flush();
+      expect(picker(shadow)).toBeNull();
+    });
+
+    it('opens from the toolbar on System, naming the language the browser asks for', async () => {
+      spyLanguages(['ja-JP', 'en']);
+      const { shadow } = await createEditor({ enableLocalePicker: true });
+
+      await openPicker(shadow);
+
+      expect(checked(shadow)).toEqual(['system']);
+      expect(systemHint(shadow)?.textContent).toBe('日本語');
+      expect(systemHint(shadow)?.getAttribute('lang')).toBe('ja-JP');
+    });
+
+    it('checks the language a host set, and names the one a host gives System', async () => {
+      const { el, shadow } = await createEditor({ enableLocalePicker: true });
+      el.setLocale('uk-UA');
+      el.setSystemLocale('sv');
+      await openPicker(shadow);
+
+      expect(checked(shadow)).toEqual(['uk-UA']);
+      expect(systemHint(shadow)?.textContent).toBe('Svenska');
+    });
+
+    it('moves the System hint when the browser language changes, from a frozen list', async () => {
+      spyLanguages(['de-DE']);
+      const { shadow } = await createEditor({ enableLocalePicker: true });
+      await openPicker(shadow);
+      expect(systemHint(shadow)?.textContent).toBe('Deutsch');
+
+      spyLanguages(['pl-PL']);
+      window.dispatchEvent(new Event('languagechange'));
+      await flush();
+
+      expect(systemHint(shadow)?.textContent).toBe('Polski');
+    });
+
+    it('switches the element on a pick, telling the host the option picked', async () => {
+      const { el, app, shadow, root } = await createEditor({
+        enableLocalePicker: true,
+      });
+      const picked: unknown[] = [];
+      el.addEventListener('changeLocale', event =>
+        picked.push((event as CustomEvent).detail)
+      );
+      await openPicker(shadow);
+
+      pickerRow(shadow, 'ko-KR')!.click();
+      await flush();
+
+      expect(picked).toEqual([{ locale: 'ko-KR' }]);
+      expect(root.getAttribute('lang')).toBe('ko-KR');
+      expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
+      expect(picker(shadow)).toBeNull();
+
+      await openPicker(shadow);
+      expect(checked(shadow)).toEqual(['ko-KR']);
+    });
+
+    it('closes when the pointer goes down outside it or the toolbar', async () => {
+      const { app, shadow, root } = await createEditor({
+        enableLocalePicker: true,
+      });
+      app.emitter.emit(openLocalePickerAction());
+      await flush();
+
+      for (const selector of ['.toolbar', '.locale-picker']) {
+        shadow
+          .querySelector(selector)!
+          .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        await flush();
+        expect(app.store.state.editor.openMap[Open.localePicker]).toBe(true);
+      }
+
+      root.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      await flush();
+      expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
+      expect(picker(shadow)).toBeNull();
+    });
+
+    it('trades places with the theme builder, either button closing the other panel', async () => {
+      const { app, shadow } = await createEditor({
+        enableThemeBuilder: true,
+        enableLocalePicker: true,
+      });
+
+      await openPicker(shadow);
+      expect(picker(shadow)).toBeTruthy();
+
+      shadow
+        .querySelector('.toolbar-theme')!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flush();
+      expect(shadow.querySelector('.theme-builder')).toBeTruthy();
+      expect(picker(shadow)).toBeNull();
+
+      await openPicker(shadow);
+      expect(picker(shadow)).toBeTruthy();
+      expect(shadow.querySelector('.theme-builder')).toBeNull();
+      expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
+    });
   });
 });

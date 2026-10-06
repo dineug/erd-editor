@@ -12,8 +12,11 @@ import {
 
 import {
   createTestAppContext,
+  createTestI18n,
   createTestTheme,
   flush,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext, appContext } from '@/components/appContext';
 import ExportImage, {
@@ -37,6 +40,8 @@ import {
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { en } from '@/i18n/messages/en';
+import { createI18n, type I18n } from '@/i18n/translate';
 import {
   createDocumentPreview,
   type DocumentPreview,
@@ -95,8 +100,15 @@ type Mounted = {
 let mounted: Mounted | null = null;
 let urls = 0;
 
-/** Mounts with the scene palette provided too, which the dialog reads its colours from. */
-function mount(template: DOMTemplateLiterals, app: AppContext): Mounted {
+/**
+ * Mounts with the scene palette provided too, which the dialog reads its
+ * colours from, and a language when one is given, English otherwise.
+ */
+function mount(
+  template: DOMTemplateLiterals,
+  app: AppContext,
+  i18n?: I18n
+): Mounted {
   const container = document.createElement('div');
   document.body.append(container);
   // r-html's provider, not a React hook; it takes a bare element at runtime.
@@ -104,6 +116,7 @@ function mount(template: DOMTemplateLiterals, app: AppContext): Mounted {
   const appProvider = useProvider(container as any, appContext, app);
   // oxlint-disable-next-line react-hooks/rules-of-hooks
   const themeProvider = useProvider(container as any, themeContext, sceneTheme);
+  const localeProvider = i18n ? provideI18n(container, i18n) : null;
   render(container, template);
 
   return {
@@ -112,6 +125,7 @@ function mount(template: DOMTemplateLiterals, app: AppContext): Mounted {
     setTheme: theme => themeProvider.set(theme),
     unmount: () => {
       render(container, null);
+      localeProvider?.destroy();
       themeProvider.destroy();
       appProvider.destroy();
       container.remove();
@@ -139,7 +153,10 @@ const createDeferred = <T>() => {
   return { promise, resolve, reject };
 };
 
-async function setup({ isDarkMode = false } = {}) {
+async function setup({
+  isDarkMode = false,
+  i18n,
+}: { isDarkMode?: boolean; i18n?: I18n } = {}) {
   const app = createTestAppContext();
   app.store.dispatchSync(changeViewportAction({ width: 1200, height: 800 }));
   mounted = mount(
@@ -147,7 +164,8 @@ async function setup({ isDarkMode = false } = {}) {
       themeOptions=${themeOptions}
       isDarkMode=${isDarkMode}
     />`,
-    app
+    app,
+    i18n
   );
   await flush();
   return app;
@@ -657,6 +675,7 @@ describe('ExportImage buttons', () => {
       toWidth: app.toWidth,
       zoomLevel: 0.6,
       pixelRatio: 3,
+      i18n: { locale: 'en', messages: en },
     });
     expect(databaseName).toBe('shop');
     expect(dialog()).not.toBeNull();
@@ -716,6 +735,86 @@ describe('ExportImage buttons', () => {
       canvasBackground: TRANSPARENT_BACKGROUND,
     });
     expect(dialog()).not.toBeNull();
+  });
+});
+
+describe('ExportImage language', () => {
+  it('shows its own words in the language the editor shows', async () => {
+    const pending = createDeferred<DocumentPreview>();
+    preview.mockReturnValueOnce(pending.promise);
+    const app = await setup({
+      i18n: createTestI18n('ko-KR', pseudoMessages('ko')),
+    });
+
+    await open(app);
+
+    expect(dialog()?.getAttribute('aria-label')).toBe('ko:Export image');
+    expect(closeButton()).toBeNull();
+    expect(
+      dialog()
+        ?.querySelector('button[aria-label="ko:Close"]')
+        ?.getAttribute('title')
+    ).toBe('ko:Close (ESC)');
+    expect(switchOf('ko:Background')).not.toBeNull();
+    expect(switchOf('ko:Dark mode')).not.toBeNull();
+    expect(buttonOf('ko:Copy to clipboard')).not.toBeNull();
+    expect(buttonOf('PNG')).not.toBeNull();
+    expect(buttonOf('SVG')).not.toBeNull();
+    expect(
+      dialog()?.querySelector('[role="group"]')?.getAttribute('aria-label')
+    ).toBe('ko:Scale');
+    expect(loading()?.getAttribute('aria-label')).toBe('ko:Loading preview');
+
+    pending.resolve(drawn());
+    await flush();
+
+    expect(image()?.getAttribute('alt')).toBe('ko:Preview');
+  });
+
+  it('draws the image in the language it opened in, while its own words follow a switch', async () => {
+    const korean = pseudoMessages('ko');
+    const i18n = createTestI18n('ko-KR', korean);
+    const app = await setup({ i18n });
+    await open(app);
+
+    Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
+    await flush();
+
+    expect(image()?.getAttribute('alt')).toBe('ar:Preview');
+    expect(dialog()?.getAttribute('aria-label')).toBe('ar:Export image');
+
+    vi.useFakeTimers();
+    await click(switchOf('ar:Background'));
+    await vi.advanceTimersByTimeAsync(PREVIEW_DEBOUNCE_MS);
+    await flush();
+    await click(buttonOf('PNG'));
+    await click(buttonOf('SVG'));
+    await click(buttonOf('ar:Copy to clipboard'));
+
+    const snapshot = { locale: 'ko-KR', messages: korean };
+    expect(preview.mock.calls.map(([options]) => options.i18n)).toEqual([
+      snapshot,
+      snapshot,
+    ]);
+    expect(vi.mocked(exportImagePng).mock.calls[0][1].i18n).toEqual(snapshot);
+    expect(vi.mocked(exportImageSvg).mock.calls[0][1].i18n).toEqual(snapshot);
+    expect(vi.mocked(copyImagePng).mock.calls[0][1].i18n).toEqual(snapshot);
+  });
+
+  it('takes the language again at the next opening', async () => {
+    const i18n = createTestI18n('ko-KR', pseudoMessages('ko'));
+    const app = await setup({ i18n });
+    await open(app);
+    await pressStop(app);
+
+    const german = pseudoMessages('de');
+    Object.assign(i18n, createI18n('de-DE', german));
+    await open(app);
+
+    expect(preview.mock.calls.at(-1)?.[0].i18n).toEqual({
+      locale: 'de-DE',
+      messages: german,
+    });
   });
 });
 

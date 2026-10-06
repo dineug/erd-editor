@@ -1,5 +1,6 @@
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowRight,
   ArrowUp,
   Atom,
@@ -25,6 +26,7 @@ import {
   GripVertical,
   Hand,
   type IconNode,
+  Keyboard,
   KeyRound,
   Languages,
   Lock,
@@ -74,6 +76,7 @@ export type IconNodeChild = IconNode[number];
 // is what lets one flat namespace serve both.
 const LUCIDE_ICON = {
   'arrow-down': ArrowDown,
+  'arrow-left': ArrowLeft,
   'arrow-right': ArrowRight,
   'arrow-up': ArrowUp,
   atom: Atom,
@@ -98,6 +101,7 @@ const LUCIDE_ICON = {
   fullscreen: Fullscreen,
   'grip-vertical': GripVertical,
   hand: Hand,
+  keyboard: Keyboard,
   'key-round': KeyRound,
   languages: Languages,
   lock: Lock,

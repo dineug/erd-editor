@@ -14,7 +14,6 @@ import {
   ColumnOption,
   ColumnType,
   ColumnTypeList,
-  ColumnTypeToName,
   ColumnUIKey,
   Database,
   DatabaseList,
@@ -165,38 +164,5 @@ describe('BracketTypeMap', () => {
   it('returns undefined for an unknown bracket type', () => {
     expect(BracketTypeMap[0]).toBeUndefined();
     expect(BracketTypeMap[999]).toBeUndefined();
-  });
-});
-
-describe('ColumnTypeToName', () => {
-  it('maps every column type flag to its settings label', () => {
-    expect(ColumnTypeToName).toEqual({
-      [ColumnType.columnName]: 'Name',
-      [ColumnType.columnDataType]: 'DataType',
-      [ColumnType.columnNotNull]: 'Not Null',
-      [ColumnType.columnUnique]: 'Unique',
-      [ColumnType.columnAutoIncrement]: 'Auto Increment',
-      [ColumnType.columnDefault]: 'Default',
-      [ColumnType.columnComment]: 'Comment',
-    });
-  });
-
-  it('covers every entry of ColumnTypeList with a unique label', () => {
-    const labels = ColumnTypeList.map(columnType => {
-      const name = ColumnTypeToName[columnType];
-      expect(typeof name).toBe('string');
-      expect(name.length).toBeGreaterThan(0);
-      return name;
-    });
-
-    expect(new Set(labels).size).toBe(ColumnTypeList.length);
-    expect(Object.keys(ColumnTypeToName)).toHaveLength(ColumnTypeList.length);
-  });
-
-  it('returns undefined for a flag that is not a column type', () => {
-    expect(ColumnTypeToName[0]).toBeUndefined();
-    expect(
-      ColumnTypeToName[ColumnType.columnName | ColumnType.columnUnique]
-    ).toBeUndefined();
   });
 });

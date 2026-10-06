@@ -10,6 +10,7 @@ import { isEmpty } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import TextInput from '@/components/primitives/text-input/TextInput';
@@ -17,14 +18,17 @@ import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { isEditingText } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import type { LocaleOption } from '@/i18n/locales';
-import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import { arrayHas } from '@/utils/arrayHas';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import { Action, createScopeActions, searchActions } from './actions';
+import {
+  Action,
+  createScopeActions,
+  PalettePreferences,
+  searchActions,
+} from './actions';
 import { clearHangulForms, findPaletteChunks } from './hangul';
 import {
   PALETTE_PREFIXES,
@@ -35,11 +39,7 @@ import {
 import * as styles from './QuickSearch.styles';
 import { paletteRows, scopeBase } from './scopedActions';
 
-/** The appearance and the display language the element holds, each given only while it offers that picker. */
-export type QuickSearchProps = {
-  appearance?: AppearanceOption;
-  locale?: LocaleOption;
-};
+export type QuickSearchProps = PalettePreferences;
 
 const hasAutocompleteKey = arrayHas([
   'ArrowUp',
@@ -51,6 +51,7 @@ const hasAutocompleteKey = arrayHas([
 
 const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
   const root = createRef<HTMLDivElement>();
 
@@ -100,7 +101,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
 
     state.index = -1;
     // Rows read from the document are looked up only at the top level.
-    state.rows = state.submenu ? found : paletteRows(app.value, found, query);
+    state.rows = state.submenu
+      ? found
+      : paletteRows(app.value, found, query, i18n.value);
     state.missed =
       !state.submenu && query.scope === null && !noKeyword && !found.length;
   };
@@ -236,7 +239,14 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       clearHangulForms();
 
       if (opened) {
-        setLevel(createScopeActions(app.value));
+        // Built in the language shown as it opens, Theme and Display Language
+        // with it while the element offers those pickers.
+        setLevel(
+          createScopeActions(app.value, i18n.value, {
+            appearance: props.appearance,
+            locale: props.locale,
+          })
+        );
         state.submenu = false;
         clearKeyword();
         store.dispatch(
@@ -244,6 +254,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
             [Open.tableProperties]: false,
             [Open.themeBuilder]: false,
             [Open.exportImage]: false,
+            [Open.localePicker]: false,
           })
         );
       } else {
@@ -282,6 +293,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     } = store.state;
     if (!openMap[Open.search]) return null;
 
+    const { t } = i18n.value;
     const query = readQuery(state.keyword);
     const searchWords = getSearchWords(query);
     const topLevel = !state.submenu;
@@ -292,7 +304,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
           <div class={styles.field}>
             <TextInput
               class={styles.search}
-              placeholder="Search"
+              placeholder={t('common.search')}
               autofocus={true}
               value={state.keyword}
               onInput={handleInputKeyword}
@@ -300,31 +312,31 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
             />
             {query.scope ? (
               <span class={['quick-search-scope', styles.scope]}>
-                {scopeLabel(query.scope)}
+                {scopeLabel(query.scope, i18n.value)}
               </span>
             ) : null}
           </div>
           {topLevel && !state.keyword ? (
             <div class={['quick-search-hint', styles.hint]}>
-              {PALETTE_PREFIXES.map(({ prefix, label, description }) => (
+              {PALETTE_PREFIXES.map(({ prefix, labelKey, descriptionKey }) => (
                 <button
                   class={styles.hintItem}
                   type="button"
-                  title={description}
+                  title={t(descriptionKey)}
                   on:click={(event: MouseEvent) => {
                     event.stopPropagation();
                     insertText(prefix);
                   }}
                 >
                   <span class={styles.prefix}>{prefix}</span>
-                  {label}
+                  {t(labelKey)}
                 </button>
               ))}
             </div>
           ) : null}
           {state.missed ? (
             <div class={['quick-search-empty', styles.empty]}>
-              No commands match
+              {t('palette.noCommandsMatch')}
             </div>
           ) : null}
           <div class={['scrollbar', styles.list]}>
@@ -339,7 +351,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                 {action.icon ? (
                   <div class={styles.icon}>{action.icon}</div>
                 ) : null}
-                <span class={styles.name}>
+                <span class={styles.name} prop:dir="auto">
                   <HighlightedText
                     searchWords={searchWords}
                     textToHighlight={action.name}
@@ -349,7 +361,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
                 {action.keywords ? (
                   <>
                     <div class={styles.vertical}></div>
-                    <span class={styles.keyword}>
+                    <span class={styles.keyword} prop:dir="auto">
                       <HighlightedText
                         searchWords={searchWords}
                         textToHighlight={action.keywords}

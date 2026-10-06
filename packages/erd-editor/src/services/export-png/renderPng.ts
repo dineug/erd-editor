@@ -1,3 +1,4 @@
+import type { LocaleMessages } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
@@ -23,6 +24,8 @@ export type RenderPngRequest = {
    * previews an export. Left out, the box is drawn at the zoom asked for.
    */
   maxSide?: number;
+  /** The language the scene's own words are drawn in; English when left out. */
+  i18n?: LocaleMessages;
 };
 
 export type RenderPngResult = {
@@ -72,6 +75,7 @@ export async function renderDocumentPng({
   pixelRatio,
   zoomLevel,
   maxSide,
+  i18n,
   toWidth,
 }: RenderPngRequest & { toWidth: ToWidth }): Promise<RenderPngResult> {
   const scene = await renderDocumentScene({
@@ -80,6 +84,7 @@ export async function renderDocumentPng({
     toWidth,
     zoomLevel,
     maxSide,
+    i18n,
   });
 
   try {

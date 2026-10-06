@@ -1,5 +1,6 @@
 import * as Comlink from 'comlink';
 
+import type { LocaleMessages } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
 import { withTimeout } from '@/utils/promise';
 import { spawnExportPngWorker } from '@/workers/spawn';
@@ -50,6 +51,11 @@ export type DocumentPngOptions = {
    * out, the image is drawn at the zoom the document carries.
    */
   zoomLevel?: number;
+  /**
+   * The language the scene's own words are drawn in, a table with no name say.
+   * Left out, the scene draws them in English.
+   */
+  i18n?: LocaleMessages;
   /**
    * Called once, after a file exists, when the pixels the zoom and scale asked
    * for outran what a canvas holds, with those and the pixels written. A caller
@@ -123,6 +129,13 @@ function connectSharedWorker(): Promise<Remote | null> {
 }
 
 type Reporters = Pick<DocumentPngOptions, 'onResolutionReduced' | 'onProgress'>;
+
+/**
+ * The language as a plain object of its two fields, copied for the reason the
+ * palette is: the editor hands its own out as an observable proxy.
+ */
+const copyLocale = (i18n?: LocaleMessages): LocaleMessages | undefined =>
+  i18n && { locale: i18n.locale, messages: i18n.messages };
 
 function report(
   { blob, width, height, reduction }: RenderPngResult,
@@ -208,13 +221,20 @@ export async function createDocumentPng({
   toWidth,
   pixelRatio = DEFAULT_PIXEL_RATIO,
   zoomLevel,
+  i18n,
   onResolutionReduced,
   onProgress,
 }: DocumentPngOptions): Promise<Blob> {
   // Copied, not passed on: the editor hands out its palette as an observable
   // proxy, and a proxy is what structuredClone refuses, so a worker sent the
   // live object gets a DataCloneError instead of an image.
-  const request = { doc, theme: { ...theme }, pixelRatio, zoomLevel };
+  const request = {
+    doc,
+    theme: { ...theme },
+    pixelRatio,
+    zoomLevel,
+    i18n: copyLocale(i18n),
+  };
   const { result, realm } = await renderInRealm(request, toWidth, onProgress);
 
   return report(result, realm, { onResolutionReduced, onProgress });
@@ -222,7 +242,7 @@ export async function createDocumentPng({
 
 export type DocumentPreviewOptions = Pick<
   DocumentPngOptions,
-  'doc' | 'theme' | 'toWidth' | 'zoomLevel'
+  'doc' | 'theme' | 'toWidth' | 'zoomLevel' | 'i18n'
 > & {
   /** The longest side the preview may take, in pixels. */
   maxSide: number;
@@ -254,6 +274,7 @@ export async function createDocumentPreview({
   toWidth,
   zoomLevel,
   maxSide,
+  i18n,
 }: DocumentPreviewOptions): Promise<DocumentPreview> {
   const request = {
     doc,
@@ -261,6 +282,7 @@ export async function createDocumentPreview({
     pixelRatio: DEFAULT_PIXEL_RATIO,
     zoomLevel,
     maxSide,
+    i18n: copyLocale(i18n),
   };
   const { result } = await renderInRealm(request, toWidth);
 
@@ -276,7 +298,7 @@ export async function createDocumentPreview({
 
 export type DocumentSvgOptions = Pick<
   DocumentPngOptions,
-  'doc' | 'theme' | 'toWidth' | 'zoomLevel'
+  'doc' | 'theme' | 'toWidth' | 'zoomLevel' | 'i18n'
 >;
 
 /**
@@ -292,9 +314,15 @@ export async function createDocumentSvg({
   theme,
   toWidth,
   zoomLevel,
+  i18n,
 }: DocumentSvgOptions): Promise<string> {
   // Copied for the reason the png copies it: a proxy does not clone.
-  const request = { doc, theme: { ...theme }, zoomLevel };
+  const request = {
+    doc,
+    theme: { ...theme },
+    zoomLevel,
+    i18n: copyLocale(i18n),
+  };
   const { result } = await drawInRealm(
     {
       inWorker: (remote, fontProbe) =>

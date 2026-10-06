@@ -1,4 +1,4 @@
-import { AnyAction } from '@dineug/r-html';
+import { AnyAction, render } from '@dineug/r-html';
 import {
   afterEach,
   beforeEach,
@@ -8,7 +8,13 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import {
+  createTestI18n,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import type { I18n } from '@/i18n/translate';
 import { Emitter } from '@/utils/emitter';
 import {
   importAML,
@@ -81,6 +87,17 @@ function attachFile(input: HTMLInputElement, name: string, content: string) {
   const dataTransfer = new DataTransfer();
   dataTransfer.items.add(new File([content], name));
   input.files = dataTransfer.files;
+}
+
+/** What a toast emitted says once rendered, in the language given or in English. */
+function toastText(action: AnyAction, i18n?: I18n) {
+  const container = document.createElement('div');
+  const provider = i18n ? provideI18n(container, i18n) : null;
+  render(container, action.payload.message);
+  const text = container.textContent?.trim();
+  render(container, null);
+  provider?.destroy();
+  return text;
 }
 
 async function change(input: HTMLInputElement) {
@@ -325,6 +342,7 @@ describe('importFile', () => {
       expect(harness.dispatch).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
+      expect(toastText(harness.emitted[0])).toBe('Just import the json file');
     });
 
     it('ignores a non-string FileReader result', async () => {
@@ -398,8 +416,23 @@ describe('importFile', () => {
       expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
+      expect(toastText(harness.emitted[0])).toBe('Just import the sql file');
     });
 
+    it('says so in the language of the editor the toast renders in, the format as written', async () => {
+      importSchemaSQL(harness.app);
+      const [input] = harness.inputs;
+      attachFile(input, 'schema.json', '{}');
+
+      await change(input);
+
+      expect(
+        toastText(
+          harness.emitted[0],
+          createTestI18n('fa-IR', pseudoMessages('fa'))
+        )
+      ).toBe('fa:Just import the \u2068sql\u2069 file');
+    });
     it('ignores a non-string FileReader result', async () => {
       class FakeFileReader {
         result: unknown = null;
@@ -471,6 +504,9 @@ describe('importFile', () => {
       expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
+      expect(toastText(harness.emitted[0])).toBe(
+        'Just import the graphql file'
+      );
     });
 
     it('imports whatever the file holds, as the SQL import does', async () => {
@@ -560,6 +596,7 @@ describe('importFile', () => {
       expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
+      expect(toastText(harness.emitted[0])).toBe('Just import the dbml file');
     });
 
     it('rejects a name ending in dbml without the dot', async () => {
@@ -623,6 +660,7 @@ describe('importFile', () => {
       expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
+      expect(toastText(harness.emitted[0])).toBe('Just import the aml file');
     });
 
     it('rejects a name ending in aml without the dot', async () => {
@@ -679,6 +717,7 @@ describe('importFile', () => {
 
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
+      expect(toastText(harness.emitted[0])).toBe('Just import the json file');
     });
 
     it('ignores a non-string FileReader result', async () => {

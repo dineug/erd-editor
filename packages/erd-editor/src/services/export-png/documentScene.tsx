@@ -6,6 +6,7 @@ import type { Stage } from 'konva/lib/Stage';
 import { appDestroy, createAppContext } from '@/components/appContext';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import { createI18n, type LocaleMessages } from '@/i18n/translate';
 import { whenDrawn } from '@/konva/batchDraw';
 import type { Rect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
@@ -30,6 +31,11 @@ export type DocumentSceneOptions = {
    * decides how a table is drawn, so either holds the shapes the export does.
    */
   maxSide?: number;
+  /**
+   * The language and dictionary the scene's own words are drawn in, a table
+   * with no name say. Left out, the scene draws them in English.
+   */
+  i18n?: LocaleMessages;
 };
 
 export type DocumentScene = {
@@ -64,6 +70,7 @@ export async function renderDocumentScene({
   toWidth,
   zoomLevel,
   maxSide,
+  i18n,
 }: DocumentSceneOptions): Promise<DocumentScene> {
   const app = createAppContext({ toWidth }, { devtools: false });
   app.store.dispatchSync(initialLoadJsonAction$(doc));
@@ -98,6 +105,7 @@ export async function renderDocumentScene({
     width: stageSize.width,
     height: stageSize.height,
     theme,
+    i18n: i18n && createI18n(i18n.locale, i18n.messages),
   });
 
   await whenDrawn();

@@ -10,9 +10,12 @@ import {
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
@@ -27,6 +30,7 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import type { ShikiService } from '@/services/shiki';
 import { openToastAction } from '@/utils/emitter';
 
@@ -392,6 +396,38 @@ describe('SchemaSQL', () => {
     expect(action.type).toBe(openToastAction({} as any).type);
     expect(action.payload.message).toBeTruthy();
     expect(action.payload.close).toBeInstanceOf(Promise);
+  });
+
+  it('says Copied! in the toast, in the language the element shows', async () => {
+    const app = createTestAppContext();
+    seedTable(app, 't1', 'users');
+    const openToast = vi.fn();
+    app.emitter.on({ openToast });
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+    (
+      mounted.container.querySelector('[title="Copy"]') as HTMLElement
+    ).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await flush();
+    const { message } = openToast.mock.calls[0][0].payload;
+
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+    const toast = await mountAndFlush(message, app);
+
+    try {
+      expect(toast.container.textContent?.trim()).toBe('Copied!');
+
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(toast.container.textContent?.trim()).toBe('ko:Copied!');
+    } finally {
+      toast.unmount();
+      provider.destroy();
+    }
   });
 
   it('stops reacting to store changes after unmount', async () => {

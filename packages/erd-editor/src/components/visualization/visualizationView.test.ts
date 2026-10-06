@@ -63,15 +63,16 @@ describe('truncateName', () => {
 
 describe('labelOf', () => {
   it('draws the cut name where there is one', () => {
-    expect(labelOf({ name: 'users' })).toBe('users');
-    expect(labelOf({ name: 'x'.repeat(20) })).toBe(
+    expect(labelOf({ name: 'users' }, 'table')).toBe('users');
+    expect(labelOf({ name: 'x'.repeat(20) }, 'table')).toBe(
       'x'.repeat(NAME_MAX_LENGTH) + '…'
     );
   });
 
-  it('falls back to the placeholder the preview input uses', () => {
-    expect(labelOf({ name: '' })).toBe('table');
-    expect(labelOf({ name: '   ' })).toBe('table');
+  it('falls back to the placeholder it is handed, the one the preview input shows', () => {
+    expect(labelOf({ name: '' }, 'table')).toBe('table');
+    expect(labelOf({ name: '   ' }, 'table')).toBe('table');
+    expect(labelOf({ name: '' }, 'ko:table')).toBe('ko:table');
   });
 
   it('tells a named table from a placeholder one', () => {

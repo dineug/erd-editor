@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { createRef, FC, onUpdated, ref, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import { OrderType } from '@/constants/schema';
@@ -31,6 +32,7 @@ export type IndexesColumnProps = {
 
 const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const root = createRef<HTMLDivElement>();
   // The held row is left out: it snaps to its slot on each move, and only the
   // row it pushes aside slides, so the list never paints out of order.
@@ -41,11 +43,13 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
   );
 
   const toOrderTitle = (orderType: number) => {
+    const { t } = i18n.value;
+
     switch (orderType) {
       case OrderType.ASC:
-        return 'Ascending';
+        return t('tableProperties.ascending');
       case OrderType.DESC:
-        return 'Descending';
+        return t('tableProperties.descending');
       default:
         return '';
     }

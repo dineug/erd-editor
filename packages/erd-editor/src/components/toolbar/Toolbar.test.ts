@@ -121,6 +121,78 @@ describe('Toolbar', () => {
       expect(input('zoom level')).toBeNull();
     });
 
+    it('lets the database name take the direction of what is typed into it', async () => {
+      await setup();
+
+      expect(input('database name').getAttribute('dir')).toBe('auto');
+      expect(input('database name').placeholder).toBe('database name');
+      expect(input('database name').getAttribute('spellcheck')).toBe('false');
+      expect(input('database name').type).toBe('text');
+    });
+
+    it('reads every title and the table count in the language shown, following a switch', async () => {
+      const i18n = createTestI18n('en');
+      const provider = provideI18n(document.body, i18n);
+
+      try {
+        const { app } = await setup({ enableThemeBuilder: true });
+        app.store.dispatchSync(addTable('t1'));
+        Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+        await flush();
+
+        const titles = Array.from(
+          root().querySelectorAll<HTMLElement>('[title]')
+        ).map(el => el.title);
+        expect(titles).toEqual([
+          'ko:database name',
+          'ko:Entity Relationship Diagram',
+          'ko:Visualization',
+          'ko:Schema SQL',
+          'ko:Code Generator',
+          'ko:Settings',
+          toShortcutTitle(
+            app.keyBindingMap,
+            'ko:Search',
+            KeyBindingName.search
+          ),
+          toShortcutTitle(
+            app.keyBindingMap,
+            'ko:Find and Replace',
+            KeyBindingName.findReplace
+          ),
+          'ko:Theme',
+          toShortcutTitle(app.keyBindingMap, 'ko:Undo', KeyBindingName.undo),
+          toShortcutTitle(app.keyBindingMap, 'ko:Redo', KeyBindingName.redo),
+          'ko:Time Travel',
+        ]);
+        expect(input('ko:database name').placeholder).toBe('ko:database name');
+        expect(
+          root().querySelector(`.${String(styles.tableCount)}`)?.textContent
+        ).toBe('ko:Table: 1');
+      } finally {
+        provider.destroy();
+      }
+    });
+
+    it('reads Find in the language shown in a read-only editor', async () => {
+      const i18n = createTestI18n('ko-KR', pseudoMessages('ko'));
+      const provider = provideI18n(document.body, i18n);
+
+      try {
+        const { app } = await setup({ readonly: true });
+
+        expect(menu('ko:Find').title).toBe(
+          toShortcutTitle(
+            app.keyBindingMap,
+            'ko:Find',
+            KeyBindingName.findReplace
+          )
+        );
+      } finally {
+        provider.destroy();
+      }
+    });
+
     it('reflects seeded settings in the inputs', async () => {
       const { app } = await setup();
       app.store.dispatchSync(

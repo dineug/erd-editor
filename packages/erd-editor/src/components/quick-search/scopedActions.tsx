@@ -2,6 +2,8 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { RootState } from '@/engine/state';
+import { sourceI18n } from '@/i18n/source';
+import type { I18n, MessageKey } from '@/i18n/translate';
 import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
@@ -17,6 +19,7 @@ import {
   createMatchAction,
   createShowAllAction,
   keywordHolder,
+  named,
   searchActions,
 } from './actions';
 import {
@@ -32,12 +35,16 @@ import * as styles from './QuickSearch.styles';
 /** How many rows a prefixed list shows, few enough to draw at once. */
 export const SCOPED_ACTION_LIMIT = 100;
 
-/** The scopes that search the document, which a search with no prefix offers once no command listed holds it. */
-const DOCUMENT_SCOPES: ReadonlyArray<PaletteScope> = [
-  PaletteScope.tables,
-  PaletteScope.columns,
-  PaletteScope.text,
-];
+type SearchMessageKey = Extract<MessageKey, `palette.search${string}`>;
+
+/** The scopes that search the document, which a search with no prefix offers once no command listed holds it, each with the sentence its row reads. */
+const DOCUMENT_SCOPES: Readonly<
+  Partial<Record<PaletteScope, SearchMessageKey>>
+> = {
+  [PaletteScope.tables]: 'palette.searchTables',
+  [PaletteScope.columns]: 'palette.searchColumns',
+  [PaletteScope.text]: 'palette.searchText',
+};
 
 /** What the colon searches: the free text, never a name. */
 export const TEXT_FIELDS: FindField[] = [
@@ -80,7 +87,8 @@ export function scopeBase(
 export function paletteRows(
   app: AppContext,
   found: Action[],
-  { scope, keyword, table }: PaletteQuery
+  { scope, keyword, table }: PaletteQuery,
+  i18n: I18n = sourceI18n
 ): Action[] {
   switch (scope) {
     case null:
@@ -88,16 +96,16 @@ export function paletteRows(
       // so a hit alone never means the keyword names one: only a command
       // holding it keeps them away.
       return keyword && !found.some(keywordHolder(keyword))
-        ? [...found, ...createPrefixActions(keyword)]
+        ? [...found, ...createPrefixActions(keyword, i18n)]
         : found;
     case PaletteScope.tables:
-      return rankTableActions(app, found, keyword);
+      return rankTableActions(app, found, keyword, i18n);
     case PaletteScope.columns:
-      return createFieldActions(app, COLUMN_FIELDS, keyword, table);
+      return createFieldActions(app, COLUMN_FIELDS, keyword, table, i18n);
     case PaletteScope.text:
-      return createFieldActions(app, TEXT_FIELDS, keyword);
+      return createFieldActions(app, TEXT_FIELDS, keyword, null, i18n);
     case PaletteScope.help:
-      return createHelpActions(keyword);
+      return createHelpActions(keyword, i18n);
   }
 }
 
@@ -109,7 +117,8 @@ export function paletteRows(
 export function rankTableActions(
   app: AppContext,
   found: Action[],
-  keyword: string
+  keyword: string,
+  i18n: I18n = sourceI18n
 ): Action[] {
   const holds = keywordHolder(keyword);
   const ranked = [...found.filter(holds), ...found.filter(row => !holds(row))];
@@ -130,7 +139,7 @@ export function rankTableActions(
   const count = findMatches(app.store.state, matcher, TABLE_FIELDS).length;
   return [
     ...rows,
-    createShowAllAction(count, { query: keyword, fields: TABLE_FIELDS }),
+    createShowAllAction(count, { query: keyword, fields: TABLE_FIELDS }, i18n),
   ];
 }
 
@@ -165,12 +174,13 @@ export function createFieldActions(
   app: AppContext,
   fields: FindField[],
   keyword: string,
-  table: string | null = null
+  table: string | null = null,
+  i18n: I18n = sourceI18n
 ): Action[] {
   const { state } = app.store;
   const matcher = matcherOf(keyword);
   const inTable = tableFilter(state, table);
-  if (!matcher) return listFieldActions(state, fields, inTable);
+  if (!matcher) return listFieldActions(state, fields, inTable, i18n);
 
   const hangul = hangulQueryOf(keyword);
   const found: FieldHit[] = [];
@@ -186,32 +196,39 @@ export function createFieldActions(
   }
 
   const ranked = hangul ? rankHits(found) : found;
-  const rows = ranked.slice(0, SCOPED_ACTION_LIMIT).map(({ field, hit }) =>
-    createMatchAction(state, {
-      ...field,
-      ...hitRange(field.text, hit, hangul),
-    })
-  );
+  const rows = ranked
+    .slice(0, SCOPED_ACTION_LIMIT)
+    .map(({ field, hit }) =>
+      createMatchAction(
+        state,
+        { ...field, ...hitRange(field.text, hit, hangul) },
+        i18n
+      )
+    );
   if (!ranked.slice(SCOPED_ACTION_LIMIT).some(({ hit }) => hit.literal)) {
     return rows;
   }
 
   const count = findMatches(state, matcher, fields).length;
-  return [...rows, createShowAllAction(count, { query: keyword, fields })];
+  return [
+    ...rows,
+    createShowAllAction(count, { query: keyword, fields }, i18n),
+  ];
 }
 
 /** Every column, or every text that is not empty, of the kinds given, up to the scoped limit: a scope with no keyword yet. */
 function listFieldActions(
   state: RootState,
   fields: FindField[],
-  inTable: (tableId: string) => boolean
+  inTable: (tableId: string) => boolean,
+  i18n: I18n
 ): Action[] {
   const rows: Action[] = [];
   for (const field of walkFields(state, fields)) {
     if (rows.length === SCOPED_ACTION_LIMIT) break;
     if (!inTable(field.tableId)) continue;
     if (!field.text && field.field !== FindField.columnName) continue;
-    rows.push(createMatchAction(state, { ...field, start: 0, end: 0 }));
+    rows.push(createMatchAction(state, { ...field, start: 0, end: 0 }, i18n));
   }
   return rows;
 }
@@ -222,13 +239,15 @@ const prefixIcon = (prefix: string) => (
 );
 
 /** The prefixes as rows, each typing its character into the input when chosen; a keyword fuzzes them. */
-export function createHelpActions(keyword = ''): Action[] {
+export function createHelpActions(
+  keyword = '',
+  i18n: I18n = sourceI18n
+): Action[] {
   const rows = PALETTE_PREFIXES.filter(
     ({ scope }) => scope !== PaletteScope.help
-  ).map<Action>(({ prefix, label, description }) => ({
+  ).map<Action>(({ prefix, labelKey, descriptionKey }) => ({
     icon: prefixIcon(prefix),
-    name: label,
-    keywords: description,
+    ...named(i18n, labelKey, descriptionKey),
     insert: prefix,
   }));
 
@@ -240,12 +259,20 @@ export function createHelpActions(keyword = ''): Action[] {
  * what a search with no prefix lists below its commands once none holds it:
  * choosing one types its prefix before the keyword, so users becomes #users.
  */
-export function createPrefixActions(keyword: string): Action[] {
-  return PALETTE_PREFIXES.filter(({ scope }) =>
-    DOCUMENT_SCOPES.includes(scope)
-  ).map<Action>(({ prefix, label }) => ({
-    icon: prefixIcon(prefix),
-    name: `Search ${label.toLowerCase()} for "${keyword}"`,
-    insert: `${prefix}${keyword}`,
-  }));
+export function createPrefixActions(
+  keyword: string,
+  i18n: I18n = sourceI18n
+): Action[] {
+  return PALETTE_PREFIXES.flatMap<Action>(({ prefix, scope }) => {
+    const message = DOCUMENT_SCOPES[scope];
+    if (!message) return [];
+
+    return [
+      {
+        icon: prefixIcon(prefix),
+        name: i18n.t(message, { keyword }),
+        insert: `${prefix}${keyword}`,
+      },
+    ];
+  });
 }

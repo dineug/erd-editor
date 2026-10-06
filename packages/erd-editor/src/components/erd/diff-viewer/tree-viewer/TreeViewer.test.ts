@@ -4,9 +4,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { diffState } from '@/components/erd/diff-viewer/diff';
@@ -25,6 +28,7 @@ import {
   changeColumnDataTypeAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import { toScreenPoint } from '@/konva/scene/viewport';
 
 type ColumnSeed = { id: string; name: string; dataType?: string };
@@ -289,6 +293,31 @@ describe('TreeViewer', () => {
 
     expect(tableRows().map(labelOf)).toEqual(['unnamed']);
     expect(columnRows().map(labelOf)).toEqual(['unnamed']);
+  });
+
+  it('names a blank table and column in the language the editor shows, and again after a switch', async () => {
+    const i18n = createTestI18n('ko-KR', pseudoMessages('ko'));
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      await mountTree(
+        [],
+        [{ id: 'n1', name: '  ', columns: [{ id: 'nc1', name: '' }] }]
+      );
+
+      expect(tableRows().map(labelOf)).toEqual(['ko:unnamed']);
+      expect(columnRows().map(labelOf)).toEqual(['ko:unnamed']);
+
+      Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
+      await flush();
+
+      expect(tableRows().map(labelOf)).toEqual(['ar:unnamed']);
+      expect(columnRows().map(labelOf)).toEqual(['ar:unnamed']);
+    } finally {
+      mounted?.unmount();
+      mounted = null;
+      provider.destroy();
+    }
   });
 
   it('lists a column added to an otherwise untouched table under a plain row that moves both sides', async () => {

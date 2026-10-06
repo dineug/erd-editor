@@ -11,6 +11,8 @@ import * as styles from './FloatingToolbar.styles';
 
 export type ToolbarCompassOptions = {
   compass: ContentCompass | null;
+  /** What the compass names itself, in the language of the bar it stands in. */
+  title: string;
   className?: string;
   onClick: () => void;
 };
@@ -22,17 +24,14 @@ export type ToolbarCompassOptions = {
  */
 export function toolbarCompass({
   compass,
+  title,
   className,
   onClick,
 }: ToolbarCompassOptions): DOMTemplateLiterals | null {
   return compass ? (
     <>
       <div class={styles.divider}></div>
-      <div
-        class={[className, styles.compass]}
-        title="Go to content"
-        on:click={onClick}
-      >
+      <div class={[className, styles.compass]} title={title} on:click={onClick}>
         <Icon
           name="arrow-right"
           size={COMPASS_ARROW_SIZE}

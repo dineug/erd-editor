@@ -4,9 +4,12 @@ import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
   createTestAppContext,
+  createTestI18n,
   createTestTheme,
   flush,
   type Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__';
 import { type AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
@@ -79,6 +82,7 @@ import {
   addColumnAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import { createI18n } from '@/i18n/translate';
 import { whenDrawn } from '@/konva/batchDraw';
 import {
   getColumnRect,
@@ -285,6 +289,25 @@ describe('the editing overlay', () => {
     expect(input.value).toBe('');
     expect(input.placeholder).toBe('table');
     expect(document.activeElement).toBe(input);
+  });
+
+  it('shows the placeholder in the language the element shows, following a switch', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+    teardowns.push(() => provider.destroy());
+
+    const fixture = await setup();
+    await editTableName(fixture);
+    expect(inputOf(fixture.mounted).placeholder).toBe('table');
+
+    Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+    await flush();
+    expect(inputOf(fixture.mounted).placeholder).toBe('ko:table');
+
+    fixture.app.store.dispatchSync(editTableEndAction());
+    await flush();
+    await editColumnName(fixture);
+    expect(inputOf(fixture.mounted).placeholder).toBe('ko:column');
   });
 
   it('closes the input when the edit ends', async () => {

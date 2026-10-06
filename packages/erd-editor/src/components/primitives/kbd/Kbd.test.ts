@@ -43,6 +43,12 @@ describe('Kbd', () => {
     expect(el.children.length).toBe(0);
   });
 
+  it('spells its keys left to right in a right-to-left editor', async () => {
+    mounted = await mountAndFlush(html`<${Kbd} shortcut=${'$mod+KeyK'} />`);
+
+    expect(root().getAttribute('dir')).toBe('ltr');
+  });
+
   it('renders nothing for an empty shortcut string', async () => {
     mounted = await mountAndFlush(html`<${Kbd} shortcut=${''} />`);
 

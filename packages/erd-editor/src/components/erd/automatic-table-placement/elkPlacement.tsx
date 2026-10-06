@@ -2,6 +2,7 @@ import { FC } from '@dineug/r-html';
 import type { Subscription } from 'rxjs';
 
 import { AppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import {
@@ -22,13 +23,23 @@ type PlacingToastProps = {
  * shows. There is no progress to follow and nothing to read off a layout that
  * does not exist yet, so Cancel is the only thing on it. A view placement shows it too.
  */
-export const PlacingToast: FC<PlacingToastProps> = props => () => (
-  <Toast
-    busy={true}
-    description="Placing tables…"
-    action={<Button size="1" text="Cancel" onClick={props.onCancel} />}
-  />
-);
+export const PlacingToast: FC<PlacingToastProps> = (props, ctx) => {
+  const i18n = useI18n(ctx);
+
+  return () => (
+    <Toast
+      busy={true}
+      description={i18n.value.t('feedback.placingTables')}
+      action={
+        <Button
+          size="1"
+          text={i18n.value.t('common.cancel')}
+          onClick={props.onCancel}
+        />
+      }
+    />
+  );
+};
 
 /** How a layout ended: placed, given up on by whoever waited, or never answered. */
 export type ElkLayoutAnswer =

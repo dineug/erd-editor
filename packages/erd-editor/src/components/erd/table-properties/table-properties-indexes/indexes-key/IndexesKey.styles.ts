@@ -64,8 +64,8 @@ export const tag = css`
 export const name = css`
   ${typography.paragraph};
   min-width: 0;
-  padding-left: 4px;
-  padding-right: ${INPUT_MARGIN_RIGHT}px;
+  padding-inline-start: 4px;
+  padding-inline-end: ${INPUT_MARGIN_RIGHT}px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -74,7 +74,7 @@ export const name = css`
 /* The box an index row's remove button takes, at the end of the row. */
 export const lock = css`
   flex-shrink: 0;
-  margin-left: auto;
+  margin-inline-start: auto;
   width: 20px;
   justify-content: center;
   color: var(--placeholder);

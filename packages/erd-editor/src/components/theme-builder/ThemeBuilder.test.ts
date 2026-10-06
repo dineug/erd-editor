@@ -4,14 +4,18 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import ThemeBuilder from '@/components/theme-builder/ThemeBuilder';
 import * as styles from '@/components/theme-builder/ThemeBuilder.styles';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import {
   AccentColor,
   AccentColorList,
@@ -191,6 +195,32 @@ describe('ThemeBuilder', () => {
       expect(byStyle(String(styles.vertical))).toHaveLength(3);
     });
 
+    it('reads its words in the language shown, following a switch, and keeps the swatch keys', async () => {
+      const i18n = createTestI18n('en');
+      const provider = provideI18n(document.body, i18n);
+
+      try {
+        await setup();
+        Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+        await flush();
+
+        expect(byStyle(String(styles.title))[0].textContent).toBe('ko:Theme');
+        expect(
+          byStyle(String(styles.subTitle)).map(el => el.textContent)
+        ).toEqual(['ko:Accent color', 'ko:Gray color', 'ko:Appearance']);
+        expect(appearanceButtons().map(el => el.textContent)).toEqual([
+          'ko:System',
+          'ko:Light',
+          'ko:Dark',
+        ]);
+        expect(swatches(0).map(el => el.getAttribute('title'))).toEqual(
+          AccentColorList
+        );
+      } finally {
+        provider.destroy();
+      }
+    });
+
     it('draws a distinct icon on each appearance button', async () => {
       await setup();
       const icons = appearanceButtons().map(
@@ -351,6 +381,19 @@ describe('ThemeBuilder', () => {
       expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);
       expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(false);
       expect(root()).toBeTruthy();
+    });
+
+    it('closes the locale picker as it opens, the two panels standing in one place', async () => {
+      const { app } = await setup({ open: false });
+      app.store.dispatchSync(
+        changeOpenMapAction({ [Open.localePicker]: true })
+      );
+
+      app.emitter.emit(openThemeBuilderAction());
+      await flush();
+
+      expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);
+      expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
     });
 
     it('closes the panel and leaves table properties alone', async () => {

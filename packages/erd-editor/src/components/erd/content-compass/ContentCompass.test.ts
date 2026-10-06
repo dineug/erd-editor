@@ -3,9 +3,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
@@ -25,6 +28,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { createI18n } from '@/i18n/translate';
 
 let mounted: Mounted | null = null;
 
@@ -87,6 +91,27 @@ describe('ContentCompass', () => {
     expect(pill()).toBeTruthy();
     expect(label()).toBe(formatDistance(compass.distance));
     expect(arrow()?.style.transform).toBe(`rotate(${compass.angle}deg)`);
+  });
+
+  it('names itself in the language the element shows, left to right under any', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      const { app, pill } = await setup();
+      await panTo(app, -5_000, -4_000);
+
+      expect(pill()?.title).toBe('go to the nearest content');
+      expect(pill()?.getAttribute('dir')).toBe('ltr');
+
+      Object.assign(i18n, createI18n('he-IL', pseudoMessages('he')));
+      await flush();
+
+      expect(pill()?.title).toBe('he:go to the nearest content');
+      expect(pill()?.getAttribute('dir')).toBe('ltr');
+    } finally {
+      provider.destroy();
+    }
   });
 
   it('turns the arrow back the way the content lies, which is up and left here', async () => {

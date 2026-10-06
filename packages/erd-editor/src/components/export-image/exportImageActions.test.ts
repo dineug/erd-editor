@@ -1,3 +1,4 @@
+import { DOMTemplateLiterals, render } from '@dineug/r-html';
 import {
   afterEach,
   beforeEach,
@@ -7,7 +8,13 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { createTestAppContext, flush } from '@/__test-utils__/index';
+import {
+  createTestAppContext,
+  createTestI18n,
+  flush,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
   copyImagePng,
@@ -17,6 +24,8 @@ import {
   exportImageSvg,
   type ImageRequest,
 } from '@/components/export-image/exportImageActions';
+import * as toastStyles from '@/components/primitives/toast/Toast.styles';
+import type { I18n } from '@/i18n/translate';
 import {
   createDocumentPng,
   createDocumentSvg,
@@ -98,11 +107,36 @@ const createDeferred = <T>() => {
 
 const png = () => new Blob(['png-bytes'], { type: 'image/png' });
 
-/** The strings a toast was built from, which is all its template exposes. */
-const labelOf = (payload: any) =>
-  (payload.message.values as unknown[])
-    .filter(value => typeof value === 'string')
-    .join(' | ');
+/** A template as it renders, in the language given or in English where none is. */
+function renderText(
+  template: DOMTemplateLiterals,
+  read: (container: HTMLElement) => string,
+  i18n?: I18n
+) {
+  const container = document.createElement('div');
+  const provider = i18n ? provideI18n(container, i18n) : null;
+  render(container, template);
+  const text = read(container);
+  render(container, null);
+  provider?.destroy();
+  return text;
+}
+
+const textOf = (template: DOMTemplateLiterals, i18n?: I18n) =>
+  renderText(template, container => container.textContent?.trim() ?? '', i18n);
+
+/** A toast's title and description as it renders them. */
+const labelOf = (message: DOMTemplateLiterals, i18n?: I18n) =>
+  renderText(
+    message,
+    container =>
+      Array.from(
+        container.querySelectorAll(`.${String(toastStyles.textWrap)} > div`)
+      )
+        .map(line => line.textContent?.trim())
+        .join(' | '),
+    i18n
+  );
 
 /**
  * Every open and close of a toast in the order it happened, which is the one
@@ -111,7 +145,7 @@ const labelOf = (payload: any) =>
 function recordToasts(entries: string[]) {
   return app.emitter.on({
     openToast: ({ payload }) => {
-      const label = labelOf(payload);
+      const label = labelOf(payload.message);
       entries.push(`open ${label}`);
       payload.close?.then(() => entries.push(`close ${label}`));
     },
@@ -120,12 +154,23 @@ function recordToasts(entries: string[]) {
 
 describe('describeReduction', () => {
   it('names the pixels asked for and the pixels written, as the dialog does', () => {
-    expect(describeReduction(REDUCTION)).toBe(REDUCED_TEXT);
+    expect(textOf(describeReduction(REDUCTION))).toBe(REDUCED_TEXT);
   });
 
   it('shares its words with the warning the dialog shows before the file', () => {
-    expect(describeAskedSize(REDUCTION)).toBe(
+    expect(textOf(describeAskedSize(REDUCTION))).toBe(
       'Reduced from 20000 × 20000 px, past what a browser canvas can hold'
+    );
+  });
+
+  it('is said in the language of the editor it renders in', () => {
+    const korean = createTestI18n('ko-KR', pseudoMessages('ko'));
+
+    expect(textOf(describeReduction(REDUCTION), korean)).toBe(
+      `ko:${REDUCED_TEXT}`
+    );
+    expect(textOf(describeAskedSize(REDUCTION), korean)).toBe(
+      'ko:Reduced from 20000 × 20000 px, past what a browser canvas can hold'
     );
   });
 });
@@ -231,6 +276,16 @@ describe('exportImageSvg', () => {
     ]);
   });
 
+  it('draws the svg in the language the dialog snapshotted', async () => {
+    const i18n = { locale: 'ko-KR' as const, messages: pseudoMessages('ko') };
+
+    await exportImageSvg(app, { ...request(), i18n }, 'shop');
+
+    const [options] = vi.mocked(createDocumentSvg).mock.calls[0];
+    expect(options.i18n).toBe(i18n);
+    expect(Reflect.has(options, 'pixelRatio')).toBe(false);
+  });
+
   it('says nothing when the svg is written quickly', async () => {
     await exportImageSvg(app, request(), 'shop');
     await flush();
@@ -293,6 +348,23 @@ describe('copyImagePng', () => {
 
     expect(log).toEqual(['open Copied the image to the clipboard']);
     expect(exported).toEqual([]);
+  });
+
+  it('says it in the language of the editor the toast renders in', async () => {
+    const messages: DOMTemplateLiterals[] = [];
+    const stop = app.emitter.on({
+      openToast: ({ payload }) => {
+        messages.push(payload.message);
+      },
+    });
+
+    await copyImagePng(app, request());
+    stop();
+
+    expect(messages).toHaveLength(1);
+    expect(
+      labelOf(messages[0], createTestI18n('ar-SA', pseudoMessages('ar')))
+    ).toBe('ar:Copied the image to the clipboard');
   });
 
   it('says what it gave up when the copied image is scaled down', async () => {

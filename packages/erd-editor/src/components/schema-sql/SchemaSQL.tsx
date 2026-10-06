@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, observable, onBeforeMount, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { localized } from '@/components/localized/Localized';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import Toast from '@/components/primitives/toast/Toast';
@@ -58,7 +59,7 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
       emitter.emit(
         openToastAction({
           close: delay(2000),
-          message: <Toast title="Copied!" />,
+          message: <Toast title={localized('common.toast.copied')} />,
         })
       );
     });

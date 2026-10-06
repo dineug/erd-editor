@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { pseudoMessages } from '@/__test-utils__/index';
 import {
   PALETTE_PREFIXES,
   PaletteScope,
   parsePaletteQuery,
   scopeLabel,
 } from '@/components/quick-search/paletteQuery';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 
 describe('parsePaletteQuery', () => {
   it('reads no scope from a keyword without a prefix, trimmed', () => {
@@ -220,7 +223,7 @@ describe('parsePaletteQuery', () => {
 });
 
 describe('PALETTE_PREFIXES', () => {
-  it('lists one distinct single character per scope, each with a label and a description', () => {
+  it('lists one distinct single character per scope, each with a label and a description to translate', () => {
     expect(PALETTE_PREFIXES.map(({ prefix }) => prefix)).toEqual([
       '#',
       '@',
@@ -230,10 +233,17 @@ describe('PALETTE_PREFIXES', () => {
     expect(new Set(PALETTE_PREFIXES.map(({ scope }) => scope)).size).toBe(
       Object.keys(PaletteScope).length
     );
-    for (const { label, description } of PALETTE_PREFIXES) {
-      expect(label).not.toBe('');
-      expect(description).not.toBe('');
-    }
+    expect(
+      PALETTE_PREFIXES.map(({ labelKey, descriptionKey }) => [
+        sourceI18n.t(labelKey),
+        sourceI18n.t(descriptionKey),
+      ])
+    ).toEqual([
+      ['Tables', 'Go to a table by its name'],
+      ['Columns', 'Go to a column by its name, or by table.column'],
+      ['Comments & memos', 'Search table comments, column comments and memos'],
+      ['Help', 'List the prefixes that narrow the search'],
+    ]);
   });
 
   it('names each scope for the label beside the input', () => {
@@ -242,5 +252,13 @@ describe('PALETTE_PREFIXES', () => {
     expect(scopeLabel(PaletteScope.text)).toBe('Comments & memos');
     expect(scopeLabel(PaletteScope.help)).toBe('Help');
     expect(scopeLabel('unknown' as PaletteScope)).toBe('');
+  });
+
+  it('names a scope in the language it is given', () => {
+    const i18n = createI18n('de-DE', pseudoMessages('de'));
+
+    expect(scopeLabel(PaletteScope.tables, i18n)).toBe('de:Tables');
+    expect(scopeLabel(PaletteScope.text, i18n)).toBe('de:Comments & memos');
+    expect(scopeLabel('unknown' as PaletteScope, i18n)).toBe('');
   });
 });

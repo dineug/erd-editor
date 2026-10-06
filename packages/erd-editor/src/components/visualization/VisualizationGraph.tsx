@@ -184,6 +184,7 @@ const VisualizationGraph: FC<VisualizationGraphProps> = (props, ctx) => {
     return (
       <div
         class={styles.root}
+        prop:dir="ltr"
         on:touchstart={pinch.handleTouchstart}
         on:wheel={handleWheel}
       >

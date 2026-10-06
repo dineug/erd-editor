@@ -1,5 +1,5 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { createRef, DOMTemplateLiterals, html } from '@dineug/r-html';
+import { createRef, DOMTemplateLiterals, html, render } from '@dineug/r-html';
 import {
   afterEach,
   beforeEach,
@@ -11,12 +11,16 @@ import {
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mount,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
+  placementDescription,
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
 import * as styles from '@/components/erd/automatic-table-placement/AutomaticTablePlacement.styles';
@@ -41,6 +45,7 @@ import {
   addTableAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { createI18n, type I18n } from '@/i18n/translate';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
 import type { Rect } from '@/konva/scene/metrics';
@@ -188,6 +193,28 @@ async function renderToast(toast: Toast) {
   return toastContainer.container;
 }
 
+const cleanups: Array<() => void> = [];
+
+/** A captured toast rendered under a language, as the toast stack renders it. */
+async function renderToastIn(toast: Toast, i18n: I18n) {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const provider = provideI18n(container, i18n);
+  render(container, toast.message);
+  await flush();
+  cleanups.push(() => {
+    render(container, null);
+    provider.destroy();
+    container.remove();
+  });
+  return container;
+}
+
+const buttonTexts = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll('button')).map(el =>
+    el.textContent?.trim()
+  );
+
 function clickButton(container: HTMLElement, text: string) {
   const button = Array.from(container.querySelectorAll('button')).find(
     el => el.textContent?.trim() === text
@@ -204,6 +231,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanups.splice(0).forEach(cleanup => cleanup());
   contexts.splice(0).forEach(app => app.store.destroy());
   toastContainer?.unmount();
   toastContainer = null;
@@ -574,6 +602,59 @@ describe('AutomaticTablePlacement', () => {
       expect(app.store.state.editor.openMap[Open.automaticTablePlacement]).toBe(
         false
       );
+    });
+  });
+
+  describe('in the language the editor shows', () => {
+    it('says no tables were found in that language', async () => {
+      const app = createOrigin();
+      const toasts = listenToasts(app);
+
+      await open(app, vi.fn());
+
+      const container = await renderToastIn(
+        toasts[0],
+        createTestI18n('ja-JP', pseudoMessages('ja'))
+      );
+      expect(container.textContent?.trim()).toBe('ja:No tables to place');
+    });
+
+    it('follows the placement and offers Apply and Cancel in that language', async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users');
+      const toasts = listenToasts(app);
+      await open(app, vi.fn());
+      const i18n = createTestI18n('ja-JP', pseudoMessages('ja'));
+
+      const container = await renderToastIn(toasts[0], i18n);
+
+      expect(container.textContent).toContain('ja:Placing tables… 0%');
+      expect(buttonTexts(container)).toEqual(['ja:Apply', 'ja:Cancel']);
+
+      Object.assign(i18n, createI18n('he-IL', pseudoMessages('he')));
+      await flush();
+
+      expect(container.textContent).toContain(
+        'he:Placing tables… \u20680\u2069%'
+      );
+      expect(buttonTexts(container)).toEqual(['he:Apply', 'he:Cancel']);
+    });
+
+    it('words the progress in English when it is given no language', () => {
+      expect(placementDescription({ progress: 0.426 })).toBe(
+        'Placing tables… 43%'
+      );
+    });
+
+    it('keeps the preview left to right whatever the editor reads in', async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users');
+
+      const { container } = await open(app, vi.fn());
+
+      expect(
+        container.querySelector(`.${styles.root}`)?.getAttribute('dir')
+      ).toBe('ltr');
     });
   });
 });

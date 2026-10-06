@@ -6,9 +6,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   createTestTheme,
   flush,
   moveScenePointer,
+  provideI18n,
+  pseudoMessages,
   whenPainted,
 } from '@/__test-utils__';
 import {
@@ -16,7 +19,10 @@ import {
   appContext,
   useAppContext,
 } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import { themeContext, useThemeContext } from '@/components/themeContext';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n, type I18n } from '@/i18n/translate';
 import { whenDrawn } from '@/konva/batchDraw';
 import { type RenderedScene, renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
@@ -176,6 +182,100 @@ describe('renderScene builds one Stage for a scene to be drawn into', () => {
 
     expect(seen.renders).toBeGreaterThan(0);
     expect(after.first).toBe(app);
+  });
+});
+
+type Said = { i18n: I18n | null; text: string };
+
+/** A scene node that writes one of the editor's own words, as a placeholder does. */
+const Word: FC<{ said: Said }> = (props, ctx) => {
+  const i18n = useI18n(ctx);
+
+  return () => {
+    props.said.i18n = i18n.value;
+    props.said.text = i18n.value.t('common.placeholder.table');
+    return <k-text name="word" text={props.said.text} />;
+  };
+};
+
+function mountWord(i18n?: I18n, container = document.createElement('div')) {
+  container.isConnected || document.body.append(container);
+  const said: Said = { i18n: null, text: '' };
+  const rendered = renderScene({
+    app: createTestAppContext(),
+    container,
+    scene: (
+      <k-layer name="scene">
+        <Word said={said} />
+      </k-layer>
+    ),
+    width: 320,
+    height: 240,
+    i18n,
+  });
+
+  teardowns.push(() => {
+    rendered.destroy();
+    container.remove();
+  });
+
+  return { said, scene: rendered };
+}
+
+describe('renderScene draws the scene in the language it is given', () => {
+  it('writes a word in the language it was given', async () => {
+    const i18n = createI18n('ja-JP', pseudoMessages('ja'));
+    const { said, scene } = mountWord(i18n);
+    await flush();
+    await whenDrawn();
+
+    expect(said.i18n).toBe(i18n);
+    expect(scene.stage.findOne('.word')?.getAttr('text')).toBe('ja:table');
+  });
+
+  it('writes it in English where nothing provides a language', async () => {
+    const { said } = mountWord();
+    await flush();
+    await whenDrawn();
+
+    expect(said.i18n).toBe(sourceI18n);
+    expect(said.text).toBe('table');
+  });
+
+  it('leaves the language to a DOM ancestor when it was given none', async () => {
+    const outer = document.createElement('div');
+    const container = document.createElement('div');
+    outer.append(container);
+    document.body.append(outer);
+    const i18n = createTestI18n('ko-KR', pseudoMessages('ko'));
+    const provider = provideI18n(outer, i18n);
+    teardowns.push(() => {
+      provider.destroy();
+      outer.remove();
+    });
+
+    const { said } = mountWord(undefined, container);
+    await flush();
+    await whenDrawn();
+
+    expect(said.text).toBe('ko:table');
+  });
+
+  it('drops the language with the rest of the scene when destroyed', async () => {
+    const container = document.createElement('div');
+    const { scene } = mountWord(
+      createI18n('de-DE', pseudoMessages('de')),
+      container
+    );
+    await flush();
+    await whenDrawn();
+
+    scene.destroy();
+    const { said } = mountWord(undefined, container);
+    await flush();
+    await whenDrawn();
+
+    expect(said.text).toBe('table');
   });
 });
 

@@ -276,6 +276,16 @@ describe('the minimap shell', () => {
     ).toBeTruthy();
   });
 
+  it('keeps the map left to right inside a right-to-left editor', async () => {
+    const mounted = await mountMinimap();
+    mounted.container.dir = 'rtl';
+
+    expect(minimapOf(mounted).getAttribute('dir')).toBe('ltr');
+    expect(getComputedStyle(stageRegistry().minimap.content).direction).toBe(
+      'ltr'
+    );
+  });
+
   it('hangs one Stage of one layer in the scene box', async () => {
     const app = createTestAppContext();
     const mounted = await mountMinimap(app);

@@ -1,3 +1,4 @@
+import type { LocaleMessages } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
@@ -10,6 +11,8 @@ export type RenderSvgRequest = {
   theme: Theme;
   /** The zoom to draw at; the document's own when the caller names none. */
   zoomLevel?: number;
+  /** The language the scene's own words are drawn in; English when left out. */
+  i18n?: LocaleMessages;
 };
 
 /**
@@ -31,6 +34,7 @@ export async function renderDocumentSvg({
   doc,
   theme,
   zoomLevel,
+  i18n,
   toWidth,
 }: RenderSvgRequest & { toWidth: ToWidth }): Promise<string> {
   const scene = await renderDocumentScene({
@@ -39,6 +43,7 @@ export async function renderDocumentSvg({
     toWidth,
     zoomLevel,
     maxSide: STAGE_MAX_SIDE,
+    i18n,
   });
 
   try {

@@ -3,6 +3,7 @@ import { FC, observable, onMounted, watch } from '@dineug/r-html';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import Dialog from '@/components/primitives/dialog/Dialog';
 import Icon from '@/components/primitives/icon/Icon';
@@ -11,6 +12,7 @@ import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import type { LocaleMessages } from '@/i18n/translate';
 import { createDocumentPreview } from '@/services/export-png';
 import { getExportSize } from '@/services/export-png/exportBox';
 import { createExportTheme } from '@/services/export-png/exportTheme';
@@ -57,6 +59,8 @@ type Session = {
   sceneTheme: Theme;
   themeOptions: ThemeOptions;
   isDarkMode: boolean;
+  /** The language the scene's own words are drawn in, as the editor showed it then. */
+  i18n: LocaleMessages;
   /** Object urls by background and dark mode, the only options a preview shows. */
   previews: Map<string, string>;
   /** Counts the changes of the options, so a preview that lands after one is not shown. */
@@ -72,6 +76,7 @@ type Session = {
 const ExportImage: FC<ExportImageProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
 
   const options = observable({
@@ -118,6 +123,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
         toWidth: app.value.toWidth,
         zoomLevel: current.zoomLevel,
         maxSide: PREVIEW_MAX_SIDE,
+        i18n: current.i18n,
       });
       if (session !== current) return;
 
@@ -215,6 +221,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
       sceneTheme: { ...themeRef.value },
       themeOptions: { ...props.themeOptions },
       isDarkMode: props.isDarkMode,
+      i18n: { locale: i18n.value.locale, messages: i18n.value.messages },
       previews: new Map(),
       request: 0,
       timer: undefined,
@@ -236,6 +243,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     toWidth: app.value.toWidth,
     zoomLevel: current.zoomLevel,
     pixelRatio: options.scale,
+    i18n: current.i18n,
   });
 
   const handleBackground = (value: boolean) => {
@@ -292,6 +300,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     if (!isOpen()) return null;
 
     const { store, keyBindingMap } = app.value;
+    const { t } = i18n.value;
     const stacked = store.state.editor.viewport.width < STACK_BELOW;
     const size = view.measured
       ? getExportSize(
@@ -303,20 +312,20 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
 
     return (
       <Dialog
-        label="Export image"
+        label={t('exportImage.title')}
         maxWidth={DIALOG_MAX_WIDTH}
         onClose={close}
         children={
           <div class={['export-image', styles.layout, { stacked }]}>
             <div class={styles.header}>
-              <h2 class={styles.title}>Export image</h2>
+              <h2 class={styles.title}>{t('exportImage.title')}</h2>
               <button
                 class={['export-image-close', styles.close]}
                 type="button"
-                aria-label="Close"
+                aria-label={t('common.close')}
                 title={toShortcutTitle(
                   keyBindingMap,
-                  'Close',
+                  t('common.close'),
                   KeyBindingName.stop
                 )}
                 on:click={close}
@@ -329,19 +338,23 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
               aria-busy={view.loading ? 'true' : 'false'}
             >
               {view.preview ? (
-                <img class={styles.image} src={view.preview} alt="Preview" />
+                <img
+                  class={styles.image}
+                  src={view.preview}
+                  alt={t('exportImage.preview')}
+                />
               ) : null}
               {view.loading ? (
                 <div
                   class={styles.loading}
                   role="status"
-                  aria-label="Loading preview"
+                  aria-label={t('exportImage.loadingPreview')}
                 />
               ) : null}
             </div>
             <div class={styles.panel}>
               <label class={styles.row}>
-                <span>Background</span>
+                <span>{t('exportImage.background')}</span>
                 <Switch
                   size="1"
                   value={options.background}
@@ -349,7 +362,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                 />
               </label>
               <label class={styles.row}>
-                <span>Dark mode</span>
+                <span>{t('exportImage.darkMode')}</span>
                 <Switch
                   size="1"
                   value={options.darkMode}
@@ -357,8 +370,12 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                 />
               </label>
               <div class={styles.row}>
-                <span>Scale</span>
-                <div class={styles.scales} role="group" aria-label="Scale">
+                <span>{t('exportImage.scale')}</span>
+                <div
+                  class={styles.scales}
+                  role="group"
+                  aria-label={t('exportImage.scale')}
+                >
                   {EXPORT_SCALES.map(scale => (
                     <button
                       class={styles.scale}
@@ -412,7 +429,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                   type="button"
                   on:click={handleCopy}
                 >
-                  Copy to clipboard
+                  {t('exportImage.copyToClipboard')}
                 </button>
               </div>
             </div>

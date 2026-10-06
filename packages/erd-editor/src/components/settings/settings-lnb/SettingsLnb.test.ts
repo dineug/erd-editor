@@ -1,11 +1,21 @@
 import { FC, html, observable } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import SettingsLnb, {
   Lnb,
+  LnbLabelKey,
 } from '@/components/settings/settings-lnb/SettingsLnb';
 import * as styles from '@/components/settings/settings-lnb/SettingsLnb.styles';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import { fontSize6 } from '@/styles/typography.styles';
 
 let mounted: Mounted | null = null;
@@ -101,5 +111,36 @@ describe('SettingsLnb', () => {
 
     expect(items()[0].classList.contains('selected')).toBe(false);
     expect(items()[1].classList.contains('selected')).toBe(true);
+  });
+
+  it('names each panel by a message of its own, English as the ids read', () => {
+    expect(Object.keys(LnbLabelKey)).toEqual(Object.values(Lnb));
+    for (const lnb of Object.values(Lnb)) {
+      expect(sourceI18n.t(LnbLabelKey[lnb])).toBe(lnb);
+    }
+  });
+
+  it('reads the title and the panel names in the language provided, following a switch', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      const { container, onChange } = await setup();
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(container.querySelector(`.${fontSize6}`)?.textContent).toBe(
+        'ko:Settings'
+      );
+      expect(items().map(el => el.textContent?.trim())).toEqual([
+        'ko:Preferences',
+        'ko:Shortcuts',
+      ]);
+
+      items()[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(onChange).toHaveBeenCalledWith(Lnb.shortcuts);
+    } finally {
+      provider.destroy();
+    }
   });
 });

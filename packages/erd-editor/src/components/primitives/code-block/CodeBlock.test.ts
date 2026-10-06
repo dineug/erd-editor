@@ -1,9 +1,17 @@
 import { FC, html, observable } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
 import * as styles from '@/components/primitives/code-block/CodeBlock.styles';
+import { createI18n } from '@/i18n/translate';
 import type { ShikiService } from '@/services/shiki';
 
 const mocks = vi.hoisted(() => ({
@@ -186,6 +194,35 @@ describe('CodeBlock', () => {
 
     expect(getTextarea(mounted).getAttribute('aria-label')).toBe('Code');
     expect(getPreview(mounted).getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('names the overlay and the copy button in the language the element shows, following a switch', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      mounted = await mountAndFlush(
+        html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
+      );
+      const clipboard = getClipboard(mounted);
+
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(getTextarea(mounted).getAttribute('aria-label')).toBe('ko:Code');
+      expect(clipboard.title).toBe('ko:Copy');
+    } finally {
+      provider.destroy();
+    }
+  });
+
+  it('reads left to right in every language, its copy button included', async () => {
+    mounted = await mountAndFlush(
+      html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
+    );
+
+    expect(getRoot(mounted).getAttribute('dir')).toBe('ltr');
+    expect(getRoot(mounted).contains(getClipboard(mounted))).toBe(true);
   });
 
   it('strips the trailing newline, which a textarea turns into a line the preview has not got', async () => {

@@ -15,7 +15,7 @@ export const root = css`
   background-color: var(--toolbar-background);
 
   & > input {
-    margin-right: 15px;
+    margin-inline-end: 15px;
   }
 `;
 
@@ -58,7 +58,7 @@ export const menu = css`
 export const tableCount = css`
   display: flex;
   align-self: center;
-  margin-left: auto;
+  margin-inline-start: auto;
   white-space: nowrap;
   ${typography.paragraph};
 `;

@@ -10,9 +10,12 @@ import {
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
@@ -32,6 +35,7 @@ import {
   changeColumnDataTypeAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import type { ShikiService } from '@/services/shiki';
 import {
   createGeneratorCode,
@@ -325,6 +329,37 @@ describe('GeneratorCode', () => {
     expect(openToast).toHaveBeenCalledTimes(1);
     expect(openToast.mock.calls[0][0].payload.message).toBeTruthy();
     expect(openToast.mock.calls[0][0].payload.close).toBeInstanceOf(Promise);
+  });
+
+  it('says Copied! in the toast, in the language the element shows', async () => {
+    const app = createSeededApp();
+    const openToast = vi.fn();
+    app.emitter.on({ openToast });
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+    copyButtonOf(mounted).dispatchEvent(
+      new MouseEvent('click', { bubbles: true })
+    );
+    await flush();
+    const { message } = openToast.mock.calls[0][0].payload;
+
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+    const toast = await mountAndFlush(message, app);
+
+    try {
+      expect(toast.container.textContent?.trim()).toBe('Copied!');
+
+      Object.assign(i18n, createI18n('ja-JP', pseudoMessages('ja')));
+      await flush();
+
+      expect(toast.container.textContent?.trim()).toBe('ja:Copied!');
+    } finally {
+      toast.unmount();
+      provider.destroy();
+    }
   });
 
   it('opens the generator context menu on contextmenu and cancels the native one', async () => {

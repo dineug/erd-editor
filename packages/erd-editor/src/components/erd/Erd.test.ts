@@ -85,7 +85,12 @@ type Harness = {
   app: AppContext;
   container: HTMLDivElement;
   root: HTMLDivElement;
-  props: { isDarkMode: boolean; mouseTracking: boolean; readonly: boolean };
+  props: {
+    isDarkMode: boolean;
+    mouseTracking: boolean;
+    readonly: boolean;
+    enableWelcomeScreen: boolean;
+  };
   actions: AnyAction[];
 };
 
@@ -97,6 +102,7 @@ async function setup(
     isDarkMode: false,
     mouseTracking: false,
     readonly: false,
+    enableWelcomeScreen: false,
     ...initial,
   });
 
@@ -112,6 +118,7 @@ async function setup(
           isDarkMode=${props.isDarkMode}
           mouseTracking=${props.mouseTracking}
           readonly=${props.readonly}
+          enableWelcomeScreen=${props.enableWelcomeScreen}
         />
       </div>`;
   };
@@ -176,6 +183,7 @@ const DOM_GUARDS = [
   'minimap',
   'minimap-viewport',
   'virtual-scroll',
+  'welcome-screen-menu',
 ];
 
 const dispatchMouse = (
@@ -1508,5 +1516,127 @@ describe('Erd - shared mouse tracking', () => {
     await flush();
 
     expect(trackerActions(actions)).toHaveLength(0);
+  });
+});
+
+describe('Erd - welcome screen', () => {
+  const welcome = (root: HTMLElement) => root.querySelector('.welcome-screen');
+
+  const row = (root: HTMLElement, label: string) =>
+    Array.from(
+      root.querySelectorAll<HTMLButtonElement>('.welcome-screen-item')
+    ).find(
+      button => button.querySelector('span')?.textContent?.trim() === label
+    ) as HTMLButtonElement;
+
+  it('stays off until the host asks for it, then stands over the empty document', async () => {
+    const { root, props } = await setup();
+    expect(welcome(root)).toBeNull();
+
+    props.enableWelcomeScreen = true;
+    await flush();
+
+    expect(welcome(root)).not.toBeNull();
+    expect(row(root, 'New Table')).toBeTruthy();
+  });
+
+  it.each<[string, (harness: Harness) => void]>([
+    [
+      'in a read-only editor',
+      ({ props }) => {
+        props.readonly = true;
+      },
+    ],
+    [
+      'in zen mode',
+      ({ app }) => app.store.dispatchSync(changeZenModeAction({ value: true })),
+    ],
+    [
+      'under a takeover',
+      ({ app }) =>
+        app.store.dispatchSync(
+          changeOpenMapAction({ [Open.timeTravel]: true })
+        ),
+    ],
+    ['over a table', ({ app }) => seedTable(app)],
+    [
+      'over a memo',
+      ({ app }) =>
+        app.store.dispatchSync(
+          addMemoAction({ id: 'note', ui: { x: 0, y: 0, zIndex: 2 } })
+        ),
+    ],
+  ])('steps aside %s', async (_, change) => {
+    const harness = await setup({ enableWelcomeScreen: true });
+    expect(welcome(harness.root)).not.toBeNull();
+
+    change(harness);
+    await flush(6);
+
+    expect(welcome(harness.root)).toBeNull();
+  });
+
+  it('goes with the first table its menu adds and comes back on the undo', async () => {
+    const { app, root } = await setup({ enableWelcomeScreen: true });
+
+    row(root, 'New Table').click();
+    await flush(6);
+
+    expect(app.store.state.doc.tableIds).toHaveLength(1);
+    expect(welcome(root)).toBeNull();
+
+    app.store.undo();
+    await flush(6);
+
+    expect(app.store.state.doc.tableIds).toHaveLength(0);
+    expect(welcome(root)).not.toBeNull();
+  });
+
+  it('starts no pan on a press on a menu row, while one on the heading pans', async () => {
+    const { app, root } = await setup({ enableWelcomeScreen: true });
+    const origin = () => {
+      const { originX, originY } = app.store.state.settings;
+      return [originX, originY];
+    };
+
+    dispatchMouse(row(root, 'New Memo'), 'mousedown', {
+      clientX: 100,
+      clientY: 100,
+    });
+    dispatchMouse(window, 'mousemove', { clientX: 60, clientY: 70 });
+    dispatchMouse(window, 'mouseup');
+    await flush();
+
+    expect(origin()).toEqual([0, 0]);
+
+    dispatchMouse(root.querySelector('.welcome-screen-heading')!, 'mousedown', {
+      clientX: 100,
+      clientY: 100,
+    });
+    dispatchMouse(window, 'mousemove', { clientX: 60, clientY: 70 });
+    dispatchMouse(window, 'mouseup');
+    await flush();
+
+    expect(origin()).toEqual([-40, -30]);
+  });
+
+  it('zooms on a modifier wheel over the menu', async () => {
+    const { app, root } = await setup({ enableWelcomeScreen: true });
+    const event = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaY: 100,
+    });
+    // happy-dom's WheelEvent constructor drops the modifier flags.
+    Object.defineProperties(event, {
+      ctrlKey: { value: true },
+      metaKey: { value: true },
+    });
+
+    root.querySelector('.welcome-screen-menu')!.dispatchEvent(event);
+    await flush();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(app.store.state.settings.zoomLevel).toBe(0.97);
   });
 });

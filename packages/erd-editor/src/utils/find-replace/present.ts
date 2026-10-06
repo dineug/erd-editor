@@ -1,18 +1,22 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
+import { sourceI18n } from '@/i18n/source';
+import type { I18n, PlainMessageKey } from '@/i18n/translate';
 
 import { FindField, FindMatch } from './findMatches';
 
-export const FindFieldLabel: Record<FindField, string> = {
-  [FindField.tableName]: 'Table',
-  [FindField.tableComment]: 'Table comment',
-  [FindField.columnName]: 'Column',
-  [FindField.columnComment]: 'Column comment',
-  [FindField.memo]: 'Memo',
+/** The kind of text a match was found in, as its result row names it. */
+export const FindFieldLabel: Record<FindField, PlainMessageKey> = {
+  [FindField.tableName]: 'findReplace.field.tableName',
+  [FindField.tableComment]: 'findReplace.field.tableComment',
+  [FindField.columnName]: 'findReplace.field.columnName',
+  [FindField.columnComment]: 'findReplace.field.columnComment',
+  [FindField.memo]: 'findReplace.field.memo',
 };
 
-const nameOf = (name: string | undefined) => name?.trim() || 'unnamed';
+const nameOf = (name: string | undefined, { t }: Pick<I18n, 't'>) =>
+  name?.trim() || t('common.unnamed');
 
 /**
  * Where a match sits, as a reader finds it on the canvas: the table, or the
@@ -20,14 +24,15 @@ const nameOf = (name: string | undefined) => name?.trim() || 'unnamed';
  */
 export function locationOf(
   { collections }: RootState,
-  { field, id, tableId }: FindMatch
+  { field, id, tableId }: FindMatch,
+  i18n: Pick<I18n, 't'> = sourceI18n
 ): string {
   if (field === FindField.memo) return '';
 
   const table = query(collections)
     .collection('tableEntities')
     .selectById(tableId);
-  const tableName = nameOf(table?.name);
+  const tableName = nameOf(table?.name, i18n);
   if (field === FindField.tableName || field === FindField.tableComment) {
     return tableName;
   }
@@ -35,14 +40,20 @@ export function locationOf(
   const column = query(collections)
     .collection('tableColumnEntities')
     .selectById(id);
-  return `${tableName}.${nameOf(column?.name)}`;
+  return `${tableName}.${nameOf(column?.name, i18n)}`;
 }
 
 /** A result row's second line: where the match sits, then the kind of text it was found in. */
-export function describeMatch(state: RootState, match: FindMatch): string {
-  const location = locationOf(state, match);
-  const kind = FindFieldLabel[match.field];
-  return location ? `${location} · ${kind}` : kind;
+export function describeMatch(
+  state: RootState,
+  match: FindMatch,
+  i18n: Pick<I18n, 't'> = sourceI18n
+): string {
+  const location = locationOf(state, match, i18n);
+  const kind = i18n.t(FindFieldLabel[match.field]);
+  return location
+    ? i18n.t('findReplace.matchLocation', { location, kind })
+    : kind;
 }
 
 /** Whether a cut at the offset falls between a high and a low surrogate. */

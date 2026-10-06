@@ -27,7 +27,7 @@ export const contentArea = css`
   width: 100%;
   height: 100%;
   overflow: hidden;
-  padding-left: 16px;
+  padding-inline-start: 16px;
 `;
 
 export const content = css`
@@ -39,7 +39,8 @@ export const content = css`
 `;
 
 export const section = css`
-  margin: 0 32px 32px 0;
+  margin-block: 0 32px;
+  margin-inline: 0 32px;
   min-width: 300px;
 `;
 
@@ -77,7 +78,7 @@ export const lockName = css`
 /* The value the file keeps, dimmed while unlocked, when it follows the screen. */
 export const lockValue = css`
   min-width: 120px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
   color: var(--placeholder);
 
   &[data-locked] {

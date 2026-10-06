@@ -12,10 +12,13 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   createTestTheme,
   fireScenePointer,
   flush,
   movePointer,
+  provideI18n,
+  pseudoMessages,
   releasePointer,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
@@ -32,6 +35,7 @@ import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { changeColumnNameAction } from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import { createI18n } from '@/i18n/translate';
 import type { Point, Table } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
@@ -200,6 +204,31 @@ describe('the ghost a column drag carries', () => {
     await moveTo(fixture, { x: 560, y: 640 });
     expectNear(ghost.x(), 560 - grab.x);
     expectNear(ghost.y(), 640 - grab.y);
+  });
+
+  it('names an empty row by its placeholders, in the language the element shows', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+    teardowns.push(() => provider.destroy());
+    const fixture = await setup();
+    const { app, table } = fixture;
+    app.store.dispatchSync(
+      changeColumnNameAction({
+        tableId: table.id,
+        id: table.columnIds[1],
+        value: '',
+      })
+    );
+    Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+
+    focus(fixture, 1);
+    await pressRow(fixture, 1);
+    await moveTo(fixture, { x: 500, y: 600 });
+
+    const texts = ghostOf(fixture.stage)!
+      .find<Text>('Text')
+      .map(text => text.text());
+    expect(texts.sort()).toEqual(['ko:column', 'ko:dataType']);
   });
 
   it('stacks every dragged row and holds the pressed one where it was taken', async () => {

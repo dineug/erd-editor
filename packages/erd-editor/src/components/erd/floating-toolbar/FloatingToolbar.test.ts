@@ -3,9 +3,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
@@ -24,6 +27,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 
 let mounted: Mounted | null = null;
@@ -278,6 +282,48 @@ describe('FloatingToolbar', () => {
     await flush();
 
     expect(compass(root)).toBeNull();
+  });
+
+  it('stands left to right in every language, as the canvas under it does', async () => {
+    const { root } = await setup();
+
+    expect(root.getAttribute('dir')).toBe('ltr');
+  });
+
+  it('names every button and the compass in the language the element shows, following a switch', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      const app = createTestAppContext();
+      app.store.dispatchSync(
+        addTableAction({ id: 'users', ui: { x: 0, y: 0, zIndex: 2 } }),
+        scrollToAction({ originX: -5_000, originY: -4_000 })
+      );
+      const { root } = await setup(app);
+      expect(compass(root)?.title).toBe('Go to content');
+
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+
+      expect(menus(root).map(menu => menu.getAttribute('title'))).toEqual([
+        'ko:Hand (Space)',
+        'ko:Select (Space)',
+        expect.stringMatching(/^ko:Zoom out \(/),
+        expect.stringMatching(/^ko:Zoom in \(/),
+        expect.stringMatching(/^ko:Zero One \(/),
+        expect.stringMatching(/^ko:Zero N \(/),
+        expect.stringMatching(/^ko:One Only \(/),
+        expect.stringMatching(/^ko:One N \(/),
+        expect.stringMatching(/^ko:Zen Mode \(/),
+      ]);
+      expect(
+        root.querySelector(`.${String(styles.readout)}`)?.getAttribute('title')
+      ).toMatch(/^ko:Reset zoom \(/);
+      expect(compass(root)?.title).toBe('ko:Go to content');
+    } finally {
+      provider.destroy();
+    }
   });
 
   it('toggles zen mode, and says which of the two icons it is showing', async () => {

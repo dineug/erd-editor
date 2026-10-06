@@ -7,6 +7,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { createTestI18n, pseudoMessages } from '@/__test-utils__/i18n';
 import type { Theme } from '@/themes/tokens';
 
 const state = {
@@ -340,5 +341,69 @@ describe('the svg the export dialog writes', () => {
 
     expect(state.construct).not.toHaveBeenCalled();
     expect(mainRenderSvg).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the language every drawing is asked in', () => {
+  /** The language as the editor hands it out: observable, which no clone takes. */
+  const live = () => createTestI18n('ko-KR', pseudoMessages('ko'));
+
+  /** What a worker would be handed of it, cloned as a port clones it. */
+  const sent = (request: { i18n?: unknown }) => structuredClone(request.i18n);
+
+  it('goes with the png as a plain copy a worker can be sent', async () => {
+    const i18n = live();
+    const { createDocumentPng } = await load();
+
+    await createDocumentPng({ ...options(), i18n });
+
+    const [request] = state.render.mock.calls[0];
+    expect(request.i18n).not.toBe(i18n);
+    expect(sent(request)).toEqual({
+      locale: 'ko-KR',
+      messages: i18n.messages,
+    });
+  });
+
+  it('goes with the preview, and with the png drawn on the main thread', async () => {
+    state.render.mockRejectedValue(new Error('no'));
+    const i18n = live();
+    const { createDocumentPreview } = await load();
+
+    await createDocumentPreview({ ...options(), maxSide: 960, i18n });
+
+    const [inWorker] = state.render.mock.calls[0];
+    const [onMain] = mainRender.mock.calls[0];
+    expect(sent(inWorker)).toEqual({
+      locale: 'ko-KR',
+      messages: i18n.messages,
+    });
+    expect(onMain.i18n).toEqual(inWorker.i18n);
+  });
+
+  it('goes with the svg, in the worker and on the main thread', async () => {
+    state.renderSvg.mockRejectedValue(new Error('no'));
+    const i18n = live();
+    const { createDocumentSvg } = await load();
+
+    await createDocumentSvg({ ...options(), i18n });
+
+    const [inWorker] = state.renderSvg.mock.calls[0];
+    const [onMain] = mainRenderSvg.mock.calls[0];
+    expect(sent(inWorker)).toEqual({
+      locale: 'ko-KR',
+      messages: i18n.messages,
+    });
+    expect(onMain.i18n).toEqual(inWorker.i18n);
+  });
+
+  it('is left out of a drawing asked in no language, which draws English', async () => {
+    const { createDocumentPng, createDocumentSvg } = await load();
+
+    await createDocumentPng(options());
+    await createDocumentSvg(options());
+
+    expect(state.render.mock.calls[0][0].i18n).toBeUndefined();
+    expect(state.renderSvg.mock.calls[0][0].i18n).toBeUndefined();
   });
 });

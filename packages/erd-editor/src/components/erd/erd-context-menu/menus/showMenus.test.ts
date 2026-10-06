@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, flush } from '@/__test-utils__/index';
+import {
+  createTestAppContext,
+  flush,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { createShowMenus } from '@/components/erd/erd-context-menu/menus/showMenus';
 import { Show } from '@/constants/schema';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import { bHas } from '@/utils/bit';
 
 let app: AppContext;
@@ -30,11 +36,24 @@ const ALL_MENUS = [
   'Referential Actions',
 ];
 const referentialActions = () =>
-  createShowMenus(app).find(menu => menu.name === 'Referential Actions');
+  createShowMenus(app, sourceI18n).find(
+    menu => menu.name === 'Referential Actions'
+  );
 
 describe('showMenus', () => {
   it('exposes one menu per view option in declaration order', () => {
+    expect(createShowMenus(app, sourceI18n).map(menu => menu.name)).toEqual(
+      ALL_MENUS
+    );
+  });
+
+  it('names each option in the language it is handed, English where none is', () => {
     expect(createShowMenus(app).map(menu => menu.name)).toEqual(ALL_MENUS);
+    expect(
+      createShowMenus(app, createI18n('ko-KR', pseudoMessages('ko'))).map(
+        menu => menu.name
+      )
+    ).toEqual(ALL_MENUS.map(name => `ko:${name}`));
   });
 
   it('checks Referential Actions while its hide bit is off, which a new document leaves it', () => {
@@ -66,7 +85,9 @@ describe('showMenus', () => {
     const { show } = app.store.state.settings;
 
     for (const [name, bit] of NAME_TO_SHOW) {
-      const menu = createShowMenus(app).find(item => item.name === name);
+      const menu = createShowMenus(app, sourceI18n).find(
+        item => item.name === name
+      );
       expect(menu?.checked).toBe(bHas(show, bit));
     }
   });
@@ -77,7 +98,7 @@ describe('showMenus', () => {
     );
     expect(bHas(app.store.state.settings.show, Show.tableComment)).toBe(true);
 
-    createShowMenus(app)
+    createShowMenus(app, sourceI18n)
       .find(menu => menu.name === 'Table Comment')
       ?.onClick();
     await flush();
@@ -91,7 +112,7 @@ describe('showMenus', () => {
     );
     expect(bHas(app.store.state.settings.show, Show.columnComment)).toBe(false);
 
-    createShowMenus(app)
+    createShowMenus(app, sourceI18n)
       .find(menu => menu.name === 'Column Comment')
       ?.onClick();
     await flush();
@@ -103,7 +124,7 @@ describe('showMenus', () => {
     for (const [name, bit] of NAME_TO_SHOW) {
       const before = bHas(app.store.state.settings.show, bit);
 
-      createShowMenus(app)
+      createShowMenus(app, sourceI18n)
         .find(menu => menu.name === name)
         ?.onClick();
       await flush();
@@ -117,7 +138,7 @@ describe('showMenus', () => {
       changeShowAction({ show: Show.relationship, value: true })
     );
 
-    createShowMenus(app)
+    createShowMenus(app, sourceI18n)
       .find(menu => menu.name === 'Unique')
       ?.onClick();
     await flush();

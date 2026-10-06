@@ -36,7 +36,7 @@ export const container = css`
   overflow: hidden;
 `;
 
-/* The input and, on its right, the scope a prefix narrows to, which leaves the caret where it was. */
+/* The input and, after it, the scope a prefix narrows to, which leaves the caret where it was. */
 export const field = css`
   display: flex;
   align-items: center;
@@ -53,7 +53,7 @@ export const search = css`
 
 export const scope = css`
   flex-shrink: 0;
-  margin-right: 16px;
+  margin-inline-end: 16px;
   padding: 0 8px;
   border: 1px solid var(--accent-color-8);
   border-radius: 9999px;
@@ -136,7 +136,7 @@ export const icon = css`
   display: flex;
   align-items: center;
   min-width: 14px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
 `;
 
 export const name = css`
@@ -160,6 +160,6 @@ export const vertical = css`
 export const shortcut = css`
   display: flex;
   align-items: center;
-  margin-left: auto;
-  padding-left: 24px;
+  margin-inline-start: auto;
+  padding-inline-start: 24px;
 `;

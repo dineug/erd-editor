@@ -1,5 +1,6 @@
 import { FC } from '@dineug/r-html';
 
+import { useI18n } from '@/components/localeContext';
 import { COLUMN_NOT_NULL_WIDTH } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
 import { bHas } from '@/utils/bit';
@@ -12,6 +13,8 @@ export type ColumnNotNullProps = {
 };
 
 const ColumnNotNull: FC<ColumnNotNullProps> = (props, ctx) => {
+  const i18n = useI18n(ctx);
+
   return () => (
     <div
       class={[styles.notNull, { focus: props.focus }]}
@@ -19,7 +22,7 @@ const ColumnNotNull: FC<ColumnNotNullProps> = (props, ctx) => {
         width: `${COLUMN_NOT_NULL_WIDTH}px`,
         'min-width': `${COLUMN_NOT_NULL_WIDTH}px`,
       }}
-      title="Not Null"
+      title={i18n.value.t('common.column.notNull')}
       bool:data-focus-border-bottom={props.focus}
     >
       {bHas(props.options, ColumnOption.notNull) ? 'N-N' : 'NULL'}

@@ -3,6 +3,7 @@ import { FC, observable, onBeforeMount, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import GeneratorCodeContextMenu from '@/components/generator-code/generator-code-context-menu/GeneratorCodeContextMenu';
+import { localized } from '@/components/localized/Localized';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import Toast from '@/components/primitives/toast/Toast';
@@ -63,7 +64,7 @@ const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
       emitter.emit(
         openToastAction({
           close: delay(2000),
-          message: <Toast title="Copied!" />,
+          message: <Toast title={localized('common.toast.copied')} />,
         })
       );
     });

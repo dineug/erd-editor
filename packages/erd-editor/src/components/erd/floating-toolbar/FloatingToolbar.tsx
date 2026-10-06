@@ -6,6 +6,7 @@ import {
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
 import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { NotationIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -20,6 +21,7 @@ import {
   changeZoomLevelAction$,
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
+import type { PlainMessageKey } from '@/i18n/translate';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import { toZoomFormat } from '@/utils/validation';
 
@@ -31,7 +33,7 @@ const ICON_SIZE = 16;
 
 type Notation = {
   iconName: NotationIconName;
-  name: string;
+  labelKey: PlainMessageKey;
   relationshipType: number;
   keyBindingName: KeyBindingName;
 };
@@ -39,25 +41,25 @@ type Notation = {
 const NOTATIONS: Notation[] = [
   {
     iconName: 'ZeroOne',
-    name: 'Zero One',
+    labelKey: 'common.relationshipType.zeroOne',
     relationshipType: RelationshipType.ZeroOne,
     keyBindingName: KeyBindingName.relationshipZeroOne,
   },
   {
     iconName: 'ZeroN',
-    name: 'Zero N',
+    labelKey: 'common.relationshipType.zeroN',
     relationshipType: RelationshipType.ZeroN,
     keyBindingName: KeyBindingName.relationshipZeroN,
   },
   {
     iconName: 'OneOnly',
-    name: 'One Only',
+    labelKey: 'common.relationshipType.oneOnly',
     relationshipType: RelationshipType.OneOnly,
     keyBindingName: KeyBindingName.relationshipOneOnly,
   },
   {
     iconName: 'OneN',
-    name: 'One N',
+    labelKey: 'common.relationshipType.oneN',
     relationshipType: RelationshipType.OneN,
     keyBindingName: KeyBindingName.relationshipOneN,
   },
@@ -70,6 +72,7 @@ const NOTATIONS: Notation[] = [
  */
 const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
 
   const handleHandTool = (value: boolean) => () => {
@@ -111,24 +114,25 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
+    const { t } = i18n.value;
     const { editor, settings } = store.state;
     const drawing = editor.drawRelationship?.relationshipType;
     const compass = getContentCompass(store.state, sourceRef.value);
-    const title = (name: string, keyBindingName: KeyBindingName) =>
-      toShortcutTitle(keyBindingMap, name, keyBindingName);
+    const title = (labelKey: PlainMessageKey, keyBindingName: KeyBindingName) =>
+      toShortcutTitle(keyBindingMap, t(labelKey), keyBindingName);
 
     return (
-      <div class={['floating-toolbar', styles.root]}>
+      <div class={['floating-toolbar', styles.root]} prop:dir="ltr">
         <div
           class={[styles.menu, { active: editor.handTool }]}
-          title={title('Hand', KeyBindingName.handTool)}
+          title={title('floatingToolbar.hand', KeyBindingName.handTool)}
           on:click={handleHandTool(true)}
         >
           <Icon name="hand" size={ICON_SIZE} />
         </div>
         <div
           class={[styles.menu, { active: !editor.handTool }]}
-          title={title('Select', KeyBindingName.handTool)}
+          title={title('floatingToolbar.select', KeyBindingName.handTool)}
           on:click={handleHandTool(false)}
         >
           <Icon name="mouse-pointer-2" size={ICON_SIZE} />
@@ -136,21 +140,21 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
         <div class={styles.divider}></div>
         <div
           class={styles.menu}
-          title={title('Zoom out', KeyBindingName.zoomOut)}
+          title={title('floatingToolbar.zoomOut', KeyBindingName.zoomOut)}
           on:click={handleZoomStep(-ZOOM_STEP)}
         >
           <Icon name="minus" size={ICON_SIZE} />
         </div>
         <div
           class={['zoom-level', styles.readout]}
-          title={title('Reset zoom', KeyBindingName.zoomReset)}
+          title={title('floatingToolbar.resetZoom', KeyBindingName.zoomReset)}
           on:click={handleZoomReset}
         >
           {toZoomFormat(settings.zoomLevel)}
         </div>
         <div
           class={styles.menu}
-          title={title('Zoom in', KeyBindingName.zoomIn)}
+          title={title('floatingToolbar.zoomIn', KeyBindingName.zoomIn)}
           on:click={handleZoomStep(ZOOM_STEP)}
         >
           <Icon name="plus" size={ICON_SIZE} />
@@ -162,7 +166,7 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
               styles.menu,
               { active: drawing === notation.relationshipType },
             ]}
-            title={title(notation.name, notation.keyBindingName)}
+            title={title(notation.labelKey, notation.keyBindingName)}
             on:click={handleDrawRelationship(notation.relationshipType)}
           >
             <Icon name={notation.iconName} size={ICON_SIZE} />
@@ -171,7 +175,7 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
         <div class={styles.divider}></div>
         <div
           class={['zen-mode', styles.menu, { active: editor.zenMode }]}
-          title={title('Zen Mode', KeyBindingName.zenMode)}
+          title={title('floatingToolbar.zenMode', KeyBindingName.zenMode)}
           on:click={handleZenMode}
         >
           {editor.zenMode ? (
@@ -182,6 +186,7 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
         </div>
         {toolbarCompass({
           compass,
+          title: t('floatingToolbar.goToContent'),
           className: 'content-compass',
           onClick: handleCompass,
         })}

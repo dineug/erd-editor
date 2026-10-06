@@ -1,13 +1,16 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { createRef, html } from '@dineug/r-html';
+import { createRef, html, render } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mount,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
@@ -255,5 +258,42 @@ describe('DiffViewer', () => {
     mounted = null;
 
     expect(root.isConnected).toBe(false);
+  });
+
+  it('says it is open, and offers Close, in the language the editor shows', async () => {
+    const originApp = createOriginApp([{ id: 'n1', name: 'users' }]);
+    const actions: any[] = [];
+    originApp.emitter.on({ openToast: action => actions.push(action) });
+    mounted = await mountAndFlush(
+      html`<${DiffViewer}
+        app=${createRef<AppContext>(originApp)}
+        initialValue=${initialValueOf([{ id: 'p1', name: 'users' }])}
+        .onClose=${vi.fn()}
+      />`
+    );
+
+    const container = document.createElement('div');
+    document.body.append(container);
+    const provider = provideI18n(
+      container,
+      createTestI18n('tr-TR', pseudoMessages('tr'))
+    );
+    render(container, actions[0].payload.message);
+    await flush();
+
+    expect(container.textContent).toContain('tr:Diff Viewer...');
+    expect(container.querySelector('button')?.textContent?.trim()).toBe(
+      'tr:Close'
+    );
+
+    render(container, null);
+    provider.destroy();
+    container.remove();
+  });
+
+  it('keeps both documents and the tree left to right whatever the editor reads in', async () => {
+    await mountDiffViewer();
+
+    expect(rootOf().getAttribute('dir')).toBe('ltr');
   });
 });

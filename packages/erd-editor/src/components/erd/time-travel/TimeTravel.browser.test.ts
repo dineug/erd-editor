@@ -7,9 +7,12 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
@@ -302,6 +305,39 @@ describe('TimeTravel', () => {
       ) as HTMLElement;
       // cursor 1 of min -1 / max 1 is the far right of the track
       expect(range.style.right).toBe('0%');
+    });
+  });
+
+  describe('in the language the editor shows', () => {
+    it('offers Apply and Cancel in that language', async () => {
+      const provider = provideI18n(
+        document.body,
+        createTestI18n('es-ES', pseudoMessages('es'))
+      );
+
+      try {
+        await setup();
+
+        expect(buttons().map(button => button.textContent?.trim())).toEqual([
+          'es:Apply',
+          'es:Cancel',
+        ]);
+      } finally {
+        provider.destroy();
+      }
+    });
+
+    it('keeps the preview and the slider bar left to right whatever the editor reads in', async () => {
+      await setup();
+
+      expect(
+        container()
+          .querySelector(`.${String(styles.root)}`)
+          ?.getAttribute('dir')
+      ).toBe('ltr');
+      expect(
+        container().querySelector('.time-travel-slider')?.getAttribute('dir')
+      ).toBe('ltr');
     });
   });
 

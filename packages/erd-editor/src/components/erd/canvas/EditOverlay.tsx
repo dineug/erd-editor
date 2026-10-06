@@ -28,6 +28,7 @@ import {
   getHeaderTextY,
   HEADER_CELLS_X,
 } from '@/components/erd/canvas/table/cellLayout';
+import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
@@ -49,6 +50,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
 import type { RootState } from '@/engine/state';
+import type { PlainMessageKey } from '@/i18n/translate';
 import type { Column } from '@/internal-types';
 import {
   getColumnRect,
@@ -62,14 +64,14 @@ import { isHighLevelTable } from '@/utils/validation';
 
 import * as styles from './EditOverlay.styles';
 
-/** What an editor writes into, and what it shows while the value is empty. */
-const EDITABLE: Partial<Record<FocusType, string>> = {
-  [FocusType.tableName]: 'table',
-  [FocusType.tableComment]: 'comment',
-  [FocusType.columnName]: 'column',
-  [FocusType.columnDataType]: 'dataType',
-  [FocusType.columnDefault]: 'default',
-  [FocusType.columnComment]: 'comment',
+/** What an editor writes into, and the key of what it shows while the value is empty. */
+const EDITABLE: Partial<Record<FocusType, PlainMessageKey>> = {
+  [FocusType.tableName]: 'common.placeholder.table',
+  [FocusType.tableComment]: 'common.placeholder.comment',
+  [FocusType.columnName]: 'common.placeholder.column',
+  [FocusType.columnDataType]: 'common.placeholder.dataType',
+  [FocusType.columnDefault]: 'common.placeholder.default',
+  [FocusType.columnComment]: 'common.placeholder.comment',
 };
 
 type CellTarget = {
@@ -82,7 +84,7 @@ type CellTarget = {
   y: number;
   width: number;
   value: string;
-  placeholder: string;
+  placeholderKey: PlainMessageKey;
 };
 
 type MemoTarget = {
@@ -134,8 +136,8 @@ function resolveCellTarget(state: RootState): CellTarget | null {
   // table's tombstone keeps its columns, so this covers a column cell as well.
   if (!doc.tableIds.includes(focusTable.tableId)) return null;
 
-  const placeholder = EDITABLE[focusTable.focusType];
-  if (placeholder === undefined) return null;
+  const placeholderKey = EDITABLE[focusTable.focusType];
+  if (placeholderKey === undefined) return null;
 
   const table = query(collections)
     .collection('tableEntities')
@@ -160,7 +162,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
       width: slot.width,
       value:
         slot.focusType === FocusType.tableName ? table.name : table.comment,
-      placeholder,
+      placeholderKey,
     };
   }
 
@@ -186,7 +188,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     y: getColumnRect(state, table, index).y + getColumnTextY(),
     width: slot.width,
     value: getColumnValue(column, slot.focusType),
-    placeholder,
+    placeholderKey,
   };
 }
 
@@ -333,6 +335,7 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
  */
 const EditOverlay: FC = (_, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
 
   const handleEditEnd = () => {
@@ -366,7 +369,10 @@ const EditOverlay: FC = (_, ctx) => {
     );
   };
 
-  const editor = (target: EditTarget): DOMTemplateLiterals => {
+  const editor = (
+    target: EditTarget,
+    placeholder: string
+  ): DOMTemplateLiterals => {
     if (target.kind === 'memo') {
       return <MemoEditor target={target} />;
     }
@@ -389,7 +395,7 @@ const EditOverlay: FC = (_, ctx) => {
 
     return (
       <EditInput
-        placeholder={target.placeholder}
+        placeholder={placeholder}
         width={target.width}
         value={target.value}
         focus={true}
@@ -410,6 +416,9 @@ const EditOverlay: FC = (_, ctx) => {
     const { settings } = store.state;
     const target = resolveEditTarget(store.state);
     const { zoomLevel } = settings;
+    // Read here rather than in the editor, which repeat draws outside this pass.
+    const placeholder =
+      target?.kind === 'cell' ? i18n.value.t(target.placeholderKey) : '';
 
     return (
       <div
@@ -449,7 +458,7 @@ const EditOverlay: FC = (_, ctx) => {
                   : {}),
               }}
             >
-              {editor(item)}
+              {editor(item, placeholder)}
             </div>
           );
         })}

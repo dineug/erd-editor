@@ -15,6 +15,7 @@ import {
   createTestAppContext,
   flush,
   mountAndFlush,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
@@ -24,8 +25,13 @@ import { menus as languageMenus } from '@/components/generator-code/generator-co
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
 import {
   Action,
-  allScopeActions,
+  createPreferenceActions,
   createScopeActions,
+  createShowAllAction,
+  createTabActions,
+  keywordHolder,
+  named,
+  PalettePreferences,
   SEARCH_THRESHOLD,
   searchActions,
 } from '@/components/quick-search/actions';
@@ -63,7 +69,12 @@ import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { type LocaleOption, LOCALES } from '@/i18n/locales';
+import { en } from '@/i18n/messages/en';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n, type MessageKey, type Messages } from '@/i18n/translate';
 import { toScreenPoint } from '@/konva/scene/viewport';
+import { Appearance } from '@/themes/radix-ui-theme';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import { setImportFileCallback } from '@/utils/file/importFile';
@@ -85,6 +96,9 @@ const find = (actions: Action[], name: string): Action => {
 };
 
 const names = (actions: Action[]) => actions.map(action => action.name);
+
+const pairs = (actions: Action[]) =>
+  actions.map(({ name, keywords }) => [name, keywords]);
 
 /** The registered icon a row draws, mounted on its own. */
 const iconOf = async ({ icon }: Action) => {
@@ -299,20 +313,19 @@ describe('searchActions / threshold', () => {
   });
 });
 
-describe('allScopeActions', () => {
-  it('exposes a single Tab action holding the five canvas tabs', () => {
-    expect(names(allScopeActions)).toEqual(['Tab']);
-    expect(names(allScopeActions[0].next ?? [])).toEqual([
+describe('createTabActions', () => {
+  it('holds the five canvas tabs, named as the toolbar names them', () => {
+    expect(names(createTabActions())).toEqual([
       'Entity Relationship Diagram',
       'Visualization',
       'Schema SQL',
-      'Generator Code',
+      'Code Generator',
       'Settings',
     ]);
   });
 
   it('gives every tab an icon but no keyword or shortcut', () => {
-    for (const tab of allScopeActions[0].next ?? []) {
+    for (const tab of createTabActions()) {
       expect(tab.icon).toBeTruthy();
       expect(tab.keywords).toBeUndefined();
       expect(tab.shortcut).toBeUndefined();
@@ -320,7 +333,7 @@ describe('allScopeActions', () => {
   });
 
   it('hides only the tab matching the current canvas type', () => {
-    const tabs = allScopeActions[0].next ?? [];
+    const tabs = createTabActions();
     const visible = (canvasType: string) => {
       setCanvasType(canvasType);
       return tabs.filter(tab => tab.filter?.(app)).map(tab => tab.name);
@@ -332,18 +345,18 @@ describe('allScopeActions', () => {
     expect(visible(CanvasType.ERD)).toHaveLength(4);
     expect(visible(CanvasType.visualization)).not.toContain('Visualization');
     expect(visible(CanvasType.schemaSQL)).not.toContain('Schema SQL');
-    expect(visible(CanvasType.generatorCode)).not.toContain('Generator Code');
+    expect(visible(CanvasType.generatorCode)).not.toContain('Code Generator');
     expect(visible(CanvasType.settings)).not.toContain('Settings');
   });
 
   it('switches the canvas type when a tab is performed', async () => {
     setCanvasType(CanvasType.ERD);
-    const tabs = allScopeActions[0].next ?? [];
+    const tabs = createTabActions();
 
     for (const [name, expected] of [
       ['Visualization', CanvasType.visualization],
       ['Schema SQL', CanvasType.schemaSQL],
-      ['Generator Code', CanvasType.generatorCode],
+      ['Code Generator', CanvasType.generatorCode],
       ['Settings', CanvasType.settings],
       ['Entity Relationship Diagram', CanvasType.ERD],
     ] as const) {
@@ -355,11 +368,13 @@ describe('allScopeActions', () => {
 });
 
 describe('createScopeActions', () => {
-  it('always starts with the shared Tab action', () => {
+  it('always starts with the Tab action, which opens the tabs', () => {
     setCanvasType(CanvasType.settings);
+    const [tab] = scope();
 
-    expect(scope()[0].name).toBe('Tab');
-    expect(scope()[0]).toBe(allScopeActions[0]);
+    expect(tab.name).toBe('Tab');
+    expect(tab.icon).toBeUndefined();
+    expect(names(tab.next ?? [])).toEqual(names(createTabActions()));
   });
 
   it('lists the full ERD toolbox in the ERD canvas', () => {
@@ -1161,5 +1176,417 @@ describe('searchActions / Hangul', () => {
         'ㅌㅇㅂ'
       )
     ).toEqual([]);
+  });
+});
+
+/** English but for the texts given, as a dictionary written for another language reads. */
+const translated = (texts: Partial<Record<MessageKey, string>>) =>
+  ({ ...en, ...texts }) as Messages;
+
+/** A Korean reader's palette: no command it names holds its English. */
+const korean = createI18n(
+  'ko-KR',
+  translated({
+    'palette.tab': '탭',
+    'common.newTable': '새 테이블',
+    'common.newMemo': '새 메모',
+    'common.findAndReplace': '찾기 및 바꾸기',
+    'palette.keywords.findReplace': '찾기 바꾸기 이름',
+    'palette.keywords.graphql': 'graphql sdl gql 스키마',
+    'common.table': '테이블',
+    'common.unnamed': '이름 없음',
+    'common.system': '시스템',
+    'common.theme': '테마',
+    'common.displayLanguage': '표시 언어',
+  })
+);
+
+const preferences = (given: PalettePreferences) =>
+  createScopeActions(app, sourceI18n, given);
+
+const submenu = (actions: Action[], name: string) =>
+  find(actions, name).next ?? [];
+
+/** The names of a submenu's rows that draw the check. */
+const checked = async (actions: Action[]) => {
+  const marked: string[] = [];
+  for (const action of actions) {
+    if ((await iconOf(action)) === 'check') marked.push(action.name);
+  }
+  return marked;
+};
+
+describe('named', () => {
+  it('names a row in English with no alias', () => {
+    expect(named(sourceI18n, 'common.newTable')).toEqual({
+      name: 'New Table',
+    });
+    expect(
+      named(sourceI18n, 'common.findAndReplace', 'palette.keywords.findReplace')
+    ).toEqual({ name: 'Find and Replace', keywords: 'find replace rename' });
+    expect(named(sourceI18n, { name: 'GraphQL' })).toEqual({
+      name: 'GraphQL',
+    });
+  });
+
+  it('keeps as the alias the English of each text a translation changes, the name and the keywords alike', () => {
+    expect(named(korean, 'common.newTable')).toEqual({
+      name: '새 테이블',
+      alias: ['New Table'],
+    });
+    expect(
+      named(korean, 'common.findAndReplace', 'palette.keywords.findReplace')
+    ).toEqual({
+      name: '찾기 및 바꾸기',
+      keywords: '찾기 바꾸기 이름',
+      alias: ['Find and Replace', 'find replace rename'],
+    });
+    expect(
+      named(korean, { name: 'GraphQL' }, 'palette.keywords.graphql')
+    ).toEqual({
+      name: 'GraphQL',
+      keywords: 'graphql sdl gql 스키마',
+      alias: ['graphql sdl gql schema'],
+    });
+    // A text the dictionary leaves as English needs no alias.
+    expect(named(korean, 'common.import')).toEqual({ name: 'Import' });
+  });
+
+  it('reads a shared menu by its key, or by its name where it has none', () => {
+    const pseudo = createI18n('de-DE', pseudoMessages('de'));
+    const singleQuote = bracketMenus[0];
+    const none = bracketMenus[bracketMenus.length - 1];
+
+    expect(named(pseudo, singleQuote)).toEqual({ name: 'SingleQuote' });
+    expect(named(pseudo, none)).toEqual({ name: 'de:None', alias: ['None'] });
+  });
+});
+
+describe('createScopeActions / translated', () => {
+  const pseudo = createI18n('de-DE', pseudoMessages('de'));
+
+  it('reads every command of every tab through the dictionary, its English kept as the alias', () => {
+    for (const canvasType of [
+      CanvasType.ERD,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+    ]) {
+      setCanvasType(canvasType);
+      const commands = createScopeActions(app, pseudo, {
+        appearance: Appearance.dark,
+        locale: 'en',
+      }).filter(action => action.filter?.(app) ?? true);
+
+      for (const { name, keywords, alias } of commands) {
+        expect(name).toMatch(/^de:/);
+        expect(keywords ?? 'de:').toMatch(/^de:/);
+        expect(alias).toEqual(
+          [name, keywords]
+            .filter(Boolean)
+            .map(text => (text as string).slice(3))
+        );
+      }
+    }
+  });
+
+  it('reads the rows of each submenu through the dictionary, vendors, formats and cases as written', () => {
+    setCanvasType(CanvasType.ERD);
+    const actions = createScopeActions(app, pseudo);
+
+    expect(names(submenu(actions, 'de:Tab'))).toEqual([
+      'de:Entity Relationship Diagram',
+      'de:Visualization',
+      'de:Schema SQL',
+      'de:Code Generator',
+      'de:Settings',
+    ]);
+    expect(names(submenu(actions, 'de:Import'))).toEqual([
+      'json',
+      'de:Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
+    expect(pairs(submenu(actions, 'de:Export'))).toEqual([
+      ['json', undefined],
+      ['de:Schema SQL', undefined],
+      ['de:Image', 'de:image png svg vector picture clipboard'],
+    ]);
+    expect(names(submenu(actions, 'de:Auto Layout'))).toEqual([
+      'de:Force',
+      'de:Flow',
+      'de:Tree - vertical',
+      'de:Tree - horizontal',
+    ]);
+    expect(names(submenu(actions, 'de:Bracket')).at(-1)).toBe('de:None');
+    expect(names(submenu(actions, 'de:Table Name Case')).at(-1)).toBe(
+      'de:None'
+    );
+    expect(names(submenu(actions, 'de:Column Name Case')).at(-1)).toBe(
+      'de:None'
+    );
+    expect(names(submenu(actions, 'de:Database'))).toEqual(
+      databaseMenus.map(menu => menu.name)
+    );
+    expect(names(submenu(actions, 'de:Language'))).toEqual(
+      languageMenus.map(menu => menu.name)
+    );
+    expect(pairs(submenu(actions, 'de:Import')).slice(2)).toEqual([
+      ['GraphQL', 'de:graphql sdl gql schema'],
+      ['DBML', 'de:dbml dbdiagram dbdocs schema'],
+      ['AML', 'de:aml azimutt markup language schema'],
+    ]);
+  });
+
+  it('names the kind of a table row, and a table with no name, in the language given', () => {
+    setCanvasType(CanvasType.ERD);
+    addTable('users');
+    addTable('   ');
+
+    const tables = createScopeActions(app, pseudo).filter(
+      action => action.tableId
+    );
+
+    expect(pairs(tables)).toEqual([
+      ['de:unnamed', 'de:Table'],
+      ['users', 'de:Table'],
+    ]);
+    expect(tables.every(action => action.alias === undefined)).toBe(true);
+  });
+
+  it('finds a translated command by the English it never shows, and by its own words', () => {
+    setCanvasType(CanvasType.ERD);
+    const commands = createScopeActions(app, korean).filter(
+      action => !action.tableId && (action.filter?.(app) ?? true)
+    );
+
+    expect(names(searchActions(commands, 'new table'))[0]).toBe('새 테이블');
+    expect(names(searchActions(commands, 'rename'))).toEqual([
+      '찾기 및 바꾸기',
+    ]);
+    expect(names(searchActions(commands, '새 메모'))[0]).toBe('새 메모');
+    expect(keywordHolder('Find and')(find(commands, '찾기 및 바꾸기'))).toBe(
+      true
+    );
+  });
+
+  it('scores each English text apart, so a typo English finds finds the translated command too', () => {
+    setCanvasType(CanvasType.ERD);
+    const inEnglish = createScopeActions(app).filter(
+      action => !action.tableId && (action.filter?.(app) ?? true)
+    );
+    const inKorean = createScopeActions(app, korean).filter(
+      action => !action.tableId && (action.filter?.(app) ?? true)
+    );
+
+    expect(names(searchActions(inEnglish, 'renme'))).toContain(
+      'Find and Replace'
+    );
+    expect(names(searchActions(inKorean, 'renme'))).toContain('찾기 및 바꾸기');
+  });
+
+  it('holds a keyword in a translated command only where English holds it, never across its name and keywords', () => {
+    setCanvasType(CanvasType.ERD);
+    const english = find(createScopeActions(app), 'Find and Replace');
+    const translated = find(createScopeActions(app, korean), '찾기 및 바꾸기');
+
+    expect(keywordHolder('replace find')(english)).toBe(false);
+    expect(keywordHolder('replace find')(translated)).toBe(false);
+    expect(keywordHolder('replace rename')(translated)).toBe(true);
+  });
+
+  it('ranks a translated command by the initials of its Hangul syllables', () => {
+    setCanvasType(CanvasType.ERD);
+    const commands = createScopeActions(app, korean).filter(
+      action => !action.tableId && (action.filter?.(app) ?? true)
+    );
+
+    expect(names(searchActions(commands, 'ㅅㅌㅇㅂ'))[0]).toBe('새 테이블');
+    expect(names(searchActions(commands, 'ㅊㄱ'))[0]).toBe('찾기 및 바꾸기');
+  });
+
+  it('never finds a table row by an alias, as it never finds one by its kind', () => {
+    const table: Action = {
+      name: 'users',
+      tableId: 'users',
+      alias: ['orders'],
+    };
+
+    expect(searchActions([table], 'orders')).toEqual([]);
+    expect(keywordHolder('orders')(table)).toBe(false);
+    expect(keywordHolder('users')(table)).toBe(true);
+  });
+});
+
+describe('createPreferenceActions', () => {
+  it('offers neither Theme nor Display Language while no picker is given', () => {
+    setCanvasType(CanvasType.ERD);
+
+    expect(names(scope())).not.toContain('Theme');
+    expect(names(scope())).not.toContain('Display Language');
+    expect(createPreferenceActions(sourceI18n, {})).toEqual([]);
+  });
+
+  it('offers each only while its picker is given, after the commands on every tab', () => {
+    const visibleOf = (given: PalettePreferences) =>
+      names(preferences(given).filter(action => action.filter?.(app) ?? true));
+
+    setCanvasType(CanvasType.ERD);
+    expect(visibleOf({ appearance: Appearance.light })).toEqual([
+      ...ERD_TOOLBOX,
+      'Theme',
+    ]);
+    expect(visibleOf({ locale: 'system' })).toEqual([
+      ...ERD_TOOLBOX,
+      'Display Language',
+    ]);
+
+    for (const canvasType of [
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      expect(
+        visibleOf({ appearance: 'system', locale: 'ko-KR' }).slice(-2)
+      ).toEqual(['Theme', 'Display Language']);
+    }
+  });
+
+  it('draws Theme as the toolbar draws it, and Display Language as the language button does', async () => {
+    const actions = preferences({ appearance: 'system', locale: 'system' });
+
+    expect(await iconOf(find(actions, 'Theme'))).toBe('contrast');
+    expect(await iconOf(find(actions, 'Display Language'))).toBe('languages');
+  });
+
+  it('lists System, Light and Dark under Theme, checking the appearance in force', async () => {
+    for (const [appearance, expected] of [
+      ['system', 'System'],
+      [Appearance.light, 'Light'],
+      [Appearance.dark, 'Dark'],
+    ] as const) {
+      const rows = submenu(preferences({ appearance }), 'Theme');
+
+      expect(names(rows)).toEqual(['System', 'Light', 'Dark']);
+      expect(await checked(rows)).toEqual([expected]);
+    }
+  });
+
+  it('sets the appearance alone from a Theme row, leaving the colors to the element', () => {
+    const picked: unknown[] = [];
+    app.emitter.on({
+      setThemeOptions: ({ payload }) => {
+        picked.push(payload);
+      },
+    });
+    const rows = submenu(preferences({ appearance: 'system' }), 'Theme');
+
+    for (const row of rows) row.perform?.(app);
+
+    expect(picked).toEqual([
+      { appearance: 'system' },
+      { appearance: Appearance.light },
+      { appearance: Appearance.dark },
+    ]);
+  });
+
+  it('lists System and then every language by its own name under Display Language', () => {
+    const rows = submenu(preferences({ locale: 'en' }), 'Display Language');
+
+    expect(rows).toHaveLength(26);
+    expect(names(rows)).toEqual([
+      'System',
+      ...LOCALES.map(locale => locale.label),
+    ]);
+    expect(rows.slice(1).map(row => row.alias)).toEqual(
+      LOCALES.map(({ english, code }) => [english, code])
+    );
+    expect(rows[0].alias).toBeUndefined();
+  });
+
+  it('checks the language option in force, System included', async () => {
+    for (const [locale, expected] of [
+      ['system', 'System'],
+      ['en', 'English'],
+      ['ko-KR', '한국어'],
+      ['ar-SA', 'العربية'],
+    ] as const) {
+      const rows = submenu(preferences({ locale }), 'Display Language');
+      expect(await checked(rows)).toEqual([expected]);
+    }
+  });
+
+  it('asks the element for the language picked, System included', () => {
+    const picked: LocaleOption[] = [];
+    app.emitter.on({
+      setLocaleOption: ({ payload }) => {
+        picked.push(payload.locale);
+      },
+    });
+    const rows = submenu(preferences({ locale: 'en' }), 'Display Language');
+
+    find(rows, 'System').perform?.(app);
+    find(rows, '한국어').perform?.(app);
+    find(rows, 'English').perform?.(app);
+
+    expect(picked).toEqual(['system', 'ko-KR', 'en']);
+  });
+
+  it('finds a language by its English name or its code, kor reaching 한국어', () => {
+    const rows = submenu(preferences({ locale: 'en' }), 'Display Language');
+
+    expect(names(searchActions(rows, 'kor'))[0]).toBe('한국어');
+    expect(names(searchActions(rows, 'japanese'))[0]).toBe('日本語');
+    expect(names(searchActions(rows, 'zh-TW'))[0]).toBe('繁體中文');
+    expect(names(searchActions(rows, 'Deutsch'))[0]).toBe('Deutsch');
+  });
+
+  it('ranks a language by the initials of its Hangul syllables', () => {
+    const rows = submenu(preferences({ locale: 'en' }), 'Display Language');
+
+    expect(names(searchActions(rows, 'ㅎㄱㅇ'))[0]).toBe('한국어');
+    expect(names(searchActions(rows, '한국'))[0]).toBe('한국어');
+  });
+
+  it('names Theme, Display Language and System in the language given', () => {
+    const rows = createPreferenceActions(korean, {
+      appearance: 'system',
+      locale: 'system',
+    });
+    const languages = submenu(rows, '표시 언어');
+
+    expect(names(rows)).toEqual(['테마', '표시 언어']);
+    expect(names(submenu(rows, '테마'))).toEqual(['시스템', 'Light', 'Dark']);
+    expect(languages[0]).toMatchObject({ name: '시스템', alias: ['System'] });
+    expect(names(searchActions(languages, 'system'))[0]).toBe('시스템');
+  });
+});
+
+describe('createShowAllAction', () => {
+  const payload = { query: 'users', fields: [] };
+
+  it('names the count the panel opens on, one match and many as English has always read them', () => {
+    expect(createShowAllAction(1, payload).name).toBe(
+      'Show 1 match in Find and Replace'
+    );
+    expect(createShowAllAction(3, payload).name).toBe(
+      'Show all 3 matches in Find and Replace'
+    );
+    expect(createShowAllAction(0, payload).name).toBe(
+      'Show all 0 matches in Find and Replace'
+    );
+  });
+
+  it('names the count in the language given, by its own plural rules', () => {
+    const pseudo = createI18n('ru-RU', pseudoMessages('ru'));
+
+    expect(createShowAllAction(21, payload, pseudo).name).toBe(
+      'ru:Show 21 match in Find and Replace'
+    );
+    expect(createShowAllAction(5, payload, pseudo).name).toBe(
+      'ru:Show all 5 matches in Find and Replace'
+    );
   });
 });

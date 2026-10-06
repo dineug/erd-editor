@@ -33,7 +33,9 @@ describe('ThemeBuilder.styles', () => {
 
     expect(source).toContain('position: absolute');
     expect(source).toContain('top: 46px');
-    expect(source).toContain('left: 16px');
+    // On the side a line starts from, so a right-to-left editor hangs it at the right.
+    expect(source).toContain('inset-inline-start: 16px');
+    expect(source).not.toMatch(/\b(left|right):/);
     // A raised descendant of the tab wrapper would otherwise paint over this
     // panel, which that wrapper holds in no stacking context of its own.
     expect(source).toContain('z-index: 1');

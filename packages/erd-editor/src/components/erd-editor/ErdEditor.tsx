@@ -19,6 +19,7 @@ import ExportImage from '@/components/export-image/ExportImage';
 import FindReplace from '@/components/find-replace/FindReplace';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
+import LocalePicker from '@/components/locale-picker/LocalePicker';
 import { localeContext } from '@/components/localeContext';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
@@ -186,6 +187,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     themeState,
     i18n,
     resolveLocaleOption,
+    resolveSystemLocale,
     destroySet,
     hasDarkMode,
   } = useErdEditorAttachElement({
@@ -361,9 +363,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   });
 
   /**
-   * A press outside the theme builder closes it, and a middle press takes the
-   * keyboard in, since every pan prevents that press, and with it the default
-   * that focuses this root on any other press.
+   * A press outside the theme builder or the locale picker closes that panel,
+   * and a middle press takes the keyboard in, since every pan prevents that
+   * press, and with it the default that focuses this root on any other press.
    */
   const handlePress = (event: MouseEvent) => {
     if (isMiddleButtonPress(event)) checkAndFocus();
@@ -372,12 +374,14 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     if (!el) return;
 
     const { store } = appContextValue;
-    if (
-      store.state.editor.openMap[Open.themeBuilder] &&
-      !el.closest('.toolbar') &&
-      !el.closest('.theme-builder')
-    ) {
+    const { openMap } = store.state.editor;
+    if (el.closest('.toolbar')) return;
+
+    if (openMap[Open.themeBuilder] && !el.closest('.theme-builder')) {
       store.dispatch(changeOpenMapAction({ [Open.themeBuilder]: false }));
+    }
+    if (openMap[Open.localePicker] && !el.closest('.locale-picker')) {
+      store.dispatch(changeOpenMapAction({ [Open.localePicker]: false }));
     }
   };
 
@@ -450,6 +454,12 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           <ToastContainer />
           {props.enableThemeBuilder ? (
             <ThemeBuilder theme={themeState.options} />
+          ) : null}
+          {props.enableLocalePicker ? (
+            <LocalePicker
+              option={resolveLocaleOption()}
+              systemLocale={resolveSystemLocale()}
+            />
           ) : null}
           <ExportImage
             themeOptions={themeState.options}

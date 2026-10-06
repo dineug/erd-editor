@@ -42,8 +42,12 @@ describe('Toolbar.styles', () => {
     expect(source).toContain('background-color: var(--toolbar-background)');
   });
 
-  it('spaces the text inputs through a child selector', () => {
-    expect(styles.root.strings.join('')).toContain('& > input');
+  it('spaces the text inputs through a child selector, on the side a line ends', () => {
+    const source = styles.root.strings.join('');
+
+    expect(source).toContain('& > input');
+    expect(source).toContain('margin-inline-end: 15px');
+    expect(source).not.toContain('margin-right');
   });
 
   it('renders the vertical rule as a fixed width spacer', () => {
@@ -95,7 +99,8 @@ describe('Toolbar.styles', () => {
   it('pushes the table count to the end of the bar with paragraph type', () => {
     const source = styles.tableCount.strings.join('');
 
-    expect(source).toContain('margin-left: auto');
+    expect(source).toContain('margin-inline-start: auto');
+    expect(source).not.toContain('margin-left');
     expect(source).toContain('align-self: center');
     expect(source).toContain('white-space: nowrap');
     expect(styles.tableCount.values).toEqual([typography.paragraph]);

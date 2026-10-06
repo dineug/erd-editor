@@ -50,7 +50,7 @@ describe('Settings.styles', () => {
   it('gives the lnb a fixed 200px column and the content the remaining space', () => {
     expect(source(styles.lnbArea)).toContain('width: 200px');
     expect(source(styles.contentArea)).toContain('flex-direction: column');
-    expect(source(styles.contentArea)).toContain('padding-left: 16px');
+    expect(source(styles.contentArea)).toContain('padding-inline-start: 16px');
   });
 
   it('lets the content area wrap and scroll', () => {
@@ -61,7 +61,8 @@ describe('Settings.styles', () => {
   });
 
   it('spaces sections and rows', () => {
-    expect(source(styles.section)).toContain('margin: 0 32px 32px 0');
+    expect(source(styles.section)).toContain('margin-block: 0 32px');
+    expect(source(styles.section)).toContain('margin-inline: 0 32px');
     expect(source(styles.section)).toContain('min-width: 300px');
 
     const row = source(styles.row);
@@ -69,6 +70,21 @@ describe('Settings.styles', () => {
     expect(row).toContain('height: 24px');
     expect(row).toContain('align-items: center');
     expect(row).toContain('margin-bottom: 16px');
+  });
+
+  it('spaces the lock value from its button on the side it ends at', () => {
+    expect(source(styles.lockValue)).toContain('margin-inline-end: 8px');
+  });
+
+  it('writes no physical side, so a right-to-left page mirrors the panel', () => {
+    const sources = Object.values(styles)
+      .filter(style => typeof style !== 'function')
+      .map(style => source(style as { strings: TemplateStringsArray }));
+
+    for (const css of sources) {
+      expect(css).not.toMatch(/(?:margin|padding)-(?:left|right)\b/);
+      expect(css).not.toMatch(/\bmargin:\s*\S+\s+\S+\s+\S+\s+\S+;/);
+    }
   });
 
   describe('vertical', () => {

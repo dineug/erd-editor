@@ -65,7 +65,7 @@ describe('IndexesColumn.styles', () => {
   it('puts the alternate key mark at the end of the row in the accent text colour', () => {
     const text = staticText(styles.mark);
 
-    expect(text).toContain('margin-left: auto');
+    expect(text).toContain('margin-inline-start: auto');
     expect(text).toContain('color: var(--accent-color-11)');
     expect(text).toContain('font-variant-numeric: tabular-nums');
     expect(text).toContain('white-space: nowrap');

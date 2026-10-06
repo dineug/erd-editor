@@ -11,7 +11,7 @@ import { fontSize5, typography } from '@/styles/typography.styles';
 export const root = css`
   position: absolute;
   top: 46px;
-  left: 16px;
+  inset-inline-start: 16px;
   z-index: 1;
   padding: 24px;
   background-color: var(--context-menu-background);

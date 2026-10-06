@@ -1,6 +1,7 @@
 import { DOMTemplateLiterals, FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import * as styles from '@/components/table-view/column/Column.styles';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
@@ -38,9 +39,11 @@ type ColumnOrderTpl = {
 
 const Column: FC<ColumnProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   const getColumnOrder = (): ColumnOrderTpl[] => {
     const { store } = app.value;
+    const { t } = i18n.value;
     const { settings } = store.state;
     const { column, widthName, widthDataType, widthDefault, widthComment } =
       props;
@@ -54,7 +57,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
             template = (
               <div class="column-col">
                 <EditInput
-                  placeholder="column"
+                  placeholder={t('common.placeholder.column')}
                   width={widthName}
                   value={column.name}
                 />
@@ -65,7 +68,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
             template = bHas(settings.show, Show.columnDefault) ? (
               <div class="column-col">
                 <EditInput
-                  placeholder="default"
+                  placeholder={t('common.placeholder.default')}
                   width={widthDefault}
                   value={column.default}
                 />
@@ -76,7 +79,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
             template = bHas(settings.show, Show.columnComment) ? (
               <div class="column-col">
                 <EditInput
-                  placeholder="comment"
+                  placeholder={t('common.placeholder.comment')}
                   width={widthComment}
                   value={column.comment}
                 />
@@ -109,7 +112,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                   checked={bHas(column.options, ColumnOptionType.unique)}
                   width={COLUMN_UNIQUE_WIDTH}
                   text="UQ"
-                  title="Unique"
+                  title={t('common.column.unique')}
                 />
               </div>
             ) : null;
@@ -121,7 +124,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                   checked={bHas(column.options, ColumnOptionType.autoIncrement)}
                   width={COLUMN_AUTO_INCREMENT_WIDTH}
                   text="AI"
-                  title="Auto Increment"
+                  title={t('common.column.autoIncrement')}
                 />
               </div>
             ) : null;

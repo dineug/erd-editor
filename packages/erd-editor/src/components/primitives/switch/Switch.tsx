@@ -20,6 +20,7 @@ const Switch: FC<SwitchProps> = (props, ctx) => {
         Reflect.get(styles, `size${props.size ?? '2'}`),
       ]}
       type="button"
+      prop:dir="ltr"
       role="switch"
       aria-checked={props.value ? 'true' : 'false'}
       data-checked={props.value}

@@ -24,6 +24,7 @@ export const isPanelShown = (state: RootState) =>
   !state.editor.openMap[Open.themeBuilder] &&
   !state.editor.openMap[Open.tableProperties] &&
   !state.editor.openMap[Open.exportImage] &&
+  !state.editor.openMap[Open.localePicker] &&
   !isTakenOver(state);
 
 /** How far in from the left of the canvas the panel stands, and how wide it is at most, as FindReplace.styles draws it. */

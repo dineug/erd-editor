@@ -1,9 +1,14 @@
 import { isString } from 'es-toolkit';
 
 import { AppContext } from '@/components/appContext';
+import { localized } from '@/components/localized/Localized';
 import Toast from '@/components/primitives/toast/Toast';
 import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-import { openDiffViewerAction, openToastAction } from '@/utils/emitter';
+import {
+  Emitter,
+  openDiffViewerAction,
+  openToastAction,
+} from '@/utils/emitter';
 import {
   appendSchemaJSON,
   appendSchemaPlaced,
@@ -34,6 +39,17 @@ let performImportFileExtra: ImportFileCallback | null = null;
 
 export function setImportFileCallback(callback: ImportFileCallback | null) {
   performImportFileExtra = callback;
+}
+
+/** Says a file of another format was picked; the format is named as the code spells it. */
+function openImportOnlyToast(emitter: Emitter, format: ImportOptions['type']) {
+  emitter.emit(
+    openToastAction({
+      message: (
+        <Toast description={localized('feedback.importOnly', { format })} />
+      ),
+    })
+  );
 }
 
 /** What a host is asked for, the mode named only when it is an append. */
@@ -75,11 +91,7 @@ export function importJSON(app: AppContext, mode: ImportMode = 'replace') {
     if (!file) return;
 
     if (!JSON_EXTENSION.test(file.name)) {
-      emitter.emit(
-        openToastAction({
-          message: <Toast description="Just import the json file" />,
-        })
-      );
+      openImportOnlyToast(emitter, 'json');
       return;
     }
 
@@ -117,11 +129,7 @@ export function importSchemaSQL(app: AppContext, mode: ImportMode = 'replace') {
     if (!file) return;
 
     if (!SQL_EXTENSION.test(file.name)) {
-      emitter.emit(
-        openToastAction({
-          message: <Toast description="Just import the sql file" />,
-        })
-      );
+      openImportOnlyToast(emitter, 'sql');
       return;
     }
 
@@ -155,11 +163,7 @@ export function importGraphQL(app: AppContext, mode: ImportMode = 'replace') {
     if (!file) return;
 
     if (!GRAPHQL_EXTENSION.test(file.name)) {
-      emitter.emit(
-        openToastAction({
-          message: <Toast description="Just import the graphql file" />,
-        })
-      );
+      openImportOnlyToast(emitter, 'graphql');
       return;
     }
 
@@ -193,11 +197,7 @@ export function importDBML(app: AppContext, mode: ImportMode = 'replace') {
     if (!file) return;
 
     if (!DBML_EXTENSION.test(file.name)) {
-      emitter.emit(
-        openToastAction({
-          message: <Toast description="Just import the dbml file" />,
-        })
-      );
+      openImportOnlyToast(emitter, 'dbml');
       return;
     }
 
@@ -231,11 +231,7 @@ export function importAML(app: AppContext, mode: ImportMode = 'replace') {
     if (!file) return;
 
     if (!AML_EXTENSION.test(file.name)) {
-      emitter.emit(
-        openToastAction({
-          message: <Toast description="Just import the aml file" />,
-        })
-      );
+      openImportOnlyToast(emitter, 'aml');
       return;
     }
 
@@ -271,11 +267,7 @@ export function importDiffJSON({ emitter }: AppContext) {
     if (!file) return;
 
     if (!JSON_EXTENSION.test(file.name)) {
-      emitter.emit(
-        openToastAction({
-          message: <Toast description="Just import the json file" />,
-        })
-      );
+      openImportOnlyToast(emitter, 'json');
       return;
     }
 

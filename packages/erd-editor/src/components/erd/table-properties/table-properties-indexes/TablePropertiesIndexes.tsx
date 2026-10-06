@@ -5,12 +5,17 @@ import { useAppContext } from '@/components/appContext';
 import IndexesCheckboxColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-checkbox-column/IndexesCheckboxColumn';
 import IndexesColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn';
 import IndexesIndex from '@/components/erd/table-properties/table-properties-indexes/indexes-index/IndexesIndex';
-import IndexesKey from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey';
+import IndexesKey, {
+  KIND_LABEL,
+} from '@/components/erd/table-properties/table-properties-indexes/indexes-key/IndexesKey';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
 import { TABLE_PADDING } from '@/constants/layout';
 import { addIndexAction$ } from '@/engine/modules/index/generator.actions';
 import { attachChangeOnlyTag$ } from '@/engine/tag';
+import { sourceI18n } from '@/i18n/source';
+import type { I18n, MessageKey } from '@/i18n/translate';
 import { Index } from '@/internal-types';
 import { ColumnKey, getAlternateKeys, getColumnKeys } from '@/utils/tableKeys';
 
@@ -28,10 +33,11 @@ type ColumnsStatus = {
   locked: boolean;
 };
 
-const KEY_FLAG_TEXT: Record<ColumnKey['kind'], string> = {
-  primaryKey: 'the PK flag on its columns',
-  unique: 'the UQ flag on its column',
-};
+/** Why a picked key's columns are read only, one whole sentence per kind of key, its flag kept as written. */
+const KEY_STATUS = {
+  primaryKey: 'tableProperties.readOnlyByPrimaryKey',
+  unique: 'tableProperties.readOnlyByUnique',
+} as const satisfies Record<ColumnKey['kind'], MessageKey>;
 
 /**
  * What the Columns heading says about the list under it: how many columns
@@ -45,30 +51,36 @@ function toColumnsStatus(
   columnCount: number,
   hasKeys: boolean,
   hasIndexes: boolean,
-  readonly: boolean
+  readonly: boolean,
+  { t }: Pick<I18n, 't'> = sourceI18n
 ): ColumnsStatus {
   if (selectedIndex) {
     return {
-      text: `${checkedCount} of ${columnCount} selected`,
+      text: t('tableProperties.selectedCount', {
+        count: checkedCount,
+        total: columnCount,
+      }),
       locked: false,
     };
   }
   if (selectedKey) {
     return {
-      text: `Read only: set by ${KEY_FLAG_TEXT[selectedKey.kind]}`,
+      text: t(KEY_STATUS[selectedKey.kind], {
+        flag: KIND_LABEL[selectedKey.kind].text,
+      }),
       locked: true,
     };
   }
 
   const text = hasKeys
-    ? 'Select a key or an index'
+    ? t('tableProperties.selectKeyOrIndex')
     : hasIndexes
       ? readonly
-        ? 'Select an index to see its columns'
-        : 'Select an index to edit its columns'
+        ? t('tableProperties.selectIndexToSee')
+        : t('tableProperties.selectIndexToEdit')
       : readonly
-        ? 'This table has no keys or indexes'
-        : 'Add an index to choose its columns';
+        ? t('tableProperties.noKeysOrIndexes')
+        : t('tableProperties.addIndexToChoose');
 
   return { text, locked: false };
 }
@@ -78,6 +90,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
   ctx
 ) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   // An index id, or the id of a key the columns declare: one selection
   // across both kinds of row.
@@ -102,6 +115,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
     const { tableId } = props;
     const readonly = Boolean(props.readonly);
     const { store } = app.value;
+    const { t } = i18n.value;
     const {
       doc: { indexIds },
       collections,
@@ -139,7 +153,8 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
       columnCount,
       columnKeys.length > 0,
       indexes.length > 0,
-      readonly
+      readonly,
+      i18n.value
     );
     const orderCount = selectedIndex?.indexColumnIds.length ?? 0;
 
@@ -149,7 +164,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
           <div class={styles.leftArea}>
             {columnKeys.length ? (
               <div class={styles.sectionLabel}>
-                <span>Keys</span>
+                <span>{t('tableProperties.keys')}</span>
               </div>
             ) : null}
             {repeat(
@@ -167,7 +182,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
               <Separator space={4} padding={TABLE_PADDING} />
             ) : null}
             <div class={styles.sectionLabel}>
-              <span>Indexes</span>
+              <span>{t('tableProperties.indexes')}</span>
             </div>
             {repeat(
               indexes,
@@ -184,17 +199,19 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
             )}
             {indexes.length ? null : (
               <div class={styles.hint}>
-                {readonly ? 'No indexes' : 'No indexes yet'}
+                {readonly
+                  ? t('tableProperties.noIndexes')
+                  : t('tableProperties.noIndexesYet')}
               </div>
             )}
             {readonly ? null : (
               <div
                 class={styles.addIndexButtonArea}
-                title="Add Index"
+                title={t('tableProperties.addIndex')}
                 on:click={handleAddIndex}
               >
                 <Icon class={styles.addIcon} size={12} name="plus" />
-                <span>Add Index</span>
+                <span>{t('tableProperties.addIndex')}</span>
               </div>
             )}
           </div>
@@ -202,7 +219,7 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
         <div class={styles.rightArea}>
           <div class={styles.columnsHead}>
             <div class={styles.sectionLabel}>
-              <span>Columns</span>
+              <span>{t('tableProperties.columns')}</span>
               <span class={styles.sectionStatus}>
                 {status.locked ? <Icon size={12} name="lock" /> : null}
                 <span>{status.text}</span>
@@ -219,15 +236,15 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
               />
             </div>
           ) : (
-            <div class={styles.hint}>This table has no columns</div>
+            <div class={styles.hint}>{t('tableProperties.noColumns')}</div>
           )}
           {selectedIndex ? (
             <div class={styles.order}>
               <div class={styles.sectionLabel}>
-                <span>Index order</span>
+                <span>{t('tableProperties.indexOrder')}</span>
                 {orderCount > 1 && !readonly ? (
                   <span class={styles.sectionStatus}>
-                    <span>Drag to reorder</span>
+                    <span>{t('tableProperties.dragToReorder')}</span>
                   </span>
                 ) : null}
               </div>
@@ -240,8 +257,8 @@ const TablePropertiesIndexes: FC<TablePropertiesIndexesProps> = (
               ) : (
                 <div class={styles.hint}>
                   {readonly
-                    ? 'This index has no columns'
-                    : 'Check columns above to add them'}
+                    ? t('tableProperties.indexHasNoColumns')
+                    : t('tableProperties.checkColumnsToAdd')}
                 </div>
               )}
             </div>

@@ -1,11 +1,20 @@
-import { html } from '@dineug/r-html';
+import { html, render } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestAppContext,
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import Settings from '@/components/settings/Settings';
 import * as styles from '@/components/settings/Settings.styles';
 import { Lnb } from '@/components/settings/settings-lnb/SettingsLnb';
 import * as lnbStyles from '@/components/settings/settings-lnb/SettingsLnb.styles';
+import { requestSettingsPage } from '@/components/settings/settingsPage';
 import * as shortcutsStyles from '@/components/settings/shortcuts/Shortcuts.styles';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import {
@@ -24,13 +33,17 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import { fontSize6 } from '@/styles/typography.styles';
 
 let mounted: Mounted | null = null;
+let teardown: (() => void) | null = null;
 
 afterEach(() => {
   mounted?.unmount();
   mounted = null;
+  teardown?.();
+  teardown = null;
   vi.restoreAllMocks();
 });
 
@@ -86,6 +99,19 @@ async function setup() {
   return mounted;
 }
 
+/** Mounts the tab under a provided language that a spec switches in place. */
+async function setupLocalized() {
+  const i18n = createTestI18n('en');
+  const provider = provideI18n(document.body, i18n);
+  teardown = () => provider.destroy();
+  return { ...(await setup()), i18n };
+}
+
+const switchToPseudo = async (i18n: ReturnType<typeof createTestI18n>) => {
+  Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+  await flush();
+};
+
 describe('Settings', () => {
   describe('layout', () => {
     it('renders the lnb column next to the content column', async () => {
@@ -124,6 +150,33 @@ describe('Settings', () => {
         'Maximum comment width',
         'Recalculation table width',
       ]);
+    });
+  });
+
+  describe('a page asked for from outside', () => {
+    it('opens on the page asked for before the tab mounted', async () => {
+      const app = createTestAppContext();
+      requestSettingsPage(app.store, Lnb.shortcuts);
+
+      mounted = await mountAndFlush(html`<${Settings} />`, app);
+
+      expect(heading().textContent?.trim()).toBe(Lnb.shortcuts);
+      expect(lnbItems()[1].classList.contains('selected')).toBe(true);
+      expect(root().querySelector(`.${shortcutsStyles.table}`)).toBeTruthy();
+      expect(root().querySelector(`.${styles.section}`)).toBeNull();
+    });
+
+    it('opens on Preferences again the next time the tab mounts', async () => {
+      const app = createTestAppContext();
+      requestSettingsPage(app.store, Lnb.shortcuts);
+      mounted = await mountAndFlush(html`<${Settings} />`, app);
+      render(mounted.container, null);
+
+      render(mounted.container, html`<${Settings} />`);
+      await flush();
+
+      expect(heading().textContent?.trim()).toBe(Lnb.preferences);
+      expect(root().querySelector(`.${styles.section}`)).toBeTruthy();
     });
   });
 
@@ -316,6 +369,133 @@ describe('Settings', () => {
       expect(lockButton(lockRows()[5]).getAttribute('aria-pressed')).toBe(
         'false'
       );
+    });
+  });
+
+  describe('display language', () => {
+    it('reads every row, heading and title in the language provided, following a switch', async () => {
+      const { i18n } = await setupLocalized();
+      expect(heading().textContent?.trim()).toBe('Preferences');
+
+      await switchToPseudo(i18n);
+
+      expect(heading().textContent?.trim()).toBe('ko:Preferences');
+      expect(
+        rows().map(row => row.firstElementChild?.textContent?.trim())
+      ).toEqual([
+        'ko:Relationship DataType Sync',
+        'ko:Maximum comment width',
+        'ko:Recalculation table width',
+      ]);
+      const input = rows()[1].querySelector('input') as HTMLInputElement;
+      expect(input.title).toBe('ko:Maximum comment width');
+      expect(input.placeholder).toBe('ko:Maximum comment width');
+      expect(rows()[2].querySelector('button')?.textContent?.trim()).toBe(
+        'ko:Sync'
+      );
+      expect(
+        root()
+          .querySelector(`.${styles.lockSection}`)
+          ?.firstElementChild?.textContent?.trim()
+      ).toBe('ko:Lock');
+      expect(
+        root()
+          .querySelector(`.${styles.columnOrderList}`)
+          ?.parentElement?.firstElementChild?.textContent?.trim()
+      ).toBe('ko:Column Order');
+      expect(columnOrderItems()[0].textContent?.trim()).toBe('ko:Name');
+    });
+
+    it('names each lock and its button in one sentence of the language provided', async () => {
+      const { app, i18n } = await setupLocalized();
+      await switchToPseudo(i18n);
+
+      expect(lockRows().map(row => lockName(row))).toEqual([
+        'ko:Viewport',
+        'ko:Canvas Type',
+        'ko:Language',
+        'ko:Table Name Case',
+        'ko:Column Name Case',
+        'ko:Bracket Type',
+      ]);
+      expect(lockButton(lockRows()[0]).title).toBe('ko:Unlock ko:Viewport');
+      expect(lockValue(lockRows()[0]).title).toBe('ko:Locked value');
+      expect(lockValue(lockRows()[1]).textContent?.trim()).toBe('ERD');
+      expect(lockValue(lockRows()[5]).textContent?.trim()).toBe('ko:None');
+
+      click(lockButton(lockRows()[0]));
+      await flush();
+
+      expect(
+        app.store.state.settings.lockSettings & LockSettingType.viewport
+      ).toBe(0);
+      expect(lockButton(lockRows()[0]).title).toBe('ko:Lock ko:Viewport');
+      expect(lockValue(lockRows()[0]).title).toBe('ko:Current value');
+    });
+
+    it('wraps a name in isolates inside a right-to-left sentence', async () => {
+      const { i18n } = await setupLocalized();
+      Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
+      await flush();
+
+      expect(lockButton(lockRows()[0]).title).toBe(
+        'ar:Unlock \u2068ar:Viewport\u2069'
+      );
+    });
+
+    it('reads the Shortcuts page name in the language provided', async () => {
+      const { i18n } = await setupLocalized();
+      await switchToPseudo(i18n);
+
+      click(lnbItems()[1]);
+      await flush();
+
+      expect(heading().textContent?.trim()).toBe('ko:Shortcuts');
+    });
+
+    it('shows the recalculation toast in the language its container provides', async () => {
+      const { app } = await setup();
+      const openToast = vi.fn();
+      app.emitter.on({ openToast });
+      click(rows()[2].querySelector('button') as HTMLButtonElement);
+      await flush();
+
+      const toast = document.createElement('div');
+      document.body.append(toast);
+      const provider = provideI18n(
+        toast,
+        createTestI18n('ko-KR', pseudoMessages('ko'))
+      );
+      render(toast, openToast.mock.calls[0][0].payload.message);
+      await flush();
+
+      expect(toast.textContent).toContain('ko:Recalculated table width');
+      render(toast, null);
+      provider.destroy();
+      toast.remove();
+    });
+  });
+
+  describe('text direction', () => {
+    it('keeps the column order list left to right, as the table columns run', async () => {
+      await setup();
+
+      expect(
+        root().querySelector(`.${styles.columnOrderList}`)?.getAttribute('dir')
+      ).toBe('ltr');
+    });
+
+    it('lets each lock value text take its own direction inside a box that keeps the row direction', async () => {
+      await setup();
+
+      for (const row of lockRows()) {
+        const box = lockValue(row);
+        const text = box.querySelector(':scope > span');
+
+        expect(box.hasAttribute('dir')).toBe(false);
+        expect(text?.getAttribute('dir')).toBe('auto');
+        expect(text?.textContent).toBe(box.textContent);
+      }
     });
   });
 

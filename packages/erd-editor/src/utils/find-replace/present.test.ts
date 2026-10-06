@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext } from '@/__test-utils__';
+import { createTestAppContext, pseudoMessages } from '@/__test-utils__';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
 import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
 import { changeColumnNameAction } from '@/engine/modules/table-column/atom.actions';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import {
   describeMatch,
   FindField,
@@ -39,13 +41,9 @@ afterEach(() => {
 
 describe('FindFieldLabel', () => {
   it('names every field a search covers', () => {
-    expect(FindFieldList.map(field => FindFieldLabel[field])).toEqual([
-      'Table',
-      'Table comment',
-      'Column',
-      'Column comment',
-      'Memo',
-    ]);
+    expect(
+      FindFieldList.map(field => sourceI18n.t(FindFieldLabel[field]))
+    ).toEqual(['Table', 'Table comment', 'Column', 'Column comment', 'Memo']);
   });
 });
 
@@ -111,6 +109,35 @@ describe('describeMatch', () => {
         match({ field: FindField.memo, id: 'note', tableId: '' })
       )
     ).toBe('Memo');
+  });
+
+  it('reads the kind, the joint and an unnamed table in the language it is given', () => {
+    const pseudo = createI18n('de-DE', pseudoMessages('de'));
+    app.store.dispatchSync(changeTableNameAction({ id: 'orders', value: '' }));
+    const { state } = app.store;
+
+    expect(
+      describeMatch(
+        state,
+        match({ field: FindField.columnComment, id: 'orders_user_id' }),
+        pseudo
+      )
+    ).toBe('de:de:unnamed.user_id · de:Column comment');
+    expect(
+      describeMatch(
+        state,
+        match({ field: FindField.memo, id: 'note', tableId: '' }),
+        pseudo
+      )
+    ).toBe('de:Memo');
+  });
+
+  it('isolates the location and the kind in a right-to-left sentence', () => {
+    const rtl = createI18n('ar-SA', pseudoMessages('ar'));
+
+    expect(
+      describeMatch(app.store.state, match({ field: FindField.tableName }), rtl)
+    ).toBe('ar:\u2068orders\u2069 · \u2068ar:Table\u2069');
   });
 });
 

@@ -8,42 +8,47 @@ import {
   changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
 } from '@/engine/modules/relationship/atom.actions';
+import { menuLabel } from '@/i18n/menuLabel';
+import { sourceI18n } from '@/i18n/source';
+import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import { referentialActionSupport } from '@/utils/schema-sql/utils';
 
 import { menus as databaseMenus } from './databaseMenus';
 
 type Menu = {
   iconName: NotationIconName;
-  name: string;
+  labelKey: PlainMessageKey;
   relationshipType: number;
 };
 
 const menus: Menu[] = [
   {
     iconName: 'ZeroOne',
-    name: 'Zero One',
+    labelKey: 'common.relationshipType.zeroOne',
     relationshipType: RelationshipType.ZeroOne,
   },
   {
     iconName: 'ZeroN',
-    name: 'Zero N',
+    labelKey: 'common.relationshipType.zeroN',
     relationshipType: RelationshipType.ZeroN,
   },
   {
     iconName: 'OneOnly',
-    name: 'One Only',
+    labelKey: 'common.relationshipType.oneOnly',
     relationshipType: RelationshipType.OneOnly,
   },
   {
     iconName: 'OneN',
-    name: 'One N',
+    labelKey: 'common.relationshipType.oneN',
     relationshipType: RelationshipType.OneN,
   },
 ];
 
+/** The four types a relationship can take, its own one checked, named in the reader's language. */
 export function createRelationshipMenus(
   { store }: AppContext,
-  relationshipId?: string
+  relationshipId?: string,
+  i18n: Pick<I18n, 't'> = sourceI18n
 ) {
   if (!relationshipId) return [];
 
@@ -59,7 +64,7 @@ export function createRelationshipMenus(
     return {
       checked,
       iconName: menu.iconName,
-      name: menu.name,
+      name: i18n.t(menu.labelKey),
       onClick: () => {
         store.dispatch(
           changeRelationshipTypeAction({
@@ -74,8 +79,17 @@ export function createRelationshipMenus(
 
 export type ReferentialActionField = 'onDelete' | 'onUpdate';
 
-const referentialActionMenus: Array<{ name: string; value: number }> = [
-  { name: 'Not set', value: ReferentialAction.none },
+/** The SQL each action is written as, which no language translates; Not set is a word of the editor's. */
+const referentialActionMenus: Array<{
+  name: string;
+  labelKey?: PlainMessageKey;
+  value: number;
+}> = [
+  {
+    name: 'Not set',
+    labelKey: 'contextMenu.notSet',
+    value: ReferentialAction.none,
+  },
   { name: 'NO ACTION', value: ReferentialAction.noAction },
   { name: 'CASCADE', value: ReferentialAction.cascade },
   { name: 'SET NULL', value: ReferentialAction.setNull },
@@ -95,7 +109,8 @@ const changeReferentialAction = {
 export function createReferentialActionMenus(
   { store }: AppContext,
   field: ReferentialActionField,
-  relationshipId?: string
+  relationshipId?: string,
+  i18n: Pick<I18n, 't'> = sourceI18n
 ) {
   if (!relationshipId) return [];
 
@@ -112,12 +127,12 @@ export function createReferentialActionMenus(
 
   return referentialActionMenus.map(menu => ({
     checked: menu.value === relationship[field],
-    name: menu.name,
+    name: menuLabel(i18n, menu),
     note:
       database &&
       menu.value !== ReferentialAction.none &&
       !supported.includes(menu.value)
-        ? `not in ${database}`
+        ? i18n.t('contextMenu.notInDatabase', { database })
         : null,
     onClick: () => {
       store.dispatch(

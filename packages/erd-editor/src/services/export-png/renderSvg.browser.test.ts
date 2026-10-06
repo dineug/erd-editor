@@ -2,7 +2,7 @@ import type { Shape } from 'konva/lib/Shape';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { createTestTheme } from '@/__test-utils__';
+import { createTestTheme, pseudoMessages } from '@/__test-utils__';
 import {
   ColumnOption,
   ColumnUIKey,
@@ -200,6 +200,17 @@ function parse(svg: string): SVGSVGElement {
 const texts = (root: Element) =>
   Array.from(root.querySelectorAll('text')).map(text => text.textContent);
 
+/** That document with the first table's name left empty, which the scene writes a placeholder for. */
+function createUnnamedDoc() {
+  const json = JSON.parse(createDoc(1, ''));
+  Object.assign(json.collections.tableEntities.users, { name: '' });
+  json.collections.tableEntities.users.ui.widthName = toWidth('');
+  return JSON.stringify(json);
+}
+
+/** A language whose every word is tagged, so a word read from it is told from English. */
+const pseudo = { locale: 'de-DE' as const, messages: pseudoMessages('xx') };
+
 /** The box the export of that document holds, as the png measures it. */
 async function exportBox(doc: string) {
   const scene = await renderDocumentScene({ doc, theme, toWidth });
@@ -329,6 +340,30 @@ describe('the svg of a document', () => {
     ).toBe(true);
     expect(texts(root)).not.toContain('user_id');
     expect(texts(root)).not.toContain('D:C');
+  });
+});
+
+describe('the svg in the language it is asked in', () => {
+  it("writes the scene's own words in that language", async () => {
+    const root = parse(
+      await renderDocumentSvg({
+        doc: createUnnamedDoc(),
+        theme,
+        toWidth,
+        i18n: pseudo,
+      })
+    );
+
+    expect(texts(root)).toContain('xx:table');
+    expect(texts(root)).not.toContain('table');
+  });
+
+  it('writes them in English when it is asked in none', async () => {
+    const root = parse(
+      await renderDocumentSvg({ doc: createUnnamedDoc(), theme, toWidth })
+    );
+
+    expect(texts(root)).toContain('table');
   });
 });
 
@@ -478,6 +513,24 @@ describe('the svg in the shared worker', () => {
 
     expect(warn).not.toHaveBeenCalled();
     expect(fromWorker).toBe(onMain);
+  });
+
+  it('is written in the worker in the language it is asked in', async () => {
+    const warn = vi.spyOn(console, 'warn');
+    const doc = createUnnamedDoc();
+
+    const fromWorker = await createDocumentSvg({
+      doc,
+      theme,
+      toWidth,
+      i18n: pseudo,
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(texts(parse(fromWorker))).toContain('xx:table');
+    expect(fromWorker).toBe(
+      await renderDocumentSvg({ doc, theme, toWidth, i18n: pseudo })
+    );
   });
 
   it('is written on the main thread when the worker measures differently', async () => {

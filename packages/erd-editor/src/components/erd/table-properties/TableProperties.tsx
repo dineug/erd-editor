@@ -7,6 +7,7 @@ import TablePropertiesTabs, {
   Tab,
 } from '@/components/erd/table-properties/table-properties-tabs/TablePropertiesTabs';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import { Open } from '@/constants/open';
@@ -29,6 +30,7 @@ export type TablePropertiesProps = {
 
 const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
 
   const state = observable({
@@ -89,6 +91,7 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
     const { store, keyBindingMap } = app.value;
     const { collections } = store.state;
     const { tableIds } = props;
+    const { t } = i18n.value;
 
     const tables = query(collections)
       .collection('tableEntities')
@@ -106,14 +109,14 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
         <div
           class={['table-properties', styles.container]}
           role="dialog"
-          aria-label="Table Properties"
+          aria-label={t('common.tableProperties')}
         >
           <div class={styles.header}>
-            <span class={styles.title}>Table Properties</span>
+            <span class={styles.title}>{t('common.tableProperties')}</span>
             {props.readonly ? (
               <span class={styles.readonlyBadge}>
                 <Icon name="lock" size={12} />
-                <span>Read only</span>
+                <span>{t('tableProperties.readOnly')}</span>
               </span>
             ) : null}
             <div class={['scrollbar', styles.tables]}>
@@ -124,9 +127,12 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
                     { selected: table.id === props.tableId },
                   ]}
                   title={table.name}
+                  prop:dir="auto"
                   on:click={() => props.onChange(table.id)}
                 >
-                  <span>{table.name.trim() ? table.name : 'unnamed'}</span>
+                  <span>
+                    {table.name.trim() ? table.name : t('common.unnamed')}
+                  </span>
                 </div>
               ))}
             </div>
@@ -135,7 +141,7 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
               type="button"
               title={toShortcutTitle(
                 keyBindingMap,
-                'Close',
+                t('common.close'),
                 KeyBindingName.stop
               )}
               on:click={handleCloseButton}

@@ -37,6 +37,7 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { diffFill, type DiffPaths } from '@/components/erd/diff-viewer/diff';
+import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
   COLUMN_DELETE_WIDTH,
@@ -216,6 +217,8 @@ const rowBackground = (
 const Column: FC<ColumnProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  // Read only where a field is empty, so a switch redraws the empty cells alone.
+  const i18n = useI18n(ctx);
   const state = observable({ hover: false, removeHover: false });
   const { addUnsubscribe } = useUnmounted();
   const doubleClick = createDoubleClickGuard();
@@ -492,7 +495,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           focusType,
           x,
           width,
-          text: column.name.trim() ? column.name : 'column',
+          text: column.name.trim()
+            ? column.name
+            : i18n.value.t('common.placeholder.column'),
           fill: column.name.trim() ? theme.active : theme.placeholder,
           focus: props.focusName,
           edit: props.editName,
@@ -504,7 +509,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           focusType,
           x,
           width,
-          text: column.default.trim() ? column.default : 'default',
+          text: column.default.trim()
+            ? column.default
+            : i18n.value.t('common.placeholder.default'),
           fill: column.default.trim() ? theme.active : theme.placeholder,
           focus: props.focusDefault,
           edit: props.editDefault,
@@ -516,7 +523,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           focusType,
           x,
           width,
-          text: column.comment.trim() ? column.comment : 'comment',
+          text: column.comment.trim()
+            ? column.comment
+            : i18n.value.t('common.placeholder.comment'),
           fill: column.comment.trim() ? theme.active : theme.placeholder,
           focus: props.focusComment,
           edit: props.editComment,
@@ -528,7 +537,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           focusType,
           x,
           width,
-          text: column.dataType.trim() ? column.dataType : 'dataType',
+          text: column.dataType.trim()
+            ? column.dataType
+            : i18n.value.t('common.placeholder.dataType'),
           fill: column.dataType.trim() ? theme.active : theme.placeholder,
           focus: props.focusDataType,
           edit: props.editDataType,

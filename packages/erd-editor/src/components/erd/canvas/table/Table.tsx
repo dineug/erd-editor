@@ -58,6 +58,7 @@ import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEn
 import { diffFill } from '@/components/erd/diff-viewer/diff';
 import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { focusFlowView } from '@/components/flowCenters';
+import { useI18n } from '@/components/localeContext';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
@@ -163,6 +164,8 @@ const nameFill = (theme: Theme, name: string, view: boolean) => {
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  // Read only where a field is empty, so a switch redraws an unnamed table alone.
+  const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
   const diffMapRef = useDiffMap(ctx);
   const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
@@ -724,7 +727,9 @@ const Table: FC<TableProps> = (props, ctx) => {
             {nameCell
               ? headerCell({
                   ...nameCell,
-                  text: table.name.trim() ? table.name : 'table',
+                  text: table.name.trim()
+                    ? table.name
+                    : i18n.value.t('common.placeholder.table'),
                   fill: nameFill(theme, table.name, view),
                   focus: hasFocus(FocusType.tableName),
                   edit: cellEdit(FocusType.tableName),
@@ -734,7 +739,9 @@ const Table: FC<TableProps> = (props, ctx) => {
             {commentCell
               ? headerCell({
                   ...commentCell,
-                  text: table.comment.trim() ? table.comment : 'comment',
+                  text: table.comment.trim()
+                    ? table.comment
+                    : i18n.value.t('common.placeholder.comment'),
                   fill: table.comment.trim() ? theme.active : theme.placeholder,
                   focus: hasFocus(FocusType.tableComment),
                   edit: cellEdit(FocusType.tableComment),

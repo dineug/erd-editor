@@ -15,11 +15,15 @@ import {
   flush,
   mount,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
 import { hangulFormsOf } from '@/components/quick-search/hangul';
-import QuickSearch from '@/components/quick-search/QuickSearch';
+import QuickSearch, {
+  type QuickSearchProps,
+} from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
 import {
   SCOPED_ACTION_LIMIT,
@@ -44,6 +48,8 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import type { LocaleOption } from '@/i18n/locales';
+import { createI18n, type I18n } from '@/i18n/translate';
 import { openFindReplaceAction, toggleSearchAction } from '@/utils/emitter';
 import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -178,12 +184,13 @@ describe('QuickSearch', () => {
     expect(isOpen()).toBe(true);
   });
 
-  it('closes the table properties, theme builder and export image panels when it opens', async () => {
+  it('closes the table properties, theme builder, export image and language panels when it opens', async () => {
     app.store.dispatchSync(
       changeOpenMapAction({
         [Open.tableProperties]: true,
         [Open.themeBuilder]: true,
         [Open.exportImage]: true,
+        [Open.localePicker]: true,
       })
     );
 
@@ -192,6 +199,7 @@ describe('QuickSearch', () => {
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(false);
     expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
+    expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
   });
 
   it('toggles closed on a second search shortcut and re-emits focus', async () => {
@@ -448,7 +456,7 @@ describe('QuickSearch keyboard navigation', () => {
     expect(rowNames()).toEqual([
       'Visualization',
       'Schema SQL',
-      'Generator Code',
+      'Code Generator',
       'Settings',
     ]);
     expect(selectedIndex()).toBe(-1);
@@ -480,7 +488,7 @@ describe('QuickSearch keyboard navigation', () => {
     expect(rowNames()).toEqual([
       'Visualization',
       'Schema SQL',
-      'Generator Code',
+      'Code Generator',
       'Settings',
     ]);
   });
@@ -524,7 +532,7 @@ describe('QuickSearch mouse interaction', () => {
     expect(rowNames()).toEqual([
       'Visualization',
       'Schema SQL',
-      'Generator Code',
+      'Code Generator',
       'Settings',
     ]);
   });
@@ -966,7 +974,7 @@ describe('QuickSearch prefixes', () => {
       expect([
         'Visualization',
         'Schema SQL',
-        'Generator Code',
+        'Code Generator',
         'Settings',
       ]).toContain(name);
     }
@@ -1355,5 +1363,159 @@ describe('QuickSearch Hangul', () => {
       columnId: 'products_name',
       focusType: 'columnName',
     });
+  });
+});
+
+describe('QuickSearch preferences and language', () => {
+  let localeProvider: { destroy: () => void } | null = null;
+
+  /** Mounts the palette again, under a language provided above it and with the options of the pickers the element offers. */
+  const remount = async (i18n: I18n | null, props: QuickSearchProps = {}) => {
+    mounted?.unmount();
+    localeProvider = i18n ? provideI18n(document.body, i18n) : null;
+    mounted = mount(
+      html`<${QuickSearch}
+        .appearance=${props.appearance}
+        .locale=${props.locale}
+      />`,
+      app
+    );
+    await flush();
+  };
+
+  const rowNamed = (name: string) => {
+    const row = rows().find(
+      item =>
+        item.querySelector(`.${styles.name}`)?.textContent?.trim() === name
+    );
+    if (!row) throw new Error(`row not found: ${name}`);
+    return row;
+  };
+
+  const checkedNames = () =>
+    rows()
+      .filter(
+        row => iconNameOf(row.querySelector(`.${styles.icon}`)) === 'check'
+      )
+      .map(row => row.querySelector(`.${styles.name}`)?.textContent?.trim());
+
+  afterEach(() => {
+    localeProvider?.destroy();
+    localeProvider = null;
+  });
+
+  it('offers Theme and Display Language only while the element gives their options', async () => {
+    await remount(null);
+    await open();
+    expect(rowNames()).not.toContain('Theme');
+    expect(rowNames()).not.toContain('Display Language');
+
+    await open();
+    await remount(null, { appearance: 'dark', locale: 'ko-KR' });
+    await open();
+
+    expect(rowNames().slice(-2)).toEqual(['Theme', 'Display Language']);
+  });
+
+  it('checks the appearance and the language in force as it opens', async () => {
+    await remount(null, { appearance: 'dark', locale: 'ko-KR' });
+    await open();
+
+    await click(rowNamed('Theme'));
+    expect(rowNames()).toEqual(['System', 'Light', 'Dark']);
+    expect(checkedNames()).toEqual(['Dark']);
+
+    await open();
+    await open();
+    await click(rowNamed('Display Language'));
+    expect(rows()).toHaveLength(26);
+    expect(checkedNames()).toEqual(['한국어']);
+  });
+
+  it('asks the element for the appearance or the language picked, and closes', async () => {
+    const picked: unknown[] = [];
+    app.emitter.on({
+      setThemeOptions: ({ payload }) => {
+        picked.push(payload);
+      },
+      setLocaleOption: ({ payload }) => {
+        picked.push(payload);
+      },
+    });
+    const locale: LocaleOption = 'system';
+    await remount(null, { appearance: 'system', locale });
+
+    await open();
+    await click(rowNamed('Theme'));
+    await click(rowNamed('Light'));
+    expect(isOpen()).toBe(false);
+
+    await open();
+    await click(rowNamed('Display Language'));
+    await type('kor');
+    await click(rowNamed('한국어'));
+
+    expect(isOpen()).toBe(false);
+    expect(picked).toEqual([{ appearance: 'light' }, { locale: 'ko-KR' }]);
+  });
+
+  it('shows its own text in the language provided above it', async () => {
+    seedFindDocument(app);
+    await remount(createI18n('de-DE', pseudoMessages('de')));
+    await open();
+
+    expect(input().getAttribute('placeholder')).toBe('de:Search');
+    const hints = Array.from(
+      mounted?.container.querySelectorAll('.quick-search-hint button') ?? []
+    );
+    expect(hints.map(item => item.textContent?.trim())).toEqual([
+      '#de:Tables',
+      '@de:Columns',
+      ':de:Comments & memos',
+      '?de:Help',
+    ]);
+    expect(hints[0].getAttribute('title')).toBe('de:Go to a table by its name');
+    expect(rowNames()[0]).toBe('de:Tab');
+
+    await type('qqqq');
+    expect(
+      mounted?.container
+        .querySelector('.quick-search-empty')
+        ?.textContent?.trim()
+    ).toBe('de:No commands match');
+    expect(rowNames()[0]).toBe('de:Search tables for "qqqq"');
+
+    await type('#us');
+    expect(
+      mounted?.container.querySelector('.quick-search-scope')?.textContent
+    ).toBe('de:Tables');
+  });
+
+  it('finds a translated command by its English, which it never shows', async () => {
+    await remount(
+      createI18n('de-DE', {
+        ...pseudoMessages('de'),
+        'common.newTable': 'Neue Tabelle',
+      })
+    );
+    await open();
+    expect(mounted?.container.textContent).not.toContain('New Table');
+
+    await type('new table');
+
+    expect(rowNames()[0]).toBe('Neue Tabelle');
+    expect(mounted?.container.textContent).not.toContain('New Table');
+  });
+
+  it('lets the name and the keywords of a row take the direction of their own text', async () => {
+    await open();
+    const zeroOne = rows()[7];
+
+    expect(zeroOne.querySelector(`.${styles.name}`)?.getAttribute('dir')).toBe(
+      'auto'
+    );
+    expect(
+      zeroOne.querySelector(`.${styles.keyword}`)?.getAttribute('dir')
+    ).toBe('auto');
   });
 });
