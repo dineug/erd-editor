@@ -13,7 +13,7 @@ import {
   useProvider,
 } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
-import { userEvent } from 'vite-plus/test/browser/context';
+import { page, userEvent } from 'vite-plus/test/browser/context';
 
 import {
   createTestAppContext,
@@ -193,7 +193,7 @@ const isOpen = ({ app }: Fixture) =>
 const rowSelects = ({ mounted }: Fixture) =>
   Array.from(
     mounted.container.querySelectorAll<HTMLSelectElement>(
-      'select[aria-label="Foreign key column"]'
+      'select[data-parent-column-id]'
     )
   );
 const references = ({ mounted }: Fixture) =>
@@ -546,6 +546,35 @@ describe('Map Columns editing a stored mapping', () => {
   });
 });
 
+describe('Map Columns to assistive tech', () => {
+  const TENANT_USERS: MapSeedColumn[] = [
+    { id: 'u_tenant', name: 'tenant_id', dataType: 'int', primaryKey: true },
+    { id: 'u_id', name: 'id', dataType: 'int', primaryKey: true },
+  ];
+
+  /** The row lists the accessibility tree names exactly so. */
+  const listsNamed = ({ mounted }: Fixture, name: string) =>
+    page
+      .elementLocator(mounted.container)
+      .getByRole('combobox', { name, exact: true })
+      .elements();
+
+  it('names each row’s list after the key column it maps, side by side and stacked', async () => {
+    for (const width of [900, 600]) {
+      const fixture = await setup({ width, users: TENANT_USERS });
+      await openCreate(fixture);
+      const [tenant, id] = rowSelects(fixture);
+
+      expect(listsNamed(fixture, 'Foreign key column tenant_id')).toEqual([
+        tenant,
+      ]);
+      expect(listsNamed(fixture, 'Foreign key column id')).toEqual([id]);
+
+      teardowns.splice(0).forEach(teardown => teardown());
+    }
+  });
+});
+
 describe('Map Columns while a peer edits the diagram', () => {
   it('creating: empties a row whose child goes, rebuilds rows on a new key and refuses a duplicate', async () => {
     const fixture = await setup();
@@ -771,9 +800,15 @@ describe('Map Columns in a right-to-left language', () => {
     expect(parent.getBoundingClientRect().left).toBeGreaterThan(
       list.getBoundingClientRect().right
     );
-    expect(list.getAttribute('aria-label')).toBe(
-      he['mapColumns.foreignKeyColumn']
-    );
+    expect(
+      page
+        .elementLocator(dialog)
+        .getByRole('combobox', {
+          name: `${he['mapColumns.foreignKeyColumn']} id`,
+          exact: true,
+        })
+        .elements()
+    ).toEqual([list]);
 
     const [name, dataType] = Array.from(parent.children) as HTMLElement[];
     expect([name.dir, dataType.dir]).toEqual(['auto', 'ltr']);

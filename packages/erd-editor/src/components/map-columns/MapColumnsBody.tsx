@@ -1,5 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { FC } from '@dineug/r-html';
+import { uuid25 } from '@dineug/uuid';
 
 import { useAppContext } from '@/components/appContext';
 import { relationshipTypeName } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
@@ -61,6 +62,9 @@ type Message = { text: string; error: boolean };
 const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const i18n = useI18n(ctx);
+  // Several editors can share a page, and a list's name points at these ids.
+  const labelId = `map-columns-${uuid25()}`;
+  const parentNameId = (index: number) => `${labelId}-${index}`;
 
   const columnsOf = () =>
     query(app.value.store.state.collections).collection('tableColumnEntities');
@@ -134,12 +138,15 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
         });
   };
 
-  const parentCell = (row: MappingRowView) => {
+  const parentCell = (row: MappingRowView, index: number) => {
     const { t } = i18n.value;
+    const nameId = parentNameId(index);
     if (row.invalid) {
       return (
         <div class={styles.parent}>
-          <span class={styles.dim}>{t('mapColumns.invalid')}</span>
+          <span id={nameId} class={styles.dim}>
+            {t('mapColumns.invalid')}
+          </span>
         </div>
       );
     }
@@ -151,14 +158,20 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     if (row.removedParent || !column) {
       return (
         <div class={styles.parent}>
-          <span class={styles.dim}>{t('mapColumns.removed')}</span>
+          <span id={nameId} class={styles.dim}>
+            {t('mapColumns.removed')}
+          </span>
         </div>
       );
     }
 
     return (
       <div class={styles.parent}>
-        <span class={isBlank(column.name) ? styles.dim : null} prop:dir="auto">
+        <span
+          id={nameId}
+          class={isBlank(column.name) ? styles.dim : null}
+          prop:dir="auto"
+        >
           {nameOf(column, i18n.value)}
         </span>
         <span class={styles.dataType} prop:dir="ltr">
@@ -210,7 +223,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     return (
       <select
         class={styles.select}
-        aria-label={t('mapColumns.foreignKeyColumn')}
+        aria-labelledby={`${labelId} ${parentNameId(index)}`}
         data-parent-column-id={parentColumnId ?? ''}
         bool:disabled={disabled}
         bool:data-autofocus={autofocus}
@@ -297,6 +310,9 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
             </select>
           </label>
         ) : null}
+        <span id={labelId} hidden>
+          {t('mapColumns.foreignKeyColumn')}
+        </span>
         {rows.length ? (
           <div class={['map-columns-rows', styles.grid, { stacked }]}>
             {stacked ? null : (
@@ -313,7 +329,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
               const note = typeNote(row);
               return (
                 <>
-                  {parentCell(row)}
+                  {parentCell(row, index)}
                   {childSelect(row, index, childTable, index === emptyIndex)}
                   {note ? (
                     <div class={['map-columns-note', styles.note]}>{note}</div>

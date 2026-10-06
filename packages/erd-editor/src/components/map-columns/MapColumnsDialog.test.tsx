@@ -111,10 +111,17 @@ const dialog = () => root().querySelector<HTMLElement>('.map-columns') ?? null;
 const isOpen = () => Boolean(app.store.state.editor.openMap[Open.mapColumns]);
 const rowSelects = () =>
   Array.from(
-    root().querySelectorAll<HTMLSelectElement>(
-      'select[aria-label="Foreign key column"]'
-    )
+    root().querySelectorAll<HTMLSelectElement>('select[data-parent-column-id]')
   );
+
+/** The name assistive tech reads for a list: the text of the nodes its aria-labelledby lists. */
+const accessibleName = (element: Element) => {
+  const ids = element.getAttribute('aria-labelledby')?.split(/\s+/) ?? [];
+  const scope = element.getRootNode() as Document | ShadowRoot;
+  return ids
+    .map(id => scope.getElementById(id)?.textContent?.trim() ?? '')
+    .join(' ');
+};
 const referencesSelect = () =>
   root().querySelector<HTMLSelectElement>('.map-columns-references select');
 const confirmButton = () =>
@@ -522,6 +529,36 @@ describe('MapColumnsDialog creating a relationship', () => {
     ).toBe(true);
   });
 
+  it('names each row’s list after the key column it maps, so the lists of a composite key differ', async () => {
+    seed(
+      [
+        {
+          id: 'p_tenant',
+          name: 'tenant_id',
+          dataType: 'int',
+          primaryKey: true,
+        },
+        { id: 'p_id', name: 'id', dataType: 'int', primaryKey: true },
+      ],
+      [{ id: 'c_x', name: 'x', dataType: 'int' }]
+    );
+    await mountDialog();
+    await openCreate();
+
+    expect(rowSelects().map(accessibleName)).toEqual([
+      'Foreign key column tenant_id',
+      'Foreign key column id',
+    ]);
+
+    app.store.dispatchSync(changeViewportAction({ width: 600, height: 800 }));
+    await flush();
+
+    expect(rowSelects().map(accessibleName)).toEqual([
+      'Foreign key column tenant_id',
+      'Foreign key column id',
+    ]);
+  });
+
   it('refuses a mapping of every column onto itself', async () => {
     seed();
     await mountDialog();
@@ -786,7 +823,7 @@ describe('MapColumnsDialog / language', () => {
       'ko:Foreign key column',
     ]);
     const [list] = rowLists();
-    expect(list.getAttribute('aria-label')).toBe('ko:Foreign key column');
+    expect(accessibleName(list)).toBe('ko:Foreign key column id');
     expect(optionTexts(list)).toEqual([
       'ko:Pick a column',
       'ko:New column: users_id_2',
