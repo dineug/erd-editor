@@ -1,12 +1,12 @@
 import { uuid25 } from '@dineug/uuid';
-import merge from 'deepmerge';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { DeepPartial, Table } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
+import { deepMerge } from '@/utils/deepMerge';
 
 export const createTable = (value?: DeepPartial<Table>): Table =>
-  merge(
+  deepMerge<Table>(
     {
       id: uuid25(),
       name: '',
@@ -23,5 +23,5 @@ export const createTable = (value?: DeepPartial<Table>): Table =>
       },
       meta: getDefaultEntityMeta(),
     },
-    (value as Table) ?? {}
+    value ?? {}
   );

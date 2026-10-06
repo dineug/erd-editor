@@ -686,7 +686,7 @@ export class ErdEditorPage {
   // ── input ────────────────────────────────────────────────────────────────
 
   /**
-   * Puts keyboard focus on the editor root, which is where tinykeys is bound.
+   * Puts keyboard focus on the editor root, which is where the key bindings listen.
    * Clicking empty canvas also clears the current selection.
    */
   async focusCanvas(at?: Point) {
@@ -699,13 +699,13 @@ export class ErdEditorPage {
   }
 
   /**
-   * The modifier the editor's pointer handlers read as $mod. isMod parses the
-   * user agent, so this asks the page rather than the runner — the two agree
-   * only because the config no longer pins a user agent of its own.
+   * The modifier the editor's pointer handlers read as $mod. isMod reads the
+   * page's platform, so this asks the page rather than the runner, with the
+   * test hasAppleDevice makes.
    */
   async pointerModKey(): Promise<'Meta' | 'Control'> {
     const isApple = await this.page.evaluate(() =>
-      /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+      /Mac|iPod|iPhone|iPad/.test(navigator.platform)
     );
     return isApple ? 'Meta' : 'Control';
   }

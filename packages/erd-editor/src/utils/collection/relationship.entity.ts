@@ -1,5 +1,4 @@
 import { uuid25 } from '@dineug/uuid';
-import merge from 'deepmerge';
 
 import {
   Direction,
@@ -9,11 +8,12 @@ import {
 } from '@/constants/schema';
 import { DeepPartial, Relationship } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
+import { deepMerge } from '@/utils/deepMerge';
 
 export const createRelationship = (
   value?: DeepPartial<Relationship>
 ): Relationship =>
-  merge(
+  deepMerge<Relationship>(
     {
       id: uuid25(),
       identification: false,
@@ -37,5 +37,5 @@ export const createRelationship = (
       },
       meta: getDefaultEntityMeta(),
     },
-    (value as Relationship) ?? {}
+    value ?? {}
   );

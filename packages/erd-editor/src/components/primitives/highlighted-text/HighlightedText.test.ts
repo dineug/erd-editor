@@ -80,7 +80,7 @@ describe('HighlightedText', () => {
     expect(highlights()).toEqual(['dog', 'cat']);
   });
 
-  it('escapes regular expression metacharacters because autoEscape is forced on', async () => {
+  it('matches a word as typed, never as a regular expression', async () => {
     mounted = await mountAndFlush(
       html`<${HighlightedText}
         searchWords=${['a.c']}
@@ -92,16 +92,33 @@ describe('HighlightedText', () => {
     expect(mounted.container.textContent).toBe('abc a.c');
   });
 
-  it('ignores a caller supplied autoEscape=false, which the component overrides', async () => {
+  it('lights words that touch or overlap in one span', async () => {
     mounted = await mountAndFlush(
       html`<${HighlightedText}
-        searchWords=${['a.c']}
-        textToHighlight=${'abc a.c'}
-        autoEscape=${false}
+        searchWords=${['dog', ' and', 'he c', 'cat']}
+        textToHighlight=${'the dog and the cat'}
       />`
     );
 
-    expect(highlights()).toEqual(['a.c']);
+    expect(highlights()).toEqual(['dog and', 'he cat']);
+    expect(mounted.container.textContent).toBe('the dog and the cat');
+  });
+
+  it('lights what its findChunks finds, merged and in order', async () => {
+    mounted = await mountAndFlush(
+      html`<${HighlightedText}
+        searchWords=${['zebra']}
+        textToHighlight=${'the dog and the cat'}
+        findChunks=${() => [
+          { start: 16, end: 19 },
+          { start: 4, end: 6 },
+          { start: 5, end: 7 },
+        ]}
+      />`
+    );
+
+    expect(highlights()).toEqual(['dog', 'cat']);
+    expect(mounted.container.textContent).toBe('the dog and the cat');
   });
 
   it('renders the text unhighlighted when nothing matches', async () => {

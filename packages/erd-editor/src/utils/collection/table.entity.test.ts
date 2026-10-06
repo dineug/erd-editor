@@ -82,6 +82,27 @@ describe('createTable', () => {
     expect(table.meta).toEqual({ createAt: 7, updateAt: now });
   });
 
+  it('drops a __proto__ key parsed from a peer or tool payload', () => {
+    const table = createTable(
+      JSON.parse(
+        '{"__proto__": {"admin": true}, "name": "users", "ui": {"__proto__": {"admin": true}, "x": 5}}'
+      )
+    );
+
+    expect(table.name).toBe('users');
+    expect(Object.getPrototypeOf(table)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(table.ui)).toBe(Object.prototype);
+    expect(table.ui).toEqual({
+      x: 5,
+      y: 100,
+      zIndex: 2,
+      widthName: COLUMN_MIN_WIDTH,
+      widthComment: COLUMN_MIN_WIDTH,
+      color: '',
+    });
+    expect(({} as Record<string, unknown>).admin).toBeUndefined();
+  });
+
   it('treats an explicitly undefined value as no value', () => {
     const table = createTable(undefined);
 

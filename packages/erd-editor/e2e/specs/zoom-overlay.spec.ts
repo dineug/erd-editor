@@ -19,7 +19,7 @@ test.describe('zoom, scroll and overlays', () => {
 
     // Wheeling down zooms out and wheeling up is a no-op, because the editor
     // already sits at the ceiling. The modifier comes from the page, since
-    // handleWheel reads the UA rather than the layout tinykeys uses.
+    // handleWheel reads $mod off the page's platform, not the runner's.
     const modKey = await erd.pointerModKey();
     for (let notch = 0; notch < 4; notch++) {
       await erd.wheel(120, { modifiers: [modKey] });

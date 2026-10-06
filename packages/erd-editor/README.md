@@ -216,8 +216,11 @@ and Add.
 ## Key bindings
 
 `createKeyBindingMap()` returns the shortcuts an editor listens for until `setKeyBindingMap`
-changes them, as a new map on every call. Each is a [tinykeys](https://github.com/jamiebuilds/tinykeys)
-chord that names its key by `KeyboardEvent.code`, where `$mod` is Cmd on macOS and Ctrl elsewhere.
+changes them, as a new map on every call. Each is a chord: its modifiers (`Shift`, `Alt`,
+`Control`, `Meta`, or `$mod`, which is Cmd on macOS and Ctrl elsewhere) joined by `+`, then the
+key, named by its `KeyboardEvent.code` (`KeyK`, `Digit1`) or its `KeyboardEvent.key` in any case.
+A chord matches only while exactly its modifiers are held. Presses separated by a space form a
+sequence, each pressed within a second of the keydown before it.
 
 ```js
 import { createKeyBindingMap } from '@dineug/erd-editor';

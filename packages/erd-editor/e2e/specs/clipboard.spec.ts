@@ -29,7 +29,7 @@ const CLIPBOARD_HTML_TRUNCATED_ATTR = 'data-erd-editor-truncated';
 const START_ADD = 50;
 
 /**
- * The browser's own clipboard shortcuts, not tinykeys bindings: Chromium's
+ * The browser's own clipboard shortcuts, not the editor's bindings: Chromium's
  * editing layer is what turns these into copy and paste events, and Playwright
  * resolves the modifier from the same signal Chromium uses.
  */

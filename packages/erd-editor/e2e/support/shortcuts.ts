@@ -1,7 +1,7 @@
 /**
- * The editor binds shortcuts through tinykeys, which matches on
- * KeyboardEvent.code and resolves the modifier by platform. Playwright follows
- * the same rule, so these stay correct on a workstation and on a CI runner.
+ * The editor's key bindings match on KeyboardEvent.code and resolve $mod by
+ * platform. Playwright's ControlOrMeta follows the same rule, so these stay
+ * correct on a workstation and on a CI runner.
  */
 export const Shortcut = {
   edit: 'Enter',

@@ -489,7 +489,7 @@ async function freeCanvasPoint(page: Page) {
 }
 
 /**
- * Alt+N is the editor's add-table shortcut. tinykeys binds it to a element
+ * Alt+N is the editor's add-table shortcut. Its bindings listen on an element
  * inside the shadow root, so the canvas has to be clicked first for the keydown
  * to reach the binding.
  */

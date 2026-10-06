@@ -1,5 +1,4 @@
 import { disassemble, getChoseong } from 'es-hangul';
-import { findAll } from 'highlight-words-core';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -17,6 +16,7 @@ import {
   TextHit,
 } from '@/components/quick-search/hangul';
 import { createMatcher, DEFAULT_FIND_OPTIONS } from '@/utils/find-replace';
+import { findAll } from '@/utils/highlightWords';
 
 const queryOf = (keyword: string): HangulQuery => {
   const query = hangulQueryOf(keyword);
@@ -44,7 +44,6 @@ const lit = (text: string, searchWords: string[]) =>
   findAll({
     searchWords,
     textToHighlight: text,
-    autoEscape: true,
     findChunks: findPaletteChunks,
   })
     .filter(chunk => chunk.highlight)

@@ -1,7 +1,7 @@
 import { disassembleToGroups } from 'es-hangul';
-import { type Chunk, findAll, type FindChunksArgs } from 'highlight-words-core';
 
 import type { Matcher, TextRange } from '@/utils/find-replace';
+import { findChunks, type FindChunksArgs } from '@/utils/highlightWords';
 
 /** A Hangul syllable, compatibility jamo or conjoining jamo: what turns a keyword into a Hangul search. */
 const HANGUL = /[ᄀ-ᇿㄱ-ㆎ가-힣]/;
@@ -303,16 +303,15 @@ export function rankHits<T extends { hit: TextHit }>(hits: T[]): T[] {
 }
 
 /**
- * The chunks a palette row lights up: each word where the text holds it as
+ * The ranges a palette row lights up: each word where the text holds it as
  * typed, and a Hangul word where the text holds it by its letters, widened to
- * whole syllables. HighlightedText merges the ones that overlap.
+ * whole syllables. HighlightedText merges the ones that overlap or touch.
  */
-export function findPaletteChunks(args: FindChunksArgs): Chunk[] {
-  const typed = findAll(args).filter(chunk => chunk.highlight);
+export function findPaletteChunks(args: FindChunksArgs): TextRange[] {
   const spelled = args.searchWords.flatMap(word => {
     const query = hangulQueryOf(word);
     return query ? hangulRanges(args.textToHighlight, query) : [];
   });
 
-  return [...typed, ...spelled.map(range => ({ ...range, highlight: true }))];
+  return [...findChunks(args), ...spelled];
 }

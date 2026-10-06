@@ -22,11 +22,9 @@ const ENTRY = join(SOURCE_ROOT, 'peer', 'index.ts');
 
 /** The runtime dependencies the built engine chunks import, and no others. */
 const BARE_ALLOWLIST = new Set([
-  'deepmerge',
   'es-toolkit',
   'es-toolkit/compat',
   'graphql',
-  'luxon',
   'rxjs',
 ]);
 

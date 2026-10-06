@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { SchemaGCService } from '@/services/schema-gc/schemaGCService';
 
@@ -236,6 +236,70 @@ describe('SchemaGCService', () => {
     const result = await new SchemaGCService().run(source);
 
     expect(result.memoIds).toEqual(['m-4days']);
+  });
+
+  describe('at a fixed time', () => {
+    const NOW = Date.UTC(2026, 0, 15, 12, 0, 0);
+
+    const memoSource = (memos: Record<string, number>) =>
+      JSON.stringify({
+        version: '3.0.0',
+        collections: {
+          memoEntities: toEntities(
+            Object.entries(memos).map(([id, updateAt]) => memo(id, updateAt))
+          ),
+        },
+      });
+
+    const collect = async (source: string) => {
+      vi.useFakeTimers({ now: NOW });
+      return sorted((await new SchemaGCService().run(source)).memoIds);
+    };
+
+    const collectMemos = (memos: Record<string, number>) =>
+      collect(memoSource(memos));
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('collects from the fourth whole day of elapsed time on', async () => {
+      const result = await collectMemos({
+        'm-4days': Date.UTC(2026, 0, 11, 12, 0, 0),
+        'm-4days-less-1ms': Date.UTC(2026, 0, 11, 12, 0, 0) + 1,
+        'm-30days': Date.UTC(2025, 11, 16, 12, 0, 0),
+      });
+
+      expect(result).toEqual(['m-30days', 'm-4days']);
+    });
+
+    it('keeps an entity stamped later than now', async () => {
+      const result = await collectMemos({
+        'm-1ms-ahead': NOW + 1,
+        'm-10days-ahead': Date.UTC(2026, 0, 25, 12, 0, 0),
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('collects an entity stamped before the earliest time a Date holds', async () => {
+      const result = await collectMemos({
+        'm-1ms-before-date-range': -8640000000000001,
+        'm-minus-1e300': -1e300,
+        'm-plus-1e300': 1e300,
+      });
+
+      expect(result).toEqual(['m-1ms-before-date-range', 'm-minus-1e300']);
+    });
+
+    it('collects an entity whose stamp parses to minus infinity', async () => {
+      const source = memoSource({ 'm-minus-1e400': NOW }).replace(
+        `"updateAt":${NOW}`,
+        '"updateAt":-1e400'
+      );
+
+      expect(await collect(source)).toEqual(['m-minus-1e400']);
+    });
   });
 
   it('rejects when the source is not valid JSON', async () => {

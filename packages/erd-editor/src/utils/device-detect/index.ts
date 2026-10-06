@@ -1,34 +1,9 @@
-import getAgent, { getAccurateAgent } from '@egjs/agent';
+/** The platform the browser names, read on every call; empty without a navigator. */
+const readPlatform = (): string =>
+  typeof navigator === 'object' ? navigator.platform : '';
 
-const agent = getAgent();
+/** macOS or iOS, where $mod is Cmd rather than Ctrl. */
+export const hasAppleDevice = () => /Mac|iPod|iPhone|iPad/.test(readPlatform());
 
-let isMacintosh = agent.os.name === 'mac';
-let isIOS = agent.os.name === 'ios';
-let isAndroid = agent.os.name === 'android';
-let isWindows = agent.os.name === 'window';
-
-let isChrome = agent.browser.name === 'chrome';
-let isSafari = agent.browser.name === 'safari';
-let isFirefox = agent.browser.name === 'firefox';
-
-getAccurateAgent(agent => {
-  isMacintosh = agent.os.name === 'mac';
-  isIOS = agent.os.name === 'ios';
-  isAndroid = agent.os.name === 'android';
-  isWindows = agent.os.name === 'window';
-
-  isChrome = agent.browser.name === 'chrome';
-  isSafari = agent.browser.name === 'safari';
-  isFirefox = agent.browser.name === 'firefox';
-});
-
-export const hasAppleDevice = () => isMacintosh || isIOS;
-
-export const hasMacintosh = () => isMacintosh;
-export const hasIOS = () => isIOS;
-export const hasAndroid = () => isAndroid;
-export const hasWindows = () => isWindows;
-
-export const hasChrome = () => isChrome;
-export const hasSafari = () => isSafari;
-export const hasFirefox = () => isFirefox;
+/** Windows, whose browsers all name it Win32 and where AltGr is Ctrl and Alt held. */
+export const hasWindows = () => readPlatform() === 'Win32';

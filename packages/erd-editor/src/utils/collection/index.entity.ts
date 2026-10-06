@@ -1,11 +1,11 @@
 import { uuid25 } from '@dineug/uuid';
-import merge from 'deepmerge';
 
 import { DeepPartial, Index } from '@/internal-types';
 import { getDefaultEntityMeta } from '@/utils';
+import { deepMerge } from '@/utils/deepMerge';
 
 export const createIndex = (value?: DeepPartial<Index>): Index =>
-  merge(
+  deepMerge<Index>(
     {
       id: uuid25(),
       name: '',
@@ -15,5 +15,5 @@ export const createIndex = (value?: DeepPartial<Index>): Index =>
       unique: false,
       meta: getDefaultEntityMeta(),
     },
-    (value as Index) ?? {}
+    value ?? {}
   );
