@@ -1,7 +1,14 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../support/fixtures';
-import { twoTables } from '../support/schema';
+import {
+  ColumnOption,
+  ColumnUIKey,
+  createSchema,
+  RelationshipType,
+  twoTables,
+} from '../support/schema';
+import { Shortcut } from '../support/shortcuts';
 
 /**
  * Collaborative presence through the real transport: a second editor on the
@@ -422,5 +429,167 @@ test.describe('shared presence', () => {
           : Infinity;
       })
       .toBeLessThan(0.1);
+  });
+});
+
+/**
+ * users and posts, whose user_id and author_id a key can be mapped onto, and,
+ * when asked, the relationship from users.id to posts.user_id.
+ */
+function mappable({ linked = false } = {}) {
+  const key = {
+    options: ColumnOption.primaryKey | ColumnOption.notNull,
+    keys: ColumnUIKey.primaryKey,
+  };
+
+  return createSchema({
+    tables: [
+      {
+        id: 'users',
+        name: 'users',
+        x: 160,
+        y: 160,
+        columns: [{ id: 'users_id', name: 'id', dataType: 'int', ...key }],
+      },
+      {
+        id: 'posts',
+        name: 'posts',
+        x: 760,
+        y: 420,
+        columns: [
+          { id: 'posts_id', name: 'id', dataType: 'int', ...key },
+          {
+            id: 'posts_user_id',
+            name: 'user_id',
+            dataType: 'int',
+            keys: linked ? ColumnUIKey.foreignKey : 0,
+          },
+          { id: 'posts_author_id', name: 'author_id', dataType: 'int' },
+        ],
+      },
+    ],
+    relationships: linked
+      ? [
+          {
+            id: 'users_posts',
+            relationshipType: RelationshipType.OneN,
+            startTableId: 'users',
+            startColumnIds: ['users_id'],
+            endTableId: 'posts',
+            endColumnIds: ['posts_user_id'],
+          },
+        ]
+      : [],
+  });
+}
+
+/** The relationships the peer holds, each by its id and its two column lists. */
+const peerRelationships = (page: Page) =>
+  page.evaluate(() => {
+    const { doc, collections } = JSON.parse(
+      document.querySelector<any>('#peer erd-editor').value
+    );
+    return doc.relationshipIds.map((id: string) => {
+      const { start, end } = collections.relationshipEntities[id];
+      return { id, start: start.columnIds, end: end.columnIds };
+    });
+  });
+
+const mapColumnsOf = (page: Page) =>
+  page.locator(LOCAL).getByRole('dialog', { name: 'Map Columns' });
+
+test.describe('shared mapping', () => {
+  test('a mapping made in Map Columns reaches the peer', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(mappable());
+    await erd.focusCanvas();
+    const users = await erd.tableHeaderPoint('users');
+    const posts = centreOf(await erd.sceneBox('#table-posts'));
+    await attachPeer(page);
+
+    await erd.press(Shortcut.relationshipZeroN);
+    await page.mouse.click(users.x, users.y);
+    await page.mouse.move(posts.x, posts.y, { steps: 4 });
+    await page.locator(LOCAL).locator('.draw-target-map').click();
+    const dialog = mapColumnsOf(page);
+    await dialog
+      .getByRole('combobox', { name: 'Foreign key column' })
+      .selectOption({ label: 'user_id (int)' });
+    await dialog.getByRole('button', { name: 'Map', exact: true }).click();
+
+    await expect
+      .poll(async () =>
+        (await peerRelationships(page)).map(
+          ({ start, end }: { start: string[]; end: string[] }) => ({
+            start,
+            end,
+          })
+        )
+      )
+      .toEqual([{ start: ['users_id'], end: ['posts_user_id'] }]);
+  });
+
+  test('a mapping edited from the relationship menu reaches the peer with the same id', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(mappable({ linked: true }));
+    const connector = await erd.sceneHitPoint('users_posts');
+    await attachPeer(page);
+
+    await page.mouse.click(connector.x, connector.y, { button: 'right' });
+    await page
+      .locator(LOCAL)
+      .locator('.context-menu-content')
+      .getByText('Map Columns', { exact: true })
+      .click();
+    const dialog = mapColumnsOf(page);
+    await dialog
+      .getByRole('combobox', { name: 'Foreign key column' })
+      .selectOption({ label: 'author_id (int)' });
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+
+    await expect
+      .poll(() => peerRelationships(page))
+      .toEqual([
+        { id: 'users_posts', start: ['users_id'], end: ['posts_author_id'] },
+      ]);
+  });
+
+  test('an open Map Columns closes with a toast when the peer removes its relationship', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(mappable({ linked: true }));
+    const connector = await erd.sceneHitPoint('users_posts');
+    await attachPeer(page);
+
+    await page.mouse.click(connector.x, connector.y, { button: 'right' });
+    await page
+      .locator(LOCAL)
+      .locator('.context-menu-content')
+      .getByText('Map Columns', { exact: true })
+      .click();
+    const dialog = mapColumnsOf(page);
+    await expect(dialog).toBeVisible();
+
+    await page.evaluate(() => {
+      const peer = document.querySelector<any>('#peer erd-editor');
+      peer
+        .getSharedStore()
+        .dispatch([
+          { type: 'relationship.remove', payload: { id: 'users_posts' } },
+        ]);
+    });
+
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page
+        .locator(LOCAL)
+        .getByText('Map Columns closed: the relationship was removed')
+    ).toBeVisible();
+    expect(await erd.relationshipIds()).toEqual([]);
   });
 });

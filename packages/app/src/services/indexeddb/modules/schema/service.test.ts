@@ -126,6 +126,15 @@ const usersAndOrders = [
   },
 ];
 
+/** A second column of orders, for the relationship to be pointed at instead. */
+const ordersBuyer = [
+  { type: 'column.add', payload: { id: 'orders.buyer', tableId: 'orders' } },
+  {
+    type: 'column.changeName',
+    payload: { id: 'orders.buyer', tableId: 'orders', value: 'buyer_id' },
+  },
+];
+
 /** A document as the engine leaves it once its hooks have run, derived fields included. */
 async function settledValueOf(actions: any[]) {
   const store = createReplicationStore({ toWidth });
@@ -303,6 +312,40 @@ describe('SchemaService', () => {
 
       expect(rows.get(row.id)!.updateAt).toBeGreaterThanOrEqual(OPENED);
       expect(JSON.parse(rows.get(row.id)!.value).doc.memoIds).toEqual(['m1']);
+    });
+
+    it('saves a mapping another tab changed, the foreign key mark moved to the column it now ends on, as an edit', async () => {
+      const row = seed(rows, {
+        value: await settledValueOf([...usersAndOrders, ...ordersBuyer]),
+      });
+
+      await service.replication(row.id, [
+        {
+          type: 'relationship.changeColumns',
+          payload: {
+            id: 'placed',
+            start: { tableId: 'users', columnIds: ['users.id'] },
+            end: { tableId: 'orders', columnIds: ['orders.buyer'] },
+          },
+        },
+      ]);
+      await settle();
+
+      const saved = rows.get(row.id)!;
+      const { collections } = JSON.parse(saved.value);
+      expect(collections.relationshipEntities.placed.end.columnIds).toEqual([
+        'orders.buyer',
+      ]);
+      expect(collections.tableColumnEntities['orders.buyer'].ui.keys).toBe(2);
+      expect(collections.tableColumnEntities['orders.user'].ui.keys).toBe(0);
+      expect(saved.updateAt).toBeGreaterThanOrEqual(OPENED);
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      expect(postMessage).toHaveBeenCalledWith(
+        updateSchemaEntityAction({
+          id: row.id,
+          entityValue: { updateAt: saved.updateAt },
+        })
+      );
     });
 
     it('measures the next change against the last save', async () => {

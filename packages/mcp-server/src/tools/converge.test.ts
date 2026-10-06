@@ -1,10 +1,19 @@
+import { bHas, relationshipActions } from '@dineug/erd-editor/peer.js';
+import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { comparable, settle } from '@/__test-utils__/mcp';
 import { TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
-import { createPeerSession, type PeerSession } from '@/__test-utils__/seed';
+import {
+  createPeerSession,
+  type PeerSession,
+  SEED,
+} from '@/__test-utils__/seed';
+import { entityReader, readDocument } from '@/tools/read';
 import { actionTools } from '@/tools/registry';
 import { runTool } from '@/tools/run';
+
+const { ColumnUIKey } = SchemaV3Constants;
 
 const sessions: PeerSession[] = [];
 
@@ -37,4 +46,59 @@ describe('two peers converge over every tool (AC-E5)', () => {
       );
     }
   );
+});
+
+/**
+ * No tool sends relationship.changeColumns, the edit the editor's Map Columns
+ * dialog makes, but an agent joined to that editor takes it like any batch.
+ */
+describe('a mapping the editor changes reaches the agent', () => {
+  it('erd_get and erd_read show the columns the relationship now ends on', async () => {
+    const session = createPeerSession();
+    sessions.push(session);
+    await quiet();
+
+    const start = { tableId: SEED.users, columnIds: [SEED.userId] };
+    const end = { tableId: SEED.orders, columnIds: [SEED.orderId] };
+    session.other.dispatch([
+      relationshipActions.changeRelationshipColumnsAction({
+        id: SEED.relationship,
+        start,
+        end,
+      }),
+    ]);
+    await quiet();
+
+    const { state } = session.agent;
+    const mapping = {
+      id: SEED.relationship,
+      relationshipType: 'OneN',
+      start,
+      end,
+    };
+    const got = JSON.parse(
+      entityReader({ relationshipIds: [SEED.relationship] }).render(state)
+    );
+    expect(got.relationships).toEqual([expect.objectContaining(mapping)]);
+    const snapshot = JSON.parse(readDocument(state, 'snapshot'));
+    expect(snapshot.relationships).toEqual([expect.objectContaining(mapping)]);
+
+    // What the engine reads off the mapping follows it on the agent's side:
+    // the foreign key mark moves to the new end column, and a relationship
+    // ending on the child's whole primary key becomes identifying.
+    const { collections } = JSON.parse(readDocument(state, 'json'));
+    const isForeignKey = (columnId: string) =>
+      bHas(
+        collections.tableColumnEntities[columnId].ui.keys,
+        ColumnUIKey.foreignKey
+      );
+    expect(isForeignKey(SEED.orderId)).toBe(true);
+    expect(isForeignKey(SEED.orderUser)).toBe(false);
+    expect(
+      collections.relationshipEntities[SEED.relationship].identification
+    ).toBe(true);
+    expect(comparable(session.agent.value)).toEqual(
+      comparable(session.other.value)
+    );
+  });
 });
