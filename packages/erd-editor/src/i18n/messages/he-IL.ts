@@ -56,7 +56,7 @@ export const heIL = {
   'common.placeholder.table': 'טבלה',
   'common.placeholder.column': 'עמודה',
   'common.placeholder.comment': 'הערה',
-  'common.placeholder.default': 'ברירת מחדל',
+  'common.placeholder.default': 'DEFAULT',
   'common.placeholder.dataType': 'סוג נתונים',
   'common.toast.noTablesToPlace': 'אין טבלאות למיקום',
   'common.toast.couldNotPlaceTables': 'לא ניתן היה למקם את הטבלאות',

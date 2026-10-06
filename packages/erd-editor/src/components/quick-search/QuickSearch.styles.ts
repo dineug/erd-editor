@@ -134,6 +134,7 @@ export const action = css`
 
 export const icon = css`
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   min-width: 14px;
   margin-inline-end: 8px;
@@ -145,11 +146,22 @@ export const name = css`
   ${typography.normal};
 `;
 
+/*
+ * Takes only the room the name leaves, so a row cuts its description first,
+ * and sits by the rule on the row's side, whichever way its own text runs.
+ */
 export const keyword = css`
+  flex: 1 1 0;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
   color: var(--placeholder);
   ${typography.paragraph};
+
+  [dir='rtl'] & {
+    text-align: right;
+  }
 `;
 
 export const vertical = css`

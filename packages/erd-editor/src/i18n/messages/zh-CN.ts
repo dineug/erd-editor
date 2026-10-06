@@ -48,7 +48,7 @@ export const zhCN = {
   'common.placement.treeHorizontal': '树形 - 水平',
   'common.column.name': '名称',
   'common.column.dataType': '数据类型',
-  'common.column.notNull': '非空',
+  'common.column.notNull': 'NOT NULL',
   'common.column.unique': '唯一',
   'common.column.autoIncrement': '自动递增',
   'common.column.default': '默认值',

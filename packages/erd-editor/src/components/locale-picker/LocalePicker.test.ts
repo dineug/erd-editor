@@ -227,7 +227,7 @@ describe('LocalePicker', () => {
   });
 
   describe('rows', () => {
-    it('lists System, a separator, then the 25 languages in the picker order', async () => {
+    it('lists System and a separator pinned together, then the 25 languages in the picker order', async () => {
       await setup();
       await open();
 
@@ -235,8 +235,11 @@ describe('LocalePicker', () => {
         'system',
         ...LOCALES.map(({ code }) => code),
       ]);
-      expect(rows()[0].nextElementSibling).not.toBe(rows()[1]);
-      expect(list().children).toHaveLength(27);
+      const pinned = rows()[0].parentElement as HTMLElement;
+      expect(pinned.parentElement).toBe(list());
+      expect(pinned.classList.contains(String(styles.pinned))).toBe(true);
+      expect(pinned.children).toHaveLength(2);
+      expect(list().children).toHaveLength(26);
     });
 
     it('names each language in itself, marked with its own language', async () => {

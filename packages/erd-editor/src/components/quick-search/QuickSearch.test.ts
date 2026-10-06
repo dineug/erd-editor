@@ -1,5 +1,12 @@
-import { html } from '@dineug/r-html';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import { html, render } from '@dineug/r-html';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
@@ -12,6 +19,7 @@ import {
 import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mount,
   Mounted,
@@ -1369,17 +1377,23 @@ describe('QuickSearch Hangul', () => {
 describe('QuickSearch preferences and language', () => {
   let localeProvider: { destroy: () => void } | null = null;
 
+  const view = (props: QuickSearchProps) =>
+    html`<${QuickSearch}
+      .appearance=${props.appearance}
+      .locale=${props.locale}
+    />`;
+
   /** Mounts the palette again, under a language provided above it and with the options of the pickers the element offers. */
   const remount = async (i18n: I18n | null, props: QuickSearchProps = {}) => {
     mounted?.unmount();
     localeProvider = i18n ? provideI18n(document.body, i18n) : null;
-    mounted = mount(
-      html`<${QuickSearch}
-        .appearance=${props.appearance}
-        .locale=${props.locale}
-      />`,
-      app
-    );
+    mounted = mount(view(props), app);
+    await flush();
+  };
+
+  /** Hands the mounted palette other options in force, as the element does when its host changes one. */
+  const rerender = async (props: QuickSearchProps) => {
+    render(mounted!.container, view(props));
     await flush();
   };
 
@@ -1430,6 +1444,143 @@ describe('QuickSearch preferences and language', () => {
     await click(rowNamed('Display Language'));
     expect(rows()).toHaveLength(26);
     expect(checkedNames()).toEqual(['한국어']);
+  });
+
+  it('opens a submenu on its option in force, scrolled to it, so Enter keeps that option', async () => {
+    const scrolled: string[] = [];
+    const scroll = vi
+      .spyOn(Element.prototype, 'scrollIntoView')
+      .mockImplementation(function (this: Element) {
+        scrolled.push(this.textContent?.trim() ?? '');
+      });
+    try {
+      await remount(null, { appearance: 'dark', locale: 'ko-KR' });
+      await open();
+
+      await click(rowNamed('Theme'));
+      expect(rowNames()[selectedIndex()]).toBe('Dark');
+
+      await open();
+      await open();
+      await click(rowNamed('Display Language'));
+      expect(rowNames()[selectedIndex()]).toBe('한국어');
+      expect(scrolled.at(-1)).toBe('한국어');
+
+      await keydown('ArrowUp');
+      expect(selectedIndex()).toBe(rowNames().indexOf('한국어') - 1);
+    } finally {
+      scroll.mockRestore();
+    }
+  });
+
+  it('opens a submenu with no option in force on no row', async () => {
+    await remount(null, { appearance: 'dark' });
+    await open();
+
+    await click(rowNamed('Tab'));
+
+    expect(selectedIndex()).toBe(-1);
+  });
+
+  it('follows a switch of language while open, at the top level and in a submenu', async () => {
+    const i18n = createTestI18n('en');
+    await remount(i18n, { appearance: 'dark', locale: 'system' });
+    await open();
+    expect(rowNames()[0]).toBe('Tab');
+
+    Object.assign(i18n, createI18n('de-DE', pseudoMessages('de')));
+    await flush();
+    expect(rowNames()[0]).toBe('de:Tab');
+    expect(input().getAttribute('placeholder')).toBe('de:Search');
+
+    await click(rowNamed('de:Theme'));
+    Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+    await flush();
+
+    expect(rowNames()).toEqual(['ko:System', 'ko:Light', 'ko:Dark']);
+    expect(checkedNames()).toEqual(['ko:Dark']);
+    expect(rowNames()[selectedIndex()]).toBe('ko:Dark');
+  });
+
+  it('keeps what is typed when the language switches under it', async () => {
+    const i18n = createTestI18n('en');
+    await remount(i18n, { appearance: 'dark', locale: 'system' });
+    await open();
+    await click(rowNamed('Display Language'));
+    await type('deutsch');
+    const found = rowNames();
+    expect(found[0]).toBe('Deutsch');
+
+    Object.assign(i18n, createI18n('de-DE', pseudoMessages('de')));
+    await flush();
+
+    expect(input().value).toBe('deutsch');
+    expect(rowNames()).toEqual(found);
+
+    await type('');
+    await open();
+    await open();
+    await type('tab');
+    Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+    await flush();
+
+    expect(input().value).toBe('tab');
+    expect(rowNames()[0]).toBe('ko:Tab');
+  });
+
+  it('moves its check when the host changes an option in force while it is open', async () => {
+    await remount(null, { appearance: 'dark', locale: 'system' });
+    await open();
+    await click(rowNamed('Display Language'));
+    expect(checkedNames()).toEqual(['System']);
+
+    await rerender({ appearance: 'dark', locale: 'ja-JP' });
+
+    expect(checkedNames()).toEqual(['日本語']);
+    expect(rowNames()[selectedIndex()]).toBe('日本語');
+  });
+
+  it('goes back to the top level when the host takes away the submenu shown', async () => {
+    await remount(null, { appearance: 'dark', locale: 'system' });
+    await open();
+    await click(rowNamed('Theme'));
+
+    await rerender({ locale: 'system' });
+
+    expect(rowNames()[0]).toBe('Tab');
+    expect(rowNames()).toContain('Display Language');
+    expect(rowNames()).not.toContain('Theme');
+    expect(selectedIndex()).toBe(-1);
+  });
+
+  it('keeps the submenu shown when the host takes away a row before it', async () => {
+    await remount(null, { appearance: 'dark', locale: 'system' });
+    await open();
+    await click(rowNamed('Display Language'));
+
+    await rerender({ locale: 'ja-JP' });
+
+    expect(rows()).toHaveLength(26);
+    expect(checkedNames()).toEqual(['日本語']);
+    expect(rowNames()[selectedIndex()]).toBe('日本語');
+  });
+
+  it('reads no message for a switch while it is closed', async () => {
+    const i18n = createTestI18n('en');
+    await remount(i18n, { appearance: 'dark', locale: 'system' });
+    const next = createI18n('de-DE', pseudoMessages('de'));
+    const t = vi.fn(next.t);
+
+    Object.assign(i18n, { ...next, t });
+    await flush();
+
+    expect(isOpen()).toBe(false);
+    expect(t).not.toHaveBeenCalled();
+
+    await open();
+    expect(t).toHaveBeenCalled();
+    expect(rowNames()[0]).toBe('de:Tab');
+    expect(selectedIndex()).toBe(-1);
   });
 
   it('asks the element for the appearance or the language picked, and closes', async () => {
@@ -1507,6 +1658,17 @@ describe('QuickSearch preferences and language', () => {
     expect(mounted?.container.textContent).not.toContain('New Table');
   });
 
+  it("lets what is typed take its own direction, so a prefix stays where it was typed, the empty input the page's", async () => {
+    await open();
+    expect(input().getAttribute('dir')).toBe('');
+
+    await type('@users');
+    expect(input().getAttribute('dir')).toBe('auto');
+
+    await type('');
+    expect(input().getAttribute('dir')).toBe('');
+  });
+
   it('lets the name and the keywords of a row take the direction of their own text', async () => {
     await open();
     const zeroOne = rows()[7];
@@ -1517,5 +1679,18 @@ describe('QuickSearch preferences and language', () => {
     expect(
       zeroOne.querySelector(`.${styles.keyword}`)?.getAttribute('dir')
     ).toBe('auto');
+  });
+
+  it("titles a row's keywords with their whole text, which a narrow row cuts first", async () => {
+    await open();
+    await type('?');
+
+    const keywords = rows().map(row =>
+      row.querySelector<HTMLElement>(`.${styles.keyword}`)!
+    );
+    expect(keywords.length).toBeGreaterThan(0);
+    for (const keyword of keywords) {
+      expect(keyword.title).toBe(keyword.textContent?.trim());
+    }
   });
 });

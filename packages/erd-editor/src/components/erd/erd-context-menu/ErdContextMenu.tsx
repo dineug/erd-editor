@@ -4,6 +4,7 @@ import { FC, onMounted } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import { useI18n } from '@/components/localeContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
+import SubmenuChevron from '@/components/primitives/context-menu/submenu-chevron/SubmenuChevron';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { Open } from '@/constants/open';
@@ -107,7 +108,7 @@ const isOneOfSelection = (
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const i18n = useI18n(ctx);
-  const chevronRightIcon = <Icon name="chevron-right" size={14} />;
+  const chevronRightIcon = <SubmenuChevron />;
   const { addUnsubscribe } = useUnmounted();
 
   const handleAddTable = () => {
@@ -478,6 +479,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                                 ) : null
                               }
                               name={menu.name}
+                              literal={true}
                               right={
                                 menu.note ? (
                                   <span style={{ color: 'var(--placeholder)' }}>
@@ -612,6 +614,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                               ) : null
                             }
                             name={menu.name}
+                            literal={true}
                           />
                         }
                       />

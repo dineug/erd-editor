@@ -63,16 +63,30 @@ export const lockSection = css`
   margin-bottom: 16px;
 `;
 
-export const lockRow = css`
-  display: flex;
+/*
+ * The rows share the names' column, as wide as the longest name and never
+ * under 140px, so a longer language moves every value along and covers none.
+ */
+export const lockList = css`
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) max-content;
+  grid-auto-rows: 28px;
   align-items: center;
-  height: 28px;
   white-space: nowrap;
 `;
 
+export const lockRow = css`
+  display: contents;
+`;
+
 export const lockName = css`
-  width: 140px;
-  flex-shrink: 0;
+  padding-inline-end: 12px;
+`;
+
+/* A row's value and its button, so a long value moves its own button alone. */
+export const lockControl = css`
+  display: flex;
+  align-items: center;
 `;
 
 /* The value the file keeps, dimmed while unlocked, when it follows the screen. */

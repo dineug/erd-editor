@@ -87,6 +87,10 @@ export type Action = {
   insert?: string;
   /** The English of a translated name and keywords, each its own text, which a search also reads and the list never shows. */
   alias?: string[];
+  /** The option in force among a submenu's rows, which the submenu opens on. */
+  checked?: boolean;
+  /** The message key of a row opening a submenu, by which an open palette finds that submenu again in a rebuilt level. */
+  id?: PlainMessageKey;
   filter?: (app: AppContext) => boolean;
   perform?: (app: AppContext) => void;
   next?: Action[];
@@ -135,6 +139,15 @@ export function named(
 
   return alias.length ? { ...row, alias } : row;
 }
+
+/** A row opening a submenu, named as named() names it and known by its message key in any language. */
+const submenuNamed = (
+  i18n: Pick<I18n, 't'>,
+  key: PlainMessageKey
+): Pick<Action, 'id' | 'name' | 'keywords' | 'alias'> => ({
+  id: key,
+  ...named(i18n, key),
+});
 
 /** Whether a row holds the keyword as typed, in any case, in a text a search reads: what Find and Replace would find. */
 const holdsAsTyped = (action: Action, keyword: string): boolean => {
@@ -280,9 +293,11 @@ export type PalettePreferences = {
   locale?: LocaleOption;
 };
 
-/** The check a submenu row draws beside the option in force. */
-const checkIcon = (checked: boolean) =>
-  checked ? <Icon name="check" size={16} /> : null;
+/** A submenu row's check, drawn beside the option in force, which the submenu opens on. */
+const checkOf = (checked: boolean): Pick<Action, 'icon' | 'checked'> => ({
+  icon: checked ? <Icon name="check" size={16} /> : null,
+  checked,
+});
 
 /**
  * The palette's top level: the commands of every tab, then a jump to each
@@ -299,14 +314,14 @@ export function createScopeActions(
 
   return [
     {
-      ...named(i18n, 'palette.tab'),
+      ...submenuNamed(i18n, 'palette.tab'),
       next: createTabActions(i18n),
     },
     {
       icon: <Icon name="database" size={16} />,
-      ...named(i18n, 'common.database'),
+      ...submenuNamed(i18n, 'common.database'),
       next: databaseMenus.map<Action>(menu => ({
-        icon: checkIcon(menu.value === settings.database),
+        ...checkOf(menu.value === settings.database),
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -325,7 +340,7 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="file-input" size={16} />,
-      ...named(i18n, 'common.import'),
+      ...submenuNamed(i18n, 'common.import'),
       next: createImportActions('replace', i18n),
       filter: ({ store }) => {
         return store.state.settings.canvasType === CanvasType.ERD;
@@ -333,7 +348,7 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="file-input" size={16} />,
-      ...named(i18n, 'common.importAndAdd'),
+      ...submenuNamed(i18n, 'common.importAndAdd'),
       next: createImportActions('append', i18n),
       filter: ({ store }) => {
         return (
@@ -344,7 +359,7 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="file-output" size={16} />,
-      ...named(i18n, 'common.export'),
+      ...submenuNamed(i18n, 'common.export'),
       next: [
         {
           icon: <Icon name="braces" size={16} />,
@@ -410,7 +425,7 @@ export function createScopeActions(
     })),
     {
       icon: <Icon name="wand-sparkles" size={16} />,
-      ...named(i18n, 'common.autoLayout'),
+      ...submenuNamed(i18n, 'common.autoLayout'),
       next: tablePlacementMenus.map<Action>(menu => ({
         icon: <Icon name={menu.iconName} size={16} />,
         ...named(i18n, menu),
@@ -426,9 +441,9 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="brackets" size={16} />,
-      ...named(i18n, 'common.bracket'),
+      ...submenuNamed(i18n, 'common.bracket'),
       next: bracketMenus.map<Action>(menu => ({
-        icon: checkIcon(menu.value === settings.bracketType),
+        ...checkOf(menu.value === settings.bracketType),
         ...named(i18n, menu),
         perform: ({ store }) => {
           store.dispatch(
@@ -444,9 +459,9 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="code" size={16} />,
-      ...named(i18n, 'common.codeLanguage'),
+      ...submenuNamed(i18n, 'common.codeLanguage'),
       next: languageMenus.map<Action>(menu => ({
-        icon: checkIcon(menu.value === settings.language),
+        ...checkOf(menu.value === settings.language),
         name: menu.name,
         perform: ({ store }) => {
           store.dispatch(
@@ -462,9 +477,9 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="case-sensitive" size={16} />,
-      ...named(i18n, 'common.tableNameCase'),
+      ...submenuNamed(i18n, 'common.tableNameCase'),
       next: tableNameCaseMenus.map<Action>(menu => ({
-        icon: checkIcon(menu.value === settings.tableNameCase),
+        ...checkOf(menu.value === settings.tableNameCase),
         ...named(i18n, menu),
         perform: ({ store }) => {
           store.dispatch(
@@ -480,9 +495,9 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="case-sensitive" size={16} />,
-      ...named(i18n, 'common.columnNameCase'),
+      ...submenuNamed(i18n, 'common.columnNameCase'),
       next: columnNameCaseMenus.map<Action>(menu => ({
-        icon: checkIcon(menu.value === settings.columnNameCase),
+        ...checkOf(menu.value === settings.columnNameCase),
         ...named(i18n, menu),
         perform: ({ store }) => {
           store.dispatch(
@@ -534,9 +549,9 @@ export function createPreferenceActions(
   if (appearance !== undefined) {
     actions.push({
       icon: <Icon name="contrast" size={16} />,
-      ...named(i18n, 'common.theme'),
+      ...submenuNamed(i18n, 'common.theme'),
       next: APPEARANCES.map<Action>(option => ({
-        icon: checkIcon(option.appearance === appearance),
+        ...checkOf(option.appearance === appearance),
         ...named(i18n, option.labelKey),
         perform: ({ emitter }) => {
           emitter.emit(
@@ -556,15 +571,15 @@ export function createPreferenceActions(
 
     actions.push({
       icon: <Icon name="languages" size={16} />,
-      ...named(i18n, 'common.displayLanguage'),
+      ...submenuNamed(i18n, 'common.displayLanguage'),
       next: [
         {
-          icon: checkIcon(locale === SYSTEM_LOCALE),
+          ...checkOf(locale === SYSTEM_LOCALE),
           ...named(i18n, 'common.system'),
           perform: pick(SYSTEM_LOCALE),
         },
         ...LOCALES.map<Action>(({ code, label, english }) => ({
-          icon: checkIcon(locale === code),
+          ...checkOf(locale === code),
           name: label,
           alias: [english, code],
           perform: pick(code),

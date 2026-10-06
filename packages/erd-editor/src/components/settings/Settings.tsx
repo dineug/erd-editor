@@ -236,55 +236,59 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                 <div class={styles.lockSection}>
                   <div>{t('settings.lockHeading')}</div>
                   <Separator space={12} />
-                  {lockSettingRows.map(row => {
-                    const locked = bHas(
-                      settings.lockSettings,
-                      row.lockSettingType
-                    );
-                    const name = t(row.nameKey);
+                  <div class={styles.lockList}>
+                    {lockSettingRows.map(row => {
+                      const locked = bHas(
+                        settings.lockSettings,
+                        row.lockSettingType
+                      );
+                      const name = t(row.nameKey);
 
-                    return (
-                      <div class={styles.lockRow}>
-                        <div class={styles.lockName}>{name}</div>
-                        <div
-                          class={styles.lockValue}
-                          bool:data-locked={locked}
-                          title={
-                            locked
-                              ? t('settings.lockedValue')
-                              : t('settings.currentValue')
-                          }
-                        >
-                          <span prop:dir="auto">
-                            {row.toText(
-                              locked ? settings.lockedValues : liveValues,
-                              i18n.value
-                            )}
-                          </span>
+                      return (
+                        <div class={styles.lockRow}>
+                          <div class={styles.lockName}>{name}</div>
+                          <div class={styles.lockControl}>
+                            <div
+                              class={styles.lockValue}
+                              bool:data-locked={locked}
+                              title={
+                                locked
+                                  ? t('settings.lockedValue')
+                                  : t('settings.currentValue')
+                              }
+                            >
+                              <span prop:dir="auto">
+                                {row.toText(
+                                  locked ? settings.lockedValues : liveValues,
+                                  i18n.value
+                                )}
+                              </span>
+                            </div>
+                            <button
+                              class={styles.lockButton}
+                              type="button"
+                              title={
+                                locked
+                                  ? t('settings.unlockSetting', { name })
+                                  : t('settings.lockSetting', { name })
+                              }
+                              aria-pressed={locked ? 'true' : 'false'}
+                              bool:data-locked={locked}
+                              on:click={() =>
+                                handleChangeLock(row.lockSettingType, !locked)
+                              }
+                            >
+                              {locked ? (
+                                <Icon name="lock" size={14} />
+                              ) : (
+                                <Icon name="lock-open" size={14} />
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          class={styles.lockButton}
-                          type="button"
-                          title={
-                            locked
-                              ? t('settings.unlockSetting', { name })
-                              : t('settings.lockSetting', { name })
-                          }
-                          aria-pressed={locked ? 'true' : 'false'}
-                          bool:data-locked={locked}
-                          on:click={() =>
-                            handleChangeLock(row.lockSettingType, !locked)
-                          }
-                        >
-                          {locked ? (
-                            <Icon name="lock" size={14} />
-                          ) : (
-                            <Icon name="lock-open" size={14} />
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div class={styles.columnOrderSection}>
@@ -292,7 +296,6 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   <Separator space={12} />
                   <div
                     class={styles.columnOrderList}
-                    prop:dir="ltr"
                     on:dragenter={onPrevent}
                     on:dragover={onPrevent}
                   >

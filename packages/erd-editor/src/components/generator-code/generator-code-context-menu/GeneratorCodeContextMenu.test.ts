@@ -176,6 +176,18 @@ describe('GeneratorCodeContextMenu', () => {
     expect(checkedNameOf(submenu)).toEqual(['GraphQL']);
   });
 
+  it('keeps each language name left to right, so C# reads as C# in a right-to-left menu', async () => {
+    await openMenu();
+
+    const submenu = await openSubmenu('Language');
+    const names = rowsOf(submenu).map(row =>
+      Array.from(row.querySelectorAll('[dir="ltr"]'), el => el.textContent)
+    );
+
+    expect(names[0]).toEqual(['C#']);
+    expect(names.every(found => found.length === 1)).toBe(true);
+  });
+
   it('changes the language and moves the check when a language row is clicked', async () => {
     const { app } = await openMenu();
 

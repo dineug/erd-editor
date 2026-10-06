@@ -1882,4 +1882,11 @@ describe('FindReplace in the language the editor shows', () => {
     const excerpt = rows()[0].querySelector('span');
     expect(excerpt?.getAttribute('dir')).toBe('auto');
   });
+
+  it("lets what is typed to find take its own direction, the empty replace field the page's", async () => {
+    await openWith('user');
+
+    expect(findInput().getAttribute('dir')).toBe('auto');
+    expect(replaceInput()?.getAttribute('dir')).toBe('');
+  });
 });

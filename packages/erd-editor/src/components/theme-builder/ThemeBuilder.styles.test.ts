@@ -90,12 +90,15 @@ describe('ThemeBuilder.styles', () => {
     expect(styles.color.values).toEqual([]);
   });
 
-  it('lays the three appearance buttons out as a three column grid', () => {
+  it('lays the three appearance buttons out as a three column grid that never wraps a label', () => {
     const source = styles.appearanceButtonGroup.strings.join('');
 
     expect(source).toContain('display: grid');
     expect(source).toContain(
-      'grid-template-columns: repeat(3, minmax(0, 1fr))'
+      'grid-template-columns: repeat(3, minmax(max-content, 1fr))'
+    );
+    expect(styles.appearanceButton.strings.join('')).toContain(
+      'padding-inline: 8px'
     );
     expect(source).toContain('gap: 8px');
     expect(styles.appearanceButtonGroup.values).toEqual([]);

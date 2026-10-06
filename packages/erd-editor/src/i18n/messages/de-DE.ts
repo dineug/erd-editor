@@ -55,8 +55,8 @@ export const deDE = {
   'common.column.comment': 'Kommentar',
   'common.placeholder.table': 'tabelle',
   'common.placeholder.column': 'spalte',
-  'common.placeholder.comment': 'kommentar',
-  'common.placeholder.default': 'standardwert',
+  'common.placeholder.comment': 'komm.',
+  'common.placeholder.default': 'standard',
   'common.placeholder.dataType': 'datentyp',
   'common.toast.noTablesToPlace': 'Keine Tabellen zum Anordnen',
   'common.toast.couldNotPlaceTables':

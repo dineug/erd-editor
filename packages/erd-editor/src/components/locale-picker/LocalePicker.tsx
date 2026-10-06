@@ -236,16 +236,22 @@ const LocalePicker: FC<LocalePickerProps> = (props, ctx) => {
           role="listbox"
           aria-label={t('common.displayLanguage')}
         >
-          {renderOption(
-            SYSTEM_LOCALE,
-            <>
-              <span class={styles.label}>{t('common.system')}</span>
-              <span class={styles.hint} prop:lang={system.code} prop:dir="auto">
-                {system.label}
-              </span>
-            </>
-          )}
-          <Separator space={4} />
+          <div class={styles.pinned}>
+            {renderOption(
+              SYSTEM_LOCALE,
+              <>
+                <span class={styles.label}>{t('common.system')}</span>
+                <span
+                  class={styles.hint}
+                  prop:lang={system.code}
+                  prop:dir="auto"
+                >
+                  {system.label}
+                </span>
+              </>
+            )}
+            <Separator space={4} />
+          </div>
           {LOCALES.map(({ code, label }) =>
             renderOption(
               code,

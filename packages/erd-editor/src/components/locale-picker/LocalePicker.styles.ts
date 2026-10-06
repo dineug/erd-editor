@@ -30,10 +30,21 @@ export const title = css`
   ${typography.normal};
 `;
 
+/* Scrolls a row into view below the System row pinned at its top, a 32px row and a 9px rule. */
 export const list = css`
   overflow-y: auto;
   overscroll-behavior: contain;
   min-height: 0;
+  scroll-padding-block-start: 41px;
+`;
+
+/* System and the rule under it, its margins kept inside, which stay in view however far the languages scroll. */
+export const pinned = css`
+  display: flow-root;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--context-menu-background);
 `;
 
 export const option = css`

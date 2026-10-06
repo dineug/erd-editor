@@ -22,6 +22,9 @@ export type ContextMenuContentProps = {
   fit?: boolean;
   // The x a fitted submenu ends at when it opens to the left of its row.
   flipX?: number;
+  // Opens a fitted submenu to the left of its row first, as a right-to-left
+  // reader's does, and to the right only when the window cuts the left more.
+  openLeft?: boolean;
   children?: DOMTemplateLiterals;
 };
 
@@ -40,7 +43,14 @@ const ContextMenuContent: FC<ContextMenuContentProps> = (props, ctx) => {
     if (!props.fit) return;
 
     const rect = $content.value.getBoundingClientRect();
-    const measured = [props.x, props.y, props.flipX, rect.width, rect.height];
+    const measured = [
+      props.x,
+      props.y,
+      props.flipX,
+      props.openLeft,
+      rect.width,
+      rect.height,
+    ];
     if (measured.join() === fitted) return;
     fitted = measured.join();
 
@@ -54,7 +64,8 @@ const ContextMenuContent: FC<ContextMenuContentProps> = (props, ctx) => {
         height: rect.height,
       },
       { width: window.innerWidth, height: window.innerHeight },
-      isNil(props.flipX) ? undefined : props.flipX + offsetX
+      isNil(props.flipX) ? undefined : props.flipX + offsetX,
+      props.openLeft
     );
 
     if (state.dx !== dx) state.dx = dx;

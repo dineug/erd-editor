@@ -59,6 +59,11 @@ describe('WelcomeScreen.styles', () => {
     expect(source(hintStyles.down)).toContain('margin-inline: auto');
   });
 
+  it('wraps a hint label between phrases, which Chromium reads for Japanese alone', () => {
+    expect(source(hintStyles.label)).toContain('max-width: 220px');
+    expect(source(hintStyles.label)).toContain('word-break: auto-phrase');
+  });
+
   it('writes every side in logical terms, so a right-to-left language mirrors it', () => {
     for (const template of all) {
       expect(source(template)).not.toMatch(

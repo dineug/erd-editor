@@ -652,6 +652,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
               ]}
               title={t('common.find')}
               placeholder={t('common.find')}
+              dir="auto"
               value={state.query}
               onInput={handleQueryInput}
               onKeydown={handleQueryKeydown}
@@ -700,6 +701,7 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
                 class={['replace-input', styles.input]}
                 title={t('findReplace.replace')}
                 placeholder={t('findReplace.replace')}
+                dir="auto"
                 value={state.replacement}
                 onInput={handleReplacementInput}
                 onKeydown={handleReplacementKeydown}

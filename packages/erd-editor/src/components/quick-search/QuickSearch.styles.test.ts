@@ -164,6 +164,7 @@ describe('QuickSearch.styles', () => {
     const text = staticText(styles.icon);
 
     expect(text).toContain('min-width: 14px');
+    expect(text).toContain('flex-shrink: 0');
     expect(text).toContain('margin-inline-end: 8px');
     expect(text).not.toContain('margin-right');
     expect(text).toContain('align-items: center');
@@ -177,12 +178,22 @@ describe('QuickSearch.styles', () => {
     expect(styles.name.values).toContain(typography.normal);
   });
 
-  it('dims the keyword column with the placeholder color', () => {
+  it('dims the keyword column with the placeholder color, cut before the name is', () => {
     const text = staticText(styles.keyword);
+
+    expect(text).toContain('flex: 1 1 0');
+    expect(text).toContain('min-width: 0');
 
     expect(text).toContain('color: var(--placeholder)');
     expect(text).toContain('text-overflow: ellipsis');
     expect(styles.keyword.values).toContain(typography.paragraph);
+  });
+
+  it("aligns the keyword in its own direction to the row's side, beside the rule", () => {
+    const text = staticText(styles.keyword);
+
+    expect(text).toContain('text-align: left');
+    expect(text).toMatch(/\[dir='rtl'\] &\s*\{\s*text-align: right;/);
   });
 
   it('uses an 8px spacer between the name and the keyword', () => {

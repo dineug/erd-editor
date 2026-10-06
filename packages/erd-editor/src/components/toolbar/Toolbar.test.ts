@@ -174,6 +174,24 @@ describe('Toolbar', () => {
       }
     });
 
+    it('mirrors the undo and redo arrows for a right-to-left reader, following a switch', async () => {
+      const i18n = createTestI18n('en');
+      const provider = provideI18n(document.body, i18n);
+      const arrows = () =>
+        Array.from(root().querySelectorAll('.undo-redo'), iconNameOf);
+
+      try {
+        await setup();
+        expect(arrows()).toEqual(['undo-2', 'redo-2', 'rotate-ccw-clock']);
+
+        Object.assign(i18n, createI18n('ar-SA', pseudoMessages('ar')));
+        await flush();
+        expect(arrows()).toEqual(['redo-2', 'undo-2', 'rotate-ccw-clock']);
+      } finally {
+        provider.destroy();
+      }
+    });
+
     it('reads Find in the language shown in a read-only editor', async () => {
       const i18n = createTestI18n('ko-KR', pseudoMessages('ko'));
       const provider = provideI18n(document.body, i18n);

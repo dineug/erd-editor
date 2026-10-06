@@ -477,12 +477,12 @@ describe('Settings', () => {
   });
 
   describe('text direction', () => {
-    it('keeps the column order list left to right, as the table columns run', async () => {
+    it('lets the column order list follow the page, since its rows run down, not across', async () => {
       await setup();
 
       expect(
-        root().querySelector(`.${styles.columnOrderList}`)?.getAttribute('dir')
-      ).toBe('ltr');
+        root().querySelector(`.${styles.columnOrderList}`)?.hasAttribute('dir')
+      ).toBe(false);
     });
 
     it('lets each lock value text take its own direction inside a box that keeps the row direction', async () => {

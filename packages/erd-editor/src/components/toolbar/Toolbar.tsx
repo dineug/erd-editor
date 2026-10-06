@@ -4,6 +4,7 @@ import { useAppContext } from '@/components/appContext';
 import { isTakenOver } from '@/components/find-replace/panelLayout';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
+import { TOOLBAR_DATABASE_NAME_WIDTH } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
@@ -96,9 +97,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   return () => {
     const { store, keyBindingMap } = app.value;
     const { settings, editor, doc } = store.state;
-    const { t } = i18n.value;
+    const { t, dir } = i18n.value;
     const title = (name: string, keyBindingName: KeyBindingName) =>
       toShortcutTitle(keyBindingMap, name, keyBindingName);
+    // A right-to-left reader goes back to the right, so the two arrows swap.
+    const mirrored = dir === 'rtl';
 
     const showAutomaticTablePlacement =
       editor.openMap[Open.automaticTablePlacement];
@@ -123,7 +126,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         <input
           title={t('toolbar.databaseName')}
           placeholder={t('toolbar.databaseName')}
-          style={{ width: '150px' }}
+          style={{ width: `${TOOLBAR_DATABASE_NAME_WIDTH}px` }}
           type="text"
           spellcheck="false"
           prop:dir="auto"
@@ -233,7 +236,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               title={title(t('toolbar.undo'), KeyBindingName.undo)}
               on:click={handleUndo}
             >
-              <Icon name="undo-2" size={16} />
+              {mirrored ? (
+                <Icon name="redo-2" size={16} />
+              ) : (
+                <Icon name="undo-2" size={16} />
+              )}
             </div>
             <div
               class={[
@@ -246,7 +253,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               title={title(t('toolbar.redo'), KeyBindingName.redo)}
               on:click={handleRedo}
             >
-              <Icon name="redo-2" size={16} />
+              {mirrored ? (
+                <Icon name="undo-2" size={16} />
+              ) : (
+                <Icon name="redo-2" size={16} />
+              )}
             </div>
             <div
               class={[

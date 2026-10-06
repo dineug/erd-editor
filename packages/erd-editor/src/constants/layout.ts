@@ -166,6 +166,9 @@ export const MINIMAP_MARGIN = 20;
 
 export const TOOLBAR_HEIGHT = 30;
 
+/** The width of the toolbar's database name, which every language's placeholder fits. */
+export const TOOLBAR_DATABASE_NAME_WIDTH = 150;
+
 /**
  * The padding around the Table Properties body. A band stuck to an edge of the
  * body reaches back over it, so no row scrolls into sight behind the band.

@@ -175,6 +175,22 @@ describe('ContextMenuContent', () => {
     expect(contentOf(mounted).style.left).toBe(`${window.innerWidth - 420}px`);
   });
 
+  it('opens a fitted submenu that opens left on the left of its row, though the right has room', async () => {
+    layOutAt();
+    mounted = await mountAndFlush(
+      html`<${ContextMenuContent}
+        id=${'sub'}
+        x=${500}
+        y=${0}
+        fit=${true}
+        flipX=${300}
+        openLeft=${true}
+      />`
+    );
+
+    expect(contentOf(mounted).style.left).toBe('100px');
+  });
+
   it('keeps a wheel over a menu cut to the window from the host, so it scrolls the menu', async () => {
     const onHostWheel = vi.fn();
     mounted = await mountAndFlush(

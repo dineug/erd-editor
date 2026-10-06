@@ -53,4 +53,30 @@ describe('fitMenu', () => {
       fitMenu({ left: 170, top: 0, width: 180, height: 100 }, narrow, 50).dx
     ).toBe(0);
   });
+
+  it('opens a right-to-left submenu on the left of its row, where it fits', () => {
+    // Its row runs from 310 to 500; the submenu ends where the row begins.
+    const { dx } = fitMenu(
+      { left: 500, top: 60, width: 170, height: 146 },
+      view,
+      310,
+      true
+    );
+
+    expect(500 + dx).toBe(140);
+  });
+
+  it('opens a right-to-left submenu the left edge cuts on the right, unless that cuts it more', () => {
+    // 130 past the left edge, none past the right: it opens on the right.
+    expect(
+      fitMenu({ left: 240, top: 0, width: 180, height: 100 }, view, 50, true).dx
+    ).toBe(0);
+
+    const narrow = { width: 300, height: 540 };
+    // 83 past the left edge against 170 past the right: the left stays.
+    expect(
+      fitMenu({ left: 290, top: 0, width: 180, height: 100 }, narrow, 97, true)
+        .dx
+    ).toBe(-373);
+  });
 });

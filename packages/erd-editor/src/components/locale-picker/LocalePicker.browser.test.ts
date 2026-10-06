@@ -78,6 +78,28 @@ describe('LocalePicker in the browser', () => {
     expect(rowBox.bottom).toBeLessThanOrEqual(listBox.bottom);
   });
 
+  it('keeps System and its rule pinned in view over a list scrolled far down, clear of the checked row', async () => {
+    const { shadow, list } = await setup('ko-KR');
+    const system = list.querySelector(
+      'button[data-locale="system"]'
+    ) as HTMLButtonElement;
+    const pinned = system.parentElement as HTMLElement;
+    const checked = list.querySelector(
+      'button[data-locale="ko-KR"]'
+    ) as HTMLButtonElement;
+
+    expect(list.scrollTop).toBeGreaterThan(0);
+    const listBox = list.getBoundingClientRect();
+    const systemBox = system.getBoundingClientRect();
+    expect(systemBox.top).toBe(listBox.top);
+    expect(pinned.getBoundingClientRect().height).toBe(41);
+    expect(checked.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      pinned.getBoundingClientRect().bottom
+    );
+    const hit = shadow.elementFromPoint(systemBox.left + 4, systemBox.top + 4);
+    expect(system.contains(hit)).toBe(true);
+  });
+
   it('keeps the panel inside the editor, its rows 32px high', async () => {
     const { root, panel, list } = await setup('zh-TW');
     const rootBox = root.getBoundingClientRect();

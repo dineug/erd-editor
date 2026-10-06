@@ -76,6 +76,23 @@ describe('Settings.styles', () => {
     expect(source(styles.lockValue)).toContain('margin-inline-end: 8px');
   });
 
+  it('sizes the lock names to the longest, so a long name never runs into its value', () => {
+    const list = source(styles.lockList);
+    expect(list).toContain('display: grid');
+    expect(list).toContain(
+      'grid-template-columns: minmax(140px, max-content) max-content;'
+    );
+    expect(source(styles.lockRow)).toContain('display: contents');
+    expect(source(styles.lockName)).toContain('padding-inline-end: 12px');
+    expect(source(styles.lockName)).not.toMatch(/(?:^|[^-])width:/);
+  });
+
+  it("keeps each row's value and button together, so a long value moves its own button alone", () => {
+    const control = source(styles.lockControl);
+    expect(control).toContain('display: flex');
+    expect(control).toContain('align-items: center');
+  });
+
   it('writes no physical side, so a right-to-left page mirrors the panel', () => {
     const sources = Object.values(styles)
       .filter(style => typeof style !== 'function')

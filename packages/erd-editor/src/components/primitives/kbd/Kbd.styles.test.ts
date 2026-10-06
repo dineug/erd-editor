@@ -18,6 +18,7 @@ describe('Kbd.styles', () => {
 
   it('lays the root out as a flex row', () => {
     expect(staticText(styles.root)).toContain('display: flex');
+    expect(staticText(styles.root)).toContain('width: fit-content');
   });
 
   it('styles the normal chip with the foreground custom property', () => {

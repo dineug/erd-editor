@@ -4,6 +4,7 @@ import { useAppContext } from '@/components/appContext';
 import { createDatabaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { useI18n } from '@/components/localeContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
+import SubmenuChevron from '@/components/primitives/context-menu/submenu-chevron/SubmenuChevron';
 import Icon from '@/components/primitives/icon/Icon';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { menuLabel } from '@/i18n/menuLabel';
@@ -18,7 +19,7 @@ export type SchemaSQLContextMenuProps = {
 const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const i18n = useI18n(ctx);
-  const chevronRightIcon = <Icon name="chevron-right" size={14} />;
+  const chevronRightIcon = <SubmenuChevron />;
   const { addUnsubscribe } = useUnmounted();
 
   onMounted(() => {
@@ -59,6 +60,7 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
                             ) : null
                           }
                           name={menu.name}
+                          literal={true}
                         />
                       }
                     />

@@ -8,7 +8,14 @@ import {
 import { Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import ContextMenuItem from '@/components/primitives/context-menu/context-menu-item/ContextMenuItem';
 import * as styles from '@/components/primitives/context-menu/context-menu-item/ContextMenuItem.styles';
 import {
@@ -173,6 +180,41 @@ describe('ContextMenuItem', () => {
     expect(content.style.left).toBe('200px');
     expect(content.style.top).toBe('92px');
     expect(content.querySelector('.sub')).toBeTruthy();
+  });
+
+  it('opens the submenu on the left of the row for a right-to-left reader', async () => {
+    const i18n = createTestI18n('ar-SA', pseudoMessages('ar'));
+    const provider = provideI18n(document.body, i18n);
+    const { Host } = createHost();
+    try {
+      mounted = await mountAndFlush(
+        html`<${Host}
+          children=${html`<${ContextMenuItem}
+            children=${'Submenu'}
+            subChildren=${html`<span class="sub">Sub</span>`}
+          />`}
+        />`
+      );
+
+      const [item] = itemsOf(mounted);
+      stubRect(item, { width: 160, x: 400, y: 100 });
+      vi.spyOn(
+        HTMLElement.prototype,
+        'getBoundingClientRect'
+      ).mockImplementation(function (this: HTMLElement) {
+        const left = parseFloat(this.style.left) || 0;
+        const top = parseFloat(this.style.top) || 0;
+        return DOMRect.fromRect({ x: left, y: top, width: 120, height: 80 });
+      });
+      mouseenter(item);
+      await flush();
+
+      const [content] = contentsOf(mounted);
+      expect(content.style.left).toBe('280px');
+    } finally {
+      vi.restoreAllMocks();
+      provider.destroy();
+    }
   });
 
   it('announces the hover on change$ using the enclosing content id', async () => {

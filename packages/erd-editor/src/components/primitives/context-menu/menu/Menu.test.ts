@@ -71,4 +71,23 @@ describe('Menu', () => {
     ).toBe('Named');
     expect(mounted.container.querySelector('.right-kbd')).toBeTruthy();
   });
+
+  it('keeps a name kept as written left to right, so C# never reads #C in a right-to-left menu', async () => {
+    mounted = await mountAndFlush(
+      html`<${Menu} icon=${''} name=${'C#'} literal=${true} />`
+    );
+    const literal = mounted.container.querySelector(
+      `.${String(styles.icon)} + div`
+    );
+    expect(literal?.textContent).toBe('C#');
+    expect(literal?.getAttribute('dir')).toBe('ltr');
+
+    mounted.unmount();
+    mounted = await mountAndFlush(html`<${Menu} icon=${''} name=${'Copy'} />`);
+    expect(
+      mounted.container
+        .querySelector(`.${String(styles.icon)} + div`)
+        ?.hasAttribute('dir')
+    ).toBe(false);
+  });
 });

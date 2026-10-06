@@ -13,6 +13,7 @@ describe('LocalePicker.styles', () => {
       String(styles.root),
       String(styles.title),
       String(styles.list),
+      String(styles.pinned),
       String(styles.option),
       String(styles.check),
       String(styles.label),
@@ -22,7 +23,7 @@ describe('LocalePicker.styles', () => {
     for (const identifier of identifiers) {
       expect(identifier).toMatch(/\S/);
     }
-    expect(new Set(identifiers).size).toBe(7);
+    expect(new Set(identifiers).size).toBe(8);
   });
 
   it('hangs the panel where the theme builder hangs, on the side a line starts from', () => {
@@ -53,6 +54,18 @@ describe('LocalePicker.styles', () => {
     expect(list).toContain('overflow-y: auto');
     expect(list).toContain('overscroll-behavior: contain');
     expect(list).toContain('min-height: 0');
+  });
+
+  it('pins System and its rule atop the list, which scrolls a row clear of them', () => {
+    const pinned = sourceOf(styles.pinned);
+
+    expect(pinned).toContain('display: flow-root');
+    expect(pinned).toContain('position: sticky');
+    expect(pinned).toContain('top: 0');
+    expect(pinned).toContain(
+      'background-color: var(--context-menu-background)'
+    );
+    expect(sourceOf(styles.list)).toContain('scroll-padding-block-start: 41px');
   });
 
   it('draws a row 32px high, its text from the start, lit on hover and ringed on a keyboard focus', () => {

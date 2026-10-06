@@ -1289,6 +1289,25 @@ describe('createScopeActions / translated', () => {
     }
   });
 
+  it('knows each row opening a submenu by its own message key, the same in any language', () => {
+    const preferences = { appearance: Appearance.dark, locale: 'en' } as const;
+    const ids = (i18n: typeof pseudo) =>
+      createScopeActions(app, i18n, preferences)
+        .filter(action => action.next)
+        .map(action => action.id);
+
+    const translated = ids(pseudo);
+
+    expect(translated).toHaveLength(12);
+    expect(translated.every(Boolean)).toBe(true);
+    expect(new Set(translated).size).toBe(translated.length);
+    expect(ids(sourceI18n)).toEqual(translated);
+    expect(translated.slice(-2)).toEqual([
+      'common.theme',
+      'common.displayLanguage',
+    ]);
+  });
+
   it('reads the rows of each submenu through the dictionary, vendors, formats and cases as written', () => {
     setCanvasType(CanvasType.ERD);
     const actions = createScopeActions(app, pseudo);

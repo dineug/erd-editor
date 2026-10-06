@@ -55,7 +55,7 @@ export const svSE = {
   'common.column.comment': 'Kommentar',
   'common.placeholder.table': 'tabell',
   'common.placeholder.column': 'kolumn',
-  'common.placeholder.comment': 'kommentar',
+  'common.placeholder.comment': 'notering',
   'common.placeholder.default': 'standard',
   'common.placeholder.dataType': 'datatyp',
   'common.toast.noTablesToPlace': 'Inga tabeller att placera',

@@ -44,10 +44,11 @@ export const down = css`
   pointer-events: none;
 `;
 
-/** A label a longer language wraps rather than run under the next hint. */
+/** A label a longer language wraps rather than run under the next hint, Japanese between phrases, never mid-word. */
 export const label = css`
   max-width: 220px;
   white-space: normal;
+  word-break: auto-phrase;
   text-align: center;
   ${typography.normal};
 `;
