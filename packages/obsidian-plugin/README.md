@@ -51,6 +51,9 @@ editor's own history.
 
 - **Visual schema design** — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
+- **Link existing columns** — while you draw a relationship, the buttons beside the table it
+  ends on either map the parent's key onto columns that table already has or add new ones, and
+  Map Columns in a relationship's right-click menu changes its columns later
 - **SQL DDL import** — bring in a `.sql` dump from any of the vendors below. The parser reads
   `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does not
   recognize, so an awkward dump imports partially rather than failing outright

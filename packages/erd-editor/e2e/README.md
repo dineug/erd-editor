@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-43 spec files. Ten of the groups exist because the DOM scene got their subject
+44 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -180,6 +180,31 @@ pressed on a focused row; the command palette and the Shortcuts page it opens;
 the menu kept and the hints dropped on a small screen; and each toolbar arrow
 landing on its button in English and in Arabic.
 
+`relationship-map-columns.spec.ts` holds down the two buttons a relationship
+draw puts beside the table it would end on, and Map Columns behind them. The
+buttons stand on the table's left at one screen size at any zoom, outline the
+table a press there would link, the one drawn on top of two overlapping at one
+z-index, flip right where the left edge has no room, keep clear of the minimap
+and stay in view beside a table taller than the canvas, while the draw preview
+keeps following the pointer over them; the strip between them and the table
+spends a press that would reach a neighbour or the start table, which shows
+them only once the pointer travels 24 px from the press that started the draw.
+Plus draws what a press on the table draws, which a press on the table still
+does. Map
+links existing columns in one undo and renames nothing, row by row for a
+composite key, prefilled where exactly one name matches, References offering a
+unique column only where the parent has one, and a self reference sharing its
+tenant column; the relationship menu changes a relationship's columns in place,
+its id, type and ON DELETE kept, a column it no longer uses kept without its FK
+mark, a removed column shown as `(removed)` until another is picked; with data
+type sync on the child takes the parent's type in the same undo. Readonly shows
+neither, the chords of Find and Replace and the palette close the dialog for
+them, Escape closes it writing nothing, opening it from the menu ends an armed
+draw, and under touch a first tap names the table and a second mints new
+columns. `shared-presence.spec.ts` sends a mapping made in the dialog and one
+edited from the menu to a wired peer, and closes the dialog with a toast once
+the peer removes its relationship.
+
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
@@ -192,7 +217,8 @@ one of them at the new ids. `relatedTables()` is the seed both use, and the
 foreign key badge on a copied end column is the user-visible half — the payload
 does carry `ui.keys`, but the duplicate never replays it (`toCreateEntityActions`
 emits `addColumnAction` with `id` and `tableId` alone), so the badge is only
-there if a real `relationship.add` reached `addColumnForeignKeyHook`.
+there if a real `relationship.add` reached `validationForeignKeyHook`, which
+marks every column a relationship in the document ends on.
 
 ## The things that make this suite work
 
