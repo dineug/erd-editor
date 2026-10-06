@@ -3,25 +3,40 @@
 // trade it for their panel, and native lists that open on their own keys.
 
 import { query } from '@dineug/erd-editor-schema';
-import { AnyAction, createRef, FC, ref, useProvider } from '@dineug/r-html';
+import {
+  addCSSHost,
+  AnyAction,
+  createRef,
+  FC,
+  ref,
+  render,
+  useProvider,
+} from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
   createTestAppContext,
+  createTestI18n,
   createTestTheme,
   flush,
   mount,
   type Mounted,
+  provideI18n,
 } from '@/__test-utils__';
 import {
   MapSeedColumn,
   seedMapRelationship,
   seedMapTable,
 } from '@/__test-utils__/mapColumnsSeed';
-import { type AppContext, useAppContext } from '@/components/appContext';
+import {
+  type AppContext,
+  appContext,
+  useAppContext,
+} from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import FindReplace from '@/components/find-replace/FindReplace';
+import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import MapColumnsDialog from '@/components/map-columns/MapColumnsDialog';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import QuickSearch from '@/components/quick-search/QuickSearch';
@@ -47,6 +62,8 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { attachActionsTag, Tag } from '@/engine/tag';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import type { LocaleCode } from '@/i18n/locales';
+import { messagesOf } from '@/i18n/messages/index';
 import { whenDrawn } from '@/konva/batchDraw';
 import { hasAppleDevice } from '@/utils/device-detect';
 import { openFindReplaceAction } from '@/utils/emitter';
@@ -642,5 +659,152 @@ describe('Map Columns while a peer edits the diagram', () => {
     expect(changedOf(fixture)).toBe(
       'This relationship changed while the dialog was open'
     );
+  });
+});
+
+/**
+ * Mounts the dialog alone where its stylesheets are live, in a shadow root as
+ * the element has one, under a root in the direction of the language it is
+ * given, and opens it on a new mapping from users to orders.
+ */
+async function setupStyled(locale: LocaleCode, users = USERS) {
+  const app = createTestAppContext();
+  const i18n = createTestI18n(locale);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const shadow = host.attachShadow({ mode: 'open' });
+  addCSSHost(shadow);
+  const globals = document.createElement('div');
+  const root = document.createElement('div');
+  root.dir = i18n.dir;
+  root.setAttribute(
+    'style',
+    'position: relative; width: 900px; height: 640px;'
+  );
+  shadow.append(globals, root);
+
+  // useProvider takes a bare element at runtime and types only a component
+  // context, hence the casts; it is r-html's own, not a React hook.
+  const providers = [
+    // oxlint-disable-next-line react-hooks/rules-of-hooks
+    useProvider(root as any, appContext, app),
+    // oxlint-disable-next-line react-hooks/rules-of-hooks
+    useProvider(root as any, themeContext, createTestTheme()),
+    provideI18n(root, i18n),
+  ];
+
+  app.store.dispatchSync(changeViewportAction({ width: 900, height: 640 }));
+  seedMapTable(app.store, 'u', 'users', users);
+  seedMapTable(app.store, 'o', 'orders', ORDERS);
+  render(globals, <GlobalStyles />);
+  render(root, <MapColumnsDialog readonly={false} isDarkMode={false} />);
+
+  teardowns.push(() => {
+    render(root, null);
+    render(globals, null);
+    providers.forEach(provider => provider.destroy());
+    host.remove();
+  });
+
+  openMapColumns(app, {
+    mode: 'create',
+    startTableId: 'u',
+    endTableId: 'o',
+    relationshipType: RelationshipType.OneN,
+  });
+  await flush();
+
+  return shadow.querySelector<HTMLElement>('[role="dialog"]')!;
+}
+
+/** Where each of these words of an element's text stands on screen. */
+function boxesOfWords(element: Element, words: string[]) {
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const boxes = new Map<string, DOMRect>();
+
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.textContent ?? '';
+    for (const word of words) {
+      const start = text.indexOf(word);
+      if (start === -1 || boxes.has(word)) continue;
+
+      const range = document.createRange();
+      range.setStart(node, start);
+      range.setEnd(node, start + word.length);
+      boxes.set(word, range.getBoundingClientRect());
+    }
+  }
+
+  return words.map(word => boxes.get(word)!);
+}
+
+describe('Map Columns in a right-to-left language', () => {
+  it('reads from the right, the parent named first and each name and type kept in its own direction', async () => {
+    const dialog = await setupStyled('he-IL');
+    const he = messagesOf('he-IL');
+
+    expect(dialog.querySelector('h2')?.textContent).toBe(
+      he['mapColumns.title']
+    );
+    expect(dialog.getAttribute('aria-label')).toBe(he['mapColumns.title']);
+
+    const subtitle = dialog.querySelector('.map-columns-subtitle')!;
+    expect(subtitle.textContent).toBe(
+      `\u2068users\u2069 ← \u2068orders\u2069 · \u2068${he['common.relationshipType.oneN']}\u2069`
+    );
+    const [parentName, arrow, childName] = boxesOfWords(subtitle, [
+      'users',
+      '←',
+      'orders',
+    ]);
+    expect(parentName.left).toBeGreaterThan(arrow.right);
+    expect(arrow.left).toBeGreaterThan(childName.right);
+
+    const rows = dialog.querySelector('.map-columns-rows')!;
+    const [referenced, foreignKey, parent, list] = Array.from(
+      rows.children
+    ) as HTMLElement[];
+    expect(referenced.textContent).toBe(he['mapColumns.referencedColumn']);
+    expect(referenced.getBoundingClientRect().left).toBeGreaterThan(
+      foreignKey.getBoundingClientRect().right
+    );
+    expect(parent.getBoundingClientRect().left).toBeGreaterThan(
+      list.getBoundingClientRect().right
+    );
+    expect(list.getAttribute('aria-label')).toBe(
+      he['mapColumns.foreignKeyColumn']
+    );
+
+    const [name, dataType] = Array.from(parent.children) as HTMLElement[];
+    expect([name.dir, dataType.dir]).toEqual(['auto', 'ltr']);
+    expect(getComputedStyle(name).direction).toBe('ltr');
+    expect(name.getBoundingClientRect().left).toBeGreaterThan(
+      dataType.getBoundingClientRect().right
+    );
+
+    const cancel = dialog.querySelector('.map-columns-cancel')!;
+    const confirm = dialog.querySelector('.map-columns-confirm')!;
+    expect(cancel.textContent?.trim()).toBe(he['common.cancel']);
+    expect(confirm.textContent?.trim()).toBe(he['mapColumns.map']);
+    const dialogBox = dialog.getBoundingClientRect();
+    const confirmBox = confirm.getBoundingClientRect();
+    const cancelBox = cancel.getBoundingClientRect();
+    expect(confirmBox.right).toBeLessThan(cancelBox.left);
+    expect(confirmBox.left - dialogBox.left).toBeLessThan(
+      dialogBox.right - cancelBox.right
+    );
+  });
+
+  it('keeps a data type that ends in a bracket whole beside its column', async () => {
+    const dialog = await setupStyled('ar-SA', [
+      { id: 'u_id', name: 'id', dataType: 'varchar(36)', primaryKey: true },
+    ]);
+
+    const dataType = dialog.querySelector(
+      '.map-columns-rows > div:nth-child(3) > span:last-child'
+    )!;
+    expect(dataType.textContent).toBe('varchar(36)');
+    const [open, close] = boxesOfWords(dataType, ['(', ')']);
+    expect(open.right).toBeLessThanOrEqual(close.left);
   });
 });

@@ -318,4 +318,40 @@ export const ruRU = {
   'welcome.hintLanguage': 'Выбор языка',
   'welcome.hintFloatingToolbar':
     'Перемещение, масштабирование и рисование связей',
+  'mapColumns.title': 'Сопоставить столбцы',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Сопоставить с существующими столбцами',
+  'mapColumns.createNew': 'Создать новые столбцы',
+  'mapColumns.noPrimaryKeyToCopy':
+    'У таблицы {table} нет первичного ключа для копирования',
+  'mapColumns.references': 'Целевой ключ',
+  'mapColumns.unique': 'Уникальный: {column}',
+  'mapColumns.currentColumns': 'Текущие столбцы (не ключ)',
+  'mapColumns.referencedColumn': 'Целевой столбец',
+  'mapColumns.foreignKeyColumn': 'Столбец внешнего ключа',
+  'mapColumns.pickColumn': 'Выбрать столбец',
+  'mapColumns.newColumn': 'Новый столбец: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · уже используется',
+  'mapColumns.removed': '(удален)',
+  'mapColumns.invalid': '(недопустимо)',
+  'mapColumns.becomesType': 'Тип столбца {column} станет {dataType}',
+  'mapColumns.typesDiffer': 'Типы различаются: {parentType} и {childType}',
+  'mapColumns.selfOnly':
+    'Хотя бы один столбец должен ссылаться на другой столбец',
+  'mapColumns.duplicate': 'Эти столбцы уже соединены другой связью',
+  'mapColumns.noKey': 'У таблицы {table} нет ключа, на который можно сослаться',
+  'mapColumns.notAKey': 'Целевые столбцы не являются ключом таблицы {table}',
+  'mapColumns.fixMapping':
+    'Чтобы исправить сопоставление, нужно выбрать ключ в поле «Целевой ключ»',
+  'mapColumns.addKeyToFix':
+    'Чтобы исправить сопоставление, нужно добавить в таблицу {table} первичный ключ или уникальный столбец',
+  'mapColumns.changedRemotely': 'Эта связь изменилась, пока диалог был открыт',
+  'mapColumns.map': 'Сопоставить',
+  'mapColumns.save': 'Сохранить',
+  'mapColumns.closedTableRemoved':
+    'Окно «Сопоставить столбцы» закрыто: таблица {table} удалена',
+  'mapColumns.closedRelationshipRemoved':
+    'Окно «Сопоставить столбцы» закрыто: связь удалена',
+  'mapColumns.failed': 'Не удалось сопоставить столбцы: диаграмма изменилась',
 } satisfies Messages;

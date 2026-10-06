@@ -44,6 +44,15 @@ const menus: Menu[] = [
   },
 ];
 
+/** A notation's name as this menu gives it, and none for a value it does not know. */
+export function relationshipTypeName(
+  relationshipType: number,
+  { t }: Pick<I18n, 't'>
+) {
+  const menu = menus.find(item => item.relationshipType === relationshipType);
+  return menu ? t(menu.labelKey) : '';
+}
+
 /** The four types a relationship can take, its own one checked, named in the reader's language. */
 export function createRelationshipMenus(
   { store }: AppContext,

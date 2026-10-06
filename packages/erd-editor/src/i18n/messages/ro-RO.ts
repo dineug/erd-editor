@@ -315,4 +315,43 @@ export const roRO = {
   'welcome.hintLanguage': 'Alegeți o limbă',
   'welcome.hintFloatingToolbar':
     'Deplasați pânza, aplicați zoom și trasați relații',
+  'mapColumns.title': 'Mapare coloane',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Mapare la coloane existente',
+  'mapColumns.createNew': 'Creare coloane noi',
+  'mapColumns.noPrimaryKeyToCopy':
+    'Tabelul {table} nu are o cheie primară de copiat',
+  'mapColumns.references': 'Cheie referită',
+  'mapColumns.unique': 'Unic: {column}',
+  'mapColumns.currentColumns': 'Coloane curente (nu sunt o cheie)',
+  'mapColumns.referencedColumn': 'Coloană referită',
+  'mapColumns.foreignKeyColumn': 'Coloană cheie străină',
+  'mapColumns.pickColumn': 'Alegeți o coloană',
+  'mapColumns.newColumn': 'Coloană nouă: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · în uz',
+  'mapColumns.removed': '(eliminată)',
+  'mapColumns.invalid': '(nevalidă)',
+  'mapColumns.becomesType': 'Tipul coloanei {column} devine {dataType}',
+  'mapColumns.typesDiffer': 'Tipurile diferă: {parentType} și {childType}',
+  'mapColumns.selfOnly': 'Cel puțin o coloană trebuie să refere o altă coloană',
+  'mapColumns.duplicate': 'Aceste coloane sunt deja legate de o altă relație',
+  'mapColumns.noKey':
+    'Tabelul {table} nu are nicio cheie care să poată fi referită',
+  'mapColumns.notAKey':
+    'Coloanele referite nu sunt o cheie a tabelului {table}',
+  'mapColumns.fixMapping':
+    'Alegeți o cheie în „Cheie referită” pentru a corecta această mapare',
+  'mapColumns.addKeyToFix':
+    'Adăugați o cheie primară sau o coloană unică în tabelul {table} pentru a corecta această mapare',
+  'mapColumns.changedRemotely':
+    'Această relație s-a modificat cât timp caseta de dialog era deschisă',
+  'mapColumns.map': 'Mapare',
+  'mapColumns.save': 'Salvare',
+  'mapColumns.closedTableRemoved':
+    '„Mapare coloane” s-a închis: tabelul {table} a fost eliminat',
+  'mapColumns.closedRelationshipRemoved':
+    '„Mapare coloane” s-a închis: relația a fost eliminată',
+  'mapColumns.failed':
+    'Coloanele nu au putut fi mapate: diagrama s-a modificat',
 } satisfies Messages;

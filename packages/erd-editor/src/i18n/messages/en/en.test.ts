@@ -32,6 +32,7 @@ describe('the English dictionary', () => {
         'feedback',
         'findReplace',
         'floatingToolbar',
+        'mapColumns',
         'palette',
         'settings',
         'shortcuts',

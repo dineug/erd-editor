@@ -311,4 +311,43 @@ export const nlNL = {
   'welcome.hintTheme': 'Een thema kiezen',
   'welcome.hintLanguage': 'Een taal kiezen',
   'welcome.hintFloatingToolbar': 'Pannen, zoomen en relaties tekenen',
+  'mapColumns.title': 'Kolommen toewijzen',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Aan bestaande kolommen toewijzen',
+  'mapColumns.createNew': 'Nieuwe kolommen maken',
+  'mapColumns.noPrimaryKeyToCopy':
+    '{table} heeft geen primaire sleutel om te kopiëren',
+  'mapColumns.references': 'Verwijst naar',
+  'mapColumns.unique': 'Uniek: {column}',
+  'mapColumns.currentColumns': 'Huidige kolommen (geen sleutel)',
+  'mapColumns.referencedColumn': 'Kolom waarnaar wordt verwezen',
+  'mapColumns.foreignKeyColumn': 'Kolom met refererende sleutel',
+  'mapColumns.pickColumn': 'Kies een kolom',
+  'mapColumns.newColumn': 'Nieuwe kolom: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · in gebruik',
+  'mapColumns.removed': '(verwijderd)',
+  'mapColumns.invalid': '(ongeldig)',
+  'mapColumns.becomesType': 'Type van {column} wordt {dataType}',
+  'mapColumns.typesDiffer': 'Typen verschillen: {parentType} en {childType}',
+  'mapColumns.selfOnly':
+    'Ten minste één kolom moet naar een andere kolom verwijzen',
+  'mapColumns.duplicate':
+    'Deze kolommen zijn al gekoppeld door een andere relatie',
+  'mapColumns.noKey': '{table} heeft geen sleutel om naar te verwijzen',
+  'mapColumns.notAKey':
+    'De kolommen waarnaar wordt verwezen zijn geen sleutel van {table}',
+  'mapColumns.fixMapping':
+    'Kies een sleutel bij "Verwijst naar" om deze toewijzing te herstellen',
+  'mapColumns.addKeyToFix':
+    'Voeg een primaire sleutel of unieke kolom toe aan {table} om deze toewijzing te herstellen',
+  'mapColumns.changedRemotely':
+    'Deze relatie is gewijzigd terwijl het dialoogvenster open was',
+  'mapColumns.map': 'Toewijzen',
+  'mapColumns.save': 'Opslaan',
+  'mapColumns.closedTableRemoved':
+    '"Kolommen toewijzen" gesloten: {table} is verwijderd',
+  'mapColumns.closedRelationshipRemoved':
+    '"Kolommen toewijzen" gesloten: de relatie is verwijderd',
+  'mapColumns.failed': 'Kan kolommen niet toewijzen: het diagram is gewijzigd',
 } satisfies Messages;

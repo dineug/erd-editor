@@ -1,8 +1,16 @@
 import { query } from '@dineug/erd-editor-schema';
-import { FC, observable, onMounted, watch } from '@dineug/r-html';
+import {
+  DOMTemplateLiterals,
+  FC,
+  observable,
+  onMounted,
+  watch,
+} from '@dineug/r-html';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useI18n } from '@/components/localeContext';
+import { localized } from '@/components/localized/Localized';
 import Dialog, {
   DIALOG_STACK_BELOW,
 } from '@/components/primitives/dialog/Dialog';
@@ -27,7 +35,7 @@ import {
 
 import { mapColumnsAction$ } from './mapColumnsAction';
 import MapColumnsBody from './MapColumnsBody';
-import { mapColumnsText, nameOf } from './mapColumnsText';
+import { nameOf } from './nameOf';
 
 export type MapColumnsDialogProps = {
   readonly: boolean;
@@ -36,6 +44,19 @@ export type MapColumnsDialogProps = {
 
 const DIALOG_MAX_WIDTH = 480;
 
+/** The toast a removed table closes the dialog with, read where it renders, its unnamed too. */
+const TableRemovedText: FC<{ name: string }> = (props, ctx) => {
+  const i18n = useI18n(ctx);
+
+  return () => (
+    <>
+      {i18n.value.t('mapColumns.closedTableRemoved', {
+        table: nameOf(props, i18n.value),
+      })}
+    </>
+  );
+};
+
 /**
  * Maps a parent's key onto the child's columns, for a relationship drawn or
  * held. Built from the document on every render, it shows a peer's change at
@@ -43,6 +64,7 @@ const DIALOG_MAX_WIDTH = 480;
  */
 const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
   const current = observable(
     { session: null as MapColumnsSession | null },
@@ -62,7 +84,7 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
     store.dispatch(changeOpenMapAction({ [Open.mapColumns]: false }));
   };
 
-  const toast = (title: string) => {
+  const toast = (title: DOMTemplateLiterals) => {
     app.value.emitter.emit(
       openToastAction({ message: <Toast title={title} /> })
     );
@@ -70,15 +92,13 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
 
   const closedText = (closed: MapColumnsClosed) => {
     if (closed.reason === 'relationshipRemoved') {
-      return mapColumnsText('mapColumns.closedRelationshipRemoved');
+      return localized('mapColumns.closedRelationshipRemoved');
     }
 
     const table = query(app.value.store.state.collections)
       .collection('tableEntities')
       .selectById(closed.tableId);
-    return mapColumnsText('mapColumns.closedTableRemoved', {
-      table: table ? nameOf(table) : mapColumnsText('common.unnamed'),
-    });
+    return <TableRemovedText name={table?.name ?? ''} />;
   };
 
   const open = ({ payload }: ReturnType<typeof openMapColumnsAction>) => {
@@ -139,7 +159,7 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
     const { store } = app.value;
     store.dispatch(
       mapColumnsAction$(view.draft, {
-        onRefuse: () => toast(mapColumnsText('mapColumns.failed')),
+        onRefuse: () => toast(localized('mapColumns.failed')),
       })
     );
     close();
@@ -189,7 +209,7 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
 
     return (
       <Dialog
-        label={mapColumnsText('mapColumns.title')}
+        label={i18n.value.t('mapColumns.title')}
         maxWidth={DIALOG_MAX_WIDTH}
         onClose={close}
         children={

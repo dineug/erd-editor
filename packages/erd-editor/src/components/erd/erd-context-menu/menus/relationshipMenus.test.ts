@@ -10,6 +10,7 @@ import { AppContext } from '@/components/appContext';
 import {
   createReferentialActionMenus,
   createRelationshipMenus,
+  relationshipTypeName,
 } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
 import {
   Database,
@@ -117,6 +118,26 @@ describe('relationshipMenus', () => {
     const result = createRelationshipMenus(app, RELATIONSHIP_ID, sourceI18n);
     expect(result[0].checked).toBe(false);
     expect(result[1].checked).toBe(true);
+  });
+});
+
+describe('relationshipTypeName', () => {
+  it('names each notation as the menu does, and none for a value it does not know', () => {
+    const names = [
+      RelationshipType.ZeroOne,
+      RelationshipType.ZeroN,
+      RelationshipType.OneOnly,
+      RelationshipType.OneN,
+      0,
+    ].map(type => relationshipTypeName(type, sourceI18n));
+
+    expect(names).toEqual(['Zero One', 'Zero N', 'One Only', 'One N', '']);
+    expect(
+      relationshipTypeName(
+        RelationshipType.OneN,
+        createI18n('ko-KR', pseudoMessages('ko'))
+      )
+    ).toBe('ko:One N');
   });
 });
 

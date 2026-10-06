@@ -2,6 +2,8 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { relationshipTypeName } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
+import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import { Column, Table } from '@/internal-types';
 import {
@@ -14,7 +16,7 @@ import {
 } from '@/utils/map-columns';
 
 import * as styles from './MapColumnsDialog.styles';
-import { mapColumnsText, nameOf, relationshipTypeText } from './mapColumnsText';
+import { nameOf } from './nameOf';
 
 export type MapColumnsBodyProps = {
   mode: 'create' | 'edit';
@@ -58,57 +60,44 @@ type Message = { text: string; error: boolean };
  */
 const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   const columnsOf = () =>
     query(app.value.store.state.collections).collection('tableColumnEntities');
 
   const keyLabel = (key: CandidateKey) => {
-    if (key.kind === 'primaryKey') return mapColumnsText('common.primaryKey');
-    if (key.kind === 'current') {
-      return mapColumnsText('mapColumns.currentColumns');
-    }
+    const { t } = i18n.value;
+    if (key.kind === 'primaryKey') return t('common.primaryKey');
+    if (key.kind === 'current') return t('mapColumns.currentColumns');
 
     const column = columnsOf().selectById(key.columnIds[0]);
-    return mapColumnsText('mapColumns.unique', {
-      column: column ? nameOf(column) : '',
-    });
+    return t('mapColumns.unique', { column: nameOf(column, i18n.value) });
   };
 
   const mappingMessage = (): Message | null => {
     const { issues, notice, keyId, parentTable } = props.view;
-    const table = nameOf(parentTable);
+    const { t } = i18n.value;
+    const table = nameOf(parentTable, i18n.value);
 
     if (issues.set.includes('selfOnly')) {
-      return { text: mapColumnsText('mapColumns.selfOnly'), error: true };
+      return { text: t('mapColumns.selfOnly'), error: true };
     }
     if (issues.set.includes('duplicate')) {
-      return { text: mapColumnsText('mapColumns.duplicate'), error: true };
+      return { text: t('mapColumns.duplicate'), error: true };
     }
     if (keyId === null) {
-      return {
-        text: mapColumnsText('mapColumns.noKey', { table }),
-        error: true,
-      };
+      return { text: t('mapColumns.noKey', { table }), error: true };
     }
 
     switch (notice) {
       case 'notAKey':
-        return {
-          text: mapColumnsText('mapColumns.notAKey', { table }),
-          error: false,
-        };
+        return { text: t('mapColumns.notAKey', { table }), error: false };
       case 'noKey':
-        return {
-          text: mapColumnsText('mapColumns.noKey', { table }),
-          error: false,
-        };
+        return { text: t('mapColumns.noKey', { table }), error: false };
       case 'fixMapping':
-        return { text: mapColumnsText('mapColumns.fixMapping'), error: false };
+        return { text: t('mapColumns.fixMapping'), error: false };
       case 'addKeyToFix':
-        return {
-          text: mapColumnsText('mapColumns.addKeyToFix', { table }),
-          error: false,
-        };
+        return { text: t('mapColumns.addKeyToFix', { table }), error: false };
       default:
         return null;
     }
@@ -133,22 +122,24 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     const note = getTypeNote(app.value.store.state, parent, child);
     if (!note) return null;
 
+    const { t } = i18n.value;
     return note.kind === 'becomes'
-      ? mapColumnsText('mapColumns.becomesType', {
-          column: nameOf(child),
+      ? t('mapColumns.becomesType', {
+          column: nameOf(child, i18n.value),
           dataType: note.dataType,
         })
-      : mapColumnsText('mapColumns.typesDiffer', {
+      : t('mapColumns.typesDiffer', {
           parentType: note.parentType,
           childType: note.childType,
         });
   };
 
   const parentCell = (row: MappingRowView) => {
+    const { t } = i18n.value;
     if (row.invalid) {
       return (
         <div class={styles.parent}>
-          <span class={styles.dim}>{mapColumnsText('mapColumns.invalid')}</span>
+          <span class={styles.dim}>{t('mapColumns.invalid')}</span>
         </div>
       );
     }
@@ -160,17 +151,19 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     if (row.removedParent || !column) {
       return (
         <div class={styles.parent}>
-          <span class={styles.dim}>{mapColumnsText('mapColumns.removed')}</span>
+          <span class={styles.dim}>{t('mapColumns.removed')}</span>
         </div>
       );
     }
 
     return (
       <div class={styles.parent}>
-        <span class={isBlank(column.name) ? styles.dim : null}>
-          {nameOf(column)}
+        <span class={isBlank(column.name) ? styles.dim : null} prop:dir="auto">
+          {nameOf(column, i18n.value)}
         </span>
-        <span class={styles.dataType}>{column.dataType}</span>
+        <span class={styles.dataType} prop:dir="ltr">
+          {column.dataType}
+        </span>
       </div>
     );
   };
@@ -178,9 +171,9 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
   const childOption = (column: Column, selected: string, used: Set<string>) => {
     const value = COLUMN_PREFIX + column.id;
     const inUse = used.has(column.id);
-    const text = mapColumnsText(
+    const text = i18n.value.t(
       inUse ? 'mapColumns.columnOptionInUse' : 'mapColumns.columnOption',
-      { name: nameOf(column), dataType: column.dataType }
+      { name: nameOf(column, i18n.value), dataType: column.dataType }
     );
 
     return (
@@ -201,6 +194,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     autofocus: boolean
   ) => {
     const { rows } = props.view;
+    const { t } = i18n.value;
     const selected = toOptionValue(row.pick);
     const used = getUsedColumnIds(rows, index);
     const children = columnsOf().selectByIds(childTable.columnIds);
@@ -216,7 +210,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     return (
       <select
         class={styles.select}
-        aria-label={mapColumnsText('mapColumns.foreignKeyColumn')}
+        aria-label={t('mapColumns.foreignKeyColumn')}
         data-parent-column-id={parentColumnId ?? ''}
         bool:disabled={disabled}
         bool:data-autofocus={autofocus}
@@ -226,13 +220,11 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
           prop:value={EMPTY_VALUE}
           prop:selected={selected === EMPTY_VALUE}
         >
-          {mapColumnsText('mapColumns.pickColumn')}
+          {t('mapColumns.pickColumn')}
         </option>
         {row.newColumnName ? (
           <option prop:value={NEW_VALUE} prop:selected={selected === NEW_VALUE}>
-            {mapColumnsText('mapColumns.newColumn', {
-              name: row.newColumnName,
-            })}
+            {t('mapColumns.newColumn', { name: row.newColumnName })}
           </option>
         ) : null}
         {children.map(column => childOption(column, selected, used))}
@@ -242,7 +234,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
             bool:disabled={true}
             prop:selected={true}
           >
-            {mapColumnsText('mapColumns.removed')}
+            {t('mapColumns.removed')}
           </option>
         ) : null}
       </select>
@@ -251,6 +243,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
 
   return () => {
     const { view, mode, stacked } = props;
+    const { t } = i18n.value;
     const {
       parentTable,
       childTable,
@@ -266,7 +259,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     const emptyIndex = rows.findIndex(
       row => !row.invalid && row.parentColumnId !== null && !row.pick
     );
-    const confirmText = mapColumnsText(
+    const confirmText = t(
       mode === 'create' ? 'mapColumns.map' : 'mapColumns.save'
     );
 
@@ -275,20 +268,23 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
         class={['map-columns', styles.body]}
         style={{ 'color-scheme': props.isDarkMode ? 'dark' : 'light' }}
       >
-        <h2 class={styles.title}>{mapColumnsText('mapColumns.title')}</h2>
+        <h2 class={styles.title}>{t('mapColumns.title')}</h2>
         <div class={['map-columns-subtitle', styles.subtitle]}>
-          {mapColumnsText('mapColumns.subtitle', {
-            parent: nameOf(parentTable),
-            child: nameOf(childTable),
-            relationshipType: relationshipTypeText(relationshipType),
+          {t('mapColumns.subtitle', {
+            parent: nameOf(parentTable, i18n.value),
+            child: nameOf(childTable, i18n.value),
+            relationshipType: relationshipTypeName(
+              relationshipType,
+              i18n.value
+            ),
           })}
         </div>
         {showReferences ? (
           <label class={['map-columns-references', styles.references]}>
-            <span>{mapColumnsText('mapColumns.references')}</span>
+            <span>{t('mapColumns.references')}</span>
             <select
               class={styles.select}
-              aria-label={mapColumnsText('mapColumns.references')}
+              aria-label={t('mapColumns.references')}
               on:change={(event: Event) =>
                 props.onKeyChange((event.target as HTMLSelectElement).value)
               }
@@ -306,10 +302,10 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
             {stacked ? null : (
               <>
                 <div class={styles.heading}>
-                  {mapColumnsText('mapColumns.referencedColumn')}
+                  {t('mapColumns.referencedColumn')}
                 </div>
                 <div class={styles.heading}>
-                  {mapColumnsText('mapColumns.foreignKeyColumn')}
+                  {t('mapColumns.foreignKeyColumn')}
                 </div>
               </>
             )}
@@ -341,7 +337,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
         ) : null}
         {changedRemotely ? (
           <div class={['map-columns-changed', styles.message]} role="status">
-            {mapColumnsText('mapColumns.changedRemotely')}
+            {t('mapColumns.changedRemotely')}
           </div>
         ) : null}
         <div class={styles.actions}>
@@ -356,7 +352,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
             bool:data-autofocus={emptyIndex === -1 && !canConfirm}
             on:click={props.onCancel}
           >
-            {mapColumnsText('common.cancel')}
+            {t('common.cancel')}
           </button>
           <button
             class={[

@@ -321,4 +321,42 @@ export const frFR = {
   'welcome.hintLanguage': 'Choisissez une langue',
   'welcome.hintFloatingToolbar':
     'Déplacez la vue, zoomez et tracez des relations',
+  'mapColumns.title': 'Associer les colonnes',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Associer à des colonnes existantes',
+  'mapColumns.createNew': 'Créer de nouvelles colonnes',
+  'mapColumns.noPrimaryKeyToCopy': '{table} n’a pas de clé primaire à copier',
+  'mapColumns.references': 'Clé référencée',
+  'mapColumns.unique': 'Unique : {column}',
+  'mapColumns.currentColumns': 'Colonnes actuelles (pas une clé)',
+  'mapColumns.referencedColumn': 'Colonne référencée',
+  'mapColumns.foreignKeyColumn': 'Colonne de clé étrangère',
+  'mapColumns.pickColumn': 'Choisir une colonne',
+  'mapColumns.newColumn': 'Nouvelle colonne : {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · déjà utilisée',
+  'mapColumns.removed': '(supprimée)',
+  'mapColumns.invalid': '(non valide)',
+  'mapColumns.becomesType': 'Le type de {column} devient {dataType}',
+  'mapColumns.typesDiffer': 'Les types diffèrent : {parentType} et {childType}',
+  'mapColumns.selfOnly':
+    'Au moins une colonne doit référencer une autre colonne',
+  'mapColumns.duplicate': 'Ces colonnes sont déjà liées par une autre relation',
+  'mapColumns.noKey': '{table} n’a aucune clé à référencer',
+  'mapColumns.notAKey':
+    'Les colonnes référencées ne sont pas une clé de {table}',
+  'mapColumns.fixMapping':
+    'Choisissez une clé dans « Clé référencée » pour corriger cette association',
+  'mapColumns.addKeyToFix':
+    'Ajoutez une clé primaire ou une colonne unique à {table} pour corriger cette association',
+  'mapColumns.changedRemotely':
+    'Cette relation a changé pendant que la boîte de dialogue était ouverte',
+  'mapColumns.map': 'Associer',
+  'mapColumns.save': 'Enregistrer',
+  'mapColumns.closedTableRemoved':
+    '« Associer les colonnes » a été fermé : la table {table} a été supprimée',
+  'mapColumns.closedRelationshipRemoved':
+    '« Associer les colonnes » a été fermé : la relation a été supprimée',
+  'mapColumns.failed':
+    'Impossible d’associer les colonnes : le diagramme a changé',
 } satisfies Messages;

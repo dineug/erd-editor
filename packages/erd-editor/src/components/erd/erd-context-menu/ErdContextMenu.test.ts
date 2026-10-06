@@ -1633,7 +1633,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Relationship Type',
       'ko:On Delete',
       'ko:On Update',
-      'Map Columns',
+      'ko:Map Columns',
       'ko:Delete',
     ]);
     expect(

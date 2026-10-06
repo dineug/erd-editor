@@ -315,4 +315,41 @@ export const skSK = {
   'welcome.hintTheme': 'Výber motívu',
   'welcome.hintLanguage': 'Výber jazyka',
   'welcome.hintFloatingToolbar': 'Posúvanie, približovanie a kreslenie vzťahov',
+  'mapColumns.title': 'Mapovať stĺpce',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Mapovať na existujúce stĺpce',
+  'mapColumns.createNew': 'Vytvoriť nové stĺpce',
+  'mapColumns.noPrimaryKeyToCopy':
+    'Tabuľka {table} nemá primárny kľúč na skopírovanie',
+  'mapColumns.references': 'Cieľový kľúč',
+  'mapColumns.unique': 'Jedinečný: {column}',
+  'mapColumns.currentColumns': 'Aktuálne stĺpce (nie kľúč)',
+  'mapColumns.referencedColumn': 'Cieľový stĺpec',
+  'mapColumns.foreignKeyColumn': 'Stĺpec cudzieho kľúča',
+  'mapColumns.pickColumn': 'Vyberte stĺpec',
+  'mapColumns.newColumn': 'Nový stĺpec: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · používa sa',
+  'mapColumns.removed': '(odstránený)',
+  'mapColumns.invalid': '(neplatné)',
+  'mapColumns.becomesType': 'Typ stĺpca {column} sa zmení na {dataType}',
+  'mapColumns.typesDiffer': 'Typy sa líšia: {parentType} a {childType}',
+  'mapColumns.selfOnly': 'Aspoň jeden stĺpec musí odkazovať na iný stĺpec',
+  'mapColumns.duplicate': 'Tieto stĺpce už spája iný vzťah',
+  'mapColumns.noKey':
+    'Tabuľka {table} nemá kľúč, na ktorý by sa dalo odkazovať',
+  'mapColumns.notAKey': 'Cieľové stĺpce nie sú kľúčom tabuľky {table}',
+  'mapColumns.fixMapping':
+    'Ak chcete opraviť toto mapovanie, vyberte kľúč v poli „Cieľový kľúč“',
+  'mapColumns.addKeyToFix':
+    'Ak chcete opraviť toto mapovanie, pridajte do tabuľky {table} primárny kľúč alebo jedinečný stĺpec',
+  'mapColumns.changedRemotely':
+    'Tento vzťah sa zmenil, kým bolo dialógové okno otvorené',
+  'mapColumns.map': 'Mapovať',
+  'mapColumns.save': 'Uložiť',
+  'mapColumns.closedTableRemoved':
+    'Okno „Mapovať stĺpce“ sa zavrelo: tabuľka {table} bola odstránená',
+  'mapColumns.closedRelationshipRemoved':
+    'Okno „Mapovať stĺpce“ sa zavrelo: vzťah bol odstránený',
+  'mapColumns.failed': 'Stĺpce sa nepodarilo namapovať: diagram sa zmenil',
 } satisfies Messages;

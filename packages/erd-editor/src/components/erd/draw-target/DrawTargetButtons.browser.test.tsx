@@ -6,7 +6,13 @@ import { addCSSHost, AnyAction, render, useProvider } from '@dineug/r-html';
 import { afterEach, beforeAll, describe, expect, it } from 'vite-plus/test';
 import { page } from 'vite-plus/test/browser/context';
 
-import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestI18n,
+  createTestTheme,
+  flush,
+  provideI18n,
+} from '@/__test-utils__';
 import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { type AppContext, appContext } from '@/components/appContext';
 import { getDrawTarget } from '@/components/erd/draw-target/drawTargetState';
@@ -26,6 +32,8 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
 import { attachActionsTag, Tag } from '@/engine/tag';
+import type { LocaleCode } from '@/i18n/locales';
+import { messagesOf } from '@/i18n/messages/index';
 import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { getTableRect } from '@/konva/scene/metrics';
@@ -71,8 +79,9 @@ async function settle(rounds = 3) {
  * mounted in a shadow root that adopts the editor's stylesheets, as the element
  * does, so the buttons are laid out by their own rules.
  */
-async function setup(): Promise<Fixture> {
+async function setup(locale: LocaleCode = 'en'): Promise<Fixture> {
   const app = createTestAppContext();
+  const i18n = createTestI18n(locale);
   const host = document.createElement('div');
   host.setAttribute('style', 'position: fixed; top: 0; left: 0;');
   document.body.append(host);
@@ -97,6 +106,8 @@ async function setup(): Promise<Fixture> {
     themeContext,
     createTestTheme()
   );
+  const i18nProvider = provideI18n(container, i18n);
+  container.dir = i18n.dir;
   render(globals, <GlobalStyles />);
   render(
     container,
@@ -127,6 +138,7 @@ async function setup(): Promise<Fixture> {
     render(globals, null);
     appProvider.destroy();
     themeProvider.destroy();
+    i18nProvider.destroy();
     host.remove();
     store.destroy();
   });
@@ -406,6 +418,28 @@ describe('DrawTargetButtons in a browser', () => {
       'editor.drawEndRelationship',
       'editor.changeOpenMap',
     ]);
+  });
+
+  it('stand left of the table in a right-to-left editor too, named in its language', async () => {
+    const fixture = await setup('ar-SA');
+    const ar = messagesOf('ar-SA');
+    await startDraw(fixture);
+    await moveTo(fixture, overOrders(fixture.app));
+
+    expect(getComputedStyle(fixture.root).direction).toBe('rtl');
+    const card = cardOf(fixture.app, 'orders');
+    const rootBox = fixture.root.getBoundingClientRect();
+    expect(buttonsOf(fixture)!.getBoundingClientRect().right - rootBox.x).toBe(
+      card.x - 8
+    );
+
+    const map = fixture.root.querySelector('.draw-target-map')!;
+    const add = fixture.root.querySelector('.draw-target-new')!;
+    expect(map.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      add.getBoundingClientRect().top
+    );
+    expect(map.getAttribute('title')).toBe(ar['mapColumns.mapToExisting']);
+    expect(add.getAttribute('aria-label')).toBe(ar['mapColumns.createNew']);
   });
 
   it('dim the plus button once the start table has no key, and ignore it', async () => {

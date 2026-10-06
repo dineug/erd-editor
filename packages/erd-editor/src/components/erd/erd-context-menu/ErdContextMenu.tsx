@@ -3,7 +3,6 @@ import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { useI18n } from '@/components/localeContext';
-import { mapColumnsText } from '@/components/map-columns/mapColumnsText';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import SubmenuChevron from '@/components/primitives/context-menu/submenu-chevron/SubmenuChevron';
@@ -522,11 +521,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
               {app.value.store.getReadonly() ? null : (
                 <ContextMenu.Item
                   onClick={handleOpenMapColumns}
-                  children={
-                    <ContextMenu.Menu
-                      name={mapColumnsText('mapColumns.title')}
-                    />
-                  }
+                  children={<ContextMenu.Menu name={t('mapColumns.title')} />}
                 />
               )}
               <ContextMenu.Item

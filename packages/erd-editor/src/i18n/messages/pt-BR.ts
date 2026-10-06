@@ -316,4 +316,42 @@ export const ptBR = {
   'welcome.hintLanguage': 'Escolher um idioma',
   'welcome.hintFloatingToolbar':
     'Deslocar, aplicar zoom e desenhar relacionamentos',
+  'mapColumns.title': 'Mapear colunas',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Mapear para colunas existentes',
+  'mapColumns.createNew': 'Criar novas colunas',
+  'mapColumns.noPrimaryKeyToCopy': '{table} não tem chave primária para copiar',
+  'mapColumns.references': 'Chave referenciada',
+  'mapColumns.unique': 'Único: {column}',
+  'mapColumns.currentColumns': 'Colunas atuais (não são uma chave)',
+  'mapColumns.referencedColumn': 'Coluna referenciada',
+  'mapColumns.foreignKeyColumn': 'Coluna de chave estrangeira',
+  'mapColumns.pickColumn': 'Escolher uma coluna',
+  'mapColumns.newColumn': 'Nova coluna: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · em uso',
+  'mapColumns.removed': '(removida)',
+  'mapColumns.invalid': '(inválida)',
+  'mapColumns.becomesType': 'O tipo de {column} passa a ser {dataType}',
+  'mapColumns.typesDiffer':
+    'Os tipos são diferentes: {parentType} e {childType}',
+  'mapColumns.selfOnly':
+    'Pelo menos uma coluna precisa referenciar uma coluna diferente',
+  'mapColumns.duplicate':
+    'Essas colunas já estão ligadas por outro relacionamento',
+  'mapColumns.noKey': '{table} não tem chave para referenciar',
+  'mapColumns.notAKey': 'As colunas referenciadas não são uma chave de {table}',
+  'mapColumns.fixMapping':
+    'Escolher uma chave em "Chave referenciada" para corrigir este mapeamento',
+  'mapColumns.addKeyToFix':
+    'Adicionar uma chave primária ou coluna única a {table} para corrigir este mapeamento',
+  'mapColumns.changedRemotely':
+    'Este relacionamento mudou enquanto a caixa de diálogo estava aberta',
+  'mapColumns.map': 'Mapear',
+  'mapColumns.save': 'Salvar',
+  'mapColumns.closedTableRemoved':
+    '"Mapear colunas" foi fechado: a tabela {table} foi removida',
+  'mapColumns.closedRelationshipRemoved':
+    '"Mapear colunas" foi fechado: o relacionamento foi removido',
+  'mapColumns.failed': 'Não foi possível mapear as colunas: o diagrama mudou',
 } satisfies Messages;

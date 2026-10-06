@@ -314,4 +314,45 @@ export const esES = {
   'welcome.hintTheme': 'Elegir un tema',
   'welcome.hintLanguage': 'Elegir un idioma',
   'welcome.hintFloatingToolbar': 'Desplazar, hacer zoom y dibujar relaciones',
+  'mapColumns.title': 'Asignar columnas',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Asignar a columnas existentes',
+  'mapColumns.createNew': 'Crear columnas nuevas',
+  'mapColumns.noPrimaryKeyToCopy':
+    '{table} no tiene clave principal que copiar',
+  'mapColumns.references': 'Clave referenciada',
+  'mapColumns.unique': 'Único: {column}',
+  'mapColumns.currentColumns': 'Columnas actuales (no son una clave)',
+  'mapColumns.referencedColumn': 'Columna referenciada',
+  'mapColumns.foreignKeyColumn': 'Columna de clave externa',
+  'mapColumns.pickColumn': 'Elegir una columna',
+  'mapColumns.newColumn': 'Columna nueva: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · en uso',
+  'mapColumns.removed': '(eliminada)',
+  'mapColumns.invalid': '(no válida)',
+  'mapColumns.becomesType': 'El tipo de {column} pasa a ser {dataType}',
+  'mapColumns.typesDiffer':
+    'Los tipos no coinciden: {parentType} y {childType}',
+  'mapColumns.selfOnly':
+    'Al menos una columna debe hacer referencia a otra columna',
+  'mapColumns.duplicate': 'Otra relación ya vincula estas columnas',
+  'mapColumns.noKey':
+    '{table} no tiene ninguna clave a la que hacer referencia',
+  'mapColumns.notAKey':
+    'Las columnas referenciadas no son una clave de {table}',
+  'mapColumns.fixMapping':
+    'Elegir una clave en "Clave referenciada" para corregir esta asignación',
+  'mapColumns.addKeyToFix':
+    'Añadir una clave principal o una columna única a {table} para corregir esta asignación',
+  'mapColumns.changedRemotely':
+    'Esta relación cambió mientras el cuadro de diálogo estaba abierto',
+  'mapColumns.map': 'Asignar',
+  'mapColumns.save': 'Guardar',
+  'mapColumns.closedTableRemoved':
+    'Se cerró "Asignar columnas": se eliminó la tabla {table}',
+  'mapColumns.closedRelationshipRemoved':
+    'Se cerró "Asignar columnas": se eliminó la relación',
+  'mapColumns.failed':
+    'No se pudieron asignar las columnas: el diagrama cambió',
 } satisfies Messages;

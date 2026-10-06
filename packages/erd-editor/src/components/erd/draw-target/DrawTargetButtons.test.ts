@@ -18,9 +18,12 @@ import {
 import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
+  createTestI18n,
   flush,
   mountAndFlush,
   Mounted,
+  provideI18n,
+  pseudoMessages,
 } from '@/__test-utils__/index';
 import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
@@ -48,6 +51,7 @@ import {
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import type { Point } from '@/internal-types';
 import { getTableRect } from '@/konva/scene/metrics';
 import { getSceneTransform, toScreenPoint } from '@/konva/scene/viewport';
@@ -778,5 +782,58 @@ describe('DrawTargetButtons', () => {
 describe('PILL_SIZE', () => {
   it('fits two buttons, the gap between them and their padding', () => {
     expect(PILL_SIZE).toEqual({ width: 36, height: 64 });
+  });
+});
+
+describe('DrawTargetButtons / language', () => {
+  let teardown: (() => void) | null = null;
+
+  afterEach(() => {
+    teardown?.();
+    teardown = null;
+  });
+
+  /** The language the element would provide, English until a spec switches it. */
+  function provideLanguage() {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+    teardown = () => provider.destroy();
+
+    return async () => {
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+    };
+  }
+
+  it('names the buttons in the language the element shows, following a switch', async () => {
+    const switchLanguage = provideLanguage();
+    const harness = await setup(seed(createTestAppContext()));
+    await startDraw(harness);
+    await hover(harness, insideOf(harness.app, 'orders'));
+    expect(mapOf(harness.root).title).toBe('Map to existing columns');
+
+    await switchLanguage();
+
+    const map = mapOf(harness.root);
+    const add = newOf(harness.root);
+    expect(map.title).toBe('ko:Map to existing columns');
+    expect(map.getAttribute('aria-label')).toBe('ko:Map to existing columns');
+    expect(add.title).toBe('ko:Create new columns');
+    expect(add.getAttribute('aria-label')).toBe('ko:Create new columns');
+  });
+
+  it('says in that language that a start table with no name has no key to copy', async () => {
+    const switchLanguage = provideLanguage();
+    const app = seed(createTestAppContext());
+    seedMapTable(app.store, 'blank', '', [{ id: 'blank.a', name: 'a' }]);
+    app.store.dispatchSync(moveToTableAction({ id: 'blank', x: 100, y: 500 }));
+    const harness = await setup(app);
+    await switchLanguage();
+    await startDraw(harness, 'blank');
+    await hover(harness, insideOf(app, 'orders'));
+
+    expect(newOf(harness.root).title).toBe(
+      'ko:ko:unnamed has no primary key to copy'
+    );
   });
 });

@@ -2,7 +2,15 @@ import { query } from '@dineug/erd-editor-schema';
 import { AnyAction, FC, observable } from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, flush, mount, Mounted } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestI18n,
+  flush,
+  mount,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__';
 import {
   MapSeedColumn,
   seedMapRelationship,
@@ -11,10 +19,7 @@ import {
 import type { AppContext } from '@/components/appContext';
 import { toOptionValue, toPick } from '@/components/map-columns/MapColumnsBody';
 import MapColumnsDialog from '@/components/map-columns/MapColumnsDialog';
-import {
-  mapColumnsText,
-  relationshipTypeText,
-} from '@/components/map-columns/mapColumnsText';
+import { nameOf } from '@/components/map-columns/nameOf';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import { Open } from '@/constants/open';
@@ -37,6 +42,8 @@ import {
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { attachActionsTag, Tag } from '@/engine/tag';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const harness = observable({ readonly: false });
@@ -144,25 +151,14 @@ const relationships = () =>
 const shared = (...actions: AnyAction[]) =>
   app.store.dispatchSync(attachActionsTag(Tag.shared, actions));
 
-describe('mapColumnsText', () => {
-  it('writes each placeholder and leaves one it is not given as typed', () => {
-    expect(mapColumnsText('mapColumns.noKey', { table: 'users' })).toBe(
-      'users has no key to reference'
-    );
-    expect(mapColumnsText('mapColumns.title')).toBe('Map Columns');
+describe('the names the dialog writes', () => {
+  it('keeps a name as written and calls a blank or missing one unnamed', () => {
+    expect(nameOf({ name: ' users ' }, sourceI18n)).toBe(' users ');
+    expect(nameOf({ name: '  ' }, sourceI18n)).toBe('unnamed');
+    expect(nameOf(undefined, sourceI18n)).toBe('unnamed');
     expect(
-      mapColumnsText('mapColumns.typesDiffer', {
-        parentType: 'int',
-      } as never)
-    ).toBe('Types differ: int and {childType}');
-  });
-
-  it('names each notation as the relationship menu does, and none for a value it does not know', () => {
-    expect(relationshipTypeText(RelationshipType.ZeroOne)).toBe('Zero One');
-    expect(relationshipTypeText(RelationshipType.ZeroN)).toBe('Zero N');
-    expect(relationshipTypeText(RelationshipType.OneOnly)).toBe('One Only');
-    expect(relationshipTypeText(RelationshipType.OneN)).toBe('One N');
-    expect(relationshipTypeText(0)).toBe('');
+      nameOf({ name: '' }, createI18n('ko-KR', pseudoMessages('ko')))
+    ).toBe('ko:unnamed');
   });
 });
 
@@ -733,5 +729,181 @@ describe('MapColumnsDialog editing a relationship', () => {
 
     expect(parentCells()).toContain('(removed)');
     expect(confirmButton().disabled).toBe(true);
+  });
+});
+
+describe('MapColumnsDialog / language', () => {
+  let teardown: (() => void) | null = null;
+
+  afterEach(() => {
+    teardown?.();
+    teardown = null;
+  });
+
+  /** The language the element would provide, English until a spec switches it. */
+  function provideLanguage() {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+    teardown = () => provider.destroy();
+
+    return async () => {
+      Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+      await flush();
+    };
+  }
+
+  /** The row lists by place, since their name follows the language. */
+  const rowLists = () =>
+    Array.from(
+      root().querySelectorAll<HTMLSelectElement>('.map-columns-rows select')
+    );
+
+  it('writes a new mapping in the language the element shows, following a switch', async () => {
+    const switchLanguage = provideLanguage();
+    seed();
+    await mountDialog();
+    await openCreate();
+    expect(dialog()?.querySelector('h2')?.textContent).toBe('Map Columns');
+
+    await switchLanguage();
+
+    expect(dialog()?.querySelector('h2')?.textContent).toBe('ko:Map Columns');
+    expect(
+      root().querySelector('[role="dialog"]')?.getAttribute('aria-label')
+    ).toBe('ko:Map Columns');
+    expect(root().querySelector('.map-columns-subtitle')?.textContent).toBe(
+      'ko:users → orders · ko:One N'
+    );
+    expect(
+      root().querySelector('.map-columns-references span')?.textContent
+    ).toBe('ko:References');
+    expect(optionTexts(referencesSelect()!)).toEqual([
+      'ko:Primary Key',
+      'ko:Unique: email',
+    ]);
+    expect(parentCells().slice(0, 2)).toEqual([
+      'ko:Referenced column',
+      'ko:Foreign key column',
+    ]);
+    const [list] = rowLists();
+    expect(list.getAttribute('aria-label')).toBe('ko:Foreign key column');
+    expect(optionTexts(list)).toEqual([
+      'ko:Pick a column',
+      'ko:New column: users_id_2',
+      'ko:id (int)',
+      'ko:users_id (bigint)',
+      'ko:email (varchar)',
+    ]);
+    expect(notes()).toEqual(['ko:users_id becomes int']);
+    expect(cancelButton().textContent?.trim()).toBe('ko:Cancel');
+    expect(confirmButton().textContent?.trim()).toBe('ko:Map');
+  });
+
+  it('says what stands in the way in that language', async () => {
+    const switchLanguage = provideLanguage();
+    seed(
+      [
+        { id: 'p_a', name: 'a', dataType: 'int', primaryKey: true },
+        { id: 'p_b', name: 'b', dataType: 'int', primaryKey: true },
+      ],
+      [{ id: 'c_x', name: '', dataType: 'bigint' }]
+    );
+    app.store.dispatchSync(
+      changeRelationshipDataTypeSyncAction({ value: false })
+    );
+    await mountDialog();
+    await openCreate('u', 'o');
+    await switchLanguage();
+
+    await choose(rowLists()[0], 'column:c_x');
+
+    expect(optionTexts(rowLists()[1])).toContain(
+      'ko:ko:unnamed (bigint) · in use'
+    );
+    expect(notes()).toEqual(['ko:Types differ: int and bigint']);
+
+    await openCreate('u', 'u');
+    await choose(rowLists()[0], 'column:p_a');
+    await choose(rowLists()[1], 'column:p_b');
+
+    expect(message()?.textContent).toBe(
+      'ko:At least one column must reference a different column'
+    );
+  });
+
+  it('edits a stored mapping in that language', async () => {
+    const switchLanguage = provideLanguage();
+    seed();
+    seedMapRelationship(app.store, 'r1', ['u', ['u_name']], ['o', ['o_user']]);
+    seedMapRelationship(
+      app.store,
+      'r2',
+      ['u', ['u_id', 'u_id']],
+      ['o', ['o_user', 'o_mail']]
+    );
+    await mountDialog();
+    await switchLanguage();
+    await openEdit('r1');
+
+    expect(confirmButton().textContent?.trim()).toBe('ko:Save');
+    expect(message()?.textContent).toBe(
+      'ko:The referenced columns are not a key of users'
+    );
+
+    shared(
+      changeRelationshipColumnsAction({
+        id: 'r1',
+        start: { tableId: 'u', columnIds: ['u_id'] },
+        end: { tableId: 'o', columnIds: ['o_mail'] },
+      })
+    );
+    await flush();
+    expect(root().querySelector('.map-columns-changed')?.textContent).toBe(
+      'ko:This relationship changed while the dialog was open'
+    );
+
+    cancelButton().click();
+    await flush();
+    await openEdit('r2');
+
+    expect(optionTexts(referencesSelect()!)).toContain(
+      'ko:Current columns (not a key)'
+    );
+    expect(parentCells()).toContain('ko:(invalid)');
+    expect(message()?.textContent).toBe(
+      'ko:Pick a key in References to fix this mapping'
+    );
+  });
+
+  it('closes with toasts that follow a switch after they show, a table with no name too', async () => {
+    const switchLanguage = provideLanguage();
+    seed();
+    seedMapTable(app.store, 'x', '', [{ id: 'x_a', name: 'a' }]);
+    seedMapRelationship(app.store, 'r1', ['u', ['u_id']], ['o', ['o_user']]);
+    await mountDialog();
+
+    await openEdit('r1');
+    shared(removeRelationshipAction({ id: 'r1' }));
+    await flush();
+    await openCreate();
+    confirmButton().click();
+    app.store.dispatchSync(removeColumnAction({ id: 'o_user', tableId: 'o' }));
+    await flush();
+    await openCreate('u', 'x');
+    shared(removeTableAction({ id: 'x' }));
+    await flush();
+    expect(toastText()).toEqual([
+      'Map Columns closed: the relationship was removed',
+      "Couldn't map columns: the diagram changed",
+      'Map Columns closed: unnamed was removed',
+    ]);
+
+    await switchLanguage();
+
+    expect(toastText()).toEqual([
+      'ko:Map Columns closed: the relationship was removed',
+      "ko:Couldn't map columns: the diagram changed",
+      'ko:Map Columns closed: ko:unnamed was removed',
+    ]);
   });
 });

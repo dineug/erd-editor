@@ -22,10 +22,8 @@ import {
   coveredWidth,
   isTakenOver,
 } from '@/components/find-replace/panelLayout';
-import {
-  mapColumnsText,
-  nameOf,
-} from '@/components/map-columns/mapColumnsText';
+import { useI18n } from '@/components/localeContext';
+import { nameOf } from '@/components/map-columns/nameOf';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import Icon from '@/components/primitives/icon/Icon';
 import { Open } from '@/constants/open';
@@ -111,6 +109,7 @@ type TargetLayout = {
  */
 const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
 
   /** The last press on the canvas, which is the press that started a draw once one starts. */
@@ -403,13 +402,12 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
 
     const { card, placement, pill, gutter } = layout;
     const start = startKeyOf(state);
-    const mapTitle = mapColumnsText('mapColumns.mapToExisting');
+    const { t } = i18n.value;
+    const mapTitle = t('mapColumns.mapToExisting');
     const newTitle = start.hasKey
-      ? mapColumnsText('mapColumns.createNew')
-      : mapColumnsText('mapColumns.noPrimaryKeyToCopy', {
-          table: start.table
-            ? nameOf(start.table)
-            : mapColumnsText('common.unnamed'),
+      ? t('mapColumns.createNew')
+      : t('mapColumns.noPrimaryKeyToCopy', {
+          table: nameOf(start.table, i18n.value),
         });
 
     return (

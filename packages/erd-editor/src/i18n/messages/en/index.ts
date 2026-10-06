@@ -6,6 +6,7 @@ import { exportImage } from './exportImage';
 import { feedback } from './feedback';
 import { findReplace } from './findReplace';
 import { floatingToolbar } from './floatingToolbar';
+import { mapColumns } from './mapColumns';
 import { palette } from './palette';
 import { settings } from './settings';
 import { shortcuts } from './shortcuts';
@@ -36,4 +37,5 @@ export const en = {
   ...toolbar,
   ...themeBuilder,
   ...welcome,
+  ...mapColumns,
 } as const;

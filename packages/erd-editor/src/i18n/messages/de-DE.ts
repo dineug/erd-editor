@@ -314,4 +314,46 @@ export const deDE = {
   'welcome.hintTheme': 'Design auswählen',
   'welcome.hintLanguage': 'Sprache auswählen',
   'welcome.hintFloatingToolbar': 'Verschieben, zoomen und Beziehungen zeichnen',
+  'mapColumns.title': 'Spalten zuordnen',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Vorhandenen Spalten zuordnen',
+  'mapColumns.createNew': 'Neue Spalten erstellen',
+  'mapColumns.noPrimaryKeyToCopy':
+    '{table} hat keinen Primärschlüssel zum Kopieren',
+  'mapColumns.references': 'Referenzierter Schlüssel',
+  'mapColumns.unique': 'Eindeutig: {column}',
+  'mapColumns.currentColumns': 'Aktuelle Spalten (kein Schlüssel)',
+  'mapColumns.referencedColumn': 'Referenzierte Spalte',
+  'mapColumns.foreignKeyColumn': 'Fremdschlüsselspalte',
+  'mapColumns.pickColumn': 'Spalte auswählen',
+  'mapColumns.newColumn': 'Neue Spalte: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · bereits verwendet',
+  'mapColumns.removed': '(entfernt)',
+  'mapColumns.invalid': '(ungültig)',
+  'mapColumns.becomesType': '{column} erhält den Datentyp {dataType}',
+  'mapColumns.typesDiffer':
+    'Datentypen unterscheiden sich: {parentType} und {childType}',
+  'mapColumns.selfOnly':
+    'Mindestens eine Spalte muss auf eine andere Spalte verweisen',
+  'mapColumns.duplicate':
+    'Diese Spalten sind bereits durch eine andere Beziehung verbunden',
+  'mapColumns.noKey':
+    '{table} hat keinen Schlüssel, auf den verwiesen werden kann',
+  'mapColumns.notAKey':
+    'Die referenzierten Spalten sind kein Schlüssel von {table}',
+  'mapColumns.fixMapping':
+    'Wählen Sie unter „Referenzierter Schlüssel“ einen Schlüssel aus, um diese Zuordnung zu korrigieren',
+  'mapColumns.addKeyToFix':
+    'Fügen Sie {table} einen Primärschlüssel oder eine eindeutige Spalte hinzu, um diese Zuordnung zu korrigieren',
+  'mapColumns.changedRemotely':
+    'Diese Beziehung wurde geändert, während der Dialog geöffnet war',
+  'mapColumns.map': 'Zuordnen',
+  'mapColumns.save': 'Speichern',
+  'mapColumns.closedTableRemoved':
+    '„Spalten zuordnen“ wurde geschlossen: {table} wurde entfernt',
+  'mapColumns.closedRelationshipRemoved':
+    '„Spalten zuordnen“ wurde geschlossen: Die Beziehung wurde entfernt',
+  'mapColumns.failed':
+    'Spalten konnten nicht zugeordnet werden: Das Diagramm wurde geändert',
 } satisfies Messages;
