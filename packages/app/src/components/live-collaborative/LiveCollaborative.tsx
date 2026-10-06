@@ -7,6 +7,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
+import {
+  useApplyPickedLocale,
+  useLocalePreference,
+} from '@/atoms/modules/locale';
 import { useApplyPresetTheme, useThemeState } from '@/atoms/modules/theme';
 import LiveParticipants from '@/components/live-collaborative/live-participants/LiveParticipants';
 import {
@@ -47,6 +51,8 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   const guestRef = useRef<CollaborativeGuest | null>(null);
   const theme = useThemeState();
   const applyPresetTheme = useApplyPresetTheme();
+  const locale = useLocalePreference();
+  const applyPickedLocale = useApplyPickedLocale();
   const nickname = useAtomValue(nicknameStorageAtom);
   const nicknameRef = useRef(nickname);
   nicknameRef.current = nickname;
@@ -71,6 +77,8 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       });
       editorRef.current = editor;
       editor.enableThemeBuilder = true;
+      editor.enableLocalePicker = true;
+      editor.enableWelcomeScreen = true;
       // Nothing leaves this guest until a host has actually answered.
       sharedStore.disconnect();
 
@@ -156,7 +164,12 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
         applyPresetTheme((event as CustomEvent).detail);
       };
 
+      const handleChangeLocale = (event: Event) => {
+        applyPickedLocale((event as CustomEvent).detail);
+      };
+
       editor.addEventListener('changePresetTheme', handleChangePresetTheme);
+      editor.addEventListener('changeLocale', handleChangeLocale);
 
       return () => {
         guest.close();
@@ -170,6 +183,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
           'changePresetTheme',
           handleChangePresetTheme
         );
+        editor.removeEventListener('changeLocale', handleChangeLocale);
         Array.from(unsubscribeSet).forEach(unsubscribe => unsubscribe());
         unsubscribeSet.clear();
         editor.destroy();
@@ -178,7 +192,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
     } catch (error) {
       setError(error);
     }
-  }, [roomId, secretKey, applyPresetTheme]);
+  }, [roomId, secretKey, applyPresetTheme, applyPickedLocale]);
 
   useEffect(() => {
     guestRef.current?.setNickname(nickname);
@@ -194,6 +208,10 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
       grayColor: theme.grayColor as any,
     });
   }, [theme]);
+
+  useLayoutEffect(() => {
+    editorRef.current?.setLocale(locale);
+  }, [locale]);
 
   return (
     <Flex css={styles.root} direction="column" align="center" justify="center">
