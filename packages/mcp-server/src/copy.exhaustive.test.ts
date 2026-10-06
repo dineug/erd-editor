@@ -194,35 +194,49 @@ describe('the words on a foreign key data type', () => {
       'except a serial key, which keeps its type and stops the change there'
     );
   });
-
-  it('say erd_undo cannot revert erd_set_relationship_data_type_sync, whose sync runs both ways, maps a serial key and stops at one', () => {
-    const text = describeTool('erd_set_relationship_data_type_sync');
-
-    expect(text).toMatch(
-      /^Sets relationship data type sync\. erd_undo cannot revert it: /
-    );
-    for (const phrase of [
-      'a change to the data type of a column spreads along relationships both ways',
-      'into the foreign keys that copy the column, a serial type as the integer it stores',
-      'from a foreign key back to the key it copies',
-      'except a serial key, which keeps its type and stops the change there',
-    ]) {
-      expect(text).toContain(phrase);
-    }
-    expect(text).not.toContain('follow the data type of the columns');
-  });
 });
 
-describe('the words on the Mermaid language', () => {
-  const text = describeArg('erd_set_language', 'value');
+describe('the words on an import', () => {
+  const schemaImports = [
+    'erd_import_sql',
+    'erd_import_graphql',
+    'erd_import_dbml',
+    'erd_import_aml',
+  ];
 
-  it('say an editor released before the generator drops it, so the user updates it', () => {
-    expect(text).toContain(
-      'An ERD Editor extension or plugin released before the Mermaid generator ignores Mermaid, so the user should update it.'
-    );
+  it('say the four schema imports keep the settings but the view, and none that it discards the document', () => {
+    for (const name of schemaImports) {
+      const text = describeTool(name);
+
+      expect(text, name).toContain(
+        'Replaces every table, relationship, index and memo of the document'
+      );
+      expect(text, name).toContain(
+        'keeping its settings but the view, which goes to the start of the canvas'
+      );
+      expect(describeArg(name, 'mode'), name).toContain(
+        'keeps the settings but the view, which goes to the start of the canvas'
+      );
+    }
+    for (const { description, args } of Object.values(TOOL_COPY)) {
+      for (const prose of [description, ...Object.values(args ?? {})]) {
+        expect(prose).not.toMatch(/discard/i);
+      }
+    }
   });
 
-  it('name no release, which the next one would make wrong', () => {
-    expect(text).not.toMatch(/\d+\.\d+/);
+  it('say erd_import_json takes the settings and locks it carries, and how to keep this document’s', () => {
+    const text = describeTool('erd_import_json');
+
+    expect(text).toContain('its settings included');
+    expect(text).toContain(
+      'one without lockSettings turns every lock on and puts the view at the start of the canvas'
+    );
+    expect(text).toContain(
+      "To keep this document's settings, start from the text erd_read json gives."
+    );
+    expect(describeArg('erd_import_json', 'mode')).toContain(
+      'its settings included'
+    );
   });
 });

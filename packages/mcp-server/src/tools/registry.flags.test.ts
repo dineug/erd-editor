@@ -20,7 +20,7 @@ describe('registry shape', () => {
 
     expect(new Set(names).size).toBe(names.length);
     expect(names.filter(name => !TOOL_NAME.test(name))).toEqual([]);
-    expect(names).toHaveLength(56);
+    expect(names).toHaveLength(46);
   });
 
   it('names each argument once per tool, in camel case', () => {

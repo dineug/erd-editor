@@ -60,7 +60,7 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the eight session tools, every registry tool and erd_batch: 65 in all', () => {
+  it('is the eight session tools, every registry tool and erd_batch: 55 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [
         ...SESSION_TOOL_NAMES,
@@ -69,8 +69,8 @@ describe('the tool surface (AC-M8)', () => {
       ].sort()
     );
     expect(SESSION_TOOL_NAMES).toHaveLength(8);
-    expect(actionTools).toHaveLength(56);
-    expect(tools).toHaveLength(65);
+    expect(actionTools).toHaveLength(46);
+    expect(tools).toHaveLength(55);
   });
 
   it('lists the session toolkit, then the read tools, then the registry, in its order, then erd_batch', () => {

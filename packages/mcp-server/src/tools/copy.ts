@@ -28,8 +28,6 @@ const OLDER_EDITOR =
 const REFERENTIAL_ACTION = `What the database does to the child rows: none (no clause, the database default), noAction, cascade, setNull, setDefault or restrict. A vendor that lacks the action drops it from its DDL. ${OLDER_EDITOR}`;
 const COLOR =
   'CSS hex color such as #3b82f6; an empty string removes the color.';
-const DATA_TYPE_SYNC =
-  'spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
 
@@ -55,21 +53,11 @@ export const ARG_COPY: Readonly<Record<string, string>> = {
   color: COLOR,
   x: X,
   y: Y,
-  mode: 'replace, the default, discards the document and loads the import in its place; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
+  mode: 'replace, the default, loads the import in place of every table, relationship, index and memo and keeps the settings but the view, which goes to the start of the canvas; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
 };
 
 const setting = (subject: string, value: string): ToolCopy => ({
   description: `Sets ${subject}. ${NO_UNDO}`,
-  args: { value },
-});
-
-/** A setting the file keeps at its lock, which every document starts with on. */
-const lockedSetting = (
-  subject: string,
-  value: string,
-  lock: string
-): ToolCopy => ({
-  description: `Sets ${subject}. ${NO_UNDO} While its ${lock} lock is on, as it is by default, the saved file keeps the value it was locked at; erd_set_lock_settings unlocks it.`,
   args: { value },
 });
 
@@ -79,7 +67,7 @@ const flag = (subject: string): ToolCopy => ({
 });
 
 const importer = (language: string): ToolCopy => ({
-  description: `Replaces the whole document with the schema parsed from ${language}. Everything in the document is discarded; erd_undo restores it. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.`,
+  description: `Replaces every table, relationship, index and memo of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.`,
   args: { value: `The ${language} source text.` },
 });
 
@@ -200,7 +188,8 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { columnIds: 'Column ids in that table, from erd_get.' },
   },
   erd_change_column_data_type: {
-    description: `Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change ${DATA_TYPE_SYNC}.`,
+    description:
+      'Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there.',
     args: { value: 'The data type text.' },
   },
   erd_change_column_name: {
@@ -333,61 +322,6 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     'the database vendor, which picks the data types and the default DDL of erd_read sql',
     'The database vendor.'
   ),
-  erd_set_language: lockedSetting(
-    'the code generation language of the document',
-    'The language or framework. An ERD Editor extension or plugin released before the Mermaid generator ignores Mermaid, so the user should update it.',
-    'language'
-  ),
-  erd_set_table_name_case: lockedSetting(
-    'the name case used when generating code for table names',
-    'The case style.',
-    'tableNameCase'
-  ),
-  erd_set_column_name_case: lockedSetting(
-    'the name case used when generating code for column names',
-    'The case style.',
-    'columnNameCase'
-  ),
-  erd_set_bracket_type: lockedSetting(
-    'how generated SQL quotes names',
-    'The quote style.',
-    'bracketType'
-  ),
-  erd_set_relationship_data_type_sync: {
-    description: `Sets relationship data type sync. ${NO_UNDO} When it is on, a change to the data type of a column ${DATA_TYPE_SYNC}.`,
-    args: { value: 'True to spread data type changes along relationships.' },
-  },
-  erd_set_relationship_optimization: setting(
-    'the relationship optimization flag stored in the document',
-    'True to turn it on.'
-  ),
-  erd_set_column_order: {
-    description: `Sets the order of the column parts shown in a table row by moving one part to the place of another. ${NO_UNDO}`,
-    args: {
-      columnType: 'The column part to move.',
-      targetColumnType: 'The column part whose place it takes.',
-    },
-  },
-  erd_set_max_width_comment: setting(
-    'the widest a comment is drawn in a table',
-    'Width in pixels, or -1 for no limit.'
-  ),
-  erd_set_lock_settings: {
-    description: `Locks or unlocks a setting the file keeps as it stood when locked: viewport (the scroll and zoom together), canvasType (the open tab), language, tableNameCase, columnNameCase or bracketType. Every one starts locked, so a change to a locked setting changes what the editors show but not the saved file. A lock holds the value the document has now, so locking a locked setting again moves its lock there. Only the user can lock viewport or canvasType, in the editor Settings tab; an agent may unlock them. ${NO_UNDO}`,
-    args: {
-      lockSettingType: 'The setting to lock or unlock.',
-      value: 'True to lock it at its current value, false to unlock it.',
-    },
-  },
-  erd_set_show: {
-    description:
-      'Shows or hides one part of the diagram, such as column comments or relationship lines. Setting the value it already has changes nothing.',
-    args: {
-      show: 'The part of the diagram. hideReferentialAction reads the other way round: it hides the ON DELETE and ON UPDATE labels on relationship lines, which show by default.',
-      value:
-        'True to show it, false to hide it; for hideReferentialAction, true hides the labels.',
-    },
-  },
 
   erd_import_sql: importer('SQL DDL (CREATE TABLE statements)'),
   erd_import_graphql: importer('a GraphQL SDL'),
@@ -395,10 +329,11 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   erd_import_aml: importer('AML'),
   erd_import_json: {
     description:
-      "Replaces the whole document with an erd-editor JSON document, such as another .erd.json file. erd_undo restores the previous one. With mode append it instead adds that document's tables, relationships, indexes and memos as new ones below the diagram, apart as the file places them, and keeps this document's settings.",
+      "Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes and memos as new ones below the diagram, apart as the file places them, and keeps this document's settings.",
     args: {
       value:
         'The .erd.json document text; empty gives an empty document, and is refused with mode append.',
+      mode: 'replace, the default, loads the document in place of this one, its settings included; append adds its tables, relationships, indexes and memos below the diagram and keeps everything already there, a table of the same name included.',
     },
   },
 };

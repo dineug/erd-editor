@@ -22,6 +22,7 @@ export const ActionType = {
   changeColumnOrder: 'settings.changeColumnOrder',
   changeMaxWidthComment: 'settings.changeMaxWidthComment',
   changeLockSettings: 'settings.changeLockSettings',
+  changeIgnoreSaveSettings: 'settings.changeIgnoreSaveSettings',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -82,10 +83,15 @@ export type ActionMap = {
     lockSettingType: number;
     value: boolean;
     /**
-     * What a lock holds, read from the settings of the store that took it, so
-     * every peer locks the same values; unread when unlocking.
+     * The settings named as the sending store shows them: a lock holds them,
+     * and an unlock shows the code settings among them on every peer, so each
+     * saves one value. The viewport and the tab carry none to unlock.
      */
     values: Partial<RootState['settings']['lockedValues']>;
+  };
+  [ActionType.changeIgnoreSaveSettings]: {
+    saveSettingType: number;
+    value: boolean;
   };
 };
 

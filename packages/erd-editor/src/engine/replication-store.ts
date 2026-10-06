@@ -3,7 +3,7 @@ import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
-import { ChangeActionTypes } from '@/engine/actions';
+import { ReplicaActionTypes, ReplicaChangeActionTypes } from '@/engine/actions';
 import {
   createEngineContext,
   type InjectEngineContext,
@@ -19,8 +19,11 @@ import { createHooks, settleLoad } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
 import { procGC } from '@/services/schema-gc/procGC';
 import { collectGCIds } from '@/services/schema-gc/schemaGCService';
+import { arrayHas } from '@/utils/arrayHas';
 import { toLoadValue } from '@/utils/loadValue';
 import { safeCallback } from '@/utils/safeCallback';
+
+const isReplicaChange = arrayHas<string>(ReplicaChangeActionTypes);
 
 type ListenerRecord = {
   [P in keyof InternalActionMap]: (payload: InternalActionMap[P]) => void;
@@ -63,6 +66,7 @@ export function createReplicationStore(
 ): ReplicationStore {
   const subscriptionSet = new Set<Subscription>();
   const engineContext = createEngineContext(context);
+  const { clock } = engineContext;
   const store = createStore(engineContext, false);
   // A replica has no screen, and the default editor size the store starts with
   // would pull every replicated load against a frame nobody looks through, so
@@ -72,11 +76,11 @@ export function createReplicationStore(
   const dispatch$ = new Subject<Array<AnyAction>>();
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
-  ).pipe(actionsFilter(ChangeActionTypes), debounceTime(200));
+  ).pipe(actionsFilter(ReplicaChangeActionTypes), debounceTime(200));
   const observers = new Set<Partial<ListenerRecord>>();
   // What a change is measured against: the value the last one handed out, or
-  // after a load the value the first change action finds, which holds the
-  // load's own rewrites (the GC, text widths, flags). A file is no measure.
+  // after a load the value the first change action finds, not a join's registers
+  // before it, so it holds the load's own rewrites. A file is no measure.
   let baseline: string | null = null;
 
   const on = (listeners: Partial<ListenerRecord>): Unsubscribe => {
@@ -140,12 +144,20 @@ export function createReplicationStore(
   subscriptionSet.add(change$.subscribe(handleChange)).add(
     dispatch$
       .pipe(
-        actionsFilter(ChangeActionTypes),
+        actionsFilter(ReplicaActionTypes),
         map(actions => actions.map(action => omit(action, ['tags'])))
       )
       .subscribe(actions => {
-        baseline ??= toJson(store.state);
+        if (actions.some(({ type }) => isReplicaChange(type))) {
+          baseline ??= toJson(store.state);
+        }
+        // Versions as the element's store gives them: what a stream regroup sent
+        // without one takes the next, and each moves the clock past the registers
+        // a join brought in, which would otherwise refuse every later stroke.
+        const version = clock.getNextVersion();
+        actions.forEach(action => (action.version ??= version));
         store.dispatchSync(actions);
+        actions.forEach(action => clock.merge(action.version));
       })
   );
 

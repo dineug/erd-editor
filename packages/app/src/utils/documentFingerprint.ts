@@ -4,17 +4,32 @@ import { mapValues, omit, pickBy } from 'es-toolkit';
 const FOREIGN_KEY = 2;
 
 /**
- * The settings a view writes: where it is scrolled, how far zoomed, which
- * canvas shows. Opening, looking around and switching views changes them.
+ * The view bits of LockSettingType, which files save and so never change.
+ * Imported from peer.js, they pull its store into the chunk every page preloads.
  */
-const VIEW_SETTINGS = [
-  'scrollTop',
-  'scrollLeft',
-  'originX',
-  'originY',
-  'zoomLevel',
-  'canvasType',
-] as const;
+const VIEWPORT_LOCK = 1;
+const CANVAS_TYPE_LOCK = 2;
+
+/** The scroll a release before the origin saved, which no editor moves now. */
+const LEGACY_SCROLL = ['scrollTop', 'scrollLeft'];
+
+/**
+ * The settings a view writes, by the lock that holds them: where it is scrolled,
+ * how far zoomed, which canvas shows. Opening, looking around and switching views
+ * changes them unless locked, when the file keeps what the lock holds.
+ */
+const VIEW_SETTINGS: ReadonlyArray<[number, string[]]> = [
+  [VIEWPORT_LOCK, ['originX', 'originY', 'zoomLevel']],
+  [CANVAS_TYPE_LOCK, ['canvasType']],
+];
+
+/** What a Drive save leaves out of the settings: the legacy scroll, each view no lock holds. */
+const unlockedViewSettings = (lockSettings: number) => [
+  ...LEGACY_SCROLL,
+  ...VIEW_SETTINGS.flatMap(([bit, fields]) =>
+    lockSettings & bit ? [] : fields
+  ),
+];
 
 const withoutAnchor = (end: Record<string, unknown>) =>
   omit(end, ['x', 'y', 'direction']);
@@ -149,9 +164,9 @@ function inIdOrder(doc: any, collections: Record<string, Record<string, any>>) {
 }
 
 /**
- * What a Drive save compares: the document and every setting but the view's.
- * A Drive file is the whole document, so a changed database or column order
- * has to reach it, while a zoom, a scroll or a collected tombstone never does.
+ * What a Drive save compares: the document and its settings but a view no lock
+ * holds. The file is the whole document, so a changed database, column order or
+ * locked view reaches it, while a zoom, a scroll or a collected tombstone never does.
  */
 export function toDriveFingerprint(value: string) {
   const json = JSON.parse(value);
@@ -160,6 +175,9 @@ export function toDriveFingerprint(value: string) {
   return JSON.stringify({
     doc,
     collections: withoutDerived(withoutMeta(collections)),
-    settings: omit(json.settings, VIEW_SETTINGS),
+    settings: omit(
+      json.settings,
+      unlockedViewSettings(json.settings.lockSettings)
+    ),
   });
 }

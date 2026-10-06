@@ -1,8 +1,10 @@
 import {
   createPeerStore,
   defaultToWidth,
+  Language,
   measureTableSize,
   type PeerStore,
+  settingsActions,
 } from '@dineug/erd-editor/peer.js';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -86,6 +88,17 @@ describe('the document list', () => {
       'width',
       'height',
     ]);
+  });
+
+  it('lists a locked code setting at the value the file saves, as the snapshot does', () => {
+    const peer = seeded();
+    peer.dispatch([
+      settingsActions.changeLanguageAction({ value: Language.TypeScript }),
+    ]);
+    const { settings } = toDocumentList(peer.state);
+
+    expect(settings.language).toBe('GraphQL');
+    expect(settings).not.toHaveProperty('canvasType');
   });
 
   it('sizes each table with the text measure of the peer hooks and the table sort', () => {

@@ -433,12 +433,24 @@ describe('the locks of a new document and of a file', () => {
     expect(parsed.lockedValues).toEqual(omit(settings, ['lockSettings']));
   });
 
-  it('drops the bits no lock owns', () => {
-    const source = JSON.stringify({
-      version: '3.0.0',
-      settings: { lockSettings: 1024 | LockSettingType.language },
-    });
+  it('keeps the bits no lock owns and writes them back', () => {
+    const lockSettings = 1024 | LockSettingType.language;
+    const schema = parser(
+      JSON.stringify({ version: '3.0.0', settings: { lockSettings } })
+    );
 
-    expect(parser(source).settings.lockSettings).toBe(LockSettingType.language);
+    expect(schema.settings.lockSettings).toBe(lockSettings);
+    expect(JSON.parse(toJson(schema)).settings.lockSettings).toBe(lockSettings);
+  });
+
+  it('locks nothing with a bit no lock owns', () => {
+    const schema = parser(
+      JSON.stringify({ version: '3.0.0', settings: { lockSettings: 64 } })
+    );
+    Object.assign(schema.settings, LIVE);
+
+    const { settings } = JSON.parse(toJson(schema));
+
+    expect(settings).toMatchObject({ ...LIVE, ignoreSaveSettings: 0 });
   });
 });

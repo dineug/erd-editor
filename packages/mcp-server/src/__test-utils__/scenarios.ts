@@ -123,19 +123,6 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     erd_resize_memo: { memoId: SEED.memo, width: 320, height: 240 },
     erd_set_database_name: { value: 'shop' },
     erd_set_database: { value: 'PostgreSQL' },
-    erd_set_language: { value: 'TypeScript' },
-    erd_set_table_name_case: { value: 'snakeCase' },
-    erd_set_column_name_case: { value: 'snakeCase' },
-    erd_set_bracket_type: { value: 'backtick' },
-    erd_set_relationship_data_type_sync: { value: false },
-    erd_set_relationship_optimization: { value: true },
-    erd_set_column_order: {
-      columnType: 'columnComment',
-      targetColumnType: 'columnName',
-    },
-    erd_set_show: { show: 'columnUnique', value: true },
-    erd_set_max_width_comment: { value: 120 },
-    erd_set_lock_settings: { lockSettingType: 'language', value: false },
     erd_import_sql: {
       value:
         'CREATE TABLE accounts (id INT NOT NULL PRIMARY KEY, email VARCHAR(255));',

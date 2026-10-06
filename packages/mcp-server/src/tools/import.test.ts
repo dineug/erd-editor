@@ -1,10 +1,16 @@
-import { type RootState } from '@dineug/erd-editor/peer.js';
+import {
+  LockSettingType,
+  type RootState,
+  settingsActions,
+  settingsActions$,
+} from '@dineug/erd-editor/peer.js';
 import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { comparable, settle } from '@/__test-utils__/mcp';
 import { APPEND_SCENARIOS, TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import {
+  createImportValue,
   createPeerSession,
   type PeerSession,
   SEED,
@@ -101,6 +107,43 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
     }
   );
 
+  it.each(SCHEMA_IMPORTS)(
+    '%s puts the view at the start of the canvas, in the file too, though a lock held it',
+    async name => {
+      const session = open();
+      await quiet();
+      const { agent, other } = session;
+      const viewOf = (value: string) => {
+        const { originX, originY, zoomLevel } = JSON.parse(value).settings;
+        return { originX, originY, zoomLevel };
+      };
+      const { originX, originY, zoomLevel } = createSchema().settings;
+      const start = { originX, originY, zoomLevel };
+      agent.dispatch([
+        settingsActions$.changeLockSettingsAction$(
+          LockSettingType.viewport,
+          false
+        ),
+      ]);
+      agent.dispatch([settingsActions.changeZoomLevelAction({ value: 0.5 })]);
+      agent.dispatch([
+        settingsActions$.changeLockSettingsAction$(
+          LockSettingType.viewport,
+          true
+        ),
+      ]);
+      await quiet();
+      expect(viewOf(agent.value)).not.toEqual(start);
+
+      runTool(agent, name, TOOL_SCENARIOS[name]);
+      await quiet();
+
+      expect(viewOf(agent.value)).toEqual(start);
+      expect(viewOf(other.value)).toEqual(start);
+      expect(agent.state.settings.lockSettings).toBe(63);
+    }
+  );
+
   it('takes the settings the JSON document carries', async () => {
     const session = open();
     await quiet();
@@ -111,6 +154,39 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
     expect(session.agent.state.settings.databaseName).toBe('imported');
     expect(session.other.state.settings.databaseName).toBe('imported');
   });
+
+  it.each([
+    ['carries', LockSettingType.language, 63 & ~LockSettingType.language, 0.8],
+    ['has no', undefined, 63, createSchema().settings.zoomLevel],
+  ])(
+    'takes the locks of a JSON document that %s lockSettings, every one on and the view at the start without them',
+    async (_, unlocked, locks, zoomLevel) => {
+      const session = open();
+      await quiet();
+      const { agent, other } = session;
+      agent.dispatch([
+        settingsActions$.changeLockSettingsAction$(
+          LockSettingType.viewport | LockSettingType.bracketType,
+          false
+        ),
+      ]);
+      agent.dispatch([settingsActions.changeZoomLevelAction({ value: 0.5 })]);
+      const json = JSON.parse(createImportValue());
+      json.settings.zoomLevel = 0.8;
+      if (unlocked === undefined) {
+        delete json.settings.lockSettings;
+      } else {
+        json.settings.lockSettings &= ~unlocked;
+      }
+
+      runTool(agent, 'erd_import_json', { value: JSON.stringify(json) });
+      await quiet();
+
+      expect(agent.state.settings.lockSettings).toBe(locks);
+      expect(other.state.settings.lockSettings).toBe(locks);
+      expect(agent.state.settings.zoomLevel).toBe(zoomLevel);
+    }
+  );
 
   it('brings the seed back on both sides with one undo', async () => {
     const session = open();

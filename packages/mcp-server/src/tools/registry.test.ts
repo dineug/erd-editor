@@ -34,7 +34,6 @@ const IDEMPOTENT = [
   'erd_set_index_unique',
   'erd_set_index_column_order',
   'erd_add_index_column',
-  'erd_set_show',
 ];
 
 describe('the registry', () => {

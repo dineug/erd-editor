@@ -1,7 +1,11 @@
 import {
+  BracketType,
   createSchemaSQL,
   type DatabaseVendor,
   DatabaseVendorToDatabase,
+  LockSettingType,
+  settingsActions,
+  settingsActions$,
 } from '@dineug/erd-editor/peer.js';
 import { toJson } from '@dineug/erd-editor-schema';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
@@ -66,6 +70,35 @@ describe('reading a document (AC-E12)', () => {
     expect(snapshot).toBe(JSON.stringify(toAgentSnapshot(peer.state)));
     expect(snapshot).not.toContain('\n');
     expect(JSON.parse(snapshot).tables[0].id).toBe(SEED.users);
+  });
+});
+
+describe('the DDL of a document whose bracket type is locked', () => {
+  it('quotes names as the file saves the bracket type, not as the screen shows it', () => {
+    const other = createSeededPeer();
+    other.dispatch([
+      settingsActions.changeBracketTypeAction({ value: BracketType.backtick }),
+    ]);
+
+    expect(other.state.settings.bracketType).toBe(BracketType.backtick);
+    expect(readDocument(other.state, 'sql', 'MySQL')).toBe(
+      createSchemaSQL(peer.state, DatabaseVendorToDatabase.MySQL)
+    );
+    expect(
+      readDocument(other.state, 'sql', 'MySQL', { tableIds: [SEED.users] })
+    ).toContain('CREATE TABLE users');
+
+    other.dispatch([
+      settingsActions$.changeLockSettingsAction$(
+        LockSettingType.bracketType,
+        false
+      ),
+    ]);
+
+    expect(readDocument(other.state, 'sql', 'MySQL')).toContain(
+      'CREATE TABLE `users`'
+    );
+    other.destroy();
   });
 });
 

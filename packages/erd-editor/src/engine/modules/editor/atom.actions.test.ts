@@ -688,6 +688,22 @@ describe('the locked settings a load lands', () => {
     });
   });
 
+  it.each([
+    [63, 127],
+    [127, 63 & ~LockSettingType.language],
+  ])(
+    'takes the bits no lock owns from the load, as show, opened at %d and loading %d',
+    (opened, loaded) => {
+      store.dispatchSync(initialLoadJsonAction({ value: fileOf(opened) }));
+      store.dispatchSync(loadJsonAction({ value: fileOf(loaded) }));
+
+      expect(store.state.settings.lockSettings).toBe(loaded);
+      expect(JSON.parse(toJson(store.state)).settings.lockSettings).toBe(
+        loaded
+      );
+    }
+  );
+
   it('leaves a lock newer than the load where it is', () => {
     store.dispatchSync({
       ...changeLockSettingsAction({

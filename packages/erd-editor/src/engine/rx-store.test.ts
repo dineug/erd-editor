@@ -24,6 +24,7 @@ import {
   changeBracketTypeAction,
   changeCanvasTypeAction,
   changeColumnNameCaseAction,
+  changeIgnoreSaveSettingsAction,
   changeLanguageAction,
   changeLockSettingsAction,
   changeTableNameCaseAction,
@@ -486,6 +487,25 @@ describe('createRxStore', () => {
         ['settings.changeLockSettings'],
         ['settings.changeLanguage'],
       ]);
+      subscription.unsubscribe();
+    });
+
+    it('leaves out a peer’s batch of the save switch the locks replaced, the value left as it was', () => {
+      vi.useFakeTimers();
+      const store = make(createContext());
+      const { seen, subscription } = watch(store);
+      const before = toJson(store.state);
+
+      store.dispatchSync(
+        attachActionTag(
+          Tag.shared,
+          changeIgnoreSaveSettingsAction({ saveSettingType: 3, value: true })
+        )
+      );
+      vi.advanceTimersByTime(250);
+
+      expect(seen).toEqual([]);
+      expect(toJson(store.state)).toBe(before);
       subscription.unsubscribe();
     });
   });

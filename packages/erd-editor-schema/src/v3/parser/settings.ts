@@ -155,7 +155,9 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   }
 
   if (isNumber(json.lockSettings)) {
-    settings.lockSettings = json.lockSettings & LOCK_ALL;
+    // Every bit, unknown ones too as with show, so a lock a later release adds
+    // outlives a save by this one; made only the int32 a bit test reads.
+    settings.lockSettings = json.lockSettings | 0;
     // A tab no editor locks, which only a hand edit can have written.
     if (
       bHas(settings.lockSettings, LockSettingType.canvasType) &&

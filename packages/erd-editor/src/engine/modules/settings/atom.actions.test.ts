@@ -31,6 +31,7 @@ import {
   changeColumnOrderAction,
   changeDatabaseAction,
   changeDatabaseNameAction,
+  changeIgnoreSaveSettingsAction,
   changeLanguageAction,
   changeLockSettingsAction,
   changeMaxWidthCommentAction,
@@ -971,7 +972,14 @@ describe('settings/atom.actions', () => {
   });
 
   describe('changeLockSettings', () => {
-    const { viewport, language, bracketType } = LockSettingType;
+    const {
+      viewport,
+      canvasType,
+      language,
+      tableNameCase,
+      columnNameCase,
+      bracketType,
+    } = LockSettingType;
     const lock = (
       lockSettingType: number,
       value: boolean,
@@ -982,6 +990,29 @@ describe('settings/atom.actions', () => {
       );
       return store.state.settings;
     };
+    const lockLanguage = (
+      value: boolean,
+      version: number,
+      carried: number
+    ) => ({
+      ...changeLockSettingsAction({
+        lockSettingType: language,
+        value,
+        values: { language: carried },
+      }),
+      version,
+    });
+
+    /** The settings of two peers handed both actions, one in each order. */
+    const inBothOrders = (a: AnyAction, b: AnyAction) =>
+      [
+        [a, b],
+        [b, a],
+      ].map(order => {
+        const peer = createTestStore();
+        order.forEach(action => peer.dispatchSync(action));
+        return peer.state.settings;
+      });
 
     it('starts a new document with every lock on', () => {
       expect(store.state.settings.lockSettings).toBe(63);
@@ -1106,6 +1137,149 @@ describe('settings/atom.actions', () => {
 
       expect(settings.lockedValues.zoomLevel).toBe(0.1);
     });
+
+    it('shows the code values an unlock carries, and keeps the values it held', () => {
+      const before = { ...store.state.settings.lockedValues };
+      const settings = lock(
+        language | tableNameCase | columnNameCase | bracketType,
+        false,
+        {
+          language: Language.Kotlin,
+          tableNameCase: NameCase.snakeCase,
+          columnNameCase: NameCase.camelCase,
+          bracketType: BracketType.backtick,
+        }
+      );
+
+      expect(settings.lockSettings).toBe(viewport | canvasType);
+      expect(settings).toMatchObject({
+        language: Language.Kotlin,
+        tableNameCase: NameCase.snakeCase,
+        columnNameCase: NameCase.camelCase,
+        bracketType: BracketType.backtick,
+      });
+      expect(settings.lockedValues).toEqual(before);
+    });
+
+    it('shows what an older unlock carries through the code register, though a later lock won', () => {
+      store.dispatchSync(lockLanguage(true, 9, Language.Java));
+      store.dispatchSync(lockLanguage(false, 5, Language.Go));
+
+      expect(bHas(store.state.settings.lockSettings, language)).toBe(true);
+      expect(store.state.settings.lockedValues.language).toBe(Language.Java);
+      expect(store.state.settings.language).toBe(Language.Go);
+    });
+
+    it('shows one language whichever order an unlock meets a newer relock in', () => {
+      const peers = inBothOrders(
+        lockLanguage(false, 10, Language.Kotlin),
+        lockLanguage(true, 11, Language.Go)
+      );
+
+      for (const settings of peers) {
+        expect(bHas(settings.lockSettings, language)).toBe(true);
+        expect(settings.lockedValues.language).toBe(Language.Go);
+        expect(settings.language).toBe(Language.Kotlin);
+      }
+    });
+
+    it.each([
+      ['a value its setter would refuse', { language: 3 }],
+      ['no value', {}],
+    ])('unlocks all the same carrying %s, and shows nothing', (_, values) => {
+      const settings = lock(language, false, values);
+
+      expect(bHas(settings.lockSettings, language)).toBe(false);
+      expect(settings.language).toBe(Language.GraphQL);
+    });
+
+    it('shows nothing of the viewport or the tab an unlock carries, each reader keeping its own', () => {
+      const settings = lock(viewport | canvasType, false, {
+        originX: 400,
+        originY: -90,
+        zoomLevel: 0.5,
+        canvasType: CanvasType.schemaSQL,
+      });
+
+      expect(settings.lockSettings).toBe(63 & ~(viewport | canvasType));
+      expect(settings).toMatchObject({
+        originX: 0,
+        originY: 0,
+        zoomLevel: 1,
+        canvasType: CanvasType.ERD,
+      });
+    });
+
+    it.each([
+      ['newer', 11, Language.Java],
+      ['older', 9, Language.Kotlin],
+    ])(
+      'lands one language whichever order an unlock meets a setter %s than it in',
+      (_, setterVersion, landed) => {
+        const peers = inBothOrders(lockLanguage(false, 10, Language.Kotlin), {
+          ...changeLanguageAction({ value: Language.Java }),
+          version: setterVersion,
+        });
+
+        expect(peers.map(settings => settings.language)).toEqual([
+          landed,
+          landed,
+        ]);
+      }
+    );
+  });
+
+  describe('the code settings', () => {
+    it.each([
+      ['language', changeLanguageAction, Language.Java, Language.Go] as const,
+      [
+        'tableNameCase',
+        changeTableNameCaseAction,
+        NameCase.snakeCase,
+        NameCase.camelCase,
+      ] as const,
+      [
+        'columnNameCase',
+        changeColumnNameCaseAction,
+        NameCase.snakeCase,
+        NameCase.camelCase,
+      ] as const,
+      [
+        'bracketType',
+        changeBracketTypeAction,
+        BracketType.backtick,
+        BracketType.doubleQuote,
+      ] as const,
+    ])(
+      'keeps the latest %s whatever order two setters arrive in',
+      (field, action, newer, older) => {
+        store.dispatchSync(
+          { ...action({ value: newer }), version: 8 },
+          { ...action({ value: older }), version: 6 }
+        );
+
+        expect(store.state.settings[field]).toBe(newer);
+        expect(store.state.lww['settings.code']).toEqual([
+          'settings',
+          -1,
+          -1,
+          { [field]: 8 },
+        ]);
+      }
+    );
+  });
+
+  describe('changeIgnoreSaveSettings', () => {
+    it('changes nothing, the locks having replaced the switch', () => {
+      const before = JSON.stringify(store.state.settings);
+
+      store.dispatchSync(
+        changeIgnoreSaveSettingsAction({ saveSettingType: 3, value: true }),
+        changeIgnoreSaveSettingsAction({ saveSettingType: 1, value: false })
+      );
+
+      expect(JSON.stringify(store.state.settings)).toBe(before);
+    });
   });
 
   describe('the scroll range chain read for a view', () => {
@@ -1203,6 +1377,7 @@ describe('settings/atom.actions', () => {
         'changeColumnOrderAction',
         'changeDatabaseAction',
         'changeDatabaseNameAction',
+        'changeIgnoreSaveSettingsAction',
         'changeLanguageAction',
         'changeLockSettingsAction',
         'changeMaxWidthCommentAction',

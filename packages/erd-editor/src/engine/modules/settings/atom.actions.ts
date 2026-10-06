@@ -332,16 +332,39 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   state.settings.canvasType = value;
 };
 
+type CodeSetting =
+  | 'language'
+  | 'tableNameCase'
+  | 'columnNameCase'
+  | 'bracketType';
+
+/**
+ * Writes a code setting through its register, so the latest setter or unlock
+ * of it wins on every peer, whatever order they arrive in.
+ */
+function replaceCodeSetting(
+  { settings, lww }: RootState,
+  version: number,
+  field: CodeSetting,
+  value: number
+): void {
+  replaceOperator(lww, version, 'settings.code', 'settings', field, () => {
+    settings[field] = value;
+  });
+}
+
 export const changeLanguageAction = createAction<
   ActionMap[typeof ActionType.changeLanguage]
 >(ActionType.changeLanguage);
 
 const changeLanguage: ReducerType<typeof ActionType.changeLanguage> = (
-  { settings },
-  { payload: { value } }
+  state,
+  { payload: { value }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasLanguage(value)) {
-    settings.language = value;
+    replaceCodeSetting(state, safeVersion, 'language', value);
   }
 };
 
@@ -351,9 +374,10 @@ export const changeTableNameCaseAction = createAction<
 
 const changeTableNameCase: ReducerType<
   typeof ActionType.changeTableNameCase
-> = ({ settings }, { payload: { value } }) => {
+> = (state, { payload: { value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasNameCase(value)) {
-    settings.tableNameCase = value;
+    replaceCodeSetting(state, safeVersion, 'tableNameCase', value);
   }
 };
 
@@ -363,9 +387,10 @@ export const changeColumnNameCaseAction = createAction<
 
 const changeColumnNameCase: ReducerType<
   typeof ActionType.changeColumnNameCase
-> = ({ settings }, { payload: { value } }) => {
+> = (state, { payload: { value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasNameCase(value)) {
-    settings.columnNameCase = value;
+    replaceCodeSetting(state, safeVersion, 'columnNameCase', value);
   }
 };
 
@@ -374,11 +399,13 @@ export const changeBracketTypeAction = createAction<
 >(ActionType.changeBracketType);
 
 const changeBracketType: ReducerType<typeof ActionType.changeBracketType> = (
-  { settings },
-  { payload: { value } }
+  state,
+  { payload: { value }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   if (hasBracketType(value)) {
-    settings.bracketType = value;
+    replaceCodeSetting(state, safeVersion, 'bracketType', value);
   }
 };
 
@@ -454,27 +481,35 @@ const isLockedValue: Record<keyof LockedValues, (value: any) => boolean> = {
 };
 
 /**
+ * The locks of the settings every peer shows one screen of, their setters
+ * never following-tagged, so an unlock of one carries the unlocker's value.
+ */
+export const CodeLockSettings =
+  LockSettingType.language |
+  LockSettingType.tableNameCase |
+  LockSettingType.columnNameCase |
+  LockSettingType.bracketType;
+
+/**
  * Locks each setting named at the values the payload carries, the last lock
  * or unlock of it winning on every peer, and leaves one sent wrong as it was.
+ * An unlock sets each valid code value it carries as a setter would, won or not.
  */
 const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
-  { settings, lww },
+  state,
   { payload: { lockSettingType, value, values }, version },
   { clock }
 ) => {
+  const { settings, lww } = state;
   const safeVersion = version ?? clock.getVersion();
 
   LockSettingTypeList.forEach(bit => {
     if (!bHas(lockSettingType, bit)) return;
 
     const fields = LockSettingFields[bit];
-    const lockedValues = pick(values, fields);
-    if (
-      value &&
-      fields.some(field => !isLockedValue[field](lockedValues[field]))
-    ) {
-      return;
-    }
+    const carried = pick(values, fields);
+    const valid = fields.filter(field => isLockedValue[field](carried[field]));
+    if (value && valid.length < fields.length) return;
 
     replaceOperator(
       lww,
@@ -484,20 +519,48 @@ const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
       String(bit),
       () => {
         if (value) {
-          Object.assign(settings.lockedValues, lockedValues);
+          Object.assign(settings.lockedValues, carried);
           settings.lockSettings |= bit;
         } else {
           settings.lockSettings &= ~bit;
         }
       }
     );
+
+    // Outside the lock's register, so an unlock that crosses a newer relock
+    // shows the same value on every peer whichever of the two comes first.
+    if (value || !bHas(CodeLockSettings, bit)) return;
+    valid.forEach(field =>
+      replaceCodeSetting(
+        state,
+        safeVersion,
+        field as CodeSetting,
+        carried[field] as number
+      )
+    );
   });
 };
 
+export const changeIgnoreSaveSettingsAction = createAction<
+  ActionMap[typeof ActionType.changeIgnoreSaveSettings]
+>(ActionType.changeIgnoreSaveSettings);
+
+/**
+ * Changes nothing, the locks having replaced the switch. Only a replica takes
+ * it (ReplicaChangeActionTypes), so a batch an agent written before the locks
+ * sends still gets the save its hub waits on, and the element reports none.
+ */
+const changeIgnoreSaveSettings: ReducerType<
+  typeof ActionType.changeIgnoreSaveSettings
+> = () => {};
+
+/** Every lock this release knows, the rest of lockSettings a later one's. */
+const LOCK_KNOWN = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
+
 /**
  * Lands the settings of a load that replaces the document: each lock through
- * its register, so the latest lock wins on every peer, and each setting locked
- * once it lands but the view, which lands where any load puts it, keeps the screen.
+ * its register, a bit no lock owns taken from the load as show is, and each
+ * setting locked once it lands but the view keeping the screen.
  */
 export function landLoadedSettings(
   { settings, lww }: RootState,
@@ -506,7 +569,8 @@ export function landLoadedSettings(
 ): void {
   const { lockSettings, lockedValues, ...screen } = settings;
   Object.assign(settings, loaded, {
-    lockSettings,
+    lockSettings:
+      (lockSettings & LOCK_KNOWN) | (loaded.lockSettings & ~LOCK_KNOWN),
     lockedValues: { ...lockedValues },
   });
 
@@ -550,6 +614,7 @@ export const settingsReducers = {
   [ActionType.changeColumnOrder]: changeColumnOrder,
   [ActionType.changeMaxWidthComment]: changeMaxWidthComment,
   [ActionType.changeLockSettings]: changeLockSettings,
+  [ActionType.changeIgnoreSaveSettings]: changeIgnoreSaveSettings,
 };
 
 export const actions = {
@@ -570,4 +635,5 @@ export const actions = {
   changeColumnOrderAction,
   changeMaxWidthCommentAction,
   changeLockSettingsAction,
+  changeIgnoreSaveSettingsAction,
 };

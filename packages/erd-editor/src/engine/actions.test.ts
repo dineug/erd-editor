@@ -8,6 +8,8 @@ import {
   HistoryActionTypes,
   LockSettingActionTypes,
   ReadonlyIgnoreActionTypes,
+  ReplicaActionTypes,
+  ReplicaChangeActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
   SharedStreamActionTypes,
@@ -147,6 +149,31 @@ describe('ChangeActionTypes', () => {
     expect(ChangeActionTypes).not.toContain('editor.changeViewport');
     expect(ChangeActionTypes).not.toContain('editor.sharedMouseTracker');
     expect(ChangeActionTypes).not.toContain('memo.changeZIndex');
+  });
+});
+
+describe('ReplicaChangeActionTypes', () => {
+  it('is ChangeActionTypes plus the save switch the locks replaced, a change of no other list', () => {
+    expect(ReplicaChangeActionTypes).toEqual([
+      ...ChangeActionTypes,
+      'settings.changeIgnoreSaveSettings',
+    ]);
+    expect(SharedActionTypes).not.toContain(
+      'settings.changeIgnoreSaveSettings'
+    );
+    expect(HistoryActionTypes).not.toContain(
+      'settings.changeIgnoreSaveSettings'
+    );
+  });
+});
+
+describe('ReplicaActionTypes', () => {
+  it('is what a replica reports plus the registers a window answers a join with, never reported', () => {
+    expect(ReplicaActionTypes).toEqual([
+      ...ReplicaChangeActionTypes,
+      'editor.mergeLWW',
+    ]);
+    expect(ReplicaChangeActionTypes).not.toContain('editor.mergeLWW');
   });
 });
 

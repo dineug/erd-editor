@@ -17,7 +17,7 @@ import {
   toEntityDetails,
   toTableNameList,
 } from '@/tools/outline';
-import { toAgentSnapshot } from '@/tools/snapshot';
+import { toAgentSnapshot, toSavedSettings } from '@/tools/snapshot';
 
 export type ReadFormat = 'snapshot' | 'sql' | 'json';
 
@@ -93,6 +93,12 @@ function selectTables(state: RootState, filter: TableFilter): RootState {
   };
 }
 
+/** The state with the settings its file saves, the bracket type the DDL quotes with among them. */
+const withSavedSettings = (state: RootState): RootState => ({
+  ...state,
+  settings: toSavedSettings(state.settings),
+});
+
 /**
  * Serializes a document the way an agent asked to read it: the snapshot it
  * edits by, the DDL of a vendor, which defaults to the document's database,
@@ -128,7 +134,7 @@ export function readDocument(
       : format === 'json'
         ? toJson(state)
         : createSchemaSQL(
-            filtered ? selectTables(state, filtered) : state,
+            withSavedSettings(filtered ? selectTables(state, filtered) : state),
             vendor === undefined ? undefined : toDatabase(vendor)
           );
   if (!fitsInRead(text)) {

@@ -114,7 +114,7 @@ refused with how to narrow it.
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
 | Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
-| Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_language`, `erd_set_table_name_case`, `erd_set_column_name_case`, `erd_set_bracket_type`, `erd_set_relationship_data_type_sync`, `erd_set_relationship_optimization`, `erd_set_column_order`, `erd_set_max_width_comment`, `erd_set_lock_settings`, `erd_set_show` |
+| Settings | `erd_set_database`, `erd_set_database_name` |
 | Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |
 | Batch | `erd_batch` |
 
@@ -123,20 +123,26 @@ a copy of the document first, so a refused one is named and nothing is applied, 
 reverts the whole batch. An operation named with `as` lets a later one pass `$name` (or `$name.1`
 for its second created id) where it takes an entity id, so a table and its columns take one call.
 
-The five import tools replace the document by default. With `mode: "append"` they add the import
-instead, as the editor's Import and Add does: its tables, relationships and indexes arrive as new
-ones in a grid below everything already there (a JSON document's, with its memos, in the placement
-it has), the document's settings and tables stay as they are, and one `erd_undo` takes them away. A
-foreign key to a table the import does not declare is dropped.
+The five import tools replace the document's tables, relationships, indexes and memos by default:
+the four schema imports keep its settings but the view, which goes to the start of the canvas, and
+`erd_import_json` takes the settings of the document it loads. With `mode: "append"` they add the
+import instead, as the editor's Import and Add does: its tables, relationships and indexes arrive
+as new ones in a grid below everything already there (a JSON document's, with its memos, in the
+placement it has), the document's settings and tables stay as they are, and one `erd_undo` takes
+them away. A foreign key to a table the import does not declare is dropped.
 
 `erd_change_relationship_on_delete` and `erd_change_relationship_on_update`, and the `onDelete` /
 `onUpdate` of `erd_add_relationship` and `erd_link_columns`, set a foreign key's ON DELETE and ON
 UPDATE actions. An ERD Editor extension or plugin released before referential actions ignores them
 when it serves the document, so update it.
 
-Every edit tool takes the document `path`. Settings other than `erd_set_show`, and
-`erd_resize_memo`, make no undo entry in the editor, so `erd_undo` passes over them and the result
-says so.
+An agent sets the database and its name, the settings of the schema itself. What the diagram
+shows, the code generation language, the name cases, the bracket type and the locks that keep them
+in the file are yours to set in the editor; `erd_list` and `erd_read` read them as the file saves
+them.
+
+Every edit tool takes the document `path`. The two settings tools and `erd_resize_memo` make no
+undo entry in the editor, so `erd_undo` passes over them and the result says so.
 
 The edit tools, `erd_batch` and the read tools (`erd_list`, `erd_get`, `erd_read`) refuse an
 argument they do not declare, or one of the wrong type, with a JSON-RPC invalid params error

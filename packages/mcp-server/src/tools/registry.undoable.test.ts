@@ -57,15 +57,16 @@ describe('undoable is what a run on the engine measures (AC-B4)', () => {
     expect(sort.actionTypes).toEqual(['table.moveTo']);
   });
 
-  it('keeps erd_set_show the one settings tool the engine can undo', () => {
+  it('keeps both settings tools out of the editor history', () => {
     const settings = actionTools.filter(({ actionTypes }) =>
       actionTypes.every(type => type.startsWith('settings.'))
     );
 
-    expect(settings).toHaveLength(12);
-    expect(
-      settings.filter(({ undoable }) => undoable).map(({ name }) => name)
-    ).toEqual(['erd_set_show']);
+    expect(settings.map(({ name }) => name)).toEqual([
+      'erd_set_database_name',
+      'erd_set_database',
+    ]);
+    expect(settings.filter(({ undoable }) => undoable)).toEqual([]);
   });
 
   it('says why a lone resize leaves no entry, citing the memo history', () => {

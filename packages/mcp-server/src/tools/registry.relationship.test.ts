@@ -6,6 +6,7 @@ import {
   type PeerStore,
   ReferentialAction,
   RelationshipType,
+  settingsActions,
 } from '@dineug/erd-editor/peer.js';
 import { compositionActionsFlat } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -466,7 +467,7 @@ describe.each([
   });
 });
 
-describe('the foreign key data types the descriptions of erd_add_relationship, erd_change_column_data_type and erd_set_relationship_data_type_sync state', () => {
+describe('the foreign key data types the descriptions of erd_add_relationship and erd_change_column_data_type state', () => {
   const dataTypeOf = (peer: PeerStore, columnId: string) =>
     peer.state.collections.tableColumnEntities[columnId].dataType;
 
@@ -481,7 +482,10 @@ describe('the foreign key data types the descriptions of erd_add_relationship, e
   it('gives the foreign key of a serial key the integer it stores, sync off too', () => {
     const peer = seededPeer();
     runTool(peer, 'erd_set_database', { value: 'PostgreSQL' });
-    runTool(peer, 'erd_set_relationship_data_type_sync', { value: false });
+    // The user sets the sync in the editor; no tool does.
+    peer.dispatch([
+      settingsActions.changeRelationshipDataTypeSyncAction({ value: false }),
+    ]);
     setDataType(peer, SEED.users, SEED.userId, 'BIGSERIAL');
     expect(dataTypeOf(peer, SEED.orderUser)).toBe('INT');
 
@@ -503,7 +507,9 @@ describe('the foreign key data types the descriptions of erd_add_relationship, e
   it('syncs both ways and stops a foreign key change at a serial key', () => {
     const peer = seededPeer();
     runTool(peer, 'erd_set_database', { value: 'PostgreSQL' });
-    runTool(peer, 'erd_set_relationship_data_type_sync', { value: true });
+    peer.dispatch([
+      settingsActions.changeRelationshipDataTypeSyncAction({ value: true }),
+    ]);
 
     setDataType(peer, SEED.orders, SEED.orderUser, 'BIGINT');
     expect(dataTypeOf(peer, SEED.userId)).toBe('BIGINT');

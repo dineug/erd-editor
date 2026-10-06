@@ -1,4 +1,9 @@
-import { tableActions$ } from '@dineug/erd-editor/peer.js';
+import {
+  LockSettingType,
+  settingsActions,
+  settingsActions$,
+  tableActions$,
+} from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
   beforeEach,
@@ -38,7 +43,23 @@ const EDITED_AGAIN = documentWith(store => {
   store.dispatch([tableActions$.addTableAction$()]);
 });
 
-/** The same document, zoomed and scrolled: view state, no edit. */
+/** USERS_DOCUMENT scrolled with its viewport unlocked, which its value shows. */
+const UNLOCKED = documentWith(store => {
+  store.setInitialValue(USERS_DOCUMENT);
+  store.dispatch([
+    settingsActions.scrollToAction({ originX: -800, originY: -400 }),
+    settingsActions$.changeLockSettingsAction$(LockSettingType.viewport, false),
+  ]);
+});
+/** USERS_DOCUMENT with its viewport locked again where UNLOCKED was scrolled. */
+const RELOCKED = documentWith(store => {
+  store.setInitialValue(UNLOCKED);
+  store.dispatch([
+    settingsActions$.changeLockSettingsAction$(LockSettingType.viewport, true),
+  ]);
+});
+
+/** The same document, zoomed and scrolled: view state, no edit while unlocked. */
 function viewed(value: string) {
   const json = JSON.parse(value);
   json.settings.zoomLevel = 0.5;
@@ -177,13 +198,30 @@ describe('debounce', () => {
   });
 
   it('sends nothing for view state, zoom and scroll alone', async () => {
-    const { edit, requests, states } = setup();
+    const { edit, requests, states } = setup({
+      baseFingerprint: toDriveFingerprint(UNLOCKED),
+    });
 
-    edit(viewed(USERS_DOCUMENT));
+    edit(viewed(UNLOCKED));
     await settle(MAX_WAIT_MS);
 
     expect(requests()).toEqual([]);
     expect(states).toEqual([]);
+  });
+
+  it('saves a locked viewport moved by an unlock and a lock again within one debounce', async () => {
+    const { edit, requests, file } = setup();
+
+    edit(UNLOCKED);
+    await settle(DEBOUNCE_MS - 1);
+    edit(RELOCKED);
+    await settle(DEBOUNCE_MS);
+
+    expect(requests()).toEqual([
+      'GET /drive/v3/files',
+      'PATCH /upload/drive/v3/files',
+    ]);
+    expect(file.content).toBe(RELOCKED);
   });
 
   it('has a follower ask its leader instead of saving', async () => {
