@@ -23,6 +23,7 @@ import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   addRelationshipAction,
   changeRelationshipColumnsAction,
+  removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
@@ -144,6 +145,7 @@ describe('relationship/hooks registration', () => {
       'column.remove',
       'column.changePrimaryKey',
       'relationship.add',
+      'relationship.remove',
       'relationship.changeColumns',
       'table.add',
       'table.remove',
@@ -159,6 +161,7 @@ describe('relationship/hooks registration', () => {
       'column.changeNotNull',
       'column.changePrimaryKey',
       'relationship.add',
+      'relationship.remove',
       'relationship.changeColumns',
       'table.add',
       'table.remove',
@@ -313,22 +316,23 @@ describe('relationship/hooks identificationHook', () => {
     expect(rel(store, 'r1').identification).toBe(true);
   });
 
-  it('ignores relationships that are not listed in the document', async () => {
+  it('falls back to not identifying for a relationship that is not listed in the document', async () => {
     const store = createTestStore();
     addTable(store, 't2', ['c1']);
     addColumn(store, 't2', 'c1', ColumnOption.primaryKey);
-    const orphan = createRelationship({
-      id: 'orphan',
+    const removed = createRelationship({
+      id: 'removed',
+      identification: true,
       start: { tableId: 't1', columnIds: [] },
       end: { tableId: 't2', columnIds: ['c1'] },
     });
-    store.state.collections.relationshipEntities['orphan'] = orphan;
+    store.state.collections.relationshipEntities['removed'] = removed;
 
     const { fire } = await run(identificationHook, store);
     fire();
     await settle();
 
-    expect(rel(store, 'orphan').identification).toBe(false);
+    expect(rel(store, 'removed').identification).toBe(false);
   });
 });
 
@@ -411,6 +415,27 @@ describe('relationship/hooks startRelationshipHook', () => {
     await settle();
 
     expect(rel(store, 'r1').startRelationshipType).toBe(
+      StartRelationshipType.dash
+    );
+  });
+
+  it('falls back to dash for a relationship that is not listed in the document', async () => {
+    const store = createTestStore();
+    addTable(store, 't2', ['c1']);
+    addColumn(store, 't2', 'c1', 0);
+    const removed = createRelationship({
+      id: 'removed',
+      startRelationshipType: StartRelationshipType.ring,
+      start: { tableId: 't1', columnIds: [] },
+      end: { tableId: 't2', columnIds: ['c1'] },
+    });
+    store.state.collections.relationshipEntities['removed'] = removed;
+
+    const { fire } = await run(startRelationshipHook, store);
+    fire();
+    await settle();
+
+    expect(rel(store, 'removed').startRelationshipType).toBe(
       StartRelationshipType.dash
     );
   });
@@ -529,6 +554,26 @@ describe('relationship/hooks identification and start type through the store', (
     expect(flagsOf(store, 'r1')).toEqual({
       identification: true,
       startRelationshipType: StartRelationshipType.dash,
+    });
+  });
+
+  it('takes the flags a new relationship starts with once it is removed, and reads them again once it is back', async () => {
+    const store = await createLinkScene();
+    store.dispatchSync(link('r1', 'nullable'));
+    await settle();
+
+    store.dispatchSync(removeRelationshipAction({ id: 'r1' }));
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.dash,
+    });
+
+    store.dispatchSync(link('r1', 'nullable'));
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.ring,
     });
   });
 

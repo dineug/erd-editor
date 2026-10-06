@@ -104,25 +104,31 @@ function selectEndColumns(
     .filter(column => has(column.id));
 }
 
-/** Each relationship in the document with the columns it still ends on. */
+/**
+ * Each relationship entity with the columns it still ends on. A removed one
+ * ends on none, so the flags a file saves for it never hang on arrival order.
+ */
 function* endColumnsOf({ doc, collections }: RootState) {
   const hasTable = arrayHas(doc.tableIds);
+  const hasRelationship = arrayHas(doc.relationshipIds);
   const relationships = query(collections)
     .collection('relationshipEntities')
-    .selectByIds(doc.relationshipIds);
+    .selectAll();
 
   for (const relationship of relationships) {
     yield [
       relationship,
-      selectEndColumns(collections, hasTable, relationship),
+      hasRelationship(relationship.id)
+        ? selectEndColumns(collections, hasTable, relationship)
+        : [],
     ] as const;
   }
 }
 
 /**
  * Marks each relationship identifying when every column it ends on is a primary
- * key, and not identifying, as a new one starts, once none of them is left, so
- * the value follows the document whatever order a peer's actions arrive in.
+ * key, and not identifying, as a new one starts, once none of them is left or
+ * it is removed, so the value follows the document whatever order actions arrive in.
  */
 export function recalculateIdentification(state: RootState) {
   for (const [relationship, columns] of endColumnsOf(state)) {
@@ -435,13 +441,14 @@ const viewLayoutActions = [
 /**
  * What can change the columns a relationship ends on or the flags it reads off
  * them: an end column or its table removed or back by an undo, a peer or an
- * agent, a relationship made or remapped, a key flag, and a load.
+ * agent, a relationship made, remapped or removed, a key flag, and a load.
  */
 const identificationActions = [
   addColumnAction,
   removeColumnAction,
   changeColumnPrimaryKeyAction,
   addRelationshipAction,
+  removeRelationshipAction,
   changeRelationshipColumnsAction,
   addTableAction,
   removeTableAction,
@@ -459,6 +466,7 @@ const startRelationshipActions = [
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   addRelationshipAction,
+  removeRelationshipAction,
   changeRelationshipColumnsAction,
   addTableAction,
   removeTableAction,

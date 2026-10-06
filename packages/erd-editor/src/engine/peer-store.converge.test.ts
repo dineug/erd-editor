@@ -583,6 +583,52 @@ describe('relationship.changeColumns converges', () => {
     expectSameDocuments(mesh.peers);
   });
 
+  it('gives a relationship one peer removes while another remaps it onto a key the flags of a new one on every peer', async () => {
+    const mesh = await open(2);
+    const [editor, remover] = mesh.peers;
+
+    editor.dispatch([remap([SEED.orderId])]);
+    remover.dispatch([removeRelationshipAction({ id: SEED.relationship })]);
+    // Each side's hooks run on its own edit before it hears the other's.
+    await settleHooks();
+    await mesh.deliverAll();
+
+    expectSameDocuments(mesh.peers);
+    for (const peer of mesh.peers) {
+      expect(peer.state.doc.relationshipIds).toEqual([]);
+      expect(endOf(peer)).toEqual([SEED.orderId]);
+      expect(relationshipOf(peer)).toMatchObject({
+        identification: false,
+        startRelationshipType: StartRelationshipType.dash,
+      });
+    }
+  });
+
+  it('gives a relationship one peer removes while another makes its end column a key the flags of a new one on every peer', async () => {
+    const mesh = await open(2);
+    const [keyer, remover] = mesh.peers;
+
+    keyer.dispatch([
+      changeColumnPrimaryKeyAction({
+        id: SEED.orderUser,
+        tableId: SEED.orders,
+        value: true,
+      }),
+    ]);
+    remover.dispatch([removeRelationshipAction({ id: SEED.relationship })]);
+    await settleHooks();
+    await mesh.deliverAll();
+
+    expectSameDocuments(mesh.peers);
+    for (const peer of mesh.peers) {
+      expect(peer.state.doc.relationshipIds).toEqual([]);
+      expect(relationshipOf(peer)).toMatchObject({
+        identification: false,
+        startRelationshipType: StartRelationshipType.dash,
+      });
+    }
+  });
+
   it('drops a mapping edit with its relationship when another peer removes the old child column', async () => {
     const mesh = await open(2);
     const [editor, remover] = mesh.peers;
