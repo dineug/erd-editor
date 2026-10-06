@@ -1,12 +1,21 @@
-import { AccentColor, GrayColor } from '@dineug/erd-editor-webview-bridge';
-import { describe, expect, it } from 'vite-plus/test';
+import {
+  AccentColor,
+  GrayColor,
+  LocaleLabel,
+} from '@dineug/erd-editor-webview-bridge';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   ACCENT_COLORS,
   APPEARANCES,
   DEFAULT_SETTINGS,
+  editorLocale,
   editorTheme,
   GRAY_COLORS,
+  LOCALE_NAMES,
+  localeFromPicker,
+  LOCALES,
+  obsidianLanguage,
   readSettings,
   readTheme,
   themeFromBuilder,
@@ -18,10 +27,11 @@ const DEFAULTS = {
   appearance: 'auto',
   grayColor: 'slate',
   accentColor: 'indigo',
+  locale: 'auto',
 };
 
 describe('readSettings', () => {
-  it('turns coding agents on and follows Obsidian in slate and indigo when nothing was saved', () => {
+  it("turns coding agents on and follows Obsidian's theme and language, in slate and indigo, when nothing was saved", () => {
     expect(DEFAULT_SETTINGS).toEqual(DEFAULTS);
     expect(readSettings(null)).toEqual(DEFAULTS);
     expect(readSettings(undefined)).toEqual(DEFAULTS);
@@ -34,6 +44,7 @@ describe('readSettings', () => {
       appearance: 'light',
       grayColor: 'sand',
       accentColor: 'crimson',
+      locale: 'ko-KR',
     };
     expect(readSettings(saved)).toEqual(saved);
     expect(readSettings({ appearance: 'dark' })).toEqual({
@@ -49,9 +60,14 @@ describe('readSettings', () => {
         appearance: 'system',
         grayColor: 'indigo',
         accentColor: 7,
+        locale: 'system',
         other: 1,
       })
     ).toEqual(DEFAULTS);
+    // The editor's own spelling, a bare language and another case are no setting.
+    for (const locale of ['system', 'ko', 'KO-KR', 'pt', null, 1]) {
+      expect(readSettings({ locale }).locale).toBe('auto');
+    }
     // An accent that is no gray, and a name the prototype carries.
     expect(readSettings({ grayColor: 'toString' }).grayColor).toBe('slate');
     expect(readSettings({ accentColor: 'constructor' }).accentColor).toBe(
@@ -68,6 +84,28 @@ describe('readSettings', () => {
     for (const accentColor of ACCENT_COLORS) {
       expect(readSettings({ accentColor }).accentColor).toBe(accentColor);
     }
+  });
+});
+
+describe('LOCALES', () => {
+  it('lists auto, then every language webview-bridge names, in its order', () => {
+    expect(LOCALES).toEqual(['auto', ...Object.keys(LocaleLabel)]);
+    expect(LOCALES).toHaveLength(26);
+    expect(LOCALES.slice(0, 3)).toEqual(['auto', 'en', 'id-ID']);
+    expect(LOCALES.at(-1)).toBe('ko-KR');
+    for (const locale of LOCALES) {
+      expect(readSettings({ locale }).locale).toBe(locale);
+    }
+  });
+
+  it('names Auto, then each language by its own name, in the same order', () => {
+    expect(Object.keys(LOCALE_NAMES)).toEqual(LOCALES);
+    expect(Object.values(LOCALE_NAMES)).toEqual([
+      'Auto',
+      ...Object.values(LocaleLabel),
+    ]);
+    expect(LOCALE_NAMES['ko-KR']).toBe('한국어');
+    expect(LOCALE_NAMES['pt-PT']).toBe('Português');
   });
 });
 
@@ -168,5 +206,77 @@ describe('themeFromBuilder', () => {
     expect(
       themeFromBuilder(auto, { appearance: 'dim', accentColor: 'plaid' })
     ).toEqual(auto);
+  });
+});
+
+describe('editorLocale', () => {
+  it("hands auto over as system, beside Obsidian's language", () => {
+    expect(editorLocale('auto', 'ja')).toEqual({
+      locale: 'system',
+      systemLocale: 'ja',
+    });
+    expect(editorLocale('auto', null)).toEqual({
+      locale: 'system',
+      systemLocale: null,
+    });
+  });
+
+  it("keeps a named language whatever Obsidian's is", () => {
+    expect(editorLocale('fa-IR', 'de')).toEqual({
+      locale: 'fa-IR',
+      systemLocale: 'de',
+    });
+  });
+});
+
+describe('localeFromPicker', () => {
+  it("keeps the picker's system as auto", () => {
+    expect(localeFromPicker('ko-KR', { locale: 'system' })).toBe('auto');
+  });
+
+  it('takes the language the picker picked, the current one too', () => {
+    expect(localeFromPicker('auto', { locale: 'he-IL' })).toBe('he-IL');
+    expect(localeFromPicker('he-IL', { locale: 'he-IL' })).toBe('he-IL');
+  });
+
+  it('keeps the current value for a detail that is missing or names no language', () => {
+    expect(localeFromPicker('de-DE', null)).toBe('de-DE');
+    expect(localeFromPicker('de-DE', {})).toBe('de-DE');
+    expect(localeFromPicker('auto', { locale: 'ko' })).toBe('auto');
+    expect(localeFromPicker('auto', { locale: 'toString' })).toBe('auto');
+  });
+});
+
+describe('obsidianLanguage', () => {
+  const storageOf = (language: string | null) => ({
+    getItem: vi.fn((key: string) => (key === 'language' ? language : null)),
+  });
+
+  it('reads getLanguage where Obsidian has it, never the storage', () => {
+    const storage = storageOf('fr');
+    expect(obsidianLanguage(() => 'ja', storage)).toBe('ja');
+    expect(storage.getItem).not.toHaveBeenCalled();
+  });
+
+  it('reads the language Obsidian keeps in localStorage where getLanguage is missing', () => {
+    const storage = storageOf('zh-TW');
+    expect(obsidianLanguage(undefined, storage)).toBe('zh-TW');
+    expect(storage.getItem).toHaveBeenCalledWith('language');
+  });
+
+  it("is null where neither names one, which leaves the editor to the browser's languages", () => {
+    expect(obsidianLanguage(undefined, storageOf(null))).toBeNull();
+    expect(obsidianLanguage(() => '', storageOf('fr'))).toBeNull();
+  });
+
+  it("reads Obsidian's pt as European Portuguese, from either source", () => {
+    expect(obsidianLanguage(() => 'pt', storageOf(null))).toBe('pt-PT');
+    expect(obsidianLanguage(undefined, storageOf('pt'))).toBe('pt-PT');
+  });
+
+  it('hands every other language over as Obsidian names it', () => {
+    expect(obsidianLanguage(() => 'pt-BR', storageOf(null))).toBe('pt-BR');
+    expect(obsidianLanguage(() => 'zh', storageOf(null))).toBe('zh');
+    expect(obsidianLanguage(undefined, storageOf('en-GB'))).toBe('en-GB');
   });
 });
