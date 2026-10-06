@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { koKR } from '../../src/i18n/messages/ko-KR';
 import type { ErdEditorPage } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import { Shortcut } from '../support/shortcuts';
@@ -28,6 +29,8 @@ const pickerOf = (erd: ErdEditorPage) => erd.host.locator('.locale-picker');
 const rowOf = (erd: ErdEditorPage, option: string) =>
   pickerOf(erd).locator(`button[role="option"][data-locale="${option}"]`);
 const rootOf = (erd: ErdEditorPage) => erd.host.locator('.root');
+const searchTitleOf = (erd: ErdEditorPage) =>
+  erd.toolbar.locator('.toolbar-search').getAttribute('title');
 
 async function openPicker(erd: ErdEditorPage) {
   await erd.toolbar.locator('.toolbar-locale').click();
@@ -75,6 +78,10 @@ test.describe('locale picker', () => {
     await expect(pickerOf(erd)).toHaveCount(0);
     await expect(rootOf(erd)).toHaveAttribute('lang', 'ko-KR');
     await expect(rootOf(erd)).toHaveAttribute('dir', 'ltr');
+    const search = koKR['common.search'];
+    await expect
+      .poll(async () => (await searchTitleOf(erd))?.slice(0, search.length))
+      .toBe(search);
     expect(await changes()).toEqual([{ locale: 'ko-KR' }]);
     await erd.expectKeyboardFocusInside();
 

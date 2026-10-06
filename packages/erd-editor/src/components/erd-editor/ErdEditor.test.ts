@@ -26,6 +26,7 @@ import {
   changeZenModeAction,
 } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import { MESSAGES } from '@/i18n/messages/index';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import {
@@ -33,6 +34,7 @@ import {
   openThemeBuilderAction,
 } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 const { appContexts, gcState } = vi.hoisted(() => ({
   appContexts: [] as any[],
@@ -379,6 +381,33 @@ describe('<erd-editor>', () => {
     expect(root.getAttribute('dir')).toBe('ltr');
     expect(el.hasAttribute('lang')).toBe(false);
     expect(el.hasAttribute('dir')).toBe(false);
+  });
+
+  it('titles the toolbar Search in the language set, Arabic laid out right to left', async () => {
+    const { el, app, shadow, root } = await createEditor();
+    const searchTitle = () =>
+      shadow.querySelector('.toolbar-search')?.getAttribute('title');
+
+    el.setLocale('ko-KR');
+    await flush();
+    expect(searchTitle()).toBe(
+      toShortcutTitle(
+        app.keyBindingMap,
+        MESSAGES['ko-KR']['common.search'],
+        KeyBindingName.search
+      )
+    );
+
+    el.setLocale('ar-SA');
+    await flush();
+    expect(root.getAttribute('dir')).toBe('rtl');
+    expect(searchTitle()).toBe(
+      toShortcutTitle(
+        app.keyBindingMap,
+        MESSAGES['ar-SA']['common.search'],
+        KeyBindingName.search
+      )
+    );
   });
 
   it('paints a language a host names before it appends the element from the first frame', async () => {

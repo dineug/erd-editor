@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { LocaleCode, LocaleCodeList } from '@/i18n/locales';
 import { en } from '@/i18n/messages/en';
-import { messagesOf } from '@/i18n/messages/index';
+import { MESSAGES, messagesOf } from '@/i18n/messages/index';
 
 type Value = string | Readonly<Record<string, string>>;
 type Dictionary = Readonly<Record<string, Value>>;
@@ -25,6 +25,17 @@ const dictionaries = Object.entries(
   const code = path.replace(/^\.\/(.+)\.ts$/, '$1');
   const exportName = code.replace('-', '');
   return { code, module, exportName, messages: module[exportName] };
+});
+
+/** The English files, one per part of the editor, each exporting its part's messages. */
+const englishParts = Object.entries(
+  import.meta.glob<Record<string, Dictionary | undefined>>(
+    ['./en/*.ts', '!./en/index.ts', '!./en/*.test.ts'],
+    { eager: true }
+  )
+).map(([path, module]) => {
+  const name = path.replace(/^\.\/en\/(.+)\.ts$/, '$1');
+  return { name, messages: module[name] ?? {} };
 });
 
 const english = en as Dictionary;
@@ -115,6 +126,20 @@ function checkDictionary(
 }
 
 describe('the dictionaries', () => {
+  it('are one file for each listed code but English, and no other', () => {
+    expect(dictionaries.map(({ code }) => code).sort()).toEqual(
+      LocaleCodeList.filter(code => code !== 'en').sort()
+    );
+    expect(dictionaries).toHaveLength(24);
+  });
+
+  it('follow an English file for every part, none of them empty', () => {
+    expect(englishParts).toHaveLength(16);
+    for (const { name, messages } of englishParts) {
+      expect(Object.keys(messages).length, name).toBeGreaterThan(0);
+    }
+  });
+
   it('are named after a listed code other than English, one export each', () => {
     for (const { code, module, exportName } of dictionaries) {
       expect(LocaleCodeList, code).toContain(code);
@@ -183,14 +208,11 @@ describe('messagesOf', () => {
     }
   });
 
-  it('reads English for a language with no dictionary yet', () => {
-    const written = new Set(dictionaries.map(({ code }) => code));
-    const unwritten = LocaleCodeList.filter(
-      code => code !== 'en' && !written.has(code)
-    );
-
-    for (const code of unwritten) {
-      expect(messagesOf(code), code).toBe(en);
+  it('holds a dictionary for every listed code, each its own', () => {
+    expect(Object.keys(MESSAGES).sort()).toEqual([...LocaleCodeList].sort());
+    expect(new Set(Object.values(MESSAGES)).size).toBe(LocaleCodeList.length);
+    for (const code of LocaleCodeList) {
+      expect(messagesOf(code), code).toBe(MESSAGES[code]);
     }
   });
 });
