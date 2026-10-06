@@ -20,10 +20,26 @@ import {
   moveIndexColumnAction,
 } from '@/engine/modules/index-column/atom.actions';
 import { moveMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  addRelationshipAction,
+  changeRelationshipColumnsAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
-import { moveTableAction } from '@/engine/modules/table/atom.actions';
-import { moveColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableAction,
+  moveTableAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
+import {
+  addColumnAction,
+  changeColumnNotNullAction,
+  changeColumnPrimaryKeyAction,
+  moveColumnAction,
+  removeColumnAction,
+} from '@/engine/modules/table-column/atom.actions';
+import type { RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 import { calcTableWidths, getWidthGeneration } from '@/utils/calcTable';
@@ -48,10 +64,11 @@ const [identificationHook, startRelationshipHook, relationshipSortHook] =
   hooks.map(([, effect]) => effect) as [HookEffect, HookEffect, HookEffect];
 
 const stores: Store[] = [];
+const rxStores: RxStore[] = [];
 const subscriptions: Subscription[] = [];
 
 const tick = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
-/** throttle window is 10ms (5ms for a drag's sort) with trailing only. */
+/** Past every window: a drag's sort waits 5 ms, the other hooks a microtask or two. */
 const settle = () => tick(50);
 /** The microtasks a trigger queues and the ones those queue, with no task between. */
 const microtasks = async () => {
@@ -108,6 +125,7 @@ const rel = (store: Store, id: string) =>
 afterEach(() => {
   subscriptions.splice(0).forEach(subscription => subscription.unsubscribe());
   stores.splice(0).forEach(store => store.destroy());
+  rxStores.splice(0).forEach(store => store.destroy());
   vi.mocked(relationshipSort).mockClear();
 });
 
@@ -121,19 +139,32 @@ describe('relationship/hooks registration', () => {
     }
   });
 
-  it('subscribes the identification hook to primary-key related actions', () => {
+  it('subscribes the identification hook to every action that moves an end column or its key flag', () => {
     expect(hooks[0][0].map(String)).toEqual([
+      'column.add',
       'column.remove',
       'column.changePrimaryKey',
+      'relationship.add',
+      'relationship.remove',
+      'relationship.changeColumns',
+      'table.add',
+      'table.remove',
       'editor.loadJson',
       'editor.initialLoadJson',
     ]);
   });
 
-  it('subscribes the start-relationship hook to notNull related actions', () => {
+  it('subscribes the start-relationship hook to the same actions with the notNull flag, keeping the key flag that turns it on', () => {
     expect(hooks[1][0].map(String)).toEqual([
+      'column.add',
       'column.remove',
       'column.changeNotNull',
+      'column.changePrimaryKey',
+      'relationship.add',
+      'relationship.remove',
+      'relationship.changeColumns',
+      'table.add',
+      'table.remove',
       'editor.loadJson',
       'editor.initialLoadJson',
     ]);
@@ -145,6 +176,7 @@ describe('relationship/hooks registration', () => {
       'settings.changeMaxWidthComment',
       'relationship.add',
       'relationship.remove',
+      'relationship.changeColumns',
       'memo.move',
       'table.add',
       'table.remove',
@@ -210,11 +242,12 @@ describe('relationship/hooks identificationHook', () => {
     expect(rel(store, 'r1').identification).toBe(false);
   });
 
-  it('skips a relationship whose end table is gone', async () => {
+  it('falls back to not identifying once the end table is gone', async () => {
     const store = createTestStore();
     addColumn(store, 'missing', 'c1', ColumnOption.primaryKey);
     addRelationship(store, {
       id: 'r1',
+      identification: true,
       start: { tableId: 't1', columnIds: [] },
       end: { tableId: 'missing', columnIds: ['c1'] },
     });
@@ -226,7 +259,28 @@ describe('relationship/hooks identificationHook', () => {
     expect(rel(store, 'r1').identification).toBe(false);
   });
 
-  it('skips a relationship whose end columns no longer belong to the table', async () => {
+  it('falls back to not identifying when the end table was removed with its key columns', async () => {
+    // A removed table keeps its entity and the columns it lists, so a hook
+    // reading the entity alone would keep a value its peers no longer derive.
+    const store = createTestStore();
+    addTable(store, 't2', ['c1']);
+    addColumn(store, 't2', 'c1', ColumnOption.primaryKey);
+    addRelationship(store, {
+      id: 'r1',
+      identification: true,
+      start: { tableId: 't1', columnIds: [] },
+      end: { tableId: 't2', columnIds: ['c1'] },
+    });
+    store.state.doc.tableIds.splice(store.state.doc.tableIds.indexOf('t2'), 1);
+
+    const { fire } = await run(identificationHook, store);
+    fire();
+    await settle();
+
+    expect(rel(store, 'r1').identification).toBe(false);
+  });
+
+  it('falls back to not identifying once no end column is left in its table', async () => {
     const store = createTestStore();
     addTable(store, 't2', ['other']);
     addColumn(store, 't2', 'c1', ColumnOption.primaryKey);
@@ -241,7 +295,7 @@ describe('relationship/hooks identificationHook', () => {
     fire();
     await settle();
 
-    expect(rel(store, 'r1').identification).toBe(true);
+    expect(rel(store, 'r1').identification).toBe(false);
   });
 
   it('leaves the value alone when it already matches', async () => {
@@ -262,22 +316,23 @@ describe('relationship/hooks identificationHook', () => {
     expect(rel(store, 'r1').identification).toBe(true);
   });
 
-  it('ignores relationships that are not listed in the document', async () => {
+  it('falls back to not identifying for a relationship that is not listed in the document', async () => {
     const store = createTestStore();
     addTable(store, 't2', ['c1']);
     addColumn(store, 't2', 'c1', ColumnOption.primaryKey);
-    const orphan = createRelationship({
-      id: 'orphan',
+    const removed = createRelationship({
+      id: 'removed',
+      identification: true,
       start: { tableId: 't1', columnIds: [] },
       end: { tableId: 't2', columnIds: ['c1'] },
     });
-    store.state.collections.relationshipEntities['orphan'] = orphan;
+    store.state.collections.relationshipEntities['removed'] = removed;
 
     const { fire } = await run(identificationHook, store);
     fire();
     await settle();
 
-    expect(rel(store, 'orphan').identification).toBe(false);
+    expect(rel(store, 'removed').identification).toBe(false);
   });
 });
 
@@ -326,11 +381,12 @@ describe('relationship/hooks startRelationshipHook', () => {
     );
   });
 
-  it('skips a relationship whose end table is gone', async () => {
+  it('falls back to dash once the end table is gone', async () => {
     const store = createTestStore();
     addColumn(store, 'missing', 'c1', 0);
     addRelationship(store, {
       id: 'r1',
+      startRelationshipType: StartRelationshipType.ring,
       start: { tableId: 't1', columnIds: [] },
       end: { tableId: 'missing', columnIds: ['c1'] },
     });
@@ -344,11 +400,12 @@ describe('relationship/hooks startRelationshipHook', () => {
     );
   });
 
-  it('skips a relationship with no resolvable end column', async () => {
+  it('falls back to dash once no end column is left', async () => {
     const store = createTestStore();
     addTable(store, 't2', []);
     addRelationship(store, {
       id: 'r1',
+      startRelationshipType: StartRelationshipType.ring,
       start: { tableId: 't1', columnIds: [] },
       end: { tableId: 't2', columnIds: ['gone'] },
     });
@@ -358,6 +415,27 @@ describe('relationship/hooks startRelationshipHook', () => {
     await settle();
 
     expect(rel(store, 'r1').startRelationshipType).toBe(
+      StartRelationshipType.dash
+    );
+  });
+
+  it('falls back to dash for a relationship that is not listed in the document', async () => {
+    const store = createTestStore();
+    addTable(store, 't2', ['c1']);
+    addColumn(store, 't2', 'c1', 0);
+    const removed = createRelationship({
+      id: 'removed',
+      startRelationshipType: StartRelationshipType.ring,
+      start: { tableId: 't1', columnIds: [] },
+      end: { tableId: 't2', columnIds: ['c1'] },
+    });
+    store.state.collections.relationshipEntities['removed'] = removed;
+
+    const { fire } = await run(startRelationshipHook, store);
+    fire();
+    await settle();
+
+    expect(rel(store, 'removed').startRelationshipType).toBe(
       StartRelationshipType.dash
     );
   });
@@ -380,6 +458,143 @@ describe('relationship/hooks startRelationshipHook', () => {
     expect(rel(store, 'r1').startRelationshipType).toBe(
       StartRelationshipType.ring
     );
+  });
+});
+
+describe('relationship/hooks identification and start type through the store', () => {
+  /**
+   * t1 holds the parent key, t2 a key column and a nullable one. The hooks the
+   * scene wakes have run once it returns, so a case sees what its own action wakes.
+   */
+  async function createLinkScene(): Promise<RxStore> {
+    const { store } = createTestAppContext();
+    rxStores.push(store);
+    store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addColumnAction({ id: 'p1', tableId: 't1' }),
+      changeColumnPrimaryKeyAction({ id: 'p1', tableId: 't1', value: true }),
+      addTableAction({ id: 't2', ui: { x: 600, y: 0, zIndex: 2 } }),
+      addColumnAction({ id: 'key', tableId: 't2' }),
+      changeColumnPrimaryKeyAction({ id: 'key', tableId: 't2', value: true }),
+      changeColumnNotNullAction({ id: 'key', tableId: 't2', value: true }),
+      addColumnAction({ id: 'nullable', tableId: 't2' })
+    );
+    await settle();
+    return store;
+  }
+
+  const link = (id: string, columnId: string) =>
+    addRelationshipAction({
+      id,
+      relationshipType: 4,
+      start: { tableId: 't1', columnIds: ['p1'] },
+      end: { tableId: 't2', columnIds: [columnId] },
+    });
+
+  const flagsOf = (store: RxStore, id: string) => {
+    const { identification, startRelationshipType } =
+      store.state.collections.relationshipEntities[id];
+    return { identification, startRelationshipType };
+  };
+
+  it('reads the flags off the end columns of a relationship that only was added', async () => {
+    // Relating existing columns sends the add alone, and a peer that never
+    // reread the columns kept the defaults its author had already replaced.
+    const store = await createLinkScene();
+
+    store.dispatchSync(link('r1', 'key'), link('r2', 'nullable'));
+    await settle();
+
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: true,
+      startRelationshipType: StartRelationshipType.dash,
+    });
+    expect(flagsOf(store, 'r2')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.ring,
+    });
+  });
+
+  it('reads them again when a relationship is remapped to other columns', async () => {
+    const store = await createLinkScene();
+    store.dispatchSync(link('r1', 'key'));
+    await settle();
+
+    store.dispatchSync(
+      changeRelationshipColumnsAction({
+        id: 'r1',
+        start: { tableId: 't1', columnIds: ['p1'] },
+        end: { tableId: 't2', columnIds: ['nullable'] },
+      })
+    );
+    await settle();
+
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.ring,
+    });
+  });
+
+  it('takes the flags a new relationship starts with while its end table is removed, and reads them again once it is back', async () => {
+    const store = await createLinkScene();
+    store.dispatchSync(link('r1', 'key'));
+    await settle();
+
+    store.dispatchSync(removeTableAction({ id: 't2' }));
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.dash,
+    });
+
+    store.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 600, y: 0, zIndex: 2 } })
+    );
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: true,
+      startRelationshipType: StartRelationshipType.dash,
+    });
+  });
+
+  it('takes the flags a new relationship starts with once it is removed, and reads them again once it is back', async () => {
+    const store = await createLinkScene();
+    store.dispatchSync(link('r1', 'nullable'));
+    await settle();
+
+    store.dispatchSync(removeRelationshipAction({ id: 'r1' }));
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.dash,
+    });
+
+    store.dispatchSync(link('r1', 'nullable'));
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.ring,
+    });
+  });
+
+  it('reads them again when an end column leaves its table and comes back', async () => {
+    const store = await createLinkScene();
+    store.dispatchSync(link('r1', 'nullable'));
+    await settle();
+
+    store.dispatchSync(removeColumnAction({ id: 'nullable', tableId: 't2' }));
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.dash,
+    });
+
+    store.dispatchSync(addColumnAction({ id: 'nullable', tableId: 't2' }));
+    await settle();
+    expect(flagsOf(store, 'r1')).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.ring,
+    });
   });
 });
 

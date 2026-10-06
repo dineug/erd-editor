@@ -16,33 +16,26 @@ import {
   formatSpace,
   FormatTableOptions,
   getBracket,
-  KeyColumn,
   Name,
-  orderByNameASC,
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
   splitTableName,
   tableNamePart,
+  toForeignKeyPairs,
   toOrderName,
+  toSchemaEntities,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
 
-export function createSchema(state: RootState): string {
-  const {
-    doc: { tableIds, indexIds },
-    collections,
-  } = state;
+export function createSchema(
+  state: RootState,
+  tableIds?: readonly string[]
+): string {
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
-  const tables = query(collections)
-    .collection('tableEntities')
-    .selectByIds(tableIds)
-    .sort(orderByNameASC);
-  const indexes = query(collections)
-    .collection('indexEntities')
-    .selectByIds(indexIds);
+  const { tables, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
     formatTable(state, { table, buffer: stringBuffer });
@@ -71,13 +64,20 @@ export function formatTable(
     collections,
   } = state;
   const bracket = getBracket(bracketType);
-  const tableCollection = query(collections).collection('tableEntities');
-  const columnCollection = query(collections).collection('tableColumnEntities');
-  const columns = columnCollection.selectByIds(table.columnIds);
-  const relationships = query(collections)
+  const columns = query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(table.columnIds);
+  const foreignKeys = query(collections)
     .collection('relationshipEntities')
     .selectByIds(relationshipIds)
-    .filter(({ end }) => end.tableId === table.id);
+    .filter(({ end }) => end.tableId === table.id)
+    .flatMap(relationship => {
+      const pairs = toForeignKeyPairs(state, relationship);
+      return pairs ? [{ relationship, ...pairs }] : [];
+    });
+  // The commas count the foreign keys written, not the relationships ending
+  // here: one whose table or columns are gone writes no clause.
+  const hasForeignKey = foreignKeys.length !== 0;
 
   if (table.comment.trim() !== '') {
     buffer.push(`-- ${table.comment}`);
@@ -88,108 +88,44 @@ export function formatTable(
   const spaceSize = formatSize(columns);
 
   columns.forEach((column, i) => {
-    if (pk) {
-      formatColumn(state, {
-        column,
-        isComma: true,
-        spaceSize,
-        buffer,
-      });
-    } else {
-      formatColumn(state, {
-        column,
-        isComma: columns.length !== i + 1,
-        spaceSize,
-        buffer,
-      });
-    }
+    formatColumn(state, {
+      column,
+      isComma: pk || hasForeignKey || columns.length !== i + 1,
+      spaceSize,
+      buffer,
+    });
   });
 
   if (pk) {
     const pkColumns = primaryKeyColumns(columns);
-    if (relationships.length !== 0) {
-      if (pkColumns.length === 1) {
-        const autoIncrement = bHas(
-          pkColumns[0].options,
-          ColumnOption.autoIncrement
-        )
-          ? ' AUTOINCREMENT'
-          : '';
-        buffer.push(
-          `  PRIMARY KEY (${formatNames(pkColumns, bracket)}${autoIncrement}),`
-        );
-      } else {
-        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)}),`);
-      }
-    } else {
-      if (pkColumns.length === 1) {
-        const autoIncrement = bHas(
-          pkColumns[0].options,
-          ColumnOption.autoIncrement
-        )
-          ? ' AUTOINCREMENT'
-          : '';
-        buffer.push(
-          `  PRIMARY KEY (${formatNames(pkColumns, bracket)}${autoIncrement})`
-        );
-      } else {
-        buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)})`);
-      }
-    }
+    const autoIncrement =
+      pkColumns.length === 1 &&
+      bHas(pkColumns[0].options, ColumnOption.autoIncrement)
+        ? ' AUTOINCREMENT'
+        : '';
+    buffer.push(
+      `  PRIMARY KEY (${formatNames(pkColumns, bracket)}${autoIncrement})` +
+        (hasForeignKey ? ',' : '')
+    );
   }
 
-  relationships.forEach((relationship, i) => {
-    const startTable = tableCollection.selectById(relationship.start.tableId);
-    const endTable = tableCollection.selectById(relationship.end.tableId);
+  foreignKeys.forEach(({ relationship, startTable, start, end }, i) => {
+    const actions = formatReferentialActions(relationship, ACTION_SUPPORT)
+      .map(clause => ` ${clause}`)
+      .join('');
+    // SQLite resolves a foreign key in the child table's own schema and
+    // refuses a qualified name there.
+    const [, referenced] = splitTableName(startTable.name, bracketType);
 
-    if (startTable && endTable) {
-      // key
-      const columns: KeyColumn = {
-        start: [],
-        end: [],
-      };
-      relationship.end.columnIds.forEach(columnId => {
-        const column = columnCollection.selectById(columnId);
-        if (column) {
-          columns.end.push(column);
-        }
-      });
-      relationship.start.columnIds.forEach(columnId => {
-        const column = columnCollection.selectById(columnId);
-        if (column) {
-          columns.start.push(column);
-        }
-      });
-
-      const actions = formatReferentialActions(relationship, ACTION_SUPPORT)
-        .map(clause => ` ${clause}`)
-        .join('');
-      // SQLite resolves a foreign key in the child table's own schema and
-      // refuses a qualified name there.
-      const [, referenced] = splitTableName(startTable.name, bracketType);
-
-      if (relationships.length - 1 > i) {
-        buffer.push(
-          `  FOREIGN KEY (${formatNames(
-            columns.end,
-            bracket
-          )}) REFERENCES ${bracket}${referenced}${bracket} (${formatNames(
-            columns.start,
-            bracket
-          )})${actions},`
-        );
-      } else {
-        buffer.push(
-          `  FOREIGN KEY (${formatNames(
-            columns.end,
-            bracket
-          )}) REFERENCES ${bracket}${referenced}${bracket} (${formatNames(
-            columns.start,
-            bracket
-          )})${actions}`
-        );
-      }
-    }
+    buffer.push(
+      `  FOREIGN KEY (${formatNames(
+        end,
+        bracket
+      )}) REFERENCES ${bracket}${referenced}${bracket} (${formatNames(
+        start,
+        bracket
+      )})${actions}` + (foreignKeys.length - 1 > i ? ',' : '')
+    );
   });
 
   buffer.push(`);`);

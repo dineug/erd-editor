@@ -315,4 +315,42 @@ export const plPL = {
   'welcome.hintTheme': 'Wybierz motyw',
   'welcome.hintLanguage': 'Wybierz język',
   'welcome.hintFloatingToolbar': 'Przesuwaj, powiększaj i rysuj relacje',
+  'mapColumns.title': 'Mapuj kolumny',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Mapuj na istniejące kolumny',
+  'mapColumns.createNew': 'Utwórz nowe kolumny',
+  'mapColumns.noPrimaryKeyToCopy':
+    'Tabela {table} nie ma klucza podstawowego do skopiowania',
+  'mapColumns.references': 'Klucz docelowy',
+  'mapColumns.unique': 'Unikatowa: {column}',
+  'mapColumns.currentColumns': 'Bieżące kolumny (nie klucz)',
+  'mapColumns.referencedColumn': 'Kolumna docelowa',
+  'mapColumns.foreignKeyColumn': 'Kolumna klucza obcego',
+  'mapColumns.pickColumn': 'Wybierz kolumnę',
+  'mapColumns.newColumn': 'Nowa kolumna: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · w użyciu',
+  'mapColumns.removed': '(usunięta)',
+  'mapColumns.invalid': '(nieprawidłowa)',
+  'mapColumns.becomesType': 'Typ kolumny {column} zmieni się na {dataType}',
+  'mapColumns.typesDiffer': 'Typy się różnią: {parentType} i {childType}',
+  'mapColumns.selfOnly':
+    'Co najmniej jedna kolumna musi odwoływać się do innej kolumny',
+  'mapColumns.duplicate': 'Te kolumny są już połączone inną relacją',
+  'mapColumns.noKey':
+    'Tabela {table} nie ma klucza, do którego można się odwołać',
+  'mapColumns.notAKey': 'Kolumny docelowe nie są kluczem tabeli {table}',
+  'mapColumns.fixMapping':
+    'Wybierz klucz w polu „Klucz docelowy”, aby naprawić to mapowanie',
+  'mapColumns.addKeyToFix':
+    'Dodaj klucz podstawowy lub kolumnę unikatową do tabeli {table}, aby naprawić to mapowanie',
+  'mapColumns.changedRemotely':
+    'Ta relacja zmieniła się, gdy okno dialogowe było otwarte',
+  'mapColumns.map': 'Mapuj',
+  'mapColumns.save': 'Zapisz',
+  'mapColumns.closedTableRemoved':
+    'Zamknięto „Mapuj kolumny”: tabela {table} została usunięta',
+  'mapColumns.closedRelationshipRemoved':
+    'Zamknięto „Mapuj kolumny”: relacja została usunięta',
+  'mapColumns.failed': 'Nie udało się zmapować kolumn: diagram się zmienił',
 } satisfies Messages;

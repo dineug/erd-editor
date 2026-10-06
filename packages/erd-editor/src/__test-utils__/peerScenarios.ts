@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import type { CompositionActions } from '@dineug/r-html';
 
 import { createImportValue, SEED } from '@/__test-utils__/peerSeed';
+import { mapColumnsAction$ } from '@/components/map-columns/mapColumnsAction';
 import {
   BracketType,
   ColumnOption,
@@ -50,6 +51,7 @@ import {
 } from '@/engine/modules/memo/generator.actions';
 import {
   addRelationshipAction,
+  changeRelationshipColumnsAction,
   changeRelationshipOnDeleteAction,
   changeRelationshipOnUpdateAction,
   changeRelationshipTypeAction,
@@ -295,6 +297,52 @@ export const setDatabase = (value: number): PeerScenario => ({
   actions: [changeDatabaseAction({ value })],
 });
 
+type RelationshipEnd = { tableId: string; columnIds: string[] };
+
+/** Points a relationship at other columns, as Map Columns saves an edit. */
+export const changeColumns = (
+  id: string,
+  start: RelationshipEnd,
+  end: RelationshipEnd
+): PeerScenario => ({
+  label: 'changeColumns',
+  actions: [changeRelationshipColumnsAction({ id, start, end })],
+});
+
+const refuseNever = () => {
+  throw new Error('the seed refused a mapping it takes');
+};
+
+/**
+ * What Map Columns confirms from a parent to a child taking a new column for
+ * each column of the parent's primary key, judged where it lands as the
+ * dialog's own dispatch is.
+ */
+export const mapWithNewColumn = (
+  startTableId: string,
+  endTableId: string,
+  keyColumnIds: string[],
+  relationshipType: number = RelationshipType.ZeroN
+): PeerScenario => ({
+  label: 'mapWithNewColumn',
+  actions: [
+    mapColumnsAction$(
+      {
+        mode: 'create',
+        startTableId,
+        endTableId,
+        relationshipType,
+        keyId: `primaryKey:${startTableId}`,
+        rows: keyColumnIds.map(parentColumnId => ({
+          parentColumnId,
+          pick: { kind: 'new' as const },
+        })),
+      },
+      { onRefuse: refuseNever }
+    ),
+  ],
+});
+
 /** A scenario under its own label, for the edits only the seed map makes. */
 const edit = (
   label: string,
@@ -403,6 +451,15 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
         end: { tableId: SEED.orders, columnIds: [SEED.orderNote] },
       }),
     ]),
+  changeColumns: () =>
+    changeColumns(
+      SEED.relationship,
+      { tableId: SEED.users, columnIds: [SEED.userId] },
+      { tableId: SEED.orders, columnIds: [SEED.orderNote] }
+    ),
+  // The empty table has no column for the key, so the mapping adds one.
+  mapWithNewColumn: () =>
+    mapWithNewColumn(SEED.users, SEED.empty, [SEED.userId]),
   removeRelationship: () =>
     edit('removeRelationship', [
       removeRelationshipAction({ id: SEED.relationship }),

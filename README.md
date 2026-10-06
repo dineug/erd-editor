@@ -28,6 +28,9 @@ run **Create new diagram** from the command palette. In Google Drive, choose
 
 - **Visual schema design** — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
+- **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
+  beside the table it ends on either map the parent's key onto columns that table already has or
+  add new ones, and Map Columns in a relationship's right-click menu changes its columns later
 - **SQL DDL import** — point it at a `.sql` dump and get a diagram; the parser skips what it
   does not recognize, so an awkward dump imports partially rather than failing outright
 - **GraphQL SDL import** — point it at a schema from any tool that emits SDL and get a

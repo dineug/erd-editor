@@ -305,4 +305,40 @@ export const jaJP = {
   'welcome.hintTheme': 'テーマを選択',
   'welcome.hintLanguage': '表示言語を選択',
   'welcome.hintFloatingToolbar': 'パン、ズーム、リレーションシップの描画',
+  'mapColumns.title': '列のマッピング',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': '既存の列にマッピング',
+  'mapColumns.createNew': '新しい列を作成',
+  'mapColumns.noPrimaryKeyToCopy': '{table} にはコピーする主キーがありません',
+  'mapColumns.references': '参照先',
+  'mapColumns.unique': '一意: {column}',
+  'mapColumns.currentColumns': '現在の列（キーではない）',
+  'mapColumns.referencedColumn': '参照される列',
+  'mapColumns.foreignKeyColumn': '外部キー列',
+  'mapColumns.pickColumn': '列を選択',
+  'mapColumns.newColumn': '新しい列: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · 使用中',
+  'mapColumns.removed': '（削除済み）',
+  'mapColumns.invalid': '（無効）',
+  'mapColumns.becomesType': '{column} のデータ型が {dataType} に変わります',
+  'mapColumns.typesDiffer': 'データ型が異なります: {parentType} と {childType}',
+  'mapColumns.selfOnly': '少なくとも 1 つの列は別の列を参照する必要があります',
+  'mapColumns.duplicate':
+    'これらの列はすでに別のリレーションシップで関連付けられています',
+  'mapColumns.noKey': '{table} には参照できるキーがありません',
+  'mapColumns.notAKey': '参照される列は {table} のキーではありません',
+  'mapColumns.fixMapping':
+    'このマッピングを修正するには、参照先でキーを選択してください',
+  'mapColumns.addKeyToFix':
+    'このマッピングを修正するには、{table} に主キーまたは一意の列を追加してください',
+  'mapColumns.changedRemotely':
+    'ダイアログを開いている間にこのリレーションシップが変更されました',
+  'mapColumns.map': 'マッピング',
+  'mapColumns.save': '保存',
+  'mapColumns.closedTableRemoved':
+    '列のマッピングを閉じました: {table} が削除されました',
+  'mapColumns.closedRelationshipRemoved':
+    '列のマッピングを閉じました: リレーションシップが削除されました',
+  'mapColumns.failed': '列をマッピングできませんでした: 図が変更されました',
 } satisfies Messages;

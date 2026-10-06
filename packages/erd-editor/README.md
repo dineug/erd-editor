@@ -18,6 +18,9 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
 
 - Visual schema design — tables, columns, memos, and four relationship cardinalities
   (zero-one, zero-N, one-only, one-N)
+- Link existing columns — while you draw a relationship with a mouse or a pen, the buttons
+  beside the table it ends on either map the parent's key onto columns that table already has or
+  add new ones, and Map Columns in a relationship's right-click menu changes its columns later
 - Import — a `.sql` dump, a GraphQL SDL schema from any tool that emits one, a `.dbml` file, or
   an `.aml` file; one picked from the editor's own Import menu lands with its tables laid out by
   their relationships, and Import and Add adds one, or an `.erd.json` file, below the diagram

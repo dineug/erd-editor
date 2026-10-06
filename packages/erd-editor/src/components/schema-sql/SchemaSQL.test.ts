@@ -53,6 +53,14 @@ const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(
 );
 
 let mounted: Mounted | null = null;
+const apps: AppContext[] = [];
+
+/** A context destroyed after the case, so no hook timer its edits set outlives the file's DOM. */
+function createApp(): AppContext {
+  const app = createTestAppContext();
+  apps.push(app);
+  return app;
+}
 
 function seedTable(app: AppContext, id: string, name: string) {
   app.store.dispatchSync(
@@ -87,6 +95,7 @@ beforeEach(() => {
 afterEach(() => {
   mounted?.unmount();
   mounted = null;
+  apps.splice(0).forEach(app => app.store.destroy());
   setShikiService(null);
 
   if (originalClipboardDescriptor) {
@@ -108,7 +117,7 @@ describe('SchemaSQL', () => {
   });
 
   it('renders the generated schema sql for the whole document', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
 
     mounted = await mountAndFlush(
@@ -126,7 +135,7 @@ describe('SchemaSQL', () => {
   });
 
   it('renders only the requested table when tableId is given', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
     seedTable(app, 't2', 'posts');
 
@@ -141,7 +150,7 @@ describe('SchemaSQL', () => {
   });
 
   it('leaves the sql empty when tableId points at a missing table', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
 
     mounted = await mountAndFlush(
@@ -177,7 +186,7 @@ describe('SchemaSQL', () => {
   });
 
   it('regenerates the sql when the database setting changes', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
 
     mounted = await mountAndFlush(
@@ -197,7 +206,7 @@ describe('SchemaSQL', () => {
   });
 
   it('regenerates the sql when the bracket type setting changes', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
 
     mounted = await mountAndFlush(
@@ -215,7 +224,7 @@ describe('SchemaSQL', () => {
   });
 
   it('ignores settings changes that cannot affect the sql', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
 
     mounted = await mountAndFlush(
@@ -231,7 +240,7 @@ describe('SchemaSQL', () => {
   });
 
   it('regenerates the sql when the tableId prop changes', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
     seedTable(app, 't2', 'posts');
 
@@ -257,7 +266,7 @@ describe('SchemaSQL', () => {
   });
 
   it('does not regenerate the sql when an unwatched prop changes', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
 
     const state = observable({
@@ -350,7 +359,7 @@ describe('SchemaSQL', () => {
   });
 
   it('closes the context menu when the child asks to close', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     mounted = await mountAndFlush(
       html`<${SchemaSQL} isDarkMode=${false} />`,
       app
@@ -372,7 +381,7 @@ describe('SchemaSQL', () => {
   });
 
   it('copies the sql and emits a toast when the copy affordance is clicked', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
     const openToast = vi.fn();
     app.emitter.on({ openToast });
@@ -399,7 +408,7 @@ describe('SchemaSQL', () => {
   });
 
   it('says Copied! in the toast, in the language the element shows', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
     const openToast = vi.fn();
     app.emitter.on({ openToast });
@@ -431,7 +440,7 @@ describe('SchemaSQL', () => {
   });
 
   it('stops reacting to store changes after unmount', async () => {
-    const app = createTestAppContext();
+    const app = createApp();
     seedTable(app, 't1', 'users');
 
     mounted = await mountAndFlush(

@@ -1,3 +1,5 @@
+import { query } from '@dineug/erd-editor-schema';
+
 import {
   BracketTypeMap,
   ColumnOption,
@@ -6,6 +8,7 @@ import {
   ReferentialAction,
   ReferentialActionToSQL,
 } from '@/constants/schema';
+import { RootState } from '@/engine/state';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
@@ -46,6 +49,105 @@ export interface Name {
 export interface KeyColumn {
   start: Column[];
   end: Column[];
+}
+
+/** The columns of a foreign key, end[i] referencing start[i]. */
+export interface ForeignKeyPairs extends KeyColumn {
+  startTable: Table;
+  endTable: Table;
+}
+
+/**
+ * A relationship read pair by pair: a pair whose start or end column has left
+ * its table is dropped whole, and pairs that reference the whole primary key
+ * follow its declaration order; null when a table or every pair is gone.
+ */
+export function toForeignKeyPairs(
+  { doc: { tableIds }, collections }: Pick<RootState, 'doc' | 'collections'>,
+  { start, end }: Relationship
+): ForeignKeyPairs | null {
+  if (!tableIds.includes(start.tableId) || !tableIds.includes(end.tableId)) {
+    return null;
+  }
+
+  const tableCollection = query(collections).collection('tableEntities');
+  const columnCollection = query(collections).collection('tableColumnEntities');
+  const startTable = tableCollection.selectById(start.tableId);
+  const endTable = tableCollection.selectById(end.tableId);
+  if (!startTable || !endTable) return null;
+
+  const pairs: Array<[start: Column, end: Column]> = [];
+  const length = Math.min(start.columnIds.length, end.columnIds.length);
+
+  for (let i = 0; i < length; i++) {
+    const startId = start.columnIds[i];
+    const endId = end.columnIds[i];
+    if (
+      !startTable.columnIds.includes(startId) ||
+      !endTable.columnIds.includes(endId)
+    ) {
+      continue;
+    }
+
+    const startColumn = columnCollection.selectById(startId);
+    const endColumn = columnCollection.selectById(endId);
+    if (startColumn && endColumn) {
+      pairs.push([startColumn, endColumn]);
+    }
+  }
+  if (pairs.length === 0) return null;
+
+  const keyIds = new Set(
+    primaryKeyColumns(columnCollection.selectByIds(startTable.columnIds)).map(
+      column => column.id
+    )
+  );
+  const startIds = new Set(pairs.map(([column]) => column.id));
+  const isPrimaryKey =
+    keyIds.size === startIds.size && [...startIds].every(id => keyIds.has(id));
+
+  // The PRIMARY KEY clause lists the key in table column order, and MySQL and
+  // MariaDB refuse a foreign key naming the referenced columns in another.
+  if (isPrimaryKey) {
+    const position = (column: Column) =>
+      startTable.columnIds.indexOf(column.id);
+    pairs.sort(([a], [b]) => position(a) - position(b));
+  }
+
+  return {
+    startTable,
+    endTable,
+    start: pairs.map(([column]) => column),
+    end: pairs.map(([, column]) => column),
+  };
+}
+
+/**
+ * What one export writes: every table, relationship and index of the document,
+ * or the tables named, their indexes and the foreign keys they hold, whose
+ * parent tables stay in the document, so a reference out of them still shows.
+ */
+export function toSchemaEntities(
+  { doc, collections }: Pick<RootState, 'doc' | 'collections'>,
+  tableIds?: readonly string[]
+): { tables: Table[]; relationships: Relationship[]; indexes: Index[] } {
+  const named = tableIds ? new Set(tableIds) : null;
+  const writes = (tableId: string) => !named || named.has(tableId);
+
+  return {
+    tables: query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds.filter(writes))
+      .sort(orderByNameASC),
+    relationships: query(collections)
+      .collection('relationshipEntities')
+      .selectByIds(doc.relationshipIds)
+      .filter(({ end }) => writes(end.tableId)),
+    indexes: query(collections)
+      .collection('indexEntities')
+      .selectByIds(doc.indexIds)
+      .filter(({ tableId }) => writes(tableId)),
+  };
 }
 
 export function formatNames<

@@ -14,6 +14,7 @@ describe('Open', () => {
       timeTravel: 'timeTravel',
       findReplace: 'findReplace',
       exportImage: 'exportImage',
+      mapColumns: 'mapColumns',
     });
   });
 
@@ -35,6 +36,7 @@ describe('Open', () => {
       'timeTravel',
       'findReplace',
       'exportImage',
+      'mapColumns',
     ]);
   });
 

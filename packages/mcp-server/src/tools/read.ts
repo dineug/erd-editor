@@ -59,11 +59,11 @@ const NARROWER: Readonly<Record<ReadFormat, string>> = {
 };
 
 /**
- * The state with only the tables named, their indexes and the relationships
- * whose child end is one of them: the foreign keys they hold keep the parent
- * tables they reference, so a join path out of the selection still shows.
+ * The live tables named, which the DDL writes with their indexes and the
+ * foreign keys they hold: those keep the parent tables they reference, so a
+ * join path out of the selection still shows.
  */
-function selectTables(state: RootState, filter: TableFilter): RootState {
+function selectTables(state: RootState, filter: TableFilter): string[] {
   const { ids, missing } = findTables(state, filter);
   if (missing.length) {
     throw new ToolError(
@@ -75,22 +75,7 @@ function selectTables(state: RootState, filter: TableFilter): RootState {
   if (!ids.length) {
     throw refused('tableIds and tableNames name no table; pass one at least');
   }
-  const selected = new Set(ids);
-  const { doc, collections } = state;
-
-  return {
-    ...state,
-    doc: {
-      ...doc,
-      tableIds: doc.tableIds.filter(id => selected.has(id)),
-      relationshipIds: doc.relationshipIds.filter(id =>
-        selected.has(collections.relationshipEntities[id]?.end.tableId)
-      ),
-      indexIds: doc.indexIds.filter(id =>
-        selected.has(collections.indexEntities[id]?.tableId)
-      ),
-    },
-  };
+  return ids;
 }
 
 /** The state with the settings its file saves, the bracket type the DDL quotes with among them. */
@@ -134,8 +119,9 @@ export function readDocument(
       : format === 'json'
         ? toJson(state)
         : createSchemaSQL(
-            withSavedSettings(filtered ? selectTables(state, filtered) : state),
-            vendor === undefined ? undefined : toDatabase(vendor)
+            withSavedSettings(state),
+            vendor === undefined ? undefined : toDatabase(vendor),
+            filtered ? selectTables(state, filtered) : undefined
           );
   if (!fitsInRead(text)) {
     const size = `${text.length.toLocaleString('en-US')} characters, over the ${MAX_READ_CHARS.toLocaleString('en-US')} one read returns`;

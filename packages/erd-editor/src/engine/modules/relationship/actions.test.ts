@@ -15,12 +15,13 @@ describe('relationship/actions', () => {
       changeRelationshipType: 'relationship.changeType',
       changeRelationshipOnDelete: 'relationship.changeOnDelete',
       changeRelationshipOnUpdate: 'relationship.changeOnUpdate',
+      changeRelationshipColumns: 'relationship.changeColumns',
     });
   });
 
   it('namespaces every action type under "relationship."', () => {
     const values = Object.values(ActionType);
-    expect(values).toHaveLength(5);
+    expect(values).toHaveLength(6);
 
     for (const type of values) {
       expect(type.startsWith('relationship.')).toBe(true);
@@ -66,6 +67,23 @@ describe('relationship/actions', () => {
       end: { tableId: 't2', columnIds: ['c2'] },
     });
     expect(`${actions.addRelationshipAction}`).toBe(ActionType.addRelationship);
+  });
+
+  it('carries both ends of a mapping edit in one payload of a fixed shape', () => {
+    const action = actions.changeRelationshipColumnsAction({
+      id: 'r1',
+      start: { tableId: 't1', columnIds: ['c1', 'c2'] },
+      end: { tableId: 't2', columnIds: ['c3', 'c4'] },
+    });
+
+    expect(action).toEqual({
+      type: 'relationship.changeColumns',
+      payload: {
+        id: 'r1',
+        start: { tableId: 't1', columnIds: ['c1', 'c2'] },
+        end: { tableId: 't2', columnIds: ['c3', 'c4'] },
+      },
+    });
   });
 
   it('registers every action type as a document changing action', () => {

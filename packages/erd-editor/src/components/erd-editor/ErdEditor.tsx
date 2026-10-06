@@ -21,6 +21,7 @@ import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import LocalePicker from '@/components/locale-picker/LocalePicker';
 import { localeContext } from '@/components/localeContext';
+import MapColumnsDialog from '@/components/map-columns/MapColumnsDialog';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Settings from '@/components/settings/Settings';
@@ -464,6 +465,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             themeOptions={themeState.options}
             isDarkMode={isDarkMode}
           />
+          <MapColumnsDialog readonly={props.readonly} isDarkMode={isDarkMode} />
           <FindReplace readonly={props.readonly} />
           <QuickSearch
             appearance={

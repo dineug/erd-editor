@@ -10,5 +10,6 @@ export const Open = {
   timeTravel: 'timeTravel',
   findReplace: 'findReplace',
   exportImage: 'exportImage',
+  mapColumns: 'mapColumns',
 } as const;
 export type Open = ValuesType<typeof Open>;

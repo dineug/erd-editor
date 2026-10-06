@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
   createTestAppContext,
+  createTouch,
   flush,
   mountAndFlush,
   Mounted,
   movePointer,
   releasePointer,
 } from '@/__test-utils__/index';
+import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
 import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
@@ -17,14 +19,22 @@ import {
   sceneSourceContext,
   useSceneSource,
 } from '@/components/sceneSourceContext';
-import { selectAction } from '@/engine/modules/editor/atom.actions';
+import { RelationshipType } from '@/constants/schema';
+import {
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  selectAction,
+} from '@/engine/modules/editor/atom.actions';
 import { SelectType, ViewKind } from '@/engine/modules/editor/state';
 import {
   viewChangeZoomLevelAction,
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  moveToTableAction,
+} from '@/engine/modules/table/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import {
@@ -314,5 +324,39 @@ describe('useMoveEntity', () => {
     expect(selectedIds()).toEqual(['t2']);
     expect(isEntityDragActive(app.store.state)).toBe(false);
     expect(isViewFrozen(app.store.state)).toBe(false);
+  });
+});
+
+describe('useMoveEntity - a tap while a relationship is drawn', () => {
+  afterEach(() => {
+    window.dispatchEvent(createTouch('touchend'));
+  });
+
+  it('ends the draw on the tapped table at once with new key columns, as a press does', async () => {
+    seedMapTable(app.store, 'users', 'users', [
+      { id: 'users.id', name: 'id', primaryKey: true },
+    ]);
+    app.store.dispatchSync(
+      moveToTableAction({ id: 'users', x: 0, y: 600 }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.ZeroN }),
+      drawStartAddRelationshipAction({ tableId: 'users' })
+    );
+
+    const evt = createTouch('touchstart');
+    window.dispatchEvent(evt);
+    api.onMoveStart({
+      target: sceneNode(),
+      evt,
+    } as unknown as ScenePointerEvent);
+    await flush();
+
+    const { doc, collections, editor } = app.store.state;
+    expect(doc.relationshipIds).toHaveLength(1);
+    const [relationshipId] = doc.relationshipIds;
+    const { end } = collections.relationshipEntities[relationshipId];
+    expect(end.tableId).toBe('t1');
+    expect(end.columnIds).toEqual(collections.tableEntities.t1.columnIds);
+    expect(end.columnIds).toHaveLength(1);
+    expect(editor.drawRelationship).toBeNull();
   });
 });

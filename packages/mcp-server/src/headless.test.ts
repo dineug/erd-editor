@@ -50,7 +50,7 @@ import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/solo.erd.json';
 
-const { ColumnOption, ColumnUIKey } = SchemaV3Constants;
+const { ColumnOption, ColumnUIKey, StartRelationshipType } = SchemaV3Constants;
 
 let io: MemoryHost;
 let mcp: McpHarness;
@@ -311,10 +311,16 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
     onDisk().collections.tableColumnEntities[columnId];
   const isForeignKey = (columnId: string) =>
     bHas(columnOnDisk(columnId).ui.keys, ColumnUIKey.foreignKey);
-  /** Each relationship's two ends, where the relationship sort placed them. */
+  /** Each relationship's two ends, where the relationship sort placed them, and its flags. */
   const placements = (document: any) =>
     Object.values<any>(document.collections.relationshipEntities).map(
-      ({ id, start, end }) => ({ id, start, end })
+      ({ id, start, end, identification, startRelationshipType }) => ({
+        id,
+        start,
+        end,
+        identification,
+        startRelationshipType,
+      })
     );
 
   /** A table with one column, both made by the tools. */
@@ -346,25 +352,32 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
     expect(columnOnDisk(columnId).options).toBe(ColumnOption.notNull);
   });
 
-  it('writes the foreign-key mark and the placement a link brings, and the undo takes the mark off', async () => {
+  it('writes the foreign-key mark, the placement and the flags a link brings, and the undo takes the mark off', async () => {
     const start = await tableWithColumn();
     const end = await tableWithColumn();
 
-    await mcp.ok('erd_link_columns', {
-      path: DOCUMENT,
-      startTableId: start.tableId,
-      startColumnIds: [start.columnId],
-      endTableId: end.tableId,
-      endColumnIds: [end.columnId],
-      relationshipType: 'ZeroN',
-    });
+    const [relationshipId] = (
+      await mcp.ok('erd_link_columns', {
+        path: DOCUMENT,
+        startTableId: start.tableId,
+        startColumnIds: [start.columnId],
+        endTableId: end.tableId,
+        endColumnIds: [end.columnId],
+        relationshipType: 'ZeroN',
+      })
+    ).createdIds;
     expect(isForeignKey(end.columnId)).toBe(true);
+    // A nullable end column rings the start, which a new relationship does not
+    // start with, so the file holds what was derived.
+    expect(
+      onDisk().collections.relationshipEntities[relationshipId]
+    ).toMatchObject({
+      identification: false,
+      startRelationshipType: StartRelationshipType.ring,
+    });
     const session = JSON.parse(
       await mcp.text('erd_read', { path: DOCUMENT, format: 'json' })
     );
-    // The placement alone: identification and startRelationshipType follow the
-    // session's load too, behind a 10 ms throttle, so a link inside that window
-    // gets them changed in the session after its write.
     expect(placements(onDisk())).toEqual(placements(session));
 
     await mcp.ok('erd_undo', { path: DOCUMENT });

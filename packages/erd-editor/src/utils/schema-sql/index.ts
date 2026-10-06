@@ -51,25 +51,33 @@ import {
 } from './SQLite';
 import { Name } from './utils';
 
-export function createSchemaSQL(state: RootState, database?: number): string {
+/**
+ * The DDL of the document in a database, the document's own by default; given
+ * table ids, only those tables, their indexes and the foreign keys they hold.
+ */
+export function createSchemaSQL(
+  state: RootState,
+  database?: number,
+  tableIds?: readonly string[]
+): string {
   const currentDatabase = database ? database : state.settings.database;
   switch (currentDatabase) {
     case Database.Databricks:
-      return createSchemaDatabricks(state);
+      return createSchemaDatabricks(state, tableIds);
     case Database.MariaDB:
-      return createSchemaMariaDB(state);
+      return createSchemaMariaDB(state, tableIds);
     case Database.MSSQL:
-      return createSchemaMSSQL(state);
+      return createSchemaMSSQL(state, tableIds);
     case Database.MySQL:
-      return createSchemaMySQL(state);
+      return createSchemaMySQL(state, tableIds);
     case Database.Oracle:
-      return createSchemaOracle(state);
+      return createSchemaOracle(state, tableIds);
     case Database.PostgreSQL:
-      return createSchemaPostgreSQL(state);
+      return createSchemaPostgreSQL(state, tableIds);
     case Database.Snowflake:
-      return createSchemaSnowflake(state);
+      return createSchemaSnowflake(state, tableIds);
     case Database.SQLite:
-      return createSchemaSQLite(state);
+      return createSchemaSQLite(state, tableIds);
   }
 
   return '';

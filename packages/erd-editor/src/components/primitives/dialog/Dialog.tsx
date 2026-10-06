@@ -26,6 +26,9 @@ export type DialogProps = {
 /** Marks the control a dialog focuses when it opens; without one the box takes the focus. */
 export const AUTOFOCUS_ATTRIBUTE = 'data-autofocus';
 
+/** The editor width under which a dialog stacks what stands side by side in it. */
+export const DIALOG_STACK_BELOW = 640;
+
 const FOCUSABLE = [
   'button:not([disabled])',
   'input:not([disabled])',

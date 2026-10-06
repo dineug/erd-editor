@@ -10,6 +10,7 @@ export const ActionType = {
   changeRelationshipType: 'relationship.changeType',
   changeRelationshipOnDelete: 'relationship.changeOnDelete',
   changeRelationshipOnUpdate: 'relationship.changeOnUpdate',
+  changeRelationshipColumns: 'relationship.changeColumns',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -37,6 +38,11 @@ export type ActionMap = {
   [ActionType.changeRelationshipOnUpdate]: {
     id: string;
     value: number;
+  };
+  [ActionType.changeRelationshipColumns]: {
+    id: string;
+    start: RelationshipPoint;
+    end: RelationshipPoint;
   };
 };
 

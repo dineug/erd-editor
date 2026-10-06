@@ -306,4 +306,42 @@ export const svSE = {
   'welcome.hintTheme': 'Välj tema',
   'welcome.hintLanguage': 'Välj språk',
   'welcome.hintFloatingToolbar': 'Panorera, zooma och rita relationer',
+  'mapColumns.title': 'Mappa kolumner',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Mappa till befintliga kolumner',
+  'mapColumns.createNew': 'Skapa nya kolumner',
+  'mapColumns.noPrimaryKeyToCopy': '{table} har ingen primärnyckel att kopiera',
+  'mapColumns.references': 'Refererad nyckel',
+  'mapColumns.unique': 'Unik: {column}',
+  'mapColumns.currentColumns': 'Nuvarande kolumner (ingen nyckel)',
+  'mapColumns.referencedColumn': 'Refererad kolumn',
+  'mapColumns.foreignKeyColumn': 'Sekundärnyckelkolumn',
+  'mapColumns.pickColumn': 'Välj en kolumn',
+  'mapColumns.newColumn': 'Ny kolumn: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · används',
+  'mapColumns.removed': '(borttagen)',
+  'mapColumns.invalid': '(ogiltig)',
+  'mapColumns.becomesType': 'Datatypen för {column} blir {dataType}',
+  'mapColumns.typesDiffer':
+    'Typerna skiljer sig åt: {parentType} och {childType}',
+  'mapColumns.selfOnly': 'Minst en kolumn måste referera till en annan kolumn',
+  'mapColumns.duplicate':
+    'De här kolumnerna är redan länkade av en annan relation',
+  'mapColumns.noKey': '{table} har ingen nyckel att referera till',
+  'mapColumns.notAKey': 'De refererade kolumnerna är inte en nyckel i {table}',
+  'mapColumns.fixMapping':
+    'Välj en nyckel under ”Refererad nyckel” för att åtgärda mappningen',
+  'mapColumns.addKeyToFix':
+    'Lägg till en primärnyckel eller unik kolumn i {table} för att åtgärda mappningen',
+  'mapColumns.changedRemotely':
+    'Relationen ändrades medan dialogrutan var öppen',
+  'mapColumns.map': 'Mappa',
+  'mapColumns.save': 'Spara',
+  'mapColumns.closedTableRemoved':
+    '”Mappa kolumner” stängdes: {table} togs bort',
+  'mapColumns.closedRelationshipRemoved':
+    '”Mappa kolumner” stängdes: relationen togs bort',
+  'mapColumns.failed':
+    'Det gick inte att mappa kolumnerna: diagrammet ändrades',
 } satisfies Messages;

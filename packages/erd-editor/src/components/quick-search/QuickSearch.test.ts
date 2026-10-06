@@ -192,13 +192,14 @@ describe('QuickSearch', () => {
     expect(isOpen()).toBe(true);
   });
 
-  it('closes the table properties, theme builder, export image and language panels when it opens', async () => {
+  it('closes the table properties, theme builder, export image, language and map columns panels when it opens', async () => {
     app.store.dispatchSync(
       changeOpenMapAction({
         [Open.tableProperties]: true,
         [Open.themeBuilder]: true,
         [Open.exportImage]: true,
         [Open.localePicker]: true,
+        [Open.mapColumns]: true,
       })
     );
 
@@ -208,6 +209,7 @@ describe('QuickSearch', () => {
     expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(false);
     expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
+    expect(app.store.state.editor.openMap[Open.mapColumns]).toBe(false);
   });
 
   it('toggles closed on a second search shortcut and re-emits focus', async () => {

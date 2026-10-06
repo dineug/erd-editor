@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-43 spec files. Ten of the groups exist because the DOM scene got their subject
+44 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -180,6 +180,33 @@ pressed on a focused row; the command palette and the Shortcuts page it opens;
 the menu kept and the hints dropped on a small screen; and each toolbar arrow
 landing on its button in English and in Arabic.
 
+`relationship-map-columns.spec.ts` holds down the two buttons a relationship
+draw puts beside the table it would end on, and Map Columns behind them. The
+buttons stand on the table's left at one screen size at any zoom, outline the
+table a press there would link, the one drawn on top of two overlapping at one
+z-index, flip right where the left edge has no room, keep clear of the minimap
+and stay in view beside a table taller than the canvas, while the draw preview
+keeps following the pointer over them; the strip between them and the table
+spends a press that would reach a neighbour or the start table, which shows
+them only once the pointer travels 24 px from the press that started the draw.
+Plus draws what a press on the table draws, which a press on the table still
+does. Map links existing columns in one undo and renames nothing, row by row
+for a composite key, prefilled where exactly one name matches, References
+offering a unique column only where the parent has one, and a self reference
+sharing its tenant column; the relationship menu changes a relationship's
+columns in place, its id, type and ON DELETE kept, a column it no longer uses
+kept without its FK mark, a removed column shown as `(removed)` until another
+is picked; with data type sync on the child takes the parent's type in the same
+undo. Readonly shows neither, the chords of Find and Replace and the palette
+close the dialog for them, Escape closes it writing nothing, opening it from
+the menu ends an armed draw, and under touch a tap on a table mints new columns
+at once, as it always has, with no buttons ever shown: not after a tap on empty
+canvas and a pan or a zoom from the keyboard that brings a table under it, and
+not for a pinch whose first finger lands on a table, which draws to that table
+as a tap there does and still zooms. `shared-presence.spec.ts` sends a mapping
+made in the dialog and one edited from the menu to a wired peer, and closes the
+dialog with a toast once the peer removes its relationship.
+
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
@@ -192,7 +219,8 @@ one of them at the new ids. `relatedTables()` is the seed both use, and the
 foreign key badge on a copied end column is the user-visible half — the payload
 does carry `ui.keys`, but the duplicate never replays it (`toCreateEntityActions`
 emits `addColumnAction` with `id` and `tableId` alone), so the badge is only
-there if a real `relationship.add` reached `addColumnForeignKeyHook`.
+there if a real `relationship.add` reached `validationForeignKeyHook`, which
+marks every column a relationship in the document ends on.
 
 ## The things that make this suite work
 
@@ -449,9 +477,9 @@ cost when you hit them blind.
 - The outward `change` event is `debounceTime(200)`. It is not an assertion
   target; `el.value` is.
 - Relationship side effects land on later ticks: the FK `ui.keys` bit arrives on
-  the next channel tick, `identification` / `startRelationshipType` on a 10ms
-  trailing throttle, and the relationship's start/end geometry on a 5ms one
-  after a dragged table or memo, or a microtask after anything else.
+  the next channel tick, `identification` / `startRelationshipType` in the
+  microtasks after the batch, and the relationship's start/end geometry on a
+  5ms throttle after a dragged table or memo, or a microtask after anything else.
   Poll for all four.
 - A column reorder plays a 0.3s FLIP tween on the scene (`FLIP_DURATION`).
   Assert the settled `columnIds` order or the settled projected order, never a

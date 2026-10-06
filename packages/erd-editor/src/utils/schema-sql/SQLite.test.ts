@@ -235,10 +235,9 @@ describe('SQLite createSchema', () => {
   it('wraps identifiers with the configured bracket type', () => {
     const { state } = createFixture();
     state.settings.bracketType = BracketType.singleQuote;
-    state.doc.tableIds = ['t-posts'];
     state.doc.indexIds = [];
 
-    expect(createSchema(state)).toBe(
+    expect(createSchema(state)).toContain(
       [
         '',
         "CREATE TABLE 'posts'",
@@ -475,7 +474,7 @@ describe('SQLite formatTable', () => {
     ]);
   });
 
-  it('skips relationships whose start table is missing', () => {
+  it('skips relationships whose start table is missing, leaving the primary key without a comma', () => {
     const state = createState();
     const { child } = seedParentChild(state, { pkNames: ['id'] });
     Reflect.deleteProperty(state.collections.tableEntities, 't-parent');
@@ -488,12 +487,12 @@ describe('SQLite formatTable', () => {
       '(',
       '  id     INT NULL    ,',
       '  fk_col INT NULL    ,',
-      '  PRIMARY KEY (id),',
+      '  PRIMARY KEY (id)',
       ');',
     ]);
   });
 
-  it('drops relationship columns that no longer exist', () => {
+  it('skips a relationship none of whose columns exist', () => {
     const state = createState();
     const { child } = seedParentChild(state, { pkNames: ['id'] });
     state.collections.relationshipEntities['r-0'].start.columnIds = [
@@ -506,9 +505,59 @@ describe('SQLite formatTable', () => {
     const buffer: string[] = [];
     formatTable(state, { table: child, buffer });
 
-    expect(buffer[buffer.length - 2]).toBe(
-      '  FOREIGN KEY () REFERENCES parent ()'
-    );
+    expect(buffer.slice(-2)).toEqual(['  PRIMARY KEY (id)', ');']);
+  });
+
+  it('counts only the foreign keys it writes when placing commas', () => {
+    const state = createState();
+    const { child } = seedParentChild(state, {
+      pkNames: ['id'],
+      relationshipCount: 2,
+    });
+    state.collections.relationshipEntities['r-1'].end.columnIds = [
+      'missing-end',
+    ];
+
+    const buffer: string[] = [];
+    formatTable(state, { table: child, buffer });
+
+    expect(buffer.slice(4)).toEqual([
+      '  PRIMARY KEY (id),',
+      '  FOREIGN KEY (fk_col) REFERENCES parent (id)',
+      ');',
+    ]);
+  });
+
+  it('separates the last column from the foreign key of a table without a primary key', () => {
+    const state = createState();
+    const { child } = seedParentChild(state, { pkNames: [] });
+
+    const buffer: string[] = [];
+    formatTable(state, { table: child, buffer });
+
+    expect(buffer).toEqual([
+      'CREATE TABLE child',
+      '(',
+      '  fk_col INT NULL    ,',
+      '  FOREIGN KEY (fk_col) REFERENCES parent (id)',
+      ');',
+    ]);
+  });
+
+  it('ends the last column of a table without a primary key bare when its foreign keys are all skipped', () => {
+    const state = createState();
+    const { child } = seedParentChild(state, { pkNames: [] });
+    state.doc.tableIds = [child.id];
+
+    const buffer: string[] = [];
+    formatTable(state, { table: child, buffer });
+
+    expect(buffer).toEqual([
+      'CREATE TABLE child',
+      '(',
+      '  fk_col INT NULL    ',
+      ');',
+    ]);
   });
 
   it('emits no primary key clause when no column is a primary key', () => {

@@ -316,4 +316,42 @@ export const slSI = {
   'welcome.hintTheme': 'Izberite temo',
   'welcome.hintLanguage': 'Izberite jezik',
   'welcome.hintFloatingToolbar': 'Premikajte, povečujte in rišite relacije',
+  'mapColumns.title': 'Preslikaj stolpce',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Preslikaj v obstoječe stolpce',
+  'mapColumns.createNew': 'Ustvari nove stolpce',
+  'mapColumns.noPrimaryKeyToCopy':
+    'Tabela {table} nima primarnega ključa za kopiranje',
+  'mapColumns.references': 'Ciljni ključ',
+  'mapColumns.unique': 'Enolično: {column}',
+  'mapColumns.currentColumns': 'Trenutni stolpci (niso ključ)',
+  'mapColumns.referencedColumn': 'Ciljni stolpec',
+  'mapColumns.foreignKeyColumn': 'Stolpec tujega ključa',
+  'mapColumns.pickColumn': 'Izberite stolpec',
+  'mapColumns.newColumn': 'Nov stolpec: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · v uporabi',
+  'mapColumns.removed': '(odstranjen)',
+  'mapColumns.invalid': '(neveljavno)',
+  'mapColumns.becomesType': 'Tip stolpca {column} bo postal {dataType}',
+  'mapColumns.typesDiffer': 'Tipa se razlikujeta: {parentType} in {childType}',
+  'mapColumns.selfOnly': 'Vsaj en stolpec se mora sklicevati na drug stolpec',
+  'mapColumns.duplicate': 'Te stolpce že povezuje druga relacija',
+  'mapColumns.noKey':
+    'Tabela {table} nima ključa, na katerega bi se lahko sklicevali',
+  'mapColumns.notAKey': 'Ciljni stolpci niso ključ tabele {table}',
+  'mapColumns.fixMapping':
+    'Za popravek te preslikave izberite ključ v polju »Ciljni ključ«',
+  'mapColumns.addKeyToFix':
+    'Za popravek te preslikave dodajte tabeli {table} primarni ključ ali enoličen stolpec',
+  'mapColumns.changedRemotely':
+    'Ta relacija se je spremenila, medtem ko je bilo pogovorno okno odprto',
+  'mapColumns.map': 'Preslikaj',
+  'mapColumns.save': 'Shrani',
+  'mapColumns.closedTableRemoved':
+    'Okno »Preslikaj stolpce« je zaprto: tabela {table} je bila odstranjena',
+  'mapColumns.closedRelationshipRemoved':
+    'Okno »Preslikaj stolpce« je zaprto: relacija je bila odstranjena',
+  'mapColumns.failed':
+    'Stolpcev ni bilo mogoče preslikati: diagram se je spremenil',
 } satisfies Messages;

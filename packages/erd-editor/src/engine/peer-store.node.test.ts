@@ -10,8 +10,14 @@ import {
   renameColumn,
   renameTable,
 } from '@/__test-utils__/peerScenarios';
-import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
+import { createSeedValue, SEED, settle } from '@/__test-utils__/peerSeed';
+import { RelationshipType, StartRelationshipType } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
+import {
+  addRelationshipAction,
+  changeRelationshipColumnsAction,
+} from '@/engine/modules/relationship/atom.actions';
+import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
 import {
   createPeerStore,
   type PeerStore,
@@ -244,5 +250,79 @@ describe('peer store reseed', () => {
     peer.setInitialValue(createSeedValue());
 
     expect(peer.state.editor.focusTable).toBeNull();
+  });
+});
+
+describe('peer store value one scheduler turn after a batch', () => {
+  /** What a headless host waits before it reads the value it writes. */
+  const schedulerTurn = () =>
+    new Promise<void>(resolve => setImmediate(resolve));
+
+  const savedFlags = (peer: PeerStore, id: string) => {
+    const { identification, startRelationshipType } = JSON.parse(peer.value)
+      .collections.relationshipEntities[id];
+    return { identification, startRelationshipType };
+  };
+
+  /** The seed loaded, with what its load woke written. */
+  async function loadedPeer() {
+    const peer = peerOf({ presence: false });
+    peer.setInitialValue(createSeedValue());
+    await settle();
+    return peer;
+  }
+
+  it('carries the flags a link reads off the columns it ends on', async () => {
+    // A headless host writes the value one turn after a batch, so a flag
+    // derived later reached its file only with the next write.
+    const peer = await loadedPeer();
+
+    peer.dispatch([
+      addRelationshipAction({
+        id: 'link',
+        relationshipType: RelationshipType.OneN,
+        start: { tableId: SEED.users, columnIds: [SEED.userId] },
+        end: { tableId: SEED.orders, columnIds: [SEED.orderId] },
+      }),
+    ]);
+    await schedulerTurn();
+
+    expect(savedFlags(peer, 'link')).toEqual({
+      identification: true,
+      startRelationshipType: StartRelationshipType.dash,
+    });
+  });
+
+  it('carries the not null a batch keying two end columns at once turns on', async () => {
+    // A key turns not null on in the microtask after its batch, so the start
+    // read before that one ringed a relationship whose columns all end up keyed.
+    const peer = await loadedPeer();
+    peer.dispatch([
+      changeRelationshipColumnsAction({
+        id: SEED.relationship,
+        start: { tableId: SEED.users, columnIds: [SEED.userId, SEED.userName] },
+        end: {
+          tableId: SEED.orders,
+          columnIds: [SEED.orderUser, SEED.orderNote],
+        },
+      }),
+    ]);
+    await schedulerTurn();
+    expect(savedFlags(peer, SEED.relationship)).toEqual({
+      identification: false,
+      startRelationshipType: StartRelationshipType.ring,
+    });
+
+    peer.dispatch(
+      [SEED.orderUser, SEED.orderNote].map(id =>
+        changeColumnPrimaryKeyAction({ id, tableId: SEED.orders, value: true })
+      )
+    );
+    await schedulerTurn();
+
+    expect(savedFlags(peer, SEED.relationship)).toEqual({
+      identification: true,
+      startRelationshipType: StartRelationshipType.dash,
+    });
   });
 });

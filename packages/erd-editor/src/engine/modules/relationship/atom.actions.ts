@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
 import { ReferentialAction } from '@/constants/schema';
+import { Relationship } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 
@@ -116,12 +117,68 @@ const changeRelationshipOnUpdate: ReducerType<
   });
 };
 
+export const changeRelationshipColumnsAction = createAction<
+  ActionMap[typeof ActionType.changeRelationshipColumns]
+>(ActionType.changeRelationshipColumns);
+
+const COLUMNS = 'columns';
+
+const toColumnsKey = (startColumnIds: string[], endColumnIds: string[]) =>
+  JSON.stringify([startColumnIds, endColumnIds]);
+
+type ColumnsPayload = ActionMap[typeof ActionType.changeRelationshipColumns];
+
+/** Whether the payload names other tables than the relationship's, which the reducer ignores. */
+export const namesOtherTables = (
+  relationship: Relationship,
+  { start, end }: Pick<ColumnsPayload, 'start' | 'end'>
+) =>
+  relationship.start.tableId !== start.tableId ||
+  relationship.end.tableId !== end.tableId;
+
+/**
+ * Both ends share the one register, so a mapping never mixes two writers. A
+ * payload naming other tables than the entity's is ignored before the register
+ * moves, and of two writes at one version the greater JSON of the lists wins.
+ */
+const changeRelationshipColumns: ReducerType<
+  typeof ActionType.changeRelationshipColumns
+> = (
+  { collections, lww },
+  { payload: { id, start, end }, version },
+  { clock }
+) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('relationshipEntities');
+  const relationship = collection.selectById(id);
+
+  if (relationship && namesOtherTables(relationship, { start, end })) return;
+
+  if (
+    relationship &&
+    (lww[id]?.[3][COLUMNS] ?? -1) === safeVersion &&
+    toColumnsKey(start.columnIds, end.columnIds) <=
+      toColumnsKey(relationship.start.columnIds, relationship.end.columnIds)
+  ) {
+    return;
+  }
+
+  // New arrays, so the lists an undo entry captured from the entity stay put.
+  collection.replaceOperator(lww, safeVersion, id, COLUMNS, () => {
+    collection.updateOne(id, value => {
+      value.start.columnIds = [...start.columnIds];
+      value.end.columnIds = [...end.columnIds];
+    });
+  });
+};
+
 export const relationshipReducers = {
   [ActionType.addRelationship]: addRelationship,
   [ActionType.removeRelationship]: removeRelationship,
   [ActionType.changeRelationshipType]: changeRelationshipType,
   [ActionType.changeRelationshipOnDelete]: changeRelationshipOnDelete,
   [ActionType.changeRelationshipOnUpdate]: changeRelationshipOnUpdate,
+  [ActionType.changeRelationshipColumns]: changeRelationshipColumns,
 };
 
 export const actions = {
@@ -130,4 +187,5 @@ export const actions = {
   changeRelationshipTypeAction,
   changeRelationshipOnDeleteAction,
   changeRelationshipOnUpdateAction,
+  changeRelationshipColumnsAction,
 };

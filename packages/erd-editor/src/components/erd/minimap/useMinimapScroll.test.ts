@@ -177,6 +177,9 @@ afterEach(() => {
   mounted?.unmount();
   mounted = null;
   api = null;
+  // Lets go of the store, so nothing its edits set running outlives the
+  // file's environment.
+  app.store.destroy();
 });
 
 describe('useMinimapScroll', () => {

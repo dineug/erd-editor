@@ -329,7 +329,6 @@ describe('Oracle createSchema', () => {
       end: { tableId: posts.id, columnIds: [postUserId.id] },
     });
     state.collections.relationshipEntities[second.id] = second;
-    state.doc.tableIds = [];
     state.doc.indexIds = [];
     state.doc.relationshipIds = ['r-1', 'r-2'];
 
@@ -339,19 +338,17 @@ describe('Oracle createSchema', () => {
     expect(sql).toContain('  ADD CONSTRAINT FK_users_TO_posts1\n');
   });
 
-  it('skips relationships whose tables are missing', () => {
+  it('skips relationships whose tables are missing, blank line and all', () => {
     const { state } = createFixture();
     state.doc.tableIds = [];
     state.doc.indexIds = [];
     Reflect.deleteProperty(state.collections.tableEntities, 't-posts');
 
-    expect(createSchema(state)).toBe('\n');
+    expect(createSchema(state)).toBe('');
   });
 
-  it('drops relationship columns that no longer exist', () => {
+  it('skips a relationship none of whose columns exist, blank line and all', () => {
     const { state } = createFixture();
-    state.doc.tableIds = [];
-    state.doc.indexIds = [];
     state.collections.relationshipEntities['r-1'].start.columnIds = [
       'missing-start',
     ];
@@ -359,16 +356,11 @@ describe('Oracle createSchema', () => {
       'missing-end',
     ];
 
-    expect(createSchema(state)).toBe(
-      [
-        '',
-        'ALTER TABLE posts',
-        '  ADD CONSTRAINT FK_users_TO_posts',
-        '    FOREIGN KEY ()',
-        '    REFERENCES users ();',
-        '',
-      ].join('\n')
-    );
+    const sql = createSchema(state);
+    state.doc.relationshipIds = [];
+
+    expect(sql).not.toContain('FOREIGN KEY');
+    expect(sql).toBe(createSchema(state));
   });
 
   it('qualifies a unique constraint with its table so two tables can share a column name', () => {

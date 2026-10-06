@@ -17,6 +17,7 @@ import AutomaticTablePlacement, {
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
+import DrawTargetButtons from '@/components/erd/draw-target/DrawTargetButtons';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
@@ -264,6 +265,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !onEditor &&
       !el.closest('.edit-input') &&
       !el.closest('.context-menu-content') &&
+      !el.closest('.draw-target') &&
       canHideColorPicker;
 
     const canDrag =
@@ -588,6 +590,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         on:wheel={handleWheel}
       >
         <Canvas root={root} canvas={canvas} grabMove={handTool} />
+        <DrawTargetButtons root={root} readonly={props.readonly} />
         {zenMode ? null : <VirtualScroll />}
         {hasContent && !zenMode ? <Minimap /> : null}
         {showWelcomeScreen ? (

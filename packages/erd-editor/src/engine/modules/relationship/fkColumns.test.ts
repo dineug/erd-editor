@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 import { Database } from '@/constants/schema';
 import {
   isSingleWord,
+  prefixKeyName,
   toForeignKeyActions,
   toForeignKeyNames,
+  toNameKey,
 } from '@/engine/modules/relationship/fkColumns';
 import {
   addColumnAction,
@@ -145,6 +147,36 @@ describe('isSingleWord', () => {
 
   it('takes no empty name as a word', () => {
     expect(isSingleWord('')).toBe(false);
+  });
+});
+
+describe('prefixKeyName', () => {
+  it('prefixes a single word key with the table name and an underscore', () => {
+    expect(prefixKeyName('users', 'id')).toBe('users_id');
+    expect(prefixKeyName('public.users', 'id')).toBe('public.users_id');
+    expect(prefixKeyName(' users ', ' ID ')).toBe('users_ID');
+  });
+
+  it('keeps a key of several words, one equal to the table name, or any key of a blank table', () => {
+    expect(prefixKeyName('users', 'user_id')).toBe('user_id');
+    expect(prefixKeyName('user', 'User')).toBe('User');
+    expect(prefixKeyName('  ', 'id')).toBe('id');
+  });
+
+  it('names no column it numbers, which toForeignKeyNames does against the taken names', () => {
+    expect(prefixKeyName('users', 'id')).toBe(
+      toForeignKeyNames('users', ['id'], [])[0]
+    );
+    expect(toForeignKeyNames('users', ['id'], ['users_id'])).toEqual([
+      'users_id_2',
+    ]);
+  });
+});
+
+describe('toNameKey', () => {
+  it('compares names trimmed and without case', () => {
+    expect(toNameKey('  User_ID ')).toBe('user_id');
+    expect(toNameKey('')).toBe('');
   });
 });
 

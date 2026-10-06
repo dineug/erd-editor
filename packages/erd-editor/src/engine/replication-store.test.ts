@@ -23,6 +23,7 @@ import {
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { changeMemoColorAction } from '@/engine/modules/memo/atom.actions';
+import { changeRelationshipColumnsAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeCanvasTypeAction,
   changeLanguageAction,
@@ -869,7 +870,7 @@ describe('createReplicationStore', () => {
     }
 
     it.each([0, 3, 7])(
-      'changes nothing for a view change %i ms into a load, before its hooks would have run',
+      'changes nothing for a view change %i ms into a load, whichever of its hooks have run',
       async delay => {
         vi.useFakeTimers();
         const store = make(winWidth);
@@ -916,6 +917,52 @@ describe('createReplicationStore', () => {
         collections.tableColumnEntities[SEED.orderUser].ui.keys &
           ColumnUIKey.foreignKey
       ).toBe(ColumnUIKey.foreignKey);
+    });
+
+    /**
+     * The seed with orders.user_id out of its table, so its relationship ends
+     * on no column the document holds, under flags it no longer derives.
+     */
+    function brokenLinkFile() {
+      const json = JSON.parse(createSeedValue());
+      const orders = json.collections.tableEntities[SEED.orders];
+      const relationship =
+        json.collections.relationshipEntities[SEED.relationship];
+
+      orders.columnIds = orders.columnIds.filter(
+        (id: string) => id !== SEED.orderUser
+      );
+      relationship.identification = true;
+      relationship.startRelationshipType = StartRelationshipType.ring;
+      json.collections.tableColumnEntities[SEED.orderUser].ui.keys &=
+        ~ColumnUIKey.foreignKey;
+      return JSON.stringify(json);
+    }
+
+    it('loads a relationship with no end column left under the flags a new one starts with, and a view change on it changes nothing', async () => {
+      vi.useFakeTimers();
+      const store = make(winWidth);
+      const change = vi.fn();
+      store.on({ change });
+
+      store.setInitialValue(brokenLinkFile());
+      const opened = store.value;
+      await vi.advanceTimersByTimeAsync(50);
+      store.dispatchSync(scroll);
+      await vi.advanceTimersByTimeAsync(250);
+
+      const { collections } = JSON.parse(opened);
+      expect(collections.relationshipEntities[SEED.relationship]).toMatchObject(
+        {
+          identification: false,
+          startRelationshipType: StartRelationshipType.dash,
+        }
+      );
+      expect(
+        collections.tableColumnEntities[SEED.orderUser].ui.keys &
+          ColumnUIKey.foreignKey
+      ).toBe(0);
+      expect(change.mock.calls).toEqual([[{ value: opened, changed: false }]]);
     });
 
     it('takes a load that came while a change was pending as the value, changing nothing', async () => {
@@ -1222,6 +1269,55 @@ describe('createReplicationStore', () => {
       expect(colours(replica)).toEqual(['#222222', '#222222']);
       expect(colours(replica)).toEqual(colours(user));
     });
+  });
+
+  it('applies a remap as a change and derives the flags an editor derives from it', async () => {
+    vi.useFakeTimers();
+    const seed = createSeedValue();
+    const store = make();
+    const user = createUserStore(seed);
+    store.setInitialValue(seed);
+    await vi.advanceTimersByTimeAsync(50);
+    const change = vi.fn();
+    store.on({ change });
+    const remap = () =>
+      changeRelationshipColumnsAction({
+        id: SEED.relationship,
+        start: { tableId: SEED.users, columnIds: [SEED.userId] },
+        end: { tableId: SEED.orders, columnIds: [SEED.orderId] },
+      });
+
+    store.dispatchSync(remap());
+    user.rxStore.dispatchSync(remap());
+    await vi.advanceTimersByTimeAsync(250);
+
+    const derived = (collections: any) => ({
+      relationship: {
+        identification:
+          collections.relationshipEntities[SEED.relationship].identification,
+        startRelationshipType:
+          collections.relationshipEntities[SEED.relationship]
+            .startRelationshipType,
+        end: collections.relationshipEntities[SEED.relationship].end.columnIds,
+      },
+      foreignKeys: [SEED.orderId, SEED.orderUser, SEED.orderNote].filter(
+        id =>
+          collections.tableColumnEntities[id].ui.keys & ColumnUIKey.foreignKey
+      ),
+    });
+    expect(change).toHaveBeenCalledWith({ value: store.value, changed: true });
+    expect(derived(parse(store).collections)).toEqual({
+      relationship: {
+        identification: true,
+        startRelationshipType: StartRelationshipType.dash,
+        end: [SEED.orderId],
+      },
+      foreignKeys: [SEED.orderId],
+    });
+    expect(derived(parse(store).collections)).toEqual(
+      derived(user.rxStore.state.collections)
+    );
+    user.destroy();
   });
 
   it('destroy detaches subscriptions and observers', () => {

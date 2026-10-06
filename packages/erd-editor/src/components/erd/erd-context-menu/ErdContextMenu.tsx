@@ -3,13 +3,17 @@ import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { useI18n } from '@/components/localeContext';
+import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import SubmenuChevron from '@/components/primitives/context-menu/submenu-chevron/SubmenuChevron';
 import Icon from '@/components/primitives/icon/Icon';
 import Kbd from '@/components/primitives/kbd/Kbd';
 import { Open } from '@/constants/open';
 import { GeneratorAction } from '@/engine/generator.actions';
-import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  drawEndRelationshipAction,
+} from '@/engine/modules/editor/atom.actions';
 import {
   removeColorAllAction$,
   removeSelectedAction$,
@@ -131,6 +135,25 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
 
   const handleOpenDiffViewer = () => {
     importDiffJSON(app.value);
+    props.onClose();
+  };
+
+  /**
+   * Opens the mapping of the relationship the menu was raised over. A draw
+   * still armed ends first, or its buttons would come back over the table
+   * once the dialog closed.
+   */
+  const handleOpenMapColumns = () => {
+    if (!props.relationshipId) return;
+
+    const { store } = app.value;
+    if (store.state.editor.drawRelationship) {
+      store.dispatchSync(drawEndRelationshipAction());
+    }
+    openMapColumns(app.value, {
+      mode: 'edit',
+      relationshipId: props.relationshipId,
+    });
     props.onClose();
   };
 
@@ -495,6 +518,12 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   }
                 />
               ))}
+              {app.value.store.getReadonly() ? null : (
+                <ContextMenu.Item
+                  onClick={handleOpenMapColumns}
+                  children={<ContextMenu.Menu name={t('mapColumns.title')} />}
+                />
+              )}
               <ContextMenu.Item
                 onClick={handleRemoveRelationship}
                 children={<ContextMenu.Menu name={t('contextMenu.delete')} />}

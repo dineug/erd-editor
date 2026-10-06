@@ -302,6 +302,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
             [Open.themeBuilder]: false,
             [Open.exportImage]: false,
             [Open.localePicker]: false,
+            [Open.mapColumns]: false,
           })
         );
       } else {

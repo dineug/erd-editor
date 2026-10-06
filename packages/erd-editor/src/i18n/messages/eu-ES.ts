@@ -307,4 +307,45 @@ export const euES = {
   'welcome.hintTheme': 'Aukeratu gai bat',
   'welcome.hintLanguage': 'Aukeratu hizkuntza bat',
   'welcome.hintFloatingToolbar': 'Mugitu, egin zoom eta marraztu erlazioak',
+  'mapColumns.title': 'Mapatu zutabeak',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Mapatu lehendik dauden zutabeetara',
+  'mapColumns.createNew': 'Sortu zutabe berriak',
+  'mapColumns.noPrimaryKeyToCopy':
+    '{table} taulak ez du kopiatzeko gako nagusirik',
+  'mapColumns.references': 'Erreferentziako gakoa',
+  'mapColumns.unique': 'Bakarra: {column}',
+  'mapColumns.currentColumns': 'Uneko zutabeak (ez dira gakoa)',
+  'mapColumns.referencedColumn': 'Erreferentziako zutabea',
+  'mapColumns.foreignKeyColumn': 'Gako arrotzaren zutabea',
+  'mapColumns.pickColumn': 'Aukeratu zutabe bat',
+  'mapColumns.newColumn': 'Zutabe berria: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · erabileran',
+  'mapColumns.removed': '(kenduta)',
+  'mapColumns.invalid': '(baliogabea)',
+  'mapColumns.becomesType': '{column} zutabearen mota {dataType} izango da',
+  'mapColumns.typesDiffer':
+    'Motak desberdinak dira: {parentType} eta {childType}',
+  'mapColumns.selfOnly':
+    'Gutxienez zutabe batek beste zutabe bati egin behar dio erreferentzia',
+  'mapColumns.duplicate':
+    'Beste erlazio batek lotzen ditu dagoeneko zutabe hauek',
+  'mapColumns.noKey': '{table} taulak ez du erreferentzia egiteko gakorik',
+  'mapColumns.notAKey':
+    'Erreferentziako zutabeak ez dira {table} taularen gakoa',
+  'mapColumns.fixMapping':
+    'Mapaketa hau konpontzeko, hautatu gako bat "Erreferentziako gakoa" atalean',
+  'mapColumns.addKeyToFix':
+    'Mapaketa hau konpontzeko, gehitu gako nagusi bat edo balio bakarreko zutabe bat {table} taulari',
+  'mapColumns.changedRemotely':
+    'Erlazio hau aldatu egin da elkarrizketa-koadroa irekita zegoen bitartean',
+  'mapColumns.map': 'Mapatu',
+  'mapColumns.save': 'Gorde',
+  'mapColumns.closedTableRemoved':
+    '"Mapatu zutabeak" itxi da: {table} taula kendu da',
+  'mapColumns.closedRelationshipRemoved':
+    '"Mapatu zutabeak" itxi da: erlazioa kendu da',
+  'mapColumns.failed':
+    'Ezin izan dira zutabeak mapatu: diagrama aldatu egin da',
 } satisfies Messages;

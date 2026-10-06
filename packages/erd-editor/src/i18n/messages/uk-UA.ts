@@ -317,4 +317,41 @@ export const ukUA = {
   'welcome.hintLanguage': 'Вибрати мову',
   'welcome.hintFloatingToolbar':
     'Панорамувати, масштабувати й малювати зв’язки',
+  'mapColumns.title': 'Зіставити стовпці',
+  'mapColumns.subtitle': '{parent} → {child} · {relationshipType}',
+  'mapColumns.mapToExisting': 'Зіставити з наявними стовпцями',
+  'mapColumns.createNew': 'Створити нові стовпці',
+  'mapColumns.noPrimaryKeyToCopy':
+    'Таблиця {table} не має первинного ключа для копіювання',
+  'mapColumns.references': 'Цільовий ключ',
+  'mapColumns.unique': 'Унікальний: {column}',
+  'mapColumns.currentColumns': 'Поточні стовпці (не ключ)',
+  'mapColumns.referencedColumn': 'Цільовий стовпець',
+  'mapColumns.foreignKeyColumn': 'Стовпець зовнішнього ключа',
+  'mapColumns.pickColumn': 'Вибрати стовпець',
+  'mapColumns.newColumn': 'Новий стовпець: {name}',
+  'mapColumns.columnOption': '{name} ({dataType})',
+  'mapColumns.columnOptionInUse': '{name} ({dataType}) · уже використовується',
+  'mapColumns.removed': '(видалено)',
+  'mapColumns.invalid': '(недійсне)',
+  'mapColumns.becomesType': 'Тип стовпця {column} стане {dataType}',
+  'mapColumns.typesDiffer': 'Типи відрізняються: {parentType} і {childType}',
+  'mapColumns.selfOnly':
+    'Принаймні один стовпець має посилатися на інший стовпець',
+  'mapColumns.duplicate': 'Ці стовпці вже з’єднано іншим зв’язком',
+  'mapColumns.noKey': 'Таблиця {table} не має ключа, на який можна послатися',
+  'mapColumns.notAKey': 'Цільові стовпці не є ключем таблиці {table}',
+  'mapColumns.fixMapping':
+    'Вибрати ключ у полі «Цільовий ключ», щоб виправити зіставлення',
+  'mapColumns.addKeyToFix':
+    'Додати до таблиці {table} первинний ключ або унікальний стовпець, щоб виправити зіставлення',
+  'mapColumns.changedRemotely':
+    'Цей зв’язок змінився, поки діалогове вікно було відкрите',
+  'mapColumns.map': 'Зіставити',
+  'mapColumns.save': 'Зберегти',
+  'mapColumns.closedTableRemoved':
+    'Вікно «Зіставити стовпці» закрито: таблицю {table} видалено',
+  'mapColumns.closedRelationshipRemoved':
+    'Вікно «Зіставити стовпці» закрито: зв’язок видалено',
+  'mapColumns.failed': 'Не вдалося зіставити стовпці: діаграма змінилася',
 } satisfies Messages;

@@ -1,6 +1,12 @@
 import { query } from '@dineug/erd-editor-schema';
 import { type AnyAction } from '@dineug/r-html';
-import { asapScheduler, type Observable, observeOn } from 'rxjs';
+import {
+  asapScheduler,
+  type Observable,
+  observeOn,
+  throttle,
+  timer,
+} from 'rxjs';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
@@ -10,9 +16,18 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import {
   addRelationshipAction,
+  changeRelationshipColumnsAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
-import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+  removeColumnAction,
+} from '@/engine/modules/table-column/atom.actions';
 import type { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
@@ -42,92 +57,74 @@ const changeColumnNotNullHook: HookEffect = (action$, getState) =>
     }
   );
 
-const addColumnForeignKeyHook: HookEffect = (action$, getState) =>
-  deferred(action$).subscribe(
-    ({ payload: { id, end } }: ReturnType<typeof addRelationshipAction>) => {
-      const {
-        doc: { relationshipIds },
-        collections,
-      } = getState();
-      if (!relationshipIds.includes(id)) return;
-
-      const columns = query(collections)
-        .collection('tableColumnEntities')
-        .selectByIds(end.columnIds);
-
-      for (const column of columns) {
-        column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
-      }
-    }
-  );
-
-const removeColumnForeignKeyHook: HookEffect = (action$, getState) =>
-  deferred(action$).subscribe(
-    ({ payload: { id } }: ReturnType<typeof removeRelationshipAction>) => {
-      const {
-        doc: { relationshipIds },
-        collections,
-      } = getState();
-      if (relationshipIds.includes(id)) return;
-
-      const relationship = query(collections)
-        .collection('relationshipEntities')
-        .selectById(id);
-      if (!relationship) return;
-
-      const columns = query(collections)
-        .collection('tableColumnEntities')
-        .selectByIds(relationship.end.columnIds);
-
-      for (const column of columns) {
-        column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
-      }
-    }
-  );
-
 /**
- * Marks as a foreign key every column a relationship ends on, and only those,
- * as a load leaves the marks to be read off the relationships again.
+ * Marks as a foreign key every column of a table in the document that a
+ * relationship in the document ends on in that table, and clears every other
+ * one, a removed column's too, so a file's bits never hang on arrival order.
  */
 export function validateForeignKeys({ doc, collections }: RootState) {
+  const endColumnIds = new Map<string, Set<string>>();
   const relationships = query(collections)
     .collection('relationshipEntities')
     .selectByIds(doc.relationshipIds);
-  const tables = query(collections)
-    .collection('tableEntities')
-    .selectByIds(doc.tableIds);
-  const foreignKeyColumnIdsSet = new Set<string>();
-  const columnCollection = query(collections).collection('tableColumnEntities');
 
   for (const { end } of relationships) {
-    const columns = columnCollection.selectByIds(end.columnIds);
-
-    for (const column of columns) {
-      column.ui.keys = column.ui.keys | ColumnUIKey.foreignKey;
-      foreignKeyColumnIdsSet.add(column.id);
-    }
+    const ids = endColumnIds.get(end.tableId) ?? new Set<string>();
+    end.columnIds.forEach(id => ids.add(id));
+    endColumnIds.set(end.tableId, ids);
   }
 
-  for (const table of tables) {
-    const columns = columnCollection.selectByIds(table.columnIds);
+  const tableIdOf = new Map<string, string>();
+  for (const table of query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)) {
+    table.columnIds.forEach(id => tableIdOf.set(id, table.id));
+  }
 
-    for (const column of columns) {
-      if (
-        bHas(column.ui.keys, ColumnUIKey.foreignKey) &&
-        !foreignKeyColumnIdsSet.has(column.id)
-      ) {
-        column.ui.keys = column.ui.keys & ~ColumnUIKey.foreignKey;
-      }
-    }
+  for (const column of query(collections)
+    .collection('tableColumnEntities')
+    .selectAll()) {
+    const tableId = tableIdOf.get(column.id);
+    const value =
+      tableId !== undefined &&
+      (endColumnIds.get(tableId)?.has(column.id) ?? false);
+    if (value === bHas(column.ui.keys, ColumnUIKey.foreignKey)) continue;
+
+    column.ui.keys = value
+      ? column.ui.keys | ColumnUIKey.foreignKey
+      : column.ui.keys & ~ColumnUIKey.foreignKey;
   }
 }
 
+/**
+ * Reads the flags whole once per batch, in the microtask after it: a flag set
+ * or cleared one relationship at a time lost a column another one still ended
+ * on, and a headless peer writes its file one scheduler turn after a batch.
+ */
 const validationForeignKeyHook: HookEffect = (action$, getState) =>
-  deferred(action$).subscribe(() => validateForeignKeys(getState()));
+  action$
+    .pipe(
+      throttle(() => timer(0, asapScheduler), {
+        leading: false,
+        trailing: true,
+      })
+    )
+    .subscribe(() => validateForeignKeys(getState()));
+
+/** What can add or drop a relationship's end or the column or table under one. */
+const foreignKeyActions = [
+  addRelationshipAction,
+  removeRelationshipAction,
+  changeRelationshipColumnsAction,
+  addColumnAction,
+  removeColumnAction,
+  addTableAction,
+  removeTableAction,
+  loadJsonAction,
+  initialLoadJsonAction,
+];
 
 export const hooks: Hook[] = [
   [[changeColumnPrimaryKeyAction], changeColumnNotNullHook],
-  [[addRelationshipAction], addColumnForeignKeyHook],
-  [[removeRelationshipAction], removeColumnForeignKeyHook],
-  [[loadJsonAction, initialLoadJsonAction], validationForeignKeyHook],
+  [foreignKeyActions, validationForeignKeyHook],
 ];

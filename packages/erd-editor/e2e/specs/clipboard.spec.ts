@@ -709,8 +709,8 @@ test.describe('the graph a copy carries', () => {
     expect(referenced.filter(id => SOURCE_IDS.includes(id))).toEqual([]);
 
     // The duplicate replays no ui.keys, so the foreign key badge on a copy is
-    // stamped by addColumnForeignKeyHook watching relationship.add alone — it
-    // is what says one really landed.
+    // stamped by validationForeignKeyHook reading the relationships the
+    // document holds — it is what says one really landed.
     const rebuilt = value.collections.relationshipEntities[relationshipCopyId];
     await expect(erd.relationshipEl(relationshipCopyId)).toBeVisible();
     await expect(erd.columnKey(rebuilt.end.columnIds[0], 'fk')).toBeVisible();
