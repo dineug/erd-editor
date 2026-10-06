@@ -105,7 +105,9 @@ class ErdEditor(
             bridge.subscribe(coroutineScope) { action ->
                 when (action) {
                     is HostBridgeCommand.Initial -> {
-                        webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(ErdEditorAppSettings.instance))
+                        val settings = ErdEditorAppSettings.instance
+                        webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(settings))
+                        webviewPanel.dispatch(WebviewBridgeCommand.UpdateLocale.of(settings))
                         webviewPanel.dispatch(
                             WebviewBridgeCommand.UpdateReadonly(file.isWritable.not())
                         )
@@ -183,6 +185,10 @@ class ErdEditor(
                             action.payload.grayColor,
                             action.payload.accentColor
                         )
+                    }
+
+                    is HostBridgeCommand.SaveLocale -> {
+                        ErdEditorAppSettings.instance.updateLocale(action.payload.locale)
                     }
                 }
             }
@@ -362,6 +368,7 @@ class ErdEditor(
     override fun onSettingsChange(settings: ErdEditorAppSettings) {
         if (this::webviewPanel.isInitialized) {
             webviewPanel.dispatch(WebviewBridgeCommand.UpdateTheme.of(settings))
+            webviewPanel.dispatch(WebviewBridgeCommand.UpdateLocale.of(settings))
         }
     }
 

@@ -71,7 +71,8 @@ class WebviewBridge(private val name: () -> String) {
     JsonSubTypes.Type(value = HostBridgeCommand.Initial::class, name = "hostInitialCommand"),
     JsonSubTypes.Type(value = HostBridgeCommand.SaveValue::class, name = "hostSaveValueCommand"),
     JsonSubTypes.Type(value = HostBridgeCommand.SaveReplication::class, name = "hostSaveReplicationCommand"),
-    JsonSubTypes.Type(value = HostBridgeCommand.SaveTheme::class, name = "hostSaveThemeCommand")
+    JsonSubTypes.Type(value = HostBridgeCommand.SaveTheme::class, name = "hostSaveThemeCommand"),
+    JsonSubTypes.Type(value = HostBridgeCommand.SaveLocale::class, name = "hostSaveLocaleCommand")
 )
 sealed class HostBridgeCommand {
     data class ExportFile(val payload: HostExportFileCommandPayload) : HostBridgeCommand() {
@@ -92,6 +93,9 @@ sealed class HostBridgeCommand {
     data class SaveTheme(val payload: HostSaveThemeCommandPayload): HostBridgeCommand() {
         val type = "hostSaveThemeCommand"
     }
+    data class SaveLocale(val payload: HostSaveLocaleCommandPayload): HostBridgeCommand() {
+        val type = "hostSaveLocaleCommand"
+    }
 }
 data class HostExportFileCommandPayload(val value: String, val fileName: String)
 /** mode is "append" for Import and Add; the page names none for a replace, and this host reads neither. */
@@ -106,6 +110,8 @@ data class HostSaveValueCommandPayload(val value: String, val changed: Boolean =
 // A tree, not Any: Any reads objects as maps, whose null entries the NON_NULL mapper then drops.
 data class HostSaveReplicationCommandPayload(val actions: JsonNode)
 data class HostSaveThemeCommandPayload(val appearance: String, val grayColor: String, val accentColor: String)
+/** A pick from a page's language picker, its System spelled auto. */
+data class HostSaveLocaleCommandPayload(val locale: String)
 
 sealed class WebviewBridgeCommand {
     data class ImportFile(val payload: WebviewImportFileCommandPayload) : WebviewBridgeCommand() {
@@ -132,6 +138,15 @@ sealed class WebviewBridgeCommand {
             }
         }
     }
+    data class UpdateLocale(val payload: WebviewUpdateLocaleCommandPayload): WebviewBridgeCommand() {
+        val type = "webviewUpdateLocaleCommand"
+
+        companion object {
+            /** The stored display language, auto included, with the IDE's language, which auto follows. */
+            fun of(settings: ErdEditorAppSettings) =
+                UpdateLocale(WebviewUpdateLocaleCommandPayload(settings.locale, settings.systemLocale))
+        }
+    }
     data class UpdateReadonly(val payload: Boolean): WebviewBridgeCommand() {
         val type = "webviewUpdateReadonlyCommand"
     }
@@ -153,4 +168,6 @@ data class WebviewUpdateThemeCommandPayload(
     val accentColor: String?,
     val systemAppearance: String? = null
 )
+/** systemLocale left null is left out, which a page reads as keeping the one it has. */
+data class WebviewUpdateLocaleCommandPayload(val locale: String, val systemLocale: String? = null)
 data class WebviewReplicationCommandPayload(val actions: JsonNode)

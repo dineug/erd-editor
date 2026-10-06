@@ -10,14 +10,15 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 
 /**
- * Settings | Tools | ERD Editor: the theme of [ErdEditorAppSettings], worded as the Obsidian
- * plugin's settings tab, and the Coding agents switch of [AgentHubSettings].
+ * Settings | Tools | ERD Editor: the theme and display language of [ErdEditorAppSettings], worded as
+ * the Obsidian plugin's settings tab, and the Coding agents switch of [AgentHubSettings].
  */
 class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
     // The fields apply found changed on the page; null is a field the page left alone.
     private var appearance: String? = null
     private var grayColor: String? = null
     private var accentColor: String? = null
+    private var locale: String? = null
 
     override fun createPanel(): DialogPanel {
         val agents = AgentHubSettings.instance
@@ -34,6 +35,14 @@ class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
                 themeComboBox(ErdEditorTheme.ACCENT_COLORS, { it.accentColor }) { accentColor = it }
                     .comment(ACCENT_COLOR_COMMENT)
             }
+            row("Display language:") {
+                comboBox(
+                    ErdEditorLocale.SETTINGS,
+                    textListCellRenderer<String?> { it?.let(ErdEditorLocale::optionName) }
+                )
+                    .bindItem({ ErdEditorAppSettings.instance.locale }) { value -> if (value != null) locale = value }
+                    .comment(LOCALE_COMMENT)
+            }
             row { checkBox("Coding agents").bindSelected(agents::codingAgents) }
                 .rowComment(agentsComment(AgentHubService.whyUnavailable()))
         }
@@ -41,14 +50,16 @@ class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
 
     /**
      * Lays the fields the page changed over the theme stored at that moment, as one change, so each
-     * open editor re-themes once and a builder pick that lands meanwhile keeps its other fields.
+     * open editor re-themes once and a builder pick that lands meanwhile keeps its other fields; a
+     * changed display language is stored after it.
      */
     override fun apply() {
         appearance = null
         grayColor = null
         accentColor = null
+        locale = null
         super.apply()
-        ErdEditorAppSettings.instance.updateTheme { changed(it, appearance, grayColor, accentColor) }
+        store(ErdEditorAppSettings.instance, appearance, grayColor, accentColor, locale)
     }
 
     /** A combo box showing [field] of the stored theme; apply hands a changed pick to [pick]. */
@@ -68,6 +79,18 @@ class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
             if (unavailableReason == null) COMMENT
             else "$COMMENT<br>Coding agents are unavailable: $unavailableReason"
 
+        /** Stores the theme fields the page changed as one change, then the display language if it changed. */
+        fun store(
+            settings: ErdEditorAppSettings,
+            appearance: String?,
+            grayColor: String?,
+            accentColor: String?,
+            locale: String?
+        ) {
+            settings.updateTheme { changed(it, appearance, grayColor, accentColor) }
+            if (locale != null) settings.updateLocale(locale)
+        }
+
         /** [stored] with each field the page changed; a null is a field the page left alone. */
         fun changed(stored: ErdEditorTheme, appearance: String?, grayColor: String?, accentColor: String?) =
             ErdEditorTheme(
@@ -81,6 +104,9 @@ class ErdEditorConfigurable : BoundConfigurable("ERD Editor") {
             "settings too, where Auto is System."
         private const val GRAY_COLOR_COMMENT = "The neutral color of the canvas, the tables and the menus."
         private const val ACCENT_COLOR_COMMENT = "The color of selections and highlights."
+        private const val LOCALE_COMMENT = "The language of the editor's menus, panels and messages. " +
+            "Auto follows the IDE's language, and English when the editor does not offer it. The " +
+            "language button in the editor's toolbar changes this setting too, where Auto is System."
         private const val COMMENT = "Lets a coding agent's ERD Editor MCP server edit the diagrams open in " +
             "this IDE over a local socket. Projects the IDE does not trust are read but never " +
             "changed. When off, agents can still read the ERD files of the open projects but " +

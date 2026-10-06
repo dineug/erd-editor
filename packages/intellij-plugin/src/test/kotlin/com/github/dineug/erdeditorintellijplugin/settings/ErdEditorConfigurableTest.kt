@@ -55,4 +55,35 @@ class ErdEditorConfigurableTest {
             ErdEditorConfigurable.changed(stored, "dark", "olive", "teal")
         )
     }
+
+    @Test
+    fun `names the display languages Auto, then each by its own name`() {
+        val names = ErdEditorLocale.SETTINGS.map(ErdEditorLocale::optionName)
+
+        assertEquals(26, names.size)
+        assertEquals(listOf("Auto", "English", "Bahasa Indonesia"), names.take(3))
+        assertEquals("한국어", names.last())
+    }
+
+    @Test
+    fun `apply stores only what the page changed, the theme as one change and the language after it`() {
+        val published = mutableListOf<Pair<ErdEditorTheme, String>>()
+        val settings = ErdEditorAppSettings({ false }, { "en" }) { published += it.theme to it.locale }
+
+        ErdEditorConfigurable.store(settings, null, null, null, null)
+        assertEquals(emptyList<Pair<ErdEditorTheme, String>>(), published)
+
+        ErdEditorConfigurable.store(settings, null, null, null, "uk-UA")
+        assertEquals(listOf(ErdEditorTheme.DEFAULT to "uk-UA"), published)
+
+        published.clear()
+        ErdEditorConfigurable.store(settings, "dark", null, "teal", "auto")
+        assertEquals(
+            listOf(
+                ErdEditorTheme("dark", "slate", "teal") to "uk-UA",
+                ErdEditorTheme("dark", "slate", "teal") to "auto"
+            ),
+            published
+        )
+    }
 }

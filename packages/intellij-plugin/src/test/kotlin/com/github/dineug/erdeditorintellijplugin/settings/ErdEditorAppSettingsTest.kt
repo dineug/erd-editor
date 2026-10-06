@@ -7,13 +7,15 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * The stored theme: its default, what a stored value that is missing or unknown reads as, what the
- * pages are shown, and when a change reaches the open editors, all with no Application.
+ * The stored theme and display language: their defaults, what a stored value that is missing or
+ * unknown reads as, what the pages are shown, and when a change reaches the open editors, all with
+ * no Application.
  */
 class ErdEditorAppSettingsTest {
     private var ideDark = true
+    private var ideLanguage = "ko"
     private var published = 0
-    private val settings = ErdEditorAppSettings({ ideDark }) { published++ }
+    private val settings = ErdEditorAppSettings({ ideDark }, { ideLanguage }) { published++ }
 
     @Test
     fun `the theme follows the IDE in slate and indigo by default`() {
@@ -76,14 +78,110 @@ class ErdEditorAppSettingsTest {
     }
 
     @Test
-    fun `storing the current theme never reaches the message bus`() {
+    fun `storing the current theme or display language never reaches the message bus`() {
         // No Application exists in a plain JUnit run, so a publish would throw here.
         assertNull(ApplicationManager.getApplication())
         val settings = ErdEditorAppSettings()
 
         settings.updateTheme { ErdEditorTheme.DEFAULT }
+        settings.updateLocale("auto")
+        settings.updateLocale("system")
 
         assertEquals(ErdEditorTheme.DEFAULT, settings.theme)
+        assertEquals("auto", settings.locale)
+    }
+
+    @Test
+    fun `with no IDE running the language auto follows is the platform's default, English`() {
+        // The platform answers its default with no Application, as it does for a language with no
+        // language pack, so this shows only the fallback; that auto follows the language an IDE
+        // shows is checked by hand in an IDE switched to another language.
+        assertEquals("en", ErdEditorAppSettings().systemLocale)
+    }
+
+    @Test
+    fun `the display language follows the IDE by default`() {
+        assertEquals("auto", settings.locale)
+        assertEquals("auto", settings.state.locale)
+        assertEquals("auto", ErdEditorAppSettings.State().locale)
+    }
+
+    @Test
+    fun `loadState keeps a stored display language and reads one it cannot hold as auto`() {
+        settings.loadState(ErdEditorAppSettings.State(locale = "ja-JP"))
+        assertEquals("ja-JP", settings.locale)
+        assertEquals("ja-JP", settings.state.locale)
+
+        for (stored in listOf("system", "ko", "KO-KR", "")) {
+            settings.loadState(ErdEditorAppSettings.State(locale = stored))
+            assertEquals(stored, "auto", settings.locale)
+        }
+        assertEquals(0, published)
+    }
+
+    @Test
+    fun `a file that names no display language reads as auto and keeps its theme`() {
+        // A file an older release wrote names no locale.
+        val written = XmlSerializer.serialize(ErdEditorAppSettings.State("light", "mauve", "indigo", "ja-JP"))
+        written.children.single { it.getAttributeValue("name") == "locale" }.detach()
+
+        settings.loadState(XmlSerializer.deserialize(written, ErdEditorAppSettings.State::class.java))
+
+        assertEquals("auto", settings.locale)
+        assertEquals(ErdEditorTheme("light", "mauve", "indigo"), settings.theme)
+    }
+
+    @Test
+    fun `a picked display language is written and read back`() {
+        val state = ErdEditorAppSettings.State(locale = "zh-TW")
+
+        val read = XmlSerializer.deserialize(XmlSerializer.serialize(state), ErdEditorAppSettings.State::class.java)
+
+        assertEquals("zh-TW", read.locale)
+    }
+
+    @Test
+    fun `a display language change reaches the open editors once`() {
+        settings.updateLocale("auto")
+        settings.updateLocale("de-DE")
+        settings.updateLocale("de-DE")
+        settings.updateLocale("auto")
+
+        assertEquals(2, published)
+        assertEquals("auto", settings.locale)
+    }
+
+    @Test
+    fun `a display language the setting cannot hold keeps the stored one`() {
+        settings.updateLocale("fa-IR")
+
+        for (value in listOf("system", "ko", "KO-KR", "")) settings.updateLocale(value)
+
+        assertEquals("fa-IR", settings.locale)
+        assertEquals(1, published)
+    }
+
+    @Test
+    fun `auto follows the language the IDE shows now, whatever the setting`() {
+        assertEquals("ko", settings.systemLocale)
+        ideLanguage = "zh-CN"
+        assertEquals("zh-CN", settings.systemLocale)
+
+        settings.updateLocale("en")
+        assertEquals("zh-CN", settings.systemLocale)
+        assertEquals("en", settings.locale)
+    }
+
+    @Test
+    fun `a theme change keeps the display language and a display language change keeps the theme`() {
+        settings.updateLocale("he-IL")
+        settings.updateTheme { it.copy(appearance = "dark") }
+
+        assertEquals("he-IL", settings.locale)
+        assertEquals(ErdEditorTheme("dark", "slate", "indigo"), settings.theme)
+        val state = settings.state
+        assertEquals("he-IL", state.locale)
+        assertEquals("dark", state.appearance)
     }
 
     @Test

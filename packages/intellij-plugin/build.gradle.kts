@@ -288,10 +288,14 @@ tasks {
         // HubImportsTest reads the hub's sources: an unused import changes no class file.
         inputs.dir("src/main/kotlin/com/github/dineug/erdeditorintellijplugin/hub")
             .withPropertyName("hubSources").withPathSensitivity(PathSensitivity.RELATIVE)
-        // ErdEditorThemeTest holds the settings page's value lists to the ones the page picks from.
+        // ErdEditorThemeTest and ErdEditorLocaleTest hold the settings page's value lists to the ones the
+        // page picks from.
         val bridgeTheme = file("../webview-bridge/src/theme.ts")
         inputs.file(bridgeTheme).withPropertyName("bridgeTheme").withPathSensitivity(PathSensitivity.RELATIVE)
         systemProperty("erd.bridgeTheme", bridgeTheme.absolutePath)
+        val bridgeLocale = file("../webview-bridge/src/locale.ts")
+        inputs.file(bridgeLocale).withPropertyName("bridgeLocale").withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty("erd.bridgeLocale", bridgeLocale.absolutePath)
         // McpConformanceTest drives a hub of its own with the built MCP server and e2e/mcp-probe.mjs.
         // Without node or the build it skips, unless ERD_MCP_CONFORMANCE=required makes that a failure;
         // ERD_MCP_NODE names a node binary other than the one on PATH.
