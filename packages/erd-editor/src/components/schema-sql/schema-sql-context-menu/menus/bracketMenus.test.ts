@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
+import { pseudoMessages } from '@/__test-utils__/i18n';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import { AppContext, appDestroy } from '@/components/appContext';
 import {
@@ -8,6 +9,9 @@ import {
 } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { BracketType } from '@/constants/schema';
 import { changeBracketTypeAction } from '@/engine/modules/settings/atom.actions';
+import { menuLabel } from '@/i18n/menuLabel';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 
 let app: AppContext | null = null;
 
@@ -28,6 +32,30 @@ describe('bracketMenus', () => {
       'DoubleQuote',
       'Backtick',
       'None',
+    ]);
+  });
+
+  it('translates None alone, the quote names reading the same in every language', () => {
+    const created = createBracketMenus(createApp());
+    const pseudo = createI18n('ko-KR', pseudoMessages('ko'));
+
+    expect(menus.map(menu => menu.labelKey)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      'common.none',
+    ]);
+    expect(created.map(menu => menuLabel(sourceI18n, menu))).toEqual([
+      'SingleQuote',
+      'DoubleQuote',
+      'Backtick',
+      'None',
+    ]);
+    expect(created.map(menu => menuLabel(pseudo, menu))).toEqual([
+      'SingleQuote',
+      'DoubleQuote',
+      'Backtick',
+      'ko:None',
     ]);
   });
 

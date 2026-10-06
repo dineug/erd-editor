@@ -1,5 +1,11 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { observable, onMounted, Ref, watch } from '@dineug/r-html';
+import {
+  observable,
+  onBeforeMount,
+  onMounted,
+  Ref,
+  watch,
+} from '@dineug/r-html';
 import { cloneDeep, isString, omit } from 'es-toolkit';
 import { get, isEmpty } from 'es-toolkit/compat';
 
@@ -22,7 +28,17 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { createSharedStore, SharedStore } from '@/engine/shared-store';
 import { useDarkMode } from '@/hooks/useDarkMode';
+import { useNavigatorLanguages } from '@/hooks/useNavigatorLanguages';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import {
+  hasLocaleOption,
+  LocaleCode,
+  LocaleOption,
+  SYSTEM_LOCALE,
+} from '@/i18n/locales';
+import { messagesOf } from '@/i18n/messages/index';
+import { resolveLocale } from '@/i18n/resolveLocale';
+import { createI18n, I18n } from '@/i18n/translate';
 import { Unsubscribe } from '@/internal-types';
 import {
   AccentColor,
@@ -126,7 +142,55 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   );
 
   const darkMode = useDarkMode();
+  const navigatorLanguages = useNavigatorLanguages();
   const { addUnsubscribe } = useUnmounted();
+
+  const localeState = observable<{
+    /** The option a host or a pick last set; null until either sets one. */
+    option: LocaleOption | null;
+    /** What system means once a host names its own language; null reads the browser's. */
+    systemTag: string | null;
+  }>({
+    option: null,
+    systemTag: null,
+  });
+
+  /**
+   * The option in force. With none set it is system while the element offers
+   * its picker and English while it does not, so an element no host configures
+   * keeps the English it always showed (an owner decision of 2026-10-06).
+   */
+  const resolveLocaleOption = (): LocaleOption =>
+    localeState.option ?? (props.enableLocalePicker ? SYSTEM_LOCALE : 'en');
+
+  const resolveSystemLocale = (): LocaleCode =>
+    resolveLocale(localeState.systemTag ?? navigatorLanguages.state.languages);
+
+  const resolveCurrentLocale = (): LocaleCode => {
+    const option = resolveLocaleOption();
+    return option === SYSTEM_LOCALE ? resolveSystemLocale() : option;
+  };
+
+  // Resolved here and again just before each mount, so a language a host sets
+  // or a picker it turns on before appending the element is in its first render.
+  const initialLocale = resolveCurrentLocale();
+  const i18n = observable<I18n>(
+    { ...createI18n(initialLocale, messagesOf(initialLocale)) },
+    { shallow: true }
+  );
+
+  /**
+   * Assigns the language into the object every component already reads, never
+   * a new one through the provider, which a component mounted later would miss.
+   */
+  const applyLocale = () => {
+    const code = resolveCurrentLocale();
+    if (code === i18n.locale) return;
+
+    Object.assign(i18n, createI18n(code, messagesOf(code)));
+  };
+
+  onBeforeMount(applyLocale);
 
   const resolveAppearance = (): Appearance => {
     const { options, systemAppearance } = themeState;
@@ -220,6 +284,10 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   const destroySet = new Set<Unsubscribe>([
     // On, it picks system; off, it keeps the appearance system shows now.
     watch(props).subscribe(propName => {
+      if (propName === 'enableLocalePicker') {
+        applyLocale();
+        return;
+      }
       if (propName !== 'systemDarkMode') return;
 
       if (props.systemDarkMode) {
@@ -247,6 +315,8 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
       Object.assign(theme, themeState.preset, themeState.custom);
     }),
+    watch(localeState).subscribe(applyLocale),
+    watch(navigatorLanguages.state).subscribe(applyLocale),
   ]);
 
   onMounted(() => {
@@ -258,6 +328,16 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
           ctx.dispatchEvent(
             new CustomEvent('changePresetTheme', {
               detail: cloneDeep(themeState.options),
+            })
+          );
+        },
+        setLocaleOption: ({ payload }) => {
+          ctx.setLocale(payload.locale);
+          if (localeState.option !== payload.locale) return;
+
+          ctx.dispatchEvent(
+            new CustomEvent('changeLocale', {
+              detail: { locale: payload.locale },
             })
           );
         },
@@ -330,6 +410,21 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   ctx.setSystemAppearance = appearance => {
     themeState.systemAppearance =
       isString(appearance) && hasAppearance(appearance) ? appearance : null;
+  };
+
+  // Both apply before they return, so a host that names the language before it
+  // appends the element paints it in that language from the first frame.
+  ctx.setLocale = locale => {
+    if (!isString(locale) || !hasLocaleOption(locale)) return;
+
+    localeState.option = locale;
+    applyLocale();
+  };
+
+  ctx.setSystemLocale = locale => {
+    const tag = isString(locale) ? locale.trim() : '';
+    localeState.systemTag = tag || null;
+    applyLocale();
   };
 
   ctx.setTheme = newTheme => {
@@ -441,6 +536,10 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   return {
     theme,
     themeState,
+    i18n,
+    localeState,
+    resolveLocaleOption,
+    resolveSystemLocale,
     destroySet,
     hasDarkMode: () => resolveAppearance() === Appearance.dark,
   };

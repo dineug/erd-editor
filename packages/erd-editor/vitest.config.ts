@@ -74,7 +74,10 @@ export default defineConfig({
           retry: process.env.CI ? 2 : 0,
           browser: {
             enabled: true,
-            provider: playwright(),
+            // An element with its locale picker on, or told to follow system,
+            // shows the browser's language, so the specs pin the one their
+            // English assertions read, as Playwright's own runner does.
+            provider: playwright({ contextOptions: { locale: 'en-US' } }),
             instances: [{ browser: 'chromium' }],
             headless: true,
           },

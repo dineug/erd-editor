@@ -8,6 +8,7 @@ import {
 } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
+import type { LocaleCode, LocaleOption } from '@/index';
 import * as index from '@/index';
 import { exportJSON } from '@/utils/file/exportFile';
 import { importJSON } from '@/utils/file/importFile';
@@ -71,6 +72,20 @@ describe('@dineug/erd-editor entry point', () => {
       [value: string, options?: { mode?: 'replace' | 'append' }]
     >();
     expectTypeOf(editor.setSchemaJSON).returns.toEqualTypeOf<void>();
+  });
+
+  it('types the display language setters, which the hosts check their own lists against', () => {
+    const editor = document.createElement('erd-editor');
+
+    expectTypeOf(editor.setLocale).parameter(0).toEqualTypeOf<LocaleOption>();
+    expectTypeOf(editor.setSystemLocale)
+      .parameter(0)
+      .toEqualTypeOf<string | null>();
+    expectTypeOf<LocaleOption>().toEqualTypeOf<LocaleCode | 'system'>();
+    expectTypeOf<'ko-KR'>().toExtend<LocaleCode>();
+    expectTypeOf<'ko'>().not.toExtend<LocaleCode>();
+    expect(editor.setLocale).toBeTypeOf('function');
+    expect(editor.setSystemLocale).toBeTypeOf('function');
   });
 
   it('exports the default key bindings, a fresh map on every call', () => {

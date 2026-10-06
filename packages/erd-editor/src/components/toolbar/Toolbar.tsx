@@ -2,6 +2,7 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { isTakenOver } from '@/components/find-replace/panelLayout';
+import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { Open } from '@/constants/open';
@@ -14,6 +15,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   openFindReplaceAction,
+  openLocalePickerAction,
   openThemeBuilderAction,
   toggleSearchAction,
 } from '@/utils/emitter';
@@ -23,11 +25,13 @@ import * as styles from './Toolbar.styles';
 
 export type ToolbarProps = {
   enableThemeBuilder: boolean;
+  enableLocalePicker?: boolean;
   readonly: boolean;
 };
 
 const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const i18n = useI18n(ctx);
 
   const handleChangeDatabaseName = (event: InputEvent) => {
     const el = event.target as HTMLInputElement | null;
@@ -74,6 +78,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
   const handleTheme = () => {
     const { emitter } = app.value;
     emitter.emit(openThemeBuilderAction());
+  };
+
+  const handleLocale = () => {
+    const { emitter } = app.value;
+    emitter.emit(openLocalePickerAction());
   };
 
   const handleOpenTimeTravel = () => {
@@ -171,7 +180,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         </div>
         <div class={styles.vertical}></div>
         <div
-          class={styles.menu}
+          class={['toolbar-search', styles.menu]}
           title={title('Search', KeyBindingName.search)}
           on:click={handleSearch}
         >
@@ -190,8 +199,21 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           <Icon name="text-search" size={16} />
         </div>
         {props.enableThemeBuilder ? (
-          <div class={styles.menu} title="Theme" on:click={handleTheme}>
+          <div
+            class={['toolbar-theme', styles.menu]}
+            title="Theme"
+            on:click={handleTheme}
+          >
             <Icon name="contrast" size={16} />
+          </div>
+        ) : null}
+        {props.enableLocalePicker ? (
+          <div
+            class={['toolbar-locale', styles.menu]}
+            title={i18n.value.t('common.displayLanguage')}
+            on:click={handleLocale}
+          >
+            <Icon name="languages" size={16} />
           </div>
         ) : null}
         <div class={styles.vertical}></div>

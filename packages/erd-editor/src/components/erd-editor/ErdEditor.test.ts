@@ -1,3 +1,4 @@
+import { FC, html, render } from '@dineug/r-html';
 import {
   afterAll,
   afterEach,
@@ -16,6 +17,7 @@ import {
   ErdEditorElement,
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
+import { useI18n } from '@/components/localeContext';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
@@ -52,6 +54,27 @@ vi.mock('@/components/appContext', async importOriginal => {
 vi.mock('@/services/schema-gc', () => ({
   getSchemaGCService: () => gcState.service,
 }));
+
+const quickSearch = vi.hoisted(() => ({
+  props: null as null | { appearance?: string; locale?: string },
+}));
+
+// The palette renders as it is; the wrapper only keeps the props object the
+// element hands it, which r-html updates in place on every render.
+vi.mock('@/components/quick-search/QuickSearch', async importOriginal => {
+  const mod =
+    await importOriginal<
+      typeof import('@/components/quick-search/QuickSearch')
+    >();
+
+  return {
+    ...mod,
+    default: (props: any, ctx: any) => {
+      quickSearch.props = props;
+      return mod.default(props, ctx);
+    },
+  };
+});
 
 await import('@/components/erd-editor/ErdEditor');
 
@@ -172,6 +195,13 @@ function emptyGCIds() {
     indexColumnIds: [],
     memoIds: [],
   };
+}
+
+/** Chromium's navigator.languages, a frozen array. */
+function spyLanguages(languages: string[]) {
+  vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(
+    Object.freeze([...languages]) as string[]
+  );
 }
 
 /** A middle press on a node of the shadow tree, composed as a mouse's is. */
@@ -295,6 +325,185 @@ describe('<erd-editor>', () => {
     el.setAttribute('readonly', 'false');
     await flush();
     expect(el.readonly).toBe(false);
+  });
+
+  it('reflects the locale picker and welcome screen attributes onto the props, both off by default', async () => {
+    const { el: plain } = await createEditor();
+    expect(plain.enableLocalePicker).toBe(false);
+    expect(plain.enableWelcomeScreen).toBe(false);
+
+    const { el } = await createEditor({}, target => {
+      target.setAttribute('enable-locale-picker', '');
+      target.setAttribute('enable-welcome-screen', 'true');
+    });
+
+    expect(el.enableLocalePicker).toBe(true);
+    expect(el.enableWelcomeScreen).toBe(true);
+
+    el.setAttribute('enable-locale-picker', 'false');
+    el.setAttribute('enable-welcome-screen', 'false');
+    await flush();
+    expect(el.enableLocalePicker).toBe(false);
+    expect(el.enableWelcomeScreen).toBe(false);
+  });
+
+  it('shows the toolbar language button only while enableLocalePicker is set', async () => {
+    const { el, shadow } = await createEditor();
+    expect(shadow.querySelector('.toolbar-locale')).toBeNull();
+
+    el.enableLocalePicker = true;
+    await flush();
+    expect(shadow.querySelector('.toolbar-locale')).toBeTruthy();
+
+    el.enableLocalePicker = false;
+    await flush();
+    expect(shadow.querySelector('.toolbar-locale')).toBeNull();
+  });
+
+  it('marks its root with the language and direction shown, and the host with neither', async () => {
+    const { el, root } = await createEditor();
+    expect(root.getAttribute('lang')).toBe('en');
+    expect(root.getAttribute('dir')).toBe('ltr');
+
+    el.setLocale('ar-SA');
+    await flush();
+    expect(root.getAttribute('lang')).toBe('ar-SA');
+    expect(root.getAttribute('dir')).toBe('rtl');
+
+    el.setLocale('ko-KR');
+    await flush();
+    expect(root.getAttribute('lang')).toBe('ko-KR');
+    expect(root.getAttribute('dir')).toBe('ltr');
+    expect(el.hasAttribute('lang')).toBe(false);
+    expect(el.hasAttribute('dir')).toBe(false);
+  });
+
+  it('paints a language a host names before it appends the element from the first frame', async () => {
+    const { root } = await createEditor({}, target => {
+      target.setLocale('he-IL');
+    });
+
+    expect(root.getAttribute('lang')).toBe('he-IL');
+    expect(root.getAttribute('dir')).toBe('rtl');
+  });
+
+  it('hands a component mounted after a switch the language switched to', async () => {
+    const { el, root } = await createEditor();
+    const seen: string[] = [];
+    const Probe: FC<{}> = (props, ctx) => {
+      const i18n = useI18n(ctx);
+      return () => {
+        seen.push(i18n.value.locale);
+        return html`<span>${i18n.value.locale}</span>`;
+      };
+    };
+
+    el.setLocale('fa-IR');
+    await flush();
+
+    const late = document.createElement('div');
+    root.append(late);
+    render(late, html`<${Probe} />`);
+    await flush();
+
+    try {
+      expect(late.textContent).toBe('fa-IR');
+
+      el.setLocale('pt-BR');
+      await flush();
+      expect(late.textContent).toBe('pt-BR');
+      expect(seen).toEqual(['fa-IR', 'pt-BR']);
+    } finally {
+      render(late, null);
+      late.remove();
+    }
+  });
+
+  it('shows English while enableLocalePicker is off whatever the browser language, and the system language while it is on', async () => {
+    spyLanguages(['ko-KR']);
+    const { el, root } = await createEditor();
+    expect(root.getAttribute('lang')).toBe('en');
+
+    el.enableLocalePicker = true;
+    await flush();
+    expect(root.getAttribute('lang')).toBe('ko-KR');
+
+    el.enableLocalePicker = false;
+    await flush();
+    expect(root.getAttribute('lang')).toBe('en');
+
+    el.setAttribute('enable-locale-picker', '');
+    await flush();
+    expect(root.getAttribute('lang')).toBe('ko-KR');
+
+    el.removeAttribute('enable-locale-picker');
+    await flush();
+    expect(root.getAttribute('lang')).toBe('en');
+  });
+
+  it('renders the system language from the first frame when the picker is turned on before the element is appended', async () => {
+    spyLanguages(['ar-SA']);
+    const el = document.createElement('erd-editor');
+    el.enableLocalePicker = true;
+    document.body.append(el);
+    editors.push(el);
+
+    const root = shadowRoots.get(el)?.querySelector('.root');
+    expect(root?.getAttribute('lang')).toBe('ar-SA');
+    expect(root?.getAttribute('dir')).toBe('rtl');
+    await flush();
+  });
+
+  it('hands the palette the option in force while the picker is on, and none while it is off', async () => {
+    spyLanguages(['ko-KR']);
+    const { el } = await createEditor();
+    const props = quickSearch.props;
+    expect(props).not.toBeNull();
+    expect(props?.locale).toBeUndefined();
+
+    el.setLocale('ja-JP');
+    await flush();
+    expect(props?.locale).toBeUndefined();
+
+    el.enableLocalePicker = true;
+    await flush();
+    expect(props?.locale).toBe('ja-JP');
+
+    el.enableLocalePicker = false;
+    await flush();
+    expect(props?.locale).toBeUndefined();
+  });
+
+  it('hands the palette system while the picker is on and no language is set', async () => {
+    const { el } = await createEditor({ enableLocalePicker: true });
+
+    expect(quickSearch.props?.locale).toBe('system');
+
+    el.setLocale('ko-KR');
+    await flush();
+    expect(quickSearch.props?.locale).toBe('ko-KR');
+  });
+
+  it('hands the palette the appearance option while the theme builder is on, and none while it is off', async () => {
+    const { el } = await createEditor();
+    expect(quickSearch.props).not.toBeNull();
+    expect(quickSearch.props?.appearance).toBeUndefined();
+
+    el.setPresetTheme({ appearance: 'light' });
+    await flush();
+    expect(quickSearch.props?.appearance).toBeUndefined();
+
+    el.enableThemeBuilder = true;
+    await flush();
+    expect(quickSearch.props?.appearance).toBe('light');
+
+    el.setPresetTheme({ appearance: 'system' });
+    await flush();
+    expect(quickSearch.props?.appearance).toBe('system');
+
+    el.enableThemeBuilder = false;
+    await flush();
+    expect(quickSearch.props?.appearance).toBeUndefined();
   });
 
   it('feeds root keydown events into the shared keydown stream', async () => {

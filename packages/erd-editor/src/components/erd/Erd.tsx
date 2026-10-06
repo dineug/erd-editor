@@ -88,6 +88,9 @@ export type ErdProps = {
   isDarkMode: boolean;
   mouseTracking: boolean;
   readonly: boolean;
+  enableWelcomeScreen?: boolean;
+  enableThemeBuilder?: boolean;
+  enableLocalePicker?: boolean;
 };
 
 /**

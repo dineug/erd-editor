@@ -2,7 +2,14 @@ import { html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { iconNameOf } from '@/__test-utils__/icon';
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestI18n,
+  flush,
+  mountAndFlush,
+  Mounted,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/index';
 import { TAKEOVERS } from '@/components/find-replace/panelLayout';
 import Toolbar from '@/components/toolbar/Toolbar';
 import * as styles from '@/components/toolbar/Toolbar.styles';
@@ -25,8 +32,10 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { createI18n } from '@/i18n/translate';
 import {
   openFindReplaceAction,
+  openLocalePickerAction,
   openThemeBuilderAction,
   toggleSearchAction,
 } from '@/utils/emitter';
@@ -41,16 +50,19 @@ afterEach(() => {
 
 type Options = {
   enableThemeBuilder?: boolean;
+  enableLocalePicker?: boolean;
   readonly?: boolean;
 };
 
 async function setup({
   enableThemeBuilder = false,
+  enableLocalePicker,
   readonly = false,
 }: Options = {}) {
   mounted = await mountAndFlush(
     html`<${Toolbar}
       enableThemeBuilder=${enableThemeBuilder}
+      enableLocalePicker=${enableLocalePicker}
       readonly=${readonly}
     />`
   );
@@ -231,6 +243,79 @@ describe('Toolbar', () => {
       expect(openThemeBuilder.mock.calls[0][0].type).toBe(
         openThemeBuilderAction().type
       );
+    });
+  });
+
+  describe('language menu', () => {
+    const language = () =>
+      root().querySelector('.toolbar-locale') as HTMLDivElement | null;
+
+    it('hides the language menu unless the locale picker is enabled', async () => {
+      await setup();
+      expect(language()).toBeNull();
+
+      mounted?.unmount();
+      await setup({ enableLocalePicker: false });
+      expect(language()).toBeNull();
+    });
+
+    it('opens the locale picker through the emitter when enabled', async () => {
+      const { app } = await setup({ enableLocalePicker: true });
+      const openLocalePicker = vi.fn();
+      app.emitter.on({ openLocalePicker });
+
+      language()!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(openLocalePicker).toHaveBeenCalledTimes(1);
+      expect(openLocalePicker.mock.calls[0][0]).toEqual(
+        openLocalePickerAction()
+      );
+    });
+
+    it('stands after the theme menu, drawing the languages glyph under its own title', async () => {
+      await setup({ enableThemeBuilder: true, enableLocalePicker: true });
+
+      expect(menu('Theme').nextElementSibling).toBe(language());
+      expect(iconNameOf(language())).toBe('languages');
+      expect(language()!.title).toBe('Display Language');
+      expect(language()!.getAttribute('class')).toContain(String(styles.menu));
+    });
+
+    it('reads its title in the language the element shows, following a switch', async () => {
+      const i18n = createTestI18n('en');
+      const provider = provideI18n(document.body, i18n);
+
+      try {
+        await setup({ enableLocalePicker: true });
+        expect(language()!.title).toBe('Display Language');
+
+        Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
+        await flush();
+
+        expect(language()!.title).toBe('ko:Display Language');
+      } finally {
+        provider.destroy();
+      }
+    });
+  });
+
+  describe('toolbar anchors', () => {
+    it('marks Search, Theme and the language menu with the classes a hint is placed by', async () => {
+      await setup({ enableThemeBuilder: true, enableLocalePicker: true });
+
+      expect(root().querySelector('.toolbar-search')).toBe(menu('Search'));
+      expect(root().querySelector('.toolbar-theme')).toBe(menu('Theme'));
+      expect(iconNameOf(root().querySelector('.toolbar-locale'))).toBe(
+        'languages'
+      );
+    });
+
+    it('drops the Theme and language anchors with their menus', async () => {
+      await setup();
+
+      expect(root().querySelector('.toolbar-search')).toBe(menu('Search'));
+      expect(root().querySelector('.toolbar-theme')).toBeNull();
+      expect(root().querySelector('.toolbar-locale')).toBeNull();
     });
   });
 

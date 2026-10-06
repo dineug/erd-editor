@@ -19,6 +19,12 @@ import {
 import { RxStoreOptions } from '@/engine/rx-store';
 import { type Theme, ThemeTokens } from '@/themes/tokens';
 
+export {
+  createTestI18n,
+  provideI18n,
+  pseudoMessages,
+} from '@/__test-utils__/i18n';
+
 /**
  * Test-only helpers. Not shipped — excluded from coverage in vitest.config.ts.
  */

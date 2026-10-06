@@ -5,6 +5,8 @@ import {
   type Page,
 } from '@playwright/test';
 
+import type { ErdEditorElement, LocaleOption } from '@/index';
+
 import {
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
@@ -43,6 +45,12 @@ export type Box = { x: number; y: number; width: number; height: number };
  * than one css-style descendant selector.
  */
 export type SceneSelector = string | readonly string[];
+
+/** The element's on and off props a spec may turn on, all of them off in the fixture. */
+export type ElementToggles = Pick<
+  ErdEditorElement,
+  'enableThemeBuilder' | 'enableLocalePicker' | 'enableWelcomeScreen'
+>;
 
 const toScenePath = (selector: SceneSelector): string[] =>
   typeof selector === 'string' ? [selector] : [...selector];
@@ -123,6 +131,36 @@ export class ErdEditorPage {
     if (!box) throw new Error(`no element inside the shadow root: ${selector}`);
 
     await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  }
+
+  /**
+   * Turns on what the fixture leaves off, the locale picker or the welcome
+   * screen say, as a host sets the element's props.
+   */
+  async enable(props: Partial<ElementToggles>) {
+    await this.page.evaluate(next => {
+      const editor = window.document.querySelector('erd-editor');
+      if (!editor) throw new Error('erd-editor is not mounted');
+      Object.assign(editor, next);
+    }, props);
+  }
+
+  /** The display language a host names, 'system' to follow the System language. */
+  async setLocale(option: LocaleOption) {
+    await this.page.evaluate(value => {
+      const editor = window.document.querySelector('erd-editor');
+      if (!editor) throw new Error('erd-editor is not mounted');
+      editor.setLocale(value);
+    }, option);
+  }
+
+  /** What System means, as an IDE host names its own language; null reads the browser's. */
+  async setSystemLocale(tag: string | null) {
+    await this.page.evaluate(value => {
+      const editor = window.document.querySelector('erd-editor');
+      if (!editor) throw new Error('erd-editor is not mounted');
+      editor.setSystemLocale(value);
+    }, tag);
   }
 
   /**

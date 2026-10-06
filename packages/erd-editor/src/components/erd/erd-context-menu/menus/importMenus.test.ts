@@ -7,9 +7,13 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { pseudoMessages } from '@/__test-utils__/i18n';
 import { createTestAppContext } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { createImportMenus } from '@/components/erd/erd-context-menu/menus/importMenus';
+import { menuLabel } from '@/i18n/menuLabel';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import { setImportFileCallback } from '@/utils/file/importFile';
 
 let app: AppContext;
@@ -50,6 +54,26 @@ describe('importMenus', () => {
       'code',
       'code',
     ]);
+  });
+
+  it('translates Schema SQL alone, the format names reading the same in every language', () => {
+    const result = createImportMenus(app, () => {});
+
+    expect(result.map(menu => menu.labelKey)).toEqual([
+      undefined,
+      'common.tab.schemaSql',
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(result.map(menu => menuLabel(sourceI18n, menu))).toEqual(
+      result.map(menu => menu.name)
+    );
+    expect(
+      result.map(menu =>
+        menuLabel(createI18n('ko-KR', pseudoMessages('ko')), menu)
+      )
+    ).toEqual(['json', 'ko:Schema SQL', 'GraphQL', 'DBML', 'AML']);
   });
 
   it('requests a json import and closes the menu', () => {

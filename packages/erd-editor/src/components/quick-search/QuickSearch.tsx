@@ -17,6 +17,8 @@ import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { isEditingText } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import type { LocaleOption } from '@/i18n/locales';
+import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import { arrayHas } from '@/utils/arrayHas';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
@@ -33,7 +35,11 @@ import {
 import * as styles from './QuickSearch.styles';
 import { paletteRows, scopeBase } from './scopedActions';
 
-export type QuickSearchProps = {};
+/** The appearance and the display language the element holds, each given only while it offers that picker. */
+export type QuickSearchProps = {
+  appearance?: AppearanceOption;
+  locale?: LocaleOption;
+};
 
 const hasAutocompleteKey = arrayHas([
   'ArrowUp',

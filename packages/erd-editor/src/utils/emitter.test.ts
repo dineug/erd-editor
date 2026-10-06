@@ -13,11 +13,13 @@ import {
   openDiffViewerAction,
   openExportImageAction,
   openFindReplaceAction,
+  openLocalePickerAction,
   openTablePropertiesAction,
   openThemeBuilderAction,
   openToastAction,
   pasteAction,
   schemaGCAction,
+  setLocaleOptionAction,
   setThemeOptionsAction,
   toggleSearchAction,
 } from '@/utils/emitter';
@@ -210,6 +212,18 @@ describe('action creators', () => {
     expect(setThemeOptionsAction({ grayColor: 'slate' as any })).toEqual({
       type: 'setThemeOptions',
       payload: { grayColor: 'slate' },
+    });
+    expect(openLocalePickerAction()).toEqual({
+      type: 'openLocalePicker',
+      payload: undefined,
+    });
+    expect(setLocaleOptionAction({ locale: 'ko-KR' })).toEqual({
+      type: 'setLocaleOption',
+      payload: { locale: 'ko-KR' },
+    });
+    expect(setLocaleOptionAction({ locale: 'system' })).toEqual({
+      type: 'setLocaleOption',
+      payload: { locale: 'system' },
     });
     expect(mouseTrackerStartAction()).toEqual({
       type: 'mouseTrackerStart',

@@ -4,13 +4,20 @@
 // no bundler, so what it reaches must neither touch a browser global nor name
 // a package the consumer's single file bundle cannot inline or resolve.
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vite-plus/test';
 
-const PACKAGE_ROOT = process.cwd();
-const SOURCE_ROOT = join(PACKAGE_ROOT, 'src');
+import {
+  bindsLocally,
+  IMPORT_FORM,
+  PACKAGE_ROOT,
+  resolveSource,
+  SOURCE_ROOT,
+  walk,
+} from '@/__test-utils__/importGraph';
+
 const ENTRY = join(SOURCE_ROOT, 'peer', 'index.ts');
 
 /** The runtime dependencies the built engine chunks import, and no others. */
@@ -22,93 +29,6 @@ const BARE_ALLOWLIST = new Set([
   'luxon',
   'rxjs',
 ]);
-
-/**
- * A static import or re-export with its type keyword, if any, the bindings it
- * names and its specifier; a bare side effect import; a dynamic import.
- */
-const IMPORT_FORM =
-  /\b(import|export)\s+(type\s+)?([^;]*?)\bfrom\s*'([^']+)'|\bimport\s*'([^']+)'|\bimport\s*\(\s*'([^']+)'\s*\)/g;
-
-/** The globals a Node realm lacks, read as a member access or named outright. */
-const DOM_TOKEN =
-  /\b(document|window|navigator)\.|\b(SharedWorker|customElements)\b/g;
-
-const posix = (path: string) =>
-  relative(SOURCE_ROOT, path).split(sep).join('/');
-
-function resolveSource(base: string): string {
-  const candidates = [
-    base,
-    `${base}.ts`,
-    `${base}.tsx`,
-    join(base, 'index.ts'),
-    join(base, 'index.tsx'),
-  ];
-  const found = candidates.find(
-    path => existsSync(path) && statSync(path).isFile()
-  );
-  if (!found) throw new Error(`Unresolved import: ${base}`);
-  return found;
-}
-
-const stripComments = (source: string) =>
-  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-
-/**
- * Whether a file binds the name itself, as a parameter or a declaration, so a
- * member access on it is a local and not the global. The graphql importer
- * calls its AST parameter document, which the build renames on the way out.
- */
-const bindsLocally = (source: string, name: string) =>
-  new RegExp(
-    `[(,]\\s*${name}\\s*[:,)=]|\\b(?:const|let|var|function)\\s+${name}\\b`
-  ).test(source);
-
-type Graph = {
-  files: string[];
-  bare: Map<string, string[]>;
-  domTokens: string[];
-};
-
-/** Walks the value imports from the entry through relative and @ specifiers. */
-function walk(entry: string): Graph {
-  const seen = new Set<string>();
-  const bare = new Map<string, string[]>();
-  const domTokens: string[] = [];
-  const pending = [entry];
-
-  while (pending.length) {
-    const file = pending.pop()!;
-    if (seen.has(file)) continue;
-    seen.add(file);
-
-    const source = stripComments(readFileSync(file, 'utf8'));
-
-    for (const match of source.matchAll(IMPORT_FORM)) {
-      const [, , typeOnly, bindings] = match;
-      const specifier = match[4] ?? match[5] ?? match[6];
-      if (typeOnly || (match[1] === 'export' && /^\s*type\b/.test(bindings))) {
-        continue;
-      }
-
-      if (specifier.startsWith('@/')) {
-        pending.push(resolveSource(join(SOURCE_ROOT, specifier.slice(2))));
-      } else if (specifier.startsWith('.')) {
-        pending.push(resolveSource(join(dirname(file), specifier)));
-      } else {
-        bare.set(specifier, [...(bare.get(specifier) ?? []), posix(file)]);
-      }
-    }
-
-    for (const match of source.matchAll(DOM_TOKEN)) {
-      const local = match[1] && bindsLocally(source, match[1]);
-      if (!local) domTokens.push(`${posix(file)}: ${match[0]}`);
-    }
-  }
-
-  return { files: [...seen].map(posix).sort(), bare, domTokens };
-}
 
 const manifest = JSON.parse(
   readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8')

@@ -19,6 +19,7 @@ import ExportImage from '@/components/export-image/ExportImage';
 import FindReplace from '@/components/find-replace/FindReplace';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
+import { localeContext } from '@/components/localeContext';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Settings from '@/components/settings/Settings';
@@ -41,6 +42,7 @@ import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
 import { RootState } from '@/engine/state';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import type { LocaleOption } from '@/i18n/locales';
 import { observeThemeOverrides, resolveHostTheme } from '@/konva/theme';
 import { getSchemaGCService } from '@/services/schema-gc';
 import { procGC } from '@/services/schema-gc/procGC';
@@ -66,6 +68,8 @@ export type ErdEditorProps = {
   readonly: boolean;
   systemDarkMode: boolean;
   enableThemeBuilder: boolean;
+  enableLocalePicker: boolean;
+  enableWelcomeScreen: boolean;
 };
 
 export type SchemaImportOptions = {
@@ -114,6 +118,14 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   /** What the system appearance shows, for a host with its own light and dark; null follows the OS. */
   setSystemAppearance: (appearance: Appearance | null) => void;
   setTheme: (theme: Partial<ThemeType>) => void;
+  /**
+   * 'system' follows the host's or the browser's language; a code fixes one.
+   * Emits nothing. Before any call the editor shows English, or follows system
+   * while enableLocalePicker is on.
+   */
+  setLocale: (locale: LocaleOption) => void;
+  /** What system means: the host UI language as a BCP 47 tag; null reads navigator.languages. */
+  setSystemLocale: (locale: string | null) => void;
   setKeyBindingMap: (
     keyBindingMap: Partial<
       Omit<
@@ -169,18 +181,25 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, root);
 
-  const { theme, themeState, destroySet, hasDarkMode } =
-    useErdEditorAttachElement({
-      props,
-      ctx,
-      app: appContextValue,
-      root,
-    });
+  const {
+    theme,
+    themeState,
+    i18n,
+    resolveLocaleOption,
+    destroySet,
+    hasDarkMode,
+  } = useErdEditorAttachElement({
+    props,
+    ctx,
+    app: appContextValue,
+    root,
+  });
   // Konva resolves no custom property, so the scene reads the palette as values
   // off this provider. What it carries is the cascade's answer rather than the
   // preset, which is how an --erd-editor-* override reaches a painted node.
   const sceneTheme = observable<ThemeType>({ ...theme }, { shallow: true });
   const themeProvider = useProvider(ctx, themeContext, sceneTheme);
+  const localeProvider = useProvider(ctx, localeContext, i18n);
   const { store, keydown$, emitter } = appContextValue;
   const { addUnsubscribe } = useUnmounted();
 
@@ -204,6 +223,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   destroySet.add(provider.destroy);
   destroySet.add(themeProvider.destroy);
+  destroySet.add(localeProvider.destroy);
   destroySet.add(watch(theme).subscribe(scheduleSceneTheme));
   destroySet.add(
     emitter.on({
@@ -378,6 +398,8 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             styles.root,
             { dark: isDarkMode, 'none-focus': !state.isFocus },
           ]}
+          prop:lang={i18n.locale}
+          prop:dir={i18n.dir}
           tabindex="-1"
           on:keydown={handleKeydown}
           on:focus={handleFocus}
@@ -390,6 +412,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           {hasToolbar(store.state) ? (
             <Toolbar
               enableThemeBuilder={props.enableThemeBuilder}
+              enableLocalePicker={props.enableLocalePicker}
               readonly={props.readonly}
             />
           ) : null}
@@ -400,6 +423,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
                   isDarkMode={isDarkMode}
                   mouseTracking={state.mouseTracking}
                   readonly={props.readonly}
+                  enableWelcomeScreen={props.enableWelcomeScreen}
+                  enableThemeBuilder={props.enableThemeBuilder}
+                  enableLocalePicker={props.enableLocalePicker}
                 />
               </div>
             ) : null
@@ -430,7 +456,16 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             isDarkMode={isDarkMode}
           />
           <FindReplace readonly={props.readonly} />
-          <QuickSearch />
+          <QuickSearch
+            appearance={
+              props.enableThemeBuilder
+                ? themeState.options.appearance
+                : undefined
+            }
+            locale={
+              props.enableLocalePicker ? resolveLocaleOption() : undefined
+            }
+          />
           {text.span}
         </div>
       </>
@@ -444,6 +479,8 @@ defineCustomElement('erd-editor', {
     readonly: Boolean,
     systemDarkMode: Boolean,
     enableThemeBuilder: Boolean,
+    enableLocalePicker: Boolean,
+    enableWelcomeScreen: Boolean,
   },
   render: ErdEditor,
 });

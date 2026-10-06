@@ -6,6 +6,7 @@ import {
 } from '@dineug/r-html';
 
 import { TablePlacement } from '@/constants/tablePlacement';
+import type { LocaleOption } from '@/i18n/locales';
 import { ValuesType } from '@/internal-types';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
@@ -32,6 +33,8 @@ const InternalActionType = {
   openExportImage: 'openExportImage',
   openThemeBuilder: 'openThemeBuilder',
   setThemeOptions: 'setThemeOptions',
+  openLocalePicker: 'openLocalePicker',
+  setLocaleOption: 'setLocaleOption',
   mouseTrackerStart: 'mouseTrackerStart',
   mouseTrackerEnd: 'mouseTrackerEnd',
   openDiffViewer: 'openDiffViewer',
@@ -68,6 +71,10 @@ type InternalActionMap = {
   [InternalActionType.openExportImage]: void;
   [InternalActionType.openThemeBuilder]: void;
   [InternalActionType.setThemeOptions]: Partial<ThemeOptions>;
+  [InternalActionType.openLocalePicker]: void;
+  [InternalActionType.setLocaleOption]: {
+    locale: LocaleOption;
+  };
   [InternalActionType.mouseTrackerStart]: void;
   [InternalActionType.mouseTrackerEnd]: void;
   [InternalActionType.openDiffViewer]: {
@@ -167,6 +174,14 @@ export const openThemeBuilderAction = createAction<
 export const setThemeOptionsAction = createAction<
   InternalActionMap[typeof InternalActionType.setThemeOptions]
 >(InternalActionType.setThemeOptions);
+
+export const openLocalePickerAction = createAction<
+  InternalActionMap[typeof InternalActionType.openLocalePicker]
+>(InternalActionType.openLocalePicker);
+
+export const setLocaleOptionAction = createAction<
+  InternalActionMap[typeof InternalActionType.setLocaleOption]
+>(InternalActionType.setLocaleOption);
 
 export const mouseTrackerStartAction = createAction<
   InternalActionMap[typeof InternalActionType.mouseTrackerStart]
