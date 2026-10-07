@@ -22,9 +22,9 @@ export function parser(source: string): ERDEditorSchemaV3 {
 }
 
 /**
- * The document as its file holds it: each locked setting at the value it was
- * locked at, every other one as it stands, the locked values themselves left
- * out, and the save switches of releases before the locks read off the viewport.
+ * The document as its file holds it: each locked setting at its lock, every
+ * other as it stands, the locked values left out, the save switches of older
+ * releases read off the viewport, and the scripts only while one holds text.
  */
 export function toJson(schemaV3: ERDEditorSchemaV3) {
   const source = pick(schemaV3, [
@@ -34,7 +34,7 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
     'doc',
     'collections',
   ]);
-  const { lockedValues, lockSettings, ...rest } = source.settings;
+  const { lockedValues, lockSettings, ddlScripts, ...rest } = source.settings;
   const { LockSettingFields, LockSettingType, LockSettingTypeList } =
     SchemaV3Constants;
   const { scroll, zoomLevel } = SchemaV3Constants.SaveSettingType;
@@ -44,6 +44,9 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
       ? scroll | zoomLevel
       : 0,
     lockSettings,
+    ...(ddlScripts && (ddlScripts.before !== '' || ddlScripts.after !== '')
+      ? { ddlScripts: { before: ddlScripts.before, after: ddlScripts.after } }
+      : {}),
   };
 
   // A document no parser built, raw JSON say, carries no locked values: its

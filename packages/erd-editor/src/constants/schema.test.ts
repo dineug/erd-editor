@@ -17,6 +17,8 @@ import {
   ColumnUIKey,
   Database,
   DatabaseList,
+  DDLScriptPosition,
+  DDLScriptPositionList,
   Direction,
   DirectionList,
   Language,
@@ -67,6 +69,8 @@ describe('schema constant re-exports', () => {
     expect(LockSettingType).toBe(SchemaV3Constants.LockSettingType);
     expect(LockSettingTypeList).toBe(SchemaV3Constants.LockSettingTypeList);
     expect(LockSettingFields).toBe(SchemaV3Constants.LockSettingFields);
+    expect(DDLScriptPosition).toBe(SchemaV3Constants.DDLScriptPosition);
+    expect(DDLScriptPositionList).toBe(SchemaV3Constants.DDLScriptPositionList);
   });
 
   it('re-exports the canvas bounds as plain numbers', () => {

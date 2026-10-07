@@ -13,6 +13,8 @@ import {
   ColumnTypeList,
   Database,
   DatabaseList,
+  DDLScriptPosition,
+  DDLScriptPositionList,
   Language,
   LanguageList,
   LockSettingFields,
@@ -248,6 +250,13 @@ describe('v3/schema/settings', () => {
     });
   });
 
+  describe('DDLScriptPosition', () => {
+    it('names the two places a Schema SQL script goes by themselves', () => {
+      expect(DDLScriptPosition).toEqual({ before: 'before', after: 'after' });
+      expect(DDLScriptPositionList).toEqual(['before', 'after']);
+    });
+  });
+
   describe('canvas boundaries', () => {
     it('constrains zoom between 0.1 and 1.5', () => {
       expect(CANVAS_ZOOM_MIN).toBe(0.1);
@@ -298,6 +307,7 @@ describe('v3/schema/settings', () => {
         columnNameCase: NameCase.camelCase,
         bracketType: BracketType.backtick,
       },
+      ddlScripts: { before: '', after: '' },
     };
 
     expect(CanvasTypeList).toContain(settings.canvasType);

@@ -81,6 +81,8 @@ export type AgentSnapshotSettings = {
   show: Record<string, boolean>;
   maxWidthComment: number;
   lockSettings: Record<string, boolean>;
+  /** The Schema SQL scripts erd_set_ddl_script sets, which erd_list leaves out. */
+  ddlScripts: { before: string; after: string };
 };
 
 /**
@@ -164,6 +166,10 @@ export function toSnapshotSettings(
     show: flagsOf(Show, settings.show),
     maxWidthComment: settings.maxWidthComment,
     lockSettings: flagsOf(LockSettingType, settings.lockSettings),
+    ddlScripts: {
+      before: settings.ddlScripts?.before ?? '',
+      after: settings.ddlScripts?.after ?? '',
+    },
   };
 }
 

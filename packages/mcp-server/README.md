@@ -114,7 +114,7 @@ refused with how to narrow it.
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
 | Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
-| Settings | `erd_set_database`, `erd_set_database_name` |
+| Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_ddl_script` |
 | Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |
 | Batch | `erd_batch` |
 
@@ -141,8 +141,15 @@ shows, the code generation language, the name cases, the bracket type and the lo
 in the file are yours to set in the editor; `erd_list` and `erd_read` read them as the file saves
 them.
 
-Every edit tool takes the document `path`. The two settings tools and `erd_resize_memo` make no
-undo entry in the editor, so `erd_undo` passes over them and the result says so.
+`erd_set_ddl_script` sets the SQL the document keeps before and after the tables of its Schema SQL,
+such as `CREATE EXTENSION` ahead of them or `GRANT` past them, written as is for every database, up
+to 10,000 characters a call; an empty string removes one, and `erd_undo` reverts it. The `erd_read`
+snapshot gives both scripts. An ERD Editor extension or plugin released before scripts neither
+shows nor keeps them when it serves the document, so update it.
+
+Every edit tool takes the document `path`. `erd_set_database`, `erd_set_database_name` and
+`erd_resize_memo` make no undo entry in the editor, so `erd_undo` passes over them and the result
+says so.
 
 The edit tools, `erd_batch` and the read tools (`erd_list`, `erd_get`, `erd_read`) refuse an
 argument they do not declare, or one of the wrong type, with a JSON-RPC invalid params error

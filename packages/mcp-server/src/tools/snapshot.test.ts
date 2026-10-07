@@ -141,6 +141,7 @@ describe('the agent snapshot', () => {
         columnNameCase: true,
         bracketType: true,
       },
+      ddlScripts: { before: '', after: '' },
     });
   });
 
@@ -193,6 +194,30 @@ describe('the agent snapshot', () => {
     expect(toAgentSnapshot(other.state).memos).toEqual([]);
 
     other.destroy();
+  });
+
+  it('gives the Schema SQL scripts as the document holds them', () => {
+    const other = createSeededPeer();
+    runTool(other, 'erd_set_ddl_script', {
+      position: 'after',
+      sql: 'GRANT SELECT ON users TO app;',
+    });
+
+    expect(toAgentSnapshot(other.state).settings.ddlScripts).toEqual({
+      before: '',
+      after: 'GRANT SELECT ON users TO app;',
+    });
+
+    other.destroy();
+  });
+
+  it('gives empty scripts for settings that carry none', () => {
+    const { settings } = toAgentSnapshot({
+      ...peer.state,
+      settings: { ...peer.state.settings, ddlScripts: undefined as any },
+    });
+
+    expect(settings.ddlScripts).toEqual({ before: '', after: '' });
   });
 
   it('shows a stored value no enum names as the value itself', () => {

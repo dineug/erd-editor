@@ -141,6 +141,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'settings.changeColumnOrder',
   'settings.changeMaxWidthComment',
   'settings.changeLockSettings',
+  'settings.changeDDLScript',
   // editor
   'editor.loadJson',
   'editor.clear',

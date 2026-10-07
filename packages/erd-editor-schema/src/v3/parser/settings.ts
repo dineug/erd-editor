@@ -89,6 +89,7 @@ const createSettings = (): Settings => {
     ],
     maxWidthComment: -1,
     lockSettings: LOCK_ALL,
+    ddlScripts: { before: '', after: '' },
   };
   return { ...settings, lockedValues: toLockedValues(settings) };
 };
@@ -168,6 +169,14 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     settings.lockedValues = toLockedValues(settings);
   } else {
     resetPreLockView(settings);
+  }
+
+  if (isPlainObject(json.ddlScripts)) {
+    const { before, after } = json.ddlScripts as Record<string, unknown>;
+    settings.ddlScripts = {
+      before: isString(before) ? before : '',
+      after: isString(after) ? after : '',
+    };
   }
 
   return settings;

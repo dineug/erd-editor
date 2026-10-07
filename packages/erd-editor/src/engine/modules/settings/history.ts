@@ -2,6 +2,7 @@ import { PushStreamHistory, PushUndoHistory } from '@/engine/history.actions';
 
 import { ActionType } from './actions';
 import {
+  changeDDLScriptAction,
   changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -31,10 +32,21 @@ const changeZoomLevel: PushUndoHistory = (undoActions, _, { settings }) => {
   undoActions.push(changeZoomLevelAction({ value: settings.zoomLevel }));
 };
 
+const changeDDLScript: PushUndoHistory = (
+  undoActions,
+  { payload: { position } }: ReturnType<typeof changeDDLScriptAction>,
+  { settings }
+) => {
+  undoActions.push(
+    changeDDLScriptAction({ position, value: settings.ddlScripts[position] })
+  );
+};
+
 export const settingsPushUndoHistoryMap = {
   [ActionType.scrollTo]: scrollTo,
   [ActionType.changeShow]: changeShow,
   [ActionType.changeZoomLevel]: changeZoomLevel,
+  [ActionType.changeDDLScript]: changeDDLScript,
 };
 
 const streamScrollTo: PushStreamHistory = (

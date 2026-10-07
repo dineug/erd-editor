@@ -1,10 +1,11 @@
 import { replaceOperator } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { clamp, isNil, isNumber, pick } from 'es-toolkit';
+import { clamp, isNil, isNumber, isString, pick } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
 import {
   CanvasType,
+  DDLScriptPositionList,
   LockSettingFields,
   LockSettingType,
   LockSettingTypeList,
@@ -554,6 +555,35 @@ const changeIgnoreSaveSettings: ReducerType<
   typeof ActionType.changeIgnoreSaveSettings
 > = () => {};
 
+export const changeDDLScriptAction = createAction<
+  ActionMap[typeof ActionType.changeDDLScript]
+>(ActionType.changeDDLScript);
+
+/**
+ * Sets one Schema SQL script through its own register, so a peer's edit of
+ * the other script never overwrites it; a position or value no editor sends
+ * changes nothing.
+ */
+const changeDDLScript: ReducerType<typeof ActionType.changeDDLScript> = (
+  { settings, lww },
+  { payload: { position, value }, version },
+  { clock }
+) => {
+  if (!DDLScriptPositionList.includes(position) || !isString(value)) return;
+
+  const safeVersion = version ?? clock.getVersion();
+  replaceOperator(
+    lww,
+    safeVersion,
+    'settings.ddlScripts',
+    'settings',
+    position,
+    () => {
+      settings.ddlScripts = { ...settings.ddlScripts, [position]: value };
+    }
+  );
+};
+
 /** Every lock this release knows, the rest of lockSettings a later one's. */
 const LOCK_KNOWN = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
 
@@ -615,6 +645,7 @@ export const settingsReducers = {
   [ActionType.changeMaxWidthComment]: changeMaxWidthComment,
   [ActionType.changeLockSettings]: changeLockSettings,
   [ActionType.changeIgnoreSaveSettings]: changeIgnoreSaveSettings,
+  [ActionType.changeDDLScript]: changeDDLScript,
 };
 
 export const actions = {
@@ -636,4 +667,5 @@ export const actions = {
   changeMaxWidthCommentAction,
   changeLockSettingsAction,
   changeIgnoreSaveSettingsAction,
+  changeDDLScriptAction,
 };

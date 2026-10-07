@@ -14,7 +14,7 @@ const fixture = readToolSurfaceFixture();
 
 /**
  * The tools that advertise no result schema: the read tools answer plain
- * text, added by hand. The 52 toolkit tools declare theirs; the recording has none.
+ * text, added by hand. The 53 toolkit tools declare theirs; the recording has none.
  */
 const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
   'erd_read',
@@ -30,6 +30,7 @@ const ADDED_TOOLS: readonly string[] = [
   'erd_get',
   'erd_list',
   'erd_move_tables',
+  'erd_set_ddl_script',
 ];
 
 /**
@@ -101,9 +102,9 @@ const recorded = () =>
 const kept = () => fixture.filter(({ name }) => !REMOVED_TOOLS.includes(name));
 
 describe('the tool surface against the SDK-based server recording', () => {
-  it('holds the 59 recorded tools less the 10 removed, and the 6 added since', () => {
+  it('holds the 59 recorded tools less the 10 removed, and the 7 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(55);
+    expect(tools).toHaveLength(56);
     expect(namesIn(fixture, ADDED_TOOLS)).toEqual([]);
     expect(namesIn(live, ADDED_TOOLS)).toEqual(ADDED_TOOLS);
     expect(namesIn(fixture, REMOVED_TOOLS)).toEqual(REMOVED_TOOLS);
@@ -133,7 +134,7 @@ describe('the tool surface against the SDK-based server recording', () => {
         hasOutputSchema: !PLAIN_TEXT_TOOLS.has(name),
       }))
     );
-    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(52);
+    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(53);
   });
 
   it('takes an object for its arguments, in every tool', () => {

@@ -5,6 +5,7 @@ export {
   ColumnOption,
   ColumnType,
   Database,
+  DDLScriptPosition,
   Language,
   LockSettingType,
   NameCase,

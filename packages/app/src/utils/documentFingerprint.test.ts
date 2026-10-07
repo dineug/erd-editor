@@ -120,6 +120,11 @@ const documentChanges: Array<[string, (json: any) => void]> = [
   ['the column order', json => json.settings.columnOrder.reverse()],
   ['the database name', json => (json.settings.databaseName = 'shop')],
   [
+    'a Schema SQL script',
+    json =>
+      (json.settings.ddlScripts = { before: 'CREATE SCHEMA a;', after: '' }),
+  ],
+  [
     'a table name',
     json => (json.collections.tableEntities.users.name = 'people'),
   ],
@@ -145,6 +150,40 @@ describe('toFingerprint', () => {
     expect(toFingerprint(databaseName)).not.toBe(toFingerprint(VALUE));
     expect(toFingerprint(tableName)).not.toBe(toFingerprint(VALUE));
     expect(toFingerprint(database)).toBe(toFingerprint(VALUE));
+  });
+
+  it('fingerprints a document with no script as it did before the scripts', () => {
+    expect(JSON.parse(VALUE).settings).not.toHaveProperty('ddlScripts');
+    expect(Object.keys(JSON.parse(toFingerprint(VALUE)))).toEqual([
+      'doc',
+      'collections',
+      'databaseName',
+    ]);
+  });
+
+  it('counts an edit of either Schema SQL script, the one an agent makes too', () => {
+    const peer = createPeerStore({ nickname: 'agent', presence: false });
+    peer.setInitialValue(VALUE);
+    const opened = toFingerprint(peer.value);
+
+    peer.dispatch(
+      [
+        settingsActions.changeDDLScriptAction({
+          position: 'after',
+          value: 'GRANT SELECT ON users TO app;',
+        }),
+      ],
+      { label: 'script' }
+    );
+    const edited = peer.value;
+    peer.destroy();
+
+    expect(opened).toBe(toFingerprint(VALUE));
+    expect(toFingerprint(edited)).not.toBe(opened);
+    expect(JSON.parse(toFingerprint(edited)).ddlScripts).toEqual({
+      before: '',
+      after: 'GRANT SELECT ON users TO app;',
+    });
   });
 });
 

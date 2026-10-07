@@ -240,3 +240,38 @@ describe('the words on an import', () => {
     );
   });
 });
+
+describe('the words on a Schema SQL script', () => {
+  const text = describeTool('erd_set_ddl_script');
+
+  it('say where each script goes, that it goes in as is, and how to remove it', () => {
+    expect(text).toContain('before, written ahead of the tables');
+    expect(text).toContain('after, written past the generated DDL');
+    expect(text).toContain(
+      'The text goes as is into the DDL of every database'
+    );
+    expect(text).toContain(
+      'SQL Server output gets GO after a script that does not end with GO'
+    );
+    expect(text).toContain('An empty string removes it.');
+    expect(describeArg('erd_set_ddl_script', 'sql')).toContain(
+      'an empty string removes it'
+    );
+  });
+
+  it('give the longest script a call takes', () => {
+    expect(describeArg('erd_set_ddl_script', 'sql')).toContain(
+      'at most 10,000 characters'
+    );
+    expect(describeArg('erd_set_ddl_script', 'position')).toBe(
+      'before or after the generated tables.'
+    );
+  });
+
+  it('say an editor released before the scripts loses them, so the user updates it, naming no release', () => {
+    expect(text).toContain(
+      'An ERD Editor extension or plugin released before scripts neither shows nor keeps them, so the user should update it.'
+    );
+    expect(text).not.toMatch(/\d+\.\d+/);
+  });
+});

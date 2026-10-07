@@ -1,11 +1,19 @@
 import { AnyAction } from '@dineug/r-html';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { Show } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
+  changeDDLScriptAction,
   changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -16,6 +24,7 @@ import {
   settingsPushStreamHistoryMap,
   settingsPushUndoHistoryMap,
 } from '@/engine/modules/settings/history';
+import { createRxStore, RxStore } from '@/engine/rx-store';
 import { RootState } from '@/engine/state';
 import { createStore, Store } from '@/engine/store';
 
@@ -43,6 +52,7 @@ describe('settings/history', () => {
           ActionType.scrollTo,
           ActionType.changeShow,
           ActionType.changeZoomLevel,
+          ActionType.changeDDLScript,
         ].sort()
       );
     });
@@ -92,6 +102,85 @@ describe('settings/history', () => {
       );
 
       expect(undoActions).toEqual([changeZoomLevelAction({ value: 0.6 })]);
+    });
+
+    it('changeDDLScript pushes the script it replaces, at its own position', () => {
+      store.dispatchSync(
+        changeDDLScriptAction({
+          position: 'before',
+          value: 'CREATE SCHEMA a;',
+        }),
+        changeDDLScriptAction({ position: 'after', value: 'GRANT ALL;' })
+      );
+
+      const undoActions: AnyAction[] = [];
+      settingsPushUndoHistoryMap[ActionType.changeDDLScript](
+        undoActions,
+        changeDDLScriptAction({ position: 'before', value: '' }),
+        state()
+      );
+
+      expect(undoActions).toEqual([
+        changeDDLScriptAction({
+          position: 'before',
+          value: 'CREATE SCHEMA a;',
+        }),
+      ]);
+    });
+  });
+
+  describe('changeDDLScript through a real store', () => {
+    const rxStores: RxStore[] = [];
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      rxStores.splice(0).forEach(rxStore => rxStore.destroy());
+    });
+
+    function createRxTestStore(): RxStore {
+      const rxStore = createRxStore({ toWidth, clock: new Clock() });
+      rxStores.push(rxStore);
+      return rxStore;
+    }
+
+    const write = (
+      rxStore: RxStore,
+      position: 'before' | 'after',
+      value: string
+    ) => {
+      rxStore.dispatchSync(changeDDLScriptAction({ position, value }));
+      vi.advanceTimersByTime(300);
+    };
+
+    it('undoes each edit to the script it replaced and redoes it, one entry each', () => {
+      const rxStore = createRxTestStore();
+      const scripts = () => rxStore.state.settings.ddlScripts;
+      const size = rxStore.history.size;
+
+      write(rxStore, 'before', 'CREATE SCHEMA a;');
+      write(rxStore, 'before', 'CREATE SCHEMA b;');
+      write(rxStore, 'after', 'GRANT ALL;');
+
+      expect(rxStore.history.size).toBe(size + 3);
+
+      rxStore.undo();
+      expect(scripts()).toEqual({ before: 'CREATE SCHEMA b;', after: '' });
+
+      rxStore.undo();
+      expect(scripts()).toEqual({ before: 'CREATE SCHEMA a;', after: '' });
+
+      rxStore.redo();
+      expect(scripts()).toEqual({ before: 'CREATE SCHEMA b;', after: '' });
+
+      rxStore.redo();
+      expect(scripts()).toEqual({
+        before: 'CREATE SCHEMA b;',
+        after: 'GRANT ALL;',
+      });
     });
   });
 

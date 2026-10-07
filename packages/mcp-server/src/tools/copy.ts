@@ -322,6 +322,14 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     'the database vendor, which picks the data types and the default DDL of erd_read sql',
     'The database vendor.'
   ),
+  erd_set_ddl_script: {
+    description:
+      "Sets one of the two SQL scripts the document keeps for its Schema SQL: before, written ahead of the tables, such as CREATE EXTENSION or CREATE SCHEMA, or after, written past the generated DDL, such as GRANT or CREATE VIEW. The text goes as is into the DDL of every database, so write it for the document's database; SQL Server output gets GO after a script that does not end with GO. An empty string removes it. An ERD Editor extension or plugin released before scripts neither shows nor keeps them, so the user should update it.",
+    args: {
+      position: 'before or after the generated tables.',
+      sql: 'The script, at most 10,000 characters; an empty string removes it.',
+    },
+  },
 
   erd_import_sql: importer('SQL DDL (CREATE TABLE statements)'),
   erd_import_graphql: importer('a GraphQL SDL'),

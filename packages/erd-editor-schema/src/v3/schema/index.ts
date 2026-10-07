@@ -30,6 +30,8 @@ import {
   ColumnTypeList,
   Database,
   DatabaseList,
+  DDLScriptPosition,
+  DDLScriptPositionList,
   Language,
   LanguageList,
   LockSettingFields,
@@ -97,4 +99,6 @@ export const SchemaV3Constants = {
   CANVAS_SIZE_MIN,
   CANVAS_ZOOM_MAX,
   CANVAS_ZOOM_MIN,
+  DDLScriptPosition,
+  DDLScriptPositionList,
 } as const;

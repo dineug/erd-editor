@@ -38,7 +38,31 @@ export type Settings = {
    * the live value, and a parse takes it from the saved fields.
    */
   lockedValues: LockedValues;
+  /**
+   * The Schema SQL scripts; a file saves the key only while one of them holds
+   * text.
+   */
+  ddlScripts: DDLScripts;
 };
+
+export type DDLScripts = {
+  /**
+   * SQL written as is after the header and before the tables, for every
+   * database.
+   */
+  before: string;
+  /** SQL written as is after the generated DDL, for every database. */
+  after: string;
+};
+
+/** Where a Schema SQL script goes: ahead of the tables or past the DDL. */
+export const DDLScriptPosition = {
+  before: 'before',
+  after: 'after',
+} as const;
+export type DDLScriptPosition = ValuesType<typeof DDLScriptPosition>;
+export const DDLScriptPositionList: ReadonlyArray<DDLScriptPosition> =
+  Object.values(DDLScriptPosition);
 
 export type LockedValues = Pick<
   Settings,

@@ -454,3 +454,79 @@ describe('the locks of a new document and of a file', () => {
     expect(settings).toMatchObject({ ...LIVE, ignoreSaveSettings: 0 });
   });
 });
+
+/**
+ * The scripts are saved sparsely: a document that never had one keeps the
+ * file it had, and one with either script writes both right after the locks.
+ */
+describe('the Schema SQL scripts toJson writes', () => {
+  const withScripts = (before: string, after: string) => {
+    const schema = createSchema();
+    schema.settings.ddlScripts = { before, after };
+    return JSON.parse(toJson(schema)).settings;
+  };
+
+  it('writes no key while both scripts are empty', () => {
+    expect(withScripts('', '')).not.toHaveProperty('ddlScripts');
+    expect(JSON.parse(toJson(createSchema())).settings).not.toHaveProperty(
+      'ddlScripts'
+    );
+  });
+
+  it.each([
+    ['before alone', 'CREATE SCHEMA app;', ''],
+    ['after alone', '', 'GRANT SELECT ON member TO app;'],
+    ['both', 'CREATE SCHEMA app;', 'GRANT SELECT ON member TO app;'],
+  ])('writes both fields once %s holds text', (_, before, after) => {
+    expect(withScripts(before, after).ddlScripts).toEqual({ before, after });
+  });
+
+  it('writes a script of blanks alone, as it was typed', () => {
+    expect(withScripts('  \n', '').ddlScripts).toEqual({
+      before: '  \n',
+      after: '',
+    });
+  });
+
+  it('writes the key right after lockSettings', () => {
+    expect(Object.keys(withScripts('a', 'b')).slice(-3)).toEqual([
+      'ignoreSaveSettings',
+      'lockSettings',
+      'ddlScripts',
+    ]);
+  });
+
+  it('writes no field the scripts do not have', () => {
+    const schema = createSchema();
+    schema.settings.ddlScripts = {
+      before: 'a',
+      after: '',
+      middle: 'c',
+    } as any;
+
+    expect(JSON.parse(toJson(schema)).settings.ddlScripts).toEqual({
+      before: 'a',
+      after: '',
+    });
+  });
+
+  it('reads its own output back to the same scripts', () => {
+    const schema = createSchema();
+    schema.settings.ddlScripts = { before: 'CREATE SCHEMA app;', after: '' };
+
+    expect(parser(toJson(schema))).toEqual(schema);
+  });
+
+  it('writes the scripts of raw JSON as they stand, and none it lacks', () => {
+    const raw = JSON.parse(toJson(createSchema()));
+
+    expect(JSON.parse(toJson(raw)).settings).not.toHaveProperty('ddlScripts');
+
+    raw.settings.ddlScripts = { before: '', after: 'SELECT 1;' };
+
+    expect(JSON.parse(toJson(raw)).settings.ddlScripts).toEqual({
+      before: '',
+      after: 'SELECT 1;',
+    });
+  });
+});
