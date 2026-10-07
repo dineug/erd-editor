@@ -108,7 +108,7 @@ export const slSI = {
     'Pred ustvarjanjem izbriše {tables}. Njihove vrstice se izgubijo.',
   'schemaSql.replaceWarning': 'Zamenja {tables}. Njihove vrstice se izgubijo.',
   'schemaSql.moreTables': {
-    one: 'še {count} tabela',
+    one: 'še {count} tabelo',
     two: 'še {count} tabeli',
     few: 'še {count} tabele',
     other: 'še {count} tabel',

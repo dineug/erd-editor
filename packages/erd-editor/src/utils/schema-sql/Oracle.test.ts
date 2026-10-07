@@ -922,7 +922,7 @@ describe('Oracle formatIndex', () => {
   });
 });
 
-describe('Oracle phase 0', () => {
+describe('Oracle auto-increment triggers as SQL*Plus runs them', () => {
   it('ends each trigger with a slash and binds :NEW, as SQL*Plus runs it', () => {
     expect(createSchemaSQL(createSampleState(), Database.Oracle)).toBe(
       readFixture('Oracle/phase0-create-none.sql')

@@ -87,7 +87,9 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
   return () => {
     const { t } = i18n.value;
     const { store } = app.value;
+    // Only the whole document's tab settles the panel, at the width it opens at.
     const panelOpen =
+      props.full &&
       resolvePanel(
         schemaSQLViewOf(app.value),
         store.state.editor.viewport.width

@@ -13,7 +13,13 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
-import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestI18n,
+  createTestTheme,
+  flush,
+  provideI18n,
+} from '@/__test-utils__';
 import {
   type AppContext,
   appContext,
@@ -27,7 +33,13 @@ import {
 } from '@/components/schema-sql/schemaSQLView';
 import { themeContext } from '@/components/themeContext';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  addTableAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
+import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import type { LocaleCode } from '@/i18n/locales';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 
 // The code block's highlighter is a shared worker whose shiki modules the dev
@@ -73,13 +85,24 @@ const Editor: FC = (_, ctx) => {
   );
 };
 
+/** A table with one column, so the DDL writes it and a drop names it. */
+function seedTable(app: AppContext, id: string, name: string) {
+  app.store.dispatchSync(
+    addTableAction({ id, ui: { x: 0, y: 0, zIndex: 1 } }),
+    changeTableNameAction({ id, value: name })
+  );
+  app.store.dispatchSync(addColumnAction({ tableId: id, id: `${id}-col` }));
+}
+
 /**
  * Mounts the tab in a shadow root as the element has one, the editor measured
- * at the width given, after whatever the case sets on the store first.
+ * at the width given, after whatever the case sets on the store first, in the
+ * language given or English.
  */
 async function setup(
   width = 1000,
-  before: (app: AppContext) => void = () => {}
+  before: (app: AppContext) => void = () => {},
+  locale: LocaleCode = 'en'
 ): Promise<Fixture> {
   const app = createTestAppContext();
   const host = document.createElement('div');
@@ -101,6 +124,7 @@ async function setup(
     useProvider(container as any, appContext, app),
     // oxlint-disable-next-line react-hooks/rules-of-hooks
     useProvider(container as any, themeContext, createTestTheme()),
+    provideI18n(container, createTestI18n(locale)),
   ];
   app.store.dispatchSync(changeViewportAction({ width, height: 700 }));
   before(app);
@@ -140,6 +164,24 @@ describe('the Schema SQL options panel on a real layout', () => {
     expect(panel.width).toBe(300);
     expect(code.width).toBe(700);
     expect(panel.left).toBe(code.right);
+  });
+
+  it('draws its rule between the code and itself in a right-to-left language too', async () => {
+    const fixture = await setup(1000, undefined, 'ar-SA');
+    const panel = fixture.panel()!;
+    // the theme's colour, which this mount leaves unset, the rule drawn in
+    panel.style.setProperty('--context-menu-border', '#ccc');
+    const code = (
+      fixture.shadow.querySelector('.root > div > div') as HTMLElement
+    ).getBoundingClientRect();
+    const style = getComputedStyle(panel);
+
+    expect(panel.dir).toBe('rtl');
+    expect(panel.getBoundingClientRect().left).toBe(code.right);
+    expect([style.borderLeftWidth, style.borderRightWidth]).toEqual([
+      '1px',
+      '0px',
+    ]);
   });
 
   it('draws a 1 px rule halfway into the gap above each group but the first', async () => {
@@ -203,6 +245,46 @@ describe('the Schema SQL options panel on a real layout', () => {
     expect(fixture.panel()).not.toBeNull();
     expect(fixture.shadow.activeElement).toBe(fixture.save());
     expect(schemaSQLViewOf(fixture.app).focusSave).toBe(false);
+  });
+});
+
+describe('the drop warning on a real layout', () => {
+  /** The warning box, its text and its icon, with tables named as given, Drop & re-create chosen. */
+  async function warningFor(names: string[]) {
+    const fixture = await setup(1000, app => {
+      names.forEach((name, index) => seedTable(app, `t${index}`, name));
+      schemaSQLViewOf(app).statements = 'recreate';
+    });
+    const box = fixture.shadow.querySelector<HTMLElement>(
+      '.schema-sql-options-warning'
+    )!;
+
+    return {
+      box: box.getBoundingClientRect(),
+      text: box.querySelector('span')!.getBoundingClientRect(),
+      icon: box.querySelector('svg')!.getBoundingClientRect(),
+    };
+  }
+
+  it('breaks a table name too long for a line inside its box', async () => {
+    const { box, text } = await warningFor([
+      'customer_order_item_shipping_addresses_by_region',
+      'member',
+    ]);
+
+    expect(text.right).toBeLessThanOrEqual(box.right - 10);
+    expect(text.left).toBeGreaterThanOrEqual(box.left + 10);
+  });
+
+  it('sets the icon beside the first line of a warning of several', async () => {
+    const { box, text, icon } = await warningFor([
+      'customer_order_item_shipping_addresses_by_region',
+      'member',
+      'post',
+    ]);
+
+    expect(text.height).toBeGreaterThanOrEqual(3 * 16);
+    expect(icon.top - (box.top + 8)).toBe(1);
   });
 });
 

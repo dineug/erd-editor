@@ -108,7 +108,7 @@ export const arSA = {
   'schemaSql.moreTables': {
     zero: '{count} جدول آخر',
     one: '{count} جدول آخر',
-    two: '{count} جدولان آخران',
+    two: '{count} جدولين آخرين',
     few: '{count} جداول أخرى',
     many: '{count} جدولًا آخر',
     other: '{count} جدول آخر',

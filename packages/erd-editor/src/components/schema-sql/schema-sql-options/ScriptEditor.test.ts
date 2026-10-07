@@ -112,6 +112,65 @@ describe('ScriptEditor', () => {
     expect(textarea().value).toBe('later');
   });
 
+  it("takes the document's script as it loses the focus untyped, committing nothing back over it", async () => {
+    const { state, textarea, onCommit } = await setup('a');
+
+    textarea().focus();
+    state.value = 'from an agent';
+    await flush();
+    expect(textarea().value).toBe('a');
+
+    textarea().blur();
+    await flush();
+
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(state.value).toBe('from an agent');
+    expect(textarea().value).toBe('from an agent');
+  });
+
+  it('commits nothing for text typed back to what it held', async () => {
+    const { state, textarea, onCommit } = await setup('a');
+
+    textarea().focus();
+    type(textarea(), 'ab');
+    type(textarea(), 'a');
+    state.value = 'from a peer';
+    await flush();
+    textarea().blur();
+    await flush();
+
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(textarea().value).toBe('from a peer');
+  });
+
+  it('commits nothing when it goes while focused and untyped', async () => {
+    const { state, textarea, onCommit } = await setup('old');
+
+    textarea().focus();
+    state.value = 'from a peer';
+    await flush();
+    state.shown = false;
+    await flush();
+
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(state.value).toBe('from a peer');
+  });
+
+  it("takes the document's script as it loses the focus while readonly", async () => {
+    const { state, textarea, onCommit } = await setup('old');
+    state.readonly = true;
+    await flush();
+
+    textarea().focus();
+    state.value = 'from an agent';
+    await flush();
+    textarea().blur();
+    await flush();
+
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(textarea().value).toBe('from an agent');
+  });
+
   it('commits what was typed when it goes while focused, and once', async () => {
     const { state, textarea, onCommit } = await setup('a');
 

@@ -236,6 +236,45 @@ describe('ScriptEditor on a real layout', () => {
     expect(fixture.textarea().getBoundingClientRect().height).toBe(7 * 18 + 16);
     expect(fixture.textarea().scrollTop).toBe(0);
   });
+
+  it('keeps a scrolled panel where it was as a long script takes a key, the caret in sight', async () => {
+    const lines = Array.from({ length: 60 }, (_, index) => `SELECT ${index};`);
+    const fixture = await setup(lines.join('\n'));
+    const { root } = fixture;
+    // the panel's body, scrolling, with groups above and below the field
+    Object.assign(root.style, {
+      height: '400px',
+      overflow: 'auto',
+      paddingTop: '300px',
+      paddingBottom: '120px',
+    });
+    const textarea = fixture.textarea();
+    const caret = lines.slice(0, 50).join('\n').length;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+    root.scrollTop = root.scrollHeight;
+    const scrollTop = root.scrollTop;
+    expect(scrollTop).toBeGreaterThan(0);
+
+    await userEvent.keyboard('x');
+    await flush();
+    await flush();
+
+    expect(root.scrollTop).toBe(scrollTop);
+    const view = root.getBoundingClientRect();
+    const caretLine = textarea.getBoundingClientRect().top + 8 + 49 * 18;
+    expect(caretLine).toBeGreaterThanOrEqual(view.top);
+    expect(caretLine + 18).toBeLessThanOrEqual(view.bottom);
+  });
+
+  it('writes its placeholder in the code font the text takes', async () => {
+    const fixture = await setup('');
+    const textarea = fixture.textarea();
+
+    expect(getComputedStyle(textarea, '::placeholder').fontFamily).toBe(
+      getComputedStyle(textarea).fontFamily
+    );
+  });
 });
 
 describe('ScriptEditor commits', () => {
@@ -287,6 +326,20 @@ describe('ScriptEditor commits', () => {
     fixture.textarea().blur();
     state.value = 'from an agent';
     await flush();
+    expect(fixture.textarea().value).toBe('from an agent');
+  });
+
+  it("takes the document's script as it loses the focus untyped, committing nothing back over it", async () => {
+    const fixture = await setup('a');
+    fixture.textarea().focus();
+
+    state.value = 'from an agent';
+    await flush();
+    fixture.textarea().blur();
+    await flush();
+
+    expect(fixture.onCommit).not.toHaveBeenCalled();
+    expect(state.value).toBe('from an agent');
     expect(fixture.textarea().value).toBe('from an agent');
   });
 

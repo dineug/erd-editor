@@ -48,7 +48,7 @@ const SCRIPT_PASSING_BINDINGS: ReadonlyArray<KeyBindingName> = [
 /**
  * A text field over its own highlighted text, left to right in any language as
  * the code block is, which commits what was typed as it loses the focus: one
- * action per edit. A change of the script meanwhile leaves the draft alone.
+ * action per edit. A change of the script while focused shows once it is left untyped.
  */
 const ScriptEditor: FC<ScriptEditorProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -64,16 +64,23 @@ const ScriptEditor: FC<ScriptEditorProps> = (props, ctx) => {
 
   let focused = false;
   let unmounted = false;
+  // The draft as the field took the focus: one left as it was writes nothing.
+  let focusedDraft = '';
   let highlightSource: string | null = null;
   let highlightRequestId = 0;
 
   // The field grows with its text, so the panel scrolls it rather than the field.
   const fitHeight = () => {
     const $textarea = textarea.value;
-    if (!$textarea) return;
+    const $box = $textarea?.parentElement;
+    if (!$textarea || !$box) return;
 
+    // The box keeps its height while the field is measured, or the scrolled
+    // panel would clamp to the shorter field and leave the caret out of sight.
+    $box.style.height = `${$box.offsetHeight}px`;
     $textarea.style.height = 'auto';
     $textarea.style.height = `${$textarea.scrollHeight}px`;
+    $box.style.height = '';
   };
 
   const getPre = () =>
@@ -109,9 +116,17 @@ const ScriptEditor: FC<ScriptEditorProps> = (props, ctx) => {
   };
 
   const commit = () => {
-    if (state.draft !== props.value) {
+    if (state.draft !== focusedDraft && state.draft !== props.value) {
       props.onCommit(state.draft);
     }
+  };
+
+  // The script as the document holds it, which a draft left unedited takes.
+  const followValue = () => {
+    if (state.draft === props.value) return;
+
+    state.draft = props.value;
+    setHighlight();
   };
 
   const handleInput = () => {
@@ -125,13 +140,22 @@ const ScriptEditor: FC<ScriptEditorProps> = (props, ctx) => {
 
   const handleFocus = () => {
     focused = true;
+    focusedDraft = state.draft;
   };
 
+  /**
+   * Commits what was typed; a field nothing was typed into, or a readonly one,
+   * which the document refuses, shows what the document holds now instead.
+   */
   const handleBlur = () => {
     if (unmounted) return;
 
     focused = false;
-    commit();
+    if (props.readonly || state.draft === focusedDraft) {
+      followValue();
+    } else {
+      commit();
+    }
   };
 
   // the editor root turns a copy, a cut or a paste into a diagram's own
@@ -164,8 +188,7 @@ const ScriptEditor: FC<ScriptEditorProps> = (props, ctx) => {
     addUnsubscribe(
       watch(props).subscribe(propName => {
         if (propName === 'value' && !focused) {
-          state.draft = props.value;
-          setHighlight();
+          followValue();
         } else if (propName === 'theme') {
           setHighlight();
         }

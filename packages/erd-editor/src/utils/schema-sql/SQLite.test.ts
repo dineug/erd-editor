@@ -887,7 +887,7 @@ describe('SQLite isIntegerFamily', () => {
   });
 });
 
-describe('SQLite phase 0', () => {
+describe('SQLite AUTOINCREMENT keys', () => {
   it('writes an integer AUTOINCREMENT key as INTEGER', () => {
     expect(createSchemaSQL(createSampleState(), Database.SQLite)).toBe(
       readFixture('SQLite/phase0-create-none.sql')

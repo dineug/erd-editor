@@ -213,7 +213,10 @@ export function createSchemaSQL(
     header === SchemaSQLHeader.none
       ? ''
       : writer.formatHeader(state, header, databaseName);
-  const chunks = [headerText, before, drop, body, after].filter(Boolean);
+  // An index with no column left writes its blank line alone, a second one
+  // before the after script; with none after, the body ends as it always has.
+  const tables = after ? body.replace(/\n+$/, '') : body;
+  const chunks = [headerText, before, drop, tables, after].filter(Boolean);
 
   return `\n${chunks.join('\n\n')}\n`;
 }

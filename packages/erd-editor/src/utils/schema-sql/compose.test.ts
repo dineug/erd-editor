@@ -263,6 +263,24 @@ function createSampleState({
   return state;
 }
 
+/** Adds, last in the document, an index whose one column has left its table, which no vendor writes. */
+function withDeadIndex(state: RootState): RootState {
+  state.collections.indexEntities.dead = createIndex({
+    id: 'dead',
+    name: 'idx_member_gone',
+    tableId: 'tm',
+    indexColumnIds: ['gone'],
+  });
+  state.collections.indexColumnEntities.gone = createIndexColumn({
+    id: 'gone',
+    indexId: 'dead',
+    columnId: 'removed',
+    orderType: OrderType.ASC,
+  });
+  state.doc.indexIds = [...state.doc.indexIds, 'dead'];
+  return state;
+}
+
 function createEmptyState(ddlScripts?: Scripts): RootState {
   const state = {
     ...schemaV3Parser(ddlScripts ? { settings: { ddlScripts } } : {}),
@@ -314,6 +332,30 @@ describe('createSchemaSQL options', () => {
         ).toBe(readFixture(`${vendor}/${statements}-${header}-scripts.sql`));
       }
     );
+
+    it.each(SCRIPT_COMBINATIONS[vendor])(
+      'keeps one blank line before the after script past an index it cannot write, around %s with the %s header',
+      (statements, header) => {
+        const state = withDeadIndex(
+          createSampleState({ ddlScripts: SCRIPTS[vendor] })
+        );
+
+        expect(
+          createSchemaSQL(state, Database[vendor], undefined, {
+            statements,
+            header,
+          })
+        ).toBe(readFixture(`${vendor}/${statements}-${header}-scripts.sql`));
+      }
+    );
+
+    it('ends as the vendor always has past an index it cannot write, given no script', () => {
+      const state = withDeadIndex(createSampleState());
+
+      expect(createSchemaSQL(state, Database[vendor])).toBe(
+        CREATE_SCHEMA[vendor](state)
+      );
+    });
 
     it('writes the create batch with no header when given no options', () => {
       const state = createSampleState();

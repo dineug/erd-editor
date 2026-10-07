@@ -108,7 +108,7 @@ export const ukUA = {
     'Видаляє {tables} перед створенням. Їхні рядки втрачаються.',
   'schemaSql.replaceWarning': 'Замінює {tables}. Їхні рядки втрачаються.',
   'schemaSql.moreTables': {
-    one: 'ще {count} таблиця',
+    one: 'ще {count} таблицю',
     few: 'ще {count} таблиці',
     many: 'ще {count} таблиць',
     other: 'ще {count} таблиці',

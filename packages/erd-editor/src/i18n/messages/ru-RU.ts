@@ -108,7 +108,7 @@ export const ruRU = {
     'Удаляет {tables} перед созданием. Их строки теряются.',
   'schemaSql.replaceWarning': 'Заменяет {tables}. Их строки теряются.',
   'schemaSql.moreTables': {
-    one: 'ещё {count} таблица',
+    one: 'ещё {count} таблицу',
     few: 'ещё {count} таблицы',
     many: 'ещё {count} таблиц',
     other: 'ещё {count} таблицы',

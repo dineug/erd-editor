@@ -15,6 +15,7 @@ import { useContextMenuRootProvider } from '@/components/primitives/context-menu
 import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-menu/SchemaSQLContextMenu';
 import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
 import { BracketType, Database } from '@/constants/schema';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -246,6 +247,14 @@ describe('SchemaSQLContextMenu', () => {
 
     expect(subContentOf(database)).toBeNull();
     expect(subContentOf(topItemByName('Bracket'))).toBeTruthy();
+  });
+
+  it("leaves the Schema SQL tab's panel unsettled, for that tab to open by its own width", async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(changeViewportAction({ width: 600, height: 800 }));
+    await open(() => {}, app);
+
+    expect(schemaSQLViewOf(app).panel).toBe('unset');
   });
 
   it('calls onClose when the stop shortcut fires', async () => {

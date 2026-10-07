@@ -3,7 +3,10 @@ import { css } from '@dineug/r-html';
 import { SCHEMA_SQL_PANEL_WIDTH } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
-/** The options beside the code, a fixed width whatever the editor's. */
+/**
+ * The options beside the code, a fixed width whatever the editor's, its rule
+ * on the left, where the code stands in every language.
+ */
 export const panel = css`
   width: ${SCHEMA_SQL_PANEL_WIDTH}px;
   flex-shrink: 0;
@@ -12,7 +15,7 @@ export const panel = css`
   flex-direction: column;
   overflow: hidden;
   background-color: var(--context-menu-background);
-  border-inline-start: 1px solid var(--context-menu-border);
+  border-left: 1px solid var(--context-menu-border);
   color: var(--foreground);
   ${typography.normal};
 `;
@@ -155,7 +158,10 @@ export const segment = css`
   }
 `;
 
-/** What a drop and re-create takes with it, in the colours of a deleted line. */
+/**
+ * What a drop and re-create takes with it, in the colours of a deleted line,
+ * a long table name broken to stay inside the box.
+ */
 export const warning = css`
   display: flex;
   gap: 8px;
@@ -164,11 +170,18 @@ export const warning = css`
   background-color: var(--diff-delete-background);
   color: var(--diff-delete-foreground);
   ${typography.paragraph};
+
+  & > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 `;
 
+/** One line of the text tall, so the icon stands beside the first. */
 export const warningIcon = css`
   flex-shrink: 0;
-  margin-top: 1px;
+  align-self: flex-start;
+  height: var(--line-height-1);
 `;
 
 /** The buttons under the scrolling part, always in sight. */

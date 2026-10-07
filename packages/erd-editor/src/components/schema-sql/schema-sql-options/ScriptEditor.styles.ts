@@ -60,7 +60,9 @@ export const input = css`
     background-color: var(--placeholder);
   }
 
+  /* the reset gives every placeholder the text font, a hint here being SQL */
   &::placeholder {
+    font-family: inherit;
     color: #6a737d;
     -webkit-text-fill-color: #6a737d;
   }
