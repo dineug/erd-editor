@@ -34,12 +34,13 @@ beforeAll(() => {
 });
 
 describe('CodeBlock.styles', () => {
-  it('exports the six css template literals the component renders with', () => {
+  it('exports the seven css template literals the component renders with', () => {
     expect(styles.root).toBeTruthy();
     expect(styles.scroller).toBeTruthy();
     expect(styles.layers).toBeTruthy();
     expect(styles.preview).toBeTruthy();
     expect(styles.textarea).toBeTruthy();
+    expect(styles.tools).toBeTruthy();
     expect(styles.clipboard).toBeTruthy();
   });
 
@@ -50,6 +51,7 @@ describe('CodeBlock.styles', () => {
       String(styles.layers),
       String(styles.preview),
       String(styles.textarea),
+      String(styles.tools),
       String(styles.clipboard),
     ];
 
@@ -57,15 +59,28 @@ describe('CodeBlock.styles', () => {
       expect(typeof identifier).toBe('string');
       expect(identifier.length).toBeGreaterThan(0);
     });
-    expect(new Set(identifiers).size).toBe(6);
+    expect(new Set(identifiers).size).toBe(7);
   });
 
-  it('positions the clipboard button and drives it from the foreground/active tokens', () => {
+  it('stands the clipboard button 8px into the top right corner, 8px inside its box, over the code', () => {
+    const tools = ruleOf(rules, `.${String(styles.tools)}`);
+    const clipboard = ruleOf(rules, `.${String(styles.clipboard)}`);
+
+    expect(tools.style.getPropertyValue('position')).toBe('absolute');
+    expect(tools.style.getPropertyValue('top')).toBe('8px');
+    expect(tools.style.getPropertyValue('right')).toBe('8px');
+    expect(tools.style.getPropertyValue('z-index')).toBe('1');
+    expect(tools.style.getPropertyValue('display')).toBe('flex');
+    expect(tools.style.getPropertyValue('gap')).toBe('4px');
+    expect(clipboard.style.getPropertyValue('position')).toBe('');
+    expect(clipboard.style.getPropertyValue('margin')).toBe('');
+    expect(clipboard.style.getPropertyValue('padding')).toBe('8px');
+    expect(clipboard.style.getPropertyValue('display')).toBe('inline-flex');
+  });
+
+  it('drives the clipboard button from the foreground/active tokens', () => {
     const clipboard = source(styles.clipboard);
 
-    expect(clipboard).toContain('position: absolute');
-    expect(clipboard).toContain('top: 0');
-    expect(clipboard).toContain('right: 0');
     expect(clipboard).toContain('cursor: pointer');
     expect(clipboard).toContain('opacity: 0');
     expect(clipboard).toContain('var(--foreground)');
@@ -106,7 +121,7 @@ describe('CodeBlock.styles', () => {
   it('leaves the scroll container in flow, so the root keeps a content height', () => {
     const scroller = ruleOf(rules, `.${String(styles.scroller)}`);
 
-    // out of flow, the root — whose only other child is the absolute clipboard button — has
+    // out of flow, the root — whose only other child is the absolute box of tools — has
     // nothing to size itself from wherever the parent chain is height-indefinite
     expect(scroller.style.getPropertyValue('position')).toBe('');
     expect(scroller.style.getPropertyValue('inset')).toBe('');

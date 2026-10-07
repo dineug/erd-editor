@@ -124,6 +124,32 @@ describe('CodeBlock', () => {
     expect(getRoot(mounted).contains(clipboard)).toBe(true);
   });
 
+  it('stands the tools after the copy button in its top corner, and nothing there without them', async () => {
+    mounted = await mountAndFlush(
+      html`<${CodeBlock}
+        value=${'SELECT 1;'}
+        lang=${'sql'}
+        .tools=${html`<button type="button" class="extra">Show</button>`}
+      />`
+    );
+
+    const tools = mounted.container.querySelector(
+      `.${String(styles.tools)}`
+    ) as HTMLDivElement;
+    expect(Array.from(tools.children)).toEqual([
+      getClipboard(mounted),
+      mounted.container.querySelector('.extra'),
+    ]);
+
+    mounted.unmount();
+    mounted = await mountAndFlush(
+      html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
+    );
+
+    const alone = mounted.container.querySelector(`.${String(styles.tools)}`);
+    expect(Array.from(alone?.children ?? [])).toEqual([getClipboard(mounted)]);
+  });
+
   it('overlays the preview with a textarea carrying the raw value', async () => {
     mounted = await mountAndFlush(
       html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
@@ -274,8 +300,8 @@ describe('CodeBlock', () => {
     expect(layers.parentElement).toBe(scroller);
     expect(getPreview(mounted).parentElement).toBe(layers);
     expect(getTextarea(mounted).parentElement).toBe(layers);
-    // the clipboard button sits outside the scroller, last, so it stays pinned and on top
-    expect(root.lastElementChild).toBe(getClipboard(mounted));
+    // the clipboard button sits outside the scroller, in the last box, so it stays pinned and on top
+    expect(root.lastElementChild).toBe(getClipboard(mounted).parentElement);
     expect(scroller.contains(getClipboard(mounted))).toBe(false);
   });
 
@@ -323,6 +349,28 @@ describe('CodeBlock', () => {
     expect(getScroller(mounted).style.backgroundColor).toBe(
       pre.style.backgroundColor
     );
+  });
+
+  it('hands its tools the colour the code sits on, the canvas until a highlight lands', async () => {
+    mounted = await mountAndFlush(
+      html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} />`
+    );
+    const toolsOf = (m: Mounted) =>
+      m.container.querySelector(`.${String(styles.tools)}`) as HTMLElement;
+
+    expect(
+      toolsOf(mounted).style.getPropertyValue('--code-block-background')
+    ).toBe('var(--canvas-background)');
+
+    mounted.unmount();
+    setShikiService(createShikiService().service);
+    mounted = await mountAndFlush(
+      html`<${CodeBlock} value=${'SELECT 1;'} lang=${'sql'} theme=${'dark'} />`
+    );
+
+    expect(
+      toolsOf(mounted).style.getPropertyValue('--code-block-background')
+    ).toBe(getScroller(mounted).style.backgroundColor);
   });
 
   it('drops the tab stop shiki puts on its pre', async () => {

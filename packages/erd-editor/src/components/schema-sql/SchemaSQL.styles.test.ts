@@ -27,6 +27,25 @@ describe('SchemaSQL.styles', () => {
     );
   });
 
+  it('lays the code and the options panel side by side', () => {
+    expect(styles.root.strings.raw.join('')).toContain('display: flex');
+  });
+
+  it('gives the code what the panel leaves, never less than nothing', () => {
+    const css = styles.code.strings.raw.join('');
+
+    expect(css).toContain('position: relative');
+    expect(css).toContain('flex: 1');
+    expect(css).toContain('min-width: 0');
+    expect(css).toContain('min-height: 0');
+  });
+
+  it('paints Show options in the colour the code block sits on', () => {
+    expect(styles.show.strings.raw.join('')).toContain(
+      'background-color: var(--code-block-background)'
+    );
+  });
+
   it('resolves to a stable non-empty class identifier', () => {
     const identifier = String(styles.root);
 

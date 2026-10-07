@@ -99,6 +99,35 @@ export const roRO = {
   'visualization.showMode.allFields': 'Toate câmpurile',
   'code.label': 'Cod',
   'code.copy': 'Copiere',
+  'schemaSql.savedInDocument': 'Salvat în document',
+  'schemaSql.thisWindowOnly': 'Doar această fereastră',
+  'schemaSql.statements': 'Instrucțiuni',
+  'schemaSql.header': 'Antet',
+  'schemaSql.notInDatabase': 'Neacceptat în {database}',
+  'schemaSql.dropWarning':
+    'Șterge {tables} înainte de a le crea. Rândurile lor se pierd.',
+  'schemaSql.replaceWarning': 'Înlocuiește {tables}. Rândurile lor se pierd.',
+  'schemaSql.moreTables': {
+    one: 'încă {count} tabel',
+    few: 'încă {count} tabele',
+    other: 'încă {count} de tabele',
+  },
+  'schemaSql.headerInvalidName':
+    'Numele bazei de date „{name}” nu este un identificator valid.',
+  'schemaSql.oracleLongNames':
+    'Oracle 12.2+ pentru nume de peste 30 de octeți: {names}',
+  'schemaSql.scriptsCaption':
+    'Salvat în document · scris ca atare pentru fiecare bază de date',
+  'schemaSql.beforeTables': 'Înainte de tabele',
+  'schemaSql.afterTables': 'După tabele',
+  'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, date inițiale …',
+  'schemaSql.mssqlGoHint':
+    'MSSQL primește GO după un script care nu se termină cu GO.',
+  'schemaSql.saveFile': 'Salvare fișier',
+  'schemaSql.saveFileMenu': 'Salvare fișier…',
+  'schemaSql.optionsPanel': 'Panou de opțiuni',
+  'schemaSql.hideOptions': 'Ascundere opțiuni',
+  'schemaSql.showOptions': 'Afișare opțiuni',
   'findReplace.matchCase': 'Potrivire litere mari și mici',
   'findReplace.wholeWord': 'Potrivire cuvânt întreg',
   'findReplace.regex': 'Utilizare expresie regulată',
@@ -228,6 +257,16 @@ export const roRO = {
   'palette.keywords.aml': 'aml azimutt limbaj markup schemă',
   'palette.keywords.image': 'imagine png svg vector poză clipboard',
   'palette.keywords.findReplace': 'găsire căutare înlocuire redenumire',
+  'palette.schemaSqlStatements': 'Schemă SQL: Instrucțiuni',
+  'palette.schemaSqlHeader': 'Schemă SQL: Antet',
+  'palette.schemaSqlOptionsPanel': 'Schemă SQL: Panou de opțiuni',
+  'palette.exportSchemaSql': 'Export: Schemă SQL',
+  'palette.keywords.schemaSqlStatements':
+    'creare dacă nu există ștergere înlocuire',
+  'palette.keywords.schemaSqlHeader': 'use bază de date search_path',
+  'palette.keywords.schemaSqlOptionsPanel':
+    'afișare ascundere înainte după scripturi',
+  'palette.keywords.exportSchemaSql': 'sql ddl fișier',
   'settings.preferences': 'Preferințe',
   'settings.relationshipDataTypeSync': 'Sincronizare tip de date în relații',
   'settings.maxCommentWidth': 'Lățime maximă comentarii',

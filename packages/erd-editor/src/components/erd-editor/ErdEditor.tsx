@@ -440,7 +440,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             </div>
           ) : settings.canvasType === CanvasType.schemaSQL ? (
             <div class={styles.scope}>
-              <SchemaSQL isDarkMode={isDarkMode} />
+              <SchemaSQL isDarkMode={isDarkMode} readonly={props.readonly} />
             </div>
           ) : settings.canvasType === CanvasType.generatorCode ? (
             <div class={styles.scope}>

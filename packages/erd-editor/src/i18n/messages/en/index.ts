@@ -8,6 +8,7 @@ import { findReplace } from './findReplace';
 import { floatingToolbar } from './floatingToolbar';
 import { mapColumns } from './mapColumns';
 import { palette } from './palette';
+import { schemaSql } from './schemaSql';
 import { settings } from './settings';
 import { shortcuts } from './shortcuts';
 import { tableProperties } from './tableProperties';
@@ -26,6 +27,7 @@ export const en = {
   ...floatingToolbar,
   ...visualization,
   ...code,
+  ...schemaSql,
   ...findReplace,
   ...tableProperties,
   ...colorPicker,

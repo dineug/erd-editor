@@ -24,6 +24,19 @@ import { menus as tableNameCaseMenus } from '@/components/generator-code/generat
 import Icon from '@/components/primitives/icon/Icon';
 import type { IconName } from '@/components/primitives/icon/icons';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
+import {
+  isHeaderSupported,
+  menus as headerMenus,
+} from '@/components/schema-sql/schema-sql-context-menu/menus/headerMenus';
+import {
+  isStatementsSupported,
+  menus as statementsMenus,
+} from '@/components/schema-sql/schema-sql-context-menu/menus/statementsMenus';
+import {
+  schemaSQLViewOf,
+  showSchemaSQLExport,
+  toggleSchemaSQLPanel,
+} from '@/components/schema-sql/schemaSQLView';
 import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
 import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
@@ -54,7 +67,7 @@ import {
   setLocaleOptionAction,
   setThemeOptionsAction,
 } from '@/utils/emitter';
-import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
+import { exportJSON } from '@/utils/file/exportFile';
 import {
   importAML,
   importDBML,
@@ -69,7 +82,7 @@ import {
   FindMatch,
   snippetOf,
 } from '@/utils/find-replace';
-import { createSchemaSQL } from '@/utils/schema-sql';
+import { resolveSchemaSQLOptions, schemaSQLSupport } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
 import { HangulQuery, hangulQueryOf, HangulTier, hangulTier } from './hangul';
@@ -369,12 +382,7 @@ export function createScopeActions(
         {
           icon: <Icon name="database" size={16} />,
           ...named(i18n, 'common.tab.schemaSql'),
-          perform: ({ store }) => {
-            exportSchemaSQL(
-              createSchemaSQL(store.state),
-              store.state.settings.databaseName
-            );
-          },
+          perform: showSchemaSQLExport,
         },
         {
           icon: <Icon name="file-image" size={16} />,
@@ -451,10 +459,9 @@ export function createScopeActions(
           );
         },
       })),
-      filter: ({ store }) => {
-        return store.state.settings.canvasType === CanvasType.schemaSQL;
-      },
+      filter: isSchemaSQLTab,
     },
+    ...createSchemaSQLActions(app, i18n),
     {
       icon: <Icon name="code" size={16} />,
       ...submenuNamed(i18n, 'common.codeLanguage'),
@@ -520,6 +527,93 @@ export function createScopeActions(
     },
     ...createPreferenceActions(i18n, preferences),
     ...createTableActions(app, i18n),
+  ];
+}
+
+const isSchemaSQLTab = ({ store }: AppContext) =>
+  store.state.settings.canvasType === CanvasType.schemaSQL;
+
+/** A submenu row with the words it is found by, known by its message key in any language. */
+const submenuWithKeywords = (
+  i18n: I18n,
+  key: PlainMessageKey,
+  keywordsKey: PlainMessageKey
+): Pick<Action, 'id' | 'name' | 'keywords' | 'alias'> => ({
+  ...submenuNamed(i18n, key),
+  ...named(i18n, key, keywordsKey),
+});
+
+/**
+ * The Schema SQL tab's own rows, the statements and the header listing only
+ * what the database writes, checked as it writes them; then Export: Schema
+ * SQL, on every tab, which opens that tab with its options out to save from.
+ */
+function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
+  const { settings } = app.store.state;
+  const view = schemaSQLViewOf(app);
+  const resolved = resolveSchemaSQLOptions(
+    settings.database,
+    view,
+    settings.databaseName
+  );
+  const support = schemaSQLSupport(settings.database);
+
+  return [
+    {
+      icon: <Icon name="settings-2" size={16} />,
+      ...submenuWithKeywords(
+        i18n,
+        'palette.schemaSqlStatements',
+        'palette.keywords.schemaSqlStatements'
+      ),
+      next: statementsMenus
+        .filter(menu => isStatementsSupported(support, menu.id))
+        .map<Action>(menu => ({
+          ...checkOf(menu.id === resolved.statements),
+          name: menu.name,
+          perform: app => {
+            schemaSQLViewOf(app).statements = menu.id;
+          },
+        })),
+      filter: isSchemaSQLTab,
+    },
+    {
+      icon: <Icon name="settings-2" size={16} />,
+      ...submenuWithKeywords(
+        i18n,
+        'palette.schemaSqlHeader',
+        'palette.keywords.schemaSqlHeader'
+      ),
+      next: headerMenus
+        .filter(menu => isHeaderSupported(support, menu.id))
+        .map<Action>(menu => ({
+          ...checkOf(menu.id === resolved.header),
+          ...named(i18n, menu),
+          perform: app => {
+            schemaSQLViewOf(app).header = menu.id;
+          },
+        })),
+      filter: isSchemaSQLTab,
+    },
+    {
+      icon: <Icon name="panel-right" size={16} />,
+      ...named(
+        i18n,
+        'palette.schemaSqlOptionsPanel',
+        'palette.keywords.schemaSqlOptionsPanel'
+      ),
+      perform: toggleSchemaSQLPanel,
+      filter: isSchemaSQLTab,
+    },
+    {
+      icon: <Icon name="file-output" size={16} />,
+      ...named(
+        i18n,
+        'palette.exportSchemaSql',
+        'palette.keywords.exportSchemaSql'
+      ),
+      perform: showSchemaSQLExport,
+    },
   ];
 }
 

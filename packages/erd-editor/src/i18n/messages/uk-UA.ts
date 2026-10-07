@@ -99,6 +99,36 @@ export const ukUA = {
   'visualization.showMode.allFields': 'Усі поля',
   'code.label': 'Код',
   'code.copy': 'Копіювати',
+  'schemaSql.savedInDocument': 'Зберігається в документі',
+  'schemaSql.thisWindowOnly': 'Лише це вікно',
+  'schemaSql.statements': 'Оператори',
+  'schemaSql.header': 'Заголовок',
+  'schemaSql.notInDatabase': 'Немає в {database}',
+  'schemaSql.dropWarning':
+    'Видаляє {tables} перед створенням. Їхні рядки втрачаються.',
+  'schemaSql.replaceWarning': 'Замінює {tables}. Їхні рядки втрачаються.',
+  'schemaSql.moreTables': {
+    one: 'ще {count} таблиця',
+    few: 'ще {count} таблиці',
+    many: 'ще {count} таблиць',
+    other: 'ще {count} таблиці',
+  },
+  'schemaSql.headerInvalidName':
+    'Назва бази даних «{name}» не є допустимим ідентифікатором.',
+  'schemaSql.oracleLongNames':
+    'Oracle 12.2+ для назв, довших за 30 байтів: {names}',
+  'schemaSql.scriptsCaption':
+    'Зберігається в документі · записується як є для кожної бази даних',
+  'schemaSql.beforeTables': 'Перед таблицями',
+  'schemaSql.afterTables': 'Після таблиць',
+  'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, початкові дані …',
+  'schemaSql.mssqlGoHint':
+    'MSSQL отримує GO після скрипта, що не закінчується на GO.',
+  'schemaSql.saveFile': 'Зберегти файл',
+  'schemaSql.saveFileMenu': 'Зберегти файл…',
+  'schemaSql.optionsPanel': 'Панель параметрів',
+  'schemaSql.hideOptions': 'Сховати параметри',
+  'schemaSql.showOptions': 'Показати параметри',
   'findReplace.matchCase': 'Враховувати регістр',
   'findReplace.wholeWord': 'Лише цілі слова',
   'findReplace.regex': 'Використовувати регулярний вираз',
@@ -232,6 +262,16 @@ export const ukUA = {
   'palette.keywords.aml': 'aml azimutt мова розмітки схема',
   'palette.keywords.image': 'зображення png svg вектор малюнок буфер обміну',
   'palette.keywords.findReplace': 'знайти замінити перейменувати',
+  'palette.schemaSqlStatements': 'Схема SQL: Оператори',
+  'palette.schemaSqlHeader': 'Схема SQL: Заголовок',
+  'palette.schemaSqlOptionsPanel': 'Схема SQL: Панель параметрів',
+  'palette.exportSchemaSql': 'Експортувати: Схема SQL',
+  'palette.keywords.schemaSqlStatements':
+    'створити якщо не існує видалити замінити',
+  'palette.keywords.schemaSqlHeader': 'use база даних search_path',
+  'palette.keywords.schemaSqlOptionsPanel':
+    'показати сховати перед після скрипти',
+  'palette.keywords.exportSchemaSql': 'sql ddl файл',
   'settings.preferences': 'Параметри',
   'settings.relationshipDataTypeSync': 'Синхронізація типів даних у зв’язках',
   'settings.maxCommentWidth': 'Максимальна ширина коментаря',

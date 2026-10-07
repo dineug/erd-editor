@@ -34,6 +34,7 @@ describe('the English dictionary', () => {
         'floatingToolbar',
         'mapColumns',
         'palette',
+        'schemaSql',
         'settings',
         'shortcuts',
         'tableProperties',

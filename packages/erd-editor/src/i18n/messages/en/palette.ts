@@ -27,4 +27,12 @@ export const palette = {
   'palette.keywords.aml': 'aml azimutt markup language schema',
   'palette.keywords.image': 'image png svg vector picture clipboard',
   'palette.keywords.findReplace': 'find replace rename',
+  'palette.schemaSqlStatements': 'Schema SQL: Statements',
+  'palette.schemaSqlHeader': 'Schema SQL: Header',
+  'palette.schemaSqlOptionsPanel': 'Schema SQL: Options panel',
+  'palette.exportSchemaSql': 'Export: Schema SQL',
+  'palette.keywords.schemaSqlStatements': 'create if not exists drop replace',
+  'palette.keywords.schemaSqlHeader': 'use database search_path',
+  'palette.keywords.schemaSqlOptionsPanel': 'show hide before after scripts',
+  'palette.keywords.exportSchemaSql': 'sql ddl file',
 } as const;

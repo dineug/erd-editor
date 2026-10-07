@@ -181,6 +181,8 @@ export type ErdDocument = {
     maxWidthComment: number;
     ignoreSaveSettings: number;
     lockSettings: number;
+    /** The Schema SQL scripts, written only while one of them holds text. */
+    ddlScripts?: { before: string; after: string };
   };
   doc: {
     tableIds: string[];
