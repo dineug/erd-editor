@@ -50,7 +50,9 @@ tables placed as new ones below the ones already there, in one undoable step.
 - **Import and Add** — add a `.sql`, GraphQL, DBML, AML or `.erd.json` file to the diagram rather
   than replacing it: its tables arrive below the ones already there, which stay where they are, and
   one undo takes them away. A foreign key to a table outside the file is dropped
-- **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite
+- **SQL DDL export** — MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, SQLite,
+  with CREATE TABLE IF NOT EXISTS, drop and re-create, a USE or CREATE SCHEMA header and SQL of
+  your own before and after the tables, from the Schema SQL tab's options panel
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy,
   TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine
 - **Visualization** — a force-directed view of how the tables actually relate
