@@ -4,6 +4,8 @@ import {
   type DatabaseVendor,
   DatabaseVendorToDatabase,
   LockSettingType,
+  SchemaSQLHeaderList,
+  SchemaSQLStatementsList,
   settingsActions,
   settingsActions$,
 } from '@dineug/erd-editor/peer.js';
@@ -12,6 +14,7 @@ import { afterAll, describe, expect, it } from 'vite-plus/test';
 
 import { createSeededPeer, SEED } from '@/__test-utils__/seed';
 import { createWidePeer, wideTableName } from '@/__test-utils__/wide';
+import { MAX_READ_CHARS } from '@/tools/budget';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import {
   READ_FORMATS,
@@ -231,5 +234,180 @@ describe('a read too large for one answer', () => {
     });
 
     expect(sql.match(/CREATE TABLE/g)).toHaveLength(2);
+  });
+});
+
+/** The seed under a database name a header can write, with the scripts given. */
+function createNamedPeer(scripts: { before?: string; after?: string } = {}) {
+  const named = createSeededPeer();
+  named.dispatch([
+    settingsActions.changeDatabaseNameAction({ value: 'shop' }),
+    ...(['before', 'after'] as const).flatMap(position => {
+      const value = scripts[position];
+      return value === undefined
+        ? []
+        : [settingsActions.changeDDLScriptAction({ position, value })];
+    }),
+  ]);
+  return named;
+}
+
+describe('the statements and header of the DDL', () => {
+  const named = createNamedPeer();
+
+  afterAll(() => named.destroy());
+
+  it('writes every pair for every vendor as the generator does', () => {
+    for (const vendor of SQL_VENDORS) {
+      const database = DatabaseVendorToDatabase[vendor as DatabaseVendor];
+      for (const statements of SchemaSQLStatementsList) {
+        for (const header of SchemaSQLHeaderList) {
+          expect(
+            readDocument(named.state, 'sql', vendor, undefined, {
+              statements,
+              header,
+            }),
+            `${vendor} ${statements} ${header}`
+          ).toBe(
+            createSchemaSQL(named.state, database, undefined, {
+              statements,
+              header,
+            })
+          );
+        }
+      }
+    }
+  });
+
+  it('writes IF NOT EXISTS and a header where the vendor has them', () => {
+    const sql = readDocument(named.state, 'sql', 'MySQL', undefined, {
+      statements: 'ifNotExists',
+      header: 'createAndUse',
+    });
+
+    expect(sql).toMatch(/^\nCREATE DATABASE IF NOT EXISTS shop;\nUSE shop;\n/);
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS users');
+    expect(
+      readDocument(named.state, 'sql', 'PostgreSQL', undefined, {
+        statements: 'recreate',
+      })
+    ).toMatch(/^\nDROP TABLE IF EXISTS /);
+  });
+
+  it('falls back to what the vendor has, as the Schema SQL tab does', () => {
+    const asked = {
+      statements: 'ifNotExists',
+      header: 'createAndUse',
+    } as const;
+
+    expect(readDocument(named.state, 'sql', 'Oracle', undefined, asked)).toBe(
+      readDocument(named.state, 'sql', 'Oracle', undefined, {
+        statements: 'create',
+        header: 'use',
+      })
+    );
+    expect(
+      readDocument(named.state, 'sql', 'SQLite', undefined, { header: 'use' })
+    ).toBe(readDocument(named.state, 'sql', 'SQLite'));
+  });
+
+  it('writes no header while the database name is no plain identifier', () => {
+    expect(
+      readDocument(peer.state, 'sql', 'MySQL', undefined, {
+        header: 'createAndUse',
+      })
+    ).toBe(readDocument(peer.state, 'sql', 'MySQL'));
+  });
+
+  it('applies the two to the DDL of some tables too', () => {
+    const sql = readDocument(
+      named.state,
+      'sql',
+      'MySQL',
+      { tableNames: ['orders'] },
+      { statements: 'ifNotExists', header: 'use' }
+    );
+
+    expect(sql).toMatch(/^\nUSE shop;\n/);
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS orders');
+    expect(sql).not.toContain('CREATE TABLE IF NOT EXISTS users');
+  });
+
+  it('takes them for the sql format only', () => {
+    for (const format of ['json', 'snapshot'] as const) {
+      const error = refusal(() =>
+        readDocument(named.state, format, undefined, undefined, {
+          header: 'use',
+        })
+      );
+
+      expect(error.code).toBe(ToolErrorCode.invalidArgs);
+      expect(error.message).toBe(
+        `statements and header apply to the sql format only, not ${format}`
+      );
+    }
+    expect(
+      refusal(() =>
+        readDocument(named.state, 'json', undefined, undefined, {
+          statements: 'recreate',
+        })
+      ).message
+    ).toBe('statements and header apply to the sql format only, not json');
+    expect(
+      readDocument(named.state, 'json', undefined, undefined, {
+        statements: undefined,
+        header: undefined,
+      })
+    ).toBe(toJson(named.state));
+  });
+});
+
+describe('the before and after scripts in the DDL', () => {
+  const before = 'CREATE EXTENSION IF NOT EXISTS pgcrypto;';
+  const after = 'GRANT SELECT ON users, orders TO PUBLIC;';
+
+  it('writes them around the whole document, whatever the options', () => {
+    const scripted = createNamedPeer({ before, after });
+
+    const sql = readDocument(scripted.state, 'sql', 'PostgreSQL');
+    expect(sql).toBe(
+      createSchemaSQL(scripted.state, DatabaseVendorToDatabase.PostgreSQL)
+    );
+    expect(sql.startsWith(`\n${before}\n\nCREATE TABLE`)).toBe(true);
+    expect(sql.endsWith(`\n\n${after}\n`)).toBe(true);
+    expect(
+      readDocument(scripted.state, 'sql', 'PostgreSQL', undefined, {
+        statements: 'recreate',
+        header: 'createAndUse',
+      })
+    ).toMatch(
+      /^\nCREATE SCHEMA IF NOT EXISTS shop;\nSET search_path TO shop, public;\n\nCREATE EXTENSION IF NOT EXISTS pgcrypto;\n\nDROP TABLE IF EXISTS /
+    );
+    scripted.destroy();
+  });
+
+  it('leaves them out of the DDL of some tables', () => {
+    const scripted = createNamedPeer({ before, after });
+
+    const sql = readDocument(scripted.state, 'sql', 'PostgreSQL', {
+      tableNames: ['users'],
+    });
+    expect(sql).toContain('CREATE TABLE users');
+    expect(sql).not.toContain(before);
+    expect(sql).not.toContain(after);
+    scripted.destroy();
+  });
+
+  it('refuses a whole read the scripts make too large, which some tables still answer', () => {
+    const long = `-- ${'x'.repeat(MAX_READ_CHARS)}`;
+    const scripted = createNamedPeer({ after: long });
+
+    const error = refusal(() => readDocument(scripted.state, 'sql'));
+    expect(error.code).toBe(ToolErrorCode.tooLarge);
+    expect(error.message).toMatch(/pass tableIds or tableNames/);
+    expect(
+      readDocument(scripted.state, 'sql', undefined, { tableNames: ['users'] })
+    ).toContain('CREATE TABLE users');
+    scripted.destroy();
   });
 });

@@ -117,6 +117,20 @@ describe('the tool surface (AC-M8)', () => {
     expect(required).toEqual(['path', 'format']);
   });
 
+  it('gives erd_read the statements and header of its DDL, each optional', () => {
+    const { properties, required } = tool('erd_read').inputSchema as any;
+
+    expect(properties.statements).toMatchObject({
+      type: 'string',
+      enum: ['create', 'ifNotExists', 'recreate'],
+    });
+    expect(properties.header).toMatchObject({
+      type: 'string',
+      enum: ['none', 'use', 'createAndUse'],
+    });
+    expect(required).toEqual(['path', 'format']);
+  });
+
   it('gives erd_list a query, a page and namesOnly, and erd_get a list per kind', () => {
     const list = tool('erd_list').inputSchema as any;
     const get = tool('erd_get').inputSchema as any;
@@ -290,7 +304,7 @@ describe('tool arguments', () => {
     expect(mcp.manager.paths()).toEqual([]);
   });
 
-  it('refuses an unknown argument and an unknown format of erd_read with -32602', async () => {
+  it('refuses an unknown argument, format, statements or header of erd_read with -32602', async () => {
     const unknown = await rpcError('erd_read', {
       path: DOCUMENT,
       format: 'snapshot',
@@ -301,9 +315,23 @@ describe('tool arguments', () => {
       format: 'yaml',
     });
 
+    const statements = await rpcError('erd_read', {
+      path: DOCUMENT,
+      format: 'sql',
+      statements: 'drop',
+    });
+    const header = await rpcError('erd_read', {
+      path: DOCUMENT,
+      format: 'sql',
+      header: 'USE',
+    });
+
     expect([unknown.code, format.code]).toEqual([-32602, -32602]);
+    expect([statements.code, header.code]).toEqual([-32602, -32602]);
     expect(unknown.message).toMatch(/^Invalid parameters for tool 'erd_read'/);
     expect(format.message).toMatch(/\["format"\]/);
+    expect(statements.message).toMatch(/\["statements"\]/);
+    expect(header.message).toMatch(/\["header"\]/);
     expect(mcp.manager.paths()).toEqual([]);
   });
 

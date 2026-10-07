@@ -77,7 +77,7 @@ const namesIn = (surface: readonly ToolSurface[], names: readonly string[]) =>
 
 /** The optional arguments a recorded tool gained after the recording was made. */
 const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
-  erd_read: ['tableIds', 'tableNames'],
+  erd_read: ['tableIds', 'tableNames', 'statements', 'header'],
   erd_add_relationship: ['onDelete', 'onUpdate'],
   erd_link_columns: ['onDelete', 'onUpdate'],
   erd_import_sql: ['mode'],

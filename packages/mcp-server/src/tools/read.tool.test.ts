@@ -1,3 +1,4 @@
+import { settingsActions } from '@dineug/erd-editor/peer.js';
 import { Effect } from 'effect';
 import {
   afterEach,
@@ -9,8 +10,11 @@ import {
 } from 'vite-plus/test';
 
 import { stubSessions } from '@/__test-utils__/effect';
-import { connectLayer, RpcError } from '@/__test-utils__/mcp';
+import { connectLayer, connectMcp, RpcError } from '@/__test-utils__/mcp';
+import { createMemoryHost } from '@/__test-utils__/memoryHost';
+import { createSeededPeer } from '@/__test-utils__/seed';
 import { layerWithSessions } from '@/server';
+import { readDocument } from '@/tools/read';
 import { ReadParams } from '@/tools/read.tool';
 import { toolInputSchema } from '@/tools/schema';
 
@@ -29,6 +33,51 @@ describe('the input schema of a hand-added tool', () => {
       required: ['path', 'format'],
       additionalProperties: false,
     });
+  });
+});
+
+describe('the DDL erd_read writes', () => {
+  const DOCUMENT = '/work/shop.erd.json';
+
+  it('hands the statements and header asked for to the generator', async () => {
+    const peer = createSeededPeer();
+    peer.dispatch([
+      settingsActions.changeDatabaseNameAction({ value: 'shop' }),
+      settingsActions.changeDDLScriptAction({
+        position: 'before',
+        value: 'SET NAMES utf8mb4;',
+      }),
+    ]);
+    const io = createMemoryHost();
+    io.put(DOCUMENT, peer.value);
+    const mcp = await connectMcp({ host: io });
+    const options = { statements: 'recreate', header: 'createAndUse' } as const;
+
+    const sql = await mcp.text('erd_read', {
+      path: DOCUMENT,
+      format: 'sql',
+      vendor: 'MySQL',
+      ...options,
+    });
+    expect(sql).toBe(
+      readDocument(peer.state, 'sql', 'MySQL', undefined, options)
+    );
+    expect(sql).toMatch(
+      /^\nCREATE DATABASE IF NOT EXISTS shop;\nUSE shop;\n\nSET NAMES utf8mb4;\n/
+    );
+
+    const refused = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'json',
+      header: 'use',
+    });
+    expect(refused.isError).toBe(true);
+    expect(refused.json.error).toEqual({
+      code: 'invalidArgs',
+      message: 'statements and header apply to the sql format only, not json',
+    });
+    peer.destroy();
+    await mcp.close();
   });
 });
 

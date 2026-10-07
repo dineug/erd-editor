@@ -16,7 +16,15 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
   { name: 'erd_open_document', args: ['path', 'create'] },
   {
     name: 'erd_read',
-    args: ['path', 'format', 'vendor', 'tableIds', 'tableNames'],
+    args: [
+      'path',
+      'format',
+      'vendor',
+      'statements',
+      'header',
+      'tableIds',
+      'tableNames',
+    ],
   },
   {
     name: 'erd_list',
@@ -268,10 +276,50 @@ describe('the words on a Schema SQL script', () => {
     );
   });
 
+  it('say erd_read sql shows the script where it goes', () => {
+    expect(text).toContain(
+      'An empty string removes it. erd_read sql shows it in place. An ERD Editor'
+    );
+  });
+
   it('say an editor released before the scripts loses them, so the user updates it, naming no release', () => {
     expect(text).toContain(
       'An ERD Editor extension or plugin released before scripts neither shows nor keeps them, so the user should update it.'
     );
     expect(text).not.toMatch(/\d+\.\d+/);
+  });
+});
+
+describe('the words on how erd_read writes the DDL', () => {
+  it('say the whole document’s DDL carries its scripts', () => {
+    expect(describeTool('erd_read')).toContain(
+      "The sql format of the whole document includes the document's before and after scripts."
+    );
+  });
+
+  it('name each statements value, where IF NOT EXISTS is written and what recreate does', () => {
+    const text = describeArg('erd_read', 'statements');
+
+    expect(text).toMatch(
+      /^For the sql format: create \(default\), ifNotExists/
+    );
+    expect(text).toContain(
+      'CREATE TABLE IF NOT EXISTS on MySQL, MariaDB, PostgreSQL, SQLite and Databricks and falls back to create elsewhere'
+    );
+    expect(text).toContain('recreate, which drops the tables first');
+    expect(text).toContain('(Snowflake writes CREATE OR REPLACE TABLE)');
+  });
+
+  it('name each header value, the databases short of one and when none is written', () => {
+    const text = describeArg('erd_read', 'header');
+
+    expect(text).toMatch(/^For the sql format: none \(default\), use/);
+    expect(text).toContain('createAndUse, which creates it first');
+    expect(text).toContain(
+      'Oracle has use alone, PostgreSQL createAndUse alone and SQLite neither'
+    );
+    expect(text).toContain(
+      'no header is written while the database name is empty or not a plain identifier'
+    );
   });
 });

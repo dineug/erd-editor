@@ -4,6 +4,7 @@ import {
   DatabaseVendorList,
   DatabaseVendorToDatabase,
   type RootState,
+  type SchemaSQLOptions,
 } from '@dineug/erd-editor/peer.js';
 import { toJson } from '@dineug/erd-editor-schema';
 
@@ -87,13 +88,14 @@ const withSavedSettings = (state: RootState): RootState => ({
 /**
  * Serializes a document the way an agent asked to read it: the snapshot it
  * edits by, the DDL of a vendor, which defaults to the document's database,
- * or the file's own JSON. A peer reads its live state through it.
+ * written with the statements and header asked for, or the file's own JSON.
  */
 export function readDocument(
   state: RootState,
   format: ReadFormat,
   vendor?: string,
-  filter?: TableFilter
+  filter?: TableFilter,
+  options?: SchemaSQLOptions
 ): string {
   if (!READ_FORMATS.includes(format)) {
     throw refused(
@@ -102,6 +104,14 @@ export function readDocument(
   }
   if (vendor !== undefined && format !== 'sql') {
     throw refused(`vendor applies to the sql format only, not ${format}`);
+  }
+  if (
+    (options?.statements !== undefined || options?.header !== undefined) &&
+    format !== 'sql'
+  ) {
+    throw refused(
+      `statements and header apply to the sql format only, not ${format}`
+    );
   }
   const filtered =
     filter?.tableIds !== undefined || filter?.tableNames !== undefined
@@ -121,7 +131,8 @@ export function readDocument(
         : createSchemaSQL(
             withSavedSettings(state),
             vendor === undefined ? undefined : toDatabase(vendor),
-            filtered ? selectTables(state, filtered) : undefined
+            filtered ? selectTables(state, filtered) : undefined,
+            options
           );
   if (!fitsInRead(text)) {
     const size = `${text.length.toLocaleString('en-US')} characters, over the ${MAX_READ_CHARS.toLocaleString('en-US')} one read returns`;
@@ -150,10 +161,11 @@ export type DocumentReader = {
 export const documentReader = (
   format: ReadFormat,
   vendor?: string,
-  filter?: TableFilter
+  filter?: TableFilter,
+  options?: SchemaSQLOptions
 ): DocumentReader => ({
   tool: READ_TOOL,
-  render: state => readDocument(state, format, vendor, filter),
+  render: state => readDocument(state, format, vendor, filter, options),
 });
 
 /** erd_list: the settings, the counts and a page of tables, or the table names alone. */

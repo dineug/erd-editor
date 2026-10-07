@@ -21,10 +21,14 @@ import { defaultToWidth } from '@/engine/to-width';
 import * as peer from '@/peer';
 import { bHas } from '@/utils/bit';
 import { measureTableSize } from '@/utils/calcTable';
-import { createSchemaSQL } from '@/utils/schema-sql';
+import {
+  createSchemaSQL,
+  SchemaSQLHeaderList,
+  SchemaSQLStatementsList,
+} from '@/utils/schema-sql';
 
 describe('peer barrel (AC-B2)', () => {
-  it('exposes exactly the 46 values the headless peer needs', () => {
+  it('exposes exactly the 48 values the headless peer needs', () => {
     expect(Object.keys(peer).sort()).toEqual(
       [
         'createPeerStore',
@@ -69,13 +73,15 @@ describe('peer barrel (AC-B2)', () => {
         'MEMO_MIN_WIDTH',
         'MEMO_MIN_HEIGHT',
         'createSchemaSQL',
+        'SchemaSQLStatementsList',
+        'SchemaSQLHeaderList',
         'DatabaseVendorList',
         'DatabaseVendorToDatabase',
         'bHas',
         'measureTableSize',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(46);
+    expect(Object.keys(peer)).toHaveLength(48);
   });
 
   it('re-exports each name from the module that owns it', () => {
@@ -95,6 +101,8 @@ describe('peer barrel (AC-B2)', () => {
     expect(peer.Show).toBe(Show);
     expect(peer.MEMO_MIN_HEIGHT).toBe(MEMO_MIN_HEIGHT);
     expect(peer.createSchemaSQL).toBe(createSchemaSQL);
+    expect(peer.SchemaSQLStatementsList).toBe(SchemaSQLStatementsList);
+    expect(peer.SchemaSQLHeaderList).toBe(SchemaSQLHeaderList);
     expect(peer.DatabaseVendorList).toBe(DatabaseVendorList);
     expect(peer.bHas).toBe(bHas);
     expect(peer.measureTableSize).toBe(measureTableSize);
