@@ -10,8 +10,10 @@ import { RootState } from '@/engine/state';
 import { Relationship } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoName,
+  CreateSchemaOptions,
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
@@ -41,7 +43,10 @@ const toBracket = (bracketType: number) =>
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { statements, written }: CreateSchemaOptions = {
+    statements: SchemaSQLStatements.create,
+  }
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -49,17 +54,18 @@ export function createSchema(
   const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
-    formatTable(state, { table, buffer: stringBuffer });
+    written?.tables.push(table);
+    formatTable(state, { table, buffer: stringBuffer, statements });
     stringBuffer.push('');
   });
 
   relationships.forEach(relationship => {
-    const written = formatRelation(state, {
+    const wrote = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
     });
-    if (written) stringBuffer.push('');
+    if (wrote) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -76,7 +82,7 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const {
     collections,
@@ -86,8 +92,13 @@ export function formatTable(
   const columns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
+  // Snowflake replaces a table in one statement, so recreate needs no DROP.
+  const create =
+    statements === SchemaSQLStatements.recreate
+      ? 'CREATE OR REPLACE TABLE'
+      : 'CREATE TABLE';
 
-  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
+  buffer.push(`${create} ${bracket}${table.name}${bracket}`);
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -300,4 +311,24 @@ export function formatIndex(
       bracket
     )});`
   );
+}
+
+/** USE SCHEMA, after CREATE SCHEMA IF NOT EXISTS for createAndUse. */
+export function formatHeader(
+  { settings: { bracketType } }: RootState,
+  header: Exclude<SchemaSQLHeader, 'none'>,
+  name: string
+): string {
+  const bracket = toBracket(bracketType);
+  const schema = `${bracket}${name}${bracket}`;
+  const use = `USE SCHEMA ${schema};`;
+
+  return header === SchemaSQLHeader.createAndUse
+    ? `CREATE SCHEMA IF NOT EXISTS ${schema};\n${use}`
+    : use;
+}
+
+/** Nothing: recreate writes CREATE OR REPLACE TABLE instead. */
+export function formatDropBlock(): string {
+  return '';
 }

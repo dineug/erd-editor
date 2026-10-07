@@ -25,6 +25,8 @@ import {
 } from '@/utils/schema-sql/index';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/Snowflake';
@@ -623,5 +625,30 @@ describe('Snowflake referential actions', () => {
 
     expect(sql).not.toContain('-- Snowflake creates no foreign key');
     expect(sql).toContain('    REFERENCES member (id);\n');
+  });
+});
+
+describe('Snowflake options', () => {
+  it('replaces each table in its CREATE under recreate, with no DROP block', () => {
+    const state = createSampleState();
+
+    const sql = createSchemaSQL(state, Database.Snowflake, undefined, {
+      statements: 'recreate',
+    });
+
+    expect(sql.match(/^CREATE OR REPLACE TABLE /gm)).toHaveLength(2);
+    expect(sql).not.toMatch(/^CREATE TABLE /m);
+    expect(sql).not.toContain('DROP');
+    expect(formatDropBlock()).toBe('');
+  });
+
+  it('writes USE SCHEMA, after CREATE SCHEMA for createAndUse, quoted as the tables are', () => {
+    const state = createSampleState();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe('USE SCHEMA shop;');
+    state.settings.bracketType = BracketType.backtick;
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      'CREATE SCHEMA IF NOT EXISTS "shop";\nUSE SCHEMA "shop";'
+    );
   });
 });

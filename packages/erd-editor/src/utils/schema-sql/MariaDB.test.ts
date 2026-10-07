@@ -11,11 +11,17 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/MariaDB';
-import { createSchema as createSchemaMySQL } from '@/utils/schema-sql/MySQL';
-import { Name } from '@/utils/schema-sql/utils';
+import {
+  createSchema as createSchemaMySQL,
+  formatDropBlock as formatDropBlockMySQL,
+  formatHeader as formatHeaderMySQL,
+} from '@/utils/schema-sql/MySQL';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createFixture() {
   const state = {
@@ -527,5 +533,79 @@ describe('schema-sql/MariaDB dotted table names', () => {
     expect(sql).toContain('  ADD CONSTRAINT `UQ_sales.users_name` UNIQUE');
     expect(sql).toContain('  ADD CONSTRAINT `FK_sales.users_TO_sales.posts`');
     expect(sql).toContain('CREATE INDEX `IDX_sales.posts`\n  ON `sales.posts`');
+  });
+});
+
+describe('schema-sql/MariaDB ifNotExists', () => {
+  it('writes IF NOT EXISTS on the table, the unique constraint, the foreign key and the index', () => {
+    const { state, index } = createFixture();
+    state.settings.bracketType = BracketType.backtick;
+    index.unique = true;
+    const written = createWrittenObjects();
+
+    expect(
+      createSchema(state, undefined, {
+        statements: 'ifNotExists',
+        written,
+      }).split('\n')
+    ).toEqual([
+      '',
+      'CREATE TABLE IF NOT EXISTS `posts`',
+      '(',
+      '  `title`   VARCHAR(20) NOT NULL,',
+      '  `user_id` INT         NULL    ',
+      ');',
+      '',
+      'CREATE TABLE IF NOT EXISTS `users`',
+      '(',
+      '  `id`   INT         NOT NULL AUTO_INCREMENT,',
+      "  `name` VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',",
+      '  `age`  INT         NULL    ,',
+      '  PRIMARY KEY (`id`)',
+      ") COMMENT 'user table';",
+      '',
+      'ALTER TABLE `users`',
+      '  ADD CONSTRAINT `UQ_users_name` UNIQUE IF NOT EXISTS (`name`);',
+      '',
+      'ALTER TABLE `posts`',
+      '  ADD CONSTRAINT `FK_users_TO_posts`',
+      '    FOREIGN KEY IF NOT EXISTS (`user_id`)',
+      '    REFERENCES `users` (`id`);',
+      '',
+      'CREATE UNIQUE INDEX IF NOT EXISTS `IDX_posts`',
+      '  ON `posts` (`title` ASC);',
+      '',
+    ]);
+    expect(written.tables.map(table => table.name)).toEqual(['posts', 'users']);
+  });
+
+  it('writes what MySQL writes under create and recreate, but not under ifNotExists', () => {
+    const { state } = createFixture();
+
+    (['create', 'recreate'] as const).forEach(statements => {
+      expect(createSchema(state, undefined, { statements })).toBe(
+        createSchemaMySQL(state, undefined, { statements })
+      );
+    });
+    expect(
+      createSchema(state, undefined, { statements: 'ifNotExists' })
+    ).not.toBe(
+      createSchemaMySQL(state, undefined, { statements: 'ifNotExists' })
+    );
+  });
+
+  it('writes the header and the drop block MySQL writes', () => {
+    const { state, users } = createFixture();
+    const written = createWrittenObjects();
+    written.tables.push(users);
+
+    expect(formatHeader).toBe(formatHeaderMySQL);
+    expect(formatDropBlock).toBe(formatDropBlockMySQL);
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      'CREATE DATABASE IF NOT EXISTS shop;\nUSE shop;'
+    );
+    expect(formatDropBlock(state, written)).toContain(
+      '\n\nDROP TABLE IF EXISTS users;\n\n'
+    );
   });
 });

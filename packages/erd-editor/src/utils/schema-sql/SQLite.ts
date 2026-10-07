@@ -5,8 +5,10 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLStatements } from './options';
 import {
   autoNameIgnoreCase,
+  CreateSchemaOptions,
   FormatColumnOptions,
   formatDefault,
   FormatIndexOptions,
@@ -16,6 +18,7 @@ import {
   formatSpace,
   FormatTableOptions,
   getBracket,
+  ifNotExists,
   Name,
   primaryKey,
   primaryKeyColumns,
@@ -25,20 +28,25 @@ import {
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,
+  WrittenObjects,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { statements, written }: CreateSchemaOptions = {
+    statements: SchemaSQLStatements.create,
+  }
 ): string {
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
   const { tables, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
-    formatTable(state, { table, buffer: stringBuffer });
+    written?.tables.push(table);
+    formatTable(state, { table, buffer: stringBuffer, statements });
     stringBuffer.push('');
   });
 
@@ -47,6 +55,7 @@ export function createSchema(
       index,
       buffer: stringBuffer,
       indexNames,
+      statements,
     });
     stringBuffer.push('');
   });
@@ -66,7 +75,7 @@ export function isIntegerFamily(dataType: string): boolean {
 
 export function formatTable(
   state: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const {
     settings: { bracketType },
@@ -110,7 +119,9 @@ export function formatTable(
   if (table.comment.trim() !== '') {
     buffer.push(`-- ${table.comment}`);
   }
-  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
+  buffer.push(
+    `CREATE TABLE${ifNotExists(statements)} ${bracket}${table.name}${bracket}`
+  );
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -199,7 +210,7 @@ function formatColumn(
 
 export function formatIndex(
   { settings: { bracketType }, collections }: RootState,
-  { buffer, index, indexNames }: FormatIndexOptions
+  { buffer, index, indexNames, statements }: FormatIndexOptions
 ) {
   const bracket = getBracket(bracketType);
   const table = query(collections)
@@ -242,13 +253,35 @@ export function formatIndex(
       schema === '' || indexName.includes('.') ? '' : `${schema}.`;
     const indexRef = `${indexSchema}${bracket}${indexName}${bracket}`;
 
-    if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${indexRef}`);
-    } else {
-      buffer.push(`CREATE INDEX ${indexRef}`);
-    }
+    buffer.push(
+      `CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX${ifNotExists(statements)} ${indexRef}`
+    );
     buffer.push(
       `  ON ${bracket}${tableName}${bracket} (${formatNames(columnNames)});`
     );
   }
+}
+
+/** SQLite has no database or schema to create or select in a script. */
+export function formatHeader(): string {
+  return '';
+}
+
+/**
+ * Foreign key enforcement off, which stays off for the connection, and then
+ * each table written dropped, so the order does not matter.
+ */
+export function formatDropBlock(
+  { settings: { bracketType } }: RootState,
+  { tables }: WrittenObjects
+): string {
+  if (tables.length === 0) return '';
+
+  const bracket = getBracket(bracketType);
+  return [
+    'PRAGMA foreign_keys=OFF;',
+    tables
+      .map(({ name }) => `DROP TABLE IF EXISTS ${bracket}${name}${bracket};`)
+      .join('\n'),
+  ].join('\n\n');
 }

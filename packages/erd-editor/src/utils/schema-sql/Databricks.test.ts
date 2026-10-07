@@ -21,6 +21,8 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/Databricks';
@@ -28,7 +30,7 @@ import {
   createSchemaSQL,
   createSchemaSQLTable,
 } from '@/utils/schema-sql/index';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createFixture() {
   const state = {
@@ -703,6 +705,50 @@ describe('Databricks identity types', () => {
         '-- Databricks takes IDENTITY only on BIGINT, so `member`.`email` is written without it.',
         '',
       ].join('\n')
+    );
+  });
+});
+
+describe('Databricks options', () => {
+  it('drops each foreign key right above adding it back under ifNotExists', () => {
+    const sql = createSchemaSQL(
+      createSampleState(),
+      Database.Databricks,
+      undefined,
+      {
+        statements: 'ifNotExists',
+      }
+    );
+
+    expect(sql).toContain('\nCREATE TABLE IF NOT EXISTS `member`\n');
+    expect(sql).toContain(
+      [
+        '',
+        'ALTER TABLE `post` DROP CONSTRAINT IF EXISTS `FK_member_TO_post`;',
+        'ALTER TABLE `post`',
+        '  ADD CONSTRAINT `FK_member_TO_post`',
+      ].join('\n')
+    );
+  });
+
+  it('drops each table written', () => {
+    const state = createSampleState();
+    const written = createWrittenObjects();
+
+    expect(formatDropBlock(state, written)).toBe('');
+    createSchema(state, undefined, { statements: 'recreate', written });
+    expect(formatDropBlock(state, written)).toBe(
+      'DROP TABLE IF EXISTS `member`;\nDROP TABLE IF EXISTS `post`;'
+    );
+  });
+
+  it('writes the header in backticks whatever the bracket type', () => {
+    const state = createSampleState();
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    expect(formatHeader(state, 'use', 'shop')).toBe('USE SCHEMA `shop`;');
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      'CREATE SCHEMA IF NOT EXISTS `shop`;\nUSE SCHEMA `shop`;'
     );
   });
 });

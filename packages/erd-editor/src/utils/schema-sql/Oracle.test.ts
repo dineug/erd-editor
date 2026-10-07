@@ -21,10 +21,13 @@ import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
+  oracleLongNames,
 } from '@/utils/schema-sql/Oracle';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createState(): RootState {
   return {
@@ -184,6 +187,7 @@ function addHrUsers(
 }
 
 interface SampleVariant {
+  memberName?: string;
   memberIdType?: string;
   postIdType?: string;
   postMemberIdType?: string;
@@ -191,8 +195,9 @@ interface SampleVariant {
 }
 
 // The two-table sample every options fixture was written from; a variant
-// changes the key types or the delete action.
+// changes the member table name, the key types or the delete action.
 function createSampleState({
+  memberName = 'member',
   memberIdType = 'INT',
   postIdType = 'INT',
   postMemberIdType = 'INT',
@@ -247,7 +252,7 @@ function createSampleState({
   state.collections.tableEntities = {
     tm: createTable({
       id: 'tm',
-      name: 'member',
+      name: memberName,
       comment: 'Members',
       columnIds: ['m1', 'm2'],
     }),
@@ -922,5 +927,131 @@ describe('Oracle phase 0', () => {
     expect(createSchemaSQL(createSampleState(), Database.Oracle)).toBe(
       readFixture('Oracle/phase0-create-none.sql')
     );
+  });
+});
+
+describe('Oracle names past 30 bytes', () => {
+  it('lists every name over 30 bytes once, in the order written', () => {
+    const state = createSampleState({
+      memberName: 'member_notification_settings',
+    });
+    const { over30Bytes } = JSON.parse(
+      readFixture('Oracle/d14-2-long-names.json')
+    );
+
+    expect(oracleLongNames(state)).toEqual(over30Bytes);
+    expect(oracleLongNames(createSampleState())).toEqual([]);
+  });
+
+  it('counts UTF-8 bytes, 30 of them still taken', () => {
+    // 27 bytes in 11 characters, so the 30-byte PK name stays off the list.
+    const state = createSampleState({ memberName: '회원_알림_설정_목록' });
+
+    expect(oracleLongNames(state)).toEqual([
+      'UQ_회원_알림_설정_목록_email',
+      'SEQ_회원_알림_설정_목록',
+      'SEQ_TRG_회원_알림_설정_목록',
+      'FK_회원_알림_설정_목록_TO_post',
+    ]);
+  });
+
+  it('collects the names without changing a byte of the script', () => {
+    const { state, users, posts, postsIndex } = createFixture();
+    users.name = 'sales.users';
+    posts.name = '"sales"."posts"';
+    postsIndex.name = 'hr.idx_posts_user';
+    const written = createWrittenObjects();
+
+    const sql = createSchema(state, undefined, {
+      statements: 'create',
+      written,
+    });
+
+    expect(sql).toBe(createSchema(state));
+    expect(written.identifiers).toEqual([
+      'sales',
+      'posts',
+      'id',
+      'user_id',
+      'PK_posts',
+      'sales',
+      'users',
+      'id',
+      'email',
+      'name',
+      'PK_users',
+      'UQ_users_email',
+      'SEQ_users',
+      'SEQ_TRG_users',
+      'FK_users_TO_posts',
+      'idx_posts_user',
+      'IDX_EMAIL',
+    ]);
+    expect(written.sequences).toEqual(['sales.SEQ_users']);
+  });
+});
+
+describe('Oracle header and drop block', () => {
+  it('writes ALTER SESSION SET CURRENT_SCHEMA for use alone', () => {
+    const state = createState();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe(
+      'ALTER SESSION SET CURRENT_SCHEMA = shop;'
+    );
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe('');
+    state.settings.bracketType = BracketType.doubleQuote;
+    expect(formatHeader(state, 'use', 'shop')).toBe(
+      'ALTER SESSION SET CURRENT_SCHEMA = "shop";'
+    );
+  });
+
+  it('drops each table, then each sequence with its owner, passing over what is not there', () => {
+    const { state, users } = createFixture();
+    users.name = 'sales.users';
+    const written = createWrittenObjects();
+    createSchema(state, undefined, { statements: 'recreate', written });
+
+    expect(formatDropBlock(state, written)).toBe(
+      [
+        'BEGIN',
+        "  EXECUTE IMMEDIATE 'DROP TABLE posts CASCADE CONSTRAINTS';",
+        'EXCEPTION WHEN OTHERS THEN',
+        '  IF SQLCODE != -942 THEN RAISE; END IF;',
+        'END;',
+        '/',
+        '',
+        'BEGIN',
+        "  EXECUTE IMMEDIATE 'DROP TABLE sales.users CASCADE CONSTRAINTS';",
+        'EXCEPTION WHEN OTHERS THEN',
+        '  IF SQLCODE != -942 THEN RAISE; END IF;',
+        'END;',
+        '/',
+        '',
+        'BEGIN',
+        "  EXECUTE IMMEDIATE 'DROP SEQUENCE sales.SEQ_users';",
+        'EXCEPTION WHEN OTHERS THEN',
+        '  IF SQLCODE != -2289 THEN RAISE; END IF;',
+        'END;',
+        '/',
+      ].join('\n')
+    );
+  });
+
+  it('quotes a table as its CREATE does and doubles a quote in the statement', () => {
+    const { state, users } = createFixture();
+    users.name = "o'users";
+    state.settings.bracketType = BracketType.doubleQuote;
+    const written = createWrittenObjects();
+    createSchema(state, undefined, { statements: 'recreate', written });
+
+    const block = formatDropBlock(state, written);
+
+    expect(block).toContain(
+      `  EXECUTE IMMEDIATE 'DROP TABLE "o''users" CASCADE CONSTRAINTS';`
+    );
+    expect(block).toContain(
+      `  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_o''users';`
+    );
+    expect(formatDropBlock(state, createWrittenObjects())).toBe('');
   });
 });

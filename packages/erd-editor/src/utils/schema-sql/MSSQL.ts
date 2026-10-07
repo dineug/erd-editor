@@ -5,8 +5,10 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoNameIgnoreCase,
+  CreateSchemaOptions,
   FormatColumnOptions,
   FormatCommentOptions,
   FormatIndexOptions,
@@ -31,6 +33,7 @@ import {
   unique,
   uniqueColumns,
   unquoteNamePart,
+  WrittenObjects,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.MSSQL);
@@ -41,7 +44,8 @@ const DEFAULT_SCHEMA = 'dbo';
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { written }: CreateSchemaOptions = { statements: SchemaSQLStatements.create }
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -49,6 +53,7 @@ export function createSchema(
   const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
+    written?.tables.push(table);
     formatTable(state, { table, buffer: stringBuffer });
     stringBuffer.push('');
 
@@ -58,12 +63,13 @@ export function createSchema(
   });
 
   relationships.forEach(relationship => {
-    const written = formatRelation(state, {
+    const wrote = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
+      written,
     });
-    if (written) stringBuffer.push('');
+    if (wrote) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -239,7 +245,7 @@ function formatComment(
 
 function formatRelation(
   state: RootState,
-  { buffer, relationship, fkNames }: FormatRelationOptions
+  { buffer, relationship, fkNames, written }: FormatRelationOptions
 ): boolean {
   const {
     settings: { bracketType },
@@ -259,6 +265,7 @@ function formatRelation(
     id: uuid25(),
     name: fkName,
   });
+  written?.foreignKeys.push({ table: endTable, name: fkName });
 
   buffer.push(`  ADD CONSTRAINT ${bracket}${fkName}${bracket}`);
 
@@ -324,4 +331,59 @@ export function formatIndex(
       `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)})\nGO`
     );
   }
+}
+
+/**
+ * USE for use; for createAndUse, CREATE DATABASE first where DB_ID finds none.
+ * Each ends its batch with GO.
+ */
+export function formatHeader(
+  { settings: { bracketType } }: RootState,
+  header: Exclude<SchemaSQLHeader, 'none'>,
+  name: string
+): string {
+  const bracket = getBracket(bracketType);
+  const database = `${bracket}${name}${bracket}`;
+  const use = `USE ${database}\nGO`;
+
+  return header === SchemaSQLHeader.createAndUse
+    ? `IF DB_ID(N${toStringLiteral(name)}) IS NULL\n  CREATE DATABASE ${database}\nGO\n\n${use}`
+    : use;
+}
+
+/**
+ * One transaction that drops the foreign keys the tables written hold, then the
+ * tables, rolled back whole on an error; DROP ... IF EXISTS needs SQL Server
+ * 2016 or later.
+ */
+export function formatDropBlock(
+  { settings: { bracketType } }: RootState,
+  { tables, foreignKeys }: WrittenObjects
+): string {
+  if (tables.length === 0) return '';
+
+  const bracket = getBracket(bracketType);
+  const quote = (name: string) => `${bracket}${name}${bracket}`;
+  const lines = ['BEGIN TRY', '  BEGIN TRANSACTION', ''];
+
+  foreignKeys.forEach(({ table, name }) => {
+    lines.push(
+      `  IF OBJECT_ID(N${toStringLiteral(quote(table.name))}, N'U') IS NOT NULL`,
+      `    ALTER TABLE ${quote(table.name)} DROP CONSTRAINT IF EXISTS ${quote(name)}`,
+      ''
+    );
+  });
+  lines.push(
+    `  DROP TABLE IF EXISTS ${tables.map(({ name }) => quote(name)).join(', ')}`,
+    '',
+    '  COMMIT TRANSACTION',
+    'END TRY',
+    'BEGIN CATCH',
+    '  IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;',
+    '  THROW;',
+    'END CATCH',
+    'GO'
+  );
+
+  return lines.join('\n');
 }

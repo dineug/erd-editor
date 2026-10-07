@@ -21,10 +21,12 @@ import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/PostgreSQL';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createState(): RootState {
   return {
@@ -739,6 +741,94 @@ describe('PostgreSQL identity types', () => {
         '-- PostgreSQL takes IDENTITY only on smallint, integer or bigint, so "member"."email" is written without it.',
         '',
       ].join('\n')
+    );
+  });
+});
+
+describe('PostgreSQL options', () => {
+  it('drops each foreign key right above adding it back under ifNotExists', () => {
+    const state = createSampleState();
+    state.settings.bracketType = BracketType.doubleQuote;
+    state.collections.indexEntities.ix.unique = true;
+
+    const sql = createSchemaSQL(state, Database.PostgreSQL, undefined, {
+      statements: 'ifNotExists',
+    });
+
+    expect(sql).toContain('\nCREATE TABLE IF NOT EXISTS "member"\n');
+    expect(sql).toContain(
+      [
+        '',
+        'ALTER TABLE "post" DROP CONSTRAINT IF EXISTS "FK_member_TO_post";',
+        'ALTER TABLE "post"',
+        '  ADD CONSTRAINT "FK_member_TO_post"',
+      ].join('\n')
+    );
+    expect(sql).toContain(
+      '\nCREATE UNIQUE INDEX IF NOT EXISTS "idx_post_title"\n'
+    );
+  });
+
+  it('matches the UUID key fixture under the editor defaults', () => {
+    const state = createSampleState({
+      memberIdType: 'UUID',
+      postMemberIdType: 'UUID',
+    });
+    state.settings.databaseName = 'shop';
+
+    expect(
+      createSchemaSQL(state, Database.PostgreSQL, undefined, {
+        statements: 'ifNotExists',
+        header: 'createAndUse',
+      })
+    ).toBe(
+      readFixture('PostgreSQL/d14-1-uuid-pk-ifNotExists-createAndUse.sql')
+    );
+  });
+
+  it('writes the createAndUse header alone, quoted as the tables are', () => {
+    const state = createState();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe('');
+    state.settings.bracketType = BracketType.doubleQuote;
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      'CREATE SCHEMA IF NOT EXISTS "shop";\nSET search_path TO "shop", public;'
+    );
+  });
+
+  it('names a table without a schema of its own in the header schema', () => {
+    const { state, users, posts } = createFixture();
+    users.name = 'sales.users';
+    const written = createWrittenObjects();
+    written.tables.push(users, posts);
+
+    expect(formatDropBlock(state, written, 'createAndUse', 'shop')).toBe(
+      'DROP TABLE IF EXISTS sales.users, shop.posts;'
+    );
+    expect(formatDropBlock(state, written, 'none', 'shop')).toBe(
+      'DROP TABLE IF EXISTS sales.users, posts;'
+    );
+    state.settings.bracketType = BracketType.doubleQuote;
+    expect(formatDropBlock(state, written, 'createAndUse', 'shop')).toBe(
+      'DROP TABLE IF EXISTS "shop"."sales.users", "shop"."posts";'
+    );
+    expect(formatDropBlock(state, createWrittenObjects(), 'none', 'shop')).toBe(
+      ''
+    );
+  });
+
+  it('writes the header and the schema on the DROP for recreate', () => {
+    const state = createSampleState();
+    state.settings.databaseName = 'shop';
+    state.settings.bracketType = BracketType.doubleQuote;
+
+    expect(
+      createSchemaSQL(state, Database.PostgreSQL, undefined, {
+        statements: 'recreate',
+        header: 'createAndUse',
+      })
+    ).toMatch(
+      /^\nCREATE SCHEMA IF NOT EXISTS "shop";\nSET search_path TO "shop", public;\n\nDROP TABLE IF EXISTS "shop"."member", "shop"."post";\n\nCREATE TABLE "member"\n/
     );
   });
 });

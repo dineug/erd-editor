@@ -102,11 +102,24 @@ describe('schema-sql/index', () => {
       expect(createSchemaSQL(state)).toContain('GENERATED ALWAYS AS IDENTITY');
     });
 
-    it('generates MariaDB output identical to MySQL output', () => {
+    it('generates MariaDB output identical to MySQL output but under ifNotExists', () => {
       const { state } = createFixture();
 
-      expect(createSchemaSQL(state, Database.MariaDB)).toBe(
-        createSchemaSQL(state, Database.MySQL)
+      (['create', 'recreate'] as const).forEach(statements => {
+        expect(
+          createSchemaSQL(state, Database.MariaDB, undefined, { statements })
+        ).toBe(
+          createSchemaSQL(state, Database.MySQL, undefined, { statements })
+        );
+      });
+      expect(
+        createSchemaSQL(state, Database.MariaDB, undefined, {
+          statements: 'ifNotExists',
+        })
+      ).not.toBe(
+        createSchemaSQL(state, Database.MySQL, undefined, {
+          statements: 'ifNotExists',
+        })
       );
     });
 

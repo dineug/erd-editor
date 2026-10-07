@@ -12,9 +12,36 @@ import { RootState } from '@/engine/state';
 import { Column, Index, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLStatements } from './options';
+
+/** What a script's DROP block and the Oracle name check read off the body just written. */
+export interface WrittenObjects {
+  /** The tables in the order their CREATE TABLE is written. */
+  tables: Table[];
+  /** Oracle: each sequence name as written, its owner included. */
+  sequences: string[];
+  /** SQL Server: each foreign key, unquoted, and the table holding it. */
+  foreignKeys: Array<{ table: Table; name: string }>;
+  /** Oracle: each identifier written, unquoted, in the order written. */
+  identifiers: string[];
+}
+
+export function createWrittenObjects(): WrittenObjects {
+  return { tables: [], sequences: [], foreignKeys: [], identifiers: [] };
+}
+
+export interface CreateSchemaOptions {
+  /** Already what the database writes (resolveSchemaSQLOptions). */
+  statements: SchemaSQLStatements;
+  written?: WrittenObjects;
+}
+
 export interface FormatTableOptions {
   buffer: string[];
   table: Table;
+  /** create when left out. */
+  statements?: SchemaSQLStatements;
+  written?: WrittenObjects;
 }
 
 export interface FormatColumnOptions {
@@ -28,12 +55,18 @@ export interface FormatRelationOptions {
   buffer: string[];
   relationship: Relationship;
   fkNames: Name[];
+  /** create when left out. */
+  statements?: SchemaSQLStatements;
+  written?: WrittenObjects;
 }
 
 export interface FormatIndexOptions {
   buffer: string[];
   index: Index;
   indexNames: Name[];
+  /** create when left out. */
+  statements?: SchemaSQLStatements;
+  written?: WrittenObjects;
 }
 
 export interface FormatCommentOptions {
@@ -223,6 +256,14 @@ export function uniqueColumns(columns: Column[]): Column[] {
 
 export function getBracket(bracketType: number) {
   return BracketTypeMap[bracketType] ?? '';
+}
+
+/**
+ * The words a CREATE TABLE or CREATE INDEX writes after its object type, and
+ * MariaDB after UNIQUE and FOREIGN KEY, under ifNotExists; nothing otherwise.
+ */
+export function ifNotExists(statements?: SchemaSQLStatements): string {
+  return statements === SchemaSQLStatements.ifNotExists ? ' IF NOT EXISTS' : '';
 }
 
 // A part of an unquoted name: bracketed or double-quoted runs, whose dots and

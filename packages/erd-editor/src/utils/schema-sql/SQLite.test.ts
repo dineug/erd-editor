@@ -21,11 +21,13 @@ import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
   isIntegerFamily,
 } from '@/utils/schema-sql/SQLite';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createState(): RootState {
   return {
@@ -935,5 +937,43 @@ describe('SQLite phase 0', () => {
     expect(sql).toContain('  id    INT          NOT NULL,\n');
     expect(sql).toContain('  PRIMARY KEY (id, email)\n');
     expect(sql).not.toContain('-- SQLite takes AUTOINCREMENT');
+  });
+});
+
+describe('SQLite options', () => {
+  it('writes IF NOT EXISTS on the table, under its comment, and on a unique index', () => {
+    const state = createSampleState();
+    state.collections.tableEntities.tp.comment = 'Posts';
+    state.collections.indexEntities.ix.unique = true;
+
+    const sql = createSchemaSQL(state, Database.SQLite, undefined, {
+      statements: 'ifNotExists',
+    });
+
+    expect(sql).toContain('\n-- Posts\nCREATE TABLE IF NOT EXISTS post\n');
+    expect(sql).toContain(
+      '\nCREATE UNIQUE INDEX IF NOT EXISTS idx_post_title\n  ON post (title ASC);\n'
+    );
+  });
+
+  it('writes no header', () => {
+    expect(formatHeader()).toBe('');
+  });
+
+  it('turns foreign keys off and drops each table written, quoted as its CREATE is', () => {
+    const state = createSampleState();
+    state.settings.bracketType = BracketType.doubleQuote;
+    const written = createWrittenObjects();
+
+    expect(formatDropBlock(state, written)).toBe('');
+    createSchema(state, undefined, { statements: 'recreate', written });
+    expect(formatDropBlock(state, written)).toBe(
+      [
+        'PRAGMA foreign_keys=OFF;',
+        '',
+        'DROP TABLE IF EXISTS "member";',
+        'DROP TABLE IF EXISTS "post";',
+      ].join('\n')
+    );
   });
 });

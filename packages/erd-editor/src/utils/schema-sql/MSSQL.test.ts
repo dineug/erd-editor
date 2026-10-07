@@ -1,19 +1,27 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { BracketType, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketType,
+  ColumnOption,
+  Database,
+  OrderType,
+} from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/MSSQL';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createState(): RootState {
   return {
@@ -835,5 +843,127 @@ describe('MSSQL formatIndex', () => {
     formatIndex(state, { index: postsIndex, buffer, indexNames: [] });
 
     expect(buffer[1]).toBe('  ON posts (user_id )\nGO');
+  });
+});
+
+describe('MSSQL drop block', () => {
+  function written(fixture: ReturnType<typeof createFixture>) {
+    const objects = createWrittenObjects();
+    createSchema(fixture.state, undefined, {
+      statements: 'recreate',
+      written: objects,
+    });
+    return objects;
+  }
+
+  it('drops the tables alone in a document without foreign keys', () => {
+    const fixture = createFixture();
+    fixture.state.doc.relationshipIds = [];
+
+    expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+      [
+        'BEGIN TRY',
+        '  BEGIN TRANSACTION',
+        '',
+        '  DROP TABLE IF EXISTS posts, users',
+        '',
+        '  COMMIT TRANSACTION',
+        'END TRY',
+        'BEGIN CATCH',
+        '  IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;',
+        '  THROW;',
+        'END CATCH',
+        'GO',
+      ].join('\n')
+    );
+  });
+
+  it('drops each foreign key the tables hold first, a blank line after each', () => {
+    const fixture = createFixture();
+    addHrUsers(fixture, {
+      name: 'hr.users',
+      columnIds: [fixture.userId.id],
+      indexColumnId: 'ic-1',
+    });
+
+    expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+      [
+        'BEGIN TRY',
+        '  BEGIN TRANSACTION',
+        '',
+        "  IF OBJECT_ID(N'posts', N'U') IS NOT NULL",
+        '    ALTER TABLE posts DROP CONSTRAINT IF EXISTS FK_users_TO_posts',
+        '',
+        "  IF OBJECT_ID(N'posts', N'U') IS NOT NULL",
+        '    ALTER TABLE posts DROP CONSTRAINT IF EXISTS FK_users_TO_posts1',
+        '',
+        '  DROP TABLE IF EXISTS hr.users, posts, users',
+        '',
+        '  COMMIT TRANSACTION',
+        'END TRY',
+        'BEGIN CATCH',
+        '  IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;',
+        '  THROW;',
+        'END CATCH',
+        'GO',
+      ].join('\n')
+    );
+  });
+
+  it('quotes the names as the tables are and doubles a quote in the OBJECT_ID literal', () => {
+    const fixture = createFixture();
+    fixture.posts.name = "o'posts";
+    fixture.state.settings.bracketType = BracketType.doubleQuote;
+
+    const block = formatDropBlock(fixture.state, written(fixture));
+
+    expect(block).toContain(
+      [
+        `  IF OBJECT_ID(N'"o''posts"', N'U') IS NOT NULL`,
+        `    ALTER TABLE "o'posts" DROP CONSTRAINT IF EXISTS "FK_users_TO_o'posts"`,
+      ].join('\n')
+    );
+    expect(block).toContain(`  DROP TABLE IF EXISTS "o'posts", "users"\n`);
+  });
+
+  it('writes nothing without tables', () => {
+    expect(formatDropBlock(createState(), createWrittenObjects())).toBe('');
+  });
+});
+
+describe('MSSQL header', () => {
+  it('writes USE for use and CREATE DATABASE where DB_ID finds none first for createAndUse', () => {
+    const state = createState();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe('USE shop\nGO');
+    state.settings.bracketType = BracketType.doubleQuote;
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      [
+        "IF DB_ID(N'shop') IS NULL",
+        '  CREATE DATABASE "shop"',
+        'GO',
+        '',
+        'USE "shop"',
+        'GO',
+      ].join('\n')
+    );
+  });
+
+  it('ends a script with GO unless its last line is GO already', () => {
+    const { state } = createFixture();
+    state.settings.databaseName = 'shop';
+    state.settings.ddlScripts = {
+      before: 'CREATE SCHEMA app\r\n',
+      after: 'EXEC a\ngo 2\n',
+    };
+
+    const sql = createSchemaSQL(state, Database.MSSQL, undefined, {
+      header: 'use',
+    });
+
+    expect(sql).toMatch(
+      /^\nUSE shop\nGO\n\nCREATE SCHEMA app\nGO\n\nCREATE TABLE posts\n/
+    );
+    expect(sql).toMatch(/\nGO\n\nEXEC a\ngo 2\n$/);
   });
 });

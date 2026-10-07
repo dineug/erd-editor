@@ -6,8 +6,10 @@ import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoName,
+  CreateSchemaOptions,
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
@@ -16,6 +18,7 @@ import {
   formatSize,
   formatSpace,
   FormatTableOptions,
+  ifNotExists,
   Name,
   primaryKey,
   primaryKeyColumns,
@@ -24,6 +27,7 @@ import {
   toOrderName,
   toSchemaEntities,
   uniqueColumns,
+  WrittenObjects,
 } from './utils';
 
 // Databricks SQL quotes identifiers with backticks only -- "x" and 'x' are
@@ -54,7 +58,10 @@ function takesIdentity(column: Column): boolean {
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { statements, written }: CreateSchemaOptions = {
+    statements: SchemaSQLStatements.create,
+  }
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -62,19 +69,21 @@ export function createSchema(
   const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
-    formatTable(state, { table, buffer: stringBuffer });
+    written?.tables.push(table);
+    formatTable(state, { table, buffer: stringBuffer, statements });
     stringBuffer.push('');
 
     formatUnique(state, { table, buffer: stringBuffer });
   });
 
   relationships.forEach(relationship => {
-    const written = formatRelation(state, {
+    const wrote = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
+      statements,
     });
-    if (written) stringBuffer.push('');
+    if (wrote) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -91,14 +100,16 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const { collections } = state;
   const columns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  buffer.push(`CREATE TABLE ${BRACKET}${table.name}${BRACKET}`);
+  buffer.push(
+    `CREATE TABLE${ifNotExists(statements)} ${BRACKET}${table.name}${BRACKET}`
+  );
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -205,20 +216,27 @@ function formatColumn(
 
 function formatRelation(
   state: RootState,
-  { buffer, relationship, fkNames }: FormatRelationOptions
+  { buffer, relationship, fkNames, statements }: FormatRelationOptions
 ): boolean {
   const columns = toForeignKeyPairs(state, relationship);
   if (!columns) return false;
 
   const { startTable, endTable } = columns;
-  buffer.push(`ALTER TABLE ${BRACKET}${endTable.name}${BRACKET}`);
-
   let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
   fkName = autoName(fkNames, '', fkName);
   fkNames.push({
     id: uuid25(),
     name: fkName,
   });
+  const alterTable = `ALTER TABLE ${BRACKET}${endTable.name}${BRACKET}`;
+
+  // A constraint has no IF NOT EXISTS, so a run again drops it and adds it back.
+  if (statements === SchemaSQLStatements.ifNotExists) {
+    buffer.push(
+      `${alterTable} DROP CONSTRAINT IF EXISTS ${BRACKET}${fkName}${BRACKET};`
+    );
+  }
+  buffer.push(alterTable);
 
   buffer.push(`  ADD CONSTRAINT ${BRACKET}${fkName}${BRACKET}`);
 
@@ -295,4 +313,28 @@ export function formatIndex(
       BRACKET
     )});`
   );
+}
+
+/** USE SCHEMA, after CREATE SCHEMA IF NOT EXISTS for createAndUse. */
+export function formatHeader(
+  _: RootState,
+  header: Exclude<SchemaSQLHeader, 'none'>,
+  name: string
+): string {
+  const schema = `${BRACKET}${name}${BRACKET}`;
+  const use = `USE SCHEMA ${schema};`;
+
+  return header === SchemaSQLHeader.createAndUse
+    ? `CREATE SCHEMA IF NOT EXISTS ${schema};\n${use}`
+    : use;
+}
+
+/** Each table written dropped, its foreign keys with it. */
+export function formatDropBlock(
+  _: RootState,
+  { tables }: WrittenObjects
+): string {
+  return tables
+    .map(({ name }) => `DROP TABLE IF EXISTS ${BRACKET}${name}${BRACKET};`)
+    .join('\n');
 }

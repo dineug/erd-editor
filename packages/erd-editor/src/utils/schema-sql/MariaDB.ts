@@ -5,8 +5,10 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLStatements } from './options';
 import {
   autoNameIgnoreCase,
+  CreateSchemaOptions,
   FormatColumnOptions,
   formatDefault,
   FormatIndexOptions,
@@ -17,6 +19,7 @@ import {
   formatSpace,
   FormatTableOptions,
   getBracket,
+  ifNotExists,
   Name,
   primaryKey,
   primaryKeyColumns,
@@ -30,11 +33,17 @@ import {
   uniqueColumns,
 } from './utils';
 
+// The header and the drop block are MySQL's, which MariaDB reads alike.
+export { formatDropBlock, formatHeader } from './MySQL';
+
 const ACTION_SUPPORT = referentialActionSupport(Database.MariaDB);
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { statements, written }: CreateSchemaOptions = {
+    statements: SchemaSQLStatements.create,
+  }
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -42,19 +51,21 @@ export function createSchema(
   const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
-    formatTable(state, { table, buffer: stringBuffer });
+    written?.tables.push(table);
+    formatTable(state, { table, buffer: stringBuffer, statements });
     stringBuffer.push('');
 
-    formatUnique(state, { table, buffer: stringBuffer });
+    formatUnique(state, { table, buffer: stringBuffer, statements });
   });
 
   relationships.forEach(relationship => {
-    const written = formatRelation(state, {
+    const wrote = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
+      statements,
     });
-    if (written) stringBuffer.push('');
+    if (wrote) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -62,6 +73,7 @@ export function createSchema(
       index,
       buffer: stringBuffer,
       indexNames,
+      statements,
     });
     stringBuffer.push('');
   });
@@ -71,7 +83,7 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const {
     settings: { bracketType },
@@ -82,7 +94,9 @@ export function formatTable(
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
+  buffer.push(
+    `CREATE TABLE${ifNotExists(statements)} ${bracket}${table.name}${bracket}`
+  );
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -122,7 +136,7 @@ export function formatTable(
  */
 export function formatUnique(
   { settings: { bracketType }, collections }: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const bracket = getBracket(bracketType);
   const columns = query(collections)
@@ -134,7 +148,7 @@ export function formatUnique(
   uniqueColumns(columns).forEach(column => {
     buffer.push(`ALTER TABLE ${bracket}${table.name}${bracket}`);
     buffer.push(
-      `  ADD CONSTRAINT ${bracket}UQ_${tableNamePart(table.name, bracketType)}_${column.name}${bracket} UNIQUE (${bracket}${column.name}${bracket});`
+      `  ADD CONSTRAINT ${bracket}UQ_${tableNamePart(table.name, bracketType)}_${column.name}${bracket} UNIQUE${ifNotExists(statements)} (${bracket}${column.name}${bracket});`
     );
     buffer.push('');
   });
@@ -177,7 +191,7 @@ function formatColumn(
 
 function formatRelation(
   state: RootState,
-  { buffer, relationship, fkNames }: FormatRelationOptions
+  { buffer, relationship, fkNames, statements }: FormatRelationOptions
 ): boolean {
   const {
     settings: { bracketType },
@@ -200,7 +214,9 @@ function formatRelation(
 
   buffer.push(`  ADD CONSTRAINT ${bracket}${fkName}${bracket}`);
 
-  buffer.push(`    FOREIGN KEY (${formatNames(columns.end, bracket)})`);
+  buffer.push(
+    `    FOREIGN KEY${ifNotExists(statements)} (${formatNames(columns.end, bracket)})`
+  );
   buffer.push(
     `    REFERENCES ${bracket}${startTable.name}${bracket} (${formatNames(
       columns.start,
@@ -216,7 +232,7 @@ function formatRelation(
 
 export function formatIndex(
   { settings: { bracketType }, collections }: RootState,
-  { buffer, index, indexNames }: FormatIndexOptions
+  { buffer, index, indexNames, statements }: FormatIndexOptions
 ) {
   const bracket = getBracket(bracketType);
   const table = query(collections)
@@ -253,11 +269,9 @@ export function formatIndex(
       });
     }
 
-    if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
-    } else {
-      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
-    }
+    buffer.push(
+      `CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX${ifNotExists(statements)} ${bracket}${indexName}${bracket}`
+    );
     buffer.push(
       `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
     );
