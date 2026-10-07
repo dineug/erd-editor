@@ -88,9 +88,11 @@ export function createSchema(
         stringBuffer.push(`REFERENCING NEW AS NEW FOR EACH ROW`);
         stringBuffer.push(`BEGIN`);
         stringBuffer.push(`  SELECT ${sequence}.NEXTVAL`);
-        stringBuffer.push(`  INTO: NEW.${column.name}`);
+        stringBuffer.push(`  INTO :NEW.${column.name}`);
         stringBuffer.push(`  FROM DUAL;`);
         stringBuffer.push(`END;`);
+        // SQL*Plus and SQLcl run a PL/SQL block at the slash line after it.
+        stringBuffer.push('/');
         stringBuffer.push('');
       }
     });

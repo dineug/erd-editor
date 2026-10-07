@@ -420,8 +420,12 @@ const REFERENTIAL_ACTION_SUPPORT: Record<number, ReferentialActionSupport> = {
   [Database.PostgreSQL]: ALL_REFERENTIAL_ACTIONS,
   // SQLite takes every action, enforced once PRAGMA foreign_keys is on.
   [Database.SQLite]: ALL_REFERENTIAL_ACTIONS,
-  // Snowflake accepts every action for compatibility and enforces none.
-  [Database.Snowflake]: ALL_REFERENTIAL_ACTIONS,
+  // Snowflake accepts every action for compatibility and enforces none, but
+  // creates no foreign key on a standard table whose action is not NO ACTION.
+  [Database.Snowflake]: {
+    onDelete: [ReferentialAction.noAction],
+    onUpdate: [ReferentialAction.noAction],
+  },
 };
 
 /**

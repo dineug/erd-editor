@@ -1,17 +1,29 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { BracketType, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketType,
+  ColumnOption,
+  Database,
+  OrderType,
+  ReferentialAction,
+} from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
   formatIndex,
   formatTable,
+  isIntegerFamily,
 } from '@/utils/schema-sql/SQLite';
 import { Name } from '@/utils/schema-sql/utils';
 
@@ -196,6 +208,116 @@ function seedParentChild(
   return { parent, child, parentId, pkColumns, fkColumn };
 }
 
+interface SampleVariant {
+  memberIdType?: string;
+  postIdType?: string;
+  postMemberIdType?: string;
+  onDelete?: number;
+}
+
+// The two-table sample every options fixture was written from; a variant
+// changes the key types or the delete action.
+function createSampleState({
+  memberIdType = 'INT',
+  postIdType = 'INT',
+  postMemberIdType = 'INT',
+  onDelete = ReferentialAction.cascade,
+}: SampleVariant = {}): RootState {
+  const state = {
+    ...schemaV3Parser({}),
+    editor: {},
+    lww: {},
+  } as unknown as RootState;
+  const key =
+    ColumnOption.primaryKey | ColumnOption.notNull | ColumnOption.autoIncrement;
+  const columns = [
+    createColumn({
+      id: 'm1',
+      tableId: 'tm',
+      name: 'id',
+      dataType: memberIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'm2',
+      tableId: 'tm',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.notNull | ColumnOption.unique,
+    }),
+    createColumn({
+      id: 'p1',
+      tableId: 'tp',
+      name: 'id',
+      dataType: postIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'p2',
+      tableId: 'tp',
+      name: 'member_id',
+      dataType: postMemberIdType,
+      options: ColumnOption.notNull,
+    }),
+    createColumn({
+      id: 'p3',
+      tableId: 'tp',
+      name: 'title',
+      dataType: 'VARCHAR(200)',
+      options: ColumnOption.notNull,
+    }),
+  ];
+
+  state.settings.databaseName = 'shop';
+  state.collections.tableEntities = {
+    tm: createTable({
+      id: 'tm',
+      name: 'member',
+      comment: 'Members',
+      columnIds: ['m1', 'm2'],
+    }),
+    tp: createTable({ id: 'tp', name: 'post', columnIds: ['p1', 'p2', 'p3'] }),
+  };
+  state.collections.tableColumnEntities = Object.fromEntries(
+    columns.map(column => [column.id, column])
+  );
+  state.collections.relationshipEntities = {
+    rp: createRelationship({
+      id: 'rp',
+      onDelete,
+      start: { tableId: 'tm', columnIds: ['m1'] },
+      end: { tableId: 'tp', columnIds: ['p2'] },
+    }),
+  };
+  state.collections.indexEntities = {
+    ix: createIndex({
+      id: 'ix',
+      name: 'idx_post_title',
+      tableId: 'tp',
+      indexColumnIds: ['ic'],
+    }),
+  };
+  state.collections.indexColumnEntities = {
+    ic: createIndexColumn({
+      id: 'ic',
+      indexId: 'ix',
+      columnId: 'p3',
+      orderType: OrderType.ASC,
+    }),
+  };
+  state.doc.tableIds = ['tm', 'tp'];
+  state.doc.relationshipIds = ['rp'];
+  state.doc.indexIds = ['ix'];
+
+  return state;
+}
+
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
+
+function readFixture(path: string): string {
+  return readFileSync(join(FIXTURES, 'options', path), 'utf8');
+}
+
 describe('SQLite createSchema', () => {
   it('emits table comments, inline foreign keys, AUTOINCREMENT and indexes', () => {
     const { state } = createFixture();
@@ -215,7 +337,7 @@ describe('SQLite createSchema', () => {
         'CREATE TABLE users',
         '(',
         '  -- user id',
-        '  id    INT          NOT NULL,',
+        '  id    INTEGER      NOT NULL,',
         '  -- email address',
         "  email VARCHAR(255) NOT NULL UNIQUE DEFAULT 'a@b.c',",
         "  name  VARCHAR(50)  NULL     DEFAULT 'guest',",
@@ -278,7 +400,7 @@ describe('SQLite dotted table names', () => {
         'CREATE TABLE sales.users',
         '(',
         '  -- user id',
-        '  id    INT          NOT NULL,',
+        '  id    INTEGER      NOT NULL,',
         '  -- email address',
         "  email VARCHAR(255) NOT NULL UNIQUE DEFAULT 'a@b.c',",
         "  name  VARCHAR(50)  NULL     DEFAULT 'guest',",
@@ -391,8 +513,8 @@ describe('SQLite formatTable', () => {
     expect(buffer).toEqual([
       'CREATE TABLE child',
       '(',
-      '  id     INT NULL    ,',
-      '  fk_col INT NULL    ,',
+      '  id     INTEGER NULL    ,',
+      '  fk_col INT     NULL    ,',
       '  PRIMARY KEY (id AUTOINCREMENT),',
       '  FOREIGN KEY (fk_col) REFERENCES parent (id)',
       ');',
@@ -727,5 +849,91 @@ describe('SQLite formatIndex', () => {
     formatIndex(state, { index: postsIndex, buffer, indexNames: [] });
 
     expect(buffer[1]).toBe('  ON posts (user_id );');
+  });
+});
+
+describe('SQLite isIntegerFamily', () => {
+  it.each([
+    'INT',
+    'int',
+    'INTEGER',
+    'INTEGER(11)',
+    'BIGINT',
+    'SMALLINT',
+    'TINYINT',
+    'MEDIUMINT',
+    'INT2',
+    'INT4',
+    'INT8',
+    'UNSIGNED BIG INT',
+    ' int ',
+    'int ( 11 )',
+  ])('takes %j as an integer type', dataType => {
+    expect(isIntegerFamily(dataType)).toBe(true);
+  });
+
+  it.each([
+    'VARCHAR(36)',
+    'UUID',
+    'NUMERIC(10)',
+    'POINT',
+    'SERIAL',
+    'INT16',
+    '',
+  ])('refuses %j', dataType => {
+    expect(isIntegerFamily(dataType)).toBe(false);
+  });
+});
+
+describe('SQLite phase 0', () => {
+  it('writes an integer AUTOINCREMENT key as INTEGER', () => {
+    expect(createSchemaSQL(createSampleState(), Database.SQLite)).toBe(
+      readFixture('SQLite/phase0-create-none.sql')
+    );
+  });
+
+  it('writes any other AUTOINCREMENT key without the keyword and says why', () => {
+    expect(
+      createSchemaSQL(
+        createSampleState({
+          memberIdType: 'VARCHAR(36)',
+          postMemberIdType: 'VARCHAR(36)',
+        }),
+        Database.SQLite
+      )
+    ).toBe(readFixture('SQLite/phase0-varchar-pk-create-none.sql'));
+  });
+
+  it('writes an integer type with a width as INTEGER', () => {
+    const sql = createSchemaSQL(
+      createSampleState({ memberIdType: 'int(11)' }),
+      Database.SQLite
+    );
+
+    expect(sql).toContain('  id    INTEGER      NOT NULL,\n');
+    expect(sql).not.toContain('int(11)');
+  });
+
+  it('quotes the table and column the comment names as the table is quoted', () => {
+    const state = createSampleState({ memberIdType: 'UUID' });
+    state.settings.bracketType = BracketType.backtick;
+
+    const sql = createSchemaSQL(state, Database.SQLite);
+
+    expect(sql).toContain('  PRIMARY KEY (`id`)\n);\n\n');
+    expect(sql).toContain(
+      '\n-- SQLite takes AUTOINCREMENT only on an INTEGER column, so `member`.`id` is written without it.\n'
+    );
+  });
+
+  it('keeps the type of an AUTOINCREMENT column outside a single primary key', () => {
+    const state = createSampleState();
+    state.collections.tableColumnEntities.m2.options |= ColumnOption.primaryKey;
+
+    const sql = createSchemaSQL(state, Database.SQLite);
+
+    expect(sql).toContain('  id    INT          NOT NULL,\n');
+    expect(sql).toContain('  PRIMARY KEY (id, email)\n');
+    expect(sql).not.toContain('-- SQLite takes AUTOINCREMENT');
   });
 });

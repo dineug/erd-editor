@@ -198,6 +198,12 @@ describe('referentialActionMenus', () => {
       'SET DEFAULT not in Databricks',
       'RESTRICT not in Databricks',
     ]);
+    expect(notes(Database.Snowflake)).toEqual([
+      'CASCADE not in Snowflake',
+      'SET NULL not in Snowflake',
+      'SET DEFAULT not in Snowflake',
+      'RESTRICT not in Snowflake',
+    ]);
     expect(notes(Database.PostgreSQL)).toEqual([]);
 
     // No menu names a database the settings cannot hold, so none is noted.

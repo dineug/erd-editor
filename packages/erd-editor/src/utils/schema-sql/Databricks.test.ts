@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -6,6 +10,7 @@ import {
   ColumnOption,
   Database,
   OrderType,
+  ReferentialAction,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Relationship } from '@/internal-types';
@@ -19,7 +24,10 @@ import {
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/Databricks';
-import { createSchemaSQLTable } from '@/utils/schema-sql/index';
+import {
+  createSchemaSQL,
+  createSchemaSQLTable,
+} from '@/utils/schema-sql/index';
 import { Name } from '@/utils/schema-sql/utils';
 
 function createFixture() {
@@ -120,10 +128,121 @@ function createFixture() {
   return { state, users, posts, index, relationship };
 }
 
+interface SampleVariant {
+  memberIdType?: string;
+  postIdType?: string;
+  postMemberIdType?: string;
+  onDelete?: number;
+}
+
+// The two-table sample every options fixture was written from; a variant
+// changes the key types or the delete action.
+function createSampleState({
+  memberIdType = 'INT',
+  postIdType = 'INT',
+  postMemberIdType = 'INT',
+  onDelete = ReferentialAction.cascade,
+}: SampleVariant = {}): RootState {
+  const state = {
+    ...schemaV3Parser({}),
+    editor: {},
+    lww: {},
+  } as unknown as RootState;
+  const key =
+    ColumnOption.primaryKey | ColumnOption.notNull | ColumnOption.autoIncrement;
+  const columns = [
+    createColumn({
+      id: 'm1',
+      tableId: 'tm',
+      name: 'id',
+      dataType: memberIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'm2',
+      tableId: 'tm',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.notNull | ColumnOption.unique,
+    }),
+    createColumn({
+      id: 'p1',
+      tableId: 'tp',
+      name: 'id',
+      dataType: postIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'p2',
+      tableId: 'tp',
+      name: 'member_id',
+      dataType: postMemberIdType,
+      options: ColumnOption.notNull,
+    }),
+    createColumn({
+      id: 'p3',
+      tableId: 'tp',
+      name: 'title',
+      dataType: 'VARCHAR(200)',
+      options: ColumnOption.notNull,
+    }),
+  ];
+
+  state.settings.databaseName = 'shop';
+  state.collections.tableEntities = {
+    tm: createTable({
+      id: 'tm',
+      name: 'member',
+      comment: 'Members',
+      columnIds: ['m1', 'm2'],
+    }),
+    tp: createTable({ id: 'tp', name: 'post', columnIds: ['p1', 'p2', 'p3'] }),
+  };
+  state.collections.tableColumnEntities = Object.fromEntries(
+    columns.map(column => [column.id, column])
+  );
+  state.collections.relationshipEntities = {
+    rp: createRelationship({
+      id: 'rp',
+      onDelete,
+      start: { tableId: 'tm', columnIds: ['m1'] },
+      end: { tableId: 'tp', columnIds: ['p2'] },
+    }),
+  };
+  state.collections.indexEntities = {
+    ix: createIndex({
+      id: 'ix',
+      name: 'idx_post_title',
+      tableId: 'tp',
+      indexColumnIds: ['ic'],
+    }),
+  };
+  state.collections.indexColumnEntities = {
+    ic: createIndexColumn({
+      id: 'ic',
+      indexId: 'ix',
+      columnId: 'p3',
+      orderType: OrderType.ASC,
+    }),
+  };
+  state.doc.tableIds = ['tm', 'tp'];
+  state.doc.relationshipIds = ['rp'];
+  state.doc.indexIds = ['ix'];
+
+  return state;
+}
+
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
+
+function readFixture(path: string): string {
+  return readFileSync(join(FIXTURES, 'options', path), 'utf8');
+}
+
 describe('schema-sql/Databricks', () => {
   describe('formatTable', () => {
     it('emits an identity column, a RELY primary key constraint and the DELTA tail', () => {
       const { state, users } = createFixture();
+      state.collections.tableColumnEntities['col-id'].dataType = 'BIGINT';
       const buffer: string[] = [];
 
       formatTable(state, { buffer, table: users });
@@ -131,7 +250,7 @@ describe('schema-sql/Databricks', () => {
       expect(buffer).toEqual([
         'CREATE TABLE `users`',
         '(',
-        '  `id`   INT         NOT NULL GENERATED ALWAYS AS IDENTITY,',
+        '  `id`   BIGINT      NOT NULL GENERATED ALWAYS AS IDENTITY,',
         "  `name` VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',",
         '  `age`  INT,',
         '  CONSTRAINT `PK_users` PRIMARY KEY (`id`) NOT ENFORCED RELY',
@@ -248,13 +367,14 @@ describe('schema-sql/Databricks', () => {
 
     it('prefers GENERATED ALWAYS AS IDENTITY over a DEFAULT value on the same column', () => {
       const { state, users } = createFixture();
+      state.collections.tableColumnEntities['col-id'].dataType = 'BIGINT';
       state.collections.tableColumnEntities['col-id'].default = '1';
       const buffer: string[] = [];
 
       formatTable(state, { buffer, table: users });
 
       expect(buffer[2]).toBe(
-        '  `id`   INT         NOT NULL GENERATED ALWAYS AS IDENTITY,'
+        '  `id`   BIGINT      NOT NULL GENERATED ALWAYS AS IDENTITY,'
       );
       expect(buffer[2]).not.toContain('DEFAULT');
       expect(buffer[2]).not.toContain('AUTO_INCREMENT');
@@ -382,13 +502,15 @@ describe('schema-sql/Databricks', () => {
         '',
         'CREATE TABLE `users`',
         '(',
-        '  `id`   INT         NOT NULL GENERATED ALWAYS AS IDENTITY,',
+        '  `id`   INT         NOT NULL,',
         "  `name` VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',",
         '  `age`  INT,',
         '  CONSTRAINT `PK_users` PRIMARY KEY (`id`) NOT ENFORCED RELY',
         ')',
         'USING DELTA',
         "COMMENT 'user table';",
+        '',
+        '-- Databricks takes IDENTITY only on BIGINT, so `users`.`id` is written without it.',
         '',
         '-- Databricks does not support UNIQUE constraints: `users`.`name`',
         '',
@@ -516,5 +638,71 @@ describe('schema-sql/Databricks', () => {
         '',
       ]);
     });
+  });
+});
+
+describe('Databricks identity types', () => {
+  it.each(['BIGINT', 'bigint', ' BigInt '])(
+    'makes an AUTOINCREMENT %j column an identity',
+    dataType => {
+      const sql = createSchemaSQL(
+        createSampleState({ memberIdType: dataType, postIdType: dataType }),
+        Database.Databricks
+      );
+
+      expect(sql.split('GENERATED ALWAYS AS IDENTITY')).toHaveLength(3);
+      expect(sql).not.toContain('-- Databricks takes IDENTITY');
+    }
+  );
+
+  it.each(['INT', 'LONG', 'DECIMAL(20)'])(
+    'writes an AUTOINCREMENT %j column without IDENTITY or a DEFAULT and says why',
+    dataType => {
+      const state = createSampleState({ memberIdType: dataType });
+      state.collections.tableColumnEntities.m1.default = '1';
+
+      const sql = createSchemaSQL(state, Database.Databricks);
+
+      expect(sql).not.toContain('GENERATED ALWAYS AS IDENTITY');
+      expect(sql).not.toContain('DEFAULT');
+      expect(sql).toContain(
+        "COMMENT 'Members';\n\n-- Databricks takes IDENTITY only on BIGINT, so `member`.`id` is written without it.\n\n"
+      );
+    }
+  );
+
+  it('matches the INT key fixture, which is the sample as it stands', () => {
+    expect(createSchemaSQL(createSampleState(), Database.Databricks)).toBe(
+      readFixture('Databricks/d14-3-int-create-none.sql')
+    );
+  });
+
+  it('matches the BIGINT key fixture', () => {
+    expect(
+      createSchemaSQL(
+        createSampleState({
+          memberIdType: 'BIGINT',
+          postIdType: 'BIGINT',
+          postMemberIdType: 'BIGINT',
+        }),
+        Database.Databricks
+      )
+    ).toBe(readFixture('Databricks/d14-3-bigint-create-none.sql'));
+  });
+
+  it('names every column of a table that goes without IDENTITY', () => {
+    const state = createSampleState();
+    state.collections.tableColumnEntities.m2.options |=
+      ColumnOption.autoIncrement;
+
+    expect(createSchemaSQL(state, Database.Databricks)).toContain(
+      [
+        "COMMENT 'Members';",
+        '',
+        '-- Databricks takes IDENTITY only on BIGINT, so `member`.`id` is written without it.',
+        '-- Databricks takes IDENTITY only on BIGINT, so `member`.`email` is written without it.',
+        '',
+      ].join('\n')
+    );
   });
 });

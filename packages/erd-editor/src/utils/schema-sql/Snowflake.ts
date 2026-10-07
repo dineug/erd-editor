@@ -1,8 +1,13 @@
 import { query } from '@dineug/erd-editor-schema';
 import { uuid25 } from '@dineug/uuid';
 
-import { ColumnOption, Database } from '@/constants/schema';
+import {
+  ColumnOption,
+  Database,
+  ReferentialActionToSQL,
+} from '@/constants/schema';
 import { RootState } from '@/engine/state';
+import { Relationship } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 import {
@@ -168,6 +173,12 @@ function formatRelation(
 
   const { startTable, endTable } = columns;
   const bracket = toBracket(bracketType);
+  const leftOut = leftOutActions(relationship);
+  if (leftOut.length !== 0) {
+    buffer.push(
+      `-- Snowflake creates no foreign key with a referential action other than NO ACTION, so ${leftOut.join(' and ')} ${leftOut.length === 1 ? 'is' : 'are'} left out.`
+    );
+  }
   buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
   let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -191,6 +202,30 @@ function formatRelation(
   );
   buffer[buffer.length - 1] += ';';
   return true;
+}
+
+// The clauses a relationship sets that the DDL leaves out, ON DELETE first,
+// for the comment above its foreign key.
+function leftOutActions({
+  onDelete,
+  onUpdate,
+}: Pick<Relationship, 'onDelete' | 'onUpdate'>): string[] {
+  const clauses: string[] = [];
+
+  if (
+    ReferentialActionToSQL[onDelete] &&
+    !ACTION_SUPPORT.onDelete.includes(onDelete)
+  ) {
+    clauses.push(`ON DELETE ${ReferentialActionToSQL[onDelete]}`);
+  }
+  if (
+    ReferentialActionToSQL[onUpdate] &&
+    !ACTION_SUPPORT.onUpdate.includes(onUpdate)
+  ) {
+    clauses.push(`ON UPDATE ${ReferentialActionToSQL[onUpdate]}`);
+  }
+
+  return clauses;
 }
 
 export function formatIndex(

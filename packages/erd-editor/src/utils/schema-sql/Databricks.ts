@@ -3,6 +3,7 @@ import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
+import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 import {
@@ -41,6 +42,15 @@ function toSparkStringLiteral(value: string): string {
 const CONSTRAINT_OPTIONS = 'NOT ENFORCED RELY';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.Databricks);
+
+// Databricks makes an identity column of BIGINT alone, so an autoIncrement
+// column of any other type is written without one.
+function takesIdentity(column: Column): boolean {
+  return (
+    bHas(column.options, ColumnOption.autoIncrement) &&
+    column.dataType.trim().toUpperCase() === 'BIGINT'
+  );
+}
 
 export function createSchema(
   state: RootState,
@@ -120,6 +130,19 @@ export function formatTable(
     buffer.push(`USING DELTA`);
     buffer.push(`COMMENT ${toSparkStringLiteral(table.comment)};`);
   }
+
+  const withoutIdentity = columns.filter(
+    column =>
+      bHas(column.options, ColumnOption.autoIncrement) && !takesIdentity(column)
+  );
+  if (withoutIdentity.length !== 0) {
+    buffer.push('');
+    withoutIdentity.forEach(column => {
+      buffer.push(
+        `-- Databricks takes IDENTITY only on BIGINT, so ${BRACKET}${table.name}${BRACKET}.${BRACKET}${column.name}${BRACKET} is written without it.`
+      );
+    });
+  }
 }
 
 /**
@@ -165,9 +188,12 @@ function formatColumn(
     bHas(column.options, ColumnOption.primaryKey);
   stringBuffer.push(notNull ? 'NOT NULL' : '        ');
 
-  if (bHas(column.options, ColumnOption.autoIncrement)) {
+  if (takesIdentity(column)) {
     stringBuffer.push(`GENERATED ALWAYS AS IDENTITY`);
-  } else if (column.default.trim() !== '') {
+  } else if (
+    !bHas(column.options, ColumnOption.autoIncrement) &&
+    column.default.trim() !== ''
+  ) {
     stringBuffer.push(`DEFAULT ${column.default}`);
   }
   if (column.comment.trim() !== '') {

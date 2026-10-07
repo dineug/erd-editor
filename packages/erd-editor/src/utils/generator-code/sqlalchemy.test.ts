@@ -1898,6 +1898,20 @@ describe('generator-code/sqlalchemy', () => {
       );
     });
 
+    it('keeps NO ACTION alone under Snowflake, as its DDL does', () => {
+      const state = createOneToManyState(RelationshipType.ZeroN);
+      state.settings.database = Database.Snowflake;
+      const [relationshipId] = state.doc.relationshipIds;
+      Object.assign(state.collections.relationshipEntities[relationshipId], {
+        onDelete: ReferentialAction.setNull,
+        onUpdate: ReferentialAction.noAction,
+      });
+
+      expect(
+        render(state, state.collections.tableEntities['t_post']).join('\n')
+      ).toContain('ForeignKey("user.id", onupdate="NO ACTION")');
+    });
+
     it('passes the referential actions to a ForeignKeyConstraint', () => {
       const { state } = createCompositeFixture();
       Object.assign(state.collections.relationshipEntities.r1, {

@@ -2682,7 +2682,6 @@ CREATE TABLE \`refs\` (
       Database.MariaDB,
       Database.MSSQL,
       Database.SQLite,
-      Database.Snowflake,
     ])(
       'keeps the actions of a %s export when the SQL is imported back',
       database => {
@@ -2694,6 +2693,21 @@ CREATE TABLE \`refs\` (
         expect(relationship.onUpdate).toBe(ReferentialAction.setNull);
       }
     );
+
+    it('keeps NO ACTION, the one action a Snowflake export writes, when the SQL is imported back', () => {
+      const state = relatedState();
+      Object.assign(state.collections.relationshipEntities['rel-1'], {
+        onDelete: ReferentialAction.noAction,
+        onUpdate: ReferentialAction.noAction,
+      });
+
+      const [relationship] = relationshipsOf(
+        parse(createSchemaSQL(state, Database.Snowflake))
+      );
+
+      expect(relationship.onDelete).toBe(ReferentialAction.noAction);
+      expect(relationship.onUpdate).toBe(ReferentialAction.noAction);
+    });
   });
 
   describe('default round trip', () => {

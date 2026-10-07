@@ -54,6 +54,16 @@ export function createSchema(
   return stringBuffer.join('\n');
 }
 
+/**
+ * An integer type name, with or without a width, which an AUTOINCREMENT key
+ * is written as INTEGER for; the rest keep their type and lose the keyword.
+ */
+export function isIntegerFamily(dataType: string): boolean {
+  return /^(?:(?:TINY|SMALL|MEDIUM|BIG)?INT(?:EGER)?|INT[248]|UNSIGNED\s+BIG\s+INT)(?:\s*\(\s*\d+\s*\))?$/i.test(
+    dataType.trim()
+  );
+}
+
 export function formatTable(
   state: RootState,
   { buffer, table }: FormatTableOptions
@@ -64,9 +74,27 @@ export function formatTable(
     collections,
   } = state;
   const bracket = getBracket(bracketType);
-  const columns = query(collections)
+  const tableColumns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
+  const pkColumns = primaryKeyColumns(tableColumns);
+  const autoIncrementColumn =
+    pkColumns.length === 1 &&
+    bHas(pkColumns[0].options, ColumnOption.autoIncrement)
+      ? pkColumns[0]
+      : null;
+  // SQLite takes AUTOINCREMENT only on a key written INTEGER, so an integer
+  // key is written that way and any other key goes without it.
+  const integerKey =
+    autoIncrementColumn !== null &&
+    isIntegerFamily(autoIncrementColumn.dataType);
+  const columns = integerKey
+    ? tableColumns.map(column =>
+        column === autoIncrementColumn
+          ? { ...column, dataType: 'INTEGER' }
+          : column
+      )
+    : tableColumns;
   const foreignKeys = query(collections)
     .collection('relationshipEntities')
     .selectByIds(relationshipIds)
@@ -97,12 +125,7 @@ export function formatTable(
   });
 
   if (pk) {
-    const pkColumns = primaryKeyColumns(columns);
-    const autoIncrement =
-      pkColumns.length === 1 &&
-      bHas(pkColumns[0].options, ColumnOption.autoIncrement)
-        ? ' AUTOINCREMENT'
-        : '';
+    const autoIncrement = integerKey ? ' AUTOINCREMENT' : '';
     buffer.push(
       `  PRIMARY KEY (${formatNames(pkColumns, bracket)}${autoIncrement})` +
         (hasForeignKey ? ',' : '')
@@ -129,6 +152,13 @@ export function formatTable(
   });
 
   buffer.push(`);`);
+
+  if (autoIncrementColumn !== null && !integerKey) {
+    buffer.push('');
+    buffer.push(
+      `-- SQLite takes AUTOINCREMENT only on an INTEGER column, so ${bracket}${table.name}${bracket}.${bracket}${autoIncrementColumn.name}${bracket} is written without it.`
+    );
+  }
 }
 
 function formatColumn(

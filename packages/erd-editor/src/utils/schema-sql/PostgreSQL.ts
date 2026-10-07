@@ -3,6 +3,7 @@ import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
+import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 import {
@@ -30,6 +31,25 @@ import {
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.PostgreSQL);
+
+// An identity column must be smallint, integer or bigint, by any of the names
+// PostgreSQL gives them.
+const IDENTITY_TYPES = new Set([
+  'INT',
+  'INTEGER',
+  'BIGINT',
+  'SMALLINT',
+  'INT2',
+  'INT4',
+  'INT8',
+]);
+
+function takesIdentity(column: Column): boolean {
+  return (
+    bHas(column.options, ColumnOption.autoIncrement) &&
+    IDENTITY_TYPES.has(column.dataType.trim().toUpperCase())
+  );
+}
 
 export function createSchema(
   state: RootState,
@@ -108,6 +128,19 @@ export function formatTable(
     buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)})`);
   }
   buffer.push(`);`);
+
+  const withoutIdentity = columns.filter(
+    column =>
+      bHas(column.options, ColumnOption.autoIncrement) && !takesIdentity(column)
+  );
+  if (withoutIdentity.length !== 0) {
+    buffer.push('');
+    withoutIdentity.forEach(column => {
+      buffer.push(
+        `-- PostgreSQL takes IDENTITY only on smallint, integer or bigint, so ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} is written without it.`
+      );
+    });
+  }
 }
 
 function formatColumn(
@@ -129,7 +162,9 @@ function formatColumn(
     stringBuffer.push(`NOT NULL`);
   }
   if (bHas(column.options, ColumnOption.autoIncrement)) {
-    stringBuffer.push(`GENERATED ALWAYS AS IDENTITY`);
+    if (takesIdentity(column)) {
+      stringBuffer.push(`GENERATED ALWAYS AS IDENTITY`);
+    }
   } else {
     if (column.default.trim() !== '') {
       stringBuffer.push(

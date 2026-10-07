@@ -1137,6 +1137,19 @@ describe('generator-code/typeorm', () => {
       );
     });
 
+    it('keeps NO ACTION alone under Snowflake, as its DDL does', () => {
+      const { state, user } = createTeamFixture();
+      state.settings.database = Database.Snowflake;
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.noAction,
+        onUpdate: ReferentialAction.cascade,
+      });
+
+      expect(render(state, user)).toContain(
+        '  @ManyToOne(() => Team, (team) => team.userList, { onDelete: "NO ACTION" })'
+      );
+    });
+
     it('drops the null from the parent once the foreign key is required', () => {
       const { state, user } = createTeamFixture(
         RelationshipType.OneN,

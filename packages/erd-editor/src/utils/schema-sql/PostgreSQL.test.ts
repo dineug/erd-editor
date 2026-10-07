@@ -1,13 +1,24 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { BracketType, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketType,
+  ColumnOption,
+  Database,
+  OrderType,
+  ReferentialAction,
+} from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
   formatIndex,
@@ -136,6 +147,116 @@ function createFixture() {
     postsIndex,
     usersIndex,
   };
+}
+
+interface SampleVariant {
+  memberIdType?: string;
+  postIdType?: string;
+  postMemberIdType?: string;
+  onDelete?: number;
+}
+
+// The two-table sample every options fixture was written from; a variant
+// changes the key types or the delete action.
+function createSampleState({
+  memberIdType = 'INT',
+  postIdType = 'INT',
+  postMemberIdType = 'INT',
+  onDelete = ReferentialAction.cascade,
+}: SampleVariant = {}): RootState {
+  const state = {
+    ...schemaV3Parser({}),
+    editor: {},
+    lww: {},
+  } as unknown as RootState;
+  const key =
+    ColumnOption.primaryKey | ColumnOption.notNull | ColumnOption.autoIncrement;
+  const columns = [
+    createColumn({
+      id: 'm1',
+      tableId: 'tm',
+      name: 'id',
+      dataType: memberIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'm2',
+      tableId: 'tm',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.notNull | ColumnOption.unique,
+    }),
+    createColumn({
+      id: 'p1',
+      tableId: 'tp',
+      name: 'id',
+      dataType: postIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'p2',
+      tableId: 'tp',
+      name: 'member_id',
+      dataType: postMemberIdType,
+      options: ColumnOption.notNull,
+    }),
+    createColumn({
+      id: 'p3',
+      tableId: 'tp',
+      name: 'title',
+      dataType: 'VARCHAR(200)',
+      options: ColumnOption.notNull,
+    }),
+  ];
+
+  state.settings.databaseName = 'shop';
+  state.collections.tableEntities = {
+    tm: createTable({
+      id: 'tm',
+      name: 'member',
+      comment: 'Members',
+      columnIds: ['m1', 'm2'],
+    }),
+    tp: createTable({ id: 'tp', name: 'post', columnIds: ['p1', 'p2', 'p3'] }),
+  };
+  state.collections.tableColumnEntities = Object.fromEntries(
+    columns.map(column => [column.id, column])
+  );
+  state.collections.relationshipEntities = {
+    rp: createRelationship({
+      id: 'rp',
+      onDelete,
+      start: { tableId: 'tm', columnIds: ['m1'] },
+      end: { tableId: 'tp', columnIds: ['p2'] },
+    }),
+  };
+  state.collections.indexEntities = {
+    ix: createIndex({
+      id: 'ix',
+      name: 'idx_post_title',
+      tableId: 'tp',
+      indexColumnIds: ['ic'],
+    }),
+  };
+  state.collections.indexColumnEntities = {
+    ic: createIndexColumn({
+      id: 'ic',
+      indexId: 'ix',
+      columnId: 'p3',
+      orderType: OrderType.ASC,
+    }),
+  };
+  state.doc.tableIds = ['tm', 'tp'];
+  state.doc.relationshipIds = ['rp'];
+  state.doc.indexIds = ['ix'];
+
+  return state;
+}
+
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
+
+function readFixture(path: string): string {
+  return readFileSync(join(FIXTURES, 'options', path), 'utf8');
 }
 
 describe('PostgreSQL createSchema', () => {
@@ -554,5 +675,70 @@ describe('PostgreSQL formatIndex', () => {
     formatIndex(state, { index: postsIndex, buffer, indexNames: [] });
 
     expect(buffer[1]).toBe('  ON posts (user_id );');
+  });
+});
+
+describe('PostgreSQL identity types', () => {
+  it.each([
+    'INT',
+    'INTEGER',
+    'BIGINT',
+    'SMALLINT',
+    'INT2',
+    'INT4',
+    'INT8',
+    ' int ',
+  ])('makes an AUTOINCREMENT %j column an identity', dataType => {
+    const sql = createSchemaSQL(
+      createSampleState({ memberIdType: dataType }),
+      Database.PostgreSQL
+    );
+
+    expect(sql.split('GENERATED ALWAYS AS IDENTITY')).toHaveLength(3);
+    expect(sql).not.toContain('-- PostgreSQL takes IDENTITY');
+  });
+
+  it.each(['UUID', 'VARCHAR(36)', 'NUMERIC(10)', 'SERIAL'])(
+    'writes an AUTOINCREMENT %j column without IDENTITY and says why',
+    dataType => {
+      const state = createSampleState({ memberIdType: dataType });
+      state.collections.tableColumnEntities.m1.default = 'gen_random_uuid()';
+
+      const sql = createSchemaSQL(state, Database.PostgreSQL);
+
+      expect(sql.split('GENERATED ALWAYS AS IDENTITY')).toHaveLength(2);
+      expect(sql).toContain(
+        ');\n\n-- PostgreSQL takes IDENTITY only on smallint, integer or bigint, so member.id is written without it.\n\n'
+      );
+      expect(sql).not.toContain('DEFAULT');
+    }
+  );
+
+  it('matches the UUID key fixture', () => {
+    expect(
+      createSchemaSQL(
+        createSampleState({ memberIdType: 'UUID', postMemberIdType: 'UUID' }),
+        Database.PostgreSQL
+      )
+    ).toBe(readFixture('PostgreSQL/d14-1-uuid-pk-create-none.sql'));
+  });
+
+  it('names every column of a table that goes without IDENTITY, quoted as the table is', () => {
+    const state = createSampleState({ memberIdType: 'UUID' });
+    state.settings.bracketType = BracketType.doubleQuote;
+    state.collections.tableColumnEntities.m2.options |=
+      ColumnOption.autoIncrement;
+
+    const sql = createSchemaSQL(state, Database.PostgreSQL);
+
+    expect(sql).toContain(
+      [
+        ');',
+        '',
+        '-- PostgreSQL takes IDENTITY only on smallint, integer or bigint, so "member"."id" is written without it.',
+        '-- PostgreSQL takes IDENTITY only on smallint, integer or bigint, so "member"."email" is written without it.',
+        '',
+      ].join('\n')
+    );
   });
 });

@@ -431,6 +431,19 @@ describe('generator-code/sequelize', () => {
       expect(code).not.toContain('onUpdate');
     });
 
+    it('keeps NO ACTION alone under Snowflake, as its DDL does', () => {
+      const { state } = createTeamFixture();
+      state.settings.database = Database.Snowflake;
+      Object.assign(state.collections.relationshipEntities.r1, {
+        onDelete: ReferentialAction.cascade,
+        onUpdate: ReferentialAction.noAction,
+      });
+      const code = createCode(state);
+
+      expect(code).toContain('  onUpdate: "NO ACTION",\n});');
+      expect(code).not.toContain('onDelete');
+    });
+
     it('runs every association call after every init call', () => {
       const { state } = createTeamFixture();
       const lines = createCode(state).split('\n');
