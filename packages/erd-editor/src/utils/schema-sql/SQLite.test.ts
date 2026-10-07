@@ -890,7 +890,7 @@ describe('SQLite isIntegerFamily', () => {
 describe('SQLite AUTOINCREMENT keys', () => {
   it('writes an integer AUTOINCREMENT key as INTEGER', () => {
     expect(createSchemaSQL(createSampleState(), Database.SQLite)).toBe(
-      readFixture('SQLite/phase0-create-none.sql')
+      readFixture('SQLite/integer-autoincrement-create-none.sql')
     );
   });
 
@@ -903,7 +903,7 @@ describe('SQLite AUTOINCREMENT keys', () => {
         }),
         Database.SQLite
       )
-    ).toBe(readFixture('SQLite/phase0-varchar-pk-create-none.sql'));
+    ).toBe(readFixture('SQLite/non-integer-autoincrement-create-none.sql'));
   });
 
   it('writes an integer type with a width as INTEGER', () => {

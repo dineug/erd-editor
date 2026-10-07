@@ -88,10 +88,15 @@ describe('the tool surface (AC-M8)', () => {
     ]);
   });
 
-  it('gives erd_read the three formats and the vendor list', () => {
+  it('gives erd_read the four formats and the vendor list', () => {
     const { properties, required } = tool('erd_read').inputSchema as any;
 
-    expect(properties.format.enum).toEqual(['snapshot', 'sql', 'json']);
+    expect(properties.format.enum).toEqual([
+      'snapshot',
+      'sql',
+      'json',
+      'scripts',
+    ]);
     expect(properties.vendor.enum).toEqual([...SQL_VENDORS]);
     expect(required).toEqual(['path', 'format']);
   });

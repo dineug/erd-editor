@@ -85,16 +85,16 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_read: {
     description:
-      "Reads a document as a snapshot, as DDL or as its raw JSON. The sql format of the whole document includes the document's before and after scripts. The sql format with tableIds or tableNames gives the DDL of just those tables, the way to read a large schema; a read too large for one answer is refused with how to narrow it. For ids and details prefer erd_list and erd_get. Change a document only through the erd_ tools, never by writing its file.",
+      "Reads a document as a snapshot, as DDL, as its raw JSON or, with the scripts format, its before and after scripts alone. The sql format of the whole document includes the document's before and after scripts. The sql format with tableIds or tableNames gives the DDL of just those tables, the way to read a large schema; a read too large for one answer is refused with how to narrow it. For ids and details prefer erd_list and erd_get. Change a document only through the erd_ tools, never by writing its file.",
     args: {
       format:
-        'snapshot: compact JSON with every id and column, large on a big schema. sql: DDL of a vendor. json: the whole raw .erd.json document, larger still; never write this into the file.',
+        "snapshot: compact JSON with every id and column, large on a big schema. sql: DDL of a vendor. json: the whole raw .erd.json document, larger still; never write this into the file. scripts: just the document's before and after scripts, as JSON { before, after }, each empty when unset, whatever the size of the schema.",
       vendor:
         'Database for the sql format; defaults to the database the document is set to.',
       statements:
         'For the sql format: create (default), ifNotExists, which writes CREATE TABLE IF NOT EXISTS on MySQL, MariaDB, PostgreSQL, SQLite and Databricks and falls back to create elsewhere, or recreate, which drops the tables first (Snowflake writes CREATE OR REPLACE TABLE).',
       header:
-        "For the sql format: none (default), use, which selects the database or schema the document's database name gives, or createAndUse, which creates it first. Oracle has use alone, PostgreSQL createAndUse alone and SQLite neither, so a choice falls back to what the database has; no header is written while the database name is empty or not a plain identifier.",
+        "For the sql format: none (default), use, which selects the database or schema the document's database name gives, or createAndUse, which creates it first. Oracle has use alone, so createAndUse writes use there; PostgreSQL has createAndUse alone, so use writes no header there; SQLite has neither and writes none. No header is written while the database name is empty or not a plain identifier.",
       tableIds:
         'For the sql format: the DDL of these tables only, with the foreign keys they hold, which name the tables they reference.',
       tableNames:
@@ -328,7 +328,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   ),
   erd_set_ddl_script: {
     description:
-      "Sets one of the two SQL scripts the document keeps for its Schema SQL: before, written ahead of the tables, such as CREATE EXTENSION or CREATE SCHEMA, or after, written past the generated DDL, such as GRANT or CREATE VIEW. The text goes as is into the DDL of every database, so write it for the document's database; SQL Server output gets GO after a script that does not end with GO. An empty string removes it. erd_read sql shows it in place. An ERD Editor extension or plugin released before scripts neither shows nor keeps them, so the user should update it.",
+      "Sets one of the two SQL scripts the document keeps for its Schema SQL: before, written ahead of the tables, such as CREATE EXTENSION or CREATE SCHEMA, or after, written past the generated DDL, such as GRANT or CREATE VIEW. It replaces the whole script, so read the current one first with erd_read format scripts. The text goes as is into the DDL of every database, so write it for the document's database; SQL Server output gets GO after a script that does not end with GO. An empty string removes it. erd_read sql shows it in place. An ERD Editor extension or plugin released before scripts neither shows nor keeps them, so the user should update it.",
     args: {
       position: 'before or after the generated tables.',
       sql: 'The script, at most 10,000 characters; an empty string removes it.',

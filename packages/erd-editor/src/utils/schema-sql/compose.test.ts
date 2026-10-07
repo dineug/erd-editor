@@ -506,7 +506,9 @@ describe('createSchemaSQL options', () => {
         header: 'createAndUse',
       })
     ).toBe(
-      readFixture('PostgreSQL/d14-1-uuid-pk-ifNotExists-createAndUse.sql')
+      readFixture(
+        'PostgreSQL/non-integer-identity-ifNotExists-createAndUse.sql'
+      )
     );
   });
 
@@ -516,10 +518,10 @@ describe('createSchemaSQL options', () => {
     });
 
     expect(createSchemaSQL(state, Database.Oracle)).toBe(
-      readFixture('Oracle/d14-2-long-names-create-none.sql')
+      readFixture('Oracle/long-names-create-none.sql')
     );
     expect(oracleLongNames(state)).toEqual(
-      JSON.parse(readFixture('Oracle/d14-2-long-names.json')).over30Bytes
+      JSON.parse(readFixture('Oracle/long-names.json')).over30Bytes
     );
   });
 

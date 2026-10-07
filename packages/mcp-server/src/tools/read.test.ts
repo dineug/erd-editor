@@ -125,9 +125,9 @@ describe('what a read refuses', () => {
   });
 
   it('names the formats when the one asked for is unknown', () => {
-    expect(READ_FORMATS).toEqual(['snapshot', 'sql', 'json']);
+    expect(READ_FORMATS).toEqual(['snapshot', 'sql', 'json', 'scripts']);
     expect(refusal(() => read('ddl' as ReadFormat)).message).toBe(
-      'format must be one of snapshot, sql, json, got ddl'
+      'format must be one of snapshot, sql, json, scripts, got ddl'
     );
   });
 });
@@ -294,7 +294,7 @@ describe('the statements and header of the DDL', () => {
     ).toMatch(/^\nDROP TABLE IF EXISTS /);
   });
 
-  it('falls back to what the vendor has, as the Schema SQL tab does', () => {
+  it('writes use for createAndUse on Oracle, no header for use on PostgreSQL and none on SQLite, as the Schema SQL tab does', () => {
     const asked = {
       statements: 'ifNotExists',
       header: 'createAndUse',
@@ -307,8 +307,15 @@ describe('the statements and header of the DDL', () => {
       })
     );
     expect(
-      readDocument(named.state, 'sql', 'SQLite', undefined, { header: 'use' })
-    ).toBe(readDocument(named.state, 'sql', 'SQLite'));
+      readDocument(named.state, 'sql', 'PostgreSQL', undefined, {
+        header: 'use',
+      })
+    ).toBe(readDocument(named.state, 'sql', 'PostgreSQL'));
+    for (const header of ['use', 'createAndUse'] as const) {
+      expect(
+        readDocument(named.state, 'sql', 'SQLite', undefined, { header })
+      ).toBe(readDocument(named.state, 'sql', 'SQLite'));
+    }
   });
 
   it('writes no header while the database name is no plain identifier', () => {
@@ -409,5 +416,127 @@ describe('the before and after scripts in the DDL', () => {
       readDocument(scripted.state, 'sql', undefined, { tableNames: ['users'] })
     ).toContain('CREATE TABLE users');
     scripted.destroy();
+  });
+});
+
+describe('the scripts format', () => {
+  const before = 'CREATE EXTENSION IF NOT EXISTS pgcrypto;  \r\n';
+  const after = 'GRANT SELECT ON users TO PUBLIC;';
+
+  it('gives the two scripts alone, each empty while unset', () => {
+    const scripted = createNamedPeer({ after });
+
+    expect(read('scripts')).toBe('{"before":"","after":""}');
+    expect(JSON.parse(readDocument(scripted.state, 'scripts'))).toEqual({
+      before: '',
+      after,
+    });
+    scripted.destroy();
+  });
+
+  it('gives the text the document holds, which the DDL writes formatted', () => {
+    const scripted = createNamedPeer({ before, after });
+
+    expect(readDocument(scripted.state, 'scripts')).toBe(
+      JSON.stringify({ before, after })
+    );
+    expect(readDocument(scripted.state, 'sql', 'MSSQL')).toContain(
+      'CREATE EXTENSION IF NOT EXISTS pgcrypto;\nGO\n'
+    );
+    scripted.destroy();
+  });
+
+  it('answers whatever the locks, which have no part in the scripts', () => {
+    const scripted = createNamedPeer({ before });
+    const locked = readDocument(scripted.state, 'scripts');
+
+    scripted.dispatch([
+      settingsActions$.changeLockSettingsAction$(
+        LockSettingType.bracketType,
+        false
+      ),
+      settingsActions.changeBracketTypeAction({ value: BracketType.backtick }),
+    ]);
+
+    expect(readDocument(scripted.state, 'scripts')).toBe(locked);
+    scripted.destroy();
+  });
+
+  it('answers a schema the other formats refuse as too large', () => {
+    const wide = createWidePeer(400);
+    wide.dispatch([
+      settingsActions.changeDDLScriptAction({
+        position: 'after',
+        value: after,
+      }),
+    ]);
+
+    expect(refusal(() => readDocument(wide.state, 'snapshot')).code).toBe(
+      ToolErrorCode.tooLarge
+    );
+    expect(refusal(() => readDocument(wide.state, 'json')).code).toBe(
+      ToolErrorCode.tooLarge
+    );
+    expect(readDocument(wide.state, 'scripts')).toBe(
+      JSON.stringify({ before: '', after })
+    );
+    wide.destroy();
+  });
+
+  it('refuses scripts that alone pass one read, saying no read gives them in parts', () => {
+    const scripted = createNamedPeer({
+      before: 'x'.repeat(MAX_READ_CHARS / 2),
+      after: 'y'.repeat(MAX_READ_CHARS / 2),
+    });
+
+    const error = refusal(() => readDocument(scripted.state, 'scripts'));
+    expect(error.code).toBe(ToolErrorCode.tooLarge);
+    expect(error.message).toBe(
+      "this read is 40,024 characters, over the 40,000 one read returns; no read gives the scripts in parts, so ask the user to shorten them in the options of the editor's Schema SQL tab"
+    );
+    scripted.destroy();
+  });
+
+  it('refuses every argument of the sql format', () => {
+    const cases: Array<[() => string, string]> = [
+      [
+        () => readDocument(peer.state, 'scripts', 'MySQL'),
+        'vendor applies to the sql format only, not scripts',
+      ],
+      [
+        () =>
+          readDocument(peer.state, 'scripts', undefined, undefined, {
+            statements: 'recreate',
+          }),
+        'statements and header apply to the sql format only, not scripts',
+      ],
+      [
+        () =>
+          readDocument(peer.state, 'scripts', undefined, undefined, {
+            header: 'use',
+          }),
+        'statements and header apply to the sql format only, not scripts',
+      ],
+      [
+        () =>
+          readDocument(peer.state, 'scripts', undefined, {
+            tableIds: [SEED.users],
+          }),
+        'tableIds and tableNames apply to the sql format only, not scripts; erd_get takes them too',
+      ],
+      [
+        () =>
+          readDocument(peer.state, 'scripts', undefined, {
+            tableNames: ['users'],
+          }),
+        'tableIds and tableNames apply to the sql format only, not scripts; erd_get takes them too',
+      ],
+    ];
+
+    for (const [call, message] of cases) {
+      const error = refusal(call);
+      expect(error.code).toBe(ToolErrorCode.invalidArgs);
+      expect(error.message).toBe(message);
+    }
   });
 });

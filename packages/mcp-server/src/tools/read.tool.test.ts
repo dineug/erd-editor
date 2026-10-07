@@ -81,6 +81,47 @@ describe('the DDL erd_read writes', () => {
   });
 });
 
+describe('the scripts erd_read gives', () => {
+  const DOCUMENT = '/work/shop.erd.json';
+
+  it('answers the two scripts alone as plain text, and refuses an argument of the sql format', async () => {
+    const peer = createSeededPeer();
+    peer.dispatch([
+      settingsActions.changeDDLScriptAction({
+        position: 'after',
+        value: 'GRANT SELECT ON users TO PUBLIC;',
+      }),
+    ]);
+    const io = createMemoryHost();
+    io.put(DOCUMENT, peer.value);
+    const mcp = await connectMcp({ host: io });
+
+    const read = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'scripts',
+    });
+    expect(read.isError).toBe(false);
+    expect(read.texts).toEqual([
+      '{"before":"","after":"GRANT SELECT ON users TO PUBLIC;"}',
+    ]);
+    expect(read.structured).toBeUndefined();
+
+    const refused = await mcp.call('erd_read', {
+      path: DOCUMENT,
+      format: 'scripts',
+      tableNames: ['users'],
+    });
+    expect(refused.isError).toBe(true);
+    expect(refused.json.error).toEqual({
+      code: 'invalidArgs',
+      message:
+        'tableIds and tableNames apply to the sql format only, not scripts; erd_get takes them too',
+    });
+    peer.destroy();
+    await mcp.close();
+  });
+});
+
 describe('a call that fails unexpectedly', () => {
   it('answers erd_read with an internal error for a defect, logged, and keeps serving', async () => {
     const mcp = await connectLayer(

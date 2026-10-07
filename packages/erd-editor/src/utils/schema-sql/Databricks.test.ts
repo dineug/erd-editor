@@ -675,7 +675,7 @@ describe('Databricks identity types', () => {
 
   it('matches the INT key fixture, which is the sample as it stands', () => {
     expect(createSchemaSQL(createSampleState(), Database.Databricks)).toBe(
-      readFixture('Databricks/d14-3-int-create-none.sql')
+      readFixture('Databricks/non-bigint-identity-create-none.sql')
     );
   });
 
@@ -689,7 +689,7 @@ describe('Databricks identity types', () => {
         }),
         Database.Databricks
       )
-    ).toBe(readFixture('Databricks/d14-3-bigint-create-none.sql'));
+    ).toBe(readFixture('Databricks/bigint-identity-create-none.sql'));
   });
 
   it('names every column of a table that goes without IDENTITY', () => {

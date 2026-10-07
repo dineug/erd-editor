@@ -276,6 +276,12 @@ describe('the words on a Schema SQL script', () => {
     );
   });
 
+  it('say a call replaces the whole script, so the agent reads the current one first', () => {
+    expect(text).toContain(
+      'or after, written past the generated DDL, such as GRANT or CREATE VIEW. It replaces the whole script, so read the current one first with erd_read format scripts. The text goes'
+    );
+  });
+
   it('say erd_read sql shows the script where it goes', () => {
     expect(text).toContain(
       'An empty string removes it. erd_read sql shows it in place. An ERD Editor'
@@ -297,6 +303,15 @@ describe('the words on how erd_read writes the DDL', () => {
     );
   });
 
+  it('name the scripts format, which answers the scripts alone whatever the schema', () => {
+    expect(describeTool('erd_read')).toContain(
+      'as its raw JSON or, with the scripts format, its before and after scripts alone.'
+    );
+    expect(describeArg('erd_read', 'format')).toMatch(
+      /^snapshot: .+ sql: .+ json: .+ scripts: just the document's before and after scripts, as JSON \{ before, after \}, each empty when unset, whatever the size of the schema\.$/
+    );
+  });
+
   it('name each statements value, where IF NOT EXISTS is written and what recreate does', () => {
     const text = describeArg('erd_read', 'statements');
 
@@ -310,16 +325,21 @@ describe('the words on how erd_read writes the DDL', () => {
     expect(text).toContain('(Snowflake writes CREATE OR REPLACE TABLE)');
   });
 
-  it('name each header value, the databases short of one and when none is written', () => {
+  it('name each header value, what each database short of one writes and when none is written', () => {
     const text = describeArg('erd_read', 'header');
 
     expect(text).toMatch(/^For the sql format: none \(default\), use/);
     expect(text).toContain('createAndUse, which creates it first');
     expect(text).toContain(
-      'Oracle has use alone, PostgreSQL createAndUse alone and SQLite neither'
+      'Oracle has use alone, so createAndUse writes use there'
     );
     expect(text).toContain(
-      'no header is written while the database name is empty or not a plain identifier'
+      'PostgreSQL has createAndUse alone, so use writes no header there'
+    );
+    expect(text).toContain('SQLite has neither and writes none');
+    expect(text).not.toMatch(/falls back to what/);
+    expect(text).toContain(
+      'No header is written while the database name is empty or not a plain identifier'
     );
   });
 });

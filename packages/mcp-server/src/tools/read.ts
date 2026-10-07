@@ -18,14 +18,19 @@ import {
   toEntityDetails,
   toTableNameList,
 } from '@/tools/outline';
-import { toAgentSnapshot, toSavedSettings } from '@/tools/snapshot';
+import {
+  toAgentSnapshot,
+  toSavedSettings,
+  toSnapshotScripts,
+} from '@/tools/snapshot';
 
-export type ReadFormat = 'snapshot' | 'sql' | 'json';
+export type ReadFormat = 'snapshot' | 'sql' | 'json' | 'scripts';
 
 export const READ_FORMATS: readonly ReadFormat[] = Object.freeze([
   'snapshot',
   'sql',
   'json',
+  'scripts',
 ]);
 
 /** The vendor names the sql format takes, each the name of one database. */
@@ -57,6 +62,8 @@ const NARROWER: Readonly<Record<ReadFormat, string>> = {
   snapshot:
     'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
   json: 'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
+  scripts:
+    "no read gives the scripts in parts, so ask the user to shorten them in the options of the editor's Schema SQL tab",
 };
 
 /**
@@ -86,9 +93,9 @@ const withSavedSettings = (state: RootState): RootState => ({
 });
 
 /**
- * Serializes a document the way an agent asked to read it: the snapshot it
- * edits by, the DDL of a vendor, which defaults to the document's database,
- * written with the statements and header asked for, or the file's own JSON.
+ * Serializes a document as an agent asked: the snapshot it edits by, the DDL of
+ * a vendor (the document's by default) with the statements and header asked
+ * for, the file's own JSON, or the two Schema SQL scripts alone.
  */
 export function readDocument(
   state: RootState,
@@ -128,12 +135,14 @@ export function readDocument(
       ? JSON.stringify(toAgentSnapshot(state))
       : format === 'json'
         ? toJson(state)
-        : createSchemaSQL(
-            withSavedSettings(state),
-            vendor === undefined ? undefined : toDatabase(vendor),
-            filtered ? selectTables(state, filtered) : undefined,
-            options
-          );
+        : format === 'scripts'
+          ? JSON.stringify(toSnapshotScripts(state.settings))
+          : createSchemaSQL(
+              withSavedSettings(state),
+              vendor === undefined ? undefined : toDatabase(vendor),
+              filtered ? selectTables(state, filtered) : undefined,
+              options
+            );
   if (!fitsInRead(text)) {
     const size = `${text.length.toLocaleString('en-US')} characters, over the ${MAX_READ_CHARS.toLocaleString('en-US')} one read returns`;
     throw new ToolError(

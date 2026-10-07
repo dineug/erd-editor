@@ -82,8 +82,11 @@ export type AgentSnapshotSettings = {
   maxWidthComment: number;
   lockSettings: Record<string, boolean>;
   /** The Schema SQL scripts erd_set_ddl_script sets, which erd_list leaves out. */
-  ddlScripts: { before: string; after: string };
+  ddlScripts: AgentSnapshotScripts;
 };
+
+/** The two Schema SQL scripts of a document, each empty while unset. */
+export type AgentSnapshotScripts = { before: string; after: string };
 
 /**
  * What an agent reads to edit: every entity under its id and the settings as
@@ -166,11 +169,15 @@ export function toSnapshotSettings(
     show: flagsOf(Show, settings.show),
     maxWidthComment: settings.maxWidthComment,
     lockSettings: flagsOf(LockSettingType, settings.lockSettings),
-    ddlScripts: {
-      before: settings.ddlScripts?.before ?? '',
-      after: settings.ddlScripts?.after ?? '',
-    },
+    ddlScripts: toSnapshotScripts(settings),
   };
+}
+
+/** The scripts as the snapshot and erd_read's scripts format give them, no lock involved. */
+export function toSnapshotScripts({
+  ddlScripts,
+}: RootState['settings']): AgentSnapshotScripts {
+  return { before: ddlScripts?.before ?? '', after: ddlScripts?.after ?? '' };
 }
 
 export function toSnapshotTable(

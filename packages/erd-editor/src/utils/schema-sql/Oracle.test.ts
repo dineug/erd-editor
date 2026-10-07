@@ -925,7 +925,7 @@ describe('Oracle formatIndex', () => {
 describe('Oracle auto-increment triggers as SQL*Plus runs them', () => {
   it('ends each trigger with a slash and binds :NEW, as SQL*Plus runs it', () => {
     expect(createSchemaSQL(createSampleState(), Database.Oracle)).toBe(
-      readFixture('Oracle/phase0-create-none.sql')
+      readFixture('Oracle/sqlplus-triggers-create-none.sql')
     );
   });
 });
@@ -935,9 +935,7 @@ describe('Oracle names past 30 bytes', () => {
     const state = createSampleState({
       memberName: 'member_notification_settings',
     });
-    const { over30Bytes } = JSON.parse(
-      readFixture('Oracle/d14-2-long-names.json')
-    );
+    const { over30Bytes } = JSON.parse(readFixture('Oracle/long-names.json'));
 
     expect(oracleLongNames(state)).toEqual(over30Bytes);
     expect(oracleLongNames(createSampleState())).toEqual([]);

@@ -722,7 +722,7 @@ describe('PostgreSQL identity types', () => {
         createSampleState({ memberIdType: 'UUID', postMemberIdType: 'UUID' }),
         Database.PostgreSQL
       )
-    ).toBe(readFixture('PostgreSQL/d14-1-uuid-pk-create-none.sql'));
+    ).toBe(readFixture('PostgreSQL/non-integer-identity-create-none.sql'));
   });
 
   it('names every column of a table that goes without IDENTITY, quoted as the table is', () => {
@@ -782,7 +782,9 @@ describe('PostgreSQL options', () => {
         header: 'createAndUse',
       })
     ).toBe(
-      readFixture('PostgreSQL/d14-1-uuid-pk-ifNotExists-createAndUse.sql')
+      readFixture(
+        'PostgreSQL/non-integer-identity-ifNotExists-createAndUse.sql'
+      )
     );
   });
 

@@ -7,6 +7,7 @@ import {
   type ListedTool,
   normalizeToolSurface,
   readToolSurfaceFixture,
+  type ToolArgSurface,
   type ToolSurface,
 } from '@/__test-utils__/toolSurface';
 
@@ -87,15 +88,30 @@ const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_import_json: ['mode'],
 };
 
-/** The recorded tools as the server lists them, the arguments added since left out. */
+/** The values a recorded argument gained after the recording was made. */
+const ADDED_VALUES: Readonly<
+  Record<string, Readonly<Record<string, readonly string[]>>>
+> = {
+  erd_read: { format: ['scripts'] },
+};
+
+/** A recorded argument as the server lists it, the values added since left out. */
+const withoutAddedValues = (tool: string, arg: ToolArgSurface) => {
+  const added = ADDED_VALUES[tool]?.[arg.name];
+  return added && arg.enum
+    ? { ...arg, enum: arg.enum.filter(value => !added.includes(value)) }
+    : arg;
+};
+
+/** The recorded tools as the server lists them, the arguments and values added since left out. */
 const recorded = () =>
   live
     .filter(({ name }) => !ADDED_TOOLS.includes(name))
     .map(tool => ({
       ...tool,
-      args: tool.args.filter(
-        ({ name }) => !ADDED_ARGS[tool.name]?.includes(name)
-      ),
+      args: tool.args
+        .filter(({ name }) => !ADDED_ARGS[tool.name]?.includes(name))
+        .map(arg => withoutAddedValues(tool.name, arg)),
     }));
 
 /** The recording less the tools the server dropped since. */
@@ -113,6 +129,28 @@ describe('the tool surface against the SDK-based server recording', () => {
 
   it('keeps every recorded tool name, argument name, JSON type and required flag', () => {
     expect(declarations(recorded())).toEqual(declarations(kept()));
+  });
+
+  it('adds to a recorded argument only values the recording lacks', () => {
+    const argOf = (
+      surface: readonly ToolSurface[],
+      tool: string,
+      arg: string
+    ) =>
+      surface
+        .find(({ name }) => name === tool)!
+        .args.find(({ name }) => name === arg)!;
+
+    for (const [tool, args] of Object.entries(ADDED_VALUES)) {
+      for (const [arg, added] of Object.entries(args)) {
+        const before = argOf(fixture, tool, arg).enum!;
+
+        expect(before.filter(value => added.includes(value))).toEqual([]);
+        expect(argOf(live, tool, arg).enum).toEqual(
+          [...before, ...added].sort()
+        );
+      }
+    }
   });
 
   it('adds only optional arguments to a recorded tool', () => {

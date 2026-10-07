@@ -565,7 +565,7 @@ describe('Snowflake referential actions', () => {
 
   it('leaves out ON DELETE CASCADE with a comment above its ALTER TABLE', () => {
     expect(createSchemaSQL(createSampleState(), Database.Snowflake)).toBe(
-      readFixture('Snowflake/d14-4-cascade-create-none.sql')
+      readFixture('Snowflake/referential-action-cascade-create-none.sql')
     );
   });
 
@@ -575,7 +575,9 @@ describe('Snowflake referential actions', () => {
         createSampleState({ onDelete: ReferentialAction.noAction }),
         Database.Snowflake
       )
-    ).toBe(readFixture('Snowflake/d14-4-no-action-create-none.sql'));
+    ).toBe(
+      readFixture('Snowflake/referential-action-no-action-create-none.sql')
+    );
   });
 
   it('names both clauses it leaves out in one comment', () => {
