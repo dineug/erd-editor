@@ -12,6 +12,7 @@ export type Lang =
   | 'java'
   | 'kotlin'
   | 'mermaid'
+  | 'php'
   | 'python'
   | 'scala'
   | 'sql'
@@ -33,4 +34,6 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.DBML]: 'sql',
   [Language.AML]: 'sql',
   [Language.Mermaid]: 'mermaid',
+  [Language.PHP]: 'php',
+  [Language.Doctrine]: 'php',
 };

@@ -27,7 +27,7 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   instead of replacing it
 - SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine
 - Export — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
   transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead
 - Force-directed visualization of table relationships
@@ -286,12 +286,13 @@ code panel renders, so a page that opens none never fetches the grammars.
 
 | | |
 | --- | --- |
-| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python, Mermaid |
+| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python, Mermaid, PHP |
 | Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
 Those are exactly the languages the panels emit — the JPA generator emits Java, the SQLAlchemy
-generator emits Python, the TypeORM, Sequelize and Drizzle generators emit TypeScript, and the
-DBML and AML generators are highlighted as SQL, the closest grammar shiki ships.
+generator emits Python, the TypeORM, Sequelize and Drizzle generators emit TypeScript, the
+Doctrine generator emits PHP, and the DBML and AML generators are highlighted as SQL, the closest
+grammar shiki ships.
 
 Where `SharedWorker` is missing — Chrome on Android, Safari before 16.4 — the underlying error is
 logged and the panels render as plain text; nothing else is affected. The regex engine is plain

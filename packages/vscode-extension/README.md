@@ -55,7 +55,7 @@ only; they do not appear in the Command Palette.
   they are, and one undo takes them away. A foreign key to a table outside the file is dropped
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
   transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead

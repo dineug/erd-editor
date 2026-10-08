@@ -24,6 +24,7 @@ const hasPropName = arrayHas<string | number | symbol>([
   'language',
   'tableNameCase',
   'columnNameCase',
+  'bracketType',
 ]);
 
 export type GeneratorCodeProps = {

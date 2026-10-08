@@ -27,6 +27,7 @@ const meta = {
         'go',
         'python',
         'mermaid',
+        'php',
       ],
     },
     theme: {

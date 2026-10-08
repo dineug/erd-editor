@@ -11,6 +11,7 @@ import {
   ColumnType,
   Database,
   Language,
+  LanguageList,
   LockSettingType,
   NameCase,
   Settings,
@@ -319,9 +320,22 @@ describe('createAndMergeSettings', () => {
       ).toBe(Language.Mermaid);
     });
 
+    it('keeps the PHP language', () => {
+      expect(createAndMergeSettings({ language: Language.PHP }).language).toBe(
+        Language.PHP
+      );
+    });
+
+    it('keeps the Doctrine language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.Doctrine }).language
+      ).toBe(Language.Doctrine);
+    });
+
     it('opens a language flag it does not know as GraphQL, as an editor older than the flag does', () => {
       expect(
-        createAndMergeSettings({ language: Language.Mermaid * 2 }).language
+        createAndMergeSettings({ language: Math.max(...LanguageList) * 2 })
+          .language
       ).toBe(Language.GraphQL);
     });
 

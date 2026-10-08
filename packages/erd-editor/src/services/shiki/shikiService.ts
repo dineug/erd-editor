@@ -4,6 +4,7 @@ import graphql from '@shikijs/langs/graphql';
 import java from '@shikijs/langs/java';
 import kotlin from '@shikijs/langs/kotlin';
 import mermaid from '@shikijs/langs/mermaid';
+import php from '@shikijs/langs/php';
 import python from '@shikijs/langs/python';
 import scala from '@shikijs/langs/scala';
 import sql from '@shikijs/langs/sql';
@@ -49,6 +50,7 @@ export class ShikiService {
         go,
         python,
         mermaid,
+        php,
       ],
       // Plain javascript rather than oniguruma, so no host needs wasm-unsafe-eval
       // in its policy; forgiving turns a grammar the engine cannot transpile into

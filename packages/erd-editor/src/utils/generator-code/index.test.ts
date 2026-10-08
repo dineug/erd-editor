@@ -185,6 +185,42 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
     Language.Mermaid,
     ['', 'erDiagram', '  "user" {', '    INT created_at', '  }', ''],
   ],
+  [
+    'PHP',
+    Language.PHP,
+    [
+      '<?php',
+      '',
+      'declare(strict_types=1);',
+      '',
+      'class User',
+      '{',
+      '    public int $createdAt;',
+      '}',
+      '',
+    ],
+  ],
+  [
+    'Doctrine',
+    Language.Doctrine,
+    [
+      '<?php',
+      '',
+      'declare(strict_types=1);',
+      '',
+      'use Doctrine\\DBAL\\Types\\Types;',
+      'use Doctrine\\ORM\\Mapping as ORM;',
+      '',
+      '#[ORM\\Entity]',
+      "#[ORM\\Table(name: '`user`')]",
+      'class User',
+      '{',
+      "    #[ORM\\Column(name: 'created_at', type: Types::INTEGER)]",
+      '    public int $createdAt;',
+      '}',
+      '',
+    ],
+  ],
 ];
 
 describe('generator-code/index', () => {

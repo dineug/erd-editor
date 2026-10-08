@@ -21,6 +21,8 @@ describe('LanguageToLangMap', () => {
       [Language.DBML]: 'sql',
       [Language.AML]: 'sql',
       [Language.Mermaid]: 'mermaid',
+      [Language.PHP]: 'php',
+      [Language.Doctrine]: 'php',
     });
   });
 

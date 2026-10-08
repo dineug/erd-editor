@@ -15,6 +15,10 @@ import {
   formatTable as formatTableDBML,
 } from './dbml';
 import {
+  createCode as createCodeDoctrine,
+  createTableCode as createTableCodeDoctrine,
+} from './doctrine';
+import {
   createCode as createCodeDrizzle,
   formatTable as formatTableDrizzle,
 } from './drizzle';
@@ -39,6 +43,10 @@ import {
   createCode as createCodeMermaid,
   formatTable as formatTableMermaid,
 } from './mermaid';
+import {
+  createCode as createCodePHP,
+  createTableCode as createTableCodePHP,
+} from './php';
 import {
   createCode as createCodeScala,
   formatTable as formatTableScala,
@@ -96,6 +104,10 @@ export function createGeneratorCode(state: RootState): string {
       return createCodeAML(state);
     case Language.Mermaid:
       return createCodeMermaid(state);
+    case Language.PHP:
+      return createCodePHP(state);
+    case Language.Doctrine:
+      return createCodeDoctrine(state);
   }
 
   return '';
@@ -171,6 +183,12 @@ export function createGeneratorCodeTable(
       formatTableMermaid(state, { buffer, table });
       buffer.push('');
       break;
+    // Nothing may come before <?php, the blank line above included, or PHP
+    // refuses the declare(strict_types=1) under it.
+    case Language.PHP:
+      return createTableCodePHP(state, table);
+    case Language.Doctrine:
+      return createTableCodeDoctrine(state, table);
   }
 
   return buffer.join('\n');
