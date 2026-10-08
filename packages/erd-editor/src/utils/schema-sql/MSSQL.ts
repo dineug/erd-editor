@@ -67,7 +67,6 @@ export function createSchema(
       relationship,
       buffer: stringBuffer,
       fkNames,
-      written,
     });
     if (wrote) stringBuffer.push('');
   });
@@ -191,6 +190,18 @@ function isOneName(part: string): boolean {
 }
 
 /**
+ * The prefix that puts an object in the database an unquoted name gives, its
+ * third part from the end; '' quoted, or where that part is no one name, which
+ * fails its CREATE TABLE and would open a quote or a bracket before the dot.
+ */
+function databasePrefix(name: string, bracket: string): string {
+  if (bracket) return '';
+
+  const [, , database = ''] = splitNameParts(name).reverse();
+  return isOneName(database) ? `${database}.` : '';
+}
+
+/**
  * The procedure that adds a table's extended properties and their level 0 and 1
  * arguments. An unquoted name splits at each dot outside brackets or quotes into
  * table, schema and the database whose procedure acts there; quoted, a dbo table.
@@ -199,18 +210,14 @@ function formatLevels(
   name: string,
   bracket: string
 ): { procedure: string; levels: string } {
-  const [table, schema = '', database = ''] = bracket
+  const [table, schema = ''] = bracket
     ? [name]
     : splitNameParts(name).reverse();
   const level0 = unquoteNamePart(schema) || DEFAULT_SCHEMA;
   const level1 = bracket ? table : unquoteNamePart(table);
-  // A database part SQL Server reads as no one name fails its CREATE TABLE
-  // too, and written before the procedure it could open a quote or bracket
-  // that swallows every batch after it, so it is dropped.
-  const prefix = isOneName(database) ? `${database}.` : '';
 
   return {
-    procedure: `${prefix}sys.sp_addextendedproperty`,
+    procedure: `${databasePrefix(name, bracket)}sys.sp_addextendedproperty`,
     levels: `'schema', ${toStringLiteral(level0)}, 'table', ${toStringLiteral(level1)}`,
   };
 }
@@ -245,7 +252,7 @@ function formatComment(
 
 function formatRelation(
   state: RootState,
-  { buffer, relationship, fkNames, written }: FormatRelationOptions
+  { buffer, relationship, fkNames }: FormatRelationOptions
 ): boolean {
   const {
     settings: { bracketType },
@@ -265,7 +272,6 @@ function formatRelation(
     id: uuid25(),
     name: fkName,
   });
-  written?.foreignKeys.push({ table: endTable, name: fkName });
 
   buffer.push(`  ADD CONSTRAINT ${bracket}${fkName}${bracket}`);
 
@@ -352,28 +358,41 @@ export function formatHeader(
 }
 
 /**
- * One transaction that drops the foreign keys the tables written hold, then the
- * tables, rolled back whole on an error; DROP ... IF EXISTS needs SQL Server
- * 2016 or later.
+ * One transaction that drops each foreign key a written table holds, found in
+ * its own database's catalog, then the tables, all rolled back on an error, so
+ * a key held from outside them still refuses; IF EXISTS needs SQL Server 2016.
  */
 export function formatDropBlock(
   { settings: { bracketType } }: RootState,
-  { tables, foreignKeys }: WrittenObjects
+  { tables }: WrittenObjects
 ): string {
   if (tables.length === 0) return '';
 
   const bracket = getBracket(bracketType);
   const quote = (name: string) => `${bracket}${name}${bracket}`;
-  const lines = ['BEGIN TRY', '  BEGIN TRANSACTION', ''];
-
-  foreignKeys.forEach(({ table, name }) => {
-    lines.push(
-      `  IF OBJECT_ID(N${toStringLiteral(quote(table.name))}, N'U') IS NOT NULL`,
-      `    ALTER TABLE ${quote(table.name)} DROP CONSTRAINT IF EXISTS ${quote(name)}`,
-      ''
-    );
+  const selects = tables.flatMap(({ name }) => {
+    const database = databasePrefix(name, bracket);
+    const objectId = `OBJECT_ID(N${toStringLiteral(quote(name))}, N'U')`;
+    const select = [
+      `SELECT @sql += N${toStringLiteral(`ALTER TABLE ${quote(name)} DROP CONSTRAINT `)} + QUOTENAME(name) + N';'`,
+      `  FROM ${database}sys.foreign_keys`,
+      `  WHERE parent_object_id = ${objectId}`,
+    ];
+    // The catalog of a database that does not exist fails as the SELECT runs,
+    // past the CATCH and with the transaction left open, so the SELECT runs
+    // only where OBJECT_ID finds its table.
+    return database
+      ? [`  IF ${objectId} IS NOT NULL`, ...select.map(line => `    ${line}`)]
+      : select.map(line => `  ${line}`);
   });
-  lines.push(
+  const lines = [
+    'BEGIN TRY',
+    '  BEGIN TRANSACTION',
+    '',
+    "  DECLARE @sql NVARCHAR(MAX) = N''",
+    ...selects,
+    '  EXECUTE sp_executesql @sql',
+    '',
     `  DROP TABLE IF EXISTS ${tables.map(({ name }) => quote(name)).join(', ')}`,
     '',
     '  COMMIT TRANSACTION',
@@ -382,8 +401,8 @@ export function formatDropBlock(
     '  IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;',
     '  THROW;',
     'END CATCH',
-    'GO'
-  );
+    'GO',
+  ];
 
   return lines.join('\n');
 }

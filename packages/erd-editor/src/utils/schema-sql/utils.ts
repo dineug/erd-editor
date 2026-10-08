@@ -20,14 +20,12 @@ export interface WrittenObjects {
   tables: Table[];
   /** Oracle: each sequence name as written, its owner included. */
   sequences: string[];
-  /** SQL Server: each foreign key, unquoted, and the table holding it. */
-  foreignKeys: Array<{ table: Table; name: string }>;
   /** Oracle: each identifier written, unquoted, in the order written. */
   identifiers: string[];
 }
 
 export function createWrittenObjects(): WrittenObjects {
-  return { tables: [], sequences: [], foreignKeys: [], identifiers: [] };
+  return { tables: [], sequences: [], identifiers: [] };
 }
 
 export interface CreateSchemaOptions {

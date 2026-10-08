@@ -9,8 +9,14 @@ GO
 BEGIN TRY
   BEGIN TRANSACTION
 
-  IF OBJECT_ID(N'post', N'U') IS NOT NULL
-    ALTER TABLE post DROP CONSTRAINT IF EXISTS FK_member_TO_post
+  DECLARE @sql NVARCHAR(MAX) = N''
+  SELECT @sql += N'ALTER TABLE member DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+    FROM sys.foreign_keys
+    WHERE parent_object_id = OBJECT_ID(N'member', N'U')
+  SELECT @sql += N'ALTER TABLE post DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+    FROM sys.foreign_keys
+    WHERE parent_object_id = OBJECT_ID(N'post', N'U')
+  EXECUTE sp_executesql @sql
 
   DROP TABLE IF EXISTS member, post
 
