@@ -5,6 +5,7 @@ import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import ScriptEditor from '@/components/schema-sql/schema-sql-options/ScriptEditor';
 import type { ShikiService } from '@/services/shiki';
 import { hasAppleDevice } from '@/utils/device-detect';
+import { createKeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const mocks = vi.hoisted(() => ({
   getShikiService: vi.fn<() => ShikiService | null>(() => null),
@@ -64,6 +65,23 @@ async function setup(value = '') {
 const type = (textarea: HTMLTextAreaElement, text: string) => {
   textarea.value = text;
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+/** The keydown a one-chord binding sends, by its code, $mod held as this platform holds it. */
+const keydownOf = (shortcut: string): KeyboardEventInit => {
+  const mods = shortcut.split('+');
+  const code = mods.pop() as string;
+  const held = (mod: string) =>
+    mods.includes(mod) ||
+    (mods.includes('$mod') && mod === (hasAppleDevice() ? 'Meta' : 'Control'));
+
+  return {
+    code,
+    metaKey: held('Meta'),
+    ctrlKey: held('Control'),
+    altKey: held('Alt'),
+    shiftKey: held('Shift'),
+  };
 };
 
 describe('ScriptEditor', () => {
@@ -281,11 +299,25 @@ describe('ScriptEditor', () => {
     const option = press({ key: 'n', code: 'KeyN', altKey: true });
     const composing = press({ key: 'a', code: 'KeyA', isComposing: true });
     const letter = press({ key: 'a', code: 'KeyA' });
-    const escape = press({ key: 'Escape', code: 'Escape' });
+    const keyBindingMap = createKeyBindingMap();
+    const handedOn = [
+      KeyBindingName.findReplace,
+      KeyBindingName.search,
+      KeyBindingName.stop,
+      KeyBindingName.zoomIn,
+      KeyBindingName.zoomOut,
+      KeyBindingName.zoomReset,
+    ].flatMap(name =>
+      keyBindingMap[name].map(({ shortcut }) => press(keydownOf(shortcut)))
+    );
 
+    expect(handedOn).toHaveLength(6);
     expect(
       [undo, option, composing].map(event => event.defaultPrevented)
     ).toEqual([false, false, false]);
-    expect(behind.mock.calls.map(([event]) => event)).toEqual([letter, escape]);
+    expect(behind.mock.calls.map(([event]) => event)).toEqual([
+      letter,
+      ...handedOn,
+    ]);
   });
 });

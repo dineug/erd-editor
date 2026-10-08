@@ -418,15 +418,26 @@ describe('ScriptEditor on a real keyboard', () => {
     expect(chords).toEqual([]);
   });
 
-  it('hands the palette and Escape on to the editor', async () => {
+  it('hands find, the palette, Escape and the zoom on to the editor', async () => {
     const fixture = await setup('');
     const { chords } = record(fixture);
     fixture.textarea().focus();
 
+    await userEvent.keyboard(`{${MOD}>}f{/${MOD}}`);
     await userEvent.keyboard(`{${MOD}>}k{/${MOD}}`);
     await userEvent.keyboard('{Escape}');
+    await userEvent.keyboard(`{${MOD}>}={/${MOD}}`);
+    await userEvent.keyboard(`{${MOD}>}-{/${MOD}}`);
+    await userEvent.keyboard(`{${MOD}>}0{/${MOD}}`);
 
-    expect(chords).toEqual([KeyBindingName.search, KeyBindingName.stop]);
+    expect(chords).toEqual([
+      KeyBindingName.findReplace,
+      KeyBindingName.search,
+      KeyBindingName.stop,
+      KeyBindingName.zoomIn,
+      KeyBindingName.zoomOut,
+      KeyBindingName.zoomReset,
+    ]);
   });
 
   it('keeps a composing keydown from the editor', async () => {

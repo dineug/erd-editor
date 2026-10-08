@@ -160,7 +160,7 @@ test.describe('the Schema SQL options panel', () => {
     expect(await codeOf(erd)).not.toContain('DROP TABLE');
   });
 
-  test('dims what a database lacks and keeps the pick for the next one that has it', async ({
+  test('dims what a database lacks, ignoring a press on it, and keeps the pick for the next one that has it', async ({
     erd,
   }) => {
     await erd.seed(shop());
@@ -169,27 +169,32 @@ test.describe('the Schema SQL options panel', () => {
       name: 'Database',
       exact: true,
     });
+    const create = segment(erd, 'Statements', 'Create');
+    const ifNotExists = segment(erd, 'Statements', 'If not exists');
 
+    await ifNotExists.click();
     await database.selectOption({ label: 'Oracle' });
 
-    const ifNotExists = segment(erd, 'Statements', 'If not exists');
     await expect(ifNotExists).toHaveAttribute('aria-disabled', 'true');
     await expect(ifNotExists).toHaveAttribute('title', 'Not in Oracle');
-    await expect(segment(erd, 'Statements', 'Create')).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
+    await expect(create).toHaveAttribute('aria-pressed', 'true');
     expect((await erd.settings()).database).toBe(8);
 
-    // A dimmed segment still takes a press, which it ignores.
+    await database.selectOption({ label: 'MySQL' });
+    await expect(ifNotExists).toHaveAttribute('aria-pressed', 'true');
+
+    // Oracle shows Create whatever was asked, so only MySQL tells whether the
+    // dimmed segment's press replaced the Create picked there.
+    await create.click();
+    await expect(create).toHaveAttribute('aria-pressed', 'true');
+    await database.selectOption({ label: 'Oracle' });
+    await expect(ifNotExists).toHaveAttribute('aria-disabled', 'true');
     await ifNotExists.click({ force: true });
-    await expect(segment(erd, 'Statements', 'Create')).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
     await database.selectOption({ label: 'MySQL' });
 
-    await expect(ifNotExists).toHaveAttribute('aria-pressed', 'true');
+    await expect(ifNotExists).toHaveAttribute('aria-disabled', 'false');
+    await expect(create).toHaveAttribute('aria-pressed', 'true');
+    await expect(ifNotExists).toHaveAttribute('aria-pressed', 'false');
   });
 
   test("saves a script in the document as the field loses the focus, which the ERD tab's undo takes back", async ({
