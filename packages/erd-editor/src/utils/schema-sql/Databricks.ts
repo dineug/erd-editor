@@ -47,12 +47,14 @@ const CONSTRAINT_OPTIONS = 'NOT ENFORCED RELY';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.Databricks);
 
-// Databricks makes an identity column of BIGINT alone, so an autoIncrement
-// column of any other type is written without one.
+// Databricks makes an identity column of BIGINT alone, which it also spells
+// LONG, so an autoIncrement column of any other type is written without one.
+const IDENTITY_TYPES = new Set(['BIGINT', 'LONG']);
+
 function takesIdentity(column: Column): boolean {
   return (
     bHas(column.options, ColumnOption.autoIncrement) &&
-    column.dataType.trim().toUpperCase() === 'BIGINT'
+    IDENTITY_TYPES.has(column.dataType.trim().toUpperCase())
   );
 }
 

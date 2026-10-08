@@ -644,7 +644,7 @@ describe('schema-sql/Databricks', () => {
 });
 
 describe('Databricks identity types', () => {
-  it.each(['BIGINT', 'bigint', ' BigInt '])(
+  it.each(['BIGINT', 'bigint', ' BigInt ', 'LONG', ' long '])(
     'makes an AUTOINCREMENT %j column an identity',
     dataType => {
       const sql = createSchemaSQL(
@@ -657,7 +657,21 @@ describe('Databricks identity types', () => {
     }
   );
 
-  it.each(['INT', 'LONG', 'DECIMAL(20)'])(
+  it('writes a LONG key, the BIGINT of another name, with IDENTITY', () => {
+    const sql = createSchemaSQL(
+      createSampleState({ memberIdType: 'LONG', postIdType: 'LONG' }),
+      Database.Databricks
+    );
+
+    expect(sql).toContain(
+      '\n  `id`    LONG         NOT NULL GENERATED ALWAYS AS IDENTITY,\n'
+    );
+    expect(sql).toContain(
+      '\n  `id`        LONG         NOT NULL GENERATED ALWAYS AS IDENTITY,\n'
+    );
+  });
+
+  it.each(['INT', 'DECIMAL(20)'])(
     'writes an AUTOINCREMENT %j column without IDENTITY or a DEFAULT and says why',
     dataType => {
       const state = createSampleState({ memberIdType: dataType });
