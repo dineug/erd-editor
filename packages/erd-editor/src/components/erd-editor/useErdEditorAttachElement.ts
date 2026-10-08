@@ -71,12 +71,7 @@ import {
 import { toSharedFocus, toSharedFocusKey } from '@/utils/focus';
 import { KeyBindingName, KeyBindingNameList } from '@/utils/keyboard-shortcut';
 import { toLoadValue } from '@/utils/loadValue';
-import {
-  createSchemaSQL,
-  isSchemaSQLHeader,
-  isSchemaSQLStatements,
-  SchemaSQLOptions,
-} from '@/utils/schema-sql';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import { hasDatabaseVendor, toSafeString } from '@/utils/validation';
 
 import {
@@ -114,17 +109,6 @@ const hasGrayColor = arrayHas<string>(GrayColorList);
 const hasAccentColor = arrayHas<string>(AccentColorList);
 const hasAppearance = arrayHas<string>(AppearanceList);
 const hasAppearanceOption = arrayHas<string>(AppearanceOptionList);
-
-/** What getSchemaSQL takes of a host's options: a known statements and header, no other key. */
-function toSchemaSQLOptions(options: unknown): SchemaSQLOptions {
-  if (typeof options !== 'object' || options === null) return {};
-  const { statements, header } = options as Record<string, unknown>;
-
-  return {
-    ...(isSchemaSQLStatements(statements) ? { statements } : {}),
-    ...(isSchemaSQLHeader(header) ? { header } : {}),
-  };
-}
 
 type Props = {
   props: ErdEditorProps;
@@ -506,12 +490,8 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     const database = isDatabaseVendor
       ? get(DatabaseVendorToDatabase, databaseVendor ?? '')
       : undefined;
-    return createSchemaSQL(
-      store.state,
-      database,
-      undefined,
-      toSchemaSQLOptions(options)
-    );
+    // createSchemaSQL reads only statements and header, an unknown value as left out.
+    return createSchemaSQL(store.state, database, undefined, options);
   };
 
   ctx.getSharedStore = config => {

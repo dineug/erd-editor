@@ -21,7 +21,7 @@ export function formatDropWarning(
   const names = i18n.dir === 'rtl' ? tables.map(isolate) : tables;
   const listed =
     names.length <= LISTED_TABLES
-      ? [...names]
+      ? names
       : [
           ...names.slice(0, LISTED_TABLES - 1),
           i18n.t('schemaSql.moreTables', {

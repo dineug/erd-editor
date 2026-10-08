@@ -96,23 +96,30 @@ export function resolveSchemaSQLOptions(
   databaseName: string
 ): ResolvedSchemaSQLOptions {
   const support = schemaSQLSupport(database);
-  const asked = options?.statements;
-  const statements =
-    !isSchemaSQLStatements(asked) ||
-    (asked === SchemaSQLStatements.ifNotExists && !support.ifNotExists)
-      ? SchemaSQLStatements.create
-      : asked;
 
   return {
-    statements,
+    statements: resolveStatements(support, options?.statements),
     header: resolveHeader(support, options?.header),
-    headerName:
-      databaseName === ''
-        ? 'empty'
-        : HEADER_NAME_PATTERN.test(databaseName)
-          ? 'valid'
-          : 'invalid',
+    headerName: toHeaderName(databaseName),
   };
+}
+
+function resolveStatements(
+  { ifNotExists }: SchemaSQLSupport,
+  asked: unknown
+): SchemaSQLStatements {
+  if (!isSchemaSQLStatements(asked)) return SchemaSQLStatements.create;
+  if (asked === SchemaSQLStatements.ifNotExists && !ifNotExists) {
+    return SchemaSQLStatements.create;
+  }
+
+  return asked;
+}
+
+function toHeaderName(databaseName: string): HeaderName {
+  if (databaseName === '') return 'empty';
+
+  return HEADER_NAME_PATTERN.test(databaseName) ? 'valid' : 'invalid';
 }
 
 function resolveHeader(

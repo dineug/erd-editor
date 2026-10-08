@@ -47,9 +47,7 @@ const FOREIGN_KEY_CHECKS_RESTORE =
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {
-    statements: SchemaSQLStatements.create,
-  }
+  { statements, written }: CreateSchemaOptions = {}
 ): string {
   if (statements === SchemaSQLStatements.ifNotExists) {
     return createInlineSchema(state, tableIds, written);

@@ -45,8 +45,14 @@ const TITLE_ID = 'schema-sql-options-title';
 /** The before script's hint: SQL alone, which no language translates. */
 const BEFORE_PLACEHOLDER = '-- CREATE EXTENSION, CREATE SCHEMA, SET …';
 
-/** The one drop and re-create SQL Server ran from, said where the choice is made. */
-const MSSQL_RECREATE_HINT = 'SQL Server 2016+';
+/**
+ * What a statement notes in a database: the SQL Server release drop and
+ * re-create runs from, said where the choice is made, and nothing else.
+ */
+const statementsHint = (database: number, id: SchemaSQLStatements): string =>
+  database === Database.MSSQL && id === SchemaSQLStatements.recreate
+    ? 'SQL Server 2016+'
+    : '';
 
 /** Space is the hand tool's key, whose binding cancels the keydown and with it a native button's press. */
 export const keepSpace = (event: KeyboardEvent) => {
@@ -168,12 +174,7 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
         label: menu.name,
         pressed: menu.id === resolved.statements,
         disabled,
-        title: disabled
-          ? notIn
-          : menu.id === SchemaSQLStatements.recreate &&
-              settings.database === Database.MSSQL
-            ? MSSQL_RECREATE_HINT
-            : '',
+        title: disabled ? notIn : statementsHint(settings.database, menu.id),
         onPress: () => {
           view.statements = menu.id;
         },

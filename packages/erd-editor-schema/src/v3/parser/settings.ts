@@ -171,13 +171,9 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     resetPreLockView(settings);
   }
 
-  if (isPlainObject(json.ddlScripts)) {
-    const { before, after } = json.ddlScripts as Record<string, unknown>;
-    settings.ddlScripts = {
-      before: isString(before) ? before : '',
-      after: isString(after) ? after : '',
-    };
-  }
+  const assignScript = assign(isString, settings.ddlScripts, json.ddlScripts);
+  assignScript('before');
+  assignScript('after');
 
   return settings;
 }

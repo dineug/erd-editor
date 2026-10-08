@@ -59,9 +59,7 @@ function takesIdentity(column: Column): boolean {
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {
-    statements: SchemaSQLStatements.create,
-  }
+  { statements, written }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];

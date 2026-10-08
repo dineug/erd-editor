@@ -192,14 +192,10 @@ export function createSchemaSQL(
     })
   );
   // The scripts belong to the whole document, never to a few of its tables.
-  const whole = tableIds === undefined;
-  const scripts = state.settings.ddlScripts;
-  const before = whole
-    ? formatScript(scripts?.before ?? '', currentDatabase)
-    : '';
-  const after = whole
-    ? formatScript(scripts?.after ?? '', currentDatabase)
-    : '';
+  const scripts =
+    tableIds === undefined ? state.settings.ddlScripts : undefined;
+  const before = formatScript(scripts?.before ?? '', currentDatabase);
+  const after = formatScript(scripts?.after ?? '', currentDatabase);
   // A name no plain identifier writes no header, and no schema on a DROP.
   const header =
     resolved.headerName === 'valid' ? resolved.header : SchemaSQLHeader.none;

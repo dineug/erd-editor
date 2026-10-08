@@ -154,10 +154,11 @@ export function named(
 /** A row opening a submenu, named as named() names it and known by its message key in any language. */
 const submenuNamed = (
   i18n: Pick<I18n, 't'>,
-  key: PlainMessageKey
+  key: PlainMessageKey,
+  keywordsKey?: PlainMessageKey
 ): Pick<Action, 'id' | 'name' | 'keywords' | 'alias'> => ({
   id: key,
-  ...named(i18n, key),
+  ...named(i18n, key, keywordsKey),
 });
 
 /** Whether a row holds the keyword as typed, in any case, in a text a search reads: what Find and Replace would find. */
@@ -533,16 +534,6 @@ export function createScopeActions(
 const isSchemaSQLTab = ({ store }: AppContext) =>
   store.state.settings.canvasType === CanvasType.schemaSQL;
 
-/** A submenu row with the words it is found by, known by its message key in any language. */
-const submenuWithKeywords = (
-  i18n: I18n,
-  key: PlainMessageKey,
-  keywordsKey: PlainMessageKey
-): Pick<Action, 'id' | 'name' | 'keywords' | 'alias'> => ({
-  ...submenuNamed(i18n, key),
-  ...named(i18n, key, keywordsKey),
-});
-
 /**
  * The Schema SQL tab's own rows, the statements and the header listing only
  * what the database writes, checked as it writes them; then Export: Schema
@@ -561,7 +552,7 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
   return [
     {
       icon: <Icon name="settings-2" size={16} />,
-      ...submenuWithKeywords(
+      ...submenuNamed(
         i18n,
         'palette.schemaSqlStatements',
         'palette.keywords.schemaSqlStatements'
@@ -579,7 +570,7 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
     },
     {
       icon: <Icon name="settings-2" size={16} />,
-      ...submenuWithKeywords(
+      ...submenuNamed(
         i18n,
         'palette.schemaSqlHeader',
         'palette.keywords.schemaSqlHeader'

@@ -92,6 +92,15 @@ const withSavedSettings = (state: RootState): RootState => ({
   settings: toSavedSettings(state.settings),
 });
 
+/** How each format but sql, whose DDL takes a vendor, tables and options, writes a document. */
+const SERIALIZER: Readonly<
+  Record<Exclude<ReadFormat, 'sql'>, (state: RootState) => string>
+> = {
+  snapshot: state => JSON.stringify(toAgentSnapshot(state)),
+  json: state => toJson(state),
+  scripts: state => JSON.stringify(toSnapshotScripts(state.settings)),
+};
+
 /**
  * Serializes a document as an agent asked: the snapshot it edits by, the DDL of
  * a vendor (the document's by default) with the statements and header asked
@@ -131,18 +140,14 @@ export function readDocument(
   }
 
   const text =
-    format === 'snapshot'
-      ? JSON.stringify(toAgentSnapshot(state))
-      : format === 'json'
-        ? toJson(state)
-        : format === 'scripts'
-          ? JSON.stringify(toSnapshotScripts(state.settings))
-          : createSchemaSQL(
-              withSavedSettings(state),
-              vendor === undefined ? undefined : toDatabase(vendor),
-              filtered ? selectTables(state, filtered) : undefined,
-              options
-            );
+    format === 'sql'
+      ? createSchemaSQL(
+          withSavedSettings(state),
+          vendor === undefined ? undefined : toDatabase(vendor),
+          filtered ? selectTables(state, filtered) : undefined,
+          options
+        )
+      : SERIALIZER[format](state);
   if (!fitsInRead(text)) {
     const size = `${text.length.toLocaleString('en-US')} characters, over the ${MAX_READ_CHARS.toLocaleString('en-US')} one read returns`;
     throw new ToolError(

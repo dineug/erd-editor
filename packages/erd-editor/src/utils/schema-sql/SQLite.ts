@@ -5,7 +5,6 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
-import { SchemaSQLStatements } from './options';
 import {
   autoNameIgnoreCase,
   CreateSchemaOptions,
@@ -36,9 +35,7 @@ const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {
-    statements: SchemaSQLStatements.create,
-  }
+  { statements, written }: CreateSchemaOptions = {}
 ): string {
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];

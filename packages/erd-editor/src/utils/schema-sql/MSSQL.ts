@@ -5,7 +5,7 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
-import { SchemaSQLHeader, SchemaSQLStatements } from './options';
+import { SchemaSQLHeader } from './options';
 import {
   autoNameIgnoreCase,
   CreateSchemaOptions,
@@ -45,7 +45,7 @@ const DEFAULT_SCHEMA = 'dbo';
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { written }: CreateSchemaOptions = { statements: SchemaSQLStatements.create }
+  { written }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];

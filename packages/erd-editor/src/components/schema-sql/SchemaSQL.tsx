@@ -23,6 +23,7 @@ import SchemaSQLOptions, {
 import * as optionsStyles from '@/components/schema-sql/schema-sql-options/SchemaSQLOptions.styles';
 import {
   resolvePanel,
+  type SchemaSQLView,
   schemaSQLViewOf,
 } from '@/components/schema-sql/schemaSQLView';
 import { Database } from '@/constants/schema';
@@ -141,6 +142,13 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
     contextMenu.state.show = false;
   };
 
+  // The width is read only while the panel is unset, so a decided panel
+  // never renders again for a resize.
+  const shownPanel = (view: SchemaSQLView) =>
+    view.panel === 'unset'
+      ? resolvePanel(view, app.value.store.state.editor.viewport.width)
+      : view.panel;
+
   onBeforeMount(() => {
     const { store } = app.value;
     const { settings } = store.state;
@@ -161,17 +169,10 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
   });
 
   return () => {
-    const { store } = app.value;
     const { t, dir } = i18n.value;
     const full = !props.tableId;
     const view = schemaSQLViewOf(app.value);
-    // The width is read only while the panel is unset, so a decided panel
-    // never renders again for a resize.
-    const panel = !full
-      ? 'unknown'
-      : view.panel === 'unset'
-        ? resolvePanel(view, store.state.editor.viewport.width)
-        : view.panel;
+    const panel = full ? shownPanel(view) : 'unknown';
 
     // The code stays left of the panel in every language; the panel and the
     // menu read in the reader's direction.

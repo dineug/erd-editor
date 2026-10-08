@@ -29,8 +29,8 @@ export function createWrittenObjects(): WrittenObjects {
 }
 
 export interface CreateSchemaOptions {
-  /** Already what the database writes (resolveSchemaSQLOptions). */
-  statements: SchemaSQLStatements;
+  /** Already what the database writes (resolveSchemaSQLOptions); create when left out. */
+  statements?: SchemaSQLStatements;
   written?: WrittenObjects;
 }
 

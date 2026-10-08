@@ -5,7 +5,7 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
-import { SchemaSQLHeader, SchemaSQLStatements } from './options';
+import { SchemaSQLHeader } from './options';
 import {
   autoName,
   autoNameIgnoreCase,
@@ -42,7 +42,7 @@ const ACTION_SUPPORT = referentialActionSupport(Database.Oracle);
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { written }: CreateSchemaOptions = { statements: SchemaSQLStatements.create }
+  { written }: CreateSchemaOptions = {}
 ): string {
   const {
     settings: { bracketType },
@@ -362,10 +362,7 @@ export function formatIndex(
 /** The names an Oracle script writes that run past the 30 bytes Oracle 12.1 and older allow. */
 export function oracleLongNames(state: RootState): string[] {
   const written = createWrittenObjects();
-  createSchema(state, undefined, {
-    statements: SchemaSQLStatements.create,
-    written,
-  });
+  createSchema(state, undefined, { written });
   const encoder = new TextEncoder();
 
   return [...new Set(written.identifiers)].filter(
