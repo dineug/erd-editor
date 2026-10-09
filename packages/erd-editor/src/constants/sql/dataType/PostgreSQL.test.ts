@@ -153,19 +153,15 @@ describe('PostgreSQLTypes', () => {
 
   it('classifies the integer family', () => {
     expect(namesOf('int')).toEqual([
-      'bit varying',
-      'bit',
       'int',
       'int2',
       'int4',
       'integer',
-      'pg_lsn',
       'serial',
       'serial2',
       'serial4',
       'smallint',
       'smallserial',
-      'varbit',
     ]);
     expect(namesOf('long')).toEqual([
       'bigint',
@@ -181,12 +177,7 @@ describe('PostgreSQLTypes', () => {
 
   it('classifies the approximate and exact numeric types', () => {
     expect(namesOf('float')).toEqual(['float4', 'real']);
-    expect(namesOf('double')).toEqual([
-      'double precision',
-      'float',
-      'float8',
-      'money',
-    ]);
+    expect(namesOf('double')).toEqual(['double precision', 'float', 'float8']);
     expect(namesOf('decimal')).toEqual(['decimal', 'numeric']);
     expect(namesOf('boolean')).toEqual(['bool', 'boolean']);
   });
@@ -226,8 +217,10 @@ describe('PostgreSQLTypes', () => {
     expect(resolvePrimitiveType('text')).toBe('string');
   });
 
-  it('classifies the geometric, network and text types as strings', () => {
+  it('classifies the geometric, network, text and bit string types as strings', () => {
     expect(namesOf('string')).toEqual([
+      'bit varying',
+      'bit',
       'box',
       'bpchar',
       'bytea',
@@ -248,10 +241,12 @@ describe('PostgreSQLTypes', () => {
       'lseg',
       'macaddr',
       'macaddr8',
+      'money',
       'name',
       'nummultirange',
       'numrange',
       'path',
+      'pg_lsn',
       'pg_snapshot',
       'point',
       'polygon',
@@ -276,6 +271,7 @@ describe('PostgreSQLTypes', () => {
       'tsvector',
       'txid_snapshot',
       'uuid',
+      'varbit',
       'varchar',
     ]);
   });
@@ -291,7 +287,7 @@ describe('PostgreSQLTypes', () => {
       names.indexOf('time')
     );
 
-    expect(resolvePrimitiveType('bit varying(8)')).toBe('int');
+    expect(resolvePrimitiveType('bit varying(8)')).toBe('string');
     expect(resolvePrimitiveType('character varying(255)')).toBe('string');
     expect(resolvePrimitiveType('time with time zone')).toBe('time');
   });

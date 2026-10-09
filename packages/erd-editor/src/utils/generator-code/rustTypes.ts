@@ -1,8 +1,15 @@
 import { Database } from '@/constants/schema';
 import { PrimitiveType } from '@/constants/sql/dataType';
 
-import { baseTypeName, fractionalNumber, POSTGRES_BIT_TYPES } from './php';
-import { getPrimitiveType } from './utils';
+import {
+  ColumnScalar,
+  columnScalar,
+  getColumnType,
+  isMySQLFamily,
+  MONEY_TYPES,
+  POSTGRES_OBJECT_ID_TYPES,
+} from './columnTypes';
+import { baseTypeName, findDataTypeHint } from './utils';
 
 /** The Rust value a column's element holds, which each generator spells its own way. */
 export type RustScalar =
@@ -83,92 +90,32 @@ export type RustColumnType = {
   entityScalar: RustScalar;
 };
 
-const convertTypeMap: Record<PrimitiveType, RustScalar> = {
-  int: 'i32',
-  long: 'i64',
-  float: 'f32',
-  double: 'f64',
+// sqlx has no chrono type for a time with its offset, nor any for an interval.
+const RUST_SCALARS: Readonly<Record<ColumnScalar, RustScalar>> = {
+  bool: 'bool',
+  i8: 'i8',
+  i16: 'i16',
+  i32: 'i32',
+  i64: 'i64',
+  u8: 'u8',
+  u16: 'u16',
+  u32: 'u32',
+  u64: 'u64',
+  f32: 'f32',
+  f64: 'f64',
   decimal: 'decimal',
-  boolean: 'bool',
   string: 'string',
-  lob: 'string',
+  bytes: 'bytes',
+  uuid: 'uuid',
+  json: 'json',
   date: 'date',
-  dateTime: 'dateTime',
   time: 'time',
+  timeTz: 'string',
+  dateTime: 'dateTime',
+  dateTimeUtc: 'dateTimeUtc',
+  dateTimeOffset: 'dateTimeOffset',
+  interval: 'string',
 };
-
-const binaryTypes = new Set([
-  'bfile',
-  'binary',
-  'binary varying',
-  'blob',
-  'bytea',
-  'char byte',
-  'image',
-  'long raw',
-  'long varbinary',
-  'longblob',
-  'mediumblob',
-  'raw',
-  'tinyblob',
-  'varbinary',
-]);
-
-const uuidTypes = new Set(['uniqueidentifier', 'uuid']);
-
-const jsonTypes = new Set(['json', 'jsonb']);
-
-const timestampTzTypes = new Set([
-  'datetimeoffset',
-  'timestamp with time zone',
-  'timestamp_tz',
-  'timestamptz',
-]);
-
-// An instant the database shows in the session's zone, as MySQL's TIMESTAMP.
-const timestampLtzTypes = new Set([
-  'timestamp with local time zone',
-  'timestamp_ltz',
-  'timestampltz',
-]);
-
-const moneyTypes = new Set(['money', 'smallmoney']);
-
-const smallintTypes = new Set([
-  'int2',
-  'serial2',
-  'short',
-  'smallint',
-  'smallserial',
-]);
-
-const tinyintTypes = new Set(['byte', 'int1', 'tinyint']);
-
-const unsignedTypes = new Map<string, RustScalar>([
-  ['bigint', 'u64'],
-  ['int', 'u32'],
-  ['int1', 'u8'],
-  ['int2', 'u16'],
-  ['int3', 'u32'],
-  ['int4', 'u32'],
-  ['int8', 'u64'],
-  ['integer', 'u32'],
-  ['mediumint', 'u32'],
-  ['middleint', 'u32'],
-  ['smallint', 'u16'],
-  ['tinyint', 'u8'],
-]);
-
-const yearTypes = new Set(['sql_tsi_year', 'year']);
-
-// SQL Server alone: timestamp and rowversion are eight bytes there.
-const mssqlTypes = new Map<string, RustScalar>([
-  ['bit', 'bool'],
-  ['numeric', 'decimal'],
-  ['rowversion', 'bytes'],
-  ['timestamp', 'bytes'],
-  ['tinyint', 'u8'],
-]);
 
 /** PostgreSQL's character types, which sqlx reads into a String as they are. */
 export const POSTGRES_CHARACTER_TYPES: ReadonlySet<string> = new Set([
@@ -182,41 +129,81 @@ export const POSTGRES_CHARACTER_TYPES: ReadonlySet<string> = new Set([
   'varchar',
 ]);
 
-const postgresTimeTzTypes = new Set(['time with time zone', 'timetz']);
+/**
+ * Where rust.ts reads a vendor list entry by another category than the list,
+ * so its output, which sqlx 0.9 was measured on, holds for the names its rules
+ * by name leave to the category.
+ */
+const rustPrimitiveTypes = new Map<number, ReadonlyMap<string, PrimitiveType>>([
+  [
+    Database.MSSQL,
+    new Map<string, PrimitiveType>([
+      ['binary', 'lob'],
+      ['bit', 'int'],
+      ['money', 'double'],
+      ['numeric', 'float'],
+      ['smallmoney', 'float'],
+    ]),
+  ],
+  [
+    Database.Oracle,
+    new Map<string, PrimitiveType>([
+      ['date', 'date'],
+      ['raw', 'lob'],
+      ['real', 'float'],
+    ]),
+  ],
+  [
+    Database.PostgreSQL,
+    new Map<string, PrimitiveType>([
+      ['bit', 'int'],
+      ['bit varying', 'int'],
+      ['money', 'double'],
+      ['pg_lsn', 'int'],
+      ['varbit', 'int'],
+    ]),
+  ],
+  // sqlx 0.9 read a SQLite TIMESTAMP column into a String.
+  [
+    Database.SQLite,
+    new Map<string, PrimitiveType>([
+      ['bool', 'string'],
+      ['time', 'string'],
+      ['timestamp', 'string'],
+    ]),
+  ],
+]);
 
-const postgresObjectIdTypes = new Set(['cid', 'oid', 'xid', 'xid8']);
-
-const INTERVAL = /^interval\b/;
 const UNSIGNED = /(^|[^0-9a-z_])unsigned([^0-9a-z_]|$)/;
 const ZEROFILL = /(^|[^0-9a-z_])zerofill([^0-9a-z_]|$)/;
 const WHITESPACE = /\s+/g;
-const TYPE_ARGUMENTS = /\(\s*([^)]*)\)/;
-const DIGITS = /^[0-9]+$/;
-// PostgreSQL takes integer ARRAY and integer ARRAY[4] as one dimension.
-const ARRAY_KEYWORD = /\s+array\s*(?:\[\s*\d*\s*\])?\s*$/i;
-const ARRAY_BOUND = /\[\s*\d*\s*\]\s*$/;
 
+/**
+ * The shared column classifier with the choices sqlx makes for Rust on top: an
+ * Oracle, Snowflake or SQLite integer keeps the width its name declares, and a
+ * MySQL SIGNED stays in the name, which keeps it from every rule by name.
+ */
 export function getRustColumnType(
   dataType: string,
   database: number
 ): RustColumnType {
-  const [element, arrayDepth] = splitPostgresArray(dataType, database);
-  const typeName = baseTypeName(element);
-  const isMySQL = isMySQLFamily(database);
-  const isUnsigned =
-    isMySQL &&
-    (UNSIGNED.test(typeName) ||
-      ZEROFILL.test(typeName) ||
-      typeName === 'serial');
-  const base = isMySQL
-    ? typeName
+  const column = getColumnType(dataType, database);
+  const { element, args, arrayDepth, isUnsigned } = column;
+  const base = isMySQLFamily(database)
+    ? baseTypeName(element)
         .replace(UNSIGNED, '$1$2')
         .replace(ZEROFILL, '$1$2')
         .replace(WHITESPACE, ' ')
         .trim()
-    : typeName;
-  const args = typeArguments(element);
-  const scalar = getScalar(element, base, args, database, isUnsigned);
+    : column.base;
+  // columnScalar, not the column's own scalar: Rust keeps the declared width,
+  // an i32 for Oracle's and SQLite's INTEGER, which hold 64 bits.
+  const scalar = rustScalar(
+    columnScalar(element, base, args, database, isUnsigned, rustPrimitiveType),
+    base,
+    database,
+    column.isSemiStructured
+  );
   const isNested = arrayDepth > 1;
 
   return {
@@ -244,116 +231,35 @@ export function wrapVec(type: string, depth: number): string {
   return wrapped;
 }
 
-function getScalar(
-  element: string,
+function rustScalar(
+  scalar: ColumnScalar,
   base: string,
-  args: number[],
   database: number,
-  isUnsigned: boolean
+  isSemiStructured: boolean
 ): RustScalar {
-  if (isMySQLFamily(database)) {
-    const unsigned = isUnsigned ? unsignedTypes.get(base) : undefined;
-
-    if (unsigned) {
-      return unsigned;
-    }
-    if (base === 'serial') {
-      return 'u64';
-    }
-    // BIT and BIT(1) hold one bit, which sqlx reads as a bool.
-    if (base === 'bit') {
-      return args.length === 1 && args[0] > 1 ? 'u64' : 'bool';
-    }
-    if (yearTypes.has(base)) {
-      return 'u16';
-    }
-    if (base === 'timestamp') {
-      return 'dateTimeUtc';
-    }
-    if (base === 'float' && args.length === 1 && args[0] > 24) {
-      return 'f64';
-    }
-  }
-  if (database === Database.MariaDB) {
-    // MariaDB sends a UUID as its 36 characters, and in its Oracle mode
-    // stores a NUMBER of no precision as a DOUBLE.
-    if (base === 'uuid') {
-      return 'string';
-    }
-    if (base === 'number' && args.length === 0) {
-      return 'f64';
-    }
-  }
-  if (database === Database.PostgreSQL) {
-    if (
-      POSTGRES_BIT_TYPES.has(base) ||
-      postgresTimeTzTypes.has(base) ||
-      postgresObjectIdTypes.has(base)
-    ) {
-      return 'string';
-    }
-    if (base === 'float' && args.length === 1 && args[0] <= 24) {
-      return 'f32';
-    }
-  }
-  if (database === Database.MSSQL) {
-    const mssqlType = mssqlTypes.get(base);
-
-    if (mssqlType) {
-      return mssqlType;
-    }
-    if (base === 'float' && args.length === 1 && args[0] <= 24) {
-      return 'f32';
-    }
-  }
-  // Oracle's DATE holds a time of day, and its REAL is a FLOAT(63) NUMBER.
-  if (database === Database.Oracle) {
-    if (base === 'date') {
-      return 'dateTime';
-    }
-    if (base === 'real') {
-      return 'f64';
-    }
-  }
-  if (database === Database.Databricks && base === 'timestamp') {
-    return 'dateTimeUtc';
-  }
-  if (fractionalNumber(element, database)) {
-    return 'decimal';
-  }
-
-  if (binaryTypes.has(base)) {
-    return 'bytes';
-  }
-  if (uuidTypes.has(base)) {
-    return 'uuid';
-  }
-  if (jsonTypes.has(base)) {
-    return 'json';
-  }
-  if (timestampTzTypes.has(base)) {
-    return 'dateTimeOffset';
-  }
-  if (timestampLtzTypes.has(base)) {
-    return 'dateTimeUtc';
-  }
-  if (moneyTypes.has(base)) {
-    return 'decimal';
-  }
-  if (INTERVAL.test(base) || base === 'pg_lsn') {
+  // sqlx sends MariaDB's UUID as its 36 characters, and rust.ts reads the
+  // PostgreSQL system identifiers and the Snowflake and Databricks
+  // semi-structured values as text.
+  if (
+    (database === Database.MariaDB && base === 'uuid') ||
+    (database === Database.PostgreSQL && POSTGRES_OBJECT_ID_TYPES.has(base)) ||
+    isSemiStructured
+  ) {
     return 'string';
   }
-  // Oracle and Snowflake store SMALLINT and TINYINT as a NUMBER(38).
-  if (database !== Database.Oracle && database !== Database.Snowflake) {
-    if (smallintTypes.has(base)) {
-      return 'i16';
-    }
-    if (tinyintTypes.has(base)) {
-      return 'i8';
-    }
-  }
+  return RUST_SCALARS[scalar];
+}
 
-  return convertTypeMap[getPrimitiveType(element, database)];
+function rustPrimitiveType(dataType: string, database: number): PrimitiveType {
+  const hint = findDataTypeHint(dataType, database);
+
+  if (!hint) {
+    return 'string';
+  }
+  return (
+    rustPrimitiveTypes.get(database)?.get(hint.name.toLowerCase()) ??
+    hint.primitiveType
+  );
 }
 
 function postgresSelectAs(
@@ -368,7 +274,7 @@ function postgresSelectAs(
 
   const brackets = '[]'.repeat(arrayDepth);
 
-  if (moneyTypes.has(base)) {
+  if (MONEY_TYPES.has(base)) {
     return `numeric${brackets}`;
   }
   // A column of no type names nothing to cast to.
@@ -380,40 +286,4 @@ function postgresSelectAs(
     return `text${brackets}`;
   }
   return null;
-}
-
-function splitPostgresArray(
-  dataType: string,
-  database: number
-): [element: string, depth: number] {
-  if (database !== Database.PostgreSQL) {
-    return [dataType, 0];
-  }
-  if (ARRAY_KEYWORD.test(dataType)) {
-    return [dataType.replace(ARRAY_KEYWORD, ''), 1];
-  }
-
-  let element = dataType;
-  let depth = 0;
-
-  while (ARRAY_BOUND.test(element)) {
-    element = element.replace(ARRAY_BOUND, '');
-    depth++;
-  }
-  return [element, depth];
-}
-
-function typeArguments(dataType: string): number[] {
-  const matched = TYPE_ARGUMENTS.exec(dataType);
-
-  if (!matched) {
-    return [];
-  }
-
-  const values = matched[1].split(',').map(value => value.trim());
-  return values.every(value => DIGITS.test(value)) ? values.map(Number) : [];
-}
-
-function isMySQLFamily(database: number): boolean {
-  return database === Database.MySQL || database === Database.MariaDB;
 }

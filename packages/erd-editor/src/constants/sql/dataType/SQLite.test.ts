@@ -26,10 +26,11 @@ function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
 }
 
 describe('SQLiteTypes', () => {
-  it('lists the storage classes plus the documented affinity names', () => {
+  it('lists the storage classes, the documented affinity names, BOOL, TIME and TIMESTAMP', () => {
     expect(SQLiteTypes).toEqual([
       { name: 'BIGINT', primitiveType: 'long' },
       { name: 'BLOB', primitiveType: 'lob' },
+      { name: 'BOOL', primitiveType: 'boolean' },
       { name: 'BOOLEAN', primitiveType: 'boolean' },
       { name: 'CHARACTER', primitiveType: 'string' },
       { name: 'CLOB', primitiveType: 'lob' },
@@ -51,6 +52,8 @@ describe('SQLiteTypes', () => {
       { name: 'REAL', primitiveType: 'double' },
       { name: 'SMALLINT', primitiveType: 'int' },
       { name: 'TEXT', primitiveType: 'string' },
+      { name: 'TIME', primitiveType: 'time' },
+      { name: 'TIMESTAMP', primitiveType: 'dateTime' },
       { name: 'TINYINT', primitiveType: 'int' },
       { name: 'UNSIGNED BIG INT', primitiveType: 'long' },
       { name: 'VARCHAR', primitiveType: 'string' },
@@ -72,11 +75,17 @@ describe('SQLiteTypes', () => {
     ).toEqual([]);
   });
 
-  it('carries no time hint, the one primitive SQLite has no name for', () => {
+  it('carries no float hint, since SQLite stores every REAL in eight bytes', () => {
     const primitiveTypes = SQLiteTypes.map(hint => hint.primitiveType);
 
-    expect(primitiveTypes).not.toContain('time');
     expect(primitiveTypes).not.toContain('float');
+  });
+
+  it('reads BOOL, TIME and TIMESTAMP, which SQLite schemas use too', () => {
+    expect(resolvePrimitiveType('bool')).toBe('boolean');
+    expect(resolvePrimitiveType('time')).toBe('time');
+    expect(resolvePrimitiveType('TIMESTAMP')).toBe('dateTime');
+    expect(resolvePrimitiveType('datetime')).toBe('dateTime');
   });
 
   it('resolves data types by prefix, case-insensitively', () => {

@@ -100,14 +100,15 @@ describe('OracleTypes', () => {
     expect(mixedCase).toEqual(['URIType', 'XMLType']);
   });
 
-  it('classifies NUMBER as long and the binary floats separately', () => {
+  it('classifies NUMBER as long and REAL as the FLOAT(63) it stores', () => {
     expect(namesOf('long')).toEqual(['NUMBER']);
     expect(namesOf('double')).toEqual([
       'BINARY_DOUBLE',
       'DOUBLE PRECISION',
       'FLOAT',
+      'REAL',
     ]);
-    expect(namesOf('float')).toEqual(['BINARY_FLOAT', 'REAL']);
+    expect(namesOf('float')).toEqual(['BINARY_FLOAT']);
     expect(namesOf('int')).toEqual(['INT', 'INTEGER', 'SMALLINT']);
     expect(namesOf('decimal')).toEqual(['DEC', 'DECIMAL', 'NUMERIC']);
     expect(namesOf('boolean')).toEqual(['BOOL', 'BOOLEAN']);
@@ -117,9 +118,10 @@ describe('OracleTypes', () => {
     ]);
   });
 
-  it('classifies the temporal types', () => {
-    expect(namesOf('date')).toEqual(['DATE']);
+  it('classifies DATE, which holds a time of day, with the timestamps', () => {
+    expect(namesOf('date')).toEqual([]);
     expect(namesOf('dateTime')).toEqual([
+      'DATE',
       'TIMESTAMP WITH LOCAL TIME ZONE',
       'TIMESTAMP WITH TIME ZONE',
       'TIMESTAMP',
@@ -136,7 +138,6 @@ describe('OracleTypes', () => {
       'LONG VARCHAR',
       'LONG',
       'NCLOB',
-      'RAW',
     ]);
     expect(namesOf('string')).toEqual([
       'ANYDATA',
@@ -151,6 +152,7 @@ describe('OracleTypes', () => {
       'NCHAR VARYING',
       'NCHAR',
       'NVARCHAR2',
+      'RAW',
       'ROWID',
       'SDO_GEOMETRY',
       'SDO_GEORASTER',
@@ -199,7 +201,7 @@ describe('OracleTypes', () => {
   });
 
   it('resolves a longer name past the shorter one that prefixes it', () => {
-    expect(resolvePrimitiveType('DATE')).toBe('date');
+    expect(resolvePrimitiveType('DATE')).toBe('dateTime');
     // Oracle has no DATETIME; the doc's datetime types are DATE, TIMESTAMP and
     // the two INTERVAL forms.
     expect(resolvePrimitiveType('DATETIME')).toBeUndefined();

@@ -95,23 +95,28 @@ describe('MSSQLTypes', () => {
 
   it('classifies the numeric types', () => {
     expect(namesOf('long')).toEqual(['bigint']);
-    expect(namesOf('int')).toEqual([
-      'bit',
-      'int',
-      'integer',
-      'smallint',
-      'tinyint',
+    expect(namesOf('int')).toEqual(['int', 'integer', 'smallint', 'tinyint']);
+    expect(namesOf('decimal')).toEqual([
+      'dec',
+      'decimal',
+      'money',
+      'numeric',
+      'smallmoney',
     ]);
-    expect(namesOf('decimal')).toEqual(['dec', 'decimal']);
-    expect(namesOf('double')).toEqual(['double precision', 'float', 'money']);
-    expect(namesOf('float')).toEqual(['numeric', 'real', 'smallmoney']);
+    expect(namesOf('double')).toEqual(['double precision', 'float']);
+    expect(namesOf('float')).toEqual(['real']);
   });
 
-  it('classifies numeric as float and decimal as decimal', () => {
-    // Unlike every other vendor list, MSSQL maps numeric to float rather
-    // than decimal.
-    expect(resolvePrimitiveType('numeric(18, 0)')).toBe('float');
+  it('classifies numeric and the money types as decimal, as decimal is', () => {
+    expect(resolvePrimitiveType('numeric(18, 0)')).toBe('decimal');
     expect(resolvePrimitiveType('decimal(18, 0)')).toBe('decimal');
+    expect(resolvePrimitiveType('money')).toBe('decimal');
+    expect(resolvePrimitiveType('smallmoney')).toBe('decimal');
+  });
+
+  it('classifies bit as the flag SQL Server reads it as', () => {
+    expect(resolvePrimitiveType('bit')).toBe('boolean');
+    expect(namesOf('boolean')).toEqual(['bit']);
   });
 
   it('classifies the temporal types', () => {
@@ -127,7 +132,6 @@ describe('MSSQLTypes', () => {
 
   it('classifies the large object and string types', () => {
     expect(namesOf('lob')).toEqual([
-      'binary',
       'image',
       'json',
       'national text',
@@ -137,6 +141,7 @@ describe('MSSQLTypes', () => {
     ]);
     expect(namesOf('string')).toEqual([
       'binary varying',
+      'binary',
       'char varying',
       'char',
       'character varying',
@@ -160,13 +165,14 @@ describe('MSSQLTypes', () => {
     ]);
   });
 
-  it('maps binary to lob but varbinary to string', () => {
+  it('files binary as varbinary is, apart from the image large object', () => {
     const byName = new Map(
       MSSQLTypes.map(hint => [hint.name, hint.primitiveType])
     );
 
-    expect(byName.get('binary')).toBe('lob');
+    expect(byName.get('binary')).toBe('string');
     expect(byName.get('varbinary')).toBe('string');
+    expect(byName.get('image')).toBe('lob');
   });
 
   it('resolves parameterised data types by prefix', () => {

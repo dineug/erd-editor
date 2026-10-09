@@ -464,7 +464,12 @@ describe('hint list coverage', () => {
       expect(primitiveOf('BigInt')).toBe(PrimitiveType.long);
       expect(primitiveOf('Float')).toBe(PrimitiveType.double);
       expect(primitiveOf('Decimal')).toBe(PrimitiveType.decimal);
-      expect(primitiveOf('Date')).toBe(PrimitiveType.date);
+      // Oracle's DATE, its only date type, holds a time of day too.
+      expect(primitiveOf('Date')).toBe(
+        database === Database.Oracle
+          ? PrimitiveType.dateTime
+          : PrimitiveType.date
+      );
       expect(primitiveOf('DateTime')).toBe(PrimitiveType.dateTime);
       expect(primitiveOf('timestamptz')).toBe(PrimitiveType.dateTime);
       expect(primitiveOf('String')).toBe(PrimitiveType.string);

@@ -10,12 +10,17 @@ import {
 import { MySQLTypes } from '@/constants/sql/dataType/MySQL';
 import { PostgreSQLTypes } from '@/constants/sql/dataType/PostgreSQL';
 import {
+  baseTypeName,
+  findDataTypeHint,
+  fractionalNumber,
   getDataTypeHints,
   getNameCase,
   getPrimitiveType,
   hasNRelationship,
   hasOneRelationship,
+  LINE_TERMINATOR,
   referentialActionEntries,
+  splitLines,
 } from '@/utils/generator-code/utils';
 import { referentialActionSupport } from '@/utils/schema-sql/utils';
 
@@ -160,6 +165,137 @@ describe('generator-code/utils', () => {
       expect(getPrimitiveType('rowversion', Database.MSSQL)).toBe('string');
       expect(getPrimitiveType('INTEGER', Database.Oracle)).toBe('int');
       expect(getPrimitiveType('INET6', Database.MariaDB)).toBe('string');
+    });
+  });
+
+  describe('getPrimitiveType past the vendor lists', () => {
+    it('reads an Oracle or Snowflake NUMBER with a scale as a decimal', () => {
+      expect(getPrimitiveType('NUMBER(10,2)', Database.Oracle)).toBe('decimal');
+      expect(getPrimitiveType('NUMBER(*,2)', Database.Oracle)).toBe('decimal');
+      expect(getPrimitiveType('NUMBER(38,2)', Database.Snowflake)).toBe(
+        'decimal'
+      );
+      expect(getPrimitiveType('NUMBER(10)', Database.Oracle)).toBe('long');
+      expect(getPrimitiveType('NUMBER(10,0)', Database.Oracle)).toBe('long');
+      expect(getPrimitiveType('NUMBER', Database.Snowflake)).toBe('long');
+      expect(getPrimitiveType('NUMBER(10,2)', Database.MariaDB)).toBe(
+        'decimal'
+      );
+    });
+
+    it('reads a FLOAT(p) by its precision where p sets the width', () => {
+      expect(getPrimitiveType('FLOAT(24)', Database.MySQL)).toBe('float');
+      expect(getPrimitiveType('FLOAT(25)', Database.MySQL)).toBe('double');
+      expect(getPrimitiveType('FLOAT(53) UNSIGNED', Database.MariaDB)).toBe(
+        'double'
+      );
+      expect(getPrimitiveType('float(1)', Database.PostgreSQL)).toBe('float');
+      expect(getPrimitiveType('float(24)[]', Database.PostgreSQL)).toBe(
+        'float'
+      );
+      expect(getPrimitiveType('float(53)', Database.MSSQL)).toBe('double');
+      expect(getPrimitiveType('float(24)', Database.MSSQL)).toBe('float');
+    });
+
+    it('leaves a precision outside 1 to 53, two arguments or another name to the list', () => {
+      expect(getPrimitiveType('float(0)', Database.MSSQL)).toBe('double');
+      expect(getPrimitiveType('FLOAT(0)', Database.MySQL)).toBe('float');
+      expect(getPrimitiveType('float(54)', Database.PostgreSQL)).toBe('double');
+      expect(getPrimitiveType('FLOAT(10,2)', Database.MySQL)).toBe('float');
+      expect(getPrimitiveType('FLOAT4(30)', Database.MySQL)).toBe('float');
+      expect(getPrimitiveType('FLOAT(126)', Database.Oracle)).toBe('double');
+      expect(getPrimitiveType('FLOAT(10)', Database.Oracle)).toBe('double');
+      expect(getPrimitiveType('FLOAT(10)', Database.Snowflake)).toBe('double');
+    });
+
+    it('reads the names the vendor lists refiled by what their drivers return', () => {
+      expect(getPrimitiveType('bit', Database.MSSQL)).toBe('boolean');
+      expect(getPrimitiveType('numeric(10,2)', Database.MSSQL)).toBe('decimal');
+      expect(getPrimitiveType('money', Database.MSSQL)).toBe('decimal');
+      expect(getPrimitiveType('binary(16)', Database.MSSQL)).toBe('string');
+      expect(getPrimitiveType('bit(8)', Database.PostgreSQL)).toBe('string');
+      expect(getPrimitiveType('pg_lsn', Database.PostgreSQL)).toBe('string');
+      expect(getPrimitiveType('money', Database.PostgreSQL)).toBe('string');
+      expect(getPrimitiveType('DATE', Database.Oracle)).toBe('dateTime');
+      expect(getPrimitiveType('REAL', Database.Oracle)).toBe('double');
+      expect(getPrimitiveType('RAW(16)', Database.Oracle)).toBe('string');
+      expect(getPrimitiveType('BOOL', Database.SQLite)).toBe('boolean');
+      expect(getPrimitiveType('TIME', Database.SQLite)).toBe('time');
+      expect(getPrimitiveType('TIMESTAMP', Database.SQLite)).toBe('dateTime');
+    });
+  });
+
+  describe('findDataTypeHint', () => {
+    it('returns the longest list entry that prefixes the type', () => {
+      expect(findDataTypeHint('datetime2(7)', Database.MSSQL)).toEqual({
+        name: 'datetime2',
+        primitiveType: 'dateTime',
+      });
+      expect(findDataTypeHint('INT UNSIGNED', Database.MySQL)?.name).toBe(
+        'INT'
+      );
+      expect(findDataTypeHint('int4range', Database.PostgreSQL)?.name).toBe(
+        'int4range'
+      );
+    });
+
+    it('returns nothing for a name the list does not hold', () => {
+      expect(findDataTypeHint('mood', Database.PostgreSQL)).toBeUndefined();
+      expect(findDataTypeHint('', Database.MySQL)).toBeUndefined();
+      expect(findDataTypeHint('INT', 0)).toBeUndefined();
+    });
+  });
+
+  describe('fractionalNumber', () => {
+    it('reads the precision and scale of a NUMBER with a scale on Oracle and Snowflake', () => {
+      expect(fractionalNumber('NUMBER(10,2)', Database.Oracle)).toEqual([
+        10, 2,
+      ]);
+      expect(fractionalNumber(' number( * , 4 ) ', Database.Oracle)).toEqual([
+        38, 4,
+      ]);
+      expect(fractionalNumber('NUMBER(38,2)', Database.Snowflake)).toEqual([
+        38, 2,
+      ]);
+    });
+
+    it('returns null for a whole number, another type or another database', () => {
+      expect(fractionalNumber('NUMBER(10,0)', Database.Oracle)).toBeNull();
+      expect(fractionalNumber('NUMBER(10)', Database.Oracle)).toBeNull();
+      expect(fractionalNumber('NUMBER', Database.Oracle)).toBeNull();
+      expect(fractionalNumber('DECIMAL(10,2)', Database.Oracle)).toBeNull();
+      expect(fractionalNumber('NUMBER(10,2)', Database.MariaDB)).toBeNull();
+    });
+  });
+
+  describe('baseTypeName', () => {
+    it('lowers the name and drops its argument lists and extra spaces', () => {
+      expect(baseTypeName('  NUMERIC( 10, 2 ) ')).toBe('numeric');
+      expect(baseTypeName('interval day(2) to   second(6)')).toBe(
+        'interval day to second'
+      );
+    });
+
+    it('lowers an I to i under a Turkish default locale too', () => {
+      underTurkishLocale(() => {
+        expect(baseTypeName('TINYINT UNSIGNED')).toBe('tinyint unsigned');
+        expect(baseTypeName('BIT(8)')).toBe('bit');
+      });
+    });
+  });
+
+  describe('splitLines', () => {
+    it('splits at CR LF, CR, LF, U+2028 and U+2029, and nowhere else', () => {
+      expect(splitLines('a\r\nb\rc\nd\u2028e\u2029f\u0085g')).toEqual([
+        'a',
+        'b',
+        'c',
+        'd',
+        'e',
+        'f\u0085g',
+      ]);
+      expect(splitLines('one line')).toEqual(['one line']);
+      expect(LINE_TERMINATOR.test('\u2028')).toBe(true);
     });
   });
 

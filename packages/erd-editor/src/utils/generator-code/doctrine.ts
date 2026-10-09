@@ -16,18 +16,13 @@ import {
   unquoteNamePart,
 } from '@/utils/schema-sql/utils';
 
+import { enumMembers, POSTGRES_BIT_TYPES } from './columnTypes';
 import { DOCTRINE_RESERVED_WORDS } from './doctrineReservedWords';
+import { INDENT, isPostgresArray, PHP_HEADER, toClassName } from './php';
 import {
   baseTypeName,
-  fractionalNumber,
-  INDENT,
-  isPostgresArray,
-  PHP_HEADER,
-  POSTGRES_BIT_TYPES,
-  toClassName,
-} from './php';
-import {
   FormatTableOptions,
+  fractionalNumber,
   getNameCase,
   getPrimitiveType,
   hasNRelationship,
@@ -122,8 +117,8 @@ const namedTypes = new Map<string, DoctrineType>([
 
 /**
  * Names one database reads its own way, read before the others: SQL Server's
- * bit is a flag and its numeric a decimal, Oracle stores a SMALLINT as the
- * NUMBER DBAL reads back as an INTEGER, and MySQL's CHAR BYTE is a BINARY.
+ * bit is a flag and its numeric a decimal, Oracle's SMALLINT and DATE what DBAL
+ * reads them back as, an INTEGER and a DATE, and MySQL's CHAR BYTE a BINARY.
  */
 const vendorTypes = new Map<number, ReadonlyMap<string, DoctrineType>>([
   [
@@ -133,7 +128,13 @@ const vendorTypes = new Map<number, ReadonlyMap<string, DoctrineType>>([
       ['numeric', 'DECIMAL'],
     ]),
   ],
-  [Database.Oracle, new Map<string, DoctrineType>([['smallint', 'INTEGER']])],
+  [
+    Database.Oracle,
+    new Map<string, DoctrineType>([
+      ['date', 'DATE_IMMUTABLE'],
+      ['smallint', 'INTEGER'],
+    ]),
+  ],
   [Database.MySQL, new Map<string, DoctrineType>([['char byte', 'BINARY']])],
   [Database.MariaDB, new Map<string, DoctrineType>([['char byte', 'BINARY']])],
 ]);
@@ -1251,8 +1252,6 @@ const MAX_ARGUMENT = /\(\s*max\s*\)/i;
 const UNSIGNED = /(^|[^0-9a-z_])unsigned([^0-9a-z_]|$)/;
 const ZEROFILL = /(^|[^0-9a-z_])zerofill([^0-9a-z_]|$)/;
 const SPACES = /\s+/g;
-const ENUM_MEMBER = /'((?:[^'\\]|''|\\[\s\S])*)'/g;
-const ENUM_SEPARATORS = /[\s,]/g;
 
 // DBAL 4 writes no DECIMAL without a precision, so a type naming none takes
 // the one DBAL 3 defaulted to, or a money type the digits its vendor keeps.
@@ -1351,7 +1350,7 @@ function resolveColumnType(
   if (isMySQL && base === 'enum') {
     const members = enumMembers(dataType);
 
-    if (members.length !== 0) {
+    if (members) {
       return createColumnType('ENUM', {
         options: [`'values' => [${members.map(phpString).join(', ')}]`],
       });
@@ -1603,22 +1602,6 @@ function lengthArgument(dataType: string): number | null {
   const length = Number(matched?.[1]);
 
   return length > 0 ? length : null;
-}
-
-/** The members of an ENUM, each read as MySQL reads a string literal. */
-function enumMembers(dataType: string): string[] {
-  const start = dataType.indexOf('(');
-  const list = dataType.slice(start + 1, dataType.lastIndexOf(')'));
-
-  if (
-    start === -1 ||
-    list.replace(ENUM_MEMBER, '').replace(ENUM_SEPARATORS, '') !== ''
-  ) {
-    return [];
-  }
-  return Array.from(list.matchAll(ENUM_MEMBER), ([, member]) =>
-    unescapeMySQL(member)
-  );
 }
 
 function createClassContext(state: RootState): ClassContext {
