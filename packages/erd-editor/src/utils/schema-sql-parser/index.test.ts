@@ -104,8 +104,8 @@ describe('schemaSQLParserToSchemaJson', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
-      tableGroupIds: [],
     });
+    expect(schema.collections).not.toHaveProperty('tableGroupEntities');
     expect(schema.collections.tableEntities).toEqual({});
     expect(schema.collections.tableColumnEntities).toEqual({});
   });

@@ -214,7 +214,7 @@
           }
         },
         "tableGroupIds": {
-          "description": "Order of the table groups. Absent in a document saved before them, which has none",
+          "description": "Order of the table groups. Written only while the document has a table group; absent means none",
           "type": "array",
           "items": {
             "type": "string"
@@ -249,7 +249,7 @@
             }
           },
           "groupId": {
-            "description": "Id of the table group the table belongs to, empty for none; an id naming no group in doc.tableGroupIds reads as none. Absent in a document saved before table groups",
+            "description": "Id of the table group the table belongs to; an id naming no group in doc.tableGroupIds reads as none. Written only while it names a group; absent or empty means none",
             "type": "string"
           },
           "ui": {
@@ -530,7 +530,7 @@
       }
     },
     "tableGroupEntities": {
-      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Absent in a document saved before them",
+      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written only while the document has a table group; absent means none",
       "type": "object",
       "additionalProperties": {
         "type": "object",
