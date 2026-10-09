@@ -13,6 +13,7 @@ import {
   copyAnchor,
   DirectionName,
   DirectionNameList,
+  LINE_SIZE,
   nextSortEpoch,
   ObjectPoint,
   setAnchors,
@@ -49,8 +50,8 @@ type RelationshipGraph = {
   centerX: number;
   centerY: number;
   objectPoint: ObjectPoint;
-  /** Loops placed on this table so far, which decides how far each is offset. */
-  selfCount: number;
+  /** The loops on this table, laid out together once every one is known. */
+  loops: ChangeRelationship[];
   top: SideEntry[];
   bottom: SideEntry[];
   left: SideEntry[];
@@ -89,12 +90,16 @@ const directionNameToDirection: Record<string, number> = {
 
 const TAU = Math.PI * 2;
 
-/** Loop corner offset: a fraction of the table's shorter side, within bounds. */
-const SELF_CORNER_RATIO = 0.15;
-const SELF_CORNER_MIN = 20;
-const SELF_CORNER_MAX = 60;
-/** How far each additional loop on the same table steps out from the previous. */
-const SELF_CORNER_STRIDE = 14;
+/**
+ * How far the first loop's anchors sit from the table's top-right corner, the
+ * same on every table, so a large table's loop is no larger than a small one's.
+ */
+const SELF_CORNER_OFFSET = 20;
+/**
+ * How far each additional loop on the same table steps out from the previous,
+ * enough that the markers of two neighbouring loops stay apart where it fits.
+ */
+const SELF_CORNER_STRIDE = 18;
 /** Gap kept between the outermost loop and the nearest ordinary anchor. */
 const SELF_CLEARANCE = 8;
 
@@ -161,8 +166,9 @@ export function relationshipSort(
     slotMap.set(relationshipShape.id, [0, 0]);
 
     if (start.tableId === end.tableId) {
-      const graph = getOrCreateGraph(state, graphMap, startTable, source);
-      placeSelf(graph, relationshipShape);
+      getOrCreateGraph(state, graphMap, startTable, source).loops.push(
+        relationshipShape
+      );
     } else {
       const startGraph = getOrCreateGraph(state, graphMap, startTable, source);
       const endGraph = getOrCreateGraph(state, graphMap, endTable, source);
@@ -190,6 +196,7 @@ export function relationshipSort(
   }
 
   for (const graph of graphMap.values()) {
+    placeLoops(graph);
     for (const key of DirectionNameList) {
       placeSide(key as DirectionName, graph, slotMap);
     }
@@ -381,7 +388,7 @@ function getOrCreateGraph(
       centerX: objectPoint.top.x,
       centerY: objectPoint.left.y,
       objectPoint,
-      selfCount: 0,
+      loops: [],
       top: [],
       bottom: [],
       left: [],
@@ -393,39 +400,35 @@ function getOrCreateGraph(
 }
 
 /**
- * Places a loop around the table's top-right corner, kept out of the side lists
- * entirely so it inflates no side's count. The offset grows with the table, and
- * each further loop steps outwards from the last.
+ * Places a table's loops around its top-right corner, kept out of the side lists
+ * entirely so they inflate no side's count. Each further loop steps outwards from
+ * the last, closer together where the table's shorter side has no room for more.
  */
-function placeSelf(graph: RelationshipGraph, relationship: ChangeRelationship) {
-  const { rt, width, height } = graph.objectPoint;
-  const index = graph.selfCount++;
-  const offset =
-    clamp(
-      Math.min(width, height) * SELF_CORNER_RATIO,
-      SELF_CORNER_MIN,
-      SELF_CORNER_MAX
-    ) +
-    index * SELF_CORNER_STRIDE;
+function placeLoops(graph: RelationshipGraph) {
+  const { rt } = graph.objectPoint;
+  const offsets = loopOffsets(graph);
 
-  relationship.start.direction = Direction.top;
-  relationship.start.x = rt.x - offset;
-  relationship.start.y = rt.y;
-  relationship.end.direction = Direction.right;
-  relationship.end.x = rt.x;
-  relationship.end.y = rt.y + offset;
+  graph.loops.forEach((relationship, index) => {
+    const offset = offsets[index];
+    relationship.start.direction = Direction.top;
+    relationship.start.x = rt.x - offset;
+    relationship.start.y = rt.y;
+    relationship.end.direction = Direction.right;
+    relationship.end.x = rt.x;
+    relationship.end.y = rt.y + offset;
+  });
 }
 
-function selfOffset(graph: RelationshipGraph, index: number) {
+/** How far each loop's anchors sit from the corner, on a side of either length. */
+function loopOffsets(graph: RelationshipGraph): number[] {
   const { width, height } = graph.objectPoint;
-  return (
-    clamp(
-      Math.min(width, height) * SELF_CORNER_RATIO,
-      SELF_CORNER_MIN,
-      SELF_CORNER_MAX
-    ) +
-    index * SELF_CORNER_STRIDE
-  );
+  const count = graph.loops.length;
+  const room = Math.max(0, Math.min(width, height) - LINE_SIZE);
+  const first = Math.min(SELF_CORNER_OFFSET, room);
+  const stride =
+    count > 1 ? Math.min(SELF_CORNER_STRIDE, (room - first) / (count - 1)) : 0;
+
+  return graph.loops.map((_, index) => first + index * stride);
 }
 
 /**
@@ -434,12 +437,9 @@ function selfOffset(graph: RelationshipGraph, index: number) {
  * this the anchor spread reaches the corner one already sits in.
  */
 function selfReserve(graph: RelationshipGraph) {
-  if (!graph.selfCount) return 0;
-  return selfOffset(graph, graph.selfCount - 1) + SELF_CLEARANCE;
-}
-
-function clamp(value: number, low: number, high: number) {
-  return Math.min(Math.max(value, low), high);
+  const offsets = loopOffsets(graph);
+  if (!offsets.length) return 0;
+  return offsets[offsets.length - 1] + SELF_CLEARANCE;
 }
 
 function createChangeRelationship({

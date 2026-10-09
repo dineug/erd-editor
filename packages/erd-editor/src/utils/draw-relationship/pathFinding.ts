@@ -13,11 +13,16 @@ import {
   PathLine,
   PathPoint,
   RelationshipPath,
-  ROUTE_CHAMFER,
+  ROUTE_CORNER_RADIUS,
 } from '@/utils/draw-relationship';
 import { bezierPolyline } from '@/utils/draw-relationship/bezier';
-import { chamferPolyline } from '@/utils/draw-relationship/chamfer';
+import { roundPolyline } from '@/utils/draw-relationship/corner';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import {
+  loopOffset,
+  loopPolyline,
+  loopStub,
+} from '@/utils/draw-relationship/loop';
 import {
   clampStub,
   facingGap,
@@ -33,13 +38,14 @@ export function getRelationshipPath(
   const { start, end } = getAnchors(relationship, source);
   const [startSlot, endSlot] = getStubSlots(relationship, source);
   const gap = facingGap(start, end);
+  const loop = start.tableId === end.tableId;
 
   return {
     path: getPath(
       start,
       end,
-      clampStub(stubFor(startSlot), gap),
-      clampStub(stubFor(endSlot), gap),
+      loop ? loopStub(start, end) : clampStub(stubFor(startSlot), gap),
+      loop ? loopStub(start, end) : clampStub(stubFor(endSlot), gap),
       getRoute(relationship, source),
       source
     ),
@@ -74,18 +80,23 @@ function getPath(
     L: { x: 0, y: 0 },
     Q: { x: 0, y: 0 },
     d() {
+      // A loop curves from one turning point round the table's corner to the
+      // other, so it never cuts across the table it leaves.
       if (start.tableId === end.tableId) {
-        return [
-          [
-            { x: this.M.x, y: this.M.y },
-            { x: this.L.x, y: this.L.y },
-          ],
-        ];
+        return toSegments(
+          loopPolyline(
+            this.M,
+            outwardOf(start.direction),
+            this.L,
+            outwardOf(end.direction),
+            loopOffset(start, end)
+          )
+        );
       }
 
       // A view draws one curve between the turning points and reads no route:
-      // the reference has none either, and a chamfered polyline still read as
-      // right angles however far its corners were cut back.
+      // the reference has none either, and an orthogonal polyline still reads
+      // as right angles however its corners are rounded.
       if (source !== 'document') {
         return toSegments(
           bezierPolyline(
@@ -102,7 +113,7 @@ function getPath(
           ? route
           : twoBend(this.M, this.L, start.direction);
 
-      return toSegments(chamferPolyline(polyline, ROUTE_CHAMFER));
+      return toSegments(roundPolyline(polyline, ROUTE_CORNER_RADIUS));
     },
   };
 
@@ -330,7 +341,7 @@ function getLine(
 
 /**
  * The routing polyline as one d, so a connector is a single element whatever the
- * router and the corner cuts made of it. The segments are contiguous by
+ * router and the rounded corners made of it. The segments are contiguous by
  * construction, so each contributes its far end and nothing else.
  */
 export function toPathD(segments: Array<[Point, Point]>) {
@@ -368,7 +379,7 @@ function outwardOf(direction: number): Point {
 /**
  * What a relationship is drawn as before its first sort, which is the only time
  * it has no route: the same shape routeOrthogonal falls back to. Deriving it
- * any other way put a diagonal on screen that no corner had been cut from.
+ * any other way put a diagonal on screen where every routed connector turns.
  */
 function twoBend(m: Point, l: Point, direction: number): Point[] {
   if (isHorizontal(direction)) {

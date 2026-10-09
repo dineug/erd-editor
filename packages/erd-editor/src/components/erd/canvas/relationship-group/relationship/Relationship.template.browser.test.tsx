@@ -127,7 +127,7 @@ describe('relationshipShape as konva nodes', () => {
     expect(points(lines[0])).toEqual(toPoints(path.path.line.end));
     expect(circles[0].x()).toBe(path.line.circle.cx);
     expect(circles[0].y()).toBe(path.line.circle.cy);
-    expect(circles[0].getAttr('radius')).toBe(6);
+    expect(circles[0].getAttr('radius')).toBe(5);
     expect(points(lines[1])).toEqual(toPoints(path.line.line.end.base));
     expect(points(lines[2])).toEqual(toPoints(path.line.line.end.left));
     expect(points(lines[3])).toEqual(toPoints(path.line.line.end.center));
@@ -270,7 +270,7 @@ describe('relationshipShape as konva nodes', () => {
       }
 
       for (const circle of circles) {
-        expect(circle.getAttr('radius')).toBe(6);
+        expect(circle.getAttr('radius')).toBe(5);
       }
     });
   }

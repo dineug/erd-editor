@@ -16,6 +16,7 @@ import type {
   GeometrySource,
   ViewSource,
 } from '@/utils/draw-relationship/geometrySource';
+import { loopReach } from '@/utils/draw-relationship/loop';
 
 export const DirectionName = {
   left: 'left',
@@ -118,26 +119,26 @@ export const isDirection = arrayHas<string>([
   DirectionName.right,
 ]);
 
-export const PATH_HEIGHT = 30;
-export const PATH_END_HEIGHT = PATH_HEIGHT + 20;
+/** The stub of a side's first slot: as short as the decoration lets it be. */
+export const PATH_END_HEIGHT = 24;
 
 /**
- * The cardinality decoration, measured outward from the anchor. The four are one
- * shape and cannot be set independently: the ring shares a centre with the
- * second tick and has to clear both the first tick and the guide line.
+ * The cardinality decoration, measured outward from the anchor, at the size other
+ * ERD tools draw it, clear down to the lowest zoom a table shows its rows. The
+ * ring shares the second tick's centre and clears the first and the guide.
  */
-export const LINE_SIZE = 7;
-export const LINE_HEIGHT = 11;
+export const LINE_SIZE = 6;
+export const LINE_HEIGHT = 9;
 export const CIRCLE_HEIGHT = LINE_SIZE + LINE_HEIGHT;
-export const CIRCLE_RADIUS = 6;
+export const CIRCLE_RADIUS = 5;
 export const PATH_LINE_HEIGHT = LINE_HEIGHT + LINE_HEIGHT + 3;
 
 /**
  * How far apart the corridors of two relationships leaving the same table side
- * sit. Without it every path on a side turns at the same coordinate and their
- * first segments run down one another however far the anchors are spread.
+ * sit, one hit band at full zoom. Without it every path on a side turns at the
+ * same coordinate and their first segments run down one another.
  */
-export const STUB_STEP = 12;
+export const STUB_STEP = 8;
 
 /**
  * Corridors repeat every fourth slot. An unbounded stub walks a busy side's
@@ -148,10 +149,10 @@ export const STUB_CYCLE = 4;
 
 /**
  * The shortest a stub may be clamped to. It has to clear PATH_LINE_HEIGHT or the
- * guide line is drawn backwards, but it is not derived from it: this is where
- * the routing was measured, and following the decorations down cost overlap.
+ * guide line is drawn backwards; just past it, two facing tables about 50px
+ * apart still join in one straight run, where a longer floor sends it around.
  */
-export const MIN_STUB = 36;
+export const MIN_STUB = 24;
 
 /**
  * The widest gap allowed between two anchors on the same table side. Capping the
@@ -164,11 +165,11 @@ export const ANCHOR_MAX_PITCH = 120;
 export const ANCHOR_EDGE_INSET = 12;
 
 /**
- * How far back from a corner a connector turns when the corner is cut to 45
- * degrees. A ceiling rather than a length: each cut is clamped to half the
- * shorter run it touches, so a short run keeps its right angle.
+ * The radius of the quarter circle a connector turns on at a corner. A ceiling
+ * rather than a length: each corner is clamped to half the shorter run it
+ * touches, so a short run keeps its right angle.
  */
-export const ROUTE_CHAMFER = 8;
+export const ROUTE_CORNER_RADIUS = 8;
 
 const EMPTY_SLOTS: readonly [number, number] = [0, 0];
 
@@ -475,6 +476,14 @@ export function getRouteBBox(
   const { start, end } = getAnchors(relationship, source);
   const entry = channel.routes.get(relationship);
   const routed = entry && entry.epoch === channel.epoch ? entry.points : null;
+
+  // A loop never routes, and its curve stays inside its stubs and control reach.
+  if (start.tableId === end.tableId) {
+    return inflate(
+      aabb([start, end]),
+      ROUTE_BBOX_REACH + strokeWidth + loopReach(start, end)
+    );
+  }
 
   const slack = routed ? 0 : MAX_STUB;
 

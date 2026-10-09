@@ -52,8 +52,8 @@ const SUITES: Suite[] = [
   },
   {
     path: 'utils/draw-relationship/pathFinding.test.ts',
-    pins: 'the chamfered polyline a document connector is drawn as',
-    cases: ['turns at right angles on the y axis, with the corners cut'],
+    pins: 'the rounded polyline a document connector is drawn as',
+    cases: ['turns at right angles on the y axis, on rounded corners'],
   },
   {
     path: 'components/erd/floating-toolbar/FloatingToolbar.styles.test.ts',

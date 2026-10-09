@@ -47,6 +47,7 @@ import {
   nextSortEpoch,
   ROUTE_BBOX_REACH,
 } from '@/utils/draw-relationship';
+import { loopReach } from '@/utils/draw-relationship/loop';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 // A table with no columns and every show flag disabled is 134 x 30, which is
@@ -705,7 +706,7 @@ describe('a relationship is kept for its whole reach (AC-G14)', () => {
   });
 
   it('keeps one whose routed points are all off screen while its anchor is on it', () => {
-    const rect: CullingRect = rectAt(76, 0, 70, 60);
+    const rect: CullingRect = rectAt(64, 0, 70, 60);
     const route = getRoute(relationship) ?? [];
 
     expect(intersects(rect, boxOf(route, PAD))).toBe(false);
@@ -755,13 +756,13 @@ describe('a relationship is kept for its whole reach (AC-G14)', () => {
     expect(isRelationshipVisible(strip, relationship)).toBe(true);
   });
 
-  it('falls back to the anchors and the longest stub for a self relationship', () => {
+  it('reaches as far as its curve can for a self relationship', () => {
     const self = addRelationship(state, 'self', 'A', 'A');
     relationshipSort(state);
 
     expect(getRoute(self)).toBeUndefined();
     expect(getRouteBBox(self)).toEqual(
-      boxOf([self.start, self.end], PAD + MAX_STUB)
+      boxOf([self.start, self.end], PAD + loopReach(self.start, self.end))
     );
   });
 
