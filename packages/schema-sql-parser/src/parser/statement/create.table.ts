@@ -27,9 +27,11 @@ import {
   isReferencesValue,
   isRightParentToken,
   isSemicolonToken,
+  isSignedValue,
   isStringToken,
   isTableItemWord,
   isTablespaceValue,
+  isTypeModifier,
   isUniqueValue,
   isUsingValue,
   isWhereValue,
@@ -266,6 +268,8 @@ function createTableColumnsParser(
   const keyModifiers = matchKeyModifiers(tokens);
   const indexKind = isIndexKind(tokens);
   const tableItemWord = isTableItemWord(tokens);
+  const typeModifier = isTypeModifier(tokens);
+  const isSigned = isSignedValue(tokens);
 
   const isToken = () => $pos.value < tokens.length;
 
@@ -781,6 +785,16 @@ function createTableColumnsParser(
       while (depth > 0) {
         value += ')';
         depth--;
+      }
+
+      // Dropping UNSIGNED or ZEROFILL would export the column signed, so they
+      // stay in the order and case written. SIGNED, the default, adds nothing
+      // MySQL keeps, and a generator reading TINYINT SIGNED finds no TINYINT.
+      while (typeModifier($pos.value)) {
+        if (!isSigned($pos.value)) {
+          value += ` ${tokens[$pos.value].value}`;
+        }
+        $pos.value++;
       }
 
       column.dataType = value;

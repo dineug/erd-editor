@@ -233,6 +233,26 @@ describe('data/sakila.sql', () => {
     });
   });
 
+  // Read as plain SMALLINT, TINYINT and MEDIUMINT, they went back out signed.
+  it('keeps UNSIGNED in the type of the 36 columns that declare it', () => {
+    const unsigned = tables
+      .flatMap(table => table.columns)
+      .map(column => column.dataType)
+      .filter(dataType => dataType.endsWith(' UNSIGNED'));
+
+    expect(unsigned).toHaveLength(36);
+    expect(new Set(unsigned)).toEqual(
+      new Set(['SMALLINT UNSIGNED', 'TINYINT UNSIGNED', 'MEDIUMINT UNSIGNED'])
+    );
+    expect(
+      table('film')?.columns.find(column => column.name === 'film_id')
+    ).toMatchObject({
+      dataType: 'SMALLINT UNSIGNED',
+      autoIncrement: true,
+      nullable: false,
+    });
+  });
+
   // Without their quotes the values went back out as ENUM(G,PG,PG-13,...),
   // which no MySQL accepts.
   it('keeps the quotes of the ENUM and SET values', () => {

@@ -1,9 +1,11 @@
 /**
- * https://www.sqlite.org/datatype3.html
+ * https://www.sqlite.org/datatype3.html, and BOOL, TIME and TIMESTAMP, which
+ * SQLite schemas use too: Django declares a boolean as bool and a time as time.
  */
 export const SQLiteTypes: string[] = [
   'BIGINT',
   'BLOB',
+  'BOOL',
   'BOOLEAN',
   'CHARACTER',
   'CLOB',
@@ -25,6 +27,8 @@ export const SQLiteTypes: string[] = [
   'REAL',
   'SMALLINT',
   'TEXT',
+  'TIME',
+  'TIMESTAMP',
   'TINYINT',
   'UNSIGNED BIG INT',
   'VARCHAR',

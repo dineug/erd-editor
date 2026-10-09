@@ -736,6 +736,106 @@ describe('createTableParser - column options', () => {
   });
 });
 
+// MySQL reads SIGNED, UNSIGNED and ZEROFILL as part of a numeric type, so the
+// export writes the column back unsigned only when the type keeps them.
+describe('createTableParser - MySQL numeric type attributes', () => {
+  const types = (sql: string) =>
+    parse(sql).ast.columns.map(({ name, dataType }) => [name, dataType]);
+
+  it('keeps UNSIGNED and ZEROFILL in the type, in the order written', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a INT UNSIGNED, b SMALLINT(5) UNSIGNED ZEROFILL, c DECIMAL(10,2) UNSIGNED, d BIGINT(20) ZEROFILL UNSIGNED, e INT SIGNED, f DOUBLE PRECISION UNSIGNED, g FLOAT(7,2) ZEROFILL, h MEDIUMINT UNSIGNED);'
+      )
+    ).toEqual([
+      ['a', 'INT UNSIGNED'],
+      ['b', 'SMALLINT(5) UNSIGNED ZEROFILL'],
+      ['c', 'DECIMAL(10,2) UNSIGNED'],
+      ['d', 'BIGINT(20) ZEROFILL UNSIGNED'],
+      ['e', 'INT'],
+      ['f', 'DOUBLE PRECISION UNSIGNED'],
+      ['g', 'FLOAT(7,2) ZEROFILL'],
+      ['h', 'MEDIUMINT UNSIGNED'],
+    ]);
+  });
+
+  // MySQL 8.4 and MariaDB 11.4 store a SIGNED column as the bare type, and
+  // read TINYINT SIGNED, the name no generator rule matched, as TINYINT.
+  it('leaves SIGNED out, the default, wherever it stands among them', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a TINYINT SIGNED, b FLOAT(53) signed, c INT SIGNED ZEROFILL, d INT UNSIGNED SIGNED, e BIGINT(20) SIGNED NOT NULL);'
+      )
+    ).toEqual([
+      ['a', 'TINYINT'],
+      ['b', 'FLOAT(53)'],
+      ['c', 'INT ZEROFILL'],
+      ['d', 'INT UNSIGNED'],
+      ['e', 'BIGINT(20)'],
+    ]);
+  });
+
+  it('keeps the case each word is written in, as mysqldump writes it', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a int unsigned, b smallint(5) unsigned zerofill, c INT Unsigned);'
+      )
+    ).toEqual([
+      ['a', 'int unsigned'],
+      ['b', 'smallint(5) unsigned zerofill'],
+      ['c', 'INT Unsigned'],
+    ]);
+  });
+
+  it('still reads the column options after them', () => {
+    const { ast } = parse(
+      "CREATE TABLE t (id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'pk', n TINYINT UNSIGNED DEFAULT 0 UNIQUE, PRIMARY KEY (id));"
+    );
+
+    expect(ast.columns).toEqual([
+      column({
+        name: 'id',
+        dataType: 'INT(10) UNSIGNED',
+        comment: 'pk',
+        primaryKey: true,
+        autoIncrement: true,
+        nullable: false,
+      }),
+      column({
+        name: 'n',
+        dataType: 'TINYINT UNSIGNED',
+        default: '0',
+        unique: true,
+      }),
+    ]);
+  });
+
+  // MySQL refuses them anywhere but right after the type and its arguments.
+  it('leaves out one written after another column option', () => {
+    expect(
+      types(
+        'CREATE TABLE t (a INT NOT NULL UNSIGNED, b INT "UNSIGNED", c BIGINT COMMENT \'x\' ZEROFILL);'
+      )
+    ).toEqual([
+      ['a', 'INT'],
+      ['b', 'INT'],
+      ['c', 'BIGINT'],
+    ]);
+  });
+
+  it('still reads those words as a column name', () => {
+    expect(
+      types(
+        'CREATE TABLE t (unsigned INT UNSIGNED, signed SMALLINT, zerofill);'
+      )
+    ).toEqual([
+      ['unsigned', 'INT UNSIGNED'],
+      ['signed', 'SMALLINT'],
+      ['zerofill', ''],
+    ]);
+  });
+});
+
 describe('createTableParser - user defined types', () => {
   const types = (sql: string) =>
     parse(sql).ast.columns.map(({ name, dataType }) => [name, dataType]);
@@ -905,10 +1005,10 @@ describe('createTableParser - user defined types', () => {
   it('reads a word the lists lack after the type as an attribute', () => {
     expect(
       types(
-        'CREATE TABLE t (a INT UNSIGNED ZEROFILL, b mood SPARSE, c VARCHAR(10) BINARY, d hstore COMPRESSION pglz);'
+        'CREATE TABLE t (a INT UNSIGNED ZEROFILL COLUMN_FORMAT FIXED, b mood SPARSE, c VARCHAR(10) BINARY, d hstore COMPRESSION pglz);'
       )
     ).toEqual([
-      ['a', 'INT'],
+      ['a', 'INT UNSIGNED ZEROFILL'],
       ['b', 'mood'],
       ['c', 'VARCHAR(10)'],
       ['d', 'hstore'],

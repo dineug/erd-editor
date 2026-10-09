@@ -1384,7 +1384,7 @@ CREATE TABLE 'users' (
         {
           "autoIncrement": true,
           "comment": "",
-          "dataType": "bigint",
+          "dataType": "bigint unsigned",
           "default": "",
           "name": "id",
           "nullable": false,
@@ -5248,6 +5248,108 @@ CREATE TABLE `film` (
           "autoIncrement": false,
           "unique": false,
           "nullable": false
+        }
+      ],
+      "indexes": [],
+      "keys": [],
+      "foreignKeys": []
+    }
+  ]
+}
+```
+
+### MySQL UNSIGNED, ZEROFILL and SIGNED
+
+```sql
+CREATE TABLE `product` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `level` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `code` SMALLINT(5) UNSIGNED ZEROFILL,
+  `price` DECIMAL(10,2) UNSIGNED COMMENT 'never negative',
+  `serial_no` BIGINT ZEROFILL UNSIGNED,
+  `delta` INT SIGNED,
+  `ratio` DOUBLE PRECISION UNSIGNED,
+  PRIMARY KEY (`id`)
+);
+```
+
+```json
+{
+  "statements": [
+    {
+      "type": "create.table",
+      "name": "product",
+      "comment": "",
+      "columns": [
+        {
+          "name": "id",
+          "dataType": "int(10) unsigned",
+          "default": "",
+          "comment": "",
+          "primaryKey": true,
+          "autoIncrement": true,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "level",
+          "dataType": "TINYINT UNSIGNED",
+          "default": "0",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "dataType": "SMALLINT(5) UNSIGNED ZEROFILL",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "price",
+          "dataType": "DECIMAL(10,2) UNSIGNED",
+          "default": "",
+          "comment": "never negative",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "serial_no",
+          "dataType": "BIGINT ZEROFILL UNSIGNED",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "delta",
+          "dataType": "INT",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
+        },
+        {
+          "name": "ratio",
+          "dataType": "DOUBLE PRECISION UNSIGNED",
+          "default": "",
+          "comment": "",
+          "primaryKey": false,
+          "autoIncrement": false,
+          "unique": false,
+          "nullable": true
         }
       ],
       "indexes": [],
