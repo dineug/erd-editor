@@ -20,9 +20,9 @@ export type TableProps = {
 };
 
 /**
- * A table as the minimap draws it: the box and nothing in it, no smaller than a
- * mark however far the map is folded. The id stays off the node because two
- * stages spelling one id make an id scan ambiguous, so it is found by name and table.
+ * A table as the minimap draws it: the box in the table's own color and nothing in it, no smaller
+ * than a mark however far the map is folded. The id stays off the node because two stages
+ * spelling one id make an id scan ambiguous, so it is found by name and table.
  */
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -48,7 +48,7 @@ const Table: FC<TableProps> = (props, ctx) => {
         width={rect.width - TABLE_BORDER}
         height={rect.height - TABLE_BORDER}
         cornerRadius={CORNER_RADIUS}
-        fill={theme.tableBackground}
+        fill={table.ui.color || theme.tableBackground}
         stroke={theme.tableBorder}
         strokeWidth={TABLE_BORDER}
       />

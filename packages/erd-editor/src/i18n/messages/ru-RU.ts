@@ -81,6 +81,7 @@ export const ruRU = {
   'contextMenu.show.columnComment': 'Комментарий столбца',
   'contextMenu.show.alternateKey': 'Альтернативный ключ',
   'contextMenu.show.referentialActions': 'Ссылочные действия',
+  'contextMenu.show.tableGroups': 'Группы таблиц',
   'floatingToolbar.hand': 'Рука',
   'floatingToolbar.select': 'Выделение',
   'floatingToolbar.zoomOut': 'Уменьшить',

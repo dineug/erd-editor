@@ -80,6 +80,7 @@ export const zhTW = {
   'contextMenu.show.columnComment': '欄位註解',
   'contextMenu.show.alternateKey': '替代鍵',
   'contextMenu.show.referentialActions': '參考動作',
+  'contextMenu.show.tableGroups': '資料表群組',
   'floatingToolbar.hand': '手形工具',
   'floatingToolbar.select': '選取',
   'floatingToolbar.zoomOut': '縮小',

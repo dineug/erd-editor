@@ -81,6 +81,7 @@ export const slSI = {
   'contextMenu.show.columnComment': 'Komentar stolpca',
   'contextMenu.show.alternateKey': 'Alternativni ključ',
   'contextMenu.show.referentialActions': 'Referenčna dejanja',
+  'contextMenu.show.tableGroups': 'Skupine tabel',
   'floatingToolbar.hand': 'Roka',
   'floatingToolbar.select': 'Izbira',
   'floatingToolbar.zoomOut': 'Pomanjšaj',

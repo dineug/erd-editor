@@ -82,6 +82,7 @@ export const deDE = {
   'contextMenu.show.columnComment': 'Spaltenkommentar',
   'contextMenu.show.alternateKey': 'Alternativschlüssel',
   'contextMenu.show.referentialActions': 'Referenzielle Aktionen',
+  'contextMenu.show.tableGroups': 'Tabellengruppen',
   'floatingToolbar.hand': 'Hand',
   'floatingToolbar.select': 'Auswählen',
   'floatingToolbar.zoomOut': 'Verkleinern',

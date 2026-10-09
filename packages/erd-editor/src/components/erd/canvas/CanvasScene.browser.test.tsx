@@ -40,12 +40,16 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableGroupAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
@@ -144,6 +148,16 @@ const drawnTableIdsOf = (stage: Stage) =>
 
 const backgroundLayerOf = (stage: Stage) =>
   stage.findOne<Layer>('.canvas-background')!;
+
+const seedGroup = (app: AppContext, id: string, zIndex: number) => {
+  app.store.dispatchSync(
+    addTableGroupAction({
+      id,
+      color: '#3b82f6',
+      ui: { x: 50, y: 50, width: 400, height: 300, zIndex },
+    })
+  );
+};
 
 describe('the canvas scene', () => {
   it('roots four layers in the Stage, background first and presence last', async () => {
@@ -464,6 +478,55 @@ describe('the canvas scene', () => {
     expect(stage.find('.relationship-group')).toHaveLength(1);
   });
 
+  it('draws the groups first, under the connectors, by the z-index among themselves', async () => {
+    const { app, stage } = await mountScene();
+    const scene = stage.findOne<Layer>('.scene')!;
+
+    seedTable(app, 't1', 100);
+    seedGroup(app, 'above', 9);
+    seedGroup(app, 'below', 3);
+    await flush();
+
+    expect(scene.getChildren().map(node => node.name())).toEqual([
+      'table-group',
+      'table-group',
+      'relationship-group',
+      'table',
+    ]);
+    expect(stage.find('.table-group').map(node => node.id())).toEqual([
+      'table-group-below',
+      'table-group-above',
+    ]);
+  });
+
+  it('draws no group while the show bit hides them, and brings them back', async () => {
+    const { app, stage } = await mountScene();
+
+    seedGroup(app, 'g1', 1);
+    seedTable(app, 't1', 100);
+    app.store.dispatchSync(changeTableGroupAction({ id: 't1', value: 'g1' }));
+    await flush();
+    expect(stage.find('.table-group')).toHaveLength(1);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    await flush();
+    expect(stage.find('.table-group')).toHaveLength(0);
+    expect(stage.findOne('.table-header-band')?.getAttr('fill')).not.toBe(
+      '#3b82f6'
+    );
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: false })
+    );
+    await flush();
+    expect(stage.find('.table-group')).toHaveLength(1);
+    expect(stage.findOne('.table-header-band')?.getAttr('fill')).toBe(
+      '#3b82f6'
+    );
+  });
+
   it('renders the draw relationship preview only once a start point exists', async () => {
     const { app, stage } = await mountScene();
 
@@ -604,6 +667,21 @@ describe('a scene the context points at a view', () => {
     // The show mode a narrowed view opens on: the key rows alone, which here
     // is the one column carrying the primary key.
     expect(rowIdsOf(stage, 't1')).toEqual(['column-c1']);
+  });
+
+  it('draws no group and no group color on its cards', async () => {
+    const app = createTestAppContext();
+    seedDocument(app);
+    seedGroup(app, 'g1', 1);
+    app.store.dispatchSync(changeTableGroupAction({ id: 't1', value: 'g1' }));
+    narrowView(app);
+
+    const { stage } = await mountScene({ app, source: 'flow' });
+
+    expect(stage.find('.table-group')).toHaveLength(0);
+    expect(
+      tableOf(stage, 't1').findOne('.table-header-band')?.getAttr('fill')
+    ).not.toBe('#3b82f6');
   });
 
   it('keeps its own spelling at a zoom the document would go high level at', async () => {

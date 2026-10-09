@@ -80,6 +80,7 @@ export const faIR = {
   'contextMenu.show.columnComment': 'توضیح ستون',
   'contextMenu.show.alternateKey': 'کلید جایگزین',
   'contextMenu.show.referentialActions': 'کنش‌های ارجاعی',
+  'contextMenu.show.tableGroups': 'گروه‌های جدول',
   'floatingToolbar.hand': 'دست',
   'floatingToolbar.select': 'انتخاب',
   'floatingToolbar.zoomOut': 'کوچک‌نمایی',

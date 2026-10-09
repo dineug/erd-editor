@@ -81,6 +81,7 @@ export const roRO = {
   'contextMenu.show.columnComment': 'Comentariu coloană',
   'contextMenu.show.alternateKey': 'Cheie alternativă',
   'contextMenu.show.referentialActions': 'Acțiuni referențiale',
+  'contextMenu.show.tableGroups': 'Grupuri de tabele',
   'floatingToolbar.hand': 'Mână',
   'floatingToolbar.select': 'Selectare',
   'floatingToolbar.zoomOut': 'Micșorare',

@@ -19,4 +19,5 @@ export const contextMenu = {
   'contextMenu.show.columnComment': 'Column Comment',
   'contextMenu.show.alternateKey': 'Alternate Key',
   'contextMenu.show.referentialActions': 'Referential Actions',
+  'contextMenu.show.tableGroups': 'Table Groups',
 } as const;

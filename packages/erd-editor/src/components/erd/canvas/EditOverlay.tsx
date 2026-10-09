@@ -60,6 +60,7 @@ import {
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { focusEvent } from '@/utils/internalEvents';
 import { isPinchWheel } from '@/utils/pinch';
+import { getTableHeaderTint } from '@/utils/tableGroup';
 import { isHighLevelTable } from '@/utils/validation';
 
 import * as styles from './EditOverlay.styles';
@@ -85,6 +86,8 @@ type CellTarget = {
   width: number;
   value: string;
   placeholderKey: PlainMessageKey;
+  /** The text color a header its group tints takes, its value and placeholder alike; null for the theme's. */
+  textColor: string | null;
 };
 
 type MemoTarget = {
@@ -163,6 +166,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
       value:
         slot.focusType === FocusType.tableName ? table.name : table.comment,
       placeholderKey,
+      textColor: getTableHeaderTint(state, table)?.foreground ?? null,
     };
   }
 
@@ -189,6 +193,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     width: slot.width,
     value: getColumnValue(column, slot.focusType),
     placeholderKey,
+    textColor: null,
   };
 }
 
@@ -454,6 +459,14 @@ const EditOverlay: FC = (_, ctx) => {
                       // The box konva centred the drawn line in, handed to the
                       // input as a property so the two share one measurement.
                       '--cell-text-height': `${getCellTextHeight()}px`,
+                      // The input reads these two for its value and its
+                      // placeholder, so a tinted header keeps its text color.
+                      ...(item.textColor
+                        ? {
+                            '--active': item.textColor,
+                            '--placeholder': item.textColor,
+                          }
+                        : {}),
                     }
                   : {}),
               }}

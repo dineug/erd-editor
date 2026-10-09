@@ -169,6 +169,12 @@ export const VIEW_CARD_GLOW_BLUR = 14;
 
 export const VIEW_CARD_GLOW_OPACITY = 0.55;
 
+/**
+ * How much of its color a table group's body shows, the canvas and the
+ * connectors over it reading through.
+ */
+export const TABLE_GROUP_FILL_OPACITY = 0.12;
+
 /** The side of the square viewBox every icon is authored in. */
 export const ICON_VIEW_SIZE = Number(ICON_VIEW_BOX.split(' ')[2]);
 

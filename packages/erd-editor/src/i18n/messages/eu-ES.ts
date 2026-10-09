@@ -81,6 +81,7 @@ export const euES = {
   'contextMenu.show.columnComment': 'Zutabearen iruzkina',
   'contextMenu.show.alternateKey': 'Gako alternatiboa',
   'contextMenu.show.referentialActions': 'Erreferentzia-ekintzak',
+  'contextMenu.show.tableGroups': 'Taula-taldeak',
   'floatingToolbar.hand': 'Eskua',
   'floatingToolbar.select': 'Hautatu',
   'floatingToolbar.zoomOut': 'Txikiagotu',

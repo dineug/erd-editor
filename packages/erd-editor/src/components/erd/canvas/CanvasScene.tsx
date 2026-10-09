@@ -18,6 +18,7 @@ import { createRetentionPool } from '@/components/erd/canvas/sceneRetention';
 import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedDragSelect';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
+import TableGroup from '@/components/erd/canvas/table-group/TableGroup';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import ParticleLayer from '@/components/visualization/particles/ParticleLayer';
 import { Show } from '@/constants/schema';
@@ -37,6 +38,7 @@ import {
   isTableVisible,
 } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
+import { isTableGroupShown } from '@/utils/tableGroup';
 import { isHighLevelTable } from '@/utils/validation';
 
 export type CanvasSceneProps = {
@@ -89,8 +91,11 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       source !== 'document' || bHas(state.settings.show, Show.relationship);
 
     // What this source shows: the whole document, or what the active view
-    // places, keeps within its hop and joins, memos left out of it.
-    const { tableIds, memoIds, relationshipIds } = getVisibleIds(state, source);
+    // places, keeps within its hop and joins, memos and groups left out of it.
+    const { tableIds, memoIds, relationshipIds, tableGroupIds } = getVisibleIds(
+      state,
+      source
+    );
 
     const cullingRect = getCullingRect(state, source);
 
@@ -127,6 +132,15 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const allRelationships = query(collections)
       .collection('relationshipEntities')
       .selectByIds(relationshipIds);
+
+    // Behind everything else, a few large boxes, so none is culled.
+    const groups =
+      tableGroupIds.length && isTableGroupShown(state)
+        ? query(collections)
+            .collection('tableGroupEntities')
+            .selectByIds(tableGroupIds)
+            .sort(byZIndex)
+        : [];
 
     const isMoving = ({ start, end }: Relationship) =>
       Boolean(dragIds?.has(start.tableId) || dragIds?.has(end.tableId));
@@ -238,6 +252,13 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
         </k-layer>
         {source !== 'document' ? <ParticleLayer /> : null}
         <k-layer name="scene" x={x} y={y} scaleX={zoomLevel} scaleY={zoomLevel}>
+          {repeat(
+            groups,
+            group => group.id,
+            group => (
+              <TableGroup group={group} />
+            )
+          )}
           {showRelationship ? (
             <RelationshipGroup
               relationships={relationships}

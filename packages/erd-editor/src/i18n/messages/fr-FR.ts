@@ -82,6 +82,7 @@ export const frFR = {
   'contextMenu.show.columnComment': 'Commentaire de colonne',
   'contextMenu.show.alternateKey': 'Clé alternative',
   'contextMenu.show.referentialActions': 'Actions référentielles',
+  'contextMenu.show.tableGroups': 'Groupes de tables',
   'floatingToolbar.hand': 'Main',
   'floatingToolbar.select': 'Sélection',
   'floatingToolbar.zoomOut': 'Zoom arrière',

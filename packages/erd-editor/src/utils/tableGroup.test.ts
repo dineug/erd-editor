@@ -1,7 +1,11 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { TABLE_GROUP_PADDING } from '@/constants/layout';
+import {
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+} from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import { createEditor } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { getTableRect } from '@/konva/scene/metrics';
@@ -10,16 +14,22 @@ import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import {
   findTableGroupAt,
   getTableCenter,
+  getTableGroupColors,
   getTableGroupId,
   getTableGroupMemberIds,
   getTableGroupRect,
+  getTableHeaderTint,
   getTablesGroupRect,
   isPointInRect,
+  isTableGroupShown,
   nextTableGroupZIndex,
   padRect,
 } from '@/utils/tableGroup';
 
 const P = TABLE_GROUP_PADDING;
+
+/** The padding over a box's top edge, where the title bar sits above the padding. */
+const TOP = TABLE_GROUP_PADDING + TABLE_GROUP_TITLE_HEIGHT;
 
 function createState(): RootState {
   return { ...schemaV3Parser({}), editor: createEditor(), lww: {} };
@@ -41,9 +51,10 @@ function addTable(
 function addGroup(
   state: RootState,
   id: string,
-  ui: { x: number; y: number; width: number; height: number; zIndex?: number }
+  ui: { x: number; y: number; width: number; height: number; zIndex?: number },
+  color = ''
 ) {
-  const group = createTableGroup({ id, ui: { zIndex: 1, ...ui } });
+  const group = createTableGroup({ id, color, ui: { zIndex: 1, ...ui } });
   state.collections.tableGroupEntities[id] = group;
   state.doc.tableGroupIds.push(id);
   return group;
@@ -98,18 +109,19 @@ describe('getTableGroupMemberIds', () => {
 });
 
 describe('padRect', () => {
-  it('grows a rect by the padding on every side', () => {
+  it('grows a rect by the padding on every side and the title bar on top', () => {
+    expect(TOP).toBe(52);
     expect(padRect({ x: 10, y: 20, width: 100, height: 50 })).toEqual({
       x: 10 - P,
-      y: 20 - P,
+      y: 20 - TOP,
       width: 100 + P * 2,
-      height: 50 + P * 2,
+      height: 50 + P + TOP,
     });
     expect(padRect({ x: 0, y: 0, width: 1, height: 1 }, 5)).toEqual({
       x: -5,
-      y: -5,
+      y: -33,
       width: 11,
-      height: 11,
+      height: 39,
     });
   });
 });
@@ -147,6 +159,22 @@ describe('getTableGroupRect', () => {
     });
   });
 
+  it('keeps the title bar clear above a member that reaches past the top', () => {
+    const state = createState();
+    const group = addGroup(state, 'g1', {
+      x: 0,
+      y: 100,
+      width: 500,
+      height: 500,
+    });
+    addTable(state, 't1', 100, 110, 'g1');
+
+    const box = getTableGroupRect(state, group);
+
+    expect(box.y).toBe(110 - TOP);
+    expect(110 - box.y - TABLE_GROUP_TITLE_HEIGHT).toBe(P);
+  });
+
   it('leaves out the tables a drag holds, and tables of other groups', () => {
     const state = createState();
     const group = addGroup(state, 'g1', { x: 0, y: 0, width: 50, height: 50 });
@@ -169,9 +197,9 @@ describe('getTablesGroupRect', () => {
 
     expect(getTablesGroupRect(state, ['a', 'b', 'removed', 'ghost'])).toEqual({
       x: a.x - P,
-      y: a.y - P,
+      y: a.y - TOP,
       width: b.x + b.width - a.x + P * 2,
-      height: b.y + b.height - a.y + P * 2,
+      height: b.y + b.height - a.y + P + TOP,
     });
   });
 
@@ -261,5 +289,75 @@ describe('nextTableGroupZIndex', () => {
         createTableGroup({ ui: { zIndex: 7 } }),
       ])
     ).toBe(8);
+  });
+});
+
+describe('isTableGroupShown', () => {
+  it('shows groups until the hide bit is set', () => {
+    const state = createState();
+
+    expect(isTableGroupShown(state)).toBe(true);
+
+    state.settings.show |= Show.hideTableGroup;
+    expect(isTableGroupShown(state)).toBe(false);
+  });
+});
+
+describe('getTableGroupColors', () => {
+  it('paints with the color as an opaque hex and the text that contrasts with it', () => {
+    expect(getTableGroupColors(createTableGroup({ color: '#1E3A8A' }))).toEqual(
+      { background: '#1e3a8a', foreground: '#ffffff' }
+    );
+    expect(
+      getTableGroupColors(createTableGroup({ color: 'rgb(254 240 138 / 50%)' }))
+    ).toEqual({ background: '#fef08a', foreground: '#000000' });
+  });
+
+  it('is null for no color and for one it cannot read', () => {
+    expect(getTableGroupColors(createTableGroup({ color: '' }))).toBeNull();
+    expect(getTableGroupColors(createTableGroup({ color: 'red' }))).toBeNull();
+  });
+});
+
+describe('getTableHeaderTint', () => {
+  const box = { x: 0, y: 0, width: 10, height: 10 };
+
+  it('tints a member of a colored group in the document', () => {
+    const state = createState();
+    addGroup(state, 'g1', box, '#000000');
+    const table = addTable(state, 't1', 0, 0, 'g1');
+
+    expect(getTableHeaderTint(state, table)).toEqual({
+      background: '#000000',
+      foreground: '#ffffff',
+    });
+  });
+
+  it('tints nothing in a view, while groups are hidden, or out of any group', () => {
+    const state = createState();
+    addGroup(state, 'g1', box, '#000000');
+    const member = addTable(state, 't1', 0, 0, 'g1');
+    const loose = addTable(state, 't2', 0, 0);
+    const stale = addTable(state, 't3', 0, 0, 'ghost');
+
+    expect(getTableHeaderTint(state, member, 'flow')).toBeNull();
+    expect(getTableHeaderTint(state, loose)).toBeNull();
+    expect(getTableHeaderTint(state, stale)).toBeNull();
+
+    state.settings.show |= Show.hideTableGroup;
+    expect(getTableHeaderTint(state, member)).toBeNull();
+  });
+
+  it('tints nothing for a group with no color it can read', () => {
+    const state = createState();
+    addGroup(state, 'plain', box);
+    addGroup(state, 'named', box, 'tomato');
+
+    expect(
+      getTableHeaderTint(state, addTable(state, 't1', 0, 0, 'plain'))
+    ).toBeNull();
+    expect(
+      getTableHeaderTint(state, addTable(state, 't2', 0, 0, 'named'))
+    ).toBeNull();
   });
 });

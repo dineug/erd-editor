@@ -81,6 +81,7 @@ export const trTR = {
   'contextMenu.show.columnComment': 'Sütun açıklaması',
   'contextMenu.show.alternateKey': 'Alternatif anahtar',
   'contextMenu.show.referentialActions': 'Referans eylemleri',
+  'contextMenu.show.tableGroups': 'Tablo grupları',
   'floatingToolbar.hand': 'El aracı',
   'floatingToolbar.select': 'Seçim aracı',
   'floatingToolbar.zoomOut': 'Uzaklaştır',

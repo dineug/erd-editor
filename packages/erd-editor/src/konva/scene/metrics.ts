@@ -20,6 +20,19 @@ export type Rect = {
   height: number;
 };
 
+/** The smallest box holding both. */
+export function unionRect(a: Rect, b: Rect): Rect {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
+}
+
 /** The border and padding a table's own size is built out of, on one side. */
 const TABLE_INSET = TABLE_BORDER + TABLE_PADDING;
 

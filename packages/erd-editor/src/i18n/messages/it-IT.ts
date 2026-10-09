@@ -81,6 +81,7 @@ export const itIT = {
   'contextMenu.show.columnComment': 'Commento colonna',
   'contextMenu.show.alternateKey': 'Chiave alternativa',
   'contextMenu.show.referentialActions': 'Azioni referenziali',
+  'contextMenu.show.tableGroups': 'Gruppi di tabelle',
   'floatingToolbar.hand': 'Mano',
   'floatingToolbar.select': 'Selezione',
   'floatingToolbar.zoomOut': 'Zoom indietro',

@@ -80,6 +80,7 @@ export const heIL = {
   'contextMenu.show.columnComment': 'הערת עמודה',
   'contextMenu.show.alternateKey': 'מפתח חלופי',
   'contextMenu.show.referentialActions': 'פעולות הפניה',
+  'contextMenu.show.tableGroups': 'קבוצות טבלאות',
   'floatingToolbar.hand': 'יד',
   'floatingToolbar.select': 'בחירה',
   'floatingToolbar.zoomOut': 'התרחקות',

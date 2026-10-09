@@ -167,6 +167,12 @@ export const MEMO_MIN_HEIGHT = 100;
  */
 export const TABLE_GROUP_PADDING = 24;
 
+/**
+ * The bar a table group's name is drawn on along the top of its box, as tall
+ * as a table's header band, which the box's top padding clears as well.
+ */
+export const TABLE_GROUP_TITLE_HEIGHT = 28;
+
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_MARGIN = 20;
 

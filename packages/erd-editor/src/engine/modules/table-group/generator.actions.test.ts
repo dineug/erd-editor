@@ -8,7 +8,10 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import { TABLE_GROUP_PADDING } from '@/constants/layout';
+import {
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+} from '@/constants/layout';
 import { Clock } from '@/engine/clock';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
@@ -37,6 +40,7 @@ import { Tag } from '@/engine/tag';
 import { getTableRect } from '@/konva/scene/metrics';
 
 const P = TABLE_GROUP_PADDING;
+const T = TABLE_GROUP_TITLE_HEIGHT;
 const UI = { x: 0, y: 0, width: 600, height: 400, zIndex: 1 };
 const toWidth = (text: string) => text.length * 10;
 
@@ -157,9 +161,9 @@ describe('addTableGroupFromTablesAction$', () => {
     const id = store.state.doc.tableGroupIds[1];
     expect(store.state.collections.tableGroupEntities[id].ui).toEqual({
       x: a.x - P,
-      y: a.y - P,
+      y: a.y - P - T,
       width: b.x + b.width - a.x + P * 2,
-      height: b.y + b.height - a.y + P * 2,
+      height: b.y + b.height - a.y + P * 2 + T,
       zIndex: 2,
     });
     expect(groupIdOf(store, 'a')).toBe(id);

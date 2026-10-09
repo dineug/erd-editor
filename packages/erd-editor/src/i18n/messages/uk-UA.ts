@@ -81,6 +81,7 @@ export const ukUA = {
   'contextMenu.show.columnComment': 'Коментар стовпця',
   'contextMenu.show.alternateKey': 'Альтернативний ключ',
   'contextMenu.show.referentialActions': 'Посилальні дії',
+  'contextMenu.show.tableGroups': 'Групи таблиць',
   'floatingToolbar.hand': 'Рука',
   'floatingToolbar.select': 'Виділення',
   'floatingToolbar.zoomOut': 'Зменшити',

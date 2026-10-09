@@ -223,10 +223,16 @@ const alternateKeyActionTypes = alternateKeyActions.map(action => action.type);
 
 const isAlternateKeyAction = arrayHas<string>(alternateKeyActionTypes);
 
-/** The referential action labels shown or hidden, which moves no table and no anchor. */
-const isLabelToggle = (action: AnyAction) =>
+/** The show bits that move no table and no anchor: the referential action labels and the groups. */
+const isPaintOnlyShow = arrayHas<number>([
+  Show.hideReferentialAction,
+  Show.hideTableGroup,
+]);
+
+/** One of those bits shown or hidden, which neither sorts nor measures. */
+const isPaintOnlyToggle = (action: AnyAction) =>
   action.type === changeShowAction.type &&
-  action.payload?.show === Show.hideReferentialAction;
+  isPaintOnlyShow(action.payload?.show);
 
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
@@ -237,7 +243,7 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
         action =>
           (!isAlternateKeyAction(action.type) ||
             bHas(getState().settings.show, Show.columnAlternateKey)) &&
-          !isLabelToggle(action)
+          !isPaintOnlyToggle(action)
       ),
       // Invalidation reads every action, the sort reads one per window. Putting
       // this after the throttle would drop the width-changing action whenever

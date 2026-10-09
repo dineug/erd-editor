@@ -350,6 +350,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Auto Increment',
       'Relationship',
       'Referential Actions',
+      'Table Groups',
     ]);
 
     const before = app.store.state.settings.show;

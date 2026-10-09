@@ -80,6 +80,7 @@ export const jaJP = {
   'contextMenu.show.columnComment': '列コメント',
   'contextMenu.show.alternateKey': '代替キー',
   'contextMenu.show.referentialActions': '参照動作',
+  'contextMenu.show.tableGroups': 'テーブルグループ',
   'floatingToolbar.hand': '手のひらツール',
   'floatingToolbar.select': '選択',
   'floatingToolbar.zoomOut': 'ズームアウト',

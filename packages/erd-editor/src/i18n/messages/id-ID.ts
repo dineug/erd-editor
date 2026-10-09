@@ -81,6 +81,7 @@ export const idID = {
   'contextMenu.show.columnComment': 'Komentar kolom',
   'contextMenu.show.alternateKey': 'Kunci alternatif',
   'contextMenu.show.referentialActions': 'Tindakan referensial',
+  'contextMenu.show.tableGroups': 'Grup tabel',
   'floatingToolbar.hand': 'Tangan',
   'floatingToolbar.select': 'Pilih',
   'floatingToolbar.zoomOut': 'Perkecil',

@@ -80,6 +80,7 @@ export const zhCN = {
   'contextMenu.show.columnComment': '列注释',
   'contextMenu.show.alternateKey': '备用键',
   'contextMenu.show.referentialActions': '引用操作',
+  'contextMenu.show.tableGroups': '表分组',
   'floatingToolbar.hand': '抓手',
   'floatingToolbar.select': '选择',
   'floatingToolbar.zoomOut': '缩小',

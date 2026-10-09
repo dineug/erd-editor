@@ -80,6 +80,7 @@ export const arSA = {
   'contextMenu.show.columnComment': 'تعليق العمود',
   'contextMenu.show.alternateKey': 'المفتاح البديل',
   'contextMenu.show.referentialActions': 'الإجراءات المرجعية',
+  'contextMenu.show.tableGroups': 'مجموعات الجداول',
   'floatingToolbar.hand': 'اليد',
   'floatingToolbar.select': 'تحديد',
   'floatingToolbar.zoomOut': 'تصغير',

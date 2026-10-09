@@ -189,7 +189,7 @@ function oklabOf(channels: Channels): Lab {
 }
 
 /** An sRGB channel of 0 to 255 as linear light of 0 to 1. */
-function toLinear(channel: number): number {
+export function toLinear(channel: number): number {
   const value = channel / 255;
   return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }

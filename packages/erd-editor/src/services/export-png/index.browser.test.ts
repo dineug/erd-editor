@@ -1,3 +1,4 @@
+import type { Container } from 'konva/lib/Container';
 import { Konva } from 'konva/lib/Global';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -54,11 +55,20 @@ type TableSeed = {
   name: string;
   x: number;
   y: number;
+  groupId?: string;
+};
+
+type GroupSeed = {
+  id: string;
+  color: string;
+  x: number;
+  y: number;
 };
 
 type Seed = {
   memos?: MemoSeed[];
   tables?: TableSeed[];
+  groups?: GroupSeed[];
   relationships?: RelationshipSeed[];
   show?: number;
   originX?: number;
@@ -82,6 +92,7 @@ const DEFAULT_MEMO: MemoSeed = {
 function createDoc({
   memos = [DEFAULT_MEMO],
   tables = [],
+  groups = [],
   relationships = [],
   show,
   originX = 0,
@@ -105,14 +116,16 @@ function createDoc({
       relationshipIds: relationships.map(({ id }) => id),
       indexIds: [],
       memoIds: memos.map(({ id }) => id),
+      ...(groups.length ? { tableGroupIds: groups.map(({ id }) => id) } : {}),
     },
     collections: {
       tableEntities: Object.fromEntries(
-        tables.map(({ id, name, x, y }) => [
+        tables.map(({ id, name, x, y, groupId }) => [
           id,
           {
             id,
             name,
+            ...(groupId ? { groupId } : {}),
             comment: '',
             columnIds: [],
             seqColumnIds: [],
@@ -145,6 +158,22 @@ function createDoc({
       ),
       indexEntities: {},
       indexColumnEntities: {},
+      ...(groups.length
+        ? {
+            tableGroupEntities: Object.fromEntries(
+              groups.map(({ id, color, x, y }) => [
+                id,
+                {
+                  id,
+                  name: id,
+                  color,
+                  ui: { x, y, width: 200, height: 100, zIndex: 1 },
+                  meta: meta(),
+                },
+              ])
+            ),
+          }
+        : {}),
       memoEntities: Object.fromEntries(
         memos.map(({ id, x, y, width, height }) => [
           id,
@@ -331,6 +360,58 @@ describe('renderDocumentScene', () => {
     } finally {
       scene.destroy();
     }
+  });
+});
+
+describe('the groups of an exported document', () => {
+  const GROUP: GroupSeed = { id: 'g-1', color: '#1e3a8a', x: -600, y: -400 };
+  const MEMBER: TableSeed = { ...TABLE, groupId: GROUP.id };
+
+  const drawGroups = async (show?: number) => {
+    const scene = await renderDocumentScene({
+      doc: createDoc({ tables: [MEMBER], groups: [GROUP], show }),
+      theme,
+      toWidth,
+    });
+
+    try {
+      return {
+        layer: scene.stage
+          .findOne<Container>('.export-scene')!
+          .getChildren()
+          .map(node => node.name()),
+        band: scene.stage.findOne('.table-header-band')?.getAttr('fill'),
+        name: scene.stage
+          .findOne<Container>('.tableName')
+          ?.findOne('.cell-text')
+          ?.getAttr('fill'),
+        x: scene.box.x,
+      };
+    } finally {
+      scene.destroy();
+    }
+  };
+
+  it('draws each group behind everything, and its members in its color', async () => {
+    const drawn = await drawGroups();
+
+    expect(drawn.layer.slice(0, 3)).toEqual([
+      'export-background',
+      'table-group',
+      'relationship-group',
+    ]);
+    expect(drawn.band).toBe('#1e3a8a');
+    expect(drawn.name).toBe('#ffffff');
+    expect(drawn.x).toBe(GROUP.x - EXPORT_MARGIN);
+  });
+
+  it('draws no group, no tint and no room for one while the document hides them', async () => {
+    const drawn = await drawGroups(Show.relationship | Show.hideTableGroup);
+
+    expect(drawn.layer).not.toContain('table-group');
+    expect(drawn.band).toBe(theme.tableHeaderBackground);
+    expect(drawn.name).toBe(theme.active);
+    expect(drawn.x).toBe(DEFAULT_MEMO.x - EXPORT_MARGIN);
   });
 });
 

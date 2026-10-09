@@ -81,6 +81,7 @@ export const plPL = {
   'contextMenu.show.columnComment': 'Komentarz kolumny',
   'contextMenu.show.alternateKey': 'Klucz alternatywny',
   'contextMenu.show.referentialActions': 'Akcje referencyjne',
+  'contextMenu.show.tableGroups': 'Grupy tabel',
   'floatingToolbar.hand': 'Rączka',
   'floatingToolbar.select': 'Zaznaczanie',
   'floatingToolbar.zoomOut': 'Pomniejsz',

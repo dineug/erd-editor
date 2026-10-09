@@ -81,6 +81,7 @@ export const svSE = {
   'contextMenu.show.columnComment': 'Kolumnkommentar',
   'contextMenu.show.alternateKey': 'Alternativ nyckel',
   'contextMenu.show.referentialActions': 'Referensåtgärder',
+  'contextMenu.show.tableGroups': 'Tabellgrupper',
   'floatingToolbar.hand': 'Hand',
   'floatingToolbar.select': 'Markera',
   'floatingToolbar.zoomOut': 'Zooma ut',

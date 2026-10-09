@@ -81,6 +81,7 @@ export const ptPT = {
   'contextMenu.show.columnComment': 'Comentário da coluna',
   'contextMenu.show.alternateKey': 'Chave alternativa',
   'contextMenu.show.referentialActions': 'Ações referenciais',
+  'contextMenu.show.tableGroups': 'Grupos de tabelas',
   'floatingToolbar.hand': 'Mão',
   'floatingToolbar.select': 'Selecionar',
   'floatingToolbar.zoomOut': 'Reduzir',

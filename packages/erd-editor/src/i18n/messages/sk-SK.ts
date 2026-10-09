@@ -80,6 +80,7 @@ export const skSK = {
   'contextMenu.show.columnComment': 'Komentár stĺpca',
   'contextMenu.show.alternateKey': 'Alternatívny kľúč',
   'contextMenu.show.referentialActions': 'Referenčné akcie',
+  'contextMenu.show.tableGroups': 'Skupiny tabuliek',
   'floatingToolbar.hand': 'Ruka',
   'floatingToolbar.select': 'Výber',
   'floatingToolbar.zoomOut': 'Oddialiť',

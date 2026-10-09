@@ -81,6 +81,7 @@ export const nlNL = {
   'contextMenu.show.columnComment': 'Kolomopmerking',
   'contextMenu.show.alternateKey': 'Alternatieve sleutel',
   'contextMenu.show.referentialActions': 'Referentiële acties',
+  'contextMenu.show.tableGroups': 'Tabelgroepen',
   'floatingToolbar.hand': 'Hand',
   'floatingToolbar.select': 'Selecteren',
   'floatingToolbar.zoomOut': 'Uitzoomen',

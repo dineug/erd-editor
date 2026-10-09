@@ -93,9 +93,9 @@ const table = (id: string, name: string, x: number, columnIds: string[]) => ({
 });
 
 /**
- * Two related tables, a connector that takes a referential action label and a
- * ring at its parent end, and a memo of two lines: every node kind the export
- * scene draws, and every hit box it lays.
+ * Two related tables, the first in a colored group, a connector that takes a referential action
+ * label and a ring at its parent end, and a memo of two lines: every node kind the export scene
+ * draws, and every hit box it lays.
  */
 function createDoc(zoomLevel = 1, memoValue = 'first line\nsecond line') {
   return JSON.stringify({
@@ -114,10 +114,23 @@ function createDoc(zoomLevel = 1, memoValue = 'first line\nsecond line') {
       relationshipIds: ['users_orders'],
       indexIds: [],
       memoIds: ['memo'],
+      tableGroupIds: ['shop'],
     },
     collections: {
+      tableGroupEntities: {
+        shop: {
+          id: 'shop',
+          name: 'shop',
+          color: '#1e3a8a',
+          ui: { x: 0, y: 0, width: 100, height: 100, zIndex: 1 },
+          meta: meta(),
+        },
+      },
       tableEntities: {
-        users: table('users', 'users', 40, ['users_id']),
+        users: {
+          ...table('users', 'users', 40, ['users_id']),
+          groupId: 'shop',
+        },
         orders: table('orders', 'orders', 480, ['orders_id', 'orders_user']),
       },
       tableColumnEntities: {
@@ -263,7 +276,7 @@ describe('the svg of a document', () => {
     const memo = root.querySelector('[clip-path] text');
 
     expect(texts(root)).toEqual(
-      expect.arrayContaining(['users', 'orders', 'user_id', 'D:C'])
+      expect.arrayContaining(['shop', 'users', 'orders', 'user_id', 'D:C'])
     );
     expect(
       Array.from(memo?.querySelectorAll('tspan') ?? []).map(
@@ -333,8 +346,13 @@ describe('the svg of a document', () => {
       await renderDocumentSvg({ doc: createDoc(0.5), theme, toWidth })
     );
 
-    // A table drawn by its name alone writes that name bold, and nothing else.
-    expect(root.querySelector('text[font-weight="bold"]')).toBeNull();
+    // A table drawn by its name alone writes that name bold, and nothing else
+    // does but the group title.
+    expect(
+      Array.from(root.querySelectorAll('text[font-weight="bold"]')).map(
+        text => text.textContent
+      )
+    ).toEqual(['shop']);
     expect(texts(root)).toEqual(
       expect.arrayContaining(['users', 'orders', 'id', 'user_id', 'INT', 'D:C'])
     );

@@ -6,6 +6,7 @@ import {
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
 } from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import { createEditor, ViewKind } from '@/engine/modules/editor/state';
 import { createSceneView } from '@/engine/modules/editor/view';
 import { RootState } from '@/engine/state';
@@ -20,6 +21,8 @@ import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
+import { createTableGroup } from '@/utils/collection/tableGroup.entity';
+import { getTableGroupRect } from '@/utils/tableGroup';
 
 function createState(): RootState {
   return {
@@ -48,6 +51,13 @@ function addMemo(
   state.collections.memoEntities[id] = memo;
   state.doc.memoIds.push(id);
   return memo;
+}
+
+function addGroup(state: RootState, id: string, x: number, y: number) {
+  const group = createTableGroup({ id, ui: { x, y, width: 100, height: 100 } });
+  state.collections.tableGroupEntities[id] = group;
+  state.doc.tableGroupIds.push(id);
+  return group;
 }
 
 /** The far edges of a box, which is what a union is decided on. */
@@ -253,6 +263,36 @@ describe('getContentRects', () => {
     expect([rect.x, rect.y]).toEqual([move.x, move.y]);
     expect([table.ui.x, table.ui.y]).toEqual([0, 0]);
   });
+
+  it('hands back each group box after the memos while groups are shown', () => {
+    const state = createState();
+    const table = addTable(state, 't', 0, 0);
+    table.groupId = 'g';
+    const group = addGroup(state, 'g', -5_000, -5_000);
+
+    expect(getContentRects(state)).toEqual([
+      getTableRect(state, table),
+      getTableGroupRect(state, group),
+    ]);
+    expect(getContentRect(state)!.x).toBe(-5_000);
+
+    state.settings.show |= Show.hideTableGroup;
+    expect(getContentRects(state)).toEqual([getTableRect(state, table)]);
+    expect(getContentRect(state)!.x).toBe(0);
+  });
+
+  it('leaves a moved member out of its group box, which would hold where it stood', () => {
+    const state = createState();
+    const table = addTable(state, 't', 3_000, 3_000);
+    table.groupId = 'g';
+    const group = addGroup(state, 'g', 0, 0);
+    const move = { id: 't', x: 10, y: 10 };
+
+    const [, box] = getContentRects(state, [move]);
+
+    expect(box).toEqual({ x: 0, y: 0, width: 100, height: 100 });
+    expect(getTableGroupRect(state, group).width).toBeGreaterThan(3_000);
+  });
 });
 
 /**
@@ -349,6 +389,7 @@ describe('getContentRects for a view', () => {
   it('hands back one box per shown table at its view point, and no memo', () => {
     const state = createState();
     const { a, b } = seedView(state);
+    addGroup(state, 'g', -9_000, -9_000);
 
     expect(getContentRects(state, [], 'flow')).toEqual([
       getTableRect(state, a, 'flow'),

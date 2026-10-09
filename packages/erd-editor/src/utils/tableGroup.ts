@@ -1,11 +1,18 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { TABLE_GROUP_PADDING } from '@/constants/layout';
+import {
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+} from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Point, Table, TableGroup } from '@/internal-types';
-import { unionRect } from '@/konva/scene/contentBounds';
-import { getTableRect, type Rect } from '@/konva/scene/metrics';
+import { getTableRect, type Rect, unionRect } from '@/konva/scene/metrics';
 import { arrayHas } from '@/utils/arrayHas';
+import { bHas } from '@/utils/bit';
+import { contrastTextColor } from '@/utils/contrastText';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { toOpaqueHex } from '@/utils/tableColor';
 
 export type TableGroupRectOptions = {
   /** Tables the box leaves out though they are members, the ones a drag holds. */
@@ -40,20 +47,25 @@ export function getTableGroupMemberIds(
   return getMemberTables(state, groupId).map(({ id }) => id);
 }
 
-/** A rect grown by the padding on every side. */
+/**
+ * A rect grown by the padding on every side and by the title bar on top too,
+ * so the bar a group draws along the top of its box clears what it holds.
+ */
 export function padRect(rect: Rect, padding = TABLE_GROUP_PADDING): Rect {
+  const top = padding + TABLE_GROUP_TITLE_HEIGHT;
+
   return {
     x: rect.x - padding,
-    y: rect.y - padding,
+    y: rect.y - top,
     width: rect.width + padding * 2,
-    height: rect.height + padding * 2,
+    height: rect.height + padding + top,
   };
 }
 
 /**
  * The box a group is drawn and hit in: its stored rect united with each member
- * table's rect and the padding around it, so a member that grows never sticks
- * out and nothing is written for it.
+ * table's rect and the padding around it, title bar included, so a member that
+ * grows never sticks out and nothing is written for it.
  *
  * @example
  * const box = getTableGroupRect(state, group, { excludeTableIds: dragged });
@@ -138,3 +150,49 @@ export function findTableGroupAt(
 /** The zIndex that lifts a group over every other group, tables and memos aside. */
 export const nextTableGroupZIndex = (groups: TableGroup[]) =>
   Math.max(0, ...groups.map(({ ui }) => ui.zIndex)) + 1;
+
+/**
+ * Whether the document shows its groups, boxes and header colors alike. The
+ * bit hides them, so a document saved before groups existed shows them.
+ */
+export const isTableGroupShown = ({ settings }: RootState) =>
+  !bHas(settings.show, Show.hideTableGroup);
+
+/** A group's color as an opaque hex and the black or white text drawn over it. */
+export type TableGroupColors = { background: string; foreground: string };
+
+/**
+ * The colors a group paints with, or null for a group with no color or one
+ * toOpaqueHex cannot read, which the neutral theme colors paint instead.
+ */
+export function getTableGroupColors(
+  group: TableGroup
+): TableGroupColors | null {
+  const background = toOpaqueHex(group.color);
+  const foreground = background && contrastTextColor(background);
+
+  return background && foreground ? { background, foreground } : null;
+}
+
+/**
+ * The colors a member table's header takes from its group, or null where it
+ * keeps its own: in a view, while groups are hidden, out of any group, or in
+ * a group with no color it can read.
+ *
+ * @example
+ * const tint = getTableHeaderTint(state, table, source);
+ */
+export function getTableHeaderTint(
+  state: RootState,
+  table: Table,
+  source: GeometrySource = 'document'
+): TableGroupColors | null {
+  if (source !== 'document' || !isTableGroupShown(state)) return null;
+
+  const groupId = getTableGroupId(state, table);
+  const group = groupId
+    ? state.collections.tableGroupEntities[groupId]
+    : undefined;
+
+  return group ? getTableGroupColors(group) : null;
+}

@@ -74,6 +74,7 @@ import {
   changeZoomLevelAction,
   streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeTableGroupAction } from '@/engine/modules/table/atom.actions';
 import {
   addTableAction$,
   removeTableAction$,
@@ -82,6 +83,7 @@ import {
   addColumnAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { whenDrawn } from '@/konva/batchDraw';
 import {
@@ -515,6 +517,32 @@ describe('the editing overlay', () => {
     await flush();
 
     expect(fixture.app.store.state.editor.focusTable?.edit).toBe(false);
+  });
+
+  it('writes a tinted header in the text color of its tint, and a row in the theme one', async () => {
+    const tinted = async () => {
+      const fixture = await setup();
+      fixture.app.store.dispatchSync(
+        addTableGroupAction({
+          id: 'g1',
+          color: '#1e3a8a',
+          ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+        }),
+        changeTableGroupAction({ id: fixture.tableId, value: 'g1' })
+      );
+      return fixture;
+    };
+
+    const header = await tinted();
+    await editTableComment(header);
+    const cell = cellOf(header.mounted);
+    expect(cell.style.getPropertyValue('--active')).toBe('#ffffff');
+    expect(cell.style.getPropertyValue('--placeholder')).toBe('#ffffff');
+
+    const row = await tinted();
+    await editColumnName(row);
+    expect(inputOf(row.mounted)).toBeTruthy();
+    expect(cellOf(row.mounted).style.getPropertyValue('--active')).toBe('');
   });
 
   it('places the editor on the header cell it replaces', async () => {

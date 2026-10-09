@@ -273,6 +273,7 @@ describe('getVisibleIds', () => {
     expect(ids.tableIds).toBe(state.doc.tableIds);
     expect(ids.memoIds).toBe(state.doc.memoIds);
     expect(ids.relationshipIds).toBe(state.doc.relationshipIds);
+    expect(ids.tableGroupIds).toBe(state.doc.tableGroupIds);
     expect(getVisibleIds(state, 'document')).toEqual(ids);
   });
 
@@ -284,6 +285,7 @@ describe('getVisibleIds', () => {
       tableIds: [],
       memoIds: [],
       relationshipIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -297,6 +299,7 @@ describe('getVisibleIds', () => {
       tableIds: ['a', 'b', 'c'],
       memoIds: [],
       relationshipIds: ['ab', 'bc'],
+      tableGroupIds: [],
     });
   });
 
@@ -333,6 +336,7 @@ describe('getVisibleIds', () => {
       tableIds: ['a', 'b'],
       memoIds: [],
       relationshipIds: ['ab'],
+      tableGroupIds: [],
     });
   });
 
@@ -345,6 +349,7 @@ describe('getVisibleIds', () => {
       tableIds: ['e'],
       memoIds: [],
       relationshipIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -363,6 +368,7 @@ describe('getVisibleIds', () => {
       tableIds: ['a', 'b'],
       memoIds: [],
       relationshipIds: ['ab'],
+      tableGroupIds: [],
     });
   });
 
@@ -377,6 +383,7 @@ describe('getVisibleIds', () => {
       tableIds: ['a', 'b', 'd'],
       memoIds: [],
       relationshipIds: ['ab'],
+      tableGroupIds: [],
     });
   });
 
@@ -391,6 +398,7 @@ describe('getVisibleIds', () => {
       tableIds: ['a', 'b', 'c'],
       memoIds: [],
       relationshipIds: ['ab', 'bc'],
+      tableGroupIds: [],
     });
   });
 
@@ -404,6 +412,7 @@ describe('getVisibleIds', () => {
       tableIds: [],
       memoIds: [],
       relationshipIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -417,6 +426,7 @@ describe('getVisibleIds', () => {
       tableIds: ['a', 'b', 'c'],
       memoIds: [],
       relationshipIds: ['ab', 'bc'],
+      tableGroupIds: [],
     });
   });
 
