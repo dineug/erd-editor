@@ -439,6 +439,20 @@ describe('v3ToV2', () => {
       expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
     });
 
+    it('drops the Rust language because "Rust" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.Rust;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
+    it('drops the SeaORM language because "SeaORM" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.SeaORM;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
     it('picks the lowest matching bit when several are set', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.database = Database.MSSQL | Database.SQLite;

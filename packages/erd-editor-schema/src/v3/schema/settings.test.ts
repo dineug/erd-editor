@@ -169,10 +169,12 @@ describe('v3/schema/settings', () => {
         Mermaid: 16384,
         PHP: 32768,
         Doctrine: 65536,
+        Rust: 131072,
+        SeaORM: 262144,
       });
       expect(LanguageList).toEqual([
         1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
-        32768, 65536,
+        32768, 65536, 131072, 262144,
       ]);
       expect(Object.values(Language).every(isPowerOfTwo)).toBe(true);
     });

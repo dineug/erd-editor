@@ -305,7 +305,7 @@ export function fractionalNumber(
 /** The type name in lower case, with its argument lists and extra spaces gone. */
 export function baseTypeName(dataType: string): string {
   return dataType
-    .toLocaleLowerCase()
+    .toLowerCase()
     .replace(ARGUMENTS, ' ')
     .replace(WHITESPACE, ' ')
     .trim();

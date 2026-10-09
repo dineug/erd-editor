@@ -12,6 +12,7 @@ const LANGS: Lang[] = [
   'mermaid',
   'php',
   'python',
+  'rust',
   'scala',
   'sql',
   'typescript',
@@ -91,9 +92,24 @@ describe('ShikiService', () => {
     expect(html).toContain('<span style="color:#B392F0"> User</span>');
   });
 
+  it('colours Rust as the generators write it', async () => {
+    const html = await service.codeToHtml(
+      '// Members who sign in\n#[derive(Debug, Clone, PartialEq)]\npub struct User {\n    pub r#type: String,\n}\n',
+      { lang: 'rust' }
+    );
+
+    expect(html).toContain(
+      '<span style="color:#6A737D">// Members who sign in</span>'
+    );
+    expect(html).toContain('<span style="color:#B392F0">Debug</span>');
+    expect(html).toContain(
+      '<span style="color:#F97583">pub</span><span style="color:#F97583"> struct</span><span style="color:#B392F0"> User</span>'
+    );
+  });
+
   it('rejects a grammar it was never given', async () => {
     await expect(
-      service.codeToHtml('SELECT 1;', { lang: 'rust' as unknown as Lang })
+      service.codeToHtml('SELECT 1;', { lang: 'ruby' as unknown as Lang })
     ).rejects.toBeTruthy();
   });
 });

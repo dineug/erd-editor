@@ -28,6 +28,7 @@ const meta = {
         'python',
         'mermaid',
         'php',
+        'rust',
       ],
     },
     theme: {

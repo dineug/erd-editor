@@ -221,6 +221,33 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
     ],
   ],
+  [
+    'Rust',
+    Language.Rust,
+    [
+      '',
+      '#[derive(Debug, Clone, PartialEq)]',
+      'pub struct User {',
+      '    pub createdAt: i32,',
+      '}',
+      '',
+    ],
+  ],
+];
+
+// The one-table view is what a SeaORM module file holds, the module body the
+// whole document wraps in pub mod, so SeaORM is checked apart from the rest.
+const SEAORM_ENTITY = [
+  'use sea_orm::entity::prelude::*;',
+  '',
+  '#[sea_orm::model]',
+  '#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]',
+  '#[sea_orm(table_name = "user")]',
+  'pub struct Model {',
+  '    pub created_at: i32,',
+  '}',
+  '',
+  'impl ActiveModelBehavior for ActiveModel {}',
 ];
 
 describe('generator-code/index', () => {
@@ -240,6 +267,19 @@ describe('generator-code/index', () => {
       state.settings.language = 0;
 
       expect(createGeneratorCode(state)).toBe('');
+    });
+
+    it('wraps the SeaORM entity of each table in its module', () => {
+      const { state } = createFixture();
+      state.settings.language = Language.SeaORM;
+
+      expect(createGeneratorCode(state).split('\n')).toEqual([
+        '',
+        'pub mod user {',
+        ...SEAORM_ENTITY.map(line => (line === '' ? '' : `    ${line}`)),
+        '}',
+        '',
+      ]);
     });
   });
 
@@ -261,6 +301,17 @@ describe('generator-code/index', () => {
       state.settings.language = 0;
 
       expect(createGeneratorCodeTable(state, table)).toBe('');
+    });
+
+    it('writes the SeaORM entity of one table as its module file', () => {
+      const { state, table } = createFixture();
+      state.settings.language = Language.SeaORM;
+
+      expect(createGeneratorCodeTable(state, table).split('\n')).toEqual([
+        '',
+        ...SEAORM_ENTITY,
+        '',
+      ]);
     });
 
     it('renders the given table even when it is not part of doc.tableIds', () => {

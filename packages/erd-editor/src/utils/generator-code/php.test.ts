@@ -1,6 +1,7 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { underTurkishLocale } from '@/__test-utils__/locale';
 import { ColumnOption, Database, NameCase } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
@@ -334,6 +335,13 @@ describe('php generator', () => {
       expect(baseTypeName('interval day(2) to   second(6)')).toBe(
         'interval day to second'
       );
+    });
+
+    it('lowers an I to i under a Turkish default locale too', () => {
+      underTurkishLocale(() => {
+        expect(baseTypeName('TINYINT UNSIGNED')).toBe('tinyint unsigned');
+        expect(baseTypeName('BIT(8)')).toBe('bit');
+      });
     });
   });
 

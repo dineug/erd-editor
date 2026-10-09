@@ -148,6 +148,8 @@ export const Language = {
   Mermaid: 16384,
   PHP: 32768,
   Doctrine: 65536,
+  Rust: 131072,
+  SeaORM: 262144,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 

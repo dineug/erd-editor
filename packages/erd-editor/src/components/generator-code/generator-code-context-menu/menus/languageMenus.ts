@@ -30,6 +30,10 @@ export const menus: Menu[] = [
     value: Language.PHP,
   },
   {
+    name: 'Rust',
+    value: Language.Rust,
+  },
+  {
     name: 'Scala',
     value: Language.Scala,
   },
@@ -48,6 +52,10 @@ export const menus: Menu[] = [
   {
     name: 'JPA',
     value: Language.JPA,
+  },
+  {
+    name: 'SeaORM',
+    value: Language.SeaORM,
   },
   {
     name: 'Sequelize',

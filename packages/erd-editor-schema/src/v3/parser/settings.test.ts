@@ -333,6 +333,18 @@ describe('createAndMergeSettings', () => {
       ).toBe(Language.Doctrine);
     });
 
+    it('keeps the Rust language', () => {
+      expect(createAndMergeSettings({ language: Language.Rust }).language).toBe(
+        Language.Rust
+      );
+    });
+
+    it('keeps the SeaORM language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.SeaORM }).language
+      ).toBe(Language.SeaORM);
+    });
+
     it('opens a language flag it does not know as GraphQL, as an editor older than the flag does', () => {
       expect(
         createAndMergeSettings({ language: Math.max(...LanguageList) * 2 })
