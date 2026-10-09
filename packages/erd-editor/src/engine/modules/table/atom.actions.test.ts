@@ -6,6 +6,7 @@ import {
   addTableAction,
   changeTableColorAction,
   changeTableCommentAction,
+  changeTableGroupAction,
   changeTableNameAction,
   changeZIndexAction,
   moveTableAction,
@@ -362,6 +363,53 @@ describe('table/atom.actions changeTableColor', () => {
     );
 
     expect(table('ghost').ui.color).toBe('#abc');
+  });
+});
+
+describe('table/atom.actions changeTableGroup', () => {
+  it('sets the group under the "groupId" LWW path, apart from the other fields', () => {
+    addTable(TABLE_A);
+
+    store.dispatchSync(
+      versioned(changeTableNameAction({ id: TABLE_A, value: 'users' }), 9),
+      versioned(changeTableGroupAction({ id: TABLE_A, value: 'g1' }), 3)
+    );
+
+    expect(table(TABLE_A).groupId).toBe('g1');
+    expect(store.state.lww[TABLE_A][3]).toEqual({ name: 9, groupId: 3 });
+  });
+
+  it('keeps the newer placement whatever order two writes arrive in', () => {
+    addTable(TABLE_A);
+    addTable(TABLE_B);
+
+    store.dispatchSync(
+      versioned(changeTableGroupAction({ id: TABLE_A, value: 'newer' }), 8),
+      versioned(changeTableGroupAction({ id: TABLE_A, value: 'older' }), 5),
+      versioned(changeTableGroupAction({ id: TABLE_B, value: 'older' }), 5),
+      versioned(changeTableGroupAction({ id: TABLE_B, value: 'newer' }), 8)
+    );
+
+    expect(table(TABLE_A).groupId).toBe('newer');
+    expect(table(TABLE_B).groupId).toBe('newer');
+  });
+
+  it('takes a table out of its group with an empty id', () => {
+    addTable(TABLE_A);
+    store.dispatchSync(changeTableGroupAction({ id: TABLE_A, value: 'g1' }));
+
+    store.dispatchSync(changeTableGroupAction({ id: TABLE_A, value: '' }));
+
+    expect(table(TABLE_A).groupId).toBe('');
+  });
+
+  it('creates the entity when it is missing, at the clock version', () => {
+    clock.merge(6);
+
+    store.dispatchSync(changeTableGroupAction({ id: 'ghost', value: 'g1' }));
+
+    expect(table('ghost').groupId).toBe('g1');
+    expect(store.state.lww.ghost[3]).toEqual({ groupId: 6 });
   });
 });
 

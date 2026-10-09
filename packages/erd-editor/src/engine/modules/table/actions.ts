@@ -12,6 +12,7 @@ export const ActionType = {
   changeTableName: 'table.changeName',
   changeTableComment: 'table.changeComment',
   changeTableColor: 'table.changeColor',
+  changeTableGroup: 'table.changeGroup',
   changeZIndex: 'table.changeZIndex',
   sortTable: 'table.sort',
 } as const;
@@ -47,6 +48,7 @@ export type ActionMap = {
     color: string;
     prevColor: string;
   };
+  [ActionType.changeTableGroup]: ChangeTableValuePayload;
   [ActionType.changeZIndex]: {
     id: string;
     zIndex: number;

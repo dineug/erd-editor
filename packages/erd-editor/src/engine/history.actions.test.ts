@@ -76,6 +76,8 @@ describe('pushUndoHistoryMap / pushStreamHistoryMap', () => {
         'editor.loadJson',
         'index.add',
         'indexColumn.add',
+        'tableGroup.add',
+        'table.changeGroup',
       ])
     );
   });
@@ -90,6 +92,9 @@ describe('pushUndoHistoryMap / pushStreamHistoryMap', () => {
         'settings.streamZoomLevel',
         'table.changeColor',
         'table.move',
+        'tableGroup.changeColor',
+        'tableGroup.move',
+        'tableGroup.resize',
       ].sort()
     );
   });

@@ -148,6 +148,30 @@ const changeTableColor: ReducerType<typeof ActionType.changeTableColor> = (
   });
 };
 
+export const changeTableGroupAction = createAction<
+  ActionMap[typeof ActionType.changeTableGroup]
+>(ActionType.changeTableGroup);
+
+/**
+ * Puts a table in the group the value names, or in none for ''. One register
+ * per table, so of two peers placing one table the later write wins.
+ */
+const changeTableGroup: ReducerType<typeof ActionType.changeTableGroup> = (
+  { collections, lww },
+  { payload: { id, value }, version },
+  { clock }
+) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('tableEntities');
+  collection.getOrCreate(id, id => createTable({ id }));
+
+  collection.replaceOperator(lww, safeVersion, id, 'groupId', () => {
+    collection.updateOne(id, table => {
+      table.groupId = value;
+    });
+  });
+};
+
 export const changeZIndexAction = createAction<
   ActionMap[typeof ActionType.changeZIndex]
 >(ActionType.changeZIndex);
@@ -209,6 +233,7 @@ export const tableReducers = {
   [ActionType.changeTableName]: changeTableName,
   [ActionType.changeTableComment]: changeTableComment,
   [ActionType.changeTableColor]: changeTableColor,
+  [ActionType.changeTableGroup]: changeTableGroup,
   [ActionType.changeZIndex]: changeZIndex,
   [ActionType.sortTable]: sortTable,
 };
@@ -221,6 +246,7 @@ export const actions = {
   changeTableNameAction,
   changeTableCommentAction,
   changeTableColorAction,
+  changeTableGroupAction,
   changeZIndexAction,
   sortTableAction,
 };

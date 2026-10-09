@@ -36,6 +36,7 @@ import {
   addColumnAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
 
 const TABLE_ID = 'table-1';
@@ -366,6 +367,19 @@ describe('getRemovableColumns', () => {
       selectAction({ 'table-2': SelectType.table })
     );
     expect(getRemovableColumns(other.state)).toBeNull();
+  });
+
+  it('is null once a group is selected beside it, which Delete then removes', () => {
+    const store = createSelection();
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'group',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      }),
+      selectAction({ group: SelectType.tableGroup })
+    );
+
+    expect(getRemovableColumns(store.state)).toBeNull();
   });
 
   it('is null while the selection is another table than the focused one', () => {

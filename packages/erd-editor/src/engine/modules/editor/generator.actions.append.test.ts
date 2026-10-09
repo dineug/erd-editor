@@ -28,6 +28,7 @@ import { addRelationshipAction } from '@/engine/modules/relationship/atom.action
 import { changeDatabaseNameAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -36,11 +37,16 @@ import {
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { RootState } from '@/engine/state';
 import { getContentRect, unionRect } from '@/konva/scene/contentBounds';
 import { getMemoRect, getTableRect } from '@/konva/scene/metrics';
 import { bHas } from '@/utils/bit';
+import { padRect } from '@/utils/tableGroup';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -444,5 +450,163 @@ describe('toSchemaAppend', () => {
 
     expect(toSchemaAppend(store.state, '[', 'file', store.context)).toBeNull();
     expect(toSchemaAppend(store.state, '{}', 'grid', store.context)).toBeNull();
+  });
+});
+
+/**
+ * Two tables 500 apart in a named, coloured group whose rect reaches 24 past
+ * the first table's corner, and an empty group far off, stacked under it.
+ */
+function createGroupedDocument(): string {
+  const store = createTestStore();
+  store.dispatchSync(
+    addTableAction({ id: 'users', ui: { x: 300, y: 200, zIndex: 2 } }),
+    changeTableNameAction({ id: 'users', value: 'users' }),
+    addTableAction({ id: 'posts', ui: { x: 800, y: 200, zIndex: 3 } }),
+    changeTableNameAction({ id: 'posts', value: 'posts' }),
+    addTableAction({ id: 'tags', ui: { x: 300, y: 600, zIndex: 4 } }),
+    changeTableNameAction({ id: 'tags', value: 'tags' }),
+    addTableGroupAction({
+      id: 'blog',
+      color: '#0090ff',
+      ui: { x: 276, y: 176, width: 900, height: 200, zIndex: 5 },
+    }),
+    changeTableGroupNameAction({ id: 'blog', value: 'blog' }),
+    addTableGroupAction({
+      id: 'empty',
+      ui: { x: 2000, y: 2000, width: 100, height: 100, zIndex: 1 },
+    }),
+    changeTableGroupAction({ id: 'users', value: 'blog' }),
+    changeTableGroupAction({ id: 'posts', value: 'blog' })
+  );
+  return toJson(store.state);
+}
+
+function groupByName({ doc, collections }: RootState, name: string) {
+  const group = doc.tableGroupIds
+    .map(id => collections.tableGroupEntities[id])
+    .find(group => group.name === name);
+  if (!group) throw new Error(`group not found: ${name}`);
+  return group;
+}
+
+describe('appending table groups', () => {
+  it('carries each group under a new id, its members put in it by their new ids', () => {
+    const store = createDiagram();
+
+    store.dispatchSync(appendSchemaJsonAction$(createGroupedDocument()));
+
+    const { doc } = store.state;
+    const blog = groupByName(store.state, 'blog');
+    expect(doc.tableGroupIds).toHaveLength(2);
+    expect(doc.tableGroupIds).not.toContain('blog');
+    expect(blog.color).toBe('#0090ff');
+    expect(tableByName(store.state, 'users').groupId).toBe(blog.id);
+    expect(tableByName(store.state, 'posts').groupId).toBe(blog.id);
+    expect(tableByName(store.state, 'tags').groupId).toBe('');
+    expect(tableByName(store.state, 'old').groupId).toBe('');
+  });
+
+  it('moves a file group with its block, the block starting at the group corner', () => {
+    const store = createDiagram();
+    const corner = appendCorner(store.state);
+
+    store.dispatchSync(appendSchemaJsonAction$(createGroupedDocument()));
+
+    expect(groupByName(store.state, 'blog').ui).toMatchObject({
+      x: corner.x,
+      y: corner.y,
+      width: 900,
+      height: 200,
+    });
+    expect(cornerOf(store.state, 'users')).toEqual({
+      x: corner.x + 24,
+      y: corner.y + 24,
+    });
+  });
+
+  it('stacks the groups over the groups already there, in the order the file stacks them', () => {
+    const store = createDiagram();
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'mine',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 4 },
+      })
+    );
+
+    store.dispatchSync(appendSchemaJsonAction$(createGroupedDocument()));
+
+    const { collections, doc } = store.state;
+    const [, emptyId, blogId] = doc.tableGroupIds;
+    expect(collections.tableGroupEntities[emptyId].ui.zIndex).toBe(5);
+    expect(collections.tableGroupEntities[blogId].ui.zIndex).toBe(6);
+  });
+
+  it('takes the groups and the memberships away with the rest on one undo', () => {
+    const store = createDiagram();
+
+    store.dispatchSync(appendSchemaJsonAction$(createGroupedDocument()));
+    expect(store.history.size).toBe(1);
+    store.undo();
+
+    expect(store.state.doc.tableIds).toEqual(['old']);
+    expect(store.state.doc.tableGroupIds).toEqual([]);
+  });
+
+  it('wraps a group around where a placement put its members, and moves an empty one with the block', () => {
+    const store = createDiagram();
+    const corner = appendCorner(store.state);
+
+    const append = toSchemaAppend(
+      store.state,
+      createGroupedDocument(),
+      [
+        { id: 'users', x: 0, y: 0 },
+        { id: 'posts', x: 0, y: 400 },
+        { id: 'tags', x: 600, y: 0 },
+      ],
+      store.context
+    )!;
+    store.dispatchSync(append.actions);
+
+    const { collections } = store.state;
+    const users = tableByName(store.state, 'users');
+    const posts = tableByName(store.state, 'posts');
+    const blog = groupByName(store.state, 'blog');
+    const [emptyId] = append.tableGroupIds;
+    expect(append.tableGroupIds).toHaveLength(2);
+    expect(blog.ui).toMatchObject(
+      padRect(
+        unionRect(
+          getTableRect(store.state, users),
+          getTableRect(store.state, posts)
+        )
+      )
+    );
+    expect(collections.tableGroupEntities[emptyId].ui).toMatchObject({
+      x: corner.x + 2000,
+      y: corner.y + 2000,
+      width: 100,
+      height: 100,
+    });
+    expect(append.rect).toEqual(
+      unionRect(append.rect, collections.tableGroupEntities[emptyId].ui)
+    );
+  });
+
+  it('brings no group from a document without one', () => {
+    const store = createDiagram();
+
+    const append = toSchemaAppend(
+      store.state,
+      createDocument(),
+      'file',
+      store.context
+    )!;
+
+    expect(append.tableGroupIds).toEqual([]);
+    expect(
+      append.actions.filter(({ type }) => type.startsWith('tableGroup.'))
+    ).toEqual([]);
   });
 });

@@ -89,6 +89,14 @@ const memo = (id: string, updateAt: number) => ({
   meta: meta(updateAt),
 });
 
+const tableGroup = (id: string, updateAt: number) => ({
+  id,
+  name: id,
+  color: '',
+  ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+  meta: meta(updateAt),
+});
+
 const toEntities = (list: Array<{ id: string }>) =>
   list.reduce<Record<string, any>>((acc, entity) => {
     acc[entity.id] = entity;
@@ -103,6 +111,7 @@ function createSource() {
       relationshipIds: ['r-doc'],
       indexIds: ['i-doc'],
       memoIds: ['m-doc'],
+      tableGroupIds: ['g-doc'],
     },
     collections: {
       tableEntities: toEntities([
@@ -141,6 +150,11 @@ function createSource() {
         memo('m-old', old),
         memo('m-new', fresh),
       ]),
+      tableGroupEntities: toEntities([
+        tableGroup('g-doc', old),
+        tableGroup('g-old', old),
+        tableGroup('g-new', fresh),
+      ]),
     },
   });
 }
@@ -158,6 +172,7 @@ describe('SchemaGCService', () => {
       indexIds: [],
       indexColumnIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -166,6 +181,7 @@ describe('SchemaGCService', () => {
 
     expect(sorted(result.tableIds)).toEqual(['t-old']);
     expect(sorted(result.memoIds)).toEqual(['m-old']);
+    expect(result.tableGroupIds).toEqual(['g-old']);
   });
 
   it('cascades table removal into columns, relationships and indexes', async () => {
@@ -202,6 +218,7 @@ describe('SchemaGCService', () => {
     expect(result.relationshipIds).not.toContain('r-doc');
     expect(result.indexIds).not.toContain('i-doc');
     expect(result.memoIds).not.toContain('m-doc');
+    expect(result.tableGroupIds).not.toContain('g-doc');
   });
 
   it('keeps recent entities that are not referenced by the doc', async () => {
@@ -212,6 +229,7 @@ describe('SchemaGCService', () => {
     expect(result.indexIds).not.toContain('i-keep');
     expect(result.indexColumnIds).not.toContain('ic-keep');
     expect(result.memoIds).not.toContain('m-new');
+    expect(result.tableGroupIds).not.toContain('g-new');
   });
 
   it('is deterministic across runs on the same source', async () => {

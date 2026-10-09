@@ -12,6 +12,7 @@ import { relationshipReducers } from '@/engine/modules/relationship/atom.actions
 import { settingsReducers } from '@/engine/modules/settings/atom.actions';
 import { tableReducers } from '@/engine/modules/table/atom.actions';
 import { tableColumnReducers } from '@/engine/modules/table-column/atom.actions';
+import { tableGroupReducers } from '@/engine/modules/table-group/atom.actions';
 import { RootState } from '@/engine/state';
 
 export type Store = StoreType<RootState, EngineContext>;
@@ -36,6 +37,7 @@ export function createStore(
       ...settingsReducers,
       ...indexReducers,
       ...indexColumnReducers,
+      ...tableGroupReducers,
     },
     enableObservable: enableObservable ?? true,
   });

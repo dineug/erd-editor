@@ -22,7 +22,7 @@ export function collectGCIds(source: string): GCIds {
   const json = JSON.parse(source);
   const state = schemaV3Parser(json);
   const {
-    doc: { tableIds, memoIds, indexIds, relationshipIds },
+    doc: { tableIds, memoIds, indexIds, relationshipIds, tableGroupIds },
     collections,
   } = state;
 
@@ -30,6 +30,7 @@ export function collectGCIds(source: string): GCIds {
   const hasMemoIds = arrayHas(memoIds);
   const hasIndexIds = arrayHas(indexIds);
   const hasRelationshipIds = arrayHas(relationshipIds);
+  const hasTableGroupIds = arrayHas(tableGroupIds);
   const isGC = createIsGC(Date.now());
 
   const tableCollection = query(collections).collection('tableEntities');
@@ -44,6 +45,8 @@ export function collectGCIds(source: string): GCIds {
     'relationshipEntities'
   );
   const memoCollection = query(collections).collection('memoEntities');
+  const tableGroupCollection =
+    query(collections).collection('tableGroupEntities');
 
   const gcTableIdsSet = new Set<string>(
     tableCollection
@@ -71,6 +74,10 @@ export function collectGCIds(source: string): GCIds {
       .filter(isGC(hasMemoIds))
       .map(({ id }) => id)
   );
+  const gcTableGroupIds = tableGroupCollection
+    .selectAll()
+    .filter(isGC(hasTableGroupIds))
+    .map(({ id }) => id);
 
   tableColumnCollection
     .selectAll()
@@ -105,6 +112,7 @@ export function collectGCIds(source: string): GCIds {
     indexIds: [...gcIndexIdsSet],
     indexColumnIds: [...gcIndexColumnIdsSet],
     memoIds: [...gcMemoIdsSet],
+    tableGroupIds: gcTableGroupIds,
   });
 
   const hasTableIdsAll = arrayHas(
@@ -137,6 +145,7 @@ export function collectGCIds(source: string): GCIds {
     indexIds: [...gcIndexIdsSet],
     indexColumnIds: [...gcIndexColumnIdsSet],
     memoIds: [...gcMemoIdsSet],
+    tableGroupIds: gcTableGroupIds,
   };
 }
 

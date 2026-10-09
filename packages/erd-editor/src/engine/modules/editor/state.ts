@@ -119,6 +119,7 @@ export type SharedDragSelectTracker = Rect & {
 export const SelectType = {
   table: 'table',
   memo: 'memo',
+  tableGroup: 'tableGroup',
 } as const;
 export type SelectType = ValuesType<typeof SelectType>;
 

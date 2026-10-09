@@ -161,6 +161,12 @@ export const MEMO_HEADER_HEIGHT =
 export const MEMO_MIN_WIDTH = 100 + MEMO_HEADER_HEIGHT;
 export const MEMO_MIN_HEIGHT = 100;
 
+/**
+ * The room a table group's box keeps around each member table on every side,
+ * and around the tables a group is made from.
+ */
+export const TABLE_GROUP_PADDING = 24;
+
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_MARGIN = 20;
 

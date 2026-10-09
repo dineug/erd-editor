@@ -17,6 +17,7 @@ export type Memo = GetEntity<'memoEntities'>;
 export type Relationship = GetEntity<'relationshipEntities'>;
 export type Index = GetEntity<'indexEntities'>;
 export type IndexColumn = GetEntity<'indexColumnEntities'>;
+export type TableGroup = GetEntity<'tableGroupEntities'>;
 
 export type TableEntities = GetEntities<'tableEntities'>;
 export type TableColumnEntities = GetEntities<'tableColumnEntities'>;
@@ -24,6 +25,7 @@ export type MemoEntities = GetEntities<'memoEntities'>;
 export type RelationshipEntities = GetEntities<'relationshipEntities'>;
 export type IndexEntities = GetEntities<'indexEntities'>;
 export type IndexColumnEntities = GetEntities<'indexColumnEntities'>;
+export type TableGroupEntities = GetEntities<'tableGroupEntities'>;
 
 export type Doc = ERDEditorSchemaV3['doc'];
 export type Collections = ERDEditorSchemaV3['collections'];

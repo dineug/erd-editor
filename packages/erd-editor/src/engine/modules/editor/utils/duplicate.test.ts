@@ -334,7 +334,12 @@ describe('toCreateEntityActions', () => {
   it('returns nothing for an empty input', () => {
     const result = toCreateEntityActions(createInput(), createPlacement([]));
 
-    expect(result).toEqual({ actions: [], tableIds: [], memoIds: [] });
+    expect(result).toEqual({
+      actions: [],
+      tableIds: [],
+      memoIds: [],
+      tableGroupIds: [],
+    });
   });
 
   it('emits the table actions in add / name / comment order', () => {
@@ -949,6 +954,81 @@ describe('toCreateEntityActions — indexes', () => {
     );
     expect(findAction(actions, 'index.changeUnique')?.payload.value).toBe(true);
     expect(filterActions(actions, 'indexColumn.add')).toHaveLength(0);
+  });
+});
+
+describe('toCreateEntityActions — table groups', () => {
+  const groupInput = (name = 'billing') =>
+    createInput({
+      tables: [createClipboardTable('t1'), createClipboardTable('t2')],
+      tableGroups: [
+        {
+          sourceId: 'g1',
+          name,
+          color: '#0090ff',
+          tableIds: ['t1', 't2', 'gone'],
+          ui: { x: -10, y: -20, width: 600, height: 400, zIndex: 7 },
+        },
+      ],
+    });
+
+  it('adds each group under a new id, color and rect in the add, after the tables', () => {
+    const { actions, tableGroupIds } = toCreateEntityActions(
+      groupInput(),
+      createPlacement([
+        ['t1', {}],
+        ['t2', {}],
+      ])
+    );
+
+    expect(tableGroupIds).toHaveLength(1);
+    expect(tableGroupIds[0]).not.toBe('g1');
+    expect(findAction(actions, 'tableGroup.add')?.payload).toEqual({
+      id: tableGroupIds[0],
+      color: '#0090ff',
+      ui: { x: -10, y: -20, width: 600, height: 400, zIndex: 7 },
+    });
+    expect(findAction(actions, 'tableGroup.changeName')?.payload).toEqual({
+      id: tableGroupIds[0],
+      value: 'billing',
+    });
+    expect(toTypes(actions).indexOf('tableGroup.add')).toBeGreaterThan(
+      toTypes(actions).lastIndexOf('table.changeComment')
+    );
+  });
+
+  it('puts each new table the group held in the new group, and no table it did not bring', () => {
+    const { actions, tableIds, tableGroupIds } = toCreateEntityActions(
+      groupInput(),
+      createPlacement([['t2', {}]])
+    );
+
+    expect(filterActions(actions, 'table.changeGroup')).toEqual([
+      {
+        type: 'table.changeGroup',
+        payload: { id: tableIds[0], value: tableGroupIds[0] },
+      },
+    ]);
+  });
+
+  it('sends a group name only when it holds one, under valuesOnly', () => {
+    const { actions } = toCreateEntityActions(
+      groupInput(''),
+      createPlacement([]),
+      { valuesOnly: true }
+    );
+
+    expect(toTypes(actions)).toEqual(['tableGroup.add']);
+  });
+
+  it('brings no group for an input without one, as a paste or a duplicate', () => {
+    const { actions, tableGroupIds } = toCreateEntityActions(
+      createInput({ tables: [createClipboardTable('t1')] }),
+      createPlacement([['t1', {}]])
+    );
+
+    expect(tableGroupIds).toEqual([]);
+    expect(toTypes(actions)).not.toContain('table.changeGroup');
   });
 });
 

@@ -12,6 +12,7 @@ export type GCIds = {
   indexIds: string[];
   indexColumnIds: string[];
   memoIds: string[];
+  tableGroupIds: string[];
 };
 
 /** What a caller gets: the collector's one method, wherever it runs. */

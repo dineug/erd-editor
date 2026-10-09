@@ -29,6 +29,7 @@ import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import {
   CLIPBOARD_FORMAT,
   CLIPBOARD_VERSION,
@@ -656,6 +657,23 @@ describe('entitiesCopyToPayload', () => {
     });
 
     expect(entitiesCopyToPayload(state)).toBeNull();
+  });
+
+  it('carries no table group: a member keeps no groupId and a selected group stays behind', () => {
+    const { state } = createEntitiesState({
+      selectedMap: { ...ALL_SELECTED, 'group-1': SelectType.tableGroup },
+    });
+    state.collections.tableGroupEntities['group-1'] = createTableGroup({
+      id: 'group-1',
+      name: 'billing',
+    });
+    state.doc.tableGroupIds.push('group-1');
+    state.collections.tableEntities['table-1'].groupId = 'group-1';
+
+    const payload = entitiesCopyToPayload(state);
+
+    expect(payload?.tables).toHaveLength(2);
+    expect(JSON.stringify(payload)).not.toMatch(/group|billing/i);
   });
 
   it('builds a kind tables payload from a memo only selection (AC-33)', () => {

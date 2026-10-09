@@ -820,6 +820,8 @@ const validationIds: ReducerType<typeof ActionType.validationIds> = ({
     'relationshipEntities'
   );
   const memoCollection = query(collections).collection('memoEntities');
+  const tableGroupCollection =
+    query(collections).collection('tableGroupEntities');
 
   const invalidTableIds = doc.tableIds.filter(
     id => !tableCollection.selectById(id)
@@ -833,6 +835,9 @@ const validationIds: ReducerType<typeof ActionType.validationIds> = ({
   const invalidMemoIds = doc.memoIds.filter(
     id => !memoCollection.selectById(id)
   );
+  const invalidTableGroupIds = doc.tableGroupIds.filter(
+    id => !tableGroupCollection.selectById(id)
+  );
 
   doc.tableIds = doc.tableIds.filter(id => !invalidTableIds.includes(id));
   doc.relationshipIds = doc.relationshipIds.filter(
@@ -840,6 +845,9 @@ const validationIds: ReducerType<typeof ActionType.validationIds> = ({
   );
   doc.indexIds = doc.indexIds.filter(id => !invalidIndexIds.includes(id));
   doc.memoIds = doc.memoIds.filter(id => !invalidMemoIds.includes(id));
+  doc.tableGroupIds = doc.tableGroupIds.filter(
+    id => !invalidTableGroupIds.includes(id)
+  );
 
   tableCollection.selectAll().forEach(table => {
     const invalidColumnIds = table.columnIds.filter(

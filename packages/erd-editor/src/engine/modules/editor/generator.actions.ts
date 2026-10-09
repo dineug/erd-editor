@@ -19,7 +19,6 @@ import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import {
   changeTableColorAction,
-  moveTableAction,
   sortTableAction,
   tableReducers,
 } from '@/engine/modules/table/atom.actions';
@@ -40,6 +39,11 @@ import {
   addColumnAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import { changeTableGroupColorAction } from '@/engine/modules/table-group/atom.actions';
+import {
+  removeTableGroupAction$,
+  toMoveTableGroupActions,
+} from '@/engine/modules/table-group/generator.actions';
 import { RootState } from '@/engine/state';
 import { attachActionTag, Tag } from '@/engine/tag';
 import { Point } from '@/internal-types';
@@ -73,6 +77,7 @@ import {
   toClipboardIndexes,
   toClipboardRelationships,
 } from '@/utils/table-clipboard/copy';
+import { nextTableGroupZIndex, padRect } from '@/utils/tableGroup';
 
 import {
   clearAction,
@@ -96,6 +101,7 @@ import { getColoredSelection, getColorTargets } from './utils/color';
 import {
   CreateEntityActions,
   CreateEntityInput,
+  CreateEntityTableGroup,
   toCreateEntityActions,
 } from './utils/duplicate';
 import { findRelationshipColumn } from './utils/findRelationshipColumn';
@@ -125,9 +131,9 @@ export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
   };
 
 /**
- * Moves the selection by a pointer step, scaled by the zoom of the scene the
- * drag runs in. From a view scene the step goes to that view's own placement,
- * which holds tables alone, and the document's placement is left where it is.
+ * Moves the selection by a pointer step the scene's zoom scales, a selected
+ * group carrying its members, each table once. From a view scene the step goes
+ * to that view's own placement, which holds tables alone, the document's kept.
  */
 export const moveAllAction$ = (
   movementX: number,
@@ -135,7 +141,9 @@ export const moveAllAction$ = (
   source: GeometrySource = 'document'
 ): GeneratorAction =>
   function* (state) {
-    const { tableIds, memoIds } = getSelectTypeIds(state.editor.selectedMap);
+    const { tableIds, memoIds, tableGroupIds } = getSelectTypeIds(
+      state.editor.selectedMap
+    );
     const { zoomLevel } = getSceneTransform(state, source);
     const newMovementX = movementX / zoomLevel;
     const newMovementY = movementY / zoomLevel;
@@ -155,16 +163,13 @@ export const moveAllAction$ = (
       return;
     }
 
-    if (tableIds.length) {
-      yield attachActionTag(
-        Tag.drag,
-        moveTableAction({
-          ids: tableIds,
-          movementX: newMovementX,
-          movementY: newMovementY,
-        })
-      );
-    }
+    yield toMoveTableGroupActions(
+      state,
+      tableGroupIds,
+      tableIds,
+      newMovementX,
+      newMovementY
+    );
 
     if (memoIds.length) {
       yield attachActionTag(
@@ -182,6 +187,7 @@ export const removeSelectedAction$ = (): GeneratorAction =>
   function* () {
     yield removeTableAction$();
     yield removeMemoAction$();
+    yield removeTableGroupAction$();
   };
 
 export type DuplicateConfig = {
@@ -301,9 +307,19 @@ function roundPlacement(
   );
 }
 
+/**
+ * What a duplicate or an append makes new entities from. Only an append names
+ * groups, each with the copied tables it holds; a duplicate, like a paste,
+ * brings none and no membership.
+ */
 function toDuplicateInput(
   state: RootState,
-  { tableIds, memoIds }: SelectTypeIds
+  {
+    tableIds,
+    memoIds,
+    tableGroupIds = [],
+  }: Pick<SelectTypeIds, 'tableIds' | 'memoIds'> &
+    Partial<Pick<SelectTypeIds, 'tableGroupIds'>>
 ): CreateEntityInput {
   const { collections } = state;
   const tables = query(collections)
@@ -364,6 +380,18 @@ function toDuplicateInput(
     })),
     relationships: toClipboardRelationships(state, copiedTableIds),
     indexes: toClipboardIndexes(state, copiedTableIds),
+    tableGroups: query(collections)
+      .collection('tableGroupEntities')
+      .selectByIds(tableGroupIds)
+      .map(group => ({
+        sourceId: group.id,
+        name: group.name,
+        color: group.color,
+        tableIds: tables
+          .filter(table => table.groupId === group.id)
+          .map(({ id }) => id),
+        ui: { ...group.ui },
+      })),
   };
 }
 
@@ -457,9 +485,14 @@ export function toSchemaAppend(
   if (!input.tables.length && !input.memos.length) return null;
 
   const points = toLayoutPoints(state, schema, input, layout, ctx);
+  // A file's groups keep their rects, so the block starts at their corners too.
+  const groupPoints = layout === 'file' ? (input.tableGroups ?? []) : [];
   let minX = Infinity;
   let minY = Infinity;
-  for (const { x, y } of points.values()) {
+  for (const { x, y } of [
+    ...points.values(),
+    ...groupPoints.map(({ ui }) => ui),
+  ]) {
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
   }
@@ -489,13 +522,18 @@ export function toSchemaAppend(
     });
   });
 
-  const tableRects = query(collections)
-    .collection('tableEntities')
-    .selectByIds(doc.tableIds)
-    .map(table => {
-      const { x, y } = placement.get(table.id)!;
-      return { x, y, ...measureTableSize(table, read, ctx.toWidth) };
-    });
+  const tableRects = new Map(
+    query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds)
+      .map((table): [string, Rect] => {
+        const { x, y } = placement.get(table.id)!;
+        return [
+          table.id,
+          { x, y, ...measureTableSize(table, read, ctx.toWidth) },
+        ];
+      })
+  );
   const memoRects = query(collections)
     .collection('memoEntities')
     .selectByIds(doc.memoIds)
@@ -503,10 +541,66 @@ export function toSchemaAppend(
       getMemoRect({ ...memo, ui: { ...memo.ui, ...placement.get(memo.id)! } })
     );
 
+  const tableGroups = toAppendTableGroups(state, input, layout, tableRects, {
+    x: origin.x - minX,
+    y: origin.y - minY,
+  });
+
   return {
-    ...toCreateEntityActions(input, placement, { valuesOnly: true }),
-    rect: [...tableRects, ...memoRects].reduce(unionRect),
+    ...toCreateEntityActions({ ...input, tableGroups }, placement, {
+      valuesOnly: true,
+    }),
+    rect: [
+      ...tableRects.values(),
+      ...memoRects,
+      ...tableGroups.map(({ ui: { x, y, width, height } }) => ({
+        x,
+        y,
+        width,
+        height,
+      })),
+    ].reduce(unionRect),
   };
+}
+
+/**
+ * The groups an append brings, stacked over the groups already there: a file
+ * keeps each rect where the block moves it, while a layout that moved the
+ * tables gives a group with members their bounds and the padding instead.
+ */
+function toAppendTableGroups(
+  state: RootState,
+  { tableGroups = [] }: CreateEntityInput,
+  layout: AppendLayout,
+  tableRects: Map<string, Rect>,
+  offset: Point
+): CreateEntityTableGroup[] {
+  const baseZIndex = nextTableGroupZIndex(
+    query(state.collections)
+      .collection('tableGroupEntities')
+      .selectByIds(state.doc.tableGroupIds)
+  );
+
+  return [...tableGroups]
+    .sort((a, b) => a.ui.zIndex - b.ui.zIndex)
+    .map((group, index) => {
+      const members = group.tableIds
+        .map(id => tableRects.get(id))
+        .filter((rect): rect is Rect => Boolean(rect));
+      const { x, y, width, height } =
+        layout === 'file' || !members.length
+          ? {
+              ...group.ui,
+              x: round(group.ui.x + offset.x, 4),
+              y: round(group.ui.y + offset.y, 4),
+            }
+          : padRect(members.reduce(unionRect));
+
+      return {
+        ...group,
+        ui: { x, y, width, height, zIndex: baseZIndex + index },
+      };
+    });
 }
 
 /**
@@ -693,13 +787,13 @@ export const drawStartAddRelationshipAction$ = (
   };
 
 /**
- * Paints every selected table and memo the color, sending nothing for one that
- * already is, in any letter case, so a color pressed again adds no undo entry
- * while one an undo took back is painted again; one stream group, one entry.
+ * Paints every selected table, memo and group the color, sending nothing for
+ * one that already is, in any letter case, so a color pressed again adds no
+ * undo entry while one an undo took back is painted again; one stream group.
  */
 export const changeColorAllAction$ = (color: string): GeneratorAction =>
   function* (state) {
-    const { tables, memos } = getColorTargets(state);
+    const { tables, memos, tableGroups } = getColorTargets(state);
     const target = color.toLowerCase();
 
     yield tables
@@ -716,15 +810,24 @@ export const changeColorAllAction$ = (color: string): GeneratorAction =>
       .map(memo =>
         changeMemoColorAction({ id: memo.id, color, prevColor: memo.ui.color })
       );
+    yield tableGroups
+      .filter(group => group.color.toLowerCase() !== target)
+      .map(group =>
+        changeTableGroupColorAction({
+          id: group.id,
+          color,
+          prevColor: group.color,
+        })
+      );
   };
 
 /**
- * Clears the color of every selected table and memo that has one: one stream
- * group, so one undo entry, and none for a selection that has no color.
+ * Clears the color of every selected table, memo and group that has one: one
+ * stream group, so one undo entry, and none for a selection that has no color.
  */
 export const removeColorAllAction$ = (): GeneratorAction =>
   function* (state) {
-    const { tables, memos } = getColoredSelection(state);
+    const { tables, memos, tableGroups } = getColoredSelection(state);
 
     yield tables.map(table =>
       changeTableColorAction({
@@ -738,6 +841,13 @@ export const removeColorAllAction$ = (): GeneratorAction =>
         id: memo.id,
         color: '',
         prevColor: memo.ui.color,
+      })
+    );
+    yield tableGroups.map(group =>
+      changeTableGroupColorAction({
+        id: group.id,
+        color: '',
+        prevColor: group.color,
       })
     );
   };

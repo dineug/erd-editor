@@ -1,0 +1,223 @@
+import { query } from '@dineug/erd-editor-schema';
+import { AnyAction } from '@dineug/r-html';
+import { uuid25 } from '@dineug/uuid';
+import { uniq } from 'es-toolkit';
+
+import { GeneratorAction } from '@/engine/generator.actions';
+import { selectAction } from '@/engine/modules/editor/atom.actions';
+import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
+import { SelectType } from '@/engine/modules/editor/state';
+import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
+import {
+  changeTableGroupAction,
+  moveTableAction,
+} from '@/engine/modules/table/atom.actions';
+import { RootState } from '@/engine/state';
+import { attachActionTag, Tag } from '@/engine/tag';
+import type { Rect } from '@/konva/scene/metrics';
+import { arrayHas } from '@/utils/arrayHas';
+import {
+  getTableCenter,
+  getTableGroupId,
+  getTableGroupMemberIds,
+  getTablesGroupRect,
+  isPointInRect,
+  nextTableGroupZIndex,
+} from '@/utils/tableGroup';
+
+import {
+  addTableGroupAction,
+  changeTableGroupZIndexAction,
+  moveTableGroupAction,
+  removeTableGroupAction,
+} from './atom.actions';
+
+const selectGroups = ({ doc, collections }: RootState) =>
+  query(collections)
+    .collection('tableGroupEntities')
+    .selectByIds(doc.tableGroupIds);
+
+/**
+ * The batch that adds a group at the rect, selected alone, with the tables
+ * given joining it: one dispatch, so one undo takes back the group and every
+ * membership it set.
+ */
+function* addGroup$(state: RootState, rect: Rect, tableIds: string[]) {
+  const id = uuid25();
+  const { x, y, width, height } = rect;
+
+  yield unselectAllAction$();
+  yield selectAction({ [id]: SelectType.tableGroup });
+  yield addTableGroupAction({
+    id,
+    ui: {
+      x,
+      y,
+      width,
+      height,
+      zIndex: nextTableGroupZIndex(selectGroups(state)),
+    },
+  });
+  yield tableIds.map(tableId =>
+    changeTableGroupAction({ id: tableId, value: id })
+  );
+}
+
+/**
+ * Adds a group drawn over the canvas: the tables in no group whose centre lies
+ * in the rect join it, and a table in another group stays where it is.
+ *
+ * @example
+ * store.dispatch(addTableGroupAction$({ x: 0, y: 0, width: 600, height: 400 }));
+ */
+export const addTableGroupAction$ = (rect: Rect): GeneratorAction =>
+  function* (state) {
+    const { doc, collections } = state;
+    const tableIds = query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds)
+      .filter(
+        table =>
+          !getTableGroupId(state, table) &&
+          isPointInRect(getTableCenter(state, table), rect)
+      )
+      .map(({ id }) => id);
+
+    yield* addGroup$(state, rect, tableIds);
+  };
+
+/**
+ * Adds a group around the tables given, or the selected ones, their bounds and
+ * the padding its rect: each joins it, leaving any group it was in. No table
+ * the document lists, and nothing is added.
+ *
+ * @example
+ * store.dispatch(addTableGroupFromTablesAction$());
+ */
+export const addTableGroupFromTablesAction$ = (
+  tableIds?: string[]
+): GeneratorAction =>
+  function* (state) {
+    const ids = uniq(
+      tableIds ?? getSelectTypeIds(state.editor.selectedMap).tableIds
+    ).filter(arrayHas(state.doc.tableIds));
+    const rect = getTablesGroupRect(state, ids);
+    if (!rect) return;
+
+    yield* addGroup$(state, rect, ids);
+  };
+
+/**
+ * Removes the group named, or every selected one the document lists, each with
+ * its members' groupId cleared in the same dispatch, so one undo brings back
+ * the group and its members together.
+ */
+export const removeTableGroupAction$ = (id?: string): GeneratorAction =>
+  function* (state) {
+    const {
+      doc: { tableGroupIds },
+      editor: { selectedMap },
+    } = state;
+    // A group a peer, an agent or an undo removes stays selected, and its
+    // removal recorded again would make an undo that brings it back.
+    const isInDoc = arrayHas(tableGroupIds);
+    const ids = id
+      ? [id]
+      : Object.entries(selectedMap)
+          .filter(([id, type]) => type === SelectType.tableGroup && isInDoc(id))
+          .map(([id]) => id);
+
+    for (const groupId of ids) {
+      yield getTableGroupMemberIds(state, groupId).map(tableId =>
+        changeTableGroupAction({ id: tableId, value: '' })
+      );
+      yield removeTableGroupAction({ id: groupId });
+    }
+  };
+
+/**
+ * The drag step of groups and tables moved together: each group by the step,
+ * and the tables given with every member of those groups by the same step, a
+ * table both selected and a member moving once. Tagged as drags.
+ */
+export function toMoveTableGroupActions(
+  state: RootState,
+  groupIds: string[],
+  tableIds: string[],
+  movementX: number,
+  movementY: number
+): AnyAction[] {
+  const ids = uniq([
+    ...tableIds,
+    ...groupIds.flatMap(id => getTableGroupMemberIds(state, id)),
+  ]);
+
+  return [
+    ...(groupIds.length
+      ? [moveTableGroupAction({ ids: groupIds, movementX, movementY })]
+      : []),
+    ...(ids.length ? [moveTableAction({ ids, movementX, movementY })] : []),
+  ].map(action => attachActionTag(Tag.drag, action));
+}
+
+/**
+ * Moves groups by a step in scene units, their member tables with them, in one
+ * dispatch: moves are relative, so a peer's concurrent move adds up.
+ *
+ * @example
+ * store.dispatch(moveTableGroupAction$(['g1'], 40, 0));
+ */
+export const moveTableGroupAction$ = (
+  ids: string[],
+  movementX: number,
+  movementY: number
+): GeneratorAction =>
+  function* (state) {
+    yield toMoveTableGroupActions(state, ids, [], movementX, movementY);
+  };
+
+/**
+ * Puts the tables in the group, or in none for '': a group the document does
+ * not list, and nothing is sent, nor for a table already where it goes.
+ *
+ * @example
+ * store.dispatch(setTableGroupAction$(['users', 'orders'], 'g1'));
+ */
+export const setTableGroupAction$ = (
+  tableIds: string[],
+  groupId: string
+): GeneratorAction =>
+  function* ({ doc, collections }) {
+    if (groupId && !doc.tableGroupIds.includes(groupId)) return;
+
+    yield query(collections)
+      .collection('tableEntities')
+      .selectByIds(uniq(tableIds).filter(arrayHas(doc.tableIds)))
+      .filter(table => table.groupId !== groupId)
+      .map(({ id }) => changeTableGroupAction({ id, value: groupId }));
+  };
+
+/** Selects a group, alone unless $mod, and draws it over every other group. */
+export const selectTableGroupAction$ = (
+  id: string,
+  $mod: boolean
+): GeneratorAction =>
+  function* (state) {
+    if (!$mod) {
+      yield unselectAllAction$();
+    }
+    yield selectAction({ [id]: SelectType.tableGroup });
+    yield changeTableGroupZIndexAction({
+      id,
+      zIndex: nextTableGroupZIndex(selectGroups(state)),
+    });
+  };
+
+export const actions$ = {
+  addTableGroupAction$,
+  addTableGroupFromTablesAction$,
+  removeTableGroupAction$,
+  moveTableGroupAction$,
+  setTableGroupAction$,
+  selectTableGroupAction$,
+};

@@ -70,8 +70,17 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
   });
 
 /**
- * Change types that should have a tool and do not have one. The reachability
- * spec reads it alongside the tools; every op is covered, so it stays empty,
- * and a type the engine adds without a tool must be named here or fail it.
+ * Change types that should have a tool and do not have one yet. The
+ * reachability spec reads it alongside the tools, and a type the engine adds
+ * without a tool must be named here or fail it: the table group changes wait here.
  */
-export const PENDING_COVERAGE: readonly ActionType[] = Object.freeze([]);
+export const PENDING_COVERAGE: readonly ActionType[] = Object.freeze([
+  'tableGroup.add',
+  'tableGroup.move',
+  'tableGroup.moveTo',
+  'tableGroup.remove',
+  'tableGroup.resize',
+  'tableGroup.changeName',
+  'tableGroup.changeColor',
+  'table.changeGroup',
+]);

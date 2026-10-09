@@ -32,6 +32,7 @@ import { ActionType as RelationshipActionType } from '@/engine/modules/relations
 import { ActionType as SettingsActionType } from '@/engine/modules/settings/actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import { ActionType as TableColumnActionType } from '@/engine/modules/table-column/actions';
+import { ActionType as TableGroupActionType } from '@/engine/modules/table-group/actions';
 import { createStore } from '@/engine/store';
 
 const allActionTypes = new Set<string>([
@@ -43,6 +44,7 @@ const allActionTypes = new Set<string>([
   ...Object.values(SettingsActionType),
   ...Object.values(IndexActionType),
   ...Object.values(IndexColumnActionType),
+  ...Object.values(TableGroupActionType),
 ]);
 
 const atomActionTypes = new Set<string>(
@@ -141,11 +143,12 @@ describe('ChangeActionTypes', () => {
       'relationship',
       'settings',
       'table',
+      'tableGroup',
     ]);
   });
 
-  it('counts sixty change types, the Schema SQL scripts among them', () => {
-    expect(ChangeActionTypes).toHaveLength(60);
+  it('counts sixty-eight change types, the Schema SQL scripts among them', () => {
+    expect(ChangeActionTypes).toHaveLength(68);
     expect(ChangeActionTypes).toContain('settings.changeDDLScript');
   });
 
@@ -169,6 +172,50 @@ describe('ChangeActionTypes', () => {
     expect(ChangeActionTypes).not.toContain('editor.changeViewport');
     expect(ChangeActionTypes).not.toContain('editor.sharedMouseTracker');
     expect(ChangeActionTypes).not.toContain('memo.changeZIndex');
+    expect(ChangeActionTypes).not.toContain('tableGroup.changeZIndex');
+  });
+});
+
+describe('the table group changes', () => {
+  const GROUP_CHANGES = [
+    'tableGroup.add',
+    'tableGroup.move',
+    'tableGroup.moveTo',
+    'tableGroup.remove',
+    'tableGroup.resize',
+    'tableGroup.changeName',
+    'tableGroup.changeColor',
+    'table.changeGroup',
+  ];
+
+  it('reach the file, the peers and the replica, and no readonly host or view makes one', () => {
+    for (const type of GROUP_CHANGES) {
+      expect(ChangeActionTypes).toContain(type);
+      expect(ReplicaActionTypes).toContain(type);
+      expect(SharedActionTypes).toContain(type);
+      expect(ReadonlyIgnoreActionTypes).toContain(type);
+      expect(ViewIgnoreActionTypes).toContain(type);
+      expect(HistoryActionTypes).toContain(type);
+      expect(LockSettingActionTypes).not.toHaveProperty(type);
+    }
+  });
+
+  it('stream a drag, a color and a resize, the drag and the color with the tables and memos', () => {
+    expect(StreamActionTypes).toEqual(
+      expect.arrayContaining([
+        'tableGroup.move',
+        'tableGroup.changeColor',
+        'tableGroup.resize',
+      ])
+    );
+    expect(StreamRegroupMoveActionTypes).toContain('tableGroup.move');
+    expect(StreamRegroupColorActionTypes).toContain('tableGroup.changeColor');
+  });
+
+  it('leave raising a group to the reader, in no list', () => {
+    expect(allActionTypes.has('tableGroup.changeZIndex')).toBe(true);
+    expect(HistoryActionTypes).not.toContain('tableGroup.changeZIndex');
+    expect(SharedActionTypes).not.toContain('tableGroup.changeZIndex');
   });
 });
 
@@ -386,10 +433,15 @@ describe('shared action types', () => {
 
 describe('stream regroup action types', () => {
   it('groups move, color and scroll streams', () => {
-    expect(StreamRegroupMoveActionTypes).toEqual(['table.move', 'memo.move']);
+    expect(StreamRegroupMoveActionTypes).toEqual([
+      'table.move',
+      'memo.move',
+      'tableGroup.move',
+    ]);
     expect(StreamRegroupColorActionTypes).toEqual([
       'table.changeColor',
       'memo.changeColor',
+      'tableGroup.changeColor',
     ]);
     expect(StreamRegroupScrollActionTypes).toEqual([
       'settings.streamZoomLevel',

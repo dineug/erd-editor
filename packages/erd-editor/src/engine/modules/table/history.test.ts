@@ -7,6 +7,7 @@ import {
   addTableAction,
   changeTableColorAction,
   changeTableCommentAction,
+  changeTableGroupAction,
   changeTableNameAction,
   moveTableAction,
   moveToTableAction,
@@ -51,6 +52,7 @@ describe('table/history maps', () => {
         ActionType.removeTable,
         ActionType.changeTableName,
         ActionType.changeTableComment,
+        ActionType.changeTableGroup,
         ActionType.moveToTable,
         ActionType.sortTable,
       ]
@@ -214,6 +216,33 @@ describe('table/history changeTableName', () => {
 
     expect(table(TABLE_A).name).toBe('before_name');
     expect(table(TABLE_A).ui.widthName).toBe(110);
+  });
+});
+
+describe('table/history changeTableGroup', () => {
+  it('undoes with the group the table was in', () => {
+    addTable(TABLE_A);
+    store.dispatchSync(changeTableGroupAction({ id: TABLE_A, value: 'g1' }));
+
+    tablePushUndoHistoryMap[ActionType.changeTableGroup](
+      undoActions,
+      changeTableGroupAction({ id: TABLE_A, value: '' }),
+      store.state
+    );
+
+    expect(undoActions).toEqual([
+      changeTableGroupAction({ id: TABLE_A, value: 'g1' }),
+    ]);
+  });
+
+  it('pushes nothing for an unknown table', () => {
+    tablePushUndoHistoryMap[ActionType.changeTableGroup](
+      undoActions,
+      changeTableGroupAction({ id: 'ghost', value: 'g1' }),
+      store.state
+    );
+
+    expect(undoActions).toEqual([]);
   });
 });
 

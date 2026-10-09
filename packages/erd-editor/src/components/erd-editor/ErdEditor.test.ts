@@ -199,6 +199,7 @@ function emptyGCIds() {
     indexIds: [],
     indexColumnIds: [],
     memoIds: [],
+    tableGroupIds: [],
   };
 }
 

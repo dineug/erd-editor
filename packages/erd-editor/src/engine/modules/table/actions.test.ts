@@ -13,6 +13,7 @@ describe('table/actions', () => {
       changeTableName: 'table.changeName',
       changeTableComment: 'table.changeComment',
       changeTableColor: 'table.changeColor',
+      changeTableGroup: 'table.changeGroup',
       changeZIndex: 'table.changeZIndex',
       sortTable: 'table.sort',
     });
@@ -20,7 +21,7 @@ describe('table/actions', () => {
 
   it('namespaces every action type under "table."', () => {
     const values = Object.values(ActionType);
-    expect(values.length).toBe(9);
+    expect(values.length).toBe(10);
 
     for (const type of values) {
       expect(type.startsWith('table.')).toBe(true);
