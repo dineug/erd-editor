@@ -351,7 +351,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     description: `Sets the color of a table group, which its box and the headers of its tables take. ${OLDER_EDITOR_GROUPS}`,
   },
   erd_move_table_group: {
-    description: `Moves a table group so its rect starts at an absolute canvas position, its tables by the same step. Moving a table or a group never changes which tables a group holds. ${OLDER_EDITOR_GROUPS}`,
+    description: `Moves a table group so its rect starts at an absolute canvas position, its tables by the same step. Moving a table or a group never changes which tables a group holds. A move under 20 pixels in all makes no undo entry. ${OLDER_EDITOR_GROUPS}`,
   },
   erd_resize_table_group: {
     description: `Sets the rect of a table group, its tables staying where they are; the editor draws the box grown to hold each of them. It is refused smaller than 160 by 100 or than the tables with their padding, naming the box the rect must hold. ${OLDER_EDITOR_GROUPS}`,

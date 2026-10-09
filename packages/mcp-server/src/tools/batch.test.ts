@@ -203,6 +203,30 @@ describe('a batch of edit tools', () => {
     expect(run.withoutUndo).toEqual([0]);
     expect(peer.undo()).toMatchObject({ label: BATCH_TOOL, entries: 1 });
   });
+
+  it('lists an operation of an undoable tool that changed the document with no undo entry', () => {
+    const peer = seeded();
+    const groupAt = () => {
+      const { x, y } = peer.state.collections.tableGroupEntities[SEED.group].ui;
+      return { x, y };
+    };
+
+    const run = runBatch(peer, [
+      { tool: 'erd_add_table' },
+      {
+        tool: 'erd_move_table_group',
+        args: { groupId: SEED.group, x: 45, y: 25 },
+      },
+      {
+        tool: 'erd_move_table_group',
+        args: { groupId: SEED.group, x: 45, y: 25 },
+      },
+    ]);
+
+    expect(run.withoutUndo).toEqual([1]);
+    expect(peer.undo()).toMatchObject({ label: BATCH_TOOL, entries: 1 });
+    expect(groupAt()).toEqual({ x: 45, y: 25 });
+  });
 });
 
 describe('a batch runs all of its operations or none', () => {
