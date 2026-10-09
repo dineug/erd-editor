@@ -49,6 +49,7 @@ import {
   ColumnOption,
   ColumnUIKey,
 } from '@/v3/schema/tableColumn.entity';
+import { TableGroup } from '@/v3/schema/tableGroup.entity';
 
 export interface ERDEditorSchemaV3 {
   $schema: 'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
@@ -62,6 +63,7 @@ export interface ERDEditorSchemaV3 {
     indexEntities: Record<string, Index>;
     indexColumnEntities: Record<string, IndexColumn>;
     memoEntities: Record<string, Memo>;
+    tableGroupEntities: Record<string, TableGroup>;
   };
 }
 

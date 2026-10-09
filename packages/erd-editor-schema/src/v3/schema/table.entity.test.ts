@@ -9,6 +9,7 @@ const buildTable = (id: string, columnIds: string[] = []): Table => ({
   comment: '',
   columnIds,
   seqColumnIds: [...columnIds],
+  groupId: '',
   ui: {
     x: 0,
     y: 0,
@@ -40,12 +41,14 @@ describe('v3/schema/table.entity', () => {
       comment: 'film actors',
       columnIds: ['column-1', 'column-2'],
       seqColumnIds: ['column-1', 'column-2', 'column-3'],
+      groupId: 'group-1',
       ui,
       meta: { updateAt: 20, createAt: 10 },
     };
 
     expect(table.columnIds).toHaveLength(2);
     expect(table.ui.color).toBe('#ff0000');
+    expect(table.groupId).toBe('group-1');
     expect(table.meta.updateAt).toBeGreaterThan(table.meta.createAt);
   });
 
@@ -58,6 +61,14 @@ describe('v3/schema/table.entity', () => {
     expect(
       table.seqColumnIds.filter(id => !table.columnIds.includes(id))
     ).toEqual(['c1']);
+  });
+
+  it('holds its group membership as one id, empty for no group', () => {
+    const ungrouped = buildTable('a');
+    const grouped = { ...buildTable('b'), groupId: 'group-1' };
+
+    expect(ungrouped.groupId).toBe('');
+    expect(grouped.groupId).toBe('group-1');
   });
 
   it('orders tables by their ui zIndex', () => {

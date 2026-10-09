@@ -19,6 +19,7 @@ describe('createTable', () => {
     expect(table.comment).toBe('');
     expect(table.columnIds).toEqual([]);
     expect(table.seqColumnIds).toEqual([]);
+    expect(table.groupId).toBe('');
     expect(table.ui).toEqual({
       x: 200,
       y: 100,

@@ -40,6 +40,7 @@ const createTable = (
   comment: '',
   columnIds,
   seqColumnIds: [...columnIds],
+  groupId: '',
   ui: {
     x: 11,
     y: 22,

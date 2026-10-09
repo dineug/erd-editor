@@ -7,6 +7,7 @@ import { createAndMergeRelationshipEntities } from '@/v3/parser/relationship.ent
 import { createAndMergeSettings } from '@/v3/parser/settings';
 import { createAndMergeTableEntities } from '@/v3/parser/table.entity';
 import { createAndMergeTableColumnEntities } from '@/v3/parser/tableColumn.entity';
+import { createAndMergeTableGroupEntities } from '@/v3/parser/tableGroup.entity';
 import { ERDEditorSchemaV3 } from '@/v3/schema';
 
 export function parser(source: any): ERDEditorSchemaV3 {
@@ -33,6 +34,9 @@ export function parser(source: any): ERDEditorSchemaV3 {
   const memoEntities = createAndMergeMemoEntities(
     json.collections?.memoEntities
   );
+  const tableGroupEntities = createAndMergeTableGroupEntities(
+    json.collections?.tableGroupEntities
+  );
 
   return {
     $schema:
@@ -47,6 +51,7 @@ export function parser(source: any): ERDEditorSchemaV3 {
       indexEntities,
       indexColumnEntities,
       memoEntities,
+      tableGroupEntities,
     },
   };
 }

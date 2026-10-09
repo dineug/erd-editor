@@ -14,6 +14,7 @@ describe('createTable', () => {
     expect(table.comment).toBe('');
     expect(table.columnIds).toEqual([]);
     expect(table.seqColumnIds).toEqual([]);
+    expect(table.groupId).toBe('');
     expect(table.ui).toEqual({
       x: 200,
       y: 100,
@@ -53,6 +54,7 @@ describe('createAndMergeTableEntities', () => {
         comment: 'user table',
         columnIds: ['c1', 'c2'],
         seqColumnIds: ['c1', 'c2', 'c3'],
+        groupId: 'g1',
         ui: {
           x: 10,
           y: 20,
@@ -71,6 +73,7 @@ describe('createAndMergeTableEntities', () => {
       comment: 'user table',
       columnIds: ['c1', 'c2'],
       seqColumnIds: ['c1', 'c2', 'c3'],
+      groupId: 'g1',
       ui: {
         x: 10,
         y: 20,
@@ -89,6 +92,7 @@ describe('createAndMergeTableEntities', () => {
         id: 't1',
         name: 1 as any,
         columnIds: 'c1' as any,
+        groupId: 7 as any,
         ui: { x: '10' as any, color: 3 as any, widthName: 80 },
       },
     });
@@ -96,9 +100,18 @@ describe('createAndMergeTableEntities', () => {
     const table = entities.t1;
     expect(table.name).toBe('');
     expect(table.columnIds).toEqual([]);
+    expect(table.groupId).toBe('');
     expect(table.ui.x).toBe(200);
     expect(table.ui.color).toBe('');
     expect(table.ui.widthName).toBe(80);
+  });
+
+  it('keeps a group id naming no group as saved, for the readers to judge', () => {
+    const entities = createAndMergeTableEntities({
+      key: { id: 't1', groupId: 'gone' },
+    });
+
+    expect(entities.t1.groupId).toBe('gone');
   });
 
   it('keeps the ui defaults when ui is missing', () => {

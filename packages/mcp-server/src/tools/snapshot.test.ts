@@ -130,6 +130,7 @@ describe('the agent snapshot', () => {
         relationship: true,
         columnAlternateKey: false,
         hideReferentialAction: false,
+        hideTableGroup: false,
       },
       maxWidthComment: -1,
       // The seed starts as a new document, every setting locked.

@@ -31,6 +31,7 @@ describe('parser', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
     expect(result.collections).toEqual({
       tableEntities: {},
@@ -39,6 +40,7 @@ describe('parser', () => {
       indexEntities: {},
       indexColumnEntities: {},
       memoEntities: {},
+      tableGroupEntities: {},
     });
   });
 
@@ -67,9 +69,10 @@ describe('parser', () => {
         relationshipIds: ['r1'],
         indexIds: ['i1'],
         memoIds: ['m1'],
+        tableGroupIds: ['g1'],
       },
       collections: {
-        tableEntities: { t1: { id: 't1', name: 'users' } },
+        tableEntities: { t1: { id: 't1', name: 'users', groupId: 'g1' } },
         tableColumnEntities: { c1: { id: 'c1', tableId: 't1', name: 'id' } },
         relationshipEntities: { r1: { id: 'r1', identification: true } },
         indexEntities: { i1: { id: 'i1', tableId: 't1', unique: true } },
@@ -77,6 +80,7 @@ describe('parser', () => {
           ic1: { id: 'ic1', indexId: 'i1', orderType: OrderType.DESC },
         },
         memoEntities: { m1: { id: 'm1', value: 'hello' } },
+        tableGroupEntities: { g1: { id: 'g1', name: 'billing' } },
       },
     });
 
@@ -94,6 +98,20 @@ describe('parser', () => {
       OrderType.DESC
     );
     expect(result.collections.memoEntities.m1.value).toBe('hello');
+    expect(result.doc.tableGroupIds).toEqual(['g1']);
+    expect(result.collections.tableGroupEntities.g1.name).toBe('billing');
+    expect(result.collections.tableEntities.t1.groupId).toBe('g1');
+  });
+
+  it('reads a document saved before table groups as one with none', () => {
+    const result = parser({
+      doc: { tableIds: ['t1'] },
+      collections: { tableEntities: { t1: { id: 't1', name: 'users' } } },
+    });
+
+    expect(result.doc.tableGroupIds).toEqual([]);
+    expect(result.collections.tableGroupEntities).toEqual({});
+    expect(result.collections.tableEntities.t1.groupId).toBe('');
   });
 
   it('drops unknown top level keys', () => {

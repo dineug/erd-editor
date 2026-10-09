@@ -149,6 +149,7 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants).not.toHaveProperty('Doc');
       expect(SchemaV3Constants).not.toHaveProperty('Table');
       expect(SchemaV3Constants).not.toHaveProperty('Memo');
+      expect(SchemaV3Constants).not.toHaveProperty('TableGroup');
       expect(Object.keys(SchemaV3Constants)).toHaveLength(35);
     });
   });
@@ -197,6 +198,7 @@ describe('v3/schema/index', () => {
           relationshipIds: [],
           indexIds: [],
           memoIds: [],
+          tableGroupIds: ['group-1'],
         },
         collections: {
           tableEntities: {
@@ -206,6 +208,7 @@ describe('v3/schema/index', () => {
               comment: '',
               columnIds: [],
               seqColumnIds: [],
+              groupId: 'group-1',
               ui: {
                 x: 0,
                 y: 0,
@@ -222,6 +225,15 @@ describe('v3/schema/index', () => {
           indexEntities: {},
           indexColumnEntities: {},
           memoEntities: {},
+          tableGroupEntities: {
+            'group-1': {
+              id: 'group-1',
+              name: 'billing',
+              color: '#0090ff',
+              ui: { x: -40, y: -40, width: 400, height: 300, zIndex: 1 },
+              meta: { updateAt: 0, createAt: 0 },
+            },
+          },
         },
       };
 
@@ -234,9 +246,15 @@ describe('v3/schema/index', () => {
         'relationshipEntities',
         'tableColumnEntities',
         'tableEntities',
+        'tableGroupEntities',
       ]);
       expect(
         schema.doc.tableIds.every(id => id in schema.collections.tableEntities)
+      ).toBe(true);
+      expect(
+        schema.doc.tableGroupIds.includes(
+          schema.collections.tableEntities['table-1'].groupId
+        )
       ).toBe(true);
       expect(schema.collections.tableEntities['table-1'].name).toBe('actor');
     });

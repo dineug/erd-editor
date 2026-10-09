@@ -8,6 +8,7 @@ const createDoc = (): Doc => ({
   relationshipIds: [],
   indexIds: [],
   memoIds: [],
+  tableGroupIds: [],
 });
 
 describe('v3/schema/doc', () => {
@@ -15,11 +16,12 @@ describe('v3/schema/doc', () => {
     expect(Object.keys(docModule)).toEqual([]);
   });
 
-  it('declares exactly the four id lists that drive rendering order', () => {
+  it('declares exactly the five id lists that drive rendering order', () => {
     expect(Object.keys(createDoc()).sort()).toEqual([
       'indexIds',
       'memoIds',
       'relationshipIds',
+      'tableGroupIds',
       'tableIds',
     ]);
   });
@@ -44,6 +46,7 @@ describe('v3/schema/doc', () => {
       relationshipIds: ['relationship-1'],
       indexIds: ['index-1'],
       memoIds: ['memo-1'],
+      tableGroupIds: ['group-1'],
     };
 
     doc.tableIds = doc.tableIds.filter(id => id !== 'table-1');
@@ -52,6 +55,7 @@ describe('v3/schema/doc', () => {
     expect(doc.relationshipIds).toEqual(['relationship-1']);
     expect(doc.indexIds).toEqual(['index-1']);
     expect(doc.memoIds).toEqual(['memo-1']);
+    expect(doc.tableGroupIds).toEqual(['group-1']);
   });
 
   it('keeps the lists independent so the same id can appear in two of them', () => {

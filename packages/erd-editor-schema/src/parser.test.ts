@@ -97,6 +97,7 @@ describe('parser', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -528,5 +529,63 @@ describe('the Schema SQL scripts toJson writes', () => {
       before: '',
       after: 'SELECT 1;',
     });
+  });
+});
+
+describe('the table groups toJson writes', () => {
+  const source = {
+    version: '3.0.0',
+    settings: { show: SchemaV3Constants.Show.hideTableGroup },
+    doc: { tableIds: ['t1', 't2'], tableGroupIds: ['g1'] },
+    collections: {
+      tableEntities: {
+        t1: { id: 't1', name: 'invoice', groupId: 'g1' },
+        t2: { id: 't2', name: 'member' },
+      },
+      tableGroupEntities: {
+        g1: {
+          id: 'g1',
+          name: 'billing',
+          color: '#0090ff',
+          ui: { x: -40, y: 20, width: 640, height: 360, zIndex: 3 },
+          meta: { updateAt: 2, createAt: 1 },
+        },
+      },
+    },
+  };
+
+  it('writes the groups, their order, each membership and the hide bit', () => {
+    const json = JSON.parse(toJson(parser(JSON.stringify(source))));
+
+    expect(json.doc.tableGroupIds).toEqual(['g1']);
+    expect(json.collections.tableGroupEntities).toEqual(
+      source.collections.tableGroupEntities
+    );
+    expect(json.collections.tableEntities.t1.groupId).toBe('g1');
+    expect(json.collections.tableEntities.t2.groupId).toBe('');
+    expect(json.settings.show).toBe(SchemaV3Constants.Show.hideTableGroup);
+  });
+
+  it('reads its own output back to the same groups', () => {
+    const schema = parser(JSON.stringify(source));
+
+    expect(parser(toJson(schema))).toEqual(schema);
+  });
+
+  it('writes an empty collection and empty ids for a document with no group', () => {
+    const json = JSON.parse(toJson(createSchema()));
+
+    expect(json.doc.tableGroupIds).toEqual([]);
+    expect(json.collections.tableGroupEntities).toEqual({});
+  });
+
+  it('leaves the groups out of the v2 document parserV2 converts to', () => {
+    const schemaV2 = parserV2(JSON.stringify(source));
+
+    expect(schemaV2.table.tables.map(({ name }) => name)).toEqual([
+      'invoice',
+      'member',
+    ]);
+    expect(JSON.stringify(schemaV2)).not.toMatch(/billing|groupId|tableGroup/);
   });
 });

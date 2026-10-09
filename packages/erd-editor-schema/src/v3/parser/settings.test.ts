@@ -223,6 +223,17 @@ describe('createAndMergeSettings', () => {
       expect(createAndMergeSettings().show & Show.columnAlternateKey).toBe(0);
     });
 
+    it('shows table groups unless a document carries the hide bit', () => {
+      const hidden = Show.relationship | Show.hideTableGroup;
+
+      expect(createAndMergeSettings({ show: hidden }).show).toBe(hidden);
+      expect(createAndMergeSettings().show & Show.hideTableGroup).toBe(0);
+      expect(
+        createAndMergeSettings({ show: Show.relationship }).show &
+          Show.hideTableGroup
+      ).toBe(0);
+    });
+
     it('ignores wrongly typed values', () => {
       const settings = createAndMergeSettings({
         scrollTop: '12' as any,

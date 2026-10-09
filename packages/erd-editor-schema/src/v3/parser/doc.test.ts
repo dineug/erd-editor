@@ -9,6 +9,7 @@ describe('createAndMergeDoc', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -31,6 +32,7 @@ describe('createAndMergeDoc', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -40,6 +42,7 @@ describe('createAndMergeDoc', () => {
       relationshipIds: ['r1'],
       indexIds: ['i1'],
       memoIds: ['m1'],
+      tableGroupIds: ['g1'],
     });
 
     expect(doc).toEqual({
@@ -47,6 +50,7 @@ describe('createAndMergeDoc', () => {
       relationshipIds: ['r1'],
       indexIds: ['i1'],
       memoIds: ['m1'],
+      tableGroupIds: ['g1'],
     });
   });
 
@@ -56,6 +60,7 @@ describe('createAndMergeDoc', () => {
       relationshipIds: 'r1' as any,
       indexIds: 1 as any,
       memoIds: null as any,
+      tableGroupIds: { g1: true } as any,
     });
 
     expect(doc).toEqual({
@@ -63,6 +68,7 @@ describe('createAndMergeDoc', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -81,6 +87,7 @@ describe('createAndMergeDoc', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
     expect((doc as any).foo).toBeUndefined();
   });
