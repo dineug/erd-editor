@@ -14,11 +14,13 @@ import { Open } from '@/constants/open';
 import { CanvasType, ColumnOption, RelationshipType } from '@/constants/schema';
 import { History } from '@/engine/history';
 import {
+  changeDrawTableGroupAction,
   changeOpenMapAction,
   drawStartRelationshipAction,
   editMemoAction,
   editMemoEndAction,
   editTableAction,
+  editTableGroupAction,
   focusColumnAction,
   focusTableAction,
   selectAction,
@@ -43,13 +45,17 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeTableGroupAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { toScenePoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
 import { copyAction, pasteAction } from '@/utils/emitter';
@@ -215,6 +221,29 @@ describe('useErdShortcut - creation shortcuts', () => {
   });
 });
 
+describe('useErdShortcut - while a table group name is edited', () => {
+  it('stands the canvas shortcuts down, as for a cell or memo editor', async () => {
+    const app = await setup();
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+      }),
+      editTableGroupAction({ id: 'g1' })
+    );
+    expect(isEditingText(app.store.state.editor)).toBe(true);
+
+    shortcut(app, KeyBindingName.addTable);
+    shortcut(app, KeyBindingName.addMemo);
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toEqual([]);
+    expect(app.store.state.doc.memoIds).toEqual([]);
+    expect(app.store.state.doc.tableGroupIds).toEqual(['g1']);
+  });
+});
+
 describe('useErdShortcut - relationship shortcuts', () => {
   it.each([
     [KeyBindingName.relationshipZeroOne, RelationshipType.ZeroOne],
@@ -287,6 +316,50 @@ describe('useErdShortcut - removal and stop', () => {
   });
 });
 
+describe('useErdShortcut - stop over a table group draw or name', () => {
+  it('ends the draw mode alone, prevented, and the next press unselects', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    app.store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+
+    const first = pressStop(app);
+    await flush();
+
+    expect(first.defaultPrevented).toBe(true);
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+    expect(app.store.state.editor.selectedMap).toEqual({
+      [tableId]: SelectType.table,
+    });
+
+    const second = pressStop(app);
+    await flush();
+
+    expect(second.defaultPrevented).toBe(false);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('ends the name editor alone, prevented, the group kept selected', async () => {
+    const app = await setup();
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+      }),
+      selectAction({ g1: SelectType.tableGroup }),
+      editTableGroupAction({ id: 'g1' })
+    );
+
+    const event = pressStop(app);
+    await flush();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(app.store.state.editor.editTableGroupId).toBeNull();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      g1: SelectType.tableGroup,
+    });
+  });
+});
+
 describe('useErdShortcut - remove selection', () => {
   const seedMemo = (app: AppContext) => {
     app.store.dispatchSync(addMemoAction$());
@@ -335,6 +408,31 @@ describe('useErdShortcut - remove selection', () => {
     expect(app.store.state.doc.tableIds).toEqual([kept, tableId]);
     expect(app.store.state.doc.memoIds).toEqual([memoId]);
     document.body.removeEventListener(focusEvent.type, listener);
+  });
+
+  it('removes a group selected alone, keeping its tables, and one undo brings both back', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: tableId, value: 'g1' }),
+      unselectAllAction(),
+      selectAction({ g1: SelectType.tableGroup })
+    );
+
+    shortcut(app, KeyBindingName.removeSelection);
+    await flush();
+
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+    expect(app.store.state.doc.tableIds).toEqual([tableId]);
+    expect(getTable(app, tableId)?.groupId).toBe('');
+
+    app.store.undo();
+    expect(app.store.state.doc.tableGroupIds).toEqual(['g1']);
+    expect(getTable(app, tableId)?.groupId).toBe('g1');
   });
 
   it('removes the selected columns while their table is the whole selection, in one undo step', async () => {
@@ -556,6 +654,17 @@ describe('useErdShortcut - canvas modes', () => {
    * The two modes a press on the canvas can mean are exclusive: taking up the
    * hand ends a draw that was armed, so a press is never read as both.
    */
+  it('puts a table group draw down when the hand tool is taken up', async () => {
+    const app = await setup();
+    app.store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+
+    expect(app.store.state.editor.handTool).toBe(true);
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+  });
+
   it('ends a relationship draw when the hand tool is taken up', async () => {
     const app = await setup();
     app.store.dispatchSync(

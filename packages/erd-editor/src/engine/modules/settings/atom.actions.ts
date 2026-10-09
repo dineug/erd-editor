@@ -331,6 +331,8 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
 
   rememberCanvasType(state);
   state.settings.canvasType = value;
+  // Only the ERD tab draws a table group, so a draw armed there ends with it.
+  if (value !== CanvasType.ERD) state.editor.drawTableGroup = false;
 };
 
 type CodeSetting =

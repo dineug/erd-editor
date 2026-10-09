@@ -15,6 +15,7 @@ export const frFR = {
   'common.findAndReplace': 'Rechercher et remplacer',
   'common.newTable': 'Nouvelle table',
   'common.newMemo': 'Nouveau mémo',
+  'common.newTableGroup': 'Nouveau groupe de tables',
   'common.import': 'Importer',
   'common.importAndAdd': 'Importer et ajouter',
   'common.export': 'Exporter',
@@ -71,6 +72,10 @@ export const frFR = {
   'contextMenu.focusOnThisTable': 'Se concentrer sur cette table',
   'contextMenu.focusOnSelectedTables':
     'Se concentrer sur les tables sélectionnées',
+  'contextMenu.groupSelectedTables': 'Grouper les tables sélectionnées',
+  'contextMenu.removeFromGroup': 'Retirer du groupe',
+  'contextMenu.selectTables': 'Sélectionner les tables',
+  'contextMenu.rename': 'Renommer',
   'contextMenu.relationshipType': 'Type de relation',
   'contextMenu.onDelete': 'Lors de la suppression',
   'contextMenu.onUpdate': 'Lors de la mise à jour',
@@ -269,6 +274,7 @@ export const frFR = {
   'palette.codeGeneratorOptionsPanel':
     'Générateur de code : Panneau des options',
   'palette.exportSchemaSql': 'Exporter : Schéma SQL',
+  'palette.groupSelectedTables': 'Grouper les tables sélectionnées',
   'palette.keywords.schemaSqlStatements':
     'créer si n’existe pas supprimer remplacer',
   'palette.keywords.schemaSqlHeader': 'use base de données search_path',

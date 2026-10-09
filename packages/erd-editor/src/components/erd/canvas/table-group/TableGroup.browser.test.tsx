@@ -25,6 +25,7 @@ import {
   TABLE_GROUP_FILL_OPACITY,
 } from '@/components/erd/canvas/sceneTokens';
 import TableGroup from '@/components/erd/canvas/table-group/TableGroup';
+import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
 import {
   TABLE_GROUP_PADDING,
   TABLE_GROUP_TITLE_HEIGHT,
@@ -303,8 +304,9 @@ describe('the table group scene', () => {
       text: 'billing',
       fill: THEME.active,
       x: 8,
+      y: getTableGroupNameBox().y,
       width: STORED.width - 16,
-      height: TABLE_GROUP_TITLE_HEIGHT,
+      height: getTableGroupNameBox().height,
       fontFamily: SCENE_FONT_FAMILY,
       fontSize: SCENE_FONT_SIZE,
       fontStyle: 'bold',

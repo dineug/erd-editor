@@ -12,6 +12,7 @@ import {
   selectTableAloneAction$,
   showErdTab,
 } from '@/components/erd/goToErdTarget';
+import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
 import { fieldIcon } from '@/components/find-replace/fieldIcon';
 import { toErdTarget } from '@/components/find-replace/matchTarget';
 import {
@@ -42,7 +43,9 @@ import {
 import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
 import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
+import { changeDrawTableGroupAction } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
+import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeBracketTypeAction,
@@ -54,6 +57,7 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
+import { addTableGroupFromTablesAction$ } from '@/engine/modules/table-group/generator.actions';
 import { RootState } from '@/engine/state';
 import { type LocaleOption, LOCALES, SYSTEM_LOCALE } from '@/i18n/locales';
 import { type LabeledMenu, menuLabel } from '@/i18n/menuLabel';
@@ -86,6 +90,7 @@ import {
 } from '@/utils/find-replace';
 import { resolveSchemaSQLOptions, schemaSQLSupport } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { isTableGroupShown } from '@/utils/tableGroup';
 
 import { HangulQuery, hangulQueryOf, HangulTier, hangulTier } from './hangul';
 
@@ -422,6 +427,22 @@ export function createScopeActions(
         return store.state.settings.canvasType === CanvasType.ERD;
       },
     },
+    {
+      icon: <Icon name="group" size={16} />,
+      ...named(i18n, 'common.newTableGroup'),
+      perform: ({ store }) => {
+        store.dispatch(changeDrawTableGroupAction({ value: true }));
+      },
+      filter: canAddTableGroup,
+    },
+    {
+      icon: <Icon name="group" size={16} />,
+      ...named(i18n, 'palette.groupSelectedTables'),
+      perform: ({ store }) => {
+        addTableGroupAndRename(store, addTableGroupFromTablesAction$());
+      },
+      filter: app => canAddTableGroup(app) && hasSelectedTable(app),
+    },
     ...drawRelationshipMenus.map<Action>(menu => ({
       icon: <Icon name={menu.iconName} size={16} />,
       ...named(i18n, menu, 'common.relationship'),
@@ -553,6 +574,19 @@ const isGeneratorCodeTab = ({ store }: AppContext) =>
 /** The Code Generator tab of a language that quotes names by the bracket type. */
 const readsBracketHere = (app: AppContext) =>
   isGeneratorCodeTab(app) && readsBracket(app.store.state.settings.language);
+
+/** Whether a group may be made: on the ERD tab, showing its groups, of an editor that is not readonly. */
+const canAddTableGroup = ({ store }: AppContext) =>
+  store.state.settings.canvasType === CanvasType.ERD &&
+  isTableGroupShown(store.state) &&
+  !store.getReadonly();
+
+const hasSelectedTable = ({ store }: AppContext) => {
+  const { doc, editor } = store.state;
+  return getSelectTypeIds(editor.selectedMap).tableIds.some(id =>
+    doc.tableIds.includes(id)
+  );
+};
 
 /**
  * The Schema SQL tab's own rows, the statements and the header listing only

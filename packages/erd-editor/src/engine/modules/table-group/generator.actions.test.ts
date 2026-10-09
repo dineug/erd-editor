@@ -39,6 +39,7 @@ import {
   moveTableGroupAction$,
   removeTableGroupAction$,
   selectTableGroupAction$,
+  selectTableGroupTablesAction$,
   setTableGroupAction$,
   toMoveTableGroupActions,
 } from '@/engine/modules/table-group/generator.actions';
@@ -83,6 +84,7 @@ describe('actions$', () => {
       'moveTableGroupAction$',
       'removeTableGroupAction$',
       'selectTableGroupAction$',
+      'selectTableGroupTablesAction$',
       'setTableGroupAction$',
     ]);
   });
@@ -489,6 +491,44 @@ describe('selectTableGroupAction$', () => {
       t1: SelectType.table,
       g2: SelectType.tableGroup,
     });
+  });
+});
+
+describe('selectTableGroupTablesAction$', () => {
+  beforeEach(() => {
+    store.dispatchSync(
+      addTableGroupAction({ id: 'g1', ui: { ...UI, zIndex: 1 } }),
+      addTableGroupAction({ id: 'g2', ui: { ...UI, zIndex: 2 } }),
+      addTableAction({ id: 'a', ui: { x: 0, y: 0, zIndex: 3 } }),
+      addTableAction({ id: 'b', ui: { x: 0, y: 0, zIndex: 4 } }),
+      addTableAction({ id: 'c', ui: { x: 0, y: 0, zIndex: 5 } }),
+      changeTableGroupAction({ id: 'a', value: 'g1' }),
+      changeTableGroupAction({ id: 'b', value: 'g1' }),
+      changeTableGroupAction({ id: 'c', value: 'g2' }),
+      selectAction({ g1: SelectType.tableGroup, c: SelectType.table })
+    );
+  });
+
+  it("selects the group's tables alone, the group and the rest let go", () => {
+    store.dispatchSync(selectTableGroupTablesAction$('g1'));
+
+    expect(store.state.editor.selectedMap).toEqual({
+      a: SelectType.table,
+      b: SelectType.table,
+    });
+  });
+
+  it('leaves nothing selected for a group without tables, or one the document does not list', () => {
+    store.dispatchSync(changeTableGroupAction({ id: 'c', value: '' }));
+
+    store.dispatchSync(selectTableGroupTablesAction$('g2'));
+    expect(store.state.editor.selectedMap).toEqual({});
+
+    store.dispatchSync(
+      selectAction({ a: SelectType.table }),
+      selectTableGroupTablesAction$('ghost')
+    );
+    expect(store.state.editor.selectedMap).toEqual({});
   });
 });
 

@@ -273,6 +273,26 @@ export const selectTableGroupAction$ = (
     });
   };
 
+/**
+ * Selects the group's member tables alone, the group itself left out, so what
+ * a table command reaches next is its tables.
+ *
+ * @example
+ * store.dispatch(selectTableGroupTablesAction$('g1'));
+ */
+export const selectTableGroupTablesAction$ = (id: string): GeneratorAction =>
+  function* (state) {
+    yield unselectAllAction$();
+    yield selectAction(
+      Object.fromEntries(
+        getTableGroupMemberIds(state, id).map(tableId => [
+          tableId,
+          SelectType.table,
+        ])
+      )
+    );
+  };
+
 export const actions$ = {
   addTableGroupAction$,
   addTableGroupFromTablesAction$,
@@ -281,4 +301,5 @@ export const actions$ = {
   setTableGroupAction$,
   dropTablesIntoGroupsAction$,
   selectTableGroupAction$,
+  selectTableGroupTablesAction$,
 };

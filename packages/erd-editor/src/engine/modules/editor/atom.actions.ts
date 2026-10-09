@@ -401,6 +401,27 @@ const editMemoEnd: ReducerType<typeof ActionType.editMemoEnd> = ({
   editor.editMemoId = null;
 };
 
+export const editTableGroupAction = createAction<
+  ActionMap[typeof ActionType.editTableGroup]
+>(ActionType.editTableGroup);
+
+const editTableGroup: ReducerType<typeof ActionType.editTableGroup> = (
+  { editor },
+  { payload: { id } }
+) => {
+  editor.editTableGroupId = id;
+};
+
+export const editTableGroupEndAction = createAction<
+  ActionMap[typeof ActionType.editTableGroupEnd]
+>(ActionType.editTableGroupEnd);
+
+const editTableGroupEnd: ReducerType<typeof ActionType.editTableGroupEnd> = ({
+  editor,
+}) => {
+  editor.editTableGroupId = null;
+};
+
 export const scrollMemoAction = createAction<
   ActionMap[typeof ActionType.scrollMemo]
 >(ActionType.scrollMemo);
@@ -449,6 +470,7 @@ const drawStartRelationship: ReducerType<
     start: null,
     end: { x: 0, y: 0 },
   };
+  editor.drawTableGroup = false;
 };
 
 export const drawStartAddRelationshipAction = createAction<
@@ -550,9 +572,9 @@ export const changeHandToolAction = createAction<
 >(ActionType.changeHandTool);
 
 /**
- * The tool a press on the canvas is read as. Drawing a relationship is a third
- * thing the same press can mean, so taking the hand up ends a draw that was
- * still running rather than leaving two modes armed at once.
+ * The tool a press on the canvas is read as. Drawing a relationship or a table
+ * group is another thing the same press can mean, so taking the hand up ends a
+ * draw that was still running rather than leaving two modes armed at once.
  */
 const changeHandTool: ReducerType<typeof ActionType.changeHandTool> = (
   { editor },
@@ -560,6 +582,25 @@ const changeHandTool: ReducerType<typeof ActionType.changeHandTool> = (
 ) => {
   editor.handTool = value;
   if (value) {
+    editor.drawRelationship = null;
+    editor.drawTableGroup = false;
+  }
+};
+
+export const changeDrawTableGroupAction = createAction<
+  ActionMap[typeof ActionType.changeDrawTableGroup]
+>(ActionType.changeDrawTableGroup);
+
+/**
+ * Arms or ends the table group draw mode. Armed, it puts the hand down and ends
+ * a relationship draw, so the press it waits for means one thing alone.
+ */
+const changeDrawTableGroup: ReducerType<
+  typeof ActionType.changeDrawTableGroup
+> = ({ editor }, { payload: { value } }) => {
+  editor.drawTableGroup = value;
+  if (value) {
+    editor.handTool = false;
     editor.drawRelationship = null;
   }
 };
@@ -926,6 +967,8 @@ export const editorReducers = {
   [ActionType.editTableEnd]: editTableEnd,
   [ActionType.editMemo]: editMemo,
   [ActionType.editMemoEnd]: editMemoEnd,
+  [ActionType.editTableGroup]: editTableGroup,
+  [ActionType.editTableGroupEnd]: editTableGroupEnd,
   [ActionType.scrollMemo]: scrollMemo,
   [ActionType.selectAllColumn]: selectAllColumn,
   [ActionType.drawStartRelationship]: drawStartRelationship,
@@ -936,6 +979,7 @@ export const editorReducers = {
   [ActionType.hoverRelationshipMap]: hoverRelationshipMap,
   [ActionType.changeOpenMap]: changeOpenMap,
   [ActionType.changeHandTool]: changeHandTool,
+  [ActionType.changeDrawTableGroup]: changeDrawTableGroup,
   [ActionType.changeZenMode]: changeZenMode,
   [ActionType.dragstartColumn]: dragstartColumn,
   [ActionType.dragendColumn]: dragendColumn,
@@ -968,6 +1012,8 @@ export const actions = {
   editTableEndAction,
   editMemoAction,
   editMemoEndAction,
+  editTableGroupAction,
+  editTableGroupEndAction,
   scrollMemoAction,
   selectAllColumnAction,
   drawStartRelationshipAction,
@@ -978,6 +1024,7 @@ export const actions = {
   hoverRelationshipMapAction,
   changeOpenMapAction,
   changeHandToolAction,
+  changeDrawTableGroupAction,
   changeZenModeAction,
   dragstartColumnAction,
   dragendColumnAction,

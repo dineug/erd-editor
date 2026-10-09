@@ -32,6 +32,7 @@ export const palette = {
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Options panel',
   'palette.codeGeneratorOptionsPanel': 'Code Generator: Options panel',
   'palette.exportSchemaSql': 'Export: Schema SQL',
+  'palette.groupSelectedTables': 'Group Selected Tables',
   'palette.keywords.schemaSqlStatements': 'create if not exists drop replace',
   'palette.keywords.schemaSqlHeader': 'use database search_path',
   'palette.keywords.schemaSqlOptionsPanel': 'show hide before after scripts',

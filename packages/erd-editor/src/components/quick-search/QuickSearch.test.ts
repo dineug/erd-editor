@@ -176,6 +176,7 @@ describe('QuickSearch', () => {
       'Export',
       'New Table',
       'New Memo',
+      'New Table Group',
       'Zero One',
       'Zero N',
       'One Only',
@@ -285,7 +286,7 @@ describe('QuickSearch', () => {
     await open();
     const [tab] = rows();
     const newTable = rows()[5];
-    const zeroOne = rows()[7];
+    const zeroOne = rows()[8];
 
     expect(tab.querySelector(`.${styles.icon}`)).toBeNull();
     expect(tab.querySelector(`.${styles.keyword}`)).toBeNull();
@@ -332,7 +333,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('');
 
-    expect(rowNames()).toHaveLength(14);
+    expect(rowNames()).toHaveLength(15);
     expect(rowNames()[0]).toBe('Tab');
   });
 
@@ -342,7 +343,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('   ');
 
-    expect(rowNames()).toHaveLength(14);
+    expect(rowNames()).toHaveLength(15);
   });
 
   it('lists no command when nothing matches, only the prefixes to search the document by', async () => {
@@ -396,10 +397,10 @@ describe('QuickSearch keyboard navigation', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(selectedIndex()).toBe(0);
 
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < 14; i++) {
       await keydown('ArrowDown');
     }
-    expect(selectedIndex()).toBe(13);
+    expect(selectedIndex()).toBe(14);
 
     await keydown('ArrowDown');
     expect(selectedIndex()).toBe(0);
@@ -411,7 +412,7 @@ describe('QuickSearch keyboard navigation', () => {
     const event = await keydown('ArrowUp');
 
     expect(event.defaultPrevented).toBe(true);
-    expect(selectedIndex()).toBe(13);
+    expect(selectedIndex()).toBe(14);
   });
 
   it('clears the selection on the horizontal arrows', async () => {
@@ -441,7 +442,7 @@ describe('QuickSearch keyboard navigation', () => {
 
     expect(event.cancelBubble).toBe(false);
     expect(isOpen()).toBe(true);
-    expect(rowNames()).toHaveLength(14);
+    expect(rowNames()).toHaveLength(15);
   });
 
   it('performs the selected action on Enter and closes the palette', async () => {
@@ -507,7 +508,7 @@ describe('QuickSearch keyboard navigation', () => {
   it('ignores Enter when the selected index no longer exists', async () => {
     await open();
     await keydown('ArrowUp');
-    expect(selectedIndex()).toBe(13);
+    expect(selectedIndex()).toBe(14);
 
     app.store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.settings })
@@ -811,7 +812,12 @@ describe('QuickSearch with no command matching', () => {
     await type('tables');
 
     expect(empty()).toBeNull();
-    expect(rowNames()).toEqual(['New Table', 'Database', ...offered('tables')]);
+    expect(rowNames()).toEqual([
+      'New Table',
+      'Database',
+      'New Table Group',
+      ...offered('tables'),
+    ]);
 
     for (const key of ['ArrowUp', 'ArrowUp', 'ArrowUp', 'Enter']) {
       await keydown(key);
@@ -909,6 +915,7 @@ describe('QuickSearch with no command matching', () => {
       'Export',
       'New Table',
       'New Memo',
+      'New Table Group',
       'Zero One',
       'Zero N',
       'One Only',
@@ -1663,6 +1670,7 @@ describe('QuickSearch preferences and language', () => {
       createI18n('de-DE', {
         ...pseudoMessages('de'),
         'common.newTable': 'Neue Tabelle',
+        'common.newTableGroup': 'Neue Tabellengruppe',
       })
     );
     await open();
@@ -1687,7 +1695,7 @@ describe('QuickSearch preferences and language', () => {
 
   it('lets the name and the keywords of a row take the direction of their own text', async () => {
     await open();
-    const zeroOne = rows()[7];
+    const zeroOne = rows()[8];
 
     expect(zeroOne.querySelector(`.${styles.name}`)?.getAttribute('dir')).toBe(
       'auto'

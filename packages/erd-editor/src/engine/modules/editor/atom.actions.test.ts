@@ -23,6 +23,8 @@ import {
 import { ChangeActionTypes, SharedActionTypes } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
 import {
+  changeDrawTableGroupAction,
+  changeHandToolAction,
   changeHasHistoryAction,
   changeOpenMapAction,
   changeViewportAction,
@@ -38,6 +40,8 @@ import {
   editMemoEndAction,
   editTableAction,
   editTableEndAction,
+  editTableGroupAction,
+  editTableGroupEndAction,
   focusColumnAction,
   focusMoveTableAction,
   focusTableAction,
@@ -63,6 +67,7 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import {
   FocusType,
+  isEditingText,
   MoveKey,
   SelectType,
   type SharedFocus,
@@ -1138,6 +1143,60 @@ describe('editor.editMemo / editMemoEnd', () => {
 
     expect(store.state.editor.focusTable?.tableId).toBe('t1');
     expect(store.state.editor.editMemoId).toBe('m1');
+  });
+});
+
+describe('editor.editTableGroup / editTableGroupEnd', () => {
+  it('names the group the name editor is open on, a live text editor', () => {
+    store.dispatchSync(editTableGroupAction({ id: 'g1' }));
+    expect(store.state.editor.editTableGroupId).toBe('g1');
+    expect(isEditingText(store.state.editor)).toBe(true);
+
+    store.dispatchSync(editTableGroupEndAction());
+    expect(store.state.editor.editTableGroupId).toBeNull();
+    expect(isEditingText(store.state.editor)).toBe(false);
+  });
+});
+
+describe('editor.changeDrawTableGroup', () => {
+  it('arms the draw mode, putting the hand down and ending a relationship draw', () => {
+    store.dispatchSync(
+      changeHandToolAction({ value: true }),
+      drawStartRelationshipAction({ relationshipType: 8 })
+    );
+
+    store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+
+    expect(store.state.editor.drawTableGroup).toBe(true);
+    expect(store.state.editor.handTool).toBe(false);
+    expect(store.state.editor.drawRelationship).toBeNull();
+
+    store.dispatchSync(changeDrawTableGroupAction({ value: false }));
+    expect(store.state.editor.drawTableGroup).toBe(false);
+  });
+
+  it('is ended by the hand tool and by a relationship draw, which leave one mode armed', () => {
+    store.dispatchSync(
+      changeDrawTableGroupAction({ value: true }),
+      changeHandToolAction({ value: true })
+    );
+    expect(store.state.editor.drawTableGroup).toBe(false);
+
+    store.dispatchSync(
+      changeDrawTableGroupAction({ value: true }),
+      drawStartRelationshipAction({ relationshipType: 8 })
+    );
+    expect(store.state.editor.drawTableGroup).toBe(false);
+    expect(store.state.editor.drawRelationship).not.toBeNull();
+  });
+
+  it('keeps an armed draw when the hand is put down', () => {
+    store.dispatchSync(
+      changeDrawTableGroupAction({ value: true }),
+      changeHandToolAction({ value: false })
+    );
+
+    expect(store.state.editor.drawTableGroup).toBe(true);
   });
 });
 

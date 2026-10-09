@@ -180,6 +180,10 @@ export const TABLE_GROUP_TITLE_HEIGHT = 28;
 export const TABLE_GROUP_MIN_WIDTH = 160;
 export const TABLE_GROUP_MIN_HEIGHT = TABLE_GROUP_TITLE_HEIGHT + 72;
 
+/** The group a click of the draw mode makes, without a drag: room for two tables side by side. */
+export const TABLE_GROUP_DEFAULT_WIDTH = 480;
+export const TABLE_GROUP_DEFAULT_HEIGHT = 320;
+
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_MARGIN = 20;
 

@@ -16,7 +16,10 @@ import {
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeDrawTableGroupAction,
+  changeViewportAction,
+} from '@/engine/modules/editor/atom.actions';
 import { ViewKind } from '@/engine/modules/editor/state';
 import {
   viewChangeZoomLevelAction,
@@ -856,6 +859,17 @@ describe('settings/atom.actions', () => {
         )
       );
       expect(store.state.settings.canvasType).toBe(CanvasType.ERD);
+    });
+
+    it('ends a table group draw armed on the ERD tab once another tab comes up', () => {
+      store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+      store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+      expect(store.state.editor.drawTableGroup).toBe(true);
+
+      store.dispatchSync(
+        changeCanvasTypeAction({ value: CanvasType.visualization })
+      );
+      expect(store.state.editor.drawTableGroup).toBe(false);
     });
 
     it('remembers the tab left for another, Settings never among them', () => {

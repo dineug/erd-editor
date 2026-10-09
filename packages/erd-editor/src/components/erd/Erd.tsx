@@ -28,6 +28,8 @@ import {
   getScrollToCenter,
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
+import TableGroupDraft from '@/components/erd/table-group/TableGroupDraft';
+import { useTableGroupDraw } from '@/components/erd/table-group/useTableGroupDraw';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
@@ -41,6 +43,7 @@ import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import {
+  changeDrawTableGroupAction,
   changeOpenMapAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -68,6 +71,7 @@ import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
 import {
   editorRootOf,
+  isMainButtonPress,
   isMiddleButtonPress,
   isMouseEvent,
   preventMiddleLift,
@@ -129,6 +133,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     tableId: '' as string | undefined,
     columnId: '' as string | undefined,
     memoId: '' as string | undefined,
+    tableGroupId: '' as string | undefined,
     colorPickerShow: false,
     colorPickerX: 0,
     colorPickerY: 0,
@@ -171,7 +176,31 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     enabled: () => !getShowOverLayout(),
   });
 
+  const groupDraw = useTableGroupDraw({ app: () => app.value, root });
+
+  /** Whether a press on the canvas draws a table group, which a readonly store never does. */
+  const drawsTableGroup = () => {
+    const { store } = app.value;
+    return store.state.editor.drawTableGroup && !store.getReadonly();
+  };
+
+  const cancelTableGroupDraw = () => {
+    const { store } = app.value;
+    if (store.state.editor.drawTableGroup) {
+      store.dispatch(changeDrawTableGroupAction({ value: false }));
+    }
+  };
+
+  // The press that ends the draw mode for another button is spent on that, so
+  // the menu it raises stays unshown, as does one a Mac Ctrl+click raises.
+  let swallowContextmenu = false;
+
   const handleContextmenu = (event: MouseEvent) => {
+    if (swallowContextmenu || drawsTableGroup()) {
+      swallowContextmenu = false;
+      event.preventDefault();
+      return;
+    }
     if (!event.target || getShowOverLayout()) return;
 
     const hit = sceneHit(canvas.value, event);
@@ -186,6 +215,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     } else if (hit?.kind === 'relationship') {
       state.relationshipId = hit.id;
       state.contextMenuType = ErdContextMenuType.relationship;
+    } else if (hit?.kind === 'tableGroup') {
+      state.tableGroupId = hit.id;
+      state.contextMenuType = ErdContextMenuType.tableGroup;
     } else {
       state.contextMenuType = ErdContextMenuType.ERD;
     }
@@ -248,6 +280,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   const handleDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
+    swallowContextmenu = false;
     if (!el || pinch.handleTouchstart(event)) return;
 
     const showOverLayout = getShowOverLayout();
@@ -314,6 +347,19 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (!canDrag) return;
     if (middlePan) event.preventDefault();
 
+    // The draw mode takes the stage off the pointer, as the hand tool does, so
+    // every press lands here: the main button draws, the middle one still pans
+    // and any other ends the mode.
+    if (drawsTableGroup() && !middlePan) {
+      if (isMainButtonPress(event)) {
+        groupDraw.start(event);
+      } else {
+        swallowContextmenu = true;
+        cancelTableGroupDraw();
+      }
+      return;
+    }
+
     if (!middlePan && isMouseEvent(event) && isMod(event)) {
       event.preventDefault();
       const { emitter } = app.value;
@@ -379,7 +425,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       (type === KeyBindingName.stop &&
         !editor.openMap[Open.search] &&
         !isEditingText(editor) &&
-        !editor.drawRelationship)
+        !editor.drawRelationship &&
+        !editor.drawTableGroup)
     ) {
       state.colorPickerShow = false;
     }
@@ -470,6 +517,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     addUnsubscribe(
       watch(props).subscribe(propName => {
+        if (propName === 'readonly' && props.readonly) {
+          cancelTableGroupDraw();
+        }
         if (propName !== 'mouseTracking') return;
 
         props.mouseTracking
@@ -570,14 +620,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !getShowOverLayout() &&
       isEmptyDocument(store.state);
 
+    const drawsGroup = drawsTableGroup();
     const cursor = handTool
       ? state.grabCursor
-      : drawRelationship
-        ? `url("${getRelationshipIcon(
-            drawRelationship.relationshipType,
-            props.isDarkMode
-          )}") 16 16, auto`
-        : '';
+      : drawsGroup
+        ? 'crosshair'
+        : drawRelationship
+          ? `url("${getRelationshipIcon(
+              drawRelationship.relationshipType,
+              props.isDarkMode
+            )}") 16 16, auto`
+          : '';
 
     return (
       <div
@@ -590,8 +643,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         on:touchstart={handleDragSelect}
         on:wheel={handleWheel}
       >
-        <Canvas root={root} canvas={canvas} grabMove={handTool} />
+        <Canvas root={root} canvas={canvas} grabMove={handTool || drawsGroup} />
         <DrawTargetButtons root={root} readonly={props.readonly} />
+        {drawsGroup && groupDraw.state.draft ? (
+          <TableGroupDraft rect={groupDraw.state.draft} />
+        ) : null}
         {zenMode ? null : <VirtualScroll />}
         {hasContent && !zenMode ? <Minimap /> : null}
         {showWelcomeScreen ? (
@@ -608,6 +664,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             tableId={state.tableId}
             columnId={state.columnId}
             memoId={state.memoId}
+            tableGroupId={state.tableGroupId}
             onClose={handleContextmenuClose}
           />
         ) : null}

@@ -33,6 +33,8 @@ export const ActionType = {
   editTableEnd: 'editor.editTableEnd',
   editMemo: 'editor.editMemo',
   editMemoEnd: 'editor.editMemoEnd',
+  editTableGroup: 'editor.editTableGroup',
+  editTableGroupEnd: 'editor.editTableGroupEnd',
   scrollMemo: 'editor.scrollMemo',
   selectAllColumn: 'editor.selectAllColumn',
   drawStartRelationship: 'editor.drawStartRelationship',
@@ -43,6 +45,7 @@ export const ActionType = {
   hoverRelationshipMap: 'editor.hoverRelationshipMap',
   changeOpenMap: 'editor.changeOpenMap',
   changeHandTool: 'editor.changeHandTool',
+  changeDrawTableGroup: 'editor.changeDrawTableGroup',
   changeZenMode: 'editor.changeZenMode',
   dragstartColumn: 'editor.dragstartColumn',
   dragendColumn: 'editor.dragendColumn',
@@ -110,6 +113,10 @@ export type ActionMap = {
     id: string;
   };
   [ActionType.editMemoEnd]: void;
+  [ActionType.editTableGroup]: {
+    id: string;
+  };
+  [ActionType.editTableGroupEnd]: void;
   [ActionType.scrollMemo]: {
     id: string;
     /** How far down its body the memo is shown from, in body px. */
@@ -135,6 +142,9 @@ export type ActionMap = {
   };
   [ActionType.changeOpenMap]: Record<string, boolean>;
   [ActionType.changeHandTool]: {
+    value: boolean;
+  };
+  [ActionType.changeDrawTableGroup]: {
     value: boolean;
   };
   [ActionType.changeZenMode]: {
