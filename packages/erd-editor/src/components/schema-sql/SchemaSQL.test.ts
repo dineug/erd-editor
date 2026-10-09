@@ -19,10 +19,14 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
+import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
 import { BracketType, Database } from '@/constants/schema';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
   changeBracketTypeAction,
   changeDatabaseAction,
+  changeDatabaseNameAction,
+  changeDDLScriptAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -33,6 +37,8 @@ import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import type { ShikiService } from '@/services/shiki';
 import { openToastAction } from '@/utils/emitter';
+import { setExportFileCallback } from '@/utils/file/exportFile';
+import { createSchemaSQL } from '@/utils/schema-sql';
 
 const mocks = vi.hoisted(() => ({
   getShikiService: vi.fn<() => ShikiService | null>(() => null),
@@ -81,6 +87,21 @@ const codeOf = (m: Mounted) =>
 
 const rootOf = (m: Mounted) => m.container.firstElementChild as HTMLDivElement;
 
+/** The code's side of the tab, where a right click opens the menu. */
+const codeAreaOf = (m: Mounted) =>
+  rootOf(m).firstElementChild as HTMLDivElement;
+
+const panelOf = (m: Mounted) =>
+  m.container.querySelector<HTMLElement>('aside.schema-sql-options');
+
+const showButtonOf = (m: Mounted) =>
+  m.container.querySelector<HTMLButtonElement>('.schema-sql-options-show');
+
+/** An editor measured this wide, which is what decides whether the panel opens. */
+const measure = (app: AppContext, width: number) => {
+  app.store.dispatchSync(changeViewportAction({ width, height: 800 }));
+};
+
 const contentOf = (m: Mounted) =>
   m.container.querySelector('.context-menu-content') as HTMLElement | null;
 
@@ -93,6 +114,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setExportFileCallback(null);
   mounted?.unmount();
   mounted = null;
   apps.splice(0).forEach(app => app.store.destroy());
@@ -125,7 +147,74 @@ describe('SchemaSQL', () => {
       app
     );
 
+    expect(codeOf(mounted).textContent).toContain(
+      'CREATE TABLE IF NOT EXISTS users'
+    );
+  });
+
+  it("writes the whole document with the window's statements and header, if not exists and create and use at first", async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    const expected = createSchemaSQL(app.store.state, undefined, undefined, {
+      statements: 'ifNotExists',
+      header: 'createAndUse',
+    });
+    expect(expected.startsWith('\nCREATE DATABASE IF NOT EXISTS shop;')).toBe(
+      true
+    );
+    expect(codeOf(mounted).textContent).toBe(expected.replace(/\n+$/, ''));
+  });
+
+  it("writes again when the window's statements or header change, and not for the panel", async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+    const view = schemaSQLViewOf(app);
+
+    view.statements = 'create';
+    await flush();
     expect(codeOf(mounted).textContent).toContain('CREATE TABLE users');
+
+    view.header = 'none';
+    await flush();
+    expect(codeOf(mounted).textContent).not.toContain('CREATE DATABASE');
+
+    app.store.dispatchSync(
+      changeTableNameAction({ id: 't1', value: 'renamed' })
+    );
+    view.panel = 'closed';
+    await flush();
+    expect(codeOf(mounted).textContent).toContain('CREATE TABLE users');
+  });
+
+  it('writes again when the scripts or the database name change', async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    app.store.dispatchSync(
+      changeDDLScriptAction({ position: 'after', value: 'GRANT ALL;' })
+    );
+    await flush();
+    expect(codeOf(mounted).textContent?.endsWith('GRANT ALL;')).toBe(true);
+
+    app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+    await flush();
+    expect(codeOf(mounted).textContent).toContain('USE shop;');
   });
 
   it('renders an empty schema when the document has no tables', async () => {
@@ -193,7 +282,9 @@ describe('SchemaSQL', () => {
       html`<${SchemaSQL} isDarkMode=${false} />`,
       app
     );
-    expect(codeOf(mounted).textContent).toContain('CREATE TABLE users');
+    expect(codeOf(mounted).textContent).toContain(
+      'CREATE TABLE IF NOT EXISTS users'
+    );
 
     app.store.dispatchSync(
       changeTableNameAction({ id: 't1', value: 'accounts' }),
@@ -201,7 +292,9 @@ describe('SchemaSQL', () => {
     );
     await flush();
 
-    expect(codeOf(mounted).textContent).toContain('CREATE TABLE accounts');
+    expect(codeOf(mounted).textContent).toContain(
+      'CREATE TABLE IF NOT EXISTS accounts'
+    );
     expect(app.store.state.settings.database).toBe(Database.PostgreSQL);
   });
 
@@ -213,14 +306,18 @@ describe('SchemaSQL', () => {
       html`<${SchemaSQL} isDarkMode=${false} />`,
       app
     );
-    expect(codeOf(mounted).textContent).toContain('CREATE TABLE users');
+    expect(codeOf(mounted).textContent).toContain(
+      'CREATE TABLE IF NOT EXISTS users'
+    );
 
     app.store.dispatchSync(
       changeBracketTypeAction({ value: BracketType.backtick })
     );
     await flush();
 
-    expect(codeOf(mounted).textContent).toContain('CREATE TABLE `users`');
+    expect(codeOf(mounted).textContent).toContain(
+      'CREATE TABLE IF NOT EXISTS `users`'
+    );
   });
 
   it('ignores settings changes that cannot affect the sql', async () => {
@@ -294,7 +391,7 @@ describe('SchemaSQL', () => {
   it('opens the schema sql context menu on contextmenu', async () => {
     mounted = await mountAndFlush(html`<${SchemaSQL} isDarkMode=${false} />`);
 
-    rootOf(mounted).dispatchEvent(
+    codeAreaOf(mounted).dispatchEvent(
       new MouseEvent('contextmenu', {
         bubbles: true,
         cancelable: true,
@@ -320,7 +417,7 @@ describe('SchemaSQL', () => {
       bubbles: true,
       cancelable: true,
     });
-    rootOf(mounted).dispatchEvent(event);
+    codeAreaOf(mounted).dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);
   });
@@ -328,7 +425,7 @@ describe('SchemaSQL', () => {
   it('closes the context menu on a mousedown outside the menu content', async () => {
     mounted = await mountAndFlush(html`<${SchemaSQL} isDarkMode=${false} />`);
 
-    rootOf(mounted).dispatchEvent(
+    codeAreaOf(mounted).dispatchEvent(
       new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     );
     await flush();
@@ -345,7 +442,7 @@ describe('SchemaSQL', () => {
   it('keeps the context menu open on a mousedown inside the menu content', async () => {
     mounted = await mountAndFlush(html`<${SchemaSQL} isDarkMode=${false} />`);
 
-    rootOf(mounted).dispatchEvent(
+    codeAreaOf(mounted).dispatchEvent(
       new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     );
     await flush();
@@ -365,7 +462,7 @@ describe('SchemaSQL', () => {
       app
     );
 
-    rootOf(mounted).dispatchEvent(
+    codeAreaOf(mounted).dispatchEvent(
       new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     );
     await flush();
@@ -398,7 +495,9 @@ describe('SchemaSQL', () => {
 
     const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
     expect(writeText).toHaveBeenCalledTimes(1);
-    expect(writeText.mock.calls[0][0]).toContain('CREATE TABLE users');
+    expect(writeText.mock.calls[0][0]).toContain(
+      'CREATE TABLE IF NOT EXISTS users'
+    );
 
     expect(openToast).toHaveBeenCalledTimes(1);
     const action = openToast.mock.calls[0][0];
@@ -457,5 +556,262 @@ describe('SchemaSQL', () => {
     await flush();
 
     expect(container.querySelector('.scrollbar')).toBeNull();
+  });
+
+  it('opens the options panel on an editor 640 wide or more, once measured', async () => {
+    const app = createApp();
+    measure(app, 0);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+    expect(panelOf(mounted)).toBeNull();
+    expect(showButtonOf(mounted)).toBeNull();
+    expect(schemaSQLViewOf(app).panel).toBe('unset');
+
+    measure(app, 640);
+    await flush();
+
+    expect(panelOf(mounted)).toBeTruthy();
+    expect(showButtonOf(mounted)).toBeNull();
+    expect(schemaSQLViewOf(app).panel).toBe('open');
+  });
+
+  it('folds the panel away on a narrower editor, leaving Show options over the code', async () => {
+    const app = createApp();
+    measure(app, 639);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    const show = showButtonOf(mounted) as HTMLButtonElement;
+    expect(panelOf(mounted)).toBeNull();
+    expect(show.getAttribute('aria-label')).toBe('Show options');
+    expect(show.getAttribute('title')).toBe('Show options');
+    expect(show.getAttribute('aria-expanded')).toBe('false');
+    expect(codeAreaOf(mounted).contains(show)).toBe(true);
+  });
+
+  it("keeps the code left of the panel in every language, the panel and the menu in the reader's direction", async () => {
+    const app = createApp();
+    measure(app, 1280);
+    const i18n = createTestI18n('ar-SA');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      mounted = await mountAndFlush(
+        html`<${SchemaSQL} isDarkMode=${false} />`,
+        app
+      );
+      expect(rootOf(mounted).dir).toBe('ltr');
+      expect(panelOf(mounted)?.dir).toBe('rtl');
+
+      codeAreaOf(mounted).dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+      );
+      await flush();
+      expect(contentOf(mounted)?.parentElement?.dir).toBe('rtl');
+    } finally {
+      provider.destroy();
+    }
+  });
+
+  it('hides the panel and hands the focus to Show options, and back to Hide options', async () => {
+    const app = createApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    (
+      mounted.container.querySelector('.schema-sql-options-hide') as HTMLElement
+    ).click();
+    await flush();
+
+    expect(panelOf(mounted)).toBeNull();
+    expect(schemaSQLViewOf(app).panel).toBe('closed');
+    expect(document.activeElement).toBe(showButtonOf(mounted));
+
+    (showButtonOf(mounted) as HTMLButtonElement).click();
+    await flush();
+
+    expect(panelOf(mounted)).toBeTruthy();
+    expect(document.activeElement).toBe(
+      mounted.container.querySelector('.schema-sql-options-hide')
+    );
+  });
+
+  it('keeps Space on Show options from the hand tool, unprevented', async () => {
+    const app = createApp();
+    measure(app, 600);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+    const behind = vi.fn();
+    mounted.container.addEventListener('keydown', behind);
+
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    });
+    showButtonOf(mounted)?.dispatchEvent(space);
+
+    expect(space.defaultPrevented).toBe(false);
+    expect(behind).not.toHaveBeenCalled();
+  });
+
+  it('saves the text it shows from Save file, named after the database', async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+    measure(app, 1280);
+    const files: Array<{ blob: Blob; fileName: string }> = [];
+    setExportFileCallback((blob, { fileName }) =>
+      files.push({ blob, fileName })
+    );
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    (
+      mounted.container.querySelector('.schema-sql-options-save') as HTMLElement
+    ).click();
+
+    expect(files).toHaveLength(1);
+    expect(files[0].fileName).toMatch(/^shop-.*\.sql$/);
+    expect(await files[0].blob.text()).toBe(
+      createSchemaSQL(app.store.state, undefined, undefined, {
+        statements: 'ifNotExists',
+        header: 'createAndUse',
+      })
+    );
+  });
+
+  it("copies the text it shows from the panel's Copy too", async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    (
+      mounted.container.querySelector('.schema-sql-options-copy') as HTMLElement
+    ).click();
+    await flush();
+
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    expect(writeText.mock.calls[0][0]).toContain(
+      'CREATE TABLE IF NOT EXISTS users'
+    );
+  });
+
+  it('leaves a right click in the panel to the browser', async () => {
+    const app = createApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    const event = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    panelOf(mounted)?.dispatchEvent(event);
+    await flush();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(contentOf(mounted)).toBeNull();
+  });
+
+  it('names the Oracle names over 30 bytes under the database, and none elsewhere', async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'a_table_name_well_over_thirty_bytes');
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+    const note = () =>
+      mounted?.container.querySelector('.schema-sql-options-long-names');
+    expect(note()).toBeNull();
+
+    app.store.dispatchSync(changeDatabaseAction({ value: Database.Oracle }));
+    await flush();
+
+    expect(note()?.textContent).toBe(
+      'Oracle 12.2+ for names over 30 bytes: a_table_name_well_over_thirty_bytes'
+    );
+  });
+
+  it("hands the panel the element's readonly, which keeps the scripts from typing", async () => {
+    const app = createApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} readonly=${true} />`,
+      app
+    );
+
+    const scripts = Array.from(
+      mounted.container.querySelectorAll('textarea[id^="schema-sql-"]')
+    ) as HTMLTextAreaElement[];
+    expect(scripts.map(script => script.readOnly)).toEqual([true, true]);
+  });
+
+  it("shows one table's create alone, no panel and no Show options, whatever the width", async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} tableId=${'t1'} />`,
+      app
+    );
+
+    expect(panelOf(mounted)).toBeNull();
+    expect(showButtonOf(mounted)).toBeNull();
+    expect(codeOf(mounted).textContent).toContain('CREATE TABLE users');
+
+    codeAreaOf(mounted).dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    );
+    await flush();
+    expect(contentOf(mounted)?.textContent).not.toContain('Statements');
+  });
+
+  it("adds the statements, the header, the panel and Save file to the whole document's menu", async () => {
+    const app = createApp();
+    measure(app, 1280);
+    const files: string[] = [];
+    setExportFileCallback((_, { fileName }) => files.push(fileName));
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    codeAreaOf(mounted).dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    );
+    await flush();
+
+    const text = contentOf(mounted)?.textContent ?? '';
+    expect(text).toContain('Statements');
+    expect(text).toContain('Save file…');
+
+    const saveRow = Array.from(contentOf(mounted)?.children ?? []).find(row =>
+      row.textContent?.includes('Save file…')
+    ) as HTMLElement;
+    saveRow.click();
+    await flush();
+
+    expect(files).toHaveLength(1);
+    expect(contentOf(mounted)).toBeNull();
   });
 });

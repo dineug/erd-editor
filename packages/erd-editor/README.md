@@ -26,6 +26,9 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   their relationships, and Import and Add adds one, or an `.erd.json` file, below the diagram
   instead of replacing it
 - SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
+- Schema SQL options — a panel beside the DDL picks CREATE TABLE IF NOT EXISTS or drop and
+  re-create and a USE or CREATE SCHEMA header for the window, and keeps SQL of your own in the
+  document to write before and after the tables
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine
 - Export — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
@@ -163,7 +166,7 @@ erd-editor {
 | Method | Description |
 | --- | --- |
 | `setInitialValue(value: string)` | Load the initial document. Does not create a history entry, and clears the undo history, so nothing done before the load can be undone or redone onto it. |
-| `getSchemaSQL(vendor?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `Snowflake`, `SQLite`; omit it to use the document's own setting. |
+| `getSchemaSQL(vendor?, options?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `Snowflake`, `SQLite`; omit it to use the document's own setting. `options` takes `statements` (`create` by default, `ifNotExists`, `recreate`) and `header` (`none` by default, `use`, `createAndUse`); a value the vendor lacks falls back as the Schema SQL tab does, and a header is written only while the database name is a plain identifier (ASCII letters, digits and `_`, not starting with a digit). The document's before and after scripts are always included. The `SchemaSQLOptions` type comes with the package. |
 | `setSchemaSQL(value: string, options?)` | Parse a DDL string and **replace** the current document with it, or add it with `mode: 'append'`. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
 | `setSchemaGraphQL(value: string, options?)` | Parse a GraphQL SDL string and **replace** the current document with it, or add it with `mode: 'append'`. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
 | `setSchemaDBML(value: string, options?)` | Parse a DBML string and **replace** the current document with it, or add it with `mode: 'append'`. Tables, columns, indexes, header colors and every `Ref` spelling are read; a `Project`, `TableGroup` or sticky `Note` is skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |

@@ -1,19 +1,27 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { BracketType, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketType,
+  ColumnOption,
+  Database,
+  OrderType,
+} from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/MSSQL';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createState(): RootState {
   return {
@@ -835,5 +843,198 @@ describe('MSSQL formatIndex', () => {
     formatIndex(state, { index: postsIndex, buffer, indexNames: [] });
 
     expect(buffer[1]).toBe('  ON posts (user_id )\nGO');
+  });
+});
+
+describe('MSSQL drop block', () => {
+  function written(fixture: ReturnType<typeof createFixture>) {
+    const objects = createWrittenObjects();
+    createSchema(fixture.state, undefined, {
+      statements: 'recreate',
+      written: objects,
+    });
+    return objects;
+  }
+
+  /** The fixture's users table alone, under this name, its relationship gone. */
+  function usersAlone(name: string) {
+    const fixture = createFixture();
+    fixture.users.name = name;
+    fixture.state.doc.tableIds = [fixture.users.id];
+    fixture.state.doc.relationshipIds = [];
+    return fixture;
+  }
+
+  /**
+   * The SELECT that collects the keys a table holds from the connected database
+   * catalog, its name as it reads inside a string literal.
+   */
+  function select(table: string) {
+    return [
+      `  SELECT @sql += N'ALTER TABLE ${table} DROP CONSTRAINT ' + QUOTENAME(name) + N';'`,
+      '    FROM sys.foreign_keys',
+      `    WHERE parent_object_id = OBJECT_ID(N'${table}', N'U')`,
+    ];
+  }
+
+  /** The block for these SELECTs and this DROP TABLE list. */
+  function dropBlock(selects: string[][], dropTable: string) {
+    return [
+      'BEGIN TRY',
+      '  BEGIN TRANSACTION',
+      '',
+      "  DECLARE @sql NVARCHAR(MAX) = N''",
+      ...selects.flat(),
+      '  EXECUTE sp_executesql @sql',
+      '',
+      `  DROP TABLE IF EXISTS ${dropTable}`,
+      '',
+      '  COMMIT TRANSACTION',
+      'END TRY',
+      'BEGIN CATCH',
+      '  IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;',
+      '  THROW;',
+      'END CATCH',
+      'GO',
+    ].join('\n');
+  }
+
+  it('drops every foreign key the catalog finds each table holding, then the tables, naming no key', () => {
+    const fixture = createFixture();
+
+    const block = formatDropBlock(fixture.state, written(fixture));
+
+    expect(block).toBe(
+      dropBlock([select('posts'), select('users')], 'posts, users')
+    );
+    expect(block).not.toContain('FK_users_TO_posts');
+  });
+
+  it('writes the same catalog queries for tables that hold no foreign key', () => {
+    const fixture = createFixture();
+    fixture.state.doc.relationshipIds = [];
+
+    expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+      dropBlock([select('posts'), select('users')], 'posts, users')
+    );
+  });
+
+  it('asks the catalog for each table written, its schema part as written', () => {
+    const fixture = createFixture();
+    addHrUsers(fixture, {
+      name: 'hr.users',
+      columnIds: [fixture.userId.id],
+      indexColumnId: 'ic-1',
+    });
+
+    expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+      dropBlock(
+        [select('hr.users'), select('posts'), select('users')],
+        'hr.users, posts, users'
+      )
+    );
+  });
+
+  it('quotes the names as the tables are and doubles a quote in each literal', () => {
+    const fixture = createFixture();
+    fixture.posts.name = "o'posts";
+    fixture.state.settings.bracketType = BracketType.doubleQuote;
+
+    expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+      dropBlock([select(`"o''posts"`), select('"users"')], `"o'posts", "users"`)
+    );
+  });
+
+  // OBJECT_ID finds a table of another database by its three-part name, and
+  // the id belongs to that database's catalog, which fails past the CATCH,
+  // leaving the transaction open, where no such database exists.
+  it.each([
+    ['shop.sales.users', 'shop'],
+    ['[my shop].[sales].[users]', '[my shop]'],
+  ])(
+    'reads the keys of %s from the catalog of the database it names, once OBJECT_ID finds it',
+    (name, database) => {
+      const fixture = usersAlone(name);
+
+      expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+        dropBlock(
+          [
+            [
+              `  IF OBJECT_ID(N'${name}', N'U') IS NOT NULL`,
+              `    SELECT @sql += N'ALTER TABLE ${name} DROP CONSTRAINT ' + QUOTENAME(name) + N';'`,
+              `      FROM ${database}.sys.foreign_keys`,
+              `      WHERE parent_object_id = OBJECT_ID(N'${name}', N'U')`,
+            ],
+          ],
+          name
+        )
+      );
+    }
+  );
+
+  // Such a database part fails its CREATE TABLE too, and before the catalog it
+  // would open a quote or a bracket; inside the literals it is only text.
+  it.each([
+    ['my shop.sales.users', 'my shop.sales.users'],
+    ["o'shop.sales.users", "o''shop.sales.users"],
+  ])(
+    'reads the connected database catalog for %s, whose database part is no one name',
+    (name, literal) => {
+      const fixture = usersAlone(name);
+
+      expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+        dropBlock([select(literal)], name)
+      );
+    }
+  );
+
+  it('keeps a quoted dotted name whole, reading the connected database catalog', () => {
+    const fixture = usersAlone('shop.sales.users');
+    fixture.state.settings.bracketType = BracketType.doubleQuote;
+
+    expect(formatDropBlock(fixture.state, written(fixture))).toBe(
+      dropBlock([select('"shop.sales.users"')], '"shop.sales.users"')
+    );
+  });
+
+  it('writes nothing without tables', () => {
+    expect(formatDropBlock(createState(), createWrittenObjects())).toBe('');
+  });
+});
+
+describe('MSSQL header', () => {
+  it('writes USE for use and CREATE DATABASE where DB_ID finds none first for createAndUse', () => {
+    const state = createState();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe('USE shop\nGO');
+    state.settings.bracketType = BracketType.doubleQuote;
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      [
+        "IF DB_ID(N'shop') IS NULL",
+        '  CREATE DATABASE "shop"',
+        'GO',
+        '',
+        'USE "shop"',
+        'GO',
+      ].join('\n')
+    );
+  });
+
+  it('ends a script with GO unless its last line is GO already', () => {
+    const { state } = createFixture();
+    state.settings.databaseName = 'shop';
+    state.settings.ddlScripts = {
+      before: 'CREATE SCHEMA app\r\n',
+      after: 'EXEC a\ngo 2\n',
+    };
+
+    const sql = createSchemaSQL(state, Database.MSSQL, undefined, {
+      header: 'use',
+    });
+
+    expect(sql).toMatch(
+      /^\nUSE shop\nGO\n\nCREATE SCHEMA app\nGO\n\nCREATE TABLE posts\n/
+    );
+    expect(sql).toMatch(/\nGO\n\nEXEC a\ngo 2\n$/);
   });
 });

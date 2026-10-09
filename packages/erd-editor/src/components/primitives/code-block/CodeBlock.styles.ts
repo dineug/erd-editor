@@ -22,12 +22,20 @@ const layer = css`
   -webkit-text-size-adjust: 100%;
 `;
 
-export const clipboard = css`
+/** The top corner the copy button and any tools stand in, over the code. */
+export const tools = css`
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+export const clipboard = css`
+  display: inline-flex;
   padding: 8px;
-  margin: 8px;
   cursor: pointer;
   color: var(--foreground);
   opacity: 0;

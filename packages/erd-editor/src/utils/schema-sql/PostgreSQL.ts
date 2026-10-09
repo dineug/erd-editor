@@ -3,10 +3,13 @@ import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
+import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoNameIgnoreCase,
+  CreateSchemaOptions,
   FormatColumnOptions,
   FormatCommentOptions,
   formatDefault,
@@ -18,22 +21,45 @@ import {
   formatSpace,
   FormatTableOptions,
   getBracket,
+  ifNotExists,
   Name,
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  splitTableName,
   tableNamePart,
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,
   toStringLiteral,
+  WrittenObjects,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.PostgreSQL);
 
+// An identity column must be smallint, integer or bigint, by any of the names
+// PostgreSQL gives them.
+const IDENTITY_TYPES = new Set([
+  'INT',
+  'INTEGER',
+  'BIGINT',
+  'SMALLINT',
+  'INT2',
+  'INT4',
+  'INT8',
+]);
+
+function takesIdentity(column: Column): boolean {
+  return (
+    bHas(column.options, ColumnOption.autoIncrement) &&
+    IDENTITY_TYPES.has(column.dataType.trim().toUpperCase())
+  );
+}
+
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { statements, written }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -41,18 +67,20 @@ export function createSchema(
   const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
-    formatTable(state, { table, buffer: stringBuffer });
+    written?.tables.push(table);
+    formatTable(state, { table, buffer: stringBuffer, statements });
     stringBuffer.push('');
     formatComment(state, { table, buffer: stringBuffer });
   });
 
   relationships.forEach(relationship => {
-    const written = formatRelation(state, {
+    const wrote = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
+      statements,
     });
-    if (written) stringBuffer.push('');
+    if (wrote) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -60,6 +88,7 @@ export function createSchema(
       index,
       buffer: stringBuffer,
       indexNames,
+      statements,
     });
     stringBuffer.push('');
   });
@@ -69,7 +98,7 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const {
     settings: { bracketType },
@@ -80,7 +109,9 @@ export function formatTable(
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
+  buffer.push(
+    `CREATE TABLE${ifNotExists(statements)} ${bracket}${table.name}${bracket}`
+  );
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -108,6 +139,19 @@ export function formatTable(
     buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)})`);
   }
   buffer.push(`);`);
+
+  const withoutIdentity = columns.filter(
+    column =>
+      bHas(column.options, ColumnOption.autoIncrement) && !takesIdentity(column)
+  );
+  if (withoutIdentity.length !== 0) {
+    buffer.push('');
+    withoutIdentity.forEach(column => {
+      buffer.push(
+        `-- PostgreSQL takes IDENTITY only on smallint, integer or bigint, so ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} is written without it.`
+      );
+    });
+  }
 }
 
 function formatColumn(
@@ -129,7 +173,9 @@ function formatColumn(
     stringBuffer.push(`NOT NULL`);
   }
   if (bHas(column.options, ColumnOption.autoIncrement)) {
-    stringBuffer.push(`GENERATED ALWAYS AS IDENTITY`);
+    if (takesIdentity(column)) {
+      stringBuffer.push(`GENERATED ALWAYS AS IDENTITY`);
+    }
   } else {
     if (column.default.trim() !== '') {
       stringBuffer.push(
@@ -170,7 +216,7 @@ function formatComment(
 
 function formatRelation(
   state: RootState,
-  { buffer, relationship, fkNames }: FormatRelationOptions
+  { buffer, relationship, fkNames, statements }: FormatRelationOptions
 ): boolean {
   const {
     settings: { bracketType },
@@ -180,8 +226,6 @@ function formatRelation(
 
   const { startTable, endTable } = columns;
   const bracket = getBracket(bracketType);
-  buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
-
   const startName = tableNamePart(startTable.name, bracketType);
   const endName = tableNamePart(endTable.name, bracketType);
   const fkName = autoNameIgnoreCase(fkNames, `FK_${startName}_TO_${endName}`);
@@ -189,7 +233,15 @@ function formatRelation(
     id: uuid25(),
     name: fkName,
   });
+  const alterTable = `ALTER TABLE ${bracket}${endTable.name}${bracket}`;
 
+  // A constraint has no IF NOT EXISTS, so a run again drops it and adds it back.
+  if (statements === SchemaSQLStatements.ifNotExists) {
+    buffer.push(
+      `${alterTable} DROP CONSTRAINT IF EXISTS ${bracket}${fkName}${bracket};`
+    );
+  }
+  buffer.push(alterTable);
   buffer.push(`  ADD CONSTRAINT ${bracket}${fkName}${bracket}`);
 
   buffer.push(`    FOREIGN KEY (${formatNames(columns.end, bracket)})`);
@@ -208,7 +260,7 @@ function formatRelation(
 
 export function formatIndex(
   { settings: { bracketType }, collections }: RootState,
-  { buffer, index, indexNames }: FormatIndexOptions
+  { buffer, index, indexNames, statements }: FormatIndexOptions
 ) {
   const bracket = getBracket(bracketType);
   const table = query(collections)
@@ -245,13 +297,53 @@ export function formatIndex(
       });
     }
 
-    if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${bracket}${indexName}${bracket}`);
-    } else {
-      buffer.push(`CREATE INDEX ${bracket}${indexName}${bracket}`);
-    }
+    buffer.push(
+      `CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX${ifNotExists(statements)} ${bracket}${indexName}${bracket}`
+    );
     buffer.push(
       `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)});`
     );
   }
+}
+
+/**
+ * CREATE SCHEMA IF NOT EXISTS and a search_path that puts it first, for
+ * createAndUse; PostgreSQL has no USE, so use writes nothing.
+ */
+export function formatHeader(
+  { settings: { bracketType } }: RootState,
+  header: Exclude<SchemaSQLHeader, 'none'>,
+  name: string
+): string {
+  if (header !== SchemaSQLHeader.createAndUse) return '';
+
+  const bracket = getBracket(bracketType);
+  const schema = `${bracket}${name}${bracket}`;
+  return `CREATE SCHEMA IF NOT EXISTS ${schema};\nSET search_path TO ${schema}, public;`;
+}
+
+/**
+ * One DROP TABLE IF EXISTS naming every table written, which refuses to drop a
+ * table another one outside it references. Under the createAndUse header a
+ * table with no schema of its own is named in that schema, never public's.
+ */
+export function formatDropBlock(
+  { settings: { bracketType } }: RootState,
+  { tables }: WrittenObjects,
+  header: SchemaSQLHeader,
+  name: string
+): string {
+  if (tables.length === 0) return '';
+
+  const bracket = getBracket(bracketType);
+  const prefix =
+    header === SchemaSQLHeader.createAndUse
+      ? `${bracket}${name}${bracket}.`
+      : '';
+  const names = tables.map(({ name: tableName }) => {
+    const [schema] = splitTableName(tableName, bracketType);
+    return `${schema === '' ? prefix : ''}${bracket}${tableName}${bracket}`;
+  });
+
+  return `DROP TABLE IF EXISTS ${names.join(', ')};`;
 }

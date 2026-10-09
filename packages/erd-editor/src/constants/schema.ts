@@ -1,5 +1,7 @@
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 
+import { ValuesType } from '@/internal-types';
+
 export const CanvasType = SchemaV3Constants.CanvasType;
 export const CanvasTypeList = SchemaV3Constants.CanvasTypeList;
 export const Show = SchemaV3Constants.Show;
@@ -34,6 +36,10 @@ export const CANVAS_SIZE_MAX = SchemaV3Constants.CANVAS_SIZE_MAX;
 export const CANVAS_SIZE_MIN = SchemaV3Constants.CANVAS_SIZE_MIN;
 export const CANVAS_ZOOM_MAX = SchemaV3Constants.CANVAS_ZOOM_MAX;
 export const CANVAS_ZOOM_MIN = SchemaV3Constants.CANVAS_ZOOM_MIN;
+export const DDLScriptPosition = SchemaV3Constants.DDLScriptPosition;
+export const DDLScriptPositionList: ReadonlyArray<
+  ValuesType<typeof DDLScriptPosition>
+> = SchemaV3Constants.DDLScriptPositionList;
 
 export const BracketTypeMap: Record<number, string> = {
   [BracketType.none]: '',

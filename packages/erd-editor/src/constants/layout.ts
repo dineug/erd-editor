@@ -180,6 +180,12 @@ export const INDEX_ORDER_MAX_ROWS = 3;
 
 export const DIFF_TREE_WIDTH = 200;
 
+/** The width of the Schema SQL tab's options panel beside the code. */
+export const SCHEMA_SQL_PANEL_WIDTH = 300;
+
+/** An editor narrower than this opens the Schema SQL tab with its options panel folded away. */
+export const SCHEMA_SQL_PANEL_COLLAPSE_BELOW = 640;
+
 /**
  * How thick a relationship connector is drawn. A whole number rather than a
  * fraction, so the stroke lands on pixel boundaries instead of spreading across

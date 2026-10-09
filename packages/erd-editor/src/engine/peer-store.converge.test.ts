@@ -51,6 +51,7 @@ import {
   changeRelationshipColumnsAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
+import { changeDDLScriptAction } from '@/engine/modules/settings/atom.actions';
 import {
   changeTableNameAction,
   sortTableAction,
@@ -407,6 +408,73 @@ function permutations<T>(items: T[]): T[][] {
 
 /** The last batch a peer sent, which is the one its last dispatch made. */
 const lastBatch = (sent: AnyAction[][]) => sent[sent.length - 1];
+
+describe('the Schema SQL scripts converge', () => {
+  const scriptsOf = ({ state }: HasState) => state.settings.ddlScripts;
+
+  it('keeps both scripts when the two sides set before and after at once', async () => {
+    const session = open({ held: true });
+    session.deliver();
+    await settle();
+
+    session.user.rxStore.dispatchSync(
+      changeDDLScriptAction({ position: 'before', value: 'from the user' })
+    );
+    session.peer.dispatch(
+      [changeDDLScriptAction({ position: 'after', value: 'from the peer' })],
+      { label: 'setDDLScript' }
+    );
+    session.deliver();
+    await settle();
+
+    for (const side of [session.peer, session.user.rxStore]) {
+      expect(scriptsOf(side)).toEqual({
+        before: 'from the user',
+        after: 'from the peer',
+      });
+    }
+    expectConverged(session);
+  });
+
+  it.each([
+    ['the user', VERSION + 1, VERSION, 'from the user'],
+    ['the peer', VERSION, VERSION + 1, 'from the peer'],
+  ])(
+    'settles one script both sides set on the later version, %s’s',
+    async (_side, userVersion, peerVersion, winner) => {
+      const session = open({ held: true });
+      session.deliver();
+      await settle();
+
+      session.user.rxStore.dispatchSync({
+        ...changeDDLScriptAction({
+          position: 'before',
+          value: 'from the user',
+        }),
+        version: userVersion,
+      });
+      session.peer.dispatch(
+        [
+          {
+            ...changeDDLScriptAction({
+              position: 'before',
+              value: 'from the peer',
+            }),
+            version: peerVersion,
+          },
+        ],
+        { label: 'setDDLScript' }
+      );
+      session.deliver();
+      await settle();
+
+      for (const side of [session.peer, session.user.rxStore]) {
+        expect(scriptsOf(side)).toEqual({ before: winner, after: '' });
+      }
+      expectConverged(session);
+    }
+  );
+});
 
 describe('relationship.changeColumns converges', () => {
   const meshes: Mesh[] = [];

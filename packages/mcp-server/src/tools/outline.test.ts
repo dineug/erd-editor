@@ -36,7 +36,9 @@ describe('the document list', () => {
     const peer = seeded();
     const list = toDocumentList(peer.state);
 
-    expect(list.settings).toEqual(toAgentSnapshot(peer.state).settings);
+    const { ddlScripts, ...settings } = toAgentSnapshot(peer.state).settings;
+    expect(list.settings).toEqual(settings);
+    expect(ddlScripts).toEqual({ before: '', after: '' });
     expect(list).toMatchObject({
       tableCount: 3,
       relationshipCount: 1,
@@ -99,6 +101,21 @@ describe('the document list', () => {
 
     expect(settings.language).toBe('GraphQL');
     expect(settings).not.toHaveProperty('canvasType');
+  });
+
+  it('leaves the Schema SQL scripts out, which the snapshot gives', () => {
+    const peer = seeded();
+    runTool(peer, 'erd_set_ddl_script', {
+      position: 'before',
+      sql: 'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
+    });
+
+    expect(toDocumentList(peer.state).settings).not.toHaveProperty(
+      'ddlScripts'
+    );
+    expect(toAgentSnapshot(peer.state).settings.ddlScripts.before).toBe(
+      'CREATE EXTENSION IF NOT EXISTS pgcrypto;'
+    );
   });
 
   it('sizes each table with the text measure of the peer hooks and the table sort', () => {

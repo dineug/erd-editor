@@ -308,6 +308,19 @@ describe('v3ToV2', () => {
       expect(Object.values(canvas.show).some(Boolean)).toBe(false);
     });
 
+    it('leaves the Schema SQL scripts behind, since v2 has no slot for them', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.ddlScripts = {
+        before: 'CREATE SCHEMA app;',
+        after: 'GRANT SELECT ON member TO app;',
+      };
+
+      const { canvas } = v3ToV2(schemaV3);
+
+      expect(canvas).not.toHaveProperty('ddlScripts');
+      expect(JSON.stringify(canvas)).not.toContain('CREATE SCHEMA app;');
+    });
+
     it('maps bit enums back onto v2 string enums', () => {
       const { canvas } = v3ToV2(createSchemaV3());
 

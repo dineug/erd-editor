@@ -10,3 +10,4 @@ export {
   type KeyBindingName,
   type ShortcutOption,
 } from '@/utils/keyboard-shortcut';
+export type { SchemaSQLOptions } from '@/utils/schema-sql';

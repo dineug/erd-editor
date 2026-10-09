@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -6,6 +10,7 @@ import {
   ColumnOption,
   Database,
   OrderType,
+  ReferentialAction,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Relationship } from '@/internal-types';
@@ -14,13 +19,18 @@ import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
-import { createSchemaSQLTable } from '@/utils/schema-sql/index';
+import {
+  createSchemaSQL,
+  createSchemaSQLTable,
+} from '@/utils/schema-sql/index';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/Snowflake';
-import { Name } from '@/utils/schema-sql/utils';
+import { Name, referentialActionSupport } from '@/utils/schema-sql/utils';
 
 function createFixture() {
   const state = {
@@ -118,6 +128,116 @@ function createFixture() {
   state.doc.indexIds = ['idx-1'];
 
   return { state, users, posts, index, relationship };
+}
+
+interface SampleVariant {
+  memberIdType?: string;
+  postIdType?: string;
+  postMemberIdType?: string;
+  onDelete?: number;
+}
+
+// The two-table sample every options fixture was written from; a variant
+// changes the key types or the delete action.
+function createSampleState({
+  memberIdType = 'INT',
+  postIdType = 'INT',
+  postMemberIdType = 'INT',
+  onDelete = ReferentialAction.cascade,
+}: SampleVariant = {}): RootState {
+  const state = {
+    ...schemaV3Parser({}),
+    editor: {},
+    lww: {},
+  } as unknown as RootState;
+  const key =
+    ColumnOption.primaryKey | ColumnOption.notNull | ColumnOption.autoIncrement;
+  const columns = [
+    createColumn({
+      id: 'm1',
+      tableId: 'tm',
+      name: 'id',
+      dataType: memberIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'm2',
+      tableId: 'tm',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.notNull | ColumnOption.unique,
+    }),
+    createColumn({
+      id: 'p1',
+      tableId: 'tp',
+      name: 'id',
+      dataType: postIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'p2',
+      tableId: 'tp',
+      name: 'member_id',
+      dataType: postMemberIdType,
+      options: ColumnOption.notNull,
+    }),
+    createColumn({
+      id: 'p3',
+      tableId: 'tp',
+      name: 'title',
+      dataType: 'VARCHAR(200)',
+      options: ColumnOption.notNull,
+    }),
+  ];
+
+  state.settings.databaseName = 'shop';
+  state.collections.tableEntities = {
+    tm: createTable({
+      id: 'tm',
+      name: 'member',
+      comment: 'Members',
+      columnIds: ['m1', 'm2'],
+    }),
+    tp: createTable({ id: 'tp', name: 'post', columnIds: ['p1', 'p2', 'p3'] }),
+  };
+  state.collections.tableColumnEntities = Object.fromEntries(
+    columns.map(column => [column.id, column])
+  );
+  state.collections.relationshipEntities = {
+    rp: createRelationship({
+      id: 'rp',
+      onDelete,
+      start: { tableId: 'tm', columnIds: ['m1'] },
+      end: { tableId: 'tp', columnIds: ['p2'] },
+    }),
+  };
+  state.collections.indexEntities = {
+    ix: createIndex({
+      id: 'ix',
+      name: 'idx_post_title',
+      tableId: 'tp',
+      indexColumnIds: ['ic'],
+    }),
+  };
+  state.collections.indexColumnEntities = {
+    ic: createIndexColumn({
+      id: 'ic',
+      indexId: 'ix',
+      columnId: 'p3',
+      orderType: OrderType.ASC,
+    }),
+  };
+  state.doc.tableIds = ['tm', 'tp'];
+  state.doc.relationshipIds = ['rp'];
+  state.doc.indexIds = ['ix'];
+
+  return state;
+}
+
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
+
+function readFixture(path: string): string {
+  return readFileSync(join(FIXTURES, 'options', path), 'utf8');
 }
 
 describe('schema-sql/Snowflake', () => {
@@ -432,5 +552,105 @@ describe('schema-sql/Snowflake', () => {
         '',
       ]);
     });
+  });
+});
+
+describe('Snowflake referential actions', () => {
+  it('writes NO ACTION alone, as the shared support says', () => {
+    expect(referentialActionSupport(Database.Snowflake)).toEqual({
+      onDelete: [ReferentialAction.noAction],
+      onUpdate: [ReferentialAction.noAction],
+    });
+  });
+
+  it('leaves out ON DELETE CASCADE with a comment above its ALTER TABLE', () => {
+    expect(createSchemaSQL(createSampleState(), Database.Snowflake)).toBe(
+      readFixture('Snowflake/referential-action-cascade-create-none.sql')
+    );
+  });
+
+  it('keeps ON DELETE NO ACTION with no comment', () => {
+    expect(
+      createSchemaSQL(
+        createSampleState({ onDelete: ReferentialAction.noAction }),
+        Database.Snowflake
+      )
+    ).toBe(
+      readFixture('Snowflake/referential-action-no-action-create-none.sql')
+    );
+  });
+
+  it('names both clauses it leaves out in one comment', () => {
+    const state = createSampleState({ onDelete: ReferentialAction.setNull });
+    state.collections.relationshipEntities.rp.onUpdate =
+      ReferentialAction.restrict;
+
+    const sql = createSchemaSQL(state, Database.Snowflake);
+
+    expect(sql).toContain(
+      [
+        '',
+        '-- Snowflake creates no foreign key with a referential action other than NO ACTION, so ON DELETE SET NULL and ON UPDATE RESTRICT are left out.',
+        'ALTER TABLE post',
+        '  ADD CONSTRAINT FK_member_TO_post',
+        '    FOREIGN KEY (member_id)',
+        '    REFERENCES member (id);',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('keeps the NO ACTION it can write beside one it leaves out', () => {
+    const state = createSampleState({ onDelete: ReferentialAction.noAction });
+    state.collections.relationshipEntities.rp.onUpdate =
+      ReferentialAction.cascade;
+
+    const sql = createSchemaSQL(state, Database.Snowflake);
+
+    expect(sql).toContain(
+      [
+        '-- Snowflake creates no foreign key with a referential action other than NO ACTION, so ON UPDATE CASCADE is left out.',
+        'ALTER TABLE post',
+        '  ADD CONSTRAINT FK_member_TO_post',
+        '    FOREIGN KEY (member_id)',
+        '    REFERENCES member (id)',
+        '    ON DELETE NO ACTION;',
+      ].join('\n')
+    );
+  });
+
+  it('writes no comment for a relationship that sets no action', () => {
+    const sql = createSchemaSQL(
+      createSampleState({ onDelete: ReferentialAction.none }),
+      Database.Snowflake
+    );
+
+    expect(sql).not.toContain('-- Snowflake creates no foreign key');
+    expect(sql).toContain('    REFERENCES member (id);\n');
+  });
+});
+
+describe('Snowflake options', () => {
+  it('replaces each table in its CREATE under recreate, with no DROP block', () => {
+    const state = createSampleState();
+
+    const sql = createSchemaSQL(state, Database.Snowflake, undefined, {
+      statements: 'recreate',
+    });
+
+    expect(sql.match(/^CREATE OR REPLACE TABLE /gm)).toHaveLength(2);
+    expect(sql).not.toMatch(/^CREATE TABLE /m);
+    expect(sql).not.toContain('DROP');
+    expect(formatDropBlock()).toBe('');
+  });
+
+  it('writes USE SCHEMA, after CREATE SCHEMA for createAndUse, quoted as the tables are', () => {
+    const state = createSampleState();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe('USE SCHEMA shop;');
+    state.settings.bracketType = BracketType.backtick;
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      'CREATE SCHEMA IF NOT EXISTS "shop";\nUSE SCHEMA "shop";'
+    );
   });
 });

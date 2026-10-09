@@ -1,6 +1,7 @@
-import { AnyAction } from '@dineug/r-html';
+import { AnyAction, watch } from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
+import { flush } from '@/__test-utils__/index';
 import {
   BracketType,
   CANVAS_ZOOM_MAX,
@@ -31,6 +32,7 @@ import {
   changeColumnOrderAction,
   changeDatabaseAction,
   changeDatabaseNameAction,
+  changeDDLScriptAction,
   changeIgnoreSaveSettingsAction,
   changeLanguageAction,
   changeLockSettingsAction,
@@ -149,6 +151,112 @@ describe('settings/atom.actions', () => {
       });
       expect(store.state.settings.databaseName).toBe('v9');
       expect(store.state.lww['settings.databaseName'][3].databaseName).toBe(9);
+    });
+  });
+
+  describe('changeDDLScript', () => {
+    const scripts = () => store.state.settings.ddlScripts;
+
+    it('writes the script at its position and records the LWW replace version', () => {
+      store.dispatchSync(
+        changeDDLScriptAction({ position: 'before', value: 'CREATE SCHEMA a;' })
+      );
+
+      expect(scripts()).toEqual({ before: 'CREATE SCHEMA a;', after: '' });
+      expect(store.state.lww['settings.ddlScripts']).toEqual([
+        'settings',
+        -1,
+        -1,
+        { before: 0 },
+      ]);
+    });
+
+    it('keeps a script exactly as it was typed, blanks and line ends included', () => {
+      const value = '\r\n  GRANT SELECT ON member TO app;  \n';
+      store.dispatchSync(changeDDLScriptAction({ position: 'after', value }));
+
+      expect(scripts().after).toBe(value);
+    });
+
+    it('falls back to the clock version when the action carries none', () => {
+      store.context.clock.merge(7);
+      store.dispatchSync(
+        changeDDLScriptAction({ position: 'after', value: 'clocked' })
+      );
+
+      expect(store.state.lww['settings.ddlScripts'][3].after).toBe(7);
+      expect(scripts().after).toBe('clocked');
+    });
+
+    it.each([
+      ['an unknown position', { position: 'middle', value: 'SELECT 1;' }],
+      ['a number for the value', { position: 'before', value: 12 }],
+      ['no value', { position: 'after' }],
+    ])('changes nothing for %s', (_label, payload) => {
+      store.dispatchSync({
+        ...changeDDLScriptAction({ position: 'before', value: '' }),
+        payload,
+      } as AnyAction);
+
+      expect(scripts()).toEqual({ before: '', after: '' });
+      expect(store.state.lww['settings.ddlScripts']).toBeUndefined();
+    });
+
+    it('ignores a stale write and accepts an equal or newer version', () => {
+      const write = (value: string, version: number) =>
+        store.dispatchSync({
+          ...changeDDLScriptAction({ position: 'before', value }),
+          version,
+        });
+
+      write('v5', 5);
+      write('v3-stale', 3);
+      expect(scripts().before).toBe('v5');
+      expect(store.state.lww['settings.ddlScripts'][3].before).toBe(5);
+
+      write('v5-again', 5);
+      expect(scripts().before).toBe('v5-again');
+
+      write('v9', 9);
+      expect(scripts().before).toBe('v9');
+      expect(store.state.lww['settings.ddlScripts'][3].before).toBe(9);
+    });
+
+    it('converges each script on its own, a newer write to one leaving the other', () => {
+      store.dispatchSync(
+        {
+          ...changeDDLScriptAction({ position: 'after', value: 'after@9' }),
+          version: 9,
+        },
+        {
+          ...changeDDLScriptAction({ position: 'before', value: 'before@4' }),
+          version: 4,
+        }
+      );
+
+      expect(scripts()).toEqual({ before: 'before@4', after: 'after@9' });
+      expect(store.state.lww['settings.ddlScripts'][3]).toEqual({
+        after: 9,
+        before: 4,
+      });
+    });
+
+    it('replaces the scripts object, so a watch on the settings hears the name', async () => {
+      const previous = scripts();
+      const heard: Array<string | number | symbol> = [];
+      const unsubscribe = watch(store.state.settings).subscribe(name => {
+        heard.push(name);
+      });
+
+      store.dispatchSync(
+        changeDDLScriptAction({ position: 'before', value: 'SELECT 1;' })
+      );
+      await flush();
+      unsubscribe();
+
+      expect(scripts()).not.toBe(previous);
+      expect(previous).toEqual({ before: '', after: '' });
+      expect(heard).toContain('ddlScripts');
     });
   });
 
@@ -1377,6 +1485,7 @@ describe('settings/atom.actions', () => {
         'changeColumnOrderAction',
         'changeDatabaseAction',
         'changeDatabaseNameAction',
+        'changeDDLScriptAction',
         'changeIgnoreSaveSettingsAction',
         'changeLanguageAction',
         'changeLockSettingsAction',

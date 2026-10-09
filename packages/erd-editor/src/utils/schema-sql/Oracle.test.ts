@@ -1,19 +1,33 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { BracketType, ColumnOption, OrderType } from '@/constants/schema';
+import {
+  BracketType,
+  ColumnOption,
+  Database,
+  OrderType,
+  ReferentialAction,
+} from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createSchemaSQL } from '@/utils/schema-sql';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
+  oracleLongNames,
 } from '@/utils/schema-sql/Oracle';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createState(): RootState {
   return {
@@ -172,6 +186,118 @@ function addHrUsers(
   return hrIndex;
 }
 
+interface SampleVariant {
+  memberName?: string;
+  memberIdType?: string;
+  postIdType?: string;
+  postMemberIdType?: string;
+  onDelete?: number;
+}
+
+// The two-table sample every options fixture was written from; a variant
+// changes the member table name, the key types or the delete action.
+function createSampleState({
+  memberName = 'member',
+  memberIdType = 'INT',
+  postIdType = 'INT',
+  postMemberIdType = 'INT',
+  onDelete = ReferentialAction.cascade,
+}: SampleVariant = {}): RootState {
+  const state = {
+    ...schemaV3Parser({}),
+    editor: {},
+    lww: {},
+  } as unknown as RootState;
+  const key =
+    ColumnOption.primaryKey | ColumnOption.notNull | ColumnOption.autoIncrement;
+  const columns = [
+    createColumn({
+      id: 'm1',
+      tableId: 'tm',
+      name: 'id',
+      dataType: memberIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'm2',
+      tableId: 'tm',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.notNull | ColumnOption.unique,
+    }),
+    createColumn({
+      id: 'p1',
+      tableId: 'tp',
+      name: 'id',
+      dataType: postIdType,
+      options: key,
+    }),
+    createColumn({
+      id: 'p2',
+      tableId: 'tp',
+      name: 'member_id',
+      dataType: postMemberIdType,
+      options: ColumnOption.notNull,
+    }),
+    createColumn({
+      id: 'p3',
+      tableId: 'tp',
+      name: 'title',
+      dataType: 'VARCHAR(200)',
+      options: ColumnOption.notNull,
+    }),
+  ];
+
+  state.settings.databaseName = 'shop';
+  state.collections.tableEntities = {
+    tm: createTable({
+      id: 'tm',
+      name: memberName,
+      comment: 'Members',
+      columnIds: ['m1', 'm2'],
+    }),
+    tp: createTable({ id: 'tp', name: 'post', columnIds: ['p1', 'p2', 'p3'] }),
+  };
+  state.collections.tableColumnEntities = Object.fromEntries(
+    columns.map(column => [column.id, column])
+  );
+  state.collections.relationshipEntities = {
+    rp: createRelationship({
+      id: 'rp',
+      onDelete,
+      start: { tableId: 'tm', columnIds: ['m1'] },
+      end: { tableId: 'tp', columnIds: ['p2'] },
+    }),
+  };
+  state.collections.indexEntities = {
+    ix: createIndex({
+      id: 'ix',
+      name: 'idx_post_title',
+      tableId: 'tp',
+      indexColumnIds: ['ic'],
+    }),
+  };
+  state.collections.indexColumnEntities = {
+    ic: createIndexColumn({
+      id: 'ic',
+      indexId: 'ix',
+      columnId: 'p3',
+      orderType: OrderType.ASC,
+    }),
+  };
+  state.doc.tableIds = ['tm', 'tp'];
+  state.doc.relationshipIds = ['rp'];
+  state.doc.indexIds = ['ix'];
+
+  return state;
+}
+
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
+
+function readFixture(path: string): string {
+  return readFileSync(join(FIXTURES, 'options', path), 'utf8');
+}
+
 describe('Oracle createSchema', () => {
   it('emits tables, unique constraints, sequences, triggers, comments, FKs and indexes', () => {
     const { state } = createFixture();
@@ -206,9 +332,10 @@ describe('Oracle createSchema', () => {
         'REFERENCING NEW AS NEW FOR EACH ROW',
         'BEGIN',
         '  SELECT SEQ_users.NEXTVAL',
-        '  INTO: NEW.id',
+        '  INTO :NEW.id',
         '  FROM DUAL;',
         'END;',
+        '/',
         '',
         "COMMENT ON TABLE users IS 'user table';",
         '',
@@ -300,9 +427,10 @@ describe('Oracle createSchema', () => {
         'REFERENCING NEW AS NEW FOR EACH ROW',
         'BEGIN',
         '  SELECT SEQ_nums.NEXTVAL',
-        '  INTO: NEW.a',
+        '  INTO :NEW.a',
         '  FROM DUAL;',
         'END;',
+        '/',
         '',
         'CREATE SEQUENCE SEQ_nums1',
         'START WITH 1',
@@ -313,9 +441,10 @@ describe('Oracle createSchema', () => {
         'REFERENCING NEW AS NEW FOR EACH ROW',
         'BEGIN',
         '  SELECT SEQ_nums1.NEXTVAL',
-        '  INTO: NEW.b',
+        '  INTO :NEW.b',
         '  FROM DUAL;',
         'END;',
+        '/',
         '',
       ].join('\n')
     );
@@ -417,9 +546,10 @@ describe('Oracle dotted table names', () => {
         'REFERENCING NEW AS NEW FOR EACH ROW',
         'BEGIN',
         '  SELECT sales.SEQ_users.NEXTVAL',
-        '  INTO: NEW.id',
+        '  INTO :NEW.id',
         '  FROM DUAL;',
         'END;',
+        '/',
         '',
         "COMMENT ON TABLE sales.users IS 'user table';",
         '',
@@ -789,5 +919,137 @@ describe('Oracle formatIndex', () => {
     formatIndex(state, { index: postsIndex, buffer, indexNames: [] });
 
     expect(buffer[1]).toBe('  ON posts (user_id );');
+  });
+});
+
+describe('Oracle auto-increment triggers as SQL*Plus runs them', () => {
+  it('ends each trigger with a slash and binds :NEW, as SQL*Plus runs it', () => {
+    expect(createSchemaSQL(createSampleState(), Database.Oracle)).toBe(
+      readFixture('Oracle/sqlplus-triggers-create-none.sql')
+    );
+  });
+});
+
+describe('Oracle names past 30 bytes', () => {
+  it('lists every name over 30 bytes once, in the order written', () => {
+    const state = createSampleState({
+      memberName: 'member_notification_settings',
+    });
+    const { over30Bytes } = JSON.parse(readFixture('Oracle/long-names.json'));
+
+    expect(oracleLongNames(state)).toEqual(over30Bytes);
+    expect(oracleLongNames(createSampleState())).toEqual([]);
+  });
+
+  it('counts UTF-8 bytes, 30 of them still taken', () => {
+    // 27 bytes in 11 characters, so the 30-byte PK name stays off the list.
+    const state = createSampleState({ memberName: '회원_알림_설정_목록' });
+
+    expect(oracleLongNames(state)).toEqual([
+      'UQ_회원_알림_설정_목록_email',
+      'SEQ_회원_알림_설정_목록',
+      'SEQ_TRG_회원_알림_설정_목록',
+      'FK_회원_알림_설정_목록_TO_post',
+    ]);
+  });
+
+  it('collects the names without changing a byte of the script', () => {
+    const { state, users, posts, postsIndex } = createFixture();
+    users.name = 'sales.users';
+    posts.name = '"sales"."posts"';
+    postsIndex.name = 'hr.idx_posts_user';
+    const written = createWrittenObjects();
+
+    const sql = createSchema(state, undefined, {
+      statements: 'create',
+      written,
+    });
+
+    expect(sql).toBe(createSchema(state));
+    expect(written.identifiers).toEqual([
+      'sales',
+      'posts',
+      'id',
+      'user_id',
+      'PK_posts',
+      'sales',
+      'users',
+      'id',
+      'email',
+      'name',
+      'PK_users',
+      'UQ_users_email',
+      'SEQ_users',
+      'SEQ_TRG_users',
+      'FK_users_TO_posts',
+      'idx_posts_user',
+      'IDX_EMAIL',
+    ]);
+    expect(written.sequences).toEqual(['sales.SEQ_users']);
+  });
+});
+
+describe('Oracle header and drop block', () => {
+  it('writes ALTER SESSION SET CURRENT_SCHEMA for use alone', () => {
+    const state = createState();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe(
+      'ALTER SESSION SET CURRENT_SCHEMA = shop;'
+    );
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe('');
+    state.settings.bracketType = BracketType.doubleQuote;
+    expect(formatHeader(state, 'use', 'shop')).toBe(
+      'ALTER SESSION SET CURRENT_SCHEMA = "shop";'
+    );
+  });
+
+  it('drops each table, then each sequence with its owner, passing over what is not there', () => {
+    const { state, users } = createFixture();
+    users.name = 'sales.users';
+    const written = createWrittenObjects();
+    createSchema(state, undefined, { statements: 'recreate', written });
+
+    expect(formatDropBlock(state, written)).toBe(
+      [
+        'BEGIN',
+        "  EXECUTE IMMEDIATE 'DROP TABLE posts CASCADE CONSTRAINTS';",
+        'EXCEPTION WHEN OTHERS THEN',
+        '  IF SQLCODE != -942 THEN RAISE; END IF;',
+        'END;',
+        '/',
+        '',
+        'BEGIN',
+        "  EXECUTE IMMEDIATE 'DROP TABLE sales.users CASCADE CONSTRAINTS';",
+        'EXCEPTION WHEN OTHERS THEN',
+        '  IF SQLCODE != -942 THEN RAISE; END IF;',
+        'END;',
+        '/',
+        '',
+        'BEGIN',
+        "  EXECUTE IMMEDIATE 'DROP SEQUENCE sales.SEQ_users';",
+        'EXCEPTION WHEN OTHERS THEN',
+        '  IF SQLCODE != -2289 THEN RAISE; END IF;',
+        'END;',
+        '/',
+      ].join('\n')
+    );
+  });
+
+  it('quotes a table as its CREATE does and doubles a quote in the statement', () => {
+    const { state, users } = createFixture();
+    users.name = "o'users";
+    state.settings.bracketType = BracketType.doubleQuote;
+    const written = createWrittenObjects();
+    createSchema(state, undefined, { statements: 'recreate', written });
+
+    const block = formatDropBlock(state, written);
+
+    expect(block).toContain(
+      `  EXECUTE IMMEDIATE 'DROP TABLE "o''users" CASCADE CONSTRAINTS';`
+    );
+    expect(block).toContain(
+      `  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_o''users';`
+    );
+    expect(formatDropBlock(state, createWrittenObjects())).toBe('');
   });
 });

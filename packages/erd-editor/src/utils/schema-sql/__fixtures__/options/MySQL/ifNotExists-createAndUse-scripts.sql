@@ -1,0 +1,32 @@
+
+CREATE DATABASE IF NOT EXISTS shop;
+USE shop;
+
+SET NAMES utf8mb4;
+
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+
+CREATE TABLE IF NOT EXISTS member
+(
+  id    INT          NOT NULL AUTO_INCREMENT,
+  email VARCHAR(255) NOT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT UQ_member_email UNIQUE (email)
+) COMMENT 'Members';
+
+CREATE TABLE IF NOT EXISTS post
+(
+  id        INT          NOT NULL AUTO_INCREMENT,
+  member_id INT          NOT NULL,
+  title     VARCHAR(200) NOT NULL,
+  PRIMARY KEY (id),
+  INDEX idx_post_title (title ASC),
+  CONSTRAINT FK_member_TO_post
+    FOREIGN KEY (member_id)
+    REFERENCES member (id)
+    ON DELETE CASCADE
+);
+
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+
+CREATE OR REPLACE VIEW member_email AS SELECT id, email FROM member;

@@ -2,11 +2,11 @@ import { toJson } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
+import { showSchemaSQLExport } from '@/components/schema-sql/schemaSQLView';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n } from '@/i18n/translate';
 import { openExportImageAction } from '@/utils/emitter';
-import { exportJSON, exportSchemaSQL } from '@/utils/file/exportFile';
-import { createSchemaSQL } from '@/utils/schema-sql';
+import { exportJSON } from '@/utils/file/exportFile';
 
 type Menu = {
   icon: IconName;
@@ -14,7 +14,11 @@ type Menu = {
   onClick: () => void;
 };
 
-/** The Export rows: json by its format's name, Schema SQL and Image in the reader's language. */
+/**
+ * The Export rows: json by its format's name, Schema SQL and Image in the
+ * reader's language. Schema SQL saves nothing yet: it opens the tab, its
+ * options out, where Save file writes the text the reader settled on.
+ */
 export function createExportMenus(
   app: AppContext,
   onClose: () => void,
@@ -37,7 +41,7 @@ export function createExportMenus(
       name: i18n.t('common.tab.schemaSql'),
       onClick: () => {
         onClose();
-        exportSchemaSQL(createSchemaSQL(store.state), databaseName);
+        showSchemaSQLExport(app);
       },
     },
     {

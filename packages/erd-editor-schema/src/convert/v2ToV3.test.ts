@@ -286,6 +286,12 @@ describe('v2ToV3', () => {
       expect(settings.relationshipOptimization).toBe(true);
     });
 
+    it('starts both Schema SQL scripts empty, since v2 has no slot for them', () => {
+      const { settings } = v2ToV3(createSchemaV2());
+
+      expect(settings.ddlScripts).toEqual({ before: '', after: '' });
+    });
+
     it('migrates the v2 legacy scroll onto the origin pair', () => {
       const { canvas } = createSchemaV2();
       const { settings } = v2ToV3(createSchemaV2());

@@ -99,6 +99,37 @@ export const plPL = {
   'visualization.showMode.allFields': 'Wszystkie pola',
   'code.label': 'Kod',
   'code.copy': 'Kopiuj',
+  'schemaSql.savedInDocument': 'Zapisane w dokumencie',
+  'schemaSql.thisWindowOnly': 'Tylko to okno',
+  'schemaSql.statements': 'Instrukcje',
+  'schemaSql.header': 'Nagłówek',
+  'schemaSql.notInDatabase': 'Brak w {database}',
+  'schemaSql.dropWarning':
+    'Usuwa {tables} przed ich utworzeniem. Ich wiersze zostaną utracone.',
+  'schemaSql.replaceWarning':
+    'Zastępuje {tables}. Ich wiersze zostaną utracone.',
+  'schemaSql.moreTables': {
+    one: 'jeszcze {count} tabela',
+    few: 'jeszcze {count} tabele',
+    many: 'jeszcze {count} tabel',
+    other: 'jeszcze {count} tabeli',
+  },
+  'schemaSql.headerInvalidName':
+    'Nazwa bazy danych „{name}” nie jest prawidłowym identyfikatorem.',
+  'schemaSql.oracleLongNames':
+    'Oracle 12.2+ dla nazw dłuższych niż 30 bajtów: {names}',
+  'schemaSql.scriptsCaption':
+    'Zapisane w dokumencie · zapisywane bez zmian dla każdej bazy danych',
+  'schemaSql.beforeTables': 'Przed tabelami',
+  'schemaSql.afterTables': 'Po tabelach',
+  'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, dane początkowe …',
+  'schemaSql.mssqlGoHint':
+    'MSSQL dostaje GO po skrypcie, który nie kończy się na GO.',
+  'schemaSql.saveFile': 'Zapisz plik',
+  'schemaSql.saveFileMenu': 'Zapisz plik…',
+  'schemaSql.optionsPanel': 'Panel opcji',
+  'schemaSql.hideOptions': 'Ukryj opcje',
+  'schemaSql.showOptions': 'Pokaż opcje',
   'findReplace.matchCase': 'Uwzględnij wielkość liter',
   'findReplace.wholeWord': 'Uwzględnij tylko całe wyrazy',
   'findReplace.regex': 'Użyj wyrażenia regularnego',
@@ -230,6 +261,15 @@ export const plPL = {
   'palette.keywords.aml': 'aml azimutt markup language schemat',
   'palette.keywords.image': 'obraz png svg wektor grafika schowek',
   'palette.keywords.findReplace': 'znajdź zamień zmień nazwę',
+  'palette.schemaSqlStatements': 'Schemat SQL: Instrukcje',
+  'palette.schemaSqlHeader': 'Schemat SQL: Nagłówek',
+  'palette.schemaSqlOptionsPanel': 'Schemat SQL: Panel opcji',
+  'palette.exportSchemaSql': 'Eksportuj: Schemat SQL',
+  'palette.keywords.schemaSqlStatements':
+    'utwórz jeśli nie istnieje usuń zastąp',
+  'palette.keywords.schemaSqlHeader': 'use baza danych search_path',
+  'palette.keywords.schemaSqlOptionsPanel': 'pokaż ukryj przed po skrypty',
+  'palette.keywords.exportSchemaSql': 'sql ddl plik',
   'settings.preferences': 'Preferencje',
   'settings.relationshipDataTypeSync': 'Synchronizacja typu danych w relacjach',
   'settings.maxCommentWidth': 'Maksymalna szerokość komentarza',

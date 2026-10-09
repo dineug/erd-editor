@@ -120,7 +120,7 @@ describe('renderScene builds one Stage for a scene to be drawn into', () => {
     expect(scene.stage.findOne('.leaf')).toBeTruthy();
   });
 
-  it('answers the first render with the app it was given (G1-worker)', async () => {
+  it('answers the first render with the app it was given', async () => {
     const { app, seen } = mountScene();
     await flush();
     await whenDrawn();

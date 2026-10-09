@@ -7,6 +7,7 @@ import {
   type ListedTool,
   normalizeToolSurface,
   readToolSurfaceFixture,
+  type ToolArgSurface,
   type ToolSurface,
 } from '@/__test-utils__/toolSurface';
 
@@ -14,7 +15,7 @@ const fixture = readToolSurfaceFixture();
 
 /**
  * The tools that advertise no result schema: the read tools answer plain
- * text, added by hand. The 52 toolkit tools declare theirs; the recording has none.
+ * text, added by hand. The 53 toolkit tools declare theirs; the recording has none.
  */
 const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
   'erd_read',
@@ -30,6 +31,7 @@ const ADDED_TOOLS: readonly string[] = [
   'erd_get',
   'erd_list',
   'erd_move_tables',
+  'erd_set_ddl_script',
 ];
 
 /**
@@ -76,7 +78,7 @@ const namesIn = (surface: readonly ToolSurface[], names: readonly string[]) =>
 
 /** The optional arguments a recorded tool gained after the recording was made. */
 const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
-  erd_read: ['tableIds', 'tableNames'],
+  erd_read: ['tableIds', 'tableNames', 'statements', 'header'],
   erd_add_relationship: ['onDelete', 'onUpdate'],
   erd_link_columns: ['onDelete', 'onUpdate'],
   erd_import_sql: ['mode'],
@@ -86,24 +88,39 @@ const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
   erd_import_json: ['mode'],
 };
 
-/** The recorded tools as the server lists them, the arguments added since left out. */
+/** The values a recorded argument gained after the recording was made. */
+const ADDED_VALUES: Readonly<
+  Record<string, Readonly<Record<string, readonly string[]>>>
+> = {
+  erd_read: { format: ['scripts'] },
+};
+
+/** A recorded argument as the server lists it, the values added since left out. */
+const withoutAddedValues = (tool: string, arg: ToolArgSurface) => {
+  const added = ADDED_VALUES[tool]?.[arg.name];
+  return added && arg.enum
+    ? { ...arg, enum: arg.enum.filter(value => !added.includes(value)) }
+    : arg;
+};
+
+/** The recorded tools as the server lists them, the arguments and values added since left out. */
 const recorded = () =>
   live
     .filter(({ name }) => !ADDED_TOOLS.includes(name))
     .map(tool => ({
       ...tool,
-      args: tool.args.filter(
-        ({ name }) => !ADDED_ARGS[tool.name]?.includes(name)
-      ),
+      args: tool.args
+        .filter(({ name }) => !ADDED_ARGS[tool.name]?.includes(name))
+        .map(arg => withoutAddedValues(tool.name, arg)),
     }));
 
 /** The recording less the tools the server dropped since. */
 const kept = () => fixture.filter(({ name }) => !REMOVED_TOOLS.includes(name));
 
 describe('the tool surface against the SDK-based server recording', () => {
-  it('holds the 59 recorded tools less the 10 removed, and the 6 added since', () => {
+  it('holds the 59 recorded tools less the 10 removed, and the 7 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(55);
+    expect(tools).toHaveLength(56);
     expect(namesIn(fixture, ADDED_TOOLS)).toEqual([]);
     expect(namesIn(live, ADDED_TOOLS)).toEqual(ADDED_TOOLS);
     expect(namesIn(fixture, REMOVED_TOOLS)).toEqual(REMOVED_TOOLS);
@@ -112,6 +129,28 @@ describe('the tool surface against the SDK-based server recording', () => {
 
   it('keeps every recorded tool name, argument name, JSON type and required flag', () => {
     expect(declarations(recorded())).toEqual(declarations(kept()));
+  });
+
+  it('adds to a recorded argument only values the recording lacks', () => {
+    const argOf = (
+      surface: readonly ToolSurface[],
+      tool: string,
+      arg: string
+    ) =>
+      surface
+        .find(({ name }) => name === tool)!
+        .args.find(({ name }) => name === arg)!;
+
+    for (const [tool, args] of Object.entries(ADDED_VALUES)) {
+      for (const [arg, added] of Object.entries(args)) {
+        const before = argOf(fixture, tool, arg).enum!;
+
+        expect(before.filter(value => added.includes(value))).toEqual([]);
+        expect(argOf(live, tool, arg).enum).toEqual(
+          [...before, ...added].sort()
+        );
+      }
+    }
   });
 
   it('adds only optional arguments to a recorded tool', () => {
@@ -133,7 +172,7 @@ describe('the tool surface against the SDK-based server recording', () => {
         hasOutputSchema: !PLAIN_TEXT_TOOLS.has(name),
       }))
     );
-    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(52);
+    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(53);
   });
 
   it('takes an object for its arguments, in every tool', () => {

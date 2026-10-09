@@ -154,6 +154,15 @@
         "lockSettings": {
           "description": "bit value (viewport: 1) | (canvasType: 2) | (language: 4) | (tableNameCase: 8) | (columnNameCase: 16) | (bracketType: 32); a locked setting is saved as it stood when locked, the viewport being originX, originY and zoomLevel. A document without it opens with every setting locked",
           "type": "integer"
+        },
+        "ddlScripts": {
+          "description": "SQL the Schema SQL writes as is for every database: before after the header and ahead of the tables, after past the generated DDL. Absent while both are empty",
+          "type": "object",
+          "properties": {
+            "before": { "type": "string" },
+            "after": { "type": "string" }
+          },
+          "required": ["before", "after"]
         }
       },
       "required": [

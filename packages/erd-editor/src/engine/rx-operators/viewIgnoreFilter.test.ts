@@ -56,6 +56,7 @@ describe('ViewIgnoreActionTypes', () => {
       'memo.add',
       'settings.changeShow',
       'settings.changeDatabaseName',
+      'settings.changeDDLScript',
     ]) {
       expect(ViewIgnoreActionTypes).toContain(type);
     }

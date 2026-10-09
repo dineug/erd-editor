@@ -60,7 +60,7 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the eight session tools, every registry tool and erd_batch: 55 in all', () => {
+  it('is the eight session tools, every registry tool and erd_batch: 56 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [
         ...SESSION_TOOL_NAMES,
@@ -69,8 +69,8 @@ describe('the tool surface (AC-M8)', () => {
       ].sort()
     );
     expect(SESSION_TOOL_NAMES).toHaveLength(8);
-    expect(actionTools).toHaveLength(46);
-    expect(tools).toHaveLength(55);
+    expect(actionTools).toHaveLength(47);
+    expect(tools).toHaveLength(56);
   });
 
   it('lists the session toolkit, then the read tools, then the registry, in its order, then erd_batch', () => {
@@ -88,10 +88,15 @@ describe('the tool surface (AC-M8)', () => {
     ]);
   });
 
-  it('gives erd_read the three formats and the vendor list', () => {
+  it('gives erd_read the four formats and the vendor list', () => {
     const { properties, required } = tool('erd_read').inputSchema as any;
 
-    expect(properties.format.enum).toEqual(['snapshot', 'sql', 'json']);
+    expect(properties.format.enum).toEqual([
+      'snapshot',
+      'sql',
+      'json',
+      'scripts',
+    ]);
     expect(properties.vendor.enum).toEqual([...SQL_VENDORS]);
     expect(required).toEqual(['path', 'format']);
   });
@@ -114,6 +119,20 @@ describe('the tool surface (AC-M8)', () => {
         items: { type: 'string' },
       });
     }
+    expect(required).toEqual(['path', 'format']);
+  });
+
+  it('gives erd_read the statements and header of its DDL, each optional', () => {
+    const { properties, required } = tool('erd_read').inputSchema as any;
+
+    expect(properties.statements).toMatchObject({
+      type: 'string',
+      enum: ['create', 'ifNotExists', 'recreate'],
+    });
+    expect(properties.header).toMatchObject({
+      type: 'string',
+      enum: ['none', 'use', 'createAndUse'],
+    });
     expect(required).toEqual(['path', 'format']);
   });
 
@@ -290,7 +309,7 @@ describe('tool arguments', () => {
     expect(mcp.manager.paths()).toEqual([]);
   });
 
-  it('refuses an unknown argument and an unknown format of erd_read with -32602', async () => {
+  it('refuses an unknown argument, format, statements or header of erd_read with -32602', async () => {
     const unknown = await rpcError('erd_read', {
       path: DOCUMENT,
       format: 'snapshot',
@@ -301,9 +320,23 @@ describe('tool arguments', () => {
       format: 'yaml',
     });
 
+    const statements = await rpcError('erd_read', {
+      path: DOCUMENT,
+      format: 'sql',
+      statements: 'drop',
+    });
+    const header = await rpcError('erd_read', {
+      path: DOCUMENT,
+      format: 'sql',
+      header: 'USE',
+    });
+
     expect([unknown.code, format.code]).toEqual([-32602, -32602]);
+    expect([statements.code, header.code]).toEqual([-32602, -32602]);
     expect(unknown.message).toMatch(/^Invalid parameters for tool 'erd_read'/);
     expect(format.message).toMatch(/\["format"\]/);
+    expect(statements.message).toMatch(/\["statements"\]/);
+    expect(header.message).toMatch(/\["header"\]/);
     expect(mcp.manager.paths()).toEqual([]);
   });
 

@@ -99,6 +99,34 @@ export const nlNL = {
   'visualization.showMode.allFields': 'Alle velden',
   'code.label': 'Code',
   'code.copy': 'Kopiëren',
+  'schemaSql.savedInDocument': 'Opgeslagen in het document',
+  'schemaSql.thisWindowOnly': 'Alleen dit venster',
+  'schemaSql.statements': 'Instructies',
+  'schemaSql.header': 'Kop',
+  'schemaSql.notInDatabase': 'Niet in {database}',
+  'schemaSql.dropWarning':
+    'Verwijdert {tables} voordat ze worden gemaakt. Hun rijen gaan verloren.',
+  'schemaSql.replaceWarning': 'Vervangt {tables}. Hun rijen gaan verloren.',
+  'schemaSql.moreTables': {
+    one: 'nog {count} tabel',
+    other: 'nog {count} tabellen',
+  },
+  'schemaSql.headerInvalidName':
+    'Databasenaam "{name}" is geen geldige identifier.',
+  'schemaSql.oracleLongNames':
+    'Oracle 12.2+ voor namen langer dan 30 bytes: {names}',
+  'schemaSql.scriptsCaption':
+    'Opgeslagen in het document · ongewijzigd geschreven voor elke database',
+  'schemaSql.beforeTables': 'Vóór de tabellen',
+  'schemaSql.afterTables': 'Na de tabellen',
+  'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, startgegevens …',
+  'schemaSql.mssqlGoHint':
+    'MSSQL krijgt GO na een script dat niet op GO eindigt.',
+  'schemaSql.saveFile': 'Bestand opslaan',
+  'schemaSql.saveFileMenu': 'Bestand opslaan…',
+  'schemaSql.optionsPanel': 'Optiepaneel',
+  'schemaSql.hideOptions': 'Opties verbergen',
+  'schemaSql.showOptions': 'Opties tonen',
   'findReplace.matchCase': 'Hoofdlettergevoelig',
   'findReplace.wholeWord': 'Alleen hele woorden',
   'findReplace.regex': 'Reguliere expressie gebruiken',
@@ -225,6 +253,15 @@ export const nlNL = {
   'palette.keywords.aml': 'aml azimutt markup language schema',
   'palette.keywords.image': 'afbeelding png svg vector plaatje klembord',
   'palette.keywords.findReplace': 'zoeken vervangen hernoemen',
+  'palette.schemaSqlStatements': 'Schema SQL: Instructies',
+  'palette.schemaSqlHeader': 'Schema SQL: Kop',
+  'palette.schemaSqlOptionsPanel': 'Schema SQL: Optiepaneel',
+  'palette.exportSchemaSql': 'Exporteren: Schema SQL',
+  'palette.keywords.schemaSqlStatements':
+    'maken als niet bestaat verwijderen vervangen',
+  'palette.keywords.schemaSqlHeader': 'use database search_path',
+  'palette.keywords.schemaSqlOptionsPanel': 'tonen verbergen voor na scripts',
+  'palette.keywords.exportSchemaSql': 'sql ddl bestand',
   'settings.preferences': 'Voorkeuren',
   'settings.relationshipDataTypeSync':
     'Gegevenstype van relaties synchroniseren',

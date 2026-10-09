@@ -7,6 +7,7 @@ import { bHas } from '@/utils/bit';
 
 import {
   autoNameIgnoreCase,
+  CreateSchemaOptions,
   FormatColumnOptions,
   formatDefault,
   FormatIndexOptions,
@@ -16,6 +17,7 @@ import {
   formatSpace,
   FormatTableOptions,
   getBracket,
+  ifNotExists,
   Name,
   primaryKey,
   primaryKeyColumns,
@@ -25,20 +27,23 @@ import {
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,
+  WrittenObjects,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { statements, written }: CreateSchemaOptions = {}
 ): string {
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
   const { tables, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
-    formatTable(state, { table, buffer: stringBuffer });
+    written?.tables.push(table);
+    formatTable(state, { table, buffer: stringBuffer, statements });
     stringBuffer.push('');
   });
 
@@ -47,6 +52,7 @@ export function createSchema(
       index,
       buffer: stringBuffer,
       indexNames,
+      statements,
     });
     stringBuffer.push('');
   });
@@ -54,9 +60,19 @@ export function createSchema(
   return stringBuffer.join('\n');
 }
 
+/**
+ * An integer type name, with or without a width, which an AUTOINCREMENT key
+ * is written as INTEGER for; the rest keep their type and lose the keyword.
+ */
+export function isIntegerFamily(dataType: string): boolean {
+  return /^(?:(?:TINY|SMALL|MEDIUM|BIG)?INT(?:EGER)?|INT[248]|UNSIGNED\s+BIG\s+INT)(?:\s*\(\s*\d+\s*\))?$/i.test(
+    dataType.trim()
+  );
+}
+
 export function formatTable(
   state: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const {
     settings: { bracketType },
@@ -64,9 +80,27 @@ export function formatTable(
     collections,
   } = state;
   const bracket = getBracket(bracketType);
-  const columns = query(collections)
+  const tableColumns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
+  const pkColumns = primaryKeyColumns(tableColumns);
+  const autoIncrementColumn =
+    pkColumns.length === 1 &&
+    bHas(pkColumns[0].options, ColumnOption.autoIncrement)
+      ? pkColumns[0]
+      : null;
+  // SQLite takes AUTOINCREMENT only on a key written INTEGER, so an integer
+  // key is written that way and any other key goes without it.
+  const integerKey =
+    autoIncrementColumn !== null &&
+    isIntegerFamily(autoIncrementColumn.dataType);
+  const columns = integerKey
+    ? tableColumns.map(column =>
+        column === autoIncrementColumn
+          ? { ...column, dataType: 'INTEGER' }
+          : column
+      )
+    : tableColumns;
   const foreignKeys = query(collections)
     .collection('relationshipEntities')
     .selectByIds(relationshipIds)
@@ -82,7 +116,9 @@ export function formatTable(
   if (table.comment.trim() !== '') {
     buffer.push(`-- ${table.comment}`);
   }
-  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
+  buffer.push(
+    `CREATE TABLE${ifNotExists(statements)} ${bracket}${table.name}${bracket}`
+  );
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -97,12 +133,7 @@ export function formatTable(
   });
 
   if (pk) {
-    const pkColumns = primaryKeyColumns(columns);
-    const autoIncrement =
-      pkColumns.length === 1 &&
-      bHas(pkColumns[0].options, ColumnOption.autoIncrement)
-        ? ' AUTOINCREMENT'
-        : '';
+    const autoIncrement = integerKey ? ' AUTOINCREMENT' : '';
     buffer.push(
       `  PRIMARY KEY (${formatNames(pkColumns, bracket)}${autoIncrement})` +
         (hasForeignKey ? ',' : '')
@@ -129,6 +160,13 @@ export function formatTable(
   });
 
   buffer.push(`);`);
+
+  if (autoIncrementColumn !== null && !integerKey) {
+    buffer.push('');
+    buffer.push(
+      `-- SQLite takes AUTOINCREMENT only on an INTEGER column, so ${bracket}${table.name}${bracket}.${bracket}${autoIncrementColumn.name}${bracket} is written without it.`
+    );
+  }
 }
 
 function formatColumn(
@@ -169,7 +207,7 @@ function formatColumn(
 
 export function formatIndex(
   { settings: { bracketType }, collections }: RootState,
-  { buffer, index, indexNames }: FormatIndexOptions
+  { buffer, index, indexNames, statements }: FormatIndexOptions
 ) {
   const bracket = getBracket(bracketType);
   const table = query(collections)
@@ -212,13 +250,35 @@ export function formatIndex(
       schema === '' || indexName.includes('.') ? '' : `${schema}.`;
     const indexRef = `${indexSchema}${bracket}${indexName}${bracket}`;
 
-    if (index.unique) {
-      buffer.push(`CREATE UNIQUE INDEX ${indexRef}`);
-    } else {
-      buffer.push(`CREATE INDEX ${indexRef}`);
-    }
+    buffer.push(
+      `CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX${ifNotExists(statements)} ${indexRef}`
+    );
     buffer.push(
       `  ON ${bracket}${tableName}${bracket} (${formatNames(columnNames)});`
     );
   }
+}
+
+/** SQLite has no database or schema to create or select in a script. */
+export function formatHeader(): string {
+  return '';
+}
+
+/**
+ * Foreign key enforcement off, which stays off for the connection, and then
+ * each table written dropped, so the order does not matter.
+ */
+export function formatDropBlock(
+  { settings: { bracketType } }: RootState,
+  { tables }: WrittenObjects
+): string {
+  if (tables.length === 0) return '';
+
+  const bracket = getBracket(bracketType);
+  return [
+    'PRAGMA foreign_keys=OFF;',
+    tables
+      .map(({ name }) => `DROP TABLE IF EXISTS ${bracket}${name}${bracket};`)
+      .join('\n'),
+  ].join('\n\n');
 }

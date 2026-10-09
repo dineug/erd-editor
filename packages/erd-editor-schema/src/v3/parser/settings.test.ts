@@ -78,6 +78,7 @@ describe('createAndMergeSettings', () => {
         columnNameCase: NameCase.camelCase,
         bracketType: BracketType.none,
       },
+      ddlScripts: { before: '', after: '' },
     });
   });
 
@@ -359,6 +360,71 @@ describe('createAndMergeSettings', () => {
       expect(createAndMergeSettings({ database: '4' as any }).database).toBe(
         Database.MySQL
       );
+    });
+  });
+
+  describe('ddlScripts', () => {
+    it('starts both scripts empty', () => {
+      expect(createAndMergeSettings().ddlScripts).toEqual({
+        before: '',
+        after: '',
+      });
+    });
+
+    it('keeps the two strings a document saved, as they were written', () => {
+      const ddlScripts = {
+        before: '\r\n  CREATE EXTENSION IF NOT EXISTS pgcrypto;  ',
+        after: 'GRANT SELECT ON member TO app;',
+      };
+
+      expect(createAndMergeSettings({ ddlScripts }).ddlScripts).toEqual(
+        ddlScripts
+      );
+    });
+
+    it('reads a script that is not a string, or is missing, as empty', () => {
+      expect(
+        createAndMergeSettings({
+          ddlScripts: { before: 12 as any, after: null as any },
+        }).ddlScripts
+      ).toEqual({ before: '', after: '' });
+      expect(
+        createAndMergeSettings({ ddlScripts: { after: 'SELECT 1;' } })
+          .ddlScripts
+      ).toEqual({ before: '', after: 'SELECT 1;' });
+      expect(
+        createAndMergeSettings({ ddlScripts: { before: ['x'] as any } })
+          .ddlScripts
+      ).toEqual({ before: '', after: '' });
+    });
+
+    it.each([
+      ['a number', 7],
+      ['null', null],
+      ['an array', ['SELECT 1;']],
+      ['a string', 'SELECT 1;'],
+    ])('ignores ddlScripts that are %s', (_label, ddlScripts) => {
+      expect(
+        createAndMergeSettings({ ddlScripts: ddlScripts as any }).ddlScripts
+      ).toEqual({ before: '', after: '' });
+    });
+
+    it('drops a key it does not know', () => {
+      const { ddlScripts } = createAndMergeSettings({
+        ddlScripts: { before: 'a', after: 'b', middle: 'c' } as any,
+      });
+
+      expect(ddlScripts).toEqual({ before: 'a', after: 'b' });
+      expect(ddlScripts).not.toHaveProperty('middle');
+    });
+
+    it('gives each parse a pair of its own', () => {
+      const first = createAndMergeSettings();
+      const second = createAndMergeSettings();
+
+      first.ddlScripts.before = 'changed';
+
+      expect(second.ddlScripts.before).toBe('');
     });
   });
 

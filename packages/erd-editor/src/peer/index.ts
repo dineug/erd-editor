@@ -5,6 +5,7 @@ export {
   ColumnOption,
   ColumnType,
   Database,
+  DDLScriptPosition,
   Language,
   LockSettingType,
   NameCase,
@@ -58,4 +59,9 @@ export type { RootState } from '@/engine/state';
 export { defaultToWidth } from '@/engine/to-width';
 export { bHas } from '@/utils/bit';
 export { measureTableSize } from '@/utils/calcTable';
-export { createSchemaSQL } from '@/utils/schema-sql';
+export {
+  createSchemaSQL,
+  SchemaSQLHeaderList,
+  type SchemaSQLOptions,
+  SchemaSQLStatementsList,
+} from '@/utils/schema-sql';

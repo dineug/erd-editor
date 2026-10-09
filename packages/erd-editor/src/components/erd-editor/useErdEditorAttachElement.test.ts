@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import {
   AnyAction,
@@ -31,6 +35,13 @@ import {
 import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
 import { TABLE_SORT_START } from '@/constants/layout';
 import {
+  BracketType,
+  ColumnOption,
+  Database,
+  OrderType,
+  ReferentialAction,
+} from '@/constants/schema';
+import {
   dragSelectRectAction,
   editTableAction,
   focusColumnAction,
@@ -59,6 +70,11 @@ import {
   GrayColor,
   SYSTEM_APPEARANCE,
 } from '@/themes/radix-ui-theme';
+import { createIndex } from '@/utils/collection/index.entity';
+import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
+import { createRelationship } from '@/utils/collection/relationship.entity';
+import { createTable } from '@/utils/collection/table.entity';
+import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   openDiffViewerAction,
   schemaGCAction,
@@ -141,6 +157,123 @@ const loadedDocument = (x = 0) =>
       },
     },
   });
+
+/**
+ * The two-table PostgreSQL document the Schema SQL options fixtures were
+ * written from, with no lock, so the bracket type it saves is the one shown.
+ */
+function schemaSQLSampleDocument(ddlScripts?: {
+  before: string;
+  after: string;
+}) {
+  const key =
+    ColumnOption.primaryKey | ColumnOption.notNull | ColumnOption.autoIncrement;
+  const columns = [
+    createColumn({
+      id: 'm1',
+      tableId: 'tm',
+      name: 'id',
+      dataType: 'INT',
+      options: key,
+    }),
+    createColumn({
+      id: 'm2',
+      tableId: 'tm',
+      name: 'email',
+      dataType: 'VARCHAR(255)',
+      options: ColumnOption.notNull | ColumnOption.unique,
+    }),
+    createColumn({
+      id: 'p1',
+      tableId: 'tp',
+      name: 'id',
+      dataType: 'INT',
+      options: key,
+    }),
+    createColumn({
+      id: 'p2',
+      tableId: 'tp',
+      name: 'member_id',
+      dataType: 'INT',
+      options: ColumnOption.notNull,
+    }),
+    createColumn({
+      id: 'p3',
+      tableId: 'tp',
+      name: 'title',
+      dataType: 'VARCHAR(200)',
+      options: ColumnOption.notNull,
+    }),
+  ];
+
+  return JSON.stringify({
+    version: '3.0.0',
+    settings: {
+      database: Database.PostgreSQL,
+      databaseName: 'shop',
+      bracketType: BracketType.none,
+      lockSettings: 0,
+      ...(ddlScripts ? { ddlScripts } : {}),
+    },
+    doc: { tableIds: ['tm', 'tp'], relationshipIds: ['rp'], indexIds: ['ix'] },
+    collections: {
+      tableEntities: {
+        tm: createTable({
+          id: 'tm',
+          name: 'member',
+          comment: 'Members',
+          columnIds: ['m1', 'm2'],
+          seqColumnIds: ['m1', 'm2'],
+        }),
+        tp: createTable({
+          id: 'tp',
+          name: 'post',
+          columnIds: ['p1', 'p2', 'p3'],
+          seqColumnIds: ['p1', 'p2', 'p3'],
+        }),
+      },
+      tableColumnEntities: Object.fromEntries(
+        columns.map(column => [column.id, column])
+      ),
+      relationshipEntities: {
+        rp: createRelationship({
+          id: 'rp',
+          onDelete: ReferentialAction.cascade,
+          start: { tableId: 'tm', columnIds: ['m1'] },
+          end: { tableId: 'tp', columnIds: ['p2'] },
+        }),
+      },
+      indexEntities: {
+        ix: createIndex({
+          id: 'ix',
+          name: 'idx_post_title',
+          tableId: 'tp',
+          indexColumnIds: ['ic'],
+          seqIndexColumnIds: ['ic'],
+        }),
+      },
+      indexColumnEntities: {
+        ic: createIndexColumn({
+          id: 'ic',
+          indexId: 'ix',
+          columnId: 'p3',
+          orderType: OrderType.ASC,
+        }),
+      },
+    },
+  });
+}
+
+/** A Schema SQL options fixture, the bytes the generator must write. */
+const schemaSQLFixture = (path: string) =>
+  readFileSync(
+    join(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../utils/schema-sql/__fixtures__/options',
+      path
+    ),
+    'utf8'
+  );
 
 /**
  * Mounts the hook on a store of its own. Wired, the store reads readonly from
@@ -892,6 +1025,73 @@ describe('useErdEditorAttachElement', () => {
     expect(defaultSQL).toContain('users');
     expect(postgresSQL).toContain('users');
     expect(unknownVendorSQL).toBe(defaultSQL);
+  });
+
+  it('writes the schema SQL the options ask for, a choice the vendor lacks falling back', async () => {
+    const { ctx } = await setup();
+    ctx.setInitialValue(schemaSQLSampleDocument());
+
+    expect(ctx.getSchemaSQL()).toBe(
+      schemaSQLFixture('PostgreSQL/create-none.sql')
+    );
+    expect(
+      ctx.getSchemaSQL('PostgreSQL', {
+        statements: 'recreate',
+        header: 'createAndUse',
+      })
+    ).toBe(schemaSQLFixture('PostgreSQL/recreate-createAndUse.sql'));
+    expect(
+      ctx.getSchemaSQL(undefined, { statements: 'ifNotExists', header: 'use' })
+    ).toBe(schemaSQLFixture('PostgreSQL/ifNotExists-use.sql'));
+    expect(
+      ctx.getSchemaSQL('Oracle', {
+        statements: 'ifNotExists',
+        header: 'createAndUse',
+      })
+    ).toBe(schemaSQLFixture('Oracle/create-use.sql'));
+  });
+
+  it('ignores options that are no object, and any value or key getSchemaSQL does not know', async () => {
+    const { ctx } = await setup();
+    ctx.setInitialValue(schemaSQLSampleDocument());
+    const created = schemaSQLFixture('PostgreSQL/create-none.sql');
+
+    for (const options of [null, 'recreate', 1, [], {}]) {
+      expect(ctx.getSchemaSQL('PostgreSQL', options as any)).toBe(created);
+    }
+    expect(
+      ctx.getSchemaSQL('PostgreSQL', {
+        statements: 'drop',
+        header: 'USE',
+        tableIds: ['tm'],
+      } as any)
+    ).toBe(created);
+    expect(
+      ctx.getSchemaSQL('PostgreSQL', {
+        statements: 'replace',
+        header: 'createAndUse',
+      } as any)
+    ).toBe(schemaSQLFixture('PostgreSQL/create-createAndUse.sql'));
+  });
+
+  it('writes the document’s before and after scripts with or without options', async () => {
+    const { ctx } = await setup();
+    ctx.setInitialValue(
+      schemaSQLSampleDocument({
+        before: 'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
+        after: 'GRANT SELECT ON member, post TO PUBLIC;',
+      })
+    );
+
+    expect(ctx.getSchemaSQL()).toBe(
+      schemaSQLFixture('PostgreSQL/create-none-scripts.sql')
+    );
+    expect(
+      ctx.getSchemaSQL('PostgreSQL', {
+        statements: 'recreate',
+        header: 'createAndUse',
+      })
+    ).toBe(schemaSQLFixture('PostgreSQL/recreate-createAndUse-scripts.sql'));
   });
 
   it('clears the document through clear()', async () => {

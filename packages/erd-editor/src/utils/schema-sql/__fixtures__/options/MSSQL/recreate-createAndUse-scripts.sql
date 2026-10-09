@@ -1,0 +1,71 @@
+
+IF DB_ID(N'shop') IS NULL
+  CREATE DATABASE shop
+GO
+
+USE shop
+GO
+
+CREATE SCHEMA app
+GO
+
+BEGIN TRY
+  BEGIN TRANSACTION
+
+  DECLARE @sql NVARCHAR(MAX) = N''
+  SELECT @sql += N'ALTER TABLE member DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+    FROM sys.foreign_keys
+    WHERE parent_object_id = OBJECT_ID(N'member', N'U')
+  SELECT @sql += N'ALTER TABLE post DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+    FROM sys.foreign_keys
+    WHERE parent_object_id = OBJECT_ID(N'post', N'U')
+  EXECUTE sp_executesql @sql
+
+  DROP TABLE IF EXISTS member, post
+
+  COMMIT TRANSACTION
+END TRY
+BEGIN CATCH
+  IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+  THROW;
+END CATCH
+GO
+
+CREATE TABLE member
+(
+  id    INT          NOT NULL IDENTITY(1,1),
+  email VARCHAR(255) NOT NULL,
+  CONSTRAINT PK_member PRIMARY KEY (id)
+)
+GO
+
+ALTER TABLE member
+  ADD CONSTRAINT UQ_member_email UNIQUE (email)
+GO
+
+EXECUTE sys.sp_addextendedproperty 'MS_Description',
+  'Members', 'schema', 'dbo', 'table', 'member'
+GO
+
+CREATE TABLE post
+(
+  id        INT          NOT NULL IDENTITY(1,1),
+  member_id INT          NOT NULL,
+  title     VARCHAR(200) NOT NULL,
+  CONSTRAINT PK_post PRIMARY KEY (id)
+)
+GO
+
+ALTER TABLE post
+  ADD CONSTRAINT FK_member_TO_post
+    FOREIGN KEY (member_id)
+    REFERENCES member (id)
+    ON DELETE CASCADE
+GO
+
+CREATE INDEX idx_post_title
+  ON post (title ASC)
+GO
+
+CREATE OR ALTER VIEW member_email AS SELECT id, email FROM member
+GO

@@ -55,6 +55,7 @@ import { copyAction, pasteAction } from '@/utils/emitter';
 import { middlePanPress$ } from '@/utils/globalEventObservable';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
+import { SchemaSQLOptions } from '@/utils/schema-sql';
 import { createText } from '@/utils/text';
 
 import * as styles from './ErdEditor.styles';
@@ -147,7 +148,15 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   setSchemaDBML: SetSchema;
   setSchemaAML: SetSchema;
   setSchemaJSON: (value: string, options?: SchemaJSONImportOptions) => void;
-  getSchemaSQL: (databaseVendor?: DatabaseVendor) => string;
+  /**
+   * The document's DDL: the vendor given or the document's own, created as
+   * the options ask, a choice the vendor lacks falling back as the Schema SQL
+   * tab does; the document's before and after scripts are always in it.
+   */
+  getSchemaSQL: (
+    databaseVendor?: DatabaseVendor,
+    options?: SchemaSQLOptions
+  ) => string;
   getSharedStore: (
     config?: SharedStoreConfig & {
       mouseTracker?: boolean;
@@ -440,7 +449,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             </div>
           ) : settings.canvasType === CanvasType.schemaSQL ? (
             <div class={styles.scope}>
-              <SchemaSQL isDarkMode={isDarkMode} />
+              <SchemaSQL isDarkMode={isDarkMode} readonly={props.readonly} />
             </div>
           ) : settings.canvasType === CanvasType.generatorCode ? (
             <div class={styles.scope}>

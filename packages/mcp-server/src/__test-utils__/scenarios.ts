@@ -123,6 +123,10 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     erd_resize_memo: { memoId: SEED.memo, width: 320, height: 240 },
     erd_set_database_name: { value: 'shop' },
     erd_set_database: { value: 'PostgreSQL' },
+    erd_set_ddl_script: {
+      position: 'before',
+      sql: 'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
+    },
     erd_import_sql: {
       value:
         'CREATE TABLE accounts (id INT NOT NULL PRIMARY KEY, email VARCHAR(255));',

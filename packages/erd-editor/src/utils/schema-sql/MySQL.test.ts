@@ -11,10 +11,12 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   createSchema,
+  formatDropBlock,
+  formatHeader,
   formatIndex,
   formatTable,
 } from '@/utils/schema-sql/MySQL';
-import { Name } from '@/utils/schema-sql/utils';
+import { createWrittenObjects, Name } from '@/utils/schema-sql/utils';
 
 function createFixture() {
   const state = {
@@ -558,5 +560,159 @@ describe('schema-sql/MySQL dotted table names', () => {
     expect(sql).toContain('  ADD CONSTRAINT `FK_Users_TO_posts1`\n');
     expect(sql).toContain('CREATE INDEX `IDX_users`\n  ON `users`');
     expect(sql).toContain('CREATE INDEX `IDX_Users1`\n  ON `Users`');
+  });
+});
+
+describe('schema-sql/MySQL ifNotExists', () => {
+  const ifNotExists = { statements: 'ifNotExists' } as const;
+
+  it('writes each table with its keys, indexes and foreign keys inside, the checks off around them', () => {
+    const { state } = createFixture();
+
+    expect(createSchema(state, undefined, ifNotExists)).toBe(
+      [
+        '',
+        'SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;',
+        '',
+        'CREATE TABLE IF NOT EXISTS posts',
+        '(',
+        '  title   VARCHAR(20) NOT NULL,',
+        '  user_id INT         NULL    ,',
+        '  INDEX IDX_posts (title ASC),',
+        '  CONSTRAINT FK_users_TO_posts',
+        '    FOREIGN KEY (user_id)',
+        '    REFERENCES users (id)',
+        ');',
+        '',
+        'CREATE TABLE IF NOT EXISTS users',
+        '(',
+        '  id   INT         NOT NULL AUTO_INCREMENT,',
+        "  name VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',",
+        '  age  INT         NULL    ,',
+        '  PRIMARY KEY (id),',
+        '  CONSTRAINT UQ_users_name UNIQUE (name)',
+        ") COMMENT 'user table';",
+        '',
+        'SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('keeps a foreign key to its own table and a unique index inside it, quoted', () => {
+    const { state, users, index } = createFixture();
+    state.settings.bracketType = BracketType.backtick;
+    state.collections.tableColumnEntities['col-parent'] = createColumn({
+      id: 'col-parent',
+      tableId: users.id,
+      name: 'parent_id',
+      dataType: 'INT',
+    });
+    users.columnIds.push('col-parent');
+    state.collections.relationshipEntities['rel-self'] = createRelationship({
+      id: 'rel-self',
+      start: { tableId: users.id, columnIds: ['col-id'] },
+      end: { tableId: users.id, columnIds: ['col-parent'] },
+    });
+    state.doc.relationshipIds.push('rel-self');
+    index.unique = true;
+    index.name = 'uq_title';
+
+    const sql = createSchema(state, undefined, ifNotExists);
+
+    expect(sql).toContain(
+      [
+        '  PRIMARY KEY (`id`),',
+        '  CONSTRAINT `UQ_users_name` UNIQUE (`name`),',
+        '  CONSTRAINT `FK_users_TO_users`',
+        '    FOREIGN KEY (`parent_id`)',
+        '    REFERENCES `users` (`id`)',
+        ") COMMENT 'user table';",
+      ].join('\n')
+    );
+    expect(sql).toContain('  UNIQUE INDEX `uq_title` (`title` ASC),\n');
+  });
+
+  it('names the foreign keys and indexes as the create batch does', () => {
+    const { state } = createFixture();
+    const { usersIndex, index } = addSecondUsers(state, 'Users');
+    state.doc.indexIds = [usersIndex.id, index.id, 'idx-1'];
+
+    const create = createSchema(state);
+    const inline = createSchema(state, undefined, ifNotExists);
+
+    ['FK_users_TO_posts', 'FK_Users_TO_posts1'].forEach(name => {
+      expect(create).toContain(`  ADD CONSTRAINT ${name}\n`);
+      expect(inline).toContain(`  CONSTRAINT ${name}\n`);
+    });
+    expect(create).toContain('CREATE INDEX IDX_Users1\n  ON Users');
+    expect(inline).toContain('  INDEX IDX_Users1 (title ASC)\n');
+    expect(inline).toContain('  INDEX IDX_posts (title ASC),\n');
+  });
+
+  it('leaves out what writes nothing, and writes nothing without tables', () => {
+    const { state } = createFixture();
+    state.collections.indexColumnEntities['idx-col-1'].columnId = 'gone';
+    state.collections.relationshipEntities['rel-1'].start.tableId = 'gone';
+
+    const sql = createSchema(state, undefined, ifNotExists);
+
+    expect(sql).not.toContain('INDEX');
+    expect(sql).not.toContain('FOREIGN KEY');
+    expect(sql).toContain('  user_id INT         NULL    \n);');
+    expect(createSchema(state, [], ifNotExists)).toBe('');
+  });
+
+  it('writes CREATE TABLE IF NOT EXISTS from formatTable alone', () => {
+    const { state, posts } = createFixture();
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table: posts, ...ifNotExists });
+
+    expect(buffer[0]).toBe('CREATE TABLE IF NOT EXISTS posts');
+    expect(buffer.at(-1)).toBe(');');
+  });
+
+  it('collects the tables it writes, as the create batch does', () => {
+    const { state, users, posts } = createFixture();
+    const inline = createWrittenObjects();
+    const create = createWrittenObjects();
+
+    createSchema(state, undefined, { ...ifNotExists, written: inline });
+    createSchema(state, undefined, { statements: 'create', written: create });
+
+    expect(inline.tables).toEqual([posts, users]);
+    expect(create.tables).toEqual([posts, users]);
+  });
+});
+
+describe('schema-sql/MySQL header and drop block', () => {
+  it('writes USE, after CREATE DATABASE for createAndUse, quoted as the tables are', () => {
+    const { state } = createFixture();
+
+    expect(formatHeader(state, 'use', 'shop')).toBe('USE shop;');
+    state.settings.bracketType = BracketType.backtick;
+    expect(formatHeader(state, 'createAndUse', 'shop')).toBe(
+      'CREATE DATABASE IF NOT EXISTS `shop`;\nUSE `shop`;'
+    );
+  });
+
+  it('drops every table written while the checks are off', () => {
+    const { state, users, posts } = createFixture();
+    state.settings.bracketType = BracketType.backtick;
+    const written = createWrittenObjects();
+
+    expect(formatDropBlock(state, written)).toBe('');
+    written.tables.push(posts, users);
+    expect(formatDropBlock(state, written)).toBe(
+      [
+        'SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;',
+        '',
+        'DROP TABLE IF EXISTS `posts`;',
+        'DROP TABLE IF EXISTS `users`;',
+        '',
+        'SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;',
+      ].join('\n')
+    );
   });
 });

@@ -148,6 +148,7 @@ const ERD_COMMANDS = [
   'One Only',
   'One N',
   'Auto Layout',
+  'Export: Schema SQL',
   'Find and Replace',
 ];
 
@@ -200,6 +201,7 @@ describe('paletteRows without a prefix', () => {
 
     expect(names(rowsFor(''))).toEqual([
       'Tab',
+      'Export: Schema SQL',
       'Language',
       'Table Name Case',
       'Column Name Case',

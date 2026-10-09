@@ -81,7 +81,7 @@ const ACTIONS = [noAction, cascade, setNull, setDefault, restrict];
 const SUPPORT: Array<[string, number, number[], number[]]> = [
   ['PostgreSQL', Database.PostgreSQL, ACTIONS, ACTIONS],
   ['SQLite', Database.SQLite, ACTIONS, ACTIONS],
-  ['Snowflake', Database.Snowflake, ACTIONS, ACTIONS],
+  ['Snowflake', Database.Snowflake, [noAction], [noAction]],
   [
     'MySQL',
     Database.MySQL,
@@ -103,6 +103,14 @@ const SUPPORT: Array<[string, number, number[], number[]]> = [
   ['Oracle', Database.Oracle, [cascade, setNull], []],
   ['Databricks', Database.Databricks, [noAction], [noAction]],
 ];
+
+// The statements alone: a comment may name the clause a vendor leaves out.
+function statementsOf(sql: string): string {
+  return sql
+    .split('\n')
+    .filter(line => !line.startsWith('--'))
+    .join('\n');
+}
 
 describe('schema-sql referential actions', () => {
   it.each(SUPPORT)(
@@ -130,7 +138,9 @@ describe('schema-sql referential actions', () => {
     it.each(ACTIONS)(
       'writes ON DELETE %i only where the vendor takes it',
       action => {
-        const sql = createSchemaSQL(createState(action, none), database);
+        const sql = statementsOf(
+          createSchemaSQL(createState(action, none), database)
+        );
         const clause = `ON DELETE ${ReferentialActionToSQL[action]}`;
 
         expect(sql.includes(clause)).toBe(onDelete.includes(action));
@@ -141,7 +151,9 @@ describe('schema-sql referential actions', () => {
     it.each(ACTIONS)(
       'writes ON UPDATE %i only where the vendor takes it',
       action => {
-        const sql = createSchemaSQL(createState(none, action), database);
+        const sql = statementsOf(
+          createSchemaSQL(createState(none, action), database)
+        );
         const clause = `ON UPDATE ${ReferentialActionToSQL[action]}`;
 
         expect(sql.includes(clause)).toBe(onUpdate.includes(action));
@@ -154,7 +166,6 @@ describe('schema-sql referential actions', () => {
     ['PostgreSQL', Database.PostgreSQL, ';'],
     ['MySQL', Database.MySQL, ';'],
     ['MariaDB', Database.MariaDB, ';'],
-    ['Snowflake', Database.Snowflake, ';'],
     ['MSSQL', Database.MSSQL, '\nGO'],
   ])(
     'puts each clause on a line of its own before the end of the %s statement',
@@ -172,6 +183,17 @@ describe('schema-sql referential actions', () => {
       expect(sql).toContain(`    ON UPDATE SET NULL${end}\n`);
     }
   );
+
+  it('puts the Snowflake NO ACTION clauses on lines of their own', () => {
+    const sql = createSchemaSQL(
+      createState(noAction, noAction),
+      Database.Snowflake
+    );
+
+    expect(sql).toContain(
+      '    REFERENCES users (id)\n    ON DELETE NO ACTION\n    ON UPDATE NO ACTION;\n'
+    );
+  });
 
   it('writes the Oracle ON DELETE and never an ON UPDATE', () => {
     const sql = createSchemaSQL(createState(setNull, cascade), Database.Oracle);

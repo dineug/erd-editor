@@ -4,6 +4,7 @@ import {
   type RootState,
 } from '@dineug/erd-editor/peer.js';
 import { query } from '@dineug/erd-editor-schema';
+import { omit } from 'es-toolkit';
 
 import { MAX_READ_CHARS } from '@/tools/budget';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
@@ -72,7 +73,8 @@ export const DEFAULT_PAGE_SIZE = 100;
  * their indexes and the relationships they own, then memos; columns are erd_get's.
  */
 export type DocumentList = {
-  settings: AgentSnapshotSettings;
+  /** The snapshot settings less the scripts, which would take a page of their own. */
+  settings: Omit<AgentSnapshotSettings, 'ddlScripts'>;
   /** How many tables the document holds, so no one has to count them. */
   tableCount: number;
   relationshipCount: number;
@@ -357,7 +359,7 @@ export function toDocumentList(
   const indexesOf = groupBy(indexes, ({ tableId }) => [tableId]);
 
   const head = {
-    settings: toSnapshotSettings(settings),
+    settings: omit(toSnapshotSettings(settings), ['ddlScripts']),
     tableCount: live.length,
     relationshipCount: relationships.length,
     indexCount: indexes.length,

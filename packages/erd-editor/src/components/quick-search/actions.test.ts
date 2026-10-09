@@ -36,9 +36,10 @@ import {
   searchActions,
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
+import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
 import { START_X, START_Y } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType, RelationshipType } from '@/constants/schema';
+import { CanvasType, Database, RelationshipType } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ChangeActionTypes } from '@/engine/actions';
 import {
@@ -58,6 +59,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import {
   changeCanvasTypeAction,
+  changeDatabaseAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -109,6 +111,11 @@ const iconOf = async ({ icon }: Action) => {
   return name;
 };
 
+/** An editor measured this wide, which decides where an unset options panel stands. */
+const measureEditor = (width: number) => {
+  app.store.dispatchSync(changeViewportAction({ width, height: 800 }));
+};
+
 const visibleNames = () =>
   names(scope().filter(action => action.filter?.(app) ?? true));
 
@@ -126,6 +133,7 @@ const ERD_TOOLBOX = [
   'One Only',
   'One N',
   'Auto Layout',
+  'Export: Schema SQL',
   'Find and Replace',
 ];
 
@@ -383,13 +391,22 @@ describe('createScopeActions', () => {
     expect(visibleNames()).toEqual(ERD_TOOLBOX);
   });
 
-  it('keeps only Database and Bracket in the schema SQL canvas', () => {
+  it('keeps Database, Bracket and the Schema SQL options in the schema SQL canvas', () => {
     setCanvasType(CanvasType.schemaSQL);
     const visible = names(
       scope().filter(action => action.filter?.(app) ?? true)
     );
 
-    expect(visible).toEqual(['Tab', 'Database', 'Bracket', 'Find and Replace']);
+    expect(visible).toEqual([
+      'Tab',
+      'Database',
+      'Bracket',
+      'Schema SQL: Statements',
+      'Schema SQL: Header',
+      'Schema SQL: Options panel',
+      'Export: Schema SQL',
+      'Find and Replace',
+    ]);
   });
 
   it('keeps only the code generator options in the generator code canvas', () => {
@@ -400,6 +417,7 @@ describe('createScopeActions', () => {
 
     expect(visible).toEqual([
       'Tab',
+      'Export: Schema SQL',
       'Language',
       'Table Name Case',
       'Column Name Case',
@@ -415,7 +433,7 @@ describe('createScopeActions', () => {
       setCanvasType(canvasType);
       expect(
         names(scope().filter(action => action.filter?.(app) ?? true))
-      ).toEqual(['Tab', 'Find and Replace', 'users']);
+      ).toEqual(['Tab', 'Export: Schema SQL', 'Find and Replace', 'users']);
     }
   });
 
@@ -621,7 +639,7 @@ describe('createScopeActions / Import and Export', () => {
     expect(parsed.doc.tableIds).toHaveLength(1);
   });
 
-  it('exports the generated schema sql', async () => {
+  it('opens the Schema SQL tab from Export, its options out, rather than saving a file', async () => {
     const calls: ExportCall[] = [];
     setExportFileCallback((blob, options) =>
       calls.push({ blob, fileName: options.fileName })
@@ -629,10 +647,12 @@ describe('createScopeActions / Import and Export', () => {
     addTable('users');
 
     find(find(scope(), 'Export').next ?? [], 'Schema SQL').perform?.(app);
+    await flush();
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0].fileName).toMatch(/\.sql$/);
-    expect(await calls[0].blob.text()).toContain('users');
+    expect(calls).toEqual([]);
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.schemaSQL);
+    expect(schemaSQLViewOf(app).panel).toBe('open');
+    expect(schemaSQLViewOf(app).focusSave).toBe(true);
   });
 
   it('lists Image last under Export, which opens the export image dialog', () => {
@@ -770,6 +790,133 @@ describe('createScopeActions / Bracket', () => {
     await flush();
 
     expect(app.store.state.settings.bracketType).toBe(target!.value);
+  });
+});
+
+describe('createScopeActions / Schema SQL options', () => {
+  beforeEach(() => {
+    setCanvasType(CanvasType.schemaSQL);
+  });
+
+  const SCHEMA_SQL_ROWS = [
+    'Schema SQL: Statements',
+    'Schema SQL: Header',
+    'Schema SQL: Options panel',
+  ];
+
+  it('offers the statements, the header and the panel on the Schema SQL tab alone, the export on every tab', () => {
+    for (const canvasType of [
+      CanvasType.ERD,
+      CanvasType.visualization,
+      CanvasType.generatorCode,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      const visible = visibleNames();
+      expect(visible.filter(name => SCHEMA_SQL_ROWS.includes(name))).toEqual(
+        []
+      );
+      expect(visible).toContain('Export: Schema SQL');
+    }
+  });
+
+  it('draws each row with its icon', async () => {
+    const actions = scope();
+
+    expect(await iconOf(find(actions, 'Schema SQL: Statements'))).toBe(
+      'settings-2'
+    );
+    expect(await iconOf(find(actions, 'Schema SQL: Header'))).toBe(
+      'settings-2'
+    );
+    expect(await iconOf(find(actions, 'Schema SQL: Options panel'))).toBe(
+      'panel-right'
+    );
+    expect(await iconOf(find(actions, 'Export: Schema SQL'))).toBe(
+      'file-output'
+    );
+  });
+
+  it('finds the rows by their keywords', () => {
+    expect(
+      pairs(
+        scope()
+          .filter(row => row.name.includes(':'))
+          .slice(0, 4)
+      )
+    ).toEqual([
+      ['Schema SQL: Statements', 'create if not exists drop replace'],
+      ['Schema SQL: Header', 'use database search_path'],
+      ['Schema SQL: Options panel', 'show hide before after scripts'],
+      ['Export: Schema SQL', 'sql ddl file'],
+    ]);
+    expect(names(searchActions(scope(), 'search_path'))).toContain(
+      'Schema SQL: Header'
+    );
+  });
+
+  it("lists only the statements the database writes, the one it writes for the window's pick checked", async () => {
+    const rows = () => find(scope(), 'Schema SQL: Statements').next ?? [];
+
+    expect(names(rows())).toEqual([
+      'Create',
+      'If not exists',
+      'Drop & re-create',
+    ]);
+    expect(names(rows().filter(row => row.checked))).toEqual(['If not exists']);
+
+    app.store.dispatchSync(changeDatabaseAction({ value: Database.Oracle }));
+    expect(names(rows())).toEqual(['Create', 'Drop & re-create']);
+    expect(names(rows().filter(row => row.checked))).toEqual(['Create']);
+
+    find(rows(), 'Drop & re-create').perform?.(app);
+    expect(schemaSQLViewOf(app).statements).toBe('recreate');
+  });
+
+  it("lists None and the headers the database writes, None in the reader's language", async () => {
+    const rows = (i18n = sourceI18n) =>
+      find(createScopeActions(app, i18n), i18n.t('palette.schemaSqlHeader'))
+        .next ?? [];
+
+    app.store.dispatchSync(
+      changeDatabaseAction({ value: Database.PostgreSQL })
+    );
+    expect(names(rows())).toEqual(['None', 'CREATE + USE']);
+    expect(names(rows().filter(row => row.checked))).toEqual(['CREATE + USE']);
+
+    const pseudo = createI18n('de-DE', pseudoMessages('de'));
+    expect(names(rows(pseudo))).toEqual(['de:None', 'CREATE + USE']);
+
+    find(rows(), 'None').perform?.(app);
+    expect(schemaSQLViewOf(app).header).toBe('none');
+  });
+
+  it('folds the options panel away and opens it again', () => {
+    measureEditor(1280);
+    const panel = find(scope(), 'Schema SQL: Options panel');
+
+    panel.perform?.(app);
+    expect(schemaSQLViewOf(app).panel).toBe('closed');
+
+    panel.perform?.(app);
+    expect(schemaSQLViewOf(app).panel).toBe('open');
+  });
+
+  it('opens the Schema SQL tab from any tab with its options out, saving nothing', async () => {
+    const calls: ExportCall[] = [];
+    setExportFileCallback((blob, options) =>
+      calls.push({ blob, fileName: options.fileName })
+    );
+    setCanvasType(CanvasType.settings);
+    schemaSQLViewOf(app).panel = 'closed';
+
+    find(scope(), 'Export: Schema SQL').perform?.(app);
+    await flush();
+
+    expect(calls).toEqual([]);
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.schemaSQL);
+    expect(schemaSQLViewOf(app).panel).toBe('open');
+    expect(schemaSQLViewOf(app).focusSave).toBe(true);
   });
 });
 
@@ -1045,7 +1192,12 @@ describe('createScopeActions / no focus actions', () => {
     enterFlow();
 
     const visible = scope().filter(action => action.filter?.(app) ?? true);
-    expect(names(visible)).toEqual(['Tab', 'Find and Replace', 'users']);
+    expect(names(visible)).toEqual([
+      'Tab',
+      'Export: Schema SQL',
+      'Find and Replace',
+      'users',
+    ]);
     expect(find(visible, 'users').keywords).toBe('Table');
   });
 });
@@ -1298,7 +1450,7 @@ describe('createScopeActions / translated', () => {
 
     const translated = ids(pseudo);
 
-    expect(translated).toHaveLength(12);
+    expect(translated).toHaveLength(14);
     expect(translated.every(Boolean)).toBe(true);
     expect(new Set(translated).size).toBe(translated.length);
     expect(ids(sourceI18n)).toEqual(translated);

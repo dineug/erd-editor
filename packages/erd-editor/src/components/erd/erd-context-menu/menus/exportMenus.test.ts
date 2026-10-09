@@ -14,6 +14,8 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { createExportMenus } from '@/components/erd/erd-context-menu/menus/exportMenus';
+import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
+import { CanvasType } from '@/constants/schema';
 import { changeDatabaseNameAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { sourceI18n } from '@/i18n/source';
@@ -84,19 +86,23 @@ describe('exportMenus', () => {
     expect(exported[0].fileName).toMatch(/^unnamed-.*\.erd\.json$/);
   });
 
-  it('exports the schema sql', async () => {
+  it('opens the Schema SQL tab with its options out, Save file asked for, and writes no file', async () => {
     app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
     app.store.dispatchSync(
       addTableAction({ id: 'table-1', ui: { x: 0, y: 0, zIndex: 1 } })
     );
     await flush();
     const onClose = vi.fn();
+    schemaSQLViewOf(app).panel = 'closed';
 
     createExportMenus(app, onClose, sourceI18n)[1].onClick();
+    await flush();
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(exported).toHaveLength(1);
-    expect(exported[0].fileName).toMatch(/^shop-.*\.sql$/);
+    expect(exported).toEqual([]);
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.schemaSQL);
+    expect(schemaSQLViewOf(app).panel).toBe('open');
+    expect(schemaSQLViewOf(app).focusSave).toBe(true);
   });
 
   it('closes the menu and opens the export image dialog instead of writing a file', () => {

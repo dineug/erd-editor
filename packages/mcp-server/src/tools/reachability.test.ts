@@ -29,8 +29,8 @@ const declared = () => sorted(actionTools.flatMap(tool => tool.actionTypes));
 
 describe('every change type is reachable or excluded with a reason', () => {
   it('counts the change types the engine lists', () => {
-    expect(ChangeActionTypes).toHaveLength(59);
-    expect(new Set(ChangeActionTypes).size).toBe(59);
+    expect(ChangeActionTypes).toHaveLength(60);
+    expect(new Set(ChangeActionTypes).size).toBe(60);
     expect(NOT_EMITTED).toHaveLength(18);
     expect(NO_DEDICATED_TOOL).toEqual(['editor.clear']);
   });
@@ -46,7 +46,7 @@ describe('every change type is reachable or excluded with a reason', () => {
       type => !NOT_EMITTED.includes(type)
     );
 
-    expect(reachable).toHaveLength(41);
+    expect(reachable).toHaveLength(42);
     expect(PENDING_COVERAGE).toEqual([]);
     expect(declared()).toEqual(sorted(reachable));
   });

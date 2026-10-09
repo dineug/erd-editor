@@ -93,8 +93,20 @@ with its position and its size on the canvas (the width approximate, the height 
 relationships and indexes, then the memos, and reads columns and other details with `erd_get`, then
 passes those ids to the edit tools. `erd_read` answers the whole document at once: the
 `snapshot` format lists every entity with its id, the `sql` format generates DDL for any of the
-eight supported databases and the `json` format is the raw file. Editing the JSON file by hand is
-not supported.
+eight supported databases and the `json` format is the raw file. Its `scripts` format answers the
+document's before and after scripts alone, however large the schema. Editing the JSON file by hand
+is not supported.
+
+The `sql` format writes plain `CREATE TABLE` statements and no header by default. Its
+`statements` argument asks for `ifNotExists` (`CREATE TABLE IF NOT EXISTS` on MySQL, MariaDB,
+PostgreSQL, SQLite and Databricks) or `recreate` (the tables dropped first, `CREATE OR REPLACE
+TABLE` on Snowflake), and its `header` for `use`, which selects the database or schema the
+document's database name gives, or `createAndUse`, which creates it first. As the options of the
+editor's Schema SQL tab do, `ifNotExists` writes plain `CREATE TABLE` on the other databases,
+`createAndUse` writes `use` on Oracle, which has `use` alone, `use` writes no header on PostgreSQL,
+which has `createAndUse` alone, and SQLite writes no header; no database writes one while the name
+is empty or not a plain identifier. The DDL of the whole document carries the document's before
+and after scripts; the DDL of some tables carries none.
 
 Schemas of hundreds or thousands of tables work too. A read answers at most 40,000 characters,
 under the point where Claude Code sets a tool result aside in a file. `erd_list` answers a page of
@@ -114,7 +126,7 @@ refused with how to narrow it.
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
 | Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
-| Settings | `erd_set_database`, `erd_set_database_name` |
+| Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_ddl_script` |
 | Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |
 | Batch | `erd_batch` |
 
@@ -141,8 +153,17 @@ shows, the code generation language, the name cases, the bracket type and the lo
 in the file are yours to set in the editor; `erd_list` and `erd_read` read them as the file saves
 them.
 
-Every edit tool takes the document `path`. The two settings tools and `erd_resize_memo` make no
-undo entry in the editor, so `erd_undo` passes over them and the result says so.
+`erd_set_ddl_script` sets the SQL the document keeps before and after the tables of its Schema SQL,
+such as `CREATE EXTENSION` ahead of them or `GRANT` past them, written as is for every database, up
+to 10,000 characters a call; a call replaces the whole script, an empty string removes one, and
+`erd_undo` reverts it. The `erd_read` `scripts` format gives both scripts alone, however large the
+schema, its snapshot gives them too, and its `sql` format writes them in place. An ERD Editor
+extension or plugin released before scripts neither shows nor keeps them when it serves the
+document, so update it.
+
+Every edit tool takes the document `path`. `erd_set_database`, `erd_set_database_name` and
+`erd_resize_memo` make no undo entry in the editor, so `erd_undo` passes over them and the result
+says so.
 
 The edit tools, `erd_batch` and the read tools (`erd_list`, `erd_get`, `erd_read`) refuse an
 argument they do not declare, or one of the wrong type, with a JSON-RPC invalid params error

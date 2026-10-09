@@ -27,6 +27,8 @@ import {
   MINIMAP_SIZE,
   RELATIONSHIP_HIT_STROKE_WIDTH,
   RELATIONSHIP_STROKE_WIDTH,
+  SCHEMA_SQL_PANEL_COLLAPSE_BELOW,
+  SCHEMA_SQL_PANEL_WIDTH,
   START_ADD,
   START_X,
   START_Y,
@@ -215,6 +217,13 @@ describe('layout constants', () => {
     expect(DIFF_TREE_WIDTH).toBe(200);
   });
 
+  it('gives the Schema SQL options panel 300 px and folds it away in an editor under 640 px', () => {
+    expect(SCHEMA_SQL_PANEL_WIDTH).toBe(300);
+    expect(SCHEMA_SQL_PANEL_COLLAPSE_BELOW).toBe(640);
+    // What an open panel leaves the code at the narrowest editor it opens in.
+    expect(SCHEMA_SQL_PANEL_COLLAPSE_BELOW - SCHEMA_SQL_PANEL_WIDTH).toBe(340);
+  });
+
   it('draws the connector thinner than the band that catches the pointer', () => {
     expect(RELATIONSHIP_STROKE_WIDTH).toBe(2);
     expect(RELATIONSHIP_HIT_STROKE_WIDTH).toBe(8);
@@ -276,6 +285,8 @@ describe('layout constants', () => {
       MINIMAP_MARGIN,
       TOOLBAR_HEIGHT,
       DIFF_TREE_WIDTH,
+      SCHEMA_SQL_PANEL_WIDTH,
+      SCHEMA_SQL_PANEL_COLLAPSE_BELOW,
       RELATIONSHIP_STROKE_WIDTH,
       RELATIONSHIP_HIT_STROKE_WIDTH,
     ];

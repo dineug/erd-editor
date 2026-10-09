@@ -16,7 +16,15 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
   { name: 'erd_open_document', args: ['path', 'create'] },
   {
     name: 'erd_read',
-    args: ['path', 'format', 'vendor', 'tableIds', 'tableNames'],
+    args: [
+      'path',
+      'format',
+      'vendor',
+      'statements',
+      'header',
+      'tableIds',
+      'tableNames',
+    ],
   },
   {
     name: 'erd_list',
@@ -237,6 +245,101 @@ describe('the words on an import', () => {
     );
     expect(describeArg('erd_import_json', 'mode')).toContain(
       'its settings included'
+    );
+  });
+});
+
+describe('the words on a Schema SQL script', () => {
+  const text = describeTool('erd_set_ddl_script');
+
+  it('say where each script goes, that it goes in as is, and how to remove it', () => {
+    expect(text).toContain('before, written ahead of the tables');
+    expect(text).toContain('after, written past the generated DDL');
+    expect(text).toContain(
+      'The text goes as is into the DDL of every database'
+    );
+    expect(text).toContain(
+      'SQL Server output gets GO after a script that does not end with GO'
+    );
+    expect(text).toContain('An empty string removes it.');
+    expect(describeArg('erd_set_ddl_script', 'sql')).toContain(
+      'an empty string removes it'
+    );
+  });
+
+  it('give the longest script a call takes', () => {
+    expect(describeArg('erd_set_ddl_script', 'sql')).toContain(
+      'at most 10,000 characters'
+    );
+    expect(describeArg('erd_set_ddl_script', 'position')).toBe(
+      'before or after the generated tables.'
+    );
+  });
+
+  it('say a call replaces the whole script, so the agent reads the current one first', () => {
+    expect(text).toContain(
+      'or after, written past the generated DDL, such as GRANT or CREATE VIEW. It replaces the whole script, so read the current one first with erd_read format scripts. The text goes'
+    );
+  });
+
+  it('say erd_read sql shows the script where it goes', () => {
+    expect(text).toContain(
+      'An empty string removes it. erd_read sql shows it in place. An ERD Editor'
+    );
+  });
+
+  it('say an editor released before the scripts loses them, so the user updates it, naming no release', () => {
+    expect(text).toContain(
+      'An ERD Editor extension or plugin released before scripts neither shows nor keeps them, so the user should update it.'
+    );
+    expect(text).not.toMatch(/\d+\.\d+/);
+  });
+});
+
+describe('the words on how erd_read writes the DDL', () => {
+  it('say the whole document’s DDL carries its scripts', () => {
+    expect(describeTool('erd_read')).toContain(
+      "The sql format of the whole document includes the document's before and after scripts."
+    );
+  });
+
+  it('name the scripts format, which answers the scripts alone whatever the schema', () => {
+    expect(describeTool('erd_read')).toContain(
+      'as its raw JSON or, with the scripts format, its before and after scripts alone.'
+    );
+    expect(describeArg('erd_read', 'format')).toMatch(
+      /^snapshot: .+ sql: .+ json: .+ scripts: just the document's before and after scripts, as JSON \{ before, after \}, each empty when unset, whatever the size of the schema\.$/
+    );
+  });
+
+  it('name each statements value, where IF NOT EXISTS is written and what recreate does', () => {
+    const text = describeArg('erd_read', 'statements');
+
+    expect(text).toMatch(
+      /^For the sql format: create \(default\), ifNotExists/
+    );
+    expect(text).toContain(
+      'CREATE TABLE IF NOT EXISTS on MySQL, MariaDB, PostgreSQL, SQLite and Databricks and falls back to create elsewhere'
+    );
+    expect(text).toContain('recreate, which drops the tables first');
+    expect(text).toContain('(Snowflake writes CREATE OR REPLACE TABLE)');
+  });
+
+  it('name each header value, what each database short of one writes and when none is written', () => {
+    const text = describeArg('erd_read', 'header');
+
+    expect(text).toMatch(/^For the sql format: none \(default\), use/);
+    expect(text).toContain('createAndUse, which creates it first');
+    expect(text).toContain(
+      'Oracle has use alone, so createAndUse writes use there'
+    );
+    expect(text).toContain(
+      'PostgreSQL has createAndUse alone, so use writes no header there'
+    );
+    expect(text).toContain('SQLite has neither and writes none');
+    expect(text).not.toMatch(/falls back to what/);
+    expect(text).toContain(
+      'No header is written while the database name is empty or not a plain identifier'
     );
   });
 });

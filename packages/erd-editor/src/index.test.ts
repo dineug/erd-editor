@@ -8,7 +8,7 @@ import {
 } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
-import type { LocaleCode, LocaleOption } from '@/index';
+import type { LocaleCode, LocaleOption, SchemaSQLOptions } from '@/index';
 import * as index from '@/index';
 import { exportJSON } from '@/utils/file/exportFile';
 import { importJSON } from '@/utils/file/importFile';
@@ -86,6 +86,19 @@ describe('@dineug/erd-editor entry point', () => {
     expectTypeOf<'ko'>().not.toExtend<LocaleCode>();
     expect(editor.setLocale).toBeTypeOf('function');
     expect(editor.setSystemLocale).toBeTypeOf('function');
+  });
+
+  it('types getSchemaSQL’s options as SchemaSQLOptions, the statements and the header', () => {
+    const editor = document.createElement('erd-editor');
+
+    expectTypeOf(editor.getSchemaSQL)
+      .parameter(1)
+      .toEqualTypeOf<SchemaSQLOptions | undefined>();
+    expectTypeOf<SchemaSQLOptions>().toEqualTypeOf<{
+      statements?: 'create' | 'ifNotExists' | 'recreate';
+      header?: 'none' | 'use' | 'createAndUse';
+    }>();
+    expect(editor.getSchemaSQL).toBeTypeOf('function');
   });
 
   it('exports the default key bindings, a fresh map on every call', () => {

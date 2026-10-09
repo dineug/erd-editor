@@ -144,6 +144,26 @@ describe('ChangeActionTypes', () => {
     ]);
   });
 
+  it('counts sixty change types, the Schema SQL scripts among them', () => {
+    expect(ChangeActionTypes).toHaveLength(60);
+    expect(ChangeActionTypes).toContain('settings.changeDDLScript');
+  });
+
+  it('carries a script edit to the replica, the peers and the history, and lets no readonly host or view make one', () => {
+    expect(ReplicaChangeActionTypes).toContain('settings.changeDDLScript');
+    expect(ReplicaActionTypes).toContain('settings.changeDDLScript');
+    expect(SharedActionTypes).toContain('settings.changeDDLScript');
+    expect(HistoryActionTypes).toContain('settings.changeDDLScript');
+    expect(ReadonlyIgnoreActionTypes).toContain('settings.changeDDLScript');
+    expect(ViewIgnoreActionTypes).toContain('settings.changeDDLScript');
+    expect(LockSettingActionTypes).not.toHaveProperty(
+      'settings.changeDDLScript'
+    );
+    expect(SharedFollowingActionTypes).not.toContain(
+      'settings.changeDDLScript'
+    );
+  });
+
   it('excludes purely local editor UI actions', () => {
     expect(ChangeActionTypes).not.toContain('editor.select');
     expect(ChangeActionTypes).not.toContain('editor.changeViewport');

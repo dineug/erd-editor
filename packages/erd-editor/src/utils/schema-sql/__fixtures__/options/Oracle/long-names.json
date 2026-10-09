@@ -1,0 +1,12 @@
+{
+  "doc": {
+    "memberName": "member_notification_settings"
+  },
+  "over30Bytes": [
+    "PK_member_notification_settings",
+    "UQ_member_notification_settings_email",
+    "SEQ_member_notification_settings",
+    "SEQ_TRG_member_notification_settings",
+    "FK_member_notification_settings_TO_post"
+  ]
+}

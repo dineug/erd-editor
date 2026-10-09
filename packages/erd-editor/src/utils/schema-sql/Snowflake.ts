@@ -1,12 +1,19 @@
 import { query } from '@dineug/erd-editor-schema';
 import { uuid25 } from '@dineug/uuid';
 
-import { ColumnOption, Database } from '@/constants/schema';
+import {
+  ColumnOption,
+  Database,
+  ReferentialActionToSQL,
+} from '@/constants/schema';
 import { RootState } from '@/engine/state';
+import { Relationship } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoName,
+  CreateSchemaOptions,
   FormatColumnOptions,
   FormatIndexOptions,
   formatNames,
@@ -36,7 +43,8 @@ const toBracket = (bracketType: number) =>
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { statements, written }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -44,17 +52,18 @@ export function createSchema(
   const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
-    formatTable(state, { table, buffer: stringBuffer });
+    written?.tables.push(table);
+    formatTable(state, { table, buffer: stringBuffer, statements });
     stringBuffer.push('');
   });
 
   relationships.forEach(relationship => {
-    const written = formatRelation(state, {
+    const wrote = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
     });
-    if (written) stringBuffer.push('');
+    if (wrote) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -71,7 +80,7 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table }: FormatTableOptions
+  { buffer, table, statements }: FormatTableOptions
 ) {
   const {
     collections,
@@ -81,8 +90,13 @@ export function formatTable(
   const columns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
+  // Snowflake replaces a table in one statement, so recreate needs no DROP.
+  const create =
+    statements === SchemaSQLStatements.recreate
+      ? 'CREATE OR REPLACE TABLE'
+      : 'CREATE TABLE';
 
-  buffer.push(`CREATE TABLE ${bracket}${table.name}${bracket}`);
+  buffer.push(`${create} ${bracket}${table.name}${bracket}`);
   buffer.push(`(`);
   const pk = primaryKey(columns);
   const spaceSize = formatSize(columns);
@@ -168,6 +182,12 @@ function formatRelation(
 
   const { startTable, endTable } = columns;
   const bracket = toBracket(bracketType);
+  const leftOut = leftOutActions(relationship);
+  if (leftOut.length !== 0) {
+    buffer.push(
+      `-- Snowflake creates no foreign key with a referential action other than NO ACTION, so ${leftOut.join(' and ')} ${leftOut.length === 1 ? 'is' : 'are'} left out.`
+    );
+  }
   buffer.push(`ALTER TABLE ${bracket}${endTable.name}${bracket}`);
 
   let fkName = `FK_${startTable.name}_TO_${endTable.name}`;
@@ -191,6 +211,30 @@ function formatRelation(
   );
   buffer[buffer.length - 1] += ';';
   return true;
+}
+
+// The clauses a relationship sets that the DDL leaves out, ON DELETE first,
+// for the comment above its foreign key.
+function leftOutActions({
+  onDelete,
+  onUpdate,
+}: Pick<Relationship, 'onDelete' | 'onUpdate'>): string[] {
+  const clauses: string[] = [];
+
+  if (
+    ReferentialActionToSQL[onDelete] &&
+    !ACTION_SUPPORT.onDelete.includes(onDelete)
+  ) {
+    clauses.push(`ON DELETE ${ReferentialActionToSQL[onDelete]}`);
+  }
+  if (
+    ReferentialActionToSQL[onUpdate] &&
+    !ACTION_SUPPORT.onUpdate.includes(onUpdate)
+  ) {
+    clauses.push(`ON UPDATE ${ReferentialActionToSQL[onUpdate]}`);
+  }
+
+  return clauses;
 }
 
 export function formatIndex(
@@ -265,4 +309,24 @@ export function formatIndex(
       bracket
     )});`
   );
+}
+
+/** USE SCHEMA, after CREATE SCHEMA IF NOT EXISTS for createAndUse. */
+export function formatHeader(
+  { settings: { bracketType } }: RootState,
+  header: Exclude<SchemaSQLHeader, 'none'>,
+  name: string
+): string {
+  const bracket = toBracket(bracketType);
+  const schema = `${bracket}${name}${bracket}`;
+  const use = `USE SCHEMA ${schema};`;
+
+  return header === SchemaSQLHeader.createAndUse
+    ? `CREATE SCHEMA IF NOT EXISTS ${schema};\n${use}`
+    : use;
+}
+
+/** Nothing: recreate writes CREATE OR REPLACE TABLE instead. */
+export function formatDropBlock(): string {
+  return '';
 }

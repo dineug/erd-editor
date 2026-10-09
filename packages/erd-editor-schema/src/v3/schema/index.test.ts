@@ -25,6 +25,8 @@ import {
   ColumnTypeList,
   Database,
   DatabaseList,
+  DDLScriptPosition,
+  DDLScriptPositionList,
   Language,
   LanguageList,
   LockSettingFields,
@@ -56,6 +58,8 @@ describe('v3/schema/index', () => {
           'ColumnUIKey',
           'Database',
           'DatabaseList',
+          'DDLScriptPosition',
+          'DDLScriptPositionList',
           'Direction',
           'DirectionList',
           'Language',
@@ -115,6 +119,21 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants.LockSettingType).toBe(LockSettingType);
       expect(SchemaV3Constants.LockSettingTypeList).toBe(LockSettingTypeList);
       expect(SchemaV3Constants.LockSettingFields).toBe(LockSettingFields);
+      expect(SchemaV3Constants.DDLScriptPosition).toBe(DDLScriptPosition);
+      expect(SchemaV3Constants.DDLScriptPositionList).toBe(
+        DDLScriptPositionList
+      );
+    });
+
+    it('names the two script positions by themselves', () => {
+      expect(SchemaV3Constants.DDLScriptPosition).toEqual({
+        before: 'before',
+        after: 'after',
+      });
+      expect(SchemaV3Constants.DDLScriptPositionList).toEqual([
+        'before',
+        'after',
+      ]);
     });
 
     it('carries the canvas boundary scalars by value', () => {
@@ -130,7 +149,7 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants).not.toHaveProperty('Doc');
       expect(SchemaV3Constants).not.toHaveProperty('Table');
       expect(SchemaV3Constants).not.toHaveProperty('Memo');
-      expect(Object.keys(SchemaV3Constants)).toHaveLength(33);
+      expect(Object.keys(SchemaV3Constants)).toHaveLength(35);
     });
   });
 
@@ -171,6 +190,7 @@ describe('v3/schema/index', () => {
             columnNameCase: NameCase.camelCase,
             bracketType: BracketType.doubleQuote,
           },
+          ddlScripts: { before: '', after: '' },
         },
         doc: {
           tableIds: ['table-1'],

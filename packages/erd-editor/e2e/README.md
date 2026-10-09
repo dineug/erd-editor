@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-44 spec files. Ten of the groups exist because the DOM scene got their subject
+45 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -206,6 +206,18 @@ not for a pinch whose first finger lands on a table, which draws to that table
 as a tap there does and still zooms. `shared-presence.spec.ts` sends a mapping
 made in the dialog and one edited from the menu to a wired peer, and closes the
 dialog with a toast once the peer removes its relationship.
+
+`schema-sql-options.spec.ts` holds down the Schema SQL tab's options panel: on
+a wide editor it opens beside the code, which checks first and creates the
+database; Drop & re-create names the tables it drops and survives a trip to
+another tab but not a reload; a database lacking If not exists dims it, a press
+on it does nothing and the pick comes back with MySQL; a Before tables script
+reaches the document as the field loses the focus and the ERD tab's Undo takes
+it back; under 640 px the panel starts folded behind Show options and stays
+open once shown; Export ▸ Schema SQL from the canvas menu saves nothing, opens
+the tab with Save file focused and a press saves `shop-<time>.sql`; the code's
+menu has six rows and the palette four; a readonly editor's scripts take no
+typing while its Statements still change.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

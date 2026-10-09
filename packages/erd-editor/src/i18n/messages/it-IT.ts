@@ -99,6 +99,35 @@ export const itIT = {
   'visualization.showMode.allFields': 'Tutti i campi',
   'code.label': 'Codice',
   'code.copy': 'Copia',
+  'schemaSql.savedInDocument': 'Salvato nel documento',
+  'schemaSql.thisWindowOnly': 'Solo questa finestra',
+  'schemaSql.statements': 'Istruzioni',
+  'schemaSql.header': 'Intestazione',
+  'schemaSql.notInDatabase': 'Non disponibile in {database}',
+  'schemaSql.dropWarning':
+    'Elimina {tables} prima di crearle. Le loro righe vanno perse.',
+  'schemaSql.replaceWarning':
+    'Sostituisce {tables}. Le loro righe vanno perse.',
+  'schemaSql.moreTables': {
+    one: '{count} altra tabella',
+    many: '{count} altre tabelle',
+    other: '{count} altre tabelle',
+  },
+  'schemaSql.headerInvalidName':
+    'Il nome del database "{name}" non è un identificatore valido.',
+  'schemaSql.oracleLongNames': 'Oracle 12.2+ per nomi oltre 30 byte: {names}',
+  'schemaSql.scriptsCaption':
+    'Salvato nel documento · scritto così com’è per ogni database',
+  'schemaSql.beforeTables': 'Prima delle tabelle',
+  'schemaSql.afterTables': 'Dopo le tabelle',
+  'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, dati iniziali …',
+  'schemaSql.mssqlGoHint':
+    'MSSQL aggiunge GO dopo uno script che non termina con GO.',
+  'schemaSql.saveFile': 'Salva file',
+  'schemaSql.saveFileMenu': 'Salva file…',
+  'schemaSql.optionsPanel': 'Pannello opzioni',
+  'schemaSql.hideOptions': 'Nascondi opzioni',
+  'schemaSql.showOptions': 'Mostra opzioni',
   'findReplace.matchCase': 'Maiuscole/minuscole',
   'findReplace.wholeWord': 'Parola intera',
   'findReplace.regex': 'Usa espressione regolare',
@@ -229,6 +258,15 @@ export const itIT = {
   'palette.keywords.aml': 'aml azimutt linguaggio markup schema',
   'palette.keywords.image': 'immagine png svg vettoriale figura appunti',
   'palette.keywords.findReplace': 'trova sostituisci rinomina',
+  'palette.schemaSqlStatements': 'Schema SQL: Istruzioni',
+  'palette.schemaSqlHeader': 'Schema SQL: Intestazione',
+  'palette.schemaSqlOptionsPanel': 'Schema SQL: Pannello opzioni',
+  'palette.exportSchemaSql': 'Esporta: Schema SQL',
+  'palette.keywords.schemaSqlStatements':
+    'crea se non esiste elimina sostituisci',
+  'palette.keywords.schemaSqlHeader': 'use database search_path',
+  'palette.keywords.schemaSqlOptionsPanel': 'mostra nascondi prima dopo script',
+  'palette.keywords.exportSchemaSql': 'sql ddl file',
   'settings.preferences': 'Preferenze',
   'settings.relationshipDataTypeSync':
     'Sincronizzazione tipo di dati nelle relazioni',

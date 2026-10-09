@@ -64,6 +64,7 @@ import {
   changeColumnOrderAction,
   changeDatabaseAction,
   changeDatabaseNameAction,
+  changeDDLScriptAction,
   changeLanguageAction,
   changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
@@ -577,6 +578,13 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
   setLockSettings: () =>
     edit('setLockSettings', [
       changeLockSettingsAction$(LockSettingType.language, false),
+    ]),
+  setDDLScript: () =>
+    edit('setDDLScript', [
+      changeDDLScriptAction({
+        position: 'before',
+        value: 'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
+      }),
     ]),
 
   importSql: () =>

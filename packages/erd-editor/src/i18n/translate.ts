@@ -78,6 +78,11 @@ const FIRST_STRONG_ISOLATE = '\u2068';
 
 const POP_DIRECTIONAL_ISOLATE = '\u2069';
 
+/** A text wrapped in FSI and PDI, which keeps its own direction inside a sentence. */
+export function isolate(value: string): string {
+  return `${FIRST_STRONG_ISOLATE}${value}${POP_DIRECTIONAL_ISOLATE}`;
+}
+
 /**
  * Writes each named value into its placeholder, leaving a name it is not given
  * as typed. An isolated value is wrapped in FSI and PDI, so a name or a number
@@ -86,7 +91,7 @@ const POP_DIRECTIONAL_ISOLATE = '\u2069';
 export function formatMessage(
   template: string,
   params?: MessageValues,
-  isolate = false
+  isolated = false
 ): string {
   if (!params) return template;
 
@@ -96,9 +101,7 @@ export function formatMessage(
     }
 
     const value = String(params[name]);
-    return isolate
-      ? `${FIRST_STRONG_ISOLATE}${value}${POP_DIRECTIONAL_ISOLATE}`
-      : value;
+    return isolated ? isolate(value) : value;
   });
 }
 

@@ -1,3 +1,7 @@
+import {
+  SchemaSQLHeaderList,
+  SchemaSQLStatementsList,
+} from '@dineug/erd-editor/peer.js';
 import { Cause, Context, Effect, Schema } from 'effect';
 import { McpSchema, McpServer } from 'effect/ai';
 
@@ -30,16 +34,25 @@ const stringsField = (tool: string, name: string) =>
     })
   );
 
+const literalsField = <const L extends ReadonlyArray<string>>(
+  tool: string,
+  name: string,
+  literals: L
+) =>
+  Schema.optionalKey(
+    Schema.Literals(literals).annotate({
+      description: describeArg(tool, name),
+    })
+  );
+
 export const ReadParams = Schema.Struct({
   path: pathField(READ_TOOL),
   format: Schema.Literals(READ_FORMATS).annotate({
     description: describeArg(READ_TOOL, 'format'),
   }),
-  vendor: Schema.optionalKey(
-    Schema.Literals(SQL_VENDORS).annotate({
-      description: describeArg(READ_TOOL, 'vendor'),
-    })
-  ),
+  vendor: literalsField(READ_TOOL, 'vendor', SQL_VENDORS),
+  statements: literalsField(READ_TOOL, 'statements', SchemaSQLStatementsList),
+  header: literalsField(READ_TOOL, 'header', SchemaSQLHeaderList),
   tableIds: stringsField(READ_TOOL, 'tableIds'),
   tableNames: stringsField(READ_TOOL, 'tableNames'),
 });
@@ -169,8 +182,15 @@ export const registerReadTools = Effect.gen(function* () {
   yield* addReadTool(
     READ_TOOL,
     ReadParams,
-    ({ format, vendor, tableIds, tableNames }) =>
-      Effect.succeed(documentReader(format, vendor, { tableIds, tableNames }))
+    ({ format, vendor, statements, header, tableIds, tableNames }) =>
+      Effect.succeed(
+        documentReader(
+          format,
+          vendor,
+          { tableIds, tableNames },
+          { statements, header }
+        )
+      )
   );
   yield* addReadTool(LIST_TOOL, ListParams, ({ path: _, ...options }) =>
     Effect.succeed(listReader(options))

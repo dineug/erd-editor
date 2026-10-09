@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * Joins over a real unix socket, or a named pipe on Windows, read by a TestPeer as the MCP server
  * reads them: a join's answer before the actions its window held back, a join after shutdown, and
- * a peer whose paths leave the lock's folders, which the hub closes and ends on its own (G16, S4).
+ * a peer whose paths leave the lock's folders, which the hub closes and ends on its own.
  */
 class JoinOverSocketTest {
     @get:Rule

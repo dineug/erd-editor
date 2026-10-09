@@ -99,6 +99,35 @@ export const euES = {
   'visualization.showMode.allFields': 'Eremu guztiak',
   'code.label': 'Kodea',
   'code.copy': 'Kopiatu',
+  'schemaSql.savedInDocument': 'Dokumentuan gordeta',
+  'schemaSql.thisWindowOnly': 'Leiho honetan soilik',
+  'schemaSql.statements': 'Sententziak',
+  'schemaSql.header': 'Goiburua',
+  'schemaSql.notInDatabase': 'Ez dago {database} datu-basean',
+  'schemaSql.dropWarning':
+    '{tables} ezabatzen ditu sortu aurretik. Haien errenkadak galdu egiten dira.',
+  'schemaSql.replaceWarning':
+    '{tables} ordezten ditu. Haien errenkadak galdu egiten dira.',
+  'schemaSql.moreTables': {
+    one: '{count} taula gehiago',
+    other: '{count} taula gehiago',
+  },
+  'schemaSql.headerInvalidName':
+    '"{name}" datu-basearen izena ez da identifikatzaile baliozkoa.',
+  'schemaSql.oracleLongNames':
+    'Oracle 12.2+ 30 byte baino luzeagoak diren izenetarako: {names}',
+  'schemaSql.scriptsCaption':
+    'Dokumentuan gordeta · datu-base guztietarako dagoen bezala idatzita',
+  'schemaSql.beforeTables': 'Taulen aurretik',
+  'schemaSql.afterTables': 'Taulen ondoren',
+  'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, hasierako datuak …',
+  'schemaSql.mssqlGoHint':
+    'MSSQL-k GO gehitzen du GO-rekin amaitzen ez den script baten ondoren.',
+  'schemaSql.saveFile': 'Gorde fitxategia',
+  'schemaSql.saveFileMenu': 'Gorde fitxategia…',
+  'schemaSql.optionsPanel': 'Aukeren panela',
+  'schemaSql.hideOptions': 'Ezkutatu aukerak',
+  'schemaSql.showOptions': 'Erakutsi aukerak',
   'findReplace.matchCase': 'Bereizi maiuskulak eta minuskulak',
   'findReplace.wholeWord': 'Hitz osoak soilik',
   'findReplace.regex': 'Erabili adierazpen erregularra',
@@ -223,6 +252,15 @@ export const euES = {
   'palette.keywords.aml': 'aml azimutt markatze-lengoaia eskema',
   'palette.keywords.image': 'irudia png svg bektorea argazkia arbela',
   'palette.keywords.findReplace': 'bilatu ordeztu izena aldatu',
+  'palette.schemaSqlStatements': 'SQL eskema: Sententziak',
+  'palette.schemaSqlHeader': 'SQL eskema: Goiburua',
+  'palette.schemaSqlOptionsPanel': 'SQL eskema: Aukeren panela',
+  'palette.exportSchemaSql': 'Esportatu: SQL eskema',
+  'palette.keywords.schemaSqlStatements': 'sortu ez badago ezabatu ordeztu',
+  'palette.keywords.schemaSqlHeader': 'use datu-basea search_path',
+  'palette.keywords.schemaSqlOptionsPanel':
+    'erakutsi ezkutatu aurretik ondoren scriptak',
+  'palette.keywords.exportSchemaSql': 'sql ddl fitxategia',
   'settings.preferences': 'Hobespenak',
   'settings.relationshipDataTypeSync': 'Erlazioen datu moten sinkronizazioa',
   'settings.maxCommentWidth': 'Iruzkinen gehienezko zabalera',

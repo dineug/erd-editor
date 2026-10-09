@@ -73,9 +73,9 @@ function withoutDerived(collections: any) {
 }
 
 /**
- * The part of a saved value an edit changes. The engine also saves view state
- * (zoom, scroll, canvas type) as a change, and none of that is an edit. The
- * value is always the replica's own, so every collection and ui is present.
+ * The part of a saved value an edit changes, the Schema SQL scripts in it. The
+ * engine also saves view state (zoom, scroll, canvas type) as a change, and
+ * none of that is an edit. The value is always the replica's own.
  */
 export function toFingerprint(value: string) {
   const { doc, collections, settings } = JSON.parse(value);
@@ -83,6 +83,7 @@ export function toFingerprint(value: string) {
     doc,
     collections: withoutDerived(collections),
     databaseName: settings.databaseName,
+    ddlScripts: settings.ddlScripts,
   });
 }
 

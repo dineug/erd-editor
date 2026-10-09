@@ -485,12 +485,13 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     }
   };
 
-  ctx.getSchemaSQL = databaseVendor => {
+  ctx.getSchemaSQL = (databaseVendor, options) => {
     const isDatabaseVendor = hasDatabaseVendor(databaseVendor ?? '');
     const database = isDatabaseVendor
       ? get(DatabaseVendorToDatabase, databaseVendor ?? '')
       : undefined;
-    return createSchemaSQL(store.state, database);
+    // createSchemaSQL reads only statements and header, an unknown value as left out.
+    return createSchemaSQL(store.state, database, undefined, options);
   };
 
   ctx.getSharedStore = config => {

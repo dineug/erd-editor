@@ -1,5 +1,6 @@
 import {
   createRef,
+  DOMTemplateLiterals,
   FC,
   innerHTML,
   nextTick,
@@ -29,6 +30,11 @@ export type CodeBlockProps = {
   lang: Lang;
   theme?: 'dark' | 'light';
   onCopy?: (value: string) => void;
+  /**
+   * Buttons after the copy button in the top corner, shown with or without a
+   * hover; --code-block-background there holds the colour the code sits on.
+   */
+  tools?: DOMTemplateLiterals | null;
 };
 
 const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
@@ -174,11 +180,20 @@ const CodeBlock: FC<CodeBlockProps> = (props, ctx) => {
           </div>
         </div>
         <div
-          class={styles.clipboard}
-          title={t('code.copy')}
-          on:click={handleCopy}
+          class={styles.tools}
+          style={{
+            '--code-block-background':
+              state.backgroundColor || 'var(--canvas-background)',
+          }}
         >
-          <Icon name="copy" useTransition={true} />
+          <div
+            class={styles.clipboard}
+            title={t('code.copy')}
+            on:click={handleCopy}
+          >
+            <Icon name="copy" useTransition={true} />
+          </div>
+          {props.tools ?? null}
         </div>
       </div>
     );

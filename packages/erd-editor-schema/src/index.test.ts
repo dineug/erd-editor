@@ -82,6 +82,11 @@ describe('public entry point', () => {
     expect(SchemaV3Constants.CanvasType.ERD).toBe('ERD');
     expect(SchemaV3Constants.LockSettingType.viewport).toBe(1);
     expect(SchemaV3Constants.CANVAS_ZOOM_MAX).toBe(1.5);
+    expect(SchemaV3Constants.DDLScriptPosition.before).toBe('before');
+    expect(SchemaV3Constants.DDLScriptPositionList).toEqual([
+      'before',
+      'after',
+    ]);
   });
 
   it('opens the zoom ceiling in v3 alone, leaving the v2 read path at 1', () => {

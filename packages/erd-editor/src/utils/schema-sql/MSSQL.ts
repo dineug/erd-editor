@@ -5,8 +5,10 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 
+import { SchemaSQLHeader } from './options';
 import {
   autoNameIgnoreCase,
+  CreateSchemaOptions,
   FormatColumnOptions,
   FormatCommentOptions,
   FormatIndexOptions,
@@ -31,6 +33,7 @@ import {
   unique,
   uniqueColumns,
   unquoteNamePart,
+  WrittenObjects,
 } from './utils';
 
 const ACTION_SUPPORT = referentialActionSupport(Database.MSSQL);
@@ -41,7 +44,8 @@ const DEFAULT_SCHEMA = 'dbo';
 
 export function createSchema(
   state: RootState,
-  tableIds?: readonly string[]
+  tableIds?: readonly string[],
+  { written }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -49,6 +53,7 @@ export function createSchema(
   const { tables, relationships, indexes } = toSchemaEntities(state, tableIds);
 
   tables.forEach(table => {
+    written?.tables.push(table);
     formatTable(state, { table, buffer: stringBuffer });
     stringBuffer.push('');
 
@@ -58,12 +63,12 @@ export function createSchema(
   });
 
   relationships.forEach(relationship => {
-    const written = formatRelation(state, {
+    const wrote = formatRelation(state, {
       relationship,
       buffer: stringBuffer,
       fkNames,
     });
-    if (written) stringBuffer.push('');
+    if (wrote) stringBuffer.push('');
   });
 
   indexes.forEach(index => {
@@ -185,6 +190,18 @@ function isOneName(part: string): boolean {
 }
 
 /**
+ * The prefix that puts an object in the database an unquoted name gives, its
+ * third part from the end; '' quoted, or where that part is no one name, which
+ * fails its CREATE TABLE and would open a quote or a bracket before the dot.
+ */
+function databasePrefix(name: string, bracket: string): string {
+  if (bracket) return '';
+
+  const [, , database = ''] = splitNameParts(name).reverse();
+  return isOneName(database) ? `${database}.` : '';
+}
+
+/**
  * The procedure that adds a table's extended properties and their level 0 and 1
  * arguments. An unquoted name splits at each dot outside brackets or quotes into
  * table, schema and the database whose procedure acts there; quoted, a dbo table.
@@ -193,18 +210,14 @@ function formatLevels(
   name: string,
   bracket: string
 ): { procedure: string; levels: string } {
-  const [table, schema = '', database = ''] = bracket
+  const [table, schema = ''] = bracket
     ? [name]
     : splitNameParts(name).reverse();
   const level0 = unquoteNamePart(schema) || DEFAULT_SCHEMA;
   const level1 = bracket ? table : unquoteNamePart(table);
-  // A database part SQL Server reads as no one name fails its CREATE TABLE
-  // too, and written before the procedure it could open a quote or bracket
-  // that swallows every batch after it, so it is dropped.
-  const prefix = isOneName(database) ? `${database}.` : '';
 
   return {
-    procedure: `${prefix}sys.sp_addextendedproperty`,
+    procedure: `${databasePrefix(name, bracket)}sys.sp_addextendedproperty`,
     levels: `'schema', ${toStringLiteral(level0)}, 'table', ${toStringLiteral(level1)}`,
   };
 }
@@ -324,4 +337,72 @@ export function formatIndex(
       `  ON ${bracket}${table.name}${bracket} (${formatNames(columnNames)})\nGO`
     );
   }
+}
+
+/**
+ * USE for use; for createAndUse, CREATE DATABASE first where DB_ID finds none.
+ * Each ends its batch with GO.
+ */
+export function formatHeader(
+  { settings: { bracketType } }: RootState,
+  header: Exclude<SchemaSQLHeader, 'none'>,
+  name: string
+): string {
+  const bracket = getBracket(bracketType);
+  const database = `${bracket}${name}${bracket}`;
+  const use = `USE ${database}\nGO`;
+
+  return header === SchemaSQLHeader.createAndUse
+    ? `IF DB_ID(N${toStringLiteral(name)}) IS NULL\n  CREATE DATABASE ${database}\nGO\n\n${use}`
+    : use;
+}
+
+/**
+ * One transaction that drops each foreign key a written table holds, found in
+ * its own database's catalog, then the tables, all rolled back on an error, so
+ * a key held from outside them still refuses; IF EXISTS needs SQL Server 2016.
+ */
+export function formatDropBlock(
+  { settings: { bracketType } }: RootState,
+  { tables }: WrittenObjects
+): string {
+  if (tables.length === 0) return '';
+
+  const bracket = getBracket(bracketType);
+  const quote = (name: string) => `${bracket}${name}${bracket}`;
+  const selects = tables.flatMap(({ name }) => {
+    const database = databasePrefix(name, bracket);
+    const objectId = `OBJECT_ID(N${toStringLiteral(quote(name))}, N'U')`;
+    const select = [
+      `SELECT @sql += N${toStringLiteral(`ALTER TABLE ${quote(name)} DROP CONSTRAINT `)} + QUOTENAME(name) + N';'`,
+      `  FROM ${database}sys.foreign_keys`,
+      `  WHERE parent_object_id = ${objectId}`,
+    ];
+    // The catalog of a database that does not exist fails as the SELECT runs,
+    // past the CATCH and with the transaction left open, so the SELECT runs
+    // only where OBJECT_ID finds its table.
+    return database
+      ? [`  IF ${objectId} IS NOT NULL`, ...select.map(line => `    ${line}`)]
+      : select.map(line => `  ${line}`);
+  });
+  const lines = [
+    'BEGIN TRY',
+    '  BEGIN TRANSACTION',
+    '',
+    "  DECLARE @sql NVARCHAR(MAX) = N''",
+    ...selects,
+    '  EXECUTE sp_executesql @sql',
+    '',
+    `  DROP TABLE IF EXISTS ${tables.map(({ name }) => quote(name)).join(', ')}`,
+    '',
+    '  COMMIT TRANSACTION',
+    'END TRY',
+    'BEGIN CATCH',
+    '  IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;',
+    '  THROW;',
+    'END CATCH',
+    'GO',
+  ];
+
+  return lines.join('\n');
 }
