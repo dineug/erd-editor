@@ -150,6 +150,9 @@ export const Language = {
   Doctrine: 65536,
   Rust: 131072,
   SeaORM: 262144,
+  Swift: 524288,
+  Zod: 1048576,
+  JSONSchema: 2097152,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 
