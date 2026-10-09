@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 import { Direction } from '@/constants/schema';
 import { Relationship } from '@/internal-types';
 import { createRelationship } from '@/utils/collection/relationship.entity';
+import { PathPoint, ROUTE_CORNER_RADIUS } from '@/utils/draw-relationship';
 import { VIEW_BEZIER_SEGMENTS } from '@/utils/draw-relationship/bezier';
+import { ROUTE_CORNER_SEGMENTS } from '@/utils/draw-relationship/corner';
+import { LOOP_SEGMENTS } from '@/utils/draw-relationship/loop';
 import {
   getRelationshipPath,
   toPathD,
@@ -15,6 +18,32 @@ function relationship(start: Point, end: Point): Relationship {
   return createRelationship({ id: 'rel', start, end });
 }
 
+type Segments = ReturnType<PathPoint['d']>;
+type ScenePoint = Segments[number][number];
+
+/** Both ends of a corner's arc and every chord point between them. */
+const ARC_POINTS = ROUTE_CORNER_SEGMENTS + 1;
+
+const pointsOf = (segments: Segments): ScenePoint[] => [
+  segments[0][0],
+  ...segments.map(([, to]) => to),
+];
+
+/**
+ * The points lying on the quarter circle a corner turns on: a radius from its
+ * centre and no further than that from the corner, so an arc bulging the wrong
+ * way finds none of its middle.
+ */
+const onArc = (points: ScenePoint[], centre: ScenePoint, corner: ScenePoint) =>
+  points.filter(
+    point =>
+      Math.abs(
+        Math.hypot(point.x - centre.x, point.y - centre.y) - ROUTE_CORNER_RADIUS
+      ) < 1e-6 &&
+      Math.hypot(point.x - corner.x, point.y - corner.y) <=
+        ROUTE_CORNER_RADIUS + 1e-6
+  );
+
 describe('getRelationshipPath', () => {
   describe('start right -> end left (horizontal)', () => {
     const { path, line } = getRelationshipPath(
@@ -25,71 +54,71 @@ describe('getRelationshipPath', () => {
     );
 
     it('pushes the path end points out by PATH_END_HEIGHT on the x axis', () => {
-      expect(path.path.M).toEqual({ x: 150, y: 50 });
-      expect(path.path.L).toEqual({ x: 350, y: 50 });
+      expect(path.path.M).toEqual({ x: 124, y: 50 });
+      expect(path.path.L).toEqual({ x: 376, y: 50 });
       expect(path.path.Q).toEqual({ x: 0, y: 0 });
     });
 
     it('pushes the path guide line out by PATH_LINE_HEIGHT', () => {
-      expect(path.line.start).toEqual({ x1: 125, y1: 50, x2: 150, y2: 50 });
-      expect(path.line.end).toEqual({ x1: 375, y1: 50, x2: 350, y2: 50 });
+      expect(path.line.start).toEqual({ x1: 121, y1: 50, x2: 124, y2: 50 });
+      expect(path.line.end).toEqual({ x1: 379, y1: 50, x2: 376, y2: 50 });
     });
 
     it('draws one straight run when the two anchors line up', () => {
       expect(path.path.d()).toEqual([
         [
-          { x: 150, y: 50 },
-          { x: 350, y: 50 },
+          { x: 124, y: 50 },
+          { x: 376, y: 50 },
         ],
       ]);
     });
 
     it('lays out the start decoration lines horizontally', () => {
       expect(line.line.start.base).toEqual({
-        x1: 111,
-        y1: 43,
-        x2: 111,
-        y2: 57,
+        x1: 109,
+        y1: 44,
+        x2: 109,
+        y2: 56,
       });
       expect(line.line.start.base2).toEqual({
-        x1: 118,
-        y1: 43,
-        x2: 118,
-        y2: 57,
+        x1: 115,
+        y1: 44,
+        x2: 115,
+        y2: 56,
       });
       expect(line.line.start.center).toEqual({
-        x1: 111,
+        x1: 109,
         y1: 50,
         x2: 100,
         y2: 50,
       });
       expect(line.line.start.center2).toEqual({
-        x1: 125,
+        x1: 121,
         y1: 50,
         x2: 100,
         y2: 50,
       });
-      expect(line.startCircle).toEqual({ cx: 118, cy: 50 });
+      expect(line.startCircle).toEqual({ cx: 115, cy: 50 });
     });
 
     it('lays out the end decoration lines horizontally', () => {
-      expect(line.line.end.base).toEqual({ x1: 389, y1: 43, x2: 389, y2: 57 });
-      expect(line.line.end.base2).toEqual({ x1: 382, y1: 43, x2: 382, y2: 57 });
-      expect(line.line.end.left).toEqual({ x1: 389, y1: 50, x2: 400, y2: 57 });
-      expect(line.line.end.right).toEqual({ x1: 389, y1: 50, x2: 400, y2: 43 });
+      expect(line.line.end.base).toEqual({ x1: 391, y1: 44, x2: 391, y2: 56 });
+      expect(line.line.end.base2).toEqual({ x1: 385, y1: 44, x2: 385, y2: 56 });
+      expect(line.line.end.left).toEqual({ x1: 391, y1: 50, x2: 400, y2: 56 });
+      expect(line.line.end.right).toEqual({ x1: 391, y1: 50, x2: 400, y2: 44 });
       expect(line.line.end.center).toEqual({
-        x1: 389,
+        x1: 391,
         y1: 50,
         x2: 400,
         y2: 50,
       });
       expect(line.line.end.center2).toEqual({
-        x1: 375,
+        x1: 379,
         y1: 50,
         x2: 400,
         y2: 50,
       });
-      expect(line.circle).toEqual({ cx: 382, cy: 50 });
+      expect(line.circle).toEqual({ cx: 385, cy: 50 });
     });
   });
 
@@ -102,105 +131,104 @@ describe('getRelationshipPath', () => {
     );
 
     it('pushes the path end points out on the y axis', () => {
-      expect(path.path.M).toEqual({ x: 100, y: 150 });
-      expect(path.path.L).toEqual({ x: 300, y: 450 });
-      expect(path.line.start).toEqual({ x1: 100, y1: 125, x2: 100, y2: 150 });
-      expect(path.line.end).toEqual({ x1: 300, y1: 475, x2: 300, y2: 450 });
+      expect(path.path.M).toEqual({ x: 100, y: 124 });
+      expect(path.path.L).toEqual({ x: 300, y: 476 });
+      expect(path.line.start).toEqual({ x1: 100, y1: 121, x2: 100, y2: 124 });
+      expect(path.line.end).toEqual({ x1: 300, y1: 479, x2: 300, y2: 476 });
     });
 
-    it('turns at right angles on the y axis, with the corners cut', () => {
-      // Two turns at the midpoint, each drawn as a 45-degree cut of
-      // ROUTE_CHAMFER either side of the corner.
-      expect(path.path.d()).toEqual([
-        [
-          { x: 100, y: 150 },
-          { x: 100, y: 292 },
-        ],
-        [
-          { x: 100, y: 292 },
-          { x: 108, y: 300 },
-        ],
-        [
-          { x: 108, y: 300 },
-          { x: 292, y: 300 },
-        ],
-        [
-          { x: 292, y: 300 },
-          { x: 300, y: 308 },
-        ],
-        [
-          { x: 300, y: 308 },
-          { x: 300, y: 450 },
-        ],
+    it('turns at right angles on the y axis, on rounded corners', () => {
+      // Two turns at the midpoint, each a quarter circle of ROUTE_CORNER_RADIUS
+      // that leaves one run along it and joins the next the same way.
+      const segments = path.path.d();
+      const points = pointsOf(segments);
+
+      expect(segments[0]).toEqual([
+        { x: 100, y: 124 },
+        { x: 100, y: 292 },
       ]);
+      expect(segments).toContainEqual([
+        { x: 108, y: 300 },
+        { x: 292, y: 300 },
+      ]);
+      expect(segments[segments.length - 1]).toEqual([
+        { x: 300, y: 308 },
+        { x: 300, y: 476 },
+      ]);
+      expect(
+        onArc(points, { x: 108, y: 292 }, { x: 100, y: 300 })
+      ).toHaveLength(ARC_POINTS);
+      expect(
+        onArc(points, { x: 292, y: 308 }, { x: 300, y: 300 })
+      ).toHaveLength(ARC_POINTS);
     });
 
     it('lays out the start decoration lines vertically', () => {
       expect(line.line.start.base).toEqual({
-        x1: 93,
-        y1: 111,
-        x2: 107,
-        y2: 111,
+        x1: 94,
+        y1: 109,
+        x2: 106,
+        y2: 109,
       });
       expect(line.line.start.base2).toEqual({
-        x1: 93,
-        y1: 118,
-        x2: 107,
-        y2: 118,
+        x1: 94,
+        y1: 115,
+        x2: 106,
+        y2: 115,
       });
       expect(line.line.start.center).toEqual({
         x1: 100,
-        y1: 111,
+        y1: 109,
         x2: 100,
         y2: 100,
       });
       expect(line.line.start.center2).toEqual({
         x1: 100,
-        y1: 125,
+        y1: 121,
         x2: 100,
         y2: 100,
       });
-      expect(line.startCircle).toEqual({ cx: 100, cy: 118 });
+      expect(line.startCircle).toEqual({ cx: 100, cy: 115 });
     });
 
     it('lays out the end decoration lines vertically', () => {
       expect(line.line.end.base).toEqual({
-        x1: 293,
-        y1: 489,
-        x2: 307,
-        y2: 489,
+        x1: 294,
+        y1: 491,
+        x2: 306,
+        y2: 491,
       });
       expect(line.line.end.base2).toEqual({
-        x1: 293,
-        y1: 482,
-        x2: 307,
-        y2: 482,
+        x1: 294,
+        y1: 485,
+        x2: 306,
+        y2: 485,
       });
       expect(line.line.end.left).toEqual({
         x1: 300,
-        y1: 489,
-        x2: 307,
+        y1: 491,
+        x2: 306,
         y2: 500,
       });
       expect(line.line.end.right).toEqual({
         x1: 300,
-        y1: 489,
-        x2: 293,
+        y1: 491,
+        x2: 294,
         y2: 500,
       });
       expect(line.line.end.center).toEqual({
         x1: 300,
-        y1: 489,
+        y1: 491,
         x2: 300,
         y2: 500,
       });
       expect(line.line.end.center2).toEqual({
         x1: 300,
-        y1: 475,
+        y1: 479,
         x2: 300,
         y2: 500,
       });
-      expect(line.circle).toEqual({ cx: 300, cy: 482 });
+      expect(line.circle).toEqual({ cx: 300, cy: 485 });
     });
   });
 
@@ -212,60 +240,59 @@ describe('getRelationshipPath', () => {
       )
     );
 
-    it('crosses on the x axis at the midpoint, with the corners cut', () => {
-      expect(path.path.M).toEqual({ x: 450, y: 200 });
-      expect(path.path.L).toEqual({ x: 150, y: 260 });
-      expect(path.path.d()).toEqual([
-        [
-          { x: 450, y: 200 },
-          { x: 308, y: 200 },
-        ],
-        [
-          { x: 308, y: 200 },
-          { x: 300, y: 208 },
-        ],
-        [
-          { x: 300, y: 208 },
-          { x: 300, y: 252 },
-        ],
-        [
-          { x: 300, y: 252 },
-          { x: 292, y: 260 },
-        ],
-        [
-          { x: 292, y: 260 },
-          { x: 150, y: 260 },
-        ],
+    it('crosses on the x axis at the midpoint, on rounded corners', () => {
+      const segments = path.path.d();
+      const points = pointsOf(segments);
+
+      expect(path.path.M).toEqual({ x: 476, y: 200 });
+      expect(path.path.L).toEqual({ x: 124, y: 260 });
+      expect(segments[0]).toEqual([
+        { x: 476, y: 200 },
+        { x: 308, y: 200 },
       ]);
+      expect(segments).toContainEqual([
+        { x: 300, y: 208 },
+        { x: 300, y: 252 },
+      ]);
+      expect(segments[segments.length - 1]).toEqual([
+        { x: 292, y: 260 },
+        { x: 124, y: 260 },
+      ]);
+      expect(
+        onArc(points, { x: 308, y: 208 }, { x: 300, y: 200 })
+      ).toHaveLength(ARC_POINTS);
+      expect(
+        onArc(points, { x: 292, y: 252 }, { x: 300, y: 260 })
+      ).toHaveLength(ARC_POINTS);
     });
 
     it('mirrors the decoration lines for the inverted directions', () => {
       expect(line.line.start.center).toEqual({
-        x1: 489,
+        x1: 491,
         y1: 200,
         x2: 500,
         y2: 200,
       });
       expect(line.line.start.center2).toEqual({
-        x1: 475,
+        x1: 479,
         y1: 200,
         x2: 500,
         y2: 200,
       });
       expect(line.line.end.left).toEqual({
-        x1: 111,
+        x1: 109,
         y1: 260,
         x2: 100,
-        y2: 267,
+        y2: 266,
       });
       expect(line.line.end.right).toEqual({
-        x1: 111,
+        x1: 109,
         y1: 260,
         x2: 100,
-        y2: 253,
+        y2: 254,
       });
-      expect(line.startCircle).toEqual({ cx: 482, cy: 200 });
-      expect(line.circle).toEqual({ cx: 118, cy: 260 });
+      expect(line.startCircle).toEqual({ cx: 485, cy: 200 });
+      expect(line.circle).toEqual({ cx: 115, cy: 260 });
     });
   });
 
@@ -278,49 +305,49 @@ describe('getRelationshipPath', () => {
     );
 
     it('draws one straight run when the two anchors share an x', () => {
-      expect(path.path.M).toEqual({ x: 200, y: 350 });
-      expect(path.path.L).toEqual({ x: 200, y: 150 });
+      expect(path.path.M).toEqual({ x: 200, y: 376 });
+      expect(path.path.L).toEqual({ x: 200, y: 124 });
       expect(path.path.d()).toEqual([
         [
-          { x: 200, y: 350 },
-          { x: 200, y: 150 },
+          { x: 200, y: 376 },
+          { x: 200, y: 124 },
         ],
       ]);
     });
 
     it('flips the end decoration lines downwards', () => {
       expect(line.line.end.base).toEqual({
-        x1: 193,
-        y1: 111,
-        x2: 207,
-        y2: 111,
+        x1: 194,
+        y1: 109,
+        x2: 206,
+        y2: 109,
       });
       expect(line.line.end.base2).toEqual({
-        x1: 193,
-        y1: 118,
-        x2: 207,
-        y2: 118,
+        x1: 194,
+        y1: 115,
+        x2: 206,
+        y2: 115,
       });
       expect(line.line.end.left).toEqual({
         x1: 200,
-        y1: 111,
-        x2: 207,
+        y1: 109,
+        x2: 206,
         y2: 100,
       });
       expect(line.line.end.right).toEqual({
         x1: 200,
-        y1: 111,
-        x2: 193,
+        y1: 109,
+        x2: 194,
         y2: 100,
       });
       expect(line.line.end.center2).toEqual({
         x1: 200,
-        y1: 125,
+        y1: 121,
         x2: 200,
         y2: 100,
       });
-      expect(line.startCircle).toEqual({ cx: 200, cy: 382 });
-      expect(line.circle).toEqual({ cx: 200, cy: 118 });
+      expect(line.startCircle).toEqual({ cx: 200, cy: 385 });
+      expect(line.circle).toEqual({ cx: 200, cy: 115 });
     });
   });
 
@@ -332,42 +359,101 @@ describe('getRelationshipPath', () => {
       )
     );
 
-    it('collapses the path to a single segment', () => {
-      expect(path.path.M).toEqual({ x: 98, y: -50 });
-      expect(path.path.L).toEqual({ x: 168, y: 20 });
-      expect(path.path.d()).toEqual([
-        [
-          { x: 98, y: -50 },
-          { x: 168, y: 20 },
-        ],
-      ]);
+    it('curves from one turning point to the other, leaving each straight out', () => {
+      const segments = path.path.d();
+      const [first] = segments;
+      const last = segments[segments.length - 1];
+
+      expect(path.path.M).toEqual({ x: 98, y: -24 });
+      expect(path.path.L).toEqual({ x: 142, y: 20 });
+      expect(segments).toHaveLength(LOOP_SEGMENTS);
+      expect(first[0]).toEqual(path.path.M);
+      expect(last[1]).toEqual(path.path.L);
+      // Up out of the top anchor's stub, and in along the right one's.
+      expect(first[1].y).toBeLessThan(first[0].y);
+      expect(Math.abs(first[1].x - first[0].x)).toBeLessThan(
+        Math.abs(first[1].y - first[0].y)
+      );
+      expect(last[1].x).toBeLessThan(last[0].x);
+      expect(Math.abs(last[1].y - last[0].y)).toBeLessThan(
+        Math.abs(last[1].x - last[0].x)
+      );
     });
 
     it('still lays out both decoration ends', () => {
-      expect(path.line.start).toEqual({ x1: 98, y1: -25, x2: 98, y2: -50 });
-      expect(path.line.end).toEqual({ x1: 143, y1: 20, x2: 168, y2: 20 });
+      expect(path.line.start).toEqual({ x1: 98, y1: -21, x2: 98, y2: -24 });
+      expect(path.line.end).toEqual({ x1: 139, y1: 20, x2: 142, y2: 20 });
       expect(line.line.start.base).toEqual({
-        x1: 91,
-        y1: -11,
-        x2: 105,
-        y2: -11,
+        x1: 92,
+        y1: -9,
+        x2: 104,
+        y2: -9,
       });
       expect(line.line.start.center2).toEqual({
         x1: 98,
-        y1: -25,
+        y1: -21,
         x2: 98,
         y2: 0,
       });
-      expect(line.line.end.base).toEqual({ x1: 129, y1: 13, x2: 129, y2: 27 });
+      expect(line.line.end.base).toEqual({ x1: 127, y1: 14, x2: 127, y2: 26 });
       expect(line.line.end.center2).toEqual({
-        x1: 143,
+        x1: 139,
         y1: 20,
         x2: 118,
         y2: 20,
       });
-      expect(line.startCircle).toEqual({ cx: 98, cy: -18 });
-      expect(line.circle).toEqual({ cx: 136, cy: 20 });
+      expect(line.startCircle).toEqual({ cx: 98, cy: -15 });
+      expect(line.circle).toEqual({ cx: 133, cy: 20 });
     });
+
+    /** A loop whose anchors sit offset from the corner of a table ending at (118, 0). */
+    const loop = (offset: number) =>
+      getRelationshipPath(
+        relationship(
+          { tableId: 'A', x: 118 - offset, y: 0, direction: Direction.top },
+          { tableId: 'A', x: 118, y: offset, direction: Direction.right }
+        )
+      ).path.path.d();
+
+    /** How far a point lies from the table, the quarter below and left of the corner. */
+    const clearOfTable = ({ x, y }: ScenePoint) =>
+      x > 118 ? (y < 0 ? Math.hypot(x - 118, y) : x - 118) : -y;
+
+    it.each([20, 38, 56, 74, 92])(
+      'keeps a loop %ipx from the corner clear of the table',
+      offset => {
+        for (const point of pointsOf(loop(offset))) {
+          expect(clearOfTable(point)).toBeGreaterThanOrEqual(12);
+        }
+      }
+    );
+
+    it.each([
+      [20, 38],
+      [38, 56],
+      [56, 74],
+    ])(
+      'nests the loop %ipx from the corner inside the one %ipx out',
+      (inner, outer) => {
+        const cross = (
+          [a, b]: [ScenePoint, ScenePoint],
+          [c, d]: [ScenePoint, ScenePoint]
+        ) => {
+          const side = (p: ScenePoint, q: ScenePoint, r: ScenePoint) =>
+            Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+          return (
+            side(a, b, c) * side(a, b, d) < 0 &&
+            side(c, d, a) * side(c, d, b) < 0
+          );
+        };
+
+        for (const segment of loop(inner)) {
+          for (const other of loop(outer)) {
+            expect(cross(segment, other)).toBe(false);
+          }
+        }
+      }
+    );
   });
 
   describe('unknown direction', () => {
@@ -463,19 +549,23 @@ describe('the corner each source turns (AC-28, AC-29)', () => {
     return widest;
   };
 
-  it('cuts the document corners and spends the whole view run on one curve', () => {
+  it('rounds the document corners and spends the whole view run on one curve', () => {
     const document = pathOf('document');
     const flow = pathOf('flow');
 
-    expect(document).toHaveLength(5);
+    // Three straight runs and the chords of two rounded corners.
+    expect(document).toHaveLength(3 + 2 * ROUTE_CORNER_SEGMENTS);
     expect(flow).toHaveLength(VIEW_BEZIER_SEGMENTS);
     expect(flow[0][0]).toEqual(document[0][0]);
     expect(flow[flow.length - 1][1]).toEqual(document[document.length - 1][1]);
   });
 
-  it('turns the document corner in one 45 degree step and the view in even small ones', () => {
-    expect(sharpestTurn(pathOf('document'))).toBeCloseTo(45, 6);
-    expect(sharpestTurn(pathOf('flow'))).toBeCloseTo(6.971, 3);
+  it('turns the document corner in even steps of a quarter circle, and the view too', () => {
+    expect(sharpestTurn(pathOf('document'))).toBeCloseTo(
+      90 / ROUTE_CORNER_SEGMENTS,
+      6
+    );
+    expect(sharpestTurn(pathOf('flow'))).toBeCloseTo(6.041, 3);
   });
 
   it('leaves the straight line between the two ends, which is what a curve is', () => {
@@ -492,6 +582,6 @@ describe('the corner each source turns (AC-28, AC-29)', () => {
       return Math.max(furthest, away);
     }, 0);
 
-    expect(widest).toBeCloseTo(24.015, 3);
+    expect(widest).toBeCloseTo(25.095, 3);
   });
 });

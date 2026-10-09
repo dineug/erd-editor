@@ -21,7 +21,7 @@ const facing = (gap: number): Anchors => ({
 });
 
 describe('stubFor', () => {
-  it('keeps slot zero at the historical path end height', () => {
+  it('runs slot zero at the path end height', () => {
     expect(stubFor(0)).toBe(PATH_END_HEIGHT);
   });
 

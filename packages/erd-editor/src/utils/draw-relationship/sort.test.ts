@@ -8,7 +8,7 @@ import { RootState } from '@/engine/state';
 import { Relationship } from '@/internal-types';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
-import { getRoute } from '@/utils/draw-relationship';
+import { getRoute, LINE_SIZE } from '@/utils/draw-relationship';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 // A table with no columns and every show flag disabled is 134 x 30.
@@ -135,6 +135,37 @@ describe('relationshipSort', () => {
     });
   });
 
+  it('steps each further loop on a table 18px out from the last', () => {
+    // Six rows make A 174px tall, room for every loop at its full stride.
+    const a = addTable(state, 'A', 0, 0);
+    a.columnIds = ['c0', 'c1', 'c2', 'c3', 'c4', 'c5'];
+    const loops = ['l0', 'l1', 'l2'].map(id =>
+      addRelationship(state, id, 'A', 'A')
+    );
+
+    relationshipSort(state);
+
+    expect(loops.map(loop => TABLE_WIDTH - loop.start.x)).toEqual([20, 38, 56]);
+    expect(loops.map(loop => loop.end.y)).toEqual([20, 38, 56]);
+  });
+
+  it('draws the loops of a short table closer together to keep them on its side', () => {
+    addTable(state, 'A', 0, 0);
+    const loops = ['l0', 'l1', 'l2'].map(id =>
+      addRelationship(state, id, 'A', 'A')
+    );
+
+    relationshipSort(state);
+
+    // An empty table is 30px tall, so the last end anchor stops a marker's
+    // half spread above the bottom corner and the others share what is left.
+    expect(loops.map(loop => loop.end.y)).toEqual([20, 22, 24]);
+    for (const loop of loops) {
+      expect(loop.end.y).toBeLessThanOrEqual(TABLE_HEIGHT - LINE_SIZE);
+      expect(TABLE_WIDTH - loop.start.x).toBe(loop.end.y);
+    }
+  });
+
   it('spreads overlapping right-edge anchors along the y axis, ordered by target y', () => {
     addTable(state, 'A', 0, 0);
     addTable(state, 'B', 400, -100);
@@ -233,7 +264,7 @@ describe('relationshipSort', () => {
 
     relationshipSort(state);
 
-    // 15% of the shorter side is 11.7, below the 20px floor.
+    // The first loop sits 20px from the corner on any table.
     expect(self.start).toMatchObject({
       x: 114,
       y: 0,

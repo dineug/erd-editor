@@ -35,7 +35,6 @@ import {
   MIN_STUB,
   nextSortEpoch,
   PATH_END_HEIGHT,
-  PATH_HEIGHT,
   PATH_LINE_HEIGHT,
   ROUTE_BBOX_REACH,
   setRoute,
@@ -79,18 +78,17 @@ describe('isDirection', () => {
 });
 
 describe('layout constants', () => {
-  it('derives the path end height from the path height', () => {
-    expect(PATH_HEIGHT).toBe(30);
-    expect(PATH_END_HEIGHT).toBe(PATH_HEIGHT + 20);
-    expect(PATH_END_HEIGHT).toBe(50);
+  it('runs the first slot of a side at the stub floor', () => {
+    expect(PATH_END_HEIGHT).toBe(24);
+    expect(PATH_END_HEIGHT).toBe(MIN_STUB);
   });
 
   it('exposes the line drawing metrics', () => {
-    expect(PATH_LINE_HEIGHT).toBe(25);
-    expect(LINE_SIZE).toBe(7);
-    expect(LINE_HEIGHT).toBe(11);
-    expect(CIRCLE_HEIGHT).toBe(18);
-    expect(CIRCLE_RADIUS).toBe(6);
+    expect(PATH_LINE_HEIGHT).toBe(21);
+    expect(LINE_SIZE).toBe(6);
+    expect(LINE_HEIGHT).toBe(9);
+    expect(CIRCLE_HEIGHT).toBe(15);
+    expect(CIRCLE_RADIUS).toBe(5);
   });
 
   it('centres the ring on the second tick', () => {
@@ -110,8 +108,8 @@ describe('layout constants', () => {
     expect(PATH_LINE_HEIGHT).toBeLessThan(PATH_END_HEIGHT);
   });
 
-  it('clamps a stub clear of the decorations without following them down', () => {
-    expect(MIN_STUB).toBe(36);
+  it('clamps a stub just clear of the decorations', () => {
+    expect(MIN_STUB).toBe(24);
     // The guide line runs from the decorations out to the stub, so a stub
     // inside them draws it backwards.
     expect(MIN_STUB).toBeGreaterThan(PATH_LINE_HEIGHT);
@@ -254,6 +252,56 @@ describe('getAnchors across the two channels', () => {
     relationshipSort(state);
 
     expect(getAnchors(relationship, 'flow')).toBe(relationship);
+  });
+});
+
+describe('getRouteBBox for a self loop', () => {
+  /** Every point the loop is drawn through, its two ends included. */
+  const pointsOf = (relationship: Relationship) => {
+    const segments = getRelationshipPath(relationship).path.path.d();
+    return [segments[0][0], ...segments.map(([, to]) => to)];
+  };
+
+  const expectInside = (box: BBox, points: Point[]) => {
+    for (const point of points) {
+      expect(point.x).toBeGreaterThanOrEqual(box.x);
+      expect(point.x).toBeLessThanOrEqual(box.x + box.width);
+      expect(point.y).toBeGreaterThanOrEqual(box.y);
+      expect(point.y).toBeLessThanOrEqual(box.y + box.height);
+    }
+  };
+
+  it.each([20, 56, 92])(
+    'reaches the whole curve of a loop %ipx from its corner before any sort',
+    offset => {
+      const relationship = createRelationship({
+        id: 'loop',
+        start: {
+          tableId: 'A',
+          x: 500 - offset,
+          y: 100,
+          direction: Direction.top,
+        },
+        end: {
+          tableId: 'A',
+          x: 500,
+          y: 100 + offset,
+          direction: Direction.right,
+        },
+      });
+
+      expectInside(getRouteBBox(relationship), pointsOf(relationship));
+    }
+  );
+
+  it('reaches a loop whose two ends leave the same side', () => {
+    const relationship = createRelationship({
+      id: 'loop',
+      start: { tableId: 'A', x: 500, y: 100, direction: Direction.right },
+      end: { tableId: 'A', x: 500, y: 160, direction: Direction.right },
+    });
+
+    expectInside(getRouteBBox(relationship), pointsOf(relationship));
   });
 });
 

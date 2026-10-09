@@ -469,6 +469,13 @@ Drawing a route as one `<path>` rather than a `<line>` per segment took that bac
 — see below. It did nothing for `node-cross`, which reads the geometry and not the
 markup; that needed the metric itself changing.
 
+**The corners round now.** Since 2026-10-10 (issue #468) a document corner
+turns on a quarter circle of eight, drawn as six chords, rather than on one
+45-degree cut, so each corner adds more segments than the cut did. The figures
+in the paragraph above are the cut's and were not measured again. A self loop
+is drawn as a curve of 48 chords rather than one diagonal, which raises the
+`segments` count of any corpus that has loops.
+
 **One `<path>` a connector, rather than a `<line>` a segment, paid the corner
 cuts back with interest.** The geometry is untouched — every quality figure came
 back byte-identical, which is what says the benchmark now reads the path's `d` as

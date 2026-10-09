@@ -11,8 +11,9 @@ import {
 } from '@/utils/draw-relationship';
 
 /**
- * Slot zero keeps the historical PATH_END_HEIGHT, so a relationship that never
- * went through relationshipSort draws exactly as it did before.
+ * Slot zero runs at PATH_END_HEIGHT, the stub a relationship that never went
+ * through relationshipSort is drawn with, so a side's first connector keeps its
+ * stub through a sort.
  */
 export function stubFor(slot: number) {
   return PATH_END_HEIGHT + (slot % STUB_CYCLE) * STUB_STEP;

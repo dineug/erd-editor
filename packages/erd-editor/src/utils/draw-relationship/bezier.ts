@@ -63,8 +63,19 @@ export function bezierPolyline(
   toOutward: Point,
   segments: number = VIEW_BEZIER_SEGMENTS
 ): Point[] {
-  const count = Math.max(1, Math.floor(segments));
   const [first, second] = bezierControls(from, fromOutward, to, toOutward);
+  return cubicPolyline(from, first, second, to, segments);
+}
+
+/** A cubic between two ends and its two control points, as that many chords. */
+export function cubicPolyline(
+  from: Point,
+  first: Point,
+  second: Point,
+  to: Point,
+  segments: number
+): Point[] {
+  const count = Math.max(1, Math.floor(segments));
   const points: Point[] = [{ x: from.x, y: from.y }];
 
   for (let step = 1; step <= count; step++) {

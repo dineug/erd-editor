@@ -42,6 +42,8 @@ import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { CIRCLE_RADIUS } from '@/utils/draw-relationship';
+import { ROUTE_CORNER_SEGMENTS } from '@/utils/draw-relationship/corner';
+import { LOOP_SEGMENTS } from '@/utils/draw-relationship/loop';
 import {
   getRelationshipPath,
   toPathD,
@@ -189,8 +191,8 @@ describe('Relationship as konva nodes', () => {
     const expected = getRelationshipPath(relationship).path.path.d();
     const { group } = await mountRelationship(relationship);
 
-    // Three runs, and a cut either side of both corners between them.
-    expect(expected).toHaveLength(5);
+    // Three runs, and the chords of a rounded corner between each two.
+    expect(expected).toHaveLength(3 + 2 * ROUTE_CORNER_SEGMENTS);
 
     const route = childNamed(group, 'relationship-route');
     expect(route.getAttr('data')).toBe(toPathD(expected));
@@ -199,7 +201,7 @@ describe('Relationship as konva nodes', () => {
     expect(route.getAttr('fill')).toBeUndefined();
   });
 
-  it('collapses a self relationship into a single path segment', async () => {
+  it('draws a self relationship as one curve', async () => {
     const relationship = makeRelationship({
       start: {
         tableId: 't1',
@@ -218,7 +220,9 @@ describe('Relationship as konva nodes', () => {
     });
     const { group } = await mountRelationship(relationship);
 
-    expect(getRelationshipPath(relationship).path.path.d()).toHaveLength(1);
+    expect(getRelationshipPath(relationship).path.path.d()).toHaveLength(
+      LOOP_SEGMENTS
+    );
     expect(childNamed(group, 'relationship-route').getAttr('data')).toBe(
       toPathD(getRelationshipPath(relationship).path.path.d())
     );
@@ -363,7 +367,7 @@ describe('Relationship as konva nodes', () => {
     expect(circles).toHaveLength(2);
     expect(circles[0].x()).toBe(line.startCircle.cx);
     expect(circles[0].y()).toBe(line.startCircle.cy);
-    expect(circles[0].getAttr('radius')).toBe(6);
+    expect(circles[0].getAttr('radius')).toBe(5);
 
     // The ring branch renders nodes the dash branch never does, and every other
     // mount in this file takes the dash branch.

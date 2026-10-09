@@ -34,8 +34,11 @@ import { relationshipSort } from '@/utils/draw-relationship/sort';
 
 const THEME = createTestTheme();
 
-/** A screen at the origin, which the far relationship below sits well outside. */
-const VIEWPORT: CullingRect = { x: 0, y: 0, width: 100, height: 100 };
+/**
+ * A screen over the near relationship's reach but not its anchors, which the far
+ * relationship below sits well outside.
+ */
+const VIEWPORT: CullingRect = { x: 0, y: 40, width: 100, height: 100 };
 
 const makeRelationship = (
   id: string,
@@ -211,7 +214,7 @@ describe('RelationshipGroup', () => {
   it('keeps a relationship the viewport only straddles', async () => {
     const group = await mountGroup({
       relationships: [near(), far()],
-      viewport: { x: 450, y: 350, width: 100, height: 100 },
+      viewport: { x: 410, y: 310, width: 100, height: 100 },
     });
 
     expect(names(group)).toEqual(['relationship near']);
