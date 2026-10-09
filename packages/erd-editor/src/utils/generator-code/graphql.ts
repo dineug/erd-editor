@@ -425,7 +425,7 @@ function getForeignKeyStem(
  * dropped, words split as isSingleWord splits them; null where id is not a
  * word of its own, or is the only one.
  */
-function stripIdWord(name: string): string | null {
+export function stripIdWord(name: string): string | null {
   const id = name.slice(-2);
 
   if (!ID_SUFFIX.test(name) || !isSingleWord(id)) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { underTurkishLocale } from '@/__test-utils__/locale';
 import {
   Database,
   NameCase,
@@ -75,6 +76,14 @@ describe('generator-code/utils', () => {
 
     it('falls back to string when the database has no hints', () => {
       expect(getPrimitiveType('INT', 0)).toBe('string');
+    });
+
+    it('matches a name in another letter case under a Turkish default locale', () => {
+      underTurkishLocale(() => {
+        expect(getPrimitiveType('INTEGER', Database.PostgreSQL)).toBe('int');
+        expect(getPrimitiveType('int', Database.MySQL)).toBe('int');
+        expect(getPrimitiveType('datetime', Database.MySQL)).toBe('dateTime');
+      });
     });
 
     it('resolves to the longest prefix match, so DATETIME and TIMESTAMP report dateTime', () => {

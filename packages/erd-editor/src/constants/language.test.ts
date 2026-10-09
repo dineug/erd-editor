@@ -23,6 +23,8 @@ describe('LanguageToLangMap', () => {
       [Language.Mermaid]: 'mermaid',
       [Language.PHP]: 'php',
       [Language.Doctrine]: 'php',
+      [Language.Rust]: 'rust',
+      [Language.SeaORM]: 'rust',
     });
   });
 
@@ -88,6 +90,13 @@ describe('LanguageToLangMap', () => {
 
   it('renders Mermaid with the Mermaid highlighter', () => {
     expect(LanguageToLangMap[Language.Mermaid]).toBe('mermaid');
+  });
+
+  it('renders SeaORM with the same highlighter as Rust', () => {
+    expect(LanguageToLangMap[Language.SeaORM]).toBe('rust');
+    expect(LanguageToLangMap[Language.SeaORM]).toBe(
+      LanguageToLangMap[Language.Rust]
+    );
   });
 
   it('returns undefined for a language flag that does not exist', () => {

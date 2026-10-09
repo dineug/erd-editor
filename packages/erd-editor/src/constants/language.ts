@@ -14,6 +14,7 @@ export type Lang =
   | 'mermaid'
   | 'php'
   | 'python'
+  | 'rust'
   | 'scala'
   | 'sql'
   | 'typescript';
@@ -36,4 +37,6 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.Mermaid]: 'mermaid',
   [Language.PHP]: 'php',
   [Language.Doctrine]: 'php',
+  [Language.Rust]: 'rust',
+  [Language.SeaORM]: 'rust',
 };

@@ -6,6 +6,7 @@ import kotlin from '@shikijs/langs/kotlin';
 import mermaid from '@shikijs/langs/mermaid';
 import php from '@shikijs/langs/php';
 import python from '@shikijs/langs/python';
+import rust from '@shikijs/langs/rust';
 import scala from '@shikijs/langs/scala';
 import sql from '@shikijs/langs/sql';
 import typescript from '@shikijs/langs/typescript';
@@ -51,6 +52,7 @@ export class ShikiService {
         python,
         mermaid,
         php,
+        rust,
       ],
       // Plain javascript rather than oniguruma, so no host needs wasm-unsafe-eval
       // in its policy; forgiving turns a grammar the engine cannot transpile into

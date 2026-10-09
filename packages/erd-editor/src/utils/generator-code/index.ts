@@ -48,9 +48,17 @@ import {
   createTableCode as createTableCodePHP,
 } from './php';
 import {
+  createCode as createCodeRust,
+  formatTable as formatTableRust,
+} from './rust';
+import {
   createCode as createCodeScala,
   formatTable as formatTableScala,
 } from './scala';
+import {
+  createCode as createCodeSeaORM,
+  createTableCode as createTableCodeSeaORM,
+} from './seaorm';
 import {
   createCode as createCodeSequelize,
   formatTable as formatTableSequelize,
@@ -108,6 +116,10 @@ export function createGeneratorCode(state: RootState): string {
       return createCodePHP(state);
     case Language.Doctrine:
       return createCodeDoctrine(state);
+    case Language.Rust:
+      return createCodeRust(state);
+    case Language.SeaORM:
+      return createCodeSeaORM(state);
   }
 
   return '';
@@ -183,12 +195,19 @@ export function createGeneratorCodeTable(
       formatTableMermaid(state, { buffer, table });
       buffer.push('');
       break;
+    case Language.Rust:
+      formatTableRust(state, { buffer, table });
+      buffer.push('');
+      break;
     // Nothing may come before <?php, the blank line above included, or PHP
     // refuses the declare(strict_types=1) under it.
     case Language.PHP:
       return createTableCodePHP(state, table);
     case Language.Doctrine:
       return createTableCodeDoctrine(state, table);
+    // A SeaORM module file holds the entity alone, not the pub mod around it.
+    case Language.SeaORM:
+      return createTableCodeSeaORM(state, table);
   }
 
   return buffer.join('\n');
