@@ -10,6 +10,7 @@ const LANGS: Lang[] = [
   'java',
   'kotlin',
   'mermaid',
+  'php',
   'python',
   'scala',
   'sql',
@@ -77,6 +78,17 @@ describe('ShikiService', () => {
 
     expect(html).toContain('<span style="color:#F97583">erDiagram</span>');
     expect(html).toContain('<span style="color:#6A737D">  %% members</span>');
+  });
+
+  it('colours PHP from the open tag on, as the generators write it', async () => {
+    const html = await service.codeToHtml(
+      '<?php\n\nclass User\n{\n    public ?int $id = null;\n}\n',
+      { lang: 'php' }
+    );
+
+    expect(html).toContain('<span style="color:#79B8FF">php</span>');
+    expect(html).toContain('<span style="color:#F97583">class</span>');
+    expect(html).toContain('<span style="color:#B392F0"> User</span>');
   });
 
   it('rejects a grammar it was never given', async () => {

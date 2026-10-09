@@ -20,8 +20,9 @@ import {
 import { AppContext } from '@/components/appContext';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
 import * as styles from '@/components/generator-code/GeneratorCode.styles';
-import { Language, NameCase } from '@/constants/schema';
+import { BracketType, Language, NameCase } from '@/constants/schema';
 import {
+  changeBracketTypeAction,
   changeColumnNameCaseAction,
   changeDatabaseNameAction,
   changeLanguageAction,
@@ -242,6 +243,26 @@ describe('GeneratorCode', () => {
     await flush();
     expect(codeOf(mounted).textContent).toContain('type Account {');
     expect(codeOf(mounted).textContent).toContain('user_name: String');
+  });
+
+  it('regenerates on a bracket type change, which the Doctrine names follow', async () => {
+    const app = createSeededApp();
+    app.store.dispatchSync(changeLanguageAction({ value: Language.Doctrine }));
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+    expect(codeOf(mounted).textContent).not.toContain("name: '`user_name`'");
+
+    app.store.dispatchSync(
+      changeBracketTypeAction({ value: BracketType.doubleQuote })
+    );
+    await flush();
+
+    expect(codeOf(mounted).textContent).toBe(
+      rendered(createGeneratorCode(app.store.state))
+    );
+    expect(codeOf(mounted).textContent).toContain("name: '`user_name`'");
   });
 
   it('regenerates for the language setting and passes the mapped lang to the code block', async () => {

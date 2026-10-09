@@ -412,6 +412,20 @@ describe('v3ToV2', () => {
       expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
     });
 
+    it('drops the PHP language because "PHP" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.PHP;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
+    it('drops the Doctrine language because "Doctrine" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.Doctrine;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
     it('picks the lowest matching bit when several are set', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.database = Database.MSSQL | Database.SQLite;

@@ -122,6 +122,8 @@ export const Language = {
   DBML: 4096,
   AML: 8192,
   Mermaid: 16384,
+  PHP: 32768,
+  Doctrine: 65536,
 } as const;
 export const LanguageList: ReadonlyArray<number> = Object.values(Language);
 

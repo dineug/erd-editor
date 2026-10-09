@@ -26,12 +26,20 @@ export const menus: Menu[] = [
     value: Language.Kotlin,
   },
   {
+    name: 'PHP',
+    value: Language.PHP,
+  },
+  {
     name: 'Scala',
     value: Language.Scala,
   },
   {
     name: 'TypeScript',
     value: Language.TypeScript,
+  },
+  {
+    name: 'Doctrine',
+    value: Language.Doctrine,
   },
   {
     name: 'Drizzle',

@@ -165,9 +165,12 @@ describe('v3/schema/settings', () => {
         DBML: 4096,
         AML: 8192,
         Mermaid: 16384,
+        PHP: 32768,
+        Doctrine: 65536,
       });
       expect(LanguageList).toEqual([
         1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+        32768, 65536,
       ]);
       expect(Object.values(Language).every(isPowerOfTwo)).toBe(true);
     });

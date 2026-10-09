@@ -66,7 +66,7 @@ editor's own history.
   and one undo takes them away. A foreign key to a table outside the file is dropped
 - **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake, SQLite
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — JSON, SQL, PNG and SVG, written into the vault where your attachments go; the
   images from a dialog with a preview: transparent background, light or dark, the PNG at 1x to
