@@ -24,6 +24,7 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
       'header',
       'tableIds',
       'tableNames',
+      'groupNames',
     ],
   },
   {
@@ -39,6 +40,7 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
       'relationshipIds',
       'indexIds',
       'memoIds',
+      'tableGroupIds',
     ],
   },
   { name: 'erd_save', args: ['path'] },
@@ -172,6 +174,40 @@ describe('the words on a referential action', () => {
   it('name no release, which the next one would make wrong', () => {
     for (const text of texts) {
       expect(text).not.toMatch(/\d+\.\d+/);
+    }
+  });
+});
+
+describe('the words on a table group', () => {
+  const GROUP_TOOLS = [
+    'erd_add_table_group',
+    'erd_remove_table_group',
+    'erd_change_table_group_name',
+    'erd_change_table_group_color',
+    'erd_move_table_group',
+    'erd_resize_table_group',
+    'erd_set_table_group',
+  ];
+  const OLDER =
+    'An ERD Editor extension or plugin released before table groups ignores this edit and drops every group when it saves, so the user should update it.';
+
+  it('reach every group tool the registry has', () => {
+    expect(
+      actionTools
+        .map(({ name }) => name)
+        .filter(name => name.includes('table_group'))
+    ).toEqual(GROUP_TOOLS);
+  });
+
+  it('end each group tool on an editor released before groups dropping them, so the user updates it', () => {
+    for (const name of GROUP_TOOLS) {
+      expect(describeTool(name).endsWith(OLDER), name).toBe(true);
+    }
+  });
+
+  it('name no release, which the next one would make wrong', () => {
+    for (const name of GROUP_TOOLS) {
+      expect(describeTool(name)).not.toMatch(/\d+\.\d+/);
     }
   });
 });

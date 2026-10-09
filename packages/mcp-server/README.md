@@ -89,8 +89,9 @@ document the editor can read, such as one left with merge conflict markers, is r
 `invalidDocument` and left as it is, never loaded as an empty diagram and written back.
 
 An agent finds ids with `erd_list`, which lists the settings, the counts and the tables by id, each
-with its position and its size on the canvas (the width approximate, the height exact), with their
-relationships and indexes, then the memos, and reads columns and other details with `erd_get`, then
+with its position and its size on the canvas (the width approximate, the height exact) and the
+table group it is in, with their relationships and indexes, then the table groups and the memos,
+and reads columns and other details with `erd_get`, then
 passes those ids to the edit tools. `erd_read` answers the whole document at once: the
 `snapshot` format lists every entity with its id, the `sql` format generates DDL for any of the
 eight supported databases and the `json` format is the raw file. Its `scripts` format answers the
@@ -112,8 +113,9 @@ Schemas of hundreds or thousands of tables work too. A read answers at most 40,0
 under the point where Claude Code sets a tool result aside in a file. `erd_list` answers a page of
 100 tables and says where the next one starts; its `query` finds tables by a word in a table or
 column name or comment, and `namesOnly` lists the table names alone, 2,000 short names in one
-answer. `erd_get` and `erd_read` take `tableNames` as well as ids, so an agent asked for a SQL query
-on a large schema reads the DDL of just the tables it needs. A read too large for one answer is
+answer. `erd_get` and `erd_read` take `tableNames` as well as ids, and `erd_read` takes
+`groupNames`, the tables of those table groups, so an agent asked for a SQL query on a large schema
+reads the DDL of just the tables it needs. A read too large for one answer is
 refused with how to narrow it.
 
 ## Tools
@@ -126,6 +128,7 @@ refused with how to narrow it.
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
 | Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
+| Table groups | `erd_add_table_group`, `erd_remove_table_group`, `erd_change_table_group_name`, `erd_change_table_group_color`, `erd_move_table_group`, `erd_resize_table_group`, `erd_set_table_group` |
 | Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_ddl_script` |
 | Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |
 | Batch | `erd_batch` |
@@ -139,14 +142,21 @@ The five import tools replace the document's tables, relationships, indexes and 
 the four schema imports keep its settings but the view, which goes to the start of the canvas, and
 `erd_import_json` takes the settings of the document it loads. With `mode: "append"` they add the
 import instead, as the editor's Import and Add does: its tables, relationships and indexes arrive
-as new ones in a grid below everything already there (a JSON document's, with its memos, in the
-placement it has), the document's settings and tables stay as they are, and one `erd_undo` takes
-them away. A foreign key to a table the import does not declare is dropped.
+as new ones in a grid below everything already there (a JSON document's, with its memos and table
+groups, in the placement it has), the document's settings and tables stay as they are, and one
+`erd_undo` takes them away. A foreign key to a table the import does not declare is dropped.
 
 `erd_change_relationship_on_delete` and `erd_change_relationship_on_update`, and the `onDelete` /
 `onUpdate` of `erd_add_relationship` and `erd_link_columns`, set a foreign key's ON DELETE and ON
 UPDATE actions. An ERD Editor extension or plugin released before referential actions ignores them
 when it serves the document, so update it.
+
+A table group is a named, colored box drawn behind its tables, and a table is in one group at most.
+`erd_add_table_group` wraps the tables it is given, or takes a rect and the tables in no group whose
+centre lies inside it, as drawing a group in the editor does; `erd_move_table_group` moves a group
+with its tables, and only `erd_add_table_group`, `erd_set_table_group` and
+`erd_remove_table_group` change which tables a group holds. An ERD Editor extension or plugin
+released before table groups ignores these edits and drops every group when it saves, so update it.
 
 An agent sets the database and its name, the settings of the schema itself. What the diagram
 shows, the code generation language, the name cases, the bracket type and the locks that keep them

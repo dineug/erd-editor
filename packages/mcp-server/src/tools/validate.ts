@@ -19,6 +19,7 @@ const ENTITY_LABEL: Record<ToolEntity, string> = {
   index: 'index',
   indexColumn: 'index column',
   memo: 'memo',
+  tableGroup: 'table group',
 };
 
 const typeName = (value: unknown) =>
@@ -52,6 +53,8 @@ function isLive(
       return doc.indexIds.includes(id);
     case 'memo':
       return doc.memoIds.includes(id);
+    case 'tableGroup':
+      return doc.tableGroupIds.includes(id);
     case 'column': {
       if (!parent) {
         return doc.tableIds.some(tableId =>
@@ -113,10 +116,11 @@ function checkShape(tool: Tool, arg: ToolArg, value: unknown): unknown {
       return kind.values[value];
     }
     case 'entityId':
+      if (kind.orNone && (value === null || value === '')) return '';
       if (typeof value !== 'string' || !value) {
         throw invalid(
           tool,
-          `${name} must be a ${ENTITY_LABEL[kind.entity]} id`
+          `${name} must be a ${ENTITY_LABEL[kind.entity]} id${kind.orNone ? ', or null for none' : ''}`
         );
       }
       return value;
@@ -223,7 +227,9 @@ function checkLive(
         }
       : undefined;
   const ids =
-    kind.type === 'entityId' ? [value as string] : (value as string[]);
+    kind.type === 'entityId'
+      ? [value as string].filter(Boolean)
+      : (value as string[]);
   const label = ENTITY_LABEL[kind.entity];
 
   for (const id of ids) {
@@ -291,7 +297,7 @@ export function validateToolArgs(
     }
   }
 
-  const refusal = tool.refine?.(values);
+  const refusal = tool.refine?.(values, state);
   if (refusal) throw invalid(tool, refusal);
 
   return Object.freeze(values);

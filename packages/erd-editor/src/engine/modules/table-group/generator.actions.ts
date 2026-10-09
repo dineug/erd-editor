@@ -30,10 +30,14 @@ import {
 
 import {
   addTableGroupAction,
+  changeTableGroupNameAction,
   changeTableGroupZIndexAction,
   moveTableGroupAction,
   removeTableGroupAction,
 } from './atom.actions';
+
+/** What a new group starts with besides its rect: no name and no color unless given. */
+export type NewTableGroupFields = { name?: string; color?: string };
 
 const selectGroups = ({ doc, collections }: RootState) =>
   query(collections)
@@ -41,11 +45,16 @@ const selectGroups = ({ doc, collections }: RootState) =>
     .selectByIds(doc.tableGroupIds);
 
 /**
- * The batch that adds a group at the rect, selected alone, with the tables
- * given joining it: one dispatch, so one undo takes back the group and every
- * membership it set.
+ * The batch that adds a group at the rect, selected alone, named and colored
+ * as given, with the tables given joining it: one dispatch, so one undo takes
+ * back the group and every membership it set.
  */
-function* addGroup$(state: RootState, rect: Rect, tableIds: string[]) {
+function* addGroup$(
+  state: RootState,
+  rect: Rect,
+  tableIds: string[],
+  { name, color }: NewTableGroupFields
+) {
   const id = uuid25();
   const { x, y, width, height } = rect;
 
@@ -53,6 +62,7 @@ function* addGroup$(state: RootState, rect: Rect, tableIds: string[]) {
   yield selectAction({ [id]: SelectType.tableGroup });
   yield addTableGroupAction({
     id,
+    ...(color ? { color } : {}),
     ui: {
       x,
       y,
@@ -61,6 +71,9 @@ function* addGroup$(state: RootState, rect: Rect, tableIds: string[]) {
       zIndex: nextTableGroupZIndex(selectGroups(state)),
     },
   });
+  if (name) {
+    yield changeTableGroupNameAction({ id, value: name });
+  }
   yield tableIds.map(tableId =>
     changeTableGroupAction({ id: tableId, value: id })
   );
@@ -73,7 +86,10 @@ function* addGroup$(state: RootState, rect: Rect, tableIds: string[]) {
  * @example
  * store.dispatch(addTableGroupAction$({ x: 0, y: 0, width: 600, height: 400 }));
  */
-export const addTableGroupAction$ = (rect: Rect): GeneratorAction =>
+export const addTableGroupAction$ = (
+  rect: Rect,
+  fields: NewTableGroupFields = {}
+): GeneratorAction =>
   function* (state) {
     const { doc, collections } = state;
     const tableIds = query(collections)
@@ -86,7 +102,7 @@ export const addTableGroupAction$ = (rect: Rect): GeneratorAction =>
       )
       .map(({ id }) => id);
 
-    yield* addGroup$(state, rect, tableIds);
+    yield* addGroup$(state, rect, tableIds, fields);
   };
 
 /**
@@ -98,7 +114,8 @@ export const addTableGroupAction$ = (rect: Rect): GeneratorAction =>
  * store.dispatch(addTableGroupFromTablesAction$());
  */
 export const addTableGroupFromTablesAction$ = (
-  tableIds?: string[]
+  tableIds?: string[],
+  fields: NewTableGroupFields = {}
 ): GeneratorAction =>
   function* (state) {
     const ids = uniq(
@@ -107,7 +124,7 @@ export const addTableGroupFromTablesAction$ = (
     const rect = getTablesGroupRect(state, ids);
     if (!rect) return;
 
-    yield* addGroup$(state, rect, ids);
+    yield* addGroup$(state, rect, ids, fields);
   };
 
 /**

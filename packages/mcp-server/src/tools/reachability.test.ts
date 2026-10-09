@@ -46,8 +46,8 @@ describe('every change type is reachable or excluded with a reason', () => {
       type => !NOT_EMITTED.includes(type) && !PENDING_COVERAGE.includes(type)
     );
 
-    expect(reachable).toHaveLength(42);
-    expect(PENDING_COVERAGE).toHaveLength(8);
+    expect(reachable).toHaveLength(50);
+    expect(PENDING_COVERAGE).toHaveLength(0);
     expect(declared()).toEqual(sorted(reachable));
   });
 

@@ -282,11 +282,12 @@ describe('an import with mode append adds to the document on both sides', () => 
     expect(session.other.state.settings.databaseName).toBe('shop');
   });
 
-  it('lays what it adds out below every table and memo the seed holds', async () => {
+  it('lays what it adds out below every table and memo the seed holds, from the left edge of its group', async () => {
     const session = open();
     await quiet();
     const { agent } = session;
-    const { tableEntities, memoEntities } = agent.state.collections;
+    const { tableEntities, memoEntities, tableGroupEntities } =
+      agent.state.collections;
     const lowest = Math.max(
       ...Object.values(tableEntities).map(({ ui }) => ui.y),
       ...Object.values(memoEntities).map(({ ui }) => ui.y)
@@ -297,7 +298,7 @@ describe('an import with mode append adds to the document on both sides', () => 
     const added =
       agent.state.collections.tableEntities[agent.state.doc.tableIds[3]];
     expect(added.ui.y).toBeGreaterThan(lowest);
-    expect(added.ui.x).toBe(100);
+    expect(added.ui.x).toBe(tableGroupEntities[SEED.group].ui.x);
   });
 
   it('takes the append away on both sides with one undo', async () => {

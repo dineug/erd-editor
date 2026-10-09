@@ -176,7 +176,7 @@ describe('erd_get', () => {
         error: {
           code: 'invalidArgs',
           message:
-            'name at least one entity in tableIds, tableNames, relationshipIds, indexIds, memoIds; erd_list lists them',
+            'name at least one entity in tableIds, tableNames, relationshipIds, indexIds, memoIds, tableGroupIds; erd_list lists them',
         },
       });
     }

@@ -1,4 +1,8 @@
-import type { ActionType, FocusType } from '@dineug/erd-editor/peer.js';
+import type {
+  ActionType,
+  FocusType,
+  RootState,
+} from '@dineug/erd-editor/peer.js';
 import type { CompositionActions } from '@dineug/r-html';
 
 import { columnTools } from '@/tools/registry/column';
@@ -8,6 +12,7 @@ import { memoTools } from '@/tools/registry/memo';
 import { relationshipTools } from '@/tools/registry/relationship';
 import { settingsTools } from '@/tools/registry/settings';
 import { tableTools } from '@/tools/registry/table';
+import { tableGroupTools } from '@/tools/registry/tableGroup';
 
 /** The document entities a tool argument can name by id. */
 export type ToolEntity =
@@ -16,12 +21,13 @@ export type ToolEntity =
   | 'relationship'
   | 'index'
   | 'indexColumn'
-  | 'memo';
+  | 'memo'
+  | 'tableGroup';
 
 /**
- * What an argument holds. An entity id must name a live entity, one inside
- * the entity parentArg names when set, or a column of an index's table. An
- * enum is passed by name and reaches toActions as the value it maps to.
+ * What an argument holds. An entity id names a live entity, inside the one
+ * parentArg names (an index's table for a column), or with orNone null or '',
+ * which toActions gets as ''. An enum's name reaches toActions as its value.
  */
 export type ToolArgKind =
   | { type: 'string' }
@@ -29,8 +35,14 @@ export type ToolArgKind =
   | { type: 'integer' }
   | { type: 'boolean' }
   | { type: 'enum'; values: Readonly<Record<string, string | number>> }
-  | { type: 'entityId'; entity: ToolEntity; parentArg?: string }
+  | {
+      type: 'entityId';
+      entity: ToolEntity;
+      parentArg?: string;
+      orNone?: boolean;
+    }
   | { type: 'entityIdList'; entity: 'column'; parentArg: string }
+  | { type: 'entityIdList'; entity: 'table'; parentArg?: undefined }
   | { type: 'tablePositions' };
 
 /** One entry of a table positions argument: a live table, named once in the list. */
@@ -82,8 +94,11 @@ export type ActionTool = {
   readonly focus?: ToolFocus;
   readonly snapshotPaths: readonly string[];
   readonly args: readonly ToolArg[];
-  /** A rule across arguments; the message it returns refuses the call. */
-  readonly refine?: (args: ToolArgValues) => string | undefined;
+  /** A rule across arguments and the document; the message it returns refuses the call. */
+  readonly refine?: (
+    args: ToolArgValues,
+    state: RootState
+  ) => string | undefined;
   readonly toActions: (args: ToolArgValues) => CompositionActions;
 };
 
@@ -93,6 +108,7 @@ export const actionTools: readonly ActionTool[] = Object.freeze([
   ...relationshipTools,
   ...indexTools,
   ...memoTools,
+  ...tableGroupTools,
   ...settingsTools,
   ...importTools,
 ]);

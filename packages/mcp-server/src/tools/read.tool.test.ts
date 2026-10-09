@@ -115,7 +115,7 @@ describe('the scripts erd_read gives', () => {
     expect(refused.json.error).toEqual({
       code: 'invalidArgs',
       message:
-        'tableIds and tableNames apply to the sql format only, not scripts; erd_get takes them too',
+        'tableIds, tableNames and groupNames apply to the sql format only, not scripts; erd_get takes tableIds and tableNames too',
     });
     peer.destroy();
     await mcp.close();
@@ -148,7 +148,7 @@ describe('a call that fails unexpectedly', () => {
       'a tool call failed',
       expect.stringContaining('TypeError: bug')
     );
-    expect((await mcp.listTools()).tools).toHaveLength(56);
+    expect((await mcp.listTools()).tools).toHaveLength(63);
     await mcp.close();
   });
 

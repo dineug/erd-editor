@@ -1,4 +1,9 @@
-export { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
+export {
+  MEMO_MIN_HEIGHT,
+  MEMO_MIN_WIDTH,
+  TABLE_GROUP_MIN_HEIGHT,
+  TABLE_GROUP_MIN_WIDTH,
+} from '@/constants/layout';
 export {
   BracketType,
   CanvasType,
@@ -44,6 +49,8 @@ export { actions as tableActions } from '@/engine/modules/table/atom.actions';
 export { actions$ as tableActions$ } from '@/engine/modules/table/generator.actions';
 export { actions as tableColumnActions } from '@/engine/modules/table-column/atom.actions';
 export { actions$ as tableColumnActions$ } from '@/engine/modules/table-column/generator.actions';
+export { actions as tableGroupActions } from '@/engine/modules/table-group/atom.actions';
+export { actions$ as tableGroupActions$ } from '@/engine/modules/table-group/generator.actions';
 export {
   createPeerStore,
   type DispatchFocus,
@@ -65,3 +72,4 @@ export {
   type SchemaSQLOptions,
   SchemaSQLStatementsList,
 } from '@/utils/schema-sql';
+export { getTablesGroupRect } from '@/utils/tableGroup';

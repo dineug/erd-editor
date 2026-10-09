@@ -17,8 +17,8 @@ export const NOT_EMITTED: ReadonlyArray<ActionType> = Object.freeze([
   'settings.changeColumnNameCase',
   'settings.changeBracketType',
   'settings.changeLockSettings',
-  'table.move',
   'memo.move',
+  'tableGroup.moveTo',
   'relationship.changeColumns',
 ]);
 
@@ -59,10 +59,10 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
     'settings.changeBracketType': CODE,
     'settings.changeLockSettings':
       'A lock keeps a setting of the user’s as they saved it, so the user takes or releases one in the editor Settings tab; an agent changes locks only by loading a whole document with erd_import_json, which takes the locks it carries, every one on when it carries none, or by undoing an import.',
-    'table.move':
-      'A relative drag step; table.moveTo places a table where the agent names.',
     'memo.move':
       'A relative drag step; memo.moveTo places a memo where the agent names.',
+    'tableGroup.moveTo':
+      'Places a group alone and leaves its tables behind, which no editor gesture does; erd_move_table_group moves a group and its tables by one relative step, as a drag of its title bar does.',
     'relationship.changeColumns':
       "The editor's Map Columns dialog emits it; an agent re-maps a relationship with erd_batch of erd_remove_relationship and erd_link_columns, which every editor applies.",
     'editor.clear':
@@ -72,15 +72,6 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
 /**
  * Change types that should have a tool and do not have one yet. The
  * reachability spec reads it alongside the tools, and a type the engine adds
- * without a tool must be named here or fail it: the table group changes wait here.
+ * without a tool must be named here or fail it.
  */
-export const PENDING_COVERAGE: readonly ActionType[] = Object.freeze([
-  'tableGroup.add',
-  'tableGroup.move',
-  'tableGroup.moveTo',
-  'tableGroup.remove',
-  'tableGroup.resize',
-  'tableGroup.changeName',
-  'tableGroup.changeColor',
-  'table.changeGroup',
-]);
+export const PENDING_COVERAGE: readonly ActionType[] = Object.freeze([]);

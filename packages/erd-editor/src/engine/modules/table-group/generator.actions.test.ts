@@ -134,6 +134,28 @@ describe('addTableGroupAction$', () => {
     expect(groupIdOf(store, 'grouped')).toBe('other');
   });
 
+  it('names and colors the group in the batch that adds it, and leaves both unset when not given', () => {
+    store.dispatchSync(
+      addTableGroupAction$(UI, { name: 'billing', color: '#3b82f6' })
+    );
+    store.dispatchSync(addTableGroupAction$(UI, { name: '', color: '' }));
+
+    const [named, plain] = store.state.doc.tableGroupIds.map(
+      id => store.state.collections.tableGroupEntities[id]
+    );
+    expect(named).toMatchObject({ name: 'billing', color: '#3b82f6' });
+    expect(plain).toMatchObject({ name: '', color: '' });
+    expect(
+      typesOf(store, addTableGroupAction$(UI, { name: 'billing' }))
+    ).toEqual([
+      'editor.unselectAll',
+      'editor.focusTableEnd',
+      'editor.select',
+      ActionType.addTableGroup,
+      ActionType.changeTableGroupName,
+    ]);
+  });
+
   it('emits the selection, the add and the memberships in one batch', () => {
     store.dispatchSync(
       addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 2 } })
@@ -202,6 +224,23 @@ describe('addTableGroupFromTablesAction$', () => {
       ActionType.addTableGroup,
       'table.changeGroup',
     ]);
+  });
+
+  it('names and colors the group it wraps around the tables', () => {
+    store.dispatchSync(
+      addTableAction({ id: 'a', ui: { x: 100, y: 100, zIndex: 2 } })
+    );
+
+    store.dispatchSync(
+      addTableGroupFromTablesAction$(['a'], { name: 'core', color: '#ff8800' })
+    );
+
+    const id = store.state.doc.tableGroupIds[0];
+    expect(store.state.collections.tableGroupEntities[id]).toMatchObject({
+      name: 'core',
+      color: '#ff8800',
+    });
+    expect(groupIdOf(store, 'a')).toBe(id);
   });
 
   it('adds nothing without a table the document lists', () => {

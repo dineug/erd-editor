@@ -240,26 +240,49 @@ describe('a page of a large document list', () => {
     expect(pages[1].note).toMatch(/^This page lists memos \d+ to \d+ of 601/);
   });
 
-  it('lists a table with its indexes, and the memos only in an unsearched list', () => {
+  it('lists a table with its indexes, and the table groups and memos only in an unsearched list', () => {
     const peer = seeded();
     const pages = allPages(offset =>
       toDocumentList(peer.state, { offset, limit: 1 })
     );
 
     expect(
-      pages.map(({ tables, memos }) => [...ids(tables), ...ids(memos)])
-    ).toEqual([[SEED.users], [SEED.orders], [SEED.empty], [SEED.memo]]);
+      pages.map(({ tables, tableGroups, memos }) => [
+        ...ids(tables),
+        ...ids(tableGroups),
+        ...ids(memos),
+      ])
+    ).toEqual([
+      [SEED.users],
+      [SEED.orders],
+      [SEED.empty],
+      [SEED.group],
+      [SEED.memo],
+    ]);
     expect(pages.map(({ indexes }) => ids(indexes))).toEqual([
       [],
       [SEED.index],
+      [],
       [],
       [],
     ]);
     expect(pages[2].note).toBe(
       `This page lists tables 3 to 3 of 3; for the next page pass offset 3.${SEARCH_HINT}`
     );
-    expect(pages[3]).not.toHaveProperty('note');
-    expect(toDocumentList(peer.state, { query: 'users' }).memos).toEqual([]);
+    expect(pages[3].note).toBe(
+      `This page lists table groups 1 to 1 of 1; for the next page pass offset 4.${SEARCH_HINT}`
+    );
+    expect(pages[4]).not.toHaveProperty('note');
+    expect(toDocumentList(peer.state, { offset: 2, limit: 2 }).note).toBe(
+      `This page lists tables 3 to 3 of 3 and table groups 1 to 1 of 1; for the next page pass offset 4.${SEARCH_HINT}`
+    );
+    expect(toDocumentList(peer.state, { offset: 2, limit: 3 }).note).toBe(
+      undefined
+    );
+    const searched = toDocumentList(peer.state, { query: 'users' });
+    expect(searched.memos).toEqual([]);
+    expect(searched.tableGroups).toEqual([]);
+    expect(searched.tables[0].groupId).toBe(SEED.group);
   });
 
   it('says so when the offset is past the end', () => {
@@ -267,9 +290,14 @@ describe('a page of a large document list', () => {
 
     expect(toDocumentList(peer.state, { offset: 9 })).toMatchObject({
       tables: [],
+      tableGroups: [],
       memos: [],
-      note: 'offset 9 is past the end of the 3 tables and 1 memo.',
+      note: 'offset 9 is past the end of the 3 tables, 1 table group and 1 memo.',
     });
+    runTool(peer, 'erd_remove_table_group', { groupId: SEED.group });
+    expect(toDocumentList(peer.state, { offset: 9 }).note).toBe(
+      'offset 9 is past the end of the 3 tables and 1 memo.'
+    );
     expect(toDocumentList(peer.state, { query: 'users', offset: 9 }).note).toBe(
       'offset 9 is past the end of the 1 table matching the query.'
     );

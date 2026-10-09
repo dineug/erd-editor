@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vite-plus/test';
 
-import { MEMO_MIN_HEIGHT } from '@/constants/layout';
+import { MEMO_MIN_HEIGHT, TABLE_GROUP_MIN_WIDTH } from '@/constants/layout';
 import { Database, DDLScriptPosition, Show } from '@/constants/schema';
 import { DatabaseVendorList } from '@/constants/sql/database';
 import { ChangeActionTypes } from '@/engine/actions';
@@ -12,6 +12,8 @@ import { FocusType } from '@/engine/modules/editor/state';
 import { actions as memoActions } from '@/engine/modules/memo/atom.actions';
 import { actions as tableActions } from '@/engine/modules/table/atom.actions';
 import { actions$ as tableActions$ } from '@/engine/modules/table/generator.actions';
+import { actions as tableGroupActions } from '@/engine/modules/table-group/atom.actions';
+import { actions$ as tableGroupActions$ } from '@/engine/modules/table-group/generator.actions';
 import {
   createPeerStore,
   PeerStoreError,
@@ -26,9 +28,10 @@ import {
   SchemaSQLHeaderList,
   SchemaSQLStatementsList,
 } from '@/utils/schema-sql';
+import { getTablesGroupRect } from '@/utils/tableGroup';
 
 describe('peer barrel (AC-B2)', () => {
-  it('exposes exactly the 48 values the headless peer needs', () => {
+  it('exposes exactly the 53 values the headless peer needs', () => {
     expect(Object.keys(peer).sort()).toEqual(
       [
         'createPeerStore',
@@ -44,6 +47,7 @@ describe('peer barrel (AC-B2)', () => {
         'memoActions$',
         'relationshipActions$',
         'settingsActions$',
+        'tableGroupActions$',
         'tableActions',
         'tableColumnActions',
         'indexActions',
@@ -51,6 +55,7 @@ describe('peer barrel (AC-B2)', () => {
         'memoActions',
         'relationshipActions',
         'settingsActions',
+        'tableGroupActions',
         'ChangeActionTypes',
         'StreamActionTypes',
         'SharedFollowingActionTypes',
@@ -72,6 +77,8 @@ describe('peer barrel (AC-B2)', () => {
         'Show',
         'MEMO_MIN_WIDTH',
         'MEMO_MIN_HEIGHT',
+        'TABLE_GROUP_MIN_WIDTH',
+        'TABLE_GROUP_MIN_HEIGHT',
         'createSchemaSQL',
         'SchemaSQLStatementsList',
         'SchemaSQLHeaderList',
@@ -79,9 +86,10 @@ describe('peer barrel (AC-B2)', () => {
         'DatabaseVendorToDatabase',
         'bHas',
         'measureTableSize',
+        'getTablesGroupRect',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(48);
+    expect(Object.keys(peer)).toHaveLength(53);
   });
 
   it('re-exports each name from the module that owns it', () => {
@@ -94,18 +102,22 @@ describe('peer barrel (AC-B2)', () => {
     expect(peer.tableActions$).toBe(tableActions$);
     expect(peer.tableActions).toBe(tableActions);
     expect(peer.memoActions).toBe(memoActions);
+    expect(peer.tableGroupActions).toBe(tableGroupActions);
+    expect(peer.tableGroupActions$).toBe(tableGroupActions$);
     expect(peer.ChangeActionTypes).toBe(ChangeActionTypes);
     expect(peer.FocusType).toBe(FocusType);
     expect(peer.Database).toBe(Database);
     expect(peer.DDLScriptPosition).toBe(DDLScriptPosition);
     expect(peer.Show).toBe(Show);
     expect(peer.MEMO_MIN_HEIGHT).toBe(MEMO_MIN_HEIGHT);
+    expect(peer.TABLE_GROUP_MIN_WIDTH).toBe(TABLE_GROUP_MIN_WIDTH);
     expect(peer.createSchemaSQL).toBe(createSchemaSQL);
     expect(peer.SchemaSQLStatementsList).toBe(SchemaSQLStatementsList);
     expect(peer.SchemaSQLHeaderList).toBe(SchemaSQLHeaderList);
     expect(peer.DatabaseVendorList).toBe(DatabaseVendorList);
     expect(peer.bHas).toBe(bHas);
     expect(peer.measureTableSize).toBe(measureTableSize);
+    expect(peer.getTablesGroupRect).toBe(getTablesGroupRect);
   });
 
   it('keeps the catalog per module and exports no flat actions map', () => {
