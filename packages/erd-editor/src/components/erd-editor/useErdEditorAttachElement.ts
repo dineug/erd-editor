@@ -490,8 +490,11 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     const database = isDatabaseVendor
       ? get(DatabaseVendorToDatabase, databaseVendor ?? '')
       : undefined;
-    // createSchemaSQL reads only statements and header, an unknown value as left out.
-    return createSchemaSQL(store.state, database, undefined, options);
+    // A host passes statements and header alone, an unknown value read as left out.
+    return createSchemaSQL(store.state, database, undefined, {
+      statements: options?.statements,
+      header: options?.header,
+    });
   };
 
   ctx.getSharedStore = config => {

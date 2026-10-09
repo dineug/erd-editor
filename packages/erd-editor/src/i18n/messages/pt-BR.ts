@@ -115,6 +115,11 @@ export const ptBR = {
   'schemaSql.thisWindowOnly': 'Somente esta janela',
   'schemaSql.statements': 'Instruções',
   'schemaSql.header': 'Cabeçalho',
+  'schemaSql.tables': 'Tabelas',
+  'schemaSql.allTables': 'Todas',
+  'schemaSql.noGroup': 'Sem grupo',
+  'schemaSql.noTablesChosen':
+    'Nenhuma tabela escolhida. Marque algumas em Tabelas.',
   'schemaSql.notInDatabase': 'Indisponível no {database}',
   'schemaSql.dropWarning':
     'Exclui {tables} antes de criá-las. As linhas delas são perdidas.',

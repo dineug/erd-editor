@@ -4,6 +4,7 @@ import {
   FC,
   nextTick,
   observable,
+  observer,
   onBeforeMount,
   ref,
   watch,
@@ -22,9 +23,12 @@ import SchemaSQLOptions, {
 } from '@/components/schema-sql/schema-sql-options/SchemaSQLOptions';
 import * as optionsStyles from '@/components/schema-sql/schema-sql-options/SchemaSQLOptions.styles';
 import {
+  chosenTableIds,
+  isNoTableChosen,
   resolvePanel,
   type SchemaSQLView,
   schemaSQLViewOf,
+  syncTableChoice,
 } from '@/components/schema-sql/schemaSQLView';
 import { Database } from '@/constants/schema';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -54,6 +58,7 @@ const hasPropName = arrayHas<string | number | symbol>([
 const hasViewPropName = arrayHas<string | number | symbol>([
   'statements',
   'header',
+  'tables',
 ]);
 
 export type SchemaSQLProps = {
@@ -75,6 +80,7 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
     sql: '',
     tables: [] as string[],
     longNames: [] as string[],
+    noTableChosen: false,
   });
 
   const setSQL = () => {
@@ -90,16 +96,23 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
         state.sql = createSchemaSQLTable(store.state, table);
       }
     } else {
-      const { statements, header } = schemaSQLViewOf(app.value);
+      const { statements, header, tables } = schemaSQLViewOf(app.value);
+      const tableIds = chosenTableIds(store.state, tables);
+      const none = isNoTableChosen(tables, store.state.doc.tableGroupIds);
 
-      state.sql = createSchemaSQL(store.state, undefined, undefined, {
-        statements,
-        header,
-      });
-      state.tables = schemaSQLTables(store.state);
+      // Some tables keep the document's scripts; no box checked writes nothing.
+      state.noTableChosen = none;
+      state.sql = none
+        ? ''
+        : createSchemaSQL(store.state, undefined, tableIds, {
+            statements,
+            header,
+            scripts: true,
+          });
+      state.tables = none ? [] : schemaSQLTables(store.state, tableIds);
       state.longNames =
-        store.state.settings.database === Database.Oracle
-          ? oracleLongNames(store.state)
+        !none && store.state.settings.database === Database.Oracle
+          ? oracleLongNames(store.state, tableIds)
           : [];
     }
   };
@@ -152,14 +165,22 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
   onBeforeMount(() => {
     const { store } = app.value;
     const { settings } = store.state;
+    const view = schemaSQLViewOf(app.value);
 
+    // The table choice follows the groups the document lists, its own and a
+    // peer's, matched first to the ones it last met.
+    if (!props.tableId) {
+      addUnsubscribe(
+        observer(() => syncTableChoice(view, store.state.doc.tableGroupIds))
+      );
+    }
     setSQL();
 
     addUnsubscribe(
       watch(settings).subscribe(propName => {
         hasPropName(propName) && setSQL();
       }),
-      watch(schemaSQLViewOf(app.value)).subscribe(propName => {
+      watch(view).subscribe(propName => {
         !props.tableId && hasViewPropName(propName) && setSQL();
       }),
       watch(props).subscribe(propName => {
@@ -211,6 +232,11 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
                 ) : null
               }
             />
+            {full && state.noTableChosen ? (
+              <p class={['schema-sql-no-table', styles.empty]} prop:dir={dir}>
+                {t('schemaSql.noTablesChosen')}
+              </p>
+            ) : null}
           </div>
           {panel === 'open' ? (
             <SchemaSQLOptions

@@ -1,3 +1,4 @@
+import { query } from '@dineug/erd-editor-schema';
 import { createRef, FC, nextTick, onMounted, ref, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -17,7 +18,14 @@ import {
   isStatementsSupported,
   menus as statementsMenus,
 } from '@/components/schema-sql/schema-sql-context-menu/menus/statementsMenus';
-import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
+import {
+  chooseAllTables,
+  chooseNoGroup,
+  chooseTableGroup,
+  isEveryTableChosen,
+  resolveTableChoice,
+  schemaSQLViewOf,
+} from '@/components/schema-sql/schemaSQLView';
 import { Database, DDLScriptPosition } from '@/constants/schema';
 import {
   changeBracketTypeAction,
@@ -33,6 +41,7 @@ import {
   SchemaSQLStatements,
   schemaSQLSupport,
 } from '@/utils/schema-sql';
+import { toOpaqueHex } from '@/utils/tableColor';
 
 import { formatDropWarning } from './dropWarning';
 import * as styles from './SchemaSQLOptions.styles';
@@ -42,6 +51,8 @@ import ScriptEditor from './ScriptEditor';
 export const SCHEMA_SQL_OPTIONS_ID = 'schema-sql-options';
 
 const TITLE_ID = 'schema-sql-options-title';
+
+const TABLES_ID = 'schema-sql-tables';
 
 /** The before script's hint: SQL alone, which no language translates. */
 const BEFORE_PLACEHOLDER = '-- CREATE EXTENSION, CREATE SCHEMA, SET …';
@@ -80,10 +91,24 @@ type Segment = {
   onPress: () => void;
 };
 
+/** One box of the Tables list: All, a table group or No group. */
+type Choice = {
+  className: string;
+  label: string;
+  checked: boolean;
+  /** All, while some boxes are checked and some are not. */
+  mixed: boolean;
+  /** A group without a name, which reads unnamed in the placeholder's colour. */
+  unnamed: boolean;
+  /** A group's color as an opaque hex, or null for no dot. */
+  color: string | null;
+  onChange: (checked: boolean) => void;
+};
+
 /**
- * The options beside the Schema SQL: what the document saves, the database
- * and the bracket, then this window's statements and header, then the
- * scripts the document saves, and the buttons that save and copy the text.
+ * The options beside the Schema SQL: the database and the bracket, then this
+ * window's statements, header and tables, then the scripts the document
+ * saves, and the buttons that save and copy the text.
  */
 const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -130,6 +155,96 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
       })
     );
   });
+
+  const groupIdsNow = () => app.value.store.state.doc.tableGroupIds;
+
+  const renderChoice = (choice: Choice) => (
+    <label class={[choice.className, styles.choice]}>
+      <input
+        type="checkbox"
+        prop:checked={choice.checked}
+        prop:indeterminate={choice.mixed}
+        on:change={(event: Event) =>
+          choice.onChange((event.target as HTMLInputElement).checked)
+        }
+      />
+      {choice.color ? (
+        <span
+          class={styles.dot}
+          style={{ 'background-color': choice.color }}
+          aria-hidden="true"
+        />
+      ) : null}
+      <span
+        class={[styles.choiceName, { unnamed: choice.unnamed }]}
+        prop:dir="auto"
+        title={choice.label}
+      >
+        {choice.label}
+      </span>
+    </label>
+  );
+
+  // Shown while the document has a group, every box checked meaning the whole
+  // document as it is written with no group at all.
+  const renderTables = () => {
+    const { store } = app.value;
+    const { doc, collections } = store.state;
+    if (!doc.tableGroupIds.length) return null;
+
+    const { t } = i18n.value;
+    const view = schemaSQLViewOf(app.value);
+    const choice = resolveTableChoice(view.tables, doc.tableGroupIds);
+    const every = isEveryTableChosen(choice);
+    const some = choice.noGroup || Object.values(choice.groups).some(Boolean);
+    const groups = query(collections)
+      .collection('tableGroupEntities')
+      .selectByIds(doc.tableGroupIds);
+
+    return (
+      <div class={styles.column}>
+        <span id={TABLES_ID}>{t('schemaSql.tables')}</span>
+        <div
+          class={['schema-sql-options-tables', styles.choices]}
+          role="group"
+          aria-labelledby={TABLES_ID}
+        >
+          {renderChoice({
+            className: 'schema-sql-options-all',
+            label: t('schemaSql.allTables'),
+            checked: every,
+            mixed: some && !every,
+            unnamed: false,
+            color: null,
+            onChange: checked => chooseAllTables(view, groupIdsNow(), checked),
+          })}
+          {groups.map(group => {
+            const named = Boolean(group.name.trim());
+
+            return renderChoice({
+              className: 'schema-sql-options-group',
+              label: named ? group.name : t('common.unnamed'),
+              checked: choice.groups[group.id],
+              mixed: false,
+              unnamed: !named,
+              color: toOpaqueHex(group.color),
+              onChange: checked =>
+                chooseTableGroup(view, groupIdsNow(), group.id, checked),
+            });
+          })}
+          {renderChoice({
+            className: 'schema-sql-options-no-group',
+            label: t('schemaSql.noGroup'),
+            checked: choice.noGroup,
+            mixed: false,
+            unnamed: false,
+            color: null,
+            onChange: checked => chooseNoGroup(view, groupIdsNow(), checked),
+          })}
+        </div>
+      </div>
+    );
+  };
 
   const renderSegments = (labelledBy: string, segments: Segment[]) => (
     <div class={styles.segments} role="group" aria-labelledby={labelledBy}>
@@ -295,6 +410,7 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
                 })}
               </p>
             ) : null}
+            {renderTables()}
             {warning ? (
               <div
                 class={['schema-sql-options-warning', styles.warning]}

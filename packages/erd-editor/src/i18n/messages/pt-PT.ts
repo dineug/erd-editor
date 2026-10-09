@@ -115,6 +115,11 @@ export const ptPT = {
   'schemaSql.thisWindowOnly': 'Apenas esta janela',
   'schemaSql.statements': 'Instruções',
   'schemaSql.header': 'Cabeçalho',
+  'schemaSql.tables': 'Tabelas',
+  'schemaSql.allTables': 'Todas',
+  'schemaSql.noGroup': 'Sem grupo',
+  'schemaSql.noTablesChosen':
+    'Nenhuma tabela escolhida. Assinale algumas em Tabelas.',
   'schemaSql.notInDatabase': 'Não suportado em {database}',
   'schemaSql.dropWarning':
     'Elimina {tables} antes de as criar. As suas linhas perdem-se.',

@@ -114,6 +114,11 @@ export const skSK = {
   'schemaSql.thisWindowOnly': 'Len toto okno',
   'schemaSql.statements': 'Príkazy',
   'schemaSql.header': 'Hlavička',
+  'schemaSql.tables': 'Tabuľky',
+  'schemaSql.allTables': 'Všetky',
+  'schemaSql.noGroup': 'Bez skupiny',
+  'schemaSql.noTablesChosen':
+    'Nie sú vybrané žiadne tabuľky. Označte niektoré v časti Tabuľky.',
   'schemaSql.notInDatabase': 'Nie je v {database}',
   'schemaSql.dropWarning':
     'Pred vytvorením odstráni {tables}. Ich riadky sa stratia.',

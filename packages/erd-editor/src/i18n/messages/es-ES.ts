@@ -115,6 +115,11 @@ export const esES = {
   'schemaSql.thisWindowOnly': 'Solo esta ventana',
   'schemaSql.statements': 'Sentencias',
   'schemaSql.header': 'Cabecera',
+  'schemaSql.tables': 'Tablas',
+  'schemaSql.allTables': 'Todas',
+  'schemaSql.noGroup': 'Sin grupo',
+  'schemaSql.noTablesChosen':
+    'No hay tablas elegidas. Marque alguna en Tablas.',
   'schemaSql.notInDatabase': 'No disponible en {database}',
   'schemaSql.dropWarning':
     'Elimina {tables} antes de crearlas. Sus filas se pierden.',

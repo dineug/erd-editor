@@ -115,6 +115,11 @@ export const ukUA = {
   'schemaSql.thisWindowOnly': 'Лише це вікно',
   'schemaSql.statements': 'Оператори',
   'schemaSql.header': 'Заголовок',
+  'schemaSql.tables': 'Таблиці',
+  'schemaSql.allTables': 'Усі',
+  'schemaSql.noGroup': 'Без групи',
+  'schemaSql.noTablesChosen':
+    'Таблиці не вибрано. Позначте потрібні в розділі «Таблиці».',
   'schemaSql.notInDatabase': 'Немає в {database}',
   'schemaSql.dropWarning':
     'Видаляє {tables} перед створенням. Їхні рядки втрачаються.',

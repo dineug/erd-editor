@@ -114,6 +114,11 @@ export const koKR = {
   'schemaSql.thisWindowOnly': '이 창에서만',
   'schemaSql.statements': '구문',
   'schemaSql.header': '머리말',
+  'schemaSql.tables': '테이블',
+  'schemaSql.allTables': '전체',
+  'schemaSql.noGroup': '그룹 없음',
+  'schemaSql.noTablesChosen':
+    '선택한 테이블이 없습니다. 테이블에서 체크하세요.',
   'schemaSql.notInDatabase': '{database}에는 없음',
   'schemaSql.dropWarning':
     '다음을 삭제한 뒤 다시 만듭니다: {tables}. 행이 사라집니다.',

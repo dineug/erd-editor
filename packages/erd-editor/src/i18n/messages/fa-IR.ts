@@ -114,6 +114,11 @@ export const faIR = {
   'schemaSql.thisWindowOnly': 'فقط همین پنجره',
   'schemaSql.statements': 'دستورها',
   'schemaSql.header': 'سرآیند',
+  'schemaSql.tables': 'جدول‌ها',
+  'schemaSql.allTables': 'همه',
+  'schemaSql.noGroup': 'بدون گروه',
+  'schemaSql.noTablesChosen':
+    'هیچ جدولی انتخاب نشده است. چند جدول را زیر جدول‌ها علامت بزنید.',
   'schemaSql.notInDatabase': 'در {database} نیست',
   'schemaSql.dropWarning':
     '{tables} را پیش از ساختن حذف می‌کند. ردیف‌هایشان از دست می‌رود.',

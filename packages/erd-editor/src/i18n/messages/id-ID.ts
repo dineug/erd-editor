@@ -115,6 +115,11 @@ export const idID = {
   'schemaSql.thisWindowOnly': 'Hanya jendela ini',
   'schemaSql.statements': 'Pernyataan',
   'schemaSql.header': 'Pembuka',
+  'schemaSql.tables': 'Tabel',
+  'schemaSql.allTables': 'Semua',
+  'schemaSql.noGroup': 'Tanpa grup',
+  'schemaSql.noTablesChosen':
+    'Tidak ada tabel yang dipilih. Centang beberapa di Tabel.',
   'schemaSql.notInDatabase': 'Tidak ada di {database}',
   'schemaSql.dropWarning':
     'Menghapus {tables} sebelum membuatnya. Barisnya akan hilang.',

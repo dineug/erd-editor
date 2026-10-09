@@ -115,6 +115,11 @@ export const plPL = {
   'schemaSql.thisWindowOnly': 'Tylko to okno',
   'schemaSql.statements': 'Instrukcje',
   'schemaSql.header': 'Nagłówek',
+  'schemaSql.tables': 'Tabele',
+  'schemaSql.allTables': 'Wszystkie',
+  'schemaSql.noGroup': 'Bez grupy',
+  'schemaSql.noTablesChosen':
+    'Nie wybrano tabel. Zaznacz kilka w sekcji Tabele.',
   'schemaSql.notInDatabase': 'Brak w {database}',
   'schemaSql.dropWarning':
     'Usuwa {tables} przed ich utworzeniem. Ich wiersze zostaną utracone.',

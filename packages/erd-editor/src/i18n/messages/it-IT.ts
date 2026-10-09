@@ -115,6 +115,11 @@ export const itIT = {
   'schemaSql.thisWindowOnly': 'Solo questa finestra',
   'schemaSql.statements': 'Istruzioni',
   'schemaSql.header': 'Intestazione',
+  'schemaSql.tables': 'Tabelle',
+  'schemaSql.allTables': 'Tutte',
+  'schemaSql.noGroup': 'Nessun gruppo',
+  'schemaSql.noTablesChosen':
+    'Nessuna tabella scelta. Selezionane alcune in Tabelle.',
   'schemaSql.notInDatabase': 'Non disponibile in {database}',
   'schemaSql.dropWarning':
     'Elimina {tables} prima di crearle. Le loro righe vanno perse.',

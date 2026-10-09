@@ -115,6 +115,11 @@ export const nlNL = {
   'schemaSql.thisWindowOnly': 'Alleen dit venster',
   'schemaSql.statements': 'Instructies',
   'schemaSql.header': 'Kop',
+  'schemaSql.tables': 'Tabellen',
+  'schemaSql.allTables': 'Alle',
+  'schemaSql.noGroup': 'Geen groep',
+  'schemaSql.noTablesChosen':
+    'Geen tabellen gekozen. Vink er een paar aan onder Tabellen.',
   'schemaSql.notInDatabase': 'Niet in {database}',
   'schemaSql.dropWarning':
     'Verwijdert {tables} voordat ze worden gemaakt. Hun rijen gaan verloren.',

@@ -116,6 +116,10 @@ export const frFR = {
   'schemaSql.thisWindowOnly': 'Cette fenêtre uniquement',
   'schemaSql.statements': 'Instructions',
   'schemaSql.header': 'En-tête',
+  'schemaSql.tables': 'Tables',
+  'schemaSql.allTables': 'Toutes',
+  'schemaSql.noGroup': 'Sans groupe',
+  'schemaSql.noTablesChosen': 'Aucune table choisie. Cochez-en sous Tables.',
   'schemaSql.notInDatabase': 'Indisponible dans {database}',
   'schemaSql.dropWarning':
     'Supprime {tables} avant de les créer. Leurs lignes sont perdues.',

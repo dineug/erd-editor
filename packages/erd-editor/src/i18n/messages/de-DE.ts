@@ -116,6 +116,11 @@ export const deDE = {
   'schemaSql.thisWindowOnly': 'Nur dieses Fenster',
   'schemaSql.statements': 'Anweisungen',
   'schemaSql.header': 'Vorspann',
+  'schemaSql.tables': 'Tabellen',
+  'schemaSql.allTables': 'Alle',
+  'schemaSql.noGroup': 'Keine Gruppe',
+  'schemaSql.noTablesChosen':
+    'Keine Tabellen gewählt. Wählen Sie welche unter Tabellen.',
   'schemaSql.notInDatabase': 'Nicht in {database}',
   'schemaSql.dropWarning':
     'Löscht {tables} vor dem Erstellen. Ihre Zeilen gehen verloren.',

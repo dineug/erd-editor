@@ -146,6 +146,95 @@ export const segment = css`
   }
 `;
 
+/** The Tables list: All, each table group, then No group. */
+export const choices = css`
+  display: flex;
+  flex-direction: column;
+`;
+
+/**
+ * A box and its name on one line, the whole line taking the press; the box
+ * in the accent colour once checked, a dash while All is mixed.
+ */
+export const choice = css`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  color: var(--foreground);
+  cursor: pointer;
+  ${typography.paragraph};
+
+  &:hover {
+    color: var(--active);
+  }
+
+  & input[type='checkbox'] {
+    appearance: none;
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    border-radius: 3px;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px var(--gray-color-10);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 10px;
+    cursor: pointer;
+  }
+
+  &:hover input[type='checkbox']:not(:checked):not(:indeterminate) {
+    box-shadow: inset 0 0 0 1px var(--gray-color-11);
+  }
+
+  & input[type='checkbox']:checked {
+    background-color: var(--accent-color-9);
+    box-shadow: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2 4.1 7.2 8 3' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  & input[type='checkbox']:indeterminate {
+    background-color: var(--accent-color-9);
+    box-shadow: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.5 5h5' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+
+  & input[type='checkbox']:focus-visible {
+    outline: 2px solid var(--input-active);
+    outline-offset: 1px;
+  }
+
+  @media (forced-colors: active) {
+    & input[type='checkbox'] {
+      appearance: auto;
+      background-image: none;
+      box-shadow: none;
+    }
+  }
+`;
+
+/** A table group's color, ringed so a pale one shows on the panel. */
+export const dot = css`
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--context-menu-border);
+`;
+
+/** A name cut to one line; a group without one reads unnamed, dimmed. */
+export const choiceName = css`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.unnamed {
+    color: var(--placeholder);
+  }
+`;
+
 /**
  * What a drop and re-create takes with it, in the colours of a deleted line,
  * a long table name broken to stay inside the box.

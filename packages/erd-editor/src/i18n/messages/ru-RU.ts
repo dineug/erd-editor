@@ -115,6 +115,11 @@ export const ruRU = {
   'schemaSql.thisWindowOnly': 'Только в этом окне',
   'schemaSql.statements': 'Операторы',
   'schemaSql.header': 'Заголовок',
+  'schemaSql.tables': 'Таблицы',
+  'schemaSql.allTables': 'Все',
+  'schemaSql.noGroup': 'Без группы',
+  'schemaSql.noTablesChosen':
+    'Таблицы не выбраны. Отметьте нужные в разделе «Таблицы».',
   'schemaSql.notInDatabase': 'Нет в {database}',
   'schemaSql.dropWarning':
     'Удаляет {tables} перед созданием. Их строки теряются.',

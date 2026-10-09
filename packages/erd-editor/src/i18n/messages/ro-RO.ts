@@ -115,6 +115,10 @@ export const roRO = {
   'schemaSql.thisWindowOnly': 'Doar această fereastră',
   'schemaSql.statements': 'Instrucțiuni',
   'schemaSql.header': 'Antet',
+  'schemaSql.tables': 'Tabele',
+  'schemaSql.allTables': 'Toate',
+  'schemaSql.noGroup': 'Fără grup',
+  'schemaSql.noTablesChosen': 'Niciun tabel ales. Bifați câteva la Tabele.',
   'schemaSql.notInDatabase': 'Neacceptat în {database}',
   'schemaSql.dropWarning':
     'Șterge {tables} înainte de a le crea. Rândurile lor se pierd.',

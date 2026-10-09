@@ -359,10 +359,16 @@ export function formatIndex(
   }
 }
 
-/** The names an Oracle script writes that run past the 30 bytes Oracle 12.1 and older allow. */
-export function oracleLongNames(state: RootState): string[] {
+/**
+ * The names an Oracle script of the document, or of the tables given, writes
+ * past the 30 bytes Oracle 12.1 and older allow.
+ */
+export function oracleLongNames(
+  state: RootState,
+  tableIds?: readonly string[]
+): string[] {
   const written = createWrittenObjects();
-  createSchema(state, undefined, { written });
+  createSchema(state, tableIds, { written });
   const encoder = new TextEncoder();
 
   return [...new Set(written.identifiers)].filter(

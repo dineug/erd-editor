@@ -115,6 +115,11 @@ export const slSI = {
   'schemaSql.thisWindowOnly': 'Samo to okno',
   'schemaSql.statements': 'Stavki',
   'schemaSql.header': 'Glava',
+  'schemaSql.tables': 'Tabele',
+  'schemaSql.allTables': 'Vse',
+  'schemaSql.noGroup': 'Brez skupine',
+  'schemaSql.noTablesChosen':
+    'Izbrana ni nobena tabela. Označite nekaj pod Tabele.',
   'schemaSql.notInDatabase': 'Ni v {database}',
   'schemaSql.dropWarning':
     'Pred ustvarjanjem izbriše {tables}. Njihove vrstice se izgubijo.',

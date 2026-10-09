@@ -115,6 +115,11 @@ export const euES = {
   'schemaSql.thisWindowOnly': 'Leiho honetan soilik',
   'schemaSql.statements': 'Sententziak',
   'schemaSql.header': 'Goiburua',
+  'schemaSql.tables': 'Taulak',
+  'schemaSql.allTables': 'Denak',
+  'schemaSql.noGroup': 'Talderik gabe',
+  'schemaSql.noTablesChosen':
+    'Ez da taularik aukeratu. Markatu batzuk Taulak atalean.',
   'schemaSql.notInDatabase': 'Ez dago {database} datu-basean',
   'schemaSql.dropWarning':
     '{tables} ezabatzen ditu sortu aurretik. Haien errenkadak galdu egiten dira.',

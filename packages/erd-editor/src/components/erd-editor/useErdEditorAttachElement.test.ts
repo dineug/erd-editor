@@ -1092,6 +1092,9 @@ describe('useErdEditorAttachElement', () => {
         header: 'createAndUse',
       })
     ).toBe(schemaSQLFixture('PostgreSQL/recreate-createAndUse-scripts.sql'));
+    expect(ctx.getSchemaSQL('PostgreSQL', { scripts: false } as any)).toBe(
+      schemaSQLFixture('PostgreSQL/create-none-scripts.sql')
+    );
   });
 
   it('clears the document through clear()', async () => {

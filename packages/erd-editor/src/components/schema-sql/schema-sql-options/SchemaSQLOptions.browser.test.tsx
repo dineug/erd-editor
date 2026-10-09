@@ -35,9 +35,14 @@ import { themeContext } from '@/components/themeContext';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import type { LocaleCode } from '@/i18n/locales';
 import { setExportFileCallback } from '@/utils/file/exportFile';
@@ -93,6 +98,32 @@ function seedTable(app: AppContext, id: string, name: string) {
   );
   app.store.dispatchSync(addColumnAction({ tableId: id, id: `${id}-col` }));
 }
+
+/** users in a red group with a long name, audit in a group with no name. */
+function seedGroups(app: AppContext) {
+  const ui = { x: 0, y: 0, width: 200, height: 200, zIndex: 1 };
+  seedTable(app, 't1', 'users');
+  seedTable(app, 't2', 'audit');
+  app.store.dispatchSync(
+    addTableGroupAction({ id: 'ga', color: '#e5484d', ui }),
+    changeTableGroupNameAction({
+      id: 'ga',
+      value: 'Sales and every table the billing team owns',
+    }),
+    addTableGroupAction({ id: 'gb', ui }),
+    changeTableGroupAction({ id: 't1', value: 'ga' }),
+    changeTableGroupAction({ id: 't2', value: 'gb' })
+  );
+}
+
+const boxesOf = (fixture: Fixture) =>
+  Array.from(
+    fixture
+      .panel()!
+      .querySelectorAll<HTMLInputElement>(
+        '.schema-sql-options-tables input[type="checkbox"]'
+      )
+  );
 
 /**
  * Mounts the tab in a shadow root as the element has one, the editor measured
@@ -318,6 +349,43 @@ describe('the drop warning on a real layout', () => {
   });
 });
 
+describe('the Tables boxes on a real layout', () => {
+  it('draws 14 px boxes, All with a dash while mixed, a dot for a coloured group and a long name cut to one line', async () => {
+    const fixture = await setup(1000, seedGroups);
+    const [all, sales] = boxesOf(fixture);
+    const rows = Array.from(
+      fixture
+        .panel()!
+        .querySelectorAll<HTMLElement>('.schema-sql-options-tables label')
+    );
+    const name = rows[1].lastElementChild as HTMLElement;
+    const dots = rows.map(row => row.querySelector('span[aria-hidden]'));
+
+    expect(all.getBoundingClientRect().width).toBe(14);
+    expect(getComputedStyle(all).backgroundImage).toContain('M2 5.2');
+    expect(dots.map(dot => Boolean(dot))).toEqual([false, true, false, false]);
+    expect(getComputedStyle(dots[1]!).backgroundColor).toBe('rgb(229, 72, 77)');
+    expect(name.scrollWidth).toBeGreaterThan(name.clientWidth);
+    expect(rows[1].getBoundingClientRect().height).toBe(24);
+
+    sales.click();
+    await flush();
+    expect(all.indeterminate).toBe(true);
+    expect(getComputedStyle(all).backgroundImage).toContain('M2.5 5h5');
+  });
+
+  it("stands each box on the reader's side of its name in a right-to-left language", async () => {
+    const fixture = await setup(1000, seedGroups, 'ar-SA');
+    const row = fixture
+      .panel()!
+      .querySelectorAll<HTMLElement>('.schema-sql-options-tables label')[1];
+    const box = row.querySelector('input')!.getBoundingClientRect();
+    const name = row.lastElementChild!.getBoundingClientRect();
+
+    expect(box.left).toBeGreaterThan(name.right);
+  });
+});
+
 describe('the Schema SQL options panel on a real keyboard', () => {
   it('presses a segment with Space, which the hand tool never takes', async () => {
     const fixture = await setup();
@@ -351,6 +419,32 @@ describe('the Schema SQL options panel on a real keyboard', () => {
     await flush();
     expect(fixture.panel()).not.toBeNull();
     expect(fixture.app.store.state.editor.handTool).toBe(false);
+  });
+
+  it('walks the Tables boxes with Tab and checks one with Space, which the hand tool never takes', async () => {
+    const fixture = await setup(1000, seedGroups);
+    const [all, sales, unnamed] = boxesOf(fixture);
+    all.focus();
+
+    await userEvent.keyboard('{Tab}');
+    expect(fixture.shadow.activeElement).toBe(sales);
+
+    await userEvent.keyboard(' ');
+    await flush();
+
+    expect(sales.checked).toBe(false);
+    expect(all.indeterminate).toBe(true);
+    expect(schemaSQLViewOf(fixture.app).tables).toEqual({
+      groups: { ga: false, gb: true },
+      noGroup: true,
+    });
+    expect(fixture.app.store.state.editor.handTool).toBe(false);
+
+    await userEvent.keyboard('{Tab}');
+    await userEvent.keyboard(' ');
+    await flush();
+    expect(fixture.shadow.activeElement).toBe(unnamed);
+    expect(unnamed.checked).toBe(false);
   });
 
   it('saves the file once with Space on Save file', async () => {

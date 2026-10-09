@@ -115,6 +115,11 @@ export const trTR = {
   'schemaSql.thisWindowOnly': 'Yalnızca bu pencere',
   'schemaSql.statements': 'İfadeler',
   'schemaSql.header': 'Başlık',
+  'schemaSql.tables': 'Tablolar',
+  'schemaSql.allTables': 'Tümü',
+  'schemaSql.noGroup': 'Grupsuz',
+  'schemaSql.noTablesChosen':
+    'Hiç tablo seçilmedi. Tablolar altında birkaçını işaretleyin.',
   'schemaSql.notInDatabase': '{database} içinde yok',
   'schemaSql.dropWarning':
     '{tables} oluşturulmadan önce silinir. Satırları kaybolur.',

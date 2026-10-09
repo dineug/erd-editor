@@ -115,6 +115,11 @@ export const svSE = {
   'schemaSql.thisWindowOnly': 'Bara det här fönstret',
   'schemaSql.statements': 'Satser',
   'schemaSql.header': 'Rubrik',
+  'schemaSql.tables': 'Tabeller',
+  'schemaSql.allTables': 'Alla',
+  'schemaSql.noGroup': 'Ingen grupp',
+  'schemaSql.noTablesChosen':
+    'Inga tabeller valda. Markera några under Tabeller.',
   'schemaSql.notInDatabase': 'Inte i {database}',
   'schemaSql.dropWarning':
     'Tar bort {tables} innan de skapas. Deras rader går förlorade.',

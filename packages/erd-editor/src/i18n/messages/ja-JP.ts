@@ -114,6 +114,11 @@ export const jaJP = {
   'schemaSql.thisWindowOnly': 'このウィンドウのみ',
   'schemaSql.statements': 'ステートメント',
   'schemaSql.header': 'ヘッダー',
+  'schemaSql.tables': 'テーブル',
+  'schemaSql.allTables': 'すべて',
+  'schemaSql.noGroup': 'グループなし',
+  'schemaSql.noTablesChosen':
+    'テーブルが選ばれていません。テーブルでチェックしてください。',
   'schemaSql.notInDatabase': '{database} では非対応',
   'schemaSql.dropWarning':
     '作成する前に {tables} を削除します。行は失われます。',
