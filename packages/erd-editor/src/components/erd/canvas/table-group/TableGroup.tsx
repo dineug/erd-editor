@@ -1,6 +1,6 @@
 /** @jsxHost konva */
 
-import { FC } from '@dineug/r-html';
+import { FC, observable } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
@@ -8,18 +8,23 @@ import {
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
+  type ScenePointerEvent,
+  TABLE_GROUP_CORNER_RADIUS,
   TABLE_GROUP_FILL_OPACITY,
 } from '@/components/erd/canvas/sceneTokens';
+import TableGroupSash from '@/components/erd/canvas/table-group/TableGroupSash';
+import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import { useI18n } from '@/components/localeContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_GROUP_TITLE_HEIGHT } from '@/constants/layout';
+import { SelectType } from '@/engine/modules/editor/state';
+import { selectTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
 import type { TableGroup } from '@/internal-types';
+import type { Rect } from '@/konva/scene/metrics';
+import { isMainButtonPress, isMultiTouch } from '@/utils/domEvent';
 import { getTableGroupColors, getTableGroupRect } from '@/utils/tableGroup';
-
-/** The radius the group box is rounded with, a table's own. */
-const TABLE_GROUP_CORNER_RADIUS = 6;
 
 /** The width of the line around the box. */
 const TABLE_GROUP_BORDER = 1;
@@ -30,6 +35,9 @@ const TITLE_PADDING = 8;
 /** The weight the name is drawn at, a heading over the tables' own names. */
 const TITLE_FONT_WEIGHT = 'bold';
 
+/** The title bar's press is a click as well, so its drag waits for the pointer to travel. */
+const TITLE_KINDS = ['table-group-title'];
+
 export type TableGroupProps = {
   group: TableGroup;
 };
@@ -37,7 +45,7 @@ export type TableGroupProps = {
 /**
  * A group behind its tables, in getTableGroupRect's box: a title bar with the name over a body in
  * the group's color at a low alpha, one line around both, or the header's colors with no color it
- * reads. Title bar and body are separate nodes a press can tell apart, though neither listens yet.
+ * reads. The bar selects and carries the group, the body is canvas to the main button.
  */
 const TableGroup: FC<TableGroupProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -45,6 +53,33 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.group.id);
+  // The box a sash drag draws until it writes its one resize.
+  const draft = observable({ rect: null as Rect | null });
+
+  const { onMoveStart } = useMoveEntity(ctx, {
+    entityId: () => props.group.id,
+    selectType: SelectType.tableGroup,
+    blockedKinds: () => [],
+    clickKinds: () => TITLE_KINDS,
+    canMove: () => !app.value.store.getReadonly(),
+    source: sourceRef,
+  });
+
+  // The main button reads the body as the canvas under it, so only another
+  // button selects the group there, for the menu it opens.
+  const handleBodyPress = (event: ScenePointerEvent) => {
+    if (isMainButtonPress(event.evt) || isMultiTouch(event.evt)) return;
+
+    const { store } = app.value;
+    const { id } = props.group;
+    store.dispatch(
+      selectTableGroupAction$(id, Boolean(store.state.editor.selectedMap[id]))
+    );
+  };
+
+  const handleDraft = (rect: Rect | null) => {
+    draft.rect = rect;
+  };
 
   return () => {
     const { store } = app.value;
@@ -61,9 +96,12 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
       isEntityDragActive(store.state, sourceRef.value) && !selected
         ? Object.keys(selectedMap)
         : [];
-    const { x, y, width, height } = getTableGroupRect(store.state, group, {
-      excludeTableIds,
-    });
+    const box =
+      draft.rect ??
+      getTableGroupRect(store.state, group, {
+        excludeTableIds,
+      });
+    const { x, y, width, height } = box;
 
     const colors = getTableGroupColors(group);
     const named = Boolean(group.name.trim());
@@ -79,7 +117,6 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
         sharedSelect={sharedSelected}
         x={x}
         y={y}
-        listening={false}
       >
         <k-rect
           name="table-group-body"
@@ -95,8 +132,14 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
           ]}
           fill={colors?.background ?? theme.foreground}
           opacity={TABLE_GROUP_FILL_OPACITY}
+          on:mousedown={handleBodyPress}
         />
-        <k-group name="table-group-title" kind="table-group-title">
+        <k-group
+          name="table-group-title"
+          kind="table-group-title"
+          on:mousedown={onMoveStart}
+          on:touchstart={onMoveStart}
+        >
           <k-rect
             name="table-group-title-bar"
             width={width}
@@ -124,6 +167,7 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
             verticalAlign="middle"
             wrap="none"
             ellipsis={true}
+            listening={false}
           />
         </k-group>
         <k-rect
@@ -139,6 +183,7 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
               : (colors?.background ?? theme.tableBorder)
           }
           strokeWidth={TABLE_GROUP_BORDER}
+          listening={false}
         />
         <k-rect
           name="table-group-shared-select"
@@ -149,7 +194,11 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
           cornerRadius={TABLE_GROUP_CORNER_RADIUS + RING_WIDTH}
           stroke={sharedSelected ?? ''}
           strokeWidth={RING_WIDTH}
+          listening={false}
         />
+        {selected && !store.getReadonly() ? (
+          <TableGroupSash group={group} box={box} onDraft={handleDraft} />
+        ) : null}
       </k-group>
     );
   };

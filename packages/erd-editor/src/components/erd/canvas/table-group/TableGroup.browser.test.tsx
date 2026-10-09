@@ -125,7 +125,7 @@ function addMember(app: AppContext, id: string, x: number, y: number) {
 }
 
 describe('the table group scene', () => {
-  it('roots the group at its box, with no part taking the pointer yet', async () => {
+  it('roots the group at its box, the title bar and the body alone taking the pointer', async () => {
     const { stage } = await mountGroup();
     const root = nodeNamed<Group>(stage, 'table-group');
 
@@ -134,9 +134,32 @@ describe('the table group scene', () => {
       kind: 'table-group',
       x: STORED.x,
       y: STORED.y,
-      listening: false,
       selected: false,
     });
+    expect(root.listening()).toBe(true);
+    expect(
+      [
+        'table-group-body',
+        'table-group-title',
+        'table-group-title-bar',
+        'table-group-name',
+        'table-group-border',
+        'table-group-shared-select',
+      ].map(name => [name, nodeNamed(stage, name).listening()])
+    ).toEqual([
+      ['table-group-body', true],
+      ['table-group-title', true],
+      ['table-group-title-bar', true],
+      ['table-group-name', false],
+      ['table-group-border', false],
+      ['table-group-shared-select', false],
+    ]);
+    expect(nodeNamed(stage, 'table-group-body').attrs.kind).toBe(
+      'table-group-body'
+    );
+    expect(nodeNamed(stage, 'table-group-title').attrs.kind).toBe(
+      'table-group-title'
+    );
     expect(root.getChildren().map(node => node.name())).toEqual([
       'table-group-body',
       'table-group-title',

@@ -13,6 +13,10 @@ import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
+import {
+  dropTablesIntoGroupsAction$,
+  selectTableGroupAction$,
+} from '@/engine/modules/table-group/generator.actions';
 import type { Ctx } from '@/internal-types';
 import { isMainButtonPress, isMultiTouch } from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
@@ -36,7 +40,20 @@ export type MoveEntityOptions = {
    * again here, so a leaf pays for one context subscription and not two.
    */
   source: Ref<GeometrySource>;
+  /** Read at the press: false leaves it a selection that lifts nothing. */
+  canMove?: () => boolean;
 };
+
+const selectEntityAction$ = (
+  selectType: SelectType,
+  entityId: string,
+  keepSelection: boolean
+) =>
+  selectType === SelectType.memo
+    ? selectMemoAction$(entityId, keepSelection)
+    : selectType === SelectType.tableGroup
+      ? selectTableGroupAction$(entityId, keepSelection)
+      : selectTableAction$(entityId, keepSelection);
 
 /**
  * The pointer start every draggable entity shares: select it, hand an Alt drag
@@ -67,12 +84,15 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     const mainButton = isMainButtonPress(event.evt);
     const canDrag =
       mainButton &&
+      (options.canMove?.() ?? true) &&
       !hasKindAncestor(event.target, options.blockedKinds(source));
 
     // move$ is not share()d and mutates module-global prevX/prevY, so
     // a second concurrent drag$ subscriber always reads movementX === 0.
+    // A group is never duplicated, so Alt carries it as a plain press.
     if (
       canDrag &&
+      options.selectType !== SelectType.tableGroup &&
       tryStartAltDragDuplicate(
         app.value,
         event.evt,
@@ -91,17 +111,31 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
       Boolean(store.state.editor.selectedMap[entityId]);
 
     store.dispatch(
-      options.selectType === SelectType.memo
-        ? selectMemoAction$(entityId, keepSelection)
-        : selectTableAction$(entityId, keepSelection)
+      selectEntityAction$(options.selectType, entityId, keepSelection)
     );
 
     if (!canDrag) return;
 
-    const move = handleMove(source);
+    const step = handleMove(source);
     let begun = false;
+    let moved = false;
     let pendingX = 0;
     let pendingY = 0;
+
+    const move = (drag: DragMove) => {
+      moved ||= drag.movementX !== 0 || drag.movementY !== 0;
+      step(drag);
+    };
+
+    // A drop that moved the document's tables settles their groups in the
+    // history entry of the drag; a press that went nowhere is a click.
+    const end = () => {
+      if (!begun) return;
+      if (moved && source === 'document') {
+        store.dispatch(dropTablesIntoGroupsAction$());
+      }
+      endEntityDrag(store.state, source);
+    };
 
     // The scene this drag holds and moves is the one the press landed in: a
     // view's drag freezes the view's origin and moves the view's placement,
@@ -132,7 +166,7 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
         begin();
         move({ ...drag, movementX: pendingX, movementY: pendingY });
       })
-      .add(() => begun && endEntityDrag(store.state, source));
+      .add(end);
   };
 
   return {

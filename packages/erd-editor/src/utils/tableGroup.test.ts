@@ -13,6 +13,7 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import {
   findTableGroupAt,
+  findTableGroupsAt,
   getTableCenter,
   getTableGroupColors,
   getTableGroupId,
@@ -277,6 +278,29 @@ describe('findTableGroupAt', () => {
     state.doc.tableGroupIds = [];
 
     expect(findTableGroupAt(state, { x: 50, y: 50 })).toBeNull();
+  });
+});
+
+describe('findTableGroupsAt', () => {
+  it('answers each point as findTableGroupAt does, in order', () => {
+    const state = createState();
+    addGroup(state, 'high', { x: 0, y: 0, width: 100, height: 100, zIndex: 5 });
+    addGroup(state, 'low', { x: 0, y: 0, width: 300, height: 100, zIndex: 2 });
+    addGroup(state, 'g1', { x: 0, y: 200, width: 50, height: 50 });
+    const table = addTable(state, 't1', 400, 400, 'g1');
+    const points = [
+      { x: 50, y: 50 },
+      { x: 250, y: 50 },
+      { x: 500, y: 500 },
+      getTableCenter(state, table),
+    ];
+
+    expect(
+      findTableGroupsAt(state, points, { excludeTableIds: ['t1'] }).map(
+        group => group?.id ?? null
+      )
+    ).toEqual(['high', 'low', null, null]);
+    expect(findTableGroupsAt(state, [])).toEqual([]);
   });
 });
 

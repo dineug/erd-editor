@@ -77,6 +77,7 @@ describe('pushUndoHistoryMap / pushStreamHistoryMap', () => {
         'index.add',
         'indexColumn.add',
         'tableGroup.add',
+        'tableGroup.resize',
         'table.changeGroup',
       ])
     );
@@ -94,7 +95,6 @@ describe('pushUndoHistoryMap / pushStreamHistoryMap', () => {
         'table.move',
         'tableGroup.changeColor',
         'tableGroup.move',
-        'tableGroup.resize',
       ].sort()
     );
   });

@@ -35,13 +35,14 @@ beforeEach(() => {
 });
 
 describe('tableGroupPushUndoHistoryMap', () => {
-  it('registers undo builders for add, remove, changeName and moveTo', () => {
+  it('registers undo builders for add, remove, changeName, moveTo and resize', () => {
     expect(Object.keys(tableGroupPushUndoHistoryMap).sort()).toEqual(
       [
         ActionType.addTableGroup,
         ActionType.removeTableGroup,
         ActionType.changeTableGroupName,
         ActionType.moveToTableGroup,
+        ActionType.resizeTableGroup,
       ].sort()
     );
   });
@@ -103,6 +104,26 @@ describe('tableGroupPushUndoHistoryMap', () => {
     ]);
   });
 
+  it('undoes a resize with the rect the group stored before it', () => {
+    store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
+
+    tableGroupPushUndoHistoryMap[ActionType.resizeTableGroup](
+      undoActions,
+      resizeTableGroupAction({ id: 'g1', x: 0, y: 0, width: 640, height: 480 }),
+      store.state
+    );
+
+    expect(undoActions).toEqual([
+      resizeTableGroupAction({
+        id: 'g1',
+        x: 10,
+        y: 20,
+        width: 300,
+        height: 200,
+      }),
+    ]);
+  });
+
   it.each([
     [ActionType.removeTableGroup, removeTableGroupAction({ id: 'ghost' })],
     [
@@ -112,6 +133,10 @@ describe('tableGroupPushUndoHistoryMap', () => {
     [
       ActionType.moveToTableGroup,
       moveToTableGroupAction({ id: 'ghost', x: 0, y: 0 }),
+    ],
+    [
+      ActionType.resizeTableGroup,
+      resizeTableGroupAction({ id: 'ghost', x: 0, y: 0, width: 1, height: 1 }),
     ],
   ])('records nothing for %s on a group it has not seen', (type, action) => {
     tableGroupPushUndoHistoryMap[
@@ -123,13 +148,9 @@ describe('tableGroupPushUndoHistoryMap', () => {
 });
 
 describe('tableGroupPushStreamHistoryMap', () => {
-  it('registers stream builders for move, changeColor and resize', () => {
+  it('registers stream builders for move and changeColor', () => {
     expect(Object.keys(tableGroupPushStreamHistoryMap).sort()).toEqual(
-      [
-        ActionType.moveTableGroup,
-        ActionType.changeTableGroupColor,
-        ActionType.resizeTableGroup,
-      ].sort()
+      [ActionType.moveTableGroup, ActionType.changeTableGroupColor].sort()
     );
   });
 
@@ -194,42 +215,6 @@ describe('tableGroupPushStreamHistoryMap', () => {
       ]);
 
       expect(undoActions).toEqual([]);
-    });
-  });
-
-  describe('resizeTableGroup', () => {
-    const resize = tableGroupPushStreamHistoryMap[ActionType.resizeTableGroup];
-
-    it('takes a sash drag back to its first step and forward to its last', () => {
-      const first = resizeTableGroupAction({
-        id: 'g1',
-        x: 0,
-        y: 0,
-        width: 310,
-        height: 200,
-      });
-      const last = resizeTableGroupAction({
-        id: 'g1',
-        x: 0,
-        y: 0,
-        width: 400,
-        height: 260,
-      });
-
-      resize(undoActions, redoActions, [first, last]);
-
-      expect(undoActions).toEqual([first]);
-      expect(redoActions).toEqual([last]);
-    });
-
-    it('records nothing for a single step or no resize at all', () => {
-      resize(undoActions, redoActions, [
-        resizeTableGroupAction({ id: 'g1', x: 0, y: 0, width: 1, height: 1 }),
-      ]);
-      resize(undoActions, redoActions, []);
-
-      expect(undoActions).toEqual([]);
-      expect(redoActions).toEqual([]);
     });
   });
 });

@@ -76,10 +76,10 @@ export function getTableGroupRect(
   { excludeTableIds = [] }: TableGroupRectOptions = {}
 ): Rect {
   const { x, y, width, height } = group.ui;
-  const isExcluded = arrayHas(excludeTableIds);
+  const excluded = new Set(excludeTableIds);
 
   return getMemberTables(state, group.id)
-    .filter(table => !isExcluded(table.id))
+    .filter(table => !excluded.has(table.id))
     .reduce<Rect>(
       (rect, table) => unionRect(rect, padRect(getTableRect(state, table))),
       { x, y, width, height }
@@ -132,19 +132,36 @@ export function findTableGroupAt(
   point: Point,
   options?: TableGroupRectOptions
 ): TableGroup | null {
-  const { doc, collections } = state;
+  return findTableGroupsAt(state, [point], options)[0];
+}
 
-  return query(collections)
+/**
+ * The topmost group at each point, as findTableGroupAt finds it, every box
+ * read once for all of them, which a drag of many tables asks every step.
+ *
+ * @example
+ * const groups = findTableGroupsAt(state, centers, { excludeTableIds: ids });
+ */
+export function findTableGroupsAt(
+  state: RootState,
+  points: ReadonlyArray<Point>,
+  options?: TableGroupRectOptions
+): Array<TableGroup | null> {
+  const { doc, collections } = state;
+  const boxes = query(collections)
     .collection('tableGroupEntities')
     .selectByIds(doc.tableGroupIds)
-    .reduce<TableGroup | null>(
-      (top, group) =>
-        (!top || top.ui.zIndex <= group.ui.zIndex) &&
-        isPointInRect(point, getTableGroupRect(state, group, options))
+    .map(group => ({ group, rect: getTableGroupRect(state, group, options) }));
+
+  return points.map(point =>
+    boxes.reduce<TableGroup | null>(
+      (top, { group, rect }) =>
+        (!top || top.ui.zIndex <= group.ui.zIndex) && isPointInRect(point, rect)
           ? group
           : top,
       null
-    );
+    )
+  );
 }
 
 /** The zIndex that lifts a group over every other group, tables and memos aside. */

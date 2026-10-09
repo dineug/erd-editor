@@ -175,6 +175,15 @@ export const VIEW_CARD_GLOW_OPACITY = 0.55;
  */
 export const TABLE_GROUP_FILL_OPACITY = 0.12;
 
+/** The radius a table group's box is rounded with, a table's own. */
+export const TABLE_GROUP_CORNER_RADIUS = 6;
+
+/**
+ * The line a table drag outlines the group its drop would join with, twice
+ * the box's own line so it reads apart from the selection.
+ */
+export const TABLE_GROUP_DROP_WIDTH = 2;
+
 /** The side of the square viewBox every icon is authored in. */
 export const ICON_VIEW_SIZE = Number(ICON_VIEW_BOX.split(' ')[2]);
 

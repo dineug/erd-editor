@@ -48,7 +48,13 @@ export type ActionMap = {
     color: string;
     prevColor: string;
   };
-  [ActionType.changeTableGroup]: ChangeTableValuePayload;
+  [ActionType.changeTableGroup]: ChangeTableValuePayload & {
+    /**
+     * The groupId the table held, sent by a drop alone: its undo is written as
+     * the drag it ends closes, after the reducer has run, so it cannot read it.
+     */
+    prevValue?: string;
+  };
   [ActionType.changeZIndex]: {
     id: string;
     zIndex: number;

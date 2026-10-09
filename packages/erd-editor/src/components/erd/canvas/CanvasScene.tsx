@@ -19,9 +19,11 @@ import SharedDragSelect from '@/components/erd/canvas/shared-drag-select/SharedD
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import Table from '@/components/erd/canvas/table/Table';
 import TableGroup from '@/components/erd/canvas/table-group/TableGroup';
+import TableGroupDropTarget from '@/components/erd/canvas/table-group/TableGroupDropTarget';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import ParticleLayer from '@/components/visualization/particles/ParticleLayer';
 import { Show } from '@/constants/schema';
+import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Relationship } from '@/internal-types';
 import { renderKonva } from '@/konva/host';
@@ -38,7 +40,7 @@ import {
   isTableVisible,
 } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
-import { isTableGroupShown } from '@/utils/tableGroup';
+import { getTableGroupMemberIds, isTableGroupShown } from '@/utils/tableGroup';
 import { isHighLevelTable } from '@/utils/validation';
 
 export type CanvasSceneProps = {
@@ -100,9 +102,17 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const cullingRect = getCullingRect(state, source);
 
     // Read only while a drag runs, or the scene would re-render on a selection
-    // that moves nothing. What moves is what moveAllAction$ moves.
+    // that moves nothing. What moves is what moveAllAction$ moves: the
+    // selection, and in the document the members of a selected group too.
     const dragIds = isEntityDragActive(state, source)
-      ? new Set(Object.keys(state.editor.selectedMap))
+      ? new Set([
+          ...Object.keys(state.editor.selectedMap),
+          ...(source === 'document'
+            ? getSelectTypeIds(state.editor.selectedMap).tableGroupIds.flatMap(
+                id => getTableGroupMemberIds(state, id)
+              )
+            : []),
+        ])
       : null;
     const dragging = Boolean(dragIds?.size);
 
@@ -134,13 +144,14 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       .selectByIds(relationshipIds);
 
     // Behind everything else, a few large boxes, so none is culled.
-    const groups =
-      tableGroupIds.length && isTableGroupShown(state)
-        ? query(collections)
-            .collection('tableGroupEntities')
-            .selectByIds(tableGroupIds)
-            .sort(byZIndex)
-        : [];
+    const groupShown =
+      Boolean(tableGroupIds.length) && isTableGroupShown(state);
+    const allGroups = groupShown
+      ? query(collections)
+          .collection('tableGroupEntities')
+          .selectByIds(tableGroupIds)
+          .sort(byZIndex)
+      : [];
 
     const isMoving = ({ start, end }: Relationship) =>
       Boolean(dragIds?.has(start.tableId) || dragIds?.has(end.tableId));
@@ -154,6 +165,9 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const relationships = dragging
       ? allRelationships.filter(relationship => !isMoving(relationship))
       : allRelationships;
+    const groups = dragging
+      ? allGroups.filter(group => !dragIds?.has(group.id))
+      : allGroups;
 
     /**
      * What the drag moves, split off so a move redraws these two small layers
@@ -167,6 +181,16 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
       ? allMemos.filter(memo => dragIds?.has(memo.id))
       : [];
     const dragRelationships = dragging ? allRelationships.filter(isMoving) : [];
+
+    // A dragged group goes under the static scene as it stood behind it, so
+    // a step redraws the bottom layer and never the one the tables sit in.
+    const dragGroups = dragging
+      ? allGroups.filter(group => dragIds?.has(group.id))
+      : [];
+
+    // The groups a table drag would drop into, outlined over the static scene.
+    const dropTarget =
+      dragging && groupShown && source === 'document' && !store.getReadonly();
 
     // What a view lights, decided here and handed down as a flag: only the
     // cards and connectors whose flag flips redraw, where a leaf reading the
@@ -231,7 +255,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const { x, y } = getSceneOrigin(transform);
 
     // The bottom layer paints nothing of its own now that the document has no
-    // edge; it exists for a drag's own connectors, which go under the static
+    // edge; it holds a drag's own groups and connectors, under the static
     // scene. A layer each would put the stage at six, where konva warns.
     return (
       <>
@@ -242,6 +266,13 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
           scaleX={zoomLevel}
           scaleY={zoomLevel}
         >
+          {repeat(
+            dragGroups,
+            group => group.id,
+            group => (
+              <TableGroup group={group} />
+            )
+          )}
           {dragging && showRelationship ? (
             <RelationshipGroup
               relationships={dragRelationships}
@@ -286,6 +317,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             scaleX={zoomLevel}
             scaleY={zoomLevel}
           >
+            {dropTarget ? <TableGroupDropTarget /> : null}
             {tableShapes(dragTables)}
             {repeat(
               dragMemos,

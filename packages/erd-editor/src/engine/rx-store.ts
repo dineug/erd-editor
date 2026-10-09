@@ -111,7 +111,9 @@ export function createRxStore(
         groupByStreamActions(
           StreamActionTypes,
           [
-            ['@@move', StreamRegroupMoveActionTypes],
+            // What a drag's drop sends is tagged as the drag, so it closes
+            // with the drag's moves into one undo entry rather than its own.
+            ['@@move', StreamRegroupMoveActionTypes, Tag.drag],
             ['@@scroll', StreamRegroupScrollActionTypes],
             ['@@color', StreamRegroupColorActionTypes],
           ],

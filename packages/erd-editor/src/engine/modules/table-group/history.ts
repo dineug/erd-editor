@@ -70,11 +70,30 @@ const moveToTableGroup: PushUndoHistory = (
   );
 };
 
+/**
+ * A resize is one write, a sash drag's included, which draws its steps without
+ * writing them: so its undo is the rect the group stored before it.
+ */
+const resizeTableGroup: PushUndoHistory = (
+  undoActions,
+  { payload: { id } }: ReturnType<typeof resizeTableGroupAction>,
+  { collections }
+) => {
+  const group = query(collections)
+    .collection('tableGroupEntities')
+    .selectById(id);
+  if (!group) return;
+
+  const { x, y, width, height } = group.ui;
+  undoActions.push(resizeTableGroupAction({ id, x, y, width, height }));
+};
+
 export const tableGroupPushUndoHistoryMap = {
   [ActionType.addTableGroup]: addTableGroup,
   [ActionType.removeTableGroup]: removeTableGroup,
   [ActionType.changeTableGroupName]: changeTableGroupName,
   [ActionType.moveToTableGroup]: moveToTableGroup,
+  [ActionType.resizeTableGroup]: resizeTableGroup,
 };
 
 const moveTableGroup: PushStreamHistory = (
@@ -147,31 +166,7 @@ const changeTableGroupColor: PushStreamHistory = (
   }
 };
 
-const resizeTableGroup: PushStreamHistory = (
-  undoActions,
-  redoActions,
-  actions
-) => {
-  const resizeActions: Array<ReturnType<typeof resizeTableGroupAction>> =
-    actions.filter(action => action.type === resizeTableGroupAction.type);
-  if (!resizeActions.length) return;
-
-  const group = groupBy(resizeActions, action => action.payload.id);
-
-  for (const [, actions] of Object.entries(group)) {
-    if (actions.length < 2) continue;
-
-    undoActions.push(
-      head(actions) as ReturnType<typeof resizeTableGroupAction>
-    );
-    redoActions.push(
-      last(actions) as ReturnType<typeof resizeTableGroupAction>
-    );
-  }
-};
-
 export const tableGroupPushStreamHistoryMap = {
   [ActionType.moveTableGroup]: moveTableGroup,
   [ActionType.changeTableGroupColor]: changeTableGroupColor,
-  [ActionType.resizeTableGroup]: resizeTableGroup,
 };

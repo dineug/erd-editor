@@ -12,9 +12,15 @@ import {
   TABLE_GROUP_PADDING,
   TABLE_GROUP_TITLE_HEIGHT,
 } from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
-import { selectAction } from '@/engine/modules/editor/atom.actions';
+import {
+  selectAction,
+  unselectAllAction,
+} from '@/engine/modules/editor/atom.actions';
+import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
@@ -28,6 +34,8 @@ import {
   actions$,
   addTableGroupAction$,
   addTableGroupFromTablesAction$,
+  dropTablesIntoGroupsAction$,
+  getTableGroupDrops,
   moveTableGroupAction$,
   removeTableGroupAction$,
   selectTableGroupAction$,
@@ -36,8 +44,9 @@ import {
 } from '@/engine/modules/table-group/generator.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
-import { Tag } from '@/engine/tag';
+import { attachActionTag, Tag } from '@/engine/tag';
 import { getTableRect } from '@/konva/scene/metrics';
+import { bHas } from '@/utils/bit';
 
 const P = TABLE_GROUP_PADDING;
 const T = TABLE_GROUP_TITLE_HEIGHT;
@@ -70,6 +79,7 @@ describe('actions$', () => {
     expect(Object.keys(actions$).sort()).toEqual([
       'addTableGroupAction$',
       'addTableGroupFromTablesAction$',
+      'dropTablesIntoGroupsAction$',
       'moveTableGroupAction$',
       'removeTableGroupAction$',
       'selectTableGroupAction$',
@@ -339,6 +349,120 @@ describe('setTableGroupAction$', () => {
   });
 });
 
+describe('getTableGroupDrops', () => {
+  const drops = () =>
+    getTableGroupDrops(store.state).map(({ table, groupId }) => [
+      table.id,
+      groupId,
+    ]);
+
+  beforeEach(() => {
+    store.dispatchSync(
+      addTableGroupAction({ id: 'low', ui: { ...UI, zIndex: 1 } }),
+      addTableGroupAction({ id: 'high', ui: { ...UI, width: 300, zIndex: 2 } }),
+      addTableGroupAction({ id: 'far', ui: { ...UI, x: 2000, zIndex: 3 } }),
+      addTableAction({ id: 'inHigh', ui: { x: 40, y: 80, zIndex: 9 } }),
+      addTableAction({ id: 'inLow', ui: { x: 400, y: 80, zIndex: 9 } }),
+      addTableAction({ id: 'out', ui: { x: 1200, y: 80, zIndex: 9 } }),
+      addTableAction({ id: 'member', ui: { x: 2100, y: 80, zIndex: 9 } }),
+      changeTableGroupAction({ id: 'out', value: 'low' }),
+      changeTableGroupAction({ id: 'member', value: 'far' })
+    );
+  });
+
+  it('puts each selected table in the topmost box holding its centre, or in none', () => {
+    store.dispatchSync(
+      selectAction({
+        inHigh: SelectType.table,
+        inLow: SelectType.table,
+        out: SelectType.table,
+      })
+    );
+
+    expect(drops()).toEqual([
+      ['inHigh', 'high'],
+      ['inLow', 'low'],
+      ['out', ''],
+    ]);
+  });
+
+  it('reads each box without the tables it judges, so a table leaving its group is not held by it', () => {
+    store.dispatchSync(
+      selectAction({ out: SelectType.table }),
+      changeTableGroupAction({ id: 'inLow', value: 'low' }),
+      changeTableGroupAction({ id: 'out', value: 'low' })
+    );
+
+    expect(drops()).toEqual([['out', '']]);
+  });
+
+  it('leaves out a member a selected group carries, and what the document does not list', () => {
+    store.dispatchSync(
+      selectAction({
+        far: SelectType.tableGroup,
+        member: SelectType.table,
+        ghost: SelectType.table,
+        inHigh: SelectType.table,
+      })
+    );
+
+    expect(drops()).toEqual([['inHigh', 'high']]);
+  });
+
+  it('judges no table while groups are hidden', () => {
+    store.dispatchSync(
+      selectAction({ inHigh: SelectType.table }),
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+    expect(drops()).toEqual([]);
+  });
+});
+
+describe('dropTablesIntoGroupsAction$', () => {
+  beforeEach(() => {
+    store.dispatchSync(
+      addTableGroupAction({ id: 'g1', ui: UI }),
+      addTableAction({ id: 'joins', ui: { x: 40, y: 80, zIndex: 2 } }),
+      addTableAction({ id: 'stays', ui: { x: 300, y: 80, zIndex: 2 } }),
+      addTableAction({ id: 'leaves', ui: { x: 1200, y: 80, zIndex: 2 } }),
+      changeTableGroupAction({ id: 'stays', value: 'g1' }),
+      changeTableGroupAction({ id: 'leaves', value: 'g1' }),
+      selectAction({
+        joins: SelectType.table,
+        stays: SelectType.table,
+        leaves: SelectType.table,
+      })
+    );
+  });
+
+  it('moves only the tables whose group changes, each tagged as the drag with the group it held', () => {
+    const actions = flatten(store, dropTablesIntoGroupsAction$());
+
+    expect(actions).toEqual([
+      attachActionTag(
+        Tag.drag,
+        changeTableGroupAction({ id: 'joins', value: 'g1', prevValue: '' })
+      ),
+      attachActionTag(
+        Tag.drag,
+        changeTableGroupAction({ id: 'leaves', value: '', prevValue: 'g1' })
+      ),
+    ]);
+    expect(actions.every(({ tags }) => bHas(tags!, Tag.drag))).toBe(true);
+  });
+
+  it('reads a groupId naming no listed group as none, and sends nothing for it left out', () => {
+    store.dispatchSync(
+      changeTableGroupAction({ id: 'leaves', value: 'ghost' }),
+      unselectAllAction(),
+      selectAction({ leaves: SelectType.table })
+    );
+
+    expect(flatten(store, dropTablesIntoGroupsAction$())).toEqual([]);
+  });
+});
+
 describe('selectTableGroupAction$', () => {
   beforeEach(() => {
     store.dispatchSync(
@@ -420,6 +544,33 @@ describe('table group generators on the history', () => {
     expect(rxStore.state.doc.tableGroupIds).toEqual([id]);
     expect(groupIdOf(rxStore, 't1')).toBe(id);
     expect(groupIdOf(rxStore, 't2')).toBe(id);
+  });
+
+  it('takes back a table drag and the group its drop joined in one undo', () => {
+    rxStore.dispatchSync(
+      addTableGroupAction({ id: 'g1', ui: { ...UI, x: 1000 } }),
+      selectAction({ t1: SelectType.table })
+    );
+    vi.advanceTimersByTime(300);
+    const size = rxStore.history.size;
+
+    rxStore.dispatchSync(moveAllAction$(500, 0));
+    rxStore.dispatchSync(moveAllAction$(500, 0));
+    rxStore.dispatchSync(dropTablesIntoGroupsAction$());
+    vi.advanceTimersByTime(300);
+
+    expect(groupIdOf(rxStore, 't1')).toBe('g1');
+    expect(rxStore.history.size).toBe(size + 1);
+
+    rxStore.undo();
+
+    expect(groupIdOf(rxStore, 't1')).toBe('');
+    expect(rxStore.state.collections.tableEntities.t1.ui.x).toBe(100);
+
+    rxStore.redo();
+
+    expect(groupIdOf(rxStore, 't1')).toBe('g1');
+    expect(rxStore.state.collections.tableEntities.t1.ui.x).toBe(1100);
   });
 
   it('takes back a group drag, members and all, in one undo', () => {

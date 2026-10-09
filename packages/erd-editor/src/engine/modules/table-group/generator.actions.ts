@@ -14,14 +14,17 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { RootState } from '@/engine/state';
 import { attachActionTag, Tag } from '@/engine/tag';
+import type { Table } from '@/internal-types';
 import type { Rect } from '@/konva/scene/metrics';
 import { arrayHas } from '@/utils/arrayHas';
 import {
+  findTableGroupsAt,
   getTableCenter,
   getTableGroupId,
   getTableGroupMemberIds,
   getTablesGroupRect,
   isPointInRect,
+  isTableGroupShown,
   nextTableGroupZIndex,
 } from '@/utils/tableGroup';
 
@@ -197,6 +200,63 @@ export const setTableGroupAction$ = (
       .map(({ id }) => changeTableGroupAction({ id, value: groupId }));
   };
 
+/** A table a drop judges, and the group it lands in, '' for none. */
+export type TableGroupDrop = { table: Table; groupId: string };
+
+/**
+ * Where a drop of the selection puts the tables it judges: each selected table
+ * no selected group carries as a member, in the topmost group whose box without
+ * them holds its centre, or in none. With groups hidden it judges no table.
+ */
+export function getTableGroupDrops(state: RootState): TableGroupDrop[] {
+  if (!isTableGroupShown(state)) return [];
+
+  const { doc, collections, editor } = state;
+  const { tableIds, tableGroupIds } = getSelectTypeIds(editor.selectedMap);
+  const listed = new Set(doc.tableIds);
+  const carried = new Set(
+    tableGroupIds.flatMap(id => getTableGroupMemberIds(state, id))
+  );
+  const judged = tableIds.filter(id => listed.has(id) && !carried.has(id));
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(judged);
+  const groups = findTableGroupsAt(
+    state,
+    tables.map(table => getTableCenter(state, table)),
+    { excludeTableIds: judged }
+  );
+
+  return tables.map((table, index) => ({
+    table,
+    groupId: groups[index]?.id ?? '',
+  }));
+}
+
+/**
+ * Ends a drag of the selection: each table the drop judges joins the group it
+ * landed in or leaves its own, tagged as the drag, so the history closes the
+ * membership into the drag's undo entry; its undo reads prevValue.
+ *
+ * @example
+ * store.dispatch(dropTablesIntoGroupsAction$());
+ */
+export const dropTablesIntoGroupsAction$ = (): GeneratorAction =>
+  function* (state) {
+    yield getTableGroupDrops(state)
+      .filter(({ table, groupId }) => groupId !== getTableGroupId(state, table))
+      .map(({ table, groupId }) =>
+        attachActionTag(
+          Tag.drag,
+          changeTableGroupAction({
+            id: table.id,
+            value: groupId,
+            prevValue: table.groupId,
+          })
+        )
+      );
+  };
+
 /** Selects a group, alone unless $mod, and draws it over every other group. */
 export const selectTableGroupAction$ = (
   id: string,
@@ -219,5 +279,6 @@ export const actions$ = {
   removeTableGroupAction$,
   moveTableGroupAction$,
   setTableGroupAction$,
+  dropTablesIntoGroupsAction$,
   selectTableGroupAction$,
 };

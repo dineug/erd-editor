@@ -22,7 +22,7 @@ import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
-import { sceneHit } from '@/components/erd/hitTest';
+import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import {
   getScrollToCenter,
@@ -252,8 +252,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     const showOverLayout = getShowOverLayout();
     const canHideColorPicker = !el.closest('.color-picker');
-    const hit = sceneHit(canvas.value, event);
-    const onEntity = hit?.kind === 'table' || hit?.kind === 'memo';
+    // A group's body is canvas to the main button: it pans, takes a marquee
+    // and unselects; its title bar and sashes, like a table or memo, do not.
+    const onEntity = ownsPress(sceneHit(canvas.value, event), event);
 
     // The editing surface sits beside the stage container rather than inside
     // it, so sceneHit cannot see it and the entity it is open over cannot

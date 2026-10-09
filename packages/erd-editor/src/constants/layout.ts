@@ -173,6 +173,13 @@ export const TABLE_GROUP_PADDING = 24;
  */
 export const TABLE_GROUP_TITLE_HEIGHT = 28;
 
+/**
+ * The least a sash resizes a group to, which its members' padded box raises
+ * further: wide enough for a short name, tall enough for a body under the bar.
+ */
+export const TABLE_GROUP_MIN_WIDTH = 160;
+export const TABLE_GROUP_MIN_HEIGHT = TABLE_GROUP_TITLE_HEIGHT + 72;
+
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_MARGIN = 20;
 

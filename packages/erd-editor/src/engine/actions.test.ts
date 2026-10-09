@@ -200,14 +200,11 @@ describe('the table group changes', () => {
     }
   });
 
-  it('stream a drag, a color and a resize, the drag and the color with the tables and memos', () => {
+  it('stream a drag and a color with the tables and memos, and leave a resize one undo entry each', () => {
     expect(StreamActionTypes).toEqual(
-      expect.arrayContaining([
-        'tableGroup.move',
-        'tableGroup.changeColor',
-        'tableGroup.resize',
-      ])
+      expect.arrayContaining(['tableGroup.move', 'tableGroup.changeColor'])
     );
+    expect(StreamActionTypes).not.toContain('tableGroup.resize');
     expect(StreamRegroupMoveActionTypes).toContain('tableGroup.move');
     expect(StreamRegroupColorActionTypes).toContain('tableGroup.changeColor');
   });

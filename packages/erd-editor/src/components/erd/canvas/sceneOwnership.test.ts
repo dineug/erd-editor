@@ -16,18 +16,20 @@ const CALLBACK_PROP_DECLARATION = /\bon[A-Z][A-Za-z0-9_]*\??\s*:/g;
 const CALLBACK_PROP_PASSED = /\bon[A-Z][A-Za-z0-9_]*\s*=\{/g;
 
 /**
- * Column hands the drag boundary up because Table decides the drop index, and
- * that decision reads the order of every sibling column. A connector hands its
- * hover up because the group draws its label in a later pass, as a sibling.
+ * Column hands its drag up as Table orders the sibling columns, a connector its
+ * hover as the group draws the label in a later pass, and a group sash its
+ * draft box as the title bar, body and lines beside it draw that box.
  */
 const DECLARED = [
   'relationship-group/relationship/Relationship.tsx onHover',
+  'table-group/TableGroupSash.tsx onDraft',
   'table/column/Column.tsx onDragend',
   'table/column/Column.tsx onDragstart',
 ];
 
 const PASSED = [
   'relationship-group/RelationshipGroup.tsx onHover',
+  'table-group/TableGroup.tsx onDraft',
   'table/Table.tsx onDragend',
   'table/Table.tsx onDragstart',
 ];

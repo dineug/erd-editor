@@ -235,6 +235,21 @@ describe('table/history changeTableGroup', () => {
     ]);
   });
 
+  it('undoes a drop with the group it carries, the state read after its reducer', () => {
+    addTable(TABLE_A);
+    store.dispatchSync(changeTableGroupAction({ id: TABLE_A, value: 'g2' }));
+
+    tablePushUndoHistoryMap[ActionType.changeTableGroup](
+      undoActions,
+      changeTableGroupAction({ id: TABLE_A, value: 'g2', prevValue: 'g1' }),
+      store.state
+    );
+
+    expect(undoActions).toEqual([
+      changeTableGroupAction({ id: TABLE_A, value: 'g1' }),
+    ]);
+  });
+
   it('pushes nothing for an unknown table', () => {
     tablePushUndoHistoryMap[ActionType.changeTableGroup](
       undoActions,

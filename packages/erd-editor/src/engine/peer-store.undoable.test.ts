@@ -72,14 +72,13 @@ describe('a dispatch reports the undo entries the engine makes (AC-P2)', () => {
     }
   );
 
-  it('records an entry for every scenario but a memo or group resize and the settings the engine cannot undo', () => {
+  it('records an entry for every scenario but a memo resize and the settings the engine cannot undo', () => {
     const withoutEntry = names.filter(
       name => play(seededPeer(), SEED_SCENARIOS[name]()).historyEntries === 0
     );
 
     expect(withoutEntry).toEqual([
       'resizeMemo',
-      'resizeTableGroup',
       'setDatabaseName',
       'setDatabase',
       'setLanguage',
