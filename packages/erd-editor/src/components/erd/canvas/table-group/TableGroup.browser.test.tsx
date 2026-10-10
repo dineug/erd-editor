@@ -415,7 +415,9 @@ describe('the table group scene', () => {
     expect(icon.scaleX()).toBe(box.size / ICON_VIEW_SIZE);
     expect(nodeNamed(stage, 'table-group-icon-holder').listening()).toBe(false);
     expect(
-      new Set(icon.getChildren().map(shape => shape.getAttr('stroke')))
+      new Set(
+        icon.getChildren().map((shape: KonvaNode) => shape.getAttr('stroke'))
+      )
     ).toEqual(new Set([THEME.active]));
     expect(box.x + box.size).toBeLessThan(nameOf(stage).x());
   });
@@ -430,7 +432,9 @@ describe('the table group scene', () => {
       const icon = nodeNamed<Group>(stage, 'table-group-icon');
 
       expect(
-        new Set(icon.getChildren().map(shape => shape.getAttr('stroke')))
+        new Set(
+          icon.getChildren().map((shape: KonvaNode) => shape.getAttr('stroke'))
+        )
       ).toEqual(new Set([ink]));
     }
   );
