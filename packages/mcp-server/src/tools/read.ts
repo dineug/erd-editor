@@ -64,7 +64,7 @@ export type TableFilter = Pick<EntityIds, 'tableIds' | 'tableNames'> & {
 
 /** What each format tells an agent to do when the document is too large for one read. */
 const NARROWER: Readonly<Record<ReadFormat, string>> = {
-  sql: 'pass tableIds or tableNames for the tables the task needs, which erd_list with query or namesOnly finds',
+  sql: 'pass tableIds, tableNames or groupNames for the tables the task needs, which erd_list with query or namesOnly finds',
   snapshot:
     'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
   json: 'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
@@ -86,14 +86,27 @@ function selectTables(state: RootState, filter: TableFilter): string[] {
       `${missing.join(', ')} ${missing.length === 1 ? 'names' : 'name'} no live table; erd_list lists them`
     );
   }
-  const grouped = groupTables(state, filter.groupNames ?? []);
+  const groupNames = filter.groupNames ?? [];
+  const grouped = groupTables(state, groupNames);
   const selected = [...new Set([...ids, ...grouped])];
   if (!selected.length) {
     throw refused(
-      'tableIds, tableNames and groupNames name no table; pass one at least'
+      groupNames.length
+        ? emptyGroupsMessage(groupNames)
+        : 'tableIds, tableNames and groupNames name no table; pass one at least'
     );
   }
   return selected;
+}
+
+/** The refusal of groups that exist, every one of them, but hold no table. */
+function emptyGroupsMessage(groupNames: readonly string[]): string {
+  const names = [...new Set(groupNames)];
+  const subject =
+    names.length === 1
+      ? 'names a table group that holds'
+      : 'name table groups that hold';
+  return `${names.join(', ')} ${subject} no table; erd_set_table_group puts tables in a group`;
 }
 
 /**

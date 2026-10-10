@@ -261,10 +261,34 @@ describe('the DDL of some table groups', () => {
       refusal(() =>
         readDocument(emptied.state, 'sql', undefined, {
           groupNames: ['accounts'],
+          tableIds: [],
+        })
+      )
+    ).toEqual(
+      expect.objectContaining({
+        code: ToolErrorCode.invalidArgs,
+        message:
+          'accounts names a table group that holds no table; erd_set_table_group puts tables in a group',
+      })
+    );
+    emptied.dispatch([
+      tableGroupActions.addTableGroupAction({
+        id: 'billing',
+        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+      }),
+      tableGroupActions.changeTableGroupNameAction({
+        id: 'billing',
+        value: 'billing',
+      }),
+    ]);
+    expect(
+      refusal(() =>
+        readDocument(emptied.state, 'sql', undefined, {
+          groupNames: ['accounts', 'billing', 'billing'],
         })
       ).message
     ).toBe(
-      'tableIds, tableNames and groupNames name no table; pass one at least'
+      'accounts, billing name table groups that hold no table; erd_set_table_group puts tables in a group'
     );
     emptied.destroy();
     expect(
@@ -287,7 +311,10 @@ describe('a read too large for one answer', () => {
   afterAll(() => wide.destroy());
 
   it.each([
-    ['sql', /pass tableIds or tableNames for the tables the task needs/],
+    [
+      'sql',
+      /pass tableIds, tableNames or groupNames for the tables the task needs/,
+    ],
     ['snapshot', /find tables with erd_list \(query, namesOnly\)/],
     ['json', /read them with erd_get, or the sql format with tableNames$/],
   ] as const)(
@@ -499,7 +526,7 @@ describe('the before and after scripts in the DDL', () => {
 
     const error = refusal(() => readDocument(scripted.state, 'sql'));
     expect(error.code).toBe(ToolErrorCode.tooLarge);
-    expect(error.message).toMatch(/pass tableIds or tableNames/);
+    expect(error.message).toMatch(/pass tableIds, tableNames or groupNames/);
     expect(
       readDocument(scripted.state, 'sql', undefined, { tableNames: ['users'] })
     ).toContain('CREATE TABLE users');

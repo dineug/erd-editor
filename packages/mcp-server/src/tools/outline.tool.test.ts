@@ -138,7 +138,9 @@ describe('a schema of hundreds of tables through the server', () => {
 
     expect(refused.isError).toBe(true);
     expect(refused.json.error.code).toBe('tooLarge');
-    expect(refused.json.error.message).toMatch(/pass tableIds or tableNames/);
+    expect(refused.json.error.message).toMatch(
+      /pass tableIds, tableNames or groupNames/
+    );
   });
 });
 
