@@ -1,9 +1,8 @@
 /**
- * The Schema SQL tab's options panel, its menu and its buttons. The statements
- * and the headers keep their names in every language, so they have no key.
+ * The Schema SQL tab's own options: its panel's groups, statements, header and
+ * scripts. The statements and the headers keep their names, so they have no key.
  */
 export const schemaSql = {
-  'schemaSql.savedInDocument': 'Saved in the document',
   'schemaSql.thisWindowOnly': 'This window only',
   'schemaSql.statements': 'Statements',
   'schemaSql.header': 'Header',
@@ -25,9 +24,4 @@ export const schemaSql = {
   'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, seed data …',
   'schemaSql.mssqlGoHint':
     'MSSQL gets GO after a script that does not end with GO.',
-  'schemaSql.saveFile': 'Save file',
-  'schemaSql.saveFileMenu': 'Save file…',
-  'schemaSql.optionsPanel': 'Options panel',
-  'schemaSql.hideOptions': 'Hide options',
-  'schemaSql.showOptions': 'Show options',
 } as const;

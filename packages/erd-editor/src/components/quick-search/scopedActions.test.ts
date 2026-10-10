@@ -201,10 +201,12 @@ describe('paletteRows without a prefix', () => {
 
     expect(names(rowsFor(''))).toEqual([
       'Tab',
+      'Database',
       'Export: Schema SQL',
       'Language',
       'Table Name Case',
       'Column Name Case',
+      'Code Generator: Options panel',
       'Find and Replace',
     ]);
   });

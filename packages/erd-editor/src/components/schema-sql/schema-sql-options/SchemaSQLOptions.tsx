@@ -212,8 +212,8 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
           <button
             type="button"
             class={['schema-sql-options-hide', styles.icon]}
-            aria-label={t('schemaSql.hideOptions')}
-            title={t('schemaSql.hideOptions')}
+            aria-label={t('code.hideOptions')}
+            title={t('code.hideOptions')}
             aria-expanded="true"
             aria-controls={SCHEMA_SQL_OPTIONS_ID}
             on:click={props.onHide}
@@ -225,9 +225,9 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
           <section
             class={styles.group}
             role="group"
-            aria-label={t('schemaSql.savedInDocument')}
+            aria-label={t('code.savedInDocument')}
           >
-            <span class={styles.caption}>{t('schemaSql.savedInDocument')}</span>
+            <span class={styles.caption}>{t('code.savedInDocument')}</span>
             <div class={styles.row}>
               <label prop:htmlFor="schema-sql-database">
                 {t('common.database')}
@@ -360,7 +360,7 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
               on:click={props.onSave}
             >
               <Icon name="download" size={14} />
-              <span>{t('schemaSql.saveFile')}</span>
+              <span>{t('code.saveFile')}</span>
             </button>
             <button
               type="button"

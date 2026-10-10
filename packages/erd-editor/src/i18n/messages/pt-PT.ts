@@ -99,7 +99,13 @@ export const ptPT = {
   'visualization.showMode.allFields': 'Todos os campos',
   'code.label': 'Código',
   'code.copy': 'Copiar',
-  'schemaSql.savedInDocument': 'Guardado no documento',
+  'code.savedInDocument': 'Guardado no documento',
+  'code.saveFile': 'Guardar ficheiro',
+  'code.saveFileMenu': 'Guardar ficheiro…',
+  'code.optionsPanel': 'Painel de opções',
+  'code.hideOptions': 'Ocultar opções',
+  'code.showOptions': 'Mostrar opções',
+  'code.notUsedBy': 'Não usado por {language}',
   'schemaSql.thisWindowOnly': 'Apenas esta janela',
   'schemaSql.statements': 'Instruções',
   'schemaSql.header': 'Cabeçalho',
@@ -123,11 +129,6 @@ export const ptPT = {
   'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, dados iniciais …',
   'schemaSql.mssqlGoHint':
     'O MSSQL recebe GO após um script que não termina em GO.',
-  'schemaSql.saveFile': 'Guardar ficheiro',
-  'schemaSql.saveFileMenu': 'Guardar ficheiro…',
-  'schemaSql.optionsPanel': 'Painel de opções',
-  'schemaSql.hideOptions': 'Ocultar opções',
-  'schemaSql.showOptions': 'Mostrar opções',
   'findReplace.matchCase': 'Corresponder maiúsculas/minúsculas',
   'findReplace.wholeWord': 'Corresponder à palavra inteira',
   'findReplace.regex': 'Utilizar expressão regular',
@@ -262,12 +263,15 @@ export const ptPT = {
   'palette.schemaSqlStatements': 'Esquema SQL: Instruções',
   'palette.schemaSqlHeader': 'Esquema SQL: Cabeçalho',
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Painel de opções',
+  'palette.codeGeneratorOptionsPanel': 'Gerador de código: Painel de opções',
   'palette.exportSchemaSql': 'Exportar: Esquema SQL',
   'palette.keywords.schemaSqlStatements':
     'criar se não existir eliminar substituir',
   'palette.keywords.schemaSqlHeader': 'use base de dados search_path',
   'palette.keywords.schemaSqlOptionsPanel':
     'mostrar ocultar antes depois scripts',
+  'palette.keywords.codeGeneratorOptionsPanel':
+    'mostrar ocultar base de dados formato guardar ficheiro',
   'palette.keywords.exportSchemaSql': 'sql ddl ficheiro',
   'settings.preferences': 'Preferências',
   'settings.relationshipDataTypeSync':

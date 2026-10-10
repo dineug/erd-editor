@@ -99,7 +99,13 @@ export const ptBR = {
   'visualization.showMode.allFields': 'Todos os campos',
   'code.label': 'Código',
   'code.copy': 'Copiar',
-  'schemaSql.savedInDocument': 'Salvo no documento',
+  'code.savedInDocument': 'Salvo no documento',
+  'code.saveFile': 'Salvar arquivo',
+  'code.saveFileMenu': 'Salvar arquivo…',
+  'code.optionsPanel': 'Painel de opções',
+  'code.hideOptions': 'Ocultar opções',
+  'code.showOptions': 'Mostrar opções',
+  'code.notUsedBy': 'Não usado por {language}',
   'schemaSql.thisWindowOnly': 'Somente esta janela',
   'schemaSql.statements': 'Instruções',
   'schemaSql.header': 'Cabeçalho',
@@ -124,11 +130,6 @@ export const ptBR = {
   'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, dados iniciais …',
   'schemaSql.mssqlGoHint':
     'O MSSQL recebe GO após um script que não termina com GO.',
-  'schemaSql.saveFile': 'Salvar arquivo',
-  'schemaSql.saveFileMenu': 'Salvar arquivo…',
-  'schemaSql.optionsPanel': 'Painel de opções',
-  'schemaSql.hideOptions': 'Ocultar opções',
-  'schemaSql.showOptions': 'Mostrar opções',
   'findReplace.matchCase': 'Diferenciar maiúsculas de minúsculas',
   'findReplace.wholeWord': 'Coincidir palavra inteira',
   'findReplace.regex': 'Usar expressão regular',
@@ -262,12 +263,15 @@ export const ptBR = {
   'palette.schemaSqlStatements': 'Esquema SQL: Instruções',
   'palette.schemaSqlHeader': 'Esquema SQL: Cabeçalho',
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Painel de opções',
+  'palette.codeGeneratorOptionsPanel': 'Gerador de código: Painel de opções',
   'palette.exportSchemaSql': 'Exportar: Esquema SQL',
   'palette.keywords.schemaSqlStatements':
     'criar se não existir excluir substituir',
   'palette.keywords.schemaSqlHeader': 'use banco de dados search_path',
   'palette.keywords.schemaSqlOptionsPanel':
     'mostrar ocultar antes depois scripts',
+  'palette.keywords.codeGeneratorOptionsPanel':
+    'mostrar ocultar banco de dados estilo salvar arquivo',
   'palette.keywords.exportSchemaSql': 'sql ddl arquivo',
   'settings.preferences': 'Preferências',
   'settings.relationshipDataTypeSync':

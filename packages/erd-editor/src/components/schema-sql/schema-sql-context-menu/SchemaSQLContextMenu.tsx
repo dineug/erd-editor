@@ -186,7 +186,7 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
                   children={
                     <ContextMenu.Menu
                       icon={panelOpen ? <Icon name="check" size={14} /> : null}
-                      name={t('schemaSql.optionsPanel')}
+                      name={t('code.optionsPanel')}
                     />
                   }
                 />
@@ -195,7 +195,7 @@ const SchemaSQLContextMenu: FC<SchemaSQLContextMenuProps> = (props, ctx) => {
                   children={
                     <ContextMenu.Menu
                       icon={<Icon name="download" size={14} />}
-                      name={t('schemaSql.saveFileMenu')}
+                      name={t('code.saveFileMenu')}
                     />
                   }
                 />

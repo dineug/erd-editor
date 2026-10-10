@@ -19,11 +19,20 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
-import * as styles from '@/components/generator-code/GeneratorCode.styles';
-import { BracketType, Language, NameCase } from '@/constants/schema';
+import { generatorCodeViewOf } from '@/components/generator-code/generatorCodeView';
+import * as styles from '@/components/schema-sql/SchemaSQL.styles';
+import {
+  BracketType,
+  Database,
+  Language,
+  LockSettingType,
+  NameCase,
+} from '@/constants/schema';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
   changeBracketTypeAction,
   changeColumnNameCaseAction,
+  changeDatabaseAction,
   changeDatabaseNameAction,
   changeLanguageAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -38,6 +47,8 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import type { ShikiService } from '@/services/shiki';
+import { bHas } from '@/utils/bit';
+import { setExportFileCallback } from '@/utils/file/exportFile';
 import {
   createGeneratorCode,
   createGeneratorCodeTable,
@@ -97,6 +108,27 @@ const createSeededApp = () => seedSchema(createTestAppContext());
 const rootOf = (m: Mounted) =>
   m.container.querySelector(`.${String(styles.root)}`) as HTMLDivElement;
 
+/** The code's side of the tab, where a right click opens the menu. */
+const codeAreaOf = (m: Mounted) =>
+  rootOf(m).firstElementChild as HTMLDivElement;
+
+const panelOf = (m: Mounted) =>
+  m.container.querySelector<HTMLElement>('aside.generator-code-options');
+
+const showButtonOf = (m: Mounted) =>
+  m.container.querySelector<HTMLButtonElement>('.generator-code-options-show');
+
+/** An editor measured this wide, which is what decides whether the panel opens. */
+const measure = (app: AppContext, width: number) => {
+  app.store.dispatchSync(changeViewportAction({ width, height: 800 }));
+};
+
+/** A row of the menu by its text, which a click runs. */
+const menuRowOf = (m: Mounted, text: string) =>
+  Array.from(contentOf(m)?.children ?? []).find(
+    row => row.textContent?.trim() === text
+  ) as HTMLElement | undefined;
+
 const codeOf = (m: Mounted) =>
   m.container.querySelector('.scrollbar') as HTMLDivElement;
 
@@ -125,7 +157,7 @@ function openContextMenu(m: Mounted, x = 30, y = 40) {
     clientX: x,
     clientY: y,
   });
-  rootOf(m).dispatchEvent(event);
+  codeAreaOf(m).dispatchEvent(event);
   return event;
 }
 
@@ -139,6 +171,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setExportFileCallback(null);
   mounted?.unmount();
   mounted = null;
   setShikiService(null);
@@ -243,6 +276,37 @@ describe('GeneratorCode', () => {
     await flush();
     expect(codeOf(mounted).textContent).toContain('type Account {');
     expect(codeOf(mounted).textContent).toContain('user_name: String');
+  });
+
+  it('regenerates on a database change, which the types follow', async () => {
+    const app = createSeededApp();
+    app.store.dispatchSync(
+      changeLanguageAction({ value: Language.Rust }),
+      changeColumnDataTypeAction({
+        tableId: 'table-a',
+        id: 'col-a',
+        value: 'text[]',
+      }),
+      changeDatabaseAction({ value: Database.MySQL })
+    );
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+    const before = codeOf(mounted).textContent;
+
+    app.store.dispatchSync(
+      changeDatabaseAction({ value: Database.PostgreSQL })
+    );
+    await flush();
+
+    expect(before).toContain('pub userName: Option<String>,');
+    expect(codeOf(mounted).textContent).toContain(
+      'pub userName: Option<Vec<String>>,'
+    );
+    expect(codeOf(mounted).textContent).toBe(
+      rendered(createGeneratorCode(app.store.state))
+    );
   });
 
   it('regenerates on a bracket type change, which the Doctrine names follow', async () => {
@@ -492,5 +556,294 @@ describe('GeneratorCode', () => {
     await flush();
 
     expect(container.querySelector('.scrollbar')).toBeNull();
+  });
+
+  it('opens the options panel on an editor 640 wide or more, once measured', async () => {
+    const app = createSeededApp();
+    measure(app, 0);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+    expect(panelOf(mounted)).toBeNull();
+    expect(showButtonOf(mounted)).toBeNull();
+    expect(generatorCodeViewOf(app).panel).toBe('unset');
+
+    measure(app, 640);
+    await flush();
+
+    expect(panelOf(mounted)).toBeTruthy();
+    expect(showButtonOf(mounted)).toBeNull();
+    expect(generatorCodeViewOf(app).panel).toBe('open');
+  });
+
+  it('folds the panel away on a narrower editor, leaving Show options over the code', async () => {
+    const app = createSeededApp();
+    measure(app, 639);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+
+    const show = showButtonOf(mounted) as HTMLButtonElement;
+    expect(panelOf(mounted)).toBeNull();
+    expect(show.getAttribute('aria-label')).toBe('Show options');
+    expect(show.getAttribute('title')).toBe('Show options');
+    expect(show.getAttribute('aria-expanded')).toBe('false');
+    expect(codeAreaOf(mounted).contains(show)).toBe(true);
+  });
+
+  it('keeps its fold apart from the Schema SQL tab, and keeps it across a remount', async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+    (
+      mounted.container.querySelector(
+        '.generator-code-options-hide'
+      ) as HTMLElement
+    ).click();
+    await flush();
+    mounted.unmount();
+
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+
+    expect(panelOf(mounted)).toBeNull();
+    expect(showButtonOf(mounted)).toBeTruthy();
+  });
+
+  it("keeps the code left of the panel in every language, the panel and the menu in the reader's direction", async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    const i18n = createTestI18n('ar-SA');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      mounted = await mountAndFlush(
+        html`<${GeneratorCode} isDarkMode=${false} />`,
+        app
+      );
+      expect(rootOf(mounted).dir).toBe('ltr');
+      expect(panelOf(mounted)?.dir).toBe('rtl');
+
+      openContextMenu(mounted);
+      await flush();
+      expect(contentOf(mounted)?.parentElement?.dir).toBe('rtl');
+    } finally {
+      provider.destroy();
+    }
+  });
+
+  it('hides the panel and hands the focus to Show options, and back to Hide options', async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+
+    (
+      mounted.container.querySelector(
+        '.generator-code-options-hide'
+      ) as HTMLElement
+    ).click();
+    await flush();
+
+    expect(panelOf(mounted)).toBeNull();
+    expect(generatorCodeViewOf(app).panel).toBe('closed');
+    expect(document.activeElement).toBe(showButtonOf(mounted));
+
+    (showButtonOf(mounted) as HTMLButtonElement).click();
+    await flush();
+
+    expect(panelOf(mounted)).toBeTruthy();
+    expect(document.activeElement).toBe(
+      mounted.container.querySelector('.generator-code-options-hide')
+    );
+  });
+
+  it('keeps Space on Show options from the hand tool, unprevented', async () => {
+    const app = createSeededApp();
+    measure(app, 600);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+    const behind = vi.fn();
+    mounted.container.addEventListener('keydown', behind);
+
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    });
+    showButtonOf(mounted)?.dispatchEvent(space);
+
+    expect(space.defaultPrevented).toBe(false);
+    expect(behind).not.toHaveBeenCalled();
+  });
+
+  it("saves the text it shows from Save file, named after the database with the language's extension", async () => {
+    const app = createSeededApp();
+    app.store.dispatchSync(
+      changeDatabaseNameAction({ value: 'shop' }),
+      changeLanguageAction({ value: Language.TypeScript })
+    );
+    measure(app, 1280);
+    const files: Array<{ blob: Blob; fileName: string }> = [];
+    setExportFileCallback((blob, { fileName }) =>
+      files.push({ blob, fileName })
+    );
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+
+    (
+      mounted.container.querySelector(
+        '.generator-code-options-save'
+      ) as HTMLElement
+    ).click();
+
+    expect(files).toHaveLength(1);
+    expect(files[0].fileName).toMatch(
+      /^shop-\d{4}-\d{2}-\d{2}T\d{2}_\d{2}_\d{2}\.ts$/
+    );
+    expect(await files[0].blob.text()).toBe(
+      createGeneratorCode(app.store.state)
+    );
+
+    app.store.dispatchSync(
+      changeDatabaseNameAction({ value: '' }),
+      changeLanguageAction({ value: Language.Mermaid })
+    );
+    await flush();
+    (
+      mounted.container.querySelector(
+        '.generator-code-options-save'
+      ) as HTMLElement
+    ).click();
+
+    expect(files[1].fileName).toMatch(/^unnamed-.*\.mmd$/);
+  });
+
+  it("copies the text it shows from the panel's Copy too, with the same toast", async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    const openToast = vi.fn();
+    app.emitter.on({ openToast });
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+
+    (
+      mounted.container.querySelector(
+        '.generator-code-options-copy'
+      ) as HTMLElement
+    ).click();
+    await flush();
+
+    expect(writeText).toHaveBeenCalledWith(
+      createGeneratorCode(app.store.state)
+    );
+    expect(openToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a right click in the panel to the browser', async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+
+    const event = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    panelOf(mounted)?.dispatchEvent(event);
+    await flush();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(contentOf(mounted)).toBeNull();
+  });
+
+  it("shows one table's code alone, no panel, no Show options and no panel rows in its menu", async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} tableId=${'table-a'} />`,
+      app
+    );
+
+    expect(panelOf(mounted)).toBeNull();
+    expect(showButtonOf(mounted)).toBeNull();
+    expect(generatorCodeViewOf(app).panel).toBe('unset');
+
+    openContextMenu(mounted);
+    await flush();
+    const text = contentOf(mounted)?.textContent ?? '';
+    expect(text).toContain('Database');
+    expect(text).not.toContain('Options panel');
+    expect(text).not.toContain('Save file…');
+  });
+
+  it("adds the panel and Save file to the whole document's menu, each closing it", async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    const files: string[] = [];
+    setExportFileCallback((_, { fileName }) => files.push(fileName));
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+
+    openContextMenu(mounted);
+    await flush();
+    menuRowOf(mounted, 'Save file…')?.click();
+    await flush();
+
+    expect(files).toEqual([expect.stringMatching(/^unnamed-.*\.graphql$/)]);
+    expect(contentOf(mounted)).toBeNull();
+
+    openContextMenu(mounted);
+    await flush();
+    menuRowOf(mounted, 'Options panel')?.click();
+    await flush();
+
+    expect(contentOf(mounted)).toBeNull();
+    expect(panelOf(mounted)).toBeNull();
+    expect(generatorCodeViewOf(app).panel).toBe('closed');
+  });
+
+  it('writes again when the panel changes a setting, the language locked and the database not', async () => {
+    const app = createSeededApp();
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${GeneratorCode} isDarkMode=${false} />`,
+      app
+    );
+    const { lockSettings } = app.store.state.settings;
+    expect(bHas(lockSettings, LockSettingType.language)).toBe(true);
+
+    const language = mounted.container.querySelector<HTMLSelectElement>(
+      '#generator-code-language'
+    )!;
+    language.value = String(Language.TypeScript);
+    language.dispatchEvent(new Event('change', { bubbles: true }));
+    await flush();
+
+    expect(app.store.state.settings.language).toBe(Language.TypeScript);
+    expect(codeOf(mounted).textContent).toBe(
+      rendered(createGeneratorCode(app.store.state))
+    );
+    expect(codeOf(mounted).textContent).toContain('export interface User');
   });
 });

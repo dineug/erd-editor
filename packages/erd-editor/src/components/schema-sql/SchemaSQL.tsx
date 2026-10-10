@@ -200,8 +200,8 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
                       optionsStyles.icon,
                       styles.show,
                     ]}
-                    aria-label={t('schemaSql.showOptions')}
-                    title={t('schemaSql.showOptions')}
+                    aria-label={t('code.showOptions')}
+                    title={t('code.showOptions')}
                     aria-expanded="false"
                     on:click={handleShow}
                     on:keydown={keepSpace}

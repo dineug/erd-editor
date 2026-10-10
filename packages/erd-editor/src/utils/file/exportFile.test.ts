@@ -9,6 +9,7 @@ import {
 
 import { createDocumentPng, createDocumentSvg } from '@/services/export-png';
 import {
+  exportCode,
   exportJSON,
   exportPNG,
   exportSchemaSQL,
@@ -126,6 +127,22 @@ describe('exportFile', () => {
       expect(await readBlob(blob)).toBe('CREATE TABLE a;');
       expect(blob.type).toBe('');
       expect(options.fileName).toBe(`db-${STAMP}.sql`);
+    });
+  });
+
+  describe('exportCode', () => {
+    it('names the code by the database and the extension it is handed, untyped as SQL is', async () => {
+      const calls: Array<[Blob, { fileName: string }]> = [];
+      setExportFileCallback((blob, options) => calls.push([blob, options]));
+
+      exportCode('export interface A {}\n', '.ts', 'shop');
+      exportCode('{}', '.json', '  ');
+
+      const [blob, options] = calls[0];
+      expect(await readBlob(blob)).toBe('export interface A {}\n');
+      expect(blob.type).toBe('');
+      expect(options.fileName).toBe(`shop-${STAMP}.ts`);
+      expect(calls[1][1].fileName).toBe(`unnamed-${STAMP}.json`);
     });
   });
 
