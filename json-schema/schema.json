@@ -209,7 +209,7 @@
           }
         },
         "tableGroupIds": {
-          "description": "Order of the table groups. Written while it or tableGroupEntities holds an entry, as a removed group does there until the editor collects it; absent means none",
+          "description": "Order of the table groups. Written while a group exists; absent means none",
           "type": "array",
           "items": {
             "type": "string"
@@ -244,7 +244,7 @@
             }
           },
           "groupId": {
-            "description": "Id of the table group the table belongs to; an id naming no group in doc.tableGroupIds reads as none. Written while not empty, such an id included; absent or empty means none",
+            "description": "Id of the table group the table belongs to; an id naming no group in doc.tableGroupIds reads as none. Written only while it names a listed group; absent or empty means none",
             "type": "string"
           },
           "ui": {
@@ -269,27 +269,13 @@
                 "type": "string"
               }
             },
-            "required": [
-              "x",
-              "y",
-              "zIndex",
-              "widthName",
-              "widthComment",
-              "color"
-            ]
+            "required": ["x", "y", "color"]
           },
           "meta": {
             "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "comment",
-          "columnIds",
-          "seqColumnIds",
-          "ui"
-        ]
+        "required": ["id", "name", "comment", "columnIds", "ui"]
       }
     },
     "tableColumnEntities": {
@@ -338,14 +324,7 @@
               "widthDefault": {
                 "type": "number"
               }
-            },
-            "required": [
-              "keys",
-              "widthName",
-              "widthComment",
-              "widthDataType",
-              "widthDefault"
-            ]
+            }
           },
           "meta": {
             "$ref": "#/$defs/EntityMeta"
@@ -358,8 +337,7 @@
           "comment",
           "dataType",
           "default",
-          "options",
-          "ui"
+          "options"
         ]
       }
     },
@@ -400,14 +378,7 @@
             "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": [
-          "id",
-          "identification",
-          "relationshipType",
-          "startRelationshipType",
-          "start",
-          "end"
-        ]
+        "required": ["id", "relationshipType", "start", "end"]
       }
     },
     "indexEntities": {
@@ -443,14 +414,7 @@
             "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "tableId",
-          "indexColumnIds",
-          "seqIndexColumnIds",
-          "unique"
-        ]
+        "required": ["id", "name", "tableId", "indexColumnIds", "unique"]
       }
     },
     "indexColumnEntities": {
@@ -511,7 +475,7 @@
                 "type": "string"
               }
             },
-            "required": ["x", "y", "zIndex", "width", "height", "color"]
+            "required": ["x", "y", "width", "height", "color"]
           },
           "meta": {
             "$ref": "#/$defs/EntityMeta"
@@ -521,7 +485,7 @@
       }
     },
     "tableGroupEntities": {
-      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written while it or doc.tableGroupIds holds an entry, a removed group included until the editor collects it; absent means none",
+      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written while a group exists; absent means none",
       "type": "object",
       "additionalProperties": {
         "type": "object",
@@ -554,7 +518,7 @@
                 "type": "number"
               }
             },
-            "required": ["x", "y", "width", "height", "zIndex"]
+            "required": ["x", "y", "width", "height"]
           },
           "meta": {
             "$ref": "#/$defs/EntityMeta"
@@ -598,7 +562,7 @@
           "type": "integer"
         }
       },
-      "required": ["tableId", "columnIds", "x", "y", "direction"]
+      "required": ["tableId", "columnIds"]
     }
   }
 }

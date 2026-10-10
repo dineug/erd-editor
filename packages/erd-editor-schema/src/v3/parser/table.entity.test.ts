@@ -125,6 +125,41 @@ describe('createAndMergeTableEntities', () => {
     });
   });
 
+  it.each([
+    ['missing', undefined],
+    ['missing an id the columns list', ['c1', 'c3']],
+    ['not an array', 'c1'],
+  ])(
+    'starts the column sequence at the columns when it is %s',
+    (_, seqColumnIds) => {
+      const columnIds = ['c2', 'c1', 'c3'];
+      const entities = createAndMergeTableEntities({
+        key: { id: 't1', columnIds, seqColumnIds: seqColumnIds as any },
+      });
+
+      expect(entities.t1.seqColumnIds).toEqual(['c2', 'c1', 'c3']);
+      expect(entities.t1.seqColumnIds).not.toBe(entities.t1.columnIds);
+    }
+  );
+
+  it('keeps a column sequence that holds every listed column', () => {
+    const entities = createAndMergeTableEntities({
+      key: {
+        id: 't1',
+        columnIds: ['c2', 'c1'],
+        seqColumnIds: ['c1', 'c9', 'c2'],
+      },
+    });
+
+    expect(entities.t1.seqColumnIds).toEqual(['c1', 'c9', 'c2']);
+  });
+
+  it('keeps the empty column sequence of a table without columns', () => {
+    const entities = createAndMergeTableEntities({ key: { id: 't1' } });
+
+    expect(entities.t1.seqColumnIds).toEqual([]);
+  });
+
   it('merges several tables', () => {
     const entities = createAndMergeTableEntities({
       a: { id: 'a' },

@@ -1,6 +1,6 @@
 import { isBoolean, isNil, isPlainObject, isString } from 'es-toolkit';
 
-import { assign } from '@/helper';
+import { assign, restoreSequence } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Index } from '@/v3/schema/index.entity';
 
@@ -32,6 +32,11 @@ export function createAndMergeIndexEntities(
     assignBoolean('unique');
     assignArray('indexColumnIds');
     assignArray('seqIndexColumnIds');
+
+    target.seqIndexColumnIds = restoreSequence(
+      target.indexColumnIds,
+      target.seqIndexColumnIds
+    );
 
     if (target.id) {
       entities[target.id] = target;

@@ -32,3 +32,16 @@ export function propOr<T extends object, P extends string | number | symbol, R>(
 ): P extends keyof T ? T[P] : R {
   return (Reflect.get(target, propertyKey) as unknown as any) ?? defaultValue;
 }
+
+/**
+ * The sequence a parse keeps beside an id list: the saved one while it holds
+ * every listed id, else the list itself, since a re-add sorts an id missing
+ * from the sequence past every other and so reorders the live ones.
+ */
+export function restoreSequence(
+  ids: ReadonlyArray<string>,
+  seqIds: string[]
+): string[] {
+  const seq = new Set(seqIds);
+  return ids.every(id => seq.has(id)) ? seqIds : [...ids];
+}

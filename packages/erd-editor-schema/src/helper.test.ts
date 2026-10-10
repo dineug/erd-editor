@@ -1,7 +1,13 @@
 import { isNumber, isString } from 'es-toolkit';
 import { describe, expect, it, vi } from 'vite-plus/test';
 
-import { assign, propOr, validNumber, validString } from '@/helper';
+import {
+  assign,
+  propOr,
+  restoreSequence,
+  validNumber,
+  validString,
+} from '@/helper';
 
 type Target = {
   name: string;
@@ -92,5 +98,25 @@ describe('propOr', () => {
     expect(propOr({ a: 0 } as any, 'a', 99)).toBe(0);
     expect(propOr({ a: '' } as any, 'a', 'fallback')).toBe('');
     expect(propOr({ a: false } as any, 'a', true)).toBe(false);
+  });
+});
+
+describe('restoreSequence', () => {
+  it('keeps a sequence that holds every listed id, extra ids included', () => {
+    const seqIds = ['a', 'z', 'b'];
+
+    expect(restoreSequence(['b', 'a'], seqIds)).toBe(seqIds);
+  });
+
+  it('starts a sequence missing a listed id at a copy of the list', () => {
+    const ids = ['b', 'a'];
+    const restored = restoreSequence(ids, ['a']);
+
+    expect(restored).toEqual(['b', 'a']);
+    expect(restored).not.toBe(ids);
+  });
+
+  it('keeps an empty sequence beside an empty list', () => {
+    expect(restoreSequence([], [])).toEqual([]);
   });
 });

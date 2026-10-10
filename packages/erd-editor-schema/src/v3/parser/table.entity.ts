@@ -1,6 +1,6 @@
 import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 
-import { assign } from '@/helper';
+import { assign, restoreSequence } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Table } from '@/v3/schema/table.entity';
 
@@ -48,6 +48,11 @@ export function createAndMergeTableEntities(
     uiAssignNumber('zIndex');
     uiAssignNumber('widthName');
     uiAssignNumber('widthComment');
+
+    target.seqColumnIds = restoreSequence(
+      target.columnIds,
+      target.seqColumnIds
+    );
 
     if (target.id) {
       entities[target.id] = target;

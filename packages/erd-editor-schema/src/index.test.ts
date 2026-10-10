@@ -12,6 +12,7 @@ import {
   schemaV2Parser,
   SchemaV3Constants,
   schemaV3Parser,
+  toDocumentJson,
   toJson,
 } from '@/index';
 import { LWW } from '@/v3/schema/lww';
@@ -23,6 +24,17 @@ describe('public entry point', () => {
     );
 
     expect(JSON.parse(toJson(schema)).settings.databaseName).toBe('shop');
+  });
+
+  it('exposes the storage form a file holds', () => {
+    const schema = parser(
+      '{"version":"3.0.0","settings":{"databaseName":"shop"}}'
+    );
+    const json = toDocumentJson(schema);
+
+    expect(JSON.parse(json).settings.databaseName).toBe('shop');
+    expect(json.endsWith('}\n')).toBe(true);
+    expect(toDocumentJson(parser(json))).toBe(json);
   });
 
   it('exposes the v2 parser', () => {

@@ -1,13 +1,9 @@
 import { mapValues, omit, pick } from 'es-toolkit';
 
 import { v2ToV3 } from '@/convert';
-import { bHas } from '@/utils/bit';
+import { normalizeSettings } from '@/normalizeSettings';
 import { schemaV2Parser } from '@/v2';
-import {
-  type ERDEditorSchemaV3,
-  SchemaV3Constants,
-  schemaV3Parser,
-} from '@/v3';
+import { type ERDEditorSchemaV3, schemaV3Parser } from '@/v3';
 import { resetPreLockView } from '@/v3/parser/settings';
 
 export function parser(source: string): ERDEditorSchemaV3 {
@@ -22,9 +18,9 @@ export function parser(source: string): ERDEditorSchemaV3 {
 }
 
 /**
- * The document as its file holds it: each locked setting at its lock, every
- * other as it stands, the locked values left out, the scripts and table groups
- * only when held.
+ * The runtime value: the document as an editor holds it, lossless but for the
+ * lww registers, each locked setting at its lock, the locked values left out,
+ * the scripts and table groups only when held.
  */
 export function toJson(schemaV3: ERDEditorSchemaV3) {
   const source = pick(schemaV3, [
@@ -34,29 +30,13 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
     'doc',
     'collections',
   ]);
-  const { lockedValues, lockSettings, ddlScripts, ...rest } = source.settings;
-  const { LockSettingFields, LockSettingTypeList } = SchemaV3Constants;
-  const settings = {
-    ...rest,
-    lockSettings,
-    ...(ddlScripts && (ddlScripts.before !== '' || ddlScripts.after !== '')
-      ? { ddlScripts: { before: ddlScripts.before, after: ddlScripts.after } }
-      : {}),
-  };
-
-  // A document no parser built, raw JSON say, carries no locked values: its
-  // saved fields are what it holds, so they are written as they stand.
-  LockSettingTypeList.forEach(lockSettingType => {
-    if (lockedValues && bHas(lockSettings, lockSettingType)) {
-      Object.assign(
-        settings,
-        pick(lockedValues, LockSettingFields[lockSettingType])
-      );
-    }
-  });
 
   return JSON.stringify(
-    { ...source, settings, ...withoutEmptyTableGroups(source) },
+    {
+      ...source,
+      settings: normalizeSettings(source.settings),
+      ...withoutEmptyTableGroups(source),
+    },
     null,
     2
   );
