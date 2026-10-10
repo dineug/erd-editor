@@ -15,6 +15,8 @@ import {
   type AgentSnapshotSettings,
   type AgentSnapshotTable,
   type AgentSnapshotTableGroup,
+  liveIndexes,
+  liveRelationships,
   relationshipTypeName,
   tableGroupIdOf,
   toSnapshotIndex,
@@ -170,6 +172,9 @@ const NOTE_ROOM = 700;
 
 /** The characters a value takes in an answer, with the comma before it. */
 const cost = (value: unknown) => JSON.stringify(value).length + 1;
+
+const idsOf = (entities: ReadonlyArray<{ id: string }>) =>
+  entities.map(({ id }) => id);
 
 /** The words of a query, lower case, once each. */
 function queryWords(text: string): string[] {
@@ -391,10 +396,8 @@ export function toDocumentList(
   const { settings, doc } = state;
   const searched = text !== undefined;
   const { select, tables: live, found } = candidates(state, text);
-  const relationships = select
-    .collection('relationshipEntities')
-    .selectByIds(doc.relationshipIds);
-  const indexes = select.collection('indexEntities').selectByIds(doc.indexIds);
+  const relationships = liveRelationships(state);
+  const indexes = liveIndexes(state);
   const members = toTableGroupMembers(state);
   const groups = searched
     ? []
@@ -676,12 +679,12 @@ export function toEntityDetails(
   const relationships = ids.relationshipIds
     ? select
         .collection('relationshipEntities')
-        .selectByIds(pick(ids.relationshipIds, doc.relationshipIds))
+        .selectByIds(pick(ids.relationshipIds, idsOf(liveRelationships(state))))
     : undefined;
   const indexes = ids.indexIds
     ? select
         .collection('indexEntities')
-        .selectByIds(pick(ids.indexIds, doc.indexIds))
+        .selectByIds(pick(ids.indexIds, idsOf(liveIndexes(state))))
     : undefined;
   const memos = ids.memoIds
     ? select

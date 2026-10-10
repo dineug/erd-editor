@@ -15,7 +15,11 @@ import {
 } from '@dineug/erd-editor/peer.js';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
 
-import { createSeededPeer, SEED } from '@/__test-utils__/seed';
+import {
+  createCrossedRemovalPeer,
+  createSeededPeer,
+  SEED,
+} from '@/__test-utils__/seed';
 import { runTool } from '@/tools/run';
 import { toAgentSnapshot } from '@/tools/snapshot';
 
@@ -196,6 +200,39 @@ describe('the agent snapshot', () => {
     expect(toAgentSnapshot(other.state).memos).toEqual([]);
 
     other.destroy();
+  });
+
+  it('keeps only the relationships, indexes and index columns the file form keeps', () => {
+    const { peer: crossed, orphans, kept } = createCrossedRemovalPeer();
+    const { doc, collections } = crossed.state;
+    expect(doc.relationshipIds).toContain(orphans.relationship);
+    expect(doc.indexIds).toContain(orphans.ordersIndex);
+    expect(collections.indexEntities[kept.usersIndex].indexColumnIds).toContain(
+      orphans.nameColumn
+    );
+
+    const snapshot = toAgentSnapshot(crossed.state);
+    const file = JSON.parse(crossed.value);
+
+    expect(snapshot.tables.map(({ id }) => id)).toEqual([
+      SEED.users,
+      SEED.empty,
+    ]);
+    expect(snapshot.relationships.map(({ id }) => id)).toEqual(
+      file.doc.relationshipIds
+    );
+    expect(snapshot.indexes.map(({ id }) => id)).toEqual(file.doc.indexIds);
+    expect(
+      snapshot.indexes.map(({ id, columns }) => [
+        id,
+        columns.map(({ id }) => id),
+      ])
+    ).toEqual([[kept.usersIndex, [kept.idColumn]]]);
+    expect(
+      file.collections.indexEntities[kept.usersIndex].indexColumnIds
+    ).toEqual([kept.idColumn]);
+
+    crossed.destroy();
   });
 
   it('gives the Schema SQL scripts as the document holds them', () => {
