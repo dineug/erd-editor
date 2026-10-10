@@ -86,7 +86,7 @@ describe('Editor', () => {
       expect(editor.readonly).toBe(true);
     });
 
-    it('locks a conflictResolution document — a merge preview is not an editable file', () => {
+    it('locks a conflictResolution document — the disk side of a save conflict is not an editable file', () => {
       const { editor } = createEditor(
         Uri.parse('conflictResolution:/repo/sample.erd')
       );

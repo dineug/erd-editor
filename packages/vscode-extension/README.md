@@ -101,8 +101,10 @@ parts it touches. A file an earlier release of ERD Editor saved is rewritten in 
 its first edit.
 
 Source Control shows a changed diagram as a text diff of its JSON, and opens a revision Git holds,
-such as a deleted file or a file in an earlier commit, as JSON text. **Reopen Editor With…** shows
-that revision as a diagram; a file Git does not track yet opens in the editor as any other does.
+such as a deleted file or a file in an earlier commit, as JSON text. So do Local History, Compare
+with Saved, a coding agent's edit review, and the revision views of GitLens, GitHub Pull Requests,
+GitLab Workflow, GitHub Repositories and Git Graph. **Reopen Editor With…** shows a Git revision as
+a read-only diagram; a file Git does not track yet opens in the editor as any other does.
 
 ### Multiple editors per document
 

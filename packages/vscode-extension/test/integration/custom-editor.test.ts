@@ -1,4 +1,8 @@
 import * as assert from 'assert/strict';
+import { execFileSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 
 const EXTENSION_ID = 'dineug.vuerd-vscode';
@@ -8,6 +12,14 @@ const POLL_INTERVAL = 50;
 // with several waits still fails with waitUntil's description rather than
 // with an anonymous mocha timeout.
 const POLL_TIMEOUT = 5_000;
+
+/** The slice of the built-in git extension's API these specs use. */
+type GitExtension = {
+  getAPI(version: 1): {
+    repositories: Array<{ rootUri: vscode.Uri }>;
+    toGitUri(uri: vscode.Uri, ref: string): vscode.Uri;
+  };
+};
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -166,26 +178,73 @@ describe('custom editor', () => {
   });
 
   describe('a git revision', () => {
-    let provider: vscode.Disposable;
+    let repoRoot: string;
+    let fileUri: vscode.Uri;
     let revisionUri: vscode.Uri;
+    let committed: string;
 
     before(async () => {
-      const text = Buffer.from(
+      committed = Buffer.from(
         await vscode.workspace.fs.readFile(documentUri)
       ).toString('utf8');
-      // The fixture folder is no repository, so the revision is served here;
-      // which editor opens depends on the uri alone, never on its content.
-      provider = vscode.workspace.registerTextDocumentContentProvider('git', {
-        provideTextDocumentContent: () => text,
-      });
-      revisionUri = documentUri.with({
-        scheme: 'git',
-        query: JSON.stringify({ path: documentUri.fsPath, ref: 'HEAD' }),
-      });
+      // A repository of its own, so the git file system serves the revision
+      // as it does when Source Control hands one over.
+      repoRoot = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'erd-revision-'))
+      );
+      const file = path.join(repoRoot, 'sample.erd');
+      fs.writeFileSync(file, committed);
+      const git = (...args: string[]) =>
+        execFileSync(
+          'git',
+          [
+            '-c',
+            'user.name=test',
+            '-c',
+            'user.email=test@example.com',
+            ...args,
+          ],
+          { cwd: repoRoot }
+        );
+      git('init', '-q');
+      git('add', 'sample.erd');
+      git('commit', '-q', '-m', 'sample');
+
+      const extension =
+        vscode.extensions.getExtension<GitExtension>('vscode.git');
+      assert.ok(extension, 'the built-in git extension is not in this host');
+      const api = (await extension.activate()).getAPI(1);
+      // The minimum-supported release opens a repository outside the
+      // workspace only under this setting, so it is on for the open alone.
+      const gitConfig = vscode.workspace.getConfiguration('git');
+      await gitConfig.update(
+        'openRepositoryInParentFolders',
+        'always',
+        vscode.ConfigurationTarget.Global
+      );
+      try {
+        await vscode.commands.executeCommand('git.openRepository', repoRoot);
+        await waitUntil(
+          'the git extension opened the scratch repository',
+          () =>
+            api.repositories.some(
+              repository => repository.rootUri.fsPath === repoRoot
+            ),
+          15_000
+        );
+      } finally {
+        await gitConfig.update(
+          'openRepositoryInParentFolders',
+          undefined,
+          vscode.ConfigurationTarget.Global
+        );
+      }
+      fileUri = vscode.Uri.file(file);
+      revisionUri = api.toGitUri(fileUri, 'HEAD');
     });
 
     after(() => {
-      provider.dispose();
+      fs.rmSync(repoRoot, { recursive: true, force: true });
     });
 
     function erdEditorTabsOnRevisions(): vscode.Tab[] {
@@ -207,13 +266,15 @@ describe('custom editor', () => {
         )
       );
       assert.strictEqual(erdEditorTabsOnRevisions().length, 0);
+      const revision = await vscode.workspace.openTextDocument(revisionUri);
+      assert.strictEqual(revision.getText(), committed);
     });
 
     it('diffs against the working file as text, as Source Control opens a change', async () => {
       await vscode.commands.executeCommand(
         'vscode.diff',
         revisionUri,
-        documentUri,
+        fileUri,
         'sample.erd (Working Tree)'
       );
 
@@ -222,10 +283,93 @@ describe('custom editor', () => {
           tab =>
             tab.input instanceof vscode.TabInputTextDiff &&
             tab.input.original.scheme === 'git' &&
-            tab.input.modified.fsPath === documentUri.fsPath
+            tab.input.modified.fsPath === fileUri.fsPath
         )
       );
       assert.strictEqual(erdEditorTabsOnRevisions().length, 0);
+      assert.strictEqual(erdEditorTabsFor(fileUri).length, 0);
+    });
+  });
+
+  describe('a revision another view serves', () => {
+    const SCHEMES = ['gitlens', 'git-graph', 'clipboardCompare7'];
+    let providers: vscode.Disposable[] = [];
+
+    before(async () => {
+      const text = Buffer.from(
+        await vscode.workspace.fs.readFile(documentUri)
+      ).toString('utf8');
+      providers = SCHEMES.map(scheme =>
+        vscode.workspace.registerTextDocumentContentProvider(scheme, {
+          provideTextDocumentContent: () => text,
+        })
+      );
+    });
+
+    after(() => {
+      for (const provider of providers) provider.dispose();
+    });
+
+    function textTabsOn(scheme: string): vscode.Tab[] {
+      return allTabs().filter(
+        tab =>
+          tab.input instanceof vscode.TabInputText &&
+          tab.input.uri.scheme === scheme
+      );
+    }
+
+    function erdEditorTabsOn(scheme: string): vscode.Tab[] {
+      return allTabs().filter(
+        tab =>
+          tab.input instanceof vscode.TabInputCustom &&
+          tab.input.uri.scheme === scheme
+      );
+    }
+
+    it('opens a GitLens revision as JSON text', async () => {
+      await vscode.commands.executeCommand(
+        'vscode.open',
+        documentUri.with({ scheme: 'gitlens', authority: 'abc1234' })
+      );
+
+      await waitUntil(
+        'a text editor shows the GitLens revision',
+        () => textTabsOn('gitlens').length === 1
+      );
+      assert.strictEqual(erdEditorTabsOn('gitlens').length, 0);
+    });
+
+    it('opens a Git Graph revision, whose path starts with no slash, as JSON text', async () => {
+      await vscode.commands.executeCommand(
+        'vscode.open',
+        vscode.Uri.from({ scheme: 'git-graph', path: 'abc1234: sample.erd' })
+      );
+
+      await waitUntil(
+        'a text editor shows the Git Graph revision',
+        () => textTabsOn('git-graph').length === 1
+      );
+      assert.strictEqual(erdEditorTabsOn('git-graph').length, 0);
+    });
+
+    it('diffs the clipboard against the file as text, whatever counter its scheme carries', async () => {
+      await vscode.commands.executeCommand(
+        'vscode.diff',
+        documentUri.with({ scheme: 'clipboardCompare7' }),
+        documentUri,
+        'Clipboard ↔ sample.erd'
+      );
+
+      await waitUntil(
+        'a text diff compares the clipboard with sample.erd',
+        () =>
+          allTabs().some(
+            tab =>
+              tab.input instanceof vscode.TabInputTextDiff &&
+              tab.input.original.scheme === 'clipboardCompare7' &&
+              tab.input.modified.fsPath === documentUri.fsPath
+          )
+      );
       assert.strictEqual(erdEditorTabsFor(documentUri).length, 0);
     });
   });
