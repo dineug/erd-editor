@@ -94,21 +94,9 @@ export const note = css`
   ${typography.paragraph};
 `;
 
-/** A native list in the panel's colours; its popup takes the appearance from color-scheme. */
+/** A list beside its name, as wide whatever the database or the bracket. */
 export const select = css`
   width: 132px;
-  height: 28px;
-  padding: 0 4px;
-  border: 1px solid var(--context-menu-border);
-  border-radius: 4px;
-  color: var(--active);
-  background-color: var(--context-menu-background);
-  ${typography.paragraph};
-
-  &:focus-visible {
-    outline: 2px solid var(--input-active);
-    outline-offset: 1px;
-  }
 `;
 
 /* Three choices as one segmented control, as wide as its labels. */

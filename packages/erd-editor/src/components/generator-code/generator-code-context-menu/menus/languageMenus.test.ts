@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, flush } from '@/__test-utils__/index';
 import {
   createLanguageMenus,
+  menuGroups,
   menus,
 } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
-import { Language, NameCase } from '@/constants/schema';
+import { Language, LanguageList, NameCase } from '@/constants/schema';
 import { changeTableNameCaseAction } from '@/engine/modules/settings/atom.actions';
 
 describe('languageMenus', () => {
@@ -18,6 +19,7 @@ describe('languageMenus', () => {
       { name: 'PHP', value: Language.PHP },
       { name: 'Rust', value: Language.Rust },
       { name: 'Scala', value: Language.Scala },
+      { name: 'Swift', value: Language.Swift },
       { name: 'TypeScript', value: Language.TypeScript },
       { name: 'Doctrine', value: Language.Doctrine },
       { name: 'Drizzle', value: Language.Drizzle },
@@ -29,8 +31,66 @@ describe('languageMenus', () => {
       { name: 'AML', value: Language.AML },
       { name: 'DBML', value: Language.DBML },
       { name: 'GraphQL', value: Language.GraphQL },
+      { name: 'JSON Schema', value: Language.JSONSchema },
       { name: 'Mermaid', value: Language.Mermaid },
+      { name: 'Zod', value: Language.Zod },
     ]);
+  });
+
+  it('groups the languages, the ORMs and the schemas, each ascending ignoring case', () => {
+    const names = menuGroups.map(group => group.map(menu => menu.name));
+
+    expect(names).toEqual([
+      [
+        'C#',
+        'Go',
+        'Java',
+        'Kotlin',
+        'PHP',
+        'Rust',
+        'Scala',
+        'Swift',
+        'TypeScript',
+      ],
+      [
+        'Doctrine',
+        'Drizzle',
+        'JPA',
+        'SeaORM',
+        'Sequelize',
+        'SQLAlchemy',
+        'TypeORM',
+      ],
+      ['AML', 'DBML', 'GraphQL', 'JSON Schema', 'Mermaid', 'Zod'],
+    ]);
+    for (const group of names) {
+      const sorted = [...group].sort((a, b) =>
+        a.toLowerCase() < b.toLowerCase() ? -1 : 1
+      );
+      expect(group).toEqual(sorted);
+    }
+  });
+
+  it('flattens the groups into the list the palette reads, in their order', () => {
+    expect(menus).toEqual(menuGroups.flat());
+  });
+
+  it('lists every Language once', () => {
+    const values = menus.map(menu => menu.value);
+
+    expect(new Set(values).size).toBe(values.length);
+    expect([...values].sort((a, b) => a - b)).toEqual(
+      [...LanguageList].sort((a, b) => a - b)
+    );
+  });
+
+  it('marks the first row of each later group, where a rule goes', () => {
+    const app = createTestAppContext();
+    const created = createLanguageMenus(app);
+
+    expect(
+      created.filter(menu => menu.separated).map(menu => menu.name)
+    ).toEqual(['Doctrine', 'AML']);
   });
 
   it('mirrors the menu names and keeps one entry per language', () => {
@@ -46,6 +106,7 @@ describe('languageMenus', () => {
       'PHP',
       'Rust',
       'Scala',
+      'Swift',
       'TypeScript',
       'Doctrine',
       'Drizzle',
@@ -57,7 +118,9 @@ describe('languageMenus', () => {
       'AML',
       'DBML',
       'GraphQL',
+      'JSON Schema',
       'Mermaid',
+      'Zod',
     ]);
     created.forEach(menu => expect(typeof menu.onClick).toBe('function'));
   });

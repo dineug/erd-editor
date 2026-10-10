@@ -100,7 +100,13 @@ export const deDE = {
   'visualization.showMode.allFields': 'Alle Felder',
   'code.label': 'Code',
   'code.copy': 'Kopieren',
-  'schemaSql.savedInDocument': 'Im Dokument gespeichert',
+  'code.savedInDocument': 'Im Dokument gespeichert',
+  'code.saveFile': 'Datei speichern',
+  'code.saveFileMenu': 'Datei speichern…',
+  'code.optionsPanel': 'Optionsbereich',
+  'code.hideOptions': 'Optionen ausblenden',
+  'code.showOptions': 'Optionen einblenden',
+  'code.notUsedBy': 'Von {language} nicht verwendet',
   'schemaSql.thisWindowOnly': 'Nur dieses Fenster',
   'schemaSql.statements': 'Anweisungen',
   'schemaSql.header': 'Vorspann',
@@ -122,11 +128,6 @@ export const deDE = {
   'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, Startdaten …',
   'schemaSql.mssqlGoHint':
     'MSSQL erhält GO nach einem Skript, das nicht mit GO endet.',
-  'schemaSql.saveFile': 'Datei speichern',
-  'schemaSql.saveFileMenu': 'Datei speichern…',
-  'schemaSql.optionsPanel': 'Optionsbereich',
-  'schemaSql.hideOptions': 'Optionen ausblenden',
-  'schemaSql.showOptions': 'Optionen einblenden',
   'findReplace.matchCase': 'Groß-/Kleinschreibung beachten',
   'findReplace.wholeWord': 'Nur ganzes Wort suchen',
   'findReplace.regex': 'Regulären Ausdruck verwenden',
@@ -257,12 +258,15 @@ export const deDE = {
   'palette.schemaSqlStatements': 'Schema SQL: Anweisungen',
   'palette.schemaSqlHeader': 'Schema SQL: Vorspann',
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Optionsbereich',
+  'palette.codeGeneratorOptionsPanel': 'Codegenerator: Optionsbereich',
   'palette.exportSchemaSql': 'Exportieren: Schema SQL',
   'palette.keywords.schemaSqlStatements':
     'erstellen falls nicht vorhanden löschen ersetzen',
   'palette.keywords.schemaSqlHeader': 'use datenbank search_path',
   'palette.keywords.schemaSqlOptionsPanel':
     'einblenden ausblenden vor nach skripte',
+  'palette.keywords.codeGeneratorOptionsPanel':
+    'einblenden ausblenden datenbank schreibweise datei speichern',
   'palette.keywords.exportSchemaSql': 'sql ddl datei',
   'settings.preferences': 'Voreinstellungen',
   'settings.relationshipDataTypeSync':

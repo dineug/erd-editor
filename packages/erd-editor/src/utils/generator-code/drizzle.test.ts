@@ -67,6 +67,9 @@ function createState({
   return state;
 }
 
+const LINE_SEPARATOR = String.fromCharCode(0x2028);
+const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
+
 function render(state: RootState, table: Table): string[] {
   const buffer: string[] = [];
   formatTable(state, { buffer, table });
@@ -280,6 +283,60 @@ describe('generator-code/drizzle', () => {
         '',
       ]);
     });
+
+    it('puts a backslash before a comment line TypeScript would read as a directive', () => {
+      const state = createCommentFixture(
+        [
+          '@ts-expect-error',
+          '  @ts-ignore it',
+          ' @ts-ignored',
+          '@ts-nocheck',
+          'see @ts-ignore',
+          '@TS-NOCHECK',
+          '\u00a0@ts-ignore',
+          '/@ts-ignore',
+        ].join('\n')
+      );
+
+      expect(createCode(state).split('\n')).toEqual([
+        '',
+        'import { int, mysqlTable } from "drizzle-orm/mysql-core";',
+        '',
+        '// \\@ts-expect-error',
+        '//   \\@ts-ignore it',
+        '//  \\@ts-ignored',
+        '// \\@ts-nocheck',
+        '// see @ts-ignore',
+        '// \\@TS-NOCHECK',
+        '// \u00a0\\@ts-ignore',
+        '// /@ts-ignore',
+        'export const User = mysqlTable("user", {',
+        '  id: int(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('escapes a directive on any line of a column comment', () => {
+      const state = createState({
+        tables: [createTable({ id: 't1', name: 'user', columnIds: ['c1'] })],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+            comment: `first${LINE_SEPARATOR}@ts-expect-error no error here`,
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+
+      expect(createCode(state).split('\n').slice(4, 6)).toEqual([
+        '  // first',
+        '  // \\@ts-expect-error no error here',
+      ]);
+    });
   });
 
   describe('formatTable', () => {
@@ -420,7 +477,7 @@ describe('generator-code/drizzle', () => {
           onUpdate: ReferentialAction.setDefault,
         });
         const lines = render(state, user);
-        const head = lines.indexOf('  teamId: integer("team_id")');
+        const head = lines.findIndex(line => line.startsWith('  teamId: '));
 
         expect(lines[head + 1]).toBe(
           '    .references(() => Team.id, { onDelete: "restrict", onUpdate: "set default" }),'
@@ -696,7 +753,7 @@ describe('generator-code/drizzle', () => {
         ],
         [
           Database.Oracle,
-          'import { integer, pgTable } from "drizzle-orm/pg-core";',
+          'import { bigint, pgTable } from "drizzle-orm/pg-core";',
         ],
         [
           Database.Databricks,
@@ -704,7 +761,7 @@ describe('generator-code/drizzle', () => {
         ],
         [
           Database.Snowflake,
-          'import { integer, pgTable } from "drizzle-orm/pg-core";',
+          'import { bigint, pgTable } from "drizzle-orm/pg-core";',
         ],
       ];
 
@@ -1256,6 +1313,19 @@ describe('generator-code/drizzle', () => {
       return line === undefined ? '' : line.slice(HEAD.length, -1);
     }
 
+    function createTypeCode(dataType: string, database: number): string[] {
+      const table = createTable({ id: 't1', name: 'probe', columnIds: ['c1'] });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({ id: 'c1', tableId: 't1', name: 'value', dataType }),
+        ],
+        settings: { database },
+      });
+
+      return createCode(state).split('\n');
+    }
+
     function createDialectFixture(database: number): string[] {
       const table = createTable({ id: 't1', name: 'probe', columnIds: ['c1'] });
       const state = createState({
@@ -1438,6 +1508,21 @@ describe('generator-code/drizzle', () => {
       ).toBe('timestamp({ withTimezone: true })');
     });
 
+    it('keeps the zone of every spelling of a zoned timestamp alike', () => {
+      ['TIMESTAMP_TZ', 'TIMESTAMPTZ', 'TIMESTAMP_LTZ', 'TIMESTAMPLTZ'].forEach(
+        dataType =>
+          expect(createTypeFixture(dataType, Database.Snowflake)).toBe(
+            'timestamp({ withTimezone: true })'
+          )
+      );
+      expect(createTypeFixture('TIMESTAMP_NTZ', Database.Snowflake)).toBe(
+        'timestamp()'
+      );
+      expect(
+        createTypeFixture('TIMESTAMP WITH LOCAL TIME ZONE', Database.Oracle)
+      ).toBe('timestamp({ withTimezone: true })');
+    });
+
     it('states interval fields only for a span pg names', () => {
       expect(createTypeFixture('interval', Database.PostgreSQL)).toBe(
         'interval()'
@@ -1451,6 +1536,39 @@ describe('generator-code/drizzle', () => {
       expect(createTypeFixture('interval quarter', Database.PostgreSQL)).toBe(
         'interval()'
       );
+      expect(
+        createTypeFixture('INTERVAL DAY(3) TO SECOND(2)', Database.Oracle)
+      ).toBe('interval({ fields: "day to second" })');
+      expect(createTypeFixture('interval second(3)', Database.PostgreSQL)).toBe(
+        'interval({ fields: "second", precision: 3 })'
+      );
+    });
+
+    it('reads an interval precision only after SECOND or the INTERVAL keyword', () => {
+      expect(
+        createTypeFixture('INTERVAL YEAR(2) TO MONTH', Database.Oracle)
+      ).toBe('interval({ fields: "year to month" })');
+      expect(
+        createTypeFixture('INTERVAL DAY(3) TO SECOND', Database.Oracle)
+      ).toBe('interval({ fields: "day to second" })');
+      expect(
+        createTypeFixture('INTERVAL HOUR(2) TO MINUTE', Database.PostgreSQL)
+      ).toBe('interval({ fields: "hour to minute" })');
+      expect(createTypeFixture('INTERVAL MONTH(3)', Database.PostgreSQL)).toBe(
+        'interval({ fields: "month" })'
+      );
+      expect(
+        createTypeFixture('INTERVAL DAY TO SECOND(3)', Database.Oracle)
+      ).toBe('interval({ fields: "day to second", precision: 3 })');
+      expect(
+        createTypeFixture('interval minute to second (2)', Database.PostgreSQL)
+      ).toBe('interval({ fields: "minute to second", precision: 2 })');
+      expect(createTypeFixture('INTERVAL (3)', Database.PostgreSQL)).toBe(
+        'interval({ precision: 3 })'
+      );
+      expect(
+        createTypeFixture('interval year(2) to month[]', Database.PostgreSQL)
+      ).toBe('interval({ fields: "year to month" }).array()');
     });
 
     it('names the pg network and geometry builders', () => {
@@ -1470,12 +1588,113 @@ describe('generator-code/drizzle', () => {
       expect(createTypeFixture('geography', Database.PostgreSQL)).toBe(
         'varchar()'
       );
-      expect(createTypeFixture('tsvector', Database.PostgreSQL)).toBe(
+      expect(createTypeFixture('pg_lsn', Database.PostgreSQL)).toBe(
         'varchar()'
       );
-      expect(createTypeFixture('xml', Database.PostgreSQL)).toBe('text()');
-      expect(createTypeFixture('money', Database.PostgreSQL)).toBe('numeric()');
+      expect(createTypeFixture('circle', Database.PostgreSQL)).toBe(
+        'varchar()'
+      );
       expect(createTypeFixture('', Database.PostgreSQL)).toBe('varchar()');
+    });
+
+    it('declares a pg type pg-core has no builder for under its own name', () => {
+      expect(createTypeFixture('tsvector', Database.PostgreSQL)).toBe(
+        'tsvector()'
+      );
+      expect(createTypeFixture('tsquery', Database.PostgreSQL)).toBe(
+        'tsquery()'
+      );
+      expect(createTypeFixture('xml', Database.PostgreSQL)).toBe('xml()');
+      expect(createTypeFixture('money', Database.PostgreSQL)).toBe('money()');
+      expect(createTypeFixture('int4range', Database.PostgreSQL)).toBe(
+        'int4range()'
+      );
+      expect(createTypeFixture('daterange', Database.PostgreSQL)).toBe(
+        'daterange()'
+      );
+      expect(createTypeFixture('box', Database.PostgreSQL)).toBe('box()');
+      expect(createTypeFixture('polygon', Database.PostgreSQL)).toBe(
+        'polygon()'
+      );
+      expect(createTypeCode('money', Database.PostgreSQL)).toEqual([
+        '',
+        'import { customType, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'const money = customType<{ data: string }>({ dataType: () => "money" });',
+        '',
+        'export const Probe = pgTable("probe", {',
+        '  value: money(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('keeps the decimal stand-in for money on a database pg-core borrows for', () => {
+      expect(createTypeFixture('money', Database.MSSQL)).toBe('numeric()');
+      expect(createTypeFixture('smallmoney', Database.MSSQL)).toBe('numeric()');
+      expect(createTypeFixture('xml', Database.MSSQL)).toBe('text()');
+    });
+
+    it('widens a type to what the database pg-core borrows for stores', () => {
+      expect(createTypeFixture('DATE', Database.Oracle)).toBe('timestamp()');
+      expect(createTypeFixture('TIMESTAMP', Database.Databricks)).toBe(
+        'timestamp({ withTimezone: true })'
+      );
+      expect(createTypeFixture('INT', Database.Oracle)).toBe(
+        'bigint({ mode: "number" })'
+      );
+      expect(createTypeFixture('SMALLINT', Database.Oracle)).toBe(
+        'bigint({ mode: "number" })'
+      );
+      expect(createTypeFixture('TINYINT', Database.Snowflake)).toBe(
+        'bigint({ mode: "number" })'
+      );
+      expect(createTypeFixture('BYTEINT', Database.Snowflake)).toBe(
+        'bigint({ mode: "number" })'
+      );
+      expect(createTypeFixture('REAL', Database.Oracle)).toBe(
+        'doublePrecision()'
+      );
+      expect(createTypeFixture('FLOAT4', Database.Snowflake)).toBe(
+        'doublePrecision()'
+      );
+    });
+
+    it('keeps the width a type has on PostgreSQL where the database stores no more', () => {
+      expect(createTypeFixture('DATE', Database.Snowflake)).toBe('date()');
+      expect(createTypeFixture('TIMESTAMP_NTZ', Database.Databricks)).toBe(
+        'timestamp()'
+      );
+      expect(createTypeFixture('INT', Database.MSSQL)).toBe('integer()');
+      expect(createTypeFixture('SMALLINT', Database.Databricks)).toBe(
+        'smallint()'
+      );
+      expect(createTypeFixture('REAL', Database.MSSQL)).toBe('real()');
+      expect(createTypeFixture('NUMBER(10)', Database.Oracle)).toBe(
+        'numeric({ precision: 10 })'
+      );
+      expect(createTypeFixture('date', Database.PostgreSQL)).toBe('date()');
+    });
+
+    it('gives the identity of an auto-increment key the width it widens to', () => {
+      const table = createTable({ id: 't1', name: 'probe', columnIds: ['c1'] });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'value',
+            dataType: 'INTEGER',
+            options: ColumnOption.primaryKey | ColumnOption.autoIncrement,
+          }),
+        ],
+        settings: { database: Database.Oracle },
+      });
+
+      expect(render(state, table)).toContain(
+        '  value: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),'
+      );
     });
 
     it('keeps each mysql integer width rather than widening it', () => {
@@ -1515,6 +1734,27 @@ describe('generator-code/drizzle', () => {
       );
     });
 
+    it('drops every mysql sign word from a type name on the other databases', () => {
+      expect(
+        createTypeFixture('MEDIUMINT(8) UNSIGNED ZEROFILL', Database.PostgreSQL)
+      ).toBe('integer()');
+      expect(
+        createTypeFixture('SMALLINT(5) ZEROFILL', Database.PostgreSQL)
+      ).toBe('smallint()');
+      expect(createTypeFixture('TINYINT(3) ZEROFILL', Database.MSSQL)).toBe(
+        'smallint()'
+      );
+      expect(createTypeFixture('INT(10) SIGNED', Database.PostgreSQL)).toBe(
+        'integer()'
+      );
+      expect(createTypeFixture('INT8 ZEROFILL', Database.MSSQL)).toBe(
+        'bigint({ mode: "number" })'
+      );
+      expect(createTypeFixture('INT ZEROFILL', Database.SQLite)).toBe(
+        'integer()'
+      );
+    });
+
     it('lifts a precision and a scale onto the mysql fixed and floating builders', () => {
       expect(createTypeFixture('decimal', Database.MySQL)).toBe('decimal()');
       expect(createTypeFixture('decimal(10)', Database.MySQL)).toBe(
@@ -1544,7 +1784,64 @@ describe('generator-code/drizzle', () => {
       expect(createTypeFixture('longtext', Database.MySQL)).toBe('longtext()');
     });
 
-    it('degrades a mysql builder that requires a length to text when none is stated', () => {
+    it('reads the mysql long text spellings as the mediumtext they store', () => {
+      expect(createTypeFixture('LONG', Database.MySQL)).toBe('mediumtext()');
+      expect(createTypeFixture('LONG VARCHAR', Database.MariaDB)).toBe(
+        'mediumtext()'
+      );
+      expect(createTypeFixture('long character varying', Database.MySQL)).toBe(
+        'mediumtext()'
+      );
+      expect(createTypeFixture('TEXT(50)', Database.MySQL)).toBe('text()');
+      expect(createTypeFixture('LONG VARCHAR', Database.PostgreSQL)).toBe(
+        'text()'
+      );
+    });
+
+    it('reads mariadb oracle mode clob and bare number as the types it stores', () => {
+      expect(createTypeFixture('CLOB', Database.MariaDB)).toBe('longtext()');
+      expect(createTypeFixture('NUMBER', Database.MariaDB)).toBe('double()');
+      expect(createTypeFixture('NUMBER(10)', Database.MariaDB)).toBe(
+        'decimal({ precision: 10 })'
+      );
+      expect(createTypeFixture('NUMBER(10,2)', Database.MariaDB)).toBe(
+        'decimal({ precision: 10, scale: 2 })'
+      );
+      expect(createTypeFixture('CLOB', Database.MySQL)).toBe('text()');
+      expect(createTypeFixture('NUMBER', Database.MySQL)).toBe('decimal()');
+    });
+
+    it('reads a mysql character type past the attributes written after it', () => {
+      expect(createTypeFixture('CHAR(36) BINARY', Database.MySQL)).toBe(
+        'char({ length: 36 })'
+      );
+      expect(
+        createTypeFixture('CHAR(2) CHARACTER SET latin1', Database.MariaDB)
+      ).toBe('char({ length: 2 })');
+      expect(
+        createTypeFixture(
+          'char(2) charset latin1 collate latin1_bin',
+          Database.MySQL
+        )
+      ).toBe('char({ length: 2 })');
+      expect(createTypeFixture('CHAR(10) ASCII', Database.MySQL)).toBe(
+        'char({ length: 10 })'
+      );
+      expect(createTypeFixture('TINYTEXT BINARY', Database.MariaDB)).toBe(
+        'tinytext()'
+      );
+      expect(
+        createTypeFixture('LONGTEXT COLLATE utf8mb4_bin', Database.MySQL)
+      ).toBe('longtext()');
+      expect(createTypeFixture('BINARY(16)', Database.MySQL)).toBe(
+        'binary({ length: 16 })'
+      );
+      expect(createTypeFixture('LONG VARBINARY', Database.MySQL)).toBe(
+        'mediumblob()'
+      );
+    });
+
+    it('degrades a mysql builder that requires a length when none is stated', () => {
       expect(createTypeFixture('char', Database.MySQL)).toBe('char()');
       expect(createTypeFixture('char(16)', Database.MySQL)).toBe(
         'char({ length: 16 })'
@@ -1556,11 +1853,31 @@ describe('generator-code/drizzle', () => {
       expect(createTypeFixture('binary(16)', Database.MySQL)).toBe(
         'binary({ length: 16 })'
       );
-      expect(createTypeFixture('binary', Database.MySQL)).toBe('text()');
+      expect(createTypeFixture('binary', Database.MySQL)).toBe('binary()');
       expect(createTypeFixture('varbinary(255)', Database.MySQL)).toBe(
         'varbinary({ length: 255 })'
       );
-      expect(createTypeFixture('varbinary', Database.MySQL)).toBe('text()');
+      expect(createTypeFixture('varbinary', Database.MySQL)).toBe('blob()');
+    });
+
+    it('keeps a zero length on mysql and mariadb and drops it elsewhere', () => {
+      expect(createTypeFixture('CHAR(0)', Database.MySQL)).toBe(
+        'char({ length: 0 })'
+      );
+      expect(createTypeFixture('VARCHAR(0)', Database.MariaDB)).toBe(
+        'varchar({ length: 0 })'
+      );
+      expect(createTypeFixture('BINARY(0)', Database.MySQL)).toBe(
+        'binary({ length: 0 })'
+      );
+      expect(createTypeFixture('VARBINARY(0)', Database.MariaDB)).toBe(
+        'varbinary({ length: 0 })'
+      );
+      expect(createTypeFixture('char(0)', Database.PostgreSQL)).toBe('char()');
+      expect(createTypeFixture('varchar(0)', Database.PostgreSQL)).toBe(
+        'varchar()'
+      );
+      expect(createTypeFixture('varchar(0)', Database.SQLite)).toBe('text()');
     });
 
     it('names the mysql date and time builders including year', () => {
@@ -1628,18 +1945,144 @@ describe('generator-code/drizzle', () => {
       );
     });
 
+    it('reads a mysql float precision as the float or double it stores', () => {
+      expect(createTypeFixture('FLOAT(10)', Database.MySQL)).toBe('float()');
+      expect(createTypeFixture('FLOAT(24)', Database.MariaDB)).toBe('float()');
+      expect(createTypeFixture('FLOAT(25)', Database.MySQL)).toBe('double()');
+      expect(createTypeFixture('FLOAT(53) SIGNED', Database.MySQL)).toBe(
+        'double()'
+      );
+      expect(createTypeFixture('FLOAT(30) UNSIGNED', Database.MySQL)).toBe(
+        'double({ unsigned: true })'
+      );
+      expect(createTypeFixture('FLOAT(30) ZEROFILL', Database.MariaDB)).toBe(
+        'double({ unsigned: true })'
+      );
+    });
+
+    it('drops the precision a mysql double refuses without a scale', () => {
+      expect(createTypeFixture('DOUBLE(10)', Database.MySQL)).toBe('double()');
+      expect(createTypeFixture('REAL(10,2)', Database.MySQL)).toBe(
+        'double({ precision: 10, scale: 2 })'
+      );
+    });
+
+    it('reads zerofill as unsigned and a signed type at its own width', () => {
+      expect(createTypeFixture('INT(11) ZEROFILL', Database.MySQL)).toBe(
+        'int({ unsigned: true })'
+      );
+      expect(
+        createTypeFixture('SMALLINT(5) UNSIGNED ZEROFILL', Database.MySQL)
+      ).toBe('smallint({ unsigned: true })');
+      expect(
+        createTypeFixture('DECIMAL(10,2) ZEROFILL', Database.MariaDB)
+      ).toBe('decimal({ precision: 10, scale: 2, unsigned: true })');
+      expect(createTypeFixture('TINYINT SIGNED', Database.MySQL)).toBe(
+        'tinyint()'
+      );
+      expect(createTypeFixture('MEDIUMINT SIGNED', Database.MySQL)).toBe(
+        'mediumint()'
+      );
+    });
+
     it('keeps a length off a non-numeric name the modifier is written on', () => {
       expect(createTypeFixture('char(10) unsigned', Database.MySQL)).toBe(
         'char({ length: 10 })'
       );
     });
 
-    it('lands a binary type on text rather than on a character width', () => {
-      expect(createTypeFixture('bytea', Database.PostgreSQL)).toBe('text()');
+    it('lands every binary type on a bytea it declares under pg-core', () => {
+      expect(createTypeFixture('bytea', Database.PostgreSQL)).toBe('bytea()');
       expect(createTypeFixture('varbinary(255)', Database.MSSQL)).toBe(
-        'text()'
+        'bytea()'
       );
-      expect(createTypeFixture('blob', Database.Oracle)).toBe('text()');
+      expect(createTypeFixture('image', Database.MSSQL)).toBe('bytea()');
+      expect(createTypeFixture('blob', Database.Oracle)).toBe('bytea()');
+      expect(createTypeFixture('RAW(16)', Database.Oracle)).toBe('bytea()');
+      expect(createTypeFixture('BINARY', Database.Snowflake)).toBe('bytea()');
+      expect(createTypeCode('bytea', Database.PostgreSQL)).toEqual([
+        '',
+        'import { customType, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });',
+        '',
+        'export const Probe = pgTable("probe", {',
+        '  value: bytea(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('lands each mysql blob on a type it declares under that name', () => {
+      expect(createTypeFixture('blob', Database.MySQL)).toBe('blob()');
+      expect(createTypeFixture('TINYBLOB', Database.MySQL)).toBe('tinyblob()');
+      expect(createTypeFixture('MEDIUMBLOB', Database.MariaDB)).toBe(
+        'mediumblob()'
+      );
+      expect(createTypeFixture('LONGBLOB', Database.MySQL)).toBe('longblob()');
+      expect(createTypeFixture('LONG VARBINARY', Database.MySQL)).toBe(
+        'mediumblob()'
+      );
+      expect(createTypeFixture('image', Database.MySQL)).toBe('blob()');
+      expect(createTypeCode('LONGBLOB', Database.MySQL)[3]).toBe(
+        'const longblob = customType<{ data: Buffer }>({ dataType: () => "longblob" });'
+      );
+      expect(createTypeCode('MEDIUMBLOB', Database.MySQL)).toEqual([
+        '',
+        'import { customType, mysqlTable } from "drizzle-orm/mysql-core";',
+        '',
+        'const mediumblob = customType<{ data: Buffer }>({',
+        '  dataType: () => "mediumblob",',
+        '});',
+        '',
+        'export const Probe = mysqlTable("probe", {',
+        '  value: mediumblob(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('reads a mysql blob length as the smallest blob that holds it', () => {
+      [
+        ['BLOB(1)', 'tinyblob()'],
+        ['BLOB(255)', 'tinyblob()'],
+        ['BLOB(256)', 'blob()'],
+        ['BLOB(65535)', 'blob()'],
+        ['BLOB(65536)', 'mediumblob()'],
+        ['BLOB(16777215)', 'mediumblob()'],
+        ['BLOB(16777216)', 'longblob()'],
+        ['BLOB(4294967295)', 'longblob()'],
+        ['BLOB(0)', 'blob()'],
+      ].forEach(([dataType, expected]) =>
+        expect(createTypeFixture(dataType, Database.MySQL)).toBe(expected)
+      );
+      expect(createTypeFixture('BLOB(100)', Database.MariaDB)).toBe(
+        'tinyblob()'
+      );
+      expect(createTypeCode('BLOB(100)', Database.MySQL)[3]).toBe(
+        'const tinyblob = customType<{ data: Buffer }>({ dataType: () => "tinyblob" });'
+      );
+      expect(createTypeFixture('BLOB(100)', Database.PostgreSQL)).toBe(
+        'bytea()'
+      );
+      expect(createTypeFixture('BLOB(100)', Database.SQLite)).toBe(
+        'blob({ mode: "buffer" })'
+      );
+    });
+
+    it('reads the binary synonyms mysql and mariadb take as their binary builders', () => {
+      expect(createTypeFixture('CHAR(16) BYTE', Database.MySQL)).toBe(
+        'binary({ length: 16 })'
+      );
+      expect(createTypeFixture('RAW(16)', Database.MariaDB)).toBe(
+        'varbinary({ length: 16 })'
+      );
+      expect(createTypeFixture('binary varying(8)', Database.MySQL)).toBe(
+        'varbinary({ length: 8 })'
+      );
+      expect(createTypeFixture('CHAR(16) BYTE', Database.SQLite)).toBe(
+        'blob({ mode: "buffer" })'
+      );
     });
 
     it('carries fractional seconds as precision on the pg temporal types', () => {
@@ -1678,14 +2121,130 @@ describe('generator-code/drizzle', () => {
       );
     });
 
-    it('reads a pg bit string as text rather than as pgvector or a number', () => {
+    it('declares a pg bit string as its own type rather than as pgvector or a number', () => {
       expect(createTypeFixture('bit(8)', Database.PostgreSQL)).toBe(
-        'varchar({ length: 8 })'
+        'bit({ length: 8 })'
       );
+      expect(createTypeFixture('bit', Database.PostgreSQL)).toBe('bit()');
       expect(createTypeFixture('varbit(16)', Database.PostgreSQL)).toBe(
-        'varchar({ length: 16 })'
+        'varbit({ length: 16 })'
       );
-      expect(createTypeFixture('bit', Database.MSSQL)).toBe('integer()');
+      expect(createTypeFixture('bit varying', Database.PostgreSQL)).toBe(
+        'varbit()'
+      );
+      expect(createTypeCode('bit varying(8)', Database.PostgreSQL)).toEqual([
+        '',
+        'import { customType, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'const varbit = customType<{ data: string; config: { length?: number } }>({',
+        '  dataType: (config) =>',
+        '    typeof config?.length === "number"',
+        '      ? `bit varying(${config.length})`',
+        '      : "bit varying",',
+        '});',
+        '',
+        'export const Probe = pgTable("probe", {',
+        '  value: varbit({ length: 8 }),',
+        '});',
+        '',
+      ]);
+      expect(createTypeCode('bit(8)', Database.PostgreSQL).slice(3, 6)).toEqual(
+        [
+          'const bit = customType<{ data: string; config: { length?: number } }>({',
+          '  dataType: (config) => `bit(${config?.length ?? 1})`,',
+          '});',
+        ]
+      );
+    });
+
+    it('writes the varbit declaration with no global name a table const could shadow', () => {
+      const shadow = createTable({
+        id: 't1',
+        name: 'undefined',
+        columnIds: ['c1', 'c2'],
+      });
+      const state = createState({
+        tables: [shadow],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'integer',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'flags',
+            dataType: 'varbit',
+          }),
+        ],
+        settings: {
+          database: Database.PostgreSQL,
+          tableNameCase: NameCase.none,
+          columnNameCase: NameCase.none,
+        },
+      });
+
+      expect(createCode(state).split('\n')).toEqual([
+        '',
+        'import { customType, integer, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'const varbit = customType<{ data: string; config: { length?: number } }>({',
+        '  dataType: (config) =>',
+        '    typeof config?.length === "number"',
+        '      ? `bit varying(${config.length})`',
+        '      : "bit varying",',
+        '});',
+        '',
+        'export const undefined = pgTable("undefined", {',
+        '  id: integer().primaryKey(),',
+        '  flags: varbit(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('reads the bit sql server stores a flag in as a boolean', () => {
+      expect(createTypeFixture('bit', Database.MSSQL)).toBe('boolean()');
+    });
+
+    it('declares a mysql bit field as a type that reads bytes', () => {
+      expect(createTypeFixture('BIT(8)', Database.MySQL)).toBe(
+        'bit({ length: 8 })'
+      );
+      expect(createTypeFixture('BIT', Database.MariaDB)).toBe('bit()');
+      expect(createTypeCode('BIT(1)', Database.MySQL).slice(3, 6)).toEqual([
+        'const bit = customType<{ data: Buffer; config: { length?: number } }>({',
+        '  dataType: (config) => `bit(${config?.length ?? 1})`,',
+        '});',
+      ]);
+    });
+
+    it('declares each mysql spatial type under its own name', () => {
+      expect(createTypeFixture('GEOMETRY', Database.MySQL)).toBe('geometry()');
+      expect(createTypeFixture('POINT', Database.MySQL)).toBe('point()');
+      expect(createTypeFixture('MULTIPOLYGON', Database.MariaDB)).toBe(
+        'multipolygon()'
+      );
+      expect(createTypeCode('POINT', Database.MySQL)[3]).toBe(
+        'const point = customType<{ data: unknown }>({ dataType: () => "point" });'
+      );
+    });
+
+    it('declares the mariadb uuid and address types mysql-core has no builder for', () => {
+      expect(createTypeFixture('UUID', Database.MariaDB)).toBe('uuid()');
+      expect(createTypeFixture('INET4', Database.MariaDB)).toBe('inet4()');
+      expect(createTypeFixture('INET6', Database.MariaDB)).toBe('inet6()');
+      expect(createTypeCode('UUID', Database.MariaDB).slice(1, 6)).toEqual([
+        'import { customType, mysqlTable } from "drizzle-orm/mysql-core";',
+        '',
+        'const uuid = customType<{ data: string }>({ dataType: () => "uuid" });',
+        '',
+        'export const Probe = mysqlTable("probe", {',
+      ]);
+      expect(createTypeFixture('UUID', Database.MySQL)).toBe('text()');
     });
 
     it('lets the diagram database decide a name two vendors disagree on', () => {
@@ -1710,6 +2269,335 @@ describe('generator-code/drizzle', () => {
           Database.PostgreSQL
         )
       ).toBe('numeric()');
+    });
+  });
+
+  describe('arrays', () => {
+    function createArrayFixture(
+      dataType: string,
+      database: number = Database.PostgreSQL,
+      column: Partial<Column> = {}
+    ): string[] {
+      const table = createTable({ id: 't1', name: 'probe', columnIds: ['c1'] });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'list',
+            dataType,
+            ...column,
+          }),
+        ],
+        settings: { database },
+      });
+
+      return createCode(state).split('\n');
+    }
+
+    function columnLine(lines: string[]): string {
+      return lines.find(line => line.startsWith('  list: ')) ?? '';
+    }
+
+    it('chains array once per dimension onto the element builder', () => {
+      expect(columnLine(createArrayFixture('int[]'))).toBe(
+        '  list: integer().array(),'
+      );
+      expect(columnLine(createArrayFixture('int[][]'))).toBe(
+        '  list: integer().array().array(),'
+      );
+      expect(columnLine(createArrayFixture('int[3][]'))).toBe(
+        '  list: integer().array().array(),'
+      );
+      expect(columnLine(createArrayFixture('integer ARRAY'))).toBe(
+        '  list: integer().array(),'
+      );
+      expect(columnLine(createArrayFixture('integer ARRAY[4]'))).toBe(
+        '  list: integer().array(),'
+      );
+    });
+
+    it('resolves the element with its own arguments and options', () => {
+      expect(columnLine(createArrayFixture('varchar(20)[]'))).toBe(
+        '  list: varchar({ length: 20 }).array(),'
+      );
+      expect(columnLine(createArrayFixture('text[]'))).toBe(
+        '  list: text().array(),'
+      );
+      expect(columnLine(createArrayFixture('uuid[]'))).toBe(
+        '  list: uuid().array(),'
+      );
+      expect(columnLine(createArrayFixture('timestamptz(3)[]'))).toBe(
+        '  list: timestamp({ withTimezone: true, precision: 3 }).array(),'
+      );
+      expect(columnLine(createArrayFixture('interval[]'))).toBe(
+        '  list: interval().array(),'
+      );
+      expect(createArrayFixture('bytea[]')).toEqual([
+        '',
+        'import { customType, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });',
+        '',
+        'export const Probe = pgTable("probe", {',
+        '  list: bytea().array(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('chains array onto the pg enum an array of one declares', () => {
+      expect(createArrayFixture("enum('a','b')[]")).toEqual([
+        '',
+        'import { pgEnum, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'export const ProbeListEnum = pgEnum("probe_list", ["a", "b"]);',
+        '',
+        'export const Probe = pgTable("probe", {',
+        '  list: ProbeListEnum().array(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('reads an array suffix only on postgresql', () => {
+      expect(columnLine(createArrayFixture('int[]', Database.MySQL))).toBe(
+        '  list: int(),'
+      );
+      expect(columnLine(createArrayFixture('int[]', Database.MSSQL))).toBe(
+        '  list: integer(),'
+      );
+    });
+
+    it('gives an array key no identity and its default only through sql', () => {
+      expect(
+        columnLine(
+          createArrayFixture('int[]', Database.PostgreSQL, {
+            options: ColumnOption.primaryKey | ColumnOption.autoIncrement,
+          })
+        )
+      ).toBe('  list: integer().array().primaryKey(),');
+      expect(
+        columnLine(
+          createArrayFixture('text[]', Database.PostgreSQL, {
+            default: "'{a,b}'",
+          })
+        )
+      ).toBe("  list: text().array().default(sql`'{a,b}'`),");
+      expect(
+        columnLine(
+          createArrayFixture('int[]', Database.PostgreSQL, { default: '1' })
+        )
+      ).toBe('  list: integer().array().default(sql`1`),');
+    });
+  });
+
+  describe('custom types', () => {
+    function createCustomFixture(
+      settings: Partial<RootState['settings']> = {}
+    ): RootState {
+      const first = createTable({
+        id: 't1',
+        name: 'money',
+        columnIds: ['c1', 'c2', 'c3', 'c4'],
+      });
+      const second = createTable({
+        id: 't2',
+        name: 'plain',
+        columnIds: ['c5'],
+      });
+
+      return createState({
+        tables: [first, second],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'vector',
+            dataType: 'tsvector',
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'amount',
+            dataType: 'money',
+          }),
+          createColumn({
+            id: 'c3',
+            tableId: 't1',
+            name: 'payload',
+            dataType: 'bytea',
+          }),
+          createColumn({
+            id: 'c4',
+            tableId: 't1',
+            name: 'total',
+            dataType: 'money',
+          }),
+          createColumn({
+            id: 'c5',
+            tableId: 't2',
+            name: 'id',
+            dataType: 'int',
+          }),
+        ],
+        settings: { database: Database.PostgreSQL, ...settings },
+      });
+    }
+
+    it('declares each type once, by name, between the imports and the tables', () => {
+      expect(createCode(createCustomFixture())).toEqual(
+        [
+          '',
+          'import { customType, integer, pgTable } from "drizzle-orm/pg-core";',
+          '',
+          'const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });',
+          'const money = customType<{ data: string }>({ dataType: () => "money" });',
+          'const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });',
+          '',
+          'export const Money = pgTable("money", {',
+          '  vector: tsvector(),',
+          '  amount: money(),',
+          '  payload: bytea(),',
+          '  total: money(),',
+          '});',
+          '',
+          'export const Plain = pgTable("plain", {',
+          '  id: integer(),',
+          '});',
+          '',
+        ].join('\n')
+      );
+    });
+
+    it('carries into one table only the declarations its columns need', () => {
+      const state = createCustomFixture();
+      const [first, second] = state.doc.tableIds.map(
+        id => state.collections.tableEntities[id]
+      );
+
+      expect(render(state, first).slice(0, 5)).toEqual([
+        'import { customType, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });',
+        'const money = customType<{ data: string }>({ dataType: () => "money" });',
+        'const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });',
+      ]);
+      expect(render(state, second)).toEqual([
+        'import { integer, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'export const Plain = pgTable("plain", {',
+        '  id: integer(),',
+        '});',
+      ]);
+    });
+
+    it('numbers a table const that would take the name of a declared type', () => {
+      const code = createCode(
+        createCustomFixture({ tableNameCase: NameCase.none })
+      );
+
+      expect(code).toContain('export const money2 = pgTable("money", {');
+      expect(code).toContain('export const plain = pgTable("plain", {');
+
+      const table = createTable({ id: 't1', name: 'money', columnIds: ['c1'] });
+      const unused = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+          }),
+        ],
+        settings: {
+          database: Database.PostgreSQL,
+          tableNameCase: NameCase.none,
+        },
+      });
+
+      expect(createCode(unused)).toContain(
+        'export const money = pgTable("money", {'
+      );
+    });
+
+    it('numbers a table const that would take the type a length picks', () => {
+      function createLengthFixture(
+        name: string,
+        dataType: string,
+        database: number
+      ): string[] {
+        const table = createTable({ id: 't1', name, columnIds: ['c1'] });
+        const state = createState({
+          tables: [table],
+          columns: [
+            createColumn({
+              id: 'c1',
+              tableId: 't1',
+              name: 'payload',
+              dataType,
+            }),
+          ],
+          settings: { database, tableNameCase: NameCase.none },
+        });
+
+        return createCode(state).split('\n');
+      }
+
+      expect(createLengthFixture('blob', 'VARBINARY', Database.MySQL)).toEqual([
+        '',
+        'import { customType, mysqlTable } from "drizzle-orm/mysql-core";',
+        '',
+        'const blob = customType<{ data: Buffer }>({ dataType: () => "blob" });',
+        '',
+        'export const blob2 = mysqlTable("blob", {',
+        '  payload: blob(),',
+        '});',
+        '',
+      ]);
+      expect(createLengthFixture('blob', 'RAW', Database.MariaDB)).toContain(
+        'export const blob2 = mysqlTable("blob", {'
+      );
+      expect(
+        createLengthFixture('tinyblob', 'BLOB(100)', Database.MySQL)
+      ).toContain('export const tinyblob2 = mysqlTable("tinyblob", {');
+      expect(
+        createLengthFixture('blob', 'BLOB(100)', Database.MySQL)
+      ).toContain('export const blob = mysqlTable("blob", {');
+    });
+
+    it('passes a quoted default to a type that reads text, and sql to one that reads bytes', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'probe',
+        columnIds: ['c1', 'c2'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'flags',
+            dataType: 'bit(4)',
+            default: "'1010'",
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'payload',
+            dataType: 'bytea',
+            default: "'\\x00'",
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+      const lines = createCode(state).split('\n');
+
+      expect(lines).toContain('  flags: bit({ length: 4 }).default("1010"),');
+      expect(lines).toContain("  payload: bytea().default(sql`'\\\\x00'`),");
     });
   });
 
@@ -1837,6 +2725,39 @@ describe('generator-code/drizzle', () => {
       ]);
     });
 
+    it('numbers a pg enum type past the row type a table of its name holds', () => {
+      const user = createTable({
+        id: 't1',
+        name: 'user',
+        columnIds: ['c1'],
+      });
+      const userRole = createTable({ id: 't2', name: 'user_role' });
+      const state = createState({
+        tables: [user, userRole],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'role',
+            dataType: "enum('a','b')",
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+
+      expect(createCode(state).split('\n').slice(3, 4)).toEqual([
+        'export const UserRoleEnum = pgEnum("user_role2", ["a", "b"]);',
+      ]);
+      state.settings.database = Database.Oracle;
+      expect(render(state, user)[2]).toBe(
+        'export const UserRoleEnum = pgEnum("user_role2", ["a", "b"]);'
+      );
+      userRole.name = 'User_Role';
+      expect(render(state, user)[2]).toBe(
+        'export const UserRoleEnum = pgEnum("user_role", ["a", "b"]);'
+      );
+    });
+
     it('carries the members inline on mysql and always names the column', () => {
       expect(createEnumFixture("enum('a','b')", Database.MySQL)).toEqual([
         '',
@@ -1891,7 +2812,7 @@ describe('generator-code/drizzle', () => {
       );
     });
 
-    it('leaves set on the ordinary type path, having no builder of its own', () => {
+    it('declares a mysql set with its members, and leaves one elsewhere as text', () => {
       expect(createEnumFixture("set('a','b')", Database.PostgreSQL)).toEqual([
         '',
         'import { pgTable, varchar } from "drizzle-orm/pg-core";',
@@ -1901,15 +2822,78 @@ describe('generator-code/drizzle', () => {
         '});',
         '',
       ]);
-      expect(createEnumFixture("set('a','b')", Database.MySQL)).toEqual([
+      expect(
+        createEnumFixture("set('a','b''c','d\\\\e')", Database.MySQL)
+      ).toEqual([
         '',
-        'import { mysqlTable, text } from "drizzle-orm/mysql-core";',
+        'import { customType, mysqlTable } from "drizzle-orm/mysql-core";',
+        '',
+        'const set = customType<{',
+        '  data: string;',
+        '  config: { values: string[] };',
+        '  configRequired: true;',
+        '}>({',
+        '  dataType: (config) =>',
+        '    `set(${config.values',
+        "      .map((value) => `'${value.replace(/\\\\/g, \"\\\\\\\\\").replace(/'/g, \"''\")}'`)",
+        '      .join(",")})`,',
+        '});',
         '',
         'export const Probe = mysqlTable("probe", {',
-        '  grade: text(),',
+        '  grade: set({ values: ["a", "b\'c", "d\\\\e"] }),',
         '});',
         '',
       ]);
+      expect(createEnumFixture('set', Database.MySQL)).toContain(
+        '  grade: text(),'
+      );
+    });
+
+    it('reads a member as mysql reads a string literal, backslash escapes too', () => {
+      expect(createEnumFixture("enum('a\\'b')", Database.MySQL)).toContain(
+        '  grade: mysqlEnum("grade", ["a\'b"]),'
+      );
+      expect(createEnumFixture("enum('a", Database.MySQL)).toContain(
+        '  grade: text(),'
+      );
+    });
+
+    it('writes a backslash in a mysql enum member twice, as its DDL needs', () => {
+      const dataType = String.raw`ENUM('a\\','\\','c\\d','e\%')`;
+
+      expect(createEnumFixture(dataType, Database.MySQL)).toContain(
+        String.raw`  grade: mysqlEnum("grade", ["a\\\\", "\\\\", "c\\\\d", "e\\\\%"]),`
+      );
+      expect(createEnumFixture(dataType, Database.MariaDB)).toContain(
+        String.raw`  grade: mysqlEnum("grade", ["a\\\\", "\\\\", "c\\\\d", "e\\\\%"]),`
+      );
+      expect(
+        createEnumFixture(String.raw`ENUM('a\\')`, Database.PostgreSQL)
+      ).toContain(
+        String.raw`export const ProbeGradeEnum = pgEnum("probe_grade", ["a\\"]);`
+      );
+      expect(
+        createEnumFixture(String.raw`ENUM('a\\')`, Database.SQLite)
+      ).toContain(String.raw`  grade: text({ enum: ["a\\"] }),`);
+    });
+
+    it('keeps each line break in a member as its own escape', () => {
+      expect(
+        createEnumFixture("ENUM('a\\rb','c\\r\\nd','e\\nf')", Database.MySQL)
+      ).toContain(
+        '  grade: mysqlEnum("grade", ["a\\rb", "c\\r\\nd", "e\\nf"]),'
+      );
+      expect(
+        createEnumFixture("SET('a\\rb','c\\r\\nd','e\\nf')", Database.MySQL)
+      ).toContain('  grade: set({ values: ["a\\rb", "c\\r\\nd", "e\\nf"] }),');
+      expect(
+        createEnumFixture(
+          `enum('a${LINE_SEPARATOR}b','c${PARAGRAPH_SEPARATOR}d')`,
+          Database.PostgreSQL
+        )
+      ).toContain(
+        'export const ProbeGradeEnum = pgEnum("probe_grade", ["a\\u2028b", "c\\u2029d"]);'
+      );
     });
 
     it('falls back to the ordinary type path for a list it cannot read', () => {
@@ -2182,6 +3166,101 @@ describe('generator-code/drizzle', () => {
         '',
       ]);
     });
+
+    it('spells a mariadb serial out as the unsigned bigint it stands for', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'probe',
+        columnIds: ['c1', 'c2', 'c3'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'SERIAL',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'seq',
+            dataType: 'serial',
+            default: '7',
+          }),
+          createColumn({
+            id: 'c3',
+            tableId: 't1',
+            name: 'tally',
+            dataType: 'SERIAL',
+            options: ColumnOption.notNull | ColumnOption.unique,
+          }),
+        ],
+        settings: { database: Database.MariaDB },
+      });
+
+      expect(createCode(state).split('\n')).toEqual([
+        '',
+        'import { bigint, mysqlTable } from "drizzle-orm/mysql-core";',
+        '',
+        'export const Probe = mysqlTable("probe", {',
+        '  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),',
+        '  seq: bigint({ mode: "number", unsigned: true })',
+        '    .autoincrement()',
+        '    .notNull()',
+        '    .unique(),',
+        '  tally: bigint({ mode: "number", unsigned: true })',
+        '    .autoincrement()',
+        '    .notNull()',
+        '    .unique(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('keeps a mariadb serial in a composite key unique, and mysql serial as is', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'probe',
+        columnIds: ['c1', 'c2'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'a_id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'b_id',
+            dataType: 'SERIAL',
+            options: ColumnOption.primaryKey,
+          }),
+        ],
+        settings: { database: Database.MariaDB },
+      });
+
+      expect(render(state, table).slice(2, 10)).toEqual([
+        'export const Probe = mysqlTable(',
+        '  "probe",',
+        '  {',
+        '    aId: int("a_id").notNull(),',
+        '    bId: bigint("b_id", { mode: "number", unsigned: true })',
+        '      .autoincrement()',
+        '      .notNull()',
+        '      .unique(),',
+      ]);
+      expect(
+        createKeyFixture(Database.MySQL, ColumnOption.primaryKey, 'SERIAL')
+      ).toContain('  id: serial().primaryKey(),');
+    });
   });
 
   describe('default values', () => {
@@ -2263,8 +3342,29 @@ describe('generator-code/drizzle', () => {
       expect(createDefaultFixture('FALSE', 'boolean')).toContain(
         '  value: boolean().default(false),'
       );
-      expect(createDefaultFixture('1', 'boolean')).toContain(
-        '  value: boolean().default(sql`1`),'
+    });
+
+    it('passes 1 and 0 to a boolean builder as true and false', () => {
+      expect(createDefaultFixture('1', 'boolean')).toEqual([
+        '',
+        'import { boolean, pgTable } from "drizzle-orm/pg-core";',
+        '',
+        'export const Probe = pgTable("probe", {',
+        '  value: boolean().default(true),',
+        '});',
+        '',
+      ]);
+      expect(createDefaultFixture('0', 'bit', Database.MSSQL)).toContain(
+        '  value: boolean().default(false),'
+      );
+      expect(createDefaultFixture('1', 'boolean', Database.MySQL)).toContain(
+        '  value: boolean().default(true),'
+      );
+      expect(createDefaultFixture('0', 'boolean', Database.SQLite)).toContain(
+        '  value: integer({ mode: "boolean" }).default(false),'
+      );
+      expect(createDefaultFixture('2', 'boolean')).toContain(
+        '  value: boolean().default(sql`2`),'
       );
     });
 
@@ -2278,6 +3378,18 @@ describe('generator-code/drizzle', () => {
       expect(
         createDefaultFixture("'a'", "enum('a','b')", Database.SQLite)
       ).toContain('  value: text({ enum: ["a", "b"] }).default("a"),');
+    });
+
+    it('passes a mysql enum member holding a backslash as its DDL spells it', () => {
+      expect(
+        createDefaultFixture(
+          String.raw`'a\\'`,
+          String.raw`ENUM('a\\','b')`,
+          Database.MySQL
+        )
+      ).toContain(
+        String.raw`  value: mysqlEnum("value", ["a\\\\", "b"]).default("a\\\\"),`
+      );
     });
 
     it('wraps a value the enum does not list in the sql template', () => {
@@ -2344,6 +3456,37 @@ describe('generator-code/drizzle', () => {
         '});',
         '',
       ]);
+    });
+
+    it('keeps each line break of a default and a name as its own escape', () => {
+      expect(
+        createDefaultFixture(`'a\r\nb\rc\nd${LINE_SEPARATOR}e'`, 'varchar(10)')
+      ).toContain(
+        '  value: varchar({ length: 10 }).default("a\\r\\nb\\rc\\nd\\u2028e"),'
+      );
+      expect(
+        createDefaultFixture(`'a\rb${PARAGRAPH_SEPARATOR}c'`, 'int')
+      ).toContain("  value: integer().default(sql`'a\\rb\\u2029c'`),");
+
+      const table = createTable({
+        id: 't1',
+        name: 'line\r\nbreak',
+        columnIds: ['c1'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+
+      expect(createCode(state)).toContain('pgTable("line\\r\\nbreak", {');
     });
 
     it('emits no modifier at all for a default that is only whitespace', () => {
@@ -3674,6 +4817,60 @@ describe('generator-code/drizzle', () => {
         '});',
         '',
       ]);
+    });
+
+    it('numbers a property or a relation that would take the prototype key', () => {
+      const state = createState({
+        tables: [
+          createTable({ id: 't1', name: 't', columnIds: ['c1', 'c2'] }),
+          createTable({ id: 't2', name: '__proto__', columnIds: ['c3'] }),
+        ],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: '__proto__',
+            dataType: 'int',
+            options: ColumnOption.notNull,
+          }),
+          createColumn({
+            id: 'c3',
+            tableId: 't2',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+        ],
+        relationships: [
+          createRelationship({
+            id: 'r1',
+            relationshipType: RelationshipType.ZeroN,
+            start: { tableId: 't2', columnIds: ['c3'] },
+            end: { tableId: 't1', columnIds: ['c2'] },
+          }),
+        ],
+        settings: {
+          database: Database.PostgreSQL,
+          tableNameCase: NameCase.none,
+          columnNameCase: NameCase.none,
+        },
+      });
+      const lines = createCode(state).split('\n');
+
+      expect(lines).toContain(
+        '  __proto__2: integer("__proto__").notNull().references(() => __proto__.id),'
+      );
+      expect(lines).toContain('  __proto__2: one(__proto__, {');
+      expect(lines).toContain(
+        'export const __proto__ = pgTable("__proto__", {'
+      );
     });
 
     it('numbers a property that would take a name the table itself holds', () => {

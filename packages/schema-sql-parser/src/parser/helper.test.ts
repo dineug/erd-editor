@@ -67,10 +67,12 @@ import {
   isSelectValue,
   isSemicolonToken,
   isSetValue,
+  isSignedValue,
   isStringToken,
   isTableItemWord,
   isTablespaceValue,
   isTableValue,
+  isTypeModifier,
   isUniqueValue,
   isUseValue,
   isWhereValue,
@@ -188,6 +190,7 @@ describe('token value predicates', () => {
     ['isExecValue', isExecValue, 'EXEC'],
     ['isExecuteValue', isExecuteValue, 'EXECUTE'],
     ['isGoValue', isGoValue, 'GO'],
+    ['isSignedValue', isSignedValue, 'SIGNED'],
   ];
 
   it.each(cases)(
@@ -414,6 +417,27 @@ describe('isAutoIncrementValue', () => {
     expect(test(1)).toBe(true);
     expect(test(2)).toBe(false);
     expect(test(3)).toBe(false);
+  });
+});
+
+describe('isTypeModifier', () => {
+  it('matches SIGNED, UNSIGNED and ZEROFILL in any case, never quoted', () => {
+    const tokens = [
+      ...words('UNSIGNED', 'zerofill', 'Signed', 'UNSIGNED_INT'),
+      quoted('UNSIGNED'),
+      { type: TokenType.leftParent, value: '(' },
+    ];
+    const test = isTypeModifier(tokens);
+
+    expect([0, 1, 2, 3, 4, 5, 6].map(test)).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 });
 

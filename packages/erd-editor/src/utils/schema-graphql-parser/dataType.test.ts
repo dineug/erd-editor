@@ -52,7 +52,7 @@ const EXPECTED: Record<number, Record<string, string>> = {
     String: 'VARCHAR(255)',
     Short: 'SMALLINT',
     BigInt: 'BIGINT',
-    Decimal: 'DECIMAL',
+    Decimal: 'DECIMAL(38,18)',
     Date: 'DATE',
     Time: 'TIME',
     DateTime: 'DATETIME',
@@ -71,7 +71,7 @@ const EXPECTED: Record<number, Record<string, string>> = {
     String: 'varchar(255)',
     Short: 'smallint',
     BigInt: 'bigint',
-    Decimal: 'decimal',
+    Decimal: 'decimal(38,18)',
     Date: 'date',
     Time: 'time',
     DateTime: 'datetime2',
@@ -90,7 +90,7 @@ const EXPECTED: Record<number, Record<string, string>> = {
     String: 'VARCHAR(255)',
     Short: 'SMALLINT',
     BigInt: 'BIGINT',
-    Decimal: 'DECIMAL',
+    Decimal: 'DECIMAL(38,18)',
     Date: 'DATE',
     Time: 'TIME',
     DateTime: 'DATETIME',
@@ -109,7 +109,7 @@ const EXPECTED: Record<number, Record<string, string>> = {
     String: 'VARCHAR2(255)',
     Short: 'SMALLINT',
     BigInt: 'NUMBER(19)',
-    Decimal: 'DECIMAL',
+    Decimal: 'DECIMAL(38,18)',
     Date: 'DATE',
     Time: 'VARCHAR2(255)',
     DateTime: 'TIMESTAMP',
@@ -166,7 +166,7 @@ const EXPECTED: Record<number, Record<string, string>> = {
     String: 'STRING',
     Short: 'SMALLINT',
     BigInt: 'BIGINT',
-    Decimal: 'DECIMAL',
+    Decimal: 'DECIMAL(38,18)',
     Date: 'DATE',
     Time: 'STRING',
     DateTime: 'TIMESTAMP',
@@ -185,7 +185,7 @@ const EXPECTED: Record<number, Record<string, string>> = {
     String: 'VARCHAR(255)',
     Short: 'SMALLINT',
     BigInt: 'BIGINT',
-    Decimal: 'DECIMAL',
+    Decimal: 'DECIMAL(38,18)',
     Date: 'DATE',
     Time: 'TIME',
     DateTime: 'TIMESTAMP_NTZ',
@@ -464,7 +464,12 @@ describe('hint list coverage', () => {
       expect(primitiveOf('BigInt')).toBe(PrimitiveType.long);
       expect(primitiveOf('Float')).toBe(PrimitiveType.double);
       expect(primitiveOf('Decimal')).toBe(PrimitiveType.decimal);
-      expect(primitiveOf('Date')).toBe(PrimitiveType.date);
+      // Oracle's DATE, its only date type, holds a time of day too.
+      expect(primitiveOf('Date')).toBe(
+        database === Database.Oracle
+          ? PrimitiveType.dateTime
+          : PrimitiveType.date
+      );
       expect(primitiveOf('DateTime')).toBe(PrimitiveType.dateTime);
       expect(primitiveOf('timestamptz')).toBe(PrimitiveType.dateTime);
       expect(primitiveOf('String')).toBe(PrimitiveType.string);

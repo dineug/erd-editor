@@ -21,6 +21,8 @@ import {
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
+import { toggleGeneratorCodePanel } from '@/components/generator-code/generatorCodeView';
+import { readsBracket } from '@/components/generator-code/languageSettings';
 import Icon from '@/components/primitives/icon/Icon';
 import type { IconName } from '@/components/primitives/icon/icons';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
@@ -346,7 +348,8 @@ export function createScopeActions(
       filter: ({ store }) => {
         return (
           store.state.settings.canvasType === CanvasType.ERD ||
-          store.state.settings.canvasType === CanvasType.schemaSQL
+          store.state.settings.canvasType === CanvasType.schemaSQL ||
+          store.state.settings.canvasType === CanvasType.generatorCode
         );
       },
     },
@@ -460,7 +463,7 @@ export function createScopeActions(
           );
         },
       })),
-      filter: isSchemaSQLTab,
+      filter: app => isSchemaSQLTab(app) || readsBracketHere(app),
     },
     ...createSchemaSQLActions(app, i18n),
     {
@@ -518,6 +521,16 @@ export function createScopeActions(
       },
     },
     {
+      icon: <Icon name="panel-right" size={16} />,
+      ...named(
+        i18n,
+        'palette.codeGeneratorOptionsPanel',
+        'palette.keywords.codeGeneratorOptionsPanel'
+      ),
+      perform: toggleGeneratorCodePanel,
+      filter: isGeneratorCodeTab,
+    },
+    {
       icon: <Icon name="text-search" size={16} />,
       ...named(i18n, 'common.findAndReplace', 'palette.keywords.findReplace'),
       shortcut: keyBindingMap.findReplace[0]?.shortcut,
@@ -533,6 +546,13 @@ export function createScopeActions(
 
 const isSchemaSQLTab = ({ store }: AppContext) =>
   store.state.settings.canvasType === CanvasType.schemaSQL;
+
+const isGeneratorCodeTab = ({ store }: AppContext) =>
+  store.state.settings.canvasType === CanvasType.generatorCode;
+
+/** The Code Generator tab of a language that quotes names by the bracket type. */
+const readsBracketHere = (app: AppContext) =>
+  isGeneratorCodeTab(app) && readsBracket(app.store.state.settings.language);
 
 /**
  * The Schema SQL tab's own rows, the statements and the header listing only

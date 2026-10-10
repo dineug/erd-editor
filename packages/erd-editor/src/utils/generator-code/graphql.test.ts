@@ -6,6 +6,7 @@ import {
   ColumnOption,
   ColumnUIKey,
   Database,
+  DatabaseList,
   NameCase,
   RelationshipType,
 } from '@/constants/schema';
@@ -17,6 +18,7 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createCode, formatTable } from '@/utils/generator-code/graphql';
 import { schemaGraphQLParserToSchemaJson } from '@/utils/schema-graphql-parser';
+import { resolveDataType } from '@/utils/schema-graphql-parser/dataType';
 
 type ColumnInput = {
   name: string;
@@ -109,6 +111,22 @@ function expectServableSDL(code: string) {
 }
 
 const ctx = createEngineContext({ toWidth: text => text.length * 10 });
+
+/** The type the generator writes for one column, checked as a servable schema. */
+function fieldType(database: number, dataType: string, options = 0): string {
+  const state = createState();
+  state.settings.database = database;
+  addTable(state, {
+    id: 't-a',
+    name: 'a',
+    columns: [{ name: 'value', dataType, options }],
+  });
+
+  const code = createCode(state);
+
+  expectServableSDL(code);
+  return /\n {2}value: (.+)\n/.exec(code)?.[1] ?? '';
+}
 
 function importedRelationshipCount(code: string): number {
   return JSON.parse(schemaGraphQLParserToSchemaJson(code, ctx)).doc
@@ -293,7 +311,7 @@ describe('generator-code/graphql', () => {
     expect(buffer).toEqual(['type A {', '  userId: ID', '}']);
   });
 
-  it('maps every primitive type to a GraphQL scalar', () => {
+  it('maps each column type to a scalar and declares the custom ones it uses', () => {
     const state = createState();
     const table = addTable(state, {
       id: 't-types',
@@ -308,7 +326,10 @@ describe('generator-code/graphql', () => {
         { name: 'stringCol', dataType: 'VARCHAR(10)' },
         { name: 'lobCol', dataType: 'TEXT' },
         { name: 'dateCol', dataType: 'DATE' },
+        { name: 'dateTimeCol', dataType: 'DATETIME' },
         { name: 'timeCol', dataType: 'TIME' },
+        { name: 'jsonCol', dataType: 'JSON' },
+        { name: 'blobCol', dataType: 'BLOB' },
         { name: 'unknownCol', dataType: 'NOT_A_TYPE' },
       ],
     });
@@ -317,35 +338,377 @@ describe('generator-code/graphql', () => {
     formatTable(state, { buffer, table });
 
     expect(buffer).toEqual([
+      'scalar BigInt',
+      'scalar Byte',
+      'scalar Date',
+      'scalar DateTime',
+      'scalar Decimal',
+      'scalar JSON',
+      '',
       'type Types {',
       '  intCol: Int',
-      '  longCol: Int',
+      '  longCol: BigInt',
       '  floatCol: Float',
       '  doubleCol: Float',
-      '  decimalCol: Float',
+      '  decimalCol: Decimal',
       '  booleanCol: Boolean',
       '  stringCol: String',
       '  lobCol: String',
-      '  dateCol: String',
+      '  dateCol: Date',
+      '  dateTimeCol: DateTime',
       '  timeCol: String',
+      '  jsonCol: JSON',
+      '  blobCol: Byte',
       '  unknownCol: String',
       '}',
     ]);
+    expectServableSDL(buffer.join('\n'));
   });
 
-  it('maps the dateTime primitive type to String', () => {
+  it('declares each custom scalar once, before the types, only where a field uses it', () => {
     const state = createState();
-    state.settings.database = Database.Oracle;
+    state.settings.database = Database.PostgreSQL;
+    addTable(state, {
+      id: 't-a',
+      name: 'a',
+      columns: [
+        { name: 'views', dataType: 'bigint' },
+        { name: 'data', dataType: 'jsonb' },
+      ],
+    });
+    addTable(state, {
+      id: 't-b',
+      name: 'b',
+      columns: [
+        { name: 'total', dataType: 'bigint' },
+        { name: 'b_id', dataType: 'bytea', keys: ColumnUIKey.foreignKey },
+      ],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        'scalar BigInt',
+        'scalar JSON',
+        '',
+        'type A {',
+        '  views: BigInt',
+        '  data: JSON',
+        '}',
+        '',
+        'type B {',
+        '  total: BigInt',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectServableSDL(code);
+  });
+
+  it('declares only the scalars of its own fields in the one-table view', () => {
+    const state = createState();
+    state.settings.database = Database.PostgreSQL;
     const table = addTable(state, {
-      id: 't-ts',
-      name: 'ts',
-      columns: [{ name: 'created_at', dataType: 'TIMESTAMP' }],
+      id: 't-a',
+      name: 'a',
+      columns: [{ name: 'views', dataType: 'bigint' }],
+    });
+    addTable(state, {
+      id: 't-b',
+      name: 'b',
+      columns: [{ name: 'data', dataType: 'jsonb' }],
     });
     const buffer: string[] = [];
 
     formatTable(state, { buffer, table });
 
-    expect(buffer).toEqual(['type Ts {', '  createdAt: String', '}']);
+    expect(buffer).toEqual([
+      'scalar BigInt',
+      '',
+      'type A {',
+      '  views: BigInt',
+      '}',
+    ]);
+  });
+
+  it('declares no scalar where every field takes a built-in one', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-a',
+      name: 'a',
+      columns: [{ name: 'name', dataType: 'VARCHAR(10)' }],
+    });
+
+    expect(createCode(state)).toBe(
+      ['', 'type A {', '  name: String', '}', ''].join('\n')
+    );
+  });
+
+  it.each<[string, number, string, string]>([
+    ['a PostgreSQL bigint', Database.PostgreSQL, 'bigint', 'BigInt'],
+    ['a PostgreSQL int8', Database.PostgreSQL, 'int8', 'BigInt'],
+    ['a PostgreSQL bigserial', Database.PostgreSQL, 'bigserial', 'BigInt'],
+    ['a PostgreSQL oid', Database.PostgreSQL, 'oid', 'BigInt'],
+    ['a PostgreSQL xid', Database.PostgreSQL, 'xid', 'BigInt'],
+    ['a PostgreSQL serial', Database.PostgreSQL, 'serial', 'Int'],
+    ['a MySQL INT UNSIGNED', Database.MySQL, 'INT UNSIGNED', 'BigInt'],
+    ['a MySQL BIGINT UNSIGNED', Database.MySQL, 'BIGINT UNSIGNED', 'BigInt'],
+    ['a MySQL SERIAL', Database.MySQL, 'SERIAL', 'BigInt'],
+    ['a MySQL MEDIUMINT UNSIGNED', Database.MySQL, 'MEDIUMINT UNSIGNED', 'Int'],
+    ['a MySQL SMALLINT UNSIGNED', Database.MySQL, 'SMALLINT UNSIGNED', 'Int'],
+    ['a MySQL YEAR', Database.MySQL, 'YEAR', 'Int'],
+    ['a MariaDB INT UNSIGNED', Database.MariaDB, 'INT UNSIGNED', 'BigInt'],
+    ['a SQL Server bigint', Database.MSSQL, 'bigint', 'BigInt'],
+    ['a SQL Server tinyint', Database.MSSQL, 'tinyint', 'Int'],
+    ['a SQLite INTEGER', Database.SQLite, 'INTEGER', 'BigInt'],
+    ['a Databricks LONG', Database.Databricks, 'LONG', 'BigInt'],
+    ['a Databricks INT', Database.Databricks, 'INT', 'Int'],
+    ['an Oracle INTEGER', Database.Oracle, 'INTEGER', 'BigInt'],
+    ['an Oracle NUMBER(9)', Database.Oracle, 'NUMBER(9)', 'Int'],
+    ['an Oracle NUMBER(5,0)', Database.Oracle, 'NUMBER(5,0)', 'Int'],
+    ['an Oracle NUMBER(10)', Database.Oracle, 'NUMBER(10)', 'BigInt'],
+    ['an Oracle NUMBER(*,0)', Database.Oracle, 'NUMBER(*,0)', 'BigInt'],
+    ['an Oracle NUMBER(7,-2)', Database.Oracle, 'NUMBER(7,-2)', 'Int'],
+    ['an Oracle NUMBER(8,-2)', Database.Oracle, 'NUMBER(8,-2)', 'BigInt'],
+    ['an Oracle NUMBER(9,-2)', Database.Oracle, 'NUMBER(9,-2)', 'BigInt'],
+    ['an Oracle NUMBER(5,-5)', Database.Oracle, 'NUMBER(5,-5)', 'BigInt'],
+    ['an Oracle NUMBER(10,2)', Database.Oracle, 'NUMBER(10,2)', 'Decimal'],
+    ['an Oracle bare NUMBER', Database.Oracle, 'NUMBER', 'Decimal'],
+    ['an Oracle NUMBER(*)', Database.Oracle, 'NUMBER(*)', 'Decimal'],
+    ['a Snowflake INT', Database.Snowflake, 'INT', 'BigInt'],
+    ['a Snowflake bare NUMBER', Database.Snowflake, 'NUMBER', 'BigInt'],
+    ['a Snowflake NUMBER(9,0)', Database.Snowflake, 'NUMBER(9,0)', 'Int'],
+    ['a Snowflake NUMBER(38,2)', Database.Snowflake, 'NUMBER(38,2)', 'Decimal'],
+    ['a Snowflake NUMBER(38,0)', Database.Snowflake, 'NUMBER(38,0)', 'BigInt'],
+    ['a Snowflake bare DECIMAL', Database.Snowflake, 'DECIMAL', 'Decimal'],
+    ['a Snowflake bare NUMERIC', Database.Snowflake, 'NUMERIC', 'Decimal'],
+    ['a Snowflake bare DEC', Database.Snowflake, 'DEC', 'Decimal'],
+    ['a PostgreSQL numeric', Database.PostgreSQL, 'numeric(10,2)', 'Decimal'],
+    ['a PostgreSQL dec(5,1)', Database.PostgreSQL, 'dec(5,1)', 'Decimal'],
+    ['a PostgreSQL bare DEC', Database.PostgreSQL, 'DEC', 'Decimal'],
+    ['a PostgreSQL dec(5,1)[]', Database.PostgreSQL, 'dec(5,1)[]', '[Decimal]'],
+    ['a PostgreSQL money', Database.PostgreSQL, 'money', 'String'],
+    ['a SQL Server money', Database.MSSQL, 'money', 'Decimal'],
+    ['a SQL Server numeric', Database.MSSQL, 'numeric(18,4)', 'Decimal'],
+    [
+      'a MySQL DECIMAL UNSIGNED',
+      Database.MySQL,
+      'DECIMAL(10,2) UNSIGNED',
+      'Decimal',
+    ],
+    ['a SQLite DECIMAL', Database.SQLite, 'DECIMAL', 'Decimal'],
+    ['a SQLite DEC', Database.SQLite, 'DEC', 'Decimal'],
+    ['a SQLite DEC(10,2)', Database.SQLite, 'DEC(10,2)', 'Decimal'],
+    ['a PostgreSQL timestamp', Database.PostgreSQL, 'timestamp', 'DateTime'],
+    [
+      'a PostgreSQL timestamptz',
+      Database.PostgreSQL,
+      'timestamptz(3)',
+      'DateTime',
+    ],
+    ['a PostgreSQL date', Database.PostgreSQL, 'date', 'Date'],
+    ['a PostgreSQL time', Database.PostgreSQL, 'time', 'String'],
+    ['a PostgreSQL timetz', Database.PostgreSQL, 'timetz', 'String'],
+    ['a PostgreSQL interval', Database.PostgreSQL, 'interval', 'String'],
+    ['a MySQL TIMESTAMP', Database.MySQL, 'TIMESTAMP', 'DateTime'],
+    ['a SQL Server smalldatetime', Database.MSSQL, 'smalldatetime', 'DateTime'],
+    [
+      'a SQL Server datetimeoffset',
+      Database.MSSQL,
+      'datetimeoffset',
+      'DateTime',
+    ],
+    ['a SQL Server time', Database.MSSQL, 'time', 'String'],
+    ['an Oracle DATE', Database.Oracle, 'DATE', 'DateTime'],
+    [
+      'an Oracle interval',
+      Database.Oracle,
+      'INTERVAL DAY(2) TO SECOND(6)',
+      'String',
+    ],
+    [
+      'a Snowflake TIMESTAMP_LTZ',
+      Database.Snowflake,
+      'TIMESTAMP_LTZ',
+      'DateTime',
+    ],
+    ['a PostgreSQL json', Database.PostgreSQL, 'json', 'JSON'],
+    ['a PostgreSQL jsonb', Database.PostgreSQL, 'jsonb', 'JSON'],
+    ['an Oracle JSON', Database.Oracle, 'JSON', 'JSON'],
+    ['a SQL Server json', Database.MSSQL, 'json', 'JSON'],
+    ['a Snowflake VARIANT', Database.Snowflake, 'VARIANT', 'JSON'],
+    ['a Databricks STRUCT', Database.Databricks, 'STRUCT<a:INT>', 'JSON'],
+    ['a PostgreSQL bytea', Database.PostgreSQL, 'bytea', 'Byte'],
+    ['a MySQL VARBINARY', Database.MySQL, 'VARBINARY(16)', 'Byte'],
+    ['a SQL Server rowversion', Database.MSSQL, 'rowversion', 'Byte'],
+    ['an Oracle RAW', Database.Oracle, 'RAW(16)', 'Byte'],
+    ['a PostgreSQL bit string', Database.PostgreSQL, 'bit(3)', 'String'],
+    ['a PostgreSQL varbit', Database.PostgreSQL, 'varbit', 'String'],
+    ['a PostgreSQL pg_lsn', Database.PostgreSQL, 'pg_lsn', 'String'],
+    ['a SQL Server bit', Database.MSSQL, 'bit', 'Boolean'],
+    ['a MySQL BIT(1)', Database.MySQL, 'BIT(1)', 'Int'],
+    ['a MySQL BIT', Database.MySQL, 'BIT', 'Int'],
+    ['a MariaDB BIT(1)', Database.MariaDB, 'BIT(1)', 'Int'],
+    ['a MySQL TINYINT(1)', Database.MySQL, 'TINYINT(1)', 'Int'],
+    ['a MySQL BIT(64)', Database.MySQL, 'BIT(64)', 'BigInt'],
+    ['a MySQL BOOLEAN', Database.MySQL, 'BOOLEAN', 'Boolean'],
+    ['a PostgreSQL uuid', Database.PostgreSQL, 'uuid', 'String'],
+    [
+      'a SQL Server uniqueidentifier',
+      Database.MSSQL,
+      'uniqueidentifier',
+      'String',
+    ],
+    ['a PostgreSQL int[]', Database.PostgreSQL, 'int[]', '[Int]'],
+    [
+      'a PostgreSQL integer ARRAY',
+      Database.PostgreSQL,
+      'integer ARRAY',
+      '[Int]',
+    ],
+    ['a PostgreSQL int[][]', Database.PostgreSQL, 'int[][]', '[[Int]]'],
+    ['a PostgreSQL bigint[]', Database.PostgreSQL, 'bigint[]', '[BigInt]'],
+    [
+      'a PostgreSQL timestamptz[]',
+      Database.PostgreSQL,
+      'timestamptz[]',
+      '[DateTime]',
+    ],
+    [
+      'an array of a type no list names',
+      Database.PostgreSQL,
+      '"mood"[]',
+      'String',
+    ],
+    ['a PostgreSQL bit(8)[]', Database.PostgreSQL, 'bit(8)[]', 'String'],
+    ['a PostgreSQL xid[]', Database.PostgreSQL, 'xid[]', 'String'],
+    ['a PostgreSQL int4range[]', Database.PostgreSQL, 'int4range[]', 'String'],
+    ['a PostgreSQL numrange[]', Database.PostgreSQL, 'numrange[]', '[String]'],
+    ['a PostgreSQL money[]', Database.PostgreSQL, 'money[]', '[String]'],
+    ['a PostgreSQL name[][]', Database.PostgreSQL, 'name[][]', 'String'],
+    [
+      'a PostgreSQL character varying(20)[]',
+      Database.PostgreSQL,
+      'character varying(20)[]',
+      '[String]',
+    ],
+    [
+      'a PostgreSQL timestamp(3) with time zone[]',
+      Database.PostgreSQL,
+      'timestamp(3) with time zone[]',
+      '[DateTime]',
+    ],
+    ['a PostgreSQL nchar(2)[]', Database.PostgreSQL, 'nchar(2)[]', '[String]'],
+    [
+      'a PostgreSQL interval day to second(3)[]',
+      Database.PostgreSQL,
+      'interval day to second(3)[]',
+      '[String]',
+    ],
+  ])('writes %s on database %i', (_, database, dataType, expected) => {
+    expect(fieldType(database, dataType)).toBe(expected);
+  });
+
+  it('writes a NOT NULL array with the list non-null and its items nullable', () => {
+    expect(
+      fieldType(Database.PostgreSQL, 'int[][]', ColumnOption.notNull)
+    ).toBe('[[Int]]!');
+  });
+
+  it('makes a primary key without the NN flag non-null', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 't-a',
+      name: 'a',
+      columns: [
+        {
+          name: 'id',
+          dataType: 'INT',
+          options: ColumnOption.primaryKey,
+          keys: ColumnUIKey.primaryKey,
+        },
+        { name: 'code', dataType: 'INT', options: ColumnOption.primaryKey },
+      ],
+    });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual(['type A {', '  id: ID!', '  code: ID!', '}']);
+  });
+
+  it.each([
+    ['string', NameCase.pascalCase, 'String2'],
+    ['int', NameCase.pascalCase, 'Int2'],
+    ['ID', NameCase.none, 'ID2'],
+    ['big_int', NameCase.pascalCase, 'BigInt2'],
+    ['date_time', NameCase.pascalCase, 'DateTime2'],
+    ['JSON', NameCase.none, 'JSON2'],
+  ])(
+    'numbers a table %s whose type name a scalar of the output takes',
+    (name, tableNameCase, expected) => {
+      const state = createState();
+      state.settings.database = Database.PostgreSQL;
+      state.settings.tableNameCase = tableNameCase;
+      addTable(state, {
+        id: 't-a',
+        name: 'a',
+        columns: [
+          { name: 'views', dataType: 'bigint' },
+          { name: 'at', dataType: 'timestamp' },
+          { name: 'data', dataType: 'jsonb' },
+        ],
+      });
+      addTable(state, {
+        id: 't-b',
+        name,
+        columns: [{ name: 'x', dataType: 'integer' }],
+      });
+
+      const code = createCode(state);
+
+      expect(code).toContain(`type ${expected} {`);
+      expectServableSDL(code);
+    }
+  );
+
+  it('keeps a table named after a custom scalar the output does not declare', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-a',
+      name: 'date',
+      columns: [{ name: 'x', dataType: 'INT' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(['', 'type Date {', '  x: Int', '}', ''].join('\n'));
+    expectServableSDL(code);
+  });
+
+  it('collapses the leading underscores GraphQL reserves to one', () => {
+    const state = createState();
+    state.settings.tableNameCase = NameCase.none;
+    state.settings.columnNameCase = NameCase.none;
+    addTable(state, {
+      id: 't-a',
+      name: '__type',
+      columns: [
+        { name: '__typename', dataType: 'INT' },
+        { name: '___schema', dataType: 'INT' },
+      ],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      ['', 'type _type {', '  _typename: Int', '  _schema: Int', '}', ''].join(
+        '\n'
+      )
+    );
+    expectServableSDL(code);
   });
 
   it('renders a one-to-one relationship as a single field on both sides', () => {
@@ -463,6 +826,19 @@ describe('generator-code/graphql', () => {
     expectValidSDL(code);
   });
 
+  it('writes a table with no field as a type a server refuses', () => {
+    const state = createState();
+    const table = addTable(state, { id: 't-a', name: 'a' });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual(['type A']);
+    expect(
+      validateSchema(buildSchema(buffer.join('\n'))).map(error => error.message)
+    ).toContain('Type A must define one or more fields.');
+  });
+
   it('names the child side of a self relationship with no foreign key after its parent', () => {
     const state = createState();
     addTable(state, {
@@ -491,7 +867,7 @@ describe('generator-code/graphql', () => {
       [
         '',
         'type Users {',
-        '  id: ID',
+        '  id: ID!',
         '  parentUsers: Users',
         '  users: Users',
         '}',
@@ -680,6 +1056,31 @@ describe('generator-code/graphql', () => {
     expectValidSDL(code);
   });
 
+  it('writes a lone surrogate half of a comment or a name as U+FFFD', () => {
+    const state = createState();
+    addTable(state, {
+      id: 't-notes',
+      name: 'notes',
+      comment: 'high \ud800, low \udc00, pair \ud83d\ude00',
+      columns: [{ name: '\udfff', dataType: 'INT' }],
+    });
+
+    const code = createCode(state);
+
+    expect(code).toBe(
+      [
+        '',
+        '"""high \ufffd, low \ufffd, pair \ud83d\ude00"""',
+        'type Notes {',
+        '  """\ufffd"""',
+        '  _: Int',
+        '}',
+        '',
+      ].join('\n')
+    );
+    expectServableSDL(code);
+  });
+
   it('replaces the characters a GraphQL name cannot hold', () => {
     const state = createState();
     addTable(state, {
@@ -707,22 +1108,22 @@ describe('generator-code/graphql', () => {
       [
         '',
         '"""주문 - 주문 내역"""',
-        'type __ {',
+        'type _ {',
         '  """회원 - 회원 정보"""',
-        '  __: __2',
+        '  _: _2',
         '}',
         '',
         '"""회원 - 회원 정보"""',
-        'type __2 {',
+        'type _2 {',
         '  """이름"""',
-        '  __: String',
+        '  _: String',
         '  """주문 - 주문 내역"""',
-        '  __list: [__!]!',
+        '  _list: [_!]!',
         '}',
         '',
       ].join('\n')
     );
-    expectValidSDL(code);
+    expectServableSDL(code);
   });
 
   it('prefixes a name that starts with a digit', () => {
@@ -1546,6 +1947,303 @@ describe('generator-code/graphql round trip through schema-graphql-parser', () =
         state.doc.relationshipIds.length * 2
       );
       expectServableSDL(code);
+    }
+  );
+});
+
+const SCALAR_FIELDS: Record<string, string> = {
+  int: 'Int',
+  float: 'Float',
+  boolean: 'Boolean',
+  string: 'String',
+  bigInt: 'BigInt',
+  decimal: 'Decimal',
+  dateTime: 'DateTime',
+  date: 'Date',
+  json: 'JSON',
+  byte: 'Byte',
+  ints: '[Int]',
+  grid: '[[BigInt]]',
+};
+
+/** What a database writes back where it has no column type for a scalar. */
+const WRITTEN_BACK: Record<number, Record<string, string>> = {
+  [Database.Oracle]: { Int: 'BigInt', Date: 'DateTime' },
+  [Database.Snowflake]: { Int: 'BigInt' },
+  [Database.SQLite]: { Int: 'BigInt', JSON: 'String' },
+};
+
+function importState(code: string, database: number): RootState {
+  const json = schemaGraphQLParserToSchemaJson(code, ctx, schema => {
+    schema.settings.database = database;
+    return schema;
+  });
+  return { ...schemaV3Parser(JSON.parse(json)), editor: {} as any, lww: {} };
+}
+
+function fieldTypes(code: string): Record<string, string> {
+  return Object.fromEntries(
+    [...code.matchAll(/^ {2}(\w+): (.+)$/gm)].map(([, name, type]) => [
+      name,
+      type,
+    ])
+  );
+}
+
+function columnTypes(state: RootState): Record<string, string> {
+  return Object.fromEntries(
+    Object.values(state.collections.tableColumnEntities).map(column => [
+      column.name,
+      column.dataType,
+    ])
+  );
+}
+
+/**
+ * A list comes back as its item: the importer types the column by the item
+ * and notes the list in its comment, on PostgreSQL too.
+ */
+function writtenBack(type: string, database: number): string {
+  const item = type.replace(/[[\]]/g, '');
+
+  return WRITTEN_BACK[database]?.[item] ?? item;
+}
+
+describe('generator-code/graphql scalars through schema-graphql-parser', () => {
+  it.each(DatabaseList)(
+    'writes back on database %i each scalar it imported',
+    database => {
+      const sdl = [
+        'scalar BigInt',
+        'scalar Byte',
+        'scalar Date',
+        'scalar DateTime',
+        'scalar Decimal',
+        'scalar JSON',
+        'type Row {',
+        '  id: ID!',
+        ...Object.entries(SCALAR_FIELDS).map(
+          ([name, type]) => `  ${name}: ${type}!`
+        ),
+        '}',
+      ].join('\n');
+
+      const code = createCode(importState(sdl, database));
+
+      expect(fieldTypes(code)).toEqual({
+        id: 'ID!',
+        ...Object.fromEntries(
+          Object.entries(SCALAR_FIELDS).map(([name, type]) => [
+            name,
+            `${writtenBack(type, database)}!`,
+          ])
+        ),
+      });
+      expectServableSDL(code);
+    }
+  );
+
+  it.each(DatabaseList)(
+    'imports on database %i the column type each scalar was written from',
+    database => {
+      const model = {
+        tables: [],
+        enums: {},
+        customScalars: [],
+        unions: {},
+        skipped: [],
+      };
+      const columns = Object.entries(SCALAR_FIELDS)
+        .filter(
+          ([, type]) =>
+            !type.startsWith('[') || database === Database.PostgreSQL
+        )
+        .map(([name, type]) => ({
+          name,
+          dataType: `${resolveDataType(type.replace(/[[\]]/g, ''), database, model)}${'[]'.repeat(type.split('[').length - 1)}`,
+          options: ColumnOption.notNull,
+        }));
+      const state = createState();
+      state.settings.database = database;
+      addTable(state, { id: 't-row', name: 'row', columns });
+
+      const imported = importState(createCode(state), database);
+
+      const expected = Object.fromEntries(
+        columns.map(({ name, dataType }) => {
+          const type = SCALAR_FIELDS[name];
+          const back = writtenBack(type, database);
+          return [
+            name,
+            back === type ? dataType : resolveDataType(back, database, model),
+          ];
+        })
+      );
+      expect(columnTypes(imported)).toEqual(expected);
+    }
+  );
+});
+
+/** A decimal column of two places, as each database spells one. */
+const PRICE_TYPES: Record<number, string> = {
+  [Database.MariaDB]: 'DECIMAL(10,2)',
+  [Database.MSSQL]: 'decimal(10,2)',
+  [Database.MySQL]: 'DECIMAL(10,2)',
+  [Database.Oracle]: 'NUMBER(10,2)',
+  [Database.PostgreSQL]: 'numeric(10,2)',
+  [Database.SQLite]: 'DECIMAL(10,2)',
+  [Database.Databricks]: 'DECIMAL(10,2)',
+  [Database.Snowflake]: 'NUMBER(10,2)',
+};
+
+/**
+ * The column a Decimal field imports as: a bare DECIMAL holds no fraction but
+ * on PostgreSQL and SQLite, so the others read it with 18 places.
+ */
+const DECIMAL_READ_BACK: Record<number, string> = {
+  [Database.MariaDB]: 'DECIMAL(38,18)',
+  [Database.MSSQL]: 'decimal(38,18)',
+  [Database.MySQL]: 'DECIMAL(38,18)',
+  [Database.Oracle]: 'DECIMAL(38,18)',
+  [Database.PostgreSQL]: 'numeric',
+  [Database.SQLite]: 'DECIMAL',
+  [Database.Databricks]: 'DECIMAL(38,18)',
+  [Database.Snowflake]: 'DECIMAL(38,18)',
+};
+
+describe('generator-code/graphql decimals through schema-graphql-parser', () => {
+  it.each(DatabaseList)(
+    'imports a decimal column on database %i as one that keeps its fraction',
+    database => {
+      const state = createState();
+      state.settings.database = database;
+      addTable(state, {
+        id: 't-product',
+        name: 'product',
+        columns: [
+          {
+            name: 'price',
+            dataType: PRICE_TYPES[database],
+            options: ColumnOption.notNull,
+          },
+        ],
+      });
+
+      const code = createCode(state);
+      const imported = importState(code, database);
+
+      expect(fieldTypes(code)).toEqual({ price: 'Decimal!' });
+      expect(columnTypes(imported)).toEqual({
+        price: DECIMAL_READ_BACK[database],
+      });
+      expect(fieldTypes(createCode(imported))).toEqual({ price: 'Decimal!' });
+    }
+  );
+});
+
+const KEY_OPTIONS = ColumnOption.primaryKey | ColumnOption.notNull;
+
+/** The fields of one type in a document, by field name. */
+function typeFields(code: string, typeName: string): Record<string, string> {
+  const block = new RegExp(`^type ${typeName} \\{\\n([^}]*)\\n\\}`, 'm').exec(
+    code
+  );
+  return fieldTypes(block?.[1] ?? '');
+}
+
+describe('generator-code/graphql keys and relation names through schema-graphql-parser', () => {
+  it('imports a composite key keyed on its first ID field alone', () => {
+    const state = createState();
+    addTable(state, { id: 't-film', name: 'film', columns: [PRIMARY_KEY] });
+    addTable(state, {
+      id: 't-cast',
+      name: 'cast',
+      columns: [
+        {
+          name: 'actor_id',
+          dataType: 'INT',
+          options: KEY_OPTIONS,
+          keys: ColumnUIKey.primaryKey,
+        },
+        {
+          name: 'role_code',
+          dataType: 'INT',
+          options: KEY_OPTIONS,
+          keys: ColumnUIKey.primaryKey,
+        },
+        {
+          name: 'film_id',
+          dataType: 'INT',
+          options: KEY_OPTIONS,
+          keys: ColumnUIKey.primaryKey | ColumnUIKey.foreignKey,
+        },
+      ],
+    });
+    addRelationship(state, 'r-film', 't-film', 't-cast', undefined, [
+      't-cast-c2',
+    ]);
+
+    const code = createCode(state);
+    const back = createCode(importState(code, state.settings.database));
+
+    expect(typeFields(code, 'Cast')).toEqual({
+      actorId: 'ID!',
+      roleCode: 'ID!',
+      filmId: 'ID!',
+      film: 'Film',
+    });
+    expect(typeFields(back, 'Cast')).toEqual({
+      actorId: 'ID!',
+      roleCode: 'String!',
+      film: 'Film',
+    });
+  });
+
+  it.each<[string, Record<string, string>, Record<string, string>]>([
+    [
+      'language_id',
+      { language: 'Language', originalLanguage: 'Language' },
+      { languageLanguage: 'Language', originalLanguageLanguage: 'Language' },
+    ],
+    [
+      'id',
+      { language: 'Language', originalLanguage: 'Language' },
+      { language: 'Language', originalLanguage: 'Language' },
+    ],
+  ])(
+    'names the relation fields a foreign key named after the column the importer adds, the parent key %s',
+    (keyName, written, writtenBack) => {
+      const state = createState();
+      addTable(state, {
+        id: 't-language',
+        name: 'language',
+        columns: [{ ...PRIMARY_KEY, name: keyName }],
+      });
+      addTable(state, {
+        id: 't-film',
+        name: 'film',
+        columns: [
+          PRIMARY_KEY,
+          foreignKey('language_id'),
+          { ...foreignKey('original_language_id'), options: 0 },
+        ],
+      });
+      addRelationship(state, 'r-1', 't-language', 't-film', undefined, [
+        't-film-c1',
+      ]);
+      addRelationship(state, 'r-2', 't-language', 't-film', undefined, [
+        't-film-c2',
+      ]);
+
+      const code = createCode(state);
+      const imported = importState(code, state.settings.database);
+
+      expect(typeFields(code, 'Film')).toEqual({ id: 'ID!', ...written });
+      expect(typeFields(createCode(imported), 'Film')).toEqual({
+        id: 'ID!',
+        ...writtenBack,
+      });
+      expect(imported.doc.relationshipIds).toHaveLength(2);
     }
   );
 });

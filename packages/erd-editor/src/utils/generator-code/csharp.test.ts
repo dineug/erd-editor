@@ -1,5 +1,5 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { ColumnOption, Database, NameCase } from '@/constants/schema';
 import { MSSQLTypes } from '@/constants/sql/dataType/MSSQL';
@@ -165,7 +165,8 @@ const VENDOR_TYPES: VendorCase[] = [
   ['PostgreSQL', Database.PostgreSQL, 'double precision', 'double'],
   ['PostgreSQL', Database.PostgreSQL, 'boolean', 'bool'],
   ['PostgreSQL', Database.PostgreSQL, 'date', 'DateTime'],
-  ['PostgreSQL', Database.PostgreSQL, 'time with time zone', 'TimeSpan'],
+  ['PostgreSQL', Database.PostgreSQL, 'time', 'TimeSpan'],
+  ['PostgreSQL', Database.PostgreSQL, 'time without time zone', 'TimeSpan'],
   ['PostgreSQL', Database.PostgreSQL, 'interval day to second', 'TimeSpan'],
   ['PostgreSQL', Database.PostgreSQL, 'jsonb', 'string'],
   ['PostgreSQL', Database.PostgreSQL, 'xml', 'string'],
@@ -197,13 +198,11 @@ const VENDOR_TYPES: VendorCase[] = [
   ['Oracle', Database.Oracle, 'TIMESTAMP', 'DateTime'],
   ['Oracle', Database.Oracle, 'DATE', 'DateTime'],
   ['Oracle', Database.Oracle, 'NUMBER', 'long'],
-  ['Oracle', Database.Oracle, 'SMALLINT', 'short'],
   ['Oracle', Database.Oracle, 'INTERVAL DAY(2) TO SECOND(6)', 'TimeSpan'],
   ['Oracle', Database.Oracle, 'CLOB', 'string'],
   ['Oracle', Database.Oracle, 'XMLType', 'string'],
   ['SQLite', Database.SQLite, 'BLOB', 'byte[]'],
-  ['SQLite', Database.SQLite, 'SMALLINT', 'short'],
-  ['SQLite', Database.SQLite, 'INTEGER', 'int'],
+  ['SQLite', Database.SQLite, 'INTEGER', 'long'],
   ['SQLite', Database.SQLite, 'REAL', 'double'],
   ['SQLite', Database.SQLite, 'NUMERIC', 'decimal'],
   ['SQLite', Database.SQLite, 'BOOLEAN', 'bool'],
@@ -221,7 +220,6 @@ const VENDOR_TYPES: VendorCase[] = [
     'DateTimeOffset',
   ],
   ['Snowflake', Database.Snowflake, 'TIMESTAMP_NTZ', 'DateTime'],
-  ['Snowflake', Database.Snowflake, 'SMALLINT', 'short'],
   ['Snowflake', Database.Snowflake, 'NUMBER(38, 0)', 'long'],
   ['Snowflake', Database.Snowflake, 'VARIANT', 'string'],
   ['Snowflake', Database.Snowflake, 'GEOGRAPHY', 'string'],
@@ -255,8 +253,139 @@ const OTHER_TWO_BYTE_INTEGERS: VendorCase[] = [
   ['PostgreSQL', Database.PostgreSQL, 'smallserial', 'int'],
   ['MySQL', Database.MySQL, 'INT2', 'int'],
   ['MariaDB', Database.MariaDB, 'INT2', 'int'],
-  ['SQLite', Database.SQLite, 'INT2', 'int'],
+  ['SQLite', Database.SQLite, 'INT2', 'long'],
   ['Databricks', Database.Databricks, 'SHORT', 'int'],
+];
+
+const SIXTY_FOUR_BIT_INTEGERS: VendorCase[] = [
+  ['Oracle', Database.Oracle, 'INT', 'long'],
+  ['Oracle', Database.Oracle, 'INTEGER', 'long'],
+  ['Oracle', Database.Oracle, 'NUMBER(10)', 'long'],
+  ['Oracle', Database.Oracle, 'NUMBER(10,0)', 'long'],
+  ['Oracle', Database.Oracle, 'SMALLINT', 'long'],
+  ['Snowflake', Database.Snowflake, 'INT', 'long'],
+  ['Snowflake', Database.Snowflake, 'INTEGER', 'long'],
+  ['Snowflake', Database.Snowflake, 'TINYINT', 'long'],
+  ['Snowflake', Database.Snowflake, 'BYTEINT', 'long'],
+  ['Snowflake', Database.Snowflake, 'SMALLINT', 'long'],
+  ['SQLite', Database.SQLite, 'INT', 'long'],
+  ['SQLite', Database.SQLite, 'TINYINT', 'long'],
+  ['SQLite', Database.SQLite, 'MEDIUMINT', 'long'],
+  ['SQLite', Database.SQLite, 'SMALLINT', 'long'],
+];
+
+const UNSIGNED_INTEGERS: VendorCase[] = [
+  ['MySQL', Database.MySQL, 'TINYINT UNSIGNED', 'byte'],
+  ['MySQL', Database.MySQL, 'TINYINT(3) UNSIGNED', 'byte'],
+  ['MySQL', Database.MySQL, 'SMALLINT UNSIGNED', 'ushort'],
+  ['MySQL', Database.MySQL, 'SMALLINT(5) UNSIGNED ZEROFILL', 'ushort'],
+  ['MySQL', Database.MySQL, 'MEDIUMINT UNSIGNED', 'uint'],
+  ['MySQL', Database.MySQL, 'INT UNSIGNED', 'uint'],
+  ['MySQL', Database.MySQL, 'INT(10) UNSIGNED', 'uint'],
+  ['MySQL', Database.MySQL, 'INT(11) ZEROFILL', 'uint'],
+  ['MySQL', Database.MySQL, 'BIGINT UNSIGNED', 'ulong'],
+  ['MySQL', Database.MySQL, 'SERIAL', 'ulong'],
+  ['MariaDB', Database.MariaDB, 'int unsigned', 'uint'],
+  ['MariaDB', Database.MariaDB, 'BIGINT(20) UNSIGNED', 'ulong'],
+  ['MariaDB', Database.MariaDB, 'INT1 UNSIGNED', 'byte'],
+];
+
+const SIGNED_OR_NOT_AN_INTEGER: VendorCase[] = [
+  ['MySQL', Database.MySQL, 'TINYINT', 'int'],
+  ['MySQL', Database.MySQL, 'MEDIUMINT', 'int'],
+  ['MySQL', Database.MySQL, 'YEAR', 'int'],
+  ['MySQL', Database.MySQL, 'SMALLINT SIGNED', 'short'],
+  ['MySQL', Database.MySQL, 'SMALLINT(6) SIGNED', 'short'],
+  ['MariaDB', Database.MariaDB, 'smallint signed', 'short'],
+  ['MySQL', Database.MySQL, 'INT SIGNED', 'int'],
+  ['MySQL', Database.MySQL, 'BIGINT SIGNED', 'long'],
+  ['MySQL', Database.MySQL, 'DECIMAL(10,2) UNSIGNED', 'decimal'],
+  ['MySQL', Database.MySQL, 'DOUBLE UNSIGNED', 'double'],
+  ['PostgreSQL', Database.PostgreSQL, 'INT UNSIGNED', 'int'],
+];
+
+const FIXED_OUTSIDE_SQL_SERVER: VendorCase[] = [
+  ['PostgreSQL', Database.PostgreSQL, 'money', 'decimal'],
+  ['MySQL', Database.MySQL, 'money', 'decimal'],
+  ['PostgreSQL', Database.PostgreSQL, 'bit(8)', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'bit varying(8)', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'varbit', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'pg_lsn', 'ulong'],
+  ['MySQL', Database.MySQL, 'pg_lsn', 'string'],
+  ['MySQL', Database.MySQL, 'FLOAT(24)', 'float'],
+  ['MySQL', Database.MySQL, 'FLOAT(25)', 'double'],
+  ['MySQL', Database.MySQL, 'FLOAT(53)', 'double'],
+  ['MariaDB', Database.MariaDB, 'FLOAT(53)', 'double'],
+  ['PostgreSQL', Database.PostgreSQL, 'float(24)', 'float'],
+  ['PostgreSQL', Database.PostgreSQL, 'float(53)', 'double'],
+  ['Oracle', Database.Oracle, 'NUMBER(10,2)', 'decimal'],
+  ['Oracle', Database.Oracle, 'NUMBER(*,2)', 'decimal'],
+  ['Snowflake', Database.Snowflake, 'NUMBER(38,2)', 'decimal'],
+];
+
+const POSTGRES_SYSTEM_IDS: VendorCase[] = [
+  ['PostgreSQL', Database.PostgreSQL, 'oid', 'uint'],
+  ['PostgreSQL', Database.PostgreSQL, 'cid', 'uint'],
+  ['PostgreSQL', Database.PostgreSQL, 'xid', 'uint'],
+  ['PostgreSQL', Database.PostgreSQL, 'xid8', 'ulong'],
+  ['PostgreSQL', Database.PostgreSQL, 'OID', 'uint'],
+  ['PostgreSQL', Database.PostgreSQL, 'regtype', 'uint'],
+  ['PostgreSQL', Database.PostgreSQL, 'regconfig', 'uint'],
+  ['PostgreSQL', Database.PostgreSQL, 'REGTYPE', 'uint'],
+  ['MySQL', Database.MySQL, 'oid', 'string'],
+  ['MySQL', Database.MySQL, 'regtype', 'string'],
+];
+
+const UNREADABLE_POSTGRES_IDS: VendorCase[] = [
+  ['PostgreSQL', Database.PostgreSQL, 'regclass', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regproc', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regrole', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regnamespace', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regoper', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regoperator', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regprocedure', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regcollation', 'string'],
+  ['PostgreSQL', Database.PostgreSQL, 'regdictionary', 'string'],
+];
+
+const READ_OTHERWISE_BY_DRIVERS: VendorCase[] = [
+  ['MySQL', Database.MySQL, 'CHAR(36)', 'string'],
+  ['MariaDB', Database.MariaDB, 'char(36)', 'string'],
+  ['MySQL', Database.MySQL, 'TINYINT(1)', 'int'],
+  ['MariaDB', Database.MariaDB, 'tinyint(1)', 'int'],
+  ['Oracle', Database.Oracle, 'INTERVAL YEAR(2) TO MONTH', 'TimeSpan'],
+  ['SQLite', Database.SQLite, 'TIME', 'TimeSpan'],
+];
+
+const ZONED_TIMES: VendorCase[] = [
+  ['PostgreSQL', Database.PostgreSQL, 'timetz', 'DateTimeOffset'],
+  ['PostgreSQL', Database.PostgreSQL, 'timetz(3)', 'DateTimeOffset'],
+  ['PostgreSQL', Database.PostgreSQL, 'time with time zone', 'DateTimeOffset'],
+  [
+    'PostgreSQL',
+    Database.PostgreSQL,
+    'TIME(6) WITH TIME ZONE',
+    'DateTimeOffset',
+  ],
+];
+
+const MYSQL_BIT_FIELDS: VendorCase[] = [
+  ['MySQL', Database.MySQL, 'BIT(2)', 'ulong'],
+  ['MySQL', Database.MySQL, 'BIT(8)', 'ulong'],
+  ['MySQL', Database.MySQL, 'BIT(64)', 'ulong'],
+  ['MariaDB', Database.MariaDB, 'bit(32)', 'ulong'],
+];
+
+const MYSQL_ONE_BIT: VendorCase[] = [
+  ['MySQL', Database.MySQL, 'BIT', 'int'],
+  ['MariaDB', Database.MariaDB, 'bit(1)', 'int'],
+];
+
+const MARIADB_NUMBERS: VendorCase[] = [
+  ['MariaDB', Database.MariaDB, 'NUMBER', 'double'],
+  ['MariaDB', Database.MariaDB, 'number', 'double'],
+  ['MariaDB', Database.MariaDB, 'NUMBER(10)', 'decimal'],
+  ['MariaDB', Database.MariaDB, 'NUMBER(10,2)', 'decimal'],
 ];
 
 function byVendor(rows: VendorCase[]) {
@@ -445,6 +574,206 @@ describe('generator-code/csharp', () => {
     }
   );
 
+  it.each(byVendor(SIXTY_FOUR_BIT_INTEGERS))(
+    'maps the $vendor type $dataType to $expected, the 64 bits it stores whatever its name declares',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(UNSIGNED_INTEGERS))(
+    'maps the $vendor type $dataType to $expected, the unsigned type of its width',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(SIGNED_OR_NOT_AN_INTEGER))(
+    'keeps the $vendor type $dataType as $expected, no unsigned integer',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(FIXED_OUTSIDE_SQL_SERVER))(
+    'maps the $vendor type $dataType to $expected',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(POSTGRES_SYSTEM_IDS))(
+    'maps the $vendor type $dataType to $expected, the unsigned type Npgsql reads',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(UNREADABLE_POSTGRES_IDS))(
+    'keeps the $vendor type $dataType as $expected: Npgsql reads it neither as a string nor as a uint',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(READ_OTHERWISE_BY_DRIVERS))(
+    'writes the $vendor type $dataType as $expected, which its driver or Dapper reads otherwise by default',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(ZONED_TIMES))(
+    'maps the $vendor time of day with an offset $dataType to $expected, as Npgsql reads it',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(MYSQL_BIT_FIELDS))(
+    'maps the $vendor bit field $dataType to $expected, the 64 bits MySqlConnector reads',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(MYSQL_ONE_BIT))(
+    'keeps the $vendor one-bit field $dataType as $expected',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  it.each(byVendor(MARIADB_NUMBERS))(
+    'maps the $vendor type $dataType to $expected, what its Oracle mode stores',
+    ({ database, dataType, expected }) => {
+      expect(propertyLine(database, dataType)).toBe(
+        `  public ${expected}? Value { get; set; }`
+      );
+    }
+  );
+
+  describe('PostgreSQL arrays', () => {
+    it.each([
+      ['int[]', 'int[]'],
+      ['integer ARRAY', 'int[]'],
+      ['integer ARRAY[4]', 'int[]'],
+      ['int[3]', 'int[]'],
+      ['smallint[]', 'short[]'],
+      ['bigint[]', 'long[]'],
+      ['oid[]', 'uint[]'],
+      ['xid8[]', 'ulong[]'],
+      ['regtype[]', 'uint[]'],
+      ['timetz[]', 'DateTimeOffset[]'],
+      ['interval[]', 'TimeSpan[]'],
+      ['numeric(10,2)[]', 'decimal[]'],
+      ['money[]', 'decimal[]'],
+      ['text[]', 'string[]'],
+      ['"mood"[]', 'string[]'],
+      ['uuid[]', 'Guid[]'],
+      ['bytea[]', 'byte[][]'],
+      ['int[][]', 'int[,]'],
+      ['text[][]', 'string[,]'],
+      ['bytea[][]', 'byte[,][]'],
+      ['timestamptz[][][]', 'DateTimeOffset[,,]'],
+    ])(
+      'maps %s to %s, one rank a dimension in one rectangular array',
+      (dataType, expected) => {
+        expect(propertyLine(Database.PostgreSQL, dataType)).toBe(
+          `  public ${expected}? Value { get; set; }`
+        );
+      }
+    );
+
+    it('writes a NOT NULL array as a reference type', () => {
+      expect(
+        formatTableLines(Database.PostgreSQL, {
+          name: 'scores',
+          columns: [
+            { name: 'id', dataType: 'int', options: ColumnOption.primaryKey },
+            {
+              name: 'points',
+              dataType: 'int[]',
+              options: ColumnOption.notNull,
+            },
+            {
+              name: 'grid',
+              dataType: 'int[][]',
+              options: ColumnOption.notNull,
+            },
+            { name: 'tags', dataType: 'text[]' },
+          ],
+        })
+      ).toEqual([
+        'public class Scores {',
+        '  public int Id { get; set; }',
+        '  public int[] Points { get; set; } = null!;',
+        '  public int[,] Grid { get; set; } = null!;',
+        '  public string[]? Tags { get; set; }',
+        '}',
+      ]);
+    });
+
+    it.each([
+      ['MySQL', Database.MySQL],
+      ['SQL Server', Database.MSSQL],
+    ])(
+      'reads no array outside PostgreSQL: int[] under %s stays int',
+      (_, database) => {
+        expect(propertyLine(database, 'int[]')).toBe(
+          '  public int? Value { get; set; }'
+        );
+      }
+    );
+  });
+
+  it('writes a NOT NULL unsigned integer as a value type', () => {
+    expect(
+      formatTableLines(Database.MySQL, {
+        name: 'orders',
+        columns: [
+          {
+            name: 'id',
+            dataType: 'BIGINT UNSIGNED',
+            options: ColumnOption.primaryKey,
+          },
+          {
+            name: 'quantity',
+            dataType: 'INT UNSIGNED',
+            options: ColumnOption.notNull,
+          },
+          { name: 'rank', dataType: 'TINYINT UNSIGNED' },
+        ],
+      })
+    ).toEqual([
+      'public class Orders {',
+      '  public ulong Id { get; set; }',
+      '  public uint Quantity { get; set; }',
+      '  public byte? Rank { get; set; }',
+      '}',
+    ]);
+  });
+
   it('writes nullable reference types the way dotnet ef dbcontext scaffold does', () => {
     expect(
       formatTableLines(Database.MSSQL, {
@@ -616,6 +945,316 @@ describe('generator-code/csharp', () => {
       '  public int? User_id { get; set; }',
       '}',
     ]);
+  });
+
+  it('upper-cases the first letter of a property by no locale, so a Turkish system writes Id', () => {
+    const toLocaleUpperCase = String.prototype.toLocaleUpperCase;
+    const spy = vi
+      .spyOn(String.prototype, 'toLocaleUpperCase')
+      .mockImplementation(function (
+        this: string,
+        locales?: Intl.LocalesArgument
+      ) {
+        return toLocaleUpperCase.call(this, locales ?? 'tr');
+      });
+
+    try {
+      expect('i'.toLocaleUpperCase()).toBe('İ');
+      expect(
+        formatTableLines(Database.MySQL, {
+          name: 'users',
+          columns: [{ name: 'id', dataType: 'INT' }],
+        })
+      ).toEqual([
+        'public class Users {',
+        '  public int? Id { get; set; }',
+        '}',
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  describe('C# keywords', () => {
+    function classLine(name: string, tableNameCase: number): string {
+      const state = createState();
+      state.settings.tableNameCase = tableNameCase;
+      const table = addTable(state, { id: 't', name });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      return buffer[0];
+    }
+
+    it.each([
+      ['class', NameCase.none, 'public class @class {'],
+      ['event', NameCase.camelCase, 'public class @event {'],
+      ['object', NameCase.snakeCase, 'public class @object {'],
+      ['string', NameCase.none, 'public class @string {'],
+      ['while', NameCase.none, 'public class @while {'],
+      ['file', NameCase.none, 'public class @file {'],
+      ['required', NameCase.none, 'public class @required {'],
+      ['scoped', NameCase.none, 'public class @scoped {'],
+      ['extension', NameCase.none, 'public class @extension {'],
+      ['record', NameCase.none, 'public class @record {'],
+    ])(
+      'writes the table %s, a name C# refuses for a class, after @',
+      (name, tableNameCase, expected) => {
+        expect(classLine(name, tableNameCase)).toBe(expected);
+      }
+    );
+
+    it.each([
+      ['class', NameCase.pascalCase, 'public class Class {'],
+      ['Class', NameCase.none, 'public class Class {'],
+      ['user', NameCase.none, 'public class user {'],
+      ['var', NameCase.none, 'public class var {'],
+      ['@class', NameCase.none, 'public class @class {'],
+    ])(
+      'writes the table %s as is where C# takes it for a class',
+      (name, tableNameCase, expected) => {
+        expect(classLine(name, tableNameCase)).toBe(expected);
+      }
+    );
+
+    it('writes a property after @ only where its name stays a keyword', () => {
+      const state = createState();
+      state.settings.tableNameCase = NameCase.none;
+      state.settings.columnNameCase = NameCase.none;
+      const table = addTable(state, {
+        id: 't',
+        name: '__arglist',
+        columns: [
+          { name: 'class', dataType: 'INT' },
+          { name: '__makeref', dataType: 'INT' },
+        ],
+      });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      expect(buffer).toEqual([
+        'public class @__arglist {',
+        '  public int? Class { get; set; }',
+        '  public int? @__makeref { get; set; }',
+        '}',
+      ]);
+    });
+
+    it('writes a keyword with white space around it after @ too, which C# reads as the keyword', () => {
+      const state = createState();
+      state.settings.tableNameCase = NameCase.none;
+      state.settings.columnNameCase = NameCase.none;
+      const table = addTable(state, {
+        id: 't',
+        name: '\tclass ',
+        columns: [{ name: ' event', dataType: 'INT' }],
+      });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      expect(buffer).toEqual([
+        'public class \t@class  {',
+        '  public int?  @event { get; set; }',
+        '}',
+      ]);
+    });
+  });
+
+  describe('a property named like its class', () => {
+    const column = (name: string) =>
+      `  [global::System.ComponentModel.DataAnnotations.Schema.Column(${name})]`;
+
+    function namedLines(
+      tableName: string,
+      columnNames: string[],
+      nameCase?: number
+    ): string[] {
+      const state = createState();
+      if (nameCase !== undefined) {
+        state.settings.tableNameCase = nameCase;
+        state.settings.columnNameCase = nameCase;
+      }
+      const table = addTable(state, {
+        id: 't',
+        name: tableName,
+        columns: columnNames.map(name => ({ name, dataType: 'INT' })),
+      });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      return buffer;
+    }
+
+    it('renames it as dotnet ef dbcontext scaffold does, the column name in a Column attribute after its comment', () => {
+      expect(
+        formatTableLines(Database.MySQL, {
+          name: 'country',
+          columns: [
+            {
+              name: 'country_id',
+              dataType: 'SMALLINT UNSIGNED',
+              options: ColumnOption.primaryKey | ColumnOption.notNull,
+            },
+            {
+              name: 'country',
+              dataType: 'VARCHAR(50)',
+              comment: 'the name',
+              options: ColumnOption.notNull,
+            },
+            {
+              name: 'last_update',
+              dataType: 'TIMESTAMP',
+              options: ColumnOption.notNull,
+            },
+          ],
+        })
+      ).toEqual([
+        'public class Country {',
+        '  public ushort CountryId { get; set; }',
+        '  // the name',
+        column('"country"'),
+        '  public string Country1 { get; set; } = null!;',
+        '  public DateTime LastUpdate { get; set; }',
+        '}',
+      ]);
+    });
+
+    it('numbers it past every name the class holds, a renamed one included', () => {
+      expect(
+        namedLines('country', ['country1', 'country', 'Country2', 'Country'])
+      ).toEqual([
+        'public class Country {',
+        '  public int? Country1 { get; set; }',
+        column('"country"'),
+        '  public int? Country3 { get; set; }',
+        '  public int? Country2 { get; set; }',
+        column('"Country"'),
+        '  public int? Country4 { get; set; }',
+        '}',
+      ]);
+    });
+
+    it.each([
+      [
+        'an @',
+        '__arglist',
+        '__arglist',
+        'public class @__arglist {',
+        '__arglist1',
+      ],
+      [
+        'a formatting character',
+        'Cou\u00adntry',
+        'Country',
+        'public class Cou\u00adntry {',
+        'Country1',
+      ],
+    ])(
+      'compares the names as C# does, %s aside',
+      (_, tableName, columnName, classLine, propertyName) => {
+        expect(namedLines(tableName, [columnName], NameCase.none)).toEqual([
+          classLine,
+          column(`"${columnName}"`),
+          `  public int? ${propertyName} { get; set; }`,
+          '}',
+        ]);
+      }
+    );
+
+    it.each([
+      [
+        'a no-break space after the column',
+        'Country',
+        'country ',
+        'public class Country {',
+        '"country "',
+        'Country1',
+      ],
+      [
+        'a tab after the column',
+        'Country',
+        'country\t',
+        'public class Country {',
+        '"country\\t"',
+        'Country1',
+      ],
+      [
+        'a line separator after the column',
+        'Country',
+        'country ',
+        'public class Country {',
+        '"country\\u2028"',
+        'Country1',
+      ],
+      [
+        'a space and an @ before the column',
+        'country',
+        ' @country',
+        'public class country {',
+        '" @country"',
+        'country1',
+      ],
+      [
+        'a next line after the table',
+        'Country\u0085',
+        'country',
+        'public class Country\u0085 {',
+        '"country"',
+        'Country1',
+      ],
+    ])(
+      'compares the names as C# reads them, %s aside',
+      (_, tableName, columnName, classLine, literal, propertyName) => {
+        expect(namedLines(tableName, [columnName], NameCase.none)).toEqual([
+          classLine,
+          column(literal),
+          `  public int? ${propertyName} { get; set; }`,
+          '}',
+        ]);
+      }
+    );
+
+    it('renames nothing in a class whose name is white space alone', () => {
+      expect(namedLines(' ', [' '], NameCase.none)).toEqual([
+        'public class   {',
+        '  public int?   { get; set; }',
+        '}',
+      ]);
+    });
+
+    it('keeps a name that differs from its class in case alone', () => {
+      expect(namedLines('country', ['country'], NameCase.none)).toEqual([
+        'public class country {',
+        '  public int? Country { get; set; }',
+        '}',
+      ]);
+    });
+
+    it('writes the column name as a C# string literal, escaping what JSON leaves and C# ends a line at', () => {
+      expect(
+        namedLines('user_profile', [
+          'user"profile',
+          'user\\profile',
+          'user\u0085profile',
+          'user\u2028profile',
+        ])
+      ).toEqual([
+        'public class UserProfile {',
+        column('"user\\"profile"'),
+        '  public int? UserProfile1 { get; set; }',
+        column('"user\\\\profile"'),
+        '  public int? UserProfile2 { get; set; }',
+        column('"user\\u0085profile"'),
+        '  public int? UserProfile3 { get; set; }',
+        column('"user\\u2028profile"'),
+        '  public int? UserProfile4 { get; set; }',
+        '}',
+      ]);
+    });
   });
 
   it('renders an empty property name for a column without a name', () => {

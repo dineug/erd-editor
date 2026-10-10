@@ -5,7 +5,7 @@ import { GraphQLModel } from './types';
 /**
  * Every cell below is a name taken from that dialect's hint list under
  * @/constants/sql/dataType, so getPrimitiveType resolves it back to a
- * primitive the ten code generators understand.
+ * primitive the code generators understand.
  */
 
 const stringTypes: Record<number, string> = {
@@ -65,20 +65,25 @@ const floatTypes: Record<number, string> = {
   [Database.Snowflake]: 'FLOAT',
 };
 
+/**
+ * A bare DECIMAL holds no fraction outside PostgreSQL and SQLite (MySQL reads
+ * it as DECIMAL(10,0), SQL Server as (18,0)), so those take 38 digits, the
+ * most SQL Server, Oracle, Databricks and Snowflake hold, 18 after the point.
+ */
 const decimalTypes: Record<number, string> = {
-  [Database.MariaDB]: 'DECIMAL',
-  [Database.MSSQL]: 'decimal',
-  [Database.MySQL]: 'DECIMAL',
-  [Database.Oracle]: 'DECIMAL',
+  [Database.MariaDB]: 'DECIMAL(38,18)',
+  [Database.MSSQL]: 'decimal(38,18)',
+  [Database.MySQL]: 'DECIMAL(38,18)',
+  [Database.Oracle]: 'DECIMAL(38,18)',
   [Database.PostgreSQL]: 'numeric',
   [Database.SQLite]: 'DECIMAL',
-  [Database.Databricks]: 'DECIMAL',
-  [Database.Snowflake]: 'DECIMAL',
+  [Database.Databricks]: 'DECIMAL(38,18)',
+  [Database.Snowflake]: 'DECIMAL(38,18)',
 };
 
 const booleanTypes: Record<number, string> = {
   [Database.MariaDB]: 'BOOLEAN',
-  // MSSQL.ts has no boolean; bit is the T-SQL stand-in, primitive int.
+  // MSSQL.ts names no BOOLEAN type; bit, the T-SQL stand-in, is its boolean.
   [Database.MSSQL]: 'bit',
   [Database.MySQL]: 'BOOLEAN',
   [Database.Oracle]: 'BOOLEAN',
@@ -92,6 +97,7 @@ const dateTypes: Record<number, string> = {
   [Database.MariaDB]: 'DATE',
   [Database.MSSQL]: 'date',
   [Database.MySQL]: 'DATE',
+  // Oracle.ts has no date-only type; its DATE holds a time of day, dateTime.
   [Database.Oracle]: 'DATE',
   [Database.PostgreSQL]: 'date',
   [Database.SQLite]: 'DATE',
@@ -103,7 +109,8 @@ const timeTypes: Record<number, string> = {
   [Database.MariaDB]: 'TIME',
   [Database.MSSQL]: 'time',
   [Database.MySQL]: 'TIME',
-  // Oracle.ts, SQLite.ts and Databricks.ts list no time-of-day type.
+  // Oracle.ts and Databricks.ts list no time-of-day type, and SQLite keeps a
+  // time as the text it is given.
   [Database.Oracle]: 'VARCHAR2(255)',
   [Database.PostgreSQL]: 'time',
   [Database.SQLite]: 'TEXT',

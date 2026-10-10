@@ -5,6 +5,7 @@ import { PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { isIntegerFamily } from '@/utils/schema-sql/SQLite';
 import {
   autoName,
   Name,
@@ -12,6 +13,16 @@ import {
   referentialActionSupport,
 } from '@/utils/schema-sql/utils';
 
+import {
+  BINARY_TYPES,
+  ColumnType,
+  getColumnType,
+  isMySQLFamily,
+  JSON_TYPES,
+  POSTGRES_TIME_TZ_TYPES,
+  TIMESTAMP_TZ_TYPES,
+  UUID_TYPES,
+} from './columnTypes';
 import {
   FormatColumnOptions,
   FormatRelationOptions,
@@ -27,27 +38,100 @@ import {
 // there is off limits to a class name and a column attribute. Each import set
 // is typed from its tuple, so an unreserved name fails tsc --noEmit.
 const SQLALCHEMY_NAMES = [
+  'ARRAY',
+  'BINARY',
   'BigInteger',
   'Boolean',
+  'CHAR',
   'Date',
   'DateTime',
   'Double',
+  'Enum',
   'Float',
   'ForeignKey',
   'ForeignKeyConstraint',
   'Index',
   'Integer',
+  'Interval',
   'JSON',
   'LargeBinary',
+  'NCHAR',
+  'NVARCHAR',
   'Numeric',
+  'REAL',
+  'SmallInteger',
   'String',
   'Text',
   'Time',
+  'UUID',
   'Uuid',
+  'VARBINARY',
   'text',
 ] as const;
 
-const POSTGRESQL_NAMES = ['JSONB', 'UUID'] as const;
+// One output targets one database, so it imports from one dialect module at
+// most, and a name two modules share (TIMESTAMP, UUID) is never imported twice.
+const DIALECT_NAMES = {
+  mssql: ['MONEY', 'NTEXT', 'SMALLMONEY', 'TIMESTAMP'],
+  mysql: [
+    'BIGINT',
+    'BIT',
+    'DATETIME',
+    'DECIMAL',
+    'DOUBLE',
+    'FLOAT',
+    'INET4',
+    'INET6',
+    'INTEGER',
+    'LONGBLOB',
+    'LONGTEXT',
+    'MEDIUMBLOB',
+    'MEDIUMINT',
+    'MEDIUMTEXT',
+    'SET',
+    'SMALLINT',
+    'TIME',
+    'TIMESTAMP',
+    'TINYBLOB',
+    'TINYINT',
+    'TINYTEXT',
+    'VARCHAR',
+    'YEAR',
+  ],
+  oracle: ['DATE', 'NCLOB', 'NVARCHAR2', 'RAW', 'TIMESTAMP'],
+  postgresql: [
+    'BIT',
+    'CIDR',
+    'DATEMULTIRANGE',
+    'DATERANGE',
+    'INET',
+    'INT4MULTIRANGE',
+    'INT4RANGE',
+    'INT8MULTIRANGE',
+    'INT8RANGE',
+    'INTERVAL',
+    'JSONB',
+    'JSONPATH',
+    'MACADDR',
+    'MACADDR8',
+    'MONEY',
+    'NUMMULTIRANGE',
+    'NUMRANGE',
+    'OID',
+    'REGCLASS',
+    'REGCONFIG',
+    'Range',
+    'TIME',
+    'TIMESTAMP',
+    'TSMULTIRANGE',
+    'TSQUERY',
+    'TSRANGE',
+    'TSTZMULTIRANGE',
+    'TSTZRANGE',
+    'TSVECTOR',
+    'UUID',
+  ],
+} as const;
 
 const ORM_NAMES = [
   'DeclarativeBase',
@@ -59,9 +143,9 @@ const ORM_NAMES = [
 const STDLIB_PLAIN_NAMES = ['uuid'] as const;
 
 const STDLIB_FROM_NAMES = {
-  datetime: ['date', 'datetime', 'time'],
+  datetime: ['date', 'datetime', 'time', 'timedelta'],
   decimal: ['Decimal'],
-  typing: ['Any', 'List', 'Optional'],
+  typing: ['Any', 'List', 'Optional', 'Set'],
 } as const;
 
 // Builtins rather than imports, but an attribute named str shadows the
@@ -71,7 +155,8 @@ const BUILTIN_NAMES = ['bool', 'bytes', 'float', 'int', 'str'] as const;
 const BASE_CLASS_NAME = 'Base';
 
 type SqlalchemyName = (typeof SQLALCHEMY_NAMES)[number];
-type PostgresqlName = (typeof POSTGRESQL_NAMES)[number];
+type Dialect = keyof typeof DIALECT_NAMES;
+type DialectName<T extends Dialect> = (typeof DIALECT_NAMES)[T][number];
 type OrmName = (typeof ORM_NAMES)[number];
 type StdlibPlainName = (typeof STDLIB_PLAIN_NAMES)[number];
 type StdlibModule = keyof typeof STDLIB_FROM_NAMES;
@@ -86,7 +171,7 @@ type AnnotationName =
 const MODULE_SCOPE_NAMES: ReadonlySet<string> = new Set<string>([
   BASE_CLASS_NAME,
   ...SQLALCHEMY_NAMES,
-  ...POSTGRESQL_NAMES,
+  ...Object.values(DIALECT_NAMES).flatMap<string>(names => [...names]),
   ...ORM_NAMES,
   ...STDLIB_PLAIN_NAMES,
   ...Object.values(STDLIB_FROM_NAMES).flatMap<string>(names => [...names]),
@@ -132,19 +217,27 @@ type ImportSet = {
   stdlibPlain: Set<StdlibPlainName>;
   stdlibFrom: Map<StdlibModule, Set<AnyStdlibFromName>>;
   sqlalchemy: Set<SqlalchemyName>;
-  postgresql: Set<PostgresqlName>;
+  dialects: Map<Dialect, Set<string>>;
   orm: Set<OrmName>;
-};
-
-type ColumnType = {
-  expression: string;
-  annotation: string;
 };
 
 type CallEntry = {
   head: string;
   args: string[];
 };
+
+type SqlalchemyType = {
+  expression: string;
+  annotation: string;
+  /** Integer or Numeric affinity, which autoincrement="auto" makes an identity. */
+  isNumeric: boolean;
+  /** Integer affinity alone, the only one MySQL takes AUTO_INCREMENT on. */
+  isInteger: boolean;
+  /** The same expression as a call whose arguments may go one to a line. */
+  call?: CallEntry;
+};
+
+type CallArgument = string | CallEntry;
 
 type ResolvedRelationship = {
   relationship: Relationship;
@@ -177,11 +270,20 @@ type ClassContext = {
   ambiguous: Set<string>;
 };
 
+type TypedColumn = {
+  column: Column;
+  columnType: ColumnType;
+  type: SqlalchemyType;
+};
+
 type ColumnContext = {
   imports: ImportSet;
   attribute: string;
   key: string;
   foreignKeys: string[];
+  typed: TypedColumn;
+  isSoleKey: boolean;
+  isAutoIncrement: boolean;
 };
 
 export function createCode(state: RootState): string {
@@ -269,7 +371,7 @@ function formatClass(
         addSqlalchemy(imports, 'ForeignKey');
         const target = `${startTable.name}.${columnKey(parentNaming, startColumns[0])}`;
         const carrier = columnRef(naming, endColumns[0]);
-        const args = [`"${escapeString(target)}"`, ...actions];
+        const args = [pythonString(target), ...actions];
         const values = foreignKeys.get(carrier) ?? [];
         values.push(`ForeignKey(${args.join(', ')})`);
         foreignKeys.set(carrier, values);
@@ -302,12 +404,42 @@ function formatClass(
     buffer.push('');
   }
 
-  buffer.push(`${INDENT}__tablename__ = "${escapeString(table.name)}"`);
+  buffer.push(`${INDENT}__tablename__ = ${pythonString(table.name)}`);
   formatTableArgs(buffer, entries, table.comment);
 
   const bodyBuffer: string[] = [];
+  const { database } = state.settings;
+  const isSoleKey =
+    columns.filter(column => bHas(column.options, ColumnOption.primaryKey))
+      .length === 1;
+  const typedColumns = columns.map(column => {
+    // The type the editor's DDL writes the column as, which create_all must
+    // write too: a BIGINT key written BIGINT would be no rowid SQLite numbers.
+    const dataType = isSqliteIntegerKey(column, database, isSoleKey)
+      ? SQLITE_ROWID_TYPE
+      : column.dataType;
+    const columnType = getColumnType(dataType, database);
+    return {
+      column,
+      columnType,
+      type: getSqlalchemyType(columnType, database, imports),
+    };
+  });
+  const keys = typedColumns.filter(({ column }) =>
+    bHas(column.options, ColumnOption.primaryKey)
+  );
+  // SQLAlchemy refuses a second key column marked autoincrement=True, so of
+  // the keys the database numbers the first one takes it.
+  const autoIncrementKey = keys.find(
+    typed =>
+      isNumberedByDatabase(typed, database, isSoleKey) ||
+      (isSoleKey && typed.type.isNumeric && typed.columnType.isSerial)
+  );
 
-  columns.forEach(column => {
+  typedColumns.forEach(typed => {
+    const { column } = typed;
+    const isPrimaryKey = bHas(column.options, ColumnOption.primaryKey);
+
     formatColumn(
       state,
       { buffer: bodyBuffer, column },
@@ -316,6 +448,11 @@ function formatClass(
         attribute: naming.columnNames.get(column.id) ?? column.name,
         key: columnKey(naming, column),
         foreignKeys: foreignKeys.get(column.id) ?? [],
+        typed,
+        isSoleKey,
+        isAutoIncrement: isPrimaryKey
+          ? typed === autoIncrementKey
+          : isNumberedByDatabase(typed, database, isSoleKey),
       }
     );
   });
@@ -340,46 +477,73 @@ function formatClass(
 function formatColumn(
   { settings: { database } }: RootState,
   { buffer, column }: FormatColumnOptions,
-  { imports, attribute, key, foreignKeys }: ColumnContext
+  {
+    imports,
+    attribute,
+    key,
+    foreignKeys,
+    typed: {
+      columnType,
+      type: { expression, annotation, isNumeric, call },
+    },
+    isSoleKey,
+    isAutoIncrement,
+  }: ColumnContext
 ) {
-  const { expression, annotation } = getColumnType(
-    column.dataType,
-    database,
-    imports
-  );
   const isPrimaryKey = bHas(column.options, ColumnOption.primaryKey);
   const isNotNull = bHas(column.options, ColumnOption.notNull);
-  const isAutoIncrement = bHas(column.options, ColumnOption.autoIncrement);
+  // SQLAlchemy's autoincrement="auto" makes a lone numeric key an identity the
+  // document never asked for, unless its type numbers the rows itself, as
+  // SQLite's key declared INTEGER does, an alias of the rowid "auto" models.
+  const isRowid =
+    database === Database.SQLite &&
+    columnType.element.trim().toLowerCase() === 'integer';
+  const isGeneratedKey = isPrimaryKey && isSoleKey && isNumeric && !isRowid;
+  // The editor's DDL writes no DEFAULT on a column flagged auto increment,
+  // whether or not its database numbers it.
+  const hasServerDefault =
+    !isAutoIncrement &&
+    !bHas(column.options, ColumnOption.autoIncrement) &&
+    column.default.trim() !== '';
+  // MySQL's SERIAL adds a unique index of its own wherever the column stands.
+  const isUnique =
+    bHas(column.options, ColumnOption.unique) ||
+    (isMySQLFamily(database) && columnType.isSerial);
   const isOptional = !isPrimaryKey && !isNotNull;
-  const args: string[] = [];
+  const args: CallArgument[] = [];
 
   if (attribute !== column.name) {
-    args.push(`"${escapeString(column.name)}"`);
+    args.push(pythonString(column.name));
   }
-  args.push(expression);
+  args.push(call ?? expression);
   foreignKeys.forEach(foreignKey => args.push(foreignKey));
 
   if (key !== column.name) {
-    args.push(`key="${escapeString(key)}"`);
+    args.push(`key=${pythonString(key)}`);
   }
   if (isPrimaryKey) {
     args.push('primary_key=True');
   }
   if (isAutoIncrement) {
     args.push('autoincrement=True');
+  } else if (isGeneratedKey) {
+    args.push('autoincrement=False');
   }
   if (!isPrimaryKey && isNotNull) {
     args.push('nullable=False');
   }
-  if (bHas(column.options, ColumnOption.unique)) {
+  if (isUnique) {
     args.push('unique=True');
   }
-  if (!isAutoIncrement && column.default.trim() !== '') {
+  if (hasServerDefault) {
     addSqlalchemy(imports, 'text');
-    args.push(`server_default=text("${escapeString(column.default)}")`);
+    args.push({
+      head: 'server_default=text(',
+      args: [pythonString(column.default)],
+    });
   }
   if (column.comment.trim() !== '') {
-    args.push(`comment="${escapeString(column.comment)}"`);
+    args.push(`comment=${pythonString(column.comment)}`);
   }
 
   addOrm(imports, 'Mapped');
@@ -389,16 +553,12 @@ function formatColumn(
     addStdlibFrom(imports, 'typing', 'Optional');
   }
 
-  const mapped = isOptional
-    ? `Mapped[Optional[${annotation}]]`
-    : `Mapped[${annotation}]`;
-
-  formatCall(
+  formatAssignment(
     buffer,
-    INDENT,
-    `${attribute}: ${mapped} = mapped_column(`,
-    args,
-    ')'
+    attribute,
+    isOptional ? `Optional[${annotation}]` : annotation,
+    'mapped_column(',
+    args
   );
 }
 
@@ -433,16 +593,16 @@ function formatRelation(
       // would call the column optional, and formatClass has already run it over
       // every column this relationship can name.
       const annotation = isRequired
-        ? `Mapped["${parentNaming.className}"]`
-        : `Mapped[Optional["${parentNaming.className}"]]`;
+        ? `"${parentNaming.className}"`
+        : `Optional["${parentNaming.className}"]`;
 
       addOrm(imports, 'relationship');
-      formatCall(
+      formatAssignment(
         buffer,
-        INDENT,
-        `${attribute}: ${annotation} = relationship(`,
-        relationArguments(state, context, resolved, INVERSE),
-        ')'
+        attribute,
+        annotation,
+        'relationship(',
+        relationArguments(state, context, resolved, INVERSE)
       );
     });
 
@@ -464,16 +624,16 @@ function formatRelation(
       addStdlibFrom(imports, 'typing', isMany ? 'List' : 'Optional');
 
       const annotation = isMany
-        ? `Mapped[List["${childNaming.className}"]]`
-        : `Mapped[Optional["${childNaming.className}"]]`;
+        ? `List["${childNaming.className}"]`
+        : `Optional["${childNaming.className}"]`;
 
       addOrm(imports, 'relationship');
-      formatCall(
+      formatAssignment(
         buffer,
-        INDENT,
-        `${attribute}: ${annotation} = relationship(`,
-        relationArguments(state, context, resolved, OWNING),
-        ')'
+        attribute,
+        annotation,
+        'relationship(',
+        relationArguments(state, context, resolved, OWNING)
       );
     });
 }
@@ -562,9 +722,9 @@ function createIndexEntries(
         indexNames.push({ id: index.id, name: indexName });
       }
 
-      const args = [`"${escapeString(indexName)}"`];
+      const args = [pythonString(indexName)];
       columns.forEach(column =>
-        args.push(`"${escapeString(columnKey(naming, column))}"`)
+        args.push(pythonString(columnKey(naming, column)))
       );
       if (index.unique) {
         args.push('unique=True');
@@ -583,12 +743,24 @@ function formatTableArgs(
   comment: string
 ) {
   const commentArg =
-    comment.trim() === '' ? null : `"comment": "${escapeString(comment)}"`;
+    comment.trim() === '' ? null : `"comment": ${pythonString(comment)}`;
 
   if (entries.length === 0) {
     if (commentArg !== null) {
       formatCall(buffer, INDENT, '__table_args__ = {', [commentArg], '}');
     }
+    return;
+  }
+
+  // The comma after a lone entry is what makes the tuple, not one that keeps
+  // it open, so black joins the tuple onto one line wherever it fits.
+  const single = `${INDENT}__table_args__ = (${callText(entries[0])},)`;
+  if (
+    entries.length === 1 &&
+    commentArg === null &&
+    lineWidth(single) <= LINE_LIMIT
+  ) {
+    buffer.push(single);
     return;
   }
 
@@ -606,12 +778,12 @@ function formatCall(
   buffer: string[],
   indent: string,
   head: string,
-  args: string[],
+  args: CallArgument[],
   tail: string
 ) {
-  const line = `${indent}${head}${args.join(', ')}${tail}`;
+  const line = `${indent}${head}${args.map(callText).join(', ')}${tail}`;
 
-  if (line.length <= LINE_LIMIT) {
+  if (lineWidth(line) <= LINE_LIMIT) {
     buffer.push(line);
     return;
   }
@@ -619,8 +791,105 @@ function formatCall(
   // Keep the trailing comma: it is black's magic trailing comma, and without it
   // black pulls the arguments back onto one line.
   buffer.push(`${indent}${head}`);
-  args.forEach(arg => buffer.push(`${indent}${INDENT}${arg},`));
+  args.forEach(arg => {
+    if (typeof arg === 'string') {
+      buffer.push(`${indent}${INDENT}${arg},`);
+      return;
+    }
+    formatCall(buffer, `${indent}${INDENT}`, arg.head, arg.args, '),');
+  });
   buffer.push(`${indent}${tail}`);
+}
+
+/**
+ * A Mapped attribute set to a call. Where the call would open past the line,
+ * black moves it into parentheses of its own if the target, = and ( fit on
+ * one line, and otherwise opens the annotation's brackets instead.
+ */
+function formatAssignment(
+  buffer: string[],
+  attribute: string,
+  annotation: string,
+  head: string,
+  args: CallArgument[]
+) {
+  const target = `${attribute}: Mapped[${annotation}]`;
+  const opening = `${INDENT}${target} = ${head}`;
+  const line = `${opening}${args.map(callText).join(', ')})`;
+  const wrapped = `${INDENT}${target} = (`;
+
+  if (lineWidth(line) <= LINE_LIMIT || lineWidth(opening) <= LINE_LIMIT) {
+    formatCall(buffer, INDENT, `${target} = ${head}`, args, ')');
+    return;
+  }
+  if (lineWidth(wrapped) <= LINE_LIMIT) {
+    buffer.push(wrapped);
+    formatCall(buffer, `${INDENT}${INDENT}`, head, args, ')');
+    buffer.push(`${INDENT})`);
+    return;
+  }
+
+  buffer.push(`${INDENT}${attribute}: Mapped[`);
+  buffer.push(`${INDENT}${INDENT}${annotation}`);
+  formatCall(buffer, INDENT, `] = ${head}`, args, ')');
+}
+
+/**
+ * The code points black counts as two columns in the East Asian scripts:
+ * Hangul, kana, the CJK ideographs, symbols and punctuation, fullwidth forms.
+ */
+const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
+  [0x1100, 0x115f],
+  [0x2e80, 0x2e99],
+  [0x2e9b, 0x2ef3],
+  [0x2f00, 0x2fd5],
+  [0x2ff0, 0x2ffb],
+  [0x3000, 0x3029],
+  [0x302e, 0x303e],
+  [0x3041, 0x3096],
+  [0x309b, 0x30ff],
+  [0x3105, 0x312f],
+  [0x3131, 0x318e],
+  [0x3190, 0x31e3],
+  [0x31f0, 0x321e],
+  [0x3220, 0x3247],
+  [0x3250, 0x4dbf],
+  [0x4e00, 0xa48c],
+  [0xa490, 0xa4c6],
+  [0xa960, 0xa97c],
+  [0xac00, 0xd7a3],
+  [0xf900, 0xfaff],
+  [0xfe10, 0xfe19],
+  [0xfe30, 0xfe52],
+  [0xfe54, 0xfe66],
+  [0xfe68, 0xfe6b],
+  [0xff01, 0xff60],
+  [0xffe0, 0xffe6],
+  [0x20000, 0x2fffd],
+  [0x30000, 0x3fffd],
+];
+
+const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
+
+// The columns black gives a line: a code point at a time, two for a wide one.
+// Emoji and combining marks, which black also counts apart, count one here.
+function lineWidth(line: string): number {
+  if (PRINTABLE_ASCII.test(line)) {
+    return line.length;
+  }
+
+  let width = 0;
+  for (const char of line) {
+    const code = char.codePointAt(0) as number;
+    width += WIDE_RANGES.some(([first, last]) => first <= code && code <= last)
+      ? 2
+      : 1;
+  }
+  return width;
+}
+
+function callText(arg: CallArgument): string {
+  return typeof arg === 'string' ? arg : `${arg.head}${arg.args.join(', ')})`;
 }
 
 function formatImports(buffer: string[], imports: ImportSet) {
@@ -645,13 +914,15 @@ function formatImports(buffer: string[], imports: ImportSet) {
   if (imports.sqlalchemy.size !== 0) {
     formatFromImport(sqlalchemyBuffer, 'sqlalchemy', imports.sqlalchemy);
   }
-  if (imports.postgresql.size !== 0) {
-    formatFromImport(
-      sqlalchemyBuffer,
-      'sqlalchemy.dialects.postgresql',
-      imports.postgresql
-    );
-  }
+  Array.from(imports.dialects.keys())
+    .sort()
+    .forEach(dialect => {
+      formatFromImport(
+        sqlalchemyBuffer,
+        `sqlalchemy.dialects.${dialect}`,
+        imports.dialects.get(dialect) as ReadonlySet<string>
+      );
+    });
   formatFromImport(sqlalchemyBuffer, 'sqlalchemy.orm', imports.orm);
 
   stdlibBuffer.forEach(line => buffer.push(line));
@@ -706,7 +977,7 @@ function createImportSet(): ImportSet {
     stdlibPlain: new Set<StdlibPlainName>(),
     stdlibFrom: new Map<StdlibModule, Set<AnyStdlibFromName>>(),
     sqlalchemy: new Set<SqlalchemyName>(),
-    postgresql: new Set<PostgresqlName>(),
+    dialects: new Map<Dialect, Set<string>>(),
     orm: new Set<OrmName>(),
   };
 
@@ -719,8 +990,14 @@ function addSqlalchemy(imports: ImportSet, name: SqlalchemyName) {
   imports.sqlalchemy.add(name);
 }
 
-function addPostgresql(imports: ImportSet, name: PostgresqlName) {
-  imports.postgresql.add(name);
+function addDialect<T extends Dialect>(
+  imports: ImportSet,
+  dialect: T,
+  name: DialectName<T>
+) {
+  const names = imports.dialects.get(dialect) ?? new Set<string>();
+  names.add(name);
+  imports.dialects.set(dialect, names);
 }
 
 function addOrm(imports: ImportSet, name: OrmName) {
@@ -741,14 +1018,9 @@ function addStdlibFrom<T extends StdlibModule>(
   imports.stdlibFrom.set(module, names);
 }
 
-// ARGUMENTS is global to match getPrimitiveType's copy, because a vendor name
-// can carry two argument groups. TYPE_ARGUMENTS stays non-global: it is module
-// scoped and read with exec, whose lastIndex would carry between columns.
-const ARGUMENTS = /\([^)]*\)/g;
-const WHITESPACE = /\s+/g;
-const TYPE_ARGUMENTS = /\(\s*([^)]*)\)/;
-const DIGITS = /^[0-9]+$/;
-
+// TEXT, BLOB and JSON share primitive types the eleven categories cannot tell
+// apart. Alembic compares the mapped type against the reflected one, so a model
+// that collapsed them would emit a modify_type back to the type it already has.
 const textTypes = new Set([
   'clob',
   'long varchar',
@@ -760,114 +1032,889 @@ const textTypes = new Set([
   'tinytext',
 ]);
 
-const binaryTypes = new Set([
-  'bfile',
-  'binary',
-  'blob',
+// Each integer name with the dialect type that carries UNSIGNED and ZEROFILL,
+// and the core type a signed one keeps where the core has one.
+const mysqlIntegerTypes = new Map<
+  string,
+  [DialectName<'mysql'>, SqlalchemyName | null]
+>([
+  ['bigint', ['BIGINT', 'BigInteger']],
+  ['int', ['INTEGER', 'Integer']],
+  ['int1', ['TINYINT', null]],
+  ['int2', ['SMALLINT', 'SmallInteger']],
+  ['int3', ['MEDIUMINT', null]],
+  ['int4', ['INTEGER', 'Integer']],
+  ['int8', ['BIGINT', 'BigInteger']],
+  ['integer', ['INTEGER', 'Integer']],
+  ['mediumint', ['MEDIUMINT', null]],
+  ['middleint', ['MEDIUMINT', null]],
+  ['smallint', ['SMALLINT', 'SmallInteger']],
+  ['tinyint', ['TINYINT', null]],
+]);
+
+// MySQL stores LONG and LONG VARCHAR as MEDIUMTEXT and LONG VARBINARY as a
+// MEDIUMBLOB; MariaDB's Oracle mode takes CLOB for LONGTEXT.
+const mysqlSizedTypes = new Map<string, [DialectName<'mysql'>, AnnotationName]>(
+  [
+    ['clob', ['LONGTEXT', 'str']],
+    ['long', ['MEDIUMTEXT', 'str']],
+    ['long char varying', ['MEDIUMTEXT', 'str']],
+    ['long character varying', ['MEDIUMTEXT', 'str']],
+    ['long varbinary', ['MEDIUMBLOB', 'bytes']],
+    ['long varchar', ['MEDIUMTEXT', 'str']],
+    ['long varcharacter', ['MEDIUMTEXT', 'str']],
+    ['longblob', ['LONGBLOB', 'bytes']],
+    ['longtext', ['LONGTEXT', 'str']],
+    ['mediumblob', ['MEDIUMBLOB', 'bytes']],
+    ['mediumtext', ['MEDIUMTEXT', 'str']],
+    ['tinyblob', ['TINYBLOB', 'bytes']],
+    ['tinytext', ['TINYTEXT', 'str']],
+  ]
+);
+
+// The databases with an interval column type; on any other an interval is
+// not a type, and stays the string its vendor list files it under.
+const intervalDatabases = new Set<number>([
+  Database.Databricks,
+  Database.Oracle,
+  Database.PostgreSQL,
+]);
+
+const mysqlDecimalTypes = new Set(['dec', 'decimal', 'fixed', 'numeric']);
+const mysqlYearTypes = new Set(['sql_tsi_year', 'year']);
+const characterTypes = new Set(['char', 'character']);
+const nationalCharacterTypes = new Set([
+  'national char',
+  'national character',
+  'nchar',
+]);
+// Every spelling MySQL and MariaDB read as a VARCHAR of the national
+// character set, utf8mb3.
+const mysqlNationalVaryingTypes = new Set([
+  'national char varying',
+  'national character varying',
+  'national varchar',
+  'national varcharacter',
+  'nchar varchar',
+  'nchar varcharacter',
+  'nchar varying',
+  'nvarchar',
+]);
+const mssqlBinaryReadTypes = new Set([
+  'geography',
+  'geometry',
+  'hierarchyid',
+  'sql_variant',
+]);
+// The Oracle types python-oracledb hands over as one of its own objects: a
+// DbObject for an object type, an array.array for a VECTOR, a LOB for a BFILE.
+const oracleObjectTypes = new Set(['anydata', 'bfile', 'uritype', 'vector']);
+const mssqlNationalVaryingTypes = new Set([
+  'national char varying',
+  'national character varying',
+  'nvarchar',
+]);
+const oracleNationalVaryingTypes = new Set([
+  'national char varying',
+  'national character varying',
+  'nchar varying',
+  'nvarchar2',
+]);
+const postgresSmallintTypes = new Set([
+  'int2',
+  'serial2',
+  'smallint',
+  'smallserial',
+]);
+const postgresTimeTypes = new Set(['time', 'time without time zone']);
+const postgresTimestampTypes = new Set([
+  'timestamp',
+  'timestamp without time zone',
+]);
+
+// The element types whose arrays psycopg2, SQLAlchemy's default PostgreSQL
+// driver, parses into a list. It hands any other array over as one string
+// such as {a,b}, which an ARRAY would split into its letters.
+const postgresArrayTypes = new Set([
+  'bigint',
+  'bool',
+  'boolean',
+  'bpchar',
   'bytea',
-  'image',
-  'long raw',
-  'longblob',
-  'mediumblob',
-  'raw',
-  'tinyblob',
-  'varbinary',
-]);
-
-const timestampTzTypes = new Set([
-  'datetimeoffset',
+  'char',
+  'character',
+  'character varying',
+  'cidr',
+  'date',
+  'daterange',
+  'dec',
+  'decimal',
+  'double precision',
+  'float',
+  'float4',
+  'float8',
+  'inet',
+  'int',
+  'int2',
+  'int4',
+  'int4range',
+  'int8',
+  'int8range',
+  'integer',
+  'json',
+  'jsonb',
+  'macaddr',
+  'name',
+  'numeric',
+  'numrange',
+  'oid',
+  'real',
+  'smallint',
+  'text',
+  'time',
+  'time with time zone',
+  'time without time zone',
+  'timestamp',
   'timestamp with time zone',
-  'timestamp_tz',
+  'timestamp without time zone',
   'timestamptz',
+  'timetz',
+  'tsrange',
+  'tstzrange',
+  'uuid',
+  'varchar',
 ]);
 
-const timeTzTypes = new Set(['time with time zone', 'timetz']);
+// The PostgreSQL types the dialect names that psycopg2 reads as text, and oid,
+// which it reads as a number.
+const postgresNamedTypes = new Map<
+  string,
+  [DialectName<'postgresql'>, AnnotationName]
+>([
+  ['cidr', ['CIDR', 'str']],
+  ['inet', ['INET', 'str']],
+  ['jsonpath', ['JSONPATH', 'str']],
+  ['macaddr', ['MACADDR', 'str']],
+  ['macaddr8', ['MACADDR8', 'str']],
+  ['oid', ['OID', 'int']],
+  ['regclass', ['REGCLASS', 'str']],
+  ['regconfig', ['REGCONFIG', 'str']],
+  ['tsquery', ['TSQUERY', 'str']],
+  ['tsvector', ['TSVECTOR', 'str']],
+]);
 
-// The 11 primitive types cannot tell TEXT from BLOB from JSON. Alembic compares
-// the mapped type against the reflected one, so a model that collapsed them
-// would emit a modify_type back to the type the database already has.
-function getColumnType(
-  dataType: string,
+// Each range type with the Python type of its bounds; a multirange reads as a
+// list of ranges.
+const postgresRangeTypes = new Map<
+  string,
+  [DialectName<'postgresql'>, AnnotationName]
+>([
+  ['datemultirange', ['DATEMULTIRANGE', 'date']],
+  ['daterange', ['DATERANGE', 'date']],
+  ['int4multirange', ['INT4MULTIRANGE', 'int']],
+  ['int4range', ['INT4RANGE', 'int']],
+  ['int8multirange', ['INT8MULTIRANGE', 'int']],
+  ['int8range', ['INT8RANGE', 'int']],
+  ['nummultirange', ['NUMMULTIRANGE', 'Decimal']],
+  ['numrange', ['NUMRANGE', 'Decimal']],
+  ['tsmultirange', ['TSMULTIRANGE', 'datetime']],
+  ['tsrange', ['TSRANGE', 'datetime']],
+  ['tstzmultirange', ['TSTZMULTIRANGE', 'datetime']],
+  ['tstzrange', ['TSTZRANGE', 'datetime']],
+]);
+
+type AffinityName = SqlalchemyName | DialectName<'mysql'>;
+
+// The names SQLAlchemy gives Integer affinity and, with the decimal and float
+// ones, Numeric affinity, which on a lone key autoincrement="auto" makes SERIAL,
+// AUTO_INCREMENT, an IDENTITY or a CREATE TABLE SQL Server and MySQL refuse.
+const INTEGER_AFFINITY: readonly AffinityName[] = [
+  'BIGINT',
+  'BigInteger',
+  'INTEGER',
+  'Integer',
+  'MEDIUMINT',
+  'SMALLINT',
+  'SmallInteger',
+  'TINYINT',
+];
+const DECIMAL_AFFINITY: readonly AffinityName[] = [
+  'DECIMAL',
+  'DOUBLE',
+  'Double',
+  'FLOAT',
+  'Float',
+  'Numeric',
+  'REAL',
+];
+const INTEGER_NAMES: ReadonlySet<string> = new Set(INTEGER_AFFINITY);
+const NUMERIC_NAMES: ReadonlySet<string> = new Set([
+  ...INTEGER_AFFINITY,
+  ...DECIMAL_AFFINITY,
+]);
+
+// The type names PostgreSQL and Databricks take an identity on, by which the
+// editor's DDL gives one to a column flagged auto increment.
+const POSTGRES_IDENTITY_TYPES = new Set([
+  'bigint',
+  'int',
+  'int2',
+  'int4',
+  'int8',
+  'integer',
+  'smallint',
+]);
+const DATABRICKS_IDENTITY_TYPES = new Set(['bigint', 'long']);
+
+/**
+ * Whether the editor's DDL numbers a column flagged auto increment on its
+ * database, of a type SQLAlchemy takes autoincrement=True on, which refuses
+ * any type without Integer or Numeric affinity.
+ */
+function isNumberedByDatabase(
+  { column, columnType, type }: TypedColumn,
+  database: number,
+  isSoleKey: boolean
+): boolean {
+  if (!bHas(column.options, ColumnOption.autoIncrement) || !type.isNumeric) {
+    return false;
+  }
+
+  const name = column.dataType.trim().toLowerCase();
+
+  // MySQL takes AUTO_INCREMENT on an integer alone and MariaDB on a float
+  // too; SQL Server takes an IDENTITY on an integer or a decimal of scale 0.
+  // Oracle's sequence and trigger number any number.
+  switch (database) {
+    case Database.PostgreSQL:
+      return columnType.isSerial || POSTGRES_IDENTITY_TYPES.has(name);
+    case Database.SQLite:
+      return isSqliteIntegerKey(column, database, isSoleKey);
+    case Database.Databricks:
+      return DATABRICKS_IDENTITY_TYPES.has(name);
+    case Database.MySQL:
+      return type.isInteger;
+    case Database.MariaDB:
+      return type.isInteger || columnType.isFloat;
+    case Database.MSSQL:
+      return (
+        type.isInteger || (!columnType.isFloat && (columnType.scale ?? 0) === 0)
+      );
+  }
+  return true;
+}
+
+const SQLITE_ROWID_TYPE = 'INTEGER';
+
+/**
+ * Whether the editor's SQLite DDL writes the column INTEGER with AUTOINCREMENT,
+ * as it does a table's only key flagged auto increment of an integer name; an
+ * INTEGER key is the rowid, which SQLite numbers, and a BIGINT one is not.
+ */
+function isSqliteIntegerKey(
+  column: Column,
+  database: number,
+  isSoleKey: boolean
+): boolean {
+  return (
+    database === Database.SQLite &&
+    isSoleKey &&
+    bHas(column.options, ColumnOption.primaryKey) &&
+    bHas(column.options, ColumnOption.autoIncrement) &&
+    isIntegerFamily(column.dataType)
+  );
+}
+
+const ZEROFILL = /(^|[^0-9a-z_])zerofill([^0-9a-z_]|$)/i;
+const ORACLE_DAY_TO_SECOND =
+  /^\s*interval\s+day\s*(?:\(\s*(\d+)\s*\))?\s+to\s+second\s*(?:\(\s*(\d+)\s*\))?\s*$/i;
+const INTERVAL_WORD = 'interval';
+
+/**
+ * The SQLAlchemy type of a column and the Python type it reads as. On each
+ * database the type is the one its DDL names where SQLAlchemy has it, so that
+ * create_all writes that type and Alembic reports no difference against it.
+ */
+function getSqlalchemyType(
+  column: ColumnType,
   database: number,
   imports: ImportSet
-): ColumnType {
-  const base = dataType
-    .toLocaleLowerCase()
-    .replace(ARGUMENTS, ' ')
-    .replace(WHITESPACE, ' ')
-    .trim();
+): SqlalchemyType {
+  if (column.arrayDepth === 0) {
+    return elementType(column, database, imports);
+  }
+  // An enum array, which no vendor list names, or an array psycopg2 cannot
+  // parse stays the text it hands over.
+  if (
+    !column.isListed ||
+    (!postgresArrayTypes.has(column.base) && column.scalar !== 'interval')
+  ) {
+    return coreType(imports, 'String', 'str');
+  }
+
+  const element = elementType(column, database, imports);
+  const dimensions =
+    column.arrayDepth > 1 ? `, dimensions=${column.arrayDepth}` : '';
+
+  addSqlalchemy(imports, 'ARRAY');
+  addStdlibFrom(imports, 'typing', 'List');
+  return {
+    expression: `ARRAY(${element.expression}${dimensions})`,
+    annotation: `${'List['.repeat(column.arrayDepth)}${element.annotation}${']'.repeat(column.arrayDepth)}`,
+    isNumeric: false,
+    isInteger: false,
+  };
+}
+
+function elementType(
+  column: ColumnType,
+  database: number,
+  imports: ImportSet
+): SqlalchemyType {
+  switch (database) {
+    case Database.MariaDB:
+    case Database.MySQL:
+      return (
+        mysqlType(column, database, imports) ??
+        portableType(column, database, imports)
+      );
+    case Database.PostgreSQL:
+      return (
+        postgresType(column, imports) ?? portableType(column, database, imports)
+      );
+    case Database.MSSQL:
+      return (
+        mssqlType(column, imports) ?? portableType(column, database, imports)
+      );
+    case Database.Oracle:
+      return (
+        oracleType(column, imports) ?? portableType(column, database, imports)
+      );
+  }
+  return portableType(column, database, imports);
+}
+
+function portableType(
+  column: ColumnType,
+  database: number,
+  imports: ImportSet
+): SqlalchemyType {
+  const { base, element, args } = column;
 
   if (textTypes.has(base)) {
-    addSqlalchemy(imports, 'Text');
-    return { expression: 'Text', annotation: 'str' };
+    return coreType(imports, 'Text', 'str');
   }
-  if (binaryTypes.has(base)) {
-    addSqlalchemy(imports, 'LargeBinary');
-    return { expression: 'LargeBinary', annotation: 'bytes' };
+  if (BINARY_TYPES.has(base)) {
+    return coreType(imports, 'LargeBinary', 'bytes');
   }
   if (base === 'jsonb' && database === Database.PostgreSQL) {
-    addPostgresql(imports, 'JSONB');
     addStdlibFrom(imports, 'typing', 'Any');
-    return { expression: 'JSONB', annotation: 'Any' };
+    return dialectType(imports, 'postgresql', 'JSONB', 'Any');
   }
-  if (base === 'json' || base === 'jsonb') {
-    addSqlalchemy(imports, 'JSON');
+  if (JSON_TYPES.has(base)) {
     addStdlibFrom(imports, 'typing', 'Any');
-    return { expression: 'JSON', annotation: 'Any' };
+    return coreType(imports, 'JSON', 'Any');
   }
   if (base === 'uuid' && database === Database.PostgreSQL) {
-    addPostgresql(imports, 'UUID');
     addStdlibPlain(imports, 'uuid');
-    return { expression: 'UUID(as_uuid=True)', annotation: 'uuid.UUID' };
+    return dialectType(
+      imports,
+      'postgresql',
+      'UUID',
+      'uuid.UUID',
+      '(as_uuid=True)'
+    );
   }
-  if (base === 'uuid' || base === 'uniqueidentifier') {
-    addSqlalchemy(imports, 'Uuid');
+  if (UUID_TYPES.has(base)) {
     addStdlibPlain(imports, 'uuid');
-    return { expression: 'Uuid', annotation: 'uuid.UUID' };
+    return coreType(imports, 'Uuid', 'uuid.UUID');
   }
-  if (timestampTzTypes.has(base)) {
-    addSqlalchemy(imports, 'DateTime');
-    addStdlibFrom(imports, 'datetime', 'datetime');
-    return { expression: 'DateTime(timezone=True)', annotation: 'datetime' };
+  if (TIMESTAMP_TZ_TYPES.has(base)) {
+    return coreType(imports, 'DateTime', 'datetime', '(timezone=True)');
   }
-  if (timeTzTypes.has(base)) {
-    addSqlalchemy(imports, 'Time');
-    addStdlibFrom(imports, 'datetime', 'time');
-    return { expression: 'Time(timezone=True)', annotation: 'time' };
+  if (POSTGRES_TIME_TZ_TYPES.has(base)) {
+    return coreType(imports, 'Time', 'time', '(timezone=True)');
+  }
+  if (column.scalar === 'interval' && intervalDatabases.has(database)) {
+    return coreType(imports, 'Interval', 'timedelta');
   }
 
-  const primitiveType = getPrimitiveType(dataType, database);
+  const primitiveType = getPrimitiveType(element, database);
   const callable = convertTypeMap[primitiveType];
   const annotation = annotationMap[primitiveType];
-  const args = typeArguments(dataType);
 
-  addSqlalchemy(imports, callable);
+  if (primitiveType === 'string') {
+    return coreType(imports, callable, annotation, lengthArgument(column));
+  }
+  if (primitiveType === 'decimal' && (args.length === 1 || args.length === 2)) {
+    return coreType(imports, callable, annotation, `(${args.join(', ')})`);
+  }
+  // Oracle's NUMBER(*,2) is a NUMBER(38,2), which Numeric spells with digits.
+  if (
+    primitiveType === 'decimal' &&
+    column.precision !== null &&
+    column.scale !== null
+  ) {
+    return coreType(
+      imports,
+      callable,
+      annotation,
+      `(${column.precision}, ${column.scale})`
+    );
+  }
+  return coreType(imports, callable, annotation);
+}
+
+// A character type's declared length, an Oracle BYTE or CHAR unit dropped,
+// else a positive lone argument; null where neither gives one.
+function lengthValue({ args, length }: ColumnType): number | null {
+  const value = length ?? (args.length === 1 ? args[0] : null);
+  return value !== null && value > 0 ? value : null;
+}
+
+function lengthArgument(column: ColumnType): string {
+  const value = lengthValue(column);
+  return value === null ? '' : `(${value})`;
+}
+
+// A MySQL or MariaDB String needs a length, and a type the core spells only
+// one way (TINYINT, YEAR, BIT, the sized TEXT and BLOB types, a fractional
+// second on TIMESTAMP, DATETIME and TIME) comes from the dialect.
+function mysqlType(
+  column: ColumnType,
+  database: number,
+  imports: ImportSet
+): SqlalchemyType | null {
+  const { base, args } = column;
+  const isMariaDB = database === Database.MariaDB;
+  const length = lengthArgument(column);
+  const fsp = args.length === 1 && args[0] > 0 ? `(fsp=${args[0]})` : '';
+  const integer = mysqlIntegerTypes.get(base);
+  const sized = mysqlSizedTypes.get(base);
+
+  if (column.enumMembers) {
+    return memberCall(coreType(imports, 'Enum', 'str'), column.enumMembers);
+  }
+  if (column.setMembers) {
+    addStdlibFrom(imports, 'typing', 'Set');
+    return {
+      ...memberCall(
+        dialectType(imports, 'mysql', 'SET', 'str'),
+        column.setMembers
+      ),
+      annotation: 'Set[str]',
+    };
+  }
+  if (column.network === 'ipv4') {
+    return dialectType(imports, 'mysql', 'INET4', 'str');
+  }
+  if (column.network === 'ipv6') {
+    return dialectType(imports, 'mysql', 'INET6', 'str');
+  }
+  if (isMariaDB && base === 'uuid') {
+    addStdlibPlain(imports, 'uuid');
+    return coreType(imports, 'UUID', 'uuid.UUID');
+  }
+  if (base === 'serial') {
+    return dialectType(imports, 'mysql', 'BIGINT', 'int', '(unsigned=True)');
+  }
+  if (integer) {
+    return mysqlInteger(column, integer, imports);
+  }
+  if (base === 'bit') {
+    return dialectType(imports, 'mysql', 'BIT', 'int', length);
+  }
+  if (mysqlYearTypes.has(base)) {
+    return dialectType(imports, 'mysql', 'YEAR', 'int');
+  }
+  if (mysqlDecimalTypes.has(base) && column.isUnsigned) {
+    const digits = [column.precision, column.scale].filter(
+      value => value !== null
+    );
+    return dialectType(
+      imports,
+      'mysql',
+      'DECIMAL',
+      'Decimal',
+      `(${[...digits, ...unsignedOptions(column)].join(', ')})`
+    );
+  }
+  // The dialect's DOUBLE reads a Decimal unless told otherwise; its FLOAT and
+  // the core Double read a float.
+  if (column.isFloat && column.isUnsigned) {
+    const isDouble = column.scalar === 'f64';
+    const options = unsignedOptions(column);
+
+    return dialectType(
+      imports,
+      'mysql',
+      isDouble ? 'DOUBLE' : 'FLOAT',
+      'float',
+      `(${(isDouble ? [...options, 'asdecimal=False'] : options).join(', ')})`
+    );
+  }
+  // CLOB, RAW and NUMBER exist in MariaDB's Oracle mode alone, which stores
+  // them as LONGTEXT, VARBINARY(n) and, for a bare NUMBER, a DOUBLE.
+  if (sized && (base !== 'clob' || isMariaDB)) {
+    return dialectType(imports, 'mysql', sized[0], sized[1]);
+  }
+  // TEXT(n) and BLOB(n) are the smallest class that holds n, TEXT(0) MySQL's
+  // TINYTEXT, so n goes on and the database picks the class for create_all as
+  // it did for the editor's DDL.
+  if (base === 'text' && args.length === 1) {
+    return coreType(imports, 'Text', 'str', `(${args[0]})`);
+  }
+  if (base === 'blob' && args.length === 1) {
+    return coreType(imports, 'LargeBinary', 'bytes', `(${args[0]})`);
+  }
+  if (base === 'binary' || base === 'char byte') {
+    return coreType(imports, 'BINARY', 'bytes', length);
+  }
+  if (
+    (base === 'varbinary' || (isMariaDB && base === 'raw')) &&
+    length !== ''
+  ) {
+    return coreType(imports, 'VARBINARY', 'bytes', length);
+  }
+  if (isMariaDB && base === 'number' && column.precision === null) {
+    return coreType(imports, 'Double', 'float');
+  }
+  if (characterTypes.has(base)) {
+    return coreType(imports, 'CHAR', 'str', length);
+  }
+  if (nationalCharacterTypes.has(base)) {
+    return coreType(imports, 'NCHAR', 'str', length);
+  }
+  if (mysqlNationalVaryingTypes.has(base) && length !== '') {
+    return dialectType(
+      imports,
+      'mysql',
+      'VARCHAR',
+      'str',
+      `(${lengthValue(column)}, charset="utf8mb3")`
+    );
+  }
+  if (base === 'timestamp') {
+    return dialectType(imports, 'mysql', 'TIMESTAMP', 'datetime', fsp);
+  }
+  if (base === 'datetime' && fsp !== '') {
+    return dialectType(imports, 'mysql', 'DATETIME', 'datetime', fsp);
+  }
+  if (base === 'time' && fsp !== '') {
+    return dialectType(imports, 'mysql', 'TIME', 'time', fsp);
+  }
+  return null;
+}
+
+// MySQL keeps a display width only on TINYINT(1) and on a ZEROFILL column,
+// where SHOW CREATE TABLE still prints it, and deprecates it everywhere else.
+function mysqlInteger(
+  column: ColumnType,
+  [name, signed]: [DialectName<'mysql'>, SqlalchemyName | null],
+  imports: ImportSet
+): SqlalchemyType {
+  const { args, element } = column;
+  const options = unsignedOptions(column);
+  const width = args.length === 1 ? args[0] : null;
+
+  if (!column.isUnsigned && signed) {
+    return coreType(imports, signed, 'int');
+  }
+
+  const keepsWidth =
+    width !== null &&
+    (ZEROFILL.test(element) || (name === 'TINYINT' && width === 1));
+  const values = keepsWidth ? [String(width), ...options] : options;
+
+  return dialectType(
+    imports,
+    'mysql',
+    name,
+    'int',
+    values.length === 0 ? '' : `(${values.join(', ')})`
+  );
+}
+
+// ZEROFILL makes a MySQL column UNSIGNED too, and SHOW CREATE TABLE says both.
+function unsignedOptions({ element, isUnsigned }: ColumnType): string[] {
+  if (ZEROFILL.test(element)) {
+    return ['unsigned=True', 'zerofill=True'];
+  }
+  return isUnsigned ? ['unsigned=True'] : [];
+}
+
+function postgresType(
+  column: ColumnType,
+  imports: ImportSet
+): SqlalchemyType | null {
+  const { base, args } = column;
+  const precision = args.length === 1 ? args[0] : null;
+  const length = lengthArgument(column);
+  const named = postgresNamedTypes.get(base);
+  const range = postgresRangeTypes.get(base);
+
+  // psycopg2 reads xid, cid and xid8 as text, and PostgreSQL casts no integer
+  // to them, so a String reads and writes them as a str.
+  if (column.isTextInteger) {
+    return coreType(imports, 'String', 'str');
+  }
+  if (postgresSmallintTypes.has(base)) {
+    return coreType(imports, 'SmallInteger', 'int');
+  }
+  if (column.scalar === 'f32') {
+    return coreType(imports, 'REAL', 'float');
+  }
+  if (characterTypes.has(base) || (base === 'bpchar' && length !== '')) {
+    return coreType(imports, 'CHAR', 'str', length);
+  }
+  if (column.isBitString) {
+    const values = length === '' ? [] : [String(args[0])];
+    if (base !== 'bit') {
+      values.push('varying=True');
+    }
+    return dialectType(
+      imports,
+      'postgresql',
+      'BIT',
+      'str',
+      values.length === 0 ? '' : `(${values.join(', ')})`
+    );
+  }
+  if (column.isMoney) {
+    return dialectType(imports, 'postgresql', 'MONEY', 'str');
+  }
+  if (named) {
+    return dialectType(imports, 'postgresql', named[0], named[1]);
+  }
+  if (range) {
+    const isMultirange = base.endsWith('multirange');
+
+    addDialect(imports, 'postgresql', 'Range');
+    if (isMultirange) {
+      addStdlibFrom(imports, 'typing', 'List');
+    }
+    return {
+      ...dialectType(imports, 'postgresql', range[0], range[1]),
+      annotation: isMultirange
+        ? `List[Range[${range[1]}]]`
+        : `Range[${range[1]}]`,
+    };
+  }
+  if (column.scalar === 'interval') {
+    return postgresInterval(base, precision, imports);
+  }
+  if (precision === null) {
+    return null;
+  }
+  if (postgresTimeTypes.has(base) || POSTGRES_TIME_TZ_TYPES.has(base)) {
+    return dialectType(
+      imports,
+      'postgresql',
+      'TIME',
+      'time',
+      timePrecision(postgresTimeTypes.has(base), precision)
+    );
+  }
+  if (postgresTimestampTypes.has(base) || TIMESTAMP_TZ_TYPES.has(base)) {
+    return dialectType(
+      imports,
+      'postgresql',
+      'TIMESTAMP',
+      'datetime',
+      timePrecision(postgresTimestampTypes.has(base), precision)
+    );
+  }
+  return null;
+}
+
+function timePrecision(isNaive: boolean, precision: number): string {
+  return isNaive
+    ? `(precision=${precision})`
+    : `(timezone=True, precision=${precision})`;
+}
+
+// interval day to second(3) keeps its fields and its precision, which the
+// core Interval cannot write.
+function postgresInterval(
+  base: string,
+  precision: number | null,
+  imports: ImportSet
+): SqlalchemyType {
+  const fields = base.slice(INTERVAL_WORD.length).trim();
+  const values: string[] = [];
+
+  if (fields !== '') {
+    values.push(`fields="${fields}"`);
+  }
+  if (precision !== null) {
+    values.push(`precision=${precision}`);
+  }
+  if (values.length === 0) {
+    return coreType(imports, 'Interval', 'timedelta');
+  }
+  return dialectType(
+    imports,
+    'postgresql',
+    'INTERVAL',
+    'timedelta',
+    `(${values.join(', ')})`
+  );
+}
+
+function mssqlType(
+  column: ColumnType,
+  imports: ImportSet
+): SqlalchemyType | null {
+  const { base } = column;
+  const length = lengthArgument(column);
+
+  // The dialect's TIMESTAMP is the eight bytes of a rowversion, a name Alembic
+  // reads back as TIMESTAMP where it would report the dialect's ROWVERSION.
+  if (column.isRowVersion) {
+    return dialectType(imports, 'mssql', 'TIMESTAMP', 'bytes');
+  }
+  // pymssql hands these over in their binary form, so they read as bytes
+  // through the String they keep.
+  if (mssqlBinaryReadTypes.has(base)) {
+    return coreType(imports, 'String', 'bytes');
+  }
+  if (base === 'money') {
+    return dialectType(imports, 'mssql', 'MONEY', 'Decimal');
+  }
+  if (base === 'smallmoney') {
+    return dialectType(imports, 'mssql', 'SMALLMONEY', 'Decimal');
+  }
+  if (mssqlNationalVaryingTypes.has(base)) {
+    return coreType(imports, 'NVARCHAR', 'str', length);
+  }
+  if (characterTypes.has(base)) {
+    return coreType(imports, 'CHAR', 'str', length);
+  }
+  if (nationalCharacterTypes.has(base)) {
+    return coreType(imports, 'NCHAR', 'str', length);
+  }
+  if (base === 'ntext' || base === 'national text') {
+    return dialectType(imports, 'mssql', 'NTEXT', 'str');
+  }
+  if (base === 'binary') {
+    return coreType(imports, 'BINARY', 'bytes', length);
+  }
+  if ((base === 'varbinary' || base === 'binary varying') && length !== '') {
+    return coreType(imports, 'VARBINARY', 'bytes', length);
+  }
+  return null;
+}
+
+// SQLAlchemy writes DATE and every TIMESTAMP as DATE on Oracle unless the
+// dialect's own types are used, and a TIMESTAMP's precision has no argument
+// there: TIMESTAMP(3) takes the 3 as timezone.
+function oracleType(
+  column: ColumnType,
+  imports: ImportSet
+): SqlalchemyType | null {
+  const { base, element } = column;
+  const length = lengthArgument(column);
+
+  if (oracleObjectTypes.has(base)) {
+    addStdlibFrom(imports, 'typing', 'Any');
+    return {
+      ...portableType(column, Database.Oracle, imports),
+      annotation: 'Any',
+    };
+  }
+  if (base === 'date') {
+    return dialectType(imports, 'oracle', 'DATE', 'datetime');
+  }
+  if (base === 'timestamp') {
+    return dialectType(imports, 'oracle', 'TIMESTAMP', 'datetime');
+  }
+  if (base === 'timestamp with time zone') {
+    return dialectType(
+      imports,
+      'oracle',
+      'TIMESTAMP',
+      'datetime',
+      '(timezone=True)'
+    );
+  }
+  if (base === 'timestamp with local time zone') {
+    return dialectType(
+      imports,
+      'oracle',
+      'TIMESTAMP',
+      'datetime',
+      '(local_timezone=True)'
+    );
+  }
+  if (oracleNationalVaryingTypes.has(base) && length !== '') {
+    return dialectType(imports, 'oracle', 'NVARCHAR2', 'str', length);
+  }
+  if (characterTypes.has(base)) {
+    return coreType(imports, 'CHAR', 'str', length);
+  }
+  if (nationalCharacterTypes.has(base)) {
+    return coreType(imports, 'NCHAR', 'str', length);
+  }
+  if (base === 'nclob') {
+    return dialectType(imports, 'oracle', 'NCLOB', 'str');
+  }
+  if (base === 'raw' && length !== '') {
+    return dialectType(imports, 'oracle', 'RAW', 'bytes', length);
+  }
+
+  const daySecond = ORACLE_DAY_TO_SECOND.exec(element);
+
+  if (daySecond) {
+    const [, day, second] = daySecond;
+    const values = [
+      day === undefined ? null : `day_precision=${day}`,
+      second === undefined ? null : `second_precision=${second}`,
+    ].filter(value => value !== null);
+
+    return coreType(
+      imports,
+      'Interval',
+      'timedelta',
+      values.length === 0 ? '' : `(${values.join(', ')})`
+    );
+  }
+  return null;
+}
+
+function coreType(
+  imports: ImportSet,
+  name: SqlalchemyName,
+  annotation: AnnotationName | 'Any' | 'uuid.UUID',
+  args = ''
+): SqlalchemyType {
+  addSqlalchemy(imports, name);
   addAnnotationImport(imports, annotation);
-
-  if (primitiveType === 'string' && args.length === 1 && args[0] > 0) {
-    return { expression: `String(${args[0]})`, annotation };
-  }
-  if (primitiveType === 'decimal' && args.length === 1) {
-    return { expression: `Numeric(${args[0]})`, annotation };
-  }
-  if (primitiveType === 'decimal' && args.length === 2) {
-    return { expression: `Numeric(${args[0]}, ${args[1]})`, annotation };
-  }
-
-  return { expression: callable, annotation };
+  return {
+    expression: `${name}${args}`,
+    annotation,
+    isNumeric: NUMERIC_NAMES.has(name),
+    isInteger: INTEGER_NAMES.has(name),
+  };
 }
 
-function typeArguments(dataType: string): number[] {
-  const matched = TYPE_ARGUMENTS.exec(dataType);
-  if (!matched) {
-    return [];
-  }
-
-  const values = matched[1].split(',').map(value => value.trim());
-  return values.every(value => DIGITS.test(value)) ? values.map(Number) : [];
+function dialectType<T extends Dialect>(
+  imports: ImportSet,
+  dialect: T,
+  name: DialectName<T>,
+  annotation: AnnotationName | 'Any' | 'uuid.UUID',
+  args = ''
+): SqlalchemyType {
+  addDialect(imports, dialect, name);
+  addAnnotationImport(imports, annotation);
+  return {
+    expression: `${name}${args}`,
+    annotation,
+    isNumeric: NUMERIC_NAMES.has(name),
+    isInteger: INTEGER_NAMES.has(name),
+  };
 }
 
-function addAnnotationImport(imports: ImportSet, annotation: AnnotationName) {
+function addAnnotationImport(imports: ImportSet, annotation: string) {
   switch (annotation) {
     case 'Decimal':
       addStdlibFrom(imports, 'decimal', 'Decimal');
@@ -875,9 +1922,54 @@ function addAnnotationImport(imports: ImportSet, annotation: AnnotationName) {
     case 'date':
     case 'datetime':
     case 'time':
+    case 'timedelta':
       addStdlibFrom(imports, 'datetime', annotation);
       break;
   }
+}
+
+const PYTHON_ESCAPES = new Map([
+  ['\\', '\\\\'],
+  ['\n', '\\n'],
+  ['\r', '\\r'],
+  ['\t', '\\t'],
+]);
+
+// The members an ENUM or SET reads, as Python string literals: a control
+// character a MySQL escape put there is written as an escape of its own.
+function memberCall(type: SqlalchemyType, members: string[]): SqlalchemyType {
+  const call = { head: `${type.expression}(`, args: members.map(pythonString) };
+  return { ...type, expression: callText(call), call };
+}
+
+// Black keeps double quotes unless single ones need fewer escapes, which is
+// where the value holds more double quotes than single ones.
+function pythonString(value: string): string {
+  const chars = Array.from(value);
+  const doubles = chars.filter(char => char === '"').length;
+  const singles = chars.filter(char => char === "'").length;
+  const quote = doubles > singles ? "'" : '"';
+  return `${quote}${escapeChars(chars, quote)}${quote}`;
+}
+
+// A line break, a backslash, the quote and every other control character as
+// its escape, so that the literal holds the value and nothing ends it early.
+function escapeChars(chars: string[], quote: string): string {
+  return chars
+    .map(char => {
+      if (char === quote) {
+        return `\\${char}`;
+      }
+      const escaped = PYTHON_ESCAPES.get(char);
+      if (escaped !== undefined) {
+        return escaped;
+      }
+      const code = char.charCodeAt(0);
+      return code < 0x20 || code === 0x7f
+        ? `\\x${code.toString(16).padStart(2, '0')}`
+        : char;
+    })
+    .join('');
 }
 
 function createClassContext(state: RootState): ClassContext {
@@ -1177,9 +2269,9 @@ function uniqueName(used: Set<string>, name: string): string {
 const NON_IDENTIFIER = /[^0-9A-Za-z_]/g;
 const IDENTIFIER_START = /^[A-Za-z]/;
 
-// metadata is no Python keyword but DeclarativeBase owns it, and mapping a
-// column onto it is rejected; registry is carried and not rejected, so it is
-// absent. The _sa_ names are absent because pyIdentifier bars that namespace.
+// metadata is DeclarativeBase's, which refuses a column mapped onto it, and
+// self the first parameter of the constructor it writes, which no keyword can
+// pass; registry is carried and not refused. pyIdentifier bars the _sa_ names.
 const RESERVED = new Set([
   'False',
   'None',
@@ -1213,6 +2305,7 @@ const RESERVED = new Set([
   'pass',
   'raise',
   'return',
+  'self',
   'try',
   'while',
   'with',
@@ -1232,24 +2325,28 @@ function pyIdentifier(name: string): string {
   return RESERVED.has(identifier) ? `${identifier}_` : identifier;
 }
 
-const BACKSLASH = /\\/g;
-const DOUBLE_QUOTE = /"/g;
 const NEWLINE = /\r\n|\r|\n/g;
+// What Python's str.strip removes that escapeChars leaves as it is.
+const PYTHON_SPACE =
+  /^[ \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[ \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/g;
 
-function escapeString(value: string): string {
-  return value
-    .replace(BACKSLASH, '\\\\')
-    .replace(DOUBLE_QUOTE, '\\"')
-    .replace(NEWLINE, ' ');
-}
-
-// A comment ending in a quote would close the docstring as \"""". That parses,
-// but it is unreadable and black rewrites it -- pad it the way black does.
+/**
+ * The comment as black writes a one-line docstring: each line break a space,
+ * the ends stripped, and one ending in a quote padded so that it does not
+ * close as \"""". Stripped to nothing it is one space.
+ */
 function formatDocstring(comment: string): string {
-  const value = escapeString(comment);
+  const value = escapeChars(
+    Array.from(comment.replace(NEWLINE, ' ')),
+    '"'
+  ).replace(PYTHON_SPACE, '');
+
+  if (value === '') {
+    return ' ';
+  }
   return value.endsWith('"') ? `${value} ` : value;
 }
 
 function formatStringList(names: string[]): string {
-  return `[${names.map(name => `"${escapeString(name)}"`).join(', ')}]`;
+  return `[${names.map(pythonString).join(', ')}]`;
 }

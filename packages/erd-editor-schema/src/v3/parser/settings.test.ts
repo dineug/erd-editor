@@ -345,6 +345,24 @@ describe('createAndMergeSettings', () => {
       ).toBe(Language.SeaORM);
     });
 
+    it('keeps the Swift language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.Swift }).language
+      ).toBe(Language.Swift);
+    });
+
+    it('keeps the Zod language', () => {
+      expect(createAndMergeSettings({ language: Language.Zod }).language).toBe(
+        Language.Zod
+      );
+    });
+
+    it('keeps the JSONSchema language', () => {
+      expect(
+        createAndMergeSettings({ language: Language.JSONSchema }).language
+      ).toBe(Language.JSONSchema);
+    });
+
     it('opens a language flag it does not know as GraphQL, as an editor older than the flag does', () => {
       expect(
         createAndMergeSettings({ language: Math.max(...LanguageList) * 2 })

@@ -7,9 +7,12 @@ import { Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
+import { POSTGRES_BIT_TYPES } from './columnTypes';
 import {
+  baseTypeName,
   FormatColumnOptions,
   FormatTableOptions,
+  fractionalNumber,
   getNameCase,
   getPrimitiveType,
 } from './utils';
@@ -42,21 +45,13 @@ const convertTypeMap: PrimitiveTypeMap = {
 };
 
 // A money amount keeps its digits in a string as a decimal does, and a pg_lsn
-// is two hex numbers and a slash, though the shared tables file them as numbers.
+// is two hex numbers and a slash.
 const stringTypes = new Set(['money', 'pg_lsn', 'smallmoney']);
 
-// SQL Server alone: bit is a flag there, and the shared tables file numeric
-// under float.
+// SQL Server alone: bit is a flag there, and numeric a decimal.
 const mssqlTypes = new Map([
   ['bit', 'bool'],
   ['numeric', 'string'],
-]);
-
-/** PostgreSQL's bit strings, which pdo_pgsql reads as text such as 1010. */
-export const POSTGRES_BIT_TYPES: ReadonlySet<string> = new Set([
-  'bit',
-  'bit varying',
-  'varbit',
 ]);
 
 /**
@@ -160,12 +155,9 @@ const RESERVED_CLASS_NAMES = new Set([
   'yield',
 ]);
 
-const ARGUMENTS = /\([^)]*\)/g;
-const WHITESPACE = /\s+/g;
 const LINE_BREAK = /\r\n|\r|\n/;
 const COMMENT_END = /\*\//g;
 const POSTGRES_ARRAY = /(\[\s*\d*\s*\]|\barray)\s*$/i;
-const NUMBER_ARGUMENTS = /^\s*number\s*\(\s*(\*|\d+)\s*,\s*(\d+)\s*\)\s*$/i;
 
 export function createCode(state: RootState): string {
   const {
@@ -274,41 +266,6 @@ function getColumnType(dataType: string, database: number): string {
 /** A PostgreSQL array type, which pdo_pgsql reads as a text literal such as {1,2}. */
 export function isPostgresArray(dataType: string, database: number): boolean {
   return database === Database.PostgreSQL && POSTGRES_ARRAY.test(dataType);
-}
-
-/**
- * The precision and scale of an Oracle or Snowflake NUMBER with a scale, which
- * the shared tables file under long with every other NUMBER; a star is 38.
- */
-export function fractionalNumber(
-  dataType: string,
-  database: number
-): [precision: number, scale: number] | null {
-  if (database !== Database.Oracle && database !== Database.Snowflake) {
-    return null;
-  }
-
-  const matched = NUMBER_ARGUMENTS.exec(dataType);
-
-  if (!matched) {
-    return null;
-  }
-
-  const [, precision, scale] = matched;
-
-  if (Number(scale) === 0) {
-    return null;
-  }
-  return [precision === '*' ? 38 : Number(precision), Number(scale)];
-}
-
-/** The type name in lower case, with its argument lists and extra spaces gone. */
-export function baseTypeName(dataType: string): string {
-  return dataType
-    .toLowerCase()
-    .replace(ARGUMENTS, ' ')
-    .replace(WHITESPACE, ' ')
-    .trim();
 }
 
 /**

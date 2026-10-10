@@ -6,7 +6,11 @@ import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
-import { createCode, formatTable } from '@/utils/generator-code/scala';
+import {
+  createCode,
+  formatTable,
+  toScalaName,
+} from '@/utils/generator-code/scala';
 
 type ColumnInput = {
   name: string;
@@ -60,12 +64,41 @@ function addTable(
   return table;
 }
 
+/** The NOT NULL field each data type writes on a database, the last without a comma. */
+function notNullFields(
+  database: number,
+  dataTypes: Array<[dataType: string, scalaType: string]>
+) {
+  const state = createState();
+  state.settings.database = database;
+  const table = addTable(state, {
+    id: 't-types',
+    name: 'types',
+    columns: dataTypes.map(([dataType], index) => ({
+      name: `c${index}`,
+      dataType,
+      options: ColumnOption.notNull,
+    })),
+  });
+  const buffer: string[] = [];
+
+  formatTable(state, { buffer, table });
+
+  return {
+    actual: buffer.slice(1, -1),
+    expected: dataTypes.map(
+      ([, scalaType], index) =>
+        `  c${index}: ${scalaType}${index < dataTypes.length - 1 ? ',' : ''}`
+    ),
+  };
+}
+
 describe('generator-code/scala', () => {
   it('returns an empty string when there is no table', () => {
     expect(createCode(createState())).toBe('');
   });
 
-  it('emits case classes sorted by name, with a trailing comma on every field but the last', () => {
+  it('emits case classes sorted by name, with a comma after every field but the last', () => {
     const state = createState();
 
     addTable(state, {
@@ -91,17 +124,15 @@ describe('generator-code/scala', () => {
     expect(createCode(state)).toBe(
       [
         '',
-        '@Data',
         'case class Posts(',
-        ' id: Long',
+        '  id: Option[Long]',
         ')',
         '',
         '// user table',
-        '@Data',
         'case class Users(',
-        ' // user id',
-        ' id: Int,',
-        ' nickName: String',
+        '  // user id',
+        '  id: Int,',
+        '  nickName: Option[String]',
         ')',
         '',
       ].join('\n')
@@ -115,26 +146,72 @@ describe('generator-code/scala', () => {
 
     formatTable(state, { buffer, table });
 
-    expect(buffer).toEqual(['@Data', 'case class Empty(', ')']);
+    expect(buffer).toEqual(['case class Empty(', ')']);
   });
 
   it('maps every primitive type to a Scala type', () => {
+    const { actual, expected } = notNullFields(Database.MySQL, [
+      ['INT', 'Int'],
+      ['BIGINT', 'Long'],
+      ['FLOAT', 'Float'],
+      ['DOUBLE', 'Double'],
+      ['DECIMAL(10, 2)', 'BigDecimal'],
+      ['BOOLEAN', 'Boolean'],
+      ['VARCHAR(10)', 'String'],
+      ['TEXT', 'String'],
+      ['DATE', 'LocalDate'],
+      ['TIME', 'LocalTime'],
+      ['NOT_A_TYPE', 'String'],
+    ]);
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('gives integers their width, an unsigned one the next wider type', () => {
+    const { actual, expected } = notNullFields(Database.MySQL, [
+      ['TINYINT', 'Byte'],
+      ['SMALLINT', 'Short'],
+      ['TINYINT UNSIGNED', 'Short'],
+      ['MEDIUMINT UNSIGNED', 'Int'],
+      ['INT UNSIGNED', 'Long'],
+      ['BIGINT UNSIGNED', 'Long'],
+      ['BIT(1)', 'Boolean'],
+      ['BLOB', 'Array[Byte]'],
+      ['DATETIME', 'LocalDateTime'],
+    ]);
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('maps uuid, binaries, zoned times, intervals and arrays on PostgreSQL', () => {
+    const { actual, expected } = notNullFields(Database.PostgreSQL, [
+      ['uuid', 'UUID'],
+      ['bytea', 'Array[Byte]'],
+      ['money', 'BigDecimal'],
+      ['timetz', 'OffsetTime'],
+      ['timestamptz', 'OffsetDateTime'],
+      ['interval day to second', 'java.time.Duration'],
+      ['interval year to month', 'String'],
+      ['int[]', 'List[Int]'],
+      ['text[][]', 'List[List[String]]'],
+      ['bytea[]', 'List[Array[Byte]]'],
+    ]);
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('writes Duration with its package, which scala.concurrent.duration shares, and UUID and OffsetDateTime without', () => {
     const state = createState();
+    state.settings.database = Database.PostgreSQL;
     const table = addTable(state, {
-      id: 't-types',
-      name: 'types',
+      id: 't-session',
+      name: 'session',
       columns: [
-        { name: 'intCol', dataType: 'INT' },
-        { name: 'longCol', dataType: 'BIGINT' },
-        { name: 'floatCol', dataType: 'FLOAT' },
-        { name: 'doubleCol', dataType: 'DOUBLE' },
-        { name: 'decimalCol', dataType: 'DECIMAL(10, 2)' },
-        { name: 'booleanCol', dataType: 'BOOLEAN' },
-        { name: 'stringCol', dataType: 'VARCHAR(10)' },
-        { name: 'lobCol', dataType: 'TEXT' },
-        { name: 'dateCol', dataType: 'DATE' },
-        { name: 'timeCol', dataType: 'TIME' },
-        { name: 'unknownCol', dataType: 'NOT_A_TYPE' },
+        { name: 'id', dataType: 'uuid', options: ColumnOption.primaryKey },
+        { name: 'ttl', dataType: 'interval', options: ColumnOption.notNull },
+        { name: 'grace', dataType: 'interval' },
+        { name: 'steps', dataType: 'interval[]' },
+        { name: 'created_at', dataType: 'timestamptz' },
       ],
     });
     const buffer: string[] = [];
@@ -142,39 +219,201 @@ describe('generator-code/scala', () => {
     formatTable(state, { buffer, table });
 
     expect(buffer).toEqual([
-      '@Data',
-      'case class Types(',
-      ' intCol: Int,',
-      ' longCol: Long,',
-      ' floatCol: Float,',
-      ' doubleCol: Double,',
-      ' decimalCol: BigDecimal,',
-      ' booleanCol: Boolean,',
-      ' stringCol: String,',
-      ' lobCol: String,',
-      ' dateCol: LocalDate,',
-      ' timeCol: LocalTime,',
-      ' unknownCol: String',
+      'case class Session(',
+      '  id: UUID,',
+      '  ttl: java.time.Duration,',
+      '  grace: Option[java.time.Duration],',
+      '  steps: Option[List[java.time.Duration]],',
+      '  createdAt: Option[OffsetDateTime]',
       ')',
     ]);
   });
 
-  it('maps the dateTime primitive type to LocalDateTime', () => {
+  it('maps SQL Server, Oracle and Snowflake types through the shared classifier', () => {
+    const mssql = notNullFields(Database.MSSQL, [
+      ['numeric(10,2)', 'BigDecimal'],
+      ['bit', 'Boolean'],
+      ['tinyint', 'Short'],
+      ['rowversion', 'Array[Byte]'],
+    ]);
+    const oracle = notNullFields(Database.Oracle, [
+      ['NUMBER(10,2)', 'BigDecimal'],
+      ['DATE', 'LocalDateTime'],
+      ['TIMESTAMP WITH TIME ZONE', 'OffsetDateTime'],
+    ]);
+    const snowflake = notNullFields(Database.Snowflake, [
+      ['INT', 'Long'],
+      ['VARIANT', 'String'],
+    ]);
+
+    expect(mssql.actual).toEqual(mssql.expected);
+    expect(oracle.actual).toEqual(oracle.expected);
+    expect(snowflake.actual).toEqual(snowflake.expected);
+  });
+
+  it('wraps a nullable column in an Option, but not a primary key', () => {
     const state = createState();
-    state.settings.database = Database.Oracle;
+    state.settings.database = Database.PostgreSQL;
     const table = addTable(state, {
-      id: 't-ts',
-      name: 'ts',
-      columns: [{ name: 'created_at', dataType: 'TIMESTAMP' }],
+      id: 't-member',
+      name: 'member',
+      columns: [
+        { name: 'id', dataType: 'uuid', options: ColumnOption.primaryKey },
+        { name: 'avatar', dataType: 'bytea' },
+        { name: 'tags', dataType: 'text[]' },
+      ],
     });
     const buffer: string[] = [];
 
     formatTable(state, { buffer, table });
 
     expect(buffer).toEqual([
-      '@Data',
-      'case class Ts(',
-      ' createdAt: LocalDateTime',
+      'case class Member(',
+      '  id: UUID,',
+      '  avatar: Option[Array[Byte]],',
+      '  tags: Option[List[String]]',
+      ')',
+    ]);
+  });
+
+  it('writes a reserved word in backticks', () => {
+    const state = createState();
+    state.settings.tableNameCase = NameCase.none;
+    const table = addTable(state, {
+      id: 't-type',
+      name: 'type',
+      columns: [
+        { name: 'using', dataType: 'INT', options: ColumnOption.notNull },
+        { name: 'type', dataType: 'INT', options: ColumnOption.notNull },
+        { name: 'name', dataType: 'VARCHAR(10)' },
+      ],
+    });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual([
+      'case class `type`(',
+      '  `using`: Int,',
+      '  `type`: Int,',
+      '  name: Option[String]',
+      ')',
+    ]);
+    expect(toScalaName('then')).toBe('`then`');
+    expect(toScalaName('open')).toBe('open');
+  });
+
+  it('writes a field name ending in an underscore in backticks, so the colon stays apart', () => {
+    const state = createState();
+    state.settings.tableNameCase = NameCase.none;
+    state.settings.columnNameCase = NameCase.none;
+    const table = addTable(state, {
+      id: 't-orders',
+      name: 'orders_',
+      columns: [
+        { name: 'order_', dataType: 'INT', options: ColumnOption.notNull },
+        { name: '__', dataType: 'INT' },
+        { name: '_a', dataType: 'INT', options: ColumnOption.notNull },
+        { name: 'a_b', dataType: 'INT', options: ColumnOption.notNull },
+      ],
+    });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual([
+      'case class orders_(',
+      '  `order_`: Int,',
+      '  `__`: Option[Int],',
+      '  _a: Int,',
+      '  a_b: Int',
+      ')',
+    ]);
+  });
+
+  it('writes the bidirectional controls Scala 2.13 refuses in a comment as escapes', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 't-notes',
+      name: 'notes',
+      comment: '\u202Bنص\u202C',
+      columns: [
+        {
+          name: 'id',
+          dataType: 'INT',
+          comment: 'a\u202Ab\u202Ec \u2066d\u2069 e\u200Ff\u061Cg C:\\users',
+          options: ColumnOption.notNull,
+        },
+      ],
+    });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual([
+      '// \\u202Bنص\\u202C',
+      'case class Notes(',
+      '  // a\\u202Ab\\u202Ec \\u2066d\\u2069 e\u200Ff\u061Cg C:\\users',
+      '  id: Int',
+      ')',
+    ]);
+  });
+
+  it('writes SUB, which Scala 2.13 and 3 read as the end of the file, in a comment as an escape', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 't-sub',
+      name: 'sub',
+      comment: 'tab\u001ale \u001a\u001a',
+      columns: [
+        {
+          name: 'id',
+          dataType: 'INT',
+          comment: 'x\u001ay\u202Ez\u0019',
+          options: ColumnOption.notNull,
+        },
+      ],
+    });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual([
+      '// tab\\u001Ale \\u001A\\u001A',
+      'case class Sub(',
+      '  // x\\u001Ay\\u202Ez\u0019',
+      '  id: Int',
+      ')',
+    ]);
+  });
+
+  it('writes a comment of several lines as one line comment a line', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 't-notes',
+      name: 'notes',
+      comment: 'first\rsecond',
+      columns: [
+        {
+          name: 'id',
+          dataType: 'INT',
+          comment: 'one\n\ntwo ',
+          options: ColumnOption.notNull,
+        },
+      ],
+    });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual([
+      '// first',
+      '// second',
+      'case class Notes(',
+      '  // one',
+      '  //',
+      '  // two',
+      '  id: Int',
       ')',
     ]);
   });
@@ -196,11 +435,10 @@ describe('generator-code/scala', () => {
     formatTable(state, { buffer, table });
 
     expect(buffer).toEqual([
-      '@Data',
       'case class user_profile(',
-      ' // the id',
-      ' UserId: Int,',
-      ' UserName: String',
+      '  // the id',
+      '  UserId: Option[Int],',
+      '  UserName: Option[String]',
       ')',
     ]);
   });

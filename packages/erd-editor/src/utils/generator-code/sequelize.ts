@@ -13,9 +13,16 @@ import {
 } from '@/utils/schema-sql/utils';
 
 import {
+  ColumnScalar,
+  ColumnType as ColumnFacts,
+  getColumnType as getColumnFacts,
+  isMySQLFamily,
+} from './columnTypes';
+import {
   FormatColumnOptions,
   FormatRelationOptions,
   FormatTableOptions,
+  getDataTypeHints,
   getNameCase,
   getPrimitiveType,
   hasNRelationship,
@@ -30,16 +37,41 @@ const SEQUELIZE_NAMES = [
   'InferCreationAttributes',
   'Model',
   'NonAttribute',
+  'Range',
   'Sequelize',
   'sequelize',
 ] as const;
 
-const GLOBAL_NAMES = ['Buffer', 'Date'] as const;
+const GLOBAL_NAMES = [
+  'Buffer',
+  'Date',
+  'Float32Array',
+  'Float64Array',
+  'Int8Array',
+  'Uint8Array',
+] as const;
 
+/**
+ * Names a property may not take: what Model and its Hooks declare, the fields
+ * Sequelize sets on an instance or a model's prototype, what every object
+ * inherits, and prototype, a key lodash leaves out of the copies it makes.
+ */
 const MODEL_MEMBER_NAMES: ReadonlyArray<string> = [
   '_attributes',
+  '_changed',
   '_creationAttributes',
+  '_customGetters',
+  '_customSetters',
+  '_hasCustomGetters',
+  '_hasCustomSetters',
+  '_initValues',
+  '_isAttribute',
+  '_model',
+  '_options',
   '_previousDataValues',
+  '_setInclude',
+  '_setupHooks',
+  'addHook',
   'changed',
   'dataValues',
   'decrement',
@@ -48,21 +80,42 @@ const MODEL_MEMBER_NAMES: ReadonlyArray<string> = [
   'equalsOneOf',
   'get',
   'getDataValue',
+  'hasHook',
+  'hasHooks',
   'increment',
   'isNewRecord',
   'isSoftDeleted',
   'previous',
+  'prototype',
+  'rawAttributes',
   'reload',
+  'removeHook',
   'restore',
+  'runHooks',
   'save',
   'sequelize',
   'set',
   'setAttributes',
   'setDataValue',
+  'setValidators',
   'toJSON',
+  'uniqno',
   'update',
   'validate',
+  'validators',
   'where',
+  '__defineGetter__',
+  '__defineSetter__',
+  '__lookupGetter__',
+  '__lookupSetter__',
+  '__proto__',
+  'constructor',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'toLocaleString',
+  'toString',
+  'valueOf',
 ];
 
 type SequelizeName = (typeof SEQUELIZE_NAMES)[number];
@@ -110,6 +163,8 @@ type ColumnFlags = {
   isPrimaryKey: boolean;
   isAutoIncrement: boolean;
   isNullable: boolean;
+  isUnique: boolean;
+  isWrittenByDatabase: boolean;
 };
 
 type ResolvedRelationship = {
@@ -137,17 +192,22 @@ type ModelContext = {
 type ColumnContext = {
   property: string;
   type: SequelizeType;
+  flags: ColumnFlags;
 };
 
 const CHAR = `${TYPES}.CHAR`;
 const STRING = `${TYPES}.STRING`;
+const BIGINT = `${TYPES}.BIGINT`;
+const DECIMAL = `${TYPES}.DECIMAL`;
+const DATE_TIME = `${TYPES}.DATE`;
+const FLOAT = `${TYPES}.FLOAT`;
+const DOUBLE = `${TYPES}.DOUBLE`;
 
 const VENDOR_TYPES: ReadonlyArray<[string[], Emission]> = [
   [
     [
       'bpchar',
       'char',
-      'char byte',
       'character',
       'national char',
       'national character',
@@ -163,21 +223,6 @@ const VENDOR_TYPES: ReadonlyArray<[string[], Emission]> = [
     { expr: `${TYPES}.TEXT("medium")`, ts: 'string', args: 'none' },
   ],
   [['longtext'], { expr: `${TYPES}.TEXT("long")`, ts: 'string', args: 'none' }],
-  [
-    [
-      'bfile',
-      'binary',
-      'binary varying',
-      'blob',
-      'bytea',
-      'image',
-      'long raw',
-      'long varbinary',
-      'raw',
-      'varbinary',
-    ],
-    { expr: `${TYPES}.BLOB`, ts: 'Buffer', args: 'none' },
-  ],
   [['tinyblob'], { expr: `${TYPES}.BLOB("tiny")`, ts: 'Buffer', args: 'none' }],
   [
     ['mediumblob'],
@@ -198,7 +243,7 @@ const VENDOR_TYPES: ReadonlyArray<[string[], Emission]> = [
   ],
   [
     ['dec', 'decimal', 'fixed', 'number', 'numeric'],
-    { expr: `${TYPES}.DECIMAL`, ts: 'string', args: 'precision' },
+    { expr: DECIMAL, ts: 'string', args: 'precision' },
   ],
   [
     ['uniqueidentifier', 'uuid'],
@@ -212,11 +257,13 @@ const VENDOR_TYPES: ReadonlyArray<[string[], Emission]> = [
   [['tsvector'], { expr: `${TYPES}.TSVECTOR`, ts: 'string', args: 'none' }],
 ];
 
+const BLOB: Emission = { expr: `${TYPES}.BLOB`, ts: 'Buffer', args: 'none' };
+
 const NUMERIC_EXPRESSIONS: ReadonlySet<string> = new Set([
-  `${TYPES}.BIGINT`,
-  `${TYPES}.DECIMAL`,
-  `${TYPES}.DOUBLE`,
-  `${TYPES}.FLOAT`,
+  BIGINT,
+  DECIMAL,
+  DOUBLE,
+  FLOAT,
   `${TYPES}.INTEGER`,
   `${TYPES}.MEDIUMINT`,
   `${TYPES}.SMALLINT`,
@@ -231,17 +278,325 @@ const vendorTypeMap: ReadonlyMap<string, Emission> = new Map(
 
 const fallbackTypeMap: Record<PrimitiveType, Emission> = {
   int: { expr: `${TYPES}.INTEGER`, ts: 'number', args: 'none' },
-  long: { expr: `${TYPES}.BIGINT`, ts: 'string', args: 'none' },
-  float: { expr: `${TYPES}.FLOAT`, ts: 'number', args: 'none' },
-  double: { expr: `${TYPES}.DOUBLE`, ts: 'number', args: 'none' },
-  decimal: { expr: `${TYPES}.DECIMAL`, ts: 'string', args: 'precision' },
+  long: { expr: BIGINT, ts: 'string', args: 'none' },
+  float: { expr: FLOAT, ts: 'number', args: 'none' },
+  double: { expr: DOUBLE, ts: 'number', args: 'none' },
+  decimal: { expr: DECIMAL, ts: 'string', args: 'precision' },
   boolean: { expr: `${TYPES}.BOOLEAN`, ts: 'boolean', args: 'none' },
   string: { expr: STRING, ts: 'string', args: 'length' },
   lob: { expr: `${TYPES}.TEXT`, ts: 'string', args: 'none' },
   date: { expr: `${TYPES}.DATEONLY`, ts: 'string', args: 'none' },
-  dateTime: { expr: `${TYPES}.DATE`, ts: 'Date', args: 'none' },
+  dateTime: { expr: DATE_TIME, ts: 'Date', args: 'none' },
   time: { expr: `${TYPES}.TIME`, ts: 'string', args: 'none' },
 };
+
+// What each driver hands a value of the scalar over as, under Sequelize.
+const SCALAR_ANNOTATIONS: Readonly<Record<ColumnScalar, string>> = {
+  bool: 'boolean',
+  i8: 'number',
+  i16: 'number',
+  i32: 'number',
+  i64: 'string',
+  u8: 'number',
+  u16: 'number',
+  u32: 'number',
+  u64: 'string',
+  f32: 'number',
+  f64: 'number',
+  decimal: 'string',
+  string: 'string',
+  bytes: 'Buffer',
+  uuid: 'string',
+  json: 'unknown',
+  date: 'string',
+  time: 'string',
+  timeTz: 'string',
+  dateTime: 'Date',
+  dateTimeUtc: 'Date',
+  dateTimeOffset: 'Date',
+  interval: 'string',
+};
+
+// mysql2 and the mariadb connector hand a BIGINT over as a number while it is
+// a safe integer and as a string past that; sqlite3 always as a number.
+const BIGINT_ANNOTATIONS: ReadonlyMap<number, string> = new Map([
+  [Database.MariaDB, 'number | string'],
+  [Database.MySQL, 'number | string'],
+  [Database.SQLite, 'number'],
+]);
+
+// tedious and sqlite3 hand a decimal over as a number, the mariadb connector
+// as one while it is safe; pg and mysql2 as text.
+const DECIMAL_ANNOTATIONS: ReadonlyMap<number, string> = new Map([
+  [Database.MariaDB, 'number | string'],
+  [Database.MSSQL, 'number'],
+  [Database.SQLite, 'number'],
+]);
+
+// The listed names a DataTypes member creates unchanged on each dialect. Any
+// other listed name goes in as a string, which Sequelize puts in its DDL as
+// is, since the nearest member would create another type.
+const POSTGRES_MEMBER_TYPES: ReadonlySet<string> = new Set([
+  'bigint',
+  'bigserial',
+  'bool',
+  'boolean',
+  'bpchar',
+  'bytea',
+  'char',
+  'character',
+  'character varying',
+  'cidr',
+  'date',
+  'dec',
+  'decimal',
+  'double precision',
+  'float',
+  'float4',
+  'float8',
+  'inet',
+  'int',
+  'int2',
+  'int4',
+  'int8',
+  'integer',
+  'json',
+  'jsonb',
+  'macaddr',
+  'numeric',
+  'real',
+  'serial',
+  'serial2',
+  'serial4',
+  'serial8',
+  'smallint',
+  'smallserial',
+  'text',
+  'time',
+  'time without time zone',
+  'timestamp with time zone',
+  'timestamptz',
+  'tsvector',
+  'uuid',
+  'varchar',
+]);
+
+const MYSQL_MEMBER_TYPES: ReadonlySet<string> = new Set([
+  'bigint',
+  'blob',
+  'bool',
+  'boolean',
+  'char',
+  'char varying',
+  'character',
+  'character varying',
+  'date',
+  'datetime',
+  'dec',
+  'decimal',
+  'double',
+  'double precision',
+  'enum',
+  'fixed',
+  'float',
+  'float4',
+  'float8',
+  'int',
+  'int1',
+  'int2',
+  'int3',
+  'int4',
+  'int8',
+  'integer',
+  'json',
+  'longblob',
+  'longtext',
+  'mediumblob',
+  'mediumint',
+  'mediumtext',
+  'middleint',
+  'national char',
+  'national char varying',
+  'national character',
+  'national character varying',
+  'national varchar',
+  'national varcharacter',
+  'nchar',
+  'nchar varchar',
+  'nchar varcharacter',
+  'nchar varying',
+  'numeric',
+  'nvarchar',
+  'real',
+  'serial',
+  'smallint',
+  'text',
+  'time',
+  'tinyblob',
+  'tinyint',
+  'tinytext',
+  'varchar',
+  'varcharacter',
+]);
+
+const MSSQL_MEMBER_TYPES: ReadonlySet<string> = new Set([
+  'bigint',
+  'bit',
+  'char',
+  'character',
+  'date',
+  'dec',
+  'decimal',
+  'double precision',
+  'float',
+  'int',
+  'integer',
+  'national char varying',
+  'national character varying',
+  'numeric',
+  'nvarchar',
+  'real',
+  'smallint',
+  'tinyint',
+  'varbinary',
+]);
+
+const MEMBER_TYPES: ReadonlyMap<number, ReadonlySet<string>> = new Map([
+  [Database.MariaDB, MYSQL_MEMBER_TYPES],
+  [Database.MSSQL, MSSQL_MEMBER_TYPES],
+  [Database.MySQL, MYSQL_MEMBER_TYPES],
+  [Database.PostgreSQL, POSTGRES_MEMBER_TYPES],
+]);
+
+// Sequelize's RANGE takes these subtypes; pg hands an int8range's or a
+// numrange's bounds over as text and a tsrange's as a Date.
+const POSTGRES_RANGE_TYPES: ReadonlyMap<string, [string | null, string]> =
+  new Map([
+    ['daterange', [`${TYPES}.DATEONLY`, 'string']],
+    ['int4range', [`${TYPES}.INTEGER`, 'number']],
+    ['int8range', [BIGINT, 'string']],
+    ['numrange', [DECIMAL, 'string']],
+    ['tsrange', [null, 'Date']],
+    ['tstzrange', [DATE_TIME, 'Date']],
+  ]);
+
+// pg parses a point and a circle into objects, an interval into its fields.
+const POSTGRES_OBJECT_TYPES: ReadonlySet<string> = new Set(['circle', 'point']);
+
+// pg hands an array of these over as one string, which it parses no further.
+const POSTGRES_TEXT_ARRAY_TYPES: ReadonlySet<string> = new Set([
+  'bit',
+  'bit varying',
+  'box',
+  'cid',
+  'circle',
+  'datemultirange',
+  'int4multirange',
+  'int8multirange',
+  'jsonpath',
+  'line',
+  'lseg',
+  'macaddr8',
+  'name',
+  'nummultirange',
+  'path',
+  'pg_lsn',
+  'pg_snapshot',
+  'polygon',
+  'regclass',
+  'regcollation',
+  'regconfig',
+  'regdictionary',
+  'regnamespace',
+  'regoper',
+  'regoperator',
+  'regprocedure',
+  'regrole',
+  'regtype',
+  'tid',
+  'tsmultirange',
+  'tsquery',
+  'tstzmultirange',
+  'tsvector',
+  'txid_snapshot',
+  'varbit',
+  'xid',
+  'xid8',
+  'xml',
+]);
+
+// The member of these writes the type bare, losing a time's precision, and a
+// MySQL BLOB's or TEXT's length, by which MySQL picks the TINY to LONG type.
+const ARGUMENT_DROPPING_TYPES: ReadonlySet<string> = new Set([
+  'blob',
+  'text',
+  'time',
+  'time without time zone',
+  'timestamp with time zone',
+  'timestamptz',
+]);
+
+// Sequelize's GEOMETRY member on MySQL takes these subtypes alone; the
+// driver hands every spatial value over parsed into GeoJSON.
+const MYSQL_GEOMETRY_MEMBERS: ReadonlyMap<string, string> = new Map([
+  ['geometry', `${TYPES}.GEOMETRY`],
+  ['linestring', `${TYPES}.GEOMETRY("LINESTRING")`],
+  ['point', `${TYPES}.GEOMETRY("POINT")`],
+  ['polygon', `${TYPES}.GEOMETRY("POLYGON")`],
+]);
+
+const MYSQL_GEOMETRY_TYPES: ReadonlySet<string> = new Set([
+  'geomcollection',
+  'geometry',
+  'geometrycollection',
+  'linestring',
+  'multilinestring',
+  'multipoint',
+  'multipolygon',
+  'point',
+  'polygon',
+]);
+
+// tedious hands the CLR types over as their bytes, a sql_variant as whatever
+// it holds and a json as its text.
+const SQLSERVER_ANNOTATIONS: ReadonlyMap<string, string> = new Map([
+  ['geography', 'Buffer'],
+  ['geometry', 'Buffer'],
+  ['hierarchyid', 'Buffer'],
+  ['json', 'string'],
+  ['sql_variant', 'unknown'],
+]);
+
+// oracledb hands a vector over as the typed array of the format it is stored
+// in, which a column of no fixed format leaves to each row.
+const ORACLE_VECTOR_ARRAYS: ReadonlyMap<string, string> = new Map([
+  ['binary', 'Uint8Array'],
+  ['float32', 'Float32Array'],
+  ['float64', 'Float64Array'],
+  ['int8', 'Int8Array'],
+]);
+
+const ORACLE_ANY_VECTOR = Array.from(ORACLE_VECTOR_ARRAYS.values())
+  .sort()
+  .join(' | ');
+
+const TYPE_ARGUMENTS = /\(([^)]*)\)/;
+
+const SQLSERVER_MAX_TYPES: ReadonlySet<string> = new Set([
+  'national char varying',
+  'national character varying',
+  'nvarchar',
+]);
+
+// The SQL Server types that take DATE's text with its offset, which sync
+// creates as a datetimeoffset. A datetime or smalldatetime refuses that text.
+const SQLSERVER_DATE_TYPES: ReadonlySet<string> = new Set([
+  'datetime2',
+  'datetimeoffset',
+  'time',
+]);
+
+const listedNames = new Map<number, ReadonlySet<string>>();
 
 export function createCode(state: RootState): string {
   const {
@@ -309,11 +664,19 @@ function formatModel(
   const columnBuffer: string[] = [];
   const attributes: Group = { open: '{', entries: [] };
 
+  let hasAutoIncrement = columns.some(column =>
+    bHas(column.options, ColumnOption.autoIncrement)
+  );
+
   columns.forEach(column => {
+    const facts = getColumnFacts(column.dataType, database);
     const columnContext: ColumnContext = {
       property: naming.columnNames.get(column.id) ?? column.name,
-      type: getColumnType(column.dataType, database),
+      type: getColumnType(column.dataType, facts, database),
+      flags: columnFlags(column, facts, database, hasAutoIncrement),
     };
+
+    hasAutoIncrement ||= columnContext.flags.isAutoIncrement;
 
     formatColumnProperty({ buffer: columnBuffer, column }, columnContext);
     attributes.entries.push(createAttribute(column, columnContext));
@@ -353,12 +716,15 @@ function formatModel(
 
 function formatColumnProperty(
   { buffer, column }: FormatColumnOptions,
-  { property, type }: ColumnContext
+  {
+    property,
+    type,
+    flags: { isAutoIncrement, isNullable, isWrittenByDatabase },
+  }: ColumnContext
 ) {
-  const { isAutoIncrement, isNullable } = columnFlags(column);
   const annotation = isNullable
     ? `${type.ts} | null`
-    : isAutoIncrement || column.default.trim() !== ''
+    : isAutoIncrement || isWrittenByDatabase || column.default.trim() !== ''
       ? wrap('CreationOptional', type.ts)
       : type.ts;
 
@@ -493,21 +859,56 @@ function formatAssociations(
   lines.forEach(line => buffer.push(line));
 }
 
-function columnFlags(column: Column): ColumnFlags {
+/**
+ * A serial numbers its rows as the one auto-increment column of a model does,
+ * NOT NULL on PostgreSQL whatever the flags say; MySQL's SERIAL is UNIQUE, the
+ * key AUTO_INCREMENT needs, and nullable where the DDL writes NULL after it.
+ */
+function columnFlags(
+  column: Column,
+  { isSerial, isRowVersion }: ColumnFacts,
+  database: number,
+  hasAutoIncrement: boolean
+): ColumnFlags {
   const isPrimaryKey = bHas(column.options, ColumnOption.primaryKey);
+  const isAutoIncrement =
+    bHas(column.options, ColumnOption.autoIncrement) ||
+    (isSerial && !hasAutoIncrement);
 
   return {
     isPrimaryKey,
-    isAutoIncrement: bHas(column.options, ColumnOption.autoIncrement),
-    isNullable: !isPrimaryKey && !bHas(column.options, ColumnOption.notNull),
+    isAutoIncrement,
+    isNullable:
+      !isPrimaryKey &&
+      !(isSerial && database === Database.PostgreSQL) &&
+      !bHas(column.options, ColumnOption.notNull),
+    isUnique:
+      !isPrimaryKey &&
+      (bHas(column.options, ColumnOption.unique) ||
+        (isSerial && isMySQLFamily(database))),
+    isWrittenByDatabase: isRowVersion || (isSerial && !isAutoIncrement),
   };
 }
 
+// A rowversion, which SQL Server writes and takes no value for but DEFAULT,
+// or a second serial: Sequelize's NOT NULL check refuses an insert leaving it
+// out. A function default never reaches the DDL sync writes.
+const DATABASE_DEFAULT = `defaultValue: () => ${NAMESPACE}.literal("DEFAULT")`;
+
 function createAttribute(
   column: Column,
-  { property, type }: ColumnContext
+  {
+    property,
+    type,
+    flags: {
+      isPrimaryKey,
+      isAutoIncrement,
+      isNullable,
+      isUnique,
+      isWrittenByDatabase,
+    },
+  }: ColumnContext
 ): Entry {
-  const { isPrimaryKey, isAutoIncrement, isNullable } = columnFlags(column);
   const value = column.default.trim();
 
   return {
@@ -522,13 +923,15 @@ function createAttribute(
         ...(isPrimaryKey ? ['primaryKey: true'] : []),
         ...(isAutoIncrement ? ['autoIncrement: true'] : []),
         `allowNull: ${isNullable}`,
-        ...(bHas(column.options, ColumnOption.unique) && !isPrimaryKey
-          ? ['unique: true']
-          : []),
-        ...(!isAutoIncrement && value !== '' ? [defaultValue(value)] : []),
+        ...(isUnique ? ['unique: true'] : []),
+        ...(isWrittenByDatabase
+          ? [DATABASE_DEFAULT]
+          : !isAutoIncrement && value !== ''
+            ? [defaultValue(value)]
+            : []),
         ...(column.comment.trim() === ''
           ? []
-          : [`comment: "${escapeString(column.comment)}"`]),
+          : [`comment: "${escapeComment(column.comment)}"`]),
       ],
     },
     suffix: '',
@@ -583,7 +986,7 @@ function createOptions(
       'timestamps: false',
       ...(table.comment.trim() === ''
         ? []
-        : [`comment: "${escapeString(table.comment)}"`]),
+        : [`comment: "${escapeComment(table.comment)}"`]),
       ...(indexes.length === 0
         ? []
         : [
@@ -703,124 +1106,268 @@ function formatGroup(
   buffer.push(`${indent}${group.open === '[' ? ']' : '}'}${suffix}`);
 }
 
-const ARGUMENTS = /\([^)]*\)/g;
-const WHITESPACE = /\s+/g;
-const TYPE_ARGUMENTS = /\(\s*([^)]*)\)/;
-const DIGITS = /^[0-9]+$/;
-const UNSIGNED = /(^|[^0-9a-z_])unsigned([^0-9a-z_]|$)/;
+const ZEROFILL = /(^|[^0-9a-z_])zerofill([^0-9a-z_]|$)/i;
+const MAX_LENGTH = /^[^(]*\(\s*max\s*\)/i;
 
-function getColumnType(dataType: string, database: number): SequelizeType {
-  const base = dataType
-    .toLocaleLowerCase()
-    .replace(ARGUMENTS, ' ')
-    .replace(WHITESPACE, ' ')
-    .trim();
-
-  if (base === '') {
+function getColumnType(
+  dataType: string,
+  facts: ColumnFacts,
+  database: number
+): SequelizeType {
+  if (facts.base === '') {
     return { expr: STRING, ts: 'string' };
   }
 
-  if (base === 'enum') {
-    const members = enumMembers(dataType);
+  const element = elementType(facts, database);
 
-    if (members.length !== 0) {
-      const quoted = members.map(member => `"${escapeString(member)}"`);
-
-      return {
-        expr: `${TYPES}.ENUM(${quoted.join(', ')})`,
-        ts: quoted.join(' | '),
-      };
-    }
+  if (facts.arrayDepth === 0) {
+    return element;
   }
 
-  const primitiveType = getPrimitiveType(dataType, database);
-  const emission = vendorTypeMap.get(base) ?? fallbackTypeMap[primitiveType];
-  const { expr, attached } = applyArguments(emission, typeArguments(dataType));
-  const unsigned =
-    !attached &&
-    NUMERIC_EXPRESSIONS.has(expr) &&
-    UNSIGNED.test(base) &&
-    (database === Database.MySQL || database === Database.MariaDB);
+  const isText = POSTGRES_TEXT_ARRAY_TYPES.has(facts.base);
+  const ts = isText
+    ? 'string'
+    : `${element.ts.includes(' ') ? `(${element.ts})` : element.ts}${'[]'.repeat(facts.arrayDepth)}`;
+  // DataTypes.ARRAY takes a member and writes an array value, never the one
+  // string pg reads, and a nested one writes its element in generic SQL
+  // (DATETIME for DATE), so these keep the type as written.
+  const expr =
+    facts.arrayDepth === 1 && !isText && !isWrittenAsIs(element.expr)
+      ? `${TYPES}.ARRAY(${element.expr})`
+      : writeAsIs(dataType);
 
-  return { expr: unsigned ? `${expr}.UNSIGNED` : expr, ts: emission.ts };
+  return { expr, ts };
 }
 
-function applyArguments(
-  emission: Emission,
-  args: number[]
-): { expr: string; attached: boolean } {
-  if (emission.args === 'length' && args.length === 1 && args[0] > 0) {
-    return { expr: `${emission.expr}(${args[0]})`, attached: true };
-  }
-  if (emission.args === 'precision' && args.length === 1) {
-    return { expr: `${emission.expr}(${args[0]})`, attached: true };
-  }
-  if (emission.args === 'precision' && args.length === 2) {
+function elementType(facts: ColumnFacts, database: number): SequelizeType {
+  if (facts.base === 'enum' && facts.enumMembers) {
+    const quoted = facts.enumMembers.map(member => `"${escapeString(member)}"`);
+
     return {
-      expr: `${emission.expr}(${args[0]}, ${args[1]})`,
-      attached: true,
+      expr: `${TYPES}.ENUM(${quoted.join(', ')})`,
+      ts: quoted.join(' | '),
     };
   }
 
+  return dialectType(facts, database) ?? memberType(facts, database);
+}
+
+function dialectType(
+  facts: ColumnFacts,
+  database: number
+): SequelizeType | null {
+  const { base, args, scalar } = facts;
+
+  if (database === Database.PostgreSQL) {
+    const range = POSTGRES_RANGE_TYPES.get(base);
+
+    if (range) {
+      const [subtype, bound] = range;
+
+      return {
+        expr: subtype ? `${TYPES}.RANGE(${subtype})` : writeAsIs(facts.element),
+        ts: `Range<${bound}>`,
+      };
+    }
+  }
+  if (
+    (database === Database.PostgreSQL || database === Database.MSSQL) &&
+    scalar === 'f32'
+  ) {
+    return { expr: `${TYPES}.REAL`, ts: 'number' };
+  }
+  if (isMySQLFamily(database)) {
+    const geometry = MYSQL_GEOMETRY_MEMBERS.get(base);
+
+    if (geometry) {
+      return { expr: geometry, ts: 'object' };
+    }
+    if (base === 'datetime' && args.length === 1) {
+      return { expr: `${TYPES}.DATE(${args[0]})`, ts: 'Date' };
+    }
+  }
+  if (database === Database.MSSQL) {
+    const isMax = MAX_LENGTH.test(facts.element);
+
+    if (SQLSERVER_MAX_TYPES.has(base) && isMax) {
+      return { expr: `${TYPES}.TEXT`, ts: 'string' };
+    }
+    if (base === 'varbinary' && !isMax) {
+      return { expr: writeAsIs(facts.element), ts: 'Buffer' };
+    }
+    // tedious takes a Date only as the text DATE writes, which carries an
+    // offset, and hands a time of day back as a Date on 1970-01-01.
+    if (SQLSERVER_DATE_TYPES.has(base)) {
+      return { expr: DATE_TIME, ts: 'Date' };
+    }
+  }
+  // A vector's arguments are its dimensions and format, never a length, and
+  // oracledb hands a BFILE over as a Lob.
+  if (database === Database.Oracle && base === 'vector') {
+    return { expr: STRING, ts: oracleVectorAnnotation(facts.element) };
+  }
+  if (database === Database.Oracle && base === 'bfile') {
+    return { expr: BLOB.expr, ts: 'object' };
+  }
+  // Sequelize reads a SQLite value into a Date only where the column is
+  // declared DATETIME.
+  if (database === Database.SQLite && base === 'timestamp') {
+    return { expr: writeAsIs(facts.element), ts: 'string' };
+  }
+  // Sequelize has no interval member and TIME makes a type Oracle lacks. On
+  // Oracle a type as written fails every create, and oracledb hands an
+  // interval over as an IntervalDS or IntervalYM object.
+  if (scalar === 'interval' && database !== Database.PostgreSQL) {
+    return {
+      expr: STRING,
+      ts: database === Database.Oracle ? 'object' : 'string',
+    };
+  }
+
+  return asWritten(facts, database);
+}
+
+/** A sparse vector is a SparseVector object; any other the format's array. */
+function oracleVectorAnnotation(element: string): string {
+  const [, format = '*', storage = ''] = (
+    TYPE_ARGUMENTS.exec(element)?.[1] ?? ''
+  )
+    .split(',')
+    .map(part => part.trim().toLowerCase());
+
+  if (storage === 'sparse') {
+    return 'object';
+  }
+
+  return ORACLE_VECTOR_ARRAYS.get(format) ?? ORACLE_ANY_VECTOR;
+}
+
+function asWritten(facts: ColumnFacts, database: number): SequelizeType | null {
+  const members = MEMBER_TYPES.get(database);
+
+  if (
+    !members ||
+    !isListedName(facts.base, database) ||
+    (members.has(facts.base) &&
+      !(facts.args.length !== 0 && ARGUMENT_DROPPING_TYPES.has(facts.base)))
+  ) {
+    return null;
+  }
+
   return {
-    expr: emission.expr === CHAR ? STRING : emission.expr,
-    attached: false,
+    expr: writeAsIs(facts.element),
+    ts: writtenAnnotation(facts, database),
   };
 }
 
-const SEPARATOR = /[\s,]/;
+function writtenAnnotation(facts: ColumnFacts, database: number): string {
+  const { base, scalar } = facts;
 
-function enumMembers(dataType: string): string[] {
-  const matched = TYPE_ARGUMENTS.exec(dataType);
-  if (!matched) {
-    return [];
+  if (
+    database === Database.PostgreSQL &&
+    (POSTGRES_OBJECT_TYPES.has(base) || scalar === 'interval')
+  ) {
+    return 'object';
+  }
+  // The mariadb connector reads a BIT(1) as a boolean and a SET as an array of
+  // its members; mysql2 reads every BIT as bytes and a SET as one string.
+  if (isMySQLFamily(database) && base === 'bit') {
+    return database === Database.MariaDB && scalar === 'bool'
+      ? 'boolean'
+      : 'Buffer';
+  }
+  if (database === Database.MariaDB && base === 'set') {
+    const members = facts.setMembers?.map(
+      member => `"${escapeString(member)}"`
+    );
+
+    return members ? `(${members.join(' | ')})[]` : 'string[]';
+  }
+  // The mariadb connector hands a vector over as its packed float32 bytes.
+  if (database === Database.MariaDB && base === 'vector') {
+    return 'Buffer';
+  }
+  if (isMySQLFamily(database) && MYSQL_GEOMETRY_TYPES.has(base)) {
+    return 'object';
+  }
+  if (database === Database.MSSQL) {
+    const annotation = SQLSERVER_ANNOTATIONS.get(base);
+
+    if (annotation) {
+      return annotation;
+    }
+  }
+  if (facts.isTextInteger) {
+    return 'string';
+  }
+  if (scalar === 'decimal') {
+    return DECIMAL_ANNOTATIONS.get(database) ?? SCALAR_ANNOTATIONS[scalar];
   }
 
-  const source = matched[1];
-  const members: string[] = [];
-  let index = 0;
-
-  while (index < source.length) {
-    if (SEPARATOR.test(source[index])) {
-      index += 1;
-      continue;
-    }
-
-    const quote = source[index];
-    if (quote !== "'" && quote !== '"') {
-      return [];
-    }
-
-    let member = '';
-    index += 1;
-
-    while (index < source.length) {
-      if (source[index] !== quote) {
-        member += source[index];
-        index += 1;
-      } else if (source[index + 1] === quote) {
-        member += quote;
-        index += 2;
-      } else {
-        index += 1;
-        break;
-      }
-    }
-
-    members.push(member);
-  }
-
-  return members;
+  return SCALAR_ANNOTATIONS[scalar];
 }
 
-function typeArguments(dataType: string): number[] {
-  const matched = TYPE_ARGUMENTS.exec(dataType);
-  if (!matched) {
-    return [];
+function memberType(facts: ColumnFacts, database: number): SequelizeType {
+  const emission =
+    vendorTypeMap.get(facts.base) ??
+    (facts.scalar === 'bytes'
+      ? BLOB
+      : fallbackTypeMap[getPrimitiveType(facts.element, database)]);
+  // MySQL keeps a float's precision and scale, which FLOAT and DOUBLE write
+  // after the name; a lone argument there picks FLOAT or DOUBLE alone.
+  const expr =
+    isMySQLFamily(database) &&
+    facts.args.length === 2 &&
+    (emission.expr === FLOAT || emission.expr === DOUBLE)
+      ? `${emission.expr}(${facts.args[0]}, ${facts.args[1]})`
+      : applyArguments(emission, facts.args);
+  const isNumeric =
+    isMySQLFamily(database) && NUMERIC_EXPRESSIONS.has(emission.expr);
+  const unsigned = isNumeric && facts.isUnsigned ? '.UNSIGNED' : '';
+  const zerofill = isNumeric && ZEROFILL.test(facts.element) ? '.ZEROFILL' : '';
+  const ts =
+    emission.expr === BIGINT
+      ? BIGINT_ANNOTATIONS.get(database)
+      : emission.expr === DECIMAL
+        ? DECIMAL_ANNOTATIONS.get(database)
+        : undefined;
+
+  return { expr: `${expr}${unsigned}${zerofill}`, ts: ts ?? emission.ts };
+}
+
+function applyArguments(emission: Emission, args: number[]): string {
+  if (emission.args === 'length' && args.length === 1 && args[0] > 0) {
+    return `${emission.expr}(${args[0]})`;
+  }
+  if (emission.args === 'precision' && args.length === 1) {
+    return `${emission.expr}(${args[0]})`;
+  }
+  if (emission.args === 'precision' && args.length === 2) {
+    return `${emission.expr}(${args[0]}, ${args[1]})`;
   }
 
-  const values = matched[1].split(',').map(value => value.trim());
-  return values.every(value => DIGITS.test(value)) ? values.map(Number) : [];
+  return emission.expr === CHAR ? STRING : emission.expr;
+}
+
+function isListedName(base: string, database: number): boolean {
+  let names = listedNames.get(database);
+
+  if (!names) {
+    names = new Set(
+      getDataTypeHints(database).map(hint => hint.name.toLowerCase())
+    );
+    listedNames.set(database, names);
+  }
+
+  return names.has(base);
+}
+
+function writeAsIs(dataType: string): string {
+  return `"${escapeString(dataType.trim())}"`;
+}
+
+function isWrittenAsIs(expr: string): boolean {
+  return expr.startsWith('"');
 }
 
 function createIndexNames(state: RootState): Map<string, string> {
@@ -956,6 +1503,10 @@ function createTableNaming(
   const columns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
+  const className = uniqueName(
+    classNames,
+    classIdentifier(tsIdentifier(getNameCase(table.name, tableNameCase)))
+  );
 
   const carriers = new Map<string, string>();
 
@@ -1006,7 +1557,12 @@ function createTableNaming(
 
       relationshipNames.set(
         relationshipKey(relationship, OWNING),
-        uniqueName(used, tsIdentifier(getNameCase(name, columnNameCase)))
+        uniqueAlias(
+          used,
+          tsIdentifier(getNameCase(name, columnNameCase)),
+          ONE_ACCESSORS,
+          className
+        )
       );
     });
 
@@ -1028,15 +1584,19 @@ function createTableNaming(
 
       relationshipNames.set(
         relationshipKey(relationship, INVERSE),
-        uniqueName(used, tsIdentifier(name))
+        uniqueAlias(
+          used,
+          tsIdentifier(name),
+          hasNRelationship(relationship.relationshipType)
+            ? MANY_ACCESSORS
+            : ONE_ACCESSORS,
+          className
+        )
       );
     });
 
   return {
-    className: uniqueName(
-      classNames,
-      tsIdentifier(getNameCase(table.name, tableNameCase))
-    ),
+    className,
     columnIds: declared.map(column => column.id),
     columnNames,
     relationshipNames,
@@ -1054,17 +1614,71 @@ function isSelfReferential(relationship: Relationship): boolean {
   return relationship.start.tableId === relationship.end.tableId;
 }
 
-function uniqueName(used: Set<string>, name: string): string {
+// Sequelize puts an alias's methods on the model's prototype, each a verb and
+// the alias with its first letter upper case (getTeam), where one would hide
+// a Model method or an attribute of that name.
+const ONE_ACCESSORS: ReadonlyArray<string> = ['create', 'get', 'set'];
+const MANY_ACCESSORS: ReadonlyArray<string> = [
+  'add',
+  'count',
+  'create',
+  'get',
+  'has',
+  'remove',
+  'set',
+];
+
+function numberName(
+  name: string,
+  isTaken: (candidate: string) => boolean
+): string {
   let result = name;
   let index = 2;
 
-  while (used.has(result)) {
+  while (isTaken(result)) {
     result = `${name}${index}`;
     index += 1;
   }
 
+  return result;
+}
+
+function uniqueName(used: Set<string>, name: string): string {
+  const result = numberName(name, candidate => used.has(candidate));
+
   used.add(result);
   return result;
+}
+
+/**
+ * An alias is numbered where it or one of its accessors is taken, or where it
+ * equals its class name ignoring case, the name Sequelize gives the model's own
+ * table in a query including the alias. Its accessors are then taken.
+ */
+function uniqueAlias(
+  used: Set<string>,
+  name: string,
+  accessors: ReadonlyArray<string>,
+  className: string
+): string {
+  const tableAlias = className.toLowerCase();
+  const accessorsOf = (alias: string) =>
+    accessors.map(verb => `${verb}${upperFirst(alias)}`);
+  const result = numberName(
+    name,
+    candidate =>
+      used.has(candidate) ||
+      candidate.toLowerCase() === tableAlias ||
+      accessorsOf(candidate).some(accessor => used.has(accessor))
+  );
+
+  used.add(result);
+  accessorsOf(result).forEach(accessor => used.add(accessor));
+  return result;
+}
+
+function upperFirst(name: string): string {
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
 }
 
 const NON_IDENTIFIER = /[^$0-9A-Za-z_]/g;
@@ -1132,13 +1746,58 @@ function tsIdentifier(name: string): string {
   return RESERVED.has(identifier) ? `${identifier}_` : identifier;
 }
 
+/**
+ * Names a class may not take: TypeScript's predefined types, Object, the type
+ * operators its InferAttributes reads, what a CommonJS module binds, and
+ * __proto__, which would replace the prototype of Sequelize's model registry.
+ */
+const RESERVED_CLASS_NAMES: ReadonlySet<string> = new Set([
+  'Object',
+  '__dirname',
+  '__filename',
+  '__proto__',
+  'any',
+  'bigint',
+  'boolean',
+  'exports',
+  'infer',
+  'keyof',
+  'module',
+  'never',
+  'number',
+  'object',
+  'readonly',
+  'require',
+  'string',
+  'symbol',
+  'undefined',
+  'unique',
+  'unknown',
+]);
+
+function classIdentifier(identifier: string): string {
+  return RESERVED_CLASS_NAMES.has(identifier) ? `${identifier}_` : identifier;
+}
+
 const BACKSLASH = /\\/g;
 const DOUBLE_QUOTE = /"/g;
 const NEWLINE = /\r\n|\r|\n/g;
+const CARRIAGE_RETURN = /\r/g;
+const LINE_FEED = /\n/g;
 
+/**
+ * A string Sequelize hands the database (a name, a type, a member, a default)
+ * keeps each line break as it is, since the database compares it.
+ */
 function escapeString(value: string): string {
   return value
     .replace(BACKSLASH, '\\\\')
     .replace(DOUBLE_QUOTE, '\\"')
-    .replace(NEWLINE, '\\n');
+    .replace(CARRIAGE_RETURN, '\\r')
+    .replace(LINE_FEED, '\\n');
+}
+
+/** A comment writes each CR, LF or CRLF as one line feed. */
+function escapeComment(value: string): string {
+  return escapeString(value.replace(NEWLINE, '\n'));
 }

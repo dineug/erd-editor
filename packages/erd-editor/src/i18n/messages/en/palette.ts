@@ -30,9 +30,12 @@ export const palette = {
   'palette.schemaSqlStatements': 'Schema SQL: Statements',
   'palette.schemaSqlHeader': 'Schema SQL: Header',
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Options panel',
+  'palette.codeGeneratorOptionsPanel': 'Code Generator: Options panel',
   'palette.exportSchemaSql': 'Export: Schema SQL',
   'palette.keywords.schemaSqlStatements': 'create if not exists drop replace',
   'palette.keywords.schemaSqlHeader': 'use database search_path',
   'palette.keywords.schemaSqlOptionsPanel': 'show hide before after scripts',
+  'palette.keywords.codeGeneratorOptionsPanel':
+    'show hide database case save file',
   'palette.keywords.exportSchemaSql': 'sql ddl file',
 } as const;

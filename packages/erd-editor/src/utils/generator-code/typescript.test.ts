@@ -22,12 +22,19 @@ type TableInput = {
   columns?: ColumnInput[];
 };
 
-function createState(): RootState {
-  return {
+const NN = ColumnOption.notNull;
+
+function createState(database?: number): RootState {
+  const state = {
     ...schemaV3Parser({}),
     editor: {} as any,
     lww: {},
   } as RootState;
+
+  if (database !== undefined) {
+    state.settings.database = database;
+  }
+  return state;
 }
 
 function addTable(
@@ -60,6 +67,31 @@ function addTable(
   return table;
 }
 
+function format(state: RootState, table: Table): string[] {
+  const buffer: string[] = [];
+
+  formatTable(state, { buffer, table });
+  return buffer;
+}
+
+/** One table of NOT NULL columns of the given types, keyed c0, c1, ... */
+function typesOf(database: number, dataTypes: string[]): string[] {
+  const state = createState(database);
+  const table = addTable(state, {
+    id: 't',
+    name: 't',
+    columns: dataTypes.map((dataType, index) => ({
+      name: `c${index}`,
+      dataType,
+      options: NN,
+    })),
+  });
+
+  return format(state, table)
+    .slice(1, -1)
+    .map(line => line.replace(/^ {2}c\d+: /, '').replace(/;$/, ''));
+}
+
 describe('generator-code/typescript', () => {
   it('returns an empty string when there is no table', () => {
     expect(createCode(createState())).toBe('');
@@ -77,7 +109,7 @@ describe('generator-code/typescript', () => {
           name: 'id',
           dataType: 'INT',
           comment: 'user id',
-          options: ColumnOption.primaryKey | ColumnOption.notNull,
+          options: ColumnOption.primaryKey | NN,
         },
         { name: 'nick_name', dataType: 'VARCHAR(50)' },
       ],
@@ -85,9 +117,7 @@ describe('generator-code/typescript', () => {
     addTable(state, {
       id: 't-posts',
       name: 'posts',
-      columns: [
-        { name: 'id', dataType: 'BIGINT', options: ColumnOption.notNull },
-      ],
+      columns: [{ name: 'id', dataType: 'BIGINT', options: NN }],
     });
 
     expect(createCode(state)).toBe(
@@ -108,110 +138,314 @@ describe('generator-code/typescript', () => {
     );
   });
 
-  it('maps every primitive type to a TypeScript type', () => {
-    const state = createState();
-    const table = addTable(state, {
-      id: 't-types',
-      name: 'types',
-      columns: [
-        { name: 'intCol', dataType: 'INT', options: ColumnOption.notNull },
-        { name: 'longCol', dataType: 'BIGINT', options: ColumnOption.notNull },
-        { name: 'floatCol', dataType: 'FLOAT', options: ColumnOption.notNull },
-        {
-          name: 'doubleCol',
-          dataType: 'DOUBLE',
-          options: ColumnOption.notNull,
-        },
-        {
-          name: 'decimalCol',
-          dataType: 'DECIMAL(10, 2)',
-          options: ColumnOption.notNull,
-        },
-        {
-          name: 'booleanCol',
-          dataType: 'BOOLEAN',
-          options: ColumnOption.notNull,
-        },
-        {
-          name: 'stringCol',
-          dataType: 'VARCHAR(10)',
-          options: ColumnOption.notNull,
-        },
-        { name: 'lobCol', dataType: 'TEXT', options: ColumnOption.notNull },
-        { name: 'dateCol', dataType: 'DATE', options: ColumnOption.notNull },
-        { name: 'timeCol', dataType: 'TIME', options: ColumnOption.notNull },
-        {
-          name: 'unknownCol',
-          dataType: 'NOT_A_TYPE',
-          options: ColumnOption.notNull,
-        },
-      ],
-    });
-    const buffer: string[] = [];
-
-    formatTable(state, { buffer, table });
-
-    expect(buffer).toEqual([
-      'export interface Types {',
-      '  intCol: number;',
-      '  longCol: number;',
-      '  floatCol: number;',
-      '  doubleCol: number;',
-      '  decimalCol: number;',
-      '  booleanCol: boolean;',
-      '  stringCol: string;',
-      '  lobCol: string;',
-      '  dateCol: string;',
-      '  timeCol: string;',
-      '  unknownCol: string;',
-      '}',
+  it('writes the type z.infer gives the Zod schema of each MySQL column', () => {
+    expect(
+      typesOf(Database.MySQL, [
+        'INT',
+        'BIGINT',
+        'BIGINT UNSIGNED',
+        'FLOAT',
+        'DOUBLE',
+        'DECIMAL(10, 2)',
+        'BOOLEAN',
+        'BIT(1)',
+        'BIT',
+        'BIT(8)',
+        'TINYINT(1)',
+        'VARCHAR(10)',
+        'TEXT',
+        'DATE',
+        'TIME',
+        'DATETIME',
+        'TIMESTAMP',
+        'BLOB',
+        'JSON',
+        "ENUM('sad','ok','happy')",
+        "SET('r','w')",
+        'NOT_A_TYPE',
+      ])
+    ).toEqual([
+      'number',
+      'number',
+      'number',
+      'number',
+      'number',
+      'string',
+      'boolean',
+      'boolean',
+      'boolean',
+      'number',
+      'number',
+      'string',
+      'string',
+      'string',
+      'string',
+      'string',
+      'string',
+      'string',
+      'unknown',
+      '"sad" | "ok" | "happy"',
+      'string',
+      'string',
     ]);
   });
 
-  it('maps the dateTime primitive type to string', () => {
-    const state = createState();
-    state.settings.database = Database.Oracle;
-    const table = addTable(state, {
-      id: 't-ts',
-      name: 'ts',
-      columns: [
-        {
-          name: 'created_at',
-          dataType: 'TIMESTAMP',
-          options: ColumnOption.notNull,
-        },
-      ],
-    });
-    const buffer: string[] = [];
-
-    formatTable(state, { buffer, table });
-
-    expect(buffer).toEqual([
-      'export interface Ts {',
-      '  createdAt: string;',
-      '}',
+  it('follows the JSON shape on the other databases', () => {
+    expect(
+      typesOf(Database.MariaDB, ['BIT', 'bit(1)', 'BIT(8)', 'TINYINT(1)'])
+    ).toEqual(['boolean', 'boolean', 'number', 'number']);
+    expect(
+      typesOf(Database.PostgreSQL, [
+        'numeric(10,2)',
+        'money',
+        'jsonb',
+        'uuid',
+        'bytea',
+        'bit(3)',
+        'pg_lsn',
+        'xid',
+        'xid8',
+        'oid',
+        'timestamptz',
+        'interval',
+      ])
+    ).toEqual([
+      'string',
+      'string',
+      'unknown',
+      'string',
+      'string',
+      'string',
+      'string',
+      'string',
+      'string',
+      'number',
+      'string',
+      'string',
+    ]);
+    expect(
+      typesOf(Database.SQLite, ['DECIMAL(10,2)', 'NUMERIC', 'JSON'])
+    ).toEqual(['number', 'number', 'unknown']);
+    expect(
+      typesOf(Database.MSSQL, [
+        'bit',
+        'money',
+        'uniqueidentifier',
+        'datetimeoffset',
+        'varbinary(16)',
+      ])
+    ).toEqual(['boolean', 'string', 'string', 'string', 'string']);
+    expect(
+      typesOf(Database.Snowflake, ['VARIANT', 'NUMBER(10,2)', 'NUMBER'])
+    ).toEqual(['unknown', 'string', 'number']);
+    expect(typesOf(Database.Databricks, ['VOID', 'STRUCT<a:INT>'])).toEqual([
+      'null',
+      'unknown',
     ]);
   });
 
-  it('appends a null union for columns without the not null option', () => {
-    const state = createState();
+  it('writes one array type for each PostgreSQL array dimension', () => {
+    expect(
+      typesOf(Database.PostgreSQL, [
+        'int[]',
+        'text[][]',
+        'integer ARRAY',
+        'numeric(10,2)[]',
+        'jsonb[]',
+        "enum('a','b')[]",
+        "enum('only')[]",
+        '"mood"[]',
+      ])
+    ).toEqual([
+      'number[]',
+      'string[][]',
+      'number[]',
+      'string[]',
+      'unknown[]',
+      '("a" | "b")[]',
+      '"only"[]',
+      'string[]',
+    ]);
+  });
+
+  it('adds no null union where the type holds null already', () => {
+    const state = createState(Database.PostgreSQL);
     const table = addTable(state, {
       id: 't-nullable',
       name: 'nullable',
       columns: [
-        { name: 'intCol', dataType: 'INT', options: ColumnOption.primaryKey },
-        { name: 'boolCol', dataType: 'BOOLEAN', comment: 'a flag' },
+        { name: 'data', dataType: 'jsonb' },
+        { name: 'list', dataType: 'jsonb[]' },
+        { name: 'tags', dataType: 'text[]' },
+        { name: 'mood', dataType: "enum('sad','ok')" },
       ],
     });
-    const buffer: string[] = [];
 
-    formatTable(state, { buffer, table });
-
-    expect(buffer).toEqual([
+    expect(format(state, table)).toEqual([
       'export interface Nullable {',
-      '  intCol: number | null;',
+      '  data: unknown;',
+      '  list: unknown[] | null;',
+      '  tags: string[] | null;',
+      '  mood: "sad" | "ok" | null;',
+      '}',
+    ]);
+
+    const databricks = createState(Database.Databricks);
+    const voidTable = addTable(databricks, {
+      id: 't-void',
+      name: 'nothing',
+      columns: [{ name: 'v', dataType: 'VOID' }],
+    });
+
+    expect(format(databricks, voidTable)).toEqual([
+      'export interface Nothing {',
+      '  v: null;',
+      '}',
+    ]);
+  });
+
+  it('reads a primary key as NOT NULL with its NN flag set or not', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 't-keys',
+      name: 'keys',
+      columns: [
+        { name: 'id', dataType: 'INT', options: ColumnOption.primaryKey },
+        { name: 'flag', dataType: 'BOOLEAN', comment: 'a flag' },
+      ],
+    });
+
+    expect(format(state, table)).toEqual([
+      'export interface Keys {',
+      '  id: number;',
       '  // a flag',
-      '  boolCol: boolean | null;',
+      '  flag: boolean | null;',
+      '}',
+    ]);
+  });
+
+  it('writes enum members as JSON string literals', () => {
+    expect(
+      typesOf(Database.MySQL, [
+        "ENUM('it''s','a\\\\b','say \"hi\"')",
+        "ENUM('a ','a','b')",
+      ])
+    ).toEqual(['"it\'s" | "a\\\\b" | "say \\"hi\\""', '"a" | "b"']);
+  });
+
+  it('writes a comment as one line comment per line, at every line terminator', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 't-comments',
+      name: 'comments',
+      comment: '\n\nfirst\r\nsecond\rthird fourth fifth  \n\nlast\n',
+      columns: [
+        { name: 'a', dataType: 'INT', comment: 'one\ntwo', options: NN },
+        { name: 'b', dataType: 'INT', comment: ' \n\t', options: NN },
+      ],
+    });
+
+    expect(format(state, table)).toEqual([
+      '// first',
+      '// second',
+      '// third',
+      '// fourth',
+      '// fifth',
+      '//',
+      '// last',
+      'export interface Comments {',
+      '  // one',
+      '  // two',
+      '  a: number;',
+      '  b: number;',
+      '}',
+    ]);
+  });
+
+  it('puts a backslash before the at sign of a comment line TypeScript would read as a directive', () => {
+    const state = createState();
+
+    addTable(state, {
+      id: 't-directives',
+      name: 'directives',
+      comment: '@TS-NOCHECK\n  @ts-expect-error nope\nsee @ts-ignore',
+      columns: [{ name: 'a', dataType: 'INT', comment: '@ts-ignore' }],
+    });
+
+    expect(createCode(state)).toBe(
+      [
+        '',
+        '// \\@TS-NOCHECK',
+        '//   \\@ts-expect-error nope',
+        '// see @ts-ignore',
+        'export interface Directives {',
+        '  // \\@ts-ignore',
+        '  a: number | null;',
+        '}',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('puts an underscore after an interface name an ES module refuses', () => {
+    const state = createState();
+
+    state.settings.tableNameCase = NameCase.none;
+    ['class', 'string', 'let', 'await', 'type', 'as'].forEach(name =>
+      addTable(state, { id: `t-${name}`, name })
+    );
+
+    expect(createCode(state)).toBe(
+      [
+        '',
+        'export interface as {',
+        '}',
+        '',
+        'export interface await_ {',
+        '}',
+        '',
+        'export interface class_ {',
+        '}',
+        '',
+        'export interface let_ {',
+        '}',
+        '',
+        'export interface string_ {',
+        '}',
+        '',
+        'export interface type {',
+        '}',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('quotes a key that is no identifier and writes other names as is', () => {
+    const state = createState();
+
+    state.settings.tableNameCase = NameCase.none;
+    state.settings.columnNameCase = NameCase.none;
+    const table = addTable(state, {
+      id: 't-names',
+      name: '3d models',
+      columns: [
+        { name: 'first name', dataType: 'INT', options: NN },
+        { name: '2fa_enabled', dataType: 'BOOLEAN', options: NN },
+        { name: '', dataType: 'INT', options: NN },
+        { name: 'class', dataType: 'INT', options: NN },
+        { name: 'ñandú', dataType: 'INT', options: NN },
+        { name: '__proto__', dataType: 'INT', options: NN },
+      ],
+    });
+
+    expect(format(state, table)).toEqual([
+      'export interface 3d models {',
+      '  "first name": number;',
+      '  "2fa_enabled": boolean;',
+      '  "": number;',
+      '  class: number;',
+      '  ñandú: number;',
+      '  __proto__: number;',
       '}',
     ]);
   });
@@ -223,15 +457,10 @@ describe('generator-code/typescript', () => {
     const table = addTable(state, {
       id: 't-user-profile',
       name: 'UserProfile',
-      columns: [
-        { name: 'user_id', dataType: 'INT', options: ColumnOption.notNull },
-      ],
+      columns: [{ name: 'user_id', dataType: 'INT', options: NN }],
     });
-    const buffer: string[] = [];
 
-    formatTable(state, { buffer, table });
-
-    expect(buffer).toEqual([
+    expect(format(state, table)).toEqual([
       'export interface user_profile {',
       '  UserId: number;',
       '}',

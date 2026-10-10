@@ -10,6 +10,7 @@ export type Lang =
   | 'go'
   | 'graphql'
   | 'java'
+  | 'json'
   | 'kotlin'
   | 'mermaid'
   | 'php'
@@ -17,6 +18,7 @@ export type Lang =
   | 'rust'
   | 'scala'
   | 'sql'
+  | 'swift'
   | 'typescript';
 
 export const LanguageToLangMap: Record<number, Lang> = {
@@ -39,4 +41,7 @@ export const LanguageToLangMap: Record<number, Lang> = {
   [Language.Doctrine]: 'php',
   [Language.Rust]: 'rust',
   [Language.SeaORM]: 'rust',
+  [Language.Swift]: 'swift',
+  [Language.Zod]: 'typescript',
+  [Language.JSONSchema]: 'json',
 };

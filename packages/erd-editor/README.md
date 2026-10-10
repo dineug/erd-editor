@@ -30,7 +30,10 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   re-create and a USE or CREATE SCHEMA header for the window, and keeps SQL of your own in the
   document to write before and after the tables
 - Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM,
+  Swift, Zod, JSON Schema
+- Code Generator options — a panel beside the code picks the language, the database and the name
+  cases, and saves the code as a file with the language's extension
 - Export — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
   transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead
 - Force-directed visualization of table relationships
@@ -289,13 +292,13 @@ code panel renders, so a page that opens none never fetches the grammars.
 
 | | |
 | --- | --- |
-| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python, Mermaid, PHP, Rust |
+| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python, Mermaid, PHP, Rust, Swift, JSON |
 | Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
 
 Those are exactly the languages the panels emit — the JPA generator emits Java, the SQLAlchemy
-generator emits Python, the TypeORM, Sequelize and Drizzle generators emit TypeScript, the
-Doctrine generator emits PHP, the SeaORM generator emits Rust, and the DBML and AML generators
-are highlighted as SQL, the closest grammar shiki ships.
+generator emits Python, the TypeORM, Sequelize, Drizzle and Zod generators emit TypeScript, the
+Doctrine generator emits PHP, the SeaORM generator emits Rust, the JSON Schema generator emits
+JSON, and the DBML and AML generators are highlighted as SQL, the closest grammar shiki ships.
 
 Where `SharedWorker` is missing — Chrome on Android, Safari before 16.4 — the underlying error is
 logged and the panels render as plain text; nothing else is affected. The regex engine is plain

@@ -4,7 +4,8 @@ import { fontSize4, typography } from '@/styles/typography.styles';
 
 /**
  * The dialog's one column, its native lists drawn in the editor's appearance
- * through color-scheme, which they inherit.
+ * through color-scheme, which they inherit, and ringed 2px off as its buttons
+ * are, the doubled class outweighing the list box's own ring.
  */
 export const body = css`
   display: flex;
@@ -15,7 +16,7 @@ export const body = css`
   ${typography.normal};
 
   & button:focus-visible,
-  & select:focus-visible {
+  && select:focus-visible {
     outline: 2px solid var(--input-active);
     outline-offset: 2px;
   }
@@ -35,22 +36,10 @@ export const subtitle = css`
   ${typography.paragraph};
 `;
 
-/** A native list in the box's colours; its popup takes the appearance from color-scheme. */
+/** A list as wide as its cell, narrowing with the box. */
 export const select = css`
   width: 100%;
   min-width: 0;
-  height: 28px;
-  padding: 0 4px;
-  border: 1px solid var(--context-menu-border);
-  border-radius: 4px;
-  color: var(--active);
-  background-color: var(--context-menu-background);
-  ${typography.paragraph};
-
-  &:disabled {
-    color: var(--placeholder);
-    cursor: default;
-  }
 `;
 
 export const references = css`

@@ -46,7 +46,7 @@ suite red.
 
 ## What is covered
 
-45 spec files. Ten of the groups exist because the DOM scene got their subject
+46 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -218,6 +218,16 @@ open once shown; Export ▸ Schema SQL from the canvas menu saves nothing, opens
 the tab with Save file focused and a press saves `shop-<time>.sql`; the code's
 menu has six rows and the palette four; a readonly editor's scripts take no
 typing while its Statements still change.
+
+`generator-code-options.spec.ts` holds down the Code Generator tab's options
+panel: on a wide editor it opens beside the code, folds behind Show options,
+which takes the focus, stays folded across a trip to another tab and opens
+again with Hide options focused; under 640 px it starts folded, and showing
+it leaves the Schema SQL tab's panel folded; a new language or database writes the code again
+(Zod's decimal a string on MySQL and a number on SQLite), Bracket is gone for
+TypeScript and shows for Doctrine and JPA, and Mermaid dims the Database and
+both name cases with their note; Save file in the panel and the code's menu, whose
+rows it lists, save `shop-<time>.swift` and `shop-<time>.json`.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

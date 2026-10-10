@@ -1397,6 +1397,17 @@ describe('doctrine generator', () => {
       ]);
     });
 
+    // MySQL 8.4 stores ENUM("a","b") as enum('a','b'): read as a STRING, the
+    // members made SchemaTool retype the column VARCHAR(255).
+    it('reads ENUM members in double quotes too, as MySQL reads them', () => {
+      expect(columnOf(Database.MySQL, 'ENUM("a","it\'s")')[0]).toBe(
+        "    #[ORM\\Column(name: 'value', type: Types::ENUM, options: ['values' => ['a', 'it\\'s']])]"
+      );
+      expect(columnOf(Database.MariaDB, 'ENUM(\'x\',"y""z")')[0]).toBe(
+        "    #[ORM\\Column(name: 'value', type: Types::ENUM, options: ['values' => ['x', 'y\"z']])]"
+      );
+    });
+
     it('writes a date and time key as a string whose column keeps its type, which Doctrine can hash', () => {
       const state = createState();
       addTable(state, {

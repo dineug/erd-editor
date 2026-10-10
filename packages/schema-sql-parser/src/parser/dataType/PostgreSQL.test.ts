@@ -33,6 +33,7 @@ describe('PostgreSQLTypes', () => {
       'DATE',
       'DATEMULTIRANGE',
       'DATERANGE',
+      'DEC',
       'DECIMAL',
       'DOUBLE PRECISION',
       'FLOAT',
@@ -122,7 +123,7 @@ describe('PostgreSQLTypes', () => {
       'XID8',
       'XML',
     ]);
-    expect(PostgreSQLTypes).toHaveLength(106);
+    expect(PostgreSQLTypes).toHaveLength(107);
   });
 
   it('contains no duplicate entries', () => {

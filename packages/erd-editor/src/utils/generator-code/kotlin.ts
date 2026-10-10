@@ -1,31 +1,71 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { ColumnOption } from '@/constants/schema';
-import { PrimitiveType, PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
-import {
-  FormatColumnOptions,
-  FormatTableOptions,
-  getNameCase,
-  getPrimitiveType,
-} from './utils';
+import { formatLineComment, getJvmType, JvmType } from './java';
+import { FormatColumnOptions, FormatTableOptions, getNameCase } from './utils';
 
-const convertTypeMap: PrimitiveTypeMap = {
-  int: 'Int',
-  long: 'Long',
-  float: 'Float',
-  double: 'Double',
-  decimal: 'BigDecimal',
-  boolean: 'Boolean',
-  string: 'String',
-  lob: 'String',
-  date: 'LocalDate',
-  dateTime: 'LocalDateTime',
-  time: 'LocalTime',
+// Four spaces and a comma after every parameter, as Kotlin's coding
+// conventions lay out a class header that spans several lines.
+const INDENT = '    ';
+
+// Kotlin reserves _, __, ___ and every other name of underscores alone.
+const UNDERSCORES = /^_+$/;
+
+const kotlinTypes: Readonly<Record<JvmType, string>> = {
+  BigDecimal: 'BigDecimal',
+  Boolean: 'Boolean',
+  Byte: 'Byte',
+  bytes: 'ByteArray',
+  Double: 'Double',
+  Duration: 'Duration',
+  Float: 'Float',
+  Integer: 'Int',
+  LocalDate: 'LocalDate',
+  LocalDateTime: 'LocalDateTime',
+  LocalTime: 'LocalTime',
+  Long: 'Long',
+  OffsetDateTime: 'OffsetDateTime',
+  OffsetTime: 'OffsetTime',
+  Short: 'Short',
+  String: 'String',
+  UUID: 'UUID',
 };
+
+/** Kotlin's hard keywords, which a name takes only in backticks. */
+const KOTLIN_KEYWORDS: ReadonlySet<string> = new Set([
+  'as',
+  'break',
+  'class',
+  'continue',
+  'do',
+  'else',
+  'false',
+  'for',
+  'fun',
+  'if',
+  'in',
+  'interface',
+  'is',
+  'null',
+  'object',
+  'package',
+  'return',
+  'super',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'typealias',
+  'typeof',
+  'val',
+  'var',
+  'when',
+  'while',
+]);
 
 export function createCode(state: RootState): string {
   const {
@@ -57,70 +97,53 @@ export function formatTable(
     settings: { tableNameCase },
     collections,
   } = state;
-  const tableName = getNameCase(table.name, tableNameCase);
-
-  if (table.comment.trim() !== '') {
-    buffer.push(`// ${table.comment}`);
-  }
-  buffer.push(`class ${tableName} {`);
-
-  query(collections)
+  const tableName = toKotlinName(getNameCase(table.name, tableNameCase));
+  const columns = query(collections)
     .collection('tableColumnEntities')
-    .selectByIds(table.columnIds)
-    .forEach(column => {
-      formatColumn(state, { buffer, column });
-    });
+    .selectByIds(table.columnIds);
 
-  buffer.push(`}`);
+  formatLineComment(buffer, '', table.comment);
+
+  // A data class needs a property, so a table without columns is a class.
+  if (columns.length === 0) {
+    buffer.push(`class ${tableName}`);
+    return;
+  }
+
+  buffer.push(`data class ${tableName}(`);
+  columns.forEach(column => {
+    formatColumn(state, { buffer, column });
+  });
+  buffer.push(`)`);
 }
 
 function formatColumn(
   { settings: { columnNameCase, database } }: RootState,
   { buffer, column }: FormatColumnOptions
 ) {
-  const columnName = getNameCase(column.name, columnNameCase);
-  const primitiveType = getPrimitiveType(column.dataType, database);
+  const columnName = toKotlinName(getNameCase(column.name, columnNameCase));
+  const { type, arrayDepth } = getJvmType(column.dataType, database);
+  let kotlinType = kotlinTypes[type];
 
-  if (column.comment.trim() !== '') {
-    buffer.push(`  // ${column.comment}`);
+  for (let depth = 0; depth < arrayDepth; depth++) {
+    kotlinType = `List<${kotlinType}>`;
   }
-  if (
-    bHas(column.options, ColumnOption.notNull) &&
-    primitiveType !== 'date' &&
-    primitiveType !== 'dateTime' &&
-    primitiveType !== 'time'
-  ) {
-    buffer.push(
-      `  var ${columnName}: ${convertTypeMap[primitiveType]} = ${getDefault(
-        primitiveType
-      )}`
-    );
-  } else {
-    buffer.push(
-      `  var ${columnName}: ${convertTypeMap[primitiveType]}? = null`
-    );
-  }
+
+  // A primary key takes no NULL, its flag set or not.
+  const isNotNull =
+    bHas(column.options, ColumnOption.primaryKey) ||
+    bHas(column.options, ColumnOption.notNull);
+
+  formatLineComment(buffer, INDENT, column.comment);
+  buffer.push(
+    isNotNull
+      ? `${INDENT}val ${columnName}: ${kotlinType},`
+      : `${INDENT}val ${columnName}: ${kotlinType}? = null,`
+  );
 }
 
-function getDefault(primitiveType: PrimitiveType) {
-  switch (primitiveType) {
-    case 'int':
-    case 'long':
-      return 0;
-    case 'float':
-      return '0.0f';
-    case 'double':
-      return '0.0';
-    case 'boolean':
-      return false;
-    case 'string':
-    case 'lob':
-      return '""';
-    case 'decimal':
-      return 'BigDecimal.ZERO';
-    case 'date':
-    case 'dateTime':
-    case 'time':
-      return null;
-  }
+export function toKotlinName(name: string): string {
+  return KOTLIN_KEYWORDS.has(name) || UNDERSCORES.test(name)
+    ? `\`${name}\``
+    : name;
 }

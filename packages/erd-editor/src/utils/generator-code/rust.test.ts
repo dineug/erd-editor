@@ -200,6 +200,31 @@ describe('rust generator', () => {
         '}',
       ]);
     });
+
+    // The PostgreSQL and SQLite lists gained dec, so it reads as the decimal
+    // it is there, where it was a String before (an owner decision of 2026-10-10).
+    it.each([Database.PostgreSQL, Database.SQLite])(
+      'writes dec as a rust_decimal::Decimal on database %i',
+      database => {
+        const state = createState(database);
+        const table = addTable(state, {
+          id: 'price',
+          name: 'price',
+          columns: [
+            { name: 'amount', dataType: 'dec', options: NN },
+            { name: 'net', dataType: 'DEC(10,2)' },
+          ],
+        });
+
+        expect(tableLines(state, table)).toEqual([
+          DERIVE,
+          'pub struct Price {',
+          '    pub amount: rust_decimal::Decimal,',
+          '    pub net: Option<rust_decimal::Decimal>,',
+          '}',
+        ]);
+      }
+    );
   });
 
   describe('names', () => {

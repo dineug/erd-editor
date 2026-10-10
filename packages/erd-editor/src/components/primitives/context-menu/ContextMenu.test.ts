@@ -6,6 +6,7 @@ import ContextMenuItem from '@/components/primitives/context-menu/context-menu-i
 import * as itemStyles from '@/components/primitives/context-menu/context-menu-item/ContextMenuItem.styles';
 import ContextMenuRoot from '@/components/primitives/context-menu/context-menu-root/ContextMenuRoot';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import ContextMenuSeparator from '@/components/primitives/context-menu/context-menu-separator/ContextMenuSeparator';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Menu from '@/components/primitives/context-menu/menu/Menu';
 
@@ -40,11 +41,17 @@ function createHost() {
 }
 
 describe('ContextMenu', () => {
-  it('exposes Root, Item and Menu as the composed surface', () => {
+  it('exposes Root, Item, Separator and Menu as the composed surface', () => {
     expect(ContextMenu.Root).toBe(ContextMenuRoot);
     expect(ContextMenu.Item).toBe(ContextMenuItem);
+    expect(ContextMenu.Separator).toBe(ContextMenuSeparator);
     expect(ContextMenu.Menu).toBe(Menu);
-    expect(Object.keys(ContextMenu).sort()).toEqual(['Item', 'Menu', 'Root']);
+    expect(Object.keys(ContextMenu).sort()).toEqual([
+      'Item',
+      'Menu',
+      'Root',
+      'Separator',
+    ]);
   });
 
   it('opens the composed menu on right click and renders its rows', async () => {
@@ -161,5 +168,80 @@ describe('ContextMenu', () => {
     expect(contents).toHaveLength(2);
     expect(contents[1].getAttribute('data-id')).toBe(parentRow.dataset.id);
     expect(contents[1].textContent).toContain('SQL DDL');
+  });
+
+  it('keeps the menu open and runs nothing on a press on a rule', async () => {
+    const { Host, getApi } = createHost();
+    const onClick = vi.fn();
+
+    mounted = await mountAndFlush(
+      html`<${Host}
+        children=${html`
+          <${ContextMenu.Item} children=${'Copy'} .onClick=${onClick} />
+          <${ContextMenu.Separator} />
+          <${ContextMenu.Item} children=${'Delete'} .onClick=${onClick} />
+        `}
+      />`
+    );
+
+    getApi().state.show = true;
+    await flush();
+
+    const content = mounted.container.querySelector(
+      '.context-menu-content'
+    ) as HTMLElement;
+    const rule = content.querySelector('[role="separator"]') as HTMLElement;
+    expect(rule.parentElement).toBe(content);
+
+    rule.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    rule.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await flush();
+
+    expect(onClick).not.toHaveBeenCalled();
+    expect(getApi().state.show).toBe(true);
+    expect(
+      mounted.container.querySelector('.context-menu-content')
+    ).toBeTruthy();
+  });
+
+  it('closes a submenu when a row past a rule opens its own', async () => {
+    const { Host, getApi } = createHost();
+    mounted = await mountAndFlush(
+      html`<${Host}
+        children=${html`
+          <${ContextMenu.Item}
+            children=${'Export'}
+            subChildren=${html`<${ContextMenu.Item} children=${'SQL DDL'} />`}
+          />
+          <${ContextMenu.Separator} />
+          <${ContextMenu.Item}
+            children=${'Import'}
+            subChildren=${html`<${ContextMenu.Item} children=${'DBML'} />`}
+          />
+        `}
+      />`
+    );
+
+    getApi().state.show = true;
+    await flush();
+
+    const [root] = mounted.container.querySelectorAll<HTMLElement>(
+      '.context-menu-content'
+    );
+    const [exportRow, importRow] = Array.from(
+      root.querySelectorAll<HTMLElement>(`:scope > .${String(itemStyles.item)}`)
+    );
+
+    exportRow.dispatchEvent(new MouseEvent('mouseenter'));
+    await flush();
+    importRow.dispatchEvent(new MouseEvent('mouseenter'));
+    await flush();
+
+    const contents = mounted.container.querySelectorAll<HTMLElement>(
+      '.context-menu-content'
+    );
+    expect(contents).toHaveLength(2);
+    expect(contents[1].dataset.id).toBe(importRow.dataset.id);
+    expect(contents[1].textContent).toContain('DBML');
   });
 });

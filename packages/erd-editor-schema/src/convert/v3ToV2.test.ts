@@ -453,6 +453,27 @@ describe('v3ToV2', () => {
       expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
     });
 
+    it('drops the Swift language because "Swift" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.Swift;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
+    it('drops the Zod language because "Zod" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.Zod;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
+    it('drops the JSONSchema language because "JSONSchema" is not a v2 language name', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.language = Language.JSONSchema;
+
+      expect(v3ToV2(schemaV3).canvas.language).toBe('GraphQL');
+    });
+
     it('picks the lowest matching bit when several are set', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.database = Database.MSSQL | Database.SQLite;

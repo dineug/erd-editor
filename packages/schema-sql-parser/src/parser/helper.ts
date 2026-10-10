@@ -92,6 +92,20 @@ export const isForValue = createValueEqual('FOR');
 export const isExecValue = createValueEqual('EXEC');
 export const isExecuteValue = createValueEqual('EXECUTE');
 export const isGoValue = createValueEqual('GO');
+export const isSignedValue = createValueEqual('SIGNED');
+
+const TypeModifiers: ReadonlyArray<string> = ['SIGNED', 'UNSIGNED', 'ZEROFILL'];
+
+// MySQL's SIGNED, UNSIGNED and ZEROFILL, in any order after a numeric type and
+// its arguments, are part of that type: INT(10) UNSIGNED ZEROFILL.
+export const isTypeModifier = (tokens: Token[]) => (pos: number) => {
+  const token = tokens[pos];
+  return (
+    !!token &&
+    !token.quoted &&
+    TypeModifiers.includes(token.value.toUpperCase())
+  );
+};
 
 // A string literal the vendor reads back as the value, its quotes doubled.
 // Spark escapes a quote and a backslash with a backslash instead: all but its

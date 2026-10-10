@@ -7,15 +7,18 @@ import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import type { RxStore } from '@/engine/rx-store';
 import { SchemaSQLHeader, SchemaSQLStatements } from '@/utils/schema-sql';
 
-/** Whether the options panel shows: unset until the editor is first measured. */
-export type SchemaSQLPanel = 'unset' | 'open' | 'closed';
+/** Whether an options panel shows: unset until the editor is first measured. */
+export type OptionsPanelState = 'unset' | 'open' | 'closed';
+
+/** Where a tab keeps its options panel's place, the Code Generator's as this one's. */
+export type PanelView = { panel: OptionsPanelState };
 
 export type SchemaSQLView = {
   /** The statements asked for, which each database resolves to what it has. */
   statements: SchemaSQLStatements;
   /** The header asked for, resolved the same way. */
   header: SchemaSQLHeader;
-  panel: SchemaSQLPanel;
+  panel: OptionsPanelState;
   /** Set by the export path, spent by the panel on the Save file button. */
   focusSave: boolean;
 };
@@ -49,7 +52,7 @@ export function schemaSQLViewOf({
  * more, once it is measured, and keeps that whatever the width does next.
  */
 export function resolvePanel(
-  view: SchemaSQLView,
+  view: PanelView,
   editorWidth: number
 ): 'open' | 'closed' | 'unknown' {
   if (view.panel !== 'unset') return view.panel;
@@ -60,12 +63,16 @@ export function resolvePanel(
   return view.panel;
 }
 
-/** Folds the panel away or opens it; one not measured yet opens. */
-export function toggleSchemaSQLPanel(app: Pick<AppContext, 'store'>) {
-  const view = schemaSQLViewOf(app);
-  const panel = resolvePanel(view, app.store.state.editor.viewport.width);
+/** Folds a panel away or opens it; one not measured yet opens. */
+export function togglePanel(view: PanelView, editorWidth: number) {
+  const panel = resolvePanel(view, editorWidth);
 
   view.panel = panel === 'open' ? 'closed' : 'open';
+}
+
+/** Folds the Schema SQL panel away or opens it. */
+export function toggleSchemaSQLPanel(app: Pick<AppContext, 'store'>) {
+  togglePanel(schemaSQLViewOf(app), app.store.state.editor.viewport.width);
 }
 
 /** The Schema SQL tab with its panel open and Save file focused, which saves nothing yet. */

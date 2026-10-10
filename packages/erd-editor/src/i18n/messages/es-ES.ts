@@ -99,7 +99,13 @@ export const esES = {
   'visualization.showMode.allFields': 'Todos los campos',
   'code.label': 'Código',
   'code.copy': 'Copiar',
-  'schemaSql.savedInDocument': 'Guardado en el documento',
+  'code.savedInDocument': 'Guardado en el documento',
+  'code.saveFile': 'Guardar archivo',
+  'code.saveFileMenu': 'Guardar archivo…',
+  'code.optionsPanel': 'Panel de opciones',
+  'code.hideOptions': 'Ocultar opciones',
+  'code.showOptions': 'Mostrar opciones',
+  'code.notUsedBy': '{language} no lo usa',
   'schemaSql.thisWindowOnly': 'Solo esta ventana',
   'schemaSql.statements': 'Sentencias',
   'schemaSql.header': 'Cabecera',
@@ -123,11 +129,6 @@ export const esES = {
   'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, datos iniciales …',
   'schemaSql.mssqlGoHint':
     'MSSQL añade GO tras un script que no termina en GO.',
-  'schemaSql.saveFile': 'Guardar archivo',
-  'schemaSql.saveFileMenu': 'Guardar archivo…',
-  'schemaSql.optionsPanel': 'Panel de opciones',
-  'schemaSql.hideOptions': 'Ocultar opciones',
-  'schemaSql.showOptions': 'Mostrar opciones',
   'findReplace.matchCase': 'Coincidir mayúsculas y minúsculas',
   'findReplace.wholeWord': 'Solo palabras completas',
   'findReplace.regex': 'Usar expresión regular',
@@ -259,12 +260,15 @@ export const esES = {
   'palette.schemaSqlStatements': 'Esquema SQL: Sentencias',
   'palette.schemaSqlHeader': 'Esquema SQL: Cabecera',
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Panel de opciones',
+  'palette.codeGeneratorOptionsPanel': 'Generador de código: Panel de opciones',
   'palette.exportSchemaSql': 'Exportar: Esquema SQL',
   'palette.keywords.schemaSqlStatements':
     'crear si no existe eliminar reemplazar',
   'palette.keywords.schemaSqlHeader': 'use base de datos search_path',
   'palette.keywords.schemaSqlOptionsPanel':
     'mostrar ocultar antes después scripts',
+  'palette.keywords.codeGeneratorOptionsPanel':
+    'mostrar ocultar base de datos estilo guardar archivo',
   'palette.keywords.exportSchemaSql': 'sql ddl archivo',
   'settings.preferences': 'Preferencias',
   'settings.relationshipDataTypeSync':

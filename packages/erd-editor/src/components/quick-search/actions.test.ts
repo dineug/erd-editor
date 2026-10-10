@@ -23,6 +23,7 @@ import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-men
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
+import { generatorCodeViewOf } from '@/components/generator-code/generatorCodeView';
 import {
   Action,
   createPreferenceActions,
@@ -39,7 +40,12 @@ import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-contex
 import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
 import { START_X, START_Y } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType, Database, RelationshipType } from '@/constants/schema';
+import {
+  CanvasType,
+  Database,
+  Language,
+  RelationshipType,
+} from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ChangeActionTypes } from '@/engine/actions';
 import {
@@ -60,6 +66,7 @@ import {
 import {
   changeCanvasTypeAction,
   changeDatabaseAction,
+  changeLanguageAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -417,10 +424,12 @@ describe('createScopeActions', () => {
 
     expect(visible).toEqual([
       'Tab',
+      'Database',
       'Export: Schema SQL',
       'Language',
       'Table Name Case',
       'Column Name Case',
+      'Code Generator: Options panel',
       'Find and Replace',
     ]);
   });
@@ -498,7 +507,7 @@ describe('createScopeActions / Database', () => {
     expect(app.store.state.settings.database).toBe(target!.value);
   });
 
-  it('is visible in the ERD and schema SQL canvases only', () => {
+  it('is visible in the ERD, Schema SQL and Code Generator canvases only', () => {
     const database = find(scope(), 'Database');
 
     setCanvasType(CanvasType.ERD);
@@ -506,6 +515,10 @@ describe('createScopeActions / Database', () => {
     setCanvasType(CanvasType.schemaSQL);
     expect(database.filter?.(app)).toBe(true);
     setCanvasType(CanvasType.generatorCode);
+    expect(database.filter?.(app)).toBe(true);
+    setCanvasType(CanvasType.visualization);
+    expect(database.filter?.(app)).toBe(false);
+    setCanvasType(CanvasType.settings);
     expect(database.filter?.(app)).toBe(false);
   });
 });
@@ -791,6 +804,18 @@ describe('createScopeActions / Bracket', () => {
 
     expect(app.store.state.settings.bracketType).toBe(target!.value);
   });
+
+  it('shows on the Code Generator tab for Doctrine, JPA and SeaORM alone, the three that read it', () => {
+    setCanvasType(CanvasType.generatorCode);
+    const shownFor = (language: number) => {
+      app.store.dispatchSync(changeLanguageAction({ value: language }));
+      return visibleNames().includes('Bracket');
+    };
+
+    expect(
+      languageMenus.filter(menu => shownFor(menu.value)).map(menu => menu.name)
+    ).toEqual(['Doctrine', 'JPA', 'SeaORM']);
+  });
 });
 
 describe('createScopeActions / Schema SQL options', () => {
@@ -938,6 +963,46 @@ describe('createScopeActions / generator code options', () => {
     expect(app.store.state.settings.language).toBe(target!.value);
   });
 
+  it("lists the languages flat in the menu's order, with no rule between the groups", async () => {
+    const rows = find(scope(), 'Language').next ?? [];
+
+    expect(names(rows)).toEqual([
+      'C#',
+      'Go',
+      'Java',
+      'Kotlin',
+      'PHP',
+      'Rust',
+      'Scala',
+      'Swift',
+      'TypeScript',
+      'Doctrine',
+      'Drizzle',
+      'JPA',
+      'SeaORM',
+      'Sequelize',
+      'SQLAlchemy',
+      'TypeORM',
+      'AML',
+      'DBML',
+      'GraphQL',
+      'JSON Schema',
+      'Mermaid',
+      'Zod',
+    ]);
+    expect(rows.every(row => typeof row.perform === 'function')).toBe(true);
+
+    for (const [name, value] of [
+      ['Swift', Language.Swift],
+      ['JSON Schema', Language.JSONSchema],
+      ['Zod', Language.Zod],
+    ] as const) {
+      find(find(scope(), 'Language').next ?? [], name).perform?.(app);
+      await flush();
+      expect(app.store.state.settings.language).toBe(value);
+    }
+  });
+
   it('changes the table name case when an entry is performed', async () => {
     const target = tableNameCaseMenus.find(
       menu => menu.value !== app.store.state.settings.tableNameCase
@@ -962,6 +1027,36 @@ describe('createScopeActions / generator code options', () => {
     await flush();
 
     expect(app.store.state.settings.columnNameCase).toBe(target!.value);
+  });
+
+  it('folds the options panel away and opens it again, the Schema SQL one left as it was', async () => {
+    measureEditor(1280);
+    const panel = find(scope(), 'Code Generator: Options panel');
+
+    expect(await iconOf(panel)).toBe('panel-right');
+    expect(panel.keywords).toBe('show hide database case save file');
+    expect(names(searchActions(scope(), 'save file'))).toContain(
+      'Code Generator: Options panel'
+    );
+
+    panel.perform?.(app);
+    expect(generatorCodeViewOf(app).panel).toBe('closed');
+    expect(schemaSQLViewOf(app).panel).toBe('unset');
+
+    panel.perform?.(app);
+    expect(generatorCodeViewOf(app).panel).toBe('open');
+  });
+
+  it('offers the options panel on the Code Generator tab alone', () => {
+    for (const canvasType of [
+      CanvasType.ERD,
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      expect(visibleNames()).not.toContain('Code Generator: Options panel');
+    }
   });
 
   it('checks the currently selected entry of each name-case menu', () => {

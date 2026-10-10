@@ -25,6 +25,9 @@ describe('LanguageToLangMap', () => {
       [Language.Doctrine]: 'php',
       [Language.Rust]: 'rust',
       [Language.SeaORM]: 'rust',
+      [Language.Swift]: 'swift',
+      [Language.Zod]: 'typescript',
+      [Language.JSONSchema]: 'json',
     });
   });
 
@@ -97,6 +100,21 @@ describe('LanguageToLangMap', () => {
     expect(LanguageToLangMap[Language.SeaORM]).toBe(
       LanguageToLangMap[Language.Rust]
     );
+  });
+
+  it('renders Swift with the Swift highlighter', () => {
+    expect(LanguageToLangMap[Language.Swift]).toBe('swift');
+  });
+
+  it('renders Zod with the same highlighter as TypeScript', () => {
+    expect(LanguageToLangMap[Language.Zod]).toBe('typescript');
+    expect(LanguageToLangMap[Language.Zod]).toBe(
+      LanguageToLangMap[Language.TypeScript]
+    );
+  });
+
+  it('renders JSON Schema with the JSON highlighter', () => {
+    expect(LanguageToLangMap[Language.JSONSchema]).toBe('json');
   });
 
   it('returns undefined for a language flag that does not exist', () => {

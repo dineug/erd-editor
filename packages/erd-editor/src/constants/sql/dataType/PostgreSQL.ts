@@ -1,13 +1,14 @@
 import { DataTypeHint } from '@/constants/sql/dataType';
 
 /**
- * https://www.postgresql.org/docs/current/datatype.html
+ * https://www.postgresql.org/docs/current/datatype.html, and dec, which the
+ * grammar reads as numeric, as it reads decimal.
  */
 export const PostgreSQLTypes: DataTypeHint[] = [
   { name: 'bigint', primitiveType: 'long' },
   { name: 'bigserial', primitiveType: 'long' },
-  { name: 'bit varying', primitiveType: 'int' },
-  { name: 'bit', primitiveType: 'int' },
+  { name: 'bit varying', primitiveType: 'string' },
+  { name: 'bit', primitiveType: 'string' },
   { name: 'bool', primitiveType: 'boolean' },
   { name: 'boolean', primitiveType: 'boolean' },
   { name: 'box', primitiveType: 'string' },
@@ -22,6 +23,7 @@ export const PostgreSQLTypes: DataTypeHint[] = [
   { name: 'date', primitiveType: 'date' },
   { name: 'datemultirange', primitiveType: 'string' },
   { name: 'daterange', primitiveType: 'string' },
+  { name: 'dec', primitiveType: 'decimal' },
   { name: 'decimal', primitiveType: 'decimal' },
   { name: 'double precision', primitiveType: 'double' },
   { name: 'float', primitiveType: 'double' },
@@ -58,14 +60,14 @@ export const PostgreSQLTypes: DataTypeHint[] = [
   { name: 'lseg', primitiveType: 'string' },
   { name: 'macaddr', primitiveType: 'string' },
   { name: 'macaddr8', primitiveType: 'string' },
-  { name: 'money', primitiveType: 'double' },
+  { name: 'money', primitiveType: 'string' },
   { name: 'name', primitiveType: 'string' },
   { name: 'numeric', primitiveType: 'decimal' },
   { name: 'nummultirange', primitiveType: 'string' },
   { name: 'numrange', primitiveType: 'string' },
   { name: 'oid', primitiveType: 'long' },
   { name: 'path', primitiveType: 'string' },
-  { name: 'pg_lsn', primitiveType: 'int' },
+  { name: 'pg_lsn', primitiveType: 'string' },
   { name: 'pg_snapshot', primitiveType: 'string' },
   { name: 'point', primitiveType: 'string' },
   { name: 'polygon', primitiveType: 'string' },
@@ -105,7 +107,7 @@ export const PostgreSQLTypes: DataTypeHint[] = [
   { name: 'tsvector', primitiveType: 'string' },
   { name: 'txid_snapshot', primitiveType: 'string' },
   { name: 'uuid', primitiveType: 'string' },
-  { name: 'varbit', primitiveType: 'int' },
+  { name: 'varbit', primitiveType: 'string' },
   { name: 'varchar', primitiveType: 'string' },
   { name: 'xid', primitiveType: 'long' },
   { name: 'xid8', primitiveType: 'long' },

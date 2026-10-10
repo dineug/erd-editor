@@ -1,7 +1,7 @@
 import csharp from '@shikijs/langs/csharp';
 import go from '@shikijs/langs/go';
-import graphql from '@shikijs/langs/graphql';
 import java from '@shikijs/langs/java';
+import json from '@shikijs/langs/json';
 import kotlin from '@shikijs/langs/kotlin';
 import mermaid from '@shikijs/langs/mermaid';
 import php from '@shikijs/langs/php';
@@ -9,6 +9,7 @@ import python from '@shikijs/langs/python';
 import rust from '@shikijs/langs/rust';
 import scala from '@shikijs/langs/scala';
 import sql from '@shikijs/langs/sql';
+import swift from '@shikijs/langs/swift';
 import typescript from '@shikijs/langs/typescript';
 import githubDark from '@shikijs/themes/github-dark';
 import githubLight from '@shikijs/themes/github-light';
@@ -16,6 +17,7 @@ import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
 import type { Lang } from '@/constants/language';
+import { graphqlGrammar } from '@/services/shiki/graphqlGrammar';
 
 const themeMap = {
   dark: 'github-dark',
@@ -43,7 +45,7 @@ export class ShikiService {
       langs: [
         sql,
         typescript,
-        graphql,
+        graphqlGrammar,
         csharp,
         java,
         kotlin,
@@ -53,6 +55,8 @@ export class ShikiService {
         mermaid,
         php,
         rust,
+        swift,
+        json,
       ],
       // Plain javascript rather than oniguruma, so no host needs wasm-unsafe-eval
       // in its policy; forgiving turns a grammar the engine cannot transpile into

@@ -1,6 +1,7 @@
 import { camelCase, snakeCase } from 'es-toolkit';
 
 import {
+  Database,
   NameCase,
   ReferentialActionToSQL,
   RelationshipType,
@@ -45,11 +46,49 @@ export const hasNRelationship = arrayHas<number>([
 
 const WORD = /[0-9A-Za-z_]/;
 const ARGUMENTS = /\([^)]*\)/g;
+const WHITESPACE = /\s+/g;
+const NUMBER_ARGUMENTS = /^\s*number\s*\(\s*(\*|\d+)\s*,\s*(\d+)\s*\)\s*$/i;
+const FLOAT_PRECISION = /^\s*float\s*\(\s*(\d+)\s*\)/i;
+
+// FLOAT(1) to FLOAT(24) is a single precision float there and FLOAT(25) to
+// FLOAT(53) a double; Oracle's FLOAT(p) is a NUMBER, and the rest take no p.
+const FLOAT_PRECISION_DATABASES = new Set<number>([
+  Database.MariaDB,
+  Database.MSSQL,
+  Database.MySQL,
+  Database.PostgreSQL,
+]);
+
+/** The ECMAScript line terminators, CR LF one of them, where a line comment ends. */
+export const LINE_TERMINATOR = /\r\n|[\n\r\u2028\u2029]/;
 
 export function getPrimitiveType(
   dataType: string,
   database: number
 ): PrimitiveType {
+  if (fractionalNumber(dataType, database)) {
+    return 'decimal';
+  }
+
+  const hint = findDataTypeHint(dataType, database);
+  const precision = Number(FLOAT_PRECISION.exec(dataType)?.[1]);
+
+  if (
+    precision >= 1 &&
+    precision <= 53 &&
+    hint?.name.toLowerCase() === 'float' &&
+    FLOAT_PRECISION_DATABASES.has(database)
+  ) {
+    return precision <= 24 ? 'float' : 'double';
+  }
+  return hint?.primitiveType ?? 'string';
+}
+
+/** The vendor list entry a data type names, the longest that prefixes it. */
+export function findDataTypeHint(
+  dataType: string,
+  database: number
+): DataTypeHint | undefined {
   // Drop the argument list so a name whose words wrap one still matches:
   // interval day(2) to second(6) has to reach interval day to second.
   const value = dataType.toLowerCase().replace(ARGUMENTS, '');
@@ -69,7 +108,60 @@ export function getPrimitiveType(
     }
   }
 
-  return matched?.primitiveType ?? 'string';
+  return matched;
+}
+
+/**
+ * The precision and scale of an Oracle or Snowflake NUMBER with a scale, which
+ * the vendor lists file under long with every other NUMBER; a star is 38.
+ */
+export function fractionalNumber(
+  dataType: string,
+  database: number
+): [precision: number, scale: number] | null {
+  if (database !== Database.Oracle && database !== Database.Snowflake) {
+    return null;
+  }
+
+  const matched = NUMBER_ARGUMENTS.exec(dataType);
+
+  if (!matched) {
+    return null;
+  }
+
+  const [, precision, scale] = matched;
+
+  if (Number(scale) === 0) {
+    return null;
+  }
+  return [precision === '*' ? 38 : Number(precision), Number(scale)];
+}
+
+/** The type name in lower case, with its argument lists and extra spaces gone. */
+export function baseTypeName(dataType: string): string {
+  return dataType
+    .toLowerCase()
+    .replace(ARGUMENTS, ' ')
+    .replace(WHITESPACE, ' ')
+    .trim();
+}
+
+/** A text split into its lines at every ECMAScript line terminator. */
+export function splitLines(value: string): string[] {
+  return value.split(LINE_TERMINATOR);
+}
+
+// Every directive TypeScript reads in a line comment opens with an at sign and
+// ts-, and it reads ts-check and ts-nocheck in any letter case.
+const TYPESCRIPT_DIRECTIVE = /^(\s*)@(?=ts-)/i;
+
+/**
+ * A line comment's text with a backslash before its at sign where it opens with
+ * one and ts-, after any white space and in any case, so the line stays legible
+ * and TypeScript reads no directive in it, which would hide or expect an error.
+ */
+export function escapeTypeScriptDirective(line: string): string {
+  return line.replace(TYPESCRIPT_DIRECTIVE, '$1\\@');
 }
 
 export function getDataTypeHints(database: number): DataTypeHint[] {

@@ -180,10 +180,10 @@ export const INDEX_ORDER_MAX_ROWS = 3;
 
 export const DIFF_TREE_WIDTH = 200;
 
-/** The width of the Schema SQL tab's options panel beside the code. */
+/** The width of the options panel beside the code, on the Schema SQL and Code Generator tabs. */
 export const SCHEMA_SQL_PANEL_WIDTH = 300;
 
-/** An editor narrower than this opens the Schema SQL tab with its options panel folded away. */
+/** An editor narrower than this opens the Schema SQL and Code Generator tabs with their panels folded away. */
 export const SCHEMA_SQL_PANEL_COLLAPSE_BELOW = 640;
 
 /**

@@ -29,6 +29,8 @@ const meta = {
         'mermaid',
         'php',
         'rust',
+        'swift',
+        'json',
       ],
     },
     theme: {

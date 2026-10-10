@@ -36,12 +36,14 @@ const ContextMenuTemplate: FC<ContextMenuTemplateProps> = (props, ctx) => {
             <ContextMenu.Item onClick={handleClick} children={'Item 1'} />
             <ContextMenu.Item onClick={handleClick} children={'Item 2'} />
             <ContextMenu.Item onClick={handleClick} children={'Item 3'} />
+            <ContextMenu.Separator />
             <ContextMenu.Item
               children={'Submenu'}
               subChildren={
                 <>
                   <ContextMenu.Item onClick={handleClick} children={'Item 1'} />
                   <ContextMenu.Item onClick={handleClick} children={'Item 2'} />
+                  <ContextMenu.Separator />
                   <ContextMenu.Item
                     children={'Submenu'}
                     subChildren={

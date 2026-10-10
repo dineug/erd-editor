@@ -790,9 +790,10 @@ describe('Map Columns in a right-to-left language', () => {
     expect(arrow.left).toBeGreaterThan(childName.right);
 
     const rows = dialog.querySelector('.map-columns-rows')!;
-    const [referenced, foreignKey, parent, list] = Array.from(
+    const [referenced, foreignKey, parent, listBox] = Array.from(
       rows.children
     ) as HTMLElement[];
+    const list = listBox.querySelector('select')!;
     expect(referenced.textContent).toBe(he['mapColumns.referencedColumn']);
     expect(referenced.getBoundingClientRect().left).toBeGreaterThan(
       foreignKey.getBoundingClientRect().right
@@ -800,6 +801,11 @@ describe('Map Columns in a right-to-left language', () => {
     expect(parent.getBoundingClientRect().left).toBeGreaterThan(
       list.getBoundingClientRect().right
     );
+    // the list's chevron at its end, which is its left in this language
+    const chevron = listBox.querySelector('svg')!.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    expect(chevron.left).toBeGreaterThan(listRect.left);
+    expect(chevron.right).toBeLessThan(listRect.left + listRect.width / 2);
     expect(
       page
         .elementLocator(dialog)
@@ -841,5 +847,31 @@ describe('Map Columns in a right-to-left language', () => {
     expect(dataType.textContent).toBe('varchar(36)');
     const [open, close] = boxesOfWords(dataType, ['(', ')']);
     expect(open.right).toBeLessThanOrEqual(close.left);
+  });
+});
+
+describe('Map Columns where its styles are live', () => {
+  it('rings a list the keyboard reaches as it rings a button, 2px off', async () => {
+    const dialog = await setupStyled('en');
+    // The ring's colour comes from the editor's root, which this mount leaves
+    // out; without it the whole outline shorthand drops to none.
+    dialog.style.setProperty('--input-active', 'rgb(0, 128, 255)');
+    const shadow = dialog.getRootNode() as ShadowRoot;
+    const confirm = dialog.querySelector('.map-columns-confirm');
+    const ringOf = (element: Element | null) => {
+      const style = getComputedStyle(element!);
+      return [style.outlineStyle, style.outlineWidth, style.outlineOffset];
+    };
+    expect(shadow.activeElement).toBe(confirm);
+
+    await press('{Tab}');
+    expect(shadow.activeElement?.tagName).toBe('SELECT');
+    const list = ringOf(shadow.activeElement);
+
+    await press('{Shift>}{Tab}{/Shift}');
+    expect(shadow.activeElement).toBe(confirm);
+
+    expect(ringOf(confirm)).toEqual(['solid', '2px', '2px']);
+    expect(list).toEqual(ringOf(confirm));
   });
 });
