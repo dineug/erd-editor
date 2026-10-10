@@ -45,8 +45,23 @@ export type HubDocument<T extends HubTab = HubTab> = {
   peers: Map<HubConnection, JoinPeer>;
   observedVersion: number;
   quiet: QuietState<T>;
-  /** The document as the file loaded or a replica last saved it, which a join hands a peer. */
+  /** The document in the form a file holds, as the file loaded or a replica last changed it, which dirty compares. */
   content: string | null;
+  /**
+   * The document as a replica last held it, removed entities included, which a
+   * join and a tab opened beside others start from, so an undo of a removal
+   * brings the entity back whole there. Null until a replica saves, and after an outside change.
+   */
+  runtimeValue: string | null;
+};
+
+/** What a tab's replica hands over with every save, as hostSaveValueCommand carries it. */
+export type ReplicaSave = {
+  /** The document in the form a file holds; new only when changed. */
+  readonly value: string;
+  readonly changed: boolean;
+  /** The document as the replica holds it, which the registry never hands a write. */
+  readonly runtimeValue: string;
 };
 
 type ReadyWaiter<T extends HubTab> = {
@@ -135,6 +150,7 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
         observedVersion: 0,
         quiet: createQuietState(),
         content: null,
+        runtimeValue: null,
       };
       this.entries.set(file, entry);
       void this.resolve(entry);
@@ -184,6 +200,7 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
     if (reload) {
       this.closeForPeers(entry);
       entry.content = text;
+      entry.runtimeValue = null;
       // A wait already on the old state runs out its cap and saves nothing.
       entry.quiet = createQuietState();
     } else {
@@ -203,15 +220,16 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
   }
 
   /**
-   * A replica saved, so the content is current for what its tab had seen; only
-   * the saves of tabs a change reached say the content holds that change. No
-   * value: the change left the document as it was, and the content stays.
+   * A replica saved, so the document is current for what its tab had seen;
+   * only the saves of tabs a change reached say it holds that change. Unchanged:
+   * the file form is as it was and the content stays, while the runtime value moves.
    */
-  valueSaved(tab: T, value?: string): void {
+  valueSaved(tab: T, { value, changed, runtimeValue }: ReplicaSave): void {
     const entry = this.entryOfTab.get(tab);
     if (!entry) return;
 
-    if (value !== undefined) entry.content = value;
+    if (changed) entry.content = value;
+    entry.runtimeValue = runtimeValue;
     noteSave(entry.quiet, tab, performance.now());
   }
 
@@ -317,11 +335,14 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
   }
 
   /**
-   * Runs seed once the tab's document is quiet, JOIN_QUIET_CAP_MS at most, as
-   * a join waits: a tab opened beside others then starts from a replica value
-   * that holds their edits. Returns the cancel; a tab that left never seeds.
+   * Runs seed with the runtime value once the tab's document is quiet, as a
+   * join waits, JOIN_QUIET_CAP_MS at most: a tab opened beside others then
+   * starts from a value holding their edits. A tab that left never seeds.
    */
-  seedWhenQuiet(tab: T, seed: () => void): () => void {
+  seedWhenQuiet(
+    tab: T,
+    seed: (runtimeValue: string | null) => void
+  ): () => void {
     const entry = this.entryOfTab.get(tab);
     const deadline = performance.now() + JOIN_QUIET_CAP_MS;
     let done = false;
@@ -335,7 +356,7 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
         return;
       }
       done = true;
-      seed();
+      seed(entry?.runtimeValue ?? null);
     };
 
     attempt();
@@ -389,7 +410,7 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
 
     const capture = (peer: JoinPeer, queue: QueuedBatch[]): JoinResult => {
       const result: JoinResult = {
-        initialValue: stripBom(document.content ?? ''),
+        initialValue: stripBom(document.runtimeValue ?? document.content ?? ''),
         snapshotVersion: document.observedVersion,
         readonly: this.isReadonly(document),
       };

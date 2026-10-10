@@ -95,9 +95,9 @@ export class ErdView extends TextFileView implements HubTab {
   private session: TFile | null = null;
   private sharedStore: SharedStore | null = null;
   private disposeSharedStore: (() => void) | null = null;
-  /** The document as loaded, handed back while nothing has changed it. */
+  /** The document as loaded, handed back while nothing has changed it; never a runtime value. */
   private loadedData = '';
-  /** The document as the replica last serialized it, which a save writes. */
+  /** The document in the form a file holds as the replica last serialized it, which a save writes. */
   private replicaValue: string | null = null;
   private unreadable = false;
   /** Stops the load a tab opened beside others may still wait for. */
@@ -390,7 +390,7 @@ export class ErdView extends TextFileView implements HubTab {
 
   /**
    * Loads the tab once every edit its file's other tabs made is in their
-   * replica values. Until then it has no replica, is read-only, hands back
+   * replica saves. Until then it has no replica, is read-only, hands back
    * what the file holds and is not ready, so it neither writes nor takes an edit.
    */
   private seed(data: string): void {
@@ -402,19 +402,20 @@ export class ErdView extends TextFileView implements HubTab {
     this.syncHubState();
 
     let seeded = false;
-    const cancel = this.registry.seedWhenQuiet(this, () => {
+    const cancel = this.registry.seedWhenQuiet(this, runtimeValue => {
       seeded = true;
       this.pendingSeed = null;
       // A drag still held in the other tab reaches this one once it subscribes.
       const peer = this.tabs().find(tab => tab !== this && tab.hasDocument());
-      const value = seedValue({
+      const { loaded, initialValue } = seedValue({
+        runtimeValue,
         peer: peer && currentValue(peer.tabState()),
         handed: this.session ? handedByFile.get(this.session) : undefined,
         file: this.data,
         opened: data,
       });
-      this.loadDocument(value);
-      this.registry.loaded(this, value, false);
+      this.loadDocument(loaded, initialValue);
+      this.registry.loaded(this, loaded, false);
       this.syncSharedStore();
     });
     this.pendingSeed = seeded ? null : cancel;
@@ -489,12 +490,17 @@ export class ErdView extends TextFileView implements HubTab {
     );
   }
 
-  private loadDocument(data: string): void {
+  /**
+   * The editor and its replica load initialValue, which a tab opened beside
+   * others takes from the runtime value; the tab keeps data, the text a save
+   * hands back, so the runtime value never reaches the file.
+   */
+  private loadDocument(data: string, initialValue = data): void {
     const { editor } = this;
     if (!editor) return;
 
     this.unreadable = !isReadableDiagram(data);
-    const value = this.unreadable ? '' : data;
+    const value = this.unreadable ? '' : initialValue;
 
     editor.readonly = this.unreadable;
     if (this.unreadable) {
@@ -541,16 +547,12 @@ export class ErdView extends TextFileView implements HubTab {
     replica.addEventListener('messageerror', handleError);
     const disposeCommand = bridge.registerCommand(
       hostSaveValueCommand,
-      ({ value, changed }) => {
+      saved => {
         // A save that changed nothing, such as a scroll the file does not keep,
         // leaves the tab's value as it was, so no save of Obsidian's writes it.
-        if (!changed) {
-          this.registry.valueSaved(this);
-          return;
-        }
-        this.replicaValue = value;
-        this.registry.valueSaved(this, value);
-        if (this.isWriter()) this.requestSave();
+        if (saved.changed) this.replicaValue = saved.value;
+        this.registry.valueSaved(this, saved);
+        if (saved.changed && this.isWriter()) this.requestSave();
       }
     );
     replica.postMessage(

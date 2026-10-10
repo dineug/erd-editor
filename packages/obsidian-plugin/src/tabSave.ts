@@ -8,7 +8,7 @@ export type TabSaveState = {
   seeding: boolean;
   /** The first tab of the file, the one that writes it. */
   writer: boolean;
-  /** The text the tab loaded. */
+  /** The text the tab loaded, in the form a file holds, never a runtime value its editor started from. */
   loaded: string;
   /** The document as the tab's replica last serialized it. */
   replica: string | null;
@@ -69,15 +69,24 @@ export function exitSave(
 }
 
 /**
- * The text a tab opened beside others loads once its wait ends: another tab's
- * replica value, else what the file's last writer handed Obsidian (none after an
- * outside change), which can be newer than the text Obsidian last gave this tab.
+ * What a tab opened beside others keeps as loaded once its wait ends: another
+ * tab's replica value, else what the file's last writer handed Obsidian (none
+ * after an outside change), which can be newer than what Obsidian gave the tab.
  */
 export function seedValue(sources: {
+  /** What the file's tabs last saved as their replicas hold it, which keeps removed entities for an undo. */
+  runtimeValue: string | null;
   peer: string | undefined;
   handed: string | undefined;
   file: string | null;
   opened: string;
-}): string {
-  return sources.peer ?? sources.handed ?? sources.file ?? sources.opened;
+}): {
+  /** The text the tab keeps as loaded and hands back, in the form a file holds. */
+  loaded: string;
+  /** What the editor and its replica start from: the runtime value, else the loaded text. */
+  initialValue: string;
+} {
+  const loaded =
+    sources.peer ?? sources.handed ?? sources.file ?? sources.opened;
+  return { loaded, initialValue: sources.runtimeValue ?? loaded };
 }
