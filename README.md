@@ -31,6 +31,11 @@ run **Create new diagram** from the command palette. In Google Drive, choose
 - **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or
   add new ones, and Map Columns in a relationship's right-click menu changes its columns later
+- **Table groups** — draw a named, colored box behind related tables from the canvas menu or the
+  command palette, or group the selected tables. A table joins a group when you drop it inside and
+  leaves when you drop it outside, dragging a group by its title moves its tables with it, and
+  each member's header takes the group's color. View Option hides the groups, the Schema SQL tab
+  writes the tables of the groups you check, and DBML import and export carry them as `TableGroup`s
 - **SQL DDL import** — point it at a `.sql` dump and get a diagram; the parser skips what it
   does not recognize, so an awkward dump imports partially rather than failing outright
 - **GraphQL SDL import** — point it at a schema from any tool that emits SDL and get a

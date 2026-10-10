@@ -21,6 +21,11 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
 - Link existing columns — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or
   add new ones, and Map Columns in a relationship's right-click menu changes its columns later
+- Table groups — a named, colored box behind related tables, drawn from the canvas menu or the
+  command palette or made from the selected tables; a drop puts a table in a group or takes it
+  out, a drag on its title moves its tables with it, a member's header wears its color, View
+  Option hides them, the Schema SQL options panel writes the tables of the groups checked, and
+  DBML import and export carry them as `TableGroup`s
 - Import — a `.sql` dump, a GraphQL SDL schema from any tool that emits one, a `.dbml` file, or
   an `.aml` file; one picked from the editor's own Import menu lands with its tables laid out by
   their relationships, and Import and Add adds one, or an `.erd.json` file, below the diagram
@@ -174,7 +179,7 @@ erd-editor {
 | `setSchemaGraphQL(value: string, options?)` | Parse a GraphQL SDL string and **replace** the current document with it, or add it with `mode: 'append'`. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
 | `setSchemaDBML(value: string, options?)` | Parse a DBML string and **replace** the current document with it, or add it with `mode: 'append'`. Tables, columns, indexes, header colors, every `Ref` spelling and each `TableGroup` are read, a group with its name, color and tables, its box round them where they land, a table named by two groups staying in the first; a `Project`, a sticky `Note` and a group's note and other settings are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
 | `setSchemaAML(value: string, options?)` | Parse an [AML](https://azimutt.app) string and **replace** the current document with it, or add it with `mode: 'append'`. Entities, attributes, indexes, colors and every relation arrow are read, in the v2 and the legacy v1 spelling; a check, a struct type and a view are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
-| `setSchemaJSON(value: string, options?)` | Load an `.erd.json` document in place of the current one, as assigning `value` does, or add its tables, relationships, indexes and memos to it with `{ mode: 'append' }`, which keeps the current settings, but for the tab and the scroll position (as below), and the placement the file gives them. Lands in the undo history; an empty string is ignored, and so is text the parser cannot read for an append. |
+| `setSchemaJSON(value: string, options?)` | Load an `.erd.json` document in place of the current one, as assigning `value` does, or add its tables, relationships, indexes, memos and table groups to it with `{ mode: 'append' }`, which keeps the current settings, but for the tab and the scroll position (as below), and the placement the file gives them. Lands in the undo history; an empty string is ignored, and so is text the parser cannot read for an append. |
 | `setDiffValue(value: string)` | Open the diff viewer against another document. |
 | `setPresetTheme(options)` | Set `appearance` (`light`, `dark` or `system`), `grayColor` and `accentColor`. `system` follows the OS color scheme, or what `setSystemAppearance` names. |
 | `setSystemAppearance(appearance)` | Name the light or dark `system` shows, for a host with its own theme (an IDE's light or dark); `null` hands it back to the OS color scheme. It changes nothing on screen unless the appearance is `system`. |

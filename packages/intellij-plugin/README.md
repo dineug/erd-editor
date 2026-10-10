@@ -34,6 +34,12 @@ tables placed as new ones below the ones already there, in one undoable step.
 - **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or add
   new ones, and Map Columns in a relationship's right-click menu changes its columns later
+- **Table groups** — draw a named, colored box behind related tables with **New Table Group** in
+  the canvas menu or the command palette, or group the selected tables from their right-click menu.
+  A table joins a group when you drop it inside and leaves when you drop it outside, dragging a
+  group by its title moves its tables with it, and each member's header takes the group's color.
+  View Option hides the groups, the Schema SQL tab writes the tables of the groups you check, and
+  DBML import and export carry them as `TableGroup`s
 - **SQL DDL import** — bring in a `.sql` dump from any of the six vendors below. The parser reads
   `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does not recognize,
   so an awkward dump imports partially rather than failing outright

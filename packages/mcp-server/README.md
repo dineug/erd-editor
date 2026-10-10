@@ -138,15 +138,15 @@ a copy of the document first, so a refused one is named and nothing is applied, 
 reverts the whole batch. An operation named with `as` lets a later one pass `$name` (or `$name.1`
 for its second created id) where it takes an entity id, so a table and its columns take one call.
 
-The five import tools replace the document's tables, relationships, indexes and memos by default:
-the four schema imports keep its settings but the view, which goes to the start of the canvas, and
-`erd_import_json` takes the settings of the document it loads. With `mode: "append"` they add the
-import instead, as the editor's Import and Add does: its tables, relationships and indexes arrive
-as new ones in a grid below everything already there (a JSON document's, with its memos and table
-groups, in the placement it has), the document's settings and tables stay as they are, and one
-`erd_undo` takes them away. A foreign key to a table the import does not declare is dropped.
-`erd_import_dbml` reads each `TableGroup` as a table group of the tables it names, its box round
-them, either way.
+The five import tools replace the document's tables, relationships, indexes, memos and table groups
+by default: the four schema imports keep its settings but the view, which goes to the start of the
+canvas, and `erd_import_json` takes the settings of the document it loads. With `mode: "append"`
+they add the import instead, as the editor's Import and Add does: its tables, relationships and
+indexes arrive as new ones in a grid below everything already there (a JSON document's, with its
+memos and table groups, in the placement it has), the document's settings and tables stay as they
+are, and one `erd_undo` takes them away. A foreign key to a table the import does not declare is
+dropped. `erd_import_dbml` reads each `TableGroup` as a table group of the tables it names, its box
+round them, either way.
 
 `erd_change_relationship_on_delete` and `erd_change_relationship_on_update`, and the `onDelete` /
 `onUpdate` of `erd_add_relationship` and `erd_link_columns`, set a foreign key's ON DELETE and ON
