@@ -258,6 +258,28 @@ describe('ErdEditor', () => {
       expect(registry.onWebviewReady).toHaveBeenCalledWith(document, webview);
     });
 
+    it('seeds the webview with the runtime value the last save carried, not the bytes it wrote', async () => {
+      const { webview, document } = await bootstrap({
+        content: '{"file":"as opened"}',
+      });
+      webview.__receive(
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: '{"file":"as saved"}',
+          changed: true,
+          runtimeValue: '{"runtime":"with removed entities"}',
+        })
+      );
+      await flush();
+
+      webview.__receive(Bridge.executeCommand(hostInitialCommand, undefined));
+
+      expect(document.content).toEqual(encoder.encode('{"file":"as saved"}'));
+      expect(webview.postMessage.mock.calls[3][0]).toEqual({
+        type: 'webviewInitialValueCommand',
+        payload: { value: '{"runtime":"with removed entities"}' },
+      });
+    });
+
     it('decodes the stored bytes as utf-8, not latin-1', async () => {
       const { webview } = await bootstrap({
         content: '{"name":"주문 테이블"}',
@@ -293,28 +315,47 @@ describe('ErdEditor', () => {
       expect(document.content).toEqual(encoder.encode('héllo'));
     });
 
+    it('keeps the runtime value in memory beside the bytes, writing only the value', async () => {
+      const { webview, document } = await bootstrap();
+
+      webview.__receive(
+        Bridge.executeCommand(hostSaveValueCommand, {
+          value: '{"saved":true}',
+          changed: true,
+          runtimeValue: '{"saved":true,"removed":["users"]}',
+        })
+      );
+      await flush();
+
+      expect(document.content).toEqual(encoder.encode('{"saved":true}'));
+      expect(document.runtimeValue).toBe('{"saved":true,"removed":["users"]}');
+    });
+
     it('tells the registry the replica saved once the content holds the value', async () => {
       const { webview, document, registry } = await bootstrap();
       let contentThen: Uint8Array | undefined;
+      let runtimeThen: string | undefined;
       registry.onValueSaved.mockImplementation(() => {
         contentThen = document.content;
+        runtimeThen = document.runtimeValue;
       });
 
       webview.__receive(
         Bridge.executeCommand(hostSaveValueCommand, {
           value: 'saved',
           changed: true,
-          runtimeValue: 'saved',
+          runtimeValue: 'held',
         })
       );
       await flush();
 
       expect(contentThen).toEqual(encoder.encode('saved'));
+      expect(runtimeThen).toBe('held');
       expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
       expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
     });
 
-    it('leaves content and the tab as they are for a save that changed nothing, and still reports it', async () => {
+    it('leaves content and the tab as they are for a save that changed nothing, keeps its runtime value and still reports it', async () => {
       const { webview, document, registry } = await bootstrap({
         content: '{"written":"by an older release"}',
       });
@@ -326,7 +367,7 @@ describe('ErdEditor', () => {
         Bridge.executeCommand(hostSaveValueCommand, {
           value: '{"written":"by this replica"}',
           changed: false,
-          runtimeValue: '{"written":"by this replica"}',
+          runtimeValue: '{"written":"by this replica","zIndex":3}',
         })
       );
       await flush();
@@ -336,12 +377,15 @@ describe('ErdEditor', () => {
       expect(document.content).toEqual(
         encoder.encode('{"written":"by an older release"}')
       );
+      expect(document.runtimeValue).toBe(
+        '{"written":"by this replica","zIndex":3}'
+      );
       expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
       expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
     });
 
     it.each(['git', 'conflictResolution'])(
-      'never dirties a read-only %s view, even for a save that changed the value, and still reports it',
+      'never dirties a read-only %s view, even for a save that changed the value, and keeps its runtime value and reports it',
       async scheme => {
         const { webview, document, registry } = await bootstrap({
           uri: Uri.parse(`${scheme}:/workspace/sample.erd`),
@@ -365,6 +409,7 @@ describe('ErdEditor', () => {
         expect(update).not.toHaveBeenCalled();
         expect(dirtied).not.toHaveBeenCalled();
         expect(document.content).toEqual(encoder.encode('{"scrollTop":0}'));
+        expect(document.runtimeValue).toBe('{"scrollTop":120}');
         expect(registry.onValueSaved).toHaveBeenCalledTimes(1);
         expect(registry.onValueSaved).toHaveBeenCalledWith(document, webview);
       }

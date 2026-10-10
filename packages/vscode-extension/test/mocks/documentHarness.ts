@@ -165,20 +165,32 @@ export function createDocumentHarness(options: MemoryHubOptions = {}) {
     );
   }
 
-  /** The webview's replica saved value; changed false is a save of a change that left it as it was. */
+  /**
+   * The webview's replica saved value, with the runtime value it holds beside it;
+   * changed false is a save of a change that left the value as it was.
+   */
   async function saveValue(
     editor: OpenedEditor,
     value: string,
-    changed = true
+    changed = true,
+    runtimeValue = value
   ): Promise<void> {
     editor.webview.__receive(
       Bridge.executeCommand(hostSaveValueCommand, {
         value,
         changed,
-        runtimeValue: value,
+        runtimeValue,
       })
     );
     await microtasks();
+  }
+
+  /** The value the host handed the webview's hostInitialCommand, the last one if it asked twice. */
+  function initialValueOf(editor: OpenedEditor): string | undefined {
+    const sent = editor.webview.postMessage.mock.calls
+      .map(([message]) => message)
+      .filter(message => message?.type === 'webviewInitialValueCommand');
+    return sent.at(-1)?.payload.value;
   }
 
   /** Makes vscode.openWith open the document, and ready it unless told not to. */
@@ -237,6 +249,7 @@ export function createDocumentHarness(options: MemoryHubOptions = {}) {
     ready,
     relay,
     saveValue,
+    initialValueOf,
     serveOpenWith,
     trackTab,
   };

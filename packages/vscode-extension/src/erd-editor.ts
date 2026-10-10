@@ -93,7 +93,7 @@ export class ErdEditor extends Editor {
         );
         dispatch(
           Bridge.executeCommand(webviewInitialValueCommand, {
-            value: textDecoder.decode(this.document.content),
+            value: this.document.seedValue(),
           })
         );
         // Last: postMessage keeps order, so an agent batch sent from now on
@@ -102,7 +102,10 @@ export class ErdEditor extends Editor {
       }),
       this.bridge.registerCommand(
         hostSaveValueCommand,
-        async ({ value, changed }) => {
+        async ({ value, changed, runtimeValue }) => {
+          // Every save, a read-only view's too, refreshes what seeds the next
+          // view and join; only the value below is ever written.
+          this.document.runtimeValue = runtimeValue;
           // A save that changed nothing, such as a scroll the file does
           // not keep, leaves content and the tab as they are, even where
           // the bytes differ; so does any save in a view nothing writes back.

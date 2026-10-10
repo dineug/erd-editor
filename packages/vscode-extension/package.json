@@ -47,6 +47,7 @@
     "e2e:typecheck": "tsc -p tsconfig.integration.json --noEmit"
   },
   "devDependencies": {
+    "@dineug/erd-editor": "workspace:*",
     "@dineug/erd-editor-agent-hub": "workspace:*",
     "@dineug/erd-editor-agent-hub-host": "workspace:*",
     "@dineug/erd-editor-webview-bridge": "workspace:*",

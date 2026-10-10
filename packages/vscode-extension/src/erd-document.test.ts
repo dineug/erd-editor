@@ -24,6 +24,23 @@ describe('ErdDocument', () => {
     expect(document.content).toBe(content);
   });
 
+  describe('seedValue', () => {
+    it('reads the bytes while no replica has saved a runtime value', () => {
+      const document = createDocument('/workspace/sample.erd', '{"주문":1}');
+
+      expect(document.runtimeValue).toBeUndefined();
+      expect(document.seedValue()).toBe('{"주문":1}');
+    });
+
+    it('hands the runtime value once a replica saved one, whatever the bytes hold', async () => {
+      const document = createDocument('/workspace/sample.erd', 'file form');
+      document.runtimeValue = 'runtime value';
+      await document.update(encoder.encode('saved form'));
+
+      expect(document.seedValue()).toBe('runtime value');
+    });
+  });
+
   describe('save', () => {
     it('writes the current content back to its own uri', async () => {
       const document = createDocument();
@@ -47,6 +64,19 @@ describe('ErdDocument', () => {
         document.content
       );
       expect(document.uri.path).toBe('/workspace/sample.erd');
+    });
+
+    it('writes the bytes and never the runtime value, on save and save as alike', async () => {
+      const document = createDocument('/workspace/sample.erd', 'file form');
+      document.runtimeValue = 'runtime value';
+
+      await document.save();
+      await document.saveAs(Uri.file('/workspace/copy.erd') as any);
+
+      const written = workspace.fs.writeFile.mock.calls.map(([, content]) =>
+        new TextDecoder().decode(content)
+      );
+      expect(written).toEqual(['file form', 'file form']);
     });
   });
 
@@ -88,6 +118,17 @@ describe('ErdDocument', () => {
       expect(document.content).toBe(onDisk);
     });
 
+    it('leaves the runtime value, since the webview it came from is not reloaded', async () => {
+      const document = createDocument();
+      document.runtimeValue = 'what the webview holds';
+      workspace.fs.readFile.mockResolvedValue(encoder.encode('on-disk'));
+
+      await document.revert();
+
+      expect(document.runtimeValue).toBe('what the webview holds');
+      expect(document.seedValue()).toBe('what the webview holds');
+    });
+
     it('does not fire onDidChangeContent — VSCode already knows it reverted', async () => {
       const document = createDocument();
       const listener = vi.fn();
@@ -112,6 +153,16 @@ describe('ErdDocument', () => {
         document.content
       );
       expect(backup.id).toBe(destination.toString());
+    });
+
+    it('backs up the bytes, never the runtime value', async () => {
+      const document = createDocument('/workspace/sample.erd', 'file form');
+      document.runtimeValue = 'runtime value';
+
+      await document.backup(Uri.file('/backups/sample.erd') as any);
+
+      const [, content] = workspace.fs.writeFile.mock.calls[0];
+      expect(new TextDecoder().decode(content)).toBe('file form');
     });
 
     it('round-trips its id back into a Uri, which is how the backup is reopened', async () => {

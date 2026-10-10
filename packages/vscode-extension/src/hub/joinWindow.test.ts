@@ -83,7 +83,7 @@ describe('join', () => {
     });
   });
 
-  it('wakes on a save that changed nothing and captures the text the document already held', async () => {
+  it('wakes on a save that changed nothing and captures the runtime value it carried, the bytes left as they were', async () => {
     vi.useFakeTimers();
     const harness = createDocumentHarness();
     const editor = await harness.openReady(PATH, '{ "scrolled": false }');
@@ -95,13 +95,39 @@ describe('join', () => {
     harness
       .run(harness.handler.join({ path: PATH }, createConnection()))
       .then(value => (result = value));
-    await harness.saveValue(editor, '{"scrolled":false}', false);
+    await harness.saveValue(
+      editor,
+      '{"scrolled":false}',
+      false,
+      '{"scrolled":true}'
+    );
 
     expect(result).toEqual({
-      initialValue: '{ "scrolled": false }',
+      initialValue: '{"scrolled":true}',
       snapshotVersion: 4,
       readonly: false,
     });
+    expect(new TextDecoder().decode(editor.document.content)).toBe(
+      '{ "scrolled": false }'
+    );
+  });
+
+  it('captures the runtime value of the last save, not the bytes that save wrote', async () => {
+    vi.useFakeTimers();
+    const harness = createDocumentHarness();
+    const editor = await harness.openReady(PATH, '{}');
+    harness.relay(editor, [add(4)]);
+
+    let result: { initialValue: string } | undefined;
+    harness
+      .run(harness.handler.join({ path: PATH }, createConnection()))
+      .then(value => (result = value));
+    await harness.saveValue(editor, '{"saved":1}', true, '{"held":1}');
+
+    expect(result?.initialValue).toBe('{"held":1}');
+    expect(new TextDecoder().decode(editor.document.content)).toBe(
+      '{"saved":1}'
+    );
   });
 
   it('with two webviews, wakes on the second save, not the first', async () => {
