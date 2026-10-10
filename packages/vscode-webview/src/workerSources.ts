@@ -35,7 +35,7 @@ export function whenWorkerSourcesReady(): Promise<void> {
 /**
  * The same-origin url a worker is built from. A script that could not be read
  * throws here, which the editor's services take as a host building no worker:
- * schema GC and PNG export run in-process, Shiki shows plain text, ELK refuses.
+ * the PNG and SVG export run in-process, Shiki shows plain text, ELK refuses.
  */
 export function workerBlobUrl(url: string): string {
   const blob = blobs.get(url);

@@ -122,7 +122,7 @@ export default {
 ### Script tag
 
 `dist/erd-editor.umd.js` is a self-contained build for a plain `<script>` tag: every
-dependency and all four workers are inside it, and it registers `<erd-editor>` and exposes the
+dependency and all three workers are inside it, and it registers `<erd-editor>` and exposes the
 two file callbacks as `window.ErdEditor`. It is what `unpkg` and `jsdelivr` serve.
 
 ```html

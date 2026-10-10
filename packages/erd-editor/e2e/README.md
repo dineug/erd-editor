@@ -89,7 +89,7 @@ one drawn over it in coordinates the document never keeps:
 | `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
 
 `shared-workers.spec.ts` holds down what those two and every export stand on:
-that each of the four shared workers starts on the dev server, which serves a
+that each of the three shared workers starts on the dev server, which serves a
 worker the same component boundaries, Vite client included, that it serves the page.
 
 `import-and-add.spec.ts` holds down what an import lands beside the diagram

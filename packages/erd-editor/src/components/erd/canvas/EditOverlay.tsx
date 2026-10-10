@@ -230,8 +230,8 @@ function resolveCellTarget(state: RootState): CellTarget | null {
 function resolveMemoTarget(state: RootState): MemoTarget | null {
   const { editor, collections, doc } = state;
   const { editMemoId } = editor;
-  // The document's own list, because a removed entity is still in collections
-  // until the next gc and would keep an editor open over nothing.
+  // The document's own list, because a removed entity stays in collections as
+  // a tombstone and would keep an editor open over nothing.
   if (!editMemoId || !doc.memoIds.includes(editMemoId)) return null;
 
   const memo = query(collections)
@@ -419,8 +419,8 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
     const { doc, collections } = store.state;
     const { groupId } = props.target;
     const value = input.value?.value ?? props.target.value;
-    // The document's own list, since a removed group stays in collections
-    // until the next gc and a name written to it would be an edit of nothing.
+    // The document's own list, since a removed group stays in collections as a
+    // tombstone and a name written to it would be an edit of nothing.
     const group = doc.tableGroupIds.includes(groupId)
       ? query(collections).collection('tableGroupEntities').selectById(groupId)
       : undefined;

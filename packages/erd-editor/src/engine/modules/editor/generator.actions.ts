@@ -488,8 +488,8 @@ export function withGridPoints(
 
 /**
  * Each table and memo of the document read in, at the point the layout gives
- * it. The grid is the sort an import lands in, run on the document's own
- * copy, where the parser's canvas size wraps it as it wraps a replace.
+ * it. The grid is the sort an import lands in, run on the document's own copy,
+ * so its rows wrap at the width its own table count gives, as a replace's do.
  */
 function toLayoutPoints(
   state: RootState,
