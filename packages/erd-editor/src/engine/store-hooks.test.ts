@@ -207,10 +207,10 @@ describe('createHooks', () => {
     ['initialLoadJsonAction$', loadIn(initialLoadJsonAction$)],
     ['loadJsonAction$', loadIn(loadJsonAction$)],
     ['a replica load', loadReplica],
-  ])('wakes on %s only the hooks settleLoad writes for at once', (_, load) => {
-    // A replica measures its changes from the load settleLoad leaves, so a new
-    // hook on any action a load dispatches, its clear included, joins it, or a
-    // pan on a stale file reads as an edit.
+  ])('wakes on %s no hook at all', (_, load) => {
+    // The load reducer writes what the document derives before it returns, and
+    // a replica measures its changes from there, so a hook on any action a load
+    // dispatches, its clear included, would read a pan on a stale file as an edit.
     dispatched.length = 0;
     load(fileWithTombstone());
 
@@ -220,12 +220,12 @@ describe('createHooks', () => {
       )
       .map(([, hook]) => hook.name);
 
-    expect(woken).toEqual([
-      'recalculateTableWidthHook',
-      'validationForeignKeyHook',
-      'identificationHook',
-      'startRelationshipHook',
-    ]);
+    expect(dispatched).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^editor\.(initialL|l)oadJson$/),
+      ])
+    );
+    expect(woken).toEqual([]);
   });
 
   it('keeps the record a replica load finds unlisted', () => {

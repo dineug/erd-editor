@@ -12,7 +12,7 @@ import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
-import { createHooks, settleLoad } from '@/engine/store-hooks';
+import { createHooks } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { toLoadValue } from '@/utils/loadValue';
@@ -96,13 +96,12 @@ export function createReplicationStore(
     });
   };
 
-  // The load's own rewrites, made before it returns rather than on the hooks'
-  // timers, so a change action that comes at once, as a pan replayed behind
-  // the load does, finds them in.
+  // The load reducer writes what the document derives before it returns, so a
+  // change action that comes at once, as a pan replayed behind the load does,
+  // finds them in.
   const setInitialValue = (value: string) => {
     baseline = null;
     store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
-    settleLoad(store.state, engineContext);
   };
 
   const dispatchSync = (actions: Array<AnyAction> | AnyAction) => {

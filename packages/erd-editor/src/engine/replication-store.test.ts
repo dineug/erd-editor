@@ -667,7 +667,7 @@ describe('createReplicationStore', () => {
       return store.value;
     }
 
-    /** Opens text and lets the load's own rewrites in: the schema GC and the text widths. */
+    /** Opens text, whose load writes the text widths before it returns, and lets the timers run. */
     async function open(text: string, toWidth = macWidth) {
       vi.useFakeTimers();
       const store = make(toWidth);
@@ -710,11 +710,12 @@ describe('createReplicationStore', () => {
       });
     });
 
-    it('measures from the first change action, not from the registers a join brings in before it', async () => {
+    it('keeps the widths its load measured, which no hook measures again, past the registers a join brings in', async () => {
       vi.useFakeTimers();
       let measure = macWidth;
       const store = make(text => measure(text));
       store.setInitialValue(savedWith(macWidth));
+      const opened = store.value;
       const change = vi.fn();
       store.on({ change });
 
@@ -725,16 +726,15 @@ describe('createReplicationStore', () => {
         tags: Tag.shared,
         version: 1,
       });
-      // The widths the load's hook measures again come out other than the ones
-      // settleLoad wrote, a write no change action made.
+      // A measure that moves after the load rewrites nothing until an edit measures.
       measure = winWidth;
       await vi.advanceTimersByTimeAsync(10);
-      const opened = store.value;
       store.dispatchSync(scroll);
       vi.advanceTimersByTime(250);
 
+      expect(store.value).toBe(opened);
       expect(parse(store).collections.tableEntities.t1.ui.widthName).toBe(
-        winWidth('customer_accounts')
+        macWidth('customer_accounts')
       );
       expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
     });
@@ -832,7 +832,7 @@ describe('createReplicationStore', () => {
     }
 
     it.each([0, 3, 7])(
-      'changes nothing for a view change %i ms into a load, whichever of its hooks have run',
+      'changes nothing for a view change %i ms into a load',
       async delay => {
         vi.useFakeTimers();
         const store = make(winWidth);

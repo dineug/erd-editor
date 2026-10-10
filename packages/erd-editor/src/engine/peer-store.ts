@@ -111,8 +111,9 @@ export type PeerStore = {
   readonly isDestroyed: boolean;
   setReadonly: (readonly: boolean) => void;
   /**
-   * Replaces the document and forgets every undo entry and label with it,
-   * since those were taken against the old one. The one reseed operation.
+   * Replaces the document and forgets every undo entry, label and register with
+   * it, since those were taken against the old one, and once subscribed asks the
+   * other peers for their registers again. The one reseed operation.
    */
   setInitialValue: (value: string) => void;
   mergeClock: (version: number) => void;

@@ -109,3 +109,39 @@ describe('a late peer edits past the versions it never saw (AC-E6)', () => {
     expect(nameOf(user)).toBe('renamed_by_agent');
   });
 });
+
+describe('a peer seeded again', () => {
+  it('drops the registers of the document it held and asks the open window for its own again', () => {
+    const { user, snapshot } = busyUser();
+    const peer = latePeer(snapshot);
+    // An add the window never heard, so only this peer holds its register.
+    const [columnId] = play(peer, addColumn(SEED.empty)).createdIds;
+    user.sharedStore.subscribe(actions => peer.receive(actions));
+    const sent: string[] = [];
+    peer.subscribe(actions => {
+      sent.push(...actions.map(({ type }) => type));
+      user.sharedStore.dispatchSync(actions);
+    });
+    expect(peer.state.lww[columnId]).toBeDefined();
+    sent.length = 0;
+
+    peer.setInitialValue(snapshot);
+
+    expect(sent).toEqual(['editor.getLWW']);
+    expect(peer.state.lww[columnId]).toBeUndefined();
+    expect(peer.state.lww[SEED.users]).toEqual(
+      user.rxStore.state.lww[SEED.users]
+    );
+  });
+
+  it('asks nobody before anything opened its sink', () => {
+    const { snapshot } = busyUser();
+    const peer = latePeer(snapshot);
+    const sent: string[] = [];
+
+    peer.setInitialValue(snapshot);
+    peer.subscribe(actions => sent.push(...actions.map(({ type }) => type)));
+
+    expect(sent).toEqual(['editor.getLWW']);
+  });
+});

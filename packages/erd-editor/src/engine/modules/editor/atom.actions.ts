@@ -17,6 +17,7 @@ import {
   landLoadedSettings,
   rememberCanvasType,
 } from '@/engine/modules/settings/atom.actions';
+import { settleDocument } from '@/engine/settle';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { toScenePoint } from '@/konva/scene/viewport';
@@ -160,12 +161,13 @@ export const loadJsonAction = createAction<
 
 /**
  * Replaces the document while it is open, an import, an undo or a peer's load,
- * the screen of every locked setting staying the reader's own.
+ * the screen of every locked setting staying the reader's own. The registers
+ * stay, since the session goes on: a peer's older edit is still refused.
  */
 const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
   { payload: { value }, version: actionVersion },
-  { clock }
+  ctx
 ) => {
   const { version, settings, doc, collections } = parser(value);
   if (!hasCanvasType(settings.canvasType)) {
@@ -173,12 +175,13 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   }
 
   rememberCanvasType(state);
-  landLoadedSettings(state, settings, actionVersion ?? clock.getVersion());
+  landLoadedSettings(state, settings, actionVersion ?? ctx.clock.getVersion());
   state.version = version;
   state.doc = doc;
   state.collections = collections;
   rememberCanvasType(state);
   clearViews(state.editor);
+  settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
 
@@ -198,9 +201,15 @@ export const initialLoadJsonAction = createAction<
   ActionMap[typeof ActionType.initialLoadJson]
 >(ActionType.initialLoadJson);
 
+/**
+ * Opens a document: the file's settings, and no register of the document held
+ * before, whose versions would refuse the edits of peers that opened the file
+ * afresh. A store already sharing asks its peers for theirs again.
+ */
 const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state,
-  { payload: { value } }
+  { payload: { value } },
+  ctx
 ) => {
   const { version, settings, doc, collections } = parser(value);
   if (!hasCanvasType(settings.canvasType)) {
@@ -212,8 +221,10 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  state.lww = {};
   rememberCanvasType(state);
   clearViews(state.editor);
+  settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
 

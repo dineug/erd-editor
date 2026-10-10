@@ -175,23 +175,22 @@ describe('the document list', () => {
     peer.setInitialValue(JSON.stringify(document));
     const reference = toDocumentList(seeded().state).tables;
 
-    // The peer's own hooks rewrite the loaded widths a few milliseconds on;
-    // the list estimates on copies and leaves the loaded one where it was.
-    expect(toDocumentList(peer.state).tables).toEqual(reference);
-    expect(tableOf(peer, SEED.empty).ui.widthName).toBe(900);
-    await settled();
+    // The load measures with the peer's estimate before it returns, and nothing
+    // measures again after it.
     expect(tableOf(peer, SEED.empty).ui.widthName).not.toBe(900);
+    expect(toDocumentList(peer.state).tables).toEqual(reference);
+    await settled();
     expect(toDocumentList(peer.state).tables).toEqual(reference);
   });
 
   it('leaves the peer state as it found it, widths the peer would estimate otherwise included', () => {
-    const document = JSON.parse(createSeedValue());
-    document.collections.tableEntities[SEED.users].ui.widthName = 900;
-    document.collections.tableColumnEntities[SEED.userName].ui.widthDataType =
-      700;
     const peer = createPeerStore({ nickname: 'agent', presence: false });
     peers.push(peer);
-    peer.setInitialValue(JSON.stringify(document));
+    peer.setInitialValue(createSeedValue());
+    // Widths a load never leaves, so a list that measured into the state shows.
+    tableOf(peer, SEED.users).ui.widthName = 900;
+    peer.state.collections.tableColumnEntities[SEED.userName].ui.widthDataType =
+      700;
     const before = peer.value;
 
     toDocumentList(peer.state);

@@ -13,7 +13,11 @@ import { RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { getLWWAction } from '@/engine/modules/editor/atom.actions';
-import { duplicateAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  duplicateAction$,
+  initialLoadJsonAction$,
+  loadJsonAction$,
+} from '@/engine/modules/editor/generator.actions';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import {
@@ -112,6 +116,42 @@ describe('createSharedStore', () => {
 
     fixture.shared.subscribe(actions => second.push(actions));
     expect(second).toHaveLength(0);
+  });
+
+  it('asks again once a load opens a document, which drops the registers', () => {
+    const fixture = make();
+    fixture.store.dispatchSync(addTable('t1'));
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+
+    fixture.store.dispatchSync(initialLoadJsonAction$('{}'));
+
+    expect(fixture.store.state.lww).toEqual({});
+    expect(fixture.types()).toEqual(['editor.getLWW']);
+    expect(fixture.seen.flat()[0].version).toBe(
+      fixture.store.context.clock.getVersion()
+    );
+  });
+
+  it('leaves a load before its first subscribe to the request that subscribe sends', () => {
+    const fixture = make();
+
+    fixture.store.dispatchSync(initialLoadJsonAction$('{}'));
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+
+    expect(fixture.types()).toEqual(['editor.getLWW']);
+  });
+
+  it('keeps the registers and asks for none on a load that replaces the document in session', () => {
+    const fixture = make();
+    fixture.store.dispatchSync(addTable('t1'));
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+
+    fixture.store.dispatchSync(loadJsonAction$('{}'));
+
+    expect(fixture.store.state.lww).toHaveProperty('t1');
+    expect(fixture.types()).toEqual(['editor.clear', 'editor.loadJson']);
   });
 
   it('broadcasts store actions tagged as shared with the editor meta', () => {

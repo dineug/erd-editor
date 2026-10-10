@@ -1989,6 +1989,26 @@ describe('editor.getLWW', () => {
   });
 });
 
+describe('the registers a load leaves', () => {
+  const remote: LWW = { t1: ['tableEntities', 9, -1, { name: 9 }] };
+
+  it('drops them on initialLoadJson, which opens a document afresh', () => {
+    store.dispatchSync(mergeLWWAction({ lww: remote }));
+
+    store.dispatchSync(initialLoadJsonAction({ value: '{}' }));
+
+    expect(store.state.lww).toEqual({});
+  });
+
+  it('keeps them on loadJson, which replaces the document in the session', () => {
+    store.dispatchSync(mergeLWWAction({ lww: remote }));
+
+    store.dispatchSync(loadJsonAction({ value: '{}' }));
+
+    expect(store.state.lww.t1).toEqual(remote.t1);
+  });
+});
+
 describe('editor.mergeLWW', () => {
   it('copies unknown remote entries into the local register', () => {
     const remote: LWW = {

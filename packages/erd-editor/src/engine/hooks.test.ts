@@ -119,9 +119,6 @@ describe('Hook contract', () => {
       }
     }
 
-    expect(tableHooks[0][0].map(String)).toEqual([
-      'editor.loadJson',
-      'editor.initialLoadJson',
-    ]);
+    expect(tableHooks[0][0].map(String)).toEqual(['table.remove']);
   });
 });

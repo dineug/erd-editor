@@ -7,7 +7,6 @@ import { Clock } from '@/engine/clock';
 import {
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
-  initialLoadJsonAction,
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
 import { removeTableAction } from '@/engine/modules/table/atom.actions';
@@ -19,21 +18,22 @@ const TABLE_B = 'table-b';
 const COLUMN_A = 'column-a';
 const RELATIONSHIP = 'relationship-a';
 
-const THROTTLE_WAIT = 40;
-
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const running: Subscription[] = [];
 
-function runHook(store: Store, index = 0) {
-  const [, effect] = hooks[index];
+function runHook(store: Store) {
+  const [, effect] = hooks[0];
   const action$ = new Subject<AnyAction>();
   running.push(effect(action$, () => store.state, store.context));
   return { action$ };
 }
 
-function createFixture(toWidth = (text: string) => text.length * 10) {
-  const store = createStore({ toWidth, clock: new Clock() });
+function createFixture() {
+  const store = createStore({
+    toWidth: text => text.length * 10,
+    clock: new Clock(),
+  });
 
   const json = JSON.stringify({
     version: '3.0.0',
@@ -95,133 +95,11 @@ afterEach(() => {
     .forEach(subscription => subscription.unsubscribe());
 });
 
-describe('table/hooks', () => {
-  it('reacts to both loadJson variants', () => {
-    expect(hooks).toHaveLength(2);
-
-    const [pattern, effect] = hooks[0];
-    expect(pattern).toEqual([loadJsonAction, initialLoadJsonAction]);
-    expect(pattern.map(String)).toEqual([
-      'editor.loadJson',
-      'editor.initialLoadJson',
-    ]);
-    expect(typeof effect).toBe('function');
-  });
-
-  it('recalculates every table and column width after loadJson', async () => {
-    const store = createFixture();
-    const { action$ } = runHook(store);
-
-    expect(store.state.collections.tableEntities[TABLE_A].ui.widthName).toBe(
-      999
-    );
-
-    action$.next(loadJsonAction({ value: '{}' }));
-    await delay(THROTTLE_WAIT);
-
-    const tableA = store.state.collections.tableEntities[TABLE_A];
-    const tableB = store.state.collections.tableEntities[TABLE_B];
-    const columnA = store.state.collections.tableColumnEntities[COLUMN_A];
-
-    expect(tableA.ui.widthName).toBe(130);
-    expect(tableA.ui.widthComment).toBe(60);
-    expect(tableB.ui.widthName).toBe(60);
-    expect(tableB.ui.widthComment).toBe(100);
-    expect(columnA.ui.widthName).toBe(100);
-    expect(columnA.ui.widthDataType).toBe(90);
-    expect(columnA.ui.widthDefault).toBe(60);
-    expect(columnA.ui.widthComment).toBe(60);
-
-    store.destroy();
-  });
-
-  it('re-sorts the relationship end points onto the table borders', async () => {
-    const store = createFixture();
-    const { action$ } = runHook(store);
-
-    const relationship =
-      store.state.collections.relationshipEntities[RELATIONSHIP];
-    expect(relationship.start).toMatchObject({ x: 0, y: 0 });
-    expect(relationship.end).toMatchObject({ x: 0, y: 0 });
-
-    action$.next(initialLoadJsonAction({ value: '{}' }));
-    await delay(THROTTLE_WAIT);
-
-    // both end points land on the border box of their own table
-    expect(relationship.start.x).toBeGreaterThanOrEqual(100);
-    expect(relationship.start.y).toBeGreaterThanOrEqual(100);
-    expect(relationship.end.x).toBeGreaterThanOrEqual(900);
-    expect(relationship.end.y).toBeGreaterThanOrEqual(400);
-    expect(relationship.start.x + relationship.start.y).toBeGreaterThan(200);
-    expect(relationship.end.x + relationship.end.y).toBeGreaterThan(1300);
-
-    store.destroy();
-  });
-
-  it('throttles a burst of actions into a single recalculation', async () => {
-    let calls = 0;
-    const store = createFixture(text => {
-      calls++;
-      return text.length * 10;
-    });
-    const { action$ } = runHook(store);
-    calls = 0;
-
-    action$.next(loadJsonAction({ value: '{}' }));
-    action$.next(loadJsonAction({ value: '{}' }));
-    action$.next(initialLoadJsonAction({ value: '{}' }));
-    await delay(THROTTLE_WAIT);
-
-    // 2 tables * 2 widths + 1 column * 4 widths
-    expect(calls).toBe(8);
-
-    store.destroy();
-  });
-
-  it('does not run the trailing recalculation before the throttle window', async () => {
-    let calls = 0;
-    const store = createFixture(text => {
-      calls++;
-      return text.length * 10;
-    });
-    const { action$ } = runHook(store);
-    calls = 0;
-
-    action$.next(loadJsonAction({ value: '{}' }));
-
-    expect(calls).toBe(0);
-
-    await delay(THROTTLE_WAIT);
-    expect(calls).toBe(8);
-
-    store.destroy();
-  });
-
-  it('runs again for a burst that lands after the throttle window', async () => {
-    let calls = 0;
-    const store = createFixture(text => {
-      calls++;
-      return text.length * 10;
-    });
-    const { action$ } = runHook(store);
-    calls = 0;
-
-    action$.next(loadJsonAction({ value: '{}' }));
-    await delay(THROTTLE_WAIT);
-    action$.next(loadJsonAction({ value: '{}' }));
-    await delay(THROTTLE_WAIT);
-
-    expect(calls).toBe(16);
-
-    store.destroy();
-  });
-});
-
 describe('table/hooks, a draw out of a removed table', () => {
   /** A draw armed and started from TABLE_A, then one table removed. */
   async function removeDuringDraw(tableId: string) {
     const store = createFixture();
-    const { action$ } = runHook(store, 1);
+    const { action$ } = runHook(store);
     store.dispatchSync(
       drawStartRelationshipAction({ relationshipType: RelationshipType.OneN }),
       drawStartAddRelationshipAction({ tableId: TABLE_A })
@@ -235,8 +113,10 @@ describe('table/hooks, a draw out of a removed table', () => {
     return store;
   }
 
-  it('reacts to a table removal', () => {
-    expect(hooks[1][0].map(String)).toEqual(['table.remove']);
+  it('reacts to a table removal alone: a load writes what it derives itself', () => {
+    expect(hooks.map(([pattern]) => pattern.map(String))).toEqual([
+      ['table.remove'],
+    ]);
   });
 
   it('ends the draw once the table it starts from is removed', async () => {

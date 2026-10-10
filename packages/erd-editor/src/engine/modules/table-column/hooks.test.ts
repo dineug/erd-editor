@@ -123,8 +123,6 @@ describe('table-column hooks registration', () => {
         'column.remove',
         'table.add',
         'table.remove',
-        String(loadJsonAction),
-        String(initialLoadJsonAction),
       ],
     ]);
   });
@@ -297,38 +295,48 @@ describe('validationForeignKeyHook as a relationship is removed', () => {
   });
 });
 
-describe('validationForeignKeyHook on load', () => {
-  it('repairs stale and missing foreign-key flags on load', async () => {
-    const runner = setup();
-    const { store } = runner;
-    addTable(store, 't1', ['c1', 'c2']);
-    addTable(store, 't2', ['c3']);
-    store.dispatchSync(
-      addRelationshipAction({
-        id: 'r1',
-        relationshipType: 4,
-        start: { tableId: 't1', columnIds: ['c1'] },
-        end: { tableId: 't2', columnIds: ['c3'] },
-      })
-    );
-    await settle();
+describe('the foreign key flags a load writes', () => {
+  /** The document as it stands, as a file saving it would hold it. */
+  const toValue = ({ state }: Store) =>
+    JSON.stringify({
+      version: '3.0.0',
+      settings: state.settings,
+      doc: state.doc,
+      collections: state.collections,
+    });
 
-    // Corrupt the flags the way a hand-edited document could.
-    column(store, 'c3').ui.keys =
-      column(store, 'c3').ui.keys & ~ColumnUIKey.foreignKey;
-    column(store, 'c2').ui.keys =
-      column(store, 'c2').ui.keys | ColumnUIKey.foreignKey;
+  it.each([
+    ['loadJson', loadJsonAction],
+    ['initialLoadJson', initialLoadJsonAction],
+  ])(
+    'repairs stale and missing foreign-key flags before %s returns',
+    (_, load) => {
+      const { store } = setup();
+      addTable(store, 't1', ['c1', 'c2']);
+      addTable(store, 't2', ['c3']);
+      store.dispatchSync(
+        addRelationshipAction({
+          id: 'r1',
+          relationshipType: 4,
+          start: { tableId: 't1', columnIds: ['c1'] },
+          end: { tableId: 't2', columnIds: ['c3'] },
+        })
+      );
+      // Corrupt the flags the way a hand-edited document could.
+      column(store, 'c3').ui.keys =
+        column(store, 'c3').ui.keys & ~ColumnUIKey.foreignKey;
+      column(store, 'c2').ui.keys =
+        column(store, 'c2').ui.keys | ColumnUIKey.foreignKey;
 
-    runner.send(HookIndex.validationForeignKey, loadJsonAction({ value: '' }));
-    await settle();
+      store.dispatchSync(load({ value: toValue(store) }));
 
-    expect(isForeignKey(store, 'c3')).toBe(true);
-    expect(isForeignKey(store, 'c2')).toBe(false);
-  });
+      expect(isForeignKey(store, 'c3')).toBe(true);
+      expect(isForeignKey(store, 'c2')).toBe(false);
+    }
+  );
 
-  it('preserves the primaryKey bit while clearing a stale foreignKey bit', async () => {
-    const runner = setup();
-    const { store } = runner;
+  it('preserves the primaryKey bit while clearing a stale foreignKey bit', () => {
+    const { store } = setup();
     addTable(store, 't1', ['c1']);
     store.dispatchSync(
       changeColumnPrimaryKeyAction({ tableId: 't1', id: 'c1', value: true })
@@ -336,39 +344,23 @@ describe('validationForeignKeyHook on load', () => {
     column(store, 'c1').ui.keys =
       column(store, 'c1').ui.keys | ColumnUIKey.foreignKey;
 
-    runner.send(HookIndex.validationForeignKey, loadJsonAction({ value: '' }));
-    await settle();
+    store.dispatchSync(loadJsonAction({ value: toValue(store) }));
 
     expect(column(store, 'c1').ui.keys).toBe(ColumnUIKey.primaryKey);
   });
 
-  it('runs for initialLoadJson dispatched through the store', async () => {
-    const { store } = setup();
-    addTable(store, 't1', ['c1']);
-    addTable(store, 't2', ['c2']);
-    store.dispatchSync(
-      addRelationshipAction({
-        id: 'r1',
-        relationshipType: 4,
-        start: { tableId: 't1', columnIds: ['c1'] },
-        end: { tableId: 't2', columnIds: ['c2'] },
-      })
+  it('wakes no foreign key hook, whose read would find nothing left to write', async () => {
+    const runner = setup();
+    addTable(runner.store, 't1', ['c1']);
+    await settle();
+    const before = runner.runs(HookIndex.validationForeignKey);
+
+    runner.store.dispatchSync(
+      initialLoadJsonAction({ value: toValue(runner.store) })
     );
-    column(store, 'c1').ui.keys =
-      column(store, 'c1').ui.keys | ColumnUIKey.foreignKey;
-
-    const value = JSON.stringify({
-      version: '3.0.0',
-      settings: store.state.settings,
-      doc: store.state.doc,
-      collections: store.state.collections,
-    });
-
-    store.dispatchSync(initialLoadJsonAction({ value }));
     await settle();
 
-    expect(isForeignKey(store, 'c1')).toBe(false);
-    expect(isForeignKey(store, 'c2')).toBe(true);
+    expect(runner.runs(HookIndex.validationForeignKey)).toBe(before);
   });
 });
 
