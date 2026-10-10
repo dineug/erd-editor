@@ -8,7 +8,12 @@ import {
   TABLE_GROUP_TITLE_HEIGHT,
   TABLE_SORT_START,
 } from '@/constants/layout';
-import { ColumnOption, OrderType, RelationshipType } from '@/constants/schema';
+import {
+  ColumnOption,
+  OrderType,
+  RelationshipType,
+  Show,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   appendSchemaAction$,
@@ -30,7 +35,10 @@ import {
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeDatabaseNameAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeDatabaseNameAction,
+  changeShowAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
@@ -246,6 +254,24 @@ describe('appendSchemaJsonAction$', () => {
     expect({ x: memo.ui.x, y: memo.ui.y }).toEqual({
       x: corner.x,
       y: corner.y + 500,
+    });
+  });
+
+  it('stands the block under a hidden group box too, which still holds its tables', () => {
+    const store = createDiagram();
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'hidden',
+        ui: { x: 60, y: 40, width: 600, height: 900, zIndex: 1 },
+      }),
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+    store.dispatchSync(appendSchemaJsonAction$(createDocument()));
+
+    expect(cornerOf(store.state, 'users')).toEqual({
+      x: 60,
+      y: 40 + 900 + APPEND_GAP,
     });
   });
 

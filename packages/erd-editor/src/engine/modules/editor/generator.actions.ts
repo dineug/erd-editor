@@ -78,7 +78,12 @@ import {
   toClipboardIndexes,
   toClipboardRelationships,
 } from '@/utils/table-clipboard/copy';
-import { nextTableGroupZIndex, padRect } from '@/utils/tableGroup';
+import {
+  getTableGroupRects,
+  isTableGroupShown,
+  nextTableGroupZIndex,
+  padRect,
+} from '@/utils/tableGroup';
 
 import {
   clearAction,
@@ -483,12 +488,20 @@ function toLayoutGroupRects(
 }
 
 /**
- * Where the block an append brings starts: under every table, memo and shown
- * group the diagram holds, a gap below them and in line with their left edge,
- * or where the grid of an import starts in a diagram holding none.
+ * Where the block an append brings starts: under every table, memo and group the diagram holds, a
+ * hidden group's box included, since it still holds its tables, a gap below them and in line with
+ * their left edge, or where the grid of an import starts in a diagram holding none.
  */
 function toAppendOrigin(state: RootState): Point {
-  const content = getContentRect(state);
+  const hidden = isTableGroupShown(state)
+    ? []
+    : [...getTableGroupRects(state).values()];
+  const content = [getContentRect(state), ...hidden]
+    .filter((rect): rect is Rect => rect !== null)
+    .reduce<Rect | null>(
+      (box, rect) => (box ? unionRect(box, rect) : rect),
+      null
+    );
 
   return content
     ? { x: content.x, y: content.y + content.height + APPEND_GAP }
