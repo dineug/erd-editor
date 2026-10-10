@@ -13,6 +13,7 @@ import { useSceneSource } from '@/components/sceneSourceContext';
 import { RelationshipType } from '@/constants/schema';
 import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
 import {
+  changeDrawTableGroupAction,
   changeHandToolAction,
   changeZenModeAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -75,9 +76,16 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
 
+  // Select is the plain pointer, so it ends a table group draw armed as well,
+  // which the hand going up ends on its own.
   const handleHandTool = (value: boolean) => () => {
     const { store } = app.value;
-    store.dispatch(changeHandToolAction({ value }));
+    store.dispatch(
+      changeHandToolAction({ value }),
+      ...(store.state.editor.drawTableGroup
+        ? [changeDrawTableGroupAction({ value: false })]
+        : [])
+    );
   };
 
   /**
@@ -131,7 +139,10 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
           <Icon name="hand" size={ICON_SIZE} />
         </div>
         <div
-          class={[styles.menu, { active: !editor.handTool }]}
+          class={[
+            styles.menu,
+            { active: !editor.handTool && !editor.drawTableGroup },
+          ]}
           title={title('floatingToolbar.select', KeyBindingName.handTool)}
           on:click={handleHandTool(false)}
         >
