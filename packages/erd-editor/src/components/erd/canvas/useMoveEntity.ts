@@ -9,7 +9,10 @@ import {
 import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { CLICK_DRAG_MIN_MOVE } from '@/constants/layout';
-import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  moveAllAction$,
+  type MoveAllGesture,
+} from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -64,11 +67,11 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
   const app = useAppContext(ctx);
 
   const handleMove =
-    (source: GeometrySource) =>
+    (source: GeometrySource, gesture: MoveAllGesture) =>
     ({ event, movementX, movementY }: DragMove) => {
       event.type === 'mousemove' && event.preventDefault();
       const { store } = app.value;
-      store.dispatch(moveAllAction$(movementX, movementY, source));
+      store.dispatch(moveAllAction$(movementX, movementY, source, gesture));
     };
 
   const onMoveStart = (event: ScenePointerEvent) => {
@@ -116,7 +119,8 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
 
     if (!canDrag) return;
 
-    const step = handleMove(source);
+    // A gesture per press: the tables its first step carries are its last's.
+    const step = handleMove(source, {});
     let begun = false;
     let moved = false;
     let pendingX = 0;

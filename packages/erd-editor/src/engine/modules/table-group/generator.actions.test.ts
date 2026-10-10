@@ -35,6 +35,7 @@ import {
   addTableGroupAction$,
   addTableGroupFromTablesAction$,
   dropTablesIntoGroupsAction$,
+  getCarriedTableIds,
   getTableGroupDrops,
   moveTableGroupAction$,
   removeTableGroupAction$,
@@ -313,14 +314,19 @@ describe('toMoveTableGroupActions', () => {
     );
   });
 
-  it('moves the groups and their members with the tables given, each once, as drags', () => {
-    const actions = toMoveTableGroupActions(
-      store.state,
-      ['g1'],
-      ['member', 'loose'],
-      5,
-      -5
-    );
+  it('carries the tables given and the members of the groups, each once', () => {
+    expect(getCarriedTableIds(store.state, ['g1'], ['loose'])).toEqual([
+      'loose',
+      'member',
+    ]);
+    expect(getCarriedTableIds(store.state, ['g1'], ['member'])).toEqual([
+      'member',
+    ]);
+    expect(getCarriedTableIds(store.state, [], [])).toEqual([]);
+  });
+
+  it('moves the groups and the tables they carry by the step, as drags', () => {
+    const actions = toMoveTableGroupActions(['g1'], ['member', 'loose'], 5, -5);
 
     expect(actions.map(({ type, payload }) => [type, payload])).toEqual([
       [ActionType.moveTableGroup, { ids: ['g1'], movementX: 5, movementY: -5 }],
@@ -333,11 +339,9 @@ describe('toMoveTableGroupActions', () => {
 
   it('sends no group move without a group, and nothing for nothing', () => {
     expect(
-      toMoveTableGroupActions(store.state, [], ['loose'], 1, 1).map(
-        ({ type }) => type
-      )
+      toMoveTableGroupActions([], ['loose'], 1, 1).map(({ type }) => type)
     ).toEqual(['table.move']);
-    expect(toMoveTableGroupActions(store.state, [], [], 1, 1)).toEqual([]);
+    expect(toMoveTableGroupActions([], [], 1, 1)).toEqual([]);
   });
 });
 

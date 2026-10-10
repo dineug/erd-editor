@@ -156,27 +156,37 @@ export const removeTableGroupAction$ = (id?: string): GeneratorAction =>
   };
 
 /**
- * The drag step of groups and tables moved together: each group by the step,
- * and the tables given with every member of those groups by the same step, a
- * table both selected and a member moving once. Tagged as drags.
+ * The tables a move of groups and tables carries: the tables given and every
+ * member of those groups, a table both given and a member once.
+ */
+export function getCarriedTableIds(
+  state: RootState,
+  groupIds: string[],
+  tableIds: string[]
+): string[] {
+  return uniq([
+    ...tableIds,
+    ...groupIds.flatMap(id => getTableGroupMemberIds(state, id)),
+  ]);
+}
+
+/**
+ * The drag step of groups and the tables they carry (getCarriedTableIds): each
+ * group and each table by the same step, tagged as drags.
  */
 export function toMoveTableGroupActions(
-  state: RootState,
   groupIds: string[],
   tableIds: string[],
   movementX: number,
   movementY: number
 ): AnyAction[] {
-  const ids = uniq([
-    ...tableIds,
-    ...groupIds.flatMap(id => getTableGroupMemberIds(state, id)),
-  ]);
-
   return [
     ...(groupIds.length
       ? [moveTableGroupAction({ ids: groupIds, movementX, movementY })]
       : []),
-    ...(ids.length ? [moveTableAction({ ids, movementX, movementY })] : []),
+    ...(tableIds.length
+      ? [moveTableAction({ ids: tableIds, movementX, movementY })]
+      : []),
   ].map(action => attachActionTag(Tag.drag, action));
 }
 
@@ -193,7 +203,12 @@ export const moveTableGroupAction$ = (
   movementY: number
 ): GeneratorAction =>
   function* (state) {
-    yield toMoveTableGroupActions(state, ids, [], movementX, movementY);
+    yield toMoveTableGroupActions(
+      ids,
+      getCarriedTableIds(state, ids, []),
+      movementX,
+      movementY
+    );
   };
 
 /**

@@ -33,8 +33,10 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import {
@@ -283,6 +285,36 @@ describe('useMoveEntity', () => {
       y: 20 + 120,
     });
     expect(pointOf('t1')).toEqual(before);
+  });
+
+  /**
+   * A peer can put a table in a selected group, or take one out, while the
+   * drag runs: the drag carries the tables its first step did, so its buffered
+   * steps sum under one table list, here, on every peer and in the undo.
+   */
+  it('carries the tables its first step carried to the drop, a table joining a selected group midway left standing', async () => {
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 800, y: 100, width: 600, height: 400, zIndex: 1 },
+      }),
+      addTableAction({ id: 't2', ui: { x: 900, y: 200, zIndex: 3 } }),
+      addTableAction({ id: 't3', ui: { x: 300, y: 700, zIndex: 4 } }),
+      changeTableGroupAction({ id: 't2', value: 'g1' }),
+      selectAction({ t1: SelectType.table, g1: SelectType.tableGroup })
+    );
+    const before = { t1: pointOf('t1'), t2: pointOf('t2'), t3: pointOf('t3') };
+
+    api.onMoveStart(press());
+    movePointer(100, 0);
+    await flush();
+    app.store.dispatchSync(changeTableGroupAction({ id: 't3', value: 'g1' }));
+    movePointer(160, 0);
+    await flush();
+
+    expect(pointOf('t1').x).toBe(before.t1.x + 160);
+    expect(pointOf('t2').x).toBe(before.t2.x + 160);
+    expect(pointOf('t3')).toEqual(before.t3);
   });
 
   it('leaves an entity the selection never held where it stands', async () => {

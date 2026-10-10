@@ -12,6 +12,7 @@ import {
   dragSelectAction$,
   duplicateAction$,
   moveAllAction$,
+  type MoveAllGesture,
   pasteEntitiesAction$,
   removeColorAllAction$,
   removeSelectedAction$,
@@ -98,6 +99,24 @@ describe('moveAllAction$ with a group selected', () => {
     store.dispatchSync(moveAllAction$(10, 0));
 
     expect(['member', 'other', 'loose'].map(tableX)).toEqual([110, 110, 510]);
+  });
+
+  it('carries the tables its gesture read at the first step to the last, whatever joins or leaves the group', () => {
+    store.dispatchSync(selectAction({ g1: SelectType.tableGroup }));
+    const gesture: MoveAllGesture = {};
+
+    store.dispatchSync(moveAllAction$(10, 0, 'document', gesture));
+    store.dispatchSync(
+      changeTableGroupAction({ id: 'loose', value: 'g1' }),
+      changeTableGroupAction({ id: 'other', value: '' })
+    );
+    const actions = flatten(store, moveAllAction$(10, 0, 'document', gesture));
+
+    expect(gesture.tableIds).toEqual(['member', 'other']);
+    expect(actions.map(({ type, payload }) => [type, payload.ids])).toEqual([
+      ['tableGroup.move', ['g1']],
+      ['table.move', ['member', 'other']],
+    ]);
   });
 
   it('moves no group from a view scene, which shows none', () => {

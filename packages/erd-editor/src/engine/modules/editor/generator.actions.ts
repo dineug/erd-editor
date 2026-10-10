@@ -41,6 +41,7 @@ import {
 } from '@/engine/modules/table-column/generator.actions';
 import { changeTableGroupColorAction } from '@/engine/modules/table-group/atom.actions';
 import {
+  getCarriedTableIds,
   removeTableGroupAction$,
   toMoveTableGroupActions,
 } from '@/engine/modules/table-group/generator.actions';
@@ -131,6 +132,13 @@ export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
   };
 
 /**
+ * One drag of the selection: the document tables it carries, read at its first
+ * step and kept to its last, since steps summed per table list would split if
+ * a peer changed a selected group's members midway.
+ */
+export type MoveAllGesture = { tableIds?: string[] };
+
+/**
  * Moves the selection by a pointer step the scene's zoom scales, a selected
  * group carrying its members, each table once. From a view scene the step goes
  * to that view's own placement, which holds tables alone, the document's kept.
@@ -138,7 +146,8 @@ export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
 export const moveAllAction$ = (
   movementX: number,
   movementY: number,
-  source: GeometrySource = 'document'
+  source: GeometrySource = 'document',
+  gesture: MoveAllGesture = {}
 ): GeneratorAction =>
   function* (state) {
     const { tableIds, memoIds, tableGroupIds } = getSelectTypeIds(
@@ -163,10 +172,10 @@ export const moveAllAction$ = (
       return;
     }
 
+    gesture.tableIds ??= getCarriedTableIds(state, tableGroupIds, tableIds);
     yield toMoveTableGroupActions(
-      state,
       tableGroupIds,
-      tableIds,
+      gesture.tableIds,
       newMovementX,
       newMovementY
     );
