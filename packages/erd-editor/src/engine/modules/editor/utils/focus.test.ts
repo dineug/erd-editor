@@ -36,7 +36,10 @@ import {
   addColumnAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import {
+  addTableGroupAction,
+  removeTableGroupAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
 
 const TABLE_ID = 'table-1';
@@ -402,6 +405,23 @@ describe('getRemovableColumns', () => {
     // leaves the table in the selection.
     store.dispatchSync(removeTableAction({ id: 'table-2' }));
 
+    expect(getRemovableColumns(store.state)?.columnIds).toEqual(['c3', 'c1']);
+  });
+
+  it('reads the selection over the groups still in the document', () => {
+    const store = createSelection();
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'group',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      }),
+      selectAction({ group: SelectType.tableGroup })
+    );
+    // The bare atom a peer, an agent or the undo of an add sends, which
+    // leaves the group in the selection.
+    store.dispatchSync(removeTableGroupAction({ id: 'group' }));
+
+    expect(store.state.editor.selectedMap.group).toBe(SelectType.tableGroup);
     expect(getRemovableColumns(store.state)?.columnIds).toEqual(['c3', 'c1']);
   });
 
