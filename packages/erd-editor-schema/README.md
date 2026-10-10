@@ -20,7 +20,7 @@ store and what it loads for an empty value. A file without `lockSettings` was sa
 locks: it parses with all of them on, its `originX`, `originY`, `zoomLevel` and `canvasType`
 at the defaults and the code settings as it saved them. Every v3 document a
 parser returns is stamped with a `$schema` pointing at
-[`json-schema/schema.json`](../../json-schema/schema.json), the JSON Schema for the format.
+[`json-schema/schema.json`](../../json-schema/schema.json), the JSON Schema of the storage form a file holds.
 
 ## Usage
 
