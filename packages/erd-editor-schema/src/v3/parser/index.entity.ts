@@ -1,6 +1,6 @@
 import { isBoolean, isNil, isPlainObject, isString } from 'es-toolkit';
 
-import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
+import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Index } from '@/v3/schema/index.entity';
 
@@ -11,7 +11,6 @@ export const createIndex = (): Index => ({
   indexColumnIds: [],
   seqIndexColumnIds: [],
   unique: false,
-  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeIndexEntities(
@@ -33,8 +32,6 @@ export function createAndMergeIndexEntities(
     assignBoolean('unique');
     assignArray('indexColumnIds');
     assignArray('seqIndexColumnIds');
-
-    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

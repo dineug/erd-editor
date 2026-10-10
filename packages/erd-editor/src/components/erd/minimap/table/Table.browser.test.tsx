@@ -52,7 +52,6 @@ const createTable = (
     color: '',
     ...ui,
   },
-  meta: { updateAt: 0, createAt: 0 },
 });
 
 /**

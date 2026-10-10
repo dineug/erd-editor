@@ -453,6 +453,13 @@ describe('table/atom.actions sortTable', () => {
     table(TABLE_C).columnIds.push('c3');
   }
 
+  /** A name a thousand wide, so two such tables overrun the 2000 the sort wraps three at. */
+  function widen(...ids: string[]) {
+    ids.forEach(id => {
+      table(id).ui.widthName = 1000;
+    });
+  }
+
   it('lays tables out left to right ordered by column count', () => {
     seedForSort();
 
@@ -464,9 +471,9 @@ describe('table/atom.actions sortTable', () => {
     expect(table(TABLE_A).ui).toMatchObject({ x: 940, y: 50 });
   });
 
-  it('wraps to the next row when the canvas width is exceeded', () => {
+  it('wraps to the next row when the sort width is exceeded', () => {
     seedForSort();
-    store.state.settings.width = 600;
+    widen(TABLE_A, TABLE_B, TABLE_C);
 
     store.dispatchSync(sortTableAction());
 
@@ -475,6 +482,18 @@ describe('table/atom.actions sortTable', () => {
     expect(table(TABLE_B).ui).toMatchObject({ x: 50, y: 50 });
     expect(table(TABLE_C).ui).toMatchObject({ x: 50, y: 160 });
     expect(table(TABLE_A).ui).toMatchObject({ x: 50, y: 294 });
+  });
+
+  it('wraps at a hundred per table, so thirty tables wrap after six', () => {
+    const ids = Array.from({ length: 30 }, (_, index) => `t${index}`);
+    ids.forEach(id => addTable(id));
+
+    store.dispatchSync(sortTableAction());
+
+    // 50 + 6 * 445 = 2720 fits the 3000, and a seventh would end at 3165.
+    const firstRow = ids.filter(id => table(id).ui.y === 50);
+    expect(firstRow).toHaveLength(6);
+    expect(table(ids[6]).ui.x).toBe(50);
   });
 
   it('keeps the row height when a later table in the row is not taller', () => {
@@ -540,9 +559,9 @@ describe('table/atom.actions sortTable', () => {
     });
   });
 
-  it("wraps a group's rows so that its box fits the canvas beside the start corner", () => {
+  it("wraps a group's rows so that its box fits the sort width beside the start corner", () => {
     seedGroupForSort();
-    store.state.settings.width = 600;
+    widen(TABLE_A, TABLE_B, TABLE_C);
     const a = sizeOf(TABLE_A);
     const b = sizeOf(TABLE_B);
 
@@ -553,7 +572,7 @@ describe('table/atom.actions sortTable', () => {
       x: 50 + P,
       y: 50 + TOP + b.height + TABLE_SORT_MARGIN,
     });
-    expect(group.ui.x + group.ui.width).toBeLessThanOrEqual(600);
+    expect(group.ui.x + group.ui.width).toBeLessThanOrEqual(2000);
     expect(group.ui).toMatchObject({
       width: Math.max(a.width, b.width) + P * 2,
       height: b.height + TABLE_SORT_MARGIN + a.height + P + TOP,

@@ -1,6 +1,6 @@
 import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 
-import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
+import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Table } from '@/v3/schema/table.entity';
 
@@ -19,7 +19,6 @@ export const createTable = (): Table => ({
     widthComment: 60,
     color: '',
   },
-  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeTableEntities(
@@ -49,8 +48,6 @@ export function createAndMergeTableEntities(
     uiAssignNumber('zIndex');
     uiAssignNumber('widthName');
     uiAssignNumber('widthComment');
-
-    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

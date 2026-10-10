@@ -440,16 +440,6 @@ const changeRelationshipDataTypeSync: ReducerType<
   settings.relationshipDataTypeSync = value;
 };
 
-export const changeRelationshipOptimizationAction = createAction<
-  ActionMap[typeof ActionType.changeRelationshipOptimization]
->(ActionType.changeRelationshipOptimization);
-
-const changeRelationshipOptimization: ReducerType<
-  typeof ActionType.changeRelationshipOptimization
-> = ({ settings }, { payload: { value } }) => {
-  settings.relationshipOptimization = value;
-};
-
 export const changeColumnOrderAction = createAction<
   ActionMap[typeof ActionType.changeColumnOrder]
 >(ActionType.changeColumnOrder);
@@ -660,7 +650,6 @@ export const settingsReducers = {
   [ActionType.changeColumnNameCase]: changeColumnNameCase,
   [ActionType.changeBracketType]: changeBracketType,
   [ActionType.changeRelationshipDataTypeSync]: changeRelationshipDataTypeSync,
-  [ActionType.changeRelationshipOptimization]: changeRelationshipOptimization,
   [ActionType.changeColumnOrder]: changeColumnOrder,
   [ActionType.changeMaxWidthComment]: changeMaxWidthComment,
   [ActionType.changeLockSettings]: changeLockSettings,
@@ -682,7 +671,6 @@ export const actions = {
   changeColumnNameCaseAction,
   changeBracketTypeAction,
   changeRelationshipDataTypeSyncAction,
-  changeRelationshipOptimizationAction,
   changeColumnOrderAction,
   changeMaxWidthCommentAction,
   changeLockSettingsAction,

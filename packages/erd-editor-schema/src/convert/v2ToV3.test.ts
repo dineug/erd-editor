@@ -276,15 +276,24 @@ describe('v2ToV3', () => {
     it('copies scalar canvas values and forces the ERD canvas type', () => {
       const { settings } = v2ToV3(createSchemaV2());
 
-      expect(settings.width).toBe(3000);
-      expect(settings.height).toBe(4000);
-      expect(settings.scrollTop).toBe(-100);
-      expect(settings.scrollLeft).toBe(-200);
       expect(settings.zoomLevel).toBe(0.7);
       expect(settings.databaseName).toBe('sample-db');
       expect(settings.canvasType).toBe(SchemaV3Constants.CanvasType.ERD);
       expect(settings.relationshipDataTypeSync).toBe(false);
-      expect(settings.relationshipOptimization).toBe(true);
+    });
+
+    it('keeps none of the canvas fields v3 no longer holds', () => {
+      const { settings } = v2ToV3(createSchemaV2());
+
+      for (const field of [
+        'width',
+        'height',
+        'scrollTop',
+        'scrollLeft',
+        'relationshipOptimization',
+      ]) {
+        expect(settings).not.toHaveProperty(field);
+      }
     });
 
     it('starts both Schema SQL scripts empty, since v2 has no slot for them', () => {

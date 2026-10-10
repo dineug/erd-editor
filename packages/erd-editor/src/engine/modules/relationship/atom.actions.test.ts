@@ -274,20 +274,6 @@ describe('relationship/atom.actions changeRelationshipType', () => {
     expect(store.state.lww['r1'][3]).toEqual({ relationshipType: 3 });
   });
 
-  it('bumps the entity updateAt timestamp', () => {
-    const store = createTestStore();
-    store.dispatchSync(addRelationshipAction(addPayload));
-    const before = relationship(store, 'r1')!.meta.updateAt;
-
-    store.dispatchSync(
-      changeRelationshipTypeAction({ id: 'r1', value: RelationshipType.OneN })
-    );
-
-    expect(relationship(store, 'r1')!.meta.updateAt).toBeGreaterThanOrEqual(
-      before
-    );
-  });
-
   it('ignores a change that is older than the recorded field version', () => {
     const store = createTestStore();
     store.dispatchSync(addRelationshipAction(addPayload));

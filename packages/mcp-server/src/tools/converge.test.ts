@@ -2,7 +2,7 @@ import { bHas, relationshipActions } from '@dineug/erd-editor/peer.js';
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { comparable, settle } from '@/__test-utils__/mcp';
+import { settle } from '@/__test-utils__/mcp';
 import { TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import {
   createPeerSession,
@@ -41,8 +41,8 @@ describe('two peers converge over every tool (AC-E5)', () => {
       await quiet();
 
       expect(run.batches).toBeGreaterThan(0);
-      expect(comparable(session.agent.value)).toEqual(
-        comparable(session.other.value)
+      expect(JSON.parse(session.agent.value)).toEqual(
+        JSON.parse(session.other.value)
       );
     }
   );
@@ -97,8 +97,8 @@ describe('a mapping the editor changes reaches the agent', () => {
     expect(
       collections.relationshipEntities[SEED.relationship].identification
     ).toBe(true);
-    expect(comparable(session.agent.value)).toEqual(
-      comparable(session.other.value)
+    expect(JSON.parse(session.agent.value)).toEqual(
+      JSON.parse(session.other.value)
     );
   });
 });

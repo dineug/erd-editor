@@ -385,7 +385,6 @@ describe('SchemaService', () => {
       await settle();
 
       expect(JSON.parse(rows.get(row.id)!.value).settings).toMatchObject({
-        ignoreSaveSettings: 3,
         originX: 0,
         originY: 0,
         zoomLevel: 1,
@@ -415,8 +414,7 @@ describe('SchemaService', () => {
       );
     });
 
-    it('does not count the tombstones the engine collects on load as an edit', async () => {
-      vi.setSystemTime(OPENED - 10 * DAY);
+    it('keeps the tombstone a stored value holds and counts its load as no edit', async () => {
       const value = valueOf([
         {
           type: 'memo.add',
@@ -424,7 +422,6 @@ describe('SchemaService', () => {
         },
         { type: 'memo.remove', payload: { id: 'm1' } },
       ]);
-      vi.setSystemTime(OPENED);
       expect(JSON.parse(value).collections.memoEntities).toHaveProperty('m1');
       const row = seed(rows, { value });
 
@@ -432,7 +429,9 @@ describe('SchemaService', () => {
       await settle();
 
       const saved = rows.get(row.id)!;
-      expect(JSON.parse(saved.value).collections.memoEntities).toEqual({});
+      expect(JSON.parse(saved.value).collections.memoEntities).toHaveProperty(
+        'm1'
+      );
       expect(saved.updateAt).toBe(CREATED);
       expect(postMessage).not.toHaveBeenCalled();
     });

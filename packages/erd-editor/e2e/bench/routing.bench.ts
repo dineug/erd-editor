@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 
 import { FIXTURE_URL } from '../support/ErdEditorPage';
 import type { ErdDocument } from '../support/schema';
-import { CORPORA, createCorpus } from './corpus';
+import { BENCH_CANVAS, CORPORA, createCorpus } from './corpus';
 import {
   fitWholeCanvas,
   measureQuality,
@@ -94,7 +94,8 @@ for (const options of CORPORA) {
       whole.collections.tableEntities[id].ui.x = ui.x;
       whole.collections.tableEntities[id].ui.y = ui.y;
     }
-    Object.assign(whole.settings, fitWholeCanvas(whole.settings, VIEWPORT));
+    const { width = BENCH_CANVAS, height = BENCH_CANVAS } = whole.settings;
+    Object.assign(whole.settings, fitWholeCanvas({ width, height }, VIEWPORT));
 
     await page.goto(FIXTURE_URL);
     await installBench(page);

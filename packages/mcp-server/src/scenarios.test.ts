@@ -16,12 +16,7 @@ import {
   tableNamed,
 } from '@/__test-utils__/documents';
 import { createFakeHub, type FakeHub } from '@/__test-utils__/fakeHub';
-import {
-  comparable,
-  connectMcp,
-  type McpHarness,
-  settle,
-} from '@/__test-utils__/mcp';
+import { connectMcp, type McpHarness, settle } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { readDocument } from '@/tools/read';
 import { runTool } from '@/tools/run';
@@ -52,7 +47,7 @@ const snapshot = async (path = DOCUMENT) =>
 async function expectConverged(path = DOCUMENT) {
   await settle();
   const agent = await mcp.text('erd_read', { path, format: 'json' });
-  expect(comparable(agent)).toEqual(comparable(hub.webview(path).value));
+  expect(JSON.parse(agent)).toEqual(JSON.parse(hub.webview(path).value));
 }
 
 describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
@@ -138,8 +133,8 @@ describe('the four scenarios, live through a VS Code hub (AC-M1)', () => {
       mode: 'live',
       saved: true,
     });
-    expect(comparable(io.read(path))).toEqual(
-      comparable(hub.webview(path).value)
+    expect(JSON.parse(io.read(path))).toEqual(
+      JSON.parse(hub.webview(path).value)
     );
   });
 

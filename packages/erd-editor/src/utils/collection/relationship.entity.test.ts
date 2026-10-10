@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it } from 'vite-plus/test';
 
 import {
   Direction,
@@ -8,15 +8,7 @@ import {
 import { createRelationship } from '@/utils/collection/relationship.entity';
 
 describe('createRelationship', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('creates a relationship filled with defaults when no value is given', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-01-02T03:04:05.000Z'));
-    const now = Date.now();
-
     const relationship = createRelationship();
 
     expect(relationship.identification).toBe(false);
@@ -36,7 +28,7 @@ describe('createRelationship', () => {
       y: 0,
       direction: Direction.bottom,
     });
-    expect(relationship.meta).toEqual({ updateAt: now, createAt: now });
+    expect(relationship).not.toHaveProperty('meta');
     expect(typeof relationship.id).toBe('string');
     expect(relationship.id.length).toBeGreaterThan(0);
   });

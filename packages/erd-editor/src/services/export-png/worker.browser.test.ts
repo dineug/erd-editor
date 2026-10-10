@@ -19,8 +19,6 @@ const CANVAS = 600;
 
 const theme: Theme = createTestTheme();
 
-const meta = () => ({ updateAt: 0, createAt: 0 });
-
 /**
  * The editor's own measurement, which is what the app hands the export and the
  * only one a worker can reproduce. Every case below turns on whether the realm
@@ -68,7 +66,6 @@ function createDoc(zoomLevel = 1) {
             widthComment: toWidth('주문 이력 / 注文履歴'),
             color: '',
           },
-          meta: meta(),
         },
       },
       tableColumnEntities: {
@@ -87,7 +84,6 @@ function createDoc(zoomLevel = 1) {
             widthDefault: toWidth(''),
             widthComment: toWidth('—…€·'),
           },
-          meta: meta(),
         },
         'c-2': {
           id: 'c-2',
@@ -104,7 +100,6 @@ function createDoc(zoomLevel = 1) {
             widthDefault: toWidth('now()'),
             widthComment: toWidth('iIlL1 0O'),
           },
-          meta: meta(),
         },
       },
       relationshipEntities: {},
@@ -158,7 +153,6 @@ function createMemoDoc(memos: MemoSeed[], zoomLevel = 1) {
             id,
             value: '',
             ui: { x, y, width, height, zIndex: 2, color: '#ff0000' },
-            meta: meta(),
           },
         ])
       ),

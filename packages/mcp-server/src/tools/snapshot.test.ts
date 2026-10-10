@@ -111,7 +111,6 @@ describe('the agent snapshot', () => {
       columnNameCase: 'camelCase',
       bracketType: 'none',
       relationshipDataTypeSync: true,
-      relationshipOptimization: false,
       columnOrder: [
         'columnName',
         'columnDataType',

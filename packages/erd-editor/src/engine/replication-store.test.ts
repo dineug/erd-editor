@@ -51,7 +51,6 @@ import {
 import { createStore } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 
-const DAY = 24 * 60 * 60 * 1000;
 const LOCK_ALL = 63;
 const { viewport } = LockSettingType;
 
@@ -126,7 +125,7 @@ async function settle() {
   }
 }
 
-function createTableJson(id: string, updateAt: number) {
+function createTableJson(id: string) {
   return {
     id,
     name: id,
@@ -141,7 +140,6 @@ function createTableJson(id: string, updateAt: number) {
       widthComment: 60,
       color: '',
     },
-    meta: { updateAt, createAt: updateAt },
   };
 }
 
@@ -202,10 +200,8 @@ describe('createReplicationStore', () => {
     store.setInitialValue(file);
     await settle();
 
-    expect(parse(store).settings).toMatchObject({
-      lockSettings: LOCK_ALL,
-      ignoreSaveSettings: 3,
-    });
+    expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
+    expect(parse(store).settings).not.toHaveProperty('ignoreSaveSettings');
   });
 
   it('setInitialValue shows text it cannot read as a new document, every setting locked', async () => {
@@ -223,7 +219,6 @@ describe('createReplicationStore', () => {
 
   it('setInitialValue loads a v3 document', async () => {
     const store = make();
-    const now = Date.now();
 
     store.setInitialValue(
       JSON.stringify({
@@ -235,7 +230,7 @@ describe('createReplicationStore', () => {
           memoIds: [],
         },
         collections: {
-          tableEntities: { t1: createTableJson('t1', now) },
+          tableEntities: { t1: createTableJson('t1') },
         },
       })
     );
@@ -246,37 +241,8 @@ describe('createReplicationStore', () => {
     expect(json.collections.tableEntities.t1.name).toBe('t1');
   });
 
-  it('garbage collects stale entities that no longer belong to the doc', async () => {
+  it('keeps entities the doc no longer lists', async () => {
     const store = make();
-    const now = Date.now();
-
-    store.setInitialValue(
-      JSON.stringify({
-        version: '3.0.0',
-        doc: {
-          tableIds: ['keep'],
-          relationshipIds: [],
-          indexIds: [],
-          memoIds: [],
-        },
-        collections: {
-          tableEntities: {
-            keep: createTableJson('keep', now),
-            stale: createTableJson('stale', now - 10 * DAY),
-          },
-        },
-      })
-    );
-    await settle();
-
-    const json = parse(store);
-    expect(Object.keys(json.collections.tableEntities)).toEqual(['keep']);
-    expect(json.doc.tableIds).toEqual(['keep']);
-  });
-
-  it('keeps recently touched entities that are not referenced by the doc', async () => {
-    const store = make();
-    const now = Date.now();
 
     store.setInitialValue(
       JSON.stringify({
@@ -288,7 +254,7 @@ describe('createReplicationStore', () => {
           memoIds: [],
         },
         collections: {
-          tableEntities: { fresh: createTableJson('fresh', now) },
+          tableEntities: { fresh: createTableJson('fresh') },
         },
       })
     );
@@ -375,7 +341,7 @@ describe('createReplicationStore', () => {
 
       expect(change).toHaveBeenCalledTimes(1);
       expect(change).toHaveBeenCalledWith({ value: before, changed: false });
-      expect(parse(store).settings).toMatchObject({ ignoreSaveSettings: 0 });
+      expect(parse(store).settings).not.toHaveProperty('ignoreSaveSettings');
     });
 
     it('reports no change for the registers a window answers a join with', () => {
@@ -843,13 +809,12 @@ describe('createReplicationStore', () => {
         canvasType: CanvasType.ERD,
         language: Language.Kotlin,
       });
-      expect(parse(store).settings.ignoreSaveSettings).toBe(3);
     });
 
     /**
      * The seed saved with every lock on, by a machine with other fonts and
      * a release whose relationship and key flags fell behind its columns, with
-     * a table removed long enough ago for the schema GC.
+     * a table the doc no longer lists.
      */
     function staleFile() {
       const json = JSON.parse(createSeedValue());
@@ -862,10 +827,7 @@ describe('createReplicationStore', () => {
       relationship.identification = true;
       relationship.startRelationshipType = StartRelationshipType.dash;
       userColumn.ui.keys &= ~ColumnUIKey.foreignKey;
-      json.collections.tableEntities.removed = createTableJson(
-        'removed',
-        Date.now() - 10 * DAY
-      );
+      json.collections.tableEntities.removed = createTableJson('removed');
       return JSON.stringify(json);
     }
 
@@ -904,7 +866,9 @@ describe('createReplicationStore', () => {
       const relationship = collections.relationshipEntities[SEED.relationship];
       const userName = collections.tableColumnEntities[SEED.userName];
       expect(store.value).toBe(opened);
-      expect(collections.tableEntities.removed).toBeUndefined();
+      expect(collections.tableEntities.removed).toMatchObject({
+        name: 'removed',
+      });
       expect(userName.ui.widthDataType).toBe(winWidth('VARCHAR(255)'));
       expect(userName.ui.widthDataType).not.toBe(
         stale.tableColumnEntities[SEED.userName].ui.widthDataType

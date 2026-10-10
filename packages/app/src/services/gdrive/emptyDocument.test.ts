@@ -18,7 +18,8 @@ describe('createEmptyDocument', () => {
   it('locks every setting, the view at the start, as a new diagram in the editor', () => {
     const { settings } = JSON.parse(createEmptyDocument());
 
-    expect(settings).toMatchObject({ ignoreSaveSettings: 3, lockSettings: 63 });
+    expect(settings.lockSettings).toBe(63);
+    expect(settings).not.toHaveProperty('ignoreSaveSettings');
     expect(settings).toMatchObject({ originX: 0, originY: 0, zoomLevel: 1 });
   });
 

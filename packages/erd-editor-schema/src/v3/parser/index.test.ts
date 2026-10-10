@@ -25,7 +25,7 @@ describe('parser', () => {
   it('produces a fully defaulted document for an empty source', () => {
     const result = parser({});
 
-    expect(result.settings.width).toBe(2000);
+    expect(result.settings.zoomLevel).toBe(1);
     expect(result.doc).toEqual({
       tableIds: [],
       relationshipIds: [],
@@ -59,7 +59,6 @@ describe('parser', () => {
   it('parses a full document', () => {
     const result = parser({
       settings: {
-        width: 3000,
         database: Database.PostgreSQL,
         zoomLevel: 0.7,
         lockSettings: 63,
@@ -84,7 +83,6 @@ describe('parser', () => {
       },
     });
 
-    expect(result.settings.width).toBe(3000);
     expect(result.settings.database).toBe(Database.PostgreSQL);
     expect(result.settings.zoomLevel).toBe(0.7);
     expect(result.doc.tableIds).toEqual(['t1']);
@@ -114,6 +112,30 @@ describe('parser', () => {
     expect(result.collections.tableEntities.t1.groupId).toBe('');
   });
 
+  it('drops the meta every entity of an older file carries', () => {
+    const meta = { updateAt: 1, createAt: 1 };
+    const result = parser({
+      collections: {
+        tableEntities: { t1: { id: 't1', meta } },
+        tableColumnEntities: { c1: { id: 'c1', meta } },
+        relationshipEntities: { r1: { id: 'r1', meta } },
+        indexEntities: { i1: { id: 'i1', meta } },
+        indexColumnEntities: { ic1: { id: 'ic1', meta } },
+        memoEntities: { m1: { id: 'm1', meta } },
+        tableGroupEntities: { g1: { id: 'g1', meta } },
+      },
+    });
+
+    for (const entities of Object.values(result.collections)) {
+      for (const entity of Object.values(entities)) {
+        expect(entity).not.toHaveProperty('meta');
+      }
+    }
+    expect(
+      Object.values(result.collections).map(e => Object.keys(e).length)
+    ).toEqual([1, 1, 1, 1, 1, 1, 1]);
+  });
+
   it('drops unknown top level keys', () => {
     const result = parser({ foo: 'bar' });
 
@@ -128,7 +150,7 @@ describe('parser', () => {
 
   it('is idempotent when re-parsing its own output', () => {
     const first = parser({
-      settings: { width: 4000 },
+      settings: { databaseName: 'shop' },
       doc: { tableIds: ['t1'] },
       collections: { tableEntities: { t1: { id: 't1', name: 'users' } } },
     });

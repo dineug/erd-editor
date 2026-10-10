@@ -17,7 +17,7 @@ describe('createIndex', () => {
       seqIndexColumnIds: [],
       unique: false,
     });
-    expect(index.meta.createAt).toBe(index.meta.updateAt);
+    expect(index).not.toHaveProperty('meta');
   });
 });
 
@@ -49,7 +49,6 @@ describe('createAndMergeIndexEntities', () => {
         unique: true,
         indexColumnIds: ['ic1'],
         seqIndexColumnIds: ['ic1', 'ic2'],
-        meta: { updateAt: 5, createAt: 6 },
       },
     });
 
@@ -60,7 +59,6 @@ describe('createAndMergeIndexEntities', () => {
       unique: true,
       indexColumnIds: ['ic1'],
       seqIndexColumnIds: ['ic1', 'ic2'],
-      meta: { updateAt: 5, createAt: 6 },
     });
   });
 

@@ -23,8 +23,6 @@ const TABLE_ID = 'users';
 const document$ = JSON.stringify({
   version: '3.0.0',
   settings: {
-    width: 2000,
-    height: 2000,
     originX: 0,
     originY: 0,
     zoomLevel: 1,
@@ -37,7 +35,6 @@ const document$ = JSON.stringify({
     columnNameCase: 2,
     bracketType: 1,
     relationshipDataTypeSync: true,
-    relationshipOptimization: false,
     columnOrder: [1, 2, 4, 8, 16, 32, 64],
     maxWidthComment: -1,
     lockSettings: 0,
@@ -57,7 +54,6 @@ const document$ = JSON.stringify({
         columnIds: ['c1'],
         seqColumnIds: ['c1'],
         ui: { x: 60, y: 60, zIndex: 2, widthName: 60, color: '' },
-        meta: { updateAt: 1, createAt: 1 },
       },
     },
     tableColumnEntities: {
@@ -76,7 +72,6 @@ const document$ = JSON.stringify({
           widthDataType: 60,
           widthDefault: 60,
         },
-        meta: { updateAt: 1, createAt: 1 },
       },
     },
     relationshipEntities: {},

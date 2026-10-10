@@ -1,15 +1,6 @@
 import { ValuesType } from '@/internal-types';
 
 export type Settings = {
-  width: number;
-  height: number;
-  /**
-   * The legacy view offset every released editor reads, measured from the
-   * canvas box centred in the viewport. The parser reads the pair once to
-   * migrate a document that carries no origin; nothing else ever writes it.
-   */
-  scrollTop: number;
-  scrollLeft: number;
   /**
    * The live view: the screen point scene (0, 0) lands on.
    */
@@ -25,7 +16,6 @@ export type Settings = {
   columnNameCase: number;
   bracketType: number;
   relationshipDataTypeSync: boolean;
-  relationshipOptimization: boolean;
   columnOrder: number[];
   maxWidthComment: number;
   /**
@@ -173,15 +163,6 @@ export const BracketType = {
 } as const;
 export const BracketTypeList: ReadonlyArray<number> =
   Object.values(BracketType);
-
-/**
- * The bits of ignoreSaveSettings, the field releases before the locks read:
- * toJson writes both while the viewport is locked and neither while it is not.
- */
-export const SaveSettingType = {
-  scroll: 1,
-  zoomLevel: 2,
-} as const;
 
 // Append only, like the lists above. The viewport locks the origin and the zoom
 // together, since an origin saved without its zoom opens on another place.

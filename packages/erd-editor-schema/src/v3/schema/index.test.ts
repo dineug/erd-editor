@@ -34,7 +34,6 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
-  SaveSettingType,
   Show,
 } from '@/v3/schema/settings';
 import { ColumnOption, ColumnUIKey } from '@/v3/schema/tableColumn.entity';
@@ -75,7 +74,6 @@ describe('v3/schema/index', () => {
           'ReferentialActionList',
           'RelationshipType',
           'RelationshipTypeList',
-          'SaveSettingType',
           'Show',
           'StartRelationshipType',
           'StartRelationshipTypeList',
@@ -115,7 +113,6 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants.ColumnUIKey).toBe(ColumnUIKey);
       expect(SchemaV3Constants.OrderType).toBe(OrderType);
       expect(SchemaV3Constants.OrderTypeList).toBe(OrderTypeList);
-      expect(SchemaV3Constants.SaveSettingType).toBe(SaveSettingType);
       expect(SchemaV3Constants.LockSettingType).toBe(LockSettingType);
       expect(SchemaV3Constants.LockSettingTypeList).toBe(LockSettingTypeList);
       expect(SchemaV3Constants.LockSettingFields).toBe(LockSettingFields);
@@ -150,7 +147,7 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants).not.toHaveProperty('Table');
       expect(SchemaV3Constants).not.toHaveProperty('Memo');
       expect(SchemaV3Constants).not.toHaveProperty('TableGroup');
-      expect(Object.keys(SchemaV3Constants)).toHaveLength(35);
+      expect(Object.keys(SchemaV3Constants)).toHaveLength(34);
     });
   });
 
@@ -161,10 +158,6 @@ describe('v3/schema/index', () => {
           'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json',
         version: '3.0.0',
         settings: {
-          width: CANVAS_SIZE_MAX,
-          height: CANVAS_SIZE_MAX,
-          scrollTop: 0,
-          scrollLeft: 0,
           originX: 0,
           originY: 0,
           zoomLevel: CANVAS_ZOOM_MIN,
@@ -177,7 +170,6 @@ describe('v3/schema/index', () => {
           columnNameCase: NameCase.camelCase,
           bracketType: BracketType.doubleQuote,
           relationshipDataTypeSync: true,
-          relationshipOptimization: false,
           columnOrder: [...ColumnTypeList],
           maxWidthComment: -1,
           lockSettings: LockSettingType.viewport,
@@ -217,7 +209,6 @@ describe('v3/schema/index', () => {
                 widthComment: 60,
                 color: '',
               },
-              meta: { updateAt: 0, createAt: 0 },
             },
           },
           tableColumnEntities: {},
@@ -231,7 +222,6 @@ describe('v3/schema/index', () => {
               name: 'billing',
               color: '#0090ff',
               ui: { x: -40, y: -40, width: 400, height: 300, zIndex: 1 },
-              meta: { updateAt: 0, createAt: 0 },
             },
           },
         },

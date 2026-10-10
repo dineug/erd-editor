@@ -40,7 +40,6 @@ const InternalActionType = {
   dragendColumnAll: 'dragendColumnAll',
   copy: 'copy',
   paste: 'paste',
-  schemaGC: 'schemaGC',
   toggleSearch: 'toggleSearch',
   openFindReplace: 'openFindReplace',
   openExportImage: 'openExportImage',
@@ -79,7 +78,6 @@ type InternalActionMap = {
   [InternalActionType.paste]: {
     event: ClipboardEvent;
   };
-  [InternalActionType.schemaGC]: void;
   [InternalActionType.toggleSearch]: void;
   [InternalActionType.openFindReplace]: FindReplaceQuery | void;
   [InternalActionType.openExportImage]: void;
@@ -165,10 +163,6 @@ export const copyAction = createAction<
 export const pasteAction = createAction<
   InternalActionMap[typeof InternalActionType.paste]
 >(InternalActionType.paste);
-
-export const schemaGCAction = createAction<
-  InternalActionMap[typeof InternalActionType.schemaGC]
->(InternalActionType.schemaGC);
 
 export const toggleSearchAction = createAction<
   InternalActionMap[typeof InternalActionType.toggleSearch]

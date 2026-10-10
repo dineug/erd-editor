@@ -17,7 +17,6 @@ export {
   OrderType,
   ReferentialAction,
   RelationshipType,
-  SaveSettingType,
   Show,
 } from '@/constants/schema';
 export {

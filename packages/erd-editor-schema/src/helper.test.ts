@@ -1,14 +1,7 @@
 import { isNumber, isString } from 'es-toolkit';
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
-import {
-  assign,
-  assignMeta,
-  getDefaultEntityMeta,
-  propOr,
-  validNumber,
-  validString,
-} from '@/helper';
+import { assign, propOr, validNumber, validString } from '@/helper';
 
 type Target = {
   name: string;
@@ -99,47 +92,5 @@ describe('propOr', () => {
     expect(propOr({ a: 0 } as any, 'a', 99)).toBe(0);
     expect(propOr({ a: '' } as any, 'a', 'fallback')).toBe('');
     expect(propOr({ a: false } as any, 'a', true)).toBe(false);
-  });
-});
-
-describe('getDefaultEntityMeta', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('uses a single Date.now call for both fields', () => {
-    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
-
-    expect(getDefaultEntityMeta()).toEqual({
-      updateAt: 1700000000000,
-      createAt: 1700000000000,
-    });
-    expect(nowSpy).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('assignMeta', () => {
-  it('copies numeric meta fields', () => {
-    const target = { updateAt: 1, createAt: 2 };
-
-    assignMeta(target, { updateAt: 10, createAt: 20 });
-
-    expect(target).toEqual({ updateAt: 10, createAt: 20 });
-  });
-
-  it('ignores non numeric meta fields', () => {
-    const target = { updateAt: 1, createAt: 2 };
-
-    assignMeta(target, { updateAt: '10', createAt: null } as any);
-
-    expect(target).toEqual({ updateAt: 1, createAt: 2 });
-  });
-
-  it('does nothing without a source', () => {
-    const target = { updateAt: 1, createAt: 2 };
-
-    assignMeta(target);
-
-    expect(target).toEqual({ updateAt: 1, createAt: 2 });
   });
 });

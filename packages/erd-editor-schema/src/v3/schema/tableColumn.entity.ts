@@ -1,6 +1,4 @@
-import { EntityType } from '@/internal-types';
-
-export type Column = EntityType<{
+export type Column = {
   id: string;
   tableId: string;
   name: string;
@@ -9,7 +7,7 @@ export type Column = EntityType<{
   default: string;
   options: number;
   ui: ColumnUI;
-}>;
+};
 
 export type ColumnUI = {
   keys: number;

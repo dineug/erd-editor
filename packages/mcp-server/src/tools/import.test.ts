@@ -8,7 +8,7 @@ import {
 import { createSchema, toJson } from '@dineug/erd-editor-schema';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { comparable, settle } from '@/__test-utils__/mcp';
+import { settle } from '@/__test-utils__/mcp';
 import { APPEND_SCENARIOS, TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import {
   createImportValue,
@@ -83,7 +83,7 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
         indexIds: [],
         memoIds: [],
       });
-      expect(comparable(other.value)).toEqual(comparable(agent.value));
+      expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
     }
   );
 
@@ -200,7 +200,7 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
 
     expect(tableNames(agent.state)).toEqual(['users', 'orders', 'empty']);
     expect(other.state.doc.indexIds).toEqual([SEED.index]);
-    expect(comparable(other.value)).toEqual(comparable(agent.value));
+    expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
   });
 
   it('lays tables out at the same points where the other side measures text apart', async () => {
@@ -275,7 +275,7 @@ TableGroup billing [color: #3498db, note: 'dropped'] {
         getTablesGroupRect(agent.state, memberIds)
       );
       expect(doc.tableGroupIds).toHaveLength(mode === 'append' ? 2 : 1);
-      expect(comparable(other.value)).toEqual(comparable(agent.value));
+      expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
     }
   );
 });
@@ -313,7 +313,7 @@ describe('an import with mode append adds to the document on both sides', () => 
       expect(agent.state.doc.relationshipIds).toEqual([SEED.relationship]);
       expect(sent).not.toContain('editor.loadJson');
       expect(sent.filter(type => type.startsWith('editor.'))).toEqual([]);
-      expect(comparable(other.value)).toEqual(comparable(agent.value));
+      expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
     }
   );
 
@@ -359,7 +359,7 @@ describe('an import with mode append adds to the document on both sides', () => 
 
     expect(tableNames(agent.state)).toEqual(SEED_NAMES);
     expect(tableNames(other.state)).toEqual(SEED_NAMES);
-    expect(comparable(other.value)).toEqual(comparable(agent.value));
+    expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
   });
 
   it('refuses an empty document text, which would add nothing', async () => {

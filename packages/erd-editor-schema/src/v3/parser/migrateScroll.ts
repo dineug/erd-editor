@@ -2,10 +2,17 @@ import { round } from 'es-toolkit/compat';
 
 import { Settings } from '@/v3/schema/settings';
 
-export type LegacyScrollBox = Pick<
-  Settings,
-  'width' | 'height' | 'zoomLevel' | 'scrollLeft' | 'scrollTop'
->;
+/**
+ * What a document saved before the origin held of its view: the canvas box,
+ * its zoom and the scroll pair measured from the box centred in the viewport.
+ */
+export type LegacyScrollBox = {
+  width: number;
+  height: number;
+  zoomLevel: number;
+  scrollLeft: number;
+  scrollTop: number;
+};
 
 export type Origin = Pick<Settings, 'originX' | 'originY'>;
 

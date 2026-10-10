@@ -1,6 +1,6 @@
 import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 
-import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
+import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Memo } from '@/v3/schema/memo.entity';
 
@@ -15,7 +15,6 @@ export const createMemo = (): Memo => ({
     height: 100,
     color: '',
   },
-  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeMemoEntities(
@@ -40,8 +39,6 @@ export function createAndMergeMemoEntities(
     uiAssignNumber('zIndex');
     uiAssignNumber('width');
     uiAssignNumber('height');
-
-    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

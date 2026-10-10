@@ -52,17 +52,6 @@ export const USERS_DOCUMENT = documentWith(store => {
   store.dispatch([tableColumnActions$.addColumnAction$(tableId)]);
 });
 
-/** Documents compared across replicas: each replica stamps its own entity meta. */
-export function comparable(value: string) {
-  const document = JSON.parse(value);
-  for (const entities of Object.values<Record<string, any>>(
-    document.collections
-  )) {
-    for (const entity of Object.values<any>(entities)) delete entity.meta;
-  }
-  return document;
-}
-
 /**
  * A headless editor behind the adapter the controller drives, as the element
  * would be: its shared store's batches go out, and any change is a change.

@@ -86,10 +86,10 @@ describe('createAutomaticTablePlacement', () => {
     expect(nodes.map(node => node.id)).toEqual(['t1', 't2']);
     expect(nodes.every(node => node.x === center.x)).toBe(true);
     expect(nodes.every(node => node.y === center.y)).toBe(true);
-    // Nothing about the seed is the canvas box any more, which a document this
+    // Nothing about the seed is the old 2000 canvas box, which a document this
     // far from it would otherwise pull every node back to.
-    expect(center.x).not.toBe(state.settings.width / 2);
-    expect(center.y).not.toBe(state.settings.height / 2);
+    expect(center.x).not.toBe(1000);
+    expect(center.y).not.toBe(1000);
   });
 
   it('derives the node radius from the rendered table width and height', () => {

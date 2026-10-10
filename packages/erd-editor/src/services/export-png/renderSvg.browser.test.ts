@@ -39,8 +39,6 @@ const theme: Theme = createTestTheme();
 /** The editor's own measure, the one a worker reproduces before it draws. */
 const { toWidth } = createText();
 
-const meta = () => ({ updateAt: 0, createAt: 0 });
-
 type ColumnSeed = {
   id: string;
   tableId: string;
@@ -72,7 +70,6 @@ const column = ({
     widthDefault: toWidth(''),
     widthComment: toWidth(''),
   },
-  meta: meta(),
 });
 
 const table = (id: string, name: string, x: number, columnIds: string[]) => ({
@@ -89,7 +86,6 @@ const table = (id: string, name: string, x: number, columnIds: string[]) => ({
     widthComment: toWidth(''),
     color: '#ff8800',
   },
-  meta: meta(),
 });
 
 /**
@@ -123,7 +119,6 @@ function createDoc(zoomLevel = 1, memoValue = 'first line\nsecond line') {
           name: 'shop',
           color: '#1e3a8a',
           ui: { x: 0, y: 0, width: 100, height: 100, zIndex: 1 },
-          meta: meta(),
         },
       },
       tableEntities: {
@@ -180,7 +175,6 @@ function createDoc(zoomLevel = 1, memoValue = 'first line\nsecond line') {
             y: 0,
             direction: Direction.left,
           },
-          meta: meta(),
         },
       },
       indexEntities: {},
@@ -197,7 +191,6 @@ function createDoc(zoomLevel = 1, memoValue = 'first line\nsecond line') {
             zIndex: 3,
             color: '#00aaff',
           },
-          meta: meta(),
         },
       },
     },

@@ -21,7 +21,6 @@ describe('v3/schema/tableGroup.entity', () => {
       name: 'billing',
       color: '#0090ff',
       ui,
-      meta: { updateAt: 2, createAt: 1 },
     };
 
     expect(group.name).toBe('billing');
@@ -41,16 +40,9 @@ describe('v3/schema/tableGroup.entity', () => {
       name: '',
       color: '',
       ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
-      meta: { updateAt: 0, createAt: 0 },
     };
 
-    expect(Object.keys(group).sort()).toEqual([
-      'color',
-      'id',
-      'meta',
-      'name',
-      'ui',
-    ]);
+    expect(Object.keys(group).sort()).toEqual(['color', 'id', 'name', 'ui']);
     expect(group.ui).not.toHaveProperty('color');
   });
 });

@@ -77,9 +77,9 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   openDiffViewerAction,
-  schemaGCAction,
   setLocaleOptionAction,
   setThemeOptionsAction,
+  toggleSearchAction,
 } from '@/utils/emitter';
 
 type Layout = (request: ElkLayoutRequest) => Promise<ElkLayoutPoint[]>;
@@ -152,7 +152,6 @@ const loadedDocument = (x = 0) =>
           columnIds: [],
           seqColumnIds: [],
           ui: { x, y: 0, zIndex: 2, widthName: 60, widthComment: 60 },
-          meta: { updateAt: 1, createAt: 1 },
         },
       },
     },
@@ -548,10 +547,8 @@ describe('useErdEditorAttachElement', () => {
     expect(app.keyBindingMap.removeTable).toBe(removeTable);
   });
 
-  it('loads an initial value and emits a schema GC request', async () => {
+  it('loads an initial value', async () => {
     const { app, ctx } = await setup();
-    const schemaGC = vi.fn();
-    app.emitter.on({ schemaGC });
 
     ctx.setInitialValue(
       JSON.stringify({
@@ -561,7 +558,6 @@ describe('useErdEditorAttachElement', () => {
     );
 
     expect(app.store.state.settings.databaseName).toBe('seeded');
-    expect(schemaGC).toHaveBeenCalledTimes(1);
   });
 
   it('drops the history of the document setInitialValue replaces', async () => {
@@ -1545,15 +1541,15 @@ describe('useErdEditorAttachElement', () => {
   it('tears every watcher and shared store down on destroy()', async () => {
     const { api, app, ctx } = await setup();
     ctx.getSharedStore({ mouseTracker: false });
-    const schemaGC = vi.fn();
-    app.emitter.on({ schemaGC });
+    const toggleSearch = vi.fn();
+    app.emitter.on({ toggleSearch });
     expect(api.destroySet.size).toBeGreaterThan(0);
 
     ctx.destroy();
 
     expect(api.destroySet.size).toBe(0);
-    app.emitter.emit(schemaGCAction());
-    expect(schemaGC).not.toHaveBeenCalled();
+    app.emitter.emit(toggleSearchAction());
+    expect(toggleSearch).not.toHaveBeenCalled();
   });
 
   it('dispatches a change event for document mutations', async () => {

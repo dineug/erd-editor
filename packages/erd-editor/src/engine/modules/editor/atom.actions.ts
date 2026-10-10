@@ -841,88 +841,6 @@ const dragSelectRect: ReducerType<typeof ActionType.dragSelectRect> = (
   editor.dragSelect = rect;
 };
 
-export const validationIdsAction = createAction<
-  ActionMap[typeof ActionType.validationIds]
->(ActionType.validationIds);
-
-const validationIds: ReducerType<typeof ActionType.validationIds> = ({
-  doc,
-  collections,
-}) => {
-  const tableCollection = query(collections).collection('tableEntities');
-  const tableColumnCollection = query(collections).collection(
-    'tableColumnEntities'
-  );
-  const indexCollection = query(collections).collection('indexEntities');
-  const indexColumnCollection = query(collections).collection(
-    'indexColumnEntities'
-  );
-  const relationshipCollection = query(collections).collection(
-    'relationshipEntities'
-  );
-  const memoCollection = query(collections).collection('memoEntities');
-  const tableGroupCollection =
-    query(collections).collection('tableGroupEntities');
-
-  const invalidTableIds = doc.tableIds.filter(
-    id => !tableCollection.selectById(id)
-  );
-  const invalidRelationshipIds = doc.relationshipIds.filter(
-    id => !relationshipCollection.selectById(id)
-  );
-  const invalidIndexIds = doc.indexIds.filter(
-    id => !indexCollection.selectById(id)
-  );
-  const invalidMemoIds = doc.memoIds.filter(
-    id => !memoCollection.selectById(id)
-  );
-  const invalidTableGroupIds = doc.tableGroupIds.filter(
-    id => !tableGroupCollection.selectById(id)
-  );
-
-  doc.tableIds = doc.tableIds.filter(id => !invalidTableIds.includes(id));
-  doc.relationshipIds = doc.relationshipIds.filter(
-    id => !invalidRelationshipIds.includes(id)
-  );
-  doc.indexIds = doc.indexIds.filter(id => !invalidIndexIds.includes(id));
-  doc.memoIds = doc.memoIds.filter(id => !invalidMemoIds.includes(id));
-  doc.tableGroupIds = doc.tableGroupIds.filter(
-    id => !invalidTableGroupIds.includes(id)
-  );
-
-  tableCollection.selectAll().forEach(table => {
-    const invalidColumnIds = table.columnIds.filter(
-      id => !tableColumnCollection.selectById(id)
-    );
-    const invalidSeqColumnIds = table.seqColumnIds.filter(
-      id => !tableColumnCollection.selectById(id)
-    );
-
-    table.columnIds = table.columnIds.filter(
-      id => !invalidColumnIds.includes(id)
-    );
-    table.seqColumnIds = table.seqColumnIds.filter(
-      id => !invalidSeqColumnIds.includes(id)
-    );
-  });
-
-  indexCollection.selectAll().forEach(index => {
-    const invalidIndexColumnIds = index.indexColumnIds.filter(
-      id => !indexColumnCollection.selectById(id)
-    );
-    const invalidSeqIndexColumnIds = index.seqIndexColumnIds.filter(
-      id => !indexColumnCollection.selectById(id)
-    );
-
-    index.indexColumnIds = index.indexColumnIds.filter(
-      id => !invalidIndexColumnIds.includes(id)
-    );
-    index.seqIndexColumnIds = index.seqIndexColumnIds.filter(
-      id => !invalidSeqIndexColumnIds.includes(id)
-    );
-  });
-};
-
 export const getLWWAction = createAction<ActionMap[typeof ActionType.getLWW]>(
   ActionType.getLWW
 );
@@ -988,7 +906,6 @@ export const editorReducers = {
   [ActionType.sharedSelectionTracker]: sharedSelectionTracker,
   [ActionType.sharedDragSelectTracker]: sharedDragSelectTracker,
   [ActionType.dragSelectRect]: dragSelectRect,
-  [ActionType.validationIds]: validationIds,
   [ActionType.getLWW]: getLWW,
   [ActionType.mergeLWW]: mergeLWW,
   ...viewReducers,
@@ -1033,7 +950,6 @@ export const actions = {
   sharedSelectionTrackerAction,
   sharedDragSelectTrackerAction,
   dragSelectRectAction,
-  validationIdsAction,
   getLWWAction,
   mergeLWWAction,
   ...viewActions,

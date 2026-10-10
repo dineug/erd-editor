@@ -21,7 +21,6 @@ describe('v3/schema/memo.entity', () => {
       id: 'memo-1',
       value: 'remember me',
       ui,
-      meta: { updateAt: 2, createAt: 1 },
     };
 
     expect(memo.value).toBe('remember me');
@@ -34,7 +33,6 @@ describe('v3/schema/memo.entity', () => {
       id: 'memo-2',
       value: '',
       ui: { x: 0, y: 0, width: 127, height: 127, zIndex: 1, color: '' },
-      meta: { updateAt: 0, createAt: 0 },
     };
 
     expect(memo.ui.color).toBe('');
@@ -53,7 +51,6 @@ describe('v3/schema/memo.entity', () => {
       id,
       value,
       ui: { x: 0, y: 0, width: 127, height: 127, zIndex: 1, color: '' },
-      meta: { updateAt: 0, createAt: 0 },
     });
     const memoEntities: Record<string, Memo> = {
       a: build('a', 'first'),

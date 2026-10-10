@@ -32,13 +32,9 @@ function assignCanvas(
   target: ERDEditorSchemaV3['settings'],
   source: ERDEditorSchemaV2['canvas']
 ) {
-  target.width = source.width;
-  target.height = source.height;
-  target.scrollTop = source.scrollTop;
-  target.scrollLeft = source.scrollLeft;
   target.zoomLevel = source.zoomLevel;
 
-  const { originX, originY } = migrateScrollToOrigin(target);
+  const { originX, originY } = migrateScrollToOrigin(source);
   target.originX = originX;
   target.originY = originY;
 
@@ -86,7 +82,6 @@ function assignCanvas(
   );
 
   target.relationshipDataTypeSync = source.setting.relationshipDataTypeSync;
-  target.relationshipOptimization = source.setting.relationshipOptimization;
 
   const newColumnOrder = source.setting.columnOrder.map(
     key => SchemaV3Constants.ColumnType[key]

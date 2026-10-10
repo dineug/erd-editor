@@ -87,16 +87,9 @@ export function toFingerprint(value: string) {
   });
 }
 
-/** Collections less each entity's meta, which every replica stamps with its own clock. */
-const withoutMeta = (collections: any) =>
-  mapValues(collections, (entities: any) =>
-    mapValues(entities, (entity: any) => omit(entity, ['meta']))
-  );
-
 /**
  * The table groups doc lists, and with none listed neither group field: a file
- * writes both while a removed group's tombstone is left and drops them with the
- * last one, which the element collects long after a load.
+ * writes both while a removed group's tombstone is left.
  */
 function listedTableGroups(
   doc: any,
@@ -122,8 +115,8 @@ function listedTableGroups(
 
 /**
  * The document less what no longer hangs off it: removed tables, memos and table
- * groups, and what belongs to a removed table. The element's collector drops them
- * three days on, a macrotask or more after a load; a removal shows in doc anyway.
+ * groups, and what belongs to a removed table, which a replica keeps as their
+ * tombstones; a removal shows in doc anyway.
  */
 function reachable(doc: any, collections: Record<string, Record<string, any>>) {
   const tableIds = new Set<string>(doc.tableIds);
@@ -197,7 +190,7 @@ function inIdOrder(doc: any, collections: Record<string, Record<string, any>>) {
 /**
  * What a Drive save compares: the document and its settings but a view no lock
  * holds. The file is the whole document, so a changed database, column order or
- * locked view reaches it, while a zoom, a scroll or a collected tombstone never does.
+ * locked view reaches it, while a zoom, a scroll or a tombstone never does.
  */
 export function toDriveFingerprint(value: string) {
   const json = JSON.parse(value);
@@ -205,7 +198,7 @@ export function toDriveFingerprint(value: string) {
   const { doc, collections } = inIdOrder(live.doc, live.collections);
   return JSON.stringify({
     doc,
-    collections: withoutDerived(withoutMeta(collections)),
+    collections: withoutDerived(collections),
     settings: omit(
       json.settings,
       unlockedViewSettings(json.settings.lockSettings)

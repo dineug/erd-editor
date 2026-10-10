@@ -28,7 +28,6 @@ export const ColumnOption = SchemaV3Constants.ColumnOption;
 export const ColumnUIKey = SchemaV3Constants.ColumnUIKey;
 export const OrderType = SchemaV3Constants.OrderType;
 export const OrderTypeList = SchemaV3Constants.OrderTypeList;
-export const SaveSettingType = SchemaV3Constants.SaveSettingType;
 export const LockSettingType = SchemaV3Constants.LockSettingType;
 export const LockSettingTypeList = SchemaV3Constants.LockSettingTypeList;
 export const LockSettingFields = SchemaV3Constants.LockSettingFields;

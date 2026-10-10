@@ -42,11 +42,6 @@ export type RelationshipPoint = {
   direction: number;
 };
 
-export type EntityMeta = {
-  updateAt: number;
-  createAt: number;
-};
-
 export type Unsubscribe = () => void;
 
 export type Ctx = Parameters<typeof useContext>[0];

@@ -8,17 +8,12 @@ import {
   createEngineContext,
   type InjectEngineContext,
 } from '@/engine/context';
-import {
-  changeViewportAction,
-  validationIdsAction,
-} from '@/engine/modules/editor/atom.actions';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
 import { createHooks, settleLoad } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
-import { procGC } from '@/services/schema-gc/procGC';
-import { collectGCIds } from '@/services/schema-gc/schemaGCService';
 import { arrayHas } from '@/utils/arrayHas';
 import { toLoadValue } from '@/utils/loadValue';
 import { safeCallback } from '@/utils/safeCallback';
@@ -101,18 +96,12 @@ export function createReplicationStore(
     });
   };
 
-  // The load's own rewrites, made before it returns rather than on the GC's
-  // promise and the hooks' timers, so a change action that comes at once, as a
-  // pan replayed behind the load does, finds them in.
+  // The load's own rewrites, made before it returns rather than on the hooks'
+  // timers, so a change action that comes at once, as a pan replayed behind
+  // the load does, finds them in.
   const setInitialValue = (value: string) => {
     baseline = null;
     store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
-
-    const gcIds = collectGCIds(toJson(store.state));
-    if (Object.values(gcIds).some(ids => ids.length)) {
-      procGC(store.state, gcIds);
-      store.dispatchSync(validationIdsAction());
-    }
     settleLoad(store.state, engineContext);
   };
 

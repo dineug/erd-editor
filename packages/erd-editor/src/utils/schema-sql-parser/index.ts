@@ -41,7 +41,7 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { toReferentialAction } from '@/utils/referentialAction';
-import { canvasSizeInRange, textInRange } from '@/utils/validation';
+import { textInRange } from '@/utils/validation';
 
 import { findByName } from './utils';
 
@@ -74,10 +74,6 @@ export function schemaSQLParserToSchemaJson(
   const statements = schemaSQLParser(sql, { database: vendor });
   const statementMap = getStatementMap(statements);
   const tables = mergeTables(statementMap);
-
-  const canvasSize = canvasSizeInRange(tables.length * 100);
-  schema.settings.width = canvasSize;
-  schema.settings.height = canvasSize;
 
   tables.forEach(table => convertTable(schema, table, ctx));
   convertRelationship(schema, tables);

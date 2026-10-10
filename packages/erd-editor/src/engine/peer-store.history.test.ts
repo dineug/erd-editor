@@ -18,7 +18,6 @@ import {
   setDatabase,
 } from '@/__test-utils__/peerScenarios';
 import {
-  comparable,
   createSeedValue,
   createSession,
   SEED,
@@ -108,8 +107,8 @@ describe('peer undo reverts the peer’s last dispatch only (AC-E8)', () => {
     expect(
       user.rxStore.state.collections.tableEntities[SEED.empty].columnIds
     ).toEqual([]);
-    expect(comparable(peer.value)).toEqual(
-      comparable(toJson(user.rxStore.state))
+    expect(JSON.parse(peer.value)).toEqual(
+      JSON.parse(toJson(user.rxStore.state))
     );
   });
 
@@ -474,8 +473,8 @@ describe('a peer’s undo of a mapping edit', () => {
   }
 
   const expectConverged = ({ peer, user }: Session) =>
-    expect(comparable(peer.value)).toEqual(
-      comparable(toJson(user.rxStore.state))
+    expect(JSON.parse(peer.value)).toEqual(
+      JSON.parse(toJson(user.rxStore.state))
     );
 
   it('records one entry for a link to existing columns and one for a mapping edit', () => {

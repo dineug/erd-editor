@@ -17,7 +17,7 @@ import {
   tableNamed,
 } from '@/__test-utils__/documents';
 import { createFakeHub, type FakeHub } from '@/__test-utils__/fakeHub';
-import { comparable, settle } from '@/__test-utils__/mcp';
+import { settle } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import {
   type LiveSession,
@@ -117,8 +117,8 @@ describe('a live session beyond the transition table', () => {
 
     const shown = JSON.parse(readDocument(webview.state, 'snapshot'));
     expect(tableNamed(shown, 'members').id).toBe(users.id);
-    expect(comparable((await read('json')).text)).toEqual(
-      comparable(webview.value)
+    expect(JSON.parse((await read('json')).text)).toEqual(
+      JSON.parse(webview.value)
     );
   });
 
@@ -535,7 +535,7 @@ describe('a live session beyond the transition table', () => {
 
   it('sends nothing of a batch the editor refuses, and joins again next time', async () => {
     await call('erd_add_table');
-    const shown = comparable(hub.webview(DOCUMENT).value);
+    const shown = JSON.parse(hub.webview(DOCUMENT).value);
     hub.documents.get(DOCUMENT)!.readonly = true;
 
     await expect(
@@ -553,14 +553,14 @@ describe('a live session beyond the transition table', () => {
     hub.documents.get(DOCUMENT)!.readonly = false;
     await settle();
 
-    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    expect(JSON.parse(hub.webview(DOCUMENT).value)).toEqual(shown);
     const { notes } = await call('erd_add_memo');
     expect(notes).toEqual([RESEED_NOTE]);
   });
 
   it('keeps nothing of a batch cut short on the peer, and reseeds from the editor', async () => {
     await call('erd_add_table');
-    const shown = comparable(hub.webview(DOCUMENT).value);
+    const shown = JSON.parse(hub.webview(DOCUMENT).value);
     vi.mocked(runBatch).mockImplementationOnce(peer => {
       runTool(peer, 'erd_add_memo', {});
       throw new BatchInterrupted(new Error('boom'));
@@ -571,15 +571,15 @@ describe('a live session beyond the transition table', () => {
     ).rejects.toBeInstanceOf(BatchInterrupted);
     await settle();
 
-    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    expect(JSON.parse(hub.webview(DOCUMENT).value)).toEqual(shown);
     const { text, notes } = await read('json');
-    expect(comparable(text)).toEqual(shown);
+    expect(JSON.parse(text)).toEqual(shown);
     expect(notes).toEqual([RESEED_NOTE]);
   });
 
   it('refuses a batch before any of it reaches the editor', async () => {
     await call('erd_add_table');
-    const shown = comparable(hub.webview(DOCUMENT).value);
+    const shown = JSON.parse(hub.webview(DOCUMENT).value);
 
     await expect(
       io.run(
@@ -590,7 +590,7 @@ describe('a live session beyond the transition table', () => {
       )
     ).rejects.toMatchObject({ name: 'ToolError', code: 'notFound' });
     await settle();
-    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    expect(JSON.parse(hub.webview(DOCUMENT).value)).toEqual(shown);
   });
 
   it('reports a disconnect in the middle of an undo', async () => {

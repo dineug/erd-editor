@@ -43,7 +43,6 @@ import {
   changeLockSettingsAction,
   changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
-  changeRelationshipOptimizationAction,
   changeShowAction,
   changeTableNameCaseAction,
   changeZoomLevelAction,
@@ -356,23 +355,6 @@ describe('settings/atom.actions', () => {
       );
       expect(store.state.settings.originY).toBe(0);
       expect(store.state.settings.originX).toBe(0);
-    });
-
-    it('never touches the legacy scroll pair', () => {
-      // A pair the default would not tell apart from a zeroing reducer.
-      store.state.settings.scrollLeft = -300;
-      store.state.settings.scrollTop = -400;
-      seedTable(store, 't', 1_000, 1_000);
-
-      store.dispatchSync(scrollToAction({ originY: -300, originX: -250 }));
-      store.dispatchSync(
-        streamScrollToAction({ movementX: -100, movementY: -200 })
-      );
-
-      expect(store.state.settings.originX).toBe(-350);
-      expect(store.state.settings.originY).toBe(-500);
-      expect(store.state.settings.scrollLeft).toBe(-300);
-      expect(store.state.settings.scrollTop).toBe(-400);
     });
   });
 
@@ -988,16 +970,6 @@ describe('settings/atom.actions', () => {
       store.dispatchSync(changeRelationshipDataTypeSyncAction({ value: true }));
       expect(store.state.settings.relationshipDataTypeSync).toBe(true);
     });
-
-    it('changeRelationshipOptimization assigns the raw value', () => {
-      store.dispatchSync(changeRelationshipOptimizationAction({ value: true }));
-      expect(store.state.settings.relationshipOptimization).toBe(true);
-
-      store.dispatchSync(
-        changeRelationshipOptimizationAction({ value: false })
-      );
-      expect(store.state.settings.relationshipOptimization).toBe(false);
-    });
   });
 
   describe('changeColumnOrder', () => {
@@ -1542,7 +1514,6 @@ describe('settings/atom.actions', () => {
         'changeLockSettingsAction',
         'changeMaxWidthCommentAction',
         'changeRelationshipDataTypeSyncAction',
-        'changeRelationshipOptimizationAction',
         'changeShowAction',
         'changeTableNameCaseAction',
         'changeZoomLevelAction',

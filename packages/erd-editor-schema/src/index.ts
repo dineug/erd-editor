@@ -1,4 +1,4 @@
-export { parser, parserV2, toJson } from '@/parser';
+export { parser, toJson } from '@/parser';
 export { query } from '@/query';
 export { addOperator, removeOperator, replaceOperator } from '@/query/lww';
 export {

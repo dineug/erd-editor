@@ -151,7 +151,7 @@
           "type": "integer"
         },
         "ignoreSaveSettings": {
-          "description": "bit value (scroll: 1) | (zoomLevel: 2), read by releases before lockSettings; written as both bits while the viewport is locked and as 0 otherwise",
+          "description": "bit value (scroll: 1) | (zoomLevel: 2), read by releases before lockSettings; no longer written",
           "type": "integer"
         },
         "lockSettings": {
@@ -169,10 +169,6 @@
         }
       },
       "required": [
-        "width",
-        "height",
-        "scrollTop",
-        "scrollLeft",
         "zoomLevel",
         "show",
         "canvasType",
@@ -181,7 +177,6 @@
         "columnNameCase",
         "bracketType",
         "relationshipDataTypeSync",
-        "relationshipOptimization",
         "columnOrder",
         "maxWidthComment"
       ]
@@ -293,8 +288,7 @@
           "comment",
           "columnIds",
           "seqColumnIds",
-          "ui",
-          "meta"
+          "ui"
         ]
       }
     },
@@ -365,8 +359,7 @@
           "dataType",
           "default",
           "options",
-          "ui",
-          "meta"
+          "ui"
         ]
       }
     },
@@ -413,8 +406,7 @@
           "relationshipType",
           "startRelationshipType",
           "start",
-          "end",
-          "meta"
+          "end"
         ]
       }
     },
@@ -457,8 +449,7 @@
           "tableId",
           "indexColumnIds",
           "seqIndexColumnIds",
-          "unique",
-          "meta"
+          "unique"
         ]
       }
     },
@@ -484,7 +475,7 @@
             "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": ["id", "indexId", "columnId", "orderType", "meta"]
+        "required": ["id", "indexId", "columnId", "orderType"]
       }
     },
     "memoEntities": {
@@ -526,7 +517,7 @@
             "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": ["id", "value", "ui", "meta"]
+        "required": ["id", "value", "ui"]
       }
     },
     "tableGroupEntities": {
@@ -569,7 +560,7 @@
             "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": ["id", "name", "color", "ui", "meta"]
+        "required": ["id", "name", "color", "ui"]
       }
     },
     "EntityMeta": {

@@ -115,7 +115,7 @@ test.describe('import and export', () => {
     // Read straight after parsing, before the engine placed any connector.
     expect(storedAnchors(blog)).toEqual([[0, 0, 0, 0]]);
     // A source converts to a new document, every setting locked.
-    expect(storedSettings(blog).ignoreSaveSettings).toBe(3);
+    expect(storedSettings(blog).lockSettings).toBe(63);
 
     await app.page.reload();
     await app.selectSchema('blog');
@@ -129,7 +129,7 @@ test.describe('import and export', () => {
     const opened = await app.storedSchema('blog');
     expect(opened.updateAt).toBe(blog.updateAt);
     expect(storedSettings(opened)).toMatchObject({
-      ignoreSaveSettings: 3,
+      lockSettings: 63,
       zoomLevel: 1,
     });
   });

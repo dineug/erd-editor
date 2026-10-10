@@ -14,7 +14,6 @@ import {
 } from 'vite-plus/test';
 
 import {
-  comparable,
   createDriveEnv,
   createPeerEditor,
   documentWith,
@@ -106,7 +105,7 @@ const saveRequestsOf = (tab: string) =>
     ({ tab: from, message }) => from === tab && message.type === 'save-request'
   );
 
-/** The other tabs apply an edit later, by their own clock, which stamps its entity meta. */
+/** The other tabs apply an edit later, by their own clock. */
 const deliverLater = () => vi.setSystemTime(Date.now() + 1000);
 
 beforeEach(() => {
@@ -189,8 +188,8 @@ describe('tabs of one file', () => {
     await settle(5);
 
     expect(tableNames(a.value())).toEqual(['items', 'purchases', 'users']);
-    expect(comparable(b.value())).toEqual(comparable(a.value()));
-    expect(comparable(c.value())).toEqual(comparable(a.value()));
+    expect(JSON.parse(b.value())).toEqual(JSON.parse(a.value()));
+    expect(JSON.parse(c.value())).toEqual(JSON.parse(a.value()));
 
     await settle(10_000);
     expect(env.patches().map(env.tabOf)).toEqual(['a']);

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { Emitter, schemaGCAction, toggleSearchAction } from '@/utils/emitter';
+import { Emitter, toggleSearchAction } from '@/utils/emitter';
 import { globalEmitter } from '@/utils/globalEmitter';
 
 afterEach(() => {
@@ -25,12 +25,12 @@ describe('globalEmitter', () => {
 
   it('is the same singleton for every importer', async () => {
     const again = await import('@/utils/globalEmitter');
-    const onSchemaGC = vi.fn();
+    const onToggleSearch = vi.fn();
 
-    globalEmitter.on({ schemaGC: onSchemaGC });
-    again.globalEmitter.emit(schemaGCAction());
+    globalEmitter.on({ toggleSearch: onToggleSearch });
+    again.globalEmitter.emit(toggleSearchAction());
 
     expect(again.globalEmitter).toBe(globalEmitter);
-    expect(onSchemaGC).toHaveBeenCalledOnce();
+    expect(onToggleSearch).toHaveBeenCalledOnce();
   });
 });

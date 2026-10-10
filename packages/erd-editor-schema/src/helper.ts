@@ -1,6 +1,6 @@
 import { isNumber, isString } from 'es-toolkit';
 
-import { DeepPartial, EntityMeta } from '@/internal-types';
+import { DeepPartial } from '@/internal-types';
 
 export function assign<T extends object, K extends keyof T>(
   valid: (value: any) => boolean,
@@ -31,22 +31,4 @@ export function propOr<T extends object, P extends string | number | symbol, R>(
   defaultValue: R
 ): P extends keyof T ? T[P] : R {
   return (Reflect.get(target, propertyKey) as unknown as any) ?? defaultValue;
-}
-
-export function getDefaultEntityMeta(): EntityMeta {
-  const now = Date.now();
-  return {
-    updateAt: now,
-    createAt: now,
-  };
-}
-
-export function assignMeta(
-  target: EntityMeta,
-  source?: DeepPartial<EntityMeta>
-) {
-  const assignNumber = assign(isNumber, target, source);
-
-  assignNumber('updateAt');
-  assignNumber('createAt');
 }

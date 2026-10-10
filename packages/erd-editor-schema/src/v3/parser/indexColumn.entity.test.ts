@@ -16,7 +16,7 @@ describe('createIndexColumn', () => {
       columnId: '',
       orderType: OrderType.ASC,
     });
-    expect(indexColumn.meta.createAt).toBe(indexColumn.meta.updateAt);
+    expect(indexColumn).not.toHaveProperty('meta');
   });
 });
 
@@ -46,7 +46,6 @@ describe('createAndMergeIndexColumnEntities', () => {
         indexId: 'i1',
         columnId: 'c1',
         orderType: OrderType.DESC,
-        meta: { updateAt: 7, createAt: 8 },
       },
     });
 
@@ -55,7 +54,6 @@ describe('createAndMergeIndexColumnEntities', () => {
       indexId: 'i1',
       columnId: 'c1',
       orderType: OrderType.DESC,
-      meta: { updateAt: 7, createAt: 8 },
     });
   });
 

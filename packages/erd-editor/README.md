@@ -60,8 +60,8 @@ npm install @dineug/erd-editor
 
 The package ships ES modules with its dependencies left as bare imports, so any bundler
 (Vite, webpack, Rspack, esbuild, …) resolves, dedupes and tree-shakes them like the rest of
-your app. Four features run in shared workers — schema garbage collection, the PNG and SVG
-export, the automatic table placement and the syntax highlighting — constructed as
+your app. Three features run in shared workers — the PNG and SVG export, the automatic table
+placement and the syntax highlighting — constructed as
 `new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers emit as worker
 files beside your chunks; a strict CSP needs `worker-src 'self'`. Without a bundler, use the UMD
 file described under [Script tag](#script-tag) instead.

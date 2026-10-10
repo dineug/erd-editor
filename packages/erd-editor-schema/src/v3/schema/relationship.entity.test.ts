@@ -118,7 +118,6 @@ describe('v3/schema/relationship.entity', () => {
       onUpdate: ReferentialAction.none,
       start,
       end,
-      meta: { updateAt: 2, createAt: 1 },
     };
 
     expect(RelationshipTypeList).toContain(relationship.relationshipType);
@@ -129,8 +128,5 @@ describe('v3/schema/relationship.entity', () => {
     expect(ReferentialActionList).toContain(relationship.onUpdate);
     expect(DirectionList).toContain(relationship.start.direction);
     expect(relationship.end.columnIds).toHaveLength(2);
-    expect(relationship.meta.updateAt).toBeGreaterThan(
-      relationship.meta.createAt
-    );
   });
 });

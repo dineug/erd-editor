@@ -1,7 +1,6 @@
 import { uuid25 } from '@dineug/uuid';
 
 import { DeepPartial, Index } from '@/internal-types';
-import { getDefaultEntityMeta } from '@/utils';
 import { deepMerge } from '@/utils/deepMerge';
 
 export const createIndex = (value?: DeepPartial<Index>): Index =>
@@ -13,7 +12,6 @@ export const createIndex = (value?: DeepPartial<Index>): Index =>
       indexColumnIds: [],
       seqIndexColumnIds: [],
       unique: false,
-      meta: getDefaultEntityMeta(),
     },
     value ?? {}
   );

@@ -1,23 +1,14 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import { Memo, Settings, Table } from '@/internal-types';
-import {
-  getDefaultEntityMeta,
-  nextPoint,
-  nextZIndex,
-  pascalCase,
-  safeRange,
-  toList,
-} from '@/utils';
+import { nextPoint, nextZIndex, pascalCase, safeRange, toList } from '@/utils';
 import { createMemo } from '@/utils/collection/memo.entity';
 import { createTable } from '@/utils/collection/table.entity';
 
 const createSettings = (partial: Partial<Settings> = {}): Settings => ({
   ...schemaV3Parser({}).settings,
-  width: 2000,
-  height: 2000,
   originX: 0,
   originY: 0,
   zoomLevel: 1,
@@ -70,18 +61,6 @@ describe('nextPoint', () => {
       x: START_X / 0.5,
       y: START_Y / 0.5,
     });
-  });
-
-  it('reads nothing off the canvas box', () => {
-    const settings = createSettings({
-      originX: -60,
-      originY: 40,
-      zoomLevel: 0.5,
-    });
-
-    expect(
-      nextPoint({ ...settings, width: 8000, height: 8000 }, [], [])
-    ).toEqual(nextPoint(settings, [], []));
   });
 
   it('shifts the point while it collides with an existing table', () => {
@@ -147,30 +126,6 @@ describe('toList', () => {
 
   it('returns an empty array for no ids', () => {
     expect(toList([], { a: 1 })).toEqual([]);
-  });
-});
-
-describe('getDefaultEntityMeta', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('stamps createAt and updateAt with the current time', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-03-04T05:06:07.000Z'));
-
-    const meta = getDefaultEntityMeta();
-    const now = new Date('2024-03-04T05:06:07.000Z').getTime();
-
-    expect(meta).toEqual({ createAt: now, updateAt: now });
-  });
-
-  it('returns a fresh object each call', () => {
-    const a = getDefaultEntityMeta();
-    const b = getDefaultEntityMeta();
-
-    expect(a).not.toBe(b);
-    expect(typeof a.createAt).toBe('number');
   });
 });
 

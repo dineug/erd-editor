@@ -10,7 +10,6 @@ export const NOT_EMITTED: ReadonlyArray<ActionType> = Object.freeze([
   'settings.changeShow',
   'settings.changeColumnOrder',
   'settings.changeMaxWidthComment',
-  'settings.changeRelationshipOptimization',
   'settings.changeRelationshipDataTypeSync',
   'settings.changeLanguage',
   'settings.changeTableNameCase',
@@ -49,8 +48,6 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
     'settings.changeShow': SCREEN,
     'settings.changeColumnOrder': SCREEN,
     'settings.changeMaxWidthComment': SCREEN,
-    'settings.changeRelationshipOptimization':
-      'A flag the document keeps that no editor control sets and nothing reads, so an agent leaves it as the file has it and sees it in erd_list.',
     'settings.changeRelationshipDataTypeSync':
       'Whether a data type change spreads along relationships is an editing habit of the user’s; an agent reads it in erd_list and sets each column it means to change.',
     'settings.changeLanguage': CODE,

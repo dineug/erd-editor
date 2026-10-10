@@ -28,7 +28,7 @@ The bundle inside the VSCode webview iframe — the client half of `vuerd-vscode
   - The document does the read, never the worker: VSCode's service worker resolves a resource by the requesting client's webview id, a blob worker has none, and every request from inside one comes back 408.
   - `worker.rolldownOptions.output.codeSplitting: false`: a blob worker resolves relative imports against its blob URL, so a split chunk (ELK's) would 404.
   - `index.html` sets no CSP; one added later must allow `worker-src blob:` or no worker is built.
-- **`main.ts` awaits `whenWorkerSourcesReady()` before `mountWebview`**, because every spawn is synchronous. A failed read makes `workerBlobUrl` throw: each of the editor's four services then meets a host with no worker as the `src/services/` row of `erd-editor`'s Subdirectories table says (schema GC and the PNG and SVG export run in-process, Shiki shows plain text, ELK refuses, so automatic table placement and Flow mode's layout end on a `Could not place tables` toast), and the replica worker has no fallback, so `mountWebview` throws and the panel stays on `Loading...`.
+- **`main.ts` awaits `whenWorkerSourcesReady()` before `mountWebview`**, because every spawn is synchronous. A failed read makes `workerBlobUrl` throw: each of the editor's three services then meets a host with no worker as the `src/services/` row of `erd-editor`'s Subdirectories table says (the PNG and SVG export run in-process, Shiki shows plain text, ELK refuses, so automatic table placement and Flow mode's layout end on a `Could not place tables` toast), and the replica worker has no fallback, so `mountWebview` throws and the panel stays on `Loading...`.
 - **`crossorigin` must not reach the emitted HTML**: the `asWebviewUri` origin sends no CORS headers, so such a module script never loads — hence `stripCrossorigin` and `modulePreload: false`.
 - **`acquireVsCodeApi()` is called once, at module scope**; a second call throws.
 - `'auto'` follows `document.body`'s `data-vscode-theme-kind` (or the `vscode-light` class) through a `MutationObserver` that calls `client.refreshAppearance()` — not `prefers-color-scheme`.
@@ -42,7 +42,7 @@ The bundle inside the VSCode webview iframe — the client half of `vuerd-vscode
 
 ### Internal
 
-`@dineug/erd-editor-webview-client` (the editor, the replica worker and the protocol, all bundled here) and `@dineug/erd-editor-webview-bridge` (for `Appearance`). The editor's four SharedWorkers and the replica worker are the five scripts the document reads at startup.
+`@dineug/erd-editor-webview-client` (the editor, the replica worker and the protocol, all bundled here) and `@dineug/erd-editor-webview-bridge` (for `Appearance`). The editor's three SharedWorkers and the replica worker are the four scripts the document reads at startup.
 
 ### External
 

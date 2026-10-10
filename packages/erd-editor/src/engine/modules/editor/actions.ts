@@ -54,7 +54,6 @@ export const ActionType = {
   sharedSelectionTracker: 'editor.sharedSelectionTracker',
   sharedDragSelectTracker: 'editor.sharedDragSelectTracker',
   dragSelectRect: 'editor.dragSelectRect',
-  validationIds: 'editor.validationIds',
   getLWW: 'editor.getLWW',
   mergeLWW: 'editor.mergeLWW',
   viewOpen: 'editor.viewOpen',
@@ -171,7 +170,6 @@ export type ActionMap = {
   [ActionType.dragSelectRect]: {
     rect: Rect | null;
   };
-  [ActionType.validationIds]: void;
   [ActionType.getLWW]: void;
   [ActionType.mergeLWW]: {
     lww: LWW;

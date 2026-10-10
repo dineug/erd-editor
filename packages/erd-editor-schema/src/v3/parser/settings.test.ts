@@ -3,7 +3,10 @@ import { round } from 'es-toolkit/compat';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { DeepPartial } from '@/internal-types';
-import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
+import {
+  type LegacyScrollBox,
+  migrateScrollToOrigin,
+} from '@/v3/parser/migrateScroll';
 import { createAndMergeSettings as mergeSettings } from '@/v3/parser/settings';
 import {
   BracketType,
@@ -20,11 +23,33 @@ import {
 
 const LOCK_ALL = 63;
 
+/** What a document saved before these fields left the settings. */
+type LegacyFields = Partial<
+  Record<
+    | 'width'
+    | 'height'
+    | 'scrollTop'
+    | 'scrollLeft'
+    | 'relationshipOptimization'
+    | 'ignoreSaveSettings',
+    unknown
+  >
+>;
+
 /** A file that names its locks, so the view and the tab it saved stay. */
-const createAndMergeSettings = (json?: DeepPartial<Settings>) =>
+const createAndMergeSettings = (json?: DeepPartial<Settings> & LegacyFields) =>
   mergeSettings(
     isPlainObject(json) ? { lockSettings: LOCK_ALL, ...json } : json
   );
+
+const legacyBox = (box: Partial<LegacyScrollBox> = {}): LegacyScrollBox => ({
+  width: 2000,
+  height: 2000,
+  zoomLevel: 1,
+  scrollLeft: 0,
+  scrollTop: 0,
+  ...box,
+});
 
 const defaultShow =
   Show.tableComment |
@@ -48,10 +73,6 @@ const defaultColumnOrder = [
 describe('createAndMergeSettings', () => {
   it('returns the default settings when no json is given', () => {
     expect(createAndMergeSettings()).toEqual({
-      width: 2000,
-      height: 2000,
-      scrollTop: 0,
-      scrollLeft: 0,
       originX: 0,
       originY: 0,
       zoomLevel: 1,
@@ -64,7 +85,6 @@ describe('createAndMergeSettings', () => {
       columnNameCase: NameCase.camelCase,
       bracketType: BracketType.none,
       relationshipDataTypeSync: true,
-      relationshipOptimization: false,
       columnOrder: defaultColumnOrder,
       maxWidthComment: -1,
       lockSettings: LOCK_ALL,
@@ -86,7 +106,7 @@ describe('createAndMergeSettings', () => {
     const settings = createAndMergeSettings();
 
     expect(settings.zoomLevel).toBe(1);
-    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
+    expect(settings).toMatchObject(migrateScrollToOrigin(legacyBox()));
   });
 
   it('computes the default show bitmask as 431', () => {
@@ -99,38 +119,50 @@ describe('createAndMergeSettings', () => {
     ['string', 'nope'],
     ['array', []],
   ])('ignores a non-object source (%s)', (_label, source) => {
-    expect(createAndMergeSettings(source as any).width).toBe(2000);
+    expect(createAndMergeSettings(source as any)).toEqual(mergeSettings());
   });
 
-  describe('canvas size', () => {
-    it('clamps width below the minimum', () => {
-      expect(createAndMergeSettings({ width: 10 }).width).toBe(2000);
+  describe('the legacy canvas box', () => {
+    const originOf = (json: LegacyFields) =>
+      createAndMergeSettings({ zoomLevel: 0.5, ...json });
+
+    it.each([
+      ['a width below the minimum', { width: 10 }, { originX: 500 }],
+      ['a width above the maximum', { width: 999_999 }, { originX: 5000 }],
+      ['a width inside the range', { width: 5_000 }, { originX: 1250 }],
+      ['a height below the minimum', { height: -1 }, { originY: 500 }],
+      ['a height above the maximum', { height: 20_001 }, { originY: 5000 }],
+    ])('migrates from %s clamped', (_label, json, origin) => {
+      expect(originOf(json)).toMatchObject(origin);
     });
 
-    it('clamps width above the maximum', () => {
-      expect(createAndMergeSettings({ width: 999_999 }).width).toBe(20_000);
+    it('reads a non-number width and height at the default box', () => {
+      expect(originOf({ width: '3000', height: null })).toMatchObject({
+        originX: 500,
+        originY: 500,
+      });
     });
 
-    it('keeps a width inside the range', () => {
-      expect(createAndMergeSettings({ width: 5_000 }).width).toBe(5_000);
-    });
-
-    it('clamps height below the minimum', () => {
-      expect(createAndMergeSettings({ height: -1 }).height).toBe(2000);
-    });
-
-    it('clamps height above the maximum', () => {
-      expect(createAndMergeSettings({ height: 20_001 }).height).toBe(20_000);
-    });
-
-    it('ignores a non-number width and height', () => {
+    it('keeps none of the fields a document saved before they left', () => {
       const settings = createAndMergeSettings({
-        width: '3000' as any,
-        height: null as any,
+        width: 4000,
+        height: 3000,
+        scrollTop: 12,
+        scrollLeft: -34,
+        relationshipOptimization: true,
+        ignoreSaveSettings: 3,
       });
 
-      expect(settings.width).toBe(2000);
-      expect(settings.height).toBe(2000);
+      for (const field of [
+        'width',
+        'height',
+        'scrollTop',
+        'scrollLeft',
+        'relationshipOptimization',
+        'ignoreSaveSettings',
+      ]) {
+        expect(settings).not.toHaveProperty(field);
+      }
     });
   });
 
@@ -196,24 +228,18 @@ describe('createAndMergeSettings', () => {
   describe('plain assignments', () => {
     it('assigns numbers, strings and booleans', () => {
       const settings = createAndMergeSettings({
-        scrollTop: 12,
-        scrollLeft: -34,
         show: Show.relationship,
         lockSettings: LockSettingType.language,
         databaseName: 'sakila',
         canvasType: CanvasType.schemaSQL,
         relationshipDataTypeSync: false,
-        relationshipOptimization: true,
       });
 
-      expect(settings.scrollTop).toBe(12);
-      expect(settings.scrollLeft).toBe(-34);
       expect(settings.show).toBe(Show.relationship);
       expect(settings.lockSettings).toBe(LockSettingType.language);
       expect(settings.databaseName).toBe('sakila');
       expect(settings.canvasType).toBe(CanvasType.schemaSQL);
       expect(settings.relationshipDataTypeSync).toBe(false);
-      expect(settings.relationshipOptimization).toBe(true);
     });
 
     it('keeps the alternate key bit a document carries, off by default', () => {
@@ -236,13 +262,11 @@ describe('createAndMergeSettings', () => {
 
     it('ignores wrongly typed values', () => {
       const settings = createAndMergeSettings({
-        scrollTop: '12' as any,
         show: null as any,
         databaseName: 10 as any,
         relationshipDataTypeSync: 'false' as any,
       });
 
-      expect(settings.scrollTop).toBe(0);
       expect(settings.show).toBe(defaultShow);
       expect(settings.databaseName).toBe('');
       expect(settings.relationshipDataTypeSync).toBe(true);
@@ -534,15 +558,21 @@ describe('the legacy scroll migration', () => {
   );
 
   it.each([0.5, 0.1, 1.5])(
-    'carries the legacy pair through the migration at zoom %s',
+    'keeps none of the legacy fields after the migration at zoom %s',
     zoomLevel => {
-      const json = legacy(zoomLevel);
-      const settings = createAndMergeSettings(json);
+      const settings = createAndMergeSettings(legacy(zoomLevel));
 
-      expect(settings.scrollLeft).toBe(json.scrollLeft);
-      expect(settings.scrollTop).toBe(json.scrollTop);
+      for (const field of ['width', 'height', 'scrollLeft', 'scrollTop']) {
+        expect(settings).not.toHaveProperty(field);
+      }
     }
   );
+
+  it('reads a missing scroll field at zero', () => {
+    expect(
+      createAndMergeSettings({ zoomLevel: 0.5, scrollLeft: 10 })
+    ).toMatchObject({ originX: 510, originY: 500 });
+  });
 
   it('migrates from the clamped box and zoom, not the raw json', () => {
     const settings = createAndMergeSettings({
@@ -553,10 +583,16 @@ describe('the legacy scroll migration', () => {
       scrollTop: 60,
     });
 
-    expect(settings.width).toBe(20_000);
-    expect(settings.height).toBe(2000);
     expect(settings.zoomLevel).toBe(1.5);
-    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
+    expect(settings).toMatchObject(
+      migrateScrollToOrigin({
+        width: 20_000,
+        height: 2000,
+        zoomLevel: 1.5,
+        scrollLeft: 40,
+        scrollTop: 60,
+      })
+    );
   });
 
   it('keeps an origin pair the document carries and migrates nothing', () => {
@@ -568,8 +604,6 @@ describe('the legacy scroll migration', () => {
 
     expect(settings.originX).toBe(-11);
     expect(settings.originY).toBe(22.5);
-    expect(settings.scrollLeft).toBe(-137.25);
-    expect(settings.scrollTop).toBe(1234.5);
   });
 
   it.each([
@@ -580,7 +614,7 @@ describe('the legacy scroll migration', () => {
     const json = { ...legacy(0.5), ...origin };
     const settings = createAndMergeSettings(json);
 
-    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
+    expect(settings).toMatchObject(migrateScrollToOrigin(legacy(0.5)));
   });
 });
 
@@ -646,16 +680,17 @@ describe('the view and the tab a lock can hold', () => {
     ['an infinite originX', { originX: Infinity, originY: 0 }],
     ['a NaN originY', { originX: 0, originY: NaN }],
   ])('migrates the origin of %s rather than locking it', (_label, origin) => {
-    const settings = mergeSettings({
+    const settings = createAndMergeSettings({
       ...origin,
       scrollLeft: -10,
       scrollTop: 20,
-      lockSettings: LOCK_ALL,
     });
 
     expect(Number.isFinite(settings.originX)).toBe(true);
     expect(Number.isFinite(settings.originY)).toBe(true);
-    expect(settings).toMatchObject(migrateScrollToOrigin(settings));
+    expect(settings).toMatchObject(
+      migrateScrollToOrigin(legacyBox({ scrollLeft: -10, scrollTop: 20 }))
+    );
     expect(settings.lockedValues.originX).toBe(settings.originX);
   });
 

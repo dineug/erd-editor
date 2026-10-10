@@ -7,7 +7,6 @@ import {
   StartRelationshipType,
 } from '@/constants/schema';
 import { DeepPartial, Relationship } from '@/internal-types';
-import { getDefaultEntityMeta } from '@/utils';
 import { deepMerge } from '@/utils/deepMerge';
 
 export const createRelationship = (
@@ -35,7 +34,6 @@ export const createRelationship = (
         y: 0,
         direction: Direction.bottom,
       },
-      meta: getDefaultEntityMeta(),
     },
     value ?? {}
   );

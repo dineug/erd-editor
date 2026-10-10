@@ -259,22 +259,3 @@ export function createSession({
     },
   };
 }
-
-/**
- * A serialized document with each entity's meta dropped. Every replica stamps
- * createAt and updateAt from its own clock as its reducers run, and they are
- * never replicated, so two converged sides differ there and nowhere else.
- */
-export function comparable(value: string) {
-  const document = JSON.parse(value);
-
-  for (const entities of Object.values<Record<string, any>>(
-    document.collections
-  )) {
-    for (const entity of Object.values<any>(entities)) {
-      delete entity.meta;
-    }
-  }
-
-  return document;
-}

@@ -68,7 +68,6 @@ import {
   changeLanguageAction,
   changeMaxWidthCommentAction,
   changeRelationshipDataTypeSyncAction,
-  changeRelationshipOptimizationAction,
   changeShowAction,
   changeTableNameCaseAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -614,10 +613,6 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
   setRelationshipDataTypeSync: () =>
     edit('setRelationshipDataTypeSync', [
       changeRelationshipDataTypeSyncAction({ value: false }),
-    ]),
-  setRelationshipOptimization: () =>
-    edit('setRelationshipOptimization', [
-      changeRelationshipOptimizationAction({ value: true }),
     ]),
   setColumnOrder: () =>
     edit('setColumnOrder', [

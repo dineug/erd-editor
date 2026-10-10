@@ -6,7 +6,6 @@ import {
   selectAction,
   selectAllAction,
   unselectAllAction,
-  validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
   changeColorAllAction$,
@@ -251,15 +250,5 @@ describe('pastes of grouped tables', () => {
     expect(doc.tableIds).toHaveLength(4);
     expect(pasted.groupId).toBe('');
     expect(doc.tableGroupIds).toEqual(['g1']);
-  });
-});
-
-describe('validationIds', () => {
-  it('drops a group id with no entity behind it, keeping the rest', () => {
-    store.state.doc.tableGroupIds.push('ghost');
-
-    store.dispatchSync(validationIdsAction());
-
-    expect(store.state.doc.tableGroupIds).toEqual(['g1']);
   });
 });

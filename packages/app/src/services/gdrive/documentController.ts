@@ -687,8 +687,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
 
   /**
    * A leader answers once its baseline is known: for a document fresh from
-   * Drive, one microtask after the load. The element collects old tombstones
-   * later still, which the Drive fingerprint never counts.
+   * Drive, one microtask after the load.
    */
   function startLeading(next: EditorAdapter, current: SaveQueue) {
     if (current.getBase().fingerprint !== null) {

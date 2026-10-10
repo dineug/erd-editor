@@ -317,7 +317,6 @@ describe('initialLoadJsonAction$', () => {
               height: 100,
               color: '',
             },
-            meta: { updateAt: 0, createAt: 0 },
           } as any,
         },
       },
@@ -1142,9 +1141,9 @@ describe('loadSchemaAMLAction$', () => {
 });
 
 /**
- * An import is a brand-new document, so both view pairs come from the parser at
- * their defaults: the live origin and the frozen legacy pair are left out of the
- * settings an importer carries over, and the rest of them survive the import.
+ * An import is a brand-new document, so its view comes from the parser at the
+ * defaults: the origin is left out of the settings an importer carries over,
+ * and the rest of them survive the import.
  */
 describe('the four importers open the new document at the origin', () => {
   it.each([
@@ -1166,8 +1165,6 @@ describe('the four importers open the new document at the origin', () => {
     ['loadSchemaAMLAction$', loadSchemaAMLAction$, 'users\n  id int pk'],
   ])('%s', (_, load, source) => {
     store.dispatchSync(changeDatabaseNameAction({ value: 'keep-me' }));
-    store.state.settings.scrollLeft = -300;
-    store.state.settings.scrollTop = -400;
     store.dispatchSync(scrollToAction({ originX: -250, originY: -300 }));
     expect(store.state.settings.originX).toBe(-250);
     expect(store.state.settings.originY).toBe(-300);
@@ -1177,8 +1174,6 @@ describe('the four importers open the new document at the origin', () => {
     expect(store.state.doc.tableIds).toHaveLength(1);
     expect(store.state.settings.originX).toBe(0);
     expect(store.state.settings.originY).toBe(0);
-    expect(store.state.settings.scrollLeft).toBe(0);
-    expect(store.state.settings.scrollTop).toBe(0);
     expect(store.state.settings.databaseName).toBe('keep-me');
   });
 });

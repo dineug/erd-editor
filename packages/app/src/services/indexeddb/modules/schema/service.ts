@@ -44,8 +44,8 @@ export class SchemaService {
 
   /**
    * Replaces the replica's value and measures later edits against it. The load
-   * returns with the tombstones it collects gone, which is housekeeping rather
-   * than an edit.
+   * returns with what it derives written, which is housekeeping rather than an
+   * edit.
    */
   private load(id: string, store: ReplicationStore, value: string) {
     store.setInitialValue(value);

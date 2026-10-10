@@ -14,7 +14,6 @@ const DOM_FREE_ENTRIES = ['peer/index.ts', 'engine/index.ts'];
 /** The workers built on their own, which are handed the dictionary they need. */
 const WORKER_ENTRIES = [
   'services/export-png/exportPng.shared-worker.ts',
-  'services/schema-gc/schemaGC.shared-worker.ts',
   'services/elk-layout/elkLayout.shared-worker.ts',
   'services/shiki/shiki.shared-worker.ts',
 ];

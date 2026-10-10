@@ -23,7 +23,7 @@ describe('createTable', () => {
       widthComment: 60,
       color: '',
     });
-    expect(table.meta.createAt).toBe(table.meta.updateAt);
+    expect(table).not.toHaveProperty('meta');
   });
 });
 
@@ -63,7 +63,6 @@ describe('createAndMergeTableEntities', () => {
           widthComment: 90,
           color: '#123456',
         },
-        meta: { updateAt: 1, createAt: 2 },
       },
     });
 
@@ -82,7 +81,6 @@ describe('createAndMergeTableEntities', () => {
         widthComment: 90,
         color: '#123456',
       },
-      meta: { updateAt: 1, createAt: 2 },
     });
   });
 

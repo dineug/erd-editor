@@ -42,36 +42,30 @@ function changed(change: (json: any) => void, value = VALUE) {
   return JSON.stringify(json);
 }
 
-const META = { updateAt: 1, createAt: 1 };
-
 /** VALUE with orders removed, its column, index and relationship, a removed memo and group. */
 const TOMBSTONES = changed(({ doc, collections }) => {
   const { users } = collections.tableEntities;
-  collections.tableEntities.orders = { ...users, id: 'orders', meta: META };
+  collections.tableEntities.orders = { ...users, id: 'orders' };
   collections.tableColumnEntities['orders.id'] = {
     ...collections.tableColumnEntities['users.id'],
     id: 'orders.id',
     tableId: 'orders',
-    meta: META,
   };
   collections.indexEntities.byOrder = {
     id: 'byOrder',
     tableId: 'orders',
-    meta: META,
   };
   collections.indexColumnEntities['byOrder.id'] = {
     id: 'byOrder.id',
     indexId: 'byOrder',
-    meta: META,
   };
   const end = (tableId: string) => ({ tableId, x: 0, y: 0, direction: 1 });
   collections.relationshipEntities.placed = {
     id: 'placed',
     start: end('users'),
     end: end('orders'),
-    meta: META,
   };
-  collections.memoEntities.note = { id: 'note', value: 'x', meta: META };
+  collections.memoEntities.note = { id: 'note', value: 'x' };
   // A file writes the group fields while a removed group's tombstone is left.
   doc.tableGroupIds = [];
   collections.tableGroupEntities = {
@@ -80,7 +74,6 @@ const TOMBSTONES = changed(({ doc, collections }) => {
       name: 'team',
       color: '',
       ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
-      meta: META,
     },
   };
 });
@@ -419,7 +412,7 @@ describe('toDriveFingerprint', () => {
   describe('across replicas', () => {
     afterEach(() => vi.useRealTimers());
 
-    it('is the same for two replicas of one edit, whose entity meta differs', () => {
+    it('is the same for two replicas of one edit applied a second apart', () => {
       vi.useFakeTimers({ now: Date.UTC(2026, 8, 25) });
       const here = createPeerStore({ nickname: 'here', presence: false });
       const there = createPeerStore({ nickname: 'there', presence: false });
@@ -436,9 +429,6 @@ describe('toDriveFingerprint', () => {
       vi.advanceTimersByTime(1000);
       for (const actions of sent) there.receive(actions as any);
 
-      const metaOf = (value: string) =>
-        JSON.parse(value).collections.tableEntities[id].meta;
-      expect(metaOf(there.value)).not.toEqual(metaOf(here.value));
       expect(toDriveFingerprint(there.value)).toBe(
         toDriveFingerprint(here.value)
       );

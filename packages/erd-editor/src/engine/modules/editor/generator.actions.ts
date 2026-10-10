@@ -908,23 +908,14 @@ export type SchemaImportType = 'sql' | 'graphql' | 'dbml' | 'aml';
 
 /**
  * The settings an import takes from the parser rather than from the document
- * it replaces: the view, the legacy scroll pair, and the canvas size its grid
- * wraps at, which the parser sizes to the tables.
+ * it replaces: the view.
  */
-const IMPORT_OMIT_SETTINGS = [
-  'width',
-  'height',
-  'originX',
-  'originY',
-  'scrollTop',
-  'scrollLeft',
-  'zoomLevel',
-] as const;
+const IMPORT_OMIT_SETTINGS = ['originX', 'originY', 'zoomLevel'] as const;
 
 /**
  * Writes the settings of the document an import replaces over the parser's,
- * all but the view and the canvas size, locks included, the view locked where
- * the parser left it. A placed import writes them again as it lands.
+ * all but the view, locks included, the view locked where the parser left it.
+ * A placed import writes them again as it lands.
  *
  * @example
  * withImportSettings(schema, store.state.settings);

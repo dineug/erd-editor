@@ -5,7 +5,6 @@ import {
 } from '@dineug/erd-editor-schema';
 
 import { EngineContext } from '@/engine/context';
-import { canvasSizeInRange } from '@/utils/validation';
 
 import { convertToSchema } from './convert';
 import { parseAMLModel } from './parser';
@@ -26,9 +25,6 @@ export function schemaAMLParserToSchemaJson(
   const result = parseAMLModel(aml);
   const model = result.ok ? result.model : EMPTY_MODEL;
   const schema = schemaV3Parser({});
-  const canvasSize = canvasSizeInRange(model.entities.length * 100);
-  schema.settings.width = canvasSize;
-  schema.settings.height = canvasSize;
 
   // The editor's dialect reaches this function through prepare, and
   // resolveDataType needs it before the first column is created.

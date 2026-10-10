@@ -36,12 +36,10 @@ describe('v3/schema/indexColumn.entity', () => {
       indexId: 'index-1',
       columnId: 'column-1',
       orderType: OrderType.DESC,
-      meta: { updateAt: 5, createAt: 3 },
     };
 
     expect(OrderTypeList).toContain(indexColumn.orderType);
     expect(indexColumn.indexId).not.toBe(indexColumn.columnId);
-    expect(indexColumn.meta.updateAt - indexColumn.meta.createAt).toBe(2);
   });
 
   it('sorts index columns by ascending order flag first', () => {
@@ -50,7 +48,6 @@ describe('v3/schema/indexColumn.entity', () => {
       indexId: 'index-1',
       columnId: `column-${id}`,
       orderType,
-      meta: { updateAt: 0, createAt: 0 },
     });
     const columns = [
       build('b', OrderType.DESC),

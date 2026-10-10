@@ -59,7 +59,6 @@ import {
   mouseTrackerEndAction,
   mouseTrackerStartAction,
   openDiffViewerAction,
-  schemaGCAction,
 } from '@/utils/emitter';
 import {
   appendSchema,
@@ -383,7 +382,6 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   ctx.setInitialValue = value => {
     store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
     store.resetHistory();
-    emitter.emit(schemaGCAction());
   };
 
   ctx.setPresetTheme = newThemeOptions => {

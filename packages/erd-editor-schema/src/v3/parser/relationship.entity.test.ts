@@ -37,7 +37,7 @@ describe('createRelationship', () => {
         direction: Direction.bottom,
       },
     });
-    expect(relationship.meta.createAt).toBe(relationship.meta.updateAt);
+    expect(relationship).not.toHaveProperty('meta');
   });
 
   it('does not share the start and end points between instances', () => {
@@ -91,7 +91,6 @@ describe('createAndMergeRelationshipEntities', () => {
           y: 40,
           direction: Direction.top,
         },
-        meta: { updateAt: 9, createAt: 10 },
       },
     });
 
@@ -116,7 +115,6 @@ describe('createAndMergeRelationshipEntities', () => {
         y: 40,
         direction: Direction.top,
       },
-      meta: { updateAt: 9, createAt: 10 },
     });
   });
 

@@ -12,7 +12,10 @@ import {
 import { assign, validNumber } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
+import {
+  type LegacyScrollBox,
+  migrateScrollToOrigin,
+} from '@/v3/parser/migrateScroll';
 import {
   BracketType,
   BracketTypeList,
@@ -61,10 +64,6 @@ export const toLockedValues = (settings: LockedValues): LockedValues =>
 
 const createSettings = (): Settings => {
   const settings: Omit<Settings, 'lockedValues'> = {
-    width: 2000,
-    height: 2000,
-    scrollTop: 0,
-    scrollLeft: 0,
     originX: 0,
     originY: 0,
     zoomLevel: 1,
@@ -77,7 +76,6 @@ const createSettings = (): Settings => {
     columnNameCase: NameCase.camelCase,
     bracketType: BracketType.none,
     relationshipDataTypeSync: true,
-    relationshipOptimization: false,
     columnOrder: [
       ColumnType.columnName,
       ColumnType.columnDataType,
@@ -94,6 +92,8 @@ const createSettings = (): Settings => {
   return { ...settings, lockedValues: toLockedValues(settings) };
 };
 
+const LEGACY_CANVAS_SIZE = 2000;
+
 const isFiniteNumber = (value: unknown): value is number =>
   Number.isFinite(value);
 
@@ -103,6 +103,28 @@ const zoomInRange = (value: number) =>
   clamp(value, CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX);
 const maxWidthCommentInRange = (value: number) => clamp(value, 60, 200);
 
+/**
+ * The canvas box and scroll pair of a document saved before the origin, read
+ * off its raw settings since no parsed field holds them: each size clamped as
+ * it was then, a missing field at the default it had.
+ */
+function toLegacyScrollBox(
+  json: Record<string, unknown>,
+  zoomLevel: number
+): LegacyScrollBox {
+  const size = (value: unknown) =>
+    isNumber(value) ? sizeInRange(value) : LEGACY_CANVAS_SIZE;
+  const scroll = (value: unknown) => (isNumber(value) ? value : 0);
+
+  return {
+    width: size(json.width),
+    height: size(json.height),
+    zoomLevel,
+    scrollLeft: scroll(json.scrollLeft),
+    scrollTop: scroll(json.scrollTop),
+  };
+}
+
 export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   const settings = createSettings();
   if (!isPlainObject(json) || isNil(json)) return settings;
@@ -111,12 +133,6 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   const assignString = assign(isString, settings, json);
   const assignBoolean = assign(isBoolean, settings, json);
 
-  if (isNumber(json.width)) {
-    settings.width = sizeInRange(json.width);
-  }
-  if (isNumber(json.height)) {
-    settings.height = sizeInRange(json.height);
-  }
   if (isNumber(json.zoomLevel)) {
     settings.zoomLevel = zoomInRange(json.zoomLevel);
   }
@@ -124,13 +140,10 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     settings.maxWidthComment = maxWidthCommentInRange(json.maxWidthComment);
   }
 
-  assignNumber('scrollTop');
-  assignNumber('scrollLeft');
   assignNumber('show');
   assignString('databaseName');
   assignString('canvasType');
   assignBoolean('relationshipDataTypeSync');
-  assignBoolean('relationshipOptimization');
 
   assign(validNumber(DatabaseList), settings, json)('database');
   assign(validNumber(LanguageList), settings, json)('language');
@@ -150,7 +163,9 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     settings.originX = json.originX;
     settings.originY = json.originY;
   } else {
-    const { originX, originY } = migrateScrollToOrigin(settings);
+    const { originX, originY } = migrateScrollToOrigin(
+      toLegacyScrollBox(json, settings.zoomLevel)
+    );
     settings.originX = originX;
     settings.originY = originY;
   }

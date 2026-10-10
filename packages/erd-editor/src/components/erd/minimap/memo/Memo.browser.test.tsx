@@ -38,7 +38,6 @@ const createMemo = (ui: Partial<MemoType['ui']> = {}): MemoType => ({
     color: '',
     ...ui,
   },
-  meta: { updateAt: 0, createAt: 0 },
 });
 
 /**

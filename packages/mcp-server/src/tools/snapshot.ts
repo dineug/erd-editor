@@ -90,7 +90,6 @@ export type AgentSnapshotSettings = {
   columnNameCase: string;
   bracketType: string;
   relationshipDataTypeSync: boolean;
-  relationshipOptimization: boolean;
   columnOrder: string[];
   show: Record<string, boolean>;
   maxWidthComment: number;
@@ -180,7 +179,6 @@ export function toSnapshotSettings(
     columnNameCase: nameOf(NameCase, settings.columnNameCase),
     bracketType: nameOf(BracketType, settings.bracketType),
     relationshipDataTypeSync: settings.relationshipDataTypeSync,
-    relationshipOptimization: settings.relationshipOptimization,
     columnOrder: settings.columnOrder.map(type => nameOf(ColumnType, type)),
     show: flagsOf(Show, settings.show),
     maxWidthComment: settings.maxWidthComment,

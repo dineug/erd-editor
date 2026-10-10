@@ -14,7 +14,7 @@ import { arrayHas } from '@/utils/arrayHas';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 import { getTableGroupId, padRect } from '@/utils/tableGroup';
-import { textInRange } from '@/utils/validation';
+import { canvasSizeInRange, textInRange } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 
@@ -251,9 +251,16 @@ const tableCell = (state: RootState, table: Table): SortCell => ({
 });
 
 /**
+ * The width the sort wraps its rows at: a hundred per table, inside the
+ * canvas bounds, the size an importer gave the canvas it laid its tables on.
+ */
+const sortWidth = ({ doc }: RootState) =>
+  canvasSizeInRange(doc.tableIds.length * 100);
+
+/**
  * A group's members in rows of their own inside its box, the members' bounds
  * and the padding, which becomes the group's rect where the cell is put. The
- * rows wrap so that the box fits the canvas width beside the start corner.
+ * rows wrap so that the box fits the sort width beside the start corner.
  */
 function groupCell(
   state: RootState,
@@ -269,7 +276,7 @@ function groupCell(
       },
     })),
     0,
-    state.settings.width - TABLE_SORT_START - TABLE_GROUP_PADDING * 2,
+    sortWidth(state) - TABLE_SORT_START - TABLE_GROUP_PADDING * 2,
     0
   );
   const box = padRect(rects.reduce(unionRect));
@@ -325,7 +332,7 @@ function toSortCells(state: RootState, tables: Table[]): SortCell[] {
 }
 
 const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
-  const { doc, settings, collections } = state;
+  const { doc, collections } = state;
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(doc.tableIds);
@@ -335,7 +342,7 @@ const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
   placeInRows(
     toSortCells(state, tables),
     TABLE_SORT_START,
-    settings.width,
+    sortWidth(state),
     TABLE_SORT_START
   );
 };

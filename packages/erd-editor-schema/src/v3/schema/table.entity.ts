@@ -1,6 +1,4 @@
-import { EntityType } from '@/internal-types';
-
-export type Table = EntityType<{
+export type Table = {
   id: string;
   name: string;
   comment: string;
@@ -12,7 +10,7 @@ export type Table = EntityType<{
    */
   groupId: string;
   ui: TableUI;
-}>;
+};
 
 export type TableUI = {
   x: number;

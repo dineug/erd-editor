@@ -5,7 +5,7 @@ import { expect, test } from '../support/fixtures';
 // from a build can still die here while its imports evaluate.
 
 /** Each worker by the name its spawn function and its service class share. */
-const WORKERS = ['SchemaGC', 'ExportPng', 'ElkLayout', 'Shiki'] as const;
+const WORKERS = ['ExportPng', 'ElkLayout', 'Shiki'] as const;
 
 /** ELK is megabytes of script the worker parses before it answers anything. */
 const START_TIMEOUT = 45_000;
@@ -15,7 +15,7 @@ type Started = { worker: string; service: string | null; errors: string[] };
 test.describe('the shared workers on the dev server', () => {
   test.slow();
 
-  test('starts every one of the four and reaches the service it exposes', async ({
+  test('starts every one of the three and reaches the service it exposes', async ({
     erd,
   }) => {
     const started = await erd.page.evaluate(
