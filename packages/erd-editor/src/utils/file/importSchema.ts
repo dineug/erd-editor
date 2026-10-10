@@ -193,14 +193,15 @@ export async function importSchemaPlaced(
 }
 
 /**
- * An append as the editor lands it: the new tables and memos alone selected,
- * and brought on screen clear of an open Find and Replace panel, in the
- * dispatch that adds them, so one undo takes them away and the scroll back.
+ * An append as the editor lands it: the new tables, memos and groups alone
+ * selected, so a drag carries each group with its members, and brought on
+ * screen clear of Find and Replace, in the dispatch that adds them.
  */
 const appendLandingAction$ = ({
   actions,
   tableIds,
   memoIds,
+  tableGroupIds,
   rect,
 }: SchemaAppend): GeneratorAction =>
   function* (state) {
@@ -210,6 +211,7 @@ const appendLandingAction$ = ({
       Object.fromEntries([
         ...tableIds.map(id => [id, SelectType.table]),
         ...memoIds.map(id => [id, SelectType.memo]),
+        ...tableGroupIds.map(id => [id, SelectType.tableGroup]),
       ])
     );
     yield* scrollIntoView(state, rect, coveredWidth(state));

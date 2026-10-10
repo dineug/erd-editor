@@ -29,7 +29,10 @@ import {
   loadJsonAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  loadJsonAction$,
+  moveAllAction$,
+} from '@/engine/modules/editor/generator.actions';
 import {
   SelectType,
   ViewKind,
@@ -53,6 +56,7 @@ import {
   changeTableNameAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { dropTablesIntoGroupsAction$ } from '@/engine/modules/table-group/generator.actions';
 import type { RxStoreOptions } from '@/engine/rx-store';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { getTableRect, unionRect } from '@/konva/scene/metrics';
@@ -756,6 +760,34 @@ describe('appendSchema', () => {
     expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
     expect(groupRect(app).y).toBe(corner.y);
     expect(cornerOf(app, 'old')).toEqual({ x: 900, y: 900 });
+  });
+
+  /**
+   * A drop judges each selected table no selected group carries, against the
+   * boxes without it: a group left behind unselected would lose every member
+   * the moment its block was dragged clear of its stored rect.
+   */
+  it('selects the groups it adds beside their tables, so a drag of the block keeps every membership', () => {
+    const app = createScreenApp();
+
+    appendSchema(app, 'dbml', FAN_DBML);
+    const { id } = groupOf(app);
+    const { x } = groupRect(app);
+
+    expect(app.store.state.editor.selectedMap[id]).toBe(SelectType.tableGroup);
+    expect(selectedNames(app)).toEqual(['photos', 'posts', 'users']);
+
+    for (let step = 0; step < 10; step++) {
+      app.store.dispatchSync(moveAllAction$(150, 0));
+    }
+    app.store.dispatchSync(dropTablesIntoGroupsAction$());
+
+    const members = Object.values(app.store.state.collections.tableEntities)
+      .filter(table => table.groupId === id)
+      .map(table => table.name)
+      .sort();
+    expect(members).toEqual(['posts', 'users']);
+    expect(groupRect(app).x).toBe(x + 1500);
   });
 
   it('takes the tables, the selection and the scroll back on a single undo', () => {
