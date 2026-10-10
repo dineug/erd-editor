@@ -47,8 +47,9 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
       '@Data',
       '@Entity',
+      '@Table(name = "user")',
       'public class User {',
-      '  @Column(nullable = false)',
+      '  @Column(name = "created_at", nullable = false)',
       '  private Integer createdAt;',
       '}',
       '',
@@ -85,12 +86,12 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
   [
     'Kotlin',
     Language.Kotlin,
-    ['', 'class User {', '  var createdAt: Int = 0', '}', ''],
+    ['', 'data class User(', '    val createdAt: Int,', ')', ''],
   ],
   [
     'Scala',
     Language.Scala,
-    ['', '@Data', 'case class User(', ' createdAt: Int', ')', ''],
+    ['', 'case class User(', '  createdAt: Int', ')', ''],
   ],
   [
     'Go',
@@ -233,6 +234,37 @@ const expectedByLanguage: Array<[string, number, string[]]> = [
       '',
     ],
   ],
+  [
+    'Swift',
+    Language.Swift,
+    [
+      '',
+      'import Foundation',
+      '',
+      'nonisolated struct User: Codable, Hashable, Sendable {',
+      '    var createdAt: Int32',
+      '',
+      '    enum CodingKeys: String, CodingKey {',
+      '        case createdAt = "created_at"',
+      '    }',
+      '}',
+      '',
+    ],
+  ],
+  [
+    'Zod',
+    Language.Zod,
+    [
+      '',
+      'import * as z from "zod";',
+      '',
+      'export const UserSchema = z.object({',
+      '  createdAt: z.int32(),',
+      '});',
+      'export type User = z.infer<typeof UserSchema>;',
+      '',
+    ],
+  ],
 ];
 
 // The one-table view is what a SeaORM module file holds, the module body the
@@ -249,6 +281,25 @@ const SEAORM_ENTITY = [
   '',
   'impl ActiveModelBehavior for ActiveModel {}',
 ];
+
+// A JSON Schema text keys each table under $defs, while one table is a schema
+// of its own with $schema at its top, so JSON Schema is checked apart too.
+const JSON_SCHEMA_ROW = [
+  '"title": "User",',
+  '"type": "object",',
+  '"properties": {',
+  '  "createdAt": {',
+  '    "type": "integer",',
+  '    "minimum": -2147483648,',
+  '    "maximum": 2147483647',
+  '  }',
+  '},',
+  '"required": ["createdAt"],',
+  '"additionalProperties": false',
+];
+
+const JSON_SCHEMA_DIALECT =
+  '"$schema": "https://json-schema.org/draft/2020-12/schema",';
 
 describe('generator-code/index', () => {
   describe('createGeneratorCode', () => {
@@ -277,6 +328,24 @@ describe('generator-code/index', () => {
         '',
         'pub mod user {',
         ...SEAORM_ENTITY.map(line => (line === '' ? '' : `    ${line}`)),
+        '}',
+        '',
+      ]);
+    });
+
+    it('keys the JSON Schema of each table under $defs', () => {
+      const { state } = createFixture();
+      state.settings.language = Language.JSONSchema;
+
+      expect(createGeneratorCode(state).split('\n')).toEqual([
+        '',
+        '{',
+        `  ${JSON_SCHEMA_DIALECT}`,
+        '  "$defs": {',
+        '    "User": {',
+        ...JSON_SCHEMA_ROW.map(line => `      ${line}`),
+        '    }',
+        '  }',
         '}',
         '',
       ]);
@@ -310,6 +379,20 @@ describe('generator-code/index', () => {
       expect(createGeneratorCodeTable(state, table).split('\n')).toEqual([
         '',
         ...SEAORM_ENTITY,
+        '',
+      ]);
+    });
+
+    it('writes the JSON Schema of one table as a schema of its own', () => {
+      const { state, table } = createFixture();
+      state.settings.language = Language.JSONSchema;
+
+      expect(createGeneratorCodeTable(state, table).split('\n')).toEqual([
+        '',
+        '{',
+        `  ${JSON_SCHEMA_DIALECT}`,
+        ...JSON_SCHEMA_ROW.map(line => `  ${line}`),
+        '}',
         '',
       ]);
     });
