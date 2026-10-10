@@ -44,8 +44,16 @@ import {
   StartRelationshipType,
 } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
-import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  changeViewportAction,
+  selectAction,
+} from '@/engine/modules/editor/atom.actions';
+import {
+  initialLoadJsonAction$,
+  moveAllAction$,
+  type MoveAllGesture,
+} from '@/engine/modules/editor/generator.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import {
   addRelationshipAction,
   changeRelationshipColumnsAction,
@@ -197,6 +205,72 @@ describe('a peer store and an element’s store converge (AC-E5)', () => {
     await settle();
 
     expectConverged(session);
+  });
+});
+
+describe('a group drag converges while a peer changes its members', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** The x of the seed's group and of each table, the one axis the drag moves. */
+  const placement = (state: RootState): Record<string, number> => ({
+    group: state.collections.tableGroupEntities[SEED.group].ui.x,
+    ...Object.fromEntries(
+      [SEED.users, SEED.orders, SEED.empty].map(id => [
+        id,
+        state.collections.tableEntities[id].ui.x,
+      ])
+    ),
+  });
+
+  /** Past the 200 ms quiet period of the history and of both outbound compressors. */
+  const quiet = () => vi.advanceTimersByTimeAsync(500);
+
+  /**
+   * The drag's buffered steps go out summed per table list, and a list under
+   * the history's 20 px floor is dropped there, so a list that changed midway
+   * would leave a step applied here and never sent, or never undone.
+   */
+  it('moves the tables the drag began with on both sides, and one undo puts them all back', async () => {
+    const session = open({ held: true });
+    await vi.advanceTimersByTimeAsync(30);
+    session.deliver();
+    const { peer, user } = session;
+    const before = placement(user.rxStore.state);
+    const gesture: MoveAllGesture = {};
+
+    user.rxStore.dispatchSync(
+      selectAction({ [SEED.group]: SelectType.tableGroup })
+    );
+    user.rxStore.dispatchSync(moveAllAction$(80, 0, 'document', gesture));
+    play(peer, SEED_SCENARIOS.setTableGroup());
+    session.deliver();
+    user.rxStore.dispatchSync(moveAllAction$(15, 0, 'document', gesture));
+    await quiet();
+    session.deliver();
+
+    const moved = {
+      ...before,
+      group: before.group + 95,
+      [SEED.users]: before[SEED.users] + 95,
+    };
+    expect(placement(user.rxStore.state)).toEqual(moved);
+    expect(placement(peer.state)).toEqual(moved);
+    expect(peer.state.collections.tableEntities[SEED.orders].groupId).toBe(
+      SEED.group
+    );
+
+    user.rxStore.undo();
+    await quiet();
+    session.deliver();
+
+    expect(placement(user.rxStore.state)).toEqual(before);
+    expect(placement(peer.state)).toEqual(before);
   });
 });
 

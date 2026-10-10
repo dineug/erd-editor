@@ -108,6 +108,11 @@ import { tableHeaderHeight } from '@/utils/calcTable';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
+import {
+  getTableGroupTint,
+  getTableHeaderTint,
+  type TableGroupColors,
+} from '@/utils/tableGroup';
 import { getAlternateKeyMarks } from '@/utils/tableKeys';
 
 import { useFocusTable } from './useFocusTable';
@@ -117,7 +122,10 @@ import { useViewPin } from './useViewPin';
 
 export type TableProps = {
   table: Table;
-  /** A drawn copy rather than the table itself, so nothing in it takes an id. */
+  /**
+   * A drawn copy rather than the table itself, so nothing in it takes an id,
+   * and no group color either: a copy, a duplicate's, lands in no group.
+   */
   preview?: boolean;
   hovered?: boolean;
   hoveredColumnId?: string | null;
@@ -132,6 +140,11 @@ export type TableProps = {
    * by the scene, which walks the document's links once for every card it draws.
    */
   relatedColumnIds?: Set<string> | null;
+  /**
+   * The group whose color the header wears, '' for none, named by a scene that
+   * reads the group list once for every table; a table drawn alone reads its own.
+   */
+  tableGroupId?: string;
 };
 
 type HeaderCellOptions = {
@@ -234,8 +247,15 @@ const Table: FC<TableProps> = (props, ctx) => {
     setSceneCursor(event, CURSOR_INHERIT);
   };
 
-  const iconColor = (theme: Theme, icon: LucideIconName, hovered: boolean) => {
+  /** A header button's color: none at rest, and on a group's color the text drawn over it. */
+  const iconColor = (
+    theme: Theme,
+    icon: LucideIconName,
+    hovered: boolean,
+    tint: TableGroupColors | null
+  ) => {
     if (!hovered) return TRANSPARENT;
+    if (tint) return tint.foreground;
 
     return state.iconHover === icon ? theme.active : theme.foreground;
   };
@@ -591,6 +611,15 @@ const Table: FC<TableProps> = (props, ctx) => {
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
+    // A member of a colored group wears the color across its header, the text
+    // and icons on it in the black or white that reads best there, and keeps
+    // its own color on the edge, so both show.
+    const tint = props.preview
+      ? null
+      : props.tableGroupId === undefined
+        ? getTableHeaderTint(store.state, table, source)
+        : getTableGroupTint(store.state, props.tableGroupId, source);
+
     // A card showing no rows is its header and nothing else, so the band takes
     // the whole box and rounds all four corners rather than the top two.
     const headerFillsCard = columnIds.length === 0;
@@ -679,7 +708,7 @@ const Table: FC<TableProps> = (props, ctx) => {
               ? TABLE_CORNER_RADIUS
               : [TABLE_CORNER_RADIUS, TABLE_CORNER_RADIUS, 0, 0]
           }
-          fill={theme.tableHeaderBackground}
+          fill={tint?.background ?? theme.tableHeaderBackground}
           listening={false}
         />
         {litAlpha > 0 ? (
@@ -720,7 +749,7 @@ const Table: FC<TableProps> = (props, ctx) => {
               name: 'table-header-icon',
               kind: 'table-header-icon',
               size: headerIconSize,
-              color: theme.foreground,
+              color: tint?.foreground ?? theme.foreground,
               x: 0,
               y: view ? 0 : (TABLE_HEADER_INPUT_HEIGHT - headerIconSize) / 2,
             })}
@@ -730,7 +759,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: table.name.trim()
                     ? table.name
                     : i18n.value.t('common.placeholder.table'),
-                  fill: nameFill(theme, table.name, view),
+                  fill: tint?.foreground ?? nameFill(theme, table.name, view),
                   focus: hasFocus(FocusType.tableName),
                   edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,
@@ -742,7 +771,9 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: table.comment.trim()
                     ? table.comment
                     : i18n.value.t('common.placeholder.comment'),
-                  fill: table.comment.trim() ? theme.active : theme.placeholder,
+                  fill:
+                    tint?.foreground ??
+                    (table.comment.trim() ? theme.active : theme.placeholder),
                   focus: hasFocus(FocusType.tableComment),
                   edit: cellEdit(FocusType.tableComment),
                   sharedFocus: sharedCommentColor,
@@ -756,7 +787,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 name: 'table-add-column',
                 kind: 'icon',
                 size: HEADER_ICON_HEIGHT,
-                color: iconColor(theme, 'plus', hovered),
+                color: iconColor(theme, 'plus', hovered, tint),
                 mouseenter: handleIconMouseenter('plus'),
                 mouseleave: handleIconMouseleave,
                 x:
@@ -773,7 +804,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 name: 'table-remove',
                 kind: 'icon',
                 size: HEADER_ICON_HEIGHT,
-                color: iconColor(theme, 'x', hovered),
+                color: iconColor(theme, 'x', hovered, tint),
                 mouseenter: handleIconMouseenter('x'),
                 mouseleave: handleIconMouseleave,
                 x: contentWidth - HEADER_ICON_HEIGHT,
@@ -786,7 +817,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 name: 'table-related',
                 kind: 'icon',
                 size: VIEW_TABLE_HEADER_BUTTON_SIZE,
-                color: iconColor(theme, 'waypoints', hovered),
+                color: iconColor(theme, 'waypoints', hovered, tint),
                 mouseenter: handleIconMouseenter('waypoints'),
                 mouseleave: handleIconMouseleave,
                 x: contentWidth - VIEW_TABLE_HEADER_BUTTONS_WIDTH,
@@ -800,7 +831,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 name: 'table-go-to-erd',
                 kind: 'icon',
                 size: VIEW_TABLE_HEADER_BUTTON_SIZE,
-                color: iconColor(theme, 'external-link', hovered),
+                color: iconColor(theme, 'external-link', hovered, tint),
                 mouseenter: handleIconMouseenter('external-link'),
                 mouseleave: handleIconMouseleave,
                 x: contentWidth - VIEW_TABLE_HEADER_BUTTON_SIZE,

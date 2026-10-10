@@ -55,6 +55,7 @@ export const ReadParams = Schema.Struct({
   header: literalsField(READ_TOOL, 'header', SchemaSQLHeaderList),
   tableIds: stringsField(READ_TOOL, 'tableIds'),
   tableNames: stringsField(READ_TOOL, 'tableNames'),
+  groupNames: stringsField(READ_TOOL, 'groupNames'),
 });
 
 export const ListParams = Schema.Struct({
@@ -86,6 +87,7 @@ export const ENTITY_ID_ARGS = Object.freeze([
   'relationshipIds',
   'indexIds',
   'memoIds',
+  'tableGroupIds',
 ] as const);
 
 export const GetParams = Schema.Struct({
@@ -95,6 +97,7 @@ export const GetParams = Schema.Struct({
   relationshipIds: stringsField(GET_TOOL, 'relationshipIds'),
   indexIds: stringsField(GET_TOOL, 'indexIds'),
   memoIds: stringsField(GET_TOOL, 'memoIds'),
+  tableGroupIds: stringsField(GET_TOOL, 'tableGroupIds'),
 });
 
 /** erd_get needs one id at least, in any of its lists. */
@@ -182,12 +185,20 @@ export const registerReadTools = Effect.gen(function* () {
   yield* addReadTool(
     READ_TOOL,
     ReadParams,
-    ({ format, vendor, statements, header, tableIds, tableNames }) =>
+    ({
+      format,
+      vendor,
+      statements,
+      header,
+      tableIds,
+      tableNames,
+      groupNames,
+    }) =>
       Effect.succeed(
         documentReader(
           format,
           vendor,
-          { tableIds, tableNames },
+          { tableIds, tableNames, groupNames },
           { statements, header }
         )
       )

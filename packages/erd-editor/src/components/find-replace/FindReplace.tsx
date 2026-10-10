@@ -508,8 +508,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
 
   /**
    * Escape pressed anywhere closes the panel, as it closes every other one,
-   * unless something takes it first: an open cell editor or a relationship
-   * being drawn, which that press ends alone, or the palette, which it closes.
+   * unless something takes it first: an open cell editor or a relationship or
+   * table group draw, which that press ends alone, or the palette it closes.
    */
   const handleStop = () => {
     const { store } = app.value;
@@ -519,7 +519,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
       isPanelShown(store.state) &&
       !editor.openMap[Open.search] &&
       !isEditingText(editor) &&
-      !editor.drawRelationship
+      !editor.drawRelationship &&
+      !editor.drawTableGroup
     ) {
       close();
     }

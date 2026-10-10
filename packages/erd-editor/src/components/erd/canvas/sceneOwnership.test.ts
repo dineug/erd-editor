@@ -16,18 +16,20 @@ const CALLBACK_PROP_DECLARATION = /\bon[A-Z][A-Za-z0-9_]*\??\s*:/g;
 const CALLBACK_PROP_PASSED = /\bon[A-Z][A-Za-z0-9_]*\s*=\{/g;
 
 /**
- * Column hands the drag boundary up because Table decides the drop index, and
- * that decision reads the order of every sibling column. A connector hands its
- * hover up because the group draws its label in a later pass, as a sibling.
+ * Column hands its drag up as Table orders the sibling columns, a connector its
+ * hover as the group draws the label in a later pass, and a group sash its
+ * draft box as the title bar, body and lines beside it draw that box.
  */
 const DECLARED = [
   'relationship-group/relationship/Relationship.tsx onHover',
+  'table-group/TableGroupSash.tsx onDraft',
   'table/column/Column.tsx onDragend',
   'table/column/Column.tsx onDragstart',
 ];
 
 const PASSED = [
   'relationship-group/RelationshipGroup.tsx onHover',
+  'table-group/TableGroup.tsx onDraft',
   'table/Table.tsx onDragend',
   'table/Table.tsx onDragstart',
 ];
@@ -120,6 +122,11 @@ const OUTSIDE_REFERENCES = [
   'components/erd/hitTest.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/erd/minimap/Minimap.browser.test.tsx @/components/erd/canvas/Canvas.styles',
   'components/erd/minimap/Minimap.tsx @/components/erd/canvas/Canvas.styles',
+  // The minimap draws each group in the box the canvas draws it in, the one a
+  // drag holds included, off the member lists the canvas reads them by.
+  'components/erd/minimap/MinimapScene.tsx @/components/erd/canvas/table-group/tableGroupBox',
+  'components/erd/minimap/table-group/TableGroup.browser.test.tsx @/components/erd/canvas/entityDrag',
+  'components/erd/minimap/table-group/TableGroup.tsx @/components/erd/canvas/table-group/tableGroupBox',
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
   'components/find-replace/FindReplace.test.ts @/components/erd/canvas/table/cellLayout',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
@@ -131,6 +138,7 @@ const OUTSIDE_REFERENCES = [
   'services/export-png/ExportScene.tsx @/components/erd/canvas/memo/Memo',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/relationship-group/RelationshipGroup',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/table/Table',
+  'services/export-png/ExportScene.tsx @/components/erd/canvas/table-group/TableGroups',
 ];
 
 const CANVAS_REFERENCE = /@\/components\/erd\/canvas\/[\w./-]+/g;
@@ -165,7 +173,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the twenty references that own a reason to', () => {
+  it('is reached from outside by the twenty-four references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

@@ -14,6 +14,7 @@ import {
   settingsActions$,
   tableActions$,
   tableColumnActions$,
+  tableGroupActions$,
 } from '@dineug/erd-editor/peer.js';
 import { type CompositionAction, compositionActionsFlat } from '@dineug/r-html';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
@@ -37,6 +38,7 @@ const MODULES = [
   indexActions$,
   indexColumnActions$,
   memoActions$,
+  tableGroupActions$,
   settingsActions$,
 ];
 
@@ -145,6 +147,38 @@ const CENSUS: Census = {
     memoActions$.removeMemoAction$(),
   ],
   selectMemoAction$: () => [memoActions$.selectMemoAction$(SEED.memo, false)],
+  addTableGroupAction$: () => [
+    tableGroupActions$.addTableGroupAction$(
+      { x: 0, y: 600, width: 400, height: 300 },
+      { name: 'empty', color: '#22c55e' }
+    ),
+  ],
+  addTableGroupFromTablesAction$: () => [
+    tableGroupActions$.addTableGroupFromTablesAction$([SEED.orders], {
+      name: 'orders',
+    }),
+    tableGroupActions$.addTableGroupFromTablesAction$(),
+  ],
+  removeTableGroupAction$: () => [
+    tableGroupActions$.removeTableGroupAction$(SEED.group),
+    tableGroupActions$.removeTableGroupAction$(),
+  ],
+  moveTableGroupAction$: () => [
+    tableGroupActions$.moveTableGroupAction$([SEED.group], 40, 0),
+  ],
+  setTableGroupAction$: () => [
+    tableGroupActions$.setTableGroupAction$([SEED.orders], SEED.group),
+    tableGroupActions$.setTableGroupAction$([SEED.users], ''),
+  ],
+  dropTablesIntoGroupsAction$: () => [
+    tableGroupActions$.dropTablesIntoGroupsAction$(),
+  ],
+  selectTableGroupAction$: () => [
+    tableGroupActions$.selectTableGroupAction$(SEED.group, false),
+  ],
+  selectTableGroupTablesAction$: () => [
+    tableGroupActions$.selectTableGroupTablesAction$(SEED.group),
+  ],
   changeZoomLevelAction$: () => [settingsActions$.changeZoomLevelAction$(0.5)],
   streamZoomLevelAction$: () => [settingsActions$.streamZoomLevelAction$(0.1)],
   changeLockSettingsAction$: () => [
@@ -162,9 +196,9 @@ const EDITOR_GENERATORS: Record<string, string> = {
   initialLoadJsonAction$:
     'the load a peer reseeds with, which makes no change to replicate',
   moveAllAction$:
-    'drags the selection by a pointer step; erd_move_table and erd_move_memo place one',
+    'drags the selection by a pointer step; erd_move_table and erd_move_memo place one, erd_move_table_group moves one group',
   removeSelectedAction$:
-    'removes the selection; erd_remove_table and erd_remove_memo name theirs',
+    'removes the selection; erd_remove_table, erd_remove_memo and erd_remove_table_group name theirs',
   pasteEntitiesAction$: 'pastes what the clipboard holds',
   duplicateAction$: 'duplicates the selection',
   dragSelectAction$: 'selects what a drag box covers',
@@ -175,9 +209,9 @@ const EDITOR_GENERATORS: Record<string, string> = {
   drawStartAddRelationshipAction$:
     'starts a pointer draw from a table; erd_add_relationship relates two named tables',
   changeColorAllAction$:
-    'colors the selection; erd_change_table_color and erd_change_memo_color color one',
+    'colors the selection; erd_change_table_color, erd_change_memo_color and erd_change_table_group_color color one',
   removeColorAllAction$:
-    'clears the selection’s colors; erd_change_table_color and erd_change_memo_color given an empty color clear one',
+    'clears the selection’s colors; erd_change_table_color, erd_change_memo_color and erd_change_table_group_color given an empty color clear one',
   loadSchemaSQLAction$: 'wrapped by erd_import_sql',
   loadSchemaGraphQLAction$: 'wrapped by erd_import_graphql',
   loadSchemaDBMLAction$: 'wrapped by erd_import_dbml',

@@ -26,6 +26,7 @@ import type { RootState } from '@/engine/state';
 import type { ElkLayoutPoint } from '@/services/elk-layout';
 import { arrayHas } from '@/utils/arrayHas';
 import { closePromise } from '@/utils/promise';
+import { getTableGroupWraps, isTableGroupShown } from '@/utils/tableGroup';
 
 /** Every action a load or a clear starts with, from this editor, a peer or an undo. */
 const isLoad = arrayHas<string>([
@@ -123,24 +124,39 @@ export function importSchema(
 }
 
 /**
- * The import's document as it lands: the settings as they stand by then, and
- * every table at its point, the block the points make standing where the grid
- * would have started. A layout answers every table of this document.
+ * The import's document as it lands: the settings as they stand by then, every
+ * table at its point from where the grid would have started, each group with
+ * members round them. A layout answers every table of this document.
  */
 function toLandingJson(
   json: string,
-  settings: RootState['settings'],
+  state: RootState,
   points: ElkLayoutPoint[] | null
 ): string {
-  const schema: Pick<ERDEditorSchemaV3, 'settings' | 'collections'> =
+  const schema: Pick<ERDEditorSchemaV3, 'doc' | 'settings' | 'collections'> =
     JSON.parse(json);
-  const tables = schema.collections.tableEntities;
+  const { doc, collections } = schema;
+  const tables = collections.tableEntities;
 
-  withImportSettings(schema, settings);
+  withImportSettings(schema, state.settings);
   points?.forEach(({ id, x, y }) => {
     tables[id].ui.x = TABLE_SORT_START + x;
     tables[id].ui.y = TABLE_SORT_START + y;
   });
+
+  // A document with no group leaves the list out when written, as the
+  // parsers write theirs, and with no layout the grid wraps its groups.
+  if (points && doc.tableGroupIds?.length) {
+    getTableGroupWraps({ ...state, ...schema }).forEach(
+      ({ id, x, y, width, height }) =>
+        Object.assign(collections.tableGroupEntities[id].ui, {
+          x,
+          y,
+          width,
+          height,
+        })
+    );
+  }
 
   return toJson(schema as ERDEditorSchemaV3);
 }
@@ -167,7 +183,7 @@ export async function importSchemaPlaced(
   await placeAndLand(app, json, true, points => {
     // A placement that could not be had leaves the grid, which a failure, a
     // host with no worker and Cancel all land without a word.
-    const landing = toLandingJson(json, store.state.settings, points);
+    const landing = toLandingJson(json, store.state, points);
     if (points) {
       store.dispatchSync(loadJsonAction$(landing));
     } else {
@@ -177,14 +193,15 @@ export async function importSchemaPlaced(
 }
 
 /**
- * An append as the editor lands it: the new tables and memos alone selected,
- * and brought on screen clear of an open Find and Replace panel, in the
- * dispatch that adds them, so one undo takes them away and the scroll back.
+ * An append as the editor lands it: the new tables, memos and groups alone
+ * selected, so a drag carries each group with its members, and brought on
+ * screen clear of Find and Replace, in the dispatch that adds them.
  */
 const appendLandingAction$ = ({
   actions,
   tableIds,
   memoIds,
+  tableGroupIds,
   rect,
 }: SchemaAppend): GeneratorAction =>
   function* (state) {
@@ -194,6 +211,11 @@ const appendLandingAction$ = ({
       Object.fromEntries([
         ...tableIds.map(id => [id, SelectType.table]),
         ...memoIds.map(id => [id, SelectType.memo]),
+        // Hidden groups never stay selected, and a drag judges no group then.
+        ...(isTableGroupShown(state) ? tableGroupIds : []).map(id => [
+          id,
+          SelectType.tableGroup,
+        ]),
       ])
     );
     yield* scrollIntoView(state, rect, coveredWidth(state));

@@ -1,7 +1,22 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
+import { createTestAppContext } from '@/__test-utils__/index';
+import { AppContext } from '@/components/appContext';
+import { toPlacementActions } from '@/components/erd/automatic-table-placement/placementActions';
 import { TablePlacement } from '@/constants/tablePlacement';
-import { createElkLayout } from '@/services/elk-layout';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addTableAction,
+  changeTableGroupAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import { getTableRect, type Rect } from '@/konva/scene/metrics';
+import {
+  createElkLayout,
+  createElkLayoutRequest,
+  toTablePoints,
+} from '@/services/elk-layout';
 import type {
   ElkLayoutPoint,
   ElkLayoutRequest,
@@ -76,6 +91,133 @@ describe('the placement runs in a shared worker', () => {
 
       expect(points).toHaveLength(3);
       expect(points.every(point => Number.isFinite(point.x))).toBe(true);
+    },
+    TIMEOUT
+  );
+});
+
+const contexts: AppContext[] = [];
+
+afterEach(() => {
+  contexts.splice(0).forEach(app => app.store.destroy());
+});
+
+/**
+ * Two groups, orders' holding a table joined to nothing, a relationship from
+ * one group into the other, and two tables in no group, one joined to a group.
+ */
+function createGroupedDocument(): AppContext {
+  const app = createTestAppContext();
+  contexts.push(app);
+  const tables = ['users', 'profiles', 'orders', 'items', 'audit', 'admins'];
+
+  app.store.dispatchSync(
+    ...tables.flatMap((id, index) => [
+      addTableAction({ id, ui: { x: index * 40, y: 0, zIndex: 2 } }),
+      changeTableNameAction({ id, value: id }),
+    ]),
+    ...['accounts', 'sales'].map(id =>
+      addTableGroupAction({
+        id,
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      })
+    ),
+    ...[
+      ['users', 'accounts'],
+      ['profiles', 'accounts'],
+      ['orders', 'sales'],
+      ['items', 'sales'],
+      ['audit', 'sales'],
+    ].map(([id, value]) => changeTableGroupAction({ id, value })),
+    ...[
+      ['users', 'profiles'],
+      ['users', 'orders'],
+      ['orders', 'items'],
+      ['admins', 'users'],
+    ].map(([start, end], index) =>
+      addRelationshipAction({
+        id: `r${index}`,
+        relationshipType: 4,
+        start: { tableId: start, columnIds: [] },
+        end: { tableId: end, columnIds: [] },
+      })
+    )
+  );
+  return app;
+}
+
+describe('a placement of table groups through the worker', () => {
+  for (const placement of [
+    TablePlacement.layeredHorizontal,
+    TablePlacement.layeredVertical,
+    TablePlacement.flow,
+  ] as const) {
+    it(
+      `lands each group's members inside its box and keeps the boxes apart under ${placement}`,
+      async () => {
+        const app = createGroupedDocument();
+        const { store } = app;
+        const request = createElkLayoutRequest(store.state, placement);
+
+        const points = toTablePoints(
+          store.state,
+          request,
+          await createElkLayout(request)
+        );
+        store.dispatchSync(toPlacementActions(store.state, points));
+
+        const { collections } = store.state;
+        const boxes = ['accounts', 'sales'].map(id => ({
+          id,
+          rect: collections.tableGroupEntities[id].ui,
+        }));
+        const inside = (rect: Rect, box: Rect) =>
+          box.x <= rect.x &&
+          box.y <= rect.y &&
+          rect.x + rect.width <= box.x + box.width &&
+          rect.y + rect.height <= box.y + box.height;
+        const meets = (a: Rect, b: Rect) =>
+          a.x < b.x + b.width &&
+          b.x < a.x + a.width &&
+          a.y < b.y + b.height &&
+          b.y < a.y + a.height;
+
+        expect(points).toHaveLength(6);
+        expect(meets(boxes[0].rect, boxes[1].rect)).toBe(false);
+        for (const id of store.state.doc.tableIds) {
+          const table = collections.tableEntities[id];
+          const rect = getTableRect(store.state, table);
+          for (const box of boxes) {
+            expect(
+              table.groupId === box.id
+                ? inside(rect, box.rect)
+                : !meets(rect, box.rect)
+            ).toBe(true);
+          }
+        }
+      },
+      TIMEOUT
+    );
+  }
+
+  it(
+    'places the group a relationship reaches after the group it leaves, left to right',
+    async () => {
+      const { store } = createGroupedDocument();
+      const request = createElkLayoutRequest(
+        store.state,
+        TablePlacement.layeredHorizontal
+      );
+
+      store.dispatchSync(
+        toPlacementActions(
+          store.state,
+          toTablePoints(store.state, request, await createElkLayout(request))
+        )
+      );
+
+      const { accounts, sales } = store.state.collections.tableGroupEntities;
+      expect(sales.ui.x).toBeGreaterThan(accounts.ui.x + accounts.ui.width);
     },
     TIMEOUT
   );

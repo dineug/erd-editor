@@ -6,7 +6,7 @@ import {
   type RootState,
   type SchemaSQLOptions,
 } from '@dineug/erd-editor/peer.js';
-import { toJson } from '@dineug/erd-editor-schema';
+import { query, toJson } from '@dineug/erd-editor-schema';
 
 import { fitsInRead, MAX_READ_CHARS } from '@/tools/budget';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
@@ -22,6 +22,7 @@ import {
   toAgentSnapshot,
   toSavedSettings,
   toSnapshotScripts,
+  toTableGroupMembers,
 } from '@/tools/snapshot';
 
 export type ReadFormat = 'snapshot' | 'sql' | 'json' | 'scripts';
@@ -53,12 +54,17 @@ function toDatabase(vendor: string): number {
   return DatabaseVendorToDatabase[vendor as DatabaseVendor];
 }
 
-/** The tables erd_read gives the DDL of, by id or by name; the whole document when absent. */
-export type TableFilter = Pick<EntityIds, 'tableIds' | 'tableNames'>;
+/**
+ * The tables erd_read gives the DDL of, by id, by name or by the name of the
+ * table group they are in, all joined; the whole document when all are absent.
+ */
+export type TableFilter = Pick<EntityIds, 'tableIds' | 'tableNames'> & {
+  readonly groupNames?: readonly string[];
+};
 
 /** What each format tells an agent to do when the document is too large for one read. */
 const NARROWER: Readonly<Record<ReadFormat, string>> = {
-  sql: 'pass tableIds or tableNames for the tables the task needs, which erd_list with query or namesOnly finds',
+  sql: 'pass tableIds, tableNames or groupNames for the tables the task needs, which erd_list with query or namesOnly finds',
   snapshot:
     'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
   json: 'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
@@ -80,10 +86,55 @@ function selectTables(state: RootState, filter: TableFilter): string[] {
       `${missing.join(', ')} ${missing.length === 1 ? 'names' : 'name'} no live table; erd_list lists them`
     );
   }
-  if (!ids.length) {
-    throw refused('tableIds and tableNames name no table; pass one at least');
+  const groupNames = filter.groupNames ?? [];
+  const grouped = groupTables(state, groupNames);
+  const selected = [...new Set([...ids, ...grouped])];
+  if (!selected.length) {
+    throw refused(
+      groupNames.length
+        ? emptyGroupsMessage(groupNames)
+        : 'tableIds, tableNames and groupNames name no table; pass one at least'
+    );
   }
-  return ids;
+  return selected;
+}
+
+/** The refusal of groups that exist, every one of them, but hold no table. */
+function emptyGroupsMessage(groupNames: readonly string[]): string {
+  const names = [...new Set(groupNames)];
+  const subject =
+    names.length === 1
+      ? 'names a table group that holds'
+      : 'name table groups that hold';
+  return `${names.join(', ')} ${subject} no table; erd_set_table_group puts tables in a group`;
+}
+
+/**
+ * The tables of every live group a name matches, in any case, in document
+ * order; a name matching no group is refused as a missing table is.
+ */
+function groupTables(state: RootState, names: readonly string[]): string[] {
+  if (!names.length) return [];
+
+  const members = toTableGroupMembers(state);
+  const groups = query(state.collections)
+    .collection('tableGroupEntities')
+    .selectByIds(state.doc.tableGroupIds);
+  const wanted = new Set(names.map(name => name.toLowerCase()));
+  const matched = groups.filter(({ name }) => wanted.has(name.toLowerCase()));
+  const found = new Set(matched.map(({ name }) => name.toLowerCase()));
+  const missing = [...new Set(names)].filter(
+    name => !found.has(name.toLowerCase())
+  );
+  if (missing.length) {
+    throw new ToolError(
+      ToolErrorCode.notFound,
+      READ_TOOL,
+      `${missing.join(', ')} ${missing.length === 1 ? 'names' : 'name'} no table group; erd_list lists them`
+    );
+  }
+  const grouped = new Set(matched.flatMap(({ id }) => members.get(id) ?? []));
+  return state.doc.tableIds.filter(id => grouped.has(id));
 }
 
 /** The state with the settings its file saves, the bracket type the DDL quotes with among them. */
@@ -130,12 +181,14 @@ export function readDocument(
     );
   }
   const filtered =
-    filter?.tableIds !== undefined || filter?.tableNames !== undefined
+    filter?.tableIds !== undefined ||
+    filter?.tableNames !== undefined ||
+    filter?.groupNames !== undefined
       ? filter
       : undefined;
   if (filtered && format !== 'sql') {
     throw refused(
-      `tableIds and tableNames apply to the sql format only, not ${format}; erd_get takes them too`
+      `tableIds, tableNames and groupNames apply to the sql format only, not ${format}; erd_get takes tableIds and tableNames too`
     );
   }
 

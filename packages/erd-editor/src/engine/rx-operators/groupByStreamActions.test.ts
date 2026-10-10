@@ -132,6 +132,27 @@ describe('groupByStreamActions', () => {
     expect(emitted).toEqual([[action(PLAIN, 1)]]);
   });
 
+  it('brings an action carrying the regroup tag into the group, whatever its type', () => {
+    const DRAG = 8;
+    const source$ = new Subject<Array<AnyAction>>();
+    const emitted: Array<Array<AnyAction>> = [];
+    source$
+      .pipe(groupByStreamActions([STREAM_A], [['@@move', [STREAM_A], DRAG]]))
+      .subscribe(actions => emitted.push(actions));
+
+    const drop = { ...action(PLAIN, 2), tags: DRAG | 1 };
+    source$.next([action(STREAM_A, 1)]);
+    source$.next([drop, { ...action('plain.b', 3), tags: 1 }]);
+
+    expect(emitted).toEqual([[{ ...action('plain.b', 3), tags: 1 }]]);
+
+    vi.advanceTimersByTime(200);
+    expect(emitted).toEqual([
+      [{ ...action('plain.b', 3), tags: 1 }],
+      [action(STREAM_A, 1), drop],
+    ]);
+  });
+
   it('honours a custom buffer closing notifier operator', () => {
     const source$ = new Subject<Array<AnyAction>>();
     const emitted: Array<Array<AnyAction>> = [];

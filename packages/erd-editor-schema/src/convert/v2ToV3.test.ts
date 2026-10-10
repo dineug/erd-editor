@@ -268,6 +268,7 @@ describe('v2ToV3', () => {
       'relationshipEntities',
       'tableColumnEntities',
       'tableEntities',
+      'tableGroupEntities',
     ]);
   });
 
@@ -364,6 +365,12 @@ describe('v2ToV3', () => {
       expect(v2ToV3(schemaV2).settings.show).toBe(0);
     });
 
+    it('leaves table groups shown, since v2 has no hide bit for them', () => {
+      const { settings } = v2ToV3(createSchemaV2());
+
+      expect(settings.show & Show.hideTableGroup).toBe(0);
+    });
+
     it('maps enum-ish string values onto v3 bit values', () => {
       const { settings } = v2ToV3(createSchemaV2());
 
@@ -455,6 +462,16 @@ describe('v2ToV3', () => {
         widthComment: 110,
         color: '#ff0000',
       });
+    });
+
+    it('puts every table in no group, since v2 has no groups', () => {
+      const { doc, collections } = v2ToV3(createSchemaV2());
+
+      expect(doc.tableGroupIds).toEqual([]);
+      expect(collections.tableGroupEntities).toEqual({});
+      expect(
+        Object.values(collections.tableEntities).map(({ groupId }) => groupId)
+      ).toEqual(['', '']);
     });
 
     it('defaults a missing table color to an empty string', () => {
@@ -668,12 +685,14 @@ describe('v2ToV3', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
     expect(result.collections.tableEntities).toEqual({});
     expect(result.collections.tableColumnEntities).toEqual({});
     expect(result.collections.indexEntities).toEqual({});
     expect(result.collections.indexColumnEntities).toEqual({});
     expect(result.collections.memoEntities).toEqual({});
+    expect(result.collections.tableGroupEntities).toEqual({});
     expect(result.collections.relationshipEntities).toEqual({});
     expect(result.settings.show).toBe(
       Show.tableComment |

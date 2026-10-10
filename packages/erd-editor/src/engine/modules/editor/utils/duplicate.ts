@@ -19,6 +19,7 @@ import { addRelationshipAction } from '@/engine/modules/relationship/atom.action
 import {
   addTableAction,
   changeTableCommentAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -32,6 +33,10 @@ import {
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { bHas } from '@/utils/bit';
 import {
   ClipboardColumn,
@@ -42,18 +47,32 @@ import {
   PlacementPoint,
 } from '@/utils/table-clipboard';
 
+/**
+ * A table group a document brings, its rect where it lands and the source ids
+ * of the tables it holds, which no clipboard payload carries.
+ */
+export type CreateEntityTableGroup = {
+  sourceId: string;
+  name: string;
+  color: string;
+  tableIds: string[];
+  ui: { x: number; y: number; width: number; height: number; zIndex: number };
+};
+
 export type CreateEntityInput = {
   tables: ClipboardTable[];
   columns: ClipboardColumn[];
   memos: ClipboardMemo[];
   relationships: ClipboardRelationship[];
   indexes: ClipboardIndex[];
+  tableGroups?: CreateEntityTableGroup[];
 };
 
 export type CreateEntityActions = {
   actions: AnyAction[];
   tableIds: string[];
   memoIds: string[];
+  tableGroupIds: string[];
 };
 
 export type CreateEntityOptions = {
@@ -68,7 +87,14 @@ export type CreateEntityOptions = {
 // changeColor/memo.resize are in pushStreamHistoryMap and would land as a
 // second, debounced history command, so colour and size ride the add payload.
 export function toCreateEntityActions(
-  { tables, columns, memos, relationships, indexes }: CreateEntityInput,
+  {
+    tables,
+    columns,
+    memos,
+    relationships,
+    indexes,
+    tableGroups = [],
+  }: CreateEntityInput,
   placement: Map<string, PlacementPoint>,
   { valuesOnly = false }: CreateEntityOptions = {}
 ): CreateEntityActions {
@@ -78,6 +104,7 @@ export function toCreateEntityActions(
   };
   const tableIds: string[] = [];
   const memoIds: string[] = [];
+  const tableGroupIds: string[] = [];
   const columnBySourceId = new Map(
     columns.map(column => [column.sourceId, column])
   );
@@ -246,7 +273,35 @@ export function toCreateEntityActions(
     set(!!memo.value, changeMemoValueAction({ id: memoId, value: memo.value }));
   }
 
-  return { actions, tableIds, memoIds };
+  // A group takes new ids for itself and its members alike, and a member the
+  // input does not bring is left out of it.
+  for (const group of tableGroups) {
+    const tableGroupId = uuid25();
+    tableGroupIds.push(tableGroupId);
+
+    actions.push(
+      addTableGroupAction({
+        id: tableGroupId,
+        color: group.color,
+        ui: { ...group.ui },
+      })
+    );
+    set(
+      !!group.name,
+      changeTableGroupNameAction({ id: tableGroupId, value: group.name })
+    );
+
+    for (const sourceTableId of group.tableIds) {
+      const tableId = tableIdBySourceId.get(sourceTableId);
+      if (!tableId) continue;
+
+      actions.push(
+        changeTableGroupAction({ id: tableId, value: tableGroupId })
+      );
+    }
+  }
+
+  return { actions, tableIds, memoIds, tableGroupIds };
 }
 
 /**

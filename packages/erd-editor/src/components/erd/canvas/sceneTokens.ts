@@ -169,6 +169,27 @@ export const VIEW_CARD_GLOW_BLUR = 14;
 
 export const VIEW_CARD_GLOW_OPACITY = 0.55;
 
+/**
+ * How much of its color a table group's body shows, the canvas and the
+ * connectors over it reading through.
+ */
+export const TABLE_GROUP_FILL_OPACITY = 0.12;
+
+/** The radius a table group's box is rounded with, a table's own. */
+export const TABLE_GROUP_CORNER_RADIUS = 6;
+
+/** The room a table group's name keeps from each end of its title bar, the name editor's too. */
+export const TABLE_GROUP_TITLE_PADDING = 8;
+
+/** The weight a table group's name is drawn and edited at, a heading over the tables' own names. */
+export const TABLE_GROUP_TITLE_FONT_WEIGHT = 'bold';
+
+/**
+ * The line a table drag outlines the group its drop would join with, twice
+ * the box's own line so it reads apart from the selection.
+ */
+export const TABLE_GROUP_DROP_WIDTH = 2;
+
 /** The side of the square viewBox every icon is authored in. */
 export const ICON_VIEW_SIZE = Number(ICON_VIEW_BOX.split(' ')[2]);
 

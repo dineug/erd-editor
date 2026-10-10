@@ -143,6 +143,7 @@ const ERD_COMMANDS = [
   'Export',
   'New Table',
   'New Memo',
+  'New Table Group',
   'Zero One',
   'Zero N',
   'One Only',
@@ -261,6 +262,7 @@ describe('paletteRows without a prefix', () => {
     expect(names(rowsFor('tables'))).toEqual([
       'New Table',
       'Database',
+      'New Table Group',
       'Search tables for "tables"',
       'Search columns for "tables"',
       'Search comments & memos for "tables"',

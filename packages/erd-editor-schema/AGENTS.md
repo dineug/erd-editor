@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-07 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-10 -->
 
 # erd-editor-schema
 
@@ -38,7 +38,8 @@ Defines the persisted `.erd` / `.vuerd` document: v2 and v3 schemas, defensive p
 - **`width` / `height` are compatibility fields too**: clamped, required and round-tripped, but no entity position is bounded by them. Readers: the migration, the editor's SQL / GraphQL / DBML / AML importers (which write them) and `sortTableAction` (wraps rows at `width`); a released editor draws them as its document box.
 - **Zoom and size bounds** (`CANVAS_ZOOM_MIN` 0.1, `CANVAS_ZOOM_MAX` 1.5, `CANVAS_SIZE_MIN` 2,000, `CANVAS_SIZE_MAX` 20,000) are clamped on parse, so widening one is backward compatible and narrowing one silently rewrites saved documents. `json-schema/schema.json` repeats them.
 - **A relationship's `onDelete` / `onUpdate`** hold a `ReferentialAction`, `none` (1) by default, which writes no clause: a document saved before them loads unset, and `v3ToV2` drops them, since v2 has no slot.
-- **`Show.hideReferentialAction` (1024) reads the other way round** from every other `Show` bit: set, it hides the ON DELETE / ON UPDATE labels the editor draws on connectors, so a document saved before it, which lacks the bit, shows them (an owner decision). `defaultShow` leaves it out.
+- **`Show.hideReferentialAction` (1024) and `Show.hideTableGroup` (2048) read the other way round** from every other `Show` bit: set, the first hides the ON DELETE / ON UPDATE labels the editor draws on connectors and the second the table groups, so a document saved before either, which lacks the bit, shows them (owner decisions). `defaultShow` leaves both out.
+- **Table groups** live in `collections.tableGroupEntities` (`name`, `color`, `ui` `x` / `y` / `width` / `height` / `zIndex`, `meta`), ordered in `doc.tableGroupIds`. Membership is the table's `groupId`, `''` for none, so a table is in one group at most and a group holds no member list; a `groupId` naming no group in `doc.tableGroupIds` reads as none, a rule for the readers, since the parser keeps the id as saved. A document saved before them parses to an empty collection, empty ids and every `groupId` `''`. `toJson` writes them sparsely, as it writes `ddlScripts` (an owner decision): the collection and the ids only while either holds an entry, so also while a removed group waits for the schema GC, a `groupId` only while it is not `''`, even one naming no listed group, so a document that never had a group keeps its bytes. `v3ToV2` drops them, since v2 has no slot, and so does a release before them on its next save, its parser keeping only the keys it knows.
 - **A v3 shape change** touches the type in `v3/schema/`, the factory and `createAndMerge*` in `v3/parser/`, both `convert/` files if it must survive a v2 round trip, `migrateScroll.ts` if it moves `width`, `height`, `zoomLevel`, `scrollLeft` or `scrollTop`, and `json-schema/schema.json` by hand — nothing generates it.
 - **`selectByIds` reads `ids.length` before mapping** to register an r-html observable dependency; removing that line breaks reactivity on id-list changes.
 - `removeAll()` replaces only the query's private collection reference; replacing the parent `collections[key]` slot is the caller's job.

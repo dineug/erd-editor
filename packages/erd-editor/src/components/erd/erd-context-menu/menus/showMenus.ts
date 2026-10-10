@@ -54,6 +54,11 @@ const menus: Menu[] = [
     show: Show.hideReferentialAction,
     hides: true,
   },
+  {
+    labelKey: 'contextMenu.show.tableGroups',
+    show: Show.hideTableGroup,
+    hides: true,
+  },
 ];
 
 /** The View Option rows, each named in the reader's language and checked while it shows. */

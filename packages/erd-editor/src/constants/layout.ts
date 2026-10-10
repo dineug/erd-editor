@@ -161,6 +161,29 @@ export const MEMO_HEADER_HEIGHT =
 export const MEMO_MIN_WIDTH = 100 + MEMO_HEADER_HEIGHT;
 export const MEMO_MIN_HEIGHT = 100;
 
+/**
+ * The room a table group's box keeps around each member table on every side,
+ * and around the tables a group is made from.
+ */
+export const TABLE_GROUP_PADDING = 24;
+
+/**
+ * The bar a table group's name is drawn on along the top of its box, as tall
+ * as a table's header band, which the box's top padding clears as well.
+ */
+export const TABLE_GROUP_TITLE_HEIGHT = 28;
+
+/**
+ * The least a sash resizes a group to, which its members' padded box raises
+ * further: wide enough for a short name, tall enough for a body under the bar.
+ */
+export const TABLE_GROUP_MIN_WIDTH = 160;
+export const TABLE_GROUP_MIN_HEIGHT = TABLE_GROUP_TITLE_HEIGHT + 72;
+
+/** The group a click of the draw mode makes, without a drag: room for two tables side by side. */
+export const TABLE_GROUP_DEFAULT_WIDTH = 480;
+export const TABLE_GROUP_DEFAULT_HEIGHT = 320;
+
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_MARGIN = 20;
 

@@ -17,6 +17,7 @@ import { Show } from '@/constants/schema';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import type { Table as TableType } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
@@ -33,13 +34,15 @@ afterEach(async () => {
 
 const createTable = (
   ui: Partial<TableType['ui']> = {},
-  columnIds: string[] = []
+  columnIds: string[] = [],
+  groupId = ''
 ): TableType => ({
   id: 'table-1',
   name: 'users',
   comment: '',
   columnIds,
   seqColumnIds: [...columnIds],
+  groupId,
   ui: {
     x: 11,
     y: 22,
@@ -171,6 +174,25 @@ describe('the minimap table box', () => {
     expect(box.getAttr('fill')).toBe(THEME.tableBackground);
     expect(box.getAttr('stroke')).toBe(THEME.tableBorder);
     expect(box.getAttr('strokeWidth')).toBe(TABLE_BORDER);
+  });
+
+  it('fills the box in the color the table wears, never its group color', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'group-1',
+        color: '#3b82f6',
+        ui: { x: 0, y: 0, width: 100, height: 100, zIndex: 1 },
+      })
+    );
+    const stage = await mountTable(
+      createTable({ color: '#22c55e' }, [], 'group-1'),
+      app
+    );
+    const box = boxOf(stage);
+
+    expect(box.getAttr('fill')).toBe('#22c55e');
+    expect(box.getAttr('stroke')).toBe(THEME.tableBorder);
   });
 
   /**

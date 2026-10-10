@@ -163,16 +163,22 @@ function withoutEdges(sql: string): string {
   return sql === '' ? '' : sql.slice(1, -1);
 }
 
+/** The options a read passes, and whether the before and after scripts are written. */
+export type CreateSchemaSQLOptions = SchemaSQLOptions & {
+  /** Left out, the whole document's DDL writes them and that of some tables none. */
+  scripts?: boolean;
+};
+
 /**
  * The DDL of the document in a database, the document's own by default: the
  * header, the before script, the DROP block, the tables and the after script.
- * Given table ids, only those tables, their indexes and foreign keys, no script.
+ * Given table ids, only those tables, their indexes and foreign keys.
  */
 export function createSchemaSQL(
   state: RootState,
   database?: number,
   tableIds?: readonly string[],
-  options?: SchemaSQLOptions
+  options?: CreateSchemaSQLOptions
 ): string {
   const currentDatabase = database ? database : state.settings.database;
   const writer = WRITERS[currentDatabase];
@@ -191,9 +197,12 @@ export function createSchemaSQL(
       written,
     })
   );
-  // The scripts belong to the whole document, never to a few of its tables.
+  // The scripts belong to the whole document, so a few of its tables write
+  // them only when asked to.
   const scripts =
-    tableIds === undefined ? state.settings.ddlScripts : undefined;
+    (options?.scripts ?? tableIds === undefined)
+      ? state.settings.ddlScripts
+      : undefined;
   const before = formatScript(scripts?.before ?? '', currentDatabase);
   const after = formatScript(scripts?.after ?? '', currentDatabase);
   // A name no plain identifier writes no header, and no schema on a DROP.
@@ -217,9 +226,12 @@ export function createSchemaSQL(
   return `\n${chunks.join('\n\n')}\n`;
 }
 
-/** The names of the tables the whole document's DDL writes, in its order. */
-export function schemaSQLTables(state: RootState): string[] {
-  return toSchemaEntities(state).tables.map(table => table.name);
+/** The names of the tables the DDL writes, all or those given, in its order. */
+export function schemaSQLTables(
+  state: RootState,
+  tableIds?: readonly string[]
+): string[] {
+  return toSchemaEntities(state, tableIds).tables.map(table => table.name);
 }
 
 /**

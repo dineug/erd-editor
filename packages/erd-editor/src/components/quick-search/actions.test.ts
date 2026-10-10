@@ -45,6 +45,7 @@ import {
   Database,
   Language,
   RelationshipType,
+  Show,
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ChangeActionTypes } from '@/engine/actions';
@@ -52,6 +53,8 @@ import {
   changeOpenMapAction,
   changeViewportAction,
   drawStartRelationshipAction,
+  selectAction,
+  unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
   SelectType,
@@ -67,6 +70,7 @@ import {
   changeCanvasTypeAction,
   changeDatabaseAction,
   changeLanguageAction,
+  changeShowAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -135,6 +139,7 @@ const ERD_TOOLBOX = [
   'Export',
   'New Table',
   'New Memo',
+  'New Table Group',
   'Zero One',
   'Zero N',
   'One Only',
@@ -732,6 +737,97 @@ describe('createScopeActions / ERD commands', () => {
     expect(app.store.state.doc.memoIds).toHaveLength(1);
   });
 
+  it('arms the table group draw from New Table Group, drawn with the group icon', async () => {
+    const row = find(scope(), 'New Table Group');
+    expect(await iconOf(row)).toBe('group');
+    expect(row.shortcut).toBeUndefined();
+
+    row.perform?.(app);
+    await flush();
+
+    expect(app.store.state.editor.drawTableGroup).toBe(true);
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+  });
+
+  it('groups the selected tables from Group Selected Tables and opens the new name', async () => {
+    const users = addTable('users');
+    const orders = addTable('orders', 400);
+    addTable('loose', 0, 600);
+    app.store.dispatchSync(
+      unselectAllAction(),
+      selectAction({ [users]: SelectType.table, [orders]: SelectType.table })
+    );
+
+    const row = find(scope(), 'Group Selected Tables');
+    expect(await iconOf(row)).toBe('group');
+    expect(row.filter?.(app)).toBe(true);
+    row.perform?.(app);
+    await flush();
+
+    const [id] = app.store.state.doc.tableGroupIds;
+    const { tableEntities } = app.store.state.collections;
+    expect(tableEntities[users].groupId).toBe(id);
+    expect(tableEntities[orders].groupId).toBe(id);
+    expect(app.store.state.editor.editTableGroupId).toBe(id);
+  });
+
+  it('offers Group Selected Tables only while the selection holds a table of the document', () => {
+    const groupSelected = find(scope(), 'Group Selected Tables');
+    expect(groupSelected.filter?.(app)).toBe(false);
+
+    app.store.dispatchSync(selectAction({ ghost: SelectType.table }));
+    expect(groupSelected.filter?.(app)).toBe(false);
+
+    addTable('users');
+    expect(groupSelected.filter?.(app)).toBe(true);
+  });
+
+  it('offers neither group row off the ERD tab or while groups are hidden', () => {
+    addTable('users');
+    const rows = [
+      find(scope(), 'New Table Group'),
+      find(scope(), 'Group Selected Tables'),
+    ];
+    expect(rows.map(row => row.filter?.(app))).toEqual([true, true]);
+
+    setCanvasType(CanvasType.schemaSQL);
+    expect(rows.map(row => row.filter?.(app))).toEqual([false, false]);
+
+    setCanvasType(CanvasType.ERD);
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    expect(rows.map(row => row.filter?.(app))).toEqual([false, false]);
+  });
+
+  it('offers neither group row to a readonly editor', () => {
+    let locked = false;
+    app.store.destroy();
+    app = createTestAppContext({ getReadonly: () => locked });
+    addTable('users');
+    locked = true;
+
+    expect(find(scope(), 'New Table Group').filter?.(app)).toBe(false);
+    expect(find(scope(), 'Group Selected Tables').filter?.(app)).toBe(false);
+  });
+
+  it('keeps the English of both group rows under a translation, so a search finds them by it', () => {
+    const i18n = createI18n('ko-KR', {
+      ...en,
+      'common.newTableGroup': '새 테이블 그룹',
+      'palette.groupSelectedTables': '선택한 테이블을 그룹으로 묶기',
+    } as Messages);
+    const rows = createScopeActions(app, i18n);
+
+    expect(find(rows, '새 테이블 그룹').alias).toEqual(['New Table Group']);
+    expect(find(rows, '선택한 테이블을 그룹으로 묶기').alias).toEqual([
+      'Group Selected Tables',
+    ]);
+    expect(names(searchActions(rows, 'table group'))).toContain(
+      '새 테이블 그룹'
+    );
+  });
+
   it('offers one automatic table placement action per placement', () => {
     expect(
       find(scope(), 'Auto Layout').next?.map(action => action.name)
@@ -1262,7 +1358,12 @@ describe('createScopeActions / no focus actions', () => {
     // The toolbox and the one row the table itself is, which is the jump to it:
     // a second row minted per table would stand in this list whatever keyword
     // it carried, where the filter below only catches the one that was taken out.
-    expect(visibleNames()).toEqual([...ERD_TOOLBOX, 'users']);
+    expect(visibleNames()).toEqual([
+      ...ERD_TOOLBOX.flatMap(name =>
+        name === 'New Table Group' ? [name, 'Group Selected Tables'] : [name]
+      ),
+      'users',
+    ]);
 
     for (const canvasType of [
       CanvasType.ERD,

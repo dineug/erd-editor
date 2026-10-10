@@ -294,15 +294,9 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     getSchemaGCService()
       ?.run(toJson(store.state))
       .then(gcIds => {
-        const isChange =
-          gcIds.tableIds.length ||
-          gcIds.tableColumnIds.length ||
-          gcIds.relationshipIds.length ||
-          gcIds.indexIds.length ||
-          gcIds.indexColumnIds.length ||
-          gcIds.memoIds.length;
-
-        if (isChange) {
+        // Every list the collector returns, as the replica reads it, so a
+        // collection it starts returning needs no edit here.
+        if (Object.values(gcIds).some(ids => ids.length)) {
           procGC(store.state, gcIds);
           store.dispatchSync(validationIdsAction());
         }

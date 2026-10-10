@@ -31,12 +31,25 @@ export type SceneIconOptions = {
 };
 
 /**
- * One lucide child as a konva shape: one filled dot or path data handed over
- * verbatim. The first child also answers a press anywhere in the icon's box,
- * so no shape exists only to be hit.
+ * One lucide child as a konva shape: a stroked rounded rect, one filled dot or path data handed
+ * over verbatim. The first child also answers a press anywhere in the icon's box, so no shape
+ * exists only to be hit.
  */
 const shape = ([tag, attrs]: IconNodeChild, color: string, hit: boolean) =>
-  tag === 'circle' ? (
+  tag === 'rect' ? (
+    <k-rect
+      x={Number(attrs.x ?? 0)}
+      y={Number(attrs.y ?? 0)}
+      width={Number(attrs.width)}
+      height={Number(attrs.height)}
+      cornerRadius={Number(attrs.rx ?? 0)}
+      stroke={color}
+      strokeWidth={ICON_STROKE_WIDTH}
+      lineJoin="round"
+      listening={hit}
+      hitFunc={hit ? iconHit : undefined}
+    />
+  ) : tag === 'circle' ? (
     <k-circle
       x={Number(attrs.cx)}
       y={Number(attrs.cy)}

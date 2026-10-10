@@ -1,4 +1,4 @@
-import { pick } from 'es-toolkit';
+import { mapValues, omit, pick } from 'es-toolkit';
 
 import { v2ToV3, v3ToV2 } from '@/convert';
 import { bHas } from '@/utils/bit';
@@ -24,7 +24,7 @@ export function parser(source: string): ERDEditorSchemaV3 {
 /**
  * The document as its file holds it: each locked setting at its lock, every
  * other as it stands, the locked values left out, the save switches of older
- * releases read off the viewport, and the scripts only while one holds text.
+ * releases read off the viewport, the scripts and table groups only when held.
  */
 export function toJson(schemaV3: ERDEditorSchemaV3) {
   const source = pick(schemaV3, [
@@ -60,7 +60,38 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
     }
   });
 
-  return JSON.stringify({ ...source, settings }, null, 2);
+  return JSON.stringify(
+    { ...source, settings, ...withoutEmptyTableGroups(source) },
+    null,
+    2
+  );
+}
+
+/**
+ * The doc and collections with the table group fields written sparsely: the
+ * groups and their order while either holds an entry, a removed group's too,
+ * a groupId while not empty, so a document that never had one keeps its bytes.
+ */
+function withoutEmptyTableGroups({
+  doc,
+  collections,
+}: Pick<ERDEditorSchemaV3, 'doc' | 'collections'>) {
+  const hasGroups =
+    (doc.tableGroupIds?.length ?? 0) !== 0 ||
+    Object.keys(collections.tableGroupEntities ?? {}).length !== 0;
+  const tableEntities = mapValues(collections.tableEntities ?? {}, table =>
+    table.groupId ? table : omit(table, ['groupId'])
+  );
+
+  return hasGroups
+    ? { doc, collections: { ...collections, tableEntities } }
+    : {
+        doc: omit(doc, ['tableGroupIds']),
+        collections: {
+          ...omit(collections, ['tableGroupEntities']),
+          tableEntities,
+        },
+      };
 }
 
 export function parserV2(source: string): ERDEditorSchemaV2 {

@@ -8,6 +8,8 @@ import {
   SchemaSQLStatementsList,
   settingsActions,
   settingsActions$,
+  tableActions,
+  tableGroupActions,
 } from '@dineug/erd-editor/peer.js';
 import { toJson } from '@dineug/erd-editor-schema';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
@@ -182,13 +184,123 @@ describe('the DDL of some tables', () => {
       refusal(() =>
         readDocument(peer.state, 'sql', undefined, { tableIds: [] })
       ).message
-    ).toBe('tableIds and tableNames name no table; pass one at least');
+    ).toBe(
+      'tableIds, tableNames and groupNames name no table; pass one at least'
+    );
     expect(
       refusal(() =>
         readDocument(peer.state, 'snapshot', undefined, { tableIds: [] })
       ).message
     ).toBe(
-      'tableIds and tableNames apply to the sql format only, not snapshot; erd_get takes them too'
+      'tableIds, tableNames and groupNames apply to the sql format only, not snapshot; erd_get takes tableIds and tableNames too'
+    );
+  });
+});
+
+describe('the DDL of some table groups', () => {
+  it('holds the tables of the groups named, in any case, joined with the tables named', () => {
+    const grouped = readDocument(peer.state, 'sql', 'MySQL', {
+      groupNames: ['ACCOUNTS'],
+    });
+
+    expect(grouped).toBe(
+      readDocument(peer.state, 'sql', 'MySQL', { tableIds: [SEED.users] })
+    );
+    expect(
+      readDocument(peer.state, 'sql', 'MySQL', {
+        groupNames: ['accounts'],
+        tableNames: ['orders'],
+        tableIds: [SEED.users],
+      })
+    ).toBe(
+      readDocument(peer.state, 'sql', 'MySQL', {
+        tableIds: [SEED.users, SEED.orders],
+      })
+    );
+  });
+
+  it('leaves the before and after scripts out, as the DDL of some tables does', () => {
+    const scripted = createNamedPeer({
+      before: 'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
+    });
+    scripted.dispatch([
+      tableActions.changeTableGroupAction({ id: SEED.users, value: 'g' }),
+      tableGroupActions.addTableGroupAction({
+        id: 'g',
+        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+      }),
+      tableGroupActions.changeTableGroupNameAction({ id: 'g', value: 'auth' }),
+    ]);
+
+    const sql = readDocument(scripted.state, 'sql', 'PostgreSQL', {
+      groupNames: ['auth'],
+    });
+    expect(sql).toContain('CREATE TABLE users');
+    expect(sql).not.toContain('pgcrypto');
+    scripted.destroy();
+  });
+
+  it('refuses a name no group has, a group with no table and a format other than sql', () => {
+    expect(
+      refusal(() =>
+        readDocument(peer.state, 'sql', undefined, {
+          groupNames: ['accounts', 'billing', 'billing'],
+        })
+      )
+    ).toEqual(
+      expect.objectContaining({
+        code: ToolErrorCode.notFound,
+        message: 'billing names no table group; erd_list lists them',
+      })
+    );
+    const emptied = createSeededPeer();
+    emptied.dispatch([
+      tableActions.changeTableGroupAction({ id: SEED.users, value: '' }),
+    ]);
+    expect(
+      refusal(() =>
+        readDocument(emptied.state, 'sql', undefined, {
+          groupNames: ['accounts'],
+          tableIds: [],
+        })
+      )
+    ).toEqual(
+      expect.objectContaining({
+        code: ToolErrorCode.invalidArgs,
+        message:
+          'accounts names a table group that holds no table; erd_set_table_group puts tables in a group',
+      })
+    );
+    emptied.dispatch([
+      tableGroupActions.addTableGroupAction({
+        id: 'billing',
+        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+      }),
+      tableGroupActions.changeTableGroupNameAction({
+        id: 'billing',
+        value: 'billing',
+      }),
+    ]);
+    expect(
+      refusal(() =>
+        readDocument(emptied.state, 'sql', undefined, {
+          groupNames: ['accounts', 'billing', 'billing'],
+        })
+      ).message
+    ).toBe(
+      'accounts, billing name table groups that hold no table; erd_set_table_group puts tables in a group'
+    );
+    emptied.destroy();
+    expect(
+      refusal(() =>
+        readDocument(peer.state, 'json', undefined, { groupNames: ['x'] })
+      )
+    ).toEqual(
+      expect.objectContaining({
+        code: ToolErrorCode.invalidArgs,
+        message:
+          'tableIds, tableNames and groupNames apply to the sql format only, not json; erd_get takes tableIds and tableNames too',
+      })
     );
   });
 });
@@ -199,7 +311,10 @@ describe('a read too large for one answer', () => {
   afterAll(() => wide.destroy());
 
   it.each([
-    ['sql', /pass tableIds or tableNames for the tables the task needs/],
+    [
+      'sql',
+      /pass tableIds, tableNames or groupNames for the tables the task needs/,
+    ],
     ['snapshot', /find tables with erd_list \(query, namesOnly\)/],
     ['json', /read them with erd_get, or the sql format with tableNames$/],
   ] as const)(
@@ -411,7 +526,7 @@ describe('the before and after scripts in the DDL', () => {
 
     const error = refusal(() => readDocument(scripted.state, 'sql'));
     expect(error.code).toBe(ToolErrorCode.tooLarge);
-    expect(error.message).toMatch(/pass tableIds or tableNames/);
+    expect(error.message).toMatch(/pass tableIds, tableNames or groupNames/);
     expect(
       readDocument(scripted.state, 'sql', undefined, { tableNames: ['users'] })
     ).toContain('CREATE TABLE users');
@@ -522,14 +637,14 @@ describe('the scripts format', () => {
           readDocument(peer.state, 'scripts', undefined, {
             tableIds: [SEED.users],
           }),
-        'tableIds and tableNames apply to the sql format only, not scripts; erd_get takes them too',
+        'tableIds, tableNames and groupNames apply to the sql format only, not scripts; erd_get takes tableIds and tableNames too',
       ],
       [
         () =>
           readDocument(peer.state, 'scripts', undefined, {
             tableNames: ['users'],
           }),
-        'tableIds and tableNames apply to the sql format only, not scripts; erd_get takes them too',
+        'tableIds, tableNames and groupNames apply to the sql format only, not scripts; erd_get takes tableIds and tableNames too',
       ],
     ];
 

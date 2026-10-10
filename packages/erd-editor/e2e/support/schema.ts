@@ -48,8 +48,10 @@ export const Show = {
   columnNotNull: 128,
   relationship: 256,
   columnAlternateKey: 512,
-  /** The one bit that hides what it names: the referential action labels. */
+  /** One of the two bits that hide what they name: the referential action labels. */
   hideReferentialAction: 1024,
+  /** The other: the table groups, their boxes and the header colour they give. */
+  hideTableGroup: 2048,
 } as const;
 
 /** The editor's own default for settings.show. */
@@ -89,7 +91,21 @@ export type TableSeed = {
   y?: number;
   zIndex?: number;
   color?: string;
+  /** The table group it is in; left out of the entity when the seed leaves it out. */
+  groupId?: string;
   columns?: ColumnSeed[];
+};
+
+/** One table group; its members name it through their own groupId. */
+export type TableGroupSeed = {
+  id: string;
+  name?: string;
+  color?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  zIndex?: number;
 };
 
 export type MemoSeed = {
@@ -143,6 +159,8 @@ export type SchemaSeed = {
   memos?: MemoSeed[];
   relationships?: RelationshipSeed[];
   indexes?: IndexSeed[];
+  /** Written only when the seed holds one, as the editor writes a document without groups. */
+  tableGroups?: TableGroupSeed[];
   zoomLevel?: number;
   scrollTop?: number;
   scrollLeft?: number;
@@ -189,6 +207,8 @@ export type ErdDocument = {
     relationshipIds: string[];
     indexIds: string[];
     memoIds: string[];
+    /** Written while it or tableGroupEntities holds an entry, a removed group's too. */
+    tableGroupIds?: string[];
   };
   collections: {
     tableEntities: Record<string, TableEntity>;
@@ -197,6 +217,8 @@ export type ErdDocument = {
     indexEntities: Record<string, IndexEntity>;
     indexColumnEntities: Record<string, IndexColumnEntity>;
     memoEntities: Record<string, MemoEntity>;
+    /** Written while it or doc.tableGroupIds holds an entry, a removed group's too. */
+    tableGroupEntities?: Record<string, TableGroupEntity>;
   };
   lww?: Record<string, unknown>;
 };
@@ -215,6 +237,8 @@ export type TableEntity = {
   comment: string;
   columnIds: string[];
   seqColumnIds: string[];
+  /** The table group it is in, written while not empty, a removed group's id too. */
+  groupId?: string;
   ui: {
     x: number;
     y: number;
@@ -222,6 +246,20 @@ export type TableEntity = {
     widthName: number;
     widthComment: number;
     color: string;
+  };
+  meta: { updateAt: number; createAt: number };
+};
+
+export type TableGroupEntity = {
+  id: string;
+  name: string;
+  color: string;
+  ui: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    zIndex: number;
   };
   meta: { updateAt: number; createAt: number };
 };
@@ -418,6 +456,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         color: table.color ?? '',
       },
       meta: { ...META },
+      ...(table.groupId === undefined ? {} : { groupId: table.groupId }),
     };
 
     columns.forEach(column => {
@@ -440,6 +479,30 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       };
     });
   });
+
+  const tableGroups = seed.tableGroups ?? [];
+  const tableGroupEntities: Record<string, TableGroupEntity> = {};
+  tableGroups.forEach((group, index) => {
+    tableGroupEntities[group.id] = {
+      id: group.id,
+      name: group.name ?? '',
+      color: group.color ?? '',
+      ui: {
+        x: group.x ?? 100,
+        y: group.y ?? 100,
+        width: group.width ?? 600,
+        height: group.height ?? 400,
+        zIndex: group.zIndex ?? index + 1,
+      },
+      meta: { ...META },
+    };
+  });
+  const groups = tableGroups.length
+    ? {
+        ids: { tableGroupIds: tableGroups.map(group => group.id) },
+        entities: { tableGroupEntities },
+      }
+    : { ids: {}, entities: {} };
 
   return {
     version: '3.0.0',
@@ -470,6 +533,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       relationshipIds: relationships.map(relationship => relationship.id),
       indexIds: indexes.map(index => index.id),
       memoIds: memos.map(memo => memo.id),
+      ...groups.ids,
     },
     collections: {
       tableEntities,
@@ -478,6 +542,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       indexEntities,
       indexColumnEntities,
       memoEntities,
+      ...groups.entities,
     },
   };
 }

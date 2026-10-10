@@ -5,6 +5,7 @@ import { Open } from '@/constants/open';
 import { RelationshipType } from '@/constants/schema';
 import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
 import {
+  changeDrawTableGroupAction,
   changeHandToolAction,
   changeOpenMapAction,
   changeZenModeAction,
@@ -12,6 +13,7 @@ import {
   editMemoEndAction,
   editTableAction,
   editTableEndAction,
+  editTableGroupEndAction,
   focusMoveTableAction,
   selectAllAction,
   selectAllColumnAction,
@@ -285,7 +287,9 @@ export function useErdShortcut(ctx: Ctx) {
       // unselects. Read before the host takes the focus, whose blur ends an
       // open editor on its own.
       const endsEdit =
-        isEditingText(editor) || Boolean(editor.drawRelationship);
+        isEditingText(editor) ||
+        Boolean(editor.drawRelationship) ||
+        editor.drawTableGroup;
       ctx.host.dispatchEvent(forceFocusEvent());
 
       if (endsEdit) {
@@ -293,8 +297,10 @@ export function useErdShortcut(ctx: Ctx) {
         event.preventDefault();
         store.dispatch(
           drawEndRelationshipAction(),
+          changeDrawTableGroupAction({ value: false }),
           editTableEndAction(),
-          editMemoEndAction()
+          editMemoEndAction(),
+          editTableGroupEndAction()
         );
       } else {
         store.dispatch(drawEndRelationshipAction(), unselectAllAction$());

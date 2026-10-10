@@ -140,6 +140,26 @@ describe('erd_batch', () => {
     expect(result).not.toHaveProperty('undoable');
   });
 
+  it('names an operation that changed the document with no undo entry, as a short group move', async () => {
+    const { mcp } = await connect();
+
+    const result = await mcp.ok('erd_batch', {
+      path: DOCUMENT,
+      operations: [
+        { tool: 'erd_add_memo' },
+        {
+          tool: 'erd_move_table_group',
+          args: { groupId: SEED.group, x: 45, y: 25 },
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({ batches: 2, historyEntries: 1 });
+    expect(result.undoNote).toBe(
+      'One erd_undo reverts this batch, except operations[1] erd_move_table_group: the editor keeps no undo entry for those. historyEntries counts the editor history entries inside the batch, not erd_undo calls.'
+    );
+  });
+
   it('says when one erd_undo has nothing of the batch to revert', async () => {
     const { mcp } = await connect();
     const settings = [

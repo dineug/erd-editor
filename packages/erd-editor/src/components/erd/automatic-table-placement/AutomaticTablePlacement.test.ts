@@ -43,8 +43,10 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createI18n, type I18n } from '@/i18n/translate';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
@@ -490,6 +492,56 @@ describe('AutomaticTablePlacement', () => {
       clickButton(container, 'Apply');
 
       expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("draws a group's box where its members go in the preview, the document's own group untouched", async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users', { x: 10, y: 20 });
+      addTable(app, 't2', 'posts', { x: 410, y: 20 });
+      app.store.dispatchSync(
+        addTableGroupAction({
+          id: 'g1',
+          ui: { x: -14, y: -32, width: 900, height: 300, zIndex: 1 },
+        }),
+        changeTableGroupAction({ id: 't1', value: 'g1' }),
+        changeTableGroupAction({ id: 't2', value: 'g1' })
+      );
+      const toasts = listenToasts(app);
+      const onChange = vi.fn();
+
+      await open(app, onChange);
+      const simulation = hoisted.simulations[0];
+      const [node] = simulation.nodes();
+      node.x = 2_000;
+      node.y = 1_000;
+      simulation.on('tick').call(simulation);
+
+      const left = 2_000 - node.width / 2;
+      const top = 1_000 - node.height / 2;
+      expect(node.group.ui).toMatchObject({
+        x: left,
+        y: top,
+        width: node.width,
+        height: node.height,
+      });
+      expect(node.group).not.toBe(
+        app.store.state.collections.tableGroupEntities['g1']
+      );
+      expect(
+        app.store.state.collections.tableGroupEntities['g1'].ui
+      ).toMatchObject({ x: -14, y: -32, width: 900, height: 300 });
+
+      clickButton(await renderToast(toasts[0]), 'Apply');
+
+      const [t1, t2] = node.members.map(({ dx, dy }: any) => ({
+        x: left + dx,
+        y: top + dy,
+      }));
+      expect(onChange.mock.calls[0][0]).toEqual([
+        { id: 't1', ...t1 },
+        { id: 't2', ...t2 },
+      ]);
+      expect(t2.x - t1.x).toBeCloseTo(400, 6);
     });
 
     it('reports the positions when the simulation settles on its own', async () => {

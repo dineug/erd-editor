@@ -44,6 +44,7 @@ describe('the document list', () => {
       relationshipCount: 1,
       indexCount: 1,
       memoCount: 1,
+      tableGroupCount: 1,
     });
     expect(Object.keys(list)).toEqual([
       'settings',
@@ -51,23 +52,60 @@ describe('the document list', () => {
       'relationshipCount',
       'indexCount',
       'memoCount',
+      'tableGroupCount',
       'tables',
       'relationships',
       'indexes',
+      'tableGroups',
       'memos',
     ]);
     expect(
-      list.tables.map(({ id, name, x, y, columnCount }) => ({
+      list.tables.map(({ id, name, groupId, x, y, columnCount }) => ({
         id,
         name,
+        groupId,
         x,
         y,
         columnCount,
       }))
     ).toEqual([
-      { id: SEED.users, name: 'users', x: 100, y: 100, columnCount: 2 },
-      { id: SEED.orders, name: 'orders', x: 500, y: 100, columnCount: 3 },
-      { id: SEED.empty, name: 'empty', x: 100, y: 500, columnCount: 0 },
+      {
+        id: SEED.users,
+        name: 'users',
+        groupId: SEED.group,
+        x: 100,
+        y: 100,
+        columnCount: 2,
+      },
+      {
+        id: SEED.orders,
+        name: 'orders',
+        groupId: undefined,
+        x: 500,
+        y: 100,
+        columnCount: 3,
+      },
+      {
+        id: SEED.empty,
+        name: 'empty',
+        groupId: undefined,
+        x: 100,
+        y: 500,
+        columnCount: 0,
+      },
+    ]);
+    expect(Object.keys(list.tables[1])).not.toContain('groupId');
+    expect(list.tableGroups).toEqual([
+      {
+        id: SEED.group,
+        name: 'accounts',
+        color: '',
+        x: 40,
+        y: 20,
+        width: 560,
+        height: 300,
+        tableCount: 1,
+      },
     ]);
     expect(list.relationships).toEqual([
       {
@@ -273,5 +311,22 @@ describe('the entity details', () => {
     expect(
       toEntityDetails(peer.state, { memoIds: [SEED.memo] })
     ).not.toHaveProperty('missing');
+  });
+
+  it('gives a table group with its tables as the snapshot does, and a removed one as missing', () => {
+    const peer = seeded();
+    const snapshot = toAgentSnapshot(peer.state);
+
+    expect(
+      toEntityDetails(peer.state, { tableGroupIds: [SEED.group] })
+    ).toEqual({ tableGroups: snapshot.tableGroups });
+    expect(
+      toEntityDetails(peer.state, { tableIds: [SEED.users] }).tables![0].groupId
+    ).toBe(SEED.group);
+
+    runTool(peer, 'erd_remove_table_group', { groupId: SEED.group });
+    expect(
+      toEntityDetails(peer.state, { tableGroupIds: [SEED.group] })
+    ).toEqual({ tableGroups: [], missing: [SEED.group] });
   });
 });

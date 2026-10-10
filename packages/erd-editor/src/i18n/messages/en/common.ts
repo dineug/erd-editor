@@ -13,6 +13,7 @@ export const common = {
   'common.findAndReplace': 'Find and Replace',
   'common.newTable': 'New Table',
   'common.newMemo': 'New Memo',
+  'common.newTableGroup': 'New Table Group',
   'common.import': 'Import',
   'common.importAndAdd': 'Import and Add',
   'common.export': 'Export',

@@ -13,6 +13,7 @@ export const createTable = (value?: DeepPartial<Table>): Table =>
       comment: '',
       columnIds: [],
       seqColumnIds: [],
+      groupId: '',
       ui: {
         x: 200,
         y: 100,

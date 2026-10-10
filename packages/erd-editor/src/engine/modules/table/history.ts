@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { groupBy, head, last, pick } from 'es-toolkit';
+import { groupBy, head, isString, last, pick } from 'es-toolkit';
 
 import { PushStreamHistory, PushUndoHistory } from '@/engine/history.actions';
 
@@ -8,6 +8,7 @@ import {
   addTableAction,
   changeTableColorAction,
   changeTableCommentAction,
+  changeTableGroupAction,
   changeTableNameAction,
   moveTableAction,
   moveToTableAction,
@@ -58,6 +59,22 @@ const changeTableComment: PushUndoHistory = (
   undoActions.push(changeTableCommentAction({ id, value: table.comment }));
 };
 
+const changeTableGroup: PushUndoHistory = (
+  undoActions,
+  { payload: { id, prevValue } }: ReturnType<typeof changeTableGroupAction>,
+  { collections }
+) => {
+  const table = query(collections).collection('tableEntities').selectById(id);
+  if (!table) return;
+
+  undoActions.push(
+    changeTableGroupAction({
+      id,
+      value: isString(prevValue) ? prevValue : table.groupId,
+    })
+  );
+};
+
 const moveToTable: PushUndoHistory = (
   undoActions,
   { payload: { id } }: ReturnType<typeof moveToTableAction>,
@@ -82,6 +99,7 @@ export const tablePushUndoHistoryMap = {
   [ActionType.removeTable]: removeTable,
   [ActionType.changeTableName]: changeTableName,
   [ActionType.changeTableComment]: changeTableComment,
+  [ActionType.changeTableGroup]: changeTableGroup,
   [ActionType.moveToTable]: moveToTable,
   [ActionType.sortTable]: sortTable,
 };

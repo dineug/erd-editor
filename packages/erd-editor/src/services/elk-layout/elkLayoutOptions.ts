@@ -1,5 +1,9 @@
 import type { LayoutOptions } from 'elkjs/lib/elk-api';
 
+import {
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+} from '@/constants/layout';
 import { TablePlacement } from '@/constants/tablePlacement';
 
 /** The placements ELK answers, which is every one but the force simulation. */
@@ -28,6 +32,39 @@ export function usesPorts(placement: ElkPlacement): boolean {
 export function usesCoordinateHints(placement: ElkPlacement): boolean {
   return placement === TablePlacement.viewLayered;
 }
+
+/**
+ * Whether the placement keeps each table group's members together inside a
+ * node of the group. The views draw no group, so their preset never does.
+ */
+export function keepsTableGroups(placement: ElkPlacement): boolean {
+  return placement !== TablePlacement.viewLayered;
+}
+
+/**
+ * What a node holding children stands for: a table group, drawn round its
+ * members, or a component, the groups and tables relationships join across
+ * group borders. Left out, it is the box of the tables joined to nothing.
+ */
+export type ElkCompoundKind = 'tableGroup' | 'component';
+
+/**
+ * Room a table group's node keeps round its members, which is the box the
+ * editor draws round them: the padding, and the title bar on top as well.
+ */
+const TABLE_GROUP_NODE_OPTIONS: LayoutOptions = {
+  'elk.padding': `[top=${TABLE_GROUP_PADDING + TABLE_GROUP_TITLE_HEIGHT},left=${TABLE_GROUP_PADDING},bottom=${TABLE_GROUP_PADDING},right=${TABLE_GROUP_PADDING}]`,
+};
+
+/**
+ * A component is laid out as one, across the borders of the groups inside it,
+ * which is what lets a relationship between two groups place them; it draws
+ * nothing, so it keeps no room round what it holds.
+ */
+const COMPONENT_NODE_OPTIONS: LayoutOptions = {
+  'elk.padding': '[top=0,left=0,bottom=0,right=0]',
+  'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+};
 
 /**
  * Room left between two tables, between two layers of them, and between two
@@ -126,6 +163,28 @@ export function elkNodeLayoutOptions(
   placement: ElkPlacement
 ): LayoutOptions | null {
   return placement === TablePlacement.viewLayered ? { ...VIEW_NODE } : null;
+}
+
+/**
+ * What a node holding children is told. A table group and a component lay their
+ * children out as the root is laid out, its spacing included, which ELK would
+ * otherwise take from its own defaults; the box of unrelated tables, the ratio.
+ *
+ * @example
+ * const layoutOptions = elkCompoundLayoutOptions(placement, node.kind);
+ */
+export function elkCompoundLayoutOptions(
+  placement: ElkPlacement,
+  kind?: ElkCompoundKind
+): LayoutOptions {
+  switch (kind) {
+    case 'tableGroup':
+      return { ...elkLayoutOptions(placement), ...TABLE_GROUP_NODE_OPTIONS };
+    case 'component':
+      return { ...elkLayoutOptions(placement), ...COMPONENT_NODE_OPTIONS };
+    default:
+      return { ...GROUP_NODE_OPTIONS };
+  }
 }
 
 /**

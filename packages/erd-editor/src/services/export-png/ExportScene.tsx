@@ -7,10 +7,12 @@ import { useAppContext } from '@/components/appContext';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import RelationshipGroup from '@/components/erd/canvas/relationship-group/RelationshipGroup';
 import Table from '@/components/erd/canvas/table/Table';
+import TableGroups from '@/components/erd/canvas/table-group/TableGroups';
 import { useThemeContext } from '@/components/themeContext';
 import { Show } from '@/constants/schema';
 import type { Rect } from '@/konva/scene/metrics';
 import { bHas } from '@/utils/bit';
+import { isTableGroupShown } from '@/utils/tableGroup';
 
 export type ExportSceneProps = {
   /** The scene box the image holds, margin included, in scene units. */
@@ -24,9 +26,9 @@ type Stacked = { ui: { zIndex: number } };
 const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
- * Everything the document draws on one layer, with no culling and every table
- * in full, as at the export's zoom. The scroll and the viewport do not reach
- * it, so the whole document is held.
+ * Everything the document draws on one layer, the groups behind it all, with
+ * no culling and every table in full, as at the export's zoom. The scroll and
+ * the viewport do not reach it, so the whole document is held.
  */
 const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -73,6 +75,7 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
           height={box.height}
           fill={theme.canvasBackground}
         />
+        {isTableGroupShown(store.state) ? <TableGroups /> : null}
         {bHas(show, Show.relationship) ? (
           <RelationshipGroup relationships={relationships} />
         ) : null}

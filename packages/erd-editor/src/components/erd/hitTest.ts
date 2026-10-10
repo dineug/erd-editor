@@ -1,25 +1,44 @@
 import type { KonvaEventObject, Node as KonvaNode } from 'konva/lib/Node';
 import { type Stage, stages } from 'konva/lib/Stage';
 
+import { isMainButtonPress } from '@/utils/domEvent';
+
 /** The scene entities the erd routing tells apart from one another. */
-export type SceneEntityKind = 'table' | 'memo' | 'relationship';
+export type SceneEntityKind = 'table' | 'memo' | 'relationship' | 'tableGroup';
+
+/** The part of a table group a press landed on: its title bar, its body or a sash on its edge. */
+export type TableGroupPart = 'title' | 'body' | 'sash';
 
 export type SceneHit = {
   kind: SceneEntityKind;
   id: string;
   /** The column whose row a press inside a table landed on, absent off the rows. */
   columnId?: string;
+  /** The part of a group a press landed on, for a group alone. */
+  part?: TableGroupPart;
 };
 
 /**
- * The routing label a scene node carries as an attr. It is what the dom scene
- * spelt as a class on the element an event landed on, so only a node the
- * routing has to recognise carries one.
+ * The routing label a scene node carries as an attr, and the entity it names.
+ * It is what the dom scene spelt as a class on the element an event landed on,
+ * so only a node the routing has to recognise carries one.
  */
-const ENTITY_KINDS: readonly string[] = ['table', 'memo', 'relationship'];
+const ENTITY_KINDS = new Map<unknown, SceneEntityKind>([
+  ['table', 'table'],
+  ['memo', 'memo'],
+  ['relationship', 'relationship'],
+  ['table-group', 'tableGroup'],
+  // A group's body stands apart from the rest of it, under every group's bar,
+  // so it names its group in an id of its own.
+  ['table-group-body', 'tableGroup'],
+]);
 
-const isEntityKind = (kind: unknown): kind is SceneEntityKind =>
-  typeof kind === 'string' && ENTITY_KINDS.includes(kind);
+/** The labels the parts of a group carry, under its own. */
+const TABLE_GROUP_PARTS = new Map<unknown, TableGroupPart>([
+  ['table-group-title', 'title'],
+  ['table-group-body', 'body'],
+  ['table-group-sash', 'sash'],
+]);
 
 /** The label a column row carries, whose konva id is its column id behind a prefix. */
 const COLUMN_ROW_KIND = 'column-row';
@@ -111,7 +130,7 @@ export function trackSceneHits(stage: Stage): () => void {
  * prefixed by its kind, and a connector, which owns no id at all, holds it as
  * the second half of its name.
  */
-function entityId(node: KonvaNode, kind: SceneEntityKind): string {
+function entityId(node: KonvaNode, kind: string): string {
   const prefix = `${kind}-`;
   const id = node.id();
 
@@ -131,19 +150,24 @@ function entityId(node: KonvaNode, kind: SceneEntityKind): string {
 function entityUnder(target: KonvaNode | null): SceneHit | null {
   let node: KonvaNode | null = target;
   let columnId = '';
+  let part: TableGroupPart = 'body';
 
   while (node) {
-    const kind = node.getAttr('kind');
+    const label = node.getAttr('kind');
 
     if (
-      kind === COLUMN_ROW_KIND &&
+      label === COLUMN_ROW_KIND &&
       node.id().startsWith(COLUMN_ROW_ID_PREFIX)
     ) {
       columnId = node.id().slice(COLUMN_ROW_ID_PREFIX.length);
     }
 
-    if (isEntityKind(kind)) {
-      const id = entityId(node, kind);
+    part = TABLE_GROUP_PARTS.get(label) ?? part;
+    const kind = ENTITY_KINDS.get(label);
+
+    if (kind) {
+      const id = entityId(node, label);
+      if (kind === 'tableGroup') return { kind, id, part };
       return kind === 'table' && columnId
         ? { kind, id, columnId }
         : { kind, id };
@@ -153,6 +177,24 @@ function entityUnder(target: KonvaNode | null): SceneHit | null {
   }
 
   return null;
+}
+
+/**
+ * Whether a press over the scene belongs to what it landed on, so the canvas
+ * under it neither pans, draws a marquee nor unselects: a table, a memo, a
+ * group's title bar or sash, and any part of a group for any other button.
+ *
+ * @example
+ * const canUnselectAll = !ownsPress(sceneHit(canvas, event), event);
+ */
+export function ownsPress(
+  hit: SceneHit | null,
+  event: MouseEvent | TouchEvent
+): boolean {
+  if (hit?.kind === 'table' || hit?.kind === 'memo') return true;
+  if (hit?.kind !== 'tableGroup') return false;
+
+  return hit.part !== 'body' || !isMainButtonPress(event);
 }
 
 /**

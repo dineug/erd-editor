@@ -308,6 +308,16 @@ describe('v3ToV2', () => {
       expect(Object.values(canvas.show).some(Boolean)).toBe(false);
     });
 
+    it('drops the table group hide bit, which v2 has no field for', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.settings.show = Show.hideTableGroup;
+
+      const { canvas } = v3ToV2(schemaV3);
+
+      expect(Object.keys(canvas.show)).not.toContain('hideTableGroup');
+      expect(Object.values(canvas.show).some(Boolean)).toBe(false);
+    });
+
     it('leaves the Schema SQL scripts behind, since v2 has no slot for them', () => {
       const schemaV3 = createSchemaV3();
       schemaV3.settings.ddlScripts = {
@@ -675,6 +685,29 @@ describe('v3ToV2', () => {
           },
         },
       ]);
+    });
+  });
+
+  describe('table groups', () => {
+    it('leaves the groups and the membership behind, since v2 has no slot for them', () => {
+      const schemaV3 = createSchemaV3();
+      schemaV3.doc.tableGroupIds = ['g1'];
+      schemaV3.collections.tableGroupEntities.g1 = {
+        id: 'g1',
+        name: 'billing-group',
+        color: '#0090ff',
+        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+        meta: { updateAt: 1, createAt: 1 },
+      };
+      schemaV3.collections.tableEntities.t1.groupId = 'g1';
+
+      const result = v3ToV2(schemaV3);
+      const [t1] = result.table.tables;
+
+      expect(t1.id).toBe('t1');
+      expect(t1).not.toHaveProperty('groupId');
+      expect(JSON.stringify(result)).not.toContain('billing-group');
+      expect(JSON.stringify(result)).not.toMatch(/tableGroup|groupId/);
     });
   });
 

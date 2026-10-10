@@ -45,6 +45,13 @@ const APPEND_TYPES: readonly ActionType[] = [
   'indexColumn.changeOrderType',
 ];
 
+/** What an append adds for the table groups a document brings, with their tables. */
+const GROUP_APPEND_TYPES: readonly ActionType[] = [
+  'tableGroup.add',
+  'tableGroup.changeName',
+  'table.changeGroup',
+];
+
 /** The text an import loads, trimmed, as the element's value setter takes it. */
 const toSafeString = (value: any): string =>
   isString(value) ? value.trim() : '';
@@ -59,7 +66,8 @@ const isAppend = ({ mode }: ToolArgValues) => mode === ImportMode.append;
 const schemaTool = (
   name: string,
   type: 'sql' | 'graphql' | 'dbml' | 'aml',
-  load$: (value: string) => GeneratorAction
+  load$: (value: string) => GeneratorAction,
+  extraAppendTypes: readonly ActionType[] = []
 ): ActionTool => ({
   name,
   kind: 'generator',
@@ -68,6 +76,7 @@ const schemaTool = (
     'editor.loadJson',
     'table.sort',
     ...APPEND_TYPES,
+    ...extraAppendTypes,
   ],
   undoable: true,
   stream: false,
@@ -117,7 +126,12 @@ export const importTools: readonly ActionTool[] = [
     'graphql',
     editorActions$.loadSchemaGraphQLAction$
   ),
-  schemaTool('erd_import_dbml', 'dbml', editorActions$.loadSchemaDBMLAction$),
+  schemaTool(
+    'erd_import_dbml',
+    'dbml',
+    editorActions$.loadSchemaDBMLAction$,
+    GROUP_APPEND_TYPES
+  ),
   schemaTool('erd_import_aml', 'aml', editorActions$.loadSchemaAMLAction$),
   {
     name: 'erd_import_json',
@@ -128,6 +142,7 @@ export const importTools: readonly ActionTool[] = [
       ...APPEND_TYPES,
       'memo.add',
       'memo.changeValue',
+      ...GROUP_APPEND_TYPES,
     ],
     undoable: true,
     stream: false,

@@ -172,6 +172,7 @@ describe('getSchemaGCService', () => {
       indexIds: [],
       indexColumnIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
   });
 

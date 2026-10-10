@@ -111,16 +111,17 @@ export type Mounted = {
 };
 
 /**
- * Mounts a template into a container attached to document.body, providing
- * appContext from the container so any child that calls useAppContext
- * resolves it through the normal context event flow.
+ * Mounts a template into a container appended to the parent, document.body by
+ * default, providing appContext from the container so any child that calls
+ * useAppContext resolves it through the normal context event flow.
  */
 export function mount(
   template: DOMTemplateLiterals,
-  app: AppContext = createTestAppContext()
+  app: AppContext = createTestAppContext(),
+  parent: ParentNode = document.body
 ): Mounted {
   const container = document.createElement('div');
-  document.body.append(container);
+  parent.append(container);
 
   // useProvider takes a bare HTMLElement at runtime but types only a component
   // context, hence the cast; it is r-html's, not a React hook.

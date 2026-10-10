@@ -12,13 +12,17 @@ import {
 } from '@/__test-utils__/index';
 import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
-import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
+import {
+  hasEntityDragTravelled,
+  isEntityDragActive,
+} from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import {
   sceneSourceContext,
   useSceneSource,
 } from '@/components/sceneSourceContext';
+import { CLICK_DRAG_MIN_MOVE } from '@/constants/layout';
 import { RelationshipType } from '@/constants/schema';
 import {
   drawStartAddRelationshipAction,
@@ -33,8 +37,10 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import {
@@ -283,6 +289,65 @@ describe('useMoveEntity', () => {
       y: 20 + 120,
     });
     expect(pointOf('t1')).toEqual(before);
+  });
+
+  /**
+   * A peer can put a table in a selected group, or take one out, while the
+   * drag runs: the drag carries the tables its first step did, so its buffered
+   * steps sum under one table list, here, on every peer and in the undo.
+   */
+  it('carries the tables its first step carried to the drop, a table joining a selected group midway left standing', async () => {
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 800, y: 100, width: 600, height: 400, zIndex: 1 },
+      }),
+      addTableAction({ id: 't2', ui: { x: 900, y: 200, zIndex: 3 } }),
+      addTableAction({ id: 't3', ui: { x: 300, y: 700, zIndex: 4 } }),
+      changeTableGroupAction({ id: 't2', value: 'g1' }),
+      selectAction({ t1: SelectType.table, g1: SelectType.tableGroup })
+    );
+    const before = { t1: pointOf('t1'), t2: pointOf('t2'), t3: pointOf('t3') };
+
+    api.onMoveStart(press());
+    movePointer(100, 0);
+    await flush();
+    app.store.dispatchSync(changeTableGroupAction({ id: 't3', value: 'g1' }));
+    movePointer(160, 0);
+    await flush();
+
+    expect(pointOf('t1').x).toBe(before.t1.x + 160);
+    expect(pointOf('t2').x).toBe(before.t2.x + 160);
+    expect(pointOf('t3')).toEqual(before.t3);
+  });
+
+  it('judges the drop of a drag past the click distance alone, a tremor of the hand putting no table in a group', async () => {
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 1200, height: 900, zIndex: 1 },
+      })
+    );
+
+    api.onMoveStart(press());
+    movePointer(CLICK_DRAG_MIN_MOVE - 2, 1);
+    await flush();
+    expect(isEntityDragActive(app.store.state)).toBe(true);
+    expect(hasEntityDragTravelled(app.store.state)).toBe(false);
+    releasePointer();
+    await flush();
+
+    expect(app.store.state.collections.tableEntities.t1.groupId).toBe('');
+
+    api.onMoveStart(press());
+    movePointer(CLICK_DRAG_MIN_MOVE, 0);
+    await flush();
+    expect(hasEntityDragTravelled(app.store.state)).toBe(true);
+    releasePointer();
+    await flush();
+
+    expect(app.store.state.collections.tableEntities.t1.groupId).toBe('g1');
+    expect(hasEntityDragTravelled(app.store.state)).toBe(false);
   });
 
   it('leaves an entity the selection never held where it stands', async () => {

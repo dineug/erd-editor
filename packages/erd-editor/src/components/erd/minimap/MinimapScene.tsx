@@ -5,15 +5,18 @@ import { FC, repeat } from '@dineug/r-html';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
+import { createTableGroupMemberLists } from '@/components/erd/canvas/table-group/tableGroupBox';
 import Memo from '@/components/erd/minimap/memo/Memo';
 import {
   getMinimapLayout,
   toMinimapPoint,
 } from '@/components/erd/minimap/minimapGeometry';
 import Table from '@/components/erd/minimap/table/Table';
+import TableGroup from '@/components/erd/minimap/table-group/TableGroup';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { renderKonva } from '@/konva/host';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
+import { isTableGroupShown } from '@/utils/tableGroup';
 
 export type MinimapSceneProps = {};
 
@@ -24,11 +27,12 @@ const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 /**
  * The whole scene on one layer, with no culling: a thumbnail that dropped
  * what is off screen would stop being a map of where the rest of it is. Boxes
- * only, because a connector between two of them is noise at this size.
+ * only, the groups behind, because a connector between two is noise at this size.
  */
 const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const memberLists = createTableGroupMemberLists();
 
   return () => {
     const { store } = app.value;
@@ -36,8 +40,18 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
     const source = sourceRef.value;
     // The document's two lists read directly, as the content rect reads them:
     // the relationships getVisibleIds carries would be a dependency for nothing.
-    const { tableIds, memoIds } =
+    const { tableIds, memoIds, tableGroupIds } =
       source === 'document' ? doc : getVisibleIds(store.state, source);
+
+    const groups =
+      tableGroupIds.length && isTableGroupShown(store.state)
+        ? query(collections)
+            .collection('tableGroupEntities')
+            .selectByIds(tableGroupIds)
+            .sort(byZIndex)
+        : [];
+    // One walk over the tables for every group's members, and none with no group.
+    const membersOf = groups.length ? memberLists(store.state) : () => [];
 
     const tables = query(collections)
       .collection('tableEntities')
@@ -64,6 +78,17 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
         x={place.x}
         y={place.y}
       >
+        {repeat(
+          groups,
+          group => group.id,
+          group => (
+            <TableGroup
+              group={group}
+              members={membersOf(group.id)}
+              ratio={layout.ratio}
+            />
+          )
+        )}
         {repeat(
           tables,
           table => table.id,

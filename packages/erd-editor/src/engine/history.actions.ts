@@ -19,6 +19,10 @@ import {
   tablePushUndoHistoryMap,
 } from '@/engine/modules/table/history';
 import { tableColumnPushUndoHistoryMap } from '@/engine/modules/table-column/history';
+import {
+  tableGroupPushStreamHistoryMap,
+  tableGroupPushUndoHistoryMap,
+} from '@/engine/modules/table-group/history';
 import { RootState } from '@/engine/state';
 import { Store } from '@/engine/store';
 import { safeCallback } from '@/utils/safeCallback';
@@ -44,12 +48,14 @@ export const pushUndoHistoryMap: Record<string, PushUndoHistory> = {
   ...editorPushUndoHistoryMap,
   ...indexPushUndoHistoryMap,
   ...indexColumnPushUndoHistoryMap,
+  ...tableGroupPushUndoHistoryMap,
 };
 
 export const pushStreamHistoryMap: Record<string, PushStreamHistory> = {
   ...tablePushStreamHistoryMap,
   ...memoPushStreamHistoryMap,
   ...settingsPushStreamHistoryMap,
+  ...tableGroupPushStreamHistoryMap,
 };
 
 function push(store: Store, history: History, actions: AnyAction[]) {

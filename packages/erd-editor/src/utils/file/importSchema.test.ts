@@ -19,7 +19,7 @@ import { AppContext } from '@/components/appContext';
 import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType, Database, Language } from '@/constants/schema';
+import { CanvasType, Database, Language, Show } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeViewportAction,
@@ -29,7 +29,10 @@ import {
   loadJsonAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  loadJsonAction$,
+  moveAllAction$,
+} from '@/engine/modules/editor/generator.actions';
 import {
   SelectType,
   ViewKind,
@@ -46,6 +49,7 @@ import {
   changeDatabaseAction,
   changeDatabaseNameAction,
   changeLanguageAction,
+  changeShowAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -53,11 +57,13 @@ import {
   changeTableNameAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { dropTablesIntoGroupsAction$ } from '@/engine/modules/table-group/generator.actions';
 import type { RxStoreOptions } from '@/engine/rx-store';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { getTableRect } from '@/konva/scene/metrics';
+import { getTableRect, unionRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
+import { flattenElkNodes } from '@/services/elk-layout/elkGraph';
 import {
   appendSchema,
   appendSchemaJSON,
@@ -65,6 +71,7 @@ import {
   importSchema,
   importSchemaPlaced,
 } from '@/utils/file/importSchema';
+import { padRect } from '@/utils/tableGroup';
 
 type Layout = (
   request: ElkLayoutRequest,
@@ -126,6 +133,25 @@ CREATE TABLE users (id INT NOT NULL);
 CREATE TABLE posts (id INT NOT NULL);
 `;
 
+/** FAN_SQL's fan in DBML, its parent and one child in a table group. */
+const FAN_DBML = `
+Table users {
+  id int [pk, not null]
+}
+Table posts {
+  id int [pk, not null]
+  user_id int [ref: > users.id]
+}
+Table photos {
+  id int [pk, not null]
+  user_id int [ref: > users.id]
+}
+TableGroup accounts [color: #3498db] {
+  users
+  posts
+}
+`;
+
 type Toast = { message: DOMTemplateLiterals; close?: Promise<void> };
 
 let toastContainer: Mounted | null = null;
@@ -153,6 +179,28 @@ function cornerOf(app: AppContext, name: string) {
   );
   if (!table) throw new Error(`table not found: ${name}`);
   return { x: table.ui.x, y: table.ui.y };
+}
+
+/** The first group the document lists. */
+function groupOf(app: AppContext) {
+  const { doc, collections } = app.store.state;
+  return collections.tableGroupEntities[doc.tableGroupIds[0]];
+}
+
+function groupRect(app: AppContext) {
+  const { x, y, width, height } = groupOf(app).ui;
+  return { x, y, width, height };
+}
+
+/** The box a group takes round the tables named: their bounds and the padding. */
+function membersBox(app: AppContext, names: string[]) {
+  const { state } = app.store;
+  return padRect(
+    Object.values(state.collections.tableEntities)
+      .filter(table => names.includes(table.name))
+      .map(table => getTableRect(state, table))
+      .reduce(unionRect)
+  );
 }
 
 /** The batches that reach the document, past the history's own bookkeeping. */
@@ -312,6 +360,15 @@ describe('importSchema', () => {
 
     expect(tableNames(app)).toEqual([name]);
   });
+
+  it('wraps a DBML table group round its members where the grid puts them', () => {
+    const app = createApp();
+
+    importSchema(app, 'dbml', FAN_DBML);
+
+    expect(groupOf(app)).toMatchObject({ name: 'accounts', color: '#3498db' });
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+  });
 });
 
 describe('importSchemaPlaced', () => {
@@ -438,6 +495,38 @@ describe('importSchemaPlaced', () => {
     expect(cornerOf(app, 'users').y).toBe(TABLE_SORT_START);
     expect(cornerOf(app, 'posts').y).toBe(TABLE_SORT_START);
     expect(toasts).toEqual([]);
+  });
+
+  it('wraps a group round where Flow put its members, its box at the corner the grid starts at', async () => {
+    const app = createApp();
+    hoisted.elkLayout = async ({ nodes }) =>
+      flattenElkNodes(nodes).map((node, index) => ({
+        id: node.id,
+        x: 400,
+        y: 300 + index * 1000,
+      }));
+
+    await importSchemaPlaced(app, 'dbml', FAN_DBML);
+
+    const { id } = groupOf(app);
+    expect(
+      hoisted.requests[0].nodes.some(({ children }) =>
+        children?.some(child => child.id === id)
+      )
+    ).toBe(true);
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+    expect(groupRect(app)).toMatchObject({
+      x: TABLE_SORT_START,
+      y: TABLE_SORT_START,
+    });
+  });
+
+  it('wraps a group round its members in the grid when no layout comes back', async () => {
+    const app = createApp();
+
+    await importSchemaPlaced(app, 'dbml', FAN_DBML);
+
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
   });
 
   it('lands the grid at once when the slow toast is cancelled', async () => {
@@ -662,6 +751,70 @@ describe('appendSchema', () => {
     expect(settings.databaseName).toBe('kept');
   });
 
+  it('adds a DBML table group round its members where the grid puts them, below the diagram', () => {
+    const app = createScreenApp();
+    const corner = appendCorner(app);
+
+    appendSchema(app, 'dbml', FAN_DBML);
+
+    expect(groupOf(app)).toMatchObject({ name: 'accounts', color: '#3498db' });
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+    expect(groupRect(app).y).toBe(corner.y);
+    expect(cornerOf(app, 'old')).toEqual({ x: 900, y: 900 });
+  });
+
+  /**
+   * A drop judges each selected table no selected group carries, against the
+   * boxes without it: a group left behind unselected would lose every member
+   * the moment its block was dragged clear of its stored rect.
+   */
+  it('selects the groups it adds beside their tables, so a drag of the block keeps every membership', () => {
+    const app = createScreenApp();
+
+    appendSchema(app, 'dbml', FAN_DBML);
+    const { id } = groupOf(app);
+    const { x } = groupRect(app);
+
+    expect(app.store.state.editor.selectedMap[id]).toBe(SelectType.tableGroup);
+    expect(selectedNames(app)).toEqual(['photos', 'posts', 'users']);
+
+    for (let step = 0; step < 10; step++) {
+      app.store.dispatchSync(moveAllAction$(150, 0));
+    }
+    app.store.dispatchSync(dropTablesIntoGroupsAction$());
+
+    const members = Object.values(app.store.state.collections.tableEntities)
+      .filter(table => table.groupId === id)
+      .map(table => table.name)
+      .sort();
+    expect(members).toEqual(['posts', 'users']);
+    expect(groupRect(app).x).toBe(x + 1500);
+  });
+
+  it('leaves the groups it adds unselected while groups are hidden, whose drop judges none', () => {
+    const app = createScreenApp();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+    appendSchema(app, 'dbml', FAN_DBML);
+    const { id } = groupOf(app);
+
+    expect(app.store.state.editor.selectedMap[id]).toBeUndefined();
+    expect(selectedNames(app)).toEqual(['photos', 'posts', 'users']);
+
+    for (let step = 0; step < 10; step++) {
+      app.store.dispatchSync(moveAllAction$(150, 0));
+    }
+    app.store.dispatchSync(dropTablesIntoGroupsAction$());
+
+    const members = Object.values(app.store.state.collections.tableEntities)
+      .filter(table => table.groupId === id)
+      .map(table => table.name)
+      .sort();
+    expect(members).toEqual(['posts', 'users']);
+  });
+
   it('takes the tables, the selection and the scroll back on a single undo', () => {
     const app = createScreenApp();
     const { originX, originY } = app.store.state.settings;
@@ -842,6 +995,17 @@ describe('appendSchemaPlaced', () => {
     ]);
     expect(cornerOf(app, 'old')).toEqual({ x: 900, y: 900 });
     expect(selectedNames(app)).toEqual(['photos', 'posts', 'users']);
+  });
+
+  it('adds a DBML table group round where Flow put its members, its box at the corner of the block', async () => {
+    const app = createScreenApp();
+    const corner = appendCorner(app);
+    hoisted.elkLayout = columnLayout;
+
+    await appendSchemaPlaced(app, 'dbml', FAN_DBML);
+
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+    expect(groupRect(app)).toMatchObject(corner);
   });
 
   it('reads the diagram as it lands, so a table moved meanwhile is cleared all the same', async () => {

@@ -34,6 +34,7 @@ describe('schema-dbml-parser/parser', () => {
     expect(parse('')).toEqual({
       tables: [],
       refs: [],
+      tableGroups: [],
       enums: {},
       skipped: [],
     });
@@ -615,10 +616,177 @@ Table t {
     });
   });
 
+  describe('table groups', () => {
+    it('reads the name, the color and one table per line', () => {
+      expect(
+        parse(`TableGroup billing [color: #3498DB] {
+  invoices
+  payments
+}`).tableGroups
+      ).toEqual([
+        {
+          name: 'billing',
+          color: '#3498DB',
+          tables: [
+            { schemaName: '', tableName: 'invoices' },
+            { schemaName: '', tableName: 'payments' },
+          ],
+        },
+      ]);
+    });
+
+    it.each(['tablegroup', 'TABLEGROUP', 'tableGroup'])(
+      'reads the keyword %s in any letter case',
+      keyword => {
+        expect(parse(`${keyword} g {\n  a\n}`).tableGroups).toHaveLength(1);
+      }
+    );
+
+    it('reads a quoted name and schema-qualified, quoted members', () => {
+      const [group] = parse(`TableGroup "core tables" {
+  sales.orders
+  "sales"."order items"
+  "users"
+}`).tableGroups;
+
+      expect(group.name).toBe('core tables');
+      expect(group.tables).toEqual([
+        { schemaName: 'sales', tableName: 'orders' },
+        { schemaName: 'sales', tableName: 'order items' },
+        { schemaName: '', tableName: 'users' },
+      ]);
+    });
+
+    it('reads a group written on one line', () => {
+      expect(parse('TableGroup g { a }').tableGroups[0].tables).toEqual([
+        { schemaName: '', tableName: 'a' },
+      ]);
+    });
+
+    it('reads the last part of a schema-qualified group name, which DBML refuses', () => {
+      expect(parse('TableGroup s.g { a }').tableGroups[0].name).toBe('g');
+    });
+
+    it('reads a group with no name as an empty name', () => {
+      expect(parse('TableGroup { a }').tableGroups[0]).toMatchObject({
+        name: '',
+        tables: [{ schemaName: '', tableName: 'a' }],
+      });
+    });
+
+    it('reads the first name of a line naming two, which DBML refuses', () => {
+      expect(
+        parse('TableGroup g {\n  a b\n  c\n}').tableGroups[0].tables
+      ).toEqual([
+        { schemaName: '', tableName: 'a' },
+        { schemaName: '', tableName: 'c' },
+      ]);
+    });
+
+    it('keeps every member line, a repeated one too, for convert to resolve', () => {
+      expect(
+        parse('TableGroup g {\n  a\n  a\n}').tableGroups[0].tables
+      ).toHaveLength(2);
+    });
+
+    it('reads past comments and lines it cannot read', () => {
+      expect(
+        parse(`TableGroup g {
+  // the first
+  a /* inline */
+  !!
+  b
+}`).tableGroups[0].tables.map(({ tableName }) => tableName)
+      ).toEqual(['a', 'b']);
+    });
+
+    it.each([
+      ['#abc', '#abc'],
+      ['#3498db', '#3498db'],
+      ['red', ''],
+      ['#3498DBAA', ''],
+      ["'#3498DB'", ''],
+      ['#3498 DB', ''],
+    ])('reads the color %s as %j', (color, expected) => {
+      expect(
+        parse(`TableGroup g [color: ${color}] { a }`).tableGroups[0].color
+      ).toBe(expected);
+    });
+
+    it('records nothing skipped for a group of a name, a color and tables', () => {
+      expect(parse('TableGroup g [color: #abc] {\n  a\n}').skipped).toEqual([]);
+    });
+
+    it('records nothing for a setting with no key', () => {
+      const model = parse("TableGroup g ['loose'] { a }");
+
+      expect(model.skipped).toEqual([]);
+      expect(model.tableGroups[0].tables).toHaveLength(1);
+    });
+
+    it('drops the note setting and every other setting, recording each kind once', () => {
+      const model =
+        parse(`TableGroup g1 [note: 'text', anykey: "v", color: #abc] { a }
+TableGroup g2 [Note: 'more', anykey: 'w'] { b }`);
+
+      expect(model.skipped).toEqual(['tablegroup note', 'tablegroup anykey']);
+      expect(model.tableGroups.map(({ color }) => color)).toEqual(['#abc', '']);
+    });
+
+    it.each([
+      ['a note entry', "Note: 'inner'"],
+      ['a note block', "Note {\n    'inner'\n  }"],
+      ['a triple-quoted note', "note: '''\n    inner\n  '''"],
+    ])('drops %s, which names no table', (_, note) => {
+      const model = parse(`TableGroup g {
+  a
+  ${note}
+  b
+}`);
+
+      expect(
+        model.tableGroups[0].tables.map(({ tableName }) => tableName)
+      ).toEqual(['a', 'b']);
+      expect(model.skipped).toEqual(['tablegroup note']);
+    });
+
+    it('reads a table named note as a member', () => {
+      expect(parse('TableGroup g {\n  note\n}').tableGroups[0].tables).toEqual([
+        { schemaName: '', tableName: 'note' },
+      ]);
+    });
+
+    it('reads an empty group as one with no table', () => {
+      expect(parse('TableGroup g {\n}').tableGroups[0].tables).toEqual([]);
+    });
+
+    it('reads a group with no body and the table after it', () => {
+      const model = parse('TableGroup g\nTable t { a int }');
+
+      expect(model.tableGroups).toEqual([{ name: 'g', color: '', tables: [] }]);
+      expect(model.tables.map(({ name }) => name)).toEqual(['t']);
+    });
+
+    it('reads a group whose body never closes', () => {
+      expect(parse('TableGroup g {\n  a').tableGroups[0].tables).toEqual([
+        { schemaName: '', tableName: 'a' },
+      ]);
+    });
+
+    it('keeps reading the tables after a group', () => {
+      const model = parse(`TableGroup g {
+  t
+}
+Table t { a int }`);
+
+      expect(model.tables).toHaveLength(1);
+      expect(model.tableGroups).toHaveLength(1);
+    });
+  });
+
   describe('elements read and discarded', () => {
     it.each([
       ['project', "Project p {\n  database_type: 'PostgreSQL'\n}"],
-      ['tablegroup', 'TableGroup g {\n  a\n}'],
       ['note', "Note sticky {\n  'content'\n}"],
       ['unknown', 'unknown thing {\n}'],
     ])('records %s and keeps reading', (kind, source) => {
@@ -631,9 +799,9 @@ Table t { a int }`);
 
     it('records each kind once', () => {
       expect(
-        parse(`TableGroup g1 { a }
-TableGroup g2 { b }`).skipped
-      ).toEqual(['tablegroup']);
+        parse(`Note n1 { 'a' }
+Note n2 { 'b' }`).skipped
+      ).toEqual(['note']);
     });
 
     it('skips a checks block inside a table', () => {

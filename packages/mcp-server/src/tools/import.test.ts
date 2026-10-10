@@ -1,4 +1,5 @@
 import {
+  getTablesGroupRect,
   LockSettingType,
   type RootState,
   settingsActions,
@@ -233,6 +234,52 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
   });
 });
 
+describe('a DBML TableGroup', () => {
+  it.each(['replace', 'append'] as const)(
+    'erd_import_dbml with mode %s makes a TableGroup a table group round its tables on both sides',
+    async mode => {
+      const session = open();
+      await quiet();
+      const { agent, other } = session;
+      const value = `Table accounts {
+  id int [pk]
+}
+Table invoices {
+  id int [pk]
+  account_id int [ref: > accounts.id]
+}
+Table notes {
+  id int [pk]
+}
+TableGroup billing [color: #3498db, note: 'dropped'] {
+  accounts
+  invoices
+}`;
+
+      const run = runTool(agent, 'erd_import_dbml', { value, mode });
+      await quiet();
+
+      const { doc, collections } = agent.state;
+      const groupId = doc.tableGroupIds.at(-1)!;
+      const group = collections.tableGroupEntities[groupId];
+      const memberIds = doc.tableIds.filter(
+        id => collections.tableEntities[id].groupId === groupId
+      );
+      const { x, y, width, height } = group.ui;
+      expect(run.mismatch).toBeUndefined();
+      expect(group).toMatchObject({ name: 'billing', color: '#3498db' });
+      expect(
+        memberIds.map(id => collections.tableEntities[id].name).sort()
+      ).toEqual(['accounts', 'invoices']);
+      expect({ x, y, width, height }).toEqual(
+        getTablesGroupRect(agent.state, memberIds)
+      );
+      expect(doc.tableGroupIds).toHaveLength(mode === 'append' ? 2 : 1);
+      expect(comparable(other.value)).toEqual(comparable(agent.value));
+    }
+  );
+});
+
 describe('an import with mode append adds to the document on both sides', () => {
   const SEED_NAMES = ['users', 'orders', 'empty'];
 
@@ -282,11 +329,12 @@ describe('an import with mode append adds to the document on both sides', () => 
     expect(session.other.state.settings.databaseName).toBe('shop');
   });
 
-  it('lays what it adds out below every table and memo the seed holds', async () => {
+  it('lays what it adds out below every table and memo the seed holds, from the left edge of its group', async () => {
     const session = open();
     await quiet();
     const { agent } = session;
-    const { tableEntities, memoEntities } = agent.state.collections;
+    const { tableEntities, memoEntities, tableGroupEntities } =
+      agent.state.collections;
     const lowest = Math.max(
       ...Object.values(tableEntities).map(({ ui }) => ui.y),
       ...Object.values(memoEntities).map(({ ui }) => ui.y)
@@ -297,7 +345,7 @@ describe('an import with mode append adds to the document on both sides', () => 
     const added =
       agent.state.collections.tableEntities[agent.state.doc.tableIds[3]];
     expect(added.ui.y).toBeGreaterThan(lowest);
-    expect(added.ui.x).toBe(100);
+    expect(added.ui.x).toBe(tableGroupEntities[SEED.group].ui.x);
   });
 
   it('takes the append away on both sides with one undo', async () => {

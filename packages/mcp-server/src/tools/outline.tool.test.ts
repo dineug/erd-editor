@@ -138,7 +138,9 @@ describe('a schema of hundreds of tables through the server', () => {
 
     expect(refused.isError).toBe(true);
     expect(refused.json.error.code).toBe('tooLarge');
-    expect(refused.json.error.message).toMatch(/pass tableIds or tableNames/);
+    expect(refused.json.error.message).toMatch(
+      /pass tableIds, tableNames or groupNames/
+    );
   });
 });
 
@@ -176,7 +178,7 @@ describe('erd_get', () => {
         error: {
           code: 'invalidArgs',
           message:
-            'name at least one entity in tableIds, tableNames, relationshipIds, indexIds, memoIds; erd_list lists them',
+            'name at least one entity in tableIds, tableNames, relationshipIds, indexIds, memoIds, tableGroupIds; erd_list lists them',
         },
       });
     }

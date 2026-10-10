@@ -11,6 +11,7 @@ export function procGC(
     indexIds,
     indexColumnIds,
     memoIds,
+    tableGroupIds,
   }: GCIds
 ) {
   query(collections).collection('tableEntities').removeMany(tableIds);
@@ -25,4 +26,5 @@ export function procGC(
     .collection('indexColumnEntities')
     .removeMany(indexColumnIds);
   query(collections).collection('memoEntities').removeMany(memoIds);
+  query(collections).collection('tableGroupEntities').removeMany(tableGroupIds);
 }

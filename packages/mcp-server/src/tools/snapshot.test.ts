@@ -10,6 +10,8 @@ import {
   type PeerStore,
   settingsActions,
   settingsActions$,
+  tableActions,
+  tableGroupActions,
 } from '@dineug/erd-editor/peer.js';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
 
@@ -40,6 +42,7 @@ describe('the agent snapshot', () => {
       name: 'orders',
       comment: '',
       color: '',
+      groupId: '',
       x: 500,
       y: 100,
       zIndex: 3,
@@ -130,6 +133,7 @@ describe('the agent snapshot', () => {
         relationship: true,
         columnAlternateKey: false,
         hideReferentialAction: false,
+        hideTableGroup: false,
       },
       maxWidthComment: -1,
       // The seed starts as a new document, every setting locked.
@@ -241,12 +245,67 @@ describe('the agent snapshot', () => {
 
   it('holds nothing for a document with no entity', () => {
     const empty = createPeerStore({ nickname: 'agent', presence: false });
-    const { tables, relationships, indexes, memos } = toAgentSnapshot(
-      empty.state
-    );
+    const { tables, relationships, indexes, memos, tableGroups } =
+      toAgentSnapshot(empty.state);
 
-    expect([tables, relationships, indexes, memos]).toEqual([[], [], [], []]);
+    expect([tables, relationships, indexes, memos, tableGroups]).toEqual([
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
     empty.destroy();
+  });
+});
+
+describe('the table groups a snapshot lists', () => {
+  it('gives each group its stored rect and its tables, and each table its group', () => {
+    const snapshot = toAgentSnapshot(peer.state);
+
+    expect(snapshot.tableGroups).toEqual([
+      {
+        id: SEED.group,
+        name: 'accounts',
+        color: '',
+        x: 40,
+        y: 20,
+        width: 560,
+        height: 300,
+        tableIds: [SEED.users],
+      },
+    ]);
+    expect(snapshot.tables.map(({ id, groupId }) => [id, groupId])).toEqual([
+      [SEED.users, SEED.group],
+      [SEED.orders, ''],
+      [SEED.empty, ''],
+    ]);
+  });
+
+  it('reads a groupId naming no live group as none, a removed group dropped', () => {
+    const other = createSeededPeer();
+    other.dispatch([
+      tableActions.changeTableGroupAction({ id: SEED.orders, value: 'ghost' }),
+      tableGroupActions.removeTableGroupAction({ id: SEED.group }),
+    ]);
+    const snapshot = toAgentSnapshot(other.state);
+
+    expect(
+      other.state.collections.tableGroupEntities[SEED.group]
+    ).toBeDefined();
+    expect(snapshot.tableGroups).toEqual([]);
+    expect(snapshot.tables.map(({ groupId }) => groupId)).toEqual(['', '', '']);
+
+    other.destroy();
+  });
+
+  it('hands out a copy of the tables a group holds', () => {
+    const copy = toAgentSnapshot(peer.state);
+    copy.tableGroups[0].tableIds.push('intruder');
+
+    expect(toAgentSnapshot(peer.state).tableGroups[0].tableIds).toEqual([
+      SEED.users,
+    ]);
   });
 });
 

@@ -34,11 +34,14 @@ import {
   changeColumnNotNullAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { resizeTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
 import { nextPoint, nextZIndex } from '@/utils';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { getShowColumnOrder } from '@/utils/table-clipboard';
+import { getTableGroupId } from '@/utils/tableGroup';
 
 import { ActionType } from './actions';
 import {
@@ -403,9 +406,9 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
   };
 
 /**
- * Runs the engine's sort once, on copies of the live tables, and places each
- * table at the point it found. A replayed table.sort measures each replica's
- * own text, so only the placed points come out the same everywhere.
+ * Runs the engine's sort on copies of the live tables and groups, then places
+ * each table and each group with members where it found them. A replayed
+ * table.sort measures each replica's own text; placed points agree everywhere.
  */
 export const sortTablesToMoveAction$ = (): GeneratorAction =>
   function* (state, context) {
@@ -414,22 +417,39 @@ export const sortTablesToMoveAction$ = (): GeneratorAction =>
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
       .map(table => ({ ...table, ui: { ...table.ui } }));
+    const groups = query(collections)
+      .collection('tableGroupEntities')
+      .selectByIds(doc.tableGroupIds)
+      .map(group => ({ ...group, ui: { ...group.ui } }));
+    const sorted: RootState = {
+      ...state,
+      collections: {
+        ...collections,
+        tableEntities: Object.fromEntries(
+          copies.map(table => [table.id, table])
+        ),
+        tableGroupEntities: Object.fromEntries(
+          groups.map(group => [group.id, group])
+        ),
+      },
+    };
 
     tableReducers[ActionType.sortTable](
-      {
-        ...state,
-        collections: {
-          ...collections,
-          tableEntities: Object.fromEntries(
-            copies.map(table => [table.id, table])
-          ),
-        },
-      },
+      sorted,
       { type: ActionType.sortTable, payload: undefined },
       context
     );
 
+    const placedGroupIds = new Set(
+      copies.map(table => getTableGroupId(sorted, table))
+    );
+
     yield copies.map(({ id, ui: { x, y } }) => moveToTableAction({ id, x, y }));
+    yield groups
+      .filter(({ id }) => placedGroupIds.has(id))
+      .map(({ id, ui: { x, y, width, height } }) =>
+        resizeTableGroupAction({ id, x, y, width, height })
+      );
   };
 
 export const actions$ = {

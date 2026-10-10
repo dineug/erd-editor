@@ -41,11 +41,13 @@ import {
   Database,
   ReferentialAction,
   RelationshipType,
+  Show,
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import {
   drawStartRelationshipAction,
   focusColumnAction,
+  focusTableAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -60,17 +62,23 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeDatabaseAction,
+  changeShowAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableColorAction,
+  changeTableGroupAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupColorAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { bHas } from '@/utils/bit';
 import { setExportFileCallback } from '@/utils/file/exportFile';
@@ -110,6 +118,7 @@ type MountOptions = {
   tableId?: string;
   columnId?: string;
   memoId?: string;
+  tableGroupId?: string;
 };
 
 async function mountMenu({
@@ -118,6 +127,7 @@ async function mountMenu({
   tableId,
   columnId,
   memoId,
+  tableGroupId,
 }: MountOptions = {}) {
   mounted = await mountAndFlush(
     html`
@@ -129,6 +139,7 @@ async function mountMenu({
             tableId=${tableId}
             columnId=${columnId}
             memoId=${memoId}
+            tableGroupId=${tableGroupId}
             .onClose=${onClose}
           />
         `}
@@ -212,6 +223,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'New TableAlt + N',
       'New MemoAlt + M',
+      'New Table Group',
       'Find and ReplaceCtrl + F',
       'Relationship',
       'View Option',
@@ -350,6 +362,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Auto Increment',
       'Relationship',
       'Referential Actions',
+      'Table Groups',
     ]);
 
     const before = app.store.state.settings.show;
@@ -1011,6 +1024,7 @@ describe('ErdContextMenu / table type', () => {
         'Focus on this tableAlt + F',
         'Color',
         'Remove color',
+        'Group selected tables',
         'DeleteDelete',
       ]);
       expect(findItem(rootItems(), 'Remove color').querySelector('svg')).toBe(
@@ -1459,6 +1473,384 @@ describe('ErdContextMenu / relationship type', () => {
   });
 });
 
+describe('ErdContextMenu / table groups', () => {
+  const GROUP_ID = 'group-1';
+  const OTHER_GROUP_ID = 'group-2';
+
+  /** A readonly switch a spec flips after its seed, which a readonly store would drop. */
+  let locked = false;
+
+  beforeEach(() => {
+    locked = false;
+    app = createTestAppContext({ getReadonly: () => locked });
+  });
+
+  function seedGroups() {
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: GROUP_ID,
+        ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+      }),
+      addTableGroupAction({
+        id: OTHER_GROUP_ID,
+        ui: { x: 800, y: 0, width: 600, height: 400, zIndex: 2 },
+      }),
+      addTableAction({ id: 'a', ui: { x: 40, y: 80, zIndex: 3 } }),
+      addTableAction({ id: 'b', ui: { x: 300, y: 80, zIndex: 4 } }),
+      addTableAction({ id: 'c', ui: { x: 900, y: 80, zIndex: 5 } }),
+      addTableAction({ id: 'loose', ui: { x: 0, y: 900, zIndex: 6 } }),
+      changeTableGroupAction({ id: 'a', value: GROUP_ID }),
+      changeTableGroupAction({ id: 'b', value: GROUP_ID }),
+      changeTableGroupAction({ id: 'c', value: OTHER_GROUP_ID })
+    );
+  }
+
+  const groupOf = (tableId: string) =>
+    app.store.state.collections.tableEntities[tableId].groupId;
+
+  const hideGroups = () =>
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+  describe('on the canvas', () => {
+    it('arms the draw mode from New Table Group, drawn with the group icon, and closes', async () => {
+      await mountMenu();
+
+      const item = findItem(rootItems(), 'New Table Group');
+      expect(iconNameOf(item)).toBe('group');
+      expect(item.querySelector('.kbd')).toBeNull();
+      await click(item);
+
+      expect(app.store.state.editor.drawTableGroup).toBe(true);
+      expect(app.store.state.doc.tableGroupIds).toEqual([]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no New Table Group to a readonly editor or while groups are hidden', async () => {
+      locked = true;
+      await mountMenu();
+      expect(labelsOf(rootItems())).not.toContain('New Table Group');
+      mounted?.unmount();
+
+      locked = false;
+      hideGroups();
+      await mountMenu();
+      expect(labelsOf(rootItems())).not.toContain('New Table Group');
+    });
+  });
+
+  describe('on a table', () => {
+    it('groups the selected tables, out of any group they were in, and opens the new name', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        selectAction({ b: SelectType.table, loose: SelectType.table })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'b' });
+
+      const item = findItem(rootItems(), 'Group selected tables');
+      expect(iconNameOf(item)).toBe('group');
+      await click(item);
+
+      const id = app.store.state.doc.tableGroupIds[2];
+      expect(id).toBeDefined();
+      expect(groupOf('b')).toBe(id);
+      expect(groupOf('loose')).toBe(id);
+      expect(groupOf('a')).toBe(GROUP_ID);
+      expect(app.store.state.editor.selectedMap).toEqual({
+        [id]: SelectType.tableGroup,
+      });
+      expect(app.store.state.editor.editTableGroupId).toBe(id);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('takes every selected table out of its group from Remove from group, the rest kept', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        selectAction({
+          a: SelectType.table,
+          c: SelectType.table,
+          loose: SelectType.table,
+        })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
+
+      const item = findItem(rootItems(), 'Remove from group');
+      expect(iconNameOf(item)).toBe('ungroup');
+      await click(item);
+
+      expect(groupOf('a')).toBe('');
+      expect(groupOf('c')).toBe('');
+      expect(groupOf('b')).toBe(GROUP_ID);
+      expect(app.store.state.doc.tableGroupIds).toEqual([
+        GROUP_ID,
+        OTHER_GROUP_ID,
+      ]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('lists both rows above Delete, Remove from group only while a selected table is in a group', async () => {
+      seedGroups();
+      app.store.dispatchSync(selectAction({ loose: SelectType.table }));
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'loose' });
+      expect(labelsOf(rootItems())).toEqual([
+        'Primary KeyAlt + K',
+        'Table PropertiesAlt + Space',
+        'Focus on this tableAlt + F',
+        'Color',
+        'Group selected tables',
+        'DeleteDelete',
+      ]);
+      mounted?.unmount();
+
+      app.store.dispatchSync(selectAction({ a: SelectType.table }));
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
+      expect(labelsOf(rootItems()).slice(-3)).toEqual([
+        'Group selected tables',
+        'Remove from group',
+        'Delete selectedDelete',
+      ]);
+    });
+
+    it('offers neither to a readonly editor, and no grouping while groups are hidden', async () => {
+      seedGroups();
+      app.store.dispatchSync(selectAction({ a: SelectType.table }));
+      locked = true;
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
+      expect(labelsOf(rootItems())).not.toContain('Group selected tables');
+      expect(labelsOf(rootItems())).not.toContain('Remove from group');
+      mounted?.unmount();
+
+      locked = false;
+      hideGroups();
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
+      expect(labelsOf(rootItems())).not.toContain('Group selected tables');
+      expect(labelsOf(rootItems())).toContain('Remove from group');
+    });
+
+    it('groups nothing while the selection holds no table the document lists', async () => {
+      seedGroups();
+      app.store.dispatchSync(selectAction({ ghost: SelectType.table }));
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'ghost' });
+
+      expect(labelsOf(rootItems())).not.toContain('Group selected tables');
+      expect(labelsOf(rootItems())).not.toContain('Remove from group');
+    });
+  });
+
+  describe('on a group', () => {
+    const mountGroupMenu = () =>
+      mountMenu({
+        type: ErdContextMenuType.tableGroup,
+        tableGroupId: GROUP_ID,
+      });
+
+    it('lists Select tables, Rename, Color and Delete, which names the key', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        selectAction({ [GROUP_ID]: SelectType.tableGroup })
+      );
+      await mountGroupMenu();
+
+      expect(labelsOf(rootItems())).toEqual([
+        'Select tables',
+        'Rename',
+        'Color',
+        'DeleteDelete',
+      ]);
+      expect(iconNameOf(findItem(rootItems(), 'Select tables'))).toBe(
+        'mouse-pointer-2'
+      );
+      expect(iconNameOf(findItem(rootItems(), 'Rename'))).toBe('pencil');
+      expect(iconNameOf(findItem(rootItems(), 'Color'))).toBe('palette');
+      expect(findItem(rootItems(), 'Delete').querySelector('svg')).toBeNull();
+    });
+
+    it("selects the group's tables alone from Select tables", async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        selectAction({
+          [GROUP_ID]: SelectType.tableGroup,
+          c: SelectType.table,
+        })
+      );
+      await mountGroupMenu();
+
+      await click(findItem(rootItems(), 'Select tables'));
+
+      expect(app.store.state.editor.selectedMap).toEqual({
+        a: SelectType.table,
+        b: SelectType.table,
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens the name editor on the group from Rename, letting the table focus go', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        focusTableAction({ tableId: 'a', focusType: FocusType.tableName })
+      );
+      await mountGroupMenu();
+
+      await click(findItem(rootItems(), 'Rename'));
+
+      expect(app.store.state.editor.editTableGroupId).toBe(GROUP_ID);
+      expect(app.store.state.editor.focusTable).toBeNull();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens the color picker on the group color at the pointer position', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        changeTableGroupColorAction({
+          id: GROUP_ID,
+          color: '#3b82f6',
+          prevColor: '',
+        })
+      );
+      const openColorPicker = vi.fn();
+      app.emitter.on({ openColorPicker });
+      await mountGroupMenu();
+
+      await click(findItem(rootItems(), 'Color'), {
+        clientX: 21,
+        clientY: 43,
+      });
+
+      expect(openColorPicker).toHaveBeenCalledTimes(1);
+      expect(openColorPicker.mock.calls[0][0].payload).toEqual({
+        x: 21,
+        y: 43,
+        color: '#3b82f6',
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers Remove color while the group is a colored selection, and clears it', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        changeTableGroupColorAction({
+          id: GROUP_ID,
+          color: '#3b82f6',
+          prevColor: '',
+        }),
+        selectAction({ [GROUP_ID]: SelectType.tableGroup })
+      );
+      await mountGroupMenu();
+
+      expect(labelsOf(rootItems())).toEqual([
+        'Select tables',
+        'Rename',
+        'Color',
+        'Remove color',
+        'DeleteDelete',
+      ]);
+      await click(findItem(rootItems(), 'Remove color'));
+
+      expect(
+        app.store.state.collections.tableGroupEntities[GROUP_ID].color
+      ).toBe('');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('deletes the group it was raised over alone, keeping its tables', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        selectAction({ [GROUP_ID]: SelectType.tableGroup })
+      );
+      await mountGroupMenu();
+
+      await click(findItem(rootItems(), 'Delete'));
+
+      expect(app.store.state.doc.tableGroupIds).toEqual([OTHER_GROUP_ID]);
+      expect(app.store.state.doc.tableIds).toEqual(['a', 'b', 'c', 'loose']);
+      expect(groupOf('a')).toBe('');
+      expect(groupOf('c')).toBe(OTHER_GROUP_ID);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('names the selection the group is one of and deletes all of it', async () => {
+      seedGroups();
+      app.store.dispatchSync(
+        selectAction({
+          [GROUP_ID]: SelectType.tableGroup,
+          loose: SelectType.table,
+        })
+      );
+      await mountGroupMenu();
+
+      expect(labelsOf(rootItems()).at(-1)).toBe('Delete selectedDelete');
+      await click(findItem(rootItems(), 'Delete selected'));
+
+      expect(app.store.state.doc.tableGroupIds).toEqual([OTHER_GROUP_ID]);
+      expect(app.store.state.doc.tableIds).toEqual(['a', 'b', 'c']);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers a readonly editor Select tables alone, which still selects', async () => {
+      seedGroups();
+      locked = true;
+      await mountGroupMenu();
+
+      expect(labelsOf(rootItems())).toEqual(['Select tables']);
+      await click(findItem(rootItems(), 'Select tables'));
+
+      expect(app.store.state.editor.selectedMap).toEqual({
+        a: SelectType.table,
+        b: SelectType.table,
+      });
+    });
+
+    it('opens no name editor once the editor turns readonly under an open menu', async () => {
+      seedGroups();
+      await mountGroupMenu();
+      locked = true;
+
+      await click(findItem(rootItems(), 'Rename'));
+
+      expect(app.store.state.editor.editTableGroupId).toBeNull();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not open the color picker for an unknown group', async () => {
+      const openColorPicker = vi.fn();
+      app.emitter.on({ openColorPicker });
+      await mountMenu({
+        type: ErdContextMenuType.tableGroup,
+        tableGroupId: 'missing',
+      });
+
+      await click(findItem(rootItems(), 'Color'));
+
+      expect(openColorPicker).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('ignores every group action when no group id is given', async () => {
+      seedGroups();
+      const openColorPicker = vi.fn();
+      app.emitter.on({ openColorPicker });
+      app.store.dispatchSync(selectAction({ loose: SelectType.table }));
+      await mountMenu({ type: ErdContextMenuType.tableGroup });
+
+      for (const item of rootItems()) {
+        await click(item);
+      }
+
+      expect(openColorPicker).not.toHaveBeenCalled();
+      expect(app.store.state.editor.selectedMap).toEqual({
+        loose: SelectType.table,
+      });
+      expect(app.store.state.editor.editTableGroupId).toBeNull();
+      expect(app.store.state.doc.tableGroupIds).toEqual([
+        GROUP_ID,
+        OTHER_GROUP_ID,
+      ]);
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+});
+
 describe('ErdContextMenu / language', () => {
   let teardown: (() => void) | null = null;
 
@@ -1489,6 +1881,7 @@ describe('ErdContextMenu / language', () => {
     expect(labelsOf(rootItems())).toEqual([
       'ko:New TableAlt + N',
       'ko:New MemoAlt + M',
+      'ko:New Table Group',
       'ko:Find and ReplaceCtrl + F',
       'ko:Relationship',
       'ko:View Option',
@@ -1576,6 +1969,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Table PropertiesAlt + Space',
       'ko:Focus on this tableAlt + F',
       'ko:Color',
+      'ko:Group selected tables',
       'ko:Delete columnsDelete',
     ]);
   });
@@ -1604,6 +1998,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Focus on selected tablesAlt + F',
       'ko:Color',
       'ko:Remove color',
+      'ko:Group selected tables',
       'ko:Delete selectedDelete',
     ]);
   });

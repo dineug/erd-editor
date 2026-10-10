@@ -14,6 +14,7 @@ import { useAppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
+import { toPlacementActions } from '@/components/erd/automatic-table-placement/placementActions';
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
@@ -22,12 +23,10 @@ import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
-import { sceneHit } from '@/components/erd/hitTest';
+import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
-import {
-  getScrollToCenter,
-  getViewTransform,
-} from '@/components/erd/minimap/minimapGeometry';
+import TableGroupDraft from '@/components/erd/table-group/TableGroupDraft';
+import { useTableGroupDraw } from '@/components/erd/table-group/useTableGroupDraw';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
@@ -41,6 +40,7 @@ import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import {
+  changeDrawTableGroupAction,
   changeOpenMapAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -51,23 +51,18 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { isEditingText, Viewport } from '@/engine/modules/editor/state';
 import { getDocumentColors } from '@/engine/modules/editor/utils/color';
-import {
-  scrollToAction,
-  streamScrollToAction,
-} from '@/engine/modules/settings/atom.actions';
+import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
-import { moveToTableAction } from '@/engine/modules/table/atom.actions';
+import { selectTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import {
-  getContentRect,
-  getContentRectAfter,
-} from '@/konva/scene/contentBounds';
+import { hasContent } from '@/konva/scene/contentBounds';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
 import {
   editorRootOf,
+  isMainButtonPress,
   isMiddleButtonPress,
   isMouseEvent,
   preventMiddleLift,
@@ -129,6 +124,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     tableId: '' as string | undefined,
     columnId: '' as string | undefined,
     memoId: '' as string | undefined,
+    tableGroupId: '' as string | undefined,
     colorPickerShow: false,
     colorPickerX: 0,
     colorPickerY: 0,
@@ -171,7 +167,31 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     enabled: () => !getShowOverLayout(),
   });
 
+  const groupDraw = useTableGroupDraw({ app: () => app.value, root });
+
+  /** Whether a press on the canvas draws a table group, which a readonly store never does. */
+  const drawsTableGroup = () => {
+    const { store } = app.value;
+    return store.state.editor.drawTableGroup && !store.getReadonly();
+  };
+
+  const cancelTableGroupDraw = () => {
+    const { store } = app.value;
+    if (store.state.editor.drawTableGroup) {
+      store.dispatch(changeDrawTableGroupAction({ value: false }));
+    }
+  };
+
+  // The press that ends the draw mode for another button is spent on that, so
+  // the menu it raises stays unshown, as does one a Mac Ctrl+click raises.
+  let swallowContextmenu = false;
+
   const handleContextmenu = (event: MouseEvent) => {
+    if (swallowContextmenu || drawsTableGroup()) {
+      swallowContextmenu = false;
+      event.preventDefault();
+      return;
+    }
     if (!event.target || getShowOverLayout()) return;
 
     const hit = sceneHit(canvas.value, event);
@@ -186,6 +206,16 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     } else if (hit?.kind === 'relationship') {
       state.relationshipId = hit.id;
       state.contextMenuType = ErdContextMenuType.relationship;
+    } else if (hit?.kind === 'tableGroup') {
+      // A Mac Ctrl+click and a long touch are main presses, which read the
+      // body as canvas and unselect, so the menu they raise selects the group
+      // as a right press would have; one the selection holds stays as it is.
+      const { store } = app.value;
+      if (!store.state.editor.selectedMap[hit.id]) {
+        store.dispatch(selectTableGroupAction$(hit.id, false));
+      }
+      state.tableGroupId = hit.id;
+      state.contextMenuType = ErdContextMenuType.tableGroup;
     } else {
       state.contextMenuType = ErdContextMenuType.ERD;
     }
@@ -248,12 +278,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   const handleDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
+    swallowContextmenu = false;
     if (!el || pinch.handleTouchstart(event)) return;
 
     const showOverLayout = getShowOverLayout();
     const canHideColorPicker = !el.closest('.color-picker');
-    const hit = sceneHit(canvas.value, event);
-    const onEntity = hit?.kind === 'table' || hit?.kind === 'memo';
+    // A group's body is canvas to the main button: it pans, takes a marquee
+    // and unselects; its title bar and sashes, like a table or memo, do not.
+    const onEntity = ownsPress(sceneHit(canvas.value, event), event);
 
     // The editing surface sits beside the stage container rather than inside
     // it, so sceneHit cannot see it and the entity it is open over cannot
@@ -312,6 +344,19 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     if (!canDrag) return;
     if (middlePan) event.preventDefault();
+
+    // The draw mode takes the stage off the pointer, as the hand tool does, so
+    // every press lands here: the main button draws, the middle one still pans
+    // and any other ends the mode.
+    if (drawsTableGroup() && !middlePan) {
+      if (isMainButtonPress(event)) {
+        groupDraw.start(event);
+      } else {
+        swallowContextmenu = true;
+        cancelTableGroupDraw();
+      }
+      return;
+    }
 
     if (!middlePan && isMouseEvent(event) && isMod(event)) {
       event.preventDefault();
@@ -378,35 +423,21 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       (type === KeyBindingName.stop &&
         !editor.openMap[Open.search] &&
         !isEditingText(editor) &&
-        !editor.drawRelationship)
+        !editor.drawRelationship &&
+        !editor.drawTableGroup)
     ) {
       state.colorPickerShow = false;
     }
   };
 
   /**
-   * The moves and the view centred on where they land go out as one dispatch,
-   * so the history holds them as one entry and a single undo puts the tables
-   * and the view back together. The box is read off the points before the move.
+   * The moves, the groups wrapped round them and the view centred on where they
+   * land go out as one dispatch, so the history holds them as one entry and a
+   * single undo puts the tables, the groups and the view back together.
    */
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
-    const moves = tables.map(moveToTableAction);
-    const content = getContentRectAfter(store.state, tables, SOURCE);
-
-    if (!content) {
-      store.dispatch(moves);
-      return;
-    }
-
-    const origin = getScrollToCenter(getViewTransform(store.state, SOURCE), {
-      x: content.x + content.width / 2,
-      y: content.y + content.height / 2,
-    });
-    store.dispatch([
-      ...moves,
-      scrollToAction({ originX: origin.x, originY: origin.y }),
-    ]);
+    store.dispatch(toPlacementActions(store.state, tables, SOURCE));
   };
 
   const handleChangeTableProperties = (tableId: string) => {
@@ -469,6 +500,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     addUnsubscribe(
       watch(props).subscribe(propName => {
+        if (propName === 'readonly' && props.readonly) {
+          cancelTableGroupDraw();
+        }
         if (propName !== 'mouseTracking') return;
 
         props.mouseTracking
@@ -553,14 +587,15 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const showDiffViewer = openMap[Open.diffViewer];
     const { handTool, zenMode } = store.state.editor;
     // An empty document has no travel and draws no scrollbar; the map of it
-    // would be as empty, so it is left out the same way.
-    const hasContent = getContentRect(store.state) !== null;
+    // would be as empty, so it is left out the same way. Read off the lists,
+    // so a drag step, which moves rects alone, does not run this render again.
+    const showMinimap = hasContent(store.state) && !zenMode;
     // An open overlay stands a scene of its own over this canvas, so the tools
     // that drive this one step aside rather than float over it.
     const showFloatingToolbar = !getShowOverLayout();
     // Only for a host that asks for it, over a document still empty that the
-    // reader may edit, so the first table or memo takes it away and an undo
-    // brings it again, and never after appDestroy, whose clear empties it too.
+    // reader may edit, so the first table, memo or shown group takes it away
+    // and an undo brings it again, never after appDestroy, which empties it too.
     const showWelcomeScreen =
       Boolean(props.enableWelcomeScreen) &&
       !app.value.lifecycle.destroyed &&
@@ -569,14 +604,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       !getShowOverLayout() &&
       isEmptyDocument(store.state);
 
+    const drawsGroup = drawsTableGroup();
     const cursor = handTool
       ? state.grabCursor
-      : drawRelationship
-        ? `url("${getRelationshipIcon(
-            drawRelationship.relationshipType,
-            props.isDarkMode
-          )}") 16 16, auto`
-        : '';
+      : drawsGroup
+        ? 'crosshair'
+        : drawRelationship
+          ? `url("${getRelationshipIcon(
+              drawRelationship.relationshipType,
+              props.isDarkMode
+            )}") 16 16, auto`
+          : '';
 
     return (
       <div
@@ -589,10 +627,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         on:touchstart={handleDragSelect}
         on:wheel={handleWheel}
       >
-        <Canvas root={root} canvas={canvas} grabMove={handTool} />
+        <Canvas root={root} canvas={canvas} grabMove={handTool || drawsGroup} />
         <DrawTargetButtons root={root} readonly={props.readonly} />
+        {drawsGroup ? <TableGroupDraft draw={groupDraw.state} /> : null}
         {zenMode ? null : <VirtualScroll />}
-        {hasContent && !zenMode ? <Minimap /> : null}
+        {showMinimap ? <Minimap /> : null}
         {showWelcomeScreen ? (
           <WelcomeScreen
             enableThemeBuilder={props.enableThemeBuilder}
@@ -607,6 +646,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             tableId={state.tableId}
             columnId={state.columnId}
             memoId={state.memoId}
+            tableGroupId={state.tableGroupId}
             onClose={handleContextmenuClose}
           />
         ) : null}

@@ -9,6 +9,7 @@ import {
   play,
   renameColumn,
   renameTable,
+  SEED_SCENARIOS,
 } from '@/__test-utils__/peerScenarios';
 import { createSeedValue, SEED, settle } from '@/__test-utils__/peerSeed';
 import { RelationshipType, StartRelationshipType } from '@/constants/schema';
@@ -148,6 +149,19 @@ describe('peer store in a realm with no DOM (AC-E2)', () => {
     expect(report.label).toBeNull();
     expect(report.createdIds).toHaveLength(1);
     expect(peer.state.doc.tableIds).toContain(report.createdIds[0]);
+  });
+
+  it('hands back the id of a table group it created', () => {
+    const peer = peerOf({ presence: false });
+    peer.setInitialValue(createSeedValue());
+
+    const report = play(peer, SEED_SCENARIOS.addTableGroup());
+
+    expect(report.createdIds).toHaveLength(1);
+    expect(peer.state.doc.tableGroupIds).toContain(report.createdIds[0]);
+    expect(peer.state.collections.tableEntities[SEED.empty].groupId).toBe(
+      report.createdIds[0]
+    );
   });
 
   it('focuses the table or the column a dispatch names before its edit', () => {

@@ -45,8 +45,10 @@ describe('v3/index', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
     expect(result.collections.tableEntities).toEqual({});
+    expect(result.collections.tableGroupEntities).toEqual({});
     expect(SchemaV3Constants.CanvasTypeList).toContain(
       result.settings.canvasType
     );

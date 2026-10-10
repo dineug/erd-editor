@@ -35,6 +35,7 @@ import {
   getHeaderTextY,
   HEADER_CELLS_X,
 } from '@/components/erd/canvas/table/cellLayout';
+import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
@@ -53,6 +54,7 @@ import {
   editMemoEndAction,
   editTableAction,
   editTableEndAction,
+  editTableGroupAction,
   focusColumnAction,
   focusTableAction,
   scrollMemoAction,
@@ -74,6 +76,7 @@ import {
   changeZoomLevelAction,
   streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeTableGroupAction } from '@/engine/modules/table/atom.actions';
 import {
   addTableAction$,
   removeTableAction$,
@@ -82,6 +85,11 @@ import {
   addColumnAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+  removeTableGroupAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { whenDrawn } from '@/konva/batchDraw';
 import {
@@ -515,6 +523,32 @@ describe('the editing overlay', () => {
     await flush();
 
     expect(fixture.app.store.state.editor.focusTable?.edit).toBe(false);
+  });
+
+  it('writes a tinted header in the text color of its tint, and a row in the theme one', async () => {
+    const tinted = async () => {
+      const fixture = await setup();
+      fixture.app.store.dispatchSync(
+        addTableGroupAction({
+          id: 'g1',
+          color: '#1e3a8a',
+          ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+        }),
+        changeTableGroupAction({ id: fixture.tableId, value: 'g1' })
+      );
+      return fixture;
+    };
+
+    const header = await tinted();
+    await editTableComment(header);
+    const cell = cellOf(header.mounted);
+    expect(cell.style.getPropertyValue('--active')).toBe('#ffffff');
+    expect(cell.style.getPropertyValue('--placeholder')).toBe('#ffffff');
+
+    const row = await tinted();
+    await editColumnName(row);
+    expect(inputOf(row.mounted)).toBeTruthy();
+    expect(cellOf(row.mounted).style.getPropertyValue('--active')).toBe('');
   });
 
   it('places the editor on the header cell it replaces', async () => {
@@ -1638,6 +1672,106 @@ describe('the box the cell editor covers on the scene', () => {
  * alone: under a view source it draws nothing at all, and the edit the document
  * is holding is left exactly where it was. Spec A.5, decision 1.
  */
+describe('the table group name editor', () => {
+  const GROUP_UI = { x: 300, y: 400, width: 420, height: 200, zIndex: 1 };
+
+  async function editGroupName(fixture: Fixture, name = '') {
+    fixture.app.store.dispatchSync(
+      addTableGroupAction({ id: 'g1', ui: GROUP_UI }),
+      changeTableGroupNameAction({ id: 'g1', value: name }),
+      editTableGroupAction({ id: 'g1' })
+    );
+    await flush();
+  }
+
+  const groupInputOf = (mounted: Mounted) =>
+    overlayOf(mounted).querySelector<HTMLInputElement>(
+      'input.table-group-name-input'
+    );
+
+  const nameOf = (fixture: Fixture) =>
+    fixture.app.store.state.collections.tableGroupEntities.g1.name;
+
+  it('stands over the name the title bar draws, past its icon, in the bar font', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+
+    const input = groupInputOf(fixture.mounted)!;
+    const transform = transformOf(fixture.mounted);
+    expect(input.value).toBe('Billing');
+    expect(input.placeholder).toBe('unnamed');
+    // The box the scene centres the name in, so the two baselines meet.
+    const nameBox = getTableGroupNameBox(GROUP_UI.width);
+    expect(transform.x).toBe(GROUP_UI.x + nameBox.x);
+    expect(transform.y).toBe(GROUP_UI.y + nameBox.y);
+    expect(input.style.width).toBe(`${nameBox.width}px`);
+    expect(input.style.height).toBe(`${getTableGroupNameBox().height}px`);
+    expect(input.style.fontWeight).toBe('bold');
+    // An uncolored bar keeps the theme's text, so the cell sets neither.
+    expect(cellOf(fixture.mounted).style.getPropertyValue('--active')).toBe('');
+  });
+
+  it('writes nothing for an Enter the IME still holds, and the name once it is done', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture);
+    const input = groupInputOf(fixture.mounted)!;
+
+    input.value = 'Billing';
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', isComposing: true })
+    );
+    await flush();
+    expect(nameOf(fixture)).toBe('');
+    expect(groupInputOf(fixture.mounted)).toBe(input);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await flush();
+    expect(nameOf(fixture)).toBe('Billing');
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+  });
+
+  it('keeps what is typed when a peer renames the group under it', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Invoices';
+
+    fixture.app.store.dispatchSync(
+      changeTableGroupNameAction({ id: 'g1', value: 'Payments' })
+    );
+    await flush();
+
+    expect(groupInputOf(fixture.mounted)).toBe(input);
+    expect(input.value).toBe('Invoices');
+  });
+
+  it('closes over a group removed while it is open, writing nothing on its blur', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Invoices';
+
+    fixture.app.store.dispatchSync(removeTableGroupAction({ id: 'g1' }));
+    await flush();
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+
+    input.dispatchEvent(new FocusEvent('blur'));
+    await flush();
+    expect(nameOf(fixture)).toBe('Billing');
+    expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
+  });
+
+  it('opens nothing while groups are hidden', async () => {
+    const fixture = await setup();
+    fixture.app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    await editGroupName(fixture, 'Billing');
+
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+  });
+});
+
 describe('the overlay under a view source', () => {
   /**
    * The table this scene did draw, so an absence below reads as the overlay

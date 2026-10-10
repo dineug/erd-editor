@@ -1,11 +1,18 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
+import { Table } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { getTableRect, type Rect } from '@/konva/scene/metrics';
+import { getTableRect, type Rect, unionRect } from '@/konva/scene/metrics';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { getTableGroupId, padRect } from '@/utils/tableGroup';
 
-import { type ElkPlacement, usesCoordinateHints } from './elkLayoutOptions';
+import {
+  type ElkCompoundKind,
+  type ElkPlacement,
+  keepsTableGroups,
+  usesCoordinateHints,
+} from './elkLayoutOptions';
 
 export type ElkLayoutNode = {
   id: string;
@@ -20,6 +27,8 @@ export type ElkLayoutNode = {
   y?: number;
   /** What is laid out inside this node, which is what makes it a group rather than a table. */
   children?: ElkLayoutNode[];
+  /** What a node holding children stands for, left out for the box of unrelated tables. */
+  kind?: ElkCompoundKind;
 };
 
 /**
@@ -71,6 +80,9 @@ const NO_ROW = -1;
 /** The one node that is not a table, holding every table no relationship reaches. */
 const UNRELATED_GROUP_ID = 'elk-unrelated-group';
 
+/** What a component node's id starts with, which no table id does. */
+const COMPONENT_ID_PREFIX = 'elk-component-';
+
 /**
  * The topmost row a relationship touches. A composite key names several, and
  * the editor draws one connector for all of them, so the first is the one.
@@ -110,9 +122,9 @@ function toHints(nodes: ElkLayoutNode[], rects: Rect[]): void {
 }
 
 /**
- * What ELK is asked to place, at the sizes the source draws. Nodes carry a
- * hint of where they already stand where the placement reads one, and grouping
- * folds the tables no relationship reaches into one packed box.
+ * What ELK is asked to place, at the sizes the source draws, with a hint where
+ * the placement reads one. A document placement keeps each table group in a
+ * node, and grouping folds the tables no relationship reaches into one box.
  *
  * @example
  * createElkLayoutRequest(state, TablePlacement.viewLayered, { source: 'flow' });
@@ -171,29 +183,145 @@ export function createElkLayoutRequest(
     toHints(nodes, rects);
   }
 
+  const grouped = keepsTableGroups(placement)
+    ? withTableGroups(state, tables, nodes, edges)
+    : nodes;
+
   return {
     placement,
-    nodes: groupUnrelated ? withUnrelatedGroup(nodes, edges) : nodes,
+    nodes: groupUnrelated ? withUnrelatedGroup(grouped, edges) : grouped,
     edges,
   };
 }
 
 /**
- * The nodes no edge reaches, moved inside one group node at the end of the
- * list. ELK sizes and places that node like any other, and what comes back is
- * flat, so nothing downstream learns the group was ever there.
+ * The connected parts of a graph whose nodes are the ids given and whose links
+ * are the pairs, each id answered with the one id its part is known by.
+ */
+function connectedParts(
+  ids: string[],
+  pairs: Array<[string, string]>
+): (id: string) => string {
+  const parents = new Map(ids.map(id => [id, id]));
+  const find = (id: string): string => {
+    const parent = parents.get(id)!;
+    if (parent === id) return id;
+
+    const root = find(parent);
+    parents.set(id, root);
+    return root;
+  };
+
+  pairs.forEach(([a, b]) => parents.set(find(a), find(b)));
+
+  return find;
+}
+
+/**
+ * Each group's members in a node of the group where its first member stood,
+ * and what relationships join across a group's border in a component node laid
+ * out as one; the rest stay at the top, where ELK packs what nothing joins.
+ */
+function withTableGroups(
+  state: RootState,
+  tables: Table[],
+  nodes: ElkLayoutNode[],
+  edges: ElkLayoutEdge[]
+): ElkLayoutNode[] {
+  const groupIds = new Map(
+    tables.map(table => [table.id, getTableGroupId(state, table)])
+  );
+  const groups = new Map<string, ElkLayoutNode>();
+  const blocks: ElkLayoutNode[] = [];
+
+  nodes.forEach(node => {
+    const groupId = groupIds.get(node.id);
+    const group = groupId ? groups.get(groupId) : undefined;
+
+    if (!groupId) {
+      blocks.push(node);
+    } else if (group) {
+      group.children!.push(node);
+    } else {
+      const created: ElkLayoutNode = {
+        id: groupId,
+        width: 0,
+        height: 0,
+        kind: 'tableGroup',
+        children: [node],
+      };
+      groups.set(groupId, created);
+      blocks.push(created);
+    }
+  });
+
+  if (!groups.size) return nodes;
+
+  const blockOf = (tableId: string) => groupIds.get(tableId) || tableId;
+  const links = edges
+    .map(({ source, target }): [string, string] => [
+      blockOf(source),
+      blockOf(target),
+    ])
+    .filter(([a, b]) => a !== b);
+  const partOf = connectedParts(
+    blocks.map(block => block.id),
+    links
+  );
+  // Only a link that reaches a group crosses a border; two tables in no group
+  // are joined at whatever level they sit, which is the root.
+  const crossing = new Set(
+    links
+      .filter(([a, b]) => groups.has(a) || groups.has(b))
+      .map(([a]) => partOf(a))
+  );
+  const components = new Map<string, ElkLayoutNode>();
+
+  return blocks.flatMap(block => {
+    const part = partOf(block.id);
+    if (!crossing.has(part)) return [block];
+
+    const component = components.get(part);
+    if (component) {
+      component.children!.push(block);
+      return [];
+    }
+
+    const created: ElkLayoutNode = {
+      id: `${COMPONENT_ID_PREFIX}${components.size}`,
+      width: 0,
+      height: 0,
+      kind: 'component',
+      children: [block],
+    };
+    components.set(part, created);
+    return [created];
+  });
+}
+
+/**
+ * The tables no edge reaches, moved inside one group node at the end of the
+ * list, a node holding children left where it is. ELK places the box like any
+ * node, and what comes back is flat, so nothing downstream learns of it.
  */
 function withUnrelatedGroup(
   nodes: ElkLayoutNode[],
   edges: ElkLayoutEdge[]
 ): ElkLayoutNode[] {
   const related = new Set(edges.flatMap(edge => [edge.source, edge.target]));
-  const unrelated = nodes.filter(node => !related.has(node.id));
-  if (!unrelated.length) return nodes;
+  const unrelated = new Set(
+    nodes.filter(node => !node.children && !related.has(node.id))
+  );
+  if (!unrelated.size) return nodes;
 
   return [
-    ...nodes.filter(node => related.has(node.id)),
-    { id: UNRELATED_GROUP_ID, width: 0, height: 0, children: unrelated },
+    ...nodes.filter(node => !unrelated.has(node)),
+    {
+      id: UNRELATED_GROUP_ID,
+      width: 0,
+      height: 0,
+      children: [...unrelated],
+    },
   ];
 }
 
@@ -204,28 +332,46 @@ export function flattenElkNodes(nodes: ElkLayoutNode[]): ElkLayoutNode[] {
   );
 }
 
-/** The box the placed tables occupy, or null when none of them were placed. */
+/**
+ * The boxes a layout draws: each placed table, and round the members of each
+ * table group the box the editor draws for it, its padding and title bar.
+ */
+function layoutRects(
+  nodes: ElkLayoutNode[],
+  pointById: Map<string, ElkLayoutPoint>
+): Rect[] {
+  return nodes.flatMap(node => {
+    if (!node.children?.length) {
+      const point = pointById.get(node.id);
+      return point
+        ? [{ x: point.x, y: point.y, width: node.width, height: node.height }]
+        : [];
+    }
+
+    const inner = layoutRects(node.children, pointById);
+    return node.kind === 'tableGroup' && inner.length
+      ? [...inner, padRect(inner.reduce(unionRect))]
+      : inner;
+  });
+}
+
+/** The box what was placed draws, groups included, or null when nothing was placed. */
 function boundsOfLayout(
   nodes: ElkLayoutNode[],
   points: ElkLayoutPoint[]
 ): { minX: number; minY: number; maxX: number; maxY: number } | null {
-  const sizeById = new Map(flattenElkNodes(nodes).map(node => [node.id, node]));
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
+  const rects = layoutRects(
+    nodes,
+    new Map(points.map(point => [point.id, point]))
+  );
+  if (!rects.length) return null;
 
-  points.forEach(({ id, x, y }) => {
-    const size = sizeById.get(id);
-    if (!size) return;
-
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x + size.width);
-    maxY = Math.max(maxY, y + size.height);
-  });
-
-  return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+  return {
+    minX: Math.min(...rects.map(({ x }) => x)),
+    minY: Math.min(...rects.map(({ y }) => y)),
+    maxX: Math.max(...rects.map(({ x, width }) => x + width)),
+    maxY: Math.max(...rects.map(({ y, height }) => y + height)),
+  };
 }
 
 /**

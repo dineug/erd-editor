@@ -39,6 +39,7 @@ const LISTED: Record<string, (peer: PeerStore) => string[]> = {
     ...peer.state.collections.tableEntities[SEED.users].columnIds,
   ],
   erd_link_columns: peer => peer.state.doc.relationshipIds,
+  erd_add_table_group: peer => peer.state.doc.tableGroupIds,
 };
 
 describe('creation tools hand back the ids they drew (AC-E7)', () => {

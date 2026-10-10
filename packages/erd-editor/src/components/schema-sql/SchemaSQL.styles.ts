@@ -1,5 +1,7 @@
 import { css } from '@dineug/r-html';
 
+import { typography } from '@/styles/typography.styles';
+
 /** The code and, beside it, the options panel. */
 export const root = css`
   position: relative;
@@ -16,6 +18,21 @@ export const code = css`
   flex: 1;
   min-width: 0;
   min-height: 0;
+`;
+
+/** Why the code is empty while no table is chosen, centred over it in any language. */
+export const empty = css`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 16px;
+  text-align: center;
+  color: var(--placeholder);
+  pointer-events: none;
+  ${typography.paragraph};
 `;
 
 /** Show options, over the code's own colour so it reads above the text. */

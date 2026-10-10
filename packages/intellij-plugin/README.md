@@ -34,6 +34,12 @@ tables placed as new ones below the ones already there, in one undoable step.
 - **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or add
   new ones, and Map Columns in a relationship's right-click menu changes its columns later
+- **Table groups** — draw a named, colored box behind related tables with **New Table Group** in
+  the canvas menu or the command palette, or group the selected tables from their right-click menu.
+  A table joins a group when you drop it inside and leaves when you drop it outside, dragging a
+  group by its title moves its tables with it, and each member's header takes the group's color.
+  View Option hides the groups, the Schema SQL tab writes the tables of the groups you check, and
+  DBML import and export carry them as `TableGroup`s
 - **SQL DDL import** — bring in a `.sql` dump from any of the six vendors below. The parser reads
   `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does not recognize,
   so an awkward dump imports partially rather than failing outright
@@ -42,8 +48,9 @@ tables placed as new ones below the ones already there, in one undoable step.
   the relationships; the generated types an API layer wraps its rows in are left out rather than
   drawn as tables
 - **DBML import** — bring in a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted by
-  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors and every
-  `Ref` spelling arrive; a `Project`, `TableGroup` or sticky `Note` is skipped rather than refused
+  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors, every
+  `Ref` spelling and each `TableGroup` arrive; a `Project` or sticky `Note` is skipped rather than
+  refused
 - **AML import** — bring in an `.aml` file written for [Azimutt](https://azimutt.app), in either the
   v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every relation
   arrow arrive; a check, a struct type and a view are skipped rather than refused
@@ -76,7 +83,7 @@ tables placed as new ones below the ones already there, in one undoable step.
 - **Welcome guide** — an empty diagram you can edit opens on a short menu to add the first table or
   memo, import a schema, open the command palette or look up the shortcuts, with hints at the
   toolbar's search, theme and language buttons and at the floating toolbar where the canvas has
-  room; the first table or memo takes it away
+  room; the first table, memo or table group takes it away
 
 Edits are written to the file a fraction of a second after you stop changing it; the tab never shows as modified.
 

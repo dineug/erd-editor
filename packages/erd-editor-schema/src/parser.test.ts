@@ -97,6 +97,7 @@ describe('parser', () => {
       relationshipIds: [],
       indexIds: [],
       memoIds: [],
+      tableGroupIds: [],
     });
   });
 
@@ -528,5 +529,161 @@ describe('the Schema SQL scripts toJson writes', () => {
       before: '',
       after: 'SELECT 1;',
     });
+  });
+});
+
+describe('the table groups toJson writes', () => {
+  const source = {
+    version: '3.0.0',
+    settings: { show: SchemaV3Constants.Show.hideTableGroup },
+    doc: { tableIds: ['t1', 't2'], tableGroupIds: ['g1'] },
+    collections: {
+      tableEntities: {
+        t1: { id: 't1', name: 'invoice', groupId: 'g1' },
+        t2: { id: 't2', name: 'member' },
+      },
+      tableGroupEntities: {
+        g1: {
+          id: 'g1',
+          name: 'billing',
+          color: '#0090ff',
+          ui: { x: -40, y: 20, width: 640, height: 360, zIndex: 3 },
+          meta: { updateAt: 2, createAt: 1 },
+        },
+      },
+    },
+  };
+
+  it('writes the groups, their order, each membership and the hide bit', () => {
+    const json = JSON.parse(toJson(parser(JSON.stringify(source))));
+
+    expect(json.doc.tableGroupIds).toEqual(['g1']);
+    expect(json.collections.tableGroupEntities).toEqual(
+      source.collections.tableGroupEntities
+    );
+    expect(json.collections.tableEntities.t1.groupId).toBe('g1');
+    expect(json.collections.tableEntities.t2).not.toHaveProperty('groupId');
+    expect(json.settings.show).toBe(SchemaV3Constants.Show.hideTableGroup);
+  });
+
+  it('reads its own output back to the same groups', () => {
+    const schema = parser(JSON.stringify(source));
+
+    expect(parser(toJson(schema))).toEqual(schema);
+  });
+
+  it('writes no group key and no empty groupId for a document that never had a group', () => {
+    const schema = parser(
+      JSON.stringify({
+        ...source,
+        doc: { tableIds: ['t1'] },
+        collections: { tableEntities: { t1: { id: 't1', name: 'member' } } },
+      })
+    );
+    const json = JSON.parse(toJson(schema));
+
+    expect(json.doc).not.toHaveProperty('tableGroupIds');
+    expect(json.collections).not.toHaveProperty('tableGroupEntities');
+    expect(json.collections.tableEntities.t1).not.toHaveProperty('groupId');
+    expect(JSON.parse(toJson(createSchema())).doc).toEqual({
+      tableIds: [],
+      relationshipIds: [],
+      indexIds: [],
+      memoIds: [],
+    });
+  });
+
+  it('reads a document without groups back to the same document', () => {
+    const schema = parser(
+      JSON.stringify({
+        ...source,
+        doc: { tableIds: ['t1'] },
+        collections: { tableEntities: { t1: { id: 't1', name: 'member' } } },
+      })
+    );
+
+    expect(parser(toJson(schema))).toEqual(schema);
+  });
+
+  it('keeps the bytes of a document saved before the groups', () => {
+    const saved = toJson(
+      parser(
+        JSON.stringify({
+          ...source,
+          doc: { tableIds: ['t1'] },
+          collections: {
+            tableEntities: { t1: { id: 't1', name: 'member' } },
+          },
+        })
+      )
+    );
+
+    expect(toJson(parser(saved))).toBe(saved);
+    expect(saved).not.toMatch(/groupId|tableGroup/);
+  });
+
+  it('writes both keys while either the ids or the collection holds one', () => {
+    const removed = parser(JSON.stringify(source));
+    removed.doc.tableGroupIds = [];
+    const unlisted = parser(JSON.stringify(source));
+    unlisted.collections.tableGroupEntities = {};
+
+    for (const schema of [removed, unlisted]) {
+      const json = JSON.parse(toJson(schema));
+
+      expect(json.doc).toHaveProperty('tableGroupIds');
+      expect(json.collections).toHaveProperty('tableGroupEntities');
+    }
+  });
+
+  it('keeps the groupId of a table naming a group no document lists', () => {
+    const schema = parser(
+      JSON.stringify({
+        ...source,
+        doc: { tableIds: ['t1'] },
+        collections: {
+          tableEntities: { t1: { id: 't1', name: 'member', groupId: 'g9' } },
+        },
+      })
+    );
+    const json = JSON.parse(toJson(schema));
+
+    expect(json.collections.tableEntities.t1.groupId).toBe('g9');
+    expect(json.doc).not.toHaveProperty('tableGroupIds');
+  });
+
+  it('writes from a copy, leaving the live document as it was', () => {
+    const schema = createSchema();
+    schema.doc.tableIds = ['t1'];
+    schema.collections.tableEntities = {
+      t1: parser(JSON.stringify(source)).collections.tableEntities.t2,
+    };
+    schema.collections.tableEntities.t1.id = 't1';
+
+    toJson(schema);
+
+    expect(schema.doc.tableGroupIds).toEqual([]);
+    expect(schema.collections.tableGroupEntities).toEqual({});
+    expect(schema.collections.tableEntities.t1.groupId).toBe('');
+  });
+
+  it('writes the groups of raw JSON as they stand, and none it lacks', () => {
+    const raw = JSON.parse(toJson(createSchema()));
+
+    expect(JSON.parse(toJson(raw)).doc).not.toHaveProperty('tableGroupIds');
+
+    const grouped = JSON.parse(toJson(parser(JSON.stringify(source))));
+
+    expect(JSON.parse(toJson(grouped)).doc.tableGroupIds).toEqual(['g1']);
+  });
+
+  it('leaves the groups out of the v2 document parserV2 converts to', () => {
+    const schemaV2 = parserV2(JSON.stringify(source));
+
+    expect(schemaV2.table.tables.map(({ name }) => name)).toEqual([
+      'invoice',
+      'member',
+    ]);
+    expect(JSON.stringify(schemaV2)).not.toMatch(/billing|groupId|tableGroup/);
   });
 });

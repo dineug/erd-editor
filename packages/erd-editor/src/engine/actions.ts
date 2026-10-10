@@ -27,6 +27,9 @@ import { actions$ as tableActions$ } from '@/engine/modules/table/generator.acti
 import { ActionMap as TableColumnActionMap } from '@/engine/modules/table-column/actions';
 import { actions as tableColumnActions } from '@/engine/modules/table-column/atom.actions';
 import { actions$ as tableColumnActions$ } from '@/engine/modules/table-column/generator.actions';
+import { ActionMap as TableGroupActionMap } from '@/engine/modules/table-group/actions';
+import { actions as tableGroupActions } from '@/engine/modules/table-group/atom.actions';
+import { actions$ as tableGroupActions$ } from '@/engine/modules/table-group/generator.actions';
 import { arrayHas } from '@/utils/arrayHas';
 
 export type Actions = typeof editorActions &
@@ -44,7 +47,9 @@ export type Actions = typeof editorActions &
   typeof tableActions &
   typeof tableActions$ &
   typeof tableColumnActions &
-  typeof tableColumnActions$;
+  typeof tableColumnActions$ &
+  typeof tableGroupActions &
+  typeof tableGroupActions$;
 
 export type RootActionMap = EditorActionMap &
   TableActionMap &
@@ -53,7 +58,8 @@ export type RootActionMap = EditorActionMap &
   RelationshipActionMap &
   SettingsActionMap &
   IndexActionMap &
-  IndexColumnActionMap;
+  IndexColumnActionMap &
+  TableGroupActionMap;
 
 export type ActionType = keyof RootActionMap;
 
@@ -74,6 +80,8 @@ export const actions: Actions = Object.freeze({
   ...tableActions$,
   ...tableColumnActions,
   ...tableColumnActions$,
+  ...tableGroupActions,
+  ...tableGroupActions$,
 });
 
 export const ChangeActionTypes: ReadonlyArray<ActionType> = [
@@ -85,6 +93,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'table.changeName',
   'table.changeComment',
   'table.changeColor',
+  'table.changeGroup',
   'table.sort',
   // column
   'column.add',
@@ -123,6 +132,14 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'memo.changeValue',
   'memo.changeColor',
   'memo.resize',
+  // tableGroup
+  'tableGroup.add',
+  'tableGroup.move',
+  'tableGroup.moveTo',
+  'tableGroup.remove',
+  'tableGroup.resize',
+  'tableGroup.changeName',
+  'tableGroup.changeColor',
   // settings
   'settings.changeDatabaseName',
   'settings.changeZoomLevel',
@@ -239,11 +256,13 @@ export const SharedFollowingActionTypes: ReadonlyArray<ActionType> = [
 export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [
   'table.move',
   'memo.move',
+  'tableGroup.move',
 ];
 
 export const StreamRegroupColorActionTypes: ReadonlyArray<ActionType> = [
   'table.changeColor',
   'memo.changeColor',
+  'tableGroup.changeColor',
 ];
 
 export const StreamRegroupScrollActionTypes: ReadonlyArray<ActionType> = [

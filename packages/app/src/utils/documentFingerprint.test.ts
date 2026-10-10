@@ -8,6 +8,7 @@ import {
   settingsActions$,
   tableActions,
   tableActions$,
+  tableGroupActions$,
 } from '@dineug/erd-editor/peer.js';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
@@ -43,8 +44,8 @@ function changed(change: (json: any) => void, value = VALUE) {
 
 const META = { updateAt: 1, createAt: 1 };
 
-/** VALUE with orders removed, its column, index and relationship, and a removed memo. */
-const TOMBSTONES = changed(({ collections }) => {
+/** VALUE with orders removed, its column, index and relationship, a removed memo and group. */
+const TOMBSTONES = changed(({ doc, collections }) => {
   const { users } = collections.tableEntities;
   collections.tableEntities.orders = { ...users, id: 'orders', meta: META };
   collections.tableColumnEntities['orders.id'] = {
@@ -71,6 +72,17 @@ const TOMBSTONES = changed(({ collections }) => {
     meta: META,
   };
   collections.memoEntities.note = { id: 'note', value: 'x', meta: META };
+  // A file writes the group fields while a removed group's tombstone is left.
+  doc.tableGroupIds = [];
+  collections.tableGroupEntities = {
+    team: {
+      id: 'team',
+      name: 'team',
+      color: '',
+      ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+      meta: META,
+    },
+  };
 });
 
 /** The same entities, all of them in the document. */
@@ -79,6 +91,7 @@ const LIVE = changed(({ doc }) => {
   doc.relationshipIds.push('placed');
   doc.indexIds.push('byOrder');
   doc.memoIds.push('note');
+  doc.tableGroupIds.push('team');
 }, TOMBSTONES);
 
 const legacyScrollChanges: Array<[string, (json: any) => void]> = [
@@ -357,8 +370,18 @@ describe('toDriveFingerprint', () => {
   });
 
   describe('what no longer hangs off the document', () => {
-    it('leaves out a removed table and memo and what belonged to the table', () => {
+    it('leaves out a removed table, memo and table group and what belonged to the table', () => {
+      expect(JSON.parse(VALUE).doc).not.toHaveProperty('tableGroupIds');
       expect(toDriveFingerprint(TOMBSTONES)).toBe(toDriveFingerprint(VALUE));
+    });
+
+    it('leaves out a removed table group beside one the document holds', () => {
+      const beside = changed(({ collections }) => {
+        const { team } = collections.tableGroupEntities;
+        collections.tableGroupEntities.gone = { ...team, id: 'gone' };
+      }, LIVE);
+
+      expect(toDriveFingerprint(beside)).toBe(toDriveFingerprint(LIVE));
     });
 
     it('leaves out a relationship and an index the document still lists on a removed table', () => {
@@ -374,6 +397,7 @@ describe('toDriveFingerprint', () => {
       ['relationship', 'relationshipIds', 'relationshipEntities', 'placed'],
       ['index', 'indexIds', 'indexEntities', 'byOrder'],
       ['memo', 'memoIds', 'memoEntities', 'note'],
+      ['table group', 'tableGroupIds', 'tableGroupEntities', 'team'],
     ])('tells a %s the document holds apart', (_name, ids, entities, id) => {
       const without = changed(({ doc, collections }) => {
         doc[ids] = doc[ids].filter((kept: string) => kept !== id);
@@ -422,46 +446,62 @@ describe('toDriveFingerprint', () => {
       there.destroy();
     });
 
-    it('is the same for two replicas that applied two adds in opposite orders', () => {
-      vi.useFakeTimers({ now: Date.UTC(2026, 8, 25) });
-      const here = createPeerStore({ nickname: 'here', presence: false });
-      const there = createPeerStore({ nickname: 'there', presence: false });
-      here.setInitialValue(VALUE);
-      there.setInitialValue(VALUE);
-      const fromHere: unknown[][] = [];
-      const fromThere: unknown[][] = [];
-      here.subscribe(actions => fromHere.push(actions));
-      there.subscribe(actions => fromThere.push(actions));
+    const adds: Array<
+      [string, string, () => ReturnType<typeof tableActions$.addTableAction$>]
+    > = [
+      ['tables', 'tableIds', () => tableActions$.addTableAction$()],
+      [
+        'table groups',
+        'tableGroupIds',
+        () =>
+          tableGroupActions$.addTableGroupAction$({
+            x: 2000,
+            y: 2000,
+            width: 400,
+            height: 300,
+          }),
+      ],
+    ];
 
-      // Each tab adds a table before the other's batch arrives.
-      const [mine] = here.dispatch([
-        tableActions$.addTableAction$(),
-      ]).createdIds;
-      const [theirs] = there.dispatch([
-        tableActions$.addTableAction$(),
-      ]).createdIds;
-      here.flushStreamBuffers();
-      there.flushStreamBuffers();
-      vi.advanceTimersByTime(1000);
-      for (const actions of fromThere) here.receive(actions as any);
-      for (const actions of fromHere) there.receive(actions as any);
+    it.each(adds)(
+      'is the same for two replicas that applied two adds of %s in opposite orders',
+      (_name, ids, add) => {
+        vi.useFakeTimers({ now: Date.UTC(2026, 8, 25) });
+        const here = createPeerStore({ nickname: 'here', presence: false });
+        const there = createPeerStore({ nickname: 'there', presence: false });
+        here.setInitialValue(VALUE);
+        there.setInitialValue(VALUE);
+        const fromHere: unknown[][] = [];
+        const fromThere: unknown[][] = [];
+        here.subscribe(actions => fromHere.push(actions));
+        there.subscribe(actions => fromThere.push(actions));
 
-      const order = (value: string) =>
-        JSON.parse(value).doc.tableIds.filter((id: string) =>
-          [mine, theirs].includes(id)
+        // Each tab adds one before the other's batch arrives.
+        const [mine] = here.dispatch([add()]).createdIds;
+        const [theirs] = there.dispatch([add()]).createdIds;
+        here.flushStreamBuffers();
+        there.flushStreamBuffers();
+        vi.advanceTimersByTime(1000);
+        for (const actions of fromThere) here.receive(actions as any);
+        for (const actions of fromHere) there.receive(actions as any);
+
+        const order = (value: string) =>
+          JSON.parse(value).doc[ids].filter((id: string) =>
+            [mine, theirs].includes(id)
+          );
+        expect(order(here.value)).toEqual([mine, theirs]);
+        expect(order(there.value)).toEqual([theirs, mine]);
+        expect(toDriveFingerprint(there.value)).toBe(
+          toDriveFingerprint(here.value)
         );
-      expect(order(here.value)).toEqual([mine, theirs]);
-      expect(order(there.value)).toEqual([theirs, mine]);
-      expect(toDriveFingerprint(there.value)).toBe(
-        toDriveFingerprint(here.value)
-      );
-      here.destroy();
-      there.destroy();
-    });
+        here.destroy();
+        there.destroy();
+      }
+    );
   });
 
   describe('in any order', () => {
-    /** LIVE with a second memo, relationship and index, so every list has two. */
+    /** LIVE with a second memo, relationship, index and table group, so every list has two. */
     const TWO_OF_EACH = changed(({ doc, collections }) => {
       const copy = (ids: string, entities: string, from: string) => {
         const id = `${from}2`;
@@ -471,6 +511,7 @@ describe('toDriveFingerprint', () => {
       copy('memoIds', 'memoEntities', 'note');
       copy('relationshipIds', 'relationshipEntities', 'placed');
       copy('indexIds', 'indexEntities', 'byOrder');
+      copy('tableGroupIds', 'tableGroupEntities', 'team');
     }, LIVE);
 
     it.each([
@@ -478,6 +519,7 @@ describe('toDriveFingerprint', () => {
       ['memoIds', 'memoEntities'],
       ['relationshipIds', 'relationshipEntities'],
       ['indexIds', 'indexEntities'],
+      ['tableGroupIds', 'tableGroupEntities'],
     ])('holds %s and %s to no order', (ids, entities) => {
       const reordered = changed(({ doc, collections }) => {
         doc[ids].reverse();

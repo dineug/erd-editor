@@ -31,9 +31,15 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+  removeTableGroupAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import type { ShikiService } from '@/services/shiki';
 import { openToastAction } from '@/utils/emitter';
@@ -813,5 +819,317 @@ describe('SchemaSQL', () => {
 
     expect(files).toHaveLength(1);
     expect(contentOf(mounted)).toBeNull();
+  });
+});
+
+const GROUP_UI = { x: 0, y: 0, width: 200, height: 200, zIndex: 1 };
+
+/**
+ * users and posts in Sales, red, audit in a group with no name, logs in no
+ * group, and the two scripts around them.
+ */
+function seedGroups(app: AppContext) {
+  seedTable(app, 't1', 'users');
+  seedTable(app, 't2', 'posts');
+  seedTable(app, 't3', 'audit');
+  seedTable(app, 't4', 'logs');
+  app.store.dispatchSync(
+    addTableGroupAction({ id: 'ga', color: '#ff0000', ui: GROUP_UI }),
+    changeTableGroupNameAction({ id: 'ga', value: 'Sales' }),
+    addTableGroupAction({ id: 'gb', ui: GROUP_UI }),
+    changeTableGroupAction({ id: 't1', value: 'ga' }),
+    changeTableGroupAction({ id: 't2', value: 'ga' }),
+    changeTableGroupAction({ id: 't3', value: 'gb' }),
+    changeDDLScriptAction({ position: 'before', value: 'SET a;' }),
+    changeDDLScriptAction({ position: 'after', value: 'SET b;' })
+  );
+}
+
+const tablesOf = (m: Mounted) =>
+  m.container.querySelector<HTMLElement>('.schema-sql-options-tables');
+
+const rowsOf = (m: Mounted) =>
+  Array.from(tablesOf(m)?.querySelectorAll('label') ?? []);
+
+const boxesOf = (m: Mounted) =>
+  rowsOf(m).map(row => row.querySelector('input') as HTMLInputElement);
+
+const checkedOf = (m: Mounted) => boxesOf(m).map(box => box.checked);
+
+const labelsOf = (m: Mounted) =>
+  rowsOf(m).map(row => row.textContent?.trim() ?? '');
+
+/** The text the tab writes for these tables, the scripts kept, as the code block shows it. */
+const shownFor = (app: AppContext, tableIds?: string[]) =>
+  createSchemaSQL(app.store.state, undefined, tableIds, {
+    statements: 'ifNotExists',
+    header: 'createAndUse',
+    scripts: true,
+  }).replace(/\n+$/, '');
+
+async function mountGrouped(readonly = false) {
+  const app = createApp();
+  seedGroups(app);
+  measure(app, 1280);
+  mounted = await mountAndFlush(
+    html`<${SchemaSQL} isDarkMode=${false} readonly=${readonly} />`,
+    app
+  );
+  return { app, m: mounted };
+}
+
+describe('SchemaSQL tables by group', () => {
+  it('shows no Tables while the document has no table group', async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    measure(app, 1280);
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    expect(panelOf(mounted)).not.toBeNull();
+    expect(tablesOf(mounted)).toBeNull();
+  });
+
+  it('lists All, each group in document order with its colour or unnamed, then No group, all checked for the whole document', async () => {
+    const { app, m } = await mountGrouped();
+
+    expect(labelsOf(m)).toEqual(['All', 'Sales', 'unnamed', 'No group']);
+    expect(checkedOf(m)).toEqual([true, true, true, true]);
+    expect(boxesOf(m)[0].indeterminate).toBe(false);
+    expect(
+      rowsOf(m).map(
+        row =>
+          row.querySelector('span[aria-hidden]')?.getAttribute('style') ?? null
+      )
+    ).toEqual([null, 'background-color: #ff0000;', null, null]);
+    expect(
+      rowsOf(m).map(row =>
+        row.querySelector('span:last-child')?.classList.contains('unnamed')
+      )
+    ).toEqual([false, false, true, false]);
+    expect(codeOf(m).textContent).toBe(shownFor(app));
+    expect(codeOf(m).textContent).toBe(
+      createSchemaSQL(app.store.state, undefined, undefined, {
+        statements: 'ifNotExists',
+        header: 'createAndUse',
+      }).replace(/\n+$/, '')
+    );
+  });
+
+  it('writes the tables of the checked boxes with the scripts, and saves and copies what it shows', async () => {
+    const { app, m } = await mountGrouped();
+    app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+    const files: Array<{ blob: Blob; fileName: string }> = [];
+    setExportFileCallback((blob, { fileName }) =>
+      files.push({ blob, fileName })
+    );
+
+    boxesOf(m)[2].click();
+    await flush();
+
+    const shown = shownFor(app, ['t1', 't2', 't4']);
+    expect(checkedOf(m)).toEqual([false, true, false, true]);
+    expect(boxesOf(m)[0].indeterminate).toBe(true);
+    expect(codeOf(m).textContent).toBe(shown);
+    expect(shown).toContain('SET a;');
+    expect(shown.endsWith('SET b;')).toBe(true);
+    expect(shown).not.toContain('audit');
+
+    (
+      m.container.querySelector('.schema-sql-options-save') as HTMLElement
+    ).click();
+    (
+      m.container.querySelector('.schema-sql-options-copy') as HTMLElement
+    ).click();
+    await flush();
+
+    expect(files).toHaveLength(1);
+    expect(files[0].fileName).toMatch(/^shop-.*\.sql$/);
+    expect(await files[0].blob.text()).toBe(`${shown}\n`);
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    expect(writeText.mock.calls[0][0]).toBe(`${shown}\n`);
+  });
+
+  it('drops only the chosen tables and names only them in the warning', async () => {
+    const { app, m } = await mountGrouped();
+    schemaSQLViewOf(app).statements = 'recreate';
+    await flush();
+
+    boxesOf(m)[1].click();
+    await flush();
+
+    const code = codeOf(m).textContent ?? '';
+    expect(code).toContain('DROP TABLE IF EXISTS audit;');
+    expect(code).not.toContain('DROP TABLE IF EXISTS users;');
+    expect(
+      m.container.querySelector('.schema-sql-options-warning')?.textContent
+    ).toBe('Drops audit and logs before creating them. Their rows are lost.');
+  });
+
+  it('writes nothing with no box checked and says why over the empty code', async () => {
+    const { app, m } = await mountGrouped();
+    app.store.dispatchSync(changeDatabaseAction({ value: Database.Oracle }));
+    schemaSQLViewOf(app).statements = 'recreate';
+    await flush();
+    const hint = () => m.container.querySelector('.schema-sql-no-table');
+    expect(hint()).toBeNull();
+
+    boxesOf(m)[0].click();
+    await flush();
+
+    expect(checkedOf(m)).toEqual([false, false, false, false]);
+    expect(boxesOf(m)[0].indeterminate).toBe(false);
+    expect(codeOf(m).textContent).toBe('');
+    expect(hint()?.textContent).toBe(
+      'No tables chosen. Check some under Tables.'
+    );
+    expect(m.container.querySelector('.schema-sql-options-warning')).toBeNull();
+
+    boxesOf(m)[3].click();
+    await flush();
+
+    expect(hint()).toBeNull();
+    expect(codeOf(m).textContent).toContain('logs');
+  });
+
+  it('checks every box from a mixed All and unchecks every box from a full one', async () => {
+    const { app, m } = await mountGrouped();
+
+    boxesOf(m)[3].click();
+    await flush();
+    expect(checkedOf(m)).toEqual([false, true, true, false]);
+
+    boxesOf(m)[0].click();
+    await flush();
+    expect(checkedOf(m)).toEqual([true, true, true, true]);
+    expect(codeOf(m).textContent).toBe(shownFor(app));
+
+    boxesOf(m)[0].click();
+    await flush();
+    expect(checkedOf(m)).toEqual([false, false, false, false]);
+  });
+
+  it('starts a group added with every box checked checked, one added after unchecked, and drops a removed one', async () => {
+    const { app, m } = await mountGrouped();
+    const view = schemaSQLViewOf(app);
+
+    app.store.dispatchSync(
+      addTableGroupAction({ id: 'gc', ui: GROUP_UI }),
+      changeTableGroupNameAction({ id: 'gc', value: 'Later' })
+    );
+    await flush();
+    expect(labelsOf(m)).toEqual([
+      'All',
+      'Sales',
+      'unnamed',
+      'Later',
+      'No group',
+    ]);
+    expect(checkedOf(m)).toEqual([true, true, true, true, true]);
+
+    boxesOf(m)[1].click();
+    await flush();
+    app.store.dispatchSync(
+      addTableGroupAction({ id: 'gd', ui: GROUP_UI }),
+      changeTableGroupNameAction({ id: 'gd', value: 'Last' })
+    );
+    await flush();
+    expect(checkedOf(m)).toEqual([false, false, true, true, false, true]);
+
+    app.store.dispatchSync(removeTableGroupAction({ id: 'ga' }));
+    await flush();
+    expect(labelsOf(m)).toEqual([
+      'All',
+      'unnamed',
+      'Later',
+      'Last',
+      'No group',
+    ]);
+    expect(view.tables).toEqual({
+      groups: { gb: true, gc: true, gd: false },
+      noGroup: true,
+    });
+    expect(codeOf(m).textContent).toBe(shownFor(app, ['t1', 't2', 't3', 't4']));
+  });
+
+  it('follows a group renamed while it shows, keeping its box', async () => {
+    const { app, m } = await mountGrouped();
+
+    boxesOf(m)[2].click();
+    await flush();
+    app.store.dispatchSync(
+      changeTableGroupNameAction({ id: 'gb', value: 'Ops' })
+    );
+    await flush();
+
+    expect(labelsOf(m)).toEqual(['All', 'Sales', 'Ops', 'No group']);
+    expect(checkedOf(m)).toEqual([false, true, false, true]);
+  });
+
+  it('hides Tables and writes every table once the last group goes', async () => {
+    const { app, m } = await mountGrouped();
+
+    boxesOf(m)[3].click();
+    await flush();
+    app.store.dispatchSync(
+      removeTableGroupAction({ id: 'ga' }),
+      removeTableGroupAction({ id: 'gb' })
+    );
+    await flush();
+
+    expect(tablesOf(m)).toBeNull();
+    expect(codeOf(m).textContent).toBe(shownFor(app));
+    expect(schemaSQLViewOf(app).tables).toEqual({ groups: {}, noGroup: true });
+  });
+
+  it('keeps the choice across a tab switch, a group added meanwhile starting unchecked', async () => {
+    const { app, m } = await mountGrouped();
+
+    boxesOf(m)[2].click();
+    await flush();
+    m.unmount();
+    mounted = null;
+    app.store.dispatchSync(addTableGroupAction({ id: 'gc', ui: GROUP_UI }));
+
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+
+    expect(checkedOf(mounted)).toEqual([false, true, false, false, true]);
+    expect(codeOf(mounted).textContent).toBe(shownFor(app, ['t1', 't2', 't4']));
+  });
+
+  it('chooses the same in a readonly editor, which dispatches nothing', async () => {
+    const { app, m } = await mountGrouped(true);
+    const dispatched = vi.fn();
+    const unsubscribe = app.store.subscribe(dispatched);
+
+    boxesOf(m)[1].click();
+    await flush();
+
+    expect(checkedOf(m)).toEqual([false, false, true, true]);
+    expect(codeOf(m).textContent).toBe(shownFor(app, ['t3', 't4']));
+    expect(dispatched).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  it("leaves one table's create to Table Properties whatever is checked", async () => {
+    const app = createApp();
+    seedGroups(app);
+    schemaSQLViewOf(app).tables = {
+      groups: { ga: false, gb: false },
+      noGroup: false,
+    };
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} tableId=${'t1'} />`,
+      app
+    );
+
+    expect(codeOf(mounted).textContent).toContain('CREATE TABLE users');
+    expect(codeOf(mounted).textContent).not.toContain('SET a;');
+    expect(mounted.container.querySelector('.schema-sql-no-table')).toBeNull();
   });
 });

@@ -54,7 +54,7 @@ describe('undoable is what a run on the engine measures (AC-B4)', () => {
       expect(tool.actionTypes.every(exempt), tool.name).toBe(true);
     }
     expect(sort.undoable).toBe(true);
-    expect(sort.actionTypes).toEqual(['table.moveTo']);
+    expect(sort.actionTypes).toEqual(['table.moveTo', 'tableGroup.resize']);
   });
 
   it('keeps the database settings out of the editor history and the scripts in it', () => {

@@ -13,6 +13,7 @@ import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 
 const emptyIds = (): GCIds => ({
   tableIds: [],
@@ -21,6 +22,7 @@ const emptyIds = (): GCIds => ({
   indexIds: [],
   indexColumnIds: [],
   memoIds: [],
+  tableGroupIds: [],
 });
 
 function createState(): ERDEditorSchemaV3 {
@@ -60,6 +62,12 @@ function createState(): ERDEditorSchemaV3 {
   query(collections)
     .collection('memoEntities')
     .setMany([createMemo({ id: 'memo-a' }), createMemo({ id: 'memo-b' })]);
+  query(collections)
+    .collection('tableGroupEntities')
+    .setMany([
+      createTableGroup({ id: 'group-a' }),
+      createTableGroup({ id: 'group-b' }),
+    ]);
 
   return state;
 }
@@ -75,6 +83,7 @@ describe('procGC', () => {
       indexIds: ['index-a'],
       indexColumnIds: ['index-column-a'],
       memoIds: ['memo-a'],
+      tableGroupIds: ['group-a'],
     });
 
     const { collections } = state;
@@ -88,6 +97,7 @@ describe('procGC', () => {
       'index-column-b',
     ]);
     expect(Object.keys(collections.memoEntities)).toEqual(['memo-b']);
+    expect(Object.keys(collections.tableGroupEntities)).toEqual(['group-b']);
   });
 
   it('keeps every entity when no id is requested', () => {

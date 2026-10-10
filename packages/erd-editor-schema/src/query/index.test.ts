@@ -11,6 +11,7 @@ function createTable(id: string, name = id): Table {
     comment: '',
     columnIds: [],
     seqColumnIds: [],
+    groupId: '',
     ui: {
       x: 0,
       y: 0,
@@ -34,6 +35,7 @@ function createCollections(...tables: Table[]): Collections {
     indexEntities: {},
     indexColumnEntities: {},
     memoEntities: {},
+    tableGroupEntities: {},
   };
 }
 

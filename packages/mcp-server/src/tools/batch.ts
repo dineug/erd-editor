@@ -31,7 +31,10 @@ export type BatchRun = {
   steps: BatchStep[];
   batches: number;
   historyEntries: number;
-  /** The operations whose tool the editor keeps no undo entry for. */
+  /**
+   * The operations one undo leaves in place: their tool keeps no undo entry,
+   * or they changed the document with none, as a short group move does.
+   */
   withoutUndo: number[];
 };
 
@@ -178,7 +181,9 @@ function play(peer: PeerStore, operations: Checked[]): BatchRun {
     batch.createdIds.push(...run.createdIds);
     batch.batches += run.batches;
     batch.historyEntries += run.historyEntries;
-    if (!tool.undoable) batch.withoutUndo.push(at);
+    if (!tool.undoable || (run.batches && !run.historyEntries)) {
+      batch.withoutUndo.push(at);
+    }
     batch.steps.push({
       tool: tool.name,
       ...(as ? { as } : {}),

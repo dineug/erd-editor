@@ -34,6 +34,8 @@ export type AgentSnapshotTable = {
   name: string;
   comment: string;
   color: string;
+  /** The table group it is in, '' for none. */
+  groupId: string;
   x: number;
   y: number;
   zIndex: number;
@@ -68,6 +70,18 @@ export type AgentSnapshotMemo = {
   zIndex: number;
 };
 
+/** A table group by its stored rect; the editor draws it grown to hold each member. */
+export type AgentSnapshotTableGroup = {
+  id: string;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  tableIds: string[];
+};
+
 export type AgentSnapshotSettings = {
   databaseName: string;
   database: string;
@@ -99,6 +113,7 @@ export type AgentSnapshot = {
   relationships: AgentSnapshotRelationship[];
   indexes: AgentSnapshotIndex[];
   memos: AgentSnapshotMemo[];
+  tableGroups: AgentSnapshotTableGroup[];
 };
 
 /** The name a tool takes for a stored value, or the value itself when unnamed. */
@@ -124,6 +139,7 @@ type RelationshipEntity =
   RootState['collections']['relationshipEntities'][string];
 type IndexEntity = RootState['collections']['indexEntities'][string];
 type MemoEntity = RootState['collections']['memoEntities'][string];
+type TableGroupEntity = RootState['collections']['tableGroupEntities'][string];
 
 /** The field each code setting's lock holds, the view's and the tab's aside. */
 const CODE_LOCK_FIELDS = [
@@ -180,15 +196,43 @@ export function toSnapshotScripts({
   return { before: ddlScripts?.before ?? '', after: ddlScripts?.after ?? '' };
 }
 
+/**
+ * The group a table is in, '' for none: a groupId naming no group the document
+ * lists reads as none, as the editor reads it.
+ */
+export const tableGroupIdOf = (
+  { doc }: Pick<RootState, 'doc'>,
+  { groupId }: TableEntity
+): string => (groupId && doc.tableGroupIds.includes(groupId) ? groupId : '');
+
+/** The live tables of each listed group, in document order. */
+export function toTableGroupMembers(
+  state: Pick<RootState, 'doc' | 'collections'>
+): Map<string, string[]> {
+  const members = new Map<string, string[]>(
+    state.doc.tableGroupIds.map(id => [id, []])
+  );
+  for (const table of query(state.collections)
+    .collection('tableEntities')
+    .selectByIds(state.doc.tableIds)) {
+    members.get(tableGroupIdOf(state, table))?.push(table.id);
+  }
+  return members;
+}
+
 export function toSnapshotTable(
   select: Select,
-  { id, name, comment, columnIds, ui }: TableEntity
+  table: TableEntity,
+  groupId: string
 ): AgentSnapshotTable {
+  const { id, name, comment, columnIds, ui } = table;
+
   return {
     id,
     name,
     comment,
     color: ui.color,
+    groupId,
     x: ui.x,
     y: ui.y,
     zIndex: ui.zIndex,
@@ -264,20 +308,36 @@ export function toSnapshotMemo({
   };
 }
 
+export function toSnapshotTableGroup(
+  { id, name, color, ui }: TableGroupEntity,
+  tableIds: readonly string[]
+): AgentSnapshotTableGroup {
+  return {
+    id,
+    name,
+    color,
+    x: ui.x,
+    y: ui.y,
+    width: ui.width,
+    height: ui.height,
+    tableIds: [...tableIds],
+  };
+}
+
 /** The live entities of a document, as its id lists hold them, in their order. */
-export function toAgentSnapshot({
-  settings,
-  doc,
-  collections,
-}: RootState): AgentSnapshot {
+export function toAgentSnapshot(state: RootState): AgentSnapshot {
+  const { settings, doc, collections } = state;
   const select = query(collections);
+  const members = toTableGroupMembers(state);
 
   return {
     settings: toSnapshotSettings(settings),
     tables: select
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
-      .map(table => toSnapshotTable(select, table)),
+      .map(table =>
+        toSnapshotTable(select, table, tableGroupIdOf(state, table))
+      ),
     relationships: select
       .collection('relationshipEntities')
       .selectByIds(doc.relationshipIds)
@@ -290,5 +350,9 @@ export function toAgentSnapshot({
       .collection('memoEntities')
       .selectByIds(doc.memoIds)
       .map(toSnapshotMemo),
+    tableGroups: select
+      .collection('tableGroupEntities')
+      .selectByIds(doc.tableGroupIds)
+      .map(group => toSnapshotTableGroup(group, members.get(group.id) ?? [])),
   };
 }

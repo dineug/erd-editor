@@ -5,7 +5,7 @@ import Canvas from '@/components/erd/canvas/Canvas';
 import ContentCompass from '@/components/erd/content-compass/ContentCompass';
 import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
 import { diffContext } from '@/components/erd/diff-viewer/diffContext';
-import { sceneHit } from '@/components/erd/hitTest';
+import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
@@ -14,7 +14,7 @@ import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
 import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { getContentRect } from '@/konva/scene/contentBounds';
+import { hasContent } from '@/konva/scene/contentBounds';
 import { isMiddleButtonPress, onPrevent } from '@/utils/domEvent';
 import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
@@ -90,8 +90,9 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     if (!el || pinch.handleTouchstart(event)) return;
 
     const canHideColorPicker = !el.closest('.color-picker');
-    const hit = sceneHit(canvas.value, event);
-    const onEntity = hit?.kind === 'table' || hit?.kind === 'memo';
+    // A group's body is canvas to the main button: it pans, takes a marquee
+    // and unselects; its title bar and sashes, like a table or memo, do not.
+    const onEntity = ownsPress(sceneHit(canvas.value, event), event);
 
     const canUnselectAll =
       !onEntity &&
@@ -136,7 +137,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
 
   return () => {
     // As in Erd: an empty document draws no scrollbar and no map either.
-    const hasContent = getContentRect(app.store.state) !== null;
+    const showMinimap = hasContent(app.store.state);
 
     return (
       <div
@@ -155,7 +156,7 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
       >
         <Canvas root={root} canvas={canvas} grabMove={true} />
         <VirtualScroll />
-        {hasContent ? <Minimap /> : null}
+        {showMinimap ? <Minimap /> : null}
         <ContentCompass />
       </div>
     );

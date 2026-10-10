@@ -34,7 +34,7 @@ suite red.
 | `playwright.config.ts`          | Chromium project, pinned 1440x900 viewport, `E2E_PORT` webServer  |
 | `playwright.bench.config.ts`    | The bench project — own testDir, one worker, asserts nothing      |
 | `e2e/fixture/`                  | The page under test — a deterministic `<erd-editor>` mount        |
-| `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes    |
+| `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes, table groups |
 | `e2e/support/graph.ts`          | A relationship or index read back by the names it joins           |
 | `e2e/support/connectorDrift.ts` | How far each scene draw puts a connector end off its own table    |
 | `e2e/support/sceneMirror.ts`    | Projects every live Konva stage into divs a css locator can name  |
@@ -229,6 +229,18 @@ TypeScript and shows for Doctrine and JPA, and Mermaid dims the Database and
 both name cases with their note; Save file in the panel and the code's menu, whose
 rows it lists, save `shop-<time>.swift` and `shop-<time>.json`.
 
+`table-group.spec.ts` holds down table groups: New Table Group in the canvas
+menu draws a group round the tables whose centres the box holds and opens its
+name editor, Group selected tables wraps a marquee selection and Remove from
+group takes one table out; a table dropped inside a group joins it, outlined
+while it is held there, and wears the group's colour on its header band, and
+one dropped outside leaves it; a drag on the title carries the group and its
+tables, which one undo puts back; View Option hides the boxes and the colour,
+a table dragged meanwhile keeping its group, and the box grows round it once
+shown; and the Schema SQL tab's Tables leaves out the tables of an unchecked
+group, writes nothing under its hint with no box checked, and All checks
+every box again.
+
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
@@ -355,8 +367,9 @@ The projection is interactive, not read-only. What it guarantees:
   re-renders the scene inside its own dispatch still finds the element it landed
   on when the routing above asks what it was.
 - **Names become classes**, split on whitespace; `data-id` is the node id minus
-  its `table-` / `column-` / `memo-` / `relationship-` prefix, and `data-type`
-  is the second name. So `relationship <id>` answers to
+  its `table-group-body-` / `table-group-` / `table-` / `column-` / `memo-` /
+  `relationship-` prefix, the longest that matches,
+  and `data-type` is the second name. So `relationship <id>` answers to
   `.relationship[data-type="<id>"]`, and a cell named `column-col columnName`
   answers to `[data-type="columnName"]`.
 - **A paint token names a colour a class no longer can.** A column key badge is

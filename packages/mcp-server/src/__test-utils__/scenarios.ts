@@ -121,6 +121,23 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     erd_change_memo_color: { memoId: SEED.memo, color: '#336699' },
     erd_move_memo: { memoId: SEED.memo, x: 960, y: 420 },
     erd_resize_memo: { memoId: SEED.memo, width: 320, height: 240 },
+    erd_add_table_group: {
+      name: 'shipping',
+      color: '#22c55e',
+      tableIds: [SEED.orders],
+    },
+    erd_remove_table_group: { groupId: SEED.group },
+    erd_change_table_group_name: { groupId: SEED.group, value: 'members' },
+    erd_change_table_group_color: { groupId: SEED.group, color: '#a855f7' },
+    erd_move_table_group: { groupId: SEED.group, x: 160, y: 140 },
+    erd_resize_table_group: {
+      groupId: SEED.group,
+      x: 20,
+      y: 10,
+      width: 640,
+      height: 420,
+    },
+    erd_set_table_group: { tableIds: [SEED.orders], groupId: SEED.group },
     erd_set_database_name: { value: 'shop' },
     erd_set_database: { value: 'PostgreSQL' },
     erd_set_ddl_script: {
@@ -135,7 +152,8 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
       value: 'type Account {\n  id: ID!\n  email: String\n}',
     },
     erd_import_dbml: {
-      value: 'Table accounts {\n  id int [pk]\n  email varchar\n}',
+      value:
+        'Table accounts {\n  id int [pk]\n  email varchar\n}\n\nTableGroup billing {\n  accounts\n}',
     },
     erd_import_aml: { value: 'accounts\n  id int pk\n  email varchar' },
     erd_import_json: { value: createImportValue() },
@@ -143,7 +161,7 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
 
 /**
  * The import tools again with mode append, each adding what its text holds
- * below the seed: a table, and from the document a memo too.
+ * below the seed: a table, and from the document and the DBML a table group too.
  */
 export const APPEND_SCENARIOS: Readonly<
   Record<string, Record<string, unknown>>

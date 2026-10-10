@@ -60,7 +60,7 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the eight session tools, every registry tool and erd_batch: 56 in all', () => {
+  it('is the eight session tools, every registry tool and erd_batch: 63 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [
         ...SESSION_TOOL_NAMES,
@@ -69,8 +69,8 @@ describe('the tool surface (AC-M8)', () => {
       ].sort()
     );
     expect(SESSION_TOOL_NAMES).toHaveLength(8);
-    expect(actionTools).toHaveLength(47);
-    expect(tools).toHaveLength(56);
+    expect(actionTools).toHaveLength(54);
+    expect(tools).toHaveLength(63);
   });
 
   it('lists the session toolkit, then the read tools, then the registry, in its order, then erd_batch', () => {
@@ -163,6 +163,7 @@ describe('the tool surface (AC-M8)', () => {
       'relationshipIds',
       'indexIds',
       'memoIds',
+      'tableGroupIds',
     ]);
     expect(get.required).toEqual(['path']);
     expect(get.properties.tableIds).toMatchObject({
@@ -225,6 +226,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_remove_index',
       'erd_remove_index_column',
       'erd_remove_memo',
+      'erd_remove_table_group',
       'erd_import_sql',
       'erd_import_graphql',
       'erd_import_dbml',

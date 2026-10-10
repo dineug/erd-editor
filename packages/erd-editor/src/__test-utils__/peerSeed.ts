@@ -12,6 +12,7 @@ import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -21,6 +22,10 @@ import {
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { createPeerStore, type PeerStore } from '@/engine/peer-store';
 import { createRxStore, type RxStore } from '@/engine/rx-store';
 import { createSharedStore, type SharedStore } from '@/engine/shared-store';
@@ -48,6 +53,7 @@ export const SEED = {
   indexColumn: 'orders_note_index_column',
   userIndexColumn: 'orders_user_id_index_column',
   memo: 'memo',
+  group: 'group',
 } as const;
 
 const column = (
@@ -84,9 +90,9 @@ function buildValue(...actions: AnyAction[][]): string {
 }
 
 /**
- * Two related tables, an empty one, a two column index and a memo: every
- * entity an edit can name, and one relationship and index for a removal to
- * cascade into. Built through the reducers, so it is a document they accept.
+ * Two related tables, an empty one, a two column index, a memo and a group
+ * holding users: every entity an edit can name, and one relationship and index
+ * for a removal to cascade into. Built through the reducers they accept.
  */
 export function createSeedValue(): string {
   return buildValue(
@@ -128,6 +134,12 @@ export function createSeedValue(): string {
         columnId: SEED.orderUser,
       }),
       addMemoAction({ id: SEED.memo, ui: { x: 900, y: 100, zIndex: 5 } }),
+      addTableGroupAction({
+        id: SEED.group,
+        ui: { x: 60, y: 60, width: 400, height: 200, zIndex: 1 },
+      }),
+      changeTableGroupNameAction({ id: SEED.group, value: 'accounts' }),
+      changeTableGroupAction({ id: SEED.users, value: SEED.group }),
     ]
   );
 }

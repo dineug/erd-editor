@@ -31,15 +31,20 @@ run **Create new diagram** from the command palette. In Google Drive, choose
 - **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or
   add new ones, and Map Columns in a relationship's right-click menu changes its columns later
+- **Table groups** — draw a named, colored box behind related tables from the canvas menu or the
+  command palette, or group the selected tables. A table joins a group when you drop it inside and
+  leaves when you drop it outside, dragging a group by its title moves its tables with it, and
+  each member's header takes the group's color. View Option hides the groups, the Schema SQL tab
+  writes the tables of the groups you check, and DBML import and export carry them as `TableGroup`s
 - **SQL DDL import** — point it at a `.sql` dump and get a diagram; the parser skips what it
   does not recognize, so an awkward dump imports partially rather than failing outright
 - **GraphQL SDL import** — point it at a schema from any tool that emits SDL and get a
   diagram. Object types become tables, scalars map to the diagram's own dialect, and the
   fields that point at another type become the relationships between them
 - **DBML import** — read a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted by
-  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors and
-  every `Ref` spelling arrive; the elements the diagram has no place for are skipped rather
-  than refused
+  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors,
+  every `Ref` spelling and each `TableGroup` arrive; the elements the diagram has no place
+  for are skipped rather than refused
 - **AML import** — read an `.aml` file written for [Azimutt](https://azimutt.app), in either the
   v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every relation
   arrow arrive; a check, a struct type and a view are skipped rather than refused
@@ -73,8 +78,8 @@ run **Create new diagram** from the command palette. In Google Drive, choose
   their settings. The app's and the plugins' own screens stay in English, as the npm element
   does until its host turns the picker on or names a language
 - **Welcome screen** — an empty diagram opens on a menu of New Table, New Memo, Import, the
-  command palette and the shortcuts, with arrows at the tools, until its first table or memo; the
-  npm element shows it only once its host turns it on
+  command palette and the shortcuts, with arrows at the tools, until its first table, memo or
+  table group; the npm element shows it only once its host turns it on
 - **Real-time collaboration** (experimental) — peer-to-peer, end-to-end encrypted, with no
   backend holding your schema. Live on erd-editor.io; embedders get the same action stream
   through the element's `getSharedStore()`

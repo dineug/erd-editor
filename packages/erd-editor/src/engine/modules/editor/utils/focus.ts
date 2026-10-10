@@ -200,11 +200,11 @@ export type RemovableColumns = {
 
 /**
  * The columns Delete removes: those selected and still in the focused table
- * while it is the one table or memo selected in the document and the zoom draws
- * its rows. Null otherwise, where the selected tables and memos go instead.
+ * while it is the one table, memo or group selected and the zoom draws its
+ * rows. Null otherwise, where the selected tables, memos and groups go instead.
  */
 export function getRemovableColumns({
-  doc: { tableIds, memoIds },
+  doc: { tableIds, memoIds, tableGroupIds },
   editor: { focusTable, selectedMap },
   settings: { zoomLevel },
   collections,
@@ -213,9 +213,9 @@ export function getRemovableColumns({
     return null;
   }
 
-  // A table, memo or column a peer, an agent or an undo removes stays selected.
+  // A table, memo, group or column a peer, an agent or an undo removes stays selected.
   const selectedIds = Object.keys(selectedMap).filter(
-    arrayHas([...tableIds, ...memoIds])
+    arrayHas([...tableIds, ...memoIds, ...tableGroupIds])
   );
   if (selectedIds.length !== 1 || selectedIds[0] !== focusTable.tableId) {
     return null;

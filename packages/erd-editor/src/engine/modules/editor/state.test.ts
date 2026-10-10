@@ -197,7 +197,11 @@ describe('editor/state', () => {
 
   describe('constants', () => {
     it('SelectType values mirror their keys', () => {
-      expect(SelectType).toEqual({ table: 'table', memo: 'memo' });
+      expect(SelectType).toEqual({
+        table: 'table',
+        memo: 'memo',
+        tableGroup: 'tableGroup',
+      });
     });
 
     it('FocusType values mirror their keys', () => {

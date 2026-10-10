@@ -18,6 +18,7 @@ export type VisibleIds = {
   tableIds: string[];
   memoIds: string[];
   relationshipIds: string[];
+  tableGroupIds: string[];
 };
 
 /** The tables a view lights and the relationships between them and what lit them. */
@@ -30,6 +31,7 @@ const NONE: VisibleIds = Object.freeze({
   tableIds: [],
   memoIds: [],
   relationshipIds: [],
+  tableGroupIds: [],
 });
 
 /**
@@ -168,7 +170,7 @@ export function getReachedTableIds(
 /**
  * What a scene drawn from the source given shows: the whole document, or the
  * tables a view's last layout landed whatever its centers reach now, so a
- * narrowing draws the last landing until its own lands. No memo, and only the joining relationships.
+ * narrowing draws the last landing until its own lands. No memo, no group, and only the joining relationships.
  */
 export function getVisibleIds(
   state: RootState,
@@ -181,6 +183,7 @@ export function getVisibleIds(
       tableIds: doc.tableIds,
       memoIds: doc.memoIds,
       relationshipIds: doc.relationshipIds,
+      tableGroupIds: doc.tableGroupIds,
     };
   }
 
@@ -200,6 +203,7 @@ export function getVisibleIds(
   return {
     tableIds,
     memoIds: [],
+    tableGroupIds: [],
     relationshipIds: relationships
       .filter(
         ({ start, end }) => inView.has(start.tableId) && inView.has(end.tableId)

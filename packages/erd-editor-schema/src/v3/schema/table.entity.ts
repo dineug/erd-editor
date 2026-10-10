@@ -6,6 +6,11 @@ export type Table = EntityType<{
   comment: string;
   columnIds: string[];
   seqColumnIds: string[];
+  /**
+   * The table group the table belongs to, '' for none; an id naming no group in
+   * doc.tableGroupIds reads as none.
+   */
+  groupId: string;
   ui: TableUI;
 }>;
 

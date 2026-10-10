@@ -9,6 +9,7 @@ import {
   settingsActions,
   tableActions,
   tableColumnActions,
+  tableGroupActions,
 } from '@dineug/erd-editor/peer.js';
 import type { AnyAction } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
@@ -28,6 +29,7 @@ export const SEED = {
   indexColumn: 'orders_note_index_column',
   userIndexColumn: 'orders_user_id_index_column',
   memo: 'memo',
+  group: 'users_group',
 } as const;
 
 const column = (
@@ -61,10 +63,24 @@ function buildValue(...actions: AnyAction[][]): string {
   }
 }
 
+/** A group named and placed, with the tables given as its members. */
+const group = (
+  id: string,
+  name: string,
+  ui: { x: number; y: number; width: number; height: number },
+  tableIds: string[]
+): AnyAction[] => [
+  tableGroupActions.addTableGroupAction({ id, ui: { ...ui, zIndex: 1 } }),
+  tableGroupActions.changeTableGroupNameAction({ id, value: name }),
+  ...tableIds.map(tableId =>
+    tableActions.changeTableGroupAction({ id: tableId, value: id })
+  ),
+];
+
 /**
- * Two related tables, an empty one, a two column index and a memo: every
- * entity an edit can name, and one relationship and index for a removal to
- * cascade into. Built through the reducers, so it is a document they accept.
+ * Two related tables, an empty one, a two column index, a memo and a group of
+ * the first table: every entity an edit can name, and one relationship and
+ * index for a removal to cascade into. Built through the reducers.
  */
 export function createSeedValue(): string {
   return buildValue(
@@ -118,13 +134,17 @@ export function createSeedValue(): string {
         id: SEED.memo,
         ui: { x: 900, y: 100, zIndex: 5 },
       }),
-    ]
+    ],
+    group(SEED.group, 'accounts', { x: 40, y: 20, width: 560, height: 300 }, [
+      SEED.users,
+    ])
   );
 }
 
 /**
  * A document of its own for the JSON import to replace the seed with: one
- * table, no relationship, index or memo, and a database name of its own.
+ * table in a group of its own, no relationship, index or memo, and a database
+ * name of its own.
  */
 export function createImportValue(): string {
   return buildValue(
@@ -139,7 +159,10 @@ export function createImportValue(): string {
         value: 'accounts',
       }),
     ],
-    column('accounts', 'accounts_id', 'id', 'BIGINT')
+    column('accounts', 'accounts_id', 'id', 'BIGINT'),
+    group('billing', 'billing', { x: 20, y: 0, width: 300, height: 200 }, [
+      'accounts',
+    ])
   );
 }
 

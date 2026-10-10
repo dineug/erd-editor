@@ -15,6 +15,7 @@ export const frFR = {
   'common.findAndReplace': 'Rechercher et remplacer',
   'common.newTable': 'Nouvelle table',
   'common.newMemo': 'Nouveau mémo',
+  'common.newTableGroup': 'Nouveau groupe de tables',
   'common.import': 'Importer',
   'common.importAndAdd': 'Importer et ajouter',
   'common.export': 'Exporter',
@@ -71,6 +72,10 @@ export const frFR = {
   'contextMenu.focusOnThisTable': 'Se concentrer sur cette table',
   'contextMenu.focusOnSelectedTables':
     'Se concentrer sur les tables sélectionnées',
+  'contextMenu.groupSelectedTables': 'Grouper les tables sélectionnées',
+  'contextMenu.removeFromGroup': 'Retirer du groupe',
+  'contextMenu.selectTables': 'Sélectionner les tables',
+  'contextMenu.rename': 'Renommer',
   'contextMenu.relationshipType': 'Type de relation',
   'contextMenu.onDelete': 'Lors de la suppression',
   'contextMenu.onUpdate': 'Lors de la mise à jour',
@@ -82,6 +87,7 @@ export const frFR = {
   'contextMenu.show.columnComment': 'Commentaire de colonne',
   'contextMenu.show.alternateKey': 'Clé alternative',
   'contextMenu.show.referentialActions': 'Actions référentielles',
+  'contextMenu.show.tableGroups': 'Groupes de tables',
   'floatingToolbar.hand': 'Main',
   'floatingToolbar.select': 'Sélection',
   'floatingToolbar.zoomOut': 'Zoom arrière',
@@ -110,6 +116,10 @@ export const frFR = {
   'schemaSql.thisWindowOnly': 'Cette fenêtre uniquement',
   'schemaSql.statements': 'Instructions',
   'schemaSql.header': 'En-tête',
+  'schemaSql.tables': 'Tables',
+  'schemaSql.allTables': 'Toutes',
+  'schemaSql.noGroup': 'Sans groupe',
+  'schemaSql.noTablesChosen': 'Aucune table choisie. Cochez-en sous Tables.',
   'schemaSql.notInDatabase': 'Indisponible dans {database}',
   'schemaSql.dropWarning':
     'Supprime {tables} avant de les créer. Leurs lignes sont perdues.',
@@ -268,6 +278,7 @@ export const frFR = {
   'palette.codeGeneratorOptionsPanel':
     'Générateur de code : Panneau des options',
   'palette.exportSchemaSql': 'Exporter : Schéma SQL',
+  'palette.groupSelectedTables': 'Grouper les tables sélectionnées',
   'palette.keywords.schemaSqlStatements':
     'créer si n’existe pas supprimer remplacer',
   'palette.keywords.schemaSqlHeader': 'use base de données search_path',

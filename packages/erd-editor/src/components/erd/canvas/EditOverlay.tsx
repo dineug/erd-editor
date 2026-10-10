@@ -18,6 +18,7 @@ import {
 import {
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
+  TABLE_GROUP_TITLE_FONT_WEIGHT,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   getCellTextHeight,
@@ -28,6 +29,7 @@ import {
   getHeaderTextY,
   HEADER_CELLS_X,
 } from '@/components/erd/canvas/table/cellLayout';
+import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
 import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -40,6 +42,7 @@ import {
 import {
   editMemoEndAction,
   editTableEndAction,
+  editTableGroupEndAction,
   scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
@@ -49,6 +52,7 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
+import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 import type { RootState } from '@/engine/state';
 import type { PlainMessageKey } from '@/i18n/translate';
 import type { Column } from '@/internal-types';
@@ -58,8 +62,16 @@ import {
   getTableWidths,
 } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
+import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
+import { isComposing } from '@/utils/keyboard-shortcut';
 import { isPinchWheel } from '@/utils/pinch';
+import {
+  getTableGroupColors,
+  getTableGroupRect,
+  getTableHeaderTint,
+  isTableGroupShown,
+} from '@/utils/tableGroup';
 import { isHighLevelTable } from '@/utils/validation';
 
 import * as styles from './EditOverlay.styles';
@@ -85,6 +97,8 @@ type CellTarget = {
   width: number;
   value: string;
   placeholderKey: PlainMessageKey;
+  /** The text color a header its group tints takes, its value and placeholder alike; null for the theme's. */
+  textColor: string | null;
 };
 
 type MemoTarget = {
@@ -98,7 +112,19 @@ type MemoTarget = {
   value: string;
 };
 
-type EditTarget = CellTarget | MemoTarget;
+type TableGroupTarget = {
+  kind: 'tableGroup';
+  groupId: string;
+  /** Where the name this replaces is drawn, in canvas coordinates. */
+  x: number;
+  y: number;
+  width: number;
+  value: string;
+  /** The text color the group's color takes, its value and placeholder alike; null for the theme's. */
+  textColor: string | null;
+};
+
+type EditTarget = CellTarget | MemoTarget | TableGroupTarget;
 
 /**
  * The column field a cell editor writes into. Only the four column focus types
@@ -120,7 +146,9 @@ function getColumnValue(column: Column, focusType: FocusType): string {
 const keyOf = (target: EditTarget) =>
   target.kind === 'memo'
     ? `memo:${target.memoId}`
-    : `${target.tableId}:${target.columnId ?? ''}:${target.focusType}`;
+    : target.kind === 'tableGroup'
+      ? `tableGroup:${target.groupId}`
+      : `${target.tableId}:${target.columnId ?? ''}:${target.focusType}`;
 
 /**
  * The cell the editor is open on, or null while none is. Every box comes out of
@@ -163,6 +191,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
       value:
         slot.focusType === FocusType.tableName ? table.name : table.comment,
       placeholderKey,
+      textColor: getTableHeaderTint(state, table)?.foreground ?? null,
     };
   }
 
@@ -189,6 +218,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     width: slot.width,
     value: getColumnValue(column, slot.focusType),
     placeholderKey,
+    textColor: null,
   };
 }
 
@@ -220,9 +250,46 @@ function resolveMemoTarget(state: RootState): MemoTarget | null {
   };
 }
 
-/** The one editor open over the scene: a memo body outranks a table cell. */
+/**
+ * The group whose name the editor is open on, or null while none is or groups
+ * are hidden. The box is the one the bar draws the name in, past the padding at
+ * each end, so the caret lands where the name was.
+ */
+function resolveTableGroupTarget(state: RootState): TableGroupTarget | null {
+  const { editor, collections, doc } = state;
+  const { editTableGroupId } = editor;
+  if (
+    !editTableGroupId ||
+    !doc.tableGroupIds.includes(editTableGroupId) ||
+    !isTableGroupShown(state)
+  ) {
+    return null;
+  }
+
+  const group = query(collections)
+    .collection('tableGroupEntities')
+    .selectById(editTableGroupId);
+  if (!group) return null;
+
+  const { x, y, width } = getTableGroupRect(state, group);
+  const nameBox = getTableGroupNameBox(width);
+
+  return {
+    kind: 'tableGroup',
+    groupId: group.id,
+    x: x + nameBox.x,
+    y: y + nameBox.y,
+    width: nameBox.width,
+    value: group.name,
+    textColor: getTableGroupColors(group)?.foreground ?? null,
+  };
+}
+
+/** The one editor open over the scene: a memo body, then a group name, then a table cell. */
 const resolveEditTarget = (state: RootState): EditTarget | null =>
-  resolveMemoTarget(state) ?? resolveCellTarget(state);
+  resolveMemoTarget(state) ??
+  resolveTableGroupTarget(state) ??
+  resolveCellTarget(state);
 
 type MemoEditorProps = {
   target: MemoTarget;
@@ -328,6 +395,101 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
   );
 };
 
+type TableGroupNameEditorProps = {
+  target: TableGroupTarget;
+  placeholder: string;
+};
+
+/**
+ * The input a group's name is edited in, in the bar's font and text color. It
+ * writes once: Enter or a blur commits a changed name as one action, and an
+ * Escape, on which the canvas's stop branch closes it, writes nothing.
+ */
+const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
+  const app = useAppContext(ctx);
+  const input = createRef<HTMLInputElement>();
+  let cancelled = false;
+  let ended = false;
+
+  const end = (commit: boolean) => {
+    if (ended) return;
+    ended = true;
+
+    const { store } = app.value;
+    const { doc, collections } = store.state;
+    const { groupId } = props.target;
+    const value = input.value?.value ?? props.target.value;
+    // The document's own list, since a removed group stays in collections
+    // until the next gc and a name written to it would be an edit of nothing.
+    const group = doc.tableGroupIds.includes(groupId)
+      ? query(collections).collection('tableGroupEntities').selectById(groupId)
+      : undefined;
+    const changed = Boolean(commit && group && group.name !== value);
+
+    store.dispatch(
+      ...(changed ? [changeTableGroupNameAction({ id: groupId, value })] : []),
+      editTableGroupEndAction()
+    );
+    ctx.host.dispatchEvent(focusEvent());
+  };
+
+  // Escape goes on to the stop branch, whose focus change blurs this input,
+  // so the flag is what keeps that blur from committing.
+  const handleKeydown = (event: KeyboardEvent) => {
+    if (isComposing(event)) return;
+
+    if (event.key === 'Escape') {
+      cancelled = true;
+    } else if (event.key === 'Enter') {
+      end(true);
+    }
+  };
+
+  const handleBlur = () => {
+    end(!cancelled);
+  };
+
+  // The name goes in once as it opens, so a peer's rename while it is open
+  // never overwrites what is being typed.
+  onMounted(() => {
+    const el = input.value;
+    if (!el) return;
+
+    el.value = props.target.value;
+    lastCursorFocus(el);
+  });
+
+  return () => (
+    <input
+      class="table-group-name-input"
+      use:ref={ref(input)}
+      type="text"
+      spellcheck="false"
+      placeholder={props.placeholder}
+      style={{
+        display: 'block',
+        width: `${props.target.width}px`,
+        height: `${getTableGroupNameBox().height}px`,
+        margin: '0',
+        padding: '0',
+        border: '0',
+        outline: 'none',
+        'box-sizing': 'border-box',
+        'background-color': 'transparent',
+        color: 'var(--active)',
+        'caret-color': 'var(--active)',
+        'font-family': SCENE_FONT_FAMILY,
+        'font-size': `${SCENE_FONT_SIZE}px`,
+        'font-weight': TABLE_GROUP_TITLE_FONT_WEIGHT,
+        'line-height': 'normal',
+        'letter-spacing': '0em',
+      }}
+      on:keydown={handleKeydown}
+      on:blur={handleBlur}
+    />
+  );
+};
+
 /**
  * The one editing surface over the Stage. A canvas has no caret, no selection
  * and no IME, so the edited cell hides its konva text and a real input takes
@@ -377,6 +539,10 @@ const EditOverlay: FC = (_, ctx) => {
       return <MemoEditor target={target} />;
     }
 
+    if (target.kind === 'tableGroup') {
+      return <TableGroupNameEditor target={target} placeholder={placeholder} />;
+    }
+
     if (target.focusType === FocusType.columnDataType && target.columnId) {
       return (
         <ColumnDataType
@@ -418,7 +584,11 @@ const EditOverlay: FC = (_, ctx) => {
     const { zoomLevel } = settings;
     // Read here rather than in the editor, which repeat draws outside this pass.
     const placeholder =
-      target?.kind === 'cell' ? i18n.value.t(target.placeholderKey) : '';
+      target?.kind === 'cell'
+        ? i18n.value.t(target.placeholderKey)
+        : target?.kind === 'tableGroup'
+          ? i18n.value.t('common.unnamed')
+          : '';
 
     return (
       <div
@@ -454,6 +624,14 @@ const EditOverlay: FC = (_, ctx) => {
                       // The box konva centred the drawn line in, handed to the
                       // input as a property so the two share one measurement.
                       '--cell-text-height': `${getCellTextHeight()}px`,
+                    }
+                  : {}),
+                // The input reads these two for its value and its placeholder,
+                // so a tinted header or a colored group keeps its text color.
+                ...(item.kind !== 'memo' && item.textColor
+                  ? {
+                      '--active': item.textColor,
+                      '--placeholder': item.textColor,
                     }
                   : {}),
               }}

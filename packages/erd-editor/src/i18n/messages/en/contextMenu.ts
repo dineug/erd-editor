@@ -8,6 +8,10 @@ export const contextMenu = {
   'contextMenu.primaryKeyOnSelectedColumns': 'Primary Key on selected columns',
   'contextMenu.focusOnThisTable': 'Focus on this table',
   'contextMenu.focusOnSelectedTables': 'Focus on selected tables',
+  'contextMenu.groupSelectedTables': 'Group selected tables',
+  'contextMenu.removeFromGroup': 'Remove from group',
+  'contextMenu.selectTables': 'Select tables',
+  'contextMenu.rename': 'Rename',
   'contextMenu.relationshipType': 'Relationship Type',
   'contextMenu.onDelete': 'On Delete',
   'contextMenu.onUpdate': 'On Update',
@@ -19,4 +23,5 @@ export const contextMenu = {
   'contextMenu.show.columnComment': 'Column Comment',
   'contextMenu.show.alternateKey': 'Alternate Key',
   'contextMenu.show.referentialActions': 'Referential Actions',
+  'contextMenu.show.tableGroups': 'Table Groups',
 } as const;

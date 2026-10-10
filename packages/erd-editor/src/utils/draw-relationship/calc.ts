@@ -56,8 +56,10 @@ function tableSize(
  */
 function documentTableSize(state: RootState, table: Table): PendingSize {
   const { settings } = state;
-  // The referential action labels sit on the connectors and size no table.
-  const show = settings.show & ~Show.hideReferentialAction;
+  // The referential action labels sit on the connectors and the groups behind
+  // the tables, and neither sizes a table.
+  const show =
+    settings.show & ~(Show.hideReferentialAction | Show.hideTableGroup);
   const key = `${getWidthGeneration()}|${show}|${settings.maxWidthComment}|${table.ui.widthName}|${table.ui.widthComment}|${table.columnIds.length}`;
 
   return {

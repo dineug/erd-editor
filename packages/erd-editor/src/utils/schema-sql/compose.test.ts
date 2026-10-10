@@ -385,6 +385,29 @@ describe('createSchemaSQL options', () => {
       ).toBe(readFixture(`${vendor}/recreate-none.sql`));
     });
 
+    it.each(SCRIPT_COMBINATIONS[vendor])(
+      'writes the scripts around a few tables asked to, %s with the %s header',
+      (statements, header) => {
+        const state = createSampleState({ ddlScripts: SCRIPTS[vendor] });
+
+        expect(
+          createSchemaSQL(state, Database[vendor], ['tm', 'tp'], {
+            statements,
+            header,
+            scripts: true,
+          })
+        ).toBe(readFixture(`${vendor}/${statements}-${header}-scripts.sql`));
+      }
+    );
+
+    it('writes no script for the whole document told to write none', () => {
+      const state = createSampleState({ ddlScripts: SCRIPTS[vendor] });
+
+      expect(
+        createSchemaSQL(state, Database[vendor], undefined, { scripts: false })
+      ).toBe(readFixture(`${vendor}/create-none.sql`));
+    });
+
     it('writes an empty document as the empty string, whatever the options', () => {
       const state = createEmptyState();
 
@@ -415,6 +438,34 @@ describe('createSchemaSQL options', () => {
     const state = createEmptyState({ before: 'SET a;', after: 'SET b;' });
 
     expect(createSchemaSQL(state, Database.MySQL, [])).toBe('');
+  });
+
+  it('writes the scripts alone for no table given, when asked to', () => {
+    const state = createEmptyState({ before: 'SET a;', after: 'SET b;' });
+
+    expect(createSchemaSQL(state, Database.MySQL, [], { scripts: true })).toBe(
+      '\nSET a;\n\nSET b;\n'
+    );
+  });
+
+  it('drops and creates only the tables given, the scripts around them and a foreign key to a table left out kept', () => {
+    const state = createSampleState({ ddlScripts: SCRIPTS.MySQL });
+    const whole = readFixture('MySQL/recreate-createAndUse-scripts.sql');
+    const memberCreate =
+      /CREATE TABLE member\n[\s\S]*?ADD CONSTRAINT UQ_member_email UNIQUE \(email\);\n\n/;
+
+    expect(whole).toMatch(memberCreate);
+    expect(
+      createSchemaSQL(state, Database.MySQL, ['tp'], {
+        statements: 'recreate',
+        header: 'createAndUse',
+        scripts: true,
+      })
+    ).toBe(
+      whole
+        .replace('DROP TABLE IF EXISTS member;\n', '')
+        .replace(memberCreate, '')
+    );
   });
 
   it('writes one script alone where the other is empty', () => {
@@ -525,6 +576,16 @@ describe('createSchemaSQL options', () => {
     );
   });
 
+  it('names only the long Oracle names the tables given write', () => {
+    const state = createSampleState({
+      memberName: 'member_notification_settings',
+    });
+
+    expect(oracleLongNames(state, ['tp'])).toEqual([
+      'FK_member_notification_settings_TO_post',
+    ]);
+  });
+
   it('quotes the header name as the tables are', () => {
     const state = createSampleState({ bracketType: BracketType.backtick });
 
@@ -542,5 +603,12 @@ describe('schemaSQLTables', () => {
 
     expect(schemaSQLTables(state)).toEqual(['post', 'Zebra']);
     expect(schemaSQLTables(createEmptyState())).toEqual([]);
+  });
+
+  it('names only the tables given', () => {
+    const state = createSampleState({ memberName: 'Zebra' });
+
+    expect(schemaSQLTables(state, ['tm'])).toEqual(['Zebra']);
+    expect(schemaSQLTables(state, [])).toEqual([]);
   });
 });

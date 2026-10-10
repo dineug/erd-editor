@@ -16,6 +16,7 @@ import * as styles from '@/components/erd/floating-toolbar/FloatingToolbar.style
 import { RelationshipType } from '@/constants/schema';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
+  changeDrawTableGroupAction,
   changeHandToolAction,
   changeViewportAction,
   drawStartRelationshipAction,
@@ -111,6 +112,22 @@ describe('FloatingToolbar', () => {
     await flush();
 
     expect(app.store.state.editor.handTool).toBe(false);
+  });
+
+  it('marks neither tool while a table group draw is armed, and Select ends the draw', async () => {
+    const { app, root } = await setup();
+    app.store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+    await flush();
+
+    expect(isActive(byTitle(root, 'Hand'))).toBe(false);
+    expect(isActive(byTitle(root, 'Select'))).toBe(false);
+
+    click(byTitle(root, 'Select'));
+    await flush();
+
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+    expect(app.store.state.editor.handTool).toBe(false);
+    expect(isActive(byTitle(root, 'Select'))).toBe(true);
   });
 
   it('arms a notation, marks it, and puts the pointer back in hand for it', async () => {

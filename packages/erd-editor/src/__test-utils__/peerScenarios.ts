@@ -97,6 +97,18 @@ import {
   changeColumnValueAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import {
+  changeTableGroupColorAction,
+  changeTableGroupNameAction,
+  moveToTableGroupAction,
+  resizeTableGroupAction,
+} from '@/engine/modules/table-group/atom.actions';
+import {
+  addTableGroupAction$,
+  moveTableGroupAction$,
+  removeTableGroupAction$,
+  setTableGroupAction$,
+} from '@/engine/modules/table-group/generator.actions';
 import type {
   DispatchFocus,
   DispatchReport,
@@ -151,6 +163,19 @@ const colorMemoAction$ = (id: string, color: string): GeneratorAction =>
       id,
       color,
       prevColor: memo?.ui.color ?? '',
+    });
+  };
+
+const colorTableGroupAction$ = (id: string, color: string): GeneratorAction =>
+  function* ({ collections }) {
+    const group = query(collections)
+      .collection('tableGroupEntities')
+      .selectById(id);
+
+    yield changeTableGroupColorAction({
+      id,
+      color,
+      prevColor: group?.color ?? '',
     });
   };
 
@@ -536,6 +561,38 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
   moveMemo: () =>
     edit('moveMemo', [moveToMemoAction({ id: SEED.memo, x: 960, y: 420 })]),
   resizeMemo: () => resizeMemo(SEED.memo, 320, 240),
+
+  // Drawn round the empty table, which joins it.
+  addTableGroup: () =>
+    edit('addTableGroup', [
+      addTableGroupAction$({ x: 60, y: 460, width: 500, height: 200 }),
+    ]),
+  removeTableGroup: () =>
+    edit('removeTableGroup', [removeTableGroupAction$(SEED.group)]),
+  renameTableGroup: () =>
+    edit('renameTableGroup', [
+      changeTableGroupNameAction({ id: SEED.group, value: 'members' }),
+    ]),
+  colorTableGroup: () =>
+    edit('colorTableGroup', [colorTableGroupAction$(SEED.group, '#0090ff')]),
+  moveTableGroup: () =>
+    edit('moveTableGroup', [moveTableGroupAction$([SEED.group], 40, 0)]),
+  placeTableGroup: () =>
+    edit('placeTableGroup', [
+      moveToTableGroupAction({ id: SEED.group, x: -200, y: 40 }),
+    ]),
+  resizeTableGroup: () =>
+    edit('resizeTableGroup', [
+      resizeTableGroupAction({
+        id: SEED.group,
+        x: 60,
+        y: 60,
+        width: 900,
+        height: 240,
+      }),
+    ]),
+  setTableGroup: () =>
+    edit('setTableGroup', [setTableGroupAction$([SEED.orders], SEED.group)]),
 
   setDatabaseName: () =>
     edit('setDatabaseName', [changeDatabaseNameAction({ value: 'shop' })]),

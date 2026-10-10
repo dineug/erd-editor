@@ -6,6 +6,10 @@ export const schemaSql = {
   'schemaSql.thisWindowOnly': 'This window only',
   'schemaSql.statements': 'Statements',
   'schemaSql.header': 'Header',
+  'schemaSql.tables': 'Tables',
+  'schemaSql.allTables': 'All',
+  'schemaSql.noGroup': 'No group',
+  'schemaSql.noTablesChosen': 'No tables chosen. Check some under Tables.',
   'schemaSql.notInDatabase': 'Not in {database}',
   'schemaSql.dropWarning':
     'Drops {tables} before creating them. Their rows are lost.',

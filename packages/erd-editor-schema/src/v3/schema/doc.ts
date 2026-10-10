@@ -3,4 +3,5 @@ export type Doc = {
   relationshipIds: string[];
   indexIds: string[];
   memoIds: string[];
+  tableGroupIds: string[];
 };

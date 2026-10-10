@@ -21,6 +21,8 @@ export type Editor = {
   focusTable: FocusTable | null;
   /** The memo whose body an overlay editor is open on, and null while none is. */
   editMemoId: string | null;
+  /** The table group whose name an overlay editor is open on, and null while none is. */
+  editTableGroupId: string | null;
   /**
    * How far down its body each memo is shown from, by memo id. The scene and
    * the overlay editor both read it, so the lines a body shows survive the
@@ -33,6 +35,11 @@ export type Editor = {
   openMap: Record<string, boolean>;
   /** Whether the pointer pans the canvas instead of reaching the scene under it. */
   handTool: boolean;
+  /**
+   * Whether the next main press on the canvas draws a table group instead of
+   * reaching the scene under it. Local to this client, never the file or a peer.
+   */
+  drawTableGroup: boolean;
   /** Whether the editor is drawn without its scrollbars, its map and its toolbar. */
   zenMode: boolean;
   draggableColumn: DraggableColumn | null;
@@ -119,6 +126,7 @@ export type SharedDragSelectTracker = Rect & {
 export const SelectType = {
   table: 'table',
   memo: 'memo',
+  tableGroup: 'tableGroup',
 } as const;
 export type SelectType = ValuesType<typeof SelectType>;
 
@@ -192,12 +200,14 @@ export const isEditingMemo = ({ editMemoId }: Editor): boolean =>
   Boolean(editMemoId);
 
 /**
- * Whether a live text editor owns the keyboard. A memo body and a table cell
- * both open a real input over the scene, so a canvas shortcut stands down for
- * either of them rather than for the cell alone.
+ * Whether a live text editor owns the keyboard. A memo body, a table cell and a
+ * table group's name each open a real input over the scene, so a canvas
+ * shortcut stands down for any of them rather than for the cell alone.
  */
 export const isEditingText = (editor: Editor): boolean =>
-  isEditingMemo(editor) || Boolean(editor.focusTable?.edit);
+  isEditingMemo(editor) ||
+  Boolean(editor.focusTable?.edit) ||
+  Boolean(editor.editTableGroupId);
 
 export const createEditor = (): Editor => ({
   id: uuid25(),
@@ -211,12 +221,14 @@ export const createEditor = (): Editor => ({
   scrollPullPending: false,
   focusTable: null,
   editMemoId: null,
+  editTableGroupId: null,
   memoScrollTopMap: {},
   drawRelationship: null,
   hoverColumnMap: {},
   hoverRelationshipMap: {},
   openMap: {},
   handTool: false,
+  drawTableGroup: false,
   zenMode: false,
   draggableColumn: null,
   draggingColumnMap: {},

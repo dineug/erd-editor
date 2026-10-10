@@ -1,3 +1,4 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import { FC, html, render } from '@dineug/r-html';
 import {
   afterAll,
@@ -26,6 +27,10 @@ import {
   changeZenModeAction,
 } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  addTableGroupAction,
+  removeTableGroupAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { MESSAGES } from '@/i18n/messages/index';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
@@ -199,6 +204,7 @@ function emptyGCIds() {
     indexIds: [],
     indexColumnIds: [],
     memoIds: [],
+    tableGroupIds: [],
   };
 }
 
@@ -924,6 +930,31 @@ describe('<erd-editor>', () => {
     expect(
       Object.keys(app.store.state.collections.tableEntities)
     ).not.toContain(tableIds[0]);
+  });
+
+  it('applies a schema GC result holding removed table groups alone, so the value writes no group fields again', async () => {
+    const { app } = await createEditor();
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'gone',
+        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
+      }),
+      removeTableGroupAction({ id: 'gone' })
+    );
+    expect(app.store.state.collections.tableGroupEntities).toHaveProperty(
+      'gone'
+    );
+
+    gcState.service = {
+      run: async () => ({ ...emptyGCIds(), tableGroupIds: ['gone'] }),
+    };
+    app.emitter.emit({ type: 'schemaGC', payload: undefined } as any);
+    await flush(6);
+
+    expect(app.store.state.collections.tableGroupEntities).toEqual({});
+    expect(JSON.parse(toJson(app.store.state)).collections).not.toHaveProperty(
+      'tableGroupEntities'
+    );
   });
 
   it('leaves the document untouched when schema GC finds nothing', async () => {

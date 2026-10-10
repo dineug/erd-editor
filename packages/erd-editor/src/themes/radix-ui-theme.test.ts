@@ -403,6 +403,59 @@ describe('the table header band', () => {
   });
 });
 
+/** A #rrggbbaa radix alpha step laid over an opaque #rrggbb, as the canvas paints it. */
+function over(top: string, bottom: string): string {
+  expect(top).toMatch(/^#[0-9a-f]{8}$/);
+  const alpha = parseInt(top.slice(7, 9), 16) / 255;
+  const channel = (index: number) =>
+    Math.round(
+      parseInt(top.slice(index, index + 2), 16) * alpha +
+        parseInt(bottom.slice(index, index + 2), 16) * (1 - alpha)
+    )
+      .toString(16)
+      .padStart(2, '0');
+  return `#${[1, 3, 5].map(channel).join('')}`;
+}
+
+describe('a table group with no color', () => {
+  /** The bar for the table header band, which the bar must not be read as. */
+  const MIN_GROUP_DELTA_E = 5;
+
+  it('sets its bar, its body and the canvas apart, and its bar apart from a table header, in every theme', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+      const body = over(theme.tableGroupBackground, theme.canvasBackground);
+      const label = labelOf(options);
+
+      expect(
+        deltaE(theme.tableGroupHeaderBackground, body),
+        label
+      ).toBeGreaterThan(MIN_GROUP_DELTA_E);
+      expect(deltaE(body, theme.canvasBackground), label).toBeGreaterThan(
+        MIN_GROUP_DELTA_E
+      );
+      expect(
+        deltaE(theme.tableGroupHeaderBackground, theme.tableHeaderBackground),
+        label
+      ).toBeGreaterThan(MIN_GROUP_DELTA_E);
+    });
+  });
+
+  it('keeps the group name at 7:1 on its bar and frames the box in the bar color', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        contrast(theme.active, theme.tableGroupHeaderBackground),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(7);
+      expect(theme.tableGroupBorder, labelOf(options)).toBe(
+        theme.tableGroupHeaderBackground
+      );
+    });
+  });
+});
+
 describe('the light appearance', () => {
   const lightResolvedThemeOptions = everyThemeOptions.filter(
     options => options.appearance === Appearance.light

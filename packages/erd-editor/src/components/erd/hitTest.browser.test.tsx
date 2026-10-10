@@ -20,9 +20,14 @@ import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as viewerStyles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
 import Erd from '@/components/erd/Erd';
 import * as erdStyles from '@/components/erd/Erd.styles';
-import { type SceneHit, sceneHit } from '@/components/erd/hitTest';
+import {
+  ownsPress,
+  type SceneHit,
+  sceneHit,
+  type TableGroupPart,
+} from '@/components/erd/hitTest';
 import { themeContext } from '@/components/themeContext';
-import { RelationshipType } from '@/constants/schema';
+import { RelationshipType, Show } from '@/constants/schema';
 import {
   changeViewportAction,
   drawStartRelationshipAction,
@@ -33,6 +38,7 @@ import { getRemovableColumns } from '@/engine/modules/editor/utils/focus';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -43,6 +49,8 @@ import {
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import { selectTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 
@@ -416,6 +424,139 @@ describe('sceneHit - entity under a pointer', () => {
   });
 });
 
+/**
+ * A group under the first table and the connector, clear of the second table
+ * and the memo: its title bar along the top, its body under them.
+ */
+const GROUP_UI = { x: 60, y: 20, width: 700, height: 360, zIndex: 1 };
+
+async function addGroup(app: AppContext) {
+  app.store.dispatchSync(addTableGroupAction({ id: 'g1', ui: GROUP_UI }));
+  await settle();
+}
+
+/** A part of g1: its body stands apart under every group's frame, the rest under the frame's node. */
+const groupPart = (stage: Stage, name: string) =>
+  name === 'table-group-body'
+    ? stage.findOne('#table-group-body-g1')!
+    : stage.findOne<Group>('#table-group-g1')!.findOne(`.${name}`)!;
+
+const middleOf = (stage: Stage, name: string) => {
+  const rect = groupPart(stage, name).getClientRect();
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+};
+
+/** A point low in the body, clear of the tables and the connector over it. */
+const groupBodyPoint = (stage: Stage) => {
+  const rect = groupPart(stage, 'table-group-body').getClientRect();
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height - 16 };
+};
+
+describe('sceneHit - a table group under a pointer', () => {
+  it('answers with the group and its title bar for a press on the bar', async () => {
+    const fixture = await setup();
+    await addGroup(fixture.app);
+
+    expect(
+      hitAt(fixture, middleOf(fixture.stage, 'table-group-title-bar'))
+    ).toEqual({ kind: 'tableGroup', id: 'g1', part: 'title' });
+  });
+
+  it('answers with the group and its body for a press on the body', async () => {
+    const fixture = await setup();
+    await addGroup(fixture.app);
+
+    expect(hitAt(fixture, groupBodyPoint(fixture.stage))).toEqual({
+      kind: 'tableGroup',
+      id: 'g1',
+      part: 'body',
+    });
+  });
+
+  it('answers with the inner group for a press on its bar under a larger group drawn over it', async () => {
+    const fixture = await setup();
+    await addGroup(fixture.app);
+    fixture.app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'outer',
+        ui: { x: 0, y: -60, width: 900, height: 600, zIndex: 2 },
+      })
+    );
+    await settle();
+
+    expect(
+      hitAt(fixture, middleOf(fixture.stage, 'table-group-title-bar'))
+    ).toEqual({ kind: 'tableGroup', id: 'g1', part: 'title' });
+    expect(hitAt(fixture, groupBodyPoint(fixture.stage))).toEqual({
+      kind: 'tableGroup',
+      id: 'outer',
+      part: 'body',
+    });
+  });
+
+  it('answers with the group and a sash for a press on the edge of a selected one', async () => {
+    const fixture = await setup();
+    await addGroup(fixture.app);
+    fixture.app.store.dispatchSync(selectTableGroupAction$('g1', false));
+    await settle();
+
+    expect(
+      hitAt(fixture, middleOf(fixture.stage, 'table-group-sash-right'))
+    ).toEqual({ kind: 'tableGroup', id: 'g1', part: 'sash' });
+  });
+
+  it('leaves a table and a connector over a group answering for themselves', async () => {
+    const fixture = await setup();
+    await addGroup(fixture.app);
+
+    expect(hitAt(fixture, centerOf(fixture.stage, '#table-t1'))).toEqual({
+      kind: 'table',
+      id: 't1',
+    });
+    expect(
+      hitAt(fixture, centerOf(fixture.stage, '.relationship-hit-area'))
+    ).toEqual({ kind: 'relationship', id: 'r1' });
+  });
+
+  it('answers with nothing where a hidden group stands', async () => {
+    const fixture = await setup();
+    await addGroup(fixture.app);
+    const point = groupBodyPoint(fixture.stage);
+
+    fixture.app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    await settle();
+
+    expect(fixture.stage.findOne('#table-group-g1')).toBeUndefined();
+    expect(hitAt(fixture, point)).toBeNull();
+  });
+});
+
+describe('ownsPress', () => {
+  const main = new MouseEvent('mousedown', { button: 0 });
+  const right = new MouseEvent('mousedown', { button: 2 });
+  const group = (part: TableGroupPart): SceneHit => ({
+    kind: 'tableGroup',
+    id: 'g1',
+    part,
+  });
+
+  it('gives a table and a memo every press, and bare canvas or a connector none', () => {
+    expect(ownsPress({ kind: 'table', id: 't1' }, main)).toBe(true);
+    expect(ownsPress({ kind: 'memo', id: 'm1' }, right)).toBe(true);
+    expect(ownsPress({ kind: 'relationship', id: 'r1' }, main)).toBe(false);
+    expect(ownsPress(null, main)).toBe(false);
+  });
+
+  it('gives a group its title bar and sashes, and its body for any button but the main one', () => {
+    expect(ownsPress(group('title'), main)).toBe(true);
+    expect(ownsPress(group('sash'), main)).toBe(true);
+    expect(ownsPress(group('body'), main)).toBe(false);
+    expect(ownsPress(group('body'), right)).toBe(true);
+  });
+});
+
 type Editor = {
   app: AppContext;
   root: HTMLDivElement;
@@ -675,6 +816,38 @@ describe('Erd - routing what the scene answered', () => {
     expect(editor.app.store.state.editor.selectedMap).toEqual({});
   });
 
+  it('selects a group for a press on its title bar, and takes the selection off for one on its body', async () => {
+    const editor = await mountEditor();
+    await addGroup(editor.app);
+    editor.app.store.dispatchSync(selectTableAction$('t1', false));
+    await flush();
+
+    pressOn(
+      editor,
+      'mousedown',
+      middleOf(editor.stage, 'table-group-title-bar')
+    );
+    await flush();
+    expect(editor.app.store.state.editor.selectedMap).toEqual({
+      g1: 'tableGroup',
+    });
+
+    pressOn(editor, 'mousedown', groupBodyPoint(editor.stage));
+    await flush();
+    expect(editor.app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('selects a group for a right press on its body, so the menu acts on it', async () => {
+    const editor = await mountEditor();
+    await addGroup(editor.app);
+
+    await rightPress(editor, groupBodyPoint(editor.stage));
+
+    expect(editor.app.store.state.editor.selectedMap).toEqual({
+      g1: 'tableGroup',
+    });
+  });
+
   it('unselects on a press over a connector, which was never selectable', async () => {
     const editor = await mountEditor();
     editor.app.store.dispatchSync(selectTableAction$('t1', false));
@@ -816,6 +989,23 @@ describe('ErdViewer - routing what the scene answered', () => {
     await flush();
 
     expect(viewer.app.store.state.editor.selectedMap.t1).toBe('table');
+    expect(viewer.root.style.cursor).toBe('grab');
+  });
+
+  it('keeps a group selected for a press on its title bar, and pans nothing for it', async () => {
+    const viewer = await mountViewer();
+    await addGroup(viewer.app);
+
+    pressOn(
+      viewer,
+      'mousedown',
+      middleOf(viewer.stage, 'table-group-title-bar')
+    );
+    await flush();
+
+    expect(viewer.app.store.state.editor.selectedMap).toEqual({
+      g1: 'tableGroup',
+    });
     expect(viewer.root.style.cursor).toBe('grab');
   });
 

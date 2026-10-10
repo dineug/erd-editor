@@ -831,14 +831,15 @@ describe('relationship/hooks relationshipSortHook', () => {
     expect(relationshipSort).toHaveBeenCalledTimes(1);
   });
 
-  it('neither sorts nor measures as the referential action labels show or hide', async () => {
+  it.each([
+    ['the referential action labels', Show.hideReferentialAction],
+    ['the table groups', Show.hideTableGroup],
+  ])('neither sorts nor measures as %s show or hide', async (_, show) => {
     const store = createTestStore();
     const { dispatch } = await run(relationshipSortHook, store);
     const generation = getWidthGeneration();
 
-    dispatch(
-      changeShowAction({ show: Show.hideReferentialAction, value: true })
-    );
+    dispatch(changeShowAction({ show, value: true }));
     await settle();
     expect(relationshipSort).not.toHaveBeenCalled();
     expect(getWidthGeneration()).toBe(generation);

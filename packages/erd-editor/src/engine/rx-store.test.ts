@@ -40,6 +40,7 @@ import {
 import {
   addTableAction,
   changeTableColorAction,
+  changeTableGroupAction,
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -47,6 +48,7 @@ import {
   addColumnAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createRxStore, HISTORY_LIMIT, RxStore } from '@/engine/rx-store';
 import { attachActionTag, Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
@@ -56,6 +58,8 @@ const unlock = (lockSettingType: number) =>
 
 const addTable = (id: string) =>
   addTableAction({ id, ui: { x: 200, y: 100, zIndex: 2 } });
+
+const GROUP_UI = { x: 0, y: 0, width: 600, height: 400, zIndex: 1 };
 
 function createContext(): EngineContext {
   return {
@@ -235,6 +239,45 @@ describe('createRxStore', () => {
 
     store.undo();
     expect(store.state.collections.tableEntities['t1'].ui.x).toBe(200);
+  });
+
+  it('closes what a drop sends tagged as the drag into the drag entry, one undo taking back both', () => {
+    vi.useFakeTimers();
+    const store = make(createContext());
+    store.dispatchSync(
+      addTable('t1'),
+      addTableGroupAction({ id: 'g1', ui: GROUP_UI })
+    );
+    vi.advanceTimersByTime(300);
+    const before = store.history.size;
+
+    store.dispatchSync(
+      attachActionTag(
+        Tag.drag,
+        moveTableAction({ ids: ['t1'], movementX: 40, movementY: 0 })
+      )
+    );
+    store.dispatchSync(
+      attachActionTag(
+        Tag.drag,
+        changeTableGroupAction({ id: 't1', value: 'g1', prevValue: '' })
+      )
+    );
+    vi.advanceTimersByTime(300);
+
+    expect(store.history.size).toBe(before + 1);
+
+    store.undo();
+    expect(store.state.collections.tableEntities['t1']).toMatchObject({
+      groupId: '',
+      ui: { x: 200 },
+    });
+
+    store.redo();
+    expect(store.state.collections.tableEntities['t1']).toMatchObject({
+      groupId: 'g1',
+      ui: { x: 240 },
+    });
   });
 
   it('resetHistory empties both stacks and reports it', async () => {

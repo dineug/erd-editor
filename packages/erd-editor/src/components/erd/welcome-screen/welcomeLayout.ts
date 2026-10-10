@@ -1,5 +1,6 @@
 import type { RootState } from '@/engine/state';
 import type { TextDirection } from '@/i18n/locales';
+import { hasContent } from '@/konva/scene/contentBounds';
 import { editorRootOf } from '@/utils/domEvent';
 
 /** The narrowest canvas that shows the welcome screen at all. */
@@ -73,9 +74,12 @@ export function welcomeTiers({ width, height }: WelcomeSize): WelcomeTiers {
   };
 }
 
-/** A document with no table and no memo, which is what the welcome screen stands over. */
-export const isEmptyDocument = ({ doc }: RootState) =>
-  doc.tableIds.length === 0 && doc.memoIds.length === 0;
+/**
+ * A document with no table, no memo and no shown group, which is what the
+ * welcome screen stands over: the content bounds count the same, so the map
+ * and the scrollbars leave as the screen comes and come as it leaves.
+ */
+export const isEmptyDocument = (state: RootState) => !hasContent(state);
 
 /** Where along the welcome screen's width each hint points, or null where it has nothing to point at. */
 export type WelcomeAnchors = {

@@ -10,6 +10,7 @@ export const createTable = (): Table => ({
   comment: '',
   columnIds: [],
   seqColumnIds: [],
+  groupId: '',
   ui: {
     x: 200,
     y: 100,
@@ -38,6 +39,7 @@ export function createAndMergeTableEntities(
     assignString('id');
     assignString('name');
     assignString('comment');
+    assignString('groupId');
     assignArray('columnIds');
     assignArray('seqColumnIds');
 

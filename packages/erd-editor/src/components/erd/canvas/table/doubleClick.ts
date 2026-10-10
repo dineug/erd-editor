@@ -1,14 +1,13 @@
 import type { SceneMouseEvent } from '@/components/erd/canvas/sceneTokens';
-import type { FocusType } from '@/engine/modules/editor/state';
 
 /** The browser's own click count, which resets when a click lands elsewhere. */
 const clickCount = (event: SceneMouseEvent) => event.evt?.detail ?? 0;
 
 export type DoubleClickGuard = {
-  /** Records the cell a click opened a pair on. */
-  track(cell: FocusType, event: SceneMouseEvent): void;
+  /** Records the cell, or a group's part, a click opened a pair on. */
+  track(cell: string, event: SceneMouseEvent): void;
   /** Whether a konva dblclick closes a pair that began on this same cell. */
-  isDouble(cell: FocusType, event: SceneMouseEvent): boolean;
+  isDouble(cell: string, event: SceneMouseEvent): boolean;
 };
 
 /**
@@ -17,7 +16,7 @@ export type DoubleClickGuard = {
  * the first one was, so the cell that opened the pair is remembered here.
  */
 export function createDoubleClickGuard(): DoubleClickGuard {
-  let opened: FocusType | null = null;
+  let opened: string | null = null;
 
   return {
     track(cell, event) {

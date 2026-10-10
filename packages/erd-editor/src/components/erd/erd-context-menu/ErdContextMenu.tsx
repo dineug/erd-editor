@@ -2,6 +2,10 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import {
+  addTableGroupAndRename,
+  openTableGroupNameEditor,
+} from '@/components/erd/table-group/tableGroupName';
 import { useI18n } from '@/components/localeContext';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
@@ -11,6 +15,7 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 import { Open } from '@/constants/open';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
+  changeDrawTableGroupAction,
   changeOpenMapAction,
   drawEndRelationshipAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -24,6 +29,7 @@ import {
   getFocusedColumnIds,
   getRemovableColumns,
 } from '@/engine/modules/editor/utils/focus';
+import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import {
   focusCentersOf,
   focusFlowTableAction$,
@@ -41,6 +47,12 @@ import {
   changeColumnsPrimaryKeyAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import {
+  addTableGroupFromTablesAction$,
+  removeTableGroupAction$,
+  selectTableGroupTablesAction$,
+  setTableGroupAction$,
+} from '@/engine/modules/table-group/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { menuLabel } from '@/i18n/menuLabel';
 import type { PlainMessageKey } from '@/i18n/translate';
@@ -52,6 +64,7 @@ import {
 } from '@/utils/emitter';
 import { importDiffJSON } from '@/utils/file/importFile';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { getTableGroupId, isTableGroupShown } from '@/utils/tableGroup';
 
 import { createDatabaseMenus } from './menus/databaseMenus';
 import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
@@ -70,6 +83,7 @@ export const ErdContextMenuType = {
   table: 'table',
   memo: 'memo',
   relationship: 'relationship',
+  tableGroup: 'tableGroup',
 } as const;
 export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
 
@@ -88,6 +102,7 @@ export type ErdContextMenuProps = {
   /** The column whose row the press that raised a table menu landed on. */
   columnId?: string;
   memoId?: string;
+  tableGroupId?: string;
   onClose: () => void;
 };
 
@@ -97,13 +112,13 @@ type Removal = {
   action: () => GeneratorAction;
 };
 
-/** Every selected table and memo, which Delete reaches inside a multi-selection. */
+/** Every selected table, memo and group, which Delete reaches inside a multi-selection. */
 const selectionRemoval: Removal = {
   labelKey: 'contextMenu.deleteSelected',
   action: removeSelectedAction$,
 };
 
-/** Whether the table or memo a menu was raised over is one of two or more selected. */
+/** Whether the table, memo or group a menu was raised over is one of two or more selected. */
 const isOneOfSelection = (
   selectedMap: Record<string, SelectType>,
   id: string
@@ -124,6 +139,13 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const handleAddMemo = () => {
     const { store } = app.value;
     store.dispatch(addMemoAction$());
+    props.onClose();
+  };
+
+  /** Arms the draw mode: the next main press on the canvas draws the group. */
+  const handleAddTableGroup = () => {
+    const { store } = app.value;
+    store.dispatch(changeDrawTableGroupAction({ value: true }));
     props.onClose();
   };
 
@@ -305,6 +327,68 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
+  /** A group around the selected tables, its name editor open on it. */
+  const handleGroupSelectedTables = () => {
+    const { store } = app.value;
+    addTableGroupAndRename(store, addTableGroupFromTablesAction$());
+    props.onClose();
+  };
+
+  /** The selected tables leave whatever group each is in. */
+  const handleRemoveFromGroup = () => {
+    const { store } = app.value;
+    const { tableIds } = getSelectTypeIds(store.state.editor.selectedMap);
+    store.dispatch(setTableGroupAction$(tableIds, ''));
+    props.onClose();
+  };
+
+  const handleSelectGroupTables = () => {
+    if (!props.tableGroupId) return;
+
+    const { store } = app.value;
+    store.dispatch(selectTableGroupTablesAction$(props.tableGroupId));
+    props.onClose();
+  };
+
+  const handleRenameTableGroup = () => {
+    if (!props.tableGroupId) return;
+
+    openTableGroupNameEditor(app.value.store, props.tableGroupId);
+    props.onClose();
+  };
+
+  const handleOpenTableGroupColorPicker = (event: MouseEvent) => {
+    if (!props.tableGroupId) return;
+
+    const { store } = app.value;
+    const group = query(store.state.collections)
+      .collection('tableGroupEntities')
+      .selectById(props.tableGroupId);
+    if (!group) return;
+
+    openColorPicker(event, group.color);
+  };
+
+  /**
+   * What Delete reaches from the group the menu was raised over: the selection
+   * the group is one of, or the group alone, its tables kept.
+   */
+  const getTableGroupRemoval = (groupId: string): Removal =>
+    isOneOfSelection(app.value.store.state.editor.selectedMap, groupId)
+      ? selectionRemoval
+      : {
+          labelKey: 'contextMenu.delete',
+          action: () => removeTableGroupAction$(groupId),
+        };
+
+  const handleRemoveTableGroup = () => {
+    if (!props.tableGroupId) return;
+
+    const { store } = app.value;
+    store.dispatch(getTableGroupRemoval(props.tableGroupId).action());
+    props.onClose();
+  };
+
   onMounted(() => {
     const { shortcut$ } = app.value;
 
@@ -321,14 +405,40 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     );
   });
 
+  /**
+   * The group rows the table menu shows: Group selected tables over a selection
+   * holding a table, Remove from group while one of them is in a group. A
+   * readonly store shows neither, and hidden groups leave the first out.
+   */
+  const getTableGroupRows = () => {
+    const { store } = app.value;
+    const { state } = store;
+    if (store.getReadonly()) return { canGroup: false, canUngroup: false };
+
+    const { tableIds } = getSelectTypeIds(state.editor.selectedMap);
+    const tables = query(state.collections)
+      .collection('tableEntities')
+      .selectByIds(tableIds.filter(id => state.doc.tableIds.includes(id)));
+
+    return {
+      canGroup: tables.length !== 0 && isTableGroupShown(state),
+      canUngroup: tables.some(table => getTableGroupId(state, table) !== ''),
+    };
+  };
+
   return () => {
     const { keyBindingMap, store } = app.value;
     const { t } = i18n.value;
+    const readonly = store.getReadonly();
     const focusesGroup =
       Boolean(props.tableId) &&
       focusCentersOf(store.state.editor.selectedMap, props.tableId).length > 1;
     const keysSelection = getFocusedColumnIds(store.state).length > 1;
     const removeShortcut = keyBindingMap.removeSelection[0]?.shortcut;
+    const tableGroupRows =
+      props.type === ErdContextMenuType.table
+        ? getTableGroupRows()
+        : { canGroup: false, canUngroup: false };
     const removeColorItem = hasColoredSelection(store.state) ? (
       <ContextMenu.Item
         onClick={handleRemoveColor}
@@ -397,6 +507,28 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 }
               />
               {removeColorItem}
+              {tableGroupRows.canGroup ? (
+                <ContextMenu.Item
+                  onClick={handleGroupSelectedTables}
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name="group" size={14} />}
+                      name={t('contextMenu.groupSelectedTables')}
+                    />
+                  }
+                />
+              ) : null}
+              {tableGroupRows.canUngroup ? (
+                <ContextMenu.Item
+                  onClick={handleRemoveFromGroup}
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name="ungroup" size={14} />}
+                      name={t('contextMenu.removeFromGroup')}
+                    />
+                  }
+                />
+              ) : null}
               <ContextMenu.Item
                 onClick={handleRemoveTable}
                 children={
@@ -436,6 +568,54 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
+            </>
+          ) : props.type === ErdContextMenuType.tableGroup ? (
+            <>
+              <ContextMenu.Item
+                onClick={handleSelectGroupTables}
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="mouse-pointer-2" size={14} />}
+                    name={t('contextMenu.selectTables')}
+                  />
+                }
+              />
+              {readonly ? null : (
+                <>
+                  <ContextMenu.Item
+                    onClick={handleRenameTableGroup}
+                    children={
+                      <ContextMenu.Menu
+                        icon={<Icon name="pencil" size={14} />}
+                        name={t('contextMenu.rename')}
+                      />
+                    }
+                  />
+                  <ContextMenu.Item
+                    onClick={handleOpenTableGroupColorPicker}
+                    children={
+                      <ContextMenu.Menu
+                        icon={<Icon name="palette" size={14} />}
+                        name={t('common.color')}
+                      />
+                    }
+                  />
+                  {removeColorItem}
+                  <ContextMenu.Item
+                    onClick={handleRemoveTableGroup}
+                    children={
+                      <ContextMenu.Menu
+                        name={t(
+                          props.tableGroupId
+                            ? getTableGroupRemoval(props.tableGroupId).labelKey
+                            : 'contextMenu.delete'
+                        )}
+                        right={<Kbd shortcut={removeShortcut} />}
+                      />
+                    }
+                  />
+                </>
+              )}
             </>
           ) : props.type === ErdContextMenuType.relationship ? (
             <>
@@ -555,6 +735,17 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
+              {readonly || !isTableGroupShown(store.state) ? null : (
+                <ContextMenu.Item
+                  onClick={handleAddTableGroup}
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name="group" size={14} />}
+                      name={t('common.newTableGroup')}
+                    />
+                  }
+                />
+              )}
               <ContextMenu.Item
                 onClick={handleOpenFindReplace}
                 children={

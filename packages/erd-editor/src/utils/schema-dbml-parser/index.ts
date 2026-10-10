@@ -14,6 +14,7 @@ import { DBMLModel } from './types';
 const EMPTY_MODEL: DBMLModel = {
   tables: [],
   refs: [],
+  tableGroups: [],
   enums: {},
   skipped: [],
 };

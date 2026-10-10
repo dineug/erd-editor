@@ -54,13 +54,18 @@ editor's own history.
 - **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or
   add new ones, and Map Columns in a relationship's right-click menu changes its columns later
+- **Table groups** — draw a named, colored box behind related tables with **New Table Group** in
+  the canvas menu or `Ctrl`/`Cmd`+`K`, or group the selected tables from their right-click menu. A
+  table joins a group when you drop it inside and leaves when you drop it outside, dragging a
+  group by its title moves its tables with it, and each member's header takes the group's color.
+  View Option hides the groups, and the Schema SQL tab writes the tables of the groups you check
 - **SQL DDL import** — bring in a `.sql` dump from any of the vendors below. The parser reads
   `CREATE TABLE`, `CREATE INDEX` and `ALTER TABLE` constraints and skips what it does not
   recognize, so an awkward dump imports partially rather than failing outright
 - **GraphQL SDL import** — object types become tables, scalars map to the diagram's own dialect,
   and the fields pointing at another type become the relationships
 - **DBML and AML import** — `.dbml` files written for dbdiagram.io or dbdocs.io, and `.aml` files
-  written for [Azimutt](https://azimutt.app), table colors included
+  written for [Azimutt](https://azimutt.app), table colors and DBML table groups included
 - **Import and Add** — add a `.sql`, GraphQL, DBML, AML or `.erd.json` file to the diagram rather
   than replacing it: its tables arrive below the ones already there, which stay where they are,
   and one undo takes them away. A foreign key to a table outside the file is dropped
@@ -89,7 +94,8 @@ editor's own history.
   keywords and generated code stay as they are
 - **Welcome guide** — an empty diagram opens on the ways to start: a new table or memo, an
   import, the command palette and the shortcuts, with hints pointing at the toolbar's search, theme
-  and language buttons and at the floating toolbar. The first table or memo takes it away
+  and language buttons and at the floating toolbar. The first table, memo or table group takes it
+  away
 
 ### Split panes
 
