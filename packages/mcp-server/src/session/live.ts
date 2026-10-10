@@ -211,10 +211,18 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
         yield* assertDocumentText(path, stripBom(result.initialValue));
         if (seeded && edits > 0) notes.push(RESEED_NOTE);
 
+        // The seed asks the editor for its registers again: that batch waits
+        // until this agent is registered, and a read's join or a failed seed drops it.
+        const seedBatches: unknown[][] = [];
         yield* attempt(() => {
-          peer.setInitialValue(result.initialValue);
-          peer.mergeClock(result.snapshotVersion);
-          peer.setReadonly(result.readonly);
+          held = seedBatches;
+          try {
+            peer.setInitialValue(result.initialValue);
+            peer.mergeClock(result.snapshotVersion);
+            peer.setReadonly(result.readonly);
+          } finally {
+            held = null;
+          }
         });
         seeded = true;
         edits = 0;
@@ -223,6 +231,7 @@ export const makeLiveSession = Effect.fn('makeLiveSession')(function* (
         state = 'ready';
         if (registered) released = false;
 
+        if (registered) seedBatches.forEach(enqueueOutbound);
         if (registered && !subscribed) {
           subscribed = true;
           yield* attempt(() => peer.subscribe(enqueueOutbound));
