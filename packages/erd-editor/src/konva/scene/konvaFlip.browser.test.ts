@@ -78,7 +78,9 @@ describe('the column reorder flip', () => {
     expect(drawnY(first)).toBeCloseTo(0, 5);
     expect(drawnY(second)).toBeCloseTo(24, 5);
 
-    await wait(FLIP_DURATION * 1000 + 150);
+    // The tween closes its window, or the flip's timeout does once a busy page
+    // starved its frames; either way the rows come to rest where they belong.
+    await settled();
     expect(first.offsetY()).toBeCloseTo(0, 5);
     expect(second.offsetY()).toBeCloseTo(0, 5);
     expect(drawnY(first)).toBeCloseTo(24, 5);
