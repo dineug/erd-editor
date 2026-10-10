@@ -57,7 +57,9 @@ only; they do not appear in the Command Palette.
   with CREATE TABLE IF NOT EXISTS, drop and re-create, a USE or CREATE SCHEMA header and SQL of
   your own before and after the tables, from the Schema SQL tab's options panel
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM,
+  Swift, Zod, JSON Schema, picked with the database and the name cases from the Code Generator
+  tab's options panel, which saves the code as a file
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
   transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead

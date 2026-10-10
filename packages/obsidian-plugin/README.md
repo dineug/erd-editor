@@ -68,7 +68,9 @@ editor's own history.
   with CREATE TABLE IF NOT EXISTS, drop and re-create, a USE or CREATE SCHEMA header and SQL of
   your own before and after the tables, from the Schema SQL tab's options panel
 - **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM
+  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM,
+  Swift, Zod, JSON Schema, picked with the database and the name cases from the Code Generator
+  tab's options panel, which saves the code into the vault where your attachments go
 - **Visualization** — a force-directed view of how the tables actually relate
 - **Export** — JSON, SQL, PNG and SVG, written into the vault where your attachments go; the
   images from a dialog with a preview: transparent background, light or dark, the PNG at 1x to
