@@ -93,6 +93,10 @@ under **Lock** with the value the file keeps. Unlock the viewport for a document
 where you left it, or unlock and lock it again to fix a new starting view. Files saved before the
 locks open with all of them on, their scroll, zoom and tab at the start.
 
+Source Control shows a changed diagram as a text diff of its JSON, and opens a revision Git holds,
+such as a deleted file or a file in an earlier commit, as JSON text. **Reopen Editor With…** shows
+that revision as a diagram; a file Git does not track yet opens in the editor as any other does.
+
 ### Multiple editors per document
 
 The same document can be open in several editors at once, and they stay in sync.

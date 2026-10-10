@@ -165,6 +165,71 @@ describe('custom editor', () => {
     });
   });
 
+  describe('a git revision', () => {
+    let provider: vscode.Disposable;
+    let revisionUri: vscode.Uri;
+
+    before(async () => {
+      const text = Buffer.from(
+        await vscode.workspace.fs.readFile(documentUri)
+      ).toString('utf8');
+      // The fixture folder is no repository, so the revision is served here;
+      // which editor opens depends on the uri alone, never on its content.
+      provider = vscode.workspace.registerTextDocumentContentProvider('git', {
+        provideTextDocumentContent: () => text,
+      });
+      revisionUri = documentUri.with({
+        scheme: 'git',
+        query: JSON.stringify({ path: documentUri.fsPath, ref: 'HEAD' }),
+      });
+    });
+
+    after(() => {
+      provider.dispose();
+    });
+
+    function erdEditorTabsOnRevisions(): vscode.Tab[] {
+      return allTabs().filter(
+        tab =>
+          tab.input instanceof vscode.TabInputCustom &&
+          tab.input.uri.scheme === 'git'
+      );
+    }
+
+    it('opens as JSON text, as Source Control opens a deleted diagram', async () => {
+      await vscode.commands.executeCommand('vscode.open', revisionUri);
+
+      await waitUntil('a text editor shows the revision of sample.erd', () =>
+        allTabs().some(
+          tab =>
+            tab.input instanceof vscode.TabInputText &&
+            tab.input.uri.scheme === 'git'
+        )
+      );
+      assert.strictEqual(erdEditorTabsOnRevisions().length, 0);
+    });
+
+    it('diffs against the working file as text, as Source Control opens a change', async () => {
+      await vscode.commands.executeCommand(
+        'vscode.diff',
+        revisionUri,
+        documentUri,
+        'sample.erd (Working Tree)'
+      );
+
+      await waitUntil('a text diff compares the revision with sample.erd', () =>
+        allTabs().some(
+          tab =>
+            tab.input instanceof vscode.TabInputTextDiff &&
+            tab.input.original.scheme === 'git' &&
+            tab.input.modified.fsPath === documentUri.fsPath
+        )
+      );
+      assert.strictEqual(erdEditorTabsOnRevisions().length, 0);
+      assert.strictEqual(erdEditorTabsFor(documentUri).length, 0);
+    });
+  });
+
   describe('vuerd.showSource', () => {
     it('opens the underlying file in a text editor so the JSON stays editable', async () => {
       await openErdEditor(documentUri);

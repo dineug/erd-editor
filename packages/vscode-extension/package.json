@@ -104,6 +104,12 @@
       "files.associations": {
         "*.erd": "json",
         "*.vuerd": "json"
+      },
+      "workbench.editorAssociations": {
+        "git:/**/*.erd": "default",
+        "git:/**/*.erd.json": "default",
+        "git:/**/*.vuerd": "default",
+        "git:/**/*.vuerd.json": "default"
       }
     },
     "menus": {
