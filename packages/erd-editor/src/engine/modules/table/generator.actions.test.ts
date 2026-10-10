@@ -27,6 +27,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   removeTableAction,
   sortTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -46,6 +47,7 @@ import {
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
@@ -728,6 +730,70 @@ describe('sortTablesToMoveAction$', () => {
 
   it('emits nothing for a document with no table', () => {
     expect(typesOf(store, sortTablesToMoveAction$())).toEqual([]);
+  });
+
+  function seedGroups(target: Store) {
+    seedTable(target, 'wide', 900, 900);
+    seedColumn(target, 'wide', 'w1');
+    seedTable(target, 'narrow', 700, 700);
+    seedTable(target, 'loose', 300, 300);
+    target.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 900, y: 900, width: 10, height: 10, zIndex: 1 },
+      }),
+      addTableGroupAction({
+        id: 'empty',
+        ui: { x: -50, y: -50, width: 20, height: 20, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 'wide', value: 'g1' }),
+      changeTableGroupAction({ id: 'narrow', value: 'g1' })
+    );
+  }
+
+  it('places each group with members at the rect the sort reducer gives it, an empty one left out', () => {
+    seedGroups(store);
+    const sorted = createTestStore();
+    seedGroups(sorted);
+    sorted.dispatchSync(sortTableAction());
+
+    const actions = flatten(store, sortTablesToMoveAction$());
+    store.dispatchSync(sortTablesToMoveAction$());
+
+    expect(actions.map(({ type }) => type)).toEqual([
+      'table.moveTo',
+      'table.moveTo',
+      'table.moveTo',
+      'tableGroup.resize',
+    ]);
+    expect(store.state.collections.tableGroupEntities.g1.ui).toEqual(
+      sorted.state.collections.tableGroupEntities.g1.ui
+    );
+    expect(store.state.collections.tableGroupEntities.empty.ui).toMatchObject({
+      x: -50,
+      y: -50,
+      width: 20,
+      height: 20,
+    });
+    for (const id of ['wide', 'narrow', 'loose']) {
+      expect(tableOf(store, id).ui).toMatchObject({
+        x: tableOf(sorted, id).ui.x,
+        y: tableOf(sorted, id).ui.y,
+      });
+    }
+  });
+
+  it('measures on copies of the groups too, so a live group stays put until its resize lands', () => {
+    seedGroups(store);
+
+    flatten(store, sortTablesToMoveAction$());
+
+    expect(store.state.collections.tableGroupEntities.g1.ui).toMatchObject({
+      x: 900,
+      y: 900,
+      width: 10,
+      height: 10,
+    });
   });
 });
 

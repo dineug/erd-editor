@@ -9,7 +9,11 @@ import {
 } from '@/konva/scene/metrics';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
-import { getTableGroupRect, isTableGroupShown } from '@/utils/tableGroup';
+import {
+  getTableGroupRect,
+  isTableGroupShown,
+  type TableGroupWrap,
+} from '@/utils/tableGroup';
 
 export { unionRect } from '@/konva/scene/metrics';
 
@@ -39,13 +43,14 @@ export function getSceneContentRect(
 
 /**
  * One box per table, memo and group the source shows, each table at the point
- * named for it. The reader that asks which entity is nearest needs them apart,
- * where the box below folds them together, and both are the same pass.
+ * named for it and each group named at its rect. The reader that asks which
+ * entity is nearest needs them apart, and the box below folds them together.
  */
 export function getContentRects(
   state: RootState,
   moves: ReadonlyArray<TableMove> = [],
-  source: GeometrySource = 'document'
+  source: GeometrySource = 'document',
+  groupRects: ReadonlyArray<TableGroupWrap> = []
 ): Rect[] {
   const { collections, doc } = state;
   // The document's two lists read directly: the third getVisibleIds carries,
@@ -62,6 +67,9 @@ export function getContentRects(
           .selectByIds(tableGroupIds)
       : [];
   const excludeTableIds = moves.map(move => move.id);
+  const placedGroups = new Map(
+    groupRects.map(({ id, ...rect }): [string, Rect] => [id, rect])
+  );
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds);
@@ -77,23 +85,26 @@ export function getContentRects(
       return move ? { ...rect, x: move.x, y: move.y } : rect;
     }),
     ...memos.map(getMemoRect),
-    ...groups.map(group =>
-      getTableGroupRect(state, group, { excludeTableIds })
+    ...groups.map(
+      group =>
+        placedGroups.get(group.id) ??
+        getTableGroupRect(state, group, { excludeTableIds })
     ),
   ];
 }
 
 /**
- * The content rect as it will stand once each table named is at its point. The
- * placement centres the view on where its tables land in the very dispatch that
- * moves them, so it has to know the box before any reducer has run.
+ * The content rect as it will stand once each table named is at its point and
+ * each group named at its rect. A placement centres the view on where they land
+ * in the dispatch that moves them, so it needs the box before any reducer ran.
  */
 export function getContentRectAfter(
   state: RootState,
   moves: ReadonlyArray<TableMove>,
-  source: GeometrySource = 'document'
+  source: GeometrySource = 'document',
+  groupRects: ReadonlyArray<TableGroupWrap> = []
 ): Rect | null {
-  const boxes = getContentRects(state, moves, source);
+  const boxes = getContentRects(state, moves, source, groupRects);
 
   return boxes.length ? boxes.reduce(unionRect) : null;
 }

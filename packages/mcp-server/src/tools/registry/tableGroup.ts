@@ -259,7 +259,7 @@ export const tableGroupTools: readonly ActionTool[] = [
     name: 'erd_resize_table_group',
     kind: 'atom',
     atomReason:
-      'The table group module has no generator that resizes a group; the sash dispatches this atom itself as its drag ends.',
+      'No generator resizes one named group to a rect: the sash dispatches this atom itself as its drag ends, and sortTablesToMoveAction$ fits every group with tables round where the sort puts them.',
     actionTypes: ['tableGroup.resize'],
     undoable: true,
     stream: false,

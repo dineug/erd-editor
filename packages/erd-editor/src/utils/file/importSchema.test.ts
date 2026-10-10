@@ -54,10 +54,13 @@ import {
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import type { RxStoreOptions } from '@/engine/rx-store';
+import { Table } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { getTableRect } from '@/konva/scene/metrics';
+import { getTableRect, unionRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
+import { flattenElkNodes } from '@/services/elk-layout/elkGraph';
+import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import {
   appendSchema,
   appendSchemaJSON,
@@ -65,6 +68,7 @@ import {
   importSchema,
   importSchemaPlaced,
 } from '@/utils/file/importSchema';
+import { padRect } from '@/utils/tableGroup';
 
 type Layout = (
   request: ElkLayoutRequest,
@@ -74,7 +78,29 @@ type Layout = (
 const hoisted = vi.hoisted(() => ({
   elkLayout: null as Layout | null,
   requests: [] as ElkLayoutRequest[],
+  importJson: null as ((json: string) => string) | null,
 }));
+
+/**
+ * No text importer brings a table group yet, so a spec that needs one in the
+ * document an import parses to rewrites that document as it comes back.
+ */
+vi.mock('@/engine/modules/editor/generator.actions', async importOriginal => {
+  const actual =
+    await importOriginal<
+      typeof import('@/engine/modules/editor/generator.actions')
+    >();
+
+  return {
+    ...actual,
+    toSchemaImportJson: (
+      ...args: Parameters<typeof actual.toSchemaImportJson>
+    ) => {
+      const json = actual.toSchemaImportJson(...args);
+      return hoisted.importJson ? hoisted.importJson(json) : json;
+    },
+  };
+});
 
 /**
  * ELK answers from a shared worker, which this environment runs none of, so
@@ -155,6 +181,39 @@ function cornerOf(app: AppContext, name: string) {
   return { x: table.ui.x, y: table.ui.y };
 }
 
+/** An import's document rewritten to hold group g1, with the tables named in it. */
+const withGroup =
+  (names: string[]) =>
+  (json: string): string => {
+    const schema = JSON.parse(json);
+    const tables: Table[] = Object.values(schema.collections.tableEntities);
+    tables
+      .filter(table => names.includes(table.name))
+      .forEach(table => (table.groupId = 'g1'));
+    schema.doc.tableGroupIds = ['g1'];
+    schema.collections.tableGroupEntities = {
+      g1: createTableGroup({ id: 'g1', name: 'accounts' }),
+    };
+    return JSON.stringify(schema);
+  };
+
+function groupRect(app: AppContext) {
+  const { x, y, width, height } =
+    app.store.state.collections.tableGroupEntities['g1'].ui;
+  return { x, y, width, height };
+}
+
+/** The box a group takes round the tables named: their bounds and the padding. */
+function membersBox(app: AppContext, names: string[]) {
+  const { state } = app.store;
+  return padRect(
+    Object.values(state.collections.tableEntities)
+      .filter(table => names.includes(table.name))
+      .map(table => getTableRect(state, table))
+      .reduce(unionRect)
+  );
+}
+
 /** The batches that reach the document, past the history's own bookkeeping. */
 function recordActions(app: AppContext): AnyAction[][] {
   const batches: AnyAction[][] = [];
@@ -211,6 +270,7 @@ function pendingColumnLayout({ slow = false } = {}): () => Promise<void> {
 beforeEach(() => {
   hoisted.elkLayout = null;
   hoisted.requests.length = 0;
+  hoisted.importJson = null;
 });
 
 afterEach(() => {
@@ -438,6 +498,39 @@ describe('importSchemaPlaced', () => {
     expect(cornerOf(app, 'users').y).toBe(TABLE_SORT_START);
     expect(cornerOf(app, 'posts').y).toBe(TABLE_SORT_START);
     expect(toasts).toEqual([]);
+  });
+
+  it('wraps a group round where Flow put its members, its box at the corner the grid starts at', async () => {
+    const app = createApp();
+    hoisted.importJson = withGroup(['users', 'posts']);
+    hoisted.elkLayout = async ({ nodes }) =>
+      flattenElkNodes(nodes).map((node, index) => ({
+        id: node.id,
+        x: 400,
+        y: 300 + index * 1000,
+      }));
+
+    await importSchemaPlaced(app, 'sql', FAN_SQL);
+
+    expect(
+      hoisted.requests[0].nodes.some(({ children }) =>
+        children?.some(({ id }) => id === 'g1')
+      )
+    ).toBe(true);
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+    expect(groupRect(app)).toMatchObject({
+      x: TABLE_SORT_START,
+      y: TABLE_SORT_START,
+    });
+  });
+
+  it('wraps a group round its members in the grid when no layout comes back', async () => {
+    const app = createApp();
+    hoisted.importJson = withGroup(['users', 'posts']);
+
+    await importSchemaPlaced(app, 'sql', FAN_SQL);
+
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
   });
 
   it('lands the grid at once when the slow toast is cancelled', async () => {

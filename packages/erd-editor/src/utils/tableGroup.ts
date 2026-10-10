@@ -103,6 +103,44 @@ export function getTablesGroupRect(
   return rects.length ? padRect(rects.reduce(unionRect)) : null;
 }
 
+/** A group and the rect a placement gives it. */
+export type TableGroupWrap = Rect & { id: string };
+
+/**
+ * The rect each listed group with a member takes once every table named stands
+ * at its point: its members' bounds and the padding, what an automatic
+ * placement writes. A group with no member keeps its rect and is left out.
+ *
+ * @example
+ * const resizes = getTableGroupWraps(state, points).map(resizeTableGroupAction);
+ */
+export function getTableGroupWraps(
+  state: RootState,
+  points: ReadonlyArray<Point & { id: string }> = []
+): TableGroupWrap[] {
+  const { doc, collections } = state;
+  const placed = new Map(points.map(point => [point.id, point]));
+  const rectsByGroup = new Map<string, Rect[]>();
+
+  query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .forEach(table => {
+      const groupId = getTableGroupId(state, table);
+      if (!groupId) return;
+
+      const { x, y } = placed.get(table.id) ?? table.ui;
+      const rect = { ...getTableRect(state, table), x, y };
+      const rects = rectsByGroup.get(groupId);
+      rects ? rects.push(rect) : rectsByGroup.set(groupId, [rect]);
+    });
+
+  return doc.tableGroupIds.flatMap(id => {
+    const rects = rectsByGroup.get(id);
+    return rects ? [{ ...padRect(rects.reduce(unionRect)), id }] : [];
+  });
+}
+
 /** The centre of a table's box, the point every membership test reads. */
 export function getTableCenter(state: RootState, table: Table): Point {
   const { x, y, width, height } = getTableRect(state, table);

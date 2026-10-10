@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import {
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+} from '@/constants/layout';
 import { TablePlacement } from '@/constants/tablePlacement';
 import {
   ELK_ALGORITHMS,
+  elkCompoundLayoutOptions,
   elkLayoutOptions,
   elkNodeLayoutOptions,
   type ElkPlacement,
   GROUP_NODE_OPTIONS,
   isElkPlacement,
+  keepsTableGroups,
   usesCoordinateHints,
   usesPorts,
 } from '@/services/elk-layout/elkLayoutOptions';
@@ -191,6 +197,51 @@ describe('elkLayoutOptions', () => {
       for (const value of Object.values(elkLayoutOptions(placement))) {
         expect(typeof value).toBe('string');
       }
+    }
+  });
+});
+
+describe('keepsTableGroups', () => {
+  it('keeps the groups together for every placement the author picks', () => {
+    expect(ELK_PLACEMENTS.every(keepsTableGroups)).toBe(true);
+  });
+
+  it('never for the views, which draw no group', () => {
+    expect(keepsTableGroups(TablePlacement.viewLayered)).toBe(false);
+  });
+});
+
+describe('elkCompoundLayoutOptions', () => {
+  it('lays a table group out as the root is, round its members the box the editor draws', () => {
+    for (const placement of ELK_PLACEMENTS) {
+      expect(elkCompoundLayoutOptions(placement, 'tableGroup')).toEqual({
+        ...elkLayoutOptions(placement),
+        'elk.padding': `[top=${TABLE_GROUP_PADDING + TABLE_GROUP_TITLE_HEIGHT},left=${TABLE_GROUP_PADDING},bottom=${TABLE_GROUP_PADDING},right=${TABLE_GROUP_PADDING}]`,
+      });
+    }
+  });
+
+  it('lays a component out as one across the groups inside it, keeping no room of its own', () => {
+    for (const placement of ELK_PLACEMENTS) {
+      expect(elkCompoundLayoutOptions(placement, 'component')).toEqual({
+        ...elkLayoutOptions(placement),
+        'elk.padding': '[top=0,left=0,bottom=0,right=0]',
+        'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+      });
+    }
+  });
+
+  it('gives the box of unrelated tables the ratio alone, as it always had', () => {
+    expect(elkCompoundLayoutOptions(TablePlacement.viewLayered)).toEqual(
+      GROUP_NODE_OPTIONS
+    );
+  });
+
+  it('keeps the root of every placement free of a hierarchy option', () => {
+    for (const placement of [...ELK_PLACEMENTS, TablePlacement.viewLayered]) {
+      expect(elkLayoutOptions(placement)).not.toHaveProperty(
+        'elk.hierarchyHandling'
+      );
     }
   });
 });

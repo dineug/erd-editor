@@ -163,6 +163,191 @@ describe('toElkGraph', () => {
       toElkGraph(chain(TablePlacement.flow)).layoutOptions?.['elk.algorithm']
     ).toBe('layered');
   });
+
+  it('asks for no hierarchy anywhere and keeps every edge at the root for a document with no group', () => {
+    for (const placement of [
+      TablePlacement.layeredHorizontal,
+      TablePlacement.layeredVertical,
+      TablePlacement.flow,
+    ]) {
+      const graph = toElkGraph(chain(placement));
+
+      expect(JSON.stringify(graph)).not.toContain('hierarchyHandling');
+      expect(graph.edges).toHaveLength(2);
+      expect(graph.children?.every(child => !child.edges)).toBe(true);
+    }
+  });
+});
+
+/** Two groups a relationship joins, one member of each joined to nothing, and a table off on its own. */
+const twoGroups = (
+  placement: ElkLayoutRequest['placement']
+): ElkLayoutRequest => ({
+  placement,
+  nodes: [
+    {
+      id: 'component',
+      width: 0,
+      height: 0,
+      kind: 'component',
+      children: [
+        {
+          id: 'g1',
+          width: 0,
+          height: 0,
+          kind: 'tableGroup',
+          children: [box('a1'), box('a2'), box('a3')],
+        },
+        {
+          id: 'g2',
+          width: 0,
+          height: 0,
+          kind: 'tableGroup',
+          children: [box('b1'), box('b2')],
+        },
+      ],
+    },
+    box('alone'),
+  ],
+  edges: [edge('a1', 'a2'), edge('a2', 'b1')],
+});
+
+describe('toElkGraph with table groups', () => {
+  it('tells ELK about each edge in the deepest node holding both its ends', () => {
+    const graph = toElkGraph(twoGroups(TablePlacement.layeredHorizontal));
+    const component = graph.children![0];
+    const g1 = component.children![0];
+
+    expect(graph.edges).toEqual([]);
+    expect(component.edges?.map(({ id }) => id)).toEqual(['edge-1']);
+    expect(g1.edges?.map(({ id }) => id)).toEqual(['edge-0']);
+    expect(component.children![1]).not.toHaveProperty('edges');
+  });
+
+  it('lays a component out across its groups and gives each group the padding round its members', () => {
+    const graph = toElkGraph(twoGroups(TablePlacement.layeredHorizontal));
+    const component = graph.children![0];
+
+    expect(component.layoutOptions?.['elk.hierarchyHandling']).toBe(
+      'INCLUDE_CHILDREN'
+    );
+    expect(component.children?.[0].layoutOptions).toMatchObject({
+      'elk.padding': '[top=52,left=24,bottom=24,right=24]',
+      'elk.spacing.nodeNode': '80',
+    });
+    expect(graph.layoutOptions).not.toHaveProperty('elk.hierarchyHandling');
+  });
+
+  it('gives the tables inside a group their ports for flow, joined port to port across the border', () => {
+    const graph = toElkGraph(twoGroups(TablePlacement.flow));
+    const component = graph.children![0];
+    const a2 = component.children![0].children![1];
+
+    expect(component.edges?.[0]).toMatchObject({
+      sources: ['edge-1-source'],
+      targets: ['edge-1-target'],
+    });
+    expect(a2.ports?.map(({ id }) => id)).toEqual([
+      'edge-1-source',
+      'edge-0-target',
+    ]);
+    expect(a2.layoutOptions?.['elk.portConstraints']).toBe('FIXED_ORDER');
+  });
+});
+
+/** Each group's box as the editor draws it: its members' bounds and the padding. */
+function groupBoxes(
+  points: ElkLayoutPoint[],
+  members: Record<string, string[]>
+) {
+  const byId = new Map(points.map(point => [point.id, point]));
+
+  return Object.fromEntries(
+    Object.entries(members).map(([groupId, ids]) => {
+      const rects = ids.map(id => ({
+        ...byId.get(id)!,
+        width: 200,
+        height: 100,
+      }));
+      const left = Math.min(...rects.map(({ x }) => x)) - 24;
+      const top = Math.min(...rects.map(({ y }) => y)) - 52;
+      const right = Math.max(...rects.map(({ x, width }) => x + width)) + 24;
+      const bottom = Math.max(...rects.map(({ y, height }) => y + height)) + 24;
+      return [groupId, { left, top, right, bottom }];
+    })
+  );
+}
+
+type Box = { left: number; top: number; right: number; bottom: number };
+
+const intersects = (a: Box, b: Box) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+const tableBox = ({ x, y }: ElkLayoutPoint): Box => ({
+  left: x,
+  top: y,
+  right: x + 200,
+  bottom: y + 100,
+});
+
+describe('ElkLayoutService with table groups', () => {
+  const MEMBERS = { g1: ['a1', 'a2', 'a3'], g2: ['b1', 'b2'] };
+
+  for (const placement of [
+    TablePlacement.layeredHorizontal,
+    TablePlacement.layeredVertical,
+    TablePlacement.flow,
+  ]) {
+    it(`keeps each group's members apart from every other table under ${placement}`, async () => {
+      const points = await new ElkLayoutService().layout(twoGroups(placement));
+      const boxes = groupBoxes(points, MEMBERS);
+
+      expect(points.map(({ id }) => id).sort()).toEqual([
+        'a1',
+        'a2',
+        'a3',
+        'alone',
+        'b1',
+        'b2',
+      ]);
+      expect(intersects(boxes.g1, boxes.g2)).toBe(false);
+      for (const point of points) {
+        const own = Object.entries(MEMBERS).find(([, ids]) =>
+          ids.includes(point.id)
+        )?.[0];
+        for (const [groupId, box] of Object.entries(boxes)) {
+          if (groupId !== own) {
+            expect(intersects(tableBox(point), box)).toBe(false);
+          }
+        }
+      }
+      expect(overlaps(points)).toBe(false);
+    });
+  }
+
+  it('places a group by a relationship from another group, which only the component makes it read', async () => {
+    const points = await new ElkLayoutService().layout(
+      twoGroups(TablePlacement.layeredHorizontal)
+    );
+    const boxes = groupBoxes(points, MEMBERS);
+
+    expect(boxes.g2.left).toBeGreaterThan(boxes.g1.right);
+  });
+
+  it('packs what nothing joins beside a component, as it packs it with no group', async () => {
+    const lone = Array.from({ length: 6 }, (_, index) => box(`lone${index}`));
+    const request = twoGroups(TablePlacement.layeredHorizontal);
+    const points = await new ElkLayoutService().layout({
+      ...request,
+      nodes: [...request.nodes, ...lone],
+    });
+    const columns = new Set(
+      points.filter(({ id }) => id.startsWith('lone')).map(({ x }) => x)
+    );
+
+    expect(columns.size).toBeGreaterThan(1);
+    expect(overlaps(points)).toBe(false);
+  });
 });
 
 describe('ElkLayoutService', () => {

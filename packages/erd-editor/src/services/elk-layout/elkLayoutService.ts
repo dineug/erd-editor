@@ -1,6 +1,12 @@
 import '@/services/elk-layout/elkWorkerRealm';
 
-import type { ELK, ElkNode, ElkPort, LayoutOptions } from 'elkjs/lib/elk-api';
+import type {
+  ELK,
+  ElkExtendedEdge,
+  ElkNode,
+  ElkPort,
+  LayoutOptions,
+} from 'elkjs/lib/elk-api';
 
 import type {
   ElkLayoutEdge,
@@ -10,10 +16,10 @@ import type {
 } from './elkGraph';
 import {
   ELK_ALGORITHMS,
+  elkCompoundLayoutOptions,
   elkLayoutOptions,
   elkNodeLayoutOptions,
   type ElkPlacement,
-  GROUP_NODE_OPTIONS,
   usesPorts,
 } from './elkLayoutOptions';
 
@@ -81,9 +87,50 @@ export function portsByNode(edges: ElkLayoutEdge[]): Map<string, ElkPort[]> {
 }
 
 /**
- * The graph ELK is handed. An ERD nests no table in another, so the one node
- * that ever holds children is the group a request packs its unrelated tables
- * into, and every edge stays at the root whatever level its ends sit on.
+ * The node holding each node another holds. One at the top level has no entry
+ * rather than the root's id, which a table may carry as well.
+ */
+function parentsOf(
+  nodes: ElkLayoutNode[],
+  parents = new Map<string, string>()
+): Map<string, string> {
+  nodes.forEach(({ id, children = [] }) => {
+    children.forEach(child => parents.set(child.id, id));
+    parentsOf(children, parents);
+  });
+
+  return parents;
+}
+
+/** The nodes holding a node, nearest first. */
+function ancestorsOf(parents: Map<string, string>, id: string): string[] {
+  const ancestors: string[] = [];
+  for (let parent = parents.get(id); parent; parent = parents.get(parent)) {
+    ancestors.push(parent);
+  }
+
+  return ancestors;
+}
+
+/**
+ * The deepest node holding both ends of an edge, where ELK is told about it, or
+ * null for the root: a node laid out on its own reads only the edges it holds,
+ * and a component holds those that cross the groups inside it.
+ */
+function containerOf(
+  parents: Map<string, string>,
+  source: string,
+  target: string
+): string | null {
+  const sources = new Set(ancestorsOf(parents, source));
+
+  return ancestorsOf(parents, target).find(id => sources.has(id)) ?? null;
+}
+
+/**
+ * The graph ELK is handed: a table group holds its members, a component what is
+ * joined across group borders, the box the unrelated tables, and each edge sits
+ * in the deepest node holding both its ends, the root in a document with no group.
  */
 export function toElkGraph({
   placement,
@@ -91,32 +138,49 @@ export function toElkGraph({
   edges,
 }: ElkLayoutRequest): ElkNode {
   const ports = usesPorts(placement) ? portsByNode(edges) : null;
+  const parents = parentsOf(nodes);
+  const edgesByContainer = new Map<string | null, ElkExtendedEdge[]>();
+
+  edges.forEach(({ source, target }, index) => {
+    const container = containerOf(parents, source, target);
+    const edge: ElkExtendedEdge = {
+      id: `edge-${index}`,
+      sources: [ports ? sourcePortId(index) : source],
+      targets: [ports ? targetPortId(index) : target],
+    };
+    const held = edgesByContainer.get(container);
+    held ? held.push(edge) : edgesByContainer.set(container, [edge]);
+  });
 
   return {
     id: 'root',
     layoutOptions: elkLayoutOptions(placement),
-    children: nodes.map(node => toElkChild(node, placement, ports)),
-    edges: edges.map(({ source, target }, index) => ({
-      id: `edge-${index}`,
-      sources: [ports ? sourcePortId(index) : source],
-      targets: [ports ? targetPortId(index) : target],
-    })),
+    children: nodes.map(node =>
+      toElkChild(node, placement, ports, edgesByContainer)
+    ),
+    edges: edgesByContainer.get(null) ?? [],
   };
 }
 
-/** One node of the graph: a table with its hint and ports, or a group holding tables. */
+/** One node of the graph: a table with its hint and ports, or a node holding others. */
 function toElkChild(
-  { id, width, height, x, y, children }: ElkLayoutNode,
+  { id, width, height, x, y, children, kind }: ElkLayoutNode,
   placement: ElkPlacement,
-  ports: Map<string, ElkPort[]> | null
+  ports: Map<string, ElkPort[]> | null,
+  edgesByContainer: Map<string | null, ElkExtendedEdge[]>
 ): ElkNode {
   if (children?.length) {
+    const edges = edgesByContainer.get(id);
+
     return {
       id,
       width,
       height,
-      layoutOptions: { ...GROUP_NODE_OPTIONS },
-      children: children.map(child => toElkChild(child, placement, ports)),
+      layoutOptions: elkCompoundLayoutOptions(placement, kind),
+      children: children.map(child =>
+        toElkChild(child, placement, ports, edgesByContainer)
+      ),
+      ...(edges ? { edges } : {}),
     };
   }
 

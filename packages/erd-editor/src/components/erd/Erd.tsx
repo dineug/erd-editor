@@ -14,6 +14,7 @@ import { useAppContext } from '@/components/appContext';
 import AutomaticTablePlacement, {
   TablePoint,
 } from '@/components/erd/automatic-table-placement/AutomaticTablePlacement';
+import { toPlacementActions } from '@/components/erd/automatic-table-placement/placementActions';
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
@@ -24,10 +25,6 @@ import ErdContextMenu, {
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
-import {
-  getScrollToCenter,
-  getViewTransform,
-} from '@/components/erd/minimap/minimapGeometry';
 import TableGroupDraft from '@/components/erd/table-group/TableGroupDraft';
 import { useTableGroupDraw } from '@/components/erd/table-group/useTableGroupDraw';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
@@ -54,19 +51,12 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { isEditingText, Viewport } from '@/engine/modules/editor/state';
 import { getDocumentColors } from '@/engine/modules/editor/utils/color';
-import {
-  scrollToAction,
-  streamScrollToAction,
-} from '@/engine/modules/settings/atom.actions';
+import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
-import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import {
-  getContentRect,
-  getContentRectAfter,
-} from '@/konva/scene/contentBounds';
+import { getContentRect } from '@/konva/scene/contentBounds';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
 import {
@@ -433,28 +423,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   /**
-   * The moves and the view centred on where they land go out as one dispatch,
-   * so the history holds them as one entry and a single undo puts the tables
-   * and the view back together. The box is read off the points before the move.
+   * The moves, the groups wrapped round them and the view centred on where they
+   * land go out as one dispatch, so the history holds them as one entry and a
+   * single undo puts the tables, the groups and the view back together.
    */
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
-    const moves = tables.map(moveToTableAction);
-    const content = getContentRectAfter(store.state, tables, SOURCE);
-
-    if (!content) {
-      store.dispatch(moves);
-      return;
-    }
-
-    const origin = getScrollToCenter(getViewTransform(store.state, SOURCE), {
-      x: content.x + content.width / 2,
-      y: content.y + content.height / 2,
-    });
-    store.dispatch([
-      ...moves,
-      scrollToAction({ originX: origin.x, originY: origin.y }),
-    ]);
+    store.dispatch(toPlacementActions(store.state, tables, SOURCE));
   };
 
   const handleChangeTableProperties = (tableId: string) => {

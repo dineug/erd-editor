@@ -186,7 +186,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_sort_tables: {
     description:
-      'Arranges every table on the canvas automatically, as the editor sort command does.',
+      "Arranges every table on the canvas automatically, as the editor sort command does: the tables of a table group stay together and the group's rect is fitted round them, which tables it holds unchanged.",
   },
 
   erd_add_column: {

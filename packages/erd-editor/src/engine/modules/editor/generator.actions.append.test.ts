@@ -2,7 +2,12 @@ import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
+import {
+  APPEND_GAP,
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+  TABLE_SORT_START,
+} from '@/constants/layout';
 import { ColumnOption, OrderType, RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
@@ -553,7 +558,7 @@ describe('appending table groups', () => {
     expect(store.state.doc.tableGroupIds).toEqual([]);
   });
 
-  it('wraps a group around where a placement put its members, and moves an empty one with the block', () => {
+  it('wraps a group around where a placement put its members, starting the block at its corner, and moves an empty one with the block', () => {
     const store = createDiagram();
     const corner = appendCorner(store.state);
 
@@ -583,15 +588,46 @@ describe('appending table groups', () => {
         )
       )
     );
+    // The wrapped group reaches past its first member by the padding, and by
+    // the title bar on top, so the block starts there and the rest move with it.
+    expect(blog.ui).toMatchObject({ x: corner.x, y: corner.y });
     expect(collections.tableGroupEntities[emptyId].ui).toMatchObject({
-      x: corner.x + 2000,
-      y: corner.y + 2000,
+      x: corner.x + 2000 + TABLE_GROUP_PADDING,
+      y: corner.y + 2000 + TABLE_GROUP_PADDING + TABLE_GROUP_TITLE_HEIGHT,
       width: 100,
       height: 100,
     });
     expect(append.rect).toEqual(
       unionRect(append.rect, collections.tableGroupEntities[emptyId].ui)
     );
+  });
+
+  it('keeps a group together in the grid, the block starting at its corner', () => {
+    const store = createDiagram();
+    const corner = appendCorner(store.state);
+
+    store.dispatchSync(
+      appendSchemaJsonAction$(createGroupedDocument(), 'grid')
+    );
+
+    const blog = groupByName(store.state, 'blog');
+    const users = tableByName(store.state, 'users');
+    const tags = tableByName(store.state, 'tags');
+    expect(blog.ui).toMatchObject({ x: corner.x, y: corner.y });
+    expect(cornerOf(store.state, 'users')).toEqual({
+      x: corner.x + TABLE_GROUP_PADDING,
+      y: corner.y + TABLE_GROUP_PADDING + TABLE_GROUP_TITLE_HEIGHT,
+    });
+    expect(blog.ui).toMatchObject(
+      padRect(
+        unionRect(
+          getTableRect(store.state, users),
+          getTableRect(store.state, tableByName(store.state, 'posts'))
+        )
+      )
+    );
+    expect(tags.ui.x).toBeGreaterThan(blog.ui.x + blog.ui.width);
+    expect(tags.ui.y).toBe(corner.y);
   });
 
   it('brings no group from a document without one', () => {

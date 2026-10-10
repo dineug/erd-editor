@@ -10,13 +10,16 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { RootState } from '@/engine/state';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { type Rect } from '@/konva/scene/metrics';
+import { type Rect, unionRect } from '@/konva/scene/metrics';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
+import { padRect } from '@/utils/tableGroup';
 
 type Simulation = ReturnType<typeof createAutomaticTablePlacement>;
 
@@ -299,6 +302,131 @@ describe('createAutomaticTablePlacement', () => {
     expect(relationship.start.y).not.toBe(-1);
     expect(Number.isFinite(relationship.start.x)).toBe(true);
     expect(Number.isFinite(relationship.end.x)).toBe(true);
+  });
+});
+
+describe('createAutomaticTablePlacement with table groups', () => {
+  function addGroup(app: AppContext, id: string, tableIds: string[]) {
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id,
+        ui: { x: -900, y: -900, width: 10, height: 10, zIndex: 1 },
+      }),
+      ...tableIds.map(tableId =>
+        changeTableGroupAction({ id: tableId, value: id })
+      )
+    );
+  }
+
+  const rectOf = (state: RootState, id: string) => {
+    const table = state.collections.tableEntities[id];
+    return {
+      x: table.ui.x,
+      y: table.ui.y,
+      width: calcTableWidths(table, state).width,
+      height: calcTableHeight(table),
+    };
+  };
+
+  it("makes a group's members one node where its first member stood, its box their bounds and the padding", () => {
+    const app = createApp();
+    addTable(app, 't1', 'users', { x: 100, y: 100 });
+    addTable(app, 't2', 'posts', { x: 0, y: 0 });
+    addTable(app, 't3', 'tags', { x: 600, y: 400 });
+    addGroup(app, 'g1', ['t1', 't3']);
+    const state = app.store.state;
+    const box = padRect(unionRect(rectOf(state, 't1'), rectOf(state, 't3')));
+
+    const nodes = create(state).nodes() as any[];
+
+    expect(nodes.map(node => node.id)).toEqual(['g1', 't2']);
+    expect(nodes[0]).toMatchObject({
+      width: box.width,
+      height: box.height,
+      r: (box.width + box.height) / 4,
+      group: state.collections.tableGroupEntities['g1'],
+    });
+  });
+
+  it('links a group by the relationships of its members, one link a pair and none inside it', () => {
+    const app = createApp();
+    ['t1', 't2', 't3'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t1', 't2']);
+    ['t1', 't2'].forEach((start, index) =>
+      app.store.dispatchSync(
+        addRelationshipAction({
+          id: `r${index}`,
+          relationshipType: 4,
+          start: { tableId: start, columnIds: [] },
+          end: { tableId: 't3', columnIds: [] },
+        })
+      )
+    );
+    app.store.dispatchSync(
+      addRelationshipAction({
+        id: 'inside',
+        relationshipType: 4,
+        start: { tableId: 't1', columnIds: [] },
+        end: { tableId: 't2', columnIds: [] },
+      })
+    );
+
+    const simulation = create(app.store.state);
+    const links = (simulation.force('link') as any).links();
+
+    expect(
+      links.map(({ source, target }: any) => [source.id, target.id])
+    ).toEqual([['g1', 't3']]);
+  });
+
+  it('moves the members with their box, each kept where it stands inside, and the group to the box', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users', { x: 100, y: 100 });
+    addTable(app, 't3', 'tags', { x: 600, y: 400 });
+    addGroup(app, 'g1', ['t1', 't3']);
+    const state = app.store.state;
+    const box = padRect(unionRect(rectOf(state, 't1'), rectOf(state, 't3')));
+
+    const simulation = create(state);
+    const [node] = simulation.nodes() as any[];
+    node.x = 5_000;
+    node.y = 6_000;
+    (simulation.on('tick') as (this: unknown) => void).call(simulation);
+
+    const left = 5_000 - box.width / 2;
+    const top = 6_000 - box.height / 2;
+    expect(state.collections.tableGroupEntities['g1'].ui).toMatchObject({
+      x: left,
+      y: top,
+      width: box.width,
+      height: box.height,
+    });
+    expect(state.collections.tableEntities['t1'].ui).toMatchObject({
+      x: left + 100 - box.x,
+      y: top + 100 - box.y,
+    });
+    expect(state.collections.tableEntities['t3'].ui).toMatchObject({
+      x: left + 600 - box.x,
+      y: top + 400 - box.y,
+    });
+  });
+
+  it('leaves a group with no member out of the simulation, at its rect', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addGroup(app, 'empty', []);
+    const state = app.store.state;
+
+    const simulation = create(state);
+    (simulation.on('tick') as (this: unknown) => void).call(simulation);
+
+    expect((simulation.nodes() as any[]).map(node => node.id)).toEqual(['t1']);
+    expect(state.collections.tableGroupEntities['empty'].ui).toMatchObject({
+      x: -900,
+      y: -900,
+      width: 10,
+      height: 10,
+    });
   });
 });
 

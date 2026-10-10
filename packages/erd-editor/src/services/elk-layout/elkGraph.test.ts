@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import {
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+} from '@/constants/layout';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ViewKind } from '@/engine/modules/editor/state';
 import {
@@ -12,16 +16,19 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { type Rect } from '@/konva/scene/metrics';
+import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import { getVisibleColumnIds } from '@/konva/scene/viewLayout';
 import {
   createElkLayoutRequest,
+  type ElkLayoutNode,
   type ElkLayoutPoint,
   type ElkLayoutRequest,
   flattenElkNodes,
@@ -33,6 +40,9 @@ import {
   calcTableWidths,
   calcViewTableWidths,
 } from '@/utils/calcTable';
+
+/** The room a group's box keeps over its members, the title bar included. */
+const TOP = TABLE_GROUP_PADDING + TABLE_GROUP_TITLE_HEIGHT;
 
 /** A name long enough that the box it sizes is nothing like a short one's. */
 const LONG_NAME = 'a_table_whose_name_is_far_longer_than_the_other_one_here';
@@ -630,5 +640,221 @@ describe('toViewPoints', () => {
     addTable(app, 't1', 'users');
 
     expect(toViewPoints(viewRequest(app.store.state), [])).toEqual([]);
+  });
+});
+
+function addGroup(app: AppContext, id: string, tableIds: string[]) {
+  app.store.dispatchSync(
+    addTableGroupAction({
+      id,
+      ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+    }),
+    ...tableIds.map(tableId =>
+      changeTableGroupAction({ id: tableId, value: id })
+    )
+  );
+}
+
+/** A node list as its ids, a node holding others as its id, kind and theirs. */
+type Shape = string | { id: string; kind?: string; children: Shape[] };
+
+const shapeOf = (nodes: ElkLayoutNode[]): Shape[] =>
+  nodes.map(({ id, kind, children }) =>
+    children ? { id, kind, children: shapeOf(children) } : id
+  );
+
+describe('createElkLayoutRequest table groups', () => {
+  const horizontal = (state: RootState) =>
+    createElkLayoutRequest(state, TablePlacement.layeredHorizontal);
+
+  it("puts a group's members in a node of the group where its first member stood, one joined to nothing included", () => {
+    const app = createApp();
+    ['t1', 't2', 't3', 't4'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t2', 't4']);
+
+    const { nodes, edges } = horizontal(app.store.state);
+
+    expect(shapeOf(nodes)).toEqual([
+      't1',
+      { id: 'g1', kind: 'tableGroup', children: ['t2', 't4'] },
+      't3',
+    ]);
+    expect(nodes[1]).toMatchObject({ width: 0, height: 0 });
+    expect(edges).toEqual([]);
+  });
+
+  it('gathers what relationships join across a group border into one component, the rest where it was', () => {
+    const app = createApp();
+    ['t1', 't2', 't3', 't4', 't5', 't6'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t2', 't3']);
+    addGroup(app, 'g2', ['t4']);
+    relate(app, 'r1', 't1', 't2');
+    relate(app, 'r2', 't3', 't4');
+    relate(app, 'r3', 't5', 't6');
+
+    const { nodes, edges } = horizontal(app.store.state);
+
+    expect(shapeOf(nodes)).toEqual([
+      {
+        id: 'elk-component-0',
+        kind: 'component',
+        children: [
+          't1',
+          { id: 'g1', kind: 'tableGroup', children: ['t2', 't3'] },
+          { id: 'g2', kind: 'tableGroup', children: ['t4'] },
+        ],
+      },
+      't5',
+      't6',
+    ]);
+    expect(edges.map(({ source, target }) => [source, target])).toEqual([
+      ['t1', 't2'],
+      ['t3', 't4'],
+      ['t5', 't6'],
+    ]);
+  });
+
+  it('gives each set joined across a border a component of its own', () => {
+    const app = createApp();
+    ['t1', 't2', 't3', 't4'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t2']);
+    addGroup(app, 'g2', ['t4']);
+    relate(app, 'r1', 't1', 't2');
+    relate(app, 'r2', 't3', 't4');
+
+    const { nodes } = horizontal(app.store.state);
+
+    expect(nodes.map(({ id, kind }) => [id, kind])).toEqual([
+      ['elk-component-0', 'component'],
+      ['elk-component-1', 'component'],
+    ]);
+  });
+
+  it('builds no component for a group whose relationships stay inside it', () => {
+    const app = createApp();
+    ['t1', 't2', 't3'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t1', 't2']);
+    relate(app, 'r1', 't1', 't2');
+
+    expect(shapeOf(horizontal(app.store.state).nodes)).toEqual([
+      { id: 'g1', kind: 'tableGroup', children: ['t1', 't2'] },
+      't3',
+    ]);
+  });
+
+  it('reads a groupId naming no group as none', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    app.store.dispatchSync(changeTableGroupAction({ id: 't1', value: 'gone' }));
+
+    expect(shapeOf(horizontal(app.store.state).nodes)).toEqual(['t1']);
+  });
+
+  it('sends the views preset no group, since a view draws none', () => {
+    const app = createApp();
+    ['t1', 't2'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t1', 't2']);
+    relate(app, 'r1', 't1', 't2');
+
+    const { nodes } = createElkLayoutRequest(
+      app.store.state,
+      TablePlacement.viewLayered,
+      { source: 'flow' }
+    );
+
+    expect(shapeOf(nodes)).toEqual(['t1', 't2']);
+  });
+
+  it('keeps a group out of the box of unrelated tables, its member joined to nothing still inside it', () => {
+    const app = createApp();
+    ['t1', 't2', 't3', 't4'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t4']);
+    relate(app, 'r1', 't1', 't2');
+
+    const { nodes } = createElkLayoutRequest(
+      app.store.state,
+      TablePlacement.flow,
+      { groupUnrelated: true }
+    );
+
+    expect(shapeOf(nodes)).toEqual([
+      't1',
+      't2',
+      { id: 'g1', kind: 'tableGroup', children: ['t4'] },
+      { id: 'elk-unrelated-group', children: ['t3'] },
+    ]);
+  });
+
+  it('builds the flat request it always built for a document with no group', () => {
+    const app = createApp();
+    ['t1', 't2', 't3'].forEach(id => addTable(app, id, id));
+    relate(app, 'r1', 't1', 't2');
+    const state = app.store.state;
+
+    for (const placement of [
+      TablePlacement.layeredHorizontal,
+      TablePlacement.layeredVertical,
+      TablePlacement.flow,
+    ]) {
+      const { nodes } = createElkLayoutRequest(state, placement);
+
+      expect(nodes).toEqual(
+        ['t1', 't2', 't3'].map(id => {
+          const { width, height } = getTableRect(
+            state,
+            state.collections.tableEntities[id]
+          );
+          return { id, width, height };
+        })
+      );
+    }
+  });
+});
+
+describe('the points of a layout with table groups', () => {
+  const NODE = { width: 100, height: 50 };
+  const request: ElkLayoutRequest = {
+    placement: TablePlacement.layeredHorizontal,
+    nodes: [
+      {
+        id: 'g1',
+        width: 0,
+        height: 0,
+        kind: 'tableGroup',
+        children: [{ id: 'a', ...NODE }],
+      },
+      { id: 'b', ...NODE },
+    ],
+    edges: [],
+  };
+  const points: ElkLayoutPoint[] = [
+    { id: 'a', x: 0, y: 0 },
+    { id: 'b', x: 300, y: -10 },
+  ];
+
+  it("starts a view's layout at the corner of a group's box, its padding and title bar", () => {
+    expect(toViewPoints(request, points)).toEqual([
+      { id: 'a', x: TABLE_GROUP_PADDING, y: TOP },
+      { id: 'b', x: 300 + TABLE_GROUP_PADDING, y: TOP - 10 },
+    ]);
+  });
+
+  it("centres a document's layout on the content, the group's box counted", () => {
+    const app = createApp();
+    addTable(app, 'a', 'a', { x: -2_000, y: 500 });
+    addTable(app, 'b', 'b', { x: 1_000, y: 900 });
+    const state = app.store.state;
+    const center = contentCenter(state);
+
+    const placed = new Map(
+      toTablePoints(state, request, points).map(point => [point.id, point])
+    );
+    const left = placed.get('a')!.x - TABLE_GROUP_PADDING;
+    const right = placed.get('b')!.x + NODE.width;
+    const top = placed.get('a')!.y - TOP;
+    const bottom = placed.get('a')!.y + NODE.height + TABLE_GROUP_PADDING;
+
+    expect((left + right) / 2).toBeCloseTo(center.x, 6);
+    expect((top + bottom) / 2).toBeCloseTo(center.y, 6);
   });
 });

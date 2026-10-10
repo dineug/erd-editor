@@ -55,14 +55,16 @@ import {
 import {
   addTableAction,
   changeTableColorAction,
+  changeTableGroupAction,
   changeTableNameAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import type { Rect } from '@/konva/scene/metrics';
+import { getTableRect, type Rect, unionRect } from '@/konva/scene/metrics';
 import {
   openColorPickerAction,
   openDiffViewerAction,
@@ -70,6 +72,7 @@ import {
 } from '@/utils/emitter';
 import { getRelationshipIcon } from '@/utils/icon';
 import { InternalEventType } from '@/utils/internalEvents';
+import { padRect } from '@/utils/tableGroup';
 
 let mounted: Mounted | null = null;
 
@@ -1463,6 +1466,53 @@ describe('Erd - automatic table placement', () => {
     expect(positionsOf()).toEqual(before.positions);
     expect(originOf()).toEqual(before.origin);
     expect(app.store.history.cursor).toBe(before.cursor);
+    toast.unmount();
+  });
+
+  it('wraps a group round where its members land, put back by the same one undo', async () => {
+    const { app } = await setup();
+    const alpha = seedTable(app, 'alpha');
+    const beta = seedTable(app, 'beta');
+    seedTable(app, 'gamma');
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: -900, y: -900, width: 50, height: 50, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: alpha, value: 'g1' }),
+      changeTableGroupAction({ id: beta, value: 'g1' })
+    );
+    await flush();
+    const groupOf = () => ({
+      ...app.store.state.collections.tableGroupEntities['g1'].ui,
+    });
+    const before = groupOf();
+
+    const toasts: any[] = [];
+    app.emitter.on({
+      openToast: ({ payload: { message } }) => {
+        toasts.push(message);
+      },
+    });
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.automaticTablePlacement]: true })
+    );
+    await flush(6);
+    const toast = mount(toasts[0], app);
+    await flush();
+    dispatchMouse(findByText(toast.container, 'button', 'Apply')!, 'click');
+    await flush(6);
+
+    const { state } = app.store;
+    const [alphaRect, betaRect] = [alpha, beta].map(id =>
+      getTableRect(state, state.collections.tableEntities[id])
+    );
+    expect(groupOf()).toMatchObject(padRect(unionRect(alphaRect, betaRect)));
+
+    app.store.undo();
+    await flush(6);
+
+    expect(groupOf()).toEqual(before);
     toast.unmount();
   });
 });

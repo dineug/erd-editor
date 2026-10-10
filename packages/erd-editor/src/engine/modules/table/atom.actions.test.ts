@@ -1,6 +1,11 @@
 import { AnyAction } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
+import {
+  TABLE_GROUP_PADDING,
+  TABLE_GROUP_TITLE_HEIGHT,
+  TABLE_SORT_MARGIN,
+} from '@/constants/layout';
 import { Clock } from '@/engine/clock';
 import {
   addTableAction,
@@ -14,7 +19,14 @@ import {
   removeTableAction,
   sortTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
+import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
+
+const P = TABLE_GROUP_PADDING;
+
+/** The padding over a group box's top edge, the title bar included. */
+const TOP = TABLE_GROUP_PADDING + TABLE_GROUP_TITLE_HEIGHT;
 
 const TABLE_A = 'table-a';
 const TABLE_B = 'table-b';
@@ -483,5 +495,92 @@ describe('table/atom.actions sortTable', () => {
 
     expect(() => store.dispatchSync(sortTableAction())).not.toThrow();
     expect(store.state.collections.tableEntities).toEqual({});
+  });
+
+  const sizeOf = (id: string) => ({
+    width: calcTableWidths(table(id), store.state).width,
+    height: calcTableHeight(table(id)),
+  });
+
+  /** B (0 columns) and A (2 columns) in group g, C (1 column) in none. */
+  function seedGroupForSort() {
+    seedForSort();
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g',
+        ui: { x: 900, y: 900, width: 10, height: 10, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: TABLE_A, value: 'g' }),
+      changeTableGroupAction({ id: TABLE_B, value: 'g' })
+    );
+  }
+
+  it('gathers a group in one cell where its first member comes, its rect the members and the padding', () => {
+    seedGroupForSort();
+    const a = sizeOf(TABLE_A);
+    const b = sizeOf(TABLE_B);
+
+    store.dispatchSync(sortTableAction());
+
+    const group = store.state.collections.tableGroupEntities['g'];
+    expect(table(TABLE_B).ui).toMatchObject({ x: 50 + P, y: 50 + TOP });
+    expect(table(TABLE_A).ui).toMatchObject({
+      x: 50 + P + b.width + TABLE_SORT_MARGIN,
+      y: 50 + TOP,
+    });
+    expect(group.ui).toMatchObject({
+      x: 50,
+      y: 50,
+      width: b.width + TABLE_SORT_MARGIN + a.width + P * 2,
+      height: Math.max(a.height, b.height) + P + TOP,
+    });
+    expect(table(TABLE_C).ui).toMatchObject({
+      x: 50 + group.ui.width + TABLE_SORT_MARGIN,
+      y: 50,
+    });
+  });
+
+  it("wraps a group's rows so that its box fits the canvas beside the start corner", () => {
+    seedGroupForSort();
+    store.state.settings.width = 600;
+    const a = sizeOf(TABLE_A);
+    const b = sizeOf(TABLE_B);
+
+    store.dispatchSync(sortTableAction());
+
+    const group = store.state.collections.tableGroupEntities['g'];
+    expect(table(TABLE_A).ui).toMatchObject({
+      x: 50 + P,
+      y: 50 + TOP + b.height + TABLE_SORT_MARGIN,
+    });
+    expect(group.ui.x + group.ui.width).toBeLessThanOrEqual(600);
+    expect(group.ui).toMatchObject({
+      width: Math.max(a.width, b.width) + P * 2,
+      height: b.height + TABLE_SORT_MARGIN + a.height + P + TOP,
+    });
+    expect(table(TABLE_C).ui).toMatchObject({
+      x: 50,
+      y: 50 + group.ui.height + TABLE_SORT_MARGIN,
+    });
+  });
+
+  it('leaves a group with no member at its rect and reads a groupId naming no group as none', () => {
+    seedForSort();
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'empty',
+        ui: { x: 900, y: 900, width: 10, height: 10, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: TABLE_B, value: 'ghost' })
+    );
+
+    store.dispatchSync(sortTableAction());
+
+    expect(
+      store.state.collections.tableGroupEntities['empty'].ui
+    ).toMatchObject({ x: 900, y: 900, width: 10, height: 10 });
+    expect(table(TABLE_B).ui).toMatchObject({ x: 50, y: 50 });
+    expect(table(TABLE_C).ui).toMatchObject({ x: 495, y: 50 });
+    expect(table(TABLE_A).ui).toMatchObject({ x: 940, y: 50 });
   });
 });

@@ -19,6 +19,7 @@ import {
   getTableGroupId,
   getTableGroupMemberIds,
   getTableGroupRect,
+  getTableGroupWraps,
   getTableHeaderTint,
   getTablesGroupRect,
   isPointInRect,
@@ -207,6 +208,52 @@ describe('getTablesGroupRect', () => {
   it('is null for no table the document lists', () => {
     expect(getTablesGroupRect(createState(), ['ghost'])).toBeNull();
     expect(getTablesGroupRect(createState(), [])).toBeNull();
+  });
+});
+
+describe('getTableGroupWraps', () => {
+  it('wraps each group with members round them, a named table at its point', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: -900, y: -900, width: 2000, height: 2000 });
+    const a = getTableRect(state, addTable(state, 'a', 100, 100, 'g1'));
+    const b = getTableRect(state, addTable(state, 'b', 500, 300, 'g1'));
+    addTable(state, 'loose', 0, 0);
+
+    expect(getTableGroupWraps(state, [{ id: 'a', x: 700, y: 400 }])).toEqual([
+      {
+        id: 'g1',
+        x: b.x - P,
+        y: b.y - TOP,
+        width: 700 + a.width - b.x + P * 2,
+        height: 400 + a.height - b.y + P + TOP,
+      },
+    ]);
+  });
+
+  it('wraps the members where they stand when no point is named', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    const a = getTableRect(state, addTable(state, 'a', 100, 100, 'g1'));
+
+    expect(getTableGroupWraps(state)).toEqual([{ id: 'g1', ...padRect(a) }]);
+  });
+
+  it('leaves out a group with no member and a groupId naming no group', () => {
+    const state = createState();
+    addGroup(state, 'empty', { x: 0, y: 0, width: 10, height: 10 });
+    addTable(state, 'a', 100, 100, 'ghost');
+
+    expect(getTableGroupWraps(state, [{ id: 'a', x: 0, y: 0 }])).toEqual([]);
+  });
+
+  it('answers the groups in the order the document lists them', () => {
+    const state = createState();
+    addGroup(state, 'g2', { x: 0, y: 0, width: 10, height: 10 });
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    addTable(state, 'a', 100, 100, 'g1');
+    addTable(state, 'b', 500, 100, 'g2');
+
+    expect(getTableGroupWraps(state).map(({ id }) => id)).toEqual(['g2', 'g1']);
   });
 });
 

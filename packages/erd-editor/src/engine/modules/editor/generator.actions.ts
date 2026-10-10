@@ -446,6 +446,29 @@ function toLayoutPoints(
 }
 
 /**
+ * The rects the groups of an append take in the layout, before the block
+ * moves: a file's as it has them, and for a grid or a placement each group's
+ * members wrapped where they stand, which is where the block starts too.
+ */
+function toLayoutGroupRects(
+  { tableGroups = [] }: CreateEntityInput,
+  layout: AppendLayout,
+  points: Map<string, Point>,
+  sizes: Map<string, { width: number; height: number }>
+): Rect[] {
+  if (layout === 'file') return tableGroups.map(({ ui }) => ui);
+
+  return tableGroups.flatMap(({ tableIds }) => {
+    const rects = tableIds.flatMap(id => {
+      const point = points.get(id);
+      const size = sizes.get(id);
+      return point && size ? [{ ...point, ...size }] : [];
+    });
+    return rects.length ? [padRect(rects.reduce(unionRect))] : [];
+  });
+}
+
+/**
  * Where the block an append brings starts: under every table and memo the
  * diagram holds, a gap below them and in line with their left edge, or where
  * the grid of an import starts in a diagram holding none.
@@ -485,13 +508,17 @@ export function toSchemaAppend(
   if (!input.tables.length && !input.memos.length) return null;
 
   const points = toLayoutPoints(state, schema, input, layout, ctx);
-  // A file's groups keep their rects, so the block starts at their corners too.
-  const groupPoints = layout === 'file' ? (input.tableGroups ?? []) : [];
+  const sizes = new Map(
+    query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds)
+      .map(table => [table.id, measureTableSize(table, read, ctx.toWidth)])
+  );
   let minX = Infinity;
   let minY = Infinity;
   for (const { x, y } of [
     ...points.values(),
-    ...groupPoints.map(({ ui }) => ui),
+    ...toLayoutGroupRects(input, layout, points, sizes),
   ]) {
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
@@ -528,10 +555,7 @@ export function toSchemaAppend(
       .selectByIds(doc.tableIds)
       .map((table): [string, Rect] => {
         const { x, y } = placement.get(table.id)!;
-        return [
-          table.id,
-          { x, y, ...measureTableSize(table, read, ctx.toWidth) },
-        ];
+        return [table.id, { x, y, ...sizes.get(table.id)! }];
       })
   );
   const memoRects = query(collections)

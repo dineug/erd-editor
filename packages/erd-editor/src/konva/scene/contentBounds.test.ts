@@ -293,6 +293,36 @@ describe('getContentRects', () => {
     expect(box).toEqual({ x: 0, y: 0, width: 100, height: 100 });
     expect(getTableGroupRect(state, group).width).toBeGreaterThan(3_000);
   });
+
+  it('reads a group named with a rect at that rect, as a placement will write it', () => {
+    const state = createState();
+    const table = addTable(state, 't', 3_000, 3_000);
+    table.groupId = 'g';
+    addGroup(state, 'g', 0, 0);
+    addGroup(state, 'other', -500, -500);
+    const rect = { x: 10, y: 20, width: 300, height: 200 };
+
+    const [, placed, other] = getContentRects(
+      state,
+      [{ id: 't', x: 40, y: 60 }],
+      'document',
+      [{ id: 'g', ...rect }]
+    );
+
+    expect(placed).toEqual(rect);
+    expect(other).toEqual({ x: -500, y: -500, width: 100, height: 100 });
+    expect(
+      getContentRectAfter(state, [{ id: 't', x: 40, y: 60 }], 'document', [
+        { id: 'g', ...rect },
+      ])
+    ).toEqual(
+      [
+        { ...getTableRect(state, table), x: 40, y: 60 },
+        { x: -500, y: -500, width: 100, height: 100 },
+        rect,
+      ].reduce(unionRect)
+    );
+  });
 });
 
 /**

@@ -171,9 +171,12 @@ describe('one dispatch is one outbound batch and one undo entry (AC-E9′, AC-P1
 
     expect(report).toMatchObject({ batches: 1, historyEntries: 1 });
     expect(report.actions.map(({ payload }) => payload.id).sort()).toEqual(
-      [SEED.empty, SEED.orders, SEED.users].sort()
+      [SEED.empty, SEED.orders, SEED.users, SEED.group].sort()
     );
-    expect(layout).toEqual([Array(3).fill('table.moveTo')]);
+    // The seed's group holds users, so the sort fits it round where they land.
+    expect(layout).toEqual([
+      [...Array(3).fill('table.moveTo'), 'tableGroup.resize'],
+    ]);
     expect(sent.some(types => types.includes('table.sort'))).toBe(false);
   });
 
