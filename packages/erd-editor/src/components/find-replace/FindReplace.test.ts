@@ -33,12 +33,13 @@ import {
 import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
+  changeDrawTableGroupAction,
   changeOpenMapAction,
   changeViewportAction,
   changeZenModeAction,
-  drawEndRelationshipAction,
   drawStartRelationshipAction,
   editTableAction,
+  editTableEndAction,
   focusTableAction,
   hoverColumnMapAction,
   selectAction,
@@ -1712,7 +1713,7 @@ describe('FindReplace keyboard isolation', () => {
     expect(focusEvents).toBe(1);
   });
 
-  it('leaves that Escape to what takes it first: a cell editor, a draw or the palette', async () => {
+  it('leaves that Escape to what takes it first: a cell editor, a relationship or table group draw or the palette', async () => {
     app.store.dispatchSync(
       focusTableAction({ tableId: 'orders' }),
       editTableAction()
@@ -1721,18 +1722,27 @@ describe('FindReplace keyboard isolation', () => {
     expect(isOpen()).toBe(true);
 
     app.store.dispatchSync(
-      focusTableAction({ tableId: 'orders' }),
+      editTableEndAction(),
       drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
     );
     await shortcut(KeyBindingName.stop);
     expect(isOpen()).toBe(true);
 
+    app.store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+    expect(app.store.state.editor.drawRelationship).toBeNull();
+    await shortcut(KeyBindingName.stop);
+    expect(isOpen()).toBe(true);
+
     app.store.dispatchSync(
       changeOpenMapAction({ [Open.search]: true }),
-      drawEndRelationshipAction()
+      changeDrawTableGroupAction({ value: false })
     );
     await shortcut(KeyBindingName.stop);
     expect(isOpen()).toBe(true);
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.search]: false }));
+    await shortcut(KeyBindingName.stop);
+    expect(isOpen()).toBe(false);
   });
 
   it('closes on Escape, which the canvas never hears', async () => {
