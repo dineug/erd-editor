@@ -358,9 +358,10 @@ class DocumentRegistry(
 
     /**
      * Seeds a peer. It queues deliveries from the start, waits for the document to go quiet, then
-     * captures content and observedVersion in one step; the queue empties in afterResponse, once the
-     * answer is queued. A document no view ever readied is read from disk, never answered empty, and
-     * so is one the last revoked scope no longer admits, closed for the peer once answered.
+     * captures the seed (the runtime value, else the content) and observedVersion in one step; the
+     * queue empties in afterResponse, once the answer is queued. A document no view ever readied is
+     * read from disk, never answered empty, and so is one the last revoked scope no longer admits,
+     * closed for the peer once answered.
      */
     suspend fun join(entry: DocumentEntry, connection: HubConnection): JoinOutcome {
         if (isShutDown || entries[entry.file] !== entry || connection in gone) {

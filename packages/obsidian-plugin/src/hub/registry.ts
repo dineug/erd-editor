@@ -388,8 +388,8 @@ export class DocumentRegistry<T extends HubTab = HubTab> {
 
   /**
    * Seeds a peer. It queues deliveries from the start, waits for the document
-   * to go quiet, then captures content and observedVersion in one step. The
-   * queue empties on a timer, after the response is written, not ahead of it.
+   * to go quiet, then captures observedVersion and the runtime value, else the
+   * content, in one step. The queue empties on a timer, after the response.
    */
   join(
     document: HubDocument<T>,

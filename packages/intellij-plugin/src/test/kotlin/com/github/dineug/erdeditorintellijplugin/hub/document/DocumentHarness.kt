@@ -120,7 +120,10 @@ class DocumentHarness(
         onRegistry {}
     }
 
-    /** The page's replica saved value, null for a change that left it as it was, and handed runtime with it. */
+    /**
+     * The page's replica saved value, null for a change that left it as it was, and the runtime value
+     * it handed with it.
+     */
     fun save(opened: Opened, value: String?, runtime: String? = null) =
         onRegistry { onValueSaved(opened.file, opened.view, value, runtime) }
 
