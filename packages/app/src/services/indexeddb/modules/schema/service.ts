@@ -125,9 +125,16 @@ export class SchemaService {
     }
   }
 
+  /**
+   * The schema to open, whose value is an open replica's runtime value, removed
+   * entities included, for a second tab or a guest to seed from, so an undo sent
+   * there brings an entity back whole; else the stored value, which opens one.
+   */
   async get(id: string) {
     const prev = this.cache.get(id);
-    if (prev) return omit(prev, ['store']);
+    if (prev) {
+      return { ...omit(prev, ['store']), value: prev.store.runtimeValue };
+    }
 
     const result = await getSchemaEntity(this.db, id);
     result && this.createCache(result);

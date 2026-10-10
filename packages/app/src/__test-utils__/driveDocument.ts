@@ -65,6 +65,7 @@ export function createPeerEditor(nickname: string, presence = false) {
 
   const adapter: EditorAdapter = {
     getValue: () => store.value,
+    getRuntimeValue: () => store.runtimeValue,
     setInitialValue: value => store.setInitialValue(value),
     subscribeLocal: listener => store.subscribe(actions => listener(actions)),
     applyRemote: actions => {
@@ -97,6 +98,13 @@ export function createPeerEditor(nickname: string, presence = false) {
     store,
     adapter,
     edit,
+    /** An undo, as the element's: its batch sent and its change noticed. */
+    undo() {
+      const result = store.undo();
+      store.flushStreamBuffers();
+      changed();
+      return result;
+    },
     /** A press in the element, whose edit, if any, the change event reports later. */
     press: () => [...inputs].forEach(listener => listener()),
     /** Adds a table named tableName, the edit most tests make. */

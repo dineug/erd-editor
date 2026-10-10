@@ -1,4 +1,12 @@
 import {
+  createPeerStore,
+  type PeerStore,
+  tableActions,
+  tableActions$,
+  tableColumnActions,
+  tableColumnActions$,
+} from '@dineug/erd-editor/peer.js';
+import {
   afterEach,
   beforeEach,
   describe,
@@ -13,10 +21,12 @@ import {
   FakeCollaborativeRoom,
   rejectSends,
 } from '@/__test-utils__/room';
+import { createFakeDatabase } from '@/__test-utils__/schemaDatabase';
 import { CollaborativeHostService } from '@/services/collaborative/host';
 import { NICKNAME_ANNOUNCE_DELAY } from '@/services/collaborative/participants';
 import { joinCollaborativeRoom, Strategy } from '@/services/collaborative/room';
 import { getAppDatabaseService } from '@/services/indexeddb';
+import { SchemaService } from '@/services/indexeddb/modules/schema/service';
 import {
   bridge,
   collaborativeDispatchAction,
@@ -201,6 +211,95 @@ describe('CollaborativeHostService', () => {
     expect(options).toEqual({ target: 'guest-1' });
     expect(JSON.stringify(payload)).not.toContain('version');
     await expect(decryptFromJson(payload, key)).resolves.toBe('{"version":3}');
+  });
+
+  it('seeds a guest from the replica’s runtime value, so the host’s undo of a removal it saved restores the table whole there', async () => {
+    const { rows, db: database } = createFakeDatabase();
+    rows.set('schema-1', {
+      id: 'schema-1',
+      name: 'schema',
+      value: '',
+      createAt: 0,
+      updateAt: 0,
+    });
+    const schemas = new SchemaService(database);
+    db.getSchemaEntity = (id: string) => schemas.get(id);
+    const [nostr] = await openRooms();
+    const stores: PeerStore[] = [];
+    const peer = (nickname: string) => {
+      const store = createPeerStore({ nickname, presence: false });
+      stores.push(store);
+      return store;
+    };
+    const edit = (
+      store: PeerStore,
+      actions: Parameters<PeerStore['dispatch']>[0]
+    ) => {
+      const { createdIds } = store.dispatch(actions);
+      store.flushStreamBuffers();
+      return createdIds;
+    };
+
+    // The host's own tab: its batches reach the replica and the session.
+    const host = peer('host');
+    host.setInitialValue((await schemas.get('schema-1'))!.value);
+    host.subscribe(actions => {
+      void schemas.replication('schema-1', actions);
+      bridge.emit(
+        collaborativeDispatchAction({ schemaId: 'schema-1', actions })
+      );
+    });
+    const [tableId] = edit(host, [tableActions$.addTableAction$()]);
+    edit(host, [
+      tableActions.changeTableNameAction({ id: tableId, value: 'users' }),
+    ]);
+    const [columnId] = edit(host, [
+      tableColumnActions$.addColumnAction$(tableId),
+    ]);
+    edit(host, [
+      tableColumnActions.changeColumnNameAction({
+        id: columnId,
+        tableId,
+        value: 'id',
+      }),
+    ]);
+    edit(host, [tableActions$.removeTableAction$(tableId)]);
+    await vi.waitFor(
+      () =>
+        expect(JSON.parse(rows.get('schema-1')!.value).doc.tableIds).toEqual(
+          []
+        ),
+      { interval: 20, timeout: 2000 }
+    );
+
+    nostr.room.onPeerJoin?.('guest-1');
+    await vi.waitFor(() => expect(nostr.schema.send).toHaveBeenCalled(), {
+      interval: 5,
+    });
+    const guest = peer('guest');
+    guest.setInitialValue(
+      await decryptFromJson(nostr.schema.send.mock.calls[0][0], key)
+    );
+    nostr.dispatch.send.mockClear();
+    host.undo();
+    await vi.waitFor(() => expect(nostr.dispatch.send).toHaveBeenCalled(), {
+      interval: 5,
+    });
+    for (const [value] of nostr.dispatch.send.mock.calls) {
+      guest.receive(JSON.parse(await decryptFromJson(value, key)));
+    }
+
+    const restored = JSON.parse(guest.value);
+    expect(restored.doc.tableIds).toEqual([tableId]);
+    expect(restored.collections.tableEntities[tableId]).toMatchObject({
+      name: 'users',
+      columnIds: [columnId],
+    });
+    expect(restored.collections.tableColumnEntities[columnId]).toMatchObject({
+      name: 'id',
+    });
+    stores.forEach(store => store.destroy());
+    await schemas.delete('schema-1');
   });
 
   it('says nothing when the schema is gone from the database', async () => {

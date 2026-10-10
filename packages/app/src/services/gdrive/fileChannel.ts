@@ -82,7 +82,10 @@ export type SaveAttempt = { attemptId: string; fingerprint: string };
 export type SnapshotMessage = {
   type: 'snapshot';
   to: string;
+  /** The document in the form a file holds: what the tab saves until an editor holds it. */
   value: string;
+  /** The document as the leader's editor holds it, removed entities included, to seed from. */
+  runtimeValue?: string;
   baseModifiedTime: string;
   baseFingerprint: string;
   name: string;
@@ -215,8 +218,10 @@ const readers: Record<Body['type'], Reader> = {
   hello: ({ from }) => (isString(from) ? { type: 'hello', from } : null),
   snapshot: data => {
     const pendingAttempt = readAttempt(data.pendingAttempt);
+    const { runtimeValue } = data;
     return hasDocument(data) &&
       isString(data.to) &&
+      (runtimeValue === undefined || isString(runtimeValue)) &&
       isString(data.baseModifiedTime) &&
       isString(data.baseFingerprint) &&
       isSaveState(data.saveState) &&
@@ -225,6 +230,7 @@ const readers: Record<Body['type'], Reader> = {
           type: 'snapshot',
           to: data.to,
           value: data.value as string,
+          ...(isString(runtimeValue) ? { runtimeValue } : {}),
           baseModifiedTime: data.baseModifiedTime,
           baseFingerprint: data.baseFingerprint,
           name: data.name as string,

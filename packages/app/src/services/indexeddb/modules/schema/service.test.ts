@@ -1,5 +1,13 @@
 import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import {
+  createPeerStore,
+  type PeerStore,
+  tableActions,
+  tableActions$,
+  tableColumnActions,
+  tableColumnActions$,
+} from '@dineug/erd-editor/peer.js';
+import {
   afterEach,
   beforeEach,
   describe,
@@ -9,7 +17,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import type { AppDatabase } from '@/services/indexeddb/appDatabaseService';
+import { createFakeDatabase } from '@/__test-utils__/schemaDatabase';
 import type { SchemaEntity } from '@/services/indexeddb/modules/schema';
 import { SchemaService } from '@/services/indexeddb/modules/schema/service';
 import { updateSchemaEntityAction } from '@/utils/broadcastChannel';
@@ -18,37 +26,6 @@ import { toWidth } from '@/utils/text';
 const DAY = 24 * 60 * 60 * 1000;
 const CREATED = Date.UTC(2026, 8, 1, 9);
 const OPENED = Date.UTC(2026, 8, 19, 9);
-
-/** The slice of a Dexie table the schema module touches, kept in memory. */
-function createFakeDatabase() {
-  const rows = new Map<string, SchemaEntity>();
-  const table = {
-    add: async (entity: SchemaEntity) => {
-      rows.set(entity.id, structuredClone(entity));
-      return entity.id;
-    },
-    bulkAdd: async (entities: SchemaEntity[]) => {
-      entities.forEach(entity => rows.set(entity.id, structuredClone(entity)));
-    },
-    update: async (id: string, changes: Partial<SchemaEntity>) => {
-      const row = rows.get(id);
-      if (!row) return 0;
-      Object.assign(row, structuredClone(changes));
-      return 1;
-    },
-    delete: async (id: string) => {
-      rows.delete(id);
-    },
-    get: async (id: string) => structuredClone(rows.get(id)),
-    toArray: async () => Array.from(rows.values(), row => structuredClone(row)),
-  };
-
-  return {
-    rows,
-    table,
-    db: { table: () => table } as unknown as AppDatabase,
-  };
-}
 
 /**
  * A stored schema whose locks are all off, so it saves the scroll and the zoom
@@ -584,6 +561,123 @@ describe('SchemaService', () => {
 
       expect(rows.has(row.id)).toBe(false);
       expect(postMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a second tab', () => {
+    const tabs: PeerStore[] = [];
+
+    /** An editor on the schema, sending its batches to the replica and the other tabs, as the bridge does. */
+    async function openTab(id: string) {
+      const tab = createPeerStore({
+        nickname: `tab-${tabs.length + 1}`,
+        presence: false,
+      });
+      tab.setInitialValue((await service.get(id))!.value);
+      tab.subscribe(actions => {
+        void service.replication(id, actions);
+        tabs
+          .filter(other => other !== tab)
+          .forEach(other => other.receive(actions));
+      });
+      tabs.push(tab);
+      return tab;
+    }
+
+    const edit = (
+      tab: PeerStore,
+      actions: Parameters<PeerStore['dispatch']>[0]
+    ) => {
+      const { createdIds } = tab.dispatch(actions);
+      tab.flushStreamBuffers();
+      return createdIds;
+    };
+
+    /** A users table with an id column, saved, which the tab then removes, saved too. */
+    async function removeUsers(tab: PeerStore) {
+      const [tableId] = edit(tab, [tableActions$.addTableAction$()]);
+      edit(tab, [
+        tableActions.changeTableNameAction({ id: tableId, value: 'users' }),
+      ]);
+      const [columnId] = edit(tab, [
+        tableColumnActions$.addColumnAction$(tableId),
+      ]);
+      edit(tab, [
+        tableColumnActions.changeColumnNameAction({
+          id: columnId,
+          tableId,
+          value: 'id',
+        }),
+      ]);
+      await settle();
+      expect(writes).toHaveBeenCalledTimes(1);
+
+      edit(tab, [tableActions$.removeTableAction$(tableId)]);
+      await settle();
+      expect(writes).toHaveBeenCalledTimes(2);
+      return { tableId, columnId };
+    }
+
+    afterEach(() => {
+      tabs.splice(0).forEach(tab => tab.destroy());
+    });
+
+    it('opens from the replica’s runtime value, so an undo of a removal it saved restores the table whole there', async () => {
+      const row = seed(rows);
+      const first = await openTab(row.id);
+      const { tableId, columnId } = await removeUsers(first);
+      expect(
+        JSON.parse(rows.get(row.id)!.value).collections.tableEntities
+      ).not.toHaveProperty(tableId);
+
+      const second = await openTab(row.id);
+      first.undo();
+      await settle();
+
+      const restored = JSON.parse(second.value);
+      expect(restored.doc.tableIds).toEqual([tableId]);
+      expect(restored.collections.tableEntities[tableId]).toMatchObject({
+        name: 'users',
+        columnIds: [columnId],
+      });
+      expect(restored.collections.tableColumnEntities[columnId]).toMatchObject({
+        name: 'id',
+      });
+      expect(JSON.parse(rows.get(row.id)!.value)).toEqual(restored);
+    });
+
+    it('opens from the stored value while no replica is open', async () => {
+      const row = seed(rows, { value: valueOf([renameDatabase('stored')]) });
+
+      await expect(service.get(row.id)).resolves.toEqual(row);
+    });
+
+    it('stores, exports and duplicates the file form, never the runtime value a tab opens from', async () => {
+      const row = seed(rows);
+      const first = await openTab(row.id);
+      const { tableId } = await removeUsers(first);
+      const runtimeValue = (await service.get(row.id))!.value;
+      expect(JSON.parse(runtimeValue).collections.tableEntities).toHaveProperty(
+        tableId
+      );
+
+      const [exported] = await service.getAllWithValue();
+      const copy = await service.duplicate(row.id, { name: 'Orders copy' });
+      await settle();
+
+      // The first write held the table, before its removal.
+      const written = [
+        ...writes.mock.calls.map(([, changes]) => changes.value),
+        exported.value,
+        ...Array.from(rows.values(), entity => entity.value),
+      ];
+      for (const value of written.slice(1)) {
+        expect(value).not.toBe(runtimeValue);
+        expect(JSON.parse(value).collections.tableEntities).not.toHaveProperty(
+          tableId
+        );
+      }
+      expect(rows.get(copy!.id)!.value).toBe(first.value);
     });
   });
 

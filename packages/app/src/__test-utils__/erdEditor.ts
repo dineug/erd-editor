@@ -29,6 +29,7 @@ export class FakeErdEditor extends HTMLElement {
     disconnect: vi.fn(),
   };
   value = '';
+  runtimeValue = '';
 
   constructor() {
     super();
@@ -47,6 +48,7 @@ export class FakeErdEditor extends HTMLElement {
   setInitialValue(value: string) {
     this.calls.push(['setInitialValue', value]);
     this.value = value;
+    this.runtimeValue = value;
   }
 
   setPresetTheme(theme: unknown) {

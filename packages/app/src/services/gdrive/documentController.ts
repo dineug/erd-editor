@@ -117,7 +117,10 @@ export type DocumentSnapshot = {
 
 /** The editor as the controller drives it: the element, or a headless peer store. */
 export type EditorAdapter = {
+  /** The document in the form a file holds, which Drive gets. */
   getValue(): string;
+  /** The document as the editor holds it, removed entities included, which seeds another editor. */
+  getRuntimeValue(): string;
   setInitialValue(value: string): void;
   /** The batches this editor sends, the shared store's own subscription. */
   subscribeLocal(listener: (actions: unknown[]) => void): () => void;
@@ -339,6 +342,12 @@ export function createDocumentController(deps: DocumentControllerDeps) {
   let canEdit = false;
   let epoch: string | null = null;
   let initialValue: string | null = null;
+  /**
+   * The document as an editor of this load held it, this tab's or the leader's,
+   * removed entities included, which the next editor starts from. Null after a
+   * load from Drive.
+   */
+  let initialRuntimeValue: string | null = null;
   let queue: SaveQueue | null = null;
 
   let adapter: EditorAdapter | null = null;
@@ -549,6 +558,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     adoptMeta(file);
     epoch = createId();
     initialValue = text;
+    initialRuntimeValue = null;
     buffered = [];
     answering = false;
     announceReload = announce;
@@ -602,6 +612,8 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     dropAdapter();
     epoch = message.epoch;
     initialValue = message.value;
+    // A leader on an older build sends the file form alone.
+    initialRuntimeValue = message.runtimeValue ?? null;
     name = message.name;
     canEdit = message.canEdit;
     followerStatus = message.saveState;
@@ -627,6 +639,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     dropAdapter();
     epoch = message.epoch;
     initialValue = message.value;
+    initialRuntimeValue = null;
     name = message.name;
     canEdit = message.canEdit;
     buffered = [];
@@ -656,7 +669,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
     dropAdapter();
     // The order the shared store needs: the value, then the subscription whose
     // first handshake settles the LWW state, then what other tabs sent meanwhile.
-    next.setInitialValue(initialValue);
+    next.setInitialValue(initialRuntimeValue ?? initialValue);
     const offLocal = next.subscribeLocal(batch => {
       const actions = batch.filter(action => !isPresence(action));
       if (actions.length) channel.post({ type: 'actions', actions });
@@ -676,6 +689,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       offInput();
       // The next editor of this load starts from this one's document, edits included.
       initialValue = next.getValue();
+      initialRuntimeValue = next.getRuntimeValue();
       adapter = null;
       answering = false;
       if (detachAdapter === detach) detachAdapter = null;
@@ -734,6 +748,7 @@ export function createDocumentController(deps: DocumentControllerDeps) {
       type: 'snapshot',
       to,
       value: adapter.getValue(),
+      runtimeValue: adapter.getRuntimeValue(),
       baseModifiedTime: base.modifiedTime,
       baseFingerprint: base.fingerprint!,
       name,

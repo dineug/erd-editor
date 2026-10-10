@@ -94,6 +94,23 @@ describe('the Drive file editor', () => {
     unmount();
   });
 
+  it('hands the controller the element’s file form to save and its runtime value to seed from', () => {
+    const attached: EditorAdapter[] = [];
+    const { editor, unmount } = mount(
+      stubController('ready', adapter => {
+        attached.push(adapter);
+        return () => {};
+      })
+    );
+    const [adapter] = attached;
+    editor.value = '{"form":"file"}';
+    editor.runtimeValue = '{"form":"runtime"}';
+
+    expect(adapter.getValue()).toBe('{"form":"file"}');
+    expect(adapter.getRuntimeValue()).toBe('{"form":"runtime"}');
+    unmount();
+  });
+
   it('hands the editor the stored language and stores a pick from it', () => {
     const store = createStore();
     store.set(localeAtom, 'ko-KR');
