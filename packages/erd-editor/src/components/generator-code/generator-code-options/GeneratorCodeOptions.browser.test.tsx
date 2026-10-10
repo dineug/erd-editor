@@ -221,7 +221,7 @@ describe('the Code Generator options panel on a real layout', () => {
   });
 
   it.each(LocaleCodeList)(
-    '%s: sets each name over its list, both inside the panel, the note under them',
+    '%s: sets each name over its list, both inside the panel, the chevron at the list end, the note under them',
     async locale => {
       const fixture = await setup(1000, locale, Language.SeaORM);
       const panel = fixture.panel()!;
@@ -230,16 +230,23 @@ describe('the Code Generator options panel on a real layout', () => {
       const inside = (rect: DOMRect) =>
         rect.left >= box.left + 20 && rect.right <= box.right - 20;
 
+      const rtl = getComputedStyle(panel).direction === 'rtl';
+
       expect(body.scrollWidth).toBe(body.clientWidth);
       for (const setting of panel.querySelectorAll<HTMLElement>(
         '.generator-code-options-setting'
       )) {
         const name = setting.firstElementChild!.getBoundingClientRect();
         const list = setting.querySelector('select')!.getBoundingClientRect();
+        const chevron = setting.querySelector('svg')!.getBoundingClientRect();
+        const middle = list.left + list.width / 2;
 
         expect(name.bottom).toBeLessThanOrEqual(list.top);
         expect(inside(name)).toBe(true);
         expect(list.width).toBe(box.width - 40);
+        expect(chevron.left).toBeGreaterThan(list.left);
+        expect(chevron.right).toBeLessThan(list.right);
+        expect(rtl ? chevron.right < middle : chevron.left > middle).toBe(true);
       }
       const note = panel
         .querySelector('.generator-code-options-unused')!

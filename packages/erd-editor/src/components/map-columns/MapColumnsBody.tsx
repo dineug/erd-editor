@@ -6,6 +6,7 @@ import { useAppContext } from '@/components/appContext';
 import { relationshipTypeName } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
 import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
+import Select from '@/components/primitives/select/Select';
 import { Column, Table } from '@/internal-types';
 import {
   type CandidateKey,
@@ -210,36 +211,40 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     };
 
     return (
-      <select
-        class={styles.select}
-        aria-labelledby={`${labelId} ${parentNameId(index)}`}
-        data-parent-column-id={parentColumnId ?? ''}
-        bool:disabled={disabled}
-        bool:data-autofocus={autofocus}
-        on:change={handleChange}
-      >
-        <option
-          prop:value={EMPTY_VALUE}
-          prop:selected={selected === EMPTY_VALUE}
+      <Select class={styles.select}>
+        <select
+          aria-labelledby={`${labelId} ${parentNameId(index)}`}
+          data-parent-column-id={parentColumnId ?? ''}
+          bool:disabled={disabled}
+          bool:data-autofocus={autofocus}
+          on:change={handleChange}
         >
-          {t('mapColumns.pickColumn')}
-        </option>
-        {row.newColumnName ? (
-          <option prop:value={NEW_VALUE} prop:selected={selected === NEW_VALUE}>
-            {t('mapColumns.newColumn', { name: row.newColumnName })}
-          </option>
-        ) : null}
-        {children.map(column => childOption(column, selected, used))}
-        {row.removedChild ? (
           <option
-            prop:value={selected}
-            bool:disabled={true}
-            prop:selected={true}
+            prop:value={EMPTY_VALUE}
+            prop:selected={selected === EMPTY_VALUE}
           >
-            {t('mapColumns.removed')}
+            {t('mapColumns.pickColumn')}
           </option>
-        ) : null}
-      </select>
+          {row.newColumnName ? (
+            <option
+              prop:value={NEW_VALUE}
+              prop:selected={selected === NEW_VALUE}
+            >
+              {t('mapColumns.newColumn', { name: row.newColumnName })}
+            </option>
+          ) : null}
+          {children.map(column => childOption(column, selected, used))}
+          {row.removedChild ? (
+            <option
+              prop:value={selected}
+              bool:disabled={true}
+              prop:selected={true}
+            >
+              {t('mapColumns.removed')}
+            </option>
+          ) : null}
+        </select>
+      </Select>
     );
   };
 
@@ -284,19 +289,20 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
         {showReferences ? (
           <label class={['map-columns-references', styles.references]}>
             <span>{t('mapColumns.references')}</span>
-            <select
-              class={styles.select}
-              aria-label={t('mapColumns.references')}
-              on:change={(event: Event) =>
-                props.onKeyChange((event.target as HTMLSelectElement).value)
-              }
-            >
-              {keys.map(key => (
-                <option prop:value={key.id} prop:selected={key.id === keyId}>
-                  {keyLabel(key)}
-                </option>
-              ))}
-            </select>
+            <Select class={styles.select}>
+              <select
+                aria-label={t('mapColumns.references')}
+                on:change={(event: Event) =>
+                  props.onKeyChange((event.target as HTMLSelectElement).value)
+                }
+              >
+                {keys.map(key => (
+                  <option prop:value={key.id} prop:selected={key.id === keyId}>
+                    {keyLabel(key)}
+                  </option>
+                ))}
+              </select>
+            </Select>
           </label>
         ) : null}
         <span id={labelId} hidden>

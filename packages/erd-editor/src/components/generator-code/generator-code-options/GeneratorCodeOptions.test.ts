@@ -1,6 +1,7 @@
 import { html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   createTestI18n,
@@ -91,6 +92,12 @@ const rowsOf = () =>
     label: row.querySelector('label')?.textContent,
     unused: row.dataset.unused === 'true',
   }));
+
+/** Whether each row's list dims its value and chevron, which a row the language ignores does. */
+const listsDimmedOf = () =>
+  settingsOf().map(row =>
+    row.querySelector('select')!.parentElement!.hasAttribute('data-dimmed')
+  );
 
 const notesOf = () =>
   Array.from(
@@ -257,6 +264,7 @@ describe('GeneratorCodeOptions', () => {
       ['Table Name Case', true],
       ['Column Name Case', true],
     ]);
+    expect(listsDimmedOf()).toEqual([false, true, true, true]);
     expect(notesOf()).toEqual(['Not used by Mermaid', 'Not used by Mermaid']);
     expect(selectOf('database').getAttribute('aria-describedby')).toBe(
       'generator-code-database-unused'
@@ -275,12 +283,14 @@ describe('GeneratorCodeOptions', () => {
       ['Column Name Case', true],
       ['Bracket', false],
     ]);
+    expect(listsDimmedOf()).toEqual([false, false, true, true, false]);
     expect(notesOf()).toEqual(['Not used by SeaORM']);
 
     pick(selectOf('language'), Language.Swift);
     await flush();
 
     expect(rowsOf().some(row => row.unused)).toBe(false);
+    expect(listsDimmedOf().some(Boolean)).toBe(false);
     expect(notesOf()).toEqual([]);
   });
 
@@ -315,7 +325,12 @@ describe('GeneratorCodeOptions', () => {
       'Bracket',
     ]);
     for (const row of settingsOf()) {
-      expect(row.querySelector('svg')).toBeNull();
+      // the list's own chevron is the one glyph a row draws
+      expect(
+        Array.from(row.querySelectorAll('svg'), svg =>
+          iconNameOf(svg.parentElement)
+        )
+      ).toEqual(['chevron-down']);
       expect(
         row.querySelector('[title], [aria-label], [role="img"]')
       ).toBeNull();

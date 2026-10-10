@@ -16,6 +16,7 @@ import {
 import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import Icon from '@/components/primitives/icon/Icon';
+import Select from '@/components/primitives/select/Select';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { keepSpace } from '@/components/schema-sql/schema-sql-options/SchemaSQLOptions';
 import * as shell from '@/components/schema-sql/schema-sql-options/SchemaSQLOptions.styles';
@@ -101,7 +102,6 @@ const GeneratorCodeOptions: FC<GeneratorCodeOptionsProps> = (props, ctx) => {
         class={[
           'generator-code-options-setting',
           shell.column,
-          styles.setting,
           setting.noteId ? styles.unused : null,
         ]}
         data-unused={setting.noteId ? 'true' : 'false'}
@@ -109,24 +109,25 @@ const GeneratorCodeOptions: FC<GeneratorCodeOptionsProps> = (props, ctx) => {
         <label class={styles.name} prop:htmlFor={setting.id}>
           {t(setting.labelKey)}
         </label>
-        <select
-          class={shell.select}
-          id={setting.id}
-          aria-describedby={setting.noteId ?? ''}
-          on:change={handleChange(setting)}
-        >
-          {setting.choices.map(choice => (
-            <>
-              {choice.separated ? <hr /> : null}
-              <option
-                prop:value={String(choice.value)}
-                prop:selected={choice.value === setting.value}
-              >
-                {labelOf(choice)}
-              </option>
-            </>
-          ))}
-        </select>
+        <Select dimmed={Boolean(setting.noteId)}>
+          <select
+            id={setting.id}
+            aria-describedby={setting.noteId ?? ''}
+            on:change={handleChange(setting)}
+          >
+            {setting.choices.map(choice => (
+              <>
+                {choice.separated ? <hr /> : null}
+                <option
+                  prop:value={String(choice.value)}
+                  prop:selected={choice.value === setting.value}
+                >
+                  {labelOf(choice)}
+                </option>
+              </>
+            ))}
+          </select>
+        </Select>
       </div>
     );
   };

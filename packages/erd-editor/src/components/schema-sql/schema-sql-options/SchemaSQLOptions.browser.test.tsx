@@ -184,6 +184,36 @@ describe('the Schema SQL options panel on a real layout', () => {
     ]);
   });
 
+  it.each(['en', 'ar-SA'] as const)(
+    '%s: sets each list 132 px wide beside its name, its chevron at the list end',
+    async locale => {
+      const fixture = await setup(1000, undefined, locale);
+      const panel = fixture.panel()!;
+      const rtl = locale === 'ar-SA';
+
+      for (const id of ['schema-sql-database', 'schema-sql-bracket']) {
+        const select = panel.querySelector<HTMLSelectElement>(`#${id}`)!;
+        const list = select.getBoundingClientRect();
+        const name = panel
+          .querySelector(`label[for="${id}"]`)!
+          .getBoundingClientRect();
+        const chevron = select
+          .parentElement!.querySelector('svg')!
+          .getBoundingClientRect();
+        const middle = list.left + list.width / 2;
+
+        expect(getComputedStyle(select).direction).toBe(rtl ? 'rtl' : 'ltr');
+        expect(list.width).toBe(132);
+        expect(rtl ? name.left > list.right : name.right < list.left).toBe(
+          true
+        );
+        expect(chevron.left).toBeGreaterThan(list.left);
+        expect(chevron.right).toBeLessThan(list.right);
+        expect(rtl ? chevron.right < middle : chevron.left > middle).toBe(true);
+      }
+    }
+  );
+
   it('draws a 1 px rule halfway into the gap above each group but the first', async () => {
     const fixture = await setup();
     const groups = Array.from(

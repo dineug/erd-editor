@@ -5,6 +5,7 @@ import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/
 import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import Icon from '@/components/primitives/icon/Icon';
+import Select from '@/components/primitives/select/Select';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import {
   headerHint,
@@ -232,39 +233,35 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
               <label prop:htmlFor="schema-sql-database">
                 {t('common.database')}
               </label>
-              <select
-                class={styles.select}
-                id="schema-sql-database"
-                on:change={handleDatabase}
-              >
-                {databaseMenus.map(menu => (
-                  <option
-                    prop:value={String(menu.value)}
-                    prop:selected={menu.value === settings.database}
-                  >
-                    {menu.name}
-                  </option>
-                ))}
-              </select>
+              <Select class={styles.select}>
+                <select id="schema-sql-database" on:change={handleDatabase}>
+                  {databaseMenus.map(menu => (
+                    <option
+                      prop:value={String(menu.value)}
+                      prop:selected={menu.value === settings.database}
+                    >
+                      {menu.name}
+                    </option>
+                  ))}
+                </select>
+              </Select>
             </div>
             <div class={styles.row}>
               <label prop:htmlFor="schema-sql-bracket">
                 {t('common.bracket')}
               </label>
-              <select
-                class={styles.select}
-                id="schema-sql-bracket"
-                on:change={handleBracket}
-              >
-                {bracketMenus.map(menu => (
-                  <option
-                    prop:value={String(menu.value)}
-                    prop:selected={menu.value === settings.bracketType}
-                  >
-                    {menuLabel(i18n.value, menu)}
-                  </option>
-                ))}
-              </select>
+              <Select class={styles.select}>
+                <select id="schema-sql-bracket" on:change={handleBracket}>
+                  {bracketMenus.map(menu => (
+                    <option
+                      prop:value={String(menu.value)}
+                      prop:selected={menu.value === settings.bracketType}
+                    >
+                      {menuLabel(i18n.value, menu)}
+                    </option>
+                  ))}
+                </select>
+              </Select>
             </div>
             {props.longNames.length ? (
               <p class={['schema-sql-options-long-names', styles.note]}>
