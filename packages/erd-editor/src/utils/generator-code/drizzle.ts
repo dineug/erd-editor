@@ -28,6 +28,7 @@ import {
   UUID_TYPES,
 } from './columnTypes';
 import {
+  escapeTypeScriptDirective,
   FormatTableOptions,
   getNameCase,
   getPrimitiveType,
@@ -1275,18 +1276,13 @@ function formatColumn(
   );
 }
 
-// TypeScript reads a line comment whose text opens with an at sign and ts- as
-// a directive, which would hide an error or report an unused one, so such a
-// line takes a backslash before its at sign.
-const DIRECTIVE = /^(\s*)@ts-/;
-
 function formatComment(buffer: string[], indent: string, comment: string) {
   if (comment.trim() === '') {
     return;
   }
 
   splitLines(comment).forEach(line =>
-    buffer.push(`${indent}// ${line.replace(DIRECTIVE, '$1\\@ts-')}`)
+    buffer.push(`${indent}// ${escapeTypeScriptDirective(line)}`)
   );
 }
 

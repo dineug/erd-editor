@@ -1869,6 +1869,37 @@ describe('generator-code/typeorm', () => {
       );
     });
 
+    it('writes a comment holding a TypeScript directive in a string, where TypeScript reads none', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'user',
+        comment: '@ts-nocheck\n@ts-ignore',
+        columnIds: ['c1'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+            comment: '@ts-expect-error',
+            options: ColumnOption.notNull,
+          }),
+        ],
+        settings: { database: Database.MySQL },
+      });
+
+      expect(render(state, table)).toEqual([
+        '@Entity("user", { comment: "@ts-nocheck\\n@ts-ignore" })',
+        'export class User {',
+        '  @Column("int", { comment: "@ts-expect-error" })',
+        '  id: number;',
+        '}',
+      ]);
+    });
+
     it('ignores a comment or a default that is only whitespace', () => {
       const table = createTable({
         id: 't1',

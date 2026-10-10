@@ -49,11 +49,12 @@ const NAME_CASES_IGNORED: ReadonlyArray<number> = [
 ];
 
 /**
- * The languages offered the bracket type (an owner decision): Doctrine and SeaORM
- * quote names by it. JPA reads it for a reserved table name alone and is not offered it.
+ * The languages offered the bracket type (owner decisions): Doctrine and SeaORM
+ * quote names by it, and JPA quotes a reserved table name only under it.
  */
 const BRACKET_READ: ReadonlyArray<number> = [
   Language.Doctrine,
+  Language.JPA,
   Language.SeaORM,
 ];
 

@@ -39,7 +39,10 @@ const COLUMNS: Array<[string, string]> = [
   ['code', 'NUMBER(10,2)'],
 ];
 
-/** One table of those columns, in the language given and nothing else changed. */
+/**
+ * One table of those columns and a table named with a reserved word, which JPA
+ * quotes under a bracket type, in the language given and nothing else changed.
+ */
 function createState(language: number): RootState {
   const state = {
     ...schemaV3Parser({}),
@@ -61,12 +64,27 @@ function createState(language: number): RootState {
     columnIds: columns.map(column => column.id),
   });
 
+  const reservedColumn = createColumn({
+    id: 'r0',
+    tableId: 'r',
+    name: 'id',
+    dataType: 'int',
+    options: ColumnOption.primaryKey,
+  });
+  const reserved = createTable({
+    id: 'r',
+    name: 'order',
+    columnIds: [reservedColumn.id],
+  });
+
   state.settings.language = language;
-  state.collections.tableEntities[table.id] = table;
-  columns.forEach(column => {
+  [table, reserved].forEach(entity => {
+    state.collections.tableEntities[entity.id] = entity;
+    state.doc.tableIds.push(entity.id);
+  });
+  [...columns, reservedColumn].forEach(column => {
     state.collections.tableColumnEntities[column.id] = column;
   });
-  state.doc.tableIds.push(table.id);
   return state;
 }
 

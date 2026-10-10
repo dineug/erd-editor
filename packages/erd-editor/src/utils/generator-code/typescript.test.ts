@@ -362,23 +362,24 @@ describe('generator-code/typescript', () => {
     ]);
   });
 
-  it('writes a comment line that reads as a TypeScript directive as is', () => {
+  it('puts a backslash before the at sign of a comment line TypeScript would read as a directive', () => {
     const state = createState();
 
     addTable(state, {
       id: 't-directives',
       name: 'directives',
-      comment: '@ts-nocheck\n  @ts-expect-error nope',
+      comment: '@TS-NOCHECK\n  @ts-expect-error nope\nsee @ts-ignore',
       columns: [{ name: 'a', dataType: 'INT', comment: '@ts-ignore' }],
     });
 
     expect(createCode(state)).toBe(
       [
         '',
-        '// @ts-nocheck',
-        '//   @ts-expect-error nope',
+        '// \\@TS-NOCHECK',
+        '//   \\@ts-expect-error nope',
+        '// see @ts-ignore',
         'export interface Directives {',
-        '  // @ts-ignore',
+        '  // \\@ts-ignore',
         '  a: number | null;',
         '}',
         '',

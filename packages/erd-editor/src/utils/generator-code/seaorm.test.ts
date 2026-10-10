@@ -1478,6 +1478,24 @@ describe('seaorm generator', () => {
           '    pub v: Decimal,',
         ],
       ],
+      // The PostgreSQL and SQLite lists gained dec, which now reads as a
+      // decimal, no longer as text (an owner decision of 2026-10-10).
+      [
+        Database.PostgreSQL,
+        'dec',
+        [
+          '    #[sea_orm(column_type = "custom(\\"dec\\")")]',
+          '    pub v: Decimal,',
+        ],
+      ],
+      [
+        Database.PostgreSQL,
+        'DEC(10,2)',
+        [
+          '    #[sea_orm(column_type = "Decimal(Some((10, 2)))")]',
+          '    pub v: Decimal,',
+        ],
+      ],
       [
         Database.PostgreSQL,
         'char(2)',
@@ -1621,6 +1639,14 @@ describe('seaorm generator', () => {
         'NUMERIC',
         [
           '    #[sea_orm(column_type = "custom(\\"NUMERIC\\")", select_as = "REAL")]',
+          '    pub v: Decimal,',
+        ],
+      ],
+      [
+        Database.SQLite,
+        'dec',
+        [
+          '    #[sea_orm(column_type = "custom(\\"dec\\")", select_as = "REAL")]',
           '    pub v: Decimal,',
         ],
       ],

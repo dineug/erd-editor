@@ -292,7 +292,8 @@ describe('generator-code/drizzle', () => {
           ' @ts-ignored',
           '@ts-nocheck',
           'see @ts-ignore',
-          '@TS-IGNORE',
+          '@TS-NOCHECK',
+          '\u00a0@ts-ignore',
           '/@ts-ignore',
         ].join('\n')
       );
@@ -306,7 +307,8 @@ describe('generator-code/drizzle', () => {
         '//  \\@ts-ignored',
         '// \\@ts-nocheck',
         '// see @ts-ignore',
-        '// @TS-IGNORE',
+        '// \\@TS-NOCHECK',
+        '// \u00a0\\@ts-ignore',
         '// /@ts-ignore',
         'export const User = mysqlTable("user", {',
         '  id: int(),',

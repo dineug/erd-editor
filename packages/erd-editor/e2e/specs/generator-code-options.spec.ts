@@ -183,6 +183,10 @@ test.describe('the Code Generator options panel', () => {
     await setting(erd, 'Language').selectOption({ label: 'Doctrine' });
     await expect(setting(erd, 'Bracket')).toBeVisible();
 
+    await setting(erd, 'Language').selectOption({ label: 'JPA' });
+    await expect.poll(() => codeOf(erd)).toContain('@Entity');
+    await expect(setting(erd, 'Bracket')).toBeVisible();
+
     await setting(erd, 'Language').selectOption({ label: 'Mermaid' });
     await expect.poll(() => codeOf(erd)).toMatch(/^erDiagram/);
     await expect(

@@ -12,7 +12,12 @@ import {
   toTypeScriptPropertyKey,
   toTypeScriptTypeName,
 } from './jsonShape';
-import { FormatTableOptions, getNameCase, splitLines } from './utils';
+import {
+  escapeTypeScriptDirective,
+  FormatTableOptions,
+  getNameCase,
+  splitLines,
+} from './utils';
 
 const IMPORT_LINE = 'import * as z from "zod";';
 const INDENT = '  ';
@@ -149,13 +154,15 @@ export function toZodPropertyKey(name: string): string {
   return name === '__proto__' ? '["__proto__"]' : toTypeScriptPropertyKey(name);
 }
 
-/** A comment as line comments, one for each of its lines. */
+/** A comment as line comments, one for each of its lines, none a TypeScript directive. */
 export function formatComment(
   buffer: string[],
   indent: string,
   comment: string
 ) {
-  const lines = splitLines(comment).map(line => line.trimEnd());
+  const lines = splitLines(comment).map(line =>
+    escapeTypeScriptDirective(line.trimEnd())
+  );
 
   while (lines.length > 0 && lines[0] === '') {
     lines.shift();

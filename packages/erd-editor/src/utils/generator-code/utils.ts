@@ -151,6 +151,19 @@ export function splitLines(value: string): string[] {
   return value.split(LINE_TERMINATOR);
 }
 
+// Every directive TypeScript reads in a line comment opens with an at sign and
+// ts-, and it reads ts-check and ts-nocheck in any letter case.
+const TYPESCRIPT_DIRECTIVE = /^(\s*)@(?=ts-)/i;
+
+/**
+ * A line comment's text with a backslash before its at sign where it opens with
+ * one and ts-, after any white space and in any case, so the line stays legible
+ * and TypeScript reads no directive in it, which would hide or expect an error.
+ */
+export function escapeTypeScriptDirective(line: string): string {
+  return line.replace(TYPESCRIPT_DIRECTIVE, '$1\\@');
+}
+
 export function getDataTypeHints(database: number): DataTypeHint[] {
   return DatabaseHintMap[database] ?? [];
 }

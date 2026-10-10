@@ -2614,6 +2614,54 @@ describe('generator-code/sequelize', () => {
       ]);
     });
 
+    it('writes a comment holding a TypeScript directive in a string, where TypeScript reads none', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'user',
+        comment: '@ts-nocheck\n@ts-ignore',
+        columnIds: ['c1'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+            comment: '@ts-expect-error',
+            options: ColumnOption.notNull,
+          }),
+        ],
+        settings: { database: Database.MySQL },
+      });
+
+      expect(render(state, table)).toEqual([
+        'export class User extends Model<',
+        '  InferAttributes<User>,',
+        '  InferCreationAttributes<User>',
+        '> {',
+        '  declare id: number;',
+        '}',
+        '',
+        'User.init(',
+        '  {',
+        '    id: {',
+        '      type: DataTypes.INTEGER,',
+        '      allowNull: false,',
+        '      comment: "@ts-expect-error",',
+        '    },',
+        '  },',
+        '  {',
+        '    sequelize,',
+        '    tableName: "user",',
+        '    timestamps: false,',
+        '    comment: "@ts-nocheck\\n@ts-ignore",',
+        '  }',
+        ');',
+      ]);
+    });
+
     it('ignores a comment or a default that is only whitespace', () => {
       const table = createTable({
         id: 't1',

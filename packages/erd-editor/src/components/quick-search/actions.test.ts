@@ -805,7 +805,7 @@ describe('createScopeActions / Bracket', () => {
     expect(app.store.state.settings.bracketType).toBe(target!.value);
   });
 
-  it('shows on the Code Generator tab for Doctrine and SeaORM alone, the two that read it', () => {
+  it('shows on the Code Generator tab for Doctrine, JPA and SeaORM alone, the three that read it', () => {
     setCanvasType(CanvasType.generatorCode);
     const shownFor = (language: number) => {
       app.store.dispatchSync(changeLanguageAction({ value: language }));
@@ -814,7 +814,7 @@ describe('createScopeActions / Bracket', () => {
 
     expect(
       languageMenus.filter(menu => shownFor(menu.value)).map(menu => menu.name)
-    ).toEqual(['Doctrine', 'SeaORM']);
+    ).toEqual(['Doctrine', 'JPA', 'SeaORM']);
   });
 });
 

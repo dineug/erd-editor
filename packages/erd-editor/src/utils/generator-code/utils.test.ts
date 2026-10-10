@@ -11,6 +11,7 @@ import { MySQLTypes } from '@/constants/sql/dataType/MySQL';
 import { PostgreSQLTypes } from '@/constants/sql/dataType/PostgreSQL';
 import {
   baseTypeName,
+  escapeTypeScriptDirective,
   findDataTypeHint,
   fractionalNumber,
   getDataTypeHints,
@@ -296,6 +297,40 @@ describe('generator-code/utils', () => {
       ]);
       expect(splitLines('one line')).toEqual(['one line']);
       expect(LINE_TERMINATOR.test('\u2028')).toBe(true);
+    });
+  });
+
+  describe('escapeTypeScriptDirective', () => {
+    it.each([
+      ['@ts-ignore', '\\@ts-ignore'],
+      ['@ts-expect-error no error here', '\\@ts-expect-error no error here'],
+      ['@ts-nocheck', '\\@ts-nocheck'],
+      ['@ts-check', '\\@ts-check'],
+      ['@TS-NOCHECK', '\\@TS-NOCHECK'],
+      ['@Ts-Check: on', '\\@Ts-Check: on'],
+      ['@ts-nocheck1', '\\@ts-nocheck1'],
+      ['@ts-ignored', '\\@ts-ignored'],
+      ['  @ts-ignore', '  \\@ts-ignore'],
+      ['\t@ts-expect-error', '\t\\@ts-expect-error'],
+      ['\u00a0@ts-ignore', '\u00a0\\@ts-ignore'],
+      ['\ufeff@ts-nocheck', '\ufeff\\@ts-nocheck'],
+    ])(
+      'puts a backslash before the at sign of %j, which TypeScript reads as a directive',
+      (line, escaped) => {
+        expect(escapeTypeScriptDirective(line)).toBe(escaped);
+      }
+    );
+
+    it.each([
+      'see @ts-ignore',
+      '/@ts-ignore',
+      '\\@ts-ignore',
+      '@tsignore',
+      '@ts',
+      '',
+      'plain',
+    ])('keeps %j, no directive, as it is', line => {
+      expect(escapeTypeScriptDirective(line)).toBe(line);
     });
   });
 

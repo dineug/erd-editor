@@ -143,6 +143,7 @@ describe('GeneratorCodeContextMenu', () => {
 
   it.each([
     { name: 'Doctrine', language: Language.Doctrine },
+    { name: 'JPA', language: Language.JPA },
     { name: 'SeaORM', language: Language.SeaORM },
   ])('adds Bracket for $name, which reads it', async ({ language }) => {
     const { app } = await openMenu(() => {}, { language });

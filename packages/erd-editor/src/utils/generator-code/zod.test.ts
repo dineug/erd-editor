@@ -271,6 +271,28 @@ describe('createTableCode', () => {
 });
 
 describe('formatTable', () => {
+  it('writes a table or column comment TypeScript would read as a directive with a backslash', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 'directives',
+      name: 'directives',
+      comment: '@ts-nocheck\n  @ts-expect-error nope',
+      columns: [
+        { name: 'a', dataType: 'INT', options: NN, comment: '@ts-ignore' },
+      ],
+    });
+
+    expect(tableLines(state, table)).toEqual([
+      '// \\@ts-nocheck',
+      '//   \\@ts-expect-error nope',
+      'export const DirectivesSchema = z.object({',
+      '  // \\@ts-ignore',
+      '  a: z.int32(),',
+      '});',
+      'export type Directives = z.infer<typeof DirectivesSchema>;',
+    ]);
+  });
+
   it('writes an empty object for a table with no column', () => {
     const state = createState();
     const table = addTable(state, {
@@ -412,11 +434,17 @@ describe('formatComment', () => {
     expect(commentLines(' \n\t')).toEqual([]);
   });
 
-  it('writes a line opening with a TypeScript directive as is', () => {
-    expect(commentLines('a\n@ts-expect-error nope\n  @ts-ignore')).toEqual([
+  it('puts a backslash before the at sign of a line TypeScript reads as a directive', () => {
+    expect(
+      commentLines(
+        'a\n@ts-expect-error nope\n  @ts-ignore\n@TS-NOCHECK\nsee @ts-ignore'
+      )
+    ).toEqual([
       '// a',
-      '// @ts-expect-error nope',
-      '//   @ts-ignore',
+      '// \\@ts-expect-error nope',
+      '//   \\@ts-ignore',
+      '// \\@TS-NOCHECK',
+      '// see @ts-ignore',
     ]);
   });
 });
