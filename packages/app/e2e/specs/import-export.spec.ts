@@ -220,6 +220,9 @@ test.describe('import and export', () => {
     await expect
       .poll(async () => storedTableCount(await app.storedSchema('shop')))
       .toBe(2);
+    // The import opened shop, and its editor takes the keyboard as it mounts,
+    // which would close a name field opened before it.
+    await app.waitForEditor();
     await app.createSchema('notes');
 
     const download = await app.exportBackup();
