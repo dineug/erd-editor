@@ -48,7 +48,10 @@ const NAME_CASES_IGNORED: ReadonlyArray<number> = [
   Language.Mermaid,
 ];
 
-/** The two languages that quote names by the bracket type, the only ones offered it. */
+/**
+ * The languages offered the bracket type (an owner decision): Doctrine and SeaORM
+ * quote names by it. JPA reads it for a reserved table name alone and is not offered it.
+ */
 const BRACKET_READ: ReadonlyArray<number> = [
   Language.Doctrine,
   Language.SeaORM,
@@ -62,6 +65,6 @@ export const readsDatabase = (language: number): boolean =>
 export const readsNameCases = (language: number): boolean =>
   !NAME_CASES_IGNORED.includes(language);
 
-/** Whether a language's code follows the bracket type. */
+/** Whether the panel, the context menu and the palette offer a language the bracket type. */
 export const readsBracket = (language: number): boolean =>
   BRACKET_READ.includes(language);

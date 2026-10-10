@@ -33,7 +33,7 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM,
   Swift, Zod, JSON Schema
 - Code Generator options — a panel beside the code picks the language, the database and the name
-  cases, and saves the code as a file named by the language
+  cases, and saves the code as a file with the language's extension
 - Export — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
   transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead
 - Force-directed visualization of table relationships

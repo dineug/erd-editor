@@ -5,7 +5,7 @@ import { GraphQLModel } from './types';
 /**
  * Every cell below is a name taken from that dialect's hint list under
  * @/constants/sql/dataType, so getPrimitiveType resolves it back to a
- * primitive the ten code generators understand.
+ * primitive the code generators understand.
  */
 
 const stringTypes: Record<number, string> = {
