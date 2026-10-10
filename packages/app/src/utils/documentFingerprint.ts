@@ -94,9 +94,36 @@ const withoutMeta = (collections: any) =>
   );
 
 /**
- * The document less what no longer hangs off it: removed tables and memos, and
- * what belongs to a removed table. The element's collector drops those three
- * days on, a macrotask or more after a load, and a removal shows in doc anyway.
+ * The table groups doc lists, and with none listed neither group field: a file
+ * writes both while a removed group's tombstone is left and drops them with the
+ * last one, which the element collects long after a load.
+ */
+function listedTableGroups(
+  doc: any,
+  collections: Record<string, Record<string, any>>
+) {
+  const tableGroupIds = new Set<string>(doc.tableGroupIds);
+  if (!tableGroupIds.size) {
+    return {
+      doc: omit(doc, ['tableGroupIds']),
+      collections: omit(collections, ['tableGroupEntities']),
+    };
+  }
+  return {
+    doc,
+    collections: {
+      ...collections,
+      tableGroupEntities: pickBy(collections.tableGroupEntities, (_group, id) =>
+        tableGroupIds.has(id)
+      ),
+    },
+  };
+}
+
+/**
+ * The document less what no longer hangs off it: removed tables, memos and table
+ * groups, and what belongs to a removed table. The element's collector drops them
+ * three days on, a macrotask or more after a load; a removal shows in doc anyway.
  */
 function reachable(doc: any, collections: Record<string, Record<string, any>>) {
   const tableIds = new Set<string>(doc.tableIds);
@@ -113,9 +140,9 @@ function reachable(doc: any, collections: Record<string, Record<string, any>>) {
   );
   const keptRelationships = new Set<string>(relationshipIds);
   const keptIndexes = new Set<string>(indexIds);
-  return {
-    doc: { ...doc, relationshipIds, indexIds },
-    collections: {
+  return listedTableGroups(
+    { ...doc, relationshipIds, indexIds },
+    {
       ...collections,
       tableEntities: pickBy(collections.tableEntities, (_table, id) =>
         tableIds.has(id)
@@ -136,8 +163,8 @@ function reachable(doc: any, collections: Record<string, Record<string, any>>) {
       memoEntities: pickBy(collections.memoEntities, (_memo, id) =>
         memoIds.has(id)
       ),
-    },
-  };
+    }
+  );
 }
 
 const byKey = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -155,6 +182,9 @@ function inIdOrder(doc: any, collections: Record<string, Record<string, any>>) {
       relationshipIds: [...doc.relationshipIds].sort(byKey),
       indexIds: [...doc.indexIds].sort(byKey),
       memoIds: [...doc.memoIds].sort(byKey),
+      ...(doc.tableGroupIds && {
+        tableGroupIds: [...doc.tableGroupIds].sort(byKey),
+      }),
     },
     collections: mapValues(collections, entities =>
       Object.fromEntries(
