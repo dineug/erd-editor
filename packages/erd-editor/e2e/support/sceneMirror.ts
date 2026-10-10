@@ -57,7 +57,14 @@ const STYLE_ATTRIBUTES: Array<[string, string]> = [
   ['sharedFocus', '--shared-focus'],
 ];
 
-const ID_PREFIXES = ['table-', 'column-', 'memo-', 'relationship-'];
+/** Longest first, since a table group's id starts with a table's prefix too. */
+const ID_PREFIXES = [
+  'table-group-',
+  'table-',
+  'column-',
+  'memo-',
+  'relationship-',
+];
 
 /**
  * Names the projection draws a dashed svg band inside. The dom marquee was an
