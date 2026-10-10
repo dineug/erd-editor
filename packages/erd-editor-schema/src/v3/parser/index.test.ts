@@ -136,6 +136,96 @@ describe('parser', () => {
     ).toEqual([1, 1, 1, 1, 1, 1, 1]);
   });
 
+  it('stacks entities saved without a z-index in their doc order', () => {
+    const result = parser({
+      doc: {
+        tableIds: ['t2', 't1', 't3'],
+        memoIds: ['m2', 'm1'],
+        tableGroupIds: ['g2', 'g1'],
+      },
+      collections: {
+        tableEntities: {
+          t1: { id: 't1' },
+          t2: { id: 't2' },
+          t3: { id: 't3', ui: { x: 10 } },
+        },
+        memoEntities: { m1: { id: 'm1' }, m2: { id: 'm2' } },
+        tableGroupEntities: { g1: { id: 'g1' }, g2: { id: 'g2' } },
+      },
+    });
+    const { tableEntities, memoEntities, tableGroupEntities } =
+      result.collections;
+
+    expect(tableEntities.t2.ui.zIndex).toBe(2);
+    expect(tableEntities.t1.ui.zIndex).toBe(3);
+    expect(tableEntities.t3.ui.zIndex).toBe(4);
+    expect(tableEntities.t3.ui.x).toBe(10);
+    expect(memoEntities.m2.ui.zIndex).toBe(2);
+    expect(memoEntities.m1.ui.zIndex).toBe(3);
+    expect(tableGroupEntities.g2.ui.zIndex).toBe(1);
+    expect(tableGroupEntities.g1.ui.zIndex).toBe(2);
+  });
+
+  it('keeps the z-index an entity carries and the default of one not listed', () => {
+    const result = parser({
+      doc: { tableIds: ['t1', 't2'], memoIds: ['m1'] },
+      collections: {
+        tableEntities: {
+          t1: { id: 't1', ui: { zIndex: 9 } },
+          t2: { id: 't2', ui: { zIndex: 'top' } },
+          t3: { id: 't3' },
+        },
+        memoEntities: { m1: { id: 'm1', ui: { zIndex: 0 } } },
+        tableGroupEntities: { g1: { id: 'g1', ui: { zIndex: 5 } } },
+      },
+    });
+    const { tableEntities, memoEntities, tableGroupEntities } =
+      result.collections;
+
+    expect(tableEntities.t1.ui.zIndex).toBe(9);
+    expect(tableEntities.t2.ui.zIndex).toBe(3);
+    expect(tableEntities.t3.ui.zIndex).toBe(2);
+    expect(memoEntities.m1.ui.zIndex).toBe(0);
+    expect(tableGroupEntities.g1.ui.zIndex).toBe(5);
+  });
+
+  it('stacks a doubly listed entity at its first place', () => {
+    const result = parser({
+      doc: { tableIds: ['t1', 't2', 't1'] },
+      collections: {
+        tableEntities: { t1: { id: 't1' }, t2: { id: 't2' } },
+      },
+    });
+
+    expect(result.collections.tableEntities.t1.ui.zIndex).toBe(2);
+    expect(result.collections.tableEntities.t2.ui.zIndex).toBe(3);
+  });
+
+  it('lets the last raw entry with an id decide whether it carries a z-index', () => {
+    const result = parser({
+      doc: { tableIds: ['x', 't1'] },
+      collections: {
+        tableEntities: {
+          a: { id: 't1', ui: { zIndex: 7 } },
+          b: { id: 't1' },
+          c: 'not an entity',
+          d: { name: 'no id', ui: { zIndex: 4 } },
+        },
+      },
+    });
+
+    expect(result.collections.tableEntities.t1.ui.zIndex).toBe(3);
+  });
+
+  it('stacks nothing from a collection that is not an object', () => {
+    const result = parser({
+      doc: { tableIds: ['t1'] },
+      collections: { tableEntities: [] },
+    });
+
+    expect(result.collections.tableEntities).toEqual({});
+  });
+
   it('drops unknown top level keys', () => {
     const result = parser({ foo: 'bar' });
 

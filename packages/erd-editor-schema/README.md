@@ -44,7 +44,7 @@ The two strings are two serializations of one document, and `parser` reads both.
 `toDocumentJson` is what a file holds: the live entities alone, each collection sorted by
 id, no field an editor derives on load (widths, anchors, key marks, sequences) or keeps for
 one instance (z-indexes), and a trailing newline, so saving the same document twice writes
-the same bytes. `toJson` is the runtime value: tombstones of removed entities and all of
+the same bytes. Parsing it stacks the tables, memos and groups in the order `doc` lists them. `toJson` is the runtime value: tombstones of removed entities and all of
 the above kept, everything but the LWW registers, which is what a collaborator or a second
 view needs to undo a removal it did not see.
 
