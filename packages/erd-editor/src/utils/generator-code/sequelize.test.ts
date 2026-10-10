@@ -1308,6 +1308,21 @@ describe('generator-code/sequelize', () => {
   });
 
   describe('PostgreSQL types', () => {
+    it('states a dec as DECIMAL, the numeric PostgreSQL reads dec as', () => {
+      expect(createTypeFixture('dec(5,1)', Database.PostgreSQL)).toBe(
+        'DataTypes.DECIMAL(5, 1)'
+      );
+      expect(createTypeFixture('DEC', Database.PostgreSQL)).toBe(
+        'DataTypes.DECIMAL'
+      );
+      expect(createTypeFixture('dec[]', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.DECIMAL)'
+      );
+      expect(createAnnotationFixture('dec(5,1)', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
     it('states a real as REAL, which FLOAT would make a double precision', () => {
       expect(createTypeFixture('real', Database.PostgreSQL)).toBe(
         'DataTypes.REAL'
@@ -1548,8 +1563,17 @@ describe('generator-code/sequelize', () => {
       expect(createAnnotationFixture('xid[]', Database.PostgreSQL)).toBe(
         '  declare value: string;'
       );
+    });
+
+    it('states a tsvector array as written, since ARRAY cannot write the string pg reads', () => {
+      expect(createTypeFixture('tsvector', Database.PostgreSQL)).toBe(
+        'DataTypes.TSVECTOR'
+      );
       expect(createTypeFixture('tsvector[]', Database.PostgreSQL)).toBe(
-        'DataTypes.ARRAY(DataTypes.TSVECTOR)'
+        '"tsvector[]"'
+      );
+      expect(createTypeFixture('TSVECTOR ARRAY', Database.PostgreSQL)).toBe(
+        '"TSVECTOR ARRAY"'
       );
       expect(createAnnotationFixture('tsvector[]', Database.PostgreSQL)).toBe(
         '  declare value: string;'
@@ -2984,6 +3008,8 @@ describe('generator-code/sequelize', () => {
         '_options',
         'validators',
         'rawAttributes',
+        '_hasCustomGetters',
+        '_hasCustomSetters',
         '__proto__',
         'toString',
         'hasOwnProperty',
@@ -3068,6 +3094,72 @@ describe('generator-code/sequelize', () => {
       expect(code).toContain('  declare __proto__2?: NonAttribute<');
       expect(code).toContain('  as: "__proto__2",');
       expect(code).not.toContain('as: "__proto__"');
+    });
+
+    it('renames a property and an alias named prototype, a key lodash leaves out of copies', () => {
+      const parent = createTable({
+        id: 't_parent',
+        name: 'prototype',
+        columnIds: ['pc_id'],
+      });
+      const child = createTable({
+        id: 't_child',
+        name: 'child',
+        columnIds: ['cc_id', 'cc_parent', 'cc_proto'],
+      });
+      const state = createState({
+        tables: [parent, child],
+        columns: [
+          createColumn({
+            id: 'pc_id',
+            tableId: 't_parent',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'cc_id',
+            tableId: 't_child',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'cc_parent',
+            tableId: 't_child',
+            name: 'parent_id',
+            dataType: 'int',
+          }),
+          createColumn({
+            id: 'cc_proto',
+            tableId: 't_child',
+            name: 'prototype',
+            dataType: 'int',
+          }),
+        ],
+        relationships: [
+          createRelationship({
+            id: 'r1',
+            relationshipType: RelationshipType.ZeroN,
+            start: { tableId: 't_parent', columnIds: ['pc_id'] },
+            end: { tableId: 't_child', columnIds: ['cc_parent'] },
+          }),
+        ],
+        settings: { database: Database.SQLite },
+      });
+      const code = createCode(state);
+
+      expect(code).toContain('  declare prototype2: number | null;');
+      expect(code).toContain(
+        [
+          '    prototype2: {',
+          '      type: DataTypes.INTEGER,',
+          '      field: "prototype",',
+        ].join('\n')
+      );
+      expect(code).toContain('  declare prototype3?: NonAttribute<Prototype>;');
+      expect(code).toContain('  as: "prototype3",');
+      expect(code).not.toMatch(/(declare |as: ")prototype[:?"]/);
     });
 
     it('escapes a reserved word a class or a member cannot spell', () => {
@@ -3530,6 +3622,131 @@ describe('generator-code/sequelize', () => {
       expect(code).toContain('as: "team2"');
       expect(code).toContain('  declare item?: NonAttribute<Item>;');
       expect(code).not.toMatch(/as: "(dataValue|attributes|team)"/);
+    });
+
+    it('numbers an alias named after an accessor of an alias named before it, in either order', () => {
+      const aliasesOf = (order: string[]) => {
+        const tables = [
+          createTable({ id: 't_user', name: 'user', columnIds: ['u1'] }),
+          createTable({ id: 't_role', name: 'role', columnIds: ['r1', 'r2'] }),
+          createTable({
+            id: 't_has_role',
+            name: 'has_role',
+            columnIds: ['h1', 'h2'],
+          }),
+        ];
+        const key = (id: string) =>
+          createColumn({
+            id,
+            tableId: '',
+            name: 'id',
+            dataType: 'INTEGER',
+            options: ColumnOption.primaryKey,
+          });
+        const state = createState({
+          tables,
+          columns: [
+            { ...key('u1'), tableId: 't_user' },
+            { ...key('r1'), tableId: 't_role' },
+            { ...key('h1'), tableId: 't_has_role' },
+            createColumn({
+              id: 'r2',
+              tableId: 't_role',
+              name: 'user_id',
+              dataType: 'INTEGER',
+            }),
+            createColumn({
+              id: 'h2',
+              tableId: 't_has_role',
+              name: 'user_id',
+              dataType: 'INTEGER',
+            }),
+          ],
+          relationships: order.map(tableId =>
+            createRelationship({
+              id: `rel_${tableId}`,
+              relationshipType: RelationshipType.ZeroN,
+              start: { tableId: 't_user', columnIds: ['u1'] },
+              end: {
+                tableId,
+                columnIds: [tableId === 't_role' ? 'r2' : 'h2'],
+              },
+            })
+          ),
+          settings: { database: Database.SQLite },
+        });
+
+        return Array.from(
+          createCode(state).matchAll(/User\.hasMany\(\w+, \{[^}]*as: "(\w+)"/g),
+          match => match[1]
+        );
+      };
+
+      expect(aliasesOf(['t_role', 't_has_role'])).toEqual([
+        'roleList',
+        'hasRoleList2',
+      ]);
+      expect(aliasesOf(['t_has_role', 't_role'])).toEqual([
+        'hasRoleList',
+        'roleList2',
+      ]);
+    });
+
+    it('numbers an alias whose accessors another alias took, the two differing in case alone', () => {
+      const tables = [
+        createTable({ id: 't_upper', name: 'Team', columnIds: ['a1'] }),
+        createTable({ id: 't_lower', name: 'team', columnIds: ['b1'] }),
+        createTable({
+          id: 't_member',
+          name: 'member',
+          columnIds: ['m1', 'm2', 'm3'],
+        }),
+      ];
+      const state = createState({
+        tables,
+        columns: [
+          ...[
+            ['a1', 't_upper'],
+            ['b1', 't_lower'],
+            ['m1', 't_member'],
+          ].map(([id, tableId]) =>
+            createColumn({
+              id,
+              tableId,
+              name: 'id',
+              dataType: 'int',
+              options: ColumnOption.primaryKey,
+            })
+          ),
+          ...[
+            ['m2', 'team_a'],
+            ['m3', 'team_b'],
+          ].map(([id, name]) =>
+            createColumn({ id, tableId: 't_member', name, dataType: 'int' })
+          ),
+        ],
+        relationships: [
+          ['r1', 't_upper', 'a1', 'm2'],
+          ['r2', 't_lower', 'b1', 'm3'],
+        ].map(([id, tableId, start, end]) =>
+          createRelationship({
+            id,
+            relationshipType: RelationshipType.ZeroN,
+            start: { tableId, columnIds: [start] },
+            end: { tableId: 't_member', columnIds: [end] },
+          })
+        ),
+        settings: {
+          database: Database.PostgreSQL,
+          columnNameCase: NameCase.none,
+        },
+      });
+      const code = createCode(state);
+
+      expect(code).toContain('  declare Team?: NonAttribute<Team>;');
+      expect(code).toContain('  declare team2?: NonAttribute<Team2>;');
+      expect(code).toContain('as: "team2"');
+      expect(code).not.toContain('as: "team"');
     });
 
     it('deduplicates a property name a relationship would collide with', () => {
@@ -4218,12 +4435,86 @@ describe('generator-code/sequelize', () => {
         '  declare parentNode?: NonAttribute<Node>;'
       );
       expect(render(state, table)).toContain(
-        '  declare node?: NonAttribute<Node>;'
+        '  declare node2?: NonAttribute<Node>;'
       );
       expect(render(state, table)).toContain(
-        'Node.hasOne(Node, { foreignKey: "nextId", sourceKey: "id", as: "node" });'
+        'Node.hasOne(Node, { foreignKey: "nextId", sourceKey: "id", as: "node2" });'
       );
       expect(render(state, table)).toContain('  as: "parentNode",');
+    });
+
+    it('numbers an alias equal to its class name ignoring case, the alias of its table in a query', () => {
+      const aliasesOf = (
+        names: [string, string],
+        settings: Partial<RootState['settings']>
+      ) => {
+        const [parentName, childName] = names;
+        const tables = [
+          createTable({ id: 't_p', name: parentName, columnIds: ['p1'] }),
+          createTable({ id: 't_c', name: childName, columnIds: ['c1', 'c2'] }),
+        ];
+        const isSelf = parentName === childName;
+        const state = createState({
+          tables: isSelf ? [{ ...tables[1], columnIds: ['p1', 'c2'] }] : tables,
+          columns: [
+            createColumn({
+              id: 'p1',
+              tableId: isSelf ? 't_c' : 't_p',
+              name: 'id',
+              dataType: 'int',
+              options: ColumnOption.primaryKey,
+            }),
+            createColumn({
+              id: 'c1',
+              tableId: 't_c',
+              name: 'id',
+              dataType: 'int',
+              options: ColumnOption.primaryKey,
+            }),
+            createColumn({
+              id: 'c2',
+              tableId: 't_c',
+              name: 'mentor_id',
+              dataType: 'int',
+              options: ColumnOption.unique,
+            }),
+          ],
+          relationships: [
+            createRelationship({
+              id: 'r1',
+              relationshipType: RelationshipType.ZeroOne,
+              start: { tableId: isSelf ? 't_c' : 't_p', columnIds: ['p1'] },
+              end: { tableId: 't_c', columnIds: ['c2'] },
+            }),
+          ],
+          settings: { database: Database.SQLite, ...settings },
+        });
+
+        return Array.from(
+          createCode(state).matchAll(
+            /^(\w+)\.(?:hasOne|belongsTo)\(\w+, \{[^}]*as: "(\w+)"/gm
+          ),
+          match => `${match[1]} ${match[2]}`
+        );
+      };
+
+      expect(aliasesOf(['employee', 'employee'], {})).toEqual([
+        'Employee employee2',
+        'Employee parentEmployee',
+      ]);
+      expect(
+        aliasesOf(['employee', 'employee'], {
+          tableNameCase: NameCase.none,
+          columnNameCase: NameCase.none,
+        })
+      ).toEqual(['employee employee2', 'employee parent_employee']);
+      expect(
+        aliasesOf(['user_list', 'UserList'], { tableNameCase: NameCase.none })
+      ).toEqual(['user_list userList', 'UserList userList2']);
+      expect(aliasesOf(['team', 'member'], {})).toEqual([
+        'Team member',
+        'Member team',
+      ]);
     });
   });
 

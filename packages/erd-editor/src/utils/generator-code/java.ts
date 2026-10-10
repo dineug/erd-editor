@@ -159,6 +159,11 @@ const JAVA_RESTRICTED_TYPE_NAMES = new Set([
   'yield',
 ]);
 
+// Names javac takes as a field but which break the class Lombok completes:
+// Class, whose getter would be the final getClass, and java, which hides the
+// package of the java.util.Arrays calls Lombok writes for an array field.
+const LOMBOK_FIELD_CLASHES = new Set(['Class', 'java']);
+
 export function createCode(state: RootState): string {
   const {
     doc: { tableIds },
@@ -246,11 +251,11 @@ function escapeReservedWord(name: string): string {
 }
 
 /**
- * A field name, with an underscore after a reserved word and after Class,
- * whose Lombok getter would be getClass, which Object declares final.
+ * A field name, with an underscore after a reserved word and after a name
+ * that breaks the class Lombok completes.
  */
 export function toJavaFieldName(name: string): string {
-  return name === 'Class' ? 'Class_' : escapeReservedWord(name);
+  return LOMBOK_FIELD_CLASHES.has(name) ? `${name}_` : escapeReservedWord(name);
 }
 
 export function toJavaClassName(name: string): string {

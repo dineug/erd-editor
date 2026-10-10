@@ -359,6 +359,34 @@ describe('generator-code/scala', () => {
     ]);
   });
 
+  it('writes SUB, which Scala 2.13 and 3 read as the end of the file, in a comment as an escape', () => {
+    const state = createState();
+    const table = addTable(state, {
+      id: 't-sub',
+      name: 'sub',
+      comment: 'tab\u001ale \u001a\u001a',
+      columns: [
+        {
+          name: 'id',
+          dataType: 'INT',
+          comment: 'x\u001ay\u202Ez\u0019',
+          options: ColumnOption.notNull,
+        },
+      ],
+    });
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table });
+
+    expect(buffer).toEqual([
+      '// tab\\u001Ale \\u001A\\u001A',
+      'case class Sub(',
+      '  // x\\u001Ay\\u202Ez\u0019',
+      '  id: Int',
+      ')',
+    ]);
+  });
+
   it('writes a comment of several lines as one line comment a line', () => {
     const state = createState();
     const table = addTable(state, {

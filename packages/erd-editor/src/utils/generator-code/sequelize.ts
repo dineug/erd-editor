@@ -52,9 +52,9 @@ const GLOBAL_NAMES = [
 ] as const;
 
 /**
- * Names a property may not take: the members Model and its Hooks declare, the
- * fields Sequelize sets on an instance or a model's prototype, and what every
- * object inherits, since Sequelize looks attributes up in plain objects.
+ * Names a property may not take: what Model and its Hooks declare, the fields
+ * Sequelize sets on an instance or a model's prototype, what every object
+ * inherits, and prototype, a key lodash leaves out of the copies it makes.
  */
 const MODEL_MEMBER_NAMES: ReadonlyArray<string> = [
   '_attributes',
@@ -62,6 +62,8 @@ const MODEL_MEMBER_NAMES: ReadonlyArray<string> = [
   '_creationAttributes',
   '_customGetters',
   '_customSetters',
+  '_hasCustomGetters',
+  '_hasCustomSetters',
   '_initValues',
   '_isAttribute',
   '_model',
@@ -84,6 +86,7 @@ const MODEL_MEMBER_NAMES: ReadonlyArray<string> = [
   'isNewRecord',
   'isSoftDeleted',
   'previous',
+  'prototype',
   'rawAttributes',
   'reload',
   'removeHook',
@@ -345,6 +348,7 @@ const POSTGRES_MEMBER_TYPES: ReadonlySet<string> = new Set([
   'character varying',
   'cidr',
   'date',
+  'dec',
   'decimal',
   'double precision',
   'float',
@@ -1120,13 +1124,15 @@ function getColumnType(
     return element;
   }
 
-  const ts = POSTGRES_TEXT_ARRAY_TYPES.has(facts.base)
+  const isText = POSTGRES_TEXT_ARRAY_TYPES.has(facts.base);
+  const ts = isText
     ? 'string'
     : `${element.ts.includes(' ') ? `(${element.ts})` : element.ts}${'[]'.repeat(facts.arrayDepth)}`;
-  // DataTypes.ARRAY takes a member, and a nested one writes its element in
-  // generic SQL (DATETIME for DATE), so these keep the type as written.
+  // DataTypes.ARRAY takes a member and writes an array value, never the one
+  // string pg reads, and a nested one writes its element in generic SQL
+  // (DATETIME for DATE), so these keep the type as written.
   const expr =
-    facts.arrayDepth === 1 && !isWrittenAsIs(element.expr)
+    facts.arrayDepth === 1 && !isText && !isWrittenAsIs(element.expr)
       ? `${TYPES}.ARRAY(${element.expr})`
       : writeAsIs(dataType);
 
@@ -1497,6 +1503,10 @@ function createTableNaming(
   const columns = query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
+  const className = uniqueName(
+    classNames,
+    classIdentifier(tsIdentifier(getNameCase(table.name, tableNameCase)))
+  );
 
   const carriers = new Map<string, string>();
 
@@ -1547,10 +1557,11 @@ function createTableNaming(
 
       relationshipNames.set(
         relationshipKey(relationship, OWNING),
-        uniqueName(
+        uniqueAlias(
           used,
           tsIdentifier(getNameCase(name, columnNameCase)),
-          ONE_ACCESSORS
+          ONE_ACCESSORS,
+          className
         )
       );
     });
@@ -1573,21 +1584,19 @@ function createTableNaming(
 
       relationshipNames.set(
         relationshipKey(relationship, INVERSE),
-        uniqueName(
+        uniqueAlias(
           used,
           tsIdentifier(name),
           hasNRelationship(relationship.relationshipType)
             ? MANY_ACCESSORS
-            : ONE_ACCESSORS
+            : ONE_ACCESSORS,
+          className
         )
       );
     });
 
   return {
-    className: uniqueName(
-      classNames,
-      classIdentifier(tsIdentifier(getNameCase(table.name, tableNameCase)))
-    ),
+    className,
     columnIds: declared.map(column => column.id),
     columnNames,
     relationshipNames,
@@ -1619,23 +1628,52 @@ const MANY_ACCESSORS: ReadonlyArray<string> = [
   'set',
 ];
 
-function uniqueName(
-  used: Set<string>,
+function numberName(
   name: string,
-  accessors: ReadonlyArray<string> = []
+  isTaken: (candidate: string) => boolean
 ): string {
   let result = name;
   let index = 2;
 
-  while (
-    used.has(result) ||
-    accessors.some(prefix => used.has(`${prefix}${upperFirst(result)}`))
-  ) {
+  while (isTaken(result)) {
     result = `${name}${index}`;
     index += 1;
   }
 
+  return result;
+}
+
+function uniqueName(used: Set<string>, name: string): string {
+  const result = numberName(name, candidate => used.has(candidate));
+
   used.add(result);
+  return result;
+}
+
+/**
+ * An alias is numbered where it or one of its accessors is taken, or where it
+ * equals its class name ignoring case, the name Sequelize gives the model's own
+ * table in a query including the alias. Its accessors are then taken.
+ */
+function uniqueAlias(
+  used: Set<string>,
+  name: string,
+  accessors: ReadonlyArray<string>,
+  className: string
+): string {
+  const tableAlias = className.toLowerCase();
+  const accessorsOf = (alias: string) =>
+    accessors.map(verb => `${verb}${upperFirst(alias)}`);
+  const result = numberName(
+    name,
+    candidate =>
+      used.has(candidate) ||
+      candidate.toLowerCase() === tableAlias ||
+      accessorsOf(candidate).some(accessor => used.has(accessor))
+  );
+
+  used.add(result);
+  accessorsOf(result).forEach(accessor => used.add(accessor));
   return result;
 }
 

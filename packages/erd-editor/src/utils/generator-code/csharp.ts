@@ -84,6 +84,10 @@ const COLUMN_ATTRIBUTE =
 // Formatting characters, which C# drops from an identifier before comparing.
 const FORMAT_CHARACTERS = /\p{Cf}/gu;
 
+// The white space and line breaks C# reads around a name as no part of it; the
+// control character U+001A, which Roslyn alone reads so, is left in.
+const SURROUNDING_SPACE = /^[\s\u0085]+|[\s\u0085]+$/g;
+
 type Property = {
   name: string;
   isRenamed: boolean;
@@ -220,7 +224,7 @@ export function formatTable(
     className,
     columns.map(column => {
       const columnName = getNameCase(column.name, columnNameCase);
-      return columnName.charAt(0).toLocaleUpperCase() + columnName.slice(1);
+      return columnName.charAt(0).toUpperCase() + columnName.slice(1);
     })
   );
 
@@ -257,9 +261,15 @@ function toProperties(className: string, names: string[]): Property[] {
   });
 }
 
-/** A name as C# compares identifiers: without an @ before it or a Cf character. */
+/**
+ * A name as C# compares identifiers: without a Cf character, the white space
+ * and line breaks around it or an @ before it.
+ */
 function identifierText(name: string): string {
-  return name.replace(/^@/, '').replace(FORMAT_CHARACTERS, '');
+  return name
+    .replace(FORMAT_CHARACTERS, '')
+    .replace(SURROUNDING_SPACE, '')
+    .replace(/^@/, '');
 }
 
 function formatColumn(
@@ -291,8 +301,13 @@ function formatColumn(
   }
 }
 
+/**
+ * A name with an @ before it where C# reads it as a keyword, the white space
+ * and line breaks around it kept as they are.
+ */
 function toIdentifier(name: string): string {
-  return CSHARP_KEYWORDS.has(name) ? `@${name}` : name;
+  const word = name.replace(SURROUNDING_SPACE, '');
+  return CSHARP_KEYWORDS.has(word) ? name.replace(word, `@${word}`) : name;
 }
 
 /**

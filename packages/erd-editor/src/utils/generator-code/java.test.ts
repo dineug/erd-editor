@@ -558,6 +558,55 @@ describe('generator-code/java', () => {
       ]);
     });
 
+    it('writes a field java as java_, which would hide the package of the java.util.Arrays calls Lombok writes for an array', () => {
+      const columns = [
+        createColumn({
+          id: 'c1',
+          tableId: 't1',
+          name: 'java',
+          dataType: 'varchar(20)',
+        }),
+        createColumn({
+          id: 'c2',
+          tableId: 't1',
+          name: 'content',
+          dataType: 'bytea',
+        }),
+        createColumn({
+          id: 'c3',
+          tableId: 't1',
+          name: 'Java',
+          dataType: 'text[]',
+        }),
+      ];
+      const table = createTable({
+        id: 't1',
+        name: 'document',
+        columnIds: columns.map(column => column.id),
+      });
+      const state = createState({
+        tables: [table],
+        columns,
+        settings: {
+          database: Database.PostgreSQL,
+          tableNameCase: NameCase.none,
+          columnNameCase: NameCase.none,
+        },
+      });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      expect(buffer).toEqual([
+        '@Data',
+        'public class document {',
+        '  private String java_;',
+        '  private byte[] content;',
+        '  private String[] Java;',
+        '}',
+      ]);
+    });
+
     it('writes a comment of several lines as one line comment a line', () => {
       const column = createColumn({
         id: 'c1',
@@ -725,7 +774,10 @@ describe('generator-code/java', () => {
       expect(toJavaFieldName('yield')).toBe('yield');
       expect(toJavaFieldName('null')).toBe('null_');
       expect(toJavaFieldName('Class')).toBe('Class_');
+      expect(toJavaFieldName('java')).toBe('java_');
+      expect(toJavaFieldName('Java')).toBe('Java');
       expect(toJavaClassName('Class')).toBe('Class');
+      expect(toJavaClassName('java')).toBe('java');
       expect(toJavaClassName('yield')).toBe('yield_');
       expect(toJavaClassName('sealed')).toBe('sealed_');
       expect(toJavaClassName('enum')).toBe('enum_');

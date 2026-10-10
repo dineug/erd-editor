@@ -1,5 +1,5 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { ColumnOption, Database, NameCase } from '@/constants/schema';
 import { MSSQLTypes } from '@/constants/sql/dataType/MSSQL';
@@ -947,6 +947,34 @@ describe('generator-code/csharp', () => {
     ]);
   });
 
+  it('upper-cases the first letter of a property by no locale, so a Turkish system writes Id', () => {
+    const toLocaleUpperCase = String.prototype.toLocaleUpperCase;
+    const spy = vi
+      .spyOn(String.prototype, 'toLocaleUpperCase')
+      .mockImplementation(function (
+        this: string,
+        locales?: Intl.LocalesArgument
+      ) {
+        return toLocaleUpperCase.call(this, locales ?? 'tr');
+      });
+
+    try {
+      expect('i'.toLocaleUpperCase()).toBe('İ');
+      expect(
+        formatTableLines(Database.MySQL, {
+          name: 'users',
+          columns: [{ name: 'id', dataType: 'INT' }],
+        })
+      ).toEqual([
+        'public class Users {',
+        '  public int? Id { get; set; }',
+        '}',
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   describe('C# keywords', () => {
     function classLine(name: string, tableNameCase: number): string {
       const state = createState();
@@ -1010,6 +1038,26 @@ describe('generator-code/csharp', () => {
         'public class @__arglist {',
         '  public int? Class { get; set; }',
         '  public int? @__makeref { get; set; }',
+        '}',
+      ]);
+    });
+
+    it('writes a keyword with white space around it after @ too, which C# reads as the keyword', () => {
+      const state = createState();
+      state.settings.tableNameCase = NameCase.none;
+      state.settings.columnNameCase = NameCase.none;
+      const table = addTable(state, {
+        id: 't',
+        name: '\tclass ',
+        columns: [{ name: ' event', dataType: 'INT' }],
+      });
+      const buffer: string[] = [];
+
+      formatTable(state, { buffer, table });
+
+      expect(buffer).toEqual([
+        'public class \t@class  {',
+        '  public int?  @event { get; set; }',
         '}',
       ]);
     });
@@ -1116,6 +1164,67 @@ describe('generator-code/csharp', () => {
         ]);
       }
     );
+
+    it.each([
+      [
+        'a no-break space after the column',
+        'Country',
+        'country ',
+        'public class Country {',
+        '"country "',
+        'Country1',
+      ],
+      [
+        'a tab after the column',
+        'Country',
+        'country\t',
+        'public class Country {',
+        '"country\\t"',
+        'Country1',
+      ],
+      [
+        'a line separator after the column',
+        'Country',
+        'country ',
+        'public class Country {',
+        '"country\\u2028"',
+        'Country1',
+      ],
+      [
+        'a space and an @ before the column',
+        'country',
+        ' @country',
+        'public class country {',
+        '" @country"',
+        'country1',
+      ],
+      [
+        'a next line after the table',
+        'Country\u0085',
+        'country',
+        'public class Country\u0085 {',
+        '"country"',
+        'Country1',
+      ],
+    ])(
+      'compares the names as C# reads them, %s aside',
+      (_, tableName, columnName, classLine, literal, propertyName) => {
+        expect(namedLines(tableName, [columnName], NameCase.none)).toEqual([
+          classLine,
+          column(literal),
+          `  public int? ${propertyName} { get; set; }`,
+          '}',
+        ]);
+      }
+    );
+
+    it('renames nothing in a class whose name is white space alone', () => {
+      expect(namedLines(' ', [' '], NameCase.none)).toEqual([
+        'public class   {',
+        '  public int?   { get; set; }',
+        '}',
+      ]);
+    });
 
     it('keeps a name that differs from its class in case alone', () => {
       expect(namedLines('country', ['country'], NameCase.none)).toEqual([

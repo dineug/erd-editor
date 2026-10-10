@@ -283,6 +283,58 @@ describe('generator-code/drizzle', () => {
         '',
       ]);
     });
+
+    it('puts a backslash before a comment line TypeScript would read as a directive', () => {
+      const state = createCommentFixture(
+        [
+          '@ts-expect-error',
+          '  @ts-ignore it',
+          ' @ts-ignored',
+          '@ts-nocheck',
+          'see @ts-ignore',
+          '@TS-IGNORE',
+          '/@ts-ignore',
+        ].join('\n')
+      );
+
+      expect(createCode(state).split('\n')).toEqual([
+        '',
+        'import { int, mysqlTable } from "drizzle-orm/mysql-core";',
+        '',
+        '// \\@ts-expect-error',
+        '//   \\@ts-ignore it',
+        '//  \\@ts-ignored',
+        '// \\@ts-nocheck',
+        '// see @ts-ignore',
+        '// @TS-IGNORE',
+        '// /@ts-ignore',
+        'export const User = mysqlTable("user", {',
+        '  id: int(),',
+        '});',
+        '',
+      ]);
+    });
+
+    it('escapes a directive on any line of a column comment', () => {
+      const state = createState({
+        tables: [createTable({ id: 't1', name: 'user', columnIds: ['c1'] })],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+            comment: `first${LINE_SEPARATOR}@ts-expect-error no error here`,
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+
+      expect(createCode(state).split('\n').slice(4, 6)).toEqual([
+        '  // first',
+        '  // \\@ts-expect-error no error here',
+      ]);
+    });
   });
 
   describe('formatTable', () => {
@@ -1490,6 +1542,33 @@ describe('generator-code/drizzle', () => {
       );
     });
 
+    it('reads an interval precision only after SECOND or the INTERVAL keyword', () => {
+      expect(
+        createTypeFixture('INTERVAL YEAR(2) TO MONTH', Database.Oracle)
+      ).toBe('interval({ fields: "year to month" })');
+      expect(
+        createTypeFixture('INTERVAL DAY(3) TO SECOND', Database.Oracle)
+      ).toBe('interval({ fields: "day to second" })');
+      expect(
+        createTypeFixture('INTERVAL HOUR(2) TO MINUTE', Database.PostgreSQL)
+      ).toBe('interval({ fields: "hour to minute" })');
+      expect(createTypeFixture('INTERVAL MONTH(3)', Database.PostgreSQL)).toBe(
+        'interval({ fields: "month" })'
+      );
+      expect(
+        createTypeFixture('INTERVAL DAY TO SECOND(3)', Database.Oracle)
+      ).toBe('interval({ fields: "day to second", precision: 3 })');
+      expect(
+        createTypeFixture('interval minute to second (2)', Database.PostgreSQL)
+      ).toBe('interval({ fields: "minute to second", precision: 2 })');
+      expect(createTypeFixture('INTERVAL (3)', Database.PostgreSQL)).toBe(
+        'interval({ precision: 3 })'
+      );
+      expect(
+        createTypeFixture('interval year(2) to month[]', Database.PostgreSQL)
+      ).toBe('interval({ fields: "year to month" }).array()');
+    });
+
     it('names the pg network and geometry builders', () => {
       expect(createTypeFixture('inet', Database.PostgreSQL)).toBe('inet()');
       expect(createTypeFixture('cidr', Database.PostgreSQL)).toBe('cidr()');
@@ -1714,6 +1793,49 @@ describe('generator-code/drizzle', () => {
       expect(createTypeFixture('TEXT(50)', Database.MySQL)).toBe('text()');
       expect(createTypeFixture('LONG VARCHAR', Database.PostgreSQL)).toBe(
         'text()'
+      );
+    });
+
+    it('reads mariadb oracle mode clob and bare number as the types it stores', () => {
+      expect(createTypeFixture('CLOB', Database.MariaDB)).toBe('longtext()');
+      expect(createTypeFixture('NUMBER', Database.MariaDB)).toBe('double()');
+      expect(createTypeFixture('NUMBER(10)', Database.MariaDB)).toBe(
+        'decimal({ precision: 10 })'
+      );
+      expect(createTypeFixture('NUMBER(10,2)', Database.MariaDB)).toBe(
+        'decimal({ precision: 10, scale: 2 })'
+      );
+      expect(createTypeFixture('CLOB', Database.MySQL)).toBe('text()');
+      expect(createTypeFixture('NUMBER', Database.MySQL)).toBe('decimal()');
+    });
+
+    it('reads a mysql character type past the attributes written after it', () => {
+      expect(createTypeFixture('CHAR(36) BINARY', Database.MySQL)).toBe(
+        'char({ length: 36 })'
+      );
+      expect(
+        createTypeFixture('CHAR(2) CHARACTER SET latin1', Database.MariaDB)
+      ).toBe('char({ length: 2 })');
+      expect(
+        createTypeFixture(
+          'char(2) charset latin1 collate latin1_bin',
+          Database.MySQL
+        )
+      ).toBe('char({ length: 2 })');
+      expect(createTypeFixture('CHAR(10) ASCII', Database.MySQL)).toBe(
+        'char({ length: 10 })'
+      );
+      expect(createTypeFixture('TINYTEXT BINARY', Database.MariaDB)).toBe(
+        'tinytext()'
+      );
+      expect(
+        createTypeFixture('LONGTEXT COLLATE utf8mb4_bin', Database.MySQL)
+      ).toBe('longtext()');
+      expect(createTypeFixture('BINARY(16)', Database.MySQL)).toBe(
+        'binary({ length: 16 })'
+      );
+      expect(createTypeFixture('LONG VARBINARY', Database.MySQL)).toBe(
+        'mediumblob()'
       );
     });
 

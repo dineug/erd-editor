@@ -5,6 +5,7 @@ import { PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { isIntegerFamily } from '@/utils/schema-sql/SQLite';
 import {
   autoName,
   Name,
@@ -71,7 +72,7 @@ const SQLALCHEMY_NAMES = [
 // One output targets one database, so it imports from one dialect module at
 // most, and a name two modules share (TIMESTAMP, UUID) is never imported twice.
 const DIALECT_NAMES = {
-  mssql: ['MONEY', 'NTEXT', 'SMALLMONEY'],
+  mssql: ['MONEY', 'NTEXT', 'SMALLMONEY', 'TIMESTAMP'],
   mysql: [
     'BIGINT',
     'BIT',
@@ -230,6 +231,8 @@ type SqlalchemyType = {
   annotation: string;
   /** Integer or Numeric affinity, which autoincrement="auto" makes an identity. */
   isNumeric: boolean;
+  /** Integer affinity alone, the only one MySQL takes AUTO_INCREMENT on. */
+  isInteger: boolean;
   /** The same expression as a call whose arguments may go one to a line. */
   call?: CallEntry;
 };
@@ -267,12 +270,20 @@ type ClassContext = {
   ambiguous: Set<string>;
 };
 
+type TypedColumn = {
+  column: Column;
+  columnType: ColumnType;
+  type: SqlalchemyType;
+};
+
 type ColumnContext = {
   imports: ImportSet;
   attribute: string;
   key: string;
   foreignKeys: string[];
+  typed: TypedColumn;
   isSoleKey: boolean;
+  isAutoIncrement: boolean;
 };
 
 export function createCode(state: RootState): string {
@@ -397,11 +408,38 @@ function formatClass(
   formatTableArgs(buffer, entries, table.comment);
 
   const bodyBuffer: string[] = [];
+  const { database } = state.settings;
   const isSoleKey =
     columns.filter(column => bHas(column.options, ColumnOption.primaryKey))
       .length === 1;
+  const typedColumns = columns.map(column => {
+    // The type the editor's DDL writes the column as, which create_all must
+    // write too: a BIGINT key written BIGINT would be no rowid SQLite numbers.
+    const dataType = isSqliteIntegerKey(column, database, isSoleKey)
+      ? SQLITE_ROWID_TYPE
+      : column.dataType;
+    const columnType = getColumnType(dataType, database);
+    return {
+      column,
+      columnType,
+      type: getSqlalchemyType(columnType, database, imports),
+    };
+  });
+  const keys = typedColumns.filter(({ column }) =>
+    bHas(column.options, ColumnOption.primaryKey)
+  );
+  // SQLAlchemy refuses a second key column marked autoincrement=True, so of
+  // the keys the database numbers the first one takes it.
+  const autoIncrementKey = keys.find(
+    typed =>
+      isNumberedByDatabase(typed, database, isSoleKey) ||
+      (isSoleKey && typed.type.isNumeric && typed.columnType.isSerial)
+  );
 
-  columns.forEach(column => {
+  typedColumns.forEach(typed => {
+    const { column } = typed;
+    const isPrimaryKey = bHas(column.options, ColumnOption.primaryKey);
+
     formatColumn(
       state,
       { buffer: bodyBuffer, column },
@@ -410,7 +448,11 @@ function formatClass(
         attribute: naming.columnNames.get(column.id) ?? column.name,
         key: columnKey(naming, column),
         foreignKeys: foreignKeys.get(column.id) ?? [],
+        typed,
         isSoleKey,
+        isAutoIncrement: isPrimaryKey
+          ? typed === autoIncrementKey
+          : isNumberedByDatabase(typed, database, isSoleKey),
       }
     );
   });
@@ -435,14 +477,19 @@ function formatClass(
 function formatColumn(
   { settings: { database } }: RootState,
   { buffer, column }: FormatColumnOptions,
-  { imports, attribute, key, foreignKeys, isSoleKey }: ColumnContext
+  {
+    imports,
+    attribute,
+    key,
+    foreignKeys,
+    typed: {
+      columnType,
+      type: { expression, annotation, isNumeric, call },
+    },
+    isSoleKey,
+    isAutoIncrement,
+  }: ColumnContext
 ) {
-  const columnType = getColumnType(column.dataType, database);
-  const { expression, annotation, isNumeric, call } = getSqlalchemyType(
-    columnType,
-    database,
-    imports
-  );
   const isPrimaryKey = bHas(column.options, ColumnOption.primaryKey);
   const isNotNull = bHas(column.options, ColumnOption.notNull);
   // SQLAlchemy's autoincrement="auto" makes a lone numeric key an identity the
@@ -452,9 +499,12 @@ function formatColumn(
     database === Database.SQLite &&
     columnType.element.trim().toLowerCase() === 'integer';
   const isGeneratedKey = isPrimaryKey && isSoleKey && isNumeric && !isRowid;
-  const isAutoIncrement =
-    bHas(column.options, ColumnOption.autoIncrement) ||
-    (isGeneratedKey && columnType.isSerial);
+  // The editor's DDL writes no DEFAULT on a column flagged auto increment,
+  // whether or not its database numbers it.
+  const hasServerDefault =
+    !isAutoIncrement &&
+    !bHas(column.options, ColumnOption.autoIncrement) &&
+    column.default.trim() !== '';
   // MySQL's SERIAL adds a unique index of its own wherever the column stands.
   const isUnique =
     bHas(column.options, ColumnOption.unique) ||
@@ -485,7 +535,7 @@ function formatColumn(
   if (isUnique) {
     args.push('unique=True');
   }
-  if (!isAutoIncrement && column.default.trim() !== '') {
+  if (hasServerDefault) {
     addSqlalchemy(imports, 'text');
     args.push({
       head: 'server_default=text(',
@@ -1050,6 +1100,15 @@ const mysqlNationalVaryingTypes = new Set([
   'nchar varying',
   'nvarchar',
 ]);
+const mssqlBinaryReadTypes = new Set([
+  'geography',
+  'geometry',
+  'hierarchyid',
+  'sql_variant',
+]);
+// The Oracle types python-oracledb hands over as one of its own objects: a
+// DbObject for an object type, an array.array for a VECTOR, a LOB for a BFILE.
+const oracleObjectTypes = new Set(['anydata', 'bfile', 'uritype', 'vector']);
 const mssqlNationalVaryingTypes = new Set([
   'national char varying',
   'national character varying',
@@ -1164,28 +1223,107 @@ const postgresRangeTypes = new Map<
   ['tstzrange', ['TSTZRANGE', 'datetime']],
 ]);
 
-// The names SQLAlchemy gives Integer or Numeric affinity: on a lone primary
-// key its autoincrement="auto" turns each into SERIAL, AUTO_INCREMENT or an
-// IDENTITY, or a CREATE TABLE that SQL Server and MySQL refuse.
-const NUMERIC_NAMES: ReadonlySet<string> = new Set<
-  SqlalchemyName | DialectName<'mysql'>
->([
+type AffinityName = SqlalchemyName | DialectName<'mysql'>;
+
+// The names SQLAlchemy gives Integer affinity and, with the decimal and float
+// ones, Numeric affinity, which on a lone key autoincrement="auto" makes SERIAL,
+// AUTO_INCREMENT, an IDENTITY or a CREATE TABLE SQL Server and MySQL refuse.
+const INTEGER_AFFINITY: readonly AffinityName[] = [
   'BIGINT',
   'BigInteger',
+  'INTEGER',
+  'Integer',
+  'MEDIUMINT',
+  'SMALLINT',
+  'SmallInteger',
+  'TINYINT',
+];
+const DECIMAL_AFFINITY: readonly AffinityName[] = [
   'DECIMAL',
   'DOUBLE',
   'Double',
   'FLOAT',
   'Float',
-  'INTEGER',
-  'Integer',
-  'MEDIUMINT',
   'Numeric',
   'REAL',
-  'SMALLINT',
-  'SmallInteger',
-  'TINYINT',
+];
+const INTEGER_NAMES: ReadonlySet<string> = new Set(INTEGER_AFFINITY);
+const NUMERIC_NAMES: ReadonlySet<string> = new Set([
+  ...INTEGER_AFFINITY,
+  ...DECIMAL_AFFINITY,
 ]);
+
+// The type names PostgreSQL and Databricks take an identity on, by which the
+// editor's DDL gives one to a column flagged auto increment.
+const POSTGRES_IDENTITY_TYPES = new Set([
+  'bigint',
+  'int',
+  'int2',
+  'int4',
+  'int8',
+  'integer',
+  'smallint',
+]);
+const DATABRICKS_IDENTITY_TYPES = new Set(['bigint', 'long']);
+
+/**
+ * Whether the editor's DDL numbers a column flagged auto increment on its
+ * database, of a type SQLAlchemy takes autoincrement=True on, which refuses
+ * any type without Integer or Numeric affinity.
+ */
+function isNumberedByDatabase(
+  { column, columnType, type }: TypedColumn,
+  database: number,
+  isSoleKey: boolean
+): boolean {
+  if (!bHas(column.options, ColumnOption.autoIncrement) || !type.isNumeric) {
+    return false;
+  }
+
+  const name = column.dataType.trim().toLowerCase();
+
+  // MySQL takes AUTO_INCREMENT on an integer alone and MariaDB on a float
+  // too; SQL Server takes an IDENTITY on an integer or a decimal of scale 0.
+  // Oracle's sequence and trigger number any number.
+  switch (database) {
+    case Database.PostgreSQL:
+      return columnType.isSerial || POSTGRES_IDENTITY_TYPES.has(name);
+    case Database.SQLite:
+      return isSqliteIntegerKey(column, database, isSoleKey);
+    case Database.Databricks:
+      return DATABRICKS_IDENTITY_TYPES.has(name);
+    case Database.MySQL:
+      return type.isInteger;
+    case Database.MariaDB:
+      return type.isInteger || columnType.isFloat;
+    case Database.MSSQL:
+      return (
+        type.isInteger || (!columnType.isFloat && (columnType.scale ?? 0) === 0)
+      );
+  }
+  return true;
+}
+
+const SQLITE_ROWID_TYPE = 'INTEGER';
+
+/**
+ * Whether the editor's SQLite DDL writes the column INTEGER with AUTOINCREMENT,
+ * as it does a table's only key flagged auto increment of an integer name; an
+ * INTEGER key is the rowid, which SQLite numbers, and a BIGINT one is not.
+ */
+function isSqliteIntegerKey(
+  column: Column,
+  database: number,
+  isSoleKey: boolean
+): boolean {
+  return (
+    database === Database.SQLite &&
+    isSoleKey &&
+    bHas(column.options, ColumnOption.primaryKey) &&
+    bHas(column.options, ColumnOption.autoIncrement) &&
+    isIntegerFamily(column.dataType)
+  );
+}
 
 const ZEROFILL = /(^|[^0-9a-z_])zerofill([^0-9a-z_]|$)/i;
 const ORACLE_DAY_TO_SECOND =
@@ -1224,6 +1362,7 @@ function getSqlalchemyType(
     expression: `ARRAY(${element.expression}${dimensions})`,
     annotation: `${'List['.repeat(column.arrayDepth)}${element.annotation}${']'.repeat(column.arrayDepth)}`,
     isNumeric: false,
+    isInteger: false,
   };
 }
 
@@ -1514,6 +1653,11 @@ function postgresType(
   const named = postgresNamedTypes.get(base);
   const range = postgresRangeTypes.get(base);
 
+  // psycopg2 reads xid, cid and xid8 as text, and PostgreSQL casts no integer
+  // to them, so a String reads and writes them as a str.
+  if (column.isTextInteger) {
+    return coreType(imports, 'String', 'str');
+  }
   if (postgresSmallintTypes.has(base)) {
     return coreType(imports, 'SmallInteger', 'int');
   }
@@ -1624,6 +1768,16 @@ function mssqlType(
   const { base } = column;
   const length = lengthArgument(column);
 
+  // The dialect's TIMESTAMP is the eight bytes of a rowversion, a name Alembic
+  // reads back as TIMESTAMP where it would report the dialect's ROWVERSION.
+  if (column.isRowVersion) {
+    return dialectType(imports, 'mssql', 'TIMESTAMP', 'bytes');
+  }
+  // pymssql hands these over in their binary form, so they read as bytes
+  // through the String they keep.
+  if (mssqlBinaryReadTypes.has(base)) {
+    return coreType(imports, 'String', 'bytes');
+  }
   if (base === 'money') {
     return dialectType(imports, 'mssql', 'MONEY', 'Decimal');
   }
@@ -1661,6 +1815,13 @@ function oracleType(
   const { base, element } = column;
   const length = lengthArgument(column);
 
+  if (oracleObjectTypes.has(base)) {
+    addStdlibFrom(imports, 'typing', 'Any');
+    return {
+      ...portableType(column, Database.Oracle, imports),
+      annotation: 'Any',
+    };
+  }
   if (base === 'date') {
     return dialectType(imports, 'oracle', 'DATE', 'datetime');
   }
@@ -1732,6 +1893,7 @@ function coreType(
     expression: `${name}${args}`,
     annotation,
     isNumeric: NUMERIC_NAMES.has(name),
+    isInteger: INTEGER_NAMES.has(name),
   };
 }
 
@@ -1748,6 +1910,7 @@ function dialectType<T extends Dialect>(
     expression: `${name}${args}`,
     annotation,
     isNumeric: NUMERIC_NAMES.has(name),
+    isInteger: INTEGER_NAMES.has(name),
   };
 }
 
@@ -2106,9 +2269,9 @@ function uniqueName(used: Set<string>, name: string): string {
 const NON_IDENTIFIER = /[^0-9A-Za-z_]/g;
 const IDENTIFIER_START = /^[A-Za-z]/;
 
-// metadata is no Python keyword but DeclarativeBase owns it, and mapping a
-// column onto it is rejected; registry is carried and not rejected, so it is
-// absent. The _sa_ names are absent because pyIdentifier bars that namespace.
+// metadata is DeclarativeBase's, which refuses a column mapped onto it, and
+// self the first parameter of the constructor it writes, which no keyword can
+// pass; registry is carried and not refused. pyIdentifier bars the _sa_ names.
 const RESERVED = new Set([
   'False',
   'None',
@@ -2142,6 +2305,7 @@ const RESERVED = new Set([
   'pass',
   'raise',
   'return',
+  'self',
   'try',
   'while',
   'with',

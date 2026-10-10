@@ -9,6 +9,7 @@ import {
   ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
+import { DatabaseHintMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import {
   Column,
@@ -23,6 +24,7 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { createCode, formatTable } from '@/utils/generator-code/sqlalchemy';
+import { createSchemaSQL } from '@/utils/schema-sql';
 
 type StateInput = {
   tables?: Table[];
@@ -1699,6 +1701,96 @@ describe('generator-code/sqlalchemy', () => {
       ]);
     });
 
+    // psycopg2 reads xid, cid and xid8 as text and PostgreSQL casts no integer
+    // to them, so a BigInteger reads a str and refuses to write an int.
+    it('writes PostgreSQL xid, cid and xid8 as a String', () => {
+      const { state, table } = createKeyFixture(Database.PostgreSQL, [
+        ['k', 'xid', ColumnOption.primaryKey],
+        ['a', 'cid', ColumnOption.notNull],
+        ['b', 'xid8', 0],
+      ]);
+
+      expect(render(state, table).slice(2, 3)).toEqual([
+        'from sqlalchemy import String',
+      ]);
+      expect(render(state, table).slice(-3)).toEqual([
+        '    k: Mapped[str] = mapped_column(String, primary_key=True)',
+        '    a: Mapped[str] = mapped_column(String, nullable=False)',
+        '    b: Mapped[Optional[str]] = mapped_column(String)',
+      ]);
+    });
+
+    // pymssql reads a rowversion and the CLR types as bytes; the dialect's
+    // TIMESTAMP is the rowversion Alembic reflects, its ROWVERSION is not.
+    it('writes a SQL Server rowversion as TIMESTAMP and the types read as bytes', () => {
+      const { state, table } = createTypesFixture(Database.MSSQL, [
+        ['a', 'rowversion'],
+        ['b', 'timestamp'],
+        ['c', 'hierarchyid'],
+        ['d', 'geography'],
+        ['e', 'geometry'],
+        ['f', 'sql_variant'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import String',
+        'from sqlalchemy.dialects.mssql import TIMESTAMP',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[bytes]] = mapped_column(TIMESTAMP)',
+        '    b: Mapped[Optional[bytes]] = mapped_column(TIMESTAMP)',
+        '    c: Mapped[Optional[bytes]] = mapped_column(String)',
+        '    d: Mapped[Optional[bytes]] = mapped_column(String)',
+        '    e: Mapped[Optional[bytes]] = mapped_column(String)',
+        '    f: Mapped[Optional[bytes]] = mapped_column(String)',
+      ]);
+    });
+
+    // python-oracledb hands an object type over as a DbObject, a VECTOR as an
+    // array.array and a BFILE as a LOB, none of them a str or bytes.
+    it('annotates the Oracle types read as a python-oracledb object Any', () => {
+      const { state, table } = createTypesFixture(Database.Oracle, [
+        ['a', 'ANYDATA'],
+        ['b', 'URIType'],
+        ['c', 'VECTOR'],
+        ['d', 'VECTOR(3, FLOAT32)'],
+        ['e', 'BFILE'],
+        ['f', 'XMLType'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'from typing import Any, Optional',
+        '',
+        'from sqlalchemy import LargeBinary, String',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[Any]] = mapped_column(String)',
+        '    b: Mapped[Optional[Any]] = mapped_column(String)',
+        '    c: Mapped[Optional[Any]] = mapped_column(String)',
+        '    d: Mapped[Optional[Any]] = mapped_column(String)',
+        '    e: Mapped[Optional[Any]] = mapped_column(LargeBinary)',
+        '    f: Mapped[Optional[str]] = mapped_column(String)',
+      ]);
+    });
+
     it('writes an interval as Interval on a database with no dialect type for it', () => {
       const { state, table } = createTypesFixture(Database.Databricks, [
         ['a', 'INTERVAL DAY TO SECOND'],
@@ -1925,6 +2017,371 @@ describe('generator-code/sqlalchemy', () => {
         '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    k: Mapped[int] = mapped_column(BIGINT(unsigned=True), nullable=False, unique=True)',
         '    u: Mapped[int] = mapped_column(BIGINT(unsigned=True), nullable=False, unique=True)',
+      ]);
+    });
+
+    // The editor's DDL numbers a flagged column only where its database takes
+    // an identity on the type, and SQLAlchemy refuses autoincrement=True on a
+    // type of neither Integer nor Numeric affinity.
+    it.each([
+      [
+        'PostgreSQL',
+        'varchar(10)',
+        Database.PostgreSQL,
+        ['    id: Mapped[str] = mapped_column(String(10), primary_key=True)'],
+      ],
+      [
+        'PostgreSQL',
+        'uuid',
+        Database.PostgreSQL,
+        [
+          '    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)',
+        ],
+      ],
+      [
+        'PostgreSQL',
+        'numeric(10)',
+        Database.PostgreSQL,
+        [
+          '    id: Mapped[Decimal] = mapped_column(',
+          '        Numeric(10),',
+          '        primary_key=True,',
+          '        autoincrement=False,',
+          '    )',
+        ],
+      ],
+      [
+        'PostgreSQL',
+        'int4',
+        Database.PostgreSQL,
+        [
+          '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)',
+        ],
+      ],
+      [
+        'SQLite',
+        'TEXT',
+        Database.SQLite,
+        ['    id: Mapped[str] = mapped_column(Text, primary_key=True)'],
+      ],
+      [
+        'SQLite',
+        'VARCHAR(36)',
+        Database.SQLite,
+        ['    id: Mapped[str] = mapped_column(String(36), primary_key=True)'],
+      ],
+      [
+        'SQLite',
+        'NUMERIC',
+        Database.SQLite,
+        [
+          '    id: Mapped[Decimal] = mapped_column(Numeric, primary_key=True, autoincrement=False)',
+        ],
+      ],
+      [
+        'SQLite',
+        'BIGINT',
+        Database.SQLite,
+        [
+          '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)',
+        ],
+      ],
+      [
+        'MySQL',
+        'VARCHAR(10)',
+        Database.MySQL,
+        ['    id: Mapped[str] = mapped_column(String(10), primary_key=True)'],
+      ],
+      [
+        'Oracle',
+        'VARCHAR2(10)',
+        Database.Oracle,
+        ['    id: Mapped[str] = mapped_column(String(10), primary_key=True)'],
+      ],
+      [
+        'Oracle',
+        'NUMBER(10,2)',
+        Database.Oracle,
+        [
+          '    id: Mapped[Decimal] = mapped_column(',
+          '        Numeric(10, 2),',
+          '        primary_key=True,',
+          '        autoincrement=True,',
+          '    )',
+        ],
+      ],
+      [
+        'MySQL',
+        'DOUBLE',
+        Database.MySQL,
+        [
+          '    id: Mapped[float] = mapped_column(Double, primary_key=True, autoincrement=False)',
+        ],
+      ],
+      [
+        'MySQL',
+        'TINYINT',
+        Database.MySQL,
+        [
+          '    id: Mapped[int] = mapped_column(TINYINT, primary_key=True, autoincrement=True)',
+        ],
+      ],
+      [
+        'MariaDB',
+        'DOUBLE',
+        Database.MariaDB,
+        [
+          '    id: Mapped[float] = mapped_column(Double, primary_key=True, autoincrement=True)',
+        ],
+      ],
+      [
+        'MariaDB',
+        'DECIMAL(10,0)',
+        Database.MariaDB,
+        [
+          '    id: Mapped[Decimal] = mapped_column(',
+          '        Numeric(10, 0),',
+          '        primary_key=True,',
+          '        autoincrement=False,',
+          '    )',
+        ],
+      ],
+      [
+        'SQL Server',
+        'numeric(10)',
+        Database.MSSQL,
+        [
+          '    id: Mapped[Decimal] = mapped_column(',
+          '        Numeric(10),',
+          '        primary_key=True,',
+          '        autoincrement=True,',
+          '    )',
+        ],
+      ],
+      [
+        'SQL Server',
+        'decimal(10,2)',
+        Database.MSSQL,
+        [
+          '    id: Mapped[Decimal] = mapped_column(',
+          '        Numeric(10, 2),',
+          '        primary_key=True,',
+          '        autoincrement=False,',
+          '    )',
+        ],
+      ],
+      [
+        'SQL Server',
+        'float',
+        Database.MSSQL,
+        [
+          '    id: Mapped[float] = mapped_column(Double, primary_key=True, autoincrement=False)',
+        ],
+      ],
+      [
+        'Databricks',
+        'INT',
+        Database.Databricks,
+        [
+          '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
+        ],
+      ],
+      [
+        'Databricks',
+        'BIGINT',
+        Database.Databricks,
+        [
+          '    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)',
+        ],
+      ],
+    ])(
+      'numbers a flagged lone %s key of %s only where the database does',
+      (_name, dataType, database, lines) => {
+        const { state, table } = createKeyFixture(database, [
+          [
+            'id',
+            dataType,
+            ColumnOption.primaryKey |
+              ColumnOption.notNull |
+              ColumnOption.autoIncrement,
+          ],
+        ]);
+
+        expect(render(state, table).slice(-lines.length)).toEqual(lines);
+      }
+    );
+
+    // PostgreSQL and Databricks take an identity on their integer names alone
+    // and SQLite its AUTOINCREMENT on a lone integer key, where the editor's
+    // DDL writes one; a serial numbers its rows without it.
+    it.each([
+      ['PostgreSQL', Database.PostgreSQL, /GENERATED ALWAYS AS IDENTITY/, []],
+      [
+        'SQLite',
+        Database.SQLite,
+        /AUTOINCREMENT\)/,
+        ['INT(10)', 'BIGINT(20)', 'UNSIGNED BIG INT', 'SMALLINT UNSIGNED'],
+      ],
+      ['Databricks', Database.Databricks, /GENERATED ALWAYS AS IDENTITY/, []],
+    ])(
+      'writes autoincrement=True on a flagged %s key exactly where the DDL numbers it',
+      (_name, database, numbered, extra) => {
+        const dataTypes = [
+          ...DatabaseHintMap[database].map(({ name }) => name),
+          ...extra,
+        ];
+
+        dataTypes.forEach(dataType => {
+          const { state } = createKeyFixture(database, [
+            [
+              'id',
+              dataType,
+              ColumnOption.primaryKey |
+                ColumnOption.notNull |
+                ColumnOption.autoIncrement,
+            ],
+          ]);
+
+          expect({
+            dataType,
+            autoIncrement: createCode(state).includes('autoincrement=True'),
+          }).toEqual({
+            dataType,
+            autoIncrement:
+              /serial/i.test(dataType) || numbered.test(createSchemaSQL(state)),
+          });
+        });
+      }
+    );
+
+    // SQLite numbers a key declared exactly INTEGER, the rowid, and no other:
+    // a flagged key create_all wrote as BIGINT, INT8 or UNSIGNED BIG INT would
+    // fail every insert without a key (NOT NULL constraint failed).
+    it('types a flagged lone SQLite integer key as the INTEGER its DDL writes', () => {
+      const flagged =
+        ColumnOption.primaryKey |
+        ColumnOption.notNull |
+        ColumnOption.autoIncrement;
+      const dataTypes = [
+        'TINYINT',
+        'SMALLINT',
+        'MEDIUMINT',
+        'INT',
+        'INTEGER',
+        'BIGINT',
+        'INT2',
+        'INT8',
+        'UNSIGNED BIG INT',
+        'int(10)',
+        'BIGINT(20)',
+      ];
+
+      dataTypes.forEach(dataType => {
+        const { state, table } = createKeyFixture(Database.SQLite, [
+          ['id', dataType, flagged],
+        ]);
+
+        expect({
+          dataType,
+          ddl: /^ {2}id INTEGER NOT NULL,$/m.test(createSchemaSQL(state)),
+          lines: render(state, table).slice(-1),
+          imports: render(state, table)[0],
+        }).toEqual({
+          dataType,
+          ddl: true,
+          lines: [
+            '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)',
+          ],
+          imports: 'from sqlalchemy import Integer',
+        });
+      });
+
+      const unflagged = createKeyFixture(Database.SQLite, [
+        ['id', 'BIGINT', ColumnOption.primaryKey | ColumnOption.notNull],
+      ]);
+      const composite = createKeyFixture(Database.SQLite, [
+        ['a', 'BIGINT', flagged],
+        ['b', 'BIGINT', flagged],
+      ]);
+      const text = createKeyFixture(Database.SQLite, [
+        ['id', 'BIGINT UNSIGNED', flagged],
+      ]);
+
+      expect(render(unflagged.state, unflagged.table).slice(-1)).toEqual([
+        '    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)',
+      ]);
+      expect(render(composite.state, composite.table).slice(-2)).toEqual([
+        '    a: Mapped[int] = mapped_column(BigInteger, primary_key=True)',
+        '    b: Mapped[int] = mapped_column(BigInteger, primary_key=True)',
+      ]);
+      expect(render(text.state, text.table).slice(-1)).toEqual([
+        '    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)',
+      ]);
+    });
+
+    it('marks one flagged key of a composite key, the first its database numbers', () => {
+      const flagged =
+        ColumnOption.primaryKey |
+        ColumnOption.notNull |
+        ColumnOption.autoIncrement;
+      const both = createKeyFixture(Database.PostgreSQL, [
+        ['a', 'int', flagged],
+        ['b', 'int', flagged],
+      ]);
+      const text = createKeyFixture(Database.PostgreSQL, [
+        ['a', 'varchar(10)', flagged],
+        ['b', 'bigint', flagged],
+      ]);
+      const sqlite = createKeyFixture(Database.SQLite, [
+        ['a', 'INTEGER', flagged],
+        ['b', 'INTEGER', flagged],
+      ]);
+
+      expect(render(both.state, both.table).slice(-2)).toEqual([
+        '    a: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)',
+        '    b: Mapped[int] = mapped_column(Integer, primary_key=True)',
+      ]);
+      expect(render(text.state, text.table).slice(-2)).toEqual([
+        '    a: Mapped[str] = mapped_column(String(10), primary_key=True)',
+        '    b: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)',
+      ]);
+      expect(render(sqlite.state, sqlite.table).slice(-2)).toEqual([
+        '    a: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    b: Mapped[int] = mapped_column(Integer, primary_key=True)',
+      ]);
+    });
+
+    // The editor's DDL writes no DEFAULT on a flagged column, numbered or not.
+    it('keeps the default off a flagged column the database does not number', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'code',
+        columnIds: ['c1', 'c2'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'code',
+            dataType: 'varchar(10)',
+            default: "'x'",
+            options: ColumnOption.notNull | ColumnOption.autoIncrement,
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+
+      expect(render(state, table).slice(-1)).toEqual([
+        '    code: Mapped[str] = mapped_column(String(10), nullable=False)',
       ]);
     });
 
@@ -2709,6 +3166,23 @@ describe('generator-code/sqlalchemy', () => {
       );
       expect(createCode(state)).toContain(
         '    x2nd_place_: Mapped[Optional[int]] = mapped_column("2nd place!", Integer)'
+      );
+    });
+
+    // The constructor DeclarativeBase writes takes self first, so an attribute
+    // named self cannot be passed to it by keyword.
+    it('renames a self column and keeps its name', () => {
+      const { state } = createTypesFixture(Database.PostgreSQL, [
+        ['self', 'int'],
+        ['Self', 'int'],
+      ]);
+      const code = createCode(state);
+
+      expect(code).toContain(
+        '    self_: Mapped[Optional[int]] = mapped_column("self", Integer)'
+      );
+      expect(code).toContain(
+        '    Self: Mapped[Optional[int]] = mapped_column(Integer)'
       );
     });
 

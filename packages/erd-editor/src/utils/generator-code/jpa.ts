@@ -446,8 +446,8 @@ function toClassName(name: string, nameCase: number): string {
 }
 
 /**
- * The field name java.ts writes, Class_ included, every relation field,
- * mappedBy and @IdClass field among them, so each side names one field.
+ * The field name java.ts writes, Class_ and java_ included, every relation
+ * field, mappedBy and @IdClass field among them, so each side names one field.
  */
 function toFieldName(name: string, nameCase: number): string {
   return toJavaFieldName(getNameCase(name, nameCase));

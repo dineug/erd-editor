@@ -14,6 +14,9 @@ const INDENT = '  ';
 // comment writes each as the text of its Unicode escape.
 const BIDI_CONTROLS = /[\u202A-\u202E\u2066-\u2069]/g;
 
+// Scala 2.13 and 3 read SUB, U+001A, as the end of the file, even in a comment.
+const SUB = '\u001A';
+
 // BigDecimal names scala.math.BigDecimal, which Scala needs no import for.
 // Duration keeps its package: a bare one would resolve to, or clash with, the
 // scala.concurrent.duration.Duration a Scala file often imports.
@@ -121,7 +124,7 @@ export function formatTable(
   } = state;
   const tableName = toScalaName(getNameCase(table.name, tableNameCase));
 
-  formatLineComment(buffer, '', table.comment, escapeBidiControls);
+  formatLineComment(buffer, '', table.comment, escapeComment);
   buffer.push(`case class ${tableName}(`);
 
   query(collections)
@@ -152,7 +155,7 @@ function formatColumn(
     !bHas(column.options, ColumnOption.primaryKey) &&
     !bHas(column.options, ColumnOption.notNull);
 
-  formatLineComment(buffer, INDENT, column.comment, escapeBidiControls);
+  formatLineComment(buffer, INDENT, column.comment, escapeComment);
   buffer.push(
     `${INDENT}${columnName}: ${isNullable ? `Option[${scalaType}]` : scalaType}${isComma ? ',' : ''}`
   );
@@ -170,9 +173,13 @@ function toScalaFieldName(name: string): string {
   return name.endsWith('_') ? `\`${name}\`` : toScalaName(name);
 }
 
-function escapeBidiControls(line: string): string {
-  return line.replace(
-    BIDI_CONTROLS,
-    char => `\\u${char.charCodeAt(0).toString(16).toUpperCase()}`
-  );
+/** A comment line with each character scalac refuses written as its escape. */
+function escapeComment(line: string): string {
+  return line
+    .replaceAll(SUB, unicodeEscape)
+    .replace(BIDI_CONTROLS, unicodeEscape);
+}
+
+function unicodeEscape(char: string): string {
+  return `\\u${char.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
 }

@@ -1249,6 +1249,90 @@ describe('generator-code/jpa', () => {
       ]);
     });
 
+    it('writes a field, relation field and mappedBy java as java_ with its column name, as java.ts does', () => {
+      const parent = createTable({
+        id: 'p',
+        name: 'java',
+        columnIds: ['p1', 'p2', 'p3'],
+      });
+      const child = createTable({
+        id: 'c',
+        name: 'skill',
+        columnIds: ['c1', 'c2'],
+      });
+      const state = createState({
+        tables: [parent, child],
+        columns: [
+          createColumn({
+            id: 'p1',
+            tableId: 'p',
+            name: 'id',
+            dataType: 'INT',
+            options: ColumnOption.primaryKey,
+            ui: { keys: ColumnUIKey.primaryKey },
+          }),
+          createColumn({
+            id: 'p2',
+            tableId: 'p',
+            name: 'java',
+            dataType: 'BOOLEAN',
+            options: ColumnOption.notNull,
+          }),
+          createColumn({
+            id: 'p3',
+            tableId: 'p',
+            name: 'avatar',
+            dataType: 'BLOB',
+          }),
+          createColumn({
+            id: 'c1',
+            tableId: 'c',
+            name: 'id',
+            dataType: 'INT',
+            options: ColumnOption.primaryKey,
+            ui: { keys: ColumnUIKey.primaryKey },
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 'c',
+            name: 'java_id',
+            dataType: 'INT',
+            ui: { keys: ColumnUIKey.foreignKey },
+          }),
+        ],
+        relationships: [
+          createRelationship({
+            id: 'r',
+            relationshipType: RelationshipType.ZeroN,
+            start: { tableId: 'p', columnIds: ['p1'] },
+            end: { tableId: 'c', columnIds: ['c2'] },
+          }),
+        ],
+        settings: { database: Database.MySQL },
+      });
+
+      expect(render(state, parent)).toEqual([
+        '@Data',
+        '@Entity',
+        '@Table(name = "java")',
+        'public class Java {',
+        '  @Id',
+        '  private Integer id;',
+        '  @Column(name = "java", nullable = false)',
+        '  private Boolean java_;',
+        '  private byte[] avatar;',
+        '  @OneToMany(mappedBy = "java_")',
+        '  private List<Skill> skillList = new ArrayList<>();',
+        '}',
+      ]);
+      expect(render(state, child).slice(-4)).toEqual([
+        '  @ManyToOne',
+        '  @JoinColumn(name = "java_id")',
+        '  private Java java_;',
+        '}',
+      ]);
+    });
+
     it('keeps a renamed parent field and its mappedBy in step', () => {
       const parent = createTable({
         id: 'p',

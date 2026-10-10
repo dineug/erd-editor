@@ -1618,6 +1618,57 @@ describe('generator-code/typeorm', () => {
       ]);
     });
 
+    it('writes a PostgreSQL generated key no serial can hold as the type it is', () => {
+      const key = ColumnOption.primaryKey | ColumnOption.autoIncrement;
+
+      expect(memberLines('varchar(10)', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryColumn("varchar", { length: 10, generated: "increment" })',
+        '  value: string;',
+      ]);
+      expect(memberLines('timestamp', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryColumn("timestamp", { generated: "increment" })',
+        '  value: Date;',
+      ]);
+      expect(memberLines('real', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryColumn("real", { generated: "increment" })',
+        '  value: number;',
+      ]);
+      expect(memberLines('int[]', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryColumn("int", { array: true, generated: "increment" })',
+        '  value: number[];',
+      ]);
+      expect(memberLines('bigint[]', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryColumn("bigint", { array: true, generated: "increment" })',
+        '  value: string[];',
+      ]);
+      expect(memberLines('uuid[]', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryColumn("uuid", { array: true, generated: "increment" })',
+        '  value: string[];',
+      ]);
+      expect(memberLines('integer', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryGeneratedColumn({ type: "integer" })',
+        '  value: number;',
+      ]);
+      expect(memberLines('numeric', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryGeneratedColumn({ type: "numeric" })',
+        '  value: string;',
+      ]);
+      expect(memberLines('uuid', Database.PostgreSQL, key)).toEqual([
+        '  @PrimaryGeneratedColumn("uuid")',
+        '  value: string;',
+      ]);
+      expect(
+        memberLines('serial', Database.PostgreSQL, ColumnOption.primaryKey)
+      ).toEqual([
+        '  @PrimaryGeneratedColumn({ type: "int" })',
+        '  value: number;',
+      ]);
+      expect(memberLines('varchar(10)', Database.MySQL, key)).toEqual([
+        '  @PrimaryGeneratedColumn()',
+        '  value: number;',
+      ]);
+    });
+
     it('marks an auto-increment column that is not the primary key', () => {
       const table = createTable({
         id: 't1',
@@ -2176,6 +2227,27 @@ describe('generator-code/typeorm', () => {
 
       names.forEach(name => {
         expect(code).toContain(`export class ${name}2 {}`);
+      });
+    });
+
+    it('renames a class named then, which would make the module a thenable', () => {
+      const cases: Array<[number, string]> = [
+        [NameCase.none, 'then2'],
+        [NameCase.camelCase, 'then2'],
+        [NameCase.snakeCase, 'then2'],
+        [NameCase.pascalCase, 'Then'],
+      ];
+
+      cases.forEach(([tableNameCase, className]) => {
+        const state = createState({
+          tables: [
+            createTable({ id: 't1', name: 'then' }),
+            createTable({ id: 't2', name: 'zzz' }),
+          ],
+          settings: { tableNameCase },
+        });
+
+        expect(createCode(state)).toContain(`export class ${className} {}`);
       });
     });
 

@@ -764,8 +764,8 @@ const MYSQL_TYPES: ReadonlyArray<[string[], Emission]> = [
 ];
 
 // MariaDB refuses the AUTO_INCREMENT drizzle-kit writes after serial, so its
-// SERIAL is spelt out as the BIGINT UNSIGNED it stands for; its UUID, INET4
-// and INET6 have no mysql-core builder.
+// SERIAL is spelt out as the BIGINT UNSIGNED it stands for; mysql-core has no
+// builder for its UUID, INET4 and INET6; its Oracle mode's CLOB is a LONGTEXT.
 const MARIADB_TYPES: ReadonlyMap<string, Emission> = new Map([
   [
     'serial',
@@ -782,6 +782,7 @@ const MARIADB_TYPES: ReadonlyMap<string, Emission> = new Map([
     name,
     customEmission(namedCustomType(name, 'string'), 'string'),
   ]),
+  ['clob', { builder: 'longtext', ts: 'string', args: 'none' }],
 ]);
 
 const MYSQL_FALLBACK: Record<PrimitiveType, Emission> = {
@@ -1274,12 +1275,19 @@ function formatColumn(
   );
 }
 
+// TypeScript reads a line comment whose text opens with an at sign and ts- as
+// a directive, which would hide an error or report an unused one, so such a
+// line takes a backslash before its at sign.
+const DIRECTIVE = /^(\s*)@ts-/;
+
 function formatComment(buffer: string[], indent: string, comment: string) {
   if (comment.trim() === '') {
     return;
   }
 
-  splitLines(comment).forEach(line => buffer.push(`${indent}// ${line}`));
+  splitLines(comment).forEach(line =>
+    buffer.push(`${indent}// ${line.replace(DIRECTIVE, '$1\\@ts-')}`)
+  );
 }
 
 function columnFlags(column: Column): ColumnFlags {
@@ -1819,7 +1827,18 @@ function aliasOption(
 const WHITESPACE = /\s+/g;
 const SIGN_WORDS =
   /(^|[^0-9a-z_])(?:signed|unsigned|zerofill)(?=[^0-9a-z_]|$)/g;
+// MySQL and MariaDB read a character set, a collation, BINARY, ASCII or
+// UNICODE written after a character type as the column's, not the type's.
+const CHARACTER_ATTRIBUTES =
+  /(?: (?:ascii|binary|unicode|(?:char set|character set|charset|collate) \S+))+$/;
 const INTERVAL = 'interval';
+// PostgreSQL reads a number as an interval's seconds precision only after
+// SECOND or the INTERVAL keyword; Oracle's YEAR(2) or DAY(3) is the digits of
+// the leading field.
+const SECONDS_PRECISION = /\b(?:interval|second)\s*\(/i;
+// MariaDB's Oracle mode, the one mode that takes NUMBER, stores a NUMBER of no
+// precision as a DOUBLE.
+const BARE_NUMBER = 'number';
 // MySQL stores FLOAT(1) to FLOAT(24) as a FLOAT and any wider one as a DOUBLE.
 const SINGLE_PRECISION_DIGITS = 24;
 
@@ -1903,14 +1922,21 @@ function resolveEmission(
   // The classifier sets MySQL's UNSIGNED, ZEROFILL and SIGNED apart only on
   // MySQL and MariaDB, and no other database's type name holds them.
   const lookup = isMySQLFamily(database)
-    ? base
+    ? base.replace(CHARACTER_ATTRIBUTES, '')
     : base.replace(SIGN_WORDS, '$1').replace(WHITESPACE, ' ').trim();
 
   if (lookup === INTERVAL || lookup.startsWith(`${INTERVAL} `)) {
-    return intervalEmission(lookup, dialect);
+    return intervalEmission(lookup, element, dialect);
   }
   if (dialect === 'mysql' && setMembers !== null) {
     return MYSQL_SET;
+  }
+  if (
+    database === Database.MariaDB &&
+    lookup === BARE_NUMBER &&
+    classified.scalar === 'f64'
+  ) {
+    return MYSQL_DOUBLE;
   }
 
   const own = DATABASE_TYPES[database]?.get(lookup);
@@ -1969,7 +1995,11 @@ function memberOption(members: string[]): string {
   return `values: ${memberList(members)}`;
 }
 
-function intervalEmission(base: string, dialect: Dialect): Emission {
+function intervalEmission(
+  base: string,
+  element: string,
+  dialect: Dialect
+): Emission {
   if (dialect === 'mysql') {
     return MYSQL_TEXT;
   }
@@ -1978,15 +2008,16 @@ function intervalEmission(base: string, dialect: Dialect): Emission {
   }
 
   const fields = base.slice(INTERVAL.length).trim();
+  const args = SECONDS_PRECISION.test(element) ? 'seconds' : 'none';
 
   return INTERVAL_FIELDS.has(fields)
     ? {
         builder: INTERVAL,
         ts: 'string',
-        args: 'seconds',
+        args,
         options: [`fields: "${fields}"`],
       }
-    : { builder: INTERVAL, ts: 'string', args: 'seconds' };
+    : { builder: INTERVAL, ts: 'string', args };
 }
 
 function enumType(
