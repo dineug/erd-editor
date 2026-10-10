@@ -123,9 +123,15 @@ const WALKS_BACKWARDS: Record<DirectionName, boolean> = {
   [DirectionName.left]: true,
 };
 
+/**
+ * Places each relationship's anchors and slots on the source's channel, and on
+ * the document's routes every connector too, unless route is false, as in a
+ * store that draws nothing, where a route is never read.
+ */
 export function relationshipSort(
   state: RootState,
-  source: GeometrySource = 'document'
+  source: GeometrySource = 'document',
+  { route = true }: { route?: boolean } = {}
 ) {
   // Every route box the last sort left behind answers for a route this one is
   // about to replace, and the connectors it skips over - self relationships,
@@ -208,7 +214,7 @@ export function relationshipSort(
   }
 
   if (source === 'document') {
-    routeRelationships(state, changeMap, slotMap);
+    if (route) routeRelationships(state, changeMap, slotMap);
   } else {
     stubRelationships(changeMap, slotMap, source);
   }

@@ -230,14 +230,17 @@ export function createPeerStore({
   readonly = false,
 }: PeerStoreOptions): PeerStore {
   let counter: ReturnType<typeof createCountingHistory> | null = null;
-  const rxStore = createRxStore(createEngineContext({ toWidth }), {
-    manualStreamFlush: true,
-    observable: false,
-    getHistory: options => {
-      counter = createCountingHistory(createHistory(options));
-      return counter.history;
-    },
-  });
+  const rxStore = createRxStore(
+    createEngineContext({ toWidth, routes: false }),
+    {
+      manualStreamFlush: true,
+      observable: false,
+      getHistory: options => {
+        counter = createCountingHistory(createHistory(options));
+        return counter.history;
+      },
+    }
+  );
   const getPushes = () => counter?.getPushes() ?? 0;
   const getLimit = () => counter?.getLimit() ?? 0;
   const sharedStore = createSharedStore(

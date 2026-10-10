@@ -63,7 +63,7 @@ export function createReplicationStore(
   context: InjectEngineContext
 ): ReplicationStore {
   const subscriptionSet = new Set<Subscription>();
-  const engineContext = createEngineContext(context);
+  const engineContext = createEngineContext({ ...context, routes: false });
   const { clock } = engineContext;
   const store = createStore(engineContext, false);
   // A replica has no screen, and the default editor size the store starts with

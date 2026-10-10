@@ -16,6 +16,7 @@ import { createRxStore } from '@/engine/rx-store';
 import { settleDocument } from '@/engine/settle';
 import { createStore } from '@/engine/store';
 import { bHas } from '@/utils/bit';
+import { getRoute } from '@/utils/draw-relationship';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -126,6 +127,19 @@ describe('settleDocument', () => {
     expect(start).toMatchObject({ direction: Direction.right });
     expect(start.x).toBeGreaterThanOrEqual(100);
     expect(end).toMatchObject({ x: 900, direction: Direction.left });
+  });
+
+  it('routes each connector in a store that draws, and none in one that draws nothing', () => {
+    const drawn = loaded().state.collections.relationshipEntities.r1;
+    expect(getRoute(drawn)?.length).toBeGreaterThan(1);
+
+    const store = createStore({ toWidth, routes: false, clock: new Clock() });
+    store.dispatchSync(loadJsonAction$(file()));
+    const headless = store.state.collections.relationshipEntities.r1;
+
+    expect(headless.start).toMatchObject({ direction: Direction.right });
+    expect(headless.end).toMatchObject({ x: 900, direction: Direction.left });
+    expect(getRoute(headless)).toBeUndefined();
   });
 
   it('reads the flags of each relationship off the columns it ends on', () => {
