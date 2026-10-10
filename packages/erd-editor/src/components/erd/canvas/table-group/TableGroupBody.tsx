@@ -29,9 +29,9 @@ export type TableGroupBodyProps = {
 };
 
 /**
- * The body of a group under its title bar, in the group's color at a low alpha, drawn before every
- * group's frame, so no body stands over another group's bar. The main button reads it as the
- * canvas under it, so only another button selects the group there, for the menu it opens.
+ * A group's body under its bar, in its color at a low alpha or the theme's group body (alpha its own),
+ * drawn before every frame, so no body stands over another group's bar. The main button reads it as
+ * the canvas under it, so only another button selects the group there, for the menu it opens.
  */
 const TableGroupBody: FC<TableGroupBodyProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -75,8 +75,8 @@ const TableGroupBody: FC<TableGroupBodyProps> = (props, ctx) => {
           TABLE_GROUP_CORNER_RADIUS,
           TABLE_GROUP_CORNER_RADIUS,
         ]}
-        fill={colors?.background ?? themeRef.value.foreground}
-        opacity={TABLE_GROUP_FILL_OPACITY}
+        fill={colors?.background ?? themeRef.value.tableGroupBackground}
+        opacity={colors ? TABLE_GROUP_FILL_OPACITY : 1}
         on:mousedown={handleBodyPress}
       />
     );

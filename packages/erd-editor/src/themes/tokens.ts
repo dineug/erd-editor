@@ -36,6 +36,10 @@ export type Theme = {
   tableBorder: string;
   tableShadow: string;
 
+  tableGroupHeaderBackground: string;
+  tableGroupBackground: string;
+  tableGroupBorder: string;
+
   memoBackground: string;
   memoSelect: string;
   memoBorder: string;
@@ -127,6 +131,10 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'tableSelect',
   'tableBorder',
   'tableShadow',
+
+  'tableGroupHeaderBackground',
+  'tableGroupBackground',
+  'tableGroupBorder',
 
   'memoBackground',
   'memoSelect',

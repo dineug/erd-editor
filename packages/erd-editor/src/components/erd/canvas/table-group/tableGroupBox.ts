@@ -11,6 +11,7 @@ import {
 import { RootState } from '@/engine/state';
 import type { Table, TableGroup } from '@/internal-types';
 import { type Rect, unionRect } from '@/konva/scene/metrics';
+import { trackTableWidths } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { getTableGroupMembers, getTableGroupRect } from '@/utils/tableGroup';
 
@@ -34,6 +35,9 @@ export function getDrawnTableGroupRect(
   source: GeometrySource,
   members: ReadonlyArray<Table>
 ): Rect {
+  // A member widened by a column edit or a remeasure changes no field the size
+  // cache keys on, so the box asks to be drawn again on every such change.
+  trackTableWidths();
   const { selectedMap } = state.editor;
   // A group dragged itself moves with its members and keeps them all.
   const standing = isEntityDragActive(state, source) && !selectedMap[group.id];
@@ -92,7 +96,9 @@ const isSameList = (a: ReadonlyArray<Table>, b: ReadonlyArray<Table>) =>
  * const membersOf = memberLists(state);
  * membersOf(group.id);
  */
-export function createTableGroupMemberLists() {
+export function createTableGroupMemberLists(): (
+  state: RootState
+) => (groupId: string) => ReadonlyArray<Table> {
   let last = new Map<string, ReadonlyArray<Table>>();
 
   return (state: RootState) => {

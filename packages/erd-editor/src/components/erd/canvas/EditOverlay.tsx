@@ -19,7 +19,6 @@ import {
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   TABLE_GROUP_TITLE_FONT_WEIGHT,
-  TABLE_GROUP_TITLE_PADDING,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   getCellTextHeight,
@@ -273,13 +272,14 @@ function resolveTableGroupTarget(state: RootState): TableGroupTarget | null {
   if (!group) return null;
 
   const { x, y, width } = getTableGroupRect(state, group);
+  const nameBox = getTableGroupNameBox(width);
 
   return {
     kind: 'tableGroup',
     groupId: group.id,
-    x: x + TABLE_GROUP_TITLE_PADDING,
-    y: y + getTableGroupNameBox().y,
-    width: Math.max(width - TABLE_GROUP_TITLE_PADDING * 2, 0),
+    x: x + nameBox.x,
+    y: y + nameBox.y,
+    width: nameBox.width,
     value: group.name,
     textColor: getTableGroupColors(group)?.foreground ?? null,
   };

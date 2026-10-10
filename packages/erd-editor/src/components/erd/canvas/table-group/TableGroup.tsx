@@ -3,6 +3,7 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
   mainButtonClick,
   RING_WIDTH,
@@ -12,14 +13,16 @@ import {
   type ScenePointerEvent,
   TABLE_GROUP_CORNER_RADIUS,
   TABLE_GROUP_TITLE_FONT_WEIGHT,
-  TABLE_GROUP_TITLE_PADDING,
 } from '@/components/erd/canvas/sceneTokens';
 import {
   getDrawnTableGroupRect,
   type TableGroupLinks,
 } from '@/components/erd/canvas/table-group/tableGroupBox';
 import TableGroupSash from '@/components/erd/canvas/table-group/TableGroupSash';
-import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
+import {
+  getTableGroupIconBox,
+  getTableGroupNameBox,
+} from '@/components/erd/canvas/table-group/titleLayout';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import { openTableGroupNameEditor } from '@/components/erd/table-group/tableGroupName';
@@ -47,8 +50,8 @@ export type TableGroupProps = {
 
 /**
  * A group's frame over its body (TableGroupBody), in getDrawnTableGroupRect's box: a title bar with
- * the name, one line around the box, the peer ring and the sashes, or the header's colors with no
- * color it reads. The bar selects and carries the group.
+ * the group icon and the name, one line around the box, the peer ring and the sashes, in the theme's
+ * group colors with no color it reads. The bar selects and carries the group.
  */
 const TableGroup: FC<TableGroupProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -100,7 +103,8 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
     const { x, y, width, height } = box;
 
     const colors = getTableGroupColors(group);
-    const nameBox = getTableGroupNameBox();
+    const nameBox = getTableGroupNameBox(width);
+    const iconBox = getTableGroupIconBox();
     const named = Boolean(group.name.trim());
     const borderInset = TABLE_GROUP_BORDER / 2;
     const ringInset = RING_WIDTH / 2;
@@ -132,13 +136,24 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
               0,
               0,
             ]}
-            fill={colors?.background ?? theme.tableHeaderBackground}
+            fill={colors?.background ?? theme.tableGroupHeaderBackground}
           />
+          <k-group name="table-group-icon-holder" listening={false}>
+            {sceneIcon({
+              icon: 'group',
+              name: 'table-group-icon',
+              kind: 'table-group-icon',
+              size: iconBox.size,
+              color: colors?.foreground ?? theme.active,
+              x: iconBox.x,
+              y: iconBox.y,
+            })}
+          </k-group>
           <k-text
             name="table-group-name"
-            x={TABLE_GROUP_TITLE_PADDING}
+            x={nameBox.x}
             y={nameBox.y}
-            width={Math.max(width - TABLE_GROUP_TITLE_PADDING * 2, 0)}
+            width={nameBox.width}
             height={nameBox.height}
             text={named ? group.name : i18n.value.t('common.unnamed')}
             fill={
@@ -164,7 +179,7 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
           stroke={
             selected
               ? theme.memoSelect
-              : (colors?.background ?? theme.tableBorder)
+              : (colors?.background ?? theme.tableGroupBorder)
           }
           strokeWidth={TABLE_GROUP_BORDER}
           listening={false}

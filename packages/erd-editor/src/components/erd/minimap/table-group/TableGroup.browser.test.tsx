@@ -98,10 +98,12 @@ describe('the minimap table group box', () => {
     expect(box.getAttr('opacity')).toBe(0.4);
   });
 
-  it('fills a group with no color, or one it cannot read, in the neutral color', async () => {
-    expect(boxOf(await mountGroup('')).getAttr('fill')).toBe(THEME.foreground);
+  it('fills a group with no color, or one it cannot read, in the theme group bar color', async () => {
+    expect(boxOf(await mountGroup('')).getAttr('fill')).toBe(
+      THEME.tableGroupHeaderBackground
+    );
     expect(boxOf(await mountGroup('tomato')).getAttr('fill')).toBe(
-      THEME.foreground
+      THEME.tableGroupHeaderBackground
     );
   });
 

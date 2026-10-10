@@ -19,13 +19,19 @@ import {
   endEntityDrag,
 } from '@/components/erd/canvas/entityDrag';
 import {
+  ICON_VIEW_SIZE,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   TABLE_GROUP_FILL_OPACITY,
+  TABLE_GROUP_TITLE_PADDING,
 } from '@/components/erd/canvas/sceneTokens';
 import TableGroups from '@/components/erd/canvas/table-group/TableGroups';
-import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
+import {
+  getTableGroupIconBox,
+  getTableGroupNameBox,
+  TABLE_GROUP_NAME_X,
+} from '@/components/erd/canvas/table-group/titleLayout';
 import {
   TABLE_GROUP_PADDING,
   TABLE_GROUP_TITLE_HEIGHT,
@@ -40,6 +46,10 @@ import {
   changeTableGroupAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
+import {
+  addColumnAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   addTableGroupAction,
   changeTableGroupColorAction,
@@ -144,6 +154,7 @@ describe('the table group scene', () => {
         'table-group-body',
         'table-group-title',
         'table-group-title-bar',
+        'table-group-icon-holder',
         'table-group-name',
         'table-group-border',
         'table-group-shared-select',
@@ -152,6 +163,7 @@ describe('the table group scene', () => {
       ['table-group-body', true],
       ['table-group-title', true],
       ['table-group-title-bar', true],
+      ['table-group-icon-holder', false],
       ['table-group-name', false],
       ['table-group-border', false],
       ['table-group-shared-select', false],
@@ -174,7 +186,11 @@ describe('the table group scene', () => {
       nodeNamed<Group>(stage, 'table-group-title')
         .getChildren()
         .map(node => node.name())
-    ).toEqual(['table-group-title-bar', 'table-group-name']);
+    ).toEqual([
+      'table-group-title-bar',
+      'table-group-icon-holder',
+      'table-group-name',
+    ]);
   });
 
   it('splits the box into a title bar along its top and the body under it', async () => {
@@ -189,7 +205,7 @@ describe('the table group scene', () => {
       y: STORED.y + TABLE_GROUP_TITLE_HEIGHT,
       width: STORED.width,
       height: STORED.height - TABLE_GROUP_TITLE_HEIGHT,
-      opacity: TABLE_GROUP_FILL_OPACITY,
+      opacity: 1,
     });
     expect(nodeNamed(stage, 'table-group-border').attrs).toMatchObject({
       x: 0.5,
@@ -322,17 +338,18 @@ describe('the table group scene', () => {
     endEntityDrag(app.store.state);
   });
 
-  it('paints a group with no color in the table header colors', async () => {
+  it('paints a group with no color in the theme group colors, the body at its own alpha', async () => {
     const { stage } = await mountGroup();
 
     expect(nodeNamed(stage, 'table-group-title-bar').getAttr('fill')).toBe(
-      THEME.tableHeaderBackground
+      THEME.tableGroupHeaderBackground
     );
-    expect(nodeNamed(stage, 'table-group-body').getAttr('fill')).toBe(
-      THEME.foreground
-    );
+    expect(nodeNamed(stage, 'table-group-body').attrs).toMatchObject({
+      fill: THEME.tableGroupBackground,
+      opacity: 1,
+    });
     expect(nodeNamed(stage, 'table-group-border').getAttr('stroke')).toBe(
-      THEME.tableBorder
+      THEME.tableGroupBorder
     );
   });
 
@@ -342,9 +359,10 @@ describe('the table group scene', () => {
     expect(nodeNamed(stage, 'table-group-title-bar').getAttr('fill')).toBe(
       '#1e3a8a'
     );
-    expect(nodeNamed(stage, 'table-group-body').getAttr('fill')).toBe(
-      '#1e3a8a'
-    );
+    expect(nodeNamed(stage, 'table-group-body').attrs).toMatchObject({
+      fill: '#1e3a8a',
+      opacity: TABLE_GROUP_FILL_OPACITY,
+    });
     expect(nodeNamed(stage, 'table-group-border').getAttr('stroke')).toBe(
       '#1e3a8a'
     );
@@ -354,7 +372,7 @@ describe('the table group scene', () => {
     const { stage } = await mountGroup({ color: 'tomato' });
 
     expect(nodeNamed(stage, 'table-group-title-bar').getAttr('fill')).toBe(
-      THEME.tableHeaderBackground
+      THEME.tableGroupHeaderBackground
     );
     expect(nameOf(stage).getAttr('fill')).toBe(THEME.placeholder);
   });
@@ -371,9 +389,9 @@ describe('the table group scene', () => {
     expect(nameOf(stage).attrs).toMatchObject({
       text: 'billing',
       fill: THEME.active,
-      x: 8,
+      x: TABLE_GROUP_NAME_X,
       y: getTableGroupNameBox().y,
-      width: STORED.width - 16,
+      width: STORED.width - TABLE_GROUP_NAME_X - TABLE_GROUP_TITLE_PADDING,
       height: getTableGroupNameBox().height,
       fontFamily: SCENE_FONT_FAMILY,
       fontSize: SCENE_FONT_SIZE,
@@ -382,6 +400,67 @@ describe('the table group scene', () => {
       wrap: 'none',
       ellipsis: true,
     });
+  });
+
+  it('draws the group icon at the left of the bar, in the name color, taking no press of its own', async () => {
+    const { stage } = await mountGroup();
+    const icon = nodeNamed<Group>(stage, 'table-group-icon');
+    const box = getTableGroupIconBox();
+
+    expect(icon.attrs).toMatchObject({
+      kind: 'table-group-icon',
+      x: box.x,
+      y: box.y,
+    });
+    expect(icon.scaleX()).toBe(box.size / ICON_VIEW_SIZE);
+    expect(nodeNamed(stage, 'table-group-icon-holder').listening()).toBe(false);
+    expect(
+      new Set(icon.getChildren().map(shape => shape.getAttr('stroke')))
+    ).toEqual(new Set([THEME.active]));
+    expect(box.x + box.size).toBeLessThan(nameOf(stage).x());
+  });
+
+  it.each([
+    ['#fef08a', '#000000'],
+    ['#1e3a8a', '#ffffff'],
+  ])(
+    'draws the icon on %s in %s, the color the name takes',
+    async (color, ink) => {
+      const { stage } = await mountGroup({ color });
+      const icon = nodeNamed<Group>(stage, 'table-group-icon');
+
+      expect(
+        new Set(icon.getChildren().map(shape => shape.getAttr('stroke')))
+      ).toEqual(new Set([ink]));
+    }
+  );
+
+  it('grows over a member whose column widens, though the member never moved', async () => {
+    const app = createTestAppContext();
+    addMember(app, 'member', 500, 100);
+    app.store.dispatchSync(
+      addColumnAction({ id: 'column', tableId: 'member' }),
+      changeColumnNameAction({ tableId: 'member', id: 'column', value: 'id' })
+    );
+    const { stage } = await mountGroup({ app });
+    const width = () => nodeNamed(stage, 'table-group-border').width() + 1;
+    const before = width();
+
+    app.store.dispatchSync(
+      changeColumnNameAction({
+        tableId: 'member',
+        id: 'column',
+        value: 'a_column_name_far_wider_than_the_one_before',
+      })
+    );
+    await settle();
+    const rect = getTableRect(
+      app.store.state,
+      app.store.state.collections.tableEntities.member
+    );
+
+    expect(width()).toBeGreaterThan(before);
+    expect(width()).toBe(rect.x + rect.width + TABLE_GROUP_PADDING - STORED.x);
   });
 
   it('writes an unnamed group as the unnamed placeholder in the reader language', async () => {
@@ -433,7 +512,7 @@ describe('the table group scene', () => {
       })
     );
     await settle();
-    expect(bar.getAttr('fill')).toBe(THEME.tableHeaderBackground);
+    expect(bar.getAttr('fill')).toBe(THEME.tableGroupHeaderBackground);
   });
 
   it('outlines a selected group in the selection color, as a memo is', async () => {

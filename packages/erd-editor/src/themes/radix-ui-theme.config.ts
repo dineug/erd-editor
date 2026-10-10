@@ -38,6 +38,13 @@ export const ThemeConfig: Theme = {
   tableBorder: 'gray-6',
   tableShadow: 'override-transparent',
 
+  // A group with no color of its own: the bar two steps past a table header,
+  // so it reads as neither, over a body on the alpha scale between the bar and
+  // the canvas, and its frame in the bar's color, as a colored group's is.
+  tableGroupHeaderBackground: 'gray-7',
+  tableGroupBackground: 'grayA-4',
+  tableGroupBorder: 'gray-7',
+
   memoBackground: 'gray-2',
   memoSelect: 'accent-8',
   memoBorder: 'gray-6',
@@ -116,6 +123,8 @@ export const LightThemeConfig: Partial<Theme> = {
   memoBorder: 'gray-8',
   tableShadow: 'override-rgba(0, 0, 0, 0.18)',
   memoShadow: 'override-rgba(0, 0, 0, 0.18)',
+  tableGroupHeaderBackground: 'gray-8',
+  tableGroupBorder: 'gray-8',
   minimapBorder: 'gray-7',
   keyPK: 'custom-amber--11',
   keyFK: 'custom-ruby--11',

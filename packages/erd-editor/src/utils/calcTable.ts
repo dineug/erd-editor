@@ -1,4 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
+import { observable } from '@dineug/r-html';
 
 import {
   COLUMN_ALTERNATE_KEY_CHAR_WIDTH,
@@ -41,8 +42,27 @@ import { textInRange } from '@/utils/validation';
  */
 let widthGeneration = 0;
 
+/**
+ * The generation again, observable, for the few renders that size other tables
+ * through the cache: a cache hit reads no column, so such a render would never
+ * hear a member's column widen. A table's own render reads its columns itself.
+ */
+const widthSignal = observable({ generation: 0 });
+
 export function getWidthGeneration() {
   return widthGeneration;
+}
+
+/**
+ * Reads the generation through the observable, so the render calling it runs
+ * again whenever any table's widths may have changed.
+ *
+ * @example
+ * trackTableWidths();
+ * const rect = getTableRect(state, member);
+ */
+export function trackTableWidths(): number {
+  return widthSignal.generation;
 }
 
 /**
@@ -52,6 +72,7 @@ export function getWidthGeneration() {
  */
 export function invalidateTableWidths() {
   widthGeneration++;
+  widthSignal.generation = widthGeneration;
 }
 
 /**

@@ -1692,7 +1692,7 @@ describe('the table group name editor', () => {
   const nameOf = (fixture: Fixture) =>
     fixture.app.store.state.collections.tableGroupEntities.g1.name;
 
-  it('stands over the name the title bar draws, past its padding, in the bar font', async () => {
+  it('stands over the name the title bar draws, past its icon, in the bar font', async () => {
     const fixture = await setup();
     await editGroupName(fixture, 'Billing');
 
@@ -1701,9 +1701,10 @@ describe('the table group name editor', () => {
     expect(input.value).toBe('Billing');
     expect(input.placeholder).toBe('unnamed');
     // The box the scene centres the name in, so the two baselines meet.
-    expect(transform.x).toBe(GROUP_UI.x + 8);
-    expect(transform.y).toBe(GROUP_UI.y + getTableGroupNameBox().y);
-    expect(input.style.width).toBe(`${GROUP_UI.width - 16}px`);
+    const nameBox = getTableGroupNameBox(GROUP_UI.width);
+    expect(transform.x).toBe(GROUP_UI.x + nameBox.x);
+    expect(transform.y).toBe(GROUP_UI.y + nameBox.y);
+    expect(input.style.width).toBe(`${nameBox.width}px`);
     expect(input.style.height).toBe(`${getTableGroupNameBox().height}px`);
     expect(input.style.fontWeight).toBe('bold');
     // An uncolored bar keeps the theme's text, so the cell sets neither.

@@ -4,6 +4,7 @@ import type { DOMTemplateLiterals } from '@dineug/r-html';
 import { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Circle } from 'konva/lib/shapes/Circle';
+import type { Rect } from 'konva/lib/shapes/Rect';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -107,6 +108,54 @@ describe('a lucide icon drawn as konva shapes', () => {
     expect(group.find('Path')).toHaveLength(1);
     expect(circle.fill()).toBe('#445566');
     expect(circle.radius()).toBe(0.5);
+  });
+
+  it('strokes the rounded rects a group icon carries, which no path data covers', async () => {
+    const stage = await mount(
+      sceneIcon({
+        icon: 'group',
+        name: 'group-icon',
+        kind: 'table-group-icon',
+        size: 12,
+        color: '#778899',
+        x: 0,
+        y: 0,
+      })
+    );
+    const group = stage.findOne<Group>('.group-icon') as Group;
+    const rects = group.find<Rect>('Rect');
+
+    expect(group.find('Path')).toHaveLength(4);
+    expect(
+      rects.map(rect => ({
+        x: rect.x(),
+        y: rect.y(),
+        width: rect.width(),
+        height: rect.height(),
+        cornerRadius: rect.cornerRadius(),
+        stroke: rect.stroke(),
+        fill: rect.fill(),
+      }))
+    ).toEqual([
+      {
+        x: 7,
+        y: 7,
+        width: 7,
+        height: 5,
+        cornerRadius: 1,
+        stroke: '#778899',
+        fill: undefined,
+      },
+      {
+        x: 10,
+        y: 12,
+        width: 7,
+        height: 5,
+        cornerRadius: 1,
+        stroke: '#778899',
+        fill: undefined,
+      },
+    ]);
   });
 
   it('puts the box back at the icon corner when a circle is what answers', async () => {

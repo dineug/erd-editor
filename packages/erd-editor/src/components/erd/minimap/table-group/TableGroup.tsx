@@ -26,8 +26,8 @@ export type TableGroupProps = {
 
 /**
  * A table group as the minimap draws it: the box the canvas draws it in,
- * filled in its color, or the canvas's neutral one, at a low alpha behind the
- * table marks.
+ * filled in its color, or the bar color of a group with none, at a low alpha
+ * behind the table marks.
  */
 const TableGroup: FC<TableGroupProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -51,7 +51,8 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
         width={rect.width}
         height={rect.height}
         fill={
-          getTableGroupColors(group)?.background ?? themeRef.value.foreground
+          getTableGroupColors(group)?.background ??
+          themeRef.value.tableGroupHeaderBackground
         }
         opacity={FILL_OPACITY}
       />

@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(72);
+    expect(entries).toHaveLength(75);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -131,6 +131,12 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.visualizationRelationship).toBe('gray-8');
   });
 
+  it('paints a group with no color on its own bar, body and frame steps', () => {
+    expect(ThemeConfig.tableGroupHeaderBackground).toBe('gray-7');
+    expect(ThemeConfig.tableGroupBackground).toBe('grayA-4');
+    expect(ThemeConfig.tableGroupBorder).toBe('gray-7');
+  });
+
   it('gives memo and table the same background/border/select treatment', () => {
     expect(ThemeConfig.memoBackground).toBe(ThemeConfig.tableBackground);
     expect(ThemeConfig.memoBorder).toBe(ThemeConfig.tableBorder);
@@ -157,7 +163,7 @@ describe('ThemeConfig', () => {
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the boxes and their shadows, the minimap edge, the keys and the visualization strokes only', () => {
+  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys and the visualization strokes only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
@@ -165,6 +171,8 @@ describe('LightThemeConfig', () => {
       memoBorder: 'gray-8',
       tableShadow: 'override-rgba(0, 0, 0, 0.18)',
       memoShadow: 'override-rgba(0, 0, 0, 0.18)',
+      tableGroupHeaderBackground: 'gray-8',
+      tableGroupBorder: 'gray-8',
       minimapBorder: 'gray-7',
       keyPK: 'custom-amber--11',
       keyFK: 'custom-ruby--11',
