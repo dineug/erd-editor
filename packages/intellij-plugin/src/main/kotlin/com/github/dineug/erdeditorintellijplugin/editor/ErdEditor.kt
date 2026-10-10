@@ -32,7 +32,6 @@ import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import java.io.IOException
 import java.util.*
-import java.util.concurrent.ConcurrentMap
 import javax.swing.JComponent
 import javax.swing.JPanel
 import kotlin.collections.HashMap
@@ -42,7 +41,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(FlowPreview::class)
 class ErdEditor(
         private val file: VirtualFile,
-        private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>>
+        private val openEditors: OpenEditors<VirtualFile, ErdEditor>
 ) : UserDataHolderBase(),
         FileEditor,
         DumbAware, ErdEditorAppSettings.SettingsChangedListener, HubView {
@@ -113,16 +112,21 @@ class ErdEditor(
                         val value = file.inputStream.use { it.reader(Charsets.UTF_8).readText() }
 
                         holdForLock()
-                        // The registry picks the value, its mirror once quiet or the file's, and readies
+                        // The registry picks the value, its seed once quiet or the file's, and readies
                         // the page in the same step, so every batch it injects later follows the value.
-                        postHeld({ sendInitialValue(value) }) { onViewReady(it, this@ErdEditor, value) }
+                        // Unregistered, the page starts from the runtime value its file's editors hold.
+                        postHeld({ sendInitialValue(openEditors.seed(file, value)) }) {
+                            onViewReady(it, this@ErdEditor, value)
+                        }
                     }
 
                     is HostBridgeCommand.SaveValue -> {
                         val (value, changed, runtimeValue) = action.payload
                         // A save that changed nothing, as after a scroll the file does not keep, is not written.
                         if (changed) savePayload.value = value
-                        // The runtime value goes to the registry alone, which seeds pages and agents with it.
+                        // The runtime value seeds pages and agents, never a write: the registry keeps it,
+                        // and the open editors too, for a page of theirs the registry does not hold.
+                        openEditors.saved(file, this@ErdEditor, runtimeValue)
                         postForFile { onValueSaved(it, this@ErdEditor, value.takeIf { changed }, runtimeValue) }
                     }
 
@@ -198,7 +202,7 @@ class ErdEditor(
                 registry.post {
                     // Editors the registry let go of (the file renamed away and back) relay among
                     // themselves; a new one of that file joins them, so every page reaches every other.
-                    if (docToEditorsMap[file].orEmpty().all { it === this@ErdEditor || holds(doc, it) }) {
+                    if (openEditors.editors(file).all { it === this@ErdEditor || holds(doc, it) }) {
                         register(doc)
                         addView(doc, this@ErdEditor)
                     }
@@ -209,7 +213,7 @@ class ErdEditor(
                 coroutineScope,
                 bridge,
                 file,
-                docToEditorsMap
+                openEditors
             )
             if (document != null) {
                 // A new page holds nothing until it asks for its initial value again.
@@ -402,10 +406,7 @@ class ErdEditor(
     override fun dispose() {
         isDisposed = true
         bridge.close()
-        docToEditorsMap.computeIfPresent(file) { _, editors ->
-            editors.remove(this)
-            if (editors.isEmpty()) null else editors
-        }
+        openEditors.close(file, this)
 
         // Order matters: flush before cancelling, otherwise the cancellation wins the race and the
         // last edit is lost for good. The registry hears of the flush first; the last view to go

@@ -9,8 +9,6 @@ import com.intellij.openapi.fileEditor.impl.NonProjectFileWritingAccessProvider
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
 
 /**
  * Implements the stable [FileEditorProvider] rather than `AsyncFileEditorProvider`.
@@ -22,10 +20,9 @@ import java.util.concurrent.ConcurrentMap
  * happen on the EDT anyway.
  */
 class ErdEditorProvider : FileEditorProvider, DumbAware {
-    // Application-scoped and touched from both the EDT (open/close) and background dispatchers
-    // (replication broadcast), so it has to be concurrent. It relays the pages of a file the agent
-    // hub's registry does not hold; the registry relays those of the files it does.
-    private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>> = ConcurrentHashMap()
+    // Application-scoped. It relays the pages of a file the agent hub's registry does not hold, and
+    // seeds a new one, while the registry relays and seeds those of the files it does.
+    private val openEditors = OpenEditors<VirtualFile, ErdEditor>()
 
     override fun accept(project: Project, file: VirtualFile): Boolean = ErdEditorFiles.isErdEditorFile(file)
     override fun getEditorTypeId() = "erd-editor-jcef"
@@ -43,8 +40,8 @@ class ErdEditorProvider : FileEditorProvider, DumbAware {
             NonProjectFileWritingAccessProvider.allowWriting(listOf(file))
         }
 
-        val editor = ErdEditor(file, docToEditorsMap)
-        docToEditorsMap.computeIfAbsent(file) { ConcurrentHashMap.newKeySet() }.add(editor)
+        val editor = ErdEditor(file, openEditors)
+        openEditors.open(file, editor)
         return editor
     }
 }
