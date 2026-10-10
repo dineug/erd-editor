@@ -14,8 +14,11 @@ import { type Rect, unionRect } from '@/konva/scene/metrics';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { getTableGroupMembers, getTableGroupRect } from '@/utils/tableGroup';
 
-/** The members of a group with none, one list every such group shares. */
-const NO_MEMBERS: ReadonlyArray<Table> = Object.freeze([]);
+/**
+ * The members of a group with none, one list every such group shares, left unfrozen: r-html tracks
+ * no read of a frozen value, so a group handed its first member would never draw it in its box.
+ */
+const NO_MEMBERS: ReadonlyArray<Table> = [];
 
 /**
  * The box a group is drawn in, on the canvas and the minimap: getTableGroupRect's, and while a drag

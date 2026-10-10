@@ -53,6 +53,7 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableGroupAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
@@ -63,6 +64,7 @@ import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import { freezeView, thawView } from '@/konva/scene/viewFreeze';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { getTableGroupRect } from '@/utils/tableGroup';
 
 const teardowns: Array<() => void> = [];
 
@@ -438,6 +440,38 @@ describe('the minimap shell', () => {
     );
     await flush();
     expect(stage.find('.minimap-table-group')).toHaveLength(0);
+  });
+
+  it('grows a group box over the first member the group gains, on a map the join leaves unmoved', async () => {
+    const app = createTestAppContext();
+    // Two tables far out on either side pin the map, so no new ratio redraws the box.
+    app.store.dispatchSync(
+      addTableAction({ id: 'west', ui: { x: -3000, y: -3000, zIndex: 1 } }),
+      addTableAction({ id: 'east', ui: { x: 4000, y: 3000, zIndex: 2 } }),
+      addTableAction({ id: 't1', ui: { x: 500, y: 100, zIndex: 3 } }),
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 300, height: 200, zIndex: 4 },
+      })
+    );
+    await mountMinimap(app);
+    const stage = stageRegistry().minimap;
+    const before = layoutOf(app);
+
+    app.store.dispatchSync(changeTableGroupAction({ id: 't1', value: 'g1' }));
+    await flush();
+    await whenDrawn();
+
+    const rect = getMinimapMarkRect(
+      before.ratio,
+      getTableGroupRect(
+        app.store.state,
+        app.store.state.collections.tableGroupEntities.g1
+      )
+    );
+    expect(layoutOf(app)).toEqual(before);
+    expect(rect.width).toBeGreaterThan(300);
+    expect(stage.findOne('.minimap-table-group')!.attrs).toMatchObject(rect);
   });
 
   it('keeps the box for a table the canvas culls (AC-S4, AC-S5)', async () => {

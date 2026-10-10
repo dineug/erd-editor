@@ -220,6 +220,43 @@ describe('the table group scene', () => {
     );
   });
 
+  it('grows over the first member a group with none gains, and again once its last one left and came back', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addTableAction({ id: 'table', ui: { x: 500, y: 100, zIndex: 2 } })
+    );
+    const { stage } = await mountGroup({ app });
+    const rect = getTableRect(
+      app.store.state,
+      app.store.state.collections.tableEntities.table
+    );
+    const grown = rect.x + rect.width + TABLE_GROUP_PADDING - STORED.x;
+    const widths = () => ({
+      border: nodeNamed(stage, 'table-group-border').width() + 1,
+      bar: nodeNamed(stage, 'table-group-title-bar').width(),
+      body: nodeNamed(stage, 'table-group-body').width(),
+    });
+    const join = async (value: string) => {
+      app.store.dispatchSync(changeTableGroupAction({ id: 'table', value }));
+      await settle();
+    };
+
+    expect(widths()).toEqual({
+      border: STORED.width,
+      bar: STORED.width,
+      body: STORED.width,
+    });
+
+    await join(GROUP_ID);
+    expect(widths()).toEqual({ border: grown, bar: grown, body: grown });
+
+    await join('');
+    expect(widths().border).toBe(STORED.width);
+
+    await join(GROUP_ID);
+    expect(widths().border).toBe(grown);
+  });
+
   it('holds the box a drag began with, neither shrinking under a member lifted out nor stretching after it', async () => {
     const app = createTestAppContext();
     addMember(app, 'member', 900, 500);

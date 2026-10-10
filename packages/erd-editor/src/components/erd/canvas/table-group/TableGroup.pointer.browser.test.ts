@@ -624,6 +624,56 @@ describe('the drop of a table drag', () => {
     expect(tableOf(editor, 'loose').ui).toMatchObject(LOOSE);
   });
 
+  it('grows the box of a group with no member over the part of a table that joins it past the stored rect', async () => {
+    const editor = await mountEditor();
+    // The centre lands just inside the right edge, so most of the table stands past it.
+    const edge = { x: G2.x + G2.width - 20, y: G2_MIDDLE.y };
+
+    await pressAndMove(
+      editor,
+      centerOf(editor, '#table-loose'),
+      travelTo(editor, 'loose', edge)
+    );
+    await drop();
+
+    const loose = tableOf(editor, 'loose');
+    const padded = padRect(getTableRect(stateOf(editor), loose));
+    const box = boxOf(editor, 'g2');
+    expect(loose.groupId).toBe('g2');
+    expect(groupUi(editor, 'g2')).toMatchObject(G2);
+    expect(box.x + box.width).toBe(padded.x + padded.width);
+    expect(box.x + box.width).toBeGreaterThan(G2.x + G2.width);
+
+    const frame = editor.stage.findOne('#table-group-g2')!;
+    const border = partOf(editor, 'g2', 'table-group-border');
+    const bar = partOf(editor, 'g2', 'table-group-title-bar');
+    const body = partOf(editor, 'g2', 'table-group-body');
+    expect({
+      x: frame.x(),
+      y: frame.y(),
+      width: border.width() + 1,
+      height: border.height() + 1,
+    }).toEqual(box);
+    expect(bar.width()).toBe(box.width);
+    expect({ x: body.x(), width: body.width() }).toEqual({
+      x: box.x,
+      width: box.width,
+    });
+
+    // The bar takes a press past the stored rect as well, where it is drawn now.
+    press(
+      editor,
+      bar.getAbsoluteTransform().point({
+        x: G2.width + 30,
+        y: bar.height() / 2,
+      })
+    );
+    await drop();
+    expect(stateOf(editor).editor.selectedMap).toEqual({
+      g2: SelectType.tableGroup,
+    });
+  });
+
   it('takes a member dropped out of every group out of its own, outlining nothing', async () => {
     const editor = await mountEditor();
 
