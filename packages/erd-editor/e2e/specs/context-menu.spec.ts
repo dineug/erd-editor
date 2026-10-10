@@ -461,8 +461,11 @@ async function expectOnScreen(menu: Locator) {
 const rootMenu = (erd: ErdEditorPage) =>
   erd.host.locator('.context-menu-content[data-id="root"]');
 
+/** The row whose name is the whole of name, which New Table Group is not for New Table. */
 const rowOf = (menu: Locator, name: string) =>
-  menu.locator(':scope > div:not(.context-menu-content)', { hasText: name });
+  menu.locator(':scope > div:not(.context-menu-content)', {
+    has: menu.page().getByText(name, { exact: true }),
+  });
 
 test.describe('context menu at the window edge', () => {
   test.use({ viewport: EDGE_VIEWPORT });
@@ -554,7 +557,7 @@ test.describe('context menu at the window edge', () => {
   }) => {
     await erd.seed(oneTable());
 
-    const at = { x: 850, y: 196 };
+    const at = { x: 850, y: 164 };
     await erd.hoverAt(at);
     await erd.clickAt(at, { button: 'right' });
     await expect(erd.contextMenuItem('New Table')).toBeVisible();

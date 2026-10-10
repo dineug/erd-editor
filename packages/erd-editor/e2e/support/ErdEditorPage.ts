@@ -411,8 +411,9 @@ export class ErdEditorPage {
     return this.toolbar.locator(`[title^="${title}"]`);
   }
 
+  /** A menu row by its whole name, since one row's name can start another's: New Table Group. */
   contextMenuItem(label: string | RegExp) {
-    return this.contextMenu.getByText(label, { exact: false });
+    return this.contextMenu.getByText(label, { exact: true });
   }
 
   // ── coordinates ──────────────────────────────────────────────────────────
