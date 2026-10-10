@@ -23,7 +23,11 @@ type TableNode = {
   r: number;
   x: number;
   y: number;
+  vx: number;
+  vy: number;
   ref: Table;
+  width: number;
+  height: number;
 };
 
 /** A member, and where it stands from the corner of its group's box. */
@@ -39,6 +43,8 @@ type GroupNode = {
   r: number;
   x: number;
   y: number;
+  vx: number;
+  vy: number;
   group: TableGroup;
   width: number;
   height: number;
@@ -67,7 +73,17 @@ function createTableNode(
 ): TableNode {
   const { width, height } = tableRect(state, table);
 
-  return { id: table.id, r: (width + height) / 4, x, y, ref: table };
+  return {
+    id: table.id,
+    r: (width + height) / 4,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    ref: table,
+    width,
+    height,
+  };
 }
 
 function createGroupNode(
@@ -86,6 +102,8 @@ function createGroupNode(
     r: (box.width + box.height) / 4,
     x,
     y,
+    vx: 0,
+    vy: 0,
     group,
     width: box.width,
     height: box.height,
@@ -184,6 +202,94 @@ function placeNode(node: Node): void {
   node.group.ui.height = node.height;
 }
 
+/** The least room a group's box keeps from another group's box or a table. */
+export const GROUP_BOX_GAP = 100;
+
+/** The box a node draws where this tick's velocity takes it, as placeNode puts it. */
+function nextBox(node: Node): Rect {
+  const x = node.x + node.vx;
+  const y = node.y + node.vy;
+  const { width, height } = node;
+
+  return 'ref' in node
+    ? { x: x - node.r, y: y - node.r, width, height }
+    : { x: x - width / 2, y: y - height / 2, width, height };
+}
+
+/** How far two spans run into each other, the gap counted in; none at zero or less. */
+const overlapOf = (
+  start: number,
+  size: number,
+  other: number,
+  otherSize: number
+) =>
+  Math.min(start + size, other + otherSize) -
+  Math.max(start, other) +
+  GROUP_BOX_GAP;
+
+/**
+ * Pushes two boxes apart along the axis they run into each other least, the
+ * smaller node taking more of the push, as forceCollide shares one; boxes on
+ * one spot part in a direction the simulation's random source picks.
+ */
+function separate(a: Node, b: Node, random: () => number): void {
+  const boxA = nextBox(a);
+  const boxB = nextBox(b);
+  const overlapX = overlapOf(boxA.x, boxA.width, boxB.x, boxB.width);
+  const overlapY = overlapOf(boxA.y, boxA.height, boxB.y, boxB.height);
+  if (overlapX <= 0 || overlapY <= 0) return;
+
+  const across = overlapX < overlapY;
+  const apart = across
+    ? boxB.x + boxB.width / 2 - (boxA.x + boxA.width / 2)
+    : boxB.y + boxB.height / 2 - (boxA.y + boxA.height / 2);
+  const push =
+    Math.sign(apart || random() - 0.5) * Math.min(overlapX, overlapY);
+  const share = (b.r * b.r) / (a.r * a.r + b.r * b.r);
+
+  if (across) {
+    a.vx -= push * share;
+    b.vx += push * (1 - share);
+  } else {
+    a.vy -= push * share;
+    b.vy += push * (1 - share);
+  }
+}
+
+/**
+ * Keeps each group's box clear of every other box by GROUP_BOX_GAP, which no
+ * circle does for a box several members wide without claiming room far above
+ * and below it. A document with no group has no pair to part.
+ */
+function forceGroupBoxes() {
+  let groups: GroupNode[] = [];
+  let tables: TableNode[] = [];
+  let random: () => number;
+
+  const force = () => {
+    groups.forEach((group, index) => {
+      groups.slice(index + 1).forEach(other => separate(group, other, random));
+      tables.forEach(table => separate(group, table, random));
+    });
+  };
+
+  force.initialize = (nodes: Node[], source: () => number) => {
+    groups = nodes.filter((node): node is GroupNode => !('ref' in node));
+    tables = nodes.filter((node): node is TableNode => 'ref' in node);
+    random = source;
+  };
+
+  return force;
+}
+
+/**
+ * The circle forceCollide keeps a node in: a table's padded by 100, as it
+ * always was, and a group's the one inside its box, which claims no room past
+ * the box, so forceGroupBoxes alone sets the room round a group.
+ */
+const collideRadius = (node: Node) =>
+  'ref' in node ? 100 + node.r : Math.min(node.width, node.height) / 2;
+
 const progressInRange = (value: number) => clamp(value, 0, 1);
 
 /** The two readings of a simulation's heat that its progress is taken from. */
@@ -211,7 +317,7 @@ export function placementProgress(simulation: Cooling): number {
 /**
  * The force simulation that places the tables, around the middle of what the
  * document draws. A group with members is one box in it, its members kept
- * where they stand inside, so a group stays together and is drawn where it goes.
+ * inside and the box kept clear of the others, so it is drawn where it goes.
  */
 export function createAutomaticTablePlacement(state: RootState) {
   // The middle of what the document already draws, so a layout of an empty
@@ -226,10 +332,8 @@ export function createAutomaticTablePlacement(state: RootState) {
       'link',
       forceLink(links).id((d: any) => d.id)
     )
-    .force(
-      'collide',
-      forceCollide().radius((d: any) => 100 + d.r)
-    )
+    .force('collide', forceCollide<Node>().radius(collideRadius))
+    .force('groupBoxes', forceGroupBoxes())
     .force('charge', forceManyBody())
     .force('x', forceX(centerX))
     .force('y', forceY(centerY))

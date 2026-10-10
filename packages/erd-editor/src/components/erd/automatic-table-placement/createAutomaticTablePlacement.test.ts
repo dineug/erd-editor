@@ -1,10 +1,18 @@
-import { forceSimulation } from 'd3-force';
+import {
+  forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
+  forceX,
+  forceY,
+} from 'd3-force';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import {
   createAutomaticTablePlacement,
+  GROUP_BOX_GAP,
   placementProgress,
 } from '@/components/erd/automatic-table-placement/createAutomaticTablePlacement';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -19,7 +27,7 @@ import { RootState } from '@/engine/state';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { type Rect, unionRect } from '@/konva/scene/metrics';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
-import { padRect } from '@/utils/tableGroup';
+import { findTableGroupAt, getTableCenter, padRect } from '@/utils/tableGroup';
 
 type Simulation = ReturnType<typeof createAutomaticTablePlacement>;
 
@@ -100,7 +108,7 @@ describe('createAutomaticTablePlacement', () => {
     expect(node.ref).toBe(table);
   });
 
-  it('registers the link, collide, charge, x and y forces', () => {
+  it('registers the link, collide, group box, charge, x and y forces', () => {
     const app = createApp();
     addTable(app, 't1', 'users');
     const state = app.store.state;
@@ -109,6 +117,7 @@ describe('createAutomaticTablePlacement', () => {
 
     expect(simulation.force('link')).toBeTruthy();
     expect(simulation.force('collide')).toBeTruthy();
+    expect(simulation.force('groupBoxes')).toBeTruthy();
     expect(simulation.force('charge')).toBeTruthy();
     expect(simulation.force('x')).toBeTruthy();
     expect(simulation.force('y')).toBeTruthy();
@@ -124,6 +133,25 @@ describe('createAutomaticTablePlacement', () => {
     const radius = (simulation.force('collide') as any).radius();
 
     expect(radius(node)).toBe(100 + node.r);
+  });
+
+  it('gives a group the circle inside its box, claiming no room past the box', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users_with_a_long_table_name');
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 't1', value: 'g1' })
+    );
+
+    const simulation = create(app.store.state);
+    const [node] = simulation.nodes() as any[];
+    const radius = (simulation.force('collide') as any).radius();
+
+    expect(node.height).toBeLessThan(node.width);
+    expect(radius(node)).toBe(node.height / 2);
   });
 
   it('pulls every node toward the middle of the content on both axes', () => {
@@ -427,6 +455,235 @@ describe('createAutomaticTablePlacement with table groups', () => {
       width: 10,
       height: 10,
     });
+  });
+});
+
+describe('createAutomaticTablePlacement keeps group boxes apart', () => {
+  const overlaps = (a: Rect, b: Rect) =>
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height;
+
+  const tableBox = (state: RootState, id: string): Rect => {
+    const table = state.collections.tableEntities[id];
+    return {
+      x: table.ui.x,
+      y: table.ui.y,
+      width: calcTableWidths(table, state).width,
+      height: calcTableHeight(table),
+    };
+  };
+
+  const groupBox = (state: RootState, id: string): Rect => {
+    const { x, y, width, height } = state.collections.tableGroupEntities[id].ui;
+    return { x, y, width, height };
+  };
+
+  function relate(app: AppContext, id: string, start: string, end: string) {
+    app.store.dispatchSync(
+      addRelationshipAction({
+        id,
+        relationshipType: 4,
+        start: { tableId: start, columnIds: [] },
+        end: { tableId: end, columnIds: [] },
+      })
+    );
+  }
+
+  /** Runs the simulation to the heat its timer stops at, then places once. */
+  function settle(simulation: Simulation) {
+    while (simulation.alpha() >= simulation.alphaMin()) simulation.tick();
+    (simulation.on('tick') as (this: unknown) => void).call(simulation);
+  }
+
+  /**
+   * Three groups of four tables in a row each, far wider than tall, and four
+   * tables in no group, joined group to group and table to group.
+   */
+  function createWideGroups(app: AppContext) {
+    const groups = ['gA', 'gB', 'gC'];
+    groups.forEach((groupId, row) => {
+      const memberIds = [0, 1, 2, 3].map(index => `${groupId}-t${index}`);
+      memberIds.forEach((id, index) => {
+        addTable(app, id, `${groupId}_member_table_${index}`, {
+          x: index * 300,
+          y: row * 500,
+        });
+        app.store.dispatchSync(
+          ...[0, 1, 2, 3, 4, 5, 6, 7].map(column =>
+            addColumnAction({ id: `${id}-c${column}`, tableId: id })
+          )
+        );
+      });
+      app.store.dispatchSync(
+        addTableGroupAction({
+          id: groupId,
+          ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+        }),
+        ...memberIds.map(id => changeTableGroupAction({ id, value: groupId }))
+      );
+    });
+    const loose = [0, 1, 2, 3].map(index => `loose${index}`);
+    loose.forEach(id => addTable(app, id, id));
+    relate(app, 'r1', 'gA-t0', 'gB-t0');
+    relate(app, 'r2', 'gB-t1', 'gC-t0');
+    relate(app, 'r3', 'loose0', 'gA-t1');
+    relate(app, 'r4', 'loose1', 'gB-t2');
+
+    return { groups, loose };
+  }
+
+  it('leaves no two group boxes overlapping once the simulation settles', () => {
+    const app = createApp();
+    const { groups } = createWideGroups(app);
+    const state = app.store.state;
+
+    settle(create(state));
+
+    groups.forEach((a, index) =>
+      groups.slice(index + 1).forEach(b => {
+        expect(
+          overlaps(groupBox(state, a), groupBox(state, b)),
+          `${a} and ${b}`
+        ).toBe(false);
+      })
+    );
+    // The drop rule reads the box under a table's centre, so a member whose
+    // centre sat in another box would join that group on its next small drag.
+    groups.forEach(groupId =>
+      [0, 1, 2, 3].forEach(index => {
+        const table = state.collections.tableEntities[`${groupId}-t${index}`];
+        expect(findTableGroupAt(state, getTableCenter(state, table))?.id).toBe(
+          groupId
+        );
+      })
+    );
+  });
+
+  it('leaves no table of no group inside a group box once the simulation settles', () => {
+    const app = createApp();
+    const { groups, loose } = createWideGroups(app);
+    const state = app.store.state;
+
+    settle(create(state));
+
+    groups.forEach(groupId =>
+      loose.forEach(tableId => {
+        expect(
+          overlaps(groupBox(state, groupId), tableBox(state, tableId)),
+          `${groupId} and ${tableId}`
+        ).toBe(false);
+      })
+    );
+  });
+
+  it('places a document with no group exactly where the forces before groups did', () => {
+    const build = () => {
+      const app = createApp();
+      ['t1', 't2', 't3', 't4', 't5'].forEach((id, index) => {
+        addTable(app, id, `table_${'x'.repeat(index * 4)}`, {
+          x: index * 250,
+          y: (index % 2) * 400,
+        });
+        app.store.dispatchSync(
+          ...Array.from({ length: index + 1 }, (_, column) =>
+            addColumnAction({ id: `${id}-c${column}`, tableId: id })
+          )
+        );
+      });
+      relate(app, 'r1', 't1', 't2');
+      relate(app, 'r2', 't2', 't3');
+      relate(app, 'r3', 't4', 't1');
+      return app.store.state;
+    };
+    const state = build();
+    const reference = build();
+    const center = contentCenter(reference);
+    const nodes = reference.doc.tableIds.map(id => {
+      const { width, height } = tableBox(reference, id);
+      return { id, r: (width + height) / 4, x: center.x, y: center.y };
+    });
+    const before = forceSimulation(nodes)
+      .force(
+        'link',
+        forceLink([
+          { source: 't1', target: 't2' },
+          { source: 't2', target: 't3' },
+          { source: 't4', target: 't1' },
+        ]).id((d: any) => d.id)
+      )
+      .force(
+        'collide',
+        forceCollide().radius((d: any) => 100 + d.r)
+      )
+      .force('charge', forceManyBody())
+      .force('x', forceX(center.x))
+      .force('y', forceY(center.y))
+      .stop();
+    while (before.alpha() >= before.alphaMin()) before.tick();
+
+    settle(create(state));
+
+    expect(
+      state.doc.tableIds.map(id => {
+        const { x, y } = state.collections.tableEntities[id].ui;
+        return { id, x, y };
+      })
+    ).toEqual(nodes.map(({ id, x, y, r }) => ({ id, x: x - r, y: y - r })));
+  });
+
+  it("pushes a table out of a group's box along the axis it runs in least, the table taking most of it", () => {
+    const app = createApp();
+    addTable(app, 'member', 'member_table_with_a_long_name', { x: 0, y: 0 });
+    addTable(app, 'loose', 'loose');
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 'member', value: 'g1' })
+    );
+    const simulation = create(app.store.state);
+    const [group, table] = simulation.nodes() as any[];
+    // The table's box starts 10 inside the right edge of the group's box, its
+    // middle level with the box's, so across is the way it runs in least.
+    table.x = group.x + group.width / 2 - 10 + table.r;
+    table.y = group.y - table.height / 2 + table.r;
+
+    (simulation.force('groupBoxes') as (alpha: number) => void)(1);
+
+    const push = 10 + GROUP_BOX_GAP;
+    const share = table.r ** 2 / (group.r ** 2 + table.r ** 2);
+    expect(group.vx).toBeCloseTo(-push * share, 9);
+    expect(table.vx).toBeCloseTo(push * (1 - share), 9);
+    expect(table.vx).toBeGreaterThan(-group.vx);
+    expect([group.vy, table.vy]).toEqual([0, 0]);
+  });
+
+  it('parts two group boxes standing on one spot, by their whole height and the gap', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users_with_a_long_table_name');
+    addTable(app, 't2', 'posts_with_a_long_table_name');
+    ['g1', 'g2'].forEach((id, index) =>
+      app.store.dispatchSync(
+        addTableGroupAction({
+          id,
+          ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+        }),
+        changeTableGroupAction({ id: `t${index + 1}`, value: id })
+      )
+    );
+    const simulation = create(app.store.state);
+    const [a, b] = simulation.nodes() as any[];
+
+    (simulation.force('groupBoxes') as (alpha: number) => void)(1);
+
+    expect(a.width).toBe(b.width);
+    expect(a.height).toBeLessThan(a.width);
+    expect([a.vx, b.vx]).toEqual([0, 0]);
+    expect(Math.abs(b.vy - a.vy)).toBeCloseTo(a.height + GROUP_BOX_GAP, 9);
+    expect(Math.sign(a.vy)).toBe(-Math.sign(b.vy));
   });
 });
 
