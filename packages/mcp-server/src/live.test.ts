@@ -155,11 +155,15 @@ describe('a live session beyond the transition table', () => {
 
     await call('erd_add_memo');
     webview.undo();
-    await settle();
 
-    const shown = JSON.parse((await read('snapshot')).text);
+    // The undo reaches the agent over the socket, so wait for the agent to
+    // show the table rather than for a fixed time.
+    const shown = await vi.waitFor(async () => {
+      const snapshot = JSON.parse((await read('snapshot')).text);
+      expect(tableNamed(snapshot, 'users')).toEqual(users);
+      return snapshot;
+    });
     expect(hub.methods().filter(method => method === 'join')).toHaveLength(1);
-    expect(tableNamed(shown, 'users')).toEqual(users);
     expect(shown.tables).toEqual(snapshotOf(webview).tables);
   });
 
