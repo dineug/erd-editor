@@ -132,11 +132,11 @@ export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
   };
 
 /**
- * One drag of the selection: the document tables it carries, read at its first
- * step and kept to its last, since steps summed per table list would split if
- * a peer changed a selected group's members midway.
+ * One drag of the selection: the document groups and tables it carries, read at its first step and
+ * kept to its last, since steps summed per list would split if a peer changed a group's members, or
+ * hid the groups and so took them out of the selection, midway.
  */
-export type MoveAllGesture = { tableIds?: string[] };
+export type MoveAllGesture = { tableGroupIds?: string[]; tableIds?: string[] };
 
 /**
  * Moves the selection by a pointer step the scene's zoom scales, a selected
@@ -172,9 +172,14 @@ export const moveAllAction$ = (
       return;
     }
 
-    gesture.tableIds ??= getCarriedTableIds(state, tableGroupIds, tableIds);
+    gesture.tableGroupIds ??= tableGroupIds;
+    gesture.tableIds ??= getCarriedTableIds(
+      state,
+      gesture.tableGroupIds,
+      tableIds
+    );
     yield toMoveTableGroupActions(
-      tableGroupIds,
+      gesture.tableGroupIds,
       gesture.tableIds,
       newMovementX,
       newMovementY

@@ -367,7 +367,8 @@ The projection is interactive, not read-only. What it guarantees:
   re-renders the scene inside its own dispatch still finds the element it landed
   on when the routing above asks what it was.
 - **Names become classes**, split on whitespace; `data-id` is the node id minus
-  its `table-group-` / `table-` / `column-` / `memo-` / `relationship-` prefix,
+  its `table-group-body-` / `table-group-` / `table-` / `column-` / `memo-` /
+  `relationship-` prefix, the longest that matches,
   and `data-type` is the second name. So `relationship <id>` answers to
   `.relationship[data-type="<id>"]`, and a cell named `column-col columnName`
   answers to `[data-type="columnName"]`.

@@ -5,6 +5,7 @@ import { Clock } from '@/engine/clock';
 import {
   selectAction,
   selectAllAction,
+  unselectAllAction,
   validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -117,6 +118,19 @@ describe('moveAllAction$ with a group selected', () => {
       ['tableGroup.move', ['g1']],
       ['table.move', ['member', 'other']],
     ]);
+  });
+
+  it('keeps carrying the group its gesture began with once the group leaves the selection midway', () => {
+    store.dispatchSync(selectAction({ g1: SelectType.tableGroup }));
+    const gesture: MoveAllGesture = {};
+
+    store.dispatchSync(moveAllAction$(10, 0, 'document', gesture));
+    store.dispatchSync(unselectAllAction());
+    store.dispatchSync(moveAllAction$(10, 0, 'document', gesture));
+
+    expect(gesture.tableGroupIds).toEqual(['g1']);
+    expect(store.state.collections.tableGroupEntities.g1.ui.x).toBe(20);
+    expect(['member', 'other', 'loose'].map(tableX)).toEqual([120, 120, 500]);
   });
 
   it('moves no group from a view scene, which shows none', () => {

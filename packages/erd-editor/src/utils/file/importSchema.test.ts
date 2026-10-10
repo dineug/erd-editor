@@ -19,7 +19,7 @@ import { AppContext } from '@/components/appContext';
 import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType, Database, Language } from '@/constants/schema';
+import { CanvasType, Database, Language, Show } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeViewportAction,
@@ -49,6 +49,7 @@ import {
   changeDatabaseAction,
   changeDatabaseNameAction,
   changeLanguageAction,
+  changeShowAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -788,6 +789,30 @@ describe('appendSchema', () => {
       .sort();
     expect(members).toEqual(['posts', 'users']);
     expect(groupRect(app).x).toBe(x + 1500);
+  });
+
+  it('leaves the groups it adds unselected while groups are hidden, whose drop judges none', () => {
+    const app = createScreenApp();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+    appendSchema(app, 'dbml', FAN_DBML);
+    const { id } = groupOf(app);
+
+    expect(app.store.state.editor.selectedMap[id]).toBeUndefined();
+    expect(selectedNames(app)).toEqual(['photos', 'posts', 'users']);
+
+    for (let step = 0; step < 10; step++) {
+      app.store.dispatchSync(moveAllAction$(150, 0));
+    }
+    app.store.dispatchSync(dropTablesIntoGroupsAction$());
+
+    const members = Object.values(app.store.state.collections.tableEntities)
+      .filter(table => table.groupId === id)
+      .map(table => table.name)
+      .sort();
+    expect(members).toEqual(['posts', 'users']);
   });
 
   it('takes the tables, the selection and the scroll back on a single undo', () => {

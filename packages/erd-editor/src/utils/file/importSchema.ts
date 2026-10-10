@@ -26,7 +26,7 @@ import type { RootState } from '@/engine/state';
 import type { ElkLayoutPoint } from '@/services/elk-layout';
 import { arrayHas } from '@/utils/arrayHas';
 import { closePromise } from '@/utils/promise';
-import { getTableGroupWraps } from '@/utils/tableGroup';
+import { getTableGroupWraps, isTableGroupShown } from '@/utils/tableGroup';
 
 /** Every action a load or a clear starts with, from this editor, a peer or an undo. */
 const isLoad = arrayHas<string>([
@@ -211,7 +211,11 @@ const appendLandingAction$ = ({
       Object.fromEntries([
         ...tableIds.map(id => [id, SelectType.table]),
         ...memoIds.map(id => [id, SelectType.memo]),
-        ...tableGroupIds.map(id => [id, SelectType.tableGroup]),
+        // Hidden groups never stay selected, and a drag judges no group then.
+        ...(isTableGroupShown(state) ? tableGroupIds : []).map(id => [
+          id,
+          SelectType.tableGroup,
+        ]),
       ])
     );
     yield* scrollIntoView(state, rect, coveredWidth(state));
