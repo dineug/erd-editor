@@ -385,7 +385,8 @@ class McpConformanceTest {
             runtime.threads.schedule(SAVE_AFTER_MS) {
                 val text = page.text
                 lastSaved = text
-                runtime.registry.onValueSaved(file, this, text)
+                // A page hands its runtime value with every save; this one holds nothing the file drops.
+                runtime.registry.onValueSaved(file, this, text, text)
             }
         }
     }

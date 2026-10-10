@@ -51,12 +51,24 @@ class DocumentEntry internal constructor(val file: DocumentFile) {
     var observedVersion: Double = 0.0
     var quiet: QuietState<HubView> = QuietState()
 
-    /** The document as the first editor loaded it or a replica last saved it; save reads it on the EDT. */
+    /**
+     * The document as the first editor loaded it or a replica last saved it, the storage form the
+     * file takes; save reads it on the EDT.
+     */
     @Volatile
     var content: String? = null
 
+    /**
+     * The runtime value a replica handed with its last save, changed or not: what a new page or a
+     * joining peer is seeded with ahead of the content. Kept in memory only, never written.
+     */
+    var runtimeValue: String? = null
+
     /** What an editor last wrote to the file; the dirty flag compares the content against it. */
     var lastWritten: String? = null
+
+    /** What a new page or a joining peer starts from: the runtime value, else the content. */
+    val seed: String? get() = runtimeValue ?: content
 
     /** Completed once the lock lists the document, or at once with no hub to list it. */
     val listed: CompletableDeferred<Unit> = CompletableDeferred()
@@ -175,8 +187,8 @@ class DocumentRegistry(
 
     /**
      * The view's page asked for its initial value, so it holds nothing until it has one. One step
-     * seeds and readies it: once the document is quiet (a join's wait), it picks the mirror or
-     * diskValue, sends it and marks the view ready without suspending, so every later batch follows it.
+     * seeds and readies it: once the document is quiet (a join's wait), it sends the seed or
+     * diskValue and marks the view ready without suspending, so every later batch follows it.
      */
     fun onViewReady(file: DocumentFile, view: HubView, diskValue: String) {
         val entry = entries[file] ?: return
@@ -186,16 +198,17 @@ class DocumentRegistry(
         val token = Any()
         readying[view] = token
         threads.scope.launch(threads.registry, CoroutineStart.UNDISPATCHED) {
-            if (entry.content != null) {
+            if (entry.seed != null) {
                 JoinWindow.waitUntilQuiet(entry.quiet, timings.joinQuietCapMs, clock)
                 if (readying[view] !== token) return@launch
             }
             readying.remove(view)
-            val value = entry.content ?: diskValue
-            view.sendInitialValue(value)
+            // The page may start from the runtime value; the file's side keeps the storage form.
+            val stored = entry.content ?: diskValue
+            view.sendInitialValue(entry.runtimeValue ?: stored)
             entry.ready += view
-            if (entry.content == null) entry.content = value
-            if (entry.lastWritten == null) entry.lastWritten = value
+            if (entry.content == null) entry.content = stored
+            if (entry.lastWritten == null) entry.lastWritten = stored
             wake(entry)
         }
     }
@@ -209,11 +222,15 @@ class DocumentRegistry(
         JoinWindow.dropRecipient(entry.quiet, view)
     }
 
-    /** A replica saved, so the content is current for what its view had seen; a null value changed nothing. */
-    fun onValueSaved(file: DocumentFile, view: HubView, value: String?) {
+    /**
+     * A replica saved, so the content is current for what its view had seen; a null value changed
+     * nothing. runtimeValue, sent with every save of a page that has one, replaces the seed's.
+     */
+    fun onValueSaved(file: DocumentFile, view: HubView, value: String?, runtimeValue: String? = null) {
         val entry = entries[file] ?: return
         if (view !in entry.views) return
         if (value != null) entry.content = value
+        if (runtimeValue != null) entry.runtimeValue = runtimeValue
         JoinWindow.noteSave(entry.quiet, view, clock.nowMs())
     }
 
@@ -476,18 +493,18 @@ class DocumentRegistry(
     }
 
     /**
-     * The mirror, or the file while no view was ever ready. A view that turns ready during the read
+     * The seed, or the file while no view was ever ready. A view that turns ready during the read
      * emitted into the mirror only, so the disk text is dropped and the join waits out the rest of its cap.
      */
     private suspend fun joinText(entry: DocumentEntry, peer: JoinPeer, deadline: Double): String {
-        entry.content?.let { return it }
+        entry.seed?.let { return it }
         val disk = withContext(threads.io) { readFile(entry.path) }
         checkJoined(entry, peer)
-        if (entry.content == null) return disk
+        if (entry.seed == null) return disk
         val left = deadline - clock.nowMs()
         if (left > 0) JoinWindow.waitUntilQuiet(entry.quiet, ceil(left).toLong(), clock)
         checkJoined(entry, peer)
-        return entry.content ?: disk
+        return entry.seed ?: disk
     }
 
     /** The file as it is on disk, a missing one refused with notFound. On io. */

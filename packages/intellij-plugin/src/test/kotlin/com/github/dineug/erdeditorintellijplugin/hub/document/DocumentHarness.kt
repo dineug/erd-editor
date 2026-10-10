@@ -120,8 +120,9 @@ class DocumentHarness(
         onRegistry {}
     }
 
-    /** The page's replica saved value; null for a change that left it as it was. */
-    fun save(opened: Opened, value: String?) = onRegistry { onValueSaved(opened.file, opened.view, value) }
+    /** The page's replica saved value, null for a change that left it as it was, and handed runtime with it. */
+    fun save(opened: Opened, value: String?, runtime: String? = null) =
+        onRegistry { onValueSaved(opened.file, opened.view, value, runtime) }
 
     /** Runs a handler method on the registry thread, as the connection server does, and waits for it. */
     fun <T> call(block: suspend HubRequestHandler.() -> T): T = runBlocking(threads.registry) { handler.block() }

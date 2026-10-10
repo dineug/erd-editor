@@ -838,6 +838,21 @@ class HubRequestHandlerTest {
     }
 
     @Test
+    fun `writes the value a page saved, never the runtime value it handed with it`() {
+        val h = harness()
+        val writer = h.openReady(A, "{}")
+        h.save(writer, "{\"stored\":1}", runtime = "{\"runtime\":1}")
+
+        assertEquals("{\"saved\":true}", h.saveDocument(A))
+        h.onRegistry { onWritten(writer.file, "{\"stored\":1}") }
+        h.save(writer, null, runtime = "{\"runtime\":2}")
+        h.ready(h.add(writer.file))
+        assertEquals("{\"saved\":true}", h.saveDocument(A))
+
+        assertEquals(listOf("{\"stored\":1}"), writer.view.writeCalls)
+    }
+
+    @Test
     fun `writes nothing when the file holds the mirror, as after a scroll the file does not keep or an autosave`() {
         val h = harness(PATIENT_TIMINGS)
         val editor = h.openReady(A, "{ \"older\": \"bytes\" }")

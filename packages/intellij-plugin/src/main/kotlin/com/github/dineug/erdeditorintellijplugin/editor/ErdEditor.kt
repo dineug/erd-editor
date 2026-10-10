@@ -119,10 +119,11 @@ class ErdEditor(
                     }
 
                     is HostBridgeCommand.SaveValue -> {
-                        val (value, changed) = action.payload
+                        val (value, changed, runtimeValue) = action.payload
                         // A save that changed nothing, as after a scroll the file does not keep, is not written.
                         if (changed) savePayload.value = value
-                        postForFile { onValueSaved(it, this@ErdEditor, value.takeIf { changed }) }
+                        // The runtime value goes to the registry alone, which seeds pages and agents with it.
+                        postForFile { onValueSaved(it, this@ErdEditor, value.takeIf { changed }, runtimeValue) }
                     }
 
                     is HostBridgeCommand.SaveReplication -> {
