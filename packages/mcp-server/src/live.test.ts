@@ -146,6 +146,23 @@ describe('a live session beyond the transition table', () => {
     });
   });
 
+  it('joins from the runtime value the editor holds, so the user undoing a removal restores the table whole', async () => {
+    io.put(DOCUMENT, documentFromSql(SHOP_SQL));
+    const { webview } = hub.open(DOCUMENT);
+    const users = tableNamed(snapshotOf(webview), 'users');
+    runTool(webview, 'erd_remove_table', { tableId: users.id });
+    await settle();
+
+    await call('erd_add_memo');
+    webview.undo();
+    await settle();
+
+    const shown = JSON.parse((await read('snapshot')).text);
+    expect(hub.methods().filter(method => method === 'join')).toHaveLength(1);
+    expect(tableNamed(shown, 'users')).toEqual(users);
+    expect(shown.tables).toEqual(snapshotOf(webview).tables);
+  });
+
   describe('the order of a join answer and what came with it', () => {
     /** A table the user added after the snapshot, as actions the hub relays. */
     function addedAfterSnapshot() {
