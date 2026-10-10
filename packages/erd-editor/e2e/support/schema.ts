@@ -207,7 +207,7 @@ export type ErdDocument = {
     relationshipIds: string[];
     indexIds: string[];
     memoIds: string[];
-    /** Written only while the document holds a table group. */
+    /** Written while it or tableGroupEntities holds an entry, a removed group's too. */
     tableGroupIds?: string[];
   };
   collections: {
@@ -217,7 +217,7 @@ export type ErdDocument = {
     indexEntities: Record<string, IndexEntity>;
     indexColumnEntities: Record<string, IndexColumnEntity>;
     memoEntities: Record<string, MemoEntity>;
-    /** Written only while the document holds a table group. */
+    /** Written while it or doc.tableGroupIds holds an entry, a removed group's too. */
     tableGroupEntities?: Record<string, TableGroupEntity>;
   };
   lww?: Record<string, unknown>;
@@ -237,7 +237,7 @@ export type TableEntity = {
   comment: string;
   columnIds: string[];
   seqColumnIds: string[];
-  /** The table group it is in, written only while it is in one. */
+  /** The table group it is in, written while not empty, a removed group's id too. */
   groupId?: string;
   ui: {
     x: number;

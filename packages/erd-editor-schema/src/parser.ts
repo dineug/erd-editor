@@ -69,8 +69,8 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
 
 /**
  * The doc and collections with the table group fields written sparsely: the
- * groups and their order only while either holds one, a table's groupId only
- * while it names a group, so a document that never had one keeps its bytes.
+ * groups and their order while either holds an entry, a removed group's too,
+ * a groupId while not empty, so a document that never had one keeps its bytes.
  */
 function withoutEmptyTableGroups({
   doc,

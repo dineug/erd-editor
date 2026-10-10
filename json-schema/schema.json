@@ -214,7 +214,7 @@
           }
         },
         "tableGroupIds": {
-          "description": "Order of the table groups. Written only while the document has a table group; absent means none",
+          "description": "Order of the table groups. Written while it or tableGroupEntities holds an entry, as a removed group does there until the editor collects it; absent means none",
           "type": "array",
           "items": {
             "type": "string"
@@ -249,7 +249,7 @@
             }
           },
           "groupId": {
-            "description": "Id of the table group the table belongs to; an id naming no group in doc.tableGroupIds reads as none. Written only while it names a group; absent or empty means none",
+            "description": "Id of the table group the table belongs to; an id naming no group in doc.tableGroupIds reads as none. Written while not empty, such an id included; absent or empty means none",
             "type": "string"
           },
           "ui": {
@@ -530,7 +530,7 @@
       }
     },
     "tableGroupEntities": {
-      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written only while the document has a table group; absent means none",
+      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written while it or doc.tableGroupIds holds an entry, a removed group included until the editor collects it; absent means none",
       "type": "object",
       "additionalProperties": {
         "type": "object",
