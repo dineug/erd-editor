@@ -2,7 +2,14 @@
 // table and canvas menus, the draw mode, the name editor and the Delete key,
 // the keys pressed on a real keyboard and the presses dispatched on the page.
 
-import { createRef, FC, observable, ref, useProvider } from '@dineug/r-html';
+import {
+  addCSSHost,
+  createRef,
+  FC,
+  observable,
+  ref,
+  useProvider,
+} from '@dineug/r-html';
 import type { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { type Stage, stages } from 'konva/lib/Stage';
@@ -115,7 +122,28 @@ async function settle(rounds = 2) {
   }
 }
 
-async function mountEditor({ readonly = false } = {}): Promise<Editor> {
+/**
+ * A shadow root that adopts the editor's stylesheets, as the element's does,
+ * so what the editor overlays on the scene is laid out by its own rules.
+ */
+function styledRoot() {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const shadow = host.attachShadow({ mode: 'open' });
+  addCSSHost(shadow);
+  return { host, shadow };
+}
+
+type MountOptions = {
+  readonly?: boolean;
+  /** Lays the editor out right to left, styled in a shadow root. */
+  rtl?: boolean;
+};
+
+async function mountEditor({
+  readonly = false,
+  rtl = false,
+}: MountOptions = {}): Promise<Editor> {
   const flags = observable({ readonly: false });
   const app = createTestAppContext({ getReadonly: () => flags.readonly });
   const { store } = app;
@@ -133,7 +161,8 @@ async function mountEditor({ readonly = false } = {}): Promise<Editor> {
   flags.readonly = readonly;
 
   const Root: FC = () => () => <Shell readonly={flags.readonly} />;
-  const mounted = mount(<Root />, app);
+  const styled = rtl ? styledRoot() : null;
+  const mounted = mount(<Root />, app, styled?.shadow);
   // useProvider takes a bare element at runtime and types only a component
   // context, hence the cast; it is r-html's own, not a React hook.
   // oxlint-disable-next-line react-hooks/rules-of-hooks
@@ -144,6 +173,7 @@ async function mountEditor({ readonly = false } = {}): Promise<Editor> {
   );
 
   const shell = mounted.container.querySelector('.root') as HTMLDivElement;
+  if (rtl) shell.dir = 'rtl';
   // What ErdEditor answers the event with, ctx.focus() on its root.
   const focusShell = () => shell.focus();
   document.body.addEventListener(forceFocusEvent.type, focusShell);
@@ -152,6 +182,7 @@ async function mountEditor({ readonly = false } = {}): Promise<Editor> {
     document.body.removeEventListener(forceFocusEvent.type, focusShell);
     mounted.unmount();
     themeProvider.destroy();
+    styled?.host.remove();
   });
 
   await settle(3);
@@ -562,6 +593,34 @@ describe('the draw mode', () => {
       [id]: SelectType.tableGroup,
     });
     expect(document.activeElement).toBe(nameInputOf(editor));
+  });
+
+  it('spans from the press to the pointer in a right-to-left editor too, over a canvas that never mirrors', async () => {
+    const editor = await mountEditor({ rtl: true });
+    editor.app.store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+    await settle(1);
+    expect(getComputedStyle(editor.root).direction).toBe('rtl');
+
+    const from = { x: 590, y: 120 };
+    const to = { x: 1140, y: 340 };
+    await drawFrom(editor, from);
+    await moveTo(editor, to);
+
+    const box = draftOf(editor)!.getBoundingClientRect();
+    const start = clientOf(editor, from);
+    const end = clientOf(editor, to);
+    expect(box.left).toBeCloseTo(start.clientX, 1);
+    expect(box.top).toBeCloseTo(start.clientY, 1);
+    expect(box.right).toBeCloseTo(end.clientX, 1);
+    expect(box.bottom).toBeCloseTo(end.clientY, 1);
+
+    await release(editor);
+    const [id] = newGroupIds(editor);
+    const corner = sceneOf(editor, from);
+    expect(groupEntity(editor, id).ui).toMatchObject({
+      x: Math.round(corner.x),
+      y: Math.round(corner.y),
+    });
   });
 
   it('draws a group no smaller than the least a group takes, the way it was dragged', async () => {
