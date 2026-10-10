@@ -23,6 +23,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  selectIndexColumns,
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,
@@ -263,23 +264,13 @@ export function formatIndex(
     .selectById(index.tableId);
   if (!table) return;
 
-  const columnNames = query(collections)
-    .collection('indexColumnEntities')
-    .selectByIds(index.indexColumnIds)
-    .map(indexColumn => {
-      const column = query(collections)
-        .collection('tableColumnEntities')
-        .selectById(indexColumn.columnId);
-      if (column) {
-        return {
-          name: `${BRACKET}${column.name}${BRACKET} ${toOrderName(
-            indexColumn.orderType
-          )}`,
-        };
-      }
-      return null;
+  const columnNames = selectIndexColumns(collections, table, index).map(
+    ({ indexColumn, column }) => ({
+      name: `${BRACKET}${column.name}${BRACKET} ${toOrderName(
+        indexColumn.orderType
+      )}`,
     })
-    .filter(columnName => columnName !== null) as { name: string }[];
+  );
 
   if (columnNames.length === 0) return;
 
@@ -301,15 +292,7 @@ export function formatIndex(
   );
   buffer.push(
     `-- ALTER TABLE ${BRACKET}${table.name}${BRACKET} CLUSTER BY (${formatNames(
-      query(collections)
-        .collection('indexColumnEntities')
-        .selectByIds(index.indexColumnIds)
-        .map(indexColumn =>
-          query(collections)
-            .collection('tableColumnEntities')
-            .selectById(indexColumn.columnId)
-        )
-        .filter(column => column !== undefined) as { name: string }[],
+      selectIndexColumns(collections, table, index).map(({ column }) => column),
       BRACKET
     )});`
   );

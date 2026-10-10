@@ -119,7 +119,7 @@ function createFixture() {
 /**
  * Adds a second users table that posts also references, and an unnamed index on
  * users and on it that the document does not list yet. The table borrows the
- * users key column, which the DDL reads by id alone.
+ * users key column and both indexes one index column, which the DDL reads by id alone.
  */
 function addSecondUsers(state: RootState, name: string) {
   const table = createTable({
@@ -132,18 +132,24 @@ function addSecondUsers(state: RootState, name: string) {
     start: { tableId: table.id, columnIds: ['col-id'] },
     end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
   });
+  const indexColumn = createIndexColumn({
+    id: 'idx-col-id',
+    indexId: 'idx-users',
+    columnId: 'col-id',
+  });
   const usersIndex = createIndex({
     id: 'idx-users',
     tableId: 'tbl-users',
-    indexColumnIds: ['idx-col-1'],
+    indexColumnIds: [indexColumn.id],
   });
   const index = createIndex({
     id: 'idx-users-2',
     tableId: table.id,
-    indexColumnIds: ['idx-col-1'],
+    indexColumnIds: [indexColumn.id],
   });
   state.collections.tableEntities[table.id] = table;
   state.collections.relationshipEntities[relationship.id] = relationship;
+  state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
   state.collections.indexEntities[usersIndex.id] = usersIndex;
   state.collections.indexEntities[index.id] = index;
   state.doc.tableIds.push(table.id);
@@ -646,7 +652,7 @@ describe('schema-sql/MySQL ifNotExists', () => {
       expect(inline).toContain(`  CONSTRAINT ${name}\n`);
     });
     expect(create).toContain('CREATE INDEX IDX_Users1\n  ON Users');
-    expect(inline).toContain('  INDEX IDX_Users1 (title ASC)\n');
+    expect(inline).toContain('  INDEX IDX_Users1 (id ASC)\n');
     expect(inline).toContain('  INDEX IDX_posts (title ASC),\n');
   });
 

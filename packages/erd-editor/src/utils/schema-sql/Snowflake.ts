@@ -27,6 +27,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  selectIndexColumns,
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,
@@ -247,16 +248,8 @@ export function formatIndex(
     .selectById(index.tableId);
   if (!table) return;
 
-  const indexColumns = query(collections)
-    .collection('indexColumnEntities')
-    .selectByIds(index.indexColumnIds);
-  const columns = indexColumns
-    .map(indexColumn =>
-      query(collections)
-        .collection('tableColumnEntities')
-        .selectById(indexColumn.columnId)
-    )
-    .filter(column => column !== undefined);
+  const indexColumns = selectIndexColumns(collections, table, index);
+  const columns = indexColumns.map(({ column }) => column);
 
   if (columns.length === 0) return;
 
@@ -283,19 +276,11 @@ export function formatIndex(
     return;
   }
 
-  const sortedNames = indexColumns
-    .map(indexColumn => {
-      const column = query(collections)
-        .collection('tableColumnEntities')
-        .selectById(indexColumn.columnId);
-      if (!column) return null;
-      return {
-        name: `${bracket}${column.name}${bracket} ${toOrderName(
-          indexColumn.orderType
-        )}`,
-      };
-    })
-    .filter(columnName => columnName !== null);
+  const sortedNames = indexColumns.map(({ indexColumn, column }) => ({
+    name: `${bracket}${column.name}${bracket} ${toOrderName(
+      indexColumn.orderType
+    )}`,
+  }));
 
   // There is no CREATE INDEX in Snowflake. The index is emitted as the
   // clustering it maps onto, commented out: CLUSTER BY takes one key set per

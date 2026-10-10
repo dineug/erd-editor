@@ -450,11 +450,12 @@ describe('SQLite dotted table names', () => {
     const { state, users, posts } = createFixture();
     users.name = 'sales.users';
     posts.name = 'sales.posts';
-    // The hr table borrows the sales key column, which the DDL reads by id alone.
+    // The hr table borrows the sales key and email columns, which the DDL reads
+    // by id alone, and its index the sales email index column.
     const hrUsers = createTable({
       id: 't-hr-users',
       name: 'hr.Users',
-      columnIds: ['c-user-id'],
+      columnIds: ['c-user-id', 'c-user-email'],
     });
     const hrRelationship = createRelationship({
       id: 'r-hr',
@@ -465,7 +466,7 @@ describe('SQLite dotted table names', () => {
       id: 'i-hr',
       name: '',
       tableId: hrUsers.id,
-      indexColumnIds: ['ic-1'],
+      indexColumnIds: ['ic-2'],
     });
     state.collections.tableEntities[hrUsers.id] = hrUsers;
     state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;

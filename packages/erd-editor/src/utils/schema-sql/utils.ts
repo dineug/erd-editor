@@ -9,7 +9,14 @@ import {
   ReferentialActionToSQL,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import { Column, Index, Relationship, Table } from '@/internal-types';
+import {
+  Collections,
+  Column,
+  Index,
+  IndexColumn,
+  Relationship,
+  Table,
+} from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 import { SchemaSQLStatements } from './options';
@@ -154,15 +161,41 @@ export function toForeignKeyPairs(
 }
 
 /**
+ * The columns of an index its table still lists, in the index's order, each
+ * with the index column naming it: a column taken out of the table stays in
+ * the collection, but a saved file leaves it out of the index, as this does.
+ */
+export function selectIndexColumns(
+  collections: Collections,
+  table: Table,
+  index: Index
+): Array<{ indexColumn: IndexColumn; column: Column }> {
+  const listed = new Set(table.columnIds);
+
+  return query(collections)
+    .collection('indexColumnEntities')
+    .selectByIds(index.indexColumnIds)
+    .flatMap(indexColumn => {
+      const column = listed.has(indexColumn.columnId)
+        ? query(collections)
+            .collection('tableColumnEntities')
+            .selectById(indexColumn.columnId)
+        : undefined;
+      return column ? [{ indexColumn, column }] : [];
+    });
+}
+
+/**
  * What one export writes: every table, relationship and index of the document,
  * or the tables named, their indexes and the foreign keys they hold, whose
- * parent tables stay in the document, so a reference out of them still shows.
+ * parents stay in the document, so a reference out still shows; never an index of a removed table.
  */
 export function toSchemaEntities(
   { doc, collections }: Pick<RootState, 'doc' | 'collections'>,
   tableIds?: readonly string[]
 ): { tables: Table[]; relationships: Relationship[]; indexes: Index[] } {
   const named = tableIds ? new Set(tableIds) : null;
+  const listed = new Set(doc.tableIds);
   const writes = (tableId: string) => !named || named.has(tableId);
 
   return {
@@ -177,7 +210,7 @@ export function toSchemaEntities(
     indexes: query(collections)
       .collection('indexEntities')
       .selectByIds(doc.indexIds)
-      .filter(({ tableId }) => writes(tableId)),
+      .filter(({ tableId }) => listed.has(tableId) && writes(tableId)),
   };
 }
 
