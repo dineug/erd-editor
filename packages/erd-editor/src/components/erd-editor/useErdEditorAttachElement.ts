@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import {
   observable,
   onBeforeMount,
@@ -529,10 +529,14 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   Object.defineProperty(ctx, 'value', {
-    get: () => toJson(store.state),
+    get: () => toDocumentJson(store.state),
     set: (value: string) => {
       store.dispatchSync(loadJsonAction$(toLoadValue(value)));
     },
+  });
+
+  Object.defineProperty(ctx, 'runtimeValue', {
+    get: () => toJson(store.state),
   });
 
   return {

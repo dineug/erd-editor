@@ -135,13 +135,27 @@ const ordersBuyer = [
   },
 ];
 
-/** A document as the engine leaves it once its hooks have run, derived fields included. */
+/** A document in the file form a replica stores once its hooks have run. */
 async function settledValueOf(actions: any[]) {
   const store = createReplicationStore({ toWidth });
   store.setInitialValue(SAVED_WITH_THE_VIEW);
   store.dispatchSync(actions);
   await settle();
   const value = store.value;
+  store.destroy();
+  return value;
+}
+
+/**
+ * The same document as a release before the file form stored it: the replica's
+ * runtime value, its derived fields and removed entities included.
+ */
+async function olderValueOf(actions: any[]) {
+  const store = createReplicationStore({ toWidth });
+  store.setInitialValue(SAVED_WITH_THE_VIEW);
+  store.dispatchSync(actions);
+  await settle();
+  const value = store.runtimeValue;
   store.destroy();
   return value;
 }
@@ -200,8 +214,8 @@ function withForeignFields(
 }
 
 /**
- * The document as an import converts a source: laid out, but read before the
- * engine's hooks place its connectors and set the flags read off its columns,
+ * A source as a release before the file form converted it: laid out, but read
+ * before the hooks placed its connectors and set the flags read off its columns,
  * so every relationship still holds what the parser created it with.
  */
 function asConverted(value: string) {
@@ -314,7 +328,7 @@ describe('SchemaService', () => {
       expect(JSON.parse(rows.get(row.id)!.value).doc.memoIds).toEqual(['m1']);
     });
 
-    it('saves a mapping another tab changed, the foreign key mark moved to the column it now ends on, as an edit', async () => {
+    it('saves a mapping another tab changed as an edit, the foreign key mark it moves left out of the file', async () => {
       const row = seed(rows, {
         value: await settledValueOf([...usersAndOrders, ...ordersBuyer]),
       });
@@ -336,8 +350,9 @@ describe('SchemaService', () => {
       expect(collections.relationshipEntities.placed.end.columnIds).toEqual([
         'orders.buyer',
       ]);
-      expect(collections.tableColumnEntities['orders.buyer'].ui.keys).toBe(2);
-      expect(collections.tableColumnEntities['orders.user'].ui.keys).toBe(0);
+      expect(
+        collections.tableColumnEntities['orders.buyer']
+      ).not.toHaveProperty('ui');
       expect(saved.updateAt).toBeGreaterThanOrEqual(OPENED);
       expect(postMessage).toHaveBeenCalledTimes(1);
       expect(postMessage).toHaveBeenCalledWith(
@@ -414,8 +429,8 @@ describe('SchemaService', () => {
       );
     });
 
-    it('keeps the tombstone a stored value holds and counts its load as no edit', async () => {
-      const value = valueOf([
+    it('stores an older value, a tombstone in it, in the file form without it, counting its load as no edit', async () => {
+      const value = await olderValueOf([
         {
           type: 'memo.add',
           payload: { id: 'm1', ui: { x: 1, y: 2, zIndex: 3 } },
@@ -429,19 +444,22 @@ describe('SchemaService', () => {
       await settle();
 
       const saved = rows.get(row.id)!;
-      expect(JSON.parse(saved.value).collections.memoEntities).toHaveProperty(
-        'm1'
-      );
+      expect(saved.value).not.toBe(value);
+      expect(
+        JSON.parse(saved.value).collections.memoEntities
+      ).not.toHaveProperty('m1');
       expect(saved.updateAt).toBe(CREATED);
       expect(postMessage).not.toHaveBeenCalled();
     });
 
-    describe('on a document whose derived fields were saved elsewhere', () => {
+    describe('on a document an older release saved with the derived fields of another machine', () => {
       let settled: string;
+      let file: string;
       let row: SchemaEntity;
 
       beforeEach(async () => {
-        settled = await settledValueOf(usersAndOrders);
+        settled = await olderValueOf(usersAndOrders);
+        file = await settledValueOf(usersAndOrders);
         row = seed(rows, {
           value: withForeignFields(
             settled,
@@ -468,7 +486,7 @@ describe('SchemaService', () => {
           await settle();
           const [replica] = await service.getAllWithValue();
           expect(JSON.parse(replica.value).collections).toEqual(
-            JSON.parse(settled).collections
+            JSON.parse(file).collections
           );
 
           await service.replication(row.id, zoomAndScroll);

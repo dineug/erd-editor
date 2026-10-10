@@ -192,6 +192,27 @@ describe('a batch of edit tools', () => {
     expect(toAgentSnapshot(peer.state).tables.at(-1)!.comment).toBe('$t');
   });
 
+  it('rehearses on the runtime value, which holds what an undo brings back, never the file form', () => {
+    const peer = seeded();
+    runBatch(peer, [
+      { tool: 'erd_remove_table', args: { tableId: SEED.empty } },
+    ]);
+    const read: PropertyKey[] = [];
+    const watched = new Proxy(peer, {
+      get: (target, key) => {
+        if (key === 'value' || key === 'runtimeValue') read.push(key);
+        return Reflect.get(target, key);
+      },
+    });
+
+    runBatch(watched, REVIEWS);
+
+    expect(read).toEqual(['runtimeValue']);
+    expect(
+      JSON.parse(peer.runtimeValue).collections.tableEntities
+    ).toHaveProperty(SEED.empty);
+  });
+
   it('lists the operations the editor keeps no undo entry for', () => {
     const peer = seeded();
 

@@ -232,9 +232,9 @@ describe('createHooks', () => {
     const replica = createReplicationStore({ toWidth: () => 0 });
     replica.setInitialValue(fileWithTombstone());
 
-    expect(JSON.parse(replica.value).collections.memoEntities).toHaveProperty(
-      'removed'
-    );
+    expect(
+      JSON.parse(replica.runtimeValue).collections.memoEntities
+    ).toHaveProperty('removed');
     replica.destroy();
   });
 

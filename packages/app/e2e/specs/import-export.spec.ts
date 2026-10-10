@@ -30,12 +30,12 @@ const storedTableCount = ({ value }: StoredSchema) =>
 
 const storedSettings = ({ value }: StoredSchema) => JSON.parse(value).settings;
 
-/** Where each stored connector starts and ends. */
-const storedAnchors = ({ value }: StoredSchema): number[][] => {
+/** The fields each stored connector end holds. */
+const storedEnds = ({ value }: StoredSchema): string[][] => {
   const { doc, collections } = JSON.parse(value);
-  return doc.relationshipIds.map((id: string) => {
+  return doc.relationshipIds.flatMap((id: string) => {
     const { start, end } = collections.relationshipEntities[id];
-    return [start.x, start.y, end.x, end.y];
+    return [Object.keys(start), Object.keys(end)];
   });
 };
 
@@ -112,8 +112,11 @@ test.describe('import and export', () => {
     const blog = await app.storedSchema('blog');
     expect(storedTableCount(blog)).toBe(2);
     expect(storedTableCount(await app.storedSchema('shop'))).toBe(2);
-    // Read straight after parsing, before the engine placed any connector.
-    expect(storedAnchors(blog)).toEqual([[0, 0, 0, 0]]);
+    // Stored in the file form, which writes no connector anchor.
+    expect(storedEnds(blog)).toEqual([
+      ['tableId', 'columnIds'],
+      ['tableId', 'columnIds'],
+    ]);
     // A source converts to a new document, every setting locked.
     expect(storedSettings(blog).lockSettings).toBe(63);
 
@@ -121,12 +124,10 @@ test.describe('import and export', () => {
     await app.selectSchema('blog');
     await expect.poll(async () => (await app.tableIds()).length).toBe(2);
     await app.zoomIn();
-    // Opening derived the connectors, and the zoom stored them, as no edit.
-    await expect
-      .poll(async () => storedAnchors(await app.storedSchema('blog')))
-      .not.toEqual([[0, 0, 0, 0]]);
 
+    // What opening derived stays out of the file, as the locked zoom does.
     const opened = await app.storedSchema('blog');
+    expect(opened.value).toBe(blog.value);
     expect(opened.updateAt).toBe(blog.updateAt);
     expect(storedSettings(opened)).toMatchObject({
       lockSettings: 63,

@@ -134,9 +134,9 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
    * rename, which keeps size and mtime, so the temp file's stat is the baseline.
    */
   const persist = Effect.gen(function* () {
-    // The engine sets a key's not-null, a relationship's foreign-key mark and
-    // flags and the relationship sort in microtasks after the dispatch, which
-    // one scheduler turn lets run before the value is taken.
+    // The engine sets a key's not-null in a microtask after the dispatch, which
+    // one scheduler turn lets run before the value is taken; the marks and flags
+    // it derives there too are never saved.
     yield* Effect.yieldNow;
     const text = peer.value;
     const temp = paths.join(

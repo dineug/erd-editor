@@ -86,7 +86,7 @@ describe('a mapping the editor changes reaches the agent', () => {
     // What the engine reads off the mapping follows it on the agent's side:
     // the foreign key mark moves to the new end column, and a relationship
     // ending on the child's whole primary key becomes identifying.
-    const { collections } = JSON.parse(readDocument(state, 'json'));
+    const { collections } = JSON.parse(session.agent.runtimeValue);
     const isForeignKey = (columnId: string) =>
       bHas(
         collections.tableColumnEntities[columnId].ui.keys,
@@ -97,8 +97,8 @@ describe('a mapping the editor changes reaches the agent', () => {
     expect(
       collections.relationshipEntities[SEED.relationship].identification
     ).toBe(true);
-    expect(JSON.parse(session.agent.value)).toEqual(
-      JSON.parse(session.other.value)
+    expect(JSON.parse(session.agent.runtimeValue)).toEqual(
+      JSON.parse(session.other.runtimeValue)
     );
   });
 });

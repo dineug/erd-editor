@@ -12,7 +12,11 @@ import {
   SEED_SCENARIOS,
 } from '@/__test-utils__/peerScenarios';
 import { createSeedValue, SEED, settle } from '@/__test-utils__/peerSeed';
-import { RelationshipType, StartRelationshipType } from '@/constants/schema';
+import {
+  ColumnOption,
+  RelationshipType,
+  StartRelationshipType,
+} from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
   addRelationshipAction,
@@ -25,6 +29,7 @@ import {
   PeerStoreError,
   PeerStoreErrorCode,
 } from '@/engine/peer-store';
+import { bHas } from '@/utils/bit';
 
 const peers: PeerStore[] = [];
 
@@ -267,16 +272,25 @@ describe('peer store reseed', () => {
   });
 });
 
-describe('peer store value one scheduler turn after a batch', () => {
+describe('peer store values one scheduler turn after a batch', () => {
   /** What a headless host waits before it reads the value it writes. */
   const schedulerTurn = () =>
     new Promise<void>(resolve => setImmediate(resolve));
 
-  const savedFlags = (peer: PeerStore, id: string) => {
-    const { identification, startRelationshipType } = JSON.parse(peer.value)
-      .collections.relationshipEntities[id];
+  /** The flags the runtime value carries, which no file saves. */
+  const heldFlags = (peer: PeerStore, id: string) => {
+    const { identification, startRelationshipType } = JSON.parse(
+      peer.runtimeValue
+    ).collections.relationshipEntities[id];
     return { identification, startRelationshipType };
   };
+
+  /** Whether the file form holds a column not null. */
+  const savedNotNull = (peer: PeerStore, id: string) =>
+    bHas(
+      JSON.parse(peer.value).collections.tableColumnEntities[id].options,
+      ColumnOption.notNull
+    );
 
   /** The seed loaded, with what its load woke written. */
   async function loadedPeer() {
@@ -287,8 +301,8 @@ describe('peer store value one scheduler turn after a batch', () => {
   }
 
   it('carries the flags a link reads off the columns it ends on', async () => {
-    // A headless host writes the value one turn after a batch, so a flag
-    // derived later reached its file only with the next write.
+    // A host reads a value one turn after a batch, so a flag derived later
+    // would reach it only with the next edit.
     const peer = await loadedPeer();
 
     peer.dispatch([
@@ -301,7 +315,7 @@ describe('peer store value one scheduler turn after a batch', () => {
     ]);
     await schedulerTurn();
 
-    expect(savedFlags(peer, 'link')).toEqual({
+    expect(heldFlags(peer, 'link')).toEqual({
       identification: true,
       startRelationshipType: StartRelationshipType.dash,
     });
@@ -322,7 +336,7 @@ describe('peer store value one scheduler turn after a batch', () => {
       }),
     ]);
     await schedulerTurn();
-    expect(savedFlags(peer, SEED.relationship)).toEqual({
+    expect(heldFlags(peer, SEED.relationship)).toEqual({
       identification: false,
       startRelationshipType: StartRelationshipType.ring,
     });
@@ -334,9 +348,12 @@ describe('peer store value one scheduler turn after a batch', () => {
     );
     await schedulerTurn();
 
-    expect(savedFlags(peer, SEED.relationship)).toEqual({
+    expect(heldFlags(peer, SEED.relationship)).toEqual({
       identification: true,
       startRelationshipType: StartRelationshipType.dash,
     });
+    expect(
+      [SEED.orderUser, SEED.orderNote].map(id => savedNotNull(peer, id))
+    ).toEqual([true, true]);
   });
 });

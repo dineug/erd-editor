@@ -38,7 +38,6 @@ export type AgentSnapshotTable = {
   groupId: string;
   x: number;
   y: number;
-  zIndex: number;
   columns: AgentSnapshotColumn[];
 };
 
@@ -67,7 +66,6 @@ export type AgentSnapshotMemo = {
   y: number;
   width: number;
   height: number;
-  zIndex: number;
 };
 
 /** A table group by its stored rect; the editor draws it grown to hold each member. */
@@ -103,8 +101,8 @@ export type AgentSnapshotScripts = { before: string; after: string };
 
 /**
  * What an agent reads to edit: every entity under its id and the settings as
- * the file saves them, each by its enum name. Render derived widths, the
- * viewport and the tab are left out, since they differ per reader.
+ * the file saves them, each by its enum name, leaving out what differs per
+ * reader: the measured widths, the stacking order, the viewport and the tab.
  */
 export type AgentSnapshot = {
   settings: AgentSnapshotSettings;
@@ -150,8 +148,8 @@ const CODE_LOCK_FIELDS = [
 
 /**
  * The settings with each locked code setting at the value its lock holds, which
- * is what toJson writes and every reader of the file opens on, the screen of
- * the peer aside.
+ * is what the file holds and every reader of it opens on, the screen of the
+ * peer aside.
  */
 export function toSavedSettings(
   settings: RootState['settings']
@@ -233,7 +231,6 @@ export function toSnapshotTable(
     groupId,
     x: ui.x,
     y: ui.y,
-    zIndex: ui.zIndex,
     columns: select
       .collection('tableColumnEntities')
       .selectByIds(columnIds)
@@ -302,7 +299,6 @@ export function toSnapshotMemo({
     y: ui.y,
     width: ui.width,
     height: ui.height,
-    zIndex: ui.zIndex,
   };
 }
 

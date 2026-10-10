@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import {
   type AnyAction,
   type CompositionActions,
@@ -103,8 +103,13 @@ export class PeerStoreError extends Error {
 
 export type PeerStore = {
   readonly editorId: string;
-  /** The document as the element would save it. */
+  /** The document as the element would save it, in the form a file holds. */
   readonly value: string;
+  /**
+   * The document as this peer holds it, removed entities included, for another
+   * peer's setInitialValue, so an undo of a removal restores the entity whole there.
+   */
+  readonly runtimeValue: string;
   /** The live state, for readers that serialize it another way. */
   readonly state: RootState;
   readonly isReadonly: boolean;
@@ -500,6 +505,9 @@ export function createPeerStore({
   return Object.freeze({
     editorId,
     get value() {
+      return toDocumentJson(rxStore.state);
+    },
+    get runtimeValue() {
       return toJson(rxStore.state);
     },
     get state() {

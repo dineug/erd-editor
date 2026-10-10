@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 const sides = ({ peer, user }: Session) => [
-  JSON.parse(peer.value),
+  JSON.parse(peer.runtimeValue),
   JSON.parse(toJson(user.rxStore.state)),
 ];
 

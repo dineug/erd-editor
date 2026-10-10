@@ -6,7 +6,7 @@ import {
   type RootState,
   type SchemaSQLOptions,
 } from '@dineug/erd-editor/peer.js';
-import { query, toJson } from '@dineug/erd-editor-schema';
+import { query, toDocumentJson } from '@dineug/erd-editor-schema';
 
 import { fitsInRead, MAX_READ_CHARS } from '@/tools/budget';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
@@ -148,7 +148,7 @@ const SERIALIZER: Readonly<
   Record<Exclude<ReadFormat, 'sql'>, (state: RootState) => string>
 > = {
   snapshot: state => JSON.stringify(toAgentSnapshot(state)),
-  json: state => toJson(state),
+  json: state => toDocumentJson(state),
   scripts: state => JSON.stringify(toSnapshotScripts(state.settings)),
 };
 

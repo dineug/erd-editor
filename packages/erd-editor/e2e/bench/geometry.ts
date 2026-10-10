@@ -141,14 +141,14 @@ export async function readScene(page: Page): Promise<Scene> {
       });
     }
 
-    const editor = host as HTMLElement & { value: string };
+    const editor = host as HTMLElement & { runtimeValue: string };
     type Point = {
       tableId: string;
       x: number;
       y: number;
       direction: number;
     };
-    const value = JSON.parse(editor.value) as {
+    const value = JSON.parse(editor.runtimeValue) as {
       doc: { relationshipIds: string[] };
       collections: {
         relationshipEntities: Record<string, { start: Point; end: Point }>;

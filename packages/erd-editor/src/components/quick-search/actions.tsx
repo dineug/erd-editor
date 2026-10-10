@@ -1,4 +1,4 @@
-import { query, toJson } from '@dineug/erd-editor-schema';
+import { query, toDocumentJson } from '@dineug/erd-editor-schema';
 import { DOMTemplateLiterals } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
 import Fues from 'fuse.js';
@@ -385,7 +385,10 @@ export function createScopeActions(
           icon: <Icon name="braces" size={16} />,
           name: 'json',
           perform: ({ store }) => {
-            exportJSON(toJson(store.state), store.state.settings.databaseName);
+            exportJSON(
+              toDocumentJson(store.state),
+              store.state.settings.databaseName
+            );
           },
         },
         {

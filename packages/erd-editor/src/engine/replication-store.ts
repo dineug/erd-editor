@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
@@ -33,9 +33,9 @@ type InternalActionMap = {
 };
 
 /**
- * What a change hands its listeners: the document serialized, and whether the
- * change actions since the last change, or since the load, left it byte for
- * byte as it was, as a scroll or a zoom the file does not save does.
+ * What a change hands its listeners: the document in the form a file holds,
+ * and whether the change actions since the last change, or since the load,
+ * left that form byte for byte as it was, as a scroll under its lock does.
  */
 export type ReplicationChange = {
   value: string;
@@ -43,7 +43,10 @@ export type ReplicationChange = {
 };
 
 export type ReplicationStore = {
+  /** The document in the form a file holds. */
   readonly value: string;
+  /** The document as the replica holds it, removed entities included, to seed a peer. */
+  readonly runtimeValue: string;
   /**
    * A change comes 200 ms after the last change action, even one that left the
    * value as it was (changed false): a hub waits for each as a save, and a host
@@ -121,7 +124,7 @@ export function createReplicationStore(
   };
 
   const handleChange = () => {
-    const value = toJson(store.state);
+    const value = toDocumentJson(store.state);
     // Null after a load that came while a change was pending, whose value is
     // what loaded.
     const changed = baseline !== null && value !== baseline;
@@ -137,7 +140,7 @@ export function createReplicationStore(
       )
       .subscribe(actions => {
         if (actions.some(({ type }) => isReplicaChange(type))) {
-          baseline ??= toJson(store.state);
+          baseline ??= toDocumentJson(store.state);
         }
         // Versions as the element's store gives them: what a stream regroup sent
         // without one takes the next, and each moves the clock past the registers
@@ -151,6 +154,9 @@ export function createReplicationStore(
 
   return Object.freeze({
     get value() {
+      return toDocumentJson(store.state);
+    },
+    get runtimeValue() {
       return toJson(store.state);
     },
     on,

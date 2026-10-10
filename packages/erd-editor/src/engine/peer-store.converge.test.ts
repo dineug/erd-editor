@@ -98,9 +98,9 @@ afterEach(() => {
   sessions.splice(0).forEach(session => session.destroy());
 });
 
-/** Both sides' documents, meta aside, since each replica stamps its own. */
+/** Both sides' documents as each side holds them, removed entities included. */
 const sides = ({ peer, user }: Session) => [
-  JSON.parse(peer.value),
+  JSON.parse(peer.runtimeValue),
   JSON.parse(toJson(user.rxStore.state)),
 ];
 
@@ -586,7 +586,9 @@ describe('relationship.changeColumns converges', () => {
   }
 
   const expectSameDocuments = (stores: PeerStore[]) => {
-    const [first, ...rest] = stores.map(store => JSON.parse(store.value));
+    const [first, ...rest] = stores.map(store =>
+      JSON.parse(store.runtimeValue)
+    );
     rest.forEach(document => expect(document).toEqual(first));
   };
 
@@ -853,7 +855,7 @@ describe('relationship.changeColumns converges', () => {
       });
     }
     const [linkerSide, removerSide] = mesh.peers.map(peer =>
-      splitAnchors(JSON.parse(peer.value))
+      splitAnchors(JSON.parse(peer.runtimeValue))
     );
     expect(linkerSide.document).toEqual(removerSide.document);
     expect(linkerSide.anchors[SEED.relationship]).toEqual(
@@ -883,7 +885,7 @@ describe('relationship.changeColumns converges', () => {
       'from_person',
     ]);
     const [personDocument, agentDocument] = mesh.peers.map(peer => {
-      const document = JSON.parse(peer.value);
+      const document = JSON.parse(peer.runtimeValue);
       document.doc.relationshipIds.sort();
       return document;
     });
@@ -1036,7 +1038,9 @@ describe('relationship.changeColumns converges', () => {
     await settleHooks();
 
     expect(endOf(reader)).toEqual([SEED.orderNote]);
-    expect(JSON.parse(toJson(reader.state))).toEqual(JSON.parse(author.value));
+    expect(JSON.parse(toJson(reader.state))).toEqual(
+      JSON.parse(author.runtimeValue)
+    );
 
     reader.dispatchSync(remap([SEED.orderId]));
     await settleHooks();
@@ -1232,7 +1236,7 @@ describe('relationship.changeColumns converges', () => {
         });
       }
       const [mapperSide, removerSide] = mesh.peers.map(peer =>
-        splitAnchors(JSON.parse(peer.value))
+        splitAnchors(JSON.parse(peer.runtimeValue))
       );
       expect(mapperSide.document).toEqual(removerSide.document);
       expect(mapperSide.anchors).not.toEqual(removerSide.anchors);
@@ -1266,7 +1270,7 @@ describe('relationship.changeColumns converges', () => {
 
     /** Each peer's document with the orders column lists put in one order. */
     const withSortedOrders = (peer: PeerStore) => {
-      const document = JSON.parse(peer.value);
+      const document = JSON.parse(peer.runtimeValue);
       const orders = document.collections.tableEntities[SEED.orders];
       orders.columnIds.sort();
       orders.seqColumnIds.sort();

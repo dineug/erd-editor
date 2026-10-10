@@ -11,7 +11,7 @@ import {
   tableActions,
   tableGroupActions,
 } from '@dineug/erd-editor/peer.js';
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson } from '@dineug/erd-editor-schema';
 import { afterAll, describe, expect, it } from 'vite-plus/test';
 
 import { createSeededPeer, SEED } from '@/__test-utils__/seed';
@@ -64,9 +64,13 @@ describe('reading a document (AC-E12)', () => {
     expect(read('sql')).toBe(read('sql', 'MySQL'));
   });
 
-  it('gives the JSON the element’s value getter gives', () => {
-    expect(read('json')).toBe(toJson(peer.state));
+  it('gives the file form the element’s value getter gives, never the runtime value', () => {
+    expect(read('json')).toBe(toDocumentJson(peer.state));
     expect(read('json')).toBe(peer.value);
+    expect(read('json')).not.toBe(peer.runtimeValue);
+    expect(
+      JSON.parse(read('json')).collections.tableEntities[SEED.users]
+    ).not.toHaveProperty('seqColumnIds');
   });
 
   it('gives the snapshot as compact JSON', () => {
@@ -480,7 +484,7 @@ describe('the statements and header of the DDL', () => {
         statements: undefined,
         header: undefined,
       })
-    ).toBe(toJson(named.state));
+    ).toBe(toDocumentJson(named.state));
   });
 });
 

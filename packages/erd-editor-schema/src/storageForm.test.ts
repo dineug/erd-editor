@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { toDocument, toDocumentJson } from '@/document';
 import { parser, toJson } from '@/parser';
+import { toDocument, toDocumentJson } from '@/storageForm';
 import { createSchema, SchemaV3Constants } from '@/v3';
 import { createTable } from '@/v3/parser/table.entity';
 

@@ -45,7 +45,6 @@ describe('the agent snapshot', () => {
       groupId: '',
       x: 500,
       y: 100,
-      zIndex: 3,
       columns: [
         {
           id: SEED.orderId,
@@ -97,7 +96,6 @@ describe('the agent snapshot', () => {
         y: 100,
         width: MEMO_MIN_WIDTH,
         height: MEMO_MIN_HEIGHT,
-        zIndex: 5,
       },
     ]);
   });
@@ -160,6 +158,7 @@ describe('the agent snapshot', () => {
       'meta',
       'seqColumnIds',
       'seqIndexColumnIds',
+      'zIndex',
     ]) {
       expect(keys.has(derived), derived).toBe(false);
     }

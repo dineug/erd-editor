@@ -168,7 +168,8 @@ erd-editor {
 
 | Property | Description |
 | --- | --- |
-| `value: string` | The document as JSON — an `.erd.json` document ([schema](https://github.com/dineug/erd-editor/blob/main/json-schema/schema.json)). Assigning it loads the document as an edit, so it lands in the undo history; use `setInitialValue` to load without one. Assigning an empty string loads a new document, as `setInitialValue('')` does. |
+| `value: string` | The document as JSON in the form a file saves — an `.erd.json` document ([schema](https://github.com/dineug/erd-editor/blob/main/json-schema/schema.json)): the entities the document lists, each collection in id order, without what an editor derives on load or keeps for itself (removed entities, the stacking order, measured widths, relationship anchors), and the same bytes for the same document on every machine. Assigning it loads the document as an edit, so it lands in the undo history; use `setInitialValue` to load without one. Assigning an empty string loads a new document, as `setInitialValue('')` does. |
+| `runtimeValue: string` | Read only. The document as this editor holds it, removed entities and the derived fields included, to seed a collaborator with: `setInitialValue(editor.runtimeValue)`. An undo of a removal then brings the table or column back whole on both sides, where a collaborator seeded from `value` gets back a nameless table with no columns. Never write it to a file. |
 
 ### Methods
 
@@ -188,7 +189,7 @@ erd-editor {
 | `setSystemLocale(tag)` | Name the language `system` shows, as a BCP 47 tag, for a host with its own UI language (an IDE's); `null` hands it back to the browser's `navigator.languages`. A tag the editor has no language for shows English. It changes the language shown only while the option in force is `system`. |
 | `setTheme(theme)` | Override individual theme tokens. |
 | `setKeyBindingMap(map)` | Remap shortcuts, `search` and `findReplace` among them. `edit`, `stop`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
-| `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport. `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
+| `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport, and seed a joining editor with this one's `runtimeValue` (below). `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
 | `focus()` / `blur()` | Move focus in and out of the editor. |
 | `clear()` | Empty the document. Its settings stay, the locks included, so a cleared file keeps saving what it saved. |
 | `destroy()` | Tear the editor down and release its listeners, subscriptions and shared stores. |
@@ -220,11 +221,27 @@ brings the ERD tab up first, then selects the new tables and scrolls to them, cl
 and Replace panel. A readonly editor adds nothing, and its menu and command palette offer no Import
 and Add.
 
+### Collaboration
+
+A second editor joins the first from its runtime value, then each relays its actions to the other:
+
+```js
+joiner.setInitialValue(editor.runtimeValue);
+
+const local = editor.getSharedStore();
+const remote = joiner.getSharedStore();
+local.subscribe(actions => remote.dispatch(actions));
+remote.subscribe(actions => local.dispatch(actions));
+```
+
+Save `value`, never `runtimeValue`: the file stays free of what one editor keeps for itself, and
+the runtime value carries the removed entities an undo on either side brings back.
+
 ### Events
 
 | Event | Description |
 | --- | --- |
-| `change` | The document changed. Debounced, and never fired while `readonly`, nor for a change to a locked setting alone: a scroll, a zoom, a tab switch or a code generator setting under its lock leaves `value` as it was. Read `editor.value`. With the viewport unlocked a scroll or a zoom fires it, and `value` holds both. `value` differs from a file another release or machine wrote from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
+| `change` | The document changed. Debounced, and never fired while `readonly`, nor for a change to a locked setting alone: a scroll, a zoom, a tab switch or a code generator setting under its lock leaves `value` as it was. Read `editor.value`. With the viewport unlocked a scroll or a zoom fires it, and `value` holds both. `value` differs from a file another release wrote, or one edited by hand, from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
 | `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options, whose `appearance` is `system` when the theme builder's System is picked. |
 | `changeLocale` | A display language was picked from inside the editor, in the toolbar's picker or the command palette, the one already in force included. `event.detail.locale` is the option picked, `system` or a language code. `setLocale` fires none. |
 
@@ -369,11 +386,13 @@ store.on({ change: ({ value, changed }) => changed && persist(value) });
 store.dispatch(actions); // actions relayed from a live editor's shared store
 ```
 
-`change` comes 200 ms after the last action that can change the document, a locked setting's
-change included. `changed` is false when those actions left `value` as it was, such as a scroll,
-a zoom or a tab switch while its lock is on. It compares with the value the store last reported,
-or loaded, never with your file: a file another release or machine wrote serializes differently
-from the start.
+`value` is the form a file saves, as the element's is, and `runtimeValue` the document as the
+replica holds it, what an editor that joins later is seeded with. `change` comes 200 ms after the
+last action that can change the document, a locked setting's change included. `changed` is false
+when those actions left `value` as it was, such as a scroll, a zoom or a tab switch while its lock
+is on, or a table added and removed again. It compares with the value the store last reported, or
+loaded, never with your file: a file another release wrote, or one edited by hand, serializes
+differently from the start.
 
 ## Development
 

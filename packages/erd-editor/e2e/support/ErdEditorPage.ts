@@ -188,14 +188,15 @@ export class ErdEditorPage {
   // ── authoritative state ──────────────────────────────────────────────────
 
   /**
-   * The element's value getter serialises the live store synchronously, so
-   * this is the authoritative view of editor state — not a rendering of it.
+   * The element's runtime value serialises the live store synchronously, the
+   * fields a file leaves out included, so this is the authoritative view of
+   * editor state, not a rendering of it.
    */
   async value(): Promise<ErdDocument> {
     const json = await this.page.evaluate(() => {
       const editor = window.document.querySelector('erd-editor');
       if (!editor) throw new Error('erd-editor is not mounted');
-      return editor.value;
+      return editor.runtimeValue;
     });
     return JSON.parse(json) as ErdDocument;
   }

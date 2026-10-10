@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createSchema, toJson } from '@dineug/erd-editor-schema';
+import {
+  createSchema,
+  toDocumentJson,
+  toJson,
+} from '@dineug/erd-editor-schema';
 import {
   AnyAction,
   createRef,
@@ -59,8 +63,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
+  addTableAction,
   changeTableNameAction,
   moveTableAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import {
@@ -380,6 +386,7 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof ctx.getSharedStore).toBe('function');
     expect(typeof ctx.setDiffValue).toBe('function');
     expect(typeof ctx.value).toBe('string');
+    expect(typeof ctx.runtimeValue).toBe('string');
   });
 
   it('defines focus/blur as writable own properties that drive the root element', async () => {
@@ -731,6 +738,33 @@ describe('useErdEditorAttachElement', () => {
 
     ctx.value = '   ';
     expect(app.store.state.settings.databaseName).not.toBe('round-trip');
+  });
+
+  it('gives the file form through value and the document as held, removed tables included, through runtimeValue', async () => {
+    const { app, ctx } = await setup();
+    app.store.dispatchSync(
+      addTableAction({ id: 'kept', ui: { x: 0, y: 0, zIndex: 3 } }),
+      addTableAction({ id: 'gone', ui: { x: 0, y: 0, zIndex: 4 } }),
+      removeTableAction({ id: 'gone' })
+    );
+
+    const saved = JSON.parse(ctx.value);
+    const held = JSON.parse(ctx.runtimeValue);
+
+    expect(ctx.value).toBe(toDocumentJson(app.store.state));
+    expect(ctx.runtimeValue).toBe(toJson(app.store.state));
+    expect(Object.keys(saved.collections.tableEntities)).toEqual(['kept']);
+    expect(saved.collections.tableEntities.kept.ui).not.toHaveProperty(
+      'zIndex'
+    );
+    expect(Object.keys(held.collections.tableEntities)).toEqual([
+      'kept',
+      'gone',
+    ]);
+    expect(held.collections.tableEntities.kept.ui.zIndex).toBe(3);
+    expect(
+      Object.getOwnPropertyDescriptor(ctx, 'runtimeValue')?.set
+    ).toBeUndefined();
   });
 
   it('imports schema SQL and ignores blank input', async () => {

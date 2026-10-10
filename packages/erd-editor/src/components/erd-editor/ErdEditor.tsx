@@ -107,7 +107,14 @@ export type SetSchema = {
 };
 
 export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
+  /** The document in the form a file saves; setting it replaces the document. */
   value: string;
+  /**
+   * The document as this editor holds it, removed entities and their order
+   * included, which a collaborator's setInitialValue takes so undo can bring
+   * them back. Never written to a file.
+   */
+  readonly runtimeValue: string;
   focus: () => void;
   blur: () => void;
   clear: () => void;
