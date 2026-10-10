@@ -28,6 +28,9 @@ const ENTITY_KINDS = new Map<unknown, SceneEntityKind>([
   ['memo', 'memo'],
   ['relationship', 'relationship'],
   ['table-group', 'tableGroup'],
+  // A group's body stands apart from the rest of it, under every group's bar,
+  // so it names its group in an id of its own.
+  ['table-group-body', 'tableGroup'],
 ]);
 
 /** The labels the parts of a group carry, under its own. */

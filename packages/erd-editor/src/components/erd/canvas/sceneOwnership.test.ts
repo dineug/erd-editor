@@ -122,6 +122,11 @@ const OUTSIDE_REFERENCES = [
   'components/erd/hitTest.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/erd/minimap/Minimap.browser.test.tsx @/components/erd/canvas/Canvas.styles',
   'components/erd/minimap/Minimap.tsx @/components/erd/canvas/Canvas.styles',
+  // The minimap draws each group in the box the canvas draws it in, the one a
+  // drag holds included, off the member lists the canvas reads them by.
+  'components/erd/minimap/MinimapScene.tsx @/components/erd/canvas/table-group/tableGroupBox',
+  'components/erd/minimap/table-group/TableGroup.browser.test.tsx @/components/erd/canvas/entityDrag',
+  'components/erd/minimap/table-group/TableGroup.tsx @/components/erd/canvas/table-group/tableGroupBox',
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
   'components/find-replace/FindReplace.test.ts @/components/erd/canvas/table/cellLayout',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
@@ -133,7 +138,7 @@ const OUTSIDE_REFERENCES = [
   'services/export-png/ExportScene.tsx @/components/erd/canvas/memo/Memo',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/relationship-group/RelationshipGroup',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/table/Table',
-  'services/export-png/ExportScene.tsx @/components/erd/canvas/table-group/TableGroup',
+  'services/export-png/ExportScene.tsx @/components/erd/canvas/table-group/TableGroups',
 ];
 
 const CANVAS_REFERENCE = /@\/components\/erd\/canvas\/[\w./-]+/g;
@@ -168,7 +173,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the twenty-one references that own a reason to', () => {
+  it('is reached from outside by the twenty-four references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

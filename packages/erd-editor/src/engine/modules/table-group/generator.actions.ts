@@ -15,13 +15,14 @@ import {
 import { RootState } from '@/engine/state';
 import { attachActionTag, Tag } from '@/engine/tag';
 import type { Table } from '@/internal-types';
-import type { Rect } from '@/konva/scene/metrics';
+import { type Rect, unionRect } from '@/konva/scene/metrics';
 import { arrayHas } from '@/utils/arrayHas';
 import {
   findTableGroupsAt,
   getTableCenter,
   getTableGroupId,
   getTableGroupMemberIds,
+  getTableGroupRects,
   getTablesGroupRect,
   isPointInRect,
   isTableGroupShown,
@@ -232,50 +233,78 @@ export const setTableGroupAction$ = (
       .map(({ id }) => changeTableGroupAction({ id, value: groupId }));
   };
 
-/** A table a drop judges, and the group it lands in, '' for none. */
-export type TableGroupDrop = { table: Table; groupId: string };
+/** A table a drop judges, the group it lands in, '' for none, and that group's box, null for none. */
+export type TableGroupDrop = {
+  table: Table;
+  groupId: string;
+  box: Rect | null;
+};
 
 /**
- * Where a drop of the selection puts the tables it judges: each selected table
- * no selected group carries as a member, in the topmost group whose box without
- * them holds its centre, or in none. With groups hidden it judges no table.
+ * The box each group showed as a drag began, by group id, held for the drag's
+ * length: a member that grew past the stored rect stays in the box the reader
+ * saw while its centre does, though only its own padding drew the box there.
  */
-export function getTableGroupDrops(state: RootState): TableGroupDrop[] {
+export type HeldTableGroupBoxes = ReadonlyMap<string, Rect>;
+
+/**
+ * Where a drop puts each selected table no selected group carries: in the topmost group whose box
+ * without them, and for a group the drag leaves standing the box it held too, holds its centre, or
+ * in none. With groups hidden or no table to judge, a drag of groups alone, it reads no box.
+ */
+export function getTableGroupDrops(
+  state: RootState,
+  held?: HeldTableGroupBoxes | null
+): TableGroupDrop[] {
   if (!isTableGroupShown(state)) return [];
 
   const { doc, collections, editor } = state;
   const { tableIds, tableGroupIds } = getSelectTypeIds(editor.selectedMap);
   const listed = new Set(doc.tableIds);
+  const selected = tableIds.filter(id => listed.has(id));
+  if (!selected.length) return [];
+
   const carried = new Set(
     tableGroupIds.flatMap(id => getTableGroupMemberIds(state, id))
   );
-  const judged = tableIds.filter(id => listed.has(id) && !carried.has(id));
+  const judged = selected.filter(id => !carried.has(id));
+  if (!judged.length) return [];
+
+  const moving = new Set(tableGroupIds);
+  const boxes = getTableGroupRects(state, { excludeTableIds: judged });
+  held?.forEach((rect, id) => {
+    const box = boxes.get(id);
+    if (box && !moving.has(id)) boxes.set(id, unionRect(box, rect));
+  });
+
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(judged);
   const groups = findTableGroupsAt(
     state,
     tables.map(table => getTableCenter(state, table)),
-    { excludeTableIds: judged }
+    { boxes }
   );
 
-  return tables.map((table, index) => ({
-    table,
-    groupId: groups[index]?.id ?? '',
-  }));
+  return tables.map((table, index) => {
+    const groupId = groups[index]?.id ?? '';
+    return { table, groupId, box: boxes.get(groupId) ?? null };
+  });
 }
 
 /**
- * Ends a drag of the selection: each table the drop judges joins the group it
- * landed in or leaves its own, tagged as the drag, so the history closes the
+ * Ends a drag of the selection: each table getTableGroupDrops judges, given the boxes the drag held,
+ * joins the group it landed in or leaves its own, tagged as the drag, so the history closes the
  * membership into the drag's undo entry; its undo reads prevValue.
  *
  * @example
- * store.dispatch(dropTablesIntoGroupsAction$());
+ * store.dispatch(dropTablesIntoGroupsAction$(held));
  */
-export const dropTablesIntoGroupsAction$ = (): GeneratorAction =>
+export const dropTablesIntoGroupsAction$ = (
+  held?: HeldTableGroupBoxes | null
+): GeneratorAction =>
   function* (state) {
-    yield getTableGroupDrops(state)
+    yield getTableGroupDrops(state, held)
       .filter(({ table, groupId }) => groupId !== getTableGroupId(state, table))
       .map(({ table, groupId }) =>
         attachActionTag(

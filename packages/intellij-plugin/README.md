@@ -83,7 +83,7 @@ tables placed as new ones below the ones already there, in one undoable step.
 - **Welcome guide** — an empty diagram you can edit opens on a short menu to add the first table or
   memo, import a schema, open the command palette or look up the shortcuts, with hints at the
   toolbar's search, theme and language buttons and at the floating toolbar where the canvas has
-  room; the first table or memo takes it away
+  room; the first table, memo or table group takes it away
 
 Edits are written to the file a fraction of a second after you stop changing it; the tab never shows as modified.
 

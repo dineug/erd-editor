@@ -78,8 +78,8 @@ run **Create new diagram** from the command palette. In Google Drive, choose
   their settings. The app's and the plugins' own screens stay in English, as the npm element
   does until its host turns the picker on or names a language
 - **Welcome screen** — an empty diagram opens on a menu of New Table, New Memo, Import, the
-  command palette and the shortcuts, with arrows at the tools, until its first table or memo; the
-  npm element shows it only once its host turns it on
+  command palette and the shortcuts, with arrows at the tools, until its first table, memo or
+  table group; the npm element shows it only once its host turns it on
 - **Real-time collaboration** (experimental) — peer-to-peer, end-to-end encrypted, with no
   backend holding your schema. Live on erd-editor.io; embedders get the same action stream
   through the element's `getSharedStore()`

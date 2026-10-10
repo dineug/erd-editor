@@ -188,8 +188,11 @@ const middleOf = (node: KonvaNode): Point => {
   return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
 };
 
+/** A part of a group: its body stands apart under every group's frame, the rest under the frame. */
 const partOf = (editor: Editor, id: string, name: string) =>
-  editor.stage.findOne<Group>(`#table-group-${id}`)!.findOne(`.${name}`)!;
+  name === 'table-group-body'
+    ? editor.stage.findOne(`#table-group-body-${id}`)!
+    : editor.stage.findOne<Group>(`#table-group-${id}`)!.findOne(`.${name}`)!;
 
 const titleOf = (editor: Editor, id: string) =>
   middleOf(partOf(editor, id, 'table-group-title-bar'));
@@ -373,6 +376,40 @@ describe('the group menu', () => {
     await rightPress(editor, titleOf(editor, 'g1'));
     await pickRow(editor, 'Color', { clientX: 40, clientY: 40 });
 
+    const swatch = editor.root.querySelector<HTMLButtonElement>(
+      '.color-picker button[role="radio"]'
+    )!;
+    swatch.click();
+    await settle();
+
+    expect(groupEntity(editor, 'g1').color).toBe(swatch.title.toLowerCase());
+  });
+
+  it('selects the group for the menu a main press raises, as a Mac Ctrl+click does, so Color paints it', async () => {
+    const editor = await mountEditor();
+    editor.app.store.dispatchSync(
+      changeTableGroupColorAction({
+        id: 'g1',
+        color: '#123456',
+        prevColor: '',
+      }),
+      selectAction({ a: SelectType.table })
+    );
+    await settle();
+    const point = bodyOf(editor, 'g1');
+
+    fire(editor, canvasOf(editor), 'mousedown', point);
+    await flush();
+    fire(editor, canvasOf(editor), 'contextmenu', point);
+    releasePointer();
+    await flush(6);
+
+    expect(stateOf(editor).editor.selectedMap).toEqual({
+      g1: SelectType.tableGroup,
+    });
+    expect(findRow(editor, 'Remove color')).toBeDefined();
+
+    await pickRow(editor, 'Color', { clientX: 40, clientY: 40 });
     const swatch = editor.root.querySelector<HTMLButtonElement>(
       '.color-picker button[role="radio"]'
     )!;

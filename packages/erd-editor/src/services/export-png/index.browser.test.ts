@@ -395,8 +395,9 @@ describe('the groups of an exported document', () => {
   it('draws each group behind everything, and its members in its color', async () => {
     const drawn = await drawGroups();
 
-    expect(drawn.layer.slice(0, 3)).toEqual([
+    expect(drawn.layer.slice(0, 4)).toEqual([
       'export-background',
+      'table-group-body',
       'table-group',
       'relationship-group',
     ]);
@@ -409,6 +410,7 @@ describe('the groups of an exported document', () => {
     const drawn = await drawGroups(Show.relationship | Show.hideTableGroup);
 
     expect(drawn.layer).not.toContain('table-group');
+    expect(drawn.layer).not.toContain('table-group-body');
     expect(drawn.band).toBe(theme.tableHeaderBackground);
     expect(drawn.name).toBe(theme.active);
     expect(drawn.x).toBe(DEFAULT_MEMO.x - EXPORT_MARGIN);

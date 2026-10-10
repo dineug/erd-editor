@@ -3,10 +3,12 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { getDrawnTableGroupRect } from '@/components/erd/canvas/table-group/tableGroupBox';
 import { getMinimapMarkRect } from '@/components/erd/minimap/minimapGeometry';
+import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
-import type { TableGroup } from '@/internal-types';
-import { getTableGroupColors, getTableGroupRect } from '@/utils/tableGroup';
+import type { Table, TableGroup } from '@/internal-types';
+import { getTableGroupColors } from '@/utils/tableGroup';
 
 /**
  * How much of its color a group's box shows, more than the canvas body's,
@@ -16,24 +18,28 @@ const FILL_OPACITY = 0.4;
 
 export type TableGroupProps = {
   group: TableGroup;
+  /** The group's member tables, read once for every group by the minimap scene. */
+  members: ReadonlyArray<Table>;
   /** Thumbnail pixels per scene unit, which is what the box is floored at. */
   ratio: number;
 };
 
 /**
- * A table group as the minimap draws it: its box filled in its color, or the
- * canvas's neutral one, at a low alpha behind the table marks.
+ * A table group as the minimap draws it: the box the canvas draws it in,
+ * filled in its color, or the canvas's neutral one, at a low alpha behind the
+ * table marks.
  */
 const TableGroup: FC<TableGroupProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
+  const sourceRef = useSceneSource(ctx);
 
   return () => {
     const { store } = app.value;
-    const { group, ratio } = props;
+    const { group, members, ratio } = props;
     const rect = getMinimapMarkRect(
       ratio,
-      getTableGroupRect(store.state, group)
+      getDrawnTableGroupRect(store.state, group, sourceRef.value, members)
     );
 
     return (

@@ -15,6 +15,7 @@ import {
   getContentRectAfter,
   getContentRects,
   getSceneContentRect,
+  hasContent,
   unionRect,
 } from '@/konva/scene/contentBounds';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
@@ -160,6 +161,28 @@ describe('getContentRect', () => {
   });
 });
 
+describe('hasContent', () => {
+  it('answers whether the content rect has a box, off the lists alone', () => {
+    const state = createState();
+    expect(hasContent(state)).toBe(false);
+
+    addGroup(state, 'g', 0, 0);
+    expect(hasContent(state)).toBe(true);
+    expect(getContentRect(state)).not.toBeNull();
+
+    state.settings.show |= Show.hideTableGroup;
+    expect(hasContent(state)).toBe(false);
+    expect(getContentRect(state)).toBeNull();
+
+    addMemo(state, 'm', 0, 0, 100, 100);
+    expect(hasContent(state)).toBe(true);
+
+    const tablesOnly = createState();
+    addTable(tablesOnly, 't', 0, 0);
+    expect(hasContent(tablesOnly)).toBe(true);
+  });
+});
+
 describe('unionRect', () => {
   const a: Rect = { x: -10, y: 5, width: 30, height: 40 };
   const b: Rect = { x: 15, y: -20, width: 100, height: 10 };
@@ -279,6 +302,23 @@ describe('getContentRects', () => {
     state.settings.show |= Show.hideTableGroup;
     expect(getContentRects(state)).toEqual([getTableRect(state, table)]);
     expect(getContentRect(state)!.x).toBe(0);
+  });
+
+  it('reads each group box as getTableGroupRect does, a member of no listed group growing none', () => {
+    const state = createState();
+    const a = addTable(state, 'a', 3_000, 0);
+    a.groupId = 'g';
+    const b = addTable(state, 'b', 0, 3_000);
+    b.groupId = 'h';
+    const stale = addTable(state, 'stale', -9_000, -9_000);
+    stale.groupId = 'ghost';
+    const g = addGroup(state, 'g', 0, 0);
+    const h = addGroup(state, 'h', 500, 500);
+
+    expect(getContentRects(state).slice(3)).toEqual([
+      getTableGroupRect(state, g),
+      getTableGroupRect(state, h),
+    ]);
   });
 
   it('leaves a moved member out of its group box, which would hold where it stood', () => {

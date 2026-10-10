@@ -198,9 +198,11 @@ async function drop() {
   await settle();
 }
 
-/** A named part of a group, which konva finds under the group's own node. */
+/** A named part of a group: its body stands apart under every frame, the rest under the frame. */
 const partOf = (editor: Editor, id: string, name: string) =>
-  editor.stage.findOne<Group>(`#table-group-${id}`)!.findOne(`.${name}`)!;
+  name === 'table-group-body'
+    ? editor.stage.findOne(`#table-group-body-${id}`)!
+    : editor.stage.findOne<Group>(`#table-group-${id}`)!.findOne(`.${name}`)!;
 
 const rectOf = (node: KonvaNode) =>
   node.getClientRect({ skipShadow: true, skipStroke: true });
@@ -279,16 +281,20 @@ describe('a press on a group title bar', () => {
     await pressAndMove(editor, titleOf(editor, 'g1'), { x: 120, y: 60 });
     await settle(1);
 
-    // The group goes under the static scene and its member over it, so a step
-    // redraws the two small layers and never the one the other tables sit in.
+    // The groups go under the static scene and the member over it, so a step
+    // redraws the two small layers and never the one the other tables sit in;
+    // the group the press raised stays over the group it stood over.
+    const bottom = layerNamed(editor, 'canvas-background');
     expect(isEntityDragActive(stateOf(editor))).toBe(true);
-    expect(
-      layerNamed(editor, 'canvas-background').findOne('#table-group-g1')
-    ).toBeTruthy();
+    expect(bottom.findOne('#table-group-g1')).toBeTruthy();
+    expect(bottom.findOne('#table-group-g2')).toBeTruthy();
+    expect(bottom.findOne('#table-group-g1')!.zIndex()).toBeGreaterThan(
+      bottom.findOne('#table-group-g2')!.zIndex()
+    );
     expect(
       layerNamed(editor, 'drag-entity').findOne('#table-member')
     ).toBeTruthy();
-    expect(layerNamed(editor, 'scene').findOne('#table-group-g1')).toBeFalsy();
+    expect(layerNamed(editor, 'scene').findOne('.table-group')).toBeFalsy();
 
     await drop();
 
@@ -307,6 +313,27 @@ describe('a press on a group title bar', () => {
 
     expect(groupUi(editor, 'g1')).toMatchObject({ x: G1.x, y: G1.y });
     expect(tableOf(editor, 'member').ui).toMatchObject(MEMBER);
+  });
+
+  it('takes the press for the inner group under a larger group drawn over it', async () => {
+    const editor = await mountEditor();
+    editor.app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'outer',
+        ui: { x: 40, y: 40, width: 1100, height: 700, zIndex: 3 },
+      })
+    );
+    await settle();
+
+    press(editor, titleOf(editor, 'g1'));
+    await drop();
+
+    expect(stateOf(editor).editor.selectedMap).toEqual({
+      g1: SelectType.tableGroup,
+    });
+    expect(groupUi(editor, 'g1').zIndex).toBeGreaterThan(
+      groupUi(editor, 'outer').zIndex
+    );
   });
 
   it('lifts and moves nothing for a press that travels less than the click distance', async () => {
@@ -668,6 +695,29 @@ describe('the drop of a table drag', () => {
     );
     await settle(1);
     expect(dropTargets(editor)).toHaveLength(0);
+    await drop();
+
+    expect(tableOf(editor, 'member').groupId).toBe('g1');
+  });
+
+  it('keeps a member whose centre stands past the stored rect, as one grown or moved there, through a nudge', async () => {
+    const editor = await mountEditor();
+    const rect = getTableRect(stateOf(editor), tableOf(editor, 'member'));
+    editor.app.store.dispatchSync(
+      moveToTableAction({
+        id: 'member',
+        x: G1.x + G1.width - rect.width / 2 + 20,
+        y: MEMBER.y,
+      })
+    );
+    await settle();
+
+    await pressAndMove(editor, centerOf(editor, '#table-member'), {
+      x: 10,
+      y: 0,
+    });
+    await settle(1);
+    expect(dropTargets(editor)).toHaveLength(1);
     await drop();
 
     expect(tableOf(editor, 'member').groupId).toBe('g1');

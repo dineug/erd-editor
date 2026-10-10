@@ -80,7 +80,8 @@ only; they do not appear in the Command Palette.
   **Display Language** in `Ctrl`/`Cmd`+`K`
 - **Welcome guide** — an empty diagram shows where to start: New Table, New Memo, Import, the
   command palette and the shortcuts, with hints pointing at the toolbar's search, theme and
-  language buttons and at the floating toolbar. The first table or memo takes it away
+  language buttons and at the floating toolbar. The first table, memo or table group takes it
+  away
 - **Undo / redo** and a built-in theme builder
 
 ### Keeping diffs clean

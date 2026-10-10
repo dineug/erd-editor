@@ -19,6 +19,12 @@ export type TableGroupRectOptions = {
   excludeTableIds?: ReadonlyArray<string>;
 };
 
+/** A group's box options, and the members it is read from when the caller holds them. */
+export type TableGroupMemberOptions = TableGroupRectOptions & {
+  /** The group's member tables, which spares a walk over every table of the document. */
+  members?: ReadonlyArray<Table>;
+};
+
 /**
  * The group a table is in, or '' for none: a groupId naming no group the
  * document lists reads as none, whatever the table saved.
@@ -73,17 +79,104 @@ export function padRect(rect: Rect, padding = TABLE_GROUP_PADDING): Rect {
 export function getTableGroupRect(
   state: RootState,
   group: TableGroup,
-  { excludeTableIds = [] }: TableGroupRectOptions = {}
+  {
+    excludeTableIds = [],
+    members = getMemberTables(state, group.id),
+  }: TableGroupMemberOptions = {}
 ): Rect {
   const { x, y, width, height } = group.ui;
   const excluded = new Set(excludeTableIds);
 
-  return getMemberTables(state, group.id)
+  return members
     .filter(table => !excluded.has(table.id))
     .reduce<Rect>(
       (rect, table) => unionRect(rect, padRect(getTableRect(state, table))),
       { x, y, width, height }
     );
+}
+
+/**
+ * Each group's box seeded at its stored rect, keyed by id, for one walk over
+ * the tables to grow with growTableGroupBox: every box out of one pass, where
+ * a box apiece walks every table once per group.
+ */
+export function seedTableGroupBoxes(
+  groups: ReadonlyArray<TableGroup>
+): Map<string, Rect> {
+  return new Map(
+    groups.map(({ id, ui: { x, y, width, height } }) => [
+      id,
+      { x, y, width, height },
+    ])
+  );
+}
+
+/**
+ * Grows the box of the group a table names by the table's rect and padding; a
+ * table naming no seeded group, a removed one among them, grows none.
+ */
+export function growTableGroupBox(
+  boxes: Map<string, Rect>,
+  table: Table,
+  rect: Rect
+): void {
+  const box = table.groupId ? boxes.get(table.groupId) : undefined;
+  if (box) boxes.set(table.groupId, unionRect(box, padRect(rect)));
+}
+
+/**
+ * The box of every group the document lists, keyed by id, each as
+ * getTableGroupRect reads it, out of one walk over the tables.
+ *
+ * @example
+ * const boxes = getTableGroupRects(state, { excludeTableIds: dragged });
+ */
+export function getTableGroupRects(
+  state: RootState,
+  { excludeTableIds = [] }: TableGroupRectOptions = {}
+): Map<string, Rect> {
+  const { doc, collections } = state;
+  const boxes = seedTableGroupBoxes(
+    query(collections)
+      .collection('tableGroupEntities')
+      .selectByIds(doc.tableGroupIds)
+  );
+  if (!boxes.size) return boxes;
+
+  const excluded = new Set(excludeTableIds);
+  query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .forEach(table => {
+      if (excluded.has(table.id)) return;
+      growTableGroupBox(boxes, table, getTableRect(state, table));
+    });
+
+  return boxes;
+}
+
+/**
+ * The member tables of every group the document lists, keyed by id, each list
+ * in document order, out of one walk over the tables; a group with no member
+ * is left out.
+ */
+export function getTableGroupMembers(state: RootState): Map<string, Table[]> {
+  const { doc, collections } = state;
+  const listed = new Set(doc.tableGroupIds);
+  const members = new Map<string, Table[]>();
+  if (!listed.size) return members;
+
+  query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .forEach(table => {
+      if (!listed.has(table.groupId)) return;
+
+      const list = members.get(table.groupId);
+      list ? list.push(table) : members.set(table.groupId, [table]);
+    });
+
+  return members;
 }
 
 /**
@@ -173,9 +266,16 @@ export function findTableGroupAt(
   return findTableGroupsAt(state, [point], options)[0];
 }
 
+/** Where findTableGroupsAt reads the boxes: built from the tables, or handed in built. */
+export type TableGroupFindOptions = TableGroupRectOptions & {
+  /** Every group's box, keyed as getTableGroupRects keys them, read in place of building them. */
+  boxes?: ReadonlyMap<string, Rect>;
+};
+
 /**
  * The topmost group at each point, as findTableGroupAt finds it, every box
- * read once for all of them, which a drag of many tables asks every step.
+ * read once for all of them, which a drag of many tables asks every step; no
+ * point, and no box is built.
  *
  * @example
  * const groups = findTableGroupsAt(state, centers, { excludeTableIds: ids });
@@ -183,16 +283,22 @@ export function findTableGroupAt(
 export function findTableGroupsAt(
   state: RootState,
   points: ReadonlyArray<Point>,
-  options?: TableGroupRectOptions
+  { boxes, ...options }: TableGroupFindOptions = {}
 ): Array<TableGroup | null> {
+  if (!points.length) return [];
+
   const { doc, collections } = state;
-  const boxes = query(collections)
+  const rects = boxes ?? getTableGroupRects(state, options);
+  const candidates = query(collections)
     .collection('tableGroupEntities')
     .selectByIds(doc.tableGroupIds)
-    .map(group => ({ group, rect: getTableGroupRect(state, group, options) }));
+    .flatMap(group => {
+      const rect = rects.get(group.id);
+      return rect ? [{ group, rect }] : [];
+    });
 
   return points.map(point =>
-    boxes.reduce<TableGroup | null>(
+    candidates.reduce<TableGroup | null>(
       (top, { group, rect }) =>
         (!top || top.ui.zIndex <= group.ui.zIndex) && isPointInRect(point, rect)
           ? group
@@ -244,10 +350,26 @@ export function getTableHeaderTint(
 ): TableGroupColors | null {
   if (source !== 'document' || !isTableGroupShown(state)) return null;
 
-  const groupId = getTableGroupId(state, table);
-  const group = groupId
-    ? state.collections.tableGroupEntities[groupId]
-    : undefined;
+  return getTableGroupTint(state, getTableGroupId(state, table), source);
+}
 
+/**
+ * The colors a header takes from the group named, one already read as listed ('' for none), as
+ * getTableHeaderTint decides them: a scene naming each table's group off one read of the list hands
+ * it here, so a group coming or going re-renders no table it does not reach.
+ *
+ * @example
+ * const tint = getTableGroupTint(state, props.tableGroupId, source);
+ */
+export function getTableGroupTint(
+  state: RootState,
+  groupId: string,
+  source: GeometrySource = 'document'
+): TableGroupColors | null {
+  if (!groupId || source !== 'document' || !isTableGroupShown(state)) {
+    return null;
+  }
+
+  const group = state.collections.tableGroupEntities[groupId];
   return group ? getTableGroupColors(group) : null;
 }

@@ -108,7 +108,11 @@ import { tableHeaderHeight } from '@/utils/calcTable';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
-import { getTableHeaderTint, type TableGroupColors } from '@/utils/tableGroup';
+import {
+  getTableGroupTint,
+  getTableHeaderTint,
+  type TableGroupColors,
+} from '@/utils/tableGroup';
 import { getAlternateKeyMarks } from '@/utils/tableKeys';
 
 import { useFocusTable } from './useFocusTable';
@@ -118,7 +122,10 @@ import { useViewPin } from './useViewPin';
 
 export type TableProps = {
   table: Table;
-  /** A drawn copy rather than the table itself, so nothing in it takes an id. */
+  /**
+   * A drawn copy rather than the table itself, so nothing in it takes an id,
+   * and no group color either: a copy, a duplicate's, lands in no group.
+   */
   preview?: boolean;
   hovered?: boolean;
   hoveredColumnId?: string | null;
@@ -133,6 +140,11 @@ export type TableProps = {
    * by the scene, which walks the document's links once for every card it draws.
    */
   relatedColumnIds?: Set<string> | null;
+  /**
+   * The group whose color the header wears, '' for none, named by a scene that
+   * reads the group list once for every table; a table drawn alone reads its own.
+   */
+  tableGroupId?: string;
 };
 
 type HeaderCellOptions = {
@@ -602,7 +614,11 @@ const Table: FC<TableProps> = (props, ctx) => {
     // A member of a colored group wears the color across its header, the text
     // and icons on it in the black or white that reads best there, and keeps
     // its own color on the edge, so both show.
-    const tint = getTableHeaderTint(store.state, table, source);
+    const tint = props.preview
+      ? null
+      : props.tableGroupId === undefined
+        ? getTableHeaderTint(store.state, table, source)
+        : getTableGroupTint(store.state, props.tableGroupId, source);
 
     // A card showing no rows is its header and nothing else, so the band takes
     // the whole box and rounds all four corners rather than the top two.

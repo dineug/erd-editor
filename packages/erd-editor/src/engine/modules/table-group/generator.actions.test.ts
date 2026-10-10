@@ -462,6 +462,47 @@ describe('getTableGroupDrops', () => {
 
     expect(drops()).toEqual([]);
   });
+
+  it('keeps a table in the box its group held as the drag began, which a group the drag moves reads none of', () => {
+    // A member standing past its group's stored rect, as one that grew or a
+    // peer moved, sits in the box its own padding drew as the drag began.
+    const wide = { x: 0, y: 0, width: 1600, height: 400 };
+    const judge = (held: Map<string, typeof wide>) =>
+      getTableGroupDrops(store.state, held).map(({ table, groupId, box }) => [
+        table.id,
+        groupId,
+        box,
+      ]);
+    store.dispatchSync(selectAction({ out: SelectType.table }));
+
+    expect(judge(new Map([['low', wide]]))).toEqual([['out', 'low', wide]]);
+    expect(drops()).toEqual([['out', '']]);
+
+    expect(judge(new Map([['high', wide]]))).toEqual([['out', 'high', wide]]);
+    store.dispatchSync(selectAction({ high: SelectType.tableGroup }));
+    expect(judge(new Map([['high', wide]]))).toEqual([['out', '', null]]);
+  });
+
+  it('hands each drop the box of the group it lands in, and none for no group', () => {
+    store.dispatchSync(
+      selectAction({ inHigh: SelectType.table, out: SelectType.table })
+    );
+
+    expect(
+      getTableGroupDrops(store.state).map(({ table, box }) => [table.id, box])
+    ).toEqual([
+      ['inHigh', { x: 0, y: 0, width: 300, height: 400 }],
+      ['out', null],
+    ]);
+  });
+
+  it('judges nothing for a drag of groups alone, or of members their groups carry', () => {
+    store.dispatchSync(selectAction({ far: SelectType.tableGroup }));
+    expect(drops()).toEqual([]);
+
+    store.dispatchSync(selectAction({ member: SelectType.table }));
+    expect(drops()).toEqual([]);
+  });
 });
 
 describe('dropTablesIntoGroupsAction$', () => {

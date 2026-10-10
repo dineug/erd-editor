@@ -45,10 +45,14 @@ const settle = async () => {
   await whenDrawn();
 };
 
-/** A table in a group of the color given, hovered unless told otherwise so its buttons paint. */
+/**
+ * A table in a group of the color given, hovered unless told otherwise so its
+ * buttons paint, and drawn alone unless a scene names its group or a copy.
+ */
 async function mountMember(
   color: string,
-  hovered = true
+  hovered = true,
+  drawn: { tableGroupId?: string; preview?: boolean } = {}
 ): Promise<{ app: AppContext; stage: Stage }> {
   const app = createTestAppContext();
   app.store.dispatchSync(
@@ -71,7 +75,12 @@ async function mountMember(
     container,
     scene: (
       <k-layer name="scene">
-        <Table table={table} hovered={hovered} />
+        <Table
+          table={table}
+          hovered={hovered}
+          tableGroupId={drawn.tableGroupId}
+          preview={drawn.preview}
+        />
       </k-layer>
     ),
     width: 900,
@@ -213,6 +222,22 @@ describe('a member table header', () => {
     );
     await settle();
     expect(headerPaint(stage).band).toBe('#1e3a8a');
+  });
+
+  it('wears the group a scene names for it, and none where the scene names none', async () => {
+    const named = await mountMember('#1e3a8a', true, {
+      tableGroupId: GROUP_ID,
+    });
+    expect(headerPaint(named.stage).band).toBe('#1e3a8a');
+
+    const none = await mountMember('#1e3a8a', true, { tableGroupId: '' });
+    expect(headerPaint(none.stage)).toEqual(UNTINTED);
+  });
+
+  it('draws a copy with no group color, since a copy lands in no group', async () => {
+    const { stage } = await mountMember('#1e3a8a', true, { preview: true });
+
+    expect(headerPaint(stage).band).toBe(THEME.tableHeaderBackground);
   });
 
   it('hides the buttons at rest on a tint as on any header', async () => {

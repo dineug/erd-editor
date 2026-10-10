@@ -7,7 +7,7 @@ import { useAppContext } from '@/components/appContext';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import RelationshipGroup from '@/components/erd/canvas/relationship-group/RelationshipGroup';
 import Table from '@/components/erd/canvas/table/Table';
-import TableGroup from '@/components/erd/canvas/table-group/TableGroup';
+import TableGroups from '@/components/erd/canvas/table-group/TableGroups';
 import { useThemeContext } from '@/components/themeContext';
 import { Show } from '@/constants/schema';
 import type { Rect } from '@/konva/scene/metrics';
@@ -39,7 +39,7 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
     const { box, scale } = props;
     const {
       settings: { show },
-      doc: { tableIds, memoIds, relationshipIds, tableGroupIds },
+      doc: { tableIds, memoIds, relationshipIds },
       collections,
     } = store.state;
     const theme = themeRef.value;
@@ -58,13 +58,6 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
       .collection('relationshipEntities')
       .selectByIds(relationshipIds);
 
-    const groups = isTableGroupShown(store.state)
-      ? query(collections)
-          .collection('tableGroupEntities')
-          .selectByIds(tableGroupIds)
-          .sort(byZIndex)
-      : [];
-
     return (
       <k-layer
         name="export-scene"
@@ -82,13 +75,7 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
           height={box.height}
           fill={theme.canvasBackground}
         />
-        {repeat(
-          groups,
-          group => group.id,
-          group => (
-            <TableGroup group={group} />
-          )
-        )}
+        {isTableGroupShown(store.state) ? <TableGroups /> : null}
         {bHas(show, Show.relationship) ? (
           <RelationshipGroup relationships={relationships} />
         ) : null}

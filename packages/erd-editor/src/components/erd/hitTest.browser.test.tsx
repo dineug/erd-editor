@@ -435,8 +435,11 @@ async function addGroup(app: AppContext) {
   await settle();
 }
 
+/** A part of g1: its body stands apart under every group's frame, the rest under the frame's node. */
 const groupPart = (stage: Stage, name: string) =>
-  stage.findOne<Group>('#table-group-g1')!.findOne(`.${name}`)!;
+  name === 'table-group-body'
+    ? stage.findOne('#table-group-body-g1')!
+    : stage.findOne<Group>('#table-group-g1')!.findOne(`.${name}`)!;
 
 const middleOf = (stage: Stage, name: string) => {
   const rect = groupPart(stage, name).getClientRect();
@@ -466,6 +469,27 @@ describe('sceneHit - a table group under a pointer', () => {
     expect(hitAt(fixture, groupBodyPoint(fixture.stage))).toEqual({
       kind: 'tableGroup',
       id: 'g1',
+      part: 'body',
+    });
+  });
+
+  it('answers with the inner group for a press on its bar under a larger group drawn over it', async () => {
+    const fixture = await setup();
+    await addGroup(fixture.app);
+    fixture.app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'outer',
+        ui: { x: 0, y: -60, width: 900, height: 600, zIndex: 2 },
+      })
+    );
+    await settle();
+
+    expect(
+      hitAt(fixture, middleOf(fixture.stage, 'table-group-title-bar'))
+    ).toEqual({ kind: 'tableGroup', id: 'g1', part: 'title' });
+    expect(hitAt(fixture, groupBodyPoint(fixture.stage))).toEqual({
+      kind: 'tableGroup',
+      id: 'outer',
       part: 'body',
     });
   });

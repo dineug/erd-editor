@@ -5,6 +5,8 @@ import { tryStartAltDragDuplicate } from '@/components/erd/canvas/altDragDuplica
 import {
   beginEntityDrag,
   endEntityDrag,
+  getHeldTableGroupBoxes,
+  markEntityDragTravelled,
 } from '@/components/erd/canvas/entityDrag';
 import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
@@ -122,21 +124,36 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     // A gesture per press: the tables its first step carries are its last's.
     const step = handleMove(source, {});
     let begun = false;
-    let moved = false;
+    let travelled = false;
     let pendingX = 0;
     let pendingY = 0;
+    let travelX = 0;
+    let travelY = 0;
 
     const move = (drag: DragMove) => {
-      moved ||= drag.movementX !== 0 || drag.movementY !== 0;
+      travelX += drag.movementX;
+      travelY += drag.movementY;
+      if (
+        !travelled &&
+        Math.abs(travelX) + Math.abs(travelY) >= CLICK_DRAG_MIN_MOVE
+      ) {
+        travelled = true;
+        markEntityDragTravelled(store.state, source);
+      }
       step(drag);
     };
 
-    // A drop that moved the document's tables settles their groups in the
-    // history entry of the drag; a press that went nowhere is a click.
+    // A drop past the click distance settles the groups of the document's
+    // tables in the drag's history entry, in the boxes they held as it began;
+    // a press that went nowhere, or a tremor short of it, changes no group.
     const end = () => {
       if (!begun) return;
-      if (moved && source === 'document') {
-        store.dispatch(dropTablesIntoGroupsAction$());
+      if (travelled && source === 'document') {
+        store.dispatch(
+          dropTablesIntoGroupsAction$(
+            getHeldTableGroupBoxes(store.state, source)
+          )
+        );
       }
       endEntityDrag(store.state, source);
     };

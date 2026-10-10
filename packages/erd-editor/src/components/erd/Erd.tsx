@@ -53,10 +53,11 @@ import { isEditingText, Viewport } from '@/engine/modules/editor/state';
 import { getDocumentColors } from '@/engine/modules/editor/utils/color';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import { selectTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
 import { HISTORY_LIMIT } from '@/engine/rx-store';
 import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { getContentRect } from '@/konva/scene/contentBounds';
+import { hasContent } from '@/konva/scene/contentBounds';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { isElkPlacement } from '@/services/elk-layout';
 import {
@@ -206,6 +207,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       state.relationshipId = hit.id;
       state.contextMenuType = ErdContextMenuType.relationship;
     } else if (hit?.kind === 'tableGroup') {
+      // A Mac Ctrl+click and a long touch are main presses, which read the
+      // body as canvas and unselect, so the menu they raise selects the group
+      // as a right press would have; one the selection holds stays as it is.
+      const { store } = app.value;
+      if (!store.state.editor.selectedMap[hit.id]) {
+        store.dispatch(selectTableGroupAction$(hit.id, false));
+      }
       state.tableGroupId = hit.id;
       state.contextMenuType = ErdContextMenuType.tableGroup;
     } else {
@@ -579,14 +587,15 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const showDiffViewer = openMap[Open.diffViewer];
     const { handTool, zenMode } = store.state.editor;
     // An empty document has no travel and draws no scrollbar; the map of it
-    // would be as empty, so it is left out the same way.
-    const hasContent = getContentRect(store.state) !== null;
+    // would be as empty, so it is left out the same way. Read off the lists,
+    // so a drag step, which moves rects alone, does not run this render again.
+    const showMinimap = hasContent(store.state) && !zenMode;
     // An open overlay stands a scene of its own over this canvas, so the tools
     // that drive this one step aside rather than float over it.
     const showFloatingToolbar = !getShowOverLayout();
     // Only for a host that asks for it, over a document still empty that the
-    // reader may edit, so the first table or memo takes it away and an undo
-    // brings it again, and never after appDestroy, whose clear empties it too.
+    // reader may edit, so the first table, memo or shown group takes it away
+    // and an undo brings it again, never after appDestroy, which empties it too.
     const showWelcomeScreen =
       Boolean(props.enableWelcomeScreen) &&
       !app.value.lifecycle.destroyed &&
@@ -620,11 +629,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       >
         <Canvas root={root} canvas={canvas} grabMove={handTool || drawsGroup} />
         <DrawTargetButtons root={root} readonly={props.readonly} />
-        {drawsGroup && groupDraw.state.draft ? (
-          <TableGroupDraft rect={groupDraw.state.draft} />
-        ) : null}
+        {drawsGroup ? <TableGroupDraft draw={groupDraw.state} /> : null}
         {zenMode ? null : <VirtualScroll />}
-        {hasContent && !zenMode ? <Minimap /> : null}
+        {showMinimap ? <Minimap /> : null}
         {showWelcomeScreen ? (
           <WelcomeScreen
             enableThemeBuilder={props.enableThemeBuilder}

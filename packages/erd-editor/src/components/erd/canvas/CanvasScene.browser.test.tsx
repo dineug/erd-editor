@@ -478,7 +478,7 @@ describe('the canvas scene', () => {
     expect(stage.find('.relationship-group')).toHaveLength(1);
   });
 
-  it('draws the groups first, under the connectors, by the z-index among themselves', async () => {
+  it('draws the groups first, under the connectors, by the z-index among themselves, every body before every frame', async () => {
     const { app, stage } = await mountScene();
     const scene = stage.findOne<Layer>('.scene')!;
 
@@ -488,12 +488,21 @@ describe('the canvas scene', () => {
     await flush();
 
     expect(scene.getChildren().map(node => node.name())).toEqual([
+      'table-group-body',
+      'table-group-body',
       'table-group',
       'table-group',
       'relationship-group',
       'table',
     ]);
-    expect(stage.find('.table-group').map(node => node.id())).toEqual([
+    expect(
+      scene
+        .getChildren()
+        .slice(0, 4)
+        .map(node => node.id())
+    ).toEqual([
+      'table-group-body-below',
+      'table-group-body-above',
       'table-group-below',
       'table-group-above',
     ]);

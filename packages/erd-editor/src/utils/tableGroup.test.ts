@@ -18,7 +18,10 @@ import {
   getTableGroupColors,
   getTableGroupId,
   getTableGroupMemberIds,
+  getTableGroupMembers,
   getTableGroupRect,
+  getTableGroupRects,
+  getTableGroupTint,
   getTableGroupWraps,
   getTableHeaderTint,
   getTablesGroupRect,
@@ -189,6 +192,85 @@ describe('getTableGroupRect', () => {
   });
 });
 
+describe('getTableGroupRect with its members handed in', () => {
+  it('reads the members given and walks no table of the document', () => {
+    const state = createState();
+    const group = addGroup(state, 'g1', { x: 0, y: 0, width: 50, height: 50 });
+    const member = addTable(state, 't1', 400, 400, 'g1');
+    addTable(state, 't2', 900, 900, 'g1');
+
+    expect(getTableGroupRect(state, group, { members: [member] })).toEqual(
+      getTableGroupRect(state, group, { excludeTableIds: ['t2'] })
+    );
+    expect(
+      getTableGroupRect(state, group, {
+        members: [member],
+        excludeTableIds: ['t1'],
+      })
+    ).toEqual({ x: 0, y: 0, width: 50, height: 50 });
+  });
+});
+
+describe('getTableGroupRects', () => {
+  it('reads every listed group as getTableGroupRect does, out of one walk', () => {
+    const state = createState();
+    const g1 = addGroup(state, 'g1', { x: 0, y: 0, width: 50, height: 50 });
+    const g2 = addGroup(state, 'g2', { x: 600, y: 0, width: 50, height: 50 });
+    addTable(state, 'a', 300, 300, 'g1');
+    addTable(state, 'b', 900, 300, 'g2');
+    addTable(state, 'c', 100, 900, 'g2');
+    addTable(state, 'stale', -900, -900, 'ghost');
+    addTable(state, 'loose', -900, -900);
+
+    expect(getTableGroupRects(state)).toEqual(
+      new Map([
+        ['g1', getTableGroupRect(state, g1)],
+        ['g2', getTableGroupRect(state, g2)],
+      ])
+    );
+    expect(
+      getTableGroupRects(state, { excludeTableIds: ['b', 'c'] }).get('g2')
+    ).toEqual({ x: 600, y: 0, width: 50, height: 50 });
+  });
+
+  it('reads no group the document does not list, and none in a document with none', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 50, height: 50 });
+    addTable(state, 'a', 300, 300, 'g1');
+    state.doc.tableGroupIds = [];
+
+    expect(getTableGroupRects(state).size).toBe(0);
+  });
+});
+
+describe('getTableGroupMembers', () => {
+  it('lists each listed group its member tables in document order, a group with none left out', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 50, height: 50 });
+    addGroup(state, 'g2', { x: 0, y: 0, width: 50, height: 50 });
+    addGroup(state, 'empty', { x: 0, y: 0, width: 50, height: 50 });
+    const b = addTable(state, 'b', 0, 0, 'g1');
+    const a = addTable(state, 'a', 0, 0, 'g2');
+    const c = addTable(state, 'c', 0, 0, 'g1');
+    addTable(state, 'stale', 0, 0, 'ghost');
+    addTable(state, 'loose', 0, 0);
+
+    expect(getTableGroupMembers(state)).toEqual(
+      new Map([
+        ['g1', [b, c]],
+        ['g2', [a]],
+      ])
+    );
+  });
+
+  it('lists nothing in a document with no group', () => {
+    const state = createState();
+    addTable(state, 'a', 0, 0, 'ghost');
+
+    expect(getTableGroupMembers(state).size).toBe(0);
+  });
+});
+
 describe('getTablesGroupRect', () => {
   it('is the bounds of the tables the document lists, padded', () => {
     const state = createState();
@@ -349,6 +431,19 @@ describe('findTableGroupsAt', () => {
     ).toEqual(['high', 'low', null, null]);
     expect(findTableGroupsAt(state, [])).toEqual([]);
   });
+
+  it('reads the boxes handed in over the ones the tables would build', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 100, height: 100 });
+    addGroup(state, 'g2', { x: 500, y: 0, width: 100, height: 100 });
+    const boxes = new Map([['g1', { x: 0, y: 0, width: 1000, height: 100 }]]);
+
+    expect(
+      findTableGroupsAt(state, [{ x: 550, y: 50 }], { boxes }).map(
+        group => group?.id ?? null
+      )
+    ).toEqual(['g1']);
+  });
 });
 
 describe('nextTableGroupZIndex', () => {
@@ -387,6 +482,26 @@ describe('getTableGroupColors', () => {
   it('is null for no color and for one it cannot read', () => {
     expect(getTableGroupColors(createTableGroup({ color: '' }))).toBeNull();
     expect(getTableGroupColors(createTableGroup({ color: 'red' }))).toBeNull();
+  });
+});
+
+describe('getTableGroupTint', () => {
+  const box = { x: 0, y: 0, width: 10, height: 10 };
+
+  it('paints the group named, in the document while groups show', () => {
+    const state = createState();
+    addGroup(state, 'g1', box, '#000000');
+
+    expect(getTableGroupTint(state, 'g1')).toEqual({
+      background: '#000000',
+      foreground: '#ffffff',
+    });
+    expect(getTableGroupTint(state, '')).toBeNull();
+    expect(getTableGroupTint(state, 'ghost')).toBeNull();
+    expect(getTableGroupTint(state, 'g1', 'flow')).toBeNull();
+
+    state.settings.show |= Show.hideTableGroup;
+    expect(getTableGroupTint(state, 'g1')).toBeNull();
   });
 });
 

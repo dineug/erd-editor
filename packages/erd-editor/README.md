@@ -48,7 +48,8 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
   Arabic, Hebrew and Persian laid out right to left while the diagram stays left to right;
   English until you [turn the picker on or call `setLocale`](#display-language)
 - Welcome screen — opt-in: an empty diagram shows a start menu (New Table, New Memo, Import, the
-  command palette, the shortcuts) and arrows at the tools, until its first table or memo
+  command palette, the shortcuts) and arrows at the tools, until its first table, memo or table
+  group
 - Collaboration hooks — the editor emits and applies actions; you supply the transport
 
 ## Install

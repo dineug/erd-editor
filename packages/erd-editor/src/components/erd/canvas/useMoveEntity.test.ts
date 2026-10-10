@@ -12,13 +12,17 @@ import {
 } from '@/__test-utils__/index';
 import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
 import { AppContext } from '@/components/appContext';
-import { isEntityDragActive } from '@/components/erd/canvas/entityDrag';
+import {
+  hasEntityDragTravelled,
+  isEntityDragActive,
+} from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import {
   sceneSourceContext,
   useSceneSource,
 } from '@/components/sceneSourceContext';
+import { CLICK_DRAG_MIN_MOVE } from '@/constants/layout';
 import { RelationshipType } from '@/constants/schema';
 import {
   drawStartAddRelationshipAction,
@@ -315,6 +319,35 @@ describe('useMoveEntity', () => {
     expect(pointOf('t1').x).toBe(before.t1.x + 160);
     expect(pointOf('t2').x).toBe(before.t2.x + 160);
     expect(pointOf('t3')).toEqual(before.t3);
+  });
+
+  it('judges the drop of a drag past the click distance alone, a tremor of the hand putting no table in a group', async () => {
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 1200, height: 900, zIndex: 1 },
+      })
+    );
+
+    api.onMoveStart(press());
+    movePointer(CLICK_DRAG_MIN_MOVE - 2, 1);
+    await flush();
+    expect(isEntityDragActive(app.store.state)).toBe(true);
+    expect(hasEntityDragTravelled(app.store.state)).toBe(false);
+    releasePointer();
+    await flush();
+
+    expect(app.store.state.collections.tableEntities.t1.groupId).toBe('');
+
+    api.onMoveStart(press());
+    movePointer(CLICK_DRAG_MIN_MOVE, 0);
+    await flush();
+    expect(hasEntityDragTravelled(app.store.state)).toBe(true);
+    releasePointer();
+    await flush();
+
+    expect(app.store.state.collections.tableEntities.t1.groupId).toBe('g1');
+    expect(hasEntityDragTravelled(app.store.state)).toBe(false);
   });
 
   it('leaves an entity the selection never held where it stands', async () => {

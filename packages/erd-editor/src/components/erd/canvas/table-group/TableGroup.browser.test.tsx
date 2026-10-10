@@ -24,7 +24,7 @@ import {
   SCENE_FONT_SIZE,
   TABLE_GROUP_FILL_OPACITY,
 } from '@/components/erd/canvas/sceneTokens';
-import TableGroup from '@/components/erd/canvas/table-group/TableGroup';
+import TableGroups from '@/components/erd/canvas/table-group/TableGroups';
 import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
 import {
   TABLE_GROUP_PADDING,
@@ -38,6 +38,7 @@ import { SelectType } from '@/engine/modules/editor/state';
 import {
   addTableAction,
   changeTableGroupAction,
+  moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addTableGroupAction,
@@ -76,7 +77,6 @@ async function mountGroup({
   app.store.dispatchSync(
     addTableGroupAction({ id: GROUP_ID, color, ui: { ...STORED, zIndex: 1 } })
   );
-  const group = app.store.state.collections.tableGroupEntities[GROUP_ID];
 
   const container = document.createElement('div');
   document.body.append(container);
@@ -86,7 +86,7 @@ async function mountGroup({
     container,
     scene: (
       <k-layer name="scene">
-        <TableGroup group={group} />
+        <TableGroups />
       </k-layer>
     ),
     width: 1200,
@@ -129,6 +129,7 @@ describe('the table group scene', () => {
   it('roots the group at its box, the title bar and the body alone taking the pointer', async () => {
     const { stage } = await mountGroup();
     const root = nodeNamed<Group>(stage, 'table-group');
+    const body = nodeNamed(stage, 'table-group-body');
 
     expect(root.attrs).toMatchObject({
       id: `table-group-${GROUP_ID}`,
@@ -155,18 +156,20 @@ describe('the table group scene', () => {
       ['table-group-border', false],
       ['table-group-shared-select', false],
     ]);
-    expect(nodeNamed(stage, 'table-group-body').attrs.kind).toBe(
-      'table-group-body'
-    );
+    expect(body.attrs).toMatchObject({
+      id: `table-group-body-${GROUP_ID}`,
+      kind: 'table-group-body',
+    });
     expect(nodeNamed(stage, 'table-group-title').attrs.kind).toBe(
       'table-group-title'
     );
     expect(root.getChildren().map(node => node.name())).toEqual([
-      'table-group-body',
       'table-group-title',
       'table-group-border',
       'table-group-shared-select',
     ]);
+    expect(body.getParent()).toBe(root.getParent());
+    expect(body.zIndex()).toBeLessThan(root.zIndex());
     expect(
       nodeNamed<Group>(stage, 'table-group-title')
         .getChildren()
@@ -182,7 +185,8 @@ describe('the table group scene', () => {
       height: TABLE_GROUP_TITLE_HEIGHT,
     });
     expect(nodeNamed(stage, 'table-group-body').attrs).toMatchObject({
-      y: TABLE_GROUP_TITLE_HEIGHT,
+      x: STORED.x,
+      y: STORED.y + TABLE_GROUP_TITLE_HEIGHT,
       width: STORED.width,
       height: STORED.height - TABLE_GROUP_TITLE_HEIGHT,
       opacity: TABLE_GROUP_FILL_OPACITY,
@@ -216,11 +220,12 @@ describe('the table group scene', () => {
     );
   });
 
-  it('stretches over a member, and leaves out the ones a drag holds', async () => {
+  it('holds the box a drag began with, neither shrinking under a member lifted out nor stretching after it', async () => {
     const app = createTestAppContext();
     addMember(app, 'member', 900, 500);
     const { stage } = await mountGroup({ app });
     const border = () => nodeNamed(stage, 'table-group-border');
+    const body = () => nodeNamed(stage, 'table-group-body');
     const stretched = border().width();
 
     expect(stretched).toBeGreaterThan(STORED.width);
@@ -228,11 +233,37 @@ describe('the table group scene', () => {
     app.store.dispatchSync(selectAction({ member: SelectType.table }));
     beginEntityDrag(app.store.state);
     await settle();
-    expect(border().width()).toBe(STORED.width - 1);
+    expect(border().width()).toBe(stretched);
+
+    app.store.dispatchSync(
+      moveTableAction({ ids: ['member'], movementX: 400, movementY: 0 })
+    );
+    await settle();
+    expect(border().width()).toBe(stretched);
+    expect(body().width()).toBe(stretched + 1);
 
     endEntityDrag(app.store.state);
     await settle();
-    expect(border().width()).toBe(stretched);
+    expect(border().width()).toBe(stretched + 400);
+  });
+
+  it('follows a member the drag leaves standing past the box it held', async () => {
+    const app = createTestAppContext();
+    addMember(app, 'member', 100, 100);
+    addMember(app, 'standing', 120, 120);
+    const { stage } = await mountGroup({ app });
+    const border = () => nodeNamed(stage, 'table-group-border');
+    const held = border().width();
+
+    app.store.dispatchSync(selectAction({ member: SelectType.table }));
+    beginEntityDrag(app.store.state);
+    app.store.dispatchSync(
+      moveTableAction({ ids: ['standing'], movementX: 900, movementY: 0 })
+    );
+    await settle();
+
+    expect(border().width()).toBeGreaterThan(held);
+    endEntityDrag(app.store.state);
   });
 
   it('keeps every member in the box while the group itself is dragged', async () => {

@@ -15,8 +15,11 @@ import {
   WELCOME_MIN_WIDTH,
   welcomeTiers,
 } from '@/components/erd/welcome-screen/welcomeLayout';
+import { Show } from '@/constants/schema';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 
 const ROOMY = { width: 1440, height: 900 };
 
@@ -103,6 +106,23 @@ describe('isEmptyDocument', () => {
 
     expect(isEmptyDocument(withTable.store.state)).toBe(false);
     expect(isEmptyDocument(withMemo.store.state)).toBe(false);
+  });
+
+  it('fails once a shown group exists, as the content bounds count it, and holds while groups are hidden', () => {
+    const { store } = createTestAppContext();
+
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g',
+        ui: { x: 0, y: 0, width: 480, height: 320, zIndex: 1 },
+      })
+    );
+    expect(isEmptyDocument(store.state)).toBe(false);
+
+    store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    expect(isEmptyDocument(store.state)).toBe(true);
   });
 });
 

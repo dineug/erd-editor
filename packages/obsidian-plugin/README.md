@@ -94,7 +94,8 @@ editor's own history.
   keywords and generated code stay as they are
 - **Welcome guide** — an empty diagram opens on the ways to start: a new table or memo, an
   import, the command palette and the shortcuts, with hints pointing at the toolbar's search, theme
-  and language buttons and at the floating toolbar. The first table or memo takes it away
+  and language buttons and at the floating toolbar. The first table, memo or table group takes it
+  away
 
 ### Split panes
 

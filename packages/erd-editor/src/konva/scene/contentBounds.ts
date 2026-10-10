@@ -10,8 +10,9 @@ import {
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import {
-  getTableGroupRect,
+  growTableGroupBox,
   isTableGroupShown,
+  seedTableGroupBoxes,
   type TableGroupWrap,
 } from '@/utils/tableGroup';
 
@@ -27,6 +28,21 @@ export type TableMove = { id: string; x: number; y: number };
  */
 export function getContentRect(state: RootState): Rect | null {
   return getContentRectAfter(state, []);
+}
+
+/**
+ * Whether getContentRect has a box, read off the document's lists alone: a
+ * table, a memo or a shown group. A render asking only that observes no
+ * table's rect, so a drag step or a peer's move does not run it again.
+ */
+export function hasContent(state: RootState): boolean {
+  const { doc } = state;
+
+  return (
+    doc.tableIds.length > 0 ||
+    doc.memoIds.length > 0 ||
+    (doc.tableGroupIds.length > 0 && isTableGroupShown(state))
+  );
 }
 
 /**
@@ -58,15 +74,15 @@ export function getContentRects(
   const { tableIds, memoIds, tableGroupIds } =
     source === 'document' ? doc : getVisibleIds(state, source);
   const moved = new Map(moves.map(move => [move.id, move]));
-  // A moved member is left out of its group's box, which would otherwise
-  // reach for where it stood; its own box below already holds where it goes.
+  // Only the document lists groups, so a group's members are read at the
+  // document's geometry, the one the walk over the tables below takes there.
   const groups =
     tableGroupIds.length && isTableGroupShown(state)
       ? query(collections)
           .collection('tableGroupEntities')
           .selectByIds(tableGroupIds)
       : [];
-  const excludeTableIds = moves.map(move => move.id);
+  const groupBoxes = seedTableGroupBoxes(groups);
   const placedGroups = new Map(
     groupRects.map(({ id, ...rect }): [string, Rect] => [id, rect])
   );
@@ -77,18 +93,22 @@ export function getContentRects(
     .collection('memoEntities')
     .selectByIds(memoIds);
 
-  return [
-    ...tables.map(table => {
-      const rect = getTableRect(state, table, source);
-      const move = moved.get(table.id);
+  const tableRects = tables.map(table => {
+    const rect = getTableRect(state, table, source);
+    const move = moved.get(table.id);
+    // A moved member is left out of its group's box, which would otherwise
+    // reach for where it stood; its own box already holds where it goes.
+    if (move) return { ...rect, x: move.x, y: move.y };
 
-      return move ? { ...rect, x: move.x, y: move.y } : rect;
-    }),
+    growTableGroupBox(groupBoxes, table, rect);
+    return rect;
+  });
+
+  return [
+    ...tableRects,
     ...memos.map(getMemoRect),
     ...groups.map(
-      group =>
-        placedGroups.get(group.id) ??
-        getTableGroupRect(state, group, { excludeTableIds })
+      group => placedGroups.get(group.id) ?? groupBoxes.get(group.id)!
     ),
   ];
 }

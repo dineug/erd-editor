@@ -5,6 +5,7 @@ import { FC, repeat } from '@dineug/r-html';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
+import { createTableGroupMemberLists } from '@/components/erd/canvas/table-group/tableGroupBox';
 import Memo from '@/components/erd/minimap/memo/Memo';
 import {
   getMinimapLayout,
@@ -31,6 +32,7 @@ const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const memberLists = createTableGroupMemberLists();
 
   return () => {
     const { store } = app.value;
@@ -48,6 +50,8 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
             .selectByIds(tableGroupIds)
             .sort(byZIndex)
         : [];
+    // One walk over the tables for every group's members, and none with no group.
+    const membersOf = groups.length ? memberLists(store.state) : () => [];
 
     const tables = query(collections)
       .collection('tableEntities')
@@ -78,7 +82,11 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
           groups,
           group => group.id,
           group => (
-            <TableGroup group={group} ratio={layout.ratio} />
+            <TableGroup
+              group={group}
+              members={membersOf(group.id)}
+              ratio={layout.ratio}
+            />
           )
         )}
         {repeat(

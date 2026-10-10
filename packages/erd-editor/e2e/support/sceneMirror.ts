@@ -57,8 +57,9 @@ const STYLE_ATTRIBUTES: Array<[string, string]> = [
   ['sharedFocus', '--shared-focus'],
 ];
 
-/** Longest first, since a table group's id starts with a table's prefix too. */
+/** Longest first, since a table group's id starts with a table's prefix too, and its body's with the group's. */
 const ID_PREFIXES = [
+  'table-group-body-',
   'table-group-',
   'table-',
   'column-',

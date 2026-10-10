@@ -6,16 +6,23 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import {
+  beginEntityDrag,
+  endEntityDrag,
+} from '@/components/erd/canvas/entityDrag';
 import { MINIMAP_MARK_MIN } from '@/components/erd/minimap/minimapGeometry';
 import TableGroup from '@/components/erd/minimap/table-group/TableGroup';
+import { selectAction } from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import {
   addTableAction,
   changeTableGroupAction,
+  moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
-import { getTableGroupRect } from '@/utils/tableGroup';
+import { getTableGroupMembers, getTableGroupRect } from '@/utils/tableGroup';
 
 const GROUP_ID = 'group-1';
 const THEME = createTestTheme();
@@ -48,7 +55,11 @@ async function mountGroup(
     container,
     scene: (
       <k-layer name="scene">
-        <TableGroup group={group} ratio={ratio} />
+        <TableGroup
+          group={group}
+          members={getTableGroupMembers(app.store.state).get(GROUP_ID) ?? []}
+          ratio={ratio}
+        />
       </k-layer>
     ),
     width: 800,
@@ -108,6 +119,37 @@ describe('the minimap table group box', () => {
 
     expect(rect.width).toBeGreaterThan(500);
     expect(box.attrs).toMatchObject(rect);
+  });
+
+  it('holds the box it showed as a drag began, as the canvas box does', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 900, y: 700, zIndex: 2 } }),
+      changeTableGroupAction({ id: 't1', value: GROUP_ID })
+    );
+    const stage = await mountGroup('#3b82f6', app);
+    const held = { ...boxOf(stage).attrs };
+
+    app.store.dispatchSync(selectAction({ t1: SelectType.table }));
+    beginEntityDrag(app.store.state);
+    app.store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 600, movementY: 400 })
+    );
+    await flush();
+    await whenDrawn();
+
+    expect(boxOf(stage).attrs).toMatchObject({
+      x: held.x,
+      y: held.y,
+      width: held.width,
+      height: held.height,
+    });
+
+    endEntityDrag(app.store.state);
+    await flush();
+    await whenDrawn();
+
+    expect(boxOf(stage).width()).toBeGreaterThan(held.width);
   });
 
   it('draws no smaller than a mark at a ratio that folds the group away', async () => {
