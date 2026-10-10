@@ -947,7 +947,9 @@ class DocumentHubTest {
             AuthScope(emptyList(), listOf("/ws/a.erd.json")),
         )
         assertEquals("the published documents' write, then each change", scopes, fixture.hooks.map { it.scope })
-        assertEquals(scopes, fixture.hooks.map { AuthScope(it.lock!!.workspaceFolders, it.lock.documents) })
+        // A hook is posted once its write landed, and a later write can land before the registry runs it.
+        val listed = fixture.hooks.map { scopes.indexOf(AuthScope(it.lock!!.workspaceFolders, it.lock.documents)) }
+        assertTrue("the lock lists each hook's scope or a later one: $listed", listed.withIndex().all { it.value >= it.index })
         assertTrue(fixture.hooks.toString(), fixture.hooks.all { it.thread.startsWith("${threads.namePrefix}-registry") })
     }
 
