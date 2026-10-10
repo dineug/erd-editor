@@ -13,7 +13,7 @@ const orderViolations = (list: string[]) =>
   });
 
 describe('SQLiteTypes', () => {
-  it('exposes the storage classes, the documented affinity names, BOOL, TIME and TIMESTAMP', () => {
+  it('exposes the storage classes, the documented affinity names, BOOL, DEC, TIME and TIMESTAMP', () => {
     expect(SQLiteTypes).toEqual([
       'BIGINT',
       'BLOB',
@@ -23,6 +23,7 @@ describe('SQLiteTypes', () => {
       'CLOB',
       'DATE',
       'DATETIME',
+      'DEC',
       'DECIMAL',
       'DOUBLE PRECISION',
       'DOUBLE',
@@ -46,7 +47,7 @@ describe('SQLiteTypes', () => {
       'VARCHAR',
       'VARYING CHARACTER',
     ]);
-    expect(SQLiteTypes).toHaveLength(30);
+    expect(SQLiteTypes).toHaveLength(31);
   });
 
   it('contains no duplicate entries', () => {

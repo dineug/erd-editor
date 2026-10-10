@@ -1,31 +1,41 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { ColumnOption } from '@/constants/schema';
-import { PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
-import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 
 import {
-  FormatColumnOptions,
-  FormatTableOptions,
-  getNameCase,
-  getPrimitiveType,
-} from './utils';
+  getJsonShape,
+  isNullableColumn,
+  JsonShape,
+  JsonShapeKind,
+  toTypeScriptPropertyKey,
+  toTypeScriptTypeName,
+} from './jsonShape';
+import { FormatColumnOptions, FormatTableOptions, getNameCase } from './utils';
+import { formatComment } from './zod';
 
-const convertTypeMap: PrimitiveTypeMap = {
-  int: 'number',
-  long: 'number',
-  float: 'number',
-  double: 'number',
-  decimal: 'number',
+const INDENT = '  ';
+
+const TYPES: Readonly<Record<Exclude<JsonShapeKind, 'enum'>, string>> = {
   boolean: 'boolean',
+  integer: 'number',
+  number: 'number',
   string: 'string',
-  lob: 'string',
+  uuid: 'string',
+  guid: 'string',
   date: 'string',
-  dateTime: 'string',
   time: 'string',
+  naiveDateTime: 'string',
+  offsetDateTime: 'string',
+  base64: 'string',
+  json: 'unknown',
+  ipv4: 'string',
+  ipv6: 'string',
+  null: 'null',
 };
+
+// Both already hold null, so a nullable column adds no union to them.
+const NULL_HOLDING_TYPES: ReadonlySet<string> = new Set(['unknown', 'null']);
 
 export function createCode(state: RootState): string {
   const {
@@ -57,12 +67,10 @@ export function formatTable(
     settings: { tableNameCase },
     collections,
   } = state;
-  const tableName = getNameCase(table.name, tableNameCase);
+  const typeName = toTypeScriptTypeName(getNameCase(table.name, tableNameCase));
 
-  if (table.comment.trim() !== '') {
-    buffer.push(`// ${table.comment}`);
-  }
-  buffer.push(`export interface ${tableName} {`);
+  formatComment(buffer, '', table.comment);
+  buffer.push(`export interface ${typeName} {`);
 
   query(collections)
     .collection('tableColumnEntities')
@@ -78,15 +86,34 @@ function formatColumn(
   { settings: { columnNameCase, database } }: RootState,
   { buffer, column }: FormatColumnOptions
 ) {
-  const columnName = getNameCase(column.name, columnNameCase);
-  const primitiveType = getPrimitiveType(column.dataType, database);
-
-  if (column.comment.trim() !== '') {
-    buffer.push(`  // ${column.comment}`);
-  }
-  buffer.push(
-    `  ${columnName}: ${convertTypeMap[primitiveType]}${
-      bHas(column.options, ColumnOption.notNull) ? '' : ' | null'
-    };`
+  const key = toTypeScriptPropertyKey(getNameCase(column.name, columnNameCase));
+  const type = toTypeScriptType(
+    getJsonShape(column.dataType, database),
+    isNullableColumn(column)
   );
+
+  formatComment(buffer, INDENT, column.comment);
+  buffer.push(`${INDENT}${key}: ${type};`);
+}
+
+/**
+ * A value's type as z.infer reads it from the Zod schema of the same column:
+ * an array type for each dimension, its elements never null, and a null union
+ * where the column takes NULL.
+ */
+function toTypeScriptType(shape: JsonShape, nullable: boolean): string {
+  const element = elementType(shape);
+  const isUnion = shape.kind === 'enum' && shape.members.length > 1;
+  const type =
+    shape.arrayDepth === 0
+      ? element
+      : `${isUnion ? `(${element})` : element}${'[]'.repeat(shape.arrayDepth)}`;
+
+  return nullable && !NULL_HOLDING_TYPES.has(type) ? `${type} | null` : type;
+}
+
+function elementType({ kind, members }: JsonShape): string {
+  return kind === 'enum'
+    ? members.map(member => JSON.stringify(member)).join(' | ')
+    : TYPES[kind];
 }

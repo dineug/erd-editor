@@ -556,7 +556,7 @@ describe('generator-code/sequelize', () => {
     it('maps every primitive type to a DataTypes member and a TypeScript type', () => {
       const cases: Array<[string, string, string]> = [
         ['INT', 'DataTypes.INTEGER', 'number'],
-        ['BIGINT', 'DataTypes.BIGINT', 'string'],
+        ['BIGINT', 'DataTypes.BIGINT', 'number | string'],
         ['FLOAT', 'DataTypes.FLOAT', 'number'],
         ['DOUBLE', 'DataTypes.DOUBLE', 'number'],
         ['DECIMAL', 'DataTypes.DECIMAL', 'string'],
@@ -576,24 +576,42 @@ describe('generator-code/sequelize', () => {
       });
     });
 
-    it('reads every 64-bit integer as a string, whichever name spells it', () => {
+    it('reads a 64-bit integer as the driver hands it over', () => {
       expect(createAnnotationFixture('BIGINT', Database.MySQL)).toBe(
-        '  declare value: string;'
+        '  declare value: number | string;'
+      );
+      expect(createAnnotationFixture('BIGINT UNSIGNED', Database.MariaDB)).toBe(
+        '  declare value: number | string;'
       );
       expect(createAnnotationFixture('SERIAL', Database.MySQL)).toBe(
-        '  declare value: string;'
+        '  declare value: CreationOptional<number | string>;'
       );
       expect(createAnnotationFixture('bigserial', Database.PostgreSQL)).toBe(
+        '  declare value: CreationOptional<string>;'
+      );
+      expect(createAnnotationFixture('bigint', Database.MSSQL)).toBe(
+        '  declare value: string;'
+      );
+      expect(createAnnotationFixture('NUMBER', Database.Oracle)).toBe(
         '  declare value: string;'
       );
       expect(createAnnotationFixture('UNSIGNED BIG INT', Database.SQLite)).toBe(
-        '  declare value: string;'
+        '  declare value: number;'
       );
       expect(createTypeFixture('UNSIGNED BIG INT', Database.SQLite)).toBe(
         'DataTypes.BIGINT'
       );
-      expect(createTypeFixture('oid', Database.PostgreSQL)).toBe(
-        'DataTypes.BIGINT'
+    });
+
+    it('states a MySQL SERIAL as the unsigned BIGINT it stands for', () => {
+      expect(createTypeFixture('SERIAL', Database.MySQL)).toBe(
+        'DataTypes.BIGINT.UNSIGNED'
+      );
+      expect(createTypeFixture('serial', Database.MariaDB)).toBe(
+        'DataTypes.BIGINT.UNSIGNED'
+      );
+      expect(createTypeFixture('serial', Database.PostgreSQL)).toBe(
+        'DataTypes.INTEGER'
       );
     });
 
@@ -688,23 +706,27 @@ describe('generator-code/sequelize', () => {
         'DataTypes.UUID'
       );
       expect(createTypeFixture('uniqueidentifier', Database.MSSQL)).toBe(
-        'DataTypes.UUID'
+        '"uniqueidentifier"'
       );
     });
 
-    it('reads a timezone-aware stamp as DATE and a timezone-aware time as TIME', () => {
+    it('reads a zoned stamp as DATE and states a zoned time as written', () => {
       expect(
-        createTypeFixture('timestamp(3) with time zone', Database.PostgreSQL)
+        createTypeFixture('timestamp with time zone', Database.PostgreSQL)
       ).toBe('DataTypes.DATE');
       expect(
         createAnnotationFixture('timestamp with time zone', Database.PostgreSQL)
       ).toBe('  declare value: Date;');
-      expect(createTypeFixture('timetz', Database.PostgreSQL)).toBe(
-        'DataTypes.TIME'
-      );
+      expect(
+        createTypeFixture('timestamp(3) with time zone', Database.PostgreSQL)
+      ).toBe('"timestamp(3) with time zone"');
+      expect(createTypeFixture('timetz', Database.PostgreSQL)).toBe('"timetz"');
       expect(createAnnotationFixture('timetz', Database.PostgreSQL)).toBe(
         '  declare value: string;'
       );
+      expect(
+        createTypeFixture('time with time zone', Database.PostgreSQL)
+      ).toBe('"time with time zone"');
     });
 
     it('lifts a length out of a string type and a precision out of a decimal', () => {
@@ -721,11 +743,11 @@ describe('generator-code/sequelize', () => {
         'DataTypes.CHAR(16)'
       );
       expect(createTypeFixture('binary(16)', Database.MySQL)).toBe(
-        'DataTypes.BLOB'
+        '"binary(16)"'
       );
     });
 
-    it('keeps the members of an enum but reads a set as a plain string', () => {
+    it('keeps the members of an enum and states a set as written', () => {
       expect(
         createTypeFixture("ENUM('G','PG-13','NC-17')", Database.MySQL)
       ).toBe('DataTypes.ENUM("G", "PG-13", "NC-17")');
@@ -734,7 +756,7 @@ describe('generator-code/sequelize', () => {
       );
       expect(
         createTypeFixture("SET('Trailers','Commentaries')", Database.MySQL)
-      ).toBe('DataTypes.STRING');
+      ).toBe("\"SET('Trailers','Commentaries')\"");
       expect(
         createAnnotationFixture(
           "SET('Trailers','Commentaries')",
@@ -800,9 +822,81 @@ describe('generator-code/sequelize', () => {
       );
       expect(
         createTypeFixture('interval day(2) to second(6)', Database.Oracle)
-      ).toBe('DataTypes.TIME');
+      ).toBe('DataTypes.STRING');
       expect(createTypeFixture('NATIONAL CHARACTER (10)', Database.MySQL)).toBe(
         'DataTypes.CHAR(10)'
+      );
+    });
+
+    it('states an interval outside PostgreSQL as a string, read as Oracle hands it over', () => {
+      expect(createTypeFixture('INTERVAL DAY TO SECOND', Database.Oracle)).toBe(
+        'DataTypes.STRING'
+      );
+      expect(
+        createAnnotationFixture('INTERVAL YEAR TO MONTH', Database.Oracle)
+      ).toBe('  declare value: object;');
+      expect(
+        createTypeFixture('INTERVAL HOUR TO MINUTE', Database.Databricks)
+      ).toBe('DataTypes.STRING');
+      expect(createAnnotationFixture('INTERVAL', Database.Databricks)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('reads an Oracle vector as the typed array of its format', () => {
+      expect(createTypeFixture('VECTOR(3)', Database.Oracle)).toBe(
+        'DataTypes.STRING'
+      );
+      expect(createTypeFixture('VECTOR(3, FLOAT64)', Database.Oracle)).toBe(
+        'DataTypes.STRING'
+      );
+      expect(
+        createAnnotationFixture('VECTOR(3, FLOAT32)', Database.Oracle)
+      ).toBe('  declare value: Float32Array;');
+      expect(
+        createAnnotationFixture('vector(1024, float64)', Database.Oracle)
+      ).toBe('  declare value: Float64Array;');
+      expect(createAnnotationFixture('VECTOR(*, INT8)', Database.Oracle)).toBe(
+        '  declare value: Int8Array;'
+      );
+      expect(
+        createAnnotationFixture('VECTOR(8, BINARY)', Database.Oracle)
+      ).toBe('  declare value: Uint8Array;');
+      expect(
+        createAnnotationFixture('VECTOR(3, FLOAT32, SPARSE)', Database.Oracle)
+      ).toBe('  declare value: object;');
+      expect(
+        createAnnotationFixture('VECTOR(3, FLOAT32, DENSE)', Database.Oracle)
+      ).toBe('  declare value: Float32Array;');
+    });
+
+    it('reads an Oracle vector of no fixed format as any typed array', () => {
+      const anyFormat =
+        '  declare value: Float32Array | Float64Array | Int8Array | Uint8Array;';
+
+      expect(createAnnotationFixture('VECTOR', Database.Oracle)).toBe(
+        anyFormat
+      );
+      expect(createAnnotationFixture('VECTOR(3)', Database.Oracle)).toBe(
+        anyFormat
+      );
+      expect(createAnnotationFixture('VECTOR(*, *)', Database.Oracle)).toBe(
+        anyFormat
+      );
+      expect(createAnnotationFixture('VECTOR(3, *, *)', Database.Oracle)).toBe(
+        anyFormat
+      );
+    });
+
+    it('reads an Oracle BFILE as the Lob oracledb hands over', () => {
+      expect(createTypeFixture('BFILE', Database.Oracle)).toBe(
+        'DataTypes.BLOB'
+      );
+      expect(createAnnotationFixture('BFILE', Database.Oracle)).toBe(
+        '  declare value: object;'
+      );
+      expect(createAnnotationFixture('RAW(16)', Database.Oracle)).toBe(
+        '  declare value: Buffer;'
       );
     });
 
@@ -823,7 +917,7 @@ describe('generator-code/sequelize', () => {
       expect(createTypeFixture('bpchar(10)', Database.PostgreSQL)).toBe(
         'DataTypes.CHAR(10)'
       );
-      expect(createTypeFixture('LONG VARBINARY', Database.MySQL)).toBe(
+      expect(createTypeFixture('LONG RAW', Database.Oracle)).toBe(
         'DataTypes.BLOB'
       );
       expect(createTypeFixture('BINARY_FLOAT', Database.Oracle)).toBe(
@@ -843,33 +937,33 @@ describe('generator-code/sequelize', () => {
       );
     });
 
-    it('reads a name only when it matches a vendor spelling exactly', () => {
+    it('reads the name of a MySQL integer with UNSIGNED and ZEROFILL dropped', () => {
       expect(createTypeFixture('mediumint unsigned', Database.MySQL)).toBe(
-        'DataTypes.INTEGER.UNSIGNED'
+        'DataTypes.MEDIUMINT.UNSIGNED'
+      );
+      expect(createTypeFixture('SMALLINT UNSIGNED', Database.MySQL)).toBe(
+        'DataTypes.SMALLINT.UNSIGNED'
+      );
+      expect(createTypeFixture('TINYINT(3) UNSIGNED', Database.MariaDB)).toBe(
+        'DataTypes.TINYINT.UNSIGNED'
+      );
+      expect(createTypeFixture('SMALLINT SIGNED', Database.MySQL)).toBe(
+        'DataTypes.SMALLINT'
       );
       expect(createTypeFixture('mediumint', Database.MySQL)).toBe(
         'DataTypes.MEDIUMINT'
       );
-      expect(createTypeFixture('bit', Database.MSSQL)).toBe(
-        'DataTypes.INTEGER'
-      );
     });
 
     it('lifts a length only onto a type that carries one', () => {
-      expect(createTypeFixture('TEXT(500)', Database.MySQL)).toBe(
-        'DataTypes.TEXT'
-      );
-      expect(createTypeFixture('BLOB(500)', Database.MySQL)).toBe(
-        'DataTypes.BLOB'
-      );
-      expect(createTypeFixture('TIME(3)', Database.MySQL)).toBe(
-        'DataTypes.TIME'
-      );
+      expect(createTypeFixture('TEXT', Database.MySQL)).toBe('DataTypes.TEXT');
+      expect(createTypeFixture('BLOB', Database.MySQL)).toBe('DataTypes.BLOB');
+      expect(createTypeFixture('TIME', Database.MySQL)).toBe('DataTypes.TIME');
       expect(createTypeFixture('DATE(2)', Database.MySQL)).toBe(
         'DataTypes.DATEONLY'
       );
       expect(createTypeFixture('FLOAT(11,10)', Database.MySQL)).toBe(
-        'DataTypes.FLOAT'
+        'DataTypes.FLOAT(11, 10)'
       );
       expect(createTypeFixture('VARCHAR(500)', Database.MySQL)).toBe(
         'DataTypes.STRING(500)'
@@ -889,9 +983,9 @@ describe('generator-code/sequelize', () => {
       expect(createTypeFixture('native character(10)', Database.MySQL)).toBe(
         'DataTypes.CHAR(10)'
       );
-      expect(createTypeFixture('char byte(10)', Database.MySQL)).toBe(
-        'DataTypes.CHAR(10)'
-      );
+      expect(
+        createTypeFixture('national character(10)', Database.MariaDB)
+      ).toBe('DataTypes.CHAR(10)');
       expect(createTypeFixture('bpchar(10)', Database.PostgreSQL)).toBe(
         'DataTypes.CHAR(10)'
       );
@@ -907,12 +1001,56 @@ describe('generator-code/sequelize', () => {
       expect(createTypeFixture('binary varying(10)', Database.MySQL)).toBe(
         'DataTypes.BLOB'
       );
-      expect(createTypeFixture('varbinary(10)', Database.MySQL)).toBe(
+      expect(createTypeFixture('CHAR(16) BYTE', Database.Databricks)).toBe(
+        'DataTypes.BLOB'
+      );
+      expect(createTypeFixture('BINARY(16)', Database.Snowflake)).toBe(
         'DataTypes.BLOB'
       );
       expect(createAnnotationFixture('raw(16)', Database.Oracle)).toBe(
         '  declare value: Buffer;'
       );
+    });
+
+    it('states a sized binary type as written where BLOB would widen it', () => {
+      expect(createTypeFixture('BINARY(16)', Database.MySQL)).toBe(
+        '"BINARY(16)"'
+      );
+      expect(createTypeFixture('varbinary(10)', Database.MariaDB)).toBe(
+        '"varbinary(10)"'
+      );
+      expect(createTypeFixture('CHAR(16) BYTE', Database.MySQL)).toBe(
+        '"CHAR(16) BYTE"'
+      );
+      expect(createTypeFixture('LONG VARBINARY', Database.MySQL)).toBe(
+        '"LONG VARBINARY"'
+      );
+      expect(createTypeFixture('binary(16)', Database.MSSQL)).toBe(
+        '"binary(16)"'
+      );
+      expect(createTypeFixture('varbinary(16)', Database.MSSQL)).toBe(
+        '"varbinary(16)"'
+      );
+      expect(createTypeFixture('image', Database.MSSQL)).toBe('"image"');
+      expect(createTypeFixture('varbinary(max)', Database.MSSQL)).toBe(
+        'DataTypes.BLOB'
+      );
+      expect(createAnnotationFixture('BINARY(16)', Database.MySQL)).toBe(
+        '  declare value: Buffer;'
+      );
+      expect(createAnnotationFixture('varbinary(16)', Database.MSSQL)).toBe(
+        '  declare value: Buffer;'
+      );
+    });
+
+    it('keeps a binary key a key MySQL can index', () => {
+      const { expression } = probe(
+        'BINARY(16)',
+        Database.MySQL,
+        ColumnOption.primaryKey
+      );
+
+      expect(expression).toBe('"BINARY(16)"');
     });
 
     it('reads every spelling of a decimal as one that reads back a string', () => {
@@ -976,12 +1114,49 @@ describe('generator-code/sequelize', () => {
       });
     });
 
-    it('reads a bit as the integer its vendor hint names, not a boolean', () => {
-      expect(createTypeFixture('bit', Database.PostgreSQL)).toBe(
-        'DataTypes.INTEGER'
+    it('states a PostgreSQL bit string as written and reads a SQL Server bit as a boolean', () => {
+      expect(createTypeFixture('bit', Database.PostgreSQL)).toBe('"bit"');
+      expect(createTypeFixture('bit(8)', Database.PostgreSQL)).toBe('"bit(8)"');
+      expect(createTypeFixture('varbit(8)', Database.PostgreSQL)).toBe(
+        '"varbit(8)"'
+      );
+      expect(createAnnotationFixture('bit(8)', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+      expect(createTypeFixture('bit', Database.MSSQL)).toBe(
+        'DataTypes.BOOLEAN'
       );
       expect(createAnnotationFixture('bit', Database.MSSQL)).toBe(
-        '  declare value: number;'
+        '  declare value: boolean;'
+      );
+    });
+
+    it('states a MySQL BIT as written and reads it as its driver does', () => {
+      expect(createTypeFixture('BIT(8)', Database.MySQL)).toBe('"BIT(8)"');
+      expect(createTypeFixture('BIT', Database.MariaDB)).toBe('"BIT"');
+      expect(createAnnotationFixture('BIT(1)', Database.MySQL)).toBe(
+        '  declare value: Buffer;'
+      );
+      expect(createAnnotationFixture('BIT(1)', Database.MariaDB)).toBe(
+        '  declare value: boolean;'
+      );
+      expect(createAnnotationFixture('BIT', Database.MariaDB)).toBe(
+        '  declare value: boolean;'
+      );
+      expect(createAnnotationFixture('BIT(64)', Database.MariaDB)).toBe(
+        '  declare value: Buffer;'
+      );
+    });
+
+    it('reads a member as MySQL reads a string literal, escapes included', () => {
+      expect(createTypeFixture("ENUM('a\\'b')", Database.MySQL)).toBe(
+        'DataTypes.ENUM("a\'b")'
+      );
+      expect(createTypeFixture("ENUM('a\\nb')", Database.MariaDB)).toBe(
+        'DataTypes.ENUM("a\\nb")'
+      );
+      expect(createAnnotationFixture("ENUM('a\\'b')", Database.MySQL)).toBe(
+        '  declare value: "a\'b";'
       );
     });
 
@@ -994,24 +1169,67 @@ describe('generator-code/sequelize', () => {
       );
     });
 
-    it('drops the fractional-second precision of a temporal type', () => {
+    it('keeps the fractional-second precision of a temporal type', () => {
       expect(createTypeFixture('TIMESTAMP(6)', Database.MySQL)).toBe(
-        'DataTypes.DATE'
+        '"TIMESTAMP(6)"'
       );
       expect(createTypeFixture('DATETIME(3)', Database.MySQL)).toBe(
+        'DataTypes.DATE(3)'
+      );
+      expect(createTypeFixture('DATETIME', Database.MariaDB)).toBe(
         'DataTypes.DATE'
       );
+      expect(createTypeFixture('TIME(3)', Database.MySQL)).toBe('"TIME(3)"');
       expect(createAnnotationFixture('TIMESTAMP(6)', Database.MySQL)).toBe(
+        '  declare value: Date;'
+      );
+      expect(createAnnotationFixture('TIME(3)', Database.MySQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('states a MySQL TIMESTAMP as written, which DATE would make a DATETIME', () => {
+      expect(createTypeFixture('TIMESTAMP', Database.MySQL)).toBe(
+        '"TIMESTAMP"'
+      );
+      expect(createTypeFixture('TIMESTAMP(3)', Database.MariaDB)).toBe(
+        '"TIMESTAMP(3)"'
+      );
+      expect(createAnnotationFixture('TIMESTAMP', Database.MariaDB)).toBe(
         '  declare value: Date;'
       );
     });
 
-    it('drops the precision of a floating point type', () => {
+    it('keeps the precision and scale of a MySQL floating point type', () => {
       expect(createTypeFixture('DOUBLE(11,10)', Database.MySQL)).toBe(
+        'DataTypes.DOUBLE(11, 10)'
+      );
+      expect(createTypeFixture('DOUBLE PRECISION(10,2)', Database.MySQL)).toBe(
+        'DataTypes.DOUBLE(10, 2)'
+      );
+      expect(createTypeFixture('REAL(10,2)', Database.MariaDB)).toBe(
+        'DataTypes.DOUBLE(10, 2)'
+      );
+      expect(createTypeFixture('float(7,4) unsigned', Database.MySQL)).toBe(
+        'DataTypes.FLOAT(7, 4).UNSIGNED'
+      );
+      expect(createTypeFixture('FLOAT(25)', Database.MySQL)).toBe(
         'DataTypes.DOUBLE'
       );
-      expect(createTypeFixture('REAL(11)', Database.PostgreSQL)).toBe(
+      expect(createTypeFixture('FLOAT(24)', Database.MySQL)).toBe(
         'DataTypes.FLOAT'
+      );
+    });
+
+    it('drops the precision of a floating point type outside MySQL', () => {
+      expect(createTypeFixture('REAL(11)', Database.PostgreSQL)).toBe(
+        'DataTypes.REAL'
+      );
+      expect(createTypeFixture('float(53)', Database.MSSQL)).toBe(
+        'DataTypes.DOUBLE'
+      );
+      expect(createTypeFixture('FLOAT(10,2)', Database.SQLite)).toBe(
+        'DataTypes.DOUBLE'
       );
     });
 
@@ -1040,7 +1258,7 @@ describe('generator-code/sequelize', () => {
       );
     });
 
-    it('appends UNSIGNED only on MySQL and MariaDB and only without an argument list', () => {
+    it('appends UNSIGNED and ZEROFILL on MySQL and MariaDB alone, argument list or not', () => {
       expect(createTypeFixture('int unsigned', Database.MySQL)).toBe(
         'DataTypes.INTEGER.UNSIGNED'
       );
@@ -1051,8 +1269,17 @@ describe('generator-code/sequelize', () => {
         'DataTypes.INTEGER.UNSIGNED'
       );
       expect(createTypeFixture('decimal(10,2) unsigned', Database.MySQL)).toBe(
-        'DataTypes.DECIMAL(10, 2)'
+        'DataTypes.DECIMAL(10, 2).UNSIGNED'
       );
+      expect(createTypeFixture('FLOAT UNSIGNED', Database.MariaDB)).toBe(
+        'DataTypes.FLOAT.UNSIGNED'
+      );
+      expect(createTypeFixture('INT(11) ZEROFILL', Database.MySQL)).toBe(
+        'DataTypes.INTEGER.UNSIGNED.ZEROFILL'
+      );
+      expect(
+        createTypeFixture('DECIMAL(10,2) UNSIGNED ZEROFILL', Database.MariaDB)
+      ).toBe('DataTypes.DECIMAL(10, 2).UNSIGNED.ZEROFILL');
       expect(createTypeFixture('int unsigned', Database.PostgreSQL)).toBe(
         'DataTypes.INTEGER'
       );
@@ -1076,6 +1303,610 @@ describe('generator-code/sequelize', () => {
       );
       expect(createTypeFixture('boolean unsigned', Database.MySQL)).toBe(
         'DataTypes.BOOLEAN'
+      );
+    });
+  });
+
+  describe('PostgreSQL types', () => {
+    it('states a real as REAL, which FLOAT would make a double precision', () => {
+      expect(createTypeFixture('real', Database.PostgreSQL)).toBe(
+        'DataTypes.REAL'
+      );
+      expect(createTypeFixture('float4', Database.PostgreSQL)).toBe(
+        'DataTypes.REAL'
+      );
+      expect(createTypeFixture('float(24)', Database.PostgreSQL)).toBe(
+        'DataTypes.REAL'
+      );
+      expect(createTypeFixture('float(25)', Database.PostgreSQL)).toBe(
+        'DataTypes.DOUBLE'
+      );
+      expect(createAnnotationFixture('real', Database.PostgreSQL)).toBe(
+        '  declare value: number;'
+      );
+    });
+
+    it('states a stamp without a zone as written, which DATE would give one', () => {
+      expect(createTypeFixture('timestamp', Database.PostgreSQL)).toBe(
+        '"timestamp"'
+      );
+      expect(createTypeFixture('timestamp(3)', Database.PostgreSQL)).toBe(
+        '"timestamp(3)"'
+      );
+      expect(
+        createTypeFixture('timestamp without time zone', Database.PostgreSQL)
+      ).toBe('"timestamp without time zone"');
+      expect(createTypeFixture('timestamptz(3)', Database.PostgreSQL)).toBe(
+        '"timestamptz(3)"'
+      );
+      expect(createTypeFixture('time(6)', Database.PostgreSQL)).toBe(
+        '"time(6)"'
+      );
+      expect(createAnnotationFixture('timestamp(3)', Database.PostgreSQL)).toBe(
+        '  declare value: Date;'
+      );
+    });
+
+    it('states an interval as written and reads it as the object pg parses', () => {
+      expect(createTypeFixture('interval', Database.PostgreSQL)).toBe(
+        '"interval"'
+      );
+      expect(
+        createTypeFixture('interval day to second(3)', Database.PostgreSQL)
+      ).toBe('"interval day to second(3)"');
+      expect(createAnnotationFixture('interval', Database.PostgreSQL)).toBe(
+        '  declare value: object;'
+      );
+      expect(
+        createAnnotationFixture('interval year to month', Database.PostgreSQL)
+      ).toBe('  declare value: object;');
+    });
+
+    it('states money as written and reads it as the text pg hands over', () => {
+      expect(createTypeFixture('money', Database.PostgreSQL)).toBe('"money"');
+      expect(createAnnotationFixture('money', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('states a range as RANGE of its subtype where Sequelize has one', () => {
+      expect(createTypeFixture('int4range', Database.PostgreSQL)).toBe(
+        'DataTypes.RANGE(DataTypes.INTEGER)'
+      );
+      expect(createTypeFixture('int8range', Database.PostgreSQL)).toBe(
+        'DataTypes.RANGE(DataTypes.BIGINT)'
+      );
+      expect(createTypeFixture('numrange', Database.PostgreSQL)).toBe(
+        'DataTypes.RANGE(DataTypes.DECIMAL)'
+      );
+      expect(createTypeFixture('daterange', Database.PostgreSQL)).toBe(
+        'DataTypes.RANGE(DataTypes.DATEONLY)'
+      );
+      expect(createTypeFixture('tstzrange', Database.PostgreSQL)).toBe(
+        'DataTypes.RANGE(DataTypes.DATE)'
+      );
+      expect(createTypeFixture('tsrange', Database.PostgreSQL)).toBe(
+        '"tsrange"'
+      );
+      expect(createTypeFixture('int4multirange', Database.PostgreSQL)).toBe(
+        '"int4multirange"'
+      );
+    });
+
+    it('reads a range as a Range of the bound pg parses', () => {
+      expect(createAnnotationFixture('int4range', Database.PostgreSQL)).toBe(
+        '  declare value: Range<number>;'
+      );
+      expect(createAnnotationFixture('int8range', Database.PostgreSQL)).toBe(
+        '  declare value: Range<string>;'
+      );
+      expect(createAnnotationFixture('numrange', Database.PostgreSQL)).toBe(
+        '  declare value: Range<string>;'
+      );
+      expect(createAnnotationFixture('daterange', Database.PostgreSQL)).toBe(
+        '  declare value: Range<string>;'
+      );
+      expect(createAnnotationFixture('tsrange', Database.PostgreSQL)).toBe(
+        '  declare value: Range<Date>;'
+      );
+      expect(createAnnotationFixture('tstzrange', Database.PostgreSQL)).toBe(
+        '  declare value: Range<Date>;'
+      );
+      expect(
+        createAnnotationFixture('int4multirange', Database.PostgreSQL)
+      ).toBe('  declare value: string;');
+    });
+
+    it('states a system identifier as written and reads it as pg does', () => {
+      expect(createTypeFixture('oid', Database.PostgreSQL)).toBe('"oid"');
+      expect(createAnnotationFixture('oid', Database.PostgreSQL)).toBe(
+        '  declare value: number;'
+      );
+      expect(createTypeFixture('xid', Database.PostgreSQL)).toBe('"xid"');
+      expect(createAnnotationFixture('xid', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+      expect(createAnnotationFixture('xid8', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('states any other listed type with no member as written', () => {
+      expect(createTypeFixture('pg_lsn', Database.PostgreSQL)).toBe('"pg_lsn"');
+      expect(createTypeFixture('xml', Database.PostgreSQL)).toBe('"xml"');
+      expect(createTypeFixture('macaddr8', Database.PostgreSQL)).toBe(
+        '"macaddr8"'
+      );
+      expect(createTypeFixture('point', Database.PostgreSQL)).toBe('"point"');
+      expect(createAnnotationFixture('point', Database.PostgreSQL)).toBe(
+        '  declare value: object;'
+      );
+      expect(createAnnotationFixture('circle', Database.PostgreSQL)).toBe(
+        '  declare value: object;'
+      );
+      expect(createAnnotationFixture('polygon', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('keeps the member of a listed type Sequelize creates as it is', () => {
+      expect(createTypeFixture('macaddr', Database.PostgreSQL)).toBe(
+        'DataTypes.MACADDR'
+      );
+      expect(createTypeFixture('time', Database.PostgreSQL)).toBe(
+        'DataTypes.TIME'
+      );
+      expect(createTypeFixture('timestamptz', Database.PostgreSQL)).toBe(
+        'DataTypes.DATE'
+      );
+      expect(createTypeFixture('mood', Database.PostgreSQL)).toBe(
+        'DataTypes.STRING'
+      );
+    });
+  });
+
+  describe('PostgreSQL arrays', () => {
+    it('wraps the member of a one-dimension array in ARRAY', () => {
+      expect(createTypeFixture('int[]', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.INTEGER)'
+      );
+      expect(createTypeFixture('integer ARRAY', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.INTEGER)'
+      );
+      expect(createTypeFixture('text[]', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.TEXT)'
+      );
+      expect(createTypeFixture('varchar(20)[]', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.STRING(20))'
+      );
+      expect(createTypeFixture('uuid[]', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.UUID)'
+      );
+      expect(createTypeFixture('int4range[]', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.RANGE(DataTypes.INTEGER))'
+      );
+    });
+
+    it('reads an array as an array of what pg hands over for an element', () => {
+      expect(createAnnotationFixture('int[]', Database.PostgreSQL)).toBe(
+        '  declare value: number[];'
+      );
+      expect(createAnnotationFixture('bigint[]', Database.PostgreSQL)).toBe(
+        '  declare value: string[];'
+      );
+      expect(createAnnotationFixture('bytea[]', Database.PostgreSQL)).toBe(
+        '  declare value: Buffer[];'
+      );
+      expect(createAnnotationFixture('jsonb[]', Database.PostgreSQL)).toBe(
+        '  declare value: unknown[];'
+      );
+      expect(createAnnotationFixture('int4range[]', Database.PostgreSQL)).toBe(
+        '  declare value: Range<number>[];'
+      );
+    });
+
+    it('wraps the annotation of an element that is a union in parentheses', () => {
+      expect(createTypeFixture("enum('a','b')[]", Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.ENUM("a", "b"))'
+      );
+      expect(
+        createAnnotationFixture("enum('a','b')[]", Database.PostgreSQL)
+      ).toBe('  declare value: ("a" | "b")[];');
+    });
+
+    it('states an array as written where its element is or it nests', () => {
+      expect(createTypeFixture('money[]', Database.PostgreSQL)).toBe(
+        '"money[]"'
+      );
+      expect(createTypeFixture('interval[]', Database.PostgreSQL)).toBe(
+        '"interval[]"'
+      );
+      expect(createTypeFixture('int[][]', Database.PostgreSQL)).toBe(
+        '"int[][]"'
+      );
+      expect(createTypeFixture('timestamptz[][][]', Database.PostgreSQL)).toBe(
+        '"timestamptz[][][]"'
+      );
+      expect(createAnnotationFixture('interval[]', Database.PostgreSQL)).toBe(
+        '  declare value: object[];'
+      );
+      expect(createAnnotationFixture('int[][]', Database.PostgreSQL)).toBe(
+        '  declare value: number[][];'
+      );
+      expect(
+        createAnnotationFixture('timestamptz[][][]', Database.PostgreSQL)
+      ).toBe('  declare value: Date[][][];');
+    });
+
+    it('reads an array pg does not parse as the one string it hands over', () => {
+      expect(createTypeFixture('bit(8)[]', Database.PostgreSQL)).toBe(
+        '"bit(8)[]"'
+      );
+      expect(createAnnotationFixture('bit(8)[]', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+      expect(createAnnotationFixture('xid[]', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+      expect(createTypeFixture('tsvector[]', Database.PostgreSQL)).toBe(
+        'DataTypes.ARRAY(DataTypes.TSVECTOR)'
+      );
+      expect(createAnnotationFixture('tsvector[]', Database.PostgreSQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('reads no array suffix outside PostgreSQL', () => {
+      expect(createTypeFixture('int[]', Database.MySQL)).toBe(
+        'DataTypes.INTEGER'
+      );
+      expect(createAnnotationFixture('int[]', Database.MySQL)).toBe(
+        '  declare value: number;'
+      );
+    });
+  });
+
+  describe('MySQL and MariaDB types', () => {
+    it('states a spatial type as GEOMETRY where Sequelize takes its subtype', () => {
+      expect(createTypeFixture('GEOMETRY', Database.MySQL)).toBe(
+        'DataTypes.GEOMETRY'
+      );
+      expect(createTypeFixture('POINT', Database.MySQL)).toBe(
+        'DataTypes.GEOMETRY("POINT")'
+      );
+      expect(createTypeFixture('LINESTRING', Database.MariaDB)).toBe(
+        'DataTypes.GEOMETRY("LINESTRING")'
+      );
+      expect(createTypeFixture('POLYGON', Database.MySQL)).toBe(
+        'DataTypes.GEOMETRY("POLYGON")'
+      );
+      expect(createTypeFixture('MULTIPOINT', Database.MySQL)).toBe(
+        '"MULTIPOINT"'
+      );
+      expect(createAnnotationFixture('POINT', Database.MySQL)).toBe(
+        '  declare value: object;'
+      );
+      expect(createAnnotationFixture('MULTIPOLYGON', Database.MariaDB)).toBe(
+        '  declare value: object;'
+      );
+    });
+
+    it('states YEAR and SET as written', () => {
+      expect(createTypeFixture('YEAR', Database.MySQL)).toBe('"YEAR"');
+      expect(createAnnotationFixture('YEAR', Database.MySQL)).toBe(
+        '  declare value: number;'
+      );
+      expect(createTypeFixture("SET('a','b')", Database.MariaDB)).toBe(
+        `"SET('a','b')"`
+      );
+      expect(createAnnotationFixture("SET('a','b')", Database.MySQL)).toBe(
+        '  declare value: string;'
+      );
+      expect(createAnnotationFixture("SET('a','b')", Database.MariaDB)).toBe(
+        '  declare value: ("a" | "b")[];'
+      );
+      expect(createAnnotationFixture('SET', Database.MariaDB)).toBe(
+        '  declare value: string[];'
+      );
+    });
+
+    it('reads a MariaDB decimal as a number while it is safe and as text past that', () => {
+      expect(createAnnotationFixture('DECIMAL(10,2)', Database.MariaDB)).toBe(
+        '  declare value: number | string;'
+      );
+      expect(createAnnotationFixture('DECIMAL(10,2)', Database.MySQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('states the MariaDB address and UUID types as written', () => {
+      expect(createTypeFixture('INET4', Database.MariaDB)).toBe('"INET4"');
+      expect(createTypeFixture('INET6', Database.MariaDB)).toBe('"INET6"');
+      expect(createTypeFixture('UUID', Database.MariaDB)).toBe('"UUID"');
+      expect(createAnnotationFixture('INET6', Database.MariaDB)).toBe(
+        '  declare value: string;'
+      );
+      expect(createAnnotationFixture('UUID', Database.MariaDB)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('states the long text and binary synonyms as written', () => {
+      expect(createTypeFixture('LONG VARCHAR', Database.MySQL)).toBe(
+        '"LONG VARCHAR"'
+      );
+      expect(createAnnotationFixture('LONG', Database.MariaDB)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('states a BLOB or TEXT of a length as written, which MySQL sizes by it', () => {
+      expect(createTypeFixture('BLOB(100)', Database.MySQL)).toBe(
+        '"BLOB(100)"'
+      );
+      expect(createAnnotationFixture('BLOB(100)', Database.MySQL)).toBe(
+        '  declare value: Buffer;'
+      );
+      expect(createTypeFixture('text(50)', Database.MariaDB)).toBe(
+        '"text(50)"'
+      );
+      expect(createAnnotationFixture('text(50)', Database.MariaDB)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('reads a MariaDB vector as its bytes', () => {
+      expect(createTypeFixture('VECTOR(3)', Database.MariaDB)).toBe(
+        '"VECTOR(3)"'
+      );
+      expect(createAnnotationFixture('VECTOR(3)', Database.MariaDB)).toBe(
+        '  declare value: Buffer;'
+      );
+      expect(createAnnotationFixture('vector', Database.MariaDB)).toBe(
+        '  declare value: Buffer;'
+      );
+    });
+
+    it('keeps a carriage return in an enum or set member', () => {
+      expect(createTypeFixture("ENUM('a\\rb')", Database.MySQL)).toBe(
+        'DataTypes.ENUM("a\\rb")'
+      );
+      expect(createAnnotationFixture("ENUM('a\\rb')", Database.MySQL)).toBe(
+        '  declare value: "a\\rb";'
+      );
+      expect(createTypeFixture("ENUM('a\r\nb')", Database.MariaDB)).toBe(
+        'DataTypes.ENUM("a\\r\\nb")'
+      );
+      expect(createAnnotationFixture("SET('a\\rb')", Database.MariaDB)).toBe(
+        '  declare value: ("a\\rb")[];'
+      );
+    });
+
+    it('keeps each line break of a type written as is, as its members do', () => {
+      expect(createTypeFixture("SET('a\r\nb','c')", Database.MySQL)).toBe(
+        `"SET('a\\r\\nb','c')"`
+      );
+      expect(createTypeFixture("SET('a\r\nb','c')", Database.MariaDB)).toBe(
+        `"SET('a\\r\\nb','c')"`
+      );
+      expect(
+        createAnnotationFixture("SET('a\r\nb','c')", Database.MariaDB)
+      ).toBe('  declare value: ("a\\r\\nb" | "c")[];');
+      expect(createTypeFixture("SET('a\rb')", Database.MariaDB)).toBe(
+        `"SET('a\\rb')"`
+      );
+      expect(createAnnotationFixture("SET('a\rb')", Database.MariaDB)).toBe(
+        '  declare value: ("a\\rb")[];'
+      );
+    });
+  });
+
+  describe('SQL Server types', () => {
+    it('states nvarchar(max) as TEXT and every other string type it has no member for as written', () => {
+      expect(createTypeFixture('nvarchar(max)', Database.MSSQL)).toBe(
+        'DataTypes.TEXT'
+      );
+      expect(createTypeFixture('nvarchar(100)', Database.MSSQL)).toBe(
+        'DataTypes.STRING(100)'
+      );
+      expect(createTypeFixture('varchar(max)', Database.MSSQL)).toBe(
+        '"varchar(max)"'
+      );
+      expect(createTypeFixture('varchar(100)', Database.MSSQL)).toBe(
+        '"varchar(100)"'
+      );
+      expect(createTypeFixture('nchar(10)', Database.MSSQL)).toBe(
+        '"nchar(10)"'
+      );
+      expect(createTypeFixture('char(10)', Database.MSSQL)).toBe(
+        'DataTypes.CHAR(10)'
+      );
+      expect(createTypeFixture('ntext', Database.MSSQL)).toBe('"ntext"');
+      expect(createTypeFixture('xml', Database.MSSQL)).toBe('"xml"');
+    });
+
+    it('states every stamp and time of day that takes the text of a Date as DATE', () => {
+      [
+        'datetime2',
+        'datetime2(3)',
+        'DATETIME2(7)',
+        'datetimeoffset',
+        'datetimeoffset(3)',
+        'time',
+        'time(3)',
+      ].forEach(dataType => {
+        expect(createTypeFixture(dataType, Database.MSSQL)).toBe(
+          'DataTypes.DATE'
+        );
+        expect(createAnnotationFixture(dataType, Database.MSSQL)).toBe(
+          '  declare value: Date;'
+        );
+      });
+    });
+
+    it('states datetime and smalldatetime as written, which refuse the text DATE writes', () => {
+      expect(createTypeFixture('datetime', Database.MSSQL)).toBe('"datetime"');
+      expect(createTypeFixture('smalldatetime', Database.MSSQL)).toBe(
+        '"smalldatetime"'
+      );
+      expect(createAnnotationFixture('datetime', Database.MSSQL)).toBe(
+        '  declare value: Date;'
+      );
+    });
+
+    it('reads a decimal and money as the number tedious hands over', () => {
+      expect(createTypeFixture('decimal(10,2)', Database.MSSQL)).toBe(
+        'DataTypes.DECIMAL(10, 2)'
+      );
+      expect(createAnnotationFixture('decimal(10,2)', Database.MSSQL)).toBe(
+        '  declare value: number;'
+      );
+      expect(createAnnotationFixture('numeric(18,4)', Database.MSSQL)).toBe(
+        '  declare value: number;'
+      );
+      expect(createTypeFixture('money', Database.MSSQL)).toBe('"money"');
+      expect(createAnnotationFixture('smallmoney', Database.MSSQL)).toBe(
+        '  declare value: number;'
+      );
+    });
+
+    it('states a single-precision float as REAL, which FLOAT would widen', () => {
+      expect(createTypeFixture('real', Database.MSSQL)).toBe('DataTypes.REAL');
+      expect(createTypeFixture('float(24)', Database.MSSQL)).toBe(
+        'DataTypes.REAL'
+      );
+      expect(createTypeFixture('float', Database.MSSQL)).toBe(
+        'DataTypes.DOUBLE'
+      );
+    });
+
+    it('reads the CLR types as bytes, sql_variant as unknown and json as text', () => {
+      expect(createTypeFixture('geography', Database.MSSQL)).toBe(
+        '"geography"'
+      );
+      expect(createAnnotationFixture('geography', Database.MSSQL)).toBe(
+        '  declare value: Buffer;'
+      );
+      expect(createAnnotationFixture('hierarchyid', Database.MSSQL)).toBe(
+        '  declare value: Buffer;'
+      );
+      expect(createAnnotationFixture('sql_variant', Database.MSSQL)).toBe(
+        '  declare value: unknown;'
+      );
+      expect(createTypeFixture('json', Database.MSSQL)).toBe('"json"');
+      expect(createAnnotationFixture('json', Database.MSSQL)).toBe(
+        '  declare value: string;'
+      );
+    });
+
+    it('states uniqueidentifier and rowversion as written', () => {
+      expect(createAnnotationFixture('uniqueidentifier', Database.MSSQL)).toBe(
+        '  declare value: string;'
+      );
+      expect(createTypeFixture('rowversion', Database.MSSQL)).toBe(
+        '"rowversion"'
+      );
+      expect(createTypeFixture('timestamp', Database.MSSQL)).toBe(
+        '"timestamp"'
+      );
+    });
+
+    it('leaves a rowversion to the database on an insert, as DEFAULT', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'probe',
+        columnIds: ['c1', 'c2', 'c3'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'version',
+            dataType: 'rowversion',
+            default: '0',
+            options: ColumnOption.notNull,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'stamp',
+            dataType: 'timestamp',
+          }),
+          createColumn({
+            id: 'c3',
+            tableId: 't1',
+            name: 'at',
+            dataType: 'timestamp',
+            options: ColumnOption.notNull,
+          }),
+        ],
+        settings: { database: Database.MSSQL },
+      });
+
+      expect(render(state, table)).toEqual([
+        'export class Probe extends Model<',
+        '  InferAttributes<Probe>,',
+        '  InferCreationAttributes<Probe>',
+        '> {',
+        '  declare version: CreationOptional<Buffer>;',
+        '  declare stamp: Buffer | null;',
+        '  declare at: CreationOptional<Buffer>;',
+        '}',
+        '',
+        'Probe.init(',
+        '  {',
+        '    version: {',
+        '      type: "rowversion",',
+        '      allowNull: false,',
+        '      defaultValue: () => Sequelize.literal("DEFAULT"),',
+        '    },',
+        '    stamp: {',
+        '      type: "timestamp",',
+        '      allowNull: true,',
+        '      defaultValue: () => Sequelize.literal("DEFAULT"),',
+        '    },',
+        '    at: {',
+        '      type: "timestamp",',
+        '      allowNull: false,',
+        '      defaultValue: () => Sequelize.literal("DEFAULT"),',
+        '    },',
+        '  },',
+        '  { sequelize, tableName: "probe", timestamps: false }',
+        ');',
+      ]);
+    });
+
+    it('reads a timestamp outside SQL Server as a date and time', () => {
+      expect(createAnnotationFixture('timestamp', Database.MySQL)).toBe(
+        '  declare value: Date;'
+      );
+    });
+  });
+
+  describe('SQLite types', () => {
+    it('states TIMESTAMP as written and reads it as text', () => {
+      expect(createTypeFixture('TIMESTAMP', Database.SQLite)).toBe(
+        '"TIMESTAMP"'
+      );
+      expect(createAnnotationFixture('TIMESTAMP', Database.SQLite)).toBe(
+        '  declare value: string;'
+      );
+      expect(createTypeFixture('DATETIME', Database.SQLite)).toBe(
+        'DataTypes.DATE'
+      );
+      expect(createAnnotationFixture('DATETIME', Database.SQLite)).toBe(
+        '  declare value: Date;'
+      );
+    });
+
+    it('reads a decimal as the number sqlite3 hands over', () => {
+      expect(createAnnotationFixture('NUMERIC', Database.SQLite)).toBe(
+        '  declare value: number;'
+      );
+      expect(createAnnotationFixture('DECIMAL(10,2)', Database.SQLite)).toBe(
+        '  declare value: number;'
       );
     });
   });
@@ -1415,6 +2246,208 @@ describe('generator-code/sequelize', () => {
       ]);
     });
 
+    it('marks a serial auto-increment and NOT NULL, as the type numbers its rows', () => {
+      const item = createTable({
+        id: 't1',
+        name: 'item',
+        columnIds: ['c1', 'c2'],
+      });
+      const ledger = createTable({
+        id: 't2',
+        name: 'ledger',
+        columnIds: ['c3', 'c4'],
+      });
+      const state = createState({
+        tables: [item, ledger],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'serial',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'name',
+            dataType: 'text',
+            options: ColumnOption.notNull,
+          }),
+          createColumn({
+            id: 'c3',
+            tableId: 't2',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c4',
+            tableId: 't2',
+            name: 'seq',
+            dataType: 'bigserial',
+            default: '7',
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+
+      expect(render(state, item)).toEqual([
+        'export class Item extends Model<',
+        '  InferAttributes<Item>,',
+        '  InferCreationAttributes<Item>',
+        '> {',
+        '  declare id: CreationOptional<number>;',
+        '  declare name: string;',
+        '}',
+        '',
+        'Item.init(',
+        '  {',
+        '    id: {',
+        '      type: DataTypes.INTEGER,',
+        '      primaryKey: true,',
+        '      autoIncrement: true,',
+        '      allowNull: false,',
+        '    },',
+        '    name: { type: DataTypes.TEXT, allowNull: false },',
+        '  },',
+        '  { sequelize, tableName: "item", timestamps: false }',
+        ');',
+      ]);
+      expect(render(state, ledger)).toContain(
+        '  declare seq: CreationOptional<string>;'
+      );
+      expect(render(state, ledger)).toContain(
+        '    seq: { type: DataTypes.BIGINT, autoIncrement: true, allowNull: false },'
+      );
+    });
+
+    it('leaves a serial past the one auto-increment of a model to the database', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'item',
+        columnIds: ['c1', 'c2', 'c3'],
+      });
+      const columns = [
+        createColumn({
+          id: 'c1',
+          tableId: 't1',
+          name: 'id',
+          dataType: 'serial',
+          options: ColumnOption.primaryKey,
+        }),
+        createColumn({
+          id: 'c2',
+          tableId: 't1',
+          name: 'seq',
+          dataType: 'bigserial',
+        }),
+        createColumn({
+          id: 'c3',
+          tableId: 't1',
+          name: 'no',
+          dataType: 'int',
+          options: ColumnOption.autoIncrement | ColumnOption.notNull,
+        }),
+      ];
+      const state = createState({
+        tables: [table],
+        columns,
+        settings: { database: Database.PostgreSQL },
+      });
+
+      expect(render(state, table)).toEqual([
+        'export class Item extends Model<',
+        '  InferAttributes<Item>,',
+        '  InferCreationAttributes<Item>',
+        '> {',
+        '  declare id: CreationOptional<number>;',
+        '  declare seq: CreationOptional<string>;',
+        '  declare no: CreationOptional<number>;',
+        '}',
+        '',
+        'Item.init(',
+        '  {',
+        '    id: {',
+        '      type: DataTypes.INTEGER,',
+        '      primaryKey: true,',
+        '      allowNull: false,',
+        '      defaultValue: () => Sequelize.literal("DEFAULT"),',
+        '    },',
+        '    seq: {',
+        '      type: DataTypes.BIGINT,',
+        '      allowNull: false,',
+        '      defaultValue: () => Sequelize.literal("DEFAULT"),',
+        '    },',
+        '    no: { type: DataTypes.INTEGER, autoIncrement: true, allowNull: false },',
+        '  },',
+        '  { sequelize, tableName: "item", timestamps: false }',
+        ');',
+      ]);
+    });
+
+    it('marks a MySQL SERIAL unique, the key its AUTO_INCREMENT needs, and nullable as the DDL writes it', () => {
+      const keyed = createTable({ id: 't1', name: 'keyed', columnIds: ['c1'] });
+      const counted = createTable({
+        id: 't2',
+        name: 'counted',
+        columnIds: ['c2', 'c3'],
+      });
+      const state = createState({
+        tables: [keyed, counted],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType: 'SERIAL',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't2',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'c3',
+            tableId: 't2',
+            name: 'seq',
+            dataType: 'serial',
+          }),
+        ],
+        settings: { database: Database.MariaDB },
+      });
+
+      expect(render(state, keyed)).toContain(
+        '  declare id: CreationOptional<number | string>;'
+      );
+      expect(render(state, keyed).join('\n')).toContain(
+        [
+          '    id: {',
+          '      type: DataTypes.BIGINT.UNSIGNED,',
+          '      primaryKey: true,',
+          '      autoIncrement: true,',
+          '      allowNull: false,',
+          '    },',
+        ].join('\n')
+      );
+      expect(render(state, counted)).toContain(
+        '  declare seq: number | string | null;'
+      );
+      expect(render(state, counted).join('\n')).toContain(
+        [
+          '    seq: {',
+          '      type: DataTypes.BIGINT.UNSIGNED,',
+          '      autoIncrement: true,',
+          '      allowNull: true,',
+          '      unique: true,',
+          '    },',
+        ].join('\n')
+      );
+    });
+
     it('emits one primaryKey per member of a composite primary key', () => {
       const table = createTable({
         id: 't1',
@@ -1662,6 +2695,87 @@ describe('generator-code/sequelize', () => {
       ]);
     });
 
+    it('keeps each line break of a string the database reads, but a comment', () => {
+      const table = createTable({
+        id: 't1',
+        name: 'pa\r\nge',
+        comment: 'one\rtwo',
+        columnIds: ['c1', 'c2'],
+      });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'cr\rx',
+            dataType: 'varchar(10)',
+            default: "'a\r\nb'",
+            comment: 'x\r\ny',
+            options: ColumnOption.notNull,
+          }),
+          createColumn({
+            id: 'c2',
+            tableId: 't1',
+            name: 'lf\nx',
+            dataType: 'varchar(10)',
+            default: "concat('a\rb')",
+            options: ColumnOption.notNull,
+          }),
+        ],
+        indexes: [
+          createIndex({
+            id: 'i1',
+            tableId: 't1',
+            name: 'IDX\r\n1',
+            indexColumnIds: ['ic1'],
+          }),
+        ],
+        indexColumns: [
+          createIndexColumn({ id: 'ic1', indexId: 'i1', columnId: 'c1' }),
+        ],
+        settings: {
+          database: Database.MySQL,
+          columnNameCase: NameCase.none,
+        },
+      });
+
+      expect(render(state, table)).toEqual([
+        'export class PaGe extends Model<',
+        '  InferAttributes<PaGe>,',
+        '  InferCreationAttributes<PaGe>',
+        '> {',
+        '  declare cr_x: CreationOptional<string>;',
+        '  declare lf_x: CreationOptional<string>;',
+        '}',
+        '',
+        'PaGe.init(',
+        '  {',
+        '    cr_x: {',
+        '      type: DataTypes.STRING(10),',
+        '      field: "cr\\rx",',
+        '      allowNull: false,',
+        '      defaultValue: "a\\r\\nb",',
+        '      comment: "x\\ny",',
+        '    },',
+        '    lf_x: {',
+        '      type: DataTypes.STRING(10),',
+        '      field: "lf\\nx",',
+        '      allowNull: false,',
+        '      defaultValue: Sequelize.literal("concat(\'a\\rb\')"),',
+        '    },',
+        '  },',
+        '  {',
+        '    sequelize,',
+        '    tableName: "pa\\r\\nge",',
+        '    timestamps: false,',
+        '    comment: "one\\ntwo",',
+        '    indexes: [{ name: "IDX\\r\\n1", fields: ["cr\\rx"] }],',
+        '  }',
+        ');',
+      ]);
+    });
+
     it('renders a raw default as a literal, a quoted string or Sequelize.literal', () => {
       expect(createDefaultFixture('0')).toContain(
         '  { value: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 } },'
@@ -1859,6 +2973,101 @@ describe('generator-code/sequelize', () => {
         '  { sequelize, tableName: "card", timestamps: false }',
         ');',
       ]);
+    });
+
+    it('renames a property Sequelize declares, sets or looks up on every object', () => {
+      const names = [
+        '_model',
+        'addHook',
+        'runHooks',
+        'uniqno',
+        '_options',
+        'validators',
+        'rawAttributes',
+        '__proto__',
+        'toString',
+        'hasOwnProperty',
+      ];
+      const table = createTable({
+        id: 't1',
+        name: 'card',
+        columnIds: names.map((_, index) => `c${index}`),
+      });
+      const state = createState({
+        tables: [table],
+        columns: names.map((name, index) =>
+          createColumn({
+            id: `c${index}`,
+            tableId: 't1',
+            name,
+            dataType: 'int',
+            options: ColumnOption.notNull,
+          })
+        ),
+        settings: { database: Database.MySQL, columnNameCase: NameCase.none },
+      });
+      const code = render(state, table).join('\n');
+
+      names.forEach(name => {
+        expect(code).toContain(`  declare ${name}2: number;`);
+        expect(code).toMatch(
+          new RegExp(
+            `\\n    ${name}2: \\{\\s+type: DataTypes\\.INTEGER,\\s+field: "${name}",`
+          )
+        );
+      });
+    });
+
+    it('renames an association alias named after what every object inherits', () => {
+      const parent = createTable({
+        id: 't_parent',
+        name: '__proto__',
+        columnIds: ['pc_id'],
+      });
+      const child = createTable({
+        id: 't_child',
+        name: 'child',
+        columnIds: ['cc_id', 'cc_parent'],
+      });
+      const state = createState({
+        tables: [parent, child],
+        columns: [
+          createColumn({
+            id: 'pc_id',
+            tableId: 't_parent',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'cc_id',
+            tableId: 't_child',
+            name: 'id',
+            dataType: 'int',
+            options: ColumnOption.primaryKey,
+          }),
+          createColumn({
+            id: 'cc_parent',
+            tableId: 't_child',
+            name: 'parent_id',
+            dataType: 'int',
+          }),
+        ],
+        relationships: [
+          createRelationship({
+            id: 'r1',
+            relationshipType: RelationshipType.ZeroN,
+            start: { tableId: 't_parent', columnIds: ['pc_id'] },
+            end: { tableId: 't_child', columnIds: ['cc_parent'] },
+          }),
+        ],
+        settings: { database: Database.MySQL, columnNameCase: NameCase.none },
+      });
+      const code = createCode(state);
+
+      expect(code).toContain('  declare __proto__2?: NonAttribute<');
+      expect(code).toContain('  as: "__proto__2",');
+      expect(code).not.toContain('as: "__proto__"');
     });
 
     it('escapes a reserved word a class or a member cannot spell', () => {
@@ -2100,6 +3309,25 @@ describe('generator-code/sequelize', () => {
       );
     });
 
+    it('renames a class that would shadow the Range type a range column names', () => {
+      const state = createState({
+        tables: [createTable({ id: 't1', name: 'range', columnIds: ['c1'] })],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'span',
+            dataType: 'int4range',
+          }),
+        ],
+        settings: { database: Database.PostgreSQL },
+      });
+      const whole = createCode(state);
+
+      expect(whole).toContain('export class Range2 extends Model<');
+      expect(whole).toContain('  declare span: Range<number> | null;');
+    });
+
     it('renames a class that would shadow the sequelize instance itself', () => {
       const state = createState({
         tables: [createTable({ id: 't1', name: 'sequelize' })],
@@ -2113,6 +3341,195 @@ describe('generator-code/sequelize', () => {
         'export class sequelize2 extends Model<'
       );
       expect(createCode(state)).toContain('sequelize2.init(');
+    });
+
+    it('puts an underscore after a class name TypeScript refuses or reads as a type operator', () => {
+      const classNameOf = (name: string, tableNameCase: number) =>
+        /^export class (\S+) /m.exec(
+          createCode(
+            createState({
+              tables: [createTable({ id: 't1', name })],
+              settings: { database: Database.PostgreSQL, tableNameCase },
+            })
+          )
+        )?.[1];
+
+      expect(classNameOf('object', NameCase.pascalCase)).toBe('Object_');
+      expect(classNameOf('Number', NameCase.camelCase)).toBe('number_');
+      expect(classNameOf('unknown', NameCase.none)).toBe('unknown_');
+      expect(classNameOf('keyof', NameCase.none)).toBe('keyof_');
+      expect(classNameOf('readonly', NameCase.snakeCase)).toBe('readonly_');
+      expect(classNameOf('type', NameCase.none)).toBe('type');
+    });
+
+    it('puts an underscore after a class name a CommonJS module already binds', () => {
+      const classNameOf = (name: string, tableNameCase: number) =>
+        /^export class (\S+) /m.exec(
+          createCode(
+            createState({
+              tables: [createTable({ id: 't1', name })],
+              settings: { database: Database.MySQL, tableNameCase },
+            })
+          )
+        )?.[1];
+
+      expect(classNameOf('require', NameCase.none)).toBe('require_');
+      expect(classNameOf('exports', NameCase.camelCase)).toBe('exports_');
+      expect(classNameOf('module', NameCase.snakeCase)).toBe('module_');
+      expect(classNameOf('__filename', NameCase.none)).toBe('__filename_');
+      expect(classNameOf('__dirname', NameCase.none)).toBe('__dirname_');
+      expect(classNameOf('require', NameCase.pascalCase)).toBe('Require');
+    });
+
+    it('puts an underscore after a class named __proto__, a key of the model registry', () => {
+      const state = createState({
+        tables: [
+          createTable({ id: 't1', name: '__proto__' }),
+          createTable({ id: 't2', name: 'prototype' }),
+        ],
+        settings: { database: Database.SQLite, tableNameCase: NameCase.none },
+      });
+      const whole = createCode(state);
+
+      expect(whole).toContain('export class __proto___ extends Model<');
+      expect(whole).toContain('export class prototype extends Model<');
+    });
+
+    it('keeps a property named after what a CommonJS module binds', () => {
+      const table = createTable({ id: 't1', name: 'probe', columnIds: ['c1'] });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'require',
+            dataType: 'int',
+          }),
+        ],
+        settings: { database: Database.MySQL, columnNameCase: NameCase.none },
+      });
+
+      expect(render(state, table)).toContain(
+        '  declare require: number | null;'
+      );
+    });
+
+    it('renames a class that would shadow the typed array a vector names', () => {
+      const state = createState({
+        tables: [
+          createTable({ id: 't1', name: 'float32_array' }),
+          createTable({ id: 't2', name: 'embedding', columnIds: ['c1'] }),
+          createTable({ id: 't3', name: 'uint8 array' }),
+          createTable({ id: 't4', name: 'int8_array' }),
+          createTable({ id: 't5', name: 'float64_array' }),
+        ],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't2',
+            name: 'v',
+            dataType: 'VECTOR(3, FLOAT32)',
+            options: ColumnOption.notNull,
+          }),
+        ],
+        settings: { database: Database.Oracle },
+      });
+      const whole = createCode(state);
+
+      expect(whole).toContain('export class Float32Array2 extends Model<');
+      expect(whole).toContain('export class Uint8Array2 extends Model<');
+      expect(whole).toContain('export class Int8Array2 extends Model<');
+      expect(whole).toContain('export class Float64Array2 extends Model<');
+      expect(whole).toContain('  declare v: Float32Array;');
+    });
+
+    it('keeps a property named after a predefined type', () => {
+      const table = createTable({ id: 't1', name: 'probe', columnIds: ['c1'] });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'number',
+            dataType: 'int',
+          }),
+        ],
+        settings: {
+          database: Database.PostgreSQL,
+          columnNameCase: NameCase.none,
+        },
+      });
+
+      expect(render(state, table)).toContain(
+        '  declare number: number | null;'
+      );
+    });
+
+    it('numbers an alias whose accessors would hide a Model method or an attribute', () => {
+      const tables = [
+        createTable({ id: 't1', name: 'data_value', columnIds: ['a1'] }),
+        createTable({ id: 't2', name: 'attributes', columnIds: ['b1'] }),
+        createTable({ id: 't3', name: 'team', columnIds: ['d1'] }),
+        createTable({
+          id: 't4',
+          name: 'item',
+          columnIds: ['i1', 'i2', 'i3', 'i4', 'i5'],
+        }),
+      ];
+      const state = createState({
+        tables,
+        columns: [
+          ...[
+            ['a1', 't1'],
+            ['b1', 't2'],
+            ['d1', 't3'],
+            ['i1', 't4'],
+          ].map(([id, tableId]) =>
+            createColumn({
+              id,
+              tableId,
+              name: 'id',
+              dataType: 'INTEGER',
+              options: ColumnOption.primaryKey,
+            })
+          ),
+          ...[
+            ['i2', 'data_value_id'],
+            ['i3', 'attributes_id'],
+            ['i4', 'team_id'],
+            ['i5', 'get_team'],
+          ].map(([id, name]) =>
+            createColumn({ id, tableId: 't4', name, dataType: 'INTEGER' })
+          ),
+        ],
+        relationships: [
+          ['r1', 't1', 'a1', 'i2'],
+          ['r2', 't2', 'b1', 'i3'],
+          ['r3', 't3', 'd1', 'i4'],
+        ].map(([id, tableId, start, end]) =>
+          createRelationship({
+            id,
+            relationshipType: RelationshipType.ZeroOne,
+            start: { tableId, columnIds: [start] },
+            end: { tableId: 't4', columnIds: [end] },
+          })
+        ),
+        settings: { database: Database.SQLite },
+      });
+      const code = createCode(state);
+
+      expect(code).toContain('  declare dataValue2?: NonAttribute<DataValue>;');
+      expect(code).toContain(
+        '  declare attributes2?: NonAttribute<Attributes>;'
+      );
+      expect(code).toContain('  declare team2?: NonAttribute<Team>;');
+      expect(code).toContain('as: "dataValue2"');
+      expect(code).toContain('as: "attributes2"');
+      expect(code).toContain('as: "team2"');
+      expect(code).toContain('  declare item?: NonAttribute<Item>;');
+      expect(code).not.toMatch(/as: "(dataValue|attributes|team)"/);
     });
 
     it('deduplicates a property name a relationship would collide with', () => {

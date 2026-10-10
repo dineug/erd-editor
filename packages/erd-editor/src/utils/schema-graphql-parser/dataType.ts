@@ -65,15 +65,20 @@ const floatTypes: Record<number, string> = {
   [Database.Snowflake]: 'FLOAT',
 };
 
+/**
+ * A bare DECIMAL holds no fraction outside PostgreSQL and SQLite (MySQL reads
+ * it as DECIMAL(10,0), SQL Server as (18,0)), so those take 38 digits, the
+ * most SQL Server, Oracle, Databricks and Snowflake hold, 18 after the point.
+ */
 const decimalTypes: Record<number, string> = {
-  [Database.MariaDB]: 'DECIMAL',
-  [Database.MSSQL]: 'decimal',
-  [Database.MySQL]: 'DECIMAL',
-  [Database.Oracle]: 'DECIMAL',
+  [Database.MariaDB]: 'DECIMAL(38,18)',
+  [Database.MSSQL]: 'decimal(38,18)',
+  [Database.MySQL]: 'DECIMAL(38,18)',
+  [Database.Oracle]: 'DECIMAL(38,18)',
   [Database.PostgreSQL]: 'numeric',
   [Database.SQLite]: 'DECIMAL',
-  [Database.Databricks]: 'DECIMAL',
-  [Database.Snowflake]: 'DECIMAL',
+  [Database.Databricks]: 'DECIMAL(38,18)',
+  [Database.Snowflake]: 'DECIMAL(38,18)',
 };
 
 const booleanTypes: Record<number, string> = {

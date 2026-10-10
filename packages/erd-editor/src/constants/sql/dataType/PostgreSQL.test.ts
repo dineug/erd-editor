@@ -33,7 +33,7 @@ function namesOf(primitiveType: PrimitiveType): string[] {
 
 describe('PostgreSQLTypes', () => {
   it('is the largest vendor list and is written in lower case', () => {
-    expect(PostgreSQLTypes).toHaveLength(106);
+    expect(PostgreSQLTypes).toHaveLength(107);
 
     for (const hint of PostgreSQLTypes) {
       expect(hint.name).toBe(hint.name.toLowerCase());
@@ -60,6 +60,7 @@ describe('PostgreSQLTypes', () => {
       'date',
       'datemultirange',
       'daterange',
+      'dec',
       'decimal',
       'double precision',
       'float',
@@ -178,7 +179,7 @@ describe('PostgreSQLTypes', () => {
   it('classifies the approximate and exact numeric types', () => {
     expect(namesOf('float')).toEqual(['float4', 'real']);
     expect(namesOf('double')).toEqual(['double precision', 'float', 'float8']);
-    expect(namesOf('decimal')).toEqual(['decimal', 'numeric']);
+    expect(namesOf('decimal')).toEqual(['dec', 'decimal', 'numeric']);
     expect(namesOf('boolean')).toEqual(['bool', 'boolean']);
   });
 
@@ -295,6 +296,8 @@ describe('PostgreSQLTypes', () => {
   it('resolves parameterised data types by prefix', () => {
     expect(resolvePrimitiveType('varchar(255)')).toBe('string');
     expect(resolvePrimitiveType('NUMERIC(10,2)')).toBe('decimal');
+    expect(resolvePrimitiveType('dec(5,1)')).toBe('decimal');
+    expect(resolvePrimitiveType('DEC')).toBe('decimal');
     expect(resolvePrimitiveType('bigserial')).toBe('long');
     expect(resolvePrimitiveType('hstore')).toBeUndefined();
     expect(resolvePrimitiveType('')).toBeUndefined();

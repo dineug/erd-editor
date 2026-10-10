@@ -1,7 +1,8 @@
 import { DataTypeHint } from '@/constants/sql/dataType';
 
 /**
- * https://www.postgresql.org/docs/current/datatype.html
+ * https://www.postgresql.org/docs/current/datatype.html, and dec, which the
+ * grammar reads as numeric, as it reads decimal.
  */
 export const PostgreSQLTypes: DataTypeHint[] = [
   { name: 'bigint', primitiveType: 'long' },
@@ -22,6 +23,7 @@ export const PostgreSQLTypes: DataTypeHint[] = [
   { name: 'date', primitiveType: 'date' },
   { name: 'datemultirange', primitiveType: 'string' },
   { name: 'daterange', primitiveType: 'string' },
+  { name: 'dec', primitiveType: 'decimal' },
   { name: 'decimal', primitiveType: 'decimal' },
   { name: 'double precision', primitiveType: 'double' },
   { name: 'float', primitiveType: 'double' },

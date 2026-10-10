@@ -1,5 +1,6 @@
 /**
- * https://www.postgresql.org/docs/current/datatype.html
+ * https://www.postgresql.org/docs/current/datatype.html, and dec, which the
+ * grammar reads as numeric, as it reads decimal.
  */
 export const PostgreSQLTypes: string[] = [
   'BIGINT',
@@ -20,6 +21,7 @@ export const PostgreSQLTypes: string[] = [
   'DATE',
   'DATEMULTIRANGE',
   'DATERANGE',
+  'DEC',
   'DECIMAL',
   'DOUBLE PRECISION',
   'FLOAT',

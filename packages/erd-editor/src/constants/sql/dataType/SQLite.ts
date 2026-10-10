@@ -1,8 +1,9 @@
 import { DataTypeHint } from '@/constants/sql/dataType';
 
 /**
- * https://www.sqlite.org/datatype3.html, and BOOL, TIME and TIMESTAMP, which
- * SQLite schemas use too: Django declares a boolean as bool and a time as time.
+ * https://www.sqlite.org/datatype3.html, and BOOL, DEC, TIME and TIMESTAMP,
+ * which SQLite schemas use too: Django declares a boolean as bool and a time
+ * as time, and DEC, standard SQL's DECIMAL, takes the same NUMERIC affinity.
  */
 export const SQLiteTypes: DataTypeHint[] = [
   { name: 'BIGINT', primitiveType: 'long' },
@@ -13,6 +14,7 @@ export const SQLiteTypes: DataTypeHint[] = [
   { name: 'CLOB', primitiveType: 'lob' },
   { name: 'DATE', primitiveType: 'date' },
   { name: 'DATETIME', primitiveType: 'dateTime' },
+  { name: 'DEC', primitiveType: 'decimal' },
   { name: 'DECIMAL', primitiveType: 'decimal' },
   { name: 'DOUBLE PRECISION', primitiveType: 'double' },
   { name: 'DOUBLE', primitiveType: 'double' },

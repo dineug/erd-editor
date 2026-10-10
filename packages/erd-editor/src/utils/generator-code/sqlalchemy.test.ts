@@ -567,9 +567,9 @@ describe('generator-code/sqlalchemy', () => {
         '    Integer,',
         '    Numeric,',
         '    String,',
-        '    Text,',
         '    Time,',
         ')',
+        'from sqlalchemy.dialects.mysql import MEDIUMTEXT',
         'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
         '',
         '',
@@ -587,7 +587,7 @@ describe('generator-code/sqlalchemy', () => {
         '    decimalCol: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))',
         '    booleanCol: Mapped[Optional[bool]] = mapped_column(Boolean)',
         '    stringCol: Mapped[Optional[str]] = mapped_column(String(10))',
-        '    lobCol: Mapped[Optional[str]] = mapped_column(Text)',
+        '    lobCol: Mapped[Optional[str]] = mapped_column(MEDIUMTEXT)',
         '    dateCol: Mapped[Optional[date]] = mapped_column(Date)',
         '    dateTimeCol: Mapped[Optional[datetime]] = mapped_column(DateTime)',
         '    timeCol: Mapped[Optional[time]] = mapped_column(Time)',
@@ -773,7 +773,7 @@ describe('generator-code/sqlalchemy', () => {
         'from datetime import datetime, time',
         'from typing import Optional',
         '',
-        'from sqlalchemy import DateTime, Integer, LargeBinary, Time',
+        'from sqlalchemy import VARBINARY, DateTime, Integer, LargeBinary, Time',
         'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
         '',
         '',
@@ -784,9 +784,9 @@ describe('generator-code/sqlalchemy', () => {
         'class Args(Base):',
         '    __tablename__ = "args"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
-        '    a: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
-        '    b: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
+        '    a: Mapped[Optional[bytes]] = mapped_column(VARBINARY(255))',
+        '    b: Mapped[Optional[bytes]] = mapped_column(LargeBinary(100))',
         '    c: Mapped[Optional[time]] = mapped_column(Time(timezone=True))',
         '    d: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))',
       ]);
@@ -831,7 +831,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Portable(Base):',
         '    __tablename__ = "portable"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    a: Mapped[Optional[Any]] = mapped_column(JSON)',
         '    b: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)',
       ]);
@@ -902,7 +902,7 @@ describe('generator-code/sqlalchemy', () => {
         'class BadArgs(Base):',
         '    __tablename__ = "bad_args"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    a: Mapped[Optional[str]] = mapped_column(String)',
         '    b: Mapped[Optional[Decimal]] = mapped_column(Numeric)',
         '    c: Mapped[Optional[Decimal]] = mapped_column(Numeric)',
@@ -962,10 +962,995 @@ describe('generator-code/sqlalchemy', () => {
         'class EmptyArgs(Base):',
         '    __tablename__ = "empty_args"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    a: Mapped[Optional[Decimal]] = mapped_column(Numeric)',
         '    b: Mapped[Optional[Decimal]] = mapped_column(Numeric)',
         '    c: Mapped[Optional[str]] = mapped_column(String)',
+      ]);
+    });
+  });
+
+  // Alembic compares the type a model maps against the type it reflects, and
+  // create_all writes the mapped one, so each database gets the type its own
+  // DDL names wherever SQLAlchemy has it.
+  describe('database types', () => {
+    it('writes the MySQL integer, decimal, float, BIT and YEAR types with their sign', () => {
+      const { state, table } = createTypesFixture(Database.MySQL, [
+        ['a', 'TINYINT'],
+        ['b', 'TINYINT(1)'],
+        ['c', 'SMALLINT'],
+        ['d', 'MEDIUMINT'],
+        ['e', 'TINYINT(3) UNSIGNED'],
+        ['f', 'SMALLINT UNSIGNED'],
+        ['g', 'MEDIUMINT(8) UNSIGNED'],
+        ['h', 'INT UNSIGNED'],
+        ['i', 'INT(11) ZEROFILL'],
+        ['j', 'INT UNSIGNED ZEROFILL'],
+        ['k', 'BIGINT UNSIGNED'],
+        ['l', 'SERIAL'],
+        ['m', 'DECIMAL(10,2) UNSIGNED'],
+        ['n', 'DECIMAL UNSIGNED'],
+        ['o', 'FLOAT UNSIGNED'],
+        ['p', 'DOUBLE UNSIGNED'],
+        ['q', 'BIT'],
+        ['r', 'BIT(8)'],
+        ['s', 'YEAR'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'from decimal import Decimal',
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import SmallInteger',
+        'from sqlalchemy.dialects.mysql import (',
+        '    BIGINT,',
+        '    BIT,',
+        '    DECIMAL,',
+        '    DOUBLE,',
+        '    FLOAT,',
+        '    INTEGER,',
+        '    MEDIUMINT,',
+        '    SMALLINT,',
+        '    TINYINT,',
+        '    YEAR,',
+        ')',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[int]] = mapped_column(TINYINT)',
+        '    b: Mapped[Optional[int]] = mapped_column(TINYINT(1))',
+        '    c: Mapped[Optional[int]] = mapped_column(SmallInteger)',
+        '    d: Mapped[Optional[int]] = mapped_column(MEDIUMINT)',
+        '    e: Mapped[Optional[int]] = mapped_column(TINYINT(unsigned=True))',
+        '    f: Mapped[Optional[int]] = mapped_column(SMALLINT(unsigned=True))',
+        '    g: Mapped[Optional[int]] = mapped_column(MEDIUMINT(unsigned=True))',
+        '    h: Mapped[Optional[int]] = mapped_column(INTEGER(unsigned=True))',
+        '    i: Mapped[Optional[int]] = mapped_column(INTEGER(11, unsigned=True, zerofill=True))',
+        '    j: Mapped[Optional[int]] = mapped_column(INTEGER(unsigned=True, zerofill=True))',
+        '    k: Mapped[Optional[int]] = mapped_column(BIGINT(unsigned=True))',
+        '    l: Mapped[Optional[int]] = mapped_column(BIGINT(unsigned=True), unique=True)',
+        '    m: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(10, 2, unsigned=True))',
+        '    n: Mapped[Optional[Decimal]] = mapped_column(DECIMAL(unsigned=True))',
+        '    o: Mapped[Optional[float]] = mapped_column(FLOAT(unsigned=True))',
+        '    p: Mapped[Optional[float]] = mapped_column(DOUBLE(unsigned=True, asdecimal=False))',
+        '    q: Mapped[Optional[int]] = mapped_column(BIT)',
+        '    r: Mapped[Optional[int]] = mapped_column(BIT(8))',
+        '    s: Mapped[Optional[int]] = mapped_column(YEAR)',
+      ]);
+    });
+
+    // MySQL writes no VARCHAR without a length, so a fixed-width character or
+    // binary type keeps its own name, and the sized TEXT and BLOB classes and a
+    // fractional second come from the dialect.
+    it('writes the MySQL character, binary, sized and fractional-second types', () => {
+      const { state, table } = createTypesFixture(Database.MySQL, [
+        ['a', 'CHAR(36)'],
+        ['b', 'CHAR'],
+        ['c', 'NCHAR'],
+        ['d', 'NATIONAL CHAR(10)'],
+        ['e', 'BINARY(16)'],
+        ['f', 'VARBINARY(16)'],
+        ['g', 'CHAR(16) BYTE'],
+        ['h', 'VARBINARY'],
+        ['i', 'TINYTEXT'],
+        ['j', 'MEDIUMTEXT'],
+        ['k', 'LONGTEXT'],
+        ['l', 'LONG VARCHAR'],
+        ['m', 'TINYBLOB'],
+        ['n', 'MEDIUMBLOB'],
+        ['o', 'LONGBLOB'],
+        ['p', 'LONG VARBINARY'],
+        ['q', 'TIMESTAMP'],
+        ['r', 'TIMESTAMP(3)'],
+        ['s', 'DATETIME(6)'],
+        ['t', 'TIME(3)'],
+        ['u', 'DATETIME(0)'],
+        ['v', 'TIME'],
+        ['w', 'UUID'],
+        ['x', 'CLOB'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'import uuid',
+        'from datetime import datetime, time',
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import (',
+        '    BINARY,',
+        '    CHAR,',
+        '    NCHAR,',
+        '    VARBINARY,',
+        '    DateTime,',
+        '    LargeBinary,',
+        '    Text,',
+        '    Time,',
+        '    Uuid,',
+        ')',
+        'from sqlalchemy.dialects.mysql import (',
+        '    DATETIME,',
+        '    LONGBLOB,',
+        '    LONGTEXT,',
+        '    MEDIUMBLOB,',
+        '    MEDIUMTEXT,',
+        '    TIME,',
+        '    TIMESTAMP,',
+        '    TINYBLOB,',
+        '    TINYTEXT,',
+        ')',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[str]] = mapped_column(CHAR(36))',
+        '    b: Mapped[Optional[str]] = mapped_column(CHAR)',
+        '    c: Mapped[Optional[str]] = mapped_column(NCHAR)',
+        '    d: Mapped[Optional[str]] = mapped_column(NCHAR(10))',
+        '    e: Mapped[Optional[bytes]] = mapped_column(BINARY(16))',
+        '    f: Mapped[Optional[bytes]] = mapped_column(VARBINARY(16))',
+        '    g: Mapped[Optional[bytes]] = mapped_column(BINARY(16))',
+        '    h: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
+        '    i: Mapped[Optional[str]] = mapped_column(TINYTEXT)',
+        '    j: Mapped[Optional[str]] = mapped_column(MEDIUMTEXT)',
+        '    k: Mapped[Optional[str]] = mapped_column(LONGTEXT)',
+        '    l: Mapped[Optional[str]] = mapped_column(MEDIUMTEXT)',
+        '    m: Mapped[Optional[bytes]] = mapped_column(TINYBLOB)',
+        '    n: Mapped[Optional[bytes]] = mapped_column(MEDIUMBLOB)',
+        '    o: Mapped[Optional[bytes]] = mapped_column(LONGBLOB)',
+        '    p: Mapped[Optional[bytes]] = mapped_column(MEDIUMBLOB)',
+        '    q: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)',
+        '    r: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(fsp=3))',
+        '    s: Mapped[Optional[datetime]] = mapped_column(DATETIME(fsp=6))',
+        '    t: Mapped[Optional[time]] = mapped_column(TIME(fsp=3))',
+        '    u: Mapped[Optional[datetime]] = mapped_column(DateTime)',
+        '    v: Mapped[Optional[time]] = mapped_column(Time)',
+        '    w: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)',
+        '    x: Mapped[Optional[str]] = mapped_column(Text)',
+      ]);
+    });
+
+    // MySQL stores TEXT(n) and BLOB(n) as the smallest class that holds n,
+    // which a bare Text or LargeBinary would leave a TEXT or a BLOB: TEXT(70000)
+    // as a MEDIUMTEXT, BLOB(100) and TEXT(0) as tiny ones. n goes on to choose.
+    it.each([Database.MySQL, Database.MariaDB])(
+      'writes TEXT(n) and BLOB(n) with their length on database %i',
+      database => {
+        const { state, table } = createTypesFixture(database, [
+          ['a', 'TEXT(70000)'],
+          ['b', 'BLOB(70000)'],
+          ['c', 'text(100)'],
+          ['d', 'BLOB(100)'],
+          ['e', 'TEXT'],
+          ['f', 'BLOB'],
+          ['g', 'TEXT(0)'],
+        ]);
+
+        expect(render(state, table).slice(-7)).toEqual([
+          '    a: Mapped[Optional[str]] = mapped_column(Text(70000))',
+          '    b: Mapped[Optional[bytes]] = mapped_column(LargeBinary(70000))',
+          '    c: Mapped[Optional[str]] = mapped_column(Text(100))',
+          '    d: Mapped[Optional[bytes]] = mapped_column(LargeBinary(100))',
+          '    e: Mapped[Optional[str]] = mapped_column(Text)',
+          '    f: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
+          '    g: Mapped[Optional[str]] = mapped_column(Text(0))',
+        ]);
+      }
+    );
+
+    // A length on any other database is no class of its own.
+    it('keeps TEXT(n) a bare Text outside MySQL and MariaDB', () => {
+      const { state, table } = createTypesFixture(Database.SQLite, [
+        ['a', 'TEXT(100)'],
+        ['b', 'BLOB(100)'],
+      ]);
+
+      expect(render(state, table).slice(-2)).toEqual([
+        '    a: Mapped[Optional[str]] = mapped_column(Text)',
+        '    b: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
+      ]);
+    });
+
+    // MariaDB takes CLOB, RAW and NUMBER in its Oracle mode alone, where it
+    // stores them as LONGTEXT, VARBINARY(n) and, for a bare NUMBER, a DOUBLE.
+    it('writes MariaDB INET4, INET6, UUID and its Oracle-mode and LONG synonyms', () => {
+      const { state, table } = createTypesFixture(Database.MariaDB, [
+        ['a', 'INET4'],
+        ['b', 'INET6'],
+        ['c', 'UUID'],
+        ['d', 'CLOB'],
+        ['e', 'LONG CHAR VARYING'],
+        ['f', 'SQL_TSI_YEAR'],
+        ['g', 'RAW(16)'],
+        ['h', 'RAW'],
+        ['i', 'NUMBER'],
+        ['j', 'NUMBER(10)'],
+        ['k', 'NUMBER(10,2)'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'import uuid',
+        'from decimal import Decimal',
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import UUID, VARBINARY, Double, LargeBinary, Numeric',
+        'from sqlalchemy.dialects.mysql import INET4, INET6, LONGTEXT, MEDIUMTEXT, YEAR',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[str]] = mapped_column(INET4)',
+        '    b: Mapped[Optional[str]] = mapped_column(INET6)',
+        '    c: Mapped[Optional[uuid.UUID]] = mapped_column(UUID)',
+        '    d: Mapped[Optional[str]] = mapped_column(LONGTEXT)',
+        '    e: Mapped[Optional[str]] = mapped_column(MEDIUMTEXT)',
+        '    f: Mapped[Optional[int]] = mapped_column(YEAR)',
+        '    g: Mapped[Optional[bytes]] = mapped_column(VARBINARY(16))',
+        '    h: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
+        '    i: Mapped[Optional[float]] = mapped_column(Double)',
+        '    j: Mapped[Optional[Decimal]] = mapped_column(Numeric(10))',
+        '    k: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))',
+      ]);
+    });
+
+    // MySQL and MariaDB store every national varying spelling as a VARCHAR in
+    // utf8mb3, which only the dialect's VARCHAR can name for create_all.
+    it.each([
+      ['MySQL', Database.MySQL],
+      ['MariaDB', Database.MariaDB],
+    ])(
+      'writes the %s national varying types as a utf8mb3 VARCHAR',
+      (_, database) => {
+        const { state, table } = createTypesFixture(database, [
+          ['a', 'NVARCHAR(20)'],
+          ['b', 'NATIONAL VARCHAR(20)'],
+          ['c', 'NATIONAL VARCHARACTER(20)'],
+          ['d', 'NCHAR VARCHAR(20)'],
+          ['e', 'NCHAR VARCHARACTER(20)'],
+          ['f', 'nchar varying(20)'],
+          ['g', 'NATIONAL CHAR VARYING(20)'],
+          ['h', 'NATIONAL CHARACTER VARYING(20)'],
+          ['i', 'NVARCHAR'],
+        ]);
+        const lines = render(state, table);
+
+        expect(lines).toContain('from sqlalchemy import String');
+        expect(lines).toContain(
+          'from sqlalchemy.dialects.mysql import VARCHAR'
+        );
+        expect(lines.slice(-9)).toEqual([
+          ...['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(
+            name =>
+              `    ${name}: Mapped[Optional[str]] = mapped_column(VARCHAR(20, charset="utf8mb3"))`
+          ),
+          '    i: Mapped[Optional[str]] = mapped_column(String)',
+        ]);
+      }
+    );
+
+    // Each member goes back as a Python literal, an escape for a backslash or a
+    // control character, and single quotes only where black would pick them:
+    // where the member holds more double quotes than single ones.
+    it('writes ENUM and SET members as Python string literals', () => {
+      const members = String.raw`'it''s','a\\b','x"y','l\nm\rn\to','\Z'`;
+      const { state, table } = createTypesFixture(Database.MySQL, [
+        ['a', `ENUM(${members},'del${String.fromCharCode(0x7f)}')`],
+        ['b', "SET('r','w')"],
+        ['c', 'ENUM'],
+        ['d', String.raw`ENUM('p"q''r','"two" "dq" ''one''','x"\\')`],
+      ]);
+      const lines = render(state, table);
+
+      expect(lines).toContain('from typing import Optional, Set');
+      expect(lines).toContain('from sqlalchemy import Enum, String');
+      expect(lines).toContain('from sqlalchemy.dialects.mysql import SET');
+      expect(lines.slice(-8)).toEqual([
+        '    a: Mapped[Optional[str]] = mapped_column(',
+        String.raw`        Enum("it's", "a\\b", 'x"y', "l\nm\rn\to", "\x1a", "del\x7f"),`,
+        '    )',
+        '    b: Mapped[Optional[Set[str]]] = mapped_column(SET("r", "w"))',
+        '    c: Mapped[Optional[str]] = mapped_column(String)',
+        '    d: Mapped[Optional[str]] = mapped_column(',
+        String.raw`        Enum("p\"q'r", '"two" "dq" \'one\'', 'x"\\'),`,
+        '    )',
+      ]);
+    });
+
+    // A call black would split keeps its members one to a line, the trailing
+    // comma telling black to leave them there.
+    it('writes the members of an ENUM or SET past the line limit one to a line', () => {
+      const { state, table } = createKeyFixture(Database.MySQL, [
+        [
+          'rating',
+          "ENUM('G','PG','PG-13','R','NC-17','X','XX','XXX','unrated','pending','withdrawn')",
+          ColumnOption.notNull,
+        ],
+        [
+          'special_features',
+          "SET('Trailers','Commentaries','Deleted Scenes','Behind the Scenes','Bloopers')",
+          0,
+        ],
+      ]);
+
+      expect(render(state, table).slice(-25)).toEqual([
+        '    rating: Mapped[str] = mapped_column(',
+        '        Enum(',
+        '            "G",',
+        '            "PG",',
+        '            "PG-13",',
+        '            "R",',
+        '            "NC-17",',
+        '            "X",',
+        '            "XX",',
+        '            "XXX",',
+        '            "unrated",',
+        '            "pending",',
+        '            "withdrawn",',
+        '        ),',
+        '        nullable=False,',
+        '    )',
+        '    special_features: Mapped[Optional[Set[str]]] = mapped_column(',
+        '        SET(',
+        '            "Trailers",',
+        '            "Commentaries",',
+        '            "Deleted Scenes",',
+        '            "Behind the Scenes",',
+        '            "Bloopers",',
+        '        ),',
+        '    )',
+      ]);
+    });
+
+    it('writes the PostgreSQL dialect types with their precision and fields', () => {
+      const { state, table } = createTypesFixture(Database.PostgreSQL, [
+        ['a', 'smallint'],
+        ['b', 'smallserial'],
+        ['c', 'real'],
+        ['d', 'float(24)'],
+        ['e', 'char(5)'],
+        ['f', 'bpchar(5)'],
+        ['g', 'bpchar'],
+        ['h', 'bit'],
+        ['i', 'bit(8)'],
+        ['j', 'varbit(8)'],
+        ['k', 'bit varying'],
+        ['l', 'money'],
+        ['m', 'inet'],
+        ['n', 'macaddr8'],
+        ['o', 'tsvector'],
+        ['p', 'oid'],
+        ['q', 'int4range'],
+        ['r', 'numrange'],
+        ['s', 'daterange'],
+        ['t', 'tstzrange'],
+        ['u', 'interval'],
+        ['v', 'interval day to second(3)'],
+        ['w', 'interval(3)'],
+        ['x', 'interval year to month'],
+        ['y', 'time(3)'],
+        ['z', 'timetz(3)'],
+        ['aa', 'timestamp(3)'],
+        ['ab', 'timestamp(6) with time zone'],
+        ['ac', 'timestamptz'],
+        ['ad', 'varchar(20)'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'from datetime import date, datetime, time, timedelta',
+        'from decimal import Decimal',
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import CHAR, REAL, DateTime, Interval, SmallInteger, String',
+        'from sqlalchemy.dialects.postgresql import (',
+        '    BIT,',
+        '    DATERANGE,',
+        '    INET,',
+        '    INT4RANGE,',
+        '    INTERVAL,',
+        '    MACADDR8,',
+        '    MONEY,',
+        '    NUMRANGE,',
+        '    OID,',
+        '    TIME,',
+        '    TIMESTAMP,',
+        '    TSTZRANGE,',
+        '    TSVECTOR,',
+        '    Range,',
+        ')',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[int]] = mapped_column(SmallInteger)',
+        '    b: Mapped[Optional[int]] = mapped_column(SmallInteger)',
+        '    c: Mapped[Optional[float]] = mapped_column(REAL)',
+        '    d: Mapped[Optional[float]] = mapped_column(REAL)',
+        '    e: Mapped[Optional[str]] = mapped_column(CHAR(5))',
+        '    f: Mapped[Optional[str]] = mapped_column(CHAR(5))',
+        '    g: Mapped[Optional[str]] = mapped_column(String)',
+        '    h: Mapped[Optional[str]] = mapped_column(BIT)',
+        '    i: Mapped[Optional[str]] = mapped_column(BIT(8))',
+        '    j: Mapped[Optional[str]] = mapped_column(BIT(8, varying=True))',
+        '    k: Mapped[Optional[str]] = mapped_column(BIT(varying=True))',
+        '    l: Mapped[Optional[str]] = mapped_column(MONEY)',
+        '    m: Mapped[Optional[str]] = mapped_column(INET)',
+        '    n: Mapped[Optional[str]] = mapped_column(MACADDR8)',
+        '    o: Mapped[Optional[str]] = mapped_column(TSVECTOR)',
+        '    p: Mapped[Optional[int]] = mapped_column(OID)',
+        '    q: Mapped[Optional[Range[int]]] = mapped_column(INT4RANGE)',
+        '    r: Mapped[Optional[Range[Decimal]]] = mapped_column(NUMRANGE)',
+        '    s: Mapped[Optional[Range[date]]] = mapped_column(DATERANGE)',
+        '    t: Mapped[Optional[Range[datetime]]] = mapped_column(TSTZRANGE)',
+        '    u: Mapped[Optional[timedelta]] = mapped_column(Interval)',
+        '    v: Mapped[Optional[timedelta]] = mapped_column(',
+        '        INTERVAL(fields="day to second", precision=3),',
+        '    )',
+        '    w: Mapped[Optional[timedelta]] = mapped_column(INTERVAL(precision=3))',
+        '    x: Mapped[Optional[timedelta]] = mapped_column(INTERVAL(fields="year to month"))',
+        '    y: Mapped[Optional[time]] = mapped_column(TIME(precision=3))',
+        '    z: Mapped[Optional[time]] = mapped_column(TIME(timezone=True, precision=3))',
+        '    aa: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(precision=3))',
+        '    ab: Mapped[Optional[datetime]] = mapped_column(',
+        '        TIMESTAMP(timezone=True, precision=6),',
+        '    )',
+        '    ac: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))',
+        '    ad: Mapped[Optional[str]] = mapped_column(String(20))',
+      ]);
+    });
+
+    // psycopg2 parses an array into a list only for the element types it knows
+    // and hands any other over as one string such as {a,b}, which an ARRAY
+    // would split into its letters: an enum, a bit string, xml, a point, an xid.
+    it('writes a PostgreSQL array as an ARRAY of its element, a List a dimension', () => {
+      const { state, table } = createTypesFixture(Database.PostgreSQL, [
+        ['a', 'int[]'],
+        ['b', 'text[][]'],
+        ['c', 'varchar(20)[]'],
+        ['d', 'uuid[]'],
+        ['e', 'integer ARRAY'],
+        ['f', 'timestamptz[][][]'],
+        ['g', 'numeric(10,2)[]'],
+        ['h', '"mood"[]'],
+        ['i', 'bit(8)[]'],
+        ['j', 'xml[]'],
+        ['k', 'point[]'],
+        ['l', 'xid[]'],
+        ['m', 'money[]'],
+        ['n', 'tsvector[]'],
+        ['o', 'int4multirange[]'],
+        ['p', 'inet[]'],
+        ['q', 'int4range[]'],
+        ['r', 'interval day[]'],
+        ['s', 'dec(10,2)[]'],
+        ['t', 'dec[]'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'import uuid',
+        'from datetime import datetime, timedelta',
+        'from decimal import Decimal',
+        'from typing import List, Optional',
+        '',
+        'from sqlalchemy import ARRAY, DateTime, Integer, Numeric, String, Text',
+        'from sqlalchemy.dialects.postgresql import INET, INT4RANGE, INTERVAL, UUID, Range',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[List[int]]] = mapped_column(ARRAY(Integer))',
+        '    b: Mapped[Optional[List[List[str]]]] = mapped_column(ARRAY(Text, dimensions=2))',
+        '    c: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String(20)))',
+        '    d: Mapped[Optional[List[uuid.UUID]]] = mapped_column(ARRAY(UUID(as_uuid=True)))',
+        '    e: Mapped[Optional[List[int]]] = mapped_column(ARRAY(Integer))',
+        '    f: Mapped[Optional[List[List[List[datetime]]]]] = mapped_column(',
+        '        ARRAY(DateTime(timezone=True), dimensions=3),',
+        '    )',
+        '    g: Mapped[Optional[List[Decimal]]] = mapped_column(ARRAY(Numeric(10, 2)))',
+        '    h: Mapped[Optional[str]] = mapped_column(String)',
+        '    i: Mapped[Optional[str]] = mapped_column(String)',
+        '    j: Mapped[Optional[str]] = mapped_column(String)',
+        '    k: Mapped[Optional[str]] = mapped_column(String)',
+        '    l: Mapped[Optional[str]] = mapped_column(String)',
+        '    m: Mapped[Optional[str]] = mapped_column(String)',
+        '    n: Mapped[Optional[str]] = mapped_column(String)',
+        '    o: Mapped[Optional[str]] = mapped_column(String)',
+        '    p: Mapped[Optional[List[str]]] = mapped_column(ARRAY(INET))',
+        '    q: Mapped[Optional[List[Range[int]]]] = mapped_column(ARRAY(INT4RANGE))',
+        '    r: Mapped[Optional[List[timedelta]]] = mapped_column(ARRAY(INTERVAL(fields="day")))',
+        '    s: Mapped[Optional[List[Decimal]]] = mapped_column(ARRAY(Numeric(10, 2)))',
+        '    t: Mapped[Optional[List[Decimal]]] = mapped_column(ARRAY(Numeric))',
+      ]);
+    });
+
+    // psycopg2 hands a multirange over as its text form and cannot write one;
+    // psycopg reads and writes the list of ranges.
+    it('writes a PostgreSQL multirange as its dialect type, a List of Range', () => {
+      const { state, table } = createTypesFixture(Database.PostgreSQL, [
+        ['a', 'int4multirange'],
+        ['b', 'int8multirange'],
+        ['c', 'nummultirange'],
+        ['d', 'datemultirange'],
+        ['e', 'tsmultirange'],
+        ['f', 'tstzmultirange'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'from datetime import date, datetime',
+        'from decimal import Decimal',
+        'from typing import List, Optional',
+        '',
+        'from sqlalchemy.dialects.postgresql import (',
+        '    DATEMULTIRANGE,',
+        '    INT4MULTIRANGE,',
+        '    INT8MULTIRANGE,',
+        '    NUMMULTIRANGE,',
+        '    TSMULTIRANGE,',
+        '    TSTZMULTIRANGE,',
+        '    Range,',
+        ')',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[List[Range[int]]]] = mapped_column(INT4MULTIRANGE)',
+        '    b: Mapped[Optional[List[Range[int]]]] = mapped_column(INT8MULTIRANGE)',
+        '    c: Mapped[Optional[List[Range[Decimal]]]] = mapped_column(NUMMULTIRANGE)',
+        '    d: Mapped[Optional[List[Range[date]]]] = mapped_column(DATEMULTIRANGE)',
+        '    e: Mapped[Optional[List[Range[datetime]]]] = mapped_column(TSMULTIRANGE)',
+        '    f: Mapped[Optional[List[Range[datetime]]]] = mapped_column(TSTZMULTIRANGE)',
+      ]);
+    });
+
+    it('writes the SQL Server money, national character and binary types', () => {
+      const { state, table } = createTypesFixture(Database.MSSQL, [
+        ['a', 'money'],
+        ['b', 'smallmoney'],
+        ['c', 'nvarchar(50)'],
+        ['d', 'nvarchar(max)'],
+        ['e', 'national character varying(20)'],
+        ['f', 'nchar(10)'],
+        ['g', 'nchar'],
+        ['h', 'ntext'],
+        ['i', 'national text'],
+        ['j', 'binary(16)'],
+        ['k', 'binary'],
+        ['l', 'varbinary(16)'],
+        ['m', 'binary varying(16)'],
+        ['n', 'varbinary(max)'],
+        ['o', 'bit'],
+        ['p', 'numeric(10,2)'],
+        ['q', 'char(10)'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'from decimal import Decimal',
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import (',
+        '    BINARY,',
+        '    CHAR,',
+        '    NCHAR,',
+        '    NVARCHAR,',
+        '    VARBINARY,',
+        '    Boolean,',
+        '    LargeBinary,',
+        '    Numeric,',
+        ')',
+        'from sqlalchemy.dialects.mssql import MONEY, NTEXT, SMALLMONEY',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[Decimal]] = mapped_column(MONEY)',
+        '    b: Mapped[Optional[Decimal]] = mapped_column(SMALLMONEY)',
+        '    c: Mapped[Optional[str]] = mapped_column(NVARCHAR(50))',
+        '    d: Mapped[Optional[str]] = mapped_column(NVARCHAR)',
+        '    e: Mapped[Optional[str]] = mapped_column(NVARCHAR(20))',
+        '    f: Mapped[Optional[str]] = mapped_column(NCHAR(10))',
+        '    g: Mapped[Optional[str]] = mapped_column(NCHAR)',
+        '    h: Mapped[Optional[str]] = mapped_column(NTEXT)',
+        '    i: Mapped[Optional[str]] = mapped_column(NTEXT)',
+        '    j: Mapped[Optional[bytes]] = mapped_column(BINARY(16))',
+        '    k: Mapped[Optional[bytes]] = mapped_column(BINARY)',
+        '    l: Mapped[Optional[bytes]] = mapped_column(VARBINARY(16))',
+        '    m: Mapped[Optional[bytes]] = mapped_column(VARBINARY(16))',
+        '    n: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
+        '    o: Mapped[Optional[bool]] = mapped_column(Boolean)',
+        '    p: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))',
+        '    q: Mapped[Optional[str]] = mapped_column(CHAR(10))',
+      ]);
+    });
+
+    // SQLAlchemy writes DATE and every TIMESTAMP as an Oracle DATE unless the
+    // dialect's own types are used, and has no type for INTERVAL YEAR TO MONTH,
+    // which therefore stays an Interval.
+    it('writes the Oracle date, timestamp, national, raw, interval and NUMBER types', () => {
+      const { state, table } = createTypesFixture(Database.Oracle, [
+        ['a', 'DATE'],
+        ['b', 'TIMESTAMP'],
+        ['c', 'TIMESTAMP(3)'],
+        ['d', 'TIMESTAMP(6) WITH TIME ZONE'],
+        ['e', 'TIMESTAMP(6) WITH LOCAL TIME ZONE'],
+        ['f', 'NVARCHAR2(20)'],
+        ['g', 'NVARCHAR2(20 CHAR)'],
+        ['h', 'NVARCHAR2'],
+        ['i', 'RAW(16)'],
+        ['j', 'RAW'],
+        ['k', 'INTERVAL DAY(2) TO SECOND(6)'],
+        ['l', 'INTERVAL DAY(5) TO SECOND'],
+        ['m', 'INTERVAL DAY TO SECOND'],
+        ['n', 'INTERVAL YEAR TO MONTH'],
+        ['o', 'NUMBER(10,2)'],
+        ['p', 'NUMBER(*,2)'],
+        ['q', 'NUMBER'],
+        ['r', 'VARCHAR2(100 BYTE)'],
+        ['s', 'CHAR(5)'],
+        ['t', 'NCHAR(5)'],
+        ['u', 'NCLOB'],
+        ['v', 'NCHAR VARYING(20)'],
+        ['w', 'NATIONAL CHAR VARYING(20)'],
+        ['x', 'NATIONAL CHARACTER VARYING(20)'],
+      ]);
+
+      expect(render(state, table)).toEqual([
+        'from datetime import datetime, timedelta',
+        'from decimal import Decimal',
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import CHAR, NCHAR, BigInteger, Interval, LargeBinary, Numeric, String',
+        'from sqlalchemy.dialects.oracle import DATE, NCLOB, NVARCHAR2, RAW, TIMESTAMP',
+        'from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column',
+        '',
+        '',
+        'class Base(DeclarativeBase):',
+        '    pass',
+        '',
+        '',
+        'class Types(Base):',
+        '    __tablename__ = "types"',
+        '',
+        '    a: Mapped[Optional[datetime]] = mapped_column(DATE)',
+        '    b: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)',
+        '    c: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP)',
+        '    d: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))',
+        '    e: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(local_timezone=True))',
+        '    f: Mapped[Optional[str]] = mapped_column(NVARCHAR2(20))',
+        '    g: Mapped[Optional[str]] = mapped_column(NVARCHAR2(20))',
+        '    h: Mapped[Optional[str]] = mapped_column(String)',
+        '    i: Mapped[Optional[bytes]] = mapped_column(RAW(16))',
+        '    j: Mapped[Optional[bytes]] = mapped_column(LargeBinary)',
+        '    k: Mapped[Optional[timedelta]] = mapped_column(',
+        '        Interval(day_precision=2, second_precision=6),',
+        '    )',
+        '    l: Mapped[Optional[timedelta]] = mapped_column(Interval(day_precision=5))',
+        '    m: Mapped[Optional[timedelta]] = mapped_column(Interval)',
+        '    n: Mapped[Optional[timedelta]] = mapped_column(Interval)',
+        '    o: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))',
+        '    p: Mapped[Optional[Decimal]] = mapped_column(Numeric(38, 2))',
+        '    q: Mapped[Optional[int]] = mapped_column(BigInteger)',
+        '    r: Mapped[Optional[str]] = mapped_column(String(100))',
+        '    s: Mapped[Optional[str]] = mapped_column(CHAR(5))',
+        '    t: Mapped[Optional[str]] = mapped_column(NCHAR(5))',
+        '    u: Mapped[Optional[str]] = mapped_column(NCLOB)',
+        '    v: Mapped[Optional[str]] = mapped_column(NVARCHAR2(20))',
+        '    w: Mapped[Optional[str]] = mapped_column(NVARCHAR2(20))',
+        '    x: Mapped[Optional[str]] = mapped_column(NVARCHAR2(20))',
+      ]);
+    });
+
+    it('writes an interval as Interval on a database with no dialect type for it', () => {
+      const { state, table } = createTypesFixture(Database.Databricks, [
+        ['a', 'INTERVAL DAY TO SECOND'],
+        ['b', 'INTERVAL YEAR TO MONTH'],
+      ]);
+
+      expect(render(state, table).slice(0, 4)).toEqual([
+        'from datetime import timedelta',
+        'from typing import Optional',
+        '',
+        'from sqlalchemy import Interval',
+      ]);
+      expect(render(state, table).slice(-2)).toEqual([
+        '    a: Mapped[Optional[timedelta]] = mapped_column(Interval)',
+        '    b: Mapped[Optional[timedelta]] = mapped_column(Interval)',
+      ]);
+    });
+
+    // MySQL and SQL Server have no interval column, so the name is no type
+    // there and keeps the string the vendor list files it under.
+    it('leaves an interval a string on a database with no interval type', () => {
+      const mysql = createTypesFixture(Database.MySQL, [
+        ['a', 'interval day to second'],
+      ]);
+      const mssql = createTypesFixture(Database.MSSQL, [['a', 'interval(3)']]);
+
+      expect(render(mysql.state, mysql.table).slice(-1)).toEqual([
+        '    a: Mapped[Optional[str]] = mapped_column(String)',
+      ]);
+      expect(render(mssql.state, mssql.table).slice(-1)).toEqual([
+        '    a: Mapped[Optional[str]] = mapped_column(String(3))',
+      ]);
+    });
+  });
+
+  // SQLAlchemy's autoincrement="auto" turns a lone integer or numeric key into
+  // SERIAL, AUTO_INCREMENT or IDENTITY, which the document's DDL never declared
+  // and which refuses an explicit key on SQL Server.
+  describe('autoincrement', () => {
+    it('writes autoincrement=False on a lone numeric key the document does not flag', () => {
+      const numeric = createKeyFixture(Database.PostgreSQL, [
+        ['k', 'numeric(10,2)', ColumnOption.primaryKey],
+      ]);
+      const real = createKeyFixture(Database.PostgreSQL, [
+        ['k', 'real', ColumnOption.primaryKey],
+      ]);
+      const unsigned = createKeyFixture(Database.MySQL, [
+        ['k', 'DECIMAL(10,2) UNSIGNED', ColumnOption.primaryKey],
+      ]);
+      const double = createKeyFixture(Database.MySQL, [
+        ['k', 'DOUBLE', ColumnOption.primaryKey],
+      ]);
+      const mssql = createKeyFixture(Database.MSSQL, [
+        ['k', 'numeric(10)', ColumnOption.primaryKey],
+      ]);
+
+      expect(render(numeric.state, numeric.table).slice(-5)).toEqual([
+        '    k: Mapped[Decimal] = mapped_column(',
+        '        Numeric(10, 2),',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
+      ]);
+      expect(render(real.state, real.table).slice(-1)).toEqual([
+        '    k: Mapped[float] = mapped_column(REAL, primary_key=True, autoincrement=False)',
+      ]);
+      expect(render(unsigned.state, unsigned.table).slice(-5)).toEqual([
+        '    k: Mapped[Decimal] = mapped_column(',
+        '        DECIMAL(10, 2, unsigned=True),',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
+      ]);
+      expect(render(double.state, double.table).slice(-1)).toEqual([
+        '    k: Mapped[float] = mapped_column(Double, primary_key=True, autoincrement=False)',
+      ]);
+      expect(render(mssql.state, mssql.table).slice(-5)).toEqual([
+        '    k: Mapped[Decimal] = mapped_column(',
+        '        Numeric(10),',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
+      ]);
+    });
+
+    // SQLite numbers the rows of a key declared exactly INTEGER itself, as an
+    // alias of the rowid, which SQLAlchemy's default models; INT, BIGINT and
+    // INTEGER(10) number nothing there.
+    it('leaves a lone SQLite INTEGER key to SQLAlchemy, which reads it as the rowid', () => {
+      const rowid = createKeyFixture(Database.SQLite, [
+        ['id', 'INTEGER', ColumnOption.primaryKey],
+      ]);
+      const lower = createKeyFixture(Database.SQLite, [
+        ['id', 'integer', ColumnOption.primaryKey],
+      ]);
+      const sized = createKeyFixture(Database.SQLite, [
+        ['id', 'INTEGER(10)', ColumnOption.primaryKey],
+      ]);
+      const int = createKeyFixture(Database.SQLite, [
+        ['id', 'INT', ColumnOption.primaryKey],
+      ]);
+      const postgres = createKeyFixture(Database.PostgreSQL, [
+        ['id', 'INTEGER', ColumnOption.primaryKey],
+      ]);
+
+      expect(render(rowid.state, rowid.table).slice(-1)).toEqual([
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+      ]);
+      expect(render(lower.state, lower.table).slice(-1)).toEqual([
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+      ]);
+      expect(render(sized.state, sized.table).slice(-1)).toEqual([
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
+      ]);
+      expect(render(int.state, int.table).slice(-1)).toEqual([
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
+      ]);
+      expect(render(postgres.state, postgres.table).slice(-1)).toEqual([
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
+      ]);
+    });
+
+    it('writes autoincrement=False on a lone integer key the document does not flag', () => {
+      const { state, table } = createKeyFixture(Database.MySQL, [
+        ['id', 'BIGINT UNSIGNED', ColumnOption.primaryKey],
+        ['name', 'VARCHAR(20)', 0],
+      ]);
+
+      expect(render(state, table).slice(-6)).toEqual([
+        '    id: Mapped[int] = mapped_column(',
+        '        BIGINT(unsigned=True),',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
+        '    name: Mapped[Optional[str]] = mapped_column(String(20))',
+      ]);
+    });
+
+    // A serial type numbers its rows itself, so its key keeps the sequence
+    // create_all makes for it, and drops the default it would conflict with.
+    it.each([
+      [
+        'serial',
+        Database.PostgreSQL,
+        [
+          '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)',
+        ],
+      ],
+      [
+        'bigserial',
+        Database.PostgreSQL,
+        [
+          '    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)',
+        ],
+      ],
+      [
+        'smallserial',
+        Database.PostgreSQL,
+        [
+          '    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, autoincrement=True)',
+        ],
+      ],
+      [
+        'SERIAL',
+        Database.MySQL,
+        [
+          '    id: Mapped[int] = mapped_column(',
+          '        BIGINT(unsigned=True),',
+          '        primary_key=True,',
+          '        autoincrement=True,',
+          '        unique=True,',
+          '    )',
+        ],
+      ],
+    ])('treats a %s key as flagged', (dataType, database, lines) => {
+      const table = createTable({ id: 't1', name: 'seq', columnIds: ['c1'] });
+      const state = createState({
+        tables: [table],
+        columns: [
+          createColumn({
+            id: 'c1',
+            tableId: 't1',
+            name: 'id',
+            dataType,
+            default: '1',
+            options: ColumnOption.primaryKey,
+          }),
+        ],
+        settings: { database },
+      });
+
+      expect(render(state, table).slice(-lines.length)).toEqual(lines);
+    });
+
+    // MySQL's SERIAL is BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE, so the
+    // unique index it adds belongs to the model wherever the column stands.
+    it('writes unique=True on every MySQL and MariaDB SERIAL column', () => {
+      const mariadb = createKeyFixture(Database.MariaDB, [
+        ['k', 'SERIAL', ColumnOption.primaryKey],
+      ]);
+      const composite = createKeyFixture(Database.MySQL, [
+        ['a', 'INT', ColumnOption.primaryKey],
+        ['k', 'SERIAL', ColumnOption.primaryKey],
+      ]);
+      const column = createKeyFixture(Database.MySQL, [
+        ['id', 'INT', ColumnOption.primaryKey],
+        ['k', 'serial', ColumnOption.notNull],
+        ['u', 'SERIAL', ColumnOption.notNull | ColumnOption.unique],
+      ]);
+
+      expect(render(mariadb.state, mariadb.table).slice(-6)).toEqual([
+        '    k: Mapped[int] = mapped_column(',
+        '        BIGINT(unsigned=True),',
+        '        primary_key=True,',
+        '        autoincrement=True,',
+        '        unique=True,',
+        '    )',
+      ]);
+      expect(render(composite.state, composite.table).slice(-2)).toEqual([
+        '    a: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    k: Mapped[int] = mapped_column(BIGINT(unsigned=True), primary_key=True, unique=True)',
+      ]);
+      expect(render(column.state, column.table).slice(-3)).toEqual([
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
+        '    k: Mapped[int] = mapped_column(BIGINT(unsigned=True), nullable=False, unique=True)',
+        '    u: Mapped[int] = mapped_column(BIGINT(unsigned=True), nullable=False, unique=True)',
+      ]);
+    });
+
+    it('leaves a composite key, a key of another type and a serial column alone', () => {
+      const composite = createKeyFixture(Database.PostgreSQL, [
+        ['a', 'integer', ColumnOption.primaryKey],
+        ['b', 'integer', ColumnOption.primaryKey],
+        ['c', 'serial', ColumnOption.notNull],
+      ]);
+      const text = createKeyFixture(Database.PostgreSQL, [
+        ['code', 'varchar(10)', ColumnOption.primaryKey],
+      ]);
+      const year = createKeyFixture(Database.MySQL, [
+        ['y', 'YEAR', ColumnOption.primaryKey],
+      ]);
+
+      expect(render(composite.state, composite.table).slice(-3)).toEqual([
+        '    a: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    b: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    c: Mapped[int] = mapped_column(Integer, nullable=False)',
+      ]);
+      expect(render(text.state, text.table).slice(-1)).toEqual([
+        '    code: Mapped[str] = mapped_column(String(10), primary_key=True)',
+      ]);
+      expect(render(year.state, year.table).slice(-1)).toEqual([
+        '    y: Mapped[int] = mapped_column(YEAR, primary_key=True)',
       ]);
     });
   });
@@ -1049,6 +2034,106 @@ describe('generator-code/sqlalchemy', () => {
           'sqlalchemy.dialects.postgresql'
         )
       ).toEqual(['JSONB', 'UUID']);
+    });
+
+    // Each database imports from its own dialect module, so every dialect name
+    // has a state that reaches it, and the CONSTANT bucket sorts before Range.
+    it('orders every dialect import the way isort does', () => {
+      const states = createDialectImportStates();
+
+      expect(fromImportNames(createCode(states.mysql), 'sqlalchemy')).toEqual([
+        'BINARY',
+        'CHAR',
+        'NCHAR',
+        'VARBINARY',
+        'Enum',
+        'SmallInteger',
+      ]);
+      expect(
+        fromImportNames(createCode(states.mysql), 'sqlalchemy.dialects.mysql')
+      ).toEqual([
+        'BIGINT',
+        'BIT',
+        'DATETIME',
+        'DECIMAL',
+        'DOUBLE',
+        'FLOAT',
+        'INTEGER',
+        'LONGBLOB',
+        'LONGTEXT',
+        'MEDIUMBLOB',
+        'MEDIUMINT',
+        'MEDIUMTEXT',
+        'SET',
+        'SMALLINT',
+        'TIME',
+        'TIMESTAMP',
+        'TINYBLOB',
+        'TINYINT',
+        'TINYTEXT',
+        'VARCHAR',
+        'YEAR',
+      ]);
+      expect(fromImportNames(createCode(states.mysql), 'typing')).toEqual([
+        'Optional',
+        'Set',
+      ]);
+      expect(
+        fromImportNames(createCode(states.mariadb), 'sqlalchemy.dialects.mysql')
+      ).toEqual(['INET4', 'INET6']);
+      expect(fromImportNames(createCode(states.mariadb), 'sqlalchemy')).toEqual(
+        ['UUID']
+      );
+      expect(
+        fromImportNames(createCode(states.postgresql), 'sqlalchemy')
+      ).toEqual(['ARRAY', 'REAL', 'Integer', 'Interval']);
+      expect(
+        fromImportNames(
+          createCode(states.postgresql),
+          'sqlalchemy.dialects.postgresql'
+        )
+      ).toEqual([
+        'BIT',
+        'CIDR',
+        'DATEMULTIRANGE',
+        'DATERANGE',
+        'INET',
+        'INT4MULTIRANGE',
+        'INT4RANGE',
+        'INT8MULTIRANGE',
+        'INT8RANGE',
+        'INTERVAL',
+        'JSONPATH',
+        'MACADDR',
+        'MACADDR8',
+        'MONEY',
+        'NUMMULTIRANGE',
+        'NUMRANGE',
+        'OID',
+        'REGCLASS',
+        'REGCONFIG',
+        'TIME',
+        'TIMESTAMP',
+        'TSMULTIRANGE',
+        'TSQUERY',
+        'TSRANGE',
+        'TSTZMULTIRANGE',
+        'TSTZRANGE',
+        'TSVECTOR',
+        'Range',
+      ]);
+      expect(
+        fromImportNames(createCode(states.postgresql), 'datetime')
+      ).toEqual(['date', 'datetime', 'time', 'timedelta']);
+      expect(
+        fromImportNames(createCode(states.mssql), 'sqlalchemy.dialects.mssql')
+      ).toEqual(['MONEY', 'NTEXT', 'SMALLMONEY']);
+      expect(fromImportNames(createCode(states.mssql), 'sqlalchemy')).toEqual([
+        'NVARCHAR',
+      ]);
+      expect(
+        fromImportNames(createCode(states.oracle), 'sqlalchemy.dialects.oracle')
+      ).toEqual(['DATE', 'NCLOB', 'NVARCHAR2', 'RAW', 'TIMESTAMP']);
     });
 
     it('emits no Mapped or mapped_column import for a table with no columns', () => {
@@ -1238,10 +2323,12 @@ describe('generator-code/sqlalchemy', () => {
       expect(render(state, table).slice(-3)).toEqual([
         '    __tablename__ = "blank"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
       ]);
     });
 
+    // Each string is a Python literal in the quote black keeps: double quotes
+    // unless the value holds more of them than single ones.
     it('escapes a quote, a backslash and a newline in a default, a comment and a name', () => {
       const table = createTable({
         id: 't1',
@@ -1281,23 +2368,23 @@ describe('generator-code/sqlalchemy', () => {
         'class we_ird(Base):',
         '    """line one line \\"two\\" """',
         '',
-        '    __tablename__ = "we\\"ird"',
-        '    __table_args__ = {"comment": "line one line \\"two\\""}',
+        `    __tablename__ = 'we"ird'`,
+        `    __table_args__ = {"comment": 'line one\\nline "two"'}`,
         '',
         '    pa_th: Mapped[str] = mapped_column(',
-        '        "pa\\"th",',
+        `        'pa"th',`,
         '        String(10),',
         '        nullable=False,',
-        '        server_default=text("a\\"b\\\\c"),',
+        `        server_default=text('a"b\\\\c'),`,
         '        comment="a\\\\b",',
         '    )',
       ]);
     });
 
-    // Each escape is global: a raw backslash makes the module a SyntaxError, a
-    // newline left in place ends the string early, and a CRLF matched as two
-    // breaks leaves a double space in the comment.
-    it('escapes every backslash and every newline, and a CRLF only once', () => {
+    // Each escape is global: a raw backslash makes the module a SyntaxError and
+    // a newline left in place ends the string early. A string keeps each break
+    // as its escape, the comment the database holds; the docstring flattens one.
+    it('escapes every backslash and every newline, and flattens a CRLF once', () => {
       const table = createTable({
         id: 't1',
         name: 'escapes',
@@ -1334,22 +2421,22 @@ describe('generator-code/sqlalchemy', () => {
         '    """one two"""',
         '',
         '    __tablename__ = "escapes"',
-        '    __table_args__ = {"comment": "one two"}',
+        '    __table_args__ = {"comment": "one\\r\\ntwo"}',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    path: Mapped[str] = mapped_column(',
         '        String(10),',
         '        nullable=False,',
-        '        server_default=text("\'x y z\'"),',
+        '        server_default=text("\'x\\ny\\nz\'"),',
         '        comment="a\\\\b\\\\c",',
         '    )',
       ]);
     });
 
     // Python's tokenizer reads a lone CR in source as a newline, so one left in
-    // the literal ends the string early and the module dies at import.
-    // Flattened, the module imports and create_all runs clean.
-    it('flattens a lone carriage return in a comment and a default', () => {
+    // the literal ends the string early and the module dies at import. Written
+    // as an escape it stays in the value; the docstring flattens it.
+    it('escapes a lone carriage return in a comment and a default', () => {
       const table = createTable({
         id: 't1',
         name: 'cr_table',
@@ -1386,14 +2473,14 @@ describe('generator-code/sqlalchemy', () => {
         '    """one two"""',
         '',
         '    __tablename__ = "cr_table"',
-        '    __table_args__ = {"comment": "one two"}',
+        '    __table_args__ = {"comment": "one\\rtwo"}',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    note: Mapped[str] = mapped_column(',
         '        String(10),',
         '        nullable=False,',
-        '        server_default=text("\'a b\'"),',
-        '        comment="left right",',
+        '        server_default=text("\'a\\rb\'"),',
+        '        comment="left\\rright",',
         '    )',
       ]);
     });
@@ -1425,8 +2512,153 @@ describe('generator-code/sqlalchemy', () => {
         'class Blank(Base):',
         '    __tablename__ = "blank"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
       ]);
+    });
+  });
+
+  describe('layout', () => {
+    // A long default would leave its line past the limit, where black opens
+    // the text call; the trailing comma tells black to leave it open.
+    it('opens a server default past the line limit inside its text call', () => {
+      const value = `'${'y'.repeat(80)}'`;
+      const { state, table } = createTypesFixture(Database.MySQL, [
+        ['v', 'VARCHAR(100)'],
+      ]);
+      state.collections.tableColumnEntities['v'].default = value;
+
+      expect(render(state, table).slice(-6)).toEqual([
+        '    v: Mapped[Optional[str]] = mapped_column(',
+        '        String(100),',
+        '        server_default=text(',
+        `            "${value}",`,
+        '        ),',
+        '    )',
+      ]);
+    });
+
+    // Black puts the call on a line of its own inside parentheses where the
+    // line would open past the limit and the target with = ( fits.
+    it('puts a call that would open past the line limit inside parentheses', () => {
+      const parent = createTable({
+        id: 't_parent',
+        name: 'customer_group',
+        columnIds: ['p_id'],
+      });
+      const child = createTable({
+        id: 't_child',
+        name: 'salesrule_product_attribute',
+        columnIds: ['c_id', 'c_fk', 'c_long'],
+      });
+      const state = createState({
+        tables: [parent, child],
+        columns: [
+          primaryKey('p_id', 't_parent'),
+          primaryKey('c_id', 't_child'),
+          createColumn({
+            id: 'c_fk',
+            tableId: 't_child',
+            name: 'customer_group_id',
+            dataType: 'INT',
+            options: ColumnOption.notNull,
+          }),
+          createColumn({
+            id: 'c_long',
+            tableId: 't_child',
+            name: 'a_rather_long_column_name_for_the_last_date_it_was_seen',
+            dataType: 'DATETIME',
+          }),
+        ],
+        relationships: [
+          createRelationship({
+            id: 'r1',
+            relationshipType: RelationshipType.ZeroN,
+            start: { tableId: 't_parent', columnIds: ['p_id'] },
+            end: { tableId: 't_child', columnIds: ['c_fk'] },
+          }),
+        ],
+        settings: { database: Database.MySQL },
+      });
+      const lines = createCode(state).split('\n');
+
+      expect(lines).toEqual(
+        expect.arrayContaining([
+          '    salesruleProductAttributeList: Mapped[List["SalesruleProductAttribute"]] = (',
+          '        relationship(back_populates="customerGroup")',
+          '    )',
+          '    aRatherLongColumnNameForTheLastDateItWasSeen: Mapped[Optional[datetime]] = (',
+          '        mapped_column(',
+          '            "a_rather_long_column_name_for_the_last_date_it_was_seen",',
+          '            DateTime,',
+          '        )',
+          '    )',
+        ])
+      );
+    });
+
+    // Where the target with = ( is past the limit too, black opens the
+    // brackets of Mapped instead and the call follows the closing one.
+    it('opens the annotation where the target alone passes the line limit', () => {
+      const name = 'x'.repeat(60);
+      const longer = 'z'.repeat(75);
+      const { state, table } = createKeyFixture(Database.MySQL, [
+        [name, 'VARCHAR(20)', 0],
+        [longer, 'VARCHAR(20)', ColumnOption.notNull],
+      ]);
+      state.collections.tableColumnEntities[longer].comment = 'c'.repeat(50);
+
+      expect(render(state, table).slice(-10)).toEqual([
+        `    ${name}: Mapped[`,
+        '        Optional[str]',
+        '    ] = mapped_column(String(20))',
+        `    ${longer}: Mapped[`,
+        '        str',
+        '    ] = mapped_column(',
+        '        String(20),',
+        '        nullable=False,',
+        `        comment="${'c'.repeat(50)}",`,
+        '    )',
+      ]);
+    });
+
+    // Black measures a line in columns, two for a Hangul syllable or a CJK
+    // ideograph, so a comment in them reaches the limit at half the length.
+    it('counts an East Asian wide character as two columns', () => {
+      const { state, table } = createTypesFixture(Database.MySQL, [
+        ['a', 'VARCHAR(20)'],
+      ]);
+      const columns = state.collections.tableColumnEntities;
+      columns['a'].comment = '한글'.repeat(10);
+
+      expect(render(state, table).slice(-4)).toEqual([
+        '    a: Mapped[Optional[str]] = mapped_column(',
+        '        String(20),',
+        `        comment="${'한글'.repeat(10)}",`,
+        '    )',
+      ]);
+
+      columns['a'].comment = 'é'.repeat(20);
+
+      expect(render(state, table).at(-1)).toBe(
+        `    a: Mapped[Optional[str]] = mapped_column(String(20), comment="${'é'.repeat(20)}")`
+      );
+    });
+
+    // Black strips a one-line docstring and writes one of nothing as a space.
+    it('strips the docstring as black does', () => {
+      const { state, table } = createTypesFixture(Database.MySQL, [
+        ['a', 'INT'],
+      ]);
+      const tables = state.collections.tableEntities;
+
+      const docstring = () =>
+        render(state, table).find(line => line.startsWith('    """'));
+
+      tables['t1'].comment = '  padded\u3000 ';
+      expect(docstring()).toBe('    """padded"""');
+
+      tables['t1'].comment = '\u0085';
+      expect(docstring()).toBe('    """ """');
     });
   });
 
@@ -1508,7 +2740,13 @@ describe('generator-code/sqlalchemy', () => {
       const code = createCode(state);
 
       expect(code).toContain(
-        '    registry: Mapped[int] = mapped_column(Integer, primary_key=True)'
+        [
+          '    registry: Mapped[int] = mapped_column(',
+          '        Integer,',
+          '        primary_key=True,',
+          '        autoincrement=False,',
+          '    )',
+        ].join('\n')
       );
       expect(code).toContain(
         '    metadata_: Mapped[Optional[int]] = mapped_column("metadata", Integer)'
@@ -1656,7 +2894,7 @@ describe('generator-code/sqlalchemy', () => {
       const { state, table } = createUnderscoreFixture(NameCase.none);
 
       expect(render(state, table).slice(-11)).toEqual([
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    x__secret: Mapped[Optional[str]] = mapped_column("__secret", String(5))',
         '    x__x__: Mapped[Optional[str]] = mapped_column("__x__", String(5))',
         '    x__doc__: Mapped[Optional[str]] = mapped_column("__doc__", String(5))',
@@ -1674,7 +2912,7 @@ describe('generator-code/sqlalchemy', () => {
       const { state, table } = createUnderscoreFixture(NameCase.snakeCase);
 
       expect(render(state, table).slice(-11)).toEqual([
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    secret: Mapped[Optional[str]] = mapped_column("__secret", String(5))',
         '    x: Mapped[Optional[str]] = mapped_column("__x__", String(5))',
         '    doc: Mapped[Optional[str]] = mapped_column("__doc__", String(5))',
@@ -1691,14 +2929,12 @@ describe('generator-code/sqlalchemy', () => {
     it('moves a leading-underscore table name off the class it would shadow', () => {
       const { state, table } = createUnderscoreTableFixture(NameCase.none);
 
-      expect(render(state, table).slice(-9)).toEqual([
+      expect(render(state, table).slice(-7)).toEqual([
         'class x__thing(Base):',
         '    __tablename__ = "__thing"',
-        '    __table_args__ = (',
-        '        Index("IDX___thing", "x__a_b"),',
-        '    )',
+        '    __table_args__ = (Index("IDX___thing", "x__a_b"),)',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    x__a_b: Mapped[Optional[str]] = mapped_column("__a.b", String(5), key="x__a_b")',
         '    x__metadata: Mapped[Optional[str]] = mapped_column("__metadata", String(5))',
       ]);
@@ -1709,14 +2945,17 @@ describe('generator-code/sqlalchemy', () => {
         NameCase.pascalCase
       );
 
-      expect(render(state, table).slice(-9)).toEqual([
+      expect(render(state, table).slice(-12)).toEqual([
         'class Thing(Base):',
         '    __tablename__ = "__thing"',
-        '    __table_args__ = (',
-        '        Index("IDX___thing", "AB"),',
-        '    )',
+        '    __table_args__ = (Index("IDX___thing", "AB"),)',
         '',
-        '    Id: Mapped[int] = mapped_column("id", Integer, primary_key=True)',
+        '    Id: Mapped[int] = mapped_column(',
+        '        "id",',
+        '        Integer,',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
         '    AB: Mapped[Optional[str]] = mapped_column("__a.b", String(5), key="AB")',
         '    Metadata: Mapped[Optional[str]] = mapped_column("__metadata", String(5))',
       ]);
@@ -1725,11 +2964,16 @@ describe('generator-code/sqlalchemy', () => {
     it('names the moved attribute in back_populates and remote_side', () => {
       const { state, child } = createUnderscoreRelationFixture(NameCase.none);
 
-      expect(render(state, child).slice(-24)).toEqual([
+      expect(render(state, child).slice(-29)).toEqual([
         'class x__child(Base):',
         '    __tablename__ = "__child"',
         '',
-        '    x__id: Mapped[int] = mapped_column("__id", Integer, primary_key=True)',
+        '    x__id: Mapped[int] = mapped_column(',
+        '        "__id",',
+        '        Integer,',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
         '    x__secret_id: Mapped[int] = mapped_column(',
         '        "__secret_id",',
         '        Integer,',
@@ -1758,11 +3002,16 @@ describe('generator-code/sqlalchemy', () => {
         NameCase.pascalCase
       );
 
-      expect(render(state, child).slice(-22)).toEqual([
+      expect(render(state, child).slice(-27)).toEqual([
         'class Child(Base):',
         '    __tablename__ = "__child"',
         '',
-        '    Id: Mapped[int] = mapped_column("__id", Integer, primary_key=True)',
+        '    Id: Mapped[int] = mapped_column(',
+        '        "__id",',
+        '        Integer,',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
         '    SecretId: Mapped[int] = mapped_column(',
         '        "__secret_id",',
         '        Integer,',
@@ -1787,11 +3036,16 @@ describe('generator-code/sqlalchemy', () => {
     it('names the moved attribute in foreign_keys', () => {
       const { state, left } = createUnderscoreAmbiguousFixture();
 
-      expect(render(state, left).slice(-18)).toEqual([
+      expect(render(state, left).slice(-23)).toEqual([
         'class x__a(Base):',
         '    __tablename__ = "__a"',
         '',
-        '    x__id: Mapped[int] = mapped_column("__id", Integer, primary_key=True)',
+        '    x__id: Mapped[int] = mapped_column(',
+        '        "__id",',
+        '        Integer,',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
         '    x__b_id: Mapped[Optional[int]] = mapped_column(',
         '        "__b_id",',
         '        Integer,',
@@ -1861,7 +3115,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Collide(Base):',
         '    __tablename__ = "collide"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    a_b: Mapped[Optional[str]] = mapped_column("a b", String(10))',
         '    a_b_2: Mapped[Optional[str]] = mapped_column("a-b", String(10))',
         '    a_b_3: Mapped[Optional[str]] = mapped_column("a+b", String(10))',
@@ -1876,7 +3130,7 @@ describe('generator-code/sqlalchemy', () => {
       expect(
         render(state, state.collections.tableEntities['t_post']).slice(-4)
       ).toEqual([
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"), nullable=False)',
         '',
         '    user: Mapped["User"] = relationship(back_populates="postList")',
@@ -1990,7 +3244,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Post(Base):',
         '    __tablename__ = "post"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("user.id"))',
         '',
         '    user: Mapped[Optional["User"]] = relationship(back_populates="postList")',
@@ -2016,7 +3270,7 @@ describe('generator-code/sqlalchemy', () => {
         'class User(Base):',
         '    __tablename__ = "user"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '',
         '    post: Mapped[Optional["Post"]] = relationship(back_populates="user")',
       ]);
@@ -2188,12 +3442,14 @@ describe('generator-code/sqlalchemy', () => {
       expect(
         render(state, state.collections.tableEntities['t_post']).slice(-2)
       ).toEqual([
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"), nullable=False)',
       ]);
       expect(
         render(state, state.collections.tableEntities['t_user']).at(-1)
-      ).toBe('    id: Mapped[int] = mapped_column(Integer, primary_key=True)');
+      ).toBe(
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)'
+      );
     });
 
     it('skips a relationship whose table or column cannot be resolved', () => {
@@ -2274,7 +3530,7 @@ describe('generator-code/sqlalchemy', () => {
       expect(code).not.toContain('ForeignKey');
       expect(code).not.toContain('relationship(');
       expect(render(state, child).slice(-2)).toEqual([
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    parent_a: Mapped[int] = mapped_column(Integer, nullable=False)',
       ]);
     });
@@ -2315,13 +3571,18 @@ describe('generator-code/sqlalchemy', () => {
         'class Child(Base):',
         '    __tablename__ = "child"',
         '',
-        '    parentId: Mapped[int] = mapped_column("parent_id", Integer, primary_key=True)',
+        '    parentId: Mapped[int] = mapped_column(',
+        '        "parent_id",',
+        '        Integer,',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
         '',
         '',
         'class Parent(Base):',
         '    __tablename__ = "parent"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
       ]);
     });
 
@@ -2408,14 +3669,14 @@ describe('generator-code/sqlalchemy', () => {
         'class Child(Base):',
         '    __tablename__ = "child"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    parentId: Mapped[Optional[int]] = mapped_column("parent_id", Integer)',
         '',
         '',
         'class Parent(Base):',
         '    __tablename__ = "parent"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
       ]);
     });
 
@@ -2475,7 +3736,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Alpha(Base):',
         '    __tablename__ = "alpha"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '',
         '    childList: Mapped[List["Child"]] = relationship(back_populates="alpha")',
         '',
@@ -2483,7 +3744,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Beta(Base):',
         '    __tablename__ = "beta"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '',
         '    childList: Mapped[List["Child"]] = relationship(back_populates="beta")',
         '',
@@ -2491,7 +3752,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Child(Base):',
         '    __tablename__ = "child"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    refId: Mapped[int] = mapped_column(',
         '        "ref_id",',
         '        Integer,',
@@ -2570,7 +3831,7 @@ describe('generator-code/sqlalchemy', () => {
         '        ),',
         '    )',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    tenantId: Mapped[int] = mapped_column("tenant_id", Integer, nullable=False)',
         '    code: Mapped[Optional[int]] = mapped_column(Integer)',
         '',
@@ -2588,9 +3849,9 @@ describe('generator-code/sqlalchemy', () => {
     });
 
     // The column names inside a ForeignKeyConstraint are Python string literals
-    // like every other name the generator writes, so a quote in one has to be
-    // escaped there too or the module never parses.
-    it('escapes a quoted column name inside a ForeignKeyConstraint', () => {
+    // like every other name the generator writes, so a quote in one takes the
+    // other quote there too or the module never parses.
+    it('quotes a column name holding a quote inside a ForeignKeyConstraint', () => {
       const parent = createTable({
         id: 'tp',
         name: 'parent',
@@ -2647,11 +3908,11 @@ describe('generator-code/sqlalchemy', () => {
         'class Child(Base):',
         '    __tablename__ = "child"',
         '    __table_args__ = (',
-        '        ForeignKeyConstraint(["a\\"b", "code"], ["parent.a\\"b", "parent.code"]),',
+        `        ForeignKeyConstraint(['a"b', "code"], ['parent.a"b', "parent.code"]),`,
         '    )',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
-        '    a_b: Mapped[int] = mapped_column("a\\"b", Integer, nullable=False)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
+        `    a_b: Mapped[int] = mapped_column('a"b', Integer, nullable=False)`,
         '    code: Mapped[int] = mapped_column(Integer, nullable=False)',
         '',
         '    parent: Mapped["Parent"] = relationship(back_populates="childList")',
@@ -2660,7 +3921,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Parent(Base):',
         '    __tablename__ = "parent"',
         '',
-        '    a_b: Mapped[int] = mapped_column("a\\"b", Integer, primary_key=True)',
+        `    a_b: Mapped[int] = mapped_column('a"b', Integer, primary_key=True)`,
         '    code: Mapped[int] = mapped_column(Integer, primary_key=True)',
         '',
         '    childList: Mapped[List["Child"]] = relationship(back_populates="parent")',
@@ -3058,7 +4319,7 @@ describe('generator-code/sqlalchemy', () => {
         'class Other(Base):',
         '    __tablename__ = "other"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    nickname: Mapped[Optional[str]] = mapped_column(String(50))',
         '',
         '',
@@ -3069,7 +4330,7 @@ describe('generator-code/sqlalchemy', () => {
         '        Index("IDX_users1", "email"),',
         '    )',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    email: Mapped[Optional[str]] = mapped_column(String(50))',
       ]);
     });
@@ -3134,17 +4395,15 @@ describe('generator-code/sqlalchemy', () => {
         'class Other(Base):',
         '    __tablename__ = "other"',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    nickname: Mapped[Optional[str]] = mapped_column(String(50))',
         '',
         '',
         'class Users(Base):',
         '    __tablename__ = "users"',
-        '    __table_args__ = (',
-        '        Index("idx_cross", "nickname"),',
-        '    )',
+        '    __table_args__ = (Index("idx_cross", "nickname"),)',
         '',
-        '    id: Mapped[int] = mapped_column(Integer, primary_key=True)',
+        '    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)',
         '    email: Mapped[Optional[str]] = mapped_column(String(50))',
       ]);
     });
@@ -3217,7 +4476,7 @@ describe('generator-code/sqlalchemy', () => {
             id: 'c3',
             tableId: 't2',
             name: 'body',
-            dataType: 'LONGTEXT',
+            dataType: 'TEXT',
           }),
         ],
         settings: { database: Database.MySQL },
@@ -3379,6 +4638,9 @@ describe('generator-code/sqlalchemy', () => {
       const names = new Set([
         ...importedNames(createCode(createEveryImportState())),
         ...importedNames(createCode(createPostgresImportState())),
+        ...Object.values(createDialectImportStates()).flatMap(state =>
+          importedNames(createCode(state))
+        ),
       ]);
 
       expect(Array.from(names).sort()).toEqual(
@@ -3434,7 +4696,9 @@ describe('generator-code/sqlalchemy', () => {
         '    body: Mapped[Optional[str]] = mapped_column(String(10))'
       );
       expect(code).not.toContain('body_2');
-      expect(code).toContain('        Index("idx_body", "body"),');
+      expect(code).toContain(
+        '    __table_args__ = (Index("idx_body", "body"),)'
+      );
     });
 
     it('moves a foreign key onto the column that carries the name', () => {
@@ -3530,7 +4794,7 @@ describe('generator-code/sqlalchemy', () => {
       });
       const code = createCode(state);
 
-      expect(code).toContain('        Index("IDX_1", "a_b"),');
+      expect(code).toContain('    __table_args__ = (Index("IDX_1", "a_b"),)');
       expect(code).toContain(
         '    a_b: Mapped[Optional[int]] = mapped_column("a.b", Integer, key="a_b")'
       );
@@ -3543,8 +4807,13 @@ describe('generator-code/sqlalchemy', () => {
     it('gives a duplicate the repaired attribute of the column that carries it', () => {
       const { state, left } = createDuplicateAmbiguousFixture();
 
-      expect(render(state, left).slice(-15)).toEqual([
-        '    x__id: Mapped[int] = mapped_column("__id", Integer, primary_key=True)',
+      expect(render(state, left).slice(-20)).toEqual([
+        '    x__id: Mapped[int] = mapped_column(',
+        '        "__id",',
+        '        Integer,',
+        '        primary_key=True,',
+        '        autoincrement=False,',
+        '    )',
         '    x__b_id: Mapped[Optional[int]] = mapped_column(',
         '        "__b_id",',
         '        Integer,',
@@ -3676,7 +4945,9 @@ describe('generator-code/sqlalchemy', () => {
       expect(code).toContain('        "the.id",');
       expect(code).toContain('        key="the_id",');
       expect(code).toContain('        ForeignKey("my.parent.the_id"),');
-      expect(code).toContain('        Index("idx_parent", "parent_id"),');
+      expect(code).toContain(
+        '    __table_args__ = (Index("idx_parent", "parent_id"),)'
+      );
     });
 
     it('keys both ends of a composite ForeignKeyConstraint', () => {
@@ -3729,7 +5000,7 @@ describe('generator-code/sqlalchemy', () => {
       });
 
       expect(createCode(state)).toContain(
-        '        ForeignKeyConstraint(["a_1", "b"], ["pair.a_1", "pair.b"]),'
+        '    __table_args__ = (ForeignKeyConstraint(["a_1", "b"], ["pair.a_1", "pair.b"]),)'
       );
     });
 
@@ -3983,32 +5254,97 @@ function createMutualForeignKeyFixture() {
  * attribute taking any of these shadows it for the statements that follow.
  */
 const MODULE_SCOPE_IDENTIFIERS = [
+  'ARRAY',
   'Any',
+  'BIGINT',
+  'BINARY',
+  'BIT',
   'Base',
   'BigInteger',
   'Boolean',
+  'CHAR',
+  'CIDR',
+  'DATE',
+  'DATEMULTIRANGE',
+  'DATERANGE',
+  'DATETIME',
+  'DECIMAL',
+  'DOUBLE',
   'Date',
   'DateTime',
   'Decimal',
   'DeclarativeBase',
   'Double',
+  'Enum',
+  'FLOAT',
   'Float',
   'ForeignKey',
   'ForeignKeyConstraint',
+  'INET',
+  'INET4',
+  'INET6',
+  'INT4MULTIRANGE',
+  'INT4RANGE',
+  'INT8MULTIRANGE',
+  'INT8RANGE',
+  'INTEGER',
+  'INTERVAL',
   'Index',
   'Integer',
+  'Interval',
   'JSON',
   'JSONB',
+  'JSONPATH',
+  'LONGBLOB',
+  'LONGTEXT',
   'LargeBinary',
   'List',
+  'MACADDR',
+  'MACADDR8',
+  'MEDIUMBLOB',
+  'MEDIUMINT',
+  'MEDIUMTEXT',
+  'MONEY',
   'Mapped',
+  'NCHAR',
+  'NCLOB',
+  'NTEXT',
+  'NUMMULTIRANGE',
+  'NUMRANGE',
+  'NVARCHAR',
+  'NVARCHAR2',
   'Numeric',
+  'OID',
   'Optional',
+  'RAW',
+  'REAL',
+  'REGCLASS',
+  'REGCONFIG',
+  'Range',
+  'SET',
+  'SMALLINT',
+  'SMALLMONEY',
+  'Set',
+  'SmallInteger',
   'String',
+  'TIME',
+  'TIMESTAMP',
+  'TINYBLOB',
+  'TINYINT',
+  'TINYTEXT',
+  'TSMULTIRANGE',
+  'TSQUERY',
+  'TSRANGE',
+  'TSTZMULTIRANGE',
+  'TSTZRANGE',
+  'TSVECTOR',
   'Text',
   'Time',
   'UUID',
   'Uuid',
+  'VARBINARY',
+  'VARCHAR',
+  'YEAR',
   'bool',
   'bytes',
   'date',
@@ -4020,6 +5356,7 @@ const MODULE_SCOPE_IDENTIFIERS = [
   'str',
   'text',
   'time',
+  'timedelta',
   'uuid',
 ];
 
@@ -4079,6 +5416,38 @@ function fromImportNames(code: string, module: string): string[] {
     .map(line => line.trim().replace(/,$/, ''));
 }
 
+/** One table of nullable columns named after their keys, under a database. */
+function createTypesFixture(
+  database: number,
+  dataTypes: Array<[string, string]>
+) {
+  return createKeyFixture(
+    database,
+    dataTypes.map(([name, dataType]) => [name, dataType, 0])
+  );
+}
+
+/** One table of the given columns and options, under a database. */
+function createKeyFixture(
+  database: number,
+  columns: Array<[string, string, number]>
+) {
+  const table = createTable({
+    id: 't1',
+    name: 'types',
+    columnIds: columns.map(([name]) => name),
+  });
+  const state = createState({
+    tables: [table],
+    columns: columns.map(([name, dataType, options]) =>
+      createColumn({ id: name, tableId: 't1', name, dataType, options })
+    ),
+    settings: { database, columnNameCase: NameCase.none },
+  });
+
+  return { state, table };
+}
+
 function primaryKey(id: string, tableId: string, name = 'id'): Column {
   return createColumn({
     id,
@@ -4104,7 +5473,7 @@ function createEveryImportState(): RootState {
     ['DECIMAL(10,2)', 'c_decimal'],
     ['BOOLEAN', 'c_boolean'],
     ['VARCHAR(10)', 'c_string'],
-    ['LONGTEXT', 'c_text'],
+    ['TEXT', 'c_text'],
     ['BLOB', 'c_binary'],
     ['JSON', 'c_json'],
     ['UNIQUEIDENTIFIER', 'c_uuid'],
@@ -4194,6 +5563,94 @@ function createEveryImportState(): RootState {
     ],
     settings: { database: Database.MySQL },
   });
+}
+
+/**
+ * One document per database that imports every name of its dialect module,
+ * with the core names only that database reaches.
+ */
+function createDialectImportStates() {
+  return {
+    mysql: createTypesFixture(Database.MySQL, [
+      ['a', 'BIGINT UNSIGNED'],
+      ['b', 'BIT(8)'],
+      ['c', 'DATETIME(6)'],
+      ['d', 'DECIMAL(10,2) UNSIGNED'],
+      ['e', 'DOUBLE UNSIGNED'],
+      ['f', 'FLOAT UNSIGNED'],
+      ['g', 'INT UNSIGNED'],
+      ['h', 'LONGBLOB'],
+      ['i', 'LONGTEXT'],
+      ['j', 'MEDIUMBLOB'],
+      ['k', 'MEDIUMINT'],
+      ['l', 'MEDIUMTEXT'],
+      ['m', "SET('a')"],
+      ['n', 'SMALLINT UNSIGNED'],
+      ['o', 'TIME(3)'],
+      ['p', 'TIMESTAMP'],
+      ['q', 'TINYBLOB'],
+      ['r', 'TINYINT'],
+      ['s', 'TINYTEXT'],
+      ['t', 'YEAR'],
+      ['u', 'BINARY(16)'],
+      ['v', 'CHAR(36)'],
+      ['w', 'NCHAR(10)'],
+      ['x', 'VARBINARY(16)'],
+      ['y', "ENUM('a')"],
+      ['z', 'SMALLINT'],
+      ['aa', 'NVARCHAR(20)'],
+    ]).state,
+    mariadb: createTypesFixture(Database.MariaDB, [
+      ['a', 'INET4'],
+      ['b', 'INET6'],
+      ['c', 'UUID'],
+    ]).state,
+    postgresql: createTypesFixture(Database.PostgreSQL, [
+      ['a', 'bit(8)'],
+      ['b', 'cidr'],
+      ['c', 'daterange'],
+      ['d', 'inet'],
+      ['e', 'int4range'],
+      ['f', 'int8range'],
+      ['g', 'interval day to second'],
+      ['h', 'jsonpath'],
+      ['i', 'macaddr'],
+      ['j', 'macaddr8'],
+      ['k', 'money'],
+      ['l', 'numrange'],
+      ['m', 'oid'],
+      ['n', 'regclass'],
+      ['o', 'regconfig'],
+      ['p', 'time(3)'],
+      ['q', 'timestamp(3)'],
+      ['r', 'tsquery'],
+      ['s', 'tsrange'],
+      ['t', 'tstzrange'],
+      ['u', 'tsvector'],
+      ['v', 'int[]'],
+      ['w', 'real'],
+      ['x', 'interval'],
+      ['y', 'datemultirange'],
+      ['z', 'int4multirange'],
+      ['aa', 'int8multirange'],
+      ['ab', 'nummultirange'],
+      ['ac', 'tsmultirange'],
+      ['ad', 'tstzmultirange'],
+    ]).state,
+    mssql: createTypesFixture(Database.MSSQL, [
+      ['a', 'money'],
+      ['b', 'ntext'],
+      ['c', 'smallmoney'],
+      ['d', 'nvarchar(10)'],
+    ]).state,
+    oracle: createTypesFixture(Database.Oracle, [
+      ['a', 'DATE'],
+      ['b', 'NCLOB'],
+      ['c', 'NVARCHAR2(10)'],
+      ['d', 'RAW(16)'],
+      ['e', 'TIMESTAMP'],
+    ]).state,
+  };
 }
 
 /** The two sqlalchemy.dialects.postgresql names. */

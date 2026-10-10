@@ -1,6 +1,11 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { ColumnOption, NameCase, ReferentialAction } from '@/constants/schema';
+import {
+  ColumnOption,
+  Database,
+  NameCase,
+  ReferentialAction,
+} from '@/constants/schema';
 import { PrimitiveType, PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
@@ -12,6 +17,15 @@ import {
   referentialActionSupport,
 } from '@/utils/schema-sql/utils';
 
+import {
+  BINARY_TYPES,
+  ColumnType as ColumnFacts,
+  getColumnType as getColumnFacts,
+  isMySQLFamily,
+  JSON_TYPES,
+  POSTGRES_BIT_TYPES,
+  UUID_TYPES,
+} from './columnTypes';
 import {
   FormatColumnOptions,
   FormatRelationOptions,
@@ -36,13 +50,59 @@ const TYPEORM_NAMES = [
   'Relation',
 ] as const;
 
-const GLOBAL_NAMES = ['Buffer', 'Date'] as const;
+// The globals the module reads, in its annotations and in the decorator
+// metadata and helpers tsc emits for them, those helpers' own names, and the
+// names CommonJS declares or tsc's CommonJS output cannot assign on exports.
+const GLOBAL_NAMES = [
+  'Array',
+  'Boolean',
+  'Buffer',
+  'Date',
+  'Number',
+  'Object',
+  'Reflect',
+  'String',
+  '__decorate',
+  '__metadata',
+  '__dirname',
+  '__esModule',
+  '__filename',
+  '__proto__',
+  'exports',
+  'module',
+  'require',
+] as const;
 
 type TypeormName = (typeof TYPEORM_NAMES)[number];
+
+// A property of these names would clash with the method of every object, which
+// the target each decorator is handed must keep, or with __proto__, which an
+// assignment such as TypeORM's own reads as the object's prototype.
+const OBJECT_MEMBERS: ReadonlySet<string> = new Set([
+  '__proto__',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'toLocaleString',
+  'toString',
+  'valueOf',
+]);
+
+// TypeORM keys plain objects by class name, its dependency graph and the rows
+// it saves grouped by entity among them, so a class named after any member
+// every object inherits fails to initialize or to save.
+const PROTOTYPE_NAMES = [
+  ...OBJECT_MEMBERS,
+  '__defineGetter__',
+  '__defineSetter__',
+  '__lookupGetter__',
+  '__lookupSetter__',
+];
 
 const MODULE_SCOPE_NAMES: ReadonlySet<string> = new Set<string>([
   ...TYPEORM_NAMES,
   ...GLOBAL_NAMES,
+  ...PROTOTYPE_NAMES,
 ]);
 
 const convertTypeMap: PrimitiveTypeMap = {
@@ -69,25 +129,226 @@ const bigintTypes = new Set([
   'unsigned big int',
 ]);
 
-const binaryTypes = new Set([
-  'bfile',
-  'binary',
-  'binary varying',
-  'blob',
-  'bytea',
-  'image',
-  'long raw',
-  'long varbinary',
-  'longblob',
-  'mediumblob',
-  'raw',
-  'tinyblob',
-  'varbinary',
+// tedious, node-oracledb and better-sqlite3 hand a decimal over as a JS
+// number, where pg and mysql2 hand over a string.
+const NUMBER_DECIMAL_DATABASES = new Set<number>([
+  Database.MSSQL,
+  Database.Oracle,
+  Database.SQLite,
 ]);
 
-const jsonTypes = new Set(['json', 'jsonb']);
+// The types whose values reach the entity as objects: node-postgres parses a
+// point, a circle and an interval into their fields, node-oracledb an interval
+// into an IntervalDS or an IntervalYM and a BFILE into a Lob, all handed over.
+const objectTypes = new Map<number, ReadonlySet<string>>([
+  [
+    Database.Oracle,
+    new Set(['bfile', 'interval day to second', 'interval year to month']),
+  ],
+  [Database.PostgreSQL, new Set(['circle', 'interval', 'point'])],
+]);
 
-const uuidTypes = new Set(['uniqueidentifier', 'uuid']);
+// What a vector reaches the entity as: TypeORM parses pgvector's text and SQL
+// Server's JSON, and mysql2 MySQL's VECTOR, into numbers; MariaDB's comes over
+// as its bytes.
+const vectorAnnotations = new Map<number, string>([
+  [Database.MariaDB, 'Buffer'],
+  [Database.MSSQL, 'number[]'],
+  [Database.MySQL, 'number[]'],
+  [Database.PostgreSQL, 'number[]'],
+]);
+
+// TypeORM reads the precision of a date, time or interval column back from the
+// column alone, so an array of one that states it is altered on every sync.
+const postgresTemporalTypes = new Set([
+  'interval',
+  'time',
+  'time with time zone',
+  'time without time zone',
+  'timestamp',
+  'timestamp with time zone',
+  'timestamp without time zone',
+]);
+
+// PostgreSQL stores a time, timestamp or interval of a greater precision at
+// this one, with a warning, and TypeORM compares the precision it reads back.
+const POSTGRES_MAX_TIME_PRECISION = 6;
+
+// A serial is an integer with a sequence, which TypeORM spells as the integer
+// and the increment strategy.
+const postgresSerialTypes = new Map([
+  ['bigserial', 'bigint'],
+  ['serial', 'int'],
+  ['serial2', 'smallint'],
+  ['serial4', 'int'],
+  ['serial8', 'bigint'],
+  ['smallserial', 'smallint'],
+]);
+
+// The element types whose arrays node-postgres parses, as pg-types registers
+// them; it hands any other array over as its text, such as {1010,0101}.
+const postgresParsedArrayTypes = new Set([
+  'bigint',
+  'bool',
+  'boolean',
+  'bpchar',
+  'bytea',
+  'char',
+  'character',
+  'character varying',
+  'cidr',
+  'date',
+  'decimal',
+  'double precision',
+  'float',
+  'float4',
+  'float8',
+  'inet',
+  'int',
+  'int2',
+  'int4',
+  'int8',
+  'integer',
+  'json',
+  'jsonb',
+  'macaddr',
+  'money',
+  'numeric',
+  'numrange',
+  'oid',
+  'point',
+  'real',
+  'regproc',
+  'smallint',
+  'text',
+  'time',
+  'time with time zone',
+  'time without time zone',
+  'timestamp',
+  'timestamp with time zone',
+  'timestamp without time zone',
+  'timestamptz',
+  'timetz',
+  'uuid',
+  'varchar',
+]);
+
+const postgresZonedTypes = new Map([
+  ['timestamptz', 'timestamp with time zone'],
+  ['timetz', 'time with time zone'],
+]);
+
+const integerTypes = new Set([
+  'bigint',
+  'int',
+  'integer',
+  'mediumint',
+  'smallint',
+  'tinyint',
+]);
+
+// The typed overloads of these types take no unsigned option, so the column
+// states its type in the options object.
+const unsignedFractionalTypes = new Set([
+  'dec',
+  'decimal',
+  'double',
+  'double precision',
+  'fixed',
+  'float',
+  'numeric',
+  'real',
+]);
+
+// The typed overloads of these PostgreSQL types take no length or precision.
+const sizedObjectTypes = new Set(['bit', 'bit varying', 'interval', 'varbit']);
+
+// The names SQL Server takes a max length on, which no number states.
+const MAX_LENGTH_TYPES = new Set(['nvarchar', 'varbinary', 'varchar']);
+
+const MAX_ARGUMENT = /^[^(]*\(\s*max\s*\)/i;
+
+const INTERVAL = /^interval\b/;
+
+// MySQL's sign words, which may follow an argument list with no space between.
+const SIGN_WORDS =
+  /(^|[^0-9A-Za-z_])(?:unsigned|zerofill|signed)(?![0-9A-Za-z_])/gi;
+
+// An interval's seconds' precision: interval(3), or interval second(3) and the
+// other field lists that end on seconds.
+const SECONDS_PRECISION =
+  /^\s*interval\s*\(\s*(\d+)\s*\)\s*$|\bsecond\s*\(\s*(\d+)\s*\)\s*$/i;
+
+// MySQL and MariaDB store these synonyms as the type each names, which
+// TypeORM's driver either refuses or would create as another type or width.
+const mysqlSynonymTypes = new Map([
+  ['char varying', 'varchar'],
+  ['character', 'char'],
+  ['character varying', 'varchar'],
+  ['float4', 'float'],
+  ['float8', 'double'],
+  ['geomcollection', 'geometrycollection'],
+  ['int1', 'tinyint'],
+  ['int2', 'smallint'],
+  ['int3', 'mediumint'],
+  ['int4', 'int'],
+  ['int8', 'bigint'],
+  ['long', 'mediumtext'],
+  ['long char varying', 'mediumtext'],
+  ['long character varying', 'mediumtext'],
+  ['long varbinary', 'mediumblob'],
+  ['long varchar', 'mediumtext'],
+  ['long varcharacter', 'mediumtext'],
+  ['middleint', 'mediumint'],
+  ['national character', 'national char'],
+  ['sql_tsi_year', 'year'],
+]);
+
+// SQL Server stores the standard's spellings as these types, which TypeORM's
+// driver refuses or would create as another type.
+const mssqlSynonymTypes = new Map([
+  ['char varying', 'varchar'],
+  ['character', 'char'],
+  ['character varying', 'varchar'],
+  ['national char', 'nchar'],
+  ['national char varying', 'nvarchar'],
+  ['national character', 'nchar'],
+  ['national character varying', 'nvarchar'],
+  ['national text', 'ntext'],
+]);
+
+// Oracle stores the standard's spellings as these types, likewise.
+const oracleSynonymTypes = new Map([
+  ['char varying', 'varchar2'],
+  ['character', 'char'],
+  ['character varying', 'varchar2'],
+  ['long varchar', 'long'],
+  ['national char', 'nchar'],
+  ['national char varying', 'nvarchar2'],
+  ['national character', 'nchar'],
+  ['national character varying', 'nvarchar2'],
+  ['nchar varying', 'nvarchar2'],
+]);
+
+// TypeORM's PostgreSQL driver refuses DEC, which PostgreSQL stores as numeric.
+const postgresSynonymTypes = new Map([['dec', 'decimal']]);
+
+// TypeORM's SQLite driver refuses these names; its own for the same affinity
+// create the column and read it back as a number, a Date and a boolean.
+const sqliteTypes = new Map([
+  ['bool', 'boolean'],
+  ['dec', 'decimal'],
+  ['timestamp', 'datetime'],
+]);
+
+const synonymTypes = new Map<number, ReadonlyMap<string, string>>([
+  [Database.MariaDB, mysqlSynonymTypes],
+  [Database.MSSQL, mssqlSynonymTypes],
+  [Database.MySQL, mysqlSynonymTypes],
+  [Database.Oracle, oracleSynonymTypes],
+  [Database.PostgreSQL, postgresSynonymTypes],
+  [Database.SQLite, sqliteTypes],
+]);
 
 const generatedNumericTypes = new Set([
   'bigint',
@@ -291,10 +552,20 @@ type Group = {
   entries: string[];
 };
 
-type ColumnType = {
-  type: string | null;
+type TypeormColumn = {
+  type: string;
   annotation: string;
   args: string[];
+  /**
+   * The typed overload refuses an option the column needs, so the options
+   * object names the type.
+   */
+  typeInOptions: boolean;
+  /** The arguments state a length, a precision or a scale. */
+  isSized: boolean;
+  isUnsigned: boolean;
+  /** A type that numbers its rows itself: PostgreSQL's serials, MySQL's SERIAL. */
+  isSerial: boolean;
 };
 
 type IndexEntry = {
@@ -415,12 +686,32 @@ function formatColumn(
   { buffer, column }: FormatColumnOptions,
   { attribute }: ColumnContext
 ) {
-  const { type, annotation, args } = getColumnType(column.dataType, database);
-  const typeArg = type === null ? [] : [`"${escapeString(type)}"`];
+  const {
+    type,
+    annotation,
+    args,
+    typeInOptions,
+    isSized,
+    isUnsigned,
+    isSerial,
+  } = getColumnType(column.dataType, database);
+  const typed = `"${escapeString(type)}"`;
+  const typeArg = typeInOptions ? [] : [typed];
+  const typeEntry = typeInOptions ? [`type: ${typed}`] : [];
   const isPrimaryKey = bHas(column.options, ColumnOption.primaryKey);
-  const isAutoIncrement = bHas(column.options, ColumnOption.autoIncrement);
+  const isAutoIncrement =
+    isSerial || bHas(column.options, ColumnOption.autoIncrement);
+  // An identity or AUTO_INCREMENT column is NOT NULL whatever the NN flag says;
+  // SQLite numbers its key alone, so the flag on another column changes nothing.
+  const isNumbered = isAutoIncrement && database !== Database.SQLite;
   const isNullable =
-    !isPrimaryKey && !bHas(column.options, ColumnOption.notNull);
+    !isPrimaryKey && !isNumbered && !bHas(column.options, ColumnOption.notNull);
+  // PrimaryGeneratedColumn takes no precision or scale, so a numeric key that
+  // states them is a PrimaryColumn generated by increment.
+  const isGeneratedKey =
+    isPrimaryKey &&
+    isAutoIncrement &&
+    !(isSized && generatedNumericTypes.has(type));
   const memberBuffer: string[] = [];
   let generatedAnnotation = annotation;
   const named =
@@ -434,12 +725,12 @@ function formatColumn(
       ? []
       : [`default: () => "${escapeString(column.default)}"`];
 
-  if (isPrimaryKey && isAutoIncrement) {
-    const isUuid = type !== null && uuidTypes.has(type);
+  if (isGeneratedKey) {
+    const isUuid = UUID_TYPES.has(type);
     const numeric =
-      !isUuid && type !== null && generatedNumericTypes.has(type)
-        ? [`type: "${escapeString(type)}"`]
-        : [];
+      !isUuid && generatedNumericTypes.has(type) ? [`type: ${typed}`] : [];
+    const unsigned =
+      numeric.length !== 0 && isUnsigned ? ['unsigned: true'] : [];
 
     generatedAnnotation = isUuid
       ? 'string'
@@ -452,7 +743,7 @@ function formatColumn(
       INDENT,
       'PrimaryGeneratedColumn',
       isUuid ? ['"uuid"'] : [],
-      { open: '{', entries: [...numeric, ...named, ...comment] }
+      { open: '{', entries: [...numeric, ...unsigned, ...named, ...comment] }
     );
   } else {
     const decorator: TypeormName = isPrimaryKey ? 'PrimaryColumn' : 'Column';
@@ -461,7 +752,9 @@ function formatColumn(
       ? []
       : [
           ...(isNullable ? ['nullable: true'] : []),
-          ...(bHas(column.options, ColumnOption.unique)
+          // MySQL's SERIAL is UNIQUE, the key an AUTO_INCREMENT column needs.
+          ...(bHas(column.options, ColumnOption.unique) ||
+          (isSerial && isMySQLFamily(database))
             ? ['unique: true']
             : []),
         ];
@@ -469,6 +762,7 @@ function formatColumn(
     formatDecorator(memberBuffer, INDENT, decorator, typeArg, {
       open: '{',
       entries: [
+        ...typeEntry,
         ...named,
         ...args,
         ...generated,
@@ -721,144 +1015,299 @@ function formatDecorator(
   buffer.push(line);
 }
 
-const ARGUMENTS = /\([^)]*\)/g;
-const WHITESPACE = /\s+/g;
-const TYPE_ARGUMENTS = /\(\s*([^)]*)\)/;
-const DIGITS = /^[0-9]+$/;
+function getColumnType(dataType: string, database: number): TypeormColumn {
+  const facts = getColumnFacts(dataType, database);
 
-function getColumnType(dataType: string, database: number): ColumnType {
-  const base = dataType
-    .toLocaleLowerCase()
-    .replace(ARGUMENTS, ' ')
-    .replace(WHITESPACE, ' ')
-    .trim();
-
-  if (base === '') {
-    return { type: null, annotation: 'string', args: [] };
-  }
-
-  if (base === 'enum' || base === 'set') {
-    const members = enumMembers(dataType);
-
-    if (members.length !== 0) {
-      const union = members
-        .map(member => `"${escapeString(member)}"`)
-        .join(' | ');
-
-      return {
-        type: base,
-        annotation: base === 'set' ? `(${union})[]` : union,
-        args: [
-          `enum: [${members.map(member => `"${escapeString(member)}"`).join(', ')}]`,
-        ],
-      };
-    }
-  }
-
-  const primitiveType = getPrimitiveType(dataType, database);
-  const annotation = getAnnotation(base, primitiveType);
-  const args = typeArguments(dataType);
-  const type = columnTypes.has(base)
-    ? base
-    : fallbackType(base, primitiveType, annotation);
-
-  if (withLengthTypes.has(type) && args.length === 1 && args[0] > 0) {
-    return { type, annotation, args: [`length: ${args[0]}`] };
-  }
-  if (withPrecisionTypes.has(type) && args.length === 1) {
-    return { type, annotation, args: [`precision: ${args[0]}`] };
-  }
-  if (withPrecisionTypes.has(type) && args.length === 2) {
+  // A column with no type name states the type TypeORM reflects a string as,
+  // since a nullable one, string | null, reflects as an Object it refuses.
+  if (facts.base === '') {
     return {
-      type,
-      annotation,
-      args: [`precision: ${args[0]}`, `scale: ${args[1]}`],
+      type: database === Database.MSSQL ? 'nvarchar' : 'varchar',
+      annotation: 'string',
+      args: [],
+      typeInOptions: false,
+      isSized: false,
+      isUnsigned: false,
+      isSerial: false,
     };
   }
 
-  return { type, annotation, args: [] };
+  const element = elementColumn(facts, database);
+
+  if (facts.arrayDepth === 0) {
+    return element;
+  }
+
+  return {
+    ...element,
+    annotation: arrayAnnotation(facts, element),
+    args: [...element.args, 'array: true'],
+  };
 }
 
-function fallbackType(
-  base: string,
-  primitiveType: PrimitiveType,
-  annotation: string
+/**
+ * What node-postgres hands over for an array: its elements parsed, a numeric's
+ * into numbers and a date's into Dates, or the array's text for a type it has
+ * no array parser for.
+ */
+function arrayAnnotation(
+  { base, arrayDepth }: ColumnFacts,
+  { type, annotation }: TypeormColumn
 ): string {
-  if (binaryTypes.has(base)) {
+  const stored = postgresSynonymTypes.get(base) ?? base;
+
+  if (
+    type !== 'enum' &&
+    !INTERVAL.test(stored) &&
+    !postgresParsedArrayTypes.has(stored)
+  ) {
+    return 'string';
+  }
+
+  const element =
+    stored === 'date'
+      ? 'Date'
+      : stored === 'decimal' || stored === 'numeric'
+        ? 'number'
+        : annotation;
+  const wrapped = element.includes(' ') ? `(${element})` : element;
+
+  return `${wrapped}${'[]'.repeat(arrayDepth)}`;
+}
+
+function elementColumn(facts: ColumnFacts, database: number): TypeormColumn {
+  const { base, element, enumMembers, setMembers } = facts;
+  // The members name the type, since one holding a parenthesis leaves no
+  // readable base name.
+  const members = enumMembers ?? setMembers;
+
+  if (members) {
+    const quoted = members.map(stringLiteral);
+    const union = quoted.join(' | ');
+    const isSet = enumMembers === null;
+
+    return {
+      type: isSet ? 'set' : 'enum',
+      annotation: isSet ? `(${union})[]` : union,
+      args: [`enum: [${quoted.join(', ')}]`],
+      typeInOptions: false,
+      isSized: false,
+      isUnsigned: false,
+      isSerial: false,
+    };
+  }
+
+  // A synonym reads as the type it is stored as, which the list may not name.
+  const primitiveType = getPrimitiveType(
+    synonymTypes.get(database)?.get(base) ??
+      (isMySQLFamily(database) ? element.replace(SIGN_WORDS, '$1') : element),
+    database
+  );
+  const vendor = vendorType(facts, database);
+  const type =
+    vendor ??
+    (columnTypes.has(base) ? base : fallbackType(base, primitiveType));
+  const isUnsigned =
+    facts.isUnsigned &&
+    (integerTypes.has(type) || unsignedFractionalTypes.has(type));
+  // A float's one argument is its width, which the name vendorType gave states.
+  const sized =
+    floatWidth(facts, database) === null
+      ? sizeArguments(type, facts, database)
+      : [];
+
+  return {
+    type,
+    annotation: getAnnotation(facts, type, primitiveType, database),
+    args: [...sized, ...(isUnsigned ? ['unsigned: true'] : [])],
+    typeInOptions:
+      (sized.length !== 0 && sizedObjectTypes.has(type)) ||
+      (isUnsigned && unsignedFractionalTypes.has(type)),
+    isSized: sized.length !== 0,
+    isUnsigned,
+    isSerial: facts.isSerial,
+  };
+}
+
+/**
+ * The name a database's driver in TypeORM takes for a type it spells otherwise
+ * or holds at another width; null where the type's own name serves.
+ */
+function vendorType(facts: ColumnFacts, database: number): string | null {
+  const { base, args, arrayDepth } = facts;
+  const width = floatWidth(facts, database);
+  const isSingle = width !== null && width <= 24;
+
+  if (database === Database.PostgreSQL) {
+    if (INTERVAL.test(base)) {
+      return 'interval';
+    }
+    if (width !== null) {
+      return isSingle ? 'real' : 'double precision';
+    }
+    // The short names take no precision in TypeORM's typed overloads, and an
+    // array states none.
+    const zoned =
+      args.length === 0 || arrayDepth !== 0
+        ? undefined
+        : postgresZonedTypes.get(base);
+    return (
+      zoned ??
+      postgresSerialTypes.get(base) ??
+      postgresSynonymTypes.get(base) ??
+      null
+    );
+  }
+  // Past PostgreSQL, floatWidth answers on SQL Server, MySQL and MariaDB alone.
+  if (width !== null) {
+    if (database === Database.MSSQL) {
+      return isSingle ? 'real' : 'float';
+    }
+    return isSingle ? 'float' : 'double';
+  }
+  return synonymTypes.get(database)?.get(base) ?? null;
+}
+
+/**
+ * The width a float of one argument states, which decides the type it stores:
+ * FLOAT(1) to FLOAT(53) on PostgreSQL, SQL Server, MySQL and MariaDB, where
+ * MySQL and MariaDB also take FLOAT(0) and FLOAT4(p).
+ */
+function floatWidth(
+  { base, args }: ColumnFacts,
+  database: number
+): number | null {
+  if (args.length !== 1 || args[0] > 53) {
+    return null;
+  }
+  if (isMySQLFamily(database)) {
+    return base === 'float' || base === 'float4' ? args[0] : null;
+  }
+  return base === 'float' &&
+    args[0] >= 1 &&
+    (database === Database.PostgreSQL || database === Database.MSSQL)
+    ? args[0]
+    : null;
+}
+
+function sizeArguments(
+  type: string,
+  { args, element, arrayDepth, length, precision, scale }: ColumnFacts,
+  database: number
+): string[] {
+  if (
+    database === Database.MSSQL &&
+    MAX_LENGTH_TYPES.has(type) &&
+    MAX_ARGUMENT.test(element)
+  ) {
+    return ['length: "MAX"'];
+  }
+
+  const hasLength = args.length === 1 && args[0] > 0;
+  // Oracle's VARCHAR2(50 CHAR) and VARCHAR2(50 BYTE) hold no argument list of
+  // numbers alone, which the classifier's length reads past.
+  const unitLength = args.length === 0 && length !== null && length > 0;
+
+  if ((hasLength || unitLength) && withLengthTypes.has(type)) {
+    return [`length: ${hasLength ? args[0] : length}`];
+  }
+  if (database === Database.PostgreSQL) {
+    if (hasLength && POSTGRES_BIT_TYPES.has(type)) {
+      return [`length: ${args[0]}`];
+    }
+    if (postgresTemporalTypes.has(type)) {
+      const seconds = SECONDS_PRECISION.exec(element);
+      const stated =
+        type !== 'interval'
+          ? args.length === 1
+            ? args[0]
+            : null
+          : seconds
+            ? Number(seconds[1] ?? seconds[2])
+            : null;
+
+      return arrayDepth !== 0 || stated === null
+        ? []
+        : [`precision: ${Math.min(stated, POSTGRES_MAX_TIME_PRECISION)}`];
+    }
+  }
+  if (withPrecisionTypes.has(type) && args.length === 1) {
+    return [`precision: ${args[0]}`];
+  }
+  if (withPrecisionTypes.has(type) && args.length === 2) {
+    return [`precision: ${args[0]}`, `scale: ${args[1]}`];
+  }
+  // The classifier reads NUMBER(*,2), the widest precision of 38 at that scale,
+  // and a negative scale such as NUMBER(10,-2); NUMBER(*) is a bare NUMBER.
+  if (withPrecisionTypes.has(type) && args.length === 0 && scale !== null) {
+    return [`precision: ${precision}`, `scale: ${scale}`];
+  }
+  return [];
+}
+
+function fallbackType(base: string, primitiveType: PrimitiveType): string {
+  // MySQL makes a CHAR BYTE the BINARY of that length.
+  if (base === 'char byte') {
+    return 'binary';
+  }
+  if (BINARY_TYPES.has(base)) {
     return 'varbinary';
   }
-  if (primitiveType === 'long' && annotation !== 'string') {
+  if (primitiveType === 'long' && !bigintTypes.has(base)) {
     return 'int';
   }
   return fallbackTypeMap[primitiveType];
 }
 
-function getAnnotation(base: string, primitiveType: PrimitiveType): string {
-  if (jsonTypes.has(base)) {
-    return 'object';
-  }
-  if (binaryTypes.has(base)) {
-    return 'Buffer';
-  }
-  if (primitiveType === 'long' && bigintTypes.has(base)) {
+function getAnnotation(
+  { base, isRowVersion, isTextInteger }: ColumnFacts,
+  type: string,
+  primitiveType: PrimitiveType,
+  database: number
+): string {
+  // Every TypeORM driver hands a "date" column over as a YYYY-MM-DD string,
+  // Oracle's DATE included, though that one holds a time of day too.
+  if (type === 'date') {
     return 'string';
   }
+  if (JSON_TYPES.has(base) || objectTypes.get(database)?.has(type)) {
+    return 'object';
+  }
+  // mysql2 hands a BIT of any width over as its bytes, tedious a rowversion
+  // and a hierarchyid.
+  if (
+    BINARY_TYPES.has(base) ||
+    isRowVersion ||
+    (isMySQLFamily(database) && base === 'bit') ||
+    (database === Database.MSSQL && base === 'hierarchyid')
+  ) {
+    return 'Buffer';
+  }
+  const vector =
+    type === 'vector' ||
+    (type === 'halfvec' && database === Database.PostgreSQL)
+      ? vectorAnnotations.get(database)
+      : undefined;
+
+  if (vector !== undefined) {
+    return vector;
+  }
+  // node-postgres hands xid, cid and xid8 over as text; better-sqlite3 hands
+  // a 64-bit integer over as a number, the others a string.
+  if (isTextInteger) {
+    return 'string';
+  }
+  if (
+    primitiveType === 'long' &&
+    bigintTypes.has(base) &&
+    database !== Database.SQLite
+  ) {
+    return 'string';
+  }
+  if (primitiveType === 'decimal' && NUMBER_DECIMAL_DATABASES.has(database)) {
+    return 'number';
+  }
   return convertTypeMap[primitiveType];
-}
-
-const SEPARATOR = /[\s,]/;
-
-function enumMembers(dataType: string): string[] {
-  const matched = TYPE_ARGUMENTS.exec(dataType);
-  if (!matched) {
-    return [];
-  }
-
-  const source = matched[1];
-  const members: string[] = [];
-  let index = 0;
-
-  while (index < source.length) {
-    if (SEPARATOR.test(source[index])) {
-      index += 1;
-      continue;
-    }
-
-    const quote = source[index];
-    if (quote !== "'" && quote !== '"') {
-      return [];
-    }
-
-    let member = '';
-    index += 1;
-
-    while (index < source.length) {
-      if (source[index] !== quote) {
-        member += source[index];
-        index += 1;
-      } else if (source[index + 1] === quote) {
-        member += quote;
-        index += 2;
-      } else {
-        index += 1;
-        break;
-      }
-    }
-
-    members.push(member);
-  }
-
-  return members;
-}
-
-function typeArguments(dataType: string): number[] {
-  const matched = TYPE_ARGUMENTS.exec(dataType);
-  if (!matched) {
-    return [];
-  }
-
-  const values = matched[1].split(',').map(value => value.trim());
-  return values.every(value => DIGITS.test(value)) ? values.map(Number) : [];
 }
 
 function createIndexNames(state: RootState): Map<string, string> {
@@ -1007,7 +1456,10 @@ function createTableNaming(
     declared.push(column);
     columnNames.set(
       column.id,
-      uniqueName(used, tsIdentifier(getNameCase(column.name, columnNameCase)))
+      uniqueName(
+        used,
+        tsIdentifier(getNameCase(column.name, columnNameCase), OBJECT_MEMBERS)
+      )
     );
   });
 
@@ -1040,7 +1492,10 @@ function createTableNaming(
 
       relationshipNames.set(
         relationshipKey(relationship, OWNING),
-        uniqueName(used, tsIdentifier(getNameCase(name, columnNameCase)))
+        uniqueName(
+          used,
+          tsIdentifier(getNameCase(name, columnNameCase), OBJECT_MEMBERS)
+        )
       );
     });
 
@@ -1059,14 +1514,14 @@ function createTableNaming(
 
       relationshipNames.set(
         relationshipKey(relationship, INVERSE),
-        uniqueName(used, tsIdentifier(name))
+        uniqueName(used, tsIdentifier(name, OBJECT_MEMBERS))
       );
     });
 
   return {
     className: uniqueName(
       classNames,
-      tsIdentifier(getNameCase(table.name, tableNameCase))
+      tsIdentifier(getNameCase(table.name, tableNameCase), TYPE_NAMES)
     ),
     columnIds: declared.map(column => column.id),
     columnRefs,
@@ -1168,23 +1623,77 @@ const RESERVED = new Set([
   'yield',
 ]);
 
+// TypeScript refuses these as a class name, or reads them as an operator where
+// the class stands as a type, as in Relation<readonly>.
+const TYPE_NAMES: ReadonlySet<string> = new Set([
+  'any',
+  'bigint',
+  'boolean',
+  'infer',
+  'keyof',
+  'never',
+  'number',
+  'object',
+  'readonly',
+  'string',
+  'symbol',
+  'undefined',
+  'unique',
+  'unknown',
+]);
+
+const NO_NAMES: ReadonlySet<string> = new Set();
+
 const SAFE_PREFIX = 'x';
 
-function tsIdentifier(name: string): string {
+function tsIdentifier(
+  name: string,
+  reserved: ReadonlySet<string> = NO_NAMES
+): string {
   const value = name.replace(NON_IDENTIFIER, '_');
   const identifier = IDENTIFIER_START.test(value)
     ? value
     : `${SAFE_PREFIX}${value}`;
-  return RESERVED.has(identifier) ? `${identifier}_` : identifier;
+  return RESERVED.has(identifier) || reserved.has(identifier)
+    ? `${identifier}_`
+    : identifier;
 }
 
 const BACKSLASH = /\\/g;
 const DOUBLE_QUOTE = /"/g;
 const NEWLINE = /\r\n|\r|\n/g;
 
+const literalEscapes = new Map([
+  ['\\', '\\\\'],
+  ['"', '\\"'],
+  ['\n', '\\n'],
+  ['\r', '\\r'],
+  ['\t', '\\t'],
+]);
+
 function escapeString(value: string): string {
   return value
     .replace(BACKSLASH, '\\\\')
     .replace(DOUBLE_QUOTE, '\\"')
     .replace(NEWLINE, '\\n');
+}
+
+/**
+ * A value as a string literal that keeps every character, a control one as an
+ * escape, where escapeString folds a line break as a comment may.
+ */
+function stringLiteral(value: string): string {
+  const body = Array.from(value)
+    .map(char => {
+      const escaped = literalEscapes.get(char);
+      if (escaped !== undefined) {
+        return escaped;
+      }
+      const code = char.charCodeAt(0);
+      return code < 0x20 || code === 0x7f
+        ? `\\x${code.toString(16).padStart(2, '0')}`
+        : char;
+    })
+    .join('');
+  return `"${body}"`;
 }

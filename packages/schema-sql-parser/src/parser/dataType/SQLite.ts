@@ -1,6 +1,7 @@
 /**
- * https://www.sqlite.org/datatype3.html, and BOOL, TIME and TIMESTAMP, which
- * SQLite schemas use too: Django declares a boolean as bool and a time as time.
+ * https://www.sqlite.org/datatype3.html, and BOOL, DEC, TIME and TIMESTAMP,
+ * which SQLite schemas use too: Django declares a boolean as bool and a time
+ * as time, and DEC, standard SQL's DECIMAL, takes the same NUMERIC affinity.
  */
 export const SQLiteTypes: string[] = [
   'BIGINT',
@@ -11,6 +12,7 @@ export const SQLiteTypes: string[] = [
   'CLOB',
   'DATE',
   'DATETIME',
+  'DEC',
   'DECIMAL',
   'DOUBLE PRECISION',
   'DOUBLE',

@@ -26,7 +26,7 @@ function resolvePrimitiveType(dataType: string): PrimitiveType | undefined {
 }
 
 describe('SQLiteTypes', () => {
-  it('lists the storage classes, the documented affinity names, BOOL, TIME and TIMESTAMP', () => {
+  it('lists the storage classes, the documented affinity names, BOOL, DEC, TIME and TIMESTAMP', () => {
     expect(SQLiteTypes).toEqual([
       { name: 'BIGINT', primitiveType: 'long' },
       { name: 'BLOB', primitiveType: 'lob' },
@@ -36,6 +36,7 @@ describe('SQLiteTypes', () => {
       { name: 'CLOB', primitiveType: 'lob' },
       { name: 'DATE', primitiveType: 'date' },
       { name: 'DATETIME', primitiveType: 'dateTime' },
+      { name: 'DEC', primitiveType: 'decimal' },
       { name: 'DECIMAL', primitiveType: 'decimal' },
       { name: 'DOUBLE PRECISION', primitiveType: 'double' },
       { name: 'DOUBLE', primitiveType: 'double' },
@@ -93,6 +94,7 @@ describe('SQLiteTypes', () => {
     expect(resolvePrimitiveType('integer primary key')).toBe('int');
     expect(resolvePrimitiveType('text')).toBe('string');
     expect(resolvePrimitiveType('NUMERIC(10, 2)')).toBe('decimal');
+    expect(resolvePrimitiveType('dec(5,1)')).toBe('decimal');
     expect(resolvePrimitiveType('real')).toBe('double');
     expect(resolvePrimitiveType('blob')).toBe('lob');
   });
