@@ -1,6 +1,11 @@
+import graphqlLangs from '@shikijs/langs/graphql';
+import githubDark from '@shikijs/themes/github-dark';
+import { createHighlighterCore } from 'shiki/core';
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 import { beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import { type Lang, LanguageToLangMap } from '@/constants/language';
+import { graphqlGrammar } from '@/services/shiki/graphqlGrammar';
 import { ShikiService } from '@/services/shiki/shikiService';
 
 const LANGS: Lang[] = [
@@ -135,6 +140,43 @@ describe('ShikiService', () => {
       '<span style="color:#9ECBFF">"https://json-schema.org/draft/2020-12/schema"</span>'
     );
     expect(html).toContain('<span style="color:#79B8FF">255</span>');
+  });
+
+  it('keeps the GraphQL grammar shiki ships, but for its embedded languages', () => {
+    const { embeddedLangs, ...shipped } = graphqlLangs.at(-1)!;
+
+    expect(embeddedLangs).toEqual(['javascript', 'typescript', 'jsx', 'tsx']);
+    expect(graphqlGrammar).toEqual(shipped);
+  });
+
+  it('colours GraphQL as the shipped grammar with its script languages does', async () => {
+    const shipped = await createHighlighterCore({
+      themes: [githubDark],
+      langs: [graphqlLangs],
+      engine: createJavaScriptRegexEngine({ forgiving: true }),
+    });
+    const code = [
+      'scalar DateTime',
+      '',
+      '"""',
+      'Members who sign in, ${name}',
+      '"""',
+      'type User {',
+      '  id: Int!',
+      '  "When it joined"',
+      '  createdAt: DateTime',
+      '}',
+      '',
+    ].join('\n');
+
+    const html = await service.codeToHtml(code, { lang: 'graphql' });
+
+    expect(html).toBe(
+      shipped.codeToHtml(code, { lang: 'graphql', theme: 'github-dark' })
+    );
+    expect(html).toContain(
+      '<span style="color:#F97583">type</span><span style="color:#79B8FF"> User</span>'
+    );
   });
 
   it('rejects a grammar it was never given', async () => {

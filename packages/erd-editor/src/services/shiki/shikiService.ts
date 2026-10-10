@@ -1,6 +1,5 @@
 import csharp from '@shikijs/langs/csharp';
 import go from '@shikijs/langs/go';
-import graphql from '@shikijs/langs/graphql';
 import java from '@shikijs/langs/java';
 import json from '@shikijs/langs/json';
 import kotlin from '@shikijs/langs/kotlin';
@@ -18,6 +17,7 @@ import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
 import type { Lang } from '@/constants/language';
+import { graphqlGrammar } from '@/services/shiki/graphqlGrammar';
 
 const themeMap = {
   dark: 'github-dark',
@@ -45,7 +45,7 @@ export class ShikiService {
       langs: [
         sql,
         typescript,
-        graphql,
+        graphqlGrammar,
         csharp,
         java,
         kotlin,
