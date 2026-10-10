@@ -4,7 +4,7 @@
 import net from 'node:net';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export class Peer {
   /** Every notification received so far, and when each arrived. */

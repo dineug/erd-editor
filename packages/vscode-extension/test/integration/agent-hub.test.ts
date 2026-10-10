@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 
 const EXTENSION_ID = 'dineug.vuerd-vscode';
 const VIEW_TYPE = 'editor.erd';
-const PROTOCOL_VERSION = 1;
+const PROTOCOL_VERSION = 2;
 const FIXTURE_FILE = 'sample.erd.json';
 const POLL_INTERVAL = 50;
 const POLL_TIMEOUT = 5_000;

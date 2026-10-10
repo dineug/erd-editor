@@ -54,7 +54,7 @@ class WireCorpusTest {
             HubResults.response(8.0, "save", HubResults.save(true)),
             HubResults.errorResponse(8.0, "save", HubErrorCode.NOT_OPEN, "no webview is ready"),
             HubResults.errorResponse(
-                1.0, "hello", HubErrorCode.PROTOCOL_MISMATCH, HubTexts.protocolMismatch(1.0, 2.0), 1.0, 2.0,
+                1.0, "hello", HubErrorCode.PROTOCOL_MISMATCH, HubTexts.protocolMismatch(2.0, 3.0), 2.0, 3.0,
             ),
             HubResults.notification(HubNotification.Actions("/w/a.erd", closed)),
             HubResults.notification(HubNotification.DocumentClosed("/w/a.erd")),
@@ -140,10 +140,10 @@ class WireCorpusTest {
             refusal(2.0, "join", HubErrorCode.OUTSIDE_WORKSPACE, HubTexts.outsideWorkspace("/etc/passwd")),
             refusal(1e21, "rejoin", HubErrorCode.BAD_REQUEST, HubTexts.noMethod("rejoin")),
             HubResults.errorResponse(
-                1.0, "hello", HubErrorCode.PROTOCOL_MISMATCH, HubTexts.protocolMismatch(1.0, 0.0), 1.0, 0.0,
+                1.0, "hello", HubErrorCode.PROTOCOL_MISMATCH, HubTexts.protocolMismatch(2.0, 0.0), 2.0, 0.0,
             ),
             HubResults.errorResponse(
-                1.0, "hello", HubErrorCode.PROTOCOL_MISMATCH, HubTexts.protocolMismatch(1.0, 1.5), 1.0, 1.5,
+                1.0, "hello", HubErrorCode.PROTOCOL_MISMATCH, HubTexts.protocolMismatch(2.0, 2.5), 2.0, 2.5,
             ),
             HubResults.response(7.0, "hello", HubResults.hello(server.ide, server.version)),
             HubResults.response(9007199254740993.0, "listDocuments", HubResults.listDocuments(emptyList())),

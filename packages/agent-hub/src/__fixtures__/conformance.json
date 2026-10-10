@@ -1,6 +1,6 @@
 {
   "$comment": "Read by src/conformance.test.ts and by packages/intellij-plugin's Gradle tests; change both sides together. ideDisplayName is read by the TypeScript reader only: the Kotlin hub names no editor.",
-  "protocolVersion": 1,
+  "protocolVersion": 2,
   "maxFrameBytes": 67108864,
   "errorCodes": [
     "protocolMismatch",
@@ -15,7 +15,7 @@
   ],
   "frames": {
     "requests": [
-      "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"t\",\"protocolVersion\":1,\"client\":\"claude-code\"}}",
+      "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"t\",\"protocolVersion\":2,\"client\":\"claude-code\"}}",
       "{\"id\":2,\"method\":\"listDocuments\",\"params\":{}}",
       "{\"id\":3,\"method\":\"openDocument\",\"params\":{\"path\":\"/w/a.erd\",\"create\":true,\"initialValue\":\"{}\"}}",
       "{\"id\":4,\"method\":\"openDocument\",\"params\":{\"path\":\"/w/a.erd\"}}",
@@ -25,7 +25,7 @@
       "{\"id\":8,\"method\":\"save\",\"params\":{\"path\":\"/w/a.erd\"}}"
     ],
     "toPeer": [
-      "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":1,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
+      "{\"id\":1,\"ok\":true,\"method\":\"hello\",\"result\":{\"protocolVersion\":2,\"ide\":\"vscode\",\"version\":\"2.9.0\"}}",
       "{\"id\":2,\"ok\":true,\"method\":\"listDocuments\",\"result\":{\"documents\":[{\"path\":\"/w/a.erd\",\"open\":true,\"active\":false,\"dirty\":false,\"readonly\":false}]}}",
       "{\"id\":3,\"ok\":true,\"method\":\"openDocument\",\"result\":{\"path\":\"/w/a.erd\",\"opened\":true,\"webviews\":1}}",
       "{\"id\":5,\"ok\":true,\"method\":\"join\",\"result\":{\"initialValue\":\"{}\",\"snapshotVersion\":42,\"readonly\":false}}",
@@ -33,13 +33,13 @@
       "{\"id\":7,\"ok\":true,\"method\":\"leave\",\"result\":{}}",
       "{\"id\":8,\"ok\":true,\"method\":\"save\",\"result\":{\"saved\":true}}",
       "{\"id\":8,\"ok\":false,\"method\":\"save\",\"error\":{\"code\":\"notOpen\",\"message\":\"no webview is ready\"}}",
-      "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"protocolMismatch\",\"message\":\"The ERD Editor hub speaks protocol 1 but the client speaks protocol 2. Update the ERD Editor extension or plugin in the editor until its hub speaks protocol 2.\",\"hubProtocolVersion\":1,\"clientProtocolVersion\":2}}",
+      "{\"id\":1,\"ok\":false,\"method\":\"hello\",\"error\":{\"code\":\"protocolMismatch\",\"message\":\"The ERD Editor hub speaks protocol 2 but the client speaks protocol 3. Update the ERD Editor extension or plugin in the editor until its hub speaks protocol 3.\",\"hubProtocolVersion\":2,\"clientProtocolVersion\":3}}",
       "{\"method\":\"actions\",\"params\":{\"path\":\"/w/a.erd\",\"actions\":[{\"type\":\"memo.add\"}]}}",
       "{\"method\":\"documentClosed\",\"params\":{\"path\":\"/w/a.erd\"}}"
     ]
   },
   "encoderNormalization": [
-    {"direction": "request", "input": {"params": {"client": "c", "protocolVersion": 1, "token": "t"}, "method": "hello", "id": 1}, "output": "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"t\",\"protocolVersion\":1,\"client\":\"c\"}}"},
+    {"direction": "request", "input": {"params": {"client": "c", "protocolVersion": 2, "token": "t"}, "method": "hello", "id": 1}, "output": "{\"id\":1,\"method\":\"hello\",\"params\":{\"token\":\"t\",\"protocolVersion\":2,\"client\":\"c\"}}"},
     {"direction": "request", "input": {"id": 2, "method": "save", "params": {"path": "/a", "force": true}, "sentAt": 1}, "output": "{\"id\":2,\"method\":\"save\",\"params\":{\"path\":\"/a\"}}"},
     {"direction": "request", "input": {"id": 3, "method": "listDocuments", "params": {}}, "output": "{\"id\":3,\"method\":\"listDocuments\",\"params\":{}}"},
     {"direction": "request", "input": {"id": 4, "method": "applyActions", "params": {"path": "/a", "actions": [{"type": "t", "payload": {"id": "x"}}]}}, "output": "{\"id\":4,\"method\":\"applyActions\",\"params\":{\"path\":\"/a\",\"actions\":[{\"type\":\"t\",\"payload\":{\"id\":\"x\"}}]}}"},

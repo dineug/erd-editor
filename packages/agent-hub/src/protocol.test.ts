@@ -182,9 +182,12 @@ describe('message schemas', () => {
       method: 'hello',
       error: {
         code: HubErrorCode.protocolMismatch,
-        message: protocolMismatchMessage(HUB_PROTOCOL_VERSION, 2),
+        message: protocolMismatchMessage(
+          HUB_PROTOCOL_VERSION,
+          HUB_PROTOCOL_VERSION + 1
+        ),
         hubProtocolVersion: HUB_PROTOCOL_VERSION,
-        clientProtocolVersion: 2,
+        clientProtocolVersion: HUB_PROTOCOL_VERSION + 1,
       },
     };
 
