@@ -158,7 +158,8 @@ A table group is a named, colored box drawn behind its tables, and a table is in
 centre lies inside it, as drawing a group in the editor does; `erd_move_table_group` moves a group
 with its tables, and only `erd_add_table_group`, `erd_set_table_group` and
 `erd_remove_table_group` change which tables a group holds. An ERD Editor extension or plugin
-released before table groups ignores these edits and drops every group when it saves, so update it.
+released before table groups ignores these edits, except that it still moves the tables of a group
+`erd_move_table_group` moves, and drops every group when it saves, so update it.
 
 An agent sets the database and its name, the settings of the schema itself. What the diagram
 shows, the code generation language, the name cases, the bracket type and the locks that keep them

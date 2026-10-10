@@ -30,6 +30,8 @@ const COLOR =
   'CSS hex color such as #3b82f6; an empty string removes the color.';
 const OLDER_EDITOR_GROUPS =
   'An ERD Editor extension or plugin released before table groups ignores this edit and drops every group when it saves, so the user should update it.';
+const OLDER_EDITOR_GROUP_MOVE =
+  'An ERD Editor extension or plugin released before table groups moves only the tables of the group and drops every group when it saves, so the user should update it.';
 const OLDER_EDITOR_GROUPS_IMPORT =
   'An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it.';
 const NO_UNDO =
@@ -59,7 +61,7 @@ export const ARG_COPY: Readonly<Record<string, string>> = {
   color: COLOR,
   x: X,
   y: Y,
-  mode: 'replace, the default, loads the import in place of every table, relationship, index and memo and keeps the settings but the view, which goes to the start of the canvas; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
+  mode: 'replace, the default, loads the import in place of every table, relationship, index, memo and table group and keeps the settings but the view, which goes to the start of the canvas; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
 };
 
 const setting = (subject: string, value: string): ToolCopy => ({
@@ -73,7 +75,7 @@ const flag = (subject: string): ToolCopy => ({
 });
 
 const importer = (language: string, more = ''): ToolCopy => ({
-  description: `Replaces every table, relationship, index and memo of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.${more}`,
+  description: `Replaces every table, relationship, index, memo and table group of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.${more}`,
   args: { value: `The ${language} source text.` },
 });
 
@@ -353,7 +355,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     description: `Sets the color of a table group, which its box and the headers of its tables take. ${OLDER_EDITOR_GROUPS}`,
   },
   erd_move_table_group: {
-    description: `Moves a table group so its rect starts at an absolute canvas position, its tables by the same step. Moving a table or a group never changes which tables a group holds. A move under 20 pixels in all makes no undo entry. ${OLDER_EDITOR_GROUPS}`,
+    description: `Moves a table group so its rect starts at an absolute canvas position, its tables by the same step. Moving a table or a group never changes which tables a group holds. A move under 20 pixels in all makes no undo entry. ${OLDER_EDITOR_GROUP_MOVE}`,
   },
   erd_resize_table_group: {
     description: `Sets the rect of a table group, its tables staying where they are; the editor draws the box grown to hold each of them. It is refused smaller than 160 by 100 or than the tables with their padding, naming the box the rect must hold. ${OLDER_EDITOR_GROUPS}`,
@@ -398,8 +400,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   ),
   erd_import_aml: importer('AML'),
   erd_import_json: {
-    description:
-      "Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings.",
+    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings. ${OLDER_EDITOR_GROUPS_IMPORT}`,
     args: {
       value:
         'The .erd.json document text; empty gives an empty document, and is refused with mode append.',

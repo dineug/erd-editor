@@ -190,6 +190,9 @@ describe('the words on a table group', () => {
   ];
   const OLDER =
     'An ERD Editor extension or plugin released before table groups ignores this edit and drops every group when it saves, so the user should update it.';
+  // A group move also sends table.move, which an older editor still applies.
+  const OLDER_MOVE =
+    'An ERD Editor extension or plugin released before table groups moves only the tables of the group and drops every group when it saves, so the user should update it.';
 
   it('reach every group tool the registry has', () => {
     expect(
@@ -201,7 +204,8 @@ describe('the words on a table group', () => {
 
   it('end each group tool on an editor released before groups dropping them, so the user updates it', () => {
     for (const name of GROUP_TOOLS) {
-      expect(describeTool(name).endsWith(OLDER), name).toBe(true);
+      const ending = name === 'erd_move_table_group' ? OLDER_MOVE : OLDER;
+      expect(describeTool(name).endsWith(ending), name).toBe(true);
     }
   });
 
@@ -253,19 +257,28 @@ describe('the words on an import', () => {
       const text = describeTool(name);
 
       expect(text, name).toContain(
-        'Replaces every table, relationship, index and memo of the document'
+        'Replaces every table, relationship, index, memo and table group of the document'
       );
       expect(text, name).toContain(
         'keeping its settings but the view, which goes to the start of the canvas'
       );
       expect(describeArg(name, 'mode'), name).toContain(
-        'keeps the settings but the view, which goes to the start of the canvas'
+        'in place of every table, relationship, index, memo and table group and keeps the settings but the view, which goes to the start of the canvas'
       );
     }
     for (const { description, args } of Object.values(TOOL_COPY)) {
       for (const prose of [description, ...Object.values(args ?? {})]) {
         expect(prose).not.toMatch(/discard/i);
       }
+    }
+  });
+
+  it('end the two imports that bring table groups on an editor released before groups dropping them', () => {
+    for (const name of ['erd_import_dbml', 'erd_import_json']) {
+      expect(describeTool(name), name).toMatch(
+        /An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it\.$/
+      );
+      expect(describeTool(name), name).not.toMatch(/\d+\.\d+/);
     }
   });
 
