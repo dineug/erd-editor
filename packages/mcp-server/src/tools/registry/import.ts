@@ -74,7 +74,6 @@ const schemaTool = (
   actionTypes: [
     'editor.clear',
     'editor.loadJson',
-    'table.sort',
     ...APPEND_TYPES,
     ...extraAppendTypes,
   ],

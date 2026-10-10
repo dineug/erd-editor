@@ -19,7 +19,6 @@ import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import {
   changeTableColorAction,
-  sortTableAction,
   tableReducers,
 } from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -59,7 +58,7 @@ import { getSceneTransform } from '@/konva/scene/viewport';
 import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
-import { measureTableSize } from '@/utils/calcTable';
+import { measureTableSize, recalculateTableWidth } from '@/utils/calcTable';
 import { isOverlapPosition, Rect as DragRect } from '@/utils/dragSelect';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { schemaAMLParserToSchemaJson } from '@/utils/schema-aml-parser';
@@ -425,6 +424,69 @@ export type AppendLayout = 'file' | 'grid' | ReadonlyArray<TableMove>;
 export type SchemaAppend = CreateEntityActions & { rect: Rect };
 
 /**
+ * Lays a parsed document's tables out in the grid and wraps its groups round
+ * them, in place: the sort, on the document's own copy, its widths measured
+ * first as this store measures them, so the points are this store's alone.
+ */
+function sortGrid(
+  state: RootState,
+  schema: ERDEditorSchemaV3,
+  ctx: EngineContext
+): void {
+  const copy: RootState = { ...state, ...schema };
+
+  recalculateTableWidth(copy, ctx);
+  tableReducers[TableActionType.sortTable](
+    copy,
+    { type: TableActionType.sortTable, payload: undefined },
+    ctx
+  );
+}
+
+/**
+ * An import's document with each table at its point in the grid and each group
+ * with members round them, written into the text it loads: every peer takes the
+ * points the sender laid out, where a sort replayed would measure with its own fonts.
+ *
+ * @example
+ * store.dispatchSync(loadJsonAction$(withGridPoints(json, store.state, ctx)));
+ */
+export function withGridPoints(
+  json: string,
+  state: RootState,
+  ctx: EngineContext
+): string {
+  const schema = parser(json);
+  sortGrid(state, schema, ctx);
+
+  const raw = JSON.parse(json);
+  const write = (
+    entities: Record<string, { ui?: object }> | undefined,
+    id: string,
+    ui: object
+  ) => {
+    const entity = entities?.[id];
+    if (entity) entity.ui = { ...entity.ui, ...ui };
+  };
+  const { doc, collections } = schema;
+
+  query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .forEach(({ id, ui: { x, y } }) =>
+      write(raw.collections?.tableEntities, id, { x, y })
+    );
+  query(collections)
+    .collection('tableGroupEntities')
+    .selectByIds(doc.tableGroupIds)
+    .forEach(({ id, ui: { x, y, width, height } }) =>
+      write(raw.collections?.tableGroupEntities, id, { x, y, width, height })
+    );
+
+  return JSON.stringify(raw);
+}
+
+/**
  * Each table and memo of the document read in, at the point the layout gives
  * it. The grid is the sort an import lands in, run on the document's own
  * copy, where the parser's canvas size wraps it as it wraps a replace.
@@ -438,13 +500,7 @@ function toLayoutPoints(
 ): Map<string, Point> {
   const { tableEntities } = schema.collections;
 
-  if (layout === 'grid') {
-    tableReducers[TableActionType.sortTable](
-      { ...state, ...schema },
-      { type: TableActionType.sortTable, payload: undefined },
-      ctx
-    );
-  }
+  if (layout === 'grid') sortGrid(state, schema, ctx);
 
   const answered = new Map(
     typeof layout === 'string'
@@ -972,15 +1028,16 @@ export function toSchemaImportJson(
 
 /**
  * The load each of the four text imports runs: the parsed document replaces
- * this one, then its tables are sorted into the grid.
+ * this one, its tables at the points the grid gives them here.
  */
 export const loadSchemaAction$ = (
   type: SchemaImportType,
   value: string
 ): GeneratorAction =>
   function* (state, ctx) {
-    yield loadJsonAction$(toSchemaImportJson(type, value, state, ctx));
-    yield sortTableAction();
+    yield loadJsonAction$(
+      withGridPoints(toSchemaImportJson(type, value, state, ctx), state, ctx)
+    );
   };
 
 export const loadSchemaSQLAction$ = (value: string): GeneratorAction =>

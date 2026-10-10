@@ -88,23 +88,36 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
   );
 
   it.each(SCHEMA_IMPORTS)(
-    '%s keeps the settings and lays the tables out in the same batch',
+    '%s keeps the settings and sends the grid points inside the load, never a sort',
     async name => {
-      const session = open();
+      // A sort each side replayed would measure with its own text widths.
+      const session = open({ otherToWidth: text => text.length * 23 });
       await quiet();
-      const { agent } = session;
+      const { agent, other } = session;
       runTool(agent, 'erd_set_database_name', { value: 'shop' });
 
       runTool(agent, name, TOOL_SCENARIOS[name]);
 
+      const points = ({
+        doc,
+        collections,
+      }: Pick<RootState, 'doc' | 'collections'>) =>
+        doc.tableIds.map(id => {
+          const { x, y } = collections.tableEntities[id].ui;
+          return { x, y };
+        });
+      const batch = session.sent.find(actions =>
+        actions.some(({ type }) => type === 'editor.loadJson')
+      );
       expect(agent.state.settings.databaseName).toBe('shop');
-      expect(
-        session.sent
-          .find(actions =>
-            actions.some(({ type }) => type === 'editor.loadJson')
-          )
-          ?.at(-1)?.type
-      ).toBe('table.sort');
+      expect(batch?.map(({ type }) => type)).toEqual([
+        'editor.clear',
+        'editor.loadJson',
+      ]);
+      expect(points(JSON.parse(batch![1].payload.value))).toEqual(
+        points(agent.state)
+      );
+      expect(points(other.state)).toEqual(points(agent.state));
     }
   );
 

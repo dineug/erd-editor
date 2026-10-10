@@ -17,10 +17,10 @@ import {
   toSchemaAppend,
   toSchemaImportJson,
   unselectAllAction$,
+  withGridPoints,
   withImportSettings,
 } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
-import { sortTableAction } from '@/engine/modules/table/atom.actions';
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
 import type { ElkLayoutPoint } from '@/services/elk-layout';
@@ -184,11 +184,11 @@ export async function importSchemaPlaced(
     // A placement that could not be had leaves the grid, which a failure, a
     // host with no worker and Cancel all land without a word.
     const landing = toLandingJson(json, store.state, points);
-    if (points) {
-      store.dispatchSync(loadJsonAction$(landing));
-    } else {
-      store.dispatchSync(loadJsonAction$(landing), sortTableAction());
-    }
+    store.dispatchSync(
+      loadJsonAction$(
+        points ? landing : withGridPoints(landing, store.state, app)
+      )
+    );
   });
 }
 

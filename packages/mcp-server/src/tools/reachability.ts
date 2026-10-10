@@ -19,6 +19,7 @@ export const NOT_EMITTED: ReadonlyArray<ActionType> = Object.freeze([
   'memo.move',
   'tableGroup.moveTo',
   'relationship.changeColumns',
+  'table.sort',
 ]);
 
 /** Change types a tool emits only inside another op's batch, never on their own. */
@@ -62,6 +63,8 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
       'Places a group alone and leaves its tables behind, which no editor gesture does; erd_move_table_group moves a group and its tables by one relative step, as a drag of its title bar does.',
     'relationship.changeColumns':
       "The editor's Map Columns dialog emits it; an agent re-maps a relationship with erd_batch of erd_remove_relationship and erd_link_columns, which every editor applies.",
+    'table.sort':
+      'Each editor that applies it lays the tables out by its own text widths, so they land apart; erd_sort_tables sends the points the sort gives as table.moveTo, and an import writes its grid points into the document it loads. Only an older editor still sends it.',
     'editor.clear':
       'Emitted by the import tools, which clear the document before loading the new one.',
   });

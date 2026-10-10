@@ -1002,12 +1002,44 @@ describe('loadSchemaSQLAction$', () => {
     expect(store.state.settings.database).toBe(Database.Databricks);
   });
 
-  it('emits clear, loadJson and sortTable', () => {
+  it('emits clear and loadJson, the grid points inside it, and no sort', () => {
     expect(typesOf(store, loadSchemaSQLAction$(sql))).toEqual([
       'editor.clear',
       'editor.loadJson',
-      'table.sort',
     ]);
+  });
+
+  it('lands the tables at the same points on a peer whose fonts measure otherwise', () => {
+    // Wide enough that the rows wrap where the widths decide, which a sort
+    // replayed on the peer would decide with its own.
+    const ddl = Array.from(
+      { length: 12 },
+      (_, index) =>
+        `CREATE TABLE table_with_a_long_name_${index} (id INT, ${'c'.repeat(index * 4)} INT);`
+    ).join('\n');
+    const peer = createStore({
+      toWidth: text => text.length * 23,
+      clock: new Clock(),
+    });
+    const points = ({ state: { doc, collections } }: Store) =>
+      doc.tableIds.map(id => {
+        const { x, y } = collections.tableEntities[id].ui;
+        return [id, x, y];
+      });
+
+    const actions = flatten(store, loadSchemaSQLAction$(ddl));
+    store.dispatchSync(actions);
+    peer.dispatchSync(actions);
+
+    expect(new Set(points(store).map(([, , y]) => y)).size).toBeGreaterThan(1);
+    expect(points(peer)).toEqual(points(store));
+    expect(
+      peer.state.collections.tableEntities[peer.state.doc.tableIds[0]].ui
+        .widthName
+    ).not.toBe(
+      store.state.collections.tableEntities[store.state.doc.tableIds[0]].ui
+        .widthName
+    );
   });
 });
 
@@ -1028,11 +1060,10 @@ describe('loadSchemaGraphQLAction$', () => {
     expect(store.state.settings.databaseName).toBe('keep-me');
   });
 
-  it('emits clear, loadJson and sortTable', () => {
+  it('emits clear and loadJson, the grid points inside it, and no sort', () => {
     expect(typesOf(store, loadSchemaGraphQLAction$(sdl))).toEqual([
       'editor.clear',
       'editor.loadJson',
-      'table.sort',
     ]);
   });
 
@@ -1076,11 +1107,10 @@ describe('loadSchemaDBMLAction$', () => {
     expect(store.state.settings.databaseName).toBe('keep-me');
   });
 
-  it('emits clear, loadJson and sortTable', () => {
+  it('emits clear and loadJson, the grid points inside it, and no sort', () => {
     expect(typesOf(store, loadSchemaDBMLAction$(dbml))).toEqual([
       'editor.clear',
       'editor.loadJson',
-      'table.sort',
     ]);
   });
 
@@ -1121,11 +1151,10 @@ describe('loadSchemaAMLAction$', () => {
     expect(store.state.settings.databaseName).toBe('keep-me');
   });
 
-  it('emits clear, loadJson and sortTable', () => {
+  it('emits clear and loadJson, the grid points inside it, and no sort', () => {
     expect(typesOf(store, loadSchemaAMLAction$(aml))).toEqual([
       'editor.clear',
       'editor.loadJson',
-      'table.sort',
     ]);
   });
 
