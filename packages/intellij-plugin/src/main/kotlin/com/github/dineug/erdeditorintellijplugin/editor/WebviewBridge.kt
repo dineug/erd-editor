@@ -105,8 +105,16 @@ data class HostImportFileCommandPayload(
     val accept: String,
     val mode: String? = null
 )
-/** changed is false for a change that left the value as it was; a page that sends none means true. */
-data class HostSaveValueCommandPayload(val value: String, val changed: Boolean = true)
+/**
+ * value is the storage form the file takes; changed is false for a change that left it as it was, and
+ * a page that sends none means true. runtimeValue is what the page's replica holds, which seeds another
+ * page or a joining agent and is never written; a page that sends none leaves the mirror to seed them.
+ */
+data class HostSaveValueCommandPayload(
+    val value: String,
+    val changed: Boolean = true,
+    val runtimeValue: String? = null,
+)
 // A tree, not Any: Any reads objects as maps, whose null entries the NON_NULL mapper then drops.
 data class HostSaveReplicationCommandPayload(val actions: JsonNode)
 data class HostSaveThemeCommandPayload(val appearance: String, val grayColor: String, val accentColor: String)

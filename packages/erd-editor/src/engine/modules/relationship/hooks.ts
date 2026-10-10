@@ -1,14 +1,9 @@
-import { query } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { isNil } from 'es-toolkit';
 import { asapScheduler, filter, observeOn, tap, throttle, timer } from 'rxjs';
 
-import { ColumnOption, Show, StartRelationshipType } from '@/constants/schema';
+import { Show } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
-import {
-  initialLoadJsonAction,
-  loadJsonAction,
-} from '@/engine/modules/editor/atom.actions';
 import { ViewKind } from '@/engine/modules/editor/state';
 import { getActiveView, isViewShown } from '@/engine/modules/editor/view';
 import {
@@ -65,7 +60,6 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
-import type { Collections, Column, Relationship } from '@/internal-types';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
@@ -73,86 +67,10 @@ import { invalidateTableWidths } from '@/utils/calcTable';
 import type { ViewSource } from '@/utils/draw-relationship/geometrySource';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
 
-/**
- * The columns a relationship ends on that are still in the document: its end
- * table is in the document and holds them. A removed table keeps its entity,
- * and the columns it held with it.
- */
-function selectEndColumns(
-  collections: Collections,
-  hasTable: (id: string) => boolean,
-  { end }: Relationship
-): Column[] {
-  if (!hasTable(end.tableId)) return [];
-
-  const table = query(collections)
-    .collection('tableEntities')
-    .selectById(end.tableId);
-  if (!table) return [];
-
-  const has = arrayHas(table.columnIds);
-  return query(collections)
-    .collection('tableColumnEntities')
-    .selectByIds(end.columnIds)
-    .filter(column => has(column.id));
-}
-
-/**
- * Each relationship entity with the columns it still ends on. A removed one
- * ends on none, so the flags a file saves for it never hang on arrival order.
- */
-function* endColumnsOf({ doc, collections }: RootState) {
-  const hasTable = arrayHas(doc.tableIds);
-  const hasRelationship = arrayHas(doc.relationshipIds);
-  const relationships = query(collections)
-    .collection('relationshipEntities')
-    .selectAll();
-
-  for (const relationship of relationships) {
-    yield [
-      relationship,
-      hasRelationship(relationship.id)
-        ? selectEndColumns(collections, hasTable, relationship)
-        : [],
-    ] as const;
-  }
-}
-
-/**
- * Marks each relationship identifying when every column it ends on is a primary
- * key, and not identifying, as a new one starts, once none of them is left or
- * it is removed, so the value follows the document whatever order actions arrive in.
- */
-export function recalculateIdentification(state: RootState) {
-  for (const [relationship, columns] of endColumnsOf(state)) {
-    const value =
-      columns.length !== 0 &&
-      columns.every(column => bHas(column.options, ColumnOption.primaryKey));
-
-    if (value !== relationship.identification) {
-      relationship.identification = value;
-    }
-  }
-}
-
-/**
- * Starts each relationship dashed when every column it ends on is not null and
- * ringed otherwise, read off the columns as the identification is; one with no
- * end column left is dashed, as a new one starts.
- */
-export function recalculateStartRelationshipType(state: RootState) {
-  for (const [relationship, columns] of endColumnsOf(state)) {
-    const value = columns.every(column =>
-      bHas(column.options, ColumnOption.notNull)
-    )
-      ? StartRelationshipType.dash
-      : StartRelationshipType.ring;
-
-    if (value !== relationship.startRelationshipType) {
-      relationship.startRelationshipType = value;
-    }
-  }
-}
+import {
+  recalculateIdentification,
+  recalculateStartRelationshipType,
+} from './endFlags';
 
 /**
  * Reads the flag once per batch, in the microtask after it, as the foreign key
@@ -461,7 +379,7 @@ const viewLayoutActions = [
 /**
  * What can change the columns a relationship ends on or the flags it reads off
  * them: an end column or its table removed or back by an undo, a peer or an
- * agent, a relationship made, remapped or removed, a key flag, and a load.
+ * agent, a relationship made, remapped or removed, and a key flag. A load settles them itself.
  */
 const identificationActions = [
   addColumnAction,
@@ -472,8 +390,6 @@ const identificationActions = [
   changeRelationshipColumnsAction,
   addTableAction,
   removeTableAction,
-  loadJsonAction,
-  initialLoadJsonAction,
 ];
 
 /**
@@ -490,8 +406,6 @@ const startRelationshipActions = [
   changeRelationshipColumnsAction,
   addTableAction,
   removeTableAction,
-  loadJsonAction,
-  initialLoadJsonAction,
 ];
 
 export const hooks: Hook[] = [

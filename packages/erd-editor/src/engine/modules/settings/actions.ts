@@ -19,7 +19,6 @@ export const ActionType = {
   changeColumnNameCase: 'settings.changeColumnNameCase',
   changeBracketType: 'settings.changeBracketType',
   changeRelationshipDataTypeSync: 'settings.changeRelationshipDataTypeSync',
-  changeRelationshipOptimization: 'settings.changeRelationshipOptimization',
   changeColumnOrder: 'settings.changeColumnOrder',
   changeMaxWidthComment: 'settings.changeMaxWidthComment',
   changeLockSettings: 'settings.changeLockSettings',
@@ -69,9 +68,6 @@ export type ActionMap = {
     value: number;
   };
   [ActionType.changeRelationshipDataTypeSync]: {
-    value: boolean;
-  };
-  [ActionType.changeRelationshipOptimization]: {
     value: boolean;
   };
   [ActionType.changeColumnOrder]: {

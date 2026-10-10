@@ -48,7 +48,7 @@ test.describe('the schema list', () => {
       .poll(async () => (await app.storedSchema('second')).value)
       .not.toBe('');
     const { settings } = JSON.parse((await app.storedSchema('second')).value);
-    expect(settings).toMatchObject({ ignoreSaveSettings: 3, zoomLevel: 1 });
+    expect(settings).toMatchObject({ lockSettings: 63, zoomLevel: 1 });
 
     await app.renameSchema('second', 'renamed');
     await expect

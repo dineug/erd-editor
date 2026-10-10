@@ -219,14 +219,3 @@ export function connectMcp(options: ConnectOptions = {}): Promise<McpHarness> {
 /** Lets queued microtasks and socket deliveries run. */
 export const settle = (ms = 5) =>
   new Promise<void>(resolve => setTimeout(resolve, ms));
-
-/** Document JSON without the per-replica meta stamps, for comparing two sides. */
-export function comparable(value: string) {
-  const document = JSON.parse(value);
-  for (const entities of Object.values<Record<string, any>>(
-    document.collections
-  )) {
-    for (const entity of Object.values<any>(entities)) delete entity.meta;
-  }
-  return document;
-}

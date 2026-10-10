@@ -439,7 +439,7 @@ export async function installBench(page: Page) {
        * time. Its own pass, because it serialises the document every frame.
        */
       async sideFlips({ tableId, moves, stepX, stepY }) {
-        const editor = host as HTMLElement & { value: string };
+        const editor = host as HTMLElement & { runtimeValue: string };
         const point = grip(tableId);
         let x = point.x;
         let y = point.y;
@@ -450,7 +450,7 @@ export async function installBench(page: Page) {
         await settled();
 
         const read = () => {
-          const value = JSON.parse(editor.value) as {
+          const value = JSON.parse(editor.runtimeValue) as {
             doc: { relationshipIds: string[] };
             collections: {
               relationshipEntities: Record<

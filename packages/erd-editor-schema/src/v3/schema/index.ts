@@ -39,7 +39,6 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
-  SaveSettingType,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -93,7 +92,6 @@ export const SchemaV3Constants = {
   ColumnUIKey,
   OrderType,
   OrderTypeList,
-  SaveSettingType,
   LockSettingType,
   LockSettingTypeList,
   LockSettingFields,

@@ -18,7 +18,6 @@ const buildTable = (id: string, columnIds: string[] = []): Table => ({
     widthComment: 60,
     color: '',
   },
-  meta: { updateAt: 0, createAt: 0 },
 });
 
 describe('v3/schema/table.entity', () => {
@@ -43,13 +42,11 @@ describe('v3/schema/table.entity', () => {
       seqColumnIds: ['column-1', 'column-2', 'column-3'],
       groupId: 'group-1',
       ui,
-      meta: { updateAt: 20, createAt: 10 },
     };
 
     expect(table.columnIds).toHaveLength(2);
     expect(table.ui.color).toBe('#ff0000');
     expect(table.groupId).toBe('group-1');
-    expect(table.meta.updateAt).toBeGreaterThan(table.meta.createAt);
   });
 
   it('keeps seqColumnIds as a superset that retains deleted column ids', () => {

@@ -14,6 +14,13 @@ import {
 } from 'vite-plus/test';
 
 import {
+  createDiagram,
+  receiveAll,
+  removeTable,
+  shownTable,
+  usersDiagram,
+} from '@/__test-utils__/diagram';
+import {
   actionsSent,
   closedSent,
   createConnection,
@@ -460,6 +467,47 @@ describe('join', () => {
       message: `${VAULT}/note.md is not an ERD file; the hub serves .erd, .vuerd, .erd.json, .vuerd.json only`,
     });
     expect(harness.fs.readFileString).not.toHaveBeenCalled();
+  });
+});
+
+describe('an agent joining after a removal', () => {
+  const cleanups: Array<() => void> = [];
+
+  afterEach(() => {
+    cleanups.splice(0).forEach(cleanup => cleanup());
+  });
+
+  const diagram = (value: string) => {
+    const store = createDiagram(value);
+    cleanups.push(store.destroy);
+    return store;
+  };
+
+  it('starts from the runtime value the replica saved, so the undo in the tab brings the table back whole there', async () => {
+    vi.useFakeTimers();
+    const harness = createHubHarness();
+    const { value, tableId } = usersDiagram();
+    const editor = await harness.openReady(NAME, value);
+    const shown = diagram(value);
+    cleanups.push(shown.subscribe(actions => harness.relay(editor, actions)));
+    removeTable(shown, tableId);
+    harness.save(editor, shown.value, shown.runtimeValue);
+    const joining = createConnection();
+
+    const result = await harness.run(
+      harness.handler.join({ path: PATH }, joining)
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    const agent = diagram(result.initialValue);
+    expect(shownTable(agent, tableId)).toBeNull();
+    shown.undo();
+    receiveAll(agent, actionsSent(joining));
+
+    expect(shownTable(shown, tableId)).toEqual({
+      name: 'users',
+      columns: ['id', 'name'],
+    });
+    expect(shownTable(agent, tableId)).toEqual(shownTable(shown, tableId));
   });
 });
 

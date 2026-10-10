@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 
 const EXTENSION_ID = 'dineug.vuerd-vscode';
 const VIEW_TYPE = 'editor.erd';
-const PROTOCOL_VERSION = 1;
+const PROTOCOL_VERSION = 2;
 const FIXTURE_FILE = 'sample.erd.json';
 const POLL_INTERVAL = 50;
 const POLL_TIMEOUT = 5_000;
@@ -417,11 +417,12 @@ describe('document hub for coding agents', () => {
   it('leaves a new empty file clean and empty after a view change, as a new document saves no view', async () => {
     const onDisk = await viewThenEdit('new-view.erd', '');
 
-    const { ignoreSaveSettings, originX, originY, zoomLevel } = onDisk.settings;
+    const { lockSettings, originX, originY, zoomLevel } = onDisk.settings;
     assert.deepStrictEqual(
-      { ignoreSaveSettings, originX, originY, zoomLevel },
-      { ignoreSaveSettings: 3, originX: 0, originY: 0, zoomLevel: 1 }
+      { lockSettings, originX, originY, zoomLevel },
+      { lockSettings: 63, originX: 0, originY: 0, zoomLevel: 1 }
     );
+    assert.strictEqual('ignoreSaveSettings' in onDisk.settings, false);
   });
 
   it('hands one peer batch to the other peer, and never back to its sender', async () => {

@@ -84,10 +84,7 @@ class CollectionQuery<K extends keyof Collections> {
 
   updateOne(id: string, recipe: (entity: GetEntity<K>) => void) {
     const entity = this.selectById(id);
-    if (entity) {
-      recipe(entity);
-      entity.meta.updateAt = Date.now();
-    }
+    if (entity) recipe(entity);
     return this;
   }
   updateMany(ids: string[], recipe: (entity: GetEntity<K>) => void) {

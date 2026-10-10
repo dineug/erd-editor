@@ -1704,10 +1704,10 @@ try {
     return lock?.hub && isSocket(lock.pipe) ? lock : null;
   }, 10_000);
   step(
-    'lock: ide obsidian, hub on, protocol 1, the manifest version, a token',
+    'lock: ide obsidian, hub on, protocol 2, the manifest version, a token',
     lock?.ide === 'obsidian' &&
       lock.hub === true &&
-      lock.protocolVersion === 1 &&
+      lock.protocolVersion === 2 &&
       lock.version === manifest.version &&
       lock.token?.length > 8,
     JSON.stringify(lock && { ...lock, token: `${lock.token.slice(0, 8)}...` })

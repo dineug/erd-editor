@@ -44,8 +44,8 @@ export class SchemaService {
 
   /**
    * Replaces the replica's value and measures later edits against it. The load
-   * returns with the tombstones it collects gone, which is housekeeping rather
-   * than an edit.
+   * returns with what it derives written, which is housekeeping rather than an
+   * edit.
    */
   private load(id: string, store: ReplicationStore, value: string) {
     store.setInitialValue(value);
@@ -125,9 +125,16 @@ export class SchemaService {
     }
   }
 
+  /**
+   * The schema to open, whose value is an open replica's runtime value, removed
+   * entities included, for a second tab or a guest to seed from, so an undo sent
+   * there brings an entity back whole; else the stored value, which opens one.
+   */
   async get(id: string) {
     const prev = this.cache.get(id);
-    if (prev) return omit(prev, ['store']);
+    if (prev) {
+      return { ...omit(prev, ['store']), value: prev.store.runtimeValue };
+    }
 
     const result = await getSchemaEntity(this.db, id);
     result && this.createCache(result);

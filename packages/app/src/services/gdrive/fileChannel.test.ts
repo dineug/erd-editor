@@ -125,6 +125,12 @@ describe('readFileMessage', () => {
     expect(readFileMessage(snapshot)).toEqual(snapshot);
   });
 
+  it('reads the runtime value a snapshot carries beside its file form', () => {
+    const snapshot = { ...valid[2], runtimeValue: '{"doc":{}}' };
+    expect(readFileMessage(snapshot)).toEqual(snapshot);
+    expect(readFileMessage(valid[2])).not.toHaveProperty('runtimeValue');
+  });
+
   it('drops what it does not speak', () => {
     const invalid: unknown[] = [
       null,
@@ -140,6 +146,7 @@ describe('readFileMessage', () => {
       { ...valid[2], saveState: 'dirty' },
       { ...valid[2], pendingAttempt: { attemptId: 'a1' } },
       { ...valid[2], canEdit: 'yes' },
+      { ...valid[2], runtimeValue: null },
       { type: 'status', epoch: 'e1' },
       { type: 'status', epoch: 'e1', state: 'dirty' },
       { type: 'saving', epoch: 'e1', attemptId: 'a1' },

@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createSchema, toJson } from '@dineug/erd-editor-schema';
+import {
+  createSchema,
+  toDocumentJson,
+  toJson,
+} from '@dineug/erd-editor-schema';
 import {
   AnyAction,
   createRef,
@@ -59,8 +63,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
+  addTableAction,
   changeTableNameAction,
   moveTableAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import {
@@ -77,9 +83,9 @@ import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
   openDiffViewerAction,
-  schemaGCAction,
   setLocaleOptionAction,
   setThemeOptionsAction,
+  toggleSearchAction,
 } from '@/utils/emitter';
 
 type Layout = (request: ElkLayoutRequest) => Promise<ElkLayoutPoint[]>;
@@ -152,7 +158,6 @@ const loadedDocument = (x = 0) =>
           columnIds: [],
           seqColumnIds: [],
           ui: { x, y: 0, zIndex: 2, widthName: 60, widthComment: 60 },
-          meta: { updateAt: 1, createAt: 1 },
         },
       },
     },
@@ -381,6 +386,7 @@ describe('useErdEditorAttachElement', () => {
     expect(typeof ctx.getSharedStore).toBe('function');
     expect(typeof ctx.setDiffValue).toBe('function');
     expect(typeof ctx.value).toBe('string');
+    expect(typeof ctx.runtimeValue).toBe('string');
   });
 
   it('defines focus/blur as writable own properties that drive the root element', async () => {
@@ -548,10 +554,8 @@ describe('useErdEditorAttachElement', () => {
     expect(app.keyBindingMap.removeTable).toBe(removeTable);
   });
 
-  it('loads an initial value and emits a schema GC request', async () => {
+  it('loads an initial value', async () => {
     const { app, ctx } = await setup();
-    const schemaGC = vi.fn();
-    app.emitter.on({ schemaGC });
 
     ctx.setInitialValue(
       JSON.stringify({
@@ -561,7 +565,6 @@ describe('useErdEditorAttachElement', () => {
     );
 
     expect(app.store.state.settings.databaseName).toBe('seeded');
-    expect(schemaGC).toHaveBeenCalledTimes(1);
   });
 
   it('drops the history of the document setInitialValue replaces', async () => {
@@ -735,6 +738,33 @@ describe('useErdEditorAttachElement', () => {
 
     ctx.value = '   ';
     expect(app.store.state.settings.databaseName).not.toBe('round-trip');
+  });
+
+  it('gives the file form through value and the document as held, removed tables included, through runtimeValue', async () => {
+    const { app, ctx } = await setup();
+    app.store.dispatchSync(
+      addTableAction({ id: 'kept', ui: { x: 0, y: 0, zIndex: 3 } }),
+      addTableAction({ id: 'gone', ui: { x: 0, y: 0, zIndex: 4 } }),
+      removeTableAction({ id: 'gone' })
+    );
+
+    const saved = JSON.parse(ctx.value);
+    const held = JSON.parse(ctx.runtimeValue);
+
+    expect(ctx.value).toBe(toDocumentJson(app.store.state));
+    expect(ctx.runtimeValue).toBe(toJson(app.store.state));
+    expect(Object.keys(saved.collections.tableEntities)).toEqual(['kept']);
+    expect(saved.collections.tableEntities.kept.ui).not.toHaveProperty(
+      'zIndex'
+    );
+    expect(Object.keys(held.collections.tableEntities)).toEqual([
+      'kept',
+      'gone',
+    ]);
+    expect(held.collections.tableEntities.kept.ui.zIndex).toBe(3);
+    expect(
+      Object.getOwnPropertyDescriptor(ctx, 'runtimeValue')?.set
+    ).toBeUndefined();
   });
 
   it('imports schema SQL and ignores blank input', async () => {
@@ -1545,15 +1575,15 @@ describe('useErdEditorAttachElement', () => {
   it('tears every watcher and shared store down on destroy()', async () => {
     const { api, app, ctx } = await setup();
     ctx.getSharedStore({ mouseTracker: false });
-    const schemaGC = vi.fn();
-    app.emitter.on({ schemaGC });
+    const toggleSearch = vi.fn();
+    app.emitter.on({ toggleSearch });
     expect(api.destroySet.size).toBeGreaterThan(0);
 
     ctx.destroy();
 
     expect(api.destroySet.size).toBe(0);
-    app.emitter.emit(schemaGCAction());
-    expect(schemaGC).not.toHaveBeenCalled();
+    app.emitter.emit(toggleSearchAction());
+    expect(toggleSearch).not.toHaveBeenCalled();
   });
 
   it('dispatches a change event for document mutations', async () => {

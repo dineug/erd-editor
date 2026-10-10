@@ -64,7 +64,6 @@ export const FindTextActionTypes: ReadonlyArray<ActionType> = [
   'editor.clear',
   'editor.initialLoadJson',
   'editor.initialClear',
-  'editor.validationIds',
 ];
 
 /**

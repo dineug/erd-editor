@@ -1,7 +1,7 @@
 import { omit } from 'es-toolkit';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { parser, parserV2, toJson } from '@/parser';
+import { parser, toJson } from '@/parser';
 import { createSchema, SchemaV3Constants } from '@/v3';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 
@@ -62,7 +62,7 @@ describe('parser', () => {
 
     expect(schema.$schema).toBe(V3_SCHEMA_URL);
     expect(schema.version).toBe('3.0.0');
-    expect(schema.settings.width).toBe(4000);
+    expect(schema.settings).not.toHaveProperty('width');
     expect(schema.settings.databaseName).toBe('shop');
     expect(schema.doc.tableIds).toEqual(['t1']);
     expect(schema.collections.tableEntities.t1.name).toBe('users');
@@ -82,7 +82,7 @@ describe('parser', () => {
     );
 
     expect(schema.version).toBe('3.0.0');
-    expect(schema.settings.width).toBe(3000);
+    expect(schema.settings).not.toHaveProperty('width');
     expect(schema.settings.databaseName).toBe('legacy');
     expect(schema.doc.tableIds).toEqual(['t1']);
     expect(schema.collections.tableEntities.t1.name).toBe('users');
@@ -101,7 +101,7 @@ describe('parser', () => {
     });
   });
 
-  it('migrates a legacy document onto the origin pair, legacy pair intact', () => {
+  it('migrates a legacy document onto the origin pair, keeping no legacy field', () => {
     const settings = {
       width: 3000,
       height: 5000,
@@ -113,15 +113,14 @@ describe('parser', () => {
     const schema = parser(JSON.stringify({ version: '3.0.0', settings }));
 
     expect(schema.settings).toMatchObject(migrateScrollToOrigin(settings));
-    expect(schema.settings.scrollLeft).toBe(settings.scrollLeft);
-    expect(schema.settings.scrollTop).toBe(settings.scrollTop);
+    for (const field of ['width', 'height', 'scrollLeft', 'scrollTop']) {
+      expect(schema.settings).not.toHaveProperty(field);
+    }
   });
 
-  it('leaves an empty source at four zeroes, where the term is zero too', () => {
+  it('leaves an empty source at the zero origin, where the term is zero too', () => {
     const schema = parser('{"version":"3.0.0"}');
 
-    expect(schema.settings.scrollLeft).toBe(0);
-    expect(schema.settings.scrollTop).toBe(0);
     expect(schema.settings.originX).toBe(0);
     expect(schema.settings.originY).toBe(0);
     expect(schema.settings.zoomLevel).toBe(1);
@@ -129,43 +128,6 @@ describe('parser', () => {
 
   it('throws on malformed json', () => {
     expect(() => parser('not json')).toThrow(SyntaxError);
-  });
-});
-
-describe('parserV2', () => {
-  it('converts a v3 document down to v2', () => {
-    const schema = parserV2(
-      JSON.stringify({
-        version: '3.0.0',
-        settings: { width: 4000, databaseName: 'shop' },
-        doc: { tableIds: ['t1'], memoIds: ['m1'] },
-        collections: {
-          tableEntities: { t1: { id: 't1', name: 'users' } },
-          memoEntities: { m1: { id: 'm1', value: 'note' } },
-        },
-      })
-    );
-
-    expect(schema.canvas.width).toBe(4000);
-    expect(schema.canvas.databaseName).toBe('shop');
-    expect(schema.table.tables[0].name).toBe('users');
-    expect(schema.memo.memos[0].value).toBe('note');
-  });
-
-  it('parses a v2 document as is', () => {
-    const schema = parserV2(
-      JSON.stringify({
-        canvas: { width: 3000 },
-        table: { tables: [{ id: 't1', name: 'users' }], indexes: [] },
-      })
-    );
-
-    expect(schema.canvas.width).toBe(3000);
-    expect(schema.table.tables[0].id).toBe('t1');
-  });
-
-  it('throws on malformed json', () => {
-    expect(() => parserV2('{')).toThrow(SyntaxError);
   });
 });
 
@@ -192,24 +154,20 @@ describe('toJson', () => {
     expect(toJson(schema)).toContain('\n  "version": "3.0.0"');
   });
 
-  it('writes both pairs as they stand while the viewport is unlocked', () => {
+  it('writes the origin and the zoom as they stand while the viewport is unlocked', () => {
     const schema = parser('{"version":"3.0.0","settings":{"lockSettings":0}}');
-    schema.settings.scrollTop = 100;
-    schema.settings.scrollLeft = 200;
     schema.settings.originX = -40;
     schema.settings.originY = -60;
     schema.settings.zoomLevel = 0.5;
 
     const json = JSON.parse(toJson(schema));
 
-    expect(json.settings.scrollTop).toBe(100);
-    expect(json.settings.scrollLeft).toBe(200);
     expect(json.settings.originX).toBe(-40);
     expect(json.settings.originY).toBe(-60);
     expect(json.settings.zoomLevel).toBe(0.5);
   });
 
-  it('writes back the legacy pair a document arrived with, byte for byte', () => {
+  it('writes none of the legacy fields a document arrived with', () => {
     const settings = {
       width: 3000,
       height: 5000,
@@ -222,9 +180,10 @@ describe('toJson', () => {
 
     const json = JSON.parse(toJson(parser(source)));
 
-    expect(json.settings.scrollLeft).toBe(settings.scrollLeft);
-    expect(json.settings.scrollTop).toBe(settings.scrollTop);
     expect(json.settings).toMatchObject(migrateScrollToOrigin(settings));
+    for (const field of ['width', 'height', 'scrollLeft', 'scrollTop']) {
+      expect(json.settings).not.toHaveProperty(field);
+    }
   });
 
   it('parses its own output back to the same in-memory document', () => {
@@ -298,7 +257,7 @@ describe('toJson', () => {
     expect(settings).toMatchObject({ originX: 12, zoomLevel: 0.8 });
     expect(settings).not.toHaveProperty('lockedValues');
     expect(Object.keys(settings).slice(-2)).toEqual([
-      'ignoreSaveSettings',
+      'maxWidthComment',
       'lockSettings',
     ]);
     expect(parser(toJson(schema)).settings.lockedValues).toMatchObject({
@@ -328,39 +287,22 @@ describe('toJson', () => {
   });
 });
 
-/**
- * The save switches a release before the locks reads: off while the viewport is
- * locked, so it never saves where a reader scrolls, on while it follows them.
- */
-describe('the save switches toJson writes for releases before the locks', () => {
+describe('the save switches of releases before the locks', () => {
   it.each([
-    ['locked', LOCK_ALL, 3],
-    ['locked alone', LockSettingType.viewport, 3],
-    ['unlocked', LOCK_ALL & ~LockSettingType.viewport, 0],
-    ['unlocked with nothing locked', 0, 0],
-  ])('writes the viewport %s as %i', (_, lockSettings, ignoreSaveSettings) => {
+    ['locked', LOCK_ALL],
+    ['unlocked', 0],
+  ])('writes none with the viewport %s', (_, lockSettings) => {
     const schema = parser(
-      JSON.stringify({ version: '3.0.0', settings: { lockSettings } })
+      JSON.stringify({
+        version: '3.0.0',
+        settings: { lockSettings, ignoreSaveSettings: 3 },
+      })
     );
-
-    expect(JSON.parse(toJson(schema)).settings.ignoreSaveSettings).toBe(
-      ignoreSaveSettings
-    );
-  });
-
-  it('reads none of it back, the locks alone saying what is saved', () => {
-    const source = JSON.stringify({
-      version: '3.0.0',
-      settings: { lockSettings: 0, ignoreSaveSettings: 3, originX: -40 },
-    });
-    const schema = parser(source);
-    schema.settings.originX = 80;
 
     expect(schema.settings).not.toHaveProperty('ignoreSaveSettings');
-    expect(JSON.parse(toJson(schema)).settings).toMatchObject({
-      ignoreSaveSettings: 0,
-      originX: 80,
-    });
+    expect(JSON.parse(toJson(schema)).settings).not.toHaveProperty(
+      'ignoreSaveSettings'
+    );
   });
 });
 
@@ -377,7 +319,6 @@ describe('the locks of a new document and of a file', () => {
 
     expect(settings.lockSettings).toBe(LOCK_ALL);
     expect(settings).toMatchObject(DEFAULTS);
-    expect(settings).toMatchObject({ scrollLeft: 0, scrollTop: 0 });
   });
 
   it('reads a new document back as it wrote it', () => {
@@ -452,7 +393,7 @@ describe('the locks of a new document and of a file', () => {
 
     const { settings } = JSON.parse(toJson(schema));
 
-    expect(settings).toMatchObject({ ...LIVE, ignoreSaveSettings: 0 });
+    expect(settings).toMatchObject(LIVE);
   });
 });
 
@@ -491,7 +432,7 @@ describe('the Schema SQL scripts toJson writes', () => {
 
   it('writes the key right after lockSettings', () => {
     expect(Object.keys(withScripts('a', 'b')).slice(-3)).toEqual([
-      'ignoreSaveSettings',
+      'maxWidthComment',
       'lockSettings',
       'ddlScripts',
     ]);
@@ -548,7 +489,6 @@ describe('the table groups toJson writes', () => {
           name: 'billing',
           color: '#0090ff',
           ui: { x: -40, y: 20, width: 640, height: 360, zIndex: 3 },
-          meta: { updateAt: 2, createAt: 1 },
         },
       },
     },
@@ -675,15 +615,5 @@ describe('the table groups toJson writes', () => {
     const grouped = JSON.parse(toJson(parser(JSON.stringify(source))));
 
     expect(JSON.parse(toJson(grouped)).doc.tableGroupIds).toEqual(['g1']);
-  });
-
-  it('leaves the groups out of the v2 document parserV2 converts to', () => {
-    const schemaV2 = parserV2(JSON.stringify(source));
-
-    expect(schemaV2.table.tables.map(({ name }) => name)).toEqual([
-      'invoice',
-      'member',
-    ]);
-    expect(JSON.stringify(schemaV2)).not.toMatch(/billing|groupId|tableGroup/);
   });
 });

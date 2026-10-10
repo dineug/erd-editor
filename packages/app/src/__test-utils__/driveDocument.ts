@@ -52,17 +52,6 @@ export const USERS_DOCUMENT = documentWith(store => {
   store.dispatch([tableColumnActions$.addColumnAction$(tableId)]);
 });
 
-/** Documents compared across replicas: each replica stamps its own entity meta. */
-export function comparable(value: string) {
-  const document = JSON.parse(value);
-  for (const entities of Object.values<Record<string, any>>(
-    document.collections
-  )) {
-    for (const entity of Object.values<any>(entities)) delete entity.meta;
-  }
-  return document;
-}
-
 /**
  * A headless editor behind the adapter the controller drives, as the element
  * would be: its shared store's batches go out, and any change is a change.
@@ -76,6 +65,7 @@ export function createPeerEditor(nickname: string, presence = false) {
 
   const adapter: EditorAdapter = {
     getValue: () => store.value,
+    getRuntimeValue: () => store.runtimeValue,
     setInitialValue: value => store.setInitialValue(value),
     subscribeLocal: listener => store.subscribe(actions => listener(actions)),
     applyRemote: actions => {
@@ -108,6 +98,13 @@ export function createPeerEditor(nickname: string, presence = false) {
     store,
     adapter,
     edit,
+    /** An undo, as the element's: its batch sent and its change noticed. */
+    undo() {
+      const result = store.undo();
+      store.flushStreamBuffers();
+      changed();
+      return result;
+    },
     /** A press in the element, whose edit, if any, the change event reports later. */
     press: () => [...inputs].forEach(listener => listener()),
     /** Adds a table named tableName, the edit most tests make. */

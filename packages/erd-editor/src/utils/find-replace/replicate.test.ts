@@ -9,7 +9,6 @@ import type { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
-  comparable,
   createSession,
   SEED,
   type Session,
@@ -30,8 +29,8 @@ afterEach(() => {
 });
 
 const sides = ({ peer, user }: Session) => [
-  comparable(peer.value),
-  comparable(toJson(user.rxStore.state)),
+  JSON.parse(peer.runtimeValue),
+  JSON.parse(toJson(user.rxStore.state)),
 ];
 
 describe('a replace all reaches a collaborator', () => {

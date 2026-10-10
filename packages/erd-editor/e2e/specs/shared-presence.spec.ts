@@ -42,7 +42,7 @@ async function attachPeer(page: Page) {
     peer.systemDarkMode = false;
     peer.setAttribute('style', 'display:block;width:100%;height:100%');
     host.appendChild(peer);
-    peer.setInitialValue(local.value);
+    peer.setInitialValue(local.runtimeValue);
 
     const local$ = local.getSharedStore();
     const peer$ = peer.getSharedStore();

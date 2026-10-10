@@ -1,6 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
-import { map, merge, Observable, Subject, Subscription } from 'rxjs';
+import { filter, map, merge, Observable, Subject, Subscription } from 'rxjs';
 
 import {
   SharedActionTypes,
@@ -8,6 +8,7 @@ import {
 } from '@/engine/actions';
 import {
   getLWWAction,
+  initialLoadJsonAction,
   mergeLWWAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -115,6 +116,31 @@ export function createSharedStore(
       .subscribe(actions => observer$.next(actions))
   );
 
+  const requestLWW = () => {
+    internal$.next([
+      {
+        ...getLWWAction(),
+        version: store.context.clock.getVersion(),
+      },
+    ]);
+  };
+
+  // A load that opens a document drops the registers, so once this store has
+  // asked its peers for theirs it asks again, and they answer as to a joiner.
+  subscriptionSet.add(
+    new Observable<Array<AnyAction>>(subscriber =>
+      store.subscribe(actions => subscriber.next(actions))
+    )
+      .pipe(
+        filter(
+          actions =>
+            !firstSubscribe &&
+            actions.some(({ type }) => type === initialLoadJsonAction.type)
+        )
+      )
+      .subscribe(requestLWW)
+  );
+
   const halfOpenNotify = () => {
     const isSubscribe = 0 < observerSubscriptionSet.size;
     if (isConnection && isSubscribe) {
@@ -147,12 +173,7 @@ export function createSharedStore(
     halfOpenNotify();
 
     if (firstSubscribe) {
-      internal$.next([
-        {
-          ...getLWWAction(),
-          version: store.context.clock.getVersion(),
-        },
-      ]);
+      requestLWW();
       firstSubscribe = false;
     }
 

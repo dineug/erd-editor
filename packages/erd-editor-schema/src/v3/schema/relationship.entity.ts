@@ -1,6 +1,4 @@
-import { EntityType } from '@/internal-types';
-
-export type Relationship = EntityType<{
+export type Relationship = {
   id: string;
   identification: boolean;
   relationshipType: number;
@@ -9,7 +7,7 @@ export type Relationship = EntityType<{
   onUpdate: number;
   start: RelationshipPoint;
   end: RelationshipPoint;
-}>;
+};
 
 export type RelationshipPoint = {
   tableId: string;

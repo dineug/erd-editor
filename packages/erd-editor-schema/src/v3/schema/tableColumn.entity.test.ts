@@ -79,12 +79,10 @@ describe('v3/schema/tableColumn.entity', () => {
       default: '',
       options: ColumnOption.primaryKey | ColumnOption.autoIncrement,
       ui,
-      meta: { updateAt: 10, createAt: 10 },
     };
 
     expect(column.options).toBe(3);
     expect(Boolean(column.options & ColumnOption.notNull)).toBe(false);
     expect(column.ui.keys & ColumnUIKey.foreignKey).toBe(0);
-    expect(column.meta.updateAt).toBe(column.meta.createAt);
   });
 });

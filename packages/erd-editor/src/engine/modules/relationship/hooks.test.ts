@@ -139,7 +139,7 @@ describe('relationship/hooks registration', () => {
     }
   });
 
-  it('subscribes the identification hook to every action that moves an end column or its key flag', () => {
+  it('subscribes the identification hook to every action that moves an end column or its key flag, a load aside', () => {
     expect(hooks[0][0].map(String)).toEqual([
       'column.add',
       'column.remove',
@@ -149,8 +149,6 @@ describe('relationship/hooks registration', () => {
       'relationship.changeColumns',
       'table.add',
       'table.remove',
-      'editor.loadJson',
-      'editor.initialLoadJson',
     ]);
   });
 
@@ -165,8 +163,6 @@ describe('relationship/hooks registration', () => {
       'relationship.changeColumns',
       'table.add',
       'table.remove',
-      'editor.loadJson',
-      'editor.initialLoadJson',
     ]);
   });
 

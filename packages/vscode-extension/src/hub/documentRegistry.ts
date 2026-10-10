@@ -34,7 +34,6 @@ import type * as vscode from 'vscode';
 
 import { type ErdDocument } from '@/erd-document';
 import { isReadonlyUri } from '@/hub/readonlyUri';
-import { textDecoder } from '@/utils';
 
 /** The three calls ErdEditor makes from its bridge handlers. */
 export type WebviewRelay = Pick<
@@ -282,9 +281,9 @@ export class DocumentRegistry {
   }
 
   /**
-   * A replica saved, so document.content is current for what its webview had
-   * seen. The webview comes from the editor that relayed it, since only the
-   * saves of those a change reached say the content holds that change.
+   * A replica saved, so the document's content and runtime value are current
+   * for what its webview had seen. The webview is the relaying editor's, since
+   * only the saves of those a change reached say they hold that change.
    */
   onValueSaved(document: ErdDocument, webview: vscode.Webview): void {
     const entry = this.entries.get(document);
@@ -382,7 +381,7 @@ export class DocumentRegistry {
 
   /**
    * Seeds a peer. It queues deliveries from the start, waits for the document
-   * to go quiet, then captures content and observedVersion in one tick. The
+   * to go quiet, then captures seedValue and observedVersion in one tick. The
    * queue empties on a timer, after the response is written, not ahead of it.
    */
   join(
@@ -417,7 +416,7 @@ export class DocumentRegistry {
       }
 
       const result: JoinResult = {
-        initialValue: textDecoder.decode(document.content),
+        initialValue: document.seedValue(),
         snapshotVersion: entry.observedVersion,
         readonly: isReadonlyUri(document.uri),
       };

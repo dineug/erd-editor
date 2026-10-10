@@ -22,7 +22,6 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
-  SaveSettingType,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -213,12 +212,6 @@ describe('v3/schema/settings', () => {
     });
   });
 
-  describe('SaveSettingType', () => {
-    it('keeps the two bits releases before the locks read', () => {
-      expect(SaveSettingType).toEqual({ scroll: 1, zoomLevel: 2 });
-    });
-  });
-
   describe('LockSettingType', () => {
     it('pins the stored bit of every lock, the viewport first', () => {
       expect(LockSettingType).toEqual({
@@ -283,10 +276,6 @@ describe('v3/schema/settings', () => {
 
   it('describes a settings object built out of the exported constants', () => {
     const settings: Settings = {
-      width: CANVAS_SIZE_MAX,
-      height: CANVAS_SIZE_MAX,
-      scrollTop: 0,
-      scrollLeft: 0,
       originX: 0,
       originY: 0,
       zoomLevel: CANVAS_ZOOM_MAX,
@@ -299,7 +288,6 @@ describe('v3/schema/settings', () => {
       columnNameCase: NameCase.camelCase,
       bracketType: BracketType.backtick,
       relationshipDataTypeSync: true,
-      relationshipOptimization: false,
       columnOrder: [...ColumnTypeList],
       maxWidthComment: -1,
       lockSettings: LockSettingType.language,

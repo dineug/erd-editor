@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
-  "title": "erd-editor schema",
-  "description": "Entity-Relationship Diagram Editor Schema",
+  "title": "ERD Editor document",
+  "description": "The storage form an ERD Editor file holds (.erd, .erd.json, .vuerd, .vuerd.json): the live entities alone, each collection keyed in id order, without what an editor derives on load or keeps while it is open",
   "type": "object",
   "properties": {
     "$schema": {
@@ -50,30 +50,16 @@
         "indexEntities",
         "indexColumnEntities",
         "memoEntities"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
-  "required": ["version", "settings", "doc", "collections"],
+  "required": ["$schema", "version", "settings", "doc", "collections"],
+  "additionalProperties": false,
   "$defs": {
     "settings": {
       "type": "object",
       "properties": {
-        "width": {
-          "type": "number",
-          "minimum": 2000,
-          "maximum": 20000
-        },
-        "height": {
-          "type": "number",
-          "minimum": 2000,
-          "maximum": 20000
-        },
-        "scrollTop": {
-          "type": "number"
-        },
-        "scrollLeft": {
-          "type": "number"
-        },
         "originX": {
           "type": "number"
         },
@@ -129,9 +115,6 @@
         "relationshipDataTypeSync": {
           "type": "boolean"
         },
-        "relationshipOptimization": {
-          "type": "boolean"
-        },
         "columnOrder": {
           "description": "bit value (columnName: 1) | (columnDataType: 2) | (columnNotNull: 4) | (columnUnique: 8) | (columnAutoIncrement: 16) | (columnDefault: 32) | (columnComment: 64)",
           "type": "array",
@@ -150,12 +133,8 @@
         "maxWidthComment": {
           "type": "integer"
         },
-        "ignoreSaveSettings": {
-          "description": "bit value (scroll: 1) | (zoomLevel: 2), read by releases before lockSettings; written as both bits while the viewport is locked and as 0 otherwise",
-          "type": "integer"
-        },
         "lockSettings": {
-          "description": "bit value (viewport: 1) | (canvasType: 2) | (language: 4) | (tableNameCase: 8) | (columnNameCase: 16) | (bracketType: 32); a locked setting is saved as it stood when locked, the viewport being originX, originY and zoomLevel. A document without it opens with every setting locked",
+          "description": "bit value (viewport: 1) | (canvasType: 2) | (language: 4) | (tableNameCase: 8) | (columnNameCase: 16) | (bracketType: 32); a locked setting is saved as it stood when locked, the viewport being originX, originY and zoomLevel",
           "type": "integer"
         },
         "ddlScripts": {
@@ -165,28 +144,31 @@
             "before": { "type": "string" },
             "after": { "type": "string" }
           },
-          "required": ["before", "after"]
+          "required": ["before", "after"],
+          "additionalProperties": false
         }
       },
       "required": [
-        "width",
-        "height",
-        "scrollTop",
-        "scrollLeft",
+        "originX",
+        "originY",
         "zoomLevel",
         "show",
+        "database",
+        "databaseName",
         "canvasType",
         "language",
         "tableNameCase",
         "columnNameCase",
         "bracketType",
         "relationshipDataTypeSync",
-        "relationshipOptimization",
         "columnOrder",
-        "maxWidthComment"
-      ]
+        "maxWidthComment",
+        "lockSettings"
+      ],
+      "additionalProperties": false
     },
     "doc": {
+      "description": "The order of each kind of entity, which the DDL, the sort and the draw order read",
       "type": "object",
       "properties": {
         "tableIds": {
@@ -214,13 +196,15 @@
           }
         },
         "tableGroupIds": {
-          "description": "Order of the table groups. Written while it or tableGroupEntities holds an entry, as a removed group does there until the editor collects it; absent means none",
+          "description": "Order of the table groups. Written while a group exists; absent means none",
           "type": "array",
           "items": {
             "type": "string"
           }
         }
-      }
+      },
+      "required": ["tableIds", "relationshipIds", "indexIds", "memoIds"],
+      "additionalProperties": false
     },
     "tableEntities": {
       "type": "object",
@@ -242,14 +226,8 @@
               "type": "string"
             }
           },
-          "seqColumnIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "groupId": {
-            "description": "Id of the table group the table belongs to; an id naming no group in doc.tableGroupIds reads as none. Written while not empty, such an id included; absent or empty means none",
+            "description": "Id of the table group in doc.tableGroupIds the table belongs to; absent means none",
             "type": "string"
           },
           "ui": {
@@ -261,41 +239,16 @@
               "y": {
                 "type": "number"
               },
-              "zIndex": {
-                "type": "number"
-              },
-              "widthName": {
-                "type": "number"
-              },
-              "widthComment": {
-                "type": "number"
-              },
               "color": {
                 "type": "string"
               }
             },
-            "required": [
-              "x",
-              "y",
-              "zIndex",
-              "widthName",
-              "widthComment",
-              "color"
-            ]
-          },
-          "meta": {
-            "$ref": "#/$defs/EntityMeta"
+            "required": ["x", "y", "color"],
+            "additionalProperties": false
           }
         },
-        "required": [
-          "id",
-          "name",
-          "comment",
-          "columnIds",
-          "seqColumnIds",
-          "ui",
-          "meta"
-        ]
+        "required": ["id", "name", "comment", "columnIds", "ui"],
+        "additionalProperties": false
       }
     },
     "tableColumnEntities": {
@@ -324,37 +277,6 @@
           "options": {
             "description": "bit value (autoIncrement: 1) | (primaryKey: 2) | (unique: 4) | (notNull: 8)",
             "type": "integer"
-          },
-          "ui": {
-            "type": "object",
-            "properties": {
-              "keys": {
-                "description": "bit value (primaryKey: 1) | (foreignKey: 2)",
-                "type": "integer"
-              },
-              "widthName": {
-                "type": "number"
-              },
-              "widthComment": {
-                "type": "number"
-              },
-              "widthDataType": {
-                "type": "number"
-              },
-              "widthDefault": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "keys",
-              "widthName",
-              "widthComment",
-              "widthDataType",
-              "widthDefault"
-            ]
-          },
-          "meta": {
-            "$ref": "#/$defs/EntityMeta"
           }
         },
         "required": [
@@ -364,10 +286,9 @@
           "comment",
           "dataType",
           "default",
-          "options",
-          "ui",
-          "meta"
-        ]
+          "options"
+        ],
+        "additionalProperties": false
       }
     },
     "relationshipEntities": {
@@ -378,15 +299,8 @@
           "id": {
             "type": "string"
           },
-          "identification": {
-            "type": "boolean"
-          },
           "relationshipType": {
             "description": "bit value (ZeroOne: 2) | (ZeroN: 4) | (OneOnly: 8) | (OneN: 16)",
-            "type": "integer"
-          },
-          "startRelationshipType": {
-            "description": "bit value (ring: 1) | (dash: 2)",
             "type": "integer"
           },
           "onDelete": {
@@ -402,20 +316,17 @@
           },
           "end": {
             "$ref": "#/$defs/RelationshipPoint"
-          },
-          "meta": {
-            "$ref": "#/$defs/EntityMeta"
           }
         },
         "required": [
           "id",
-          "identification",
           "relationshipType",
-          "startRelationshipType",
+          "onDelete",
+          "onUpdate",
           "start",
-          "end",
-          "meta"
-        ]
+          "end"
+        ],
+        "additionalProperties": false
       }
     },
     "indexEntities": {
@@ -438,28 +349,12 @@
               "type": "string"
             }
           },
-          "seqIndexColumnIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "unique": {
             "type": "boolean"
-          },
-          "meta": {
-            "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "tableId",
-          "indexColumnIds",
-          "seqIndexColumnIds",
-          "unique",
-          "meta"
-        ]
+        "required": ["id", "name", "tableId", "indexColumnIds", "unique"],
+        "additionalProperties": false
       }
     },
     "indexColumnEntities": {
@@ -479,12 +374,10 @@
           "orderType": {
             "description": "bit value (ASC: 1) | (DESC: 2)",
             "type": "integer"
-          },
-          "meta": {
-            "$ref": "#/$defs/EntityMeta"
           }
         },
-        "required": ["id", "indexId", "columnId", "orderType", "meta"]
+        "required": ["id", "indexId", "columnId", "orderType"],
+        "additionalProperties": false
       }
     },
     "memoEntities": {
@@ -507,9 +400,6 @@
               "y": {
                 "type": "number"
               },
-              "zIndex": {
-                "type": "number"
-              },
               "width": {
                 "type": "number"
               },
@@ -520,17 +410,16 @@
                 "type": "string"
               }
             },
-            "required": ["x", "y", "zIndex", "width", "height", "color"]
-          },
-          "meta": {
-            "$ref": "#/$defs/EntityMeta"
+            "required": ["x", "y", "width", "height", "color"],
+            "additionalProperties": false
           }
         },
-        "required": ["id", "value", "ui", "meta"]
+        "required": ["id", "value", "ui"],
+        "additionalProperties": false
       }
     },
     "tableGroupEntities": {
-      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written while it or doc.tableGroupIds holds an entry, a removed group included until the editor collects it; absent means none",
+      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written while a group exists; absent means none",
       "type": "object",
       "additionalProperties": {
         "type": "object",
@@ -558,31 +447,15 @@
               },
               "height": {
                 "type": "number"
-              },
-              "zIndex": {
-                "type": "number"
               }
             },
-            "required": ["x", "y", "width", "height", "zIndex"]
-          },
-          "meta": {
-            "$ref": "#/$defs/EntityMeta"
+            "required": ["x", "y", "width", "height"],
+            "additionalProperties": false
           }
         },
-        "required": ["id", "name", "color", "ui", "meta"]
+        "required": ["id", "name", "color", "ui"],
+        "additionalProperties": false
       }
-    },
-    "EntityMeta": {
-      "type": "object",
-      "properties": {
-        "updateAt": {
-          "type": "integer"
-        },
-        "createAt": {
-          "type": "integer"
-        }
-      },
-      "required": ["updateAt", "createAt"]
     },
     "RelationshipPoint": {
       "type": "object",
@@ -595,19 +468,10 @@
           "items": {
             "type": "string"
           }
-        },
-        "x": {
-          "type": "number"
-        },
-        "y": {
-          "type": "number"
-        },
-        "direction": {
-          "description": "bit value (left: 1) | (right: 2) | (top: 4) | (bottom: 8)",
-          "type": "integer"
         }
       },
-      "required": ["tableId", "columnIds", "x", "y", "direction"]
+      "required": ["tableId", "columnIds"],
+      "additionalProperties": false
     }
   }
 }

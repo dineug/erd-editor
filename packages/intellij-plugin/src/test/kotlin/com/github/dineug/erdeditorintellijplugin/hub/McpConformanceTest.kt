@@ -107,7 +107,7 @@ class McpConformanceTest {
         val served = checkNotNull(lock(env))
         assertEquals("intellij", served.ide)
         assertEquals(listOf(project.toString(), untrusted.toString()), served.workspaceFolders)
-        assertEquals(1L, served.protocolVersion)
+        assertEquals(HUB_PROTOCOL_VERSION.toLong(), served.protocolVersion)
         assertTrue(served.token, TOKEN.matches(served.token))
         assertEquals(LockPaths.choosePipePath(env.homeDir, env.tmpDir, pid, platform), served.pipe)
         if (!platform.isWindows) assertTrue("the socket is bound", Files.exists(Path.of(served.pipe)))
@@ -271,7 +271,7 @@ class McpConformanceTest {
         val lock = checkNotNull(lock(env))
         val peer = TestPeer.connect(lock.pipe).also(peers::add)
         peer.send(
-            """{"id":1,"method":"hello","params":{"token":"${lock.token}","protocolVersion":1,"client":"raw"}}""",
+            """{"id":1,"method":"hello","params":{"token":"${lock.token}","protocolVersion":$HUB_PROTOCOL_VERSION,"client":"raw"}}""",
             """{"id":2,"method":"join","params":{"path":${HubJson.quote(path)}}}""",
         )
         val (hello, join) = peer.receiveFrames(2)
@@ -385,7 +385,8 @@ class McpConformanceTest {
             runtime.threads.schedule(SAVE_AFTER_MS) {
                 val text = page.text
                 lastSaved = text
-                runtime.registry.onValueSaved(file, this, text)
+                // A page hands its runtime value with every save; this one holds nothing the file drops.
+                runtime.registry.onValueSaved(file, this, text, text)
             }
         }
     }

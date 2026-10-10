@@ -1,6 +1,6 @@
 import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 
-import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
+import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { TableGroup } from '@/v3/schema/tableGroup.entity';
 
@@ -15,7 +15,6 @@ export const createTableGroup = (): TableGroup => ({
     height: 300,
     zIndex: 1,
   },
-  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeTableGroupEntities(
@@ -39,8 +38,6 @@ export function createAndMergeTableGroupEntities(
     uiAssignNumber('width');
     uiAssignNumber('height');
     uiAssignNumber('zIndex');
-
-    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

@@ -1,5 +1,13 @@
 import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import {
+  createPeerStore,
+  type PeerStore,
+  tableActions,
+  tableActions$,
+  tableColumnActions,
+  tableColumnActions$,
+} from '@dineug/erd-editor/peer.js';
+import {
   afterEach,
   beforeEach,
   describe,
@@ -9,7 +17,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
-import type { AppDatabase } from '@/services/indexeddb/appDatabaseService';
+import { createFakeDatabase } from '@/__test-utils__/schemaDatabase';
 import type { SchemaEntity } from '@/services/indexeddb/modules/schema';
 import { SchemaService } from '@/services/indexeddb/modules/schema/service';
 import { updateSchemaEntityAction } from '@/utils/broadcastChannel';
@@ -18,37 +26,6 @@ import { toWidth } from '@/utils/text';
 const DAY = 24 * 60 * 60 * 1000;
 const CREATED = Date.UTC(2026, 8, 1, 9);
 const OPENED = Date.UTC(2026, 8, 19, 9);
-
-/** The slice of a Dexie table the schema module touches, kept in memory. */
-function createFakeDatabase() {
-  const rows = new Map<string, SchemaEntity>();
-  const table = {
-    add: async (entity: SchemaEntity) => {
-      rows.set(entity.id, structuredClone(entity));
-      return entity.id;
-    },
-    bulkAdd: async (entities: SchemaEntity[]) => {
-      entities.forEach(entity => rows.set(entity.id, structuredClone(entity)));
-    },
-    update: async (id: string, changes: Partial<SchemaEntity>) => {
-      const row = rows.get(id);
-      if (!row) return 0;
-      Object.assign(row, structuredClone(changes));
-      return 1;
-    },
-    delete: async (id: string) => {
-      rows.delete(id);
-    },
-    get: async (id: string) => structuredClone(rows.get(id)),
-    toArray: async () => Array.from(rows.values(), row => structuredClone(row)),
-  };
-
-  return {
-    rows,
-    table,
-    db: { table: () => table } as unknown as AppDatabase,
-  };
-}
 
 /**
  * A stored schema whose locks are all off, so it saves the scroll and the zoom
@@ -135,13 +112,27 @@ const ordersBuyer = [
   },
 ];
 
-/** A document as the engine leaves it once its hooks have run, derived fields included. */
+/** A document in the file form a replica stores once its hooks have run. */
 async function settledValueOf(actions: any[]) {
   const store = createReplicationStore({ toWidth });
   store.setInitialValue(SAVED_WITH_THE_VIEW);
   store.dispatchSync(actions);
   await settle();
   const value = store.value;
+  store.destroy();
+  return value;
+}
+
+/**
+ * The same document as a release before the file form stored it: the replica's
+ * runtime value, its derived fields and removed entities included.
+ */
+async function olderValueOf(actions: any[]) {
+  const store = createReplicationStore({ toWidth });
+  store.setInitialValue(SAVED_WITH_THE_VIEW);
+  store.dispatchSync(actions);
+  await settle();
+  const value = store.runtimeValue;
   store.destroy();
   return value;
 }
@@ -200,8 +191,8 @@ function withForeignFields(
 }
 
 /**
- * The document as an import converts a source: laid out, but read before the
- * engine's hooks place its connectors and set the flags read off its columns,
+ * A source as a release before the file form converted it: laid out, but read
+ * before the hooks placed its connectors and set the flags read off its columns,
  * so every relationship still holds what the parser created it with.
  */
 function asConverted(value: string) {
@@ -314,7 +305,7 @@ describe('SchemaService', () => {
       expect(JSON.parse(rows.get(row.id)!.value).doc.memoIds).toEqual(['m1']);
     });
 
-    it('saves a mapping another tab changed, the foreign key mark moved to the column it now ends on, as an edit', async () => {
+    it('saves a mapping another tab changed as an edit, the foreign key mark it moves left out of the file', async () => {
       const row = seed(rows, {
         value: await settledValueOf([...usersAndOrders, ...ordersBuyer]),
       });
@@ -336,8 +327,9 @@ describe('SchemaService', () => {
       expect(collections.relationshipEntities.placed.end.columnIds).toEqual([
         'orders.buyer',
       ]);
-      expect(collections.tableColumnEntities['orders.buyer'].ui.keys).toBe(2);
-      expect(collections.tableColumnEntities['orders.user'].ui.keys).toBe(0);
+      expect(
+        collections.tableColumnEntities['orders.buyer']
+      ).not.toHaveProperty('ui');
       expect(saved.updateAt).toBeGreaterThanOrEqual(OPENED);
       expect(postMessage).toHaveBeenCalledTimes(1);
       expect(postMessage).toHaveBeenCalledWith(
@@ -385,7 +377,6 @@ describe('SchemaService', () => {
       await settle();
 
       expect(JSON.parse(rows.get(row.id)!.value).settings).toMatchObject({
-        ignoreSaveSettings: 3,
         originX: 0,
         originY: 0,
         zoomLevel: 1,
@@ -415,16 +406,14 @@ describe('SchemaService', () => {
       );
     });
 
-    it('does not count the tombstones the engine collects on load as an edit', async () => {
-      vi.setSystemTime(OPENED - 10 * DAY);
-      const value = valueOf([
+    it('stores an older value, a tombstone in it, in the file form without it, counting its load as no edit', async () => {
+      const value = await olderValueOf([
         {
           type: 'memo.add',
           payload: { id: 'm1', ui: { x: 1, y: 2, zIndex: 3 } },
         },
         { type: 'memo.remove', payload: { id: 'm1' } },
       ]);
-      vi.setSystemTime(OPENED);
       expect(JSON.parse(value).collections.memoEntities).toHaveProperty('m1');
       const row = seed(rows, { value });
 
@@ -432,17 +421,22 @@ describe('SchemaService', () => {
       await settle();
 
       const saved = rows.get(row.id)!;
-      expect(JSON.parse(saved.value).collections.memoEntities).toEqual({});
+      expect(saved.value).not.toBe(value);
+      expect(
+        JSON.parse(saved.value).collections.memoEntities
+      ).not.toHaveProperty('m1');
       expect(saved.updateAt).toBe(CREATED);
       expect(postMessage).not.toHaveBeenCalled();
     });
 
-    describe('on a document whose derived fields were saved elsewhere', () => {
+    describe('on a document an older release saved with the derived fields of another machine', () => {
       let settled: string;
+      let file: string;
       let row: SchemaEntity;
 
       beforeEach(async () => {
-        settled = await settledValueOf(usersAndOrders);
+        settled = await olderValueOf(usersAndOrders);
+        file = await settledValueOf(usersAndOrders);
         row = seed(rows, {
           value: withForeignFields(
             settled,
@@ -469,7 +463,7 @@ describe('SchemaService', () => {
           await settle();
           const [replica] = await service.getAllWithValue();
           expect(JSON.parse(replica.value).collections).toEqual(
-            JSON.parse(settled).collections
+            JSON.parse(file).collections
           );
 
           await service.replication(row.id, zoomAndScroll);
@@ -567,6 +561,123 @@ describe('SchemaService', () => {
 
       expect(rows.has(row.id)).toBe(false);
       expect(postMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a second tab', () => {
+    const tabs: PeerStore[] = [];
+
+    /** An editor on the schema, sending its batches to the replica and the other tabs, as the bridge does. */
+    async function openTab(id: string) {
+      const tab = createPeerStore({
+        nickname: `tab-${tabs.length + 1}`,
+        presence: false,
+      });
+      tab.setInitialValue((await service.get(id))!.value);
+      tab.subscribe(actions => {
+        void service.replication(id, actions);
+        tabs
+          .filter(other => other !== tab)
+          .forEach(other => other.receive(actions));
+      });
+      tabs.push(tab);
+      return tab;
+    }
+
+    const edit = (
+      tab: PeerStore,
+      actions: Parameters<PeerStore['dispatch']>[0]
+    ) => {
+      const { createdIds } = tab.dispatch(actions);
+      tab.flushStreamBuffers();
+      return createdIds;
+    };
+
+    /** A users table with an id column, saved, which the tab then removes, saved too. */
+    async function removeUsers(tab: PeerStore) {
+      const [tableId] = edit(tab, [tableActions$.addTableAction$()]);
+      edit(tab, [
+        tableActions.changeTableNameAction({ id: tableId, value: 'users' }),
+      ]);
+      const [columnId] = edit(tab, [
+        tableColumnActions$.addColumnAction$(tableId),
+      ]);
+      edit(tab, [
+        tableColumnActions.changeColumnNameAction({
+          id: columnId,
+          tableId,
+          value: 'id',
+        }),
+      ]);
+      await settle();
+      expect(writes).toHaveBeenCalledTimes(1);
+
+      edit(tab, [tableActions$.removeTableAction$(tableId)]);
+      await settle();
+      expect(writes).toHaveBeenCalledTimes(2);
+      return { tableId, columnId };
+    }
+
+    afterEach(() => {
+      tabs.splice(0).forEach(tab => tab.destroy());
+    });
+
+    it('opens from the replica’s runtime value, so an undo of a removal it saved restores the table whole there', async () => {
+      const row = seed(rows);
+      const first = await openTab(row.id);
+      const { tableId, columnId } = await removeUsers(first);
+      expect(
+        JSON.parse(rows.get(row.id)!.value).collections.tableEntities
+      ).not.toHaveProperty(tableId);
+
+      const second = await openTab(row.id);
+      first.undo();
+      await settle();
+
+      const restored = JSON.parse(second.value);
+      expect(restored.doc.tableIds).toEqual([tableId]);
+      expect(restored.collections.tableEntities[tableId]).toMatchObject({
+        name: 'users',
+        columnIds: [columnId],
+      });
+      expect(restored.collections.tableColumnEntities[columnId]).toMatchObject({
+        name: 'id',
+      });
+      expect(JSON.parse(rows.get(row.id)!.value)).toEqual(restored);
+    });
+
+    it('opens from the stored value while no replica is open', async () => {
+      const row = seed(rows, { value: valueOf([renameDatabase('stored')]) });
+
+      await expect(service.get(row.id)).resolves.toEqual(row);
+    });
+
+    it('stores, exports and duplicates the file form, never the runtime value a tab opens from', async () => {
+      const row = seed(rows);
+      const first = await openTab(row.id);
+      const { tableId } = await removeUsers(first);
+      const runtimeValue = (await service.get(row.id))!.value;
+      expect(JSON.parse(runtimeValue).collections.tableEntities).toHaveProperty(
+        tableId
+      );
+
+      const [exported] = await service.getAllWithValue();
+      const copy = await service.duplicate(row.id, { name: 'Orders copy' });
+      await settle();
+
+      // The first write held the table, before its removal.
+      const written = [
+        ...writes.mock.calls.map(([, changes]) => changes.value),
+        exported.value,
+        ...Array.from(rows.values(), entity => entity.value),
+      ];
+      for (const value of written.slice(1)) {
+        expect(value).not.toBe(runtimeValue);
+        expect(JSON.parse(value).collections.tableEntities).not.toHaveProperty(
+          tableId
+        );
+      }
+      expect(rows.get(copy!.id)!.value).toBe(first.value);
     });
   });
 

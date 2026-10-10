@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 /** Bumped on any wire change; hello carries it and the hub refuses a mismatch. */
-export const HUB_PROTOCOL_VERSION = 1;
+export const HUB_PROTOCOL_VERSION = 2;
 
 export const HubErrorCode = {
   protocolMismatch: 'protocolMismatch',
@@ -39,8 +39,9 @@ export const DocumentInfo = Schema.Struct({
 export type DocumentInfo = typeof DocumentInfo.Type;
 
 /**
- * What a peer seeds itself from on join. snapshotVersion is the highest action
- * version the hub had seen when it captured initialValue.
+ * What a peer seeds itself from on join: initialValue is the runtime value the
+ * editor holds, else the file. snapshotVersion is the highest action version
+ * the hub had seen when it captured initialValue.
  */
 export const JoinResult = Schema.Struct({
   initialValue: Schema.String,

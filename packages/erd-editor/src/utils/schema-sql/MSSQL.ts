@@ -24,6 +24,7 @@ import {
   primaryKey,
   primaryKeyColumns,
   referentialActionSupport,
+  selectIndexColumns,
   splitNameParts,
   tableNamePart,
   toForeignKeyPairs,
@@ -299,23 +300,13 @@ export function formatIndex(
     .selectById(index.tableId);
   if (!table) return;
 
-  const columnNames = query(collections)
-    .collection('indexColumnEntities')
-    .selectByIds(index.indexColumnIds)
-    .map(indexColumn => {
-      const column = query(collections)
-        .collection('tableColumnEntities')
-        .selectById(indexColumn.columnId);
-      if (column) {
-        return {
-          name: `${bracket}${column.name}${bracket} ${toOrderName(
-            indexColumn.orderType
-          )}`,
-        };
-      }
-      return null;
+  const columnNames = selectIndexColumns(collections, table, index).map(
+    ({ indexColumn, column }) => ({
+      name: `${bracket}${column.name}${bracket} ${toOrderName(
+        indexColumn.orderType
+      )}`,
     })
-    .filter(columnName => columnName !== null) as { name: string }[];
+  );
 
   if (columnNames.length !== 0) {
     let indexName = index.name;

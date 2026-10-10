@@ -1,10 +1,8 @@
-import { EntityType } from '@/internal-types';
-
-export type Memo = EntityType<{
+export type Memo = {
   id: string;
   value: string;
   ui: MemoUI;
-}>;
+};
 
 export type MemoUI = {
   x: number;

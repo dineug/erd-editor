@@ -285,17 +285,17 @@ function assertRequiredTaskContracts(tasks: LibraryTasks) {
 test('library worker urls become the one spelling every bundler resolves', () => {
   const emitted = `let e = new SharedWorker(new URL(
 			/* @vite-ignore */
-			"/workers/schemaGC.shared-worker.js",
+			"/workers/exportPng.shared-worker.js",
 			"" + import.meta.url
 		), { type: "module", name: n });`;
 
   assert.equal(
     rewriteWorkerUrls(emitted, 'index.js'),
-    `let e = new SharedWorker(new URL("./workers/schemaGC.shared-worker.js", import.meta.url), { type: "module", name: n });`
+    `let e = new SharedWorker(new URL("./workers/exportPng.shared-worker.js", import.meta.url), { type: "module", name: n });`
   );
   assert.equal(
-    relativeWorkerUrl('engine/index.js', '/workers/schemaGC.shared-worker.js'),
-    '../workers/schemaGC.shared-worker.js'
+    relativeWorkerUrl('engine/index.js', '/workers/exportPng.shared-worker.js'),
+    '../workers/exportPng.shared-worker.js'
   );
   assert.equal(
     relativeWorkerUrl('assets/iframe-abc.js', '/assets/worker-def.js'),
@@ -377,7 +377,7 @@ test('an IDE webview reads dependency url workers through the runtime module', (
       runtime
     )
   );
-  const code = `let e = new SharedWorker(new URL("./workers/schemaGC.shared-worker.js", import.meta.url), { type: "module", name: n });
+  const code = `let e = new SharedWorker(new URL("./workers/exportPng.shared-worker.js", import.meta.url), { type: "module", name: n });
 let w = new Worker(new URL("./workers/other.js", import.meta.url), { type: "module" });`;
 
   const rewritten = rewriteUrlWorkersToBlob(code, id, runtime);
@@ -388,7 +388,7 @@ let w = new Worker(new URL("./workers/other.js", import.meta.url), { type: "modu
   );
   assert.match(
     rewritten,
-    /^import __workerUrl0 from "\/repo\/packages\/erd-editor\/dist\/workers\/schemaGC\.shared-worker\.js\?sharedworker&url";$/m
+    /^import __workerUrl0 from "\/repo\/packages\/erd-editor\/dist\/workers\/exportPng\.shared-worker\.js\?sharedworker&url";$/m
   );
   assert.match(
     rewritten,

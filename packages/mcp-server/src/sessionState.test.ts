@@ -9,12 +9,7 @@ import {
 
 import { emptyDocument } from '@/__test-utils__/documents';
 import { createFakeHub, type FakeHub } from '@/__test-utils__/fakeHub';
-import {
-  comparable,
-  connectMcp,
-  type McpHarness,
-  settle,
-} from '@/__test-utils__/mcp';
+import { connectMcp, type McpHarness, settle } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { CLOSED_NOTE, makeLiveSession, RESEED_NOTE } from '@/session/live';
 import { fellBackNote } from '@/session/manager';
@@ -79,8 +74,9 @@ describe('LiveSession transitions (AC-P13)', () => {
     expect(run.batches).toBe(1);
     expect(session.state).toBe('ready');
     expect(hub.webview(DOCUMENT).state.doc.memoIds).toEqual(run.createdIds);
-    // Past the join only batches go: the memo, and the focus the reseed moved, alone, once
-    // the 100 ms presence throttle the first write's focus began runs out, here or later.
+    // Past the join only batches go: the reseed's ask for the editor's registers, the memo,
+    // and the focus the reseed moved, alone, once the 100 ms presence throttle the first
+    // write's focus began runs out, here or later.
     expect(hub.methods().slice(left)).toEqual([
       'leave',
       'openDocument',
@@ -91,7 +87,7 @@ describe('LiveSession transitions (AC-P13)', () => {
       batches
         .map(batch => batch.map(({ type }) => type))
         .filter(types => types.join() !== 'editor.sharedFocusTracker')
-    ).toEqual([['memo.add']]);
+    ).toEqual([['editor.getLWW'], ['memo.add']]);
     const presence = batches.filter(
       batch =>
         batch.length === 1 && batch[0].type === 'editor.sharedFocusTracker'
@@ -488,9 +484,9 @@ describe('two agents on one document (AC-P13, AC-P17)', () => {
     });
     await settle();
 
-    const webview = () => comparable(hub.webview(DOCUMENT).value);
+    const webview = () => JSON.parse(hub.webview(DOCUMENT).value);
     const read = async (mcp: McpHarness) =>
-      comparable(
+      JSON.parse(
         await mcp.text('erd_read', { path: DOCUMENT, format: 'json' })
       );
     expect(await read(a)).toEqual(webview());

@@ -37,12 +37,13 @@ export function findColumnDropTarget(
   const cullingRect = getCullingRect(state, source);
 
   // Painted order, reversed: the row a pointer lands on belongs to whichever
-  // table is drawn over the others there.
+  // table is drawn over the others there, of equal ones the later in the list.
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(getVisibleIds(state, source).tableIds)
     .filter(table => isTableVisible(cullingRect, state, table, source))
-    .sort((a, b) => b.ui.zIndex - a.ui.zIndex);
+    .sort((a, b) => a.ui.zIndex - b.ui.zIndex)
+    .reverse();
   const cards = tables.map(table => ({
     table,
     rect: getTableRect(state, table, source),

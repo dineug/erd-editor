@@ -117,35 +117,11 @@ describe('schemaSQLParserToSchemaJson', () => {
     expect(json).toContain('\n  "version": "3.0.0"');
   });
 
-  describe('canvas size', () => {
-    const createTables = (count: number) =>
-      Array.from(
-        { length: count },
-        (_, i) => `CREATE TABLE t${i} (a INT);`
-      ).join('\n');
+  it('writes no canvas size, the sort reading its width off the tables', () => {
+    const { settings } = parse('CREATE TABLE t (a INT);');
 
-    it('clamps small schemas up to the canvas minimum', () => {
-      const schema = parse(createTables(2));
-
-      expect(schema.settings.width).toBe(2000);
-      expect(schema.settings.height).toBe(2000);
-    });
-
-    it('scales with the table count between the bounds', () => {
-      const schema = parse(createTables(25));
-
-      expect(schema.doc.tableIds).toHaveLength(25);
-      expect(schema.settings.width).toBe(2500);
-      expect(schema.settings.height).toBe(2500);
-    });
-
-    it('clamps large schemas down to the canvas maximum', () => {
-      const schema = parse(createTables(205));
-
-      expect(schema.doc.tableIds).toHaveLength(205);
-      expect(schema.settings.width).toBe(20000);
-      expect(schema.settings.height).toBe(20000);
-    });
+    expect(settings).not.toHaveProperty('width');
+    expect(settings).not.toHaveProperty('height');
   });
 
   describe('table conversion', () => {
@@ -2310,12 +2286,10 @@ CREATE TABLE \`refs\` (
     it('is applied before serialization', () => {
       const schema = parse('CREATE TABLE t (a INT);', schema => {
         schema.settings.databaseName = 'prepared';
-        schema.settings.width = 4000;
         return schema;
       });
 
       expect(schema.settings.databaseName).toBe('prepared');
-      expect(schema.settings.width).toBe(4000);
       expect(schema.doc.tableIds).toHaveLength(1);
     });
 
@@ -2363,7 +2337,6 @@ CREATE TABLE \`refs\` (
       expect(schema.doc.relationshipIds).toHaveLength(1);
       expect(schema.doc.indexIds).toHaveLength(1);
       expect(schema.doc.memoIds).toEqual([]);
-      expect(schema.settings.width).toBe(2000);
 
       const users = tableByName(schema, 'users');
       expect(

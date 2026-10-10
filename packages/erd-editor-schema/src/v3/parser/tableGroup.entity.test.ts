@@ -15,8 +15,7 @@ describe('createTableGroup', () => {
     expect(group.name).toBe('');
     expect(group.color).toBe('');
     expect(group.ui).toEqual(defaultUI);
-    expect(group.meta.createAt).toBe(group.meta.updateAt);
-    expect(typeof group.meta.createAt).toBe('number');
+    expect(group).not.toHaveProperty('meta');
   });
 
   it('hands out a new ui each time', () => {
@@ -66,7 +65,6 @@ describe('createAndMergeTableGroupEntities', () => {
         name: 'billing',
         color: '#0090ff',
         ui: { x: -10, y: 20, width: 640, height: 360, zIndex: 4 },
-        meta: { updateAt: 10, createAt: 20 },
       },
     });
 
@@ -75,7 +73,6 @@ describe('createAndMergeTableGroupEntities', () => {
       name: 'billing',
       color: '#0090ff',
       ui: { x: -10, y: 20, width: 640, height: 360, zIndex: 4 },
-      meta: { updateAt: 10, createAt: 20 },
     });
   });
 
@@ -92,7 +89,6 @@ describe('createAndMergeTableGroupEntities', () => {
           height: {} as any,
           zIndex: true as any,
         },
-        meta: { updateAt: 'x' as any },
       },
     });
 
@@ -100,7 +96,6 @@ describe('createAndMergeTableGroupEntities', () => {
     expect(group.name).toBe('');
     expect(group.color).toBe('');
     expect(group.ui).toEqual({ ...defaultUI, y: 5 });
-    expect(group.meta.updateAt).toBe(group.meta.createAt);
   });
 
   it.each([
@@ -123,7 +118,6 @@ describe('createAndMergeTableGroupEntities', () => {
     expect(Object.keys(entities.g1).sort()).toEqual([
       'color',
       'id',
-      'meta',
       'name',
       'ui',
     ]);

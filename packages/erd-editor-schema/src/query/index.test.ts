@@ -20,7 +20,6 @@ function createTable(id: string, name = id): Table {
       widthComment: 60,
       color: '',
     },
-    meta: { updateAt: 1, createAt: 1 },
   };
 }
 
@@ -191,8 +190,7 @@ describe('CollectionQuery mutation', () => {
 });
 
 describe('CollectionQuery update', () => {
-  it('updateOne applies the recipe and refreshes updateAt', () => {
-    vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
+  it('updateOne applies the recipe and writes nothing else', () => {
     const collections = createCollections(createTable('t1', 'old'));
     const target = query(collections).collection('tableEntities');
 
@@ -200,9 +198,10 @@ describe('CollectionQuery update', () => {
       table.name = 'new';
     });
 
-    expect(collections.tableEntities.t1.name).toBe('new');
-    expect(collections.tableEntities.t1.meta.updateAt).toBe(1700000000000);
-    expect(collections.tableEntities.t1.meta.createAt).toBe(1);
+    expect(collections.tableEntities.t1).toEqual({
+      ...createTable('t1'),
+      name: 'new',
+    });
   });
 
   it('updateOne is a no-op for an unknown id', () => {

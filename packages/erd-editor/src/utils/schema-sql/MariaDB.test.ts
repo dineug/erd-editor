@@ -485,7 +485,8 @@ describe('schema-sql/MariaDB dotted table names', () => {
     const { state, users, posts } = createFixture();
     users.name = 'sales.users';
     posts.name = 'sales.posts';
-    // The hr table borrows the sales key column, which the DDL reads by id alone.
+    // The hr table borrows the sales key column and both indexes one index
+    // column, which the DDL reads by id alone.
     const hrUsers = createTable({
       id: 'tbl-hr-users',
       name: 'hr.Users',
@@ -496,18 +497,24 @@ describe('schema-sql/MariaDB dotted table names', () => {
       start: { tableId: hrUsers.id, columnIds: ['col-id'] },
       end: { tableId: 'tbl-posts', columnIds: ['col-user-id'] },
     });
+    const indexColumn = createIndexColumn({
+      id: 'idx-col-id',
+      indexId: 'idx-users',
+      columnId: 'col-id',
+    });
     const usersIndex = createIndex({
       id: 'idx-users',
       tableId: 'tbl-users',
-      indexColumnIds: ['idx-col-1'],
+      indexColumnIds: [indexColumn.id],
     });
     const hrIndex = createIndex({
       id: 'idx-hr',
       tableId: hrUsers.id,
-      indexColumnIds: ['idx-col-1'],
+      indexColumnIds: [indexColumn.id],
     });
     state.collections.tableEntities[hrUsers.id] = hrUsers;
     state.collections.relationshipEntities[hrRelationship.id] = hrRelationship;
+    state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
     state.collections.indexEntities[usersIndex.id] = usersIndex;
     state.collections.indexEntities[hrIndex.id] = hrIndex;
     state.doc.tableIds.push(hrUsers.id);

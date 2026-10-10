@@ -66,7 +66,7 @@ describe('default text width (AC-P8)', () => {
     const users = reader.state.collections.tableEntities[SEED.users];
     expect(
       JSON.parse(written).collections.tableEntities[SEED.users].ui
-    ).toMatchObject({ widthName: defaultToWidth(LONG_NAME) });
+    ).not.toHaveProperty('widthName');
     expect(users.ui.widthName).toBe(wide(LONG_NAME));
   });
 });

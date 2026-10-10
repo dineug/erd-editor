@@ -63,7 +63,6 @@ import {
   sharedMouseTrackerAction,
   sharedSelectionTrackerAction,
   unselectAllAction,
-  validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
   FocusType,
@@ -86,10 +85,7 @@ import { Tag } from '@/engine/tag';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
-import { createIndex } from '@/utils/collection/index.entity';
-import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createMemo } from '@/utils/collection/memo.entity';
-import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { type Rect } from '@/utils/dragSelect';
@@ -265,7 +261,6 @@ const tableJson = (id: string, x: number, y: number) => ({
   columnIds: [],
   seqColumnIds: [],
   ui: { x, y, zIndex: 2, widthName: 60, widthComment: 60, color: '' },
-  meta: { updateAt: 1, createAt: 1 },
 });
 
 /** A document naming its zoom, its origin and the tables it holds. */
@@ -288,8 +283,7 @@ const documentAt = (
 
 /**
  * A document saved before the origin pair existed: it names the legacy scroll
- * pair, which the parser migrates once into an origin and otherwise carries as
- * it found it.
+ * pair, which the parser migrates once into an origin and then drops.
  */
 const legacyDocumentAt = (
   zoomLevel: number,
@@ -481,8 +475,7 @@ describe('editor.loadJson / initialLoadJson', () => {
     expect(origin.originX).toBeLessThan(left.max);
     expect(origin.originY).toBeLessThan(top.max);
     expect(store.state.settings).toMatchObject(origin);
-    expect(store.state.settings.scrollLeft).toBe(0);
-    expect(store.state.settings.scrollTop).toBe(0);
+    expect(store.state.settings).not.toHaveProperty('scrollLeft');
   });
 
   it('migrates a legacy document, then pulls an origin outside the travel in', () => {
@@ -504,16 +497,13 @@ describe('editor.loadJson / initialLoadJson', () => {
     const near = toScreenPoint(store.state.settings, { x: rect.x, y: rect.y });
     expect(near.x).toBeCloseTo(0, 4);
     expect(near.y).toBeCloseTo(0, 4);
-    expect(store.state.settings.scrollLeft).toBe(-5_000);
-    expect(store.state.settings.scrollTop).toBe(-6_000);
   });
 
   /**
-   * The freeze in one round trip: the view moves, the document is written, and
-   * the legacy pair reads back exactly as the file arrived with it, beside an
-   * origin that has moved on from the one it migrated to.
+   * One round trip: the view moves, the document is written, and the origin
+   * read back is where the view went, the legacy pair written nowhere.
    */
-  it('writes the legacy pair back unchanged after the view has moved', () => {
+  it('writes the moved origin and none of the legacy pair', () => {
     store.dispatchSync(changeViewportAction(VIEWPORT));
     store.dispatchSync(
       loadJsonAction({
@@ -530,8 +520,9 @@ describe('editor.loadJson / initialLoadJson', () => {
     expect(settings.originY).toBe(100 + 20);
     expect(settings.originX).not.toBe(loaded.originX);
     expect(settings.originY).not.toBe(loaded.originY);
-    expect(settings.scrollLeft).toBe(-300);
-    expect(settings.scrollTop).toBe(-400);
+    expect(JSON.parse(toJson(store.state)).settings).not.toHaveProperty(
+      'scrollLeft'
+    );
   });
 
   /**
@@ -1972,83 +1963,6 @@ describe('editor.dragSelectRect', () => {
   });
 });
 
-describe('editor.validationIds', () => {
-  it('drops doc ids that have no matching entity', () => {
-    addTable(store, 't1');
-    store.state.doc.tableIds.push('ghost-table');
-
-    const relationship = createRelationship({ id: 'r1' });
-    store.state.collections.relationshipEntities.r1 = relationship;
-    store.state.doc.relationshipIds.push('r1', 'ghost-relationship');
-
-    const index = createIndex({ id: 'i1', tableId: 't1' });
-    store.state.collections.indexEntities.i1 = index;
-    store.state.doc.indexIds.push('i1', 'ghost-index');
-
-    addMemo(store, 'm1');
-    store.state.doc.memoIds.push('ghost-memo');
-
-    store.dispatchSync(validationIdsAction());
-
-    expect(store.state.doc.tableIds).toEqual(['t1']);
-    expect(store.state.doc.relationshipIds).toEqual(['r1']);
-    expect(store.state.doc.indexIds).toEqual(['i1']);
-    expect(store.state.doc.memoIds).toEqual(['m1']);
-  });
-
-  it('drops dangling column ids from tables', () => {
-    const table = addTable(store, 't1', ['c1', 'ghost-column']);
-    table.seqColumnIds.push('c1', 'ghost-column');
-    addColumn(store, 't1', 'c1');
-
-    store.dispatchSync(validationIdsAction());
-
-    expect(store.state.collections.tableEntities.t1.columnIds).toEqual(['c1']);
-    expect(store.state.collections.tableEntities.t1.seqColumnIds).toEqual([
-      'c1',
-    ]);
-  });
-
-  it('drops dangling index column ids from indexes', () => {
-    addTable(store, 't1');
-    const index = createIndex({
-      id: 'i1',
-      tableId: 't1',
-      indexColumnIds: ['ic1', 'ghost-index-column'],
-      seqIndexColumnIds: ['ic1', 'ghost-index-column'],
-    });
-    store.state.collections.indexEntities.i1 = index;
-    store.state.doc.indexIds.push('i1');
-    store.state.collections.indexColumnEntities.ic1 = createIndexColumn({
-      id: 'ic1',
-      indexId: 'i1',
-    });
-
-    store.dispatchSync(validationIdsAction());
-
-    expect(store.state.collections.indexEntities.i1.indexColumnIds).toEqual([
-      'ic1',
-    ]);
-    expect(store.state.collections.indexEntities.i1.seqIndexColumnIds).toEqual([
-      'ic1',
-    ]);
-  });
-
-  it('leaves a consistent document untouched', () => {
-    seedTableWithColumns(store);
-    const before = JSON.parse(JSON.stringify(store.state.doc));
-
-    store.dispatchSync(validationIdsAction());
-
-    expect(JSON.parse(JSON.stringify(store.state.doc))).toEqual(before);
-    expect(store.state.collections.tableEntities.t1.columnIds).toEqual([
-      'c1',
-      'c2',
-      'c3',
-    ]);
-  });
-});
-
 describe('editor.getLWW', () => {
   it('is a no-op reducer', () => {
     seedTableWithColumns(store);
@@ -2072,6 +1986,26 @@ describe('editor.getLWW', () => {
         })
       )
     ).toEqual(before);
+  });
+});
+
+describe('the registers a load leaves', () => {
+  const remote: LWW = { t1: ['tableEntities', 9, -1, { name: 9 }] };
+
+  it('drops them on initialLoadJson, which opens a document afresh', () => {
+    store.dispatchSync(mergeLWWAction({ lww: remote }));
+
+    store.dispatchSync(initialLoadJsonAction({ value: '{}' }));
+
+    expect(store.state.lww).toEqual({});
+  });
+
+  it('keeps them on loadJson, which replaces the document in the session', () => {
+    store.dispatchSync(mergeLWWAction({ lww: remote }));
+
+    store.dispatchSync(loadJsonAction({ value: '{}' }));
+
+    expect(store.state.lww.t1).toEqual(remote.t1);
   });
 });
 

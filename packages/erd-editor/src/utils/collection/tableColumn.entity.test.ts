@@ -1,19 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
 describe('createColumn', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('creates a column filled with defaults when no value is given', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-01-02T03:04:05.000Z'));
-    const now = Date.now();
-
     const column = createColumn();
 
     expect(column.tableId).toBe('');
@@ -29,7 +21,7 @@ describe('createColumn', () => {
       widthDataType: COLUMN_MIN_WIDTH,
       widthDefault: COLUMN_MIN_WIDTH,
     });
-    expect(column.meta).toEqual({ updateAt: now, createAt: now });
+    expect(column).not.toHaveProperty('meta');
     expect(typeof column.id).toBe('string');
     expect(column.id.length).toBeGreaterThan(0);
   });

@@ -208,6 +208,23 @@ describe('the row a column drag drops on (AC-G5)', () => {
     });
   });
 
+  it.each([
+    [['t1', 't2'], 't2'],
+    [['t2', 't1'], 't1'],
+  ])(
+    'takes the row of the table later in the document of two at one zIndex, drawn last (%j)',
+    (tableIds, expected) => {
+      const state = createState();
+      addTable(state, 't1', 100, 100, ['c1']);
+      addTable(state, 't2', 100, 100, ['c2']);
+      state.doc.tableIds = tableIds;
+
+      expect(
+        findColumnDropTarget(state, rowCentre(state, 't1', 0))?.tableId
+      ).toBe(expected);
+    }
+  );
+
   it('names the row under a pointer on a canvas the zoom has shrunk', () => {
     const state = createState();
     state.settings.zoomLevel = 0.5;

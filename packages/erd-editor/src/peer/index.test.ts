@@ -73,7 +73,6 @@ describe('peer barrel (AC-B2)', () => {
         'Language',
         'LockSettingType',
         'NameCase',
-        'SaveSettingType',
         'Show',
         'MEMO_MIN_WIDTH',
         'MEMO_MIN_HEIGHT',
@@ -89,7 +88,7 @@ describe('peer barrel (AC-B2)', () => {
         'getTablesGroupRect',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(53);
+    expect(Object.keys(peer)).toHaveLength(52);
   });
 
   it('re-exports each name from the module that owns it', () => {
@@ -149,6 +148,10 @@ describe('peer barrel (AC-B2)', () => {
       skipped: [],
     });
     expect(JSON.parse(store.value).doc.tableIds).toEqual([]);
+    expect(JSON.parse(store.value).collections.tableEntities).toEqual({});
+    expect(
+      Object.keys(JSON.parse(store.runtimeValue).collections.tableEntities)
+    ).toEqual(report.createdIds);
 
     store.destroy();
   });

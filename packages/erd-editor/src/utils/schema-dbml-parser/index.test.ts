@@ -1,7 +1,7 @@
 import { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { CANVAS_SIZE_MAX, CANVAS_SIZE_MIN, Database } from '@/constants/schema';
+import { Database } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
 import { Column } from '@/internal-types';
 import { schemaDBMLParserToSchemaJson } from '@/utils/schema-dbml-parser';
@@ -118,28 +118,11 @@ describe('schemaDBMLParserToSchemaJson', () => {
     ]);
   });
 
-  describe('canvas size', () => {
-    it('grows with the table count', () => {
-      const source = Array.from(
-        { length: 40 },
-        (_, index) => `Table t${index} { id int }`
-      ).join('\n');
+  it('writes no canvas size, the sort reading its width off the tables', () => {
+    const { settings } = parse(SIMPLE);
 
-      expect(parse(source).settings.width).toBe(4000);
-    });
-
-    it('never falls below the minimum', () => {
-      expect(parse(SIMPLE).settings.width).toBe(CANVAS_SIZE_MIN);
-    });
-
-    it('never rises above the maximum', () => {
-      const source = Array.from(
-        { length: 300 },
-        (_, index) => `Table t${index} { id int }`
-      ).join('\n');
-
-      expect(parse(source).settings.height).toBe(CANVAS_SIZE_MAX);
-    });
+    expect(settings).not.toHaveProperty('width');
+    expect(settings).not.toHaveProperty('height');
   });
 
   describe('the prepare callback', () => {
@@ -150,15 +133,6 @@ describe('schemaDBMLParserToSchemaJson', () => {
       });
 
       expect(schema.settings.databaseName).toBe('shop');
-    });
-
-    it('keeps the canvas size the importer computed', () => {
-      const schema = parse(SIMPLE, incoming => {
-        incoming.settings.databaseName = 'shop';
-        return incoming;
-      });
-
-      expect(schema.settings.width).toBe(CANVAS_SIZE_MIN);
     });
 
     it('reaches the columns, so the dialect decides an enum column', () => {
@@ -204,7 +178,6 @@ Table orders { state status }`;
       const schema = parse(null as unknown as string);
 
       expect(schema.doc.tableIds).toEqual([]);
-      expect(schema.settings.width).toBe(CANVAS_SIZE_MIN);
     });
   });
 

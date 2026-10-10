@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
+import type { ReplicationChange, ReplicationStore } from '@/engine';
 import * as engine from '@/engine';
 import { createReplicationStore as createFromModule } from '@/engine/replication-store';
 
@@ -31,7 +32,23 @@ describe('engine barrel', () => {
 
     expect(JSON.parse(store.value).doc.memoIds).toEqual(['m1']);
 
+    store.dispatchSync({ type: 'memo.remove', payload: { id: 'm1' } });
+
+    expect(JSON.parse(store.value).collections.memoEntities).toEqual({});
+    expect(
+      JSON.parse(store.runtimeValue).collections.memoEntities
+    ).toHaveProperty('m1');
+
     store.destroy();
+  });
+
+  it('types the file form and the runtime value as read-only strings', () => {
+    expectTypeOf<ReplicationStore['value']>().toEqualTypeOf<string>();
+    expectTypeOf<ReplicationStore['runtimeValue']>().toEqualTypeOf<string>();
+    expectTypeOf<ReplicationChange>().toEqualTypeOf<{
+      value: string;
+      changed: boolean;
+    }>();
   });
 
   it('ignores non-change actions dispatched through the barrel store', () => {

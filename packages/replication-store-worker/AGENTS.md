@@ -5,14 +5,14 @@
 
 ## Purpose
 
-A headless replica of the open document in a dedicated module `Worker`, so the IDE host receives the serialized value without stringifying on the UI thread. `mountWebview` in `webview-client` spawns it, feeds it `webviewInitialValueCommand` and every editor action as `webviewReplicationCommand`, and relays the `hostSaveValueCommand` it posts after each store `change` — the value both IDE hosts write to disk, with the store's `changed` flag, false for a change that left the value as it was, which the hosts do not write. `obsidian-plugin`'s `ErdView` drives it the same way, one replica per tab, inlined into its `main.js`. `private: true`.
+A headless replica of the open document in a dedicated module `Worker`, so the IDE host receives the serialized value without stringifying on the UI thread. `mountWebview` in `webview-client` spawns it, feeds it `webviewInitialValueCommand` and every editor action as `webviewReplicationCommand`, and relays the `hostSaveValueCommand` it posts after each store `change` — the value both IDE hosts write to disk, with the store's `changed` flag, false for a change that left the value as it was, which the hosts do not write, and the store's `runtimeValue`, the document as the replica holds it, which a host hands a second view or a joining agent and never writes. `obsidian-plugin`'s `ErdView` drives it the same way, one replica per tab, inlined into its `main.js`. `private: true`.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
 | `src/index.ts` | `createReplicationStoreWorker({ name })` — `new Worker(new URL('./services/replicationStore.worker.ts', import.meta.url), { type: 'module', name })` |
-| `src/services/replicationStore.worker.ts` | Worker body: a store from `createReplicationStore`, the two inbound commands, `hostSaveValueCommand` with the `change`'s `value` and `changed` |
+| `src/services/replicationStore.worker.ts` | Worker body: a store from `createReplicationStore`, the two inbound commands, `hostSaveValueCommand` with the `change`'s `value` and `changed` and the store's `runtimeValue`, read as it relays |
 | `src/utils/text.ts` | `toWidth`, the text measurement handed to the store |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, workers: true })` → `dist/index.js` plus `dist/workers/replicationStore.worker.js`, referenced by the relative url `tools/vite/worker-url.ts` writes |
 
@@ -22,7 +22,7 @@ A headless replica of the open document in a dedicated module `Worker`, so the I
 
 - **Import `@dineug/erd-editor/engine.js` (DOM-free), never the package root**, which registers custom elements and throws in a worker. `tsconfig.json` sets `lib: ["ES2022", "WebWorker"]`, so `document` does not typecheck.
 - **Keep the one constructor spelling** `new Worker(new URL(…, import.meta.url), …)` in `src/index.ts`: Vite bundles a worker only from that literal shape, `tools/vite/worker-url.ts` rewrites Vite's output back into it, and `vscode-webview`'s same-origin rewrite matches it in `dist/`. The worker file imports `engine.js` and the bridge bare (both `dependencies`), and each webview's bundler builds it as its own entry — see those packages for how each host loads it.
-- **`toWidth` has twins that must measure alike**: `packages/app/src/utils/text.ts` is this package's `src/utils/text.ts` byte for byte (the measure of `app`'s IndexedDB replicas and of a new Drive file's content), and the page's `createText` in `packages/erd-editor/src/utils/text.ts` uses the same `400 12px` over the same font stack and `TEXT_PADDING` 2; a change to one goes into all three, and a change to the no-canvas fallback, `text.length * 10`, also into `erd-editor`'s `src/engine/to-width.ts` (`defaultToWidth`, the peer's). This replica recomputes `ui.width*` with `toWidth` when it replays an edit, and its value is what the host saves. Without `OffscreenCanvas` it falls back to that estimate, where the page measures a hidden span instead.
+- **`toWidth` has twins that must measure alike**: `packages/app/src/utils/text.ts` is this package's `src/utils/text.ts` byte for byte (the measure of `app`'s IndexedDB replicas and of a new Drive file's content), and the page's `createText` in `packages/erd-editor/src/utils/text.ts` uses the same `400 12px` over the same font stack and `TEXT_PADDING` 2; a change to one goes into all three, and a change to the no-canvas fallback, `text.length * 10`, also into `erd-editor`'s `src/engine/to-width.ts` (`defaultToWidth`, the peer's). This replica recomputes `ui.width*` with `toWidth` when it replays an edit, and its runtime value carries them; the value a host saves keeps none. Without `OffscreenCanvas` it falls back to that estimate, where the page measures a hidden span instead.
 - The replica serializes and reports; it does not own the file or talk to other tabs — the host does both.
 
 ### Testing Requirements

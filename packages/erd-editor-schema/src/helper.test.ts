@@ -1,11 +1,10 @@
 import { isNumber, isString } from 'es-toolkit';
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   assign,
-  assignMeta,
-  getDefaultEntityMeta,
   propOr,
+  restoreSequence,
   validNumber,
   validString,
 } from '@/helper';
@@ -102,44 +101,22 @@ describe('propOr', () => {
   });
 });
 
-describe('getDefaultEntityMeta', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+describe('restoreSequence', () => {
+  it('keeps a sequence that holds every listed id, extra ids included', () => {
+    const seqIds = ['a', 'z', 'b'];
+
+    expect(restoreSequence(['b', 'a'], seqIds)).toBe(seqIds);
   });
 
-  it('uses a single Date.now call for both fields', () => {
-    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
+  it('starts a sequence missing a listed id at a copy of the list', () => {
+    const ids = ['b', 'a'];
+    const restored = restoreSequence(ids, ['a']);
 
-    expect(getDefaultEntityMeta()).toEqual({
-      updateAt: 1700000000000,
-      createAt: 1700000000000,
-    });
-    expect(nowSpy).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('assignMeta', () => {
-  it('copies numeric meta fields', () => {
-    const target = { updateAt: 1, createAt: 2 };
-
-    assignMeta(target, { updateAt: 10, createAt: 20 });
-
-    expect(target).toEqual({ updateAt: 10, createAt: 20 });
+    expect(restored).toEqual(['b', 'a']);
+    expect(restored).not.toBe(ids);
   });
 
-  it('ignores non numeric meta fields', () => {
-    const target = { updateAt: 1, createAt: 2 };
-
-    assignMeta(target, { updateAt: '10', createAt: null } as any);
-
-    expect(target).toEqual({ updateAt: 1, createAt: 2 });
-  });
-
-  it('does nothing without a source', () => {
-    const target = { updateAt: 1, createAt: 2 };
-
-    assignMeta(target);
-
-    expect(target).toEqual({ updateAt: 1, createAt: 2 });
+  it('keeps an empty sequence beside an empty list', () => {
+    expect(restoreSequence([], [])).toEqual([]);
   });
 });

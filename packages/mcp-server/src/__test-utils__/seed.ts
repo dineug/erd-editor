@@ -14,6 +14,8 @@ import {
 import type { AnyAction } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 
+import { runTool } from '@/tools/run';
+
 /** Fixed ids, so a spec names the seed's entities without reading them back. */
 export const SEED = {
   users: 'users',
@@ -222,5 +224,55 @@ export function createPeerSession({
       agent.destroy();
       other.destroy();
     },
+  };
+}
+
+/**
+ * A seeded peer once two peers' edits crossed: one removed orders and the name
+ * column of users while the other related users to orders, indexed orders and
+ * indexed users by name, so the runtime value keeps what the file form drops.
+ */
+export function createCrossedRemovalPeer() {
+  const peer = createSeededPeer();
+  const other = createSeededPeer();
+  const fromPeer: AnyAction[][] = [];
+  const fromOther: AnyAction[][] = [];
+  peer.subscribe(actions => void fromPeer.push(actions));
+  other.subscribe(actions => void fromOther.push(actions));
+
+  runTool(peer, 'erd_remove_table', { tableId: SEED.orders });
+  runTool(peer, 'erd_remove_columns', {
+    tableId: SEED.users,
+    columnIds: [SEED.userName],
+  });
+  const [relationship] = runTool(other, 'erd_add_relationship', {
+    startTableId: SEED.users,
+    endTableId: SEED.orders,
+    relationshipType: 'ZeroN',
+  }).createdIds.slice(-1);
+  const [ordersIndex] = runTool(other, 'erd_add_index', {
+    tableId: SEED.orders,
+  }).createdIds;
+  const [usersIndex] = runTool(other, 'erd_add_index', {
+    tableId: SEED.users,
+  }).createdIds;
+  const [nameColumn] = runTool(other, 'erd_add_index_column', {
+    indexId: usersIndex,
+    columnId: SEED.userName,
+  }).createdIds;
+  const [idColumn] = runTool(other, 'erd_add_index_column', {
+    indexId: usersIndex,
+    columnId: SEED.userId,
+  }).createdIds;
+
+  const sent = fromPeer.splice(0).flat();
+  peer.receive(fromOther.splice(0).flat());
+  other.receive(sent);
+  other.destroy();
+
+  return {
+    peer,
+    orphans: { relationship, ordersIndex, nameColumn },
+    kept: { usersIndex, idColumn },
   };
 }

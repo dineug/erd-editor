@@ -17,6 +17,7 @@ import {
   parseLock,
   serializeLock,
 } from '@/lock';
+import { HUB_PROTOCOL_VERSION } from '@/protocol';
 
 type LockInit = Partial<LockRecord> & { pid: number; mtimeMs?: number };
 
@@ -27,7 +28,7 @@ function lock({ pid, mtimeMs = 1000, ...fields }: LockInit): LockFile {
     documents: [],
     ide: 'vscode',
     version: '2.9.0',
-    protocolVersion: 1,
+    protocolVersion: HUB_PROTOCOL_VERSION,
     token: `token-${pid}`,
     hub: true,
     ...fields,

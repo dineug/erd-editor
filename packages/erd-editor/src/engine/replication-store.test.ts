@@ -19,9 +19,12 @@ import {
 import { Clock } from '@/engine/clock';
 import {
   getLWWAction,
+  loadJsonAction,
   mergeLWWAction,
+  selectAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
+import { SelectType } from '@/engine/modules/editor/state';
 import { changeMemoColorAction } from '@/engine/modules/memo/atom.actions';
 import { changeRelationshipColumnsAction } from '@/engine/modules/relationship/atom.actions';
 import {
@@ -42,6 +45,8 @@ import {
   addTableAction,
   changeTableColorAction,
   changeTableNameAction,
+  changeZIndexAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { createPeerStore } from '@/engine/peer-store';
 import {
@@ -51,7 +56,6 @@ import {
 import { createStore } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 
-const DAY = 24 * 60 * 60 * 1000;
 const LOCK_ALL = 63;
 const { viewport } = LockSettingType;
 
@@ -73,6 +77,11 @@ function make(toWidth = (text: string) => text.length * 10): ReplicationStore {
 
 function parse(store: ReplicationStore) {
   return JSON.parse(store.value);
+}
+
+/** The document as the replica holds it, removed entities and derived fields included. */
+function parseRuntime(store: ReplicationStore) {
+  return JSON.parse(store.runtimeValue);
 }
 
 /** An editor window on the file: its element's stores and the replica saving for it. */
@@ -119,14 +128,14 @@ function colours(store: ReplicationStore | SeededStore) {
   ];
 }
 
-/** Let the schema GC promise chain settle. */
+/** Lets the microtasks a dispatch queues run. */
 async function settle() {
   for (let i = 0; i < 5; i++) {
     await Promise.resolve();
   }
 }
 
-function createTableJson(id: string, updateAt: number) {
+function createTableJson(id: string) {
   return {
     id,
     name: id,
@@ -141,7 +150,6 @@ function createTableJson(id: string, updateAt: number) {
       widthComment: 60,
       color: '',
     },
-    meta: { updateAt, createAt: updateAt },
   };
 }
 
@@ -202,10 +210,8 @@ describe('createReplicationStore', () => {
     store.setInitialValue(file);
     await settle();
 
-    expect(parse(store).settings).toMatchObject({
-      lockSettings: LOCK_ALL,
-      ignoreSaveSettings: 3,
-    });
+    expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
+    expect(parse(store).settings).not.toHaveProperty('ignoreSaveSettings');
   });
 
   it('setInitialValue shows text it cannot read as a new document, every setting locked', async () => {
@@ -223,7 +229,6 @@ describe('createReplicationStore', () => {
 
   it('setInitialValue loads a v3 document', async () => {
     const store = make();
-    const now = Date.now();
 
     store.setInitialValue(
       JSON.stringify({
@@ -235,7 +240,7 @@ describe('createReplicationStore', () => {
           memoIds: [],
         },
         collections: {
-          tableEntities: { t1: createTableJson('t1', now) },
+          tableEntities: { t1: createTableJson('t1') },
         },
       })
     );
@@ -246,37 +251,8 @@ describe('createReplicationStore', () => {
     expect(json.collections.tableEntities.t1.name).toBe('t1');
   });
 
-  it('garbage collects stale entities that no longer belong to the doc', async () => {
+  it('keeps entities the doc no longer lists, which only its runtime value carries', async () => {
     const store = make();
-    const now = Date.now();
-
-    store.setInitialValue(
-      JSON.stringify({
-        version: '3.0.0',
-        doc: {
-          tableIds: ['keep'],
-          relationshipIds: [],
-          indexIds: [],
-          memoIds: [],
-        },
-        collections: {
-          tableEntities: {
-            keep: createTableJson('keep', now),
-            stale: createTableJson('stale', now - 10 * DAY),
-          },
-        },
-      })
-    );
-    await settle();
-
-    const json = parse(store);
-    expect(Object.keys(json.collections.tableEntities)).toEqual(['keep']);
-    expect(json.doc.tableIds).toEqual(['keep']);
-  });
-
-  it('keeps recently touched entities that are not referenced by the doc', async () => {
-    const store = make();
-    const now = Date.now();
 
     store.setInitialValue(
       JSON.stringify({
@@ -288,15 +264,16 @@ describe('createReplicationStore', () => {
           memoIds: [],
         },
         collections: {
-          tableEntities: { fresh: createTableJson('fresh', now) },
+          tableEntities: { fresh: createTableJson('fresh') },
         },
       })
     );
     await settle();
 
-    expect(Object.keys(parse(store).collections.tableEntities)).toEqual([
+    expect(Object.keys(parseRuntime(store).collections.tableEntities)).toEqual([
       'fresh',
     ]);
+    expect(parse(store).collections.tableEntities).toEqual({});
   });
 
   it('dispatchSync applies change actions', () => {
@@ -375,7 +352,7 @@ describe('createReplicationStore', () => {
 
       expect(change).toHaveBeenCalledTimes(1);
       expect(change).toHaveBeenCalledWith({ value: before, changed: false });
-      expect(parse(store).settings).toMatchObject({ ignoreSaveSettings: 0 });
+      expect(parse(store).settings).not.toHaveProperty('ignoreSaveSettings');
     });
 
     it('reports no change for the registers a window answers a join with', () => {
@@ -682,9 +659,9 @@ describe('createReplicationStore', () => {
   });
 
   /**
-   * A file the replica would not write as it is: one an older release wrote,
-   * without the origin, or one another machine measured with its own fonts. The
-   * value differs from it from the load on, so only a change action says changed.
+   * A file the replica would not write as it is, one an older release wrote
+   * without the origin or with the fields a load derives, and one another
+   * machine measured with its own fonts: only a change action says changed.
    */
   describe('changed after a load', () => {
     const macWidth = (text: string) => Math.round(text.length * 7.1) + 2;
@@ -701,7 +678,7 @@ describe('createReplicationStore', () => {
       return store.value;
     }
 
-    /** Opens text and lets the load's own rewrites in: the schema GC and the text widths. */
+    /** Opens text, whose load writes the text widths before it returns, and lets the timers run. */
     async function open(text: string, toWidth = macWidth) {
       vi.useFakeTimers();
       const store = make(toWidth);
@@ -720,7 +697,7 @@ describe('createReplicationStore', () => {
       expect(store.value).toBe(file);
     });
 
-    it('measures a file another machine saved again, and a view change on it changes nothing', async () => {
+    it('reopens a file another machine saved to the same bytes, measured with its own fonts, and a view change on it changes nothing', async () => {
       const file = savedWith(macWidth);
       const { store, change } = await open(file, winWidth);
       const opened = store.value;
@@ -728,10 +705,10 @@ describe('createReplicationStore', () => {
       store.dispatchSync(scroll);
       vi.advanceTimersByTime(250);
 
-      expect(opened).not.toBe(file);
-      expect(parse(store).collections.tableEntities.t1.ui.widthName).toBe(
-        winWidth('customer_accounts')
-      );
+      expect(opened).toBe(file);
+      expect(
+        parseRuntime(store).collections.tableEntities.t1.ui.widthName
+      ).toBe(winWidth('customer_accounts'));
       expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
 
       store.dispatchSync(
@@ -744,11 +721,12 @@ describe('createReplicationStore', () => {
       });
     });
 
-    it('measures from the first change action, not from the registers a join brings in before it', async () => {
+    it('keeps the widths its load measured, which no hook measures again, past the registers a join brings in', async () => {
       vi.useFakeTimers();
       let measure = macWidth;
       const store = make(text => measure(text));
       store.setInitialValue(savedWith(macWidth));
+      const opened = store.value;
       const change = vi.fn();
       store.on({ change });
 
@@ -759,17 +737,16 @@ describe('createReplicationStore', () => {
         tags: Tag.shared,
         version: 1,
       });
-      // The widths the load's hook measures again come out other than the ones
-      // settleLoad wrote, a write no change action made.
+      // A measure that moves after the load rewrites nothing until an edit measures.
       measure = winWidth;
       await vi.advanceTimersByTimeAsync(10);
-      const opened = store.value;
       store.dispatchSync(scroll);
       vi.advanceTimersByTime(250);
 
-      expect(parse(store).collections.tableEntities.t1.ui.widthName).toBe(
-        winWidth('customer_accounts')
-      );
+      expect(store.value).toBe(opened);
+      expect(
+        parseRuntime(store).collections.tableEntities.t1.ui.widthName
+      ).toBe(macWidth('customer_accounts'));
       expect(change).toHaveBeenCalledWith({ value: opened, changed: false });
     });
 
@@ -843,13 +820,12 @@ describe('createReplicationStore', () => {
         canvasType: CanvasType.ERD,
         language: Language.Kotlin,
       });
-      expect(parse(store).settings.ignoreSaveSettings).toBe(3);
     });
 
     /**
      * The seed saved with every lock on, by a machine with other fonts and
      * a release whose relationship and key flags fell behind its columns, with
-     * a table removed long enough ago for the schema GC.
+     * a table the doc no longer lists.
      */
     function staleFile() {
       const json = JSON.parse(createSeedValue());
@@ -862,15 +838,12 @@ describe('createReplicationStore', () => {
       relationship.identification = true;
       relationship.startRelationshipType = StartRelationshipType.dash;
       userColumn.ui.keys &= ~ColumnUIKey.foreignKey;
-      json.collections.tableEntities.removed = createTableJson(
-        'removed',
-        Date.now() - 10 * DAY
-      );
+      json.collections.tableEntities.removed = createTableJson('removed');
       return JSON.stringify(json);
     }
 
     it.each([0, 3, 7])(
-      'changes nothing for a view change %i ms into a load, whichever of its hooks have run',
+      'changes nothing for a view change %i ms into a load',
       async delay => {
         vi.useFakeTimers();
         const store = make(winWidth);
@@ -897,14 +870,19 @@ describe('createReplicationStore', () => {
       const store = make(winWidth);
 
       store.setInitialValue(file);
-      const opened = store.value;
+      const opened = store.runtimeValue;
       await vi.advanceTimersByTimeAsync(50);
 
       const { collections } = JSON.parse(opened);
       const relationship = collections.relationshipEntities[SEED.relationship];
       const userName = collections.tableColumnEntities[SEED.userName];
-      expect(store.value).toBe(opened);
-      expect(collections.tableEntities.removed).toBeUndefined();
+      expect(store.runtimeValue).toBe(opened);
+      expect(collections.tableEntities.removed).toMatchObject({
+        name: 'removed',
+      });
+      expect(parse(store).collections.tableEntities).not.toHaveProperty(
+        'removed'
+      );
       expect(userName.ui.widthDataType).toBe(winWidth('VARCHAR(255)'));
       expect(userName.ui.widthDataType).not.toBe(
         stale.tableColumnEntities[SEED.userName].ui.widthDataType
@@ -947,11 +925,12 @@ describe('createReplicationStore', () => {
 
       store.setInitialValue(brokenLinkFile());
       const opened = store.value;
+      const held = store.runtimeValue;
       await vi.advanceTimersByTimeAsync(50);
       store.dispatchSync(scroll);
       await vi.advanceTimersByTimeAsync(250);
 
-      const { collections } = JSON.parse(opened);
+      const { collections } = JSON.parse(held);
       expect(collections.relationshipEntities[SEED.relationship]).toMatchObject(
         {
           identification: false,
@@ -985,6 +964,100 @@ describe('createReplicationStore', () => {
       expect(parse(store).collections.tableEntities.t1.name).toBe(
         'customer_accounts'
       );
+    });
+  });
+
+  /**
+   * What changed compares is the form a file holds, so an edit undone before
+   * its change comes, or one that moves what the runtime alone holds, is none.
+   */
+  describe('changed on the form a file holds', () => {
+    /** The seed loaded, its change listener on. */
+    async function seeded() {
+      vi.useFakeTimers();
+      const store = make();
+      store.setInitialValue(createSeedValue());
+      await vi.advanceTimersByTimeAsync(10);
+      const change = vi.fn();
+      store.on({ change });
+      return { store, change, before: store.value };
+    }
+
+    it('reports a table added and undone within one change as no change, its record kept', async () => {
+      const { store, change, before } = await seeded();
+
+      store.dispatchSync(addTable('t1'));
+      store.dispatchSync(removeTableAction({ id: 't1' }));
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(change.mock.calls).toEqual([[{ value: before, changed: false }]]);
+      expect(parseRuntime(store).collections.tableEntities).toHaveProperty(
+        't1'
+      );
+    });
+
+    it('hands back the bytes it loaded once a table added in one change is undone in the next', async () => {
+      const { store, change, before } = await seeded();
+
+      store.dispatchSync(addTable('t1'));
+      await vi.advanceTimersByTimeAsync(250);
+      store.dispatchSync(removeTableAction({ id: 't1' }));
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(change.mock.calls.map(([{ changed }]) => changed)).toEqual([
+        true,
+        true,
+      ]);
+      expect(change).toHaveBeenLastCalledWith({ value: before, changed: true });
+    });
+
+    it('reports an edit that lands on a table another peer removed as no change', async () => {
+      const { store, change, before } = await seeded();
+      store.dispatchSync(removeTableAction({ id: SEED.empty }));
+      await vi.advanceTimersByTimeAsync(250);
+      const removed = store.value;
+
+      store.dispatchSync(
+        changeTableNameAction({ id: SEED.empty, value: 'renamed' })
+      );
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(removed).not.toBe(before);
+      expect(change).toHaveBeenLastCalledWith({
+        value: removed,
+        changed: false,
+      });
+      expect(
+        parseRuntime(store).collections.tableEntities[SEED.empty].name
+      ).toBe('renamed');
+    });
+
+    it('reports a load that moves the stacking order alone as no change', async () => {
+      const { store, change, before } = await seeded();
+      const restacked = parseRuntime(store);
+      restacked.collections.tableEntities[SEED.users].ui.zIndex = 9;
+      restacked.collections.memoEntities[SEED.memo].ui.zIndex = 10;
+
+      store.dispatchSync(loadJsonAction({ value: JSON.stringify(restacked) }));
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(change.mock.calls).toEqual([[{ value: before, changed: false }]]);
+      expect(
+        parseRuntime(store).collections.tableEntities[SEED.users].ui.zIndex
+      ).toBe(9);
+    });
+
+    it('takes no selection a peer relays, nor the stacking it brings a table to', async () => {
+      const { store, change, before } = await seeded();
+
+      store.dispatchSync([
+        selectAction({ [SEED.orders]: SelectType.table }),
+        changeZIndexAction({ id: SEED.orders, zIndex: 9 }),
+      ]);
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(change).not.toHaveBeenCalled();
+      expect(store.value).toBe(before);
     });
   });
 
@@ -1306,7 +1379,7 @@ describe('createReplicationStore', () => {
       ),
     });
     expect(change).toHaveBeenCalledWith({ value: store.value, changed: true });
-    expect(derived(parse(store).collections)).toEqual({
+    expect(derived(parseRuntime(store).collections)).toEqual({
       relationship: {
         identification: true,
         startRelationshipType: StartRelationshipType.dash,
@@ -1314,7 +1387,7 @@ describe('createReplicationStore', () => {
       },
       foreignKeys: [SEED.orderId],
     });
-    expect(derived(parse(store).collections)).toEqual(
+    expect(derived(parseRuntime(store).collections)).toEqual(
       derived(user.rxStore.state.collections)
     );
     user.destroy();

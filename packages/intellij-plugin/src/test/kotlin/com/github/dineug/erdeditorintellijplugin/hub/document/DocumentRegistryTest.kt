@@ -200,7 +200,7 @@ class DocumentRegistryTest {
     }
 
     @Test
-    fun `seeds the first view from its file and every later one from the mirror`() {
+    fun `seeds the first view from its file and every later one from the mirror while no page hands a runtime value`() {
         val h = harness()
         val first = h.openReady(A, "{\"first\":1}")
         h.save(first, "{\"edited\":1}")
@@ -210,6 +210,35 @@ class DocumentRegistryTest {
         assertEquals(listOf("{\"first\":1}"), first.view.initialValues)
         assertEquals(listOf("{\"edited\":1}"), second.view.initialValues)
         assertEquals("{\"edited\":1}", h.entry(A).content)
+    }
+
+    @Test
+    fun `seeds a later view and a joining peer from the runtime value a page handed, keeping the mirror`() {
+        val h = harness()
+        val first = h.openReady(A, "{\"first\":1}")
+        h.save(first, "{\"stored\":1}", runtime = "{\"runtime\":1}")
+
+        val second = h.ready(h.add(first.file), disk = "{\"stale\":1}")
+        val joined = h.join(A, RecordingConnection())
+
+        assertEquals(listOf("{\"runtime\":1}"), second.view.initialValues)
+        assertEquals("{\"runtime\":1}", joined.get("initialValue").textValue())
+        assertEquals("{\"stored\":1}", h.entry(A).content)
+        assertEquals("{\"first\":1}", h.onRegistry { entryAt(A).lastWritten })
+    }
+
+    @Test
+    fun `takes the runtime value of a save that changed nothing, leaving the mirror and dirty as they were`() {
+        val h = harness()
+        val first = h.openReady(A, "{ \"older\": \"bytes\" }")
+        h.save(first, null, runtime = "{\"runtime\":2}")
+
+        val reloaded = h.ready(h.add(first.file))
+
+        assertEquals(listOf("{\"runtime\":2}"), reloaded.view.initialValues)
+        assertEquals("{ \"older\": \"bytes\" }", h.entry(A).content)
+        assertEquals("{ \"older\": \"bytes\" }", h.onRegistry { entryAt(A).lastWritten })
+        assertFalse(h.onRegistry { isDirty(entryAt(A)) })
     }
 
     @Test

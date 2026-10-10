@@ -1,6 +1,6 @@
 import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 
-import { assign, assignMeta, getDefaultEntityMeta } from '@/helper';
+import { assign } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Column } from '@/v3/schema/tableColumn.entity';
 
@@ -19,7 +19,6 @@ export const createColumn = (): Column => ({
     widthDataType: 60,
     widthDefault: 60,
   },
-  meta: getDefaultEntityMeta(),
 });
 
 export function createAndMergeTableColumnEntities(
@@ -48,8 +47,6 @@ export function createAndMergeTableColumnEntities(
     uiAssignNumber('widthComment');
     uiAssignNumber('widthDataType');
     uiAssignNumber('widthDefault');
-
-    assignMeta(target.meta, value.meta);
 
     if (target.id) {
       entities[target.id] = target;

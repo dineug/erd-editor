@@ -1,18 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { createMemo } from '@/utils/collection/memo.entity';
 
 describe('createMemo', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('creates a memo filled with defaults when no value is given', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-01-02T03:04:05.000Z'));
-    const now = Date.now();
-
     const memo = createMemo();
 
     expect(memo.value).toBe('');
@@ -24,7 +16,7 @@ describe('createMemo', () => {
       height: MEMO_MIN_HEIGHT,
       color: '',
     });
-    expect(memo.meta).toEqual({ updateAt: now, createAt: now });
+    expect(memo).not.toHaveProperty('meta');
     expect(typeof memo.id).toBe('string');
     expect(memo.id.length).toBeGreaterThan(0);
   });

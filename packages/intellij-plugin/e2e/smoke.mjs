@@ -697,12 +697,12 @@ const real = {
 async function phaseA() {
   const { pid, lock } = await startIde();
 
-  await run('A1', 'lock: ide intellij, hub on, protocol 1, the plugin version, a UUID token', name =>
+  await run('A1', 'lock: ide intellij, hub on, protocol 2, the plugin version, a UUID token', name =>
     step(
       name,
       lock.ide === 'intellij' &&
         lock.hub === true &&
-        lock.protocolVersion === 1 &&
+        lock.protocolVersion === 2 &&
         lock.version === pluginVersion &&
         UUID.test(lock.token),
       JSON.stringify({ ...lock, token: `${lock.token.slice(0, 8)}...` })

@@ -154,7 +154,6 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'settings.changeColumnNameCase',
   'settings.changeBracketType',
   'settings.changeRelationshipDataTypeSync',
-  'settings.changeRelationshipOptimization',
   'settings.changeColumnOrder',
   'settings.changeMaxWidthComment',
   'settings.changeLockSettings',

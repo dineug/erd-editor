@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import {
   observable,
   onBeforeMount,
@@ -59,7 +59,6 @@ import {
   mouseTrackerEndAction,
   mouseTrackerStartAction,
   openDiffViewerAction,
-  schemaGCAction,
 } from '@/utils/emitter';
 import {
   appendSchema,
@@ -383,7 +382,6 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   ctx.setInitialValue = value => {
     store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
     store.resetHistory();
-    emitter.emit(schemaGCAction());
   };
 
   ctx.setPresetTheme = newThemeOptions => {
@@ -531,10 +529,14 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   Object.defineProperty(ctx, 'value', {
-    get: () => toJson(store.state),
+    get: () => toDocumentJson(store.state),
     set: (value: string) => {
       store.dispatchSync(loadJsonAction$(toLoadValue(value)));
     },
+  });
+
+  Object.defineProperty(ctx, 'runtimeValue', {
+    get: () => toJson(store.state),
   });
 
   return {

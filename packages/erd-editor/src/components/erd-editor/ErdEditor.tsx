@@ -1,4 +1,3 @@
-import { toJson } from '@dineug/erd-editor-schema';
 import {
   cache,
   createRef,
@@ -38,7 +37,6 @@ import { DatabaseVendor } from '@/constants/sql/database';
 import {
   changeOpenMapAction,
   changeViewportAction,
-  validationIdsAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
 import { RootState } from '@/engine/state';
@@ -46,8 +44,6 @@ import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { LocaleOption } from '@/i18n/locales';
 import { observeThemeOverrides, resolveHostTheme } from '@/konva/theme';
-import { getSchemaGCService } from '@/services/schema-gc';
-import { procGC } from '@/services/schema-gc/procGC';
 import { Appearance, ThemeOptions } from '@/themes/radix-ui-theme';
 import { Theme as ThemeType } from '@/themes/tokens';
 import { isMiddleButtonPress } from '@/utils/domEvent';
@@ -111,7 +107,14 @@ export type SetSchema = {
 };
 
 export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
+  /** The document in the form a file saves; setting it replaces the document. */
   value: string;
+  /**
+   * The document as this editor holds it, removed entities and their order
+   * included, which a collaborator's setInitialValue takes so undo can bring
+   * them back. Never written to a file.
+   */
+  readonly runtimeValue: string;
   focus: () => void;
   blur: () => void;
   clear: () => void;
@@ -289,21 +292,6 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const handlePaste = (event: ClipboardEvent) => {
     emitter.emit(pasteAction({ event }));
   };
-
-  const handleSchemaGC = () => {
-    getSchemaGCService()
-      ?.run(toJson(store.state))
-      .then(gcIds => {
-        // Every list the collector returns, as the replica reads it, so a
-        // collection it starts returning needs no edit here.
-        if (Object.values(gcIds).some(ids => ids.length)) {
-          procGC(store.state, gcIds);
-          store.dispatchSync(validationIdsAction());
-        }
-      });
-  };
-
-  destroySet.add(emitter.on({ schemaGC: handleSchemaGC }));
 
   /** The root as the observer last measured it, which the toolbar shares. */
   let observed = { width: 0, height: 0 };

@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
@@ -8,17 +8,12 @@ import {
   createEngineContext,
   type InjectEngineContext,
 } from '@/engine/context';
-import {
-  changeViewportAction,
-  validationIdsAction,
-} from '@/engine/modules/editor/atom.actions';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { actionsFilter } from '@/engine/rx-operators';
 import { createStore } from '@/engine/store';
-import { createHooks, settleLoad } from '@/engine/store-hooks';
+import { createHooks } from '@/engine/store-hooks';
 import { Unsubscribe, ValuesType } from '@/internal-types';
-import { procGC } from '@/services/schema-gc/procGC';
-import { collectGCIds } from '@/services/schema-gc/schemaGCService';
 import { arrayHas } from '@/utils/arrayHas';
 import { toLoadValue } from '@/utils/loadValue';
 import { safeCallback } from '@/utils/safeCallback';
@@ -38,9 +33,9 @@ type InternalActionMap = {
 };
 
 /**
- * What a change hands its listeners: the document serialized, and whether the
- * change actions since the last change, or since the load, left it byte for
- * byte as it was, as a scroll or a zoom the file does not save does.
+ * What a change hands its listeners: the document in the form a file holds,
+ * and whether the change actions since the last change, or since the load,
+ * left that form byte for byte as it was, as a scroll under its lock does.
  */
 export type ReplicationChange = {
   value: string;
@@ -48,7 +43,10 @@ export type ReplicationChange = {
 };
 
 export type ReplicationStore = {
+  /** The document in the form a file holds. */
   readonly value: string;
+  /** The document as the replica holds it, removed entities included, to seed a peer. */
+  readonly runtimeValue: string;
   /**
    * A change comes 200 ms after the last change action, even one that left the
    * value as it was (changed false): a hub waits for each as a save, and a host
@@ -65,7 +63,7 @@ export function createReplicationStore(
   context: InjectEngineContext
 ): ReplicationStore {
   const subscriptionSet = new Set<Subscription>();
-  const engineContext = createEngineContext(context);
+  const engineContext = createEngineContext({ ...context, routes: false });
   const { clock } = engineContext;
   const store = createStore(engineContext, false);
   // A replica has no screen, and the default editor size the store starts with
@@ -101,19 +99,12 @@ export function createReplicationStore(
     });
   };
 
-  // The load's own rewrites, made before it returns rather than on the GC's
-  // promise and the hooks' timers, so a change action that comes at once, as a
-  // pan replayed behind the load does, finds them in.
+  // The load reducer writes what the document derives before it returns, so a
+  // change action that comes at once, as a pan replayed behind the load does,
+  // finds them in.
   const setInitialValue = (value: string) => {
     baseline = null;
     store.dispatchSync(initialLoadJsonAction$(toLoadValue(value)));
-
-    const gcIds = collectGCIds(toJson(store.state));
-    if (Object.values(gcIds).some(ids => ids.length)) {
-      procGC(store.state, gcIds);
-      store.dispatchSync(validationIdsAction());
-    }
-    settleLoad(store.state, engineContext);
   };
 
   const dispatchSync = (actions: Array<AnyAction> | AnyAction) => {
@@ -133,7 +124,7 @@ export function createReplicationStore(
   };
 
   const handleChange = () => {
-    const value = toJson(store.state);
+    const value = toDocumentJson(store.state);
     // Null after a load that came while a change was pending, whose value is
     // what loaded.
     const changed = baseline !== null && value !== baseline;
@@ -149,7 +140,7 @@ export function createReplicationStore(
       )
       .subscribe(actions => {
         if (actions.some(({ type }) => isReplicaChange(type))) {
-          baseline ??= toJson(store.state);
+          baseline ??= toDocumentJson(store.state);
         }
         // Versions as the element's store gives them: what a stream regroup sent
         // without one takes the next, and each moves the clock past the registers
@@ -163,6 +154,9 @@ export function createReplicationStore(
 
   return Object.freeze({
     get value() {
+      return toDocumentJson(store.state);
+    },
+    get runtimeValue() {
       return toJson(store.state);
     },
     on,

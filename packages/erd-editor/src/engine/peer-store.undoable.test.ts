@@ -86,7 +86,6 @@ describe('a dispatch reports the undo entries the engine makes (AC-P2)', () => {
       'setColumnNameCase',
       'setBracketType',
       'setRelationshipDataTypeSync',
-      'setRelationshipOptimization',
       'setColumnOrder',
       'setMaxWidthComment',
       'setLockSettings',

@@ -15,7 +15,7 @@ const browserSpecs = 'src/**/*.browser.test.{ts,tsx}';
 /**
  * What both projects carry: each extends this file, which sets only projects
  * and coverage, and Vitest reads no vite.config.ts beside it. A missing define
- * leaves __APP_VERSION__ undefined and kills every spec reaching schema-gc.
+ * leaves __APP_VERSION__ undefined and kills every spec reaching a worker.
  */
 const createSharedConfig = (): UserWorkspaceConfig => ({
   // The JSX transform repeats here or a .tsx spec reaches oxc with its JSX

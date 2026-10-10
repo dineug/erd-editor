@@ -42,6 +42,20 @@ describe('isReadonlyUri', () => {
       Uri.parse('conflictResolution:/repo/a.erd.json'),
       true,
     ],
+    [
+      'vscode-local-history',
+      Uri.parse('vscode-local-history:/repo/a.erd.json'),
+      true,
+    ],
+    ['gitlens', Uri.parse('gitlens://abc/repo/a.erd.json'), true],
+    ['review', Uri.parse('review:/repo/a.erd.json'), true],
+    ['githubpr', Uri.parse('githubpr:/repo/a.erd.json'), false],
+    [
+      '_claude_vscode_fs_right',
+      Uri.parse('_claude_vscode_fs_right:/repo/a.erd.json'),
+      false,
+    ],
+    ['vscode-vfs', Uri.parse('vscode-vfs://github/o/r/a.erd.json'), false],
     ['file', Uri.file('/repo/a.erd.json'), false],
     ['untitled', Uri.parse('untitled:Untitled-1'), false],
   ])('answers %s with %s', (_scheme, uri, expected) => {

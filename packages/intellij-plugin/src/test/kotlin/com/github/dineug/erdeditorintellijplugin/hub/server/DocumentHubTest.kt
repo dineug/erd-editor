@@ -1,6 +1,7 @@
 package com.github.dineug.erdeditorintellijplugin.hub.server
 
 import com.github.dineug.erdeditorintellijplugin.hub.AuthScope
+import com.github.dineug.erdeditorintellijplugin.hub.HUB_PROTOCOL_VERSION
 import com.github.dineug.erdeditorintellijplugin.hub.HubErrorCode
 import com.github.dineug.erdeditorintellijplugin.hub.HubLog
 import com.github.dineug.erdeditorintellijplugin.hub.HubPlatform
@@ -102,7 +103,7 @@ class DocumentHubTest {
             val lock = lock() ?: error("no lock")
             assertTrue("the lock serves", lock.hub)
             return listeners.connect(lock.pipe).apply {
-                send("""{"id":1,"method":"hello","params":{"token":"${lock.token}","protocolVersion":1,"client":"spec"}}""")
+                send("""{"id":1,"method":"hello","params":{"token":"${lock.token}","protocolVersion":$HUB_PROTOCOL_VERSION,"client":"spec"}}""")
                 awaitUntil(message = "the hello answered") { received.isNotEmpty() }
             }
         }
@@ -123,7 +124,9 @@ class DocumentHubTest {
         documents: List<String> = emptyList(),
         ide: String = "memory-ide",
         token: String = "token-1",
-    ) = LockRecord(pipe, folders, documents, ide, "0.0.0-test", 1, token, pipe.isNotEmpty())
+    ) = LockRecord(
+        pipe, folders, documents, ide, "0.0.0-test", HUB_PROTOCOL_VERSION.toLong(), token, pipe.isNotEmpty(),
+    )
 
     @Test
     fun `writes only a hub false lock while the host has it off, and never listens`() {
@@ -151,7 +154,7 @@ class DocumentHubTest {
         val peer = fixture.connectToLock()
 
         assertEquals(
-            """{"id":1,"ok":true,"method":"hello","result":{"protocolVersion":1,"ide":"obsidian","version":"0.0.0-test"}}""",
+            """{"id":1,"ok":true,"method":"hello","result":{"protocolVersion":$HUB_PROTOCOL_VERSION,"ide":"obsidian","version":"0.0.0-test"}}""",
             peer.received.single(),
         )
     }

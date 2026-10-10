@@ -103,12 +103,16 @@ class WebviewBridgeCommandTest {
         assertEquals("{}", (save as HostBridgeCommand.SaveValue).payload.value)
         // A page from before the flag sent none, and every save it sent was a change.
         assertTrue(save.payload.changed)
+        // Nor a runtime value, so the mirror seeds the file's other pages and agents.
+        assertEquals(null, save.payload.runtimeValue)
 
         val unchanged = mapper.readValue(
-            """{"type":"hostSaveValueCommand","payload":{"value":"{}","changed":false}}""",
+            """{"type":"hostSaveValueCommand","payload":{"value":"{}","changed":false,"runtimeValue":"{\"r\":1}"}}""",
             HostBridgeCommand::class.java
         ) as HostBridgeCommand.SaveValue
         assertFalse(unchanged.payload.changed)
+        assertEquals("{}", unchanged.payload.value)
+        assertEquals("{\"r\":1}", unchanged.payload.runtimeValue)
 
         val export = mapper.readValue(
             """{"type":"hostExportFileCommand","payload":{"value":"AA==","fileName":"a.png"}}""",

@@ -155,11 +155,7 @@ describe('FindTextActionTypes', () => {
       ...Object.values(MemoActionType),
       ...Object.values(EditorActionType),
     ]);
-    const loads = [
-      'editor.initialLoadJson',
-      'editor.initialClear',
-      'editor.validationIds',
-    ];
+    const loads = ['editor.initialLoadJson', 'editor.initialClear'];
 
     for (const type of FindTextActionTypes) {
       expect(known.has(type)).toBe(true);

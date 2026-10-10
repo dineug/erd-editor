@@ -25,8 +25,6 @@ function fitCanvas(extent: number) {
   return Math.max(BENCH_CANVAS, Math.ceil(extent));
 }
 
-const META = { updateAt: 0, createAt: 0 };
-
 /** mulberry32 — small, fast, and identical across Node and the browser. */
 function prng(seed: number) {
   let a = seed >>> 0;
@@ -122,7 +120,6 @@ export function createCorpus(options: CorpusOptions): Corpus {
         widthComment: 60,
         color: '',
       },
-      meta: { ...META },
     };
 
     const pkId = `${id}_id`;
@@ -251,10 +248,8 @@ export function createCorpus(options: CorpusOptions): Corpus {
         columnNameCase: 2,
         bracketType: 1,
         relationshipDataTypeSync: true,
-        relationshipOptimization: false,
         columnOrder: [...DEFAULT_COLUMN_ORDER],
         maxWidthComment: -1,
-        ignoreSaveSettings: 0,
         lockSettings: 0,
       },
       doc: {
@@ -297,7 +292,6 @@ function column(
       widthDataType: 60,
       widthDefault: 60,
     },
-    meta: { ...META },
   };
 }
 
@@ -367,7 +361,6 @@ function pushRelationship(
       y: 0,
       direction: 8,
     },
-    meta: { ...META },
   };
 
   return id;

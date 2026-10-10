@@ -71,7 +71,6 @@ function linkedTables(): ErdDocument {
       y: 0,
       direction: 1,
     },
-    meta: { updateAt: 0, createAt: 0 },
   };
   document.doc.relationshipIds = [RELATIONSHIP_ID];
 

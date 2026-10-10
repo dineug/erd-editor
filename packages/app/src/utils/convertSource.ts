@@ -32,9 +32,8 @@ export async function convertSource({
         break;
     }
 
-    // Connector anchors and the flags a relationship reads off its columns
-    // follow from the store's hooks a few milliseconds after the document
-    // lands. Every load derives them again, so the value stores as it stands.
+    // The value is the file form, without the connector anchors and the flags
+    // a relationship reads off its columns, which every load derives again.
     return editor.value;
   } finally {
     editor.destroy();

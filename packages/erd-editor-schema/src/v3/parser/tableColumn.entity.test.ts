@@ -26,7 +26,7 @@ describe('createColumn', () => {
         widthDefault: 60,
       },
     });
-    expect(column.meta.createAt).toBe(column.meta.updateAt);
+    expect(column).not.toHaveProperty('meta');
   });
 });
 
@@ -66,7 +66,6 @@ describe('createAndMergeTableColumnEntities', () => {
           widthDataType: 72,
           widthDefault: 73,
         },
-        meta: { updateAt: 3, createAt: 4 },
       },
     });
 
@@ -85,7 +84,6 @@ describe('createAndMergeTableColumnEntities', () => {
         widthDataType: 72,
         widthDefault: 73,
       },
-      meta: { updateAt: 3, createAt: 4 },
     });
   });
 

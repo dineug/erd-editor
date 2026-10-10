@@ -251,8 +251,9 @@ export function createFakeHub(
           };
         }
         document.peers.add(connection);
+        // The runtime value, as the hosts hand it, while a save writes the value.
         return {
-          initialValue: document.webview.value,
+          initialValue: document.webview.runtimeValue,
           snapshotVersion: document.observedVersion,
           readonly: document.readonly,
         };

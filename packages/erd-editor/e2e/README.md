@@ -89,7 +89,7 @@ one drawn over it in coordinates the document never keeps:
 | `visualization-flow.spec.ts`    | The visualization tab's two modes, and what an entry narrows Flow to |
 
 `shared-workers.spec.ts` holds down what those two and every export stand on:
-that each of the four shared workers starts on the dev server, which serves a
+that each of the three shared workers starts on the dev server, which serves a
 worker the same component boundaries, Vite client included, that it serves the page.
 
 `import-and-add.spec.ts` holds down what an import lands beside the diagram
@@ -317,12 +317,15 @@ Removing a table drops its id from `doc.tableIds` but leaves the entity in
 keys will tell you nothing was deleted. `ErdEditorPage#tableIds()`,
 `#relationshipIds()`, `#indexIds()` and `#memoIds()` read `doc`; use them.
 
-### 5. `el.value` is the authoritative, synchronous state
+### 5. `el.runtimeValue` is the authoritative, synchronous state
 
-The element's `value` getter serialises the live store on read. That is what
-assertions should compare against — the scene is a projection of it. Pair a
-store assertion with a user-visible one wherever the visible result is
-meaningful; a spec that only reads `value` is a unit test wearing a costume.
+The element's `runtimeValue` getter serialises the live store on read, with
+what the file form `value` leaves out: removed entities, `zIndex`, the
+measured widths, the relationship anchors and flags. `erd.value()` reads it.
+That is what assertions should compare against — the scene is a projection of
+it. Pair a store assertion with a user-visible one wherever the visible result
+is meaningful; a spec that only reads the store is a unit test wearing a
+costume.
 
 `setInitialValue()` clears the undo history and records nothing, so a seeded
 document starts with **empty undo history** and fires no `change` event. That is what
@@ -510,7 +513,7 @@ cost when you hit them blind.
   element methods — `setInitialValue`, `value =`, `clear` — use `dispatchSync`
   and _are_ synchronous, but they still leave the paint to the next frame.)
 - The outward `change` event is `debounceTime(200)`. It is not an assertion
-  target; `el.value` is.
+  target; `el.runtimeValue` is.
 - Relationship side effects land on later ticks: the FK `ui.keys` bit arrives on
   the next channel tick, `identification` / `startRelationshipType` in the
   microtasks after the batch, and the relationship's start/end geometry on a
@@ -573,12 +576,12 @@ cost when you hit them blind.
   memo-over-focus states were once measured with a context menu open, while CI
   — where `Ctrl` opens nothing — tested a different state from a workstation.
   Sending the ctrl bit through CDP without a key press opens the menu too.
-- `toJson()` — which backs the `value` getter — serialises a copy, so reading
-  `value` never moves the live view. While the viewport lock of
-  `lockSettings` is on it writes the origin and the zoom the lock holds, not
-  the live ones. Every seed keeps `lockSettings` at `0`, all unlocked; the
-  unseeded element is a new document, every lock on, so a spec that reads the
-  view from `value` seeds first. A seed without the field would open as a
+- `toJson()` — which backs the `runtimeValue` getter, as `toDocumentJson()`
+  backs `value` — serialises a copy, so reading either never moves the live
+  view. While the viewport lock of `lockSettings` is on both write the origin
+  and the zoom the lock holds, not the live ones. Every seed keeps
+  `lockSettings` at `0`, all unlocked; the unseeded element is a new document,
+  every lock on, so a spec that reads the view from either seeds first. A seed without the field would open as a
   file saved before the locks, its view reset to the origin at zoom 1.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root
   `.root` div, with bubble-phase listeners. Dispatching at `document` or at the

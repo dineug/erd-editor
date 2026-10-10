@@ -252,9 +252,16 @@ export function createHubHarness() {
     /** A relay from the tab's shared store. */
     relay: ({ tab }: OpenedTab, actions: unknown) =>
       registry.relay(tab, actions),
-    /** The tab's replica saved value; none for a change that left it as it was. */
-    save: ({ tab }: OpenedTab, value?: string) =>
-      registry.valueSaved(tab, value),
+    /**
+     * The tab's replica saved: value in the form a file holds, none for a
+     * change that left it as it was, and the runtime value, the value unless given.
+     */
+    save: ({ tab }: OpenedTab, value?: string, runtimeValue = value ?? '') =>
+      registry.valueSaved(tab, {
+        value: value ?? '',
+        changed: value !== undefined,
+        runtimeValue,
+      }),
     /** Runs one of the handler's effects under the hub's logger, as its runtime does. */
     run: <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
       Effect.runPromise(Effect.provide(effect, hubLoggerLayer)),

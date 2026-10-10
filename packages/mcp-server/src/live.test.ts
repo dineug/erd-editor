@@ -17,7 +17,7 @@ import {
   tableNamed,
 } from '@/__test-utils__/documents';
 import { createFakeHub, type FakeHub } from '@/__test-utils__/fakeHub';
-import { comparable, settle } from '@/__test-utils__/mcp';
+import { settle } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import {
   type LiveSession,
@@ -117,8 +117,8 @@ describe('a live session beyond the transition table', () => {
 
     const shown = JSON.parse(readDocument(webview.state, 'snapshot'));
     expect(tableNamed(shown, 'members').id).toBe(users.id);
-    expect(comparable((await read('json')).text)).toEqual(
-      comparable(webview.value)
+    expect(JSON.parse((await read('json')).text)).toEqual(
+      JSON.parse(webview.value)
     );
   });
 
@@ -143,6 +143,100 @@ describe('a live session beyond the transition table', () => {
       id: users.id,
       name: 'users',
       columns: users.columns,
+    });
+  });
+
+  it('joins from the runtime value the editor holds, so the user undoing a removal restores the table whole', async () => {
+    io.put(DOCUMENT, documentFromSql(SHOP_SQL));
+    const { webview } = hub.open(DOCUMENT);
+    const users = tableNamed(snapshotOf(webview), 'users');
+    runTool(webview, 'erd_remove_table', { tableId: users.id });
+    await settle();
+
+    await call('erd_add_memo');
+    webview.undo();
+
+    // The undo reaches the agent over the socket, so wait for the agent to
+    // show the table rather than for a fixed time.
+    const shown = await vi.waitFor(async () => {
+      const snapshot = JSON.parse((await read('snapshot')).text);
+      expect(tableNamed(snapshot, 'users')).toEqual(users);
+      return snapshot;
+    });
+    expect(hub.methods().filter(method => method === 'join')).toHaveLength(1);
+    expect(shown.tables).toEqual(snapshotOf(webview).tables);
+  });
+
+  describe('the registers a reseed drops', () => {
+    it('asks the editor for its registers again on every join that registers it', async () => {
+      let asked = 0;
+      hub.beforeApply = actions => {
+        asked += (actions as Array<{ type: string }>).filter(
+          ({ type }) => type === 'editor.getLWW'
+        ).length;
+      };
+
+      await call('erd_add_table');
+      expect(asked).toBe(1);
+
+      hub.documents.get(DOCUMENT)!.peers.clear();
+      expect((await call('erd_add_memo')).notes).toEqual([
+        REJOIN_NOTE,
+        RESEED_NOTE,
+      ]);
+      expect(asked).toBe(2);
+
+      hub.disconnectAll();
+      await settle();
+      expect((await call('erd_add_memo')).notes).toEqual([RESEED_NOTE]);
+      expect(asked).toBe(3);
+    });
+
+    it('refuses, as the editor does, a relayed edit older than what the editor holds', async () => {
+      io.put(DOCUMENT, documentFromSql(SHOP_SQL));
+      const { webview } = hub.open(DOCUMENT);
+      const users = tableNamed(snapshotOf(webview), 'users');
+      // A collaborator seeded before the user's renames, so its clock stays behind them.
+      const other = createPeerStore({ nickname: 'other', presence: false });
+      other.setInitialValue(webview.runtimeValue);
+      const stale: Array<{ type: string }> = [];
+      other.subscribe(batch =>
+        stale.push(...batch.filter(({ type }) => type === 'table.changeName'))
+      );
+
+      await call('erd_add_memo');
+      for (let i = 0; i < 10; i++) {
+        runTool(webview, 'erd_change_table_name', {
+          tableId: users.id,
+          value: `user_${i}`,
+        });
+      }
+      runTool(other, 'erd_change_table_name', {
+        tableId: users.id,
+        value: 'stale_name',
+      });
+      await settle();
+      other.destroy();
+      expect(stale).toHaveLength(1);
+
+      hub.documents.get(DOCUMENT)!.peers.clear();
+      expect((await call('erd_add_memo')).notes).toEqual([
+        REJOIN_NOTE,
+        RESEED_NOTE,
+      ]);
+      webview.receive(stale as any[]);
+      for (const peer of hub.documents.get(DOCUMENT)!.peers) {
+        peer.notify({
+          method: 'actions',
+          params: { path: DOCUMENT, actions: stale },
+        });
+      }
+      await settle();
+
+      expect(tableNamed(snapshotOf(webview), 'user_9').id).toBe(users.id);
+      expect(
+        tableNamed(JSON.parse((await read('snapshot')).text), 'user_9').id
+      ).toBe(users.id);
     });
   });
 
@@ -535,7 +629,7 @@ describe('a live session beyond the transition table', () => {
 
   it('sends nothing of a batch the editor refuses, and joins again next time', async () => {
     await call('erd_add_table');
-    const shown = comparable(hub.webview(DOCUMENT).value);
+    const shown = JSON.parse(hub.webview(DOCUMENT).value);
     hub.documents.get(DOCUMENT)!.readonly = true;
 
     await expect(
@@ -553,14 +647,14 @@ describe('a live session beyond the transition table', () => {
     hub.documents.get(DOCUMENT)!.readonly = false;
     await settle();
 
-    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    expect(JSON.parse(hub.webview(DOCUMENT).value)).toEqual(shown);
     const { notes } = await call('erd_add_memo');
     expect(notes).toEqual([RESEED_NOTE]);
   });
 
   it('keeps nothing of a batch cut short on the peer, and reseeds from the editor', async () => {
     await call('erd_add_table');
-    const shown = comparable(hub.webview(DOCUMENT).value);
+    const shown = JSON.parse(hub.webview(DOCUMENT).value);
     vi.mocked(runBatch).mockImplementationOnce(peer => {
       runTool(peer, 'erd_add_memo', {});
       throw new BatchInterrupted(new Error('boom'));
@@ -571,15 +665,15 @@ describe('a live session beyond the transition table', () => {
     ).rejects.toBeInstanceOf(BatchInterrupted);
     await settle();
 
-    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    expect(JSON.parse(hub.webview(DOCUMENT).value)).toEqual(shown);
     const { text, notes } = await read('json');
-    expect(comparable(text)).toEqual(shown);
+    expect(JSON.parse(text)).toEqual(shown);
     expect(notes).toEqual([RESEED_NOTE]);
   });
 
   it('refuses a batch before any of it reaches the editor', async () => {
     await call('erd_add_table');
-    const shown = comparable(hub.webview(DOCUMENT).value);
+    const shown = JSON.parse(hub.webview(DOCUMENT).value);
 
     await expect(
       io.run(
@@ -590,7 +684,7 @@ describe('a live session beyond the transition table', () => {
       )
     ).rejects.toMatchObject({ name: 'ToolError', code: 'notFound' });
     await settle();
-    expect(comparable(hub.webview(DOCUMENT).value)).toEqual(shown);
+    expect(JSON.parse(hub.webview(DOCUMENT).value)).toEqual(shown);
   });
 
   it('reports a disconnect in the middle of an undo', async () => {

@@ -17,7 +17,7 @@ describe('createIndex', () => {
       seqIndexColumnIds: [],
       unique: false,
     });
-    expect(index.meta.createAt).toBe(index.meta.updateAt);
+    expect(index).not.toHaveProperty('meta');
   });
 });
 
@@ -49,7 +49,6 @@ describe('createAndMergeIndexEntities', () => {
         unique: true,
         indexColumnIds: ['ic1'],
         seqIndexColumnIds: ['ic1', 'ic2'],
-        meta: { updateAt: 5, createAt: 6 },
       },
     });
 
@@ -60,7 +59,6 @@ describe('createAndMergeIndexEntities', () => {
       unique: true,
       indexColumnIds: ['ic1'],
       seqIndexColumnIds: ['ic1', 'ic2'],
-      meta: { updateAt: 5, createAt: 6 },
     });
   });
 
@@ -88,6 +86,41 @@ describe('createAndMergeIndexEntities', () => {
     });
 
     expect(entities.i1.unique).toBe(false);
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['missing an id the index lists', ['ic2']],
+    ['not an array', 'ic1'],
+  ])(
+    'starts the index column sequence at the list when it is %s',
+    (_, seqIndexColumnIds) => {
+      const indexColumnIds = ['ic2', 'ic1'];
+      const entities = createAndMergeIndexEntities({
+        key: {
+          id: 'i1',
+          indexColumnIds,
+          seqIndexColumnIds: seqIndexColumnIds as any,
+        },
+      });
+
+      expect(entities.i1.seqIndexColumnIds).toEqual(['ic2', 'ic1']);
+      expect(entities.i1.seqIndexColumnIds).not.toBe(
+        entities.i1.indexColumnIds
+      );
+    }
+  );
+
+  it('keeps an index column sequence that holds every listed column', () => {
+    const entities = createAndMergeIndexEntities({
+      key: {
+        id: 'i1',
+        indexColumnIds: ['ic2'],
+        seqIndexColumnIds: ['ic1', 'ic2'],
+      },
+    });
+
+    expect(entities.i1.seqIndexColumnIds).toEqual(['ic1', 'ic2']);
   });
 
   it('merges several indexes', () => {

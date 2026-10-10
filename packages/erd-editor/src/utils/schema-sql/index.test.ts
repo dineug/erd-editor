@@ -193,6 +193,94 @@ describe('schema-sql/index', () => {
       }
     );
 
+    /**
+     * The fixture with what a session keeps after removals: a posts column
+     * taken out of its table that the posts index still names, and a table
+     * taken out of the document with an index the document still lists.
+     */
+    function withRemovals(name: string) {
+      const fixture = createFixture();
+      const { collections, doc } = fixture.state;
+      collections.tableColumnEntities['col-gone'] = createColumn({
+        id: 'col-gone',
+        tableId: 'tbl-posts',
+        name: 'gone_column',
+        dataType: 'INT',
+      });
+      collections.indexColumnEntities['idx-col-gone'] = createIndexColumn({
+        id: 'idx-col-gone',
+        indexId: 'idx-1',
+        columnId: 'col-gone',
+      });
+      collections.indexEntities['idx-1'].indexColumnIds.push('idx-col-gone');
+      collections.tableEntities['tbl-removed'] = createTable({
+        id: 'tbl-removed',
+        name: 'removed_table',
+        columnIds: ['col-gone'],
+      });
+      collections.indexEntities['idx-removed'] = createIndex({
+        id: 'idx-removed',
+        name,
+        tableId: 'tbl-removed',
+        indexColumnIds: ['idx-col-gone'],
+      });
+      doc.indexIds.push('idx-removed');
+      return fixture;
+    }
+
+    it.each([
+      ['MySQL', Database.MySQL],
+      ['MariaDB', Database.MariaDB],
+      ['PostgreSQL', Database.PostgreSQL],
+      ['MSSQL', Database.MSSQL],
+      ['Oracle', Database.Oracle],
+      ['Snowflake', Database.Snowflake],
+      ['Databricks', Database.Databricks],
+      ['SQLite', Database.SQLite],
+    ])(
+      'writes in %s the indexes a saved file keeps: no removed column, no index of a removed table',
+      (_, database) => {
+        const { state } = withRemovals('IDX_removed');
+        const sql = createSchemaSQL(state, database);
+
+        expect(sql).toBe(createSchemaSQL(createFixture().state, database));
+        expect(sql).toContain('IDX_posts');
+        expect(sql).not.toContain('gone_column');
+        expect(sql).not.toContain('removed_table');
+        expect(sql).not.toContain('IDX_removed');
+      }
+    );
+
+    it.each([
+      ['MySQL', Database.MySQL],
+      ['MariaDB', Database.MariaDB],
+      ['PostgreSQL', Database.PostgreSQL],
+      ['MSSQL', Database.MSSQL],
+      ['Oracle', Database.Oracle],
+      ['Snowflake', Database.Snowflake],
+      ['Databricks', Database.Databricks],
+      ['SQLite', Database.SQLite],
+    ])(
+      'writes in %s no index whose every column its table took out',
+      (_, database) => {
+        const { state } = withRemovals('IDX_removed');
+        const { collections, doc } = state;
+        collections.indexEntities['idx-only-gone'] = createIndex({
+          id: 'idx-only-gone',
+          name: 'IDX_only_gone',
+          tableId: 'tbl-posts',
+          indexColumnIds: ['idx-col-gone'],
+        });
+        doc.indexIds.push('idx-only-gone');
+
+        const sql = createSchemaSQL(state, database);
+
+        expect(sql).toContain('IDX_posts');
+        expect(sql).not.toContain('IDX_only_gone');
+        expect(sql).not.toContain('gone_column');
+      }
+    );
+
     it('returns an empty string when settings.database is unsupported', () => {
       const { state } = createFixture();
       state.settings.database = 0;

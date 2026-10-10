@@ -210,7 +210,7 @@ export function runBatch(peer: PeerStore, operations: unknown): BatchRun {
 
   const rehearsal = createPeerStore({ nickname: BATCH_TOOL, presence: false });
   try {
-    rehearsal.setInitialValue(peer.value);
+    rehearsal.setInitialValue(peer.runtimeValue);
     play(rehearsal, checked);
   } finally {
     rehearsal.destroy();

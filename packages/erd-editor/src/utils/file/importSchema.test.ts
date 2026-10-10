@@ -468,7 +468,7 @@ describe('importSchemaPlaced', () => {
     expect(settings.canvasType).toBe(CanvasType.settings);
   });
 
-  it('lands the grid at once where the tables share no relationship', async () => {
+  it('lands the grid at once where the tables share no relationship, its points inside the load', async () => {
     const app = createApp();
     const batches = recordActions(app);
 
@@ -479,9 +479,16 @@ describe('importSchemaPlaced', () => {
     expect(batches[0].map(({ type }) => type)).toEqual([
       'editor.clear',
       'editor.loadJson',
-      'table.sort',
     ]);
     expect(tableNames(app).sort()).toEqual(['posts', 'users']);
+    const { tableEntities } = JSON.parse(
+      batches[0][1].payload.value
+    ).collections;
+    for (const id of app.store.state.doc.tableIds) {
+      const { x, y } = app.store.state.collections.tableEntities[id].ui;
+      expect(tableEntities[id].ui).toMatchObject({ x, y });
+    }
+    expect(cornerOf(app, 'users').y).toBe(TABLE_SORT_START);
   });
 
   it('lands the grid without a word when no layout comes back', async () => {

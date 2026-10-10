@@ -15,6 +15,7 @@ import {
   type RefusedFrame,
 } from '@/framing';
 import {
+  HUB_PROTOCOL_VERSION,
   HubNotification,
   HubToPeerMessage,
   PeerToHubMessage,
@@ -244,7 +245,11 @@ describe('decodePeerToHubFrames', () => {
         line({
           id: 1,
           method: 'hello',
-          params: { token: 't', protocolVersion: 1, client: 'c' },
+          params: {
+            token: 't',
+            protocolVersion: HUB_PROTOCOL_VERSION,
+            client: 'c',
+          },
         }),
         line({ id: 2, method: 'join', params: { path: '/a', extra: true } }),
       ]).pipe(decodePeerToHubFrames)
@@ -254,7 +259,11 @@ describe('decodePeerToHubFrames', () => {
       Result.succeed({
         id: 1,
         method: 'hello',
-        params: { token: 't', protocolVersion: 1, client: 'c' },
+        params: {
+          token: 't',
+          protocolVersion: HUB_PROTOCOL_VERSION,
+          client: 'c',
+        },
       }),
       Result.succeed({ id: 2, method: 'join', params: { path: '/a' } }),
     ]);

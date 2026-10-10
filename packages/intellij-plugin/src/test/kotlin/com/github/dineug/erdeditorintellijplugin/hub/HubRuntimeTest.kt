@@ -439,7 +439,7 @@ class HubRuntimeTest {
         }
 
         fun hello(token: String) =
-            """{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":1,"client":"spec"}}"""
+            """{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":$HUB_PROTOCOL_VERSION,"client":"spec"}}"""
 
         fun join(id: Int, path: String) = """{"id":$id,"method":"join","params":{"path":"$path"}}"""
     }

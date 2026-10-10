@@ -14,6 +14,13 @@ import {
 } from 'vite-plus/test';
 
 import {
+  createDiagram,
+  receiveAll,
+  removeTable,
+  shownTable,
+  usersDiagram,
+} from '@/__test-utils__/diagram';
+import {
   actionsSent,
   closedSent,
   createConnection,
@@ -23,6 +30,7 @@ import {
   VAULT,
 } from '@/__test-utils__/hub';
 import { DocumentRegistry } from '@/hub/registry';
+import { seedValue } from '@/tabSave';
 
 const NAME = 'a.erd';
 const PATH = `${VAULT}/${NAME}`;
@@ -37,10 +45,19 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
 
+const cleanups: Array<() => void> = [];
+
 afterEach(() => {
+  cleanups.splice(0).forEach(cleanup => cleanup());
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
+
+const diagram = (value: string) => {
+  const store = createDiagram(value);
+  cleanups.push(store.destroy);
+  return store;
+};
 
 describe('tabs', () => {
   it('keeps the tabs of a file in the order they opened, the first writing it', async () => {
@@ -106,7 +123,11 @@ describe('tabs', () => {
     harness.registry.setTabState(stranger, { live: true, unreadable: false });
     harness.registry.loaded(stranger, '{}', true);
     harness.registry.relay(stranger, [add(1)]);
-    harness.registry.valueSaved(stranger, '{}');
+    harness.registry.valueSaved(stranger, {
+      value: '{}',
+      changed: true,
+      runtimeValue: '{}',
+    });
     harness.registry.setActive(stranger);
     harness.registry.renamed({ path: 'nothing.erd' });
 
@@ -352,6 +373,48 @@ describe('seeding a tab opened beside others', () => {
 
     expect(seed).not.toHaveBeenCalled();
   });
+
+  it('hands the seed the runtime value the last replica save carried, so an undo in the other tab brings a removed table back whole', async () => {
+    const harness = createHubHarness();
+    const { value, tableId } = usersDiagram();
+    const first = await harness.openReady(NAME, value);
+    const shown = diagram(value);
+    const batches: unknown[][] = [];
+    cleanups.push(
+      shown.subscribe(actions => {
+        harness.relay(first, actions);
+        batches.push(actions);
+      })
+    );
+    removeTable(shown, tableId);
+    const saved = shown.value;
+    harness.save(first, saved, shown.runtimeValue);
+    const second = harness.addTab(NAME);
+
+    const seeded: Array<ReturnType<typeof seedValue>> = [];
+    harness.registry.seedWhenQuiet(second.tab, runtimeValue =>
+      seeded.push(
+        seedValue({
+          runtimeValue,
+          peer: saved,
+          handed: undefined,
+          file: value,
+          opened: value,
+        })
+      )
+    );
+    const view = diagram(seeded[0].initialValue);
+    batches.length = 0;
+    shown.undo();
+    receiveAll(view, batches);
+
+    expect(shownTable(view, tableId)).toEqual({
+      name: 'users',
+      columns: ['id', 'name'],
+    });
+    expect(seeded[0].loaded).toBe(saved);
+    expect(seeded[0].initialValue).not.toBe(saved);
+  });
 });
 
 describe('content', () => {
@@ -385,20 +448,90 @@ describe('content', () => {
     expect(harness.registry.isDirty(document)).toBe(true);
   });
 
-  it('keeps the loaded text for a save that changed nothing, which settles the change and dirties nothing', async () => {
+  it('keeps the loaded text for a save that changed nothing in the file form, which settles the change and dirties nothing', async () => {
     const harness = createHubHarness();
     const editor = await harness.openReady(NAME, '{ "older": "bytes" }');
     const document = harness.registry.find(PATH)!;
 
     harness.relay(editor, [add(1, 'settings.scrollTo')]);
     expect(harness.registry.isDirty(document)).toBe(true);
-    harness.save(editor);
-    expect(harness.registry.isDirty(document)).toBe(false);
+    harness.save(editor, undefined, '{"runtime":1}');
 
-    const result = await harness.run(
-      harness.handler.join({ path: PATH }, createConnection())
-    );
-    expect(result.initialValue).toBe('{ "older": "bytes" }');
+    expect(harness.registry.isDirty(document)).toBe(false);
+    expect(document.content).toBe('{ "older": "bytes" }');
+  });
+});
+
+describe('the runtime value', () => {
+  const join = (harness: ReturnType<typeof createHubHarness>) =>
+    harness.run(harness.handler.join({ path: PATH }, createConnection()));
+
+  it('is none before a replica saves, so a join hands what the tab loaded', async () => {
+    const harness = createHubHarness();
+    await harness.openReady(NAME, '{"opened":1}');
+
+    expect(harness.registry.find(PATH)!.runtimeValue).toBeNull();
+    expect((await join(harness)).initialValue).toBe('{"opened":1}');
+  });
+
+  it('follows every replica save, one that left the file form as it was too, and a join hands it', async () => {
+    const harness = createHubHarness();
+    const editor = await harness.openReady(NAME, '{"opened":1}');
+
+    harness.save(editor, '{"saved":1}', '{"runtime":1}');
+    expect((await join(harness)).initialValue).toBe('{"runtime":1}');
+    harness.save(editor, undefined, '{"runtime":2}');
+    expect((await join(harness)).initialValue).toBe('{"runtime":2}');
+    expect(harness.registry.find(PATH)!.content).toBe('{"saved":1}');
+  });
+
+  it('never stands in for the file form: dirty compares what the file took with the content only', async () => {
+    const harness = createHubHarness();
+    const editor = await harness.openReady(NAME, '{}');
+    const document = harness.registry.find(PATH)!;
+
+    harness.save(editor, '{"saved":1}', '{"runtime":1}');
+    editor.tab.savedText = '{"saved":1}';
+
+    expect(harness.registry.isDirty(document)).toBe(false);
+    editor.tab.savedText = '{"runtime":1}';
+    expect(harness.registry.isDirty(document)).toBe(true);
+  });
+
+  it('is dropped by an outside change, so a join and a tab opened after it start from the file', async () => {
+    const harness = createHubHarness();
+    const editor = await harness.openReady(NAME, '{"opened":1}');
+    harness.save(editor, '{"saved":1}', '{"runtime":1}');
+
+    harness.registry.loaded(editor.tab, '{"outside":1}', true);
+    const seed = vi.fn();
+    harness.registry.seedWhenQuiet(harness.addTab(NAME).tab, seed);
+
+    expect((await join(harness)).initialValue).toBe('{"outside":1}');
+    expect(seed).toHaveBeenCalledWith(null);
+  });
+
+  it('stays through a rename, since the tabs keep what they hold', async () => {
+    const harness = createHubHarness();
+    const editor = await harness.openReady(NAME, '{"opened":1}');
+    harness.save(editor, '{"saved":1}', '{"runtime":1}');
+
+    harness.registry.renamed(editor.file);
+    await microtasks();
+
+    expect((await join(harness)).initialValue).toBe('{"runtime":1}');
+  });
+
+  it('goes with the last tab, so a tab opening the file again starts from the file', async () => {
+    const harness = createHubHarness();
+    const editor = await harness.openReady(NAME, '{"opened":1}');
+    harness.save(editor, '{"saved":1}', '{"runtime":1}');
+
+    harness.registry.removeTab(editor.tab);
+    const seed = vi.fn();
+    harness.registry.seedWhenQuiet(harness.addTab(NAME).tab, seed);
+
+    expect(seed).toHaveBeenCalledWith(null);
   });
 });
 

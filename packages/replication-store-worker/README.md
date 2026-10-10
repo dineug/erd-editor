@@ -15,8 +15,10 @@ the worker, spawned from a URL instead of inlined.
 
 The webview forwards the editor's raw action stream into the worker, which replays it into a store
 built by `createReplicationStore` from `@dineug/erd-editor/engine.js`. Only when that store reports a
-`change` does the worker post the serialized document back out, with `changed` false when the
-change left it as it was, such as a scroll the file does not save.
+`change` does the worker post the serialized document back out, in two forms: `value`, the one a
+file holds, and `runtimeValue`, the document as the replica holds it, removed entities included,
+which seeds a second view or a joining agent and is never written. `changed` is false when the
+change left `value` as it was, such as a scroll the file does not save.
 
 Traffic in both directions is plain `postMessage` carrying `@dineug/erd-editor-webview-bridge`
 commands — inbound `webviewInitialValueCommand` and `webviewReplicationCommand`, outbound
@@ -36,9 +38,10 @@ import { createReplicationStoreWorker } from '@dineug/erd-editor-replication-sto
 const worker = createReplicationStoreWorker({ name: 'replication-store-worker' });
 const bridge = new Bridge();
 
-bridge.registerCommand(hostSaveValueCommand, ({ value, changed }) => {
+bridge.registerCommand(hostSaveValueCommand, ({ value, changed, runtimeValue }) => {
   // `value` is the serialized document — hand it to the host to write to disk,
-  // unless `changed` is false: then the file already holds what it means
+  // unless `changed` is false: then the file already holds what it means.
+  // Keep `runtimeValue` in memory to seed a second view; never write it.
 });
 
 worker.addEventListener('message', event => bridge.executeAction(event.data));

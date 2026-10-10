@@ -10,7 +10,6 @@ const buildIndex = (id: string, indexColumnIds: string[] = []): Index => ({
   indexColumnIds,
   seqIndexColumnIds: [...indexColumnIds],
   unique: false,
-  meta: { updateAt: 0, createAt: 0 },
 });
 
 describe('v3/schema/index.entity', () => {
@@ -26,12 +25,10 @@ describe('v3/schema/index.entity', () => {
       indexColumnIds: ['index-column-1'],
       seqIndexColumnIds: ['index-column-1'],
       unique: true,
-      meta: { updateAt: 9, createAt: 4 },
     };
 
     expect(index.unique).toBe(true);
     expect(index.indexColumnIds).toEqual(index.seqIndexColumnIds);
-    expect(index.meta.updateAt).toBeGreaterThan(index.meta.createAt);
   });
 
   it('defaults to a non-unique index with an empty name', () => {

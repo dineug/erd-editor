@@ -147,8 +147,8 @@ describe('ChangeActionTypes', () => {
     ]);
   });
 
-  it('counts sixty-eight change types, the Schema SQL scripts among them', () => {
-    expect(ChangeActionTypes).toHaveLength(68);
+  it('counts sixty-seven change types, the Schema SQL scripts among them', () => {
+    expect(ChangeActionTypes).toHaveLength(67);
     expect(ChangeActionTypes).toContain('settings.changeDDLScript');
   });
 

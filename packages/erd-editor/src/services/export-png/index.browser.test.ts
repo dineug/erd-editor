@@ -29,11 +29,6 @@ import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { getRouteBBox } from '@/utils/draw-relationship';
 
-/** The box the schema still clamps settings.width to, which nothing reads now. */
-const CANVAS = 2000;
-
-const meta = () => ({ updateAt: 0, createAt: 0 });
-
 const toWidth = (text: string) => text.length * 7 + 2;
 
 type MemoSeed = {
@@ -102,8 +97,6 @@ function createDoc({
   return JSON.stringify({
     version: '3.0.0',
     settings: {
-      width: CANVAS,
-      height: CANVAS,
       originX,
       originY,
       zoomLevel,
@@ -137,7 +130,6 @@ function createDoc({
               widthComment: 60,
               color: '#00ff00',
             },
-            meta: meta(),
           },
         ])
       ),
@@ -152,7 +144,6 @@ function createDoc({
             startRelationshipType: 2,
             start: { tableId: '', columnIds: [], ...start, direction: 8 },
             end: { tableId: '', columnIds: [], ...end, direction: 8 },
-            meta: meta(),
           },
         ])
       ),
@@ -168,7 +159,6 @@ function createDoc({
                   name: id,
                   color,
                   ui: { x, y, width: 200, height: 100, zIndex: 1 },
-                  meta: meta(),
                 },
               ])
             ),
@@ -181,7 +171,6 @@ function createDoc({
             id,
             value: '',
             ui: { x, y, width, height, zIndex: 2, color: '#ff0000' },
-            meta: meta(),
           },
         ])
       ),
@@ -418,14 +407,13 @@ describe('the groups of an exported document', () => {
 });
 
 describe('createDocumentPng', () => {
-  it('is what the document draws with a margin around it, not the canvas box', async () => {
+  it('is what the document draws with a margin around it', async () => {
     const box = expectedBox();
     const image = await decode(
       await createDocumentPng({ doc: createDoc(), theme, toWidth })
     );
 
     expect([image.width, image.height]).toEqual([box.width, box.height]);
-    expect(image.width).toBeLessThan(CANVAS);
   });
 
   it('is the margin on its own for a document that draws nothing', async () => {

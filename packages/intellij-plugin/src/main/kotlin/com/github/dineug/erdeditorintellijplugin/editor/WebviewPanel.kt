@@ -22,7 +22,6 @@ import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.intellij.lang.annotations.Language
 import java.io.BufferedInputStream
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.BorderFactory
 
@@ -31,7 +30,7 @@ class WebviewPanel(
         private val coroutineScope: CoroutineScope,
         private val bridge: WebviewBridge,
         private val file: VirtualFile,
-        private val docToEditorsMap: ConcurrentMap<VirtualFile, MutableSet<ErdEditor>>
+        private val openEditors: OpenEditors<VirtualFile, ErdEditor>
 ) : Disposable.Parent {
     companion object {
         private const val DOMAIN = WebviewScripts.DOMAIN
@@ -263,7 +262,7 @@ class WebviewPanel(
 
         // Snapshot before iterating: this runs on a background dispatcher while the EDT may be
         // opening or closing peer editors for the same file.
-        docToEditorsMap[file].orEmpty().toList()
+        openEditors.editors(file)
             .filter { it !== parentDisposable && it.isWebviewPanelInitialized }
             .forEach { editor -> editor.webviewPanel.dispatch(action) }
     }

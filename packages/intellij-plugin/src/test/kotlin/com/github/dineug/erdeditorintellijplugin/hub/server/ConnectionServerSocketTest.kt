@@ -1,5 +1,6 @@
 package com.github.dineug.erdeditorintellijplugin.hub.server
 
+import com.github.dineug.erdeditorintellijplugin.hub.HUB_PROTOCOL_VERSION
 import com.github.dineug.erdeditorintellijplugin.hub.HubJson
 import com.github.dineug.erdeditorintellijplugin.hub.HubMethod
 import com.github.dineug.erdeditorintellijplugin.hub.HubPlatform
@@ -87,7 +88,7 @@ class ConnectionServerSocketTest {
         peer.send(hello())
 
         assertEquals(
-            listOf("""{"id":1,"ok":true,"method":"hello","result":{"protocolVersion":1,"ide":"intellij","version":"0.0.0-test"}}"""),
+            listOf("""{"id":1,"ok":true,"method":"hello","result":{"protocolVersion":$HUB_PROTOCOL_VERSION,"ide":"intellij","version":"0.0.0-test"}}"""),
             peer.receiveFrames(1),
         )
     }
@@ -190,6 +191,6 @@ class ConnectionServerSocketTest {
         const val TOKEN = "6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f"
 
         fun hello(token: String = TOKEN) =
-            """{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":1,"client":"spec"}}"""
+            """{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":$HUB_PROTOCOL_VERSION,"client":"spec"}}"""
     }
 }

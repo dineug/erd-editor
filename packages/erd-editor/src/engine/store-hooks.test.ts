@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { ColumnOption, ColumnUIKey, Direction } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
-import { validationIdsAction } from '@/engine/modules/editor/atom.actions';
 import {
   initialLoadJsonAction$,
   loadJsonAction$,
@@ -39,8 +38,6 @@ vi.mock('@/engine/store', async importOriginal => {
     },
   };
 });
-
-const DAY = 24 * 60 * 60 * 1000;
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 40));
 
@@ -188,18 +185,11 @@ describe('createHooks', () => {
     );
   });
 
-  /** A file whose one memo was removed long enough ago for the schema GC. */
+  /** A file holding a memo it no longer lists. */
   const fileWithTombstone = () =>
     JSON.stringify({
       version: '3.0.0',
-      collections: {
-        memoEntities: {
-          removed: {
-            id: 'removed',
-            meta: { updateAt: Date.now() - 10 * DAY, createAt: 0 },
-          },
-        },
-      },
+      collections: { memoEntities: { removed: { id: 'removed' } } },
     });
 
   const loadIn = (load: typeof loadJsonAction$) => (value: string) =>
@@ -217,10 +207,10 @@ describe('createHooks', () => {
     ['initialLoadJsonAction$', loadIn(initialLoadJsonAction$)],
     ['loadJsonAction$', loadIn(loadJsonAction$)],
     ['a replica load', loadReplica],
-  ])('wakes on %s only the hooks settleLoad writes for at once', (_, load) => {
-    // A replica measures its changes from the load settleLoad leaves, so a new
-    // hook on any action a load dispatches, its clear and the GC's validation
-    // included, joins it, or a pan on a stale file reads as an edit.
+  ])('wakes on %s no hook at all', (_, load) => {
+    // The load reducer writes what the document derives before it returns, and
+    // a replica measures its changes from there, so a hook on any action a load
+    // dispatches, its clear included, would read a pan on a stale file as an edit.
     dispatched.length = 0;
     load(fileWithTombstone());
 
@@ -230,19 +220,22 @@ describe('createHooks', () => {
       )
       .map(([, hook]) => hook.name);
 
-    expect(woken).toEqual([
-      'recalculateTableWidthHook',
-      'validationForeignKeyHook',
-      'identificationHook',
-      'startRelationshipHook',
-    ]);
+    expect(dispatched).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^editor\.(initialL|l)oadJson$/),
+      ])
+    );
+    expect(woken).toEqual([]);
   });
 
-  it('collects the tombstone a replica load finds, after the load', () => {
-    dispatched.length = 0;
-    loadReplica(fileWithTombstone());
+  it('keeps the record a replica load finds unlisted', () => {
+    const replica = createReplicationStore({ toWidth: () => 0 });
+    replica.setInitialValue(fileWithTombstone());
 
-    expect(dispatched.at(-1)).toBe(validationIdsAction.type);
+    expect(
+      JSON.parse(replica.runtimeValue).collections.memoEntities
+    ).toHaveProperty('removed');
+    replica.destroy();
   });
 
   it('destroy is safe to call twice', () => {

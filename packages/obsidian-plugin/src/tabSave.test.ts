@@ -12,6 +12,9 @@ import {
 const OPENED = '{"doc":"opened"}';
 const EDITED = '{"doc":"edited"}';
 const WRITTEN = '{"doc":"written by the tab that closed"}';
+const RUNTIME = '{"doc":"edited","removed":"kept for an undo"}';
+
+const disk = (text: string | null) => vi.fn(() => text);
 
 const writer: TabSaveState = {
   unreadable: false,
@@ -103,7 +106,6 @@ describe('a tab still waiting to load that became the writer', () => {
 
 describe('exitSave', () => {
   const edited: TabSaveState = { ...writer, replica: EDITED };
-  const disk = (text: string | null) => vi.fn(() => text);
 
   it('has nothing to write, and reads no file, for a tab with no unsaved value', () => {
     const readFile = disk(OPENED);
@@ -145,39 +147,57 @@ describe('exitSave', () => {
 });
 
 describe('seedValue', () => {
-  it("starts from another tab's replica value first", () => {
+  const sources = {
+    runtimeValue: null,
+    peer: undefined,
+    handed: undefined,
+    file: null,
+    opened: OPENED,
+  };
+
+  it("keeps another tab's replica value first as the loaded text", () => {
     expect(
-      seedValue({ peer: EDITED, handed: WRITTEN, file: OPENED, opened: OPENED })
+      seedValue({ ...sources, peer: EDITED, handed: WRITTEN, file: OPENED })
+        .loaded
     ).toBe(EDITED);
   });
 
-  it('with no other tab holding the document, starts from what the last writer handed Obsidian, ahead of a modify event still on its way', () => {
+  it('with no other tab holding the document, keeps what the last writer handed Obsidian, ahead of a modify event still on its way', () => {
     expect(
-      seedValue({
-        peer: undefined,
-        handed: WRITTEN,
-        file: OPENED,
-        opened: OPENED,
-      })
+      seedValue({ ...sources, handed: WRITTEN, file: OPENED }).loaded
     ).toBe(WRITTEN);
   });
 
-  it('else from the text Obsidian last gave the tab, else the one it opened with', () => {
+  it('else the text Obsidian last gave the tab, else the one it opened with', () => {
+    expect(seedValue({ ...sources, file: WRITTEN }).loaded).toBe(WRITTEN);
+    expect(seedValue(sources).loaded).toBe(OPENED);
+  });
+
+  it('starts the editor from the loaded text while no replica has saved a runtime value', () => {
+    expect(seedValue({ ...sources, peer: EDITED })).toEqual({
+      loaded: EDITED,
+      initialValue: EDITED,
+    });
+  });
+
+  it("starts the editor from the runtime value the file's tabs last saved, and keeps the file form as the loaded text", () => {
     expect(
-      seedValue({
-        peer: undefined,
-        handed: undefined,
-        file: WRITTEN,
-        opened: OPENED,
-      })
-    ).toBe(WRITTEN);
-    expect(
-      seedValue({
-        peer: undefined,
-        handed: undefined,
-        file: null,
-        opened: OPENED,
-      })
-    ).toBe(OPENED);
+      seedValue({ ...sources, runtimeValue: RUNTIME, peer: EDITED })
+    ).toEqual({ loaded: EDITED, initialValue: RUNTIME });
+  });
+
+  it('leaves a tab seeded from the runtime value nothing but the file form to hand back, as the writer too', () => {
+    const { loaded } = seedValue({
+      ...sources,
+      runtimeValue: RUNTIME,
+      peer: EDITED,
+    });
+    // The first tab closed after writing the file, which made this one the writer.
+    const seeded = { ...writer, loaded, saved: WRITTEN };
+
+    expect(viewData(seeded)).toBe(EDITED);
+    expect(currentValue(seeded)).toBe(EDITED);
+    expect(viewData({ ...seeded, writer: false })).toBe(WRITTEN);
+    expect(exitSave(seeded, false, disk(WRITTEN))).toBe('write');
   });
 });

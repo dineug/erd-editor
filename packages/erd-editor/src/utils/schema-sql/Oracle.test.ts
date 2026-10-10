@@ -600,13 +600,13 @@ describe('Oracle dotted table names', () => {
 
   it('numbers a foreign key and an index name repeating an earlier one but for case, not a sequence', () => {
     const fixture = createFixture();
-    const { state, users, posts, userId, usersIndex } = fixture;
+    const { state, users, posts, userId, userEmail, usersIndex } = fixture;
     users.name = 'sales.users';
     posts.name = 'sales.posts';
     const hrIndex = addHrUsers(fixture, {
       name: 'hr.Users',
-      columnIds: [userId.id],
-      indexColumnId: 'ic-1',
+      columnIds: [userId.id, userEmail.id],
+      indexColumnId: 'ic-2',
     });
     usersIndex.name = '';
     state.doc.indexIds = [usersIndex.id, hrIndex.id];

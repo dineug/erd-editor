@@ -29,6 +29,7 @@ object HubResults {
     fun openDocument(path: String, opened: Boolean, webviews: Int): ObjectNode =
         nodes.objectNode().put("path", path).put("opened", opened).put("webviews", webviews)
 
+    /** initialValue is the runtime value the editor holds, else the file. */
     fun join(initialValue: String, snapshotVersion: Double, readonly: Boolean): ObjectNode =
         nodes.objectNode()
             .put("initialValue", initialValue)
@@ -42,7 +43,7 @@ object HubResults {
 
     fun save(saved: Boolean): ObjectNode = nodes.objectNode().put("saved", saved)
 
-    /** {"protocolVersion":1,"ide":…,"version":…} */
+    /** {"protocolVersion":HUB_PROTOCOL_VERSION,"ide":…,"version":…} */
     fun hello(ide: String, version: String): ObjectNode =
         nodes.objectNode().put("protocolVersion", HUB_PROTOCOL_VERSION).put("ide", ide).put("version", version)
 

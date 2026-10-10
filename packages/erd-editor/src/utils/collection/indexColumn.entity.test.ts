@@ -1,24 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { OrderType } from '@/constants/schema';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 
 describe('createIndexColumn', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('creates an index column filled with defaults when no value is given', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-01-02T03:04:05.000Z'));
-    const now = Date.now();
-
     const indexColumn = createIndexColumn();
 
     expect(indexColumn.indexId).toBe('');
     expect(indexColumn.columnId).toBe('');
     expect(indexColumn.orderType).toBe(OrderType.ASC);
-    expect(indexColumn.meta).toEqual({ updateAt: now, createAt: now });
+    expect(indexColumn).not.toHaveProperty('meta');
     expect(typeof indexColumn.id).toBe('string');
     expect(indexColumn.id.length).toBeGreaterThan(0);
   });
@@ -44,16 +36,6 @@ describe('createIndexColumn', () => {
       columnId: 'column-1',
       orderType: OrderType.DESC,
     });
-  });
-
-  it('merges a partial meta object', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2024-05-06T07:08:09.000Z'));
-    const now = Date.now();
-
-    const indexColumn = createIndexColumn({ meta: { updateAt: 42 } });
-
-    expect(indexColumn.meta).toEqual({ updateAt: 42, createAt: now });
   });
 
   it('treats an explicitly undefined value as no value', () => {

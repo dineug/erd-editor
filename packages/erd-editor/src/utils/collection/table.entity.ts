@@ -2,7 +2,6 @@ import { uuid25 } from '@dineug/uuid';
 
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { DeepPartial, Table } from '@/internal-types';
-import { getDefaultEntityMeta } from '@/utils';
 import { deepMerge } from '@/utils/deepMerge';
 
 export const createTable = (value?: DeepPartial<Table>): Table =>
@@ -22,7 +21,6 @@ export const createTable = (value?: DeepPartial<Table>): Table =>
         widthComment: COLUMN_MIN_WIDTH,
         color: '',
       },
-      meta: getDefaultEntityMeta(),
     },
     value ?? {}
   );

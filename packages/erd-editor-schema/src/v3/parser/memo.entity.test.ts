@@ -19,8 +19,7 @@ describe('createMemo', () => {
       height: 100,
       color: '',
     });
-    expect(memo.meta.createAt).toBe(memo.meta.updateAt);
-    expect(typeof memo.meta.createAt).toBe('number');
+    expect(memo).not.toHaveProperty('meta');
   });
 });
 
@@ -74,7 +73,6 @@ describe('createAndMergeMemoEntities', () => {
           height: 5,
           color: '#fff',
         },
-        meta: { updateAt: 10, createAt: 20 },
       },
     });
 
@@ -82,7 +80,6 @@ describe('createAndMergeMemoEntities', () => {
       id: 'memo1',
       value: 'note',
       ui: { x: 1, y: 2, zIndex: 3, width: 4, height: 5, color: '#fff' },
-      meta: { updateAt: 10, createAt: 20 },
     });
   });
 
@@ -96,7 +93,6 @@ describe('createAndMergeMemoEntities', () => {
           color: 1 as any,
           height: null as any,
         },
-        meta: { updateAt: 'x' as any },
       },
     });
 
@@ -105,7 +101,6 @@ describe('createAndMergeMemoEntities', () => {
     expect(memo.ui.x).toBe(200);
     expect(memo.ui.color).toBe('');
     expect(memo.ui.height).toBe(100);
-    expect(memo.meta.updateAt).toBe(memo.meta.createAt);
   });
 
   it('keeps the ui defaults when ui is missing', () => {

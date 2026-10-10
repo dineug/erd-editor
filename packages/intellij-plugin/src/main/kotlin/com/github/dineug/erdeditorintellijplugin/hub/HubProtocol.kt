@@ -1,7 +1,7 @@
 package com.github.dineug.erdeditorintellijplugin.hub
 
 /** The protocol this hub speaks; a hello with any other version is refused. */
-const val HUB_PROTOCOL_VERSION: Int = 1
+const val HUB_PROTOCOL_VERSION: Int = 2
 
 /**
  * The largest frame either side accepts, in UTF-8 bytes without the newline. A join result carries

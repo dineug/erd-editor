@@ -8,7 +8,12 @@ import {
 } from '@dineug/erd-editor/peer.js';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { createSeededPeer, createSeedValue, SEED } from '@/__test-utils__/seed';
+import {
+  createCrossedRemovalPeer,
+  createSeededPeer,
+  createSeedValue,
+  SEED,
+} from '@/__test-utils__/seed';
 import { toDocumentList, toEntityDetails } from '@/tools/outline';
 import { runTool } from '@/tools/run';
 import { toAgentSnapshot } from '@/tools/snapshot';
@@ -175,23 +180,22 @@ describe('the document list', () => {
     peer.setInitialValue(JSON.stringify(document));
     const reference = toDocumentList(seeded().state).tables;
 
-    // The peer's own hooks rewrite the loaded widths a few milliseconds on;
-    // the list estimates on copies and leaves the loaded one where it was.
-    expect(toDocumentList(peer.state).tables).toEqual(reference);
-    expect(tableOf(peer, SEED.empty).ui.widthName).toBe(900);
-    await settled();
+    // The load measures with the peer's estimate before it returns, and nothing
+    // measures again after it.
     expect(tableOf(peer, SEED.empty).ui.widthName).not.toBe(900);
+    expect(toDocumentList(peer.state).tables).toEqual(reference);
+    await settled();
     expect(toDocumentList(peer.state).tables).toEqual(reference);
   });
 
   it('leaves the peer state as it found it, widths the peer would estimate otherwise included', () => {
-    const document = JSON.parse(createSeedValue());
-    document.collections.tableEntities[SEED.users].ui.widthName = 900;
-    document.collections.tableColumnEntities[SEED.userName].ui.widthDataType =
-      700;
     const peer = createPeerStore({ nickname: 'agent', presence: false });
     peers.push(peer);
-    peer.setInitialValue(JSON.stringify(document));
+    peer.setInitialValue(createSeedValue());
+    // Widths a load never leaves, so a list that measured into the state shows.
+    tableOf(peer, SEED.users).ui.widthName = 900;
+    peer.state.collections.tableColumnEntities[SEED.userName].ui.widthDataType =
+      700;
     const before = peer.value;
 
     toDocumentList(peer.state);
@@ -232,6 +236,22 @@ describe('the document list', () => {
     expect(list.tables.map(({ id }) => id)).toEqual([SEED.users, SEED.orders]);
     expect(list.tableCount).toBe(2);
     expect(list.memos).toEqual([]);
+  });
+
+  it('lists and counts only the relationships and indexes the file form keeps', () => {
+    const { peer, orphans, kept } = createCrossedRemovalPeer();
+    peers.push(peer);
+    expect(peer.state.doc.relationshipIds).toContain(orphans.relationship);
+    expect(peer.state.doc.indexIds).toContain(orphans.ordersIndex);
+
+    const list = toDocumentList(peer.state);
+    const file = JSON.parse(peer.value);
+
+    expect(list).toMatchObject({ relationshipCount: 0, indexCount: 1 });
+    expect(list.relationships).toEqual([]);
+    expect(list.indexes.map(({ id }) => id)).toEqual([kept.usersIndex]);
+    expect(file.doc.relationshipIds).toEqual([]);
+    expect(file.doc.indexIds).toEqual([kept.usersIndex]);
   });
 
   it('stays a small part of the snapshot', () => {
@@ -303,6 +323,31 @@ describe('the entity details', () => {
     expect(details.indexes).toEqual([]);
     expect(details.memos).toEqual([]);
     expect(details.missing).toEqual([SEED.empty, 'nope', SEED.memo]);
+  });
+
+  it('reports what the file form drops as missing, and an index without the columns its table dropped', () => {
+    const { peer, orphans, kept } = createCrossedRemovalPeer();
+    peers.push(peer);
+    expect(
+      peer.state.collections.indexEntities[kept.usersIndex].indexColumnIds
+    ).toEqual([orphans.nameColumn, kept.idColumn]);
+
+    const details = toEntityDetails(peer.state, {
+      relationshipIds: [orphans.relationship],
+      indexIds: [orphans.ordersIndex, kept.usersIndex],
+    });
+
+    expect(details.relationships).toEqual([]);
+    expect(
+      details.indexes!.map(({ id, columns }) => [
+        id,
+        columns.map(({ id }) => id),
+      ])
+    ).toEqual([[kept.usersIndex, [kept.idColumn]]]);
+    expect(details.missing).toEqual([
+      orphans.relationship,
+      orphans.ordersIndex,
+    ]);
   });
 
   it('leaves missing out when every id is live', () => {

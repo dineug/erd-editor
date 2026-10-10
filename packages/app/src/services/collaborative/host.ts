@@ -294,6 +294,11 @@ export class CollaborativeHostService {
     });
   }
 
+  /**
+   * The replica's runtime value, removed entities included, so an undo the host
+   * sends restores an entity whole there; still a version 3 document, which a
+   * guest on an older build parses too.
+   */
   async #sendSchema(session: Session, room: CollaborativeRoom, peerId: string) {
     const service = getAppDatabaseService();
     if (!service || !session.key) return;

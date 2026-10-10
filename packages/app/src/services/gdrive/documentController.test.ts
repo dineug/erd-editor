@@ -3,6 +3,8 @@ import {
   SharedFollowingActionTypes,
   tableActions,
   tableActions$,
+  tableColumnActions,
+  tableColumnActions$,
 } from '@dineug/erd-editor/peer.js';
 import {
   afterEach,
@@ -14,12 +16,12 @@ import {
 } from 'vite-plus/test';
 
 import {
-  comparable,
   createDriveEnv,
   createPeerEditor,
   documentWith,
   type DriveEnv,
   openTab,
+  type PeerEditor,
   settle,
   SUB,
   type Tab,
@@ -106,7 +108,7 @@ const saveRequestsOf = (tab: string) =>
     ({ tab: from, message }) => from === tab && message.type === 'save-request'
   );
 
-/** The other tabs apply an edit later, by their own clock, which stamps its entity meta. */
+/** The other tabs apply an edit later, by their own clock. */
 const deliverLater = () => vi.setSystemTime(Date.now() + 1000);
 
 beforeEach(() => {
@@ -189,8 +191,8 @@ describe('tabs of one file', () => {
     await settle(5);
 
     expect(tableNames(a.value())).toEqual(['items', 'purchases', 'users']);
-    expect(comparable(b.value())).toEqual(comparable(a.value()));
-    expect(comparable(c.value())).toEqual(comparable(a.value()));
+    expect(JSON.parse(b.value())).toEqual(JSON.parse(a.value()));
+    expect(JSON.parse(c.value())).toEqual(JSON.parse(a.value()));
 
     await settle(10_000);
     expect(env.patches().map(env.tabOf)).toEqual(['a']);
@@ -1033,6 +1035,112 @@ describe('what the element does on its own', () => {
     expect(tableNames(driveContent())).toEqual(['items', 'orders', 'users']);
     first.destroy();
     second.destroy();
+  });
+});
+
+describe('an editor that starts from another editor of the load', () => {
+  /** Orders with an id column, saved, which the editor then removes, saved too. */
+  async function removeOrders(editor: PeerEditor) {
+    const tableId = editor.addTable('orders');
+    const [columnId] = editor.edit([
+      tableColumnActions$.addColumnAction$(tableId),
+    ]).createdIds;
+    editor.edit([
+      tableColumnActions.changeColumnNameAction({
+        id: columnId,
+        tableId,
+        value: 'id',
+      }),
+    ]);
+    await settle(2000);
+    expect(tableNames(driveContent())).toEqual(['orders', 'users']);
+
+    editor.edit([tableActions$.removeTableAction$(tableId)]);
+    await settle(2000);
+    expect(tableNames(driveContent())).toEqual(['users']);
+    return { tableId, columnId };
+  }
+
+  const removedTableOf = (value: string, tableId: string) =>
+    JSON.parse(value).collections.tableEntities[tableId];
+
+  it('starts a new tab from the leader’s runtime value, so an undo there of a removal Drive holds restores the table whole', async () => {
+    const a = await open('a');
+    const { tableId, columnId } = await removeOrders(a.editor);
+    expect(removedTableOf(driveContent(), tableId)).toBeUndefined();
+
+    const b = await open('b');
+    a.editor.undo();
+    await settle(5);
+
+    expect(tableNames(b.value())).toEqual(['orders', 'users']);
+    expect(removedTableOf(b.value(), tableId)).toMatchObject({
+      name: 'orders',
+      columnIds: [columnId],
+    });
+    expect(JSON.parse(b.value())).toEqual(JSON.parse(a.value()));
+  });
+
+  it('starts a new tab from the file form alone, as a leader on an older build sends it', async () => {
+    const a = await open('a');
+    a.addTable('orders');
+    await settle(5);
+    env.onSend.current = (_, message) => {
+      if (message.type === 'snapshot') delete message.runtimeValue;
+    };
+
+    const b = await open('b');
+
+    expect(b.snapshot()).toMatchObject({ phase: 'ready', role: 'follower' });
+    expect(b.value()).toBe(a.value());
+  });
+
+  it('gives an editor attached again in one load the runtime value the last one held', async () => {
+    const a = await open('a', { autoAttach: false });
+    const first = createPeerEditor('first');
+    const detachFirst = a.controller.attach(first.adapter);
+    await settle(5);
+    const { tableId } = await removeOrders(first);
+
+    detachFirst();
+    const second = createPeerEditor('second');
+    a.controller.attach(second.adapter);
+    await settle(5);
+
+    expect(removedTableOf(second.store.runtimeValue, tableId)).toMatchObject({
+      name: 'orders',
+    });
+    expect(second.store.value).toBe(first.store.value);
+    expect(a.controller.hasUnsavedChanges()).toBe(false);
+    first.destroy();
+    second.destroy();
+  });
+
+  it('saves and downloads the file form, never the runtime value an editor starts from', async () => {
+    const a = await open('a');
+    const { tableId } = await removeOrders(a.editor);
+    const b = await open('b');
+    expect(removedTableOf(b.editor.store.runtimeValue, tableId)).toBeDefined();
+
+    b.addTable('items');
+    await settle(3000);
+    a.controller.downloadChanges();
+    b.controller.downloadChanges();
+    b.close();
+    tabs.splice(tabs.indexOf(b), 1);
+    b.controller.downloadChanges();
+
+    const written = [
+      ...env.patches().map(patch => patch.body!),
+      ...a.downloads.map(({ text }) => text),
+      ...b.downloads.map(({ text }) => text),
+    ];
+    // The first PATCH held the table, before its removal.
+    expect(written).toHaveLength(6);
+    for (const text of written.slice(1)) {
+      expect(removedTableOf(text, tableId)).toBeUndefined();
+    }
+    expect(written.slice(2)).toEqual(Array(4).fill(a.value()));
   });
 });
 

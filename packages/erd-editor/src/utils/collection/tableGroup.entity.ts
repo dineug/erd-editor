@@ -1,7 +1,6 @@
 import { uuid25 } from '@dineug/uuid';
 
 import { DeepPartial, TableGroup } from '@/internal-types';
-import { getDefaultEntityMeta } from '@/utils';
 import { deepMerge } from '@/utils/deepMerge';
 
 export const createTableGroup = (value?: DeepPartial<TableGroup>): TableGroup =>
@@ -17,7 +16,6 @@ export const createTableGroup = (value?: DeepPartial<TableGroup>): TableGroup =>
         height: 300,
         zIndex: 1,
       },
-      meta: getDefaultEntityMeta(),
     },
     value ?? {}
   );

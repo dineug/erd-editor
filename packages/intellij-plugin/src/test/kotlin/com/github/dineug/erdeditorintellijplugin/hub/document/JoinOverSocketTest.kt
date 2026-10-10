@@ -1,5 +1,6 @@
 package com.github.dineug.erdeditorintellijplugin.hub.document
 
+import com.github.dineug.erdeditorintellijplugin.hub.HUB_PROTOCOL_VERSION
 import com.github.dineug.erdeditorintellijplugin.hub.HubJson
 import com.github.dineug.erdeditorintellijplugin.hub.HubPlatform
 import com.github.dineug.erdeditorintellijplugin.hub.HubRuntime
@@ -212,7 +213,7 @@ class JoinOverSocketTest {
     }
 
     private fun connect(pipe: String, token: String): TestPeer = TestPeer.connect(pipe).also(peers::add).apply {
-        send("""{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":1,"client":"spec"}}""")
+        send("""{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":$HUB_PROTOCOL_VERSION,"client":"spec"}}""")
         val answer = receiveFrames(1).single()
         assertTrue(answer, answer.startsWith("""{"id":1,"ok":true,"method":"hello""""))
     }

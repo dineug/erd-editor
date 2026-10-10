@@ -178,7 +178,7 @@ describe('appDestroy', () => {
     const app = createTestAppContext();
     const received: string[] = [];
 
-    app.emitter.on({ schemaGC: () => received.push('schemaGC') });
+    app.emitter.on({ toggleSearch: () => received.push('toggleSearch') });
     app.store.dispatchSync(
       addTableAction({ id: 'table-a', ui: { x: 0, y: 0, zIndex: 2 } })
     );
@@ -195,7 +195,7 @@ describe('appDestroy', () => {
     app.keydown$.next(new KeyboardEvent('keydown'));
     expect(keydowns).toHaveLength(0);
 
-    app.emitter.emit({ type: 'schemaGC', payload: undefined } as any);
+    app.emitter.emit({ type: 'toggleSearch', payload: undefined } as any);
     expect(received).toHaveLength(0);
   });
 });

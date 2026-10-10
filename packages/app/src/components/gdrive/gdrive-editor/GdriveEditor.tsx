@@ -53,6 +53,7 @@ const GdriveEditor: React.FC<GdriveEditorProps> = ({
 
     const adapter: EditorAdapter = {
       getValue: () => editor.value,
+      getRuntimeValue: () => editor.runtimeValue,
       setInitialValue: value => editor.setInitialValue(value),
       subscribeLocal: listener => sharedStore.subscribe(listener),
       applyRemote: actions =>

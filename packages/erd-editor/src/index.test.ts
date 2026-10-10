@@ -8,7 +8,12 @@ import {
 } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__/index';
-import type { LocaleCode, LocaleOption, SchemaSQLOptions } from '@/index';
+import type {
+  ErdEditorElement,
+  LocaleCode,
+  LocaleOption,
+  SchemaSQLOptions,
+} from '@/index';
 import * as index from '@/index';
 import { exportJSON } from '@/utils/file/exportFile';
 import { importJSON } from '@/utils/file/importFile';
@@ -41,6 +46,19 @@ describe('@dineug/erd-editor entry point', () => {
     expect(editor.destroy).toBeTypeOf('function');
     expect(editor.setInitialValue).toBeTypeOf('function');
     expect(editor.setKeyBindingMap).toBeTypeOf('function');
+  });
+
+  it('types value as the file form to set and runtimeValue as a read-only string', () => {
+    const editor = document.createElement('erd-editor');
+
+    const assignRuntimeValue = (element: ErdEditorElement) => {
+      // @ts-expect-error the runtime value is read, never assigned
+      element.runtimeValue = '';
+    };
+
+    expectTypeOf(editor.value).toEqualTypeOf<string>();
+    expectTypeOf(editor.runtimeValue).toEqualTypeOf<string>();
+    expect(assignRuntimeValue).toBeTypeOf('function');
   });
 
   it('types a schema setter as returning a Promise only where it places first', () => {

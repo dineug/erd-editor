@@ -17,6 +17,7 @@ import {
   landLoadedSettings,
   rememberCanvasType,
 } from '@/engine/modules/settings/atom.actions';
+import { settleDocument } from '@/engine/settle';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { toScenePoint } from '@/konva/scene/viewport';
@@ -160,12 +161,13 @@ export const loadJsonAction = createAction<
 
 /**
  * Replaces the document while it is open, an import, an undo or a peer's load,
- * the screen of every locked setting staying the reader's own.
+ * the screen of every locked setting staying the reader's own. The registers
+ * stay, since the session goes on: a peer's older edit is still refused.
  */
 const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
   { payload: { value }, version: actionVersion },
-  { clock }
+  ctx
 ) => {
   const { version, settings, doc, collections } = parser(value);
   if (!hasCanvasType(settings.canvasType)) {
@@ -173,12 +175,13 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   }
 
   rememberCanvasType(state);
-  landLoadedSettings(state, settings, actionVersion ?? clock.getVersion());
+  landLoadedSettings(state, settings, actionVersion ?? ctx.clock.getVersion());
   state.version = version;
   state.doc = doc;
   state.collections = collections;
   rememberCanvasType(state);
   clearViews(state.editor);
+  settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
 
@@ -198,9 +201,15 @@ export const initialLoadJsonAction = createAction<
   ActionMap[typeof ActionType.initialLoadJson]
 >(ActionType.initialLoadJson);
 
+/**
+ * Opens a document: the file's settings, and no register of the document held
+ * before, whose versions would refuse the edits of peers that opened the file
+ * afresh. A store already sharing asks its peers for theirs again.
+ */
 const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state,
-  { payload: { value } }
+  { payload: { value } },
+  ctx
 ) => {
   const { version, settings, doc, collections } = parser(value);
   if (!hasCanvasType(settings.canvasType)) {
@@ -212,8 +221,10 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.version = version;
   state.doc = doc;
   state.collections = collections;
+  state.lww = {};
   rememberCanvasType(state);
   clearViews(state.editor);
+  settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
 
@@ -841,88 +852,6 @@ const dragSelectRect: ReducerType<typeof ActionType.dragSelectRect> = (
   editor.dragSelect = rect;
 };
 
-export const validationIdsAction = createAction<
-  ActionMap[typeof ActionType.validationIds]
->(ActionType.validationIds);
-
-const validationIds: ReducerType<typeof ActionType.validationIds> = ({
-  doc,
-  collections,
-}) => {
-  const tableCollection = query(collections).collection('tableEntities');
-  const tableColumnCollection = query(collections).collection(
-    'tableColumnEntities'
-  );
-  const indexCollection = query(collections).collection('indexEntities');
-  const indexColumnCollection = query(collections).collection(
-    'indexColumnEntities'
-  );
-  const relationshipCollection = query(collections).collection(
-    'relationshipEntities'
-  );
-  const memoCollection = query(collections).collection('memoEntities');
-  const tableGroupCollection =
-    query(collections).collection('tableGroupEntities');
-
-  const invalidTableIds = doc.tableIds.filter(
-    id => !tableCollection.selectById(id)
-  );
-  const invalidRelationshipIds = doc.relationshipIds.filter(
-    id => !relationshipCollection.selectById(id)
-  );
-  const invalidIndexIds = doc.indexIds.filter(
-    id => !indexCollection.selectById(id)
-  );
-  const invalidMemoIds = doc.memoIds.filter(
-    id => !memoCollection.selectById(id)
-  );
-  const invalidTableGroupIds = doc.tableGroupIds.filter(
-    id => !tableGroupCollection.selectById(id)
-  );
-
-  doc.tableIds = doc.tableIds.filter(id => !invalidTableIds.includes(id));
-  doc.relationshipIds = doc.relationshipIds.filter(
-    id => !invalidRelationshipIds.includes(id)
-  );
-  doc.indexIds = doc.indexIds.filter(id => !invalidIndexIds.includes(id));
-  doc.memoIds = doc.memoIds.filter(id => !invalidMemoIds.includes(id));
-  doc.tableGroupIds = doc.tableGroupIds.filter(
-    id => !invalidTableGroupIds.includes(id)
-  );
-
-  tableCollection.selectAll().forEach(table => {
-    const invalidColumnIds = table.columnIds.filter(
-      id => !tableColumnCollection.selectById(id)
-    );
-    const invalidSeqColumnIds = table.seqColumnIds.filter(
-      id => !tableColumnCollection.selectById(id)
-    );
-
-    table.columnIds = table.columnIds.filter(
-      id => !invalidColumnIds.includes(id)
-    );
-    table.seqColumnIds = table.seqColumnIds.filter(
-      id => !invalidSeqColumnIds.includes(id)
-    );
-  });
-
-  indexCollection.selectAll().forEach(index => {
-    const invalidIndexColumnIds = index.indexColumnIds.filter(
-      id => !indexColumnCollection.selectById(id)
-    );
-    const invalidSeqIndexColumnIds = index.seqIndexColumnIds.filter(
-      id => !indexColumnCollection.selectById(id)
-    );
-
-    index.indexColumnIds = index.indexColumnIds.filter(
-      id => !invalidIndexColumnIds.includes(id)
-    );
-    index.seqIndexColumnIds = index.seqIndexColumnIds.filter(
-      id => !invalidSeqIndexColumnIds.includes(id)
-    );
-  });
-};
-
 export const getLWWAction = createAction<ActionMap[typeof ActionType.getLWW]>(
   ActionType.getLWW
 );
@@ -988,7 +917,6 @@ export const editorReducers = {
   [ActionType.sharedSelectionTracker]: sharedSelectionTracker,
   [ActionType.sharedDragSelectTracker]: sharedDragSelectTracker,
   [ActionType.dragSelectRect]: dragSelectRect,
-  [ActionType.validationIds]: validationIds,
   [ActionType.getLWW]: getLWW,
   [ActionType.mergeLWW]: mergeLWW,
   ...viewReducers,
@@ -1033,7 +961,6 @@ export const actions = {
   sharedSelectionTrackerAction,
   sharedDragSelectTrackerAction,
   dragSelectRectAction,
-  validationIdsAction,
   getLWWAction,
   mergeLWWAction,
   ...viewActions,

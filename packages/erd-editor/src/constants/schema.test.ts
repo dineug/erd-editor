@@ -32,7 +32,6 @@ import {
   OrderTypeList,
   RelationshipType,
   RelationshipTypeList,
-  SaveSettingType,
   Show,
   StartRelationshipType,
   StartRelationshipTypeList,
@@ -65,7 +64,6 @@ describe('schema constant re-exports', () => {
     expect(ColumnUIKey).toBe(SchemaV3Constants.ColumnUIKey);
     expect(OrderType).toBe(SchemaV3Constants.OrderType);
     expect(OrderTypeList).toBe(SchemaV3Constants.OrderTypeList);
-    expect(SaveSettingType).toBe(SchemaV3Constants.SaveSettingType);
     expect(LockSettingType).toBe(SchemaV3Constants.LockSettingType);
     expect(LockSettingTypeList).toBe(SchemaV3Constants.LockSettingTypeList);
     expect(LockSettingFields).toBe(SchemaV3Constants.LockSettingFields);
@@ -114,7 +112,6 @@ describe('schema constant re-exports', () => {
       ColumnOption,
       ColumnUIKey,
       OrderType,
-      SaveSettingType,
       LockSettingType,
     ];
 

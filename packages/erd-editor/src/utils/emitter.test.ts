@@ -19,7 +19,6 @@ import {
   openThemeBuilderAction,
   openToastAction,
   pasteAction,
-  schemaGCAction,
   setLocaleOptionAction,
   setThemeOptionsAction,
   toggleSearchAction,
@@ -60,9 +59,9 @@ describe('Emitter', () => {
     const first = vi.fn();
     const second = vi.fn();
 
-    emitter.on({ schemaGC: first });
-    emitter.on({ schemaGC: second });
-    emitter.emit(schemaGCAction());
+    emitter.on({ toggleSearch: first });
+    emitter.on({ toggleSearch: second });
+    emitter.emit(toggleSearchAction());
 
     expect(first).toHaveBeenCalledOnce();
     expect(second).toHaveBeenCalledOnce();
@@ -70,14 +69,14 @@ describe('Emitter', () => {
 
   it('registers the same listener object only once', () => {
     const emitter = new Emitter();
-    const onSchemaGC = vi.fn();
-    const listeners = { schemaGC: onSchemaGC };
+    const onToggleSearch = vi.fn();
+    const listeners = { toggleSearch: onToggleSearch };
 
     emitter.on(listeners);
     emitter.on(listeners);
-    emitter.emit(schemaGCAction());
+    emitter.emit(toggleSearchAction());
 
-    expect(onSchemaGC).toHaveBeenCalledTimes(1);
+    expect(onToggleSearch).toHaveBeenCalledTimes(1);
   });
 
   it('ignores an action nobody listens for', () => {
@@ -94,15 +93,15 @@ describe('Emitter', () => {
 
   it('stops calling a listener after its unsubscribe is invoked', () => {
     const emitter = new Emitter();
-    const onSchemaGC = vi.fn();
+    const onToggleSearch = vi.fn();
 
-    const unsubscribe = emitter.on({ schemaGC: onSchemaGC });
-    emitter.emit(schemaGCAction());
+    const unsubscribe = emitter.on({ toggleSearch: onToggleSearch });
+    emitter.emit(toggleSearchAction());
     unsubscribe();
-    emitter.emit(schemaGCAction());
+    emitter.emit(toggleSearchAction());
     unsubscribe();
 
-    expect(onSchemaGC).toHaveBeenCalledTimes(1);
+    expect(onToggleSearch).toHaveBeenCalledTimes(1);
   });
 
   it('swallows a throwing listener and keeps notifying the others', () => {
@@ -143,13 +142,13 @@ describe('Emitter', () => {
 
   it('drops every observer on clear', () => {
     const emitter = new Emitter();
-    const onSchemaGC = vi.fn();
+    const onToggleSearch = vi.fn();
 
-    emitter.on({ schemaGC: onSchemaGC });
+    emitter.on({ toggleSearch: onToggleSearch });
     emitter.clear();
-    emitter.emit(schemaGCAction());
+    emitter.emit(toggleSearchAction());
 
-    expect(onSchemaGC).not.toHaveBeenCalled();
+    expect(onToggleSearch).not.toHaveBeenCalled();
   });
 });
 
@@ -187,7 +186,6 @@ describe('action creators', () => {
       type: 'paste',
       payload: { event: originEvent },
     });
-    expect(schemaGCAction()).toEqual({ type: 'schemaGC', payload: undefined });
     expect(toggleSearchAction()).toEqual({
       type: 'toggleSearch',
       payload: undefined,

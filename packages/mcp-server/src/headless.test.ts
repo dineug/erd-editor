@@ -50,7 +50,7 @@ import { runTool } from '@/tools/run';
 
 const DOCUMENT = '/work/solo.erd.json';
 
-const { ColumnOption, ColumnUIKey, StartRelationshipType } = SchemaV3Constants;
+const { ColumnOption, RelationshipType } = SchemaV3Constants;
 
 let io: MemoryHost;
 let mcp: McpHarness;
@@ -309,19 +309,6 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
   const onDisk = () => JSON.parse(io.read(DOCUMENT));
   const columnOnDisk = (columnId: string) =>
     onDisk().collections.tableColumnEntities[columnId];
-  const isForeignKey = (columnId: string) =>
-    bHas(columnOnDisk(columnId).ui.keys, ColumnUIKey.foreignKey);
-  /** Each relationship's two ends, where the relationship sort placed them, and its flags. */
-  const placements = (document: any) =>
-    Object.values<any>(document.collections.relationshipEntities).map(
-      ({ id, start, end, identification, startRelationshipType }) => ({
-        id,
-        start,
-        end,
-        identification,
-        startRelationshipType,
-      })
-    );
 
   /** A table with one column, both made by the tools. */
   async function tableWithColumn() {
@@ -352,7 +339,7 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
     expect(columnOnDisk(columnId).options).toBe(ColumnOption.notNull);
   });
 
-  it('writes the foreign-key mark, the placement and the flags a link brings, and the undo takes the mark off', async () => {
+  it('writes a link as erd_read json gives it, none of the marks, flags or anchors a load derives again, and the undo takes it out', async () => {
     const start = await tableWithColumn();
     const end = await tableWithColumn();
 
@@ -366,25 +353,31 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
         relationshipType: 'ZeroN',
       })
     ).createdIds;
-    expect(isForeignKey(end.columnId)).toBe(true);
-    // A nullable end column rings the start, which a new relationship does not
-    // start with, so the file holds what was derived.
-    expect(
-      onDisk().collections.relationshipEntities[relationshipId]
-    ).toMatchObject({
-      identification: false,
-      startRelationshipType: StartRelationshipType.ring,
+    const link = onDisk().collections.relationshipEntities[relationshipId];
+    expect(Object.keys(link)).toEqual([
+      'id',
+      'relationshipType',
+      'onDelete',
+      'onUpdate',
+      'start',
+      'end',
+    ]);
+    expect(link).toMatchObject({
+      relationshipType: RelationshipType.ZeroN,
+      start: { tableId: start.tableId, columnIds: [start.columnId] },
+      end: { tableId: end.tableId, columnIds: [end.columnId] },
     });
-    const session = JSON.parse(
-      await mcp.text('erd_read', { path: DOCUMENT, format: 'json' })
+    expect(Object.keys(link.start)).toEqual(['tableId', 'columnIds']);
+    expect(columnOnDisk(end.columnId)).not.toHaveProperty('ui');
+    expect(onDisk()).toEqual(
+      JSON.parse(await mcp.text('erd_read', { path: DOCUMENT, format: 'json' }))
     );
-    expect(placements(onDisk())).toEqual(placements(session));
 
     await mcp.ok('erd_undo', { path: DOCUMENT });
-    expect(isForeignKey(end.columnId)).toBe(false);
+    expect(onDisk().doc.relationshipIds).toEqual([]);
   });
 
-  it('writes the key columns a relationship adds, not-null and marked, and the undo takes them out', async () => {
+  it('writes the key columns a relationship adds, the parent key not-null, and the undo takes them out', async () => {
     const [startTableId] = (await mcp.ok('erd_add_table', { path: DOCUMENT }))
       .createdIds;
     const [endTableId] = (await mcp.ok('erd_add_table', { path: DOCUMENT }))
@@ -403,7 +396,7 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
     expect(columnOnDisk(primaryKey).options).toBe(
       ColumnOption.primaryKey | ColumnOption.notNull
     );
-    expect(isForeignKey(foreignKey)).toBe(true);
+    expect(columnOnDisk(foreignKey)).toMatchObject({ tableId: endTableId });
 
     await mcp.ok('erd_undo', { path: DOCUMENT });
     const undone = onDisk();

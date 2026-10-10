@@ -67,6 +67,7 @@ export const DEFAULT_SHOW =
 /** settings.columnOrder default — name, dataType, notNull, default, comment… */
 export const DEFAULT_COLUMN_ORDER = [1, 2, 4, 8, 16, 32, 64];
 
+/** The canvas box a legacy document that names none is migrated in. */
 export const CANVAS_SIZE = 2000;
 export const CANVAS_ZOOM_MIN = 0.1;
 export const CANVAS_ZOOM_MAX = 1.5;
@@ -178,10 +179,14 @@ export const MEMO_SIZE = 127;
 export type ErdDocument = {
   version: string;
   settings: {
-    width: number;
-    height: number;
-    scrollTop: number;
-    scrollLeft: number;
+    /**
+     * The legacy view of a document saved before the origin, which only a seed
+     * writes: the parser migrates it into the origin and keeps none of it.
+     */
+    width?: number;
+    height?: number;
+    scrollTop?: number;
+    scrollLeft?: number;
     originX?: number;
     originY?: number;
     zoomLevel: number;
@@ -194,10 +199,8 @@ export type ErdDocument = {
     columnNameCase: number;
     bracketType: number;
     relationshipDataTypeSync: boolean;
-    relationshipOptimization: boolean;
     columnOrder: number[];
     maxWidthComment: number;
-    ignoreSaveSettings: number;
     lockSettings: number;
     /** The Schema SQL scripts, written only while one of them holds text. */
     ddlScripts?: { before: string; after: string };
@@ -247,7 +250,6 @@ export type TableEntity = {
     widthComment: number;
     color: string;
   };
-  meta: { updateAt: number; createAt: number };
 };
 
 export type TableGroupEntity = {
@@ -261,7 +263,6 @@ export type TableGroupEntity = {
     height: number;
     zIndex: number;
   };
-  meta: { updateAt: number; createAt: number };
 };
 
 export type ColumnEntity = {
@@ -279,7 +280,6 @@ export type ColumnEntity = {
     widthDataType: number;
     widthDefault: number;
   };
-  meta: { updateAt: number; createAt: number };
 };
 
 export type RelationshipEntity = {
@@ -304,7 +304,6 @@ export type RelationshipEntity = {
     y: number;
     direction: number;
   };
-  meta: { updateAt: number; createAt: number };
 };
 
 export type IndexEntity = {
@@ -314,7 +313,6 @@ export type IndexEntity = {
   indexColumnIds: string[];
   seqIndexColumnIds: string[];
   unique: boolean;
-  meta: { updateAt: number; createAt: number };
 };
 
 export type IndexColumnEntity = {
@@ -322,7 +320,6 @@ export type IndexColumnEntity = {
   indexId: string;
   columnId: string;
   orderType: number;
-  meta: { updateAt: number; createAt: number };
 };
 
 export type MemoEntity = {
@@ -336,14 +333,7 @@ export type MemoEntity = {
     height: number;
     color: string;
   };
-  meta: { updateAt: number; createAt: number };
 };
-
-/**
- * Timestamps are frozen so two runs of the same seed are byte-identical; the
- * editor only compares them relatively.
- */
-const META = { updateAt: 0, createAt: 0 };
 
 /**
  * The live view, written only when the seed asks for one. A seed that names
@@ -354,6 +344,23 @@ function seededOrigin(seed: SchemaSeed) {
   return seed.originX === undefined && seed.originY === undefined
     ? {}
     : { originX: seed.originX ?? 0, originY: seed.originY ?? 0 };
+}
+
+/**
+ * The legacy view fields a seed names, written as a document saved before the
+ * origin held them; each one left out migrates at the default it had.
+ */
+function seededLegacyView({
+  width,
+  height,
+  scrollTop,
+  scrollLeft,
+}: SchemaSeed) {
+  return Object.fromEntries(
+    Object.entries({ width, height, scrollTop, scrollLeft }).filter(
+      ([, value]) => value !== undefined
+    )
+  );
 }
 
 export function createSchema(seed: SchemaSeed = {}): ErdDocument {
@@ -380,7 +387,6 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         height: memo.height ?? MEMO_SIZE,
         color: memo.color ?? '',
       },
-      meta: { ...META },
     };
   });
 
@@ -410,7 +416,6 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         y: 0,
         direction: 1,
       },
-      meta: { ...META },
     };
   });
 
@@ -424,7 +429,6 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       indexColumnIds: indexColumns.map(indexColumn => indexColumn.id),
       seqIndexColumnIds: indexColumns.map(indexColumn => indexColumn.id),
       unique: index.unique ?? false,
-      meta: { ...META },
     };
 
     indexColumns.forEach(indexColumn => {
@@ -433,7 +437,6 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         indexId: index.id,
         columnId: indexColumn.columnId,
         orderType: indexColumn.orderType ?? OrderType.ASC,
-        meta: { ...META },
       };
     });
   });
@@ -455,7 +458,6 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         widthComment: 60,
         color: table.color ?? '',
       },
-      meta: { ...META },
       ...(table.groupId === undefined ? {} : { groupId: table.groupId }),
     };
 
@@ -475,7 +477,6 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
           widthDataType: 60,
           widthDefault: 60,
         },
-        meta: { ...META },
       };
     });
   });
@@ -494,7 +495,6 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         height: group.height ?? 400,
         zIndex: group.zIndex ?? index + 1,
       },
-      meta: { ...META },
     };
   });
   const groups = tableGroups.length
@@ -507,10 +507,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
   return {
     version: '3.0.0',
     settings: {
-      width: seed.width ?? CANVAS_SIZE,
-      height: seed.height ?? CANVAS_SIZE,
-      scrollTop: seed.scrollTop ?? 0,
-      scrollLeft: seed.scrollLeft ?? 0,
+      ...seededLegacyView(seed),
       ...seededOrigin(seed),
       zoomLevel: seed.zoomLevel ?? 1,
       show: seed.show ?? DEFAULT_SHOW,
@@ -522,10 +519,8 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       columnNameCase: 2,
       bracketType: 1,
       relationshipDataTypeSync: true,
-      relationshipOptimization: false,
       columnOrder: [...DEFAULT_COLUMN_ORDER],
       maxWidthComment: -1,
-      ignoreSaveSettings: 0,
       lockSettings: 0,
     },
     doc: {

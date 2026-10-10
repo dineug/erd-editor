@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
@@ -33,7 +33,7 @@ export function createExportMenus(
       name: 'json',
       onClick: () => {
         onClose();
-        exportJSON(toJson(store.state), databaseName);
+        exportJSON(toDocumentJson(store.state), databaseName);
       },
     },
     {

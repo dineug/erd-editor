@@ -1,3 +1,5 @@
+import { isNumber, isPlainObject, isString } from 'es-toolkit';
+
 import { DeepPartial } from '@/internal-types';
 import { createAndMergeDoc } from '@/v3/parser/doc';
 import { createAndMergeIndexEntities } from '@/v3/parser/index.entity';
@@ -38,6 +40,20 @@ export function parser(source: any): ERDEditorSchemaV3 {
     json.collections?.tableGroupEntities
   );
 
+  stackInDocOrder(
+    tableEntities,
+    doc.tableIds,
+    json.collections?.tableEntities,
+    2
+  );
+  stackInDocOrder(memoEntities, doc.memoIds, json.collections?.memoEntities, 2);
+  stackInDocOrder(
+    tableGroupEntities,
+    doc.tableGroupIds,
+    json.collections?.tableGroupEntities,
+    1
+  );
+
   return {
     $schema:
       'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json',
@@ -54,6 +70,50 @@ export function parser(source: any): ERDEditorSchemaV3 {
       tableGroupEntities,
     },
   };
+}
+
+/**
+ * Gives each listed entity the source left without a z-index its place in the
+ * doc order, counted up from the factory default, since the storage form
+ * writes none; one that carries a z-index keeps it, as does one not listed.
+ */
+function stackInDocOrder(
+  entities: Record<string, { ui: { zIndex: number } }>,
+  ids: ReadonlyArray<string>,
+  source: unknown,
+  base: number
+) {
+  const stacked = idsWithZIndex(source);
+
+  ids.forEach((id, index) => {
+    const entity = entities[id];
+    if (!entity || stacked.has(id)) return;
+
+    entity.ui.zIndex = base + index;
+    stacked.add(id);
+  });
+}
+
+/**
+ * The ids whose raw entity carries a numeric z-index, the last entry with an
+ * id deciding, as it does in the entity parsers.
+ */
+function idsWithZIndex(source: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!isPlainObject(source)) return ids;
+
+  for (const value of Object.values(source)) {
+    if (!isPlainObject(value) || !isString(value.id)) continue;
+
+    const ui = value.ui;
+    if (isPlainObject(ui) && isNumber(ui.zIndex)) {
+      ids.add(value.id);
+    } else {
+      ids.delete(value.id);
+    }
+  }
+
+  return ids;
 }
 
 /**

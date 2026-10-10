@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.dineug.erdeditorintellijplugin.hub.AuthScope
 import com.github.dineug.erdeditorintellijplugin.hub.Authz
+import com.github.dineug.erdeditorintellijplugin.hub.HUB_PROTOCOL_VERSION
 import com.github.dineug.erdeditorintellijplugin.hub.HubErrorCode
 import com.github.dineug.erdeditorintellijplugin.hub.HubJson
 import com.github.dineug.erdeditorintellijplugin.hub.HubMethod
@@ -765,6 +766,6 @@ class ConnectionServerTest {
         const val TOKEN = "6f1c2e0a-8f7e-4d4c-9a51-3a8e2b1d0c9f"
 
         fun hello(token: String = TOKEN) =
-            """{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":1,"client":"spec"}}"""
+            """{"id":1,"method":"hello","params":{"token":"$token","protocolVersion":$HUB_PROTOCOL_VERSION,"client":"spec"}}"""
     }
 }

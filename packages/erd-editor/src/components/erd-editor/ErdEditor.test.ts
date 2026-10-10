@@ -1,4 +1,3 @@
-import { toJson } from '@dineug/erd-editor-schema';
 import { FC, html, render } from '@dineug/r-html';
 import {
   afterAll,
@@ -27,10 +26,6 @@ import {
   changeZenModeAction,
 } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
-import {
-  addTableGroupAction,
-  removeTableGroupAction,
-} from '@/engine/modules/table-group/atom.actions';
 import { MESSAGES } from '@/i18n/messages/index';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
@@ -41,11 +36,8 @@ import {
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
-const { appContexts, gcState } = vi.hoisted(() => ({
+const { appContexts } = vi.hoisted(() => ({
   appContexts: [] as any[],
-  gcState: {
-    service: null as null | { run: (source: string) => Promise<any> },
-  },
 }));
 
 vi.mock('@/components/appContext', async importOriginal => {
@@ -60,10 +52,6 @@ vi.mock('@/components/appContext', async importOriginal => {
     },
   };
 });
-
-vi.mock('@/services/schema-gc', () => ({
-  getSchemaGCService: () => gcState.service,
-}));
 
 const quickSearch = vi.hoisted(() => ({
   props: null as null | { appearance?: string; locale?: string },
@@ -178,7 +166,6 @@ async function createEditor(
 beforeEach(() => {
   resizeCallbacks = [];
   Reflect.set(globalThis, 'ResizeObserver', CapturingResizeObserver);
-  gcState.service = { run: async () => emptyGCIds() };
 });
 
 afterEach(() => {
@@ -194,18 +181,6 @@ function hasErdCanvas(shadow: ShadowRoot) {
   return Array.from(shadow.querySelectorAll('div')).some(el =>
     el.classList.contains(ERD_ROOT_CLASS)
   );
-}
-
-function emptyGCIds() {
-  return {
-    tableIds: [],
-    tableColumnIds: [],
-    relationshipIds: [],
-    indexIds: [],
-    indexColumnIds: [],
-    memoIds: [],
-    tableGroupIds: [],
-  };
 }
 
 /** Chromium's navigator.languages, a frozen array. */
@@ -764,7 +739,6 @@ describe('<erd-editor>', () => {
               columnIds: [],
               seqColumnIds: [],
               ui: { x: 0, y: 0, zIndex: 2, widthName: 60, widthComment: 60 },
-              meta: { updateAt: 1, createAt: 1 },
             },
           },
         },
@@ -907,79 +881,6 @@ describe('<erd-editor>', () => {
     expect(trackerStart).not.toHaveBeenCalled();
   });
 
-  it('runs schema GC and applies the returned ids when the emitter asks for it', async () => {
-    const { el, app } = await createEditor();
-    el.setInitialValue(
-      JSON.stringify({
-        version: '3.0.0',
-        settings: { databaseName: 'gc' },
-      })
-    );
-    el.setSchemaSQL('CREATE TABLE gone (id INT);');
-    await flush();
-
-    const tableIds = [...app.store.state.doc.tableIds];
-    expect(tableIds.length).toBe(1);
-
-    gcState.service = {
-      run: async () => ({ ...emptyGCIds(), tableIds }),
-    };
-    app.emitter.emit({ type: 'schemaGC', payload: undefined } as any);
-    await flush(6);
-
-    expect(
-      Object.keys(app.store.state.collections.tableEntities)
-    ).not.toContain(tableIds[0]);
-  });
-
-  it('applies a schema GC result holding removed table groups alone, so the value writes no group fields again', async () => {
-    const { app } = await createEditor();
-    app.store.dispatchSync(
-      addTableGroupAction({
-        id: 'gone',
-        ui: { x: 0, y: 0, width: 400, height: 300, zIndex: 1 },
-      }),
-      removeTableGroupAction({ id: 'gone' })
-    );
-    expect(app.store.state.collections.tableGroupEntities).toHaveProperty(
-      'gone'
-    );
-
-    gcState.service = {
-      run: async () => ({ ...emptyGCIds(), tableGroupIds: ['gone'] }),
-    };
-    app.emitter.emit({ type: 'schemaGC', payload: undefined } as any);
-    await flush(6);
-
-    expect(app.store.state.collections.tableGroupEntities).toEqual({});
-    expect(JSON.parse(toJson(app.store.state)).collections).not.toHaveProperty(
-      'tableGroupEntities'
-    );
-  });
-
-  it('leaves the document untouched when schema GC finds nothing', async () => {
-    const { el, app } = await createEditor();
-    el.setSchemaSQL('CREATE TABLE keep (id INT);');
-    await flush();
-    const tableIds = [...app.store.state.doc.tableIds];
-
-    app.emitter.emit({ type: 'schemaGC', payload: undefined } as any);
-    await flush(6);
-
-    expect(app.store.state.doc.tableIds).toEqual(tableIds);
-  });
-
-  it('survives a missing schema GC worker', async () => {
-    gcState.service = null;
-    const { el, app } = await createEditor();
-
-    expect(() =>
-      el.setInitialValue(JSON.stringify({ version: '3.0.0' }))
-    ).not.toThrow();
-    await flush();
-    expect(app.store.state.doc.tableIds).toEqual([]);
-  });
-
   it('exposes the document through value, setInitialValue and the SQL helpers', async () => {
     const { el } = await createEditor();
 
@@ -1113,15 +1014,15 @@ describe('<erd-editor>', () => {
 
   it('unsubscribes on disconnect and tears the context down on destroy', async () => {
     const { el, app } = await createEditor();
-    const onSchemaGC = vi.fn();
-    app.emitter.on({ schemaGC: onSchemaGC });
+    const onToggleSearch = vi.fn();
+    app.emitter.on({ toggleSearch: onToggleSearch });
 
     el.destroy();
     el.remove();
     await flush();
 
-    app.emitter.emit({ type: 'schemaGC', payload: undefined } as any);
-    expect(onSchemaGC).not.toHaveBeenCalled();
+    app.emitter.emit({ type: 'toggleSearch', payload: undefined } as any);
+    expect(onToggleSearch).not.toHaveBeenCalled();
   });
 
   it('follows the system appearance when systemDarkMode is enabled', async () => {

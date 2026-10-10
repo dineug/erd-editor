@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import {
   type AnyAction,
   type CompositionActions,
@@ -103,16 +103,22 @@ export class PeerStoreError extends Error {
 
 export type PeerStore = {
   readonly editorId: string;
-  /** The document as the element would save it. */
+  /** The document as the element would save it, in the form a file holds. */
   readonly value: string;
+  /**
+   * The document as this peer holds it, removed entities included, for another
+   * peer's setInitialValue, so an undo of a removal restores the entity whole there.
+   */
+  readonly runtimeValue: string;
   /** The live state, for readers that serialize it another way. */
   readonly state: RootState;
   readonly isReadonly: boolean;
   readonly isDestroyed: boolean;
   setReadonly: (readonly: boolean) => void;
   /**
-   * Replaces the document and forgets every undo entry and label with it,
-   * since those were taken against the old one. The one reseed operation.
+   * Replaces the document and forgets every undo entry, label and register with
+   * it, since those were taken against the old one, and once subscribed asks the
+   * other peers for their registers again. The one reseed operation.
    */
   setInitialValue: (value: string) => void;
   mergeClock: (version: number) => void;
@@ -224,14 +230,17 @@ export function createPeerStore({
   readonly = false,
 }: PeerStoreOptions): PeerStore {
   let counter: ReturnType<typeof createCountingHistory> | null = null;
-  const rxStore = createRxStore(createEngineContext({ toWidth }), {
-    manualStreamFlush: true,
-    observable: false,
-    getHistory: options => {
-      counter = createCountingHistory(createHistory(options));
-      return counter.history;
-    },
-  });
+  const rxStore = createRxStore(
+    createEngineContext({ toWidth, routes: false }),
+    {
+      manualStreamFlush: true,
+      observable: false,
+      getHistory: options => {
+        counter = createCountingHistory(createHistory(options));
+        return counter.history;
+      },
+    }
+  );
   const getPushes = () => counter?.getPushes() ?? 0;
   const getLimit = () => counter?.getLimit() ?? 0;
   const sharedStore = createSharedStore(
@@ -499,6 +508,9 @@ export function createPeerStore({
   return Object.freeze({
     editorId,
     get value() {
+      return toDocumentJson(rxStore.state);
+    },
+    get runtimeValue() {
       return toJson(rxStore.state);
     },
     get state() {

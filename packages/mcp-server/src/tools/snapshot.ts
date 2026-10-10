@@ -38,7 +38,6 @@ export type AgentSnapshotTable = {
   groupId: string;
   x: number;
   y: number;
-  zIndex: number;
   columns: AgentSnapshotColumn[];
 };
 
@@ -67,7 +66,6 @@ export type AgentSnapshotMemo = {
   y: number;
   width: number;
   height: number;
-  zIndex: number;
 };
 
 /** A table group by its stored rect; the editor draws it grown to hold each member. */
@@ -90,7 +88,6 @@ export type AgentSnapshotSettings = {
   columnNameCase: string;
   bracketType: string;
   relationshipDataTypeSync: boolean;
-  relationshipOptimization: boolean;
   columnOrder: string[];
   show: Record<string, boolean>;
   maxWidthComment: number;
@@ -104,8 +101,8 @@ export type AgentSnapshotScripts = { before: string; after: string };
 
 /**
  * What an agent reads to edit: every entity under its id and the settings as
- * the file saves them, each by its enum name. Render derived widths, the
- * viewport and the tab are left out, since they differ per reader.
+ * the file saves them, each by its enum name, leaving out what differs per
+ * reader: the measured widths, the stacking order, the viewport and the tab.
  */
 export type AgentSnapshot = {
   settings: AgentSnapshotSettings;
@@ -151,8 +148,8 @@ const CODE_LOCK_FIELDS = [
 
 /**
  * The settings with each locked code setting at the value its lock holds, which
- * is what toJson writes and every reader of the file opens on, the screen of
- * the peer aside.
+ * is what the file holds and every reader of it opens on, the screen of the
+ * peer aside.
  */
 export function toSavedSettings(
   settings: RootState['settings']
@@ -180,7 +177,6 @@ export function toSnapshotSettings(
     columnNameCase: nameOf(NameCase, settings.columnNameCase),
     bracketType: nameOf(BracketType, settings.bracketType),
     relationshipDataTypeSync: settings.relationshipDataTypeSync,
-    relationshipOptimization: settings.relationshipOptimization,
     columnOrder: settings.columnOrder.map(type => nameOf(ColumnType, type)),
     show: flagsOf(Show, settings.show),
     maxWidthComment: settings.maxWidthComment,
@@ -235,7 +231,6 @@ export function toSnapshotTable(
     groupId,
     x: ui.x,
     y: ui.y,
-    zIndex: ui.zIndex,
     columns: select
       .collection('tableColumnEntities')
       .selectByIds(columnIds)
@@ -271,10 +266,20 @@ export function toSnapshotRelationship({
   };
 }
 
+/** An index with the columns the file form keeps of it, those its table lists. */
 export function toSnapshotIndex(
   select: Select,
   { id, tableId, name, unique, indexColumnIds }: IndexEntity
 ): AgentSnapshotIndex {
+  const columnIds = new Set(
+    select
+      .collection('tableColumnEntities')
+      .selectByIds(
+        select.collection('tableEntities').selectById(tableId)?.columnIds ?? []
+      )
+      .map(({ id }) => id)
+  );
+
   return {
     id,
     tableId,
@@ -283,6 +288,7 @@ export function toSnapshotIndex(
     columns: select
       .collection('indexColumnEntities')
       .selectByIds(indexColumnIds)
+      .filter(({ columnId }) => columnIds.has(columnId))
       .map(({ id, columnId, orderType }) => ({
         id,
         columnId,
@@ -304,7 +310,6 @@ export function toSnapshotMemo({
     y: ui.y,
     width: ui.width,
     height: ui.height,
-    zIndex: ui.zIndex,
   };
 }
 
@@ -324,6 +329,40 @@ export function toSnapshotTableGroup(
   };
 }
 
+type DocumentState = Pick<RootState, 'doc' | 'collections'>;
+
+const liveTableIds = ({ doc, collections }: DocumentState) =>
+  new Set(
+    query(collections)
+      .collection('tableEntities')
+      .selectByIds(doc.tableIds)
+      .map(({ id }) => id)
+  );
+
+/**
+ * The relationships the file form keeps, those whose two tables are live, in
+ * document order: a table removed as a peer related it leaves one behind.
+ */
+export function liveRelationships(state: DocumentState): RelationshipEntity[] {
+  const tableIds = liveTableIds(state);
+  return query(state.collections)
+    .collection('relationshipEntities')
+    .selectByIds(state.doc.relationshipIds)
+    .filter(
+      ({ start, end }) =>
+        tableIds.has(start.tableId) && tableIds.has(end.tableId)
+    );
+}
+
+/** The indexes the file form keeps, those on a live table, in document order. */
+export function liveIndexes(state: DocumentState): IndexEntity[] {
+  const tableIds = liveTableIds(state);
+  return query(state.collections)
+    .collection('indexEntities')
+    .selectByIds(state.doc.indexIds)
+    .filter(({ tableId }) => tableIds.has(tableId));
+}
+
 /** The live entities of a document, as its id lists hold them, in their order. */
 export function toAgentSnapshot(state: RootState): AgentSnapshot {
   const { settings, doc, collections } = state;
@@ -338,14 +377,8 @@ export function toAgentSnapshot(state: RootState): AgentSnapshot {
       .map(table =>
         toSnapshotTable(select, table, tableGroupIdOf(state, table))
       ),
-    relationships: select
-      .collection('relationshipEntities')
-      .selectByIds(doc.relationshipIds)
-      .map(toSnapshotRelationship),
-    indexes: select
-      .collection('indexEntities')
-      .selectByIds(doc.indexIds)
-      .map(index => toSnapshotIndex(select, index)),
+    relationships: liveRelationships(state).map(toSnapshotRelationship),
+    indexes: liveIndexes(state).map(index => toSnapshotIndex(select, index)),
     memos: select
       .collection('memoEntities')
       .selectByIds(doc.memoIds)

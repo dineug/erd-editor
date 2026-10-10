@@ -300,20 +300,6 @@ describe('the culling rect covers the screen it is inverted out of', () => {
     expect(rect.x + screenWidth).toBeCloseTo(-origin.x / options.zoomLevel);
     expect(rect.y + screenHeight).toBeCloseTo(-origin.y / options.zoomLevel);
   });
-
-  it('is independent of the canvas box', () => {
-    const state = createState();
-    applyCase(state, DEFECT_CASES[0][1]);
-    state.settings.width = 8000;
-    state.settings.height = 8000;
-    const wide = getCullingRect(state);
-
-    state.settings.width = 2000;
-    state.settings.height = 2000;
-
-    expect(getCullingRect(state)).toEqual(wide);
-    expect(wide).toEqual(createCullingRect(DEFECT_CASES[0][1]));
-  });
 });
 
 describe('the two directions through the scene origin', () => {
