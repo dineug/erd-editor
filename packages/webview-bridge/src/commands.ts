@@ -23,13 +23,16 @@ export const hostImportFileCommand = createCommand<{
 }>('hostImportFileCommand');
 export const hostInitialCommand = createCommand('hostInitialCommand');
 /**
- * The replica's value after each change. With changed false the change left it
- * as it was, as a scroll the file does not save does: the host writes nothing
+ * The replica's document after each change. With changed false the change left
+ * value as it was, as a scroll the file does not save does: the host writes nothing
  * and marks nothing modified, and a hub still counts it as the save it waits for.
  */
 export const hostSaveValueCommand = createCommand<{
+  /** The document in the form a file holds: what the host writes and compares. */
   value: string;
   changed: boolean;
+  /** The document as the replica holds it: what the host hands a second view or a joining agent, and never writes. */
+  runtimeValue: string;
 }>('hostSaveValueCommand');
 export const hostSaveReplicationCommand = createCommand<{
   actions: any;

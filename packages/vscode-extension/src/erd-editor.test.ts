@@ -281,6 +281,7 @@ describe('ErdEditor', () => {
         Bridge.executeCommand(hostSaveValueCommand, {
           value: 'héllo',
           changed: true,
+          runtimeValue: 'héllo',
         })
       );
       await flush();
@@ -303,6 +304,7 @@ describe('ErdEditor', () => {
         Bridge.executeCommand(hostSaveValueCommand, {
           value: 'saved',
           changed: true,
+          runtimeValue: 'saved',
         })
       );
       await flush();
@@ -324,6 +326,7 @@ describe('ErdEditor', () => {
         Bridge.executeCommand(hostSaveValueCommand, {
           value: '{"written":"by this replica"}',
           changed: false,
+          runtimeValue: '{"written":"by this replica"}',
         })
       );
       await flush();
@@ -354,6 +357,7 @@ describe('ErdEditor', () => {
           Bridge.executeCommand(hostSaveValueCommand, {
             value: '{"scrollTop":120}',
             changed: true,
+            runtimeValue: '{"scrollTop":120}',
           })
         );
         await flush();
@@ -1036,6 +1040,7 @@ describe('ErdEditor', () => {
       const save = Bridge.executeCommand(hostSaveValueCommand, {
         value: 'ignored',
         changed: true,
+        runtimeValue: 'ignored',
       });
 
       bridge.executeAction(save);

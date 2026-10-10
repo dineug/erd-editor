@@ -550,17 +550,22 @@ describe('mountWebview', () => {
     expect(editor.element.readonly).toBe(true);
   });
 
-  it('relays the value the replica saved to the host, whether it changed or not', () => {
+  it('relays what the replica saved to the host as it came, runtime value included, whether it changed or not and while readonly', () => {
     mount();
 
-    for (const changed of [true, false]) {
-      const saved = Bridge.executeCommand(hostSaveValueCommand, {
-        value: '{}',
-        changed,
-      });
-      worker.listeners[0](new MessageEvent('message', { data: saved }));
+    for (const readonly of [false, true]) {
+      fromHost(Bridge.executeCommand(webviewUpdateReadonlyCommand, readonly));
 
-      expect(dispatch).toHaveBeenLastCalledWith(saved);
+      for (const changed of [true, false]) {
+        const saved = Bridge.executeCommand(hostSaveValueCommand, {
+          value: '{"doc":"saved"}',
+          changed,
+          runtimeValue: '{"doc":"held"}',
+        });
+        worker.listeners[0](new MessageEvent('message', { data: saved }));
+
+        expect(dispatch).toHaveBeenLastCalledWith(saved);
+      }
     }
   });
 

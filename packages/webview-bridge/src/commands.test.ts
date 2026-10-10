@@ -357,11 +357,35 @@ describe('commands over a Bridge', () => {
       Bridge.executeCommand(hostSaveValueCommand, {
         value: '{}',
         changed: false,
+        runtimeValue: '{}',
       })
     );
 
-    expect(save).toHaveBeenCalledWith({ value: '{}', changed: false });
+    expect(save).toHaveBeenCalledWith({
+      value: '{}',
+      changed: false,
+      runtimeValue: '{}',
+    });
     expect(initial).not.toHaveBeenCalled();
+  });
+
+  it('round-trips the runtime value beside the value to save through JSON', () => {
+    const bridge = new Bridge();
+    const save = vi.fn();
+    bridge.registerCommand(hostSaveValueCommand, save);
+    const action = Bridge.executeCommand(hostSaveValueCommand, {
+      value: '{"doc":"saved"}',
+      changed: true,
+      runtimeValue: '{"doc":"held"}',
+    });
+
+    bridge.executeAction(JSON.parse(JSON.stringify(action)));
+
+    expect(save).toHaveBeenCalledWith({
+      value: '{"doc":"saved"}',
+      changed: true,
+      runtimeValue: '{"doc":"held"}',
+    });
   });
 
   it('round-trips a webview import file payload', () => {

@@ -172,7 +172,11 @@ export function createDocumentHarness(options: MemoryHubOptions = {}) {
     changed = true
   ): Promise<void> {
     editor.webview.__receive(
-      Bridge.executeCommand(hostSaveValueCommand, { value, changed })
+      Bridge.executeCommand(hostSaveValueCommand, {
+        value,
+        changed,
+        runtimeValue: value,
+      })
     );
     await microtasks();
   }
