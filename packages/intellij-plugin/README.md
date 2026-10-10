@@ -10,6 +10,12 @@ diagram editor itself is `@dineug/erd-editor`, bundled for this panel by
 Design a database schema visually, without leaving your IDE. Diagrams are plain JSON files in your
 project, so they diff and review like any other source file.
 
+A file holds only what the diagram is: its tables, columns, relationships, indexes, memos and table
+groups, written in a fixed order, without the measured widths, connector anchors, stacking order or
+deleted items the editor keeps while it is open. Opening a diagram without an edit leaves the file
+as it was, and an edit made on any machine, with any fonts, changes only the parts it touches. A
+file an earlier release of ERD Editor saved is rewritten in this form once, on its first edit.
+
 ![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-intellij.png?raw=true)
 
 The editor never connects to a database — it reads and writes files only. You bring a schema in from

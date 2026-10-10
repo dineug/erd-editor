@@ -93,6 +93,13 @@ under **Lock** with the value the file keeps. Unlock the viewport for a document
 where you left it, or unlock and lock it again to fix a new starting view. Files saved before the
 locks open with all of them on, their scroll, zoom and tab at the start.
 
+The file holds only what the diagram is: its tables, columns, relationships, indexes, memos and
+table groups, written in a fixed order, without the measured widths, connector anchors, stacking
+order or deleted items the editor keeps while it is open. Opening a diagram and closing it without
+an edit leaves the file as it was, and an edit made on any machine, with any fonts, changes only the
+parts it touches. A file an earlier release of ERD Editor saved is rewritten in this form once, on
+its first edit.
+
 Source Control shows a changed diagram as a text diff of its JSON, and opens a revision Git holds,
 such as a deleted file or a file in an earlier commit, as JSON text. **Reopen Editor With…** shows
 that revision as a diagram; a file Git does not track yet opens in the editor as any other does.
