@@ -469,9 +469,9 @@ function toLayoutGroupRects(
 }
 
 /**
- * Where the block an append brings starts: under every table and memo the
- * diagram holds, a gap below them and in line with their left edge, or where
- * the grid of an import starts in a diagram holding none.
+ * Where the block an append brings starts: under every table, memo and shown
+ * group the diagram holds, a gap below them and in line with their left edge,
+ * or where the grid of an import starts in a diagram holding none.
  */
 function toAppendOrigin(state: RootState): Point {
   const content = getContentRect(state);
