@@ -19,8 +19,10 @@ import { EngineContext } from '@/engine/context';
 import {
   changeDrawTableGroupAction,
   changeViewportAction,
+  editTableGroupAction,
+  selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { ViewKind } from '@/engine/modules/editor/state';
+import { SelectType, ViewKind } from '@/engine/modules/editor/state';
 import {
   viewChangeZoomLevelAction,
   viewOpenAction,
@@ -823,6 +825,41 @@ describe('settings/atom.actions', () => {
         changeShowAction({ show: Show.tableComment, value: true })
       );
       expect(store.state.settings.show).toBe(initial);
+    });
+
+    it('lets go of every selected group, a draw armed and a name editor as groups are hidden, and of nothing as they show', () => {
+      const pick = {
+        g1: SelectType.tableGroup,
+        t1: SelectType.table,
+        m1: SelectType.memo,
+      };
+      store.dispatchSync(
+        selectAction(pick),
+        changeDrawTableGroupAction({ value: true }),
+        editTableGroupAction({ id: 'g1' }),
+        changeShowAction({ show: Show.tableComment, value: false })
+      );
+      expect(store.state.editor.selectedMap).toEqual(pick);
+      expect(store.state.editor.drawTableGroup).toBe(true);
+
+      store.dispatchSync(
+        changeShowAction({ show: Show.hideTableGroup, value: true })
+      );
+
+      expect(store.state.editor.selectedMap).toEqual({
+        t1: SelectType.table,
+        m1: SelectType.memo,
+      });
+      expect(store.state.editor.drawTableGroup).toBe(false);
+      expect(store.state.editor.editTableGroupId).toBeNull();
+
+      store.dispatchSync(
+        selectAction({ g1: SelectType.tableGroup }),
+        changeShowAction({ show: Show.hideTableGroup, value: false })
+      );
+      expect(store.state.editor.selectedMap).toMatchObject({
+        g1: SelectType.tableGroup,
+      });
     });
   });
 

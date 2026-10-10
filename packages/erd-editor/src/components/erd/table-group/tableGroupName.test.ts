@@ -6,11 +6,13 @@ import {
   addTableGroupAndRename,
   openTableGroupNameEditor,
 } from '@/components/erd/table-group/tableGroupName';
+import { Show } from '@/constants/schema';
 import {
   focusTableAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
+import { isEditingText, SelectType } from '@/engine/modules/editor/state';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import {
@@ -57,6 +59,19 @@ describe('openTableGroupNameEditor', () => {
     await flush();
 
     expect(store.state.editor.editTableGroupId).toBeNull();
+  });
+
+  it('opens nothing while groups are hidden, which no editor would stand over', async () => {
+    const { store } = setup();
+    store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+    openTableGroupNameEditor(store, 'g1');
+    await flush();
+
+    expect(store.state.editor.editTableGroupId).toBeNull();
+    expect(isEditingText(store.state.editor)).toBe(false);
   });
 });
 

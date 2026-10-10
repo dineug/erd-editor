@@ -9,8 +9,9 @@ import {
   LockSettingFields,
   LockSettingType,
   LockSettingTypeList,
+  Show,
 } from '@/constants/schema';
-import { Viewport } from '@/engine/modules/editor/state';
+import { SelectType, Viewport } from '@/engine/modules/editor/state';
 import {
   viewScrollToAction,
   viewStreamScrollToAction,
@@ -290,11 +291,28 @@ export const changeShowAction = createAction<
   ActionMap[typeof ActionType.changeShow]
 >(ActionType.changeShow);
 
+/**
+ * Hidden groups take no press, so hiding them, here, by an undo or by a peer,
+ * lets go of every selected group, ends a draw armed and closes a name editor,
+ * none of which a reader could see or end any longer.
+ */
+const releaseTableGroups = ({ editor }: RootState) => {
+  Object.entries(editor.selectedMap).forEach(([id, type]) => {
+    if (type === SelectType.tableGroup) {
+      Reflect.deleteProperty(editor.selectedMap, id);
+    }
+  });
+  editor.drawTableGroup = false;
+  editor.editTableGroupId = null;
+};
+
 const changeShow: ReducerType<typeof ActionType.changeShow> = (
-  { settings },
+  state,
   { payload: { show, value } }
 ) => {
+  const { settings } = state;
   settings.show = value ? settings.show | show : settings.show & ~show;
+  if (value && bHas(show, Show.hideTableGroup)) releaseTableGroups(state);
 };
 
 export const changeDatabaseAction = createAction<
