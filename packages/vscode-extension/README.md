@@ -44,9 +44,9 @@ only; they do not appear in the Command Palette.
   type become the relationships; the generated types an API layer wraps its rows in are left
   out rather than drawn as tables
 - **DBML import** — bring in a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted
-  by `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors and
-  every `Ref` spelling arrive; a `Project`, `TableGroup` or sticky `Note` is skipped rather than
-  refused
+  by `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors,
+  every `Ref` spelling and each `TableGroup` arrive; a `Project` or sticky `Note` is skipped
+  rather than refused
 - **AML import** — bring in an `.aml` file written for [Azimutt](https://azimutt.app), in either
   the v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every
   relation arrow arrive; a check, a struct type and a view are skipped rather than refused

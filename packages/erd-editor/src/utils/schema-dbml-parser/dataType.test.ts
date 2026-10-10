@@ -7,7 +7,13 @@ import {
 } from '@/utils/schema-dbml-parser/dataType';
 import { DBMLModel } from '@/utils/schema-dbml-parser/types';
 
-const EMPTY: DBMLModel = { tables: [], refs: [], enums: {}, skipped: [] };
+const EMPTY: DBMLModel = {
+  tables: [],
+  refs: [],
+  tableGroups: [],
+  enums: {},
+  skipped: [],
+};
 
 const withEnums = (enums: Record<string, string[]>): DBMLModel => ({
   ...EMPTY,

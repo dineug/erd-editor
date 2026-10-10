@@ -1,6 +1,6 @@
 // Hand-written dbdiagram.io style: bare identifiers, inline refs, an Enum, a
-// composite primary key stated as an index, and the elements the importer reads
-// and discards (Project, TableGroup, a sticky Note).
+// composite primary key stated as an index, two TableGroups, and the elements
+// the importer reads and discards (a Project and a sticky Note).
 
 Project bookstore {
   database_type: 'PostgreSQL'

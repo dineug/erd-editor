@@ -10,7 +10,10 @@ import {
   DBMLParseResult,
   DBMLRef,
   DBMLTable,
+  DBMLTableGroup,
 } from './types';
+
+type Skip = (kind: string) => void;
 
 type Setting = {
   key: string;
@@ -50,15 +53,25 @@ function createReader(tokens: Token[]): Reader {
 
 function parseDocument(tokens: Token[]): DBMLModel {
   const reader = createReader(tokens);
-  const model: DBMLModel = { tables: [], refs: [], enums: {}, skipped: [] };
+  const model: DBMLModel = {
+    tables: [],
+    refs: [],
+    tableGroups: [],
+    enums: {},
+    skipped: [],
+  };
   const partials = new Map<string, DBMLColumn[]>();
   const skipped = new Set<string>();
 
-  const skip = (kind: string) => {
+  const record: Skip = kind => {
     if (!skipped.has(kind)) {
       skipped.add(kind);
       model.skipped.push(kind);
     }
+  };
+
+  const skip = (kind: string) => {
+    record(kind);
     skipElement(reader);
   };
 
@@ -107,10 +120,81 @@ function parseDocument(tokens: Token[]): DBMLModel {
       continue;
     }
 
+    if (keyword === 'tablegroup' && token.kind === TokenKind.identifier) {
+      reader.next();
+      model.tableGroups.push(parseTableGroup(reader, record));
+      continue;
+    }
+
     skip(keyword);
   }
 
   return model;
+}
+
+/**
+ * A TableGroup's name, color and member lines. Its note, inner or as a
+ * setting, and every other setting have no place in a group, so each kind is
+ * recorded as skipped.
+ */
+function parseTableGroup(reader: Reader, record: Skip): DBMLTableGroup {
+  const { name } = readQualifiedName(reader);
+  const group: DBMLTableGroup = { name, color: '', tables: [] };
+
+  readSettings(reader).forEach(({ key, tokens }) => {
+    if (key === 'color') {
+      group.color = fromDBMLColor(colorOf(tokens));
+    } else if (key !== '') {
+      record(`tablegroup ${key}`);
+    }
+  });
+
+  if (!consumeBrace(reader)) {
+    skipLine(reader);
+    return group;
+  }
+
+  while (!reader.atEnd()) {
+    if (skipNewlines(reader)) {
+      continue;
+    }
+
+    const token = reader.peek();
+    if (!token) break;
+
+    if (isPunctuation(token, '}')) {
+      reader.next();
+      break;
+    }
+
+    const following = reader.peek(1);
+
+    if (
+      token.kind === TokenKind.identifier &&
+      token.value.toLowerCase() === 'note' &&
+      following &&
+      (isPunctuation(following, ':') || isPunctuation(following, '{'))
+    ) {
+      reader.next();
+      reader.next();
+      if (isPunctuation(following, '{')) {
+        skipBlock(reader);
+      } else {
+        skipLine(reader);
+      }
+      record('tablegroup note');
+      continue;
+    }
+
+    if (isName(token)) {
+      const { schemaName, name: tableName } = readQualifiedName(reader);
+      group.tables.push({ schemaName, tableName });
+    }
+
+    skipLine(reader);
+  }
+
+  return group;
 }
 
 function parseTable(

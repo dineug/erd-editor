@@ -30,6 +30,8 @@ const COLOR =
   'CSS hex color such as #3b82f6; an empty string removes the color.';
 const OLDER_EDITOR_GROUPS =
   'An ERD Editor extension or plugin released before table groups ignores this edit and drops every group when it saves, so the user should update it.';
+const OLDER_EDITOR_GROUPS_IMPORT =
+  'An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it.';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
 
@@ -70,8 +72,8 @@ const flag = (subject: string): ToolCopy => ({
   args: { value: `True to make the column ${subject}, false to clear it.` },
 });
 
-const importer = (language: string): ToolCopy => ({
-  description: `Replaces every table, relationship, index and memo of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.`,
+const importer = (language: string, more = ''): ToolCopy => ({
+  description: `Replaces every table, relationship, index and memo of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.${more}`,
   args: { value: `The ${language} source text.` },
 });
 
@@ -390,7 +392,10 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
 
   erd_import_sql: importer('SQL DDL (CREATE TABLE statements)'),
   erd_import_graphql: importer('a GraphQL SDL'),
-  erd_import_dbml: importer('DBML'),
+  erd_import_dbml: importer(
+    'DBML',
+    ` Either way a TableGroup becomes a table group of the tables it names, with its name and color, its box round them; a table named by two groups stays in the first, and a group naming no declared table is left out. ${OLDER_EDITOR_GROUPS_IMPORT}`
+  ),
   erd_import_aml: importer('AML'),
   erd_import_json: {
     description:

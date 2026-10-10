@@ -54,13 +54,11 @@ import {
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import type { RxStoreOptions } from '@/engine/rx-store';
-import { Table } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { getTableRect, unionRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import { flattenElkNodes } from '@/services/elk-layout/elkGraph';
-import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import {
   appendSchema,
   appendSchemaJSON,
@@ -78,29 +76,7 @@ type Layout = (
 const hoisted = vi.hoisted(() => ({
   elkLayout: null as Layout | null,
   requests: [] as ElkLayoutRequest[],
-  importJson: null as ((json: string) => string) | null,
 }));
-
-/**
- * No text importer brings a table group yet, so a spec that needs one in the
- * document an import parses to rewrites that document as it comes back.
- */
-vi.mock('@/engine/modules/editor/generator.actions', async importOriginal => {
-  const actual =
-    await importOriginal<
-      typeof import('@/engine/modules/editor/generator.actions')
-    >();
-
-  return {
-    ...actual,
-    toSchemaImportJson: (
-      ...args: Parameters<typeof actual.toSchemaImportJson>
-    ) => {
-      const json = actual.toSchemaImportJson(...args);
-      return hoisted.importJson ? hoisted.importJson(json) : json;
-    },
-  };
-});
 
 /**
  * ELK answers from a shared worker, which this environment runs none of, so
@@ -152,6 +128,25 @@ CREATE TABLE users (id INT NOT NULL);
 CREATE TABLE posts (id INT NOT NULL);
 `;
 
+/** FAN_SQL's fan in DBML, its parent and one child in a table group. */
+const FAN_DBML = `
+Table users {
+  id int [pk, not null]
+}
+Table posts {
+  id int [pk, not null]
+  user_id int [ref: > users.id]
+}
+Table photos {
+  id int [pk, not null]
+  user_id int [ref: > users.id]
+}
+TableGroup accounts [color: #3498db] {
+  users
+  posts
+}
+`;
+
 type Toast = { message: DOMTemplateLiterals; close?: Promise<void> };
 
 let toastContainer: Mounted | null = null;
@@ -181,25 +176,14 @@ function cornerOf(app: AppContext, name: string) {
   return { x: table.ui.x, y: table.ui.y };
 }
 
-/** An import's document rewritten to hold group g1, with the tables named in it. */
-const withGroup =
-  (names: string[]) =>
-  (json: string): string => {
-    const schema = JSON.parse(json);
-    const tables: Table[] = Object.values(schema.collections.tableEntities);
-    tables
-      .filter(table => names.includes(table.name))
-      .forEach(table => (table.groupId = 'g1'));
-    schema.doc.tableGroupIds = ['g1'];
-    schema.collections.tableGroupEntities = {
-      g1: createTableGroup({ id: 'g1', name: 'accounts' }),
-    };
-    return JSON.stringify(schema);
-  };
+/** The first group the document lists. */
+function groupOf(app: AppContext) {
+  const { doc, collections } = app.store.state;
+  return collections.tableGroupEntities[doc.tableGroupIds[0]];
+}
 
 function groupRect(app: AppContext) {
-  const { x, y, width, height } =
-    app.store.state.collections.tableGroupEntities['g1'].ui;
+  const { x, y, width, height } = groupOf(app).ui;
   return { x, y, width, height };
 }
 
@@ -270,7 +254,6 @@ function pendingColumnLayout({ slow = false } = {}): () => Promise<void> {
 beforeEach(() => {
   hoisted.elkLayout = null;
   hoisted.requests.length = 0;
-  hoisted.importJson = null;
 });
 
 afterEach(() => {
@@ -371,6 +354,15 @@ describe('importSchema', () => {
     importSchema(app, type, value);
 
     expect(tableNames(app)).toEqual([name]);
+  });
+
+  it('wraps a DBML table group round its members where the grid puts them', () => {
+    const app = createApp();
+
+    importSchema(app, 'dbml', FAN_DBML);
+
+    expect(groupOf(app)).toMatchObject({ name: 'accounts', color: '#3498db' });
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
   });
 });
 
@@ -502,7 +494,6 @@ describe('importSchemaPlaced', () => {
 
   it('wraps a group round where Flow put its members, its box at the corner the grid starts at', async () => {
     const app = createApp();
-    hoisted.importJson = withGroup(['users', 'posts']);
     hoisted.elkLayout = async ({ nodes }) =>
       flattenElkNodes(nodes).map((node, index) => ({
         id: node.id,
@@ -510,11 +501,12 @@ describe('importSchemaPlaced', () => {
         y: 300 + index * 1000,
       }));
 
-    await importSchemaPlaced(app, 'sql', FAN_SQL);
+    await importSchemaPlaced(app, 'dbml', FAN_DBML);
 
+    const { id } = groupOf(app);
     expect(
       hoisted.requests[0].nodes.some(({ children }) =>
-        children?.some(({ id }) => id === 'g1')
+        children?.some(child => child.id === id)
       )
     ).toBe(true);
     expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
@@ -526,9 +518,8 @@ describe('importSchemaPlaced', () => {
 
   it('wraps a group round its members in the grid when no layout comes back', async () => {
     const app = createApp();
-    hoisted.importJson = withGroup(['users', 'posts']);
 
-    await importSchemaPlaced(app, 'sql', FAN_SQL);
+    await importSchemaPlaced(app, 'dbml', FAN_DBML);
 
     expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
   });
@@ -755,6 +746,18 @@ describe('appendSchema', () => {
     expect(settings.databaseName).toBe('kept');
   });
 
+  it('adds a DBML table group round its members where the grid puts them, below the diagram', () => {
+    const app = createScreenApp();
+    const corner = appendCorner(app);
+
+    appendSchema(app, 'dbml', FAN_DBML);
+
+    expect(groupOf(app)).toMatchObject({ name: 'accounts', color: '#3498db' });
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+    expect(groupRect(app).y).toBe(corner.y);
+    expect(cornerOf(app, 'old')).toEqual({ x: 900, y: 900 });
+  });
+
   it('takes the tables, the selection and the scroll back on a single undo', () => {
     const app = createScreenApp();
     const { originX, originY } = app.store.state.settings;
@@ -935,6 +938,17 @@ describe('appendSchemaPlaced', () => {
     ]);
     expect(cornerOf(app, 'old')).toEqual({ x: 900, y: 900 });
     expect(selectedNames(app)).toEqual(['photos', 'posts', 'users']);
+  });
+
+  it('adds a DBML table group round where Flow put its members, its box at the corner of the block', async () => {
+    const app = createScreenApp();
+    const corner = appendCorner(app);
+    hoisted.elkLayout = columnLayout;
+
+    await appendSchemaPlaced(app, 'dbml', FAN_DBML);
+
+    expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+    expect(groupRect(app)).toMatchObject(corner);
   });
 
   it('reads the diagram as it lands, so a table moved meanwhile is cleared all the same', async () => {

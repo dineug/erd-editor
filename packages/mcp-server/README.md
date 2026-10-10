@@ -145,6 +145,8 @@ import instead, as the editor's Import and Add does: its tables, relationships a
 as new ones in a grid below everything already there (a JSON document's, with its memos and table
 groups, in the placement it has), the document's settings and tables stay as they are, and one
 `erd_undo` takes them away. A foreign key to a table the import does not declare is dropped.
+`erd_import_dbml` reads each `TableGroup` as a table group of the tables it names, its box round
+them, either way.
 
 `erd_change_relationship_on_delete` and `erd_change_relationship_on_update`, and the `onDelete` /
 `onUpdate` of `erd_add_relationship` and `erd_link_columns`, set a foreign key's ON DELETE and ON

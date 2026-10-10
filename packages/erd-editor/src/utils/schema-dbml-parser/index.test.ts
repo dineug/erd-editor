@@ -271,4 +271,89 @@ Table orders { state status }`;
       ).toEqual(['Post']);
     });
   });
+
+  describe('table groups as dbdiagram.io writes them', () => {
+    // Its group again is what @dbml/parse refuses, a table already in a
+    // group and one that is not declared, and empty is one it takes.
+    const GROUPED_DBML = `Table ecommerce.merchants {
+  id int [pk]
+}
+
+Table ecommerce.products {
+  id int [pk]
+  merchant_id int [ref: > ecommerce.merchants.id]
+}
+
+Table users as U {
+  id int [pk]
+}
+
+Table countries {
+  code int [pk]
+}
+
+TableGroup e_commerce [color: #345, note: 'Contains tables related to e-commerce', owner: "sales"] {
+  ecommerce.merchants
+  "ecommerce"."products"
+
+  Note: '''
+  The marketplace
+  '''
+}
+
+TableGroup people {
+  U // the alias of users
+}
+
+TableGroup again {
+  users
+  missing
+}
+
+TableGroup empty {
+}`;
+
+    const groupsOf = (schema: Schema) =>
+      schema.doc.tableGroupIds.map(
+        id => schema.collections.tableGroupEntities[id]
+      );
+
+    it('writes each group with a table into the document, its name and color kept', () => {
+      expect(
+        groupsOf(parse(GROUPED_DBML)).map(({ name, color }) => ({
+          name,
+          color,
+        }))
+      ).toEqual([
+        { name: 'e_commerce', color: '#345' },
+        { name: 'people', color: '' },
+      ]);
+    });
+
+    it('writes the group of each table it puts in one, and none on the rest', () => {
+      const schema = parse(GROUPED_DBML);
+      const [eCommerce, people] = schema.doc.tableGroupIds;
+
+      expect(
+        Object.fromEntries(
+          schema.doc.tableIds.map(id => {
+            const { name, groupId } = schema.collections.tableEntities[id];
+            return [name, groupId ?? ''];
+          })
+        )
+      ).toEqual({
+        ecommerce_merchants: eCommerce,
+        ecommerce_products: eCommerce,
+        users: people,
+        countries: '',
+      });
+    });
+
+    it('writes no group list for a file with no group in it', () => {
+      const schema = JSON.parse(schemaDBMLParserToSchemaJson(SIMPLE, ctx));
+
+      expect(schema.doc.tableGroupIds).toBeUndefined();
+      expect(schema.collections.tableGroupEntities).toBeUndefined();
+    });
+  });
 });

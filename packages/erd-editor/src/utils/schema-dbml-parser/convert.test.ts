@@ -701,4 +701,150 @@ Ref: users.id <> groups.id`)
       expect(indexesOf(schema)[0].indexColumnIds).toHaveLength(1);
     });
   });
+
+  describe('table groups', () => {
+    const groupsOf = (schema: ERDEditorSchemaV3) =>
+      schema.doc.tableGroupIds.map(
+        id => schema.collections.tableGroupEntities[id]
+      );
+
+    /** Each group by name, with the names of the tables whose groupId is it. */
+    const membership = (schema: ERDEditorSchemaV3) =>
+      groupsOf(schema).map(group => ({
+        name: group.name,
+        tables: tablesOf(schema)
+          .filter(table => table.groupId === group.id)
+          .map(table => table.name),
+      }));
+
+    const THREE_TABLES = `Table users { id int }
+Table posts { id int }
+Table tags { id int }
+`;
+
+    it('makes a group of its name and color and puts its tables in it', () => {
+      const schema = convert(`${THREE_TABLES}
+TableGroup content [color: #3498DB] {
+  posts
+  tags
+}`);
+      const [group] = groupsOf(schema);
+
+      expect(group).toMatchObject({ name: 'content', color: '#3498DB' });
+      expect(membership(schema)).toEqual([
+        { name: 'content', tables: ['posts', 'tags'] },
+      ]);
+      expect(tableOf(schema, 'users').groupId).toBe('');
+    });
+
+    it('leaves the color empty for none and for one DBML does not take', () => {
+      const schema = convert(`${THREE_TABLES}
+TableGroup a { users }
+TableGroup b [color: red] { posts }`);
+
+      expect(groupsOf(schema).map(({ color }) => color)).toEqual(['', '']);
+    });
+
+    it('stacks the groups in the order the file declares them', () => {
+      const schema = convert(`${THREE_TABLES}
+TableGroup a { users }
+TableGroup b { posts }`);
+
+      expect(groupsOf(schema).map(({ name, ui }) => [name, ui.zIndex])).toEqual(
+        [
+          ['a', 1],
+          ['b', 2],
+        ]
+      );
+    });
+
+    it('resolves a member as a ref does: by alias, in any letter case, with or without its schema', () => {
+      const schema = convert(`Table public.users as U { id int }
+Table posts { id int }
+Table tags { id int }
+TableGroup g {
+  u
+  PUBLIC.Posts
+  public.tags
+}`);
+
+      expect(membership(schema)).toEqual([
+        { name: 'g', tables: ['users', 'posts', 'tags'] },
+      ]);
+    });
+
+    it('resolves a schema-qualified member to the table its schema prefixes', () => {
+      const schema = convert(`Table users { id int }
+Table sales.users { id int }
+TableGroup g {
+  sales.users
+}`);
+
+      expect(membership(schema)).toEqual([
+        { name: 'g', tables: ['sales_users'] },
+      ]);
+    });
+
+    it('keeps a table in the first group naming it', () => {
+      const schema = convert(`${THREE_TABLES}
+TableGroup g1 { users }
+TableGroup g2 {
+  users
+  posts
+}`);
+
+      expect(membership(schema)).toEqual([
+        { name: 'g1', tables: ['users'] },
+        { name: 'g2', tables: ['posts'] },
+      ]);
+    });
+
+    it('makes no group of one whose every table is in an earlier group', () => {
+      const schema = convert(`${THREE_TABLES}
+TableGroup g1 { users }
+TableGroup g2 { users }`);
+
+      expect(membership(schema)).toEqual([{ name: 'g1', tables: ['users'] }]);
+    });
+
+    it('makes no group of one naming no table the file declares, or none at all', () => {
+      const schema = convert(`${THREE_TABLES}
+TableGroup unknown { missing }
+TableGroup empty {
+}
+TableGroup bodiless`);
+
+      expect(schema.doc.tableGroupIds).toEqual([]);
+      expect(schema.collections.tableGroupEntities).toEqual({});
+    });
+
+    it('leaves out a member naming no table and keeps the rest', () => {
+      const schema = convert(`${THREE_TABLES}
+TableGroup g {
+  missing
+  tags
+}`);
+
+      expect(membership(schema)).toEqual([{ name: 'g', tables: ['tags'] }]);
+    });
+
+    it('keeps an empty name, which the editor shows as unnamed', () => {
+      expect(
+        groupsOf(convert(`${THREE_TABLES}\nTableGroup "" { users }`))[0].name
+      ).toBe('');
+    });
+
+    it('leaves the junction a many-to-many invents out of every group', () => {
+      const schema = convert(`Table a { id int [pk] }
+Table b { id int [pk] }
+Ref: a.id <> b.id
+TableGroup g {
+  a
+  b
+}`);
+
+      expect(membership(schema)).toEqual([{ name: 'g', tables: ['a', 'b'] }]);
+      expect(tableOf(schema, 'a_b').groupId).toBe('');
+    });
+  });
 });

@@ -10,6 +10,7 @@ import {
   ReferentialAction,
   RelationshipType,
 } from '@/constants/schema';
+import { createEngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import {
   Column,
@@ -18,13 +19,16 @@ import {
   IndexColumn,
   Relationship,
   Table,
+  TableGroup,
 } from '@/internal-types';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import { createCode, formatTable } from '@/utils/generator-code/dbml';
+import { convertToSchema } from '@/utils/schema-dbml-parser/convert';
 import { parseDBMLModel } from '@/utils/schema-dbml-parser/parser';
 
 type StateInput = {
@@ -33,6 +37,7 @@ type StateInput = {
   relationships?: Relationship[];
   indexes?: Index[];
   indexColumns?: IndexColumn[];
+  tableGroups?: TableGroup[];
   settings?: Partial<RootState['settings']>;
 };
 
@@ -42,6 +47,7 @@ function createState({
   relationships = [],
   indexes = [],
   indexColumns = [],
+  tableGroups = [],
   settings,
 }: StateInput): RootState {
   const state = schemaV3Parser({}) as unknown as RootState;
@@ -64,6 +70,10 @@ function createState({
   });
   indexColumns.forEach(indexColumn => {
     state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
+  });
+  state.doc.tableGroupIds = tableGroups.map(group => group.id);
+  tableGroups.forEach(group => {
+    state.collections.tableGroupEntities[group.id] = group;
   });
   Object.assign(state.settings, settings);
   return state;
@@ -1626,6 +1636,395 @@ describe('generator-code/dbml', () => {
       );
 
       expect(errors).toEqual([]);
+    });
+  });
+
+  describe('table groups', () => {
+    type TableInput = { name: string; groupId?: string; dataType?: string };
+
+    /** Tables of one column each, in the groups they name, beside the groups given. */
+    function createGroupedState(
+      tables: TableInput[],
+      tableGroups: TableGroup[],
+      extra: StateInput = {}
+    ): RootState {
+      return createState({
+        tables: tables.map(({ name, groupId = '' }, index) =>
+          createTable({
+            id: `t${index}`,
+            name,
+            groupId,
+            columnIds: [`c${index}`],
+          })
+        ),
+        columns: tables.map(({ dataType = 'int' }, index) =>
+          createColumn({
+            id: `c${index}`,
+            tableId: `t${index}`,
+            name: 'id',
+            dataType,
+            options: ColumnOption.primaryKey,
+          })
+        ),
+        tableGroups,
+        ...extra,
+      });
+    }
+
+    const group = (id: string, name: string, color = '') =>
+      createTableGroup({ id, name, color });
+
+    /** The lines from the first TableGroup on. */
+    function groupLines(state: RootState): string[] {
+      const lines = createCode(state).split('\n');
+      const start = lines.findIndex(line => line.startsWith('TableGroup'));
+      return start === -1 ? [] : lines.slice(start);
+    }
+
+    function groupHeaders(state: RootState): string[] {
+      return groupLines(state).filter(line => line.startsWith('TableGroup'));
+    }
+
+    it('writes a group after the refs, one table a line in the order the tables are written', () => {
+      const state = createGroupedState(
+        [
+          { name: 'user', groupId: 'g1' },
+          { name: 'post', groupId: 'g1' },
+          { name: 'tag' },
+        ],
+        [group('g1', 'content', '#3498db')],
+        {
+          relationships: [
+            createRelationship({
+              id: 'r1',
+              start: { tableId: 't0', columnIds: ['c0'] },
+              end: { tableId: 't1', columnIds: ['c1'] },
+            }),
+          ],
+        }
+      );
+
+      expect(createCode(state).split('\n').slice(-8)).toEqual([
+        '',
+        'Ref: "user"."id" < "post"."id"',
+        '',
+        'TableGroup "content" [color: #3498db] {',
+        '  "post"',
+        '  "user"',
+        '}',
+        '',
+      ]);
+    });
+
+    it('writes the groups by name, as the tables are, each followed by a blank line', () => {
+      const state = createGroupedState(
+        [
+          { name: 'a', groupId: 'g1' },
+          { name: 'b', groupId: 'g2' },
+          { name: 'c', groupId: 'g3' },
+        ],
+        [group('g1', 'sales'), group('g2', 'Billing'), group('g3', 'core')]
+      );
+
+      expect(groupLines(state)).toEqual([
+        'TableGroup "Billing" {',
+        '  "b"',
+        '}',
+        '',
+        'TableGroup "core" {',
+        '  "c"',
+        '}',
+        '',
+        'TableGroup "sales" {',
+        '  "a"',
+        '}',
+        '',
+      ]);
+    });
+
+    it('writes no group holding no table, and no group block at all then', () => {
+      const state = createGroupedState([{ name: 'a' }], [group('g1', 'empty')]);
+
+      expect(createCode(state)).not.toContain('TableGroup');
+    });
+
+    it('leaves out a table the file drops, and a group it leaves with none', () => {
+      const state = createGroupedState(
+        [
+          { name: 'kept', groupId: 'g1' },
+          { name: 'typeless', groupId: 'g1', dataType: '' },
+          { name: 'alone', groupId: 'g2', dataType: '' },
+        ],
+        [group('g1', 'one'), group('g2', 'two')]
+      );
+
+      expect(groupLines(state)).toEqual([
+        'TableGroup "one" {',
+        '  "kept"',
+        '}',
+        '',
+      ]);
+    });
+
+    it('reads a groupId naming no group the document lists as none', () => {
+      const state = createGroupedState(
+        [{ name: 'a', groupId: 'gone' }],
+        [group('g1', 'listed')]
+      );
+
+      expect(createCode(state)).not.toContain('TableGroup');
+    });
+
+    it('names a member by the name its table is written under, a renamed one too', () => {
+      const state = createGroupedState(
+        [
+          { name: 'user', groupId: 'g1' },
+          { name: 'user', groupId: 'g1' },
+        ],
+        [group('g1', 'people')]
+      );
+
+      expect(groupLines(state).slice(1, 3)).toEqual(['  "user"', '  "user2"']);
+    });
+
+    it('writes a blank name as group_1, group_2 and on', () => {
+      const state = createGroupedState(
+        [
+          { name: 'a', groupId: 'g1' },
+          { name: 'b', groupId: 'g2' },
+        ],
+        [group('g1', ''), group('g2', '  ')]
+      );
+
+      expect(groupHeaders(state)).toEqual([
+        'TableGroup "group_1" {',
+        'TableGroup "group_2" {',
+      ]);
+    });
+
+    it('writes a repeated name with _2, _3 and on, DBML refusing two groups of one name', () => {
+      const state = createGroupedState(
+        [
+          { name: 'a', groupId: 'g1' },
+          { name: 'b', groupId: 'g2' },
+          { name: 'c', groupId: 'g3' },
+        ],
+        [group('g1', 'core'), group('g2', 'core'), group('g3', 'core')]
+      );
+
+      expect(groupHeaders(state)).toEqual([
+        'TableGroup "core" {',
+        'TableGroup "core_2" {',
+        'TableGroup "core_3" {',
+      ]);
+    });
+
+    it('never writes a made-up name another group holds', () => {
+      const state = createGroupedState(
+        [
+          { name: 'a', groupId: 'g1' },
+          { name: 'b', groupId: 'g2' },
+          { name: 'c', groupId: 'g3' },
+          { name: 'd', groupId: 'g4' },
+          { name: 'e', groupId: 'g5' },
+        ],
+        [
+          group('g1', ''),
+          group('g2', 'group_1'),
+          group('g3', 'core'),
+          group('g4', 'core'),
+          group('g5', 'core_2'),
+        ]
+      );
+
+      expect(groupLines(state).filter((_, index) => index % 4 < 2)).toEqual([
+        'TableGroup "core" {',
+        '  "c"',
+        'TableGroup "core_2" {',
+        '  "e"',
+        'TableGroup "core_3" {',
+        '  "d"',
+        'TableGroup "group_1" {',
+        '  "b"',
+        'TableGroup "group_2" {',
+        '  "a"',
+      ]);
+    });
+
+    it('tells two names apart by letter case, as DBML does', () => {
+      const state = createGroupedState(
+        [
+          { name: 'a', groupId: 'g1' },
+          { name: 'b', groupId: 'g2' },
+        ],
+        [group('g1', 'Core'), group('g2', 'core')]
+      );
+
+      expect(groupHeaders(state)).toEqual([
+        'TableGroup "Core" {',
+        'TableGroup "core" {',
+      ]);
+    });
+
+    it('escapes a group name as it does a table name', () => {
+      const state = createGroupedState(
+        [{ name: 'a', groupId: 'g1' }],
+        [group('g1', 'we"ird\\group\nname')]
+      );
+
+      expect(groupHeaders(state)).toEqual([
+        'TableGroup "we\\"ird\\\\group\\nname" {',
+      ]);
+    });
+
+    it.each([
+      ['#3498DB', ' [color: #3498DB]'],
+      ['#abc', ' [color: #abc]'],
+      ['#ff880080', ' [color: #ff8800]'],
+      ['rgb(0, 0, 255)', ' [color: #0000ff]'],
+      ['red', ''],
+      ['', ''],
+    ])('writes the color %s as %j, as a table color is', (color, setting) => {
+      const state = createGroupedState(
+        [{ name: 'a', groupId: 'g1' }],
+        [group('g1', 'core', color)]
+      );
+
+      expect(groupHeaders(state)).toEqual([`TableGroup "core"${setting} {`]);
+    });
+
+    it('writes nothing of a group into the snippet of a table rendered alone', () => {
+      const state = createGroupedState(
+        [{ name: 'a', groupId: 'g1' }],
+        [group('g1', 'core')]
+      );
+
+      expect(render(state, state.collections.tableEntities.t0)).toEqual([
+        'Table "a" {',
+        '  "id" int [pk]',
+        '}',
+      ]);
+    });
+
+    describe('the real DBML parser', () => {
+      it('compiles the groups with no error and reads back their names, colors and tables', () => {
+        const state = createGroupedState(
+          [
+            { name: 'user', groupId: 'g1' },
+            { name: 'post', groupId: 'g1' },
+            { name: 'user', groupId: 'g2' },
+            { name: 'tag', groupId: 'g3' },
+            { name: 'note' },
+          ],
+          [
+            group('g1', 'content', '#3498DB'),
+            group('g2', 'content', 'rgb(255, 0, 0)'),
+            group('g3', '', 'red'),
+          ]
+        );
+        const { errors, db } = parseDBML(createCode(state));
+
+        expect(errors).toEqual([]);
+        expect(
+          db?.tableGroups.map(({ name, color, tables }) => ({
+            name,
+            color,
+            tables: tables.map(({ name }) => name),
+          }))
+        ).toEqual([
+          { name: 'content', color: '#3498DB', tables: ['post', 'user'] },
+          { name: 'content_2', color: '#ff0000', tables: ['user2'] },
+          { name: 'group_1', color: undefined, tables: ['tag'] },
+        ]);
+      });
+
+      it('compiles a name holding a quote, a backslash and a line terminator', () => {
+        const state = createGroupedState(
+          [{ name: 'a', groupId: 'g1' }],
+          [group('g1', 'we"ird\\group\nname')]
+        );
+        const { errors, db } = parseDBML(createCode(state));
+
+        expect(errors).toEqual([]);
+        expect(db?.tableGroups[0].name).toBe('we"ird\\group\nname');
+      });
+    });
+
+    describe('round trip through the importer', () => {
+      const ctx = createEngineContext({ toWidth: text => text.length * 10 });
+
+      function importDBML(source: string): RootState {
+        const result = parseDBMLModel(source);
+        if (!result.ok) throw new Error(result.message);
+        return convertToSchema(
+          result.model,
+          ctx,
+          Database.PostgreSQL
+        ) as unknown as RootState;
+      }
+
+      /** Each group by name with its color and the names of its tables. */
+      function groupsOf({ doc, collections }: RootState) {
+        return doc.tableGroupIds.map(id => {
+          const { name, color } = collections.tableGroupEntities[id];
+          const tables = doc.tableIds
+            .map(tableId => collections.tableEntities[tableId])
+            .filter(table => table.groupId === id)
+            .map(table => table.name)
+            .sort();
+          return { name, color, tables };
+        });
+      }
+
+      const SOURCE = `Table users {
+  id int [pk]
+}
+Table posts {
+  id int [pk]
+  user_id int [ref: > users.id]
+}
+Table tags {
+  id int [pk]
+}
+Table countries {
+  code int [pk]
+}
+TableGroup "content" [color: #3498DB, note: 'what we publish'] {
+  posts
+  TAGS
+  Note: 'dropped'
+}
+TableGroup people [owner: 'crm'] {
+  users
+  tags
+}
+TableGroup "" [color: #abc] {
+  countries
+}`;
+
+      it('imports a group the export wrote as the group it came from', () => {
+        const first = importDBML(SOURCE);
+        const exported = createCode(first);
+        const second = importDBML(exported);
+
+        expect(parseDBML(exported).errors).toEqual([]);
+        expect(groupsOf(first)).toEqual([
+          { name: 'content', color: '#3498DB', tables: ['posts', 'tags'] },
+          { name: 'people', color: '', tables: ['users'] },
+          { name: '', color: '#abc', tables: ['countries'] },
+        ]);
+        expect(groupsOf(second)).toEqual([
+          { name: 'content', color: '#3498DB', tables: ['posts', 'tags'] },
+          { name: 'group_1', color: '#abc', tables: ['countries'] },
+          { name: 'people', color: '', tables: ['users'] },
+        ]);
+      });
+
+      it('writes the same text again from what it imported back', () => {
+        const exported = createCode(importDBML(SOURCE));
+
+        expect(createCode(importDBML(exported))).toBe(exported);
+      });
     });
   });
 });

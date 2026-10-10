@@ -2,7 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import { Column, Relationship, Table } from '@/internal-types';
+import { Column, Relationship, Table, TableGroup } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { toDBMLColor } from '@/utils/tableColor';
@@ -65,6 +65,11 @@ export function createCode(state: RootState): string {
     relationships.forEach(line => stringBuffer.push(line));
     stringBuffer.push('');
   }
+
+  formatTableGroups(state, context).forEach(lines => {
+    lines.forEach(line => stringBuffer.push(line));
+    stringBuffer.push('');
+  });
 
   return stringBuffer.join('\n');
 }
@@ -274,6 +279,87 @@ function formatRelationships(
     });
 
   return buffer;
+}
+
+/**
+ * A TableGroup block for each group holding a table this file writes, after
+ * the refs and by the name it is written under, its members in table order,
+ * so the text an import of it exports again is the same.
+ */
+function formatTableGroups(
+  { doc: { tableIds, tableGroupIds }, collections }: RootState,
+  context: DBMLContext
+): string[][] {
+  const membersByGroup = new Map<string, string[]>();
+
+  query(collections)
+    .collection('tableEntities')
+    .selectByIds(tableIds)
+    .sort(orderByNameASC)
+    .forEach(table => {
+      const name = context.tableNames.get(table.id);
+      if (name === undefined || !table.groupId) return;
+
+      const members = membersByGroup.get(table.groupId);
+      members ? members.push(name) : membersByGroup.set(table.groupId, [name]);
+    });
+
+  const groups = query(collections)
+    .collection('tableGroupEntities')
+    .selectByIds(tableGroupIds)
+    .filter(group => membersByGroup.has(group.id));
+  const names = tableGroupNames(groups);
+
+  return groups
+    .map((group, index) => ({ group, name: names[index] }))
+    .sort(orderByNameASC)
+    .map(({ group, name }) => [
+      `TableGroup ${quoteName(name)}${formatTableGroupSettings(group)} {`,
+      ...membersByGroup.get(group.id)!.map(member => `  ${quoteName(member)}`),
+      '}',
+    ]);
+}
+
+function formatTableGroupSettings(group: TableGroup): string {
+  const color = toDBMLColor(group.color);
+
+  return color === null ? '' : ` [color: ${color}]`;
+}
+
+/**
+ * The name each group is written under, in document order, since DBML refuses
+ * two groups of one name: a name taken already gets _2, _3 and on, a blank one
+ * group_1, group_2 and on, neither ever taking a name another group holds.
+ */
+function tableGroupNames(groups: TableGroup[]): string[] {
+  const held = new Set(
+    groups.map(({ name }) => name).filter(name => name.trim() !== '')
+  );
+  const used = new Set<string>();
+  let unnamed = 0;
+
+  const free = (name: string) => !used.has(name) && !held.has(name);
+
+  return groups.map(({ name }) => {
+    let result = name;
+
+    if (name.trim() === '') {
+      do {
+        unnamed += 1;
+        result = `group_${unnamed}`;
+      } while (!free(result));
+    } else if (used.has(name)) {
+      let index = 2;
+      result = `${name}_${index}`;
+      while (!free(result)) {
+        index += 1;
+        result = `${name}_${index}`;
+      }
+    }
+
+    used.add(result);
+    return result;
+  });
 }
 
 function createDBMLContext(state: RootState): DBMLContext {

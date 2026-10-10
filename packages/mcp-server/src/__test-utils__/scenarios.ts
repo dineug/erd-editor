@@ -152,7 +152,8 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
       value: 'type Account {\n  id: ID!\n  email: String\n}',
     },
     erd_import_dbml: {
-      value: 'Table accounts {\n  id int [pk]\n  email varchar\n}',
+      value:
+        'Table accounts {\n  id int [pk]\n  email varchar\n}\n\nTableGroup billing {\n  accounts\n}',
     },
     erd_import_aml: { value: 'accounts\n  id int pk\n  email varchar' },
     erd_import_json: { value: createImportValue() },
@@ -160,7 +161,7 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
 
 /**
  * The import tools again with mode append, each adding what its text holds
- * below the seed: a table, and from the document its table group too.
+ * below the seed: a table, and from the document and the DBML a table group too.
  */
 export const APPEND_SCENARIOS: Readonly<
   Record<string, Record<string, unknown>>
