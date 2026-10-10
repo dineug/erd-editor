@@ -134,7 +134,7 @@ describe('rule-count invariance', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 4, component: 315 });
+    expect(sheetsOfEachKind).toEqual({ global: 4, component: 319 });
     expect(globalRules).toHaveLength(20);
     expect(componentRules).toHaveLength(558);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
