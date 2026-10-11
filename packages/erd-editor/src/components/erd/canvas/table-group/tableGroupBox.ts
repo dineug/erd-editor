@@ -52,22 +52,38 @@ export function getDrawnTableGroupRect(
   return held ? unionRect(held, box) : box;
 }
 
+/** The two nodes a group draws apart, each telling the other whether the pointer is over it. */
+export type TableGroupHoverPart = 'frame' | 'body';
+
 /**
- * What a group's body and its frame share, drawn apart in the two passes of
- * TableGroups: the box a sash drag draws until it writes its one resize, and
- * the guard telling a double click on the bar from a pair begun on the body.
+ * What a group's body and its frame share, drawn apart in TableGroups' two passes: the box a sash
+ * drag draws until its one resize, the guard telling a double click on the bar from a pair begun on
+ * the body, and whether the pointer is over either, which shows the remove button.
  */
 export type TableGroupLinks = {
   draftOf(groupId: string): Rect | null;
   setDraft(groupId: string, rect: Rect | null): void;
   guardOf(groupId: string): DoubleClickGuard;
+  isHovered(groupId: string): boolean;
+  setHover(groupId: string, part: TableGroupHoverPart, hovered: boolean): void;
 };
 
 export function createTableGroupLinks(): TableGroupLinks {
   const drafts = observable({} as Record<string, Rect>);
   const guards = new Map<string, DoubleClickGuard>();
+  const hovers = observable({} as Record<string, true>);
 
   return {
+    isHovered: groupId =>
+      Boolean(hovers[`${groupId}:frame`] || hovers[`${groupId}:body`]),
+    setHover: (groupId, part, hovered) => {
+      const key = `${groupId}:${part}`;
+      if (hovered) {
+        hovers[key] = true;
+      } else {
+        Reflect.deleteProperty(hovers, key);
+      }
+    },
     draftOf: groupId => drafts[groupId] ?? null,
     setDraft: (groupId, rect) => {
       if (rect) {

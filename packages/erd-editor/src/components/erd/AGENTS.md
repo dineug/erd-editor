@@ -104,7 +104,7 @@
   - Map to existing columns opens Map Columns. The + button does what a press on the table does, as a press on the table still does.
 - **The buttons are DOM over the canvas** (`DrawTargetButtons.tsx`). Konva raises no hover over a table drawn by its name or under a DOM element. A scene node would hand its press to the table under it.
 - **The target is reckoned, never hovered** (`findDrawTarget.ts`). The tables read from the top of the order `CanvasScene` paints them in, so of two at one z-index the later in `doc.tableIds` is the target.
-  - None under a memo is a target, since the memo takes the press.
+  - None under a memo drawn over it is a target, since the memo takes the press. Tables and memos share one stack (The canvas and its presses).
   - The start table counts only once the pointer has travelled 24 px from the press that started the draw.
   - A column drop is reckoned the same way. `findColumnDropTarget` (`src/konva/scene/columnDropTarget.ts`) reads the tables from the top of the painted order, so of two at one z-index the later in `doc.tableIds`, the one shown, takes the column. A file whose tables all carry the default z-index relies on it.
 - **A clear strip spends a main press** (`.draw-target-gutter`). It runs from the buttons to the table, so the outlined table is the only one a press beside the buttons reaches.
@@ -145,9 +145,9 @@
   - A group with no members gets one shared list, left unfrozen. r-html tracks no read of a frozen value, so a frozen one would keep a group from redrawing over its first member.
 - **Groups draw in two passes: bodies, then frames.** Every body (`TableGroupBody.tsx`, its own node `table-group-body-<id>`) draws before every frame. A frame (`canvas/table-group/TableGroup.tsx`) is the bar, the line, the peer ring and the sashes.
   - So no group's body stands over another's bar, as a large group drawn over a smaller one it holds would.
-  - The two share the sash draft and the double-click guard (`createTableGroupLinks`).
+  - The two share the sash draft, the double-click guard and the hover (`createTableGroupLinks`).
 - **The box is `getDrawnTableGroupRect`** (`tableGroupBox.ts`). It is `getTableGroupRect`'s while no drag holds the scene.
-  - Its top `TABLE_GROUP_TITLE_HEIGHT` is the title bar, holding lucide's `group` icon and the name. The padding above a member clears the name.
+  - Its top `TABLE_GROUP_TITLE_HEIGHT` is the title bar, holding lucide's `group` icon, the name and the remove button. The padding above a member clears the name.
   - The icon has the table header icon's size and gap (`getTableGroupIconBox`, `canvas/table-group/titleLayout.ts`). Its holder does not listen, so a press on it is the bar's.
   - Under the bar, the body takes the group color at `TABLE_GROUP_FILL_OPACITY`.
   - One line frames both, `memoSelect` while selected, as a memo's does.
@@ -175,16 +175,21 @@
 - **`sceneHit` tells the parts of a group apart.** It answers `{ kind: 'tableGroup', part }`, the part `title`, `body` or `sash`, read off the kind its node carries.
   - The bar's and the body's fills are their hit areas. The name, line and ring listen to nothing.
   - A table, memo or connector over a group answers for itself.
-- **The title bar selects and carries the group.** A press selects (`selectTableGroupAction$`): the modifier adds, and a press inside the selection keeps it.
+- **The title bar selects and carries the group.** A press selects (`selectTableGroupAction$`): the modifier adds, and a press inside the selection keeps it. It also raises the group's tables over every other table and memo (`src/engine/AGENTS.md`), so a drop leaves them where the drag drew them.
   - Past `CLICK_DRAG_MIN_MOVE` it carries the group through `useMoveEntity` (`TITLE_KINDS` as its `clickKinds`). `moveAllAction$` moves it and its members once.
   - It is never Alt duplicated.
   - A readonly store makes the press a selection alone (`canMove`).
+- **The bar's `x` removes the group** (`table-group-remove`, an owner decision of 2026-10-11). It stands `TABLE_GROUP_TITLE_PADDING` short of the bar's end at a table header's button size (`getTableGroupRemoveBox`, `canvas/table-group/titleLayout.ts`), and the name ends a header icon gap before it.
+  - It shows while the pointer is over the frame or the body, as a table's buttons show over its card. The frame and the body are two nodes, so each writes its own hover into the links and the button reads either.
+  - A main click runs `removeTableGroupAction$` on that group alone and keeps its tables, as the menu's Delete does, in one undo entry.
+  - It is `kind="icon"`, which `useMoveEntity`'s `blockedKinds` names, so a press on it selects the group and carries nothing.
+  - A readonly store draws none.
 - **The body is canvas to the main button.** `ownsPress` (`hitTest.ts`) gives a group its bar and sashes, and its body only for another button. `handleDragSelect` in `Erd.tsx` and `ErdViewer.tsx` read it.
   - So a main press on the body pans, takes a marquee under the modifier, and unselects.
   - A right press selects the group, kept if the selection holds it, for the group menu it raises (Table group commands, below).
   - A menu a main press raises selects the group as it opens (`Erd.tsx`'s `handleContextmenu`), since that press unselected. A Mac Ctrl+click and a long touch raise such a menu.
 - **A group's drag lowers every group.** Every group goes into the bottom layer, by zIndex as they stood, under the static scene. Its members go in the drag layer (`canvas/CanvasScene.tsx`'s `dragIds` take a selected group's members). A drag of tables alone leaves the groups where they stand.
-- **`TableGroupSash.tsx` resizes a selected group.** It stands on the group's four edges and four corners, for the main button, and not under a readonly store.
+- **`TableGroupSash.tsx` resizes any group.** It stands on every group's four edges and four corners, selected or not, as a memo's sashes do (an owner decision of 2026-10-11), for the main button, and not under a readonly store. A press on one leaves the selection as it was.
   - Its drag draws a draft box in the group's body and frame. It writes one `tableGroup.resize` with `dispatchSync` as it ends.
   - The edge stops at the members' padded box (`getTablesGroupRect`) and at `TABLE_GROUP_MIN_WIDTH` / `TABLE_GROUP_MIN_HEIGHT`.
   - So peers hear one write, and one undo puts back the rect it began from.
@@ -225,7 +230,7 @@
   - For Rename.
   - On the group a draw or Group selected tables just added (`addTableGroupAndRename`, the id the batch added to `doc.tableGroupIds`).
 - **The editor stands over the hidden name.** The bar's name hides while it is open.
-  - It runs from `TABLE_GROUP_NAME_X` (past the icon) to `TABLE_GROUP_TITLE_PADDING` short of the bar's end.
+  - It runs from `TABLE_GROUP_NAME_X` (past the icon) to a header icon gap short of the remove button, the box the bar's name takes.
   - It takes the bar's font and weight, in the box konva centres the name in. That box is `getTableGroupNameBox` (`canvas/table-group/titleLayout.ts`), a cell's text height on a whole pixel. So the baselines meet.
   - `common.unnamed` is its placeholder.
   - A colored bar's text color goes to `--active` and `--placeholder` on its cell, as a tinted header's does.
@@ -237,6 +242,7 @@
 - Why `renderCanvasScene` (`canvas/CanvasScene.tsx`) and `renderMinimapScene` (`minimap/MinimapScene.tsx`) export in lower case, the `konva/lib/*` imports and `ParticleLayer.tsx`: `src/konva/AGENTS.md`.
 - **Route presses through `hitTest.ts`.** The canvas is one `<canvas>` under a closed shadow root, which r-html's `queryShadowSelector` / `closestElement` cross. `hitTest.ts` records what konva resolved at dispatch, since the press re-renders the scene before `Erd.tsx` asks.
 - **Take hit boxes from hit functions** (`canvas/sceneHit.ts`), not invisible shapes.
+- **Tables and memos paint in one stack.** `stackTablesAndMemos` (`src/konva/scene/stacking.ts`) orders them by the one z-index `nextZIndex` counts for both, a memo over a table at a tie. The scene and drag layers of `canvas/CanvasScene.tsx`, the minimap, the export scene and `findDrawTarget` read it, so what a press raised stays on top wherever it is drawn. Drawing every memo after every table put a memo over a table raised past it (an owner report of 2026-10-11).
 - **Add each canvas overlay to `canDrag`.** That is the `closest()` list in `Erd.tsx` (`.content-compass`, `.floating-toolbar`, `.draw-target`, …); `ErdViewer.tsx` has its own. Otherwise a press on the overlay starts a pan.
 - **Add takeover overlays to `TAKEOVER_CHROME` too.** An overlay a takeover lays over its scene joins it in `Erd.tsx`, or a middle press on it is prevented.
 - **A header press lifts past `CLICK_DRAG_MIN_MOVE` only.** It lifts the table only once the press travels that far (`clickKinds`, `canvas/useMoveEntity.ts`). The drag layer is off the hit canvas, so lifting at once would keep a double click from opening the cell editor.

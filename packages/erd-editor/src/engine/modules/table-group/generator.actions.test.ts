@@ -20,6 +20,7 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { moveAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -575,6 +576,35 @@ describe('selectTableGroupAction$', () => {
       t1: SelectType.table,
       g2: SelectType.tableGroup,
     });
+  });
+
+  it('raises its tables over every other table and memo, in their own order', () => {
+    store.dispatchSync(
+      addTableAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 7 } }),
+      addTableAction({ id: 'm2', ui: { x: 0, y: 0, zIndex: 3 } }),
+      addMemoAction({ id: 'note', ui: { x: 0, y: 0, zIndex: 50 } }),
+      changeTableGroupAction({ id: 'm1', value: 'g2' }),
+      changeTableGroupAction({ id: 'm2', value: 'g2' })
+    );
+
+    store.dispatchSync(selectTableGroupAction$('g2', false));
+
+    const zIndexOf = (id: string) =>
+      store.state.collections.tableEntities[id].ui.zIndex;
+    expect([zIndexOf('m2'), zIndexOf('m1')]).toEqual([51, 52]);
+    expect(zIndexOf('t1')).toBe(40);
+  });
+
+  it('sends no z-index change once its tables stand over the rest', () => {
+    store.dispatchSync(
+      addTableAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 41 } }),
+      changeTableGroupAction({ id: 'm1', value: 'g2' })
+    );
+
+    expect(typesOf(store, selectTableGroupAction$('g2', false))).not.toContain(
+      'table.changeZIndex'
+    );
+    expect(store.state.collections.tableEntities.m1.ui.zIndex).toBe(41);
   });
 });
 

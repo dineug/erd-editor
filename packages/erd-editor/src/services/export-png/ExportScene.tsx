@@ -11,6 +11,7 @@ import TableGroups from '@/components/erd/canvas/table-group/TableGroups';
 import { useThemeContext } from '@/components/themeContext';
 import { Show } from '@/constants/schema';
 import type { Rect } from '@/konva/scene/metrics';
+import { stackedKey, stackTablesAndMemos } from '@/konva/scene/stacking';
 import { bHas } from '@/utils/bit';
 import { isTableGroupShown } from '@/utils/tableGroup';
 
@@ -20,10 +21,6 @@ export type ExportSceneProps = {
   /** What the box is scaled by so a canvas can hold the raster of it. */
   scale: number;
 };
-
-type Stacked = { ui: { zIndex: number } };
-
-const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
  * Everything the document draws on one layer, the groups behind it all, with
@@ -44,15 +41,10 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
     } = store.state;
     const theme = themeRef.value;
 
-    const tables = query(collections)
-      .collection('tableEntities')
-      .selectByIds(tableIds)
-      .sort(byZIndex);
-
-    const memos = query(collections)
-      .collection('memoEntities')
-      .selectByIds(memoIds)
-      .sort(byZIndex);
+    const stack = stackTablesAndMemos(
+      query(collections).collection('tableEntities').selectByIds(tableIds),
+      query(collections).collection('memoEntities').selectByIds(memoIds)
+    );
 
     const relationships = query(collections)
       .collection('relationshipEntities')
@@ -79,18 +71,11 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
         {bHas(show, Show.relationship) ? (
           <RelationshipGroup relationships={relationships} />
         ) : null}
-        {repeat(
-          tables,
-          table => table.id,
-          table => (
-            <Table table={table} />
-          )
-        )}
-        {repeat(
-          memos,
-          memo => memo.id,
-          memo => (
-            <Memo memo={memo} />
+        {repeat(stack, stackedKey, item =>
+          item.kind === 'table' ? (
+            <Table table={item.entity} />
+          ) : (
+            <Memo memo={item.entity} />
           )
         )}
       </k-layer>

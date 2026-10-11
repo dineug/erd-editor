@@ -1,6 +1,6 @@
 /** @jsxHost konva */
 
-import { FC } from '@dineug/r-html';
+import { FC, onUnmounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
@@ -37,6 +37,17 @@ const TableGroupBody: FC<TableGroupBodyProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+
+  const handleMouseenter = () => {
+    props.links.setHover(props.group.id, 'body', true);
+  };
+
+  const handleMouseleave = () => {
+    props.links.setHover(props.group.id, 'body', false);
+  };
+
+  // A removed group takes its node from under the pointer, which sends no leave.
+  onUnmounted(handleMouseleave);
 
   const handleBodyPress = (event: ScenePointerEvent) => {
     const { group, links } = props;
@@ -78,6 +89,8 @@ const TableGroupBody: FC<TableGroupBodyProps> = (props, ctx) => {
         fill={colors?.background ?? themeRef.value.tableGroupBackground}
         opacity={colors ? TABLE_GROUP_FILL_OPACITY : 1}
         on:mousedown={handleBodyPress}
+        on:mouseenter={handleMouseenter}
+        on:mouseleave={handleMouseleave}
       />
     );
   };

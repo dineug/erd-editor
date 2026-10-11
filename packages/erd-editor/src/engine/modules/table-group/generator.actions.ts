@@ -10,6 +10,7 @@ import { SelectType } from '@/engine/modules/editor/state';
 import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import {
   changeTableGroupAction,
+  changeZIndexAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { RootState } from '@/engine/state';
@@ -318,7 +319,11 @@ export const dropTablesIntoGroupsAction$ = (
       );
   };
 
-/** Selects a group, alone unless $mod, and draws it over every other group. */
+/**
+ * Selects a group, alone unless $mod, and draws it over every other group and its tables over every
+ * other table and memo in their own order, as a press on a table raises it. Otherwise a group drag
+ * would lift its tables over the rest and drop them back under it.
+ */
 export const selectTableGroupAction$ = (
   id: string,
   $mod: boolean
@@ -332,7 +337,34 @@ export const selectTableGroupAction$ = (
       id,
       zIndex: nextTableGroupZIndex(selectGroups(state)),
     });
+    yield raiseMembers(state, id);
   };
+
+/** The z-index changes that stack a group's tables over every other table and memo, none once they are. */
+function raiseMembers(state: RootState, groupId: string) {
+  const {
+    doc: { tableIds, memoIds },
+    collections,
+  } = state;
+  const isMember = arrayHas(getTableGroupMemberIds(state, groupId));
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(tableIds);
+  const members = tables
+    .filter(table => isMember(table.id))
+    .sort((a, b) => a.ui.zIndex - b.ui.zIndex);
+  const others = [
+    ...tables.filter(table => !isMember(table.id)),
+    ...query(collections).collection('memoEntities').selectByIds(memoIds),
+  ];
+  const base = Math.max(1, ...others.map(({ ui }) => ui.zIndex)) + 1;
+
+  if (members.every(({ ui }) => ui.zIndex >= base)) return [];
+
+  return members.map((table, index) =>
+    changeZIndexAction({ id: table.id, zIndex: base + index })
+  );
+}
 
 /**
  * Selects the group's member tables alone, the group itself left out, so what

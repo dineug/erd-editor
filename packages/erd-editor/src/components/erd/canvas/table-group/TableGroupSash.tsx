@@ -138,7 +138,7 @@ export type TableGroupSashProps = {
 };
 
 /**
- * The eight resize handles on a selected group's edges and corners. A drag
+ * The eight resize handles on a group's edges and corners, selected or not, as a memo's are. A drag
  * draws its steps without writing them and writes one resize as it ends, so
  * peers hear one write and one undo puts back the rect it started from.
  */

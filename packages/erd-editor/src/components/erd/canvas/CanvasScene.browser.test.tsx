@@ -43,6 +43,7 @@ import {
 import {
   addTableAction,
   changeTableGroupAction,
+  changeZIndexAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -145,6 +146,14 @@ const drawnTableIdsOf = (stage: Stage) =>
     .find('.table')
     .filter(node => node.visible())
     .map(node => node.getAttr('id'));
+
+/** The tables and memos of the scene layer in the order it paints them, bottom first. */
+const stackOf = (stage: Stage) =>
+  stage
+    .findOne<Layer>('.scene')!
+    .getChildren()
+    .filter(node => node.hasName('table') || node.hasName('memo'))
+    .map(node => node.id());
 
 const backgroundLayerOf = (stage: Stage) =>
   stage.findOne<Layer>('.canvas-background')!;
@@ -426,6 +435,49 @@ describe('the canvas scene', () => {
     await flush();
 
     expect(tableIdsOf(stage)).toEqual(['table-below', 'table-above']);
+  });
+
+  it('stacks tables and memos by one z-index, a memo over a table of its own', async () => {
+    const { app, stage } = await mountScene();
+
+    seedTable(app, 'raised', 100, 9);
+    seedTable(app, 'low', 200, 2);
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 300, y: 0, zIndex: 5 } }),
+      addMemoAction({ id: 'tie', ui: { x: 400, y: 0, zIndex: 2 } })
+    );
+    await flush();
+
+    expect(stackOf(stage)).toEqual([
+      'table-low',
+      'memo-tie',
+      'memo-note',
+      'table-raised',
+    ]);
+
+    app.store.dispatchSync(changeZIndexAction({ id: 'low', zIndex: 10 }));
+    await flush();
+
+    expect(stackOf(stage)).toEqual([
+      'memo-tie',
+      'memo-note',
+      'table-raised',
+      'table-low',
+    ]);
+  });
+
+  it('keeps that one stack at a zoom that draws high level tables', async () => {
+    const { app, stage } = await mountScene();
+
+    seedTable(app, 'raised', 100, 9);
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 300, y: 0, zIndex: 5 } }),
+      changeZoomLevelAction({ value: 0.5 })
+    );
+    await flush();
+
+    expect(stage.find('.high-level-table')).toHaveLength(1);
+    expect(stackOf(stage)).toEqual(['memo-note', 'table-raised']);
   });
 
   it('swaps to high level tables at or below a zoom level of 0.7', async () => {

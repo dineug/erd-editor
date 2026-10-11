@@ -29,6 +29,7 @@
 | `scene/viewport.ts` | The coordinate canon and the culling rect (rule in `src/components/erd/AGENTS.md`) |
 | `scene/viewFreeze.ts` | `sceneKeyOf` and the freeze a drag holds (rules in `src/components/erd/AGENTS.md`) |
 | `scene/konvaFlip.ts` | The column flip, the one shipped module that names `konva/lib/Tween` |
+| `scene/stacking.ts` | `stackTablesAndMemos`, the one order tables and memos paint in (rule in `src/components/erd/AGENTS.md`, The canvas and its presses) |
 | `scene/renderScene.browser.test.tsx` | Pins the `Konva.DD` registration in `batchDraw.ts` |
 
 ## Rules

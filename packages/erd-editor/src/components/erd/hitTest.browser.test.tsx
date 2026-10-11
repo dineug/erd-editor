@@ -50,7 +50,6 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
-import { selectTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 
@@ -494,11 +493,9 @@ describe('sceneHit - a table group under a pointer', () => {
     });
   });
 
-  it('answers with the group and a sash for a press on the edge of a selected one', async () => {
+  it('answers with the group and a sash for a press on its edge', async () => {
     const fixture = await setup();
     await addGroup(fixture.app);
-    fixture.app.store.dispatchSync(selectTableGroupAction$('g1', false));
-    await settle();
 
     expect(
       hitAt(fixture, middleOf(fixture.stage, 'table-group-sash-right'))
