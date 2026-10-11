@@ -2,55 +2,157 @@
 
 > Entity-Relationship Diagram Editor as a custom element
 
-![erd-editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
+![ERD Editor](https://github.com/dineug/erd-editor/blob/main/img/erd-editor-vscode.png?raw=true)
 
-`<erd-editor>` is a full database-schema editor in a single custom element. It has no
-framework dependency and renders into a closed shadow root, so it drops into any page —
+`<erd-editor>` is a database-schema editor in a single custom element: design tables and
+relationships visually, import SQL DDL, GraphQL SDL, DBML or AML, and export DDL or generated code.
+It has no framework dependency and renders into a closed shadow root, so it drops into any page —
 React, Vue, Svelte, or plain HTML — without leaking styles either way.
 
-This is the same editor that powers [erd-editor.io](https://erd-editor.io), the
+It is the same editor as [erd-editor.io](https://erd-editor.io), the
 [Google Drive app](https://workspace.google.com/marketplace/app/erd_editor/428467403360), the
-[VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode),
-the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and the
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode), the
+[IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and the
 [Obsidian plugin](https://community.obsidian.md/plugins/erd-editor).
 
 ## Features
 
-- Visual schema design — tables, columns, memos, and four relationship cardinalities
-  (zero-one, zero-N, one-only, one-N)
-- Link existing columns — while you draw a relationship with a mouse or a pen, the buttons
-  beside the table it ends on either map the parent's key onto columns that table already has or
-  add new ones, and Map Columns in a relationship's right-click menu changes its columns later
-- Table groups — a named, colored box behind related tables, drawn from the canvas menu or the
-  command palette or made from the selected tables; a drop puts a table in a group or takes it
-  out, a drag on its title moves its tables with it, a member's header wears its color, View
-  Option hides them, the Schema SQL options panel writes the tables of the groups checked, and
-  DBML import and export carry them as `TableGroup`s
-- Import — a `.sql` dump, a GraphQL SDL schema from any tool that emits one, a `.dbml` file, or
-  an `.aml` file; one picked from the editor's own Import menu lands with its tables laid out by
-  their relationships, and Import and Add adds one, or an `.erd.json` file, below the diagram
-  instead of replacing it
-- SQL DDL export — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite
-- Schema SQL options — a panel beside the DDL picks CREATE TABLE IF NOT EXISTS or drop and
-  re-create and a USE or CREATE SCHEMA header for the window, and keeps SQL of your own in the
-  document to write before and after the tables
-- Code generation — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go,
-  SQLAlchemy, TypeORM, Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM,
-  Swift, Zod, JSON Schema
-- Code Generator options — a panel beside the code picks the language, the database and the name
-  cases, and saves the code as a file with the language's extension
-- Export — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview:
-  transparent background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead
-- Force-directed visualization of table relationships
-- Quick search over commands, and over tables, columns, comments and memos after `#`, `@` or `:`,
-  find and replace, undo / redo, remappable keyboard shortcuts, and a built-in theme builder
-- Display language — the editor's menus, panels, command palette and messages in 25 languages,
-  Arabic, Hebrew and Persian laid out right to left while the diagram stays left to right;
-  English until you [turn the picker on or call `setLocale`](#display-language)
-- Welcome screen — opt-in: an empty diagram shows a start menu (New Table, New Memo, Import, the
-  command palette, the shortcuts) and arrows at the tools, until its first table, memo or table
-  group
-- Collaboration hooks — the editor emits and applies actions; you supply the transport
+### Design
+
+- **Visual schema design** — tables, columns, memos, and four relationship cardinalities (Zero One,
+  Zero N, One Only, One N)
+- **Quick edits** — `Alt`+`N` adds a table and `Alt`+`Enter` a column, `Alt`+`K` toggles the primary
+  key on the focused column, or on every selected column when it is one of them, and `Delete` or
+  `Backspace` removes the selection, each in one undo step; the Shortcuts page of the editor's
+  Settings tab lists every key, and `setKeyBindingMap` remaps them
+- **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
+  beside the table it ends on either map the parent's key onto columns that table already has or add
+  new ones, named after the parent table when the key is one word (`user_id` for `user`'s `id`), and
+  **Map Columns** in a relationship's right-click menu changes its columns later
+- **Referential actions** — set **On Delete** and **On Update** (NO ACTION, CASCADE, SET NULL, SET
+  DEFAULT, RESTRICT) from a relationship's right-click menu, which marks one the current database
+  leaves out; the line shows them at its child end as `D:C U:R`, and View Option's Referential
+  Actions hides the labels. SQL, DBML and AML import read them, and the DDL export and the code
+  generators that have a place for them write the ones the target supports
+- **Alternate keys** — View Option's Alternate Key marks the columns of each unique index over two
+  or more columns as `AK1.1`, `AK1.2`, and SQL import reads a UNIQUE over several columns as one
+  such index
+- **Table groups** — draw a box behind related tables, which you name and can color, with
+  **New Table Group** in the canvas menu or the command palette, or group the selected tables from
+  their right-click menu. A table joins a group when you drop it inside and leaves when you drop it
+  outside, dragging a group by its title moves its tables with it, each member's header takes the
+  group's color, View Option hides the groups, and DBML import and the Code Generator's DBML carry
+  them as `TableGroup`s
+- **Auto Layout** — place every table again by Force, Flow or a vertical or horizontal tree from the
+  canvas menu or the command palette, table groups kept together, in one undo step; Force shows a
+  preview you apply or cancel, and the others land at once
+- **Copy, paste and colors** — copy tables and memos and paste them as new ones, into another
+  diagram too or into a spreadsheet as a grid, hold `Alt` while dragging to duplicate them, and
+  color a table, memo or table group from its right-click menu
+- **Clean diffs** — the scroll position and zoom, the open tab, the code generator's language and
+  name cases and the bracket type are locked in a new document
+  ([Loading and saving](#loading-and-saving)), so the file keeps the values they had when locked
+  and looking around never changes it; the file, written in a fixed order, also leaves out
+  measured widths, connector anchors and removed items
+
+### Import
+
+- **SQL DDL import** — bring in a `.sql` dump from any of the eight vendors below. The parser reads
+  `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE` constraints and table and column comments
+  (`COMMENT ON`, SQL Server's `sp_addextendedproperty`), and skips what it does not recognize, so an
+  awkward dump imports partially rather than failing outright
+- **GraphQL SDL import** — bring in a schema from any tool that emits SDL. Object types become
+  tables, scalars map to the diagram's own dialect, and the fields that point at another type become
+  the relationships; the root types and the wrapper types Relay, Federation and Hasura generate are
+  left out rather than drawn as tables
+- **DBML import** — bring in a `.dbml` file written for dbdiagram.io or dbdocs.io, or emitted by
+  `sql2dbml` or `prisma-dbml-generator`. Tables, columns, indexes, enums, header colors, every `Ref`
+  spelling and each `TableGroup` arrive; a `Project` or a sticky `Note` is skipped rather than
+  refused
+- **AML import** — bring in an `.aml` file written for [Azimutt](https://azimutt.app), in either the
+  v2 or the legacy v1 spelling. Entities, attributes, indexes, enums, colors and every relation
+  arrow arrive; a check and a struct type are skipped rather than refused, and a view arrives as a
+  table
+- **Imports land laid out** — a schema picked from the Import menu, the command palette or a host's
+  file dialog arrives with its tables placed by their relationships (in rows when it has none), and
+  one undo puts the previous diagram back; a `setSchema*` call, as from your own file dialog, is
+  laid out the same way when given `{ placement: 'auto' }`
+- **Import and Add** — the menu beside Import, and its five formats in the command palette, add a
+  `.sql`, GraphQL, DBML, AML or `.erd.json` file to the diagram instead of replacing it: its tables
+  arrive below everything already there, laid out the same way (an `.erd.json` file keeps its own
+  placement), selected, and one undo takes them away. A table whose name is already taken arrives as
+  a second table rather than merging, and a foreign key to a table outside the file is dropped;
+  `{ mode: 'append' }` does the same from `setSchemaJSON` and the four `setSchema*` methods, which
+  lay the tables out only with `placement: 'auto'` and stand them in rows otherwise
+
+### Export and code
+
+- **SQL DDL export** — Databricks, MariaDB, MSSQL, MySQL, Oracle, PostgreSQL, Snowflake and SQLite,
+  from the Schema SQL tab, which saves the DDL as a `.sql` file or copies it, and from
+  `getSchemaSQL(vendor?, options?)`
+- **Schema SQL options** — a panel beside the DDL picks the database and the bracket type, CREATE
+  TABLE IF NOT EXISTS or drop and re-create and a `USE` or `CREATE + USE` header, each where the
+  database has it, and the tables by table group, and keeps SQL of your own to write before and
+  after the tables. The statements, header and tables stay with this editor until the element goes
+  and never reach the file; the scripts are saved in the document
+- **Code generation** — TypeScript, GraphQL, C#, Java, JPA, Kotlin, Scala, Go, SQLAlchemy, TypeORM,
+  Sequelize, Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM, Swift, Zod and JSON Schema,
+  from the Code Generator tab. Its options panel picks the language, the database, the table and
+  column name cases and, for Doctrine, JPA and SeaORM, the bracket type, and saves the code as a
+  file with the language's extension
+- **Export** — `.erd.json`, `.sql`, and a `.png` or `.svg` from a dialog with a preview: transparent
+  background, light or dark, the PNG at 1x to 3x or copied to the clipboard instead
+
+### Find and navigate
+
+- **Quick search** — `Ctrl`/`Cmd`+`K` opens the command palette to run editor commands (new table,
+  import, export, Auto Layout, tabs, theme, language and more), or to jump to a table after `#`, a
+  column after `@`, and a comment or memo after `:`; Korean also matches by its initial consonants
+  (`ㅅㅇㅈ` finds 사용자)
+- **Find and replace** — `Ctrl`/`Cmd`+`F` searches table and column names, comments and memos, with
+  match case, whole word and regular expressions, and one undo takes back a Replace All
+- **Visualization** — Graph mode draws a force-directed view of how the tables relate. Flow mode
+  lays them out by their relationships, lights a table you hover and the tables it relates to, and
+  shows names only, keys only or all fields; **Focus on this table** in a table's right-click menu
+  opens Flow on that table and its neighbours, or, when it is one of several selected tables, as
+  **Focus on selected tables** on all of them and their neighbours, as `Alt`+`F` does for the
+  selection, and neither view writes its layout into the file
+- **Zoom and pan** — pinch a trackpad or two fingers to zoom, drag with the middle button to pan
+  from anywhere, and click the zoom level on the floating toolbar to go back to 100%
+- **Time travel** — replay this editing session's history on the canvas and jump to any point in it,
+  from the toolbar
+- **Diff viewer** — compare the diagram with another `.json` file from the canvas menu, or from
+  `setDiffValue`
+- **Undo / redo** — every edit, from the toolbar or `Ctrl`/`Cmd`+`Z` and `Ctrl`/`Cmd`+`Shift`+`Z`,
+  in the editor's own history
+
+### Language and theme
+
+- **Display language** — the editor's menus, panels, dialogs, command palette and messages in 25
+  languages, Arabic, Hebrew and Persian laid out right to left while the diagram stays left to
+  right. The element shows English until the host turns on `enable-locale-picker`, which adds the
+  toolbar's language button and **Display Language** and follows System, or calls `setLocale`
+  ([Display language](#display-language)); table and column names, SQL keywords, data types and
+  generated code stay as they are
+- **Theme** — once the host sets `enable-theme-builder`, the toolbar's theme builder picks the
+  appearance, a gray color and an accent color, and **Theme** in the command palette picks the
+  appearance; System follows the OS color scheme or what `setSystemAppearance` names, and the
+  element stores nothing (`changePresetTheme` tells the host)
+- **Welcome screen** — opt-in with `enable-welcome-screen`: an empty diagram you can edit opens on a
+  menu of New Table, New Memo, Import, Command Palette and Shortcuts, with arrows at the toolbar's
+  search, theme and language buttons where the element shows them and at the floating toolbar where
+  the canvas has room, until its first table, memo or shown table group
+
+### Collaboration hooks
+
+- **Collaboration hooks** — the editor emits the actions it makes and applies a peer's through
+  `getSharedStore()`; you supply the transport, and seed a joining editor with its `runtimeValue`
+  ([Collaboration](#collaboration))
+- **Headless entries** — `engine.js` runs a replica with no DOM, so a worker can apply the same
+  actions and serialize the document off the main thread, and `peer.js` runs a peer that edits by
+  dispatching actions, which the
+  [ERD Editor MCP server](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
+  is built on
 
 ## Install
 
@@ -58,13 +160,11 @@ the [IntelliJ plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and
 npm install @dineug/erd-editor
 ```
 
-The package ships ES modules with its dependencies left as bare imports, so any bundler
-(Vite, webpack, Rspack, esbuild, …) resolves, dedupes and tree-shakes them like the rest of
-your app. Three features run in shared workers — the PNG and SVG export, the automatic table
-placement and the syntax highlighting — constructed as
-`new SharedWorker(new URL('./workers/…', import.meta.url))`, which those bundlers emit as worker
-files beside your chunks; a strict CSP needs `worker-src 'self'`. Without a bundler, use the UMD
-file described under [Script tag](#script-tag) instead.
+Your bundler resolves, dedupes and tree-shakes the package's ES modules and dependencies. The PNG
+and SVG export, the Flow and tree layouts and the syntax highlighting run in shared workers spawned
+as `new SharedWorker(new URL('./workers/…', import.meta.url), { type: 'module', name })`, which
+Vite, webpack and Rspack emit beside your chunks and esbuild does not. A strict CSP needs
+`worker-src 'self'`. Without a bundler, use the [Script tag](#script-tag) build.
 
 ## Usage
 
@@ -72,31 +172,20 @@ file described under [Script tag](#script-tag) instead.
 import '@dineug/erd-editor';
 
 const editor = document.createElement('erd-editor');
-// the editor fills its container, and a custom element is inline by default
+// a custom element is inline, and the editor fills its box
 Object.assign(editor.style, { display: 'block', width: '100%', height: '100vh' });
 document.body.appendChild(editor);
 
-// load a document without adding an undo entry, then keep it in sync
 editor.setInitialValue(localStorage.getItem('my-diagram') ?? '');
 editor.addEventListener('change', () => {
   localStorage.setItem('my-diagram', editor.value);
 });
 ```
 
-`setInitialValue('')` starts a new document, as an element given no value shows: every setting the
-Settings tab lists under **Lock** (the scroll and zoom together, the tab, the code generator's
-language and name cases, and the SQL bracket type) is locked at its default, so looking around
-leaves `value` as it was. A locked setting is saved as it stood when it was locked, whatever the
-screen does after. A document loaded from text keeps the locks it names; one saved before the
-locks opens with all of them on, its scroll, zoom and tab at the start. Replacing the document
-while it is open (setting `value`, an import, an undo) keeps the tab and the code generator
-settings the reader had under their locks; the scroll and zoom land where the new document
-puts them.
-
 ### Server-side rendering
 
-Importing the package registers the custom element at module scope, so it needs a DOM and
-throws in Node. In Next.js, Nuxt, SvelteKit or Astro, reach it from a client-only path:
+Importing the package registers the element, which throws without a DOM, so in Next.js, Nuxt,
+SvelteKit or Astro import it on the client:
 
 ```js
 useEffect(() => {
@@ -106,124 +195,143 @@ useEffect(() => {
 
 ### Vite
 
-In development Vite pre-bundles dependencies into its cache directory, and the worker files
-would then be looked up there rather than beside the package. Exclude the editor packages from
-that step; a production build needs nothing.
+In development Vite would look the worker files up in its pre-bundle cache, so exclude the editor
+and include the CommonJS ELK bundle its layout worker imports, or the Flow and tree layouts fail. A
+production build needs nothing.
 
 ```js
 // vite.config.js
 export default {
   optimizeDeps: {
     exclude: ['@dineug/erd-editor'],
+    include: ['@dineug/erd-editor > elkjs/lib/elk.bundled.js'],
   },
 };
 ```
 
 ### Script tag
 
-`dist/erd-editor.umd.js` is a self-contained build for a plain `<script>` tag: every
-dependency and all three workers are inside it, and it registers `<erd-editor>` and exposes the
-two file callbacks as `window.ErdEditor`. It is what `unpkg` and `jsdelivr` serve.
+`dist/erd-editor.umd.js`, served by `unpkg` and `jsdelivr`, bundles every dependency and worker,
+registers `<erd-editor>` and puts `setExportFileCallback`, `setImportFileCallback` and
+`createKeyBindingMap` on `window.ErdEditor`. Its workers are `data:` URLs, so a strict CSP needs
+`worker-src data:`. Pin a version in the URL beyond a demo.
 
 ```html
 <erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
 <script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.umd.js"></script>
 ```
 
-The workers travel inside the file as `data:` URLs, so a strict CSP needs `worker-src data:`
-for this build. Pin a version in the URL for anything beyond a demo.
-
 ### HTML
 
+In a page a bundler serves:
+
 ```html
-<erd-editor system-dark-mode enable-theme-builder></erd-editor>
+<erd-editor system-dark-mode style="display: block; height: 100vh"></erd-editor>
 <script type="module">
   import '@dineug/erd-editor';
-
-  const editor = document.querySelector('erd-editor');
 </script>
 ```
 
-```css
-erd-editor {
-  display: block;
-  width: 100%;
-  height: 100vh;
-}
-```
-
 ## API
+
+The package exports the element's type as `ErdEditorElement`.
 
 ### Attributes
 
 | Attribute | Property | Description |
 | --- | --- | --- |
-| `readonly` | `readonly` | Blocks editing and suppresses the `change` event. Assigning `value`, `setSchemaSQL()`, `setSchemaGraphQL()`, `setSchemaDBML()`, `setSchemaAML()`, `setSchemaJSON()` and `clear()` are ignored while it is set — load with `setInitialValue()` instead. Viewport actions and the SQL/code output settings still apply. |
-| `system-dark-mode` | `systemDarkMode` | Sets the appearance to `system` when it turns on; turned off, the appearance stays the light or dark `system` shows. |
-| `enable-theme-builder` | `enableThemeBuilder` | Shows the built-in theme builder, and the command palette's Theme command (System, Light, Dark) |
-| `enable-locale-picker` | `enableLocalePicker` | Shows the toolbar's language button, whose picker lists System and the 25 languages, and the command palette's Display Language command. Until `setLocale` is called or the reader picks a language, the editor follows System while it is on and shows English while it is off; see [Display language](#display-language). |
-| `enable-welcome-screen` | `enableWelcomeScreen` | Shows a welcome screen over an empty diagram on the ERD tab: a line pointing to the canvas's right-click menu, a menu of New Table, New Memo, Import, Command Palette and Shortcuts, and, where the canvas has room, arrows at the toolbar's Search, theme and language buttons and at the floating toolbar. The first table or memo takes it away, and an undo back to an empty diagram brings it again. It never shows while `readonly` is set. |
+| `readonly` | `readonly` | Blocks editing and `change`; `clear()` and every load you start but `setInitialValue()` are ignored. |
+| `system-dark-mode` | `systemDarkMode` | On, sets the appearance to `system`; off, keeps the light or dark it shows. |
+| `enable-theme-builder` | `enableThemeBuilder` | Shows the theme builder's toolbar button and the palette's Theme. |
+| `enable-locale-picker` | `enableLocalePicker` | Shows the toolbar's language button and the palette's Display Language, and makes System the default. |
+| `enable-welcome-screen` | `enableWelcomeScreen` | Shows the welcome screen over an empty, editable diagram, again after an undo back to empty. |
+
+An attribute is on when present with no value or `"true"`, off for any other value (`"false"`,
+`"readonly"`).
 
 ### Properties
 
 | Property | Description |
 | --- | --- |
-| `value: string` | The document as JSON in the form a file saves — an `.erd.json` document ([schema](https://github.com/dineug/erd-editor/blob/main/json-schema/schema.json)): the entities the document lists, each collection in id order, without what an editor derives on load or keeps for itself (removed entities, the stacking order, measured widths, relationship anchors), and the same bytes for the same document on every machine. Assigning it loads the document as an edit, so it lands in the undo history; use `setInitialValue` to load without one. Assigning an empty string loads a new document, as `setInitialValue('')` does. |
-| `runtimeValue: string` | Read only. The document as this editor holds it, removed entities and the derived fields included, to seed a collaborator with: `setInitialValue(editor.runtimeValue)`. An undo of a removal then brings the table or column back whole on both sides, where a collaborator seeded from `value` gets back a nameless table with no columns. Never write it to a file. |
+| `value: string` | The document as a file saves it ([schema](https://github.com/dineug/erd-editor/blob/main/json-schema/schema.json)). Assigning one, or `''` for a new one, is an undoable load. |
+| `runtimeValue: string` | Read only. The document as this editor holds it, to seed a collaborator. |
 
 ### Methods
 
 | Method | Description |
 | --- | --- |
-| `setInitialValue(value: string)` | Load the initial document. Does not create a history entry, and clears the undo history, so nothing done before the load can be undone or redone onto it. It drops the collaboration registers of the document held before too, and a shared store already subscribed asks its peers for theirs again, as on its first subscribe. |
-| `getSchemaSQL(vendor?, options?)` | Export DDL. `vendor` is one of `Databricks`, `MariaDB`, `MSSQL`, `MySQL`, `Oracle`, `PostgreSQL`, `Snowflake`, `SQLite`; omit it to use the document's own setting. `options` takes `statements` (`create` by default, `ifNotExists`, `recreate`) and `header` (`none` by default, `use`, `createAndUse`); a value the vendor lacks falls back as the Schema SQL tab does, and a header is written only while the database name is a plain identifier (ASCII letters, digits and `_`, not starting with a digit). The document's before and after scripts are always included. The `SchemaSQLOptions` type comes with the package. |
-| `setSchemaSQL(value: string, options?)` | Parse a DDL string and **replace** the current document with it, or add it with `mode: 'append'`. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
-| `setSchemaGraphQL(value: string, options?)` | Parse a GraphQL SDL string and **replace** the current document with it, or add it with `mode: 'append'`. Object types become tables, scalars map to the document's own dialect, and relationships are read from the fields that point at another type. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
-| `setSchemaDBML(value: string, options?)` | Parse a DBML string and **replace** the current document with it, or add it with `mode: 'append'`. Tables, columns, indexes, header colors, every `Ref` spelling and each `TableGroup` are read, a group with its name, color and tables, its box round them where they land, a table named by two groups staying in the first; a `Project`, a sticky `Note` and a group's note and other settings are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
-| `setSchemaAML(value: string, options?)` | Parse an [AML](https://azimutt.app) string and **replace** the current document with it, or add it with `mode: 'append'`. Entities, attributes, indexes, colors and every relation arrow are read, in the v2 and the legacy v1 spelling; a check, a struct type and a view are skipped, and text it cannot read loads an empty document rather than being refused. Lands in the undo history; an empty string is ignored. `options` takes `placement` and `mode`, below. |
-| `setSchemaJSON(value: string, options?)` | Load an `.erd.json` document in place of the current one, as assigning `value` does, or add its tables, relationships, indexes, memos and table groups to it with `{ mode: 'append' }`, which keeps the current settings, but for the tab and the scroll position (as below), and the placement the file gives them. Lands in the undo history; an empty string is ignored, and so is text the parser cannot read for an append. |
-| `setDiffValue(value: string)` | Open the diff viewer against another document. |
-| `setPresetTheme(options)` | Set `appearance` (`light`, `dark` or `system`), `grayColor` and `accentColor`. `system` follows the OS color scheme, or what `setSystemAppearance` names. |
-| `setSystemAppearance(appearance)` | Name the light or dark `system` shows, for a host with its own theme (an IDE's light or dark); `null` hands it back to the OS color scheme. It changes nothing on screen unless the appearance is `system`. |
-| `setLocale(locale)` | Set the display language: `'system'`, or one of the codes under [Display language](#display-language). Emits nothing, and any other value is ignored. Until it is called, or the reader picks a language, the editor shows English, or follows `system` while `enableLocalePicker` is on. |
-| `setSystemLocale(tag)` | Name the language `system` shows, as a BCP 47 tag, for a host with its own UI language (an IDE's); `null` hands it back to the browser's `navigator.languages`. A tag the editor has no language for shows English. It changes the language shown only while the option in force is `system`. |
-| `setTheme(theme)` | Override individual theme tokens. |
-| `setKeyBindingMap(map)` | Remap shortcuts, `search` and `findReplace` among them. `edit`, `stop`, `undo`, `redo`, `zoomIn`, `zoomOut` and `zoomReset` are reserved. |
-| `getSharedStore(config?)` | Returns `{ subscribe, dispatch, dispatchSync, connection, disconnect, destroy }`. `subscribe` gives you this editor's actions to relay; `dispatch` applies a peer's. You supply the transport, and seed a joining editor with this one's `runtimeValue` (below). `config` is `{ getNickname?, mouseTracker?, focusTracker? }`; both trackers default to `true` and broadcast this editor's cursor and table focus to peers. |
-| `focus()` / `blur()` | Move focus in and out of the editor. |
-| `clear()` | Empty the document. Its settings stay, the locks included, so a cleared file keeps saving what it saved. |
-| `destroy()` | Tear the editor down and release its listeners, subscriptions and shared stores. |
+| `setInitialValue(value)` | Load a document with no undo entry, clearing the history; `''` starts a new one. |
+| `getSchemaSQL(vendor?, options?)` | DDL for one of the [eight vendors](#export-and-code), by default the document's, scripts included. `options` (`SchemaSQLOptions`): `statements` `create` (default), `ifNotExists` or `recreate`; `header` `none` (default), `use` or `createAndUse`, written only for a plain-identifier database name. |
+| `setSchemaSQL(value, options?)`, `setSchemaGraphQL`, `setSchemaDBML`, `setSchemaAML` | Replace the document with parsed DDL, GraphQL SDL, DBML or AML, or append it ([Importing a schema](#importing-a-schema)). |
+| `setSchemaJSON(value, options?)` | Load an `.erd.json` document as `value` does, or append it. |
+| `setDiffValue(value)` | Diff another document over the ERD tab without switching to it; it opens nothing before that tab first shows. |
+| `setPresetTheme(options)` | Set `appearance` (`light`, `dark`, `system`), `grayColor` and `accentColor`. |
+| `setSystemAppearance(appearance)` | Name the light or dark `system` shows; `null` follows the OS. |
+| `setLocale(locale)` | Set the display language, `'system'` or a [code](#display-language); emits nothing. |
+| `setSystemLocale(tag)` | Name, as a BCP 47 tag, the language `system` shows, for a host with its own UI language; `null` reads `navigator.languages`. |
+| `setTheme(theme)` | Override theme tokens with string values. Each call replaces the earlier overrides, which outlast `setPresetTheme`. |
+| `setKeyBindingMap(map)` | Remap [shortcuts](#key-bindings) but `edit`, `stop`, `undo`, `redo` and the zoom keys. |
+| `getSharedStore(config?)` | A [shared store](#collaboration): `subscribe`, `dispatch`, `dispatchSync`, `connection`, `disconnect`, `flushStreamBuffers`, `destroy`. |
+| `focus()` / `blur()` | Move focus in or out. |
+| `clear()` | Empty the document and keep its settings; one undo brings it back. |
+| `destroy()` | Release the editor's listeners, subscriptions and shared stores. |
 
-The four `setSchema*` methods take `{ placement?: 'auto' | 'grid' }` as their second argument.
-`'grid'`, the default, replaces the document at once with the tables in rows, as these methods
-always did. `'auto'` lays the tables out first, as an import from the editor's own menu does: by
-their relationships (the Flow layout) when at least two tables and one relationship arrive, and in
-rows otherwise, or when the layout fails, the page runs no `SharedWorker`, or the reader presses
-Cancel on the toast a slow layout shows. It returns a `Promise` that resolves once the document is
-replaced, still in one undo step, keeping any setting changed meanwhile. A load before then —
-another import that replaces, `value`, `setInitialValue`, `clear()`, a peer's load or an undo of
-one — supersedes it, so the replace started last is the one that lands, and its `Promise` resolves
-with nothing loaded. A readonly editor places nothing and resolves at once.
+### Events
 
-They take `mode?: 'replace' | 'append'` beside it. `'replace'`, the default, is everything above.
-`'append'` does what Import and Add does: the tables, relationships and indexes the text declares
-are added to the document as new ones, below every table and memo it already holds and in line with
-their left edge, with new ids, so a table of a name the document already has is added beside it, and
-a foreign key to a table outside the text is dropped. The tables already there and every setting but
-the tab and the scroll position (below) stay as they are, the new tables end selected and on screen,
-and one undo takes them away.
-With `placement: 'auto'` they are laid out as above before they are added, and the diagram is read
-as they land; with `'grid'` they stand in rows. An append placed with `'auto'` supersedes nothing:
-it lands after every `'auto'` import started before it, on the document a replace among them brings,
-and only a load or a replace started after it drops it. An append lands on the ERD tab: from any
-other — the Visualization tab in Graph or Flow mode, Schema SQL, Code Generator or Settings — it
-brings the ERD tab up first, then selects the new tables and scrolls to them, clear of an open Find
-and Replace panel. A readonly editor adds nothing, and its menu and command palette offer no Import
-and Add.
+| Event | Description |
+| --- | --- |
+| `change` | The document changed; read `editor.value` ([Loading and saving](#loading-and-saving)). |
+| `changePresetTheme` | The theme changed in the editor; `event.detail` holds the options (`appearance: 'system'` for System). |
+| `changeLocale` | A language was picked in the editor; `event.detail.locale` holds it. |
 
-### Collaboration
+### Loading and saving
 
-A second editor joins the first from its runtime value, then each relays its actions to the other:
+Save `value`; `runtimeValue`, which also keeps removed entities, only seeds a
+[collaborator](#collaboration).
+
+A new document locks each setting the Settings tab lists under **Lock**, which then saves its value
+at locking. A loaded document keeps its locks, or has all on if it predates them. A replacing load
+(`value`, an import, a peer's load, or the undo of a load or of `clear()`) keeps on screen what the
+incoming document locks (for an import, the current locks), scroll and zoom aside, and takes its
+values for the rest.
+
+`change` fires 200 ms after the last change, never under `readonly` or for a scroll, zoom, tab, code
+setting or bracket type under its lock. A file another release wrote, or one edited by hand, can
+differ from `value` once loaded: detect edits by a [replica](#headless-replica)'s `changed`, not by
+bytes.
+
+Under `readonly`, only the scroll, zoom, tab, database, code language, name cases and bracket type
+change; a peer's actions relayed into `getSharedStore().dispatch` still apply.
+
+### Importing a schema
+
+The four text `setSchema*` methods take
+`{ placement?: 'auto' | 'grid', mode?: 'replace' | 'append' }`, `setSchemaJSON` only `mode`; each
+lands in one undo step and ignores `''`; a replace with unreadable text loads an empty document.
+
+`'grid'`, the default, lands at once in rows. `'auto'` lays the tables out first, as the Import menu
+does, and returns a `Promise` that resolves on landing, keeping settings changed meanwhile. A load
+before then (a replacing import, `value`, `setInitialValue`, `clear()`, a peer's load or the undo of
+a load or `clear()`) supersedes it, and it resolves with nothing loaded; a readonly editor resolves
+at once.
+
+`mode: 'append'` is [Import and Add](#import), table groups included: it lands below hidden groups
+too, keeps every setting but the tab and scroll, and selects new groups while groups show. An
+`'auto'` append supersedes nothing: it lands after earlier `'auto'` imports, below the diagram as it
+stands then, and only a later load or replace drops it. From another tab it brings up the ERD tab
+first; a readonly editor adds nothing.
+
+### Theme and language
+
+The element starts dark; `setPresetTheme({ appearance: 'system' })` follows the OS, or the light or
+dark `setSystemAppearance` names. `setLocale` applies at once, so one set before appending paints
+the first frame. `setSystemLocale` matters only under System and shows English for a tag the
+editor lacks. Neither choice is stored; keep what `changePresetTheme` and `changeLocale` report.
+
+## Collaboration
+
+A joiner starts from the first editor's runtime value, so an undo there restores removed entities
+whole in both; then each relays its actions:
 
 ```js
 joiner.setInitialValue(editor.runtimeValue);
@@ -234,104 +342,53 @@ local.subscribe(actions => remote.dispatch(actions));
 remote.subscribe(actions => local.dispatch(actions));
 ```
 
-Save `value`, never `runtimeValue`: the file stays free of what one editor keeps for itself, and
-the runtime value carries the removed entities an undo on either side brings back.
+An editor never forwards what it received, so with three or more, send each one's batches to every
+other.
 
-### Events
-
-| Event | Description |
-| --- | --- |
-| `change` | The document changed. Debounced, and never fired while `readonly`, nor for a change to a locked setting alone: a scroll, a zoom, a tab switch or a code generator setting under its lock leaves `value` as it was. Read `editor.value`. With the viewport unlocked a scroll or a zoom fires it, and `value` holds both. `value` differs from a file another release wrote, or one edited by hand, from the load on, so a host that writes files tells an edit from such a change by a [headless replica](#headless-replica)'s `changed`, not by comparing bytes with the file. |
-| `changePresetTheme` | The theme was changed from inside the editor. `event.detail` carries the new options, whose `appearance` is `system` when the theme builder's System is picked. |
-| `changeLocale` | A display language was picked from inside the editor, in the toolbar's picker or the command palette, the one already in force included. `event.detail.locale` is the option picked, `system` or a language code. `setLocale` fires none. |
+`getSharedStore` takes `{ getNickname?, mouseTracker?, focusTracker? }`; `mouseTracker` broadcasts
+the cursor and `focusTracker` the focused cell, selection and drag box, both on by default.
+`disconnect()` holds outgoing actions while your transport is down; `connection()` releases them.
+Call `flushStreamBuffers()` before destroying the store or editor, or drags, color changes and memo
+resizes in their quiet period never reach the peers.
 
 ## Key bindings
 
-`createKeyBindingMap()` returns the shortcuts an editor listens for until `setKeyBindingMap`
-changes them, as a new map on every call. Each is a chord: its modifiers (`Shift`, `Alt`,
-`Control`, `Meta`, or `$mod`, which is Cmd on macOS and Ctrl elsewhere) joined by `+`, then the
-key, named by its `KeyboardEvent.code` (`KeyK`, `Digit1`) or its `KeyboardEvent.key` in any case.
-A chord matches only while exactly its modifiers are held. Presses separated by a space form a
-sequence, each pressed within a second of the keydown before it.
+`createKeyBindingMap()` returns a new map of the default shortcuts. A chord is its modifiers
+(`Shift`, `Alt`, `Control`, `Meta`, or `$mod`: Cmd on macOS and iOS, Ctrl elsewhere) joined by `+`,
+then a `KeyboardEvent.code` or a `key` in any case, matching only those exact modifiers.
 
-```js
-import { createKeyBindingMap } from '@dineug/erd-editor';
-
-const shortcuts = Object.values(createKeyBindingMap())
-  .flat()
-  .map(({ shortcut }) => shortcut); // '$mod+KeyK', 'Alt+Enter', ...
-```
-
-The editor listens on its own element, so a host that takes keys before the page does, with
-global hotkeys or a capture-phase `keydown` listener, has to let these through while the editor
-is focused. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types come with it.
-
-The page's own find is among them: while the editor is focused, on any of its tabs, `$mod+KeyF`
-opens its Find and Replace, bringing the ERD tab up, and is prevented, so the browser opens no find
-bar; while the diff viewer, time travel or the automatic placement preview covers the ERD tab, the
-press goes on to the page. `setKeyBindingMap({ findReplace: [] })` leaves it to the page on every
-tab, and the toolbar button, the quick search and the context menu still open Find and Replace.
+Entries are `ShortcutOption`s, `{ shortcut, preventDefault?, stopPropagation? }`; a remapped one
+without flags lets the browser default run and the keydown bubble. `setKeyBindingMap` replaces each
+list it names. The defaults stop `search`, `findReplace`, `undo`, `redo`, `focusView`, zoom and
+`zenMode`, so bubble-phase listeners miss them while the editor is focused, and a host that takes
+keys first (global hotkeys, a capture listener) must let them through, or leave `$mod+KeyF` to the
+page with `setKeyBindingMap({ findReplace: [] })`. The `KeyBindingMap`, `KeyBindingName` and
+`ShortcutOption` types are exported.
 
 ## Display language
 
-The editor's own text, from its menus, panels, dialogs, command palette and messages to the
-placeholders the canvas draws in an empty name, type, default or comment, comes in 25 languages:
-`en`, `ar-SA`, `de-DE`, `es-ES`, `eu-ES`, `fa-IR`, `fr-FR`, `he-IL`, `id-ID`, `it-IT`, `ja-JP`,
-`ko-KR`, `nl-NL`, `pl-PL`, `pt-BR`, `pt-PT`, `ro-RO`, `ru-RU`, `sk-SK`, `sl-SI`, `sv-SE`, `tr-TR`,
-`uk-UA`, `zh-CN` and `zh-TW`. Arabic, Hebrew and Persian lay the editor out right to left, while the
-diagram, the minimap and the SQL and code panels stay left to right. What the document holds is
-never translated, nor is generated SQL or code, a database, code language or file format name, an
-SQL keyword or a data type.
-
-An element that neither turns `enable-locale-picker` on nor calls `setLocale` shows English,
-whatever the browser's language. With the picker on and nothing set, it follows **System**. A
-`setLocale` call wins either way, and `setLocale('system')` follows System with the picker off
-too. Toggling the picker with nothing set switches between System and English. Both setters take
-effect before they return, so an element given its language before it is appended paints its
-first frame in it.
-
-System reads `navigator.languages` in the browser's order of preference and takes the first
-language the editor has, matching a tag by its language (`de-AT` shows Deutsch). Chinese goes by
-its script, then by its region: `zh-Hant`, `zh-TW`, `zh-HK` and `zh-MO` show 繁體中文, any other
-`zh` 简体中文. Portuguese is Português Brasileiro unless a region other than Brazil is named. With
-no match it shows English. The editor follows the browser's `languagechange`. A host with its own
-UI language, such as an IDE, names it with `setSystemLocale(tag)` instead.
-
-The editor stores nothing: keep the option the reader picks, as you keep the theme.
-
-```js
-editor.enableLocalePicker = true;
-editor.setLocale(localStorage.getItem('locale') ?? 'system');
-editor.addEventListener('changeLocale', event => {
-  localStorage.setItem('locale', event.detail.locale);
-});
-```
+The codes are `en`, `ar-SA`, `de-DE`, `es-ES`, `eu-ES`, `fa-IR`, `fr-FR`, `he-IL`, `id-ID`, `it-IT`,
+`ja-JP`, `ko-KR`, `nl-NL`, `pl-PL`, `pt-BR`, `pt-PT`, `ro-RO`, `ru-RU`, `sk-SK`, `sl-SI`, `sv-SE`,
+`tr-TR`, `uk-UA`, `zh-CN` and `zh-TW`. `setLocale('system')` follows System even without
+`enable-locale-picker`. The `LocaleCode` and `LocaleOption` types are exported; cast a stored
+string `as LocaleOption`, since an unknown value is ignored.
 
 ## Syntax highlighting
 
-The SQL and code-generation panels are highlighted by [Shiki](https://shiki.style), in a shared
-worker of its own. There is nothing to install or register: the worker is built the first time a
-code panel renders, so a page that opens none never fetches the grammars.
+[Shiki](https://shiki.style) highlights the panels' code, DBML and AML as SQL, with a JavaScript
+regex engine, so a CSP needs no `wasm-unsafe-eval`, from a shared worker built when a code panel
+first renders; with a bundler, a page that opens none never fetches the grammars (the UMD file
+carries them).
 
-| | |
-| --- | --- |
-| Languages | SQL, TypeScript, GraphQL, C#, Java, Kotlin, Scala, Go, Python, Mermaid, PHP, Rust, Swift, JSON |
-| Themes | `github-dark`, `github-light`, picked from the editor's light / dark appearance |
-
-Those are exactly the languages the panels emit — the JPA generator emits Java, the SQLAlchemy
-generator emits Python, the TypeORM, Sequelize, Drizzle and Zod generators emit TypeScript, the
-Doctrine generator emits PHP, the SeaORM generator emits Rust, the JSON Schema generator emits
-JSON, and the DBML and AML generators are highlighted as SQL, the closest grammar shiki ships.
-
-Where `SharedWorker` is missing — Chrome on Android, Safari before 16.4 — the underlying error is
-logged and the panels render as plain text; nothing else is affected. The regex engine is plain
-JavaScript, so no host CSP needs `wasm-unsafe-eval`.
+Without `SharedWorker`, as in Chrome on Android before Chrome 148, the panels log the error and show
+plain text, the Flow view places nothing, Auto Layout's Flow and tree placements say "Could not
+place tables" (Force works), an `'auto'` import lands in rows, and PNG and SVG exports draw on the
+main thread.
 
 ## File dialogs
 
-Import and export go through injectable callbacks, so a host without a browser file dialog —
-an IDE webview, for example — can supply its own. The two are not symmetric: export hands you
-the finished file, while import only asks for one, and you push the content back in yourself.
+Import and export go through page-wide callbacks, so a host without a browser file dialog (an IDE
+webview) supplies its own:
 
 ```js
 import { setExportFileCallback, setImportFileCallback } from '@dineug/erd-editor';
@@ -340,77 +397,65 @@ setExportFileCallback((blob, { fileName }) => host.writeFile(fileName, blob));
 
 setImportFileCallback(async ({ type, op, accept, mode }) => {
   const text = await host.pickFile(accept);
-  const options = { placement: 'auto', mode };
-
-  if (op === 'diff') {
-    editor.setDiffValue(text);
-  } else if (type === 'json') {
-    editor.setSchemaJSON(text, { mode });
-  } else if (type === 'sql') {
-    editor.setSchemaSQL(text, options);
-  } else if (type === 'graphql') {
-    editor.setSchemaGraphQL(text, options);
-  } else if (type === 'dbml') {
-    editor.setSchemaDBML(text, options);
-  } else if (type === 'aml') {
-    editor.setSchemaAML(text, options);
-  }
+  if (op === 'diff') return editor.setDiffValue(text);
+  if (type === 'json') return editor.setSchemaJSON(text, { mode });
+  const format = { sql: 'SQL', graphql: 'GraphQL', dbml: 'DBML', aml: 'AML' }[type];
+  if (format) editor[`setSchema${format}`](text, { placement: 'auto', mode });
 });
 ```
 
-Dispatch on every `type` you handle and ignore the rest. `setSchemaJSON()` replacing, like
-assigning `value`, clears the document before it parses, so routing a payload there that is not
-an `.erd.json` document —
-through a catch-all `else`, or because a `type` added later fell through — empties the
-diagram instead of importing anything. `accept` carries the extensions for that type
-(`.json`, `.sql`, or `.graphql,.gql,.graphqls`), ready to hand to a host file dialog.
-`placement: 'auto'` lays the schema out as the editor's own file picker would. `mode` is
-`'append'` when the request comes from Import and Add and absent from Import, so handing it on
-adds the file where the reader asked for that and replaces the document otherwise.
-
-Left unset, the editor uses the browser's own download and file-picker behavior.
+Export gets `.erd.json`, `.sql`, PNG, SVG and the Code Generator's file. An import's `op` is
+`'diff'` for the Diff Viewer, whose file goes to `setDiffValue()`, so test it first; otherwise it is
+`'set'`. Skip a `type` you do not handle: a replacing `setSchemaJSON()` empties the document on any
+other payload. `accept` lists the type's extensions (`.json`, `.sql`,
+`.graphql,.gql,.graphqls`, `.dbml`, `.aml`), and `mode` is `'append'` from Import and Add. Unset or
+`null`, the browser's download and file picker work.
 
 ## Headless replica
 
-A second entry point runs the document store with no DOM, for hosts that need to apply an
-action stream and serialize the result off the main thread:
+The `engine.js` replica takes the same actions with no DOM:
 
 ```js
 import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 
-// `toWidth` measures text for layout — a worker has no DOM, so you supply it
-const store = createReplicationStore({ toWidth });
-
+const store = createReplicationStore({ toWidth }); // a worker has no DOM to measure text
 store.setInitialValue(savedJson);
 store.on({ change: ({ value, changed }) => changed && persist(value) });
-store.dispatch(actions); // actions relayed from a live editor's shared store
+store.dispatch(actions);
 ```
 
-`value` is the form a file saves, as the element's is, and `runtimeValue` the document as the
-replica holds it, what an editor that joins later is seeded with. `change` comes 200 ms after the
-last action that can change the document, a locked setting's change included. `changed` is false
-when those actions left `value` as it was, such as a scroll, a zoom or a tab switch while its lock
-is on, or a table added and removed again. It compares with the value the store last reported, or
-loaded, never with your file: a file another release wrote, or one edited by hand, serializes
-differently from the start.
+`value` and `runtimeValue` mirror the element's; `dispatch` applies on the next microtask,
+`dispatchSync` at once, and `destroy` releases the store. `change` comes 200 ms after the last
+document action, locked settings included, with `changed` false when `value` matches what the store
+last reported or loaded, never your file. `ReplicationStore` and `ReplicationChange` are exported
+types.
+
+### Headless peer
+
+`peer.js` runs a collaboration peer with no DOM, the base of the ERD Editor MCP server. Its
+`createPeerStore({ nickname })` store dispatches actions, receives a peer's batches and undoes its
+own dispatches; `PeerStoreError`, per-module action barrels (`tableActions`, `tableActions$`, …) and
+`createSchemaSQL` come with it.
 
 ## Development
 
-This package is the editor core of the [erd-editor monorepo](https://github.com/dineug/erd-editor);
-work on it from a workspace checkout.
-
 ```sh
-pnpm --filter @dineug/erd-editor dev            # builds workspace deps, then a dev server
+pnpm --filter @dineug/erd-editor dev            # dev server, workspace deps built first
 pnpm --filter @dineug/erd-editor dev:storybook  # component playground
 pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match test
 pnpm --filter @dineug/erd-editor e2e            # Playwright
 ```
 
+What a change runs and carries is in
+[AGENTS.md](https://github.com/dineug/erd-editor/blob/main/packages/erd-editor/AGENTS.md).
+
 ## Documentation
 
+- [Editing Guide](https://docs.erd-editor.io/docs/category/guides) — editing, import and export,
+  relationships, quick search, visualization, code generation, settings
+- [Element API](https://docs.erd-editor.io/docs/api/erd-editor-element) — the `<erd-editor>`
+  element's API
 - [Documentation](https://docs.erd-editor.io)
-- [Editing Guide](https://docs.erd-editor.io/docs/category/guides)
-- [Element API](https://docs.erd-editor.io/docs/api/erd-editor-element)
 
 ## Issues
 

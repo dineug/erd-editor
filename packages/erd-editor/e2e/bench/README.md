@@ -1,12 +1,15 @@
 # routing bench
 
 Measures what a table drag costs and how much the relationship drawing
-overlaps. It asserts nothing and runs in no CI job — a runner's noise floor is
-wider than the differences it exists to resolve.
+overlaps. It judges no number and runs in no CI job — a runner's noise floor is
+wider than the differences it exists to resolve. A run still fails when it
+measured the wrong thing: `routing.bench.ts` expects its second load to draw
+every connector, and the Flow rows of `view.bench.ts` and the Flow shots of
+`visualization-shots.bench.ts` fail if the view they aim at never lands.
 
 ```bash
 pnpm --filter @dineug/erd-editor e2e:bench                      # compare against the saved baseline
-E2E_BENCH_LABEL=phase-3 pnpm --filter @dineug/erd-editor e2e:bench
+E2E_BENCH_LABEL=my-change pnpm --filter @dineug/erd-editor e2e:bench
 E2E_BENCH_BASELINE=1 pnpm --filter @dineug/erd-editor e2e:bench # save this run as the baseline
 E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench      # include the diagnostics below
 E2E_BENCH_ALL=1 E2E_BENCH_CORPUS=xlarge E2E_BENCH_TIMEOUT=900000 \
@@ -14,19 +17,27 @@ E2E_BENCH_ALL=1 E2E_BENCH_CORPUS=xlarge E2E_BENCH_TIMEOUT=900000 \
 ```
 
 `testMatch` in `playwright.bench.config.ts` selects `routing.bench.ts` alone
-unless `E2E_BENCH_ALL=1` is set. A command that means to run the diagnostics
-has to carry it; one that forgets exits green having run the routing bench
-instead, which is why both lines above that want them spell it out.
+unless `E2E_BENCH_ALL` is set to any non-empty value (`0` counts too). A command
+that means to run the diagnostics has to carry it; one that forgets exits green
+having run the routing bench instead, which is why both lines above that want
+them spell it out.
 
-`E2E_BENCH_CORPUS` names the row of `CORPORA` the three diagnostics run against
-— `small`, `medium`, `large` (the default) or `xlarge`. It does not reach
-`routing.bench.ts`, which walks all four whatever it is set to.
+`E2E_BENCH_CORPUS` names the row of `CORPORA` that `attribution.bench.ts`,
+`scaling.bench.ts`, `screenshot.bench.ts` and the `erd hover` row of
+`view.bench.ts` run against — `small`, `medium`, `large` (the default), `x150`,
+`x400` or `xlarge`; any other name throws. `visualization-shots.bench.ts` and
+the other `view.bench.ts` rows use corpora of their own. It does not reach
+`routing.bench.ts`, which walks all six whatever it is set to.
 `E2E_BENCH_TIMEOUT` raises the per-test ceiling from its 180000ms default,
-which `xlarge` can need on a slow machine.
+which `xlarge` can need on a slow machine. It does not reach the three 300-table
+rows of `view.bench.ts` or any test of `visualization-shots.bench.ts`, which set
+their own 240000ms ceiling with `test.setTimeout`. `E2E_PORT` moves the dev
+server off its default `5175`; outside CI, Playwright reuses a server already
+listening there.
 
 `xlarge` is the long pole in every run, including the default one:
-`routing.bench.ts` walks all four corpora, and on the fourth it drags a hub
-through 1000 tables and then scores the overlap of every pair of segments
+`routing.bench.ts` walks all six corpora, and on the last, `xlarge`, it drags a
+hub through 1000 tables and then scores the overlap of every pair of segments
 drawn. Expect it to dominate the wall clock of anything that includes it.
 
 Results land in `e2e/.bench/` (gitignored). `routing.bench.ts` writes
@@ -38,14 +49,14 @@ request, so a comparison is always against a baseline someone chose.
 | File                   | What it is                                                     |
 | ---------------------- | -------------------------------------------------------------- |
 | `routing.bench.ts`     | The benchmark. The only file the default run executes           |
-| `corpus.ts`            | Seeded generators at four scales, sized against `data/`         |
-| `harness.ts`           | In-page measurement — drives the drag and times the pipeline    |
+| `corpus.ts`            | Seeded generators at six scales: `small`, `medium` and `large` sized against the root `data/` (sakila, OKKY, Magento2-sales), then `x150`, `x400` and `xlarge` up to 1000 tables |
+| `harness.ts`           | In-page measurement — drives the drag, hover and edit passes (`runDragBench`, `runHoverBench`, `runEditBench`) and times the pipeline |
 | `geometry.ts`          | Overlap metrics, computed from the segments actually drawn      |
 | `attribution.bench.ts` | Diagnostic: which painter owns the frame                        |
 | `scaling.bench.ts`     | Diagnostic: does cost track what changed, or what is on screen? |
-| `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG — this repo has no other visual check |
+| `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG for a person to look at; with `visualization-shots.bench.ts`, the only whole-image review in this package (its e2e specs and browser tests read pixels for one property each) |
 | `view.bench.ts`        | Diagnostic: what the Flow view costs — a hover and a document edit |
-| `visualization-shots.bench.ts` | Ten frames of the Visualization tab, which is the human gate the redesign ends in |
+| `visualization-shots.bench.ts` | Twelve frames of the Visualization tab for a person to judge; it measures nothing |
 | `report.ts`            | The JSON report every bench but `routing.bench.ts` writes through |
 | `baselines/`           | Committed results that cannot be re-measured from the working tree |
 
@@ -59,9 +70,10 @@ difference is noise and the number in front of it means nothing.
 It is not bracketed around the dispatch, and that is the whole point.
 `relationshipSortHook` holds a drag's moves on a 5ms trailing throttle (every
 other action sorts in a microtask), so the relationship update lands in a
-*later task* than the move that caused it. A probe that bracketed one
-dispatch saw 8 attribute writes and zero relationship groups touched on the
-large corpus — the routing work is simply not in that window.
+*later task* than the move that caused it. A probe on the DOM renderer, recorded
+2026-08-17, that bracketed one dispatch saw 8 attribute writes and zero
+relationship groups touched on the large corpus — the routing work is simply
+not in that window.
 
 **`util`** is `busy/move` as a share of one frame. Blocking on its own says
 nothing about whether a drag holds 60fps; this is the number that does, and past
@@ -73,22 +85,25 @@ drag running. Idle is the floor; anything above it is the drag.
 Each pass carries one instrument and no more, and the idle control it is
 subtracted against carries the same one. The ping loop competes for the thread it
 measures and stretches frames, so it stays out of the frame pass. The write
-counter behind `writes/move` costs time in proportion to how many attrs the drag
+counter behind `attr/move` costs time in proportion to how many attrs the drag
 writes — which is exactly what a routing change moves — so it stays out of the
 blocking pass; leaving it in charged the editor for the harness watching it, by
 an amount that grew with the thing under test.
 
-**`writes/move`** is konva attrs committed on nodes attached to the canvas
-stage, and **`fan-out`** is how many distinct relationships those writes belong
-to. Neither has any timing noise, which makes them the sharpest regression
-signals here: a change claiming to cut render work has to move them.
+**`attr/move`** (`rows[].perf.attrWrites.perMove` in `latest.json`; the scaling and
+attribution diagnostics print the same count as `writes/move`) is konva attrs
+committed on nodes attached to the canvas stage, and **`fan-out`** is how many
+distinct relationships those writes belong to. Neither has any timing noise,
+which makes them the sharpest regression signals here: a change claiming to cut
+render work has to move them.
 
 The counter wraps konva's own `Node.prototype._setAttr`, which every effective
 write funnels through, and skips the same no-op the method itself skips. The
-harness also reports `minimap` and `detached` buckets, which `writes/move`
-excludes: the minimap is a second stage the dom bench's canvas-scoped observer
-never saw either, and a node is given its attrs before the template attaches it,
-which no `MutationObserver` over a subtree could record.
+harness also records `minimap` and `detached` buckets in `latest.json`
+(`rows[].perf.attrWrites.minimap` / `.detached`), which `attr/move` excludes: the
+minimap is a second stage the dom bench's canvas-scoped observer never saw
+either, and a node is given its attrs before the template attaches it, which no
+`MutationObserver` over a subtree could record.
 
 **`flips/move`** counts how often a relationship changes which side of a table
 it leaves from, over one drag. Side choice is remade from scratch on every
@@ -101,12 +116,16 @@ frame.
 **Quality** metrics are computed from the route the editor actually drew — the
 `data` of each `relationship-route` node — and not from a recomputation of the
 geometry, so a routing change that edits anchors but never reaches the path still
-shows up. Only what is drawn can be read, and the konva scene culls, so a corpus
-wider than three viewports scores the part of it that is on screen. `cross-shared` and `cross-free` are kept
-apart because different fixes move them: anchor ordering can drive crossings
-between relationships that touch the same table to zero on its own, while
-crossings between independent pairs only fall to side re-assignment. Summing
-them hides which change did the work.
+shows up. Only what is drawn can be read, and the konva scene culls everything
+more than a screen past the viewport. So `routing.bench.ts` scores quality off a
+second load of the corpus, with its tables where the drag left them, at the zoom
+`fitWholeCanvas` picks so nothing is culled, and the test fails if a connector is
+missing (`drawn` must equal `total`). The culled scene the drag left is reported
+next to it as `on screen` (drawn/total) and `screen segs`, and is never compared.
+`cross-shared` and `cross-free` are kept apart because different fixes move them:
+anchor ordering can drive crossings between relationships that touch the same
+table to zero on its own, while crossings between independent pairs only fall to
+side re-assignment. Summing them hides which change did the work.
 
 `node-cross` counts one connector through one table once, however many runs it is
 drawn in. Until metrics v3 it counted segment-against-table incidences, so cutting
@@ -127,33 +146,40 @@ directly rather than bucketed: a band is not an equivalence relation, and
 clustering chains 0-3-6-9 into one group.
 
 **Every `collinear px` figure recorded below was measured at a band of 3**, the
-width connectors were drawn at then. They are drawn at 2 now and the band
-followed, so those figures read high against a run made today: the same routing
-scores 0 / 0 / 2721 under the current band where it scored 0 / 168 / 2943 under
-the old one. Nothing moved — thinning the connector cleared the medium corpus on
-its own, and the wider band had been counting pairs a reader can now separate.
+width connectors were drawn at then. They have been drawn at 2 since 2026-08-24
+(#422) and the band followed, so those figures read high against a run made
+today: measured that day, the same routing scored 0 / 0 / 2721 under the 2px band
+where it scored 0 / 168 / 2943 under the old one. Nothing moved — thinning the
+connector cleared the medium corpus on its own, and the wider band had been
+counting pairs a reader can now separate.
 
 Do not hold the band still to keep old numbers comparable. A band wider than the
 stroke puts a rung of `NUDGE_GAPS` exactly on its boundary, where floating point
-drops it inside: measured at 3 against a 2px connector, adding a 3px rung looked
-like a 188% collinear regression when its real cost was 0 → 316px on medium.
+drops it inside: measured on 2026-08-24 at 3 against a 2px connector, adding a
+3px rung looked like a 188% collinear regression when its real cost was
+0 → 316px on medium.
 
 ## Comparing runs
 
-`metricsVersion` in each report is bumped whenever a metric changes what it
-*means* rather than what it measures, and deltas are suppressed across a bump.
-Re-record the baseline after one. v3 is `node-cross`: connector-table pairs, where
-v2 counted segment-table incidences. This exists because the opposite happened: a
+Each bench keeps its own `metricsVersion`, written into its report and bumped
+whenever a metric changes what it *means* rather than what it measures. A bench
+that compares against a baseline suppresses its deltas across a bump, and
+`attribution` and `scaling` also across a change of `E2E_BENCH_CORPUS`.
+Re-record the baseline after a bump.
+`routing.bench.ts`'s v3 is `node-cross`: connector-table pairs, where its v2
+counted segment-table incidences. This exists because the opposite happened: a
 baseline captured by an older harness kept printing percentages against numbers
 that were no longer the same quantity, and every one of them was quoted as a
 result.
 
 Timings drift within a session by more than the effects worth resolving —
-a five-run sequence on the large corpus fell monotonically from 8.5ms to 6.4ms
-across changes that could not have caused it. **A performance claim needs the two
-variants measured alternately, several rounds each, and reported as a
-distribution.** The bounding-box prefilter below is the worked example: three
-rounds of A/B put `large` at [6.37, 6.48, 6.76] against [7.61, 7.60, 7.61] —
+a five-run sequence on the large corpus, recorded 2026-08-17, fell monotonically
+from 8.5ms to 6.4ms across changes that could not have caused it. **A performance
+claim needs the two variants measured alternately, several rounds each, and
+reported as a distribution.** The bounding-box prefilter in `countBlocked`
+(`src/utils/draw-relationship/route.ts`, 746b1080, which skips tables a route's
+bounding box cannot reach) is the worked example: three rounds of A/B, recorded
+the same day, put `large` at [6.37, 6.48, 6.76] against [7.61, 7.60, 7.61] —
 non-overlapping, so real — while `small` gave [1.03, 1.50, 1.13] against
 [1.13, 1.25, 1.24], which is nothing at all. A single sequential pair had
 reported both as wins.
@@ -161,9 +187,13 @@ reported both as wins.
 ## The DOM baseline
 
 `baselines/dom-*.json` are what this editor measured while it drew the ERD in
-DOM and SVG. They are the one set of numbers that cannot be produced from the
-working tree once the canvas renderer replaces it, so they are committed rather
-than left in the gitignored `.bench/`.
+DOM and SVG. They are the one set of numbers the working tree can no longer
+produce, now that the canvas renderer has replaced it, so they are committed
+rather than left in the gitignored `.bench/`.
+
+This is how they were recorded, on 2026-08-30 against the DOM renderer. Do not
+run it on the current tree: it measures the konva scene, and the `cp` lines would
+overwrite the DOM files with those numbers.
 
 ```bash
 # from the repo root
@@ -177,28 +207,25 @@ cp .bench/scaling.latest.json     bench/baselines/dom-scaling.json
 cp .bench/screenshot.latest.json  bench/baselines/dom-screenshot.json
 ```
 
-`E2E_BENCH_TIMEOUT` is not optional here. The recorded run took 35.4 minutes
-for its 19 tests, and its slowest single `attribution` variant took 186s against
-a default per-test ceiling of 180000ms — the mandated command fails on that one
-test without a raised ceiling, having already spent twenty minutes.
+`E2E_BENCH_TIMEOUT` was not optional there. The recorded run, on 2026-08-30, took
+35.4 minutes for its 19 tests, and its slowest single `attribution` variant took
+186s against a default per-test ceiling of 180000ms — the command above fails on
+that one test without a raised ceiling, having already spent twenty minutes.
 
-Losing them is recoverable, which is the whole reason the corpora are seeded.
-The revision they belong to is pinned once, as `baseCommit` in
-`packages/erd-editor/.size-baseline.json`; a worktree at that commit, carrying
-this directory over the top of it, measures them again:
+Losing them is not recoverable by measuring again. The revision they belong to is
+3a524e6e (`3a524e6eb5b2e9edb686792744ef3a71ac65fbc6`), the parent of the canvas
+merge e9c9edfe; `baseCommit` in `packages/erd-editor/.size-baseline.json` named it
+until #443 re-recorded the size gate's baseline, and no longer does. The bench
+that recorded them, a DOM-era harness with the `xlarge` corpus and `report.ts`,
+never reached `main`: the bench at 3a524e6e has no `xlarge` corpus and writes no
+diagnostic JSON, and the current bench reads the konva scene
+(`window.__erdStages`, `@/konva/scene/viewport`), which does not exist at that
+commit. The committed files are the only copy, and git history restores them.
 
-```bash
-BASE=$(node -p "require('./packages/erd-editor/.size-baseline.json').baseCommit")
-git worktree add ../erd-editor-dom-baseline "$BASE"
-git -C ../erd-editor-dom-baseline checkout "$(git rev-parse --abbrev-ref HEAD)" \
-  -- packages/erd-editor/e2e/bench
-cd ../erd-editor-dom-baseline && pnpm install   # then the command above
-```
-
-Only the same machine gives a comparable answer. The documents are
-byte-identical between runs and the geometry with them, but every timing here
-is a property of the machine that took it, and the README's own numbers show
-how far they drift within one session.
+A timing in these files compares only with one taken on the machine that
+recorded them. The documents are byte-identical between runs and the geometry
+with them, but every timing here is a property of the machine that took it, and
+the README's own numbers show how far they drift within one session.
 
 ## The konva port
 
@@ -206,24 +233,36 @@ The harness reads the scene through `window.__erdStages`, the registry
 `src/konva/testHandle.ts` publishes in dev and test. `harness.ts` grips a table
 by `stage.findOne('#table-<id>')` and `geometry.ts` reads a route off the `data`
 attr of its `relationship-route` node. `routing.bench.ts`, `corpus.ts` and
-`report.ts` did not change.
+`report.ts` did not change for the run recorded below. Before the port merged,
+`routing.bench.ts` gained a second, unculled load for its quality figures and a
+separate `on screen` column, and `corpus.ts` gained the `x150` and `x400` rows.
 
-`writes/move` counts konva attr writes instead of DOM attribute mutations, so
-the column is named differently and an old baseline leaves its delta blank
-rather than printing a percentage between two quantities. `metricsVersion` is
+`writes/move` counts konva attr writes instead of DOM attribute mutations.
+`attribution.bench.ts` and `scaling.bench.ts` store it under new keys
+(`sceneWritesPerMove`, `writes`) and print it as `writes/move`, so a DOM baseline,
+which holds `attrPerMove` and `attr`, leaves their delta blank. `routing.bench.ts`
+still heads the column `attr/move` and reads the same `attrWrites.perMove` key
+`baselines/dom-routing.json` holds, so its Δ against that baseline is a
+percentage between two quantities and means nothing. `metricsVersion` is
 deliberately *not* bumped: `frame`, `busy/move` and `util` mean exactly what they
-meant, and those are the numbers AC-S7 is judged on.
+meant, and those are the numbers the port had to hold without regressing.
 
-**The scene culls, so only what is drawn can be measured.** Before each run the
-harness scrolls the document to park the dragged table near the top left, which
-is what gives `xlarge` a node to grip at all — its hub sits at (8480, 5180) on a
-13565px canvas, nine screens from the origin the dom bench measured from.
+**The scene culls, so the drag can only grip and measure what is drawn.** Before
+each run the harness scrolls the document to park the dragged table near the top
+left, which is what gives `xlarge` a node to grip at all — its hub sits at
+(8480, 5180) on a 13565px canvas, nine screens from the origin the dom bench
+measured from.
 
-Quality figures fall out of the same fact. Routes drawn: 101 / 335 / 748 / 3884
-against the dom baseline's 101 / 375 / 751 / 12322. The three small corpora are
-within a few percent; `xlarge` scores under a third of its connectors, because
-the rest are off screen and were never built. **No `xlarge` quality delta in the
-routing table is a routing result.**
+Quality figures fell out of the same fact in the run recorded below. Segments
+drawn: 101 / 335 / 748 / 3884 against the dom baseline's 101 / 375 / 751 / 12322.
+`small` and `large` were within a percent and `medium` about a tenth short;
+`xlarge` scored under a third of its segments, because the connectors off screen
+were never built. **No `xlarge` quality delta in that run's routing table was a
+routing result.** The port changed that before it merged: `routing.bench.ts`
+reads quality off a second load at a zoom that culls nothing and fails if any
+connector is missing, so every quality row, `xlarge` included, covers the whole
+document; the culled population the drag left is the separate `on screen` column,
+and a baseline row read off a culled scene prints `≠pop` instead of a delta.
 
 ### Variants
 
@@ -242,8 +281,9 @@ than the compositing half.
 
 ### What the port measured
 
-Against the dom baseline, on one machine, `E2E_BENCH_CORPUS=xlarge`. The whole
-run is 12 tests in 2.9 minutes plus 5 attribution variants in 2.1, against the
+Measured for the port on PR #442's branch, which merged on 2026-09-04 (e9c9edfe),
+against the dom baseline, on one machine, `E2E_BENCH_CORPUS=xlarge`. The whole
+run was 12 tests in 2.9 minutes plus 5 attribution variants in 2.1, against the
 dom recording's 35.4 minutes for 19.
 
 | corpus   | frame p50 dom → konva | util dom → konva | busy/move dom → konva |
@@ -253,36 +293,39 @@ dom recording's 35.4 minutes for 19.
 | `large`  | 16.7 → 16.7 ms        | 27% → 97%        | 4.43 → 16.25 ms       |
 | `xlarge` | 632.7 → 49.2 ms       | 55% → 78%        | 345.72 → 38.26 ms     |
 
-Load falls 7372ms to 2199ms on `xlarge` and rises a third on `small`, which is
+Load fell 7372ms to 2199ms on `xlarge` and rose a third on `small`, which was
 culling and node construction trading places.
 
 **The two runs do not drive the same interaction, and the table above cannot be
-read without that.** The dom baseline dragged a table. Nothing wires
-`onMoveStart` yet, so the same mousedown reaches the canvas handler and pans:
-`fan-out` is 0 in every row and `flips/move` is 0.00, because no table moves and
-no connector is re-routed. A pan re-runs the whole scene — culling for every
-entity, then a full layer redraw — where a table drag touched one table and its
-edges, so the `small` / `medium` / `large` rows compare a heavier interaction
-against a lighter one. `xlarge` is the row where both sides were doing all the
-work they could.
+read without that.** The dom baseline dragged a table. Nothing wired
+`onMoveStart` when the port run was recorded, so the same mousedown reached the
+canvas handler and panned: `fan-out` is 0 in every row and `flips/move` is 0.00,
+because no table moved and no connector was re-routed. A pan re-runs the whole
+scene — culling for every entity, then a full layer redraw — where a table drag
+touched one table and its edges, so the `small` / `medium` / `large` rows compare
+a heavier interaction against a lighter one. `xlarge` is the row where both sides
+were doing all the work they could. The port wired `onMoveStart` before it merged
+(e9c9edfe), so a run of the current harness drags the table, and its rows do not
+compare with this table's `small` / `medium` / `large` rows.
 
-**At 1000 tables the frame is 49.2ms and the target is 16.7.** The attribution
-run says where it goes: tables alone are 32.3ms, connectors add 17.1, and the
-minimap now costs nothing at all (`no-minimap` moved the frame by 0.1ms, where
-in DOM it was the whole story). `no-relationship-paint` lands at 33.3ms with
-`writes/move` unchanged at 64.7, which puts the connectors' entire cost in
+**At 1000 tables the frame was 49.2ms and the target is 16.7.** The attribution
+run said where it went: tables alone were 32.3ms, connectors added 17.1, and the
+minimap cost nothing at all (`no-minimap` moved the frame by 0.1ms, where in DOM
+it was the whole story). `no-relationship-paint` landed at 33.3ms with
+`writes/move` unchanged at 64.7, which put the connectors' entire cost in
 rasterisation rather than in the host's commit path. The lever is what the scene
-draws — a tighter culling rect than three screens each way, or cheaper shapes —
-and not how it is committed.
+draws — a tighter culling rect than its three screens across (one screen of
+margin on every side), or cheaper shapes — and not how it is committed.
 
 ## The scene view
 
 `view.bench.ts` measures the Flow view the visualization tab draws over the one
 document. Four rows, all through `installBench`, so the instruments are the drag
-bench's own. Its `METRICS_VERSION` is 3: the redesign took the aid layer out of
-the view, made the highlight a 300ms walk rather than an opacity flip, and gave
-the particle frame a path to solve, so the rows measure other quantities than
-the ones a version 2 report holds under the same names:
+bench's own. Its `METRICS_VERSION` is 3: the rework of the Flow view before it
+merged (#446) took the aid layer out of the view, made the highlight a 300ms walk
+rather than an opacity flip, and gave the particle frame a path to solve, so the
+rows measure other quantities than the ones a version 2 report holds under the
+same names:
 
 | Row          | What it stands in                                                |
 | ------------ | ---------------------------------------------------------------- |
@@ -317,7 +360,8 @@ first hover: a pass leaves the box it last moved onto lit, a lit connector
 animates every frame, and an idle floor measured after one would have that
 animation subtracted out of the pass that caused it.
 
-First recording, on a workstation, 120 events a pass:
+First recording, taken on a workstation on PR #446's branch, which merged on
+2026-09-14, 120 events a pass:
 
 | Row                        | tables | frame p50 | p95     | max      | busy/ev  | writes/ev | ctx live/subs |
 | -------------------------- | ------ | --------- | ------- | -------- | -------- | --------- | ------------- |
@@ -343,12 +387,21 @@ it plus the Flow's — 3518 against 1332 for the same document on the ERD tab.
 
 ## What the diagnostics found
 
-Everything below was measured against the DOM and SVG renderer and is kept as
-the record of why this scene is shaped the way it is. Names like `attr/move` and
-`<line>` are that renderer's; the section above says what replaced them.
+Unless a paragraph says otherwise, everything below was recorded on 2026-08-17
+and 2026-08-18 against the DOM and SVG renderer, and is kept as the record of why
+this scene is shaped the way it is. Two parts were not: the size-change side-flip
+paragraphs were recorded on 2026-09-15, after the konva port, and the
+rounded-corners note (2026-10-10) records a change that was not measured.
+`<line>` is that renderer's, and `attr/move` here counts its DOM attribute
+mutations. The routing bench still prints an `attr/move` column, but it now
+counts konva attr writes on the canvas stage (what the scaling and attribution
+benches print as `writes/move`), so no figure below compares with it. The konva
+port, above, says what replaced them.
 
-All against 56 tables / 120 relationships — the `large` corpus, which is still
-what the diagnostics run without `E2E_BENCH_CORPUS`.
+The diagnostics ran against 56 tables / 120 relationships, the `large` corpus,
+which is still what they run without `E2E_BENCH_CORPUS`. A triple with no corpus
+named, such as 748 / 1329 / 8015, is small / medium / large from the routing
+bench; the alternating timings name their corpus and list three rounds.
 
 **The frame was compositing, not script.** Blocking was around a millisecond
 per move while the frame took fifty, against an idle floor of one vsync. Hiding
@@ -410,8 +463,8 @@ one of them across whatever lies between.
 segments an attempt leaves overlapping left large at 4504px; measuring how many
 *pixels* they run together took it to 3081. The choices trade against each other
 — clearing a 750px overlap is worth landing on a 16px one — and a count of pairs
-cannot tell which way round to prefer. It is the question this file's
-`collinearOverlap` asks, and aligning the two was the single largest step.
+cannot tell which way round to prefer. It is the question `collinearOverlap` in
+`geometry.ts` asks, and aligning the two was the single largest step.
 
 **Two guards cost overlap and are worth it.** A route may only leave its anchor
 outward, which `routeOrthogonal` enforces when it enumerates candidates; keeping
@@ -438,7 +491,8 @@ against 1.32 / 1.32 / 1.26 and medium 4.07 / 4.28 / 4.08 against
 4.14 / 4.16 / 4.47, neither resolvable. The ladder is where it goes: three
 separations by two orderings, each letting a segment try up to seven lanes, and
 `countBlocked` walks every table. The quality figures were identical in every
-round, which is the determinism the replication-store worker needs.
+round, which is the determinism collaborating editors need to draw the same
+routes from the same document.
 
 **Four things were tried and reverted.** A second separation round over the whole
 drawing, which does see the overlaps the first pass creates, took large from 4504
@@ -453,7 +507,8 @@ scored.
 **Cutting the corners at 45 degrees is a render pass and costs a tenth of a
 millisecond a move.** The polyline the router and the nudge pass work on stays
 orthogonal; only what reaches the screen is cut, so channels, obstacle tests and
-the overlap metrics keep measuring right angles. Segments rise 72 / 228 / 452 to
+the nudge pass's own overlap score keep measuring right angles, while the bench's
+quality metrics read the drawn route, corners included. Segments rise 72 / 228 / 452 to
 101 / 375 / 751, two per cut corner. `node-cross` rose with them at the time —
 39 / 133 / 277 to 52 / 196 / 385, both metrics v2 quantities — because it counted
 the same run through the same table three times over once the run was in three
@@ -470,8 +525,9 @@ Drawing a route as one `<path>` rather than a `<line>` per segment took that bac
 markup; that needed the metric itself changing.
 
 **The corners round now.** Since 2026-10-10 (issue #468) a document corner
-turns on a quarter circle of eight, drawn as six chords, rather than on one
-45-degree cut, so each corner adds more segments than the cut did. The figures
+turns on a quarter circle of up to 8px radius (`ROUTE_CORNER_RADIUS`), drawn as
+up to six chords (`ROUTE_CORNER_SEGMENTS`), rather than on one 45-degree cut, so
+each corner adds more segments than the cut did. The figures
 in the paragraph above are the cut's and were not measured again. A self loop
 is drawn as a curve of 48 chords rather than one diagonal, which raises the
 `segments` count of any corpus that has loops.
@@ -520,23 +576,25 @@ a segment at a lane already rejected in the same group's ladder, and band chaini
 leaves a group unbounded — 30 slots on the large corpus where exact-coordinate
 bucketing reached 8, and nothing bounds what the ladder spends on one.
 
-
-Snapping channels to the nudge grid was tried and made the old count worse by
-60%: it puts more routes on one coordinate than can be safely spaced apart.
+Snapping channels to the nudge grid was tried and made the pre-v2 collinear count
+(segments on the identical coordinate) worse by 60%: it puts more routes on one
+coordinate than can be safely spaced apart.
 
 **The router cannot get around a table directly between two aligned anchors.**
 With both turning points on the same line, the channel template degenerates —
 `[m, {x, y: m.y}, {x, y: l.y}, l]` with `m.y === l.y` is a straight line
-whatever `x` is — and the escape template steps out by a fixed
-`ROUTE_CLEARANCE` before turning, which lands inside the blocking table whenever
-it is wider than 16px from the anchor. Every candidate is blocked, so the
+whatever `x` is — and the escape template steps out a fixed `ROUTE_CLEARANCE`
+(16px) past the turning point, itself a stub (at least `MIN_STUB`, now 24px) out
+from the anchor, so it lands inside the blocking table whenever that table starts
+closer than stub + 16px to the anchor's side. Every candidate is blocked, so the
 cheapest blocked one wins and the connector is drawn straight through. Three
-tables in a row, 361px wide, reproduce it. Offset the two ends and the router
-bends around correctly, so this is a gap in the templates rather than in the
-scoring.
+tables in a row, 361px wide, reproduced it on 2026-08-17, when `MIN_STUB` was
+36; it was not tried again at 24. Offset the two ends and the router bends
+around correctly, so this is a gap in the templates rather than in the scoring.
 
-**Side choice is stable enough.** `flips/move` is 0.05 at the largest corpus —
-about six jumps over a 240px drag of a hub table. Hysteresis was considered and
+**Side choice is stable enough.** `flips/move` was 0.05 on the `large` corpus,
+the largest there was when this was recorded (2026-08-17) — about six jumps over
+a 240px drag of a hub table. Hysteresis was considered and
 is not worth its risk at that rate; the metric stays to catch a change that
 makes it worse.
 
@@ -549,8 +607,10 @@ attached to the grown table on small / medium / large / x150 / x400, and took
 placed at random and grown by one column or 8px of width flipped 290 of 7525
 pairs, 3.9%, six of them from at most one turn to three or more.
 
-The worst of those lands on two facing sides closer than `2 * MIN_STUB`, where
-the two turning points pass each other and the only route doubles back. Taking
+The worst of those lands on two facing sides closer than `2 * MIN_STUB` (72px
+when this was recorded; 9785daff lowered `MIN_STUB` from 36 to 24 on 2026-10-10,
+so the boundary now sits at 48px and these figures were not measured again),
+where the two turning points pass each other and the only route doubles back. Taking
 such pairs out of `getAndSetDirection` was measured and not kept. Routes grew
 longer on every corpus (+2.3 / 4.1 / 1.3 / 0.9 / 0.2%), `cross-shared` rose on
 four of the five (x400 310 → 341), `node-cross` on four, collinear overlap on
@@ -580,41 +640,58 @@ lagged the tables it was drawn between. At 60fps every move lands.
 
 ## Adding a scenario
 
-`CORPORA` in `corpus.ts` is the list, and `E2E_BENCH_CORPUS` names the row the
-diagnostics run. Keep the seed fixed — the generator exists so two runs are
-byte-identical, which `data/*.sql` cannot give.
+`CORPORA` in `corpus.ts` is the list, and `E2E_BENCH_CORPUS` names the row a
+single-corpus bench runs (see the top of this file). A row added to `CORPORA`
+joins the default run, because `routing.bench.ts` walks every row whatever
+`E2E_BENCH_CORPUS` says, and its name becomes a value `E2E_BENCH_CORPUS` accepts.
+Keep the seed fixed — the generator exists so two runs are byte-identical, which
+the repository root's `data/*.sql` cannot give.
 
 A corpus has a floor on its relationship count: the generator lays a spanning
-tree before anything else, so it never returns fewer than one relationship per
-table plus the self relationships. `scaling.bench.ts` spreads its four steps
-from that floor up to the corpus for exactly this reason — a step under it
-comes back clamped, and two clamped steps are one document measured twice while
-reading as a sweep. Each row reports the count the generator returned, not the
-one asked for.
+tree before anything else, so it never returns fewer than the tree's edges (one
+fewer than the tables) plus the self relationships, the `FLOOR` `scaling.bench.ts`
+computes; asked for exactly that floor, it returns one more. `scaling.bench.ts`
+spreads its four steps from that floor up to the corpus for exactly this reason —
+a step under it comes back clamped, and two clamped steps are one document
+measured twice while reading as a sweep. Each row reports the count the generator
+returned, not the one asked for.
 
-The canvas stays shared at 4000px so SVG area never confounds a comparison, and
-`fitCanvas` grows it only for a grid that does not fit: `xlarge`'s thousand
-tables need 32 columns, which is 13565 x 11002, and a canvas short of the grid
-clips the SVG the quality metrics are read from. The other three sit inside
-4000 and their documents are unchanged to the byte.
+Every corpus writes a 4000px canvas (`BENCH_CANVAS`) into its settings, and
+`fitCanvas` grows it to the grid's extent where the grid outgrows that: `small`,
+`medium` and `large` sit inside 4000, `x150` takes 5557 x 4199, `x400` 8523 x 6914
+and `xlarge`, whose thousand tables need 32 columns, 13565 x 11002. The editor
+keeps neither field and clips nothing: the parser reads them only to turn a
+document's legacy scroll pair into the origin. The size still sets framing:
+`routing.bench.ts` passes it to `fitWholeCanvas` for the zoom and origin of its
+quality load, which must draw every connector, so a canvas short of the grid can
+fail that check.
 
-`data/` is still the manual check. Import a real dump and look at it before
+The root `data/` is still the manual check. Import a real dump and look at it before
 calling a routing change done; there is no visual regression test anywhere in
 this repo.
 
 ## The visualization shots
 
-`visualization-shots.bench.ts` writes the ten frames the spec makes this
-feature's acceptance gate into `e2e/.bench/shots/`, prefixed with
-`E2E_BENCH_LABEL` (`current` by default): `graph-default`, `flow-all`,
-`flow-hover`, `flow-focused`, the three `flow-focused-*` row modes,
-`card-closeup`, `toolbar-closeup` and `compass`. It measures nothing — a person
-looks at them and judges. The corpus is one hub carrying ten of eighteen links,
-because a narrowed view lights every card it draws and the hub is where that
-either reads as a highlight or reads as a wall of glow.
+`visualization-shots.bench.ts` writes twelve frames, the ones a person looks at
+to judge a change to the Visualization tab, into `e2e/.bench/shots/`, prefixed
+with `E2E_BENCH_LABEL` (`current` by default): `graph-default`, `flow-all`,
+`flow-hover`, `toolbar-closeup`, `row-display-menu`, `flow-focused`,
+`flow-focused-hover`, the three row modes `flow-focused-name-only`,
+`flow-focused-keys-only` and `flow-focused-all-fields`, `card-closeup` and
+`compass`. It measures nothing — a person looks at them and judges. The corpus
+is 18 tables and 26 relationships, ten of them on one hub, because a narrowed
+view rests unlit and a hover lights only the hovered card, its relationships and
+the cards at their other ends. The hub is where a hover lights the most, so it is
+where a wall of glow would show if it showed at all.
 
 Like every diagnostic here it needs `E2E_BENCH_ALL=1`:
 
 ```bash
 E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench
 ```
+
+That runs every bench, routing over all six corpora included. To take only the
+shots, name the file, which pnpm appends to the `playwright test` call:
+`E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench visualization-shots`.
+The variable is still needed, since without it `testMatch` holds
+`routing.bench.ts` alone.

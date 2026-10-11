@@ -1,18 +1,16 @@
 # schema-sql-parser
 
-> Permissive DDL parser behind the editor's SQL import.
+> Permissive DDL parser behind ERD Editor's SQL import
 
-Internal to the erd-editor monorepo — this package is private and is never published to npm.
-
-`schemaSQLParser(source)` tokenizes SQL of any dialect and returns a flat array of statements:
-`create.table`, `create.index`, `alter.table.add.{primaryKey,unique,foreignKey,default}`,
-`alter.table.alter.column.autoIncrement` and `comment.on.{table,column}`. It is permissive
-by design — anything it does not recognize is skipped instead of rejected, so a real dump full of
-dialect quirks imports partially rather than failing outright. `--` and `/* */` comments are dropped by
-the lexer. It never throws on bad input.
-
-Its one consumer is `@dineug/erd-editor`, which depends on it as
-`"@dineug/schema-sql-parser": "workspace:*"`.
+`@dineug/schema-sql-parser` tokenizes SQL DDL of any dialect and returns a flat array of statements.
+It skips what it does not recognize instead of rejecting it, so a real dump full of dialect quirks
+imports partially rather than failing. The package is private, never published to npm, and has no
+runtime dependencies. Its one dependent is [`erd-editor`](../erd-editor), which lists it as a
+devDependency (`"@dineug/schema-sql-parser": "workspace:*"`) and inlines it into its `dist/`,
+`peer.js` included. The editor's importer,
+[`src/utils/schema-sql-parser/`](../erd-editor/src/utils/schema-sql-parser), folds the statements
+into a document for the editor's SQL import and for the `erd_import_sql` tool of
+[`mcp-server`](../mcp-server), which is built on `peer.js`.
 
 ## Usage
 
@@ -25,640 +23,189 @@ const statements = schemaSQLParser(`
     email varchar(255) NOT NULL UNIQUE
   );
 
-  ALTER TABLE orders ADD FOREIGN KEY (user_id) REFERENCES users (id);
+  ALTER TABLE orders ADD FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;
 `);
 
 for (const statement of statements) {
   if (statement.type === StatementType.createTable) {
     // users [ 'id', 'email' ]
     console.log(statement.name, statement.columns.map(column => column.name));
+  } else if (statement.type === StatementType.alterTableAddForeignKey) {
+    // orders users CASCADE
+    console.log(statement.name, statement.refTableName, statement.onDelete);
   }
 }
 ```
 
 A second argument names the vendor the source is written for, when the caller knows it:
-`schemaSQLParser(source, { database: 'Databricks' })`. Only Databricks reads differently: a
-single-quoted literal follows Spark's rules, every backslash escaping the character after it
-(`'it\'s'`, `'C:\\dir'`, `'\n'`), and a `DEFAULT` literal or a quoted string inside a type comes
-back escaped the same way (`'it\'s'`), the form Spark 4.0 and earlier read. Without it, or for any
-other vendor, a doubled quote is one quote and a backslash before a quote is a guess: MySQL's
-`'it\'s'` is an escape, standard SQL's `'C:\'` a whole literal. A literal written behind a prefix
-(`N'x'`, `E'x'`, `B'0'`, `X'ff'`, `U&'x'`, MySQL's `_utf8mb4'x'`) is read whole, glued to an
-operator or not (`N'a'+N'b'`): a `DEFAULT` or a quoted string inside a type keeps the prefix
-(`N'x'`), while a `COMMENT` takes the text alone (`x`).
+`schemaSQLParser(source, { database: 'Databricks' })`. `database` is a `DatabaseVendor`
+(`'Databricks'`, `'MariaDB'`, `'MSSQL'`, `'MySQL'`, `'Oracle'`, `'PostgreSQL'`, `'Snowflake'` or
+`'SQLite'`), and only a Databricks source reads differently: its single-quoted literals follow
+Spark's backslash escapes and come back from a `DEFAULT` or a type with each quote and backslash
+escaped by a backslash (`'it\'s'`), as does a `DEFAULT` that is one quoted value. The editor's
+importer passes the document's database.
 
-`statement.type` narrows the union. `CreateTable` carries `name`, `comment`, `columns`, `indexes`,
-`keys` and `foreignKeys`; `CreateIndex` carries its `name`, `tableName`, `unique` and `columns`. A
-qualified table or index name keeps its last segment.
+`src/index.ts` exports `schemaSQLParser`; `StatementType`, `SortType` and `ReferentialAction`, each
+a const object and a union type of the same name; and the types of the statements and their parts
+(`Statement`, `CreateTable`, `Column`, `Index`, `IndexColumn`, `Key`, `ForeignKey`,
+`SchemaSQLParserOptions`, `DatabaseVendor` and the rest). `statement.type` narrows the union:
 
-A column's `default` is the whole expression after `DEFAULT`, as raw SQL: it runs to the next column
-keyword (`NOT NULL`, `COMMENT`, MySQL's `ON UPDATE`, which is dropped), comma or closing paren outside
-any parentheses or `CASE ... END`, with the spaces between its tokens written back by rule (`now()`,
-`0.5`, `lower('A'::text)`). The parentheses around the whole of it are dropped (`((0))` gives `0`,
-`(getdate())` gives `getdate()`), and so is a cast of a literal (`'draft'::character varying` gives
-`'draft'`), while any other cast stays (`ARRAY[]::text[]`). `GENERATED BY DEFAULT AS IDENTITY` sets
-`autoIncrement` and leaves `default` empty, and so does a default that is one call of
-`nextval('...')`, a PostgreSQL serial column's, whose one argument is the sequence's name in a string
-literal, plain, `E'...'` or `U&'...'`, under any casts and parentheses (`nextval('s'::regclass)`,
-`nextval(('s'::text)::regclass)`), `"nextval"(...)` too as `pg_dump --quote-all-identifiers` writes
-it (`nextval('s') + 1` stays a default, and so does MariaDB's `nextval(db.seq)`, which names its
-sequence bare). Oracle's `DEFAULT ON NULL 0` gives `0`.
+| `type` | Read from | Carries |
+| --- | --- | --- |
+| `create.table` | `CREATE TABLE` | `name`, `comment`, `columns`, `indexes`, `keys`, `foreignKeys` |
+| `create.index` | `CREATE [UNIQUE] INDEX` | `name`, `tableName`, `unique`, `columns` |
+| `alter.table.add.primaryKey` | `ALTER TABLE ... ADD PRIMARY KEY` | `name`, `constraintName`, `usingIndexName`, `columnNames` |
+| `alter.table.add.unique` | Each `UNIQUE` key clause of an `ALTER TABLE ... ADD` | `name`, `constraintName`, `usingIndexName`, `columns` |
+| `alter.table.add.foreignKey` | `ALTER TABLE ... ADD FOREIGN KEY` | `name`, `columnNames`, `refTableName`, `refColumnNames`, `onDelete`, `onUpdate` |
+| `alter.table.add.default` | SQL Server's `ALTER TABLE ... ADD DEFAULT ... FOR column` | `name`, `columnName`, `default` |
+| `alter.table.alter.column.autoIncrement` | pg_dump's `ALTER COLUMN ... SET DEFAULT nextval(...)` or `ADD GENERATED ... AS IDENTITY` | `name`, `columnName` |
+| `comment.on.table` | `COMMENT ON TABLE`, or SQL Server's `sp_addextendedproperty` on a table | `name`, `comment` |
+| `comment.on.column` | `COMMENT ON COLUMN`, or the same call on a column | `tableName`, `columnName`, `comment` |
 
-`alter.table.add.primaryKey` and `alter.table.add.foreignKey` carry the altered table's `name` and
-`columnNames`, plus `refTableName` / `refColumnNames` on foreign keys, whose `CONSTRAINT <id>` is
-consumed and not reported. `alter.table.add.unique` carries the table's `name`, its `constraintName`
-(the `UNIQUE KEY` / `UNIQUE INDEX` name, else the `CONSTRAINT` symbol, else `''`) and its `columns`; an
-`ALTER TABLE` that adds several keys yields one per UNIQUE clause. The primary key carries its
-`constraintName` too, and both carry a `usingIndexName`: the existing index Oracle's `USING INDEX` names,
-else `''`.
-
-`alter.table.add.default` is SQL Server's `ALTER TABLE ... ADD [CONSTRAINT <id>] DEFAULT <expression> FOR
-<column>`, the form SSMS scripts every default in: it carries the table's `name`, the `columnName` after
-`FOR` and the `default`, written back as a column's is (`DEFAULT ((0)) FOR [Qty]` gives `0`), but for a
-call of `nextval(...)`, which stays the default, since SQL Server has no such function, and running to that
-`FOR` past the column keywords a column's stops at (`DEFAULT 'a' COLLATE Latin1_General_CI_AS FOR c` keeps
-its `COLLATE`); the constraint's name is not reported. Only the statement's first clause is read.
-
-`alter.table.alter.column.autoIncrement` is the column a PostgreSQL dump makes auto increment apart from
-its table: `ALTER TABLE [ONLY] <table> ALTER [COLUMN] <column> SET DEFAULT nextval('...')` for a serial
-column, after its `CREATE SEQUENCE`, or `ADD GENERATED {ALWAYS | BY DEFAULT} AS IDENTITY [(...)]` for an
-identity column. It carries the table's `name` and the `columnName`, one statement per such action of
-the `ALTER TABLE`; any other action, a `SET DEFAULT` of anything else included, gives none. An `ALTER`
-the source cuts off before its action, or before its column's name, swallows no statement read after
-it, an `ALTER TABLE` included, while a column named by a word a statement opens with still reads before
-its action, as pg_dump leaves such a name unquoted where PostgreSQL does not reserve it
-(`ALTER COLUMN delete SET DEFAULT nextval('...')`).
-
-A UNIQUE over several columns inside `CREATE TABLE` becomes one entry of `indexes` with `unique: true`,
-named by its index name, else its `CONSTRAINT` symbol, else `''`; over one column it sets that column's
-`unique` instead. A partial unique key, `CREATE UNIQUE INDEX ... WHERE` or SQL Server's inline
-`INDEX n UNIQUE (...) WHERE`, comes back as an index with `unique: false` under its name and columns,
-over one column too, unless its filter is only `key IS NOT NULL` over key columns, joined by `AND`.
-
-`keys` lists, as `{ name, columnNames }`, the primary keys and one-column unique keys a `CREATE TABLE`
-names (by `CONSTRAINT`, or a one-column `UNIQUE KEY n` / `INDEX n UNIQUE`), and each key with no name
-that Oracle's `USING INDEX` follows, composite too, which stays in `indexes` as well; a key with no
-name that PostgreSQL's `USING INDEX TABLESPACE` follows is not listed. A dump may export a key's index
-on its own, as Oracle's DBMS_METADATA does for each key a table declares inline, and the editor's
-importer reads such a `CREATE INDEX` over the key's columns as that key.
-
-Index columns carry a `sort` of `SortType.asc` / `SortType.desc`. `CommentOnTable` carries the
-table's `name` and its `comment`, `CommentOnColumn` carries `tableName`, `columnName` and `comment` —
-PostgreSQL and Oracle attach comments with a statement of their own instead of a table option, so those
-two arrive separately from the `create.table` they belong to.
-
-SQL Server keeps a comment as the `MS_Description` extended property, and `EXEC
-[[db.]sys.]sp_addextendedproperty` setting one comes back as the same two statements: on a `TABLE` at
-level 1 as `comment.on.table`, on a `COLUMN` of it at level 2 as `comment.on.column`. Its arguments are
-read by name (`@name = N'MS_Description'`) or by position, as SSMS and the editor's own MSSQL export
-write them; the value has to be a string literal, `N'...'` or `'...'`, and a `NULL` or `DEFAULT`
-argument counts as not given, so one at level 2 still gives the table comment. Any other property,
-level or value (a view's, an index's, a variable for any argument but level 0's) gives no statement,
-and the schema at level 0 is not kept.
+- **Names** — In each `alter.table.*` statement `name` is the altered table's. A qualified table or
+  index name keeps its last segment (`public.users` gives `users`). Every field is filled, with `''`
+  or `[]` where the source gives nothing.
+- **Columns** — Each of `columns` carries `name`, `dataType`, `default`, `comment`, `primaryKey`,
+  `autoIncrement`, `unique` and `nullable`. `dataType` is the type and its arguments as SQL rebuilt
+  from the tokens (`numeric(10, 2)` gives `numeric(10,2)`; Support DataType, below). `default` is
+  the expression after `DEFAULT` as raw SQL, without the parentheses around the whole of it or a
+  cast of a lone literal (`((0))` gives `0`, `'draft'::character varying` gives `'draft'`), and the
+  `default` of `alter.table.add.default` is written back the same way. An identity or auto-increment
+  option sets `autoIncrement` (`GENERATED BY DEFAULT AS IDENTITY` leaves `default` empty), and so
+  does a default that is one PostgreSQL `nextval('...')` call, which then leaves `default` empty.
+- **Unique keys and indexes** — In a `CREATE TABLE`, a `UNIQUE` over one column sets that column's
+  `unique`; over several it is an entry of `indexes` with `unique: true`, named by its index name,
+  else its `CONSTRAINT` symbol, else `''`. A `WHERE` that does more than drop NULL keys
+  (SQL Server's inline `INDEX n UNIQUE (...) WHERE ...`, or `CREATE UNIQUE INDEX ... WHERE ...`)
+  makes the key a plain index with `unique: false`, over one column too. Each index column carries a
+  `sort`, `SortType.asc` or `SortType.desc`. `keys` lists, as `{ name, columnNames }`, each primary
+  key and one-column unique key a `CREATE TABLE` gives a name (by `CONSTRAINT`, or a one-column
+  `UNIQUE KEY n` / `INDEX n UNIQUE`), and each key with no name that Oracle's `USING INDEX` follows,
+  a composite one too, which stays in `indexes` as well. Any other unnamed key is not listed.
+- **Keys an `ALTER TABLE` adds** — `constraintName` is the index name after `UNIQUE [KEY | INDEX]`,
+  else the `CONSTRAINT` symbol, else `''`. `usingIndexName` is the existing index Oracle's
+  `USING INDEX` names, else `''`.
+- **Foreign keys** — Each entry of `foreignKeys` (a table-level `FOREIGN KEY` or an inline column
+  `REFERENCES`) and each `alter.table.add.foreignKey` carries `columnNames`, `refTableName`,
+  `refColumnNames`, `onDelete` and `onUpdate`. The actions keep their SQL spelling
+  (`ReferentialAction`: `NO ACTION`, `RESTRICT`, `CASCADE`, `SET NULL`, `SET DEFAULT`), or `''`
+  where the clause is absent. An empty `refColumnNames`, from a `REFERENCES t` with no column list,
+  means the referenced table's primary key. A foreign key's `CONSTRAINT` name is not reported.
+- **Comments** — An inline `COMMENT` fills the table's or column's `comment` with its text alone,
+  quotes and any prefix taken off (`COMMENT N'user id'` gives `user id`). PostgreSQL and Oracle
+  attach comments with a statement of their own, so `comment.on.*` arrives apart from the
+  `create.table` it belongs to. SQL Server's `EXEC sp_addextendedproperty` setting `MS_Description`
+  on a table or one of its columns comes back as the same two statements.
 
 ## Support DataType
 
-<details>
-<summary>MySQL (70 types)</summary>
+Each list is `src/parser/dataType/<Vendor>.ts`, sorted here. The parser matches a type name against
+all eight lists merged into one set, case-insensitively and whatever `database` names, so a type
+listed for one vendor is read in a source of any dialect.
 
-  > bigint
-  > binary
-  > bit
-  > blob
-  > bool
-  > boolean
-  > char
-  > char byte
-  > character
-  > character varying
-  > date
-  > datetime
-  > dec
-  > decimal
-  > double
-  > double precision
-  > enum
-  > fixed
-  > float
-  > float4
-  > float8
-  > geomcollection
-  > geometry
-  > geometrycollection
-  > int
-  > int1
-  > int2
-  > int3
-  > int4
-  > int8
-  > integer
-  > json
-  > linestring
-  > long
-  > long varbinary
-  > long varchar
-  > longblob
-  > longtext
-  > mediumblob
-  > mediumint
-  > mediumtext
-  > middleint
-  > multilinestring
-  > multipoint
-  > multipolygon
-  > national char
-  > national char varying
-  > national character
-  > national character varying
-  > national varchar
-  > nchar
-  > nchar varchar
-  > numeric
-  > nvarchar
-  > point
-  > polygon
-  > real
-  > serial
-  > set
-  > smallint
-  > text
-  > time
-  > timestamp
-  > tinyblob
-  > tinyint
-  > tinytext
-  > varbinary
-  > varchar
-  > varcharacter
-  > year
+### Databricks (45 types)
 
-</details>
+`array`, `bigint`, `binary`, `boolean`, `byte`, `char`, `date`, `dec`, `decimal`, `double`, `float`,
+`geography`, `geometry`, `int`, `integer`, `interval`, `interval day`, `interval day to hour`,
+`interval day to minute`, `interval day to second`, `interval hour`, `interval hour to minute`,
+`interval hour to second`, `interval minute`, `interval minute to second`, `interval month`,
+`interval second`, `interval year`, `interval year to month`, `long`, `map`, `numeric`, `object`,
+`real`, `short`, `smallint`, `string`, `struct`, `timestamp`, `timestamp_ltz`, `timestamp_ntz`,
+`tinyint`, `varchar`, `variant`, `void`
 
-<details>
-<summary>Databricks (45 types)</summary>
+### MariaDB (86 types)
 
-  > array
-  > bigint
-  > binary
-  > boolean
-  > byte
-  > char
-  > date
-  > dec
-  > decimal
-  > double
-  > float
-  > geography
-  > geometry
-  > int
-  > integer
-  > interval
-  > interval day
-  > interval day to hour
-  > interval day to minute
-  > interval day to second
-  > interval hour
-  > interval hour to minute
-  > interval hour to second
-  > interval minute
-  > interval minute to second
-  > interval month
-  > interval second
-  > interval year
-  > interval year to month
-  > long
-  > map
-  > numeric
-  > object
-  > real
-  > short
-  > smallint
-  > string
-  > struct
-  > timestamp
-  > timestamp_ltz
-  > timestamp_ntz
-  > tinyint
-  > varchar
-  > variant
-  > void
+`bigint`, `binary`, `bit`, `blob`, `bool`, `boolean`, `char`, `char byte`, `char varying`,
+`character`, `character varying`, `clob`, `date`, `datetime`, `dec`, `decimal`, `double`,
+`double precision`, `enum`, `fixed`, `float`, `float4`, `float8`, `geometry`, `geometrycollection`,
+`inet4`, `inet6`, `int`, `int1`, `int2`, `int3`, `int4`, `int8`, `integer`, `json`, `linestring`,
+`long`, `long char varying`, `long character varying`, `long varbinary`, `long varchar`,
+`long varcharacter`, `longblob`, `longtext`, `mediumblob`, `mediumint`, `mediumtext`, `middleint`,
+`multilinestring`, `multipoint`, `multipolygon`, `national char`, `national char varying`,
+`national character`, `national character varying`, `national varchar`, `national varcharacter`,
+`nchar`, `nchar varchar`, `nchar varcharacter`, `nchar varying`, `number`, `numeric`, `nvarchar`,
+`point`, `polygon`, `raw`, `real`, `serial`, `set`, `smallint`, `sql_tsi_year`, `text`, `time`,
+`timestamp`, `tinyblob`, `tinyint`, `tinytext`, `uuid`, `varbinary`, `varchar`, `varchar2`,
+`varcharacter`, `vector`, `xmltype`, `year`
 
-</details>
+### MSSQL (48 types)
 
-<details>
-<summary>MariaDB (86 types)</summary>
+`bigint`, `binary`, `binary varying`, `bit`, `char`, `char varying`, `character`,
+`character varying`, `date`, `datetime`, `datetime2`, `datetimeoffset`, `dec`, `decimal`,
+`double precision`, `float`, `geography`, `geometry`, `hierarchyid`, `image`, `int`, `integer`,
+`json`, `money`, `national char`, `national char varying`, `national character`,
+`national character varying`, `national text`, `nchar`, `ntext`, `numeric`, `nvarchar`, `real`,
+`rowversion`, `smalldatetime`, `smallint`, `smallmoney`, `sql_variant`, `text`, `time`, `timestamp`,
+`tinyint`, `uniqueidentifier`, `varbinary`, `varchar`, `vector`, `xml`
 
-  > bigint
-  > binary
-  > bit
-  > blob
-  > bool
-  > boolean
-  > char
-  > char byte
-  > char varying
-  > character
-  > character varying
-  > clob
-  > date
-  > datetime
-  > dec
-  > decimal
-  > double
-  > double precision
-  > enum
-  > fixed
-  > float
-  > float4
-  > float8
-  > geometry
-  > geometrycollection
-  > inet4
-  > inet6
-  > int
-  > int1
-  > int2
-  > int3
-  > int4
-  > int8
-  > integer
-  > json
-  > linestring
-  > long
-  > long char varying
-  > long character varying
-  > long varbinary
-  > long varchar
-  > long varcharacter
-  > longblob
-  > longtext
-  > mediumblob
-  > mediumint
-  > mediumtext
-  > middleint
-  > multilinestring
-  > multipoint
-  > multipolygon
-  > national char
-  > national char varying
-  > national character
-  > national character varying
-  > national varchar
-  > national varcharacter
-  > nchar
-  > nchar varchar
-  > nchar varcharacter
-  > nchar varying
-  > number
-  > numeric
-  > nvarchar
-  > point
-  > polygon
-  > raw
-  > real
-  > serial
-  > set
-  > smallint
-  > sql_tsi_year
-  > text
-  > time
-  > timestamp
-  > tinyblob
-  > tinyint
-  > tinytext
-  > uuid
-  > varbinary
-  > varchar
-  > varchar2
-  > varcharacter
-  > vector
-  > xmltype
-  > year
+### MySQL (70 types)
 
-</details>
+`bigint`, `binary`, `bit`, `blob`, `bool`, `boolean`, `char`, `char byte`, `character`,
+`character varying`, `date`, `datetime`, `dec`, `decimal`, `double`, `double precision`, `enum`,
+`fixed`, `float`, `float4`, `float8`, `geomcollection`, `geometry`, `geometrycollection`, `int`,
+`int1`, `int2`, `int3`, `int4`, `int8`, `integer`, `json`, `linestring`, `long`, `long varbinary`,
+`long varchar`, `longblob`, `longtext`, `mediumblob`, `mediumint`, `mediumtext`, `middleint`,
+`multilinestring`, `multipoint`, `multipolygon`, `national char`, `national char varying`,
+`national character`, `national character varying`, `national varchar`, `nchar`, `nchar varchar`,
+`numeric`, `nvarchar`, `point`, `polygon`, `real`, `serial`, `set`, `smallint`, `text`, `time`,
+`timestamp`, `tinyblob`, `tinyint`, `tinytext`, `varbinary`, `varchar`, `varcharacter`, `year`
 
-<details>
-<summary>MSSQL (48 types)</summary>
+### Oracle (51 types)
 
-  > bigint
-  > binary
-  > binary varying
-  > bit
-  > char
-  > char varying
-  > character
-  > character varying
-  > date
-  > datetime
-  > datetime2
-  > datetimeoffset
-  > dec
-  > decimal
-  > double precision
-  > float
-  > geography
-  > geometry
-  > hierarchyid
-  > image
-  > int
-  > integer
-  > json
-  > money
-  > national char
-  > national char varying
-  > national character
-  > national character varying
-  > national text
-  > nchar
-  > ntext
-  > numeric
-  > nvarchar
-  > real
-  > rowversion
-  > smalldatetime
-  > smallint
-  > smallmoney
-  > sql_variant
-  > text
-  > time
-  > timestamp
-  > tinyint
-  > uniqueidentifier
-  > varbinary
-  > varchar
-  > vector
-  > xml
+`anydata`, `bfile`, `binary_double`, `binary_float`, `blob`, `bool`, `boolean`, `char`,
+`char varying`, `character`, `character varying`, `clob`, `date`, `dec`, `decimal`,
+`double precision`, `float`, `int`, `integer`, `interval day to second`, `interval year to month`,
+`json`, `long`, `long raw`, `long varchar`, `national char`, `national char varying`,
+`national character`, `national character varying`, `nchar`, `nchar varying`, `nclob`, `number`,
+`numeric`, `nvarchar2`, `raw`, `real`, `rowid`, `sdo_geometry`, `sdo_georaster`,
+`sdo_topo_geometry`, `smallint`, `timestamp`, `timestamp with local time zone`,
+`timestamp with time zone`, `uritype`, `urowid`, `varchar`, `varchar2`, `vector`, `xmltype`
 
-</details>
+### PostgreSQL (107 types)
 
-<details>
-<summary>Oracle (51 types)</summary>
+`bigint`, `bigserial`, `bit`, `bit varying`, `bool`, `boolean`, `box`, `bpchar`, `bytea`, `char`,
+`character`, `character varying`, `cid`, `cidr`, `circle`, `date`, `datemultirange`, `daterange`,
+`dec`, `decimal`, `double precision`, `float`, `float4`, `float8`, `inet`, `int`, `int2`, `int4`,
+`int4multirange`, `int4range`, `int8`, `int8multirange`, `int8range`, `integer`, `interval`,
+`interval day`, `interval day to hour`, `interval day to minute`, `interval day to second`,
+`interval hour`, `interval hour to minute`, `interval hour to second`, `interval minute`,
+`interval minute to second`, `interval month`, `interval second`, `interval year`,
+`interval year to month`, `json`, `jsonb`, `jsonpath`, `line`, `lseg`, `macaddr`, `macaddr8`,
+`money`, `name`, `numeric`, `nummultirange`, `numrange`, `oid`, `path`, `pg_lsn`, `pg_snapshot`,
+`point`, `polygon`, `real`, `regclass`, `regcollation`, `regconfig`, `regdictionary`,
+`regnamespace`, `regoper`, `regoperator`, `regproc`, `regprocedure`, `regrole`, `regtype`, `serial`,
+`serial2`, `serial4`, `serial8`, `smallint`, `smallserial`, `text`, `tid`, `time`,
+`time with time zone`, `time without time zone`, `timestamp`, `timestamp with time zone`,
+`timestamp without time zone`, `timestamptz`, `timetz`, `tsmultirange`, `tsquery`, `tsrange`,
+`tstzmultirange`, `tstzrange`, `tsvector`, `txid_snapshot`, `uuid`, `varbit`, `varchar`, `xid`,
+`xid8`, `xml`
 
-  > anydata
-  > bfile
-  > binary_double
-  > binary_float
-  > blob
-  > bool
-  > boolean
-  > char
-  > char varying
-  > character
-  > character varying
-  > clob
-  > date
-  > dec
-  > decimal
-  > double precision
-  > float
-  > int
-  > integer
-  > interval day to second
-  > interval year to month
-  > json
-  > long
-  > long raw
-  > long varchar
-  > national char
-  > national char varying
-  > national character
-  > national character varying
-  > nchar
-  > nchar varying
-  > nclob
-  > number
-  > numeric
-  > nvarchar2
-  > raw
-  > real
-  > rowid
-  > sdo_geometry
-  > sdo_georaster
-  > sdo_topo_geometry
-  > smallint
-  > timestamp
-  > timestamp with local time zone
-  > timestamp with time zone
-  > uritype
-  > urowid
-  > varchar
-  > varchar2
-  > vector
-  > xmltype
+### Snowflake (54 types)
 
-</details>
+`array`, `bigint`, `binary`, `boolean`, `byteint`, `char`, `char varying`, `character`, `date`,
+`datetime`, `dec`, `decfloat`, `decimal`, `double`, `double precision`, `file`, `float`, `float4`,
+`float8`, `geography`, `geometry`, `int`, `integer`, `map`, `nchar`, `nchar varying`, `number`,
+`numeric`, `nvarchar`, `nvarchar2`, `object`, `real`, `smallint`, `string`, `text`, `time`,
+`timestamp`, `timestamp with local time zone`, `timestamp with time zone`,
+`timestamp without time zone`, `timestamp_ltz`, `timestamp_ntz`, `timestamp_tz`, `timestampltz`,
+`timestampntz`, `timestamptz`, `tinyint`, `unknown`, `uuid`, `varbinary`, `varchar`, `varchar2`,
+`variant`, `vector`
 
-<details>
-<summary>PostgreSQL (106 types)</summary>
+### SQLite (31 types)
 
-  > bigint
-  > bigserial
-  > bit
-  > bit varying
-  > bool
-  > boolean
-  > box
-  > bpchar
-  > bytea
-  > char
-  > character
-  > character varying
-  > cid
-  > cidr
-  > circle
-  > date
-  > datemultirange
-  > daterange
-  > decimal
-  > double precision
-  > float
-  > float4
-  > float8
-  > inet
-  > int
-  > int2
-  > int4
-  > int4multirange
-  > int4range
-  > int8
-  > int8multirange
-  > int8range
-  > integer
-  > interval
-  > interval day
-  > interval day to hour
-  > interval day to minute
-  > interval day to second
-  > interval hour
-  > interval hour to minute
-  > interval hour to second
-  > interval minute
-  > interval minute to second
-  > interval month
-  > interval second
-  > interval year
-  > interval year to month
-  > json
-  > jsonb
-  > jsonpath
-  > line
-  > lseg
-  > macaddr
-  > macaddr8
-  > money
-  > name
-  > numeric
-  > nummultirange
-  > numrange
-  > oid
-  > path
-  > pg_lsn
-  > pg_snapshot
-  > point
-  > polygon
-  > real
-  > regclass
-  > regcollation
-  > regconfig
-  > regdictionary
-  > regnamespace
-  > regoper
-  > regoperator
-  > regproc
-  > regprocedure
-  > regrole
-  > regtype
-  > serial
-  > serial2
-  > serial4
-  > serial8
-  > smallint
-  > smallserial
-  > text
-  > tid
-  > time
-  > time with time zone
-  > time without time zone
-  > timestamp
-  > timestamp with time zone
-  > timestamp without time zone
-  > timestamptz
-  > timetz
-  > tsmultirange
-  > tsquery
-  > tsrange
-  > tstzmultirange
-  > tstzrange
-  > tsvector
-  > txid_snapshot
-  > uuid
-  > varbit
-  > varchar
-  > xid
-  > xid8
-  > xml
+`bigint`, `blob`, `bool`, `boolean`, `character`, `clob`, `date`, `datetime`, `dec`, `decimal`,
+`double`, `double precision`, `float`, `int`, `int2`, `int8`, `integer`, `mediumint`,
+`native character`, `nchar`, `numeric`, `nvarchar`, `real`, `smallint`, `text`, `time`, `timestamp`,
+`tinyint`, `unsigned big int`, `varchar`, `varying character`
 
-</details>
-
-<details>
-<summary>Snowflake (54 types)</summary>
-
-  > array
-  > bigint
-  > binary
-  > boolean
-  > byteint
-  > char
-  > char varying
-  > character
-  > date
-  > datetime
-  > dec
-  > decfloat
-  > decimal
-  > double
-  > double precision
-  > file
-  > float
-  > float4
-  > float8
-  > geography
-  > geometry
-  > int
-  > integer
-  > map
-  > nchar
-  > nchar varying
-  > number
-  > numeric
-  > nvarchar
-  > nvarchar2
-  > object
-  > real
-  > smallint
-  > string
-  > text
-  > time
-  > timestamp
-  > timestamp with local time zone
-  > timestamp with time zone
-  > timestamp without time zone
-  > timestamp_ltz
-  > timestamp_ntz
-  > timestamp_tz
-  > timestampltz
-  > timestampntz
-  > timestamptz
-  > tinyint
-  > unknown
-  > uuid
-  > varbinary
-  > varchar
-  > varchar2
-  > variant
-  > vector
-
-</details>
-
-<details>
-<summary>SQLite (27 types)</summary>
-
-  > bigint
-  > blob
-  > boolean
-  > character
-  > clob
-  > date
-  > datetime
-  > decimal
-  > double
-  > double precision
-  > float
-  > int
-  > int2
-  > int8
-  > integer
-  > mediumint
-  > native character
-  > nchar
-  > numeric
-  > nvarchar
-  > real
-  > smallint
-  > text
-  > tinyint
-  > unsigned big int
-  > varchar
-  > varying character
-
-</details>
-
-A type none of these lists carries is kept as written where it follows the column name: an enum or
-composite made with `CREATE TYPE`, a `CREATE DOMAIN`, an extension type such as `hstore`, `citext` or
-`ltree`, a schema-qualified or quoted name (`public.mood`, `"MyType"`, `[dbo].[Order]`, its quotes and
-brackets kept), with its arguments. An array suffix (`[]`, `[3]`, `ARRAY`) stays on any type, and the
-values of `ENUM(...)` and `SET(...)` keep their quotes. The `CREATE TYPE`, `CREATE DOMAIN` and
-`CREATE EXTENSION` statements themselves are skipped.
+A type none of these lists carries is kept, its name as written, where it follows the column name:
+an enum or composite made with `CREATE TYPE`, a `CREATE DOMAIN`, an extension type such as `hstore`,
+`citext` or `ltree`, a schema-qualified or quoted name (`public.mood`, `"MyType"`, `[dbo].[Order]`,
+its quotes and brackets kept), with its arguments. An array suffix (`[]`, `[3]`, `ARRAY`) stays on
+any type, and the values of `ENUM(...)` and `SET(...)` keep their quotes. MySQL's `UNSIGNED` and
+`ZEROFILL` right after a type and its arguments stay in `dataType` as written (`INT UNSIGNED`,
+`SMALLINT(5) UNSIGNED ZEROFILL`), while `SIGNED` is dropped (`TINYINT SIGNED` gives `TINYINT`). The
+`CREATE TYPE`, `CREATE DOMAIN` and `CREATE EXTENSION` statements themselves are skipped.
 
 ## Support Syntax
 
@@ -668,7 +215,17 @@ values of `ENUM(...)` and `SET(...)` keep their quotes. The `CREATE TYPE`, `CREA
 CREATE TABLE a (
  b bigint
 )
+CREATE TABLE IF NOT EXISTS a (
+ b bigint
+)
+CREATE TEMPORARY TABLE a (
+ b bigint
+)
 ```
+
+Between `CREATE` and `TABLE` the header may carry `OR REPLACE`, `TRANSIENT`, `TEMPORARY` / `TEMP`,
+`LOCAL`, `GLOBAL`, `VOLATILE`, `UNLOGGED`, `HYBRID`, `ICEBERG`, `DYNAMIC` and `EXTERNAL`, and
+`IF NOT EXISTS` may follow `TABLE`.
 
 ### Double Quote
 
@@ -874,6 +431,11 @@ CREATE TABLE b (
  c int,
  CONSTRAINT FK_B FOREIGN KEY(b, c) REFERENCES a (b, c)
 )
+CREATE TABLE orders (
+  user_id INT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  shop_id INT,
+  FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE SET NULL ON UPDATE CASCADE
+)
 ```
 
 ### CREATE INDEX
@@ -949,6 +511,9 @@ ADD FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)
 ALTER TABLE Orders
 ADD CONSTRAINT FK_PersonOrder
 FOREIGN KEY (PersonID) REFERENCES Persons(PersonID)
+
+ALTER TABLE items ADD CONSTRAINT fk_items_orders FOREIGN KEY (order_id) REFERENCES orders (id)
+  MATCH SIMPLE ON UPDATE NO ACTION ON DELETE RESTRICT
 ```
 
 ### Alter database.Table Add FOREIGN KEY
@@ -981,6 +546,9 @@ ALTER TABLE "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ```sql
 ALTER TABLE users ADD UNIQUE KEY uq_ab (a, b DESC)
 ALTER TABLE users ADD CONSTRAINT sym UNIQUE INDEX uq_c (c)
+ALTER TABLE users ADD UNIQUE INDEX IF NOT EXISTS uq_de (d, e)
+ALTER TABLE users ADD UNIQUE uq_f USING BTREE (f)
+ALTER TABLE users ADD CONSTRAINT UNIQUE (g, h)
 ```
 
 ### Alter Table Add several keys
@@ -992,7 +560,14 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `uq_email` (`email`);
 ```
 
-### Alter Table Add UNIQUE USING INDEX
+Every `UNIQUE` key clause is read; a column's own `UNIQUE` (`ADD COLUMN c INT UNIQUE`) keys
+nothing. Besides those, a statement yields one key or default, from its first clause when that is
+a `PRIMARY KEY`, `FOREIGN KEY` or `DEFAULT`; the other clauses, `ADD KEY` / `ADD INDEX` included,
+are dropped. When the first clause is a foreign key, the one kept is the statement's last:
+`ADD FOREIGN KEY (a) REFERENCES p (id), ADD FOREIGN KEY (b) REFERENCES q (id)` yields one
+`alter.table.add.foreignKey`, for `(b)` and `q`.
+
+### Alter Table Add UNIQUE USING INDEX, Oracle
 
 ```sql
 CREATE UNIQUE INDEX "HR"."UQ_T_AB_IX" ON "HR"."T" ("A", "B");
@@ -1016,6 +591,18 @@ ALTER TABLE ONLY "public".Persons ADD UNIQUE (ID)
 ALTER TABLE ONLY "public".Persons ADD CONSTRAINT UC_Person UNIQUE (ID,LastName)
 ```
 
+### Alter Table WITH CHECK ADD, SQL Server
+
+```sql
+ALTER TABLE [dbo].[b]  WITH CHECK ADD  CONSTRAINT [FK_b_a] FOREIGN KEY([a_id])
+REFERENCES [dbo].[a] ([id])
+ON UPDATE SET NULL
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[b] WITH NOCHECK ADD CONSTRAINT [UQ_b] UNIQUE ([a_id])
+GO
+```
+
 ### Snowflake CREATE OR REPLACE TABLE
 
 ```sql
@@ -1035,6 +622,13 @@ COMMENT = 'sales orders'
 ALTER TABLE MY_DB.MY_SCHEMA.ORDERS ADD FOREIGN KEY (CUSTOMER_ID) REFERENCES MY_DB.MY_SCHEMA.CUSTOMER (CUSTOMER_ID)
 ```
 
+```sql
+CREATE OR REPLACE TRANSIENT TABLE analytics.dbt_dev.users (
+  user_id INT IDENTITY(1,1),
+  username VARCHAR(50) NOT NULL
+);
+```
+
 ### Databricks CREATE TABLE
 
 ```sql
@@ -1044,6 +638,7 @@ CREATE TABLE `main`.`events` (
   `occurred_at` TIMESTAMP_NTZ,
   `tags` ARRAY<STRING>,
   `props` MAP<STRING, STRING>,
+  `addr` STRUCT<city: STRING COMMENT 'city', zip: INT>,
   CONSTRAINT `pk_events` PRIMARY KEY (`event_id`) NOT ENFORCED RELY
 )
 USING DELTA
@@ -1065,9 +660,29 @@ CREATE TABLE person (
 )
 ```
 
+### MySQL UNSIGNED, ZEROFILL and SIGNED
+
+```sql
+CREATE TABLE `counters` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `code` SMALLINT(5) UNSIGNED ZEROFILL,
+  `delta` TINYINT SIGNED,
+  PRIMARY KEY (`id`)
+)
+```
+
 ## Development
 
+From the repository root:
+
 ```sh
-pnpm exec vp run --filter @dineug/schema-sql-parser --fail-if-no-match test
-pnpm --filter @dineug/schema-sql-parser test:coverage
+pnpm exec vp run --filter ./packages/schema-sql-parser --fail-if-no-match test
+pnpm --filter ./packages/schema-sql-parser --fail-if-no-match test:coverage
+pnpm --filter ./packages/schema-sql-parser --fail-if-no-match test:dev
+pnpm exec vp run --filter ./packages/schema-sql-parser --fail-if-no-match build
 ```
+
+The `test` task type-checks with `tsc --noEmit`, then runs Vitest once; `test:coverage` runs
+Vitest with v8 coverage, `test:dev` runs it in watch mode, and the `build` task writes `dist/`
+with its declarations. The rules for changing the package, and the checks a change runs, are in
+[AGENTS.md](./AGENTS.md).

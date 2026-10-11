@@ -1,93 +1,108 @@
 # erd-editor-schema
 
-> The persisted document format for erd-editor
+> ERD Editor's document: schemas, parsers, storage form and runtime value, queries, LWW operators
 
-Internal to the erd-editor monorepo. It is `private` and never published to npm; the editor
-core (`@dineug/erd-editor`) depends on it as `"@dineug/erd-editor-schema": "workspace:*"`.
-
-## What this is
-
-`.erd.json` files are this format. The package owns both versions of it — v3 (current) and
-v2 (legacy, still readable) — the parsers that fold arbitrary JSON onto a valid document,
-the v2 to v3 conversion, a query layer over the v3 collections, and the LWW
-(last-write-wins) operators.
-
-No field can fail a parse: every field is validated and falls back to its default, so
-`schemaV3Parser({})` yields a complete empty document. (`parser` still throws on a string that
-is not JSON at all.) `createSchema()` is that document, a diagram created from nothing with
-every setting `lockSettings` names locked at its default — that is how the editor seeds its
-store and what it loads for an empty value. A file without `lockSettings` was saved before the
-locks: it parses with all of them on, its `originX`, `originY`, `zoomLevel` and `canvasType`
-at the defaults and the code settings as it saved them. Every v3 document a
-parser returns is stamped with a `$schema` pointing at
-[`json-schema/schema.json`](../../json-schema/schema.json), the JSON Schema of the storage form a file holds.
+The document that `.erd`, `.erd.json`, `.vuerd` and `.vuerd.json` files hold: its v3 (current) and
+v2 (legacy, still readable) schemas, the parsers that fold a JSON object onto a valid document field
+by field, the v2 to v3 conversion, two serializations of one document, a query layer over the v3
+collections and the LWW (last-write-wins) operators. The package is `private` and never published
+to npm. Its two workspace consumers, the editor core ([`erd-editor`](../erd-editor)) and the MCP
+server ([`mcp-server`](../mcp-server)), list it as a devDependency
+(`"@dineug/erd-editor-schema": "workspace:*"`) and inline it into their published bundles. The
+format itself is public: every v3 document a parser returns carries a `$schema` URL pointing at
+[`json-schema/schema.json`](../../json-schema/schema.json), the JSON Schema of the storage form.
 
 ## Usage
 
 ```ts
 import { readFileSync } from 'node:fs';
 
-import { parser, query, toDocumentJson, toJson } from '@dineug/erd-editor-schema';
+import { type LWW, parser, query, toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 
-// reads either version, always returns ERDEditorSchemaV3
-const schema = parser(readFileSync('example.erd.json', 'utf8'));
+// Either version, either serialization; always an ERDEditorSchemaV3.
+const schema = parser(readFileSync('diagram.erd', 'utf8'));
 
-const table = query(schema.collections)
-  .collection('tableEntities')
-  .selectById('some-table-id');
+const tables = query(schema.collections).collection('tableEntities');
+const table = tables.selectById(schema.doc.tableIds[0]);
+
+// The recipe runs unless the register holds a later replace of this table's name.
+const lww: LWW = {};
+if (table) {
+  tables.replaceOperator(lww, 1, table.id, 'name', () => {
+    tables.updateOne(table.id, entity => {
+      entity.name = 'member';
+    });
+  });
+}
 
 const file = toDocumentJson(schema); // the storage form, ready to write back
-const runtimeValue = toJson(schema); // everything an editor holds, to seed a collaborator
+const runtimeValue = toJson(schema); // what a collaborator or a second view seeds from
 ```
 
 The two strings are two serializations of one document, and `parser` reads both.
-`toDocumentJson` is what a file holds: the live entities alone, each collection sorted by
-id, no field an editor derives on load (widths, anchors, key marks, sequences) or keeps for
-one instance (z-indexes), and a trailing newline, so saving the same document twice writes
-the same bytes. Parsing it stacks the tables, memos and groups in the order `doc` lists them. `toJson` is the runtime value: tombstones of removed entities and all of
-the above kept, everything but the LWW registers, which is what a collaborator or a second
+`toDocumentJson` writes the storage form, what a file holds: the live entities alone, without the
+fields an editor derives on load or keeps for one instance, in a fixed key order, so saving the
+same document twice writes the same bytes. `toJson` writes the runtime value: the collections as an
+editor holds them, the tombstones of removed entities included, which a collaborator or a second
 view needs to undo a removal it did not see.
 
-Both write each setting `lockSettings` locks at the value it was locked at
-(`settings.lockedValues`, which a parse takes from the saved fields and which is never
-written) and every other one as it stands. Neither mutates the schema it is handed — the
-settings they write are a copy.
+A field that fails validation falls back to its default, so `schemaV3Parser({})` is a complete
+empty document. The input itself can still throw. `parser` throws on text that is not JSON, and a
+`TypeError` on JSON that is not an object, such as `null`. `schemaV3Parser` and `schemaV2Parser`
+throw a `TypeError` on `null` or `undefined`. `schemaV2Parser` also throws one on a `tables`,
+`indexes`, `memos` or `relationships` list, or a table's `columns`, that holds `null`, and so does
+`parser`, which reads every document whose `version` is not `3.0.0` as v2.
 
-`settings.originX` / `originY` are the view: the screen point scene `(0, 0)` lands on. A
-file written before them saved `scrollLeft` / `scrollTop` instead, measured from the canvas
-box (`width` / `height`) centred in the viewport: the parser reads those off such a file
-once, through `migrateScrollToOrigin`, to give it the view it had, and keeps none of them.
-The settings hold no `width`, `height`, scroll pair, `relationshipOptimization` or
-`ignoreSaveSettings`, and no entity holds `meta`, so a file that has them loses them on its
-next save.
+The surface (`src/index.ts`):
 
-## Exports
-
-- `parser` — read a document from a JSON string, either serialization or a legacy file.
-- `toDocumentJson` — write the storage form a file holds.
-- `toJson` — write the runtime value, everything an editor holds but the LWW registers.
-- `schemaV3Parser`, `schemaV2Parser` — the same fold, but over an already-parsed object.
-- `createSchema` — a new v3 document, every lock on.
+- `parser(source)` — reads text: a v3 document in either serialization, or a v2 file, which it
+  converts to v3.
+- `toDocumentJson(schema)`, `toJson(schema)` — the storage form and the runtime value, as text.
+- `schemaV3Parser(object)` — the v3 fold over an already-parsed object; it checks no version.
+- `schemaV2Parser(object)` — the v2 fold, returning `ERDEditorSchemaV2`. No export converts that
+  to v3; pass a v2 file's text to `parser` instead.
+- `createSchema()` — a new empty v3 document with every lock on. The editor's store starts from
+  it, and an empty value loads as it.
+- `query(collections)` — `.collection(key)` returns reads and writes over one v3 collection
+  (`selectById`, `selectByIds`, `selectAll`, `selectEntities`, `setOne` / `setMany` / `setAll`,
+  `addOne` / `addMany`, `updateOne` / `updateMany`, `removeOne` / `removeMany` / `removeAll`,
+  `getOrCreate`) and the three LWW operators bound to that collection.
+- `addOperator`, `removeOperator`, `replaceOperator`, and the `LWW` / `LWWTuple` types — the
+  same operators unbound, taking the register's `tag` as an argument: a collection key, or another
+  name, such as the `'settings'` tag of the editor core's settings registers.
+- `migrateScrollToOrigin`, with its `LegacyScrollBox` / `Origin` types — the one-way conversion
+  of the scroll pair a file saved before `originX` / `originY`, with the canvas box and zoom it
+  was measured against, into an origin.
 - `ERDEditorSchemaV3`, `ERDEditorSchemaV2` — the document types.
-- `SchemaV3Constants`, `SchemaV2Constants` — the constant sets (`Database`, `NameCase`,
-  `RelationshipType`, canvas bounds, …) each version allows.
-- `query` — chainable reads and writes over the v3 collections, plus the operators below
-  bound to a collection.
-- `addOperator`, `removeOperator`, `replaceOperator`, and the `LWW` / `LWWTuple` types.
-- `migrateScrollToOrigin` — the one-way legacy migration, for anything that has to
-  restate what a document without an origin pair used to show.
+- `SchemaV3Constants`, `SchemaV2Constants` — the constant sets each version allows (`Database`,
+  `NameCase`, `RelationshipType`, …) and each version's canvas size and zoom bounds.
 
 ## Why the LWW operators
 
-Every change carries a version number. A direct write to state wins every merge, so a
-change that arrives late — from a collaborator, another tab, or an undo — would silently
-clobber newer data. Routing writes through the operators applies a change only when its
-version says it should, which is what lets collaboration, cross-tab sync and undo/redo
-share one mechanism.
+Every change carries a version number. An `LWW` record keeps a register per id (an entity's, or a
+name such as `settings.databaseName`): its tag and the highest version it has seen of an add, of a
+remove and of a replace of each path. A direct write to state wins every merge, so a change that
+arrives late — from a collaborator, another tab, or an undo — would silently overwrite newer data.
+Routing writes through the operators runs a change only when its version says it should, which is
+what lets collaboration, cross-tab sync and undo/redo share one mechanism.
 
 ## Development
 
+From the repository root:
+
 ```sh
-pnpm exec vp run --filter @dineug/erd-editor-schema --fail-if-no-match test
-pnpm --filter @dineug/erd-editor-schema test:coverage
+pnpm exec vp run --filter ./packages/erd-editor-schema --fail-if-no-match test
+pnpm --filter ./packages/erd-editor-schema --fail-if-no-match test:coverage
+pnpm --filter ./packages/erd-editor-schema --fail-if-no-match test:dev
+pnpm exec vp run --filter ./packages/erd-editor-schema --fail-if-no-match build
 ```
+
+- `test` builds its workspace dependency (`@dineug/uuid`), then runs `tsc --noEmit` and Vitest
+  over `src/**/*.test.ts`.
+- `test:coverage` runs Vitest with v8 coverage, and no type check.
+- `test:dev` runs Vitest in watch mode, with no type check.
+- `build` also builds `@dineug/uuid` first, runs `tsc --noEmit`, then writes `dist/` unbundled
+  (`preserveModules`): an ES module for each source module with runtime code and a `.d.ts` for
+  each source file, which the consumers type-check against.
+
+The rules for changing the package, and the checks a change runs, are in [AGENTS.md](./AGENTS.md).
