@@ -1,0 +1,2356 @@
+<!-- Parent: ../AGENTS.md -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+
+# generator-code
+
+## Purpose
+
+`src/utils/generator-code/` holds one module per Code Generator language behind `index.ts`'s `createGeneratorCode` and `createGeneratorCodeTable`, and `columnTypes.ts`, the shared vendor type classifier. The rules below are owner decisions and measured behaviour that describe output chosen on purpose, not bugs. The Code Generator tab's own rules (its options panel, the code as a snapshot, Save file, the language menu and highlighting) are in `src/components/generator-code/AGENTS.md`. The vendor type lists in `constants/sql/dataType/`, whose categories the classifier falls back to, are in the package file (`packages/erd-editor/AGENTS.md`) § Common Patterns.
+
+## Rules
+
+The rules every generator follows come first, then a section per generator, one shared by Java, Kotlin and Scala. Each generator's section opens with what it writes. Where a section has them, its Written as is bullets list output that a compiler, driver or library refuses or reads otherwise, left so on purpose. Its Measured bullets give the runs that checked its rules.
+
+| Section | Code Generator language |
+| --- | --- |
+| Rules every generator follows | every language |
+| `sqlalchemy.ts` | SQLAlchemy |
+| `typeorm.ts` | TypeORM |
+| `sequelize.ts` | Sequelize |
+| `drizzle.ts` | Drizzle |
+| `graphql.ts` | GraphQL |
+| `csharp.ts` | C# |
+| `go.ts` | Go |
+| `java.ts`, `kotlin.ts` and `scala.ts` | Java, Kotlin and Scala |
+| `jpa.ts` | JPA |
+| `php.ts` | PHP |
+| `doctrine.ts` | Doctrine |
+| `rust.ts` | Rust |
+| `seaorm.ts` | SeaORM |
+| `swift.ts` | Swift |
+| `typescript.ts` | TypeScript |
+| `zod.ts` | Zod |
+| `jsonSchema.ts` | JSON Schema |
+| `dbml.ts` | DBML |
+| `aml.ts` | AML |
+| `mermaid.ts` | Mermaid |
+
+### Rules every generator follows
+
+- **Import headers.** A generator either writes the imports its code needs or leaves names unimported.
+  - `sqlalchemy.ts` (`class Base(DeclarativeBase)`), `drizzle.ts`, `zod.ts` (`import * as z from "zod";`), `swift.ts` (`import Foundation`) and `doctrine.ts` (`use Doctrine\ORM\Mapping as ORM;`) emit an import header. They emit it in one table's code too.
+  - `seaorm.ts` writes its `use sea_orm::entity::prelude::*;` inside each table's `pub mod` and atop a table's own file.
+  - `jsonSchema.ts` writes its `$schema`.
+  - `typeorm.ts`, `jpa.ts`, `sequelize.ts`, `rust.ts` (paths written whole, `chrono::NaiveDate`) and the plain generators of Java, Kotlin, Scala, Go, C# and PHP leave names unimported.
+- **Four ORM generators render faithfully.** sqlalchemy, typeorm, sequelize and drizzle write the document as it is:
+  - A reference names its target by class name.
+  - Duplicate table names are kept; class names dedupe.
+  - An unnamed column is written as `""`.
+  - A keyless table is written as is.
+- **One vendor type classifier.** `columnTypes.ts` is the one classifier of vendor types (an owner decision of 2026-10-09). `getColumnType(dataType, database)` reads a column's type by name before the shared vendor tables. Those tables file each name under one of eleven categories. `getColumnType` answers what the generators need:
+  - The scalar: `bool`, integers by width and sign, `f32` or `f64`, `decimal`, `string`, `bytes`, `uuid`, `json`, `date`, `time`, `timeTz`, `dateTime`, `dateTimeUtc` (an instant shown in the session's zone), `dateTimeOffset`, `interval`.
+  - The base name, lower case, with its arguments gone. On MySQL and MariaDB its UNSIGNED, ZEROFILL and SIGNED go too.
+  - The numeric arguments.
+  - The PostgreSQL array depth (`splitPostgresArray`).
+  - An integer's width (24 for MEDIUMINT).
+  - A character type's declared length.
+  - A decimal's precision and scale. `NUMBER(*,s)` has precision 38.
+  - An interval's fields: year to month, day to second, or both.
+  - The network kind.
+  - An ENUM's or SET's members (`enumMembers`), each read as MySQL reads a string literal.
+  - Whether the type is unsigned: UNSIGNED, ZEROFILL or SERIAL on MySQL and MariaDB.
+  - Whether it is a serial, a float or money.
+  - Whether it is SQL Server's `uniqueidentifier` (`isGuid`: any 16 bytes, not only an RFC UUID) or `rowversion`.
+  - Whether it is semi-structured: Snowflake's and Databricks' VARIANT, OBJECT, ARRAY, MAP, STRUCT.
+  - Whether it is a PostgreSQL bit string.
+  - Whether it is PostgreSQL's `xid`, `cid` or `xid8` (`isTextInteger`), since node-postgres hands them over as text.
+  - Whether it is Databricks' `VOID` (`isNullOnly`).
+  - Whether the database's vendor list names it (`isListed`).
+- **Integer widths.** `columnScalar` gives the width a name declares. `getColumnType` widens every integer of Oracle, Snowflake and SQLite to `i64`. Oracle's is a NUMBER(38), Snowflake's a NUMBER(38,0), SQLite's eight bytes.
+- **Who reads the classifier.** Every generator reads it except DBML, AML and Mermaid, which write types as is.
+  - Swift, Zod, JSON Schema, TypeScript, Java, Kotlin, Scala, Go, GraphQL and JPA take their types from it.
+  - C#, SQLAlchemy, TypeORM, Sequelize and Drizzle read it by name, before their own tables and the vendor tables.
+  - PHP and Doctrine use its name sets and `enumMembers`.
+  - Rust and SeaORM read it through `rustTypes.ts`, the Rust layer on top (next bullet).
+- **`rustTypes.ts` keeps Rust output as it was.** Rust and SeaORM output stayed byte for byte what it was as the classifier moved (an owner decision of 2026-10-09). The one exception is PostgreSQL's and SQLite's `dec`, which their vendor lists gained (below). `rustPrimitiveType` now reads it as a decimal (`rust.ts`, Types; an owner decision of 2026-10-10). The layer keeps:
+  - sqlx's own choices, each as a `String`: MariaDB's `UUID`, PostgreSQL's `oid`, `cid`, `xid`, `xid8`, `timetz` and intervals, the semi-structured types, and SQLite's `BOOL`, `TIME` and `TIMESTAMP`.
+  - The declared widths.
+  - SIGNED in the name.
+  - The vendor categories from before the tables were refiled (`rustPrimitiveType`).
+- **Vendor tables refiled with the classifier.** An owner decision of 2026-10-09:
+  - SQL Server's `bit` is a boolean; its `numeric`, `money` and `smallmoney` are decimals.
+  - PostgreSQL's bit strings, `pg_lsn` and `money` are strings.
+  - Oracle's `DATE` is a date and time; its `REAL` is a double.
+  - SQL Server's `binary` and Oracle's `RAW` are filed as `varbinary` is.
+  - `getPrimitiveType` (`utils.ts`) reads an Oracle or Snowflake `NUMBER(p,s)` with a scale above 0 as a decimal.
+  - On MySQL, MariaDB, PostgreSQL and SQL Server, `getPrimitiveType` reads `FLOAT(1)` to `FLOAT(24)` as a float and `FLOAT(25)` to `FLOAT(53)` as a double.
+- **Vendor lists gained five names.** SQLite's list gained `BOOL`, `DEC`, `TIME` and `TIMESTAMP`; PostgreSQL's gained `dec`. Each is in step with `schema-sql-parser`'s list, so the column cell suggests them too.
+- **Case type names without the locale.** A type name is cased with `toLowerCase` / `toUpperCase`, never `toLocaleLowerCase`. This holds for the shared helpers in `utils.ts` and `columnTypes.ts`, and for the vendor tables. Under a Turkish or Azerbaijani default locale the locale form turns `I` into a dotless `ı`, so a name holding an I matched nothing. `__test-utils__/locale.ts`'s `underTurkishLocale` runs a spec under those rules (`utils.test.ts`, `columnTypes.test.ts`, `rustTypes.test.ts`, `seaorm.test.ts`).
+- **Shared helpers live in `utils.ts`.** `splitLines` splits at `LINE_TERMINATOR`: CR, LF, CRLF, U+2028 and U+2029, where an ECMAScript line comment ends. C# adds U+0085. The other shared helpers are `fractionalNumber`, `baseTypeName` and `findDataTypeHint`.
+- **The SQL importer keeps UNSIGNED and ZEROFILL.** It keeps MySQL's UNSIGNED and ZEROFILL in a column's data type (an owner decision of 2026-10-09). So an imported schema reaches every unsigned rule, and its DDL keeps them. The importer's side is in `packages/schema-sql-parser/AGENTS.md`.
+  - It drops SIGNED, the default, which MySQL and MariaDB store as the bare type.
+  - Kept, SIGNED hid the type's name from Rust, SeaORM and Doctrine, which read the whole name. A `TINYINT SIGNED` became an `i32` where the bare type is an `i8`, and Doctrine's INTEGER where it is a SMALLINT.
+  - Kept, SIGNED also made DBML, AML and Mermaid quote the type.
+  - A type with UNSIGNED or ZEROFILL goes into every database's DDL as written. PostgreSQL and SQL Server refuse it, as they refused one typed by hand.
+- **A primary key column is NOT NULL.** A key column without the NN flag is NOT NULL in every generator (an owner decision of 2026-10-09). DBML, AML and Mermaid are the exception, since they transcribe the document. DBML and AML also import back; no importer reads Mermaid. So the three keep a key's NN flag as the document has it: `"id" int [pk]`, `id int nullable pk`, `int? id PK` (an owner decision of 2026-10-10).
+- **No TypeScript directive in a comment.** Every TypeScript-family generator writes a comment line TypeScript would read as a directive as plain text (`escapeTypeScriptDirective`, `utils.ts`, an owner decision of 2026-10-10).
+  - `typescript.ts`, `zod.ts` and `drizzle.ts` write a comment as `//` lines. Each line whose text opens with `@ts-`, after any white space and in any letter case, takes a backslash before its at sign: `// \@ts-ignore`, `//   \@TS-NOCHECK`. So it reads as written and is no directive.
+  - A line where `@ts-` follows other text (`see @ts-ignore`) or a `/` stays as it is.
+  - `typeorm.ts` and `sequelize.ts` write a comment inside a string literal alone (`comment: "@ts-ignore"`). TypeScript reads no directive there, so they need nothing (`typeorm.test.ts`, `sequelize.test.ts`).
+  - The compilers read `@ts-ignore` and `@ts-expect-error` in lower case on any line, with any text after them (`@ts-ignored`, `@ts-expect-errors`). They hide the error of the next line that is no comment. Where that line holds no error, `@ts-expect-error` fails with TS2578.
+  - The compilers read `@ts-nocheck` and `@ts-check` in any letter case in the comments a file opens with. `typescript.ts` puts the first table's comment there, so one left as is would turn off checking of the whole file.
+  - On TypeScript 5.9 and 6.0, `@ts-nocheck` and `@ts-check` count when followed by white space, a colon or the line's end. On 7.0 they count when followed by anything but an ASCII letter or `-` (`@ts-nocheck1`, `@ts-nocheckß`).
+  - Before the at sign, 5.9 and 6.0 skip any white space JavaScript's `\s` matches (U+00A0, U+FEFF). 7.0 skips spaces and tabs alone.
+  - Measured on 2026-10-10 with TypeScript 5.9.3, 6.0.3 and 7.0.2 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), zod 4.6.5, drizzle-orm 0.45.4, TypeORM 1.1.2 and Sequelize 6.37.8:
+    - A table and two column comments held each of 13 directive spellings (each case, each kind of white space, a suffix). Under the eight databases, as the whole text and each table alone, that made 600 files across the five generators. All compiled with no error. Before the change, TypeScript's and Zod's had failed with 144 TS2578 each.
+    - An unknown name was put after each of the 1,968 comment blocks holding such a line in the TypeScript, Zod and Drizzle files. It failed on all three compilers; no error was hidden.
+    - Every language's output was generated for the 211 names of the vendor lists and the five `data/*.sql` fixtures under each database: 3,696 texts with the comment corpus. It matched the output from before byte for byte, except 1,344 comment lines of TypeScript, Zod and Drizzle. Each of those opens with `@ts-` and gained its backslash.
+
+### sqlalchemy.ts
+
+- **What it writes.** `sqlalchemy.ts` writes SQLAlchemy 2.0 declarative classes. Each column is `Mapped[...] = mapped_column(...)`.
+  - The classes are held to the editor's DDL on MySQL, MariaDB and PostgreSQL. On SQL Server and Oracle they are held to it for the types the rules below name.
+  - There a column takes the type that database's DDL names. It comes from the core where the core spells it, and otherwise from one `sqlalchemy.dialects.<mysql|postgresql|mssql|oracle>` module. This is so that `create_all` writes the editor's column and Alembic's `compare_metadata` reports nothing outside the limits under Written as is.
+  - Any other type, and every type on SQLite, Snowflake and Databricks, takes the portable type of its category (Types, below).
+  - Types come from the shared classifier (`columnTypes.ts`: `getColumnType`, `BINARY_TYPES`, `JSON_TYPES`, `UUID_TYPES`, the time-zone sets). The rest come from the shared vendor tables.
+  - The vendor tables carry the misclassifications the owner had fixed when they were refiled (an owner decision of 2026-10-09). SQL Server's `bit` is a `Boolean`, and its `numeric` and money types a `Numeric` or `MONEY` / `SMALLMONEY`. An Oracle or Snowflake NUMBER with a scale is a `Numeric`. PostgreSQL's bit strings, `pg_lsn` and `money` are no numbers.
+  - The UNSIGNED and ZEROFILL the importer keeps (an owner decision of 2026-10-09) reach the unsigned rules.
+- **Types.** Each database below follows its DDL for the types named; the portable types cover the rest.
+  - **MySQL and MariaDB.** A column never gets a `String` without a length where the database takes the column, since create_all refuses one (`VARCHAR requires a length`). The spatial types are the exception (Written as is).
+    - `ENUM(...)` is the core `Enum(...)`. `SET(...)` is the dialect's `SET(...)` with `Set[str]`. Their members are read as MySQL reads a literal (`enumMembers`).
+    - A signed integer is the core `Integer` / `BigInteger` / `SmallInteger`. `TINYINT` and `MEDIUMINT` are the dialect's.
+    - UNSIGNED or ZEROFILL makes the dialect's type with `unsigned=True` (and `zerofill=True`). A display width is kept only on `TINYINT(1)` and on a ZEROFILL column, where MySQL still prints it.
+    - `SERIAL` is `BIGINT(unsigned=True)` with `unique=True`, since MySQL's SERIAL adds a unique index wherever the column stands. `unique=True` is written once where the document flags UQ too.
+    - `DECIMAL ... UNSIGNED` is the dialect's `DECIMAL`. `FLOAT` / `DOUBLE UNSIGNED` are the dialect's, with `asdecimal=False` on DOUBLE, which reads a Decimal without it.
+    - `TEXT(n)` and `BLOB(n)` are the core `Text(n)` / `LargeBinary(n)`. This lets MySQL pick the class for create_all as it did for the editor's DDL (`TEXT(70000)` a MEDIUMTEXT, `BLOB(100)` a TINYBLOB).
+    - `BIT(n)`, `YEAR`, `TIMESTAMP`, `DATETIME(n)` / `TIME(n)` (`fsp=`) and the sized TEXT and BLOB types are the dialect's.
+    - `LONG` and `LONG VARCHAR` are a `MEDIUMTEXT`. `LONG VARBINARY` is a `MEDIUMBLOB`.
+    - `BINARY(n)`, `CHAR BYTE(n)` and `VARBINARY(n)` are the core `BINARY` / `VARBINARY`. `CHAR` / `NCHAR` are the core types.
+    - A national varying name with a length is the dialect's `VARCHAR(n, charset="utf8mb3")`, the character set MySQL stores them in. This covers `NVARCHAR(n)`, `NATIONAL VARCHAR(n)`, `NCHAR VARCHAR(n)`, `NATIONAL CHAR VARYING(n)`, MariaDB's `NCHAR VARYING(n)` and the rest.
+    - MariaDB's `INET4` / `INET6` are the dialect's; they need a `mariadb+` engine URL. MariaDB's `UUID` is the core `UUID`.
+    - MariaDB's Oracle mode types are written as MariaDB stores them. `CLOB` is a `LONGTEXT`, `RAW(n)` a `VARBINARY(n)`, and a bare `NUMBER` a `Double`.
+  - **PostgreSQL.**
+    - The smallint names are a `SmallInteger`. `real`, `float4` and `float(1)` to `float(24)` are a `REAL`.
+    - `char(n)` / `bpchar(n)` are a `CHAR`.
+    - Bit strings are the dialect's `BIT` (a `str`). `money` is its `MONEY` (a `str`).
+    - `xid`, `cid` and `xid8` are a `String`. psycopg2 reads them as text, and PostgreSQL casts no integer to them.
+    - `inet`, `cidr`, `macaddr`, `macaddr8`, `jsonpath`, `oid`, `regclass`, `regconfig`, `tsquery` and `tsvector` are the dialect's.
+    - The ranges and multiranges are the dialect's, with `Range[...]` / `List[Range[...]]`.
+    - `jsonb` is a `JSONB`. `uuid` is a `UUID(as_uuid=True)`.
+    - `time(n)` / `timestamp(n)` are a `TIME` / `TIMESTAMP(precision=n)`, with `timezone=True` on the zoned ones.
+    - An interval is an `Interval`, or `INTERVAL(fields=..., precision=n)` where it names them.
+    - An array is `ARRAY(element, dimensions=n)`, with one `List[...]` a dimension. This holds only for the element types psycopg2, SQLAlchemy's default PostgreSQL driver, parses into a list (`postgresArrayTypes`, `dec` among them, and every interval).
+    - psycopg2 hands any other array over as one string, which an `ARRAY` would split into its characters. So that array stays a `String`.
+  - **SQL Server.**
+    - `rowversion` and `timestamp` are its `TIMESTAMP` (a `bytes`). That is the name Alembic reflects them by; it would report the dialect's `ROWVERSION`.
+    - `hierarchyid`, `geography`, `geometry` and `sql_variant` are a `String` annotated `bytes`, the binary form pymssql reads them in.
+    - `money` / `smallmoney` are its `MONEY` / `SMALLMONEY` (a `Decimal`).
+    - `nvarchar(n)` and its synonyms are an `NVARCHAR(n)` (`NVARCHAR` for max). `nchar` is an `NCHAR`, and `ntext` an `NTEXT`.
+    - `binary(n)` is a `BINARY(n)`. `varbinary(n)` and `binary varying(n)` are a `VARBINARY(n)`.
+  - **Oracle.**
+    - `DATE` is the dialect's `DATE` (a `datetime`). The core `Date` drops the time, and `DateTime` compiles to DATE.
+    - Every `TIMESTAMP(n)` is the dialect's `TIMESTAMP` with no argument, since SQLAlchemy 2.0 takes a positional one as `timezone`. create_all writes TIMESTAMP(6).
+    - The zoned timestamps take `timezone=True` / `local_timezone=True`.
+    - `NVARCHAR2(n)` and its synonyms, `NCLOB` and `RAW(n)` are the dialect's.
+    - `INTERVAL DAY TO SECOND` is an `Interval(day_precision=..., second_precision=...)`.
+    - `NUMBER(*,s)` is a `Numeric(38, s)`.
+    - `ANYDATA`, `URIType` and `VECTOR` are a `String`, and `BFILE` a `LargeBinary`, each annotated `Any`. python-oracledb hands them over as a `DbObject` (`ANYDATA`, `URIType`), an `array.array` (`VECTOR`) and a `LOB` (`BFILE`).
+  - **The portable types.**
+    - The text types are a `Text`, and the binary ones a `LargeBinary`.
+    - JSON is a `JSON` (`Any`). A UUID is a `Uuid`.
+    - A time-zone timestamp is `DateTime(timezone=True)`.
+    - An interval is an `Interval` on PostgreSQL, Oracle and Databricks only.
+    - A string is its `String(n)`, and a decimal its `Numeric(p, s)`.
+    - Any other category is its core type (`Integer`, `BigInteger`, `Float`, `Double`, `Boolean`, `Date`, `DateTime`, `Time`).
+- **Names.** Names follow the name cases, then become ASCII identifiers.
+  - Any character an ASCII identifier cannot hold is `_`.
+  - A name not opening on an ASCII letter gets `x` in front, not `_`, since a leading underscore belongs to name mangling and SQLAlchemy's instrumentation.
+  - A Python keyword gets `_` after it. So does `metadata`, which `DeclarativeBase` owns, and `self`, the first parameter of the constructor it writes, which no keyword can pass.
+  - Class names are numbered (`_2`) against each other and against every name the header can import, `Base` and the builtins the annotations use (`int`, `str`, ...), since a class body sees module scope.
+  - Attribute names, relationship attributes included, are numbered against the same names within their class.
+  - A column whose attribute differs from its name writes the name first.
+  - A dotted column name also writes `key=`, since a `ForeignKey` splits its target on the dot.
+  - A second column of one name folds into the first.
+- **Keys.** The `autoincrement` argument follows what the database numbers under the editor's DDL.
+  - A table's only key column of Integer or Numeric affinity (`NUMERIC_NAMES`) without the auto increment flag gets `autoincrement=False`. SQLAlchemy's `"auto"` would make it a SERIAL, an AUTO_INCREMENT or an IDENTITY the document never asked for. For a decimal or float key it would make a CREATE TABLE that MySQL (1063) and SQL Server (2749) refuse.
+  - A serial type on that only key column (PostgreSQL's serials, MySQL's `SERIAL`) gets `autoincrement=True`.
+  - The auto increment flag gets `autoincrement=True` only where the database numbers the column the editor's DDL flags. The type must be of Integer or Numeric affinity, the only ones SQLAlchemy takes it on. The cases by database:
+    - PostgreSQL: the names it takes an identity on (`smallint`, `int`, `integer`, `bigint`, `int2`, `int4`, `int8`) and the serials.
+    - SQLite: a table's only key of an integer name (`isIntegerFamily`). The DDL writes that key `INTEGER` with `AUTOINCREMENT`, so the model types it an `Integer` whatever name it has. SQLite numbers a key declared `INTEGER` alone. The `BIGINT`, `INT8` or `UNSIGNED BIG INT` key that a `BigInteger` makes create_all write takes no insert without a key.
+    - Databricks: `BIGINT` and `LONG`.
+    - MySQL: an integer. MariaDB: an integer or a float.
+    - SQL Server: an integer or a decimal of scale 0.
+    - Oracle (its sequence and trigger) and Snowflake (not measured): any number.
+    - Of a composite key only the first such column gets it, since SQLAlchemy refuses a second.
+  - Any other flagged column gets none, and a lone numeric key gets `autoincrement=False`.
+  - A flagged column gets no `server_default`, numbered or not, as the editor's DDL writes no DEFAULT on it on every database but Oracle. Oracle's DDL keeps the DEFAULT but replaces the column's value on every insert with the sequence's next value through its BEFORE INSERT trigger.
+  - SQLite's only key column declared exactly `INTEGER` keeps `"auto"`. It is the rowid, which SQLite numbers itself.
+  - A key column without the NOT NULL flag is still not `Optional` (an owner decision of 2026-10-09, in Rules every generator follows, above).
+- **Strings.** Every name, comment and default is a Python literal in the quote black keeps.
+  - Single quotes appear only where the value holds more `"` than `'`.
+  - A backslash, line break, tab and every other control character is written as its escape. This keeps a comment's or a default's line breaks, and Alembic compares it equal.
+  - The class docstring alone puts the table comment on one line, each line break a space.
+  - The docstring is stripped at both ends as black strips a docstring. One stripped to nothing is a space.
+- **Layout is black's at 88 columns.** Columns are counted as black counts them: two for each character of the East Asian scripts (Hangul, kana, the CJK ideographs, fullwidth forms).
+  - A call past the line puts its arguments one to a line with the magic trailing comma.
+  - A `server_default=text(...)`, an `Enum(...)` or a `SET(...)` too long for its line puts its own arguments one to a line likewise.
+  - An attribute whose call would open past the line puts the call on a line of its own inside parentheses, where the target with `= (` fits.
+  - Otherwise the attribute opens the brackets of `Mapped[...]` onto lines of their own, with the call after the closing one. Black writes this otherwise (Written as is).
+  - A lone `__table_args__` entry stays on one line where it fits. The comma of a one-element tuple keeps nothing open.
+  - The header's names are sorted as isort's black profile sorts them, the all-capital names first.
+  - Black still removes the blank line every whole text opens with, as it does from every generator's.
+  - Emoji and combining marks count one column here. Black counts an emoji as two columns and a combining mark as none. This is not measured.
+  - A class name so long that `List["..."]` passes the line inside the opened `Mapped[` is not broken further. This is not measured.
+- **Written as is.** These stay in the output, though create_all, Alembic or black shows them.
+  - Black 25.11.0 rewrites the lines a very long name pushes past 88 columns, which the layout above leaves whole or breaks otherwise. These were measured on texts built for them; the measured corpus holds none.
+    - `__tablename__ = "..."` (a table name of 67 characters or more): black wraps it in parentheses.
+    - `class X(Base):` (a class name of 76 or more): black writes `class X(` / `Base` / `):`.
+    - An attribute whose `name: Mapped[...] = (` passes the line: the layout opens `Mapped[` / `str` / `] = mapped_column(...)`. Black writes `name: (` / `Mapped[str]` / `) = mapped_column(...)` for column names of 76 to 81 characters on a `Mapped[str]`. From 82 it also splits the call after `] = mapped_column(`.
+    - A `ForeignKey("...")` past the line (a parent table name of 64 or more): black moves its argument to a line of its own.
+    - A `ForeignKeyConstraint` whose column lists pass the line: black writes it one name to a line.
+  - MySQL and MariaDB spatial types (`GEOMETRY`, `POINT`, `LINESTRING`, `POLYGON`, the `MULTI` types, `GEOMETRYCOLLECTION` / `GEOMCOLLECTION`) stay a `String` without a length. create_all refuses it (`VARCHAR requires a length`). The owner has yet to choose between `LargeBinary` (create_all writes a BLOB, values read as WKB bytes) and GeoAlchemy2.
+  - MariaDB's `VECTOR(n)` is a `String(n)`. create_all writes a VARCHAR(n), and Alembic stops on it.
+  - An `ENUM` or `SET` member holding a backslash: SQLAlchemy writes no escape for it in the DDL. create_all fails on a member ending in one and drops it from any other (`back\slash` becomes `backslash`). Reflection doubles it, so Alembic reports a modify_type for every such member, `\%` included. Rows the model writes and reads on the editor's table keep their values.
+  - MySQL and MariaDB `NCHAR` and `NATIONAL CHAR` stay the core `NCHAR`, the column create_all writes. Alembic reports `CHAR(charset='utf8mb3')` against `NCHAR()`. The dialect's `CHAR(n, charset="utf8mb3")` would not be reported; that option is left to the owner.
+  - A `TEXT(n)` or `BLOB(n)` that MySQL stores in another class gets that class from create_all, but Alembic reports it (`MEDIUMTEXT()` against `Text(length=70000)`).
+  - `FLOAT(M,D)` and `DOUBLE(M,D)` lose their (M,D) in create_all (Alembic quiet).
+  - `CHAR(0)` becomes a `CHAR(1)` in create_all (Alembic quiet).
+  - A serial column that is not its table's only key gets no AUTO_INCREMENT or sequence from create_all, and Alembic does not report it. This covers MySQL's `SERIAL` beside another key or in a composite key, and PostgreSQL's serials likewise.
+  - A PostgreSQL serial without the NOT NULL flag, which PostgreSQL makes NOT NULL, is `Optional`, so Alembic reports a modify_nullable.
+  - A PostgreSQL key flagged auto increment, which the editor writes `GENERATED ALWAYS AS IDENTITY`, is `autoincrement=True`. create_all writes it as a SERIAL, and Alembic reports a modify_default.
+  - The second of two PostgreSQL keys flagged auto increment, which the model leaves unmarked, takes no value the model writes on the editor's table (`GENERATED ALWAYS`). MySQL refuses the editor's DDL with two (1075).
+  - SQLite's flagged integer key is `PRIMARY KEY (id AUTOINCREMENT)` in the editor's DDL and `PRIMARY KEY (id)` in create_all, which writes no `sqlite_autoincrement`. That table keeps no `sqlite_sequence` and hands a deleted last id out again (1, 2, then 2 where the editor's table gives 3). Alembic is quiet.
+  - Oracle's flagged column is numbered by a sequence and a BEFORE INSERT trigger, neither of which create_all writes. An insert without the key fails on the model's own table (ORA-01400) and succeeds on the editor's.
+  - An Oracle flagged `VARCHAR2` key is a `String`, which SQLAlchemy takes no `autoincrement=True` on. The trigger replaces the key the model writes, and the ORM loses the row it added (`Instance ... has been deleted`).
+  - A comment holding a backslash on MySQL or MariaDB: the editor's DDL lets the database read it as an escape (`\n` a line break, `\d` a `d`). The model keeps the backslash, so Alembic reports a modify_comment or add_table_comment.
+  - MariaDB keeps an integer's display width (`int(10)`), which the model drops. create_all writes `int(11)`; Alembic is quiet.
+  - The PostgreSQL types SQLAlchemy has no class for keep the portable type. create_all writes that type in their place, while Alembic stays quiet. `xml` is a `Text`. `name`, `xid`, `xid8`, `cid`, a `bpchar` without a length, `pg_lsn`, `tid`, the geometric types, the `reg*` types but `regclass` and `regconfig`, `txid_snapshot` and `pg_snapshot` are a `String`.
+  - psycopg 3 refuses any insert into such a column, NULL included, as it does into any array kept a `String`.
+  - psycopg2 reads a multirange as text and refuses to write one.
+  - Alembic reports an array kept a `String` as a modify_type for most element types (`bit(8)[]` as `ARRAY(BIT(length=8))`, `money[]`, `macaddr8[]`, `tsvector[]`, `int4multirange[]`), though not for `xml[]`.
+  - SQL Server, where only the types the rules above name follow its DDL:
+    - `tinyint` and `smallint` are an `Integer`; create_all writes `int`. Alembic reports it.
+    - `real` and `float(1)` to `float(24)` are a `Float`; create_all writes `float(53)`. Alembic reports it.
+    - `datetime2`, `datetime2(n)` and `smalldatetime` are a `DateTime`; create_all writes `datetime`. Alembic reports it.
+    - `image` is a `LargeBinary` (`varbinary(max)`). Alembic reports it.
+    - `xml` and `text` are a `Text` (`varchar(max)`). Alembic reports it.
+    - A bare `varchar`, `nvarchar`, `varbinary` or a synonym of one is one character long in SQL Server. The model makes it a type without a length (max). Alembic reports it.
+    - `float` and `double precision` are a `Double`. Alembic reports it as `FLOAT(precision=53)`, though the column is the same.
+    - `time(n)` and `datetimeoffset(n)` lose their precision; create_all writes 7. Alembic is quiet.
+    - `sql_variant` (which Alembic reports), `hierarchyid`, `geography` and `geometry` are a `String`. create_all writes it as VARCHAR(max) and refuses it as a key (1919).
+    - A `hierarchyid` takes its string form (`'/2/'`) through the model but refuses the bytes it reads back (6522).
+    - A rowversion without the NOT NULL flag is `Optional`, though SQL Server makes the editor's column NOT NULL. Alembic reports a modify_nullable.
+    - A table holding two rowversions, or a default on one, is refused by the editor's DDL and create_all alike (2738, 1755). A MySQL document's `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` carried to SQL Server does this, as in sakila and Magento2-sales.
+  - Oracle, likewise:
+    - `ROWID`, `UROWID`, `XMLType`, `ANYDATA`, `URIType`, the `SDO_` types and `VECTOR` are a `String` without a length. Oracle refuses it (ORA-00906), though the editor's DDL creates the column. Alembic reports `VECTOR`.
+    - A `DbObject` or `LOB` the model read (`ANYDATA`, `URIType`, `BFILE`) cannot be written back through it (ORA-00932).
+    - `BOOLEAN` is a `Boolean`, which create_all writes as a SMALLINT.
+    - An integer `NUMBER` (bare, `NUMBER(p)`, `NUMBER(*)`) is a `BigInteger` (`NUMBER(19)`).
+    - `FLOAT(p)`, `REAL`, `BINARY_FLOAT` and `BINARY_DOUBLE` are a `Float` or `Double` (`FLOAT(126)`). Alembic reports `REAL`, `FLOAT(63)` and the binary ones.
+    - `BFILE` is a `LargeBinary` (a BLOB). Alembic stops on its table (`UnsupportedCompilationError`: it cannot render `BFILE`).
+    - A `VARCHAR2(n)` is a `String(n)`, which create_all writes in CHAR rather than BYTE units.
+    - `INTERVAL YEAR TO MONTH` is an `Interval`, which create_all writes as DAY TO SECOND.
+    - `JSON` is a `JSON`, which SQLAlchemy 2.0's Oracle dialect cannot compile.
+  - SQLite: Alembic reports the declared names SQLite reflects as another type.
+    - `FLOAT`, `REAL` and `DOUBLE PRECISION` against `Double`.
+    - `SMALLINT` against `Integer`.
+    - `INT8`, `UNSIGNED BIG INT`, and a `BIGINT` or `INT8` with UNSIGNED or ZEROFILL (a MySQL document carried to SQLite) against `BigInteger`.
+    - `TIMESTAMP` against `DateTime`.
+    - `NCHAR`, `NVARCHAR`, `CHARACTER`, `NATIVE CHARACTER` and `VARYING CHARACTER` against `String`.
+    - A modify_nullable on every key column without the NOT NULL flag, which create_all writes NOT NULL and the editor's DDL does not.
+  - A flagged key the database numbers nothing on has no `autoincrement=True`. So create_all makes its table where the database refuses the editor's (MySQL 1063, SQL Server 2749). Such keys are a string or a uuid, a PostgreSQL `numeric`, a MySQL decimal or float, a SQL Server decimal with a scale or float, and sakila's MySQL integers on PostgreSQL, SQL Server or Oracle, which are a `String` there.
+  - A keyless table (the mapper refuses it) configures only beside the rest of the module.
+  - A one-table view of a table with relationships, whose related classes are not in the text, configures only beside the rest of the module.
+- **Measured** on 2026-10-10 with SQLAlchemy 2.0.54, Alembic 1.16.5, psycopg2 2.9.12, psycopg 3.2.13, PyMySQL 1.2.3, pymssql 2.4.3 and oracledb 4.0.2 on Python 3.9.6. The databases were PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13, SQL Server 2022 (16.0.4295.3), Oracle AI Database 26ai Free (23.26.3) and SQLite 3.54.0. The method compared what create_all and the editor's DDL made, column by column, and ran `compare_metadata` against the editor's tables, one table at a time.
+  - The cases were every vendor type of the eight lists, as NOT NULL, nullable and only key, and each database's argument, UNSIGNED and ZEROFILL variants. They showed nothing outside the limits above and the spellings the databases themselves refuse.
+  - PostgreSQL `dec(10,2)[]` and `dec[]` read and wrote lists of `Decimal` through psycopg2 and psycopg 3 (Alembic quiet).
+  - The model's own MySQL and MariaDB tables took a 70,000-character `TEXT(70000)` and a 70,000-byte `BLOB(70000)`.
+  - Comments with CR, LF, CRLF and U+2028 breaks, quotes and Hangul came back equal on PostgreSQL, MySQL, MariaDB and Oracle.
+  - On SQL Server the editor's DDL writes a comment as a varchar literal. A character outside the code page arrives as `?`, and Alembic reports it.
+  - sakila showed nothing on MySQL but three items. One is its FULLTEXT index, which the editor's DDL writes as a plain one both sides refuse. One is its customer comment's `\n`. One is a numeric `server_default`, which create_all writes as the expression `(4.99)` where the editor's DDL leaves the literal `'4.99'` (Alembic quiet).
+  - Magento2-sales showed nothing but MariaDB's display widths on the tables both sides created. Both sides stop on the `FULLTEXT` its import reads as a column, and on MySQL 8.4's refusal of a foreign key to part of a key.
+  - GNUBOARD5, YOUNGCART5 and OKKY (keyless tables set aside) showed nothing but the zero-date defaults MySQL 8.4's strict mode refuses on both sides.
+  - MariaDB's `VECTOR`, a type of 11.7 and later, was measured on MariaDB 11.8.9 in the review of 2026-10-09 and 10.
+  - The auto increment, `xid`, rowversion, object-type and `self` rules were measured on 2026-10-10 with the versions above:
+    - Two rows were inserted through the model into the editor's tables and into create_all's on all six databases, for each flagged key shape named above. Alembic was quiet on each but the documented modify_nullable.
+    - On SQLite this ran under these integer names `isIntegerFamily` takes: `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `INTEGER`, `BIGINT`, `INT2`, `INT8`, `UNSIGNED BIG INT`, `INT(10)`, `BIGINT(20)`, and a `BIGINT` without the NOT NULL flag.
+    - `xid`, `cid` and `xid8` were read and written as a `str` through psycopg2. psycopg 3 refuses to write them, as it does for every type kept a `String`.
+    - `rowversion` was read as `bytes`, inserted without a value and compared quiet by Alembic. The `String` it replaced failed create_all as a key and showed a modify_type.
+    - `hierarchyid`, `geography`, `geometry` and `sql_variant` were read as `bytes` through pymssql.
+    - `ANYDATA` and `URIType` were read as a `DbObject`, `VECTOR` as an `array.array` and `BFILE` as a `LOB`.
+    - A `self` column was written through `self_` on PostgreSQL.
+    - Every class of every whole text under the name cases was constructed with each column attribute passed by keyword.
+  - The corpus was 4,806 texts: the eight vendor lists, the variants, names under the four name cases, comment and layout cases, and the five fixtures under every database, whole and per table.
+    - black 25.11.0 changed nothing but the opening blank line of the 104 whole texts.
+    - isort 6.1.0 (black profile) changed nothing.
+    - pyflakes 3.4.0 found nothing in a whole text.
+    - Every text but those the limits above name ran, configured its mappers and compiled CREATE TABLE and CREATE INDEX on its database's dialect.
+
+### typeorm.ts
+
+- **What it writes.** One class per table, its `@Index` lines above `@Entity("<table>", { comment })`.
+  - Each column is `@Column`, `@PrimaryColumn` or `@PrimaryGeneratedColumn`, with its TypeORM type as the first argument.
+  - The type moves to `type:` in the options object where the typed overload refuses an option the column needs. Those options are `unsigned` on a fractional type, a PostgreSQL bit string's length and an interval's precision.
+  - Each property carries an annotation of what the driver hands the entity (Annotations, below).
+- **Types.** They are read through `columnTypes.ts` and the shared vendor tables, by name first.
+  - ENUM and SET members are the type: `"enum"` or `"set"` with `enum: [...]`. A member is read as MySQL reads a string literal, a parenthesis or a comma inside it included.
+  - A control character in a member is written as `\n`, `\r`, `\t` or `\xNN`. The annotation is the union of the members, or for a SET an array of it.
+  - On MySQL and MariaDB, UNSIGNED, ZEROFILL and SERIAL write `unsigned: true` on an integer or fractional type.
+  - A synonym is written as the type the database stores, because TypeORM's drivers refuse it or create it as another type:
+    - MySQL and MariaDB: `INT1` to `INT8`, `MIDDLEINT`, `FLOAT4`, `FLOAT8`, `CHARACTER` and `CHARACTER VARYING`, the `LONG` forms as `mediumtext`, `LONG VARBINARY` as `mediumblob`, `NATIONAL CHARACTER` as `national char`, `GEOMCOLLECTION`, `SQL_TSI_YEAR` as `year` and `CHAR(n) BYTE` as `binary`.
+    - SQL Server's standard spellings, as `varchar`, `char`, `nchar`, `nvarchar` and `ntext`.
+    - Oracle's, as `varchar2`, `char`, `nchar`, `nvarchar2` and `long`.
+    - SQLite's `BOOL`, `TIMESTAMP` and `DEC`, as `boolean`, `datetime` and `decimal`.
+    - PostgreSQL's `dec`, as `decimal`.
+  - `FLOAT(p)` is the type its width stores, with no precision. That is `real` or `double precision` on PostgreSQL and `real` or `float` on SQL Server. On MySQL and MariaDB it is `float` or `double`, and `FLOAT(0)` and `FLOAT4(p)` follow the same rule.
+  - A length is `length: n`, and SQL Server's `max` is `length: "MAX"`. An Oracle length in `BYTE` or `CHAR` units is its number.
+  - A precision and scale are `precision` and `scale`. `NUMBER(*,s)` is precision 38 at that scale, and `NUMBER(*)` a bare `NUMBER`. A negative scale is kept.
+  - On PostgreSQL every interval is `interval`, its precision taken from `interval(p)` or `second(p)`.
+  - On PostgreSQL a time, timestamp or interval precision above 6 is written as the 6 PostgreSQL stores it at, with a warning, because TypeORM compares the precision it reads back.
+  - On PostgreSQL `timestamptz(p)` and `timetz(p)` are written as the long names the typed overload takes. A serial is its integer, generated by increment.
+  - On PostgreSQL an array is its element type with `array: true`. A date, time or interval array states no precision.
+  - A type outside TypeORM's names takes one by its category: `varchar`, `int`, `bigint`, `decimal`, `double precision`, `text` or `timestamp`, and `varbinary` for a binary name.
+  - A column with no type name, or with arguments alone, is `varchar` (`nvarchar` on SQL Server). That is the type TypeORM reflects a `string` property as. The type is stated because a nullable one's `string | null` reflects as an `Object`, which TypeORM refuses.
+- **Annotations.** They follow what each driver hands TypeORM.
+  - `string`: a `"date"` column (Oracle's DATE too), and a PostgreSQL, MySQL or MariaDB decimal.
+  - `string`: a 64-bit integer (`bigint`, `int8`, `bigserial`, `serial8`, MySQL's `SERIAL` and `BIGINT UNSIGNED`), except on SQLite.
+  - `string`: PostgreSQL's `xid`, `cid` and `xid8`, and a time.
+  - `number`: a narrower integer, a float and PostgreSQL's `oid`.
+  - `number`: a decimal on SQL Server, Oracle and SQLite, whose drivers hand over numbers.
+  - `boolean`: a boolean and SQL Server's `bit`.
+  - `Date`: a date and time.
+  - `Buffer`: a binary type, SQL Server's `rowversion`, `timestamp` and `hierarchyid`, MySQL's and MariaDB's `BIT` at any width, and MariaDB's `VECTOR`.
+  - `object`: JSON, PostgreSQL's `point`, `circle` and intervals, Oracle's intervals (an `IntervalDS` or `IntervalYM`) and Oracle's `BFILE` (an oracledb `Lob`).
+  - `number[]`: a vector on PostgreSQL (`halfvec` too), MySQL and SQL Server.
+  - A PostgreSQL array is its element's annotation with one `[]` per dimension, where node-postgres parses the element (a numeric's as numbers, a date's as `Date`s). Otherwise it is the array's text, `string`.
+- **Names.** They follow the name cases.
+  - A character no identifier holds is `_`, letters beyond ASCII too. A leading digit takes `x`.
+  - A reserved word takes a trailing `_`. So does a class name TypeScript refuses or reads as a type operator (`number`, `object`, `readonly`, `keyof` …).
+  - A class name is numbered (`Date2`, `hasOwnProperty2`) where the class would shadow one of these:
+    - an imported decorator;
+    - a global the emitted module reads: `Array`, `Boolean`, `Buffer`, `Date`, `Number`, `Object`, `Reflect`, `String`;
+    - a helper tsc emits: `__decorate`, `__metadata`;
+    - a CommonJS name: `__dirname`, `__filename`, `__esModule`, `exports`, `module`, `require`;
+    - `then`: a module that exports it is a thenable, which `import()` fails to load, TypeORM's loader of an `entities` glob in an ES module package included;
+    - a member every object inherits: `__proto__`, `hasOwnProperty`, `toString`, `valueOf`, `toLocaleString`, `isPrototypeOf`, `propertyIsEnumerable`, `__defineGetter__`, `__defineSetter__`, `__lookupGetter__`, `__lookupSetter__`.
+  - A repeated class is numbered too. TypeORM keys plain objects by class name, so such a class fails its dependency graph at initialization (`hasOwnProperty`) or its grouping of the rows it saves.
+  - A property named `__proto__`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`, `toString` or `valueOf` takes a trailing `_` (`toString_`). It keeps its column through `name:`.
+  - `name:` is written wherever the property differs from the column.
+  - Properties are numbered against the relation properties.
+  - A second column of one name declares no property. Its foreign keys resolve onto the first.
+- **Keys and relations.** Nullability, generated keys, relation properties and indexes.
+  - A primary key, a serial, an auto-increment column or a NOT NULL column is `T`. Any other column is `T | null` with `nullable: true`. `nullable: false` is never written.
+  - A key without the NN flag reads as NOT NULL (an owner decision of 2026-10-09, in Rules every generator follows).
+  - An auto-increment column reads as the identity or AUTO_INCREMENT column every database makes NOT NULL. SQLite is the exception: it numbers its key alone and leaves the flag on another column unwritten.
+  - A key with the auto-increment flag is `@PrimaryGeneratedColumn`. It names its numeric type (`{ type: "int", unsigned: true }`), or `"uuid"` for a uuid. For another type it names nothing, and the key then reads as `number`.
+  - A key with the auto-increment flag is `@PrimaryColumn` with `generated: "increment"` where `@PrimaryGeneratedColumn` would lose what the column is. It takes the type and options any column of its type takes. Two cases:
+    - a numeric key that states a precision or scale (`decimal(10,0)`, Oracle's `NUMBER(10)`), because `@PrimaryGeneratedColumn` has no option for it;
+    - on PostgreSQL, a key of any type but an integer, a decimal or a uuid, or an array (`varchar(10)`, `timestamp`, `real`, `money`, `int[]`). TypeORM would type it as an integer, and its sync would drop and re-add it as a serial, losing the key's data.
+  - An auto-increment column outside the key is `generated: "increment"`. MySQL's and MariaDB's `SERIAL` is that and `unique: true`, the key its AUTO_INCREMENT needs.
+  - The owning side of a relation, on the child, is `@ManyToOne` or `@OneToOne`. It is named after the parent table, `parent_<table>` on a self relationship.
+    - Its `@JoinColumn([{ name, referencedColumnName }])` holds one entry per column.
+    - It is typed `Relation<T>`, with `| null` unless every foreign key column is NOT NULL or a key.
+    - Its `onDelete` and `onUpdate` are those `referentialActionSupport` keeps for the database, except SET DEFAULT.
+  - The parent's side is `<child>List: Child[]` (`@OneToMany`) or `<child>: Relation<Child> | null`.
+  - An index is `@Index("<name>", ["<property>", …])`, with `{ unique: true }` where unique. An unnamed index is `IDX_<table>`, numbered around the names the document gives.
+- **Strings and defaults.** Defaults are written as typed; comments are plain string literals.
+  - A default is `default: () => "<expression>"`, the expression as typed.
+  - An auto-increment column, key or not, drops its default. The editor's DDL does the same on every database but Oracle.
+  - A comment is `comment`, its line breaks written `\n`. It is a string literal, in which TypeScript reads no directive (No TypeScript directive in a comment, in Rules every generator follows).
+- **Layout.** A decorator longer than 80 columns breaks its options, then its arguments, one to a line.
+- **Written as is, though TypeORM cannot use it.**
+  - Refused by TypeORM at initialization:
+    - a keyless table (`MissingPrimaryColumnError`);
+    - Oracle's `BOOLEAN`, `BOOL` and `VECTOR`;
+    - SQL Server's `json`, which SQL Server 2022 refuses too (SQL Server 2025 and Azure SQL take it, not measured);
+    - MariaDB's Oracle-mode names (`NUMBER`, `VARCHAR2`, `CLOB`, `RAW`);
+    - a type of another vendor, such as a MySQL dump's `tinyint`, `datetime` or `set` under PostgreSQL.
+  - Dropped and re-added by TypeORM's schema sync, losing their data:
+    - PostgreSQL's `bpchar`, `name`, `oid`, `xid`, `cid`, `xid8`, `pg_lsn`, `pg_snapshot`, `txid_snapshot`, `tid` and `reg*` types, written `varchar` or `int`. With the auto-increment flag, key or not, all but `oid`, `xid`, `cid` and `xid8` fail the sync instead. An array of one of those four is re-added as a scalar serial on every run.
+    - MySQL's and MariaDB's `TEXT(n)` and `BLOB(n)`.
+    - SQL Server's `varchar`, `nvarchar`, `char varying` and `(national) character varying` with no length: one character there, 255 in TypeORM.
+    - SQL Server's `double precision(p)`.
+    - Oracle's `BINARY_FLOAT` and `BINARY_DOUBLE`, written `float` and `double precision`, both read back as `float`.
+    - Oracle's `ANYDATA`, written `varchar`.
+    - An Oracle `INTERVAL DAY TO SECOND`, on every run: TypeORM strips only the first of its argument lists.
+    - An Oracle length in `CHAR` units: TypeORM reads the byte length, four a character in AL32UTF8.
+    - Every Oracle auto-increment column, key or not. The editor's DDL fills it from a sequence and a trigger, and TypeORM re-adds it as an identity. A key of another type is re-added as a number; a column outside the key of another type fails instead (ORA-30675).
+  - Altered by TypeORM on every run:
+    - Oracle's `NUMBER(p)`, `DECIMAL(p)` and `NUMERIC(p)`; TypeORM reads a scale of 0 as stated.
+    - A PostgreSQL negative scale (`numeric(10,-2)`).
+    - An ENUM member holding a comma, a quote or a backslash escape.
+    - A default TypeORM reads back in another spelling (`NULL`, `TRUE`).
+  - Altered by TypeORM once:
+    - Oracle's `INT`, `INTEGER`, `SMALLINT`, `REAL` and bare `DEC`, `DECIMAL` and `NUMERIC`: an integer `NUMBER` is made a bare `NUMBER`, which takes fractions.
+    - `NUMBER(*,s)`, made the `NUMBER(38,s)` it equals.
+    - Unique and foreign key constraints, renamed to TypeORM's names.
+    - A comment holding a CR or CRLF line break, made `\n`.
+    - A SQLite type TypeORM spells otherwise (`INT`, `BOOL`, `TIMESTAMP`, `DEC`, a typeless column, a type with arguments): the table is rebuilt and its rows copied.
+    - The auto-increment flag, key or not, on a PostgreSQL type that takes no IDENTITY but fits a sequence's bigint default (a decimal, a float, `money`, a character type). The editor's DDL leaves the flag out there. TypeORM adds the sequence, and NOT NULL outside the key.
+  - Where synchronize fails:
+    - The auto-increment flag, key or not, on a PostgreSQL type the sequence's bigint default does not fit. Those are an array, a bit string, a boolean, `bytea`, JSON, a uuid outside the key, a network, geometric or text-search type, a date, time or interval, and a range. The error is `default expression is of type bigint`, and the sync rolls back with the column and its rows.
+    - Into an empty PostgreSQL database, an auto-increment column, key or not, whose type or array element type is not an integer, a uuid or an ENUM. The integers include `int`, `integer`, `smallint`, `bigint` and their aliases, and the `int` that `oid`, `xid`, `cid` and `xid8` are written as. The failing types are a character, decimal, float, `money`, boolean, `bytea`, JSON, bit string, network, geometric, text-search, date, time, interval or range type, and its array. TypeORM writes such a column with no type: `syntax error at or near "NOT"`.
+    - MySQL's `SERIAL` outside the key: TypeORM drops its UNIQUE index first, which MySQL refuses on an AUTO_INCREMENT column.
+    - A SQLite generated key of any numeric type but `INT` and `INTEGER` (`AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY`). For a `BIGINT` one, a saved entity's id is a string and a read one a number.
+    - A SQLite auto-increment column outside the key: TypeORM writes `AUTOINCREMENT` there, a syntax error.
+    - SQL Server's nullable `rowversion`: altered on every run, refused.
+    - Oracle's `URIType`: TypeORM tries to drop its hidden columns.
+    - An index on a MySQL `TEXT` or `BLOB` column, such as sakila's FULLTEXT index. The editor's DDL writes it as a plain index, which MySQL refuses without a key length.
+  - Where the schema log stops: Oracle's `XMLType`, whose hidden columns stop it (`typeorm_metadata` does not exist).
+  - What synchronize into an empty database cannot carry:
+    - A PostgreSQL auto-increment integer array, key or not: created as a scalar serial, which every later sync drops and re-adds.
+    - A PostgreSQL auto-increment uuid array or ENUM, key or not, or an auto-increment uuid column outside the key: created with no default. An insert that leaves it out fails, and every later sync fails with `default expression is of type bigint`.
+    - A MySQL `BIT(n)` width, created as `bit(1)`.
+    - MySQL's and MariaDB's `ZEROFILL`: TypeORM has no option for it, so the column is only `UNSIGNED`.
+    - A PostgreSQL interval's fields.
+    - A PostgreSQL date or time array's precision.
+    - An Oracle length's `CHAR` unit.
+  - Reads that differ from the annotation:
+    - Oracle's `DATE`: TypeORM's `"date"` drops its time of day.
+    - SQL Server's `sql_variant`, annotated `string`, reads as the stored value's own type (a `Date`, a `number`).
+  - On Oracle, a table whose DDL did not quote its lowercase name: TypeORM quotes every name, so its sync creates a second table.
+  - Oracle's `SDO_` types, written `varchar` and not measured: the Oracle Free image has no Spatial types.
+  - Snowflake and Databricks, which TypeORM has no driver for, written by the same rules.
+- **Measured** on 2026-10-10. The libraries were TypeORM 1.1.2 and reflect-metadata 0.2.2, pg 8.23.1, mysql2 3.24.5, mssql 12.7.4 (tedious 20.3.3), oracledb 7.0.1 thin and better-sqlite3 12.11.1.
+  - tsc 5.9.3, 6.0.3 and 7.0.2 compiled 27,201 outputs with no error. A file of two deliberate errors failed on each.
+  - The compiler options were `strict` without `strictPropertyInitialization`, with `experimentalDecorators`, `emitDecoratorMetadata` and `nodenext`.
+  - 10,156 type modules: each vendor list type and its `(10)` and `(10,2)` in all eight databases, with PostgreSQL's `[]` and `[][]`, MySQL's and MariaDB's UNSIGNED and ZEROFILL, ENUM escapes and other spellings. Each appeared as a NOT NULL, a nullable and a unique column, a key without the NN flag, a generated key and an auto-increment column outside the key, whole and a table at a time.
+  - 320 fixture modules: the five `data/*.sql` fixtures in all eight databases and the four name cases, whole and their tables' views together.
+  - 16,725 name modules: 207 names (keywords, globals, `Object.prototype` members, `then`, names no identifier holds) as table and column names. They covered all sixteen pairs of name cases on PostgreSQL, MySQL, SQL Server, Oracle and SQLite, with relations, a self relation and comments of every line terminator.
+  - Every output loaded as CommonJS and as an ES module. TypeORM's `entities` glob loaded the `then2` class in an ES module package.
+  - The databases ran the editor's DDL: PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13, SQL Server 2022 CU27, Oracle 23.26.3 Free (names quoted) and SQLite 3.53.2.
+  - TypeORM initialized every type the database accepted, except those Written as is lists as refused.
+  - The schema log was empty for 282 of 346 on PostgreSQL, 180 of 185 on MySQL, 212 of 215 on MariaDB, 73 of 82 on SQL Server, 48 of 77 on Oracle and 47 of 95 on SQLite. The rest are under Written as is.
+  - A generated key and an auto-increment column outside the key left the log empty for all 22 tables SQL Server accepted, and for PostgreSQL's integer types.
+  - On PostgreSQL, a generated key and an auto-increment column outside the key, each with a row in it, ran for each of 235 types and spellings (the vendor list, its arrays and sized forms). They came out alike, except a uuid, whose key takes the uuid strategy.
+  - Of those 235, TypeORM's log dropped the column only where the type is written as another: `oid`, `xid8`, `cid` and `xid`, and their arrays on every run. `cid` and `xid` are refused as a key.
+  - Of those 235, a sync that failed rolled back, keeping the column and its row.
+  - Of those 235, a character, float, decimal or `money` key converged with a sequence. It saved and read back the value its annotation names: `"1"` for `varchar(10)`, `1` for `real`, `"$1.00"` for `money`.
+  - Into an empty PostgreSQL database, a generated key and an auto-increment column outside the key ran for each of 39 types and spellings: each category, arrays of an integer, a uuid and three others, and an ENUM. Each failed, was created as a scalar serial or without a default, or came out stable, as Written as is says.
+  - In that empty database a uuid key was stable with `uuid_generate_v4()`.
+  - On MySQL a generated key left the log empty for 62 of the 65 types MySQL accepted; `BOOL`, `BOOLEAN` and `SERIAL` were altered once.
+  - On MySQL and MariaDB, the tables TypeORM itself made for an auto-increment column outside the key stayed as made after one synchronize. That held for each integer or boolean type, and on MariaDB for each float type too.
+  - A row read through a repository matched its annotation for each probed type, except `sql_variant`. The probes were 61 types on PostgreSQL, 38 on MySQL, 23 on MariaDB, 41 on SQL Server, 36 on Oracle, 21 on SQLite, and a sized generated key on PostgreSQL and SQL Server.
+  - The vector annotations rest on the drivers' sources, since none of these servers has a vector type.
+  - A column with no type initialized, was created by synchronize and read back on all six databases.
+  - A class named after each `Object.prototype` member saved and loaded its relation on SQLite.
+  - The fixtures on MySQL and MariaDB initialized, keyless tables left out. Their schema log changed no column's type, only defaults and constraint names.
+  - OKKY, GNUBOARD5 and YOUNGCART5 synchronized to an empty log on MariaDB.
+
+### sequelize.ts
+
+- **What it writes.** Sequelize 6 models.
+  - Each class is `class X extends Model<InferAttributes<X>, InferCreationAttributes<X>>`, with a `declare` per column and per relation.
+  - Then `X.init(attributes, { sequelize, tableName, timestamps: false })`.
+  - Then the associations, which run after every `init`.
+  - `DataTypes`, `Model`, `Range` and the other names it uses stay unimported. `sequelize` is the application's instance.
+  - A column's `type` is the `DataTypes` member that makes Sequelize create the column's own type on the document's database. The exception is a member that cannot write the value a read hands over.
+  - A column's `declare` is what the driver hands over on a read under Sequelize.
+  - Both were measured per type against the real databases (Measured, below).
+- **Types.** A type is read by name through the shared classifier (`columnTypes.ts`).
+  - The classifier gives the base name with MySQL's UNSIGNED, ZEROFILL and SIGNED set apart, the numeric arguments, the PostgreSQL array depth, the ENUM and SET members, and whether the type is a serial or a SQL Server rowversion.
+  - The importer keeps UNSIGNED and ZEROFILL in the data type (an owner decision of 2026-10-09).
+  - On PostgreSQL, MySQL, MariaDB and SQL Server, a name the vendor list holds keeps a member only where that member's DDL is the type itself. The tables are `POSTGRES_MEMBER_TYPES`, `MYSQL_MEMBER_TYPES` and `MSSQL_MEMBER_TYPES`.
+  - A kept member keeps its arguments: `STRING(20)`, `DECIMAL(10, 2)`, and `DATE(6)` for MySQL's `DATETIME(6)`.
+  - A MySQL or MariaDB float of a precision and scale is `FLOAT(7, 4)` or `DOUBLE(10, 2)`. `DOUBLE` writes `DOUBLE PRECISION(10,2)`, which MySQL reads as `double(10,2)`. A lone argument there picks `FLOAT` or `DOUBLE` alone.
+  - On MySQL and MariaDB a numeric member takes `.UNSIGNED` and `.ZEROFILL` (`SMALLINT.UNSIGNED`, `DECIMAL(10, 2).UNSIGNED`). ZEROFILL implies UNSIGNED.
+  - Every other listed name goes in as the string the document holds: `type: "TIMESTAMP(3)"`, `"timetz"`, `"BIT(8)"`, `"YEAR"`, `"SET('a','b')"`, `"BINARY(16)"`, `"BLOB(100)"`, `"varchar(max)"`, `"datetime"`, `"money"`. Sequelize writes that string into its DDL unchanged.
+  - The reason: the nearest member would create another type. A TIMESTAMP would become DATETIME, a BINARY(16) a BLOB no key takes, and a money a float. A `time(3)` or `timestamptz(3)` would lose its precision. A MySQL `BLOB(100)` or `TEXT(50)` would become a BLOB or TEXT, where MySQL picks the TINY type by the length.
+  - Members kept beyond the plain ones:
+    - `REAL` for a single-precision float on PostgreSQL and SQL Server.
+    - On PostgreSQL, `RANGE(INTEGER)`, `RANGE(BIGINT)`, `RANGE(DECIMAL)`, `RANGE(DATEONLY)` and `RANGE(DATE)` for `int4range`, `int8range`, `numrange`, `daterange` and `tstzrange`. A `tsrange` is written as is, since `RANGE(DATE)` is a tstzrange.
+    - On PostgreSQL, `ARRAY(member)` for an array of one dimension whose element keeps a member. The exception is an element pg hands over as one string (`tsvector[]`): `ARRAY` cannot write that value back (`values.map is not a function`).
+    - A deeper PostgreSQL array, or one whose element is written as is, is written as is. Sequelize writes a nested element in generic SQL (`datetime[]`).
+    - On MySQL and MariaDB, `GEOMETRY`, `GEOMETRY("POINT")`, `GEOMETRY("LINESTRING")` and `GEOMETRY("POLYGON")`.
+    - On SQL Server, `TEXT` for `nvarchar(max)` and `BOOLEAN` for `bit`.
+    - On SQL Server, `DATE` for `datetime2`, `datetimeoffset` and `time` at any precision. It is the one member through which tedious writes a `Date`, as text with an offset, which these types convert.
+    - On every database, `ENUM(...)` for an ENUM list, each member read as MySQL reads the literal.
+  - An interval outside PostgreSQL is `STRING`. Sequelize has no interval member, and `TIME` makes a type Oracle lacks.
+  - Oracle always takes a member, because Sequelize builds an Oracle insert's RETURNING binds from it. A type string there fails every `create()`.
+  - On Oracle a `VECTOR` is `STRING`, because its arguments are dimensions and format, never a length.
+  - SQLite keeps `TIMESTAMP` as written. Sequelize reads a SQLite value into a Date only where its column is declared DATETIME.
+  - A name the database's vendor list does not hold takes the first that applies, in this order:
+    1. The member of its name (`jsonb`, `inet`, `tsvector`, `uniqueidentifier`).
+    2. What the classifier reads it as (bytes `BLOB`, an interval `STRING`).
+    3. Its list category, with a first argument as its length (MySQL's `datetimeoffset(7)` is `STRING(7)`).
+    4. `STRING` (`mood`).
+- **Annotations.** A `declare` annotates what each driver hands over.
+  - A BIGINT is `number | string` on MySQL and MariaDB, whose drivers send a safe integer as a number. It is `number` on SQLite and `string` elsewhere.
+  - A DECIMAL, numeric or money is `number` on SQL Server and SQLite, `number | string` on MariaDB, and `string` on PostgreSQL, MySQL and Oracle.
+  - JSON is `unknown`.
+  - A date is a `string` and a timestamp a `Date`. A time of day is a `string`, but on SQL Server a `Date` on 1970-01-01.
+  - On PostgreSQL, an interval, `point` and `circle` are an `object`.
+  - On PostgreSQL, a range is `Range<T>` with its bounds' type (`string` for `int8range` and `numrange`).
+  - On PostgreSQL, `xid`, `cid`, `xid8`, `money` and the bit strings are a `string`.
+  - On PostgreSQL, an array of a type pg parses no further is one `string`. The set is `POSTGRES_TEXT_ARRAY_TYPES`: the bit strings, the geometric types but `point`, the multiranges, the reg types but `regproc`, `tsvector`, `tsquery`, `jsonpath`, `macaddr8`, `name`, `tid`, `xid`, `cid`, `xid8`, `txid_snapshot`, `pg_snapshot`, `pg_lsn` and `xml`.
+  - On MySQL and MariaDB, the spatial types are an `object` (GeoJSON).
+  - On MySQL and MariaDB, BIT is a `Buffer`; MariaDB's BIT(1) is a `boolean`.
+  - A SET is one `string` on MySQL and an array of its members on MariaDB.
+  - MariaDB's VECTOR is a `Buffer`.
+  - MariaDB's annotations follow the mariadb 3.x connector. Under 2.x a BIGINT past a safe integer is a `Long` and BIT(1) a `Buffer`.
+  - On SQL Server, the CLR types, `rowversion` and `timestamp` are a `Buffer`, `sql_variant` is `unknown`, and `json` and `vector` are a `string`.
+  - On Oracle, the intervals are an `object` (oracledb's IntervalDS and IntervalYM), and BFILE is an `object` (a Lob).
+  - On Oracle, a VECTOR is the typed array of its format: `Float32Array`, `Float64Array`, `Int8Array`, or `Uint8Array` for BINARY. It is any of the four where the format is `*` or not given, and an `object` (a SparseVector) where it is SPARSE.
+  - An ENUM is the union of its members.
+  - Snowflake's and Databricks' annotations are those of the `DataTypes` member each name takes (the generator's own name table, else the name's vendor list category), not the shared classifier's scalar, which only makes a binary type a `Buffer` there. They were never measured, both being cloud-only.
+  - On Snowflake, `BIGINT`, `NUMBER`, `NUMBER(38,0)` and a DECIMAL are `string`, while `INT`, `SMALLINT`, `TINYINT` and `BYTEINT` are `number`. Snowflake stores all of them as NUMBER(38,0), and Sequelize 6's snowflake dialect sets no `fetchAsString`. So snowflake-sdk most likely hands each over as a JS number (inferred from its documentation and Sequelize's source).
+- **Names.** Names follow the name cases.
+  - A character outside `$`, ASCII letters, digits and `_` becomes `_`. A leading digit takes `x` before it.
+  - A class name gets `_` after it (`RESERVED_CLASS_NAMES`) in three cases:
+    - TypeScript refuses it for a class, or reads it as a type operator in the class's own `InferAttributes`: `any`, `bigint`, `boolean`, `never`, `number`, `object`, `string`, `symbol`, `undefined`, `unknown`, `Object`, `infer`, `keyof`, `readonly`, `unique`.
+    - A CommonJS module binds it already: `require`, `exports`, `module`, `__filename`, `__dirname`. TypeScript's CommonJS emit refuses the first two with TS2441, which `--noEmit` never reports. Node refuses all five with a SyntaxError.
+    - It is `__proto__`, which would replace the prototype of Sequelize's model registry (`sequelize.models`). After that, a class named `prototype` fails at `init`.
+  - A property keeps such a name (`declare number: number`, `declare require: number`).
+  - Class names are numbered against each other and against the names the output uses. Those are `DataTypes`, `Model`, `Range`, `Sequelize`, `sequelize`, the `Infer…`, `CreationOptional` and `NonAttribute` helpers, `Buffer`, `Date`, and the typed arrays an Oracle vector names (`Float32Array`, `Float64Array`, `Int8Array`, `Uint8Array`).
+  - A property named after a reserved word gets `_` (`class_`, `constructor_`).
+  - A property is numbered (`_model2`, `prototype2`) and keeps `field` when its name is one of these (`MODEL_MEMBER_NAMES`): a member of `Model` or its `Hooks`, a field Sequelize sets on an instance or a model's prototype, a name every object inherits, or `prototype`. Examples: `_model`, `_options`, `_hasCustomGetters`, `_hasCustomSetters`, `dataValues`, `rawAttributes`, `toString`, `__proto__`, `prototype`.
+  - `prototype` is a key lodash's `baseSet` drops from the copies Sequelize makes. A property keeping it would make sync leave the column out and every update leave it unchanged.
+  - A property keeping `_hasCustomGetters` or `_hasCustomSetters` would fail the module's load once a relationship refreshes the model. `refreshAttributes` assigns that prototype field through the attribute's setter.
+  - Relation properties are numbered in the same set, so an alias never reads as a prototype key.
+  - An alias's accessors are a verb and the alias with its first letter upper case. The verbs are `get`, `set` and `create` for `belongsTo` and `hasOne`, and also `add`, `count`, `has` and `remove` for `hasMany`.
+  - An alias is numbered too in three cases:
+    - One of its accessors would hide a `Model` method or an attribute: `dataValue2` beside `getDataValue`, `attributes2` beside `setAttributes`, `team2` beside an attribute `getTeam`.
+    - The alias or one of its accessors is an accessor of an alias named before it on the model. Sequelize keeps the first of two accessors of one name, and an included alias hides an accessor of its name. Examples: `hasRoleList2` beside `roleList`, `team2` beside `Team` under the `none` column case.
+    - It equals its class name ignoring case. Sequelize gives the model's own table that alias in a query, and an include of the alias repeats it. Examples: `employee2` for the inverse end of a self-referencing one-to-one on `Employee`, `userList2` on a class `UserList`.
+  - Each alias's accessors are taken once it is named, so the result follows the relationships' order (`roleList` and `hasRoleList2`, or `hasRoleList` and `roleList2`).
+- **Keys and relations.** A primary key without the NN flag is NOT NULL (an owner decision of 2026-10-09).
+  - A composite foreign key gets no association.
+  - A column with the AI flag is `autoIncrement: true` and `CreationOptional<T>`.
+  - A serial without the AI flag is the same. The serials are PostgreSQL's `serial`, `serial2` to `serial8`, `smallserial` and `bigserial`, and MySQL's and MariaDB's `SERIAL`.
+  - A serial is NOT NULL on PostgreSQL whatever the flags say.
+  - On MySQL and MariaDB a serial outside the key is `unique: true`. That is the key AUTO_INCREMENT needs, which SERIAL implies.
+  - Sequelize allows one auto-increment attribute in a model. A serial past the first, or beside a column with the AI flag, takes `defaultValue: () => Sequelize.literal("DEFAULT")` instead.
+  - SQL Server's `rowversion` and `timestamp` take the same default.
+  - The reasons for that default: Sequelize's NOT NULL check refuses an insert that leaves such a column out. SQL Server takes no value for a rowversion but DEFAULT. A function default never reaches the DDL sync writes.
+  - Both kinds are `CreationOptional<T>`. A document default on them is dropped, as on an auto-increment column.
+- **Strings and defaults.** Any other column with a default (beyond the generated columns above) is `CreationOptional<T>`. A nullable column adds `| null` instead.
+  - Strings Sequelize hands the database keep each CR and LF as `\r` and `\n`, because the database compares them. These are a type written as is, an ENUM member, a table, column or index name, a foreign key, an alias and a default.
+  - A comment writes CR, LF and CRLF as one `\n`. It sits inside a string literal, where TypeScript reads no directive (Rules every generator follows, above).
+- **Written as is, though Sequelize cannot use it.**
+  - These bare character types are `STRING`, which sync creates as `varchar(255)`, `nvarchar(255)` on SQL Server and `NVARCHAR2(255)` on Oracle:
+    - A bare `char`, `character` or `bpchar`.
+    - Outside SQL Server, a bare `nchar`, `national char` or `national character` (one character).
+    - A bare PostgreSQL `varchar`, `character varying` or `char varying` (no limit).
+    - A bare SQL Server `nvarchar`, `national char varying` or `national character varying` (one character).
+  - SQL Server's bare `nchar`, `national char`, `national character`, `varchar`, `char varying` and `character varying` are written as is (`"nchar"`), since no member writes them.
+  - MySQL's and MariaDB's display widths:
+    - `TINYINT(1)` syncs as `tinyint`.
+    - `INT(11) ZEROFILL` syncs as `int(10) unsigned zerofill`, which pads to ten digits.
+    - On MariaDB an `INT(10)` syncs as `int(11)`.
+  - A value read as an object that Sequelize writes back as JSON text the database refuses:
+    - PostgreSQL's `point`, `circle` and `tsrange`, arrays of `point` and `tsrange`, and a range array of two or more dimensions (`invalid input syntax for type point`, `malformed range literal`).
+    - MySQL's `MULTIPOINT`, `MULTILINESTRING`, `MULTIPOLYGON` and `GEOMETRYCOLLECTION`. A write takes their text only past the declared type.
+  - On SQL Server, `datetime` and `smalldatetime` are written as is and read as a `Date`. No Sequelize 6 member writes a `Date` to them: tedious refuses one through a type written as is (`Invalid string`), and `DataTypes.DATE`'s text carries an offset these types refuse (`Conversion failed`). So they take the value's text, which the declared `Date` refuses at compile time (TS2322).
+  - On SQL Server, the `DATE` member creates a `datetime2`, a `time` or a `datetimeoffset(n)` as `datetimeoffset(7)` at sync.
+  - On SQL Server, `numeric` syncs as its synonym `decimal`.
+  - On SQL Server, a value given for a rowversion is refused (`Cannot insert an explicit value into a timestamp column`), though `CreationOptional<Buffer>` allows one.
+  - A serial past the first in a table syncs without its sequence (`bigint NOT NULL`).
+  - On MySQL, a SERIAL without the NN flag: the editor's DDL writes `SERIAL NULL`, a column MySQL leaves NULL on every insert, and sync creates it NOT NULL. MariaDB refuses `SERIAL NULL`.
+  - A table with the AI flag on two columns: Sequelize refuses it at `init` (`Only one autoincrement field allowed`).
+  - On Oracle, an interval or a vector is read as an object that `STRING` refuses on a write. A write takes its text, again only past the declared type (TS2322).
+  - On Oracle, the members create other types at sync: `VARCHAR2` as `NVARCHAR2`, `DATE` and `TIMESTAMP` as `TIMESTAMP WITH LOCAL TIME ZONE`, `FLOAT` and `REAL` as `BINARY_DOUBLE`, `BOOLEAN` as `CHAR(1)`, `RAW`, `LONG RAW`, `BFILE` and `JSON` as `BLOB`, a bare `DECIMAL` as a NUMBER of no scale, and an interval or vector as `NVARCHAR2(255)`.
+  - On Oracle, a native `BOOLEAN` fails every write (`NJS-016`).
+  - On Oracle, a `RAW` or `LONG RAW` fails every write through `BLOB` (`ORA-00932`).
+  - On Oracle, `LONG` and `XMLType` fail every write (`ORA-22816`, the RETURNING clause).
+  - On Oracle, a native `JSON` column fails every read through `DataTypes.JSON`: oracledb hands over an object that Sequelize parses again.
+  - A column named `__proto__`, though its property compiles: Sequelize leaves it out of sync, inserts and updates, and pg cannot hand it over in a row object.
+  - A keyless table, to which sync adds an `id`.
+  - On SQLite, a type name its list does not hold is stored by its affinity: `money` reads back as a number, `timestamp with time zone` as a string.
+  - On MariaDB under `sql_mode=ORACLE`, a `DATE` is read as a `Date`, since that mode makes it a DATETIME.
+- **Measured** on 2026-10-10.
+  - Libraries: Sequelize 6.37.8, pg 8.16.3, mysql2 3.24.5, mariadb 3.5.4, tedious 20.3.3, sqlite3 5.1.7 (SQLite 3.44.2) and oracledb 6.10.0.
+  - TypeScript 5.9.3, 6.0.3 and 7.0.2 with `--strict` (`nodenext`, no emit) compiled 25,859 files per version with no error.
+  - Those files held 3,387 type tables across the eight databases: every name of the eight vendor lists and other spellings, PostgreSQL's every listed name as `[]`, `[][]` and ` ARRAY` too. Each type sat in one table as a key without the NN flag, NOT NULL, nullable, unique, with a default and with the AI flag.
+  - They held the five `data/*.sql` fixtures.
+  - They held 156 names as tables and columns under the 16 pairs of name cases with relationships, and alias documents under the same 16 pairs. The names were keywords, TypeScript's type names, `Model`, `Hooks` and `Object.prototype` members, the output's own names, what a CommonJS module binds, the typed arrays, a name opening on a digit, Hangul, an empty name, CR and LF.
+  - They held comments with every line terminator, 24 defaults, empty tables, an empty document, repeated names and a composite foreign key.
+  - Each case compiled as the whole text and one table at a time, and every table's text was found in the whole text.
+  - The 128 whole names documents of 113 of those names also compiled with emit to CommonJS, the only mode that reports TS2441, with no error on all three versions.
+  - Node loaded each of the 16 SQLite names documents, running every `init` and association. Of their 45,200 association accessors, none was missing or hid a `Model` method.
+  - Against PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13 and SQL Server 2022 CU27, the editor's DDL created each type's table. A value was inserted, read back through the generated model and written back.
+  - On those four, every value's JS type matched its annotation: 140 on PostgreSQL, 127 on MySQL, 132 on MariaDB, 72 on SQL Server.
+  - On those four, the model's sync created the editor's type but for the shapes under Written as is (6, 8, 8 and 14 types).
+  - On SQL Server, a create and an update of a `Date` passed for every date and time type but `datetime` and `smalldatetime`.
+  - On SQL Server, a create, a bulkCreate, a save and an update on a NOT NULL rowversion passed.
+  - On PostgreSQL, MySQL and MariaDB, a create without the serial passed, and sync created the editor's serial.
+  - Oracle AI Database 26ai Free (23.26.3) (73 types), SQLite (all 31 names its list holds), MariaDB 11.8.9 (VECTOR and `sql_mode=ORACLE`) and SQL Server 2025 CU9 (`json`, `vector`) passed the same read check.
+  - On MySQL and MariaDB, the five fixtures synced with the editor's column types, but for display widths and the keyless tables' `id`.
+  - PostgreSQL 17.11 read, wrote back and synced `tsvector[]` and the `dec` spellings (`numeric`, `numeric(5,1)`, `numeric[]`).
+  - On SQLite 3.44.2 and PostgreSQL 17.11, every include of a self-referencing one-to-one and of `userList2` passed.
+  - On SQLite 3.44.2 and PostgreSQL 17.11, `hasRoleList` stayed callable after including `hasRoleList2`.
+  - On SQLite 3.44.2 and PostgreSQL 17.11, `prototype2` wrote its `prototype` column.
+  - On PostgreSQL, `getTeam()` and `getTeam2()`, the accessors of a child of tables `Team` and `team`, each read its own parent.
+  - The 16 SQLite names documents loaded, synced and included every association, with no alias equal to its class name and no accessor shared.
+  - Their remaining failures were the empty names, a table named `$x` (a SQLite bind parameter) and the `__proto__` column.
+
+### drizzle.ts
+
+- **What it writes.** `drizzle.ts` maps PostgreSQL, MySQL and MariaDB, and SQLite to their cores. It borrows `pg-core` for SQL Server, Oracle, Snowflake and Databricks. drizzle-kit then writes their DDL as PostgreSQL's.
+- **Owner decisions of 2026-10-09.**
+  - PostgreSQL's `bytea`, bit strings, `money`, `xml`, `tsvector`, range types and `box` are declared as their own types rather than approximated.
+  - MySQL's and MariaDB's BLOBs, `BIT`, `SET` and spatial types are declared as their own types rather than approximated.
+  - A PostgreSQL array is an array.
+  - SQL Server's `bit` is `boolean()`.
+  - PostgreSQL's `pg_lsn` is `varchar()`.
+  - Every `bigint` and `bigserial` stays `mode: "number"`, an unsigned one too. A JS bigint would set one integer type apart, and `JSON.stringify` refuses it.
+  - A primary key without the NN flag is NOT NULL, here through `.primaryKey()` (A primary key column is NOT NULL, above).
+  - The importer keeps MySQL's sign words UNSIGNED and ZEROFILL in the data type. It reads SIGNED and drops it (The SQL importer keeps UNSIGNED and ZEROFILL, above).
+- **Types.**
+  - A type is read by name, in this order:
+    1. The shared classifier (`columnTypes.ts`). It gives the base name, with MySQL's UNSIGNED, ZEROFILL and SIGNED set apart on MySQL and MariaDB. It also gives the PostgreSQL array depth, the ENUM and SET members, the integer width, the scalar and the shared name sets. The sets are `BINARY_TYPES`, `UUID_TYPES`, `JSON_TYPES`, `MONEY_TYPES`, the zoned time and timestamp sets and the PostgreSQL bit strings.
+    2. The names one database reads apart from the rest of its core: PostgreSQL's declared types; MariaDB's `SERIAL`, `UUID`, `INET4`, `INET6` and `CLOB`.
+    3. The generator's table for its core.
+    4. The shared vendor tables' primitive.
+  - On the other databases the generator drops UNSIGNED, ZEROFILL and SIGNED itself. So on PostgreSQL `INT UNSIGNED` is `integer()` and `SMALLINT(5) ZEROFILL` is `smallint()`.
+  - A type's arguments are read only where it has one argument list and each number is a safe integer. A second argument list belongs to a later word, and a number past 2^53 would print rounded or as Infinity. So Oracle's `INTERVAL DAY(3) TO SECOND(2)` passes no precision, and a length past 2^53 passes none.
+  - An INTERVAL's number passes as `precision` only after `SECOND` or after the `INTERVAL` keyword itself. That is the one place PostgreSQL reads a seconds precision. `INTERVAL DAY TO SECOND(3)` gives `interval({ fields: "day to second", precision: 3 })`, and `INTERVAL(3)` gives `interval({ precision: 3 })`.
+  - After a leading field the number is that field's digits, as in Oracle's `INTERVAL YEAR(2) TO MONTH` and `INTERVAL DAY(3) TO SECOND`. It is dropped: `interval({ fields: "year to month" })`. Passed on, drizzle-kit would write `interval year to month(2)`, which PostgreSQL refuses, or a seconds precision the document never gave.
+  - A declared type is a `customType` written once after the imports, sorted by name. A one-table view declares only the ones its columns use.
+  - On pg-core, `bytea` is declared for every name in `BINARY_TYPES`, under the borrowed pg-core too.
+  - On PostgreSQL alone, `bit` is declared. A bare one is `bit(1)`, as PostgreSQL stores it.
+  - On PostgreSQL alone, `varbit` is declared. Its declaration names no global, since a table const may be `undefined`.
+  - On PostgreSQL alone, `money`, `xml`, `tsvector`, `tsquery`, `box`, `lseg`, `path`, `polygon` and the range and multirange types are declared, each under its own name with `data: string`.
+  - On MySQL and MariaDB, `tinyblob`, `blob`, `mediumblob` and `longblob` are declared. `BLOB(n)` is the smallest that holds n bytes. `LONG VARBINARY` is a `mediumblob`, and a VARBINARY with no length a `blob`.
+  - On MySQL and MariaDB, `bit` is declared with `data: Buffer`.
+  - On MySQL and MariaDB, `set` is declared with its `values`. Its declaration doubles a member's backslash and quote.
+  - On MySQL and MariaDB, the spatial types are declared with `data: unknown`. mysql2 parses them into points it writes no value back from.
+  - On MariaDB alone, `uuid`, `inet4` and `inet6` are declared with `data: string`, which mysql2 reads and writes.
+  - A PostgreSQL array chains `.array()` once per dimension: `integer().array()`, an enum's const too. It takes a default only through `sql`, and never an identity.
+  - Integers keep their width: `smallint`, `integer`, `bigint`, and MySQL's `tinyint` to `bigint`.
+  - The borrowed pg-core follows what the classifier says the database stores. Oracle's `INT`, `INTEGER` and `SMALLINT` and Snowflake's integer names are `bigint`. Oracle's `REAL` and Snowflake's `REAL` and `FLOAT4` are `doublePrecision()`. Oracle's `DATE`, which holds a time, is `timestamp()`. Databricks' `TIMESTAMP`, an instant like `TIMESTAMP_LTZ`, is `timestamp({ withTimezone: true })`.
+  - Under the borrowed pg-core, `money` and `xml` stay `numeric()` and `text()`.
+  - Under the borrowed pg-core, SQL Server's `rowversion` and `timestamp` stay `varchar()`. They are 8-byte binaries outside `BINARY_TYPES`, which the shared tables file as strings.
+  - On MySQL and MariaDB a character set, a collation, `BINARY`, `ASCII` or `UNICODE` written after a type is read past, so the type keeps its builder. Both databases read these words as the column's, not the type's. `CHAR(36) BINARY` gives `char({ length: 36 })`, `CHAR(2) CHARACTER SET latin1 COLLATE latin1_bin` gives `char({ length: 2 })`, and `TINYTEXT BINARY` gives `tinytext()`.
+  - MariaDB's `CLOB` is `longtext()`. A `NUMBER` the classifier reads as a double (one with no numeric precision) is `double()`. Both follow what MariaDB's Oracle mode (`sql_mode=ORACLE`) stores, the one mode that takes either name. `NUMBER(10,2)` stays `decimal({ precision: 10, scale: 2 })`. MySQL refuses both names and keeps `text()` and `decimal()`.
+  - On MySQL and MariaDB, UNSIGNED or ZEROFILL gives `unsigned: true` to an integer, a DECIMAL, a FLOAT or a DOUBLE.
+  - MySQL's SERIAL is `serial()`, unsigned by itself.
+  - MariaDB refuses the `AUTO_INCREMENT` drizzle-kit writes after `serial`. So MariaDB's SERIAL is written as the `BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE` it stands for: `bigint({ mode: "number", unsigned: true }).autoincrement()`. Then comes `.primaryKey()` on a single key and `.notNull().unique()` anywhere else, with no default.
+  - MySQL's `FLOAT(p)` is `float()` up to p = 24 and `double()` past it, as MySQL stores it. `FLOAT(p,s)` and `DOUBLE(p,s)` keep both arguments; `DOUBLE(p)` keeps neither.
+  - MySQL's and MariaDB's `LONG` and `LONG VARCHAR` spellings are `mediumtext()`, as they store them.
+  - On MySQL and MariaDB a zero length passes as `length: 0`: `char({ length: 0 })`, `varbinary({ length: 0 })`. pg-core and SQLite drop it, since their databases refuse it.
+  - A zoned name in any spelling (`TIMESTAMP_TZ`, `TIMESTAMPLTZ`, `datetimeoffset`) is `timestamp({ withTimezone: true })`. A precision from 0 to 6 passes as `precision` on pg-core and as `fsp` on mysql-core.
+  - MySQL's VARCHAR with no length is `text()`.
+  - An INTERVAL is `text()` on MySQL and SQLite.
+- **ENUM.**
+  - On PostgreSQL and the borrowed pg-core, an ENUM is a `pgEnum`. Its const is named from `<table>_<column>_enum` in the table name case.
+  - The `pgEnum` type is `<table>_<column>`, numbered past every other enum type and every table name of the document. PostgreSQL gives each table a row type of its name. So beside a table `user_role` the type `user_role` becomes `user_role2`.
+  - On MySQL and MariaDB an ENUM is a `mysqlEnum`, always naming the column.
+  - On SQLite an ENUM is `text({ enum: [...] })`.
+  - Each member is read as MySQL reads a string literal.
+  - On MySQL and MariaDB a member is written with each backslash doubled: `ENUM('a\\')` gives `mysqlEnum("e", ["a\\\\"])`. drizzle-kit writes a member into its DDL with only its quotes doubled. A single backslash would escape the closing quote (MySQL error 1064) or turn `\b` into a backspace.
+  - drizzle-kit's DDL then stores `a\`, as the editor's does. The member's literal type says `a\\`, as a quoted MySQL default already does. So a value read back (`a\`) lies outside the union. Inserting the typed `a\\` fails with `Data truncated for column` under strict mode.
+  - drizzle-kit pull writes the stored `a\`. drizzle-kit's own DDL from that is refused.
+- **Names.**
+  - A table const follows the table name case.
+  - A character outside `$`, ASCII letters, digits and `_` becomes `_`.
+  - A name that cannot open an identifier takes `x` before it: `1st` gives `x1st`.
+  - A reserved word takes `_` after it: `class_`.
+  - A table const is numbered past every name the module holds. Those are the helpers and builders it can import, `Buffer`, `Date`, `table`, `one`, `many`, its core's `Any…Column` and `…TableExtraConfigValue` type names, the custom types the document declares, earlier table and enum consts, and each `<const>Relations`.
+  - A table `blob` beside a `blob` declaration is `blob2`. A MariaDB table `uuid` beside a `uuid` declaration is `uuid2`.
+  - Any other name is kept, globals such as `undefined`, `NaN` or `Map` included.
+  - A column property follows the column name case through the same repair. It is numbered within its table past `$inferInsert`, `$inferSelect`, `_`, `__proto__`, `enableRLS` and `getSQL`.
+  - A relation property is numbered past `__proto__`.
+  - An object literal reads `__proto__` as its prototype, which would drop the column or relation. So the column is written `__proto__2: integer("__proto__")`.
+  - The builder takes the column's own name as its first argument wherever the two differ.
+- **Keys and relations.** `relationName` is written only where one table pair has several relationships or a relationship returns to its own table.
+- **Strings and defaults.**
+  - A default that is an ENUM member passes as a string: `.default("a\\\\")` on MySQL.
+  - A number literal passes as a number to a number builder and as a string to a decimal.
+  - A quoted literal passes unquoted to a string builder.
+  - `true`, `false`, `1` or `0` pass as `true` or `false` to a boolean. PostgreSQL refuses an integer as a boolean's default, as in SQL Server's `bit DEFAULT 1` under the borrowed pg-core.
+  - Any other default goes through `sql`.
+  - Apart from a MySQL ENUM member, a string the output writes holds the document's value. Its backslash and quote are escaped. Each line terminator is written as its own escape: `\n`, `\r`, `\u2028`, `\u2029`.
+  - A comment is one `//` line per line of the document's comment. A line TypeScript would read as a directive takes a backslash before its at sign: `// \@ts-expect-error` (No TypeScript directive in a comment, above).
+- **Written as is.** The generator writes each case below so, though drizzle-kit alters the column or refuses the DDL.
+  - MySQL and MariaDB: ZEROFILL as plain `unsigned`, since drizzle has no option for ZEROFILL.
+  - MySQL and MariaDB: a display width is left out, so `INT(11)` and `TINYINT(1)` give `int()` and `tinyint()`. MySQL 8.4 keeps the width on `tinyint(1)` and ZEROFILL columns, and MariaDB on every integer.
+  - MySQL and MariaDB: `TEXT(n)` as `text()`. Both databases pick `tinytext` to `longtext` by n characters of the column's character set. Under utf8mb4 `TEXT(63)` is a `tinytext` and `TEXT(64)` a `text`; under latin1 `TEXT(255)` is a `tinytext`.
+  - MySQL and MariaDB: `BLOB(0)` as `blob()`, MariaDB's choice. MySQL stores `tinyblob`.
+  - MariaDB: `YEAR(2)` as `year()`, which MariaDB stores as `year(4)`. mysql-core's `year` takes no width.
+  - MySQL and MariaDB: a SERIAL without the NN flag as NOT NULL, as SERIAL stands for. The editor's DDL writes `NULL` after it. MySQL takes that as a nullable column, and MariaDB refuses it.
+  - MySQL and MariaDB: a key on a zero-length column, written NOT NULL. Neither database indexes it, though MariaDB keys the editor's `CHAR(0) NULL`.
+  - MySQL and MariaDB: an ENUM member holding a comma or an opening parenthesis. drizzle-kit's snapshot splits the type there. `ENUM('x,y','z')` comes out `enum('','','z')`, which MySQL refuses. `ENUM('x(y','z')` comes out `enum('''')`.
+  - MySQL and MariaDB: a composite key or foreign key name that drizzle-kit builds from table and column names. In `data/Magento2-sales.sql` such a name runs past MySQL's 64 characters.
+  - MySQL and MariaDB: the character set and collation written after a type. No mysql-core builder takes them, so drizzle-kit's column takes the database's default. `CHAR(2) CHARACTER SET latin1` comes out `utf8mb4`, and `CHAR(36) BINARY` comes out without its `utf8mb4_bin`.
+  - MySQL and MariaDB: `BIT(0)` as `bit({ length: 0 })`. MySQL refuses it (error 3013, Invalid size), as it refuses the editor's `BIT(0)`. MariaDB stores it as `bit(1)`, as it stores the editor's.
+  - PostgreSQL: `"char"`, `name`, `tid`, `jsonpath`, `pg_snapshot`, `txid_snapshot`, the `reg*` types and `circle` as `varchar()`. node-postgres parses `circle` into an object.
+  - PostgreSQL: `oid`, `xid`, `cid` and `xid8` as `bigint`.
+  - PostgreSQL: a bare `bpchar` as `char()`, which PostgreSQL stores as `character(1)`.
+  - Borrowed pg-core: a length past PostgreSQL's 10,485,760, such as Snowflake's `VARCHAR(16777216)`.
+  - pg-core and SQLite: an index name repeated across tables, such as `data/sakila.sql`'s `idx_fk_film_id`. Both databases hold index names schema-wide. So drizzle-kit refuses the pg-core snapshot, and SQLite refuses the second `CREATE INDEX`. The editor's DDL repeats the name too.
+  - MySQL, MariaDB and SQLite: a table named after an `Object.prototype` member (`constructor`, `toString`, `valueOf`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`, `__defineGetter__`, `__lookupSetter__`), whatever the name case. drizzle-kit's snapshot leaves it out with no error, so its migration creates no such table.
+  - MySQL, MariaDB and SQLite: an index of such a name. drizzle-kit throws at it (`Cannot read properties of undefined`). pg-core keeps both the table and the index. A column of such a name is kept on every core.
+  - Every core: an empty table as `{}`. MySQL, MariaDB and SQLite refuse its `CREATE TABLE x ()`.
+  - Every core: a default as the document gives it, a zero date included.
+  - Every core: a column named `__proto__`, and on MySQL, MariaDB and SQLite a table of that name. drizzle-kit's snapshot throws a ZodError at it. drizzle-orm still reads and writes the column and its relation.
+  - Every core: a relation that takes a column's property name. A relation is named after the other table (`<table>List` for a many side) and numbered only past `__proto__`. The object literal keeps both entries. So `post` with a column `author` referencing table `author` gets `author: integer()` and `author: one(author, …)`. TypeScript types `post.author` as the column's number. drizzle-orm's `findMany({ with: { author: true } })` returns the author row in its place.
+- **Measured on 2026-10-10.** The runs used drizzle-orm 0.45.4 and drizzle-kit 0.31.11.
+  - Corpus: every name of the eight vendor lists and 315 more spellings. Each ran as a NOT NULL and a nullable column, a key without the NN flag and an auto-increment key.
+  - Corpus: 24 ENUM and 6 SET member lists.
+  - Corpus: 130 awkward names under the four name cases with relationships and indexes, again with `__proto__` left out.
+  - Corpus: comments with CR, LF, CRLF, U+2028 and U+2029, and lines TypeScript reads as directives after each kind of whitespace.
+  - Corpus: defaults.
+  - Corpus: empty tables.
+  - Corpus: the five `data/*.sql` fixtures.
+  - Corpus: per database, an enum beside a table of its type's name, SERIAL keys and columns, zero lengths and a `__proto__` column.
+  - Corpus size: for the eight databases, 208 whole texts and 15,519 one-table views.
+  - TypeScript: under TypeScript 5.9.3, 6.0.3 and 7.0.2 strict, the whole texts compiled with no error.
+  - TypeScript: the one-table views' only errors name a sibling table const the view does not declare. A sibling named like a global resolves to that global, such as `File`, `Blob`, `Array` or a PascalCase table `set`'s `Set`.
+  - DDL: drizzle-kit's DDL ran beside the editor's on PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13 and SQLite 3.53.0 (`node:sqlite`, Node 24.16.0). MariaDB also ran `CLOB` and `NUMBER` under `sql_mode=ORACLE`.
+  - DDL: drizzle-kit's DDL created every table the editor's DDL created, except in the three cases below.
+  - DDL: on MySQL and MariaDB it did not create the ENUM with a comma, Magento's key name or a UNIQUE on a zero-length column. The editor's DDL adds that UNIQUE in a statement of its own, which fails too.
+  - DDL: on MariaDB it did not create a key on a zero-length column.
+  - DDL: on MySQL, MariaDB and SQLite it did not create the tables named after `Object.prototype` members, besides the `__proto__` column and table.
+  - DDL: the names corpus was compared through drizzle-kit's statements. Its editor DDL, under no bracket, stops at reserved words.
+  - DDL: its column types differed from the editor's only in four places.
+    - The names under Written as is, `pg_lsn` (Owner decisions, above) and a fractional seconds precision past 6. The generator drops such a precision as outside the 0 to 6 drizzle takes, and PostgreSQL caps it at 6. These made 29 names on PostgreSQL, `"char"`, `pg_lsn`, `TIME(7)`, `TIME(9)` and `TIMESTAMP(9)` among them; 15 on MySQL; 20 on MariaDB.
+    - The ENUM with a parenthesis.
+    - The fixtures' display widths.
+    - Character set and collation, where the type named one.
+  - DDL: its NOT NULL and defaults differed nowhere but at a SERIAL without the NN flag on MySQL, and on SQLite at `true` where the editor writes `1`. SQLite keeps a default's text; both store 1.
+  - drizzle-orm: it read and wrote a `__proto__2` column and its relation on PostgreSQL through node-postgres 8.23.1.
+  - drizzle-orm: through mysql2 3.24.5 it read and wrote MariaDB's `uuid`, `inet6` and `inet4` as strings, and a spelt-out SERIAL.
+  - drizzle-orm: through mysql2, on MySQL 8.4 and MariaDB 11.4, a member written `"a\\\\"` (the value `a\\`) stored and read back `a\`. The typed value was refused on insert.
+  - drizzle-orm: through node-postgres it returned a post's `author` column as 7 from `findMany()`. It returned the author row from `findMany({ with: { author: true } })`, which TypeScript 5.9.3 still typed as a number.
+
+### graphql.ts
+
+- **What it writes.** `graphql.ts` writes one `type` per table, sorted by name.
+  - Before the types it writes a `scalar` line for each custom scalar a field uses. Each is declared once, and only when used (an owner decision of 2026-10-09).
+  - The custom scalars are `BigInt`, `Byte`, `Date`, `DateTime`, `Decimal` and `JSON`, the names graphql-scalars gives them.
+  - graphql-scalars has no `Decimal`. So a server serves one through the default identity serializer unless it writes its own.
+  - The one-table view (`formatTable`) is that type's block of the whole text. It comes after the scalars its own fields use.
+  - A table with no field is a braceless `type X`. It parses and builds. A server refuses an object type with no field until the table gets one. The importer skips it.
+- **Types.** They come from the shared classifier (`columnTypes.ts`), an owner decision of 2026-10-09. It reads a type by name before the shared vendor tables.
+  - A signed integer of up to 32 bits, an unsigned one of up to 16 bits, and MySQL's `MEDIUMINT UNSIGNED` are `Int`, since GraphQL's `Int` is 32 bits.
+  - `BIGINT`, `INT UNSIGNED` and wider, MySQL's `SERIAL`, and PostgreSQL's `oid`, `xid`, `cid` and `xid8` are `BigInt`.
+  - Every integer type of SQLite is `BigInt`. So is every Oracle and Snowflake integer type but a `NUMBER` of stated precision. Those store any integer in eight bytes or a NUMBER(38).
+  - A MySQL or MariaDB `BIT(2)` to `BIT(64)` is `BigInt` too. The classifier reads it as an unsigned 64-bit integer whatever its width.
+  - An Oracle or Snowflake `NUMBER` with no fraction is `Int` up to 9 digits and `BigInt` past them. A negative scale counts the zeros it adds: `NUMBER(7,-2)` is `Int`, `NUMBER(8,-2)` is `BigInt`.
+  - Oracle's bare `NUMBER` and `NUMBER(*)` keep any scale, so they are `Decimal`.
+  - Snowflake's bare `NUMBER` is a `NUMBER(38,0)`, so it is `BigInt`.
+  - Snowflake's bare `DECIMAL`, `NUMERIC` and `DEC` are the same type in Snowflake. They follow the vendor table and are `Decimal`.
+  - `numeric`, `decimal`, `dec`, MySQL's and MariaDB's `fixed`, SQL Server's `money` and `smallmoney`, and a NUMBER with a scale above 0 are `Decimal`.
+  - PostgreSQL's `money` is a `String`, since node-postgres hands it over as the session's currency text (`$1,234.56`).
+  - Floats are `Float`.
+  - A boolean is `Boolean`.
+  - A MySQL or MariaDB `BIT` or `BIT(1)` stays an `Int`, as `TINYINT(1)` does. mysql2 hands it over as a Buffer, which `Boolean` refuses as `Int` does. The mariadb connector's `true` is served by `Int` as 1.
+  - Binary types and SQL Server's `rowversion` and `timestamp` are `Byte`.
+  - `json` and `jsonb` on every database are `JSON`. So are the Snowflake and Databricks `VARIANT`, `OBJECT`, `ARRAY`, `MAP` and `STRUCT`.
+  - `date` is `Date`.
+  - Every timestamp and datetime type is `DateTime`, Oracle's `DATE` and SQL Server's `datetimeoffset` among them.
+  - A time of day, `timetz` and an interval stay `String` (an owner decision of 2026-10-09). graphql-scalars' `Time` refuses the `12:34:56` the drivers hand over. Its `Duration` refuses the object node-postgres builds.
+  - A PostgreSQL bit string, `pg_lsn`, `uuid`, `uniqueidentifier`, the spatial types and any type no rule names stay `String` too.
+  - A PostgreSQL array is a list per dimension with nullable items. `int[][]` gives `[[Int]]`, and `[[Int]]!` when NOT NULL.
+  - That holds only where node-postgres parses the array. `PARSED_ARRAY_TYPES` lists those element types under every name PostgreSQL accepts for each, `dec` among them. An interval array of any fields is parsed too.
+  - Any other array is a `String`, the text node-postgres hands over. A bit string's, an `xid`'s, an enum's and a range's array are such arrays, but not `numrange[]`.
+  - `numrange[]` and `money[]` are `[String]`, the lists of text node-postgres parses them into.
+- **Names.** Each name is repaired into a GraphQL Name.
+  - Every character a GraphQL Name cannot hold becomes `_`.
+  - A leading digit gets `_` before it. An empty name is `_`.
+  - A leading run of underscores becomes one, since GraphQL reserves `__` for introspection. `__typename` gives `_typename`.
+  - Where that leaves no ASCII letter or digit (a Hangul name), the description starts with the original name.
+  - A type name is numbered where a built-in scalar (`String`, `Int`, `Float`, `Boolean`, `ID`) already takes it. It is also numbered where a custom scalar the output declares takes it, or where another table took it after the name cases fold them together. Examples: `String2`, `Date2` where the document uses `Date`, `User2`.
+  - A table named after a custom scalar the output does not declare keeps its name.
+  - A table whose type name is `Query`, `Mutation` or `Subscription` keeps it. So it becomes the schema's root operation type.
+  - A server adds its own root fields to it with `extend type Query`. A second `type Query` fails (`There can be only one type named "Query".`).
+  - The importer leaves such a root table out. It skips root types, `PageInfo`, a name ending in `Connection` or `Edge`, and Apollo Federation's and Hasura's helper names (`isNoiseTypeName` in `schema-graphql-parser/parser.ts`).
+  - A column whose field name an earlier column of the table took is dropped.
+- **Keys and relations.** Key columns are `ID`, and foreign keys become relation fields.
+  - A primary key or a foreign key column is `ID`.
+  - A primary key is `ID!` with or without the NN flag (an owner decision of 2026-10-09). Any other NOT NULL column is `T!`.
+  - A foreign key outside the key leaves its field to the relationship.
+  - A relation field is named after the table it points at.
+  - The exception is where one table pair has several relationships, or a relationship returns to its own table. It is the condition `drizzle.ts` writes `relationName` under.
+  - There the single foreign key column names both sides, without a last word `id`. Words split as `isSingleWord` (`engine/modules/relationship/fkColumns.ts`) splits them. `buyer_id` gives `buyer` and the parent's `orderListByBuyer`.
+  - A composite key, or a name with no such word, keeps the table name instead (`parentEmployee` on a self relationship).
+  - So does a stem that keeps no ASCII letter or digit in the column name case, or one that sanitizes to a name opening with `__` (`회원No_id`; `__buyer_id` under NameCase none).
+  - A relation field whose name is taken is numbered (`user2`).
+  - A relationship outside that rule is dropped where another one outside it took its name.
+  - The importer pairs a singular field with the one reciprocal whose name ends in `by` and the field's name (`pairByName` in `schema-graphql-parser/convert.ts`). It does so before its other rules, the longer name first. It then tries once more with the digits a numbered name ends in dropped.
+  - So these documents import back with as many relationships. The exception is where numbering leaves names alike:
+    - several relationships of one pair that no foreign key names;
+    - two keys giving one name on a one and a many side (`buyer_id` beside `BuyerID`);
+    - a stem ending in a digit that numbering repeats (`buyer2_id` beside `buyer_id`, where the parent holds a column `orderListByBuyer`).
+- **Strings.** A table or column comment is a description in a block string.
+  - The description is laid over several lines where it holds a line break, or ends in a quote or a backslash.
+  - `"""` is written `\"""`.
+  - A lone surrogate is written U+FFFD, since GraphQL's source text cannot hold one.
+  - GraphQL's own block-string rules then drop a description's leading and trailing blank lines and its common indentation. They also read a CR or a CRLF as an LF. So those do not round trip.
+- **Importer read-back.** `schema-graphql-parser/dataType.ts` turns each scalar back into a column type.
+  - `BigInt` imports as `bigint` (Oracle `NUMBER(19)`).
+  - `DateTime` imports as the naive timestamp (`datetime2`, `TIMESTAMP_NTZ`).
+  - On Databricks `DateTime` imports as `TIMESTAMP`, which the classifier reads as an instant. Databricks documents `TIMESTAMP` as its session-time-zone type and `TIMESTAMP_NTZ` as its naive one (from the documentation, not run).
+  - `Date` imports as `date`.
+  - `JSON` imports as `jsonb`, `JSON` or `VARIANT` (SQLite `TEXT`).
+  - `Byte` imports as `bytea`, `BLOB`, `varbinary(max)` or `BINARY`.
+  - `Decimal` imports as `DECIMAL(38,18)` (SQL Server `decimal(38,18)`) on MySQL, MariaDB, SQL Server, Oracle, Databricks and Snowflake. Their bare DECIMAL holds no fraction: MySQL's is a DECIMAL(10,0) and rounds 12.5 to 13.
+  - 38 digits is the most SQL Server, Oracle, Databricks and Snowflake hold. 18 digits after the point leave 20 before it.
+  - `Decimal` imports as `numeric` on PostgreSQL and `DECIMAL` on SQLite, which keep any scale.
+  - A generated document imports back with the type of every field outside the key. The exceptions are where a database has no column for the scalar:
+    - `Int` comes back `BigInt` on Oracle, Snowflake and SQLite.
+    - `Date` comes back `DateTime` on Oracle.
+    - `JSON` comes back `String` on SQLite.
+    - A list comes back as its item, with a `list of X` comment.
+    - A zoned timestamp comes back naive, since `DateTime` imports as one: `timestamptz` a `timestamp`, `datetimeoffset` a `datetime2`, Snowflake's `TIMESTAMP_TZ` and `TIMESTAMP_LTZ` a `TIMESTAMP_NTZ`.
+    - A Databricks `TIMESTAMP_NTZ` comes back a `TIMESTAMP`.
+  - The importer keys a type on its first `ID` field alone (`resolvePrimaryKeyFields` in `schema-graphql-parser/convert.ts`). So a composite key's fields after the first come back as plain columns (`String!`).
+  - Where such a field is also a foreign key, no field comes back. The column then serves its relationship alone (sakila's `FilmActor.filmId`).
+  - The importer adds a relationship's foreign key column under the field's name and the parent's key. `language` toward `language_id` gives `languageLanguageId`.
+  - So a relation field the foreign key names (Keys and relations, above) comes back with the parent key's name in it (`languageLanguage`).
+  - Such a field keeps its name where the parent's key is `id`.
+  - It takes the table's name where that key has no word `id`. OKKY's self relationship `parent`, toward a key `code`, comes back `parentCategory`.
+- **Written as is.** A server refuses each of these or serves another value.
+  - A table with no field.
+  - A PostgreSQL interval, `point`, `circle`, `interval[]` and `point[]`. node-postgres hands them over as objects that `String` refuses.
+  - A MySQL or MariaDB `BIT` or `BIT(1)` through mysql2. It is a Buffer that `Int` refuses.
+  - A MySQL or MariaDB `BIT(2)` to `BIT(64)`, a `BigInt`. mysql2 and the mariadb connector hand it over as a Buffer. The default serializer writes that as `{"type":"Buffer","data":[5]}`, and graphql-scalars' `BigInt` refuses it.
+  - A MySQL or MariaDB spatial type, a `String`. mysql2 hands it over as an object or a list of them (`{ x: 1, y: 2 }` for a point; MariaDB's `MULTIPOINT` as null). The mariadb connector hands it over as a GeoJSON object. `String` refuses both.
+  - SQL Server's `geography`, `geometry` and `hierarchyid`. tedious hands them over as a Buffer that `String` refuses.
+  - Oracle's `INTERVAL` types, `CLOB`, `NCLOB` and `VECTOR`. By default oracledb hands them over as an IntervalDS or IntervalYM, a Lob and a Float32Array. `String` refuses all of them.
+  - Oracle's `BLOB`, a Lob. `Byte`'s default serializer passes it on, but no response can write it as JSON.
+  - SQL Server's `time` through tedious, a `Date` on 1970-01-01. `String` serves it as its epoch milliseconds (`45296000` for 12:34:56).
+  - A `date` through node-postgres or mysql2, a local-midnight `Date`. East of UTC it serves as the day before, unless the driver's date parser is replaced.
+  - A PostgreSQL numeric array (`numeric[]`, `dec[]`, `decimal[]`). node-postgres parses its items with `parseFloat`. So `[Decimal]` serves them rounded to a double (`12345678901234567890.123456789012345678` as `12345678901234567000`), and `NaN` as null. A numeric column's value stays exact text.
+  - A SQLite `JSON` column through node:sqlite, handed over as its text. `JSON` serves it as a string (`"{\"a\":1}"`), not an object.
+  - A SQLite `BLOB` through node:sqlite, a Uint8Array. The default serializer writes it as `{"0":1,"1":2}`. graphql-scalars' `Byte` refuses it (`Value is not an instance of Buffer`).
+  - A SQLite `DATETIME` through node:sqlite, written with a space for the `T`, as SQLite's `CURRENT_TIMESTAMP` and `datetime()` write it (`2026-10-09 12:34:56`). graphql-scalars' `DateTime` refuses it (`DateTime cannot represent an invalid date-time-string`).
+  - A `Decimal`, which no stock scalar validates.
+- **Measured.** On 2026-10-10, with graphql-js 16.14.2 and 17.0.2 (`buildSchema` and `validateSchema`).
+  - Types: the 274 names of the eight vendor tables and 155 other spellings. The spellings cover lengths, precision and scale, negative scales, UNSIGNED, ZEROFILL and SIGNED, arrays, ENUMs holding quotes and escapes, an empty and an unknown type. Each ran on all eight databases as a primary key without the NN flag, a NOT NULL and a nullable column.
+  - Names: 73 table and column names under all 16 pairs of name cases, with relationships. They cover every GraphQL keyword, built-in and custom scalar names, Hangul, emoji, spaces, a leading digit, the empty name and `__x`.
+  - Comments in those documents held CR, LF, CRLF, U+2028, U+2029, NEL, control characters, `"""`, a trailing quote or backslash and lone surrogates.
+  - Fixtures: the five `data/*.sql` fixtures on all eight databases.
+  - That made 4640 whole documents and 9656 one-table views. None failed on either version.
+  - Every view parsed on both versions and matched its block in the whole text. Each declared the scalars its fields use. Each built where it names no other table's type.
+  - Tables named `query`, `mutation` and `subscription` built as the three root types on both versions.
+  - `extend type Query { users: [User] }` added a field to the first. A second `type Query` failed.
+  - Eleven tables were named after root, Relay and Apollo Federation types. The importer left out the six whose type names it reads as root or Relay types (`Query`, `Mutation`, `Subscription`, `PageInfo`, `UserConnection`, `UserEdge`). It brought back the other five.
+  - Every type document imported back through `schemaGraphQLParserToSchemaJson` and generated again with the field types Importer read-back gives (3432 round trips).
+  - The 40 fixture round trips kept every relationship and the type of every field outside the key. Per database they differed as Importer read-back says: 35 composite-key fields came back `String!`, 8 were left to their relationship, and 16 relation fields were renamed.
+  - On MySQL 8.4.11 a `DECIMAL(10,2)` column went out as `Decimal!` and came back `DECIMAL(38,18)`. The editor's DDL of it kept 12.5, `12345678901234567890.123456789012345678` and `0.000000000000000001`. A bare `DECIMAL` (`decimal(10,0)`) stored 12.5 as 13.
+  - PostgreSQL 17.11 reads `dec(5,1)`, `dec` and `dec(5,1)[]` as `numeric(5,1)`, `numeric` and `numeric(5,1)[]`.
+  - SQLite 3.54.0 (and node:sqlite's 3.53.0) gives `DEC` the NUMERIC affinity `DECIMAL` has.
+  - Served through the generated SDL and the default serializers (TZ Asia/Seoul), pg 8.23.1 rows gave these results:
+    - `numeric`, `dec`, `dec[]` (whose items pg parses into numbers), `money` (`$1,234.56` as a `String`), `xid` (`"7"`), `bigint`, `jsonb`, `bytea`, `timestamptz`, `int[][]`, `bit(3)[]` and `xid[]` (each a `String` of its text) served.
+    - `interval`, `point`, `circle`, `interval[]` and `point[]` failed (`String cannot represent value: { days: 1, ... }`).
+    - A `date` served `2026-10-08T15:00:00.000Z` for 2026-10-09.
+  - mysql2 3.24.5, on MySQL 8.4.11 and MariaDB 11.4.13, hands `BIT(1)`, `BIT(5)` and `BIT(64)` over as Buffers.
+  - mysql2 hands `POINT` and `GEOMETRY` over as `{ x: 1, y: 2 }`. It hands `LINESTRING`, `POLYGON`, `MULTIPOINT` and `GEOMETRYCOLLECTION` over as lists of such objects, and a MariaDB `MULTIPOINT` as null.
+  - mysql2 hands a `DATE` over as the same local midnight.
+  - The mariadb connector 3.4.5 hands `BIT(1)` over as `true`, served as 1. It hands the wider BITs over as Buffers, and those six spatial types as GeoJSON objects.
+  - graphql-scalars 2.0.0's `BigInt` refuses such a Buffer (`Cannot convert [object Object] to a BigInt`).
+  - tedious 20.3.3 on SQL Server 2022 (16.0.4295.3) hands `geography`, `geometry` and `hierarchyid` over as Buffers.
+  - oracledb 6.10.0 (thin) on Oracle Database 23.26 Free hands its intervals over as IntervalDS and IntervalYM. It hands `CLOB`, `NCLOB` and `BLOB` over as Lobs, and `VECTOR` as a Float32Array.
+  - Each of the tedious and oracledb values failed through the SDL, as Written as is says.
+  - That tedious hands SQL Server's `time` over as a `Date` was measured on 2026-10-09 (SQL Server 2022, tedious 20.3.3). graphql-js serves such a `Date` through `String` as `45296000` for 12:34:56.
+  - pg 8.23.1's own parsers (pg-types 2.2.0, no server) read `{12345678901234567890.123456789012345678,0.000000000000000001,NaN}` as a `numeric[]` into `[12345678901234567000, 1e-18, NaN]`.
+  - `numeric(38,18)[]`, `dec[]` and `decimal[]`, all `[Decimal]`, served that as `[12345678901234567000,1e-18,null]` on both versions.
+  - The same parsers read the same value as a `numeric` into its exact text, served as is.
+  - node:sqlite (SQLite 3.53.0) rows of `JSON`, `DATETIME` (written and `CURRENT_TIMESTAMP`) and `BLOB` columns were served through the generated SDL. They were served by default on both versions, and with graphql-scalars 2.0.0's `JSON`, `DateTime` and `Byte` serializers on graphql-js 16. They gave what Written as is says.
+  - better-sqlite3 was not run.
+
+### csharp.ts
+
+- **What it writes.** `csharp.ts` writes plain classes of auto-properties, with no `using` line and no namespace.
+  - Nullable reference types follow `dotnet ef dbcontext scaffold`: `int?`, `string?`, and `= null!;` on a NOT NULL reference type or array.
+  - So the whole text and one table compile in an SDK project with `Nullable` on and its default `ImplicitUsings`.
+  - That default holds `global using global::System;`, which supplies `Guid`, `DateTime`, `DateTimeOffset` and `TimeSpan`.
+  - A primary key or a NOT NULL column is `T`; any other column is `T?`.
+  - A primary key without the NOT NULL flag still reads as NOT NULL. Every generator but DBML, AML and Mermaid does the same (Rules every generator follows).
+  - A comment is written as `//` lines, one for each line. It is split at CR, LF, CRLF, U+0085, U+2028 and U+2029.
+  - The blank lines around a comment and each line's trailing spaces are dropped.
+- **Types.** A type is decided by name first, then by the width `columnTypes.ts` reads, then by the shared vendor tables' category.
+  - The name comes first because the shared vendor tables, which other generators read, file some types under one category that C# tells apart.
+  - Under every database, the binary names (`BINARY_TYPES`) are `byte[]`, and `uuid` / `uniqueidentifier` are `Guid`.
+  - Under every database, the four time-zone timestamps and PostgreSQL's `timetz` are `DateTimeOffset`, and `money` / `smallmoney` are `decimal`.
+  - MySQL's and MariaDB's UNSIGNED, ZEROFILL and SERIAL types take the unsigned type of their width: `byte`, `ushort`, `uint` for MEDIUMINT and INT, or `ulong`.
+  - Their `BIT(n)` past one bit is `ulong`; `BIT` and `BIT(1)` stay `int`. MySqlConnector reads these unsigned types and `BIT(n)` at their maximum.
+  - PostgreSQL's `oid`, `cid`, `xid`, `regtype` and `regconfig` are `uint`, and `xid8` and `pg_lsn` are `ulong`.
+  - Npgsql reads them in these types. It refuses a `long` for the object ids, and a `string` for `regtype`, `regconfig` and `pg_lsn`.
+  - Every integer type of Oracle, Snowflake and SQLite is `long`, `SMALLINT` included. They store up to 64 bits whatever width the name declares.
+  - Elsewhere `smallint` alone is `short`. `int2`, `serial2`, `smallserial` and Databricks `SHORT` stay `int` (an owner decision).
+  - A 64-bit float is a `double` whatever the vendor table says. So MariaDB's bare `NUMBER` is a `double`, since its Oracle mode stores it as a DOUBLE.
+  - Under SQL Server alone, `tinyint` is `byte`, `timestamp` and `rowversion` are `byte[]`, and `sql_variant` is `object`. `timestamp` is binary there and a date and time elsewhere.
+  - The rest follow the shared vendor tables' category. That category reads `float(p)` by its precision, a `NUMBER(p,s>0)` as a decimal and PostgreSQL's bit strings as text.
+  - It keeps `DateTime` / `TimeSpan` over `DateOnly` / `TimeOnly`, and `string` for the spatial types, `hierarchyid`, `vector`, `xml` and `json` (owner decisions).
+  - It keeps `string` for MySQL's and MariaDB's `CHAR(36)` (an owner decision of 2026-10-10).
+  - A PostgreSQL array takes one rank per dimension in one rectangular array, before the element's own brackets: `int[]`, `int[,]`, `byte[,][]`.
+  - It is never a jagged array, because Npgsql does not read one.
+  - Outside PostgreSQL, `int[]` is no array.
+- **Names.** Names follow the name cases.
+  - A property's first letter is upper-cased by `toUpperCase`, whatever the locale.
+  - WebKit's `toLocaleUpperCase` turns `id` into `İd` under a Turkish or Azerbaijani system locale. .NET's `OrdinalIgnoreCase` does not match `İd` to `id`.
+  - A keyword takes `@` where the name stays one. The keywords are C#'s reserved words and Roslyn's `__arglist`, `__makeref`, `__reftype` and `__refvalue`.
+  - They also include the contextual keywords C# refuses or warns against as a type name: `extension`, `file`, `record`, `required`, `scoped`.
+  - The `@` goes before the keyword, and any white space around the name is kept: `public class @class`.
+  - C# refuses a property it reads as its class's name (CS0542). Examples are sakila's `country.country`, `city.city` and `address.address`.
+  - Such a property is renamed as `dotnet ef dbcontext scaffold` renames it. It takes the first of `<Name>1`, `<Name>2`, … that no other property of the class holds, a property renamed before it included.
+  - The renamed property carries `[global::System.ComponentModel.DataAnnotations.Schema.Column("<column name>")]`. EF Core maps it through that attribute (an owner decision of 2026-10-10).
+  - The stored name is a C# string literal with JSON's escapes. U+0085, U+2028 and U+2029, where C# ends a line, are `\u` escapes too.
+  - The attribute is spelled from `global::`, so it needs no `using` line and a class named `System` cannot hide its namespace.
+  - Names compare as C# reads and compares identifiers. An `@`, Unicode formatting characters (Cf), and the white space and line breaks around a name are set aside.
+  - So a column `country` followed by a space, a no-break space, a tab, U+0085 or U+2028 is renamed in class `Country`.
+  - U+001A is the exception. Roslyn alone reads it as white space, so the comparison keeps it, and C# reports CS0542 where it is the one difference.
+  - A class with no name, or with white space alone for one, renames nothing.
+  - Any other name that is no identifier, or a repeated one, is written as is, as in `php.ts`.
+- **Written as is, though a driver reads otherwise.**
+  - MySQL and MariaDB, a `string` for a `CHAR(36)`. MySqlConnector reads it as a `Guid` by default.
+    - `GetString` and `GetFieldValue<string>` fail with `InvalidCastException`, and Dapper with a `DataException` around it.
+    - A value that is no GUID fails with `FormatException`.
+    - `GuidFormat=None` in the connection string reads it as text. A `string` parameter writes either way.
+  - MySQL and MariaDB, an `int` for a `TINYINT(1)`. MySqlConnector reads it as a `Boolean` by default. `GetInt32`, `GetFieldValue<int>` and Dapper return 1 for a stored 2, with no error. `TreatTinyAsBoolean=false` reads the number.
+  - MySQL and MariaDB, a `string` for the spatial types. MySqlConnector reads them as `byte[]`.
+  - SQL Server, a `string` for `geometry`, `geography` and `hierarchyid`. Microsoft.Data.SqlClient reads them only through `Microsoft.SqlServer.Types`.
+    - So `GetFieldValue<string>` and Dapper fail with `FileNotFoundException` for that assembly, and `GetString` with `InvalidCastException`.
+    - A query that selects `STAsText()` or `ToString()` reads a `string`.
+  - Oracle, a `TimeSpan` for an `INTERVAL YEAR TO MONTH`. ODP.NET hands it over as an `Int64` of months. `GetFieldValue<TimeSpan>`, `GetTimeSpan` (on `'0-0'` too) and Dapper fail with `InvalidCastException`. An `INTERVAL DAY TO SECOND` reads.
+  - Databricks, a `TimeSpan` for its year-month intervals too. This is not measured.
+  - Oracle, numbers through `GetFieldValue<T>`. ODP.NET picks a value type by precision and scale, and `GetFieldValue<T>` casts that value without converting it. `GetInt64`, `GetDecimal`, `GetDouble` and Dapper convert each.
+    - `GetFieldValue<T>` reads a `long` only from a `NUMBER(10)` to `NUMBER(18)`. ODP.NET picks an `Int16` under 5 digits and an `Int32` under 10.
+    - ODP.NET picks a `Decimal` from 19 digits and for `INTEGER`, `INT`, `SMALLINT` and a bare `NUMBER`.
+    - `GetFieldValue<T>` reads a `decimal` from no `NUMBER(p,s>0)` under 16 digits, which ODP.NET picks as a `Double`.
+    - `GetFieldValue<T>` reads a `double` from no `FLOAT`, `REAL` or `DOUBLE PRECISION`, which ODP.NET picks as a `Decimal`.
+  - SQLite, a `TimeSpan` for a `TIME`. Microsoft.Data.Sqlite hands Dapper text, which Dapper refuses (`Invalid cast from 'System.String' to 'System.TimeSpan'`). `GetFieldValue<TimeSpan>` reads it.
+  - PostgreSQL, a `string` for `inet`, `cidr`, `macaddr`, `macaddr8`, the range and multirange types, `tsvector`, `tsquery`, `tid` and the geometric types. Npgsql refuses it and reads each as its own Npgsql type.
+  - PostgreSQL, `regclass`, `regproc`, `regrole`, `regnamespace`, `regoper`, `regoperator`, `regprocedure`, `regcollation` and `regdictionary`. Npgsql reads them neither as a `string` nor as a `uint`.
+  - PostgreSQL, `pg_snapshot` and `txid_snapshot`. Npgsql reads them as no type at all.
+  - PostgreSQL, `pg_lsn[]` as a `ulong[]`. Npgsql refuses to read it so.
+  - PostgreSQL, an interval holding months as a `TimeSpan`. Npgsql refuses to read it so.
+  - PostgreSQL, an array holding a NULL as `int[]`. Npgsql refuses it; only `int?[]` reads.
+  - PostgreSQL, a two-dimension column holding a one-dimension value as `int[,]`. Npgsql refuses it. Such a value exists because PostgreSQL enforces no declared dimension.
+  - PostgreSQL through Dapper, a `string` for a `bit(8)` or `varbit`. Npgsql hands Dapper a `BitArray`, which it reads into no `string`. Npgsql's own `GetFieldValue` reads it.
+  - PostgreSQL through Dapper, an `int[,]` for an `int2[][]`. Npgsql hands Dapper an `Int16[,]`, which it reads into no `int[,]`. Npgsql's own `GetFieldValue` reads it.
+  - PostgreSQL, what Npgsql writes only with an `NpgsqlDbType`:
+    - a `string` into a `bit` column (`Bit`);
+    - a `DateTimeOffset` off UTC into a `timetz` (`TimeTz`);
+    - a `uint` into an `oid`, `cid`, `xid` or `regtype` (`Oid`, `Cid`, `Xid`, `Regtype`);
+    - a `ulong` into an `xid8` or `pg_lsn` (`Xid8`, `PgLsn`).
+  - PostgreSQL, a `DateTimeOffset` off UTC into a `timestamptz`. It fails with `ArgumentException` (only offset 0 is supported), with `NpgsqlDbType.TimestampTz` too.
+    - `ToUniversalTime()` writes it.
+    - Npgsql reads every `timestamptz` back at offset 0.
+  - Every database, a `decimal` for a value past its range: ±7.9 × 10^28, 28 or 29 significant digits.
+    - A `numeric` of no precision, a `DECIMAL`, `NUMERIC` or `NUMBER` past 28 digits and Snowflake's `DECFLOAT` can hold such a value.
+    - On 10^30, Npgsql 10.0.3 (PostgreSQL 17.11) throws `OverflowException` in `GetFieldValue<decimal>` and `GetDecimal`.
+    - On 10^30, MySqlConnector 2.6.2 (MySQL 8.4.11) throws `FormatException` in both. Dapper throws a `DataException` around either.
+    - A small value in the same column reads.
+    - That SQL Server, Oracle, Snowflake and Databricks fail too is inferred, not measured.
+  - Dapper and a renamed property. Dapper maps by name and ignores `[Column]`. The property stays unset unless the query aliases the column (`country AS Country1`) or a type map reads the attribute.
+- **Written as is, though C# refuses or warns.**
+  - A class named in lower-case ASCII alone: CS8981, an error under warnings as errors.
+  - A property named after an `object` member (`Equals`, `GetHashCode`, `GetType`, `MemberwiseClone`, `ToString`): CS0108.
+  - A class named after a System type the output names (`Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`). Its own properties then name the class instead: CS8618 on `public Guid Id` in `class Guid`.
+  - A class named `System` in the global namespace. It hides the `System` namespace from the attributes the SDK generates and from `global using global::System;`.
+    - That gives CS0138, CS0426, CS0437, and CS0246 on a `Guid` property.
+    - Inside a namespace it compiles.
+  - A project without `ImplicitUsings`. It needs `using System;`.
+- **Measured** on 2026-10-10 with .NET SDK 10.0.401 (`mcr.microsoft.com/dotnet/sdk:10.0`). `Nullable` and `ImplicitUsings` were on, with `TreatWarningsAsErrors` and `WarningLevel` 9999.
+  - Every type of every vendor list with extra spellings: 419 names, the lists as PR #503 left them and as they stood before it.
+    - They came with lengths, precisions, UNSIGNED, ZEROFILL, arrays and ENUM / SET values holding quotes and escapes.
+    - Each was written under each of the eight databases, as a primary key with and without the NN flag, NOT NULL and nullable.
+  - Comments with every line terminator, an empty table and the five `data/*.sql` fixtures, under the eight databases, whole and per table.
+  - Those two corpora made 4,973 outputs, each in a file-scoped namespace. They built with no warning and no error.
+  - The 55 whole texts were built again, each alone in the global namespace, with no warning and no error.
+  - Every keyword above as a table and a column name under each name case. Also names that clash with their class, are numbered past taken names, hold characters to escape or name a class `System`.
+    - They built with nothing but CS8981 on lower-case class names, CS0102 on repeated names, CS0108 on the `object` member names and CS8618 in class `Guid`.
+    - Names that are no identifier gave syntax errors, CS9008 for `@@x` among them.
+  - Table and column names with each of 18 white space, line break and formatting characters before, after or around them.
+    - Each was written under every pair of name cases: 2,592 outputs, checked with Roslyn.
+    - They gave nothing more but CS0542, where U+001A is the one difference and on the two missing names of a class with no name.
+  - The driver reads used these drivers and servers:
+    - Npgsql 10.0.3 on PostgreSQL 17.11;
+    - MySqlConnector 2.6.2 on MySQL 8.4.11 and MariaDB 11.4.13;
+    - Microsoft.Data.SqlClient 6.1.1 on SQL Server 2022 (16.00.4295);
+    - Oracle.ManagedDataAccess.Core 23.9.1 on Oracle Database Free 23.26.3;
+    - Microsoft.Data.Sqlite 10.0.12 (SQLite 3.53.3);
+    - Dapper 2.1.66.
+  - Besides the limits under Written as is, those drivers read these as written:
+    - MySQL's and MariaDB's unsigned types and `BIT(64)` read at their maximum, where `int` or `long` overflow.
+    - SQLite's rowid 3000000000 and a `SMALLINT` holding 40000 read as `long`, where `int` and `short` overflow.
+    - Oracle's `SMALLINT` holding 40000 reads as `long` through `GetInt64` and Dapper.
+    - PostgreSQL's `oid`, `cid`, `xid`, `xid8`, `regtype`, `regconfig`, `pg_lsn` and `oid[]` read as written.
+    - PostgreSQL's `money` reads as a `decimal`, `timetz` as a `DateTimeOffset` and `int[][]` as `int[,]`.
+    - MariaDB's `NUMBER` reads as a `double`, where a `decimal` drops the digits past 15.
+    - SQL Server's `sql_variant` reads as an `object`, `smallmoney` as a `decimal`, `rowversion` as a `byte[]` and `xml` as a `string`.
+    - Oracle's `TIMESTAMP WITH TIME ZONE` reads as a `DateTimeOffset` keeping its offset, and `RAW` as a `byte[]`.
+    - Oracle's `BINARY_FLOAT` reads as a `float`, and `JSON` and `XMLType` as a `string`.
+    - EF Core 10.0.12 reads and writes a renamed property through its `[Column]`.
+
+### go.ts
+
+- **What it writes.** `go.ts` writes one plain struct per table, sorted by name.
+  - Each field is typed for its database's usual `database/sql` driver.
+  - Each field is tagged `json:"<column name>"`. There is no `db` tag.
+  - There is no package clause and no import block (PR #424's choice). A project imports `time`, `encoding/json`, `github.com/shopspring/decimal` and `mssql "github.com/microsoft/go-mssqldb"` as its fields use them.
+  - The one-table view is `formatTable`, as in the other plain generators.
+- **Types.** They come from the shared classifier (`columnTypes.ts`, an owner decision of 2026-10-09). Its scalars are mapped in `SCALAR_TYPES`. A few database overrides (`elementType`) apply where the driver hands over another value.
+  - **Integers take the classifier's width.** This is an owner decision of 2026-10-09.
+    - `int8` for TINYINT, BYTE and INT1, MySQL's `TINYINT(1)` too.
+    - `int16` for SMALLINT, INT2, the PostgreSQL small serials and Databricks SHORT.
+    - `int32` for INT, MEDIUMINT and serial.
+    - `int64` for BIGINT.
+    - MySQL and MariaDB UNSIGNED and ZEROFILL integers are unsigned at their width: `uint8`, `uint16`, `uint32` for INT and MEDIUMINT, `uint64` for BIGINT and SERIAL.
+    - YEAR is a `uint16`.
+    - SQL Server's `tinyint` is a `uint8`.
+    - PostgreSQL's `oid`, `xid` and `cid` are a `uint32`, and `xid8` is a `uint64`.
+    - Every Oracle, Snowflake and SQLite integer type is an `int64`, since those databases store any integer in a NUMBER(38) or eight bytes.
+    - An Oracle or Snowflake NUMBER with no scale above 0 is an `int64` too, bare included.
+  - **Floats.**
+    - On MySQL, MariaDB, PostgreSQL and SQL Server, `FLOAT(p)` is a `float32` up to 24 and a `float64` above.
+    - On those four, PostgreSQL's and SQL Server's `real`, PostgreSQL's `float4`, and MySQL's and MariaDB's `FLOAT`, `FLOAT4` and `FLOAT(m,d)` are a `float32`.
+    - MySQL's and MariaDB's `REAL`, a DOUBLE, is a `float64`. So is PostgreSQL's and SQL Server's bare `float`.
+    - Every Oracle, Snowflake and SQLite float is a `float64`, `FLOAT(24)` and Oracle's `REAL` too. Oracle's `BINARY_FLOAT` is the exception, a `float32`.
+    - Every Databricks `FLOAT` and `REAL` is a `float32`, `FLOAT(53)` too. Its `DOUBLE` is a `float64`.
+    - MariaDB's bare `NUMBER`, a DOUBLE, is a `float64`.
+  - **Decimals.**
+    - These are a `decimal.Decimal`: numeric, decimal, dec and fixed; SQL Server's money and smallmoney; Snowflake's DECFLOAT; an Oracle or Snowflake NUMBER with a scale above 0 (`NUMBER(*,2)` too); MariaDB's NUMBER with arguments.
+    - PostgreSQL's `money` is a `string`. It holds the session's currency text (`$1,234.56`), which neither a float nor a decimal scans.
+  - **Booleans and bits.**
+    - BOOL, BOOLEAN and SQL Server's `bit` are a `bool`.
+    - MySQL's and MariaDB's `BIT` of any width is a `[]byte`. go-sql-driver/mysql hands over bytes even for `b'1'`.
+  - **Binary and UUID.**
+    - Every binary type is a `[]byte`, SQL Server's `rowversion` and `timestamp` included.
+    - Oracle's `BFILE` is a `string`.
+    - SQL Server's `uniqueidentifier` is an `mssql.UniqueIdentifier`. The value is stored mixed-endian, and only this type reads it back as written and marshals it as its string.
+    - Any other UUID is a `string`.
+  - **JSON and semi-structured types.**
+    - `json` and `jsonb` are a `json.RawMessage` on MySQL, MariaDB, PostgreSQL and Oracle, whose drivers hand JSON over as bytes.
+    - They are a `string` on SQLite, SQL Server, Snowflake and Databricks.
+    - The semi-structured VARIANT, OBJECT, ARRAY, MAP and STRUCT are a `string` too.
+  - **Dates and times.**
+    - A date and every timestamp, zoned or not, is a `time.Time`. Oracle's DATE is among them.
+    - A time of day is a `time.Time` on SQL Server and Snowflake.
+    - On MySQL, MariaDB, PostgreSQL and SQLite a time of day is a `string`, since their usual drivers hand it over as text.
+    - `timetz` and every interval are a `string` on every database.
+  - **Arrays and the rest.**
+    - A PostgreSQL array is one slice a dimension of its element's type: `int[][]` is a `[][]int32`, `jsonb[]` a `[]json.RawMessage`.
+    - Bit strings, `pg_lsn`, ranges, network and geometric types, ENUM, SET, spatial types and any type no rule names are a `string`.
+- **Names.** Go exports a name only when its first rune is an upper-case letter, and encoding/json sees only an exported field.
+  - A table or column name is composed (NFC) before the name case. The name case would otherwise split a word at a lone combining mark.
+  - So a decomposed `émile` (`e` then U+0301) cases as the precomposed one, `Émile`, under every name case.
+  - The cased name's first letter is upper-cased.
+  - Where its first rune is then no upper-case letter, the name gets `X` in front, so that Go exports it: `X회원`, `X_id` and `X1st` under NameCase none, and `X` for an empty name.
+  - Go takes a combining mark in no identifier.
+  - camelCase, pascalCase and snakeCase drop a name's own marks as they split it into words. Under camelCase `ชื่อ` gives `Xชอ` and `नाम` gives `Xनम`.
+  - A mark their casing makes is recomposed or dropped too. `İlçe` stays `İlçe`, `KİLO` gives `Kilo`, and `KİLO_ชื่อ` gives `Kiloชอ` (under snakeCase `Kilo_ช_อ`).
+  - NameCase none keeps a name's own marks (`नाम` is `Xनाम`). With them it keeps any mark its first letter's upper-casing makes.
+  - NameCase none drops that upper-casing mark from a name holding no mark of its own: `ǰx` gives `Jx`.
+  - Keywords, predeclared names and the packages the types name need no change, since an exported name is none of them (`Type`, `String`, `Time`, `Decimal`).
+  - Any other name Go refuses, or a repeated one, is written as is, as in `php.ts` and `rust.ts` (Written as is, below).
+  - The tag keeps the column name. `"` and `\` are escaped.
+  - Every control character except a tab is escaped as an interpreted Go string writes it, and so is U+FEFF: `\n`, `\r`, and a four-digit `\u` escape for the rest. The reasons: Go drops a raw carriage return and refuses a raw line feed, NUL or byte order mark. gofmt ends an alignment run at a form feed.
+  - Where the name holds a backtick, the tag is an interpreted literal.
+  - A column named `-` is tagged `-,`, which encoding/json reads as the key `-`. `json:"-"` would leave the field out.
+- **Keys and nullability.** A primary key is `T`, with or without the NN flag (an owner decision of 2026-10-09; Rules every generator follows).
+  - A NOT NULL column is `T`. Any other column is `*T`.
+  - `[]byte` and an array are never a pointer, since they scan NULL as nil.
+  - `json.RawMessage` is a pointer, since database/sql cannot set it to NULL.
+- **Comments.** They are `//` lines, one per line of the comment. A line ends at CR, LF, CRLF, U+2028 or U+2029.
+  - The table's comment sits above its struct, and a column's above its field.
+  - Each line, and the whole comment, lose the spaces gofmt trims: Go's Unicode spaces, NEL included.
+  - A run of empty lines is one `//`, as gofmt folds it in a doc comment.
+  - NUL and U+FEFF are dropped, since Go refuses them inside a file.
+  - A line that reads as a `+build` constraint (Go's spaces around `+build`) is a block comment, `/* +build ignore */`, with its form feeds made spaces. gofmt would move a `// +build` line above the package clause, where it drops the file from the build.
+- **Layout follows gofmt's field alignment.** Fields are aligned as gofmt aligns them, counting runes. An alignment run ends at a field with a comment line above it.
+- **Written as is.** These stay in the output, though Go, gofmt or a driver refuses them.
+  - **Names that fail the build.** A name Go refuses and a repeated one (`id` beside `ID`) fail the build.
+    - Under every name case, a name holding an emoji or another pictographic symbol the name cases keep (`©`, `®`, `™`, `‼`, `↔`, `〰`).
+    - Under NameCase none, which keeps every character, a name holding a character no identifier holds: a space, `-`, `,`, `;`, `.`, `:`, `//`, a quote, a backslash, a backtick, `²`, `€`, `Ⅻ`, `ⓐ`, U+00A0, U+00AD, U+200B, U+202E, U+2028, a private-use character or a control character.
+    - Under NameCase none, a name holding a mark of its own (`नाम`, `ชื่อ`).
+  - **Names gofmt or go vet flags.** Each is under NameCase none.
+    - A table or column name ending in a space or a tab. It builds, but gofmt trims it (`type Trail  struct`, `type Tab<tab> struct`).
+    - A name ending in a `/*…*/` comment. It builds as the part before it (`a/*x*/` the field `A`, `Users/*x*/` the struct `Users`), and gofmt lists it.
+    - A column name with a comma. Go reads it as two fields (`A,b string`), and go vet then reports the second unexported.
+  - **Comments.**
+    - A comment line that reads as a `+build` constraint but holds `*/`, which no block comment can carry. go vet reports `misplaced +build comment`. gofmt moves the line above the package clause, where the build then excludes the file.
+    - A table comment line opening with a space or a tab. gofmt rewrites it as a doc comment's code block (`//` then `//<tab>…`).
+    - A table comment line opening with a space or a tab, then a list marker. gofmt rewrites it as a list item: `  1. one` becomes `//  1. one`, and a tab then `* a` becomes `//   - a`. `  - id` is gofmt's own form and stays.
+    - A table comment line alone between paragraphs that reads as an old-style heading. gofmt adds `# ` to it.
+    - A table comment's link definition (`[docs]: https://x`). gofmt moves it to the comment's end, after an empty `//`.
+    - A column's comment is no doc comment, so gofmt leaves it as written.
+  - **encoding/json keys.**
+    - The key is the tag's name before its first comma. `a,b` reads as `a`.
+    - `a, b` reads as `a` too, which go vet reports (`suspicious space in struct tag value`).
+    - What follows the comma is read as options, which go vet does not report. `a,string` writes the value as a JSON string (`{"a":"1"}`).
+    - `a,omitempty` and `a,omitzero` leave a zero value out.
+    - An option go1.27.1's default encoding/json refuses (`a,format:RFC3339` on an integer) makes `json.Marshal` of the whole struct fail (``unsupported `format` tag option``). `GOEXPERIMENT=nojsonv2` ignores that option.
+    - Under go1.27.1's default encoding/json, built on json/v2, a name holding `"`, `\`, `'` or a backtick reads up to that character: `say"hi` as `say`, ``we`ird`` as `we`.
+    - A name that is only `,`, or empty, reads as the field name.
+    - Two fields that read to one key both leave the JSON, set values included. Examples: `a` beside `a,omitempty`, `a,b` beside `a,c`, and by default `say` beside `say"hi`, `back` beside `back\slash` and `it` beside `it's`. go vet reports only the comma-split pairs (`repeats json tag`).
+    - Under `GOEXPERIMENT=nojsonv2` and on Go 1.26, whose encoding/json is v1, the key is the Go field name for some names. These are names holding a character other than a letter (`unicode.IsLetter`), a digit (`unicode.IsDigit`), an ASCII space and `!#$%&()*+-./:;<=>?@[]^_{|}~`.
+    - Under v1 such characters include a quote, a backslash, an apostrophe or a backtick (`say"hi` as `SayHi`).
+    - Under v1 they also include characters the default reads as the column name: a combining mark (a decomposed `émile` as `Émile`, `नाम` as `Xनम`, `ชื่อ` as `Xชอ`), `²`, `¹`, `½`, `Ⅷ`, `€`, `°`, `·`, `×`, `–`, curly quotes, full-width brackets (`金額（円）` as `X金額円`), U+200B, U+FEFF, a tab and any other control character.
+  - **Driver limits.**
+    - lib/pq reads no array into a slice.
+    - lib/pq reads a `time` into a `string` as `0000-01-01T13:45:30Z`, which PostgreSQL refuses written back.
+    - pgx, natively and through `database/sql`, refuses a NULL element of an array (`'{1,NULL}'`) into its slice: `cannot scan NULL into *int32`. A `[]*int32` would take it. The slice takes only a NULL array as nil.
+    - pgx's native interface reads no interval or bit string into a `string`.
+    - GORM refuses a whole model that holds an array's slice when it parses the schema.
+    - An array's slice reads through pgx's native interface. It also reads through pgx v5.11.0's `database/sql` driver on Go 1.27 (`RowsColumnScanner`), not on Go 1.26.
+    - go-ora reads an Oracle `BFILE` into no plain type, since it hands over a locator.
+    - go-ora refuses to bind a `json.RawMessage` (`ORA-01484`). So an Oracle JSON column reads but is not written back.
+    - An Oracle bare `NUMBER` (and `NUMBER(*)`, the same type) holding a fraction fails its `int64` scan. The `int64` is kept to match `rust.ts`'s `i64`.
+    - An Oracle `INT`, `INTEGER` or `SMALLINT` (a NUMBER(38)), a bare `NUMBER`, or a `NUMBER(p)` with p from 19 to 38 can hold a value past `int64`'s range. go-ora refuses it: `converting driver.Value type string ("100000000000000000000") to a int64: value out of range`.
+    - A Snowflake integer, a NUMBER(38,0), can hold such a value too. This comes from its documented range; what gosnowflake does with it was not run.
+    - go-sql-driver/mysql fills a `time.Time` only with `parseTime=true` in the DSN.
+- **Measured** on 2026-10-10 with go1.27.1 (darwin/arm64), shopspring/decimal v1.5.0 and go-mssqldb v1.11.2. The generator was bundled from the current sources.
+  - **3,439 packages, whole and per table.** Each is a whole text or a one-table view, with the four imports added.
+    - The eight vendor lists' 492 names, each bare and with `(10)`, `(10,2)`, ` UNSIGNED`, ` ZEROFILL`, `[]` and `[][]`, and 101 other spellings. That is 3,545 types in all, as NOT NULL, nullable and key-only columns.
+    - 105 names as table and column names under all four name cases: Go keywords and predeclared names, the output's package and type names, Hangul, Kana, Han, the Turkish İ, combining marks, a decomposed and a precomposed `émile`, Devanagari, Thai, emoji, punctuation, quotes, a backslash, a backtick, control characters, U+FEFF, U+200B, U+202E, a leading space, a trailing space or tab.
+    - 46 comments on tables and columns of PostgreSQL and MySQL: CR, LF, CRLF, U+2028, U+2029, NEL, NUL, U+FEFF, `+build` lines with every Go space, `//go:build`, indented lines, a heading, a link definition, form feeds, bidirectional controls, a lone surrogate.
+    - Empty and column-less tables.
+    - Alignment with Hangul and characters beyond the BMP.
+    - The five `data/*.sql` fixtures on all eight databases.
+  - **Results of the 3,439 packages.**
+    - `go build` failed 119 packages, every one a name Go refuses or a repeated one.
+    - `go vet` failed 15 more: the 6 holding the `+build` line with `*/`, and 9 names with a comma.
+    - `gofmt -l` listed 36 for a table comment it rewrites: 18 an indented line, 6 a heading, 6 a link definition, 6 the `+build` line with `*/`.
+    - `gofmt -l` listed 11 for a name under NameCase none: a trailing space or tab, a lone space, a comma, a line feed. That makes 47 listed in all.
+    - Every type list, fixture, empty table and alignment package built, passed go vet and was left as it was by gofmt.
+    - 2,799 one-table packages parse. In them the tags of 38,299 of the 38,301 fields read back through `reflect.StructTag.Get` as their column name (`-,` for `-`).
+    - The two other fields are a column `x` LF `y` under NameCase none, whose line break splits its field, in a package that does not build.
+  - **A further 732 packages.**
+    - 34 comments on PostgreSQL and SQL Server: indented numbered and bulleted lists, a code block after a paragraph, `+build` after other spaces, CR, U+2028, U+FEFF or NUL, C1, private-use and noncharacters.
+    - 37 names under all four name cases.
+    - ENUM, SET and argument spellings on all eight databases.
+    - `go build` failed 54, every one a name under NameCase none that Go refuses.
+    - `go vet` failed 8 more: the `+build` line with a form feed and `*/`.
+    - `gofmt -l` listed 32 for a table comment: 8 each a numbered list, a tab-indented bulleted list, a code block and the `+build` line with `*/`.
+    - `gofmt -l` listed 8 for a name under NameCase none: `a/*x*/` and `Users/*x*/` 3 each, which build, and 2 that do not. That makes 40 listed in all.
+    - 1,333 of the 1,336 fields read back. The others are in two packages that do not build.
+  - **Names mixing two kinds of mark.** 19 names mixed a mark of their own (Thai, Devanagari, Hebrew, Arabic, a decomposed `é`) with a letter whose case change makes one (İ, ǰ, ΐ, ΰ, ẖ, ẗ, ẘ). They ran as table and column names under all four name cases.
+    - Every package built under camelCase, pascalCase and snakeCase.
+    - Under NameCase none the 15 holding a mark of their own failed.
+  - **JSON keys.** `json.Marshal` ran on the comma, quote, backslash, apostrophe and backtick names, alone and beside the name they read as, and on 60 more column names under camelCase. It gave the keys above (Written as is, encoding/json keys) by default, under `GOEXPERIMENT=nojsonv2` and on go1.26.9. The last two were alike for every name.
+  - **NULL through a stub driver.** A stub `database/sql` driver handed over NULL. A `[]byte` and a `*json.RawMessage` took it. A `json.RawMessage` did not: `unsupported Scan, storing driver.Value type <nil>`.
+  - **Driver limits, measured on 2026-10-09.** The driver limits, and the types they decided, were measured against PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13, SQLite, SQL Server 2022 (CU27) and Oracle Database 23.26 Free.
+    - The drivers were pgx v5.11.0 (`database/sql` and native), lib/pq v1.12.3, go-sql-driver/mysql v1.10.1, mattn/go-sqlite3 v1.14.52, go-mssqldb v1.11.2, go-ora v2.9.0 and GORM v1.31.2.
+    - A value row and a NULL row were each read and written back.
+  - **The NULL array element, on 2026-10-10.** It was measured with `'{1,NULL}'::int[]`, `'{a,NULL}'::text[]` and `'{{1,2},{NULL,4}}'::int[]`, through pgx v5.11.0, natively and through `database/sql`, on PostgreSQL 17.11.
+  - **Integers past `int64`, on 2026-10-10.** An `INTEGER` column holding 10^20, and casts to INTEGER, NUMBER(19) and NUMBER(38) past either end, were scanned into `int64`, `*int64` and `string`. This ran through go-ora v2.9.0 on Oracle Database 23.26 Free.
+  - **`dec` and `DEC`, not run here.** The 2026-10-09 driver run did not cover PostgreSQL's `dec` and SQLite's `DEC`. They are stored as the `numeric` and NUMERIC-affinity columns `decimal` and `DECIMAL` are (the `graphql.ts` section's measurement). So they take their `decimal.Decimal`.
+  - **Snowflake and Databricks, not run.** Their values are inferred from their drivers' documentation.
+  - **Comma options, on 2026-10-10 with go1.27.1.** NOT NULL `INT` columns named `a,string`, `a,format:RFC3339`, `a,omitempty`, `a,omitzero`, `a,b` and `a,unknown` were marshalled holding 1 and 0. This ran under the default name cases, by default and under `GOEXPERIMENT=nojsonv2`. go vet reported none.
+  - **Pictographic symbols, on 2026-10-10 with go1.27.1.** A column name held `™`, `®`, `©`, `‼`, `⁉`, `↔`, `↕`, `↩`, `⌚`, `⌨`, `◻`, `◼`, `〰`, `〽`, `⤴` or an emoji. This ran under the default name cases, camelCase, pascalCase and snakeCase. Each of the 64 packages failed to build (`invalid character U+2122 '™' in identifier`).
+
+### java.ts, kotlin.ts and scala.ts
+
+- **What they write.** Plain classes with no import or package line, as the other plain generators do.
+  - The reader adds `lombok.Data`, `java.math.BigDecimal`, `java.util.UUID` and the `java.time` types the text names. Scala's `Duration` needs no import (Types, below).
+  - The one-table view is `formatTable`.
+  - Java writes a Lombok `@Data public class` of `private` boxed fields.
+  - Kotlin writes `data class X(val a: T, val b: T? = null)` (an owner decision of 2026-10-09).
+  - Kotlin writes a table without columns as `class X`, since a data class needs a property.
+  - Scala writes a `case class X(` with no `@Data`.
+- **Types.** They come from the shared classifier (`columnTypes.ts`) through `getJvmType` in `java.ts`. Kotlin and Scala spell them their own way (`Int`, `ByteArray` / `Array[Byte]`).
+  - Integers take their width: `Byte`, `Short`, `Integer` and `Long`.
+  - An unsigned integer (UNSIGNED or ZEROFILL) takes the next wider type.
+  - MEDIUMINT UNSIGNED is an `Integer`, since it stops at 16777215, which an `Integer` holds.
+  - BIGINT UNSIGNED and SERIAL are a `Long` (an owner decision of 2026-10-09). A `Long` holds every key below 2^63, where `BigInteger` would retype every Laravel-style key.
+  - Oracle `INT`, `INTEGER` and `SMALLINT` (a `NUMBER(38)`) are a `Long`, as a bare `NUMBER` is. So are every Snowflake integer (a `NUMBER(38,0)`) and every SQLite integer.
+  - A `Long` holds 19 of the 38 digits Oracle's and Snowflake's integers take.
+  - SQL Server `tinyint` is a `Short`.
+  - On MySQL and MariaDB, `TINYINT(1)` is a `Byte`, `BIT(1)` a `Boolean` and `BIT(n)` past one bit a `Long`.
+  - On MySQL, MariaDB, PostgreSQL and SQL Server, `FLOAT(1)` to `FLOAT(24)` is a `Float` and `FLOAT(25)` to `FLOAT(53)` a `Double`.
+  - On Oracle, SQLite and Snowflake, every `FLOAT(n)` is a `Double`, as Oracle `REAL` is.
+  - On Databricks, every `FLOAT(n)` is a `Float`.
+  - Decimals, SQL Server and PostgreSQL money, and an Oracle or Snowflake `NUMBER(p,s)` with a scale are a `BigDecimal`. In Scala the bare `BigDecimal` names `scala.math.BigDecimal`, which needs no import.
+  - A bare `NUMBER` is a `Long`, but MariaDB's, a DOUBLE, is a `Double`.
+  - Binary types and SQL Server `rowversion` and `timestamp` are bytes (`byte[]`).
+  - `uuid`, `uniqueidentifier` and MariaDB's and Snowflake's `UUID` are a `UUID`.
+  - PostgreSQL `oid`, `cid`, `xid` and `xid8` are a `Long`.
+  - JSON, the semi-structured, network, bit-string and spatial types, and every other type, are a `String`.
+  - The offset timestamps are an `OffsetDateTime`: `timestamptz`, `datetimeoffset`, Oracle's and Snowflake's WITH TIME ZONE, `TIMESTAMP_TZ`.
+  - `timetz` is an `OffsetTime`.
+  - The naive and local-zone timestamps are a `LocalDateTime`: MySQL `TIMESTAMP`, WITH LOCAL TIME ZONE, `TIMESTAMP_LTZ`, Databricks `TIMESTAMP`. Oracle `DATE` is a `LocalDateTime` too.
+  - A day-to-second interval is a `Duration`. So is a bare one (PostgreSQL `interval`, Databricks `INTERVAL`), whose months a `Duration` cannot hold.
+  - Scala alone writes `Duration` with its package, `java.time.Duration`. A bare one would resolve to, or clash with, the `scala.concurrent.duration.Duration` a Scala file often imports.
+  - `UUID` and `OffsetDateTime` stay bare in all three.
+  - A year-month interval is a `String`, since a `Duration` holds no months.
+  - A PostgreSQL array is one level a dimension: Java `T[]`, Kotlin `List<T>`, Scala `List[T]`.
+  - Lombok's `equals` compares Java's `T[]` by content. `jpa.ts` writes `T[]` too.
+  - Kotlin and Scala write a `List`, since a data class and a case class compare an `Array` by reference.
+- **Names.** Names follow the name cases.
+  - Java has no escape, so it puts `_` after a keyword or literal (`_` too).
+  - Java also puts `_` after `var`, `yield`, `record`, `sealed` and `permits` as a class name, since javac takes them as a field name but not as a class name.
+  - Java writes a field `Class` as `Class_`, since its Lombok getter would be the final `getClass`.
+  - Java writes a field `java` as `java_`. Otherwise it would hide the package of the `java.util.Arrays` calls Lombok writes for a `byte[]` or array field (`cannot find symbol … variable util … location: variable java`).
+  - A table `Class` stays `public class Class`.
+  - These Java rules are `toJavaFieldName` and `toJavaClassName`, which `jpa.ts` shares.
+  - Kotlin writes a hard keyword and a name of underscores alone (`_`, `__`) in backticks, since Kotlin reserves both and takes them as a name only in backticks.
+  - Scala writes a reserved word of Scala 2.13 or 3 in backticks, the only way it takes one as a name.
+  - Scala also writes a field ending in `_` in backticks. The lexer would read it with the colon after it as one name (`` `order_`: Int ``).
+  - Any other name that is no identifier, and a repeated one, is written as is.
+- **Keys.** A primary key without the NN flag is NOT NULL in all three (an owner decision of 2026-10-09), since a primary key takes no NULL.
+  - Kotlin writes a NOT NULL or key column as a required `val a: T,`, and any other as `val b: T? = null,`.
+  - Scala writes `Option[T]` for a column that is neither a key nor NOT NULL, with no `= None`.
+- **Comments.** A comment is `//` lines, one a line, split at CR, LF, CRLF, U+2028 and U+2029 (`formatLineComment`, which `jpa.ts` shares).
+  - Its blank first and last lines are dropped. A blank inner line is a bare `//`.
+  - Java and JPA add a backslash to an odd run of backslashes before a `u` (`escapeUnicodeEscapes`). javac reads a Unicode escape even in a comment: it fails on a bad one (`C:\users`) and ends the comment at `\u000a`.
+  - Scala writes U+202A to U+202E and U+2066 to U+2069 as the text of their escape (`\u202B`), since Scala 2.13 refuses them even in a comment.
+  - Scala writes SUB (U+001A) as `\u001A`, since Scala 2.13 and 3 read it as the end of the file (`illegal character`). The importer reads SUB from a Databricks `'\Z'`.
+- **Layout.** Kotlin and Scala lay out a parameter list differently.
+  - Kotlin writes one parameter a line in four spaces, with a comma after each, as Kotlin's coding conventions lay out a class header.
+  - Scala writes two spaces, with no comma after the last field.
+- **Written as is.** The three generators write these unchanged.
+  - An empty table or column name (`public class  {`, `val : Int,`, `: Int`), which fails to compile.
+  - A name the name case empties (`_`, `__`, `$` under camelCase, PascalCase or snake_case), which fails to compile.
+  - A name opening on a digit or holding a space or a hyphen (`non-sealed` too), which fails to compile.
+  - A name holding `$`, which fails to compile in Kotlin, and in Scala 3 under `-Werror`.
+  - A repeated field, which fails to compile.
+  - A class named after a type or package the text or the reader's imports use (`Data`, `List`, `UUID`, `BigDecimal`, `Option`, `Array`, `java`, `lombok`). It breaks the class, or silently retypes the fields of that type (`Duration` in Java and Kotlin, `String`).
+  - In Scala, a field named after a member every case class has: `hashCode`, `toString`, `wait`, `notify`, `notifyAll`, `clone`, `finalize`, `productPrefix`, `productIterator`, `productElementNames`, `productArity` of any type but `Int`, and in Scala 2.13 `getClass`.
+  - In Scala, a class `_`, and in Scala 3 a field `_`.
+  - In Scala 2.13, a class `` `package` ``, which makes it the package object.
+  - In Scala 3, a field `_1` or `_2` out of its place.
+  - In Scala, a field named `java`, which hides the package of `java.time.Duration` from its own type and the fields after it.
+  - Two Java fields that differ only in the case of their first letter (`name`, `Name`). They share one Lombok getter, written for the first alone.
+  - Two such fields in Kotlin (`name` and `Name`, `uRL` and `URL`, `` `class` `` and `Class`). Their getters clash (`platform declaration clash`) and fail to compile.
+  - A binary column, which a data class and a case class compare by reference.
+  - A table of more columns than a constructor takes. The JVM counts a `Long` or `Double` twice against its 255 slots.
+  - So YOUNGCART5's `g5_shop_default` on Oracle, SQLite and Snowflake, where every integer is a `Long`, compiles in Kotlin and is refused when the JVM loads it. Scala refuses it on SQLite and Snowflake.
+- **Measured** on 2026-10-10.
+  - Compilers: javac 25.0.4 with Lombok 1.18.48 (`-proc:full -Xlint:all`), kotlinc 2.4.21 (`-Werror`), and Scala 3.10.0 and 2.13.18 (`-Werror`).
+  - Each text was compiled in a package of its own with the imports a reader adds. Then every class was loaded on the JVM.
+  - Types: every type of the eight vendor lists with seven argument variants and further spellings, 3,593 in all. Each was NOT NULL, nullable, a key without NN and an auto-increment key.
+  - Comments: CR, LF, CRLF, U+2028, U+2029, U+0085, backslash runs before `u`, bidirectional controls and every C0 control, SUB among them.
+  - SUB also came as a Databricks `COMMENT 'a\Zb'` read by the importer.
+  - The five `data/*.sql` fixtures, on every database.
+  - The types, comments and fixtures were compiled whole and per table. They compiled with no warning and loaded, but for the wide table under Written as is.
+  - Names: 164 names under the four name cases, as a class, key, NOT NULL, nullable and relation name. They were the keywords of the three languages, the members a class has, the types and packages the output names, and names that are no identifier.
+  - Under none and camelCase, the same names stood as a field beside a `bytea` and a `text[]` column, and as the parent of a child holding a `bytea` column.
+  - A field `java` also stood beside each binary type of the eight lists.
+  - Nine pairs of names that differ only in letter case ran too.
+  - The names failed only as Written as is lists.
+  - Scala's `java.time.Duration` field compiled to that type with `scala.concurrent.duration.Duration` imported, alone or beside `java.time.Duration`. There a bare `Duration` resolved to the Scala one or was refused as ambiguous.
+
+### jpa.ts
+
+- **What it writes.** `jpa.ts` writes one Jakarta Persistence entity per table, with Lombok's `@Data` on it.
+  - It uses plain JPA annotations only, no Hibernate annotation. The referential-action rule in `src/utils/schema-sql/AGENTS.md` records why.
+  - Each column is a field, in the table's order. Foreign key columns are the exception: they become relation fields (Keys and relations, below).
+  - Names and types are `java.ts`'s except where this section says otherwise.
+  - A composite key adds an `@IdClass` holder, `XId implements Serializable`, before its entity.
+- **Types.** They are `java.ts`'s with three differences.
+  - `timetz` is a `LocalTime`, since Hibernate moves an `OffsetTime` by the JVM's offset on the way in and out.
+  - An Oracle interval is a `String`, since Hibernate writes a `Duration` to an Oracle interval in no way.
+  - A PostgreSQL interval takes the `Duration` under `hibernate.type.preferred_duration_jdbc_type=INTERVAL_SECOND`.
+  - `@Lob` goes on Oracle `BLOB`, `CLOB` and `NCLOB` alone, since Hibernate reads them as a `byte[]` or `String` only under it. No other type takes `@Lob`.
+  - `columnDefinition` is written only where Hibernate's schema validation refuses the field without it:
+    - PostgreSQL `money`;
+    - a fixed `BINARY(n)` on MySQL, MariaDB and SQL Server, and MySQL's and MariaDB's `CHAR(n) BYTE`, as `"BINARY(16)"`;
+    - MySQL and MariaDB `TINYINT`, `SMALLINT` and `INT` UNSIGNED or ZEROFILL, by the name the driver reports (`"INT UNSIGNED"`).
+  - The reported name drops the display width. On MySQL it drops ZEROFILL too. MariaDB's keeps ZEROFILL, so on MariaDB the definition adds ` ZEROFILL`.
+  - YEAR never takes a `columnDefinition`, since it stays a YEAR under UNSIGNED or ZEROFILL.
+  - SQL Server `rowversion` and `timestamp` take `@Column(insertable = false, updatable = false)`, since the database writes them.
+- **Names.** Each name the annotations carry is a Java string with `"`, `\`, CR and LF escaped.
+  - `@Table(name = "...")` is written where the class name differs from the table name.
+  - `@Column(name = "...")` is written where the field name differs from the column name, key columns included.
+  - `@JoinColumn(name = "...")` carries the column name as written.
+  - This fits Hibernate's default physical naming (`PhysicalNamingStrategyStandardImpl`), which keeps every name as given.
+  - Spring Boot's default, `CamelCaseToUnderscoresNamingStrategy` (from Spring Boot's documentation), rewrites a name with a capital in it, a written one too.
+    - So `@Table(name = "userAccount")` looks for `user_account`.
+    - A field `createdAt` with no `@Column` name looks for `created_at`.
+    - A name with no capital (`member_info`, `small_n`) passes under either strategy.
+    - An application on Spring Boot sets `spring.jpa.hibernate.naming.physical-strategy` to `org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl`.
+  - A table name the shared reserved-word list holds (`DOCTRINE_RESERVED_WORDS`, in any letter case) is quoted inside the `@Table` name: `"\"user\""`. Hibernate writes it in the dialect's own quotes.
+  - It is quoted only where `settings.bracketType` quotes names, as the editor's DDL does.
+    - Under `BracketType.none` the DDL leaves the name bare, so the database folds its case.
+    - A quoted mapping would then find no table (`missing table [Member]` on PostgreSQL, ORA-00942 on Oracle).
+    - A name the database itself reserves cannot be created there at all under `BracketType.none`.
+  - Class and field names are `java.ts`'s (`toJavaClassName`, `toJavaFieldName`). Its section (`java.ts`, `kotlin.ts` and `scala.ts`, Names) gives the reasons.
+    - A keyword gets `_` after it, and the field gets its `@Column` name (`class_`).
+    - A field `Class` is `Class_` with `@Column(name = "class")`.
+    - A field `java` is `java_` with `@Column(name = "java")`.
+  - Every relation field, `mappedBy` and `@IdClass` field goes through the same rule, so each side names the one field.
+- **Keys and relations.** `@Id` goes on a key column.
+  - `@GeneratedValue(strategy = GenerationType.IDENTITY)` is added where the key auto-increments. It matches the identity or AUTO_INCREMENT column the editor's DDL creates.
+  - An `@Id` takes no `nullable`, since a key takes no NULL.
+  - Any other NOT NULL column takes `nullable = false`.
+  - A foreign key column is no field of its own. The child holds a field of the parent's class instead:
+    - `@ManyToOne`, or `@OneToOne` for a one cardinality;
+    - with `@JoinColumn`, or `@JoinColumns` for a composite key;
+    - with `@Id` too where the foreign key is part of the key.
+  - The parent holds `@OneToMany(mappedBy = "...")` on a `List<X> xList = new ArrayList<>()`, or `@OneToOne(mappedBy = "...")`.
+- **Written as is, though Hibernate cannot use it.**
+  - A keyless table. Its `@Entity` without an `@Id` stops the persistence unit at boot.
+  - A foreign key to part of a composite key (`data/Magento2-sales.sql`). MySQL and PostgreSQL refuse it in the editor's DDL.
+  - An auto-increment column in a composite key. Hibernate 6.6 refuses it on insert (`Identity generation isn't supported for composite ids`).
+  - Hibernate 7.4 inserts that column on MySQL and PostgreSQL. It does not on SQLite, whose DDL writes no AUTOINCREMENT there.
+  - Three cases that repeat a field name (`already defined` in Magento2-sales, OKKY and sakila):
+    - two relationships of one table pair;
+    - a one-to-one relationship of a table to itself, whose owning and inverse fields both take the table's name;
+    - a column named like the field a relationship writes (`city` beside a foreign key to `city`).
+  - A PostgreSQL array of more than one dimension (`Integer[][]`). Hibernate refuses it at boot (`Nested arrays ... not supported`).
+  - A reserved column name, never quoted. A PostgreSQL insert into a column `order` fails.
+  - Under a quoting bracket type, every name but a reserved table name is left bare.
+    - A name with capitals that the DDL created quoted is then not found on PostgreSQL, which folds it down, or on Oracle, which folds it up.
+    - It is found when `hibernate.globally_quoted_identifiers=true` is set.
+  - The names `java.ts` writes as is.
+  - A class named after an annotation or type the reader imports (`Entity`, `Table`, `Column`, `Id`, `List`, `ArrayList`, `Serializable`).
+  - The types below, each with its field type from Types, above.
+  - PostgreSQL: `json`, `jsonb`, `xml`, the network types (`inet`, `cidr`, `macaddr`, `macaddr8`), the geometric types (`point`, `line`, `lseg`, `box`, `path`, `polygon`, `circle`), every range and multirange, the year-month intervals (`interval year`, `interval month`, `interval year to month`), the bit strings, `tsvector`, `tsquery`, `jsonpath`, `tid`, `pg_lsn`, `pg_snapshot`, `txid_snapshot` and the `reg*` types.
+    - They fail validation (`found [json (Types#OTHER)]`, `found [xml (Types#SQLXML)]`).
+    - They write only with `stringtype=unspecified` in the JDBC URL. Without it a write fails (`column "c" is of type inet but expression is of type character varying`).
+    - `regclass` alone writes without it.
+  - PostgreSQL `cid`, `xid` and `xid8`. They fail validation and a write with or without `stringtype=unspecified` (`column "c" is of type xid but expression is of type bigint`).
+  - PostgreSQL `bpchar`, `char` and `character`. They fail validation alone.
+  - A PostgreSQL bare `interval` holding months. Hibernate reads it with the months dropped (`1 mon` as `PT0S`, `1 year 2 mons 3 days 04:05:06` as `PT76H5M6S`).
+  - A PostgreSQL `money` of 1,000 or more either side of zero. It writes, but pgjdbc cannot read it through its group separators (`Bad value for type BigDecimal : 1,234.56`).
+  - The PostgreSQL arrays `jsonb[]`, `interval[]` and `money[]`. They fail a write or a read even with `stringtype=unspecified` and `INTERVAL_SECOND`.
+    - `money[]` fails with `Bad value for type double : $12.34` whatever the value.
+  - MySQL and MariaDB `TINYINT(1)`. It fails validation alone (`found [bit (Types#BIT)], but expecting [tinyint]` on MySQL, `found [boolean]` on MariaDB).
+  - MySQL and MariaDB `BIT(n)` past one bit. It fails validation alone (`found [bit], but expecting [bigint]`).
+  - MySQL and MariaDB `YEAR`, and MariaDB's `INET4` and `INET6`. They fail validation alone.
+  - On Hibernate 6.6 alone, MySQL and MariaDB `CHAR`, and MySQL's `ENUM` and `SET`. They fail validation alone.
+  - The MySQL and MariaDB spatial types (`GEOMETRY`, `POINT`, `LINESTRING`, `POLYGON`, the `MULTI` ones, `GEOMETRYCOLLECTION` and `GEOMCOLLECTION`). They fail validation and a write (`Cannot get geometry object from data you send to the GEOMETRY field`).
+  - Oracle `CHAR`, `CHARACTER`, `NATIONAL CHAR`, `NATIONAL CHARACTER`, `NCHAR`, `NCLOB` and `JSON` (`found [json (Types#UNKNOWN(2016))]`). They fail validation alone.
+  - On Hibernate 6.6 alone, Oracle `BINARY_FLOAT` and `BINARY_DOUBLE`. They fail validation alone.
+  - Oracle `INTERVAL DAY TO SECOND` and `INTERVAL YEAR TO MONTH`. They fail validation and write, but read back in ojdbc's form (`+01 02:03:04.000000` as `1 2:3:4.0`, `+01-02` as `1-2`).
+  - Oracle `VECTOR`. It fails validation and reads `[1,2,3]` back as `[1.0E+000,2.0E+000,3.0E+000]`.
+  - Oracle `BFILE`, `ANYDATA` and `URIType`. They fail validation and a write (ORA-00932).
+  - Oracle `XMLType`. It fails validation and a round trip without Oracle's xdb library (`NoClassDefFoundError: oracle/xdb/XMLType`).
+  - Oracle `ROWID` and `UROWID`. They fail validation.
+  - An Oracle bare `NUMBER` holding a fraction. It is read with the fraction dropped (`1.5` as `1`).
+  - An Oracle bare `NUMBER` or integer type holding a value past a `Long`. Its read fails (ORA-17026).
+  - SQL Server `char`, `character`, `national char`, `national character`, `nchar` and `sql_variant`. They fail validation alone on 6.6 and 7.4.
+  - SQL Server `geometry` and `geography`. They fail validation and read back as the hex of their binary form (`POINT(1 2)` as `E6100000010C…`).
+  - SQL Server `hierarchyid`. It fails validation and reads `/1/` back as `58`.
+  - SQL Server `rowversion` and `timestamp`. They fail validation.
+  - SQLite, under Hibernate's community dialect: every integer type but `BIGINT`, a key included. It fails validation alone (`found [integer (Types#INTEGER)], but expecting [bigint]`).
+  - SQLite `BOOL`, `DATETIME`, `DEC` and `DECIMAL`. They fail validation alone.
+- **Measured** on 2026-10-10.
+  - Compile: javac 25.0.4 with Lombok 1.18.48 and jakarta.persistence-api 3.2.0 compiled the whole texts of the corpus that the Measured bullet of `java.ts`, `kotlin.ts` and `scala.ts` (above) lists. Every class loaded.
+  - Every one-table view is a slice of its whole text.
+  - The compile left out the repeated relation fields under Written as is: the fixtures', a one-to-one relationship of `employee` to itself, and a column `city` beside a foreign key to `city`.
+  - It also left out the names under Written as is.
+  - `-Xlint:all` warned only `[processing]`, since no processor claims the Jakarta annotations.
+  - It also warned `[serial]` on each `@IdClass` holder. The holder declares no `serialVersionUID`. Where a foreign key is part of the key, it holds the parent entity in a field, and that entity is not `Serializable`.
+  - Names: Hibernate 6.6.58 and 7.4.12, with Hibernate's default naming, validated, persisted and read back against the editor's DDL. The servers were PostgreSQL 17.11 (pgjdbc 42.7.8) and MySQL 8.4.11 (Connector/J 9.4.0).
+  - The cases were a table `class` with a column `class` (`Class` under the none case), and the relation, `mappedBy` and `@IdClass` fields named after it.
+  - A table the database reserves (`user`, `order`) and one only the list holds (`key`, `user`) ran too.
+  - Each ran under every column name case.
+  - Bracket types: they passed under `doubleQuote` on PostgreSQL and `backtick` on MySQL, but for PostgreSQL `doubleQuote` with a name in capitals (Written as is).
+  - Under `none` they passed without the reserved table, whose DDL fails there.
+  - Under `singleQuote`, under `backtick` on PostgreSQL and under `doubleQuote` on MySQL, the editor's DDL fails before any mapping.
+  - The naming strategies ran the same way on PostgreSQL, with a `userAccount` and a `member_info` table under the PascalCase and camelCase name cases.
+  - A table `java` with a column `java` beside `bytea` and `text[]` columns ran too. Its relation, `mappedBy` and `@IdClass` fields were named after it, all `java_` in classes holding a `byte[]`.
+  - It validated, persisted and read back the same way on PostgreSQL 17.11.
+  - Type limits: one table per type, holding an integer key and the column, in the editor's DDL under `BracketType.none`.
+  - The types were every type of the PostgreSQL, MySQL, MariaDB, Oracle, SQL Server and SQLite lists whose table that DDL creates there.
+  - Spellings with arguments ran too (`TINYINT(1)`, `BIT(64)`, `CHAR(10)`, `INTERVAL DAY(2) TO SECOND(6)`), and seventeen PostgreSQL arrays.
+  - Each entity was validated alone, then a row was persisted and found.
+  - The type limits ran on these servers and drivers:
+    - PostgreSQL 17.11 (pgjdbc 42.7.8), once as it comes and once with `stringtype=unspecified` and `INTERVAL_SECOND`;
+    - MySQL 8.4.11 (Connector/J 9.4.0);
+    - MariaDB 11.4.13 (MariaDB Connector/J 3.5.6);
+    - Oracle Database Free 23.26.3 (ojdbc11 23.9);
+    - SQL Server 2022 CU27 (mssql-jdbc 13.2);
+    - SQLite (sqlite-jdbc 3.53.4.0, `hibernate-community-dialects` of the same Hibernate release).
+  - The PostgreSQL intervals with months and the Oracle `NUMBER` values were inserted in SQL and read by Hibernate.
+  - The money values were persisted and read by Hibernate.
+  - Snowflake and Databricks were not run.
+
+### php.ts
+
+- **What it writes.** `php.ts` writes plain classes of typed public properties (owner decisions of 2026-10-07).
+  - `<?php` and `declare(strict_types=1);` open the text with nothing before them. The other languages open with a blank line, but PHP refuses that declare after any output.
+  - So `index.ts` hands the one-table view to `createTableCode`, which opens on the same header.
+  - Doctrine, Swift, Zod and JSON Schema hand theirs to a `createTableCode` too, each opening on a header a file of its own needs. SeaORM's `createTableCode` writes a module file's body.
+  - A NOT NULL column or a primary key is `T $x;`. Any other column is `?T $x = null;`.
+  - A comment is a doc block, never `//`. A `?>` in the text would end a `//` comment.
+  - A `*/` in the text is written `*\/`, since it would close the doc block early.
+- **Types.**
+  - A decimal or money type stays a string.
+  - So does an Oracle or Snowflake `NUMBER` with a scale. The shared tables file every `NUMBER` under long; a bare `NUMBER` stays an `int`.
+  - A time and an interval are strings. PHP has no time-of-day type, and the shared tables file a PostgreSQL interval under time.
+  - PostgreSQL's arrays, bit strings and `pg_lsn` are strings, because pdo_pgsql reads them as text.
+  - A date is `\DateTimeImmutable`.
+  - SQL Server's `bit` is a `bool`, and its `numeric` a string.
+- **Names.**
+  - A name PHP refuses for a class, in any letter case, gets `_` after it. nikic/PHP-Parser names its nodes the same way.
+  - Examples are `List`, `Match`, `Object`, `Readonly`, and `_`, which PHP 8.4 deprecates. The set is `RESERVED_CLASS_NAMES`.
+  - Every other name, column names included, stays as the name cases give it.
+- **Layout.** An empty table is `class X {}`, PER Coding Style's form. PSR-12 wants the braces on two lines.
+- **Written as is.** Both follow from leaving names as the name cases give them.
+  - A name that is no PHP identifier.
+  - A repeated name.
+- **Measured.**
+  - `RESERVED_CLASS_NAMES` was measured on PHP 8.1 and 8.4.
+  - On 2026-10-07, PHP 8.1 and 8.4 linted and ran the output for the five `data/*.sql` fixtures, whole and per table.
+  - On the same date, php-cs-fixer's `@PER-CS2.0` and `@PER-CS3.0` left that output as it was.
+
+### doctrine.ts
+
+- **What it writes.** Doctrine ORM 3 attribute entities with public typed properties and no accessors (owner decisions of 2026-10-07).
+  - The properties are public because ORM 3's lazy ghost proxies load a public property, which ORM 2's did not.
+  - The output is for DBAL 4.2 or later (`Types::ENUM`, `Types::SMALLFLOAT`).
+  - Its rules come from two adversarial reviews, of 2026-10-07 and 2026-10-09. Both ran every finding through ORM 3.7.4 and DBAL 4.2.5, the second against the real databases too.
+- **Types.** Every column writes `name:` and `type: Types::…`.
+  - Its PHP type is what DBAL 4 hydrates. `BLOB` is `mixed`, `JSON` and `SIMPLE_ARRAY` are `array`, and `DECIMAL` is a string.
+  - `BIGINT` is an int, or `int|string` where it is unsigned and can pass PHP's range.
+  - It writes the options DBAL reads back, so a migration diff against the editor's DDL leaves the column as it is but for the shapes under Written as is and Migration diffs below:
+    - A length comes from a character or binary type's argument alone, in every spelling the vendor lists hold (`lengthTypes`). An interval's or a vector's argument is no length.
+    - An Oracle `BYTE` or `CHAR` unit is dropped.
+    - `'fixed' => true` goes on `char`, `nchar`, `binary`, MySQL's `CHAR BYTE` (a `BINARY`) and a `bpchar` with a length.
+    - A bare CHAR takes length 1. So does a bare binary on MySQL, MariaDB and SQL Server, which make it one byte.
+    - `SMALLFLOAT` is a single precision float as each platform reads it back:
+      - MySQL `FLOAT` up to 24 or with two arguments;
+      - PostgreSQL `real`, `float4` and `float(1)` to `float(24)`;
+      - SQL Server `real` and `float(1)` to `float(24)`;
+      - Oracle `REAL` and `FLOAT(63)`, while Oracle `BINARY_FLOAT` is `FLOAT`;
+      - SQLite `real`.
+    - MySQL's types:
+      - Its sized text and blob types take their lengths (255, 65535, 16777215).
+      - A LONG type is a MEDIUMTEXT or MEDIUMBLOB there.
+      - `TEXT(n)` takes the class n four-byte characters need, where `BLOB(n)` counts bytes.
+      - A zero argument takes the TINY class on MySQL and the plain one on MariaDB.
+      - Its national character types take `'charset' => 'utf8mb3'`, which MySQL stores them in.
+      - `ENUM` takes its `'values'`, each read as MySQL reads a literal.
+      - `SET` is `SIMPLE_ARRAY`.
+      - `UNSIGNED`, `ZEROFILL` and `SERIAL` write `'unsigned' => true` on an integer, a DECIMAL or a float.
+    - PostgreSQL `jsonb` takes `'jsonb' => true`.
+    - An Oracle or Snowflake NUMBER with a scale is a `DECIMAL`.
+    - An Oracle NUMBER, DECIMAL, NUMERIC or DEC of no scale is typed as DBAL reads it back. Precision 5 is a `SMALLINT`, any other up to 10 an `INTEGER`, a wider one a `BIGINT`.
+    - Oracle's `SMALLINT`, which Oracle stores as such a NUMBER, is an `INTEGER`.
+    - Oracle's `DATE` is a `DATE_IMMUTABLE`, the type DBAL reads such a column back as. The shared vendor tables now file it as a date and time.
+    - Those two Oracle types sit in `vendorTypes`. They follow DBAL's Oracle type mapping and were not run.
+  - DBAL 4 writes no VARBINARY or DECIMAL without a size.
+    - So any other length-less binary type is a `BLOB`.
+    - A DECIMAL naming no precision takes `precision: 10, scale: 0`, DBAL 3's default.
+    - On SQL Server it takes SQL Server's own 18 and 0 instead. On Oracle it is the `INTEGER` its NUMBER(*,0) reads back as. A money type takes its vendor's digits.
+  - ORM writes a length-less string as VARCHAR(255).
+    - So `varchar(max)` and a length-less `text` or `string` (PostgreSQL, SQLite, Snowflake, Databricks) are a `TEXT`.
+    - A length-less `varchar` or `bpchar` stays a `STRING`.
+    - As a key, it takes length 255, ORM's default, which SchemaTool would not copy to a join column toward it.
+  - A time of day is `TIME_IMMUTABLE`, though `php.ts` writes a string (an owner decision). As a string, a migration would turn the column into VARCHAR.
+  - An interval is a `STRING`.
+  - Doctrine hashes a key as a string, so a key it cannot hash that way takes another type:
+    - A date or time key is a `STRING` of length 255 with a string property and a definition (an owner decision). The length is what SchemaTool copies to a join column toward it, and what DBAL's comparator needs.
+    - A length-less binary key on PostgreSQL or SQLite (`bytea`, `BLOB`) is a `BINARY` with a string property. Its `BLOB` would hydrate a stream. Those platforms write `BINARY` as the same type.
+- **Column definitions.** A column whose type DBAL cannot write keeps a column definition. DBAL writes a definition verbatim where it creates a column.
+  - SQL Server's `rowversion` and `timestamp` are `ROWVERSION`: eight bytes the database writes and never leaves NULL.
+    - They are not fixed, as DBAL reads them back.
+    - They take `insertable: false, updatable: false, generated: 'ALWAYS'`, and the property is null until the insert.
+  - SQL Server's `nvarchar(max)`, `ntext` and `national text` take `length: -1` and `NVARCHAR(MAX)`. DBAL writes a TEXT as VARCHAR(MAX), which keeps no Unicode.
+  - A SQL Server VARCHAR or CHAR past 4000 characters keeps its definition. The NVARCHAR DBAL writes holds 4000 characters at most.
+  - PostgreSQL's arrays, bit strings and `pg_lsn` are a `TEXT` with a string property, since pdo_pgsql reads them as text.
+  - A date or time key keeps a definition, and a join column toward it repeats it.
+  - A definition holds the column's NOT NULL, except on an Oracle key DBAL reads back otherwise: one of a type other than DATE, or one with a default. That key's primary key makes it NOT NULL, and its MODIFY refuses NOT NULL again.
+  - On MySQL and MariaDB a definition also holds the column's comment, which those platforms write nowhere else. The `'comment'` option stays beside it for DBAL's comparator.
+- **Names in SQL.** Doctrine quotes a reserved word in the DDL it writes. In a query it quotes only a name the mapping wraps in backticks.
+  - So every table, column and join column name gets backticks where `settings.bracketType` quotes names.
+  - Under `BracketType.none` these names get backticks:
+    - a word `DOCTRINE_RESERVED_WORDS` lists, in any letter case. `doctrineReservedWords.ts` holds every word DBAL 4 reserves on MySQL, MariaDB, PostgreSQL, SQL Server, Oracle or SQLite.
+    - a name that is no ASCII identifier;
+    - a name typed in delimiters (`"Users"`, and on MySQL, MariaDB, SQLite and Databricks a table name's part in backticks). It keeps its case (an owner decision).
+  - Under `BracketType.none` an undelimited name is written as its database stores it. A backticked one then names what the editor's DDL created.
+    - On Oracle each letter whose capital is one character is upper case. A Greek letter with an iota below takes the capital with the iota beside it, as Oracle does.
+    - On PostgreSQL ASCII letters are lower case.
+  - Doctrine keeps one quoted flag for a join column's two names. So a column takes backticks wherever it, or a key it references in any association, needs them. Its field and every join column on it take them alike.
+  - Doctrine reads a dot in a table name as the end of a schema before it reads a backtick, and keeps one schema. So a dotted name goes out as `name:` and `schema:`.
+    - Its last two parts are split and unquoted as `splitNameParts` and `unquoteNamePart` read them for the SQL generators.
+    - The backticks go on the table alone, and they quote the schema too.
+    - `sales.order` is `` name: '`order`', schema: 'sales' `` under every bracket type.
+    - `shop.sales.users` drops `shop`.
+    - A one-part name the document quotes is written whole, delimiters and all, as its DDL writes it.
+- **PHP names.** They are repaired as in `typeorm.ts`.
+  - A class name is made an identifier and suffixed as `php.ts` does. A table with no name is `__`.
+  - A class name is numbered against the header's imports and the other classes, in any letter case.
+  - A property name is made an identifier and numbered.
+  - A second column of one name is dropped.
+  - Letters beyond ASCII stay (an owner decision).
+- **Keys and relations.** A relationship maps only between tables the document lists, and only toward the parent's key columns.
+  - A key column is the one column Doctrine lets a join column reference. So a relationship toward a UNIQUE column keeps its columns plain fields.
+  - It maps both sides:
+    - A `ManyToOne` with a `OneToMany` `Collection` the constructor fills.
+    - A `OneToOne` on both, for a one relationship, or for an association that is the child's one key column (`#[ORM\Id]` on it, below). Such an association holds one child a parent, and Doctrine's validator refuses it as a many-to-one.
+  - A foreign key that is the child's whole key in another way stays a `ManyToOne` beside its `#[ORM\Id]` fields, which validates. The other ways are a composite key, or a key toward a parent keyed by an association.
+  - `inversedBy` and `mappedBy` name each other.
+  - Each `JoinColumn` carries:
+    - its own `nullable: false`;
+    - the UNIQUE, written once a column, and left to Doctrine on a single-column one-to-one;
+    - the options of a column the association carries (Types and Column definitions above, Strings and defaults below);
+    - `onDelete` where `referentialActionSupport` takes it. Doctrine has no ON UPDATE.
+  - The foreign key columns an association carries get no field of their own, but a key column may.
+    - An association is the key itself (`#[ORM\Id]` on it) only toward a parent keyed by one column of its own.
+    - Doctrine refuses one toward a composite key at metadata load. Its validator refuses one toward a parent whose key is an association.
+    - Elsewhere the key column stays an `#[ORM\Id]` field beside the association on that column.
+  - Members stand in the table's column order, an association at its first join column. Doctrine builds the primary key in the order its members are declared.
+  - `GeneratedValue` goes on a single-column integer key flagged auto increment or of a serial type.
+    - ORM 3 picks IDENTITY. DBAL reads that back from PostgreSQL only as a BY DEFAULT identity.
+    - So against the editor's `GENERATED ALWAYS` key, every schema update adds the identity again. PostgreSQL refuses that, though inserts work.
+    - On Oracle ORM 3 picks a sequence named `<table>_<column>_seq`. The editor's Oracle DDL does not create it; it writes `SEQ_<table>` and a trigger.
+- **Indexes** (an owner decision). An index is `#[ORM\Index]` and a unique one `#[ORM\UniqueConstraint]`, after `#[ORM\Table]`. Its removed columns are dropped.
+  - A blank name takes the one the editor's DDL gives it: `IDX_<table>`, numbered with `autoNameIgnoreCase` in the document's index order, so the one-table view writes the same.
+  - The exception is an index the document still holds on a table it no longer lists, or one none of whose columns its table still lists. Neither writes that index, but `doctrine.ts` numbers it and the DDL skips it. So a later blank index of that name takes the next number (`IDX_t1` where the DDL writes `IDX_t`).
+  - A name out of its delimiters is written only where DBAL and ORM take it as given:
+    - it is of `[A-Za-z0-9_]`;
+    - it is no number, which ORM reads as no name;
+    - it is not `primary`, the key's name;
+    - it repeats no earlier index name of the table, in any letter case.
+  - Any other name is left out. Then one unnamed index is written per column set and uniqueness. DBAL names those after their table, columns and uniqueness, and refuses a second of one name.
+  - ORM keeps one index for a column set a unique constraint covers. So it folds a UQ column's own unique index into a constraint on that column alone.
+- **Strings and defaults** (an owner decision).
+  - A default goes into `options` when it is one of these:
+    - a number in the grammar the editor's DDL writes (a sign, a point, an exponent);
+    - a quoted string, with an `N` before it, or on MySQL and MariaDB a character set before it. Those two read its backslash escapes too, with `\%` and `\_` kept.
+    - a boolean on a BOOLEAN, or as 1 or 0 on an integer column of MySQL, MariaDB or SQLite;
+    - the current time on a timestamp (`CURRENT_TIMESTAMP`, `NOW()`, `GETDATE()`, `now()`, `LOCALTIMESTAMP` and the like, as each database spells it), all written `CURRENT_TIMESTAMP`.
+  - An expression never goes in, since DBAL would quote it. No default goes on a generated key or a defined column.
+  - A default is written as its database reads it back:
+    - on Oracle and SQLite as typed, since they keep the text;
+    - elsewhere with no exponent, no plus, no leading zero and no trailing zero; PHP reads a leading zero as octal;
+    - an integer bare, but as a string past PHP's int or where the text is kept;
+    - any other number as a string;
+    - on MySQL and MariaDB rounded and padded to its column's scale, a DECIMAL's or a FLOAT(M,D)'s, and on an integer column rounded to an integer;
+    - a quoted `true`, `false`, 1 or 0 on a BOOLEAN as a flag, and on PostgreSQL its `t`, `yes`, `on` and the rest too. Any other text there is left out.
+  - These defaults are left out:
+    - a JSON default on MySQL, which MySQL takes only in parentheses, which DBAL never writes;
+    - a SQL Server `N'…'` holding characters beyond ASCII, which DBAL would write without the N;
+    - a PostgreSQL `E'…'`.
+  - A join column an association carries writes its own default and comment. Otherwise it writes `'default' => null` and `'comment' => ''` over its parent's, which SchemaTool would copy to it.
+- **Written as is, though Doctrine cannot use it.**
+  - A keyless table (the link tables of `data/OKKY.sql`), which Doctrine refuses.
+  - A foreign key to part of a composite key (`data/Magento2-sales.sql`), which Doctrine refuses.
+  - An optional association carrying a key field or a NOT NULL column. ORM writes NULL into it when the association is null.
+  - A column name with a dot, which DBAL splits.
+  - A dotted table name where the bracket type quotes names. The editor's DDL creates it as one identifier, and Doctrine maps it as a schema and a table.
+  - A join column ORM's OneToMany loader cannot reach (an owner decision). The loader writes the name unquoted. So a parent's collection fails to load when that column is reserved, holds other characters, or is quoted in a case PostgreSQL or Oracle would fold otherwise.
+  - A class or property name with letters beyond ASCII, which DQL and the QueryBuilder cannot name (an owner decision).
+  - A column whose name, stripped to ASCII letters, digits and the underscore, opens on a digit (`2fa_enabled`, `주소1`). ORM's unquoted result alias makes it unreadable on PostgreSQL, SQLite, SQL Server and Oracle.
+  - On Oracle, any name not opening on an ASCII letter (`이름`, `имя`). Its alias opens on an underscore, which makes it unreadable the same way.
+  - A name holding a double quote, a bracket or a backtick. A one-part name the document quotes is written with its delimiters.
+    - DBAL's schema tools strip them, so SchemaTool on an empty database creates the name without them and the entity misses it.
+    - A diff drops and recreates a table whose name holds one after its first character.
+  - A value DBAL parses only at the precision it writes itself:
+    - SQL Server's default `time` and `datetimeoffset`, which fail to load;
+    - MySQL `TIME(n)`, which fails to load;
+    - a fractional PostgreSQL `time`, `timetz` or `timestamptz`, which fails to load;
+    - an Oracle DATE holding a time of day, which fails to load;
+    - SQL Server's `datetime` and `smalldatetime`, which load but take none of the six fractional digits DBAL binds. So an insert, an update and a date parameter fail.
+- **Migration diffs keep a statement.** A migration diff against the editor's DDL keeps a statement for each case below.
+  - A column with a definition, which DBAL's comparator compares as its Doctrine type. The statements of both cases below are removed by hand.
+    - On PostgreSQL each diff retypes a date or time key as VARCHAR(255).
+    - On Oracle a NOT NULL join column toward a TIMESTAMP key, or toward a DATE key with a default, gets a MODIFY whose NOT NULL Oracle refuses.
+  - Types DBAL reads only once the application maps them (`mapping_types`):
+    - PostgreSQL's arrays, bit strings and `pg_lsn` to `text`, after which they compare equal;
+    - SQL Server's `timestamp` (a rowversion) to `binary`;
+    - SQLite's `character`, `native character`, `nchar` and `varying character` to `string`;
+    - SQLite's `int2` to `smallint`, and `int8` and `unsigned big int` to `bigint`.
+  - A default DBAL reads back other than it writes it, which the first diff rewrites:
+    - a PostgreSQL `now()`, `transaction_timestamp()` or `LOCALTIMESTAMP`, set to CURRENT_TIMESTAMP with the column retyped TIMESTAMP(0), which drops stored fractions of a second;
+    - a SQL Server `N'…'`, rewritten as a plain literal;
+    - a quoted `'false'` on a BIT, rewritten as 0;
+    - a MySQL JSON default, which the mapping cannot carry and the diff drops. A NOT NULL JSON column then needs a value on every insert.
+  - A join column the mapping backticks: every one under a quoting bracket type, and under `BracketType.none` a reserved, non-ASCII or delimited one, or one beside such a key. DBAL names its implicit index from the quoted name. So the update renames an index that does not exist, and fails on PostgreSQL, MySQL, SQL Server and Oracle.
+  - MySQL and MariaDB `TINYINT`, a `SMALLINT` here, which DBAL reads back as a BOOLEAN. The update widens the column and fails where a foreign key holds it, unless the application maps `tinyint` to `smallint` (`registerDoctrineTypeMapping`).
+  - An Oracle NUMBER DBAL reads back as another integer than the one written, which a diff retypes: a bare one, NUMBER(1), NUMBER(11) to NUMBER(19), one past 20.
+  - A MySQL FLOAT default past its precision, which MySQL rounds.
+  - A MySQL ZEROFILL default, which MySQL pads.
+  - A PostgreSQL default with a plus, which PostgreSQL keeps as the expression `(+ 5)`.
+  - A plain or second unique index on a column set a unique constraint covers, which ORM drops.
+  - On PostgreSQL, the DROP INDEX of a UQ column's constraint, which PostgreSQL refuses.
+  - A MySQL `SET` with a default. DBAL's own CREATE TABLE writes it as a LONGTEXT, which MySQL takes no default on, though a diff leaves the editor's column alone.
+  - On SQLite, where DBAL writes comments inline, the comment of a column with a definition.
+  - An index the mapping leaves unnamed: the unique index of a UQ column and a foreign key's index. DBAL names them `UNIQ_` or `IDX_` and a hash, so the first diff renames them.
+- **Measured** on 2026-10-07 and 2026-10-09.
+  - On 2026-10-07, with ORM 3.7.4 and DBAL 4.2.5 on PHP 8.1:
+    - The mapping for the five `data/*.sql` fixtures validated with no error but the two refused kinds (Written as is).
+    - It wrote its schema for SQLite, MySQL, MariaDB, PostgreSQL, SQL Server and Oracle.
+    - php-cs-fixer's `@PER-CS3.0` left it as it was.
+    - On SQLite, entities stored and read back a reserved table and reserved columns, a date key, a one-to-one key, a dotted table name and an `#[ORM\Id]` field beside its association.
+  - On 2026-10-09 the second review ran its findings and the fixes against MySQL 8.4, MariaDB 11.4, PostgreSQL 17, SQL Server 2022 and Oracle 23ai.
+    - The fixtures passed PHP 8.1 and 8.4, the validator (the same two refused kinds), the schema on all six platforms and `@PER-CS3.0` again.
+    - `sakila.sql` passed them also under every other database setting and the backtick bracket type.
+
+### rust.ts
+
+- **What it writes.** Plain structs (owner decisions of 2026-10-09).
+  - Each struct is `#[derive(Debug, Clone, PartialEq)]` with `pub` fields.
+  - A field is typed by its full path (`chrono::NaiveDateTime`, `rust_decimal::Decimal`, `uuid::Uuid`, `serde_json::Value`), with no `use` line. So the whole text and one table both compile against those four crates with no feature.
+  - The one-table view is `formatTable`, as in the other plain generators. `php.ts` and `swift.ts` differ: their one-table view opens on the header a file of its own needs (`createTableCode`).
+- **Types.** They come from `rustTypes.ts`, by name before the shared vendor tables. `rustTypes.ts` is the shared classifier's Rust layer (Rules every generator follows, above), and `seaorm.ts` reads it too.
+  - Integers are at their width (`i8`, `i16`). MySQL and MariaDB UNSIGNED, ZEROFILL and SERIAL are `u8` to `u64`.
+  - MySQL and MariaDB `BIT` is a `bool`, or a `u64` past one bit. Their `YEAR` is a `u16`, and their `TIMESTAMP` a `chrono::DateTime<chrono::Utc>`.
+  - The local time zone timestamps and Databricks' `TIMESTAMP` are a `chrono::DateTime<chrono::Utc>` too.
+  - The time zone timestamps are a `chrono::DateTime<chrono::FixedOffset>`.
+  - Binary types are `Vec<u8>`. `json` and `jsonb` are a `serde_json::Value`.
+  - `uuid` and `uniqueidentifier` are a `uuid::Uuid`. MariaDB's `uuid` is a `String`, since it is sent as text.
+  - Money is a `Decimal`.
+  - An interval, a PostgreSQL bit string, `timetz`, `pg_lsn`, `cid`, `oid`, `xid` and `xid8` are a `String`.
+  - An Oracle DATE is a `NaiveDateTime`, and an Oracle REAL an `f64`.
+  - Snowflake's and Databricks' `VARIANT`, `OBJECT`, `ARRAY` and `MAP`, and Databricks' `STRUCT`, are a `String`, as the shared vendor tables class them.
+  - A PostgreSQL array is one `Vec` per dimension, at every depth.
+  - On PostgreSQL a `String` column of any type but PostgreSQL's character types carries the type sqlx reads it through (`selectAs`), `text`; money carries `numeric`.
+  - An array of more than one dimension carries `text` too. `seaorm.ts` declares such an array a `String` (`entityScalar`).
+  - PostgreSQL's and SQLite's `dec`, bare or with arguments, is a `rust_decimal::Decimal`, the decimal it is (an owner decision of 2026-10-10). It was a `String` before.
+    - Their vendor lists gained `dec` beside `numeric`, and `rustPrimitiveType` reads those lists.
+    - This is the one change to the output of `rust.ts` and `seaorm.ts` since the classifier moved.
+    - `rust.test.ts` and `seaorm.test.ts` pin it.
+- **Names.** Names follow the name cases. A name off Rust's own cases only warns: `non_snake_case` on a camelCase field, `non_camel_case_types` on a snake_case struct.
+  - A keyword of any edition from 2015 to 2024 is a raw identifier (`r#type`, `r#gen`).
+  - `_`, `crate`, `self`, `Self` and `super` take no raw form, so they get `_` after them.
+  - A struct named after a type or crate the output writes gets `_` after it too. Otherwise it would break, or silently retype, the fields of that type.
+    - Those names are `Option`, `String`, `Vec`, `bool`, the integer and float primitives the output uses, `chrono`, `rust_decimal`, `uuid` and `serde_json`.
+  - Any other name that is no identifier, or a repeated one, is written as is, as in `php.ts`.
+- **Keys and nullability.** A primary key or a NOT NULL column is `T`. Any other column is `Option<T>`.
+- **Comments.** A comment is `//` lines, never `///`. A `///` doc comment would turn a fenced or indented line into a doctest.
+  - Its bidirectional controls are written as `\u{…}`, because rustc refuses them in any comment.
+- **Written as is.** These stay in the output, though a driver cannot read them or the Rust type cannot hold them.
+  - MySQL and MariaDB spatial types, as a `String`. sqlx reads them into nothing.
+  - A PostgreSQL array of two or more dimensions, as nested `Vec`s. sqlx does not decode it.
+  - A MySQL TIME past a day, which the chrono type cannot hold.
+  - A PostgreSQL numeric past 28 digits, which the rust_decimal type cannot hold.
+  - SQLite's `DEC`, `DECIMAL` and `NUMERIC`, with or without arguments, as a `rust_decimal::Decimal`. sqlx-sqlite leaves that type out on purpose and neither reads nor binds it.
+  - On SQLite, a `String` or `serde_json::Value` in a column of numeric affinity (`JSON`, `TIMESTAMP`, `TIME`, a type imported from another vendor such as `bit(1)`).
+    - SQLite stores text that looks like a number, a JSON number among it, as an INTEGER or a REAL.
+    - sqlx then cannot read it back.
+  - A UUID another client stored as text in SQLite, which `uuid::Uuid` cannot read.
+  - SQL Server's money, as a `Decimal` field. tiberius reads it as an `f64`.
+  - An integer type at the width its name declares, though the database stores a NUMBER(38) or eight bytes.
+    - An Oracle `INT`, `INTEGER` or `SMALLINT`, a Snowflake integer and a SQLite integer type are an `i32`.
+    - SQLite's `SMALLINT` and `INT2` are an `i16`, and its `TINYINT` an `i8`.
+    - So a SQLite rowid past 2^31 − 1 is more than an `i32` holds.
+    - The classifier gives every other generator 64 bits there. Rust and SeaORM keep the output they had.
+    - This gap was reported to the owner on 2026-10-10.
+- **Measured** on 2026-10-09 with rustc 1.98.0, editions 2021 and 2024, chrono 0.4.45, rust_decimal 1.43.0, uuid 1.27.0 and serde_json 1.0.151.
+  - Every type of every vendor list, NOT NULL and optional, compiled with only the naming lints.
+  - Every keyword as a struct name and as a field name compiled with only the naming lints.
+  - rustfmt changed only the opening blank line.
+  - The five `data/*.sql` fixtures compiled whole and per table, with the naming lints alone.
+  - sqlx 0.9.0 read and wrote back each type of PostgreSQL 17, MySQL 8.4, MariaDB 11.4 and SQLite as its Rust type. It did so through `selectAs` where the type carries one.
+    - The exceptions are the MySQL and MariaDB spatial types and the SQLite decimals and numeric-affinity values under Written as is.
+  - PostgreSQL's `dec` and SQLite's `DEC` were listed since. They write the `rust_decimal::Decimal` that `numeric` and `DECIMAL` write, and were not compiled again.
+
+### seaorm.ts
+
+- **What it writes.** SeaORM 2.0 entities in the dense form, each table a module (owner decisions of 2026-10-09).
+  - Each entity is a `#[sea_orm::model]`. Relations are `BelongsTo` / `HasOne` / `HasMany` fields, with no `Relation` enum.
+  - Each table is a `pub mod`, so the whole text compiles as one file.
+  - The one-table view is that module's file body, unwrapped. So `index.ts` hands it to `createTableCode`.
+- **Types.** They come from `rustTypes.ts`, in the prelude's spelling (`Decimal`, `DateTimeWithTimeZone`, `Json`).
+  - A PostgreSQL array of more than one dimension is a `String` read as text.
+  - PostgreSQL's and SQLite's `dec` is a `Decimal`, as in `rust.ts` (an owner decision of 2026-10-10). Before that decision it was a `String` read through `text` or `TEXT`.
+    - On PostgreSQL it is `custom("dec")` bare and `Decimal(Some((p, s)))` with arguments, with no `select_as` or `save_as`.
+    - On SQLite it is `custom` with `select_as = "REAL"`.
+  - `column_type` is written only where SeaORM's schema builder would write another type than the editor's DDL.
+  - It takes a native spelling where `postgresColumnType` or `mysqlColumnType` has one for the type and its arguments. Otherwise it is `custom("<type>")`.
+  - ZEROFILL, a non-integer UNSIGNED, a PostgreSQL array and an argument past the `u32` the native spellings hold take `custom` too. A native type would drop ZEROFILL, and UNSIGNED on any type but an integer.
+  - The native spellings on PostgreSQL, MySQL and MariaDB are `String(StringLen::N(n))` for a varchar, `Char(Some(n))` and `Char(None)`, `Decimal(Some((p, s)))`, a bare `Text`, `Bit(Some(n))` and `Bit(None)`.
+  - On MySQL and MariaDB they add `Binary(n)`, `VarBinary(StringLen::N(n))`, a bare `Blob` and `Year`.
+  - On PostgreSQL they add `VarBit(n)`, and for the bare type `JsonBinary`, `Money(None)`, `Interval(None, None)`, `Inet`, `Cidr` and `MacAddr`.
+  - So `ltree`, `interval(3)` and MySQL's `TINYTEXT` are `custom`.
+  - SQLite takes `custom` by type affinity: where the declared type's affinity differs from that of the type SeaORM would write. A SQLite column keeps an affinity, not the name it was declared with.
+  - SQL Server, Oracle, Snowflake and Databricks take no `column_type`, since SeaORM has no backend for them.
+  - On PostgreSQL, a type sqlx cannot read is read through `select_as` and written through `save_as`, which holds the column's type as typed. So an `inet` host, in an array too, reads back with its mask (`10.0.0.1/32`).
+  - SQLite's numeric affinities store a whole number or numeric text as a number. So on SQLite:
+    - A `Decimal`, which SeaORM reads as an `f64`, takes `select_as = "REAL"`. That rounds one past 15 to 17 significant digits, and fails with `TryIntoErr` near `Decimal`'s maximum.
+    - A `Json` or `String` in such a column takes `select_as = "TEXT"`.
+  - `Eq` is dropped beside an `f32` or `f64`.
+- **Names.** `seaorm.ts` ignores the name cases.
+  - Fields and modules are heck's snake_case, which DeriveEntityModel reads back (`heck.ts`, a port of heck 0.5).
+  - `table_name` is always written. `column_name` is written where the stored name differs.
+  - Under `BracketType.none`, PostgreSQL folds an undelimited name to lower case, and a dotted table name is split into `schema_name` and `table_name`.
+  - The split happens at a dot inside backticks too, since `splitNameParts` knows no backticks. So `` `a.b`.c `` writes `` schema_name = "b`" ``.
+  - A keyword column takes `_` (`type_`), since `r#` on a field breaks `unique`, `unique_key` and `from`.
+  - A keyword module or unique key takes `_` too, which keeps one spelling.
+  - A keyword relation field takes `r#` (`r#match`).
+  - `self`, `crate` and `super` take `_` as a relation field, since rustc takes no `r#` on them. So an optional one warns `non_snake_case` on the `set_self__option` setter the macros derive.
+  - A character no identifier holds parts words as a space does (`a ½b` writes `a_b`). So it leaves no run of underscores for the derived setters to warn on.
+  - A name opening on a digit or on U+0345 takes `column_`, `table_` or `unique_` before it (`rustBase`). U+0345 can continue an identifier only.
+  - A name with nothing left takes that word alone.
+  - An unnamed composite UNIQUE is named from its fields joined, through the same repair (`type_name`, not `type__name`).
+  - A module named beyond ASCII (`주문`) compiles in the one file. Moved to a file of its own, it needs `#[path]`.
+  - Names are repaired, then numbered where they would collide:
+    - `a1_2` beside `a_1`, whose Column variants match.
+    - `self_2` on a unique `self`, whose `find_by_` would name `Column::Self`.
+    - `column_2` on a key column named `column`, or with no name to make one from. Its variant would make the derived `Self::Column` ambiguous.
+    - `parent_key_2`, `parent_key_for_2` and `parent_key_for_self_rev_2` for a field named `parent_key`, `parent_key_for` or `parent_key_for_self_rev`. Its setter would shadow the `ActiveModelTrait` method the derived relation code calls.
+    - `writer_2` for a relation field where a column holds `writer_option`. An optional relation `writer` derives a `set_writer_option` setter, which the column's setter would repeat.
+    - `id_2` for a composite UNIQUE named `id`, whose derived `find_by_id` would hide `EntityTrait::find_by_id`.
+- **Keys and relations.** Keys and unique constraints are written as attributes; relations follow the editor's relationships.
+  - A key column without the auto-increment flag takes `auto_increment = false`.
+  - Outside the key the flag writes nothing, since the macros refuse `auto_increment` there.
+  - A unique column takes `unique`, a table's only key column included (owner decisions). The exception is where PostgreSQL, or SQLite on a key it does not make its rowid, folds that UNIQUE into the primary key.
+  - A composite UNIQUE index takes `unique_key` (owner decisions). A second one sharing a column is left out, since a field keeps only its last key.
+  - No plain index is written (owner decisions).
+  - Relations are read pair by pair.
+  - The child takes `belongs_to`. The parent takes `has_one` or `has_many` by cardinality.
+  - A self relationship takes `self_ref` with `relation_reverse`.
+  - Where one table pair has several relationships written, they take `relation_enum` and `via_rel`.
+  - Those relations, and a self relationship's, are named by their foreign key through `graphql.ts`'s `stripIdWord` (`author`, `posts_by_author_list`).
+  - The list word goes last. That keeps the `add_` setters the macros name apart from the singular.
+  - A one side in such a pair, or on a self relationship, is a `HasMany`, since SeaORM takes no `HasOne` in either.
+  - A link table gets no `via`.
+  - Referential actions follow `referentialActionSupport`.
+- **Strings and defaults.** Comments are written as `comment`, and no default is written (owner decisions).
+- **Written as is, though SeaORM cannot use it.**
+  - A keyless table.
+  - A primary key on a PostgreSQL array, past the keys SeaORM implements.
+  - A primary key of more than twelve columns, or a foreign key of more than twelve, past the keys and tuples SeaORM implements.
+  - An auto-increment column in a composite primary key. On MySQL and MariaDB an insert that leaves it to the database writes the row, then fails with `UnpackInsertId`. On SQLite, where the editor's DDL writes no AUTOINCREMENT on a composite key, the insert fails NOT NULL.
+  - A PostgreSQL `serial`, `serial2`, `serial4`, `serial8`, `smallserial` or `bigserial` column without the NN flag. It is an `Option<T>` by the rule both generators share: a key or NN column is `T`, any other `Option<T>`. PostgreSQL makes it NOT NULL, so a `Set(None)` insert fails where `NotSet` passes.
+  - A unique column named `id` outside the key, whose derived `find_by_id` shadows `EntityTrait::find_by_id`.
+  - A foreign key to part of a composite key (`data/Magento2-sales.sql`). MySQL refuses it in the editor's DDL, and again in a schema sync.
+  - A composite UNIQUE index left out for sharing a column with an earlier one, or one whose columns run against the table's order. Schema sync drops or rebuilds it in table order on MySQL. On PostgreSQL it stops on it with `constraint … does not exist`.
+  - A DESC column in a composite UNIQUE index, which `unique_key` cannot carry.
+  - MySQL and MariaDB spatial types, as in `rust.ts`.
+  - A MySQL TIME past a day, as in `rust.ts`.
+  - A PostgreSQL numeric past 28 digits, as in `rust.ts`.
+  - A UUID another client stored as text in SQLite. SeaORM writes and reads 16 bytes, so `find` fails with `expected 16 bytes, found 36`.
+  - A MariaDB server in `sql_mode=ORACLE`, a mode the editor does not know. It makes a DATE a DATETIME, which a `Date` field fails to read.
+  - Nested writes through the 2.0 builder into a pair with several relationships, which SeaORM skips.
+  - An Oracle, Snowflake or SQLite integer at the width its name declares, as in `rust.ts`.
+- **Measured** on 2026-10-09 with sea-orm 2.0.4 on rustc 1.98, editions 2021 and 2024.
+  - The output compiled.
+  - It matched rustfmt, except for the leading blank line and a line of Hangul. rustfmt counts Hangul at double width, as it does Han and Kana. `formatAttribute` counts a column a character.
+  - It ran insert, find, find_related, load and nested load against the editor's DDL. The databases were PostgreSQL 17, MySQL 8.4, MariaDB 11.4 and SQLite.
+  - On SQLite it also ran with whole-number decimals, and with numeric JSON and text.
+  - Schema sync changed nothing in those runs.
+  - The DDL SeaORM writes from the entities differs from the editor's in what sync leaves alone. It writes a PostgreSQL identity `BY DEFAULT`, not `ALWAYS`, other constraint and index names, and no PostgreSQL comments.
+  - The five `data/*.sql` fixtures compiled, except for their keyless tables.
+  - Without those tables, the fixtures selected every entity on MySQL 8.4 and MariaDB 11.4. Schema sync changed nothing there except the foreign keys MySQL refuses.
+
+### swift.ts
+
+- **What it writes.** `swift.ts` writes one plain struct per table, sorted by name (owner decisions of 2026-10-09).
+  - Each struct is `nonisolated struct X: Codable, Hashable, Sendable`.
+  - Its properties are internal `var`. There is no `Identifiable`, no initializer and no default.
+  - A primary key is `T`, its NN flag set or not (an owner decision of 2026-10-09; Rules every generator follows). A NOT NULL column is `T` too. Any other column is `T?`.
+  - So the memberwise init leaves an optional column out.
+  - `nonisolated` keeps the conformances usable off the main actor in a module whose default isolation is MainActor. Xcode 26's new app targets set that default (Apple's release notes, not measured).
+  - `nonisolated` makes Swift 6.1 (Xcode 16.3) the floor, since Swift 6.0.3 refuses it on a struct.
+  - `import Foundation` (`Date`, `Data`, `Decimal`, `UUID`) follows the blank line the other languages open with.
+  - The import is written whatever the columns hold, since an unused import draws no warning.
+  - The import opens the one-table view too. So `index.ts` hands that view to `createTableCode`, as for PHP, Doctrine and SeaORM, and a table pasted alone into a file compiles.
+  - A document with no table is `''`.
+  - An empty table is `nonisolated struct X: Codable, Hashable, Sendable {}`.
+  - The panel highlights the text with Shiki's `swift` grammar and saves it as `.swift`.
+- **Types.** They come from the shared classifier (`getColumnType`, `columnTypes.ts`, an owner decision) through one table, `SWIFT_SCALARS`.
+  - A PostgreSQL array writes one `[…]` a dimension at every depth: `int[][]` gives `[[Int32]]`. Codable decodes an array at any depth.
+  - **Integers keep their exact width** (an owner decision).
+    - Signed integers are `Int8` to `Int64`. `INT` is an `Int32`.
+    - MySQL and MariaDB UNSIGNED, ZEROFILL and SERIAL are `UInt8` to `UInt64`. `MEDIUMINT UNSIGNED` is a `UInt32`; `BIGINT UNSIGNED` and `SERIAL` are a `UInt64`.
+    - MySQL's and MariaDB's `YEAR` is a `UInt16`.
+    - MySQL's and MariaDB's `BIT(n)` past one bit is a `UInt64`.
+    - SQL Server's `tinyint` is a `UInt8`.
+    - Every integer type of Oracle and Snowflake, which store a NUMBER(38), is an `Int64`.
+    - Every integer type of SQLite, which stores eight bytes, is an `Int64`.
+    - An Oracle or Snowflake `NUMBER` with no fraction is an `Int64`, and so is the bare one.
+  - **Floats** are `Float` or `Double`.
+    - `float(p)` goes by p on PostgreSQL, SQL Server, MySQL and MariaDB.
+    - Oracle's `FLOAT` and `REAL` are a `Double`. Its `BINARY_FLOAT` is a `Float`.
+    - MariaDB's bare `NUMBER`, a DOUBLE in its Oracle mode, is a `Double`.
+  - **`Decimal`** holds these:
+    - `decimal`, `numeric`, `dec` and `fixed`.
+    - SQL Server's `money` and `smallmoney`.
+    - Snowflake's `DECFLOAT`.
+    - MariaDB's `NUMBER(p)` and `NUMBER(p,s)`.
+    - An Oracle or Snowflake NUMBER with a scale above 0.
+  - **`Bool`** is a boolean, and MySQL's and MariaDB's `BIT` and `BIT(1)` too. Their `TINYINT(1)` stays an `Int8`.
+  - **`Data`** is the binary types, SQL Server's `rowversion` and `timestamp` among them.
+  - **`UUID`** is `uuid` and `uniqueidentifier`.
+  - **`Date`** is a `date` and every timestamp and datetime type. Oracle's `DATE`, MySQL's `TIMESTAMP` and SQL Server's `datetimeoffset` are among them.
+  - **`String`** holds the rest:
+    - A time of day, `timetz` and an interval, which Foundation has no type for.
+    - JSON, an owner decision, since Swift has no Codable any-value type.
+    - Snowflake's and Databricks' `VARIANT`, `OBJECT`, `ARRAY`, `MAP` and `STRUCT`.
+    - Databricks' `VOID`.
+    - The character, `ENUM`, `SET`, spatial and network types.
+    - A PostgreSQL bit string and `pg_lsn`.
+    - Any type no rule names.
+  - **Three overrides where a Swift reader gets text.** Each overrides the classifier.
+    - MariaDB's `UUID` is a `String`. MariaDB sends 36 characters, and MySQLNIO reads a UUID only from 16 bytes (its source read, not run).
+    - PostgreSQL's `money` is a `String`. SQL Server's stays a `Decimal`.
+    - PostgreSQL's `oid`, `xid`, `cid` and `xid8` are a `String`.
+    - PostgreSQL's JSON (`row_to_json`) writes `money`, `oid`, `xid`, `cid` and `xid8` as text (`"$12.34"`, `"42"`). `Decimal`, `UInt32` and `UInt64` refuse that text.
+    - PostgresNIO has no unsigned decoder (its source read).
+  - An imported MySQL or MariaDB schema keeps UNSIGNED and ZEROFILL (an owner decision). So sakila's `SMALLINT UNSIGNED` keys are `UInt16`.
+- **Coding keys carry the column names.** Codable reads and writes the column names.
+  - A nested `enum CodingKeys: String, CodingKey` is written only where some property's name differs from its column's.
+  - It has one `case` a property, with `= "<column name>"` where the two names differ.
+  - The literal gives `"` and `\` a backslash. A bare `\` would open an interpolation.
+  - The literal writes every C0 control and DEL as `\u{…}`, since a Swift string literal refuses them raw.
+- **Comments are `///` lines.** A comment sits above its struct or property.
+  - `///` is Quick Help's and DocC's form. Swift runs no doctest from it.
+  - Lines split at CR, LF, CRLF, U+2028 and U+2029 (`splitLines`), since a lone CR ends a line comment.
+  - Each line's end is trimmed.
+  - Blank lines at either end are dropped. Those inside are written as a bare `///`.
+  - A NUL is written `\u{0}`, since Swift warns about a raw NUL.
+  - Every other character is left as is, the bidirectional controls rustc refuses included.
+- **Names.** They follow the name cases.
+  - Swift is case sensitive: `date` does not shadow `Date`. Swift warns about no naming style.
+  - A struct named after a type or protocol the output writes unqualified gets `_` after it (`Date_`), as in `rust.ts`. Such a name breaks the conformances or silently retypes every field of its type.
+  - The set is `TYPE_NAMES`: `Bool`, `Codable`, `CodingKey`, `Data`, `Date`, `Decimal`, `Double`, `Float`, `Hashable`, the eight integer types, `Sendable`, `String`, `UUID`.
+  - `Foundation`, `Swift`, `Optional`, `Array` and `CodingKeys` keep their names. Nothing is qualified, and `T?` and `[T]` always name the standard library's types.
+  - A table named `CodingKeys` keeps its name, since the nested enum shadows it.
+  - A word the Swift lexer reserves goes in backticks as a struct, property or case name. The set is `SWIFT_KEYWORDS`, the 54 of `TokenKinds.def`: `class`, `default`, `self`, `Self`, `Any`, `_`, `inout`, ….
+  - A property named `Type` or `Protocol` goes in backticks too. It would otherwise clash with the metatype it names.
+  - A call site writes the memberwise init's `inout`, `var`, `let` and `_` labels in backticks too.
+  - A property named `CodingKeys` or `RawValue` (`RESERVED_KEYS`) gets `_` after it and is keyed to its column. Neither works as a property name, backticks or not:
+    - `CodingKeys` breaks the synthesized conformance.
+    - `RawValue` breaks the `String` raw type of an explicit `CodingKeys`. So a `RawValue` column always writes the enum.
+  - Any other name that is no identifier, or a repeated one, is written as is, as in `rust.ts` and `php.ts` (an owner decision). No identifier means a space, a leading digit, or a name a name case empties, as `_` under camelCase.
+  - Swift 6.2's raw identifiers in backticks would compile some of those names, but Swift 6.1 refuses them.
+- **Written as is.** Each case below stays in the output, and a Swift program has to adjust it.
+  - A name that is no identifier, or a repeated one (Names, above).
+  - A bare Oracle `NUMBER` or `NUMBER(*)`, which keeps any scale, is an `Int64`, as `rust.ts`'s `i64`. So a fractional value (`1.5`) is refused.
+  - A value past 19 digits in any Oracle or Snowflake integer column is refused.
+  - A decimal wider than `Decimal`'s 128-bit mantissa (38 or 39 digits) loses its last digits with no error. PostgreSQL's `numeric` and MySQL's and MariaDB's `DECIMAL` (up to 65 digits) can be that wide.
+  - A time zone offset is dropped, since `Date` is an instant (`timestamptz`, `datetimeoffset`, `TIMESTAMP_TZ`).
+  - `JSONEncoder` and `JSONDecoder` take a `Date` as seconds since 2001 unless the coder sets a date strategy.
+  - Under `.iso8601`, a naive timestamp or a date as PostgreSQL's `row_to_json` writes them is refused (`2026-10-09T12:34:56`, `2026-10-09`).
+  - Under `.iso8601`, the space-separated datetimes of MySQL's and MariaDB's `JSON_OBJECT` are refused.
+  - Under `.iso8601`, a `timestamptz` with fractional seconds decodes on macOS and not on Linux Swift 6.1.
+  - A database's own JSON fails in these places too:
+    - A `jsonb` object or array written inline is refused by a `String`, which reads the text a driver hands over.
+    - The GeoJSON object MySQL writes for a spatial column is refused by a `String` too.
+    - PostgreSQL's bytea (`"\\xdeadbeef"`) and Oracle's RAW in hex (`"0102FF"`) are refused by `Data`'s default base64.
+    - A MySQL or MariaDB boolean written as `1` is refused by `Bool`.
+    - A NULL item in a PostgreSQL array (`[1,null]`) fails, since an array's items are never optional (`[Int32]`).
+  - Databricks' `VOID`, which holds only NULL, is a `String`.
+  - An auto-increment key is a non-optional `T`. GRDB's idiom is `var id: Int64?`, filled after the insert.
+  - The memberwise init is internal. So another module needs a `public init` written by hand.
+  - A `CodingKeys` case past swift-format's 100 columns stays on one line.
+- **Measured** on 2026-10-09 by the design research. The tools were Apple Swift 6.4 (swiftlang-6.4.0.34.1, Command Line Tools) and the Linux `swift` images 6.4, 6.2.4, 6.1.3 and 6.0.3.
+  - The keyword sweep: 249 words in six forms, Swift 5 and 6, 2,988 typechecks. It is behind `SWIFT_KEYWORDS`, the backticked `Type` and `Protocol`, and the `CodingKeys` rename.
+  - The shadowing sweep of 51 names, behind `TYPE_NAMES`.
+  - The MainActor isolation errors a plain `struct` gets and `nonisolated` removes.
+  - GRDB 7.11.1 wrote and read back every SQLite list type through the struct, against the editor's DDL. Without the coding keys it failed (`no column named c0Nn`).
+  - swift-format with 4-space indentation changed only the opening blank line and three Magento2-sales cases past 100 columns.
+- **Measured** on 2026-10-10, on the shared classifier.
+  - 5,782 files typechecked with no diagnostic under `-warnings-as-errors`. They held every vendor list name and its other spellings on all eight databases, the five `data/*.sql` fixtures on all eight under two name-case settings, and the keyword corpus, whole and per table.
+  - The compilers were macOS swiftc 6.4 (`-swift-version 5` and `6`, each also with `-default-isolation MainActor`) and Linux Swift 6.1.3 (5 and 6).
+  - Swift 6.0.3 still refused `nonisolated`.
+  - JSON round trips keyed every property by its column name and decoded back `==` on both platforms. They did so inside `Task.detached` in a MainActor-default module too.
+  - GRDB 7.11.1 round-tripped every SQLite list type with every optional set and with none.
+  - GRDB 7.11.1 read 3,000,000,000 from nine SQLite integer columns, which an `Int32` refuses.
+  - PostgreSQL 18.6's and 17's `row_to_json` wrote `money`, `oid`, `xid`, `cid` and `xid8` as text.
+  - `JSONDecoder` refused `1.5` and `12345678901234567890` for an `Int64` on macOS 6.4 and Linux 6.1.3.
+- **Measured** by an adversarial run. It failed only on the names written as is and on a `RawValue` column, the case behind `RESERVED_KEYS`' `RawValue`.
+  - Its inputs were the vendor lists in both letter cases and 186 other spellings, 218 words under all 16 name-case pairs, 23 kinds of comment, and the fixtures under three name cases.
+  - It ran on macOS 6.4 in the four modes and on Linux 6.1.3.
+- **Measured** on 2026-10-10 by a macOS swiftc 6.4 run over 520 files.
+  - The files held the 492 vendor list names, PostgreSQL's `dec` and SQLite's `DEC` among them, and 67 other spellings. Each was a key without the NN flag, a NOT NULL column and an optional column.
+  - The files also held the names the adversarial run failed on, under four name-case settings.
+  - The files also held the five fixtures on all eight databases whole, and on MySQL and PostgreSQL per table.
+  - Every file but the names written as is typechecked under `-warnings-as-errors`, with `-swift-version 5`, with `6`, and with `6` and `-default-isolation MainActor`.
+  - The decodes under Written as is were run on structs the generator wrote:
+    - `Decimal` dropped the last digit of a 40-digit integer.
+    - `Bool` refused `1`.
+    - `.iso8601` refused `2026-10-09 12:34:56.000000`.
+    - `Data` refused `"0102FF"`.
+    - `[Int32]` refused `[1,null]`.
+
+### typescript.ts
+
+- **What it writes.** `typescript.ts` writes one `export interface` per table (owner decisions of 2026-10-09).
+  - Each interface is typed as the `z.infer` of the `zod.ts` schema of the same table.
+  - So it describes a row as an API sends it in JSON: a decimal as text, dates and times as ISO text, binary as base64, a JSON value as `unknown`.
+  - The whole text opens with a blank line. It writes the tables in `orderByNameASC` order, each followed by a blank line.
+  - It writes no import.
+  - A document with no table writes nothing.
+  - The one-table view is `formatTable`, as in the other plain generators.
+- **Types.** They come from `getJsonShape` (`jsonShape.ts`), the JSON shape that `zod.ts` and `jsonSchema.ts` read too.
+  - `getJsonShape` classes a type by its name through `columnTypes.ts`, not by the vendor lists' `primitiveType` alone.
+  - `BOOLEAN`, SQL Server's `bit`, and MySQL's and MariaDB's `BIT` and `BIT(1)` are `boolean`.
+  - `TINYINT(1)` and a longer `BIT(n)` stay a `number`.
+  - Every integer and float is a `number`.
+  - A 64-bit integer is a `number` too, exact only up to 2^53 − 1 included (an owner decision). That covers `BIGINT`, `BIGINT UNSIGNED`, `SERIAL`, Oracle's bare `NUMBER`, and every Snowflake and SQLite integer.
+  - PostgreSQL's `oid`, MariaDB's bare `NUMBER` (a DOUBLE), and SQLite's `DECIMAL`, `NUMERIC` and `DEC` are a `number`.
+  - A decimal or money type on every database but SQLite is a `string` (an owner decision).
+  - Among those are Oracle's and Snowflake's `NUMBER` with a scale, MariaDB's `NUMBER(p)` and Snowflake's `DECFLOAT`.
+  - A character type is a `string`. So is a uuid, SQL Server's `uniqueidentifier` and MariaDB's `UUID` included.
+  - A date, a time, and a timestamp with or without a zone are a `string`. So is an interval.
+  - Binary, a bit string and `pg_lsn` are a `string`.
+  - PostgreSQL's `xid`, `cid` and `xid8` are a `string`, since pg hands them over as text.
+  - A network or spatial type, a SET, and any type the classifier does not know are a `string`.
+  - JSON on every database is `unknown`.
+  - Snowflake's `VARIANT`, `OBJECT` and `ARRAY` are `unknown`. So are Databricks' `STRUCT`, `MAP`, `ARRAY` and `VARIANT`.
+  - Databricks' `VOID` is `null`.
+  - An ENUM is the union of its members as JSON string literals, each once, in their order (`"it's" | "say \"hi\""`).
+  - The spaces that end a member are dropped on MySQL and MariaDB, since those databases drop them. On PostgreSQL the union keeps them.
+  - A PostgreSQL array (`int[]`, `int[3]`, `integer ARRAY`) is one `[]` per dimension around its element type.
+  - An array's elements are never null.
+  - The element type goes in parentheses where it is a union of two members or more: `number[][]`, `("a" | "b")[]`, `"only"[]`.
+  - An array of a type no list names (`"mood"[]`) is a `string[]`.
+  - The interface and `z.infer` differ in two places only.
+    - A JSON column is `unknown` here, where `z.infer` gives Zod's `JSONType`. `JSONType` assigns to `unknown`, but not the reverse.
+    - A table with no column is `export interface X {` and `}`, which takes any object. `z.infer` gives `Record<string, never>`.
+  - A table named `as` or `z` keeps that name here. Zod's type gets `_` after it.
+- **Names.** Names follow the name cases.
+  - An interface named with a word an ES module refuses for one gets `_` after it (`class_`).
+  - Those words are the 56 of `RESERVED_TYPE_NAMES`: the reserved words, the strict mode ones (`let`, `yield`, `await` and `package` among them) and the predefined type names.
+  - The predefined type names are `any`, `unknown`, `never`, `number`, `bigint`, `boolean`, `string`, `symbol`, `object`, `undefined` and `void`.
+  - Only a lower-case name meets one of them, so no name under PascalCase does.
+  - Contextual keywords (`type`, `as`, `async`, `declare`, `global`, `infer`) compile as they are. So do global type names (`Number`, `Date`, `Record`).
+  - They shadow nothing the interfaces use, since every type the interfaces use is a keyword.
+  - A property key is written bare where TypeScript reads an identifier (`class`, `__proto__`, `$x`, `주소1`).
+  - A key is written as a JSON string where TypeScript reads no identifier (`"first name"`, `"2FaEnabled"`, `""`).
+  - TypeScript reads identifiers by Unicode 15.1. So a key holding a character that Unicode 16.0 or 17.0 added is quoted too (`NEWER_IDENTIFIER_RUNS`).
+  - `jsonShape.test.ts` checks `NEWER_IDENTIFIER_RUNS` against TypeScript's own scanner, for every code point of planes 0 to 3 and 14.
+  - Any other name that is no identifier is written as is, as in `php.ts` and `rust.ts`.
+  - A repeated name is written as is too, so that a compile error shows the repeat (an owner decision of 2026-10-09).
+  - A repeated interface name compiles, though (Written as is, below).
+- **Keys and nullability.** A primary key is `T`, its NOT NULL flag set or not (an owner decision of 2026-10-09; A primary key column is NOT NULL, in Rules every generator follows).
+  - A NOT NULL column is `T` too. Any other column is `T | null`.
+  - `isNullableColumn` (`jsonShape.ts`) decides this. `zod.ts` reads it too.
+  - `unknown` and `null` get no `| null`, since they hold null already.
+- **Comments.** A comment is `//` lines, written by `zod.ts`'s `formatComment`, so the two generators stay alike.
+  - Each line of the comment gives one `//` line. Lines end at CR, LF, CRLF, U+2028 and U+2029 (`splitLines`, `utils.ts`).
+  - Each line's trailing white space is trimmed.
+  - The blank lines at either end are dropped. Each blank line inside is written `//`.
+  - So a blank comment writes nothing.
+  - A line TypeScript would read as a directive takes a backslash before its at sign (No TypeScript directive in a comment, in Rules every generator follows).
+  - A table's comment sits above its interface.
+  - A column's comment sits above its property, indented two spaces.
+  - U+0085, NUL and `*/` stay in their line, since TypeScript ends a line comment at none of them.
+- **Written as is.** These stay in the output, though TypeScript refuses or merges them, or a value reaches code in a form the interface does not describe.
+  - **Names TypeScript refuses or merges.**
+    - An interface name that is no identifier, which the name cases can make. Examples are `3DModels`, PascalCase of `3d_models`, and `3d models` under no name case. TypeScript refuses it (TS1351, TS2427).
+    - A key a name case writes twice in one table (TS2300).
+    - A table name a name case writes twice. Its interfaces merge into one without an error, unless the same key has another type in each (TS2717).
+    - A key holding a character that a Unicode later than 17.0 adds, outside `NEWER_IDENTIFIER_RUNS`. A runtime that knows the character writes the key bare, and TypeScript then refuses it (TS1127). This lasts until `jsonShape.test.ts` fails on a Node that knows the character.
+  - **Driver values.** The interface stands for the JSON row, so a value that reaches code in another form does not fit it.
+    - pg hands over PostgreSQL's `bigint` as text, and tedious hands over SQL Server's `bigint` as text.
+    - mariadb hands over a 64-bit integer as a `BigInt`.
+    - tedious hands over SQL Server's decimal as a number.
+    - Drivers hand over a date or timestamp as a `Date`.
+    - Drivers hand over binary as a `Buffer`, and mysql2 its `BIT` too.
+    - mysql2 hands over a `BOOLEAN` as `1`.
+    - PostgreSQL's `interval` and `point` arrive as objects.
+    - PostgreSQL's `numeric[]` arrives as numbers, and its `int8[]` as text.
+    - An array of a bit string or of a user-defined type arrives as one text (`"{sad,ok}"`).
+    - A NULL array element arrives as null.
+  - **The servers' own JSON.** It comes from PostgreSQL's `row_to_json` (which PostgREST and Supabase build on), MySQL's and MariaDB's `JSON_OBJECT`, SQL Server's `FOR JSON` and Oracle's `JSON_OBJECT`.
+    - It writes a decimal as a number. The owner kept the decimal a string.
+    - It writes PostgreSQL's `oid` as text.
+    - It writes a float's `NaN` and `±Infinity` as text.
+    - MySQL and MariaDB write a `BOOLEAN` as `1`.
+    - MySQL writes a `BIT` as `"base64:type16:…"` text.
+    - MariaDB writes a `BIT` unquoted, which is no JSON.
+  - **Text in another form than the interface's.** Each passes as a `string`, though it is not the ISO and base64 text the interface stands for.
+    - MySQL's and MariaDB's DATETIME and TIMESTAMP with a space for the `T`.
+    - PostgreSQL's `infinity` and BC dates.
+    - PostgreSQL's `bytea` in hex.
+    - Oracle's `RAW` in hex.
+  - **The ENUM error value.** MySQL and MariaDB store the ENUM error value `''` outside strict mode. The union refuses it.
+- **Measured** on 2026-10-10 with Node 24.16.0.
+  - 168 whole texts and their 8,224 one-table views compiled with no error on TypeScript 5.9.3, 6.0.3 and 7.0.2.
+  - The compiler options were `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `isolatedModules`, `isolatedDeclarations` and lib ES2022.
+  - The texts covered 252 type spellings: every name of the eight vendor lists, and forms with arguments.
+  - Each spelling was a NOT NULL column, a nullable column and a key column without the flag, under each database.
+  - The texts also covered the five `data/*.sql` fixtures, under each database and four name-case pairs.
+  - Each of the 8,224 interfaces was identical, by a type identity check, to the `z.infer` of the `zod.ts` schema of the same table. This held on all three compilers.
+  - That check used zod 4.6.5, with `unknown` read as `z.json()`'s type.
+  - Four altered interfaces each failed the check.
+  - Each of the 56 reserved names failed as an interface name and compiled with its `_`.
+  - Contextual keywords and global type names compiled as they are.
+  - Prettier 3.9.9 changed only the opening blank line of the 168 whole texts.
+  - Elsewhere, Prettier puts an empty interface's braces on one line.
+  - Elsewhere, Prettier breaks a line past 80 columns, such as a long ENUM union.
+  - Elsewhere, Prettier single-quotes a string holding a double quote.
+  - The driver values under Written as is come from runs on 2026-10-09 and 2026-10-10. The runs used pg 8.23.1 on PostgreSQL 17.11, mysql2 3.24.5 on MySQL 8.4.11 and MariaDB 11.4.13, the mariadb connector 3.5.4, and tedious 20.3.3 on SQL Server 2022.
+  - The servers' own JSON comes from runs on 2026-10-10. The servers were PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13, SQL Server 2022 (16.0.4295.3) and Oracle AI Database 26ai Free (23.26.3).
+
+### zod.ts
+
+- **What it writes.** One Zod 4 row schema per table: `export const <Name>Schema = z.object({…});`, then `export type <Name> = z.infer<typeof <Name>Schema>;`.
+  - The schemas sit under `import * as z from "zod";`.
+  - Tables come in `orderByNameASC` order, and their columns in table order.
+  - Owner decisions of 2026-10-09:
+    - A schema validates a row's JSON shape, as an API sends it, not what a driver returns.
+    - A row schema only, with no insert schema and no relation.
+    - Comments are `//` lines.
+  - A document with no table writes nothing.
+  - The one-table view carries the import line too, so its file compiles alone. `index.ts` hands that view to `createTableCode`.
+  - The panel highlights the output as TypeScript and saves it as `.ts`.
+- **Types.** They come from `getJsonShape` (`jsonShape.ts`): the JSON shape of a column's value, read from `columnTypes.ts`.
+  - `jsonSchema.ts` and `typescript.ts` read `getJsonShape` too, so the three agree column by column. They agree on a kind, an integer's bounds, a character type's length, an ENUM's members and a PostgreSQL array's depth.
+  - The owner decided these on 2026-10-09:
+    - A `date` is `z.iso.date()`, and a `time` is `z.iso.time()`.
+    - A naive timestamp is `z.iso.datetime({ local: true })`: `timestamp`, `datetime`, `datetime2`, `smalldatetime`, `TIMESTAMP_NTZ`, Oracle's `DATE` and `TIMESTAMP`, and SQLite's `TIMESTAMP`.
+    - A zoned or instant timestamp is `z.iso.datetime({ offset: true })`: `timestamptz`, `datetimeoffset`, the `WITH TIME ZONE`, `WITH LOCAL TIME ZONE`, `_TZ` and `_LTZ` types, and MySQL's, MariaDB's and Databricks' `TIMESTAMP`.
+    - A decimal or money type is `z.string()`. SQLite's is `z.number()`, because its NUMERIC affinity stores a number.
+    - A 64-bit integer is `z.int()`, binary `z.base64()`, JSON `z.json()` and a boolean `z.boolean()`.
+  - Integers go by width. Zod has no 8-, 16- or 64-bit integer that `z.toJSONSchema` converts, so those widths take `z.int()` with bounds.
+    - A 32-bit signed integer is `z.int32()`.
+    - A 32-bit unsigned one is `z.uint32()`: `INT UNSIGNED`, `INT ZEROFILL` and PostgreSQL's `oid`.
+    - A narrower one is `z.int()` with its bounds. `TINYINT` is −128 to 127 and `SMALLINT` −32768 to 32767.
+    - MySQL's and MariaDB's `MEDIUMINT` is −8388608 to 8388607, or 0 to 16777215 unsigned.
+    - `YEAR` and `SMALLINT UNSIGNED` are 0 to 65535. `TINYINT UNSIGNED` and SQL Server's `tinyint` are 0 to 255.
+    - A 64-bit unsigned one is `z.int().min(0)`: `BIGINT UNSIGNED`, `SERIAL`, and MySQL's and MariaDB's `BIT(n)` past one bit.
+    - Every Oracle, Snowflake and SQLite integer is `z.int()`, a `SMALLINT` and a `NUMBER`, `NUMBER(p)` or `NUMBER(p,0)` included. Those databases store 64 bits or more.
+  - A float is `z.number()`. So is MariaDB's bare `NUMBER`, which is a DOUBLE there.
+  - A character type is `z.string().max(n)` from its declared length.
+    - This covers `varchar(n)`, `nvarchar(n)`, `VARCHAR2(n BYTE)` or `VARCHAR2(n CHAR)`, Snowflake's `STRING(n)` and `TEXT(n)`, and `char(n)`.
+    - `char(n)` takes `.max(n)`, not `.length(n)`, since MySQL and MariaDB hand `char(n)` over unpadded.
+    - `varchar(max)` and the text types take no `.max`.
+  - `uuid` and MariaDB's and Snowflake's `UUID` are `z.uuid()`.
+  - SQL Server's `uniqueidentifier` is `z.guid()`. It takes the GUIDs outside RFC 9562 that `z.uuid()` refuses.
+  - MySQL's and MariaDB's `BIT` and `BIT(1)` are `z.boolean()`.
+  - The Snowflake and Databricks semi-structured types, typed forms included, are `z.json()`.
+  - MariaDB's `INET4` and `INET6` are `z.ipv4()` and `z.ipv6()`.
+  - Databricks' `VOID` is `z.null()`.
+  - SQL Server's `timestamp` and `rowversion` are binary, so they are `z.base64()`.
+  - An ENUM, `enum('a','b')` under any database, is `z.enum([…])` of its members.
+    - Each member is read as MySQL reads a string literal, and is listed once.
+    - On MySQL and MariaDB a member loses its trailing spaces, since those databases drop them as they create the table. It keeps its tabs and leading spaces.
+    - An ENUM whose list does not parse is `z.string()`.
+  - A PostgreSQL array is one `z.array(…)` per dimension (`int[][]`, `integer ARRAY`). Its elements are never null.
+  - These are `z.string()`:
+    - a time with zone and an interval;
+    - PostgreSQL's bit strings, `pg_lsn`, `inet`, `cidr`, `macaddr`, ranges and geometric types;
+    - PostgreSQL's `xid`, `cid` and `xid8`, which node-postgres hands over as text;
+    - a SET and a spatial type;
+    - any type the classifier does not know.
+  - `z.infer` of a schema is the interface `typescript.ts` writes for the table (an owner decision). They differ in two places:
+    - A JSON column is `unknown` there and Zod's `JSONType` here.
+    - A table with no column is `{}` there and `Record<string, never>` here.
+- **Names.** They follow the name cases.
+  - A type name TypeScript refuses for a type alias gets `_` after it. This holds in the type and its schema alike (`class_` and `class_Schema`, `z_Schema`). PascalCase makes none of these names:
+    - a reserved or strict mode word;
+    - a predefined type name (`RESERVED_TYPE_NAMES` in `jsonShape.ts`: `class`, `let`, `await`, `string`, `any`, …);
+    - `as`;
+    - `z`, the namespace the schemas are imported under.
+  - Any other name is written as is, as in `typescript.ts`:
+    - a name that is no identifier (`order items`, `2fa`, an empty name);
+    - a global's name (`Date`, which the output never names);
+    - a repeated name (an owner decision of 2026-10-09). A compile error shows the repeat, as it shows two keys a name case makes alike (`user_id` and `userId` under camelCase, TS1117).
+  - A property key is bare where TypeScript reads an identifier name, a reserved word included (`class`, `default`).
+  - Any other key is a JSON string (`"order-no"`, `""`, `"2fa_enabled"`).
+  - `__proto__` is written `["__proto__"]`. Written plainly or quoted, an object literal would set its prototype from it.
+  - A key is quoted too where it holds a code point from one of the 31 runs around the identifier characters Unicode 16.0 and 17.0 added (`NEWER_IDENTIFIER_RUNS`). TypeScript reads identifiers by Unicode 15.1, where Node 22 and 24 read 17.0.
+  - `jsonShape.test.ts` checks every code point of planes 0 to 3 and 14 against the scanner of `@typescript/typescript6`. It fails once the repository's Node reads a newer Unicode, and the runs then need the new characters.
+- **Keys and relations.**
+  - A primary key, its NN flag set or not, takes its schema alone. So does a NOT NULL column.
+  - Any other column adds `.nullable()` (`isNullableColumn`). `z.json()` and `z.null()` add it too, though both take null already.
+  - `z.object` strips a key the table lacks, so a joined row parses.
+- **Comments.** A comment is `//` lines, written by `formatComment`. `typescript.ts` writes its comments through it too.
+  - The text is split at CR, LF, CRLF, U+2028 and U+2029 (`splitLines`).
+  - Each line's trailing white space is dropped.
+  - The blank lines at either end are dropped. A blank line inside is written `//`.
+  - A line TypeScript would read as a directive takes a backslash before its at sign (Rules every generator follows, No TypeScript directive in a comment).
+  - A table's comment sits above its `export const`, and a column's above its key.
+- **Layout.**
+  - The text opens with the blank line the other languages open with, then the import line.
+  - Each table follows after a blank line.
+  - A table with no column is `z.object({})`.
+- **Written as is.** The generator writes each case below so, though a row of real data fails the schema or the file fails to compile.
+  - Zod versions:
+    - zod before 4.0.0. It is imported from `"zod"`, where zod 3.25 is the v3 API, with no `z.iso` or `z.int32`.
+    - zod 4.0.0 to 4.4 count `.max(n)` in UTF-16 units. 4.5.0 and later count code points, as PostgreSQL and MySQL do. So five U+1F600 fail `.max(5)` on 4.0.0.
+    - A `__proto__` key under zod 4.6.5, which neither checks nor returns it. So `{}` passes a NOT NULL one.
+    - A `__proto__` key under zod 4.0.0, which checks the row's own `__proto__`, or `Object.prototype` where the row has none. So `{}`, `{"__proto__": "x"}` and `{"__proto__": null}` fail a NOT NULL integer key. It returns none either.
+  - TypeScript settings:
+    - With `skipLibCheck` off, a program needs the DOM lib or `@types/node`, because zod's declarations name `URL`.
+    - Under `--isolatedDeclarations`, each `export const …Schema` fails TS9010, as any Zod code does. TypeScript 7.0.2 adds TS9013.
+  - Names:
+    - A name that is no identifier.
+    - A repeated name.
+    - On a runtime past Unicode 17.0, a bare key holding a character added outside those runs. tsc refuses it (TS1127).
+  - Lengths:
+    - A length past 2^53 − 1 is written as the double reads it: rounded (`.max(100000000000000000000)`), or `Infinity` past its range. Both compile and parse. zod 4.6.5's `z.toJSONSchema` then writes `"maxLength": null`.
+    - `.max(n)` counts code points, so a longer stored value fails where the database counts otherwise. SQL Server's `varchar(n)` and Oracle's `BYTE` lengths count bytes.
+    - SQL Server's `nvarchar(n)` and `nchar(n)` and Oracle's `NVARCHAR2(n)` count UTF-16 units.
+    - SQLite enforces no length.
+  - 64-bit integers: `z.int()` holds ±(2^53 − 1), so a 64-bit value past it fails.
+    - pg hands `int8` over as text, which fails raw and in JSON.
+    - mysql2 rounds `BIGINT` 2^63 − 1 to `9223372036854776000`.
+    - better-sqlite3's `safeIntegers` and node:sqlite's `readBigInts` give a `bigint`, which `JSON.stringify` refuses.
+    - Oracle's bare `NUMBER` is a `z.int()` though it holds fractions. It fails the `12.5` its `JSON_OBJECT` writes.
+  - The drivers:
+    - pg 8.23.1 and mysql2 3.24.5 read a DATE as a JS `Date` at local midnight. Its JSON shows the day before east of UTC and fails `z.iso.date()`. pg's `types.setTypeParser(1082, v => v)` and mysql2's `dateStrings: ['DATE']` keep the text.
+    - A timestamp read as a `Date` fails raw and passes as JSON. A naive one is moved to the UTC instant.
+    - Binary, and mysql2's `BIT`, come as Buffers. Their JSON (`{"type":"Buffer",…}`) fails `z.base64()`.
+    - mysql2, better-sqlite3 and node:sqlite read MySQL's, MariaDB's and SQLite's booleans as `1` and `0`, which `z.boolean()` refuses.
+    - pg hands over `interval` (and the elements of an `interval[]`), `point` and `circle` as objects.
+    - pg hands over an array of a user type (`mood[]`), or of `bit` or `varbit`, as text (`{sad,ok}`, `{101}`).
+    - pg hands over an array holding NULL as `[1, null]`, which fails, since an element is never null.
+    - mysql2 hands every MySQL and MariaDB spatial type over as `{x, y}` objects or arrays of them, which `z.string()` refuses.
+    - SQLite's `CURRENT_TIMESTAMP` and mysql2's `dateStrings` write a space for the `T`, which every `z.iso.datetime` refuses.
+    - A MySQL `TIME` past a day (`838:59:59`) or below zero (`-01:00:00`) fails `z.iso.time()`.
+    - MySQL and MariaDB store the ENUM error value `''` under `INSERT IGNORE` or a non-strict `sql_mode`, which `z.enum` refuses.
+    - A snake_case row fails the default camelCase keys. Validating database rows directly needs the `none` column case.
+  - The servers' own JSON: PostgreSQL's `row_to_json` (which PostgREST and Supabase build on), MySQL's and MariaDB's `JSON_OBJECT`, SQL Server's `FOR JSON` and Oracle's `JSON_OBJECT`.
+    - Each writes a DECIMAL as a number, which the owner kept a string.
+    - SQL Server writes its money and smallmoney as numbers too, and PostgreSQL a `numeric[]`'s elements.
+    - MySQL and MariaDB write a DATETIME or TIMESTAMP with a space, and a BOOLEAN as `1`.
+    - MySQL writes a `BIT` as `"base64:type16:…"` and binary as `"base64:type15:…"`.
+    - MariaDB writes binary as raw bytes inside a string.
+    - MariaDB writes a `BIT` unquoted, which is no JSON.
+    - MariaDB writes a character past U+FFFF as a broken `\uD83DDE00` escape.
+    - PostgreSQL writes `bytea` in hex (`"\\x0102"`), and Oracle writes `RAW` and `BLOB` in hex (`"0102FF"`). `z.base64()` refuses that hex, or reads it as other bytes where it is also base64 (`"01020304"`).
+    - PostgreSQL writes `oid` as a string (`"12345"`), which fails.
+    - PostgreSQL writes float `NaN` and `±Infinity` as strings, which fail.
+    - PostgreSQL writes `infinity` dates and timestamps, `24:00:00`, BC years (`"0044-03-15 BC"`), five-digit years and offsets with seconds (`+08:27:52`, Seoul's before 1908). All of them fail.
+    - The rest of SQL Server's JSON passes: binary in base64, and an upper-case GUID through `z.guid()`.
+- **Measured** on 2026-10-10 with Node 24.16.0.
+  - 8,744 files compiled with no error under TypeScript 5.9.3, 6.0.3 and 7.0.2 (strict, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `skipLibCheck: false`), against zod 4.6.5 and 4.0.0.
+  - The files held 296 type spellings: every name of the eight vendor lists, and forms with arguments. Each was a NOT NULL, a nullable and a key column without the NN flag, under each database.
+  - The files also held the five `data/*.sql` fixtures under each database and four name-case pairs, whole and per table.
+  - Every one of the 17,152 schemas loaded, and `z.toJSONSchema` converted it under both zod versions.
+  - 295,159 keys compiled under the three TypeScript versions, 18,081 of them quoted. They are every code point of planes 0 to 3 and 14 that Node reads as an identifier character.
+  - The names those TypeScript versions refuse for a type alias and an interface are exactly `RESERVED_TYPE_NAMES`.
+  - 132 keyword and global table names and 84 odd keys compiled under four name cases, but for the names written as is.
+  - Rows were parsed raw and after `JSON.stringify`. They came from PostgreSQL 17.11 (pg 8.23.1, session zone Asia/Seoul), MySQL 8.4.11 and MariaDB 11.4.13 (mysql2 3.24.5) and SQLite 3.53.4 (better-sqlite3 13.0.3).
+  - The servers' own JSON came from PostgreSQL, MySQL and MariaDB, SQL Server 2022 (16.0.4295.3) and Oracle AI Database 26ai Free (23.26.3).
+  - The rows and the JSON failed only as Written as is says. The verdicts were the same under zod 4.6.5 and 4.0.0, but for `.max(n)` and `__proto__`.
+  - The driver behaviour was first measured in the design research of 2026-10-09.
+  - Prettier 3.9.9 changed only the opening blank line and the lines past 80 columns (a long `z.enum([…])`, a long `z.infer` line).
+  - The TypeScript review's 6,514 tables compiled `z.infer` equal to `typescript.ts`'s interfaces, but for the two differences under Types.
+
+### jsonSchema.ts
+
+- **What it writes.** `jsonSchema.ts` writes JSON Schema draft 2020-12 (owner decisions of 2026-10-09).
+  - The whole text is one document: `$schema`, then `$defs`.
+  - `$defs` holds a row schema per table, keyed by its name in `tableNameCase`, in `orderByNameASC` order.
+  - The root takes any value. So a row is validated against `#/$defs/<Key>` or against the one-table view.
+  - The one-table view is that row schema standing alone, with `$schema` first. `index.ts` takes it from `createTableCode`.
+  - A document with no table writes nothing, as `zod.ts` does.
+  - A row schema is `title` (its key), `description` (the table comment), `"type": "object"`, `properties` in column order, `required` and `"additionalProperties": false`.
+  - `required` lists every key. With `"additionalProperties": false`, a row carries every key and no other.
+  - A table with no column takes only `{}`.
+  - A column comment is its property's `description`, written first. A blank comment writes none.
+  - No `$comment`, `$id`, `default`, `readOnly` or `$ref` is written.
+- **Types.** They come from the JSON shape (`jsonShape.ts`) that `zod.ts` and `typescript.ts` read. So the three agree column by column.
+  - A boolean is `boolean`.
+  - An integer is `integer`, with `minimum` and `maximum` at the column's width. TINYINT runs from −128 to 127, MEDIUMINT from −8388608 to 8388607.
+  - An unsigned type, YEAR, SQL Server `tinyint` and PostgreSQL `oid` start from 0.
+  - A 64-bit integer gets no bound, since no JSON number holds its range exactly. A 64-bit unsigned one, SERIAL included, keeps `"minimum": 0`.
+  - The classifier makes a 64-bit integer of Oracle's `INT`, `INTEGER` and `SMALLINT` (a `NUMBER(38)`).
+  - It does the same for an Oracle or Snowflake `NUMBER` with no fraction: `NUMBER(p)`, a scale of 0 or below, Snowflake's bare `NUMBER`.
+  - It does the same for every Snowflake integer (a `NUMBER(38,0)`) and every SQLite integer (stored in 64 bits).
+  - It does the same for Oracle's bare `NUMBER` and `NUMBER(*)`, though they keep any scale (see Written as is).
+  - A float is `number`. So is MariaDB's bare `NUMBER`, which is a DOUBLE.
+  - A decimal or money type is a `string`. SQLite's `DECIMAL` and `NUMERIC` are a `number` (an owner decision).
+  - A character type is `string`, with `maxLength` from its declared length: `varchar(n)`, `nvarchar(n)`, `VARCHAR2(n BYTE)`, Snowflake `STRING(n)`.
+  - A length past 2^53 − 1 writes no `maxLength`. A double rounds such a length or reads it as Infinity, which `JSON.stringify` writes as null.
+  - A uuid, SQL Server's `uniqueidentifier` and MariaDB's `UUID` are `"format": "uuid"`.
+  - A date is `"format": "date"`.
+  - A zoned or instant timestamp is `"format": "date-time"`. MySQL, MariaDB and Databricks `TIMESTAMP` count as one.
+  - A time and a naive timestamp (Oracle `DATE` too) are a `pattern`: `TIME_PATTERN` and `NAIVE_DATE_TIME_PATTERN`. 2020-12's `time` and `date-time` formats require an offset.
+  - The patterns are written with `[0-9]`, since `\d` takes any script's digits in a Python or .NET validator.
+  - The naive pattern takes the `Z` a driver's `Date` adds after seconds.
+  - Binary is `"contentEncoding": "base64"`.
+  - JSON and the semi-structured types are `{}`.
+  - `BOOLEAN`, SQL Server's `bit`, and MySQL's and MariaDB's `BIT` and `BIT(1)` are `boolean`.
+  - A longer MySQL or MariaDB `BIT(n)` is an `integer` from 0.
+  - An ENUM is an `enum` of its members, each listed once.
+  - MariaDB `INET4` and `INET6` are `"format": "ipv4"` and `"format": "ipv6"`.
+  - Databricks `VOID` is `{"type": "null"}`.
+  - A PostgreSQL array is one `"type": "array"` with `items` per dimension. Its elements are never null.
+  - These are a plain `string`: a time with zone, an interval, a bit string, PostgreSQL's `xid`, `cid`, `xid8`, `inet`, `cidr` and `macaddr`.
+  - So are a SET, a spatial type and any type the classifier does not know.
+- **Names.** Names are the name cases' output.
+  - Any string is a valid key: `''`, `__proto__`, `$ref`, `a/b~c`, `회원`. `JSON.stringify` escapes each.
+  - A repeated table key is numbered from 2, past every key a table takes as is. Its `title` is numbered too (owner decisions of 2026-10-09, below).
+  - Example: `user`, `User` and `user2` give `User`, `User3` and `User2`.
+  - Of a repeated property key, only the first column is kept. Both rules are owner decisions of 2026-10-09: JSON keeps one value a key, and the metaschema refuses a `required` entry listed twice.
+  - The one-table view is never numbered. So its `title` can differ from its key in the whole text.
+- **Keys and relations.** A primary key or a NOT NULL column takes its type alone.
+  - Any other column adds `"null"` to its `type` (`"type": ["string", "null"]`) and `null` to its `enum`.
+  - `{}` and `{"type": "null"}` already take null, so they stay as they are.
+  - A foreign key is a plain column. No `$ref` and no relation is written.
+- **Layout.** The text is a blank line, the JSON and a newline.
+  - The JSON is written from `Map`s (`formatJson`). A plain object loses a `__proto__` key and moves integer-like keys first.
+  - Each level indents two spaces. An object takes one key a line.
+  - An array (`type`, `required`, `enum`) stays on one line while that line fits in 80 columns. Its comma counts only where another key follows.
+  - An array that does not fit takes one item a line.
+  - Columns are counted as Prettier counts them, a code point at a time (`textWidth`). So a line of Hangul breaks where Prettier breaks it.
+  - An East Asian Wide or Fullwidth character counts two (`WIDE_RUNS`, get-east-asian-width 1.6.0 as Prettier 3.9.9 bundles it).
+  - The nine text-default emoji that take a skin tone count two (`WIDE_EMOJI`). Prettier's emoji pattern matches each of them alone.
+  - A control, U+0300 to U+036F and a variation selector U+FE00 to U+FE0F count none. Any other code point counts one.
+- **Written as is.** The generator writes these cases so, though a validator, driver or server disagrees.
+  - A `format` is checked only where the validator is told to. ajv throws on one under its default or strict options without ajv-formats (`unknown format "uuid" ignored in schema`).
+  - @hyperjump checks no `format` until `@hyperjump/json-schema/formats` is imported and `setShouldValidateFormat(true)` is called.
+  - Python jsonschema checks no `format` without a `format_checker`.
+  - ajv-formats and @cfworker take a date-time with `+0900`, `+09`, a space for the `T` or `23:59:60Z`. @hyperjump and Python refuse these.
+  - ajv-formats and @cfworker take a `urn:uuid:` uuid. @hyperjump and Python refuse it.
+  - @cfworker takes the ipv4 `010.0.0.1`.
+  - Python's `re` lets a time or naive timestamp end in a newline.
+  - The naive pattern checks month and day ranges, not month lengths. So February 30 passes where Zod refuses it.
+  - `contentEncoding` is an annotation, so binary takes any string. That includes PostgreSQL's hex `bytea` and MySQL's `base64:type15:…`.
+  - It also includes Oracle's `RAW` and `BLOB`, which its `JSON_OBJECT` writes in hex (`"0102FF"`).
+  - A 64-bit integer has no bound. So the 2^63 − 1 that mysql2 rounds passes where Zod refuses it.
+  - Oracle's bare `NUMBER` and `NUMBER(*)` keep any scale but are an unbounded `integer`. So the `12.5` such a column holds, and its `JSON_OBJECT` writes, fails.
+  - `maxLength` counts code points. SQL Server `varchar(n)` and Oracle `BYTE` lengths count bytes.
+  - SQL Server `nvarchar(n)` and `nchar(n)` and Oracle `NVARCHAR2(n)` count UTF-16 units. SQLite counts nothing.
+  - A key named after an `Object.prototype` member mis-validates in ajv and @cfworker. @hyperjump and Python get it right.
+  - ajv by default takes an inherited member for a missing key: a `{}` one, or `__proto__` of any type. `ownProperties: true` stops this.
+  - ajv, with either setting, refuses a row holding `__proto__` in a table of at most nine columns. In a larger table it takes the row whatever the value, since ajv never validates a `__proto__` property.
+  - @cfworker throws (`Instances of "function" type are not supported`) on a row lacking a key named after one of its methods, whatever the key's type. Examples: `constructor`, `toString`, `valueOf`, `hasOwnProperty`, ….
+  - @cfworker takes a row lacking a `{}` `__proto__` key.
+  - A table key `$id` (a table named `$id` under `NameCase.none`) makes ajv throw (`id.replace is not a function`). It throws resolving any `#/$defs/<key>` of the whole text. @hyperjump, @cfworker and Python reach every def.
+  - A table key holding `#` is out of reach of `$ref` in @hyperjump. In @cfworker it is reached only through a raw `#`. `NameCase.none` alone keeps a `#`.
+  - A table key holding `?`, `$`, `&`, `+`, `,`, `:`, `;`, `=` or `@` is reached in @cfworker only through the raw character. @cfworker does not percent-decode these.
+  - A lone surrogate in a column name makes ajv, @cfworker and @hyperjump throw `URIError` compiling its schema.
+  - A lone surrogate in a table name leaves its def unaddressable, since no URI encodes it.
+  - A lone surrogate in either name makes @cfworker throw on every def of the whole text. ajv and @hyperjump reach the other defs.
+  - Drivers hand over PostgreSQL `bigint` as text.
+  - Drivers hand over a DATE as a JS `Date`, a day early once east of UTC.
+  - Drivers hand over binary, and mysql2's `BIT`, as Buffer JSON.
+  - mysql2 hands over `BOOLEAN` as `1`.
+  - Drivers hand over PostgreSQL's `interval`, `point` and `circle`, and the elements of an `interval[]`, as objects.
+  - Drivers hand over a `bit` or `varbit` array as text (`"{101}"`).
+  - mysql2 hands over its spatial types (`POINT`) as objects.
+  - Drivers hand over a NULL array element as null, which an array's items refuse.
+  - Drivers hand over a naive timestamp as the UTC instant. It passes, though its value moved.
+  - SQLite (node:sqlite), raw and through its `json_object`, gives a BOOLEAN as `1`.
+  - SQLite gives a `CURRENT_TIMESTAMP` or `datetime()` value with a space for the `T`.
+  - The servers' own JSON is PostgreSQL `row_to_json` (which PostgREST and Supabase build on), MySQL and MariaDB `JSON_OBJECT`, SQL Server `FOR JSON` and Oracle `JSON_OBJECT`.
+  - The servers' own JSON writes DECIMAL as a number. The owner kept DECIMAL a string.
+  - The servers' own JSON writes PostgreSQL's `oid` as a string.
+  - The servers' own JSON writes float `NaN` and `±Infinity` as strings, `infinity` dates, `24:00:00`, BC years and offsets with seconds. All of these fail.
+  - MySQL's and MariaDB's own JSON write a DATETIME or TIMESTAMP with a space, and a BOOLEAN as `1`.
+  - MySQL's own JSON writes a `BIT` as `base64:type16:…`.
+  - MariaDB's own JSON writes a `BIT` unquoted, which is no JSON.
+  - MariaDB's own JSON writes a character past U+FFFF as a broken `\uD83DDE00` escape.
+  - MySQL and MariaDB store the ENUM error value `''` outside strict mode.
+  - MySQL and MariaDB store a TIME below zero or past a day.
+  - A ZWJ, skin-tone or tag sequence, or U+FE0F after a text-default emoji, counts a column a code point. Prettier counts the sequence two. So such a line can break where Prettier keeps it, or the reverse.
+- **Measured** on 2026-10-10 with Node 24.16.0.
+  - The first corpus was 11,107 files, whole and per table: 21,892 row schemas.
+  - It held 297 type spellings: every name of the eight vendor lists and forms with arguments. Each ran under each database as NOT NULL, nullable and key columns.
+  - It held the five `data/*.sql` fixtures under each database and three name-case pairs. It held names, comments and line-width probes.
+  - Every file passed the 2020-12 metaschema in ajv 8.20.0 (`Ajv2020`), @hyperjump/json-schema 1.17.8 and Python jsonschema 4.25.1.
+  - Every file compiled under ajv's strict and default options with ajv-formats 3.0.1, and in @cfworker/json-schema 4.1.1.
+  - Each def was reached through `#/$defs/<key>`, a reserved character left raw for @cfworker.
+  - The exceptions were a key holding `#` and, in ajv, every def of a text holding a table key `$id`, as Written as is says.
+  - Prettier 3.9.9 changed only the opening blank line. The exceptions were 28 width probes holding one of the emoji sequences in Written as is.
+  - `textWidth` equals Prettier's `getStringWidth` on all 1,112,064 Unicode scalar values.
+  - 5,085 labelled values over the 883 distinct column schemas, and 9,792 whole rows, got their expected verdict. The validators were ajv with ajv-formats, @hyperjump and @cfworker with formats on, and Python with its format checker.
+  - Rows lacking a key named after one of ten `Object.prototype` members ran over twelve types, NOT NULL and nullable (240 schemas). They gave the verdicts Written as is names in ajv, @cfworker and @hyperjump. Python refused all 240 rows.
+  - Lone surrogates in a table or column name gave the verdicts Written as is names in ajv, @cfworker and @hyperjump.
+  - zod 4.6.5's `z.toJSONSchema` ran on the `zod.ts` schema of the same 9,282 tables. 69,042 of 85,020 columns were identical, 17,108 of them after the nullable form.
+  - The rest differed only by Zod's ±(2^53 − 1) on a 64-bit integer.
+  - They differed by Zod's patterns beside `uuid`, `date`, `date-time`, the IP formats and base64 (with `format: base64`).
+  - They differed by Zod's leap-aware naive timestamp pattern, and by `\d` where this generator writes `[0-9]`.
+  - They differed by Zod's recursive schema where this generator writes `{}`.
+  - They differed by the 72 lengths past 2^53 − 1 that `zod.ts` writes rounded or infinite.
+  - json-schema-to-typescript 16.0.0 typed each of those 85,020 keys as `typescript.ts` does. A type identity check ran on each key under TypeScript 5.9.3 and 7.0.2, strict.
+  - Rows of PostgreSQL 17.11 (pg 8.23.1) failed only as Written as is says, through the driver and the server's own JSON.
+  - So did rows of MySQL 8.4.11 and MariaDB 11.4.13 (mysql2 3.24.5), through the driver and the server's own JSON.
+  - So did rows of SQLite 3.53.0 (node:sqlite), raw and through `json_object`.
+  - So did Oracle AI Database 26ai Free (23.26.3)'s `JSON_OBJECT` of `NUMBER`, `NUMBER(*)`, `RAW` and `BLOB`.
+  - SQL Server 2022's own JSON, Oracle's decimals and both servers' length units were measured on 2026-10-09. They were not run again.
+  - On 2026-10-10 these cases gave the verdicts Written as is names: a table key `$id`, and keys holding `#`, `?`, `$`, `&`, `+`, `,`, `:`, `;`, `=` or `@`.
+  - So did a NOT NULL `__proto__` column beside 0 to 82 others.
+  - Those verdicts held in ajv (default and strict options, and `ownProperties: true`), @cfworker, @hyperjump and Python.
+  - A second corpus was 9,399 files, whole and per table: 18,324 row schemas.
+  - It held every vendor list type under each database as NOT NULL, nullable and key columns, and 83 names under all 16 name-case pairs.
+  - It held comments, empty tables and the five fixtures under five name-case pairs.
+  - Every file of it passed the metaschema in all three validators. Prettier changed each only by its opening blank line.
+  - ajv resolved every def but the 332 of the four texts holding a table key `$id`, and three of the text holding lone surrogates in its names.
+  - 187,019 rows of the types, fixtures, comments and empty tables got their expected verdict in ajv, @hyperjump and @cfworker.
+
+### dbml.ts
+
+- **What it writes.** `dbml.ts` repairs the document, since DBML rejects what other generators render oddly.
+  - A duplicate table is renamed.
+  - A typeless or repeated column is dropped. So is a table those drops leave empty.
+- **Names.** Identifiers are double-quoted.
+- **Keys and relations.** A `Ref` is kept only when both its ends resolve.
+- **Strings.** A comment is written as a `Note`.
+- **Table colors.** A table color is written as `headercolor`, which takes `#rgb` or `#rrggbb` alone (`utils/tableColor.ts`, owner decisions).
+  - An alpha is dropped.
+  - An `rgb()` or `hsl()` is written as its hex.
+  - A color that reads as neither a hex nor an `rgb()` or `hsl()` is left out.
+- **Table groups.** A group holding a table the output writes becomes a `TableGroup` block after the refs.
+  - Its `color` follows the `headercolor` rule.
+  - Its members are written one a line, in table order, under the names their tables are written under.
+  - DBML refuses two groups of one name, so each group is named in document order.
+  - A blank name becomes `group_1`, `group_2` and on. A taken name gets `_2`, `_3` and on.
+  - Neither ever takes a name another group holds.
+  - The blocks are sorted by the name written. So a text that is imported and exported again comes out the same.
+- **Importer read-back of colors.** The importer reads a `headercolor` back as written when it is `#rgb` or `#rrggbb`.
+  - The tokenizer cuts `#3498DB` into a mark, a number and a name. The importer joins them while each touches the previous one (`Token.offset`).
+  - It drops any other color, `#3498 DB` too.
+  - A `TablePartial`'s `headercolor` is not inherited.
+- **Importer read-back of groups.** The importer reads a `TableGroup` in any letter case, its name quoted or bare.
+  - Each line names one table. The importer resolves it as a `Ref` resolves a table: an alias, any letter case, the schema optional.
+  - It makes a group of that name with a `#rgb` or `#rrggbb` color.
+  - A table named by two groups stays in the first.
+  - A group that names no declared table is not made at all.
+  - The group's note, inner or a setting, goes to `skipped` as `tablegroup note`.
+  - Its other settings go to `skipped` as `tablegroup <key>`.
+  - The group's rect is the placement's, which wraps it round its members (`utils/file/importSchema.test.ts`).
+- **Highlighting.** DBML highlights as `sql` (`LanguageToLangMap`), as AML does.
+- **Tests.** `dbml.test.ts` parses the output with `@dbml/parse`. It also round-trips the groups through the importer.
+
+### aml.ts
+
+- **What it writes.** `aml.ts` repairs the document as `dbml.ts` does, with these differences.
+  - It keeps typeless attributes.
+  - It writes `nullable`.
+- **Types.** A type is quoted unless it is a bare identifier that is no AML keyword.
+  - `int` and `varchar` stay bare.
+  - `"varchar(100)"` is quoted.
+- **Table colors.** A table color is written as `{color: name}`. The name is one of the 18 that AML takes (`AML_COLORS`, Tailwind's 500 shades).
+  - A color whose OKLab chroma is under 0.04 is `gray`, however light or dark (owner decisions).
+  - The reason: a neutral's hue is rounding noise. By hue alone, `#ffffff` and `#cccccc` would be `yellow` and `#000000` `pink`.
+  - Any other color takes, of the other 17 names, the one whose 500 shade is nearest in OKLCH hue (`atan2(b, a)`) around the circle.
+  - Lightness and chroma are left aside (owner decisions). Full OKLab distance is pulled by lightness: it named `#fecaca` `yellow` and `#0000ff` `indigo`.
+  - On a tie, the first name in AML's order wins.
+  - So `#fecaca` is `rose`, `#0000ff` is `blue` and a dark `#800000` is `red`. `tableColor.test.ts` pins these.
+- **Importer read-back of colors.** The importer reads a color name back as its hex, in any letter case (an owner decision).
+  - It reads the name bare or quoted, as it reads every property value.
+  - It reads a quoted `#rgb`, `#rrggbb` or `#rrggbbaa` as written.
+  - It drops any other color.
+  - It drops the color property on an attribute or a relation the same way.
+- **Highlighting.** AML highlights as `sql` (`LanguageToLangMap`), as DBML does.
+
+### mermaid.ts
+
+- **What it writes.** `mermaid.ts` writes the `erDiagram` that GitHub renders, with GitHub's Mermaid 11.17.2 (an owner decision).
+  - As in DBML and AML, it writes every column whatever View Option shows, and the name cases are inert.
+  - The table comment is a `%%` line.
+  - The one-table view (`formatTable`) is an `erDiagram` header and the one entity under its numbered name. It holds no relationships.
+- **Types.**
+  - The type is trimmed.
+  - A column that is not NOT NULL is `type?`.
+  - A column with no type is `unknown`.
+- **Names.**
+  - Every table name is double-quoted.
+  - The characters a quoted entity name cannot hold are dropped.
+  - A blank table name is written `unnamed`. So is a blank column name, in its attribute and in a relationship's label.
+  - A column name or type is written in backticks in three cases:
+    - It falls outside that release's attribute word.
+    - It starts with a whitespace character the word holds (U+3000, U+FEFF). The lexer's whitespace rule would eat that character.
+    - The lexer's key rule reads it first (`pk`, `pk-id`, `uk번호`).
+- **Keys and relations.** A relationship's label lists the child columns still in the child table. A removed column keeps its entity, so only the table's column list says it is still there.
+- **Strings: line breaks.** A line break, U+2028 and U+2029 included, is written as a space in a comment, a label and a backtick word.
+  - The reason: mermaid strips a `%%` comment from the start of any line its multiline pattern finds.
+- **Strings: tildes.** Every `~` of an attribute line is written `～` (U+FF5E) when the lexer's generic type rule would match.
+  - That rule reads from a word holding a `~` to the line's last `~` (a comment `"1~5, 6~10"`).
+  - The lexer tries it ahead of a backtick and a comment.
+  - Otherwise the line is kept as it is.
+- **Strings: directives.** Every `%%{` is written `%%｛` (U+FF5B) in a comment, the table comment's line included, in a label and in a backtick word.
+  - A `%%{` that a word follows is a directive wherever it stands.
+  - Mermaid applies a directive before its lexer runs.
+  - It can fail the parse, empty the diagram or change its config. An unclosed one in the table comment takes the rest of the text.
+  - Rewriting the other `%%{` as well keeps the rule simple.
+- **Strings: direction words.** A `direction` that whitespace and `TB`, `BT`, `RL` or `LR` follow, in any letter case, gets U+200B after it in a table name and a relationship label.
+  - The rewrite also applies inside a longer word (`sort direction tbl`).
+  - It also applies with semicolons anywhere in the word (`direc;tion LR`), since mermaid's entity encoding can drop them before its lexer runs.
+  - A table name and a label are the strings the lexer reads outside an entity block. There its direction rule takes the rest of the line.
+  - Unrewritten, a table name would fail to parse. A label would drop its relationship and change the diagram's direction without an error.
+  - U+200B is used because `\s` does not match it, while `\s` matches the no-break space.
+  - Attribute words and comments keep the word. The lexer does not try that rule inside an entity block.
+  - Mermaid drops the table comment's line before the lexer runs, so that line keeps the word too.
+- **Written as is.** Two inputs still reach mermaid as written.
+  - A backtick word or a table comment holding an HTML-like tag (`<x y="z">`).
+    - Mermaid's text clean-up rewrites the tag's `="…"` to `='…'` up to the next `>`, a later line's included.
+    - So an unclosed tag can take the opening quote of a name or comment after it and fail the parse.
+  - A semicolon on a line holding `style` or `classDef`, then `:`, a run of non-whitespace and `#`.
+    - Mermaid's entity encoding drops the line's last semicolon before its lexer runs, once for each of the two words.
+    - It also writes a `#`, a word and `;` (`#b;`) in other characters.
+    - A backtick word or a relationship line's entity name that a drop empties (`;`) fails the parse.
+    - A table name it changes on one of its lines and not the other becomes two entities (parent `style`, child `a:#b;`). The relationship goes to the empty one.
+- **Tests.** `mermaid.browser.test.ts` parses the output with `mermaid` 11.17.2 and reads back what it parsed. `mermaid` is a devDependency that no build ships.
+- **Highlighting.** Shiki's `mermaid` grammar colours only unquoted names.
+  - So the panel colours `erDiagram` and the comments.
+  - It also colours the `o` and `{` of a child `o{`, which the grammar reads as an unquoted entity opening a block.
+
+<!-- MANUAL: notes added below this line are preserved on regeneration -->
