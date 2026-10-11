@@ -10,11 +10,13 @@ import { createBrowserRouter, Navigate } from 'react-router';
 // typechecks clean.
 import { RouterProvider } from 'react-router/dom';
 
+import { watchDisplayLanguage } from '@/atoms/modules/locale';
 import App from '@/components/app/App';
 import LiveCollaborativeError from '@/components/live-collaborative/live-collaborative-error/LiveCollaborativeError';
 import { registerSW } from '@/registerSW';
 import Root from '@/routes/root/Root';
 import { store } from '@/store';
+import { reportError } from '@/utils/reportError';
 import {
   sentryPrivacyOptions,
   shouldCreateSpanForRequest,
@@ -73,13 +75,20 @@ const router = createBrowserRouter([
 ]);
 
 const root = createRoot(document.getElementById('app')!);
-root.render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <RouterProvider router={router} />
-    </Provider>
-  </React.StrictMode>
-);
+
+// The first render waits for the language's dictionary, a chunk of its own
+// unless it is English, so no other language shows English first.
+watchDisplayLanguage(store, document.documentElement)
+  .catch(reportError)
+  .finally(() => {
+    root.render(
+      <React.StrictMode>
+        <Provider store={store}>
+          <RouterProvider router={router} />
+        </Provider>
+      </React.StrictMode>
+    );
+  });
 
 if (import.meta.env.MODE === 'production') {
   registerSW();

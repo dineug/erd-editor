@@ -61,6 +61,12 @@ describe('toNewFileName', () => {
   ])('names %j %s', (input, expected) => {
     expect(toNewFileName(input)).toBe(expected);
   });
+
+  it('names an empty one with the word for untitled it is handed', () => {
+    expect(toNewFileName('', '제목 없음')).toBe('제목 없음.erd.json');
+    expect(toNewFileName('.erd', '제목 없음')).toBe('제목 없음.erd.json');
+    expect(toNewFileName('orders', '제목 없음')).toBe('orders.erd.json');
+  });
 });
 
 describe('renameKeepingExtension', () => {

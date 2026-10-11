@@ -4,10 +4,13 @@ import { act } from 'react';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { renderHook } from '@/__test-utils__/renderHook';
+import { i18nAtom } from '@/atoms/modules/locale';
 import {
   type SidebarListEntity,
   useSidebarList,
 } from '@/components/sidebar/useSidebarList';
+import { koKR } from '@/i18n/messages/ko-KR';
+import { createI18n } from '@/i18n/translate';
 
 const ZONE = 'UTC';
 const now = DateTime.fromISO('2026-09-25T12:00:00', { zone: ZONE });
@@ -19,11 +22,11 @@ const entities: SidebarListEntity[] = [
   { id: 'mid', name: 'Payments', updateAt: daysAgo(1) },
 ];
 
-function render(selectedId: string | null) {
+function render(selectedId: string | null, store = createStore()) {
   const props = { selectedId };
   const view = renderHook(
     () => useSidebarList(entities, now, props.selectedId),
-    createStore()
+    store
   );
   return {
     result: view.result,
@@ -49,6 +52,19 @@ describe('useSidebarList', () => {
       ['Previous 7 Days', ['old']],
     ]);
     expect(result.current.noResults).toBe(false);
+  });
+
+  it('names the date groups in the language shown, and again on a switch', () => {
+    const store = createStore();
+    const { result } = render(null, store);
+
+    act(() => store.set(i18nAtom, createI18n('ko-KR', koKR)));
+
+    expect(result.current.groups.map(({ label }) => label)).toEqual([
+      '오늘',
+      '어제',
+      '지난 7일',
+    ]);
   });
 
   it('filters by the query and says so when nothing is left', () => {

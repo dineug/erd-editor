@@ -1,3 +1,4 @@
+import { type Localized, localized } from '@/i18n/translate';
 import { isLoginHint } from '@/server/auth/contract';
 import { createAppFolder } from '@/services/gdrive/appFolder';
 import {
@@ -45,6 +46,7 @@ import type {
   TokenStatus,
 } from '@/services/gdrive/tokenManager';
 import type { CreateChannel } from '@/services/gdrive/types';
+import { MAX_IMPORT_FILE_MB } from '@/utils/importFile';
 import { safeCallback } from '@/utils/safeCallback';
 
 /**
@@ -89,7 +91,8 @@ export type StrandedChanges = {
 
 export type SessionNotice = {
   key: number;
-  message: string;
+  /** Read in the language it renders in, so a notice follows a switch. */
+  message: Localized;
   tone: 'success' | 'warning';
 };
 
@@ -148,25 +151,24 @@ export type SessionDeps = {
   retry?: RetryOptions;
 };
 
+/** The notices the session shows, each read where it renders. */
 export const MESSAGES = {
-  unreadableState: "Google Drive sent a link ERD Editor couldn't read",
-  renameFailed: "Couldn't rename the file",
-  createFailed: "Couldn't create the file",
-  importFailed: 'Import failed',
-  checkFailed: "Couldn't reach Google Drive. Try again.",
-  reloadFailed: "Couldn't reload from Google Drive. Try again.",
+  unreadableState: localized('gdrive.notice.unreadableState'),
+  renameFailed: localized('gdrive.notice.renameFailed'),
+  createFailed: localized('gdrive.notice.createFailed'),
+  importFailed: localized('import.failed'),
+  checkFailed: localized('gdrive.notice.checkFailed'),
+  reloadFailed: localized('gdrive.notice.reloadFailed'),
   reloadRefused: {
-    trashed: "Couldn't reload: the file is in the trash in Google Drive",
-    'too-large': "Couldn't reload: the file in Google Drive is over 64 MB",
-    'google-native':
-      "Couldn't reload: the file in Google Drive isn't an ERD Editor document anymore",
-    'not-document':
-      "Couldn't reload: the file in Google Drive isn't an ERD Editor document anymore",
-  } satisfies Record<DocumentRejection, string>,
-  signOutUnconfirmed:
-    "Signed out here. ERD Editor's server didn't confirm it, so this browser finishes signing out the next time it connects",
-  signOutNotRevoked:
-    "Signed out here, but Google didn't confirm it removed ERD Editor's access, so your other devices may stay signed in until you remove it at myaccount.google.com/permissions",
+    trashed: localized('gdrive.notice.reloadTrashed'),
+    'too-large': localized('gdrive.notice.reloadTooLarge', {
+      size: MAX_IMPORT_FILE_MB,
+    }),
+    'google-native': localized('gdrive.notice.reloadNotDocument'),
+    'not-document': localized('gdrive.notice.reloadNotDocument'),
+  } satisfies Record<DocumentRejection, Localized>,
+  signOutUnconfirmed: localized('gdrive.notice.signOutUnconfirmed'),
+  signOutNotRevoked: localized('gdrive.notice.signOutNotRevoked'),
 };
 
 const SIGNED_IN: ReadonlySet<TokenStatus> = new Set<TokenStatus>([
@@ -303,7 +305,7 @@ export function createGdriveSession(deps: SessionDeps) {
     for (const listener of [...listeners]) safeCallback(listener);
   }
 
-  function showNotice(message: string, tone: SessionNotice['tone']) {
+  function showNotice(message: Localized, tone: SessionNotice['tone']) {
     notice = { key: now(), message, tone };
   }
 
@@ -893,7 +895,7 @@ export function createGdriveSession(deps: SessionDeps) {
           announce({ type: 'created', file });
         }
         showNotice(
-          describeDriveImport(result),
+          i18n => describeDriveImport(result, i18n),
           isCleanImport(result) ? 'success' : 'warning'
         );
         const last = created.at(-1);

@@ -2,7 +2,9 @@ import { Button } from '@radix-ui/themes';
 import { Download, RotateCw, SearchCheck } from 'lucide-react';
 import { useState } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import GdriveBanner from '@/components/gdrive/gdrive-banner/GdriveBanner';
+import type { PlainMessageKey } from '@/i18n/translate';
 import type { GdriveSession } from '@/services/gdrive';
 import { settleReported } from '@/utils/reportError';
 
@@ -12,15 +14,11 @@ interface GdriveConflictBannerProps {
   state: 'conflict' | 'unconfirmed' | 'deleted' | 'readonly';
 }
 
-const MESSAGES = {
-  conflict:
-    'This file changed in Google Drive, so saving stopped. Your changes are still here.',
-  unconfirmed:
-    "Couldn't confirm the last save, so saving stopped. Your changes are still here.",
-  deleted:
-    'This file was deleted or moved to the trash in Google Drive, so saving stopped.',
-  readonly:
-    "You can't edit this file in Google Drive anymore, so saving stopped. Your changes are still here.",
+const MESSAGES: Record<GdriveConflictBannerProps['state'], PlainMessageKey> = {
+  conflict: 'gdrive.banner.conflict',
+  unconfirmed: 'gdrive.banner.unconfirmed',
+  deleted: 'gdrive.banner.deleted',
+  readonly: 'gdrive.banner.readonly',
 };
 
 /**
@@ -34,6 +32,7 @@ const GdriveConflictBanner: React.FC<GdriveConflictBannerProps> = ({
 }) => {
   const [checking, setChecking] = useState(false);
   const [reloading, setReloading] = useState(false);
+  const { t } = useI18n();
 
   const handleCheck = () => {
     setChecking(true);
@@ -46,7 +45,7 @@ const GdriveConflictBanner: React.FC<GdriveConflictBannerProps> = ({
   };
 
   return (
-    <GdriveBanner message={MESSAGES[state]}>
+    <GdriveBanner message={t(MESSAGES[state])}>
       {state === 'unconfirmed' ? (
         <Button
           size="2"
@@ -56,7 +55,7 @@ const GdriveConflictBanner: React.FC<GdriveConflictBannerProps> = ({
           onClick={handleCheck}
         >
           <SearchCheck size={16} />
-          Check Drive
+          {t('gdrive.banner.checkDrive')}
         </Button>
       ) : null}
       {state === 'deleted' ? null : (
@@ -68,7 +67,7 @@ const GdriveConflictBanner: React.FC<GdriveConflictBannerProps> = ({
           onClick={handleReload}
         >
           <RotateCw size={16} />
-          Reload from Drive
+          {t('gdrive.banner.reloadFromDrive')}
         </Button>
       )}
       <Button
@@ -78,7 +77,7 @@ const GdriveConflictBanner: React.FC<GdriveConflictBannerProps> = ({
         onClick={() => session.downloadChanges()}
       >
         <Download size={16} />
-        Download my changes
+        {t('common.downloadMyChanges')}
       </Button>
     </GdriveBanner>
   );

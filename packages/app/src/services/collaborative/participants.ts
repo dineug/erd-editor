@@ -1,5 +1,7 @@
 import { isPlainObject } from 'es-toolkit';
 
+import { sourceI18n } from '@/i18n/source';
+import type { Translate } from '@/i18n/translate';
 import { Role } from '@/services/collaborative/room';
 
 export const NICKNAME_MAX_LENGTH = 30;
@@ -41,8 +43,7 @@ export function readParticipants(value: unknown): Participant[] {
   });
 }
 
-export const participantName = ({
-  role,
-  nickname,
-}: Pick<Participant, 'role' | 'nickname'>) =>
-  nickname?.trim() || (role === Role.host ? 'Host' : 'Guest');
+export const participantName = (
+  { role, nickname }: Pick<Participant, 'role' | 'nickname'>,
+  t: Translate = sourceI18n.t
+) => nickname?.trim() || t(role === Role.host ? 'common.host' : 'common.guest');

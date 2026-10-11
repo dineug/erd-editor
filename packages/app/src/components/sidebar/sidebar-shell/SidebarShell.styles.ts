@@ -7,7 +7,7 @@ export const root = css`
   overflow: hidden;
   background-color: var(--gray-2);
   padding: 14px 0;
-  border-right: 1px solid var(--gray-6);
+  border-inline-end: 1px solid var(--gray-6);
   position: relative;
 `;
 

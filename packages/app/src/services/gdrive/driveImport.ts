@@ -1,8 +1,10 @@
+import { sourceI18n } from '@/i18n/source';
+import type { I18n } from '@/i18n/translate';
 import type { DriveClient, DriveFile } from '@/services/gdrive/driveClient';
 import { toNewFileName } from '@/services/gdrive/driveFileName';
 import {
   type ImportItem,
-  MAX_IMPORT_FILE_SIZE,
+  MAX_IMPORT_FILE_MB,
   readImportFile,
   type SourceImport,
 } from '@/utils/importFile';
@@ -125,26 +127,34 @@ export async function importToDrive(
   return { created, result };
 }
 
-const plural = (count: number, noun: string) =>
-  `${count} ${noun}${count === 1 ? '' : 's'}`;
-
 /** The one line the notice shows, in the order things were counted. */
-export function describeDriveImport(result: DriveImportResult): string {
+export function describeDriveImport(
+  result: DriveImportResult,
+  i18n: I18n = sourceI18n
+): string {
+  const { t } = i18n;
   const parts = [
     result.imported
-      ? `Imported ${plural(result.imported, 'file')} to Google Drive`
+      ? t('gdrive.import.imported', { count: result.imported })
       : '',
     result.backups
-      ? `Skipped ${plural(result.backups, 'backup')}: backups stay in the local app`
+      ? t('gdrive.import.skippedBackups', { count: result.backups })
       : '',
-    result.invalid ? `Skipped ${plural(result.invalid, 'invalid file')}` : '',
+    result.invalid
+      ? t('import.skippedInvalidFiles', { count: result.invalid })
+      : '',
     result.oversized
-      ? `Skipped ${plural(result.oversized, 'file')} over ${MAX_IMPORT_FILE_SIZE / 1024 / 1024} MB`
+      ? t('import.skippedOversized', {
+          count: result.oversized,
+          size: MAX_IMPORT_FILE_MB,
+        })
       : '',
-    result.failed ? `${plural(result.failed, 'upload')} failed` : '',
+    result.failed
+      ? t('gdrive.import.uploadsFailed', { count: result.failed })
+      : '',
   ].filter(Boolean);
 
-  return parts.length ? parts.join(' · ') : 'Nothing to import';
+  return parts.length ? parts.join(' · ') : t('import.nothing');
 }
 
 /** Success only when every file became a Drive file. */

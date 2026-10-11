@@ -9,6 +9,7 @@ import {
 } from '@radix-ui/themes';
 import { RotateCcw, Trash2 } from 'lucide-react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import {
   useDeleteSchemaEntity,
   useEmptyTrash,
@@ -29,30 +30,34 @@ interface ConfirmProps {
   children: React.ReactNode;
 }
 
-const Confirm: React.FC<ConfirmProps> = props => (
-  <AlertDialog.Root>
-    <AlertDialog.Trigger>{props.children}</AlertDialog.Trigger>
-    <AlertDialog.Content style={{ maxWidth: 450 }}>
-      <AlertDialog.Title>{props.title}</AlertDialog.Title>
-      <AlertDialog.Description size="2">
-        {props.description}
-      </AlertDialog.Description>
+const Confirm: React.FC<ConfirmProps> = props => {
+  const { t } = useI18n();
 
-      <Flex gap="3" mt="4" justify="end">
-        <AlertDialog.Cancel>
-          <Button variant="soft" color="gray">
-            Cancel
-          </Button>
-        </AlertDialog.Cancel>
-        <AlertDialog.Action onClick={props.onConfirm}>
-          <Button variant="outline" color="red">
-            {props.action}
-          </Button>
-        </AlertDialog.Action>
-      </Flex>
-    </AlertDialog.Content>
-  </AlertDialog.Root>
-);
+  return (
+    <AlertDialog.Root>
+      <AlertDialog.Trigger>{props.children}</AlertDialog.Trigger>
+      <AlertDialog.Content style={{ maxWidth: 450 }}>
+        <AlertDialog.Title>{props.title}</AlertDialog.Title>
+        <AlertDialog.Description size="2">
+          {props.description}
+        </AlertDialog.Description>
+
+        <Flex gap="3" mt="4" justify="end">
+          <AlertDialog.Cancel>
+            <Button variant="soft" color="gray">
+              {t('common.cancel')}
+            </Button>
+          </AlertDialog.Cancel>
+          <AlertDialog.Action onClick={props.onConfirm}>
+            <Button variant="outline" color="red">
+              {props.action}
+            </Button>
+          </AlertDialog.Action>
+        </Flex>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
+  );
+};
 
 interface SidebarTrashProps {}
 
@@ -62,29 +67,35 @@ const SidebarTrash: React.FC<SidebarTrashProps> = () => {
   const deleteSchemaEntity = useDeleteSchemaEntity();
   const emptyTrash = useEmptyTrash();
   const now = useNow();
-  const count =
-    entities.length === 1 ? '1 schema' : `${entities.length} schemas`;
+  const i18n = useI18n();
+  const { t } = i18n;
 
   return (
     <Dialog.Root>
       <Dialog.Trigger>
-        <Button css={styles.trigger} size="2" variant="ghost" color="gray">
+        <Button
+          css={styles.trigger}
+          size="2"
+          variant="ghost"
+          color="gray"
+          aria-label={t('trash.button', { count: entities.length })}
+        >
           <Trash2 size={16} />
-          Trash ({entities.length})
+          <span css={styles.ellipsis}>{t('trash.title')}</span>{' '}
+          <span css={styles.count}>({entities.length})</span>
         </Button>
       </Dialog.Trigger>
 
       <Dialog.Content style={{ maxWidth: 480 }}>
-        <Dialog.Title>Trash</Dialog.Title>
+        <Dialog.Title>{t('trash.title')}</Dialog.Title>
         <Dialog.Description size="2" mb="4">
-          Schemas in the trash are deleted permanently after{' '}
-          {TRASH_RETENTION_DAYS} days.
+          {t('trash.description', { count: TRASH_RETENTION_DAYS })}
         </Dialog.Description>
 
         {entities.length ? (
           <ScrollArea css={styles.list} scrollbars="vertical">
             <Flex css={styles.rows} direction="column" gap="1" asChild>
-              <ul aria-label="Trashed schemas">
+              <ul aria-label={t('trash.listLabel')}>
                 {entities.map(entity => (
                   <Flex
                     key={entity.id}
@@ -100,11 +111,21 @@ const SidebarTrash: React.FC<SidebarTrashProps> = () => {
                         </Text>
                         <Text size="1" color="gray">
                           <span css={styles.nowrap}>
-                            Deleted{' '}
-                            {formatRelativeTime(entity.deletedAt ?? 0, now)} ·
+                            {t('trash.deleted', {
+                              time: formatRelativeTime(
+                                entity.deletedAt ?? 0,
+                                now,
+                                i18n
+                              ),
+                            })}{' '}
+                            ·
                           </span>{' '}
                           <span css={styles.nowrap}>
-                            {formatTrashDeletion(entity.deletedAt ?? 0, now)}
+                            {formatTrashDeletion(
+                              entity.deletedAt ?? 0,
+                              now,
+                              i18n
+                            )}
                           </span>
                         </Text>
                       </Flex>
@@ -117,16 +138,17 @@ const SidebarTrash: React.FC<SidebarTrashProps> = () => {
                         onClick={() => restoreSchemaEntity(entity.id)}
                       >
                         <RotateCcw size={14} />
-                        Restore
+                        {t('trash.restore')}
                       </Button>
                       <Confirm
-                        title="Delete permanently"
+                        title={t('trash.deletePermanently')}
                         description={
                           <>
-                            This cannot be undone. <Quote>{entity.name}</Quote>
+                            {t('trash.cannotBeUndone')}{' '}
+                            <Quote>{entity.name}</Quote>
                           </>
                         }
-                        action="Delete"
+                        action={t('trash.delete')}
                         onConfirm={() => deleteSchemaEntity(entity.id)}
                       >
                         <Button
@@ -136,7 +158,7 @@ const SidebarTrash: React.FC<SidebarTrashProps> = () => {
                           color="red"
                         >
                           <Trash2 size={14} />
-                          Delete permanently
+                          {t('trash.deletePermanently')}
                         </Button>
                       </Confirm>
                     </li>
@@ -147,24 +169,24 @@ const SidebarTrash: React.FC<SidebarTrashProps> = () => {
           </ScrollArea>
         ) : (
           <Text as="p" size="2" color="gray">
-            The trash is empty.
+            {t('trash.empty')}
           </Text>
         )}
 
         <Flex gap="3" mt="4" justify="between">
           <Confirm
-            title="Empty trash"
-            description={`Permanently delete ${count}? This cannot be undone.`}
-            action="Empty trash"
+            title={t('trash.emptyTrash')}
+            description={t('trash.emptyConfirm', { count: entities.length })}
+            action={t('trash.emptyTrash')}
             onConfirm={() => emptyTrash()}
           >
             <Button variant="outline" color="red" disabled={!entities.length}>
-              Empty trash
+              {t('trash.emptyTrash')}
             </Button>
           </Confirm>
           <Dialog.Close>
             <Button variant="soft" color="gray">
-              Close
+              {t('common.close')}
             </Button>
           </Dialog.Close>
         </Flex>

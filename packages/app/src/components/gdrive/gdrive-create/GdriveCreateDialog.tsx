@@ -1,6 +1,8 @@
 import { Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes';
 import { useState } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
+import type { I18n } from '@/i18n/translate';
 import {
   type CreateRequest,
   type GdriveSession,
@@ -14,11 +16,11 @@ interface GdriveCreateDialogProps {
 }
 
 /** Where the file goes; a folderId in the link could name someone else's folder, so it is said. */
-function folderText({ folderId, folderName }: CreateRequest) {
-  if (!folderId) return 'In the ERD Editor folder';
-  if (folderName === undefined) return 'In a folder…';
-  if (folderName === null) return "In a folder ERD Editor can't see";
-  return `In the folder “${folderName}”`;
+function folderText({ folderId, folderName }: CreateRequest, { t }: I18n) {
+  if (!folderId) return t('gdrive.create.inAppFolder');
+  if (folderName === undefined) return t('gdrive.create.inFolderPending');
+  if (folderName === null) return t('gdrive.create.inHiddenFolder');
+  return t('gdrive.create.inFolder', { name: folderName });
 }
 
 /** Google Drive's New: a name, then the file, in the folder Drive sent or in the ERD Editor folder. */
@@ -28,9 +30,13 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
 }) => {
   const [name, setName] = useState('');
   const creating = request.status === 'creating';
+  const i18n = useI18n();
+  const { t } = i18n;
+  // Named here, so a name left empty takes the reader's word for untitled.
+  const fileName = toNewFileName(name, t('gdrive.create.untitled'));
 
   const create = (inAppFolder: boolean) => {
-    void settleReported(session.confirmCreate)(name, inAppFolder);
+    void settleReported(session.confirmCreate)(fileName, inAppFolder);
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -46,31 +52,30 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
       }}
     >
       <Dialog.Content style={{ maxWidth: 460 }}>
-        <Dialog.Title>New file in Google Drive</Dialog.Title>
+        <Dialog.Title>{t('gdrive.create.title')}</Dialog.Title>
         <Dialog.Description size="2" color="gray" mb="4">
-          {folderText(request)}
+          {folderText(request, i18n)}
         </Dialog.Description>
         <form onSubmit={handleSubmit}>
           <Flex direction="column" gap="2">
             <TextField.Root
               value={name}
-              placeholder="Untitled"
-              aria-label="File name"
+              placeholder={t('gdrive.create.untitled')}
+              aria-label={t('gdrive.sidebar.fileName')}
               autoFocus
               disabled={creating}
               onChange={event => setName(event.target.value)}
             />
             <Text size="1" color="gray">
-              Saved as {toNewFileName(name)}
+              {t('gdrive.create.savedAs', { name: fileName })}
             </Text>
             {request.status === 'folder-refused' ? (
               <Text size="2" color="red">
-                ERD Editor can&apos;t create files in this folder. Create it in
-                the ERD Editor folder instead?
+                {t('gdrive.create.folderRefused')}
               </Text>
             ) : request.status === 'failed' ? (
               <Text size="2" color="red">
-                Couldn&apos;t create the file. Try again.
+                {t('gdrive.create.failed')}
               </Text>
             ) : null}
           </Flex>
@@ -83,7 +88,7 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
                 color="gray"
                 disabled={creating}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </Dialog.Close>
             {request.folderId ? (
@@ -95,7 +100,7 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
                 disabled={creating}
                 onClick={() => create(true)}
               >
-                Create in the ERD Editor folder
+                {t('gdrive.create.createInAppFolder')}
               </Button>
             ) : null}
             <Button
@@ -105,7 +110,7 @@ const GdriveCreateDialog: React.FC<GdriveCreateDialogProps> = ({
               highContrast
               loading={creating}
             >
-              Create
+              {t('gdrive.create.create')}
             </Button>
           </Flex>
         </form>

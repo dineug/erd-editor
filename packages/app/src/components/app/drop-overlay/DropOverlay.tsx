@@ -1,6 +1,8 @@
 import { Spinner, Text } from '@radix-ui/themes';
 import { FileUp } from 'lucide-react';
 
+import { useI18n } from '@/atoms/modules/locale';
+
 import * as styles from './DropOverlay.styles';
 
 interface DropOverlayProps {
@@ -8,35 +10,38 @@ interface DropOverlayProps {
   importing: boolean;
 }
 
-const DropOverlay: React.FC<DropOverlayProps> = ({ importing }) => (
-  <div css={styles.root} aria-hidden="true">
-    <div css={styles.frame}>
-      <div css={styles.card}>
-        {importing ? (
-          <>
-            <Spinner size="3" />
-            <Text size="5" weight="medium">
-              Importing files…
-            </Text>
-            <Text size="2" color="gray">
-              Drop more once this import finishes
-            </Text>
-          </>
-        ) : (
-          <>
-            <FileUp size={32} />
-            <Text size="5" weight="medium">
-              Drop to import
-            </Text>
-            <Text size="2" color="gray">
-              Backups, .erd, .vuerd and .json documents, SQL, DBML, AML and
-              GraphQL
-            </Text>
-          </>
-        )}
+const DropOverlay: React.FC<DropOverlayProps> = ({ importing }) => {
+  const { t } = useI18n();
+
+  return (
+    <div css={styles.root} aria-hidden="true">
+      <div css={styles.frame}>
+        <div css={styles.card}>
+          {importing ? (
+            <>
+              <Spinner size="3" />
+              <Text size="5" weight="medium">
+                {t('drop.importing')}
+              </Text>
+              <Text size="2" color="gray">
+                {t('drop.importingHint')}
+              </Text>
+            </>
+          ) : (
+            <>
+              <FileUp size={32} />
+              <Text size="5" weight="medium">
+                {t('drop.title')}
+              </Text>
+              <Text size="2" color="gray">
+                {t('drop.formats')}
+              </Text>
+            </>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default DropOverlay;

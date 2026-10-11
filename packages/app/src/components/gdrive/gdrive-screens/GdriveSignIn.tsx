@@ -1,7 +1,9 @@
 import { Button, Flex, Spinner, Text } from '@radix-ui/themes';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { authControl } from '@/components/gdrive/authControl';
 import GdriveNotice from '@/components/gdrive/gdrive-screens/GdriveNotice';
+import type { PlainMessageKey } from '@/i18n/translate';
 import type { GdriveSession, TokenSnapshot } from '@/services/gdrive';
 
 import * as styles from './GdriveSignIn.styles';
@@ -52,10 +54,9 @@ const GoogleButton: React.FC<GoogleButtonProps> = ({
   </button>
 );
 
-const ERRORS = {
-  'popup-blocked':
-    'Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.',
-  failed: "Google sign-in didn't finish. Try again.",
+const ERRORS: Record<NonNullable<TokenSnapshot['error']>, PlainMessageKey> = {
+  'popup-blocked': 'gdrive.signIn.popupBlocked',
+  failed: 'gdrive.signIn.failed',
 };
 
 interface GdriveSignInProps {
@@ -75,12 +76,13 @@ const GdriveSignIn: React.FC<GdriveSignInProps> = ({
   children,
 }) => {
   const fallback = token.mode === 'fallback';
+  const { t } = useI18n();
 
   if (token.signingIn) {
     return (
       <GdriveNotice
-        title="Waiting for Google sign-in…"
-        description="Finish signing in in the window Google opened."
+        title={t('gdrive.signIn.waitingTitle')}
+        description={t('gdrive.signIn.waitingDescription')}
       >
         <Flex direction="column" align="center" gap="3">
           <Flex align="center" gap="3">
@@ -93,7 +95,7 @@ const GdriveSignIn: React.FC<GdriveSignInProps> = ({
                 onClick={() => session.cancelSignIn()}
                 {...authControl}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             )}
           </Flex>
@@ -105,27 +107,28 @@ const GdriveSignIn: React.FC<GdriveSignInProps> = ({
 
   return (
     <GdriveNotice
-      title="Open your ERD files in Google Drive"
-      description={
+      title={t('gdrive.signIn.title')}
+      description={t(
         fallback
-          ? "ERD Editor's sign-in server is busy, so Google signs you in for an hour at a time."
-          : 'ERD Editor opens and saves only the files you create or open with it.'
-      }
+          ? 'gdrive.signIn.fallbackDescription'
+          : 'gdrive.signIn.description'
+      )}
     >
       <Flex direction="column" align="center" gap="3">
         <GoogleButton
-          label={fallback ? 'Continue with Google' : 'Sign in with Google'}
+          label={t(
+            fallback ? 'gdrive.signIn.continue' : 'gdrive.signIn.signIn'
+          )}
           disabled={fallback && token.gis !== 'ready'}
           onClick={() => session.signIn()}
         />
         {fallback && token.gis === 'blocked' ? (
           <Text size="2" color="red">
-            Google sign-in couldn&apos;t load. Check that nothing blocks
-            accounts.google.com, then reload the page.
+            {t('gdrive.signIn.gisBlocked')}
           </Text>
         ) : token.error ? (
           <Text size="2" color="red">
-            {ERRORS[token.error]}
+            {t(ERRORS[token.error])}
           </Text>
         ) : null}
         {children}

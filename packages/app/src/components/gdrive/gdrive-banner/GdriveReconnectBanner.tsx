@@ -1,5 +1,6 @@
 import { Button } from '@radix-ui/themes';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { authControl } from '@/components/gdrive/authControl';
 import GdriveBanner from '@/components/gdrive/gdrive-banner/GdriveBanner';
 import type { GdriveSession } from '@/services/gdrive';
@@ -22,29 +23,33 @@ const GdriveReconnectBanner: React.FC<GdriveReconnectBannerProps> = ({
   expired,
   error,
   primary,
-}) => (
-  <GdriveBanner
-    message={
-      error === 'popup-blocked'
-        ? 'Your browser blocked the Google window. Allow pop-ups for this site, then reconnect.'
-        : error === 'failed'
-          ? "Google didn't reconnect. Try again."
-          : expired
-            ? 'Your Google session ended, so saving is paused.'
-            : 'Your Google session ends soon.'
-    }
-  >
-    <Button
-      size="2"
-      variant={primary ? 'solid' : 'outline'}
-      color="gray"
-      highContrast={primary}
-      onClick={() => session.reconnect()}
-      {...authControl}
+}) => {
+  const { t } = useI18n();
+
+  return (
+    <GdriveBanner
+      message={t(
+        error === 'popup-blocked'
+          ? 'gdrive.banner.popupBlocked'
+          : error === 'failed'
+            ? 'gdrive.banner.reconnectFailed'
+            : expired
+              ? 'gdrive.banner.sessionEnded'
+              : 'gdrive.banner.sessionEndsSoon'
+      )}
     >
-      Reconnect Google
-    </Button>
-  </GdriveBanner>
-);
+      <Button
+        size="2"
+        variant={primary ? 'solid' : 'outline'}
+        color="gray"
+        highContrast={primary}
+        onClick={() => session.reconnect()}
+        {...authControl}
+      >
+        {t('gdrive.banner.reconnect')}
+      </Button>
+    </GdriveBanner>
+  );
+};
 
 export default GdriveReconnectBanner;

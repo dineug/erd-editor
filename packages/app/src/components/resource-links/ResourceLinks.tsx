@@ -1,5 +1,7 @@
 import { Flex, Link } from '@radix-ui/themes';
 
+import { useI18n } from '@/atoms/modules/locale';
+
 import * as styles from './ResourceLinks.styles';
 
 interface ResourceLinksProps {}
@@ -18,35 +20,39 @@ const GitHubMark: React.FC = () => (
  * The Editing Guide and GitHub, in a new tab, under the actions of an empty
  * viewer: the one row both / and /gdrive show when no document is open.
  */
-const ResourceLinks: React.FC<ResourceLinksProps> = () => (
-  <Flex gap="4" align="center">
-    <Link
-      href="https://docs.erd-editor.io/docs/category/guides"
-      target="_blank"
-      rel="noopener"
-      underline="hover"
-      size="2"
-      color="gray"
-    >
-      Editing Guide
-    </Link>
-    <span css={styles.separator} aria-hidden="true">
-      ·
-    </span>
-    <Link
-      href="https://github.com/dineug/erd-editor"
-      target="_blank"
-      rel="noopener"
-      underline="hover"
-      size="2"
-      color="gray"
-    >
-      <Flex align="center" gap="1">
-        <GitHubMark />
-        GitHub
-      </Flex>
-    </Link>
-  </Flex>
-);
+const ResourceLinks: React.FC<ResourceLinksProps> = () => {
+  const { t } = useI18n();
+
+  return (
+    <Flex gap="4" align="center">
+      <Link
+        href="https://docs.erd-editor.io/docs/category/guides"
+        target="_blank"
+        rel="noopener"
+        underline="hover"
+        size="2"
+        color="gray"
+      >
+        {t('common.editingGuide')}
+      </Link>
+      <span css={styles.separator} aria-hidden="true">
+        ·
+      </span>
+      <Link
+        href="https://github.com/dineug/erd-editor"
+        target="_blank"
+        rel="noopener"
+        underline="hover"
+        size="2"
+        color="gray"
+      >
+        <Flex align="center" gap="1">
+          <GitHubMark />
+          GitHub
+        </Flex>
+      </Link>
+    </Flex>
+  );
+};
 
 export default ResourceLinks;

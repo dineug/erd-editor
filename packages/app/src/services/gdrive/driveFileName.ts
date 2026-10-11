@@ -36,9 +36,13 @@ function toBaseName(input: string): string {
   return (splitDriveFileName(trimmed)?.base ?? trimmed).trim();
 }
 
-/** A new file's name: orders, orders.erd and orders.erd.json all become orders.erd.json. */
-export function toNewFileName(input: string): string {
-  return `${toBaseName(input) || UNTITLED}${NEW_FILE_EXTENSION}`;
+/**
+ * A new file's name: orders, orders.erd and orders.erd.json all become
+ * orders.erd.json, and a name left empty becomes untitled, in the reader's
+ * language where the caller has one.
+ */
+export function toNewFileName(input: string, untitled = UNTITLED): string {
+  return `${toBaseName(input) || untitled}${NEW_FILE_EXTENSION}`;
 }
 
 /**

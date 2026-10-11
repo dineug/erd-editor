@@ -2,6 +2,7 @@ import { Callout, Flex, IconButton } from '@radix-ui/themes';
 import { CircleCheck, TriangleAlert, X } from 'lucide-react';
 import { useEffect } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import type { GdriveSession, SessionNotice } from '@/services/gdrive';
 
 import * as styles from './GdriveSessionNotice.styles';
@@ -24,6 +25,7 @@ const GdriveSessionNotice: React.FC<GdriveSessionNoticeProps> = ({
 }) => {
   const key = notice?.key;
   const tone = notice?.tone;
+  const i18n = useI18n();
 
   useEffect(() => {
     if (key === undefined || !tone) return;
@@ -52,12 +54,12 @@ const GdriveSessionNotice: React.FC<GdriveSessionNoticeProps> = ({
         )}
       </Callout.Icon>
       <Flex align="center" gap="3">
-        <Callout.Text>{notice.message}</Callout.Text>
+        <Callout.Text>{notice.message(i18n)}</Callout.Text>
         <IconButton
           size="1"
           variant="ghost"
           color="gray"
-          aria-label="Dismiss"
+          aria-label={i18n.t('common.dismiss')}
           onClick={() => session.dismissNotice()}
         >
           <X size={14} />

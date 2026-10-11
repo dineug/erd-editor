@@ -4,7 +4,9 @@ import {
   applyPickedLocale,
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
+  type LocalePreference,
   parseLocalePreference,
+  resolveDisplayLocale,
 } from './locale';
 
 describe('the stored display language', () => {
@@ -51,5 +53,24 @@ describe('applyPickedLocale', () => {
     ['a locale that is no string', { locale: 3 }],
   ])('keeps the preference for %s', (_, detail) => {
     expect(applyPickedLocale('de-DE', detail)).toBe('de-DE');
+  });
+});
+
+describe('resolveDisplayLocale', () => {
+  it('shows a picked language whatever the browser asks for', () => {
+    expect(resolveDisplayLocale('ko-KR', ['de-DE'])).toBe('ko-KR');
+    expect(resolveDisplayLocale('en', ['ar'])).toBe('en');
+  });
+
+  it('follows the browser for system, as the editor does', () => {
+    expect(resolveDisplayLocale('system', ['nb', 'fr-CA'])).toBe('fr-FR');
+    expect(resolveDisplayLocale('system', ['zh-HK'])).toBe('zh-TW');
+    expect(resolveDisplayLocale('system', [])).toBe('en');
+  });
+
+  it('reads a code this build does not know as system', () => {
+    expect(resolveDisplayLocale('xx-YY' as LocalePreference, ['ja-JP'])).toBe(
+      'ja-JP'
+    );
   });
 });

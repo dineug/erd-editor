@@ -2,6 +2,7 @@ import { DropdownMenu } from '@radix-ui/themes';
 import { useAtom } from 'jotai';
 import { Copy } from 'lucide-react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import {
   useDuplicateSchemaEntity,
   useMoveSchemaEntityToTrash,
@@ -31,23 +32,27 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   const moveSchemaEntityToTrash = useMoveSchemaEntityToTrash();
   const [schemaId, setSchemaId] = useAtom(selectedSchemaIdAtom);
   const now = useNow();
+  const i18n = useI18n();
+  const { t } = i18n;
 
   return (
     <SidebarItemView
       name={entity.name}
       selected={schemaId === entity.id}
       tabStop={tabStop}
-      title={`Edited ${formatRelativeTime(entity.updateAt, now)}`}
-      inputLabel="Schema name"
-      inputPlaceholder="schema name"
+      title={t('common.edited', {
+        time: formatRelativeTime(entity.updateAt, now, i18n),
+      })}
+      inputLabel={t('sidebar.schemaName')}
+      inputPlaceholder={t('sidebar.schemaNamePlaceholder')}
       menuItems={
         <DropdownMenu.Item onClick={() => duplicateSchemaEntity(entity.id)}>
           <Copy size={16} />
-          Duplicate
+          {t('sidebar.duplicate')}
         </DropdownMenu.Item>
       }
       trailing={<SidebarCollaborative entity={entity} tabStop={tabStop} />}
-      removeLabel="Move to trash"
+      removeLabel={t('sidebar.moveToTrash')}
       onFocus={() => onFocus(entity.id)}
       onSelect={() => setSchemaId(entity.id)}
       onRename={name =>

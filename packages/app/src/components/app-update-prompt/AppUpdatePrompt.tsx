@@ -6,6 +6,7 @@ import {
   useAppUpdateStatus,
   useDismissAppUpdate,
 } from '@/atoms/modules/app-update';
+import { useI18n } from '@/atoms/modules/locale';
 
 import * as styles from './AppUpdatePrompt.styles';
 
@@ -15,6 +16,7 @@ const AppUpdatePrompt: React.FC<AppUpdatePromptProps> = () => {
   const status = useAppUpdateStatus();
   const applyUpdate = useApplyAppUpdate();
   const dismiss = useDismissAppUpdate();
+  const { t } = useI18n();
 
   if (!status) return null;
 
@@ -22,9 +24,11 @@ const AppUpdatePrompt: React.FC<AppUpdatePromptProps> = () => {
     <Card css={styles.root} role="status">
       <Flex align="center" gap="3">
         <Text size="2">
-          {status === 'updatedElsewhere'
-            ? 'The app was updated in another tab — reload to finish.'
-            : 'A new version of ERD Editor is available.'}
+          {t(
+            status === 'updatedElsewhere'
+              ? 'update.updatedElsewhere'
+              : 'update.available'
+          )}
         </Text>
         <Button
           size="1"
@@ -34,13 +38,13 @@ const AppUpdatePrompt: React.FC<AppUpdatePromptProps> = () => {
           onClick={() => applyUpdate()}
         >
           <RefreshCw size={16} />
-          Reload
+          {t('common.reload')}
         </Button>
         <IconButton
           size="1"
           variant="ghost"
           color="gray"
-          aria-label="Dismiss"
+          aria-label={t('common.dismiss')}
           onClick={() => dismiss()}
         >
           <X size={16} />

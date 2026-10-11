@@ -2,6 +2,7 @@ import { Button, Flex, Text } from '@radix-ui/themes';
 import { FileUp, LoaderCircle, Plus, RotateCw } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import GdriveConflictBanner from '@/components/gdrive/gdrive-banner/GdriveConflictBanner';
 import GdriveLeaderBanner from '@/components/gdrive/gdrive-banner/GdriveLeaderBanner';
 import GdriveReconnectBanner from '@/components/gdrive/gdrive-banner/GdriveReconnectBanner';
@@ -9,12 +10,14 @@ import GdriveNotice from '@/components/gdrive/gdrive-screens/GdriveNotice';
 import GdriveSaveStatus from '@/components/gdrive/gdrive-status/GdriveSaveStatus';
 import { spinning } from '@/components/gdrive/gdrive-status/GdriveSaveStatus.styles';
 import ResourceLinks from '@/components/resource-links/ResourceLinks';
+import type { PlainMessageKey } from '@/i18n/translate';
 import type {
   DocumentRejection,
   DocumentSnapshot,
   GdriveSession,
   SessionSnapshot,
 } from '@/services/gdrive';
+import { MAX_IMPORT_FILE_MB } from '@/utils/importFile';
 
 import * as styles from './GdriveViewer.styles';
 
@@ -23,25 +26,20 @@ const LazyGdriveEditor = lazy(
 );
 
 const REJECTIONS: Record<
-  DocumentRejection,
-  { title: string; description: string }
+  Exclude<DocumentRejection, 'too-large'>,
+  { titleKey: PlainMessageKey; descriptionKey: PlainMessageKey }
 > = {
   'not-document': {
-    title: "This file isn't an ERD Editor document",
-    description:
-      'ERD Editor opens diagrams it saved itself. It leaves this file as it is and never saves over it.',
+    titleKey: 'gdrive.viewer.notDocument',
+    descriptionKey: 'gdrive.viewer.notDocumentHint',
   },
   trashed: {
-    title: 'This file is in the trash',
-    description: 'Restore it in Google Drive to open it here.',
-  },
-  'too-large': {
-    title: 'This file is too large',
-    description: 'ERD Editor opens files up to 64 MB.',
+    titleKey: 'gdrive.viewer.trashed',
+    descriptionKey: 'gdrive.viewer.trashedHint',
   },
   'google-native': {
-    title: "This file isn't an ERD Editor document",
-    description: 'Google Docs, Sheets and folders open in Google Drive.',
+    titleKey: 'gdrive.viewer.notDocument',
+    descriptionKey: 'gdrive.viewer.googleNativeHint',
   },
 };
 
@@ -64,32 +62,38 @@ const EmptyViewer: React.FC<EmptyViewerProps> = ({
   importing,
   onNewFile,
   onImport,
-}) => (
-  <GdriveNotice
-    title={hasFiles ? 'No file open' : 'No files yet'}
-    description={
-      hasFiles
-        ? 'Pick a file from the sidebar, or start a new one.'
-        : 'Create a file or import one. The files you open with ERD Editor from Google Drive show up here too.'
-    }
-    footer={<ResourceLinks />}
-  >
-    <Button size="2" color="gray" highContrast onClick={onNewFile}>
-      <Plus size={16} />
-      New file
-    </Button>
-    <Button
-      size="2"
-      variant="outline"
-      color="gray"
-      loading={importing}
-      onClick={onImport}
+}) => {
+  const { t } = useI18n();
+
+  return (
+    <GdriveNotice
+      title={t(
+        hasFiles ? 'gdrive.viewer.noFileOpen' : 'gdrive.viewer.noFilesYet'
+      )}
+      description={t(
+        hasFiles
+          ? 'gdrive.viewer.noFileOpenHint'
+          : 'gdrive.viewer.noFilesYetHint'
+      )}
+      footer={<ResourceLinks />}
     >
-      <FileUp size={16} />
-      Import files
-    </Button>
-  </GdriveNotice>
-);
+      <Button size="2" color="gray" highContrast onClick={onNewFile}>
+        <Plus size={16} />
+        {t('gdrive.sidebar.newFile')}
+      </Button>
+      <Button
+        size="2"
+        variant="outline"
+        color="gray"
+        loading={importing}
+        onClick={onImport}
+      >
+        <FileUp size={16} />
+        {t('common.importFiles')}
+      </Button>
+    </GdriveNotice>
+  );
+};
 
 interface DocumentViewProps {
   session: GdriveSession;
@@ -103,41 +107,55 @@ const DocumentView: React.FC<DocumentViewProps> = ({
   document,
 }) => {
   const { controller } = snapshot;
-  const loading = <Text size="4">Loading…</Text>;
+  const { t } = useI18n();
+  const loading = <Text size="4">{t('common.loading')}</Text>;
 
   switch (document.phase) {
     case 'loading':
     case 'waiting-snapshot':
       return document.role === 'follower' ? (
         <Text size="3" color="gray">
-          Waiting for the tab that opened this file…
+          {t('gdrive.viewer.waitingForOpener')}
         </Text>
       ) : (
         loading
       );
     case 'rejected': {
-      const { title, description } = REJECTIONS[document.rejection!];
-      return <GdriveNotice title={title} description={description} />;
+      const rejection = document.rejection!;
+      if (rejection === 'too-large') {
+        return (
+          <GdriveNotice
+            title={t('gdrive.viewer.tooLarge')}
+            description={t('gdrive.viewer.tooLargeHint', {
+              size: MAX_IMPORT_FILE_MB,
+            })}
+          />
+        );
+      }
+      const { titleKey, descriptionKey } = REJECTIONS[rejection];
+      return (
+        <GdriveNotice title={t(titleKey)} description={t(descriptionKey)} />
+      );
     }
     case 'not-found':
       return (
         <GdriveNotice
-          title="This file isn't available"
-          description="It may have been deleted, or this Google account can't open it."
+          title={t('gdrive.viewer.notFound')}
+          description={t('gdrive.viewer.notFoundHint')}
         />
       );
     case 'waiting-token':
       return (
         <GdriveNotice
-          title="Waiting for Google"
-          description="This file opens once your Google session is back."
+          title={t('gdrive.viewer.waitingToken')}
+          description={t('gdrive.viewer.waitingTokenHint')}
         />
       );
     case 'failed':
       return (
         <GdriveNotice
-          title="Couldn't open this file"
-          description="Google Drive didn't answer. Check the connection and try again."
+          title={t('gdrive.viewer.failed')}
+          description={t('gdrive.viewer.failedHint')}
         >
           <Button
             size="2"
@@ -146,7 +164,7 @@ const DocumentView: React.FC<DocumentViewProps> = ({
             onClick={() => session.reopen()}
           >
             <RotateCw size={16} />
-            Try again
+            {t('common.tryAgain')}
           </Button>
         </GdriveNotice>
       );
@@ -235,6 +253,7 @@ const GdriveViewer: React.FC<GdriveViewerProps> = ({
   onImport,
 }) => {
   const { document } = snapshot;
+  const { t } = useI18n();
 
   return (
     <Flex css={styles.root} direction="column" align="center" justify="center">
@@ -245,7 +264,7 @@ const GdriveViewer: React.FC<GdriveViewerProps> = ({
           document={document}
         />
       ) : snapshot.filesState === 'loading' ? (
-        <Text size="4">Loading…</Text>
+        <Text size="4">{t('common.loading')}</Text>
       ) : (
         <EmptyViewer
           hasFiles={
@@ -263,7 +282,7 @@ const GdriveViewer: React.FC<GdriveViewerProps> = ({
       {snapshot.busy ? (
         <Flex css={styles.busy} align="center" gap="2" role="status">
           <LoaderCircle css={spinning} size={14} aria-hidden />
-          <Text size="1">Saving before you leave…</Text>
+          <Text size="1">{t('gdrive.viewer.savingBeforeLeave')}</Text>
         </Flex>
       ) : null}
     </Flex>

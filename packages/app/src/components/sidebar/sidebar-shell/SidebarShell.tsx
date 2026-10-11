@@ -9,7 +9,7 @@ interface SidebarShellProps {
   open: boolean;
   header: React.ReactNode;
   footer: React.ReactNode;
-  /** The row under the footer's: the policy links, on every sidebar. */
+  /** The row under the footer's: the policy links and the language menu, on every sidebar. */
   legal: React.ReactNode;
   /** The list, scrolled between the header and the footer. */
   children: React.ReactNode;
@@ -40,7 +40,9 @@ const SidebarShell: React.FC<SidebarShellProps> = ({
           <Flex align="center" gap="3">
             {footer}
           </Flex>
-          {legal}
+          <Flex align="center" justify="between" gap="2">
+            {legal}
+          </Flex>
         </Flex>
       </nav>
     </Flex>

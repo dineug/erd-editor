@@ -1,6 +1,7 @@
 import { Flex, Text } from '@radix-ui/themes';
 import { Fragment, useId } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import type { SidebarListEntity } from '@/components/sidebar/useSidebarList';
 import type { SchemaGroup } from '@/utils/schemaList';
 
@@ -24,6 +25,7 @@ function SidebarGroups<T extends SidebarListEntity>({
   renderItem,
 }: SidebarGroupsProps<T>) {
   const groupId = useId();
+  const { t } = useI18n();
 
   return (
     <Flex
@@ -56,7 +58,7 @@ function SidebarGroups<T extends SidebarListEntity>({
       ))}
       {noResults ? (
         <Text css={styles.noResults} size="2" color="gray">
-          No results
+          {t('sidebar.noResults')}
         </Text>
       ) : null}
     </Flex>

@@ -1,5 +1,8 @@
 import type { ErdEditorElement } from '@dineug/erd-editor';
 
+import { isLocaleCode, type LocaleCode } from '@/i18n/locales';
+import { resolveLocale } from '@/i18n/resolveLocale';
+
 /** What the editor's setLocale takes: system, or one of its display languages. */
 export type LocalePreference = Parameters<ErdEditorElement['setLocale']>[0];
 
@@ -34,4 +37,16 @@ export function applyPickedLocale(
       : undefined;
 
   return readLocale(locale) ?? current;
+}
+
+/**
+ * The language the app's own text is shown in: a picked language, else the
+ * first of the browser's languages the editor also has, as an editor resolves
+ * system. A code this build does not know reads as system, as it does there.
+ */
+export function resolveDisplayLocale(
+  preference: LocalePreference,
+  languages: ReadonlyArray<string>
+): LocaleCode {
+  return isLocaleCode(preference) ? preference : resolveLocale(languages);
 }

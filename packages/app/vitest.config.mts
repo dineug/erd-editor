@@ -15,10 +15,11 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      // Scoped to the collaboration transport, the schema service with its
-      // edit fingerprint, the Drive auth relay and client, and the pure
-      // utilities they build on; the React shell and worker plumbing are not.
+      // The collaboration transport, the schema service, the Drive relay and
+      // client, the display language and the pure utilities they build on;
+      // the React shell and worker plumbing are not.
       include: [
+        'src/i18n/**/*.ts',
         'src/server/**/*.ts',
         'src/services/collaborative/**/*.ts',
         'src/services/gdrive/**/*.ts',

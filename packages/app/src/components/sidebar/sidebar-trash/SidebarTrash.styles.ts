@@ -7,6 +7,14 @@ import { rowButton } from '@/components/sidebar/sidebar-item/sidebar-item-view/S
 export const trigger = css`
   ${rowButton};
   width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+`;
+
+// A long word for trash gives way before the count, which always shows.
+export const count = css`
+  flex: none;
+  margin-inline-start: calc(var(--space-1) - var(--space-2));
 `;
 
 // Without the ghost margins, which would pull the pair over the name.

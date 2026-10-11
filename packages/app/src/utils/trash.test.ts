@@ -1,6 +1,9 @@
 import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { koKR } from '@/i18n/messages/ko-KR';
+import { ruRU } from '@/i18n/messages/ru-RU';
+import { createI18n } from '@/i18n/translate';
 import {
   formatTrashDeletion,
   isTrashExpired,
@@ -127,5 +130,23 @@ describe('formatTrashDeletion', () => {
     expect(label('2026-08-22T12:00')).toBe('deletes tomorrow');
     expect(label('2026-08-21T18:00')).toBe('deletes today');
     expect(label('2026-08-01T12:00')).toBe('deletes today');
+  });
+
+  it('reads in the language handed, plural forms included', () => {
+    const korean = createI18n('ko-KR', koKR);
+    const russian = createI18n('ru-RU', ruRU);
+
+    expect(formatTrashDeletion(ms('2026-08-22T12:00'), now, korean)).toBe(
+      '내일 삭제됨'
+    );
+    expect(formatTrashDeletion(ms('2026-09-20T12:00'), now, korean)).toBe(
+      '30일 후 삭제됨'
+    );
+    expect(formatTrashDeletion(ms('2026-08-23T12:00'), now, russian)).toBe(
+      'удаление через 2 дня'
+    );
+    expect(formatTrashDeletion(ms('2026-08-26T12:00'), now, russian)).toBe(
+      'удаление через 5 дней'
+    );
   });
 });

@@ -9,6 +9,7 @@ import { isEmpty } from 'es-toolkit/compat';
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import {
   findSuccessorSchemaItem,
   focusSchemaItem,
@@ -66,6 +67,7 @@ const SidebarItemView: React.FC<SidebarItemViewProps> = ({
   onRemove,
   removeLabel,
 }) => {
+  const { t } = useI18n();
   const [value, setValue] = useState(name);
   const [isEditing, setIsEditing] = useState(false);
   const [open, setOpen] = useState(false);
@@ -233,7 +235,7 @@ const SidebarItemView: React.FC<SidebarItemViewProps> = ({
             variant="ghost"
             color="gray"
             tabIndex={tabStop ? undefined : -1}
-            aria-label={`Actions for ${name}`}
+            aria-label={t('sidebar.actionsFor', { name })}
           >
             <Ellipsis size={16} />
           </IconButton>
@@ -244,7 +246,7 @@ const SidebarItemView: React.FC<SidebarItemViewProps> = ({
             onClick={handleStartEditing}
           >
             <Pencil size={16} />
-            Rename
+            {t('common.rename')}
           </DropdownMenu.Item>
           {menuItems}
           {onRemove ? (

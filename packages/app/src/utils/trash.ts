@@ -1,5 +1,8 @@
 import { DateTime } from 'luxon';
 
+import { sourceI18n } from '@/i18n/source';
+import type { I18n } from '@/i18n/translate';
+
 /** How long a schema sits in the trash before it is deleted for good. */
 export const TRASH_RETENTION_DAYS = 30;
 
@@ -36,11 +39,15 @@ export function trashDaysLeft(deletedAt: number, now: DateTime): number {
   return Math.max(0, Math.round(days));
 }
 
-/** When a trashed schema goes, in English: deletes today, tomorrow or in 27 days. */
-export function formatTrashDeletion(deletedAt: number, now: DateTime): string {
+/** When a trashed schema goes, in the reader's language: deletes today, tomorrow or in 27 days. */
+export function formatTrashDeletion(
+  deletedAt: number,
+  now: DateTime,
+  i18n: I18n = sourceI18n
+): string {
   const days = trashDaysLeft(deletedAt, now);
 
-  if (days === 0) return 'deletes today';
-  if (days === 1) return 'deletes tomorrow';
-  return `deletes in ${days} days`;
+  if (days === 0) return i18n.t('trash.deletesToday');
+  if (days === 1) return i18n.t('trash.deletesTomorrow');
+  return i18n.t('trash.deletesIn', { count: days });
 }
