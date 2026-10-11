@@ -26,19 +26,23 @@ export function contrastRatio(a: number, b: number): number {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
+/** How far black's contrast ratio must lead white's before black text is picked. */
+const BLACK_MIN_LEAD = 4;
+
 /**
- * Black or white, whichever has the higher WCAG 2 contrast ratio against the
- * background, black on a tie, so the one picked is never under 4.58. Null for
- * a background toOpaqueHex cannot read, which keeps the colors it had.
+ * White, unless black's WCAG 2 contrast ratio against the background beats
+ * white's by more than 4, so white is never under 3 and black never under 7.
+ * Null for a background toOpaqueHex cannot read, which keeps its colors.
  *
  * @example
- * contrastTextColor('#3b82f6'); // '#000000'
+ * contrastTextColor('#3b82f6'); // '#ffffff'
  */
 export function contrastTextColor(background: string): string | null {
   const luminance = relativeLuminance(background);
   if (luminance === null) return null;
 
-  return contrastRatio(luminance, 0) >= contrastRatio(luminance, 1)
-    ? CONTRAST_BLACK
-    : CONTRAST_WHITE;
+  const white = contrastRatio(luminance, 1);
+  const black = contrastRatio(luminance, 0);
+
+  return black - white > BLACK_MIN_LEAD ? CONTRAST_BLACK : CONTRAST_WHITE;
 }
