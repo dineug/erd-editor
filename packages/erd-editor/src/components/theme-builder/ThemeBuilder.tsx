@@ -65,6 +65,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
         changeOpenMapAction({
           [Open.tableProperties]: false,
           [Open.localePicker]: false,
+          [Open.findReplace]: false,
         })
       );
     }

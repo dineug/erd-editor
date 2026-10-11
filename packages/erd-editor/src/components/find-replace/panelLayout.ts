@@ -14,9 +14,8 @@ export const isTakenOver = ({ editor }: RootState) =>
   TAKEOVERS.some(key => editor.openMap[key]);
 
 /**
- * Whether the panel is drawn: it stands aside, still open, while a dialog its
- * opening closes is up, so its chord trades that dialog for it rather than
- * bring the caret back to a field under the dialog.
+ * Whether the panel is drawn: it stands aside, still open, off the ERD tab and
+ * under a takeover, and draws over no dialog, which closes it as it opens.
  */
 export const isPanelShown = (state: RootState) =>
   Boolean(state.editor.openMap[Open.findReplace]) &&

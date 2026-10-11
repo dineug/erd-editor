@@ -14,7 +14,6 @@ import { ARROW_UP_BOX } from '@/components/erd/welcome-screen/welcomeLayout';
 import WelcomeScreen, {
   rowIcon,
 } from '@/components/erd/welcome-screen/WelcomeScreen';
-import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { iconMap } from '@/components/primitives/icon/icons';
 import { Lnb } from '@/components/settings/settings-lnb/SettingsLnb';
 import { takeSettingsPage } from '@/components/settings/settingsPage';
@@ -568,18 +567,22 @@ describe('WelcomeScreen layout', () => {
     expect(labels()[3]).toBe('ko:Command Palette');
   });
 
-  it('stands clear of an open Find and Replace panel', async () => {
-    const { app, screen, hint } = await setup();
-    expect(screen()?.style.left).toBe('0px');
+  it.each([Open.findReplace, Open.themeBuilder])(
+    'stays over the whole canvas under %s, which stands over it',
+    async key => {
+      const { app, root, screen, hint } = await setup();
+      const heading = () =>
+        root.querySelector('.welcome-screen-heading')?.textContent;
+      const before = heading();
 
-    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
-    await flush();
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+      await flush();
 
-    const covered = coveredWidth(app.store.state);
-    expect(covered).toBeGreaterThan(0);
-    expect(screen()?.style.left).toBe(`${covered}px`);
-    expect(hint('tools')).toBeNull();
-  });
+      expect(screen()?.getAttribute('style')).toBeNull();
+      expect(heading()).toBe(before);
+      expect(hint('tools')).toBeNull();
+    }
+  );
 });
 
 describe('WelcomeScreen hints', () => {

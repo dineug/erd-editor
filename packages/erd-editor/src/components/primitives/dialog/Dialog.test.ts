@@ -78,6 +78,14 @@ describe('Dialog', () => {
     expect(box.textContent).toContain('Target');
   });
 
+  it('centres the box in the editor, 16px clear of its edges', () => {
+    const text = styles.root.strings.join(' ');
+
+    expect(text).toContain('align-items: center');
+    expect(text).toContain('justify-content: center');
+    expect(text).toContain('padding: 16px;');
+  });
+
   it('focuses the control its content marks when it opens', async () => {
     const { box } = await setup();
 

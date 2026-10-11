@@ -45,6 +45,7 @@ import {
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import {
+  changeOpenMapAction,
   drawStartRelationshipAction,
   focusColumnAction,
   focusTableAction,
@@ -913,10 +914,11 @@ describe('ErdContextMenu / table type', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('opens the table properties panel', async () => {
+  it('opens the table properties panel, closing Find and Replace', async () => {
     seedTable();
     const openTableProperties = vi.fn();
     app.emitter.on({ openTableProperties });
+    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
     await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
 
     await click(findItem(rootItems(), 'Table Properties'));
@@ -926,6 +928,7 @@ describe('ErdContextMenu / table type', () => {
       tableId: TABLE_ID,
     });
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(true);
+    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -1259,6 +1262,7 @@ describe('ErdContextMenu / relationship type', () => {
 
   it('opens Map Columns on the relationship: the session first, then the open map', async () => {
     seedRelationship();
+    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
     const openings: unknown[] = [];
     app.emitter.on({
       openMapColumns: ({ payload }) => {
@@ -1277,6 +1281,7 @@ describe('ErdContextMenu / relationship type', () => {
       { mode: 'edit', relationshipId: RELATIONSHIP_ID },
     ]);
     expect(app.store.state.editor.openMap[Open.mapColumns]).toBe(true);
+    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

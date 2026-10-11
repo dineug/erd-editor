@@ -4,8 +4,8 @@ import { typography } from '@/styles/typography.styles';
 
 /**
  * The layer over the empty canvas, which lets every press and wheel through
- * to the scene but the menu's, so a drag over the heading still pans. Its
- * left edge is set inline, clear of an open Find and Replace panel.
+ * to the scene but the menu's, so a drag over the heading still pans. An open
+ * panel stands over it, as the theme builder does, and moves nothing.
  */
 export const root = css`
   position: absolute;

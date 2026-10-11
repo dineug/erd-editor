@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/erd/table-properties/TableProperties.styles';
-import {
-  TABLE_PROPERTIES_BODY_PADDING,
-  TOOLBAR_HEIGHT,
-} from '@/constants/layout';
+import { TABLE_PROPERTIES_BODY_PADDING } from '@/constants/layout';
 import { typography } from '@/styles/typography.styles';
 
 const staticText = (literals: { strings: TemplateStringsArray }) =>
@@ -51,13 +48,13 @@ describe('TableProperties.styles', () => {
     expect(text).toContain('background-color: rgba(0, 0, 0, 0.4)');
   });
 
-  it('hangs the dialog from the palette line, 60px under the editor top', () => {
+  it('centres the dialog in the canvas, 16px clear of its edges', () => {
     const text = staticText(styles.root);
 
-    expect(text).toContain('align-items: flex-start');
-    expect(text).not.toContain('align-items: center');
-    expect(text).toMatch(/padding:\s+px 16px 16px/);
-    expect(styles.root.values).toEqual([60 - TOOLBAR_HEIGHT]);
+    expect(text).toContain('align-items: center');
+    expect(text).not.toContain('align-items: flex-start');
+    expect(text).toContain('padding: 16px;');
+    expect(styles.root.values).toEqual([]);
   });
 
   it('gives all three tabs one fixed box the host can only shorten', () => {

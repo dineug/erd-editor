@@ -154,12 +154,13 @@ describe('LocalePicker', () => {
       expect(panel()).toBeNull();
     });
 
-    it('closes the theme builder and Table Properties as it opens', async () => {
+    it('closes the theme builder, Table Properties and Find and Replace as it opens', async () => {
       await setup();
       app.store.dispatchSync(
         changeOpenMapAction({
           [Open.themeBuilder]: true,
           [Open.tableProperties]: true,
+          [Open.findReplace]: true,
         })
       );
 
@@ -169,6 +170,7 @@ describe('LocalePicker', () => {
         [Open.localePicker]: true,
         [Open.themeBuilder]: false,
         [Open.tableProperties]: false,
+        [Open.findReplace]: false,
       });
     });
 

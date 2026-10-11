@@ -51,14 +51,15 @@
 ### The shared modal
 
 - **The dialog is built on `Dialog.tsx`.** `src/components/primitives/dialog/Dialog.tsx` is the shared modal, and the bullets below are its contract.
-- **A dim covers the whole editor.** It sits one z-index under the toasts, so the toasts stack over the dialog. A press begun on the dim closes the dialog. A press begun in the box and let go over the dim, a text selection say, clicks the dim too and closes nothing.
+- **A dim covers the whole editor.** It sits one z-index under the toasts, so the toasts stack over the dialog.
+- **The box is centred in the editor.** It stands 16 px clear of the editor's edges at least, for Export image and Map Columns alike (an owner decision of 2026-10-11). A press begun on the dim closes the dialog. A press begun in the box and let go over the dim, a text selection say, clicks the dim too and closes nothing.
 - **Escape is spent inside the dialog.** It is prevented and stopped, so the canvas keeps its selection.
 - **Space is stopped inside the dialog.** That way a native button keeps its press from the hand tool's binding.
 - **Focus enters and leaves at fixed points.** The `data-autofocus` control is focused on mount; here that is PNG. Tab turns round at either end of the box, which scrolls in a short editor. On unmount it dispatches `focusEvent`, whatever closed it.
 - **Canvas shortcuts stop while it is open.** `erdShortcutPerformCheck` stops the canvas shortcuts, copy and paste.
-- **The palette and Find and Replace close it.** They close it as they close Table Properties. Find and Replace stands aside under it, still open. So its chord trades the dialog for the panel already open under it too (`isPanelShown`).
+- **The palette and Find and Replace close it.** They close it as they close Table Properties. It closes Find and Replace as it opens, so the panel's chord trades the dialog for the panel opened again.
 - **The preview stacks above the options when narrow.** It stacks under 640 px of editor width, read from `editor.viewport.width`, since the browser floor has no container query.
-- **Map Columns keeps the same contract.** It is the dialog's second user. The canvas shortcuts, undo and redo stop while it is open, and Find and Replace stands aside under it (`isPanelShown`). Find and Replace and the palette close it and drop what was picked, by their chords from inside it or any other way they open, an owner decision (2026-10-06).
+- **Map Columns keeps the same contract.** It is the dialog's second user. The canvas shortcuts, undo and redo stop while it is open, and it closes Find and Replace as it opens. Find and Replace and the palette close it and drop what was picked, by their chords from inside it or any other way they open, an owner decision (2026-10-06).
 - Map Columns' own rules: `src/components/map-columns/AGENTS.md`.
 
 ### What the image draws

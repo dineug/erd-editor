@@ -256,7 +256,7 @@ export type DocumentPreview = {
  * the file will hold, its scale capped at the side it is given.
  *
  * @example
- * const preview = await createDocumentPreview({ doc, theme, toWidth, maxSide: 960 });
+ * const preview = await createDocumentPreview({ doc, theme, toWidth, maxSide: 1280 });
  */
 export async function createDocumentPreview({
   doc,

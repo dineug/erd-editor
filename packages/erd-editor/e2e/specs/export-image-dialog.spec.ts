@@ -52,8 +52,8 @@ const MENU_ORIGIN = { x: 400, y: 400 };
 /** Bare canvas clear of the Find and Replace panel, which stands 396 px in from the canvas edge. */
 const CLEAR_OF_PANEL = { x: 700, y: 400 };
 
-/** ExportImage.styles.ts — the title row's padding and the box's border, the close button's offset from the corner. */
-const CORNER_INSET = 21;
+/** ExportImage.styles.ts — the layout's padding and the box's border, the close button's offset from the corner. */
+const CORNER_INSET = 25;
 
 /** The dialog's focus ring, a 2 px outline 2 px out, reaches this far past a button. */
 const RING_REACH = 4;
@@ -536,7 +536,7 @@ test.describe('the export image dialog', () => {
     expect(ring.y - RING_REACH).toBeGreaterThanOrEqual(box.y + 1);
   });
 
-  test('gives way to Find and Replace on its chord, the panel open beneath it already', async ({
+  test('closes Find and Replace as it opens, and gives way to the panel on its chord', async ({
     erd,
   }) => {
     await erd.seed(document());
@@ -553,6 +553,22 @@ test.describe('the export image dialog', () => {
 
     await expect(dialog).toHaveCount(0);
     await expect(panel.locator('.find-input')).toBeFocused();
+  });
+
+  test('leaves Find and Replace closed once it closes, as the other dialogs do', async ({
+    erd,
+  }) => {
+    await erd.seed(document());
+    const panel = erd.host.locator('.find-replace');
+    await erd.focusCanvas(CLEAR_OF_PANEL);
+    await erd.press(Shortcut.findReplace);
+    await expect(panel).toBeVisible();
+
+    const dialog = await openFromMenu(erd, CLEAR_OF_PANEL);
+    await button(dialog, 'Close').click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(panel).toHaveCount(0);
   });
 
   test('closes on a press on the dim, never on a text selection let go over it', async ({

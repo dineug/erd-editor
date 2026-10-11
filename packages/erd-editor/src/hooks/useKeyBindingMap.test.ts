@@ -167,6 +167,18 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('takes $mod+KeyK from a caret too, as a command palette opens from any field', () => {
+    const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+    const input = document.createElement('input');
+    $root.append(input);
+
+    const event = keydown({ key: 'k', code: 'KeyK', mod: true });
+    input.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(shortcuts.map(({ type }) => type)).toEqual([KeyBindingName.search]);
+  });
+
   it('reads a bare Delete and Backspace as removing the selection, prevented and left to bubble', () => {
     const onKeydown = vi.fn();
     mounted!.container.addEventListener('keydown', onKeydown);

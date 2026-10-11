@@ -555,11 +555,12 @@ describe('useErdShortcut - remove selection', () => {
 });
 
 describe('useErdShortcut - table properties', () => {
-  it('opens the table properties panel for the first selected table', async () => {
+  it('opens the table properties panel for the first selected table, closing Find and Replace', async () => {
     const app = await setup();
     const tableId = seedTable(app);
     const listener = vi.fn();
     app.emitter.on({ openTableProperties: listener });
+    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
 
     shortcut(app, KeyBindingName.tableProperties);
     await flush();
@@ -567,6 +568,7 @@ describe('useErdShortcut - table properties', () => {
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener.mock.calls[0][0].payload).toEqual({ tableId });
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(true);
+    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
   });
 
   it('does nothing when no table is selected', async () => {

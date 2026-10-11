@@ -396,6 +396,17 @@ describe('ThemeBuilder', () => {
       expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
     });
 
+    it('closes Find and Replace as it opens', async () => {
+      const { app } = await setup({ open: false });
+      app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+
+      app.emitter.emit(openThemeBuilderAction());
+      await flush();
+
+      expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);
+      expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
+    });
+
     it('closes the panel and leaves table properties alone', async () => {
       const { app } = await setup();
       app.store.dispatchSync(

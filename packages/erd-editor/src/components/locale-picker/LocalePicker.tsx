@@ -108,6 +108,7 @@ const LocalePicker: FC<LocalePickerProps> = (props, ctx) => {
         [Open.localePicker]: true,
         [Open.themeBuilder]: false,
         [Open.tableProperties]: false,
+        [Open.findReplace]: false,
       })
     );
     nextTick(focusChecked);

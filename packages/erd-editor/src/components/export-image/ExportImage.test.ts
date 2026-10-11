@@ -10,6 +10,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   createTestI18n,
@@ -320,6 +321,16 @@ describe('ExportImage opening', () => {
     expect(document.activeElement).toBe(buttonOf('PNG'));
   });
 
+  it('marks the file buttons with a download and the clipboard with a copy', async () => {
+    const app = await setup();
+
+    await open(app);
+
+    expect(iconNameOf(buttonOf('PNG'))).toBe('download');
+    expect(iconNameOf(buttonOf('SVG'))).toBe('download');
+    expect(iconNameOf(buttonOf('Copy to clipboard'))).toBe('copy');
+  });
+
   /** The title row is a grid item of the layout's own, which is what lets it head the options or the whole box. */
   it('heads the layout with the title row, ahead of the preview and the options', async () => {
     const app = await setup();
@@ -334,6 +345,16 @@ describe('ExportImage opening', () => {
       layout.querySelector('.export-image-preview'),
       layout.querySelector(`.${String(styles.panel)}`),
     ]);
+  });
+
+  it('closes Find and Replace as it opens', async () => {
+    const app = await setup();
+    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+
+    await open(app);
+
+    expect(app.store.state.editor.openMap[Open.exportImage]).toBe(true);
+    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
   });
 
   it('starts dark mode at the appearance the editor shows', async () => {

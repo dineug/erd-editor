@@ -73,7 +73,7 @@
 
 ### Table Properties
 
-- **One fixed box for all three tabs** (`table-properties/TableProperties.styles.ts`). It is 1040 by 600 at most, hung from the palette's line 60px under the editor's top. `max-height: 100%` shortens it on a low host. So switching tabs never moves the frame.
+- **One fixed box for all three tabs** (`table-properties/TableProperties.styles.ts`). It is 1040 by 600 at most, centred in the canvas 16px clear of its edges (an owner decision of 2026-10-11). `max-height: 100%` shortens it on a low host. So switching tabs never moves the frame.
 - **The close button is the one keyboard stop.** The header holds the title, a chip per table opened lately and the close button, the one control the keyboard reaches.
   - The button hands focus back with `focusEvent` on `nextTick`; otherwise the keyboard falls to the page and the shortcuts stop.
   - It keeps a Space keydown from the editor root, whose hand tool binding cancels it and with it the button's press.
@@ -283,6 +283,7 @@
 - Find and Replace and its chord: `src/components/find-replace/AGENTS.md`. The palette and its prefixes: `src/components/quick-search/AGENTS.md`.
 - **`YIELDS_TO_A_CARET` stands bindings down in fields.** It lives in `src/hooks/useKeyBindingMap.ts`. It stands `selectAllTable`, `handTool` and `removeSelection` down in a text field, per binding. That is because `Enter` / `Escape` still have to reach `handleShortcut` from the cell editor.
   - `findReplace` stays out of it: in a field, `$mod+F` means only the page's find, which the editor's replaces.
+  - `search` stays out of it too: the palette's `$mod+K` opens from any text field but the cell editor's, the Find and Replace field and the database name included, as a command palette does (an owner decision of 2026-10-11).
   - `YIELDS_TO_A_TAKEOVER` beside it, which leaves `findReplace` to the host's find under a takeover: `src/components/find-replace/AGENTS.md`, The chord.
 - **Escape is two presses.** The `stop` branch of `useErdShortcut.ts` decides from the state the press arrives in.
   - An open cell, memo or group name editor, a relationship being drawn, or an armed table group draw takes the press alone. Focus, selection and typed text stay.
@@ -319,7 +320,7 @@
   - Import swaps in its formats (`createImportMenus`) behind a Back row, which Escape presses too.
   - Where the canvas has room, hand-drawn arrows point at the toolbar's Search button, at its theme and language buttons, and at the floating toolbar.
 - `requestSettingsPage` and the Settings page it opens (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.
-- **`welcomeTiers` fits the screen to the room.** It reads the canvas less what Find and Replace covers (`coveredWidth`).
+- **`welcomeTiers` fits the screen to the canvas.** It reads the whole canvas, centred there. Find and Replace stands over it as the theme builder and the locale picker do, and moves nothing (an owner decision of 2026-10-11).
   - Nothing shows under 320 px wide or 294 px tall.
   - The menu shows alone under 342 px tall.
   - The arrows show from 720 by 562 px, and a row's chord from 480 px wide.

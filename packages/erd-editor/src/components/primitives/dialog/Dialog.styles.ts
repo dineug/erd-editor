@@ -3,18 +3,18 @@ import { css } from '@dineug/r-html';
 import { floatingShadow } from '@/styles/elevation.styles';
 
 /**
- * Dims the whole editor and hangs the box from the palette's line. It stacks
- * one under the toasts, which report what the dialog's buttons did, and the
- * palette, drawn after it at the toasts' height, still opens over it.
+ * Dims the whole editor and centres the box in it. It stacks one under the
+ * toasts, which report what its buttons did, and the palette, drawn after it
+ * at the toasts' height, still opens over it.
  */
 export const root = css`
   position: absolute;
   inset: 0;
   z-index: 2147483646;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 60px 16px 16px;
+  padding: 16px;
 
   &::after {
     content: '';
