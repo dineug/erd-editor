@@ -3,8 +3,10 @@ import { atom, useAtomValue, useSetAtom, useStore } from 'jotai';
 import { DateTime } from 'luxon';
 import { useCallback } from 'react';
 
+import { i18nAtom } from '@/atoms/modules/locale';
 import { schemaEntitiesAtom } from '@/atoms/modules/schema';
 import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
+import { type Localized, localized } from '@/i18n/translate';
 import { getAppDatabaseService } from '@/services/indexeddb';
 import type { NewSchemaEntity } from '@/services/indexeddb/modules/schema';
 import { backupFileName, createBackup } from '@/utils/backup';
@@ -24,11 +26,10 @@ type Store = ReturnType<typeof useStore>;
 
 export type ImportNotice = {
   key: number;
-  message: string;
+  /** Read in the language it renders in, so a notice follows a switch. */
+  message: Localized;
   tone: 'success' | 'warning';
 };
-
-const SAMPLE_NAME = 'bookstore sample';
 
 export const importNoticeAtom = atom<ImportNotice | null>(null);
 
@@ -59,7 +60,7 @@ const showImportNoticeAtom = atom(null, (get, set, result: ImportResult) => {
 
   set(importNoticeAtom, {
     key: Date.now(),
-    message: describeImportResult(result),
+    message: i18n => describeImportResult(result, i18n),
     tone: result.imported && !skipped ? 'success' : 'warning',
   });
 });
@@ -166,7 +167,7 @@ async function runImport(store: Store, read: () => Promise<ImportItem[]>) {
   } catch (error) {
     store.set(importNoticeAtom, {
       key: Date.now(),
-      message: 'Import failed',
+      message: localized('import.failed'),
       tone: 'warning',
     });
     reportError(error);
@@ -228,7 +229,7 @@ export const useOpenSample = () => {
         return [
           {
             kind: 'source',
-            name: SAMPLE_NAME,
+            name: store.get(i18nAtom).t('viewer.sampleName'),
             source: { type: 'dbml', value },
           },
         ];
@@ -255,7 +256,11 @@ export const useExportBackup = () => {
         'application/json'
       );
     } catch (error) {
-      setNotice({ key: Date.now(), message: 'Export failed', tone: 'warning' });
+      setNotice({
+        key: Date.now(),
+        message: localized('import.exportFailed'),
+        tone: 'warning',
+      });
       reportError(error);
     }
   }, [setNotice]);

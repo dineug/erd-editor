@@ -1,9 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
 
-import { AppPage } from '../support/AppPage';
+import { AppPage, reopenShadowRoots } from '../support/AppPage';
 
-// The display language: the app turns on the editor's language picker and its
-// welcome screen, keeps a pick in localStorage, and every tab follows it.
+// The display language: the app's own text and the editor's follow one pick,
+// made in the sidebar's menu or the editor's picker, kept in localStorage,
+// and every tab follows it.
 
 const LOCALE_KEY = '@locale';
 
@@ -14,6 +15,26 @@ function editorRoot(page: Page) {
 
 function picker(page: Page) {
   return page.locator('erd-editor .locale-picker');
+}
+
+/** The page root, which carries the language the app's own text shows. */
+function pageRoot(page: Page) {
+  return page.locator('html');
+}
+
+/** Picks a language from the sidebar's menu, named by the menu's own label. */
+async function pickFromSidebar(
+  app: AppPage,
+  menu: string,
+  language: string | RegExp
+) {
+  await app.page
+    .getByRole('navigation')
+    .getByRole('button', { name: menu, exact: true })
+    .click();
+  await app.page
+    .getByRole('menuitemradio', { name: language, exact: true })
+    .click();
 }
 
 async function storedLocale(page: Page) {
@@ -34,13 +55,32 @@ test.describe('the display language', () => {
   test.describe('on a German browser', () => {
     test.use({ locale: 'de-DE' });
 
-    test('follows the browser while nothing is picked', async ({ context }) => {
-      const app = await AppPage.open(context);
-      await app.createSchema('Browser language');
+    test('follows the browser while nothing is picked, the app too', async ({
+      context,
+    }) => {
+      // The helpers find the sidebar by its English names, so the German
+      // shell is driven by its own.
+      const page = await context.newPage();
+      await reopenShadowRoots(page);
+      await page.goto('/');
+      const sidebar = page.getByRole('navigation', { name: 'Schemas' });
+      await sidebar
+        .getByRole('button', { name: 'Neues Schema', exact: true })
+        .click();
+      const input = page.getByPlaceholder('Schemaname');
+      await input.fill('Browser language');
+      await input.press('Enter');
+      await sidebar
+        .getByRole('button', { name: 'Browser language', exact: true })
+        .click();
 
-      await expect(editorRoot(app.page)).toHaveAttribute('lang', 'de-DE');
-      await expect(editorRoot(app.page)).toHaveAttribute('dir', 'ltr');
-      expect(await storedLocale(app.page)).toBeNull();
+      await expect(pageRoot(page)).toHaveAttribute('lang', 'de-DE');
+      await expect(editorRoot(page)).toHaveAttribute('lang', 'de-DE');
+      await expect(editorRoot(page)).toHaveAttribute('dir', 'ltr');
+      await expect(
+        page.getByRole('button', { name: /^Papierkorb/ })
+      ).toBeVisible();
+      expect(await storedLocale(page)).toBeNull();
     });
   });
 
@@ -56,8 +96,10 @@ test.describe('the display language', () => {
     await pickLocale(app.page, 'ko-KR');
 
     await expect(editorRoot(app.page)).toHaveAttribute('lang', 'ko-KR');
+    await expect(pageRoot(app.page)).toHaveAttribute('lang', 'ko-KR');
     expect(await storedLocale(app.page)).toBe('"ko-KR"');
     await expect(editorRoot(other.page)).toHaveAttribute('lang', 'ko-KR');
+    await expect(pageRoot(other.page)).toHaveAttribute('lang', 'ko-KR');
 
     await app.page.reload();
     await app.waitForEditor();
@@ -75,6 +117,36 @@ test.describe('the display language', () => {
 
     await pickLocale(app.page, 'system');
     await expect(editorRoot(app.page)).toHaveAttribute('lang', 'en');
+    expect(await storedLocale(app.page)).toBe('"system"');
+  });
+
+  test('switches the app and the editor from the sidebar menu, right to left too', async ({
+    context,
+  }) => {
+    const app = await AppPage.open(context);
+    await app.createSchema('Menu language');
+
+    await pickFromSidebar(app, 'Display Language', '한국어');
+
+    await expect(
+      app.page.getByRole('navigation', { name: '스키마' })
+    ).toBeVisible();
+    await expect(pageRoot(app.page)).toHaveAttribute('lang', 'ko-KR');
+    await expect(editorRoot(app.page)).toHaveAttribute('lang', 'ko-KR');
+    expect(await storedLocale(app.page)).toBe('"ko-KR"');
+
+    await pickFromSidebar(app, '표시 언어', 'العربية');
+
+    await expect(pageRoot(app.page)).toHaveAttribute('dir', 'rtl');
+    await expect(editorRoot(app.page)).toHaveAttribute('dir', 'rtl');
+    await expect(
+      app.page.getByRole('navigation', { name: 'المخططات' })
+    ).toBeVisible();
+
+    // System names the language it stands for beside itself.
+    await pickFromSidebar(app, 'لغة العرض', /^النظام/);
+    await expect(pageRoot(app.page)).toHaveAttribute('lang', 'en');
+    await expect(pageRoot(app.page)).toHaveAttribute('dir', 'ltr');
     expect(await storedLocale(app.page)).toBe('"system"');
   });
 

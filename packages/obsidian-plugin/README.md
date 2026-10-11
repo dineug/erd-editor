@@ -304,7 +304,7 @@ Flatpak sandbox writes none of these files and removes none.
 | **Appearance** | Auto | Auto, Light, Dark |
 | **Gray color** | Slate | Gray, Mauve, Slate, Sage, Olive, Sand |
 | **Accent color** | Indigo | 26 [Radix](https://www.radix-ui.com/colors) accents — Gray, Gold, Bronze, Brown, Yellow, Amber, Orange, Tomato, Red, Ruby, Crimson, Pink, Plum, Purple, Violet, Iris, Indigo, Blue, Cyan, Teal, Jade, Green, Grass, Lime, Mint, Sky |
-| **Display language** | Auto | Auto, then the 25 languages by their own names, in the editor's picker order: English, Bahasa Indonesia, Deutsch, Español, Euskara, Français, Italiano, Nederlands, Polski, Português, Português Brasileiro, Română, Slovenčina, Slovenščina, Svenska, Türkçe, Русский, Українська, עברית, العربية, فارسی, 日本語, 简体中文, 繁體中文, 한국어 |
+| **Display language** | Auto | Auto, then the 25 languages by their own names, in the editor's picker order: Bahasa Indonesia, Deutsch, English, Español, Euskara, Français, Italiano, Nederlands, Polski, Português, Português Brasileiro, Română, Slovenčina, Slovenščina, Svenska, Türkçe, Русский, Українська, עברית, العربية, فارسی, 日本語, 简体中文, 繁體中文, 한국어 |
 | **Coding agents** | on | on, off — on, coding agents edit this vault's diagrams live through the MCP server; off, they can still read the files but write none (see [Coding agents](#coding-agents)) |
 
 Changing any of the three theme settings re-themes every open diagram immediately. Auto follows

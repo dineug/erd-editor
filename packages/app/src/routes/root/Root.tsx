@@ -1,8 +1,10 @@
 import { Global } from '@emotion/react';
 import { Theme } from '@radix-ui/themes';
+import { Direction } from 'radix-ui';
 import { useLayoutEffect } from 'react';
 import { Outlet } from 'react-router';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { useResolvedTheme } from '@/atoms/modules/theme';
 import AppUpdatePrompt from '@/components/app-update-prompt/AppUpdatePrompt';
 import { applyDocumentAppearance } from '@/utils/theme';
@@ -13,6 +15,7 @@ interface RootProps {}
 
 const Root: React.FC<RootProps> = () => {
   const theme = useResolvedTheme();
+  const { dir } = useI18n();
 
   useLayoutEffect(() => {
     applyDocumentAppearance(document.documentElement, theme.appearance);
@@ -30,8 +33,11 @@ const Root: React.FC<RootProps> = () => {
         scaling="100%"
         panelBackground="translucent"
       >
-        <Outlet />
-        <AppUpdatePrompt />
+        {/* Theme provides ltr to the primitives itself, so the language's direction goes inside it. */}
+        <Direction.Provider dir={dir}>
+          <Outlet />
+          <AppUpdatePrompt />
+        </Direction.Provider>
       </Theme>
     </>
   );

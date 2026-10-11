@@ -259,9 +259,9 @@
             "default": "auto",
             "enum": [
               "auto",
-              "en",
               "id-ID",
               "de-DE",
+              "en",
               "es-ES",
               "eu-ES",
               "fr-FR",
@@ -287,9 +287,9 @@
             ],
             "enumItemLabels": [
               "Auto",
-              "English",
               "Bahasa Indonesia",
               "Deutsch",
+              "English",
               "Español",
               "Euskara",
               "Français",

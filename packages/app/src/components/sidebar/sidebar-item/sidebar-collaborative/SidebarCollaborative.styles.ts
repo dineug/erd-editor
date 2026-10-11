@@ -23,7 +23,7 @@ export const link = css`
 export const count = css`
   position: absolute;
   top: -6px;
-  right: -7px;
+  inset-inline-end: -7px;
   min-width: 14px;
   height: 14px;
   padding: 0 3px;

@@ -18,6 +18,7 @@ import {
   useStartSession,
   useStopSession,
 } from '@/atoms/modules/collaborative';
+import { useI18n } from '@/atoms/modules/locale';
 import {
   NICKNAME_MAX_LENGTH,
   participantName,
@@ -49,6 +50,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
   const link = `${location.origin}/live/#${roomId},${secretKey}`;
 
   const countId = useId();
+  const { t } = useI18n();
 
   const [nickname, setNickname] = useAtom(nicknameStorageAtom);
   const [copyState, setCopyState] = useState(false);
@@ -84,7 +86,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
           variant="ghost"
           color="gray"
           tabIndex={tabStop ? undefined : -1}
-          aria-label={`Collaboration for ${entity.name}`}
+          aria-label={t('collaboration.for', { name: entity.name })}
           aria-describedby={guestCount ? countId : undefined}
           data-active={hasCollaborative}
         >
@@ -93,7 +95,9 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
             <span
               id={countId}
               css={styles.count}
-              aria-label={`${guestCount} ${guestCount === 1 ? 'guest' : 'guests'} connected`}
+              aria-label={t('collaboration.guestsConnected', {
+                count: guestCount,
+              })}
             >
               {guestCount}
             </span>
@@ -103,24 +107,23 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
 
       <Dialog.Content style={{ maxWidth: 450 }}>
         <Dialog.Title>
-          Collaborative editing{' '}
+          {t('collaboration.title')}{' '}
           <Badge radius="full" color="orange">
-            Experiment
+            {t('collaboration.experiment')}
           </Badge>
         </Dialog.Title>
         <Dialog.Description size="2" mb="4">
-          Peers connect directly over WebRTC and exchange messages using
-          end-to-end encryption.
+          {t('collaboration.description')}
         </Dialog.Description>
 
         {hasCollaborative ? (
           <Flex direction="column" gap="3">
             <label>
               <Text as="div" size="2" mb="1" weight="bold">
-                Nickname
+                {t('collaboration.nickname')}
               </Text>
               <TextField.Root
-                placeholder="Your nickname"
+                placeholder={t('common.yourNickname')}
                 value={nickname}
                 maxLength={NICKNAME_MAX_LENGTH}
                 onChange={handleChangeNickname}
@@ -128,7 +131,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
             </label>
             <label>
               <Text as="div" size="2" mb="1" weight="bold">
-                Link
+                {t('collaboration.link')}
               </Text>
               <TextField.Root
                 css={styles.link}
@@ -146,31 +149,34 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
             </label>
             <div>
               <Text as="div" size="2" mb="1" weight="bold">
-                Participants
+                {t('common.participants')}
               </Text>
-              <ul css={styles.participants} aria-label="Participants">
+              <ul
+                css={styles.participants}
+                aria-label={t('common.participants')}
+              >
                 <li css={styles.participant}>
                   <Text size="2" css={styles.name}>
-                    {participantName({ role: Role.host, nickname })}
+                    {participantName({ role: Role.host, nickname }, t)}
                   </Text>
                   <Text size="2" color="gray">
-                    (you)
+                    {t('common.you')}
                   </Text>
                   <Badge color="gray" radius="full">
-                    Host
+                    {t('common.host')}
                   </Badge>
                 </li>
                 {participants.map(participant => (
                   <li key={participant.peerId} css={styles.participant}>
                     <Text size="2" css={styles.name}>
-                      {participantName(participant)}
+                      {participantName(participant, t)}
                     </Text>
                   </li>
                 ))}
               </ul>
               {participants.length ? null : (
                 <Text as="div" size="1" color="gray" mt="1">
-                  No one else has joined yet.
+                  {t('collaboration.noOneJoined')}
                 </Text>
               )}
             </div>
@@ -180,13 +186,13 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
         <Flex gap="3" mt="4" justify="end">
           <Dialog.Close>
             <Button variant="soft" color="gray">
-              Close
+              {t('common.close')}
             </Button>
           </Dialog.Close>
           {hasCollaborative ? (
             <Dialog.Close onClick={handleStopSession}>
               <Button variant="outline" color="red">
-                Stop session
+                {t('collaboration.stopSession')}
               </Button>
             </Dialog.Close>
           ) : (
@@ -196,7 +202,7 @@ const SidebarCollaborative: React.FC<SidebarCollaborativeProps> = ({
               highContrast
               onClick={handleStartSession}
             >
-              Start session
+              {t('collaboration.startSession')}
             </Button>
           )}
         </Flex>

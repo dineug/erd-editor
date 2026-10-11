@@ -61,10 +61,12 @@ features are in the [root README](../../README.md#features):
 - **Real-time collaboration** (experimental) — start a session from a schema in the sidebar and
   share its link; guests join peer-to-peer, end-to-end encrypted, and a list shows each
   participant's nickname.
-- **Theme** — light, dark (the default) or system.
-- **Display language** — the editor in 25 languages, picked from its toolbar or command palette
-  and shared by every tab; until you pick one it follows your browser's language, or English when
-  the editor lacks it. The app's own screens stay in English.
+- **Theme** — system (the default, following your operating system), light or dark.
+- **Display language** — the app's own screens and the editor in the same 25 languages, picked
+  from the language button under the sidebar or from the editor's toolbar or command palette, and
+  shared by every tab; until you pick one they follow your browser's language, or English when the
+  editor lacks it. Arabic, Hebrew and Persian lay the app out right to left. The privacy policy,
+  terms and support pages stay in English.
 - **Welcome screen** — on an empty diagram, with its first steps: a new table or memo, import,
   the command palette and the shortcuts.
 - **Google Drive editor** — `/gdrive`, listed on the

@@ -4,6 +4,7 @@ import { Download, FileUp } from 'lucide-react';
 import { useEffect } from 'react';
 
 import { useUpdateCollaborativeSessionAll } from '@/atoms/modules/collaborative';
+import { useI18n } from '@/atoms/modules/locale';
 import {
   useAddSchemaEntity,
   useNow,
@@ -26,6 +27,7 @@ import SidebarAppearance from '@/components/sidebar/sidebar-appearance/SidebarAp
 import SidebarGroups from '@/components/sidebar/sidebar-groups/SidebarGroups';
 import SidebarHeaderRow from '@/components/sidebar/sidebar-header-row/SidebarHeaderRow';
 import SidebarItem from '@/components/sidebar/sidebar-item/SidebarItem';
+import SidebarLocale from '@/components/sidebar/sidebar-locale/SidebarLocale';
 import SidebarPolicyLinks from '@/components/sidebar/sidebar-policy-links/SidebarPolicyLinks';
 import SidebarSearch from '@/components/sidebar/sidebar-search/SidebarSearch';
 import SidebarShell from '@/components/sidebar/sidebar-shell/SidebarShell';
@@ -49,6 +51,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
   const sashState = useAtomValue(sidebarSashAtom);
   const now = useNow();
   const list = useSidebarList(schemaEntities, now, selectedId);
+  const { t } = useI18n();
 
   const handleStartEditing = () => {
     setIsEditing(true);
@@ -67,14 +70,14 @@ const Sidebar: React.FC<SidebarProps> = () => {
 
   return (
     <SidebarShell
-      label="Schemas"
+      label={t('sidebar.schemas')}
       open={sashState.open}
       header={
         <>
           <SidebarHeaderRow
-            addLabel="New schema"
+            addLabel={t('sidebar.newSchema')}
             onAdd={handleStartEditing}
-            menuLabel="Import and export"
+            menuLabel={t('sidebar.importAndExport')}
             menuItems={
               <>
                 <DropdownMenu.Item
@@ -82,20 +85,20 @@ const Sidebar: React.FC<SidebarProps> = () => {
                   onSelect={() => openImportDialog()}
                 >
                   <FileUp size={16} />
-                  Import files
+                  {t('common.importFiles')}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   disabled={!schemaEntities.length}
                   onSelect={() => exportBackup()}
                 >
                   <Download size={16} />
-                  Export backup
+                  {t('sidebar.exportBackup')}
                 </DropdownMenu.Item>
               </>
             }
           />
           <SidebarSearch
-            label="Search schemas"
+            label={t('sidebar.searchSchemas')}
             value={list.query}
             onChange={list.setQuery}
             listRef={list.listRef}
@@ -110,7 +113,12 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <SidebarAppearance />
         </>
       }
-      legal={<SidebarPolicyLinks />}
+      legal={
+        <>
+          <SidebarPolicyLinks />
+          <SidebarLocale />
+        </>
+      }
     >
       <SidebarGroups
         groups={list.groups}
@@ -119,8 +127,8 @@ const Sidebar: React.FC<SidebarProps> = () => {
         leading={
           isEditing ? (
             <SidebarAddItem
-              inputLabel="New schema name"
-              inputPlaceholder="schema name"
+              inputLabel={t('sidebar.newSchemaName')}
+              inputPlaceholder={t('sidebar.schemaNamePlaceholder')}
               onConfirm={name => {
                 handleCancelEditing();
                 addSchemaEntity({ name });

@@ -290,9 +290,19 @@ describe('vuerd-vscode in the Extension Host', () => {
       // the values and names to it; this pins what VS Code parsed of them.
       assert.strictEqual(values.length, 26);
       assert.strictEqual(new Set(values).size, 26);
-      assert.deepStrictEqual(values.slice(0, 2), ['auto', 'en']);
+      assert.deepStrictEqual(values.slice(0, 4), [
+        'auto',
+        'id-ID',
+        'de-DE',
+        'en',
+      ]);
       assert.strictEqual(labels.length, values.length);
-      assert.deepStrictEqual(labels.slice(0, 2), ['Auto', 'English']);
+      assert.deepStrictEqual(labels.slice(0, 4), [
+        'Auto',
+        'Bahasa Indonesia',
+        'Deutsch',
+        'English',
+      ]);
       assert.strictEqual(labels[values.indexOf('ko-KR')], '한국어');
     });
 

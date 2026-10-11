@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { koKR } from '@/i18n/messages/ko-KR';
+import { createI18n } from '@/i18n/translate';
 import {
   NICKNAME_MAX_LENGTH,
   participantName,
@@ -53,5 +55,13 @@ describe('participantName', () => {
   it('falls back to the role for a blank or missing nickname', () => {
     expect(participantName({ role: 'host', nickname: '  ' })).toBe('Host');
     expect(participantName({ role: 'guest' })).toBe('Guest');
+  });
+
+  it('names the role in the language handed', () => {
+    const { t } = createI18n('ko-KR', koKR);
+
+    expect(participantName({ role: 'host' }, t)).toBe('호스트');
+    expect(participantName({ role: 'guest', nickname: ' ' }, t)).toBe('게스트');
+    expect(participantName({ role: 'guest', nickname: 'Ann' }, t)).toBe('Ann');
   });
 });

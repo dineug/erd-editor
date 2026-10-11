@@ -1,6 +1,7 @@
 import { Button } from '@radix-ui/themes';
 import { useState } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import GdriveBanner from '@/components/gdrive/gdrive-banner/GdriveBanner';
 import type { GdriveSession } from '@/services/gdrive';
 import { settleReported } from '@/utils/reportError';
@@ -20,6 +21,8 @@ const GdriveLeaderBanner: React.FC<GdriveLeaderBannerProps> = ({
   state,
 }) => {
   const [taking, setTaking] = useState(false);
+  const { t } = useI18n();
+  const waitingLeader = state === 'waiting-leader';
 
   const handleTakeOver = () => {
     setTaking(true);
@@ -28,11 +31,11 @@ const GdriveLeaderBanner: React.FC<GdriveLeaderBannerProps> = ({
 
   return (
     <GdriveBanner
-      message={
-        state === 'waiting-leader'
-          ? "The tab that saves this file isn't responding."
-          : "The tab that opened this file isn't responding."
-      }
+      message={t(
+        waitingLeader
+          ? 'gdrive.banner.leaderNotResponding'
+          : 'gdrive.banner.openerNotResponding'
+      )}
     >
       <Button
         size="2"
@@ -41,9 +44,11 @@ const GdriveLeaderBanner: React.FC<GdriveLeaderBannerProps> = ({
         loading={taking}
         onClick={handleTakeOver}
       >
-        {state === 'waiting-leader'
-          ? 'Take over saving'
-          : 'Open from Drive and take over'}
+        {t(
+          waitingLeader
+            ? 'gdrive.banner.takeOver'
+            : 'gdrive.banner.openAndTakeOver'
+        )}
       </Button>
     </GdriveBanner>
   );

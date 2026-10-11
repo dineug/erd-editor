@@ -30,7 +30,7 @@
 | `src/bridge.ts` | `Bridge` (`registerCommand`, `executeAction`, static `executeCommand` / `mergeRegister`) and `createCommand` |
 | `src/commands.ts` | The wire catalogue: seven `host*` commands (webview → host) and six `webview*` (host → webview); field rules in Rules § Payload Fields |
 | `src/commands.test.ts` | Pins the exact set of thirteen commands and asserts that each `type` equals its export name |
-| `src/locale.ts` | `LocaleLabel`, the 25 display languages the editor offers, code to native name in its picker's order (English, then the rest by name); `Locale`, its keys; `LocaleSetting`, a code or `'auto'`, the host's spelling of the editor's System. Who holds it: Rules § Theme and Locale Lists |
+| `src/locale.ts` | `LocaleLabel`, the 25 display languages the editor offers, code to native name in its picker's order (each by its own name, English among them); `Locale`, its keys; `LocaleSetting`, a code or `'auto'`, the host's spelling of the editor's System. Who holds it: Rules § Theme and Locale Lists |
 | `src/theme.ts` | `Appearance` / `GrayColor` / `AccentColor` `as const` maps and `ThemeOptions`. Who holds them: Rules § Theme and Locale Lists |
 | `src/safeCallback.ts` | Runs one listener and logs its exception, so one bad listener does not stop the rest |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, minify: false, preserveModules: true })`, the private-library shape (root § Working In This Directory, Library builds) |

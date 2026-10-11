@@ -18,8 +18,10 @@ class ErdEditorLocaleTest {
     fun `lists the languages webview-bridge names, in its order, each by its own name`() {
         assertEquals(bridgeLabels(), NAMES.toList())
         assertEquals(25, NAMES.size)
-        assertEquals("en" to "English", NAMES.entries.first().toPair())
+        assertEquals("id-ID" to "Bahasa Indonesia", NAMES.entries.first().toPair())
         assertEquals("ko-KR" to "한국어", NAMES.entries.last().toPair())
+        // Each by its own name, English among them, as the editor's picker lists them.
+        assertEquals(NAMES.values.sorted(), NAMES.values.toList())
     }
 
     @Test

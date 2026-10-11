@@ -54,7 +54,7 @@ describe('formatDropWarning', () => {
     const ar = createI18n('ar-SA', messagesOf('ar-SA'));
 
     expect(formatDropWarning(he, Database.MySQL, ['member', 'post'])).toBe(
-      'מוחק את \u2068\u2068member\u2069 ו-\u2068post\u2069\u2069 לפני יצירתן. השורות שלהן אובדות.'
+      'מוחק את \u2068\u2068member\u2069 ו-\u2068post\u2069\u2069 לפני יצירתן. השורות שבהן יאבדו.'
     );
     expect(formatDropWarning(ar, Database.MySQL, tables(6))).toBe(
       'يحذف \u2068\u2068t1\u2069 و\u2068t2\u2069 و\u2068t3\u2069 و\u2068t4\u2069 و\u20682\u2069 جدولين آخرين\u2069 قبل إنشائها. تُفقد صفوفها.'
@@ -69,7 +69,7 @@ describe('formatDropWarning', () => {
         tables(count)
       );
 
-    expect(counted('ru-RU', 25)).toContain('и ещё 21 таблицу перед');
+    expect(counted('ru-RU', 25)).toContain('и еще 21 таблицу перед');
     expect(counted('uk-UA', 25)).toContain('і ще 21 таблицю перед');
     expect(counted('sl-SI', 105)).toContain('in še 101 tabelo.');
   });

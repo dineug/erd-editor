@@ -146,7 +146,7 @@ test.describe('locale picker', () => {
 
     await openPicker(erd);
     await erd.press('ArrowDown');
-    await expect(rowOf(erd, 'en')).toBeFocused();
+    await expect(rowOf(erd, 'id-ID')).toBeFocused();
     await erd.press('End');
     await expect(rowOf(erd, 'ko-KR')).toBeFocused();
     await erd.press('ArrowDown');

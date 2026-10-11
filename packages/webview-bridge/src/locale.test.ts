@@ -5,9 +5,9 @@ import { type Locale, LocaleLabel, type LocaleSetting } from '@/locale';
 describe('LocaleLabel', () => {
   it('lists the twenty-five codes in picker order', () => {
     expect(Object.keys(LocaleLabel)).toEqual([
-      'en',
       'id-ID',
       'de-DE',
+      'en',
       'es-ES',
       'eu-ES',
       'fr-FR',
@@ -33,11 +33,9 @@ describe('LocaleLabel', () => {
     ]);
   });
 
-  it('puts English first and sorts the rest by label', () => {
-    const [first, ...rest] = Object.entries(LocaleLabel);
-    const labels = rest.map(([, label]) => label);
+  it('sorts every language by its label, English among them', () => {
+    const labels = Object.values(LocaleLabel);
 
-    expect(first).toEqual(['en', 'English']);
     expect(labels).toEqual([...labels].sort((a, b) => (a > b ? 1 : -1)));
   });
 

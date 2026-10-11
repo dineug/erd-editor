@@ -2,6 +2,7 @@ import { Button, Flex, Text } from '@radix-ui/themes';
 import { BookOpen, FileUp, Plus } from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import {
   useImportingFiles,
   useOpenImportDialog,
@@ -22,6 +23,7 @@ const EmptyViewer: React.FC = () => {
   const importingFiles = useImportingFiles();
   const openSample = useOpenSample();
   const [openingSample, setOpeningSample] = useState(false);
+  const { t } = useI18n();
 
   const handleOpenSample = () => {
     setOpeningSample(true);
@@ -32,11 +34,10 @@ const EmptyViewer: React.FC = () => {
     <Flex css={styles.empty} direction="column" align="center" gap="5">
       <Flex direction="column" align="center" gap="1">
         <Text size="5" weight="medium">
-          No schema open
+          {t('viewer.noSchemaOpen')}
         </Text>
         <Text size="2" color="gray">
-          Pick one from the sidebar, or start one here. You can also drop files
-          anywhere to import them.
+          {t('viewer.emptyHint')}
         </Text>
       </Flex>
       <Flex css={styles.actions} gap="2" justify="center" wrap="wrap">
@@ -47,7 +48,7 @@ const EmptyViewer: React.FC = () => {
           onClick={() => startAddingSchema()}
         >
           <Plus size={16} />
-          New schema
+          {t('sidebar.newSchema')}
         </Button>
         <Button
           size="2"
@@ -57,7 +58,7 @@ const EmptyViewer: React.FC = () => {
           onClick={() => openImportDialog()}
         >
           <FileUp size={16} />
-          Import files
+          {t('common.importFiles')}
         </Button>
         <Button
           size="2"
@@ -67,7 +68,7 @@ const EmptyViewer: React.FC = () => {
           onClick={handleOpenSample}
         >
           <BookOpen size={16} />
-          Open sample
+          {t('viewer.openSample')}
         </Button>
       </Flex>
       <ResourceLinks />
@@ -77,7 +78,8 @@ const EmptyViewer: React.FC = () => {
 
 const Viewer: React.FC<ViewerProps> = () => {
   const value = useSchemaEntity();
-  const loading = <Text size="4">Loading...</Text>;
+  const { t } = useI18n();
+  const loading = <Text size="4">{t('common.loading')}</Text>;
 
   return (
     <Flex css={styles.root} direction="column" align="center" justify="center">

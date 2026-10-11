@@ -6,15 +6,17 @@ export type LocaleInfo = {
   readonly rtl?: true;
 };
 
+const ENGLISH = { code: 'en', label: 'English', english: 'English' } as const;
+
 /**
- * Every display language the editor offers, in its picker's order: English,
- * then the rest by their own names, as the owner decisions of 2026-10-06 list
- * them. The English name is what the palette also finds a language by.
+ * Every display language the editor offers, in its picker's order: each by
+ * its own name, English among them (an owner decision of 2026-10-11, on the
+ * list of 2026-10-06). The English name is what the palette also finds it by.
  */
 export const LOCALES = [
-  { code: 'en', label: 'English', english: 'English' },
   { code: 'id-ID', label: 'Bahasa Indonesia', english: 'Indonesian' },
   { code: 'de-DE', label: 'Deutsch', english: 'German' },
+  ENGLISH,
   { code: 'es-ES', label: 'Español', english: 'Spanish' },
   { code: 'eu-ES', label: 'Euskara', english: 'Basque' },
   { code: 'fr-FR', label: 'Français', english: 'French' },
@@ -66,7 +68,7 @@ const LocaleInfoMap = new Map<LocaleCode, LocaleInfo>(
 );
 
 export function localeInfoOf(code: LocaleCode): LocaleInfo {
-  return LocaleInfoMap.get(code) ?? LOCALES[0];
+  return LocaleInfoMap.get(code) ?? ENGLISH;
 }
 
 export function directionOf(code: LocaleCode): TextDirection {

@@ -11,6 +11,7 @@ import { ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { useId, useState } from 'react';
 
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
+import { useI18n } from '@/atoms/modules/locale';
 import {
   NICKNAME_MAX_LENGTH,
   Participant,
@@ -39,6 +40,7 @@ const LiveParticipants: React.FC<LiveParticipantsProps> = ({
   const [nickname, setNickname] = useAtom(nicknameStorageAtom);
   const [open, setOpen] = useState(startsOpen);
   const bodyId = useId();
+  const { t } = useI18n();
 
   const handleToggle = () => {
     setOpen(value => !value);
@@ -49,17 +51,24 @@ const LiveParticipants: React.FC<LiveParticipantsProps> = ({
   };
 
   return (
-    <Card css={styles.root} size="1" role="region" aria-label="Live session">
+    <Card
+      css={styles.root}
+      size="1"
+      role="region"
+      aria-label={t('live.session')}
+    >
       <Flex align="center" gap="2">
         <Users size={16} />
         <Text size="2" weight="bold" css={styles.title}>
-          {participants.length} in session
+          {t('live.inSession', { count: participants.length })}
         </Text>
         <IconButton
           size="1"
           variant="ghost"
           color="gray"
-          aria-label={open ? 'Hide participants' : 'Show participants'}
+          aria-label={t(
+            open ? 'live.hideParticipants' : 'live.showParticipants'
+          )}
           aria-expanded={open}
           aria-controls={bodyId}
           onClick={handleToggle}
@@ -72,26 +81,26 @@ const LiveParticipants: React.FC<LiveParticipantsProps> = ({
         <Flex id={bodyId} direction="column" gap="2" mt="2">
           <TextField.Root
             size="1"
-            placeholder="Your nickname"
-            aria-label="Your nickname"
+            placeholder={t('common.yourNickname')}
+            aria-label={t('common.yourNickname')}
             value={nickname}
             maxLength={NICKNAME_MAX_LENGTH}
             onChange={handleChangeNickname}
           />
-          <ul css={styles.list} aria-label="Participants">
+          <ul css={styles.list} aria-label={t('common.participants')}>
             {participants.map(participant => (
               <li key={participant.peerId} css={styles.item}>
                 <Text size="1" css={styles.name}>
-                  {participantName(participant)}
+                  {participantName(participant, t)}
                 </Text>
                 {participant.peerId === selfId ? (
                   <Text size="1" color="gray">
-                    (you)
+                    {t('common.you')}
                   </Text>
                 ) : null}
                 {participant.role === Role.host ? (
                   <Badge size="1" color="gray" radius="full">
-                    Host
+                    {t('common.host')}
                   </Badge>
                 ) : null}
               </li>

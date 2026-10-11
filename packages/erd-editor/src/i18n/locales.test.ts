@@ -12,9 +12,9 @@ import {
 
 /** The languages and native names the owner decisions of 2026-10-06 list, in picker order. */
 const OWNER_LIST = [
-  ['en', 'English'],
   ['id-ID', 'Bahasa Indonesia'],
   ['de-DE', 'Deutsch'],
+  ['en', 'English'],
   ['es-ES', 'Español'],
   ['eu-ES', 'Euskara'],
   ['fr-FR', 'Français'],
@@ -47,12 +47,10 @@ describe('LOCALES', () => {
     expect(LocaleCodeList).toEqual(OWNER_LIST.map(([code]) => code));
   });
 
-  it('puts English first and the rest in the order of their own names', () => {
-    const [first, ...rest] = LOCALES.map(locale => locale.label);
-    const sorted = [...rest].sort((a, b) => (a > b ? 1 : -1));
+  it('lists every language in the order of its own name, English among them', () => {
+    const labels = LOCALES.map(locale => locale.label);
 
-    expect(first).toBe('English');
-    expect(rest).toEqual(sorted);
+    expect(labels).toEqual([...labels].sort((a, b) => (a > b ? 1 : -1)));
   });
 
   it('reads right to left in Hebrew, Arabic and Persian alone', () => {
@@ -82,7 +80,8 @@ describe('LOCALES', () => {
   });
 
   it('answers English for a code it does not list', () => {
-    expect(localeInfoOf('xx' as LocaleCode)).toBe(LOCALES[0]);
+    expect(localeInfoOf('xx' as LocaleCode)).toBe(localeInfoOf('en'));
+    expect(localeInfoOf('xx' as LocaleCode).label).toBe('English');
   });
 });
 

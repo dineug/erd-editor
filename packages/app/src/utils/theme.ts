@@ -20,7 +20,7 @@ export const THEME_STORAGE_KEY = '@theme';
 export const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)';
 
 export const DEFAULT_THEME: ThemeState = {
-  appearance: 'dark',
+  appearance: 'system',
   accentColor: 'jade',
   grayColor: 'olive',
 };

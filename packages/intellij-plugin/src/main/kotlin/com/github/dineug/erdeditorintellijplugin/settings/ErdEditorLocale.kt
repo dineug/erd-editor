@@ -13,9 +13,9 @@ object ErdEditorLocale {
 
     /** Every language the editor offers, code to its own name, in the order its picker lists them. */
     val NAMES: Map<String, String> = linkedMapOf(
-        "en" to "English",
         "id-ID" to "Bahasa Indonesia",
         "de-DE" to "Deutsch",
+        "en" to "English",
         "es-ES" to "Español",
         "eu-ES" to "Euskara",
         "fr-FR" to "Français",

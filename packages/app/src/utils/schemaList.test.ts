@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vite-plus/test';
 
+import { koKR } from '@/i18n/messages/ko-KR';
+import { createI18n } from '@/i18n/translate';
 import {
   compareSchemaEntities,
   filterSchemasByName,
@@ -17,6 +19,7 @@ const BERLIN = 'Europe/Berlin';
 const at = (iso: string, zone = SEOUL) => DateTime.fromISO(iso, { zone });
 const ms = (iso: string, zone = SEOUL) => at(iso, zone).toMillis();
 const entity = (name: string, updateAt: number) => ({ name, updateAt });
+const korean = createI18n('ko-KR', koKR);
 
 describe('compareSchemaEntities', () => {
   it('puts the newest edit first', () => {
@@ -180,10 +183,23 @@ describe('toDateGroupLabel', () => {
     );
   });
 
-  it('names the month in English whatever the locale of now', () => {
-    const korean = at('2026-09-19T12:00').setLocale('ko');
+  it('names the month in the language handed, not in the locale of now', () => {
+    const koreanNow = at('2026-09-19T12:00').setLocale('ko');
 
-    expect(toDateGroupLabel(ms('2026-05-10T00:00'), korean)).toBe('May');
+    expect(toDateGroupLabel(ms('2026-05-10T00:00'), koreanNow)).toBe('May');
+    expect(toDateGroupLabel(ms('2026-05-10T00:00'), now, korean)).toBe('5월');
+  });
+
+  it('reads the day groups in the language handed', () => {
+    const groups = [
+      '2026-09-19T08:00',
+      '2026-09-18T08:00',
+      '2026-09-14T08:00',
+      '2026-09-01T08:00',
+    ].map(iso => toDateGroupLabel(ms(iso), now, korean));
+
+    expect(groups).toEqual(['오늘', '어제', '지난 7일', '지난 30일']);
+    expect(toDateGroupLabel(ms('2024-01-01T08:00'), now, korean)).toBe('2024');
   });
 });
 
@@ -252,10 +268,16 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(ms('2025-09-01T12:00'), now)).toBe('1 year ago');
   });
 
-  it('stays in English whatever the locale of now', () => {
+  it('reads in the language handed, not in the locale of now', () => {
     expect(
       formatRelativeTime(ms('2026-09-19T11:57'), now.setLocale('ko'))
     ).toBe('3 minutes ago');
+    expect(formatRelativeTime(ms('2026-09-19T11:57'), now, korean)).toBe(
+      '3분 전'
+    );
+    expect(formatRelativeTime(ms('2026-09-19T11:59:30'), now, korean)).toBe(
+      '방금'
+    );
   });
 
   it('returns an empty string for a timestamp that is not a date', () => {

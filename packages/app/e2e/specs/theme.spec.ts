@@ -2,21 +2,19 @@ import { expect, test } from '@playwright/test';
 
 import { AppPage } from '../support/AppPage';
 
-// A light system, so a dark page can only be the app's own default.
+// A light system, so a light page shows System, the default, over the dark
+// markup a page without script keeps.
 test.use({ colorScheme: 'light' });
 
 test.describe('the theme', () => {
-  test('stays dark by default, and follows the system once asked to', async ({
+  test('follows the system by default, and keeps a pick over it', async ({
     context,
   }) => {
     const app = await AppPage.open(context);
     const html = app.page.locator('html');
     const theme = app.sidebar();
 
-    await expect(html).toHaveClass(/\bdark-theme\b/);
-    await expect(theme.getByRole('radio', { name: 'Dark' })).toBeChecked();
-
-    await theme.getByRole('radio', { name: 'System' }).click();
+    await expect(theme.getByRole('radio', { name: 'System' })).toBeChecked();
     await expect(html).toHaveClass(/\blight-theme\b/);
     await expect(html).toHaveCSS('color-scheme', 'light');
 
@@ -24,13 +22,19 @@ test.describe('the theme', () => {
     await expect(html).toHaveClass(/\bdark-theme\b/);
     await app.page.emulateMedia({ colorScheme: 'light' });
     await expect(html).toHaveClass(/\blight-theme\b/);
+
+    await theme.getByRole('radio', { name: 'Dark' }).click();
+    await expect(html).toHaveClass(/\bdark-theme\b/);
+    await expect(html).toHaveCSS('color-scheme', 'dark');
   });
 
   test('paints a stored light preference before the app script runs', async ({
     context,
   }) => {
     const app = await AppPage.open(context);
-    await app.sidebar().getByRole('radio', { name: 'System' }).click();
+    // A dark system, so only the stored pick can paint the page light.
+    await app.page.emulateMedia({ colorScheme: 'dark' });
+    await app.sidebar().getByRole('radio', { name: 'Light' }).click();
     await expect(app.page.locator('html')).toHaveClass(/\blight-theme\b/);
 
     // With the entry module refused, only the inline script in index.html
@@ -44,7 +48,7 @@ test.describe('the theme', () => {
     await app.page.unroute('**/src/main.tsx');
     await app.page.reload();
     await expect(
-      app.sidebar().getByRole('radio', { name: 'System' })
+      app.sidebar().getByRole('radio', { name: 'Light' })
     ).toBeChecked();
     await expect(app.page.locator('html')).toHaveClass(/\blight-theme\b/);
   });

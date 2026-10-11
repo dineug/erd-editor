@@ -9,6 +9,7 @@ import { useLocation } from 'react-router';
 import { nicknameStorageAtom } from '@/atoms/modules/collaborative';
 import {
   useApplyPickedLocale,
+  useI18n,
   useLocalePreference,
 } from '@/atoms/modules/locale';
 import { useApplyPresetTheme, useThemeState } from '@/atoms/modules/theme';
@@ -53,6 +54,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
   const applyPresetTheme = useApplyPresetTheme();
   const locale = useLocalePreference();
   const applyPickedLocale = useApplyPickedLocale();
+  const { t } = useI18n();
   const nickname = useAtomValue(nicknameStorageAtom);
   const nicknameRef = useRef(nickname);
   nicknameRef.current = nickname;
@@ -229,7 +231,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
           align="center"
           justify="center"
         >
-          <Text size="6">Looking for a host...</Text>
+          <Text size="6">{t('live.lookingForHost')}</Text>
         </Flex>
       ) : null}
       {hostLeaveLoading ? (
@@ -239,7 +241,7 @@ const LiveCollaborative: React.FC<LiveCollaborativeProps> = () => {
           align="center"
           justify="center"
         >
-          <Text size="6">Waiting for a host...</Text>
+          <Text size="6">{t('live.waitingForHost')}</Text>
         </Flex>
       ) : null}
     </Flex>

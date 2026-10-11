@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <script>
-      // Pre-paint: the markup defaults to dark for no-JS. A stored light or
-      // system preference is applied here, before first paint, with the rules
-      // of parseThemeState and resolveAppearance in src/utils/theme.ts.
+      // Pre-paint: the markup is dark for no-JS. The stored preference, else
+      // system, is applied here, before first paint, with the rules of
+      // parseThemeState and resolveAppearance in src/utils/theme.ts.
       (function () {
+        var appearance;
         try {
-          var appearance = JSON.parse(localStorage.getItem('@theme')).appearance;
-          if (appearance === 'system') {
+          appearance = JSON.parse(localStorage.getItem('@theme')).appearance;
+        } catch (error) {}
+        try {
+          if (appearance !== 'dark' && appearance !== 'light') {
             appearance = matchMedia('(prefers-color-scheme: dark)').matches
               ? 'dark'
               : 'light';

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import { authControl } from '@/components/gdrive/authControl';
 import GdriveLeaveDialog from '@/components/gdrive/gdrive-confirm/GdriveLeaveDialog';
@@ -44,6 +45,8 @@ interface ScreenProps {
  */
 const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
   const { token } = snapshot;
+  const { t } = useI18n();
+  const signedInAs = token.account?.email ?? t('gdrive.anotherAccount');
   const download = snapshot.keptChanges ? (
     <Button
       size="2"
@@ -52,7 +55,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
       onClick={() => session.downloadChanges()}
     >
       <Download size={16} />
-      Download my changes
+      {t('common.downloadMyChanges')}
     </Button>
   ) : null;
 
@@ -60,8 +63,8 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
     case 'offline':
       return (
         <GdriveNotice
-          title="You're offline"
-          description="ERD Editor checks your Google sign-in once you're back online."
+          title={t('gdrive.offline.title')}
+          description={t('gdrive.offline.description')}
         >
           {download}
         </GdriveNotice>
@@ -75,8 +78,8 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
     case 'scope-missing':
       return (
         <GdriveNotice
-          title="Google Drive access was not granted"
-          description="ERD Editor needs access to the files you create or open with it. Sign in again and allow Google Drive access."
+          title={t('gdrive.scopeMissing.title')}
+          description={t('gdrive.scopeMissing.description')}
         >
           <Button
             size="2"
@@ -86,19 +89,23 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             {...authControl}
           >
             <RotateCw size={16} />
-            Try again
+            {t('common.tryAgain')}
           </Button>
           {download}
         </GdriveNotice>
       );
     case 'account-mismatch': {
-      const choose = snapshot.hintRefused
-        ? " ERD Editor couldn't preselect that account, so choose it when Google asks."
-        : '';
+      const description = t('gdrive.mismatch.description', {
+        email: signedInAs,
+      });
       return (
         <GdriveNotice
-          title="Google Drive sent this for another account"
-          description={`You're signed in as ${token.account?.email ?? 'another account'}. Switch to the account Google Drive used to open it, or go on with this account's files.${choose}`}
+          title={t('gdrive.mismatch.title')}
+          description={
+            snapshot.hintRefused
+              ? `${description} ${t('gdrive.mismatch.choose')}`
+              : description
+          }
         >
           <Button
             size="2"
@@ -107,7 +114,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             onClick={() => session.switchAccount()}
             {...authControl}
           >
-            Switch account
+            {t('gdrive.mismatch.switchAccount')}
           </Button>
           <Button
             size="2"
@@ -116,7 +123,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             onClick={() => session.dismissState()}
           >
             <FolderOpen size={16} />
-            Show my files
+            {t('gdrive.mismatch.showMyFiles')}
           </Button>
           <Button
             size="2"
@@ -126,7 +133,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             {...authControl}
           >
             <LogOut size={16} />
-            Sign out
+            {t('common.signOut')}
           </Button>
           {download}
         </GdriveNotice>
@@ -135,8 +142,8 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
     case 'account-changed':
       return (
         <GdriveNotice
-          title="Signed in with another account"
-          description="Another tab signed in to a different Google account, so this tab stopped. Reload it to continue with that account."
+          title={t('gdrive.accountChanged.title')}
+          description={t('gdrive.accountChanged.description')}
         >
           <Button
             size="2"
@@ -145,7 +152,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             onClick={() => location.reload()}
           >
             <RotateCw size={16} />
-            Reload
+            {t('common.reload')}
           </Button>
           {download}
         </GdriveNotice>
@@ -154,8 +161,19 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
       const { name, email } = snapshot.stranded!;
       return (
         <GdriveNotice
-          title="Your changes weren't saved"
-          description={`${name ?? 'The file you had open'} has changes from ${email} that aren't in Google Drive, and ${token.account?.email ?? 'another account'} is signed in now. Download them before you go on.`}
+          title={t('gdrive.unsaved.title')}
+          description={
+            name === null
+              ? t('gdrive.unsaved.descriptionUnnamed', {
+                  email,
+                  account: signedInAs,
+                })
+              : t('gdrive.unsaved.description', {
+                  name,
+                  email,
+                  account: signedInAs,
+                })
+          }
         >
           <Button
             size="2"
@@ -164,7 +182,7 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             onClick={() => session.downloadChanges()}
           >
             <Download size={16} />
-            Download my changes
+            {t('common.downloadMyChanges')}
           </Button>
           <Button
             size="2"
@@ -172,14 +190,14 @@ const AccountScreen: React.FC<ScreenProps> = ({ session, snapshot }) => {
             color="red"
             onClick={() => session.discardChanges()}
           >
-            Continue without them
+            {t('gdrive.unsaved.continueWithout')}
           </Button>
         </GdriveNotice>
       );
     }
     default:
       return (
-        <GdriveNotice title="Checking your Google sign-in…">
+        <GdriveNotice title={t('gdrive.checkingSignIn')}>
           <Spinner size="3" />
         </GdriveNotice>
       );
@@ -235,6 +253,7 @@ const Workspace: React.FC<ScreenProps> = ({ session, snapshot }) => {
 /** /gdrive once it can run here: the session, the title and the unload guard. */
 const GdriveApp: React.FC<{ clientId: string }> = ({ clientId }) => {
   const { session, snapshot } = useGdriveSession(clientId);
+  const { t } = useI18n();
   const workspace = snapshot?.screen === 'workspace';
   const name = workspace ? snapshot.document?.name : null;
 
@@ -262,7 +281,7 @@ const GdriveApp: React.FC<{ clientId: string }> = ({ clientId }) => {
   }, [session]);
 
   if (!session || !snapshot) {
-    return <GdriveNotice title="Checking your Google sign-in…" />;
+    return <GdriveNotice title={t('gdrive.checkingSignIn')} />;
   }
 
   return (
@@ -290,12 +309,13 @@ const GdriveRoute: React.FC = () => {
   const [framed] = useState(() => isFramed(window));
   const clientId = configuredClientId();
   const availability = checkAvailability(clientId, window.location.origin);
+  const { t } = useI18n();
 
   if (framed) {
     return (
       <GdriveNotice
-        title="Open ERD Editor's Google Drive editor in its own tab"
-        description="It doesn't run inside another page."
+        title={t('gdrive.framed.title')}
+        description={t('gdrive.framed.description')}
       >
         <Link
           href={window.location.href}
@@ -303,7 +323,7 @@ const GdriveRoute: React.FC = () => {
           rel="noopener"
           size="2"
         >
-          Open in a new tab <ExternalLink size={14} />
+          {t('gdrive.framed.link')} <ExternalLink size={14} />
         </Link>
       </GdriveNotice>
     );
@@ -311,16 +331,16 @@ const GdriveRoute: React.FC = () => {
   if (availability === 'not-configured') {
     return (
       <GdriveNotice
-        title="Google Drive integration is not configured"
-        description="This build of ERD Editor has no Google sign-in client."
+        title={t('gdrive.notConfigured.title')}
+        description={t('gdrive.notConfigured.description')}
       />
     );
   }
   if (availability === 'unsupported-origin') {
     return (
       <GdriveNotice
-        title="Google Drive isn't available here"
-        description="Google sign-in works on erd-editor.io only, and this is a preview."
+        title={t('gdrive.unsupportedOrigin.title')}
+        description={t('gdrive.unsupportedOrigin.description')}
       />
     );
   }

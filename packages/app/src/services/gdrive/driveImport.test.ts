@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { USERS_DOCUMENT } from '@/__test-utils__/driveDocument';
+import { koKR } from '@/i18n/messages/ko-KR';
+import { createI18n } from '@/i18n/translate';
 import type { DriveFile, NewDriveFile } from '@/services/gdrive/driveClient';
 import {
   describeDriveImport,
@@ -222,6 +224,15 @@ describe('describeDriveImport', () => {
     [result({}), 'Nothing to import'],
   ])('%j reads %s', (counted, text) => {
     expect(describeDriveImport(counted)).toBe(text);
+  });
+
+  it('reads in the language handed', () => {
+    expect(
+      describeDriveImport(
+        result({ imported: 2, failed: 1 }),
+        createI18n('ko-KR', koKR)
+      )
+    ).toBe('Google 드라이브로 파일 2개 가져옴 · 업로드 1개 실패');
   });
 });
 

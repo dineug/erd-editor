@@ -26,6 +26,7 @@ import {
   jsonReply,
   receiverChecked,
 } from '@/__test-utils__/gdrive';
+import { sourceI18n } from '@/i18n/source';
 import { AUTH_CHANNEL } from '@/server/auth/contract';
 import { RELAY_LOGOUT_PATH } from '@/services/gdrive/authMode';
 import {
@@ -1511,11 +1512,10 @@ describe('the list', () => {
     for (const id of ['created-1', 'created-2']) {
       expect(browser.drive.files.get(id)?.parents).toEqual([folder.id]);
     }
-    expect(tab.snapshot().notice).toMatchObject({
-      message:
-        'Imported 2 files to Google Drive · Skipped 1 backup: backups stay in the local app',
-      tone: 'warning',
-    });
+    expect(tab.snapshot().notice?.message(sourceI18n)).toBe(
+      'Imported 2 files to Google Drive · Skipped 1 backup: backups stay in the local app'
+    );
+    expect(tab.snapshot().notice?.tone).toBe('warning');
     expect(tab.navigations).toEqual([{ fileId: 'created-2', replace: false }]);
     expect(tab.snapshot().importing).toBe(false);
 
@@ -1613,7 +1613,7 @@ describe('signing out', () => {
       message: MESSAGES.signOutNotRevoked,
       tone: 'warning',
     });
-    expect(MESSAGES.signOutNotRevoked).toContain(
+    expect(MESSAGES.signOutNotRevoked(sourceI18n)).toContain(
       'myaccount.google.com/permissions'
     );
   });

@@ -7,14 +7,15 @@ export const item = css`
   border-radius: var(--radius-2);
   cursor: default;
   height: 32px;
-  padding-right: var(--space-2);
+  padding-inline-end: var(--space-2);
 
   &[data-selected='true'] {
     background-color: var(--gray-4);
   }
 
   & > .item-menu {
-    margin: 0 0 0 4px;
+    margin: 0;
+    margin-inline-start: 4px;
     visibility: hidden;
   }
 
@@ -53,7 +54,8 @@ export const select = css`
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
-  padding: 0 var(--space-2) 0 var(--space-3);
+  padding-block: 0;
+  padding-inline: var(--space-3) var(--space-2);
   border-radius: var(--radius-2);
   cursor: default;
 
@@ -68,7 +70,7 @@ export const menuTrigger = css`
 `;
 
 export const input = css`
-  margin-left: var(--space-1);
+  margin-inline-start: var(--space-1);
 `;
 
 export const text = css`

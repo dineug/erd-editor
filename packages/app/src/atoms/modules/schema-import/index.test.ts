@@ -12,6 +12,7 @@ import {
 
 import { collectUnhandledRejections } from '@/__test-utils__/rejections';
 import { renderHook } from '@/__test-utils__/renderHook';
+import { i18nAtom } from '@/atoms/modules/locale';
 import { schemaEntitiesAtom } from '@/atoms/modules/schema';
 import {
   importingFilesAtom,
@@ -22,6 +23,9 @@ import {
   useOpenSample,
 } from '@/atoms/modules/schema-import';
 import { selectedSchemaIdAtom } from '@/atoms/modules/sidebar';
+import { koKR } from '@/i18n/messages/ko-KR';
+import { sourceI18n } from '@/i18n/source';
+import { createI18n } from '@/i18n/translate';
 import type { AppDatabaseService } from '@/services/indexeddb/appDatabaseService';
 import type {
   NewSchemaEntity,
@@ -31,6 +35,12 @@ import { BACKUP_FORMAT } from '@/utils/backup';
 import { convertSource } from '@/utils/convertSource';
 import { downloadFile, pickFiles } from '@/utils/file';
 import { MAX_IMPORT_FILE_SIZE } from '@/utils/importFile';
+
+/** The notice as English reads it. */
+function noticeOf(store: ReturnType<typeof createStore>) {
+  const notice = store.get(importNoticeAtom);
+  return notice && { ...notice, message: notice.message(sourceI18n) };
+}
 
 const service = vi.hoisted(() => ({}) as Partial<AppDatabaseService>);
 
@@ -123,7 +133,7 @@ describe('schema import', () => {
         }),
       ]);
       expect(store.get(selectedSchemaIdAtom)).toBe(stored[0].id);
-      expect(store.get(importNoticeAtom)?.message).toBe('Imported 1 schema');
+      expect(noticeOf(store)?.message).toBe('Imported 1 schema');
     });
 
     it('stores every source of a drop at once and opens the last', async () => {
@@ -141,7 +151,7 @@ describe('schema import', () => {
         ['b', parsed('graphql', 'type B { id: ID }')],
       ]);
       expect(store.get(selectedSchemaIdAtom)).toBe(stored[2].id);
-      expect(store.get(importNoticeAtom)?.message).toBe('Imported 3 schemas');
+      expect(noticeOf(store)?.message).toBe('Imported 3 schemas');
     });
 
     it('counts a source the editor fails on as an invalid file', async () => {
@@ -157,7 +167,7 @@ describe('schema import', () => {
       ]);
 
       expect(names(store)).toEqual(['shop']);
-      expect(store.get(importNoticeAtom)).toMatchObject({
+      expect(noticeOf(store)).toMatchObject({
         message: 'Imported 1 schema · Skipped 1 invalid file',
         tone: 'warning',
       });
@@ -239,7 +249,7 @@ describe('schema import', () => {
       expect(store.get(importingFilesAtom)).toBe(false);
       expect(convertSource).toHaveBeenCalledTimes(1);
       expect(names(store)).toEqual(['shop']);
-      expect(store.get(importNoticeAtom)?.message).toBe('Imported 1 schema');
+      expect(noticeOf(store)?.message).toBe('Imported 1 schema');
     });
 
     it('takes files again once the import before has ended', async () => {
@@ -284,7 +294,7 @@ describe('schema import', () => {
 
     expect(text).not.toHaveBeenCalled();
     expect(names(store)).toEqual(['shop']);
-    expect(store.get(importNoticeAtom)).toMatchObject({
+    expect(noticeOf(store)).toMatchObject({
       message: 'Imported 1 schema · Skipped 1 file over 64 MB',
       tone: 'warning',
     });
@@ -315,7 +325,7 @@ describe('schema import', () => {
     });
 
     expect(reasons).toEqual([]);
-    expect(store.get(importNoticeAtom)).toMatchObject({
+    expect(noticeOf(store)).toMatchObject({
       message: 'Import failed',
       tone: 'warning',
     });
@@ -356,6 +366,18 @@ describe('schema import', () => {
     expect(store.get(selectedSchemaIdAtom)).toBe(stored[0].id);
   });
 
+  it('names the sample and reads its notice in the language shown', async () => {
+    store.set(i18nAtom, createI18n('ko-KR', koKR));
+    const { result } = renderHook(useOpenSample, store);
+
+    await result.current();
+
+    expect(names(store)).toEqual(['서점 샘플']);
+    expect(store.get(importNoticeAtom)?.message(store.get(i18nAtom))).toBe(
+      '스키마 1개 가져옴'
+    );
+  });
+
   describe('backup export', () => {
     it('downloads every schema', async () => {
       service.exportSchemaEntities = async () => [
@@ -382,7 +404,7 @@ describe('schema import', () => {
 
       expect(reasons).toEqual([]);
       expect(downloadFile).not.toHaveBeenCalled();
-      expect(store.get(importNoticeAtom)).toMatchObject({
+      expect(noticeOf(store)).toMatchObject({
         message: 'Export failed',
         tone: 'warning',
       });

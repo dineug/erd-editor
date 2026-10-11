@@ -371,11 +371,11 @@ describe('LocalePicker', () => {
       await open();
 
       await keydown(row('en'), { key: 'ArrowDown' });
-      expect(active()).toBe(row('id-ID'));
-      expect(row('id-ID').tabIndex).toBe(0);
+      expect(active()).toBe(row('es-ES'));
+      expect(row('es-ES').tabIndex).toBe(0);
       expect(row('en').tabIndex).toBe(-1);
 
-      await keydown(row('id-ID'), { key: 'End' });
+      await keydown(row('es-ES'), { key: 'End' });
       expect(active()).toBe(row('ko-KR'));
 
       await keydown(row('ko-KR'), { key: 'ArrowDown' });

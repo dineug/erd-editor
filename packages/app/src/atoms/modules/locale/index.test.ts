@@ -113,3 +113,102 @@ describe('the display language atom', () => {
     expect(store.get(localeAtom)).toBe('system');
   });
 });
+
+describe('the display language shown', () => {
+  /** Stubs the browser's languages, read on init and on languagechange. */
+  function browserLanguages(languages: string[]) {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(languages);
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.doUnmock('@/i18n/messages');
+  });
+
+  it('loads a stored language before the first render and marks the page with it', async () => {
+    window.localStorage.setItem(KEY, JSON.stringify('ko-KR'));
+    const { i18nAtom, watchDisplayLanguage } = await loadModule();
+    const store = createStore();
+    const root = document.createElement('html');
+
+    const ready = watchDisplayLanguage(store, root);
+    expect(root.lang).toBe('en');
+
+    await ready;
+    expect(store.get(i18nAtom).t('sidebar.schemas')).toBe('스키마');
+    expect([root.lang, root.dir]).toEqual(['ko-KR', 'ltr']);
+  });
+
+  it('follows the browser while nothing is picked, right to left included', async () => {
+    browserLanguages(['nb', 'ar-EG']);
+    const { i18nAtom, watchDisplayLanguage } = await loadModule();
+    const store = createStore();
+    const root = document.createElement('html');
+
+    await watchDisplayLanguage(store, root);
+
+    expect(store.get(i18nAtom).locale).toBe('ar-SA');
+    expect([root.lang, root.dir]).toEqual(['ar-SA', 'rtl']);
+  });
+
+  it('switches on a pick and on a change of the browser language', async () => {
+    browserLanguages(['en-US']);
+    const { i18nAtom, localeAtom, watchDisplayLanguage } = await loadModule();
+    const store = createStore();
+    const root = document.createElement('html');
+    await watchDisplayLanguage(store, root);
+
+    store.set(localeAtom, 'ja-JP');
+    await vi.waitFor(() => expect(root.lang).toBe('ja-JP'));
+
+    store.set(localeAtom, 'system');
+    await vi.waitFor(() => expect(root.lang).toBe('en'));
+
+    browserLanguages(['de-AT']);
+    window.dispatchEvent(new Event('languagechange'));
+    await vi.waitFor(() => expect(store.get(i18nAtom).locale).toBe('de-DE'));
+  });
+
+  it('keeps the language asked for last when an earlier load lands after it', async () => {
+    const { i18nAtom, loadDisplayLanguage, localeAtom } = await loadModule();
+    const store = createStore();
+
+    store.set(localeAtom, 'ko-KR');
+    const earlier = loadDisplayLanguage(store);
+    store.set(localeAtom, 'en');
+    await earlier;
+
+    expect(store.get(i18nAtom).locale).toBe('en');
+  });
+
+  it('keeps what is shown when a dictionary fails to load', async () => {
+    const failure = new Error('chunk');
+    vi.doMock('@/i18n/messages', () => ({
+      loadMessages: () => Promise.reject(failure),
+    }));
+    const { i18nAtom, loadDisplayLanguage, localeAtom } = await loadModule();
+    const store = createStore();
+
+    store.set(localeAtom, 'fr-FR');
+
+    await expect(loadDisplayLanguage(store)).rejects.toBe(failure);
+    expect(store.get(i18nAtom).locale).toBe('en');
+  });
+
+  it('hands components the language, the one System stands for and a setter', async () => {
+    browserLanguages(['pt']);
+    const { useI18n, useSetLocalePreference, useSystemLocale } =
+      await loadModule();
+    const { result, unmount } = renderHook(
+      () => [useI18n(), useSystemLocale(), useSetLocalePreference()] as const,
+      createStore()
+    );
+
+    expect(result.current[0].locale).toBe('en');
+    expect(result.current[1]).toBe('pt-BR');
+
+    act(() => result.current[2]('sv-SE'));
+    expect(window.localStorage.getItem(KEY)).toBe('"sv-SE"');
+    unmount();
+  });
+});

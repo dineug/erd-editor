@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai';
 import { FileUp, LogOut } from 'lucide-react';
 import { useMemo } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { useNow } from '@/atoms/modules/schema';
 import { sidebarSashAtom } from '@/atoms/modules/sidebar-sash';
 import { authControl } from '@/components/gdrive/authControl';
@@ -11,6 +12,7 @@ import SidebarAppearance from '@/components/sidebar/sidebar-appearance/SidebarAp
 import SidebarGroups from '@/components/sidebar/sidebar-groups/SidebarGroups';
 import SidebarHeaderRow from '@/components/sidebar/sidebar-header-row/SidebarHeaderRow';
 import SidebarItemView from '@/components/sidebar/sidebar-item/sidebar-item-view/SidebarItemView';
+import SidebarLocale from '@/components/sidebar/sidebar-locale/SidebarLocale';
 import SidebarPolicyLinks from '@/components/sidebar/sidebar-policy-links/SidebarPolicyLinks';
 import SidebarSearch from '@/components/sidebar/sidebar-search/SidebarSearch';
 import SidebarShell from '@/components/sidebar/sidebar-shell/SidebarShell';
@@ -56,6 +58,8 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
   const openId = snapshot.controller?.fileId ?? null;
   const list = useSidebarList(entries, now, openId);
   const email = snapshot.token.account?.email ?? '';
+  const i18n = useI18n();
+  const { t } = i18n;
 
   const handleNewFile = (name: string) => {
     onAddingChange(false);
@@ -64,26 +68,26 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
 
   return (
     <SidebarShell
-      label="Drive files"
+      label={t('gdrive.sidebar.label')}
       open={sashState.open}
       header={
         <>
           <SidebarHeaderRow
-            addLabel="New file"
+            addLabel={t('gdrive.sidebar.newFile')}
             onAdd={() => onAddingChange(true)}
-            menuLabel="Import"
+            menuLabel={t('gdrive.sidebar.import')}
             menuItems={
               <DropdownMenu.Item
                 disabled={snapshot.importing}
                 onSelect={onImport}
               >
                 <FileUp size={16} />
-                Import files
+                {t('common.importFiles')}
               </DropdownMenu.Item>
             }
           />
           <SidebarSearch
-            label="Search files"
+            label={t('gdrive.sidebar.searchFiles')}
             value={list.query}
             onChange={list.setQuery}
             listRef={list.listRef}
@@ -100,8 +104,8 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
             size="2"
             variant="ghost"
             color="gray"
-            aria-label="Sign out"
-            title="Sign out"
+            aria-label={t('common.signOut')}
+            title={t('common.signOut')}
             onClick={() => void settleReported(session.signOut)()}
             {...authControl}
           >
@@ -110,7 +114,12 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
           <SidebarAppearance />
         </>
       }
-      legal={<SidebarPolicyLinks />}
+      legal={
+        <>
+          <SidebarPolicyLinks />
+          <SidebarLocale />
+        </>
+      }
     >
       <SidebarGroups
         groups={list.groups}
@@ -120,21 +129,21 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
           <>
             {adding ? (
               <SidebarAddItem
-                inputLabel="New file name"
-                inputPlaceholder="file name"
+                inputLabel={t('gdrive.sidebar.newFileName')}
+                inputPlaceholder={t('gdrive.sidebar.fileNamePlaceholder')}
                 onConfirm={handleNewFile}
                 onCancel={() => onAddingChange(false)}
               />
             ) : null}
             {snapshot.filesState === 'loading' && !entries.length ? (
               <Text css={styles.listNote} size="2" color="gray">
-                Loading files…
+                {t('gdrive.sidebar.loadingFiles')}
               </Text>
             ) : null}
             {snapshot.filesState === 'failed' ? (
               <Flex css={styles.listNote} direction="column" gap="2">
                 <Text size="2" color="gray">
-                  Couldn&apos;t load your files.
+                  {t('gdrive.sidebar.loadFailed')}
                 </Text>
                 <Button
                   size="2"
@@ -142,7 +151,7 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
                   color="gray"
                   onClick={() => void settleReported(session.refreshFiles)()}
                 >
-                  Try again
+                  {t('common.tryAgain')}
                 </Button>
               </Flex>
             ) : null}
@@ -153,9 +162,11 @@ const GdriveSidebar: React.FC<GdriveSidebarProps> = ({
             name={file.name}
             selected={file.id === openId}
             tabStop={file.id === list.tabStopId}
-            title={`Edited ${formatRelativeTime(file.updateAt, now)}`}
-            inputLabel="File name"
-            inputPlaceholder="file name"
+            title={t('common.edited', {
+              time: formatRelativeTime(file.updateAt, now, i18n),
+            })}
+            inputLabel={t('gdrive.sidebar.fileName')}
+            inputPlaceholder={t('gdrive.sidebar.fileNamePlaceholder')}
             renameDisabled={!file.canRename}
             onFocus={() => list.setFocusedId(file.id)}
             onSelect={() => session.openFile(file.id)}

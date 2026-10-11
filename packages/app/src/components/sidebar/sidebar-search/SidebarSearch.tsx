@@ -1,6 +1,7 @@
 import { TextField } from '@radix-ui/themes';
 import { Search } from 'lucide-react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { focusSchemaItem } from '@/components/sidebar/sidebar-item/sidebarItemFocus';
 
 interface SidebarSearchProps {
@@ -18,6 +19,7 @@ const SidebarSearch: React.FC<SidebarSearchProps> = ({
   onChange,
   listRef,
 }) => {
+  const { t } = useI18n();
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) return;
 
@@ -35,7 +37,7 @@ const SidebarSearch: React.FC<SidebarSearchProps> = ({
     <TextField.Root
       type="search"
       value={value}
-      placeholder="Search"
+      placeholder={t('common.search')}
       aria-label={label}
       onChange={event => onChange(event.target.value)}
       onKeyDown={handleKeyDown}

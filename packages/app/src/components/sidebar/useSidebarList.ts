@@ -1,6 +1,7 @@
 import type { DateTime } from 'luxon';
 import { useMemo, useRef, useState } from 'react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { filterSchemasByName, groupSchemasByDate } from '@/utils/schemaList';
 
 /** A row of a sidebar list: the list sorts and groups by updateAt. */
@@ -22,10 +23,11 @@ export function useSidebarList<T extends SidebarListEntity>(
   const [query, setQuery] = useState('');
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const i18n = useI18n();
 
   const groups = useMemo(
-    () => groupSchemasByDate(filterSchemasByName(entities, query), now),
-    [entities, query, now]
+    () => groupSchemasByDate(filterSchemasByName(entities, query), now, i18n),
+    [entities, query, now, i18n]
   );
   const noResults = query.trim() !== '' && groups.length === 0;
 

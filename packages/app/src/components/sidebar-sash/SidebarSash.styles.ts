@@ -8,10 +8,10 @@ export const sash = (open: boolean) => css`
   ${
     open
       ? css`
-          left: calc(260px - 5px / 2);
+          inset-inline-start: calc(260px - 5px / 2);
         `
       : css`
-          left: 0;
+          inset-inline-start: 0;
         `
   }
   width: 5px;
@@ -32,10 +32,10 @@ export const sash = (open: boolean) => css`
   }
 `;
 
-// Hangs off the strip's right edge, drawn like a ghost icon button.
+// Hangs off the strip's edge toward the viewer, drawn like a ghost icon button.
 export const icon = css`
   position: absolute;
-  left: 4px;
+  inset-inline-start: 4px;
   display: flex;
   align-items: center;
   justify-content: center;

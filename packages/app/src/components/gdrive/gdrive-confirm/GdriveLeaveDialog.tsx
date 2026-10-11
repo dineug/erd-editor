@@ -1,6 +1,7 @@
 import { AlertDialog, Button, Flex } from '@radix-ui/themes';
 import { Download } from 'lucide-react';
 
+import { useI18n } from '@/atoms/modules/locale';
 import { authControl } from '@/components/gdrive/authControl';
 import type { GdriveSession, LeaveRequest } from '@/services/gdrive';
 import { settleReported } from '@/utils/reportError';
@@ -16,6 +17,7 @@ const GdriveLeaveDialog: React.FC<GdriveLeaveDialogProps> = ({
   request,
 }) => {
   const signingOut = request.reason === 'sign-out';
+  const { t } = useI18n();
 
   return (
     <AlertDialog.Root
@@ -25,17 +27,18 @@ const GdriveLeaveDialog: React.FC<GdriveLeaveDialogProps> = ({
       }}
     >
       <AlertDialog.Content style={{ maxWidth: 460 }}>
-        <AlertDialog.Title>
-          Your latest changes aren&apos;t saved
-        </AlertDialog.Title>
+        <AlertDialog.Title>{t('gdrive.leave.title')}</AlertDialog.Title>
         <AlertDialog.Description size="2">
-          ERD Editor couldn&apos;t save them to Google Drive. Download them to
-          keep a copy, or {signingOut ? 'sign out' : 'leave'} and lose them.
+          {t(
+            signingOut
+              ? 'gdrive.leave.descriptionSignOut'
+              : 'gdrive.leave.description'
+          )}
         </AlertDialog.Description>
         <Flex gap="3" mt="4" justify="end" wrap="wrap">
           <AlertDialog.Cancel>
             <Button size="2" variant="soft" color="gray">
-              Stay
+              {t('gdrive.leave.stay')}
             </Button>
           </AlertDialog.Cancel>
           <Button
@@ -45,7 +48,11 @@ const GdriveLeaveDialog: React.FC<GdriveLeaveDialogProps> = ({
             onClick={() => void settleReported(session.leaveAnyway)()}
             {...(signingOut ? authControl : {})}
           >
-            {signingOut ? 'Sign out anyway' : 'Leave anyway'}
+            {t(
+              signingOut
+                ? 'gdrive.leave.signOutAnyway'
+                : 'gdrive.leave.leaveAnyway'
+            )}
           </Button>
           <Button
             size="2"
@@ -54,7 +61,7 @@ const GdriveLeaveDialog: React.FC<GdriveLeaveDialogProps> = ({
             onClick={() => session.downloadChanges()}
           >
             <Download size={16} />
-            Download my changes
+            {t('common.downloadMyChanges')}
           </Button>
         </Flex>
       </AlertDialog.Content>
