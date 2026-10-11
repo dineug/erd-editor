@@ -100,8 +100,8 @@ describe('parseThemeState', () => {
     ).toEqual({ ...DEFAULT_THEME, grayColor: 'sand' });
   });
 
-  it('defaults to dark, the look every existing user has', () => {
-    expect(DEFAULT_THEME.appearance).toBe('dark');
+  it('defaults to system, as the display language does', () => {
+    expect(DEFAULT_THEME.appearance).toBe('system');
   });
 });
 
@@ -324,10 +324,16 @@ describe('index.html pre-paint script', () => {
     }
   );
 
-  it('keeps dark when storage is blocked', () => {
-    const root = runScript(new Error('SecurityError'), false);
+  it.each([
+    [true, 'dark'],
+    [false, 'light'],
+  ])(
+    'follows a dark system %s when storage is blocked',
+    (systemDark, appearance) => {
+      const root = runScript(new Error('SecurityError'), systemDark);
 
-    expect([...root.classList]).toEqual(['dark-theme']);
-    expect(root.style.colorScheme).toBe('dark');
-  });
+      expect([...root.classList]).toEqual([`${appearance}-theme`]);
+      expect(root.style.colorScheme).toBe(appearance);
+    }
+  );
 });
