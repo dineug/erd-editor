@@ -383,6 +383,8 @@ export const itIT = {
   'mapColumns.referencedColumn': 'Colonna referenziata',
   'mapColumns.foreignKeyColumn': 'Colonna chiave esterna',
   'mapColumns.pickColumn': 'Scegliere una colonna',
+  'mapColumns.pickEveryColumn':
+    'Scegliere una colonna chiave esterna per ogni colonna referenziata',
   'mapColumns.newColumn': 'Nuova colonna: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · in uso',

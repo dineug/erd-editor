@@ -380,6 +380,8 @@ export const deDE = {
   'mapColumns.referencedColumn': 'Referenzierte Spalte',
   'mapColumns.foreignKeyColumn': 'Fremdschlüsselspalte',
   'mapColumns.pickColumn': 'Spalte auswählen',
+  'mapColumns.pickEveryColumn':
+    'Wählen Sie für jede referenzierte Spalte eine Fremdschlüsselspalte aus',
   'mapColumns.newColumn': 'Neue Spalte: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · bereits verwendet',

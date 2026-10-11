@@ -369,6 +369,8 @@ export const svSE = {
   'mapColumns.referencedColumn': 'Refererad kolumn',
   'mapColumns.foreignKeyColumn': 'Sekundärnyckelkolumn',
   'mapColumns.pickColumn': 'Välj en kolumn',
+  'mapColumns.pickEveryColumn':
+    'Välj en sekundärnyckelkolumn för varje refererad kolumn',
   'mapColumns.newColumn': 'Ny kolumn: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · används',

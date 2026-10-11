@@ -349,6 +349,7 @@ export const zhCN = {
   'mapColumns.referencedColumn': '被引用列',
   'mapColumns.foreignKeyColumn': '外键列',
   'mapColumns.pickColumn': '选择列',
+  'mapColumns.pickEveryColumn': '请为每个被引用列选择一个外键列',
   'mapColumns.newColumn': '新列：{name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · 已使用',

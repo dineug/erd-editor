@@ -387,6 +387,8 @@ export const ukUA = {
   'mapColumns.referencedColumn': 'Цільовий стовпець',
   'mapColumns.foreignKeyColumn': 'Стовпець зовнішнього ключа',
   'mapColumns.pickColumn': 'Виберіть стовпець',
+  'mapColumns.pickEveryColumn':
+    'Виберіть стовпець зовнішнього ключа для кожного цільового стовпця',
   'mapColumns.newColumn': 'Новий стовпець: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · уже використовується',

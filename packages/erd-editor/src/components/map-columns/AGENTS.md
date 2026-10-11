@@ -78,6 +78,13 @@
 - **Built from the document on every render.** So the dialog follows a peer's edit and keeps what the reader picked. It says when the relationship it edits changed meanwhile.
 - **It closes once what it maps is gone.** It closes with a toast once a table or the relationship it maps is gone.
 
+### The layout
+
+- **The layout follows the owner decisions of 2026-10-11.** The box is 600 px at most, with the editor's `x` tool beside the title (`src/components/AGENTS.md`, Closing a dialog or panel).
+- **Each side is headed by its table.** The two headings carry `table-2`, the table's name and the side's role, and an arrow stands between a parent column and its list. The arrow points from the parent to the list, leftwards under a right-to-left language. Stacked, the headings go and the arrow leads the list under its parent.
+- **A type note stands under the list it is about.** It is the child column's: `refresh-cw` in the accent marks the type the mapping writes, `triangle-alert` in `--map-columns-error` a type it leaves differing.
+- **An empty row says what keeps Map off.** With no other line to show, a row left to pick shows `mapColumns.pickEveryColumn`. A disabled Map or Save turns gray, so it never reads as Cancel beside it.
+
 ### Text and direction
 
 - **Its own text is `mapColumns.*`.** The keys are in `src/i18n/messages/en/mapColumns.ts`, the buttons' titles and the menu row included.

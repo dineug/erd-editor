@@ -383,6 +383,8 @@ export const slSI = {
   'mapColumns.referencedColumn': 'Ciljni stolpec',
   'mapColumns.foreignKeyColumn': 'Stolpec tujega ključa',
   'mapColumns.pickColumn': 'Izberite stolpec',
+  'mapColumns.pickEveryColumn':
+    'Za vsak ciljni stolpec izberite stolpec tujega ključa',
   'mapColumns.newColumn': 'Nov stolpec: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · v uporabi',

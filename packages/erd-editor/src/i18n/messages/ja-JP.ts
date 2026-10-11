@@ -369,6 +369,8 @@ export const jaJP = {
   'mapColumns.referencedColumn': '参照される列',
   'mapColumns.foreignKeyColumn': '外部キー列',
   'mapColumns.pickColumn': '列を選択',
+  'mapColumns.pickEveryColumn':
+    '参照される列ごとに外部キー列を選択してください',
   'mapColumns.newColumn': '新しい列: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · 使用中',

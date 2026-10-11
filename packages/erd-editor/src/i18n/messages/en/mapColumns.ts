@@ -15,6 +15,8 @@ export const mapColumns = {
   'mapColumns.referencedColumn': 'Referenced column',
   'mapColumns.foreignKeyColumn': 'Foreign key column',
   'mapColumns.pickColumn': 'Pick a column',
+  'mapColumns.pickEveryColumn':
+    'Pick a foreign key column for every referenced column',
   'mapColumns.newColumn': 'New column: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · in use',

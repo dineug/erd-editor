@@ -174,6 +174,25 @@ describe('LocalePicker', () => {
       });
     });
 
+    it('closes on its close button, named for the stop key, and hands the keyboard back', async () => {
+      await setup();
+      await open();
+      focusEvents = 0;
+      const close = panel()!.querySelector<HTMLButtonElement>(
+        '.locale-picker-close'
+      )!;
+
+      expect(close.getAttribute('aria-label')).toBe('Close');
+      expect(close.getAttribute('title')).toBe('Close (ESC)');
+
+      close.click();
+      await flush();
+
+      expect(isOpen()).toBe(false);
+      expect(panel()).toBeNull();
+      expect(focusEvents).toBe(1);
+    });
+
     it('closes on the stop shortcut and hands the keyboard back', async () => {
       await setup();
       await open();

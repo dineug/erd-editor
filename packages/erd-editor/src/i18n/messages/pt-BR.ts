@@ -385,6 +385,8 @@ export const ptBR = {
   'mapColumns.referencedColumn': 'Coluna referenciada',
   'mapColumns.foreignKeyColumn': 'Coluna de chave estrangeira',
   'mapColumns.pickColumn': 'Escolha uma coluna',
+  'mapColumns.pickEveryColumn':
+    'Escolha uma coluna de chave estrangeira para cada coluna referenciada',
   'mapColumns.newColumn': 'Nova coluna: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · em uso',

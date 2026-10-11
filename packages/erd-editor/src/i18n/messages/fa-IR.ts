@@ -368,6 +368,8 @@ export const faIR = {
   'mapColumns.referencedColumn': 'ستون مرجع',
   'mapColumns.foreignKeyColumn': 'ستون کلید خارجی',
   'mapColumns.pickColumn': 'یک ستون انتخاب کنید',
+  'mapColumns.pickEveryColumn':
+    'برای هر ستون مرجع، یک ستون کلید خارجی انتخاب کنید',
   'mapColumns.newColumn': 'ستون جدید: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · در حال استفاده',

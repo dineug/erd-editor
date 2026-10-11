@@ -33,6 +33,7 @@ import {
   KeyBindingNameList,
   matchesShortcut,
   PANEL_PASSING_BINDINGS,
+  toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
 
 import * as styles from './LocalePicker.styles';
@@ -226,11 +227,27 @@ const LocalePicker: FC<LocalePickerProps> = (props, ctx) => {
     if (!isOpen()) return null;
 
     const { t } = i18n.value;
+    const { keyBindingMap } = app.value;
     const system = localeInfoOf(props.systemLocale);
 
     return (
       <div class={['locale-picker', styles.root]} on:keydown={handleKeydown}>
-        <div class={styles.title}>{t('common.displayLanguage')}</div>
+        <div class={styles.header}>
+          <div class={styles.title}>{t('common.displayLanguage')}</div>
+          <button
+            class={['locale-picker-close', styles.close]}
+            type="button"
+            aria-label={t('common.close')}
+            title={toShortcutTitle(
+              keyBindingMap,
+              t('common.close'),
+              KeyBindingName.stop
+            )}
+            on:click={close}
+          >
+            <Icon name="x" size={14} />
+          </button>
+        </div>
         <div
           use:ref={ref(list)}
           class={styles.list}

@@ -57,6 +57,11 @@
 - **Find and Replace draws `text-search`.** The command draws it wherever it shows: the toolbar button, the context menu and the palette row (an owner decision). The panel's own Replace button keeps `replace`.
 - **Remove a glyph from `icons.ts` when unused.** A glyph that goes out of use leaves `primitives/icon/icons.ts`, and the bundle, with it. `primitives/icon/icons.test.ts` fails on a registered icon no module names.
 
+### Closing a dialog or panel
+
+- **Each one closes on the editor's `x` tool.** Export image, Map Columns, Table Properties, Find and Replace, the theme builder and the locale picker carry the 26 px `x` tool at the end of their title row (an owner decision of 2026-10-11 for Map Columns, the theme builder and the locale picker). It is named `common.close` with the stop key in its title, closes as Escape does and hands the keyboard back with `focusEvent`.
+- **A panel that stops no key keeps Space and Enter on its button.** The theme builder stops neither, so its button keeps both from the editor root, whose hand tool binding would cancel the press and whose `edit` binding would open a focused cell. Table Properties keeps Space the same way.
+
 ### Toasts
 
 - **A toast's one line is its title.** `primitives/toast/Toast.tsx` takes a second line as its description, so every toast reads in one size whatever it reports.

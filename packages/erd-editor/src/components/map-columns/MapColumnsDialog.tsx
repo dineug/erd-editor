@@ -36,7 +36,7 @@ export type MapColumnsDialogProps = {
   isDarkMode: boolean;
 };
 
-const DIALOG_MAX_WIDTH = 480;
+const DIALOG_MAX_WIDTH = 600;
 
 /** The toast a removed table closes the dialog with, read where it renders, its unnamed too. */
 const TableRemovedText: FC<{ name: string }> = (props, ctx) => {

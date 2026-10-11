@@ -386,6 +386,7 @@ export const arSA = {
   'mapColumns.referencedColumn': 'العمود المُشار إليه',
   'mapColumns.foreignKeyColumn': 'عمود المفتاح الخارجي',
   'mapColumns.pickColumn': 'اختر عمودًا',
+  'mapColumns.pickEveryColumn': 'اختر عمود مفتاح خارجي لكل عمود مُشار إليه',
   'mapColumns.newColumn': 'عمود جديد: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · قيد الاستخدام',

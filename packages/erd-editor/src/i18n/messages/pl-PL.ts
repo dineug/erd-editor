@@ -384,6 +384,8 @@ export const plPL = {
   'mapColumns.referencedColumn': 'Kolumna docelowa',
   'mapColumns.foreignKeyColumn': 'Kolumna klucza obcego',
   'mapColumns.pickColumn': 'Wybierz kolumnę',
+  'mapColumns.pickEveryColumn':
+    'Wybierz kolumnę klucza obcego dla każdej kolumny docelowej',
   'mapColumns.newColumn': 'Nowa kolumna: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · w użyciu',

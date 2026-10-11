@@ -382,6 +382,8 @@ export const skSK = {
   'mapColumns.referencedColumn': 'Cieľový stĺpec',
   'mapColumns.foreignKeyColumn': 'Stĺpec cudzieho kľúča',
   'mapColumns.pickColumn': 'Vyberte stĺpec',
+  'mapColumns.pickEveryColumn':
+    'Pre každý cieľový stĺpec vyberte stĺpec cudzieho kľúča',
   'mapColumns.newColumn': 'Nový stĺpec: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · používa sa',
