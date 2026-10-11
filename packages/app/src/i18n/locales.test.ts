@@ -11,12 +11,16 @@ import {
 import { LOADERS } from '@/i18n/messages';
 
 describe('LOCALES', () => {
-  it('lists English first, then every language with a dictionary, once each', () => {
-    expect(LocaleCodeList[0]).toBe('en');
+  it('lists every language with a dictionary and English, once each', () => {
     expect(new Set(LocaleCodeList).size).toBe(LocaleCodeList.length);
     expect([...LocaleCodeList].sort()).toEqual(
       ['en', ...Object.keys(LOADERS)].sort()
     );
+  });
+
+  it('lists them in the order of their own names, English among them', () => {
+    const labels = LOCALES.map(({ label }) => label);
+    expect(labels).toEqual([...labels].sort((a, b) => (a > b ? 1 : -1)));
   });
 
   it('names each language in itself', () => {

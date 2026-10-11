@@ -91,7 +91,7 @@ describe('LOCALES', () => {
   it('lists auto, then every language webview-bridge names, in its order', () => {
     expect(LOCALES).toEqual(['auto', ...Object.keys(LocaleLabel)]);
     expect(LOCALES).toHaveLength(26);
-    expect(LOCALES.slice(0, 3)).toEqual(['auto', 'en', 'id-ID']);
+    expect(LOCALES.slice(0, 4)).toEqual(['auto', 'id-ID', 'de-DE', 'en']);
     expect(LOCALES.at(-1)).toBe('ko-KR');
     for (const locale of LOCALES) {
       expect(readSettings({ locale }).locale).toBe(locale);

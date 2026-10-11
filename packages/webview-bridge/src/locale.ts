@@ -1,11 +1,12 @@
 /**
  * Every display language the editor offers, code to native name, in its
- * picker's order: English, then the rest by name. Hosts list it after Auto.
+ * picker's order: each by its own name, English among them. Hosts list it
+ * after Auto.
  */
 export const LocaleLabel = {
-  en: 'English',
   'id-ID': 'Bahasa Indonesia',
   'de-DE': 'Deutsch',
+  en: 'English',
   'es-ES': 'Español',
   'eu-ES': 'Euskara',
   'fr-FR': 'Français',

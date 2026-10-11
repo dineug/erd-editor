@@ -9,15 +9,17 @@ export type LocaleInfo = {
   readonly rtl?: true;
 };
 
+const ENGLISH = { code: 'en', label: 'English' } as const;
+
 /**
  * The editor's display languages in its picker's order, copied since the editor
  * exports their type alone. The codes are its LocaleCode, and every code but
  * English needs a dictionary in messages/index.ts, so tsc holds the two lists.
  */
 export const LOCALES = [
-  { code: 'en', label: 'English' },
   { code: 'id-ID', label: 'Bahasa Indonesia' },
   { code: 'de-DE', label: 'Deutsch' },
+  ENGLISH,
   { code: 'es-ES', label: 'Español' },
   { code: 'eu-ES', label: 'Euskara' },
   { code: 'fr-FR', label: 'Français' },
@@ -57,7 +59,7 @@ export const isLocaleCode = (value: string): value is LocaleCode =>
   LocaleInfoMap.has(value as LocaleCode);
 
 export function localeInfoOf(code: LocaleCode): LocaleInfo {
-  return LocaleInfoMap.get(code) ?? LOCALES[0];
+  return LocaleInfoMap.get(code) ?? ENGLISH;
 }
 
 export function directionOf(code: LocaleCode): TextDirection {
