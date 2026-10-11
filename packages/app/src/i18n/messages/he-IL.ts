@@ -11,7 +11,7 @@ export const heIL = {
   'common.search': 'חיפוש',
   'common.rename': 'שינוי שם',
   'common.importFiles': 'ייבוא קבצים',
-  'common.signOut': 'יציאה',
+  'common.signOut': 'התנתקות',
   'common.downloadMyChanges': 'הורדת השינויים שלי',
   'common.edited': 'נערך {time}',
   'common.system': 'מערכת',
@@ -36,14 +36,14 @@ export const heIL = {
   'time.previous7Days': '7 הימים האחרונים',
   'time.previous30Days': '30 הימים האחרונים',
 
-  'sidebar.schemas': 'סכמות',
-  'sidebar.newSchema': 'סכמה חדשה',
+  'sidebar.schemas': 'סכימות',
+  'sidebar.newSchema': 'סכימה חדשה',
   'sidebar.importAndExport': 'ייבוא וייצוא',
   'sidebar.exportBackup': 'ייצוא גיבוי',
-  'sidebar.searchSchemas': 'חיפוש סכמות',
-  'sidebar.newSchemaName': 'שם הסכמה החדשה',
-  'sidebar.schemaName': 'שם הסכמה',
-  'sidebar.schemaNamePlaceholder': 'שם הסכמה',
+  'sidebar.searchSchemas': 'חיפוש סכימות',
+  'sidebar.newSchemaName': 'שם הסכימה החדשה',
+  'sidebar.schemaName': 'שם הסכימה',
+  'sidebar.schemaNamePlaceholder': 'שם הסכימה',
   'sidebar.duplicate': 'שכפול',
   'sidebar.moveToTrash': 'העברה לאשפה',
   'sidebar.actionsFor': 'פעולות עבור {name}',
@@ -52,11 +52,11 @@ export const heIL = {
   'trash.button': 'אשפה ({count})',
   'trash.title': 'אשפה',
   'trash.description': {
-    one: 'סכמות באשפה נמחקות לצמיתות אחרי יום {count}.',
-    two: 'סכמות באשפה נמחקות לצמיתות אחרי {count} ימים.',
-    other: 'סכמות באשפה נמחקות לצמיתות אחרי {count} ימים.',
+    one: 'סכימות באשפה נמחקות לצמיתות אחרי יום {count}.',
+    two: 'סכימות באשפה נמחקות לצמיתות אחרי {count} ימים.',
+    other: 'סכימות באשפה נמחקות לצמיתות אחרי {count} ימים.',
   },
-  'trash.listLabel': 'סכמות באשפה',
+  'trash.listLabel': 'סכימות באשפה',
   'trash.deleted': 'נמחק {time}',
   'trash.deletesToday': 'יימחק היום',
   'trash.deletesTomorrow': 'יימחק מחר',
@@ -72,9 +72,9 @@ export const heIL = {
   'trash.empty': 'האשפה ריקה.',
   'trash.emptyTrash': 'ריקון האשפה',
   'trash.emptyConfirm': {
-    one: 'למחוק לצמיתות סכמה {count}? אי אפשר לבטל את הפעולה.',
-    two: 'למחוק לצמיתות {count} סכמות? אי אפשר לבטל את הפעולה.',
-    other: 'למחוק לצמיתות {count} סכמות? אי אפשר לבטל את הפעולה.',
+    one: 'למחוק לצמיתות סכימה {count}? אי אפשר לבטל את הפעולה.',
+    two: 'למחוק לצמיתות {count} סכימות? אי אפשר לבטל את הפעולה.',
+    other: 'למחוק לצמיתות {count} סכימות? אי אפשר לבטל את הפעולה.',
   },
 
   'collaboration.for': 'שיתוף פעולה ב-{name}',
@@ -93,22 +93,22 @@ export const heIL = {
   'collaboration.startSession': 'התחלת סשן',
   'collaboration.stopSession': 'עצירת הסשן',
 
-  'viewer.noSchemaOpen': 'אין סכמה פתוחה',
+  'viewer.noSchemaOpen': 'אין סכימה פתוחה',
   'viewer.emptyHint':
-    'אפשר לבחור סכמה בסרגל הצד או להתחיל חדשה כאן. אפשר גם לשחרר קבצים בכל מקום כדי לייבא אותם.',
+    'אפשר לבחור סכימה בסרגל הצד או להתחיל חדשה כאן. אפשר גם לשחרר קבצים בכל מקום כדי לייבא אותם.',
   'viewer.openSample': 'פתיחת דוגמה',
   'viewer.sampleName': 'דוגמת חנות ספרים',
 
   'drop.title': 'שחררו כדי לייבא',
   'drop.formats':
-    'גיבויים, מסמכי .erd, .vuerd ו-.json, SQL, DBML, AML ו-GraphQL',
+    'גיבויים, SQL, DBML, AML, GraphQL ומסמכי ERD: .erd, .vuerd, .json',
   'drop.importing': 'מייבא קבצים…',
   'drop.importingHint': 'אפשר לשחרר עוד אחרי שהייבוא הזה יסתיים',
 
   'import.imported': {
-    one: 'יובאה סכמה {count}',
-    two: 'יובאו {count} סכמות',
-    other: 'יובאו {count} סכמות',
+    one: 'יובאה סכימה {count}',
+    two: 'יובאו {count} סכימות',
+    other: 'יובאו {count} סכימות',
   },
   'import.skippedInvalidFiles': {
     one: 'דולג על קובץ לא תקין {count}',
@@ -116,9 +116,9 @@ export const heIL = {
     other: 'דולג על {count} קבצים לא תקינים',
   },
   'import.skippedInvalidSchemas': {
-    one: 'דולג על סכמה לא תקינה {count}',
-    two: 'דולג על {count} סכמות לא תקינות',
-    other: 'דולג על {count} סכמות לא תקינות',
+    one: 'דולג על סכימה לא תקינה {count}',
+    two: 'דולג על {count} סכימות לא תקינות',
+    other: 'דולג על {count} סכימות לא תקינות',
   },
   'import.skippedOversized': {
     one: 'דולג על קובץ {count} שגדול מ-{size} MB',
@@ -133,7 +133,7 @@ export const heIL = {
   'update.updatedElsewhere':
     'האפליקציה עודכנה בכרטיסייה אחרת — יש לטעון מחדש כדי לסיים.',
 
-  'live.invalidToken': 'אסימון השיתוף לא תקין.',
+  'live.invalidToken': 'קישור השיתוף לא תקין.',
   'live.hostNotFound': 'המארח לא נמצא.',
   'live.refresh': 'רענון',
   'live.hostStopped': 'המארח עצר את הסשן.',
@@ -240,7 +240,7 @@ export const heIL = {
   'gdrive.status.saving': 'שומר…',
   'gdrive.status.failed': 'השמירה נכשלה',
   'gdrive.status.conflict': 'השתנה ב-Google Drive',
-  'gdrive.status.unconfirmed': 'לא ניתן לאשר את השמירה האחרונה',
+  'gdrive.status.unconfirmed': 'לא ניתן לאמת את השמירה האחרונה',
   'gdrive.status.paused': 'מושהה עד ש-Google יתחבר שוב',
   'gdrive.status.deleted': 'נמחק ב-Google Drive',
   'gdrive.status.readonly': 'צפייה בלבד',
@@ -251,7 +251,7 @@ export const heIL = {
   'gdrive.banner.conflict':
     'הקובץ הזה השתנה ב-Google Drive, ולכן השמירה נעצרה. השינויים שלך עדיין כאן.',
   'gdrive.banner.unconfirmed':
-    'לא ניתן לאשר את השמירה האחרונה, ולכן השמירה נעצרה. השינויים שלך עדיין כאן.',
+    'לא ניתן לאמת את השמירה האחרונה, ולכן השמירה נעצרה. השינויים שלך עדיין כאן.',
   'gdrive.banner.deleted':
     'הקובץ הזה נמחק או הועבר לאשפה ב-Google Drive, ולכן השמירה נעצרה.',
   'gdrive.banner.readonly':
@@ -261,7 +261,7 @@ export const heIL = {
   'gdrive.banner.leaderNotResponding': 'הכרטיסייה ששומרת את הקובץ לא מגיבה.',
   'gdrive.banner.openerNotResponding': 'הכרטיסייה שפתחה את הקובץ לא מגיבה.',
   'gdrive.banner.takeOver': 'לקיחת אחריות על השמירה',
-  'gdrive.banner.openAndTakeOver': 'פתיחה מ-Drive ולקיחת אחריות',
+  'gdrive.banner.openAndTakeOver': 'פתיחה מ-Drive ולקיחת אחריות על השמירה',
   'gdrive.banner.popupBlocked':
     'הדפדפן חסם את החלון של Google. יש לאפשר חלונות קופצים לאתר הזה ואז להתחבר מחדש.',
   'gdrive.banner.reconnectFailed': 'Google לא התחבר מחדש. יש לנסות שוב.',
@@ -274,9 +274,9 @@ export const heIL = {
     'ERD Editor לא הצליח לשמור אותם ב-Google Drive. אפשר להוריד אותם כדי לשמור עותק, או לצאת ולאבד אותם.',
   'gdrive.leave.descriptionSignOut':
     'ERD Editor לא הצליח לשמור אותם ב-Google Drive. אפשר להוריד אותם כדי לשמור עותק, או להתנתק ולאבד אותם.',
-  'gdrive.leave.stay': 'להישאר',
-  'gdrive.leave.leaveAnyway': 'לצאת בכל זאת',
-  'gdrive.leave.signOutAnyway': 'להתנתק בכל זאת',
+  'gdrive.leave.stay': 'חזרה לקובץ',
+  'gdrive.leave.leaveAnyway': 'יציאה בכל זאת',
+  'gdrive.leave.signOutAnyway': 'התנתקות בכל זאת',
 
   'gdrive.create.title': 'קובץ חדש ב-Google Drive',
   'gdrive.create.inAppFolder': 'בתיקייה ERD Editor',
@@ -286,7 +286,7 @@ export const heIL = {
   'gdrive.create.untitled': 'ללא שם',
   'gdrive.create.savedAs': 'יישמר בשם {name}',
   'gdrive.create.folderRefused':
-    'ERD Editor לא יכול ליצור קבצים בתיקייה הזו. ליצור אותו בתיקייה ERD Editor במקום?',
+    'ERD Editor לא יכול ליצור קבצים בתיקייה הזו. ליצור את הקובץ בתיקייה ERD Editor במקום זאת?',
   'gdrive.create.failed': 'לא ניתן ליצור את הקובץ. יש לנסות שוב.',
   'gdrive.create.createInAppFolder': 'יצירה בתיקייה ERD Editor',
   'gdrive.create.create': 'יצירה',
@@ -323,5 +323,5 @@ export const heIL = {
   'gdrive.notice.signOutUnconfirmed':
     'התנתקת כאן. השרת של ERD Editor לא אישר זאת, ולכן הדפדפן הזה ישלים את ההתנתקות בפעם הבאה שיתחבר',
   'gdrive.notice.signOutNotRevoked':
-    'התנתקת כאן, אבל Google לא אישר שהגישה של ERD Editor הוסרה, ולכן ייתכן שהמכשירים האחרים שלך יישארו מחוברים עד שתסירו אותה ב-myaccount.google.com/permissions',
+    'התנתקת כאן, אבל Google לא אישר שהגישה של ERD Editor הוסרה, ולכן ייתכן שהמכשירים האחרים שלך יישארו מחוברים עד שמסירים אותה ב-myaccount.google.com/permissions',
 } satisfies Messages;

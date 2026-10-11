@@ -12,8 +12,8 @@ export const faIR = {
   'common.rename': 'تغییر نام',
   'common.importFiles': 'وارد کردن فایل‌ها',
   'common.signOut': 'خروج از حساب',
-  'common.downloadMyChanges': 'دانلود تغییراتم',
-  'common.edited': 'ویرایش‌شده {time}',
+  'common.downloadMyChanges': 'دانلود تغییرات من',
+  'common.edited': '{time} ویرایش شد',
   'common.system': 'سیستم',
   'common.displayLanguage': 'زبان نمایش',
   'common.theme': 'طرح زمینه',
@@ -39,15 +39,15 @@ export const faIR = {
   'sidebar.schemas': 'طرح‌واره‌ها',
   'sidebar.newSchema': 'طرح‌واره جدید',
   'sidebar.importAndExport': 'وارد کردن و صادر کردن',
-  'sidebar.exportBackup': 'صادر کردن پشتیبان',
+  'sidebar.exportBackup': 'صادر کردن نسخه پشتیبان',
   'sidebar.searchSchemas': 'جست‌وجوی طرح‌واره‌ها',
   'sidebar.newSchemaName': 'نام طرح‌واره جدید',
   'sidebar.schemaName': 'نام طرح‌واره',
   'sidebar.schemaNamePlaceholder': 'نام طرح‌واره',
   'sidebar.duplicate': 'تکثیر',
   'sidebar.moveToTrash': 'انتقال به سطل زباله',
-  'sidebar.actionsFor': 'کارهای {name}',
-  'sidebar.noResults': 'نتیجه‌ای نیست',
+  'sidebar.actionsFor': 'کنش‌های {name}',
+  'sidebar.noResults': 'نتیجه‌ای یافت نشد',
 
   'trash.button': 'سطل زباله ({count})',
   'trash.title': 'سطل زباله',
@@ -56,7 +56,7 @@ export const faIR = {
     other: 'طرح‌واره‌های سطل زباله پس از {count} روز برای همیشه حذف می‌شوند.',
   },
   'trash.listLabel': 'طرح‌واره‌های سطل زباله',
-  'trash.deleted': 'حذف‌شده {time}',
+  'trash.deleted': '{time} حذف شد',
   'trash.deletesToday': 'امروز حذف می‌شود',
   'trash.deletesTomorrow': 'فردا حذف می‌شود',
   'trash.deletesIn': {
@@ -97,9 +97,9 @@ export const faIR = {
 
   'drop.title': 'برای وارد کردن رها کنید',
   'drop.formats':
-    'پشتیبان‌ها، سندهای .erd و .vuerd و .json، و SQL و DBML و AML و GraphQL',
+    'نسخه‌های پشتیبان، سندهای ERD (.erd، .vuerd، .json)، و SQL و DBML و AML و GraphQL',
   'drop.importing': 'در حال وارد کردن فایل‌ها…',
-  'drop.importingHint': 'پس از پایان این وارد کردن، موارد بیشتری رها کنید',
+  'drop.importingHint': 'پس از پایان وارد کردن فعلی، فایل‌های بیشتری رها کنید',
 
   'import.imported': {
     one: '{count} طرح‌واره وارد شد',
@@ -125,7 +125,7 @@ export const faIR = {
   'update.updatedElsewhere':
     'برنامه در زبانه دیگری به‌روز شد — برای تکمیل، دوباره بارگذاری کنید.',
 
-  'live.invalidToken': 'توکن اشتراک‌گذاری نامعتبر است.',
+  'live.invalidToken': 'پیوند اشتراک‌گذاری نامعتبر است.',
   'live.hostNotFound': 'میزبان پیدا نشد.',
   'live.refresh': 'تازه‌سازی',
   'live.hostStopped': 'میزبان جلسه را متوقف کرد.',
@@ -157,7 +157,7 @@ export const faIR = {
   'gdrive.mismatch.showMyFiles': 'نمایش فایل‌های من',
   'gdrive.accountChanged.title': 'با حساب دیگری وارد شده‌اید',
   'gdrive.accountChanged.description':
-    'زبانه دیگری با حساب Google دیگری وارد شد، پس این زبانه متوقف شد. برای ادامه با آن حساب، آن را دوباره بارگذاری کنید.',
+    'زبانه دیگری با حساب Google دیگری وارد شد، پس این زبانه متوقف شد. برای ادامه با آن حساب، این زبانه را دوباره بارگذاری کنید.',
   'gdrive.unsaved.title': 'تغییرات شما ذخیره نشد',
   'gdrive.unsaved.description':
     '{name} تغییراتی از {email} دارد که در Google Drive نیست، و اکنون {account} وارد شده است. پیش از ادامه آن‌ها را دانلود کنید.',
@@ -168,20 +168,20 @@ export const faIR = {
     'ویرایشگر Google Drive در ERD Editor را در زبانه‌ای جداگانه باز کنید',
   'gdrive.framed.description': 'درون صفحه دیگری اجرا نمی‌شود.',
   'gdrive.framed.link': 'باز کردن در زبانه جدید',
-  'gdrive.notConfigured.title': 'یکپارچگی با Google Drive پیکربندی نشده است',
+  'gdrive.notConfigured.title': 'یکپارچه‌سازی با Google Drive پیکربندی نشده است',
   'gdrive.notConfigured.description':
     'این نسخه از ERD Editor کلاینت ورود Google ندارد.',
   'gdrive.unsupportedOrigin.title': 'Google Drive اینجا در دسترس نیست',
   'gdrive.unsupportedOrigin.description':
     'ورود با Google فقط در erd-editor.io کار می‌کند و این یک پیش‌نمایش است.',
 
-  'gdrive.signIn.title': 'فایل‌های ERD خود را در Google Drive باز کنید',
+  'gdrive.signIn.title': 'فایل‌های ERD خود را از Google Drive باز کنید',
   'gdrive.signIn.description':
     'ERD Editor فقط فایل‌هایی را باز و ذخیره می‌کند که با آن می‌سازید یا باز می‌کنید.',
   'gdrive.signIn.fallbackDescription':
     'سرور ورود ERD Editor شلوغ است، پس Google هر بار شما را برای یک ساعت وارد می‌کند.',
-  'gdrive.signIn.signIn': 'ورود با Google',
-  'gdrive.signIn.continue': 'ادامه با Google',
+  'gdrive.signIn.signIn': 'ورود به سیستم با Google',
+  'gdrive.signIn.continue': 'ادامه دادن با Google',
   'gdrive.signIn.waitingTitle': 'در انتظار ورود به Google…',
   'gdrive.signIn.waitingDescription':
     'ورود را در پنجره‌ای که Google باز کرد کامل کنید.',
@@ -212,7 +212,7 @@ export const faIR = {
   'gdrive.viewer.notDocumentHint':
     'ERD Editor نمودارهایی را باز می‌کند که خودش ذخیره کرده است. این فایل را همان‌طور که هست رها می‌کند و هرگز روی آن نمی‌نویسد.',
   'gdrive.viewer.googleNativeHint':
-    'سندها، برگه‌ها و پوشه‌های Google در Google Drive باز می‌شوند.',
+    'فایل‌های سندنگار Google، کاربرگ‌نگار Google و پوشه‌ها در Google Drive باز می‌شوند.',
   'gdrive.viewer.trashed': 'این فایل در سطل زباله است',
   'gdrive.viewer.trashedHint':
     'برای باز کردن آن در اینجا، آن را در Google Drive بازیابی کنید.',
@@ -223,7 +223,7 @@ export const faIR = {
     'شاید حذف شده باشد، یا این حساب Google نتواند آن را باز کند.',
   'gdrive.viewer.waitingToken': 'در انتظار Google',
   'gdrive.viewer.waitingTokenHint':
-    'وقتی جلسه Google شما برگردد، این فایل باز می‌شود.',
+    'وقتی جلسه Google شما دوباره برقرار شود، این فایل باز می‌شود.',
   'gdrive.viewer.failed': 'این فایل باز نشد',
   'gdrive.viewer.failedHint':
     'Google Drive پاسخ نداد. اتصال را بررسی کنید و دوباره تلاش کنید.',
@@ -259,7 +259,8 @@ export const faIR = {
   'gdrive.banner.openAndTakeOver': 'باز کردن از Drive و برعهده گرفتن',
   'gdrive.banner.popupBlocked':
     'مرورگر پنجره Google را مسدود کرد. پنجره‌های بازشو را برای این سایت مجاز کنید، سپس دوباره وصل شوید.',
-  'gdrive.banner.reconnectFailed': 'Google دوباره وصل نشد. دوباره تلاش کنید.',
+  'gdrive.banner.reconnectFailed':
+    'اتصال دوباره به Google برقرار نشد. دوباره تلاش کنید.',
   'gdrive.banner.sessionEnded':
     'جلسه Google شما پایان یافت، پس ذخیره متوقف شده است.',
   'gdrive.banner.sessionEndsSoon': 'جلسه Google شما به‌زودی پایان می‌یابد.',
@@ -284,16 +285,16 @@ export const faIR = {
   'gdrive.create.folderRefused':
     'ERD Editor نمی‌تواند در این پوشه فایل بسازد. به‌جای آن در پوشه ERD Editor ساخته شود؟',
   'gdrive.create.failed': 'فایل ساخته نشد. دوباره تلاش کنید.',
-  'gdrive.create.createInAppFolder': 'ساختن در پوشه ERD Editor',
-  'gdrive.create.create': 'ساختن',
+  'gdrive.create.createInAppFolder': 'ایجاد در پوشه ERD Editor',
+  'gdrive.create.create': 'ایجاد',
 
   'gdrive.import.imported': {
     one: '{count} فایل به Google Drive وارد شد',
     other: '{count} فایل به Google Drive وارد شد',
   },
   'gdrive.import.skippedBackups': {
-    one: '{count} پشتیبان رد شد: پشتیبان‌ها در برنامه محلی می‌مانند',
-    other: '{count} پشتیبان رد شد: پشتیبان‌ها در برنامه محلی می‌مانند',
+    one: '{count} نسخه پشتیبان رد شد: نسخه‌های پشتیبان در برنامه محلی می‌مانند',
+    other: '{count} نسخه پشتیبان رد شد: نسخه‌های پشتیبان در برنامه محلی می‌مانند',
   },
   'gdrive.import.uploadsFailed': {
     one: '{count} بارگذاری ناموفق بود',
@@ -304,7 +305,8 @@ export const faIR = {
     'Google Drive پیوندی فرستاد که ERD Editor نتوانست آن را بخواند',
   'gdrive.notice.renameFailed': 'نام فایل تغییر نکرد',
   'gdrive.notice.createFailed': 'فایل ساخته نشد',
-  'gdrive.notice.checkFailed': 'به Google Drive دسترسی نبود. دوباره تلاش کنید.',
+  'gdrive.notice.checkFailed':
+    'اتصال به Google Drive برقرار نشد. دوباره تلاش کنید.',
   'gdrive.notice.reloadFailed':
     'بارگذاری دوباره از Google Drive انجام نشد. دوباره تلاش کنید.',
   'gdrive.notice.reloadTrashed':
@@ -316,5 +318,5 @@ export const faIR = {
   'gdrive.notice.signOutUnconfirmed':
     'اینجا از حساب خارج شدید. سرور ERD Editor آن را تأیید نکرد، پس این مرورگر خروج را در اتصال بعدی کامل می‌کند',
   'gdrive.notice.signOutNotRevoked':
-    'اینجا از حساب خارج شدید، اما Google تأیید نکرد که دسترسی ERD Editor را برداشته است، پس ممکن است دستگاه‌های دیگرتان تا وقتی آن را در myaccount.google.com/permissions بردارید وارد بمانند',
+    'اینجا از حساب خارج شدید، اما Google تأیید نکرد که دسترسی ERD Editor را حذف کرده است، پس ممکن است دستگاه‌های دیگرتان تا زمانی که این دسترسی را در myaccount.google.com/permissions حذف نکنید، همچنان وارد حساب بمانند',
 } satisfies Messages;

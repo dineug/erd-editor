@@ -13,7 +13,7 @@ export const zhCN = {
   'common.importFiles': '导入文件',
   'common.signOut': '退出登录',
   'common.downloadMyChanges': '下载我的更改',
-  'common.edited': '编辑于{time}',
+  'common.edited': '{time}编辑',
   'common.system': '跟随系统',
   'common.displayLanguage': '显示语言',
   'common.theme': '主题',
@@ -36,14 +36,14 @@ export const zhCN = {
   'time.previous7Days': '过去 7 天',
   'time.previous30Days': '过去 30 天',
 
-  'sidebar.schemas': '模式',
-  'sidebar.newSchema': '新建模式',
+  'sidebar.schemas': '架构',
+  'sidebar.newSchema': '新建架构',
   'sidebar.importAndExport': '导入和导出',
   'sidebar.exportBackup': '导出备份',
-  'sidebar.searchSchemas': '搜索模式',
-  'sidebar.newSchemaName': '新模式名称',
-  'sidebar.schemaName': '模式名称',
-  'sidebar.schemaNamePlaceholder': '模式名称',
+  'sidebar.searchSchemas': '搜索架构',
+  'sidebar.newSchemaName': '新架构名称',
+  'sidebar.schemaName': '架构名称',
+  'sidebar.schemaNamePlaceholder': '架构名称',
   'sidebar.duplicate': '创建副本',
   'sidebar.moveToTrash': '移到回收站',
   'sidebar.actionsFor': '{name} 的操作',
@@ -51,19 +51,19 @@ export const zhCN = {
 
   'trash.button': '回收站 ({count})',
   'trash.title': '回收站',
-  'trash.description': { other: '回收站中的模式将在 {count} 天后永久删除。' },
-  'trash.listLabel': '回收站中的模式',
-  'trash.deleted': '删除于{time}',
-  'trash.deletesToday': '今天删除',
-  'trash.deletesTomorrow': '明天删除',
-  'trash.deletesIn': { other: '{count} 天后删除' },
+  'trash.description': { other: '回收站中的架构将在 {count} 天后永久删除。' },
+  'trash.listLabel': '回收站中的架构',
+  'trash.deleted': '{time}删除',
+  'trash.deletesToday': '将于今天永久删除',
+  'trash.deletesTomorrow': '将于明天永久删除',
+  'trash.deletesIn': { other: '将于 {count} 天后永久删除' },
   'trash.restore': '恢复',
   'trash.deletePermanently': '永久删除',
-  'trash.cannotBeUndone': '此操作无法撤消。',
+  'trash.cannotBeUndone': '此操作无法撤销。',
   'trash.delete': '删除',
   'trash.empty': '回收站是空的。',
   'trash.emptyTrash': '清空回收站',
-  'trash.emptyConfirm': { other: '永久删除 {count} 个模式？此操作无法撤消。' },
+  'trash.emptyConfirm': { other: '永久删除 {count} 个架构？此操作无法撤销。' },
 
   'collaboration.for': '{name} 的协作',
   'collaboration.guestsConnected': { other: '已连接 {count} 位访客' },
@@ -77,9 +77,9 @@ export const zhCN = {
   'collaboration.startSession': '开始会话',
   'collaboration.stopSession': '结束会话',
 
-  'viewer.noSchemaOpen': '没有打开的模式',
+  'viewer.noSchemaOpen': '没有打开的架构',
   'viewer.emptyHint':
-    '从侧边栏选择一个，或在这里新建。也可以将文件拖放到任意位置来导入。',
+    '从侧边栏选择一个架构，或在这里新建一个。也可以将文件拖放到任意位置来导入。',
   'viewer.openSample': '打开示例',
   'viewer.sampleName': '书店示例',
 
@@ -88,9 +88,9 @@ export const zhCN = {
   'drop.importing': '正在导入文件…',
   'drop.importingHint': '本次导入完成后可以继续拖放',
 
-  'import.imported': { other: '已导入 {count} 个模式' },
+  'import.imported': { other: '已导入 {count} 个架构' },
   'import.skippedInvalidFiles': { other: '已跳过 {count} 个无效文件' },
-  'import.skippedInvalidSchemas': { other: '已跳过 {count} 个无效模式' },
+  'import.skippedInvalidSchemas': { other: '已跳过 {count} 个无效架构' },
   'import.skippedOversized': {
     other: '已跳过 {count} 个超过 {size} MB 的文件',
   },
@@ -101,7 +101,7 @@ export const zhCN = {
   'update.available': 'ERD Editor 有新版本可用。',
   'update.updatedElsewhere': '应用已在另一个标签页中更新，请重新加载以完成。',
 
-  'live.invalidToken': '共享令牌无效。',
+  'live.invalidToken': '共享链接无效。',
   'live.hostNotFound': '找不到主持人。',
   'live.refresh': '刷新',
   'live.hostStopped': '主持人已结束会话。',
@@ -113,11 +113,11 @@ export const zhCN = {
   'live.showParticipants': '显示参与者',
   'live.hideParticipants': '隐藏参与者',
 
-  'gdrive.checkingSignIn': '正在检查你的 Google 登录…',
+  'gdrive.checkingSignIn': '正在检查你的 Google 登录状态…',
   'gdrive.anotherAccount': '另一个账号',
   'gdrive.offline.title': '你已离线',
   'gdrive.offline.description':
-    '恢复联网后，ERD Editor 会检查你的 Google 登录。',
+    '恢复联网后，ERD Editor 会自动检查你的 Google 登录状态。',
   'gdrive.scopeMissing.title': '未授予 Google 云端硬盘访问权限',
   'gdrive.scopeMissing.description':
     'ERD Editor 需要访问你用它创建或打开的文件。请重新登录并允许访问 Google 云端硬盘。',
@@ -148,7 +148,7 @@ export const zhCN = {
   'gdrive.unsupportedOrigin.description':
     'Google 登录仅在 erd-editor.io 上可用，而这里是预览版。',
 
-  'gdrive.signIn.title': '在 Google 云端硬盘中打开你的 ERD 文件',
+  'gdrive.signIn.title': '打开你在 Google 云端硬盘中的 ERD 文件',
   'gdrive.signIn.description':
     'ERD Editor 只打开和保存你用它创建或打开的文件。',
   'gdrive.signIn.fallbackDescription':
@@ -196,7 +196,7 @@ export const zhCN = {
   'gdrive.viewer.failed': '无法打开此文件',
   'gdrive.viewer.failedHint':
     'Google 云端硬盘没有响应。请检查网络连接，然后重试。',
-  'gdrive.viewer.savingBeforeLeave': '正在离开前保存…',
+  'gdrive.viewer.savingBeforeLeave': '离开前正在保存…',
 
   'gdrive.status.saved': '已保存到 Google 云端硬盘',
   'gdrive.status.saving': '正在保存…',
@@ -246,7 +246,7 @@ export const zhCN = {
   'gdrive.create.inHiddenFolder': '位置：ERD Editor 无法查看的文件夹',
   'gdrive.create.inFolder': '位置：文件夹“{name}”',
   'gdrive.create.untitled': '无标题',
-  'gdrive.create.savedAs': '另存为 {name}',
+  'gdrive.create.savedAs': '将保存为 {name}',
   'gdrive.create.folderRefused':
     'ERD Editor 无法在此文件夹中创建文件。改为在 ERD Editor 文件夹中创建吗？',
   'gdrive.create.failed': '无法创建文件。请重试。',
@@ -257,9 +257,9 @@ export const zhCN = {
     other: '已将 {count} 个文件导入 Google 云端硬盘',
   },
   'gdrive.import.skippedBackups': {
-    other: '已跳过 {count} 个备份：备份只保留在本地应用中',
+    other: '已跳过 {count} 个备份：备份只能导入本地应用',
   },
-  'gdrive.import.uploadsFailed': { other: '{count} 个上传失败' },
+  'gdrive.import.uploadsFailed': { other: '{count} 个文件上传失败' },
 
   'gdrive.notice.unreadableState':
     'ERD Editor 无法读取 Google 云端硬盘发送的链接',
@@ -274,7 +274,7 @@ export const zhCN = {
   'gdrive.notice.reloadNotDocument':
     '无法重新加载：Google 云端硬盘中的文件已不再是 ERD Editor 文档',
   'gdrive.notice.signOutUnconfirmed':
-    '已在此处退出登录。ERD Editor 的服务器未确认，因此此浏览器会在下次联网时完成退出',
+    '已在此处退出登录。ERD Editor 的服务器未确认，因此此浏览器会在下次联网时完成退出登录',
   'gdrive.notice.signOutNotRevoked':
     '已在此处退出登录，但 Google 未确认已移除 ERD Editor 的访问权限，因此在你于 myaccount.google.com/permissions 移除之前，你的其他设备可能仍保持登录',
 } satisfies Messages;

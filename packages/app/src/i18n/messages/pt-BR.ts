@@ -105,7 +105,7 @@ export const ptBR = {
   'drop.formats':
     'Backups, documentos .erd, .vuerd e .json, SQL, DBML, AML e GraphQL',
   'drop.importing': 'Importando arquivos…',
-  'drop.importingHint': 'Solte mais quando esta importação terminar',
+  'drop.importingHint': 'Solte mais arquivos quando esta importação terminar',
 
   'import.imported': {
     one: '{count} esquema importado',
@@ -135,13 +135,13 @@ export const ptBR = {
   'update.updatedElsewhere':
     'O app foi atualizado em outra guia — recarregue para concluir.',
 
-  'live.invalidToken': 'Token de compartilhamento inválido.',
+  'live.invalidToken': 'Link de compartilhamento inválido.',
   'live.hostNotFound': 'Anfitrião não encontrado.',
   'live.refresh': 'Atualizar',
   'live.hostStopped': 'O anfitrião encerrou a sessão.',
   'live.somethingWentWrong': 'Algo deu errado.',
   'live.lookingForHost': 'Procurando um anfitrião...',
-  'live.waitingForHost': 'Aguardando um anfitrião...',
+  'live.waitingForHost': 'Aguardando o anfitrião voltar...',
   'live.session': 'Sessão ao vivo',
   'live.inSession': {
     one: '{count} na sessão',
@@ -171,9 +171,9 @@ export const ptBR = {
     'Outra guia fez login em outra Conta do Google, então esta guia parou. Recarregue-a para continuar com essa conta.',
   'gdrive.unsaved.title': 'Suas alterações não foram salvas',
   'gdrive.unsaved.description':
-    '{name} tem alterações de {email} que não estão no Google Drive, e agora {account} está conectado. Baixe-as antes de continuar.',
+    '{name} tem alterações de {email} que não estão no Google Drive, e agora você está conectado com {account}. Baixe-as antes de continuar.',
   'gdrive.unsaved.descriptionUnnamed':
-    'O arquivo que você tinha aberto tem alterações de {email} que não estão no Google Drive, e agora {account} está conectado. Baixe-as antes de continuar.',
+    'O arquivo que você tinha aberto tem alterações de {email} que não estão no Google Drive, e agora você está conectado com {account}. Baixe-as antes de continuar.',
   'gdrive.unsaved.continueWithout': 'Continuar sem elas',
   'gdrive.framed.title':
     'Abra o editor do Google Drive do ERD Editor em uma guia própria',
@@ -187,7 +187,7 @@ export const ptBR = {
   'gdrive.unsupportedOrigin.description':
     'O login do Google só funciona em erd-editor.io, e esta é uma prévia.',
 
-  'gdrive.signIn.title': 'Abra seus arquivos ERD no Google Drive',
+  'gdrive.signIn.title': 'Abra seus arquivos ERD do Google Drive',
   'gdrive.signIn.description':
     'O ERD Editor abre e salva apenas os arquivos que você cria ou abre com ele.',
   'gdrive.signIn.fallbackDescription':
@@ -225,7 +225,7 @@ export const ptBR = {
   'gdrive.viewer.notDocumentHint':
     'O ERD Editor abre diagramas que ele mesmo salvou. Ele deixa este arquivo como está e nunca o substitui.',
   'gdrive.viewer.googleNativeHint':
-    'Documentos, Planilhas e pastas do Google abrem no Google Drive.',
+    'Documentos Google, Planilhas Google e pastas abrem no Google Drive.',
   'gdrive.viewer.trashed': 'Este arquivo está na lixeira',
   'gdrive.viewer.trashedHint': 'Restaure-o no Google Drive para abri-lo aqui.',
   'gdrive.viewer.tooLarge': 'Este arquivo é muito grande',
@@ -248,7 +248,7 @@ export const ptBR = {
   'gdrive.status.unconfirmed': 'Não foi possível confirmar o último salvamento',
   'gdrive.status.paused': 'Pausado até o Google se reconectar',
   'gdrive.status.deleted': 'Excluído no Google Drive',
-  'gdrive.status.readonly': 'Somente leitura',
+  'gdrive.status.readonly': 'Somente visualização',
   'gdrive.status.waitingLeader': 'Aguardando a guia que salva este arquivo',
   'gdrive.status.waitingSnapshot': 'Aguardando a guia que abriu este arquivo',
   'gdrive.status.scopeMissing': 'Sem acesso ao Google Drive',
@@ -272,7 +272,7 @@ export const ptBR = {
   'gdrive.banner.popupBlocked':
     'Seu navegador bloqueou a janela do Google. Permita pop-ups para este site e reconecte.',
   'gdrive.banner.reconnectFailed':
-    'O Google não se reconectou. Tente novamente.',
+    'Não foi possível reconectar o Google. Tente novamente.',
   'gdrive.banner.sessionEnded':
     'Sua sessão do Google terminou, então o salvamento está pausado.',
   'gdrive.banner.sessionEndsSoon': 'Sua sessão do Google termina em breve.',
@@ -294,7 +294,7 @@ export const ptBR = {
     'Em uma pasta que o ERD Editor não consegue ver',
   'gdrive.create.inFolder': 'Na pasta “{name}”',
   'gdrive.create.untitled': 'Sem título',
-  'gdrive.create.savedAs': 'Salvo como {name}',
+  'gdrive.create.savedAs': 'Será salvo como {name}',
   'gdrive.create.folderRefused':
     'O ERD Editor não pode criar arquivos nesta pasta. Criar na pasta ERD Editor?',
   'gdrive.create.failed': 'Não foi possível criar o arquivo. Tente novamente.',

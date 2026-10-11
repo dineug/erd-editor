@@ -87,7 +87,7 @@ export const nlNL = {
     'Deelnemers maken rechtstreeks verbinding via WebRTC en wisselen berichten uit met end-to-end-versleuteling.',
   'collaboration.nickname': 'Bijnaam',
   'collaboration.link': 'Link',
-  'collaboration.noOneJoined': 'Er heeft nog niemand anders meegedaan.',
+  'collaboration.noOneJoined': 'Er heeft zich nog niemand anders aangesloten.',
   'collaboration.startSession': 'Sessie starten',
   'collaboration.stopSession': 'Sessie stoppen',
 
@@ -127,13 +127,13 @@ export const nlNL = {
   'update.updatedElsewhere':
     'De app is in een ander tabblad bijgewerkt — laad opnieuw om af te ronden.',
 
-  'live.invalidToken': 'Ongeldige deeltoken.',
+  'live.invalidToken': 'Ongeldige deellink.',
   'live.hostNotFound': 'Host niet gevonden.',
   'live.refresh': 'Vernieuwen',
   'live.hostStopped': 'De host heeft de sessie gestopt.',
   'live.somethingWentWrong': 'Er is iets misgegaan.',
   'live.lookingForHost': 'Host zoeken...',
-  'live.waitingForHost': 'Wachten op een host...',
+  'live.waitingForHost': 'Wachten op de host...',
   'live.session': 'Livesessie',
   'live.inSession': {
     one: '{count} in de sessie',
@@ -142,11 +142,11 @@ export const nlNL = {
   'live.showParticipants': 'Deelnemers tonen',
   'live.hideParticipants': 'Deelnemers verbergen',
 
-  'gdrive.checkingSignIn': 'Je Google-aanmelding controleren…',
+  'gdrive.checkingSignIn': 'Controleren of je bij Google bent ingelogd…',
   'gdrive.anotherAccount': 'een ander account',
   'gdrive.offline.title': 'Je bent offline',
   'gdrive.offline.description':
-    'ERD Editor controleert je Google-aanmelding zodra je weer online bent.',
+    'Zodra je weer online bent, controleert ERD Editor of je bij Google bent ingelogd.',
   'gdrive.scopeMissing.title': 'Toegang tot Google Drive is niet verleend',
   'gdrive.scopeMissing.description':
     'ERD Editor heeft toegang nodig tot de bestanden die je ermee maakt of opent. Log opnieuw in en sta toegang tot Google Drive toe.',
@@ -156,7 +156,7 @@ export const nlNL = {
     'Je bent ingelogd als {email}. Schakel over naar het account waarmee Google Drive het opende, of ga verder met de bestanden van dit account.',
   'gdrive.mismatch.choose':
     'ERD Editor kon dat account niet vooraf selecteren, dus kies het wanneer Google erom vraagt.',
-  'gdrive.mismatch.switchAccount': 'Ander account',
+  'gdrive.mismatch.switchAccount': 'Account wisselen',
   'gdrive.mismatch.showMyFiles': 'Mijn bestanden tonen',
   'gdrive.accountChanged.title': 'Ingelogd met een ander account',
   'gdrive.accountChanged.description':
@@ -166,7 +166,7 @@ export const nlNL = {
     '{name} heeft wijzigingen van {email} die niet in Google Drive staan, en nu is {account} ingelogd. Download ze voordat je verdergaat.',
   'gdrive.unsaved.descriptionUnnamed':
     'Het bestand dat je open had heeft wijzigingen van {email} die niet in Google Drive staan, en nu is {account} ingelogd. Download ze voordat je verdergaat.',
-  'gdrive.unsaved.continueWithout': 'Doorgaan zonder',
+  'gdrive.unsaved.continueWithout': 'Doorgaan zonder de wijzigingen',
   'gdrive.framed.title':
     'Open de Google Drive-editor van ERD Editor in een eigen tabblad',
   'gdrive.framed.description': 'Hij werkt niet binnen een andere pagina.',
@@ -174,7 +174,7 @@ export const nlNL = {
   'gdrive.notConfigured.title':
     'Google Drive-integratie is niet geconfigureerd',
   'gdrive.notConfigured.description':
-    'Deze build van ERD Editor heeft geen Google-aanmeldclient.',
+    'Deze build van ERD Editor heeft geen Google-inlogclient.',
   'gdrive.unsupportedOrigin.title': 'Google Drive is hier niet beschikbaar',
   'gdrive.unsupportedOrigin.description':
     'Inloggen met Google werkt alleen op erd-editor.io, en dit is een voorbeeldversie.',
@@ -183,14 +183,14 @@ export const nlNL = {
   'gdrive.signIn.description':
     'ERD Editor opent en bewaart alleen de bestanden die je ermee maakt of opent.',
   'gdrive.signIn.fallbackDescription':
-    'De aanmeldserver van ERD Editor is druk, dus Google logt je telkens voor een uur in.',
+    'De inlogserver van ERD Editor is druk, dus Google logt je telkens voor een uur in.',
   'gdrive.signIn.signIn': 'Inloggen met Google',
   'gdrive.signIn.continue': 'Doorgaan met Google',
-  'gdrive.signIn.waitingTitle': 'Wachten op aanmelding bij Google…',
+  'gdrive.signIn.waitingTitle': 'Wachten tot je bij Google bent ingelogd…',
   'gdrive.signIn.waitingDescription':
     'Rond het inloggen af in het venster dat Google heeft geopend.',
   'gdrive.signIn.popupBlocked':
-    'Je browser heeft het aanmeldvenster geblokkeerd. Sta pop-ups toe voor deze site en probeer het opnieuw.',
+    'Je browser heeft het inlogvenster geblokkeerd. Sta pop-ups toe voor deze site en probeer het opnieuw.',
   'gdrive.signIn.failed':
     'Inloggen bij Google is niet afgerond. Probeer het opnieuw.',
   'gdrive.signIn.gisBlocked':
@@ -239,7 +239,7 @@ export const nlNL = {
   'gdrive.status.saving': 'Opslaan…',
   'gdrive.status.failed': 'Opslaan mislukt',
   'gdrive.status.conflict': 'Gewijzigd in Google Drive',
-  'gdrive.status.unconfirmed': 'Laatste opslag kon niet worden bevestigd',
+  'gdrive.status.unconfirmed': 'Laatste opslagactie kon niet worden bevestigd',
   'gdrive.status.paused': 'Gepauzeerd tot Google weer verbonden is',
   'gdrive.status.deleted': 'Verwijderd in Google Drive',
   'gdrive.status.readonly': 'Alleen bekijken',
@@ -252,7 +252,7 @@ export const nlNL = {
   'gdrive.banner.conflict':
     'Dit bestand is gewijzigd in Google Drive, dus het opslaan is gestopt. Je wijzigingen staan er nog.',
   'gdrive.banner.unconfirmed':
-    'De laatste opslag kon niet worden bevestigd, dus het opslaan is gestopt. Je wijzigingen staan er nog.',
+    'De laatste opslagactie kon niet worden bevestigd, dus het opslaan is gestopt. Je wijzigingen staan er nog.',
   'gdrive.banner.deleted':
     'Dit bestand is verwijderd of naar de prullenbak verplaatst in Google Drive, dus het opslaan is gestopt.',
   'gdrive.banner.readonly':
@@ -268,7 +268,7 @@ export const nlNL = {
   'gdrive.banner.popupBlocked':
     'Je browser heeft het Google-venster geblokkeerd. Sta pop-ups toe voor deze site en maak dan opnieuw verbinding.',
   'gdrive.banner.reconnectFailed':
-    'Google maakte geen nieuwe verbinding. Probeer het opnieuw.',
+    'Opnieuw verbinden met Google is mislukt. Probeer het opnieuw.',
   'gdrive.banner.sessionEnded':
     'Je Google-sessie is beëindigd, dus het opslaan is gepauzeerd.',
   'gdrive.banner.sessionEndsSoon': 'Je Google-sessie loopt binnenkort af.',
@@ -289,7 +289,7 @@ export const nlNL = {
   'gdrive.create.inHiddenFolder': 'In een map die ERD Editor niet kan zien',
   'gdrive.create.inFolder': 'In de map ‘{name}’',
   'gdrive.create.untitled': 'Naamloos',
-  'gdrive.create.savedAs': 'Opgeslagen als {name}',
+  'gdrive.create.savedAs': 'Wordt opgeslagen als {name}',
   'gdrive.create.folderRefused':
     'ERD Editor kan geen bestanden maken in deze map. In plaats daarvan in de map ERD Editor maken?',
   'gdrive.create.failed':

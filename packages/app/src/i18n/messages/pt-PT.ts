@@ -59,12 +59,12 @@ export const ptPT = {
   },
   'trash.listLabel': 'Esquemas no lixo',
   'trash.deleted': 'Eliminado {time}',
-  'trash.deletesToday': 'eliminado hoje',
-  'trash.deletesTomorrow': 'eliminado amanhã',
+  'trash.deletesToday': 'será eliminado hoje',
+  'trash.deletesTomorrow': 'será eliminado amanhã',
   'trash.deletesIn': {
-    one: 'eliminado dentro de {count} dia',
-    many: 'eliminado dentro de {count} de dias',
-    other: 'eliminado dentro de {count} dias',
+    one: 'será eliminado dentro de {count} dia',
+    many: 'será eliminado dentro de {count} de dias',
+    other: 'será eliminado dentro de {count} dias',
   },
   'trash.restore': 'Restaurar',
   'trash.deletePermanently': 'Eliminar definitivamente',
@@ -171,9 +171,9 @@ export const ptPT = {
     'Outro separador iniciou sessão noutra Conta Google, por isso este separador parou. Recarregue-o para continuar com essa conta.',
   'gdrive.unsaved.title': 'As suas alterações não foram guardadas',
   'gdrive.unsaved.description':
-    '{name} tem alterações de {email} que não estão no Google Drive, e agora tem sessão iniciada {account}. Transfira-as antes de continuar.',
+    '{name} tem alterações de {email} que não estão no Google Drive, e agora tem sessão iniciada com {account}. Transfira-as antes de continuar.',
   'gdrive.unsaved.descriptionUnnamed':
-    'O ficheiro que tinha aberto tem alterações de {email} que não estão no Google Drive, e agora tem sessão iniciada {account}. Transfira-as antes de continuar.',
+    'O ficheiro que tinha aberto tem alterações de {email} que não estão no Google Drive, e agora tem sessão iniciada com {account}. Transfira-as antes de continuar.',
   'gdrive.unsaved.continueWithout': 'Continuar sem elas',
   'gdrive.framed.title':
     'Abra o editor do Google Drive do ERD Editor num separador próprio',
@@ -198,7 +198,7 @@ export const ptPT = {
   'gdrive.signIn.waitingDescription':
     'Conclua o início de sessão na janela que o Google abriu.',
   'gdrive.signIn.popupBlocked':
-    'O navegador bloqueou a janela de início de sessão. Permita pop-ups para este site e tente novamente.',
+    'O browser bloqueou a janela de início de sessão. Permita pop-ups para este site e tente novamente.',
   'gdrive.signIn.failed':
     'O início de sessão Google não foi concluído. Tente novamente.',
   'gdrive.signIn.gisBlocked':
@@ -248,7 +248,7 @@ export const ptPT = {
   'gdrive.status.failed': 'Não foi possível guardar',
   'gdrive.status.conflict': 'Alterado no Google Drive',
   'gdrive.status.unconfirmed': 'Não foi possível confirmar a última gravação',
-  'gdrive.status.paused': 'Em pausa até o Google voltar a ligar',
+  'gdrive.status.paused': 'Em pausa até voltar a ligar ao Google',
   'gdrive.status.deleted': 'Eliminado no Google Drive',
   'gdrive.status.readonly': 'Só de leitura',
   'gdrive.status.waitingLeader':
@@ -274,9 +274,9 @@ export const ptPT = {
   'gdrive.banner.takeOver': 'Assumir a gravação',
   'gdrive.banner.openAndTakeOver': 'Abrir do Drive e assumir',
   'gdrive.banner.popupBlocked':
-    'O navegador bloqueou a janela do Google. Permita pop-ups para este site e volte a ligar.',
+    'O browser bloqueou a janela do Google. Permita pop-ups para este site e volte a ligar ao Google.',
   'gdrive.banner.reconnectFailed':
-    'O Google não voltou a ligar. Tente novamente.',
+    'Não foi possível voltar a ligar ao Google. Tente novamente.',
   'gdrive.banner.sessionEnded':
     'A sua sessão Google terminou, por isso a gravação está em pausa.',
   'gdrive.banner.sessionEndsSoon': 'A sua sessão Google termina em breve.',
@@ -298,7 +298,7 @@ export const ptPT = {
     'Numa pasta que o ERD Editor não consegue ver',
   'gdrive.create.inFolder': 'Na pasta “{name}”',
   'gdrive.create.untitled': 'Sem título',
-  'gdrive.create.savedAs': 'Guardado como {name}',
+  'gdrive.create.savedAs': 'Será guardado como {name}',
   'gdrive.create.folderRefused':
     'O ERD Editor não pode criar ficheiros nesta pasta. Criar antes na pasta ERD Editor?',
   'gdrive.create.failed': 'Não foi possível criar o ficheiro. Tente novamente.',
@@ -317,9 +317,9 @@ export const ptPT = {
       '{count} cópias de segurança ignoradas: as cópias de segurança ficam na aplicação local',
   },
   'gdrive.import.uploadsFailed': {
-    one: 'Falha em {count} carregamento',
-    many: 'Falha em {count} de carregamentos',
-    other: 'Falha em {count} carregamentos',
+    one: '{count} carregamento falhou',
+    many: '{count} de carregamentos falharam',
+    other: '{count} carregamentos falharam',
   },
 
   'gdrive.notice.unreadableState':
@@ -337,7 +337,7 @@ export const ptPT = {
   'gdrive.notice.reloadNotDocument':
     'Não foi possível recarregar: o ficheiro no Google Drive já não é um documento do ERD Editor',
   'gdrive.notice.signOutUnconfirmed':
-    'Sessão terminada aqui. O servidor do ERD Editor não o confirmou, por isso este navegador conclui o término de sessão da próxima vez que se ligar',
+    'Sessão terminada aqui. O servidor do ERD Editor não o confirmou, por isso este browser termina a sessão da próxima vez que se ligar',
   'gdrive.notice.signOutNotRevoked':
     'Sessão terminada aqui, mas o Google não confirmou que removeu o acesso do ERD Editor, por isso os seus outros dispositivos podem manter a sessão iniciada até o remover em myaccount.google.com/permissions',
 } satisfies Messages;

@@ -33,8 +33,8 @@ export const idID = {
   'time.justNow': 'baru saja',
   'time.today': 'Hari ini',
   'time.yesterday': 'Kemarin',
-  'time.previous7Days': '7 Hari Terakhir',
-  'time.previous30Days': '30 Hari Terakhir',
+  'time.previous7Days': '7 hari terakhir',
+  'time.previous30Days': '30 hari terakhir',
 
   'sidebar.schemas': 'Skema',
   'sidebar.newSchema': 'Skema baru',
@@ -56,9 +56,9 @@ export const idID = {
   },
   'trash.listLabel': 'Skema di sampah',
   'trash.deleted': 'Dihapus {time}',
-  'trash.deletesToday': 'dihapus hari ini',
-  'trash.deletesTomorrow': 'dihapus besok',
-  'trash.deletesIn': { other: 'dihapus dalam {count} hari' },
+  'trash.deletesToday': 'akan dihapus permanen hari ini',
+  'trash.deletesTomorrow': 'akan dihapus permanen besok',
+  'trash.deletesIn': { other: 'dihapus permanen {count} hari lagi' },
   'trash.restore': 'Pulihkan',
   'trash.deletePermanently': 'Hapus permanen',
   'trash.cannotBeUndone': 'Tindakan ini tidak dapat dibatalkan.',
@@ -84,7 +84,7 @@ export const idID = {
 
   'viewer.noSchemaOpen': 'Tidak ada skema yang terbuka',
   'viewer.emptyHint':
-    'Pilih satu dari bilah samping, atau mulai yang baru di sini. Anda juga dapat meletakkan file di mana saja untuk mengimpornya.',
+    'Pilih satu dari bilah samping, atau buat yang baru di sini. Anda juga dapat meletakkan file di mana saja untuk mengimpornya.',
   'viewer.openSample': 'Buka contoh',
   'viewer.sampleName': 'contoh toko buku',
 
@@ -118,7 +118,7 @@ export const idID = {
   'live.lookingForHost': 'Mencari host...',
   'live.waitingForHost': 'Menunggu host...',
   'live.session': 'Sesi langsung',
-  'live.inSession': { other: '{count} dalam sesi' },
+  'live.inSession': { other: '{count} orang dalam sesi' },
   'live.showParticipants': 'Tampilkan peserta',
   'live.hideParticipants': 'Sembunyikan peserta',
 
@@ -137,7 +137,7 @@ export const idID = {
     'ERD Editor tidak dapat memilih akun itu terlebih dahulu, jadi pilihlah saat Google bertanya.',
   'gdrive.mismatch.switchAccount': 'Ganti akun',
   'gdrive.mismatch.showMyFiles': 'Tampilkan file saya',
-  'gdrive.accountChanged.title': 'Login dengan akun lain',
+  'gdrive.accountChanged.title': 'Telah login dengan akun lain',
   'gdrive.accountChanged.description':
     'Tab lain login ke akun Google yang berbeda, jadi tab ini berhenti. Muat ulang untuk melanjutkan dengan akun itu.',
   'gdrive.unsaved.title': 'Perubahan Anda belum disimpan',
@@ -162,7 +162,7 @@ export const idID = {
   'gdrive.signIn.description':
     'ERD Editor hanya membuka dan menyimpan file yang Anda buat atau buka dengannya.',
   'gdrive.signIn.fallbackDescription':
-    'Server login ERD Editor sedang sibuk, jadi Google membuat Anda login selama satu jam setiap kali.',
+    'Server login ERD Editor sedang sibuk, jadi setiap login melalui Google hanya berlaku selama satu jam.',
   'gdrive.signIn.signIn': 'Login dengan Google',
   'gdrive.signIn.continue': 'Lanjutkan dengan Google',
   'gdrive.signIn.waitingTitle': 'Menunggu login Google…',
@@ -186,10 +186,10 @@ export const idID = {
 
   'gdrive.viewer.noFileOpen': 'Tidak ada file yang terbuka',
   'gdrive.viewer.noFileOpenHint':
-    'Pilih file dari bilah samping, atau mulai yang baru.',
+    'Pilih file dari bilah samping, atau buat yang baru.',
   'gdrive.viewer.noFilesYet': 'Belum ada file',
   'gdrive.viewer.noFilesYetHint':
-    'Buat file atau impor satu. File yang Anda buka dengan ERD Editor dari Google Drive juga muncul di sini.',
+    'Buat file baru atau impor file. File yang Anda buka dengan ERD Editor dari Google Drive juga muncul di sini.',
   'gdrive.viewer.waitingForOpener': 'Menunggu tab yang membuka file ini…',
   'gdrive.viewer.notDocument': 'File ini bukan dokumen ERD Editor',
   'gdrive.viewer.notDocumentHint':
@@ -206,11 +206,11 @@ export const idID = {
     'File mungkin telah dihapus, atau akun Google ini tidak dapat membukanya.',
   'gdrive.viewer.waitingToken': 'Menunggu Google',
   'gdrive.viewer.waitingTokenHint':
-    'File ini terbuka setelah sesi Google Anda kembali.',
+    'File ini akan terbuka setelah sesi Google Anda pulih.',
   'gdrive.viewer.failed': 'Tidak dapat membuka file ini',
   'gdrive.viewer.failedHint':
-    'Google Drive tidak menjawab. Periksa koneksi dan coba lagi.',
-  'gdrive.viewer.savingBeforeLeave': 'Menyimpan sebelum Anda pergi…',
+    'Google Drive tidak merespons. Periksa koneksi dan coba lagi.',
+  'gdrive.viewer.savingBeforeLeave': 'Menyimpan sebelum meninggalkan file…',
 
   'gdrive.status.saved': 'Disimpan ke Google Drive',
   'gdrive.status.saving': 'Menyimpan…',
@@ -250,11 +250,11 @@ export const idID = {
 
   'gdrive.leave.title': 'Perubahan terbaru Anda belum disimpan',
   'gdrive.leave.description':
-    'ERD Editor tidak dapat menyimpannya ke Google Drive. Unduh untuk menyimpan salinan, atau pergi dan kehilangannya.',
+    'ERD Editor tidak dapat menyimpannya ke Google Drive. Unduh untuk menyimpan salinan, atau tinggalkan file ini dan perubahan itu akan hilang.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor tidak dapat menyimpannya ke Google Drive. Unduh untuk menyimpan salinan, atau logout dan kehilangannya.',
+    'ERD Editor tidak dapat menyimpannya ke Google Drive. Unduh untuk menyimpan salinan, atau logout dan perubahan itu akan hilang.',
   'gdrive.leave.stay': 'Tetap di sini',
-  'gdrive.leave.leaveAnyway': 'Tetap pergi',
+  'gdrive.leave.leaveAnyway': 'Tetap tinggalkan',
   'gdrive.leave.signOutAnyway': 'Tetap logout',
 
   'gdrive.create.title': 'File baru di Google Drive',
@@ -264,7 +264,7 @@ export const idID = {
     'Di folder yang tidak dapat dilihat ERD Editor',
   'gdrive.create.inFolder': 'Di folder “{name}”',
   'gdrive.create.untitled': 'Tanpa judul',
-  'gdrive.create.savedAs': 'Disimpan sebagai {name}',
+  'gdrive.create.savedAs': 'Akan disimpan sebagai {name}',
   'gdrive.create.folderRefused':
     'ERD Editor tidak dapat membuat file di folder ini. Buat di folder ERD Editor saja?',
   'gdrive.create.failed': 'Tidak dapat membuat file. Coba lagi.',
@@ -294,7 +294,7 @@ export const idID = {
   'gdrive.notice.reloadNotDocument':
     'Tidak dapat memuat ulang: file di Google Drive bukan lagi dokumen ERD Editor',
   'gdrive.notice.signOutUnconfirmed':
-    'Logout di sini. Server ERD Editor tidak mengonfirmasinya, jadi browser ini menyelesaikan logout saat terhubung lagi',
+    'Anda telah logout di sini. Server ERD Editor tidak mengonfirmasinya, jadi browser ini akan menyelesaikan logout saat terhubung lagi',
   'gdrive.notice.signOutNotRevoked':
-    'Logout di sini, tetapi Google tidak mengonfirmasi bahwa akses ERD Editor telah dihapus, jadi perangkat Anda yang lain mungkin tetap login hingga Anda menghapusnya di myaccount.google.com/permissions',
+    'Anda telah logout di sini, tetapi Google tidak mengonfirmasi bahwa akses ERD Editor telah dihapus, jadi perangkat Anda yang lain mungkin tetap login hingga Anda menghapusnya di myaccount.google.com/permissions',
 } satisfies Messages;

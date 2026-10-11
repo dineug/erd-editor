@@ -99,7 +99,7 @@ export const ruRU = {
 
   'viewer.noSchemaOpen': 'Нет открытой схемы',
   'viewer.emptyHint':
-    'Выберите схему на боковой панели или начните новую здесь. Файлы для импорта можно также перетащить в любое место.',
+    'Выберите схему на боковой панели или создайте новую здесь. Файлы для импорта можно также перетащить в любое место.',
   'viewer.openSample': 'Открыть пример',
   'viewer.sampleName': 'пример книжного магазина',
 
@@ -141,7 +141,7 @@ export const ruRU = {
   'update.updatedElsewhere':
     'Приложение обновлено в другой вкладке — перезагрузите, чтобы завершить.',
 
-  'live.invalidToken': 'Недействительный токен доступа.',
+  'live.invalidToken': 'Недействительная ссылка для совместной работы.',
   'live.hostNotFound': 'Организатор не найден.',
   'live.refresh': 'Обновить',
   'live.hostStopped': 'Организатор завершил сеанс.',
@@ -166,19 +166,20 @@ export const ruRU = {
   'gdrive.scopeMissing.title': 'Доступ к Google Диску не предоставлен',
   'gdrive.scopeMissing.description':
     'ERD Editor нужен доступ к файлам, которые вы в нем создаете или открываете. Войдите снова и разрешите доступ к Google Диску.',
-  'gdrive.mismatch.title': 'Google Диск отправил это для другого аккаунта',
+  'gdrive.mismatch.title':
+    'Этот запрос Google Диска предназначен для другого аккаунта',
   'gdrive.mismatch.description':
-    'Вы вошли как {email}. Переключитесь на аккаунт, в котором Google Диск открыл файл, или продолжайте с файлами этого аккаунта.',
+    'Вы вошли как {email}. Переключитесь на аккаунт, в котором Google Диск открыл файл, или продолжите работу с файлами этого аккаунта.',
   'gdrive.mismatch.choose':
     'ERD Editor не смог заранее выбрать этот аккаунт, поэтому выберите его, когда Google спросит.',
   'gdrive.mismatch.switchAccount': 'Сменить аккаунт',
   'gdrive.mismatch.showMyFiles': 'Показать мои файлы',
   'gdrive.accountChanged.title': 'Выполнен вход в другой аккаунт',
   'gdrive.accountChanged.description':
-    'В другой вкладке выполнен вход в другой аккаунт Google, поэтому эта вкладка остановлена. Перезагрузите ее, чтобы продолжить с этим аккаунтом.',
+    'В другой вкладке выполнен вход в другой аккаунт Google, поэтому работа в этой вкладке остановлена. Перезагрузите вкладку, чтобы продолжить с этим аккаунтом.',
   'gdrive.unsaved.title': 'Ваши изменения не сохранены',
   'gdrive.unsaved.description':
-    'В «{name}» есть изменения от {email}, которых нет на Google Диске, а сейчас вход выполнен как {account}. Скачайте их, прежде чем продолжить.',
+    'В файле «{name}» есть изменения от {email}, которых нет на Google Диске, а сейчас вход выполнен как {account}. Скачайте их, прежде чем продолжить.',
   'gdrive.unsaved.descriptionUnnamed':
     'В открытом файле есть изменения от {email}, которых нет на Google Диске, а сейчас вход выполнен как {account}. Скачайте их, прежде чем продолжить.',
   'gdrive.unsaved.continueWithout': 'Продолжить без них',
@@ -199,7 +200,7 @@ export const ruRU = {
   'gdrive.signIn.fallbackDescription':
     'Сервер входа ERD Editor перегружен, поэтому Google выполняет вход на один час.',
   'gdrive.signIn.signIn': 'Войти через Google',
-  'gdrive.signIn.continue': 'Продолжить с Google',
+  'gdrive.signIn.continue': 'Продолжить через Google',
   'gdrive.signIn.waitingTitle': 'Ожидание входа в Google…',
   'gdrive.signIn.waitingDescription':
     'Завершите вход в окне, которое открыл Google.',
@@ -221,19 +222,19 @@ export const ruRU = {
 
   'gdrive.viewer.noFileOpen': 'Нет открытого файла',
   'gdrive.viewer.noFileOpenHint':
-    'Выберите файл на боковой панели или начните новый.',
+    'Выберите файл на боковой панели или создайте новый.',
   'gdrive.viewer.noFilesYet': 'Файлов пока нет',
   'gdrive.viewer.noFilesYetHint':
-    'Создайте файл или импортируйте его. Файлы, которые вы открываете в ERD Editor из Google Диска, тоже появятся здесь.',
+    'Создайте или импортируйте файл. Файлы, которые вы открываете в ERD Editor с Google Диска, тоже появятся здесь.',
   'gdrive.viewer.waitingForOpener': 'Ожидание вкладки, открывшей этот файл…',
   'gdrive.viewer.notDocument': 'Этот файл не является документом ERD Editor',
   'gdrive.viewer.notDocumentHint':
     'ERD Editor открывает диаграммы, которые сохранил сам. Этот файл остается без изменений и никогда не перезаписывается.',
   'gdrive.viewer.googleNativeHint':
-    'Google Документы, Таблицы и папки открываются в Google Диске.',
+    'Google Документы, Таблицы и папки открываются на Google Диске.',
   'gdrive.viewer.trashed': 'Этот файл в корзине',
   'gdrive.viewer.trashedHint':
-    'Восстановите его в Google Диске, чтобы открыть здесь.',
+    'Восстановите его на Google Диске, чтобы открыть здесь.',
   'gdrive.viewer.tooLarge': 'Этот файл слишком большой',
   'gdrive.viewer.tooLargeHint': 'ERD Editor открывает файлы до {size} MB.',
   'gdrive.viewer.notFound': 'Этот файл недоступен',
@@ -245,7 +246,7 @@ export const ruRU = {
   'gdrive.viewer.failed': 'Не удалось открыть этот файл',
   'gdrive.viewer.failedHint':
     'Google Диск не ответил. Проверьте подключение и повторите попытку.',
-  'gdrive.viewer.savingBeforeLeave': 'Сохранение перед уходом…',
+  'gdrive.viewer.savingBeforeLeave': 'Сохранение перед закрытием файла…',
 
   'gdrive.status.saved': 'Сохранено на Google Диске',
   'gdrive.status.saving': 'Сохранение…',
@@ -286,9 +287,9 @@ export const ruRU = {
 
   'gdrive.leave.title': 'Последние изменения не сохранены',
   'gdrive.leave.description':
-    'ERD Editor не смог сохранить их на Google Диске. Скачайте их, чтобы сохранить копию, или уйдите и потеряйте их.',
+    'ERD Editor не смог сохранить их на Google Диске. Скачайте их, чтобы сохранить копию. Если уйти без этого, они будут потеряны.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor не смог сохранить их на Google Диске. Скачайте их, чтобы сохранить копию, или выйдите и потеряйте их.',
+    'ERD Editor не смог сохранить их на Google Диске. Скачайте их, чтобы сохранить копию. Если выйти без этого, они будут потеряны.',
   'gdrive.leave.stay': 'Остаться',
   'gdrive.leave.leaveAnyway': 'Все равно уйти',
   'gdrive.leave.signOutAnyway': 'Все равно выйти',
@@ -301,7 +302,7 @@ export const ruRU = {
   'gdrive.create.untitled': 'Без названия',
   'gdrive.create.savedAs': 'Будет сохранен как {name}',
   'gdrive.create.folderRefused':
-    'ERD Editor не может создавать файлы в этой папке. Создать его в папке ERD Editor?',
+    'ERD Editor не может создавать файлы в этой папке. Создать файл в папке ERD Editor?',
   'gdrive.create.failed': 'Не удалось создать файл. Повторите попытку.',
   'gdrive.create.createInAppFolder': 'Создать в папке ERD Editor',
   'gdrive.create.create': 'Создать',
@@ -320,10 +321,10 @@ export const ruRU = {
       'Пропущено {count} резервной копии: резервные копии остаются в локальном приложении',
   },
   'gdrive.import.uploadsFailed': {
-    one: 'Не удалась {count} загрузка',
-    few: 'Не удалось {count} загрузки',
-    many: 'Не удалось {count} загрузок',
-    other: 'Не удалось {count} загрузки',
+    one: 'Не удалось загрузить {count} файл',
+    few: 'Не удалось загрузить {count} файла',
+    many: 'Не удалось загрузить {count} файлов',
+    other: 'Не удалось загрузить {count} файла',
   },
 
   'gdrive.notice.unreadableState':
@@ -341,7 +342,7 @@ export const ruRU = {
   'gdrive.notice.reloadNotDocument':
     'Не удалось загрузить заново: файл на Google Диске больше не является документом ERD Editor',
   'gdrive.notice.signOutUnconfirmed':
-    'Вы вышли здесь. Сервер ERD Editor не подтвердил выход, поэтому этот браузер завершит его при следующем подключении',
+    'Вы вышли из аккаунта. Сервер ERD Editor не подтвердил выход, поэтому этот браузер завершит его при следующем подключении',
   'gdrive.notice.signOutNotRevoked':
-    'Вы вышли здесь, но Google не подтвердил отзыв доступа ERD Editor, поэтому на других устройствах вход может сохраниться, пока вы не отзовете его на myaccount.google.com/permissions',
+    'Вы вышли из аккаунта на этом устройстве, но Google не подтвердил отзыв доступа ERD Editor, поэтому на других устройствах вход может сохраниться, пока вы не отзовете доступ на myaccount.google.com/permissions',
 } satisfies Messages;

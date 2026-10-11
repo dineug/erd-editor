@@ -59,12 +59,12 @@ export const itIT = {
   },
   'trash.listLabel': 'Schemi nel cestino',
   'trash.deleted': 'Eliminato {time}',
-  'trash.deletesToday': 'eliminato oggi',
-  'trash.deletesTomorrow': 'eliminato domani',
+  'trash.deletesToday': 'verrà eliminato oggi',
+  'trash.deletesTomorrow': 'verrà eliminato domani',
   'trash.deletesIn': {
-    one: 'eliminato tra {count} giorno',
-    many: 'eliminato tra {count} di giorni',
-    other: 'eliminato tra {count} giorni',
+    one: 'verrà eliminato tra {count} giorno',
+    many: 'verrà eliminato tra {count} di giorni',
+    other: 'verrà eliminato tra {count} giorni',
   },
   'trash.restore': 'Ripristina',
   'trash.deletePermanently': 'Elimina definitivamente',
@@ -97,7 +97,7 @@ export const itIT = {
 
   'viewer.noSchemaOpen': 'Nessuno schema aperto',
   'viewer.emptyHint':
-    'Scegline uno dalla barra laterale o iniziane uno qui. Puoi anche trascinare i file ovunque per importarli.',
+    'Scegline uno dalla barra laterale o creane uno qui. Puoi anche trascinare i file ovunque per importarli.',
   'viewer.openSample': 'Apri esempio',
   'viewer.sampleName': 'esempio di libreria',
 
@@ -141,8 +141,8 @@ export const itIT = {
   'live.hostStopped': 'L’host ha interrotto la sessione.',
   'live.somethingWentWrong': 'Si è verificato un problema.',
   'live.lookingForHost': 'Ricerca di un host...',
-  'live.waitingForHost': 'In attesa di un host...',
-  'live.session': 'Sessione dal vivo',
+  'live.waitingForHost': 'In attesa dell’host...',
+  'live.session': 'Sessione in tempo reale',
   'live.inSession': {
     one: '{count} nella sessione',
     many: '{count} nella sessione',
@@ -175,7 +175,7 @@ export const itIT = {
     '{name} contiene modifiche di {email} che non sono in Google Drive, e ora è connesso {account}. Scaricale prima di continuare.',
   'gdrive.unsaved.descriptionUnnamed':
     'Il file che avevi aperto contiene modifiche di {email} che non sono in Google Drive, e ora è connesso {account}. Scaricale prima di continuare.',
-  'gdrive.unsaved.continueWithout': 'Continua senza',
+  'gdrive.unsaved.continueWithout': 'Continua senza le modifiche',
   'gdrive.framed.title':
     'Apri l’editor Google Drive di ERD Editor in una scheda dedicata',
   'gdrive.framed.description': 'Non funziona all’interno di un’altra pagina.',
@@ -188,7 +188,7 @@ export const itIT = {
   'gdrive.unsupportedOrigin.description':
     'L’accesso con Google funziona solo su erd-editor.io, e questa è un’anteprima.',
 
-  'gdrive.signIn.title': 'Apri i tuoi file ERD in Google Drive',
+  'gdrive.signIn.title': 'Apri i tuoi file ERD da Google Drive',
   'gdrive.signIn.description':
     'ERD Editor apre e salva solo i file che crei o apri con esso.',
   'gdrive.signIn.fallbackDescription':
@@ -216,7 +216,7 @@ export const itIT = {
 
   'gdrive.viewer.noFileOpen': 'Nessun file aperto',
   'gdrive.viewer.noFileOpenHint':
-    'Scegli un file dalla barra laterale o iniziane uno nuovo.',
+    'Scegli un file dalla barra laterale o creane uno nuovo.',
   'gdrive.viewer.noFilesYet': 'Ancora nessun file',
   'gdrive.viewer.noFilesYetHint':
     'Crea un file o importane uno. Anche i file che apri con ERD Editor da Google Drive compaiono qui.',
@@ -224,7 +224,7 @@ export const itIT = {
     'In attesa della scheda che ha aperto questo file…',
   'gdrive.viewer.notDocument': 'Questo file non è un documento di ERD Editor',
   'gdrive.viewer.notDocumentHint':
-    'ERD Editor apre i diagrammi che ha salvato. Lascia questo file com’è e non lo sovrascrive mai.',
+    'ERD Editor apre solo i diagrammi che ha salvato. Questo file resta com’è e non viene mai sovrascritto.',
   'gdrive.viewer.googleNativeHint':
     'Documenti, Fogli e cartelle Google si aprono in Google Drive.',
   'gdrive.viewer.trashed': 'Questo file è nel cestino',
@@ -249,7 +249,7 @@ export const itIT = {
   'gdrive.status.unconfirmed': 'Impossibile confermare l’ultimo salvataggio',
   'gdrive.status.paused': 'In pausa finché Google non si riconnette',
   'gdrive.status.deleted': 'Eliminato in Google Drive',
-  'gdrive.status.readonly': 'Sola lettura',
+  'gdrive.status.readonly': 'Solo visualizzazione',
   'gdrive.status.waitingLeader': 'In attesa della scheda che salva questo file',
   'gdrive.status.waitingSnapshot':
     'In attesa della scheda che ha aperto questo file',
@@ -283,10 +283,10 @@ export const itIT = {
   'gdrive.leave.description':
     'ERD Editor non è riuscito a salvarle in Google Drive. Scaricale per conservarne una copia, oppure esci e perdile.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor non è riuscito a salvarle in Google Drive. Scaricale per conservarne una copia, oppure disconnettiti e perdile.',
+    'ERD Editor non è riuscito a salvarle in Google Drive. Scaricale per conservarne una copia, oppure esci dall’account e perdile.',
   'gdrive.leave.stay': 'Resta',
   'gdrive.leave.leaveAnyway': 'Esci comunque',
-  'gdrive.leave.signOutAnyway': 'Disconnettiti comunque',
+  'gdrive.leave.signOutAnyway': 'Esci comunque',
 
   'gdrive.create.title': 'Nuovo file in Google Drive',
   'gdrive.create.inAppFolder': 'Nella cartella ERD Editor',
@@ -295,7 +295,7 @@ export const itIT = {
     'In una cartella che ERD Editor non può vedere',
   'gdrive.create.inFolder': 'Nella cartella «{name}»',
   'gdrive.create.untitled': 'Senza titolo',
-  'gdrive.create.savedAs': 'Salvato come {name}',
+  'gdrive.create.savedAs': 'Verrà salvato come {name}',
   'gdrive.create.folderRefused':
     'ERD Editor non può creare file in questa cartella. Crearlo invece nella cartella ERD Editor?',
   'gdrive.create.failed': 'Impossibile creare il file. Riprova.',

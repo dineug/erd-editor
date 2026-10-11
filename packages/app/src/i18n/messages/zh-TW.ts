@@ -13,7 +13,7 @@ export const zhTW = {
   'common.importFiles': '匯入檔案',
   'common.signOut': '登出',
   'common.downloadMyChanges': '下載我的變更',
-  'common.edited': '編輯於{time}',
+  'common.edited': '{time}編輯',
   'common.system': '系統',
   'common.displayLanguage': '顯示語言',
   'common.theme': '佈景主題',
@@ -55,8 +55,8 @@ export const zhTW = {
     other: '垃圾桶中的結構描述會在 {count} 天後永久刪除。',
   },
   'trash.listLabel': '垃圾桶中的結構描述',
-  'trash.deleted': '刪除於{time}',
-  'trash.deletesToday': '今天刪除',
+  'trash.deleted': '{time}刪除',
+  'trash.deletesToday': '將於今天刪除',
   'trash.deletesTomorrow': '明天刪除',
   'trash.deletesIn': { other: '{count} 天後刪除' },
   'trash.restore': '還原',
@@ -105,29 +105,29 @@ export const zhTW = {
   'update.available': 'ERD Editor 有新版本可用。',
   'update.updatedElsewhere': '應用程式已在另一個分頁中更新，請重新載入以完成。',
 
-  'live.invalidToken': '共用權杖無效。',
+  'live.invalidToken': '共用連結無效。',
   'live.hostNotFound': '找不到主持人。',
   'live.refresh': '重新整理',
   'live.hostStopped': '主持人已結束工作階段。',
   'live.somethingWentWrong': '發生錯誤。',
-  'live.lookingForHost': '正在尋找主持人...',
-  'live.waitingForHost': '正在等待主持人...',
+  'live.lookingForHost': '正在尋找主持人…',
+  'live.waitingForHost': '正在等待主持人…',
   'live.session': '即時工作階段',
   'live.inSession': { other: '工作階段中有 {count} 人' },
   'live.showParticipants': '顯示參與者',
   'live.hideParticipants': '隱藏參與者',
 
-  'gdrive.checkingSignIn': '正在檢查你的 Google 登入…',
+  'gdrive.checkingSignIn': '正在檢查 Google 登入狀態…',
   'gdrive.anotherAccount': '其他帳戶',
   'gdrive.offline.title': '你目前離線',
   'gdrive.offline.description':
-    '恢復連線後，ERD Editor 會檢查你的 Google 登入。',
+    '恢復連線後，ERD Editor 會檢查你的 Google 登入狀態。',
   'gdrive.scopeMissing.title': '未授予 Google 雲端硬碟存取權',
   'gdrive.scopeMissing.description':
     'ERD Editor 需要存取你以它建立或開啟的檔案。請重新登入並允許存取 Google 雲端硬碟。',
-  'gdrive.mismatch.title': 'Google 雲端硬碟為其他帳戶傳送了這個檔案',
+  'gdrive.mismatch.title': 'Google 雲端硬碟傳來的要求屬於其他帳戶',
   'gdrive.mismatch.description':
-    '你目前以 {email} 登入。請切換到 Google 雲端硬碟用來開啟它的帳戶，或繼續使用這個帳戶的檔案。',
+    '你目前以 {email} 登入。請切換到 Google 雲端硬碟所用的帳戶，或繼續使用這個帳戶的檔案。',
   'gdrive.mismatch.choose':
     'ERD Editor 無法預先選取該帳戶，請在 Google 詢問時選擇它。',
   'gdrive.mismatch.switchAccount': '切換帳戶',
@@ -152,7 +152,7 @@ export const zhTW = {
   'gdrive.unsupportedOrigin.description':
     'Google 登入只能在 erd-editor.io 上使用，而這裡是預覽版。',
 
-  'gdrive.signIn.title': '在 Google 雲端硬碟中開啟你的 ERD 檔案',
+  'gdrive.signIn.title': '開啟你在 Google 雲端硬碟中的 ERD 檔案',
   'gdrive.signIn.description':
     'ERD Editor 只會開啟和儲存你以它建立或開啟的檔案。',
   'gdrive.signIn.fallbackDescription':
@@ -192,7 +192,7 @@ export const zhTW = {
   'gdrive.viewer.trashedHint': '請在 Google 雲端硬碟中還原，才能在這裡開啟。',
   'gdrive.viewer.tooLarge': '這個檔案太大',
   'gdrive.viewer.tooLargeHint': 'ERD Editor 可開啟最大 {size} MB 的檔案。',
-  'gdrive.viewer.notFound': '無法使用這個檔案',
+  'gdrive.viewer.notFound': '無法存取這個檔案',
   'gdrive.viewer.notFoundHint':
     '它可能已被刪除，或這個 Google 帳戶無法開啟它。',
   'gdrive.viewer.waitingToken': '正在等待 Google',
@@ -201,7 +201,7 @@ export const zhTW = {
   'gdrive.viewer.failed': '無法開啟這個檔案',
   'gdrive.viewer.failedHint':
     'Google 雲端硬碟沒有回應。請檢查連線，然後再試一次。',
-  'gdrive.viewer.savingBeforeLeave': '正在離開前儲存…',
+  'gdrive.viewer.savingBeforeLeave': '離開前正在儲存…',
 
   'gdrive.status.saved': '已儲存到 Google 雲端硬碟',
   'gdrive.status.saving': '正在儲存…',
@@ -251,7 +251,7 @@ export const zhTW = {
   'gdrive.create.inHiddenFolder': '位置：ERD Editor 無法查看的資料夾',
   'gdrive.create.inFolder': '位置：資料夾「{name}」',
   'gdrive.create.untitled': '未命名',
-  'gdrive.create.savedAs': '儲存為 {name}',
+  'gdrive.create.savedAs': '將儲存為 {name}',
   'gdrive.create.folderRefused':
     'ERD Editor 無法在這個資料夾中建立檔案。要改在 ERD Editor 資料夾中建立嗎？',
   'gdrive.create.failed': '無法建立檔案。請再試一次。',
@@ -262,9 +262,9 @@ export const zhTW = {
     other: '已將 {count} 個檔案匯入 Google 雲端硬碟',
   },
   'gdrive.import.skippedBackups': {
-    other: '已略過 {count} 個備份：備份只會保留在本機應用程式中',
+    other: '已略過 {count} 個備份：備份只能匯入本機應用程式',
   },
-  'gdrive.import.uploadsFailed': { other: '{count} 個上傳失敗' },
+  'gdrive.import.uploadsFailed': { other: '{count} 個檔案上傳失敗' },
 
   'gdrive.notice.unreadableState':
     'ERD Editor 無法讀取 Google 雲端硬碟傳送的連結',

@@ -113,7 +113,7 @@ export const arSA = {
 
   'drop.title': 'أفلِت للاستيراد',
   'drop.formats':
-    'النسخ الاحتياطية، ومستندات .erd و.vuerd و.json، وSQL وDBML وAML وGraphQL',
+    'النسخ الاحتياطية، ومستندات ERD (.erd، .vuerd، .json)، وSQL وDBML وAML وGraphQL',
   'drop.importing': 'جارٍ استيراد الملفات…',
   'drop.importingHint': 'أفلِت المزيد بعد انتهاء هذا الاستيراد',
 
@@ -180,11 +180,11 @@ export const arSA = {
   'gdrive.anotherAccount': 'حساب آخر',
   'gdrive.offline.title': 'أنت غير متصل بالإنترنت',
   'gdrive.offline.description':
-    'يتحقق ERD Editor من تسجيل دخولك إلى Google عند عودتك إلى الاتصال.',
+    'سيتحقق ERD Editor من تسجيل دخولك إلى Google عند عودة الاتصال بالإنترنت.',
   'gdrive.scopeMissing.title': 'لم يُمنح الوصول إلى Google Drive',
   'gdrive.scopeMissing.description':
     'يحتاج ERD Editor إلى الوصول إلى الملفات التي تنشئها أو تفتحها به. سجّل الدخول مرة أخرى واسمح بالوصول إلى Google Drive.',
-  'gdrive.mismatch.title': 'أرسل Google Drive هذا لحساب آخر',
+  'gdrive.mismatch.title': 'هذا الطلب من Google Drive مخصّص لحساب آخر',
   'gdrive.mismatch.description':
     'أنت مسجّل الدخول باسم {email}. بدّل إلى الحساب الذي استخدمه Google Drive لفتحه، أو تابع بملفات هذا الحساب.',
   'gdrive.mismatch.choose':
@@ -196,12 +196,12 @@ export const arSA = {
     'سجّلت علامة تبويب أخرى الدخول إلى حساب Google مختلف، لذا توقفت علامة التبويب هذه. أعد تحميلها للمتابعة بذلك الحساب.',
   'gdrive.unsaved.title': 'لم تُحفظ تغييراتك',
   'gdrive.unsaved.description':
-    'يحتوي {name} على تغييرات من {email} غير موجودة في Google Drive، والحساب المسجّل الآن هو {account}. نزّلها قبل المتابعة.',
+    'يحتوي {name} على تغييرات من {email} غير موجودة في Google Drive، والحساب الذي سُجّل الدخول به الآن هو {account}. نزّلها قبل المتابعة.',
   'gdrive.unsaved.descriptionUnnamed':
-    'يحتوي الملف الذي كان مفتوحًا على تغييرات من {email} غير موجودة في Google Drive، والحساب المسجّل الآن هو {account}. نزّلها قبل المتابعة.',
+    'يحتوي الملف الذي كان مفتوحًا على تغييرات من {email} غير موجودة في Google Drive، والحساب الذي سُجّل الدخول به الآن هو {account}. نزّلها قبل المتابعة.',
   'gdrive.unsaved.continueWithout': 'المتابعة بدونها',
   'gdrive.framed.title':
-    'افتح محرر Google Drive في ERD Editor في علامة تبويب مستقلة',
+    'افتح محرر Google Drive الخاص بـ ERD Editor في علامة تبويب مستقلة',
   'gdrive.framed.description': 'لا يعمل داخل صفحة أخرى.',
   'gdrive.framed.link': 'فتح في علامة تبويب جديدة',
   'gdrive.notConfigured.title': 'لم يُضبط التكامل مع Google Drive',
@@ -225,7 +225,7 @@ export const arSA = {
     'حظر المتصفح نافذة تسجيل الدخول. اسمح بالنوافذ المنبثقة لهذا الموقع، ثم أعد المحاولة.',
   'gdrive.signIn.failed': 'لم يكتمل تسجيل الدخول إلى Google. أعد المحاولة.',
   'gdrive.signIn.gisBlocked':
-    'تعذّر تحميل تسجيل الدخول باستخدام Google. تأكد من أن شيئًا لا يحظر accounts.google.com، ثم أعد تحميل الصفحة.',
+    'تعذّر تحميل تسجيل الدخول باستخدام Google. تأكد من عدم حظر accounts.google.com، ثم أعد تحميل الصفحة.',
 
   'gdrive.sidebar.label': 'ملفات Drive',
   'gdrive.sidebar.newFile': 'ملف جديد',
@@ -249,7 +249,7 @@ export const arSA = {
   'gdrive.viewer.notDocumentHint':
     'يفتح ERD Editor المخططات التي حفظها بنفسه. يترك هذا الملف كما هو ولا يكتب فوقه أبدًا.',
   'gdrive.viewer.googleNativeHint':
-    'تُفتح مستندات Google وجداول البيانات والمجلدات في Google Drive.',
+    'تُفتح مستندات Google وجداول بيانات Google والمجلدات في Google Drive.',
   'gdrive.viewer.trashed': 'هذا الملف في المهملات',
   'gdrive.viewer.trashedHint': 'استعده في Google Drive لفتحه هنا.',
   'gdrive.viewer.tooLarge': 'هذا الملف كبير جدًا',
@@ -270,10 +270,10 @@ export const arSA = {
   'gdrive.status.unconfirmed': 'تعذّر تأكيد آخر حفظ',
   'gdrive.status.paused': 'متوقف مؤقتًا حتى يعاود Google الاتصال',
   'gdrive.status.deleted': 'حُذف في Google Drive',
-  'gdrive.status.readonly': 'عرض فقط',
+  'gdrive.status.readonly': 'للعرض فقط',
   'gdrive.status.waitingLeader': 'في انتظار علامة التبويب التي تحفظ هذا الملف',
   'gdrive.status.waitingSnapshot': 'في انتظار علامة التبويب التي فتحت هذا الملف',
-  'gdrive.status.scopeMissing': 'لا يوجد وصول إلى Google Drive',
+  'gdrive.status.scopeMissing': 'لا يوجد إذن بالوصول إلى Google Drive',
 
   'gdrive.banner.conflict':
     'تغيّر هذا الملف في Google Drive، لذا توقف الحفظ. لا تزال تغييراتك هنا.',
@@ -290,7 +290,7 @@ export const arSA = {
   'gdrive.banner.openerNotResponding':
     'علامة التبويب التي فتحت هذا الملف لا تستجيب.',
   'gdrive.banner.takeOver': 'تولّي الحفظ',
-  'gdrive.banner.openAndTakeOver': 'الفتح من Drive والتولّي',
+  'gdrive.banner.openAndTakeOver': 'الفتح من Drive وتولّي الحفظ',
   'gdrive.banner.popupBlocked':
     'حظر المتصفح نافذة Google. اسمح بالنوافذ المنبثقة لهذا الموقع، ثم أعد الاتصال.',
   'gdrive.banner.reconnectFailed': 'لم يعاود Google الاتصال. أعد المحاولة.',
@@ -300,9 +300,9 @@ export const arSA = {
 
   'gdrive.leave.title': 'لم تُحفظ أحدث تغييراتك',
   'gdrive.leave.description':
-    'تعذّر على ERD Editor حفظها في Google Drive. نزّلها للاحتفاظ بنسخة، أو غادر وافقدها.',
+    'تعذّر على ERD Editor حفظها في Google Drive. نزّلها للاحتفاظ بنسخة، أو غادر وستفقدها.',
   'gdrive.leave.descriptionSignOut':
-    'تعذّر على ERD Editor حفظها في Google Drive. نزّلها للاحتفاظ بنسخة، أو سجّل الخروج وافقدها.',
+    'تعذّر على ERD Editor حفظها في Google Drive. نزّلها للاحتفاظ بنسخة، أو سجّل الخروج وستفقدها.',
   'gdrive.leave.stay': 'البقاء',
   'gdrive.leave.leaveAnyway': 'المغادرة على أي حال',
   'gdrive.leave.signOutAnyway': 'تسجيل الخروج على أي حال',

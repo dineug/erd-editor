@@ -56,7 +56,7 @@ export const jaJP = {
   },
   'trash.listLabel': 'ゴミ箱内のスキーマ',
   'trash.deleted': '削除: {time}',
-  'trash.deletesToday': '今日削除',
+  'trash.deletesToday': '今日中に削除',
   'trash.deletesTomorrow': '明日削除',
   'trash.deletesIn': { other: '{count} 日後に削除' },
   'trash.restore': '復元',
@@ -112,15 +112,15 @@ export const jaJP = {
   'update.updatedElsewhere':
     '別のタブでアプリが更新されました。再読み込みして完了してください。',
 
-  'live.invalidToken': '共有トークンが無効です。',
+  'live.invalidToken': '共有リンクが無効です。',
   'live.hostNotFound': 'ホストが見つかりません。',
   'live.refresh': '再読み込み',
   'live.hostStopped': 'ホストがセッションを終了しました。',
   'live.somethingWentWrong': '問題が発生しました。',
-  'live.lookingForHost': 'ホストを探しています...',
-  'live.waitingForHost': 'ホストを待っています...',
+  'live.lookingForHost': 'ホストを探しています…',
+  'live.waitingForHost': 'ホストを待っています…',
   'live.session': 'ライブセッション',
-  'live.inSession': { other: 'セッション中 {count} 人' },
+  'live.inSession': { other: '{count} 人が参加中' },
   'live.showParticipants': '参加者を表示',
   'live.hideParticipants': '参加者を隠す',
 
@@ -134,16 +134,16 @@ export const jaJP = {
   'gdrive.scopeMissing.description':
     'ERD Editor は、このアプリで作成または開いたファイルへのアクセスが必要です。もう一度ログインして Google ドライブへのアクセスを許可してください。',
   'gdrive.mismatch.title':
-    'Google ドライブが別のアカウント宛てに送ったファイルです',
+    'Google ドライブからのリクエストは別のアカウント宛てです',
   'gdrive.mismatch.description':
-    '{email} でログインしています。Google ドライブがこのファイルを開いたアカウントに切り替えるか、このアカウントのファイルで続けてください。',
+    '{email} でログインしています。Google ドライブが使用したアカウントに切り替えるか、このアカウントのファイルで続けてください。',
   'gdrive.mismatch.choose':
-    'ERD Editor はそのアカウントを事前に選択できなかったため、Google に尋ねられたら選んでください。',
+    'ERD Editor はそのアカウントを事前に選択できませんでした。Google でアカウントの選択を求められたら、そのアカウントを選んでください。',
   'gdrive.mismatch.switchAccount': 'アカウントを切り替え',
   'gdrive.mismatch.showMyFiles': '自分のファイルを表示',
   'gdrive.accountChanged.title': '別のアカウントでログインしました',
   'gdrive.accountChanged.description':
-    '別のタブが異なる Google アカウントでログインしたため、このタブは停止しました。そのアカウントで続けるには再読み込みしてください。',
+    '別のタブで異なる Google アカウントにログインしたため、このタブは停止しました。そのアカウントで続けるには再読み込みしてください。',
   'gdrive.unsaved.title': '変更が保存されていません',
   'gdrive.unsaved.description':
     '{name} には Google ドライブにない {email} の変更があり、現在は {account} でログインしています。続ける前にダウンロードしてください。',
@@ -159,13 +159,13 @@ export const jaJP = {
     'この ERD Editor のビルドには Google ログインのクライアントがありません。',
   'gdrive.unsupportedOrigin.title': 'ここでは Google ドライブを使えません',
   'gdrive.unsupportedOrigin.description':
-    'Google ログインは erd-editor.io でのみ動作し、ここはプレビューです。',
+    'Google ログインは erd-editor.io でのみ動作します。このサイトはプレビュー版です。',
 
   'gdrive.signIn.title': 'Google ドライブの ERD ファイルを開く',
   'gdrive.signIn.description':
     'ERD Editor は、このアプリで作成または開いたファイルだけを開いて保存します。',
   'gdrive.signIn.fallbackDescription':
-    'ERD Editor のログインサーバーが混み合っているため、Google のログインは 1 時間ずつ有効です。',
+    'ERD Editor のログインサーバーが混み合っているため、Google へのログインは 1 回につき 1 時間有効です。',
   'gdrive.signIn.signIn': 'Google でログイン',
   'gdrive.signIn.continue': 'Google で続行',
   'gdrive.signIn.waitingTitle': 'Google ログインを待っています…',
@@ -211,7 +211,7 @@ export const jaJP = {
     '削除されたか、この Google アカウントでは開けない可能性があります。',
   'gdrive.viewer.waitingToken': 'Google を待っています',
   'gdrive.viewer.waitingTokenHint':
-    'Google セッションが戻るとこのファイルが開きます。',
+    'Google セッションが回復すると、このファイルが開きます。',
   'gdrive.viewer.failed': 'このファイルを開けませんでした',
   'gdrive.viewer.failedHint':
     'Google ドライブから応答がありませんでした。接続を確認して、もう一度お試しください。',
@@ -224,7 +224,7 @@ export const jaJP = {
   'gdrive.status.unconfirmed': '最後の保存を確認できませんでした',
   'gdrive.status.paused': 'Google に再接続するまで一時停止中',
   'gdrive.status.deleted': 'Google ドライブで削除されました',
-  'gdrive.status.readonly': '表示のみ',
+  'gdrive.status.readonly': '閲覧のみ',
   'gdrive.status.waitingLeader': 'このファイルを保存するタブを待っています',
   'gdrive.status.waitingSnapshot': 'このファイルを開いたタブを待っています',
   'gdrive.status.scopeMissing': 'Google ドライブへのアクセス権がありません',
@@ -269,7 +269,7 @@ export const jaJP = {
   'gdrive.create.inHiddenFolder': '保存先: ERD Editor から見えないフォルダ',
   'gdrive.create.inFolder': '保存先: フォルダ「{name}」',
   'gdrive.create.untitled': '無題',
-  'gdrive.create.savedAs': '{name} として保存',
+  'gdrive.create.savedAs': '{name} として保存されます',
   'gdrive.create.folderRefused':
     'ERD Editor はこのフォルダにファイルを作成できません。代わりに ERD Editor フォルダに作成しますか？',
   'gdrive.create.failed':
@@ -303,7 +303,7 @@ export const jaJP = {
   'gdrive.notice.reloadNotDocument':
     '再読み込みできません: Google ドライブのファイルはもう ERD Editor のドキュメントではありません',
   'gdrive.notice.signOutUnconfirmed':
-    'ここではログアウトしました。ERD Editor のサーバーが確認しなかったため、このブラウザは次に接続したときにログアウトを完了します',
+    'ここではログアウトしました。ERD Editor のサーバーで確認できなかったため、このブラウザは次に接続したときにログアウトを完了します',
   'gdrive.notice.signOutNotRevoked':
-    'ここではログアウトしましたが、Google は ERD Editor のアクセス権の削除を確認しませんでした。myaccount.google.com/permissions で削除するまで、他のデバイスはログインしたままになることがあります',
+    'ここではログアウトしましたが、Google で ERD Editor のアクセス権の削除を確認できませんでした。myaccount.google.com/permissions でアクセス権を削除するまで、他のデバイスではログインしたままになることがあります',
 } satisfies Messages;

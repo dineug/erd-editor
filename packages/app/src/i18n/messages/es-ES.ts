@@ -135,13 +135,13 @@ export const esES = {
   'update.updatedElsewhere':
     'La aplicación se actualizó en otra pestaña: recarga para terminar.',
 
-  'live.invalidToken': 'Token de uso compartido no válido.',
+  'live.invalidToken': 'Enlace compartido no válido.',
   'live.hostNotFound': 'No se encontró el anfitrión.',
   'live.refresh': 'Actualizar',
   'live.hostStopped': 'El anfitrión detuvo la sesión.',
   'live.somethingWentWrong': 'Algo salió mal.',
-  'live.lookingForHost': 'Buscando un anfitrión...',
-  'live.waitingForHost': 'Esperando a un anfitrión...',
+  'live.lookingForHost': 'Buscando al anfitrión...',
+  'live.waitingForHost': 'Esperando al anfitrión...',
   'live.session': 'Sesión en directo',
   'live.inSession': {
     one: '{count} en la sesión',
@@ -187,11 +187,11 @@ export const esES = {
   'gdrive.unsupportedOrigin.description':
     'El inicio de sesión de Google solo funciona en erd-editor.io, y esto es una vista previa.',
 
-  'gdrive.signIn.title': 'Abre tus archivos ERD en Google Drive',
+  'gdrive.signIn.title': 'Abre tus archivos ERD de Google Drive',
   'gdrive.signIn.description':
     'ERD Editor solo abre y guarda los archivos que creas o abres con él.',
   'gdrive.signIn.fallbackDescription':
-    'El servidor de inicio de sesión de ERD Editor está ocupado, así que Google te inicia sesión durante una hora cada vez.',
+    'El servidor de inicio de sesión de ERD Editor está ocupado, así que cada inicio de sesión con Google dura una hora.',
   'gdrive.signIn.signIn': 'Iniciar sesión con Google',
   'gdrive.signIn.continue': 'Continuar con Google',
   'gdrive.signIn.waitingTitle': 'Esperando el inicio de sesión de Google…',
@@ -236,7 +236,7 @@ export const esES = {
     'Puede que se haya eliminado o que esta cuenta de Google no pueda abrirlo.',
   'gdrive.viewer.waitingToken': 'Esperando a Google',
   'gdrive.viewer.waitingTokenHint':
-    'Este archivo se abrirá cuando vuelva tu sesión de Google.',
+    'Este archivo se abrirá cuando se restablezca tu sesión de Google.',
   'gdrive.viewer.failed': 'No se pudo abrir este archivo',
   'gdrive.viewer.failedHint':
     'Google Drive no respondió. Comprueba la conexión e inténtalo de nuevo.',
@@ -245,7 +245,7 @@ export const esES = {
   'gdrive.status.saved': 'Guardado en Google Drive',
   'gdrive.status.saving': 'Guardando…',
   'gdrive.status.failed': 'No se pudo guardar',
-  'gdrive.status.conflict': 'Cambiado en Google Drive',
+  'gdrive.status.conflict': 'Modificado en Google Drive',
   'gdrive.status.unconfirmed': 'No se pudo confirmar el último guardado',
   'gdrive.status.paused': 'En pausa hasta que Google se vuelva a conectar',
   'gdrive.status.deleted': 'Eliminado en Google Drive',
@@ -275,7 +275,7 @@ export const esES = {
   'gdrive.banner.popupBlocked':
     'Tu navegador bloqueó la ventana de Google. Permite las ventanas emergentes de este sitio y vuelve a conectar.',
   'gdrive.banner.reconnectFailed':
-    'Google no se volvió a conectar. Inténtalo de nuevo.',
+    'No se pudo volver a conectar con Google. Inténtalo de nuevo.',
   'gdrive.banner.sessionEnded':
     'Tu sesión de Google terminó, así que el guardado está en pausa.',
   'gdrive.banner.sessionEndsSoon': 'Tu sesión de Google termina pronto.',
@@ -337,5 +337,5 @@ export const esES = {
   'gdrive.notice.signOutUnconfirmed':
     'Sesión cerrada aquí. El servidor de ERD Editor no lo confirmó, así que este navegador terminará de cerrar la sesión la próxima vez que se conecte',
   'gdrive.notice.signOutNotRevoked':
-    'Sesión cerrada aquí, pero Google no confirmó que retiró el acceso de ERD Editor, así que tus otros dispositivos podrían seguir con la sesión iniciada hasta que lo retires en myaccount.google.com/permissions',
+    'Sesión cerrada aquí, pero Google no confirmó haber retirado el acceso de ERD Editor, así que tus otros dispositivos podrían seguir con la sesión iniciada hasta que lo retires en myaccount.google.com/permissions',
 } satisfies Messages;

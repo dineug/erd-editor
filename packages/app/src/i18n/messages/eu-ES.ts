@@ -46,7 +46,7 @@ export const euES = {
   'sidebar.schemaNamePlaceholder': 'eskemaren izena',
   'sidebar.duplicate': 'Bikoiztu',
   'sidebar.moveToTrash': 'Bota zakarrontzira',
-  'sidebar.actionsFor': '{name} eskemaren ekintzak',
+  'sidebar.actionsFor': 'Ekintzak: {name}',
   'sidebar.noResults': 'Emaitzarik ez',
 
   'trash.button': 'Zakarrontzia ({count})',
@@ -87,7 +87,7 @@ export const euES = {
   'collaboration.nickname': 'Ezizena',
   'collaboration.link': 'Esteka',
   'collaboration.noOneJoined': 'Oraindik ez da beste inor batu.',
-  'collaboration.startSession': 'Hasi saioa',
+  'collaboration.startSession': 'Hasi zuzeneko saioa',
   'collaboration.stopSession': 'Gelditu saioa',
 
   'viewer.noSchemaOpen': 'Ez dago eskemarik irekita',
@@ -135,8 +135,8 @@ export const euES = {
   'live.waitingForHost': 'Ostalariaren zain...',
   'live.session': 'Zuzeneko saioa',
   'live.inSession': {
-    one: '{count} saioan',
-    other: '{count} saioan',
+    one: 'Saioan: {count}',
+    other: 'Saioan: {count}',
   },
   'live.showParticipants': 'Erakutsi parte-hartzaileak',
   'live.hideParticipants': 'Ezkutatu parte-hartzaileak',
@@ -177,7 +177,7 @@ export const euES = {
   'gdrive.unsupportedOrigin.description':
     'Google saio-hasierak erd-editor.io-n bakarrik funtzionatzen du, eta hau aurrebista bat da.',
 
-  'gdrive.signIn.title': 'Ireki zure ERD fitxategiak Google Drive-n',
+  'gdrive.signIn.title': 'Ireki Google Drive-ko zure ERD fitxategiak',
   'gdrive.signIn.description':
     'ERD Editor-ek berarekin sortzen edo irekitzen dituzun fitxategiak bakarrik irekitzen eta gordetzen ditu.',
   'gdrive.signIn.fallbackDescription':
@@ -214,7 +214,7 @@ export const euES = {
   'gdrive.viewer.notDocumentHint':
     'ERD Editor-ek berak gordetako diagramak irekitzen ditu. Fitxategi hau dagoen bezala uzten du, eta ez du inoiz gainidazten.',
   'gdrive.viewer.googleNativeHint':
-    'Google-ren dokumentuak, kalkulu-orriak eta karpetak Google Drive-n irekitzen dira.',
+    'Google Dokumentuak, Kalkulu-orriak eta karpetak Google Drive-n irekitzen dira.',
   'gdrive.viewer.trashed': 'Fitxategi hau zakarrontzian dago',
   'gdrive.viewer.trashedHint': 'Leheneratu Google Drive-n hemen irekitzeko.',
   'gdrive.viewer.tooLarge': 'Fitxategi hau handiegia da',
@@ -225,7 +225,7 @@ export const euES = {
     'Agian ezabatu egin da, edo Google kontu honek ezin du ireki.',
   'gdrive.viewer.waitingToken': 'Google-ren zain',
   'gdrive.viewer.waitingTokenHint':
-    'Fitxategi hau irekiko da zure Google saioa itzultzen denean.',
+    'Fitxategi hau irekiko da zure Google saioa berreskuratzen denean.',
   'gdrive.viewer.failed': 'Ezin izan da fitxategi hau ireki',
   'gdrive.viewer.failedHint':
     'Google Drive-k ez du erantzun. Egiaztatu konexioa eta saiatu berriro.',
@@ -238,7 +238,7 @@ export const euES = {
   'gdrive.status.unconfirmed': 'Ezin izan da azken gordetzea berretsi',
   'gdrive.status.paused': 'Pausatuta Google berriro konektatu arte',
   'gdrive.status.deleted': 'Google Drive-n ezabatua',
-  'gdrive.status.readonly': 'Ikusi soilik',
+  'gdrive.status.readonly': 'Ikusteko soilik',
   'gdrive.status.waitingLeader': 'Fitxategi hau gordetzen duen fitxaren zain',
   'gdrive.status.waitingSnapshot': 'Fitxategi hau ireki duen fitxaren zain',
   'gdrive.status.scopeMissing': 'Ez dago Google Drive-rako sarbiderik',
@@ -302,7 +302,7 @@ export const euES = {
   },
   'gdrive.import.uploadsFailed': {
     one: 'Igoera {count}ek huts egin du',
-    other: '{count} igoerak huts egin du',
+    other: '{count} igoerak huts egin dute',
   },
 
   'gdrive.notice.unreadableState':

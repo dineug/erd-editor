@@ -59,12 +59,12 @@ export const frFR = {
   },
   'trash.listLabel': 'Schémas dans la corbeille',
   'trash.deleted': 'Supprimé {time}',
-  'trash.deletesToday': 'supprimé aujourd’hui',
-  'trash.deletesTomorrow': 'supprimé demain',
+  'trash.deletesToday': 'sera supprimé aujourd’hui',
+  'trash.deletesTomorrow': 'sera supprimé demain',
   'trash.deletesIn': {
-    one: 'supprimé dans {count} jour',
-    many: 'supprimé dans {count} de jours',
-    other: 'supprimé dans {count} jours',
+    one: 'sera supprimé dans {count} jour',
+    many: 'sera supprimé dans {count} de jours',
+    other: 'sera supprimé dans {count} jours',
   },
   'trash.restore': 'Restaurer',
   'trash.deletePermanently': 'Supprimer définitivement',
@@ -73,10 +73,10 @@ export const frFR = {
   'trash.empty': 'La corbeille est vide.',
   'trash.emptyTrash': 'Vider la corbeille',
   'trash.emptyConfirm': {
-    one: 'Supprimer définitivement {count} schéma ? Cette action est irréversible.',
-    many: 'Supprimer définitivement {count} de schémas ? Cette action est irréversible.',
+    one: 'Supprimer définitivement {count} schéma ? Cette action est irréversible.',
+    many: 'Supprimer définitivement {count} de schémas ? Cette action est irréversible.',
     other:
-      'Supprimer définitivement {count} schémas ? Cette action est irréversible.',
+      'Supprimer définitivement {count} schémas ? Cette action est irréversible.',
   },
 
   'collaboration.for': 'Collaboration sur {name}',
@@ -91,13 +91,14 @@ export const frFR = {
     'Les participants se connectent directement via WebRTC et échangent des messages avec un chiffrement de bout en bout.',
   'collaboration.nickname': 'Pseudo',
   'collaboration.link': 'Lien',
-  'collaboration.noOneJoined': 'Personne d’autre n’a encore rejoint.',
+  'collaboration.noOneJoined':
+    'Personne d’autre n’a encore rejoint la session.',
   'collaboration.startSession': 'Démarrer la session',
   'collaboration.stopSession': 'Arrêter la session',
 
   'viewer.noSchemaOpen': 'Aucun schéma ouvert',
   'viewer.emptyHint':
-    'Choisissez-en un dans la barre latérale ou commencez-en un ici. Vous pouvez aussi déposer des fichiers n’importe où pour les importer.',
+    'Choisissez-en un dans la barre latérale ou créez-en un ici. Vous pouvez aussi déposer des fichiers n’importe où pour les importer.',
   'viewer.openSample': 'Ouvrir l’exemple',
   'viewer.sampleName': 'exemple de librairie',
 
@@ -136,7 +137,7 @@ export const frFR = {
   'update.updatedElsewhere':
     'L’application a été mise à jour dans un autre onglet — rechargez pour terminer.',
 
-  'live.invalidToken': 'Jeton de partage non valide.',
+  'live.invalidToken': 'Lien de partage non valide.',
   'live.hostNotFound': 'Hôte introuvable.',
   'live.refresh': 'Actualiser',
   'live.hostStopped': 'L’hôte a arrêté la session.',
@@ -145,9 +146,9 @@ export const frFR = {
   'live.waitingForHost': 'En attente d’un hôte...',
   'live.session': 'Session en direct',
   'live.inSession': {
-    one: '{count} dans la session',
-    many: '{count} dans la session',
-    other: '{count} dans la session',
+    one: '{count} participant',
+    many: '{count} de participants',
+    other: '{count} participants',
   },
   'live.showParticipants': 'Afficher les participants',
   'live.hideParticipants': 'Masquer les participants',
@@ -162,9 +163,9 @@ export const frFR = {
     'ERD Editor a besoin d’accéder aux fichiers que vous créez ou ouvrez avec lui. Reconnectez-vous et autorisez l’accès à Google Drive.',
   'gdrive.mismatch.title': 'Google Drive a envoyé ceci pour un autre compte',
   'gdrive.mismatch.description':
-    'Vous êtes connecté en tant que {email}. Passez au compte avec lequel Google Drive l’a ouvert, ou continuez avec les fichiers de ce compte.',
+    'Vous êtes connecté avec {email}. Passez au compte avec lequel Google Drive l’a ouvert, ou continuez avec les fichiers de ce compte.',
   'gdrive.mismatch.choose':
-    'ERD Editor n’a pas pu présélectionner ce compte : choisissez-le quand Google vous le demande.',
+    'ERD Editor n’a pas pu présélectionner le compte utilisé par Google Drive : choisissez-le quand Google vous le demande.',
   'gdrive.mismatch.switchAccount': 'Changer de compte',
   'gdrive.mismatch.showMyFiles': 'Afficher mes fichiers',
   'gdrive.accountChanged.title': 'Connecté avec un autre compte',
@@ -186,13 +187,13 @@ export const frFR = {
     'Cette version d’ERD Editor n’a pas de client de connexion Google.',
   'gdrive.unsupportedOrigin.title': 'Google Drive n’est pas disponible ici',
   'gdrive.unsupportedOrigin.description':
-    'La connexion Google ne fonctionne que sur erd-editor.io, et ceci est un aperçu.',
+    'La connexion Google ne fonctionne que sur erd-editor.io, et ce site est une version de prévisualisation.',
 
-  'gdrive.signIn.title': 'Ouvrez vos fichiers ERD dans Google Drive',
+  'gdrive.signIn.title': 'Ouvrez vos fichiers ERD stockés dans Google Drive',
   'gdrive.signIn.description':
     'ERD Editor n’ouvre et n’enregistre que les fichiers que vous créez ou ouvrez avec lui.',
   'gdrive.signIn.fallbackDescription':
-    'Le serveur de connexion d’ERD Editor est occupé, Google vous connecte donc pour une heure à la fois.',
+    'Le serveur de connexion d’ERD Editor est occupé, Google vous connecte donc par sessions d’une heure.',
   'gdrive.signIn.signIn': 'Se connecter avec Google',
   'gdrive.signIn.continue': 'Continuer avec Google',
   'gdrive.signIn.waitingTitle': 'En attente de la connexion Google…',
@@ -216,7 +217,7 @@ export const frFR = {
 
   'gdrive.viewer.noFileOpen': 'Aucun fichier ouvert',
   'gdrive.viewer.noFileOpenHint':
-    'Choisissez un fichier dans la barre latérale, ou commencez-en un nouveau.',
+    'Choisissez un fichier dans la barre latérale, ou créez-en un nouveau.',
   'gdrive.viewer.noFilesYet': 'Aucun fichier pour l’instant',
   'gdrive.viewer.noFilesYetHint':
     'Créez un fichier ou importez-en un. Les fichiers que vous ouvrez avec ERD Editor depuis Google Drive apparaissent aussi ici.',
@@ -273,11 +274,12 @@ export const frFR = {
     'L’onglet qui enregistre ce fichier ne répond pas.',
   'gdrive.banner.openerNotResponding':
     'L’onglet qui a ouvert ce fichier ne répond pas.',
-  'gdrive.banner.takeOver': 'Reprendre l’enregistrement',
-  'gdrive.banner.openAndTakeOver': 'Ouvrir depuis Drive et reprendre',
+  'gdrive.banner.takeOver': 'Prendre le relais de l’enregistrement',
+  'gdrive.banner.openAndTakeOver': 'Ouvrir depuis Drive et prendre le relais',
   'gdrive.banner.popupBlocked':
     'Votre navigateur a bloqué la fenêtre Google. Autorisez les fenêtres pop-up pour ce site, puis reconnectez-vous.',
-  'gdrive.banner.reconnectFailed': 'Google ne s’est pas reconnecté. Réessayez.',
+  'gdrive.banner.reconnectFailed':
+    'La reconnexion à Google a échoué. Réessayez.',
   'gdrive.banner.sessionEnded':
     'Votre session Google a pris fin, l’enregistrement est donc en pause.',
   'gdrive.banner.sessionEndsSoon': 'Votre session Google prend bientôt fin.',
@@ -297,11 +299,11 @@ export const frFR = {
   'gdrive.create.inFolderPending': 'Dans un dossier…',
   'gdrive.create.inHiddenFolder':
     'Dans un dossier qu’ERD Editor ne peut pas voir',
-  'gdrive.create.inFolder': 'Dans le dossier « {name} »',
+  'gdrive.create.inFolder': 'Dans le dossier « {name} »',
   'gdrive.create.untitled': 'Sans titre',
-  'gdrive.create.savedAs': 'Enregistré sous {name}',
+  'gdrive.create.savedAs': 'Sera enregistré sous {name}',
   'gdrive.create.folderRefused':
-    'ERD Editor ne peut pas créer de fichiers dans ce dossier. Le créer plutôt dans le dossier ERD Editor ?',
+    'ERD Editor ne peut pas créer de fichiers dans ce dossier. Le créer plutôt dans le dossier ERD Editor ?',
   'gdrive.create.failed': 'Impossible de créer le fichier. Réessayez.',
   'gdrive.create.createInAppFolder': 'Créer dans le dossier ERD Editor',
   'gdrive.create.create': 'Créer',
@@ -312,10 +314,10 @@ export const frFR = {
     other: '{count} fichiers importés dans Google Drive',
   },
   'gdrive.import.skippedBackups': {
-    one: '{count} sauvegarde ignorée : les sauvegardes restent dans l’application locale',
-    many: '{count} de sauvegardes ignorées : les sauvegardes restent dans l’application locale',
+    one: '{count} sauvegarde ignorée : les sauvegardes restent dans l’application locale',
+    many: '{count} de sauvegardes ignorées : les sauvegardes restent dans l’application locale',
     other:
-      '{count} sauvegardes ignorées : les sauvegardes restent dans l’application locale',
+      '{count} sauvegardes ignorées : les sauvegardes restent dans l’application locale',
   },
   'gdrive.import.uploadsFailed': {
     one: 'Échec de {count} envoi',
@@ -331,13 +333,13 @@ export const frFR = {
   'gdrive.notice.reloadFailed':
     'Impossible de recharger depuis Google Drive. Réessayez.',
   'gdrive.notice.reloadTrashed':
-    'Rechargement impossible : le fichier est dans la corbeille de Google Drive',
+    'Rechargement impossible : le fichier est dans la corbeille de Google Drive',
   'gdrive.notice.reloadTooLarge':
-    'Rechargement impossible : le fichier dans Google Drive dépasse {size} MB',
+    'Rechargement impossible : le fichier dans Google Drive dépasse {size} MB',
   'gdrive.notice.reloadNotDocument':
-    'Rechargement impossible : le fichier dans Google Drive n’est plus un document ERD Editor',
+    'Rechargement impossible : le fichier dans Google Drive n’est plus un document ERD Editor',
   'gdrive.notice.signOutUnconfirmed':
     'Déconnecté ici. Le serveur d’ERD Editor ne l’a pas confirmé, ce navigateur terminera donc la déconnexion à sa prochaine connexion',
   'gdrive.notice.signOutNotRevoked':
-    'Déconnecté ici, mais Google n’a pas confirmé avoir retiré l’accès d’ERD Editor : vos autres appareils peuvent rester connectés jusqu’à ce que vous le retiriez sur myaccount.google.com/permissions',
+    'Déconnecté ici, mais Google n’a pas confirmé avoir retiré l’accès d’ERD Editor : vos autres appareils peuvent rester connectés jusqu’à ce que vous le retiriez sur myaccount.google.com/permissions',
 } satisfies Messages;

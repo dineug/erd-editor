@@ -137,10 +137,10 @@ describe('formatTrashDeletion', () => {
     const russian = createI18n('ru-RU', ruRU);
 
     expect(formatTrashDeletion(ms('2026-08-22T12:00'), now, korean)).toBe(
-      '내일 삭제됨'
+      '내일 삭제 예정'
     );
     expect(formatTrashDeletion(ms('2026-09-20T12:00'), now, korean)).toBe(
-      '30일 후 삭제됨'
+      '30일 후 삭제 예정'
     );
     expect(formatTrashDeletion(ms('2026-08-23T12:00'), now, russian)).toBe(
       'удаление через 2 дня'

@@ -139,15 +139,15 @@ export const slSI = {
 
   'update.available': 'Na voljo je nova različica programa ERD Editor.',
   'update.updatedElsewhere':
-    'Aplikacija je bila posodobljena na drugem zavihku — znova naložite za dokončanje.',
+    'Aplikacija je bila posodobljena v drugem zavihku – znova naložite za dokončanje.',
 
-  'live.invalidToken': 'Neveljaven žeton za skupno rabo.',
+  'live.invalidToken': 'Neveljavna povezava za skupno rabo.',
   'live.hostNotFound': 'Gostitelja ni mogoče najti.',
   'live.refresh': 'Osveži',
   'live.hostStopped': 'Gostitelj je ustavil sejo.',
   'live.somethingWentWrong': 'Prišlo je do napake.',
-  'live.lookingForHost': 'Iskanje gostitelja...',
-  'live.waitingForHost': 'Čakanje na gostitelja...',
+  'live.lookingForHost': 'Iskanje gostitelja …',
+  'live.waitingForHost': 'Čakanje na gostitelja …',
   'live.session': 'Seja v živo',
   'live.inSession': {
     one: '{count} v seji',
@@ -168,7 +168,7 @@ export const slSI = {
     'ERD Editor potrebuje dostop do datotek, ki jih z njim ustvarite ali odprete. Znova se prijavite in dovolite dostop do storitve Google Drive.',
   'gdrive.mismatch.title': 'Google Drive je to poslal za drug račun',
   'gdrive.mismatch.description':
-    'Prijavljeni ste kot {email}. Preklopite na račun, s katerim jo je Google Drive odprl, ali nadaljujte z datotekami tega računa.',
+    'Prijavljeni ste kot {email}. Preklopite na račun, s katerim je Google Drive to odprl, ali nadaljujte z datotekami tega računa.',
   'gdrive.mismatch.choose':
     'ERD Editor tega računa ni mogel vnaprej izbrati, zato ga izberite, ko vas Google vpraša.',
   'gdrive.mismatch.switchAccount': 'Preklopi račun',
@@ -183,7 +183,7 @@ export const slSI = {
     'Odprta datoteka vsebuje spremembe računa {email}, ki jih ni v storitvi Google Drive, zdaj pa je prijavljen {account}. Prenesite jih, preden nadaljujete.',
   'gdrive.unsaved.continueWithout': 'Nadaljuj brez njih',
   'gdrive.framed.title':
-    'Urejevalnik Google Drive v programu ERD Editor odprite v lastnem zavihku',
+    'Urejevalnik Google Drive v programu ERD Editor odprite v ločenem zavihku',
   'gdrive.framed.description': 'Znotraj druge strani ne deluje.',
   'gdrive.framed.link': 'Odpri v novem zavihku',
   'gdrive.notConfigured.title': 'Integracija z Google Drive ni nastavljena',
@@ -193,11 +193,11 @@ export const slSI = {
   'gdrive.unsupportedOrigin.description':
     'Prijava z Google deluje samo na erd-editor.io, to pa je predogled.',
 
-  'gdrive.signIn.title': 'Odprite svoje datoteke ERD v storitvi Google Drive',
+  'gdrive.signIn.title': 'Odprite svoje datoteke ERD iz storitve Google Drive',
   'gdrive.signIn.description':
     'ERD Editor odpira in shranjuje samo datoteke, ki jih z njim ustvarite ali odprete.',
   'gdrive.signIn.fallbackDescription':
-    'Strežnik za prijavo ERD Editor je zaseden, zato vas Google vsakič prijavi za eno uro.',
+    'Prijavni strežnik programa ERD Editor je zaseden, zato vas Google vsakič prijavi za eno uro.',
   'gdrive.signIn.signIn': 'Prijava z Google',
   'gdrive.signIn.continue': 'Nadaljuj z Google',
   'gdrive.signIn.waitingTitle': 'Čakanje na prijavo v Google …',
@@ -212,7 +212,7 @@ export const slSI = {
 
   'gdrive.sidebar.label': 'Datoteke v Drive',
   'gdrive.sidebar.newFile': 'Nova datoteka',
-  'gdrive.sidebar.import': 'Uvozi',
+  'gdrive.sidebar.import': 'Uvoz',
   'gdrive.sidebar.searchFiles': 'Iskanje datotek',
   'gdrive.sidebar.newFileName': 'Ime nove datoteke',
   'gdrive.sidebar.fileName': 'Ime datoteke',
@@ -225,7 +225,7 @@ export const slSI = {
     'Izberite datoteko v stranski vrstici ali začnite novo.',
   'gdrive.viewer.noFilesYet': 'Še ni datotek',
   'gdrive.viewer.noFilesYetHint':
-    'Ustvarite datoteko ali jo uvozite. Tukaj so prikazane tudi datoteke, ki jih iz storitve Google Drive odprete z ERD Editor.',
+    'Ustvarite datoteko ali jo uvozite. Tukaj so prikazane tudi datoteke, ki jih iz storitve Google Drive odprete s programom ERD Editor.',
   'gdrive.viewer.waitingForOpener':
     'Čakanje na zavihek, ki je odprl to datoteko …',
   'gdrive.viewer.notDocument': 'Ta datoteka ni dokument ERD Editor',
@@ -233,7 +233,7 @@ export const slSI = {
     'ERD Editor odpira diagrame, ki jih je shranil sam. To datoteko pusti takšno, kot je, in je nikoli ne prepiše.',
   'gdrive.viewer.googleNativeHint':
     'Google Dokumenti, Preglednice in mape se odprejo v storitvi Google Drive.',
-  'gdrive.viewer.trashed': 'Ta datoteka je v košu',
+  'gdrive.viewer.trashed': 'Ta datoteka je v smetnjaku',
   'gdrive.viewer.trashedHint':
     'Obnovite jo v storitvi Google Drive, da jo odprete tukaj.',
   'gdrive.viewer.tooLarge': 'Ta datoteka je prevelika',
@@ -268,7 +268,7 @@ export const slSI = {
   'gdrive.banner.unconfirmed':
     'Zadnjega shranjevanja ni bilo mogoče potrditi, zato se je shranjevanje ustavilo. Vaše spremembe so še vedno tukaj.',
   'gdrive.banner.deleted':
-    'Ta datoteka je bila v storitvi Google Drive izbrisana ali premaknjena v koš, zato se je shranjevanje ustavilo.',
+    'Ta datoteka je bila v storitvi Google Drive izbrisana ali premaknjena v smetnjak, zato se je shranjevanje ustavilo.',
   'gdrive.banner.readonly':
     'Te datoteke v storitvi Google Drive ne morete več urejati, zato se je shranjevanje ustavilo. Vaše spremembe so še vedno tukaj.',
   'gdrive.banner.checkDrive': 'Preveri Drive',
@@ -303,7 +303,7 @@ export const slSI = {
   'gdrive.create.inHiddenFolder': 'V mapi, ki je ERD Editor ne vidi',
   'gdrive.create.inFolder': 'V mapi »{name}«',
   'gdrive.create.untitled': 'Brez naslova',
-  'gdrive.create.savedAs': 'Shranjeno kot {name}',
+  'gdrive.create.savedAs': 'Shranjeno bo kot {name}',
   'gdrive.create.folderRefused':
     'ERD Editor v tej mapi ne more ustvarjati datotek. Jo želite ustvariti v mapi ERD Editor?',
   'gdrive.create.failed': 'Datoteke ni bilo mogoče ustvariti. Poskusite znova.',
@@ -339,13 +339,13 @@ export const slSI = {
   'gdrive.notice.reloadFailed':
     'Vnovično nalaganje iz Google Drive ni uspelo. Poskusite znova.',
   'gdrive.notice.reloadTrashed':
-    'Vnovično nalaganje ni mogoče: datoteka je v košu v Google Drive',
+    'Vnovično nalaganje ni mogoče: datoteka je v smetnjaku storitve Google Drive',
   'gdrive.notice.reloadTooLarge':
     'Vnovično nalaganje ni mogoče: datoteka v Google Drive je večja od {size} MB',
   'gdrive.notice.reloadNotDocument':
     'Vnovično nalaganje ni mogoče: datoteka v Google Drive ni več dokument ERD Editor',
   'gdrive.notice.signOutUnconfirmed':
-    'Tukaj ste odjavljeni. Strežnik ERD Editor tega ni potrdil, zato bo ta brskalnik odjavo dokončal ob naslednji povezavi',
+    'Tukaj ste odjavljeni. Strežnik programa ERD Editor tega ni potrdil, zato bo ta brskalnik odjavo dokončal ob naslednji povezavi',
   'gdrive.notice.signOutNotRevoked':
-    'Tukaj ste odjavljeni, vendar Google ni potrdil odstranitve dostopa ERD Editor, zato lahko vaše druge naprave ostanejo prijavljene, dokler ga ne odstranite na myaccount.google.com/permissions',
+    'Tukaj ste odjavljeni, vendar Google ni potrdil odstranitve dostopa programa ERD Editor, zato lahko vaše druge naprave ostanejo prijavljene, dokler ga ne odstranite na myaccount.google.com/permissions',
 } satisfies Messages;

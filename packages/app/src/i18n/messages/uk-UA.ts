@@ -82,8 +82,8 @@ export const ukUA = {
 
   'collaboration.for': 'Спільна робота: {name}',
   'collaboration.guestsConnected': {
-    one: 'Підключено {count} гостя',
-    few: 'Підключено {count} гостей',
+    one: 'Підключився {count} гість',
+    few: 'Підключилися {count} гості',
     many: 'Підключено {count} гостей',
     other: 'Підключено {count} гостя',
   },
@@ -99,7 +99,7 @@ export const ukUA = {
 
   'viewer.noSchemaOpen': 'Немає відкритої схеми',
   'viewer.emptyHint':
-    'Виберіть схему на бічній панелі або почніть нову тут. Файли для імпорту також можна перетягнути будь-куди.',
+    'Виберіть схему на бічній панелі або створіть нову тут. Файли для імпорту також можна перетягнути будь-куди.',
   'viewer.openSample': 'Відкрити приклад',
   'viewer.sampleName': 'приклад книгарні',
 
@@ -141,14 +141,14 @@ export const ukUA = {
   'update.updatedElsewhere':
     'Застосунок оновлено в іншій вкладці — перезавантажте, щоб завершити.',
 
-  'live.invalidToken': 'Недійсний токен спільного доступу.',
+  'live.invalidToken': 'Недійсне посилання для спільного доступу.',
   'live.hostNotFound': 'Організатора не знайдено.',
   'live.refresh': 'Оновити',
   'live.hostStopped': 'Організатор завершив сеанс.',
   'live.somethingWentWrong': 'Щось пішло не так.',
   'live.lookingForHost': 'Пошук організатора...',
   'live.waitingForHost': 'Очікування організатора...',
-  'live.session': 'Сеанс наживо',
+  'live.session': 'Сеанс спільного редагування',
   'live.inSession': {
     one: 'У сеансі {count} учасник',
     few: 'У сеансі {count} учасники',
@@ -174,17 +174,17 @@ export const ukUA = {
     'ERD Editor не зміг заздалегідь вибрати цей обліковий запис, тож виберіть його, коли Google запитає.',
   'gdrive.mismatch.switchAccount': 'Змінити обліковий запис',
   'gdrive.mismatch.showMyFiles': 'Показати мої файли',
-  'gdrive.accountChanged.title': 'Виконано вхід з іншого облікового запису',
+  'gdrive.accountChanged.title': 'Виконано вхід в інший обліковий запис',
   'gdrive.accountChanged.description':
     'В іншій вкладці виконано вхід в інший обліковий запис Google, тому цю вкладку зупинено. Перезавантажте її, щоб продовжити з тим обліковим записом.',
   'gdrive.unsaved.title': 'Ваші зміни не збережено',
   'gdrive.unsaved.description':
-    'У «{name}» є зміни від {email}, яких немає на Google Диску, а зараз вхід виконано як {account}. Завантажте їх, перш ніж продовжити.',
+    'У файлі «{name}» є зміни від {email}, яких немає на Google Диску, а зараз вхід виконано як {account}. Завантажте їх, перш ніж продовжити.',
   'gdrive.unsaved.descriptionUnnamed':
     'У відкритому файлі є зміни від {email}, яких немає на Google Диску, а зараз вхід виконано як {account}. Завантажте їх, перш ніж продовжити.',
   'gdrive.unsaved.continueWithout': 'Продовжити без них',
   'gdrive.framed.title':
-    'Відкрийте редактор Google Диска в ERD Editor в окремій вкладці',
+    'Відкрийте ERD Editor для Google Диска в окремій вкладці',
   'gdrive.framed.description': 'Він не працює всередині іншої сторінки.',
   'gdrive.framed.link': 'Відкрити в новій вкладці',
   'gdrive.notConfigured.title': 'Інтеграцію з Google Диском не налаштовано',
@@ -192,13 +192,13 @@ export const ukUA = {
     'У цій збірці ERD Editor немає клієнта входу через Google.',
   'gdrive.unsupportedOrigin.title': 'Google Диск тут недоступний',
   'gdrive.unsupportedOrigin.description':
-    'Вхід через Google працює лише на erd-editor.io, а це попередня версія.',
+    'Вхід через Google працює лише на erd-editor.io, а це версія для попереднього перегляду.',
 
   'gdrive.signIn.title': 'Відкривайте файли ERD на Google Диску',
   'gdrive.signIn.description':
     'ERD Editor відкриває та зберігає лише файли, які ви в ньому створюєте або відкриваєте.',
   'gdrive.signIn.fallbackDescription':
-    'Сервер входу ERD Editor перевантажений, тому Google виконує вхід на одну годину.',
+    'Сервер входу ERD Editor перевантажений, тому Google щоразу виконує вхід лише на одну годину.',
   'gdrive.signIn.signIn': 'Увійти через Google',
   'gdrive.signIn.continue': 'Продовжити з Google',
   'gdrive.signIn.waitingTitle': 'Очікування входу в Google…',
@@ -222,10 +222,10 @@ export const ukUA = {
 
   'gdrive.viewer.noFileOpen': 'Немає відкритого файлу',
   'gdrive.viewer.noFileOpenHint':
-    'Виберіть файл на бічній панелі або почніть новий.',
+    'Виберіть файл на бічній панелі або створіть новий.',
   'gdrive.viewer.noFilesYet': 'Файлів ще немає',
   'gdrive.viewer.noFilesYetHint':
-    'Створіть файл або імпортуйте його. Файли, які ви відкриваєте в ERD Editor з Google Диска, теж з’являться тут.',
+    'Створіть або імпортуйте файл. Файли, які ви відкриваєте в ERD Editor з Google Диска, теж з’являться тут.',
   'gdrive.viewer.waitingForOpener':
     'Очікування вкладки, яка відкрила цей файл…',
   'gdrive.viewer.notDocument': 'Цей файл не є документом ERD Editor',
@@ -276,7 +276,7 @@ export const ukUA = {
   'gdrive.banner.openerNotResponding':
     'Вкладка, яка відкрила цей файл, не відповідає.',
   'gdrive.banner.takeOver': 'Перебрати збереження',
-  'gdrive.banner.openAndTakeOver': 'Відкрити з Диска й перебрати',
+  'gdrive.banner.openAndTakeOver': 'Відкрити з Диска й перебрати збереження',
   'gdrive.banner.popupBlocked':
     'Браузер заблокував вікно Google. Дозвольте спливаючі вікна для цього сайту й підключіться знову.',
   'gdrive.banner.reconnectFailed':
@@ -288,9 +288,9 @@ export const ukUA = {
 
   'gdrive.leave.title': 'Останні зміни не збережено',
   'gdrive.leave.description':
-    'ERD Editor не зміг зберегти їх на Google Диску. Завантажте їх, щоб зберегти копію, або вийдіть і втратьте їх.',
+    'ERD Editor не зміг зберегти їх на Google Диску. Завантажте їх, щоб зберегти копію, або вийдіть, і їх буде втрачено.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor не зміг зберегти їх на Google Диску. Завантажте їх, щоб зберегти копію, або вийдіть з облікового запису й втратьте їх.',
+    'ERD Editor не зміг зберегти їх на Google Диску. Завантажте їх, щоб зберегти копію, або вийдіть з облікового запису, і їх буде втрачено.',
   'gdrive.leave.stay': 'Залишитися',
   'gdrive.leave.leaveAnyway': 'Усе одно вийти',
   'gdrive.leave.signOutAnyway': 'Усе одно вийти з облікового запису',
@@ -303,7 +303,7 @@ export const ukUA = {
   'gdrive.create.untitled': 'Без назви',
   'gdrive.create.savedAs': 'Буде збережено як {name}',
   'gdrive.create.folderRefused':
-    'ERD Editor не може створювати файли в цій папці. Створити його в папці ERD Editor?',
+    'ERD Editor не може створювати файли в цій папці. Створити файл у папці ERD Editor?',
   'gdrive.create.failed': 'Не вдалося створити файл. Повторіть спробу.',
   'gdrive.create.createInAppFolder': 'Створити в папці ERD Editor',
   'gdrive.create.create': 'Створити',
@@ -322,10 +322,10 @@ export const ukUA = {
       'Пропущено {count} резервної копії: резервні копії залишаються в локальному застосунку',
   },
   'gdrive.import.uploadsFailed': {
-    one: 'Не вдалося {count} вивантаження',
-    few: 'Не вдалося {count} вивантаження',
-    many: 'Не вдалося {count} вивантажень',
-    other: 'Не вдалося {count} вивантаження',
+    one: 'Не вдалося вивантажити {count} файл',
+    few: 'Не вдалося вивантажити {count} файли',
+    many: 'Не вдалося вивантажити {count} файлів',
+    other: 'Не вдалося вивантажити {count} файлу',
   },
 
   'gdrive.notice.unreadableState':
@@ -345,5 +345,5 @@ export const ukUA = {
   'gdrive.notice.signOutUnconfirmed':
     'Ви вийшли тут. Сервер ERD Editor не підтвердив вихід, тому цей браузер завершить його під час наступного підключення',
   'gdrive.notice.signOutNotRevoked':
-    'Ви вийшли тут, але Google не підтвердив відкликання доступу ERD Editor, тож на інших пристроях вхід може зберегтися, доки ви не відкличете його на myaccount.google.com/permissions',
+    'Ви вийшли тут, але Google не підтвердив відкликання доступу ERD Editor, тож на інших пристроях вхід може зберегтися, доки ви не відкличете доступ на myaccount.google.com/permissions',
 } satisfies Messages;

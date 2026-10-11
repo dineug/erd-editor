@@ -45,7 +45,7 @@ export const roRO = {
   'sidebar.schemaName': 'Numele schemei',
   'sidebar.schemaNamePlaceholder': 'numele schemei',
   'sidebar.duplicate': 'Duplicare',
-  'sidebar.moveToTrash': 'Mutați în coșul de gunoi',
+  'sidebar.moveToTrash': 'Mutare în coșul de gunoi',
   'sidebar.actionsFor': 'Acțiuni pentru {name}',
   'sidebar.noResults': 'Niciun rezultat',
 
@@ -105,7 +105,7 @@ export const roRO = {
   'drop.formats':
     'Copii de rezervă, documente .erd, .vuerd și .json, SQL, DBML, AML și GraphQL',
   'drop.importing': 'Se importă fișierele…',
-  'drop.importingHint': 'Plasați mai multe după ce se termină acest import',
+  'drop.importingHint': 'Plasați fișierele după ce se termină acest import',
 
   'import.imported': {
     one: 'S-a importat {count} schemă',
@@ -186,11 +186,11 @@ export const roRO = {
   'gdrive.unsupportedOrigin.description':
     'Conectarea cu Google funcționează doar pe erd-editor.io, iar aceasta este o previzualizare.',
 
-  'gdrive.signIn.title': 'Deschideți fișierele ERD în Google Drive',
+  'gdrive.signIn.title': 'Deschideți fișierele ERD din Google Drive',
   'gdrive.signIn.description':
     'ERD Editor deschide și salvează doar fișierele pe care le creați sau le deschideți cu el.',
   'gdrive.signIn.fallbackDescription':
-    'Serverul de conectare ERD Editor este ocupat, așa că Google vă conectează câte o oră pe rând.',
+    'Serverul de conectare ERD Editor este ocupat, așa că Google vă conectează pentru câte o oră.',
   'gdrive.signIn.signIn': 'Conectați-vă cu Google',
   'gdrive.signIn.continue': 'Continuați cu Google',
   'gdrive.signIn.waitingTitle': 'Se așteaptă conectarea la Google…',
@@ -200,7 +200,7 @@ export const roRO = {
     'Browserul a blocat fereastra de conectare. Permiteți ferestrele pop-up pentru acest site, apoi reîncercați.',
   'gdrive.signIn.failed': 'Conectarea la Google nu s-a finalizat. Reîncercați.',
   'gdrive.signIn.gisBlocked':
-    'Conectarea Google nu s-a putut încărca. Verificați că nimic nu blochează accounts.google.com, apoi reîncărcați pagina.',
+    'Conectarea cu Google nu s-a putut încărca. Asigurați-vă că nimic nu blochează accounts.google.com, apoi reîncărcați pagina.',
 
   'gdrive.sidebar.label': 'Fișiere Drive',
   'gdrive.sidebar.newFile': 'Fișier nou',
@@ -222,7 +222,7 @@ export const roRO = {
     'Se așteaptă fila care a deschis acest fișier…',
   'gdrive.viewer.notDocument': 'Acest fișier nu este un document ERD Editor',
   'gdrive.viewer.notDocumentHint':
-    'ERD Editor deschide diagramele pe care le-a salvat el însuși. Lasă acest fișier așa cum este și nu îl suprascrie niciodată.',
+    'ERD Editor deschide diagramele pe care le-a salvat el însuși. Acest fișier rămâne așa cum este și nu va fi suprascris niciodată.',
   'gdrive.viewer.googleNativeHint':
     'Documentele, foile de calcul și dosarele Google se deschid în Google Drive.',
   'gdrive.viewer.trashed': 'Acest fișier este în coșul de gunoi',
@@ -295,7 +295,7 @@ export const roRO = {
     'Într-un dosar pe care ERD Editor nu îl poate vedea',
   'gdrive.create.inFolder': 'În dosarul „{name}”',
   'gdrive.create.untitled': 'Fără titlu',
-  'gdrive.create.savedAs': 'Salvat ca {name}',
+  'gdrive.create.savedAs': 'Va fi salvat ca {name}',
   'gdrive.create.folderRefused':
     'ERD Editor nu poate crea fișiere în acest dosar. Îl creați în dosarul ERD Editor?',
   'gdrive.create.failed': 'Fișierul nu a putut fi creat. Reîncercați.',

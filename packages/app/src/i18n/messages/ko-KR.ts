@@ -56,9 +56,9 @@ export const koKR = {
   },
   'trash.listLabel': '휴지통의 스키마',
   'trash.deleted': '{time} 삭제함',
-  'trash.deletesToday': '오늘 삭제됨',
-  'trash.deletesTomorrow': '내일 삭제됨',
-  'trash.deletesIn': { other: '{count}일 후 삭제됨' },
+  'trash.deletesToday': '오늘 삭제 예정',
+  'trash.deletesTomorrow': '내일 삭제 예정',
+  'trash.deletesIn': { other: '{count}일 후 삭제 예정' },
   'trash.restore': '복원',
   'trash.deletePermanently': '영구 삭제',
   'trash.cannotBeUndone': '되돌릴 수 없습니다.',
@@ -106,7 +106,7 @@ export const koKR = {
   'update.updatedElsewhere':
     '다른 탭에서 앱이 업데이트되었습니다. 새로고침하면 마무리됩니다.',
 
-  'live.invalidToken': '공유 토큰이 올바르지 않습니다.',
+  'live.invalidToken': '공유 링크가 올바르지 않습니다.',
   'live.hostNotFound': '호스트를 찾을 수 없습니다.',
   'live.refresh': '새로고침',
   'live.hostStopped': '호스트가 세션을 종료했습니다.',
@@ -126,9 +126,9 @@ export const koKR = {
   'gdrive.scopeMissing.title': 'Google 드라이브 접근이 허용되지 않았습니다',
   'gdrive.scopeMissing.description':
     'ERD Editor는 이 앱으로 만들거나 연 파일에 접근해야 합니다. 다시 로그인하고 Google 드라이브 접근을 허용하세요.',
-  'gdrive.mismatch.title': 'Google 드라이브가 다른 계정용으로 보낸 파일입니다',
+  'gdrive.mismatch.title': 'Google 드라이브가 다른 계정용으로 보낸 요청입니다',
   'gdrive.mismatch.description':
-    '지금 {email} 계정으로 로그인되어 있습니다. Google 드라이브가 이 파일을 연 계정으로 전환하거나, 이 계정의 파일로 계속하세요.',
+    '지금 {email}(으)로 로그인되어 있습니다. Google 드라이브가 사용한 계정으로 전환하거나, 이 계정의 파일로 계속하세요.',
   'gdrive.mismatch.choose':
     'ERD Editor가 그 계정을 미리 선택하지 못했으니 Google이 물으면 직접 고르세요.',
   'gdrive.mismatch.switchAccount': '계정 전환',
@@ -138,9 +138,9 @@ export const koKR = {
     '다른 탭에서 다른 Google 계정으로 로그인해서 이 탭은 멈췄습니다. 그 계정으로 계속하려면 새로고침하세요.',
   'gdrive.unsaved.title': '변경 사항이 저장되지 않았습니다',
   'gdrive.unsaved.description':
-    '{name}에 Google 드라이브에 없는 {email}의 변경 사항이 있고, 지금은 {account} 계정으로 로그인되어 있습니다. 계속하기 전에 다운로드하세요.',
+    '{name}에 Google 드라이브에 없는 {email}의 변경 사항이 있고, 지금은 {account}(으)로 로그인되어 있습니다. 계속하기 전에 다운로드하세요.',
   'gdrive.unsaved.descriptionUnnamed':
-    '열려 있던 파일에 Google 드라이브에 없는 {email}의 변경 사항이 있고, 지금은 {account} 계정으로 로그인되어 있습니다. 계속하기 전에 다운로드하세요.',
+    '열려 있던 파일에 Google 드라이브에 없는 {email}의 변경 사항이 있고, 지금은 {account}(으)로 로그인되어 있습니다. 계속하기 전에 다운로드하세요.',
   'gdrive.unsaved.continueWithout': '버리고 계속하기',
   'gdrive.framed.title':
     'ERD Editor의 Google 드라이브 편집기를 별도 탭에서 여세요',
@@ -151,20 +151,21 @@ export const koKR = {
     '이 ERD Editor 빌드에는 Google 로그인 클라이언트가 없습니다.',
   'gdrive.unsupportedOrigin.title': '여기서는 Google 드라이브를 쓸 수 없습니다',
   'gdrive.unsupportedOrigin.description':
-    'Google 로그인은 erd-editor.io에서만 동작하며, 여기는 미리보기입니다.',
+    'Google 로그인은 erd-editor.io에서만 동작하며, 여기는 미리보기 사이트입니다.',
 
   'gdrive.signIn.title': 'Google 드라이브의 ERD 파일 열기',
   'gdrive.signIn.description':
     'ERD Editor는 이 앱으로 만들거나 연 파일만 열고 저장합니다.',
   'gdrive.signIn.fallbackDescription':
-    'ERD Editor 로그인 서버가 바빠서 Google이 한 번에 한 시간씩 로그인합니다.',
+    'ERD Editor 로그인 서버가 바빠서 Google 로그인이 한 번에 한 시간씩만 유지됩니다.',
   'gdrive.signIn.signIn': 'Google 계정으로 로그인',
   'gdrive.signIn.continue': 'Google 계정으로 계속하기',
   'gdrive.signIn.waitingTitle': 'Google 로그인을 기다리는 중…',
   'gdrive.signIn.waitingDescription': 'Google이 연 창에서 로그인을 마치세요.',
   'gdrive.signIn.popupBlocked':
     '브라우저가 로그인 창을 막았습니다. 이 사이트의 팝업을 허용한 뒤 다시 시도하세요.',
-  'gdrive.signIn.failed': 'Google 로그인이 끝나지 않았습니다. 다시 시도하세요.',
+  'gdrive.signIn.failed':
+    'Google 로그인을 완료하지 못했습니다. 다시 시도하세요.',
   'gdrive.signIn.gisBlocked':
     'Google 로그인을 불러오지 못했습니다. accounts.google.com을 막는 것이 없는지 확인한 뒤 페이지를 새로고침하세요.',
 
@@ -199,7 +200,7 @@ export const koKR = {
     '삭제되었거나 이 Google 계정으로는 열 수 없는 파일일 수 있습니다.',
   'gdrive.viewer.waitingToken': 'Google을 기다리는 중',
   'gdrive.viewer.waitingTokenHint':
-    'Google 세션이 돌아오면 이 파일이 열립니다.',
+    'Google에 다시 연결되면 이 파일이 열립니다.',
   'gdrive.viewer.failed': '이 파일을 열지 못했습니다',
   'gdrive.viewer.failedHint':
     'Google 드라이브가 응답하지 않았습니다. 연결을 확인하고 다시 시도하세요.',
@@ -243,20 +244,20 @@ export const koKR = {
 
   'gdrive.leave.title': '최근 변경 사항이 저장되지 않았습니다',
   'gdrive.leave.description':
-    'ERD Editor가 Google 드라이브에 저장하지 못했습니다. 다운로드해서 사본을 남기거나, 나가서 버리세요.',
+    'ERD Editor가 Google 드라이브에 저장하지 못했습니다. 다운로드해서 사본을 남기세요. 그대로 나가면 변경 사항이 사라집니다.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor가 Google 드라이브에 저장하지 못했습니다. 다운로드해서 사본을 남기거나, 로그아웃해서 버리세요.',
+    'ERD Editor가 Google 드라이브에 저장하지 못했습니다. 다운로드해서 사본을 남기세요. 그대로 로그아웃하면 변경 사항이 사라집니다.',
   'gdrive.leave.stay': '머무르기',
   'gdrive.leave.leaveAnyway': '그래도 나가기',
   'gdrive.leave.signOutAnyway': '그래도 로그아웃',
 
-  'gdrive.create.title': 'Google 드라이브에 새 파일',
+  'gdrive.create.title': 'Google 드라이브에 새 파일 만들기',
   'gdrive.create.inAppFolder': '위치: ERD Editor 폴더',
   'gdrive.create.inFolderPending': '위치: 폴더…',
   'gdrive.create.inHiddenFolder': '위치: ERD Editor가 볼 수 없는 폴더',
   'gdrive.create.inFolder': '위치: “{name}” 폴더',
   'gdrive.create.untitled': '제목 없음',
-  'gdrive.create.savedAs': '{name}(으)로 저장됨',
+  'gdrive.create.savedAs': '{name}(으)로 저장됩니다',
   'gdrive.create.folderRefused':
     'ERD Editor가 이 폴더에는 파일을 만들 수 없습니다. 대신 ERD Editor 폴더에 만들까요?',
   'gdrive.create.failed': '파일을 만들지 못했습니다. 다시 시도하세요.',

@@ -21,9 +21,9 @@ export const deDE = {
   'common.dark': 'Dunkel',
   'common.host': 'Host',
   'common.guest': 'Gast',
-  'common.you': '(du)',
+  'common.you': '(Sie)',
   'common.participants': 'Teilnehmende',
-  'common.yourNickname': 'Dein Spitzname',
+  'common.yourNickname': 'Ihr Spitzname',
   'common.privacy': 'Datenschutz',
   'common.terms': 'Nutzungsbedingungen',
   'common.editingGuide': 'Bearbeitungsanleitung',
@@ -82,7 +82,7 @@ export const deDE = {
     other: '{count} Gäste verbunden',
   },
   'collaboration.title': 'Gemeinsames Bearbeiten',
-  'collaboration.experiment': 'Experiment',
+  'collaboration.experiment': 'Experimentell',
   'collaboration.description':
     'Teilnehmende verbinden sich direkt über WebRTC und tauschen Nachrichten mit Ende-zu-Ende-Verschlüsselung aus.',
   'collaboration.nickname': 'Spitzname',
@@ -93,9 +93,9 @@ export const deDE = {
 
   'viewer.noSchemaOpen': 'Kein Schema geöffnet',
   'viewer.emptyHint':
-    'Wähle eines in der Seitenleiste aus oder beginne hier ein neues. Du kannst Dateien auch an beliebiger Stelle ablegen, um sie zu importieren.',
+    'Wählen Sie eines in der Seitenleiste aus oder erstellen Sie hier ein neues. Sie können Dateien auch an beliebiger Stelle ablegen, um sie zu importieren.',
   'viewer.openSample': 'Beispiel öffnen',
-  'viewer.sampleName': 'Buchhandlung-Beispiel',
+  'viewer.sampleName': 'Beispiel-Buchhandlung',
 
   'drop.title': 'Zum Importieren ablegen',
   'drop.formats':
@@ -127,13 +127,13 @@ export const deDE = {
   'update.updatedElsewhere':
     'Die App wurde in einem anderen Tab aktualisiert – zum Abschließen neu laden.',
 
-  'live.invalidToken': 'Ungültiges Freigabe-Token.',
+  'live.invalidToken': 'Ungültiger Freigabelink.',
   'live.hostNotFound': 'Host nicht gefunden.',
   'live.refresh': 'Aktualisieren',
   'live.hostStopped': 'Der Host hat die Sitzung beendet.',
   'live.somethingWentWrong': 'Etwas ist schiefgelaufen.',
   'live.lookingForHost': 'Host wird gesucht...',
-  'live.waitingForHost': 'Warten auf einen Host...',
+  'live.waitingForHost': 'Warten auf den Host...',
   'live.session': 'Live-Sitzung',
   'live.inSession': {
     one: '{count} in der Sitzung',
@@ -142,33 +142,33 @@ export const deDE = {
   'live.showParticipants': 'Teilnehmende anzeigen',
   'live.hideParticipants': 'Teilnehmende ausblenden',
 
-  'gdrive.checkingSignIn': 'Deine Google-Anmeldung wird geprüft…',
+  'gdrive.checkingSignIn': 'Ihre Google-Anmeldung wird geprüft…',
   'gdrive.anotherAccount': 'ein anderes Konto',
-  'gdrive.offline.title': 'Du bist offline',
+  'gdrive.offline.title': 'Sie sind offline',
   'gdrive.offline.description':
-    'ERD Editor prüft deine Google-Anmeldung, sobald du wieder online bist.',
+    'ERD Editor prüft Ihre Google-Anmeldung, sobald Sie wieder online sind.',
   'gdrive.scopeMissing.title': 'Zugriff auf Google Drive wurde nicht gewährt',
   'gdrive.scopeMissing.description':
-    'ERD Editor braucht Zugriff auf die Dateien, die du damit erstellst oder öffnest. Melde dich erneut an und erlaube den Zugriff auf Google Drive.',
+    'ERD Editor benötigt Zugriff auf die Dateien, die Sie damit erstellen oder öffnen. Melden Sie sich erneut an und erlauben Sie den Zugriff auf Google Drive.',
   'gdrive.mismatch.title':
     'Google Drive hat dies für ein anderes Konto gesendet',
   'gdrive.mismatch.description':
-    'Du bist als {email} angemeldet. Wechsle zu dem Konto, mit dem Google Drive die Datei geöffnet hat, oder fahre mit den Dateien dieses Kontos fort.',
+    'Sie sind als {email} angemeldet. Wechseln Sie zu dem Konto, mit dem Google Drive die Datei geöffnet hat, oder fahren Sie mit den Dateien dieses Kontos fort.',
   'gdrive.mismatch.choose':
-    'ERD Editor konnte dieses Konto nicht vorauswählen. Wähle es also aus, wenn Google fragt.',
+    'ERD Editor konnte das andere Konto nicht vorauswählen. Wählen Sie es daher aus, wenn Google danach fragt.',
   'gdrive.mismatch.switchAccount': 'Konto wechseln',
   'gdrive.mismatch.showMyFiles': 'Meine Dateien anzeigen',
   'gdrive.accountChanged.title': 'Mit einem anderen Konto angemeldet',
   'gdrive.accountChanged.description':
-    'Ein anderer Tab hat sich bei einem anderen Google-Konto angemeldet, daher wurde dieser Tab angehalten. Lade ihn neu, um mit diesem Konto fortzufahren.',
-  'gdrive.unsaved.title': 'Deine Änderungen wurden nicht gespeichert',
+    'Ein anderer Tab hat sich bei einem anderen Google-Konto angemeldet, daher wurde dieser Tab angehalten. Laden Sie ihn neu, um mit dem neuen Konto fortzufahren.',
+  'gdrive.unsaved.title': 'Ihre Änderungen wurden nicht gespeichert',
   'gdrive.unsaved.description':
-    '{name} enthält Änderungen von {email}, die nicht in Google Drive sind, und jetzt ist {account} angemeldet. Lade sie herunter, bevor du fortfährst.',
+    '{name} enthält Änderungen von {email}, die nicht in Google Drive sind, und jetzt ist {account} angemeldet. Laden Sie sie herunter, bevor Sie fortfahren.',
   'gdrive.unsaved.descriptionUnnamed':
-    'Die geöffnete Datei enthält Änderungen von {email}, die nicht in Google Drive sind, und jetzt ist {account} angemeldet. Lade sie herunter, bevor du fortfährst.',
+    'Die geöffnete Datei enthält Änderungen von {email}, die nicht in Google Drive sind, und jetzt ist {account} angemeldet. Laden Sie sie herunter, bevor Sie fortfahren.',
   'gdrive.unsaved.continueWithout': 'Ohne sie fortfahren',
   'gdrive.framed.title':
-    'Öffne den Google-Drive-Editor von ERD Editor in einem eigenen Tab',
+    'Öffnen Sie den Google-Drive-Editor von ERD Editor in einem eigenen Tab',
   'gdrive.framed.description': 'Er läuft nicht innerhalb einer anderen Seite.',
   'gdrive.framed.link': 'In neuem Tab öffnen',
   'gdrive.notConfigured.title':
@@ -179,22 +179,22 @@ export const deDE = {
   'gdrive.unsupportedOrigin.description':
     'Die Google-Anmeldung funktioniert nur auf erd-editor.io, und dies ist eine Vorschau.',
 
-  'gdrive.signIn.title': 'Deine ERD-Dateien in Google Drive öffnen',
+  'gdrive.signIn.title': 'Ihre ERD-Dateien aus Google Drive öffnen',
   'gdrive.signIn.description':
-    'ERD Editor öffnet und speichert nur die Dateien, die du damit erstellst oder öffnest.',
+    'ERD Editor öffnet und speichert nur die Dateien, die Sie damit erstellen oder öffnen.',
   'gdrive.signIn.fallbackDescription':
-    'Der Anmeldeserver von ERD Editor ist ausgelastet, daher meldet Google dich jeweils für eine Stunde an.',
+    'Der Anmeldeserver von ERD Editor ist ausgelastet, daher meldet Google Sie jeweils für eine Stunde an.',
   'gdrive.signIn.signIn': 'Über Google anmelden',
   'gdrive.signIn.continue': 'Weiter mit Google',
   'gdrive.signIn.waitingTitle': 'Warten auf die Google-Anmeldung…',
   'gdrive.signIn.waitingDescription':
-    'Schließe die Anmeldung in dem Fenster ab, das Google geöffnet hat.',
+    'Schließen Sie die Anmeldung in dem Fenster ab, das Google geöffnet hat.',
   'gdrive.signIn.popupBlocked':
-    'Dein Browser hat das Anmeldefenster blockiert. Erlaube Pop-ups für diese Website und versuche es erneut.',
+    'Ihr Browser hat das Anmeldefenster blockiert. Erlauben Sie Pop-ups für diese Website und versuchen Sie es erneut.',
   'gdrive.signIn.failed':
-    'Die Google-Anmeldung wurde nicht abgeschlossen. Versuche es erneut.',
+    'Die Google-Anmeldung wurde nicht abgeschlossen. Versuchen Sie es erneut.',
   'gdrive.signIn.gisBlocked':
-    'Die Google-Anmeldung konnte nicht geladen werden. Prüfe, dass nichts accounts.google.com blockiert, und lade die Seite neu.',
+    'Die Google-Anmeldung konnte nicht geladen werden. Stellen Sie sicher, dass nichts accounts.google.com blockiert, und laden Sie die Seite neu.',
 
   'gdrive.sidebar.label': 'Drive-Dateien',
   'gdrive.sidebar.newFile': 'Neue Datei',
@@ -204,14 +204,14 @@ export const deDE = {
   'gdrive.sidebar.fileName': 'Dateiname',
   'gdrive.sidebar.fileNamePlaceholder': 'Dateiname',
   'gdrive.sidebar.loadingFiles': 'Dateien werden geladen…',
-  'gdrive.sidebar.loadFailed': 'Deine Dateien konnten nicht geladen werden.',
+  'gdrive.sidebar.loadFailed': 'Ihre Dateien konnten nicht geladen werden.',
 
   'gdrive.viewer.noFileOpen': 'Keine Datei geöffnet',
   'gdrive.viewer.noFileOpenHint':
-    'Wähle eine Datei in der Seitenleiste aus oder beginne eine neue.',
+    'Wählen Sie eine Datei in der Seitenleiste aus oder erstellen Sie eine neue.',
   'gdrive.viewer.noFilesYet': 'Noch keine Dateien',
   'gdrive.viewer.noFilesYetHint':
-    'Erstelle eine Datei oder importiere eine. Dateien, die du aus Google Drive mit ERD Editor öffnest, erscheinen ebenfalls hier.',
+    'Erstellen Sie eine Datei oder importieren Sie eine. Dateien, die Sie aus Google Drive mit ERD Editor öffnen, erscheinen ebenfalls hier.',
   'gdrive.viewer.waitingForOpener':
     'Warten auf den Tab, der diese Datei geöffnet hat…',
   'gdrive.viewer.notDocument': 'Diese Datei ist kein ERD Editor-Dokument',
@@ -221,18 +221,18 @@ export const deDE = {
     'Google Docs, Tabellen und Ordner werden in Google Drive geöffnet.',
   'gdrive.viewer.trashed': 'Diese Datei ist im Papierkorb',
   'gdrive.viewer.trashedHint':
-    'Stelle sie in Google Drive wieder her, um sie hier zu öffnen.',
+    'Stellen Sie sie in Google Drive wieder her, um sie hier zu öffnen.',
   'gdrive.viewer.tooLarge': 'Diese Datei ist zu groß',
   'gdrive.viewer.tooLargeHint': 'ERD Editor öffnet Dateien bis {size} MB.',
   'gdrive.viewer.notFound': 'Diese Datei ist nicht verfügbar',
   'gdrive.viewer.notFoundHint':
-    'Sie wurde möglicherweise gelöscht, oder dieses Google-Konto kann sie nicht öffnen.',
+    'Die Datei wurde möglicherweise gelöscht, oder dieses Google-Konto kann sie nicht öffnen.',
   'gdrive.viewer.waitingToken': 'Warten auf Google',
   'gdrive.viewer.waitingTokenHint':
-    'Diese Datei wird geöffnet, sobald deine Google-Sitzung zurück ist.',
+    'Diese Datei wird geöffnet, sobald Ihre Google-Sitzung wiederhergestellt ist.',
   'gdrive.viewer.failed': 'Diese Datei konnte nicht geöffnet werden',
   'gdrive.viewer.failedHint':
-    'Google Drive hat nicht geantwortet. Prüfe die Verbindung und versuche es erneut.',
+    'Google Drive hat nicht geantwortet. Prüfen Sie die Verbindung und versuchen Sie es erneut.',
   'gdrive.viewer.savingBeforeLeave': 'Wird vor dem Verlassen gespeichert…',
 
   'gdrive.status.saved': 'In Google Drive gespeichert',
@@ -251,13 +251,13 @@ export const deDE = {
   'gdrive.status.scopeMissing': 'Kein Zugriff auf Google Drive',
 
   'gdrive.banner.conflict':
-    'Diese Datei wurde in Google Drive geändert, daher wurde das Speichern gestoppt. Deine Änderungen sind noch da.',
+    'Diese Datei wurde in Google Drive geändert, daher wurde das Speichern gestoppt. Ihre Änderungen sind noch da.',
   'gdrive.banner.unconfirmed':
-    'Das letzte Speichern konnte nicht bestätigt werden, daher wurde das Speichern gestoppt. Deine Änderungen sind noch da.',
+    'Das letzte Speichern konnte nicht bestätigt werden, daher wurde das Speichern gestoppt. Ihre Änderungen sind noch da.',
   'gdrive.banner.deleted':
     'Diese Datei wurde in Google Drive gelöscht oder in den Papierkorb verschoben, daher wurde das Speichern gestoppt.',
   'gdrive.banner.readonly':
-    'Du kannst diese Datei in Google Drive nicht mehr bearbeiten, daher wurde das Speichern gestoppt. Deine Änderungen sind noch da.',
+    'Sie können diese Datei in Google Drive nicht mehr bearbeiten, daher wurde das Speichern gestoppt. Ihre Änderungen sind noch da.',
   'gdrive.banner.checkDrive': 'Drive prüfen',
   'gdrive.banner.reloadFromDrive': 'Aus Drive neu laden',
   'gdrive.banner.leaderNotResponding':
@@ -267,19 +267,19 @@ export const deDE = {
   'gdrive.banner.takeOver': 'Speichern übernehmen',
   'gdrive.banner.openAndTakeOver': 'Aus Drive öffnen und übernehmen',
   'gdrive.banner.popupBlocked':
-    'Dein Browser hat das Google-Fenster blockiert. Erlaube Pop-ups für diese Website und verbinde dich dann erneut.',
+    'Ihr Browser hat das Google-Fenster blockiert. Erlauben Sie Pop-ups für diese Website und verbinden Sie sich dann erneut.',
   'gdrive.banner.reconnectFailed':
-    'Google wurde nicht wieder verbunden. Versuche es erneut.',
+    'Die Verbindung zu Google konnte nicht wiederhergestellt werden. Versuchen Sie es erneut.',
   'gdrive.banner.sessionEnded':
-    'Deine Google-Sitzung ist abgelaufen, daher ist das Speichern pausiert.',
-  'gdrive.banner.sessionEndsSoon': 'Deine Google-Sitzung läuft bald ab.',
+    'Ihre Google-Sitzung ist abgelaufen, daher ist das Speichern pausiert.',
+  'gdrive.banner.sessionEndsSoon': 'Ihre Google-Sitzung läuft bald ab.',
   'gdrive.banner.reconnect': 'Google neu verbinden',
 
-  'gdrive.leave.title': 'Deine letzten Änderungen sind nicht gespeichert',
+  'gdrive.leave.title': 'Ihre letzten Änderungen sind nicht gespeichert',
   'gdrive.leave.description':
-    'ERD Editor konnte sie nicht in Google Drive speichern. Lade sie herunter, um eine Kopie zu behalten, oder verlasse die Seite und verwirf sie.',
+    'ERD Editor konnte sie nicht in Google Drive speichern. Laden Sie sie herunter, um eine Kopie zu behalten, oder verlassen Sie die Datei und verwerfen Sie sie.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor konnte sie nicht in Google Drive speichern. Lade sie herunter, um eine Kopie zu behalten, oder melde dich ab und verwirf sie.',
+    'ERD Editor konnte sie nicht in Google Drive speichern. Laden Sie sie herunter, um eine Kopie zu behalten, oder melden Sie sich ab und verwerfen Sie sie.',
   'gdrive.leave.stay': 'Bleiben',
   'gdrive.leave.leaveAnyway': 'Trotzdem verlassen',
   'gdrive.leave.signOutAnyway': 'Trotzdem abmelden',
@@ -291,11 +291,11 @@ export const deDE = {
     'In einem Ordner, den ERD Editor nicht sehen kann',
   'gdrive.create.inFolder': 'Im Ordner „{name}“',
   'gdrive.create.untitled': 'Unbenannt',
-  'gdrive.create.savedAs': 'Gespeichert als {name}',
+  'gdrive.create.savedAs': 'Wird als {name} gespeichert',
   'gdrive.create.folderRefused':
     'ERD Editor kann in diesem Ordner keine Dateien erstellen. Stattdessen im Ordner ERD Editor erstellen?',
   'gdrive.create.failed':
-    'Die Datei konnte nicht erstellt werden. Versuche es erneut.',
+    'Die Datei konnte nicht erstellt werden. Versuchen Sie es erneut.',
   'gdrive.create.createInAppFolder': 'Im Ordner ERD Editor erstellen',
   'gdrive.create.create': 'Erstellen',
 
@@ -318,9 +318,9 @@ export const deDE = {
   'gdrive.notice.renameFailed': 'Die Datei konnte nicht umbenannt werden',
   'gdrive.notice.createFailed': 'Die Datei konnte nicht erstellt werden',
   'gdrive.notice.checkFailed':
-    'Google Drive ist nicht erreichbar. Versuche es erneut.',
+    'Google Drive ist nicht erreichbar. Versuchen Sie es erneut.',
   'gdrive.notice.reloadFailed':
-    'Neuladen aus Google Drive fehlgeschlagen. Versuche es erneut.',
+    'Neuladen aus Google Drive fehlgeschlagen. Versuchen Sie es erneut.',
   'gdrive.notice.reloadTrashed':
     'Neuladen nicht möglich: Die Datei ist in Google Drive im Papierkorb',
   'gdrive.notice.reloadTooLarge':
@@ -330,5 +330,5 @@ export const deDE = {
   'gdrive.notice.signOutUnconfirmed':
     'Hier abgemeldet. Der Server von ERD Editor hat es nicht bestätigt, daher schließt dieser Browser die Abmeldung bei der nächsten Verbindung ab',
   'gdrive.notice.signOutNotRevoked':
-    'Hier abgemeldet, aber Google hat nicht bestätigt, dass der Zugriff von ERD Editor entfernt wurde. Deine anderen Geräte bleiben möglicherweise angemeldet, bis du ihn unter myaccount.google.com/permissions entfernst',
+    'Hier abgemeldet, aber Google hat nicht bestätigt, dass der Zugriff von ERD Editor entfernt wurde. Ihre anderen Geräte bleiben möglicherweise angemeldet, bis Sie ihn unter myaccount.google.com/permissions entfernen',
 } satisfies Messages;

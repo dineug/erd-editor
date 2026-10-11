@@ -19,7 +19,7 @@ export const trTR = {
   'common.theme': 'Tema',
   'common.light': 'Açık',
   'common.dark': 'Koyu',
-  'common.host': 'Sunucu',
+  'common.host': 'Oturum sahibi',
   'common.guest': 'Konuk',
   'common.you': '(siz)',
   'common.participants': 'Katılımcılar',
@@ -60,8 +60,8 @@ export const trTR = {
   'trash.deletesToday': 'bugün silinecek',
   'trash.deletesTomorrow': 'yarın silinecek',
   'trash.deletesIn': {
-    one: '{count} gün içinde silinecek',
-    other: '{count} gün içinde silinecek',
+    one: '{count} gün sonra silinecek',
+    other: '{count} gün sonra silinecek',
   },
   'trash.restore': 'Geri yükle',
   'trash.deletePermanently': 'Kalıcı olarak sil',
@@ -91,7 +91,7 @@ export const trTR = {
 
   'viewer.noSchemaOpen': 'Açık şema yok',
   'viewer.emptyHint':
-    'Kenar çubuğundan birini seçin ya da burada yeni bir tane başlatın. İçe aktarmak için dosyaları herhangi bir yere de bırakabilirsiniz.',
+    'Kenar çubuğundan birini seçin ya da burada yeni bir tane oluşturun. İçe aktarmak için dosyaları herhangi bir yere de bırakabilirsiniz.',
   'viewer.openSample': 'Örneği aç',
   'viewer.sampleName': 'kitapçı örneği',
 
@@ -125,13 +125,13 @@ export const trTR = {
   'update.updatedElsewhere':
     'Uygulama başka bir sekmede güncellendi — tamamlamak için yeniden yükleyin.',
 
-  'live.invalidToken': 'Geçersiz paylaşım belirteci.',
-  'live.hostNotFound': 'Sunucu bulunamadı.',
+  'live.invalidToken': 'Geçersiz paylaşım bağlantısı.',
+  'live.hostNotFound': 'Oturum sahibi bulunamadı.',
   'live.refresh': 'Yenile',
-  'live.hostStopped': 'Sunucu oturumu durdurdu.',
+  'live.hostStopped': 'Oturum sahibi oturumu durdurdu.',
   'live.somethingWentWrong': 'Bir sorun oluştu.',
-  'live.lookingForHost': 'Sunucu aranıyor...',
-  'live.waitingForHost': 'Sunucu bekleniyor...',
+  'live.lookingForHost': 'Oturum sahibi aranıyor...',
+  'live.waitingForHost': 'Oturum sahibi bekleniyor...',
   'live.session': 'Canlı oturum',
   'live.inSession': {
     one: 'Oturumda {count} kişi',
@@ -163,7 +163,7 @@ export const trTR = {
     '{name} dosyasında {email} hesabının Google Drive’da olmayan değişiklikleri var ve şimdi {account} oturum açmış durumda. Devam etmeden önce bunları indirin.',
   'gdrive.unsaved.descriptionUnnamed':
     'Açık olan dosyada {email} hesabının Google Drive’da olmayan değişiklikleri var ve şimdi {account} oturum açmış durumda. Devam etmeden önce bunları indirin.',
-  'gdrive.unsaved.continueWithout': 'Onlar olmadan devam et',
+  'gdrive.unsaved.continueWithout': 'Değişiklikler olmadan devam et',
   'gdrive.framed.title':
     'ERD Editor’ün Google Drive düzenleyicisini kendi sekmesinde açın',
   'gdrive.framed.description': 'Başka bir sayfanın içinde çalışmaz.',
@@ -204,7 +204,7 @@ export const trTR = {
 
   'gdrive.viewer.noFileOpen': 'Açık dosya yok',
   'gdrive.viewer.noFileOpenHint':
-    'Kenar çubuğundan bir dosya seçin ya da yeni bir tane başlatın.',
+    'Kenar çubuğundan bir dosya seçin ya da yeni bir tane oluşturun.',
   'gdrive.viewer.noFilesYet': 'Henüz dosya yok',
   'gdrive.viewer.noFilesYetHint':
     'Bir dosya oluşturun veya içe aktarın. Google Drive’dan ERD Editor ile açtığınız dosyalar da burada görünür.',
@@ -260,7 +260,8 @@ export const trTR = {
   'gdrive.banner.openAndTakeOver': 'Drive’dan aç ve devral',
   'gdrive.banner.popupBlocked':
     'Tarayıcınız Google penceresini engelledi. Bu site için açılır pencerelere izin verin, ardından yeniden bağlanın.',
-  'gdrive.banner.reconnectFailed': 'Google yeniden bağlanmadı. Tekrar deneyin.',
+  'gdrive.banner.reconnectFailed':
+    'Google’a yeniden bağlanılamadı. Tekrar deneyin.',
   'gdrive.banner.sessionEnded':
     'Google oturumunuz sona erdi, bu yüzden kaydetme duraklatıldı.',
   'gdrive.banner.sessionEndsSoon': 'Google oturumunuz yakında sona erecek.',
@@ -268,9 +269,9 @@ export const trTR = {
 
   'gdrive.leave.title': 'Son değişiklikleriniz kaydedilmedi',
   'gdrive.leave.description':
-    'ERD Editor bunları Google Drive’a kaydedemedi. Bir kopyasını tutmak için indirin ya da ayrılın ve onları kaybedin.',
+    'ERD Editor bunları Google Drive’a kaydedemedi. Bir kopyasını saklamak için indirin ya da bunları kaybederek ayrılın.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor bunları Google Drive’a kaydedemedi. Bir kopyasını tutmak için indirin ya da oturumu kapatın ve onları kaybedin.',
+    'ERD Editor bunları Google Drive’a kaydedemedi. Bir kopyasını saklamak için indirin ya da bunları kaybederek oturumu kapatın.',
   'gdrive.leave.stay': 'Kal',
   'gdrive.leave.leaveAnyway': 'Yine de ayrıl',
   'gdrive.leave.signOutAnyway': 'Yine de oturumu kapat',
@@ -317,5 +318,5 @@ export const trTR = {
   'gdrive.notice.signOutUnconfirmed':
     'Burada oturum kapatıldı. ERD Editor’ün sunucusu bunu doğrulamadı, bu yüzden bu tarayıcı bir sonraki bağlantıda oturumu kapatmayı tamamlar',
   'gdrive.notice.signOutNotRevoked':
-    'Burada oturum kapatıldı ancak Google, ERD Editor’ün erişimini kaldırdığını doğrulamadı. Bu nedenle diğer cihazlarınız, erişimi myaccount.google.com/permissions adresinden kaldırana kadar oturum açık kalabilir',
+    'Burada oturum kapatıldı ancak Google, ERD Editor’ün erişimini kaldırdığını doğrulamadı. Bu nedenle siz erişimi myaccount.google.com/permissions adresinden kaldırana kadar diğer cihazlarınızda oturum açık kalabilir',
 } satisfies Messages;

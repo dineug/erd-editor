@@ -49,8 +49,8 @@ export const svSE = {
   'sidebar.actionsFor': 'Åtgärder för {name}',
   'sidebar.noResults': 'Inga resultat',
 
-  'trash.button': 'Papperskorg ({count})',
-  'trash.title': 'Papperskorg',
+  'trash.button': 'Papperskorgen ({count})',
+  'trash.title': 'Papperskorgen',
   'trash.description': {
     one: 'Scheman i papperskorgen raderas permanent efter {count} dag.',
     other: 'Scheman i papperskorgen raderas permanent efter {count} dagar.',
@@ -91,7 +91,7 @@ export const svSE = {
 
   'viewer.noSchemaOpen': 'Inget schema öppet',
   'viewer.emptyHint':
-    'Välj ett i sidofältet eller börja ett här. Du kan också släppa filer var som helst för att importera dem.',
+    'Välj ett i sidofältet eller skapa ett här. Du kan också dra och släppa filer var som helst för att importera dem.',
   'viewer.openSample': 'Öppna exempel',
   'viewer.sampleName': 'bokhandelsexempel',
 
@@ -125,7 +125,7 @@ export const svSE = {
   'update.updatedElsewhere':
     'Appen uppdaterades i en annan flik – läs in igen för att slutföra.',
 
-  'live.invalidToken': 'Ogiltig delningstoken.',
+  'live.invalidToken': 'Ogiltig delningslänk.',
   'live.hostNotFound': 'Värden hittades inte.',
   'live.refresh': 'Uppdatera',
   'live.hostStopped': 'Värden avslutade sessionen.',
@@ -150,7 +150,7 @@ export const svSE = {
     'ERD Editor behöver åtkomst till filerna du skapar eller öppnar med den. Logga in igen och tillåt åtkomst till Google Drive.',
   'gdrive.mismatch.title': 'Google Drive skickade det här för ett annat konto',
   'gdrive.mismatch.description':
-    'Du är inloggad som {email}. Byt till kontot som Google Drive öppnade den med, eller fortsätt med det här kontots filer.',
+    'Du är inloggad som {email}. Byt till kontot som Google Drive använde för att öppna det, eller fortsätt med det här kontots filer.',
   'gdrive.mismatch.choose':
     'ERD Editor kunde inte förvälja det kontot, så välj det när Google frågar.',
   'gdrive.mismatch.switchAccount': 'Byt konto',
@@ -160,9 +160,9 @@ export const svSE = {
     'En annan flik loggade in på ett annat Google-konto, så den här fliken stoppades. Läs in den igen för att fortsätta med det kontot.',
   'gdrive.unsaved.title': 'Dina ändringar sparades inte',
   'gdrive.unsaved.description':
-    '{name} har ändringar från {email} som inte finns i Google Drive, och nu är {account} inloggat. Ladda ned dem innan du fortsätter.',
+    '{name} har ändringar från {email} som inte finns i Google Drive, och nu är du inloggad som {account}. Ladda ned dem innan du fortsätter.',
   'gdrive.unsaved.descriptionUnnamed':
-    'Filen du hade öppen har ändringar från {email} som inte finns i Google Drive, och nu är {account} inloggat. Ladda ned dem innan du fortsätter.',
+    'Filen du hade öppen har ändringar från {email} som inte finns i Google Drive, och nu är du inloggad som {account}. Ladda ned dem innan du fortsätter.',
   'gdrive.unsaved.continueWithout': 'Fortsätt utan dem',
   'gdrive.framed.title':
     'Öppna ERD Editors Google Drive-redigerare i en egen flik',
@@ -176,7 +176,7 @@ export const svSE = {
   'gdrive.unsupportedOrigin.description':
     'Google-inloggning fungerar bara på erd-editor.io, och det här är en förhandsversion.',
 
-  'gdrive.signIn.title': 'Öppna dina ERD-filer i Google Drive',
+  'gdrive.signIn.title': 'Öppna dina ERD-filer från Google Drive',
   'gdrive.signIn.description':
     'ERD Editor öppnar och sparar bara filerna du skapar eller öppnar med den.',
   'gdrive.signIn.fallbackDescription':
@@ -203,7 +203,7 @@ export const svSE = {
   'gdrive.sidebar.loadFailed': 'Det gick inte att läsa in dina filer.',
 
   'gdrive.viewer.noFileOpen': 'Ingen fil öppen',
-  'gdrive.viewer.noFileOpenHint': 'Välj en fil i sidofältet eller börja en ny.',
+  'gdrive.viewer.noFileOpenHint': 'Välj en fil i sidofältet eller skapa en ny.',
   'gdrive.viewer.noFilesYet': 'Inga filer än',
   'gdrive.viewer.noFilesYetHint':
     'Skapa en fil eller importera en. Filer som du öppnar med ERD Editor från Google Drive visas också här.',
@@ -216,7 +216,7 @@ export const svSE = {
     'Google Dokument, Kalkylark och mappar öppnas i Google Drive.',
   'gdrive.viewer.trashed': 'Den här filen ligger i papperskorgen',
   'gdrive.viewer.trashedHint':
-    'Återställ den i Google Drive för att öppna den här.',
+    'Återställ den i Google Drive för att öppna den i ERD Editor.',
   'gdrive.viewer.tooLarge': 'Den här filen är för stor',
   'gdrive.viewer.tooLargeHint': 'ERD Editor öppnar filer upp till {size} MB.',
   'gdrive.viewer.notFound': 'Den här filen är inte tillgänglig',
@@ -261,7 +261,8 @@ export const svSE = {
   'gdrive.banner.openAndTakeOver': 'Öppna från Drive och ta över',
   'gdrive.banner.popupBlocked':
     'Webbläsaren blockerade Google-fönstret. Tillåt popup-fönster för den här webbplatsen och anslut sedan igen.',
-  'gdrive.banner.reconnectFailed': 'Google anslöt inte igen. Försök igen.',
+  'gdrive.banner.reconnectFailed':
+    'Det gick inte att ansluta till Google igen. Försök igen.',
   'gdrive.banner.sessionEnded':
     'Din Google-session har upphört, så sparandet är pausat.',
   'gdrive.banner.sessionEndsSoon': 'Din Google-session upphör snart.',

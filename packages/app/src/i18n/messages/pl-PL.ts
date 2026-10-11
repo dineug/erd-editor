@@ -26,7 +26,7 @@ export const plPL = {
   'common.yourNickname': 'Twój pseudonim',
   'common.privacy': 'Prywatność',
   'common.terms': 'Warunki',
-  'common.editingGuide': 'Przewodnik edycji',
+  'common.editingGuide': 'Przewodnik po edycji',
   'common.openSidebar': 'Otwórz pasek boczny',
   'common.closeSidebar': 'Zamknij pasek boczny',
 
@@ -82,7 +82,7 @@ export const plPL = {
 
   'collaboration.for': 'Współpraca: {name}',
   'collaboration.guestsConnected': {
-    one: 'Połączony {count} gość',
+    one: 'Połączono {count} gościa',
     few: 'Połączono {count} gości',
     many: 'Połączono {count} gości',
     other: 'Połączono {count} gościa',
@@ -99,15 +99,15 @@ export const plPL = {
 
   'viewer.noSchemaOpen': 'Brak otwartego schematu',
   'viewer.emptyHint':
-    'Wybierz schemat z paska bocznego lub zacznij nowy tutaj. Możesz też upuścić pliki w dowolnym miejscu, aby je zaimportować.',
+    'Wybierz schemat z paska bocznego lub utwórz nowy tutaj. Możesz też upuścić pliki w dowolnym miejscu, aby je zaimportować.',
   'viewer.openSample': 'Otwórz przykład',
-  'viewer.sampleName': 'przykład księgarni',
+  'viewer.sampleName': 'przykładowa księgarnia',
 
   'drop.title': 'Upuść, aby zaimportować',
   'drop.formats':
     'Kopie zapasowe, dokumenty .erd, .vuerd i .json, SQL, DBML, AML i GraphQL',
   'drop.importing': 'Importowanie plików…',
-  'drop.importingHint': 'Upuść więcej po zakończeniu tego importu',
+  'drop.importingHint': 'Upuść kolejne pliki po zakończeniu tego importu',
 
   'import.imported': {
     one: 'Zaimportowano {count} schemat',
@@ -141,7 +141,7 @@ export const plPL = {
   'update.updatedElsewhere':
     'Aplikacja została zaktualizowana w innej karcie — załaduj ponownie, aby zakończyć.',
 
-  'live.invalidToken': 'Nieprawidłowy token udostępniania.',
+  'live.invalidToken': 'Nieprawidłowy link udostępniania.',
   'live.hostNotFound': 'Nie znaleziono gospodarza.',
   'live.refresh': 'Odśwież',
   'live.hostStopped': 'Gospodarz zakończył sesję.',
@@ -168,9 +168,9 @@ export const plPL = {
     'ERD Editor potrzebuje dostępu do plików, które w nim tworzysz lub otwierasz. Zaloguj się ponownie i zezwól na dostęp do Dysku Google.',
   'gdrive.mismatch.title': 'Dysk Google wysłał to dla innego konta',
   'gdrive.mismatch.description':
-    'Jesteś zalogowany jako {email}. Przełącz się na konto, którym Dysk Google go otworzył, albo kontynuuj z plikami tego konta.',
+    'Zalogowano jako {email}. Przełącz się na konto, na którym Dysk Google to otworzył, albo kontynuuj z plikami bieżącego konta.',
   'gdrive.mismatch.choose':
-    'ERD Editor nie mógł wstępnie wybrać tego konta, więc wybierz je, gdy Google o to poprosi.',
+    'ERD Editor nie mógł wstępnie wybrać konta, którego użył Dysk Google, więc wybierz je, gdy Google o to poprosi.',
   'gdrive.mismatch.switchAccount': 'Przełącz konto',
   'gdrive.mismatch.showMyFiles': 'Pokaż moje pliki',
   'gdrive.accountChanged.title': 'Zalogowano na inne konto',
@@ -178,9 +178,9 @@ export const plPL = {
     'Inna karta zalogowała się na inne konto Google, więc ta karta została zatrzymana. Załaduj ją ponownie, aby kontynuować z tym kontem.',
   'gdrive.unsaved.title': 'Twoje zmiany nie zostały zapisane',
   'gdrive.unsaved.description':
-    '{name} zawiera zmiany konta {email}, których nie ma na Dysku Google, a teraz zalogowane jest konto {account}. Pobierz je, zanim przejdziesz dalej.',
+    '{name} zawiera zmiany z konta {email}, których nie ma na Dysku Google, a teraz zalogowano się jako {account}. Pobierz je, zanim przejdziesz dalej.',
   'gdrive.unsaved.descriptionUnnamed':
-    'Otwarty plik zawiera zmiany konta {email}, których nie ma na Dysku Google, a teraz zalogowane jest konto {account}. Pobierz je, zanim przejdziesz dalej.',
+    'Plik, który był otwarty, zawiera zmiany z konta {email}, których nie ma na Dysku Google, a teraz zalogowano się jako {account}. Pobierz je, zanim przejdziesz dalej.',
   'gdrive.unsaved.continueWithout': 'Kontynuuj bez nich',
   'gdrive.framed.title':
     'Otwórz edytor Dysku Google w ERD Editor w osobnej karcie',
@@ -223,10 +223,10 @@ export const plPL = {
 
   'gdrive.viewer.noFileOpen': 'Brak otwartego pliku',
   'gdrive.viewer.noFileOpenHint':
-    'Wybierz plik z paska bocznego lub zacznij nowy.',
+    'Wybierz plik z paska bocznego lub utwórz nowy.',
   'gdrive.viewer.noFilesYet': 'Nie ma jeszcze plików',
   'gdrive.viewer.noFilesYetHint':
-    'Utwórz plik lub zaimportuj go. Pliki otwierane w ERD Editor z Dysku Google też pojawiają się tutaj.',
+    'Utwórz lub zaimportuj plik. Pliki otwierane w ERD Editor z Dysku Google też pojawiają się tutaj.',
   'gdrive.viewer.waitingForOpener':
     'Oczekiwanie na kartę, która otworzyła ten plik…',
   'gdrive.viewer.notDocument': 'Ten plik nie jest dokumentem ERD Editor',
@@ -244,7 +244,7 @@ export const plPL = {
     'Mógł zostać usunięty albo to konto Google nie może go otworzyć.',
   'gdrive.viewer.waitingToken': 'Oczekiwanie na Google',
   'gdrive.viewer.waitingTokenHint':
-    'Ten plik otworzy się, gdy sesja Google wróci.',
+    'Ten plik otworzy się, gdy sesja Google zostanie przywrócona.',
   'gdrive.viewer.failed': 'Nie udało się otworzyć tego pliku',
   'gdrive.viewer.failedHint':
     'Dysk Google nie odpowiedział. Sprawdź połączenie i spróbuj ponownie.',
@@ -291,9 +291,9 @@ export const plPL = {
 
   'gdrive.leave.title': 'Ostatnie zmiany nie są zapisane',
   'gdrive.leave.description':
-    'ERD Editor nie mógł zapisać ich na Dysku Google. Pobierz je, aby zachować kopię, albo wyjdź i je utrać.',
+    'ERD Editor nie mógł ich zapisać na Dysku Google. Pobierz je, aby zachować kopię, albo wyjdź, a zostaną utracone.',
   'gdrive.leave.descriptionSignOut':
-    'ERD Editor nie mógł zapisać ich na Dysku Google. Pobierz je, aby zachować kopię, albo wyloguj się i je utrać.',
+    'ERD Editor nie mógł ich zapisać na Dysku Google. Pobierz je, aby zachować kopię, albo wyloguj się, a zostaną utracone.',
   'gdrive.leave.stay': 'Zostań',
   'gdrive.leave.leaveAnyway': 'Wyjdź mimo to',
   'gdrive.leave.signOutAnyway': 'Wyloguj się mimo to',
@@ -304,7 +304,7 @@ export const plPL = {
   'gdrive.create.inHiddenFolder': 'W folderze, którego ERD Editor nie widzi',
   'gdrive.create.inFolder': 'W folderze „{name}”',
   'gdrive.create.untitled': 'Bez tytułu',
-  'gdrive.create.savedAs': 'Zapisany jako {name}',
+  'gdrive.create.savedAs': 'Zostanie zapisany jako {name}',
   'gdrive.create.folderRefused':
     'ERD Editor nie może tworzyć plików w tym folderze. Utworzyć go w folderze ERD Editor?',
   'gdrive.create.failed': 'Nie udało się utworzyć pliku. Spróbuj ponownie.',

@@ -46,7 +46,7 @@ export const skSK = {
   'sidebar.schemaNamePlaceholder': 'názov schémy',
   'sidebar.duplicate': 'Duplikovať',
   'sidebar.moveToTrash': 'Presunúť do koša',
-  'sidebar.actionsFor': 'Akcie pre {name}',
+  'sidebar.actionsFor': 'Akcie pre položku {name}',
   'sidebar.noResults': 'Žiadne výsledky',
 
   'trash.button': 'Kôš ({count})',
@@ -81,7 +81,7 @@ export const skSK = {
       'Natrvalo odstrániť {count} schém? Túto akciu nie je možné vrátiť späť.',
   },
 
-  'collaboration.for': 'Spolupráca na {name}',
+  'collaboration.for': 'Spolupráca na schéme {name}',
   'collaboration.guestsConnected': {
     one: 'Pripojený {count} hosť',
     few: 'Pripojení {count} hostia',
@@ -100,11 +100,11 @@ export const skSK = {
 
   'viewer.noSchemaOpen': 'Nie je otvorená žiadna schéma',
   'viewer.emptyHint':
-    'Vyberte jednu na bočnom paneli alebo tu začnite novú. Súbory môžete tiež pustiť kdekoľvek a importovať ich.',
+    'Vyberte jednu na bočnom paneli alebo tu začnite novú. Súbory môžete importovať aj tak, že ich pustíte kdekoľvek.',
   'viewer.openSample': 'Otvoriť ukážku',
   'viewer.sampleName': 'ukážka kníhkupectva',
 
-  'drop.title': 'Pustením importujete',
+  'drop.title': 'Pustite súbory na import',
   'drop.formats':
     'Zálohy, dokumenty .erd, .vuerd a .json, SQL, DBML, AML a GraphQL',
   'drop.importing': 'Importujú sa súbory…',
@@ -140,9 +140,9 @@ export const skSK = {
 
   'update.available': 'K dispozícii je nová verzia ERD Editor.',
   'update.updatedElsewhere':
-    'Aplikácia sa aktualizovala na inej karte — dokončíte ju opätovným načítaním.',
+    'Aplikácia sa aktualizovala na inej karte – aktualizáciu dokončíte opätovným načítaním.',
 
-  'live.invalidToken': 'Neplatný token zdieľania.',
+  'live.invalidToken': 'Neplatný odkaz na zdieľanie.',
   'live.hostNotFound': 'Hostiteľ sa nenašiel.',
   'live.refresh': 'Obnoviť',
   'live.hostStopped': 'Hostiteľ ukončil reláciu.',
@@ -159,11 +159,11 @@ export const skSK = {
   'live.showParticipants': 'Zobraziť účastníkov',
   'live.hideParticipants': 'Skryť účastníkov',
 
-  'gdrive.checkingSignIn': 'Kontroluje sa prihlásenie do Google…',
+  'gdrive.checkingSignIn': 'Kontroluje sa prihlásenie do účtu Google…',
   'gdrive.anotherAccount': 'iný účet',
   'gdrive.offline.title': 'Ste offline',
   'gdrive.offline.description':
-    'ERD Editor skontroluje vaše prihlásenie do Google, keď budete znova online.',
+    'ERD Editor skontroluje vaše prihlásenie do účtu Google, keď budete znova online.',
   'gdrive.scopeMissing.title': 'Prístup k Disku Google nebol udelený',
   'gdrive.scopeMissing.description':
     'ERD Editor potrebuje prístup k súborom, ktoré v ňom vytvoríte alebo otvoríte. Znova sa prihláste a povoľte prístup k Disku Google.',
@@ -171,7 +171,7 @@ export const skSK = {
   'gdrive.mismatch.description':
     'Ste prihlásení ako {email}. Prepnite na účet, ktorým ho Disk Google otvoril, alebo pokračujte so súbormi tohto účtu.',
   'gdrive.mismatch.choose':
-    'ERD Editor nemohol tento účet vopred vybrať, preto ho vyberte, keď sa Google opýta.',
+    'ERD Editor nemohol vopred vybrať účet, ktorý použil Disk Google, preto ho vyberte, keď sa Google opýta.',
   'gdrive.mismatch.switchAccount': 'Prepnúť účet',
   'gdrive.mismatch.showMyFiles': 'Zobraziť moje súbory',
   'gdrive.accountChanged.title': 'Prihlásené iným účtom',
@@ -192,7 +192,7 @@ export const skSK = {
     'Táto zostava ERD Editor nemá klienta prihlásenia Google.',
   'gdrive.unsupportedOrigin.title': 'Disk Google tu nie je k dispozícii',
   'gdrive.unsupportedOrigin.description':
-    'Prihlásenie Google funguje len na erd-editor.io a toto je ukážka.',
+    'Prihlásenie Google funguje len na erd-editor.io a toto je náhľadová verzia.',
 
   'gdrive.signIn.title': 'Otvárajte súbory ERD na Disku Google',
   'gdrive.signIn.description':
@@ -201,13 +201,13 @@ export const skSK = {
     'Prihlasovací server ERD Editor je zaneprázdnený, preto vás Google prihlasuje vždy na hodinu.',
   'gdrive.signIn.signIn': 'Prihlásiť sa cez Google',
   'gdrive.signIn.continue': 'Pokračovať cez Google',
-  'gdrive.signIn.waitingTitle': 'Čaká sa na prihlásenie do Google…',
+  'gdrive.signIn.waitingTitle': 'Čaká sa na prihlásenie do účtu Google…',
   'gdrive.signIn.waitingDescription':
     'Dokončite prihlásenie v okne, ktoré otvoril Google.',
   'gdrive.signIn.popupBlocked':
     'Prehliadač zablokoval prihlasovacie okno. Povoľte pre tento web kontextové okná a skúste to znova.',
   'gdrive.signIn.failed':
-    'Prihlásenie do Google sa nedokončilo. Skúste to znova.',
+    'Prihlásenie do účtu Google sa nedokončilo. Skúste to znova.',
   'gdrive.signIn.gisBlocked':
     'Prihlásenie Google sa nepodarilo načítať. Skontrolujte, či nič neblokuje accounts.google.com, a znova načítajte stránku.',
 
@@ -282,7 +282,7 @@ export const skSK = {
   'gdrive.banner.popupBlocked':
     'Prehliadač zablokoval okno Google. Povoľte pre tento web kontextové okná a znova sa pripojte.',
   'gdrive.banner.reconnectFailed':
-    'Google sa znova nepripojil. Skúste to znova.',
+    'Google sa nepodarilo znova pripojiť. Skúste to znova.',
   'gdrive.banner.sessionEnded':
     'Vaša relácia Google skončila, preto je ukladanie pozastavené.',
   'gdrive.banner.sessionEndsSoon': 'Vaša relácia Google čoskoro skončí.',
@@ -305,7 +305,7 @@ export const skSK = {
   'gdrive.create.untitled': 'Bez názvu',
   'gdrive.create.savedAs': 'Uloží sa ako {name}',
   'gdrive.create.folderRefused':
-    'ERD Editor nemôže v tomto priečinku vytvárať súbory. Vytvoriť ho v priečinku ERD Editor?',
+    'ERD Editor nemôže v tomto priečinku vytvárať súbory. Vytvoriť súbor radšej v priečinku ERD Editor?',
   'gdrive.create.failed': 'Súbor sa nepodarilo vytvoriť. Skúste to znova.',
   'gdrive.create.createInAppFolder': 'Vytvoriť v priečinku ERD Editor',
   'gdrive.create.create': 'Vytvoriť',
