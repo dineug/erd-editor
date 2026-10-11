@@ -4,6 +4,72 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-12
+
+### Added
+
+- Table groups: draw a named, colored box behind related tables from the canvas menu or the command
+  palette, or group the selected tables. Drop a table in or out to join or leave, and drag the title
+  to move the group with its tables. Auto Layout keeps groups together, the Schema SQL tab can write
+  chosen groups alone, and DBML carries them as `TableGroup`.
+- The editor in 25 languages, Arabic, Hebrew and Persian right to left. Pick one from the toolbar,
+  the command palette or Settings | Tools | ERD Editor → Display language; Auto follows the IDE.
+- An empty diagram opens on a welcome screen of first steps.
+- Export ▸ Image opens a dialog with a preview: background on or off, light or dark, PNG at 1x to
+  3x, or SVG.
+- The Schema SQL tab gains options: CREATE TABLE IF NOT EXISTS, drop and re-create, a `USE` header,
+  and SQL of your own before and after the tables, saved in the diagram.
+- Code Generator languages Mermaid, PHP, Doctrine, Rust, SeaORM, Swift, Zod and JSON Schema, and an
+  options panel that saves the code as a file.
+- Import and Add adds a file's tables below the diagram instead of replacing it.
+- Map Columns ends a relationship on columns a table already has, while you draw it or later from
+  its right-click menu.
+- The table and memo menus gain Delete, and Primary Key applies to every selected column.
+- No color in the color picker and Remove color in the menus take a color off. The picker is new,
+  with presets and the colors the diagram already uses.
+- DBML and AML import and export keep table colors.
+- View Option → Memos hides the memos.
+- Drag with the middle button to pan from anywhere, over a table too.
+- System in the theme builder follows the IDE's light or dark theme, and the command palette gains
+  Theme and Display Language.
+
+### Changed
+
+- A file keeps only what the diagram is, in a fixed order: no measured widths, connector anchors,
+  stacking order, timestamps or deleted items. Opening a diagram without an edit leaves the file as
+  it was, and a file an earlier release saved is rewritten once on its first edit; until then a JSON
+  editor checking its `$schema` flags it. An earlier release shows a file this one saved without its
+  primary and foreign key icons, so update ERD Editor wherever you share diagrams.
+- Save Scroll Information and Save Zoom Information become the viewport lock in the Settings tab,
+  beside new locks for the open tab, the code generator language, the name cases and the bracket
+  type. Every lock is on by default and the file keeps the locked value. A file saved earlier opens
+  at the start position, at 100% and on the ERD tab.
+- Update `@dineug/erd-editor-mcp` with this release: an older server and this plugin refuse each
+  other and say which to update. Agents leave view and code generator settings to you and can still
+  set the database.
+- Imports arrive laid out by their relationships instead of in rows.
+- Export ▸ Schema SQL opens the Schema SQL tab instead of saving at once.
+- Image export draws at 100% whatever the zoom, and the PNG starts at 2x.
+- Relationship lines have smaller ends, rounded corners and curved self loops, and cross fewer
+  tables.
+- A right drag no longer moves tables or memos; the right button only picks what the menu acts on.
+- Tables and memos stack together, the one pressed last on top.
+- A foreign key drawn from a `serial` key gets the integer type it stores (`integer` in PostgreSQL,
+  `bigint unsigned` in MySQL and MariaDB) instead of `serial`.
+
+### Fixed
+
+- SQL import keeps whole `DEFAULT` expressions (`now()`, `0.5`, `((0))`), `UNSIGNED` and
+  `ZEROFILL`, SSMS's `ADD DEFAULT … FOR` and `MS_Description` comments, pg_dump's serial and
+  identity columns as auto increment, and an `ALTER TABLE` primary key marked `CLUSTERED`.
+- SQL export writes valid key names and SQL Server comments for a table named with its schema
+  (`sales.users`), puts a default in the parentheses MySQL, MariaDB, SQLite and PostgreSQL need,
+  ends Oracle triggers with `/`, and types a SQLite auto increment key `INTEGER`.
+- The code generators type columns more exactly (unsigned, decimals, bytes, UUIDs, JSON, time
+  zones), and GraphQL keeps every relationship between two tables.
+- Generated code no longer turns `I` into `ı` under a Turkish or Azerbaijani system language.
+- Copy in the Schema SQL and Code Generator tabs says when the clipboard refused it.
+
 ## [0.10.0] - 2026-10-03
 
 ### Added
