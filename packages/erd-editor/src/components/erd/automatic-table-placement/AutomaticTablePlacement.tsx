@@ -26,6 +26,7 @@ import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
+import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { Open } from '@/constants/open';
 import {
   changeOpenMapAction,
@@ -103,7 +104,7 @@ const PlacementToast: FC<PlacementToastProps> = (props, ctx) => {
   return () => (
     <Toast
       progress={props.state.progress}
-      description={placementDescription(props.state, i18n.value)}
+      title={placementDescription(props.state, i18n.value)}
       action={
         <>
           <Button
@@ -197,13 +198,10 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   if (!tables.length) {
     handleClose();
-    originApp.emitter.emit(
-      openToastAction({
-        message: (
-          <Toast description={localized('common.toast.noTablesToPlace')} />
-        ),
-      })
-    );
+    openStatusToast(originApp.emitter, {
+      key: 'common.toast.noTablesToPlace',
+      title: localized('common.toast.noTablesToPlace'),
+    });
     return () => null;
   }
 

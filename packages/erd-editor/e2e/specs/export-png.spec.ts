@@ -126,7 +126,7 @@ const toastTimeline = (erd: ErdEditorPage) =>
   erd.page.evaluate(() => Reflect.get(window, '__toastTimeline') as string[][]);
 
 const generating = (erd: ErdEditorPage) =>
-  erd.host.locator('.toast-container', { hasText: 'Exporting PNG…' });
+  erd.host.locator('.toast-container', { hasText: 'Exporting PNG' });
 
 const reduced = (erd: ErdEditorPage) =>
   erd.host.locator('.toast-container', {
@@ -234,7 +234,7 @@ test.describe('exporting the document as a png', () => {
     // holding both messages at once.
     const shown = (await toastTimeline(erd)).filter(toasts => toasts.length);
     expect(shown).toHaveLength(2);
-    expect(shown[0]).toEqual(['Exporting PNG…']);
+    expect(shown[0]).toEqual(['Exporting PNG']);
     expect(shown[1]).toHaveLength(1);
     expect(shown[1][0]).toContain('Exported at a reduced resolution');
     expect(shown[1][0]).toContain(

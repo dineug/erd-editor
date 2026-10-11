@@ -15,9 +15,11 @@ function fallbackCopyTextToClipboard(value: string) {
     textarea.select();
     textarea.setSelectionRange(0, 99999);
 
+    // execCommand answers false rather than throwing when the browser refuses.
     try {
-      document.execCommand('copy');
-      resolve();
+      document.execCommand('copy')
+        ? resolve()
+        : reject(new Error('the browser refused to copy'));
     } catch (error) {
       reject(error);
     }

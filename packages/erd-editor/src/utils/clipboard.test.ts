@@ -145,6 +145,16 @@ describe('copyToClipboard', () => {
     expect(document.querySelector('textarea')).toBeNull();
   });
 
+  it('rejects and still cleans up when execCommand answers false', async () => {
+    setClipboard(undefined);
+    setExecCommand(() => false);
+
+    await expect(copyToClipboard('refused')).rejects.toThrow(
+      'the browser refused to copy'
+    );
+    expect(document.querySelector('textarea')).toBeNull();
+  });
+
   it('rejects when both the async api and execCommand fail', async () => {
     const error = new Error('nope');
     setClipboard({ writeText: vi.fn().mockRejectedValue(new Error('denied')) });

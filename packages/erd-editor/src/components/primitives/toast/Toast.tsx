@@ -1,29 +1,38 @@
 import { DOMTemplateLiterals, FC } from '@dineug/r-html';
 import { clamp } from 'es-toolkit';
 
+import Icon from '@/components/primitives/icon/Icon';
+
 import * as styles from './Toast.styles';
+
+/** What became of the thing a toast reports: done, or not done. */
+export type ToastTone = 'success' | 'error';
 
 export type ToastProps = {
   title?: DOMTemplateLiterals | string;
   description?: DOMTemplateLiterals | string;
   action?: DOMTemplateLiterals | string;
-  /** The thing reported is still running, which a turning ring says. */
+  /** The thing reported is still running, which lucide's turning loader says. */
   busy?: boolean;
   /** How far along it is, from 0 to 1, which the ring fills up by. */
   progress?: number;
+  /** How it ended, which a check or a warning sign in the tone's color says. */
+  tone?: ToastTone;
 };
 
-/** The box the ring draws in, and the circle inside it. */
+/** The box the ring or an icon draws in, and the ring's circle inside it. */
 const RING_SIZE = 16;
 
 const RING_RADIUS = 6;
 
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
-/** How much of the ring a busy toast shows while it turns. */
-const BUSY_ARC = 0.25;
-
 const progressInRange = (value: number) => clamp(value, 0, 1);
+
+const TONE_ICON = {
+  success: 'check',
+  error: 'triangle-alert',
+} as const satisfies Record<ToastTone, string>;
 
 /** The ring with a fraction of it drawn, from the top and clockwise. */
 const ring = (fraction: number) => (
@@ -51,14 +60,14 @@ const Toast: FC<ToastProps> = (props, ctx) => {
   return () => {
     const showText = props.title || props.description;
     const showButton = props.action;
-    const determinate = typeof props.progress === 'number';
-    const fraction = determinate
-      ? progressInRange(props.progress as number)
-      : BUSY_ARC;
+    const fraction =
+      typeof props.progress === 'number'
+        ? progressInRange(props.progress)
+        : null;
 
     return (
       <div class={styles.root}>
-        {determinate ? (
+        {fraction !== null ? (
           <div
             class={styles.indicator}
             role="progressbar"
@@ -75,7 +84,15 @@ const Toast: FC<ToastProps> = (props, ctx) => {
             aria-busy="true"
             data-busy="true"
           >
-            {ring(fraction)}
+            <Icon name="loader-circle" size={RING_SIZE} />
+          </div>
+        ) : props.tone ? (
+          <div
+            class={styles.indicator}
+            data-tone={props.tone}
+            aria-hidden="true"
+          >
+            <Icon name={TONE_ICON[props.tone]} size={RING_SIZE} />
           </div>
         ) : null}
         {showText ? (

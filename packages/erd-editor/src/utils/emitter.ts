@@ -67,6 +67,8 @@ type InternalActionMap = {
   [InternalActionType.openToast]: {
     message: DOMTemplateLiterals;
     close?: Promise<void>;
+    /** One toast per key: a toast opened under a key already up takes its place. */
+    key?: string;
   };
   [InternalActionType.openTableProperties]: {
     tableId: string;

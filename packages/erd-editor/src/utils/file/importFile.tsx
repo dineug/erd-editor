@@ -2,13 +2,9 @@ import { isString } from 'es-toolkit';
 
 import { AppContext } from '@/components/appContext';
 import { localized } from '@/components/localized/Localized';
-import Toast from '@/components/primitives/toast/Toast';
+import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-import {
-  Emitter,
-  openDiffViewerAction,
-  openToastAction,
-} from '@/utils/emitter';
+import { Emitter, openDiffViewerAction } from '@/utils/emitter';
 import {
   appendSchemaJSON,
   appendSchemaPlaced,
@@ -43,13 +39,11 @@ export function setImportFileCallback(callback: ImportFileCallback | null) {
 
 /** Says a file of another format was picked; the format is named as the code spells it. */
 function openImportOnlyToast(emitter: Emitter, format: ImportOptions['type']) {
-  emitter.emit(
-    openToastAction({
-      message: (
-        <Toast description={localized('feedback.importOnly', { format })} />
-      ),
-    })
-  );
+  openStatusToast(emitter, {
+    key: `feedback.importOnly:${format}`,
+    tone: 'error',
+    title: localized('feedback.importOnly', { format }),
+  });
 }
 
 /** What a host is asked for, the mode named only when it is an append. */

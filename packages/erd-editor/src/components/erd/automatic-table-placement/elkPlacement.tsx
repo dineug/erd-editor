@@ -29,7 +29,7 @@ export const PlacingToast: FC<PlacingToastProps> = (props, ctx) => {
   return () => (
     <Toast
       busy={true}
-      description={i18n.value.t('feedback.placingTables')}
+      title={i18n.value.t('feedback.placingTables')}
       action={
         <Button
           size="1"

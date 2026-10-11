@@ -550,7 +550,7 @@ describe('importSchemaPlaced', () => {
     const batches = recordActions(app);
     toastContainer = mount(html`${toasts[0].message}`);
     await flush();
-    expect(toastContainer.container.textContent).toContain('Placing tables…');
+    expect(toastContainer.container.textContent).toContain('Placing tables');
     toastContainer.container
       .querySelector('button')
       ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

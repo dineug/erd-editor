@@ -166,7 +166,7 @@ describe('DiffViewer', () => {
     toastMounted = mount(actions[0].payload.message);
     await flush();
 
-    expect(toastMounted.container.textContent).toContain('Diff Viewer...');
+    expect(toastMounted.container.textContent).toContain('Diff Viewer');
 
     const closeButton =
       toastMounted.container.querySelector<HTMLButtonElement>('button')!;
@@ -281,7 +281,7 @@ describe('DiffViewer', () => {
     render(container, actions[0].payload.message);
     await flush();
 
-    expect(container.textContent).toContain('tr:Diff Viewer...');
+    expect(container.textContent).toContain('tr:Diff Viewer');
     expect(container.querySelector('button')?.textContent?.trim()).toBe(
       'tr:Close'
     );

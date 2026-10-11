@@ -27,7 +27,7 @@ export default Localized;
  * toast's text say: it is read where it renders, so it follows a switch too.
  *
  * @example
- * openToastAction({ message: <Toast description={localized('common.toast.copied')} /> });
+ * openToastAction({ message: <Toast title={localized('common.toast.copied')} /> });
  */
 export function localized<K extends MessageKey>(
   key: K,

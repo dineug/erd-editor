@@ -15,26 +15,23 @@ import GeneratorCodeOptions from '@/components/generator-code/generator-code-opt
 import { generatorCodeViewOf } from '@/components/generator-code/generatorCodeView';
 import { codeFileExtension } from '@/components/generator-code/languageSettings';
 import { useI18n } from '@/components/localeContext';
-import { localized } from '@/components/localized/Localized';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import Icon from '@/components/primitives/icon/Icon';
-import Toast from '@/components/primitives/toast/Toast';
 import { keepSpace } from '@/components/schema-sql/schema-sql-options/SchemaSQLOptions';
 import * as optionsStyles from '@/components/schema-sql/schema-sql-options/SchemaSQLOptions.styles';
 import * as styles from '@/components/schema-sql/SchemaSQL.styles';
 import { resolvePanel } from '@/components/schema-sql/schemaSQLView';
+import { reportCopy } from '@/components/toast-container/openStatusToast';
 import { LanguageToLangMap } from '@/constants/language';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { arrayHas } from '@/utils/arrayHas';
 import { copyToClipboard } from '@/utils/clipboard';
-import { openToastAction } from '@/utils/emitter';
 import { exportCode } from '@/utils/file/exportFile';
 import {
   createGeneratorCode,
   createGeneratorCodeTable,
 } from '@/utils/generator-code';
-import { delay } from '@/utils/promise';
 
 /**
  * The settings the code is written from. A document edit writes it again only
@@ -84,16 +81,7 @@ const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
   };
 
   const handleCopy = () => {
-    const { emitter } = app.value;
-
-    copyToClipboard(state.code).then(() => {
-      emitter.emit(
-        openToastAction({
-          close: delay(2000),
-          message: <Toast title={localized('common.toast.copied')} />,
-        })
-      );
-    });
+    reportCopy(app.value.emitter, copyToClipboard(state.code));
   };
 
   const handleSave = () => {

@@ -77,7 +77,7 @@ export const input = css`
   }
 
   &.invalid {
-    border-color: var(--diff-delete-foreground);
+    border-color: var(--find-replace-error);
   }
 `;
 
@@ -149,7 +149,7 @@ export const count = css`
   font-variant-numeric: tabular-nums;
 
   &.invalid {
-    color: var(--diff-delete-foreground);
+    color: var(--find-replace-error);
   }
 `;
 

@@ -1,13 +1,12 @@
 import { AppContext } from '@/components/appContext';
 import { localized } from '@/components/localized/Localized';
-import Toast from '@/components/primitives/toast/Toast';
+import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import {
   createElkLayoutRequest,
   type ElkLayoutPoint,
   type ElkPlacement,
   toTablePoints,
 } from '@/services/elk-layout';
-import { openToastAction } from '@/utils/emitter';
 
 import { layoutByElk } from './elkPlacement';
 
@@ -28,13 +27,10 @@ export async function runElkPlacement(
   const request = createElkLayoutRequest(store.state, placement);
 
   if (!request.nodes.length) {
-    emitter.emit(
-      openToastAction({
-        message: (
-          <Toast description={localized('common.toast.noTablesToPlace')} />
-        ),
-      })
-    );
+    openStatusToast(emitter, {
+      key: 'common.toast.noTablesToPlace',
+      title: localized('common.toast.noTablesToPlace'),
+    });
     return;
   }
 
@@ -49,11 +45,9 @@ export async function runElkPlacement(
   if (answer.status === 'cancelled') return;
 
   console.warn('[automatic-table-placement] no layout came back', answer.error);
-  emitter.emit(
-    openToastAction({
-      message: (
-        <Toast description={localized('common.toast.couldNotPlaceTables')} />
-      ),
-    })
-  );
+  openStatusToast(emitter, {
+    key: 'common.toast.couldNotPlaceTables',
+    tone: 'error',
+    title: localized('common.toast.couldNotPlaceTables'),
+  });
 }

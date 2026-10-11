@@ -60,4 +60,5 @@ export const common = {
   'common.toast.noTablesToPlace': 'No tables to place',
   'common.toast.couldNotPlaceTables': 'Could not place tables',
   'common.toast.copied': 'Copied!',
+  'common.toast.copyFailed': "Couldn't copy to the clipboard",
 } as const;

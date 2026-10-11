@@ -15,8 +15,8 @@ export const root = css`
 `;
 
 /**
- * The ring beside the text of a toast that reports something still running.
- * A busy one turns a quarter of it; one with a progress fills it from the top.
+ * What stands beside the text: lucide's turning loader while busy, a ring that
+ * fills from the top with a progress, or the mark of a tone in its own color.
  */
 export const indicator = css`
   flex: none;
@@ -42,6 +42,14 @@ export const indicator = css`
 
   &[data-busy] svg {
     animation: toastSpin 0.9s linear infinite;
+  }
+
+  &[data-tone='success'] {
+    color: var(--toast-success);
+  }
+
+  &[data-tone='error'] {
+    color: var(--toast-error);
   }
 
   @keyframes toastSpin {

@@ -342,7 +342,9 @@ describe('importFile', () => {
       expect(harness.dispatch).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
-      expect(toastText(harness.emitted[0])).toBe('Just import the json file');
+      expect(toastText(harness.emitted[0])).toBe(
+        'Only json files can be imported'
+      );
     });
 
     it('ignores a non-string FileReader result', async () => {
@@ -416,7 +418,9 @@ describe('importFile', () => {
       expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
-      expect(toastText(harness.emitted[0])).toBe('Just import the sql file');
+      expect(toastText(harness.emitted[0])).toBe(
+        'Only sql files can be imported'
+      );
     });
 
     it('says so in the language of the editor the toast renders in, the format as written', async () => {
@@ -431,7 +435,7 @@ describe('importFile', () => {
           harness.emitted[0],
           createTestI18n('fa-IR', pseudoMessages('fa'))
         )
-      ).toBe('fa:Just import the \u2068sql\u2069 file');
+      ).toBe('fa:Only \u2068sql\u2069 files can be imported');
     });
     it('ignores a non-string FileReader result', async () => {
       class FakeFileReader {
@@ -505,7 +509,7 @@ describe('importFile', () => {
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
       expect(toastText(harness.emitted[0])).toBe(
-        'Just import the graphql file'
+        'Only graphql files can be imported'
       );
     });
 
@@ -596,7 +600,9 @@ describe('importFile', () => {
       expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
-      expect(toastText(harness.emitted[0])).toBe('Just import the dbml file');
+      expect(toastText(harness.emitted[0])).toBe(
+        'Only dbml files can be imported'
+      );
     });
 
     it('rejects a name ending in dbml without the dot', async () => {
@@ -660,7 +666,9 @@ describe('importFile', () => {
       expect(importSchemaPlaced).not.toHaveBeenCalled();
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
-      expect(toastText(harness.emitted[0])).toBe('Just import the aml file');
+      expect(toastText(harness.emitted[0])).toBe(
+        'Only aml files can be imported'
+      );
     });
 
     it('rejects a name ending in aml without the dot', async () => {
@@ -717,7 +725,9 @@ describe('importFile', () => {
 
       expect(harness.emitted).toHaveLength(1);
       expect(harness.emitted[0].type).toBe('openToast');
-      expect(toastText(harness.emitted[0])).toBe('Just import the json file');
+      expect(toastText(harness.emitted[0])).toBe(
+        'Only json files can be imported'
+      );
     });
 
     it('ignores a non-string FileReader result', async () => {

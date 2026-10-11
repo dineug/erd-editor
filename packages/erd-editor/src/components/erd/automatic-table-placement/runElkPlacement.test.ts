@@ -185,7 +185,7 @@ describe('runElkPlacement', () => {
     await flush();
 
     const container = await renderToast(toasts[0]);
-    expect(container.textContent).toContain('Placing tables…');
+    expect(container.textContent).toContain('Placing tables');
     expect(
       Array.from(container.querySelectorAll('button')).map(el =>
         el.textContent?.trim()
@@ -289,7 +289,7 @@ describe('runElkPlacement in the language the editor shows', () => {
     await flush();
 
     const container = await renderToastIn(toasts[0], swedish());
-    expect(container.textContent).toContain('sv:Placing tables…');
+    expect(container.textContent).toContain('sv:Placing tables');
     expect(
       Array.from(container.querySelectorAll('button')).map(el =>
         el.textContent?.trim()

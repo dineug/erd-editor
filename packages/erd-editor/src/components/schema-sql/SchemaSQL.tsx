@@ -12,11 +12,9 @@ import {
 
 import { useAppContext } from '@/components/appContext';
 import { useI18n } from '@/components/localeContext';
-import { localized } from '@/components/localized/Localized';
 import CodeBlock from '@/components/primitives/code-block/CodeBlock';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import Icon from '@/components/primitives/icon/Icon';
-import Toast from '@/components/primitives/toast/Toast';
 import SchemaSQLContextMenu from '@/components/schema-sql/schema-sql-context-menu/SchemaSQLContextMenu';
 import SchemaSQLOptions, {
   keepSpace,
@@ -30,13 +28,12 @@ import {
   schemaSQLViewOf,
   syncTableChoice,
 } from '@/components/schema-sql/schemaSQLView';
+import { reportCopy } from '@/components/toast-container/openStatusToast';
 import { Database } from '@/constants/schema';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { arrayHas } from '@/utils/arrayHas';
 import { copyToClipboard } from '@/utils/clipboard';
-import { openToastAction } from '@/utils/emitter';
 import { exportSchemaSQL } from '@/utils/file/exportFile';
-import { delay } from '@/utils/promise';
 import {
   createSchemaSQL,
   createSchemaSQLTable,
@@ -118,16 +115,7 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
   };
 
   const handleCopy = () => {
-    const { emitter } = app.value;
-
-    copyToClipboard(state.sql).then(() => {
-      emitter.emit(
-        openToastAction({
-          close: delay(2000),
-          message: <Toast title={localized('common.toast.copied')} />,
-        })
-      );
-    });
+    reportCopy(app.value.emitter, copyToClipboard(state.sql));
   };
 
   const handleSave = () => {
