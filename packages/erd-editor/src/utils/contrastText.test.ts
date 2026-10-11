@@ -8,8 +8,8 @@ import {
   relativeLuminance,
 } from '@/utils/contrastText';
 
-/** The luminance at which black and white contrast alike, sqrt(0.0525) less 0.05. */
-const TIE = Math.sqrt(0.0525) - 0.05;
+/** The luminance at which black's ratio leads white's by exactly 4, 7 against 3. */
+const BOUNDARY = 0.3;
 
 const hexOf = (value: number) => value.toString(16).padStart(2, '0');
 
@@ -69,26 +69,31 @@ describe('contrastTextColor', () => {
   it.each([
     ['#ffffff', CONTRAST_BLACK],
     ['#000000', CONTRAST_WHITE],
-    ['#3b82f6', CONTRAST_BLACK],
+    ['#3b82f6', CONTRAST_WHITE],
     ['#1e3a8a', CONTRAST_WHITE],
-    ['#ef4444', CONTRAST_BLACK],
+    ['#ef4444', CONTRAST_WHITE],
     ['#6b7280', CONTRAST_WHITE],
+    ['#00a2c7', CONTRAST_WHITE],
+    ['#f76b15', CONTRAST_BLACK],
+    ['#22c55e', CONTRAST_BLACK],
     ['#ffff00', CONTRAST_BLACK],
     ['#0000ff', CONTRAST_WHITE],
   ])('writes on %s in %s', (background, text) => {
     expect(contrastTextColor(background)).toBe(text);
   });
 
-  it('picks by the ratio either side of the tie, which falls between two grays', () => {
-    expect(contrastRatio(TIE, 0)).toBeCloseTo(contrastRatio(TIE, 1), 10);
-    expect(relativeLuminance('#757575')!).toBeLessThan(TIE);
-    expect(relativeLuminance('#767676')!).toBeGreaterThan(TIE);
-    expect(contrastTextColor('#757575')).toBe(CONTRAST_WHITE);
-    expect(contrastTextColor('#767676')).toBe(CONTRAST_BLACK);
-    expect(contrastTextColor('#777777')).toBe(CONTRAST_BLACK);
+  it('keeps white while black leads it by 4 or less, which ends between two grays', () => {
+    expect(contrastRatio(BOUNDARY, 0) - contrastRatio(BOUNDARY, 1)).toBeCloseTo(
+      4,
+      10
+    );
+    expect(relativeLuminance('#949494')!).toBeLessThan(BOUNDARY);
+    expect(relativeLuminance('#959595')!).toBeGreaterThan(BOUNDARY);
+    expect(contrastTextColor('#949494')).toBe(CONTRAST_WHITE);
+    expect(contrastTextColor('#959595')).toBe(CONTRAST_BLACK);
   });
 
-  it('keeps 4.58 or more on every gray and across the color cube', () => {
+  it('keeps white above 3 and black at 7 or more on every gray and across the color cube', () => {
     const backgrounds = [
       ...Array.from(
         { length: 256 },
@@ -100,13 +105,18 @@ describe('contrastTextColor', () => {
       }),
     ];
 
-    for (const background of backgrounds) {
-      const luminance = relativeLuminance(background)!;
-      const text = contrastTextColor(background);
-      const ratio = contrastRatio(luminance, text === CONTRAST_BLACK ? 0 : 1);
+    const ratiosOf = (text: string) =>
+      backgrounds
+        .filter(background => contrastTextColor(background) === text)
+        .map(background =>
+          contrastRatio(
+            relativeLuminance(background)!,
+            text === CONTRAST_BLACK ? 0 : 1
+          )
+        );
 
-      expect(ratio).toBeGreaterThanOrEqual(4.58);
-    }
+    expect(Math.min(...ratiosOf(CONTRAST_WHITE))).toBeGreaterThan(3);
+    expect(Math.min(...ratiosOf(CONTRAST_BLACK))).toBeGreaterThanOrEqual(7);
   });
 
   it('reads the forms toOpaqueHex reads and gives null for any other', () => {

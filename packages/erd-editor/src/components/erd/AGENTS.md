@@ -164,7 +164,7 @@
   - A group dragged itself keeps every member.
 - **A member's header band takes its group's color** (`getTableHeaderTint`).
   - The scene names each table's group off one read of the list (`tableGroupId`, for `getTableGroupTint`). So a group coming or going re-renders no other table.
-  - Its name, comment, placeholders, header icons and the cell editor over them turn black or white, whichever has the higher WCAG 2 contrast ratio. That is `src/utils/contrastText.ts`, never under 4.58 (an owner decision).
+  - Its name, comment, placeholders, header icons and the cell editor over them turn white, unless black's WCAG 2 contrast ratio beats white's by more than 4 (`src/utils/contrastText.ts`, an owner decision of 2026-10-11). So white goes down to 3:1, under the 4.5:1 WCAG AA asks of body text, and black never under 7:1.
   - The table's own color stays on the left edge.
   - A view, the zoomed-out table and a drawn copy wear no tint. A drawn copy is `preview`, the Alt drag's ghost, whose duplicate lands in no group.
 - **`Show.hideTableGroup` takes groups away everywhere.** It hides the boxes, the tints and their room in the content bounds. It is masked out of the table size key and the sort hook (`isPaintOnlyToggle`), so the View Option toggle measures nothing.
