@@ -10,7 +10,7 @@ export const frFR = {
   'common.dark': 'Sombre',
   'common.theme': 'Thème',
   'common.displayLanguage': 'Langue d’affichage',
-  'common.search': 'Rechercher',
+  'common.search': 'Recherche rapide',
   'common.find': 'Rechercher',
   'common.findAndReplace': 'Rechercher et remplacer',
   'common.newTable': 'Nouvelle table',
@@ -43,7 +43,7 @@ export const frFR = {
   'common.relationshipType.zeroN': 'Zéro ou N',
   'common.relationshipType.oneOnly': 'Un seul',
   'common.relationshipType.oneN': 'Un ou N',
-  'common.placement.force': 'Force',
+  'common.placement.force': 'Dirigée par les forces',
   'common.placement.flow': 'Flux',
   'common.placement.treeVertical': 'Arbre vertical',
   'common.placement.treeHorizontal': 'Arbre horizontal',
@@ -104,7 +104,7 @@ export const frFR = {
   'visualization.rowDisplay': 'Affichage des lignes : {mode}',
   'visualization.showMode.nameOnly': 'Nom uniquement',
   'visualization.showMode.keysOnly': 'Clés uniquement',
-  'visualization.showMode.allFields': 'Tous les champs',
+  'visualization.showMode.allFields': 'Toutes les colonnes',
   'code.label': 'Code',
   'code.copy': 'Copier',
   'code.savedInDocument': 'Enregistré dans le document',
@@ -113,7 +113,7 @@ export const frFR = {
   'code.optionsPanel': 'Panneau des options',
   'code.hideOptions': 'Masquer les options',
   'code.showOptions': 'Afficher les options',
-  'code.notUsedBy': 'Non utilisé par {language}',
+  'code.notUsedBy': 'Sans effet pour {language}',
   'schemaSql.thisWindowOnly': 'Cette fenêtre uniquement',
   'schemaSql.statements': 'Instructions',
   'schemaSql.header': 'En-tête',
@@ -131,16 +131,16 @@ export const frFR = {
     other: '{count} autres tables',
   },
   'schemaSql.headerInvalidName':
-    'Le nom de base de données « {name} » n’est pas un identifiant valide.',
+    'Le nom de base de données « {name} » n’est pas un identifiant valide.',
   'schemaSql.oracleLongNames':
-    'Oracle 12.2+ pour les noms de plus de 30 octets : {names}',
+    'Oracle 12.2+ pour les noms de plus de 30 octets : {names}',
   'schemaSql.scriptsCaption':
     'Enregistré dans le document · écrit tel quel pour chaque base de données',
   'schemaSql.beforeTables': 'Avant les tables',
   'schemaSql.afterTables': 'Après les tables',
   'schemaSql.afterPlaceholder': '-- GRANT, CREATE VIEW, données initiales …',
   'schemaSql.mssqlGoHint':
-    'MSSQL reçoit GO après un script qui ne se termine pas par GO.',
+    'Pour MSSQL, GO est ajouté après un script qui ne se termine pas par GO.',
   'findReplace.matchCase': 'Respecter la casse',
   'findReplace.wholeWord': 'Mot entier',
   'findReplace.regex': 'Utiliser une expression régulière',
@@ -248,9 +248,10 @@ export const frFR = {
   'palette.tab': 'Onglet',
   'palette.noCommandsMatch': 'Aucune commande ne correspond',
   'palette.showMatches': {
-    one: 'Afficher {count} correspondance dans Rechercher et remplacer',
-    many: 'Afficher les {count} correspondances dans Rechercher et remplacer',
-    other: 'Afficher les {count} correspondances dans Rechercher et remplacer',
+    one: 'Afficher {count} correspondance dans « Rechercher et remplacer »',
+    many: 'Afficher les {count} correspondances dans « Rechercher et remplacer »',
+    other:
+      'Afficher les {count} correspondances dans « Rechercher et remplacer »',
   },
   'palette.searchTables': 'Rechercher « {keyword} » dans les tables',
   'palette.searchColumns': 'Rechercher « {keyword} » dans les colonnes',
@@ -273,12 +274,12 @@ export const frFR = {
   'palette.keywords.image':
     'image png svg vectoriel illustration presse-papiers',
   'palette.keywords.findReplace': 'rechercher remplacer renommer',
-  'palette.schemaSqlStatements': 'Schéma SQL : Instructions',
-  'palette.schemaSqlHeader': 'Schéma SQL : En-tête',
-  'palette.schemaSqlOptionsPanel': 'Schéma SQL : Panneau des options',
+  'palette.schemaSqlStatements': 'Schéma SQL : Instructions',
+  'palette.schemaSqlHeader': 'Schéma SQL : En-tête',
+  'palette.schemaSqlOptionsPanel': 'Schéma SQL : Panneau des options',
   'palette.codeGeneratorOptionsPanel':
-    'Générateur de code : Panneau des options',
-  'palette.exportSchemaSql': 'Exporter : Schéma SQL',
+    'Générateur de code : Panneau des options',
+  'palette.exportSchemaSql': 'Exporter : Schéma SQL',
   'palette.groupSelectedTables': 'Grouper les tables sélectionnées',
   'palette.keywords.schemaSqlStatements':
     'créer si n’existe pas supprimer remplacer',
@@ -308,7 +309,7 @@ export const frFR = {
   'shortcuts.keybinding': 'Raccourci clavier',
   'shortcuts.name.edit': 'Modifier',
   'shortcuts.name.stop': 'Arrêter',
-  'shortcuts.name.search': 'Rechercher',
+  'shortcuts.name.search': 'Recherche rapide',
   'shortcuts.name.findReplace': 'Rechercher et remplacer',
   'shortcuts.name.undo': 'Annuler',
   'shortcuts.name.redo': 'Rétablir',
@@ -341,9 +342,9 @@ export const frFR = {
   'exportImage.scale': 'Échelle',
   'exportImage.copyToClipboard': 'Copier dans le Presse-papiers',
   'exportImage.reducedFrom':
-    'Taille réduite, car les dimensions demandées ({askedWidth} × {askedHeight} px) dépassent la capacité d’un canevas de navigateur',
+    'Taille réduite, car les dimensions demandées ({askedWidth} × {askedHeight} px) dépassent la capacité d’un canevas de navigateur',
   'exportImage.reducedFromTo':
-    'Taille réduite de {askedWidth} × {askedHeight} px à {width} × {height} px, car les dimensions demandées dépassent la capacité d’un canevas de navigateur',
+    'Taille réduite de {askedWidth} × {askedHeight} px à {width} × {height} px, car les dimensions demandées dépassent la capacité d’un canevas de navigateur',
   'exportImage.exporting': 'Exportation au format {format}',
   'exportImage.exportFailed': 'Impossible d’exporter au format {format}',
   'exportImage.seeConsole':
@@ -354,7 +355,7 @@ export const frFR = {
   'exportImage.saveAsPng': 'Enregistrez-la plutôt au format PNG',
   'exportImage.copiedReduced': 'Image copiée en résolution réduite',
   'exportImage.copied': 'Image copiée dans le Presse-papiers',
-  'feedback.importOnly': 'Importez uniquement un fichier {format}',
+  'feedback.importOnly': 'Seuls les fichiers {format} peuvent être importés',
   'feedback.placingTables': 'Placement des tables',
   'feedback.placingProgress': 'Placement des tables {percent} %',
   'feedback.diffViewer': 'Visionneuse de différences',
@@ -393,14 +394,14 @@ export const frFR = {
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · déjà utilisée',
   'mapColumns.removed': '(supprimée)',
   'mapColumns.invalid': '(non valide)',
-  'mapColumns.becomesType': 'Le type de {column} devient {dataType}',
+  'mapColumns.becomesType': 'Le type de {column} deviendra {dataType}',
   'mapColumns.typesDiffer': 'Les types diffèrent : {parentType} et {childType}',
   'mapColumns.selfOnly':
     'Au moins une colonne doit référencer une autre colonne',
   'mapColumns.duplicate': 'Ces colonnes sont déjà liées par une autre relation',
   'mapColumns.noKey': '{table} n’a aucune clé à référencer',
   'mapColumns.notAKey':
-    'Les colonnes référencées ne sont pas une clé de {table}',
+    'Les colonnes référencées ne forment pas une clé de {table}',
   'mapColumns.fixMapping':
     'Choisissez une clé dans « Clé référencée » pour corriger cette association',
   'mapColumns.addKeyToFix':
