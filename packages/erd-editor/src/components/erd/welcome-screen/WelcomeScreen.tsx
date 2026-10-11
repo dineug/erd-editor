@@ -50,9 +50,6 @@ type WelcomeRow = {
 
 type MenuLevel = 'top' | 'import';
 
-/** Where the Import row stands in the menu, which Back hands the keyboard to. */
-const IMPORT_ROW = 2;
-
 /** A row's icon as the text runs: the Back arrow points right in a right-to-left language. */
 export const rowIcon = (icon: IconName, dir: TextDirection): IconName =>
   icon === 'arrow-left' && dir === 'rtl' ? 'arrow-right' : icon;
@@ -145,9 +142,11 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
     focusRow(0);
   };
 
+  // Back hands the keyboard to Import, wherever it stands: New Memo leaves
+  // the menu while memos are hidden.
   const handleBack = () => {
     state.level = 'top';
-    focusRow(IMPORT_ROW);
+    focusRow(topRows().findIndex(row => row.onClick === handleImport));
   };
 
   const handlePalette = () => {

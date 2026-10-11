@@ -10,6 +10,7 @@ import {
   createTestAppContext,
   createTestI18n,
   createTestTheme,
+  fireScenePointer,
   flush,
   moveScenePointer,
   pseudoMessages,
@@ -59,6 +60,7 @@ import {
   addTableGroupAction,
   changeTableGroupColorAction,
   changeTableGroupNameAction,
+  removeTableGroupAction,
 } from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { I18n } from '@/i18n/translate';
@@ -75,7 +77,11 @@ const STORED = { x: 40, y: 60, width: 300, height: 200 };
 
 const THEME: Theme = createTestTheme();
 
-type Mounted = { app: AppContext; stage: Stage };
+type Mounted = {
+  app: AppContext;
+  stage: Stage;
+  setReadonly: (value: boolean) => void;
+};
 
 const teardowns: Array<() => void> = [];
 
@@ -130,7 +136,13 @@ async function mountGroup({
   });
 
   await settle();
-  return { app, stage: rendered.stage };
+  return {
+    app,
+    stage: rendered.stage,
+    setReadonly: value => {
+      locked = value;
+    },
+  };
 }
 
 const settle = async () => {
@@ -553,11 +565,64 @@ describe('the table group scene', () => {
     expect(removeStrokes(stage)).toEqual(new Set(['#ffffff']));
   });
 
-  it('draws no remove button in a readonly editor', async () => {
-    const { stage } = await mountGroup({ readonly: true });
+  it('keeps the remove button in a readonly editor painting nothing, asking no cursor and removing nothing', async () => {
+    const { app, stage } = await mountGroup({ readonly: true });
 
-    expect(nameOf(stage)).toBeTruthy();
+    await hoverRemove(stage);
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+    expect(stage.container().style.cursor).toBe('');
+
+    fireScenePointer(removeOf(stage), 'click');
+    await settle();
+    expect(app.store.state.doc.tableGroupIds).toEqual([GROUP_ID]);
+  });
+
+  it('hands the canvas its cursor back as the pointer leaves an x that turned readonly under it', async () => {
+    const { app, stage, setReadonly } = await mountGroup();
+
+    await hoverRemove(stage);
+    expect(stage.container().style.cursor).toBe('pointer');
+
+    // The switch is the host's, so a selection, which readonly still takes,
+    // draws the group again under it.
+    setReadonly(true);
+    app.store.dispatchSync(selectAction({ [GROUP_ID]: SelectType.tableGroup }));
+    await settle();
+    await hoverTitle(stage);
+
+    expect(stage.container().style.cursor).toBe('');
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+  });
+
+  it('lets go of the hover a removed group held, so the same group brought back shows no x', async () => {
+    const app = createTestAppContext();
+    const { stage } = await mountGroup({ app });
+    await hoverTitle(stage);
+    expect(removeStrokes(stage)).toEqual(new Set([THEME.foreground]));
+
+    app.store.dispatchSync(removeTableGroupAction({ id: GROUP_ID }));
+    await settle();
+    app.store.dispatchSync(
+      addTableGroupAction({ id: GROUP_ID, ui: { ...STORED, zIndex: 1 } })
+    );
+    await settle();
+
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+  });
+
+  it('hands the canvas its cursor back once a click on the x removes the group from under the pointer', async () => {
+    const app = createTestAppContext();
+    const { stage } = await mountGroup({ app });
+
+    await hoverRemove(stage);
+    expect(stage.container().style.cursor).toBe('pointer');
+
+    fireScenePointer(removeOf(stage), 'click');
+    await settle();
+
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
     expect(stage.findOne('.table-group-remove')).toBeUndefined();
+    expect(stage.container().style.cursor).toBe('');
   });
 
   it('grows over a member whose column widens, though the member never moved', async () => {

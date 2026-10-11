@@ -250,6 +250,14 @@ describe('a marquee over table groups', () => {
     expect(store.state.editor.selectedMap.g1).toBe(SelectType.tableGroup);
   });
 
+  it('takes no group for a marquee drawn over a view, which draws none', () => {
+    store.dispatchSync(
+      dragSelectAction$({ x: -100, y: -100, w: 2000, h: 2000 }, 'flow')
+    );
+
+    expect(store.state.editor.selectedMap).not.toHaveProperty('g1');
+  });
+
   it('takes no group while groups are hidden', () => {
     store.dispatchSync(
       changeShowAction({ show: Show.hideTableGroup, value: true })

@@ -36,6 +36,7 @@ import {
 import { getOriginToPlace, toScreenPoint } from '@/konva/scene/viewport';
 import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
+import { isMemoShown } from '@/utils/memo';
 import { isHighLevelTable } from '@/utils/validation';
 
 /** The part of a cell's text a jump is for, a search's match say: text from start to end. */
@@ -316,6 +317,9 @@ export const showErdTargetAction$ = (
 ): GeneratorAction =>
   function* (state, ctx) {
     if (target.kind === 'memo') {
+      // A row found before the memos were hidden goes nowhere, so neither its
+      // selection nor a Delete after it reaches a memo no reader sees.
+      if (!isMemoShown(state)) return;
       const memo = query(state.collections)
         .collection('memoEntities')
         .selectById(target.memoId);

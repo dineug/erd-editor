@@ -47,7 +47,7 @@
   - The `title` is written again on each render, so a peer's change under a resting pointer shows.
   - The tooltip shows with the label hidden too, and leaves with the pointer or the connector.
 - **View Option's Referential Actions hides the label.** It sets `Show.hideReferentialAction`, one of the three bits that hide what they name; `hideTableGroup` and `hideMemo` are the others. So every document, those saved before the bit included, shows the labels until a reader turns them off.
-- **Showing or hiding the labels moves nothing.** So the sort hook skips that toggle (`isPaintOnlyToggle`, which skips the group bit too), and the table size key masks the bit out.
+- **Showing or hiding the labels moves nothing.** So the sort hook skips that toggle (`isPaintOnlyToggle`, which skips the group and memo bits too), and the table size key masks all three out.
 
 ### Connector ends and corners
 

@@ -230,6 +230,21 @@ describe('showErdTargetAction$', () => {
     });
   });
 
+  it('goes to no memo while memos are hidden, so nothing selects it', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(
+      showErdTargetAction$({ kind: 'memo', memoId: 'note' })
+    );
+
+    expect(batches.flat()).toEqual([]);
+    expect(app.store.state.editor.selectedMap).not.toHaveProperty('note');
+  });
+
   it('asks for nothing for a table, column or memo the document no longer holds', () => {
     const app = seed();
     const batches = recordBatches(app);

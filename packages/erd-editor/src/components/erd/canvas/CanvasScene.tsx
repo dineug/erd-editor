@@ -211,41 +211,32 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     // document scene's alone; a view would stand them somewhere unrelated.
     const presence = source === 'document';
 
-    // Konva paints siblings in order, so tables and memos go in as one stack,
-    // whatever was raised last the last child of its layer, as the DOM scene's
-    // z-index stacked them.
-    /** The tables and memos of one layer, each table in whichever spelling the zoom asks for. */
-    const entityShapes = (list: StackedEntity[]) =>
+    /** A table in whichever spelling the zoom asks for, both kept so a zoom across the threshold rebuilds neither. */
+    const tableShape = (table: TableEntity) =>
       cache(
         highLevel ? (
-          <>
-            {repeat(list, stackedKey, item =>
-              item.kind === 'table' ? (
-                <HighLevelTable
-                  table={item.entity}
-                  visible={drawnIds.has(item.entity.id)}
-                />
-              ) : (
-                <Memo memo={item.entity} />
-              )
-            )}
-          </>
+          <HighLevelTable table={table} visible={drawnIds.has(table.id)} />
         ) : (
-          <>
-            {repeat(list, stackedKey, item =>
-              item.kind === 'table' ? (
-                <Table
-                  table={item.entity}
-                  visible={drawnIds.has(item.entity.id)}
-                  lit={isLitTable(item.entity.id)}
-                  relatedColumnIds={related?.get(item.entity.id) ?? null}
-                  tableGroupId={groupIdOf(item.entity)}
-                />
-              ) : (
-                <Memo memo={item.entity} />
-              )
-            )}
-          </>
+          <Table
+            table={table}
+            visible={drawnIds.has(table.id)}
+            lit={isLitTable(table.id)}
+            relatedColumnIds={related?.get(table.id) ?? null}
+            tableGroupId={groupIdOf(table)}
+          />
+        )
+      );
+
+    // Konva paints siblings in order, so tables and memos go in as one stack,
+    // whatever was raised last the last child of its layer. A memo stays out
+    // of the cache, so a zoom across the threshold never takes it away.
+    /** The tables and memos of one layer in their one stack. */
+    const entityShapes = (list: StackedEntity[]) =>
+      repeat(list, stackedKey, item =>
+        item.kind === 'table' ? (
+          <>{tableShape(item.entity)}</>
+        ) : (
+          <Memo memo={item.entity} />
         )
       );
 

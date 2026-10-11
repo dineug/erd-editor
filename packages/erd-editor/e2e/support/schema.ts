@@ -48,10 +48,12 @@ export const Show = {
   columnNotNull: 128,
   relationship: 256,
   columnAlternateKey: 512,
-  /** One of the two bits that hide what they name: the referential action labels. */
+  /** One of the three bits that hide what they name: the referential action labels. */
   hideReferentialAction: 1024,
-  /** The other: the table groups, their boxes and the header colour they give. */
+  /** The second: the table groups, their boxes and the header colour they give. */
   hideTableGroup: 2048,
+  /** The third: the memos, wherever a reader would meet them. */
+  hideMemo: 4096,
 } as const;
 
 /** The editor's own default for settings.show. */

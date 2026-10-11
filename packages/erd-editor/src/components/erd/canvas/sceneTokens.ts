@@ -254,6 +254,34 @@ export function setSceneCursor(event: ScenePointerEvent, cursor: string): void {
 }
 
 /**
+ * The cursors one scene component asks for, so a node unmounted from under the pointer, which konva
+ * sends no leave for, hands the container back the cursor it took: release writes CURSOR_INHERIT
+ * once, unless the last cursor the component asked for already was.
+ *
+ * @example
+ * const cursor = createSceneCursorScope();
+ * onUnmounted(cursor.release);
+ */
+export function createSceneCursorScope() {
+  let container: HTMLElement | null = null;
+  let current = CURSOR_INHERIT;
+
+  return {
+    set(event: ScenePointerEvent, cursor: string) {
+      container = sceneContainerOf(event) ?? container;
+      current = cursor;
+      if (container) setStageCursor(container, cursor);
+    },
+    release() {
+      if (container && current !== CURSOR_INHERIT) {
+        setStageCursor(container, CURSOR_INHERIT);
+      }
+      current = CURSOR_INHERIT;
+    },
+  };
+}
+
+/**
  * Keeps the container on a cursor for a mouse gesture, whatever the pointer runs
  * over, and hands back the release that shows what the last hover asked for. A
  * touch has no cursor to keep, so its press holds nothing.

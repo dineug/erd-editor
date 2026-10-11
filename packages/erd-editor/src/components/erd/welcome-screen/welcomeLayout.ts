@@ -75,9 +75,9 @@ export function welcomeTiers({ width, height }: WelcomeSize): WelcomeTiers {
 }
 
 /**
- * A document with no table, no memo and no shown group, which is what the
- * welcome screen stands over: the content bounds count the same, so the map
- * and the scrollbars leave as the screen comes and come as it leaves.
+ * A document with no table, no shown memo and no shown group, which is what
+ * the welcome screen stands over: the content bounds count the same, so the
+ * map and the scrollbars leave as the screen comes and come as it leaves.
  */
 export const isEmptyDocument = (state: RootState) => !hasContent(state);
 

@@ -278,8 +278,8 @@ function* createEntities$(
 
   const placement = resolvePlacement({
     entities: [
-      ...input.tables.map(toPlacementEntity),
-      ...input.memos.map(toPlacementEntity),
+      ...input.tables.map(table => toPlacementEntity(table, 'table')),
+      ...input.memos.map(memo => toPlacementEntity(memo, 'memo')),
     ],
     offset,
     escapeCollision,
@@ -314,11 +314,12 @@ function* createEntities$(
   });
 }
 
-const toPlacementEntity = ({
+const toPlacementEntity = (
+  { sourceId, ui: { x, y, zIndex } }: ClipboardTable | ClipboardMemo,
+  kind: 'table' | 'memo'
+): PlacementEntity => ({
   sourceId,
-  ui: { x, y, zIndex },
-}: ClipboardTable | ClipboardMemo): PlacementEntity => ({
-  sourceId,
+  kind,
   ui: { x, y, zIndex },
 });
 

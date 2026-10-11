@@ -179,6 +179,10 @@ describe('FindTextActionTypes', () => {
     }
   });
 
+  it('runs a search again as the memos are hidden or shown, which takes them out of the walk or brings them back', () => {
+    expect(FindTextActionTypes).toContain('settings.changeShow');
+  });
+
   it('leaves out what moves, colours, sizes, scrolls, zooms, hovers or selects', () => {
     for (const type of [
       'table.move',

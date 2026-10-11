@@ -175,7 +175,9 @@
   - Find and Replace and the palette's `:` walk no memo (`walkFields`), and a show change runs the search again (`FindTextActionTypes`).
   - Nothing makes a memo while it is set: the canvas menu, the palette and the welcome screen offer no New Memo, and its chord adds none. An agent's `erd_add_memo` still adds one, hidden.
   - It is a paint-only toggle beside the other two hide bits, so it measures nothing either.
-- **Hiding memos drops their selection and editor.** `settings.changeShow` setting `Show.hideMemo`, here, by an undo or by a peer, lets go of every selected memo and closes the memo editor (`releaseMemos`, `src/engine/modules/settings/atom.actions.ts`).
+- **Hiding memos drops their selection and editor.** `settings.changeShow` setting `Show.hideMemo`, here, by an undo or by a peer, lets go of every selected memo and closes the memo editor. So does a load (`loadJson`, `initialLoadJson`) that lands the bit, and a load landing `Show.hideTableGroup` lets go of the groups alike (`releaseHidden`, `src/engine/modules/editor/utils/releaseHidden.ts`).
+  - A memo sash drag ends at the step that finds the memo hidden or removed, writing nothing more (`MemoSash.tsx`).
+  - A go-to on a memo (`showErdTargetAction$`) goes nowhere while memos are hidden, so a palette or Find and Replace row found before selects nothing a Delete could then take.
 - **The minimap fills group boxes behind marks.** It uses the group's color, or, for a group with no color `toOpaqueHex` reads, the bar's `tableGroupHeaderBackground`. It fills at 0.4 alpha (`FILL_OPACITY` in `minimap/table-group/TableGroup.tsx`), above the body's `TABLE_GROUP_FILL_OPACITY`, since a box a few pixels across shows its color there or not at all. Each table mark takes `table.ui.color` (an owner decision), never its group's.
 
 ### Table group pointer
@@ -191,7 +193,7 @@
   - It shows while the pointer is over the frame or the body, as a table's buttons show over its card. The frame and the body are two nodes, so each writes its own hover into the links and the button reads either.
   - A main click runs `removeTableGroupAction$` on that group alone and keeps its tables, as the menu's Delete does, in one undo entry.
   - It is `kind="icon"`, which `useMoveEntity`'s `blockedKinds` names, so a press on it selects the group and carries nothing.
-  - A readonly store draws none.
+  - A readonly store keeps it listening, painting nothing, asking for no cursor and removing nothing on a click. So konva still sends it the leave that hands back a cursor it took before readonly turned on.
 - **The body is canvas to the main button.** `ownsPress` (`hitTest.ts`) gives a group its bar and sashes, and its body only for another button. `handleDragSelect` in `Erd.tsx` and `ErdViewer.tsx` read it.
   - So a main press on the body pans, takes a marquee under the modifier, and unselects.
   - A right press selects the group, kept if the selection holds it, for the group menu it raises (Table group commands, below).
@@ -201,6 +203,7 @@
   - Its drag draws a draft box in the group's body and frame. It writes one `tableGroup.resize` with `dispatchSync` as it ends.
   - The edge stops at the members' padded box (`getTablesGroupRect`) and at `TABLE_GROUP_MIN_WIDTH` / `TABLE_GROUP_MIN_HEIGHT`.
   - So peers hear one write, and one undo puts back the rect it began from.
+  - A drag whose sash unmounts mid way, its groups hidden, its group removed or the editor turned readonly, ends writing nothing, as no reader saw where it would land.
 - **A document drag ends by judging group drops.** A drag that travelled `CLICK_DRAG_MIN_MOVE` from its press dispatches `dropTablesIntoGroupsAction$` with the boxes it held (`useMoveEntity`'s finalizer). A click, or a tremor short of that, sends nothing (`markEntityDragTravelled`).
   - `getTableGroupDrops` judges each selected table no selected group carries. It puts the table in the topmost box that holds its centre without them, or in none.
   - The boxes judged include the box a group the drag leaves standing showed as it began. So a member grown past the stored rect stays through a nudge, and leaves once its centre is out of the box the reader saw.
@@ -250,7 +253,9 @@
 - Why `renderCanvasScene` (`canvas/CanvasScene.tsx`) and `renderMinimapScene` (`minimap/MinimapScene.tsx`) export in lower case, the `konva/lib/*` imports and `ParticleLayer.tsx`: `src/konva/AGENTS.md`.
 - **Route presses through `hitTest.ts`.** The canvas is one `<canvas>` under a closed shadow root, which r-html's `queryShadowSelector` / `closestElement` cross. `hitTest.ts` records what konva resolved at dispatch, since the press re-renders the scene before `Erd.tsx` asks.
 - **Take hit boxes from hit functions** (`canvas/sceneHit.ts`), not invisible shapes.
-- **Tables and memos paint in one stack.** `stackTablesAndMemos` (`src/konva/scene/stacking.ts`) orders them by the one z-index `nextZIndex` counts for both, a memo over a table at a tie. The scene and drag layers of `canvas/CanvasScene.tsx`, the minimap, the export scene and `findDrawTarget` read it, so what a press raised stays on top wherever it is drawn. Drawing every memo after every table put a memo over a table raised past it (an owner report of 2026-10-11).
+- **Tables and memos paint in one stack.** `stackTablesAndMemos` (`src/konva/scene/stacking.ts`) orders them by the one z-index `nextZIndex` counts for both, a memo over a table at a tie. The scene and drag layers of `canvas/CanvasScene.tsx`, the Alt drag's ghost, the minimap, the export scene and `findDrawTarget` read it, so what a press raised stays on top wherever it is drawn. A paste or duplicate breaks a tie the same way (`resolvePlacement`), and a file reopened stacks its memos over its tables (`erd-editor-schema`'s parser). Drawing every memo after every table put a memo over a table raised past it (an owner report of 2026-10-11).
+  - Each table keeps its own `cache` of its two spellings, the zoom choosing one, and a memo stays out of any cache. So a zoom across the high level threshold takes no memo from under the pointer.
+- **A node that leaves under the pointer hands its cursor back.** Konva sends no leave to a node unmounted from under the pointer: one removed, hidden or swapped out. So a component that asks the stage for a cursor through `createSceneCursorScope` (`canvas/sceneTokens.ts`) writes the inherited one back on unmount, unless its last request already was. The memo, its sashes, the group sashes and the group's `x` do. The table's header buttons and colour edge, the zoomed-out table's colour edge and a column's remove button do not yet.
 - **Add each canvas overlay to `canDrag`.** That is the `closest()` list in `Erd.tsx` (`.content-compass`, `.floating-toolbar`, `.draw-target`, …); `ErdViewer.tsx` has its own. Otherwise a press on the overlay starts a pan.
 - **Add takeover overlays to `TAKEOVER_CHROME` too.** An overlay a takeover lays over its scene joins it in `Erd.tsx`, or a middle press on it is prevented.
 - **A header press lifts past `CLICK_DRAG_MIN_MOVE` only.** It lifts the table only once the press travels that far (`clickKinds`, `canvas/useMoveEntity.ts`). The drag layer is off the hit canvas, so lifting at once would keep a double click from opening the cell editor.
@@ -330,7 +335,7 @@
   - The element is not yet destroyed (`AppContext.lifecycle.destroyed`, which `appDestroy` sets first). So the clear that `destroy()` dispatches raises no screen over the providers it removed.
   - The document holds no table, no shown memo and no shown group (`isEmptyDocument`, the content bounds' own `hasContent`). So the map and the scrollbars come as it leaves, the first table, shown memo or shown group takes it away, and an undo back to none brings it again.
 - **It shows a heading and a menu.** The heading has no logo and no product name.
-  - The menu rows are New Table, New Memo, Import, Command Palette and Shortcuts (`requestSettingsPage`).
+  - The menu rows are New Table, New Memo, Import, Command Palette and Shortcuts (`requestSettingsPage`), with no New Memo while memos are hidden. Back hands the keyboard to Import wherever it stands.
   - Import swaps in its formats (`createImportMenus`) behind a Back row, which Escape presses too.
   - Where the canvas has room, hand-drawn arrows point at the toolbar's Search button, at its theme and language buttons, and at the floating toolbar.
 - `requestSettingsPage` and the Settings page it opens (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.

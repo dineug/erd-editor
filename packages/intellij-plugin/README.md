@@ -18,7 +18,7 @@ Create an empty file with a `.erd.json` extension and open it. Files ending in `
 letter case, open in ERD Editor instead of the text editor.
 
 An empty diagram you can edit opens on the welcome screen, a menu of New Table, New Memo, Import,
-Command Palette and Shortcuts, which stays until its first table, memo or shown table group.
+Command Palette and Shortcuts, which stays until its first table, shown memo or shown table group.
 Right-click the canvas for every action, as the welcome screen says.
 
 To start from a schema you already have, right-click the canvas and choose **Import**, then **Schema
@@ -149,8 +149,8 @@ shows as modified. Undo and redo, on the editor's toolbar, are its own history.
   **Settings | Tools | ERD Editor**, remembered across restarts
 - **Welcome screen** — an empty diagram you can edit opens on a menu of New Table, New Memo, Import,
   Command Palette and Shortcuts, with arrows at the toolbar's search, theme and language buttons and
-  at the floating toolbar where the canvas has room, until its first table, memo or shown table
-  group
+  at the floating toolbar where the canvas has room, until its first table, shown memo or shown
+  table group
 
 ### Collaboration and coding agents
 

@@ -20,14 +20,19 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
+import {
+  beginEntityDrag,
+  endEntityDrag,
+} from '@/components/erd/canvas/entityDrag';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { RelationshipType, Show } from '@/constants/schema';
 import {
   changeViewportAction,
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
+  selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { ViewKind } from '@/engine/modules/editor/state';
+import { SelectType, ViewKind } from '@/engine/modules/editor/state';
 import {
   viewChangeZoomLevelAction,
   viewOpenAction,
@@ -464,6 +469,74 @@ describe('the canvas scene', () => {
       'table-raised',
       'table-low',
     ]);
+  });
+
+  it('stacks the tables and memos a drag carries by one z-index in the drag layer', async () => {
+    const { app, stage } = await mountScene();
+    seedTable(app, 'raised', 100, 9);
+    seedTable(app, 'low', 200, 2);
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 300, y: 0, zIndex: 5 } }),
+      selectAction({
+        raised: SelectType.table,
+        low: SelectType.table,
+        note: SelectType.memo,
+      })
+    );
+    beginEntityDrag(app.store.state);
+    await flush();
+
+    try {
+      expect(
+        stage
+          .findOne<Layer>('.drag-entity')!
+          .getChildren()
+          .filter(node => node.hasName('table') || node.hasName('memo'))
+          .map(node => node.id())
+      ).toEqual(['table-low', 'memo-note', 'table-raised']);
+    } finally {
+      endEntityDrag(app.store.state);
+    }
+  });
+
+  it('keeps a memo the same node across the high level threshold, its pointer state with it', async () => {
+    const { app, stage } = await mountScene();
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 300, y: 0, zIndex: 5 } })
+    );
+    await flush();
+    const before = stage.findOne('#memo-note');
+
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    await flush();
+
+    expect(stage.findOne('#memo-note')).toBe(before);
+  });
+
+  it('hands the cursor a memo took back once hiding the memos takes it from under the pointer', async () => {
+    const { app, stage } = await mountScene();
+    app.store.dispatchSync(
+      addMemoAction({
+        id: 'note',
+        ui: { x: 100, y: 100, width: 200, height: 150, zIndex: 5 },
+      })
+    );
+    await flush();
+    await whenPainted();
+    const body = stage
+      .findOne('.memo-text-clip')!
+      .getClientRect({ relativeTo: stage, skipShadow: true });
+    moveScenePointer(stage, body.x + body.width / 2, body.y + body.height / 2);
+    await flush();
+    expect(stage.container().style.cursor).toBe('text');
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await flush();
+
+    expect(stage.find('.memo')).toHaveLength(0);
+    expect(stage.container().style.cursor).toBe('');
   });
 
   it('keeps that one stack at a zoom that draws high level tables', async () => {

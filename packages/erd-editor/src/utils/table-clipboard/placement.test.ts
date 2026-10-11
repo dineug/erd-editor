@@ -380,6 +380,19 @@ describe('resolvePlacement', () => {
     expect(placement.get('c')?.zIndex).toBe(12);
   });
 
+  it('stacks a copied memo over a copied table of the same z-index, whichever id sorts first', () => {
+    const placement = resolve({
+      entities: [
+        { ...createEntity('z-table', 0, 0, 4), kind: 'table' },
+        { ...createEntity('a-memo', 100, 0, 4), kind: 'memo' },
+      ],
+    });
+
+    expect(placement.get('a-memo')!.zIndex).toBeGreaterThan(
+      placement.get('z-table')!.zIndex
+    );
+  });
+
   it('mutates neither the entities it was given nor the document collections', () => {
     const entities = [createEntity('t1', 200, 100), createEntity('gone', 0, 0)];
     const tables = [createTable({ id: 't1', ui: { x: 200, y: 100 } })];

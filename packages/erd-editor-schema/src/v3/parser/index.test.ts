@@ -160,10 +160,31 @@ describe('parser', () => {
     expect(tableEntities.t1.ui.zIndex).toBe(3);
     expect(tableEntities.t3.ui.zIndex).toBe(4);
     expect(tableEntities.t3.ui.x).toBe(10);
-    expect(memoEntities.m2.ui.zIndex).toBe(2);
-    expect(memoEntities.m1.ui.zIndex).toBe(3);
+    expect(memoEntities.m2.ui.zIndex).toBe(5);
+    expect(memoEntities.m1.ui.zIndex).toBe(6);
     expect(tableGroupEntities.g2.ui.zIndex).toBe(1);
     expect(tableGroupEntities.g1.ui.zIndex).toBe(2);
+  });
+
+  it('stacks memos saved without a z-index over every table, past the highest one a table carries', () => {
+    const result = parser({
+      doc: { tableIds: ['t1', 't2'], memoIds: ['m1'] },
+      collections: {
+        tableEntities: {
+          t1: { id: 't1', ui: { zIndex: 40 } },
+          t2: { id: 't2' },
+        },
+        memoEntities: { m1: { id: 'm1' } },
+      },
+    });
+
+    expect(result.collections.memoEntities.m1.ui.zIndex).toBe(41);
+
+    const memosOnly = parser({
+      doc: { memoIds: ['m1'] },
+      collections: { memoEntities: { m1: { id: 'm1' } } },
+    });
+    expect(memosOnly.collections.memoEntities.m1.ui.zIndex).toBe(2);
   });
 
   it('keeps the z-index an entity carries and the default of one not listed', () => {

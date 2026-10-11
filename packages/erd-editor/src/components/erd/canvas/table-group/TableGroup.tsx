@@ -5,6 +5,7 @@ import { FC, observable, onUnmounted } from '@dineug/r-html';
 import { useAppContext } from '@/components/appContext';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
+  createSceneCursorScope,
   CURSOR_INHERIT,
   CURSOR_POINTER,
   mainButtonClick,
@@ -13,7 +14,6 @@ import {
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
   type ScenePointerEvent,
-  setSceneCursor,
   TABLE_GROUP_CORNER_RADIUS,
   TABLE_GROUP_TITLE_FONT_WEIGHT,
   TRANSPARENT,
@@ -107,27 +107,44 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
     props.links.setHover(props.group.id, 'frame', false);
   };
 
-  // A removed group takes its node from under the pointer, which sends no leave.
-  onUnmounted(handleMouseleave);
+  // A removed group takes its node from under the pointer, which sends no
+  // leave, so the hover and the x's cursor are handed back here.
+  const cursor = createSceneCursorScope();
+  onUnmounted(() => {
+    handleMouseleave();
+    cursor.release();
+  });
 
+  // Readonly keeps the x listening, asking for no cursor and removing nothing,
+  // so the leave konva sends it still hands back a cursor taken before.
   const handleRemoveMouseenter = (event: SceneMouseEvent) => {
     state.removeHover = true;
-    setSceneCursor(event, CURSOR_POINTER);
+    cursor.set(
+      event,
+      app.value.store.getReadonly() ? CURSOR_INHERIT : CURSOR_POINTER
+    );
   };
 
   const handleRemoveMouseleave = (event: SceneMouseEvent) => {
     state.removeHover = false;
-    setSceneCursor(event, CURSOR_INHERIT);
+    cursor.set(event, CURSOR_INHERIT);
   };
 
   // The button takes the group alone and keeps its tables, as the menu's Delete does.
   const handleRemove = () => {
-    app.value.store.dispatch(removeTableGroupAction$(props.group.id));
+    const { store } = app.value;
+    if (store.getReadonly()) return;
+
+    store.dispatch(removeTableGroupAction$(props.group.id));
   };
 
-  /** The button's color: none at rest, and on a group's color the text drawn over it. */
-  const removeColor = (theme: Theme, colors: TableGroupColors | null) => {
-    if (!props.links.isHovered(props.group.id)) return TRANSPARENT;
+  /** The button's color: none at rest or readonly, and on a group's color the text drawn over it. */
+  const removeColor = (
+    theme: Theme,
+    colors: TableGroupColors | null,
+    readonly: boolean
+  ) => {
+    if (readonly || !props.links.isHovered(props.group.id)) return TRANSPARENT;
     if (colors) return colors.foreground;
 
     return state.removeHover ? theme.active : theme.foreground;
@@ -218,20 +235,18 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
             visible={!editing}
             listening={false}
           />
-          {readonly
-            ? null
-            : sceneIcon({
-                icon: 'x',
-                name: 'table-group-remove',
-                kind: 'icon',
-                size: removeBox.size,
-                color: removeColor(theme, colors),
-                mouseenter: handleRemoveMouseenter,
-                mouseleave: handleRemoveMouseleave,
-                x: removeBox.x,
-                y: removeBox.y,
-                click: handleRemove,
-              })}
+          {sceneIcon({
+            icon: 'x',
+            name: 'table-group-remove',
+            kind: 'icon',
+            size: removeBox.size,
+            color: removeColor(theme, colors, readonly),
+            mouseenter: handleRemoveMouseenter,
+            mouseleave: handleRemoveMouseleave,
+            x: removeBox.x,
+            y: removeBox.y,
+            click: handleRemove,
+          })}
         </k-group>
         <k-rect
           name="table-group-border"

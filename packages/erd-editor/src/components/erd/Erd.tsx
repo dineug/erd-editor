@@ -593,9 +593,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     // An open overlay stands a scene of its own over this canvas, so the tools
     // that drive this one step aside rather than float over it.
     const showFloatingToolbar = !getShowOverLayout();
-    // Only for a host that asks for it, over a document still empty that the
-    // reader may edit, so the first table, memo or shown group takes it away
-    // and an undo brings it again, never after appDestroy, which empties it too.
+    // Only for a host that asks, over a still empty document the reader may
+    // edit, so the first table, shown memo or shown group takes it away and an
+    // undo brings it again, never after appDestroy, which empties it too.
     const showWelcomeScreen =
       Boolean(props.enableWelcomeScreen) &&
       !app.value.lifecycle.destroyed &&

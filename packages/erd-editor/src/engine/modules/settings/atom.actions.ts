@@ -11,7 +11,11 @@ import {
   LockSettingTypeList,
   Show,
 } from '@/constants/schema';
-import { SelectType, Viewport } from '@/engine/modules/editor/state';
+import { Viewport } from '@/engine/modules/editor/state';
+import {
+  releaseMemos,
+  releaseTableGroups,
+} from '@/engine/modules/editor/utils/releaseHidden';
 import {
   viewScrollToAction,
   viewStreamScrollToAction,
@@ -290,31 +294,6 @@ export const sceneStreamScrollToAction = (
 export const changeShowAction = createAction<
   ActionMap[typeof ActionType.changeShow]
 >(ActionType.changeShow);
-
-/**
- * Hidden groups take no press, so hiding them, here, by an undo or by a peer,
- * lets go of every selected group, ends a draw armed and closes a name editor,
- * none of which a reader could see or end any longer.
- */
-const releaseTableGroups = ({ editor }: RootState) => {
-  Object.entries(editor.selectedMap).forEach(([id, type]) => {
-    if (type === SelectType.tableGroup) {
-      Reflect.deleteProperty(editor.selectedMap, id);
-    }
-  });
-  editor.drawTableGroup = false;
-  editor.editTableGroupId = null;
-};
-
-/** Hidden memos take no press either, so hiding them lets go of every selected memo and closes a memo editor. */
-const releaseMemos = ({ editor }: RootState) => {
-  Object.entries(editor.selectedMap).forEach(([id, type]) => {
-    if (type === SelectType.memo) {
-      Reflect.deleteProperty(editor.selectedMap, id);
-    }
-  });
-  editor.editMemoId = null;
-};
 
 const changeShow: ReducerType<typeof ActionType.changeShow> = (
   state,

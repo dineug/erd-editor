@@ -17,7 +17,7 @@ Create an empty file with a `.erd.json` extension and open it in VS Code. It ope
 default.
 
 An empty diagram you can edit opens on the welcome screen, a menu of New Table, New Memo, Import,
-Command Palette and Shortcuts, which stays until its first table, memo or shown table group.
+Command Palette and Shortcuts, which stays until its first table, shown memo or shown table group.
 `Alt`+`N` adds a table and `Alt`+`Enter` adds a column to it; `Delete` or `Backspace` removes the
 selection, and `Alt`+`K` toggles the primary key on the focused column.
 
@@ -158,8 +158,8 @@ not appear in VS Code's Command Palette.
   [Settings](#settings))
 - **Welcome screen** — an empty diagram you can edit opens on a menu of New Table, New Memo, Import,
   Command Palette and Shortcuts, with arrows at the toolbar's search, theme and language buttons and
-  at the floating toolbar where the canvas has room, until its first table, memo or shown table
-  group
+  at the floating toolbar where the canvas has room, until its first table, shown memo or shown
+  table group
 
 ### Collaboration and coding agents
 

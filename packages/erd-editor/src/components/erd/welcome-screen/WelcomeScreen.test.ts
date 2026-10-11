@@ -309,6 +309,22 @@ describe('WelcomeScreen menu', () => {
     ]);
   });
 
+  it('returns the keyboard to Import from Back while memos are hidden, a row higher', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    const { row, labels, rows } = await setup({ app });
+
+    row('Import').click();
+    await flush();
+    row('Back').click();
+    await flush();
+
+    expect(labels()[1]).toBe('Import');
+    expect(document.activeElement).toBe(rows()[1]);
+  });
+
   it('adds a memo and hands the keyboard back', async () => {
     const { app, row } = await setup();
     const onFocus = listenForFocus();

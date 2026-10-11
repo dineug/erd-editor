@@ -27,6 +27,7 @@ import { hasCanvasType } from '@/utils/validation';
 import { ActionMap, ActionType, ReducerType } from './actions';
 import { FocusType, MoveKey, SelectType } from './state';
 import { arrowDown, arrowLeft, arrowRight, arrowUp } from './utils/focus';
+import { releaseHidden } from './utils/releaseHidden';
 import {
   appendSelectColumns,
   appendSelectRangeColumns,
@@ -184,6 +185,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state.collections = collections;
   rememberCanvasType(state);
   clearViews(state.editor);
+  releaseHidden(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
@@ -227,6 +229,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.lww = {};
   rememberCanvasType(state);
   clearViews(state.editor);
+  releaseHidden(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };

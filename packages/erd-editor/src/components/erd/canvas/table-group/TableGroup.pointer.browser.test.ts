@@ -651,6 +651,37 @@ describe('the sashes of a group', () => {
     expect(entriesSince(editor, removed)).toBe(0);
   });
 
+  it.each([
+    ['released while they are hidden', false],
+    ['shown again and carried on before the release', true],
+  ])(
+    'writes nothing for a drag the groups were hidden under, %s',
+    async (_, shownAgain) => {
+      const editor = await mountEditor();
+      const from = sashOf(editor, 'g2', 'right');
+      const start = clientOf(editor, from);
+
+      await pressAndMove(editor, from, { x: 80, y: 0 });
+      editor.app.store.dispatchSync(
+        changeShowAction({ show: Show.hideTableGroup, value: true })
+      );
+      await settle();
+      if (shownAgain) {
+        editor.app.store.dispatchSync(
+          changeShowAction({ show: Show.hideTableGroup, value: false })
+        );
+        await settle();
+        movePointer(start.clientX + 120, start.clientY);
+        await flush();
+      }
+      const before = editor.app.store.history.size;
+      await drop();
+
+      expect(groupUi(editor, 'g2')).toMatchObject(G2);
+      expect(entriesSince(editor, before)).toBe(0);
+    }
+  );
+
   it('writes nothing for a right drag or a press that goes nowhere', async () => {
     const editor = await mountEditor();
     editor.app.store.dispatchSync(selectAction({ g1: SelectType.tableGroup }));

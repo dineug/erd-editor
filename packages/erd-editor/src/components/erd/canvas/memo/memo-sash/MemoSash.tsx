@@ -1,14 +1,14 @@
 /** @jsxHost konva */
 
-import { FC } from '@dineug/r-html';
+import { FC, onUnmounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
+  createSceneCursorScope,
   CURSOR_INHERIT,
   HIT_FILL,
   holdSceneCursor,
   type ScenePointerEvent,
-  setSceneCursor,
 } from '@/components/erd/canvas/sceneTokens';
 import { SASH_SIZE } from '@/components/primitives/sash/Sash.styles';
 import {
@@ -25,6 +25,7 @@ import {
 } from '@/utils/domEvent';
 import { DirectionName } from '@/utils/draw-relationship';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
+import { isMemoShown } from '@/utils/memo';
 
 export type MemoSashProps = {
   memo: Memo;
@@ -139,6 +140,9 @@ const pointerOf = (event: ScenePointerEvent) =>
 
 const MemoSash: FC<MemoSashProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  // A sash unmounted under the pointer sends no leave to hand its cursor back.
+  const cursor = createSceneCursorScope();
+  onUnmounted(cursor.release);
 
   let clientX = 0;
   let clientY = 0;
@@ -261,7 +265,17 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     // The pointer outruns the thin hit area and the minimum stops the edge
     // under it, so the stage's own hover would hand the cursor away mid drag.
     const release = holdSceneCursor(event, CURSORS[position]);
-    drag$.subscribe(dragMove => handleMove(dragMove, position)).add(release);
+    const gesture = drag$.subscribe(dragMove => {
+      // A memo hidden or removed mid drag, here or by a peer, takes no more of
+      // it: no reader could see the box it would write.
+      const { state } = app.value.store;
+      if (!isMemoShown(state) || !state.doc.memoIds.includes(props.memo.id)) {
+        gesture.unsubscribe();
+        return;
+      }
+      handleMove(dragMove, position);
+    });
+    gesture.add(release);
   };
 
   return () => {
@@ -288,10 +302,10 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
               handleMoveStart(event, sash.position);
             }}
             on:mouseenter={(event: ScenePointerEvent) => {
-              setSceneCursor(event, CURSORS[sash.position]);
+              cursor.set(event, CURSORS[sash.position]);
             }}
             on:mouseleave={(event: ScenePointerEvent) => {
-              setSceneCursor(event, CURSOR_INHERIT);
+              cursor.set(event, CURSOR_INHERIT);
             }}
           />
         ))}

@@ -185,6 +185,28 @@ describe('DuplicateGhost - node structure', () => {
     ]);
   });
 
+  it('stacks the ghosts by one z-index, as the scene and the landed copy do', async () => {
+    const { app } = await mountGhost();
+    app.store.dispatchSync(
+      addTableAction({ id: 'raised', ui: { x: 100, y: 200, zIndex: 9 } }),
+      addMemoAction({ id: 'note', ui: { x: 300, y: 400, zIndex: 5 } }),
+      addTableAction({ id: 'low', ui: { x: 500, y: 200, zIndex: 2 } })
+    );
+    select(app, {
+      raised: SelectType.table,
+      note: SelectType.memo,
+      low: SelectType.table,
+    });
+
+    await startGesture(app);
+
+    expect(ghostsIn().map(node => node.id())).toEqual([
+      'duplicate-ghost-low',
+      'duplicate-ghost-note',
+      'duplicate-ghost-raised',
+    ]);
+  });
+
   it('leaves the copied entity id to the entity, so an id scan stays unambiguous', async () => {
     const { app, stage } = await mountGhost();
     seedTable(app, 't1', 100, 200);
