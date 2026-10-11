@@ -59,7 +59,11 @@ import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { measureTableSize, recalculateTableWidth } from '@/utils/calcTable';
-import { isOverlapPosition, Rect as DragRect } from '@/utils/dragSelect';
+import {
+  isInsideDragRect,
+  isOverlapPosition,
+  Rect as DragRect,
+} from '@/utils/dragSelect';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { isMemoShown } from '@/utils/memo';
 import { schemaAMLParserToSchemaJson } from '@/utils/schema-aml-parser';
@@ -814,6 +818,7 @@ export const dragSelectAction$ = (
 
           return acc;
         }, {}),
+      ...takenTableGroups(state, dragRect, source),
     };
 
     yield unselectAllAction$();
@@ -822,6 +827,27 @@ export const dragSelectAction$ = (
       yield selectAction(selectedMap);
     }
   };
+
+/**
+ * The shown groups whose whole drawn box a marquee in the document encloses (an owner decision of
+ * 2026-10-11). A centre rule would take a group with every marquee drawn inside it to pick a few
+ * of its tables, and the drag or Delete that follows would reach the whole group.
+ */
+function takenTableGroups(
+  state: RootState,
+  dragRect: DragRect,
+  source: GeometrySource
+): Record<string, SelectType> {
+  if (source !== 'document' || !isTableGroupShown(state)) return {};
+
+  const taken: Record<string, SelectType> = {};
+  getTableGroupRects(state).forEach(({ x, y, width, height }, id) => {
+    if (isInsideDragRect(dragRect, { x, y, w: width, h: height })) {
+      taken[id] = SelectType.tableGroup;
+    }
+  });
+  return taken;
+}
 
 export const unselectAllAction$ = (): GeneratorAction =>
   function* () {
