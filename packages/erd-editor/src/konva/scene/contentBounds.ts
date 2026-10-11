@@ -9,6 +9,7 @@ import {
 } from '@/konva/scene/metrics';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { isMemoShown } from '@/utils/memo';
 import {
   growTableGroupBox,
   isTableGroupShown,
@@ -22,7 +23,7 @@ export { unionRect } from '@/konva/scene/metrics';
 export type TableMove = { id: string; x: number; y: number };
 
 /**
- * The box every table, memo and shown group of the document fits inside, in
+ * The box every table, shown memo and shown group of the document fits inside, in
  * scene units, or null for a document holding none. Computed afresh on every call: the state is
  * one mutable proxy written in place, so a cache keyed on it never sees a move.
  */
@@ -32,7 +33,7 @@ export function getContentRect(state: RootState): Rect | null {
 
 /**
  * Whether getContentRect has a box, read off the document's lists alone: a
- * table, a memo or a shown group. A render asking only that observes no
+ * table, a shown memo or a shown group. A render asking only that observes no
  * table's rect, so a drag step or a peer's move does not run it again.
  */
 export function hasContent(state: RootState): boolean {
@@ -40,7 +41,7 @@ export function hasContent(state: RootState): boolean {
 
   return (
     doc.tableIds.length > 0 ||
-    doc.memoIds.length > 0 ||
+    (doc.memoIds.length > 0 && isMemoShown(state)) ||
     (doc.tableGroupIds.length > 0 && isTableGroupShown(state))
   );
 }
@@ -73,6 +74,7 @@ export function getContentRects(
   // the relationships, is one an observer here would otherwise depend on for nothing.
   const { tableIds, memoIds, tableGroupIds } =
     source === 'document' ? doc : getVisibleIds(state, source);
+  const shownMemoIds = isMemoShown(state) ? memoIds : [];
   const moved = new Map(moves.map(move => [move.id, move]));
   // Only the document lists groups, so a group's members are read at the
   // document's geometry, the one the walk over the tables below takes there.
@@ -91,7 +93,7 @@ export function getContentRects(
     .selectByIds(tableIds);
   const memos = query(collections)
     .collection('memoEntities')
-    .selectByIds(memoIds);
+    .selectByIds(shownMemoIds);
 
   const tableRects = tables.map(table => {
     const rect = getTableRect(state, table, source);

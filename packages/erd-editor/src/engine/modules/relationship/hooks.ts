@@ -141,10 +141,11 @@ const alternateKeyActionTypes = alternateKeyActions.map(action => action.type);
 
 const isAlternateKeyAction = arrayHas<string>(alternateKeyActionTypes);
 
-/** The show bits that move no table and no anchor: the referential action labels and the groups. */
+/** The show bits that move no table and no anchor: the referential action labels, the groups and the memos. */
 const isPaintOnlyShow = arrayHas<number>([
   Show.hideReferentialAction,
   Show.hideTableGroup,
+  Show.hideMemo,
 ]);
 
 /** One of those bits shown or hidden, which neither sorts nor measures. */

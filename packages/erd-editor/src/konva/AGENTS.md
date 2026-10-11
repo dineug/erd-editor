@@ -29,6 +29,7 @@
 | `scene/viewport.ts` | The coordinate canon and the culling rect (rule in `src/components/erd/AGENTS.md`) |
 | `scene/viewFreeze.ts` | `sceneKeyOf` and the freeze a drag holds (rules in `src/components/erd/AGENTS.md`) |
 | `scene/konvaFlip.ts` | The column flip, the one shipped module that names `konva/lib/Tween` |
+| `scene/stacking.ts` | `stackTablesAndMemos`, the one order tables and memos paint in (rule in `src/components/erd/AGENTS.md`, The canvas and its presses) |
 | `scene/renderScene.browser.test.tsx` | Pins the `Konva.DD` registration in `batchDraw.ts` |
 
 ## Rules
@@ -55,6 +56,7 @@
 ### What a view shows
 
 - **`scene/viewLayout.ts` decides what a view shows.** A view shows only the tables in its `positions`, and nothing until a layout lands. It shows no memos and no table groups, only the relationships with both ends shown, and rows per `showMode`. `settings.show` and `columnOrder` do not apply.
+- **The document shows every list, memos aside while hidden.** `getVisibleIds` gives the document its own lists, the memos left out while `Show.hideMemo` is set (`src/components/erd/AGENTS.md`).
 - **Keep view hover and pin out of actions.** They are module observables keyed on `editor.id`, never actions. So a view hover or pin never reaches the document, the history or a peer.
 
 ### Particle layer

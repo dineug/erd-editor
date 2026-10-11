@@ -87,6 +87,7 @@ export const zhTW = {
   'contextMenu.show.alternateKey': '替代鍵',
   'contextMenu.show.referentialActions': '參照動作',
   'contextMenu.show.tableGroups': '資料表群組',
+  'contextMenu.show.memos': '備忘錄',
   'floatingToolbar.hand': '手形工具',
   'floatingToolbar.select': '選取工具',
   'floatingToolbar.zoomOut': '縮小',

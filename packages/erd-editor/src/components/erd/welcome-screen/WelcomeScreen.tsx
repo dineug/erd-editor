@@ -32,6 +32,7 @@ import { menuLabel } from '@/i18n/menuLabel';
 import { toggleSearchAction } from '@/utils/emitter';
 import { focusEvent } from '@/utils/internalEvents';
 import { KeyBindingName, matchesShortcut } from '@/utils/keyboard-shortcut';
+import { isMemoShown } from '@/utils/memo';
 
 import * as styles from './WelcomeScreen.styles';
 
@@ -48,9 +49,6 @@ type WelcomeRow = {
 };
 
 type MenuLevel = 'top' | 'import';
-
-/** Where the Import row stands in the menu, which Back hands the keyboard to. */
-const IMPORT_ROW = 2;
 
 /** A row's icon as the text runs: the Back arrow points right in a right-to-left language. */
 export const rowIcon = (icon: IconName, dir: TextDirection): IconName =>
@@ -144,9 +142,11 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
     focusRow(0);
   };
 
+  // Back hands the keyboard to Import, wherever it stands: New Memo leaves
+  // the menu while memos are hidden.
   const handleBack = () => {
     state.level = 'top';
-    focusRow(IMPORT_ROW);
+    focusRow(topRows().findIndex(row => row.onClick === handleImport));
   };
 
   const handlePalette = () => {
@@ -205,7 +205,7 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
   };
 
   const topRows = (): WelcomeRow[] => {
-    const { keyBindingMap } = app.value;
+    const { keyBindingMap, store } = app.value;
     const { t } = i18n.value;
 
     return [
@@ -215,12 +215,17 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
         shortcut: keyBindingMap[KeyBindingName.addTable][0]?.shortcut,
         onClick: handleNewTable,
       },
-      {
-        icon: 'sticky-note',
-        label: t('common.newMemo'),
-        shortcut: keyBindingMap[KeyBindingName.addMemo][0]?.shortcut,
-        onClick: handleNewMemo,
-      },
+      // No New Memo while memos are hidden, as no menu offers one then.
+      ...(isMemoShown(store.state)
+        ? [
+            {
+              icon: 'sticky-note' as const,
+              label: t('common.newMemo'),
+              shortcut: keyBindingMap[KeyBindingName.addMemo][0]?.shortcut,
+              onClick: handleNewMemo,
+            },
+          ]
+        : []),
       {
         icon: 'file-input',
         label: t('common.import'),

@@ -788,6 +788,42 @@ describe('editor.loadJson / initialLoadJson', () => {
     expect(store.state.settings.canvasType).toBe(CanvasType.visualization);
   });
 
+  it.each([
+    ['loadJson', loadJsonAction],
+    ['initialLoadJson', initialLoadJsonAction],
+  ])(
+    'lets go of the memos and groups selected or edited when %s lands their hide bits',
+    (_, load) => {
+      store.dispatchSync(
+        selectAction({
+          m1: SelectType.memo,
+          g1: SelectType.tableGroup,
+          t1: SelectType.table,
+        }),
+        editMemoAction({ id: 'm1' })
+      );
+      const json = JSON.parse(buildJson(CanvasType.ERD));
+      json.settings.show = Show.hideMemo | Show.hideTableGroup;
+
+      store.dispatchSync(load({ value: JSON.stringify(json) }));
+
+      expect({ ...store.state.editor.selectedMap }).toEqual({
+        t1: SelectType.table,
+      });
+      expect(store.state.editor.editMemoId).toBeNull();
+    }
+  );
+
+  it('keeps the memo selection a load that shows the memos lands', () => {
+    store.dispatchSync(selectAction({ m1: SelectType.memo }));
+
+    store.dispatchSync(loadJsonAction({ value: buildJson(CanvasType.ERD) }));
+
+    expect({ ...store.state.editor.selectedMap }).toEqual({
+      m1: SelectType.memo,
+    });
+  });
+
   it('falls back to the ERD canvas type on initialLoadJson too', () => {
     store.dispatchSync(initialLoadJsonAction({ value: buildJson('') }));
 

@@ -147,8 +147,8 @@ run **ERD Editor: Create new diagram** from Obsidian's command palette. In Googl
   erd-editor.io and in each plugin's settings, while the npm element leaves it to its host
 - **Welcome screen** — an empty diagram you can edit opens on a menu of New Table, New Memo, Import,
   Command Palette and Shortcuts, with arrows at the toolbar's search, theme and language buttons and
-  at the floating toolbar where the canvas has room, until its first table, memo or shown table
-  group; the npm element shows it, its language picker and its theme builder only once its host
+  at the floating toolbar where the canvas has room, until its first table, shown memo or shown
+  table group; the npm element shows it, its language picker and its theme builder only once its host
   turns them on, and shows English until its host sets a language or turns the picker on
 
 ### Collaboration and coding agents

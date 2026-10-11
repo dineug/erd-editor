@@ -28,11 +28,15 @@ import {
   setSceneCursor,
 } from '@/components/erd/canvas/sceneTokens';
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import {
   addMemoAction,
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeShowAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import type { Memo } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
@@ -347,6 +351,27 @@ describe('the resize a sash drag commits', () => {
     expect(memo.ui.width).toBe(250);
     expect(memo.ui.x).toBe(30);
     expect(memo.ui.height).toBe(150);
+  });
+
+  it('stops resizing once the memos are hidden mid drag, writing nothing more', async () => {
+    const { app, memo, stage } = await mountSash();
+
+    await drag(stage, 'right', [0, 0], [20, 0]);
+    expect(memo.ui.width).toBe(220);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    movePointer(50, 0);
+    await flush();
+    expect(memo.ui.width).toBe(220);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: false })
+    );
+    movePointer(80, 0);
+    await flush();
+    expect(memo.ui.width).toBe(220);
   });
 
   it('grows the width from the left edge and shifts the memo left', async () => {

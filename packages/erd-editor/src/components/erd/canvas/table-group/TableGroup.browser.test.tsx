@@ -10,8 +10,11 @@ import {
   createTestAppContext,
   createTestI18n,
   createTestTheme,
+  fireScenePointer,
   flush,
+  moveScenePointer,
   pseudoMessages,
+  whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
@@ -25,16 +28,19 @@ import {
   SCENE_FONT_SIZE,
   TABLE_GROUP_FILL_OPACITY,
   TABLE_GROUP_TITLE_PADDING,
+  TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import TableGroups from '@/components/erd/canvas/table-group/TableGroups';
 import {
   getTableGroupIconBox,
   getTableGroupNameBox,
+  getTableGroupRemoveBox,
   TABLE_GROUP_NAME_X,
 } from '@/components/erd/canvas/table-group/titleLayout';
 import {
   TABLE_GROUP_PADDING,
   TABLE_GROUP_TITLE_HEIGHT,
+  TABLE_HEADER_ICON_GAP,
 } from '@/constants/layout';
 import {
   selectAction,
@@ -54,6 +60,7 @@ import {
   addTableGroupAction,
   changeTableGroupColorAction,
   changeTableGroupNameAction,
+  removeTableGroupAction,
 } from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { I18n } from '@/i18n/translate';
@@ -70,7 +77,11 @@ const STORED = { x: 40, y: 60, width: 300, height: 200 };
 
 const THEME: Theme = createTestTheme();
 
-type Mounted = { app: AppContext; stage: Stage };
+type Mounted = {
+  app: AppContext;
+  stage: Stage;
+  setReadonly: (value: boolean) => void;
+};
 
 const teardowns: Array<() => void> = [];
 
@@ -79,14 +90,28 @@ afterEach(async () => {
   await whenDrawn();
 });
 
+/**
+ * The group alone in a scene. A readonly store drops the seed, so its lock
+ * turns on once the group is in and before the scene is drawn.
+ */
 async function mountGroup({
-  app = createTestAppContext(),
   color,
   i18n,
-}: { app?: AppContext; color?: string; i18n?: I18n } = {}): Promise<Mounted> {
+  readonly = false,
+  ...options
+}: {
+  app?: AppContext;
+  color?: string;
+  i18n?: I18n;
+  readonly?: boolean;
+} = {}): Promise<Mounted> {
+  let locked = false;
+  const app =
+    options.app ?? createTestAppContext({ getReadonly: () => locked });
   app.store.dispatchSync(
     addTableGroupAction({ id: GROUP_ID, color, ui: { ...STORED, zIndex: 1 } })
   );
+  locked = readonly;
 
   const container = document.createElement('div');
   document.body.append(container);
@@ -111,7 +136,13 @@ async function mountGroup({
   });
 
   await settle();
-  return { app, stage: rendered.stage };
+  return {
+    app,
+    stage: rendered.stage,
+    setReadonly: value => {
+      locked = value;
+    },
+  };
 }
 
 const settle = async () => {
@@ -126,6 +157,39 @@ const nodeNamed = <T extends KonvaNode = KonvaNode>(
 
 const nameOf = (stage: Stage) => nodeNamed<Text>(stage, 'table-group-name');
 
+const removeOf = (stage: Stage) =>
+  nodeNamed<Group>(stage, 'table-group-remove');
+
+/** The colors the remove button's strokes paint in, one for every color it holds. */
+const removeStrokes = (stage: Stage) =>
+  new Set(
+    removeOf(stage)
+      .getChildren()
+      .map((shape: KonvaNode) => shape.getAttr('stroke'))
+  );
+
+/** A point on the title bar, clear of the icon, the name and the remove button. */
+const hoverTitle = async (stage: Stage) => {
+  await whenPainted();
+  moveScenePointer(
+    stage,
+    STORED.x + TABLE_GROUP_NAME_X + 4,
+    STORED.y + TABLE_GROUP_TITLE_HEIGHT / 2
+  );
+  await settle();
+};
+
+const hoverRemove = async (stage: Stage) => {
+  await whenPainted();
+  const box = getTableGroupRemoveBox(STORED.width);
+  moveScenePointer(
+    stage,
+    STORED.x + box.x + box.size / 2,
+    STORED.y + box.y + box.size / 2
+  );
+  await settle();
+};
+
 /** Puts a table at the point given in the group, the way a drop or a command does. */
 function addMember(app: AppContext, id: string, x: number, y: number) {
   app.store.dispatchSync(
@@ -136,7 +200,7 @@ function addMember(app: AppContext, id: string, x: number, y: number) {
 }
 
 describe('the table group scene', () => {
-  it('roots the group at its box, the title bar and the body alone taking the pointer', async () => {
+  it('roots the group at its box, the title bar, the body and the sashes alone taking the pointer', async () => {
     const { stage } = await mountGroup();
     const root = nodeNamed<Group>(stage, 'table-group');
     const body = nodeNamed(stage, 'table-group-body');
@@ -179,6 +243,9 @@ describe('the table group scene', () => {
       'table-group-title',
       'table-group-border',
       'table-group-shared-select',
+      ...['left', 'right', 'top', 'bottom', 'lt', 'rt', 'lb', 'rb'].map(
+        position => `table-group-sash table-group-sash-${position}`
+      ),
     ]);
     expect(body.getParent()).toBe(root.getParent());
     expect(body.zIndex()).toBeLessThan(root.zIndex());
@@ -190,6 +257,7 @@ describe('the table group scene', () => {
       'table-group-title-bar',
       'table-group-icon-holder',
       'table-group-name',
+      'table-group-remove',
     ]);
   });
 
@@ -391,7 +459,10 @@ describe('the table group scene', () => {
       fill: THEME.active,
       x: TABLE_GROUP_NAME_X,
       y: getTableGroupNameBox().y,
-      width: STORED.width - TABLE_GROUP_NAME_X - TABLE_GROUP_TITLE_PADDING,
+      width:
+        getTableGroupRemoveBox(STORED.width).x -
+        TABLE_HEADER_ICON_GAP -
+        TABLE_GROUP_NAME_X,
       height: getTableGroupNameBox().height,
       fontFamily: SCENE_FONT_FAMILY,
       fontSize: SCENE_FONT_SIZE,
@@ -438,6 +509,121 @@ describe('the table group scene', () => {
       ).toEqual(new Set([ink]));
     }
   );
+
+  it("draws the remove button at the end of the bar, a press on it the bar's and no drag", async () => {
+    const { stage } = await mountGroup();
+    const remove = removeOf(stage);
+    const box = getTableGroupRemoveBox(STORED.width);
+
+    expect(remove.attrs).toMatchObject({ kind: 'icon', x: box.x, y: box.y });
+    expect(remove.scaleX()).toBe(box.size / ICON_VIEW_SIZE);
+    expect(remove.getParent()!.getAttr('kind')).toBe('table-group-title');
+    expect(box.x + box.size).toBe(STORED.width - TABLE_GROUP_TITLE_PADDING);
+    expect(nameOf(stage).x() + nameOf(stage).width()).toBe(
+      box.x - TABLE_HEADER_ICON_GAP
+    );
+  });
+
+  it('paints the remove button only while the pointer is over the group, brighter over the button', async () => {
+    const { stage } = await mountGroup();
+
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+
+    await hoverTitle(stage);
+    expect(removeStrokes(stage)).toEqual(new Set([THEME.foreground]));
+
+    await hoverRemove(stage);
+    expect(removeStrokes(stage)).toEqual(new Set([THEME.active]));
+
+    await hoverTitle(stage);
+    expect(removeStrokes(stage)).toEqual(new Set([THEME.foreground]));
+
+    // The body is a node of its own, drawn apart from the bar.
+    moveScenePointer(
+      stage,
+      STORED.x + STORED.width / 2,
+      STORED.y + STORED.height - 20
+    );
+    await settle();
+    expect(removeStrokes(stage)).toEqual(new Set([THEME.foreground]));
+
+    await whenPainted();
+    moveScenePointer(
+      stage,
+      STORED.x + STORED.width / 2,
+      STORED.y + STORED.height + 80
+    );
+    await settle();
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+  });
+
+  it('paints the hovered remove button on a colored bar in the color the name takes', async () => {
+    const { stage } = await mountGroup({ color: '#1e3a8a' });
+
+    await hoverRemove(stage);
+
+    expect(removeStrokes(stage)).toEqual(new Set(['#ffffff']));
+  });
+
+  it('keeps the remove button in a readonly editor painting nothing, asking no cursor and removing nothing', async () => {
+    const { app, stage } = await mountGroup({ readonly: true });
+
+    await hoverRemove(stage);
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+    expect(stage.container().style.cursor).toBe('');
+
+    fireScenePointer(removeOf(stage), 'click');
+    await settle();
+    expect(app.store.state.doc.tableGroupIds).toEqual([GROUP_ID]);
+  });
+
+  it('hands the canvas its cursor back as the pointer leaves an x that turned readonly under it', async () => {
+    const { app, stage, setReadonly } = await mountGroup();
+
+    await hoverRemove(stage);
+    expect(stage.container().style.cursor).toBe('pointer');
+
+    // The switch is the host's, so a selection, which readonly still takes,
+    // draws the group again under it.
+    setReadonly(true);
+    app.store.dispatchSync(selectAction({ [GROUP_ID]: SelectType.tableGroup }));
+    await settle();
+    await hoverTitle(stage);
+
+    expect(stage.container().style.cursor).toBe('');
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+  });
+
+  it('lets go of the hover a removed group held, so the same group brought back shows no x', async () => {
+    const app = createTestAppContext();
+    const { stage } = await mountGroup({ app });
+    await hoverTitle(stage);
+    expect(removeStrokes(stage)).toEqual(new Set([THEME.foreground]));
+
+    app.store.dispatchSync(removeTableGroupAction({ id: GROUP_ID }));
+    await settle();
+    app.store.dispatchSync(
+      addTableGroupAction({ id: GROUP_ID, ui: { ...STORED, zIndex: 1 } })
+    );
+    await settle();
+
+    expect(removeStrokes(stage)).toEqual(new Set([TRANSPARENT]));
+  });
+
+  it('hands the canvas its cursor back once a click on the x removes the group from under the pointer', async () => {
+    const app = createTestAppContext();
+    const { stage } = await mountGroup({ app });
+
+    await hoverRemove(stage);
+    expect(stage.container().style.cursor).toBe('pointer');
+
+    fireScenePointer(removeOf(stage), 'click');
+    await settle();
+
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+    expect(stage.findOne('.table-group-remove')).toBeUndefined();
+    expect(stage.container().style.cursor).toBe('');
+  });
 
   it('grows over a member whose column widens, though the member never moved', async () => {
     const app = createTestAppContext();

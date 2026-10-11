@@ -59,7 +59,7 @@
 - **Four prefixes, each with its scope.**
   - `#` searches tables.
   - `@` searches column names.
-  - `:` searches table comments, column comments and memos, an owner decision (2026-10-03). A double quote reads as plain text, and a quote is searched as typed.
+  - `:` searches table comments, column comments and memos, an owner decision (2026-10-03). It walks no memo while View Option hides them (`walkFields`), and a row found before they were hidden goes nowhere (`showErdTargetAction$`). A double quote reads as plain text, and a quote is searched as typed.
   - `?` lists the prefixes as rows whose `insert` types one in and keeps the palette open.
 - **`@` splits on the first dot.** In `@users.em` the table part (`users`) matches as a substring of the table name. `@users.` lists every column of those tables.
 - **With no keyword, a scope lists all rows.** `:` lists only the non-empty texts.

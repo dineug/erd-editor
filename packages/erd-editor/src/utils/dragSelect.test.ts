@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import {
   getOverlapPosition,
+  isInsideDragRect,
   isOverlapPosition,
   type Rect,
 } from '@/utils/dragSelect';
@@ -11,6 +12,22 @@ const rect = (x: number, y: number, w: number, h: number): Rect => ({
   y,
   w,
   h,
+});
+
+describe('isInsideDragRect', () => {
+  const drag = rect(0, 0, 100, 100);
+
+  it('holds a rect wholly inside the drag rect, its edges included', () => {
+    expect(isInsideDragRect(drag, rect(10, 10, 50, 50))).toBe(true);
+    expect(isInsideDragRect(drag, rect(0, 0, 100, 100))).toBe(true);
+  });
+
+  it('refuses a rect that reaches past any edge', () => {
+    expect(isInsideDragRect(drag, rect(-1, 10, 50, 50))).toBe(false);
+    expect(isInsideDragRect(drag, rect(10, -1, 50, 50))).toBe(false);
+    expect(isInsideDragRect(drag, rect(60, 10, 41, 50))).toBe(false);
+    expect(isInsideDragRect(drag, rect(10, 60, 50, 41))).toBe(false);
+  });
 });
 
 describe('isOverlapPosition', () => {

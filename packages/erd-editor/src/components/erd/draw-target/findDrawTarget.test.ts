@@ -9,9 +9,11 @@ import {
   hasTravelled,
   SELF_REFERENCE_TRAVEL,
 } from '@/components/erd/draw-target/findDrawTarget';
+import { Show } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
+  changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -73,18 +75,55 @@ describe('findDrawTarget', () => {
     expect(find({ x: 1100, y: 700 })).toBeNull();
   });
 
-  it('names no table under a memo, which takes the press for itself', () => {
+  it('names no table under a memo drawn over it, which takes the press for itself', () => {
     addTable('orders', 400, 40);
     app.store.dispatchSync(
       addMemoAction({
         id: 'memo',
-        ui: { x: 400, y: 40, width: 40, height: 80, zIndex: 1 },
+        ui: { x: 400, y: 40, width: 40, height: 80, zIndex: 3 },
       })
     );
     const { width } = sceneRectOf('orders');
 
     expect(find(insideOf('orders'))).toBeNull();
     expect(find(insideOf('orders', width - 4))).toBe('orders');
+  });
+
+  it('names the table under a memo while memos are hidden, as nothing takes the press there', () => {
+    addTable('orders', 400, 40);
+    app.store.dispatchSync(
+      addMemoAction({
+        id: 'memo',
+        ui: { x: 400, y: 40, width: 40, height: 80, zIndex: 3 },
+      }),
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+
+    expect(find(insideOf('orders'))).toBe('orders');
+  });
+
+  it('names a table drawn over a memo, as tables and memos share one stack', () => {
+    addTable('orders', 400, 40, 5);
+    app.store.dispatchSync(
+      addMemoAction({
+        id: 'memo',
+        ui: { x: 400, y: 40, width: 40, height: 80, zIndex: 3 },
+      })
+    );
+
+    expect(find(insideOf('orders'))).toBe('orders');
+  });
+
+  it('names no table under a memo of the same z-index, which the canvas paints over it', () => {
+    addTable('orders', 400, 40, 3);
+    app.store.dispatchSync(
+      addMemoAction({
+        id: 'memo',
+        ui: { x: 400, y: 40, width: 40, height: 80, zIndex: 3 },
+      })
+    );
+
+    expect(find(insideOf('orders'))).toBeNull();
   });
 
   it('names the table of the larger z-index where two overlap', () => {

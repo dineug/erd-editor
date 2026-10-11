@@ -64,6 +64,7 @@ import {
 } from '@/utils/emitter';
 import { importDiffJSON } from '@/utils/file/importFile';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isMemoShown } from '@/utils/memo';
 import { getTableGroupId, isTableGroupShown } from '@/utils/tableGroup';
 
 import { createDatabaseMenus } from './menus/databaseMenus';
@@ -728,18 +729,20 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
-              <ContextMenu.Item
-                onClick={handleAddMemo}
-                children={
-                  <ContextMenu.Menu
-                    icon={<Icon name="sticky-note" size={14} />}
-                    name={t('common.newMemo')}
-                    right={
-                      <Kbd shortcut={keyBindingMap.addMemo[0]?.shortcut} />
-                    }
-                  />
-                }
-              />
+              {isMemoShown(store.state) ? (
+                <ContextMenu.Item
+                  onClick={handleAddMemo}
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name="sticky-note" size={14} />}
+                      name={t('common.newMemo')}
+                      right={
+                        <Kbd shortcut={keyBindingMap.addMemo[0]?.shortcut} />
+                      }
+                    />
+                  }
+                />
+              ) : null}
               {readonly || !isTableGroupShown(store.state) ? null : (
                 <ContextMenu.Item
                   onClick={handleAddTableGroup}

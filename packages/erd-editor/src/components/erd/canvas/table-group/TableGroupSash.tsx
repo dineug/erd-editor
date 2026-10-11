@@ -1,14 +1,14 @@
 /** @jsxHost konva */
 
-import { FC } from '@dineug/r-html';
+import { FC, onUnmounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import {
+  createSceneCursorScope,
   CURSOR_INHERIT,
   HIT_FILL,
   holdSceneCursor,
   type ScenePointerEvent,
-  setSceneCursor,
 } from '@/components/erd/canvas/sceneTokens';
 import { SASH_SIZE } from '@/components/primitives/sash/Sash.styles';
 import {
@@ -24,7 +24,11 @@ import {
   isMultiTouch,
 } from '@/utils/domEvent';
 import { drag$ } from '@/utils/globalEventObservable';
-import { getTableGroupMemberIds, getTablesGroupRect } from '@/utils/tableGroup';
+import {
+  getTableGroupMemberIds,
+  getTablesGroupRect,
+  isTableGroupShown,
+} from '@/utils/tableGroup';
 
 export const TableGroupSashPosition = {
   left: 'left',
@@ -138,12 +142,21 @@ export type TableGroupSashProps = {
 };
 
 /**
- * The eight resize handles on a selected group's edges and corners. A drag
+ * The eight resize handles on a group's edges and corners, selected or not, as a memo's are. A drag
  * draws its steps without writing them and writes one resize as it ends, so
  * peers hear one write and one undo puts back the rect it started from.
  */
 const TableGroupSash: FC<TableGroupSashProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  // A sash unmounted under the pointer sends no leave to hand its cursor back.
+  const cursor = createSceneCursorScope();
+  // A sash that leaves mid drag, its groups hidden, its group removed or the
+  // editor turned readonly, ends the drag writing nothing: no reader saw it.
+  let abandon: (() => void) | null = null;
+  onUnmounted(() => {
+    abandon?.();
+    cursor.release();
+  });
 
   const handleMoveStart = (
     event: ScenePointerEvent,
@@ -162,10 +175,17 @@ const TableGroupSash: FC<TableGroupSashProps> = (props, ctx) => {
     const { zoomLevel } = store.state.settings;
     const origin = pointerOf(event);
     let rect = start;
+    let kept = true;
 
     const commit = () => {
-      const { doc } = store.state;
-      if (!sameRect(rect, start) && doc.tableGroupIds.includes(id)) {
+      abandon = null;
+      const { state } = store;
+      if (
+        kept &&
+        !sameRect(rect, start) &&
+        isTableGroupShown(state) &&
+        state.doc.tableGroupIds.includes(id)
+      ) {
         store.dispatchSync(resizeTableGroupAction({ id, ...rect }));
       }
       props.onDraft(null);
@@ -187,6 +207,10 @@ const TableGroupSash: FC<TableGroupSashProps> = (props, ctx) => {
     });
     gesture.add(release);
     gesture.add(commit);
+    abandon = () => {
+      kept = false;
+      gesture.unsubscribe();
+    };
   };
 
   return () => {
@@ -221,10 +245,10 @@ const TableGroupSash: FC<TableGroupSashProps> = (props, ctx) => {
                 handleMoveStart(event, position);
               }}
               on:mouseenter={(event: ScenePointerEvent) => {
-                setSceneCursor(event, CURSORS[position]);
+                cursor.set(event, CURSORS[position]);
               }}
               on:mouseleave={(event: ScenePointerEvent) => {
-                setSceneCursor(event, CURSOR_INHERIT);
+                cursor.set(event, CURSOR_INHERIT);
               }}
             />
           );

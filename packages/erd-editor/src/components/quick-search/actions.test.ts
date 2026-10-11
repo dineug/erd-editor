@@ -800,6 +800,16 @@ describe('createScopeActions / ERD commands', () => {
     expect(rows.map(row => row.filter?.(app))).toEqual([false, false]);
   });
 
+  it('offers no New Memo while memos are hidden', () => {
+    const row = find(scope(), 'New Memo');
+    expect(row.filter?.(app)).toBe(true);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    expect(row.filter?.(app)).toBe(false);
+  });
+
   it('offers neither group row to a readonly editor', () => {
     let locked = false;
     app.store.destroy();

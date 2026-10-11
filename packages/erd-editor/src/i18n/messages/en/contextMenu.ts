@@ -24,4 +24,5 @@ export const contextMenu = {
   'contextMenu.show.alternateKey': 'Alternate Key',
   'contextMenu.show.referentialActions': 'Referential Actions',
   'contextMenu.show.tableGroups': 'Table Groups',
+  'contextMenu.show.memos': 'Memos',
 } as const;

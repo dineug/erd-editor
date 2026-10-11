@@ -181,6 +181,22 @@ describe('hasContent', () => {
     addTable(tablesOnly, 't', 0, 0);
     expect(hasContent(tablesOnly)).toBe(true);
   });
+
+  it('counts no memo while memos are hidden, and no room for one in the box', () => {
+    const state = createState();
+    addTable(state, 't', 0, 0);
+    addMemo(state, 'm', -4_000, 0, 100, 100);
+    expect(getContentRect(state)!.x).toBe(-4_000);
+
+    state.settings.show |= Show.hideMemo;
+    expect(getContentRect(state)!.x).toBe(0);
+
+    const memosOnly = createState();
+    addMemo(memosOnly, 'm', 0, 0, 100, 100);
+    memosOnly.settings.show |= Show.hideMemo;
+    expect(hasContent(memosOnly)).toBe(false);
+    expect(getContentRect(memosOnly)).toBeNull();
+  });
 });
 
 describe('unionRect', () => {

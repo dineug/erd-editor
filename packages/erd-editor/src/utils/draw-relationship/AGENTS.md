@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`src/utils/draw-relationship/` holds the geometry of every relationship connector: the sort pass that places its ends and routes it, the sort channels that keep a view's geometry apart from the document's, the corners, the self loops and the path a connector draws. This file also holds the rules of the connector drawing that depends on that geometry (the referential action label, the end markers) and of the sort hooks in `src/engine/modules/relationship/hooks.ts`. `src/components/AGENTS.md` says which `GeometrySource` a scene passes. `src/components/erd/AGENTS.md` holds the rest of the scene, `Show.hideTableGroup` included.
+`src/utils/draw-relationship/` holds the geometry of every relationship connector: the sort pass that places its ends and routes it, the sort channels that keep a view's geometry apart from the document's, the corners, the self loops and the path a connector draws. This file also holds the rules of the connector drawing that depends on that geometry (the referential action label, the end markers) and of the sort hooks in `src/engine/modules/relationship/hooks.ts`. `src/components/AGENTS.md` says which `GeometrySource` a scene passes. `src/components/erd/AGENTS.md` holds the rest of the scene, `Show.hideTableGroup` and `Show.hideMemo` included.
 
 ## Key Files
 
@@ -46,8 +46,8 @@
 - **A hover spells the clauses out.** The canvas's native tooltip shows them: the `title` the stage container takes while the pointer is on the connector (`Relationship.tsx`), as the toolbar's buttons name themselves.
   - The `title` is written again on each render, so a peer's change under a resting pointer shows.
   - The tooltip shows with the label hidden too, and leaves with the pointer or the connector.
-- **View Option's Referential Actions hides the label.** It sets `Show.hideReferentialAction`, one of the two bits that hide what they name; `hideTableGroup` is the other. So every document, those saved before the bit included, shows the labels until a reader turns them off.
-- **Showing or hiding the labels moves nothing.** So the sort hook skips that toggle (`isPaintOnlyToggle`, which skips the group bit too), and the table size key masks the bit out.
+- **View Option's Referential Actions hides the label.** It sets `Show.hideReferentialAction`, one of the three bits that hide what they name; `hideTableGroup` and `hideMemo` are the others. So every document, those saved before the bit included, shows the labels until a reader turns them off.
+- **Showing or hiding the labels moves nothing.** So the sort hook skips that toggle (`isPaintOnlyToggle`, which skips the group and memo bits too), and the table size key masks all three out.
 
 ### Connector ends and corners
 

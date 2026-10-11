@@ -88,6 +88,7 @@ import {
   FindMatch,
   snippetOf,
 } from '@/utils/find-replace';
+import { isMemoShown } from '@/utils/memo';
 import { resolveSchemaSQLOptions, schemaSQLSupport } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { isTableGroupShown } from '@/utils/tableGroup';
@@ -427,7 +428,10 @@ export function createScopeActions(
         store.dispatch(addMemoAction$());
       },
       filter: ({ store }) => {
-        return store.state.settings.canvasType === CanvasType.ERD;
+        return (
+          store.state.settings.canvasType === CanvasType.ERD &&
+          isMemoShown(store.state)
+        );
       },
     },
     {

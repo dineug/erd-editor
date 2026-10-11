@@ -14,6 +14,7 @@ import {
   Database,
   OrderType,
   RelationshipType,
+  Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
@@ -79,6 +80,7 @@ import {
 import {
   changeDatabaseAction,
   changeDatabaseNameAction,
+  changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -491,6 +493,18 @@ describe('dragSelectAction$', () => {
     store.dispatchSync(dragSelectAction$({ x: 4900, y: 4900, w: 400, h: 400 }));
 
     expect(store.state.editor.selectedMap).toEqual({ m1: SelectType.memo });
+  });
+
+  it('takes no memo while memos are hidden', () => {
+    seedTable(store, 't1', 100, 100);
+    seedMemo(store, 'm1', 120, 120);
+    store.dispatchSync(changeShowAction({ show: Show.hideMemo, value: true }));
+
+    store.dispatchSync(dragSelectAction$({ x: 0, y: 0, w: 1000, h: 1000 }));
+
+    expect({ ...store.state.editor.selectedMap }).toEqual({
+      t1: SelectType.table,
+    });
   });
 
   it('clears the previous selection and the table focus first', () => {
@@ -1726,9 +1740,10 @@ describe('pasteEntitiesAction$', () => {
     expect(tableCopy.comment).toBe('the users');
     expect(tableCopy.ui.color).toBe('#ff0000');
     // Stacked above everything that was already there, in the source's own
-    // overlap order: both sources sit at zIndex 2, so the tie breaks on id.
-    expect(memoCopy.ui.zIndex).toBe(3);
-    expect(tableCopy.ui.zIndex).toBe(4);
+    // overlap order: both sources sit at zIndex 2, and the memo stands over
+    // the table at a tie, as the scene paints them.
+    expect(tableCopy.ui.zIndex).toBe(3);
+    expect(memoCopy.ui.zIndex).toBe(4);
 
     const columnCopy = columnOf(store, tableCopy.columnIds[0]);
     expect(columnCopy.name).toBe('id');
@@ -1786,6 +1801,25 @@ describe('duplicateAction$', () => {
         })
       )
     ).toEqual([]);
+  });
+
+  it('adds a memo unselected while memos are hidden, as hidden memos never stay selected', () => {
+    seedTable(store, 't1', 100, 100);
+    seedMemo(store, 'm1', 500, 400);
+    store.dispatchSync(changeShowAction({ show: Show.hideMemo, value: true }));
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        memoIds: ['m1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    const { doc, editor } = store.state;
+    expect(doc.memoIds).toHaveLength(2);
+    expect(Object.values(editor.selectedMap)).toEqual([SelectType.table]);
   });
 
   it('duplicates the whole selection, keeping the relative layout', () => {

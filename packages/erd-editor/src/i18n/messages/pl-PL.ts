@@ -88,6 +88,7 @@ export const plPL = {
   'contextMenu.show.alternateKey': 'Klucz alternatywny',
   'contextMenu.show.referentialActions': 'Akcje referencyjne',
   'contextMenu.show.tableGroups': 'Grupy tabel',
+  'contextMenu.show.memos': 'Notatki',
   'floatingToolbar.hand': 'Rączka',
   'floatingToolbar.select': 'Zaznaczanie',
   'floatingToolbar.zoomOut': 'Pomniejsz',

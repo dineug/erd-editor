@@ -141,7 +141,7 @@ It is the same editor as [erd-editor.io](https://erd-editor.io), the
 - **Welcome screen** — opt-in with `enable-welcome-screen`: an empty diagram you can edit opens on a
   menu of New Table, New Memo, Import, Command Palette and Shortcuts, with arrows at the toolbar's
   search, theme and language buttons where the element shows them and at the floating toolbar where
-  the canvas has room, until its first table, memo or shown table group
+  the canvas has room, until its first table, shown memo or shown table group
 
 ### Collaboration hooks
 

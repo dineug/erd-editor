@@ -10,7 +10,7 @@ import { createAction } from '@dineug/r-html';
 import { isNil, isString, noop } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, Show } from '@/constants/schema';
 import {
   getOpeningOrigin,
   hasViewport,
@@ -27,6 +27,7 @@ import { hasCanvasType } from '@/utils/validation';
 import { ActionMap, ActionType, ReducerType } from './actions';
 import { FocusType, MoveKey, SelectType } from './state';
 import { arrowDown, arrowLeft, arrowRight, arrowUp } from './utils/focus';
+import { releaseHidden } from './utils/releaseHidden';
 import {
   appendSelectColumns,
   appendSelectRangeColumns,
@@ -57,6 +58,7 @@ export const selectAllAction = createAction<
 const selectAll: ReducerType<typeof ActionType.selectAll> = ({
   editor,
   doc,
+  settings,
 }) => {
   const tableSelectedMap = doc.tableIds.reduce<Record<string, SelectType>>(
     (acc, id) => {
@@ -65,7 +67,9 @@ const selectAll: ReducerType<typeof ActionType.selectAll> = ({
     },
     {}
   );
-  const memoSelectedMap = doc.memoIds.reduce<Record<string, SelectType>>(
+  // Hidden memos take no press, so select all leaves them out too.
+  const memoIds = bHas(settings.show, Show.hideMemo) ? [] : doc.memoIds;
+  const memoSelectedMap = memoIds.reduce<Record<string, SelectType>>(
     (acc, id) => {
       acc[id] = SelectType.memo;
       return acc;
@@ -181,6 +185,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state.collections = collections;
   rememberCanvasType(state);
   clearViews(state.editor);
+  releaseHidden(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
@@ -224,6 +229,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.lww = {};
   rememberCanvasType(state);
   clearViews(state.editor);
+  releaseHidden(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };

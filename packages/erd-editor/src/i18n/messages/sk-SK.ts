@@ -87,6 +87,7 @@ export const skSK = {
   'contextMenu.show.alternateKey': 'Alternatívny kľúč',
   'contextMenu.show.referentialActions': 'Referenčné akcie',
   'contextMenu.show.tableGroups': 'Skupiny tabuliek',
+  'contextMenu.show.memos': 'Poznámky',
   'floatingToolbar.hand': 'Ruka',
   'floatingToolbar.select': 'Výber',
   'floatingToolbar.zoomOut': 'Oddialiť',

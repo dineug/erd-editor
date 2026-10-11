@@ -12,6 +12,16 @@ export type Rect = {
   h: number;
 };
 
+/** Whether the rect lies wholly inside the drag rect, its edges included. */
+export function isInsideDragRect(dragRect: Rect, rect: Rect): boolean {
+  return (
+    rect.x >= dragRect.x &&
+    rect.y >= dragRect.y &&
+    rect.x + rect.w <= dragRect.x + dragRect.w &&
+    rect.y + rect.h <= dragRect.y + dragRect.h
+  );
+}
+
 export function isOverlapPosition(dragRect: Rect, rect: Rect): boolean {
   return !(
     dragRect.x > rect.x + rect.w ||

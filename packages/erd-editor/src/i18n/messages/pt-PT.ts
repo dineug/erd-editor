@@ -89,6 +89,7 @@ export const ptPT = {
   'contextMenu.show.alternateKey': 'Chave alternativa',
   'contextMenu.show.referentialActions': 'Ações referenciais',
   'contextMenu.show.tableGroups': 'Grupos de tabelas',
+  'contextMenu.show.memos': 'Notas',
   'floatingToolbar.hand': 'Mão',
   'floatingToolbar.select': 'Seleção',
   'floatingToolbar.zoomOut': 'Reduzir',

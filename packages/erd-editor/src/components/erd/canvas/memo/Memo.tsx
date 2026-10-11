@@ -1,6 +1,6 @@
 /** @jsxHost konva */
 
-import { FC, observable } from '@dineug/r-html';
+import { FC, observable, onUnmounted } from '@dineug/r-html';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { useAppContext } from '@/components/appContext';
@@ -21,6 +21,7 @@ import {
 import { useMoveMemo } from '@/components/erd/canvas/memo/useMoveMemo';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
+  createSceneCursorScope,
   CURSOR_INHERIT,
   CURSOR_POINTER,
   CURSOR_TEXT,
@@ -31,7 +32,6 @@ import {
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
-  setSceneCursor,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
@@ -73,6 +73,10 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.memo.id);
   const { onMoveStart } = useMoveMemo(ctx, props, sourceRef);
   const state = observable({ hover: false, removeHover: false });
+  // Hiding the memos, a removal, a cull or a move between the scene and the
+  // drag layer can take the node from under the pointer, which sends no leave.
+  const cursor = createSceneCursorScope();
+  onUnmounted(cursor.release);
 
   const handleMouseenter = () => {
     state.hover = true;
@@ -84,12 +88,12 @@ const Memo: FC<MemoProps> = (props, ctx) => {
 
   const handleRemoveMouseenter = (event: SceneMouseEvent) => {
     state.removeHover = true;
-    setSceneCursor(event, CURSOR_POINTER);
+    cursor.set(event, CURSOR_POINTER);
   };
 
   const handleRemoveMouseleave = (event: SceneMouseEvent) => {
     state.removeHover = false;
-    setSceneCursor(event, CURSOR_INHERIT);
+    cursor.set(event, CURSOR_INHERIT);
   };
 
   const handleRemoveMemo = () => {
@@ -137,11 +141,11 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   };
 
   const handleValueMouseenter = (event: SceneMouseEvent) => {
-    setSceneCursor(event, props.preview ? CURSOR_INHERIT : CURSOR_TEXT);
+    cursor.set(event, props.preview ? CURSOR_INHERIT : CURSOR_TEXT);
   };
 
   const handleValueMouseleave = (event: SceneMouseEvent) => {
-    setSceneCursor(event, CURSOR_INHERIT);
+    cursor.set(event, CURSOR_INHERIT);
   };
 
   /**
@@ -242,10 +246,10 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             fill={memo.ui.color}
             on:click={mainButtonClick(handleOpenColorPicker)}
             on:mouseenter={(event: SceneMouseEvent) => {
-              setSceneCursor(event, CURSOR_POINTER);
+              cursor.set(event, CURSOR_POINTER);
             }}
             on:mouseleave={(event: SceneMouseEvent) => {
-              setSceneCursor(event, CURSOR_INHERIT);
+              cursor.set(event, CURSOR_INHERIT);
             }}
           />
           {sceneIcon({

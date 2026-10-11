@@ -88,6 +88,7 @@ export const euES = {
   'contextMenu.show.alternateKey': 'Gako alternatiboa',
   'contextMenu.show.referentialActions': 'Erreferentzia-ekintzak',
   'contextMenu.show.tableGroups': 'Taula-taldeak',
+  'contextMenu.show.memos': 'Oharrak',
   'floatingToolbar.hand': 'Esku-tresna',
   'floatingToolbar.select': 'Hautapen-tresna',
   'floatingToolbar.zoomOut': 'Txikiagotu',

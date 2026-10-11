@@ -1,3 +1,4 @@
+import type { Layer } from 'konva/lib/Layer';
 import type { Shape } from 'konva/lib/Shape';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -332,6 +333,24 @@ describe('the svg of a document', () => {
     ).toBeNull();
     expect(svg).not.toContain('@font-face');
     expect(svg).not.toContain('shadow');
+  });
+
+  it('stacks the tables and the memo by one z-index, as the canvas does', async () => {
+    const json = JSON.parse(createDoc());
+    json.collections.tableEntities.orders.ui.zIndex = 9;
+    const scene = await renderDocumentScene({
+      doc: JSON.stringify(json),
+      theme,
+      toWidth,
+    });
+    const stack = scene.stage
+      .findOne<Layer>('.export-scene')!
+      .getChildren()
+      .filter(node => node.hasName('table') || node.hasName('memo'))
+      .map(node => node.id());
+    scene.destroy();
+
+    expect(stack).toEqual(['table-users', 'memo-memo', 'table-orders']);
   });
 
   it('draws every table in full at a zoom the canvas draws one by name alone', async () => {

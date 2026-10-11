@@ -28,6 +28,11 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Relationship, Table as TableEntity } from '@/internal-types';
 import { renderKonva } from '@/konva/host';
 import {
+  type StackedEntity,
+  stackedKey,
+  stackTablesAndMemos,
+} from '@/konva/scene/stacking';
+import {
   getHighlightIds,
   getVisibleIds,
   relationshipColumnIdsByTable,
@@ -46,14 +51,6 @@ import { isHighLevelTable } from '@/utils/validation';
 export type CanvasSceneProps = {
   root: Ref<HTMLDivElement>;
 };
-
-type Stacked = { ui: { zIndex: number } };
-
-/**
- * The order the DOM scene spelled as a z-index. Konva paints siblings in order,
- * so whatever was raised last has to end up the last child of its layer.
- */
-const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
 
 /**
  * The layers of the canvas, four over the document and four under a view,
@@ -129,15 +126,14 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     // back finds it rather than rebuilding it; the pool bounds how many.
     const retainedIds = retention.retain(drawnIds, new Set(tableIds));
 
-    const allTables = tableEntities
-      .filter(table => drawnIds.has(table.id) || retainedIds.has(table.id))
-      .sort(byZIndex);
+    const allTables = tableEntities.filter(
+      table => drawnIds.has(table.id) || retainedIds.has(table.id)
+    );
 
     const allMemos = query(collections)
       .collection('memoEntities')
       .selectByIds(memoIds)
-      .filter(memo => isMemoVisible(cullingRect, memo))
-      .sort(byZIndex);
+      .filter(memo => isMemoVisible(cullingRect, memo));
 
     const allRelationships = query(collections)
       .collection('relationshipEntities')
@@ -215,38 +211,32 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     // document scene's alone; a view would stand them somewhere unrelated.
     const presence = source === 'document';
 
-    /** The tables of one layer, in whichever spelling the zoom asks for. */
-    const tableShapes = (list: typeof allTables) =>
+    /** A table in whichever spelling the zoom asks for, both kept so a zoom across the threshold rebuilds neither. */
+    const tableShape = (table: TableEntity) =>
       cache(
         highLevel ? (
-          <>
-            {repeat(
-              list,
-              table => table.id,
-              table => (
-                <HighLevelTable
-                  table={table}
-                  visible={drawnIds.has(table.id)}
-                />
-              )
-            )}
-          </>
+          <HighLevelTable table={table} visible={drawnIds.has(table.id)} />
         ) : (
-          <>
-            {repeat(
-              list,
-              table => table.id,
-              table => (
-                <Table
-                  table={table}
-                  visible={drawnIds.has(table.id)}
-                  lit={isLitTable(table.id)}
-                  relatedColumnIds={related?.get(table.id) ?? null}
-                  tableGroupId={groupIdOf(table)}
-                />
-              )
-            )}
-          </>
+          <Table
+            table={table}
+            visible={drawnIds.has(table.id)}
+            lit={isLitTable(table.id)}
+            relatedColumnIds={related?.get(table.id) ?? null}
+            tableGroupId={groupIdOf(table)}
+          />
+        )
+      );
+
+    // Konva paints siblings in order, so tables and memos go in as one stack,
+    // whatever was raised last the last child of its layer. A memo stays out
+    // of the cache, so a zoom across the threshold never takes it away.
+    /** The tables and memos of one layer in their one stack. */
+    const entityShapes = (list: StackedEntity[]) =>
+      repeat(list, stackedKey, item =>
+        item.kind === 'table' ? (
+          <>{tableShape(item.entity)}</>
+        ) : (
+          <Memo memo={item.entity} />
         )
       );
 
@@ -288,14 +278,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
           {source === 'document' && drawRelationship?.start ? (
             <DrawRelationship root={props.root} draw={drawRelationship} />
           ) : null}
-          {tableShapes(tables)}
-          {repeat(
-            memos,
-            memo => memo.id,
-            memo => (
-              <Memo memo={memo} />
-            )
-          )}
+          {entityShapes(stackTablesAndMemos(tables, memos))}
         </k-layer>
         {dragging ? (
           <k-layer
@@ -306,14 +289,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
             scaleY={zoomLevel}
           >
             {dropTarget ? <TableGroupDropTarget /> : null}
-            {tableShapes(dragTables)}
-            {repeat(
-              dragMemos,
-              memo => memo.id,
-              memo => (
-                <Memo memo={memo} />
-              )
-            )}
+            {entityShapes(stackTablesAndMemos(dragTables, dragMemos))}
           </k-layer>
         ) : null}
         <k-layer name="overlay-marquee" listening={false}>

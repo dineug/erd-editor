@@ -275,6 +275,25 @@ describe('appendSchemaJsonAction$', () => {
     });
   });
 
+  it('stands the block under a hidden memo too, which still stands there', () => {
+    const store = createDiagram();
+    store.dispatchSync(
+      addMemoAction({
+        id: 'hidden',
+        ui: { x: 60, y: 1200, width: 200, height: 100, zIndex: 9 },
+      }),
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    const memo = getMemoRect(store.state.collections.memoEntities.hidden);
+
+    store.dispatchSync(appendSchemaJsonAction$(createDocument()));
+
+    expect(cornerOf(store.state, 'users')).toEqual({
+      x: 60,
+      y: memo.y + memo.height + APPEND_GAP,
+    });
+  });
+
   it('starts the block where an import grid starts in a diagram holding nothing', () => {
     const store = createTestStore();
 

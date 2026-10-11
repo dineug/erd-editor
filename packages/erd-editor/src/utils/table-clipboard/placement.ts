@@ -4,6 +4,8 @@ import { nextPoint, nextZIndex } from '@/utils';
 
 export type PlacementEntity = {
   sourceId: string;
+  /** A memo stacks over a table of the same z-index, as the scene paints them; a table if left out. */
+  kind?: 'table' | 'memo';
   ui: {
     x: number;
     y: number;
@@ -37,6 +39,8 @@ export type ResolvePlacementConfig = {
 const toKey = ({ x, y }: Point) => `${x},${y}`;
 
 const compareId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+const kindRank = ({ kind }: PlacementEntity) => (kind === 'memo' ? 1 : 0);
 
 const toZIndex = (entity: PlacementEntity) => entity.ui.zIndex ?? 0;
 
@@ -106,7 +110,10 @@ export function resolvePlacement({
 
   const baseZIndex = nextZIndex(tables, memos);
   const stacked = [...entities].sort(
-    (a, b) => toZIndex(a) - toZIndex(b) || compareId(a.sourceId, b.sourceId)
+    (a, b) =>
+      toZIndex(a) - toZIndex(b) ||
+      kindRank(a) - kindRank(b) ||
+      compareId(a.sourceId, b.sourceId)
   );
 
   stacked.forEach(({ sourceId }, index) => {

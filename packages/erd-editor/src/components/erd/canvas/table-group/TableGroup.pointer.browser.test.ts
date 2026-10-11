@@ -192,6 +192,19 @@ async function pressAndMove(
   }
 }
 
+/** The lift konva pairs with a press on the same node into a click. */
+function lift(editor: Editor, point: Point, init: MouseEventInit = {}) {
+  editor.stage.content.querySelector('canvas')!.dispatchEvent(
+    new MouseEvent('mouseup', {
+      button: 0,
+      ...init,
+      bubbles: true,
+      cancelable: true,
+      ...clientOf(editor, point),
+    })
+  );
+}
+
 async function drop() {
   releasePointer();
   await flush();
@@ -364,6 +377,60 @@ describe('a press on a group title bar', () => {
   });
 });
 
+describe('the remove button on a group title bar', () => {
+  const removeOf = (editor: Editor, id: string) =>
+    middleOf(partOf(editor, id, 'table-group-remove'));
+
+  it('removes that group alone on a click, keeping its tables, and one undo brings both back', async () => {
+    const editor = await mountEditor();
+    const before = editor.app.store.history.size;
+    const at = removeOf(editor, 'g1');
+
+    press(editor, at);
+    lift(editor, at);
+    await drop();
+
+    expect(stateOf(editor).doc.tableGroupIds).toEqual(['g2']);
+    expect(stateOf(editor).doc.tableIds).toEqual(['member', 'loose']);
+    expect(tableOf(editor, 'member')).toMatchObject({
+      groupId: '',
+      ui: { x: MEMBER.x, y: MEMBER.y },
+    });
+    expect(entriesSince(editor, before)).toBe(1);
+
+    editor.app.store.undo();
+    await settle();
+
+    expect([...stateOf(editor).doc.tableGroupIds].sort()).toEqual(['g1', 'g2']);
+    expect(tableOf(editor, 'member').groupId).toBe('g1');
+  });
+
+  it('carries nothing for a press on it that travels, and removes nothing', async () => {
+    const editor = await mountEditor();
+
+    await pressAndMove(editor, removeOf(editor, 'g1'), { x: 120, y: 60 });
+
+    expect(isEntityDragActive(stateOf(editor))).toBe(false);
+    await drop();
+    expect(stateOf(editor).doc.tableGroupIds).toEqual(['g1', 'g2']);
+    expect(groupUi(editor, 'g1')).toMatchObject({ x: G1.x, y: G1.y });
+  });
+
+  it('removes nothing for a right click, which the group menu answers', async () => {
+    const editor = await mountEditor();
+    const at = removeOf(editor, 'g1');
+
+    press(editor, at, { button: 2 });
+    lift(editor, at, { button: 2 });
+    await drop();
+
+    expect(stateOf(editor).doc.tableGroupIds).toEqual(['g1', 'g2']);
+    expect(stateOf(editor).editor.selectedMap).toEqual({
+      g1: SelectType.tableGroup,
+    });
+  });
+});
+
 describe('a press on a group body', () => {
   it('unselects and pans for the main button, as the canvas under it does', async () => {
     const editor = await mountEditor();
@@ -415,19 +482,42 @@ describe('the sashes of a group', () => {
       .findOne<Group>(`#table-group-${id}`)!
       .find('.table-group-sash');
 
-  it('stand on the edges and corners of a selected group alone', async () => {
+  it("stand on the edges and corners of every group, selected or not, as a memo's do", async () => {
     const editor = await mountEditor();
-    expect(sashes(editor, 'g1')).toHaveLength(0);
+    const names = [
+      'left',
+      'right',
+      'top',
+      'bottom',
+      'lt',
+      'rt',
+      'lb',
+      'rb',
+    ].map(position => `table-group-sash table-group-sash-${position}`);
 
-    editor.app.store.dispatchSync(selectAction({ g1: SelectType.tableGroup }));
+    expect(stateOf(editor).editor.selectedMap).toEqual({});
+    expect(sashes(editor, 'g1').map(sash => sash.name())).toEqual(names);
+    expect(sashes(editor, 'g2').map(sash => sash.name())).toEqual(names);
+  });
+
+  it('resize a group nobody selected, leaving the selection as it was', async () => {
+    const editor = await mountEditor();
+    editor.app.store.dispatchSync(selectAction({ loose: SelectType.table }));
     await settle();
+    const zoom = zoomOf(editor);
 
-    expect(sashes(editor, 'g1').map(sash => sash.name())).toEqual(
-      ['left', 'right', 'top', 'bottom', 'lt', 'rt', 'lb', 'rb'].map(
-        position => `table-group-sash table-group-sash-${position}`
-      )
-    );
-    expect(sashes(editor, 'g2')).toHaveLength(0);
+    await pressAndMove(editor, sashOf(editor, 'g2', 'right'), { x: 80, y: 0 });
+    await drop();
+
+    expect(groupUi(editor, 'g2')).toMatchObject({
+      x: G2.x,
+      y: G2.y,
+      width: G2.width + 80 / zoom,
+      height: G2.height,
+    });
+    expect(stateOf(editor).editor.selectedMap).toEqual({
+      loose: SelectType.table,
+    });
   });
 
   it('ask the stage for a resize cursor under the pointer, and hand it back on leave', async () => {
@@ -455,6 +545,7 @@ describe('the sashes of a group', () => {
     await settle();
 
     expect(sashes(editor, 'g1')).toHaveLength(0);
+    expect(sashes(editor, 'g2')).toHaveLength(0);
   });
 
   it('draws each step of a corner drag and writes one resize, whose undo is the rect it began from', async () => {
@@ -559,6 +650,37 @@ describe('the sashes of a group', () => {
     expect(removed).toBe(before + 1);
     expect(entriesSince(editor, removed)).toBe(0);
   });
+
+  it.each([
+    ['released while they are hidden', false],
+    ['shown again and carried on before the release', true],
+  ])(
+    'writes nothing for a drag the groups were hidden under, %s',
+    async (_, shownAgain) => {
+      const editor = await mountEditor();
+      const from = sashOf(editor, 'g2', 'right');
+      const start = clientOf(editor, from);
+
+      await pressAndMove(editor, from, { x: 80, y: 0 });
+      editor.app.store.dispatchSync(
+        changeShowAction({ show: Show.hideTableGroup, value: true })
+      );
+      await settle();
+      if (shownAgain) {
+        editor.app.store.dispatchSync(
+          changeShowAction({ show: Show.hideTableGroup, value: false })
+        );
+        await settle();
+        movePointer(start.clientX + 120, start.clientY);
+        await flush();
+      }
+      const before = editor.app.store.history.size;
+      await drop();
+
+      expect(groupUi(editor, 'g2')).toMatchObject(G2);
+      expect(entriesSince(editor, before)).toBe(0);
+    }
+  );
 
   it('writes nothing for a right drag or a press that goes nowhere', async () => {
     const editor = await mountEditor();

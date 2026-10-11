@@ -59,8 +59,13 @@ import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { measureTableSize, recalculateTableWidth } from '@/utils/calcTable';
-import { isOverlapPosition, Rect as DragRect } from '@/utils/dragSelect';
+import {
+  isInsideDragRect,
+  isOverlapPosition,
+  Rect as DragRect,
+} from '@/utils/dragSelect';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { isMemoShown } from '@/utils/memo';
 import { schemaAMLParserToSchemaJson } from '@/utils/schema-aml-parser';
 import { schemaDBMLParserToSchemaJson } from '@/utils/schema-dbml-parser';
 import { schemaGraphQLParserToSchemaJson } from '@/utils/schema-graphql-parser';
@@ -273,8 +278,8 @@ function* createEntities$(
 
   const placement = resolvePlacement({
     entities: [
-      ...input.tables.map(toPlacementEntity),
-      ...input.memos.map(toPlacementEntity),
+      ...input.tables.map(table => toPlacementEntity(table, 'table')),
+      ...input.memos.map(memo => toPlacementEntity(memo, 'memo')),
     ],
     offset,
     escapeCollision,
@@ -299,18 +304,22 @@ function* createEntities$(
       acc[id] = SelectType.table;
       return acc;
     }, {}),
-    ...newMemoIds.reduce<Record<string, SelectType>>((acc, id) => {
+    // Hidden memos never stay selected, so a paste adds them unselected.
+    ...(isMemoShown(state) ? newMemoIds : []).reduce<
+      Record<string, SelectType>
+    >((acc, id) => {
       acc[id] = SelectType.memo;
       return acc;
     }, {}),
   });
 }
 
-const toPlacementEntity = ({
+const toPlacementEntity = (
+  { sourceId, ui: { x, y, zIndex } }: ClipboardTable | ClipboardMemo,
+  kind: 'table' | 'memo'
+): PlacementEntity => ({
   sourceId,
-  ui: { x, y, zIndex },
-}: ClipboardTable | ClipboardMemo): PlacementEntity => ({
-  sourceId,
+  kind,
   ui: { x, y, zIndex },
 });
 
@@ -544,14 +553,21 @@ function toLayoutGroupRects(
 }
 
 /**
- * Where the block an append brings starts: under every table, memo and group the diagram holds, a
- * hidden group's box included, since it still holds its tables, a gap below them and in line with
+ * Where the block an append brings starts: under every table, memo and group the diagram holds,
+ * hidden groups and memos included, since they still stand there, a gap below them and in line with
  * their left edge, or where the grid of an import starts in a diagram holding none.
  */
 function toAppendOrigin(state: RootState): Point {
-  const hidden = isTableGroupShown(state)
+  const hiddenGroups = isTableGroupShown(state)
     ? []
     : [...getTableGroupRects(state).values()];
+  const hiddenMemos = isMemoShown(state)
+    ? []
+    : query(state.collections)
+        .collection('memoEntities')
+        .selectByIds(state.doc.memoIds)
+        .map(getMemoRect);
+  const hidden = [...hiddenGroups, ...hiddenMemos];
   const content = [getContentRect(state), ...hidden]
     .filter((rect): rect is Rect => rect !== null)
     .reduce<Rect | null>(
@@ -803,6 +819,7 @@ export const dragSelectAction$ = (
 
           return acc;
         }, {}),
+      ...takenTableGroups(state, dragRect, source),
     };
 
     yield unselectAllAction$();
@@ -811,6 +828,27 @@ export const dragSelectAction$ = (
       yield selectAction(selectedMap);
     }
   };
+
+/**
+ * The shown groups whose whole drawn box a marquee in the document encloses (an owner decision of
+ * 2026-10-11). A centre rule would take a group with every marquee drawn inside it to pick a few
+ * of its tables, and the drag or Delete that follows would reach the whole group.
+ */
+function takenTableGroups(
+  state: RootState,
+  dragRect: DragRect,
+  source: GeometrySource
+): Record<string, SelectType> {
+  if (source !== 'document' || !isTableGroupShown(state)) return {};
+
+  const taken: Record<string, SelectType> = {};
+  getTableGroupRects(state).forEach(({ x, y, width, height }, id) => {
+    if (isInsideDragRect(dragRect, { x, y, w: width, h: height })) {
+      taken[id] = SelectType.tableGroup;
+    }
+  });
+  return taken;
+}
 
 export const unselectAllAction$ = (): GeneratorAction =>
   function* () {

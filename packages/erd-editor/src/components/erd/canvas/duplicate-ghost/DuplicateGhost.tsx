@@ -14,6 +14,7 @@ import { duplicateAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Memo, Table } from '@/internal-types';
+import { stackedKey, stackTablesAndMemos } from '@/konva/scene/stacking';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isHighLevelTable } from '@/utils/validation';
 
@@ -166,33 +167,26 @@ const DuplicateGhost: FC<DuplicateGhostProps> = (props, ctx) => {
         opacity={GHOST_OPACITY}
         listening={false}
       >
-        {repeat(
-          tables,
-          table => table.id,
-          table => (
+        {repeat(stackTablesAndMemos(tables, memos), stackedKey, item =>
+          item.kind === 'table' ? (
             <k-group
-              id={`duplicate-ghost-${table.id}`}
+              id={`duplicate-ghost-${item.entity.id}`}
               name="duplicate-ghost"
               kind={`duplicate-ghost-${SelectType.table}`}
             >
               {highLevel ? (
-                <HighLevelTableView table={table} preview={true} />
+                <HighLevelTableView table={item.entity} preview={true} />
               ) : (
-                <TableView table={table} preview={true} />
+                <TableView table={item.entity} preview={true} />
               )}
             </k-group>
-          )
-        )}
-        {repeat(
-          memos,
-          memo => memo.id,
-          memo => (
+          ) : (
             <k-group
-              id={`duplicate-ghost-${memo.id}`}
+              id={`duplicate-ghost-${item.entity.id}`}
               name="duplicate-ghost"
               kind={`duplicate-ghost-${SelectType.memo}`}
             >
-              <MemoView memo={memo} preview={true} />
+              <MemoView memo={item.entity} preview={true} />
             </k-group>
           )
         )}

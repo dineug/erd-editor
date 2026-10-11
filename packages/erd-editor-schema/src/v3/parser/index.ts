@@ -46,7 +46,15 @@ export function parser(source: any): ERDEditorSchemaV3 {
     json.collections?.tableEntities,
     2
   );
-  stackInDocOrder(memoEntities, doc.memoIds, json.collections?.memoEntities, 2);
+  // Tables and memos share one stack, so unsaved memos count on past every
+  // listed table and stand over them, as every memo did before they shared it.
+  stackInDocOrder(
+    memoEntities,
+    doc.memoIds,
+    json.collections?.memoEntities,
+    Math.max(1, ...doc.tableIds.map(id => tableEntities[id]?.ui.zIndex ?? 0)) +
+      1
+  );
   stackInDocOrder(
     tableGroupEntities,
     doc.tableGroupIds,
@@ -74,7 +82,7 @@ export function parser(source: any): ERDEditorSchemaV3 {
 
 /**
  * Gives each listed entity the source left without a z-index its place in the
- * doc order, counted up from the factory default, since the storage form
+ * doc order, counted up from the base the caller gives, since the storage form
  * writes none; one that carries a z-index keeps it, as does one not listed.
  */
 function stackInDocOrder(

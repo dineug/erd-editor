@@ -3,6 +3,8 @@ import { query } from '@dineug/erd-editor-schema';
 import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
+import { stackTablesAndMemos } from '@/konva/scene/stacking';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
 import {
   getCullingRect,
   getSceneTransform,
@@ -28,11 +30,6 @@ export const containsPoint = (rect: Rect, { x, y }: Point) =>
   y >= rect.y &&
   y <= rect.y + rect.height;
 
-type Stacked = { ui: { zIndex: number } };
-
-/** The canvas paints its tables in this order, a stable sort over the document's list. */
-const byZIndex = (a: Stacked, b: Stacked) => a.ui.zIndex - b.ui.zIndex;
-
 export type DrawTargetQuery = {
   /** The pointer in screen pixels from the top left of the canvas root. */
   pointer: Point;
@@ -47,7 +44,7 @@ export type DrawTargetQuery = {
 /**
  * The table a press under the pointer would draw to, by arithmetic, since konva
  * raises no hover at a low zoom or over the buttons: top first, the reverse of
- * the canvas's paint order, and none under a memo, which takes the press.
+ * the canvas's paint order, and none under a memo drawn over it, which takes the press.
  */
 export function findDrawTarget(
   state: RootState,
@@ -66,25 +63,26 @@ export function findDrawTarget(
   const scene = toScenePoint(getSceneTransform(state, 'document'), pointer);
   const culling = getCullingRect(state, 'document');
 
-  const onMemo = query(collections)
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .filter(
+      table =>
+        isTableVisible(culling, state, table) &&
+        containsPoint(getTableRect(state, table), scene)
+    );
+  const memos = query(collections)
     .collection('memoEntities')
-    .selectByIds(doc.memoIds)
-    .some(
+    .selectByIds(getVisibleIds(state).memoIds)
+    .filter(
       memo =>
         isMemoVisible(culling, memo) && containsPoint(getMemoRect(memo), scene)
     );
-  if (onMemo) return null;
+  const stack = stackTablesAndMemos(tables, memos);
+  const top = stack[stack.length - 1];
 
-  const top = query(collections)
-    .collection('tableEntities')
-    .selectByIds(doc.tableIds)
-    .filter(table => isTableVisible(culling, state, table))
-    .sort(byZIndex)
-    .reverse()
-    .find(table => containsPoint(getTableRect(state, table), scene));
+  if (top?.kind !== 'table') return null;
+  if (top.entity.id === startTableId && !selfArmed) return null;
 
-  if (!top) return null;
-  if (top.id === startTableId && !selfArmed) return null;
-
-  return top.id;
+  return top.entity.id;
 }

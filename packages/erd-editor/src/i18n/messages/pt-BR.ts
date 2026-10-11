@@ -89,6 +89,7 @@ export const ptBR = {
   'contextMenu.show.alternateKey': 'Chave alternativa',
   'contextMenu.show.referentialActions': 'Ações referenciais',
   'contextMenu.show.tableGroups': 'Grupos de tabelas',
+  'contextMenu.show.memos': 'Notas',
   'floatingToolbar.hand': 'Ferramenta mão',
   'floatingToolbar.select': 'Ferramenta de seleção',
   'floatingToolbar.zoomOut': 'Diminuir zoom',

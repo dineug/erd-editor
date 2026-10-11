@@ -8,6 +8,7 @@ import { RootState } from '@/engine/state';
 import { Point, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { isMemoShown } from '@/utils/memo';
 
 /**
  * The ids a scene drawn from one source shows, each list in document order.
@@ -181,7 +182,7 @@ export function getVisibleIds(
   if (source === 'document') {
     return {
       tableIds: doc.tableIds,
-      memoIds: doc.memoIds,
+      memoIds: isMemoShown(state) ? doc.memoIds : [],
       relationshipIds: doc.relationshipIds,
       tableGroupIds: doc.tableGroupIds,
     };

@@ -285,6 +285,16 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('offers no New Memo while memos are hidden', async () => {
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await mountMenu();
+
+    expect(labelsOf(rootItems())).not.toContain('New MemoAlt + M');
+    expect(labelsOf(rootItems())).toContain('New TableAlt + N');
+  });
+
   it('lists every placement in the automatic table placement submenu', async () => {
     await mountMenu();
 
@@ -364,6 +374,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Relationship',
       'Referential Actions',
       'Table Groups',
+      'Memos',
     ]);
 
     const before = app.store.state.settings.show;

@@ -176,10 +176,12 @@
 - **A group moves with its members.** Moving a group (`moveTableGroupAction$`, and `moveAllAction$` over a selected one, `toMoveTableGroupActions`) moves its members by the same relative step in the same dispatch, tagged as a drag. A member selected beside the group moves once.
   - `tableGroup.move` and `tableGroup.changeColor` regroup with the table and memo streams, so a drag is one undo entry.
 - **A drag carries its first step's tables.** A drag carries the tables its first step read (`getCarriedTableIds`), kept in the `MoveAllGesture` that `useMoveEntity` makes per press and hands every step. The history and the outbound compressor sum a burst's steps per table list and drop a list under 20 px. Otherwise a member a peer adds or takes out midway would leave a step applied here and never sent or undone.
-- **Three paths select a group** (`SelectType.tableGroup`): a press, adding a group and an append's landing.
-  - A press (`selectTableGroupAction$`) raises the group among groups alone by `nextTableGroupZIndex`. `tableGroup.changeZIndex` is in no list, as `memo.changeZIndex` is in none.
+- **Four paths select a group** (`SelectType.tableGroup`): a press, adding a group, an append's landing and a marquee that encloses its whole box.
+  - A press (`selectTableGroupAction$`) raises the group among groups by `nextTableGroupZIndex`. `tableGroup.changeZIndex` is in no list, as `memo.changeZIndex` is in none.
+  - The same press raises the group's tables over every other table and memo, in their own order, with `table.changeZIndex`, as a press on a table raises it, and sends none once they stand there. Otherwise a group drag draws them in the drag layer over the rest and its drop puts them back under it.
   - Adding a group selects it alone.
-  - Select all and the marquee never take a group. Delete (`removeSelectedAction$`, and `getRemovableColumns` reading a selected group as a selection beside the table) and the color picker reach it.
+  - A marquee in the document takes a shown group only once it encloses the group's whole drawn box, edges included (`takenTableGroups` in `dragSelectAction$`, an owner decision of 2026-10-11). A centre rule, which tables and memos follow, would take a group with every marquee drawn inside it to pick a few of its tables, and the drag or Delete after it would reach the whole group.
+  - Select all never takes a group. Delete (`removeSelectedAction$`, and `getRemovableColumns` reading a selected group as a selection beside the table) and the color picker reach it.
 - **A paste or duplicate carries no `groupId`.** An append carries its document's groups under new ids, its tables put in them by their new ids (`toAppendTableGroups`).
   - A file's rects move with the block, which starts at their corners too.
   - A grid or placed layout wraps each group with members round where they land, the block starting at the wrapped corners as well (`toLayoutGroupRects`).

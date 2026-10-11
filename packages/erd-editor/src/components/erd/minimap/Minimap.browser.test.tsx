@@ -406,6 +406,49 @@ describe('the minimap shell', () => {
     expect(memos[0].hasName('m1')).toBe(true);
   });
 
+  it('draws no memo mark while memos are hidden', async () => {
+    const app = createTestAppContext();
+    await mountMinimap(app);
+    const stage = stageRegistry().minimap;
+
+    app.store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 10, y: 20, zIndex: 1 } }),
+      addMemoAction({ id: 'm1', ui: { x: 50, y: 60, zIndex: 3 } }),
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await flush();
+
+    expect(stage.find('.minimap-table')).toHaveLength(1);
+    expect(stage.find('.minimap-memo')).toHaveLength(0);
+  });
+
+  it('stacks the table and memo marks by one z-index, as the canvas does', async () => {
+    const app = createTestAppContext();
+    await mountMinimap(app);
+    const stage = stageRegistry().minimap;
+
+    app.store.dispatchSync(
+      addTableAction({ id: 'low', ui: { x: 10, y: 20, zIndex: 2 } }),
+      addTableAction({ id: 'raised', ui: { x: 30, y: 40, zIndex: 9 } }),
+      addMemoAction({ id: 'note', ui: { x: 50, y: 60, zIndex: 5 } })
+    );
+    await flush();
+
+    const marks = stage
+      .findOne<Layer>('.minimap-scene')!
+      .getChildren()
+      .filter(
+        node => node.hasName('minimap-table') || node.hasName('minimap-memo')
+      )
+      .map(node =>
+        node.hasName('minimap-table')
+          ? (node.attrs.tableId as string)
+          : node.name().split(' ')[1]
+      );
+
+    expect(marks).toEqual(['low', 'note', 'raised']);
+  });
+
   it('draws each group behind the marks, by z-index, while groups are shown', async () => {
     const app = createTestAppContext();
     await mountMinimap(app);

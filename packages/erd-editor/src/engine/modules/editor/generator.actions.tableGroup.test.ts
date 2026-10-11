@@ -1,6 +1,7 @@
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
+import { Show } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   selectAction,
@@ -19,7 +20,10 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeShowAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
@@ -32,6 +36,7 @@ import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 import { entitiesCopyToPayload } from '@/utils/table-clipboard/copy';
+import { getTableGroupRects } from '@/utils/tableGroup';
 
 const UI = { x: 0, y: 0, width: 800, height: 600, zIndex: 1 };
 
@@ -193,7 +198,7 @@ describe('the color picker over a selected group', () => {
   });
 });
 
-describe('selections that never take a group', () => {
+describe('select all', () => {
   it('leaves groups out of select all', () => {
     store.dispatchSync(selectAllAction());
 
@@ -207,14 +212,61 @@ describe('selections that never take a group', () => {
       'other',
     ]);
   });
+});
 
-  it('leaves groups out of a marquee drawn over the whole group', () => {
+describe('a marquee over table groups', () => {
+  it('takes a group whose whole box it encloses, beside its tables', () => {
+    store.dispatchSync(
+      dragSelectAction$({ x: -100, y: -100, w: 2000, h: 2000 })
+    );
+
+    expect(store.state.editor.selectedMap.g1).toBe(SelectType.tableGroup);
+    expect(store.state.editor.selectedMap.member).toBe(SelectType.table);
+  });
+
+  it('takes no group it covers only in part, though it takes the tables inside', () => {
+    const box = getTableGroupRects(store.state).get('g1')!;
+
+    store.dispatchSync(
+      dragSelectAction$({
+        x: box.x + 10,
+        y: box.y + 10,
+        w: box.width + 500,
+        h: box.height + 500,
+      })
+    );
+
+    expect(store.state.editor.selectedMap).not.toHaveProperty('g1');
+    expect(store.state.editor.selectedMap.member).toBe(SelectType.table);
+  });
+
+  it('takes a box exactly the size of the group, its edges included', () => {
+    const box = getTableGroupRects(store.state).get('g1')!;
+
+    store.dispatchSync(
+      dragSelectAction$({ x: box.x, y: box.y, w: box.width, h: box.height })
+    );
+
+    expect(store.state.editor.selectedMap.g1).toBe(SelectType.tableGroup);
+  });
+
+  it('takes no group for a marquee drawn over a view, which draws none', () => {
+    store.dispatchSync(
+      dragSelectAction$({ x: -100, y: -100, w: 2000, h: 2000 }, 'flow')
+    );
+
+    expect(store.state.editor.selectedMap).not.toHaveProperty('g1');
+  });
+
+  it('takes no group while groups are hidden', () => {
+    store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
     store.dispatchSync(
       dragSelectAction$({ x: -100, y: -100, w: 2000, h: 2000 })
     );
 
     expect(store.state.editor.selectedMap).not.toHaveProperty('g1');
-    expect(store.state.editor.selectedMap.member).toBe(SelectType.table);
   });
 });
 
