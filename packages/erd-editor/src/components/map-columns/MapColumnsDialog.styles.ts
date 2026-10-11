@@ -112,7 +112,7 @@ export const message = css`
   ${typography.paragraph};
 
   &.error {
-    color: var(--diff-delete-foreground);
+    color: var(--map-columns-error);
   }
 `;
 

@@ -17,7 +17,6 @@ import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
 import Switch from '@/components/primitives/switch/Switch';
 import TextInput from '@/components/primitives/text-input/TextInput';
-import Toast from '@/components/primitives/toast/Toast';
 import { ColumnTypeToMessageKey } from '@/components/settings/columnTypeLabels';
 import { lockSettingRows } from '@/components/settings/lockSettingRows';
 import SettingsLnb, {
@@ -26,6 +25,7 @@ import SettingsLnb, {
 } from '@/components/settings/settings-lnb/SettingsLnb';
 import { takeSettingsPage } from '@/components/settings/settingsPage';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
+import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import {
@@ -39,7 +39,6 @@ import { bHas } from '@/utils/bit';
 import { recalculateTableWidth } from '@/utils/calcTable';
 import { onPrevent } from '@/utils/domEvent';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
-import { openToastAction } from '@/utils/emitter';
 import { FlipAnimation } from '@/utils/flipAnimation';
 import { delay } from '@/utils/promise';
 import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
@@ -84,14 +83,12 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     const { store, emitter, toWidth } = app.value;
     recalculateTableWidth(store.state, { toWidth, clock: store.context.clock });
     relationshipSort(store.state);
-    emitter.emit(
-      openToastAction({
-        close: delay(2000),
-        message: (
-          <Toast title={localized('settings.toast.tableWidthRecalculated')} />
-        ),
-      })
-    );
+    openStatusToast(emitter, {
+      key: 'settings.toast.tableWidthRecalculated',
+      tone: 'success',
+      title: localized('settings.toast.tableWidthRecalculated'),
+      close: delay(2000),
+    });
   };
 
   const handleChangeColumnOrderAction = (value: number, target: number) => {

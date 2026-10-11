@@ -50,6 +50,11 @@ const ToastContainer: FC<ToastContainerProps> = (props, ctx) => {
     addUnsubscribe(
       emitter.on({
         openToast: ({ payload }) => {
+          const shown = payload.key
+            ? toasts.find(toast => toast.key === payload.key)
+            : undefined;
+          shown && handleClose(shown.id);
+
           const toast = Object.assign(
             {
               close: delay(DEFAULT_TIME),

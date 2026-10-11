@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(75);
+    expect(entries).toHaveLength(81);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -61,6 +61,12 @@ describe('ThemeConfig', () => {
   it('resolves every custom reference against a real radix palette in both appearances', () => {
     const customs = entries.filter(([, value]) => value.startsWith('custom-'));
     expect(customs.map(([key]) => key)).toEqual([
+      'toastSuccess',
+      'toastError',
+      'findReplaceError',
+      'mapColumnsError',
+      'schemaSqlWarningBackground',
+      'schemaSqlWarningForeground',
       'keyPK',
       'keyFK',
       'keyPFK',
@@ -150,6 +156,18 @@ describe('ThemeConfig', () => {
     expect(
       new Set([ThemeConfig.keyPK, ThemeConfig.keyFK, ThemeConfig.keyPFK]).size
     ).toBe(3);
+  });
+
+  it('marks a done toast green and a failed one red, on the text step 11', () => {
+    expect(ThemeConfig.toastSuccess).toBe('custom-green--11');
+    expect(ThemeConfig.toastError).toBe('custom-red--11');
+  });
+
+  it('gives each panel its own error color, red text on red step 4 for the Schema SQL warning', () => {
+    expect(ThemeConfig.findReplaceError).toBe('custom-red--11');
+    expect(ThemeConfig.mapColumnsError).toBe('custom-red--11');
+    expect(ThemeConfig.schemaSqlWarningBackground).toBe('custom-red--4');
+    expect(ThemeConfig.schemaSqlWarningForeground).toBe('custom-red--11');
   });
 
   it('pairs each diff background at step 4 with a foreground at step 11', () => {

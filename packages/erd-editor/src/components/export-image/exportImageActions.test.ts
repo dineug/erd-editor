@@ -239,7 +239,7 @@ describe('exportImagePng', () => {
     expect(log).toEqual([]);
 
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(log).toEqual(['open Exporting PNG…']);
+    expect(log).toEqual(['open Exporting PNG']);
     expect(exported).toHaveLength(0);
 
     render.resolve();
@@ -247,8 +247,8 @@ describe('exportImagePng', () => {
     await done;
 
     expect(log).toEqual([
-      'open Exporting PNG…',
-      'close Exporting PNG…',
+      'open Exporting PNG',
+      'close Exporting PNG',
       `open Exported at a reduced resolution | ${REDUCED_TEXT}`,
     ]);
     expect(exported).toHaveLength(1);
@@ -314,13 +314,13 @@ describe('exportImageSvg', () => {
 
     const done = exportImageSvg(app, request(), 'shop');
     await vi.advanceTimersByTimeAsync(400);
-    expect(log).toEqual(['open Exporting SVG…']);
+    expect(log).toEqual(['open Exporting SVG']);
 
     render.resolve('<svg/>');
     await vi.advanceTimersByTimeAsync(1000);
     await done;
 
-    expect(log).toEqual(['open Exporting SVG…', 'close Exporting SVG…']);
+    expect(log).toEqual(['open Exporting SVG', 'close Exporting SVG']);
     expect(exported).toHaveLength(1);
   });
 });
@@ -420,15 +420,15 @@ describe('copyImagePng', () => {
 
     const done = copyImagePng(app, request());
     await vi.advanceTimersByTimeAsync(400);
-    expect(log).toEqual(['open Copying image…']);
+    expect(log).toEqual(['open Copying image']);
 
     render.resolve(png());
     await vi.advanceTimersByTimeAsync(1000);
     await done;
 
     expect(log).toEqual([
-      'open Copying image…',
-      'close Copying image…',
+      'open Copying image',
+      'close Copying image',
       'open Copied the image to the clipboard',
     ]);
   });

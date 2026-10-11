@@ -236,7 +236,7 @@ export const choiceName = css`
 `;
 
 /**
- * What a drop and re-create takes with it, in the colours of a deleted line,
+ * What a drop and re-create takes with it, in the panel's own warning colours,
  * a long table name broken to stay inside the box.
  */
 export const warning = css`
@@ -244,8 +244,8 @@ export const warning = css`
   gap: 8px;
   padding: 8px 10px;
   border-radius: 6px;
-  background-color: var(--diff-delete-background);
-  color: var(--diff-delete-foreground);
+  background-color: var(--schema-sql-warning-background);
+  color: var(--schema-sql-warning-foreground);
   ${typography.paragraph};
 
   & > span {

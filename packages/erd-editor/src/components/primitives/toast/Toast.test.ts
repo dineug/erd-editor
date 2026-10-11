@@ -1,6 +1,7 @@
 import { FC, html, observable } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
 import Toast from '@/components/primitives/toast/Toast';
 import * as styles from '@/components/primitives/toast/Toast.styles';
@@ -98,7 +99,7 @@ describe('Toast', () => {
     expect([...children[1].classList]).toContain(String(styles.action));
   });
 
-  it('turns a ring beside the text while busy', async () => {
+  it("turns lucide's loader beside the text while busy", async () => {
     mounted = await mountAndFlush(
       html`<${Toast} busy=${true} description=${'Exporting'} />`
     );
@@ -108,7 +109,8 @@ describe('Toast', () => {
     expect(indicator.hasAttribute('data-busy')).toBe(true);
     expect(indicator.getAttribute('role')).toBe('progressbar');
     expect(indicator.hasAttribute('aria-valuenow')).toBe(false);
-    expect(indicator.querySelector('svg [data-part="arc"]')).toBeTruthy();
+    expect(iconNameOf(indicator)).toBe('loader-circle');
+    expect(indicator.querySelector('[data-part="arc"]')).toBeNull();
     expect((query(styles.root) as HTMLElement).firstElementChild).toBe(
       indicator
     );
@@ -124,6 +126,7 @@ describe('Toast', () => {
     const arc = indicator.querySelector('[data-part="arc"]') as SVGElement;
     const length = Number(arc.getAttribute('stroke-dasharray'));
     expect(indicator.hasAttribute('data-busy')).toBe(false);
+    expect(iconNameOf(indicator)).toBeNull();
     expect(indicator.getAttribute('aria-valuenow')).toBe('0.25');
     expect(Number(arc.getAttribute('stroke-dashoffset'))).toBeCloseTo(
       length * 0.75,
@@ -135,6 +138,37 @@ describe('Toast', () => {
 
     expect(indicator.getAttribute('aria-valuenow')).toBe('1');
     expect(Number(arc.getAttribute('stroke-dashoffset'))).toBe(0);
+  });
+
+  it.each([
+    ['success', 'check'],
+    ['error', 'triangle-alert'],
+  ] as const)(
+    'marks a %s toast with %s beside the text, hidden from a screen reader',
+    async (tone, icon) => {
+      mounted = await mountAndFlush(
+        html`<${Toast} tone=${tone} title=${'Done'} />`
+      );
+
+      const indicator = query(styles.indicator) as HTMLElement;
+      expect(indicator.getAttribute('data-tone')).toBe(tone);
+      expect(indicator.getAttribute('aria-hidden')).toBe('true');
+      expect(indicator.hasAttribute('role')).toBe(false);
+      expect(iconNameOf(indicator)).toBe(icon);
+      expect((query(styles.root) as HTMLElement).firstElementChild).toBe(
+        indicator
+      );
+    }
+  );
+
+  it('shows the loader over a tone while the thing still runs', async () => {
+    mounted = await mountAndFlush(
+      html`<${Toast} busy=${true} tone=${'success'} title=${'Copying'} />`
+    );
+
+    const indicator = query(styles.indicator) as HTMLElement;
+    expect(iconNameOf(indicator)).toBe('loader-circle');
+    expect(indicator.hasAttribute('data-tone')).toBe(false);
   });
 
   it('draws no ring when nothing is running', async () => {

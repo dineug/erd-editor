@@ -11,9 +11,12 @@ const meta = {
     const fragment = document.createDocumentFragment();
     render(
       fragment,
-      // action is an optional control, Button's text is not: the tagged
-      // template passed undefined straight through and nothing checked it.
-      <Toast {...args} action={<Button text={args.action ?? ''} />} />
+      // action is an optional control, Button's text is not, so a story with
+      // no action gets no button rather than an empty one.
+      <Toast
+        {...args}
+        action={args.action ? <Button text={args.action} /> : undefined}
+      />
     );
     return fragment;
   },
@@ -23,6 +26,7 @@ const meta = {
     action: { control: 'text' },
     busy: { control: 'boolean' },
     progress: { control: { type: 'range', min: 0, max: 1, step: 0.01 } },
+    tone: { control: 'select', options: [undefined, 'success', 'error'] },
   },
 } satisfies Meta<ToastProps>;
 
@@ -39,15 +43,30 @@ export const Normal: Story = {
 
 export const Busy: Story = {
   args: {
-    description: 'Exporting PNG…',
+    title: 'Exporting PNG',
     busy: true,
   },
 };
 
 export const Progress: Story = {
   args: {
-    description: 'Placing tables… 42%',
+    title: 'Placing tables 42%',
     action: 'Apply',
     progress: 0.42,
+  },
+};
+
+export const Succeeded: Story = {
+  args: {
+    title: 'Copied the image to the clipboard',
+    tone: 'success',
+  },
+};
+
+export const Failed: Story = {
+  args: {
+    title: "Couldn't export the PNG",
+    description: 'See the browser console for the error',
+    tone: 'error',
   },
 };

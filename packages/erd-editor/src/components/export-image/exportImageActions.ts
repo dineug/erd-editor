@@ -3,6 +3,7 @@ import { DOMTemplateLiterals, html } from '@dineug/r-html';
 import type { AppContext } from '@/components/appContext';
 import { localized } from '@/components/localized/Localized';
 import Toast from '@/components/primitives/toast/Toast';
+import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { openToastWhileRunning } from '@/components/toast-container/openToastWhileRunning';
 import {
   createDocumentPng,
@@ -10,7 +11,7 @@ import {
   type ResolutionReduction,
 } from '@/services/export-png';
 import { copyImageToClipboard } from '@/utils/clipboard';
-import { Emitter, openToastAction } from '@/utils/emitter';
+import { Emitter } from '@/utils/emitter';
 import { exportPNG, exportSVG } from '@/utils/file/exportFile';
 
 /** What an image is drawn from; each action hooks up the reporters itself. */
@@ -54,18 +55,6 @@ export function describeReduction({
   });
 }
 
-function openToast(
-  emitter: Emitter,
-  title: DOMTemplateLiterals,
-  description?: DOMTemplateLiterals
-) {
-  emitter.emit(
-    openToastAction({
-      message: html`<${Toast} title=${title} description=${description} />`,
-    })
-  );
-}
-
 /**
  * Waits out the work under a busy toast shown only while it runs long, and
  * settles once that toast is gone, to the work's error or to null.
@@ -73,7 +62,7 @@ function openToast(
 async function settleUnderBusyToast(
   emitter: Emitter,
   work: Promise<unknown>,
-  description: DOMTemplateLiterals
+  title: DOMTemplateLiterals
 ): Promise<{ error: unknown } | null> {
   const outcome = work.then(
     () => null,
@@ -83,7 +72,7 @@ async function settleUnderBusyToast(
   await openToastWhileRunning(
     emitter,
     outcome,
-    html`<${Toast} busy=${true} description=${description} />`
+    html`<${Toast} busy=${true} title=${title} />`
   );
 
   return outcome;
@@ -110,11 +99,12 @@ async function writeImageFile(
     `[export-${format.toLowerCase()}] the document could not be exported`,
     failure.error
   );
-  openToast(
-    emitter,
-    localized('exportImage.exportFailed', { format }),
-    localized('exportImage.seeConsole')
-  );
+  openStatusToast(emitter, {
+    key: `exportImage.exportFailed:${format}`,
+    tone: 'error',
+    title: localized('exportImage.exportFailed', { format }),
+    description: localized('exportImage.seeConsole'),
+  });
   return false;
 }
 
@@ -150,11 +140,12 @@ export async function exportImagePng(
   );
 
   if (written && reduction) {
-    openToast(
-      emitter,
-      localized('exportImage.exportedReduced'),
-      describeReduction(reduction)
-    );
+    openStatusToast(emitter, {
+      key: 'exportImage.exportedReduced',
+      tone: 'success',
+      title: localized('exportImage.exportedReduced'),
+      description: describeReduction(reduction),
+    });
   }
 }
 
@@ -217,22 +208,28 @@ export async function copyImagePng(
       '[export-png] the image could not be copied',
       renderError ?? failure.error
     );
-    openToast(
-      emitter,
-      localized('exportImage.copyFailed'),
-      localized('exportImage.saveAsPng')
-    );
+    openStatusToast(emitter, {
+      key: 'exportImage.copyFailed',
+      tone: 'error',
+      title: localized('exportImage.copyFailed'),
+      description: localized('exportImage.saveAsPng'),
+    });
     return;
   }
 
   if (reduction) {
-    openToast(
-      emitter,
-      localized('exportImage.copiedReduced'),
-      describeReduction(reduction)
-    );
+    openStatusToast(emitter, {
+      key: 'exportImage.copiedReduced',
+      tone: 'success',
+      title: localized('exportImage.copiedReduced'),
+      description: describeReduction(reduction),
+    });
     return;
   }
 
-  openToast(emitter, localized('exportImage.copied'));
+  openStatusToast(emitter, {
+    key: 'exportImage.copied',
+    tone: 'success',
+    title: localized('exportImage.copied'),
+  });
 }

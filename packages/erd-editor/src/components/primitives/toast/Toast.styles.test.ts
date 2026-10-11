@@ -37,7 +37,7 @@ describe('Toast.styles', () => {
     expect(text).not.toMatch(/margin-(left|right)/);
   });
 
-  it('paints the ring in the active color over the toast border, turning while busy', () => {
+  it('paints the indicator in the active color, the ring over the toast border, turning while busy', () => {
     const text = staticText(styles.indicator);
     expect(text).toContain('color: var(--active)');
     expect(text).toContain("& [data-part='track']");
@@ -46,6 +46,14 @@ describe('Toast.styles', () => {
     expect(text).toContain('transition: stroke-dashoffset');
     expect(text).toContain('&[data-busy] svg');
     expect(text).toContain('@keyframes toastSpin');
+  });
+
+  it('paints a tone in its own toast token', () => {
+    const text = staticText(styles.indicator);
+    expect(text).toContain("&[data-tone='success']");
+    expect(text).toContain('color: var(--toast-success)');
+    expect(text).toContain("&[data-tone='error']");
+    expect(text).toContain('color: var(--toast-error)');
   });
 
   it('spaces the stacked text rows apart from each other', () => {

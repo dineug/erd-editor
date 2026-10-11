@@ -1,11 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import {
-  DOMTemplateLiterals,
-  FC,
-  observable,
-  onMounted,
-  watch,
-} from '@dineug/r-html';
+import { FC, observable, onMounted, watch } from '@dineug/r-html';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
@@ -14,12 +8,12 @@ import { localized } from '@/components/localized/Localized';
 import Dialog, {
   DIALOG_STACK_BELOW,
 } from '@/components/primitives/dialog/Dialog';
-import Toast from '@/components/primitives/toast/Toast';
+import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { openMapColumnsAction, openToastAction } from '@/utils/emitter';
+import { openMapColumnsAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import {
   buildMapColumns,
@@ -84,11 +78,10 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
     store.dispatch(changeOpenMapAction({ [Open.mapColumns]: false }));
   };
 
-  const toast = (title: DOMTemplateLiterals) => {
-    app.value.emitter.emit(
-      openToastAction({ message: <Toast title={title} /> })
-    );
-  };
+  const closedKey = (closed: MapColumnsClosed) =>
+    closed.reason === 'relationshipRemoved'
+      ? 'mapColumns.closedRelationshipRemoved'
+      : `mapColumns.closedTableRemoved:${closed.tableId}`;
 
   const closedText = (closed: MapColumnsClosed) => {
     if (closed.reason === 'relationshipRemoved') {
@@ -129,7 +122,10 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
 
     current.session = null;
     close();
-    toast(closedText(built.closed));
+    openStatusToast(app.value.emitter, {
+      key: closedKey(built.closed),
+      title: closedText(built.closed),
+    });
   };
 
   const update = (
@@ -159,7 +155,12 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
     const { store } = app.value;
     store.dispatch(
       mapColumnsAction$(view.draft, {
-        onRefuse: () => toast(localized('mapColumns.failed')),
+        onRefuse: () =>
+          openStatusToast(app.value.emitter, {
+            key: 'mapColumns.failed',
+            tone: 'error',
+            title: localized('mapColumns.failed'),
+          }),
       })
     );
     close();

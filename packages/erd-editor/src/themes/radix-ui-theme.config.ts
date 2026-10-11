@@ -74,6 +74,17 @@ export const ThemeConfig: Theme = {
 
   toastBackground: 'gray-2',
   toastBorder: 'gray-6',
+  // Step 11 is the text step, so the mark of a done or failed toast reads on
+  // the gray-2 toast in either appearance.
+  toastSuccess: `custom-green--11`,
+  toastError: `custom-red--11`,
+
+  findReplaceError: `custom-red--11`,
+
+  mapColumnsError: `custom-red--11`,
+
+  schemaSqlWarningBackground: `custom-red--4`,
+  schemaSqlWarningForeground: `custom-red--11`,
 
   dragSelectBackground: 'accent-5',
   dragSelectBorder: 'accent-8',

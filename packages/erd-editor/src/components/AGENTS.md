@@ -57,6 +57,13 @@
 - **Find and Replace draws `text-search`.** The command draws it wherever it shows: the toolbar button, the context menu and the palette row (an owner decision). The panel's own Replace button keeps `replace`.
 - **Remove a glyph from `icons.ts` when unused.** A glyph that goes out of use leaves `primitives/icon/icons.ts`, and the bundle, with it. `primitives/icon/icons.test.ts` fails on a registered icon no module names.
 
+### Toasts
+
+- **A toast's one line is its title.** `primitives/toast/Toast.tsx` takes a second line as its description, so every toast reads in one size whatever it reports.
+- **Report how something ended through `openStatusToast`.** `toast-container/openStatusToast.tsx` opens it with a `tone`: `success` draws `check` in `--toast-success`, `error` draws `triangle-alert` in `--toast-error`, and no tone draws no mark. A copy's outcome goes through `reportCopy` beside it.
+- **Key a status toast by its message and values.** The same key opened again replaces the toast still up (`ToastContainer.tsx`), so a press repeated shows one toast. A key also names the values the message shows (`feedback.importOnly:sql`), so two different reports both stay up.
+- **Something still running shows lucide's turning `loader-circle`,** its text with no trailing ellipsis (`busy`). A `progress` fills a ring instead.
+
 ## Testing Requirements
 
 - **A component spec mounts through `src/__test-utils__`.** It uses `mountAndFlush` and `flush`.

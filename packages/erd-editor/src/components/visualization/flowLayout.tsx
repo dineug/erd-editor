@@ -7,7 +7,7 @@ import {
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
 import { localized } from '@/components/localized/Localized';
-import Toast from '@/components/primitives/toast/Toast';
+import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { CANVAS_ZOOM_MAX } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { SharedStreamActionTypes, StreamActionTypes } from '@/engine/actions';
@@ -311,13 +311,11 @@ async function requestFlowLayout(
     console.warn('[visualization] no flow layout came back', error);
     if (cancelled) return;
 
-    emitter.emit(
-      openToastAction({
-        message: (
-          <Toast description={localized('common.toast.couldNotPlaceTables')} />
-        ),
-      })
-    );
+    openStatusToast(emitter, {
+      key: 'common.toast.couldNotPlaceTables',
+      tone: 'error',
+      title: localized('common.toast.couldNotPlaceTables'),
+    });
   }
 }
 

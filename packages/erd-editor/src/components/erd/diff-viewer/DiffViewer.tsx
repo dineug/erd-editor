@@ -79,7 +79,7 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
       close,
       message: (
         <Toast
-          description={localized('feedback.diffViewer')}
+          title={localized('feedback.diffViewer')}
           action={
             <Button
               size="1"

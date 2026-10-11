@@ -379,7 +379,7 @@ describe('AutomaticTablePlacement', () => {
       expect(toasts[0].close).toBeInstanceOf(Promise);
 
       const container = await renderToast(toasts[0]);
-      expect(container.textContent).toContain('Placing tables… 0%');
+      expect(container.textContent).toContain('Placing tables 0%');
       expect(
         Array.from(container.querySelectorAll('button')).map(el =>
           el.textContent?.trim()
@@ -680,21 +680,21 @@ describe('AutomaticTablePlacement', () => {
 
       const container = await renderToastIn(toasts[0], i18n);
 
-      expect(container.textContent).toContain('ja:Placing tables… 0%');
+      expect(container.textContent).toContain('ja:Placing tables 0%');
       expect(buttonTexts(container)).toEqual(['ja:Apply', 'ja:Cancel']);
 
       Object.assign(i18n, createI18n('he-IL', pseudoMessages('he')));
       await flush();
 
       expect(container.textContent).toContain(
-        'he:Placing tables… \u20680\u2069%'
+        'he:Placing tables \u20680\u2069%'
       );
       expect(buttonTexts(container)).toEqual(['he:Apply', 'he:Cancel']);
     });
 
     it('words the progress in English when it is given no language', () => {
       expect(placementDescription({ progress: 0.426 })).toBe(
-        'Placing tables… 43%'
+        'Placing tables 43%'
       );
     });
 

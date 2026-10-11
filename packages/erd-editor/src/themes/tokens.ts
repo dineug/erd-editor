@@ -69,6 +69,15 @@ export type Theme = {
 
   toastBackground: string;
   toastBorder: string;
+  toastSuccess: string;
+  toastError: string;
+
+  findReplaceError: string;
+
+  mapColumnsError: string;
+
+  schemaSqlWarningBackground: string;
+  schemaSqlWarningForeground: string;
 
   dragSelectBackground: string;
   dragSelectBorder: string;
@@ -165,6 +174,15 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
 
   'toastBackground',
   'toastBorder',
+  'toastSuccess',
+  'toastError',
+
+  'findReplaceError',
+
+  'mapColumnsError',
+
+  'schemaSqlWarningBackground',
+  'schemaSqlWarningForeground',
 
   'dragSelectBackground',
   'dragSelectBorder',
