@@ -11,6 +11,7 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__';
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   MapSeedColumn,
   seedMapRelationship,
@@ -214,6 +215,16 @@ describe('MapColumnsDialog opening and closing', () => {
     expect(dialog()).toBeNull();
 
     await openCreate();
+    const close =
+      root().querySelector<HTMLButtonElement>('.map-columns-close')!;
+    expect(close.getAttribute('aria-label')).toBe('Close');
+    expect(close.getAttribute('title')).toBe('Close (ESC)');
+    expect(iconNameOf(close)).toBe('x');
+    close.click();
+    await flush();
+    expect(isOpen()).toBe(false);
+
+    await openCreate();
     dialog()!.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
     );
@@ -359,6 +370,9 @@ describe('MapColumnsDialog creating a relationship', () => {
     });
     await openCreate();
     expect(notes()).toEqual(['users_id becomes int']);
+    const note = root().querySelector('.map-columns-note')!;
+    expect(note.classList.contains('changes')).toBe(true);
+    expect(iconNameOf(note)).toBe('refresh-cw');
 
     confirmButton().click();
     await flush();
@@ -487,7 +501,7 @@ describe('MapColumnsDialog creating a relationship', () => {
     await openCreate();
 
     expect(referencesSelect()).toBeNull();
-    expect(parentCells()[2]).toBe('emailvarchar');
+    expect(parentCells()[3]).toBe('emailvarchar');
     expect(rowSelects()[0].value).toBe('column:o_mail');
   });
 
@@ -517,6 +531,11 @@ describe('MapColumnsDialog creating a relationship', () => {
     await openCreate();
     expect(rowSelects().map(select => select.value)).toEqual(['', '']);
     expect(confirmButton().disabled).toBe(true);
+    // The empty rows are what keeps Map off, and the line under them says so.
+    expect(message()?.textContent).toBe(
+      'Pick a foreign key column for every referenced column'
+    );
+    expect(message()?.classList.contains('error')).toBe(false);
 
     await choose(rowSelects()[0], 'column:c_x');
 
@@ -527,6 +546,10 @@ describe('MapColumnsDialog creating a relationship', () => {
       Array.from(second.options).find(({ value }) => value === 'column:c_x')
         ?.disabled
     ).toBe(true);
+
+    await choose(second, 'column:c_y');
+    expect(message()).toBeNull();
+    expect(confirmButton().disabled).toBe(false);
   });
 
   it('names each row’s list after the key column it maps, so the lists of a composite key differ', async () => {
@@ -609,9 +632,10 @@ describe('MapColumnsDialog creating a relationship', () => {
     expect(
       root().querySelector('.map-columns-rows')?.classList.contains('stacked')
     ).toBe(false);
-    expect(parentCells().slice(0, 2)).toEqual([
-      'Referenced column',
-      'Foreign key column',
+    expect(parentCells().slice(0, 3)).toEqual([
+      'usersReferenced column',
+      '',
+      'ordersForeign key column',
     ]);
 
     app.store.dispatchSync(changeViewportAction({ width: 600, height: 800 }));
@@ -818,9 +842,10 @@ describe('MapColumnsDialog / language', () => {
       'ko:Primary Key',
       'ko:Unique: email',
     ]);
-    expect(parentCells().slice(0, 2)).toEqual([
-      'ko:Referenced column',
-      'ko:Foreign key column',
+    expect(parentCells().slice(0, 3)).toEqual([
+      'usersko:Referenced column',
+      '',
+      'ordersko:Foreign key column',
     ]);
     const [list] = rowLists();
     expect(accessibleName(list)).toBe('ko:Foreign key column id');

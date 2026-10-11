@@ -369,6 +369,7 @@ export const heIL = {
   'mapColumns.referencedColumn': 'עמודת יעד',
   'mapColumns.foreignKeyColumn': 'עמודת מפתח זר',
   'mapColumns.pickColumn': 'בחירת עמודה',
+  'mapColumns.pickEveryColumn': 'יש לבחור עמודת מפתח זר לכל עמודת יעד',
   'mapColumns.newColumn': 'עמודה חדשה: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · בשימוש',

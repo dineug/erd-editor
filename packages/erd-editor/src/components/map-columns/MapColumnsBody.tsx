@@ -6,8 +6,10 @@ import { useAppContext } from '@/components/appContext';
 import { relationshipTypeName } from '@/components/erd/erd-context-menu/menus/relationshipMenus';
 import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
+import Icon from '@/components/primitives/icon/Icon';
 import Select from '@/components/primitives/select/Select';
 import { Column, Table } from '@/internal-types';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import {
   type CandidateKey,
   type ColumnPick,
@@ -53,6 +55,8 @@ const isBlank = (name: string) => !name.trim();
 
 type Message = { text: string; error: boolean };
 
+type TypeNoteView = { text: string; changes: boolean };
+
 /**
  * The body of Map Columns: the parent's key, a row per key column with a list
  * of the child's columns, one line saying what stands in the way, and Cancel
@@ -77,7 +81,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     return t('mapColumns.unique', { column: nameOf(column, i18n.value) });
   };
 
-  const mappingMessage = (): Message | null => {
+  const mappingMessage = (emptyIndex: number): Message | null => {
     const { issues, notice, keyId, parentTable } = props.view;
     const { t } = i18n.value;
     const table = nameOf(parentTable, i18n.value);
@@ -102,11 +106,14 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
       case 'addKeyToFix':
         return { text: t('mapColumns.addKeyToFix', { table }), error: false };
       default:
-        return null;
+        // An empty row is the one thing left that keeps the button off.
+        return emptyIndex === -1
+          ? null
+          : { text: t('mapColumns.pickEveryColumn'), error: false };
     }
   };
 
-  const typeNote = (row: MappingRowView): string | null => {
+  const typeNote = (row: MappingRowView): TypeNoteView | null => {
     if (
       row.invalid ||
       row.removedParent ||
@@ -127,15 +134,32 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
 
     const { t } = i18n.value;
     return note.kind === 'becomes'
-      ? t('mapColumns.becomesType', {
-          column: nameOf(child, i18n.value),
-          dataType: note.dataType,
-        })
-      : t('mapColumns.typesDiffer', {
-          parentType: note.parentType,
-          childType: note.childType,
-        });
+      ? {
+          text: t('mapColumns.becomesType', {
+            column: nameOf(child, i18n.value),
+            dataType: note.dataType,
+          }),
+          changes: true,
+        }
+      : {
+          text: t('mapColumns.typesDiffer', {
+            parentType: note.parentType,
+            childType: note.childType,
+          }),
+          changes: false,
+        };
   };
+
+  /** A side of the mapping headed by its table, so either column reads as the table it is in. */
+  const tableHeading = (table: Table, role: string) => (
+    <div class={styles.heading}>
+      <Icon class={styles.headingIcon} name="table-2" size={14} />
+      <span class={styles.tableName} prop:dir="auto">
+        {nameOf(table, i18n.value)}
+      </span>
+      <span class={styles.role}>{role}</span>
+    </div>
+  );
 
   const parentCell = (row: MappingRowView, index: number) => {
     const { t } = i18n.value;
@@ -250,7 +274,8 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
 
   return () => {
     const { view, mode, stacked } = props;
-    const { t } = i18n.value;
+    const { t, dir } = i18n.value;
+    const { keyBindingMap } = app.value;
     const {
       parentTable,
       childTable,
@@ -262,10 +287,12 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
       changedRemotely,
       canConfirm,
     } = view;
-    const message = mappingMessage();
     const emptyIndex = rows.findIndex(
       row => !row.invalid && row.parentColumnId !== null && !row.pick
     );
+    const message = mappingMessage(emptyIndex);
+    // The arrow runs from the parent to the child, whichever side each stands on.
+    const arrow = dir === 'rtl' ? 'arrow-left' : 'arrow-right';
     const confirmText = t(
       mode === 'create' ? 'mapColumns.map' : 'mapColumns.save'
     );
@@ -275,7 +302,22 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
         class={['map-columns', styles.body]}
         style={{ 'color-scheme': props.isDarkMode ? 'dark' : 'light' }}
       >
-        <h2 class={styles.title}>{t('mapColumns.title')}</h2>
+        <div class={styles.header}>
+          <h2 class={styles.title}>{t('mapColumns.title')}</h2>
+          <button
+            class={['map-columns-close', styles.close]}
+            type="button"
+            aria-label={t('common.close')}
+            title={toShortcutTitle(
+              keyBindingMap,
+              t('common.close'),
+              KeyBindingName.stop
+            )}
+            on:click={props.onCancel}
+          >
+            <Icon name="x" size={14} />
+          </button>
+        </div>
         <div class={['map-columns-subtitle', styles.subtitle]}>
           {t('mapColumns.subtitle', {
             parent: nameOf(parentTable, i18n.value),
@@ -312,12 +354,9 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
           <div class={['map-columns-rows', styles.grid, { stacked }]}>
             {stacked ? null : (
               <>
-                <div class={styles.heading}>
-                  {t('mapColumns.referencedColumn')}
-                </div>
-                <div class={styles.heading}>
-                  {t('mapColumns.foreignKeyColumn')}
-                </div>
+                {tableHeading(parentTable, t('mapColumns.referencedColumn'))}
+                <div />
+                {tableHeading(childTable, t('mapColumns.foreignKeyColumn'))}
               </>
             )}
             {rows.map((row, index) => {
@@ -325,9 +364,22 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
               return (
                 <>
                   {parentCell(row, index)}
+                  <Icon class={styles.arrow} name={arrow} size={14} />
                   {childSelect(row, index, childTable, index === emptyIndex)}
                   {note ? (
-                    <div class={['map-columns-note', styles.note]}>{note}</div>
+                    <div
+                      class={[
+                        'map-columns-note',
+                        styles.note,
+                        { changes: note.changes },
+                      ]}
+                    >
+                      <Icon
+                        name={note.changes ? 'refresh-cw' : 'triangle-alert'}
+                        size={12}
+                      />
+                      <span>{note.text}</span>
+                    </div>
                   ) : null}
                 </>
               );

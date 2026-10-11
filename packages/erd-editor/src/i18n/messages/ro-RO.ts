@@ -383,6 +383,8 @@ export const roRO = {
   'mapColumns.referencedColumn': 'Coloană referită',
   'mapColumns.foreignKeyColumn': 'Coloană cheie străină',
   'mapColumns.pickColumn': 'Alegeți o coloană',
+  'mapColumns.pickEveryColumn':
+    'Alegeți o coloană cheie străină pentru fiecare coloană referită',
   'mapColumns.newColumn': 'Coloană nouă: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · în uz',

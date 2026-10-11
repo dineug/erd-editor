@@ -377,6 +377,8 @@ export const nlNL = {
   'mapColumns.referencedColumn': 'Kolom waarnaar wordt verwezen',
   'mapColumns.foreignKeyColumn': 'Kolom met refererende sleutel',
   'mapColumns.pickColumn': 'Kies een kolom',
+  'mapColumns.pickEveryColumn':
+    'Kies een kolom met refererende sleutel voor elke kolom waarnaar wordt verwezen',
   'mapColumns.newColumn': 'Nieuwe kolom: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · in gebruik',

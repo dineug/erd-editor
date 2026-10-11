@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`src/components/map-columns/` holds Map Columns, the dialog that maps a parent table's key onto a child table's columns. Its DOM-free half is `src/utils/map-columns/`: the keys a parent offers, the rows over a session, the checks and the batch a mapping writes. This file also holds `relationship.changeColumns`, the action Map Columns writes when it edits a relationship, and how that action merges between peers. Other nested files touch the same feature: `src/components/erd/AGENTS.md` (the buttons that open it during a draw), `src/components/export-image/AGENTS.md` (the shared modal it is built on), `src/engine/AGENTS.md` (foreign key names, the type of related existing columns, the foreign key bits), `src/i18n/AGENTS.md` (text direction), `src/components/find-replace/AGENTS.md` (the panel standing aside under it) and `src/components/primitives/AGENTS.md` (the native list in `select/Select.tsx` and the 2 px ring on Map Columns' lists). A change here keeps the owner decisions of 2026-10-06 and a mapping that converges on every peer.
+`src/components/map-columns/` holds Map Columns, the dialog that maps a parent table's key onto a child table's columns. Its DOM-free half is `src/utils/map-columns/`: the keys a parent offers, the rows over a session, the checks and the batch a mapping writes. This file also holds `relationship.changeColumns`, the action Map Columns writes when it edits a relationship, and how that action merges between peers. Other nested files touch the same feature: `src/components/erd/AGENTS.md` (the buttons that open it during a draw), `src/components/export-image/AGENTS.md` (the shared modal it is built on), `src/engine/AGENTS.md` (foreign key names, the type of related existing columns, the foreign key bits), `src/i18n/AGENTS.md` (text direction), `src/components/find-replace/AGENTS.md` (the panel it closes as it opens) and `src/components/primitives/AGENTS.md` (the native list in `select/Select.tsx` and the 2 px ring on Map Columns' lists). A change here keeps the owner decisions of 2026-10-06 and a mapping that converges on every peer.
 
 ## Making a Change
 
@@ -77,6 +77,13 @@
 
 - **Built from the document on every render.** So the dialog follows a peer's edit and keeps what the reader picked. It says when the relationship it edits changed meanwhile.
 - **It closes once what it maps is gone.** It closes with a toast once a table or the relationship it maps is gone.
+
+### The layout
+
+- **The layout follows the owner decisions of 2026-10-11.** The box is 600 px at most, with the editor's `x` tool beside the title (`src/components/AGENTS.md`, Closing a dialog or panel).
+- **Each side is headed by its table.** The two headings carry `table-2`, the table's name and the side's role, and an arrow stands between a parent column and its list. The arrow points from the parent to the list, leftwards under a right-to-left language. Stacked, the headings go and the arrow leads the list under its parent.
+- **A type note stands under the list it is about.** It is the child column's: `refresh-cw` in the accent marks the type the mapping writes, `triangle-alert` in `--map-columns-error` a type it leaves differing.
+- **An empty row says what keeps Map off.** With no other line to show, a row left to pick shows `mapColumns.pickEveryColumn`. A disabled Map or Save turns gray, so it never reads as Cancel beside it.
 
 ### Text and direction
 

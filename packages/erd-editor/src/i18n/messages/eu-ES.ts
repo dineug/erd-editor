@@ -374,6 +374,8 @@ export const euES = {
   'mapColumns.referencedColumn': 'Erreferentziako zutabea',
   'mapColumns.foreignKeyColumn': 'Gako arrotzaren zutabea',
   'mapColumns.pickColumn': 'Aukeratu zutabe bat',
+  'mapColumns.pickEveryColumn':
+    'Aukeratu gako arrotzaren zutabe bat erreferentziako zutabe bakoitzerako',
   'mapColumns.newColumn': 'Zutabe berria: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · erabileran',

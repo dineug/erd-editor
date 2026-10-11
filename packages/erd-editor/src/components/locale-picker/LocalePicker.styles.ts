@@ -23,11 +23,48 @@ export const root = css`
   ${floatingShadow};
 `;
 
+/* The title and the close button on one line, the button at the end the line ends at. */
+export const header = css`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-inline-end: 4px;
+`;
+
 export const title = css`
   flex-shrink: 0;
   padding: 4px 8px 8px;
   color: var(--active);
   ${typography.normal};
+`;
+
+/**
+ * A 26px square tool tinted under the pointer, as the editor's other panels
+ * close; the panel's own keys keep Space and Enter from the canvas.
+ */
+export const close = css`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  color: var(--foreground);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--active);
+    background-color: var(--context-menu-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--input-active);
+    outline-offset: 1px;
+  }
 `;
 
 /* Scrolls a row into view below the System row pinned at its top, a 32px row and a 9px rule. */

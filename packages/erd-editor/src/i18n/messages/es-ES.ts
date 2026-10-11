@@ -382,6 +382,8 @@ export const esES = {
   'mapColumns.referencedColumn': 'Columna referenciada',
   'mapColumns.foreignKeyColumn': 'Columna de clave externa',
   'mapColumns.pickColumn': 'Elegir una columna',
+  'mapColumns.pickEveryColumn':
+    'Elegir una columna de clave externa para cada columna referenciada',
   'mapColumns.newColumn': 'Columna nueva: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · en uso',

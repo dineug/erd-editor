@@ -24,6 +24,7 @@ import {
   type Mounted,
   provideI18n,
 } from '@/__test-utils__';
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   MapSeedColumn,
   seedMapRelationship,
@@ -310,7 +311,9 @@ describe('Map Columns on a real keyboard', () => {
     const controls = Array.from(
       box(fixture)!.querySelectorAll<HTMLElement>('select, button')
     );
-    expect(controls).toHaveLength(4);
+    // The close button, References, the row's list, Cancel and Map.
+    expect(controls).toHaveLength(5);
+    expect(controls[0].classList.contains('map-columns-close')).toBe(true);
     controls[0].focus();
 
     for (const control of [...controls.slice(1), controls[0]]) {
@@ -539,10 +542,12 @@ describe('Map Columns editing a stored mapping', () => {
     const rows = fixture.mounted.container.querySelector('.map-columns-rows')!;
     expect(rows.classList.contains('stacked')).toBe(true);
     expect(rows.textContent).not.toContain('Referenced column');
-    const [parent, select] = Array.from(rows.children) as HTMLElement[];
+    const [parent, arrow, select] = Array.from(rows.children) as HTMLElement[];
     expect(select.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       parent.getBoundingClientRect().bottom
     );
+    // The arrow leads the list, so the list reads as the parent's.
+    expect(iconNameOf(arrow)).toBe('arrow-right');
   });
 });
 
@@ -790,15 +795,28 @@ describe('Map Columns in a right-to-left language', () => {
     expect(arrow.left).toBeGreaterThan(childName.right);
 
     const rows = dialog.querySelector('.map-columns-rows')!;
-    const [referenced, foreignKey, parent, listBox] = Array.from(
+    const [referenced, , foreignKey, parent, arrowIcon, listBox] = Array.from(
       rows.children
     ) as HTMLElement[];
     const list = listBox.querySelector('select')!;
-    expect(referenced.textContent).toBe(he['mapColumns.referencedColumn']);
+    expect(referenced.textContent).toBe(
+      `users${he['mapColumns.referencedColumn']}`
+    );
+    expect(foreignKey.textContent).toBe(
+      `orders${he['mapColumns.foreignKeyColumn']}`
+    );
     expect(referenced.getBoundingClientRect().left).toBeGreaterThan(
       foreignKey.getBoundingClientRect().right
     );
     expect(parent.getBoundingClientRect().left).toBeGreaterThan(
+      list.getBoundingClientRect().right
+    );
+    // The arrow still runs from the parent to the list, leftwards here.
+    expect(iconNameOf(arrowIcon)).toBe('arrow-left');
+    expect(parent.getBoundingClientRect().left).toBeGreaterThan(
+      arrowIcon.getBoundingClientRect().right
+    );
+    expect(arrowIcon.getBoundingClientRect().left).toBeGreaterThan(
       list.getBoundingClientRect().right
     );
     // the list's chevron at its end, which is its left in this language
@@ -842,7 +860,7 @@ describe('Map Columns in a right-to-left language', () => {
     ]);
 
     const dataType = dialog.querySelector(
-      '.map-columns-rows > div:nth-child(3) > span:last-child'
+      '.map-columns-rows > div:nth-child(4) > span:last-child'
     )!;
     expect(dataType.textContent).toBe('varchar(36)');
     const [open, close] = boxesOfWords(dataType, ['(', ')']);
@@ -864,12 +882,20 @@ describe('Map Columns where its styles are live', () => {
     };
     expect(shadow.activeElement).toBe(confirm);
 
+    // Tab turns round to the close button, the first control, then the list.
+    await press('{Tab}');
+    expect(shadow.activeElement?.classList.contains('map-columns-close')).toBe(
+      true
+    );
+    const close = ringOf(shadow.activeElement);
     await press('{Tab}');
     expect(shadow.activeElement?.tagName).toBe('SELECT');
     const list = ringOf(shadow.activeElement);
 
     await press('{Shift>}{Tab}{/Shift}');
+    await press('{Shift>}{Tab}{/Shift}');
     expect(shadow.activeElement).toBe(confirm);
+    expect(close).toEqual(ringOf(confirm));
 
     expect(ringOf(confirm)).toEqual(['solid', '2px', '2px']);
     expect(list).toEqual(ringOf(confirm));

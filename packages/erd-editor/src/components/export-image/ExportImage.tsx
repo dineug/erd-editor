@@ -43,12 +43,12 @@ export const EXPORT_SCALES = [1, 2, 3] as const;
 export type ExportScale = (typeof EXPORT_SCALES)[number];
 
 /** The longest side a preview is drawn at, about twice the box it is shown in. */
-export const PREVIEW_MAX_SIDE = 960;
+export const PREVIEW_MAX_SIDE = 1280;
 
 /** How long the toggles rest before the preview is drawn again. */
 export const PREVIEW_DEBOUNCE_MS = 200;
 
-const DIALOG_MAX_WIDTH = 888;
+const DIALOG_MAX_WIDTH = 1024;
 
 /** One opening of the dialog: the document and palette as they were then, and its previews. */
 type Session = {
@@ -222,7 +222,12 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     };
     view.measured = false;
 
-    store.dispatch(changeOpenMapAction({ [Open.exportImage]: true }));
+    store.dispatch(
+      changeOpenMapAction({
+        [Open.exportImage]: true,
+        [Open.findReplace]: false,
+      })
+    );
     showPreview(0);
   };
 
@@ -394,11 +399,13 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                     buttonStyles.button,
                     buttonStyles.solid,
                     buttonStyles.size2,
+                    styles.action,
                   ]}
                   type="button"
                   data-autofocus="true"
                   on:click={handleExportPng}
                 >
+                  <Icon name="download" size={14} />
                   PNG
                 </button>
                 <button
@@ -406,10 +413,12 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                     buttonStyles.button,
                     buttonStyles.soft,
                     buttonStyles.size2,
+                    styles.action,
                   ]}
                   type="button"
                   on:click={handleExportSvg}
                 >
+                  <Icon name="download" size={14} />
                   SVG
                 </button>
                 <button
@@ -417,10 +426,12 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
                     buttonStyles.button,
                     buttonStyles.soft,
                     buttonStyles.size2,
+                    styles.action,
                   ]}
                   type="button"
                   on:click={handleCopy}
                 >
+                  <Icon name="copy" size={14} />
                   {t('exportImage.copyToClipboard')}
                 </button>
               </div>

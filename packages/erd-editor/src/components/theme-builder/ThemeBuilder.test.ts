@@ -2,6 +2,7 @@ import { html, observable } from '@dineug/r-html';
 import { get } from 'es-toolkit/compat';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   createTestI18n,
@@ -27,6 +28,7 @@ import {
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { openThemeBuilderAction } from '@/utils/emitter';
+import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 let mounted: Mounted | null = null;
@@ -341,6 +343,49 @@ describe('ThemeBuilder', () => {
   });
 
   describe('shortcut handling', () => {
+    it('closes on its close button, named for the stop key, handing the keyboard back', async () => {
+      const { app } = await setup();
+      const focus = vi.fn();
+      document.body.addEventListener(InternalEventType.focus, focus);
+      const close = root().querySelector<HTMLButtonElement>(
+        '.theme-builder-close'
+      )!;
+
+      expect(close.getAttribute('aria-label')).toBe('Close');
+      expect(close.getAttribute('title')).toBe('Close (ESC)');
+      expect(iconNameOf(close)).toBe('x');
+
+      close.click();
+      await flush();
+      document.body.removeEventListener(InternalEventType.focus, focus);
+
+      expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(false);
+      expect(focus).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps Space and Enter on its close button from the editor, Escape going on', async () => {
+      await setup();
+      const close = root().querySelector<HTMLButtonElement>(
+        '.theme-builder-close'
+      )!;
+      const reached: string[] = [];
+      const listen = (event: KeyboardEvent) => reached.push(event.key);
+      mounted!.container.addEventListener('keydown', listen);
+
+      for (const init of [
+        { key: ' ', code: 'Space' },
+        { key: 'Enter', code: 'Enter' },
+        { key: 'Escape', code: 'Escape' },
+      ]) {
+        close.dispatchEvent(
+          new KeyboardEvent('keydown', { ...init, bubbles: true })
+        );
+      }
+      mounted!.container.removeEventListener('keydown', listen);
+
+      expect(reached).toEqual(['Escape']);
+    });
+
     it('closes the panel on the stop shortcut', async () => {
       const { app } = await setup();
 
@@ -394,6 +439,17 @@ describe('ThemeBuilder', () => {
 
       expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);
       expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
+    });
+
+    it('closes Find and Replace as it opens', async () => {
+      const { app } = await setup({ open: false });
+      app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+
+      app.emitter.emit(openThemeBuilderAction());
+      await flush();
+
+      expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);
+      expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
     });
 
     it('closes the panel and leaves table properties alone', async () => {

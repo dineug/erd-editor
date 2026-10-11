@@ -16,10 +16,7 @@ import {
   measureAnchors,
   welcomeTiers,
 } from '@/components/erd/welcome-screen/welcomeLayout';
-import {
-  coveredWidth,
-  isPanelShown,
-} from '@/components/find-replace/panelLayout';
+import { isPanelShown } from '@/components/find-replace/panelLayout';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import type { IconName } from '@/components/primitives/icon/icons';
@@ -282,11 +279,7 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
     const { store } = app.value;
     const { viewport, openMap } = store.state.editor;
     const { dir, t } = i18n.value;
-    const covered = coveredWidth(store.state);
-    const tiers = welcomeTiers({
-      width: viewport.width - covered,
-      height: viewport.height,
-    });
+    const tiers = welcomeTiers(viewport);
     const panelUp =
       isPanelShown(store.state) ||
       Boolean(openMap[Open.themeBuilder]) ||
@@ -294,11 +287,7 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
     const rows = state.level === 'import' ? importRows() : topRows();
 
     return (
-      <div
-        class={['welcome-screen', styles.root]}
-        style={{ left: `${covered}px` }}
-        use:ref={ref(root)}
-      >
+      <div class={['welcome-screen', styles.root]} use:ref={ref(root)}>
         {tiers.hints && !panelUp ? (
           <WelcomeHints
             search={state.search}

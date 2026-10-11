@@ -157,7 +157,8 @@
 - **Open focused on the checked row.** The picker opens scrolled to that row. The arrows go round, Home and End jump, and Enter or Space picks.
 - **Stop every bound chord but `PANEL_PASSING_BINDINGS`.** They stop at the picker, as in Find and Replace.
 - **A pick emits `setLocaleOptionAction`.** It closes the picker and hands the keyboard back with `focusEvent`.
-- **The picker and other panels close each other.** Opening the picker closes the theme builder and Table Properties. Opening the theme builder, Find and Replace or the palette closes the picker. `stop` closes it, and so does a press outside it and the toolbar (`handlePress`).
+- **The picker and other panels close each other.** Opening the picker closes the theme builder, Table Properties and Find and Replace. Opening the theme builder, Find and Replace or the palette closes the picker. `stop` closes it, and so does its close button, a press outside it and the toolbar (`handlePress`).
+- **Its close button is the editor's `x` tool** beside the title, named `common.close` with the stop key in its title. It closes as `stop` does and hands the keyboard back with `focusEvent`.
 
 ### The Settings page from outside the tab
 

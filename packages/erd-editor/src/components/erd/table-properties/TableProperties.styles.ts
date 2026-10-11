@@ -1,18 +1,12 @@
 import { css } from '@dineug/r-html';
 
-import {
-  TABLE_PROPERTIES_BODY_PADDING,
-  TOOLBAR_HEIGHT,
-} from '@/constants/layout';
+import { TABLE_PROPERTIES_BODY_PADDING } from '@/constants/layout';
 import { floatingShadow } from '@/styles/elevation.styles';
 import { typography } from '@/styles/typography.styles';
 
-/** The palette's line, 60px under the editor's top edge, measured from the canvas under the toolbar. */
-const PANEL_TOP = 60 - TOOLBAR_HEIGHT;
-
 /**
- * Dims the canvas and hangs the dialog from the palette's line, so switching
- * tabs never moves its top edge.
+ * Dims the canvas and centres the dialog in it, whose fixed height keeps it
+ * still when the tabs switch.
  */
 export const root = css`
   position: absolute;
@@ -20,9 +14,9 @@ export const root = css`
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: ${PANEL_TOP}px 16px 16px;
+  padding: 16px;
 
   &::after {
     content: '';

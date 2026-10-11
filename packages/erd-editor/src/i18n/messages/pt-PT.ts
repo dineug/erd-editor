@@ -384,6 +384,8 @@ export const ptPT = {
   'mapColumns.referencedColumn': 'Coluna referenciada',
   'mapColumns.foreignKeyColumn': 'Coluna de chave externa',
   'mapColumns.pickColumn': 'Escolher uma coluna',
+  'mapColumns.pickEveryColumn':
+    'Escolher uma coluna de chave externa para cada coluna referenciada',
   'mapColumns.newColumn': 'Nova coluna: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · em utilização',

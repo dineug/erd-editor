@@ -366,6 +366,8 @@ export const idID = {
   'mapColumns.referencedColumn': 'Kolom yang dirujuk',
   'mapColumns.foreignKeyColumn': 'Kolom kunci asing',
   'mapColumns.pickColumn': 'Pilih kolom',
+  'mapColumns.pickEveryColumn':
+    'Pilih kolom kunci asing untuk setiap kolom yang dirujuk',
   'mapColumns.newColumn': 'Kolom baru: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · sedang dipakai',

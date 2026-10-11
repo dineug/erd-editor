@@ -357,6 +357,7 @@ export const koKR = {
   'mapColumns.referencedColumn': '참조되는 컬럼',
   'mapColumns.foreignKeyColumn': '외래 키 컬럼',
   'mapColumns.pickColumn': '컬럼 선택',
+  'mapColumns.pickEveryColumn': '참조되는 컬럼마다 외래 키 컬럼을 선택하세요',
   'mapColumns.newColumn': '새 컬럼: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · 사용 중',

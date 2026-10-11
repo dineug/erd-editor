@@ -371,6 +371,8 @@ export const trTR = {
   'mapColumns.referencedColumn': 'Başvurulan sütun',
   'mapColumns.foreignKeyColumn': 'Yabancı anahtar sütunu',
   'mapColumns.pickColumn': 'Bir sütun seçin',
+  'mapColumns.pickEveryColumn':
+    'Başvurulan her sütun için bir yabancı anahtar sütunu seçin',
   'mapColumns.newColumn': 'Yeni sütun: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · kullanımda',

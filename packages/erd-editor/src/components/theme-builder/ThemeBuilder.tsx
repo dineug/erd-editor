@@ -1,4 +1,4 @@
-import { FC, onMounted } from '@dineug/r-html';
+import { FC, nextTick, onMounted } from '@dineug/r-html';
 import { get } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
@@ -22,7 +22,8 @@ import {
   ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import { setThemeOptionsAction } from '@/utils/emitter';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { focusEvent } from '@/utils/internalEvents';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 import * as styles from './ThemeBuilder.styles';
 
@@ -51,6 +52,24 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
     store.dispatch(changeOpenMapAction({ [Open.themeBuilder]: false }));
   };
 
+  /** The close button held the keyboard and leaves with the panel, so the editor takes it back. */
+  const handleCloseButton = () => {
+    handleClose();
+    nextTick(() => {
+      ctx.host.dispatchEvent(focusEvent());
+    });
+  };
+
+  /**
+   * Space is the hand tool's key and Enter opens a focused cell, and the panel
+   * stops no key, so the button keeps both for its press; Escape still closes.
+   */
+  const handleCloseKeydown = (event: KeyboardEvent) => {
+    if (event.code === 'Space' || event.key === 'Enter') {
+      event.stopPropagation();
+    }
+  };
+
   const handleToggle = () => {
     const { store } = app.value;
     const {
@@ -65,6 +84,7 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
         changeOpenMapAction({
           [Open.tableProperties]: false,
           [Open.localePicker]: false,
+          [Open.findReplace]: false,
         })
       );
     }
@@ -105,10 +125,27 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
 
     const { theme } = props;
     const { t } = i18n.value;
+    const { keyBindingMap } = app.value;
 
     return (
       <div class={['theme-builder', styles.root]}>
-        <div class={styles.title}>{t('common.theme')}</div>
+        <div class={styles.header}>
+          <div class={styles.title}>{t('common.theme')}</div>
+          <button
+            class={['theme-builder-close', styles.close]}
+            type="button"
+            aria-label={t('common.close')}
+            title={toShortcutTitle(
+              keyBindingMap,
+              t('common.close'),
+              KeyBindingName.stop
+            )}
+            on:click={handleCloseButton}
+            on:keydown={handleCloseKeydown}
+          >
+            <Icon name="x" size={14} />
+          </button>
+        </div>
         <div class={styles.subTitle}>{t('themeBuilder.accentColor')}</div>
         <div class={styles.palette}>
           {AccentColorList.map(key => (

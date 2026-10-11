@@ -154,12 +154,13 @@ describe('LocalePicker', () => {
       expect(panel()).toBeNull();
     });
 
-    it('closes the theme builder and Table Properties as it opens', async () => {
+    it('closes the theme builder, Table Properties and Find and Replace as it opens', async () => {
       await setup();
       app.store.dispatchSync(
         changeOpenMapAction({
           [Open.themeBuilder]: true,
           [Open.tableProperties]: true,
+          [Open.findReplace]: true,
         })
       );
 
@@ -169,7 +170,27 @@ describe('LocalePicker', () => {
         [Open.localePicker]: true,
         [Open.themeBuilder]: false,
         [Open.tableProperties]: false,
+        [Open.findReplace]: false,
       });
+    });
+
+    it('closes on its close button, named for the stop key, and hands the keyboard back', async () => {
+      await setup();
+      await open();
+      focusEvents = 0;
+      const close = panel()!.querySelector<HTMLButtonElement>(
+        '.locale-picker-close'
+      )!;
+
+      expect(close.getAttribute('aria-label')).toBe('Close');
+      expect(close.getAttribute('title')).toBe('Close (ESC)');
+
+      close.click();
+      await flush();
+
+      expect(isOpen()).toBe(false);
+      expect(panel()).toBeNull();
+      expect(focusEvents).toBe(1);
     });
 
     it('closes on the stop shortcut and hands the keyboard back', async () => {

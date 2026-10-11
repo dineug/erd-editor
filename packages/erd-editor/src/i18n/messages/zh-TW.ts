@@ -349,6 +349,7 @@ export const zhTW = {
   'mapColumns.referencedColumn': '被參照欄位',
   'mapColumns.foreignKeyColumn': '外鍵欄位',
   'mapColumns.pickColumn': '選取欄位',
+  'mapColumns.pickEveryColumn': '請為每個被參照欄位選取一個外鍵欄位',
   'mapColumns.newColumn': '新欄位：{name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · 使用中',

@@ -22,11 +22,41 @@ export const body = css`
   }
 `;
 
+/* The title and the close button on one line, the button at the end the line ends at. */
+export const header = css`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
 export const title = css`
   margin: 0;
   color: var(--active);
   font-weight: var(--font-weight-medium);
   ${fontSize4};
+`;
+
+/**
+ * A 26px square tool tinted under the pointer, as Export image and Table
+ * Properties close. Tab brings its whole focus ring into a box scrolled down.
+ */
+export const close = css`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  color: var(--foreground);
+  cursor: pointer;
+  scroll-margin: 6px;
+
+  &:hover {
+    color: var(--active);
+    background-color: var(--context-menu-hover);
+  }
 `;
 
 export const subtitle = css`
@@ -52,23 +82,52 @@ export const references = css`
   }
 `;
 
-/** The parent column, its list and the note under it; two columns side by side unless stacked. */
+/**
+ * The parent column, an arrow to its list and the note under the list; side by
+ * side unless stacked, where the parent takes a line over the arrow and list.
+ */
 export const grid = css`
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 12px;
   row-gap: 8px;
 
   &.stacked {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 8px;
     row-gap: 4px;
   }
 `;
 
+/* A table's name and the role its columns play, the name cut short first. */
 export const heading = css`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   color: var(--placeholder);
   ${typography.paragraph};
+`;
+
+export const headingIcon = css`
+  flex-shrink: 0;
+`;
+
+export const tableName = css`
+  min-width: 0;
+  color: var(--active);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+export const role = css`
+  flex-shrink: 0;
+`;
+
+export const arrow = css`
+  color: var(--placeholder);
 `;
 
 export const parent = css`
@@ -85,6 +144,7 @@ export const parent = css`
   }
 
   .stacked > & {
+    grid-column: 1 / -1;
     margin-top: 8px;
   }
 `;
@@ -99,12 +159,27 @@ export const dataType = css`
   ${typography.paragraph};
 `;
 
-/** A line under a row, across both columns. */
+/**
+ * A line under the list it is about, whose child column the mapping changes
+ * or leaves of another type, marked so it reads as more than a hint.
+ */
 export const note = css`
-  grid-column: 1 / -1;
+  grid-column: -2 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: -4px;
-  color: var(--placeholder);
+  color: var(--foreground);
   ${typography.paragraph};
+
+  & > .icon {
+    flex-shrink: 0;
+    color: var(--map-columns-error);
+  }
+
+  &.changes > .icon {
+    color: var(--accent-color-11);
+  }
 `;
 
 export const message = css`
@@ -122,8 +197,10 @@ export const actions = css`
   gap: 8px;
   padding-top: 4px;
 
-  & > button:disabled {
-    opacity: 0.4;
+  & > button:disabled,
+  & > button:disabled:hover {
+    color: var(--gray-color-8);
+    background-color: var(--gray-color-3);
     cursor: default;
   }
 `;

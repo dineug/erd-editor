@@ -386,6 +386,8 @@ export const ruRU = {
   'mapColumns.referencedColumn': 'Целевой столбец',
   'mapColumns.foreignKeyColumn': 'Столбец внешнего ключа',
   'mapColumns.pickColumn': 'Выбрать столбец',
+  'mapColumns.pickEveryColumn':
+    'Выберите столбец внешнего ключа для каждого целевого столбца',
   'mapColumns.newColumn': 'Новый столбец: {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · уже используется',

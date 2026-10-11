@@ -389,6 +389,8 @@ export const frFR = {
   'mapColumns.referencedColumn': 'Colonne référencée',
   'mapColumns.foreignKeyColumn': 'Colonne de clé étrangère',
   'mapColumns.pickColumn': 'Choisir une colonne',
+  'mapColumns.pickEveryColumn':
+    'Choisissez une colonne de clé étrangère pour chaque colonne référencée',
   'mapColumns.newColumn': 'Nouvelle colonne : {name}',
   'mapColumns.columnOption': '{name} ({dataType})',
   'mapColumns.columnOptionInUse': '{name} ({dataType}) · déjà utilisée',

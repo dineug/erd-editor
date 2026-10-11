@@ -15,6 +15,9 @@ export const layout = css`
   grid-template-areas:
     'preview header'
     'preview panel';
+  column-gap: 24px;
+  row-gap: 20px;
+  padding: 24px;
 
   &.stacked {
     grid-template-columns: minmax(0, 1fr);
@@ -23,6 +26,7 @@ export const layout = css`
       'header'
       'preview'
       'panel';
+    row-gap: 16px;
   }
 
   & button:focus-visible {
@@ -39,7 +43,10 @@ export const preview = css`
   grid-area: preview;
   position: relative;
   min-width: 0;
-  min-height: 320px;
+  min-height: 400px;
+  border: 1px solid var(--context-menu-border);
+  border-radius: 8px;
+  overflow: hidden;
   background-color: var(--gray-color-2);
   background-image: conic-gradient(
     var(--gray-color-4) 25%,
@@ -51,7 +58,7 @@ export const preview = css`
 
   .stacked > & {
     min-height: 0;
-    height: 200px;
+    height: 240px;
   }
 `;
 
@@ -83,22 +90,13 @@ export const loading = css`
   }
 `;
 
-/* Wide enough for PNG, SVG and Copy to clipboard to share one row. */
 export const panel = css`
   grid-area: panel;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 20px 20px;
-  border-inline-start: 1px solid var(--context-menu-border);
+  gap: 16px;
   color: var(--foreground);
   ${typography.normal};
-
-  .stacked > & {
-    padding-top: 20px;
-    border-inline-start: none;
-    border-top: 1px solid var(--context-menu-border);
-  }
 `;
 
 /**
@@ -112,14 +110,6 @@ export const header = css`
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 20px 0;
-  border-inline-start: 1px solid var(--context-menu-border);
-
-  .stacked > & {
-    padding-bottom: 20px;
-    border-inline-start: none;
-    border-bottom: 1px solid var(--context-menu-border);
-  }
 `;
 
 export const title = css`
@@ -157,7 +147,7 @@ export const row = css`
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 28px;
+  min-height: 32px;
 `;
 
 /* The three scales as one segmented control. */
@@ -169,9 +159,9 @@ export const scales = css`
 `;
 
 export const scale = css`
-  min-width: 40px;
-  height: 26px;
-  padding: 0 8px;
+  min-width: 44px;
+  height: 30px;
+  padding: 0 10px;
   color: var(--foreground);
   cursor: pointer;
   ${typography.paragraph};
@@ -204,10 +194,16 @@ export const warning = css`
   ${typography.paragraph};
 `;
 
+/* Wide enough for PNG, SVG and Copy to clipboard on one row in English; a longer label wraps. */
 export const actions = css`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
   padding-top: 8px;
+`;
+
+/* A button's icon ahead of its label. */
+export const action = css`
+  gap: 6px;
 `;
