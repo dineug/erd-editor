@@ -87,6 +87,7 @@ export const arSA = {
   'contextMenu.show.alternateKey': 'المفتاح البديل',
   'contextMenu.show.referentialActions': 'الإجراءات المرجعية',
   'contextMenu.show.tableGroups': 'مجموعات الجداول',
+  'contextMenu.show.memos': 'الملاحظات',
   'floatingToolbar.hand': 'أداة اليد',
   'floatingToolbar.select': 'أداة التحديد',
   'floatingToolbar.zoomOut': 'تصغير',

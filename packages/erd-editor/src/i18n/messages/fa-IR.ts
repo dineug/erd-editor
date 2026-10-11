@@ -87,6 +87,7 @@ export const faIR = {
   'contextMenu.show.alternateKey': 'کلید جایگزین',
   'contextMenu.show.referentialActions': 'کنش‌های ارجاعی',
   'contextMenu.show.tableGroups': 'گروه‌های جدول',
+  'contextMenu.show.memos': 'یادداشت‌ها',
   'floatingToolbar.hand': 'ابزار دست',
   'floatingToolbar.select': 'ابزار انتخاب',
   'floatingToolbar.zoomOut': 'کوچک‌نمایی',

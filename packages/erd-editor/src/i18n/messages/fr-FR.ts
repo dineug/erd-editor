@@ -89,6 +89,7 @@ export const frFR = {
   'contextMenu.show.alternateKey': 'Clé alternative',
   'contextMenu.show.referentialActions': 'Actions référentielles',
   'contextMenu.show.tableGroups': 'Groupes de tables',
+  'contextMenu.show.memos': 'Mémos',
   'floatingToolbar.hand': 'Main',
   'floatingToolbar.select': 'Sélection',
   'floatingToolbar.zoomOut': 'Zoom arrière',

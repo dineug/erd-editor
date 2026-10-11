@@ -87,6 +87,7 @@ export const heIL = {
   'contextMenu.show.alternateKey': 'מפתח חלופי',
   'contextMenu.show.referentialActions': 'פעולות הפניה',
   'contextMenu.show.tableGroups': 'קבוצות טבלאות',
+  'contextMenu.show.memos': 'פתקים',
   'floatingToolbar.hand': 'יד',
   'floatingToolbar.select': 'בחירה',
   'floatingToolbar.zoomOut': 'התרחקות',

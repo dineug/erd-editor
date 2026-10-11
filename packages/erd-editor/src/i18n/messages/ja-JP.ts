@@ -87,6 +87,7 @@ export const jaJP = {
   'contextMenu.show.alternateKey': '代替キー',
   'contextMenu.show.referentialActions': '参照動作',
   'contextMenu.show.tableGroups': 'テーブルグループ',
+  'contextMenu.show.memos': 'メモ',
   'floatingToolbar.hand': '手のひらツール',
   'floatingToolbar.select': '選択ツール',
   'floatingToolbar.zoomOut': 'ズームアウト',

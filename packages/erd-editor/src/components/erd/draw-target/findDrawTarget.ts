@@ -4,6 +4,7 @@ import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import { stackTablesAndMemos } from '@/konva/scene/stacking';
+import { getVisibleIds } from '@/konva/scene/viewLayout';
 import {
   getCullingRect,
   getSceneTransform,
@@ -72,7 +73,7 @@ export function findDrawTarget(
     );
   const memos = query(collections)
     .collection('memoEntities')
-    .selectByIds(doc.memoIds)
+    .selectByIds(getVisibleIds(state).memoIds)
     .filter(
       memo =>
         isMemoVisible(culling, memo) && containsPoint(getMemoRect(memo), scene)

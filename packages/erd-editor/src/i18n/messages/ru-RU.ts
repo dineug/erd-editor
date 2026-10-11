@@ -88,6 +88,7 @@ export const ruRU = {
   'contextMenu.show.alternateKey': 'Альтернативный ключ',
   'contextMenu.show.referentialActions': 'Ссылочные действия',
   'contextMenu.show.tableGroups': 'Группы таблиц',
+  'contextMenu.show.memos': 'Заметки',
   'floatingToolbar.hand': 'Рука',
   'floatingToolbar.select': 'Выделение',
   'floatingToolbar.zoomOut': 'Уменьшить',

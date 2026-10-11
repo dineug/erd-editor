@@ -168,6 +168,14 @@
   - The table's own color stays on the left edge.
   - A view, the zoomed-out table and a drawn copy wear no tint. A drawn copy is `preview`, the Alt drag's ghost, whose duplicate lands in no group.
 - **`Show.hideTableGroup` takes groups away everywhere.** It hides the boxes, the tints and their room in the content bounds. It is masked out of the table size key and the sort hook (`isPaintOnlyToggle`), so the View Option toggle measures nothing.
+- **`Show.hideMemo` takes memos away everywhere** (View Option's Memos, an owner request of 2026-10-11). `isMemoShown` (`src/utils/memo.ts`) reads it.
+  - `getVisibleIds` gives the document no memo while it is set. So the canvas, a drag and the marquee meet none, and `findDrawTarget` lets a table under one take the draw.
+  - The minimap and the image export draw none. The content bounds leave them no room, so neither do the scroll ranges, a fit or the export box.
+  - Select all takes none. A paste, a duplicate or an Import and Add adds its memos unselected, as hidden memos never stay selected. An append still lands below them, as below hidden groups, since they still stand there.
+  - Find and Replace and the palette's `:` walk no memo (`walkFields`), and a show change runs the search again (`FindTextActionTypes`).
+  - Nothing makes a memo while it is set: the canvas menu, the palette and the welcome screen offer no New Memo, and its chord adds none. An agent's `erd_add_memo` still adds one, hidden.
+  - It is a paint-only toggle beside the other two hide bits, so it measures nothing either.
+- **Hiding memos drops their selection and editor.** `settings.changeShow` setting `Show.hideMemo`, here, by an undo or by a peer, lets go of every selected memo and closes the memo editor (`releaseMemos`, `src/engine/modules/settings/atom.actions.ts`).
 - **The minimap fills group boxes behind marks.** It uses the group's color, or, for a group with no color `toOpaqueHex` reads, the bar's `tableGroupHeaderBackground`. It fills at 0.4 alpha (`FILL_OPACITY` in `minimap/table-group/TableGroup.tsx`), above the body's `TABLE_GROUP_FILL_OPACITY`, since a box a few pixels across shows its color there or not at all. Each table mark takes `table.ui.color` (an owner decision), never its group's.
 
 ### Table group pointer
@@ -320,7 +328,7 @@
 - **It stands over an empty diagram** (`welcome-screen/`, owner decisions of 2026-10-06). `Erd` mounts it between the minimap and the floating toolbar. `Erd` itself is the ERD tab's alone. It shows while all of these hold:
   - `enableWelcomeScreen` is on, and the editor is not readonly, not in zen mode, not taken over and not showing Table Properties.
   - The element is not yet destroyed (`AppContext.lifecycle.destroyed`, which `appDestroy` sets first). So the clear that `destroy()` dispatches raises no screen over the providers it removed.
-  - The document holds no table, no memo and no shown group (`isEmptyDocument`, the content bounds' own `hasContent`). So the map and the scrollbars come as it leaves, the first table, memo or shown group takes it away, and an undo back to none brings it again.
+  - The document holds no table, no shown memo and no shown group (`isEmptyDocument`, the content bounds' own `hasContent`). So the map and the scrollbars come as it leaves, the first table, shown memo or shown group takes it away, and an undo back to none brings it again.
 - **It shows a heading and a menu.** The heading has no logo and no product name.
   - The menu rows are New Table, New Memo, Import, Command Palette and Shortcuts (`requestSettingsPage`).
   - Import swaps in its formats (`createImportMenus`) behind a Back row, which Escape presses too.

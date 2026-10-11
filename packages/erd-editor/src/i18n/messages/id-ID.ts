@@ -88,6 +88,7 @@ export const idID = {
   'contextMenu.show.alternateKey': 'Kunci alternatif',
   'contextMenu.show.referentialActions': 'Tindakan referensial',
   'contextMenu.show.tableGroups': 'Grup tabel',
+  'contextMenu.show.memos': 'Memo',
   'floatingToolbar.hand': 'Tangan',
   'floatingToolbar.select': 'Pilih',
   'floatingToolbar.zoomOut': 'Perkecil',

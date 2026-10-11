@@ -956,6 +956,20 @@ describe('appendSchema', () => {
 });
 
 describe('appendSchemaJSON', () => {
+  it('leaves the memos it adds unselected while memos are hidden', () => {
+    const app = createScreenApp();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+
+    appendSchemaJSON(app, accountsJson());
+
+    const { doc, editor } = app.store.state;
+    expect(doc.memoIds).toHaveLength(1);
+    expect(editor.selectedMap[doc.memoIds[0]]).toBeUndefined();
+    expect(selectedNames(app)).toEqual(['accounts', 'roles']);
+  });
+
   it('adds the tables and memos of a document apart as the file has them, selected', () => {
     const app = createScreenApp();
     const corner = appendCorner(app);

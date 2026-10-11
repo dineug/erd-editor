@@ -88,6 +88,7 @@ export const svSE = {
   'contextMenu.show.alternateKey': 'Alternativ nyckel',
   'contextMenu.show.referentialActions': 'Referensåtgärder',
   'contextMenu.show.tableGroups': 'Tabellgrupper',
+  'contextMenu.show.memos': 'Anteckningar',
   'floatingToolbar.hand': 'Hand',
   'floatingToolbar.select': 'Markera',
   'floatingToolbar.zoomOut': 'Zooma ut',

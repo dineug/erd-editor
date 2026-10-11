@@ -100,7 +100,7 @@ Defines the persisted `.erd` / `.vuerd` document: the v2 and v3 schemas, defensi
 ### Entities
 
 - **Referential actions default to `none`.** A relationship's `onDelete` / `onUpdate` hold a `ReferentialAction`, `none` (1) by default, which writes no clause. A document saved before them loads unset.
-- **Two `Show` bits read inverted.** `Show.hideReferentialAction` (1024) and `Show.hideTableGroup` (2048) read the other way round from every other `Show` bit (owner decisions). Set, the first hides the ON DELETE / ON UPDATE labels the editor draws on connectors, and the second hides the table groups. So a document saved before either, which lacks the bit, shows them. `defaultShow` leaves both out.
+- **Three `Show` bits read inverted.** `Show.hideReferentialAction` (1024), `Show.hideTableGroup` (2048) and `Show.hideMemo` (4096) read the other way round from every other `Show` bit (owner decisions). Set, the first hides the ON DELETE / ON UPDATE labels the editor draws on connectors, the second the table groups and the third the memos. So a document saved before one, which lacks its bit, shows what it names. `defaultShow` leaves all three out.
 - **Table groups live in `collections.tableGroupEntities`.** Each has `name`, `color` and `ui` `x` / `y` / `width` / `height` / `zIndex`. The groups are ordered in `doc.tableGroupIds`.
   - Membership is the table's `groupId`, `''` for none, so a table is in one group at most and a group holds no member list.
   - A `groupId` naming no group in `doc.tableGroupIds` reads as none. That is a rule for the readers, since the parser keeps the id as saved.

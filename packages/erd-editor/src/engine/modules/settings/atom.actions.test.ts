@@ -19,6 +19,7 @@ import { EngineContext } from '@/engine/context';
 import {
   changeDrawTableGroupAction,
   changeViewportAction,
+  editMemoAction,
   editTableGroupAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -841,6 +842,31 @@ describe('settings/atom.actions', () => {
       );
       expect(store.state.editor.selectedMap).toMatchObject({
         g1: SelectType.tableGroup,
+      });
+    });
+  });
+
+  describe('changeShow of the memos', () => {
+    it('lets go of every selected memo and the memo editor as memos are hidden, and of nothing as they show', () => {
+      store.dispatchSync(
+        selectAction({ m1: SelectType.memo, t1: SelectType.table }),
+        editMemoAction({ id: 'm1' })
+      );
+
+      store.dispatchSync(
+        changeShowAction({ show: Show.hideMemo, value: true })
+      );
+
+      expect(bHas(store.state.settings.show, Show.hideMemo)).toBe(true);
+      expect(store.state.editor.selectedMap).toEqual({ t1: SelectType.table });
+      expect(store.state.editor.editMemoId).toBeNull();
+
+      store.dispatchSync(
+        selectAction({ m1: SelectType.memo }),
+        changeShowAction({ show: Show.hideMemo, value: false })
+      );
+      expect(store.state.editor.selectedMap).toMatchObject({
+        m1: SelectType.memo,
       });
     });
   });

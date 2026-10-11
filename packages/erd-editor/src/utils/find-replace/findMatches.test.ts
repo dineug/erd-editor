@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
+import { Show } from '@/constants/schema';
 import { ChangeActionTypes } from '@/engine/actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
 import { ActionType as MemoActionType } from '@/engine/modules/memo/actions';
@@ -10,6 +11,8 @@ import {
   changeMemoValueAction,
   removeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
+import { ActionType as SettingsActionType } from '@/engine/modules/settings/actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import { removeTableAction } from '@/engine/modules/table/atom.actions';
 import { ActionType as ColumnActionType } from '@/engine/modules/table-column/actions';
@@ -138,6 +141,16 @@ describe('findMatches', () => {
     expect(found('user_id|user')).toEqual(found('user|user_id'));
   });
 
+  it('finds nothing in the memos while memos are hidden, as nothing there is seen', () => {
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+
+    expect(
+      places(findMatches(app.store.state, matcherOf('user'), [FindField.memo]))
+    ).toEqual([]);
+  });
+
   it('finds nothing in an empty field', () => {
     expect(
       findMatches(app.store.state, matcherOf('e'), [FindField.tableComment])
@@ -154,6 +167,7 @@ describe('FindTextActionTypes', () => {
       ...Object.values(ColumnActionType),
       ...Object.values(MemoActionType),
       ...Object.values(EditorActionType),
+      ...Object.values(SettingsActionType),
     ]);
     const loads = ['editor.initialLoadJson', 'editor.initialClear'];
 

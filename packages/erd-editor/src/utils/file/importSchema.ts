@@ -25,6 +25,7 @@ import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
 import type { ElkLayoutPoint } from '@/services/elk-layout';
 import { arrayHas } from '@/utils/arrayHas';
+import { isMemoShown } from '@/utils/memo';
 import { closePromise } from '@/utils/promise';
 import { getTableGroupWraps, isTableGroupShown } from '@/utils/tableGroup';
 
@@ -210,8 +211,8 @@ const appendLandingAction$ = ({
     yield selectAction(
       Object.fromEntries([
         ...tableIds.map(id => [id, SelectType.table]),
-        ...memoIds.map(id => [id, SelectType.memo]),
-        // Hidden groups never stay selected, and a drag judges no group then.
+        // Hidden memos and groups never stay selected, and a drag judges no group then.
+        ...(isMemoShown(state) ? memoIds : []).map(id => [id, SelectType.memo]),
         ...(isTableGroupShown(state) ? tableGroupIds : []).map(id => [
           id,
           SelectType.tableGroup,

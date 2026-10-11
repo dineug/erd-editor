@@ -13,6 +13,7 @@ import { Show } from '@/constants/schema';
 import type { Rect } from '@/konva/scene/metrics';
 import { stackedKey, stackTablesAndMemos } from '@/konva/scene/stacking';
 import { bHas } from '@/utils/bit';
+import { isMemoShown } from '@/utils/memo';
 import { isTableGroupShown } from '@/utils/tableGroup';
 
 export type ExportSceneProps = {
@@ -43,7 +44,9 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
 
     const stack = stackTablesAndMemos(
       query(collections).collection('tableEntities').selectByIds(tableIds),
-      query(collections).collection('memoEntities').selectByIds(memoIds)
+      isMemoShown(store.state)
+        ? query(collections).collection('memoEntities').selectByIds(memoIds)
+        : []
     );
 
     const relationships = query(collections)

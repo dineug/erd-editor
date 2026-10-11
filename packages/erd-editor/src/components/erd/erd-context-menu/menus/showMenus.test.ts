@@ -35,6 +35,7 @@ const ALL_MENUS = [
   ...NAME_TO_SHOW.map(([name]) => name),
   'Referential Actions',
   'Table Groups',
+  'Memos',
 ];
 const referentialActions = () =>
   createShowMenus(app, sourceI18n).find(
@@ -42,6 +43,8 @@ const referentialActions = () =>
   );
 const tableGroups = () =>
   createShowMenus(app, sourceI18n).find(menu => menu.name === 'Table Groups');
+const memos = () =>
+  createShowMenus(app, sourceI18n).find(menu => menu.name === 'Memos');
 
 describe('showMenus', () => {
   it('exposes one menu per view option in declaration order', () => {
@@ -104,6 +107,23 @@ describe('showMenus', () => {
       false
     );
     expect(tableGroups()?.checked).toBe(true);
+  });
+
+  it('checks Memos while its hide bit is off, and flips the bit as it is toggled', async () => {
+    expect(memos()?.checked).toBe(true);
+
+    memos()?.onClick();
+    await flush();
+
+    expect(bHas(app.store.state.settings.show, Show.hideMemo)).toBe(true);
+    expect(memos()?.checked).toBe(false);
+    expect(tableGroups()?.checked).toBe(true);
+
+    memos()?.onClick();
+    await flush();
+
+    expect(bHas(app.store.state.settings.show, Show.hideMemo)).toBe(false);
+    expect(memos()?.checked).toBe(true);
   });
 
   it('derives checked from the settings show bitmask', () => {

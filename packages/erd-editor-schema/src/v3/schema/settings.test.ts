@@ -79,6 +79,7 @@ describe('v3/schema/settings', () => {
         columnAlternateKey: 512,
         hideReferentialAction: 1024,
         hideTableGroup: 2048,
+        hideMemo: 4096,
       });
       expect(Object.values(Show).every(isPowerOfTwo)).toBe(true);
     });
@@ -92,10 +93,10 @@ describe('v3/schema/settings', () => {
       expect(mask & ~Show.relationship).toBe(65);
     });
 
-    it('sums all flags to a contiguous 12-bit mask', () => {
+    it('sums all flags to a contiguous 13-bit mask', () => {
       const all = Object.values(Show).reduce((acc, flag) => acc | flag, 0);
 
-      expect(all).toBe(0b111111111111);
+      expect(all).toBe(0b1111111111111);
       expect(all).toBe(2 ** Object.keys(Show).length - 1);
     });
   });

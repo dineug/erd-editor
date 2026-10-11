@@ -46,6 +46,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 
 ### Scopes and options
 
+- **Hidden memos are not searched.** While View Option hides the memos, the walk skips them (`walkFields`), so a match is never one the reader cannot see and Replace All never rewrites one (`src/components/erd/AGENTS.md`, `Show.hideMemo`).
 - **The first opening searches names alone.** In each element it searches table and column names, with Table comments, Column comments and Memos off (`DEFAULT_FIND_FIELDS`, `src/utils/find-replace/findMatches.ts`). A comment or memo is prose a rename should not reach unasked. This is an owner decision, pinned in `FindReplace.test.ts`.
 - **Later openings keep the last scopes and options.** The panel keeps them for the element's life. That includes an opening with no query: the chord, the toolbar button, the palette row and the context menu.
 - **A query handed over resets options and scopes.** It sets the default options and the scopes it names. So the palette's `:` hand-off turns both comments and Memos on. `findMatches` given no fields still reads every kind.

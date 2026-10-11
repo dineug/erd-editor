@@ -18,12 +18,15 @@ import { iconMap } from '@/components/primitives/icon/icons';
 import { Lnb } from '@/components/settings/settings-lnb/SettingsLnb';
 import { takeSettingsPage } from '@/components/settings/settingsPage';
 import { Open } from '@/constants/open';
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, Show } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeViewportAction,
 } from '@/engine/modules/editor/atom.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  changeShowAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { createI18n, type I18n } from '@/i18n/translate';
 import { setImportFileCallback } from '@/utils/file/importFile';
@@ -289,6 +292,21 @@ describe('WelcomeScreen menu', () => {
     expect(app.store.state.doc.tableIds).toHaveLength(1);
     expect({ x, y }).toEqual({ x: placed.x, y: placed.y });
     expect(onFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no New Memo while memos are hidden', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    const { labels } = await setup({ app });
+
+    expect(labels()).toEqual([
+      'New Table',
+      'Import',
+      'Command Palette',
+      'Shortcuts',
+    ]);
   });
 
   it('adds a memo and hands the keyboard back', async () => {

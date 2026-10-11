@@ -11,7 +11,12 @@ import {
 import { AppContext } from '@/components/appContext';
 import { useErdShortcut } from '@/components/erd/useErdShortcut';
 import { Open } from '@/constants/open';
-import { CanvasType, ColumnOption, RelationshipType } from '@/constants/schema';
+import {
+  CanvasType,
+  ColumnOption,
+  RelationshipType,
+  Show,
+} from '@/constants/schema';
 import { History } from '@/engine/history';
 import {
   changeDrawTableGroupAction,
@@ -42,6 +47,7 @@ import {
 } from '@/engine/modules/memo/generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
+  changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -183,6 +189,35 @@ describe('useErdShortcut - creation shortcuts', () => {
     await flush();
 
     expect(app.store.state.doc.memoIds).toHaveLength(1);
+  });
+
+  it('adds no memo while memos are hidden', async () => {
+    const app = await setup();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+
+    shortcut(app, KeyBindingName.addMemo);
+    await flush();
+
+    expect(app.store.state.doc.memoIds).toHaveLength(0);
+  });
+
+  it('selects every table and no memo while memos are hidden', async () => {
+    const app = await setup();
+    const tableId = seedTable(app);
+    shortcut(app, KeyBindingName.addMemo);
+    await flush();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+
+    shortcut(app, KeyBindingName.selectAllTable);
+    await flush();
+
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      [tableId]: 'table',
+    });
   });
 
   it('adds a column to every selected table', async () => {

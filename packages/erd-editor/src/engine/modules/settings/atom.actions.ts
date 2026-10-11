@@ -306,6 +306,16 @@ const releaseTableGroups = ({ editor }: RootState) => {
   editor.editTableGroupId = null;
 };
 
+/** Hidden memos take no press either, so hiding them lets go of every selected memo and closes a memo editor. */
+const releaseMemos = ({ editor }: RootState) => {
+  Object.entries(editor.selectedMap).forEach(([id, type]) => {
+    if (type === SelectType.memo) {
+      Reflect.deleteProperty(editor.selectedMap, id);
+    }
+  });
+  editor.editMemoId = null;
+};
+
 const changeShow: ReducerType<typeof ActionType.changeShow> = (
   state,
   { payload: { show, value } }
@@ -313,6 +323,7 @@ const changeShow: ReducerType<typeof ActionType.changeShow> = (
   const { settings } = state;
   settings.show = value ? settings.show | show : settings.show & ~show;
   if (value && bHas(show, Show.hideTableGroup)) releaseTableGroups(state);
+  if (value && bHas(show, Show.hideMemo)) releaseMemos(state);
 };
 
 export const changeDatabaseAction = createAction<

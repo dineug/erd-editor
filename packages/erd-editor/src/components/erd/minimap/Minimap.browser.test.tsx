@@ -406,6 +406,22 @@ describe('the minimap shell', () => {
     expect(memos[0].hasName('m1')).toBe(true);
   });
 
+  it('draws no memo mark while memos are hidden', async () => {
+    const app = createTestAppContext();
+    await mountMinimap(app);
+    const stage = stageRegistry().minimap;
+
+    app.store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 10, y: 20, zIndex: 1 } }),
+      addMemoAction({ id: 'm1', ui: { x: 50, y: 60, zIndex: 3 } }),
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await flush();
+
+    expect(stage.find('.minimap-table')).toHaveLength(1);
+    expect(stage.find('.minimap-memo')).toHaveLength(0);
+  });
+
   it('stacks the table and memo marks by one z-index, as the canvas does', async () => {
     const app = createTestAppContext();
     await mountMinimap(app);

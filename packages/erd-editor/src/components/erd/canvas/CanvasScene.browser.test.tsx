@@ -509,6 +509,23 @@ describe('the canvas scene', () => {
     expect(memos[0].y()).toBe(6);
   });
 
+  it('draws no memo while memos are hidden, and brings them back', async () => {
+    const { app, stage } = await mountScene();
+
+    app.store.dispatchSync(
+      addMemoAction({ id: 'm1', ui: { x: 5, y: 6, zIndex: 1 } }),
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await flush();
+    expect(stage.find('.memo')).toHaveLength(0);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: false })
+    );
+    await flush();
+    expect(stage.find('.memo')).toHaveLength(1);
+  });
+
   it('draws the connectors under the tables while the show bit is set', async () => {
     const { app, stage } = await mountScene();
     const scene = stage.findOne<Layer>('.scene')!;

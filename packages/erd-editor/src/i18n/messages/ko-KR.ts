@@ -87,6 +87,7 @@ export const koKR = {
   'contextMenu.show.alternateKey': '대체 키',
   'contextMenu.show.referentialActions': '참조 동작',
   'contextMenu.show.tableGroups': '테이블 그룹',
+  'contextMenu.show.memos': '메모',
   'floatingToolbar.hand': '손 도구',
   'floatingToolbar.select': '선택 도구',
   'floatingToolbar.zoomOut': '축소',

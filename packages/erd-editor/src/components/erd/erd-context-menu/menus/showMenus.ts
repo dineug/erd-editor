@@ -59,6 +59,11 @@ const menus: Menu[] = [
     show: Show.hideTableGroup,
     hides: true,
   },
+  {
+    labelKey: 'contextMenu.show.memos',
+    show: Show.hideMemo,
+    hides: true,
+  },
 ];
 
 /** The View Option rows, each named in the reader's language and checked while it shows. */

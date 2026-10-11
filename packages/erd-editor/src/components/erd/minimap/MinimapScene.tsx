@@ -17,6 +17,7 @@ import { useSceneSource } from '@/components/sceneSourceContext';
 import { renderKonva } from '@/konva/host';
 import { stackedKey, stackTablesAndMemos } from '@/konva/scene/stacking';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
+import { isMemoShown } from '@/utils/memo';
 import { isTableGroupShown } from '@/utils/tableGroup';
 
 export type MinimapSceneProps = {};
@@ -56,7 +57,9 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
 
     const stack = stackTablesAndMemos(
       query(collections).collection('tableEntities').selectByIds(tableIds),
-      query(collections).collection('memoEntities').selectByIds(memoIds)
+      isMemoShown(store.state)
+        ? query(collections).collection('memoEntities').selectByIds(memoIds)
+        : []
     );
 
     // The map's ratio as the one scale and its corner as the one offset: scene

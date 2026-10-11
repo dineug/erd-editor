@@ -3,6 +3,7 @@ import { query } from '@dineug/erd-editor-schema';
 import type { ActionType } from '@/engine/actions';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
+import { isMemoShown } from '@/utils/memo';
 
 import { Matcher } from './matcher';
 
@@ -60,6 +61,8 @@ export const FindTextActionTypes: ReadonlyArray<ActionType> = [
   'memo.add',
   'memo.remove',
   'memo.changeValue',
+  // Hiding or showing the memos takes them out of the walk or brings them back.
+  'settings.changeShow',
   'editor.loadJson',
   'editor.clear',
   'editor.initialLoadJson',
@@ -72,9 +75,10 @@ export const FindTextActionTypes: ReadonlyArray<ActionType> = [
  * The walk reads the live id lists, since a removed entity keeps its record.
  */
 export function walkFields(
-  { doc, collections }: RootState,
+  state: RootState,
   fields: ReadonlyArray<FindField>
 ): Field[] {
+  const { doc, collections } = state;
   const has = new Set(fields);
   const result: Field[] = [];
   const push = (field: Omit<Field, 'slot'>) => {
@@ -125,7 +129,8 @@ export function walkFields(
     }
   }
 
-  if (has.has(FindField.memo)) {
+  // Hidden memos are found and replaced no more than they are seen.
+  if (has.has(FindField.memo) && isMemoShown(state)) {
     const memos = query(collections)
       .collection('memoEntities')
       .selectByIds(doc.memoIds);

@@ -61,6 +61,7 @@ import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { measureTableSize, recalculateTableWidth } from '@/utils/calcTable';
 import { isOverlapPosition, Rect as DragRect } from '@/utils/dragSelect';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { isMemoShown } from '@/utils/memo';
 import { schemaAMLParserToSchemaJson } from '@/utils/schema-aml-parser';
 import { schemaDBMLParserToSchemaJson } from '@/utils/schema-dbml-parser';
 import { schemaGraphQLParserToSchemaJson } from '@/utils/schema-graphql-parser';
@@ -299,7 +300,10 @@ function* createEntities$(
       acc[id] = SelectType.table;
       return acc;
     }, {}),
-    ...newMemoIds.reduce<Record<string, SelectType>>((acc, id) => {
+    // Hidden memos never stay selected, so a paste adds them unselected.
+    ...(isMemoShown(state) ? newMemoIds : []).reduce<
+      Record<string, SelectType>
+    >((acc, id) => {
       acc[id] = SelectType.memo;
       return acc;
     }, {}),
@@ -544,14 +548,21 @@ function toLayoutGroupRects(
 }
 
 /**
- * Where the block an append brings starts: under every table, memo and group the diagram holds, a
- * hidden group's box included, since it still holds its tables, a gap below them and in line with
+ * Where the block an append brings starts: under every table, memo and group the diagram holds,
+ * hidden groups and memos included, since they still stand there, a gap below them and in line with
  * their left edge, or where the grid of an import starts in a diagram holding none.
  */
 function toAppendOrigin(state: RootState): Point {
-  const hidden = isTableGroupShown(state)
+  const hiddenGroups = isTableGroupShown(state)
     ? []
     : [...getTableGroupRects(state).values()];
+  const hiddenMemos = isMemoShown(state)
+    ? []
+    : query(state.collections)
+        .collection('memoEntities')
+        .selectByIds(state.doc.memoIds)
+        .map(getMemoRect);
+  const hidden = [...hiddenGroups, ...hiddenMemos];
   const content = [getContentRect(state), ...hidden]
     .filter((rect): rect is Rect => rect !== null)
     .reduce<Rect | null>(

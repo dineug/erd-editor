@@ -88,6 +88,7 @@ export const esES = {
   'contextMenu.show.alternateKey': 'Clave alternativa',
   'contextMenu.show.referentialActions': 'Acciones referenciales',
   'contextMenu.show.tableGroups': 'Grupos de tablas',
+  'contextMenu.show.memos': 'Notas',
   'floatingToolbar.hand': 'Mano',
   'floatingToolbar.select': 'Selección',
   'floatingToolbar.zoomOut': 'Alejar',

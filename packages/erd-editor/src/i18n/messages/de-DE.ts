@@ -89,6 +89,7 @@ export const deDE = {
   'contextMenu.show.alternateKey': 'Alternativschlüssel',
   'contextMenu.show.referentialActions': 'Referenzielle Aktionen',
   'contextMenu.show.tableGroups': 'Tabellengruppen',
+  'contextMenu.show.memos': 'Notizen',
   'floatingToolbar.hand': 'Hand',
   'floatingToolbar.select': 'Auswählen',
   'floatingToolbar.zoomOut': 'Verkleinern',

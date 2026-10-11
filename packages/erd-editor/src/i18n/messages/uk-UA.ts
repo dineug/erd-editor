@@ -88,6 +88,7 @@ export const ukUA = {
   'contextMenu.show.alternateKey': 'Альтернативний ключ',
   'contextMenu.show.referentialActions': 'Посилальні дії',
   'contextMenu.show.tableGroups': 'Групи таблиць',
+  'contextMenu.show.memos': 'Нотатки',
   'floatingToolbar.hand': 'Рука',
   'floatingToolbar.select': 'Виділення',
   'floatingToolbar.zoomOut': 'Зменшити',

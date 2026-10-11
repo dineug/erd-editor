@@ -406,6 +406,33 @@ describe('the groups of an exported document', () => {
   });
 });
 
+describe('the memos of an exported document', () => {
+  it('draws no memo and leaves it no room while the document hides them', async () => {
+    const memo: MemoSeed = { ...DEFAULT_MEMO, x: -900, y: -700 };
+    const draw = async (show: number) => {
+      const scene = await renderDocumentScene({
+        doc: createDoc({ memos: [memo], tables: [TABLE], show }),
+        theme,
+        toWidth,
+      });
+      try {
+        return { memos: scene.stage.find('.memo').length, x: scene.box.x };
+      } finally {
+        scene.destroy();
+      }
+    };
+
+    expect(await draw(Show.relationship)).toEqual({
+      memos: 1,
+      x: memo.x - EXPORT_MARGIN,
+    });
+
+    const hidden = await draw(Show.relationship | Show.hideMemo);
+    expect(hidden.memos).toBe(0);
+    expect(hidden.x).toBeGreaterThan(memo.x - EXPORT_MARGIN);
+  });
+});
+
 describe('createDocumentPng', () => {
   it('is what the document draws with a margin around it', async () => {
     const box = expectedBox();

@@ -14,6 +14,7 @@ import {
   Database,
   OrderType,
   RelationshipType,
+  Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
@@ -79,6 +80,7 @@ import {
 import {
   changeDatabaseAction,
   changeDatabaseNameAction,
+  changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -1786,6 +1788,25 @@ describe('duplicateAction$', () => {
         })
       )
     ).toEqual([]);
+  });
+
+  it('adds a memo unselected while memos are hidden, as hidden memos never stay selected', () => {
+    seedTable(store, 't1', 100, 100);
+    seedMemo(store, 'm1', 500, 400);
+    store.dispatchSync(changeShowAction({ show: Show.hideMemo, value: true }));
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        memoIds: ['m1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    const { doc, editor } = store.state;
+    expect(doc.memoIds).toHaveLength(2);
+    expect(Object.values(editor.selectedMap)).toEqual([SelectType.table]);
   });
 
   it('duplicates the whole selection, keeping the relative layout', () => {

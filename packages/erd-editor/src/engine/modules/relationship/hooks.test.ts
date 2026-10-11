@@ -830,6 +830,7 @@ describe('relationship/hooks relationshipSortHook', () => {
   it.each([
     ['the referential action labels', Show.hideReferentialAction],
     ['the table groups', Show.hideTableGroup],
+    ['the memos', Show.hideMemo],
   ])('neither sorts nor measures as %s show or hide', async (_, show) => {
     const store = createTestStore();
     const { dispatch } = await run(relationshipSortHook, store);

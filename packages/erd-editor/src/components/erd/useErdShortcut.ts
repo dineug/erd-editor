@@ -62,6 +62,7 @@ import { arrayHas } from '@/utils/arrayHas';
 import { openTablePropertiesAction } from '@/utils/emitter';
 import { focusEvent, forceFocusEvent } from '@/utils/internalEvents';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isMemoShown } from '@/utils/memo';
 import { fromCopy } from '@/utils/rx-operators/fromCopy';
 import { fromPaste } from '@/utils/rx-operators/fromPaste';
 import {
@@ -172,7 +173,10 @@ export function useErdShortcut(ctx: Ctx) {
     if (!isEditingText(editor)) {
       type === KeyBindingName.addTable && store.dispatch(addTableAction$());
       type === KeyBindingName.addColumn && store.dispatch(addColumnAction$());
-      type === KeyBindingName.addMemo && store.dispatch(addMemoAction$());
+      // A memo added while memos are hidden could be neither seen nor ended.
+      type === KeyBindingName.addMemo &&
+        isMemoShown(store.state) &&
+        store.dispatch(addMemoAction$());
 
       type === KeyBindingName.selectAllTable &&
         store.dispatch(selectAllAction());

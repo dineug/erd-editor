@@ -88,6 +88,7 @@ export const slSI = {
   'contextMenu.show.alternateKey': 'Alternativni ključ',
   'contextMenu.show.referentialActions': 'Referenčna dejanja',
   'contextMenu.show.tableGroups': 'Skupine tabel',
+  'contextMenu.show.memos': 'Beležke',
   'floatingToolbar.hand': 'Roka',
   'floatingToolbar.select': 'Izbira',
   'floatingToolbar.zoomOut': 'Pomanjšaj',

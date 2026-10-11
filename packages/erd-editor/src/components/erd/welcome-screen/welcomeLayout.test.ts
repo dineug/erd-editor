@@ -124,6 +124,18 @@ describe('isEmptyDocument', () => {
     );
     expect(isEmptyDocument(store.state)).toBe(true);
   });
+
+  it('holds over memos alone while memos are hidden, as the content bounds count none', () => {
+    const { store } = createTestAppContext();
+
+    store.dispatchSync(
+      addMemoAction({ id: 'm', ui: { x: 0, y: 0, zIndex: 2 } })
+    );
+    expect(isEmptyDocument(store.state)).toBe(false);
+
+    store.dispatchSync(changeShowAction({ show: Show.hideMemo, value: true }));
+    expect(isEmptyDocument(store.state)).toBe(true);
+  });
 });
 
 describe('hintPlacement', () => {
