@@ -6,10 +6,8 @@ import * as styles from '@/components/find-replace/FindReplace.styles';
 import {
   coveredWidth,
   isPanelShown,
-  isTakenOver,
   PANEL_LEFT,
   PANEL_WIDTH,
-  TAKEOVERS,
 } from '@/components/find-replace/panelLayout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
@@ -18,6 +16,7 @@ import {
   changeViewportAction,
 } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import { isTakenOver, TAKEOVERS } from '@/utils/takeover';
 
 let app: AppContext;
 

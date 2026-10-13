@@ -30,7 +30,6 @@ import { themeContext } from '@/components/themeContext';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import Toolbar from '@/components/toolbar/Toolbar';
 import Visualization from '@/components/visualization/Visualization';
-import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { DatabaseVendor } from '@/constants/sql/database';
@@ -39,7 +38,6 @@ import {
   changeViewportAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SharedStore, SharedStoreConfig } from '@/engine/shared-store';
-import { RootState } from '@/engine/state';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { LocaleOption } from '@/i18n/locales';
@@ -56,6 +54,7 @@ import { createText } from '@/utils/text';
 
 import * as styles from './ErdEditor.styles';
 import { useErdEditorAttachElement } from './useErdEditorAttachElement';
+import { hasToolbar, measureRoot, observeViewport } from './viewportLayout';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -169,14 +168,6 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   setDiffValue: (value: string) => void;
 }
 
-/**
- * Whether the toolbar is drawn. Zen mode takes it away over the canvas it was
- * entered from alone, or the tab that turned the mode on would be the only one
- * it could be turned off from.
- */
-const hasToolbar = ({ editor, settings }: RootState): boolean =>
-  !editor.zenMode || settings.canvasType !== CanvasType.ERD;
-
 const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const text = createText();
   const getReadonly = () => props.readonly;
@@ -237,6 +228,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   });
 
   destroySet.add(provider.destroy);
+  destroySet.add(observeViewport(store));
   destroySet.add(themeProvider.destroy);
   destroySet.add(localeProvider.destroy);
   destroySet.add(watch(theme).subscribe(scheduleSceneTheme));
@@ -293,27 +285,6 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     emitter.emit(pasteAction({ event }));
   };
 
-  /** The root as the observer last measured it, which the toolbar shares. */
-  let observed = { width: 0, height: 0 };
-
-  /**
-   * The canvas is the root less whatever the toolbar takes, and zen mode takes
-   * the toolbar away without the root changing size, so the viewport is applied
-   * from the mode as well as from the observer.
-   */
-  const applyViewport = () => {
-    const toolbar = hasToolbar(store.state) ? TOOLBAR_HEIGHT : 0;
-
-    store.dispatch(
-      changeViewportAction({
-        width: observed.width,
-        // A hidden host reports no height at all, which must not read as a
-        // viewport with a negative one.
-        height: Math.max(0, observed.height - toolbar),
-      })
-    );
-  };
-
   onMounted(() => {
     ctx.focus();
     resolveSceneTheme();
@@ -323,8 +294,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        observed = { width, height };
-        applyViewport();
+        measureRoot(store, { width, height });
       }
     });
 
@@ -335,12 +305,6 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
         resizeObserver.unobserve($root);
         resizeObserver.disconnect();
       },
-      watch(store.state.editor).subscribe(name => {
-        name === 'zenMode' && applyViewport();
-      }),
-      watch(store.state.settings).subscribe(name => {
-        name === 'canvasType' && applyViewport();
-      }),
       // The trailing edge is the load-bearing one: the last event of a burst is
       // the one describing the focus the element is left holding, and dropping
       // it parks the keyboard outside with the focus ring still painted.

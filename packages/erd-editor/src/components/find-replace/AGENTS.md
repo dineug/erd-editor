@@ -22,7 +22,8 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 | --- | --- |
 | `FindReplace.tsx` | The panel: the chord handler, the keydown filter, Escape, Replace and Replace All, and when it searches (`REGEX_INPUT_DELAY`, `dispatchOwn`, `searchEdited`, `searchPending`, `searchTyped`, `goToRow`) |
 | `FindReplace.styles.ts` | The panel's scoped styles and `PANEL_CHROME_HEIGHT` |
-| `panelLayout.ts` | `isPanelShown`, `isTakenOver` and its `TAKEOVERS`, `coveredWidth`, `MIN_CLEAR_WIDTH` |
+| `panelLayout.ts` | `isPanelShown`, `coveredWidth`, `MIN_CLEAR_WIDTH` |
+| `src/utils/takeover.ts` | `isTakenOver` and its `TAKEOVERS`, which the toolbar, the canvas, the palette, the draw target, the key binder and the viewport layout share |
 | `matchTarget.ts` | `toErdTarget`, `withReplacement`, `showNextMatchAction$` |
 | `fieldIcon.tsx` | The icon of a match row, which the palette's `#` rows share |
 | `src/components/erd/goToErdTarget.ts` | `goToErdTarget`, `showErdTargetAction$`, `scrollTableIntoView`, `selectTableAloneAction$`, `EDGE_MARGIN` |
@@ -74,7 +75,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 - **The palette gives way to the chord.** With the palette open, the palette closes (`toggleSearchAction`), as it does when its own Find and Replace row is picked.
 - **A text editor keeps the chord.** A cell, memo or group name editor keeps it, as it keeps `$mod+K`, the press still prevented (`isEditingText`).
 - **Under a takeover, the host takes the chord.** Under a takeover (the diff viewer, time travel, the automatic placement preview), on whichever tab, the chord yields to the host's find, neither prevented nor stopped. The panel would open on nothing there. This is an owner decision.
-- **`yields` reads `isTakenOver` for this.** `yields` in `src/hooks/useKeyBindingMap.ts` reads `isTakenOver` (`panelLayout.ts`) for every `YIELDS_TO_A_TAKEOVER` binding. The dialogs that close the panel still take the chord: Table Properties, the theme builder, the locale picker, the export image dialog and Map Columns.
+- **`yields` reads `isTakenOver` for this.** `yields` in `src/hooks/useKeyBindingMap.ts` reads `isTakenOver` (`src/utils/takeover.ts`) for every `YIELDS_TO_A_TAKEOVER` binding. The dialogs that close the panel still take the chord: Table Properties, the theme builder, the locale picker, the export image dialog and Map Columns.
 - `YIELDS_TO_A_CARET` and the editor's Escape branch: `src/components/erd/AGENTS.md`.
 - **The chord works on every other tab.** On Visualization, Schema SQL, Code Generator and Settings it opens the panel and brings the ERD tab up. The toolbar button and the palette row do the same, and name the chord on every tab. A browser's find does not search the SQL, code and settings those tabs show as text. This is an owner decision of 2026-10-03.
 

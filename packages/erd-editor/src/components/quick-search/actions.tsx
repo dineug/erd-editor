@@ -15,10 +15,7 @@ import {
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
 import { fieldIcon } from '@/components/find-replace/fieldIcon';
 import { toErdTarget } from '@/components/find-replace/matchTarget';
-import {
-  coveredWidth,
-  isTakenOver,
-} from '@/components/find-replace/panelLayout';
+import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -92,6 +89,7 @@ import { isMemoShown } from '@/utils/memo';
 import { resolveSchemaSQLOptions, schemaSQLSupport } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { isTableGroupShown } from '@/utils/tableGroup';
+import { isTakenOver } from '@/utils/takeover';
 
 import { HangulQuery, hangulQueryOf, HangulTier, hangulTier } from './hangul';
 

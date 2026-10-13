@@ -1,7 +1,6 @@
 import { onMounted, Ref, watch } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { isTakenOver } from '@/components/find-replace/panelLayout';
 import { Ctx } from '@/internal-types';
 import {
   bindKeys,
@@ -9,6 +8,7 @@ import {
   KeyBindingHandlers,
   KeyBindingName,
 } from '@/utils/keyboard-shortcut';
+import { isTakenOver } from '@/utils/takeover';
 import { isEditableTarget } from '@/utils/validation';
 
 import { useUnmounted } from './useUnmounted';

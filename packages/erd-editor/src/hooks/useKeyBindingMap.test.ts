@@ -15,13 +15,13 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { TAKEOVERS } from '@/components/find-replace/panelLayout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { TAKEOVERS } from '@/utils/takeover';
 
 const Probe: FC<{}> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();

@@ -18,7 +18,6 @@ import {
 } from '@/__test-utils__';
 import { type AppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
-import { TAKEOVERS } from '@/components/find-replace/panelLayout';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import {
@@ -37,6 +36,7 @@ import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { whenDrawn } from '@/konva/batchDraw';
 import { openColorPickerAction, openDiffViewerAction } from '@/utils/emitter';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';
+import { TAKEOVERS } from '@/utils/takeover';
 
 vi.mock(
   '@/components/erd/automatic-table-placement/createAutomaticTablePlacement',

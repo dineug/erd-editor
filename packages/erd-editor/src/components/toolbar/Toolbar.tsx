@@ -1,7 +1,6 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { isTakenOver } from '@/components/find-replace/panelLayout';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { TOOLBAR_DATABASE_NAME_WIDTH } from '@/constants/layout';
@@ -20,6 +19,7 @@ import {
   toggleSearchAction,
 } from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
+import { isTakenOver } from '@/utils/takeover';
 
 import * as styles from './Toolbar.styles';
 

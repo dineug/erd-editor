@@ -3,10 +3,7 @@ import { FC, observer, onMounted, Ref } from '@dineug/r-html';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
-import {
-  coveredWidth,
-  isTakenOver,
-} from '@/components/find-replace/panelLayout';
+import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { useI18n } from '@/components/localeContext';
 import { nameOf } from '@/components/map-columns/nameOf';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
@@ -24,6 +21,7 @@ import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import { getSceneTransform, toScreenPoint } from '@/konva/scene/viewport';
 import { isMainButtonPress } from '@/utils/domEvent';
 import { getLiveTable } from '@/utils/map-columns';
+import { isTakenOver } from '@/utils/takeover';
 
 import * as styles from './DrawTargetButtons.styles';
 import {

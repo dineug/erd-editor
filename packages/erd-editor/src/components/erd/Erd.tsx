@@ -32,7 +32,6 @@ import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { isEmptyDocument } from '@/components/erd/welcome-screen/welcomeLayout';
 import WelcomeScreen from '@/components/erd/welcome-screen/WelcomeScreen';
-import { isTakenOver } from '@/components/find-replace/panelLayout';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
@@ -78,6 +77,7 @@ import {
 } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
 import { isMod, KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isTakenOver } from '@/utils/takeover';
 
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';

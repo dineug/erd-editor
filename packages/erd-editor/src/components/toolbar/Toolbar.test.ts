@@ -10,7 +10,6 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__/index';
-import { TAKEOVERS } from '@/components/find-replace/panelLayout';
 import Toolbar from '@/components/toolbar/Toolbar';
 import * as styles from '@/components/toolbar/Toolbar.styles';
 import { Open } from '@/constants/open';
@@ -40,6 +39,7 @@ import {
   toggleSearchAction,
 } from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
+import { TAKEOVERS } from '@/utils/takeover';
 
 let mounted: Mounted | null = null;
 

@@ -276,7 +276,7 @@
   - It keeps the selection and draws no marquee, whatever modifier is held.
   - It is prevented with its lift (`preventMiddleLift`).
   - So the middle button reads alike in every mode (an owner decision of 2026-10-04).
-- **A takeover's middle press reads the same.** A middle press over a takeover's scene reads the same way (an owner decision of 2026-10-04). The takeovers are the diff viewer, time travel and the automatic placement preview (`isTakenOver`, `src/components/find-replace/panelLayout.ts`).
+- **A takeover's middle press reads the same.** A middle press over a takeover's scene reads the same way (an owner decision of 2026-10-04). The takeovers are the diff viewer, time travel and the automatic placement preview (`isTakenOver`, `src/utils/takeover.ts`).
   - The press leaves the document's selection under it and is prevented with its lift. That is `handleDragSelect` in `Erd.tsx`, which every takeover stands in.
   - Time travel and the preview pan for no button.
   - A diff pane, whose pan the press still drives, keeps its own selection for it too (`diff-viewer/erd-viewer/ErdViewer.tsx`).

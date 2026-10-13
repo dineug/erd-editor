@@ -52,11 +52,12 @@ import {
   PANEL_PASSING_BINDINGS,
   toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
+import { isTakenOver } from '@/utils/takeover';
 
 import { fieldIcon } from './fieldIcon';
 import * as styles from './FindReplace.styles';
 import { showNextMatchAction$, toErdTarget } from './matchTarget';
-import { coveredWidth, isPanelShown, isTakenOver } from './panelLayout';
+import { coveredWidth, isPanelShown } from './panelLayout';
 
 export type FindReplaceProps = {
   readonly: boolean;
