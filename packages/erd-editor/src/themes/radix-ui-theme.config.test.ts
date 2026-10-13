@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(81);
+    expect(entries).toHaveLength(87);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {

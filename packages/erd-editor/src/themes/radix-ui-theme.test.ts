@@ -372,6 +372,42 @@ describe('the selected column row fill', () => {
   });
 });
 
+describe('the tree', () => {
+  it('keeps its muted text at 4.5:1 on the tree and on each row fill', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [theme.treeBackground, theme.treeRowHover, theme.treeRowCurrent].forEach(
+        fill => {
+          expect(
+            contrast(theme.treeMuted, fill),
+            labelOf(options)
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      );
+    });
+  });
+
+  it('keeps a match, active text on its fill, at 4.5:1', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        contrast(theme.active, theme.treeMatch),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+
+  it('rings the active row in the focus colour rather than filling it', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(theme.treeRowActive, labelOf(options)).toBe(theme.focus);
+    });
+  });
+});
+
 describe('the table header band', () => {
   /** Twice the least visible CIE76 step. Light sand, the nearest to its canvas, measures 5.32. */
   const MIN_BAND_DELTA_E = 5;

@@ -104,6 +104,15 @@ export const ThemeConfig: Theme = {
   keyFK: `custom-ruby--9`,
   keyPFK: `custom-cyan--9`,
 
+  // The tree the Explorer and the diff viewer share: gray-1 under it, where
+  // its muted text and status letters keep 4.5:1, and the active row ringed.
+  treeBackground: 'gray-1',
+  treeRowHover: 'gray-3',
+  treeRowActive: 'accent-8',
+  treeRowCurrent: 'accent-4',
+  treeMuted: 'gray-11',
+  treeMatch: 'accent-5',
+
   diffInsertBackground: `custom-green--4`,
   diffDeleteBackground: `custom-red--4`,
   diffCrossBackground: `custom-blue--4`,

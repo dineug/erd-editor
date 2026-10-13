@@ -97,6 +97,13 @@ export type Theme = {
   keyFK: string;
   keyPFK: string;
 
+  treeBackground: string;
+  treeRowHover: string;
+  treeRowActive: string;
+  treeRowCurrent: string;
+  treeMuted: string;
+  treeMatch: string;
+
   diffInsertBackground: string;
   diffDeleteBackground: string;
   diffCrossBackground: string;
@@ -201,6 +208,13 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'keyPK',
   'keyFK',
   'keyPFK',
+
+  'treeBackground',
+  'treeRowHover',
+  'treeRowActive',
+  'treeRowCurrent',
+  'treeMuted',
+  'treeMatch',
 
   'diffInsertBackground',
   'diffDeleteBackground',

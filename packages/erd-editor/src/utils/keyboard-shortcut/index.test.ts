@@ -7,8 +7,10 @@ import {
   KeyBindingName,
   KeyBindingNameList,
   matchesShortcut,
+  PANEL_PASSING_BINDINGS,
   shortcutToTuple,
   simpleShortcutToString,
+  stopsAtPanel,
   toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
 
@@ -214,6 +216,66 @@ describe('keyboard-shortcut', () => {
         matchesShortcut(event, [{ shortcut: 'Alt+Delete Alt+KeyG' }])
       ).toBe(false);
       expect(matchesShortcut(event, [])).toBe(false);
+    });
+  });
+
+  describe('stopsAtPanel', () => {
+    const press = (init: KeyboardEventInit) =>
+      new KeyboardEvent('keydown', init);
+    const map = createKeyBindingMap();
+
+    it('stops the keys a panel moves or presses with', () => {
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].forEach(key =>
+        expect(stopsAtPanel(press({ key, code: key }), map), key).toBe(true)
+      );
+      expect(stopsAtPanel(press({ key: 'Enter', code: 'Enter' }), map)).toBe(
+        true
+      );
+      expect(stopsAtPanel(press({ key: ' ', code: 'Space' }), map)).toBe(true);
+      expect(stopsAtPanel(press({ key: 'Home', code: 'Home' }), map)).toBe(
+        true
+      );
+      expect(stopsAtPanel(press({ key: 'End', code: 'End' }), map)).toBe(true);
+    });
+
+    it('stops a chord of the map outside the passing list, Escape among them', () => {
+      expect(stopsAtPanel(press({ key: 'Escape', code: 'Escape' }), map)).toBe(
+        true
+      );
+      expect(
+        stopsAtPanel(
+          press({ key: 'Backspace', code: 'Backspace', altKey: true }),
+          map
+        )
+      ).toBe(true);
+    });
+
+    it('lets the passing chords and any other press go on', () => {
+      expect(PANEL_PASSING_BINDINGS).toContain(KeyBindingName.undo);
+      expect(
+        stopsAtPanel(press({ key: 'z', code: 'KeyZ', ctrlKey: true }), map)
+      ).toBe(false);
+      expect(
+        stopsAtPanel(press({ key: 's', code: 'KeyS', ctrlKey: true }), map)
+      ).toBe(false);
+      expect(stopsAtPanel(press({ key: 'a', code: 'KeyA' }), map)).toBe(false);
+    });
+
+    it('lets Escape through for a host that passes stop', () => {
+      const passing = [...PANEL_PASSING_BINDINGS, KeyBindingName.stop];
+
+      expect(
+        stopsAtPanel(press({ key: 'Escape', code: 'Escape' }), map, passing)
+      ).toBe(false);
+    });
+
+    it('stops a press an IME still holds', () => {
+      expect(
+        stopsAtPanel(
+          press({ key: 'Process', code: 'KeyA', isComposing: true }),
+          map
+        )
+      ).toBe(true);
     });
   });
 

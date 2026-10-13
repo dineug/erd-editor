@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`src/components/primitives/` holds the editor's shared controls: `button/`, `context-menu/`, `dialog/`, `icon/`, `select/`, `slider/`, `toast/` and others. This file holds the rules for the color picker in `color-picker/`, for removing a color, and for the native list in `select/Select.tsx`. Other nested files touch the same features: `src/components/erd/AGENTS.md` (the table, memo and group menus that hold Color and Remove color) and `src/components/find-replace/AGENTS.md` (the panel whose key handling the picker follows). The users of `Select.tsx` have their own files: `src/components/schema-sql/AGENTS.md`, `src/components/generator-code/AGENTS.md` and `src/components/map-columns/AGENTS.md`. A change here keeps the owner decisions of 2026-10-05 on the picker and the undo grouping of a color change.
+`src/components/primitives/` holds the editor's shared controls: `button/`, `context-menu/`, `dialog/`, `icon/`, `select/`, `slider/`, `toast/`, `tree/` and others. This file holds the rules for the color picker in `color-picker/`, for removing a color, for the native list in `select/Select.tsx`, and for the virtualized tree in `tree/`. Other nested files touch the same features: `src/components/erd/AGENTS.md` (the table, memo and group menus that hold Color and Remove color) and `src/components/find-replace/AGENTS.md` (the panel whose key handling the picker follows). The users of `Select.tsx` have their own files: `src/components/schema-sql/AGENTS.md`, `src/components/generator-code/AGENTS.md` and `src/components/map-columns/AGENTS.md`. A change here keeps the owner decisions of 2026-10-05 on the picker and the undo grouping of a color change.
 
 ## Making a Change
 
@@ -27,6 +27,9 @@
 | `select/Select.tsx` | The box around a caller's native `<select>`, with lucide's `chevron-down` at its inline end |
 | `select/Select.browser.test.ts` | The chevron's place, the ellipsis, the dimming, the focus ring and forced colours, in real Chromium |
 | `dialog/Dialog.tsx` | The shared modal; its contract is in `src/components/export-image/AGENTS.md` |
+| `tree/Tree.tsx` | The virtualized tree, written here with no library: fixed rows (`TREE_ROW_HEIGHT`, 22), `TREE_OVERSCAN` (8), `visibleRange` and `offsetToShow`, the tree keys and the WAI-ARIA tree roles |
+| `tree/treeModel.ts` | `TreeNode` (children asked for only while expanded), `flattenTree`, `moveFocus` |
+| `src/utils/keyboard-shortcut/index.ts` | `stopsAtPanel`, the filter a tree's host stops presses with |
 | `src/engine/modules/editor/generator.actions.ts` | `changeColorAllAction$` and `removeColorAllAction$` |
 | `src/engine/modules/editor/utils/color.ts` | `hasColoredSelection` and `getDocumentColors` |
 | `src/engine/actions.ts` | `StreamRegroupColorActionTypes` |
@@ -129,6 +132,15 @@
 - **The list's focus ring stands 1 px off.** That is how the panels ring their other controls.
 - **Map Columns rings its lists 2 px off.** That is how it rings its buttons. A doubled class in `MapColumnsDialog.styles.ts` outweighs the box's rule (`MapColumnsDialog.browser.test.tsx`).
 
+### The tree
+
+- **The tree virtualizes its own rows.** Rows are one fixed height, so `visibleRange` works the rows in view out of the scroll offset and the tree's height, with `TREE_OVERSCAN` either side, and the active row is drawn wherever it stands, so `aria-activedescendant` names a node that is there. No virtual list library is used (an owner decision of 2026-10-13). A host builds `TreeNode`s and passes the rows `flattenTree` gives it; the Explorer and the diff viewer draw through the same component.
+- **The tree holds no policy.** It answers Up, Down, Home, End and the inline arrows (`moveFocus`, mirrored under `dir="rtl"`), and Enter and Space, which ask the host to activate. It prevents those keys alone and passes every other press, Escape and every chord included. Its host decides what a row shows (`renderRow`), what activating it does, and which chords stop at it (`stopsAtPanel`).
+- **Only a new range renders the tree.** The scroll offset and the height are kept unobserved, and a scroll writes the observed range only when its first or last row changes, so a scroll inside the overscan changes no DOM. Rows are keyed by node id in `repeat`, so a row that stays in view keeps its element.
+- **The scroll position is read through a getter.** `getScrollTop` is read once in `onMounted`, and `onScroll` reports each new offset. A host keeps it in an unobserved place, so a scroll renders nothing outside the tree (`Tree.browser.test.tsx`).
+- **A reveal scrolls once per id.** `revealId` scrolls its row into view (`offsetToShow`) each time a different id arrives, after the render that brought it.
+- **The tree tokens are its own** (`treeBackground` gray-1, `treeRowHover` gray-3, `treeRowCurrent` accent-4, `treeRowActive` accent-8 as an inset ring, `treeMuted` gray-11, `treeMatch` accent-5). `radix-ui-theme.test.ts` holds the muted text at 4.5:1 on the tree and each row fill in every theme.
+
 ### Other primitives
 
 - The shared modal `dialog/Dialog.tsx`, which the Export image dialog and Map Columns are built on: `src/components/export-image/AGENTS.md` (Rules, The shared modal).
@@ -141,5 +153,6 @@
 - `Erd.test.ts`'s `Erd - color picker` presses the picker's keys through `useKeyBindingMap` mounted around `Erd`, the path a real key takes to `shortcut$`.
 - `Select.browser.test.ts` holds the chevron and the value to their places in real Chromium, under both text directions and in forced colours.
 - `MapColumnsDialog.browser.test.tsx` holds Map Columns' 2 px ring on its lists.
+- `Tree.browser.test.tsx` lays the tree out in real Chromium, counts the DOM mutations a scroll makes and holds `visibleRange` and `offsetToShow`; `treeModel.test.ts` covers the rows and the keys.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
