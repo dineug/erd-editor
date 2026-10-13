@@ -1,186 +1,65 @@
-import { query } from '@dineug/erd-editor-schema';
-
-import { ColumnOption } from '@/constants/schema';
-import { RootState } from '@/engine/state';
-import { Column, Table } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
-import { bHas } from '@/utils/bit';
 
-/**
- * Map<uuid, [tag, Map<path, diff>]>
- */
-export type DiffMap = Map<string, DiffTuple>;
-
-/** Map<path, diff> for one entity, each path spelled as the FocusType of the cell showing it. */
-export type DiffPaths = Map<string, number>;
-
-type DiffTuple = [string, DiffPaths];
-
-type NameToTableMap = Map<
-  string,
-  {
-    table: Table;
-    nameToColumnMap: Map<string, Column>;
-  }
->;
-
+/** The kinds of change a diff pane marks, one bit each. */
 export const Diff = {
   insert: 1,
   delete: 2,
+  modify: 4,
+  rename: 8,
 } as const;
 
-export function diffState(
-  prevState: RootState,
-  state: RootState
-): [DiffMap, DiffMap] {
-  const prevNameToTableMap = getNameToTableMap(prevState);
-  const nameToTableMap = getNameToTableMap(state);
-  const prevDiffMap = getDiffMap(prevState, nameToTableMap, Diff.delete);
-  const diffMap = getDiffMap(state, prevNameToTableMap, Diff.insert);
+/**
+ * Map<path, diff> for one entity: a cell's path is the FocusType of the cell
+ * showing it, and ENTITY_PATH stands for the entity as a whole.
+ */
+export type DiffPaths = Map<string, number>;
 
-  return [prevDiffMap, diffMap];
-}
+/** Map<id, paths> for the entities one pane marks. */
+export type DiffMap = Map<string, DiffPaths>;
 
-export function getNameToTableMap({
-  doc: { tableIds },
-  collections,
-}: RootState): NameToTableMap {
-  const map: NameToTableMap = new Map();
+/** An entity added or removed, or one only moved, resized, recoloured or regrouped. */
+export const ENTITY_PATH = 'entity';
+export const MEMO_VALUE_PATH = 'memoValue';
+/** A column's primary key, which its key icon shows. */
+export const COLUMN_KEY_PATH = 'columnPrimaryKey';
+export const TABLE_GROUP_NAME_PATH = 'tableGroupName';
 
-  query(collections)
-    .collection('tableEntities')
-    .selectByIds(tableIds)
-    .forEach(table => {
-      const nameToColumnMap = new Map<string, Column>();
-      map.set(table.name, { table, nameToColumnMap });
-
-      query(collections)
-        .collection('tableColumnEntities')
-        .selectByIds(table.columnIds)
-        .forEach(column => {
-          nameToColumnMap.set(column.name, column);
-        });
-    });
-
-  return map;
-}
-
-function getDiffMap(
-  { doc: { tableIds }, collections }: RootState,
-  nameToTableMap: NameToTableMap,
-  diff: number
-): DiffMap {
-  const diffMap: DiffMap = new Map();
-
-  query(collections)
-    .collection('tableEntities')
-    .selectByIds(tableIds)
-    .forEach(table => {
-      const tableNameMap = nameToTableMap.get(table.name);
-      const pathMap = new Map<string, number>();
-      diffMap.set(table.id, ['tableEntities', pathMap]);
-
-      pathMap.set(
-        'tableName',
-        getDiffValue(diff, table.name, tableNameMap?.table.name)
-      );
-      pathMap.set(
-        'tableComment',
-        getDiffValue(diff, table.comment, tableNameMap?.table.comment)
-      );
-
-      query(collections)
-        .collection('tableColumnEntities')
-        .selectByIds(table.columnIds)
-        .forEach(column => {
-          const columnNameMap = tableNameMap?.nameToColumnMap.get(column.name);
-          const pathMap = new Map<string, number>();
-          diffMap.set(column.id, ['tableColumnEntities', pathMap]);
-
-          pathMap.set(
-            'columnName',
-            getDiffValue(diff, column.name, columnNameMap?.name)
-          );
-          pathMap.set(
-            'columnComment',
-            getDiffValue(diff, column.comment, columnNameMap?.comment)
-          );
-          pathMap.set(
-            'columnDataType',
-            getDiffValue(diff, column.dataType, columnNameMap?.dataType)
-          );
-          pathMap.set(
-            'columnDefault',
-            getDiffValue(diff, column.default, columnNameMap?.default)
-          );
-          pathMap.set(
-            'columnAutoIncrement',
-            columnNameMap
-              ? getDiffValue(
-                  diff,
-                  bHas(column.options, ColumnOption.autoIncrement),
-                  bHas(columnNameMap.options, ColumnOption.autoIncrement)
-                )
-              : diff
-          );
-          pathMap.set(
-            'columnPrimaryKey',
-            columnNameMap
-              ? getDiffValue(
-                  diff,
-                  bHas(column.options, ColumnOption.primaryKey),
-                  bHas(columnNameMap.options, ColumnOption.primaryKey)
-                )
-              : diff
-          );
-          pathMap.set(
-            'columnUnique',
-            columnNameMap
-              ? getDiffValue(
-                  diff,
-                  bHas(column.options, ColumnOption.unique),
-                  bHas(columnNameMap.options, ColumnOption.unique)
-                )
-              : diff
-          );
-          pathMap.set(
-            'columnNotNull',
-            columnNameMap
-              ? getDiffValue(
-                  diff,
-                  bHas(column.options, ColumnOption.notNull),
-                  bHas(columnNameMap.options, ColumnOption.notNull)
-                )
-              : diff
-          );
-        });
-    });
-
-  Array.from(diffMap).forEach(([id, [tag, pathMap]]) => {
-    Array.from(pathMap).forEach(([path, diff]) => {
-      diff === 0 && pathMap.delete(path);
-    });
-    pathMap.size === 0 && diffMap.delete(id);
-  });
-
-  return diffMap;
-}
-
-function getDiffValue<T>(diff: number, value: T, prev: T): number {
-  return value === prev ? 0 : diff;
+function foreground(theme: Theme, diff: number | undefined): string | null {
+  switch (diff) {
+    case Diff.insert:
+      return theme.diffInsertForeground;
+    case Diff.delete:
+      return theme.diffDeleteForeground;
+    case Diff.modify:
+      return theme.diffModifyForeground;
+    case Diff.rename:
+      return theme.diffRenameForeground;
+    default:
+      return null;
+  }
 }
 
 /**
- * The background a cell of one entity sits on in a diff pane: the insert or the
- * delete colour its own path carries, and null for a path that did not change.
+ * The colour a cell's text takes in a diff pane: its own change's, else, in a
+ * row, the row's as a whole; null where neither changed.
  */
-export function diffFill(
+export function diffTextColor(
   theme: Theme,
   paths: DiffPaths | null | undefined,
-  path: string
+  path: string,
+  row = false
 ): string | null {
-  const diff = paths?.get(path);
-  if (diff === Diff.insert) return theme.diffInsertBackground;
-  if (diff === Diff.delete) return theme.diffDeleteBackground;
-  return null;
+  if (!paths) return null;
+  return (
+    foreground(theme, paths.get(path)) ??
+    (row ? foreground(theme, paths.get(ENTITY_PATH)) : null)
+  );
+}
+
+/** The outline an entity takes in a diff pane, or the colour of a line; null for none. */
+export function diffOutline(
+  theme: Theme,
+  paths: DiffPaths | null | undefined
+): string | null {
+  return foreground(theme, paths?.get(ENTITY_PATH));
 }

@@ -35,6 +35,10 @@
 | `table-properties/` | Table Properties and its three tabs |
 | `minimap/table-group/TableGroup.tsx` | The minimap's group box, `FILL_OPACITY` |
 | `diff-viewer/erd-viewer/ErdViewer.tsx` | A diff pane's scene, with its own `canDrag` list |
+| `diff-viewer/DiffViewer.tsx` | The diff: the two panes, the tree's width and the teardown that puts out both panes' lights |
+| `diff-viewer/diff.ts` | What the scene reads of a diff: `Diff` (insert, delete, modify, rename), `DiffMap`, `diffTextColor`, `diffOutline` and the paths; it imports no engine |
+| `diff-viewer/diff-tree/DiffTree.tsx`, `diffTreeModel.ts` | The diff tree on the shared `Tree`: its rows, filter, tooltips (`describeEntry`) and where a row takes each pane (`diffTargets`) |
+| `src/utils/diff/` | The diff engine: `diffDocuments`, `pairEntities`, `compareEntities` |
 | `welcome-screen/` | The welcome screen, `welcomeTiers`, the hint arrows in `welcome-screen/welcome-hints/` |
 
 ## Rules
@@ -343,6 +347,16 @@
 - **The memo menu: Color, Remove color, Delete.** It lists Color, Remove color while it shows, then Delete (owner decisions). Delete reads Delete selected while the memo is one of two or more selected, and then removes every selected table, memo and table group. Otherwise it deletes that memo alone.
 - **A Delete row shows the key's first chord.** It has no icon. The key closes an open menu, whose entity it may just have taken.
 - **A memo's right click acts only by menu.** That holds on its body, colour bar or remove button, since only the main button clicks there (`mainButtonClick`, Mouse buttons above).
+
+### The diff viewer
+
+- **One diff, two readers** (`diffDocuments`, `src/utils/diff/`): the entries the tree lists and the marks each pane draws say the same thing, an added entity in the current pane alone, a removed one in the saved pane alone, a change both hold in both (`diffDocuments.test.ts` checks it one to one). An index draws nothing to mark. It is a snapshot of the moment the diff opens.
+- **Pairing is by id first, then one to one by a name it keeps** (owner decisions of 2026-10-13): a table by its name, a column by its paired table and name, an index by its paired table and name or, unnamed, its paired key columns and UNIQUE, a foreign key by its paired tables and column pairs, a memo by what it says then where it stands, a group by its name or, unnamed, the tables it shares most. An unnamed entity never pairs by its name, and renamed is told only of an id pair. Index columns pair by the column they key, since a v2 file's load gives them new ids each time. Only live entities count, never the tombstones a runtime value keeps.
+- **What a change is.** A table: name, comment, group, position, colour. A column: name, comment, type, default, AI, PK, UQ, NN, and a move, for a column outside the longest run both orders share. An index: name, UNIQUE, key columns with their direction. A foreign key: column pairs, kind, ON DELETE and ON UPDATE. A memo: text, position, size, colour. A group: name, members, colour, box. Never a z-index, a width the text gives, or a line's anchors. A rename outranks any other change (R over M), and a table added or removed lists nothing inside it.
+- **The canvas marks text and outlines, never fills** (owner decisions of 2026-10-13): a changed cell's text in amber (`--diff-modify-foreground`), a renamed name in blue (`--diff-rename-foreground`), in both panes; a table, memo or group added or removed in a 2 px outline of its colour, with its name alone in it; a column added to or removed from a table both hold in its colour across the row; a foreign key's line in its colour; an entity only moved, resized, recoloured or regrouped in an amber outline. A zoomed out table is marked as the full card. With no map provided, nothing draws.
+- **The tree is the Explorer's** (`DiffTree.tsx` on `primitives/tree/Tree.tsx`): its folders, every row open at first, each name in the colour of what happened to it, a removed one struck through, ending on A, M, D or R, a tilde on a row listed for what it holds. A row's tooltip lists each change as before → after. The name filter reads the current and the saved name and replaces nothing. It opens at 260 px, sized from its edge between 200 and 480, and the next diff opens at 260 again; the panes take what is left.
+- **A row takes each pane to its entity** by the one jump rule: an addition the current pane alone, a removal the saved pane alone, the rest both; a column or index its table, a foreign key its relationship, lit in the pane. The diff drops both panes' lights as it closes, since they are kept by editor ids no element teardown reaches.
+- **Keys in the tree** stop at it as at the Explorer (`stopsAtPanel`), but Escape passes on, which closes the diff.
 
 ### Welcome screen
 

@@ -201,8 +201,6 @@ export const TABLE_PROPERTIES_BODY_PADDING = 12;
 /** How many rows the Table Properties index order shows before it scrolls the rest. */
 export const INDEX_ORDER_MAX_ROWS = 3;
 
-export const DIFF_TREE_WIDTH = 200;
-
 /** The Explorer's width as it first opens, and the width a double press on its edge gives back. */
 export const EXPLORER_WIDTH = 260;
 /** The narrowest and the widest a drag on the Explorer's edge sets it; narrower than the least, it hides. */

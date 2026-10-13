@@ -145,6 +145,27 @@ describe('what the export scene sets, against what the svg writer reads', () => 
     );
   });
 
+  it('reaches neither the diff engine, the tree nor the Explorer, and the relationship light alone through r-html (AC-D16)', () => {
+    const modules = reachedModules().map(posix);
+
+    expect(
+      modules.filter(
+        path =>
+          path.startsWith('utils/diff/') ||
+          path.startsWith('components/primitives/tree/') ||
+          path.startsWith('components/explorer/')
+      )
+    ).toEqual([]);
+    expect(modules).toContain('components/erd/relationshipHighlight.ts');
+    const light = readFileSync(
+      join(SOURCE_ROOT, 'components/erd/relationshipHighlight.ts'),
+      'utf8'
+    );
+    expect([...light.matchAll(SPECIFIER)].map(([, from]) => from)).toEqual([
+      '@dineug/r-html',
+    ]);
+  });
+
   it('never reaches the table drawn by its name alone, since every table is drawn in full', () => {
     const modules = sceneModules().map(posix);
 

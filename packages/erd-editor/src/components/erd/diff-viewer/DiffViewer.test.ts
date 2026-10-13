@@ -9,14 +9,15 @@ import {
   mount,
   mountAndFlush,
   Mounted,
+  movePointer,
   provideI18n,
   pseudoMessages,
+  releasePointer,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import * as styles from '@/components/erd/diff-viewer/DiffViewer.styles';
-import * as treeStyles from '@/components/erd/diff-viewer/tree-viewer/TreeViewer.styles';
-import { DIFF_TREE_WIDTH } from '@/constants/layout';
+import { EXPLORER_WIDTH } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
   addTableAction,
@@ -27,6 +28,22 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
+
+const highlight = vi.hoisted(() => ({ dropped: [] as string[] }));
+
+vi.mock('@/components/erd/relationshipHighlight', async importOriginal => {
+  const actual =
+    await importOriginal<
+      typeof import('@/components/erd/relationshipHighlight')
+    >();
+  return {
+    ...actual,
+    dropRelationshipHighlight: (editorId: string) => {
+      highlight.dropped.push(editorId);
+      actual.dropRelationshipHighlight(editorId);
+    },
+  };
+});
 
 type TableSeed = { id: string; name: string; columns?: string[] };
 
@@ -109,7 +126,7 @@ describe('DiffViewer', () => {
     const root = rootOf();
     expect(root).toBeTruthy();
     expect(root.querySelector(`.${String(styles.container)}`)).toBeTruthy();
-    expect(root.querySelector(`.${String(treeStyles.root)}`)).toBeTruthy();
+    expect(root.querySelector('.diff-viewer-tree')).toBeTruthy();
 
     const viewports = viewportsOf();
     expect(viewports).toHaveLength(2);
@@ -117,31 +134,71 @@ describe('DiffViewer', () => {
     expect(viewports[1].querySelector('.diff-viewer-insert')).toBeTruthy();
   });
 
-  it('splits the origin viewport between the two panes minus the tree width', async () => {
+  it('opens the tree at the Explorer width and splits what is left between the two panes', async () => {
     await mountDiffViewer();
 
-    const expectedWidth = (1000 - DIFF_TREE_WIDTH) / 2 - 1;
+    const tree =
+      mounted!.container.querySelector<HTMLElement>('.diff-viewer-tree')!;
+    expect(tree.style.width).toBe(`${EXPLORER_WIDTH}px`);
     const viewports = viewportsOf();
     // both children were seeded through changeViewportAction on mount
     viewports.forEach(viewport => {
       expect(viewport.querySelector('.minimap')).toBeTruthy();
     });
-    expect(expectedWidth).toBe(399);
   });
 
-  it('lists the renamed tables of both documents in the tree', async () => {
+  it('sizes the tree from its edge between 200 and 480, and gives back 260 on a double press (AC-D12)', async () => {
+    await mountDiffViewer();
+    const tree = () =>
+      mounted!.container.querySelector<HTMLElement>('.diff-viewer-tree')!;
+    const sash = () => tree().querySelector<HTMLElement>('.sash')!;
+    const drag = async (to: number) => {
+      sash().dispatchEvent(
+        new MouseEvent('mousedown', { bubbles: true, clientX: 0, clientY: 10 })
+      );
+      movePointer(to, 10);
+      releasePointer(to, 10);
+      await flush();
+    };
+
+    await drag(900);
+    expect(tree().style.width).toBe('480px');
+    // Past the end again, the width it holds already moves nothing.
+    await drag(950);
+    expect(tree().style.width).toBe('480px');
+    await drag(50);
+    expect(tree().style.width).toBe('200px');
+    await drag(320);
+    expect(tree().style.width).toBe('320px');
+
+    sash().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    await flush();
+    expect(tree().style.width).toBe(`${EXPLORER_WIDTH}px`);
+  });
+
+  it('lists a table from elsewhere of another name as one removed and one added', async () => {
     await mountDiffViewer({
       origin: [{ id: 'n1', name: 'members' }],
       initial: [{ id: 'p1', name: 'users' }],
     });
 
     const labels = Array.from(
-      mounted!.container.querySelectorAll<HTMLElement>(
-        `.${String(treeStyles.table)} .${String(treeStyles.ellipsis)}`
-      )
-    ).map(el => el.textContent);
+      mounted!.container.querySelectorAll<HTMLElement>('[role="treeitem"]')
+    ).map(row => row.textContent?.trim());
 
-    expect(labels).toEqual(['members', 'users']);
+    expect(labels).toEqual(['Tables2~', 'membersA', 'usersD']);
+  });
+
+  it('puts out the lights of both panes as it goes, kept by editor ids no teardown of its own reaches (AC-D19)', async () => {
+    const { originApp } = await mountDiffViewer();
+    highlight.dropped = [];
+
+    mounted!.unmount();
+    mounted = null;
+
+    expect(highlight.dropped).toHaveLength(2);
+    expect(new Set(highlight.dropped).size).toBe(2);
+    expect(highlight.dropped).not.toContain(originApp.store.state.editor.id);
   });
 
   it('emits an open toast on the origin app carrying a close action', async () => {
@@ -238,14 +295,17 @@ describe('DiffViewer', () => {
     expect(viewports[1].querySelector('.diff-viewer-insert')).toBeTruthy();
   });
 
-  it('renders an empty tree when the two documents match', async () => {
+  it('says there are no changes when the two documents match', async () => {
     await mountDiffViewer({
       origin: [{ id: 'n1', name: 'users', columns: ['id'] }],
       initial: [{ id: 'p1', name: 'users', columns: ['id'] }],
     });
 
     expect(
-      mounted!.container.querySelectorAll(`.${String(treeStyles.table)}`)
+      mounted!.container.querySelector('.diff-tree-empty')?.textContent?.trim()
+    ).toBe('No changes');
+    expect(
+      mounted!.container.querySelectorAll('[role="treeitem"]')
     ).toHaveLength(0);
     expect(viewportsOf()).toHaveLength(2);
   });

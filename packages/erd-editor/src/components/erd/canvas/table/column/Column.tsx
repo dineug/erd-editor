@@ -36,7 +36,11 @@ import {
   getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
-import { diffFill, type DiffPaths } from '@/components/erd/diff-viewer/diff';
+import {
+  COLUMN_KEY_PATH,
+  type DiffPaths,
+  diffTextColor,
+} from '@/components/erd/diff-viewer/diff';
 import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -388,21 +392,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     store.dispatch(columnKeyHoverEndAction$());
   };
 
-  /** The tint a changed cell sits on in a diff pane, across its padded box. */
-  const diffBackground = (focusType: FocusType, width: number) => {
-    const fill = diffFill(themeRef.value, props.diffPaths, focusType);
-
-    return fill ? (
-      <k-rect
-        name="cell-diff-background"
-        width={width + INPUT_MARGIN_RIGHT}
-        height={tableRowHeight(props.source)}
-        fill={fill}
-        listening={false}
-      />
-    ) : null;
-  };
-
   /**
    * One cell, laid out the way its div was: the text in the 20px input line,
    * answering a press for the whole box, and the two underlines at their own
@@ -438,14 +427,16 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         handleEdit(focusType, event);
       }}
     >
-      {diffBackground(focusType, width)}
       <k-text
         name="cell-text"
         y={getColumnTextY(props.source)}
         width={width}
         height={getColumnTextHeight(props.source, fontFamily)}
         text={text}
-        fill={fill}
+        fill={
+          diffTextColor(themeRef.value, props.diffPaths, focusType, true) ??
+          fill
+        }
         fontFamily={fontFamily}
         fontSize={SCENE_FONT_SIZE}
         align={align}
@@ -682,7 +673,11 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           name: 'column-col column-key',
           kind: 'column-col',
           size: keySize,
-          color: keyFill(column.ui.keys, theme),
+          color:
+            column.ui.keys === 0
+              ? TRANSPARENT
+              : (diffTextColor(theme, props.diffPaths, COLUMN_KEY_PATH, true) ??
+                keyFill(column.ui.keys, theme)),
           x: TABLE_INSET,
           y: (rowHeight - keySize) / 2,
           mouseenter: handleKeyMouseenter,

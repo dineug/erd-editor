@@ -120,12 +120,13 @@ export const ThemeConfig: Theme = {
   explorerPrimaryKey: `custom-orange--11`,
   explorerForeignKey: `custom-blue--11`,
 
-  diffInsertBackground: `custom-green--4`,
-  diffDeleteBackground: `custom-red--4`,
-  diffCrossBackground: `custom-blue--4`,
+  // A diff's status letters and the canvas text and outlines it marks: added,
+  // removed, changed and renamed, each at step 11, which keeps 4.5:1 on the
+  // tree and the table body in either appearance.
   diffInsertForeground: `custom-green--11`,
   diffDeleteForeground: `custom-red--11`,
-  diffCrossForeground: `custom-blue--11`,
+  diffModifyForeground: `custom-amber--11`,
+  diffRenameForeground: `custom-blue--11`,
 } as const;
 
 /**
@@ -161,4 +162,7 @@ export const LightThemeConfig: Partial<Theme> = {
   visualizationLink: 'gray-8',
   visualizationColumn: 'gray-9',
   visualizationRelationship: 'gray-9',
+  // Amber step 11 reads under 4.5:1 on a light gray-1, so a changed entry
+  // takes the darker amber an editor's light theme marks a change with.
+  diffModifyForeground: 'override-#895503',
 };

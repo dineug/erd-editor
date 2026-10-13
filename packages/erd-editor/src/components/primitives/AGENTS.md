@@ -140,6 +140,7 @@
 - **The scroll position is read through a getter.** `getScrollTop` is read once in `onMounted`, and `onScroll` reports each new offset. A host keeps it in an unobserved place, so a scroll renders nothing outside the tree (`Tree.browser.test.tsx`).
 - **A reveal scrolls once per id.** `revealId` scrolls its row into view (`offsetToShow`) each time a different id arrives, after the render that brought it.
 - **The tree tokens are its own** (`treeBackground` gray-1, `treeRowHover` gray-3, `treeRowCurrent` accent-4, `treeRowActive` accent-8 as an inset ring, `treeMuted` gray-11, `treeMatch` accent-5). `radix-ui-theme.test.ts` holds the muted text at 4.5:1 on the tree and each row fill in every theme.
+- **Two hosts draw it**: the Explorer (`explorer-panel/ExplorerPanel.tsx`) and the diff tree (`erd/diff-viewer/diff-tree/DiffTree.tsx`), which `src/components/treeShared.test.ts` holds to the one component. The diff status letters keep 4.5:1 on the tree and under the pointer, but for the measured light hover green and blue at 4.1 (`radix-ui-theme.test.ts`).
 
 ### Other primitives
 

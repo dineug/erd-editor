@@ -13,7 +13,6 @@ import {
   COLUMN_UNIQUE_WIDTH,
   DEFAULT_HEIGHT,
   DEFAULT_WIDTH,
-  DIFF_TREE_WIDTH,
   EXPLORER_CANVAS_MIN_WIDTH,
   EXPLORER_MAX_WIDTH,
   EXPLORER_MIN_WIDTH,
@@ -214,11 +213,10 @@ describe('layout constants', () => {
     expect(MEMO_MIN_WIDTH).toBeGreaterThan(MEMO_MIN_HEIGHT);
   });
 
-  it('exposes the chrome sizes used by the minimap, toolbar and diff tree', () => {
+  it('exposes the chrome sizes used by the minimap and the toolbar', () => {
     expect(MINIMAP_SIZE).toBe(150);
     expect(MINIMAP_MARGIN).toBe(20);
     expect(TOOLBAR_HEIGHT).toBe(30);
-    expect(DIFF_TREE_WIDTH).toBe(200);
   });
 
   it('opens the Explorer at 260 px, sizes it from 200 to 480 and leaves the canvas 320', () => {
@@ -297,7 +295,6 @@ describe('layout constants', () => {
       MINIMAP_SIZE,
       MINIMAP_MARGIN,
       TOOLBAR_HEIGHT,
-      DIFF_TREE_WIDTH,
       SCHEMA_SQL_PANEL_WIDTH,
       SCHEMA_SQL_PANEL_COLLAPSE_BELOW,
       RELATIONSHIP_STROKE_WIDTH,

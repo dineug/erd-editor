@@ -7,6 +7,7 @@ import { useAppContext } from '@/components/appContext';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
+  DIFF_OUTLINE_WIDTH,
   HIGH_LEVEL_FONT_SIZES,
   mainButtonClick,
   RING_WIDTH,
@@ -21,10 +22,13 @@ import { getColorEdgePath } from '@/components/erd/canvas/table/colorEdge';
 import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
 import { useSharedFocusTable } from '@/components/erd/canvas/table/useSharedFocusTable';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { diffOutline, diffTextColor } from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { useI18n } from '@/components/localeContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_BORDER } from '@/constants/layout';
+import { FocusType } from '@/engine/modules/editor/state';
 import { Table } from '@/internal-types';
 import { getTableRect } from '@/konva/scene/metrics';
 import { getSceneTransform } from '@/konva/scene/viewport';
@@ -56,6 +60,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  const diffMapRef = useDiffMap(ctx);
   const { sharedFocusTableColor } = useSharedFocusTable(ctx, props.table.id);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
   const { onMoveStart } = useMoveTable(ctx, props, sourceRef);
@@ -99,6 +104,9 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
     const sharedFocus = sharedFocusTableColor();
     const sharedSelected = sharedSelectColor();
     const ringColor = sharedFocus ?? sharedSelected;
+    // Zoomed out, a table in a diff pane is marked as the full card is.
+    const diffPaths = diffMapRef.value?.get(table.id);
+    const diffColor = diffOutline(theme, diffPaths);
 
     return (
       <k-group
@@ -137,6 +145,19 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
             strokeWidth={RING_WIDTH}
           />
         ) : null}
+        {diffColor ? (
+          <k-rect
+            name="table-diff-outline"
+            x={-DIFF_OUTLINE_WIDTH / 2}
+            y={-DIFF_OUTLINE_WIDTH / 2}
+            width={rect.width + DIFF_OUTLINE_WIDTH}
+            height={rect.height + DIFF_OUTLINE_WIDTH}
+            cornerRadius={TABLE_CORNER_RADIUS}
+            stroke={diffColor}
+            strokeWidth={DIFF_OUTLINE_WIDTH}
+            listening={false}
+          />
+        ) : null}
         <k-text
           name="high-level-table-name"
           x={TABLE_BORDER}
@@ -144,7 +165,10 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           width={rect.width - TABLE_BORDER * 2}
           height={rect.height - TABLE_INSET * 2}
           text={isEmptyName ? i18n.value.t('common.unnamed') : table.name}
-          fill={isEmptyName ? theme.placeholder : theme.active}
+          fill={
+            diffTextColor(theme, diffPaths, FocusType.tableName) ??
+            (isEmptyName ? theme.placeholder : theme.active)
+          }
           fontFamily={SCENE_FONT_FAMILY}
           fontSize={nameFontSize(zoomLevel)}
           fontStyle="bold"

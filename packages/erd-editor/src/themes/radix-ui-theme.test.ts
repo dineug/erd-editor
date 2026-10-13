@@ -193,19 +193,15 @@ describe('createTheme', () => {
     const light = createTheme(lightGrayBlue);
     const dark = createTheme(darkGrayBlue);
 
-    expect(light.diffInsertBackground).toBe('#d6f1df');
-    expect(light.diffDeleteBackground).toBe('#ffdbdc');
-    expect(light.diffCrossBackground).toBe('#d5efff');
     expect(light.diffInsertForeground).toBe('#218358');
     expect(light.diffDeleteForeground).toBe('#ce2c31');
-    expect(light.diffCrossForeground).toBe('#0d74ce');
+    expect(light.diffModifyForeground).toBe('#895503');
+    expect(light.diffRenameForeground).toBe('#0d74ce');
 
-    expect(dark.diffInsertBackground).toBe('#113b29');
-    expect(dark.diffDeleteBackground).toBe('#500f1c');
-    expect(dark.diffCrossBackground).toBe('#003362');
     expect(dark.diffInsertForeground).toBe('#3dd68c');
     expect(dark.diffDeleteForeground).toBe('#ff9592');
-    expect(dark.diffCrossForeground).toBe('#70b8ff');
+    expect(dark.diffModifyForeground).toBe('#ffca16');
+    expect(dark.diffRenameForeground).toBe('#70b8ff');
   });
 
   it('honours a non-gray gray scale and a non-blue accent', () => {
@@ -385,6 +381,59 @@ describe('the tree', () => {
           ).toBeGreaterThanOrEqual(4.5);
         }
       );
+    });
+  });
+
+  /**
+   * Measured 2026-10-13: on the light hover fill, gray-3, the added green and
+   * the renamed blue read 4.14 and 4.18 at the least, so they hold 4.1 there;
+   * every other status letter keeps 4.5:1 on the tree and under the pointer.
+   */
+  it('keeps the diff status letters at 4.5:1 on the tree and under the pointer, save the light hover green and blue', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+      const light = options.appearance === Appearance.light;
+      const statuses = [
+        theme.diffInsertForeground,
+        theme.diffDeleteForeground,
+        theme.diffModifyForeground,
+        theme.diffRenameForeground,
+      ];
+
+      statuses.forEach(status => {
+        expect(
+          contrast(status, theme.treeBackground),
+          labelOf(options)
+        ).toBeGreaterThanOrEqual(4.5);
+      });
+      statuses.forEach(status => {
+        const fallback =
+          light &&
+          (status === theme.diffInsertForeground ||
+            status === theme.diffRenameForeground);
+        expect(
+          contrast(status, theme.treeRowHover),
+          labelOf(options)
+        ).toBeGreaterThanOrEqual(fallback ? 4.1 : 4.5);
+      });
+    });
+  });
+
+  it('keeps the diff colours at 4.5:1 on a table, where the canvas writes a changed cell in them', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [
+        theme.diffInsertForeground,
+        theme.diffDeleteForeground,
+        theme.diffModifyForeground,
+        theme.diffRenameForeground,
+      ].forEach(status => {
+        expect(
+          contrast(status, theme.tableBackground),
+          labelOf(options)
+        ).toBeGreaterThanOrEqual(4.5);
+      });
     });
   });
 

@@ -10,6 +10,8 @@ import {
   transitionTo,
 } from '@/components/erd/canvas/highlightTransition';
 import { mixColor } from '@/components/erd/canvas/mixColor';
+import { diffOutline } from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { isRelationshipHighlighted } from '@/components/erd/relationshipHighlight';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
@@ -151,6 +153,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const diffMapRef = useDiffMap(ctx);
   const state = observable({ hover: false });
   // The canvas container a pointer resting on this connector titles.
   let titled: HTMLElement | null = null;
@@ -233,7 +236,10 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       : relationship.identification
         ? theme.keyPFK
         : theme.keyFK;
-    const unlit = hover ? theme.relationshipHover : base;
+    // A diff pane draws an added, removed or changed foreign key in its colour.
+    const unlit =
+      diffOutline(theme, diffMapRef.value?.get(relationship.id)) ??
+      (hover ? theme.relationshipHover : base);
 
     // A view lights the connectors that reach what it lights, and the colour
     // walks between the two rather than jumping. The document has no light of

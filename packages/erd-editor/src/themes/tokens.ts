@@ -109,12 +109,10 @@ export type Theme = {
   explorerPrimaryKey: string;
   explorerForeignKey: string;
 
-  diffInsertBackground: string;
-  diffDeleteBackground: string;
-  diffCrossBackground: string;
   diffInsertForeground: string;
   diffDeleteForeground: string;
-  diffCrossForeground: string;
+  diffModifyForeground: string;
+  diffRenameForeground: string;
 };
 
 export const ThemeTokens: ReadonlyArray<keyof Theme> = [
@@ -226,12 +224,10 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'explorerPrimaryKey',
   'explorerForeignKey',
 
-  'diffInsertBackground',
-  'diffDeleteBackground',
-  'diffCrossBackground',
   'diffInsertForeground',
   'diffDeleteForeground',
-  'diffCrossForeground',
+  'diffModifyForeground',
+  'diffRenameForeground',
 ];
 
 /** The custom property one token is published under on :host. */

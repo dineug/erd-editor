@@ -49,7 +49,7 @@ function createApp(): AppContext {
 }
 
 const diffMapOf = (): DiffMap =>
-  new Map([['t1', ['tableEntities', new Map([['tableName', Diff.insert]])]]]);
+  new Map([['t1', new Map([['tableName', Diff.insert]])]]);
 
 async function mountViewer(
   diff: number,

@@ -13,8 +13,6 @@ const ROW_CELLS = [
   'columnNotNull',
 ];
 
-const HEADER_CELLS = ['tableComment', 'tableName'];
-
 const column = (id: string, name: string, options = 0, keys = 0) => ({
   id,
   name,
@@ -90,13 +88,19 @@ type PaneClass = 'diff-viewer-delete' | 'diff-viewer-insert';
 
 type PaneRead = {
   mirrors: number;
-  fills: string[];
-  token: string;
-  tints: Record<string, string[]>;
-  cellCoverage: number;
-  untouchedTintPixels: number;
+  backgrounds: number;
+  marks: Record<string, string[]>;
+  outlines: Record<string, string>;
+  untouchedMarkPixels: number;
   untouchedTablePixels: number;
 };
+
+const STATUS_TOKENS = {
+  insert: '--diff-insert-foreground',
+  delete: '--diff-delete-foreground',
+  modify: '--diff-modify-foreground',
+  rename: '--diff-rename-foreground',
+} as const;
 
 /**
  * Keeps every stage a name was ever given. The registry publishes only the
@@ -123,163 +127,184 @@ async function recordStages(page: Page) {
 }
 
 /**
- * What one pane paints, read off its own stage and its layer canvases: the
- * tint nodes by entity and cell, and the pixels in the token colour over the
- * changed user_id NOT NULL cell and over the posts table nobody changed.
+ * What one pane marks, read off its own stage and its layer canvases: each
+ * cell whose text takes a diff colour and which, each outline and its colour,
+ * and the pixels in any diff colour over the posts table nobody changed.
  */
 function readPane(page: Page, pane: PaneClass): Promise<PaneRead> {
-  return page.evaluate(paneClass => {
-    const host = document.querySelector('erd-editor')!;
-    const root = host.shadowRoot!.querySelector<HTMLElement>(`.${paneClass}`)!;
-    const token = getComputedStyle(root)
-      .getPropertyValue(
-        paneClass === 'diff-viewer-insert'
-          ? '--diff-insert-background'
-          : '--diff-delete-background'
-      )
-      .trim();
-    const background = getComputedStyle(root)
-      .getPropertyValue('--table-background')
-      .trim();
+  return page.evaluate(
+    ([paneClass, tokens]) => {
+      const host = document.querySelector('erd-editor')!;
+      const root = host.shadowRoot!.querySelector<HTMLElement>(
+        `.${paneClass}`
+      )!;
+      const style = getComputedStyle(root);
 
-    const rgbOf = (color: string) => {
-      const probe = document.createElement('span');
-      probe.style.color = color;
-      document.body.append(probe);
-      const channels = getComputedStyle(probe).color.match(/\d+/g)!;
-      probe.remove();
-      return channels.slice(0, 3).map(Number);
-    };
+      const rgbOf = (color: string) => {
+        const probe = document.createElement('span');
+        probe.style.color = color;
+        document.body.append(probe);
+        const channels = getComputedStyle(probe).color.match(/\d+/g)!;
+        probe.remove();
+        return channels.slice(0, 3).map(Number);
+      };
+      const statusOf = new Map(
+        Object.entries(tokens).map(([status, token]) => [
+          rgbOf(style.getPropertyValue(token).trim()).join(','),
+          status,
+        ])
+      );
+      const status = (color: string) => statusOf.get(rgbOf(color).join(','));
 
-    const claims = Reflect.get(window, '__stageClaims') as Array<{
-      name: string;
-      stage: any;
-    }>;
-    const stage = claims.find(
-      claim => claim.name === 'canvas' && root.contains(claim.stage.container())
-    )!.stage;
+      const claims = Reflect.get(window, '__stageClaims') as Array<{
+        name: string;
+        stage: any;
+      }>;
+      const stage = claims.find(
+        claim =>
+          claim.name === 'canvas' && root.contains(claim.stage.container())
+      )!.stage;
+      const entityOf = (node: any) =>
+        node
+          .findAncestor((ancestor: any) =>
+            /^(table|column)-/.test(ancestor.id())
+          )
+          .id();
 
-    const tints: Record<string, string[]> = {};
-    const fills = new Set<string>();
-    for (const node of stage.find('.cell-diff-background')) {
-      const entity = node
-        .findAncestor((ancestor: any) => /^(table|column)-/.test(ancestor.id()))
-        .id();
-      const cell = node.getParent().name().split(' ')[1];
-      (tints[entity] ??= []).push(cell);
-      fills.add(rgbOf(node.fill()).join(','));
-    }
-    Object.values(tints).forEach(cells => cells.sort());
-
-    /** How many pixels of a stage rect match a colour, over every layer. */
-    const pixelsIn = (
-      rect: { x: number; y: number; width: number; height: number },
-      color: number[]
-    ) => {
-      let count = 0;
-      for (const layer of stage.getLayers()) {
-        const canvas = layer.getCanvas();
-        const ratio = canvas.getPixelRatio();
-        const x = Math.round(rect.x * ratio);
-        const y = Math.round(rect.y * ratio);
-        const width = Math.round(rect.width * ratio);
-        const height = Math.round(rect.height * ratio);
-        if (width <= 0 || height <= 0) continue;
-
-        const { data } = canvas._canvas
-          .getContext('2d')
-          .getImageData(x, y, width, height);
-        for (let index = 0; index < data.length; index += 4) {
-          if (data[index + 3] !== 255) continue;
-          const hit = color.every(
-            (channel, offset) => Math.abs(data[index + offset] - channel) <= 6
-          );
-          if (hit) count++;
-        }
+      const marks: Record<string, string[]> = {};
+      for (const node of stage.find('.cell-text')) {
+        const kind = status(node.fill());
+        if (!kind) continue;
+        const cell = node.getParent().name().split(' ')[1];
+        (marks[entityOf(node)] ??= []).push(`${cell}:${kind}`);
       }
-      return count;
-    };
+      Object.values(marks).forEach(cells => cells.sort());
 
-    const rectOf = (node: any) =>
-      node.getClientRect({ relativeTo: stage, skipShadow: true });
-    const tintNode = stage
-      .findOne('#column-ur_user_id')
-      .findOne('.columnNotNull')
-      .findOne('.cell-diff-background');
-    const posts = rectOf(stage.findOne('#table-posts'));
+      const outlines: Record<string, string> = {};
+      for (const node of stage.find('.table-diff-outline')) {
+        outlines[node.getParent().id()] = status(node.stroke()) ?? '';
+      }
 
-    return {
-      mirrors: root.querySelectorAll('.scene-mirror').length,
-      fills: [...fills],
-      token: rgbOf(token).join(','),
-      tints,
-      cellCoverage: tintNode
-        ? pixelsIn(rectOf(tintNode), rgbOf(token)) /
-          (tintNode.width() * tintNode.height())
-        : 0,
-      untouchedTintPixels: pixelsIn(posts, rgbOf(token)),
-      untouchedTablePixels: pixelsIn(posts, rgbOf(background)),
-    };
-  }, pane);
+      /** How many pixels of a stage rect match any of the colours, over every layer. */
+      const pixelsIn = (
+        rect: { x: number; y: number; width: number; height: number },
+        colors: number[][]
+      ) => {
+        let count = 0;
+        for (const layer of stage.getLayers()) {
+          const canvas = layer.getCanvas();
+          const ratio = canvas.getPixelRatio();
+          const x = Math.round(rect.x * ratio);
+          const y = Math.round(rect.y * ratio);
+          const width = Math.round(rect.width * ratio);
+          const height = Math.round(rect.height * ratio);
+          if (width <= 0 || height <= 0) continue;
+
+          const { data } = canvas._canvas
+            .getContext('2d')
+            .getImageData(x, y, width, height);
+          for (let index = 0; index < data.length; index += 4) {
+            if (data[index + 3] !== 255) continue;
+            const hit = colors.some(color =>
+              color.every(
+                (channel, offset) =>
+                  Math.abs(data[index + offset] - channel) <= 6
+              )
+            );
+            if (hit) count++;
+          }
+        }
+        return count;
+      };
+
+      const posts = stage
+        .findOne('#table-posts')
+        .getClientRect({ relativeTo: stage, skipShadow: true });
+      const diffColors = Object.values(tokens).map(token =>
+        rgbOf(style.getPropertyValue(token).trim())
+      );
+
+      return {
+        mirrors: root.querySelectorAll('.scene-mirror').length,
+        backgrounds: stage.find('.cell-diff-background').length,
+        marks,
+        outlines,
+        untouchedMarkPixels: pixelsIn(posts, diffColors),
+        untouchedTablePixels: pixelsIn(posts, [
+          rgbOf(style.getPropertyValue('--table-background').trim()),
+        ]),
+      };
+    },
+    [pane, STATUS_TOKENS] as const
+  );
 }
 
-const columnTints = (ids: string[], cells: string[]) =>
-  Object.fromEntries(ids.map(id => [`column-${id}`, cells]));
+const cells = (list: string[], status: string) =>
+  list.map(cell => `${cell}:${status}`).sort();
+
+async function openDiff(erd: any, page: Page) {
+  await recordStages(page);
+  await page.goto(FIXTURE_URL);
+  await expect(erd.host.locator('[data-testid="erd-canvas"]')).toBeAttached();
+  await erd.seed(CURRENT);
+
+  await page.evaluate(value => {
+    document.querySelector('erd-editor')!.setDiffValue(value);
+  }, JSON.stringify(SAVED));
+  await expect(erd.host.locator('.diff-viewer-delete')).toBeAttached();
+  await expect(erd.host.locator('.diff-viewer-insert')).toBeAttached();
+  await erd.whenDrawn();
+}
 
 test.describe('diff viewer', () => {
   /**
    * On the plain fixture, because the scene mirror lays a div with data-id and
-   * data-type over every cell, which is exactly what the stylesheet the tint
-   * used to be would have painted, canvas untouched.
+   * data-type over every cell, which a stylesheet could have coloured with the
+   * canvas untouched.
    */
-  test('tints the changed cells of both panes on the canvas itself', async ({
+  test('writes the changed cells of both panes in their colour, a table added or removed outlined, on the canvas itself', async ({
     erd,
     page,
   }) => {
-    await recordStages(page);
-    await page.goto(FIXTURE_URL);
-    await expect(erd.host.locator('[data-testid="erd-canvas"]')).toBeAttached();
-    await erd.seed(CURRENT);
+    await openDiff(erd, page);
 
-    await page.evaluate(value => {
-      document.querySelector('erd-editor')!.setDiffValue(value);
-    }, JSON.stringify(SAVED));
-    await expect(erd.host.locator('.diff-viewer-delete')).toBeAttached();
-    await expect(erd.host.locator('.diff-viewer-insert')).toBeAttached();
-    await erd.whenDrawn();
-
-    const expected: Record<PaneClass, Record<string, string[]>> = {
+    const expected: Record<PaneClass, Pick<PaneRead, 'marks' | 'outlines'>> = {
       'diff-viewer-delete': {
-        'table-p_role': HEADER_CELLS,
-        ...columnTints(['p_id', 'p_version', 'p_authority'], ROW_CELLS),
-        'table-ur': ['tableComment'],
-        'column-ur_user_id': ['columnNotNull'],
+        marks: {
+          'table-p_role': ['tableName:delete'],
+          'table-ur': ['tableComment:modify'],
+          'column-ur_user_id': ['columnNotNull:modify'],
+        },
+        outlines: { 'table-p_role': 'delete' },
       },
       'diff-viewer-insert': {
-        'table-c_role2': HEADER_CELLS,
-        ...columnTints(['c_id', 'c_version', 'c_authority'], ROW_CELLS),
-        'table-ur': ['tableComment'],
-        'column-ur_user_id': ['columnNotNull'],
-        'column-ur_test': ROW_CELLS,
+        marks: {
+          'table-c_role2': ['tableName:insert'],
+          'table-ur': ['tableComment:modify'],
+          'column-ur_user_id': ['columnNotNull:modify'],
+          'column-ur_test': cells(ROW_CELLS, 'insert'),
+        },
+        outlines: { 'table-c_role2': 'insert' },
       },
     };
 
     for (const pane of Object.keys(expected) as PaneClass[]) {
       await expect
-        .poll(async () => (await readPane(page, pane)).tints)
+        .poll(async () => {
+          const { marks, outlines } = await readPane(page, pane);
+          return { marks, outlines };
+        })
         .toEqual(expected[pane]);
 
       const read = await readPane(page, pane);
       expect(read.mirrors).toBe(0);
-      expect(read.fills).toEqual([read.token]);
-      // The text over the tint takes some of its box, and the tint the rest.
-      expect(read.cellCoverage).toBeGreaterThan(0.5);
-      expect(read.untouchedTintPixels).toBe(0);
+      expect(read.backgrounds).toBe(0);
+      expect(read.untouchedMarkPixels).toBe(0);
       expect(read.untouchedTablePixels).toBeGreaterThan(0);
     }
 
     // The editor's own canvas stays under the viewer, and no pane is its parent.
-    const editorTints = await page.evaluate(() => {
+    const editorOutlines = await page.evaluate(() => {
       const claims = Reflect.get(window, '__stageClaims') as Array<{
         name: string;
         stage: any;
@@ -289,8 +314,63 @@ test.describe('diff viewer', () => {
           claim.name === 'canvas' &&
           !claim.stage.container().closest('[class*="diff-viewer-"]')
       )!;
-      return editor.stage.find('.cell-diff-background').length;
+      return editor.stage.find('.table-diff-outline').length;
     });
-    expect(editorTints).toBe(0);
+    expect(editorOutlines).toBe(0);
+  });
+
+  test('lists the changes on the tree, filters them by name and takes both panes to a row', async ({
+    erd,
+    page,
+  }) => {
+    await openDiff(erd, page);
+    const tree = erd.host.locator('.diff-viewer-tree');
+    const rows = tree.locator('[role="treeitem"]');
+
+    await expect(tree).toHaveCSS('width', '260px');
+    await expect(rows).toHaveText([
+      'Tables3~',
+      'roleD',
+      'role2A',
+      'user_roleM',
+      'Columns2~',
+      'user_idM',
+      'testA',
+    ]);
+
+    await tree.locator('.diff-tree-filter').fill('test');
+    await expect(rows).toHaveText([
+      'Tables1~',
+      'user_roleM',
+      'Columns1~',
+      'testA',
+    ]);
+    await tree.locator('.diff-tree-filter').fill('');
+
+    await rows.filter({ hasText: 'user_role' }).click();
+
+    const selected = (pane: PaneClass) =>
+      page.evaluate(paneClass => {
+        const host = document.querySelector('erd-editor')!;
+        const root = host.shadowRoot!.querySelector(`.${paneClass}`)!;
+        const claims = Reflect.get(window, '__stageClaims') as Array<{
+          name: string;
+          stage: any;
+        }>;
+        const stage = claims.find(
+          claim =>
+            claim.name === 'canvas' && root.contains(claim.stage.container())
+        )!.stage;
+        return stage
+          .find('.table')
+          .filter((node: any) => node.getAttr('selected'))
+          .map((node: any) => node.id());
+      }, pane);
+    await expect
+      .poll(() => selected('diff-viewer-delete'))
+      .toEqual(['table-ur']);
+    await expect
+      .poll(() => selected('diff-viewer-insert'))
+      .toEqual(['table-ur']);
   });
 });

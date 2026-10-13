@@ -82,6 +82,7 @@
 - `file/exportFile.ts` (how Save file and every export name the file): `src/components/generator-code/AGENTS.md`.
 - `find-replace/`, which has no file of its own (the matcher, `findMatches.ts`, `replaceActions.ts`): `src/components/explorer/AGENTS.md`.
 - `map-columns/` (the pure half of Map Columns): `src/components/map-columns/AGENTS.md`.
+- `diff/` (the diff engine the diff viewer's tree and panes read): `src/components/erd/AGENTS.md`, The diff viewer.
 - `referentialAction.ts` (the referential action codes a connector's child end shows): `draw-relationship/AGENTS.md`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

@@ -1,4 +1,4 @@
-/** The Explorer's own words: its title, its header buttons and the folders of its tree. */
+/** The Explorer's own words, its title, buttons and folders, and the diff tree's: its filter, statuses and changes. */
 export const explorer = {
   'explorer.title': 'Explorer',
   'explorer.collapseAll': 'Collapse All',
@@ -12,4 +12,25 @@ export const explorer = {
   'explorer.folder.columns': 'Columns',
   'explorer.folder.indexes': 'Indexes',
   'explorer.folder.foreignKeys': 'Foreign Keys',
+  'explorer.diff.filter': 'Filter by name',
+  'explorer.diff.noChanges': 'No changes',
+  'explorer.diff.change': '{field}: {before} → {after}',
+  'explorer.status.added': 'Added',
+  'explorer.status.modified': 'Modified',
+  'explorer.status.deleted': 'Deleted',
+  'explorer.status.renamed': 'Renamed',
+  'explorer.status.inside': 'Changed inside',
+  'explorer.diff.field.name': 'Name',
+  'explorer.diff.field.comment': 'Comment',
+  'explorer.diff.field.dataType': 'Data type',
+  'explorer.diff.field.default': 'Default',
+  'explorer.diff.field.order': 'Order',
+  'explorer.diff.field.tableGroup': 'Table group',
+  'explorer.diff.field.position': 'Position',
+  'explorer.diff.field.size': 'Size',
+  'explorer.diff.field.color': 'Color',
+  'explorer.diff.field.members': 'Tables',
+  'explorer.diff.field.columns': 'Columns',
+  'explorer.diff.field.relationshipType': 'Relationship type',
+  'explorer.diff.field.value': 'Content',
 } as const;
