@@ -151,8 +151,11 @@ editor's own history.
   table, import, export, Auto Layout, tabs, theme, language and more), or to jump to a table after
   `#`, a column after `@`, and a comment or memo after `:`; Korean also matches by its initial
   consonants (`ㅅㅇㅈ` finds 사용자)
-- **Find and replace** — `Ctrl`/`Cmd`+`F` searches table and column names, comments and memos, with
-  match case, whole word and regular expressions, and one undo takes back a Replace All
+- **Explorer** — the toolbar's Explorer button docks a tree of the tables, with their columns,
+  indexes and foreign keys, the table groups and the memos beside the canvas, and a click goes to
+  what a row stands for; `Ctrl`/`Cmd`+`F` searches it, table, column, index and group names,
+  comments and memos, with match case, whole word, regular expressions and Preserve Case, and one
+  undo takes back a Replace All
 - **Visualization** — Graph mode draws a force-directed view of how the tables relate. Flow mode
   lays them out by their relationships, lights a table you hover and the tables it relates to, and
   shows names only, keys only or all fields; **Focus on this table** in a table's right-click menu
@@ -163,7 +166,8 @@ editor's own history.
   from anywhere, and click the zoom level on the floating toolbar to go back to 100%
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it,
   from the toolbar
-- **Diff viewer** — compare the diagram with another `.json` file from the canvas menu; an `.erd`
+- **Diff viewer** — compare the diagram with another `.json` file from the canvas menu: a tree
+  lists what was added, changed, removed or renamed, and both panes mark it on the canvas; an `.erd`
   diagram goes in as a copy renamed to `.erd.json`
 - **Undo / redo** — every edit, from the toolbar or `Ctrl`/`Cmd`+`Z` and `Ctrl`/`Cmd`+`Shift`+`Z`,
   in the editor's own history

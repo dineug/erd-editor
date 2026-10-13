@@ -119,8 +119,10 @@ shows as modified. Undo and redo, on the editor's toolbar, are its own history.
   (new table, import, export, Auto Layout, tabs, theme, language and more), or jumps to a table
   after `#`, a column after `@`, and a comment or memo after `:`; Korean also matches by its initial
   consonants (`ㅅㅇㅈ` finds 사용자)
-- **Find and replace** — the toolbar's Find and Replace searches table and column names, comments
-  and memos, with match case, whole word and regular expressions, and one undo takes back a
+- **Explorer** — the toolbar's Explorer button docks a tree of the tables, with their columns,
+  indexes and foreign keys, the table groups and the memos beside the canvas, and a click goes to
+  what a row stands for; its search finds table, column, index and group names, comments and memos,
+  with match case, whole word, regular expressions and Preserve Case, and one undo takes back a
   Replace All
 - **Visualization** — Graph mode draws a force-directed view of how the tables relate. Flow mode
   lays them out by their relationships, lights a table you hover and the tables it relates to, and
@@ -132,7 +134,8 @@ shows as modified. Undo and redo, on the editor's toolbar, are its own history.
   from anywhere, and click the zoom level on the floating toolbar to go back to 100%
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it,
   from the toolbar
-- **Diff viewer** — compare the diagram with another `.json` file from the canvas menu
+- **Diff viewer** — compare the diagram with another `.json` file from the canvas menu: a tree
+  lists what was added, changed, removed or renamed, and both panes mark it on the canvas
 - **Undo / redo** — every edit, from the editor's toolbar, in the editor's own history
 
 ### Language and theme
