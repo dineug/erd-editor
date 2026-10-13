@@ -105,20 +105,17 @@ export const ThemeConfig: Theme = {
   keyPFK: `custom-cyan--9`,
 
   // The tree the Explorer and the diff viewer share: gray-1 under it, where
-  // its muted text and status letters keep 4.5:1, and the active row ringed.
+  // its muted text and status letters keep 4.5:1, the keyboard's row filled as
+  // the pointer's is.
   treeBackground: 'gray-1',
   treeRowHover: 'gray-3',
-  treeRowActive: 'accent-8',
   treeRowCurrent: 'accent-4',
   treeMuted: 'gray-11',
   treeMatch: 'accent-5',
 
-  // The Explorer's panel and its key icons. The icons take step 11 from the
-  // base, which holds 3:1 on every row fill in either appearance.
+  // The Explorer's panel; its key glyphs take the table's key colours.
   explorerBackground: 'gray-1',
   explorerBorder: 'gray-6',
-  explorerPrimaryKey: `custom-orange--11`,
-  explorerForeignKey: `custom-blue--11`,
 
   // A diff's status letters and the canvas text and outlines it marks: added,
   // removed, changed and renamed, each at step 11, which keeps 4.5:1 on the

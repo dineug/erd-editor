@@ -364,7 +364,6 @@ export const slSI = {
   'toolbar.undo': 'Razveljavi',
   'toolbar.redo': 'Uveljavi',
   'toolbar.timeTravel': 'Potovanje skozi čas',
-  'toolbar.tableCount': 'Tabele: {count}',
   'themeBuilder.accentColor': 'Barva poudarka',
   'themeBuilder.grayColor': 'Sivi toni',
   'themeBuilder.appearance': 'Videz',

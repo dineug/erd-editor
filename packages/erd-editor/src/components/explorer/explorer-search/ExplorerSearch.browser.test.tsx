@@ -29,7 +29,6 @@ import { hasAppleDevice } from '@/utils/device-detect';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { DEFAULT_FIND_FIELDS, FindFieldList } from '@/utils/find-replace';
 import { InternalEventType } from '@/utils/internalEvents';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 /** The modifier $mod stands for where the spec runs. */
 const MOD: KeyboardEventInit = hasAppleDevice()
@@ -202,6 +201,24 @@ describe('ExplorerSearch - layout', () => {
     expect(iconNameOf(tool('find-replace-all')!)).toBe('replace-all');
   });
 
+  it('stands its arrow as tall as the rows it unfolds, the Replace row included', async () => {
+    await setup();
+    await open();
+    const toggle = tool('explorer-replace-toggle')!;
+    const findField = findInput().parentElement!;
+    expect(toggle.getBoundingClientRect().height).toBe(
+      findField.getBoundingClientRect().height
+    );
+
+    await click(toggle);
+
+    const top = findField.getBoundingClientRect().top;
+    const bottom =
+      replaceInput()!.parentElement!.getBoundingClientRect().bottom;
+    expect(toggle.getBoundingClientRect().top).toBe(top);
+    expect(toggle.getBoundingClientRect().bottom).toBe(bottom);
+  });
+
   it('shows the seven kinds of text past the three dots, the names alone pressed at first (AC-Q2)', async () => {
     await setup();
     await open();
@@ -293,7 +310,7 @@ describe('ExplorerSearch - layout', () => {
 });
 
 describe('ExplorerSearch - keyboard', () => {
-  it('takes the keyboard on an opening, and back on the chord, its query selected (AC-S20)', async () => {
+  it('takes the keyboard on an opening, and back on an opening with no query while shown, its query selected (AC-S20)', async () => {
     await setup();
     await open();
     expect(activeElement()).toBe(findInput());
@@ -302,11 +319,7 @@ describe('ExplorerSearch - keyboard', () => {
     await press(findInput(), 'Enter');
     tool('find-next')!.focus();
 
-    app.shortcut$.next({
-      type: KeyBindingName.findReplace,
-      event: new KeyboardEvent('keydown'),
-    });
-    await settle();
+    await open();
 
     expect(activeElement()).toBe(findInput());
     expect(findInput().selectionStart).toBe(0);

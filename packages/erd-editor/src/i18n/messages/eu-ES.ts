@@ -355,7 +355,6 @@ export const euES = {
   'toolbar.undo': 'Desegin',
   'toolbar.redo': 'Berregin',
   'toolbar.timeTravel': 'Denbora-bidaia',
-  'toolbar.tableCount': 'Taulak: {count}',
   'themeBuilder.accentColor': 'Nabarmentze-kolorea',
   'themeBuilder.grayColor': 'Gris-tonua',
   'themeBuilder.appearance': 'Itxura',

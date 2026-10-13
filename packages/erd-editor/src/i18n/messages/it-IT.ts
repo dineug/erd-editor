@@ -362,7 +362,6 @@ export const itIT = {
   'toolbar.undo': 'Annulla',
   'toolbar.redo': 'Ripeti',
   'toolbar.timeTravel': 'Viaggio nel tempo',
-  'toolbar.tableCount': 'Tabelle: {count}',
   'themeBuilder.accentColor': 'Colore principale',
   'themeBuilder.grayColor': 'Tonalità di grigio',
   'themeBuilder.appearance': 'Aspetto',

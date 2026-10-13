@@ -331,7 +331,6 @@ export const zhTW = {
   'toolbar.undo': '復原',
   'toolbar.redo': '重做',
   'toolbar.timeTravel': '時光旅行',
-  'toolbar.tableCount': '資料表：{count}',
   'themeBuilder.accentColor': '強調色',
   'themeBuilder.grayColor': '灰色調',
   'themeBuilder.appearance': '外觀',

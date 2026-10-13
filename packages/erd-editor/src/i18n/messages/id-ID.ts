@@ -347,7 +347,6 @@ export const idID = {
   'toolbar.undo': 'Batalkan',
   'toolbar.redo': 'Ulangi',
   'toolbar.timeTravel': 'Perjalanan waktu',
-  'toolbar.tableCount': 'Tabel: {count}',
   'themeBuilder.accentColor': 'Warna aksen',
   'themeBuilder.grayColor': 'Warna abu-abu',
   'themeBuilder.appearance': 'Tampilan',

@@ -307,6 +307,60 @@ describe('WelcomeScreen beside the Explorer', () => {
       wide.shadow.querySelector('.welcome-screen-hint-tools')
     ).not.toBeNull();
   });
+
+  it('hangs the palette label under its arrow where the Explorer leaves no room beside it, all of it over the canvas', async () => {
+    const { shadow, box } = await setup('en', canvas, 260);
+    const hint = shadow.querySelector('.welcome-screen-hint-palette')!;
+    const label = hint.querySelector('span')!.getBoundingClientRect();
+    const arrow = hint
+      .querySelector('.welcome-screen-arrow')!
+      .getBoundingClientRect();
+
+    expect(label.left).toBeGreaterThanOrEqual(box('.explorer-stand-in').right);
+    expect(label.top).toBeGreaterThanOrEqual(arrow.bottom);
+    expect(label.left).toBeCloseTo(arrow.left, 0);
+    // Under the arrow it may run past the next arrow, but below that label.
+    const next = box('.welcome-screen-hint-preferences span');
+    expect(label.top >= next.bottom || label.right <= next.left).toBe(true);
+  });
+
+  it('keeps a hung label clear of the block from the least height the hints show at', async () => {
+    const overlapping: string[] = [];
+    let closest = Infinity;
+    let line = 0;
+
+    for (const locale of TIER_LOCALES) {
+      const { shadow, box } = await setup(
+        locale,
+        {
+          width: WELCOME_HINTS_MIN_WIDTH,
+          height: WELCOME_HINTS_MIN_HEIGHT,
+        },
+        260
+      );
+      expect(
+        shadow.querySelector('.welcome-screen-hint-palette')
+      ).not.toBeNull();
+
+      await eachLevel(shadow, level => {
+        const gap =
+          box('.welcome-screen-heading').top -
+          box('.welcome-screen-hint-palette').bottom;
+        line = parseFloat(
+          getComputedStyle(shadow.querySelector('.welcome-screen-heading')!)
+            .lineHeight
+        );
+        closest = Math.min(closest, gap);
+        gap < 0 && overlapping.push(`${locale} ${level}: ${gap}`);
+      });
+      await release();
+    }
+
+    expect(overlapping).toEqual([]);
+    // The language whose hung label needs the most room leaves less than a
+    // line under it, so the hints' least height holds for it too.
+    if (ON_MAC) expect(closest).toBeLessThan(line);
+  });
 });
 
 describe('WelcomeScreen tiers', () => {

@@ -349,7 +349,6 @@ export const jaJP = {
   'toolbar.undo': '元に戻す',
   'toolbar.redo': 'やり直し',
   'toolbar.timeTravel': 'タイムトラベル',
-  'toolbar.tableCount': 'テーブル: {count}',
   'themeBuilder.accentColor': 'アクセントカラー',
   'themeBuilder.grayColor': 'グレーカラー',
   'themeBuilder.appearance': '外観',

@@ -352,7 +352,6 @@ export const trTR = {
   'toolbar.undo': 'Geri al',
   'toolbar.redo': 'Yinele',
   'toolbar.timeTravel': 'Zaman yolculuğu',
-  'toolbar.tableCount': 'Tablo: {count}',
   'themeBuilder.accentColor': 'Vurgu rengi',
   'themeBuilder.grayColor': 'Gri tonu',
   'themeBuilder.appearance': 'Görünüş',

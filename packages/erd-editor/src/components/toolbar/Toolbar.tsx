@@ -102,7 +102,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    const { settings, editor, doc } = store.state;
+    const { settings, editor } = store.state;
     const { t, dir } = i18n.value;
     const title = (name: string, keyBindingName: KeyBindingName) =>
       toShortcutTitle(keyBindingMap, name, keyBindingName);
@@ -207,7 +207,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
               disabled: isTakenOver(store.state),
             },
           ]}
-          title={t('explorer.title')}
+          title={title(t('explorer.title'), KeyBindingName.findReplace)}
           on:mousedown={keepSelection}
           on:touchstart={keepSelection}
           on:click={handleExplorer}
@@ -287,9 +287,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             </div>
           </>
         ) : null}
-        <div class={styles.tableCount}>
-          {t('toolbar.tableCount', { count: doc.tableIds.length })}
-        </div>
       </div>
     );
   };

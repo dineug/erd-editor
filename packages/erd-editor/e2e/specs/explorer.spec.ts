@@ -87,6 +87,59 @@ test.describe('explorer', () => {
     await expect(explorerOf(erd)).toBeVisible();
   });
 
+  test('selects the child table and its key column for a foreign key, the column focused (AC-N3)', async ({
+    erd,
+  }) => {
+    await erd.seed(
+      createSchema({
+        tables: [
+          {
+            id: 'users',
+            name: 'users',
+            x: 520,
+            y: 160,
+            columns: [{ id: 'users_id', name: 'id', dataType: 'int' }],
+          },
+          {
+            id: 'orders',
+            name: 'orders',
+            x: 1800,
+            y: 1400,
+            columns: [
+              { id: 'orders_id', name: 'id', dataType: 'int' },
+              { id: 'orders_user_id', name: 'user_id', dataType: 'int' },
+            ],
+          },
+        ],
+        relationships: [
+          {
+            id: 'rel',
+            startTableId: 'users',
+            startColumnIds: ['users_id'],
+            endTableId: 'orders',
+            endColumnIds: ['orders_user_id'],
+          },
+        ],
+      })
+    );
+    await open(erd);
+
+    await rowOf(erd, 't:orders').locator('.tree-twisty').click();
+    await rowOf(erd, 't:orders/f:foreignKeys').click();
+    await rowOf(erd, 'r:rel').click();
+
+    await expect(erd.selectedTables()).toHaveCount(1);
+    await expect(erd.selectedTables()).toHaveAttribute('data-id', 'orders');
+    await expect(erd.selectedColumns()).toHaveCount(1);
+    await expect(erd.selectedColumns()).toHaveAttribute(
+      'data-id',
+      'orders_user_id'
+    );
+    await expect
+      .poll(() => erd.focusRingCells())
+      .toEqual(['orders_user_id:columnName']);
+  });
+
   test('sizes from its edge between 200 and 480 px', async ({ erd }) => {
     await erd.seed(schema());
     await open(erd);

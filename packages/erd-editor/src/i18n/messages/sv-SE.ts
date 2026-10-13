@@ -351,7 +351,6 @@ export const svSE = {
   'toolbar.undo': 'Ångra',
   'toolbar.redo': 'Gör om',
   'toolbar.timeTravel': 'Tidsresa',
-  'toolbar.tableCount': 'Tabeller: {count}',
   'themeBuilder.accentColor': 'Accentfärg',
   'themeBuilder.grayColor': 'Gråton',
   'themeBuilder.appearance': 'Utseende',

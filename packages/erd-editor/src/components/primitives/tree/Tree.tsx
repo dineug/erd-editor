@@ -190,6 +190,27 @@ const Tree: FC<TreeProps> = props => {
     props.onActiveChange?.(move.id);
   };
 
+  /**
+   * A keyboard focus with no row active lands on the current row, or else the
+   * first row wholly in view, so the reader sees where the arrows start. A
+   * press focuses the tree without it, and its click picks the row.
+   */
+  const handleFocus = () => {
+    const { rows, activeId, currentId } = props;
+    if (!rows.length || indexOf(activeId) !== -1) return;
+    if (!root.value?.matches(':focus-visible')) return;
+
+    const current = indexOf(currentId);
+    const index =
+      current !== -1
+        ? current
+        : Math.min(
+            rows.length - 1,
+            Math.ceil(measured.scrollTop / rowHeight())
+          );
+    props.onActiveChange?.(rows[index].node.id);
+  };
+
   const handleRowClick = (row: TreeRow) => {
     props.onActiveChange?.(row.node.id);
     props.onActivate?.(row);
@@ -285,7 +306,7 @@ const Tree: FC<TreeProps> = props => {
 
     return (
       <div
-        class={['tree', styles.root]}
+        class={['tree', 'scrollbar', styles.root]}
         use:ref={ref(root)}
         role="tree"
         tabindex="0"
@@ -293,6 +314,7 @@ const Tree: FC<TreeProps> = props => {
         aria-label={props.label}
         aria-activedescendant={active === -1 ? '' : domId(rows[active].node.id)}
         on:keydown={handleKeydown}
+        on:focus={handleFocus}
         on:scroll={handleScroll}
       >
         <div

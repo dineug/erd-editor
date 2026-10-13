@@ -448,13 +448,13 @@ describe('the tree', () => {
     });
   });
 
-  it('keeps the Explorer key icons at 3:1 on the tree and on each row fill', () => {
+  it('keeps the key glyphs at 3:1 on the tree and on each row fill', () => {
     everyThemeOptions.forEach(options => {
       const theme = createTheme(options);
 
       [theme.treeBackground, theme.treeRowHover, theme.treeRowCurrent].forEach(
         fill => {
-          [theme.explorerPrimaryKey, theme.explorerForeignKey].forEach(icon => {
+          [theme.keyPK, theme.keyFK, theme.keyPFK].forEach(icon => {
             expect(
               contrast(icon, fill),
               labelOf(options)
@@ -462,14 +462,6 @@ describe('the tree', () => {
           });
         }
       );
-    });
-  });
-
-  it('rings the active row in the focus colour rather than filling it', () => {
-    everyThemeOptions.forEach(options => {
-      const theme = createTheme(options);
-
-      expect(theme.treeRowActive, labelOf(options)).toBe(theme.focus);
     });
   });
 });

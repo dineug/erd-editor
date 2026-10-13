@@ -53,16 +53,23 @@ const WelcomeHints: FC<WelcomeHintsProps> = (props, ctx) => {
   ) => {
     const { dir } = i18n.value;
     const placement = hintPlacement(anchorX, props.width, side, dir);
+    const { labelFirst, stacked } = placement;
+    // Under the arrow, the label starts at its tail: the left of one that
+    // climbs right, the right of a mirrored one.
+    const alignRight = stacked ? !labelFirst : labelFirst;
     const label = (
       <span
         class={styles.label}
         prop:dir={dir}
-        style={{ 'text-align': placement.labelFirst ? 'right' : 'left' }}
+        style={{
+          'text-align': alignRight ? 'right' : 'left',
+          'margin-block-end': stacked ? '0' : null,
+        }}
       >
         {text}
       </span>
     );
-    const art = arrowUp(!placement.labelFirst);
+    const art = arrowUp(!labelFirst);
 
     return (
       <div
@@ -70,11 +77,13 @@ const WelcomeHints: FC<WelcomeHintsProps> = (props, ctx) => {
           'welcome-screen-hint',
           `welcome-screen-hint-${name}`,
           styles.up,
+          stacked ? styles.stacked : null,
+          { end: stacked && !labelFirst },
         ]}
         prop:dir="ltr"
         style={{ left: px(placement.left), right: px(placement.right) }}
       >
-        {placement.labelFirst ? [label, art] : [art, label]}
+        {labelFirst && !stacked ? [label, art] : [art, label]}
       </div>
     );
   };

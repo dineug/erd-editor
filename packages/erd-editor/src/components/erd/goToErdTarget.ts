@@ -15,7 +15,6 @@ import {
   selectAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
-import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
@@ -343,9 +342,9 @@ function rangeIn(
 }
 
 /**
- * Brings a relationship's two tables into view as one box. Where they are too
- * far apart to show together, the upper table's name band is the part that
- * shows, so the box is read from its top as a table is.
+ * Brings a relationship's two tables into view as one box and selects the
+ * child table alone with its foreign key columns, the first focused. Where the
+ * two are too far apart to show together, the child is the part that shows.
  */
 function* showRelationship(state: RootState, relationshipId: string) {
   const relationship = query(state.collections)
@@ -358,16 +357,31 @@ function* showRelationship(state: RootState, relationshipId: string) {
   const end = tables.selectById(relationship.end.tableId);
   if (!start || !end) return;
 
-  const startRect = getTableRect(state, start);
   const endRect = getTableRect(state, end);
-  const upper = endRect.y < startRect.y ? end : start;
-
   yield* scrollIntoView(
     state,
-    unionRect(startRect, endRect),
-    getTableNameRect(state, upper)
+    unionRect(getTableRect(state, start), endRect),
+    endRect
   );
-  yield unselectAllAction$();
+  yield selectTableAloneAction$(end.id);
+
+  // In the child's own order; each after the first joins the selection, and
+  // the first is focused again last, so the ring stands on it.
+  const columnIds = end.columnIds.filter(id =>
+    relationship.end.columnIds.includes(id)
+  );
+  const focus = (columnId: string, $mod: boolean) =>
+    focusColumnAction({
+      tableId: end.id,
+      columnId,
+      focusType: FocusType.columnName,
+      $mod,
+      shiftKey: false,
+    });
+  for (const [index, columnId] of columnIds.entries()) {
+    yield focus(columnId, index > 0);
+  }
+  if (columnIds.length > 1) yield focus(columnIds[0], true);
 }
 
 /** Brings a table group's box into view by its title bar, and selects it alone. */

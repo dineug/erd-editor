@@ -1113,7 +1113,7 @@ describe('QuickSearch prefixes', () => {
     await type('@em');
     expect(rowNames()).toEqual(['email']);
     expect(scopeLabel()).toBe('Columns');
-    expect(iconOf(rows()[0])).toBe('columns-2');
+    expect(iconOf(rows()[0])).toBe('list');
 
     await type('@users.');
     expect(rowNames()).toEqual(['id', 'email']);

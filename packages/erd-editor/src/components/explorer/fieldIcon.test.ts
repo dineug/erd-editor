@@ -23,7 +23,7 @@ describe('fieldIcon', () => {
     const expected: Array<[FindField, string]> = [
       [FindField.tableName, 'table-2'],
       [FindField.tableComment, 'message-square'],
-      [FindField.columnName, 'columns-2'],
+      [FindField.columnName, 'list'],
       [FindField.columnComment, 'message-square'],
       [FindField.memo, 'sticky-note'],
       [FindField.indexName, 'list-tree'],

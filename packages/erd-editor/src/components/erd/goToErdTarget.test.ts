@@ -902,7 +902,7 @@ describe('showErdTargetAction$ to a relationship', () => {
     expect(child.end).toBeLessThanOrEqual(1200);
   });
 
-  it('clears the selection, since nothing selects a relationship (N-b)', () => {
+  it('selects the child table alone with its foreign key column focused, since nothing selects a relationship', () => {
     const app = seedPair({ x: 60, y: 60 }, { x: 600, y: 60 });
     app.store.dispatchSync(
       showErdTargetAction$({ kind: 'table', tableId: 'parent' })
@@ -910,10 +910,39 @@ describe('showErdTargetAction$ to a relationship', () => {
 
     app.store.dispatchSync(showErdTargetAction$(relationship));
 
-    expect(app.store.state.editor.selectedMap).toEqual({});
+    const { selectedMap, focusTable } = app.store.state.editor;
+    expect(selectedMap).toEqual({ child: SelectType.table });
+    expect(focusTable).toMatchObject({
+      tableId: 'child',
+      columnId: 'fk',
+      focusType: FocusType.columnName,
+      selectColumnIds: ['fk'],
+    });
   });
 
-  it('shows the upper table by its name where the two are too far apart to fit', () => {
+  it('selects every key column in the order the child holds them, the first focused', () => {
+    const app = seedPair({ x: 60, y: 60 }, { x: 600, y: 60 }, 2);
+    app.store.dispatchSync(
+      addRelationshipAction({
+        id: 'pair',
+        relationshipType: RelationshipType.OneN,
+        start: { tableId: 'parent', columnIds: ['p0', 'p1'] } as any,
+        end: { tableId: 'child', columnIds: ['k1', 'k0'] } as any,
+      })
+    );
+
+    app.store.dispatchSync(
+      showErdTargetAction$({ kind: 'relationship', relationshipId: 'pair' })
+    );
+
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      tableId: 'child',
+      columnId: 'k0',
+      selectColumnIds: ['k0', 'k1'],
+    });
+  });
+
+  it('shows the child where the two are too far apart to fit, above the parent', () => {
     const app = seedPair({ x: 60, y: 3000 }, { x: 60, y: 600 });
     app.store.dispatchSync(scrollToAction({ originX: 0, originY: -6000 }));
 
@@ -921,6 +950,18 @@ describe('showErdTargetAction$ to a relationship', () => {
 
     expect(headerOnScreen(app, 'child').topLeft.y).toBe(EDGE_MARGIN);
     expect(tableSpanDown(app, 'parent').start).toBeGreaterThan(VIEWPORT.height);
+  });
+
+  it('shows the child whole a margin above the bottom where it stands far below the parent', () => {
+    const app = seedPair({ x: 60, y: 600 }, { x: 60, y: 3000 });
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY: 6000 }));
+
+    app.store.dispatchSync(showErdTargetAction$(relationship));
+
+    const child = tableSpanDown(app, 'child');
+    expect(child.start).toBeGreaterThanOrEqual(0);
+    expect(child.end).toBeCloseTo(VIEWPORT.height - EDGE_MARGIN, 0);
+    expect(tableSpanDown(app, 'parent').end).toBeLessThan(0);
   });
 
   it('asks for nothing for a relationship or a table the document no longer holds', () => {

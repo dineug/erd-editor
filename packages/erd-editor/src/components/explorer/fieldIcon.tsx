@@ -9,7 +9,7 @@ export function fieldIcon(field: FindField, size = 14): DOMTemplateLiterals {
     case FindField.tableName:
       return <Icon name="table-2" size={size} />;
     case FindField.columnName:
-      return <Icon name="columns-2" size={size} />;
+      return <Icon name="list" size={size} />;
     case FindField.memo:
       return <Icon name="sticky-note" size={size} />;
     case FindField.indexName:

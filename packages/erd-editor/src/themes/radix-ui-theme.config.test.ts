@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(89);
+    expect(entries).toHaveLength(86);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -70,8 +70,6 @@ describe('ThemeConfig', () => {
       'keyPK',
       'keyFK',
       'keyPFK',
-      'explorerPrimaryKey',
-      'explorerForeignKey',
       'diffInsertForeground',
       'diffDeleteForeground',
       'diffModifyForeground',

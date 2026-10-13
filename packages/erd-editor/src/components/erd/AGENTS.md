@@ -150,7 +150,7 @@
   - len up to L less both 40 px margins (`EDGE_MARGIN`) stays while it shows whole, and otherwise starts 40 px down the screen and stands in the middle across.
   - Longer, it stays while it shows whole, or while its focus does when it is longer than L, and otherwise `placeOnAxis` stands its focus a margin inside.
 - **A jump pressed again moves nothing.** No scroll is sent where both starts come within half a pixel of where the rect stands, which a focus longer than the screen needs; the reducer stores the origin rounded, so an exact comparison would scroll again.
-- **The focus is what has to show of a rect too big.** A table goes by the header cell a jump rings (its name, or the comment asked for), a column row by its ringed cell (`getColumnFocusRect`), a cell too wide by the range found in it, a memo by itself. A relationship goes by the box of its two tables, focused on the name band of the upper one, and selects nothing: there is no relationship selection, so the selection is cleared. A table group goes by its box, focused on its title bar, and is selected alone; while groups are hidden it goes nowhere.
+- **The focus is what has to show of a rect too big.** A table goes by the header cell a jump rings (its name, or the comment asked for), a column row by its ringed cell (`getColumnFocusRect`), a cell too wide by the range found in it, a memo by itself. A relationship goes by the box of its two tables, focused on the child table, and selects the child alone with its foreign key columns in the child's order, the first ringed, since there is no relationship selection (the owner's request of 2026-10-14). A table group goes by its box, focused on its title bar, and is selected alone; while groups are hidden it goes nowhere.
 - **The zoom never changes**, and a jump is one scroll, one undo entry.
 - **A jump lights a relationship through `relationshipHighlight.ts`**, kept per `editor.id` out of the store, so no file, history or peer holds it. The connector and its referential action label read it as they read a hover, in the document scene alone, never in a view. The generator never sets it; the host that jumps does. A press that changes the selection puts it out (`Erd.tsx`, `ErdViewer.tsx`); a pan, by the middle button or the hand tool, leaves it on. The element drops it as it goes.
 - **A jump with a draw armed adds nothing.** Its selection, `selectTableAloneAction$`, leaves out `selectTableAction$`'s relationship-draw branch, and so does every go-to's.
@@ -369,7 +369,7 @@
   - Import swaps in its formats (`createImportMenus`) behind a Back row, which Escape presses too.
   - Where the canvas has room, hand-drawn arrows point at the toolbar's Search button, at its theme and language buttons, and at the floating toolbar.
 - `requestSettingsPage` and the Settings page it opens (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.
-- **`welcomeTiers` fits the screen to the canvas.** It reads the whole canvas, centred there, the canvas the Explorer leaves while docked; an arrow whose button stands over the Explorer is left out (`measureAnchors`). The theme builder and the locale picker stand over it and move nothing (an owner decision of 2026-10-11).
+- **`welcomeTiers` fits the screen to the canvas.** It reads the whole canvas, centred there, the canvas the Explorer leaves while docked; an arrow whose button stands over the Explorer is left out (`measureAnchors`), and a label whose side holds less than a whole label beside it hangs under its arrow's tail instead (`hintPlacement`, the owner's request of 2026-10-14). The theme builder and the locale picker stand over it and move nothing (an owner decision of 2026-10-11).
   - Nothing shows under 320 px wide or 294 px tall.
   - The menu shows alone under 342 px tall.
   - The arrows show from 720 by 562 px, and a row's chord from 480 px wide.
@@ -377,7 +377,7 @@
 - **The three heights are what the block needs**, measured by `WelcomeScreen.browser.test.ts`.
   - At 294, Import's six rows alone fill the room over the floating toolbar on every platform, since a row keeps its height in any font.
   - At 342, in every language on a Mac, a heading of two lines over them at 320 px wide fills it.
-  - At 562, the arrows clear that block with nothing to spare in the language whose labels wrap the most.
+  - At 562, the arrows clear that block with nothing to spare in the language whose labels wrap the most, and so does a label hung under its arrow beside a 260 px Explorer (4 px in the tightest language, measured 2026-10-14).
 - **Only its menu takes the pointer.** The layer is `pointer-events: none` and the menu `auto`, so a drag over the heading pans. `.welcome-screen-menu` joins the `canDrag` list in `Erd.tsx`, so a press on a row starts no pan.
 - **Arrows find their buttons by anchor classes.** They use the toolbar's anchor classes, `.toolbar-search`, `.toolbar-theme` and `.toolbar-locale` (`measureAnchors`); the theme and language buttons share the point between them.
   - They are measured again as the viewport, the tab, the props or the direction changes.

@@ -45,8 +45,12 @@ import { openFindReplaceAction } from '@/utils/emitter';
 import { FindFieldList, findMatches } from '@/utils/find-replace';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
-import { isExplorerShown } from '../explorerCommands';
-import { countText, goToNext, setQuery } from '../explorerSearch';
+import {
+  closeExplorer,
+  isExplorerPressed,
+  isExplorerShown,
+} from '../explorerCommands';
+import { countText, goToNext } from '../explorerSearch';
 import { explorerViewOf } from '../explorerView';
 import ExplorerController, { EDIT_SEARCH_DELAY } from './ExplorerController';
 
@@ -115,20 +119,30 @@ describe('ExplorerController', () => {
     expect(mounted?.container.childElementCount).toBe(0);
   });
 
-  it('opens the search on the find chord, and asks for the keyboard again once shown, keeping the match', async () => {
+  /** The owner's request of 2026-10-14: the chord toggles the panel, as the toolbar button does. */
+  it('opens the search on the find chord, closes the panel on the next and opens it on the one after', async () => {
     await chord();
     expect(view().open).toBe(true);
     expect(view().focusRequest).toBe(1);
 
-    setQuery(app.store, 'user');
-    goToNext(app.store);
-    vi.mocked(findMatches).mockClear();
+    await chord();
+    expect(view().open).toBe(false);
+    expect(view().focusRequest).toBe(1);
+
+    await chord();
+    expect(view().open).toBe(true);
+    expect(view().focusRequest).toBe(2);
+  });
+
+  it('closes a panel the button shows pressed while a narrow root stands it aside', async () => {
+    await chord();
+    measureRoot(app.store, { width: 400, height: 800 });
+    expect(isExplorerShown(app.store)).toBe(false);
+    expect(isExplorerPressed(app.store)).toBe(true);
 
     await chord();
 
-    expect(view().focusRequest).toBe(2);
-    expect(count()).toBe('1 of 2');
-    expect(searches()).toBe(0);
+    expect(view().open).toBe(false);
   });
 
   /** An owner decision: the dialogs close once the search opens, open already under it or not. */
@@ -140,7 +154,14 @@ describe('ExplorerController', () => {
     app.store.dispatchSync(changeOpenMapAction({ [Open.exportImage]: true }));
     await chord();
     expect(exportImageOpen()).toBe(false);
+    expect(view().open).toBe(true);
     expect(view().query).toBe('user');
+
+    closeExplorer(app.store);
+    app.store.dispatchSync(changeOpenMapAction({ [Open.mapColumns]: true }));
+    await chord();
+    expect(app.store.state.editor.openMap[Open.mapColumns]).toBe(false);
+    expect(view().open).toBe(true);
 
     app.store.dispatchSync(
       changeOpenMapAction({ [Open.tableProperties]: true })

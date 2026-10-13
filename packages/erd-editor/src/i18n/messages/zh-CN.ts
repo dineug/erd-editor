@@ -331,7 +331,6 @@ export const zhCN = {
   'toolbar.undo': '撤销',
   'toolbar.redo': '重做',
   'toolbar.timeTravel': '时间旅行',
-  'toolbar.tableCount': '表：{count}',
   'themeBuilder.accentColor': '强调色',
   'themeBuilder.grayColor': '灰色调',
   'themeBuilder.appearance': '外观',

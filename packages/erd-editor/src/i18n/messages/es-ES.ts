@@ -362,7 +362,6 @@ export const esES = {
   'toolbar.undo': 'Deshacer',
   'toolbar.redo': 'Rehacer',
   'toolbar.timeTravel': 'Viaje en el tiempo',
-  'toolbar.tableCount': 'Tablas: {count}',
   'themeBuilder.accentColor': 'Color de énfasis',
   'themeBuilder.grayColor': 'Tono de gris',
   'themeBuilder.appearance': 'Apariencia',

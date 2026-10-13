@@ -362,7 +362,6 @@ export const roRO = {
   'toolbar.undo': 'Anulare',
   'toolbar.redo': 'Refacere',
   'toolbar.timeTravel': 'Călătorie în timp',
-  'toolbar.tableCount': 'Tabele: {count}',
   'themeBuilder.accentColor': 'Culoare de accent',
   'themeBuilder.grayColor': 'Ton de gri',
   'themeBuilder.appearance': 'Aspect',

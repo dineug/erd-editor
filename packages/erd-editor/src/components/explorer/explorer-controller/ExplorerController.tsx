@@ -10,10 +10,15 @@ import { toggleSearchAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { isTakenOver } from '@/utils/takeover';
 
-import { isExplorerShown } from '../explorerCommands';
+import {
+  closeExplorer,
+  isExplorerPressed,
+  isExplorerShown,
+} from '../explorerCommands';
 import {
   cancelPendingSearch,
   focusSearch,
+  hasSearchDialog,
   noteBatch,
   openSearch,
   searchIfStale,
@@ -32,16 +37,21 @@ const ExplorerController: FC = (_props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
 
   /**
-   * Opens the search, or brings the keyboard back to a search shown. A text
-   * editor keeps the chord, as it keeps the palette's, and the palette gives
-   * way to it. Under zen mode it shows the panel and leaves zen on.
+   * Closes the panel the toolbar button shows pressed, as the button does, and
+   * opens the search otherwise. The palette and the dialogs the search trades
+   * for itself give way to it instead, and a text editor keeps it.
    */
   const handleShortcut = () => {
     const { store, emitter } = app.value;
     const { editor } = store.state;
     if (isEditingText(editor) || isTakenOver(store.state)) return;
 
-    if (editor.openMap[Open.search]) emitter.emit(toggleSearchAction());
+    if (editor.openMap[Open.search]) {
+      emitter.emit(toggleSearchAction());
+    } else if (isExplorerPressed(store) && !hasSearchDialog(store)) {
+      closeExplorer(store);
+      return;
+    }
     isExplorerShown(store) ? focusSearch(store) : openSearch(store, emitter);
   };
 

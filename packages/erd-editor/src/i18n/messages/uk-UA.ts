@@ -367,7 +367,6 @@ export const ukUA = {
   'toolbar.undo': 'Відмінити',
   'toolbar.redo': 'Повторити',
   'toolbar.timeTravel': 'Подорож у часі',
-  'toolbar.tableCount': 'Таблиць: {count}',
   'themeBuilder.accentColor': 'Колір акценту',
   'themeBuilder.grayColor': 'Відтінок сірого',
   'themeBuilder.appearance': 'Вигляд',

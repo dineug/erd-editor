@@ -119,6 +119,7 @@ describe('buildExplorerTree', () => {
       columns: 'user_id DESC, total',
     });
     expect(nodeOf('r:rel')).toMatchObject({
+      identification: false,
       columns: 'user_id',
       parent: 'users',
       parentColumns: 'id',

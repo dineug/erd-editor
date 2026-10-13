@@ -369,7 +369,6 @@ export const frFR = {
   'toolbar.undo': 'Annuler',
   'toolbar.redo': 'Rétablir',
   'toolbar.timeTravel': 'Voyage dans le temps',
-  'toolbar.tableCount': 'Tables : {count}',
   'themeBuilder.accentColor': 'Couleur d’accentuation',
   'themeBuilder.grayColor': 'Nuance de gris',
   'themeBuilder.appearance': 'Apparence',

@@ -99,15 +99,12 @@ export type Theme = {
 
   treeBackground: string;
   treeRowHover: string;
-  treeRowActive: string;
   treeRowCurrent: string;
   treeMuted: string;
   treeMatch: string;
 
   explorerBackground: string;
   explorerBorder: string;
-  explorerPrimaryKey: string;
-  explorerForeignKey: string;
 
   diffInsertForeground: string;
   diffDeleteForeground: string;
@@ -214,15 +211,12 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
 
   'treeBackground',
   'treeRowHover',
-  'treeRowActive',
   'treeRowCurrent',
   'treeMuted',
   'treeMatch',
 
   'explorerBackground',
   'explorerBorder',
-  'explorerPrimaryKey',
-  'explorerForeignKey',
 
   'diffInsertForeground',
   'diffDeleteForeground',

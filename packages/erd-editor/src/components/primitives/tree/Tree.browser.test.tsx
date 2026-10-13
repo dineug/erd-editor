@@ -11,6 +11,7 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
+import { userEvent } from 'vite-plus/test/browser/context';
 
 import { flush, mount, type Mounted } from '@/__test-utils__';
 
@@ -339,6 +340,65 @@ describe('Tree - pointer', () => {
     (tables.querySelector('.tree-twisty') as HTMLElement).click();
     expect(onToggle).toHaveBeenLastCalledWith('tables', true);
     expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Tree - the keyboard row', () => {
+  const rowOf = (tree: HTMLElement, id: string) =>
+    tree.querySelector(`[id$=":${id}"]`) as HTMLElement;
+
+  it('fills the active row as the pointer fills one while the tree holds the keyboard', async () => {
+    const tree = await setup(flatRows(5));
+    shadowHost!.style.setProperty('--tree-row-hover', 'rgb(1, 2, 3)');
+    shadowHost!.style.setProperty('--tree-row-current', 'rgb(7, 8, 9)');
+    shadowHost!.style.setProperty('--active', 'rgb(4, 5, 6)');
+    state.activeId = 'row-1';
+    await flush();
+    const style = () => getComputedStyle(rowOf(tree, 'row-1'));
+
+    expect(style().backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    tree.focus();
+    expect(style().backgroundColor).toBe('rgb(1, 2, 3)');
+    expect(style().color).toBe('rgb(4, 5, 6)');
+    expect(style().boxShadow).toBe('none');
+
+    state.currentId = 'row-1';
+    await flush();
+    expect(style().backgroundColor).toBe('rgb(7, 8, 9)');
+  });
+
+  it('lands a keyboard focus on the first row wholly in view while no row is active', async () => {
+    // Row 50 starts at 1100, a pixel above the top; row 51 is the first whole one.
+    await setup(flatRows(500), 1101);
+
+    await userEvent.tab();
+
+    expect(onActiveChange.mock.calls).toEqual([['row-51']]);
+  });
+
+  it('lands a keyboard focus on the current row where one is drawn', async () => {
+    await setup(flatRows(500), 1101);
+    state.currentId = 'row-3';
+    await flush();
+
+    await userEvent.tab();
+
+    expect(onActiveChange).toHaveBeenLastCalledWith('row-3');
+  });
+
+  it('keeps the active row on a keyboard focus, and lands nothing on a press', async () => {
+    const tree = await setup(flatRows(5));
+    state.activeId = 'row-2';
+    await flush();
+
+    await userEvent.tab();
+    expect(onActiveChange).not.toHaveBeenCalled();
+
+    tree.blur();
+    state.activeId = null;
+    await flush();
+    await userEvent.click(rowOf(tree, 'row-4'));
+    expect(onActiveChange.mock.calls).toEqual([['row-4']]);
   });
 });
 

@@ -339,7 +339,6 @@ export const koKR = {
   'toolbar.undo': '실행 취소',
   'toolbar.redo': '다시 실행',
   'toolbar.timeTravel': '시간 여행',
-  'toolbar.tableCount': '테이블: {count}',
   'themeBuilder.accentColor': '강조 색상',
   'themeBuilder.grayColor': '회색 계열',
   'themeBuilder.appearance': '화면 모드',

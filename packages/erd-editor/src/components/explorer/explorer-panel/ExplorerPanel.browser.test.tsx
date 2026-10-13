@@ -186,7 +186,7 @@ describe('ExplorerPanel - rows', () => {
     ).toBe('folder');
   });
 
-  it('draws a key column by its key, any other by a list glyph, with its type after it (AC-T3)', async () => {
+  it('draws a key column by the key a table draws, in its key colour, any other by a list glyph, with its type after it (AC-T3)', async () => {
     await setup();
     explorerViewOf(app.store).expanded = {
       'f:tables': true,
@@ -197,9 +197,14 @@ describe('ExplorerPanel - rows', () => {
 
     const glyphOf = (nodeId: string) =>
       iconNameOf(rowOf(nodeId).querySelector('.tree-row > span:nth-child(2)')!);
+    const keyOf = (nodeId: string) =>
+      rowOf(nodeId).querySelector('.tree-row > span:nth-child(2)')!.classList;
     expect(glyphOf('c:orders.id')).toBe('key-round');
-    expect(glyphOf('c:orders.user_id')).toBe('link');
+    expect(glyphOf('c:orders.user_id')).toBe('key-round');
     expect(glyphOf('c:orders.total')).toBe('list');
+    expect(keyOf('c:orders.id').contains('pk')).toBe(true);
+    expect(keyOf('c:orders.user_id').contains('fk')).toBe(true);
+    expect(keyOf('c:orders.total').contains('fk')).toBe(false);
     expect(textOf(rowOf('c:orders.id'))).toBe('idBIGINT PK');
     expect(textOf(rowOf('c:orders.user_id'))).toBe('user_idBIGINT FK');
   });
@@ -220,7 +225,10 @@ describe('ExplorerPanel - rows', () => {
     expect(textOf(rowOf('i:idx'))).toBe(
       'orders_user_idxUNIQUE (user_id DESC, total)'
     );
-    expect(textOf(rowOf('r:rel'))).toBe('user_id → users(id)');
+    expect(textOf(rowOf('r:rel'))).toBe('user_id→ users(id)');
+    const fk = rowOf('r:rel').querySelector('.tree-row > span:nth-child(2)')!;
+    expect(iconNameOf(fk)).toBe('key-round');
+    expect(fk.classList.contains('fk')).toBe(true);
     expect(textOf(rowOf('g:billing/t:orders'))).toBe('orders');
     expect(textOf(rowOf('m:note'))).toBe('Order states');
     const dot = rowOf('g:billing').querySelector(
@@ -318,14 +326,48 @@ describe('ExplorerPanel - presses', () => {
     });
   });
 
-  it('folds every folder and closes from its header', async () => {
+  /** The owner's request of 2026-10-14: each press folds the deepest open level, from the bottom up. */
+  it('folds one level a press from the deepest open, the top one last, and closes from its header', async () => {
     await setup();
-
-    (panel()!.querySelector('.explorer-collapse-all') as HTMLElement).click();
+    const view = explorerViewOf(app.store);
+    view.expanded = {
+      'f:tables': true,
+      't:orders': true,
+      't:orders/f:columns': true,
+      't:users': true,
+      't:users/f:indexes': true,
+      'f:memos': true,
+    };
     await settle();
+    const collapse = async () => {
+      (panel()!.querySelector('.explorer-collapse-all') as HTMLElement).click();
+      await settle();
+    };
+
+    await collapse();
+    expect(Object.keys(view.expanded).sort()).toEqual([
+      'f:memos',
+      'f:tables',
+      't:orders',
+      't:users',
+      't:users/f:indexes',
+    ]);
+
+    await collapse();
+    expect(Object.keys(view.expanded).sort()).toEqual([
+      'f:memos',
+      'f:tables',
+      't:users/f:indexes',
+    ]);
+
+    await collapse();
+    expect(view.expanded).toEqual({});
     expect(rows().map(textOf)).toEqual(['Tables3', 'Table Groups2', 'Memos1']);
 
-    (panel()!.querySelector('.explorer-close') as HTMLElement).click();
+    const close = panel()!.querySelector('.explorer-close') as HTMLElement;
+    // Escape hands the keyboard back rather than close it, so its title names no key.
+    expect(close.title).toBe('Close');
+    close.click();
     await settle();
     expect(explorerViewOf(app.store).open).toBe(false);
     expect(panel()).toBeNull();

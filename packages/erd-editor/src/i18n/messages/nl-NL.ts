@@ -357,7 +357,6 @@ export const nlNL = {
   'toolbar.undo': 'Ongedaan maken',
   'toolbar.redo': 'Opnieuw uitvoeren',
   'toolbar.timeTravel': 'Tijdreizen',
-  'toolbar.tableCount': 'Tabellen: {count}',
   'themeBuilder.accentColor': 'Accentkleur',
   'themeBuilder.grayColor': 'Grijstint',
   'themeBuilder.appearance': 'Uiterlijk',

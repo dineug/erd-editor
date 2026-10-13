@@ -364,7 +364,6 @@ export const plPL = {
   'toolbar.undo': 'Cofnij',
   'toolbar.redo': 'Ponów',
   'toolbar.timeTravel': 'Podróż w czasie',
-  'toolbar.tableCount': 'Tabele: {count}',
   'themeBuilder.accentColor': 'Kolor akcentu',
   'themeBuilder.grayColor': 'Odcień szarości',
   'themeBuilder.appearance': 'Wygląd',

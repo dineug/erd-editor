@@ -78,12 +78,16 @@ export const rowIcon = css`
   margin-inline-end: 6px;
   color: var(--tree-muted);
 
-  &.primary-key {
-    color: var(--explorer-primary-key);
+  &.pk {
+    color: var(--key-pk);
   }
 
-  &.foreign-key {
-    color: var(--explorer-foreign-key);
+  &.fk {
+    color: var(--key-fk);
+  }
+
+  &.pfk {
+    color: var(--key-pfk);
   }
 `;
 
@@ -100,8 +104,9 @@ export const name = css`
   }
 `;
 
+/* It gives way before the name does, so a long type or column list is cut first. */
 export const muted = css`
-  flex: 0 1 auto;
+  flex: 0 1000 auto;
   min-width: 0;
   margin-inline-start: 6px;
   overflow: hidden;

@@ -254,7 +254,7 @@ const LocalePicker: FC<LocalePickerProps> = (props, ctx) => {
         </div>
         <div
           use:ref={ref(list)}
-          class={styles.list}
+          class={['scrollbar', styles.list]}
           role="listbox"
           aria-label={t('common.displayLanguage')}
         >

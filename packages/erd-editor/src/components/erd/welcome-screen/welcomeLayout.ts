@@ -23,6 +23,12 @@ export const WELCOME_MENU_MIN_HEIGHT = 294;
 export const WELCOME_HINTS_MIN_WIDTH = 720;
 export const WELCOME_HINTS_MIN_HEIGHT = 562;
 
+/** The widest a hint's label runs before it wraps, as WelcomeHints.styles.ts sets it. */
+export const HINT_LABEL_MAX_WIDTH = 220;
+
+/** How far a label stands from its arrow beside it. */
+const HINT_GAP = 4;
+
 /** The narrowest canvas whose menu rows still show their chords. */
 export const WELCOME_KBD_MIN_WIDTH = 480;
 
@@ -126,14 +132,16 @@ export type HintSide = 'before' | 'after';
  */
 export type HintPlacement = {
   labelFirst: boolean;
+  /** The label hangs under the arrow's tail, as the side it names has no room for it. */
+  stacked: boolean;
   left?: number;
   right?: number;
 };
 
 /**
- * Places a hint so the tip of its arrow meets the anchor, the label on the
- * side it names: before is left in a left-to-right language and right in a
- * right-to-left one, so the hints mirror with the toolbar they point at.
+ * Places a hint so its arrow's tip meets the anchor, the label on the side it
+ * names (before: left to right, left; right to left, right), or under the
+ * arrow where that side has no room for a whole label, as beside the Explorer.
  */
 export function hintPlacement(
   anchorX: number,
@@ -142,9 +150,18 @@ export function hintPlacement(
   dir: TextDirection
 ): HintPlacement {
   const labelFirst = (side === 'before') === (dir === 'ltr');
-  const reach = ARROW_UP_BOX.width - ARROW_UP_BOX.tipX;
+  const { width, tipX } = ARROW_UP_BOX;
+  const reach = width - tipX;
+  const room = labelFirst
+    ? anchorX - tipX - HINT_GAP
+    : rootWidth - anchorX - tipX - HINT_GAP;
 
+  if (room < HINT_LABEL_MAX_WIDTH) {
+    return labelFirst
+      ? { labelFirst, stacked: true, left: anchorX - tipX }
+      : { labelFirst, stacked: true, right: rootWidth - anchorX - tipX };
+  }
   return labelFirst
-    ? { labelFirst, right: rootWidth - anchorX - reach }
-    : { labelFirst, left: anchorX - reach };
+    ? { labelFirst, stacked: false, right: rootWidth - anchorX - reach }
+    : { labelFirst, stacked: false, left: anchorX - reach };
 }

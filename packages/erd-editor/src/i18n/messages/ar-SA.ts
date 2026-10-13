@@ -366,7 +366,6 @@ export const arSA = {
   'toolbar.undo': 'تراجع',
   'toolbar.redo': 'إعادة',
   'toolbar.timeTravel': 'السفر عبر الزمن',
-  'toolbar.tableCount': 'الجداول: {count}',
   'themeBuilder.accentColor': 'لون التمييز',
   'themeBuilder.grayColor': 'درجة الرمادي',
   'themeBuilder.appearance': 'المظهر',

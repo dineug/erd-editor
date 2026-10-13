@@ -177,7 +177,7 @@ const DiffTree: FC<DiffTreeProps> = (props, ctx) => {
       case DiffKind.index:
         return <Icon name="list-tree" size={14} />;
       case DiffKind.foreignKey:
-        return <Icon name="link" size={14} />;
+        return <Icon name="key-round" size={14} />;
       case DiffKind.memo:
         return <Icon name="sticky-note" size={14} />;
       case DiffKind.tableGroup:

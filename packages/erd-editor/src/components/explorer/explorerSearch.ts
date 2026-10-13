@@ -244,22 +244,28 @@ export function takeSearchFocus(store: RxStore): boolean {
 }
 
 /**
- * Closes the five dialogs a search trades for itself, as they close one
- * another: Table Properties, the theme builder, the locale picker, the export
- * image dialog and Map Columns.
+ * The five dialogs a search trades for itself, as they close one another:
+ * Table Properties, the theme builder, the locale picker, the export image
+ * dialog and Map Columns.
  */
+const SEARCH_DIALOGS = [
+  Open.tableProperties,
+  Open.themeBuilder,
+  Open.exportImage,
+  Open.localePicker,
+  Open.mapColumns,
+];
+
+/** Whether a dialog the search trades for itself is up, which the chord then trades. */
+export const hasSearchDialog = (store: RxStore) =>
+  SEARCH_DIALOGS.some(name => store.state.editor.openMap[name]);
+
 function closeDialogs(store: RxStore) {
-  const { openMap } = store.state.editor;
-  const dialogs = [
-    Open.tableProperties,
-    Open.themeBuilder,
-    Open.exportImage,
-    Open.localePicker,
-    Open.mapColumns,
-  ];
-  if (!dialogs.some(name => openMap[name])) return;
+  if (!hasSearchDialog(store)) return;
   store.dispatchSync(
-    changeOpenMapAction(Object.fromEntries(dialogs.map(name => [name, false])))
+    changeOpenMapAction(
+      Object.fromEntries(SEARCH_DIALOGS.map(name => [name, false]))
+    )
   );
 }
 

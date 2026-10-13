@@ -199,10 +199,13 @@ test.describe('Find and Replace', () => {
     expect(collections.tableColumnEntities.users_id.comment).toBe('user id');
     expect(collections.memoEntities.note.value).toBe('Rename user to member');
 
-    // A scope set stays for as long as the element lives.
+    // A scope set stays for as long as the element lives, across the panel
+    // the chord closes and opens again.
     await scopeOf(erd, 'memo').click();
     await erd.press('Escape');
     await erd.focusHost();
+    await erd.press(Shortcut.findReplace);
+    await expect(panelOf(erd)).toHaveCount(0);
     await erd.press(Shortcut.findReplace);
 
     await expect(pressedScopesOf(erd)).toHaveText([
@@ -214,7 +217,7 @@ test.describe('Find and Replace', () => {
     ]);
   });
 
-  test('takes its chord from the canvas, its own field, the palette and a cell editor, no page find opening', async ({
+  test('takes its chord from the canvas, its own field, the palette and a cell editor, toggling the panel, no page find opening', async ({
     erd,
     page,
   }) => {
@@ -242,7 +245,10 @@ test.describe('Find and Replace', () => {
     await erd.press('Enter');
     await expect(countOf(erd)).toHaveText('1 of 2');
 
-    // Pressed again in its own field it stays open, the query selected.
+    // Pressed again it closes the panel, as the toolbar button does, and
+    // pressed once more it opens it with the query selected.
+    await erd.press(Shortcut.findReplace);
+    await expect(panelOf(erd)).toHaveCount(0);
     await erd.press(Shortcut.findReplace);
     await expect(panelOf(erd)).toHaveCount(1);
     await expect(findInput).toBeFocused();
@@ -252,7 +258,6 @@ test.describe('Find and Replace', () => {
         input.selectionEnd,
       ])
     ).toEqual([0, 4]);
-    await expect(countOf(erd)).toHaveText('1 of 2');
 
     // The palette gives way to it, as its own Find and Replace row does.
     await erd.press(Shortcut.search);
@@ -273,7 +278,7 @@ test.describe('Find and Replace', () => {
     await expect(erd.editInput(cell)).toBeFocused();
     await expect(findInput).not.toBeFocused();
 
-    expect(await prevented()).toEqual([true, true, true, true]);
+    expect(await prevented()).toEqual([true, true, true, true, true]);
   });
 
   test('takes its chord on every other tab too, bringing the ERD tab up with the Explorer, no page find opening', async ({

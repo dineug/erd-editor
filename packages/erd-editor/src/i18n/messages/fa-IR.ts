@@ -350,7 +350,6 @@ export const faIR = {
   'toolbar.undo': 'واگرد',
   'toolbar.redo': 'ازنو',
   'toolbar.timeTravel': 'سفر در زمان',
-  'toolbar.tableCount': 'جدول: {count}',
   'themeBuilder.accentColor': 'رنگ تأکیدی',
   'themeBuilder.grayColor': 'رنگ خاکستری',
   'themeBuilder.appearance': 'ظاهر',

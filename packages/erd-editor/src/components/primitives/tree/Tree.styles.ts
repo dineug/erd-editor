@@ -29,16 +29,21 @@ export const row = css`
   white-space: nowrap;
   cursor: pointer;
 
-  &:hover {
+  &:hover,
+  .tree:focus &.active:not(.current) {
     background-color: var(--tree-row-hover);
+    color: var(--active);
   }
 
   &.current {
     background-color: var(--tree-row-current);
   }
 
-  .tree:focus &.active {
-    box-shadow: inset 0 0 0 1px var(--tree-row-active);
+  @media (forced-colors: active) {
+    .tree:focus &.active {
+      outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
   }
 `;
 

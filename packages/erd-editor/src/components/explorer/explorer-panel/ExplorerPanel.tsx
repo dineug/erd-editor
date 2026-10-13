@@ -26,7 +26,6 @@ import {
   KeyBindingName,
   matchesShortcut,
   stopsAtPanel,
-  toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
 
 import ExplorerSearch from '../explorer-search/ExplorerSearch';
@@ -67,6 +66,13 @@ type Model = {
   branchIds: string[];
   rows: TreeRow<ExplorerNode>[];
 };
+
+/** The key colour a glyph takes, as a table's key cell paints a column with those keys. */
+const keyClass = (primaryKey: boolean, foreignKey: boolean) => ({
+  pk: primaryKey && !foreignKey,
+  fk: foreignKey && !primaryKey,
+  pfk: primaryKey && foreignKey,
+});
 
 /** A row's text with the stretches a search found in it marked, while they still fit it. */
 function marked(text: string, matches: ReadonlyArray<FindMatch> = []) {
@@ -159,16 +165,34 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
     activateNode(store, node);
   };
 
+  /**
+   * Folds the deepest level of the open rows shown, so each press folds one
+   * level more from the deepest up, and the press that folds the top level
+   * folds every row, those hidden under a folded one too.
+   */
   const handleCollapseAll = () => {
     const { store } = app.value;
     const view = explorerViewOf(store);
-    if (isSearching(store)) {
-      view.searchCollapsed = Object.fromEntries(
-        model.branchIds.map(id => [id, true as const])
-      );
+    const searching = isSearching(store);
+    const open = model.rows.filter(row => row.expanded);
+    const deepest = open.reduce((level, row) => Math.max(level, row.level), 0);
+    if (deepest <= 1) {
+      searching
+        ? (view.searchCollapsed = Object.fromEntries(
+            model.branchIds.map(id => [id, true as const])
+          ))
+        : (view.expanded = {});
       return;
     }
-    view.expanded = {};
+
+    const next = { ...(searching ? view.searchCollapsed : view.expanded) };
+    for (const row of open) {
+      if (row.level !== deepest) continue;
+      searching
+        ? (next[row.node.id] = true)
+        : Reflect.deleteProperty(next, row.node.id);
+    }
+    searching ? (view.searchCollapsed = next) : (view.expanded = next);
   };
 
   const handleClose = () => {
@@ -257,16 +281,24 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             {label(node.name, unnamed)}
           </>
         );
-      case 'column':
+      case 'column': {
+        const detail = [
+          node.dataType,
+          node.primaryKey ? 'PK' : '',
+          node.foreignKey ? 'FK' : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
         return (
           <>
-            {node.primaryKey ? (
-              <span class={[styles.rowIcon, 'primary-key']}>
+            {node.primaryKey || node.foreignKey ? (
+              <span
+                class={[
+                  styles.rowIcon,
+                  keyClass(node.primaryKey, node.foreignKey),
+                ]}
+              >
                 <Icon name="key-round" size={14} />
-              </span>
-            ) : node.foreignKey ? (
-              <span class={[styles.rowIcon, 'foreign-key']}>
-                <Icon name="link" size={14} />
               </span>
             ) : (
               <span class={styles.rowIcon}>
@@ -274,40 +306,46 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
               </span>
             )}
             {label(node.name, unnamed, node.matches)}
-            <span class={styles.muted} prop:dir="ltr">
-              {[
-                node.dataType,
-                node.primaryKey ? 'PK' : '',
-                node.foreignKey ? 'FK' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+            <span class={styles.muted} title={detail} prop:dir="ltr">
+              {detail}
             </span>
           </>
         );
-      case 'index':
+      }
+      case 'index': {
+        const detail = `${node.unique ? 'UNIQUE ' : ''}(${node.columns})`;
         return (
           <>
             <span class={styles.rowIcon}>
               <Icon name="list-tree" size={14} />
             </span>
             {label(node.name, unnamed, node.matches)}
-            <span class={styles.muted} prop:dir="ltr">
-              {`${node.unique ? 'UNIQUE ' : ''}(${node.columns})`}
+            <span class={styles.muted} title={detail} prop:dir="ltr">
+              {detail}
             </span>
           </>
         );
-      case 'foreignKey':
+      }
+      case 'foreignKey': {
+        const parent = `→ ${node.parent || unnamed}(${node.parentColumns})`;
         return (
           <>
-            <span class={[styles.rowIcon, 'foreign-key']}>
-              <Icon name="link" size={14} />
+            <span class={[styles.rowIcon, keyClass(node.identification, true)]}>
+              <Icon name="key-round" size={14} />
             </span>
-            <span class={styles.name} prop:dir="ltr">
-              {`${node.columns} → ${node.parent || unnamed}(${node.parentColumns})`}
+            <span
+              class={styles.name}
+              title={`${node.columns} ${parent}`}
+              prop:dir="ltr"
+            >
+              {node.columns}
+            </span>
+            <span class={styles.muted} title={parent} prop:dir="ltr">
+              {parent}
             </span>
           </>
         );
+      }
       case 'tableGroup':
         return (
           <>
@@ -346,7 +384,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
   };
 
   return () => {
-    const { store, keyBindingMap } = app.value;
+    const { store } = app.value;
     const { t, dir } = i18n.value;
     const view = explorerViewOf(store);
     const scroll = explorerScrollOf(store);
@@ -377,7 +415,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             class={['explorer-close', styles.tool]}
             type="button"
             aria-label={close}
-            title={toShortcutTitle(keyBindingMap, close, KeyBindingName.stop)}
+            title={close}
             on:click={handleClose}
           >
             <Icon name="x" size={14} />

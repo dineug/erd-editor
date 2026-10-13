@@ -365,7 +365,6 @@ export const ruRU = {
   'toolbar.undo': 'Отменить',
   'toolbar.redo': 'Повторить',
   'toolbar.timeTravel': 'Путешествие во времени',
-  'toolbar.tableCount': 'Таблиц: {count}',
   'themeBuilder.accentColor': 'Цвет акцента',
   'themeBuilder.grayColor': 'Оттенок серого',
   'themeBuilder.appearance': 'Оформление',

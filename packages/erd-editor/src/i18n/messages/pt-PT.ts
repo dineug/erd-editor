@@ -365,7 +365,6 @@ export const ptPT = {
   'toolbar.undo': 'Anular',
   'toolbar.redo': 'Refazer',
   'toolbar.timeTravel': 'Viagem no tempo',
-  'toolbar.tableCount': 'Tabelas: {count}',
   'themeBuilder.accentColor': 'Cor de destaque',
   'themeBuilder.grayColor': 'Tom de cinzento',
   'themeBuilder.appearance': 'Aspeto',

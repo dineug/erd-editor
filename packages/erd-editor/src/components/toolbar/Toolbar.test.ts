@@ -131,7 +131,7 @@ describe('Toolbar', () => {
       expect(input('database name').type).toBe('text');
     });
 
-    it('reads every title and the table count in the language shown, following a switch', async () => {
+    it('reads every title in the language shown, following a switch', async () => {
       const i18n = createTestI18n('en');
       const provider = provideI18n(document.body, i18n);
 
@@ -156,16 +156,17 @@ describe('Toolbar', () => {
             'ko:Search',
             KeyBindingName.search
           ),
-          'ko:Explorer',
+          toShortcutTitle(
+            app.keyBindingMap,
+            'ko:Explorer',
+            KeyBindingName.findReplace
+          ),
           'ko:Theme',
           toShortcutTitle(app.keyBindingMap, 'ko:Undo', KeyBindingName.undo),
           toShortcutTitle(app.keyBindingMap, 'ko:Redo', KeyBindingName.redo),
           'ko:Time Travel',
         ]);
         expect(input('ko:database name').placeholder).toBe('ko:database name');
-        expect(
-          root().querySelector(`.${String(styles.tableCount)}`)?.textContent
-        ).toBe('ko:Table: 1');
       } finally {
         provider.destroy();
       }
@@ -220,18 +221,16 @@ describe('Toolbar', () => {
       ).toHaveLength(3);
     });
 
-    it('counts the tables in the document', async () => {
+    /** The owner's request of 2026-10-14: the Explorer counts the tables, so the bar does not. */
+    it('leaves the table count to the Explorer', async () => {
       const { app } = await setup();
-      expect(
-        root().querySelector(`.${String(styles.tableCount)}`)?.textContent
-      ).toContain('Table: 0');
-
       app.store.dispatchSync(addTable('t1'), addTable('t2'));
       await flush();
 
-      expect(
-        root().querySelector(`.${String(styles.tableCount)}`)?.textContent
-      ).toContain('Table: 2');
+      expect(root().textContent).not.toContain('Table');
+      expect(root().lastElementChild?.getAttribute('title')).toBe(
+        'Time Travel'
+      );
     });
   });
 
@@ -409,12 +408,19 @@ describe('Toolbar', () => {
     };
     const pressed = () => explorer().classList.contains('active');
 
-    it('stands right after Search, drawing the panel glyph under the Explorer title', async () => {
-      await setup();
+    it('stands right after Search, drawing the panel glyph under the Explorer title with its chord', async () => {
+      const { app } = await setup();
 
       expect(menu('Search').nextElementSibling).toBe(explorer());
       expect(iconNameOf(explorer())).toBe('panel-left');
-      expect(explorer().title).toBe('Explorer');
+      expect(explorer().title).toBe(
+        toShortcutTitle(
+          app.keyBindingMap,
+          'Explorer',
+          KeyBindingName.findReplace
+        )
+      );
+      expect(explorer().title).not.toBe('Explorer');
       expect(pressed()).toBe(false);
     });
 

@@ -43,6 +43,7 @@ const foreignKey: ExplorerNode = {
   kind: 'foreignKey',
   relationshipId: 'rel',
   tableId: 'orders',
+  identification: false,
   columns: 'user_id',
   parent: 'users',
   parentColumns: 'id',
@@ -114,12 +115,17 @@ describe('activateNode', () => {
     expect(selected()).toEqual({ users: SelectType.table });
   });
 
-  it('lights a foreign key and clears the selection (AC-N3, N-b)', () => {
+  it('lights a foreign key and selects its child table alone with the key columns (AC-N3)', () => {
     activateNode(app.store, table('users'));
 
     activateNode(app.store, foreignKey);
 
-    expect(selected()).toEqual({});
+    expect(selected()).toEqual({ orders: SelectType.table });
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      tableId: 'orders',
+      columnId: 'orders.user_id',
+      selectColumnIds: ['orders.user_id'],
+    });
     expect(isRelationshipHighlighted(app.store.state.editor.id, 'rel')).toBe(
       true
     );

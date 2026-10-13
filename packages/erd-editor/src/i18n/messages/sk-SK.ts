@@ -362,7 +362,6 @@ export const skSK = {
   'toolbar.undo': 'Vrátiť späť',
   'toolbar.redo': 'Znova vykonať',
   'toolbar.timeTravel': 'Cestovanie v čase',
-  'toolbar.tableCount': 'Tabuľky: {count}',
   'themeBuilder.accentColor': 'Farba zvýraznenia',
   'themeBuilder.grayColor': 'Odtieň sivej',
   'themeBuilder.appearance': 'Vzhľad',

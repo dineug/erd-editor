@@ -103,9 +103,14 @@ export const toggle = css`
   }
 `;
 
-/* The arrow before the fields, turned to face the reading direction while folded. */
+/*
+ * The arrow before the fields, as tall as the rows it unfolds, Replace's
+ * included, as an editor's find draws it; it faces the reading direction folded.
+ */
 export const twisty = css`
-  height: 26px;
+  align-self: stretch;
+  height: auto;
+  min-height: 26px;
 
   [dir='rtl'] &.collapsed {
     transform: scaleX(-1);

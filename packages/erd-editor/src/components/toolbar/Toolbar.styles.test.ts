@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import * as styles from '@/components/toolbar/Toolbar.styles';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
-import { typography } from '@/styles/typography.styles';
 
 describe('Toolbar.styles', () => {
   it('compiles every export to a distinct non empty class identifier', () => {
@@ -10,13 +9,12 @@ describe('Toolbar.styles', () => {
       String(styles.root),
       String(styles.vertical),
       String(styles.menu),
-      String(styles.tableCount),
     ];
 
     for (const identifier of identifiers) {
       expect(identifier).toMatch(/\S/);
     }
-    expect(new Set(identifiers).size).toBe(4);
+    expect(new Set(identifiers).size).toBe(3);
   });
 
   it('is stable: stringifying the same template twice yields one class', () => {
@@ -94,15 +92,5 @@ describe('Toolbar.styles', () => {
     expect(disabled).toContain('cursor: not-allowed');
     expect(disabled).toContain('color: var(--foreground)');
     expect(disabled).toContain('opacity: 0.4');
-  });
-
-  it('pushes the table count to the end of the bar with paragraph type', () => {
-    const source = styles.tableCount.strings.join('');
-
-    expect(source).toContain('margin-inline-start: auto');
-    expect(source).not.toContain('margin-left');
-    expect(source).toContain('align-self: center');
-    expect(source).toContain('white-space: nowrap');
-    expect(styles.tableCount.values).toEqual([typography.paragraph]);
   });
 });

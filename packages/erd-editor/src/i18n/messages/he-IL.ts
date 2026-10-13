@@ -351,7 +351,6 @@ export const heIL = {
   'toolbar.undo': 'ביטול פעולה',
   'toolbar.redo': 'ביצוע חוזר',
   'toolbar.timeTravel': 'מסע בזמן',
-  'toolbar.tableCount': 'טבלאות: {count}',
   'themeBuilder.accentColor': 'צבע הדגשה',
   'themeBuilder.grayColor': 'גוון אפור',
   'themeBuilder.appearance': 'מראה',

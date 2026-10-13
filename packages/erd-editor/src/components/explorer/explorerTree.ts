@@ -49,6 +49,8 @@ export type ExplorerNode =
       kind: 'foreignKey';
       relationshipId: string;
       tableId: string;
+      /** Whether its columns key the child too, which the connector draws in the PK and FK colour. */
+      identification: boolean;
       columns: string;
       parent: string;
       parentColumns: string;
@@ -176,6 +178,7 @@ function foreignKeyNodes(state: RootState, table: Table): ExplorerTreeNode[] {
         kind: 'foreignKey',
         relationshipId: relationship.id,
         tableId: table.id,
+        identification: relationship.identification,
         columns: names(relationship.end.columnIds),
         parent: tables.selectById(relationship.start.tableId)?.name ?? '',
         parentColumns: names(relationship.start.columnIds),

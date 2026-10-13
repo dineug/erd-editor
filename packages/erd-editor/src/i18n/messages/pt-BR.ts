@@ -365,7 +365,6 @@ export const ptBR = {
   'toolbar.undo': 'Desfazer',
   'toolbar.redo': 'Refazer',
   'toolbar.timeTravel': 'Viagem no tempo',
-  'toolbar.tableCount': 'Tabelas: {count}',
   'themeBuilder.accentColor': 'Cor de destaque',
   'themeBuilder.grayColor': 'Tom de cinza',
   'themeBuilder.appearance': 'Aparência',

@@ -360,7 +360,6 @@ export const deDE = {
   'toolbar.undo': 'Rückgängig',
   'toolbar.redo': 'Wiederholen',
   'toolbar.timeTravel': 'Zeitreise',
-  'toolbar.tableCount': 'Tabellen: {count}',
   'themeBuilder.accentColor': 'Akzentfarbe',
   'themeBuilder.grayColor': 'Grauton',
   'themeBuilder.appearance': 'Erscheinungsbild',
