@@ -8,13 +8,28 @@ import {
   type TreeNode,
 } from '@/components/primitives/tree/treeModel';
 import { Show } from '@/constants/schema';
+import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
+  changeTableCommentAction,
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  createMatcher,
+  FindFieldList,
+  findMatches,
+  treeOrderOf,
+} from '@/utils/find-replace';
 
-import { buildExplorerTree, type ExplorerNode } from './explorerTree';
+import {
+  buildExplorerTree,
+  buildSearchTree,
+  type ExplorerNode,
+  matchRowId,
+  searchExpanded,
+} from './explorerTree';
 
 let app: AppContext;
 
@@ -177,5 +192,130 @@ describe('buildExplorerTree', () => {
     ]);
     // Apple has no columns, indexes or keys, so it opens on nothing.
     expect(rows[1].node.children()).toEqual([]);
+  });
+});
+
+describe('buildSearchTree', () => {
+  const matchesOf = (query: string) =>
+    findMatches(
+      app.store.state,
+      createMatcher(query, {
+        matchCase: false,
+        wholeWord: false,
+        regex: false,
+      }).matcher!,
+      FindFieldList,
+      treeOrderOf(app.store.state)
+    );
+
+  /** The rows a search shows, every one open but those folded. */
+  const searchRows = (query: string, collapsed: Record<string, true> = {}) => {
+    const matches = matchesOf(query);
+    const tree = buildSearchTree(app.store.state, matches);
+    return flattenTree(tree.roots, searchExpanded(tree.branchIds, collapsed));
+  };
+  const searchIds = (query: string, collapsed?: Record<string, true>) =>
+    searchRows(query, collapsed).map(row => row.node.id);
+
+  it('shows the matches and the rows above them alone, an index under its table (AC-Q3, AC-Q4)', () => {
+    expect(searchIds('order')).toEqual([
+      'f:tables',
+      't:orders',
+      't:orders/f:indexes',
+      'i:idx',
+      'f:memos',
+      'm:note',
+      'm:note/x:memo:0',
+    ]);
+  });
+
+  it('marks a name on its own row, with every match found in it', () => {
+    const rows = searchRows('order');
+    const node = (id: string) => rows.find(row => row.node.id === id)?.node;
+
+    expect(node('t:orders')?.data).toMatchObject({
+      kind: 'table',
+      matches: [{ field: 'tableName', start: 0, end: 5 }],
+    });
+    expect(node('i:idx')?.data).toMatchObject({
+      kind: 'index',
+      columns: 'user_id DESC, total',
+      matches: [{ field: 'indexName', start: 0, end: 5 }],
+    });
+  });
+
+  it('gives each match in a comment or a memo a row of its own (N-k)', () => {
+    app.store.dispatchSync(
+      changeTableCommentAction({ id: 'users', value: 'orders placed' }),
+      changeColumnCommentAction({
+        id: 'users.email',
+        tableId: 'users',
+        value: 'the order mail',
+      }),
+      changeMemoValueAction({ id: 'note', value: 'order one, order two' })
+    );
+
+    expect(searchIds('order')).toEqual([
+      'f:tables',
+      't:orders',
+      't:orders/f:indexes',
+      'i:idx',
+      't:users',
+      't:users/x:tableComment:0',
+      't:users/f:columns',
+      'c:users.email',
+      'c:users.email/x:columnComment:4',
+      'f:memos',
+      'm:note',
+      'm:note/x:memo:0',
+      'm:note/x:memo:11',
+    ]);
+  });
+
+  it('counts a folder by the rows it shows (N-e)', () => {
+    const tables = searchRows('order').find(row => row.node.id === 'f:tables');
+
+    expect(tables?.node.data).toEqual({
+      kind: 'folder',
+      folder: 'tables',
+      count: 1,
+    });
+  });
+
+  /** An owner decision of 2026-10-13: a table found shows under Tables alone. */
+  it('leaves the tables of a group out, a group found standing alone (#8)', () => {
+    expect(searchIds('orders')).not.toContain('g:billing/t:orders');
+    expect(searchIds('bill')).toEqual(['f:tableGroups', 'g:billing']);
+    expect(searchRows('bill')[1].node.hasChildren).toBe(false);
+  });
+
+  it('shows every row with children open but those folded', () => {
+    expect(searchIds('order', { 't:orders': true })).toEqual([
+      'f:tables',
+      't:orders',
+      'f:memos',
+      'm:note',
+      'm:note/x:memo:0',
+    ]);
+  });
+
+  it('puts every match on the row matchRowId names', () => {
+    app.store.dispatchSync(
+      changeTableCommentAction({ id: 'users', value: 'orders placed' })
+    );
+    const ids = searchIds('order');
+
+    for (const match of matchesOf('order')) {
+      expect(ids).toContain(matchRowId(match));
+    }
+  });
+
+  it('leaves out a match a removal has left behind, until the search the edit asks for', () => {
+    const matches = matchesOf('order');
+    app.store.dispatchSync(removeTableAction({ id: 'orders' }));
+
+    const tree = buildSearchTree(app.store.state, matches);
+
+    expect(tree.roots.map(node => node.id)).toEqual(['f:memos']);
   });
 });

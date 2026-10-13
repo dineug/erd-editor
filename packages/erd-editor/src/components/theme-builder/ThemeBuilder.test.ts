@@ -12,6 +12,8 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__/index';
+import { openExplorer } from '@/components/explorer/explorerCommands';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import ThemeBuilder from '@/components/theme-builder/ThemeBuilder';
 import * as styles from '@/components/theme-builder/ThemeBuilder.styles';
 import { Open } from '@/constants/open';
@@ -441,15 +443,15 @@ describe('ThemeBuilder', () => {
       expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
     });
 
-    it('closes Find and Replace as it opens', async () => {
+    it('leaves the Explorer open as it opens, beside the canvas it narrows', async () => {
       const { app } = await setup({ open: false });
-      app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+      openExplorer(app.store);
 
       app.emitter.emit(openThemeBuilderAction());
       await flush();
 
       expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);
-      expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
+      expect(explorerViewOf(app.store).open).toBe(true);
     });
 
     it('closes the panel and leaves table properties alone', async () => {

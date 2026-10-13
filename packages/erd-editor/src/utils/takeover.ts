@@ -8,6 +8,6 @@ export const TAKEOVERS = [
   Open.timeTravel,
 ];
 
-/** Whether an overlay that takes the canvas over is up, which keeps Find and Replace shut. */
+/** Whether an overlay that takes the canvas over is up, which keeps Find and Replace and the Explorer shut. */
 export const isTakenOver = ({ editor }: RootState) =>
   TAKEOVERS.some(key => editor.openMap[key]);

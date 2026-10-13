@@ -5,11 +5,11 @@
 
 ## Purpose
 
-`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, the commands and table rows in `actions.tsx`, the prefix grammar in `paletteQuery.ts`, the document scopes in `scopedActions.tsx` and the Hangul letter matching in `hangul.ts`. Past its cap a scoped list hands its search to Find and Replace, whose rules are in `src/components/find-replace/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
+`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, the commands and table rows in `actions.tsx`, the prefix grammar in `paletteQuery.ts`, the document scopes in `scopedActions.tsx` and the Hangul letter matching in `hangul.ts`. Past its cap a scoped list hands its search to Find and Replace, the Explorer's search, whose rules are in `src/components/explorer/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
 
 ## Making a Change
 
-1. **Read the files on the other side.** A change to the hand-off row or to what the panel opens on reads `src/components/find-replace/AGENTS.md`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
+1. **Read the files on the other side.** A change to the hand-off row or to what the search opens on reads `src/components/explorer/AGENTS.md`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs here run in that test task, `QuickSearch.browser.test.ts` in real Chromium.
 3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins what `SEARCH_THRESHOLD` takes and lets go. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
 4. **Run the e2e for a visible change.** `e2e/specs/find-replace.spec.ts` drives the palette's field rows in the real element and types through Chromium's own IME (Testing Requirements). `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec, this one included.
@@ -71,9 +71,9 @@
 
 - **`@` and `:` rows are a substring search.** The field rows (`createFieldActions`) search the column names, or the comments and memos, as substrings. They are rebuilt from the document on each keystroke.
 - **A scoped list caps at `SCOPED_ACTION_LIMIT`.** Past the cap, a row hands Find and Replace the query with that scope's toggles on (`openFindReplace`'s `fields`).
-  - The table part of `@table.col` is left behind, since the panel has none.
-  - The row is named with the count the panel opens on: every occurrence in those kinds, with default options.
-  - What the panel does with a query handed over: `src/components/find-replace/AGENTS.md`, Scopes and options.
+  - The table part of `@table.col` is left behind, since the search has none.
+  - The row is named with the count the search opens on: every occurrence in those kinds, with default options.
+  - What the search does with a query handed over: `src/components/explorer/AGENTS.md`, Scopes and options.
 - **Hand off only literal matches past the cap.** Find and Replace stays literal. So the row shows only when the cap leaves out a match holding the keyword as typed, and it counts only those.
   - For `#` the match is read in the table's name rather than its row, which says `unnamed` for a table without a name.
   - A list held by Hangul letters alone (`ㅅㅇㅈ`, `사요`) offers no hand-off. What those letters alone find past the cap is left out, with no row saying so.
@@ -103,7 +103,7 @@
 - **Table and field rows show on every tab.** Picking one takes the ERD tab.
 - **A table row lands by the one jump rule.** It jumps through `goToErdTarget`, as the `@` and `:` rows do (`src/components/erd/AGENTS.md`, The jump rule); the corner it once parked a table at is gone.
 - **No Focus row exists** (AC-52).
-- **Hand-offs leave the list under a takeover.** The Find and Replace row and the hand-off row past the cap leave the list under a takeover (`isTakenOver`), where the panel opens on nothing.
+- **Hand-offs leave the list under a takeover.** The Find and Replace row, the Toggle Explorer row and the hand-off row past the cap leave the list under a takeover (`isTakenOver`), where the Explorer opens on nothing.
 
 ### Theme and Display Language
 
@@ -122,7 +122,7 @@
 ### Rules held elsewhere
 
 - The locale picker and the Settings page (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.
-- Find and Replace, the panel the hand-off rows open, and its matcher: `src/components/find-replace/AGENTS.md`.
+- Find and Replace, the Explorer's search the hand-off rows open, and its matcher: `src/components/explorer/AGENTS.md`.
 - The palette's New Table Group and Group Selected Tables commands: `src/components/erd/AGENTS.md`.
 - The palette's Import and Import and Add commands: `src/utils/AGENTS.md`.
 

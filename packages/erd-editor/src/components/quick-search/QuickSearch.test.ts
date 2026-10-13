@@ -184,6 +184,7 @@ describe('QuickSearch', () => {
       'Auto Layout',
       'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
@@ -333,7 +334,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('');
 
-    expect(rowNames()).toHaveLength(15);
+    expect(rowNames()).toHaveLength(16);
     expect(rowNames()[0]).toBe('Tab');
   });
 
@@ -343,7 +344,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('   ');
 
-    expect(rowNames()).toHaveLength(15);
+    expect(rowNames()).toHaveLength(16);
   });
 
   it('lists no command when nothing matches, only the prefixes to search the document by', async () => {
@@ -397,10 +398,10 @@ describe('QuickSearch keyboard navigation', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(selectedIndex()).toBe(0);
 
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 15; i++) {
       await keydown('ArrowDown');
     }
-    expect(selectedIndex()).toBe(14);
+    expect(selectedIndex()).toBe(15);
 
     await keydown('ArrowDown');
     expect(selectedIndex()).toBe(0);
@@ -412,7 +413,7 @@ describe('QuickSearch keyboard navigation', () => {
     const event = await keydown('ArrowUp');
 
     expect(event.defaultPrevented).toBe(true);
-    expect(selectedIndex()).toBe(14);
+    expect(selectedIndex()).toBe(15);
   });
 
   it('clears the selection on the horizontal arrows', async () => {
@@ -442,7 +443,7 @@ describe('QuickSearch keyboard navigation', () => {
 
     expect(event.cancelBubble).toBe(false);
     expect(isOpen()).toBe(true);
-    expect(rowNames()).toHaveLength(15);
+    expect(rowNames()).toHaveLength(16);
   });
 
   it('performs the selected action on Enter and closes the palette', async () => {
@@ -508,7 +509,7 @@ describe('QuickSearch keyboard navigation', () => {
   it('ignores Enter when the selected index no longer exists', async () => {
     await open();
     await keydown('ArrowUp');
-    expect(selectedIndex()).toBe(14);
+    expect(selectedIndex()).toBe(15);
 
     app.store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.settings })
@@ -518,6 +519,7 @@ describe('QuickSearch keyboard navigation', () => {
       'Tab',
       'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
 
     await keydown('Enter');
@@ -527,6 +529,7 @@ describe('QuickSearch keyboard navigation', () => {
       'Tab',
       'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 });
@@ -708,7 +711,6 @@ describe('QuickSearch column, comment and memo matches', () => {
     await click(rows()[index]);
 
     expect(isOpen()).toBe(false);
-    expect(app.store.state.editor.openMap[Open.findReplace]).toBeFalsy();
     expect(openedFindReplace).toBe(1);
   });
 });
@@ -923,6 +925,7 @@ describe('QuickSearch with no command matching', () => {
       'Auto Layout',
       'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
@@ -1216,6 +1219,7 @@ describe('QuickSearch prefixes', () => {
       'Tab',
       'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
 
     await type('#');

@@ -152,6 +152,7 @@ const ERD_COMMANDS = [
   'Auto Layout',
   'Export: Schema SQL',
   'Find and Replace',
+  'Toggle Explorer',
 ];
 
 /** A name holding history from index 42, past the 40 at which Fuse still lets a hit start. */
@@ -210,6 +211,7 @@ describe('paletteRows without a prefix', () => {
       'Column Name Case',
       'Code Generator: Options panel',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 

@@ -20,6 +20,8 @@ import {
   pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext, appContext } from '@/components/appContext';
+import { openExplorer } from '@/components/explorer/explorerCommands';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import ExportImage, {
   PREVIEW_DEBOUNCE_MS,
   PREVIEW_MAX_SIDE,
@@ -347,14 +349,14 @@ describe('ExportImage opening', () => {
     ]);
   });
 
-  it('closes Find and Replace as it opens', async () => {
+  it('leaves the Explorer open as it opens', async () => {
     const app = await setup();
-    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+    openExplorer(app.store);
 
     await open(app);
 
     expect(app.store.state.editor.openMap[Open.exportImage]).toBe(true);
-    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
+    expect(explorerViewOf(app.store).open).toBe(true);
   });
 
   it('starts dark mode at the appearance the editor shows', async () => {

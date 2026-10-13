@@ -99,7 +99,7 @@
 - **Write what stays as written as a literal.** It is a literal in code, never a key:
   - database vendors, code languages, file formats, SQL keywords and referential actions;
   - the Schema SQL statements and headers (`Create`, `If not exists`, `Drop & re-create`, `USE`, `CREATE + USE`), an owner decision (2026-10-07);
-  - data types, `PK`, `UQ`, `AI`, `N-N`, `NULL`, `AK<n>.<m>` and `D:C U:R`;
+  - data types, `PK`, `FK`, `UQ`, `AI`, `N-N`, `NULL`, `AK<n>.<m>`, `UNIQUE` and `D:C U:R`;
   - the name cases and quote styles, key names, Hex, R, G and B, `{n}x`, `px` and `%`;
   - the Radix color keys the theme builder names its swatches by;
   - generated output, exported file names and developer errors.
@@ -121,8 +121,7 @@
   - a menu row's name kept as written (`Menu`'s `literal`): the vendors, the code languages and the referential actions, so `C#` never reads `#C`.
 - **`Kbd` is `width: fit-content`.** So in a right-to-left cell it starts where the cell does.
 - **Set direction as a root attribute.** Never write it as a stylesheet rule. A global `.konvajs-content` rule would move the global bucket the `src/styles/emittedCss.*.test.ts` specs pin.
-- **Write other CSS as logical properties.** Other physical CSS became logical (`margin-inline-*`, `inset-inline-*`, `border-inline-*`). Five parts keep a physical side in every language:
-  - Find and Replace keeps the canvas's left (`left: 16px`), since `coveredWidth` measures from that edge (`PANEL_LEFT`) of a canvas that never mirrors.
+- **Write other CSS as logical properties.** Other physical CSS became logical (`margin-inline-*`, `inset-inline-*`, `border-inline-*`). Four parts keep a physical side in every language:
   - The draw-target layer places its outline, strip and buttons by `left` in the canvas's coordinates. So the buttons stand on a table's left in every language, which `DrawTargetButtons.browser.test.tsx` checks in Arabic.
   - The table group draw's box (`TableGroupDraft.tsx`) is placed by `left` and a translate in the erd root's pixels. `useTableGroupDraw` measures from the root's left edge, so the box spans from the press in every language. `tableGroupCommands.browser.test.tsx` checks it right to left.
   - The Explorer stands left of the canvas in a `dir="ltr"` row and keeps its border and its edge on the physical right (`border-right`, `right`), while its root and the canvas's scope take the reader's direction (`e2e/specs/explorer.spec.ts` checks it in Arabic).
@@ -131,10 +130,10 @@
 - **Open a submenu leftward under right-to-left.** Under a right-to-left language a submenu opens to the left of its row. `ContextMenuItem` passes `openLeft`, which `fitMenu` flips only when the left edge cuts it more. The chevron (`SubmenuChevron`) turns to match.
 - **The toolbar's undo and redo swap glyphs.** So undo points back the way a right-to-left reader goes.
 - **Give text that may run either way `dir="auto"`.** That covers:
-  - the palette's names and keywords, Find and Replace's rows, Table Properties' chips, Map Columns' column names, the Schema SQL panel's table group choices, the locale picker's System hint;
+  - the palette's names and keywords, the Explorer search's excerpt rows, Table Properties' chips, Map Columns' column names, the Schema SQL panel's table group choices, the locale picker's System hint;
   - the toolbar's database name and the Settings lock values;
-  - the palette's input and Find and Replace's two inputs while they hold text (`TextInput`'s `dir`). An empty one follows the page, since Chromium sets an empty auto field left to right.
-- **Align rows to the panel's side.** A Find and Replace row's text and a palette row's keywords align `left`, or `right` under `[dir='rtl']`, since Chromium ignores `match-parent`. So text in the other direction still sits by its icon or its rule.
+  - the palette's input and the Explorer search's two inputs while they hold text (`TextInput`'s `dir`). An empty one follows the page, since Chromium sets an empty auto field left to right.
+- **Align rows to the panel's side.** A palette row's keywords align `left`, or `right` under `[dir='rtl']`, since Chromium ignores `match-parent`. So text in the other direction still sits by its icon or its rule.
 
 ### The export worker's language
 
@@ -156,9 +155,9 @@
 - **List System first, then the 25 languages.** System shows the language it stands for now beside it. Each language label carries its own `lang`.
 - **Pin System and the rule under it at the top.** They stay at the list's top with `position: sticky`. The list's `scroll-padding-block-start` keeps a row clear of them.
 - **Open focused on the checked row.** The picker opens scrolled to that row. The arrows go round, Home and End jump, and Enter or Space picks.
-- **Stop every bound chord but `PANEL_PASSING_BINDINGS`.** They stop at the picker, as in Find and Replace.
+- **Stop every bound chord but `PANEL_PASSING_BINDINGS`.** They stop at the picker, as in the Explorer.
 - **A pick emits `setLocaleOptionAction`.** It closes the picker and hands the keyboard back with `focusEvent`.
-- **The picker and other panels close each other.** Opening the picker closes the theme builder, Table Properties and Find and Replace. Opening the theme builder, Find and Replace or the palette closes the picker. `stop` closes it, and so does its close button, a press outside it and the toolbar (`handlePress`).
+- **The picker and other panels close each other.** Opening the picker closes the theme builder and Table Properties and leaves the Explorer open. Opening the theme builder, Find and Replace or the palette closes the picker. `stop` closes it, and so does its close button, a press outside it and the toolbar (`handlePress`).
 - **Its close button is the editor's `x` tool** beside the title, named `common.close` with the stop key in its title. It closes as `stop` does and hands the keyboard back with `focusEvent`.
 
 ### The Settings page from outside the tab

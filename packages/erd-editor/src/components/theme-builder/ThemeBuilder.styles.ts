@@ -4,9 +4,9 @@ import { floatingShadow } from '@/styles/elevation.styles';
 import { typography } from '@/styles/typography.styles';
 
 /**
- * A panel placed over whichever tab is up, padded as Find and Replace is. The
- * tab wrapper raises no stacking context, so a raised descendant would paint
- * over an unraised sibling; the same step later in the root keeps this on top.
+ * A panel placed over whichever tab is up. The tab wrapper raises no stacking
+ * context, so a raised descendant would paint over an unraised sibling; the
+ * same step later in the root keeps this on top.
  */
 export const root = css`
   position: absolute;
@@ -29,7 +29,7 @@ export const header = css`
   gap: 12px;
 `;
 
-/* Set as Find and Replace and the locale picker set theirs. */
+/* Set as the locale picker sets its own. */
 export const title = css`
   color: var(--active);
   ${typography.normal};

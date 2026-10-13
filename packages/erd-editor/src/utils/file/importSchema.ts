@@ -195,7 +195,7 @@ export async function importSchemaPlaced(
 /**
  * An append as the editor lands it: the new tables, memos and groups alone
  * selected, so a drag carries each group with its members, and brought on
- * screen clear of Find and Replace, in the dispatch that adds them.
+ * screen in the dispatch that adds them.
  */
 const appendLandingAction$ = ({
   actions,

@@ -49,9 +49,6 @@ const CEILING_EXPORT_TIMEOUT = 30_000;
 /** Bare canvas clear of the memo at scene zero, high enough for the menu to fit. */
 const MENU_ORIGIN = { x: 400, y: 400 };
 
-/** Bare canvas clear of the Find and Replace panel, which stands 396 px in from the canvas edge. */
-const CLEAR_OF_PANEL = { x: 700, y: 400 };
-
 /** ExportImage.styles.ts — the layout's padding and the box's border, the close button's offset from the corner. */
 const CORNER_INSET = 25;
 
@@ -536,18 +533,18 @@ test.describe('the export image dialog', () => {
     expect(ring.y - RING_REACH).toBeGreaterThanOrEqual(box.y + 1);
   });
 
-  test('closes Find and Replace as it opens, and gives way to the panel on its chord', async ({
+  test('leaves the Explorer open as it opens, and gives way to its search on the chord', async ({
     erd,
   }) => {
     await erd.seed(document());
-    const panel = erd.host.locator('.find-replace');
-    await erd.focusCanvas(CLEAR_OF_PANEL);
+    const panel = erd.host.locator('.explorer');
+    await erd.focusCanvas(MENU_ORIGIN);
     await erd.press(Shortcut.findReplace);
     await expect(panel).toBeVisible();
 
-    const dialog = await openFromMenu(erd, CLEAR_OF_PANEL);
+    const dialog = await openFromMenu(erd, MENU_ORIGIN);
     await expect(button(dialog, 'PNG')).toBeFocused();
-    await expect(panel).toHaveCount(0);
+    await expect(panel).toBeVisible();
 
     await erd.press(Shortcut.findReplace);
 
@@ -555,20 +552,18 @@ test.describe('the export image dialog', () => {
     await expect(panel.locator('.find-input')).toBeFocused();
   });
 
-  test('leaves Find and Replace closed once it closes, as the other dialogs do', async ({
-    erd,
-  }) => {
+  test('leaves the Explorer open once it closes', async ({ erd }) => {
     await erd.seed(document());
-    const panel = erd.host.locator('.find-replace');
-    await erd.focusCanvas(CLEAR_OF_PANEL);
+    const panel = erd.host.locator('.explorer');
+    await erd.focusCanvas(MENU_ORIGIN);
     await erd.press(Shortcut.findReplace);
     await expect(panel).toBeVisible();
 
-    const dialog = await openFromMenu(erd, CLEAR_OF_PANEL);
+    const dialog = await openFromMenu(erd, MENU_ORIGIN);
     await button(dialog, 'Close').click();
 
     await expect(dialog).toHaveCount(0);
-    await expect(panel).toHaveCount(0);
+    await expect(panel).toBeVisible();
   });
 
   test('closes on a press on the dim, never on a text selection let go over it', async ({

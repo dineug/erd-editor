@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`src/components/erd/` holds the ERD tab: `Erd.tsx`, its Konva scene under `canvas/`, the minimap, the scrollbars, Table Properties, the draw target, the table group commands, the diff viewer's pane, time travel and the welcome screen. This file holds their rules, with the presses and keys the canvas handles. Other nested files touch the same features: `src/components/map-columns/AGENTS.md`, `src/konva/AGENTS.md`, `src/engine/AGENTS.md` (the table-group model), `src/components/primitives/AGENTS.md`, `src/components/find-replace/AGENTS.md`, `src/components/quick-search/AGENTS.md`, `src/services/AGENTS.md` and `src/i18n/AGENTS.md`; each pointer below says what it holds. Paths are relative to this directory, and a bare file name sits in the directory its bullet, its section's first bullet or the Key Files table names. A path that starts with `src/` or `e2e/` is relative to `packages/erd-editor`.
+`src/components/erd/` holds the ERD tab: `Erd.tsx`, its Konva scene under `canvas/`, the minimap, the scrollbars, Table Properties, the draw target, the table group commands, the diff viewer's pane, time travel and the welcome screen. This file holds their rules, with the presses and keys the canvas handles. Other nested files touch the same features: `src/components/map-columns/AGENTS.md`, `src/konva/AGENTS.md`, `src/engine/AGENTS.md` (the table-group model), `src/components/primitives/AGENTS.md`, `src/components/explorer/AGENTS.md`, `src/components/quick-search/AGENTS.md`, `src/services/AGENTS.md` and `src/i18n/AGENTS.md`; each pointer below says what it holds. Paths are relative to this directory, and a bare file name sits in the directory its bullet, its section's first bullet or the Key Files table names. A path that starts with `src/` or `e2e/` is relative to `packages/erd-editor`.
 
 ## Making a Change
 
@@ -150,7 +150,7 @@
 - **The zoom never changes**, and a jump is one scroll, one undo entry.
 - **A jump lights a relationship through `relationshipHighlight.ts`**, kept per `editor.id` out of the store, so no file, history or peer holds it. The connector and its referential action label read it as they read a hover, in the document scene alone, never in a view. The generator never sets it; the host that jumps does. A press that changes the selection puts it out (`Erd.tsx`, `ErdViewer.tsx`); a pan, by the middle button or the hand tool, leaves it on. The element drops it as it goes.
 - **A jump with a draw armed adds nothing.** Its selection, `selectTableAloneAction$`, leaves out `selectTableAction$`'s relationship-draw branch, and so does every go-to's.
-- **`toErdTarget` fills `ErdTarget.range` from a match** (`find-replace/matchTarget.ts`). The range is measured with the store's `toWidth` from the cell's left edge, where the scene starts its text, less the padding that measure adds, and cut at the cell's right edge. A range in a hidden comment is dropped, and the name is ringed in its place.
+- **`toErdTarget` fills `ErdTarget.range` from a match** (`explorer/matchTarget.ts`). The range is measured with the store's `toWidth` from the cell's left edge, where the scene starts its text, less the padding that measure adds, and cut at the cell's right edge. A range in a hidden comment is dropped, and the name is ringed in its place.
 
 ### Table groups in the scene
 
@@ -315,11 +315,11 @@
 
 ### Keys on the canvas
 
-- Find and Replace and its chord: `src/components/find-replace/AGENTS.md`. The palette and its prefixes: `src/components/quick-search/AGENTS.md`.
+- Find and Replace and its chord: `src/components/explorer/AGENTS.md`. The palette and its prefixes: `src/components/quick-search/AGENTS.md`.
 - **`YIELDS_TO_A_CARET` stands bindings down in fields.** It lives in `src/hooks/useKeyBindingMap.ts`. It stands `selectAllTable`, `handTool` and `removeSelection` down in a text field, per binding. That is because `Enter` / `Escape` still have to reach `handleShortcut` from the cell editor.
   - `findReplace` stays out of it: in a field, `$mod+F` means only the page's find, which the editor's replaces.
-  - `search` stays out of it too: the palette's `$mod+K` opens from any text field but the cell editor's, the Find and Replace field and the database name included, as a command palette does (an owner decision of 2026-10-11).
-  - `YIELDS_TO_A_TAKEOVER` beside it, which leaves `findReplace` to the host's find under a takeover: `src/components/find-replace/AGENTS.md`, The chord.
+  - `search` stays out of it too: the palette's `$mod+K` opens from any text field but the cell editor's, the Explorer's find field and the database name included, as a command palette does (an owner decision of 2026-10-11).
+  - `YIELDS_TO_A_TAKEOVER` beside it, which leaves `findReplace` to the host's find under a takeover: `src/components/explorer/AGENTS.md`, The search.
 - **Escape is two presses.** The `stop` branch of `useErdShortcut.ts` decides from the state the press arrives in.
   - An open cell, memo or group name editor, a relationship being drawn, or an armed table group draw takes the press alone. Focus, selection and typed text stay.
   - The actions are `editTableEndAction` / `editMemoEndAction` / `editTableGroupEndAction` / `drawEndRelationshipAction` / `changeDrawTableGroupAction`. The relationship draw takes the buttons beside its target with it.
@@ -355,11 +355,11 @@
   - Import swaps in its formats (`createImportMenus`) behind a Back row, which Escape presses too.
   - Where the canvas has room, hand-drawn arrows point at the toolbar's Search button, at its theme and language buttons, and at the floating toolbar.
 - `requestSettingsPage` and the Settings page it opens (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.
-- **`welcomeTiers` fits the screen to the canvas.** It reads the whole canvas, centred there. Find and Replace stands over it as the theme builder and the locale picker do, and moves nothing (an owner decision of 2026-10-11).
+- **`welcomeTiers` fits the screen to the canvas.** It reads the whole canvas, centred there, the canvas the Explorer leaves while docked; an arrow whose button stands over the Explorer is left out (`measureAnchors`). The theme builder and the locale picker stand over it and move nothing (an owner decision of 2026-10-11).
   - Nothing shows under 320 px wide or 294 px tall.
   - The menu shows alone under 342 px tall.
   - The arrows show from 720 by 562 px, and a row's chord from 480 px wide.
-  - The arrows also leave while Find and Replace, the theme builder or the locale picker is up.
+  - The arrows also leave while the theme builder or the locale picker is up.
 - **The three heights are what the block needs**, measured by `WelcomeScreen.browser.test.ts`.
   - At 294, Import's six rows alone fill the room over the floating toolbar on every platform, since a row keeps its height in any font.
   - At 342, in every language on a Mac, a heading of two lines over them at 320 px wide fills it.

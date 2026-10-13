@@ -20,6 +20,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -147,6 +148,7 @@ const ERD_TOOLBOX = [
   'Auto Layout',
   'Export: Schema SQL',
   'Find and Replace',
+  'Toggle Explorer',
 ];
 
 const recordActions = () => {
@@ -418,6 +420,7 @@ describe('createScopeActions', () => {
       'Schema SQL: Options panel',
       'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
@@ -436,10 +439,11 @@ describe('createScopeActions', () => {
       'Column Name Case',
       'Code Generator: Options panel',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
-  it('keeps the tabs, Find and Replace and the table jumps # lists in the visualization and settings canvases', () => {
+  it('keeps the tabs, Find and Replace, the Explorer and the table jumps # lists in the visualization and settings canvases', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
@@ -447,7 +451,13 @@ describe('createScopeActions', () => {
       setCanvasType(canvasType);
       expect(
         names(scope().filter(action => action.filter?.(app) ?? true))
-      ).toEqual(['Tab', 'Export: Schema SQL', 'Find and Replace', 'users']);
+      ).toEqual([
+        'Tab',
+        'Export: Schema SQL',
+        'Find and Replace',
+        'Toggle Explorer',
+        'users',
+      ]);
     }
   });
 
@@ -1361,6 +1371,7 @@ describe('createScopeActions / no focus actions', () => {
       'Tab',
       'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
       'users',
     ]);
     expect(find(visible, 'users').keywords).toBe('Table');
@@ -1421,6 +1432,37 @@ describe('createScopeActions / Find and Replace', () => {
       app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
 
       expect(visibleNames()).not.toContain('Find and Replace');
+    }
+  );
+});
+
+describe('createScopeActions / Toggle Explorer', () => {
+  it('draws the panel-left icon the toolbar button draws', async () => {
+    expect(await iconOf(find(scope(), 'Toggle Explorer'))).toBe('panel-left');
+  });
+
+  it('opens the Explorer on the ERD tab from any tab, and closes it shown', () => {
+    const action = find(scope(), 'Toggle Explorer');
+    expect(searchActions([action], 'tree')).toEqual([action]);
+    setCanvasType(CanvasType.schemaSQL);
+
+    action.perform?.(app);
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(explorerViewOf(app.store).open).toBe(true);
+
+    action.perform?.(app);
+    expect(explorerViewOf(app.store).open).toBe(false);
+  });
+
+  it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
+    'leaves the row out under %s, which takes the canvas over',
+    key => {
+      expect(visibleNames()).toContain('Toggle Explorer');
+
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+
+      expect(visibleNames()).not.toContain('Toggle Explorer');
     }
   );
 });

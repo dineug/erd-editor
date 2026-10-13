@@ -109,7 +109,7 @@ async function setup(seed: (app: AppContext) => void = seedExplorerDocument) {
   );
   mounted = mount(
     <div class="frame" style={{ display: 'flex', height: `${HEIGHT}px` }}>
-      <Explorer />
+      <Explorer readonly={false} />
     </div>,
     app,
     shadow

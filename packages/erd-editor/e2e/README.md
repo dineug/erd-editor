@@ -140,10 +140,10 @@ png (Chromium with clipboard permissions granted), Tab turns round inside the
 box, the close button in its top right corner (over the preview once the
 preview stacks above the options) closes it as Escape does and shows its whole
 focus ring for the keyboard, a short box scrolled down included, a short editor
-scrolls it to its buttons, Find and Replace's chord trades it for the panel
-open beneath it, a press on the dim closes it while a text selection let go
-over the dim does not, and while it is open the canvas shortcuts stay off and
-Space presses the focused button.
+scrolls it to its buttons, it leaves the Explorer open beside it and Find and
+Replace's chord trades it for the Explorer's search, a press on the dim closes
+it while a text selection let go over the dim does not, and while it is open
+the canvas shortcuts stay off and Space presses the focused button.
 `export-png.spec.ts` drives the same dialog at 1x.
 
 Two more hold down nothing but a frame, one on the canvas and one in a DOM panel
@@ -159,27 +159,29 @@ and `table-properties-indexes.spec.ts` (the index column list) each hold one
 more check of the same kind, through `support/connectorDrift.ts` and
 `support/listDrag.ts`.
 
-`find-replace.spec.ts` holds down Find and Replace and the quick search rows for
-columns, comments and memos in the real element: its chord, `$mod+F`, is
-prevented on the ERD tab from the canvas, from its own field, which it selects,
-from the palette, which gives way, and from a cell editor, which keeps it, so no
-page find opens, prevented on the Visualization, Schema SQL, Code Generator and
-Settings tabs too, where it brings the ERD tab up with the panel, and left
-unprevented to the page under time travel, until that closes; its toolbar button
-opens the panel from another tab, keeps the current match when pressed with the
-panel shown, as the chord does, and stands greyed out in place under time
-travel; what is typed into the panel reaches no other canvas shortcut (Alt+N and
-Enter there add and edit nothing), while undo and zoom in still reach the
-editor (two of `PANEL_PASSING_BINDINGS`) and a chord the editor does not bind
-(`$mod+S`, `$mod+Shift+P`) still reaches the host's window; Escape closes the
-panel and hands the keyboard back; a first opening searches table and column
-names alone, so a replace all there leaves the comments and the memo as they
-were, and a scope set stays on while the element lives; a replace all is one
-change event and one undo, and reaches a wired peer, whose copy the undo takes
-back too; a read-only editor offers Find with no replace; a jump to a table
-taller than the canvas lands on its name, and a match at the end of a comment
-wider than the canvas lands where it shows, clear of the panel. It holds down
-the palette prefixes too, the only way to its tables,
+`find-replace.spec.ts` holds down Find and Replace, the Explorer's search, and
+the quick search rows for columns, comments and memos in the real element: its
+chord, `$mod+F`, is prevented on the ERD tab from the canvas, from its own field,
+which it selects, from the palette, which gives way, and from a cell editor,
+which keeps it, so no page find opens, prevented on the Visualization, Schema
+SQL, Code Generator and Settings tabs too, where it brings the ERD tab up with
+the Explorer, shows the Explorer under zen mode with zen left on, and is left
+unprevented to the page under time travel, until that closes; the Explorer's
+toolbar button, where Find stood, opens it from another tab, closes it on the
+ERD tab and stands greyed out in place under time travel; what is typed into
+the search reaches no other canvas shortcut (Alt+N and Enter there add and edit
+nothing), the current match lighting its row in the tree, while undo and zoom
+in still reach the editor (two of `PANEL_PASSING_BINDINGS`) and a chord the
+editor does not bind (`$mod+S`, `$mod+Shift+P`) still reaches the host's
+window; Escape hands the keyboard back and leaves the panel open; a first
+opening searches table and column names alone, so a replace all there leaves
+the comments and the memo as they were, and a scope set stays on while the
+element lives; a replace all is one change event and one undo, and reaches a
+wired peer, whose copy the undo takes back too; a read-only editor offers
+nothing to replace with; a jump to a table taller than the canvas lands on its
+name, and a match at the end of a comment wider than the canvas lands where it
+shows from its row in the tree, the canvas narrowed beside the panel. It holds
+down the palette prefixes too, the only way to its tables,
 columns, comments and memos: a `:` search lands on a column comment from another
 tab, a `?` help row types its prefix in with the input still focused, a
 `@table.col` search goes to that column, and `#us` lists users and not orders,

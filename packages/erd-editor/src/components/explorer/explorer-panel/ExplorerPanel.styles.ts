@@ -126,3 +126,9 @@ export const dot = css`
   border-radius: 50%;
   background-color: var(--tree-muted);
 `;
+
+export const mark = css`
+  border-radius: 2px;
+  color: var(--foreground);
+  background-color: var(--tree-match);
+`;

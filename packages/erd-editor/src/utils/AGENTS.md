@@ -80,7 +80,7 @@
 - `tableColor.ts` (`toOpaqueHex`, the first reading the color picker's `resolveColor` tries): `src/components/primitives/AGENTS.md`.
 - `tableGroup.ts` (the DOM-free table-group helpers, inside the peer graph): `src/engine/AGENTS.md`.
 - `file/exportFile.ts` (how Save file and every export name the file): `src/components/generator-code/AGENTS.md`.
-- `find-replace/`, which has no file of its own (the matcher, `findMatches.ts`, `replaceActions.ts`): `src/components/find-replace/AGENTS.md`.
+- `find-replace/`, which has no file of its own (the matcher, `findMatches.ts`, `replaceActions.ts`): `src/components/explorer/AGENTS.md`.
 - `map-columns/` (the pure half of Map Columns): `src/components/map-columns/AGENTS.md`.
 - `referentialAction.ts` (the referential action codes a connector's child end shows): `draw-relationship/AGENTS.md`.
 

@@ -9,6 +9,7 @@ import { FocusType } from '@/engine/modules/editor/state';
 import type { RxStore } from '@/engine/rx-store';
 
 import type { ExplorerNode } from './explorerTree';
+import { toErdTarget } from './matchTarget';
 
 /** Where on the canvas a row goes: none for a folder, which only folds and unfolds. */
 export function targetOf(node: ExplorerNode): ErdTarget | null {
@@ -32,18 +33,17 @@ export function targetOf(node: ExplorerNode): ErdTarget | null {
       return { kind: 'tableGroup', tableGroupId: node.tableGroupId };
     case 'memo':
       return { kind: 'memo', memoId: node.memoId };
+    case 'excerpt':
+      return toErdTarget(node.match);
   }
 }
 
 /**
- * Goes where a row stands for, by the one jump rule, and lights a foreign
- * key's relationship once there. Table Properties gives way first, so the
- * object the jump shows is not left under it (an owner decision of 2026-10-13).
+ * Goes to a row's or a match's target by the one jump rule, and lights a
+ * foreign key's relationship once there. Table Properties gives way first, so
+ * nothing is left under it (an owner decision of 2026-10-13).
  */
-export function activateNode(store: RxStore, node: ExplorerNode): void {
-  const target = targetOf(node);
-  if (!target) return;
-
+export function jumpTo(store: RxStore, target: ErdTarget): void {
   const editorId = store.state.editor.id;
   clearRelationshipHighlight(editorId);
   if (store.state.editor.openMap[Open.tableProperties]) {
@@ -53,4 +53,10 @@ export function activateNode(store: RxStore, node: ExplorerNode): void {
   if (target.kind === 'relationship') {
     setRelationshipHighlight(editorId, target.relationshipId);
   }
+}
+
+/** Goes where a row stands for; a folder goes nowhere. */
+export function activateNode(store: RxStore, node: ExplorerNode): void {
+  const target = targetOf(node);
+  target && jumpTo(store, target);
 }

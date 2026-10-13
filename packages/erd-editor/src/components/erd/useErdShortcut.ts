@@ -212,12 +212,7 @@ export function useErdShortcut(ctx: Ctx) {
           emitter.emit(
             openTablePropertiesAction({ tableId: selectedTable[0] })
           );
-          store.dispatch(
-            changeOpenMapAction({
-              [Open.tableProperties]: true,
-              [Open.findReplace]: false,
-            })
-          );
+          store.dispatch(changeOpenMapAction({ [Open.tableProperties]: true }));
         }
       }
 

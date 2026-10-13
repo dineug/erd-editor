@@ -11,7 +11,11 @@ import ExplorerPanel from './explorer-panel/ExplorerPanel';
  * reaches, or nothing. It reads the reach alone, so a drag of the edge renders
  * the shell and the panel's root and nothing of the tree.
  */
-const Explorer: FC = (_props, ctx) => {
+export type ExplorerProps = {
+  readonly: boolean;
+};
+
+const Explorer: FC<ExplorerProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   // Unobserved: onBeforeUpdate runs inside the shell's own observer, which
   // would otherwise render again every time the keyboard comes or goes.
@@ -51,7 +55,7 @@ const Explorer: FC = (_props, ctx) => {
         on:focusin={handleFocusin}
         on:focusout={handleFocusout}
       >
-        <ExplorerPanel width={reach} />
+        <ExplorerPanel width={reach} readonly={props.readonly} />
       </div>
     );
   };

@@ -8,7 +8,6 @@ export const Open = {
   localePicker: 'localePicker',
   diffViewer: 'diffViewer',
   timeTravel: 'timeTravel',
-  findReplace: 'findReplace',
   exportImage: 'exportImage',
   mapColumns: 'mapColumns',
 } as const;

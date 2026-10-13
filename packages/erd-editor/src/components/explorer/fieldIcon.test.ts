@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { iconNameOf } from '@/__test-utils__/icon';
 import { mountAndFlush, Mounted } from '@/__test-utils__/index';
-import { fieldIcon } from '@/components/find-replace/fieldIcon';
+import { fieldIcon } from '@/components/explorer/fieldIcon';
 import { FindField } from '@/utils/find-replace';
 
 let mounted: Mounted | null = null;

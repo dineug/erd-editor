@@ -9,8 +9,9 @@ import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-men
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
 import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
-import { fieldIcon } from '@/components/find-replace/fieldIcon';
-import { toErdTarget } from '@/components/find-replace/matchTarget';
+import { toggleExplorer } from '@/components/explorer/explorerCommands';
+import { fieldIcon } from '@/components/explorer/fieldIcon';
+import { toErdTarget } from '@/components/explorer/matchTarget';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -557,6 +558,12 @@ export function createScopeActions(
       },
       filter: canOpenFindReplace,
     },
+    {
+      icon: <Icon name="panel-left" size={16} />,
+      ...named(i18n, 'explorer.toggle', 'palette.keywords.explorer'),
+      perform: ({ store }) => toggleExplorer(store),
+      filter: canOpenFindReplace,
+    },
     ...createPreferenceActions(i18n, preferences),
     ...createTableActions(app, i18n),
   ];
@@ -731,7 +738,7 @@ export function createMatchAction(
   };
 }
 
-/** Whether choosing a row that opens Find and Replace would open it: an overlay taking the canvas over keeps it shut. */
+/** Whether a row opening Find and Replace or the Explorer would open it: an overlay taking the canvas over keeps both shut. */
 const canOpenFindReplace = ({ store }: AppContext) => !isTakenOver(store.state);
 
 /** The row handing a search to Find and Replace, named with the count the panel opens on. */

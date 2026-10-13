@@ -30,6 +30,8 @@ import { AppContext } from '@/components/appContext';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
+import { openExplorer } from '@/components/explorer/explorerCommands';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import {
   ContextMenuRootContext,
   contextMenuRootContext,
@@ -925,11 +927,11 @@ describe('ErdContextMenu / table type', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('opens the table properties panel, closing Find and Replace', async () => {
+  it('opens the table properties panel, leaving the Explorer open', async () => {
     seedTable();
     const openTableProperties = vi.fn();
     app.emitter.on({ openTableProperties });
-    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+    openExplorer(app.store);
     await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
 
     await click(findItem(rootItems(), 'Table Properties'));
@@ -939,7 +941,7 @@ describe('ErdContextMenu / table type', () => {
       tableId: TABLE_ID,
     });
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(true);
-    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
+    expect(explorerViewOf(app.store).open).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -1273,7 +1275,7 @@ describe('ErdContextMenu / relationship type', () => {
 
   it('opens Map Columns on the relationship: the session first, then the open map', async () => {
     seedRelationship();
-    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+    openExplorer(app.store);
     const openings: unknown[] = [];
     app.emitter.on({
       openMapColumns: ({ payload }) => {
@@ -1292,7 +1294,7 @@ describe('ErdContextMenu / relationship type', () => {
       { mode: 'edit', relationshipId: RELATIONSHIP_ID },
     ]);
     expect(app.store.state.editor.openMap[Open.mapColumns]).toBe(true);
-    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
+    expect(explorerViewOf(app.store).open).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

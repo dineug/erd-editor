@@ -15,6 +15,12 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import {
+  measureRoot,
+  observeViewport,
+} from '@/components/erd-editor/viewportLayout';
+import ExplorerController from '@/components/explorer/explorer-controller/ExplorerController';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
@@ -326,7 +332,7 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it('takes $mod+KeyF under a dialog that only stands the panel aside', () => {
+  it('takes $mod+KeyF under a dialog, which the Explorer search trades for itself', () => {
     const dialogs = [
       Open.tableProperties,
       Open.themeBuilder,
@@ -468,5 +474,61 @@ describe('useKeyBindingMap', () => {
     $root.dispatchEvent(keydown({ key: 'Enter' }));
 
     expect(shortcuts).toHaveLength(0);
+  });
+});
+
+describe('useKeyBindingMap with the Explorer search', () => {
+  /** The binder and the search together, as the element mounts them. */
+  const Editor: FC<{}> = (props, ctx) => {
+    const root = createRef<HTMLDivElement>();
+    useKeyBindingMap(ctx, root);
+
+    return () =>
+      html`<div class="root" ${ref(root)}><${ExplorerController} /></div>`;
+  };
+
+  let stopObserving = () => {};
+
+  beforeEach(async () => {
+    mounted?.unmount();
+    app = createTestAppContext();
+    stopObserving = observeViewport(app.store);
+    measureRoot(app.store, { width: 1200, height: 800 });
+    mounted = await mountAndFlush(html`<${Editor} />`, app);
+  });
+
+  afterEach(() => {
+    stopObserving();
+    app.store.destroy();
+  });
+
+  it('opens the search on a chord a host remaps, trading Table Properties for it (AC-R7)', async () => {
+    app.keyBindingMap.findReplace = [
+      { shortcut: '$mod+Shift+KeyH', preventDefault: true },
+    ];
+    await flush();
+    app.store.dispatchSync(
+      changeOpenMapAction({ [Open.tableProperties]: true })
+    );
+
+    const event = keydown({ key: 'H', code: 'KeyH', mod: true });
+    Object.defineProperty(event, 'shiftKey', { value: true });
+    mounted!.container.querySelector('.root')!.dispatchEvent(event);
+    await flush();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(explorerViewOf(app.store).open).toBe(true);
+    expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(false);
+  });
+
+  it('leaves $mod+KeyF unprevented and the Explorer shut once a host empties findReplace (AC-R7)', async () => {
+    app.keyBindingMap.findReplace = [];
+    await flush();
+
+    const event = press({ key: 'f', code: 'KeyF', mod: true });
+    await flush();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(explorerViewOf(app.store).open).toBe(false);
   });
 });

@@ -36,7 +36,8 @@ import {
   useAppContext,
 } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
-import FindReplace from '@/components/find-replace/FindReplace';
+import ExplorerController from '@/components/explorer/explorer-controller/ExplorerController';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import MapColumnsDialog from '@/components/map-columns/MapColumnsDialog';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
@@ -92,7 +93,7 @@ const Editor: FC = (_, ctx) => {
     >
       <Erd isDarkMode={false} mouseTracking={false} readonly={false} />
       <MapColumnsDialog readonly={false} isDarkMode={false} />
-      <FindReplace readonly={false} />
+      <ExplorerController />
       <QuickSearch />
       <ToastContainer />
     </div>
@@ -325,7 +326,7 @@ describe('Map Columns on a real keyboard', () => {
     expect(document.activeElement).toBe(controls[controls.length - 1]);
   });
 
-  it('gives way to Find and Replace on its chord pressed inside, dropping what was picked', async () => {
+  it('gives way to the Explorer search on the find chord pressed inside, dropping what was picked', async () => {
     const fixture = await setup();
     await openCreate(fixture);
     const [select] = rowSelects(fixture);
@@ -334,12 +335,8 @@ describe('Map Columns on a real keyboard', () => {
 
     await press(`{${MOD}>}f{/${MOD}}`);
 
-    const { openMap } = fixture.app.store.state.editor;
-    expect(openMap[Open.findReplace]).toBe(true);
+    expect(explorerViewOf(fixture.app.store).open).toBe(true);
     expect(isOpen(fixture)).toBe(false);
-    expect(
-      fixture.mounted.container.querySelector('.find-replace')
-    ).not.toBeNull();
 
     // An opening with no session closes at once, which shows none was kept.
     fixture.app.store.dispatchSync(
@@ -362,7 +359,7 @@ describe('Map Columns on a real keyboard', () => {
     expect(box(fixture)).toBeNull();
   });
 
-  it('opens fresh after Find and Replace closed it, keeping neither the mode nor the rows touched', async () => {
+  it('opens fresh after the Explorer search closed it, keeping neither the mode nor the rows touched', async () => {
     const fixture = await setup();
     seedMapRelationship(
       fixture.app.store,

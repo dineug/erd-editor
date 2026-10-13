@@ -123,7 +123,7 @@ Deltas from root § Making a Change.
 
 ### Shortcuts
 
-- **Obsidian's hotkeys take keys before the page**: its keymap listens for `keydown` on the window in the capture phase, sending a key matching a hotkey to its command, prevented and stopped, even where the command does not apply. `Alt+Enter` (add column) is Follow link under cursor, `$mod+K` (search) Insert Markdown link, `$mod+F` (Find and Replace) Search current file, and a user's hotkey can take any shortcut.
+- **Obsidian's hotkeys take keys before the page**: its keymap listens for `keydown` on the window in the capture phase, sending a key matching a hotkey to its command, prevented and stopped, even where the command does not apply. `Alt+Enter` (add column) is Follow link under cursor, `$mod+K` (search) Insert Markdown link, `$mod+F` (Find and Replace, the Explorer's search) Search current file, and a user's hotkey can take any shortcut.
 - **The view's `scope` hands the editor its keys.** The workspace asks the active leaf's `view.scope` first, as for Obsidian's canvas view; `Scope.handleKey` returns the first matching registration's result, and the keymap prevents the key only on `false`. So `ErdView` sets `this.scope = new Scope(this.app.scope)` and registers every press of the loaded module's `createKeyBindingMap()` (the element's defaults, never a copy) with a handler returning `true`: no command runs, and the key reaches the editor.
 - **`scopeKeysOf` spells keys as the keymap matches them**, reading the key code as a letter, digit or name: `$mod` → `Mod`, `Control` → `Ctrl`, `KeyK` → `K`, `Digit1` → `1`, `Space` → `' '`, `Equal` → `=`, `Minus` → `-`.
 - **Other hotkeys fall through to `app.scope`** (the command palette, the quick switcher, closing a tab, settings). The scope holds only while the ERD leaf is active, wherever focus is in it; a modal or a menu pushes its own scope, which the view's never reaches.
@@ -193,6 +193,7 @@ OBSIDIAN_ASAR="$HOME/Library/Application Support/obsidian/obsidian-1.13.7.asar" 
 - **Each step is a `step(…)` call** in `e2e/smoke.mjs`, named for what it checks, from opening every extension to the quit. The names leave out how:
   - the waiting tab that became the writer is judged only once its saved text is the first tab's close write, or a build handing back open-time text passes too;
   - keys go through Playwright's keyboard, whose events pass Obsidian's window listener;
+  - the Mod+F step widens the window over the protocol (`Browser.setWindowBounds`) when the editor is under 520 px, where the Explorer would stand aside, and reads the shadow root's `activeElement` for the search's field;
   - the shadow root is closed, so theme steps compare the element's `:host` properties (`--gray-color-1`, `--accent-color-9`, through `getComputedStyle`) with `@radix-ui/colors`, the editor's theme palette. They click the builder over the DevTools protocol (`DOM.getDocument` with `pierce`, then a function on the shadow root): its button by `.toolbar-theme`, System, Light and Dark by place;
   - language steps read each editor root's `lang`, and Obsidian's `i18next.language` before the plugin is enabled;
   - hub steps spawn the real `packages/mcp-server/dist/erd-editor-mcp.js` over stdio in the vault folder with your `HOME`, check `0600` in `0700`, and detach Playwright around `app:reload`, 400 ms after an edit;

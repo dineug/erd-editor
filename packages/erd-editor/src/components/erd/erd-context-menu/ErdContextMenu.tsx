@@ -212,12 +212,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
 
     const { store, emitter } = app.value;
     emitter.emit(openTablePropertiesAction({ tableId: props.tableId }));
-    store.dispatch(
-      changeOpenMapAction({
-        [Open.tableProperties]: true,
-        [Open.findReplace]: false,
-      })
-    );
+    store.dispatch(changeOpenMapAction({ [Open.tableProperties]: true }));
     props.onClose();
   };
 

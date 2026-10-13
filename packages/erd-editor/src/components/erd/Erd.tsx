@@ -423,7 +423,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   /**
    * Escape pressed while the keyboard is elsewhere closes the picker unless something takes it
-   * first, as Find and Replace reads it; removeSelection or removeTable (Delete or Backspace,
+   * first; removeSelection or removeTable (Delete or Backspace,
    * bare or with the mod key) closes it too, since either may just have taken its paint.
    */
   const handleColorPickerShortcut = ({ type }: { type: KeyBindingName }) => {

@@ -13,7 +13,5 @@ export function openMapColumns(
   opening: MapColumnsOpening
 ) {
   emitter.emit(openMapColumnsAction(opening));
-  store.dispatch(
-    changeOpenMapAction({ [Open.mapColumns]: true, [Open.findReplace]: false })
-  );
+  store.dispatch(changeOpenMapAction({ [Open.mapColumns]: true }));
 }

@@ -86,7 +86,8 @@ const toolbar = html`<div class="toolbar" style=${TOOLBAR_STYLE}>
 
 async function setup(
   locale: LocaleCode,
-  canvas: Canvas = { width: WIDTH, height: HEIGHT - TOOLBAR_HEIGHT }
+  canvas: Canvas = { width: WIDTH, height: HEIGHT - TOOLBAR_HEIGHT },
+  explorer = 0
 ) {
   const app = createTestAppContext();
   const i18n = createTestI18n(locale);
@@ -94,7 +95,7 @@ async function setup(
   const host = document.createElement('div');
   host.setAttribute(
     'style',
-    `display: block; width: ${canvas.width}px; height: ${canvas.height + TOOLBAR_HEIGHT}px;`
+    `display: block; width: ${canvas.width + explorer}px; height: ${canvas.height + TOOLBAR_HEIGHT}px;`
   );
   document.body.append(host);
   const shadow = host.attachShadow({ mode: 'open' });
@@ -125,6 +126,10 @@ async function setup(
     >
       ${toolbar}
       <div style="position: relative; flex: 1; min-height: 0; display: flex;">
+        <div
+          class="explorer-stand-in"
+          style=${{ flex: 'none', width: `${explorer}px` }}
+        ></div>
         <${Erd}
           isDarkMode=${false}
           mouseTracking=${false}
@@ -275,6 +280,34 @@ async function eachLevel(
   expect(shadow.querySelectorAll('.welcome-screen-item')).toHaveLength(6);
   read('import');
 }
+
+describe('WelcomeScreen beside the Explorer', () => {
+  /** A canvas as wide as the default beside the panel, so the hints keep their tier. */
+  const canvas = { width: WIDTH, height: HEIGHT - TOOLBAR_HEIGHT };
+
+  it('points at a button above a 260 px Explorer still over the canvas, and at none above a 480 px one', async () => {
+    const narrow = await setup('en', canvas, 260);
+    const palette = tipOf(
+      narrow.shadow.querySelector('.welcome-screen-hint-palette')!
+    );
+    expect(
+      Math.abs(palette.x - narrow.centerX('.toolbar-search'))
+    ).toBeLessThanOrEqual(TOLERANCE);
+    expect(palette.x).toBeGreaterThan(narrow.box('.explorer-stand-in').right);
+
+    const wide = await setup('en', canvas, 480);
+
+    expect(
+      wide.shadow.querySelector('.welcome-screen-hint-palette')
+    ).toBeNull();
+    expect(
+      wide.shadow.querySelector('.welcome-screen-hint-preferences')
+    ).toBeNull();
+    expect(
+      wide.shadow.querySelector('.welcome-screen-hint-tools')
+    ).not.toBeNull();
+  });
+});
 
 describe('WelcomeScreen tiers', () => {
   it('fits the heading over either level of the menu from the full height on, at the narrowest width', async () => {

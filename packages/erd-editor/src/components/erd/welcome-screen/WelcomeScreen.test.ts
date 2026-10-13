@@ -601,22 +601,19 @@ describe('WelcomeScreen layout', () => {
     expect(labels()[3]).toBe('ko:Command Palette');
   });
 
-  it.each([Open.findReplace, Open.themeBuilder])(
-    'stays over the whole canvas under %s, which stands over it',
-    async key => {
-      const { app, root, screen, hint } = await setup();
-      const heading = () =>
-        root.querySelector('.welcome-screen-heading')?.textContent;
-      const before = heading();
+  it('stays over the whole canvas under the theme builder, which stands over it', async () => {
+    const { app, root, screen, hint } = await setup();
+    const heading = () =>
+      root.querySelector('.welcome-screen-heading')?.textContent;
+    const before = heading();
 
-      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
-      await flush();
+    app.store.dispatchSync(changeOpenMapAction({ [Open.themeBuilder]: true }));
+    await flush();
 
-      expect(screen()?.getAttribute('style')).toBeNull();
-      expect(heading()).toBe(before);
-      expect(hint('tools')).toBeNull();
-    }
-  );
+    expect(screen()?.getAttribute('style')).toBeNull();
+    expect(heading()).toBe(before);
+    expect(hint('tools')).toBeNull();
+  });
 });
 
 describe('WelcomeScreen hints', () => {
@@ -664,7 +661,7 @@ describe('WelcomeScreen hints', () => {
     expect(hint('preferences')).toBeNull();
   });
 
-  it.each([Open.findReplace, Open.themeBuilder, Open.localePicker])(
+  it.each([Open.themeBuilder, Open.localePicker])(
     'steps every hint aside while %s is up',
     async open => {
       const { app, root } = await setup({ enableThemeBuilder: true });

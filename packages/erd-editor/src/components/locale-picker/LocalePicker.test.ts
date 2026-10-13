@@ -19,6 +19,8 @@ import {
   pseudoMessages,
 } from '@/__test-utils__/index';
 import type { AppContext } from '@/components/appContext';
+import { openExplorer } from '@/components/explorer/explorerCommands';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import LocalePicker, {
   stepOption,
 } from '@/components/locale-picker/LocalePicker';
@@ -154,13 +156,13 @@ describe('LocalePicker', () => {
       expect(panel()).toBeNull();
     });
 
-    it('closes the theme builder, Table Properties and Find and Replace as it opens', async () => {
+    it('closes the theme builder and Table Properties as it opens, and leaves the Explorer open', async () => {
       await setup();
+      openExplorer(app.store);
       app.store.dispatchSync(
         changeOpenMapAction({
           [Open.themeBuilder]: true,
           [Open.tableProperties]: true,
-          [Open.findReplace]: true,
         })
       );
 
@@ -170,8 +172,8 @@ describe('LocalePicker', () => {
         [Open.localePicker]: true,
         [Open.themeBuilder]: false,
         [Open.tableProperties]: false,
-        [Open.findReplace]: false,
       });
+      expect(explorerViewOf(app.store).open).toBe(true);
     });
 
     it('closes on its close button, named for the stop key, and hands the keyboard back', async () => {

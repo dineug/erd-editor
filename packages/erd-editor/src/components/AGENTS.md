@@ -21,7 +21,7 @@
 | `visualization/VisualizationFlow.tsx` | `FlowScene`, the scene root of the Flow view |
 | `flowCenters.ts` | Narrows the Flow view to the tables given and their one hop, and widens it back (`focusFlowView`, `showAllFlowView`) |
 | `erd/canvas/SceneIcon.template.tsx` | Draws the `getIcon` data in the scene |
-| `find-replace/fieldIcon.tsx` | The icon a result row carries for the kind of text it was found in (`table-2` for a table name, `columns-2` for a column name, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
+| `explorer/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `columns-2` for a column name, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
 | `primitives/icon/icons.ts` | The registered icons and `getIcon`; `icons.test.ts` beside it |
 
 ## Subdirectories
@@ -33,8 +33,7 @@
 | `schema-sql/` | `schema-sql/AGENTS.md`: the Schema SQL tab, its options panel and its script editors |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator tab, its options panel, the language menu, Save file and highlighting |
 | `map-columns/` | `map-columns/AGENTS.md`: Map Columns and `relationship.changeColumns` |
-| `find-replace/` | `find-replace/AGENTS.md`: Find and Replace, when the panel searches, and the matcher in `src/utils/find-replace/` |
-| `explorer/` | `explorer/AGENTS.md`: the Explorer docked left of the canvas, its tree and where a row goes |
+| `explorer/` | `explorer/AGENTS.md`: the Explorer docked left of the canvas, its tree, where a row goes, Find and Replace above it and the matcher in `src/utils/find-replace/` |
 | `quick-search/` | `quick-search/AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |
 | `primitives/` | `primitives/AGENTS.md`: the color picker, removing a color, and the native list in `select/Select.tsx` |
 
@@ -54,13 +53,13 @@
 ### Icons
 
 - **Colour an icon with `color`, never `fill`.** An icon is stroked from `currentColor`, so a `fill` aimed at one renders it invisible and fails nothing else. `src/styles/emittedCss.iconPaint.test.ts` fails on a `fill` declared in any style module. The scene draws the same `getIcon` data through `erd/canvas/SceneIcon.template.tsx`.
-- **Draw a table with lucide's `table-2`.** Use it wherever a table shows (an owner decision): the table headers on the canvas and in the Visualization tab, and New Table in the context menu, the palette and the welcome screen. It also marks the diff tree, the palette's table rows and a table name found (`find-replace/fieldIcon.tsx`, which the palette's `#` rows share). A table or column comment found draws `message-square`.
-- **Find and Replace draws `text-search`.** The command draws it wherever it shows: the context menu and the palette row (an owner decision). The panel's own Replace button keeps `replace`. The toolbar button where Find stood is the Explorer's, `panel-left`.
+- **Draw a table with lucide's `table-2`.** Use it wherever a table shows (an owner decision): the table headers on the canvas and in the Visualization tab, and New Table in the context menu, the palette and the welcome screen. It also marks the diff tree, the palette's table rows and a table name found (`explorer/fieldIcon.tsx`, which the palette's `#` rows share). A table or column comment found draws `message-square`.
+- **Find and Replace draws `text-search`.** The command draws it wherever it shows: the context menu and the palette row (an owner decision). The Explorer search's own Replace button keeps `replace`. The toolbar button where Find stood is the Explorer's, `panel-left`.
 - **Remove a glyph from `icons.ts` when unused.** A glyph that goes out of use leaves `primitives/icon/icons.ts`, and the bundle, with it. `primitives/icon/icons.test.ts` fails on a registered icon no module names.
 
 ### Closing a dialog or panel
 
-- **Each one closes on the editor's `x` tool.** Export image, Map Columns, Table Properties, Find and Replace, the theme builder and the locale picker carry the 26 px `x` tool at the end of their title row, and so does the Explorer, which Escape does not close (an owner decision of 2026-10-11 for Map Columns, the theme builder and the locale picker). It is named `common.close` with the stop key in its title, closes as Escape does and hands the keyboard back with `focusEvent`.
+- **Each one closes on the editor's `x` tool.** Export image, Map Columns, Table Properties, the theme builder and the locale picker carry the 26 px `x` tool at the end of their title row, and so does the Explorer, which Escape does not close (an owner decision of 2026-10-11 for Map Columns, the theme builder and the locale picker). It is named `common.close` with the stop key in its title, closes as Escape does and hands the keyboard back with `focusEvent`.
 - **A panel that stops no key keeps Space and Enter on its button.** The theme builder stops neither, so its button keeps both from the editor root, whose hand tool binding would cancel the press and whose `edit` binding would open a focused cell. Table Properties keeps Space the same way.
 
 ### Toasts

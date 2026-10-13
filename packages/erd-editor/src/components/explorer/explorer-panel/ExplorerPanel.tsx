@@ -20,6 +20,7 @@ import {
 import { EXPLORER_WIDTH } from '@/constants/layout';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { PlainMessageKey } from '@/i18n/translate';
+import { type FindMatch, snippetOf } from '@/utils/find-replace';
 import { forceFocusEvent } from '@/utils/internalEvents';
 import {
   KeyBindingName,
@@ -28,15 +29,21 @@ import {
   toShortcutTitle,
 } from '@/utils/keyboard-shortcut';
 
+import ExplorerSearch from '../explorer-search/ExplorerSearch';
 import { closeExplorer, setExplorerWidth } from '../explorerCommands';
 import { activateNode } from '../explorerNavigation';
+import { goToMatch, isSearching } from '../explorerSearch';
 import {
   buildExplorerTree,
+  buildSearchTree,
   type ExplorerFolder,
   type ExplorerNode,
   type ExplorerTreeNode,
+  matchRowId,
+  searchExpanded,
 } from '../explorerTree';
 import { explorerScrollOf, explorerViewOf } from '../explorerView';
+import { fieldIcon } from '../fieldIcon';
 import * as styles from './ExplorerPanel.styles';
 
 const FOLDER_LABEL: Record<ExplorerFolder, PlainMessageKey> = {
@@ -51,12 +58,29 @@ const FOLDER_LABEL: Record<ExplorerFolder, PlainMessageKey> = {
 export type ExplorerPanelProps = {
   /** The width the layout gives the panel, which a drag on its edge asks to change. */
   width: number;
+  readonly: boolean;
 };
 
 type Model = {
   roots: ExplorerTreeNode[];
+  /** The rows with children a search shows, open unless folded; none outside a search. */
+  branchIds: string[];
   rows: TreeRow<ExplorerNode>[];
 };
+
+/** A row's text with the stretches a search found in it marked, while they still fit it. */
+function marked(text: string, matches: ReadonlyArray<FindMatch> = []) {
+  const found = matches.filter(match => match.text === text);
+  if (!found.length) return text;
+
+  let from = 0;
+  const parts = found.flatMap(({ start, end }) => {
+    const before = text.slice(from, start);
+    from = end;
+    return [before, <mark class={styles.mark}>{text.slice(start, end)}</mark>];
+  });
+  return [...parts, text.slice(from)];
+}
 
 /**
  * The Explorer docked left of the canvas: a read-only tree of the document
@@ -68,7 +92,10 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
   const i18n = useI18n(ctx);
   const root = createRef<HTMLDivElement>();
   const { addUnsubscribe } = useUnmounted();
-  const model = observable<Model>({ roots: [], rows: [] }, { shallow: true });
+  const model = observable<Model>(
+    { roots: [], branchIds: [], rows: [] },
+    { shallow: true }
+  );
 
   // Two observers of their own, so the tree is built again only by a batch
   // that changes what it reads, and laid out again only as that or the
@@ -78,31 +105,70 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
     const view = explorerViewOf(store);
     addUnsubscribe(
       observer(() => {
+        if (isSearching(store)) {
+          const tree = buildSearchTree(store.state, view.matches);
+          model.roots = tree.roots;
+          model.branchIds = tree.branchIds;
+          return;
+        }
         model.roots = buildExplorerTree(store.state);
+        model.branchIds = [];
       }),
       observer(() => {
-        model.rows = flattenTree(model.roots, view.expanded);
+        model.rows = flattenTree(
+          model.roots,
+          isSearching(store)
+            ? searchExpanded(model.branchIds, view.searchCollapsed)
+            : view.expanded
+        );
       })
     );
   });
 
+  /** Folds or unfolds a row: outside a search for good, in one until the next search. */
   const setExpanded = (id: string, expanded: boolean) => {
-    const view = explorerViewOf(app.value.store);
-    const next = { ...view.expanded };
-    expanded ? (next[id] = true) : Reflect.deleteProperty(next, id);
-    view.expanded = next;
+    const { store } = app.value;
+    const view = explorerViewOf(store);
+    const searching = isSearching(store);
+    const next = { ...(searching ? view.searchCollapsed : view.expanded) };
+    expanded === searching
+      ? Reflect.deleteProperty(next, id)
+      : (next[id] = true);
+    searching ? (view.searchCollapsed = next) : (view.expanded = next);
   };
 
+  /** A row a search found goes to its match, the first of its own; any other goes where it stands for. */
   const handleActivate = (row: TreeRow<ExplorerNode>) => {
-    if (row.node.data.kind === 'folder') {
+    const { store } = app.value;
+    const node = row.node.data;
+    if (node.kind === 'folder') {
       setExpanded(row.node.id, !row.expanded);
       return;
     }
-    activateNode(app.value.store, row.node.data);
+
+    const match =
+      node.kind === 'excerpt'
+        ? node.match
+        : 'matches' in node
+          ? node.matches?.[0]
+          : undefined;
+    if (match && isSearching(store)) {
+      goToMatch(store, match);
+      return;
+    }
+    activateNode(store, node);
   };
 
   const handleCollapseAll = () => {
-    explorerViewOf(app.value.store).expanded = {};
+    const { store } = app.value;
+    const view = explorerViewOf(store);
+    if (isSearching(store)) {
+      view.searchCollapsed = Object.fromEntries(
+        model.branchIds.map(id => [id, true as const])
+      );
+      return;
+    }
+    view.expanded = {};
   };
 
   const handleClose = () => {
@@ -137,14 +203,18 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
     setExplorerWidth(app.value.store, EXPLORER_WIDTH);
   };
 
-  const label = (text: string, unnamed: string) => {
+  const label = (
+    text: string,
+    unnamed: string,
+    matches?: ReadonlyArray<FindMatch>
+  ) => {
     const blank = !text.trim();
     return (
       <span
         class={[styles.name, { unnamed: blank }]}
         title={blank ? unnamed : text}
       >
-        {blank ? unnamed : text}
+        {blank ? unnamed : marked(text, matches)}
       </span>
     );
   };
@@ -175,7 +245,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             <span class={styles.rowIcon}>
               <Icon name="table-2" size={14} />
             </span>
-            {label(node.name, unnamed)}
+            {label(node.name, unnamed, node.matches)}
           </>
         );
       case 'groupTable':
@@ -203,7 +273,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
                 <Icon name="list" size={14} />
               </span>
             )}
-            {label(node.name, unnamed)}
+            {label(node.name, unnamed, node.matches)}
             <span class={styles.muted} prop:dir="ltr">
               {[
                 node.dataType,
@@ -221,7 +291,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             <span class={styles.rowIcon}>
               <Icon name="list-tree" size={14} />
             </span>
-            {label(node.name, unnamed)}
+            {label(node.name, unnamed, node.matches)}
             <span class={styles.muted} prop:dir="ltr">
               {`${node.unique ? 'UNIQUE ' : ''}(${node.columns})`}
             </span>
@@ -245,7 +315,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
               class={styles.dot}
               style={node.color ? { 'background-color': node.color } : {}}
             ></span>
-            {label(node.name, unnamed)}
+            {label(node.name, unnamed, node.matches)}
           </>
         );
       case 'memo':
@@ -257,6 +327,21 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             {label(node.text, unnamed)}
           </>
         );
+      case 'excerpt': {
+        const snippet = snippetOf(node.match);
+        return (
+          <>
+            <span class={styles.rowIcon}>{fieldIcon(node.match.field)}</span>
+            <span class={styles.name} title={node.match.text} prop:dir="auto">
+              {snippet.text.slice(0, snippet.start)}
+              <mark class={styles.mark}>
+                {snippet.text.slice(snippet.start, snippet.end)}
+              </mark>
+              {snippet.text.slice(snippet.end)}
+            </span>
+          </>
+        );
+      }
     }
   };
 
@@ -266,6 +351,8 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
     const view = explorerViewOf(store);
     const scroll = explorerScrollOf(store);
     const close = t('common.close');
+    const current = isSearching(store) ? view.matches[view.current] : undefined;
+    const currentId = current ? matchRowId(current) : null;
 
     return (
       <div
@@ -296,10 +383,13 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             <Icon name="x" size={14} />
           </button>
         </div>
+        <ExplorerSearch readonly={props.readonly} />
         <div class={styles.body}>
           <Tree
             rows={model.rows}
             activeId={view.activeId}
+            currentId={currentId}
+            revealId={currentId}
             label={t('explorer.title')}
             dir={dir}
             getScrollTop={() => scroll.top}

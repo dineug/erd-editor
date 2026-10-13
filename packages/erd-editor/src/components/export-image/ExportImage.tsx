@@ -223,12 +223,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     };
     view.measured = false;
 
-    store.dispatch(
-      changeOpenMapAction({
-        [Open.exportImage]: true,
-        [Open.findReplace]: false,
-      })
-    );
+    store.dispatch(changeOpenMapAction({ [Open.exportImage]: true }));
     showPreview(0);
   };
 

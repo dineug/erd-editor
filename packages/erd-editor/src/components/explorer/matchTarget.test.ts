@@ -6,7 +6,7 @@ import type { AppContext } from '@/components/appContext';
 import {
   toErdTarget,
   withReplacement,
-} from '@/components/find-replace/matchTarget';
+} from '@/components/explorer/matchTarget';
 import { FocusType } from '@/engine/modules/editor/state';
 import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
 import { FindField, FindMatch, toFieldAction } from '@/utils/find-replace';
