@@ -4,6 +4,7 @@ import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { SCENE_CODE_FONT_FAMILY } from '@/components/erd/canvas/sceneTokens';
+import { isRelationshipHighlighted } from '@/components/erd/relationshipHighlight';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { Direction, Show } from '@/constants/schema';
@@ -93,7 +94,10 @@ const RelationshipActionLabel: FC<RelationshipActionLabelProps> = (
         : referentialActionLabel(relationship);
     if (!text) return null;
 
+    // A jump's light is read first, so the label tracks it whatever the hover says.
+    const jumped = isRelationshipHighlighted(editor.id, relationship.id);
     const hover =
+      jumped ||
       props.hovered?.id === relationship.id ||
       Boolean(editor.hoverRelationshipMap[relationship.id]);
     const base = relationship.identification ? theme.keyPFK : theme.keyFK;

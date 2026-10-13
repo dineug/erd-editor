@@ -25,6 +25,7 @@ import ErdContextMenu, {
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
+import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import TableGroupDraft from '@/components/erd/table-group/TableGroupDraft';
 import { useTableGroupDraw } from '@/components/erd/table-group/useTableGroupDraw';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
@@ -330,6 +331,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (canUnselectAll && !middlePan && !middleOverTakeover) {
       const { store } = app.value;
       store.dispatch(unselectAllAction$());
+    }
+
+    // A press that changes the selection puts out a jump's light; a pan, by
+    // the middle button or the hand tool, leaves it on.
+    const { editor } = app.value.store.state;
+    if (
+      !editor.handTool &&
+      ((canUnselectAll && !middlePan && !middleOverTakeover) ||
+        (onEntity && !middlePress))
+    ) {
+      clearRelationshipHighlight(editor.id);
     }
 
     if (canHideColorPicker) {

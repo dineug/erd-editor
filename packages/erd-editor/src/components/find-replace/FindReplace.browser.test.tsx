@@ -457,23 +457,6 @@ describe('Find and Replace over the canvas', () => {
       expect(count?.bottom).toBeLessThanOrEqual(panel?.bottom ?? 0);
     }
   );
-
-  it('lands a table picked in the palette clear of the open panel', async () => {
-    const fixture = await setup({ width: 1200, height: 640, styled: true });
-    await press(OPEN_FIND);
-    await press('user');
-
-    await press(`{${MOD}>}k{/${MOD}}`);
-    await press('#orders');
-    await press('{ArrowDown}{Enter}');
-
-    const { settings, collections } = stateOf(fixture);
-    const table = toScreenPoint(settings, collections.tableEntities.orders.ui);
-    const container = fixture.mounted.container.getBoundingClientRect();
-    const panel = panelOf(fixture)?.getBoundingClientRect();
-    expect(stateOf(fixture).editor.selectedMap).toEqual({ orders: 'table' });
-    expect(table.x).toBeGreaterThan((panel?.right ?? 0) - container.left);
-  });
 });
 
 describe('quick search over the fields on a real keyboard', () => {

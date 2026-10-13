@@ -102,14 +102,11 @@ export function withReplacement(
  * The jump Replace makes to the next match, in the replacement's own dispatch.
  * A batch is read against the state before it, so the jump measures the table
  * the replacement widens or narrows from what the replacement writes.
- *
- * @param covered How far in from the left edge the panel hides the canvas.
  */
 export const showNextMatchAction$ = (
   next: FindMatch,
   replaced: FindMatch,
-  value: string,
-  covered: number
+  value: string
 ): GeneratorAction =>
   function* (state, ctx) {
     // Only the table a replacement writes in changes its size.
@@ -117,5 +114,5 @@ export const showNextMatchAction$ = (
       next.tableId === replaced.tableId
         ? withReplacement(state, ctx, replaced, value)
         : state;
-    yield* showErdTargetAction$(toErdTarget(next), covered)(measured, ctx);
+    yield* showErdTargetAction$(toErdTarget(next))(measured, ctx);
   };

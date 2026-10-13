@@ -19,7 +19,7 @@
 | File | Description |
 | --- | --- |
 | `QuickSearch.tsx` | The palette: `rebuild`, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount |
-| `actions.tsx` | `createScopeActions` (the top level), `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, `createPreferenceActions`, and the table rows' parking (`START_X`, `START_Y`, `coveredWidth`) |
+| `actions.tsx` | `createScopeActions` (the top level), `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, `createPreferenceActions`, and the table rows, which jump through `goToErdTarget` |
 | `scopedActions.tsx` | `scopeBase`, `createPrefixActions`, `createFieldActions`, `SCOPED_ACTION_LIMIT` |
 | `paletteQuery.ts` | The prefix grammar and `WIDE_PREFIXES` |
 | `hangul.ts` | The Hangul letter matching and ranking, `clearHangulForms`, `hitRange` |
@@ -101,7 +101,7 @@
 ### Table and field rows
 
 - **Table and field rows show on every tab.** Picking one takes the ERD tab.
-- **A table row parks its table inset.** It parks the table `START_X`, `START_Y` in from the corner, scaled by the zoom (`actions.tsx`). With Find and Replace open it parks just past the panel, at `x = coveredWidth`. It does so in the strip a narrow canvas leaves beside the panel too.
+- **A table row lands by the one jump rule.** It jumps through `goToErdTarget`, as the `@` and `:` rows do (`src/components/erd/AGENTS.md`, The jump rule); the corner it once parked a table at is gone.
 - **No Focus row exists** (AC-52).
 - **Hand-offs leave the list under a takeover.** The Find and Replace row and the hand-off row past the cap leave the list under a takeover (`isTakenOver`), where the panel opens on nothing.
 

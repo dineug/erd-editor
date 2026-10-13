@@ -38,7 +38,6 @@ import {
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
-import { START_X, START_Y } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import {
   CanvasType,
@@ -86,6 +85,7 @@ import { type LocaleOption, LOCALES } from '@/i18n/locales';
 import { en } from '@/i18n/messages/en';
 import { sourceI18n } from '@/i18n/source';
 import { createI18n, type MessageKey, type Messages } from '@/i18n/translate';
+import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { Appearance } from '@/themes/radix-ui-theme';
 import { openFindReplaceAction } from '@/utils/emitter';
@@ -1234,25 +1234,42 @@ describe('createScopeActions / table actions', () => {
   });
 
   /**
-   * The landing point the DOM scene had: the table parks START_X, START_Y in
-   * from the corner, scaled by the zoom, so at 0.5 it sits 100 px in and at 1.5
-   * it sits 300 px in, from a position whose origins the default screen allows.
+   * The one jump rule (AC-N10): a table whose middle is off the middle half
+   * moves to the middle, at 0.5; one whose middle is in it stays, at 1 and 1.5.
+   * No corner parking is left.
    */
-  it.each([0.5, 1, 1.5])(
-    'parks the table a zoomed START_X, START_Y in from the corner at zoom %s',
-    async zoomLevel => {
+  it.each([
+    [0.5, true],
+    [1, false],
+    [1.5, false],
+  ])(
+    'lands the table by the one jump rule at zoom %s',
+    async (zoomLevel, moves) => {
       setCanvasType(CanvasType.ERD);
       const id = addTable('users', 100, 200);
       app.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+      const recorder = recordActions();
 
       find(scope(), 'users').perform?.(app);
       await flush();
+      recorder.unsubscribe();
 
-      const table = app.store.state.collections.tableEntities[id];
-      const screen = toScreenPoint(app.store.state.settings, table.ui);
+      const { state } = app.store;
+      const table = state.collections.tableEntities[id];
+      const rect = getTableRect(state, table);
+      const middle = toScreenPoint(state.settings, {
+        x: rect.x + rect.width / 2,
+        y: rect.y + rect.height / 2,
+      });
       expect(table.ui).toMatchObject({ x: 300, y: 300 });
-      expect(screen.x).toBeCloseTo(START_X * zoomLevel, 4);
-      expect(screen.y).toBeCloseTo(START_Y * zoomLevel, 4);
+      expect(recorder.types().includes('settings.scrollTo')).toBe(moves);
+      if (moves) {
+        expect(middle.x).toBeCloseTo(state.editor.viewport.width / 2, 4);
+        expect(middle.y).toBeCloseTo(state.editor.viewport.height / 2, 4);
+      } else {
+        expect(state.settings.originX).toBe(0);
+        expect(state.settings.originY).toBe(0);
+      }
     }
   );
 
@@ -1282,64 +1299,6 @@ describe('createScopeActions / table actions', () => {
     expect(collections.tableEntities[orders].columnIds).toEqual(columnIds);
     expect(editor.drawRelationship).toMatchObject({ start: null });
     expect(editor.selectedMap).toEqual({ [orders]: SelectType.table });
-  });
-
-  /** The panel is 380 px wide, 16 px in from the left, and a jump keeps 16 px from it. */
-  it.each([
-    ['ERD', CanvasType.ERD],
-    ['Schema SQL', CanvasType.schemaSQL],
-  ])(
-    'parks the table clear of an open Find and Replace panel, jumping from the %s tab',
-    async (_, canvasType) => {
-      setCanvasType(CanvasType.ERD);
-      const id = addTable('users', 100, 200);
-      app.store.dispatchSync(
-        changeViewportAction({ width: 1440, height: 900 }),
-        changeOpenMapAction({ [Open.findReplace]: true })
-      );
-      setCanvasType(canvasType);
-
-      find(scope(), 'users').perform?.(app);
-      await flush();
-
-      const table = app.store.state.collections.tableEntities[id];
-      const screen = toScreenPoint(app.store.state.settings, table.ui);
-      expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
-      expect(screen.y).toBeCloseTo(START_Y, 4);
-    }
-  );
-
-  it('parks the table in the strip a narrow canvas leaves beside the panel', async () => {
-    setCanvasType(CanvasType.ERD);
-    const id = addTable('users', 100, 200);
-    app.store.dispatchSync(
-      changeViewportAction({ width: 600, height: 400 }),
-      changeOpenMapAction({ [Open.findReplace]: true })
-    );
-
-    find(scope(), 'users').perform?.(app);
-    await flush();
-
-    const table = app.store.state.collections.tableEntities[id];
-    const screen = toScreenPoint(app.store.state.settings, table.ui);
-    expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
-    expect(screen.y).toBeCloseTo(START_Y, 4);
-  });
-
-  it('keeps its landing point beside a panel that leaves less than 160 px of the canvas clear', async () => {
-    setCanvasType(CanvasType.ERD);
-    const id = addTable('users', 100, 200);
-    app.store.dispatchSync(
-      changeViewportAction({ width: 16 + 380 + 16 + 159, height: 400 }),
-      changeOpenMapAction({ [Open.findReplace]: true })
-    );
-
-    find(scope(), 'users').perform?.(app);
-    await flush();
-
-    const table = app.store.state.collections.tableEntities[id];
-    const screen = toScreenPoint(app.store.state.settings, table.ui);
-    expect(screen.x).toBeCloseTo(START_X, 4);
   });
 
   it('carries the table icon on table actions, drawn as the rows of a field found are', async () => {

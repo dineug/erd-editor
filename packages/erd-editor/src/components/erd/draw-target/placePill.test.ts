@@ -15,7 +15,6 @@ const viewport = { width: 1000, height: 600 };
 const input = (overrides: Partial<PlacePillInput> = {}): PlacePillInput => ({
   card: { x: 300, y: 100, width: 200, height: 160 },
   viewport,
-  covered: 0,
   obstacles: [],
   pill,
   ...overrides,
@@ -40,17 +39,6 @@ describe('placePill', () => {
     });
   });
 
-  it('keeps clear of Find and Replace, flipping right when the panel leaves no room', () => {
-    const card = { x: 400, y: 100, width: 200, height: 160 };
-
-    expect(placePill(input({ card, covered: 412 }))).toEqual({
-      x: 600 + PILL_MARGIN,
-      y: 100,
-      side: 'right',
-    });
-    expect(placePill(input({ card, covered: 300 })).side).toBe('left');
-  });
-
   it('stands over the left edge of the table when neither side has room', () => {
     const card = { x: 20, y: 100, width: 960, height: 160 };
 
@@ -59,7 +47,6 @@ describe('placePill', () => {
       y: 100,
       side: 'left',
     });
-    expect(placePill(input({ card, covered: 412 })).x).toBe(PILL_MARGIN + 412);
   });
 
   it('sticks to the top of a table taller than the canvas, so it stays in view', () => {

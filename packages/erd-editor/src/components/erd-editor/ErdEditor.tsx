@@ -14,6 +14,7 @@ import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import { dropRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import ExportImage from '@/components/export-image/ExportImage';
 import FindReplace from '@/components/find-replace/FindReplace';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
@@ -229,6 +230,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
 
   destroySet.add(provider.destroy);
   destroySet.add(observeViewport(store));
+  destroySet.add(() => dropRelationshipHighlight(store.state.editor.id));
   destroySet.add(themeProvider.destroy);
   destroySet.add(localeProvider.destroy);
   destroySet.add(watch(theme).subscribe(scheduleSceneTheme));

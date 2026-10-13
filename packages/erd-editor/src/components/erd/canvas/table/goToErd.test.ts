@@ -8,16 +8,17 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
-import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType } from '@/constants/schema';
 import {
-  changeOpenMapAction,
   changeViewportAction,
   drawStartRelationshipAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  moveTableAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnPrimaryKeyAction,
@@ -122,28 +123,37 @@ describe('goToErdTable', () => {
     expect(editor.selectedMap).toEqual({ far: SelectType.table });
   });
 
-  /** The panel stands aside on the Visualization tab and is drawn again with the ERD. */
-  it('lands clear of the Find and Replace panel the ERD tab draws again', () => {
-    const app = seed();
-    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
-
-    goToErdTable(app.store, 'near');
-
-    const { settings, collections } = app.store.state;
-    expect(
-      toScreenPoint(settings, collections.tableEntities.near.ui).x
-    ).toBeGreaterThanOrEqual(16 + 380 + 16);
-  });
-
-  it('leaves the scroll out of the second batch for a table already on screen', () => {
+  it('moves a table on screen whose middle is off the middle half down, on that axis alone', () => {
     const app = seed();
     const batches = recordBatches(app);
 
     goToErdTable(app.store, 'near');
 
     expect(batches[0]).toEqual(['settings.changeCanvasType']);
+    expect(batches[1]).toContain('settings.scrollTo');
+    const { settings } = app.store.state;
+    // Its middle stands at 75 down, above the middle half of 600.
+    expect(settings.originX).toBe(0);
+    expect(settings.originY).toBe(225);
+  });
+
+  it('leaves the scroll out of the second batch for a table whose middle is in the middle half', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      moveTableAction({ ids: ['near'], movementX: 160, movementY: 225 })
+    );
+    const batches = recordBatches(app);
+
+    goToErdTable(app.store, 'near');
+
+    expect(batches[0]).toEqual(['settings.changeCanvasType']);
     expect(batches[1]).not.toContain('settings.scrollTo');
-    expect(app.store.state.settings.originX).toBe(0);
+    const { settings, collections } = app.store.state;
+    expect(settings.originX).toBe(0);
+    expect(toScreenPoint(settings, collections.tableEntities.near.ui)).toEqual({
+      x: 220,
+      y: 285,
+    });
     expect(Boolean(app.store.state.editor.selectedMap.near)).toBe(true);
   });
 });

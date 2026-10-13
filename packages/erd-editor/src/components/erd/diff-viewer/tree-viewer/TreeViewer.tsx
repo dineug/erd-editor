@@ -7,12 +7,9 @@ import {
   DiffMap,
   getNameToTableMap,
 } from '@/components/erd/diff-viewer/diff';
+import { showErdTargetAction$ } from '@/components/erd/goToErdTarget';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
-import { START_X, START_Y } from '@/constants/layout';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
-import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
-import { getOriginToPlace } from '@/konva/scene/viewport';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
@@ -183,25 +180,7 @@ const TreeViewer: FC<TreeViewerProps> = (props, ctx) => {
     .sort(orderByNameASC);
 
   const move = ({ store }: AppContext, tableId: string) => {
-    const {
-      settings: { zoomLevel },
-      collections,
-    } = store.state;
-    const table = query(collections)
-      .collection('tableEntities')
-      .selectById(tableId);
-    if (!table) return;
-
-    // The table parks a zoomed START_X, START_Y in from the corner: the
-    // landing point the DOM scene had, kept so a jump looks the same.
-    const { x, y } = getOriginToPlace(zoomLevel, table.ui, {
-      x: START_X * zoomLevel,
-      y: START_Y * zoomLevel,
-    });
-    store.dispatch(
-      scrollToAction({ originX: x, originY: y }),
-      selectTableAction$(table.id, false)
-    );
+    store.dispatchSync(showErdTargetAction$({ kind: 'table', tableId }));
   };
 
   const handleMove = (table: DiffTable) => {

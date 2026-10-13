@@ -7,15 +7,10 @@ import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
-import {
-  goToErdTarget,
-  selectTableAloneAction$,
-  showErdTab,
-} from '@/components/erd/goToErdTarget';
+import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
 import { fieldIcon } from '@/components/find-replace/fieldIcon';
 import { toErdTarget } from '@/components/find-replace/matchTarget';
-import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -38,7 +33,6 @@ import {
   toggleSchemaSQLPanel,
 } from '@/components/schema-sql/schemaSQLView';
 import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
-import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import { changeDrawTableGroupAction } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
@@ -51,7 +45,6 @@ import {
   changeDatabaseAction,
   changeLanguageAction,
   changeTableNameCaseAction,
-  scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addTableGroupFromTablesAction$ } from '@/engine/modules/table-group/generator.actions';
@@ -60,7 +53,6 @@ import { type LocaleOption, LOCALES, SYSTEM_LOCALE } from '@/i18n/locales';
 import { type LabeledMenu, menuLabel } from '@/i18n/menuLabel';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
-import { getOriginToPlace } from '@/konva/scene/viewport';
 import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import {
   FindReplaceQuery,
@@ -776,21 +768,7 @@ function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
       keywords,
       tableId: table.id,
       perform: ({ store }) => {
-        showErdTab(store);
-        const {
-          settings: { zoomLevel },
-        } = store.state;
-        // The table parks a zoomed START_X, START_Y in from the corner, the
-        // landing point the DOM scene had, kept so a jump looks the same, or
-        // just clear of an open Find and Replace panel.
-        const { x, y } = getOriginToPlace(zoomLevel, table.ui, {
-          x: Math.max(START_X * zoomLevel, coveredWidth(store.state)),
-          y: START_Y * zoomLevel,
-        });
-        store.dispatch(
-          scrollToAction({ originX: x, originY: y }),
-          selectTableAloneAction$(table.id)
-        );
+        goToErdTarget(store, { kind: 'table', tableId: table.id });
       },
     }));
 }

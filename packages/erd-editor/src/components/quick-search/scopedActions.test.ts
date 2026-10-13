@@ -65,6 +65,7 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { createI18n, type I18n } from '@/i18n/translate';
+import { getColumnRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { openFindReplaceAction } from '@/utils/emitter';
 import { FindField } from '@/utils/find-replace';
@@ -514,24 +515,26 @@ describe('paletteRows / @ columns', () => {
     });
   });
 
-  it('lands the column clear of an open Find and Replace panel', async () => {
-    app.store.dispatchSync(
-      changeViewportAction({ width: 800, height: 600 }),
-      changeOpenMapAction({ [Open.findReplace]: true })
-    );
-    const { orders } = app.store.state.collections.tableEntities;
-    // On screen whole, the column's table still stands under the panel.
-    expect(toScreenPoint(app.store.state.settings, orders.ui).x).toBe(60);
+  it('lands the column by the one jump rule (AC-N10)', async () => {
+    app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
 
     const [userId] = rowsFor('@orders.user_id');
     userId.perform?.(app);
     await flush();
 
-    const { settings, collections } = app.store.state;
+    const { state } = app.store;
+    const orders = state.collections.tableEntities.orders;
+    const row = getColumnRect(
+      state,
+      orders,
+      orders.columnIds.indexOf('orders_user_id')
+    );
+    // Across, the row shows whole and stays; down, its middle was above the middle half.
+    expect(toScreenPoint(state.settings, orders.ui).x).toBe(60);
     expect(
-      toScreenPoint(settings, collections.tableEntities.orders.ui).x
-    ).toBeGreaterThanOrEqual(16 + 380 + 16);
-    expect(app.store.state.editor.focusTable).toMatchObject({
+      toScreenPoint(state.settings, { x: row.x, y: row.y + row.height / 2 }).y
+    ).toBeCloseTo(300, 6);
+    expect(state.editor.focusTable).toMatchObject({
       tableId: 'orders',
       columnId: 'orders_user_id',
     });

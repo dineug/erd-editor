@@ -14,6 +14,10 @@ import { type AppContext } from '@/components/appContext';
 import { ACTION_LABEL_FONT_SIZE } from '@/components/erd/canvas/relationship-group/relationship/RelationshipActionLabel';
 import RelationshipGroup from '@/components/erd/canvas/relationship-group/RelationshipGroup';
 import {
+  clearRelationshipHighlight,
+  setRelationshipHighlight,
+} from '@/components/erd/relationshipHighlight';
+import {
   Direction,
   ReferentialAction,
   RelationshipType,
@@ -258,5 +262,23 @@ describe('the referential action label', () => {
     );
     await settle();
     expect(second.getAttr('fill')).toBe(THEME.relationshipHover);
+  });
+
+  it('lights with its connector on a jump to the relationship (N-f)', async () => {
+    const { app, stage } = await mountGroup([
+      makeRelationship(),
+      makeRelationship({ id: 'r2' }),
+    ]);
+    const [first, second] = labelsOf(stage).map(label => textOf(label)!);
+    const editorId = app.store.state.editor.id;
+
+    setRelationshipHighlight(editorId, 'r1');
+    await settle();
+    expect(first.getAttr('fill')).toBe(THEME.relationshipHover);
+    expect(second.getAttr('fill')).toBe(THEME.keyFK);
+
+    clearRelationshipHighlight(editorId);
+    await settle();
+    expect(first.getAttr('fill')).toBe(THEME.keyFK);
   });
 });

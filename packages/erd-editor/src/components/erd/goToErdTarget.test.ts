@@ -13,19 +13,21 @@ import {
   HEADER_CELLS_X,
 } from '@/components/erd/canvas/table/cellLayout';
 import {
+  EDGE_MARGIN,
   goToErdTarget,
+  planJump,
   showErdTab,
   showErdTargetAction$,
+  type Span,
 } from '@/components/erd/goToErdTarget';
-import { Open } from '@/constants/open';
 import { CanvasType, RelationshipType, Show } from '@/constants/schema';
 import {
-  changeOpenMapAction,
   changeViewportAction,
   drawStartRelationshipAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeCanvasTypeAction,
   changeMaxWidthCommentAction,
@@ -36,6 +38,7 @@ import {
 import {
   addTableAction,
   changeTableCommentAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -44,6 +47,7 @@ import {
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import {
   getColumnRect,
   getTableHeaderRect,
@@ -52,6 +56,7 @@ import {
 } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
+import { getTableGroupRect } from '@/utils/tableGroup';
 
 const VIEWPORT = { width: 800, height: 600 };
 
@@ -121,7 +126,7 @@ describe('showErdTargetAction$', () => {
     });
   });
 
-  it('leaves the scroll out for a row already on screen', () => {
+  it('moves a row on screen whose middle is off the middle half down, and that axis alone (AC-N6)', () => {
     const app = seed();
     const batches = recordBatches(app);
 
@@ -129,8 +134,32 @@ describe('showErdTargetAction$', () => {
       showErdTargetAction$(column('c0', FocusType.columnName))
     );
 
-    expect(batches.flat()).not.toContain('settings.scrollTo');
+    expect(batches.flat()).toContain('settings.scrollTo');
+    const { settings, collections } = app.store.state;
+    const row = getColumnRect(
+      app.store.state,
+      collections.tableEntities.tall,
+      0
+    );
+    const middle = toScreenPoint(settings, {
+      x: row.x,
+      y: row.y + row.height / 2,
+    });
+    expect(settings.originX).toBe(0);
+    expect(middle.y).toBeCloseTo(VIEWPORT.height / 2, 6);
     expect(app.store.state.editor.focusTable?.columnId).toBe('c0');
+  });
+
+  it('leaves the scroll out for a row whose middle is in the middle half (AC-N5)', () => {
+    const app = seed();
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c4', FocusType.columnName))
+    );
+
+    expect(batches.flat()).not.toContain('settings.scrollTo');
+    expect(app.store.state.editor.focusTable?.columnId).toBe('c4');
   });
 
   it('rings the name of a column whose comments are hidden', () => {
@@ -152,11 +181,20 @@ describe('showErdTargetAction$', () => {
     app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
     const batches = recordBatches(app);
 
-    // The last row of the tall table is below the screen, but its name is not.
+    // The last row of the tall table is below the screen, but its name is not,
+    // so it stays down; across, its middle is left of the middle half.
     app.store.dispatchSync(
       showErdTargetAction$(column('c59', FocusType.columnName))
     );
-    expect(batches.flat()).not.toContain('settings.scrollTo');
+    expect(batches.flat()).toContain('settings.scrollTo');
+    const tall = app.store.state.collections.tableEntities.tall;
+    const tallRect = getTableRect(app.store.state, tall);
+    const tallMiddle = toScreenPoint(app.store.state.settings, {
+      x: tallRect.x + tallRect.width / 2,
+      y: tallRect.y,
+    });
+    expect(app.store.state.settings.originY).toBe(0);
+    expect(tallMiddle.x).toBeCloseTo(VIEWPORT.width / 2, 6);
     expect(app.store.state.editor.focusTable?.columnId).toBe('c59');
 
     app.store.dispatchSync(
@@ -321,18 +359,6 @@ describe('showErdTargetAction$ to a table taller than the screen', () => {
     expect((topLeft.x + bottomRight.x) / 2).toBeCloseTo(VIEWPORT.width / 2, 6);
   });
 
-  it('keeps the header of a table the panel would cover clear of the panel', () => {
-    const app = seed();
-    addFarTallTable(app);
-
-    app.store.dispatchSync(showErdTargetAction$(name('far'), 300));
-
-    const { topLeft, bottomRight } = headerOnScreen(app, 'far');
-    expect(topLeft.x).toBeGreaterThanOrEqual(300);
-    expect(bottomRight.x).toBeLessThanOrEqual(VIEWPORT.width);
-    expect(topLeft.y).toBe(40);
-  });
-
   it('scrolls to a header partly above the screen, as to one off it', () => {
     const app = seed();
     const tall = app.store.state.collections.tableEntities.tall;
@@ -345,14 +371,8 @@ describe('showErdTargetAction$ to a table taller than the screen', () => {
     expect(headerOnScreen(app, 'tall').topLeft.y).toBe(40);
   });
 
-  it('starts the ringed name of a row wider than the screen a margin in from its left edge', () => {
-    const app = seed();
-    app.store.dispatchSync(changeViewportAction({ width: 200, height: 600 }));
-
-    app.store.dispatchSync(
-      showErdTargetAction$(column('c30', FocusType.columnName))
-    );
-
+  /** Where the row c30 of the tall table and its name cell stand on screen. */
+  function nameOfRow30(app: AppContext) {
     const { settings, collections } = app.store.state;
     const table = collections.tableEntities.tall;
     const row = getColumnRect(app.store.state, table, 30);
@@ -360,16 +380,51 @@ describe('showErdTargetAction$ to a table taller than the screen', () => {
       app.store.state,
       getTableWidths(app.store.state, table)
     ).find(slot => slot.focusType === FocusType.columnName);
-    const topLeft = toScreenPoint(settings, row);
     const tableLeft = toScreenPoint(
       settings,
       getTableRect(app.store.state, table)
+    ).x;
+
+    return {
+      row,
+      topLeft: toScreenPoint(settings, row),
+      left: tableLeft + (name?.x ?? 0),
+      right: tableLeft + (name?.x ?? 0) + (name?.width ?? 0),
+    };
+  }
+
+  it('leaves a row wider than the screen where it is across while its ringed name shows', () => {
+    const app = seed();
+    app.store.dispatchSync(changeViewportAction({ width: 200, height: 600 }));
+
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c30', FocusType.columnName))
     );
+
+    const { row, topLeft, left, right } = nameOfRow30(app);
     expect(row.width).toBeGreaterThan(200);
-    expect(tableLeft.x + (name?.x ?? 0)).toBe(40);
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(left).toBeGreaterThanOrEqual(0);
+    expect(right).toBeLessThanOrEqual(200);
+    // Shorter than the screen, the row still stands in its middle down.
+    expect(topLeft.y + row.height / 2).toBeCloseTo(300, 6);
+  });
+
+  it('starts the ringed name of a row wider than the screen a margin in once it is off screen', () => {
+    const app = seed();
+    app.store.dispatchSync(
+      changeViewportAction({ width: 200, height: 600 }),
+      scrollToAction({ originX: -1000, originY: 0 })
+    );
+
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c30', FocusType.columnName))
+    );
+
+    const { row, topLeft, left } = nameOfRow30(app);
+    expect(left).toBe(EDGE_MARGIN);
     // The key badge before the name stays on screen too.
     expect(topLeft.x).toBeGreaterThan(0);
-    // Shorter than the screen, the row still stands in its middle down.
     expect(topLeft.y + row.height / 2).toBeCloseTo(300, 6);
   });
 });
@@ -427,19 +482,17 @@ const wideTarget = (focusType: FocusType) =>
 
 describe('showErdTargetAction$ to a cell of a table wider than the screen', () => {
   it.each([
-    ['a column comment', 0, FocusType.columnComment],
-    ['a column comment beside a panel', 412, FocusType.columnComment],
-    ['a table comment', 0, FocusType.tableComment],
-    ['a table comment beside a panel', 412, FocusType.tableComment],
-  ])('brings %s a margin inside the canvas left clear', (_, covered, focus) => {
+    ['a column comment', FocusType.columnComment],
+    ['a table comment', FocusType.tableComment],
+  ])('brings %s a margin inside the canvas', (_, focus) => {
     const app = seed();
     addWideTable(app);
 
-    app.store.dispatchSync(showErdTargetAction$(wideTarget(focus), covered));
+    app.store.dispatchSync(showErdTargetAction$(wideTarget(focus)));
 
     const { left, right, tableWidth } = cellOnScreen(app, focus);
-    expect(tableWidth).toBeGreaterThan(VIEWPORT.width - covered);
-    expect(left).toBeGreaterThanOrEqual(covered + 40);
+    expect(tableWidth).toBeGreaterThan(VIEWPORT.width);
+    expect(left).toBeGreaterThanOrEqual(40);
     expect(right).toBeLessThanOrEqual(VIEWPORT.width - 40);
     expect(app.store.state.editor.focusTable?.focusType).toBe(focus);
   });
@@ -521,70 +574,83 @@ function rangeOnScreen(
   };
 }
 
-describe('showErdTargetAction$ to a match in a cell wider than the canvas left clear', () => {
+/** The canvases a panel docked beside them leaves: 800 and 600 less 412. */
+const NARROW = 388;
+const NARROWER = 188;
+
+describe('showErdTargetAction$ to a match in a cell wider than the canvas', () => {
   it.each([
-    ['a column comment', 800, 0, FocusType.columnComment],
-    ['a column comment beside a panel', 800, 412, FocusType.columnComment],
-    ['a column comment in a narrow strip', 600, 412, FocusType.columnComment],
-    ['a table comment', 800, 0, FocusType.tableComment],
-    ['a table comment beside a panel', 800, 412, FocusType.tableComment],
-    ['a table comment in a narrow strip', 600, 412, FocusType.tableComment],
-    ['a column name beside a panel', 800, 412, FocusType.columnName],
-    ['a column name in a narrow strip', 600, 412, FocusType.columnName],
-    ['a table name beside a panel', 800, 412, FocusType.tableName],
-    ['a table name in a narrow strip', 600, 412, FocusType.tableName],
+    ['a column comment', 800, FocusType.columnComment],
+    ['a column comment on a narrow canvas', NARROW, FocusType.columnComment],
+    ['a column comment on a narrower one', NARROWER, FocusType.columnComment],
+    ['a table comment', 800, FocusType.tableComment],
+    ['a table comment on a narrow canvas', NARROW, FocusType.tableComment],
+    ['a table comment on a narrower one', NARROWER, FocusType.tableComment],
+    ['a column name on a narrow canvas', NARROW, FocusType.columnName],
+    ['a column name on a narrower one', NARROWER, FocusType.columnName],
+    ['a table name on a narrow canvas', NARROW, FocusType.tableName],
+    ['a table name on a narrower one', NARROWER, FocusType.tableName],
   ])(
-    'brings the match at the end of %s a margin inside the canvas left clear',
-    (_, width, covered, focus) => {
+    'brings the match at the end of %s a margin inside it',
+    (_, width, focus) => {
       const app = seed();
       app.store.dispatchSync(changeViewportAction({ width, height: 600 }));
       addLongTable(app);
 
-      app.store.dispatchSync(showErdTargetAction$(longTarget(focus), covered));
+      app.store.dispatchSync(showErdTargetAction$(longTarget(focus)));
 
       const cell = cellOnScreen(app, focus, 'long');
       const match = rangeOnScreen(app, focus, lastWord(focus));
-      expect(cell.right - cell.left).toBeGreaterThan(width - covered - 80);
-      expect(match.left).toBeGreaterThanOrEqual(covered + 40);
+      expect(cell.right - cell.left).toBeGreaterThan(width - 80);
+      expect(match.left).toBeGreaterThanOrEqual(40);
       expect(match.right).toBeLessThanOrEqual(width - 40);
       expect(app.store.state.editor.focusTable?.focusType).toBe(focus);
     }
   );
 
-  it('starts a match at the start of a long comment a margin in from the panel', () => {
+  it('starts a match at the start of a long comment a margin in from the left', () => {
     const app = seed();
+    app.store.dispatchSync(
+      changeViewportAction({ width: NARROW, height: 600 })
+    );
     addLongTable(app);
     const range = { text: LONG_COMMENT, start: 0, end: 3 };
 
     app.store.dispatchSync(
-      showErdTargetAction$(longTarget(FocusType.columnComment, range), 412)
+      showErdTargetAction$(longTarget(FocusType.columnComment, range))
     );
 
     const match = rangeOnScreen(app, FocusType.columnComment, range);
-    expect(match.left).toBe(412 + 40);
+    expect(match.left).toBe(40);
   });
 
-  it('leaves the scroll out while the match is on screen, though its cell is not whole', () => {
+  it('leaves the scroll out while the match is on screen, though its cell is not whole (AC-N7)', () => {
     const app = seed();
+    app.store.dispatchSync(
+      changeViewportAction({ width: NARROW, height: 600 })
+    );
     addLongTable(app);
     const target = longTarget(FocusType.columnComment);
-    app.store.dispatchSync(showErdTargetAction$(target, 412));
+    app.store.dispatchSync(showErdTargetAction$(target));
     const batches = recordBatches(app);
 
-    app.store.dispatchSync(showErdTargetAction$(target, 412));
+    app.store.dispatchSync(showErdTargetAction$(target));
 
     const cell = cellOnScreen(app, FocusType.columnComment, 'long');
-    expect(cell.left).toBeLessThan(412);
+    expect(cell.left).toBeLessThan(0);
     expect(batches.flat()).not.toContain('settings.scrollTo');
   });
 
   it('measures the match at the zoom the document is at', () => {
     const app = seed();
-    app.store.dispatchSync(changeZoomLevelAction({ value: 1.5 }));
+    app.store.dispatchSync(
+      changeViewportAction({ width: NARROW, height: 600 }),
+      changeZoomLevelAction({ value: 1.5 })
+    );
     addLongTable(app);
 
     app.store.dispatchSync(
-      showErdTargetAction$(longTarget(FocusType.columnComment), 412)
+      showErdTargetAction$(longTarget(FocusType.columnComment))
     );
 
     const match = rangeOnScreen(
@@ -592,8 +658,8 @@ describe('showErdTargetAction$ to a match in a cell wider than the canvas left c
       FocusType.columnComment,
       lastWord(FocusType.columnComment)
     );
-    expect(match.left).toBeGreaterThanOrEqual(412 + 40);
-    expect(match.right).toBeCloseTo(VIEWPORT.width - 40, 6);
+    expect(match.left).toBeGreaterThanOrEqual(40);
+    expect(match.right).toBeCloseTo(NARROW - 40, 6);
   });
 
   it('goes by the whole cell while it fits, whatever part of it the match is', () => {
@@ -605,11 +671,14 @@ describe('showErdTargetAction$ to a match in a cell wider than the canvas left c
       range: { text: comment, start: comment.length - 8, end: comment.length },
     };
 
-    app.store.dispatchSync(showErdTargetAction$(target, 412));
+    app.store.dispatchSync(
+      changeViewportAction({ width: NARROW, height: 600 })
+    );
+    app.store.dispatchSync(showErdTargetAction$(target));
     const withRange = { ...app.store.state.settings };
     app.store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
     app.store.dispatchSync(
-      showErdTargetAction$(wideTarget(FocusType.tableComment), 412)
+      showErdTargetAction$(wideTarget(FocusType.tableComment))
     );
 
     expect(withRange.originX).toBe(app.store.state.settings.originX);
@@ -619,35 +688,38 @@ describe('showErdTargetAction$ to a match in a cell wider than the canvas left c
   it('brings a match cut off past the width a comment is held to to the end the cell shows', () => {
     const app = seed();
     app.store.dispatchSync(
-      changeViewportAction({ width: 600, height: 600 }),
+      changeViewportAction({ width: NARROWER, height: 600 }),
       changeMaxWidthCommentAction({ value: 200 })
     );
     addLongTable(app);
 
     app.store.dispatchSync(
-      showErdTargetAction$(longTarget(FocusType.tableComment), 412)
+      showErdTargetAction$(longTarget(FocusType.tableComment))
     );
 
-    // The strip beside the panel is 188 px, too narrow for the 200 px the comment keeps.
+    // The canvas is 188 px, too narrow for the 200 px the comment keeps.
     const cell = cellOnScreen(app, FocusType.tableComment, 'long');
     expect(cell.right - cell.left).toBe(200);
-    expect(cell.right).toBe(600 - 40);
+    expect(cell.right).toBe(NARROWER - 40);
   });
 
   it('keeps a match found in a hidden comment off the long name ringed in its place', () => {
     const app = seed();
+    app.store.dispatchSync(
+      changeViewportAction({ width: NARROW, height: 600 })
+    );
     hide(app, Show.columnComment);
     addLongTable(app);
 
     app.store.dispatchSync(
-      showErdTargetAction$(longTarget(FocusType.columnComment), 412)
+      showErdTargetAction$(longTarget(FocusType.columnComment))
     );
 
     expect(app.store.state.editor.focusTable?.focusType).toBe(
       FocusType.columnName
     );
-    // Too long for the strip, the name goes by its start, as without a match.
-    expect(cellOnScreen(app, FocusType.columnName, 'long').left).toBe(412 + 40);
+    // Too long for the canvas, the name goes by its start, as without a match.
+    expect(cellOnScreen(app, FocusType.columnName, 'long').left).toBe(40);
   });
 });
 
@@ -691,33 +763,6 @@ describe('showErdTargetAction$ with a relationship being drawn', () => {
   });
 });
 
-describe('showErdTargetAction$ beside a panel', () => {
-  it('moves a table the panel covers into the middle of the canvas left beside it', () => {
-    const app = seed();
-    const batches = recordBatches(app);
-
-    app.store.dispatchSync(
-      showErdTargetAction$(column('c0', FocusType.columnName), 400)
-    );
-
-    expect(batches.flat()).toContain('settings.scrollTo');
-    const { settings } = app.store.state;
-    // The row starts at x 60 and is centred on x 600, the middle of 400 to 800.
-    expect(settings.originX).toBeGreaterThan(300);
-  });
-
-  it('leaves a table already clear of the panel where it is', () => {
-    const app = seed();
-    const batches = recordBatches(app);
-
-    app.store.dispatchSync(
-      showErdTargetAction$(column('c0', FocusType.columnName), 40)
-    );
-
-    expect(batches.flat()).not.toContain('settings.scrollTo');
-  });
-});
-
 describe('goToErdTarget', () => {
   it('takes the ERD tab in a batch of its own before the jump', () => {
     const app = seed();
@@ -734,61 +779,6 @@ describe('goToErdTarget', () => {
     expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
   });
 
-  /** Where the ringed name of the row c30 and the row itself stand on screen, across. */
-  function rowOnScreen(app: AppContext) {
-    const { settings, collections } = app.store.state;
-    const table = collections.tableEntities.tall;
-    const row = getColumnRect(app.store.state, table, 30);
-    const name = getColumnCellSlots(
-      app.store.state,
-      getTableWidths(app.store.state, table)
-    ).find(slot => slot.focusType === FocusType.columnName);
-    const tableLeft = toScreenPoint(
-      settings,
-      getTableRect(app.store.state, table)
-    ).x;
-    return {
-      row: { left: toScreenPoint(settings, row).x, width: row.width },
-      name: {
-        left: tableLeft + (name?.x ?? 0),
-        right: tableLeft + (name?.x ?? 0) + (name?.width ?? 0),
-      },
-    };
-  }
-
-  /** The panel's left inset and width and the gap a jump keeps from it. */
-  const COVERED = 16 + 380 + 16;
-
-  it('lands in the strip a narrow canvas leaves beside an open panel, by the cell it rings', () => {
-    const app = seed();
-    app.store.dispatchSync(
-      changeViewportAction({ width: 600, height: 600 }),
-      changeOpenMapAction({ [Open.findReplace]: true })
-    );
-
-    goToErdTarget(app.store, column('c30', FocusType.columnName));
-
-    const { row, name } = rowOnScreen(app);
-    expect(row.width).toBeGreaterThan(600 - COVERED);
-    // Wider than the strip, the row goes by its name, a margin in from the panel.
-    expect(name.left).toBeCloseTo(COVERED + 40, 6);
-    expect(name.right).toBeLessThanOrEqual(600);
-  });
-
-  it('lands as if there were no panel once the strip beside it is narrower than 160 px', () => {
-    const app = seed();
-    const width = COVERED + 159;
-    app.store.dispatchSync(
-      changeViewportAction({ width, height: 600 }),
-      changeOpenMapAction({ [Open.findReplace]: true })
-    );
-
-    goToErdTarget(app.store, column('c30', FocusType.columnName));
-
-    const { row } = rowOnScreen(app);
-    expect(row.left + row.width / 2).toBeCloseTo(width / 2, 6);
-  });
-
   it('changes no tab when the ERD is up already', () => {
     const app = seed();
     const batches = recordBatches(app);
@@ -800,5 +790,260 @@ describe('goToErdTarget', () => {
     expect(app.store.state.editor.selectedMap).toEqual({
       note: SelectType.memo,
     });
+  });
+});
+
+const span = (start: number, end: number): Span => ({ start, end });
+
+describe('planJump', () => {
+  const VIEW = { width: 800, height: 600 };
+  const at = (x: Span, y: Span) => planJump(VIEW, [x, y], [x, y]);
+
+  it('leaves a short rect whose middle is in the middle half on both axes (AC-N5)', () => {
+    expect(at(span(300, 500), span(200, 400))).toBeNull();
+  });
+
+  it('centres a short rect on the axis its middle is off, and leaves the other (AC-N6)', () => {
+    expect(at(span(0, 100), span(200, 400))).toEqual({ x: 350, y: 200 });
+    expect(at(span(300, 500), span(500, 560))).toEqual({ x: 300, y: 270 });
+  });
+
+  it('leaves a rect over half the axis while it shows whole (AC-N7)', () => {
+    expect(at(span(10, 700), span(10, 500))).toBeNull();
+  });
+
+  it('starts a rect over half the axis a margin down, and centres it across, once it shows in part', () => {
+    expect(at(span(-100, 500), span(-100, 400))).toEqual({
+      x: 100,
+      y: EDGE_MARGIN,
+    });
+  });
+
+  it('centres a rect within both margins of the axis once it shows in part', () => {
+    expect(at(span(-10, 750), span(0, 590))).toEqual({ x: 20, y: 0 });
+  });
+
+  it('goes by the focus of a rect longer than the axis, and leaves it while the focus shows', () => {
+    const rect = span(-500, 1500);
+
+    expect(
+      planJump(VIEW, [span(300, 500), rect], [span(300, 500), span(100, 130)])
+    ).toBeNull();
+    expect(
+      planJump(VIEW, [span(300, 500), rect], [span(300, 500), span(-300, -270)])
+    ).toEqual({ x: 300, y: EDGE_MARGIN - 200 });
+  });
+
+  it('moves nothing where the start it works out is within half a pixel of where the rect stands', () => {
+    const across = span(300, 500);
+    const rect = span(0, 3000);
+
+    expect(
+      planJump(VIEW, [across, rect], [across, span(40.2, 1000)])
+    ).toBeNull();
+    expect(planJump(VIEW, [across, rect], [across, span(41, 1000)])).toEqual({
+      x: 300,
+      y: -1,
+    });
+  });
+});
+
+/** Two tables tied by a relationship, the parent first, each with a run of columns. */
+function seedPair(
+  parent: { x: number; y: number },
+  child: { x: number; y: number },
+  rows = 0
+): AppContext {
+  const app = createTestAppContext();
+  apps.push(app);
+  app.store.dispatchSync(
+    changeViewportAction(VIEWPORT),
+    addTableAction({ id: 'parent', ui: { ...parent, zIndex: 1 } }),
+    addTableAction({ id: 'child', ui: { ...child, zIndex: 2 } }),
+    ...Array.from({ length: rows }, (_, index) => [
+      addColumnAction({ id: `p${index}`, tableId: 'parent' }),
+      addColumnAction({ id: `k${index}`, tableId: 'child' }),
+    ]).flat(),
+    addColumnAction({ id: 'pk', tableId: 'parent' }),
+    addColumnAction({ id: 'fk', tableId: 'child' }),
+    addRelationshipAction({
+      id: 'rel',
+      relationshipType: RelationshipType.OneN,
+      start: { tableId: 'parent', columnIds: ['pk'] } as any,
+      end: { tableId: 'child', columnIds: ['fk'] } as any,
+    })
+  );
+  return app;
+}
+
+/** Where a table stands on screen, down: its top and bottom. */
+function tableSpanDown(app: AppContext, tableId: string): Span {
+  const { state } = app.store;
+  const rect = getTableRect(state, state.collections.tableEntities[tableId]);
+  return {
+    start: toScreenPoint(state.settings, rect).y,
+    end: toScreenPoint(state.settings, { x: rect.x, y: rect.y + rect.height })
+      .y,
+  };
+}
+
+const relationship = { kind: 'relationship' as const, relationshipId: 'rel' };
+
+describe('showErdTargetAction$ to a relationship', () => {
+  it('brings both tables on screen where the two fit in it (AC-N3b)', () => {
+    const app = seedPair({ x: 60, y: -400 }, { x: 60, y: 100 }, 10);
+    app.store.dispatchSync(changeViewportAction({ width: 1200, height: 1200 }));
+
+    app.store.dispatchSync(showErdTargetAction$(relationship));
+
+    const parent = tableSpanDown(app, 'parent');
+    const child = tableSpanDown(app, 'child');
+    expect(parent.start).toBeGreaterThanOrEqual(0);
+    expect(child.end).toBeLessThanOrEqual(1200);
+  });
+
+  it('clears the selection, since nothing selects a relationship (N-b)', () => {
+    const app = seedPair({ x: 60, y: 60 }, { x: 600, y: 60 });
+    app.store.dispatchSync(
+      showErdTargetAction$({ kind: 'table', tableId: 'parent' })
+    );
+
+    app.store.dispatchSync(showErdTargetAction$(relationship));
+
+    expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('shows the upper table by its name where the two are too far apart to fit', () => {
+    const app = seedPair({ x: 60, y: 3000 }, { x: 60, y: 600 });
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY: -6000 }));
+
+    app.store.dispatchSync(showErdTargetAction$(relationship));
+
+    expect(headerOnScreen(app, 'child').topLeft.y).toBe(EDGE_MARGIN);
+    expect(tableSpanDown(app, 'parent').start).toBeGreaterThan(VIEWPORT.height);
+  });
+
+  it('asks for nothing for a relationship or a table the document no longer holds', () => {
+    const app = seedPair({ x: 60, y: 60 }, { x: 600, y: 60 });
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(
+      showErdTargetAction$({ kind: 'relationship', relationshipId: 'gone' })
+    );
+    expect(batches.flat()).toEqual([]);
+  });
+});
+
+/** A table group around one member table, its stored box the size given. */
+function seedGroup(ui: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}) {
+  const app = createTestAppContext();
+  apps.push(app);
+  app.store.dispatchSync(
+    changeViewportAction(VIEWPORT),
+    addTableGroupAction({ id: 'group', ui: { ...ui, zIndex: 1 } }),
+    addTableAction({
+      id: 'member',
+      ui: { x: ui.x + 20, y: ui.y + 40, zIndex: 2 },
+    }),
+    changeTableGroupAction({ id: 'member', value: 'group' })
+  );
+  return app;
+}
+
+/** Where the group's box stands on screen, down. */
+function groupSpanDown(app: AppContext): Span {
+  const { state } = app.store;
+  const box = getTableGroupRect(
+    state,
+    state.collections.tableGroupEntities.group
+  );
+  return {
+    start: toScreenPoint(state.settings, box).y,
+    end: toScreenPoint(state.settings, { x: box.x, y: box.y + box.height }).y,
+  };
+}
+
+const group = { kind: 'tableGroup' as const, tableGroupId: 'group' };
+
+describe('showErdTargetAction$ to a table group', () => {
+  it('starts a group over half the screen a margin down when its title alone shows (AC-N4b)', () => {
+    const app = seedGroup({ x: 60, y: 560, width: 400, height: 360 });
+
+    app.store.dispatchSync(showErdTargetAction$(group));
+
+    const box = groupSpanDown(app);
+    expect(box.start).toBe(EDGE_MARGIN);
+    expect(box.end).toBeLessThanOrEqual(VIEWPORT.height);
+    expect(app.store.state.editor.selectedMap).toMatchObject({
+      group: SelectType.tableGroup,
+    });
+  });
+
+  it('brings the title of a group taller than the screen a margin below the top', () => {
+    const app = seedGroup({ x: 60, y: 2000, width: 400, height: 1400 });
+
+    app.store.dispatchSync(showErdTargetAction$(group));
+
+    expect(groupSpanDown(app).start).toBe(EDGE_MARGIN);
+  });
+
+  it('goes to no group while the groups are hidden, nor to one that is gone', () => {
+    const app = seedGroup({ x: 60, y: 2000, width: 400, height: 300 });
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(
+      showErdTargetAction$({ kind: 'tableGroup', tableGroupId: 'gone' })
+    );
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    app.store.dispatchSync(showErdTargetAction$(group));
+
+    expect(batches.flat()).not.toContain('settings.scrollTo');
+    expect(app.store.state.editor.selectedMap).not.toHaveProperty('group');
+  });
+});
+
+describe('showErdTargetAction$ pressed again', () => {
+  it.each([
+    ['a table', () => seed(), { kind: 'table' as const, tableId: 'tall' }],
+    ['a column', () => seed(), column('c59', FocusType.columnName)],
+    ['a memo', () => seed(), { kind: 'memo' as const, memoId: 'note' }],
+    [
+      'a relationship',
+      () => seedPair({ x: 3000, y: 3000 }, { x: 3500, y: 3200 }),
+      relationship,
+    ],
+    [
+      'a table group',
+      () => seedGroup({ x: 2000, y: 2000, width: 400, height: 300 }),
+      group,
+    ],
+  ])('moves nothing the second time for %s (AC-N13)', (_, make, target) => {
+    const app = make();
+    app.store.dispatchSync(showErdTargetAction$(target));
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(showErdTargetAction$(target));
+
+    expect(batches.flat()).not.toContain('settings.scrollTo');
+  });
+
+  it('moves nothing the second time at a zoom whose origin the store rounds', () => {
+    const app = seed();
+    addLongTable(app);
+    app.store.dispatchSync(changeZoomLevelAction({ value: 1.3 }));
+    const target = longTarget(FocusType.columnComment);
+    app.store.dispatchSync(showErdTargetAction$(target));
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(showErdTargetAction$(target));
+
+    expect(batches.flat()).not.toContain('settings.scrollTo');
   });
 });

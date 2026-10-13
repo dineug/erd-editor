@@ -57,7 +57,7 @@ import { isTakenOver } from '@/utils/takeover';
 import { fieldIcon } from './fieldIcon';
 import * as styles from './FindReplace.styles';
 import { showNextMatchAction$, toErdTarget } from './matchTarget';
-import { coveredWidth, isPanelShown } from './panelLayout';
+import { isPanelShown } from './panelLayout';
 
 export type FindReplaceProps = {
   readonly: boolean;
@@ -412,12 +412,8 @@ const FindReplace: FC<FindReplaceProps> = (props, ctx) => {
     const after = rematchField(result.matches, matcher, match, value);
     const step = nextReplace(after, match, value, began);
     const next = after[step.index];
-    const { store } = app.value;
     const batch = next
-      ? [
-          ...actions,
-          showNextMatchAction$(next, match, value, coveredWidth(store.state)),
-        ]
+      ? [...actions, showNextMatchAction$(next, match, value)]
       : actions;
     batch.length && dispatchOwn(batch);
 

@@ -20,6 +20,10 @@ import {
 import { type AppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/relationship-group/relationship/Relationship';
 import {
+  clearRelationshipHighlight,
+  setRelationshipHighlight,
+} from '@/components/erd/relationshipHighlight';
+import {
   RELATIONSHIP_HIT_STROKE_WIDTH,
   RELATIONSHIP_STROKE_WIDTH,
 } from '@/constants/layout';
@@ -422,6 +426,20 @@ describe('Relationship as konva nodes', () => {
     expect(route.getAttr('stroke')).toBe(THEME.relationshipHover);
 
     app.store.dispatchSync(hoverRelationshipMapAction({ relationshipIds: [] }));
+    await settle();
+    expect(route.getAttr('stroke')).toBe(THEME.keyFK);
+  });
+
+  it('lights with a jump to it, and goes out once the jump light is put out (AC-N3)', async () => {
+    const { app, group } = await mountRelationship(makeRelationship());
+    const route = childNamed(group, 'relationship-route');
+    const editorId = app.store.state.editor.id;
+
+    setRelationshipHighlight(editorId, 'r1');
+    await settle();
+    expect(route.getAttr('stroke')).toBe(THEME.relationshipHover);
+
+    clearRelationshipHighlight(editorId);
     await settle();
     expect(route.getAttr('stroke')).toBe(THEME.keyFK);
   });

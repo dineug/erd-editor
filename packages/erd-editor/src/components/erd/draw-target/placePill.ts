@@ -17,8 +17,6 @@ export type PlacePillInput = {
   /** The table's box on screen. */
   card: Rect;
   viewport: Viewport;
-  /** How far in from the left edge Find and Replace hides the canvas. */
-  covered: number;
   /** The chrome drawn over the canvas that the buttons keep clear of. */
   obstacles: readonly Rect[];
   pill: PillSize;
@@ -50,7 +48,6 @@ export function getVisibleSpan(
 export function placePill({
   card,
   viewport,
-  covered,
   obstacles,
   pill,
 }: PlacePillInput): PillPlacement {
@@ -64,13 +61,13 @@ export function placePill({
   const right = card.x + card.width + PILL_MARGIN;
   const sides: Array<[PillSide, number]> = [];
 
-  if (left >= PILL_MARGIN + covered) sides.push(['left', left]);
+  if (left >= PILL_MARGIN) sides.push(['left', left]);
   if (right + pill.width <= viewport.width - PILL_MARGIN) {
     sides.push(['right', right]);
   }
 
   if (!sides.length) {
-    return { x: PILL_MARGIN + covered, y, side: 'left' };
+    return { x: PILL_MARGIN, y, side: 'left' };
   }
 
   const boxAt = (x: number, top: number): Rect => ({

@@ -15,7 +15,6 @@ import { AppContext } from '@/components/appContext';
 import { diffState } from '@/components/erd/diff-viewer/diff';
 import TreeViewer from '@/components/erd/diff-viewer/tree-viewer/TreeViewer';
 import * as styles from '@/components/erd/diff-viewer/tree-viewer/TreeViewer.styles';
-import { START_X, START_Y } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import {
@@ -29,6 +28,7 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { createI18n } from '@/i18n/translate';
+import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 
 type ColumnSeed = { id: string; name: string; dataType?: string };
@@ -458,10 +458,12 @@ describe('TreeViewer', () => {
     expect(app.store.state.editor.selectedMap.n1).toBeTruthy();
     expect(prevApp.store.state.editor.focusTable?.tableId).toBe('p1');
     expect(app.store.state.editor.focusTable?.tableId).toBe('n1');
-    expect(prevApp.store.state.settings.originX).toBe(-500);
-    expect(prevApp.store.state.settings.originY).toBe(-400);
-    expect(app.store.state.settings.originX).toBe(-500);
-    expect(app.store.state.settings.originY).toBe(-400);
+    // Across, the middle at 882.5 is right of the middle half of 1000; down,
+    // its middle at 515 is in the middle half of 800, so it stays.
+    expect(prevApp.store.state.settings.originX).toBe(-382.5);
+    expect(prevApp.store.state.settings.originY).toBe(0);
+    expect(app.store.state.settings.originX).toBe(-382.5);
+    expect(app.store.state.settings.originY).toBe(0);
   });
 
   it('moves only the previous side for a delete only row', async () => {
@@ -475,7 +477,7 @@ describe('TreeViewer', () => {
     await flush();
 
     expect(prevApp.store.state.editor.selectedMap.p1).toBeTruthy();
-    expect(prevApp.store.state.settings.originX).toBe(-500);
+    expect(prevApp.store.state.settings.originX).toBe(-382.5);
     expect(app.store.state.editor.selectedMap.n1).toBeFalsy();
     expect(app.store.state.settings.originX).toBe(0);
   });
@@ -491,7 +493,7 @@ describe('TreeViewer', () => {
     await flush();
 
     expect(app.store.state.editor.selectedMap.n1).toBeTruthy();
-    expect(app.store.state.settings.originX).toBe(-500);
+    expect(app.store.state.settings.originX).toBe(-382.5);
     expect(prevApp.store.state.editor.selectedMap.p1).toBeFalsy();
     expect(prevApp.store.state.settings.originX).toBe(0);
   });
@@ -526,13 +528,17 @@ describe('TreeViewer', () => {
   });
 
   /**
-   * The landing point the DOM scene had: the table parks START_X, START_Y in
-   * from the corner, scaled by the zoom, so at 0.5 it sits 100 px in and at 1.5
-   * it sits 300 px in, from a position whose origins the 1000 by 800 screen allows.
+   * The one jump rule in each pane (AC-N10): at 0.5 the table's middle is off
+   * the middle half and goes to the middle; at 1 it is in it, and at 1.5 the
+   * table, over half the pane across, shows whole; both stay.
    */
-  it.each([0.5, 1, 1.5])(
-    'parks both tables a zoomed START_X, START_Y in from the corner at zoom %s',
-    async zoomLevel => {
+  it.each([
+    [0.5, true],
+    [1, false],
+    [1.5, false],
+  ])(
+    'lands both tables by the one jump rule at zoom %s',
+    async (zoomLevel, moves) => {
       const { prevApp, app } = await mountTree(
         [{ id: 'p1', name: 'users', comment: 'old', x: 300, y: 300 }],
         [{ id: 'n1', name: 'users', comment: 'new', x: 300, y: 300 }]
@@ -548,11 +554,20 @@ describe('TreeViewer', () => {
         [prevApp, 'p1'],
         [app, 'n1'],
       ] as const) {
-        const table = side.store.state.collections.tableEntities[id];
-        const screen = toScreenPoint(side.store.state.settings, table.ui);
+        const { state } = side.store;
+        const rect = getTableRect(state, state.collections.tableEntities[id]);
+        const middle = toScreenPoint(state.settings, {
+          x: rect.x + rect.width / 2,
+          y: rect.y + rect.height / 2,
+        });
 
-        expect(screen.x).toBeCloseTo(START_X * zoomLevel, 4);
-        expect(screen.y).toBeCloseTo(START_Y * zoomLevel, 4);
+        if (moves) {
+          expect(middle.x).toBeCloseTo(500, 4);
+          expect(middle.y).toBeCloseTo(400, 4);
+        } else {
+          expect(state.settings.originX).toBe(0);
+          expect(state.settings.originY).toBe(0);
+        }
       }
     }
   );

@@ -3,7 +3,6 @@ import { FC, observer, onMounted, Ref } from '@dineug/r-html';
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
-import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { useI18n } from '@/components/localeContext';
 import { nameOf } from '@/components/map-columns/nameOf';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
@@ -170,7 +169,6 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
     const placement = placePill({
       card,
       viewport,
-      covered: coveredWidth(state),
       obstacles: readObstacles(),
       pill: PILL_SIZE,
     });

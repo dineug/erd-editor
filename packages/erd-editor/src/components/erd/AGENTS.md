@@ -19,6 +19,8 @@
 | --- | --- |
 | `Erd.tsx` | The ERD tab's root: `handleDragSelect`, the `canDrag` `closest()` list, `TAKEOVER_CHROME`, `handleContextmenu`; mounts the welcome screen |
 | `hitTest.ts` | Records what konva resolved at dispatch; `ownsPress`, `SceneHit.columnId` |
+| `goToErdTarget.ts` | The one jump rule: `planJump`, `scrollIntoView`, `showErdTargetAction$` over tables, column cells, memos, relationships and table groups, `goToErdTarget` |
+| `relationshipHighlight.ts` | The relationship a jump lights, per `editor.id`, out of the store |
 | `useErdShortcut.ts` | The `stop` branch (Escape) and the `removeSelection` branch (Delete and Backspace) |
 | `canvas/Canvas.tsx` | The stage container, on which `listenMiddleButtonPan` binds in the capture phase |
 | `canvas/CanvasScene.tsx` | `renderCanvasScene`, the paint order and the drag layer's `dragIds` |
@@ -135,6 +137,20 @@
 - **Legacy view fields stay out of `settings`.** `erd-editor-schema` owns their rules, in its `AGENTS.md`. `settings` holds no `width`, `height`, `scrollLeft` or `scrollTop`. `erd-editor-schema`'s parser reads them off a file that has no origin and migrates them into it once.
   - `sortTableAction` wraps its rows at `canvasSizeInRange(doc.tableIds.length * 100)` (`src/utils/validation.ts`), the canvas size the importers once wrote (owner decisions of 2026-10-10).
   - The importer `omit` list (`IMPORT_OMIT_SETTINGS` in `src/engine/modules/editor/generator.actions.ts`) names the view.
+
+### The jump rule
+
+- **Every go-to goes through `showErdTargetAction$`** (`goToErdTarget.ts`): the palette's `#`, `@` and `:` rows, Go to ERD, the diff tree, Find and Replace and Import and Add's landing (`scrollIntoView`). `goToErdTarget` brings the ERD tab up in a dispatch of its own first, since a batch is classified by the state before it. No corner parking is left.
+- **Each axis is judged on its own, and the one that is fine stays** (an owner decision of 2026-10-13, `planJump`). On an axis of length L, a rect of length len:
+  - len up to L/2 stays while its middle is in the middle half, from L/4 to 3L/4, and otherwise goes to the middle.
+  - len up to L less both 40 px margins (`EDGE_MARGIN`) stays while it shows whole, and otherwise starts 40 px down the screen and stands in the middle across.
+  - Longer, it stays while it shows whole, or while its focus does when it is longer than L, and otherwise `placeOnAxis` stands its focus a margin inside.
+- **A jump pressed again moves nothing.** No scroll is sent where both starts come within half a pixel of where the rect stands, which a focus longer than the screen needs; the reducer stores the origin rounded, so an exact comparison would scroll again.
+- **The focus is what has to show of a rect too big.** A table goes by the header cell a jump rings (its name, or the comment asked for), a column row by its ringed cell (`getColumnFocusRect`), a cell too wide by the range found in it, a memo by itself. A relationship goes by the box of its two tables, focused on the name band of the upper one, and selects nothing: there is no relationship selection, so the selection is cleared. A table group goes by its box, focused on its title bar, and is selected alone; while groups are hidden it goes nowhere.
+- **The zoom never changes**, and a jump is one scroll, one undo entry.
+- **A jump lights a relationship through `relationshipHighlight.ts`**, kept per `editor.id` out of the store, so no file, history or peer holds it. The connector and its referential action label read it as they read a hover, in the document scene alone, never in a view. The generator never sets it; the host that jumps does. A press that changes the selection puts it out (`Erd.tsx`, `ErdViewer.tsx`); a pan, by the middle button or the hand tool, leaves it on. The element drops it as it goes.
+- **A jump with a draw armed adds nothing.** Its selection, `selectTableAloneAction$`, leaves out `selectTableAction$`'s relationship-draw branch, and so does every go-to's.
+- **`toErdTarget` fills `ErdTarget.range` from a match** (`find-replace/matchTarget.ts`). The range is measured with the store's `toWidth` from the cell's left edge, where the scene starts its text, less the padding that measure adds, and cut at the cell's right edge. A range in a hidden comment is dropped, and the name is ringed in its place.
 
 ### Table groups in the scene
 

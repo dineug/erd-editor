@@ -85,7 +85,10 @@ import {
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -94,8 +97,10 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import type { Point } from '@/internal-types';
 import { whenDrawn } from '@/konva/batchDraw';
+import { getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import { getReachedTableIds } from '@/konva/scene/viewLayout';
+import { toScreenPoint } from '@/konva/scene/viewport';
 import type { Theme } from '@/themes/tokens';
 import { calcTableHeight, viewHeaderNameWidth } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
@@ -189,12 +194,16 @@ type Mounted = { app: AppContext; stage: Stage };
  */
 async function mountScene(
   source: GeometrySource,
-  sceneTheme: Theme = createTestTheme()
+  sceneTheme: Theme = createTestTheme(),
+  documentOrigin = { originX: 0, originY: 0 }
 ): Promise<Mounted> {
   const app = createTestAppContext();
   seedDocument(app);
+  // The document's own origin goes in before the view opens: while a view is
+  // open, a scroll is redirected to the view's own placement.
   app.store.dispatchSync(
     changeViewportAction({ width: WIDTH, height: HEIGHT }),
+    scrollToAction(documentOrigin),
     changeCanvasTypeAction({ value: CanvasType.visualization }),
     changeVisualizationModeAction({ value: VisualizationMode.flow }),
     viewOpenAction({ kind: ViewKind.flow }),
@@ -238,7 +247,10 @@ async function mountScene(
  * The view standing on no centers, so it shows what its layout placed and
  * lights only what a hover reaches.
  */
-const mountViewScene = () => mountScene('flow');
+const mountViewScene = (documentOrigin?: {
+  originX: number;
+  originY: number;
+}) => mountScene('flow', undefined, documentOrigin);
 
 /** The same store and the same leaves under the document provider, which is the ERD tab's own. */
 const mountDocumentScene = (sceneTheme?: Theme) =>
@@ -1422,18 +1434,47 @@ describe('the two buttons a view card header carries', () => {
     expect(app.store.state.editor.views.flow?.originX).toBe(0);
   });
 
-  /** AC-48. A table already on screen is swapped to and never scrolled to. */
-  it('swaps to the ERD tab without a scroll for a table already on screen', async () => {
+  /**
+   * AC-N5. With the document standing at (300, 300), the middle of a, at
+   * (482.5, 339), is in the middle half of the 1000 by 800 canvas, so the
+   * table is swapped to and never scrolled to.
+   */
+  it('swaps to the ERD tab without a scroll for a table whose middle is in the middle half', async () => {
+    const { app, stage } = await mountViewScene({ originX: 300, originY: 300 });
+    await enterTable(stage, 'a');
+    const types = recordActions(app);
+
+    await pressButton(stage, 'a', 'table-go-to-erd');
+
+    const { settings, editor } = app.store.state;
+    expect(settings.canvasType).toBe(CanvasType.ERD);
+    expect(Boolean(editor.selectedMap.a)).toBe(true);
+    expect(types.filter(type => type === 'settings.scrollTo')).toHaveLength(0);
+    expect(settings.originX).toBe(300);
+    expect(settings.originY).toBe(300);
+  });
+
+  /**
+   * AC-N6. At the document's own origin a shows whole, but its middle, at
+   * (182.5, 39), is off the middle half, so the one scroll stands it there.
+   */
+  it('scrolls a table on screen whose middle is off the middle half to the middle, once', async () => {
     const { app, stage } = await mountViewScene();
     await enterTable(stage, 'a');
     const types = recordActions(app);
 
     await pressButton(stage, 'a', 'table-go-to-erd');
 
-    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
-    expect(Boolean(app.store.state.editor.selectedMap.a)).toBe(true);
-    expect(types.filter(type => type === 'settings.scrollTo')).toHaveLength(0);
-    expect(app.store.state.settings.originX).toBe(0);
+    const { state } = app.store;
+    const rect = getTableRect(state, state.collections.tableEntities.a);
+    const middle = toScreenPoint(state.settings, {
+      x: rect.x + rect.width / 2,
+      y: rect.y + rect.height / 2,
+    });
+    expect(state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(types.filter(type => type === 'settings.scrollTo')).toHaveLength(1);
+    expect(middle.x).toBeCloseTo(WIDTH / 2, 6);
+    expect(middle.y).toBeCloseTo(HEIGHT / 2, 6);
   });
 
   /** A right click is the context menu's, so neither button acts on one. */

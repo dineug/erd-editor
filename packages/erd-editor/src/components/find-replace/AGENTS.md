@@ -22,11 +22,11 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 | --- | --- |
 | `FindReplace.tsx` | The panel: the chord handler, the keydown filter, Escape, Replace and Replace All, and when it searches (`REGEX_INPUT_DELAY`, `dispatchOwn`, `searchEdited`, `searchPending`, `searchTyped`, `goToRow`) |
 | `FindReplace.styles.ts` | The panel's scoped styles and `PANEL_CHROME_HEIGHT` |
-| `panelLayout.ts` | `isPanelShown`, `coveredWidth`, `MIN_CLEAR_WIDTH` |
+| `panelLayout.ts` | `isPanelShown`, and `coveredWidth` with `MIN_CLEAR_WIDTH`, which no jump reads any more |
 | `src/utils/takeover.ts` | `isTakenOver` and its `TAKEOVERS`, which the toolbar, the canvas, the palette, the draw target, the key binder and the viewport layout share |
 | `matchTarget.ts` | `toErdTarget`, `withReplacement`, `showNextMatchAction$` |
 | `fieldIcon.tsx` | The icon of a match row, which the palette's `#` rows share |
-| `src/components/erd/goToErdTarget.ts` | `goToErdTarget`, `showErdTargetAction$`, `scrollTableIntoView`, `selectTableAloneAction$`, `EDGE_MARGIN` |
+| `src/components/erd/goToErdTarget.ts` | `goToErdTarget`, `showErdTargetAction$`, `planJump`, `scrollIntoView`, `scrollTableIntoView`, `selectTableAloneAction$`, `EDGE_MARGIN` |
 | `src/utils/find-replace/findMatches.ts` | `FindField`, `DEFAULT_FIND_FIELDS`, `FindTextActionTypes`, `findMatches`, `rematchField`, `ReplaceRun`, `resumeRun`, `nextReplace` |
 | `src/utils/find-replace/matcher.ts` | `createMatcher`, `toUnicodeSource`, `DEFAULT_FIND_OPTIONS`, the Whole Word wrapper |
 | `src/utils/find-replace/replaceActions.ts` | `toFieldAction`, `toReplaceActions` and its `replaced` count |
@@ -55,15 +55,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 
 ### Jumps to a match
 
-- **Jumps from outside the canvas use `goToErdTarget`.** `src/components/erd/goToErdTarget.ts` brings the ERD tab up in a dispatch of its own. The scroll, the selection and the focus ring follow.
-- **A jump with a draw armed adds nothing.** Its selection, `selectTableAloneAction$`, leaves out `selectTableAction$`'s relationship-draw branch. A jump only shows, and starting or finishing a draw would add a relationship and a column. Go to ERD and the palette's `#` rows select through `selectTableAloneAction$` too.
-- **A jump lands clear of the panel.** It keeps clear by `coveredWidth` (`panelLayout.ts`), read from the state once the ERD tab is up rather than from the panel's box. So a jump from the palette, or one that brings the panel back with the ERD tab, keeps clear of it as the panel's own Next does.
-- **A narrow canvas uses the strip beside it.** A jump lands in the strip beside the panel whenever that strip is at least `MIN_CLEAR_WIDTH`, 160 px. That is a jump's 40 px `EDGE_MARGIN` on each side and the start of a name between them. On a narrower strip it lands as if there were no panel. This is an owner decision, pinned in `panelLayout.test.ts`.
-- **A rect too big goes by its focus.** A rect too big for the screen is scrolled to by its focus. `scrollTableIntoView`, which Go to ERD shares, keeps a tall table where it is while its name shows. Otherwise it brings the table's header a margin below the top. At a zoom that draws the name alone, the table's middle takes the header's place.
-- **A wide row goes by the ringed cell.** Across, a row or a table wider than the canvas left clear goes by the cell the jump rings, as the cell editor lays it out. Its rect comes from `getColumnFocusRect`, or from the comment cell for a table comment. So a comment found at the right end of a wide row lands a margin inside. By the row's left edge it would land past the canvas or under the panel.
-- **A cell too wide goes by the match.** A ringed cell too wide to show whole a margin inside that canvas goes by the match in it instead. Such a cell holds a long comment or name; `maxWidthComment` is unlimited by default. By the cell's start, a match at the end of a comment wider than the canvas stays past its right edge. Its cell is ringed and the text found stays unseen.
-- **`toErdTarget` fills `ErdTarget.range` from the match.** The range is measured with the store's `toWidth` from the cell's left edge, where the scene starts its text. The padding that measure adds comes off. The range is cut at the cell's right edge, where the text is cut off.
-- **A range in a hidden comment is dropped.** The name is ringed in its place.
+- **A jump to a match follows the one jump rule.** `src/components/erd/AGENTS.md` (The jump rule) holds it: each axis judged on its own, the focus of a rect too big, the range in a cell too wide, and a jump pressed again moving nothing. A jump no longer keeps clear of the panel; the panel's own Next and the palette land by the same rule.
 
 ### The chord
 
@@ -149,7 +141,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 
 ## Testing Requirements
 
-- **Specs pin the owner decisions here.** `FindReplace.test.ts` pins the chord trading Table Properties for the panel, and the names-only first opening. `src/hooks/useKeyBindingMap.test.ts` pins the same trade as a press the binding takes. `panelLayout.test.ts` pins `MIN_CLEAR_WIDTH`.
+- **Specs pin the owner decisions here.** `FindReplace.test.ts` pins the chord trading Table Properties for the panel, and the names-only first opening. `src/hooks/useKeyBindingMap.test.ts` pins the same trade as a press the binding takes. `panelLayout.test.ts` pins `MIN_CLEAR_WIDTH`, which no jump reads any more and which goes with the panel.
 - **`FindReplace.browser.test.tsx` presses real keys.** The `browser` project runs it in real Chromium.
 - **The Obsidian smoke presses the chord.** It presses `Mod+F` past Obsidian's Search current file; its steps are in `packages/obsidian-plugin/AGENTS.md`, Testing Requirements.
 

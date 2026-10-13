@@ -7,6 +7,7 @@ import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
 import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
+import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
@@ -116,6 +117,15 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
     if (canUnselectAll && !middlePan) {
       const { store } = app;
       store.dispatch(unselectAllAction$());
+    }
+
+    // As on the canvas: a press that changes the pane's selection puts out a
+    // jump's light, and a middle pan leaves it on.
+    if (
+      (canUnselectAll && !middlePan) ||
+      (onEntity && !isMiddleButtonPress(event))
+    ) {
+      clearRelationshipHighlight(app.store.state.editor.id);
     }
 
     if (canHideColorPicker) {

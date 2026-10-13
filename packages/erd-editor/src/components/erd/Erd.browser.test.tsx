@@ -18,6 +18,11 @@ import {
 } from '@/__test-utils__';
 import { type AppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import {
+  clearRelationshipHighlight,
+  isRelationshipHighlighted,
+  setRelationshipHighlight,
+} from '@/components/erd/relationshipHighlight';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import {
@@ -373,6 +378,40 @@ async function mountTakeover(open: (app: AppContext) => void) {
 
   return { mounted, point, shell, target };
 }
+
+describe('Erd - a jump to a relationship lit', () => {
+  it('goes out on a press that changes the selection and stays on through a middle pan (AC-N3)', async () => {
+    const mounted = await mountEditingMemo({ editing: false });
+    const editorId = mounted.app.store.state.editor.id;
+    const canvas = canvasOf(mounted).querySelector('canvas')!;
+
+    setRelationshipHighlight(editorId, 'rel');
+    pressWith(canvas, MIDDLE);
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await flush();
+    expect(isRelationshipHighlighted(editorId, 'rel')).toBe(true);
+
+    pressCanvas(mounted);
+    await flush();
+    expect(isRelationshipHighlighted(editorId, 'rel')).toBe(false);
+  });
+
+  it('stays on under the hand tool, whose press pans', async () => {
+    const mounted = await mountEditingMemo({ editing: false });
+    const { store } = mounted.app;
+    const editorId = store.state.editor.id;
+    store.dispatchSync(changeHandToolAction({ value: true }));
+    await flush();
+
+    setRelationshipHighlight(editorId, 'rel');
+    pressCanvas(mounted);
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await flush();
+
+    expect(isRelationshipHighlighted(editorId, 'rel')).toBe(true);
+    clearRelationshipHighlight(editorId);
+  });
+});
 
 describe('Erd - a middle button press over a takeover', () => {
   it('runs every takeover the editor knows', () => {

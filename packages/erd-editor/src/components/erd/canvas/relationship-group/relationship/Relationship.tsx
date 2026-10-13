@@ -10,6 +10,7 @@ import {
   transitionTo,
 } from '@/components/erd/canvas/highlightTransition';
 import { mixColor } from '@/components/erd/canvas/mixColor';
+import { isRelationshipHighlighted } from '@/components/erd/relationshipHighlight';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { RELATIONSHIP_HIT_STROKE_WIDTH } from '@/constants/layout';
@@ -216,11 +217,14 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     const relationshipPath = getRelationshipPath(relationship, source);
     const { path, line } = relationshipPath;
     const lines = path.path.d();
-    // Both are read, never short-circuited: an unread one is an untracked one,
-    // and the connector would then miss the change that flipped it.
-    const mapHover = Boolean(editor.hoverRelationshipMap[relationship.id]);
-    const hover = state.hover || mapHover;
     const view = source !== 'document';
+    // Each is read, never short-circuited: an unread one is an untracked one,
+    // and the connector would then miss the change that flipped it. A view
+    // lights its own connectors, so it never reads a jump's light.
+    const mapHover = Boolean(editor.hoverRelationshipMap[relationship.id]);
+    const jumped =
+      !view && isRelationshipHighlighted(editor.id, relationship.id);
+    const hover = state.hover || mapHover || jumped;
     // A view has one neutral for every connector, since the reference draws no
     // distinction by kind. The document keeps the two colours and the dash the
     // identifying bit has always picked between.

@@ -3,7 +3,6 @@ import { type ERDEditorSchemaV3, toJson } from '@dineug/erd-editor-schema';
 import { AppContext } from '@/components/appContext';
 import { placeByFlow } from '@/components/erd/automatic-table-placement/flowPlacement';
 import { scrollIntoView, showErdTab } from '@/components/erd/goToErdTarget';
-import { coveredWidth } from '@/components/find-replace/panelLayout';
 import { TABLE_SORT_START } from '@/constants/layout';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import { ActionType } from '@/engine/modules/editor/actions';
@@ -219,7 +218,7 @@ const appendLandingAction$ = ({
         ]),
       ])
     );
-    yield* scrollIntoView(state, rect, coveredWidth(state));
+    yield* scrollIntoView(state, rect);
   };
 
 /**
