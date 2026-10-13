@@ -1,9 +1,13 @@
 import { escapeRegExp } from 'es-toolkit';
 
+import { preserveCase } from './preserveCase';
+
 export type FindOptions = {
   matchCase: boolean;
   wholeWord: boolean;
   regex: boolean;
+  /** Cases each replacement the way the text it replaces is (preserveCase.ts). */
+  preserveCase?: boolean;
 };
 
 export type TextRange = {
@@ -36,6 +40,7 @@ export const DEFAULT_FIND_OPTIONS: FindOptions = Object.freeze({
   matchCase: false,
   wholeWord: false,
   regex: false,
+  preserveCase: false,
 });
 
 /**
@@ -226,8 +231,13 @@ export function createMatcher(
             groups
           )
         : replacement;
-      if (expanded !== match) changed++;
-      return expanded;
+      // After $1 and the rest are in, so a group cased as matched is recased
+      // too, and before the count, so a match written back as it was is none.
+      const cased = options.preserveCase
+        ? preserveCase(match, expanded)
+        : expanded;
+      if (cased !== match) changed++;
+      return cased;
     });
 
     return { value, changed };

@@ -151,6 +151,8 @@ export const jaJP = {
   'findReplace.scope.columnName': '列名',
   'findReplace.scope.columnComment': '列コメント',
   'findReplace.scope.memo': 'メモ',
+  'findReplace.scope.indexName': 'インデックス名',
+  'findReplace.scope.tableGroupName': 'テーブルグループ名',
   'findReplace.invalidRegex': '無効な正規表現',
   'findReplace.noResults': '結果なし',
   'findReplace.matchCount': {
@@ -168,6 +170,8 @@ export const jaJP = {
   'findReplace.field.columnName': '列',
   'findReplace.field.columnComment': '列コメント',
   'findReplace.field.memo': 'メモ',
+  'findReplace.field.indexName': 'インデックス',
+  'findReplace.field.tableGroupName': 'テーブルグループ',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': '読み取り専用',
   'tableProperties.indexes': 'インデックス',

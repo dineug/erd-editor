@@ -151,6 +151,8 @@ export const koKR = {
   'findReplace.scope.columnName': '컬럼 이름',
   'findReplace.scope.columnComment': '컬럼 주석',
   'findReplace.scope.memo': '메모',
+  'findReplace.scope.indexName': '인덱스 이름',
+  'findReplace.scope.tableGroupName': '테이블 그룹 이름',
   'findReplace.invalidRegex': '잘못된 정규식',
   'findReplace.noResults': '결과 없음',
   'findReplace.matchCount': {
@@ -168,6 +170,8 @@ export const koKR = {
   'findReplace.field.columnName': '컬럼',
   'findReplace.field.columnComment': '컬럼 주석',
   'findReplace.field.memo': '메모',
+  'findReplace.field.indexName': '인덱스',
+  'findReplace.field.tableGroupName': '테이블 그룹',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': '읽기 전용',
   'tableProperties.indexes': '인덱스',

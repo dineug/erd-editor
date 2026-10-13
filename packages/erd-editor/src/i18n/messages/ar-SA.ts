@@ -151,6 +151,8 @@ export const arSA = {
   'findReplace.scope.columnName': 'أسماء الأعمدة',
   'findReplace.scope.columnComment': 'تعليقات الأعمدة',
   'findReplace.scope.memo': 'الملاحظات',
+  'findReplace.scope.indexName': 'أسماء الفهارس',
+  'findReplace.scope.tableGroupName': 'أسماء مجموعات الجداول',
   'findReplace.invalidRegex': 'تعبير عادي غير صالح',
   'findReplace.noResults': 'لا توجد نتائج',
   'findReplace.matchCount': {
@@ -178,6 +180,8 @@ export const arSA = {
   'findReplace.field.columnName': 'عمود',
   'findReplace.field.columnComment': 'تعليق العمود',
   'findReplace.field.memo': 'ملاحظة',
+  'findReplace.field.indexName': 'فهرس',
+  'findReplace.field.tableGroupName': 'مجموعة جداول',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'للقراءة فقط',
   'tableProperties.indexes': 'الفهارس',

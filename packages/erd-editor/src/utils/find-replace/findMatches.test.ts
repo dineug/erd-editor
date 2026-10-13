@@ -6,6 +6,11 @@ import type { AppContext } from '@/components/appContext';
 import { Show } from '@/constants/schema';
 import { ChangeActionTypes } from '@/engine/actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
+import { ActionType as IndexActionType } from '@/engine/modules/index/actions';
+import {
+  addIndexAction,
+  changeIndexNameAction,
+} from '@/engine/modules/index/atom.actions';
 import { ActionType as MemoActionType } from '@/engine/modules/memo/actions';
 import {
   changeMemoValueAction,
@@ -14,9 +19,18 @@ import {
 import { ActionType as SettingsActionType } from '@/engine/modules/settings/actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
-import { removeTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableNameAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
 import { ActionType as ColumnActionType } from '@/engine/modules/table-column/actions';
 import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
+import { ActionType as TableGroupActionType } from '@/engine/modules/table-group/actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+} from '@/engine/modules/table-group/atom.actions';
 import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
@@ -31,6 +45,8 @@ import {
   rematchField,
   ReplaceRun,
   resumeRun,
+  toFieldAction,
+  treeOrderOf,
   walkFields,
 } from '@/utils/find-replace';
 
@@ -166,6 +182,8 @@ describe('FindTextActionTypes', () => {
       ...Object.values(TableActionType),
       ...Object.values(ColumnActionType),
       ...Object.values(MemoActionType),
+      ...Object.values(IndexActionType),
+      ...Object.values(TableGroupActionType),
       ...Object.values(EditorActionType),
       ...Object.values(SettingsActionType),
     ]);
@@ -404,5 +422,236 @@ describe('resumeRun', () => {
 
   it('has nothing to resume without a run', () => {
     expect(resumeRun(app.store.state, FindFieldList, null)).toBeNull();
+  });
+});
+
+/** An index on each seeded table and a table group, each named. */
+function addIndexesAndGroup() {
+  app.store.dispatchSync(
+    addIndexAction({ id: 'i_orders', tableId: 'orders' }),
+    changeIndexNameAction({
+      id: 'i_orders',
+      tableId: 'orders',
+      value: 'idx_user',
+    }),
+    addIndexAction({ id: 'i_users', tableId: 'users' }),
+    changeIndexNameAction({
+      id: 'i_users',
+      tableId: 'users',
+      value: 'idx_email',
+    }),
+    addTableGroupAction({
+      id: 'g_users',
+      ui: { x: 0, y: 0, width: 100, height: 100, zIndex: 1 },
+    }),
+    changeTableGroupNameAction({ id: 'g_users', value: 'user accounts' })
+  );
+}
+
+const walked = (fields: FindField[]) =>
+  walkFields(app.store.state, fields).map(({ field, id }) => `${field}:${id}`);
+
+describe('walkFields over index and table group names', () => {
+  it('walks the index names of a table after its columns, and the group names before the memos', () => {
+    addIndexesAndGroup();
+
+    expect(
+      walked([
+        FindField.tableName,
+        FindField.columnName,
+        FindField.indexName,
+        FindField.tableGroupName,
+        FindField.memo,
+      ])
+    ).toEqual([
+      'tableName:orders',
+      'columnName:order_id',
+      'columnName:orders_user_id',
+      'columnName:total',
+      'indexName:i_orders',
+      'tableName:users',
+      'columnName:users_id',
+      'columnName:email',
+      'indexName:i_users',
+      'tableGroupName:g_users',
+      'memo:note',
+    ]);
+  });
+
+  it('walks the index names though no column field is asked for', () => {
+    addIndexesAndGroup();
+
+    expect(walked([FindField.indexName])).toEqual([
+      'indexName:i_orders',
+      'indexName:i_users',
+    ]);
+  });
+
+  it('leaves the group names out while View Option hides the groups', () => {
+    addIndexesAndGroup();
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+    expect(walked([FindField.tableGroupName])).toEqual([]);
+  });
+
+  it('finds an index or a group name and nothing in a data type (AC-Q5)', () => {
+    addIndexesAndGroup();
+
+    expect(
+      places(
+        findMatches(app.store.state, matcherOf('user'), [
+          FindField.indexName,
+          FindField.tableGroupName,
+        ])
+      )
+    ).toEqual(['indexName:i_orders@4', 'tableGroupName:g_users@0']);
+  });
+});
+
+/** A document of the tables named, no columns, in the order given. */
+function namedTables(names: string[]): AppContext {
+  const named = createTestAppContext();
+  named.store.dispatchSync(
+    ...names.flatMap((name, index) => [
+      addTableAction({ id: `t${index}`, ui: { x: 0, y: 0, zIndex: index } }),
+      changeTableNameAction({ id: `t${index}`, value: name }),
+    ])
+  );
+  return named;
+}
+
+const namesOf = (
+  named: AppContext,
+  fields: FindField[],
+  order = treeOrderOf(named.store.state)
+) => walkFields(named.store.state, fields, order).map(({ text }) => text);
+
+describe('treeOrderOf and a walk in an order', () => {
+  it('orders the tables and the groups by name, any case, ties as the document has them', () => {
+    const named = namedTables(['beta', 'Alpha', 'alpha', 'Gamma']);
+
+    expect(treeOrderOf(named.store.state).tableIds).toEqual([
+      't1',
+      't2',
+      't0',
+      't3',
+    ]);
+    named.store.destroy();
+  });
+
+  it('keeps the order it was given through a rename, and puts a table it never met after, by name', () => {
+    const named = namedTables(['beta', 'alpha']);
+    const order = treeOrderOf(named.store.state);
+    named.store.dispatchSync(
+      changeTableNameAction({ id: 't1', value: 'zulu' }),
+      addTableAction({ id: 'new2', ui: { x: 0, y: 0, zIndex: 9 } }),
+      changeTableNameAction({ id: 'new2', value: 'omega' }),
+      addTableAction({ id: 'new1', ui: { x: 0, y: 0, zIndex: 8 } }),
+      changeTableNameAction({ id: 'new1', value: 'delta' }),
+      removeTableAction({ id: 't0' })
+    );
+
+    expect(namesOf(named, [FindField.tableName], order)).toEqual([
+      'zulu',
+      'delta',
+      'omega',
+    ]);
+    named.store.destroy();
+  });
+
+  it('walks in document order with no order given, as the palette does', () => {
+    const named = namedTables(['beta', 'alpha']);
+
+    expect(
+      walkFields(named.store.state, [FindField.tableName]).map(
+        ({ text }) => text
+      )
+    ).toEqual(['beta', 'alpha']);
+    named.store.destroy();
+  });
+});
+
+/**
+ * Presses Replace until the run says it is back where it began, in the order
+ * the tree had when it began, as the Explorer walks it, and says how many it made.
+ */
+function replaceRun(
+  target: AppContext,
+  matcher: Matcher,
+  replacement: string,
+  fields: FindField[]
+): number {
+  const order = treeOrderOf(target.store.state);
+  let matches = findMatches(target.store.state, matcher, fields, order);
+  let run: ReplaceRun | null = null;
+  let index = matches.length ? 0 : -1;
+  let count = 0;
+
+  while (index !== -1 && count < 20) {
+    const match = matches[index];
+    const { value } = matcher.replace(match.text, replacement, match.start);
+    target.store.dispatchSync(toFieldAction(match, value));
+    count++;
+    const after = rematchField(matches, matcher, match, value);
+    const step = nextReplace(after, match, value, run);
+    run = step.run;
+    index = step.index;
+    matches = after;
+  }
+
+  return count;
+}
+
+describe('a run of Replace presses in a frozen order (AC-Q13, AC-Q14)', () => {
+  it('comes back to where it began once, over index and group names in the tree order', () => {
+    addIndexesAndGroup();
+
+    const count = replaceRun(app, matcherOf('user'), 'member', [
+      FindField.tableName,
+      FindField.indexName,
+      FindField.tableGroupName,
+    ]);
+
+    expect(count).toBe(3);
+    expect(
+      findMatches(app.store.state, matcherOf('user'), [
+        FindField.tableName,
+        FindField.indexName,
+        FindField.tableGroupName,
+      ])
+    ).toEqual([]);
+  });
+
+  it('meets no table again whose new name sorts it later', () => {
+    const named = namedTables(['Customer', 'Customer Log']);
+
+    const count = replaceRun(named, matcherOf('Customer'), 'Zed Customer', [
+      FindField.tableName,
+    ]);
+
+    expect(count).toBe(2);
+    expect(namesOf(named, [FindField.tableName])).toEqual([
+      'Zed Customer',
+      'Zed Customer Log',
+    ]);
+    named.store.destroy();
+  });
+
+  it('grows no table whose new name sorts it before where the run began', () => {
+    const named = namedTables(['Bill', 'Border', 'Order']);
+
+    const count = replaceRun(named, matcherOf('order'), 'Aorder', [
+      FindField.tableName,
+    ]);
+
+    expect(count).toBe(2);
+    expect(namesOf(named, [FindField.tableName]).sort()).toEqual([
+      'Aorder',
+      'BAorder',
+      'Bill',
+    ]);
+    named.store.destroy();
   });
 });

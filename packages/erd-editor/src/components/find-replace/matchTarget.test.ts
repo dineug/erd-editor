@@ -73,6 +73,17 @@ describe('toErdTarget', () => {
       memoId: 'm',
     });
   });
+
+  it('goes to the table an index name is on, and to the group a group name names', () => {
+    expect(toErdTarget(match(FindField.indexName, 'i', 't'))).toEqual({
+      kind: 'table',
+      tableId: 't',
+    });
+    expect(toErdTarget(match(FindField.tableGroupName, 'g', ''))).toEqual({
+      kind: 'tableGroup',
+      tableGroupId: 'g',
+    });
+  });
 });
 
 describe('withReplacement', () => {
@@ -125,6 +136,22 @@ describe('withReplacement', () => {
 
     expect(
       withReplacement(state, context, match(FindField.memo, 'note', ''), 'x')
+    ).toBe(state);
+    expect(
+      withReplacement(
+        state,
+        context,
+        match(FindField.indexName, 'index', 'orders'),
+        'x'
+      )
+    ).toBe(state);
+    expect(
+      withReplacement(
+        state,
+        context,
+        match(FindField.tableGroupName, 'group', ''),
+        'x'
+      )
     ).toBe(state);
     expect(
       withReplacement(

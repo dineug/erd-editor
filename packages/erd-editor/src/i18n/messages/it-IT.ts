@@ -154,6 +154,8 @@ export const itIT = {
   'findReplace.scope.columnName': 'Nomi colonne',
   'findReplace.scope.columnComment': 'Commenti colonne',
   'findReplace.scope.memo': 'Memo',
+  'findReplace.scope.indexName': 'Nomi indici',
+  'findReplace.scope.tableGroupName': 'Nomi gruppi di tabelle',
   'findReplace.invalidRegex': 'Espressione regolare non valida',
   'findReplace.noResults': 'Nessun risultato',
   'findReplace.matchCount': {
@@ -175,6 +177,8 @@ export const itIT = {
   'findReplace.field.columnName': 'Colonna',
   'findReplace.field.columnComment': 'Commento colonna',
   'findReplace.field.memo': 'Memo',
+  'findReplace.field.indexName': 'Indice',
+  'findReplace.field.tableGroupName': 'Gruppo di tabelle',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Sola lettura',
   'tableProperties.indexes': 'Indici',

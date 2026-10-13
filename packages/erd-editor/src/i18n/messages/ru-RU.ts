@@ -154,6 +154,8 @@ export const ruRU = {
   'findReplace.scope.columnName': 'Имена столбцов',
   'findReplace.scope.columnComment': 'Комментарии столбцов',
   'findReplace.scope.memo': 'Заметки',
+  'findReplace.scope.indexName': 'Имена индексов',
+  'findReplace.scope.tableGroupName': 'Имена групп таблиц',
   'findReplace.invalidRegex': 'Недопустимое регулярное выражение',
   'findReplace.noResults': 'Нет результатов',
   'findReplace.matchCount': {
@@ -177,6 +179,8 @@ export const ruRU = {
   'findReplace.field.columnName': 'Столбец',
   'findReplace.field.columnComment': 'Комментарий столбца',
   'findReplace.field.memo': 'Заметка',
+  'findReplace.field.indexName': 'Индекс',
+  'findReplace.field.tableGroupName': 'Группа таблиц',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Только для чтения',
   'tableProperties.indexes': 'Индексы',

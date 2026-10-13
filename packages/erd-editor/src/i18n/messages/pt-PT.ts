@@ -155,6 +155,8 @@ export const ptPT = {
   'findReplace.scope.columnName': 'Nomes de colunas',
   'findReplace.scope.columnComment': 'Comentários de colunas',
   'findReplace.scope.memo': 'Notas',
+  'findReplace.scope.indexName': 'Nomes de índices',
+  'findReplace.scope.tableGroupName': 'Nomes de grupos de tabelas',
   'findReplace.invalidRegex': 'Expressão regular inválida',
   'findReplace.noResults': 'Sem resultados',
   'findReplace.matchCount': {
@@ -176,6 +178,8 @@ export const ptPT = {
   'findReplace.field.columnName': 'Coluna',
   'findReplace.field.columnComment': 'Comentário da coluna',
   'findReplace.field.memo': 'Nota',
+  'findReplace.field.indexName': 'Índice',
+  'findReplace.field.tableGroupName': 'Grupo de tabelas',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Só de leitura',
   'tableProperties.indexes': 'Índices',

@@ -12,6 +12,10 @@ export function fieldIcon(field: FindField, size = 14): DOMTemplateLiterals {
       return <Icon name="columns-2" size={size} />;
     case FindField.memo:
       return <Icon name="sticky-note" size={size} />;
+    case FindField.indexName:
+      return <Icon name="list-tree" size={size} />;
+    case FindField.tableGroupName:
+      return <Icon name="group" size={size} />;
     default:
       return <Icon name="message-square" size={size} />;
   }

@@ -155,6 +155,8 @@ export const ukUA = {
   'findReplace.scope.columnName': 'Назви стовпців',
   'findReplace.scope.columnComment': 'Коментарі стовпців',
   'findReplace.scope.memo': 'Нотатки',
+  'findReplace.scope.indexName': 'Назви індексів',
+  'findReplace.scope.tableGroupName': 'Назви груп таблиць',
   'findReplace.invalidRegex': 'Неприпустимий регулярний вираз',
   'findReplace.noResults': 'Немає результатів',
   'findReplace.matchCount': {
@@ -178,6 +180,8 @@ export const ukUA = {
   'findReplace.field.columnName': 'Стовпець',
   'findReplace.field.columnComment': 'Коментар стовпця',
   'findReplace.field.memo': 'Нотатка',
+  'findReplace.field.indexName': 'Індекс',
+  'findReplace.field.tableGroupName': 'Група таблиць',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Лише для читання',
   'tableProperties.indexes': 'Індекси',

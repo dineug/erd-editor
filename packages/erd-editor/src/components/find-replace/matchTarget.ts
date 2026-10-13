@@ -12,8 +12,8 @@ import { textInRange } from '@/utils/validation';
 
 /**
  * Where on the ERD canvas the text of a match is edited: its table, its column
- * cell or its memo, with the match itself, which a cell too wide for the
- * canvas is scrolled to by.
+ * cell, its memo or its table group, with the match itself, which a cell too
+ * wide for the canvas is scrolled to by. An index goes to the table it is on.
  */
 export function toErdTarget(match: FindMatch): ErdTarget {
   const { field, id, tableId, text, start, end } = match;
@@ -47,13 +47,17 @@ export function toErdTarget(match: FindMatch): ErdTarget {
       };
     case FindField.memo:
       return { kind: 'memo', memoId: id };
+    case FindField.indexName:
+      return { kind: 'table', tableId };
+    case FindField.tableGroupName:
+      return { kind: 'tableGroup', tableGroupId: id };
   }
 }
 
 /**
  * The state as a jump measures it once a replacement is in: the field holding
- * the new text at the width its reducer gives it. A memo's text sizes nothing,
- * and a table or column the document no longer holds is left as it is.
+ * the new text at the width its reducer gives it. A memo, an index or a group
+ * name sizes no table, and one the document no longer holds is left as it is.
  */
 export function withReplacement(
   state: RootState,
@@ -67,7 +71,11 @@ export function withReplacement(
   const column = tableColumnEntities[id];
   const onTable =
     field === FindField.tableName || field === FindField.tableComment;
-  if (field === FindField.memo || !table || (!onTable && !column)) {
+  const sizesTable =
+    onTable ||
+    field === FindField.columnName ||
+    field === FindField.columnComment;
+  if (!sizesTable || !table || (!onTable && !column)) {
     return state;
   }
 

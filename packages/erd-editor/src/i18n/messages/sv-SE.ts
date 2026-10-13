@@ -152,6 +152,8 @@ export const svSE = {
   'findReplace.scope.columnName': 'Kolumnnamn',
   'findReplace.scope.columnComment': 'Kolumnkommentarer',
   'findReplace.scope.memo': 'Anteckningar',
+  'findReplace.scope.indexName': 'Indexnamn',
+  'findReplace.scope.tableGroupName': 'Tabellgruppsnamn',
   'findReplace.invalidRegex': 'Ogiltigt reguljärt uttryck',
   'findReplace.noResults': 'Inga resultat',
   'findReplace.matchCount': {
@@ -171,6 +173,8 @@ export const svSE = {
   'findReplace.field.columnName': 'Kolumn',
   'findReplace.field.columnComment': 'Kolumnkommentar',
   'findReplace.field.memo': 'Anteckning',
+  'findReplace.field.indexName': 'Index',
+  'findReplace.field.tableGroupName': 'Tabellgrupp',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Skrivskyddad',
   'tableProperties.indexes': 'Index',

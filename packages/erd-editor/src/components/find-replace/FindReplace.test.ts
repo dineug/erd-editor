@@ -286,13 +286,15 @@ describe('FindReplace opening and closing', () => {
   });
 
   /** An owner decision: a comment or memo is prose, which a rename across the names would rewrite too. */
-  it('opens first on the names of tables and columns alone, the comments and memos left out', async () => {
+  it('opens first on the names of tables, columns, indexes and table groups alone, the comments and memos left out', async () => {
     await shortcut(KeyBindingName.findReplace);
     await type(findInput(), 'user');
 
     expect(pressedScopes()).toEqual([
       FindField.tableName,
       FindField.columnName,
+      FindField.indexName,
+      FindField.tableGroupName,
     ]);
     expect(countText()).toBe('2 matches');
     expect(rowTexts()).toEqual([
@@ -314,6 +316,8 @@ describe('FindReplace opening and closing', () => {
       FindField.tableComment,
       FindField.columnName,
       FindField.memo,
+      FindField.indexName,
+      FindField.tableGroupName,
     ]);
 
     await setup();
@@ -322,6 +326,8 @@ describe('FindReplace opening and closing', () => {
     expect(pressedScopes()).toEqual([
       FindField.tableName,
       FindField.columnName,
+      FindField.indexName,
+      FindField.tableGroupName,
     ]);
   });
 

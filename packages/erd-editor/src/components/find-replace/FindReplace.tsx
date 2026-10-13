@@ -96,6 +96,8 @@ const SCOPE_LABEL: Record<FindField, PlainMessageKey> = {
   [FindField.columnName]: 'findReplace.scope.columnName',
   [FindField.columnComment]: 'findReplace.scope.columnComment',
   [FindField.memo]: 'findReplace.scope.memo',
+  [FindField.indexName]: 'findReplace.scope.indexName',
+  [FindField.tableGroupName]: 'findReplace.scope.tableGroupName',
 };
 
 /**

@@ -149,6 +149,8 @@ export const heIL = {
   'findReplace.scope.columnName': 'שמות עמודות',
   'findReplace.scope.columnComment': 'הערות עמודות',
   'findReplace.scope.memo': 'פתקים',
+  'findReplace.scope.indexName': 'שמות אינדקסים',
+  'findReplace.scope.tableGroupName': 'שמות קבוצות טבלאות',
   'findReplace.invalidRegex': 'ביטוי רגולרי לא חוקי',
   'findReplace.noResults': 'אין תוצאות',
   'findReplace.matchCount': {
@@ -170,6 +172,8 @@ export const heIL = {
   'findReplace.field.columnName': 'עמודה',
   'findReplace.field.columnComment': 'הערת עמודה',
   'findReplace.field.memo': 'פתק',
+  'findReplace.field.indexName': 'אינדקס',
+  'findReplace.field.tableGroupName': 'קבוצת טבלאות',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'קריאה בלבד',
   'tableProperties.indexes': 'אינדקסים',

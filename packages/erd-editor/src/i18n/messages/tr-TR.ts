@@ -153,6 +153,8 @@ export const trTR = {
   'findReplace.scope.columnName': 'Sütun adları',
   'findReplace.scope.columnComment': 'Sütun açıklamaları',
   'findReplace.scope.memo': 'Notlar',
+  'findReplace.scope.indexName': 'Dizin adları',
+  'findReplace.scope.tableGroupName': 'Tablo grubu adları',
   'findReplace.invalidRegex': 'Geçersiz normal ifade',
   'findReplace.noResults': 'Sonuç yok',
   'findReplace.matchCount': {
@@ -172,6 +174,8 @@ export const trTR = {
   'findReplace.field.columnName': 'Sütun',
   'findReplace.field.columnComment': 'Sütun açıklaması',
   'findReplace.field.memo': 'Not',
+  'findReplace.field.indexName': 'Dizin',
+  'findReplace.field.tableGroupName': 'Tablo grubu',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Salt okunur',
   'tableProperties.indexes': 'Dizinler',

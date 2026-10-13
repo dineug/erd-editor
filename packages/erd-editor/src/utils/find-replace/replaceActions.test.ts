@@ -77,6 +77,11 @@ describe('toFieldAction', () => {
         payload: { id: 'c', tableId: 't', value: 'v' },
       },
       { type: 'memo.changeValue', payload: { id: 'c', value: 'v' } },
+      {
+        type: 'index.changeName',
+        payload: { id: 'c', tableId: 't', value: 'v' },
+      },
+      { type: 'tableGroup.changeName', payload: { id: 'c', value: 'v' } },
     ]);
   });
 

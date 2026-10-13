@@ -153,6 +153,8 @@ export const nlNL = {
   'findReplace.scope.columnName': 'Kolomnamen',
   'findReplace.scope.columnComment': 'Kolomopmerkingen',
   'findReplace.scope.memo': "Memo's",
+  'findReplace.scope.indexName': 'Indexnamen',
+  'findReplace.scope.tableGroupName': 'Tabelgroepnamen',
   'findReplace.invalidRegex': 'Ongeldige reguliere expressie',
   'findReplace.noResults': 'Geen resultaten',
   'findReplace.matchCount': {
@@ -172,6 +174,8 @@ export const nlNL = {
   'findReplace.field.columnName': 'Kolom',
   'findReplace.field.columnComment': 'Kolomopmerking',
   'findReplace.field.memo': 'Memo',
+  'findReplace.field.indexName': 'Index',
+  'findReplace.field.tableGroupName': 'Tabelgroep',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Alleen-lezen',
   'tableProperties.indexes': 'Indexen',

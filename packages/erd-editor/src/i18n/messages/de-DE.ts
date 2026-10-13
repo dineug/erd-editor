@@ -153,6 +153,8 @@ export const deDE = {
   'findReplace.scope.columnName': 'Spaltennamen',
   'findReplace.scope.columnComment': 'Spaltenkommentare',
   'findReplace.scope.memo': 'Notizen',
+  'findReplace.scope.indexName': 'Indexnamen',
+  'findReplace.scope.tableGroupName': 'Tabellengruppennamen',
   'findReplace.invalidRegex': 'Ungültiger regulärer Ausdruck',
   'findReplace.noResults': 'Keine Ergebnisse',
   'findReplace.matchCount': {
@@ -172,6 +174,8 @@ export const deDE = {
   'findReplace.field.columnName': 'Spalte',
   'findReplace.field.columnComment': 'Spaltenkommentar',
   'findReplace.field.memo': 'Notiz',
+  'findReplace.field.indexName': 'Index',
+  'findReplace.field.tableGroupName': 'Tabellengruppe',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Schreibgeschützt',
   'tableProperties.indexes': 'Indizes',

@@ -27,8 +27,9 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 | `matchTarget.ts` | `toErdTarget`, `withReplacement`, `showNextMatchAction$` |
 | `fieldIcon.tsx` | The icon of a match row, which the palette's `#` rows share |
 | `src/components/erd/goToErdTarget.ts` | `goToErdTarget`, `showErdTargetAction$`, `planJump`, `scrollIntoView`, `scrollTableIntoView`, `selectTableAloneAction$`, `EDGE_MARGIN` |
-| `src/utils/find-replace/findMatches.ts` | `FindField`, `DEFAULT_FIND_FIELDS`, `FindTextActionTypes`, `findMatches`, `rematchField`, `ReplaceRun`, `resumeRun`, `nextReplace` |
+| `src/utils/find-replace/findMatches.ts` | `FindField`, `DEFAULT_FIND_FIELDS`, `FindTextActionTypes`, `FieldOrder`, `treeOrderOf`, `walkFields`, `findMatches`, `rematchField`, `ReplaceRun`, `resumeRun`, `nextReplace` |
 | `src/utils/find-replace/matcher.ts` | `createMatcher`, `toUnicodeSource`, `DEFAULT_FIND_OPTIONS`, the Whole Word wrapper |
+| `src/utils/find-replace/preserveCase.ts` | `preserveCase`, the Preserve Case (AB) rule |
 | `src/utils/find-replace/replaceActions.ts` | `toFieldAction`, `toReplaceActions` and its `replaced` count |
 | `src/utils/find-replace/present.ts` | What a match row says: `FindFieldLabel`, `locationOf`, `describeMatch`, `snippetOf` |
 | `src/utils/keyboard-shortcut/index.ts` | `PANEL_PASSING_BINDINGS`, shared with the color picker |
@@ -47,8 +48,10 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 
 ### Scopes and options
 
-- **Hidden memos are not searched.** While View Option hides the memos, the walk skips them (`walkFields`), so a match is never one the reader cannot see and Replace All never rewrites one (`src/components/erd/AGENTS.md`, `Show.hideMemo`).
-- **The first opening searches names alone.** In each element it searches table and column names, with Table comments, Column comments and Memos off (`DEFAULT_FIND_FIELDS`, `src/utils/find-replace/findMatches.ts`). A comment or memo is prose a rename should not reach unasked. This is an owner decision, pinned in `FindReplace.test.ts`.
+- **Hidden memos and groups are not searched.** While View Option hides the memos or the table groups, the walk skips them (`walkFields`), so a match is never one the reader cannot see and Replace All never rewrites one (`src/components/erd/AGENTS.md`, `Show.hideMemo`, `Show.hideTableGroup`).
+- **Seven kinds of text are searched.** Table names and comments, column names and comments, index names, table group names and memos. A walk takes each table's name, comment, columns and index names, the index names in document order, then the group names, then the memos.
+- **A walk in an order keeps it.** Given a `FieldOrder` (`treeOrderOf`: tables and groups by name, ties in document order), a walk takes the live ids in that order and any it never met after them, by name. A run of Replace presses keeps the order it began with, so a rename that moves a table in the name order is not met again (`findMatches.test.ts`). With no order the walk is in document order, as the palette's is.
+- **The first opening searches names alone.** In each element it searches table, column, index and table group names, with Table comments, Column comments and Memos off (`DEFAULT_FIND_FIELDS`, `src/utils/find-replace/findMatches.ts`). A comment or memo is prose a rename should not reach unasked. This is an owner decision, pinned in `FindReplace.test.ts`.
 - **Later openings keep the last scopes and options.** The panel keeps them for the element's life. That includes an opening with no query: the chord, the toolbar button, the palette row and the context menu.
 - **A query handed over resets options and scopes.** It sets the default options and the scopes it names. So the palette's `:` hand-off turns both comments and Memos on. `findMatches` given no fields still reads every kind.
 - Palette prefixes and the hand-off row past the cap: `src/components/quick-search/AGENTS.md`.
@@ -110,7 +113,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 
 ### When the panel searches
 
-- **Only `FindTextActionTypes` batches search again.** The panel's store subscription in `FindReplace.tsx` searches again 100 ms after the last batch, only on a batch holding one of `FindTextActionTypes` (an owner decision). That list is in `src/utils/find-replace/findMatches.ts`. It holds the adds and removes of tables, columns and memos, the name and comment changes of tables and columns, a memo's value, `table.sort`, `column.move`, `settings.changeShow` (hiding or showing the memos takes them out of the walk or brings them back) and the document loads.
+- **Only `FindTextActionTypes` batches search again.** The panel's store subscription in `FindReplace.tsx` searches again 100 ms after the last batch, only on a batch holding one of `FindTextActionTypes` (an owner decision). That list is in `src/utils/find-replace/findMatches.ts`. It holds the adds and removes of tables, columns, memos, indexes and table groups, the name and comment changes of tables and columns, the name changes of indexes and table groups, a memo's value, `table.sort`, `column.move`, `settings.changeShow` (hiding or showing the memos or the groups takes them out of the walk or brings them back) and the document loads.
 - **Other batches never search.** No search runs on the rest of `ChangeActionTypes`, which holds the scrolls, zooms and moves, nor on a hover, a selection or a jump (an owner decision). None of them changes a text, and a slow pattern would stall the tab on every one.
 - **The panel's own replaces never search.** No search runs on the batch of its own Replace or Replace All (`dispatchOwn`), an owner decision.
 - **An edit while aside leaves the list `stale`.** That is an edit made while the panel stands aside, still open: on another tab or under a takeover. The batch that shows the panel again searches at once, so it never shows a list the document has left behind (an owner decision).
@@ -130,6 +133,10 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 - **A stray `]` or unowned brace is literal.** `toUnicodeSource` takes a stray `]` and a brace no quantifier owns as themselves (an owner decision).
 - **Other refused forms are invalid patterns.** Every other form unicode mode refuses (`[\w-.]`, `\z`) reads as an invalid pattern.
 - **A regular expression takes `m`, never `s`.** `^` and `$` read at each line of a memo, a CRLF one too. A dot stays on its line, and `[\s\S]` reaches across.
+
+### Preserve Case
+
+- **Preserve Case cases a replacement the way the text it replaces is**, as VS Code's does (`preserveCase.ts`): all upper, all lower, or by the first letter, and piece by piece across the hyphens or the underscores both texts split into as many pieces by. It applies after a regular expression's `$1` and the rest are in, and a match it writes back as it was counts as no replacement.
 
 ### Whole Word
 

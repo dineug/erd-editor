@@ -152,6 +152,8 @@ export const idID = {
   'findReplace.scope.columnName': 'Nama kolom',
   'findReplace.scope.columnComment': 'Komentar kolom',
   'findReplace.scope.memo': 'Memo',
+  'findReplace.scope.indexName': 'Nama indeks',
+  'findReplace.scope.tableGroupName': 'Nama grup tabel',
   'findReplace.invalidRegex': 'Ekspresi reguler tidak valid',
   'findReplace.noResults': 'Tidak ada hasil',
   'findReplace.matchCount': {
@@ -169,6 +171,8 @@ export const idID = {
   'findReplace.field.columnName': 'Kolom',
   'findReplace.field.columnComment': 'Komentar kolom',
   'findReplace.field.memo': 'Memo',
+  'findReplace.field.indexName': 'Indeks',
+  'findReplace.field.tableGroupName': 'Grup tabel',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Hanya baca',
   'tableProperties.indexes': 'Indeks',

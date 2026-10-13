@@ -154,6 +154,8 @@ export const euES = {
   'findReplace.scope.columnName': 'Zutabeen izenak',
   'findReplace.scope.columnComment': 'Zutabeen iruzkinak',
   'findReplace.scope.memo': 'Oharrak',
+  'findReplace.scope.indexName': 'Indizeen izenak',
+  'findReplace.scope.tableGroupName': 'Taula-taldeen izenak',
   'findReplace.invalidRegex': 'Adierazpen erregular baliogabea',
   'findReplace.noResults': 'Ez dago emaitzarik',
   'findReplace.matchCount': {
@@ -173,6 +175,8 @@ export const euES = {
   'findReplace.field.columnName': 'Zutabea',
   'findReplace.field.columnComment': 'Zutabearen iruzkina',
   'findReplace.field.memo': 'Oharra',
+  'findReplace.field.indexName': 'Indizea',
+  'findReplace.field.tableGroupName': 'Taula-taldea',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Irakurtzeko soilik',
   'tableProperties.indexes': 'Indizeak',

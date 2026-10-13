@@ -153,6 +153,8 @@ export const skSK = {
   'findReplace.scope.columnName': 'Názvy stĺpcov',
   'findReplace.scope.columnComment': 'Komentáre stĺpcov',
   'findReplace.scope.memo': 'Poznámky',
+  'findReplace.scope.indexName': 'Názvy indexov',
+  'findReplace.scope.tableGroupName': 'Názvy skupín tabuliek',
   'findReplace.invalidRegex': 'Neplatný regulárny výraz',
   'findReplace.noResults': 'Žiadne výsledky',
   'findReplace.matchCount': {
@@ -176,6 +178,8 @@ export const skSK = {
   'findReplace.field.columnName': 'Stĺpec',
   'findReplace.field.columnComment': 'Komentár stĺpca',
   'findReplace.field.memo': 'Poznámka',
+  'findReplace.field.indexName': 'Index',
+  'findReplace.field.tableGroupName': 'Skupina tabuliek',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Iba na čítanie',
   'tableProperties.indexes': 'Indexy',

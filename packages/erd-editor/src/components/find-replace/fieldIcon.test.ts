@@ -26,6 +26,8 @@ describe('fieldIcon', () => {
       [FindField.columnName, 'columns-2'],
       [FindField.columnComment, 'message-square'],
       [FindField.memo, 'sticky-note'],
+      [FindField.indexName, 'list-tree'],
+      [FindField.tableGroupName, 'group'],
     ];
 
     for (const [field, name] of expected) {

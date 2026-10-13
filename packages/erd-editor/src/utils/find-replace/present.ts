@@ -13,27 +13,34 @@ export const FindFieldLabel: Record<FindField, PlainMessageKey> = {
   [FindField.columnName]: 'findReplace.field.columnName',
   [FindField.columnComment]: 'findReplace.field.columnComment',
   [FindField.memo]: 'findReplace.field.memo',
+  [FindField.indexName]: 'findReplace.field.indexName',
+  [FindField.tableGroupName]: 'findReplace.field.tableGroupName',
 };
 
 const nameOf = (name: string | undefined, { t }: Pick<I18n, 't'>) =>
   name?.trim() || t('common.unnamed');
 
 /**
- * Where a match sits, as a reader finds it on the canvas: the table, or the
- * table and column, and nothing for a memo, which has no name.
+ * Where a match sits, as a reader finds it on the canvas: the table, the
+ * table and column, the table an index belongs to, and nothing for a memo or
+ * a table group, which stand on their own.
  */
 export function locationOf(
   { collections }: RootState,
   { field, id, tableId }: FindMatch,
   i18n: Pick<I18n, 't'> = sourceI18n
 ): string {
-  if (field === FindField.memo) return '';
+  if (field === FindField.memo || field === FindField.tableGroupName) return '';
 
   const table = query(collections)
     .collection('tableEntities')
     .selectById(tableId);
   const tableName = nameOf(table?.name, i18n);
-  if (field === FindField.tableName || field === FindField.tableComment) {
+  if (
+    field === FindField.tableName ||
+    field === FindField.tableComment ||
+    field === FindField.indexName
+  ) {
     return tableName;
   }
 

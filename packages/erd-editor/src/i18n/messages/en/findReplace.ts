@@ -12,6 +12,8 @@ export const findReplace = {
   'findReplace.scope.columnName': 'Column names',
   'findReplace.scope.columnComment': 'Column comments',
   'findReplace.scope.memo': 'Memos',
+  'findReplace.scope.indexName': 'Index names',
+  'findReplace.scope.tableGroupName': 'Table group names',
   'findReplace.invalidRegex': 'Invalid regular expression',
   'findReplace.noResults': 'No results',
   'findReplace.matchCount': {
@@ -31,5 +33,7 @@ export const findReplace = {
   'findReplace.field.columnName': 'Column',
   'findReplace.field.columnComment': 'Column comment',
   'findReplace.field.memo': 'Memo',
+  'findReplace.field.indexName': 'Index',
+  'findReplace.field.tableGroupName': 'Table group',
   'findReplace.matchLocation': '{location} · {kind}',
 } as const;

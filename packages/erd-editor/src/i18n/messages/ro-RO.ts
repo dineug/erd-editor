@@ -153,6 +153,8 @@ export const roRO = {
   'findReplace.scope.columnName': 'Nume coloane',
   'findReplace.scope.columnComment': 'Comentarii coloane',
   'findReplace.scope.memo': 'Note',
+  'findReplace.scope.indexName': 'Nume indexuri',
+  'findReplace.scope.tableGroupName': 'Nume grupuri de tabele',
   'findReplace.invalidRegex': 'Expresie regulată nevalidă',
   'findReplace.noResults': 'Niciun rezultat',
   'findReplace.matchCount': {
@@ -174,6 +176,8 @@ export const roRO = {
   'findReplace.field.columnName': 'Coloană',
   'findReplace.field.columnComment': 'Comentariu coloană',
   'findReplace.field.memo': 'Notă',
+  'findReplace.field.indexName': 'Index',
+  'findReplace.field.tableGroupName': 'Grup de tabele',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Doar în citire',
   'tableProperties.indexes': 'Indexuri',

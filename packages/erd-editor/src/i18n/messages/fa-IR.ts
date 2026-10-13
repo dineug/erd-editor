@@ -152,6 +152,8 @@ export const faIR = {
   'findReplace.scope.columnName': 'نام ستون‌ها',
   'findReplace.scope.columnComment': 'توضیحات ستون‌ها',
   'findReplace.scope.memo': 'یادداشت‌ها',
+  'findReplace.scope.indexName': 'نام شاخص‌ها',
+  'findReplace.scope.tableGroupName': 'نام گروه‌های جدول',
   'findReplace.invalidRegex': 'عبارت باقاعده نامعتبر',
   'findReplace.noResults': 'نتیجه‌ای یافت نشد',
   'findReplace.matchCount': {
@@ -171,6 +173,8 @@ export const faIR = {
   'findReplace.field.columnName': 'ستون',
   'findReplace.field.columnComment': 'توضیح ستون',
   'findReplace.field.memo': 'یادداشت',
+  'findReplace.field.indexName': 'شاخص',
+  'findReplace.field.tableGroupName': 'گروه جدول',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'فقط خواندنی',
   'tableProperties.indexes': 'شاخص‌ها',

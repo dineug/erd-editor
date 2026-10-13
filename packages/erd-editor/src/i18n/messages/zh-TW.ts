@@ -145,6 +145,8 @@ export const zhTW = {
   'findReplace.scope.columnName': '欄位名稱',
   'findReplace.scope.columnComment': '欄位註解',
   'findReplace.scope.memo': '備忘錄',
+  'findReplace.scope.indexName': '索引名稱',
+  'findReplace.scope.tableGroupName': '資料表群組名稱',
   'findReplace.invalidRegex': '規則運算式無效',
   'findReplace.noResults': '沒有結果',
   'findReplace.matchCount': {
@@ -162,6 +164,8 @@ export const zhTW = {
   'findReplace.field.columnName': '欄位',
   'findReplace.field.columnComment': '欄位註解',
   'findReplace.field.memo': '備忘錄',
+  'findReplace.field.indexName': '索引',
+  'findReplace.field.tableGroupName': '資料表群組',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': '唯讀',
   'tableProperties.indexes': '索引',

@@ -154,6 +154,8 @@ export const slSI = {
   'findReplace.scope.columnName': 'Imena stolpcev',
   'findReplace.scope.columnComment': 'Komentarji stolpcev',
   'findReplace.scope.memo': 'Beležke',
+  'findReplace.scope.indexName': 'Imena indeksov',
+  'findReplace.scope.tableGroupName': 'Imena skupin tabel',
   'findReplace.invalidRegex': 'Neveljaven regularni izraz',
   'findReplace.noResults': 'Ni rezultatov',
   'findReplace.matchCount': {
@@ -177,6 +179,8 @@ export const slSI = {
   'findReplace.field.columnName': 'Stolpec',
   'findReplace.field.columnComment': 'Komentar stolpca',
   'findReplace.field.memo': 'Beležka',
+  'findReplace.field.indexName': 'Indeks',
+  'findReplace.field.tableGroupName': 'Skupina tabel',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': 'Samo za branje',
   'tableProperties.indexes': 'Indeksi',

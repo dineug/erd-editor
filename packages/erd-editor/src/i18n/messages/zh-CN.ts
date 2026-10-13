@@ -145,6 +145,8 @@ export const zhCN = {
   'findReplace.scope.columnName': '列名',
   'findReplace.scope.columnComment': '列注释',
   'findReplace.scope.memo': '便笺',
+  'findReplace.scope.indexName': '索引名',
+  'findReplace.scope.tableGroupName': '表分组名',
   'findReplace.invalidRegex': '正则表达式无效',
   'findReplace.noResults': '无结果',
   'findReplace.matchCount': {
@@ -162,6 +164,8 @@ export const zhCN = {
   'findReplace.field.columnName': '列',
   'findReplace.field.columnComment': '列注释',
   'findReplace.field.memo': '便笺',
+  'findReplace.field.indexName': '索引',
+  'findReplace.field.tableGroupName': '表分组',
   'findReplace.matchLocation': '{location} · {kind}',
   'tableProperties.readOnly': '只读',
   'tableProperties.indexes': '索引',
