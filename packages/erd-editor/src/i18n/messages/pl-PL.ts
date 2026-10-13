@@ -417,4 +417,12 @@ export const plPL = {
   'mapColumns.closedRelationshipRemoved':
     'Zamknięto „Mapuj kolumny”: relacja została usunięta',
   'mapColumns.failed': 'Nie udało się zmapować kolumn: diagram się zmienił',
+  'explorer.title': 'Eksplorator',
+  'explorer.collapseAll': 'Zwiń wszystko',
+  'explorer.folder.tables': 'Tabele',
+  'explorer.folder.tableGroups': 'Grupy tabel',
+  'explorer.folder.memos': 'Notatki',
+  'explorer.folder.columns': 'Kolumny',
+  'explorer.folder.indexes': 'Indeksy',
+  'explorer.folder.foreignKeys': 'Klucze obce',
 } satisfies Messages;

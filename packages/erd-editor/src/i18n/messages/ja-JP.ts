@@ -401,4 +401,12 @@ export const jaJP = {
   'mapColumns.closedRelationshipRemoved':
     '列のマッピングを閉じました: リレーションシップが削除されました',
   'mapColumns.failed': '列をマッピングできませんでした: 図が変更されました',
+  'explorer.title': 'エクスプローラー',
+  'explorer.collapseAll': 'すべて折りたたむ',
+  'explorer.folder.tables': 'テーブル',
+  'explorer.folder.tableGroups': 'テーブルグループ',
+  'explorer.folder.memos': 'メモ',
+  'explorer.folder.columns': '列',
+  'explorer.folder.indexes': 'インデックス',
+  'explorer.folder.foreignKeys': '外部キー',
 } satisfies Messages;

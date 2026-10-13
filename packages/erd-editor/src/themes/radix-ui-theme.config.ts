@@ -113,6 +113,13 @@ export const ThemeConfig: Theme = {
   treeMuted: 'gray-11',
   treeMatch: 'accent-5',
 
+  // The Explorer's panel and its key icons. The icons take step 11 from the
+  // base, which holds 3:1 on every row fill in either appearance.
+  explorerBackground: 'gray-1',
+  explorerBorder: 'gray-6',
+  explorerPrimaryKey: `custom-orange--11`,
+  explorerForeignKey: `custom-blue--11`,
+
   diffInsertBackground: `custom-green--4`,
   diffDeleteBackground: `custom-red--4`,
   diffCrossBackground: `custom-blue--4`,

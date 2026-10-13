@@ -1,6 +1,10 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import {
+  isExplorerPressed,
+  toggleExplorer,
+} from '@/components/explorer/explorerCommands';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { TOOLBAR_DATABASE_NAME_WIDTH } from '@/constants/layout';
@@ -13,7 +17,6 @@ import {
   changeDatabaseNameAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
-  openFindReplaceAction,
   openLocalePickerAction,
   openThemeBuilderAction,
   toggleSearchAction,
@@ -66,13 +69,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     emitter.emit(toggleSearchAction());
   };
 
-  /** Shown on every tab, as opening brings the ERD tab up, so the bar never shifts. */
-  const handleFindReplace = () => {
-    const { emitter } = app.value;
-    emitter.emit(openFindReplaceAction());
+  /**
+   * Shown on every tab, as opening brings the ERD tab up, so the bar never
+   * shifts. Pressed while the Explorer is open on the ERD tab; on another tab
+   * a press only opens it there (an owner decision of 2026-10-13).
+   */
+  const handleExplorer = () => {
+    toggleExplorer(app.value.store);
   };
 
-  /** Spares the selection, and with it the ring on the panel's current match, as the chord does. */
+  /** Spares the selection, and with it the ring on a search's current match, as the chord does. */
   const keepSelection = (event: Event) => event.stopPropagation();
 
   const handleTheme = () => {
@@ -193,16 +199,20 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           <Icon name="search" size={16} />
         </div>
         <div
-          class={[styles.menu, { disabled: isTakenOver(store.state) }]}
-          title={title(
-            props.readonly ? t('common.find') : t('common.findAndReplace'),
-            KeyBindingName.findReplace
-          )}
+          class={[
+            'toolbar-explorer',
+            styles.menu,
+            {
+              active: isExplorerPressed(store),
+              disabled: isTakenOver(store.state),
+            },
+          ]}
+          title={t('explorer.title')}
           on:mousedown={keepSelection}
           on:touchstart={keepSelection}
-          on:click={handleFindReplace}
+          on:click={handleExplorer}
         >
-          <Icon name="text-search" size={16} />
+          <Icon name="panel-left" size={16} />
         </div>
         {props.enableThemeBuilder ? (
           <div

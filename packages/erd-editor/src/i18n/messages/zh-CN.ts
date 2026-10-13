@@ -374,4 +374,12 @@ export const zhCN = {
   'mapColumns.closedTableRemoved': '“映射列”已关闭：{table} 已被删除',
   'mapColumns.closedRelationshipRemoved': '“映射列”已关闭：关系已被删除',
   'mapColumns.failed': '无法映射列：图已更改',
+  'explorer.title': '对象资源管理器',
+  'explorer.collapseAll': '全部折叠',
+  'explorer.folder.tables': '表',
+  'explorer.folder.tableGroups': '表分组',
+  'explorer.folder.memos': '便笺',
+  'explorer.folder.columns': '列',
+  'explorer.folder.indexes': '索引',
+  'explorer.folder.foreignKeys': '外键',
 } satisfies Messages;

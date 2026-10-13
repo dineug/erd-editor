@@ -1368,7 +1368,7 @@ describe('createScopeActions / no focus actions', () => {
 });
 
 describe('createScopeActions / Find and Replace', () => {
-  it('draws the text-search icon the toolbar button and the context menu draw', async () => {
+  it('draws the text-search icon the context menu draws', async () => {
     expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('text-search');
   });
 

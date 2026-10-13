@@ -9,7 +9,20 @@ describe('ErdEditor.styles', () => {
   it('exports the root and scope css template literals', () => {
     expect(styles.root).toBeTruthy();
     expect(styles.scope).toBeTruthy();
-    expect(Object.keys(styles).sort()).toEqual(['root', 'scope']);
+    expect(Object.keys(styles).sort()).toEqual([
+      'erdRow',
+      'erdScope',
+      'root',
+      'scope',
+    ]);
+  });
+
+  it('lays the ERD tab out as a row whose canvas takes what the Explorer leaves', () => {
+    expect(rawOf(styles.erdRow)).toContain('flex-direction: row');
+    expect(rawOf(styles.erdScope)).toContain('flex: 1 1 0');
+    // Without it a canvas whose stage keeps a minimum width overflows the row.
+    expect(rawOf(styles.erdScope)).toContain('min-width: 0');
+    expect(styles.erdScope.values[0]).toBe(styles.scope.values[0]);
   });
 
   it('interpolates the shared container block into both templates', () => {

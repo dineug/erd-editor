@@ -10,6 +10,8 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__/index';
+import { layoutOf } from '@/components/erd-editor/viewportLayout';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import Toolbar from '@/components/toolbar/Toolbar';
 import * as styles from '@/components/toolbar/Toolbar.styles';
 import { Open } from '@/constants/open';
@@ -33,7 +35,6 @@ import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import {
-  openFindReplaceAction,
   openLocalePickerAction,
   openThemeBuilderAction,
   toggleSearchAction,
@@ -155,11 +156,7 @@ describe('Toolbar', () => {
             'ko:Search',
             KeyBindingName.search
           ),
-          toShortcutTitle(
-            app.keyBindingMap,
-            'ko:Find and Replace',
-            KeyBindingName.findReplace
-          ),
+          'ko:Explorer',
           'ko:Theme',
           toShortcutTitle(app.keyBindingMap, 'ko:Undo', KeyBindingName.undo),
           toShortcutTitle(app.keyBindingMap, 'ko:Redo', KeyBindingName.redo),
@@ -192,20 +189,14 @@ describe('Toolbar', () => {
       }
     });
 
-    it('reads Find in the language shown in a read-only editor', async () => {
+    it('offers the Explorer in a read-only editor too, in the language shown', async () => {
       const i18n = createTestI18n('ko-KR', pseudoMessages('ko'));
       const provider = provideI18n(document.body, i18n);
 
       try {
-        const { app } = await setup({ readonly: true });
+        await setup({ readonly: true });
 
-        expect(menu('ko:Find').title).toBe(
-          toShortcutTitle(
-            app.keyBindingMap,
-            'ko:Find',
-            KeyBindingName.findReplace
-          )
-        );
+        expect(menu('ko:Explorer')).not.toBeNull();
       } finally {
         provider.destroy();
       }
@@ -409,34 +400,34 @@ describe('Toolbar', () => {
     });
   });
 
-  describe('find and replace menu', () => {
-    const findReplace = () => menu('Find and Replace');
+  describe('explorer menu (AC-S2)', () => {
+    const explorer = () =>
+      root().querySelector('.toolbar-explorer') as HTMLDivElement;
+    const press = async () => {
+      explorer().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flush();
+    };
+    const pressed = () => explorer().classList.contains('active');
 
-    it('opens Find and Replace through the emitter', async () => {
-      const { app } = await setup();
-      const openFindReplace = vi.fn();
-      app.emitter.on({ openFindReplace });
+    it('stands right after Search, drawing the panel glyph under the Explorer title', async () => {
+      await setup();
 
-      findReplace().dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-      expect(openFindReplace).toHaveBeenCalledTimes(1);
-      expect(openFindReplace.mock.calls[0][0]).toEqual(openFindReplaceAction());
+      expect(menu('Search').nextElementSibling).toBe(explorer());
+      expect(iconNameOf(explorer())).toBe('panel-left');
+      expect(explorer().title).toBe('Explorer');
+      expect(pressed()).toBe(false);
     });
 
-    it('stands right after Search, enabled, and names its chord on the ERD tab', async () => {
+    it('opens the Explorer on a press and closes it on the next, pressed while open', async () => {
       const { app } = await setup();
 
-      expect(menu('Search').nextElementSibling).toBe(findReplace());
-      expect(iconNameOf(findReplace())).toBe('text-search');
-      expect(findReplace().getAttribute('class')).not.toContain('disabled');
-      expect(findReplace().title).toBe(
-        toShortcutTitle(
-          app.keyBindingMap,
-          'Find and Replace',
-          KeyBindingName.findReplace
-        )
-      );
-      expect(findReplace().title).not.toBe('Find and Replace');
+      await press();
+      expect(explorerViewOf(app.store).open).toBe(true);
+      expect(pressed()).toBe(true);
+
+      await press();
+      expect(explorerViewOf(app.store).open).toBe(false);
+      expect(pressed()).toBe(false);
     });
 
     for (const canvasType of [
@@ -445,31 +436,30 @@ describe('Toolbar', () => {
       CanvasType.generatorCode,
       CanvasType.settings,
     ]) {
-      it(`keeps its place and its chord on the ${canvasType} tab`, async () => {
+      it(`shows unpressed on the ${canvasType} tab, where a press takes the ERD tab and opens it (N-h)`, async () => {
         const { app } = await setup();
+        await press();
         app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
         await flush();
+        expect(pressed()).toBe(false);
 
-        expect(menu('Search').nextElementSibling).toBe(findReplace());
-        expect(findReplace().getAttribute('class')).not.toContain('disabled');
-        expect(findReplace().title).toBe(
-          toShortcutTitle(
-            app.keyBindingMap,
-            'Find and Replace',
-            KeyBindingName.findReplace
-          )
-        );
+        await press();
+
+        expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+        expect(explorerViewOf(app.store).open).toBe(true);
+        expect(pressed()).toBe(true);
       });
     }
 
-    it('reads Find in a read-only editor, which offers no replace', async () => {
-      const { app } = await setup({ readonly: true });
+    it('stays pressed while a canvas too narrow stands the panel aside, and a press closes it', async () => {
+      const { app } = await setup();
+      await press();
+      expect(layoutOf(app.store).reach).toBe(0);
+      expect(pressed()).toBe(true);
 
-      expect(findReplace()).toBeNull();
-      expect(menu('Search').nextElementSibling).toBe(menu('Find'));
-      expect(menu('Find').title).toBe(
-        toShortcutTitle(app.keyBindingMap, 'Find', KeyBindingName.findReplace)
-      );
+      await press();
+
+      expect(explorerViewOf(app.store).open).toBe(false);
     });
 
     for (const open of TAKEOVERS) {
@@ -478,8 +468,8 @@ describe('Toolbar', () => {
         app.store.dispatchSync(changeOpenMapAction({ [open]: true }));
         await flush();
 
-        expect(menu('Search').nextElementSibling).toBe(findReplace());
-        expect(findReplace().getAttribute('class')).toContain('disabled');
+        expect(menu('Search').nextElementSibling).toBe(explorer());
+        expect(explorer().getAttribute('class')).toContain('disabled');
       });
     }
 
@@ -491,19 +481,15 @@ describe('Toolbar', () => {
       );
       await flush();
 
-      expect(findReplace().getAttribute('class')).toContain('disabled');
+      expect(explorer().getAttribute('class')).toContain('disabled');
     });
 
-    it('spares the selection a press anywhere else in the bar clears, as the chord does', async () => {
+    it('spares the selection a press anywhere else in the bar clears', async () => {
       const { app } = await setup();
       app.store.dispatchSync(selectAction({ t1: SelectType.table }));
 
-      findReplace().dispatchEvent(
-        new MouseEvent('mousedown', { bubbles: true })
-      );
-      findReplace().dispatchEvent(
-        new TouchEvent('touchstart', { bubbles: true })
-      );
+      explorer().dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      explorer().dispatchEvent(new TouchEvent('touchstart', { bubbles: true }));
       await flush();
 
       expect(app.store.state.editor.selectedMap).toEqual({
@@ -511,14 +497,14 @@ describe('Toolbar', () => {
       });
     });
 
-    it('stays enabled under table properties, which opening the panel closes', async () => {
+    it('stays enabled under table properties', async () => {
       const { app } = await setup();
       app.store.dispatchSync(
         changeOpenMapAction({ [Open.tableProperties]: true })
       );
       await flush();
 
-      expect(findReplace().getAttribute('class')).not.toContain('disabled');
+      expect(explorer().getAttribute('class')).not.toContain('disabled');
     });
   });
 

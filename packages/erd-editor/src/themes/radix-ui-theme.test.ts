@@ -399,6 +399,23 @@ describe('the tree', () => {
     });
   });
 
+  it('keeps the Explorer key icons at 3:1 on the tree and on each row fill', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [theme.treeBackground, theme.treeRowHover, theme.treeRowCurrent].forEach(
+        fill => {
+          [theme.explorerPrimaryKey, theme.explorerForeignKey].forEach(icon => {
+            expect(
+              contrast(icon, fill),
+              labelOf(options)
+            ).toBeGreaterThanOrEqual(3);
+          });
+        }
+      );
+    });
+  });
+
   it('rings the active row in the focus colour rather than filling it', () => {
     everyThemeOptions.forEach(options => {
       const theme = createTheme(options);

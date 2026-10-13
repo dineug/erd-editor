@@ -9,7 +9,7 @@ The editor core, published on npm as `@dineug/erd-editor`: the framework-free `<
 
 ## Making a Change
 
-1. **Read the nested `AGENTS.md` files first.** Open the one in each `src/` directory the change touches and in each directory above it, up to this file; Subdirectories lists all eighteen. Root step 1 says which reads load them on their own, so open each one yourself. For a change another package sees, read that package's file too (root step 1): `mcp-server`'s for `peer.js`, `replication-store-worker`'s and `app`'s for `engine.js`, and `webview-client`'s, `obsidian-plugin`'s and `app`'s for the element's API.
+1. **Read the nested `AGENTS.md` files first.** Open the one in each `src/` directory the change touches and in each directory above it, up to this file; Subdirectories lists all nineteen. Root step 1 says which reads load them on their own, so open each one yourself. For a change another package sees, read that package's file too (root step 1): `mcp-server`'s for `peer.js`, `replication-store-worker`'s and `app`'s for `engine.js`, and `webview-client`'s, `obsidian-plugin`'s and `app`'s for the element's API.
 2. **Write the change with its specs** (root step 2). A spec's file name picks its project and its extension follows how it mounts (Testing Requirements). A string a user sees follows `src/i18n/AGENTS.md`: a dictionary key, or a literal where it stays as written.
 3. **Run the package's `test` task** (root step 3), which runs `tsc --noEmit`, then the `unit` and `browser` projects:
 
@@ -76,6 +76,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 | `src/components/generator-code/` | `AGENTS.md`: the Code Generator tab's options panel and when it shows, the code as a snapshot, Save file, the language menu's three groups, highlighting |
 | `src/components/map-columns/` | `AGENTS.md`: Map Columns and `relationship.changeColumns` |
 | `src/components/find-replace/` | `AGENTS.md`: Find and Replace, when the panel searches, and the matcher in `src/utils/find-replace/`, which has no file of its own |
+| `src/components/explorer/` | `AGENTS.md`: the Explorer docked left of the canvas, its state, its tree and where a row goes |
 | `src/components/quick-search/` | `AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |
 | `src/components/primitives/` | `AGENTS.md`: the color picker, removing a color, and the native list in `select/Select.tsx` |
 | `src/i18n/` | The display language runtime and `messages/`: `en/`, one file per part of the editor and the source every language follows, a `<code>.ts` per other language, and `index.ts`'s `messagesOf`; `imports.test.ts` holds the peer, engine and worker graphs to the rules in its `AGENTS.md`, which governs the option on the element, the one `I18n` object, `locale` naming, dictionaries, keys and parameters, what stays as written, the left-to-right canvas, the peer and worker graphs, the locale picker, `settingsPage.ts`, specs in English |

@@ -403,4 +403,12 @@ export const svSE = {
     '”Mappa kolumner” stängdes: relationen togs bort',
   'mapColumns.failed':
     'Det gick inte att mappa kolumnerna: diagrammet ändrades',
+  'explorer.title': 'Utforskaren',
+  'explorer.collapseAll': 'Fäll ihop alla',
+  'explorer.folder.tables': 'Tabeller',
+  'explorer.folder.tableGroups': 'Tabellgrupper',
+  'explorer.folder.memos': 'Anteckningar',
+  'explorer.folder.columns': 'Kolumner',
+  'explorer.folder.indexes': 'Index',
+  'explorer.folder.foreignKeys': 'Sekundärnycklar',
 } satisfies Messages;

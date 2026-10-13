@@ -374,4 +374,12 @@ export const zhTW = {
   'mapColumns.closedTableRemoved': '「對應欄位」已關閉：{table} 已移除',
   'mapColumns.closedRelationshipRemoved': '「對應欄位」已關閉：關聯已移除',
   'mapColumns.failed': '無法對應欄位：圖表已變更',
+  'explorer.title': '物件總管',
+  'explorer.collapseAll': '全部摺疊',
+  'explorer.folder.tables': '資料表',
+  'explorer.folder.tableGroups': '資料表群組',
+  'explorer.folder.memos': '備忘錄',
+  'explorer.folder.columns': '欄位',
+  'explorer.folder.indexes': '索引',
+  'explorer.folder.foreignKeys': '外鍵',
 } satisfies Messages;

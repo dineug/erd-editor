@@ -387,4 +387,12 @@ export const koKR = {
   'mapColumns.closedRelationshipRemoved':
     '컬럼 매핑을 닫았습니다: 관계가 삭제되었습니다',
   'mapColumns.failed': '컬럼을 매핑할 수 없습니다: 다이어그램이 바뀌었습니다',
+  'explorer.title': '탐색기',
+  'explorer.collapseAll': '모두 접기',
+  'explorer.folder.tables': '테이블',
+  'explorer.folder.tableGroups': '테이블 그룹',
+  'explorer.folder.memos': '메모',
+  'explorer.folder.columns': '컬럼',
+  'explorer.folder.indexes': '인덱스',
+  'explorer.folder.foreignKeys': '외래 키',
 } satisfies Messages;

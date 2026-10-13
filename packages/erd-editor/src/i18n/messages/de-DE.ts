@@ -417,4 +417,12 @@ export const deDE = {
     '„Spalten zuordnen“ wurde geschlossen: Die Beziehung wurde entfernt',
   'mapColumns.failed':
     'Spalten konnten nicht zugeordnet werden: Das Diagramm wurde geändert',
+  'explorer.title': 'Explorer',
+  'explorer.collapseAll': 'Alle einklappen',
+  'explorer.folder.tables': 'Tabellen',
+  'explorer.folder.tableGroups': 'Tabellengruppen',
+  'explorer.folder.memos': 'Notizen',
+  'explorer.folder.columns': 'Spalten',
+  'explorer.folder.indexes': 'Indizes',
+  'explorer.folder.foreignKeys': 'Fremdschlüssel',
 } satisfies Messages;

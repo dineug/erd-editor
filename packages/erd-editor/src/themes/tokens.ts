@@ -104,6 +104,11 @@ export type Theme = {
   treeMuted: string;
   treeMatch: string;
 
+  explorerBackground: string;
+  explorerBorder: string;
+  explorerPrimaryKey: string;
+  explorerForeignKey: string;
+
   diffInsertBackground: string;
   diffDeleteBackground: string;
   diffCrossBackground: string;
@@ -215,6 +220,11 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'treeRowCurrent',
   'treeMuted',
   'treeMatch',
+
+  'explorerBackground',
+  'explorerBorder',
+  'explorerPrimaryKey',
+  'explorerForeignKey',
 
   'diffInsertBackground',
   'diffDeleteBackground',

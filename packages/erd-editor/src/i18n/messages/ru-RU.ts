@@ -417,4 +417,12 @@ export const ruRU = {
   'mapColumns.closedRelationshipRemoved':
     'Окно «Сопоставить столбцы» закрыто: связь удалена',
   'mapColumns.failed': 'Не удалось сопоставить столбцы: диаграмма изменилась',
+  'explorer.title': 'Обозреватель',
+  'explorer.collapseAll': 'Свернуть все',
+  'explorer.folder.tables': 'Таблицы',
+  'explorer.folder.tableGroups': 'Группы таблиц',
+  'explorer.folder.memos': 'Заметки',
+  'explorer.folder.columns': 'Столбцы',
+  'explorer.folder.indexes': 'Индексы',
+  'explorer.folder.foreignKeys': 'Внешние ключи',
 } satisfies Messages;

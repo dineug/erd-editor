@@ -154,6 +154,8 @@ test.describe('Find and Replace', () => {
     await expect(pressedScopesOf(erd)).toHaveText([
       'Table names',
       'Column names',
+      'Index names',
+      'Table group names',
     ]);
     await expect(countOf(erd)).toHaveText('2 matches');
     await panelOf(erd).locator('.replace-input').fill('member');
@@ -181,6 +183,8 @@ test.describe('Find and Replace', () => {
       'Table names',
       'Column names',
       'Memos',
+      'Index names',
+      'Table group names',
     ]);
   });
 
@@ -328,11 +332,12 @@ test.describe('Find and Replace', () => {
     expect(await heard()).toEqual([false]);
   });
 
-  test('opens from its toolbar button on any tab, which stays put and greys out under time travel', async ({
+  test('toggles the Explorer from the toolbar button where Find stood, on any tab, greyed out under time travel', async ({
     erd,
   }) => {
     await erd.seed(schema());
-    const button = erd.toolbarButton('Find and Replace');
+    const button = erd.toolbarButton('Explorer');
+    const explorer = erd.host.locator('.explorer');
 
     // An edit, so time travel has a history to open on.
     await erd.focusHost();
@@ -342,7 +347,7 @@ test.describe('Find and Replace', () => {
 
     await expect(button).toHaveClass(/\bdisabled\b/);
     await button.click();
-    await expect(panelOf(erd)).toHaveCount(0);
+    await expect(explorer).toHaveCount(0);
 
     await erd.press('Escape');
     await expect(erd.toolbarButton('Undo')).toHaveCount(1);
@@ -354,15 +359,12 @@ test.describe('Find and Replace', () => {
     await button.click();
 
     expect((await erd.settings()).canvasType).toBe('ERD');
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    await expect(explorer).toBeVisible();
+    await expect(button).toHaveClass(/\bactive\b/);
 
-    // Pressed with the panel shown, it keeps the current match, as the chord does.
-    await erd.page.keyboard.type('user');
-    await erd.press('Enter');
-    await expect(countOf(erd)).toHaveText('1 of 2');
     await button.click();
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
-    await expect(countOf(erd)).toHaveText('1 of 2');
+    await expect(explorer).toHaveCount(0);
+    await expect(button).not.toHaveClass(/\bactive\b/);
   });
 
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({

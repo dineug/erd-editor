@@ -418,4 +418,12 @@ export const itIT = {
     '"Associa colonne" chiuso: la relazione è stata rimossa',
   'mapColumns.failed':
     'Impossibile associare le colonne: il diagramma è cambiato',
+  'explorer.title': 'Esplora',
+  'explorer.collapseAll': 'Comprimi tutto',
+  'explorer.folder.tables': 'Tabelle',
+  'explorer.folder.tableGroups': 'Gruppi di tabelle',
+  'explorer.folder.memos': 'Memo',
+  'explorer.folder.columns': 'Colonne',
+  'explorer.folder.indexes': 'Indici',
+  'explorer.folder.foreignKeys': 'Chiavi esterne',
 } satisfies Messages;

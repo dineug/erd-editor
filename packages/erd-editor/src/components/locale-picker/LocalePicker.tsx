@@ -10,6 +10,7 @@ import {
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { insetPastExplorer } from '@/components/erd-editor/viewportLayout';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
@@ -231,7 +232,11 @@ const LocalePicker: FC<LocalePickerProps> = (props, ctx) => {
     const system = localeInfoOf(props.systemLocale);
 
     return (
-      <div class={['locale-picker', styles.root]} on:keydown={handleKeydown}>
+      <div
+        class={['locale-picker', styles.root]}
+        style={insetPastExplorer(app.value.store, i18n.value.dir)}
+        on:keydown={handleKeydown}
+      >
         <div class={styles.header}>
           <div class={styles.title}>{t('common.displayLanguage')}</div>
           <button

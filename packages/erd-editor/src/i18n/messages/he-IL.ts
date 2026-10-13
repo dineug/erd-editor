@@ -395,4 +395,12 @@ export const heIL = {
   'mapColumns.closedTableRemoved': '"מיפוי עמודות" נסגר: הטבלה {table} הוסרה',
   'mapColumns.closedRelationshipRemoved': '"מיפוי עמודות" נסגר: הקשר הוסר',
   'mapColumns.failed': 'לא ניתן היה למפות את העמודות: התרשים השתנה',
+  'explorer.title': 'סייר',
+  'explorer.collapseAll': 'כווץ הכול',
+  'explorer.folder.tables': 'טבלאות',
+  'explorer.folder.tableGroups': 'קבוצות טבלאות',
+  'explorer.folder.memos': 'פתקים',
+  'explorer.folder.columns': 'עמודות',
+  'explorer.folder.indexes': 'אינדקסים',
+  'explorer.folder.foreignKeys': 'מפתחות זרים',
 } satisfies Messages;

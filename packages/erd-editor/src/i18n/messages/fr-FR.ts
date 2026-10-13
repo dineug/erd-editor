@@ -423,4 +423,12 @@ export const frFR = {
     '« Associer les colonnes » a été fermé : la relation a été supprimée',
   'mapColumns.failed':
     'Impossible d’associer les colonnes : le diagramme a changé',
+  'explorer.title': 'Explorateur',
+  'explorer.collapseAll': 'Tout réduire',
+  'explorer.folder.tables': 'Tables',
+  'explorer.folder.tableGroups': 'Groupes de tables',
+  'explorer.folder.memos': 'Mémos',
+  'explorer.folder.columns': 'Colonnes',
+  'explorer.folder.indexes': 'Index',
+  'explorer.folder.foreignKeys': 'Clés étrangères',
 } satisfies Messages;

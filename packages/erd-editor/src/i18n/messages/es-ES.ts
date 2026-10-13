@@ -418,4 +418,12 @@ export const esES = {
     'Se ha cerrado "Asignar columnas": se ha eliminado la relación',
   'mapColumns.failed':
     'No se pudieron asignar las columnas: el diagrama ha cambiado',
+  'explorer.title': 'Explorador',
+  'explorer.collapseAll': 'Contraer todo',
+  'explorer.folder.tables': 'Tablas',
+  'explorer.folder.tableGroups': 'Grupos de tablas',
+  'explorer.folder.memos': 'Notas',
+  'explorer.folder.columns': 'Columnas',
+  'explorer.folder.indexes': 'Índices',
+  'explorer.folder.foreignKeys': 'Claves externas',
 } satisfies Messages;

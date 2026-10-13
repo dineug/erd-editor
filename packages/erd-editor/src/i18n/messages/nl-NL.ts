@@ -411,4 +411,12 @@ export const nlNL = {
   'mapColumns.closedRelationshipRemoved':
     '"Kolommen toewijzen" gesloten: de relatie is verwijderd',
   'mapColumns.failed': 'Kan kolommen niet toewijzen: het diagram is gewijzigd',
+  'explorer.title': 'Verkenner',
+  'explorer.collapseAll': 'Alles samenvouwen',
+  'explorer.folder.tables': 'Tabellen',
+  'explorer.folder.tableGroups': 'Tabelgroepen',
+  'explorer.folder.memos': "Memo's",
+  'explorer.folder.columns': 'Kolommen',
+  'explorer.folder.indexes': 'Indexen',
+  'explorer.folder.foreignKeys': 'Refererende sleutels',
 } satisfies Messages;

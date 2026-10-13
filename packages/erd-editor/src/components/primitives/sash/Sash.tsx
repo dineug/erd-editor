@@ -28,6 +28,7 @@ export type SashProps = {
   left?: number;
   onMove?: (dragMove: DragMove) => void;
   onMousedown?: (event: MouseEvent) => void;
+  onDblclick?: (event: MouseEvent) => void;
 };
 
 const Sash: FC<SashProps> = (props, ctx) => {
@@ -75,6 +76,7 @@ const Sash: FC<SashProps> = (props, ctx) => {
           cursor: edge ? props.cursor : '',
         }}
         on:mousedown={handleMousedown}
+        on:dblclick={(event: MouseEvent) => props.onDblclick?.(event)}
       ></div>
     );
   };

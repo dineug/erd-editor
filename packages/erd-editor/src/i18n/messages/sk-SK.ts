@@ -414,4 +414,12 @@ export const skSK = {
   'mapColumns.closedRelationshipRemoved':
     'Okno „Mapovať stĺpce“ sa zavrelo: vzťah bol odstránený',
   'mapColumns.failed': 'Stĺpce sa nepodarilo namapovať: diagram sa zmenil',
+  'explorer.title': 'Prieskumník',
+  'explorer.collapseAll': 'Zbaliť všetko',
+  'explorer.folder.tables': 'Tabuľky',
+  'explorer.folder.tableGroups': 'Skupiny tabuliek',
+  'explorer.folder.memos': 'Poznámky',
+  'explorer.folder.columns': 'Stĺpce',
+  'explorer.folder.indexes': 'Indexy',
+  'explorer.folder.foreignKeys': 'Cudzie kľúče',
 } satisfies Messages;

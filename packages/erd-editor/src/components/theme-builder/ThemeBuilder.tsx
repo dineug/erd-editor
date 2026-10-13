@@ -3,6 +3,7 @@ import { get } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { insetPastExplorer } from '@/components/erd-editor/viewportLayout';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { IconName } from '@/components/primitives/icon/icons';
@@ -128,7 +129,10 @@ const ThemeBuilder: FC<ThemeBuilderProps> = (props, ctx) => {
     const { keyBindingMap } = app.value;
 
     return (
-      <div class={['theme-builder', styles.root]}>
+      <div
+        class={['theme-builder', styles.root]}
+        style={insetPastExplorer(store, i18n.value.dir)}
+      >
         <div class={styles.header}>
           <div class={styles.title}>{t('common.theme')}</div>
           <button

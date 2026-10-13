@@ -121,10 +121,11 @@
   - a menu row's name kept as written (`Menu`'s `literal`): the vendors, the code languages and the referential actions, so `C#` never reads `#C`.
 - **`Kbd` is `width: fit-content`.** So in a right-to-left cell it starts where the cell does.
 - **Set direction as a root attribute.** Never write it as a stylesheet rule. A global `.konvajs-content` rule would move the global bucket the `src/styles/emittedCss.*.test.ts` specs pin.
-- **Write other CSS as logical properties.** Other physical CSS became logical (`margin-inline-*`, `inset-inline-*`, `border-inline-*`). Four parts keep a physical left in every language:
+- **Write other CSS as logical properties.** Other physical CSS became logical (`margin-inline-*`, `inset-inline-*`, `border-inline-*`). Five parts keep a physical side in every language:
   - Find and Replace keeps the canvas's left (`left: 16px`), since `coveredWidth` measures from that edge (`PANEL_LEFT`) of a canvas that never mirrors.
   - The draw-target layer places its outline, strip and buttons by `left` in the canvas's coordinates. So the buttons stand on a table's left in every language, which `DrawTargetButtons.browser.test.tsx` checks in Arabic.
   - The table group draw's box (`TableGroupDraft.tsx`) is placed by `left` and a translate in the erd root's pixels. `useTableGroupDraw` measures from the root's left edge, so the box spans from the press in every language. `tableGroupCommands.browser.test.tsx` checks it right to left.
+  - The Explorer stands left of the canvas in a `dir="ltr"` row and keeps its border and its edge on the physical right (`border-right`, `right`), while its root and the canvas's scope take the reader's direction (`e2e/specs/explorer.spec.ts` checks it in Arabic).
   - The options panels keep `border-left`, and the Code Generator panel's is the Schema SQL panel's `shell.panel`. The rule stays beside the code in every language, since the row is `ltr` while the panel follows the reader. `SchemaSQLOptions.browser.test.tsx` checks it in Arabic.
 - **Open a context menu at the pointer.** It does so in every language.
 - **Open a submenu leftward under right-to-left.** Under a right-to-left language a submenu opens to the left of its row. `ContextMenuItem` passes `openLeft`, which `fitMenu` flips only when the left edge cuts it more. The chevron (`SubmenuChevron`) turns to match.

@@ -417,4 +417,12 @@ export const roRO = {
     '„Mapare coloane” s-a închis: relația a fost eliminată',
   'mapColumns.failed':
     'Coloanele nu au putut fi mapate: diagrama s-a modificat',
+  'explorer.title': 'Explorator',
+  'explorer.collapseAll': 'Restrânge tot',
+  'explorer.folder.tables': 'Tabele',
+  'explorer.folder.tableGroups': 'Grupuri de tabele',
+  'explorer.folder.memos': 'Note',
+  'explorer.folder.columns': 'Coloane',
+  'explorer.folder.indexes': 'Indexuri',
+  'explorer.folder.foreignKeys': 'Chei străine',
 } satisfies Messages;

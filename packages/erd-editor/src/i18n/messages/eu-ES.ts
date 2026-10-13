@@ -410,4 +410,12 @@ export const euES = {
     '"Mapatu zutabeak" itxi da: erlazioa kendu da',
   'mapColumns.failed':
     'Ezin izan dira zutabeak mapatu: diagrama aldatu egin da',
+  'explorer.title': 'Arakatzailea',
+  'explorer.collapseAll': 'Tolestu dena',
+  'explorer.folder.tables': 'Taulak',
+  'explorer.folder.tableGroups': 'Taula-taldeak',
+  'explorer.folder.memos': 'Oharrak',
+  'explorer.folder.columns': 'Zutabeak',
+  'explorer.folder.indexes': 'Indizeak',
+  'explorer.folder.foreignKeys': 'Gako arrotzak',
 } satisfies Messages;

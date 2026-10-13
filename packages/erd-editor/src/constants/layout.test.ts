@@ -14,6 +14,10 @@ import {
   DEFAULT_HEIGHT,
   DEFAULT_WIDTH,
   DIFF_TREE_WIDTH,
+  EXPLORER_CANVAS_MIN_WIDTH,
+  EXPLORER_MAX_WIDTH,
+  EXPLORER_MIN_WIDTH,
+  EXPLORER_WIDTH,
   HEADER_ICON_HEIGHT,
   HEADER_ICON_MARGIN_BOTTOM,
   INPUT_HEIGHT,
@@ -215,6 +219,15 @@ describe('layout constants', () => {
     expect(MINIMAP_MARGIN).toBe(20);
     expect(TOOLBAR_HEIGHT).toBe(30);
     expect(DIFF_TREE_WIDTH).toBe(200);
+  });
+
+  it('opens the Explorer at 260 px, sizes it from 200 to 480 and leaves the canvas 320', () => {
+    expect(EXPLORER_WIDTH).toBe(260);
+    expect(EXPLORER_MIN_WIDTH).toBe(200);
+    expect(EXPLORER_MAX_WIDTH).toBe(480);
+    expect(EXPLORER_CANVAS_MIN_WIDTH).toBe(320);
+    // The narrowest editor that shows it: its least width beside the canvas's.
+    expect(EXPLORER_MIN_WIDTH + EXPLORER_CANVAS_MIN_WIDTH).toBe(520);
   });
 
   it('gives the Schema SQL options panel 300 px and folds it away in an editor under 640 px', () => {

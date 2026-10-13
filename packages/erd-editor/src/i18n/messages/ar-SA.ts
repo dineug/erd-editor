@@ -415,4 +415,12 @@ export const arSA = {
   'mapColumns.closedRelationshipRemoved':
     'أُغلق "تعيين الأعمدة": تمت إزالة العلاقة',
   'mapColumns.failed': 'تعذر تعيين الأعمدة: تغيّر المخطط',
+  'explorer.title': 'المستكشف',
+  'explorer.collapseAll': 'طي الكل',
+  'explorer.folder.tables': 'الجداول',
+  'explorer.folder.tableGroups': 'مجموعات الجداول',
+  'explorer.folder.memos': 'الملاحظات',
+  'explorer.folder.columns': 'الأعمدة',
+  'explorer.folder.indexes': 'الفهارس',
+  'explorer.folder.foreignKeys': 'المفاتيح الخارجية',
 } satisfies Messages;

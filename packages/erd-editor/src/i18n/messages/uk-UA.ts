@@ -419,4 +419,12 @@ export const ukUA = {
   'mapColumns.closedRelationshipRemoved':
     'Вікно «Зіставити стовпці» закрито: зв’язок видалено',
   'mapColumns.failed': 'Не вдалося зіставити стовпці: діаграма змінилася',
+  'explorer.title': 'Оглядач',
+  'explorer.collapseAll': 'Згорнути все',
+  'explorer.folder.tables': 'Таблиці',
+  'explorer.folder.tableGroups': 'Групи таблиць',
+  'explorer.folder.memos': 'Нотатки',
+  'explorer.folder.columns': 'Стовпці',
+  'explorer.folder.indexes': 'Індекси',
+  'explorer.folder.foreignKeys': 'Зовнішні ключі',
 } satisfies Messages;

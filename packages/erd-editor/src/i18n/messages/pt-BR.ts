@@ -419,4 +419,12 @@ export const ptBR = {
   'mapColumns.closedRelationshipRemoved':
     '"Mapear colunas" foi fechado: o relacionamento foi removido',
   'mapColumns.failed': 'Não foi possível mapear as colunas: o diagrama mudou',
+  'explorer.title': 'Explorador',
+  'explorer.collapseAll': 'Recolher tudo',
+  'explorer.folder.tables': 'Tabelas',
+  'explorer.folder.tableGroups': 'Grupos de tabelas',
+  'explorer.folder.memos': 'Notas',
+  'explorer.folder.columns': 'Colunas',
+  'explorer.folder.indexes': 'Índices',
+  'explorer.folder.foreignKeys': 'Chaves estrangeiras',
 } satisfies Messages;

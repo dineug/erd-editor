@@ -15,6 +15,7 @@ import { fromEvent, throttleTime } from 'rxjs';
 import { appContext, createAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
 import { dropRelationshipHighlight } from '@/components/erd/relationshipHighlight';
+import Explorer from '@/components/explorer/Explorer';
 import ExportImage from '@/components/export-image/ExportImage';
 import FindReplace from '@/components/find-replace/FindReplace';
 import GeneratorCode from '@/components/generator-code/GeneratorCode';
@@ -379,15 +380,20 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           ) : null}
           {cache(
             settings.canvasType === CanvasType.ERD ? (
-              <div class={styles.scope}>
-                <Erd
-                  isDarkMode={isDarkMode}
-                  mouseTracking={state.mouseTracking}
-                  readonly={props.readonly}
-                  enableWelcomeScreen={props.enableWelcomeScreen}
-                  enableThemeBuilder={props.enableThemeBuilder}
-                  enableLocalePicker={props.enableLocalePicker}
-                />
+              // The Explorer stands left of the canvas in every language, as
+              // the canvas never mirrors; each takes the reader's direction inside.
+              <div class={styles.erdRow} prop:dir="ltr">
+                <Explorer />
+                <div class={styles.erdScope} prop:dir={i18n.dir}>
+                  <Erd
+                    isDarkMode={isDarkMode}
+                    mouseTracking={state.mouseTracking}
+                    readonly={props.readonly}
+                    enableWelcomeScreen={props.enableWelcomeScreen}
+                    enableThemeBuilder={props.enableThemeBuilder}
+                    enableLocalePicker={props.enableLocalePicker}
+                  />
+                </div>
               </div>
             ) : null
           )}

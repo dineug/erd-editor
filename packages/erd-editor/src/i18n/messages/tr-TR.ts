@@ -401,4 +401,12 @@ export const trTR = {
   'mapColumns.closedRelationshipRemoved':
     '"Sütunları eşle" kapatıldı: ilişki kaldırıldı',
   'mapColumns.failed': 'Sütunlar eşlenemedi: diyagram değişti',
+  'explorer.title': 'Gezgin',
+  'explorer.collapseAll': 'Tümünü daralt',
+  'explorer.folder.tables': 'Tablolar',
+  'explorer.folder.tableGroups': 'Tablo grupları',
+  'explorer.folder.memos': 'Notlar',
+  'explorer.folder.columns': 'Sütunlar',
+  'explorer.folder.indexes': 'Dizinler',
+  'explorer.folder.foreignKeys': 'Yabancı anahtarlar',
 } satisfies Messages;

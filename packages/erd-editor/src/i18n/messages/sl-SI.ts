@@ -416,4 +416,12 @@ export const slSI = {
     'Okno »Preslikaj stolpce« je zaprto: relacija je bila odstranjena',
   'mapColumns.failed':
     'Stolpcev ni bilo mogoče preslikati: diagram se je spremenil',
+  'explorer.title': 'Raziskovalec',
+  'explorer.collapseAll': 'Strni vse',
+  'explorer.folder.tables': 'Tabele',
+  'explorer.folder.tableGroups': 'Skupine tabel',
+  'explorer.folder.memos': 'Beležke',
+  'explorer.folder.columns': 'Stolpci',
+  'explorer.folder.indexes': 'Indeksi',
+  'explorer.folder.foreignKeys': 'Tuji ključi',
 } satisfies Messages;

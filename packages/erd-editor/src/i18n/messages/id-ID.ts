@@ -396,4 +396,12 @@ export const idID = {
   'mapColumns.closedRelationshipRemoved':
     '"Petakan kolom" ditutup: hubungan telah dihapus',
   'mapColumns.failed': 'Tidak dapat memetakan kolom: diagram telah berubah',
+  'explorer.title': 'Penjelajah',
+  'explorer.collapseAll': 'Ciutkan semua',
+  'explorer.folder.tables': 'Tabel',
+  'explorer.folder.tableGroups': 'Grup tabel',
+  'explorer.folder.memos': 'Memo',
+  'explorer.folder.columns': 'Kolom',
+  'explorer.folder.indexes': 'Indeks',
+  'explorer.folder.foreignKeys': 'Kunci asing',
 } satisfies Messages;

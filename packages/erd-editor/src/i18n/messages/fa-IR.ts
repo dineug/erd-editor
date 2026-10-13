@@ -398,4 +398,12 @@ export const faIR = {
   'mapColumns.closedRelationshipRemoved':
     '«نگاشت ستون‌ها» بسته شد: رابطه حذف شد',
   'mapColumns.failed': 'نگاشت ستون‌ها ممکن نشد: نمودار تغییر کرد',
+  'explorer.title': 'کاوشگر',
+  'explorer.collapseAll': 'جمع کردن همه',
+  'explorer.folder.tables': 'جدول‌ها',
+  'explorer.folder.tableGroups': 'گروه‌های جدول',
+  'explorer.folder.memos': 'یادداشت‌ها',
+  'explorer.folder.columns': 'ستون‌ها',
+  'explorer.folder.indexes': 'شاخص‌ها',
+  'explorer.folder.foreignKeys': 'کلیدهای خارجی',
 } satisfies Messages;
