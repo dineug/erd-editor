@@ -246,11 +246,11 @@ describe('ErdContextMenu / ERD type', () => {
     expect(iconNameOf(findItem(rootItems(), 'New Memo'))).toBe('sticky-note');
   });
 
-  it('draws Find and Replace with the text-search icon the palette draws', async () => {
+  it('draws Find and Replace with the list-tree icon the palette and the toolbar draw', async () => {
     await mountMenu();
 
     expect(iconNameOf(findItem(rootItems(), 'Find and Replace'))).toBe(
-      'text-search'
+      'list-tree'
     );
   });
 

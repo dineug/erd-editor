@@ -412,7 +412,7 @@ describe('Toolbar', () => {
       const { app } = await setup();
 
       expect(menu('Search').nextElementSibling).toBe(explorer());
-      expect(iconNameOf(explorer())).toBe('panel-left');
+      expect(iconNameOf(explorer())).toBe('list-tree');
       expect(explorer().title).toBe(
         toShortcutTitle(
           app.keyBindingMap,

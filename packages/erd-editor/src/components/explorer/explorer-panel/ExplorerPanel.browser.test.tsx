@@ -225,6 +225,9 @@ describe('ExplorerPanel - rows', () => {
     expect(textOf(rowOf('i:idx'))).toBe(
       'orders_user_idxUNIQUE (user_id DESC, total)'
     );
+    expect(
+      iconNameOf(rowOf('i:idx').querySelector('.tree-row > span:nth-child(2)')!)
+    ).toBe('logs');
     expect(textOf(rowOf('r:rel'))).toBe('user_id→ users(id)');
     const fk = rowOf('r:rel').querySelector('.tree-row > span:nth-child(2)')!;
     expect(iconNameOf(fk)).toBe('key-round');

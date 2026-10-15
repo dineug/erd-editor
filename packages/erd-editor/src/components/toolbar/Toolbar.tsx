@@ -212,7 +212,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           on:touchstart={keepSelection}
           on:click={handleExplorer}
         >
-          <Icon name="panel-left" size={16} />
+          <Icon name="list-tree" size={16} />
         </div>
         {props.enableThemeBuilder ? (
           <div

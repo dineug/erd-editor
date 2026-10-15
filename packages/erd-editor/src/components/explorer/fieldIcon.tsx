@@ -13,7 +13,7 @@ export function fieldIcon(field: FindField, size = 14): DOMTemplateLiterals {
     case FindField.memo:
       return <Icon name="sticky-note" size={size} />;
     case FindField.indexName:
-      return <Icon name="list-tree" size={size} />;
+      return <Icon name="logs" size={size} />;
     case FindField.tableGroupName:
       return <Icon name="group" size={size} />;
     default:

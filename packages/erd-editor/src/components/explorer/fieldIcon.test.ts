@@ -26,7 +26,7 @@ describe('fieldIcon', () => {
       [FindField.columnName, 'list'],
       [FindField.columnComment, 'message-square'],
       [FindField.memo, 'sticky-note'],
-      [FindField.indexName, 'list-tree'],
+      [FindField.indexName, 'logs'],
       [FindField.tableGroupName, 'group'],
     ];
 

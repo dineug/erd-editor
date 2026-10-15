@@ -1365,8 +1365,8 @@ describe('createScopeActions / no focus actions', () => {
 });
 
 describe('createScopeActions / Find and Replace', () => {
-  it('draws the text-search icon the context menu draws', async () => {
-    expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('text-search');
+  it('draws the list-tree icon the context menu and the toolbar draw', async () => {
+    expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('list-tree');
   });
 
   it('shows the find and replace chord and asks the panel to open', () => {
@@ -1423,8 +1423,8 @@ describe('createScopeActions / Find and Replace', () => {
 });
 
 describe('createScopeActions / Toggle Explorer', () => {
-  it('draws the panel-left icon the toolbar button draws', async () => {
-    expect(await iconOf(find(scope(), 'Toggle Explorer'))).toBe('panel-left');
+  it('draws the list-tree icon the toolbar button draws', async () => {
+    expect(await iconOf(find(scope(), 'Toggle Explorer'))).toBe('list-tree');
   });
 
   it('opens the Explorer on the ERD tab from any tab, and closes it shown', () => {

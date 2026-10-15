@@ -547,7 +547,7 @@ export function createScopeActions(
       filter: isGeneratorCodeTab,
     },
     {
-      icon: <Icon name="text-search" size={16} />,
+      icon: <Icon name="list-tree" size={16} />,
       ...named(i18n, 'common.findAndReplace', 'palette.keywords.findReplace'),
       shortcut: keyBindingMap.findReplace[0]?.shortcut,
       perform: ({ emitter }) => {
@@ -556,7 +556,7 @@ export function createScopeActions(
       filter: canOpenFindReplace,
     },
     {
-      icon: <Icon name="panel-left" size={16} />,
+      icon: <Icon name="list-tree" size={16} />,
       ...named(i18n, 'explorer.toggle', 'palette.keywords.explorer'),
       perform: ({ store }) => toggleExplorer(store),
       filter: canOpenFindReplace,

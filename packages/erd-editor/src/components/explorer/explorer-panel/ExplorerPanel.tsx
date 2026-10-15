@@ -317,7 +317,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
         return (
           <>
             <span class={styles.rowIcon}>
-              <Icon name="list-tree" size={14} />
+              <Icon name="logs" size={14} />
             </span>
             {label(node.name, unnamed, node.matches)}
             <span class={styles.muted} title={detail} prop:dir="ltr">
