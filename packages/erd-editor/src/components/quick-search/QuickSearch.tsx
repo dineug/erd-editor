@@ -5,6 +5,7 @@ import {
   observable,
   onMounted,
   ref,
+  repeat,
   watch,
 } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
@@ -23,6 +24,11 @@ import { arrayHas } from '@/utils/arrayHas';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
 import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
+import {
+  offsetToShow,
+  type VirtualRange,
+  visibleRange,
+} from '@/utils/virtualRange';
 
 import {
   Action,
@@ -31,6 +37,7 @@ import {
   searchActions,
 } from './actions';
 import { clearHangulForms, findPaletteChunks } from './hangul';
+import { PALETTE_ROW_HEIGHT, paletteListHeight } from './paletteList';
 import {
   PALETTE_PREFIXES,
   PaletteQuery,
@@ -55,6 +62,11 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const i18n = useI18n(ctx);
   const { addUnsubscribe } = useUnmounted();
   const root = createRef<HTMLDivElement>();
+  const list = createRef<HTMLDivElement>();
+  // Only a new range renders the list: a scroll inside the overscan changes
+  // nothing drawn, so the offset itself stays unobserved, as in the tree.
+  const range = observable<VirtualRange>({ first: 0, last: -1 });
+  const scroll = { top: 0 };
 
   const state = observable({
     keyword: '',
@@ -81,10 +93,43 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   /** What the list shows: the level's commands or their fuzzy hits, at the top level the prefixes offered below them, or a scope's rows. */
   const getActions = () => byFilter(state.rows);
 
+  const rangeOf = (count: number) =>
+    visibleRange(
+      count,
+      scroll.top,
+      paletteListHeight(count),
+      PALETTE_ROW_HEIGHT
+    );
+
+  const syncRange = () => {
+    const { first, last } = rangeOf(getActions().length);
+    if (first !== range.first) range.first = first;
+    if (last !== range.last) range.last = last;
+  };
+
+  /** Scrolls the list to an offset, read back as the browser clamps it. */
+  const scrollListTo = (top: number) => {
+    const $list = list.value;
+    scroll.top = top;
+    if ($list) {
+      $list.scrollTop = top;
+      scroll.top = $list.scrollTop;
+    }
+    syncRange();
+  };
+
+  const handleScroll = () => {
+    const $list = list.value;
+    if (!$list || $list.scrollTop === scroll.top) return;
+    scroll.top = $list.scrollTop;
+    syncRange();
+  };
+
   const setLevel = (actions: Action[]) => {
     state.level = actions;
     state.rows = scopeBase(actions, null);
     state.missed = false;
+    scrollListTo(0);
   };
 
   /** What is typed, read for a prefix at the top level only; a submenu filters its own rows. */
@@ -115,6 +160,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
       : paletteRows(app.value, found, query, i18n.value);
     state.missed =
       !state.submenu && query.scope === null && !noKeyword && !found.length;
+    // A new list starts at its top, as the keyboard's row does.
+    scrollListTo(0);
   };
 
   /** Types a prefix for the reader, as a help row or a hint does, and leaves the caret after it. */
@@ -138,11 +185,19 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     return table ? [keyword, table] : [keyword];
   };
 
+  /** Brings the keyboard's row into view once the list holds it, drawn or not. */
   const scrollIntoView = () => {
     nextTick(() => {
-      root.value?.querySelector('.selected')?.scrollIntoView({
-        block: 'nearest',
-      });
+      const count = getActions().length;
+      if (state.index < 0 || state.index >= count) return;
+      scrollListTo(
+        offsetToShow(
+          state.index,
+          scroll.top,
+          paletteListHeight(count),
+          PALETTE_ROW_HEIGHT
+        )
+      );
     });
   };
 
@@ -319,6 +374,50 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     canClose && handleClose();
   };
 
+  // The icon slot stays on a row without one, so every name starts in one
+  // line, as a context menu's does.
+  const renderRow = (
+    action: Action,
+    index: number,
+    selected: boolean,
+    searchWords: string[]
+  ) => (
+    <div
+      class={['quick-search-row', styles.action, { selected }]}
+      style={{ transform: `translateY(${index * PALETTE_ROW_HEIGHT}px)` }}
+      on:click={(event: MouseEvent) => {
+        event.stopPropagation();
+        handlePerform(index);
+      }}
+    >
+      <div class={styles.icon}>{action.icon}</div>
+      <span class={styles.name} prop:dir="auto">
+        <HighlightedText
+          searchWords={searchWords}
+          textToHighlight={action.name}
+          findChunks={findPaletteChunks}
+        />
+      </span>
+      {action.keywords ? (
+        <>
+          <div class={styles.vertical}></div>
+          <span class={styles.keyword} prop:dir="auto" title={action.keywords}>
+            <HighlightedText
+              searchWords={searchWords}
+              textToHighlight={action.keywords}
+              findChunks={findPaletteChunks}
+            />
+          </span>
+        </>
+      ) : null}
+      {action.shortcut ? (
+        <div class={styles.shortcut}>
+          <Kbd shortcut={action.shortcut} />
+        </div>
+      ) : null}
+    </div>
+  );
+
   onMounted(() => {
     const { shortcut$, emitter } = app.value;
 
@@ -351,6 +450,15 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     const query = readQuery(state.keyword);
     const searchWords = getSearchWords(query);
     const topLevel = !state.submenu;
+    const actions = getActions();
+    // Read here, since repeat builds each row outside this render: a new
+    // selection or range renders the list, rows that arrive moving the range.
+    const selected = state.index;
+    void range.first;
+    void range.last;
+    const { first, last } = rangeOf(actions.length);
+    const indexes: number[] = [];
+    for (let index = first; index <= last; index++) indexes.push(index);
 
     return (
       <div class={styles.root} on:click={handleOutsideClick}>
@@ -394,48 +502,28 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
               {t('palette.noCommandsMatch')}
             </div>
           ) : null}
-          <div class={['scrollbar', styles.list]}>
-            {getActions().map((action, index) => (
-              <div
-                class={[styles.action, { selected: index === state.index }]}
-                on:click={(event: MouseEvent) => {
-                  event.stopPropagation();
-                  handlePerform(index);
-                }}
-              >
-                {action.icon ? (
-                  <div class={styles.icon}>{action.icon}</div>
-                ) : null}
-                <span class={styles.name} prop:dir="auto">
-                  <HighlightedText
-                    searchWords={searchWords}
-                    textToHighlight={action.name}
-                    findChunks={findPaletteChunks}
-                  />
-                </span>
-                {action.keywords ? (
-                  <>
-                    <div class={styles.vertical}></div>
-                    <span
-                      class={styles.keyword}
-                      prop:dir="auto"
-                      title={action.keywords}
-                    >
-                      <HighlightedText
-                        searchWords={searchWords}
-                        textToHighlight={action.keywords}
-                        findChunks={findPaletteChunks}
-                      />
-                    </span>
-                  </>
-                ) : null}
-                {action.shortcut ? (
-                  <div class={styles.shortcut}>
-                    <Kbd shortcut={action.shortcut} />
-                  </div>
-                ) : null}
-              </div>
-            ))}
+          <div
+            class={['scrollbar', styles.list]}
+            use:ref={ref(list)}
+            style={{ height: `${paletteListHeight(actions.length)}px` }}
+            on:scroll={handleScroll}
+          >
+            <div
+              class={styles.space}
+              style={{ height: `${actions.length * PALETTE_ROW_HEIGHT}px` }}
+            >
+              {repeat(
+                indexes,
+                index => index,
+                index =>
+                  renderRow(
+                    actions[index],
+                    index,
+                    index === selected,
+                    searchWords
+                  )
+              )}
+            </div>
           </div>
         </div>
       </div>

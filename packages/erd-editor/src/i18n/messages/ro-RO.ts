@@ -109,7 +109,6 @@ export const roRO = {
   'code.copy': 'Copiere',
   'code.savedInDocument': 'Salvate în document',
   'code.saveFile': 'Salvare fișier',
-  'code.saveFileMenu': 'Salvare fișier…',
   'code.optionsPanel': 'Panou de opțiuni',
   'code.hideOptions': 'Ascundere opțiuni',
   'code.showOptions': 'Afișare opțiuni',
@@ -251,11 +250,6 @@ export const roRO = {
   'colorPicker.preset.gray': 'Gri',
   'palette.tab': 'Filă',
   'palette.noCommandsMatch': 'Nicio comandă nu corespunde',
-  'palette.showMatches': {
-    one: 'Afișare în Găsire și înlocuire: {count} potrivire',
-    few: 'Afișare în Găsire și înlocuire: toate cele {count} potriviri',
-    other: 'Afișare în Găsire și înlocuire: toate cele {count} de potriviri',
-  },
   'palette.searchTables': 'Căutare „{keyword}” în tabele',
   'palette.searchColumns': 'Căutare „{keyword}” în coloane',
   'palette.searchText': 'Căutare „{keyword}” în comentarii și note',
@@ -279,7 +273,6 @@ export const roRO = {
   'palette.schemaSqlHeader': 'Schemă SQL: Antet',
   'palette.schemaSqlOptionsPanel': 'Schemă SQL: Panou de opțiuni',
   'palette.codeGeneratorOptionsPanel': 'Generator de cod: Panou de opțiuni',
-  'palette.exportSchemaSql': 'Export: Schemă SQL',
   'palette.groupSelectedTables': 'Grupare tabele selectate',
   'palette.keywords.schemaSqlStatements':
     'creare dacă nu există ștergere înlocuire',
@@ -288,7 +281,6 @@ export const roRO = {
     'afișare ascundere înainte după scripturi',
   'palette.keywords.codeGeneratorOptionsPanel':
     'afișare ascundere bază de date stil salvare fișier',
-  'palette.keywords.exportSchemaSql': 'sql ddl fișier',
   'settings.preferences': 'Preferințe',
   'settings.relationshipDataTypeSync': 'Sincronizare tip de date în relații',
   'settings.maxCommentWidth': 'Lățime maximă comentarii',

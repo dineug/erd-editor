@@ -110,7 +110,6 @@ export const deDE = {
   'code.copy': 'Kopieren',
   'code.savedInDocument': 'Im Dokument gespeichert',
   'code.saveFile': 'Datei speichern',
-  'code.saveFileMenu': 'Datei speichern…',
   'code.optionsPanel': 'Optionsbereich',
   'code.hideOptions': 'Optionen ausblenden',
   'code.showOptions': 'Optionen einblenden',
@@ -249,10 +248,6 @@ export const deDE = {
   'colorPicker.preset.gray': 'Grau',
   'palette.tab': 'Registerkarte',
   'palette.noCommandsMatch': 'Keine passenden Befehle',
-  'palette.showMatches': {
-    one: '{count} Treffer in „Suchen und Ersetzen“ anzeigen',
-    other: 'Alle {count} Treffer in „Suchen und Ersetzen“ anzeigen',
-  },
   'palette.searchTables': 'Tabellen nach „{keyword}“ durchsuchen',
   'palette.searchColumns': 'Spalten nach „{keyword}“ durchsuchen',
   'palette.searchText': 'Kommentare & Notizen nach „{keyword}“ durchsuchen',
@@ -277,7 +272,6 @@ export const deDE = {
   'palette.schemaSqlHeader': 'Schema SQL: Vorspann',
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Optionsbereich',
   'palette.codeGeneratorOptionsPanel': 'Codegenerator: Optionsbereich',
-  'palette.exportSchemaSql': 'Exportieren: Schema SQL',
   'palette.groupSelectedTables': 'Ausgewählte Tabellen gruppieren',
   'palette.keywords.schemaSqlStatements':
     'erstellen falls nicht vorhanden löschen ersetzen',
@@ -286,7 +280,6 @@ export const deDE = {
     'einblenden ausblenden vor nach skripte',
   'palette.keywords.codeGeneratorOptionsPanel':
     'einblenden ausblenden datenbank schreibweise datei speichern',
-  'palette.keywords.exportSchemaSql': 'sql ddl datei',
   'settings.preferences': 'Voreinstellungen',
   'settings.relationshipDataTypeSync':
     'Datentyp-Synchronisierung für Beziehungen',

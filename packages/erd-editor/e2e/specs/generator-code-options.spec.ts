@@ -226,11 +226,11 @@ test.describe('the Code Generator options panel', () => {
       'Table Name Case',
       'Column Name Case',
       'Options panel',
-      'Save file…',
+      'Save file',
     ]);
 
     const fromMenu = erd.page.waitForEvent('download');
-    await erd.contextMenu.getByText('Save file…', { exact: true }).click();
+    await erd.contextMenu.getByText('Save file', { exact: true }).click();
     expect((await fromMenu).suggestedFilename()).toMatch(fileNamed('json'));
     expect(downloads).toHaveLength(2);
   });

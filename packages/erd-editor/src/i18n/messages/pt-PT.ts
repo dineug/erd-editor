@@ -110,7 +110,6 @@ export const ptPT = {
   'code.copy': 'Copiar',
   'code.savedInDocument': 'Guardado no documento',
   'code.saveFile': 'Guardar ficheiro',
-  'code.saveFileMenu': 'Guardar ficheiro…',
   'code.optionsPanel': 'Painel de opções',
   'code.hideOptions': 'Ocultar opções',
   'code.showOptions': 'Mostrar opções',
@@ -252,12 +251,6 @@ export const ptPT = {
   'colorPicker.preset.gray': 'Cinzento',
   'palette.tab': 'Separador',
   'palette.noCommandsMatch': 'Nenhum comando correspondente',
-  'palette.showMatches': {
-    one: 'Mostrar {count} correspondência em Localizar e substituir',
-    many: 'Mostrar todas as {count} correspondências em Localizar e substituir',
-    other:
-      'Mostrar todas as {count} correspondências em Localizar e substituir',
-  },
   'palette.searchTables': 'Pesquisar "{keyword}" nas tabelas',
   'palette.searchColumns': 'Pesquisar "{keyword}" nas colunas',
   'palette.searchText': 'Pesquisar "{keyword}" nos comentários e notas',
@@ -283,7 +276,6 @@ export const ptPT = {
   'palette.schemaSqlHeader': 'Esquema SQL: Cabeçalho',
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Painel de opções',
   'palette.codeGeneratorOptionsPanel': 'Gerador de código: Painel de opções',
-  'palette.exportSchemaSql': 'Exportar: Esquema SQL',
   'palette.groupSelectedTables': 'Agrupar tabelas selecionadas',
   'palette.keywords.schemaSqlStatements':
     'criar se não existir eliminar substituir',
@@ -292,7 +284,6 @@ export const ptPT = {
     'mostrar ocultar antes depois scripts',
   'palette.keywords.codeGeneratorOptionsPanel':
     'mostrar ocultar base de dados formato guardar ficheiro',
-  'palette.keywords.exportSchemaSql': 'sql ddl ficheiro',
   'settings.preferences': 'Preferências',
   'settings.relationshipDataTypeSync':
     'Sincronização do tipo de dados nas relações',

@@ -109,7 +109,6 @@ export const itIT = {
   'code.copy': 'Copia',
   'code.savedInDocument': 'Salvato nel documento',
   'code.saveFile': 'Salva file',
-  'code.saveFileMenu': 'Salva file…',
   'code.optionsPanel': 'Pannello opzioni',
   'code.hideOptions': 'Nascondi opzioni',
   'code.showOptions': 'Mostra opzioni',
@@ -252,11 +251,6 @@ export const itIT = {
   'colorPicker.preset.gray': 'Grigio',
   'palette.tab': 'Scheda',
   'palette.noCommandsMatch': 'Nessun comando corrispondente',
-  'palette.showMatches': {
-    one: 'Mostra {count} corrispondenza in Trova e sostituisci',
-    many: 'Mostra tutte le {count} corrispondenze in Trova e sostituisci',
-    other: 'Mostra tutte le {count} corrispondenze in Trova e sostituisci',
-  },
   'palette.searchTables': 'Cerca "{keyword}" nelle tabelle',
   'palette.searchColumns': 'Cerca "{keyword}" nelle colonne',
   'palette.searchText': 'Cerca "{keyword}" in commenti e memo',
@@ -281,7 +275,6 @@ export const itIT = {
   'palette.schemaSqlHeader': 'Schema SQL: Intestazione',
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Pannello opzioni',
   'palette.codeGeneratorOptionsPanel': 'Generatore di codice: Pannello opzioni',
-  'palette.exportSchemaSql': 'Esporta: Schema SQL',
   'palette.groupSelectedTables': 'Raggruppa le tabelle selezionate',
   'palette.keywords.schemaSqlStatements':
     'crea se non esiste elimina sostituisci',
@@ -289,7 +282,6 @@ export const itIT = {
   'palette.keywords.schemaSqlOptionsPanel': 'mostra nascondi prima dopo script',
   'palette.keywords.codeGeneratorOptionsPanel':
     'mostra nascondi database stile salva file',
-  'palette.keywords.exportSchemaSql': 'sql ddl file',
   'settings.preferences': 'Preferenze',
   'settings.relationshipDataTypeSync':
     'Sincronizzazione tipo di dati nelle relazioni',

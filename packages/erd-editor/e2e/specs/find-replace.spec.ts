@@ -249,6 +249,8 @@ test.describe('Find and Replace', () => {
     // pressed once more it opens it with the query selected.
     await erd.press(Shortcut.findReplace);
     await expect(panelOf(erd)).toHaveCount(0);
+    // The panel hands the keyboard back as it goes, on the next tick.
+    await erd.expectKeyboardFocusInside();
     await erd.press(Shortcut.findReplace);
     await expect(panelOf(erd)).toHaveCount(1);
     await expect(findInput).toBeFocused();
@@ -662,7 +664,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(palette.locator('.quick-search-empty')).toHaveText(
       'No commands match'
     );
-    await expect(palette.locator('.scrollbar > div')).toHaveText([
+    await expect(palette.locator('.quick-search-row')).toHaveText([
       /^#\s*Search tables for "us"$/,
       /^@\s*Search columns for "us"$/,
       /^:\s*Search comments & memos for "us"$/,
@@ -675,7 +677,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.seed(schema());
     await erd.focusHost();
     const palette = erd.host.locator('.quick-search');
-    const rows = palette.locator('.scrollbar > div');
+    const rows = palette.locator('.quick-search-row');
     const input = palette.locator('input');
 
     await erd.press(Shortcut.search);
@@ -752,7 +754,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.seed(schema());
     await erd.focusHost();
     const palette = erd.host.locator('.quick-search');
-    const rows = palette.locator('.scrollbar > div');
+    const rows = palette.locator('.quick-search-row');
     const input = palette.locator('input');
     /** The three prefixes under the line, users fuzzing to no command at 0.4. */
     const expectListed = async () => {

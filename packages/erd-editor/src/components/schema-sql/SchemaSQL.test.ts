@@ -809,10 +809,10 @@ describe('SchemaSQL', () => {
 
     const text = contentOf(mounted)?.textContent ?? '';
     expect(text).toContain('Statements');
-    expect(text).toContain('Save file…');
+    expect(text).toContain('Save file');
 
     const saveRow = Array.from(contentOf(mounted)?.children ?? []).find(row =>
-      row.textContent?.includes('Save file…')
+      row.textContent?.includes('Save file')
     ) as HTMLElement;
     saveRow.click();
     await flush();

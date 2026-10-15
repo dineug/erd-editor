@@ -109,7 +109,6 @@ export const ukUA = {
   'code.copy': 'Копіювати',
   'code.savedInDocument': 'Зберігається в документі',
   'code.saveFile': 'Зберегти файл',
-  'code.saveFileMenu': 'Зберегти файл…',
   'code.optionsPanel': 'Панель параметрів',
   'code.hideOptions': 'Сховати параметри',
   'code.showOptions': 'Показати параметри',
@@ -257,12 +256,6 @@ export const ukUA = {
   'colorPicker.preset.gray': 'Сірий',
   'palette.tab': 'Вкладка',
   'palette.noCommandsMatch': 'Немає відповідних команд',
-  'palette.showMatches': {
-    one: 'Показати {count} збіг на панелі «Знайти й замінити»',
-    few: 'Показати всі {count} збіги на панелі «Знайти й замінити»',
-    many: 'Показати всі {count} збігів на панелі «Знайти й замінити»',
-    other: 'Показати всі {count} збігу на панелі «Знайти й замінити»',
-  },
   'palette.searchTables': 'Шукати «{keyword}» у таблицях',
   'palette.searchColumns': 'Шукати «{keyword}» у стовпцях',
   'palette.searchText': 'Шукати «{keyword}» у коментарях і нотатках',
@@ -286,7 +279,6 @@ export const ukUA = {
   'palette.schemaSqlHeader': 'Схема SQL: Заголовок',
   'palette.schemaSqlOptionsPanel': 'Схема SQL: Панель параметрів',
   'palette.codeGeneratorOptionsPanel': 'Генератор коду: Панель параметрів',
-  'palette.exportSchemaSql': 'Експортувати: Схема SQL',
   'palette.groupSelectedTables': 'Згрупувати виділені таблиці',
   'palette.keywords.schemaSqlStatements':
     'створити якщо не існує видалити замінити',
@@ -295,7 +287,6 @@ export const ukUA = {
     'показати сховати перед після скрипти',
   'palette.keywords.codeGeneratorOptionsPanel':
     'показати сховати база даних стиль зберегти файл',
-  'palette.keywords.exportSchemaSql': 'sql ddl файл',
   'settings.preferences': 'Параметри',
   'settings.relationshipDataTypeSync': 'Синхронізація типів даних у зв’язках',
   'settings.maxCommentWidth': 'Максимальна ширина коментаря',

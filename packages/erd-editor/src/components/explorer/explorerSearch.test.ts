@@ -8,6 +8,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { openSearchOn } from '@/__test-utils__/explorerSearch';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
   createTestAppContext,
@@ -51,7 +52,6 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import type { Unsubscribe } from '@/internal-types';
-import { openFindReplaceAction } from '@/utils/emitter';
 import {
   DEFAULT_FIND_FIELDS,
   FindField,
@@ -107,14 +107,9 @@ const texts = () => {
   };
 };
 
-/** Opens the search through the emitter, handed a query searched in the scopes given, or with none. */
-const open = async (
-  query?: string,
-  fields: FindField[] = [...FindFieldList]
-) => {
-  app.emitter.emit(
-    openFindReplaceAction(query === undefined ? undefined : { query, fields })
-  );
+/** Opens the search as the palette row does, then searches a query in the scopes given, or none. */
+const open = async (query?: string, fields?: FindField[]) => {
+  openSearchOn(app, query, fields);
   await flush();
 };
 
@@ -192,13 +187,6 @@ describe('explorer search opening', () => {
     }
   });
 
-  it('searches a query handed over at once', async () => {
-    await open('user');
-
-    expect(view().query).toBe('user');
-    expect(count()).toBe('5 matches');
-  });
-
   /** An owner decision: a comment or memo is prose, which a rename across the names would rewrite too. */
   it('searches first the names of tables, columns, indexes and table groups alone (AC-Q2)', async () => {
     await open();
@@ -230,48 +218,6 @@ describe('explorer search opening', () => {
     await setup();
     await open();
     expect(view().fields).toEqual(DEFAULT_FIND_FIELDS);
-  });
-
-  it('searches a query handed over with the default options and the scopes it names, whatever was left on', async () => {
-    await open();
-    for (const key of [
-      'regex',
-      'matchCase',
-      'wholeWord',
-      'preserveCase',
-    ] as const) {
-      toggleOption(app.store, key);
-    }
-    toggleField(app.store, FindField.memo);
-    closeExplorer(app.store);
-
-    await open('user(');
-
-    expect(count()).toBe('No results');
-    expect(view()).toMatchObject({
-      regex: false,
-      matchCase: false,
-      wholeWord: false,
-      preserveCase: false,
-    });
-    expect(view().fields).toEqual(FindFieldList);
-
-    await open('user', [FindField.columnName]);
-    expect(view().fields).toEqual([FindField.columnName]);
-    expect(count()).toBe('1 match');
-
-    await open('user', [
-      FindField.memo,
-      FindField.tableComment,
-      FindField.columnComment,
-    ]);
-    // In the search's own order, whatever order they were handed in.
-    expect(view().fields).toEqual([
-      FindField.tableComment,
-      FindField.columnComment,
-      FindField.memo,
-    ]);
-    expect(count()).toBe('3 matches');
   });
 
   it('keeps the options left on when opened with no query', async () => {

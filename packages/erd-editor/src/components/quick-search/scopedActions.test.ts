@@ -41,15 +41,10 @@ import {
   paletteRows,
   rankTableActions,
   scopeBase,
-  SCOPED_ACTION_LIMIT,
   TEXT_FIELDS,
 } from '@/components/quick-search/scopedActions';
-import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
-import {
-  changeOpenMapAction,
-  changeViewportAction,
-} from '@/engine/modules/editor/atom.actions';
+import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
   addMemoAction,
   changeMemoValueAction,
@@ -67,7 +62,6 @@ import {
 import { createI18n, type I18n } from '@/i18n/translate';
 import { getColumnRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
-import { openFindReplaceAction } from '@/utils/emitter';
 import { FindField } from '@/utils/find-replace';
 
 /** Counts each text the palette spells into jamo, the work that grows with the document. */
@@ -94,19 +88,6 @@ const rowsFor = (value: string) => {
   const base = scopeBase(visible(), query.scope);
   const found = query.keyword ? searchActions(base, query.keyword) : base;
   return paletteRows(app, found, query);
-};
-
-/** What a row hands Find and Replace when chosen. */
-const handedOver = (action: Action | undefined) => {
-  const opened: unknown[] = [];
-  const off = app.emitter.on({
-    openFindReplace: event => {
-      opened.push(event);
-    },
-  });
-  action?.perform?.(app);
-  off();
-  return opened;
 };
 
 const addTables = (count: number, name: (index: number) => string) => {
@@ -150,7 +131,6 @@ const ERD_COMMANDS = [
   'One Only',
   'One N',
   'Auto Layout',
-  'Export: Schema SQL',
   'Find and Replace',
   'Toggle Explorer',
 ];
@@ -205,7 +185,6 @@ describe('paletteRows without a prefix', () => {
     expect(names(rowsFor(''))).toEqual([
       'Tab',
       'Database',
-      'Export: Schema SQL',
       'Language',
       'Table Name Case',
       'Column Name Case',
@@ -346,47 +325,38 @@ describe('paletteRows / # tables', () => {
     expect(rowsFor('#auto')).toEqual([]);
   });
 
-  it('lists the tables up to its cap and hands the rest to Find and Replace', () => {
-    const count = SCOPED_ACTION_LIMIT + 20;
+  it('lists every table the keyword names, however many, with nothing handed over', () => {
+    const count = 120;
     addTables(count, index => `item_${index}`);
 
     const rows = rowsFor('#item');
-    const last = rows.at(-1);
 
-    expect(rows.filter(row => row.tableId)).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(last?.name).toBe(`Show all ${count} matches in Find and Replace`);
-    expect(handedOver(last)).toEqual([
-      openFindReplaceAction({ query: 'item', fields: [FindField.tableName] }),
-    ]);
-  });
-
-  it('caps an empty keyword too, with nothing to hand over', () => {
-    addTables(SCOPED_ACTION_LIMIT + 20, index => `item_${index}`);
-
-    const rows = rowsFor('#');
-
-    expect(rows).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(rows).toHaveLength(count);
     expect(rows.every(row => row.tableId)).toBe(true);
   });
 
-  it('puts the tables holding the keyword first and hands over none that only fuzz to it', () => {
+  it('lists every table for an empty keyword too', () => {
+    addTables(120, index => `item_${index}`);
+
+    expect(rowsFor('#')).toHaveLength(122);
+  });
+
+  it('puts the tables holding the keyword first, then those that only fuzz to it, keeping every one', () => {
     const found: Action[] = [
       { name: 'orders_archive', tableId: 'a' },
       { name: 'user_orders', tableId: 'b' },
     ];
 
-    expect(names(rankTableActions(app, found, 'user'))).toEqual([
+    expect(names(rankTableActions(found, 'user'))).toEqual([
       'user_orders',
       'orders_archive',
     ]);
 
-    const loose = Array.from(
-      { length: SCOPED_ACTION_LIMIT + 5 },
-      (_, index): Action => ({ name: `loose_${index}`, tableId: `l${index}` })
-    );
-    expect(rankTableActions(app, loose, 'lsoe')).toHaveLength(
-      SCOPED_ACTION_LIMIT
-    );
+    const loose = Array.from({ length: 105 }, (_, index): Action => ({
+      name: `loose_${index}`,
+      tableId: `l${index}`,
+    }));
+    expect(rankTableActions(loose, 'lsoe')).toHaveLength(105);
   });
 
   it('goes to a table holding the keyword past index 40 of its name', () => {
@@ -398,63 +368,6 @@ describe('paletteRows / # tables', () => {
     expect(names(rowsFor('#us'))).not.toContain('orders');
   });
 
-  it('hands those tables over to Find and Replace past its cap', () => {
-    const count = SCOPED_ACTION_LIMIT + 5;
-    addTables(count, index => `${LONG_TABLE_NAME}_${index}`);
-
-    const rows = rowsFor('#history');
-    const last = rows.at(-1);
-
-    expect(rows.filter(row => row.tableId)).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(last?.name).toBe(`Show all ${count} matches in Find and Replace`);
-    expect(handedOver(last)).toEqual([
-      openFindReplaceAction({
-        query: 'history',
-        fields: [FindField.tableName],
-      }),
-    ]);
-  });
-
-  it('hands nothing over for the word a table with no name is listed by, which the panel never finds', () => {
-    addTables(SCOPED_ACTION_LIMIT + 5, () => '');
-
-    const rows = rowsFor('#unn');
-
-    expect(rows).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
-  });
-
-  it('names the one match it hands over in the singular', () => {
-    // Every table with no name is listed as unnamed, which holds the keyword.
-    addTables(SCOPED_ACTION_LIMIT + 5, () => '');
-    app.store.dispatchSync(
-      addTableAction({ id: 'named', ui: { x: 0, y: 0, zIndex: 1 } }),
-      changeTableNameAction({ id: 'named', value: 'x_name' })
-    );
-
-    const last = rowsFor('#name').at(-1);
-
-    expect(last?.name).toBe('Show 1 match in Find and Replace');
-    expect(handedOver(last)).toEqual([
-      openFindReplaceAction({ query: 'name', fields: [FindField.tableName] }),
-    ]);
-  });
-
-  it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
-    'leaves the hand-off out under %s, which keeps Find and Replace shut',
-    key => {
-      addTables(SCOPED_ACTION_LIMIT + 20, index => `item_${index}`);
-      const shown = () =>
-        rowsFor('#item').filter(row => row.filter?.(app) ?? true);
-      expect(shown().at(-1)?.tableId).toBeUndefined();
-
-      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
-
-      expect(shown()).toHaveLength(SCOPED_ACTION_LIMIT);
-      expect(shown().every(row => row.tableId)).toBe(true);
-    }
-  );
-
   it('stays quick over a schema of hundreds of tables', () => {
     addTables(600, index => `table_${index}_items`);
 
@@ -462,7 +375,7 @@ describe('paletteRows / # tables', () => {
     const rows = rowsFor('#items');
     const elapsed = performance.now() - started;
 
-    expect(rows.at(-1)?.name).toBe('Show all 600 matches in Find and Replace');
+    expect(rows).toHaveLength(600);
     // Not a benchmark, only a guard against a search that grows past linear.
     expect(elapsed).toBeLessThan(5000);
   });
@@ -542,48 +455,16 @@ describe('paletteRows / @ columns', () => {
     });
   });
 
-  it('caps the list and hands the column part to Find and Replace over column names', () => {
-    const count = SCOPED_ACTION_LIMIT + 20;
-    addColumns('users', count, index => `col_${index}`);
+  it('lists every column the keyword names, however many, the table part narrowing them', () => {
+    addColumns('users', 120, index => `col_${index}`);
     addColumns('orders', 10, index => `col_${index}`);
 
-    const rows = rowsFor('@col');
-
-    expect(rows).toHaveLength(SCOPED_ACTION_LIMIT + 1);
-    expect(rows.at(-1)?.name).toBe(
-      `Show all ${count + 10} matches in Find and Replace`
-    );
-    expect(handedOver(rows.at(-1))).toEqual([
-      openFindReplaceAction({ query: 'col', fields: [FindField.columnName] }),
-    ]);
-  });
-
-  it('leaves the table part behind when it hands a table.column search over, the count the panel opens on', () => {
-    addColumns('users', SCOPED_ACTION_LIMIT + 20, index => `col_${index}`);
-    addColumns('orders', 10, index => `col_${index}`);
-
-    const rows = rowsFor('@users.col');
-    const last = rows.at(-1);
-
-    expect(
-      rows.slice(0, -1).every(row => row.keywords?.startsWith('users.'))
-    ).toBe(true);
-    expect(last?.name).toBe(
-      `Show all ${SCOPED_ACTION_LIMIT + 30} matches in Find and Replace`
-    );
-    expect(handedOver(last)).toEqual([
-      openFindReplaceAction({ query: 'col', fields: [FindField.columnName] }),
-    ]);
+    expect(rowsFor('@col')).toHaveLength(130);
+    const users = rowsFor('@users.col');
+    expect(users).toHaveLength(120);
+    expect(users.every(row => row.keywords?.startsWith('users.'))).toBe(true);
     expect(rowsFor('@orders.col')).toHaveLength(10);
-  });
-
-  it('hands nothing over when there is no column part, however many columns it lists', () => {
-    addColumns('users', SCOPED_ACTION_LIMIT + 20, index => `col_${index}`);
-
-    const rows = rowsFor('@users.');
-
-    expect(rows).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(names(rows).some(name => name.startsWith('Show all'))).toBe(false);
+    expect(rowsFor('@users.')).toHaveLength(122);
   });
 });
 
@@ -610,9 +491,9 @@ describe('paletteRows / : comments and memos', () => {
     ]);
   });
 
-  it('caps the list and hands the search over with the comment and memo scopes', () => {
+  it('lists every text holding the keyword, however many, in the comment and memo scopes', () => {
     const actions: AnyAction[] = [];
-    for (let index = 0; index <= SCOPED_ACTION_LIMIT; index++) {
+    for (let index = 0; index < 120; index++) {
       actions.push(
         addMemoAction({ id: `m${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
         changeMemoValueAction({ id: `m${index}`, value: 'many user' })
@@ -620,17 +501,8 @@ describe('paletteRows / : comments and memos', () => {
     }
     app.store.dispatchSync(actions);
 
-    const rows = rowsFor(':user');
-    const last = rows.at(-1);
-
-    expect(rows).toHaveLength(SCOPED_ACTION_LIMIT + 1);
-    // Every memo added, and the seed's column comment and its memo's two.
-    expect(last?.name).toBe(
-      `Show all ${SCOPED_ACTION_LIMIT + 4} matches in Find and Replace`
-    );
-    expect(handedOver(last)).toEqual([
-      openFindReplaceAction({ query: 'user', fields: TEXT_FIELDS }),
-    ]);
+    // The seed's column comment and memo, then every memo added.
+    expect(rowsFor(':user')).toHaveLength(122);
     expect(TEXT_FIELDS).toEqual([
       FindField.tableComment,
       FindField.columnComment,
@@ -685,9 +557,6 @@ describe('paletteRows / Hangul', () => {
     }
     app.store.dispatchSync(actions);
   };
-
-  const hasShowAll = (actions: Action[]) =>
-    names(actions).some(name => name.startsWith('Show all'));
 
   beforeEach(() => {
     app.store.destroy();
@@ -780,58 +649,43 @@ describe('paletteRows / Hangul', () => {
     ]);
   });
 
-  it('hands # over past its limit only for a keyword the table names hold as typed', () => {
-    addTables(SCOPED_ACTION_LIMIT + 5, index => `사용자_${index}`);
-
-    for (const keyword of ['#ㅅㅇㅈ', '#사요']) {
-      const rows = rowsFor(keyword);
-      expect(rows).toHaveLength(SCOPED_ACTION_LIMIT);
-      expect(hasShowAll(rows)).toBe(false);
-    }
-
-    const last = rowsFor('#사용').at(-1);
-    expect(last?.name).toBe(
-      `Show all ${SCOPED_ACTION_LIMIT + 6} matches in Find and Replace`
+  it('lists every table a Hangul keyword or its letters name, with nothing handed over', () => {
+    const seeded = ['#ㅅㅇㅈ', '#사요', '#사용'].map(
+      keyword => rowsFor(keyword).length
     );
-    expect(handedOver(last)).toEqual([
-      openFindReplaceAction({ query: '사용', fields: [FindField.tableName] }),
-    ]);
+    addTables(105, index => `사용자_${index}`);
+
+    ['#ㅅㅇㅈ', '#사요', '#사용'].forEach((keyword, index) => {
+      expect(rowsFor(keyword)).toHaveLength(seeded[index] + 105);
+    });
   });
 
-  it('hands @ over past its limit only for a keyword the column names hold as typed', () => {
-    addColumns('orders', SCOPED_ACTION_LIMIT + 5, index => `사용자_${index}`);
+  it('lists every column a Hangul keyword or its letters name', () => {
+    const seeded = rowsFor('@ㅅㅇㅈ').length;
+    addColumns('orders', 105, index => `사용자_${index}`);
 
-    expect(rowsFor('@ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(hasShowAll(rowsFor('@ㅅㅇㅈ'))).toBe(false);
-    expect(rowsFor('@사용').at(-1)?.name).toBe(
-      `Show all ${SCOPED_ACTION_LIMIT + 6} matches in Find and Replace`
-    );
+    expect(rowsFor('@ㅅㅇㅈ')).toHaveLength(seeded + 105);
   });
 
-  it('hands " over when the limit leaves out a text holding the keyword as typed, and not before', () => {
-    addMemos(SCOPED_ACTION_LIMIT, index => `사용자 메모 ${index}`);
+  it('lists every text its letters spell, one holding the keyword as typed first', () => {
+    const seeded = rowsFor(':ㅅㅇㅈ').length;
+    addMemos(100, index => `사용자 메모 ${index}`);
 
-    expect(rowsFor(':ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(hasShowAll(rowsFor(':ㅅㅇㅈ'))).toBe(false);
-    expect(hasShowAll(rowsFor(':상'))).toBe(false);
+    expect(rowsFor(':ㅅㅇㅈ')).toHaveLength(seeded + 100);
 
     // 상 spells 사용 in every memo above; this one holds it as typed, so it
-    // goes first and the limit leaves out only memos it spells.
+    // comes before them all.
     addMemos(1, () => '상품 설명');
-    expect(names(rowsFor(':상'))[0]).toBe('상품 설명');
-    expect(hasShowAll(rowsFor(':상'))).toBe(false);
-
-    addMemos(SCOPED_ACTION_LIMIT, index => `상품 설명 ${index}`);
-    const last = rowsFor(':상').at(-1);
-    expect(last?.name).toBe(
-      `Show all ${SCOPED_ACTION_LIMIT + 1} matches in Find and Replace`
+    const listed = names(rowsFor(':상'));
+    expect(listed.indexOf('상품 설명')).toBeLessThan(
+      listed.indexOf('사용자 메모 0')
     );
-    expect(handedOver(last)).toEqual([
-      openFindReplaceAction({ query: '상', fields: TEXT_FIELDS }),
-    ]);
+    expect(listed.filter(name => name.startsWith('사용자 메모'))).toHaveLength(
+      100
+    );
   });
 
-  it('spells each text of two hundred Korean tables once, and again only the rows a field list shows', () => {
+  it('spells each text of two hundred Korean tables once, and again only the rows a field list draws', () => {
     onTestFinished(() => {
       clearHangulForms();
       spellings.mockClear();
@@ -873,12 +727,9 @@ describe('paletteRows / Hangul', () => {
 
     clearHangulForms();
     spellings.mockClear();
-    let listed = 0;
     for (const prefix of ['', '#', '@', ':']) {
       for (const step of [...STEPS, 'ㅈㅁ']) {
         rowsFor(`${prefix}${step}`);
-        // Only the column and text lists place a hit in its text.
-        if (prefix === '@' || prefix === ':') listed++;
       }
     }
     const spelled = spellings.mock.calls
@@ -886,14 +737,23 @@ describe('paletteRows / Hangul', () => {
       .filter(text => texts.has(text));
 
     // A count, not a clock, which a loaded machine stretches: every text is
-    // spelled once for its forms, then a list spells again only the rows it
-    // shows, for where each hit lies.
+    // spelled once for its forms, and a list spells one again, for where its
+    // hit lies, only as it draws that row.
     expect(new Set(spelled).size).toBe(texts.size);
-    expect(spelled.length).toBeLessThanOrEqual(
-      texts.size + listed * SCOPED_ACTION_LIMIT
-    );
-    expect(rowsFor('#ㅈㅁ')).toHaveLength(SCOPED_ACTION_LIMIT);
-    expect(rowsFor('@ㅅㅇㅈ')).toHaveLength(SCOPED_ACTION_LIMIT);
+    expect(spelled).toHaveLength(texts.size);
+    expect(
+      rowsFor('#ㅈㅁ').filter(row => row.tableId?.startsWith('ko'))
+    ).toHaveLength(200);
+
+    spellings.mockClear();
+    const columns = rowsFor('@ㅅㅇㅈ');
+    // The seed's own 사용자 column, then every one added.
+    expect(columns).toHaveLength(2001);
+    names(columns.slice(0, 17));
+    // The seed's own column, first, is no text of these tables.
+    expect(
+      spellings.mock.calls.filter(([text]) => texts.has(text))
+    ).toHaveLength(16);
   });
 });
 
@@ -963,7 +823,7 @@ describe('paletteRows / translated', () => {
     );
   });
 
-  it('names a field with no name, where a field sits and the hand-off past the cap in the language given', () => {
+  it('names a field with no name and where a field sits in the language given', () => {
     addColumns('users', 1, () => '');
     const [, unnamed] = translatedRowsFor('@users.').slice(-2);
     expect(unnamed.name).toBe('de:unnamed');
@@ -971,24 +831,14 @@ describe('paletteRows / translated', () => {
 
     const [comment] = translatedRowsFor(':login');
     expect(comment.keywords).toContain('de:');
-
-    addColumns('users', SCOPED_ACTION_LIMIT + 5, index => `col_${index}`);
-    expect(translatedRowsFor('@col').at(-1)?.name).toBe(
-      `de:Show all ${SCOPED_ACTION_LIMIT + 5} matches in Find and Replace`
-    );
     expect(translatedRowsFor('@').at(-1)?.keywords).toContain('de:');
   });
 
-  it('names the hand-off past the cap of the tables in the language given', () => {
-    addTables(SCOPED_ACTION_LIMIT + 20, index => `item_${index}`);
+  it('names the tables in the language given, however many', () => {
+    addTables(120, index => `item_${index}`);
 
-    expect(translatedRowsFor('#item').at(-1)?.name).toBe(
-      `de:Show all ${SCOPED_ACTION_LIMIT + 20} matches in Find and Replace`
-    );
-    expect(
-      translatedRowsFor('#item')
-        .filter(row => row.tableId)
-        .every(row => row.keywords === 'de:Table')
-    ).toBe(true);
+    const rows = translatedRowsFor('#item');
+    expect(rows).toHaveLength(120);
+    expect(rows.every(row => row.keywords === 'de:Table')).toBe(true);
   });
 });

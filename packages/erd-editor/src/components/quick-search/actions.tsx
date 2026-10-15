@@ -56,7 +56,6 @@ import { sourceI18n } from '@/i18n/source';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import {
-  FindReplaceQuery,
   openAutomaticTablePlacementAction,
   openExportImageAction,
   openFindReplaceAction,
@@ -504,7 +503,6 @@ export function createScopeActions(
       },
     },
     {
-      icon: <Icon name="case-sensitive" size={16} />,
       ...submenuNamed(i18n, 'common.tableNameCase'),
       next: tableNameCaseMenus.map<Action>(menu => ({
         ...checkOf(menu.value === settings.tableNameCase),
@@ -522,7 +520,6 @@ export function createScopeActions(
       },
     },
     {
-      icon: <Icon name="case-sensitive" size={16} />,
       ...submenuNamed(i18n, 'common.columnNameCase'),
       next: columnNameCaseMenus.map<Action>(menu => ({
         ...checkOf(menu.value === settings.columnNameCase),
@@ -609,7 +606,6 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
 
   return [
     {
-      icon: <Icon name="settings-2" size={16} />,
       ...submenuNamed(
         i18n,
         'palette.schemaSqlStatements',
@@ -627,7 +623,6 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
       filter: isSchemaSQLTab,
     },
     {
-      icon: <Icon name="settings-2" size={16} />,
       ...submenuNamed(
         i18n,
         'palette.schemaSqlHeader',
@@ -653,15 +648,6 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
       ),
       perform: toggleSchemaSQLPanel,
       filter: isSchemaSQLTab,
-    },
-    {
-      icon: <Icon name="file-output" size={16} />,
-      ...named(
-        i18n,
-        'palette.exportSchemaSql',
-        'palette.keywords.exportSchemaSql'
-      ),
-      perform: showSchemaSQLExport,
     },
   ];
 }
@@ -740,22 +726,6 @@ export function createMatchAction(
 
 /** Whether a row opening Find and Replace or the Explorer would open it: an overlay taking the canvas over keeps both shut. */
 const canOpenFindReplace = ({ store }: AppContext) => !isTakenOver(store.state);
-
-/** The row handing a search to Find and Replace, named with the count the panel opens on. */
-export function createShowAllAction(
-  count: number,
-  payload: FindReplaceQuery,
-  i18n: I18n = sourceI18n
-): Action {
-  return {
-    icon: <Icon name="search" size={16} />,
-    name: i18n.t('palette.showMatches', { count }),
-    perform: ({ emitter }) => {
-      emitter.emit(openFindReplaceAction(payload));
-    },
-    filter: canOpenFindReplace,
-  };
-}
 
 function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
   const {

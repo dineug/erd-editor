@@ -8,6 +8,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { openSearchOn } from '@/__test-utils__/explorerSearch';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import {
   createTestAppContext,
@@ -21,11 +22,6 @@ import {
   measureRoot,
   observeViewport,
 } from '@/components/erd-editor/viewportLayout';
-import {
-  createFieldActions,
-  SCOPED_ACTION_LIMIT,
-  TEXT_FIELDS,
-} from '@/components/quick-search/scopedActions';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import {
@@ -34,15 +30,10 @@ import {
   editTableAction,
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
-import {
-  addMemoAction,
-  changeMemoValueAction,
-} from '@/engine/modules/memo/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
 import type { Unsubscribe } from '@/internal-types';
-import { openFindReplaceAction } from '@/utils/emitter';
-import { FindFieldList, findMatches } from '@/utils/find-replace';
+import { findMatches } from '@/utils/find-replace';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import {
@@ -78,11 +69,7 @@ const chord = async () => {
 };
 
 const open = async (query?: string) => {
-  app.emitter.emit(
-    openFindReplaceAction(
-      query === undefined ? undefined : { query, fields: [...FindFieldList] }
-    )
-  );
+  openSearchOn(app, query);
   await flush();
 };
 
@@ -170,7 +157,7 @@ describe('ExplorerController', () => {
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(false);
   });
 
-  it('keeps its current match on an opening with no query while shown, and searches afresh one handed a query', async () => {
+  it('keeps its current match on an opening with no query while shown, searching nothing', async () => {
     await open('user');
     goToNext(app.store);
     vi.mocked(findMatches).mockClear();
@@ -179,10 +166,6 @@ describe('ExplorerController', () => {
 
     expect(count()).toBe('1 of 5');
     expect(searches()).toBe(0);
-
-    await open('user');
-    expect(searches()).toBe(1);
-    expect(count()).toBe('5 matches');
   });
 
   it('opens in place of the palette, which gives way as its own row does', async () => {
@@ -226,22 +209,6 @@ describe('ExplorerController', () => {
 
     expect(app.store.state.editor.zenMode).toBe(true);
     expect(isExplorerShown(app.store)).toBe(true);
-  });
-
-  it("opens from the palette's last row on the count that row names (AC-R9)", async () => {
-    for (let index = 0; index <= SCOPED_ACTION_LIMIT; index++) {
-      app.store.dispatchSync(
-        addMemoAction({ id: `m${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
-        changeMemoValueAction({ id: `m${index}`, value: 'many user' })
-      );
-    }
-    const last = createFieldActions(app, TEXT_FIELDS, 'user').at(-1);
-
-    last?.perform?.(app);
-    await flush();
-
-    expect(view().query).toBe('user');
-    expect(last?.name).toBe(`Show all ${count()} in Find and Replace`);
   });
 
   it('searches once as its chord brings it back from another tab, edited meanwhile', async () => {

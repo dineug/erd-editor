@@ -109,7 +109,6 @@ export const ruRU = {
   'code.copy': 'Копировать',
   'code.savedInDocument': 'Сохраняется в документе',
   'code.saveFile': 'Сохранить файл',
-  'code.saveFileMenu': 'Сохранить файл…',
   'code.optionsPanel': 'Панель параметров',
   'code.hideOptions': 'Скрыть параметры',
   'code.showOptions': 'Показать параметры',
@@ -255,12 +254,6 @@ export const ruRU = {
   'colorPicker.preset.gray': 'Серый',
   'palette.tab': 'Вкладка',
   'palette.noCommandsMatch': 'Нет подходящих команд',
-  'palette.showMatches': {
-    one: 'Показать {count} совпадение в панели «Найти и заменить»',
-    few: 'Показать все {count} совпадения в панели «Найти и заменить»',
-    many: 'Показать все {count} совпадений в панели «Найти и заменить»',
-    other: 'Показать все {count} совпадения в панели «Найти и заменить»',
-  },
   'palette.searchTables': 'Поиск «{keyword}» в таблицах',
   'palette.searchColumns': 'Поиск «{keyword}» в столбцах',
   'palette.searchText': 'Поиск «{keyword}» в комментариях и заметках',
@@ -284,7 +277,6 @@ export const ruRU = {
   'palette.schemaSqlHeader': 'Схема SQL: Заголовок',
   'palette.schemaSqlOptionsPanel': 'Схема SQL: Панель параметров',
   'palette.codeGeneratorOptionsPanel': 'Генератор кода: Панель параметров',
-  'palette.exportSchemaSql': 'Экспорт: Схема SQL',
   'palette.groupSelectedTables': 'Сгруппировать выделенные таблицы',
   'palette.keywords.schemaSqlStatements':
     'создать если не существует удалить заменить',
@@ -293,7 +285,6 @@ export const ruRU = {
     'показать скрыть перед после скрипты',
   'palette.keywords.codeGeneratorOptionsPanel':
     'показать скрыть база данных стиль сохранить файл',
-  'palette.keywords.exportSchemaSql': 'sql ddl файл',
   'settings.preferences': 'Параметры',
   'settings.relationshipDataTypeSync': 'Синхронизация типа данных в связях',
   'settings.maxCommentWidth': 'Максимальная ширина комментария',

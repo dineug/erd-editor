@@ -10,14 +10,7 @@ import type { LocaleOption } from '@/i18n/locales';
 import { ValuesType } from '@/internal-types';
 import { ThemeOptions } from '@/themes/radix-ui-theme';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
-import type { FindField } from '@/utils/find-replace/findMatches';
 import { safeCallback } from '@/utils/safeCallback';
-
-/** A search the palette hands Find and Replace: the query, and the kinds of text it searches in. */
-export type FindReplaceQuery = {
-  query: string;
-  fields: FindField[];
-};
 
 /**
  * What Map Columns opens on: a relationship drawn between two tables and not
@@ -81,7 +74,7 @@ type InternalActionMap = {
     event: ClipboardEvent;
   };
   [InternalActionType.toggleSearch]: void;
-  [InternalActionType.openFindReplace]: FindReplaceQuery | void;
+  [InternalActionType.openFindReplace]: void;
   [InternalActionType.openExportImage]: void;
   [InternalActionType.openMapColumns]: MapColumnsOpening;
   [InternalActionType.openThemeBuilder]: void;

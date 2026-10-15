@@ -74,7 +74,7 @@ These are owner decisions of 2026-10-09.
 - **Save file names files as every export does.** `exportCode` (`src/utils/file/exportFile.ts`) names the file `<databaseName>-<time><extension>`, with `unnamed-` when there is no database name. It hands the file to the host's export path (`setExportFileCallback`).
 - **The extension is the language's.** `LanguageToExtensionMap` (`languageSettings.ts`) gives it: Swift `.swift`, Zod `.ts`, JSON Schema `.json`, SQLAlchemy `.py`, GraphQL `.graphql`, Mermaid `.mmd`, and the rest. A language the editor does not know saves as `.txt`.
 - **Java and JPA save one `.java` file.** They save all their classes in it as is, which works as a paste (an owner decision of 2026-10-09).
-- **The code's context menu offers the panel's settings.** It offers Language, Database, Table Name Case, Column Name Case, Bracket (Doctrine, JPA and SeaORM), Options panel (checked while it shows) and Save file….
+- **The code's context menu offers the panel's settings.** It offers Language, Database, Table Name Case, Column Name Case, Bracket (Doctrine, JPA and SeaORM), Options panel (checked while it shows) and Save file. A row with a submenu draws no icon but Language's, Database's and Bracket's, and Save file reads without an ellipsis, as it saves at once (the owner's request of 2026-10-15).
 - **The palette follows the tab.** Its Database row shows on this tab too, and its Bracket row only for Doctrine, JPA and SeaORM. `Code Generator: Options panel` folds the panel or opens it.
 - **Export has no Code Generator entry** (an owner decision of 2026-10-09).
 - The palette itself: `src/components/quick-search/AGENTS.md`.

@@ -11,10 +11,9 @@ import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import type { RxStore } from '@/engine/rx-store';
 import type { I18n } from '@/i18n/translate';
 import { arrayHas } from '@/utils/arrayHas';
-import type { Emitter, FindReplaceQuery } from '@/utils/emitter';
+import type { Emitter } from '@/utils/emitter';
 import {
   createMatcher,
-  DEFAULT_FIND_OPTIONS,
   type FieldOrder,
   FindField,
   FindFieldList,
@@ -279,15 +278,10 @@ export function focusSearch(store: RxStore) {
 }
 
 /**
- * Opens the Explorer on its search, handing it the keyboard; a query handed
- * over is searched with the default options and the scopes it names. A canvas
- * too narrow says so rather than show nothing (an owner decision of 2026-10-13).
+ * Opens the Explorer on its search, handing it the keyboard. A canvas too
+ * narrow says so rather than show nothing (an owner decision of 2026-10-13).
  */
-export function openSearch(
-  store: RxStore,
-  emitter: Emitter,
-  handed?: FindReplaceQuery
-) {
+export function openSearch(store: RxStore, emitter: Emitter) {
   if (isTakenOver(store.state)) return;
   const view = explorerViewOf(store);
   const runtime = searchRuntimeOf(store);
@@ -297,11 +291,6 @@ export function openSearch(
   closeDialogs(store);
   openExplorer(store);
 
-  if (handed) {
-    view.query = handed.query;
-    Object.assign(view, DEFAULT_FIND_OPTIONS, { preserveCase: false });
-    view.fields = FindFieldList.filter(field => handed.fields.includes(field));
-  }
   view.status = null;
   view.searchCollapsed = {};
   newRun(store);

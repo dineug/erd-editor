@@ -110,7 +110,6 @@ export const ptBR = {
   'code.copy': 'Copiar',
   'code.savedInDocument': 'Salvo no documento',
   'code.saveFile': 'Salvar arquivo',
-  'code.saveFileMenu': 'Salvar arquivo…',
   'code.optionsPanel': 'Painel de opções',
   'code.hideOptions': 'Ocultar opções',
   'code.showOptions': 'Mostrar opções',
@@ -253,12 +252,6 @@ export const ptBR = {
   'colorPicker.preset.gray': 'Cinza',
   'palette.tab': 'Aba',
   'palette.noCommandsMatch': 'Nenhum comando encontrado',
-  'palette.showMatches': {
-    one: 'Mostrar {count} correspondência em Localizar e substituir',
-    many: 'Mostrar todas as {count} correspondências em Localizar e substituir',
-    other:
-      'Mostrar todas as {count} correspondências em Localizar e substituir',
-  },
   'palette.searchTables': 'Pesquisar "{keyword}" nas tabelas',
   'palette.searchColumns': 'Pesquisar "{keyword}" nas colunas',
   'palette.searchText': 'Pesquisar "{keyword}" em comentários e notas',
@@ -283,7 +276,6 @@ export const ptBR = {
   'palette.schemaSqlHeader': 'Esquema SQL: Cabeçalho',
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Painel de opções',
   'palette.codeGeneratorOptionsPanel': 'Gerador de código: Painel de opções',
-  'palette.exportSchemaSql': 'Exportar: Esquema SQL',
   'palette.groupSelectedTables': 'Agrupar tabelas selecionadas',
   'palette.keywords.schemaSqlStatements':
     'criar se não existir excluir substituir',
@@ -292,7 +284,6 @@ export const ptBR = {
     'mostrar ocultar antes depois scripts',
   'palette.keywords.codeGeneratorOptionsPanel':
     'mostrar ocultar banco de dados estilo salvar arquivo',
-  'palette.keywords.exportSchemaSql': 'sql ddl arquivo',
   'settings.preferences': 'Preferências',
   'settings.relationshipDataTypeSync':
     'Sincronização do tipo de dados nos relacionamentos',

@@ -1,7 +1,7 @@
 // The palette under a Korean IME in a real Chromium: Chrome's own composition
 // hands the input each step of a syllable, which only the browser shows.
 
-import { html } from '@dineug/r-html';
+import { addCSSHost, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { cdp, userEvent } from 'vite-plus/test/browser/context';
 
@@ -17,10 +17,19 @@ import {
 } from '@/__test-utils__/hangulSeed';
 import type { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
+import {
+  PALETTE_LIST_MAX_HEIGHT,
+  PALETTE_ROW_HEIGHT,
+} from '@/components/quick-search/paletteList';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
+import {
+  addTableAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import { hasAppleDevice } from '@/utils/device-detect';
 import { toggleSearchAction } from '@/utils/emitter';
+import { VIRTUAL_OVERSCAN } from '@/utils/virtualRange';
 
 /** The key $mod names in the browser the spec runs in. */
 const MOD = hasAppleDevice() ? 'Meta' : 'Control';
@@ -33,10 +42,13 @@ type ImeSession = {
 const session = () => cdp() as unknown as ImeSession;
 
 let mounted: Mounted | null = null;
+let shadowHost: HTMLElement | null = null;
 
 afterEach(() => {
   mounted?.unmount();
   mounted = null;
+  shadowHost?.remove();
+  shadowHost = null;
 });
 
 async function setup(seed?: (app: AppContext) => void) {
@@ -244,5 +256,66 @@ describe('quick search under a Korean IME', () => {
 
     expect(input.value).toBe('#ㅄㅈ');
     expect(tableNames()).toEqual(['배송지']);
+  });
+});
+
+describe('quick search over a long list', () => {
+  const TABLES = 300;
+
+  it('draws only the rows in view, and brings the keyboard row into view at either end', async () => {
+    shadowHost = document.createElement('div');
+    shadowHost.setAttribute(
+      'style',
+      'position: relative; width: 800px; height: 700px;'
+    );
+    document.body.append(shadowHost);
+    const shadow = shadowHost.attachShadow({ mode: 'open' });
+    addCSSHost(shadow);
+    const app = createTestAppContext();
+    for (let index = 0; index < TABLES; index++) {
+      const id = `t${index}`;
+      app.store.dispatchSync(
+        addTableAction({ id, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeTableNameAction({
+          id,
+          value: `t${String(index).padStart(3, '0')}`,
+        })
+      );
+    }
+    mounted = mount(html`<${QuickSearch} />`, app, shadow);
+    await flush();
+    app.emitter.emit(toggleSearchAction());
+    await flush();
+
+    const input = shadow.querySelector('input') as HTMLInputElement;
+    input.value = '#';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await flush();
+    const list = shadow.querySelector(`.${styles.list}`) as HTMLElement;
+    const rows = () => shadow.querySelectorAll(`.${styles.action}`);
+    const inView = (row: Element) => {
+      const box = list.getBoundingClientRect();
+      const { top, bottom } = row.getBoundingClientRect();
+      return top >= box.top - 0.5 && bottom <= box.bottom + 0.5;
+    };
+    const shown = Math.ceil(PALETTE_LIST_MAX_HEIGHT / PALETTE_ROW_HEIGHT);
+
+    expect(list.clientHeight).toBe(PALETTE_LIST_MAX_HEIGHT);
+    expect(list.scrollHeight).toBe(TABLES * PALETTE_ROW_HEIGHT);
+    expect(rows()).toHaveLength(shown + VIRTUAL_OVERSCAN);
+
+    await userEvent.keyboard('{ArrowUp}');
+    await flush();
+    const last = shadow.querySelector(`.${styles.action}.selected`)!;
+    expect(last.textContent).toContain(`t${TABLES - 1}`);
+    expect(inView(last)).toBe(true);
+    expect(rows().length).toBeLessThanOrEqual(shown + VIRTUAL_OVERSCAN);
+
+    await userEvent.keyboard('{ArrowDown}');
+    await flush();
+    const first = shadow.querySelector(`.${styles.action}.selected`)!;
+    expect(first.textContent).toContain('t000');
+    expect(inView(first)).toBe(true);
+    expect(list.scrollTop).toBe(0);
   });
 });

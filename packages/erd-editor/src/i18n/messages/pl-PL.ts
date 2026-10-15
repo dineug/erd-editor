@@ -109,7 +109,6 @@ export const plPL = {
   'code.copy': 'Kopiuj',
   'code.savedInDocument': 'Zapisane w dokumencie',
   'code.saveFile': 'Zapisz plik',
-  'code.saveFileMenu': 'Zapisz plik…',
   'code.optionsPanel': 'Panel opcji',
   'code.hideOptions': 'Ukryj opcje',
   'code.showOptions': 'Pokaż opcje',
@@ -255,12 +254,6 @@ export const plPL = {
   'colorPicker.preset.gray': 'Szary',
   'palette.tab': 'Karta',
   'palette.noCommandsMatch': 'Brak pasujących poleceń',
-  'palette.showMatches': {
-    one: 'Pokaż {count} dopasowanie w panelu Znajdź i zamień',
-    few: 'Pokaż wszystkie {count} dopasowania w panelu Znajdź i zamień',
-    many: 'Pokaż wszystkie {count} dopasowań w panelu Znajdź i zamień',
-    other: 'Pokaż wszystkie {count} dopasowania w panelu Znajdź i zamień',
-  },
   'palette.searchTables': 'Szukaj „{keyword}” w tabelach',
   'palette.searchColumns': 'Szukaj „{keyword}” w kolumnach',
   'palette.searchText': 'Szukaj „{keyword}” w komentarzach i notatkach',
@@ -284,7 +277,6 @@ export const plPL = {
   'palette.schemaSqlHeader': 'Schemat SQL: Nagłówek',
   'palette.schemaSqlOptionsPanel': 'Schemat SQL: Panel opcji',
   'palette.codeGeneratorOptionsPanel': 'Generator kodu: Panel opcji',
-  'palette.exportSchemaSql': 'Eksportuj: Schemat SQL',
   'palette.groupSelectedTables': 'Grupuj zaznaczone tabele',
   'palette.keywords.schemaSqlStatements':
     'utwórz jeśli nie istnieje usuń zastąp',
@@ -292,7 +284,6 @@ export const plPL = {
   'palette.keywords.schemaSqlOptionsPanel': 'pokaż ukryj przed po skrypty',
   'palette.keywords.codeGeneratorOptionsPanel':
     'pokaż ukryj baza danych styl zapisz plik',
-  'palette.keywords.exportSchemaSql': 'sql ddl plik',
   'settings.preferences': 'Preferencje',
   'settings.relationshipDataTypeSync': 'Synchronizacja typu danych w relacjach',
   'settings.maxCommentWidth': 'Maksymalna szerokość komentarza',

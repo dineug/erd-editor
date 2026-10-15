@@ -273,7 +273,7 @@ test.describe('the Schema SQL options panel', () => {
     expect(downloads).toHaveLength(1);
   });
 
-  test("offers six rows in the code's menu and four in the palette", async ({
+  test("offers six rows in the code's menu and three in the palette, no second way to the tab", async ({
     erd,
   }) => {
     await erd.seed(shop());
@@ -288,7 +288,7 @@ test.describe('the Schema SQL options panel', () => {
       'Statements',
       'Header',
       'Options panel',
-      'Save file…',
+      'Save file',
     ]);
 
     await erd.page.keyboard.press('Escape');
@@ -300,10 +300,12 @@ test.describe('the Schema SQL options panel', () => {
       'Schema SQL: Statements',
       'Schema SQL: Header',
       'Schema SQL: Options panel',
-      'Export: Schema SQL',
     ]) {
       await expect(palette.getByText(name, { exact: true })).toHaveCount(1);
     }
+    await expect(
+      palette.getByText('Export: Schema SQL', { exact: true })
+    ).toHaveCount(0);
   });
 
   test("keeps a readonly editor's scripts from typing, the window's statements still its own", async ({

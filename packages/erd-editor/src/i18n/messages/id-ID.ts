@@ -109,7 +109,6 @@ export const idID = {
   'code.copy': 'Salin',
   'code.savedInDocument': 'Disimpan di dokumen',
   'code.saveFile': 'Simpan file',
-  'code.saveFileMenu': 'Simpan file…',
   'code.optionsPanel': 'Panel opsi',
   'code.hideOptions': 'Sembunyikan opsi',
   'code.showOptions': 'Tampilkan opsi',
@@ -239,9 +238,6 @@ export const idID = {
   'colorPicker.preset.gray': 'Abu-abu',
   'palette.tab': 'Tab',
   'palette.noCommandsMatch': 'Tidak ada perintah yang cocok',
-  'palette.showMatches': {
-    other: 'Tampilkan semua {count} kecocokan di panel Temukan dan ganti',
-  },
   'palette.searchTables': 'Cari "{keyword}" di tabel',
   'palette.searchColumns': 'Cari "{keyword}" di kolom',
   'palette.searchText': 'Cari "{keyword}" di komentar & memo',
@@ -266,7 +262,6 @@ export const idID = {
   'palette.schemaSqlHeader': 'Skema SQL: Pembuka',
   'palette.schemaSqlOptionsPanel': 'Skema SQL: Panel opsi',
   'palette.codeGeneratorOptionsPanel': 'Generator kode: Panel opsi',
-  'palette.exportSchemaSql': 'Ekspor: Skema SQL',
   'palette.groupSelectedTables': 'Kelompokkan tabel yang dipilih',
   'palette.keywords.schemaSqlStatements': 'buat jika belum ada hapus ganti',
   'palette.keywords.schemaSqlHeader': 'use database search_path',
@@ -274,7 +269,6 @@ export const idID = {
     'tampilkan sembunyikan sebelum setelah skrip',
   'palette.keywords.codeGeneratorOptionsPanel':
     'tampilkan sembunyikan database penamaan simpan file',
-  'palette.keywords.exportSchemaSql': 'sql ddl file',
   'settings.preferences': 'Preferensi',
   'settings.relationshipDataTypeSync': 'Sinkronisasi tipe data hubungan',
   'settings.maxCommentWidth': 'Lebar komentar maksimum',

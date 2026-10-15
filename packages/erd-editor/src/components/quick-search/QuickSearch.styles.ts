@@ -105,16 +105,29 @@ export const prefix = css`
   ${typography.paragraph};
 `;
 
+/* The list's height is set inline, from the rows it holds, so only the rows in view are drawn. */
 export const list = css`
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  flex: none;
   width: 100%;
-  max-height: 400px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 `;
 
+/* As tall as every row, which stand in it at their own offsets. */
+export const space = css`
+  position: relative;
+  width: 100%;
+`;
+
+/* A row stands at its own offset, its height PALETTE_ROW_HEIGHT, which the list lays out by. */
 export const action = css`
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
+  width: 100%;
+  box-sizing: border-box;
   padding: 12px 16px;
   align-items: center;
   white-space: nowrap;

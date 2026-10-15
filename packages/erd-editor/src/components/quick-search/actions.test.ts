@@ -29,7 +29,6 @@ import {
   Action,
   createPreferenceActions,
   createScopeActions,
-  createShowAllAction,
   createTabActions,
   keywordHolder,
   named,
@@ -146,7 +145,6 @@ const ERD_TOOLBOX = [
   'One Only',
   'One N',
   'Auto Layout',
-  'Export: Schema SQL',
   'Find and Replace',
   'Toggle Explorer',
 ];
@@ -418,7 +416,6 @@ describe('createScopeActions', () => {
       'Schema SQL: Statements',
       'Schema SQL: Header',
       'Schema SQL: Options panel',
-      'Export: Schema SQL',
       'Find and Replace',
       'Toggle Explorer',
     ]);
@@ -433,7 +430,6 @@ describe('createScopeActions', () => {
     expect(visible).toEqual([
       'Tab',
       'Database',
-      'Export: Schema SQL',
       'Language',
       'Table Name Case',
       'Column Name Case',
@@ -451,13 +447,7 @@ describe('createScopeActions', () => {
       setCanvasType(canvasType);
       expect(
         names(scope().filter(action => action.filter?.(app) ?? true))
-      ).toEqual([
-        'Tab',
-        'Export: Schema SQL',
-        'Find and Replace',
-        'Toggle Explorer',
-        'users',
-      ]);
+      ).toEqual(['Tab', 'Find and Replace', 'Toggle Explorer', 'users']);
     }
   });
 
@@ -957,24 +947,18 @@ describe('createScopeActions / Schema SQL options', () => {
       expect(visible.filter(name => SCHEMA_SQL_ROWS.includes(name))).toEqual(
         []
       );
-      expect(visible).toContain('Export: Schema SQL');
+      // The tab's own row reaches it; the palette offers no second one (the owner's request of 2026-10-15).
+      expect(visible).not.toContain('Export: Schema SQL');
     }
   });
 
-  it('draws each row with its icon', async () => {
+  it('draws each row with its icon, Statements and Header with none, as the context menu does', async () => {
     const actions = scope();
 
-    expect(await iconOf(find(actions, 'Schema SQL: Statements'))).toBe(
-      'settings-2'
-    );
-    expect(await iconOf(find(actions, 'Schema SQL: Header'))).toBe(
-      'settings-2'
-    );
+    expect(await iconOf(find(actions, 'Schema SQL: Statements'))).toBeNull();
+    expect(await iconOf(find(actions, 'Schema SQL: Header'))).toBeNull();
     expect(await iconOf(find(actions, 'Schema SQL: Options panel'))).toBe(
       'panel-right'
-    );
-    expect(await iconOf(find(actions, 'Export: Schema SQL'))).toBe(
-      'file-output'
     );
   });
 
@@ -983,13 +967,12 @@ describe('createScopeActions / Schema SQL options', () => {
       pairs(
         scope()
           .filter(row => row.name.includes(':'))
-          .slice(0, 4)
+          .slice(0, 3)
       )
     ).toEqual([
       ['Schema SQL: Statements', 'create if not exists drop replace'],
       ['Schema SQL: Header', 'use database search_path'],
       ['Schema SQL: Options panel', 'show hide before after scripts'],
-      ['Export: Schema SQL', 'sql ddl file'],
     ]);
     expect(names(searchActions(scope(), 'search_path'))).toContain(
       'Schema SQL: Header'
@@ -1043,15 +1026,15 @@ describe('createScopeActions / Schema SQL options', () => {
     expect(schemaSQLViewOf(app).panel).toBe('open');
   });
 
-  it('opens the Schema SQL tab from any tab with its options out, saving nothing', async () => {
+  it('opens the Schema SQL tab from Export with its options out, saving nothing', async () => {
     const calls: ExportCall[] = [];
     setExportFileCallback((blob, options) =>
       calls.push({ blob, fileName: options.fileName })
     );
-    setCanvasType(CanvasType.settings);
+    setCanvasType(CanvasType.ERD);
     schemaSQLViewOf(app).panel = 'closed';
 
-    find(scope(), 'Export: Schema SQL').perform?.(app);
+    find(find(scope(), 'Export').next ?? [], 'Schema SQL').perform?.(app);
     await flush();
 
     expect(calls).toEqual([]);
@@ -1125,6 +1108,8 @@ describe('createScopeActions / generator code options', () => {
     );
     const action = find(scope(), 'Table Name Case');
 
+    // It draws no icon, as the code tab's context menu does.
+    expect(await iconOf(action)).toBeNull();
     expect(names(action.next ?? [])).toEqual(names(tableNameCaseMenus as any));
     find(action.next ?? [], target!.name).perform?.(app);
     await flush();
@@ -1138,6 +1123,8 @@ describe('createScopeActions / generator code options', () => {
     );
     const action = find(scope(), 'Column Name Case');
 
+    // It draws no icon, as the code tab's context menu does.
+    expect(await iconOf(action)).toBeNull();
     expect(names(action.next ?? [])).toEqual(names(columnNameCaseMenus as any));
     find(action.next ?? [], target!.name).perform?.(app);
     await flush();
@@ -1369,7 +1356,6 @@ describe('createScopeActions / no focus actions', () => {
     const visible = scope().filter(action => action.filter?.(app) ?? true);
     expect(names(visible)).toEqual([
       'Tab',
-      'Export: Schema SQL',
       'Find and Replace',
       'Toggle Explorer',
       'users',
@@ -1939,32 +1925,5 @@ describe('createPreferenceActions', () => {
     expect(names(submenu(rows, '테마'))).toEqual(['시스템', 'Light', 'Dark']);
     expect(languages[0]).toMatchObject({ name: '시스템', alias: ['System'] });
     expect(names(searchActions(languages, 'system'))[0]).toBe('시스템');
-  });
-});
-
-describe('createShowAllAction', () => {
-  const payload = { query: 'users', fields: [] };
-
-  it('names the count the panel opens on, one match and many as English has always read them', () => {
-    expect(createShowAllAction(1, payload).name).toBe(
-      'Show 1 match in Find and Replace'
-    );
-    expect(createShowAllAction(3, payload).name).toBe(
-      'Show all 3 matches in Find and Replace'
-    );
-    expect(createShowAllAction(0, payload).name).toBe(
-      'Show all 0 matches in Find and Replace'
-    );
-  });
-
-  it('names the count in the language given, by its own plural rules', () => {
-    const pseudo = createI18n('ru-RU', pseudoMessages('ru'));
-
-    expect(createShowAllAction(21, payload, pseudo).name).toBe(
-      'ru:Show 21 match in Find and Replace'
-    );
-    expect(createShowAllAction(5, payload, pseudo).name).toBe(
-      'ru:Show all 5 matches in Find and Replace'
-    );
   });
 });

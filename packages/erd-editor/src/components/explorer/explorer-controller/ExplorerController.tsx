@@ -29,8 +29,8 @@ export const EDIT_SEARCH_DELAY = 100;
 
 /**
  * What opens the Explorer's search and keeps it current, mounted beside the
- * panel whether it shows or not: the find chord, the openings that hand a
- * query or none, and the searches an edit asks for.
+ * panel whether it shows or not: the find chord, the palette row's and the
+ * context menu's openings, and the searches an edit asks for.
  */
 const ExplorerController: FC = (_props, ctx) => {
   const app = useAppContext(ctx);
@@ -63,12 +63,12 @@ const ExplorerController: FC = (_props, ctx) => {
         .pipe(filter(({ type }) => type === KeyBindingName.findReplace))
         .subscribe(handleShortcut),
       emitter.on({
-        // The toolbar's, the palette row's and the context menu's hand no
-        // query, and a search shown keeps its current match and its run.
-        openFindReplace: ({ payload }) =>
-          !payload && isExplorerShown(store)
+        // The palette row's and the context menu's: a search shown keeps its
+        // current match and its run, and takes the keyboard back.
+        openFindReplace: () =>
+          isExplorerShown(store)
             ? focusSearch(store)
-            : openSearch(store, emitter, payload ?? undefined),
+            : openSearch(store, emitter),
       }),
       new Observable<void>(subscriber =>
         store.subscribe(actions => {

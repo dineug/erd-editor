@@ -110,7 +110,6 @@ export const frFR = {
   'code.copy': 'Copier',
   'code.savedInDocument': 'Enregistré dans le document',
   'code.saveFile': 'Enregistrer le fichier',
-  'code.saveFileMenu': 'Enregistrer le fichier…',
   'code.optionsPanel': 'Panneau des options',
   'code.hideOptions': 'Masquer les options',
   'code.showOptions': 'Afficher les options',
@@ -252,12 +251,6 @@ export const frFR = {
   'colorPicker.preset.gray': 'Gris',
   'palette.tab': 'Onglet',
   'palette.noCommandsMatch': 'Aucune commande ne correspond',
-  'palette.showMatches': {
-    one: 'Afficher {count} correspondance dans « Rechercher et remplacer »',
-    many: 'Afficher les {count} correspondances dans « Rechercher et remplacer »',
-    other:
-      'Afficher les {count} correspondances dans « Rechercher et remplacer »',
-  },
   'palette.searchTables': 'Rechercher « {keyword} » dans les tables',
   'palette.searchColumns': 'Rechercher « {keyword} » dans les colonnes',
   'palette.searchText':
@@ -285,7 +278,6 @@ export const frFR = {
   'palette.schemaSqlOptionsPanel': 'Schéma SQL : Panneau des options',
   'palette.codeGeneratorOptionsPanel':
     'Générateur de code : Panneau des options',
-  'palette.exportSchemaSql': 'Exporter : Schéma SQL',
   'palette.groupSelectedTables': 'Grouper les tables sélectionnées',
   'palette.keywords.schemaSqlStatements':
     'créer si n’existe pas supprimer remplacer',
@@ -294,7 +286,6 @@ export const frFR = {
     'afficher masquer avant après scripts',
   'palette.keywords.codeGeneratorOptionsPanel':
     'afficher masquer base de données casse enregistrer fichier',
-  'palette.keywords.exportSchemaSql': 'sql ddl fichier',
   'settings.preferences': 'Préférences',
   'settings.relationshipDataTypeSync':
     'Synchronisation du type de données des relations',

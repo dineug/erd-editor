@@ -17,7 +17,7 @@ const SELF = 'components/findPanelGone.test.ts';
 
 /**
  * The names the panel was built out of, each anchored so a longer identifier
- * that merely holds one, such as FindReplaceQuery or find-replace-all, does
+ * that merely holds one, such as openFindReplace or find-replace-all, does
  * not count as a survivor.
  */
 const RETIRED: Array<[string, RegExp]> = [

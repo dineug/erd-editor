@@ -108,7 +108,6 @@ export const skSK = {
   'code.copy': 'Kopírovať',
   'code.savedInDocument': 'Uložené v dokumente',
   'code.saveFile': 'Uložiť súbor',
-  'code.saveFileMenu': 'Uložiť súbor…',
   'code.optionsPanel': 'Panel možností',
   'code.hideOptions': 'Skryť možnosti',
   'code.showOptions': 'Zobraziť možnosti',
@@ -252,12 +251,6 @@ export const skSK = {
   'colorPicker.preset.gray': 'Sivá',
   'palette.tab': 'Karta',
   'palette.noCommandsMatch': 'Žiadne zodpovedajúce príkazy',
-  'palette.showMatches': {
-    one: 'Zobraziť {count} zhodu v paneli Nájsť a nahradiť',
-    few: 'Zobraziť všetky {count} zhody v paneli Nájsť a nahradiť',
-    many: 'Zobraziť {count} zhody v paneli Nájsť a nahradiť',
-    other: 'Zobraziť všetkých {count} zhôd v paneli Nájsť a nahradiť',
-  },
   'palette.searchTables': 'Hľadať „{keyword}“ v tabuľkách',
   'palette.searchColumns': 'Hľadať „{keyword}“ v stĺpcoch',
   'palette.searchText': 'Hľadať „{keyword}“ v komentároch a poznámkach',
@@ -282,7 +275,6 @@ export const skSK = {
   'palette.schemaSqlHeader': 'Schéma SQL: Hlavička',
   'palette.schemaSqlOptionsPanel': 'Schéma SQL: Panel možností',
   'palette.codeGeneratorOptionsPanel': 'Generátor kódu: Panel možností',
-  'palette.exportSchemaSql': 'Exportovať: Schéma SQL',
   'palette.groupSelectedTables': 'Zoskupiť vybraté tabuľky',
   'palette.keywords.schemaSqlStatements':
     'vytvoriť ak neexistuje odstrániť nahradiť',
@@ -290,7 +282,6 @@ export const skSK = {
   'palette.keywords.schemaSqlOptionsPanel': 'zobraziť skryť pred za skripty',
   'palette.keywords.codeGeneratorOptionsPanel':
     'zobraziť skryť databáza štýl uložiť súbor',
-  'palette.keywords.exportSchemaSql': 'sql ddl súbor',
   'settings.preferences': 'Predvoľby',
   'settings.relationshipDataTypeSync': 'Synchronizácia typu údajov vo vzťahoch',
   'settings.maxCommentWidth': 'Maximálna šírka komentára',

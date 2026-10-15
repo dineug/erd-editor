@@ -27,7 +27,8 @@
 | `select/Select.tsx` | The box around a caller's native `<select>`, with lucide's `chevron-down` at its inline end |
 | `select/Select.browser.test.ts` | The chevron's place, the ellipsis, the dimming, the focus ring and forced colours, in real Chromium |
 | `dialog/Dialog.tsx` | The shared modal; its contract is in `src/components/export-image/AGENTS.md` |
-| `tree/Tree.tsx` | The virtualized tree, written here with no library: fixed rows (`TREE_ROW_HEIGHT`, 22), `TREE_OVERSCAN` (8), `visibleRange` and `offsetToShow`, the tree keys and the WAI-ARIA tree roles |
+| `tree/Tree.tsx` | The virtualized tree, written here with no library: fixed rows (`TREE_ROW_HEIGHT`, 22), `TREE_OVERSCAN` (8), the tree keys and the WAI-ARIA tree roles |
+| `src/utils/virtualRange.ts` | `visibleRange`, `offsetToShow` and `VIRTUAL_OVERSCAN` (8), which the tree and the palette's list share |
 | `tree/treeModel.ts` | `TreeNode` (children asked for only while expanded), `flattenTree`, `moveFocus` |
 | `src/utils/keyboard-shortcut/index.ts` | `stopsAtPanel`, the filter a tree's host stops presses with |
 | `src/engine/modules/editor/generator.actions.ts` | `changeColorAllAction$` and `removeColorAllAction$` |
@@ -134,7 +135,7 @@
 
 ### The tree
 
-- **The tree virtualizes its own rows.** Rows are one fixed height, so `visibleRange` works the rows in view out of the scroll offset and the tree's height, with `TREE_OVERSCAN` either side, and the active row is drawn wherever it stands, so `aria-activedescendant` names a node that is there. No virtual list library is used (an owner decision of 2026-10-13). A host builds `TreeNode`s and passes the rows `flattenTree` gives it; the Explorer and the diff viewer draw through the same component.
+- **The tree virtualizes its own rows.** Rows are one fixed height, so `visibleRange` works the rows in view out of the scroll offset and the tree's height, with `TREE_OVERSCAN` either side, and the active row is drawn wherever it stands, so `aria-activedescendant` names a node that is there. No virtual list library is used (an owner decision of 2026-10-13); the palette's list draws on the same range (`src/utils/virtualRange.ts`). A host builds `TreeNode`s and passes the rows `flattenTree` gives it; the Explorer and the diff viewer draw through the same component.
 - **The tree holds no policy.** It answers Up, Down, Home, End and the inline arrows (`moveFocus`, mirrored under `dir="rtl"`), and Enter and Space, which ask the host to activate. It prevents those keys alone and passes every other press, Escape and every chord included. Its host decides what a row shows (`renderRow`), what activating it does, and which chords stop at it (`stopsAtPanel`).
 - **The keyboard's row looks like the pointer's** (the owner's request of 2026-10-14). While the tree holds the keyboard, the active row takes the hover fill and `--active` text, as a hovered row and a context menu row do, and the current row keeps its own fill; in forced colours it is outlined in `Highlight`. A keyboard focus (`:focus-visible`) with no row active makes the current row active, or else the first row wholly in view; a press's focus makes none, since its click picks the row.
 - **Only a new range renders the tree.** The scroll offset and the height are kept unobserved, and a scroll writes the observed range only when its first or last row changes, so a scroll inside the overscan changes no DOM. Rows are keyed by node id in `repeat`, so a row that stays in view keeps its element.
@@ -156,6 +157,6 @@
 - `Erd.test.ts`'s `Erd - color picker` presses the picker's keys through `useKeyBindingMap` mounted around `Erd`, the path a real key takes to `shortcut$`.
 - `Select.browser.test.ts` holds the chevron and the value to their places in real Chromium, under both text directions and in forced colours.
 - `MapColumnsDialog.browser.test.tsx` holds Map Columns' 2 px ring on its lists.
-- `Tree.browser.test.tsx` lays the tree out in real Chromium, counts the DOM mutations a scroll makes and holds `visibleRange` and `offsetToShow`; `treeModel.test.ts` covers the rows and the keys.
+- `Tree.browser.test.tsx` lays the tree out in real Chromium, counts the DOM mutations a scroll makes; `src/utils/virtualRange.test.ts` holds `visibleRange` and `offsetToShow`; `treeModel.test.ts` covers the rows and the keys.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

@@ -13,6 +13,7 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__';
+import { openSearchOn } from '@/__test-utils__/explorerSearch';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import { iconNameOf } from '@/__test-utils__/icon';
 import type { AppContext } from '@/components/appContext';
@@ -26,7 +27,6 @@ import { closeExplorer } from '@/components/explorer/explorerCommands';
 import { explorerViewOf } from '@/components/explorer/explorerView';
 import type { I18n } from '@/i18n/translate';
 import { hasAppleDevice } from '@/utils/device-detect';
-import { openFindReplaceAction } from '@/utils/emitter';
 import { DEFAULT_FIND_FIELDS, FindFieldList } from '@/utils/find-replace';
 import { InternalEventType } from '@/utils/internalEvents';
 
@@ -114,11 +114,7 @@ const marksOf = (nodeId: string) =>
 const activeElement = () => shadowHost!.shadowRoot!.activeElement;
 
 const open = async (query?: string) => {
-  app.emitter.emit(
-    openFindReplaceAction(
-      query === undefined ? undefined : { query, fields: [...FindFieldList] }
-    )
-  );
+  openSearchOn(app, query);
   await settle();
 };
 

@@ -11,12 +11,18 @@ import {
 
 import Icon from '@/components/primitives/icon/Icon';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import {
+  offsetToShow,
+  VIRTUAL_OVERSCAN,
+  type VirtualRange,
+  visibleRange,
+} from '@/utils/virtualRange';
 
 import * as styles from './Tree.styles';
 import { moveFocus, type TreeRow } from './treeModel';
 
 export const TREE_ROW_HEIGHT = 22;
-export const TREE_OVERSCAN = 8;
+export const TREE_OVERSCAN = VIRTUAL_OVERSCAN;
 /** How far each level stands in from its parent. */
 export const TREE_INDENT = 12;
 
@@ -33,46 +39,6 @@ const TREE_KEYS = new Set([
 ]);
 
 let treeCount = 0;
-
-/** The rows a tree renders, first to last, both included; none while last is below first. */
-export type TreeRange = { first: number; last: number };
-
-/**
- * The rows the screen shows at a scroll offset, with the overscan either side,
- * so a short scroll finds its rows drawn already.
- */
-export function visibleRange(
-  count: number,
-  scrollTop: number,
-  height: number,
-  rowHeight: number
-): TreeRange {
-  if (count === 0) return { first: 0, last: -1 };
-
-  const first = Math.max(0, Math.floor(scrollTop / rowHeight) - TREE_OVERSCAN);
-  const last = Math.min(
-    count - 1,
-    Math.ceil((scrollTop + height) / rowHeight) - 1 + TREE_OVERSCAN
-  );
-  return { first, last: Math.max(first - 1, last) };
-}
-
-/**
- * The scroll offset nearest the one given that shows a row whole: the same
- * while it shows, else the row's top or bottom at the edge it is past.
- */
-export function offsetToShow(
-  index: number,
-  scrollTop: number,
-  height: number,
-  rowHeight: number
-): number {
-  const top = index * rowHeight;
-  const bottom = top + rowHeight;
-  if (top < scrollTop) return top;
-  if (bottom > scrollTop + height) return Math.max(0, bottom - height);
-  return scrollTop;
-}
 
 export type TreeProps<T = any> = {
   rows: ReadonlyArray<TreeRow<T>>;
@@ -104,7 +70,7 @@ const Tree: FC<TreeProps> = props => {
   const root = createRef<HTMLDivElement>();
   // Only a new range renders the tree: a scroll within the overscan changes
   // nothing a reader sees, so the offset and the height stay unobserved.
-  const view = observable<TreeRange>({ first: 0, last: -1 });
+  const view = observable<VirtualRange>({ first: 0, last: -1 });
   const measured = { scrollTop: 0, height: 0 };
   const { addUnsubscribe } = useUnmounted();
 

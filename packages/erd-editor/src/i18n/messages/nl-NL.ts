@@ -109,7 +109,6 @@ export const nlNL = {
   'code.copy': 'Kopiëren',
   'code.savedInDocument': 'Opgeslagen in het document',
   'code.saveFile': 'Bestand opslaan',
-  'code.saveFileMenu': 'Bestand opslaan…',
   'code.optionsPanel': 'Optiepaneel',
   'code.hideOptions': 'Opties verbergen',
   'code.showOptions': 'Opties tonen',
@@ -248,10 +247,6 @@ export const nlNL = {
   'colorPicker.preset.gray': 'Grijs',
   'palette.tab': 'Tabblad',
   'palette.noCommandsMatch': 'Geen overeenkomende opdrachten',
-  'palette.showMatches': {
-    one: '{count} overeenkomst weergeven in Zoeken en vervangen',
-    other: 'Alle {count} overeenkomsten weergeven in Zoeken en vervangen',
-  },
   'palette.searchTables': 'Tabellen doorzoeken op "{keyword}"',
   'palette.searchColumns': 'Kolommen doorzoeken op "{keyword}"',
   'palette.searchText': 'Opmerkingen en memo\'s doorzoeken op "{keyword}"',
@@ -276,7 +271,6 @@ export const nlNL = {
   'palette.schemaSqlHeader': 'Schema SQL: Kop',
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Optiepaneel',
   'palette.codeGeneratorOptionsPanel': 'Codegenerator: Optiepaneel',
-  'palette.exportSchemaSql': 'Exporteren: Schema SQL',
   'palette.groupSelectedTables': 'Geselecteerde tabellen groeperen',
   'palette.keywords.schemaSqlStatements':
     'maken als niet bestaat verwijderen vervangen',
@@ -284,7 +278,6 @@ export const nlNL = {
   'palette.keywords.schemaSqlOptionsPanel': 'tonen verbergen voor na scripts',
   'palette.keywords.codeGeneratorOptionsPanel':
     'tonen verbergen database notatie bestand opslaan',
-  'palette.keywords.exportSchemaSql': 'sql ddl bestand',
   'settings.preferences': 'Voorkeuren',
   'settings.relationshipDataTypeSync':
     'Gegevenstypen via relaties synchroniseren',

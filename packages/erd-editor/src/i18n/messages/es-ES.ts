@@ -109,7 +109,6 @@ export const esES = {
   'code.copy': 'Copiar',
   'code.savedInDocument': 'Guardado en el documento',
   'code.saveFile': 'Guardar archivo',
-  'code.saveFileMenu': 'Guardar archivo…',
   'code.optionsPanel': 'Panel de opciones',
   'code.hideOptions': 'Ocultar opciones',
   'code.showOptions': 'Mostrar opciones',
@@ -251,11 +250,6 @@ export const esES = {
   'colorPicker.preset.gray': 'Gris',
   'palette.tab': 'Pestaña',
   'palette.noCommandsMatch': 'Ningún comando coincide',
-  'palette.showMatches': {
-    one: 'Mostrar {count} coincidencia en Buscar y reemplazar',
-    many: 'Mostrar las {count} coincidencias en Buscar y reemplazar',
-    other: 'Mostrar las {count} coincidencias en Buscar y reemplazar',
-  },
   'palette.searchTables': 'Buscar "{keyword}" en las tablas',
   'palette.searchColumns': 'Buscar "{keyword}" en las columnas',
   'palette.searchText': 'Buscar "{keyword}" en comentarios y notas',
@@ -279,7 +273,6 @@ export const esES = {
   'palette.schemaSqlHeader': 'Esquema SQL: Cabecera',
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Panel de opciones',
   'palette.codeGeneratorOptionsPanel': 'Generador de código: Panel de opciones',
-  'palette.exportSchemaSql': 'Exportar: Esquema SQL',
   'palette.groupSelectedTables': 'Agrupar las tablas seleccionadas',
   'palette.keywords.schemaSqlStatements':
     'crear si no existe eliminar reemplazar',
@@ -288,7 +281,6 @@ export const esES = {
     'mostrar ocultar antes después scripts',
   'palette.keywords.codeGeneratorOptionsPanel':
     'mostrar ocultar base de datos estilo guardar archivo',
-  'palette.keywords.exportSchemaSql': 'sql ddl archivo',
   'settings.preferences': 'Preferencias',
   'settings.relationshipDataTypeSync':
     'Sincronizar el tipo de datos en las relaciones',

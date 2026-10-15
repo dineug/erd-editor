@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { PALETTE_ROW_HEIGHT } from '@/components/quick-search/paletteList';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
 import { fontSize3, typography } from '@/styles/typography.styles';
 
@@ -19,6 +20,7 @@ describe('QuickSearch.styles', () => {
       styles.empty,
       styles.prefix,
       styles.list,
+      styles.space,
       styles.action,
       styles.icon,
       styles.name,
@@ -46,6 +48,7 @@ describe('QuickSearch.styles', () => {
       styles.empty,
       styles.prefix,
       styles.list,
+      styles.space,
       styles.action,
       styles.icon,
       styles.name,
@@ -139,19 +142,21 @@ describe('QuickSearch.styles', () => {
     expect(text).toContain('font-family: var(--code-font-family)');
   });
 
-  it('scrolls the result list once it passes 400px', () => {
+  it('scrolls the result list down, its height set from the rows it holds', () => {
     const text = staticText(styles.list);
 
-    expect(text).toContain('max-height: 400px');
-    expect(text).toContain('overflow: auto');
-    expect(text).toContain('flex-direction: column');
+    expect(text).toContain('overflow-y: auto');
+    expect(text).not.toContain('max-height');
+    expect(staticText(styles.space)).toContain('position: relative');
   });
 
-  it('gives each row a fixed height plus hover and selected backgrounds', () => {
+  it('gives each row the fixed height the list lays out by, at its own offset, plus hover and selected backgrounds', () => {
     const text = staticText(styles.action);
 
-    expect(text).toContain('min-height: 45px');
-    expect(text).toContain('height: 45px');
+    expect(text).toContain('position: absolute');
+    expect(text).toContain('box-sizing: border-box');
+    expect(text).toContain(`min-height: ${PALETTE_ROW_HEIGHT}px`);
+    expect(text).toContain(`height: ${PALETTE_ROW_HEIGHT}px`);
     expect(text).toContain('cursor: pointer');
     expect(text).toContain('white-space: nowrap');
     expect(text).toContain('&:hover');

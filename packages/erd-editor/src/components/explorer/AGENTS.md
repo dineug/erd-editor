@@ -6,9 +6,9 @@
 
 ## Making a Change
 
-1. **Read the files on the other side.** A change to how the chord is taken reads `src/components/erd/AGENTS.md`, which holds `YIELDS_TO_A_CARET` and the editor's Escape branch. A change to `PANEL_PASSING_BINDINGS` reads `src/components/primitives/AGENTS.md`, since the color picker shares that list. A change to a query handed over reads `src/components/quick-search/AGENTS.md`.
+1. **Read the files on the other side.** A change to how the chord is taken reads `src/components/erd/AGENTS.md`, which holds `YIELDS_TO_A_CARET` and the editor's Escape branch. A change to `PANEL_PASSING_BINDINGS` reads `src/components/primitives/AGENTS.md`, since the color picker shares that list. A change to what the palette's Find and Replace row opens reads `src/components/quick-search/AGENTS.md`.
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run.
-3. **Run the e2e suite for a visible change.** `e2e/specs/explorer.spec.ts` drives the panel and `e2e/specs/find-replace.spec.ts` its search, the chord and the palette's hand-off.
+3. **Run the e2e suite for a visible change.** `e2e/specs/explorer.spec.ts` drives the panel and `e2e/specs/find-replace.spec.ts` its search, the chord and the palette's rows.
 4. **Change a pinned rule and its spec together.** Testing Requirements lists which spec pins which owner decision.
 
 ## Key Files
@@ -71,7 +71,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 ### The search
 
 - **The search sits between the header and the tree** (owner decisions of 2026-10-13): the arrow that unfolds the Replace row, folded at first, absent in a read-only editor and as tall as the rows it unfolds, as an editor's find draws it (the owner's request of 2026-10-14); the find field with Match Case, Whole Word and Regex inside it; the Replace field with Preserve Case inside it, then Replace and Replace All; the place in the matches with Previous and Next; three dots that unfold the seven scopes. The Replace row and the scopes stay as they were left for the element's life.
-- **Find and Replace opens it**: `KeyBindingName.findReplace` on `$mod+KeyF`, the palette's row and the context menu's, and a query the palette hands over (`openFindReplace`). An opening takes the ERD tab, opens the Explorer and asks the find field for the keyboard, its query selected.
+- **Find and Replace opens it**: `KeyBindingName.findReplace` on `$mod+KeyF`, and the palette's row and the context menu's (`openFindReplace`, which carries no query). An opening takes the ERD tab, opens the Explorer and asks the find field for the keyboard, its query selected.
 - **An opening closes five dialogs**: Table Properties, the theme builder, the locale picker, the export image dialog and Map Columns, as they close one another (an owner decision of 2026-10-11). So the chord pressed while Table Properties is up trades that dialog for the search. `useKeyBindingMap.test.ts` pins it as a press the binding takes.
 - **A window too narrow for the panel says so** with the `explorer.tooNarrow` toast and leaves the panel open, searched, for the root that widens; the keyboard stays where it was (an owner decision of 2026-10-13). A request for the keyboard that no drawn panel took by the renders it scheduled is let go (`requestSearchFocus`), so a panel drawn later takes nothing.
 - **Pressed again, the chord closes the panel** the toolbar button shows pressed, as the button does, and the next press opens it with its query selected (the owner's request of 2026-10-14, replacing the rule that it only brought the keyboard back). With the palette or one of the five dialogs up it gives way to the search instead (`hasSearchDialog`). An opening with no query while shown, the palette row's and the context menu's, brings the keyboard back, its query selected, keeping the current match and the run (`focusSearch`).
@@ -86,10 +86,9 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 
 - **Seven kinds of text are searched.** Table names and comments, column names and comments, index names, table group names and memos. A walk takes each table's name, comment, columns and index names, the index names in document order, then the group names, then the memos. Hidden memos and groups are not searched (`walkFields`), so a match is never one the reader cannot see.
 - **The first opening searches names alone.** In each element it searches table, column, index and table group names, with Table comments, Column comments and Memos off (`DEFAULT_FIND_FIELDS`, frozen, so the view takes a copy). A comment or memo is prose a rename should not reach unasked (an owner decision, pinned in `explorerSearch.test.ts`).
-- **Later openings keep the last scopes and options** for the element's life, an opening with no query included.
-- **A query handed over resets options and scopes.** It sets the default options, Preserve Case off, and the scopes it names in the search's own order. So the palette's `:` hand-off turns both comments and Memos on. `findMatches` given no fields still reads every kind.
+- **Later openings keep the last scopes and options** for the element's life.
 - **A walk in an order keeps it.** Given a `FieldOrder` (`treeOrderOf`: tables and groups by name, ties in document order), a walk takes the live ids in that order and any it never met after them, by name. With no order the walk is in document order, as the palette's is.
-- Palette prefixes and the hand-off row past the cap: `src/components/quick-search/AGENTS.md`.
+- Palette prefixes: `src/components/quick-search/AGENTS.md`.
 
 ### The search's tree
 
@@ -150,7 +149,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 ## Testing Requirements
 
 - `explorerTree.test.ts`, `explorerNavigation.test.ts`, `explorerCommands.test.ts` and `explorerView.test.ts` seed the document in `src/__test-utils__/explorerSeed.ts`; the search's specs seed `src/__test-utils__/findSeed.ts`.
-- `explorerSearch.test.ts` pins the search's owner decisions: the names-only first opening, the run and its stop, the order a run keeps, the searches an edit asks for and the ones it never does, Replace All's one dispatch. It counts the searches through `vi.mock` of `findMatches`. `explorer-controller/ExplorerController.test.ts` pins the chord, the openings and the palette's hand-off.
+- `explorerSearch.test.ts` pins the search's owner decisions: the names-only first opening, the run and its stop, the order a run keeps, the searches an edit asks for and the ones it never does, Replace All's one dispatch. It counts the searches through `vi.mock` of `findMatches`. `explorer-controller/ExplorerController.test.ts` pins the chord and the openings.
 - `explorer-panel/ExplorerPanel.browser.test.tsx` and `explorer-search/ExplorerSearch.browser.test.tsx` mount the shell in a shadow root with the styles adopted and press real keys in Chromium; the first counts the builds and layouts through `vi.mock` of `explorerTree` and `treeModel`.
 - `src/components/findPanelGone.test.ts` holds the floating panel's names out of `src`.
 - `e2e/specs/explorer.spec.ts` checks the panel in the element: the widths, a click and the keys, the edge, a right-to-left language and a narrow window. `e2e/specs/find-replace.spec.ts` checks its search, the chord and the palette's rows.

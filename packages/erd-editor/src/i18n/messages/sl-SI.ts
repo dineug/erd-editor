@@ -109,7 +109,6 @@ export const slSI = {
   'code.copy': 'Kopiraj',
   'code.savedInDocument': 'Shranjeno v dokumentu',
   'code.saveFile': 'Shrani datoteko',
-  'code.saveFileMenu': 'Shrani datoteko…',
   'code.optionsPanel': 'Plošča z možnostmi',
   'code.hideOptions': 'Skrij možnosti',
   'code.showOptions': 'Prikaži možnosti',
@@ -254,12 +253,6 @@ export const slSI = {
   'colorPicker.preset.gray': 'Siva',
   'palette.tab': 'Zavihek',
   'palette.noCommandsMatch': 'Ni ujemajočih se ukazov',
-  'palette.showMatches': {
-    one: 'Pokaži {count} zadetek v podoknu Najdi in zamenjaj',
-    two: 'Pokaži vsa {count} zadetka v podoknu Najdi in zamenjaj',
-    few: 'Pokaži vse {count} zadetke v podoknu Najdi in zamenjaj',
-    other: 'Pokaži vseh {count} zadetkov v podoknu Najdi in zamenjaj',
-  },
   'palette.searchTables': 'Išči »{keyword}« v tabelah',
   'palette.searchColumns': 'Išči »{keyword}« v stolpcih',
   'palette.searchText': 'Išči »{keyword}« v komentarjih in beležkah',
@@ -283,7 +276,6 @@ export const slSI = {
   'palette.schemaSqlHeader': 'Shema SQL: Glava',
   'palette.schemaSqlOptionsPanel': 'Shema SQL: Plošča z možnostmi',
   'palette.codeGeneratorOptionsPanel': 'Generator kode: Plošča z možnostmi',
-  'palette.exportSchemaSql': 'Izvozi: Shema SQL',
   'palette.groupSelectedTables': 'Združi izbrane tabele v skupino',
   'palette.keywords.schemaSqlStatements':
     'ustvari če ne obstaja izbriši zamenjaj',
@@ -291,7 +283,6 @@ export const slSI = {
   'palette.keywords.schemaSqlOptionsPanel': 'prikaži skrij pred za skripti',
   'palette.keywords.codeGeneratorOptionsPanel':
     'prikaži skrij zbirka podatkov zapis shrani datoteko',
-  'palette.keywords.exportSchemaSql': 'sql ddl datoteka',
   'settings.preferences': 'Prednostne nastavitve',
   'settings.relationshipDataTypeSync':
     'Sinhronizacija tipa podatkov v relacijah',

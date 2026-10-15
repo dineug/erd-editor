@@ -85,7 +85,7 @@
 ### Keys and parameters
 
 - **Interpolate `{name}` alone.** A message uses no ICU syntax. A number is written as `String(n)`.
-- **Make a plural only where English shows numbers.** A plural is an object of forms that `t()` picks among by the language's `Intl.PluralRules`, `other` where a form is missing. `findReplace.matchCount`, `palette.showMatches` and `colorPicker.degrees` are among them.
+- **Make a plural only where English shows numbers.** A plural is an object of forms that `t()` picks among by the language's `Intl.PluralRules`, `other` where a form is missing. `findReplace.matchCount` and `colorPicker.degrees` are among them.
 - **Otherwise pick between two plain keys in code.** A choice English makes without a number is two plain keys picked in code (`contextMenu.deleteColumn` / `deleteColumns`). A plural category does not fit there, since a category such as Russian's `one` also covers 21.
 - **Write a sentence as one message.** Its parts enter as placeholders, never as fragments joined in code. A word no language translates enters as a placeholder too (`{format}`, `{database}`).
 - **Type label keys as `PlainMessageKey`.** Every label map and every `labelKey`, `titleKey` or `nameKey` is typed so: `menuLabel`, `LnbLabelKey`, `SCOPE_LABEL`, `ColumnTypeToMessageKey`. `t()` handed the whole `MessageKey` union asks for a parameters argument.
