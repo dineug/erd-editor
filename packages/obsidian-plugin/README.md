@@ -59,15 +59,18 @@ A coding agent such as Claude Code or Codex edits the diagrams in your vault thr
 [ERD Editor MCP server](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme).
 Each change shows up on the canvas as it happens, and the agent's undo reverts only its own edits.
 
-For Claude Code, run in your vault folder (Node.js 22.12 or later):
+Add it with one command, in your vault folder (Node.js 22.12 or later):
 
 ```sh
+# Claude Code
 claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+# Codex
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 ```
 
 Then start the agent in the vault folder and ask, for example _"Add a reviews table to schema.erd,
 related to users and products"_. Name new diagrams with `.erd` so the file explorer lists them.
-Codex, other clients and the tool list are in the
+Other clients and the tool list are in the
 [MCP server's README](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme).
 
 **Settings → ERD Editor → Coding agents**, on by default, turns the connection off for the vault;

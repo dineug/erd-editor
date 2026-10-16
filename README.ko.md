@@ -46,13 +46,16 @@ Claude Code, Codex 등 MCP 클라이언트에게 스키마 변경을 부탁하�
 VS Code, Obsidian, JetBrains IDE가 그 다이어그램을 갖고 있으면 에이전트는 협업자 한 명으로 참여하고,
 에이전트의 실행 취소는 자기 편집만 되돌립니다. 편집기가 없으면 디스크의 파일을 편집하고, 연결을
 끈 편집기나 신뢰하지 않은 워크스페이스·프로젝트에서는 읽기만 하고 편집은 거부됩니다. Node.js
-22.12 이상이 필요합니다. Claude Code라면 프로젝트 폴더에서 실행하세요:
+22.12 이상이 필요합니다. 프로젝트 폴더에서 명령 한 줄로 추가하세요:
 
 ```sh
+# Claude Code
 claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+# Codex
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 ```
 
-Codex와 다른 클라이언트 설정, 도구 목록은 [README](./packages/mcp-server)에 있습니다.
+다른 클라이언트 설정과 도구 목록은 [README](./packages/mcp-server)에 있습니다.
 
 ## 어디서 쓸 수 있나
 

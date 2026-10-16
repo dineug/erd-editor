@@ -35,13 +35,16 @@
 
 ![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
 
-[`@dineug/erd-editor-mcp`](./packages/mcp-server) 为代理提供每种编辑操作一个工具。当 VS Code、Obsidian 或 JetBrains IDE 持有这张图时，代理会作为又一位协作者加入，它的撤销只回退自己的编辑；没有编辑器时它直接编辑磁盘上的文件；关闭了连接的编辑器，或尚未信任的工作区、项目，允许代理读取但拒绝其编辑。需要 Node.js 22.12 或更高版本。使用 Claude Code 时，在项目文件夹中运行：
+[`@dineug/erd-editor-mcp`](./packages/mcp-server) 为代理提供每种编辑操作一个工具。当 VS Code、Obsidian 或 JetBrains IDE 持有这张图时，代理会作为又一位协作者加入，它的撤销只回退自己的编辑；没有编辑器时它直接编辑磁盘上的文件；关闭了连接的编辑器，或尚未信任的工作区、项目，允许代理读取但拒绝其编辑。需要 Node.js 22.12 或更高版本。在项目文件夹中用一条命令添加：
 
 ```sh
+# Claude Code
 claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+# Codex
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 ```
 
-Codex 和其他客户端的设置以及工具列表见它的 [README](./packages/mcp-server)。
+其他客户端的设置以及工具列表见它的 [README](./packages/mcp-server)。
 
 ## 在哪里使用
 

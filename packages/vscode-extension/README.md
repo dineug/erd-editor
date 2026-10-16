@@ -46,10 +46,13 @@ saves it, and the agent's undo reverts only its own edits.
 
 ![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
 
-For Claude Code, run in your project folder (Node.js 22.12 or later):
+Add it with one command, in your project folder (Node.js 22.12 or later):
 
 ```sh
+# Claude Code
 claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+# Codex
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 ```
 
 Then trust the workspace, start the agent in the same folder and ask, for example _"Add a reviews
@@ -57,7 +60,7 @@ table to schema.erd.json, related to users and products"_. In a folder with no `
 yet, create one in VS Code first, or the agent's new diagram stays on disk without opening.
 
 The `dineug.erd-editor.agentHub.enabled` setting turns the connection off for the window; the agent
-can then read the diagrams but never writes them. Codex, other clients and the tool list are in the
+can then read the diagrams but never writes them. Other clients and the tool list are in the
 [MCP server's README](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme).
 
 ## Settings

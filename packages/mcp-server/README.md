@@ -35,7 +35,13 @@ claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
 
 ### Codex
 
-Add to `~/.codex/config.toml`, or to `.codex/config.toml` in a trusted project:
+Run once; the Codex CLI, app and IDE extension share the setting:
+
+```sh
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
+```
+
+Or add it to `~/.codex/config.toml`, or to `.codex/config.toml` in a trusted project:
 
 ```toml
 [mcp_servers.erd-editor]

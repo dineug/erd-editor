@@ -35,13 +35,16 @@ Claude Code、Codex などの MCP クライアントにスキーマの変更を�
 
 ![coding agents](https://github.com/dineug/erd-editor/blob/main/img/coding-agents.webp?raw=true)
 
-[`@dineug/erd-editor-mcp`](./packages/mcp-server) は、編集操作ごとにひとつのツールをエージェントに提供します。VS Code、Obsidian、JetBrains IDE がその図を持っていれば、エージェントはもう一人の共同編集者として参加し、エージェントの元に戻す操作は自身の編集だけを戻します。エディターがなければディスク上のファイルを編集し、接続をオフにしたエディターや信頼していないワークスペース・プロジェクトでは、読み取りはできても編集は拒否されます。Node.js 22.12 以降が必要です。Claude Code なら、プロジェクトフォルダーで次を実行します:
+[`@dineug/erd-editor-mcp`](./packages/mcp-server) は、編集操作ごとにひとつのツールをエージェントに提供します。VS Code、Obsidian、JetBrains IDE がその図を持っていれば、エージェントはもう一人の共同編集者として参加し、エージェントの元に戻す操作は自身の編集だけを戻します。エディターがなければディスク上のファイルを編集し、接続をオフにしたエディターや信頼していないワークスペース・プロジェクトでは、読み取りはできても編集は拒否されます。Node.js 22.12 以降が必要です。プロジェクトフォルダーで、コマンド 1 行で追加します:
 
 ```sh
+# Claude Code
 claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+# Codex
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 ```
 
-Codex やその他のクライアントの設定とツール一覧は [README](./packages/mcp-server) にあります。
+その他のクライアントの設定とツール一覧は [README](./packages/mcp-server) にあります。
 
 ## 使える場所
 

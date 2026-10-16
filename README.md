@@ -48,13 +48,16 @@ Ask Claude Code, Codex or any MCP client to change the schema, and watch it happ
 When VS Code, Obsidian or a JetBrains IDE holds the diagram, the agent joins it as one more
 collaborator, and its undo reverts only its own edits; with no editor, it edits the file on disk.
 An editor with its connection off, or an untrusted workspace or project, lets the agent read but
-refuses its edits. It needs Node.js 22.12 or later. For Claude Code, run in your project folder:
+refuses its edits. It needs Node.js 22.12 or later. Add it with one command, in your project folder:
 
 ```sh
+# Claude Code
 claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+# Codex
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 ```
 
-Codex, other clients and the tool list: [its README](./packages/mcp-server).
+Other clients and the tool list: [its README](./packages/mcp-server).
 
 ## Where to use it
 

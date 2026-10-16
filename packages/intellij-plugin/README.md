@@ -43,14 +43,17 @@ through the
 [ERD Editor MCP server](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme).
 Each change shows up on the canvas as it happens, and the agent's undo reverts only its own edits.
 
-For Claude Code, run in your project folder (Node.js 22.12 or later):
+Add it with one command, in your project folder (Node.js 22.12 or later):
 
 ```sh
+# Claude Code
 claude mcp add --transport stdio erd-editor -- npx -y @dineug/erd-editor-mcp
+# Codex
+codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 ```
 
 Then trust the project, start the agent in the same folder and ask, for example "Add a reviews
-table to schema.erd.json, related to users and products". Codex, other clients and the tool list
+table to schema.erd.json, related to users and products". Other clients and the tool list
 are in the
 [MCP server's README](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme).
 
