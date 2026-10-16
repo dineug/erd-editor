@@ -34,7 +34,7 @@ one tab per browser, elected over `navigator.locks`, with no server holding the 
 mqtt relay carries signaling only, the schema, its edits and the participant list are encrypted
 with AES-GCM, and the key reaches a guest only in the share link's URL fragment, which browsers
 leave out of every request. The
-[root README](../../README.md#real-time-collaboration-experimental) draws the architecture.
+[root README](../../README.md#real-time-collaboration) draws the architecture.
 
 `/gdrive` keeps no IndexedDB: its client in `src/services/gdrive/` reads and saves the Drive file,
 one tab per file saving under a Web Lock, and gets its access tokens from the relay, or from
@@ -58,8 +58,8 @@ features are in the [root README](../../README.md#features):
   importing one adds its schemas as new copies.
 - **Start screen** — with no schema open, offers New schema, Import files and Open sample (a
   bookstore schema).
-- **Real-time collaboration** (experimental) — start a session from a schema in the sidebar and
-  share its link; guests join peer-to-peer, end-to-end encrypted, and a list shows each
+- **Real-time collaboration** — start a session from a schema in the sidebar and share its
+  link; guests join peer-to-peer, end-to-end encrypted, and a list shows each
   participant's nickname.
 - **Theme** — system (the default, following your operating system), light or dark.
 - **Display language** — the app's own screens and the editor in the same 25 languages, picked
