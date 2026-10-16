@@ -6,6 +6,7 @@ import {
 import { EXPLORER_MAX_WIDTH, EXPLORER_MIN_WIDTH } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import type { RxStore } from '@/engine/rx-store';
+import { type Emitter, openFindReplaceAction } from '@/utils/emitter';
 import { isTakenOver } from '@/utils/takeover';
 
 import { explorerViewOf } from './explorerView';
@@ -53,10 +54,22 @@ export function closeExplorer(store: RxStore): void {
   applyViewport(store);
 }
 
-/** The toolbar button and the palette row: closes a pressed button's panel, opens any other, and does nothing under a takeover. */
+/** The toolbar button: closes a pressed button's panel, opens any other, and does nothing under a takeover. */
 export function toggleExplorer(store: RxStore): void {
   if (isTakenOver(store.state)) return;
   isExplorerPressed(store) ? closeExplorer(store) : openExplorer(store);
+}
+
+/**
+ * The palette's and the context menu's Toggle Explorer, which do what the find
+ * chord does: close a pressed button's panel, or ask for the search otherwise.
+ * Under a takeover it does nothing.
+ */
+export function toggleExplorerSearch(store: RxStore, emitter: Emitter): void {
+  if (isTakenOver(store.state)) return;
+  isExplorerPressed(store)
+    ? closeExplorer(store)
+    : emitter.emit(openFindReplaceAction());
 }
 
 /** Sets the width a drag on the edge asks for, held between the least and the most. */

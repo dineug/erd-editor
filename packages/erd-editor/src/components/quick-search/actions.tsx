@@ -9,7 +9,7 @@ import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-men
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
 import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
-import { toggleExplorer } from '@/components/explorer/explorerCommands';
+import { toggleExplorerSearch } from '@/components/explorer/explorerCommands';
 import { fieldIcon } from '@/components/explorer/fieldIcon';
 import { toErdTarget } from '@/components/explorer/matchTarget';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
@@ -58,7 +58,6 @@ import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import {
   openAutomaticTablePlacementAction,
   openExportImageAction,
-  openFindReplaceAction,
   setLocaleOptionAction,
   setThemeOptionsAction,
 } from '@/utils/emitter';
@@ -550,17 +549,9 @@ export function createScopeActions(
     },
     {
       icon: <Icon name="list-tree" size={16} />,
-      ...named(i18n, 'common.findAndReplace', 'palette.keywords.findReplace'),
-      shortcut: keyBindingMap.findReplace[0]?.shortcut,
-      perform: ({ emitter }) => {
-        emitter.emit(openFindReplaceAction());
-      },
-      filter: canOpenExplorer,
-    },
-    {
-      icon: <Icon name="list-tree" size={16} />,
       ...named(i18n, 'explorer.toggle', 'palette.keywords.explorer'),
-      perform: ({ store }) => toggleExplorer(store),
+      shortcut: keyBindingMap.findReplace[0]?.shortcut,
+      perform: ({ store, emitter }) => toggleExplorerSearch(store, emitter),
       filter: canOpenExplorer,
     },
     ...createPreferenceActions(i18n, preferences),
@@ -726,7 +717,7 @@ export function createMatchAction(
   };
 }
 
-/** Whether a row opening the Explorer, or Find and Replace above its tree, would open it: an overlay taking the canvas over keeps it shut. */
+/** Whether the Toggle Explorer row would open the Explorer: an overlay taking the canvas over keeps it shut. */
 const canOpenExplorer = ({ store }: AppContext) => !isTakenOver(store.state);
 
 function createTableActions({ store }: AppContext, i18n: I18n): Action[] {

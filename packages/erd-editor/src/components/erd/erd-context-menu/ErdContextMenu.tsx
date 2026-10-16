@@ -6,6 +6,7 @@ import {
   addTableGroupAndRename,
   openTableGroupNameEditor,
 } from '@/components/erd/table-group/tableGroupName';
+import { toggleExplorerSearch } from '@/components/explorer/explorerCommands';
 import { useI18n } from '@/components/localeContext';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
@@ -59,7 +60,6 @@ import type { PlainMessageKey } from '@/i18n/translate';
 import { ValuesType } from '@/internal-types';
 import {
   openColorPickerAction,
-  openFindReplaceAction,
   openTablePropertiesAction,
 } from '@/utils/emitter';
 import { importDiffJSON } from '@/utils/file/importFile';
@@ -150,9 +150,9 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
-  const handleOpenFindReplace = () => {
-    const { emitter } = app.value;
-    emitter.emit(openFindReplaceAction());
+  const handleToggleExplorer = () => {
+    const { store, emitter } = app.value;
+    toggleExplorerSearch(store, emitter);
     props.onClose();
   };
 
@@ -762,11 +762,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 />
               )}
               <ContextMenu.Item
-                onClick={handleOpenFindReplace}
+                onClick={handleToggleExplorer}
                 children={
                   <ContextMenu.Menu
                     icon={<Icon name="list-tree" size={14} />}
-                    name={t('common.findAndReplace')}
+                    name={t('explorer.toggle')}
                     right={
                       <Kbd shortcut={keyBindingMap.findReplace[0]?.shortcut} />
                     }

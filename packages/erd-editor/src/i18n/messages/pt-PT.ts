@@ -12,7 +12,6 @@ export const ptPT = {
   'common.displayLanguage': 'Idioma de apresentação',
   'common.search': 'Pesquisar',
   'common.find': 'Localizar',
-  'common.findAndReplace': 'Localizar e substituir',
   'common.newTable': 'Nova tabela',
   'common.newMemo': 'Nova nota',
   'common.newTableGroup': 'Novo grupo de tabelas',
@@ -270,8 +269,8 @@ export const ptPT = {
   'palette.keywords.aml': 'aml azimutt linguagem markup marcação esquema',
   'palette.keywords.image':
     'imagem png svg vetor vetorial figura área transferência',
-  'palette.keywords.findReplace': 'localizar substituir mudar nome renomear',
-  'palette.keywords.explorer': 'árvore estrutura objetos',
+  'palette.keywords.explorer':
+    'localizar substituir mudar nome renomear árvore estrutura objetos',
   'palette.schemaSqlStatements': 'Esquema SQL: Instruções',
   'palette.schemaSqlHeader': 'Esquema SQL: Cabeçalho',
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Painel de opções',
@@ -305,7 +304,7 @@ export const ptPT = {
   'shortcuts.name.edit': 'Editar',
   'shortcuts.name.stop': 'Cancelar',
   'shortcuts.name.search': 'Pesquisar',
-  'shortcuts.name.findReplace': 'Localizar e substituir',
+  'shortcuts.name.findReplace': 'Alternar explorador',
   'shortcuts.name.undo': 'Anular',
   'shortcuts.name.redo': 'Refazer',
   'shortcuts.name.addTable': 'Adicionar tabela',

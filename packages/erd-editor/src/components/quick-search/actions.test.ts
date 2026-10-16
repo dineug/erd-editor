@@ -20,6 +20,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
+import { openExplorer } from '@/components/explorer/explorerCommands';
 import { explorerViewOf } from '@/components/explorer/explorerView';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
@@ -145,7 +146,6 @@ const ERD_TOOLBOX = [
   'One Only',
   'One N',
   'Auto Layout',
-  'Find and Replace',
   'Toggle Explorer',
 ];
 
@@ -274,7 +274,7 @@ describe('searchActions / threshold', () => {
   it('lists New Memo alone for memo, none of the commands it only loosely matched', () => {
     expect(found('memo')).toEqual(['New Memo']);
     expect(found('auto')).toEqual(['Auto Layout']);
-    expect(found('replace')).toEqual(['Find and Replace']);
+    expect(found('replace')).toEqual(['Toggle Explorer']);
   });
 
   it('keeps what a word or a near typo is meant for', () => {
@@ -289,7 +289,7 @@ describe('searchActions / threshold', () => {
       ['exprt', 'Export'],
       ['databse', 'Database'],
       ['layot', 'Auto Layout'],
-      ['replce', 'Find and Replace'],
+      ['replce', 'Toggle Explorer'],
       ['relashionship', 'Zero One'],
     ]) {
       expect(found(typed)).toContain(command);
@@ -416,7 +416,6 @@ describe('createScopeActions', () => {
       'Schema SQL: Statements',
       'Schema SQL: Header',
       'Schema SQL: Options panel',
-      'Find and Replace',
       'Toggle Explorer',
     ]);
   });
@@ -434,12 +433,11 @@ describe('createScopeActions', () => {
       'Table Name Case',
       'Column Name Case',
       'Code Generator: Options panel',
-      'Find and Replace',
       'Toggle Explorer',
     ]);
   });
 
-  it('keeps the tabs, Find and Replace, the Explorer and the table jumps # lists in the visualization and settings canvases', () => {
+  it('keeps the tabs, the Explorer and the table jumps # lists in the visualization and settings canvases', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
@@ -447,7 +445,7 @@ describe('createScopeActions', () => {
       setCanvasType(canvasType);
       expect(
         names(scope().filter(action => action.filter?.(app) ?? true))
-      ).toEqual(['Tab', 'Find and Replace', 'Toggle Explorer', 'users']);
+      ).toEqual(['Tab', 'Toggle Explorer', 'users']);
     }
   });
 
@@ -1357,39 +1355,28 @@ describe('createScopeActions / no focus actions', () => {
     enterFlow();
 
     const visible = scope().filter(action => action.filter?.(app) ?? true);
-    expect(names(visible)).toEqual([
-      'Tab',
-      'Find and Replace',
-      'Toggle Explorer',
-      'users',
-    ]);
+    expect(names(visible)).toEqual(['Tab', 'Toggle Explorer', 'users']);
     expect(find(visible, 'users').keywords).toBe('Table');
   });
 });
 
-describe('createScopeActions / Find and Replace', () => {
-  it('draws the list-tree icon the context menu and the toolbar draw', async () => {
-    expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('list-tree');
+describe('createScopeActions / Toggle Explorer', () => {
+  it('draws the list-tree icon the context menu and the toolbar button draw', async () => {
+    expect(await iconOf(find(scope(), 'Toggle Explorer'))).toBe('list-tree');
   });
 
-  it('shows the find and replace chord and asks the panel to open', () => {
-    const opened: unknown[] = [];
-    app.emitter.on({
-      openFindReplace: action => {
-        opened.push(action);
-      },
-    });
-    const action = find(scope(), 'Find and Replace');
+  it('is the one row of the Explorer, found by its tree and its find words', () => {
+    const action = find(scope(), 'Toggle Explorer');
 
-    expect(action.shortcut).toBe(app.keyBindingMap.findReplace[0].shortcut);
-    expect(searchActions([action], 'replace')).toEqual([action]);
-
-    action.perform?.(app);
-
-    expect(opened).toEqual([openFindReplaceAction()]);
+    expect(
+      names(scope().filter(row => row.shortcut === action.shortcut))
+    ).toEqual(['Toggle Explorer']);
+    for (const keyword of ['tree', 'replace', 'rename']) {
+      expect(searchActions([action], keyword)).toEqual([action]);
+    }
   });
 
-  it('names its chord on every tab, and asks the panel to open from each', () => {
+  it('shows the find chord and, as the chord does, asks for the search from any tab', () => {
     const opened: unknown[] = [];
     app.emitter.on({
       openFindReplace: action => {
@@ -1398,54 +1385,40 @@ describe('createScopeActions / Find and Replace', () => {
     });
 
     for (const canvasType of [
+      CanvasType.ERD,
       CanvasType.visualization,
       CanvasType.schemaSQL,
       CanvasType.generatorCode,
       CanvasType.settings,
     ]) {
       setCanvasType(canvasType);
-      const action = find(scope(), 'Find and Replace');
+      const action = find(scope(), 'Toggle Explorer');
 
-      expect(action.shortcut).toBe('$mod+KeyF');
+      expect(action.shortcut).toBe(app.keyBindingMap.findReplace[0].shortcut);
       action.perform?.(app);
     }
 
-    expect(opened).toHaveLength(4);
+    expect(opened).toEqual(Array(5).fill(openFindReplaceAction()));
+  });
+
+  it('closes the Explorer the toolbar shows pressed, asking for no search', () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action);
+      },
+    });
+    setCanvasType(CanvasType.ERD);
+    openExplorer(app.store);
+
+    find(scope(), 'Toggle Explorer').perform?.(app);
+
+    expect(explorerViewOf(app.store).open).toBe(false);
+    expect(opened).toEqual([]);
   });
 
   it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
     'leaves the row out under %s, which takes the canvas over and keeps the panel shut',
-    key => {
-      expect(visibleNames()).toContain('Find and Replace');
-
-      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
-
-      expect(visibleNames()).not.toContain('Find and Replace');
-    }
-  );
-});
-
-describe('createScopeActions / Toggle Explorer', () => {
-  it('draws the list-tree icon the toolbar button draws', async () => {
-    expect(await iconOf(find(scope(), 'Toggle Explorer'))).toBe('list-tree');
-  });
-
-  it('opens the Explorer on the ERD tab from any tab, and closes it shown', () => {
-    const action = find(scope(), 'Toggle Explorer');
-    expect(searchActions([action], 'tree')).toEqual([action]);
-    setCanvasType(CanvasType.schemaSQL);
-
-    action.perform?.(app);
-
-    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
-    expect(explorerViewOf(app.store).open).toBe(true);
-
-    action.perform?.(app);
-    expect(explorerViewOf(app.store).open).toBe(false);
-  });
-
-  it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
-    'leaves the row out under %s, which takes the canvas over',
     key => {
       expect(visibleNames()).toContain('Toggle Explorer');
 
@@ -1538,8 +1511,8 @@ const korean = createI18n(
     'palette.tab': '탭',
     'common.newTable': '새 테이블',
     'common.newMemo': '새 메모',
-    'common.findAndReplace': '찾기 및 바꾸기',
-    'palette.keywords.findReplace': '찾기 바꾸기 이름',
+    'explorer.toggle': '탐색기 열기/닫기',
+    'palette.keywords.explorer': '찾기 바꾸기 이름 트리',
     'palette.keywords.graphql': 'graphql sdl gql 스키마',
     'common.table': '테이블',
     'common.unnamed': '이름 없음',
@@ -1570,8 +1543,11 @@ describe('named', () => {
       name: 'New Table',
     });
     expect(
-      named(sourceI18n, 'common.findAndReplace', 'palette.keywords.findReplace')
-    ).toEqual({ name: 'Find and Replace', keywords: 'find replace rename' });
+      named(sourceI18n, 'explorer.toggle', 'palette.keywords.explorer')
+    ).toEqual({
+      name: 'Toggle Explorer',
+      keywords: 'find replace rename tree outline objects',
+    });
     expect(named(sourceI18n, { name: 'GraphQL' })).toEqual({
       name: 'GraphQL',
     });
@@ -1583,11 +1559,11 @@ describe('named', () => {
       alias: ['New Table'],
     });
     expect(
-      named(korean, 'common.findAndReplace', 'palette.keywords.findReplace')
+      named(korean, 'explorer.toggle', 'palette.keywords.explorer')
     ).toEqual({
-      name: '찾기 및 바꾸기',
-      keywords: '찾기 바꾸기 이름',
-      alias: ['Find and Replace', 'find replace rename'],
+      name: '탐색기 열기/닫기',
+      keywords: '찾기 바꾸기 이름 트리',
+      alias: ['Toggle Explorer', 'find replace rename tree outline objects'],
     });
     expect(
       named(korean, { name: 'GraphQL' }, 'palette.keywords.graphql')
@@ -1729,10 +1705,10 @@ describe('createScopeActions / translated', () => {
 
     expect(names(searchActions(commands, 'new table'))[0]).toBe('새 테이블');
     expect(names(searchActions(commands, 'rename'))).toEqual([
-      '찾기 및 바꾸기',
+      '탐색기 열기/닫기',
     ]);
     expect(names(searchActions(commands, '새 메모'))[0]).toBe('새 메모');
-    expect(keywordHolder('Find and')(find(commands, '찾기 및 바꾸기'))).toBe(
+    expect(keywordHolder('Toggle Ex')(find(commands, '탐색기 열기/닫기'))).toBe(
       true
     );
   });
@@ -1747,15 +1723,20 @@ describe('createScopeActions / translated', () => {
     );
 
     expect(names(searchActions(inEnglish, 'renme'))).toContain(
-      'Find and Replace'
+      'Toggle Explorer'
     );
-    expect(names(searchActions(inKorean, 'renme'))).toContain('찾기 및 바꾸기');
+    expect(names(searchActions(inKorean, 'renme'))).toContain(
+      '탐색기 열기/닫기'
+    );
   });
 
   it('holds a keyword in a translated command only where English holds it, never across its name and keywords', () => {
     setCanvasType(CanvasType.ERD);
-    const english = find(createScopeActions(app), 'Find and Replace');
-    const translated = find(createScopeActions(app, korean), '찾기 및 바꾸기');
+    const english = find(createScopeActions(app), 'Toggle Explorer');
+    const translated = find(
+      createScopeActions(app, korean),
+      '탐색기 열기/닫기'
+    );
 
     expect(keywordHolder('replace find')(english)).toBe(false);
     expect(keywordHolder('replace find')(translated)).toBe(false);
@@ -1769,7 +1750,9 @@ describe('createScopeActions / translated', () => {
     );
 
     expect(names(searchActions(commands, 'ㅅㅌㅇㅂ'))[0]).toBe('새 테이블');
-    expect(names(searchActions(commands, 'ㅊㄱ'))[0]).toBe('찾기 및 바꾸기');
+    expect(names(searchActions(commands, 'ㅌㅅㄱ'))[0]).toBe(
+      '탐색기 열기/닫기'
+    );
   });
 
   it('never finds a table row by an alias, as it never finds one by its kind', () => {

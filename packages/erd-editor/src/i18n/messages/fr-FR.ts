@@ -12,7 +12,6 @@ export const frFR = {
   'common.displayLanguage': 'Langue d’affichage',
   'common.search': 'Recherche rapide',
   'common.find': 'Rechercher',
-  'common.findAndReplace': 'Rechercher et remplacer',
   'common.newTable': 'Nouvelle table',
   'common.newMemo': 'Nouveau mémo',
   'common.newTableGroup': 'Nouveau groupe de tables',
@@ -271,8 +270,8 @@ export const frFR = {
   'palette.keywords.aml': 'aml azimutt langage de balisage schéma',
   'palette.keywords.image':
     'image png svg vectoriel illustration presse-papiers',
-  'palette.keywords.findReplace': 'rechercher remplacer renommer',
-  'palette.keywords.explorer': 'arborescence plan objets',
+  'palette.keywords.explorer':
+    'rechercher remplacer renommer arborescence plan objets',
   'palette.schemaSqlStatements': 'Schéma SQL : Instructions',
   'palette.schemaSqlHeader': 'Schéma SQL : En-tête',
   'palette.schemaSqlOptionsPanel': 'Schéma SQL : Panneau des options',
@@ -307,7 +306,7 @@ export const frFR = {
   'shortcuts.name.edit': 'Modifier',
   'shortcuts.name.stop': 'Arrêter',
   'shortcuts.name.search': 'Recherche rapide',
-  'shortcuts.name.findReplace': 'Rechercher et remplacer',
+  'shortcuts.name.findReplace': 'Afficher ou masquer l’explorateur',
   'shortcuts.name.undo': 'Annuler',
   'shortcuts.name.redo': 'Rétablir',
   'shortcuts.name.addTable': 'Ajouter une table',

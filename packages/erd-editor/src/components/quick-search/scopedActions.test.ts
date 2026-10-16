@@ -131,7 +131,6 @@ const ERD_COMMANDS = [
   'One Only',
   'One N',
   'Auto Layout',
-  'Find and Replace',
   'Toggle Explorer',
 ];
 
@@ -189,7 +188,6 @@ describe('paletteRows without a prefix', () => {
       'Table Name Case',
       'Column Name Case',
       'Code Generator: Options panel',
-      'Find and Replace',
       'Toggle Explorer',
     ]);
   });
@@ -210,7 +208,7 @@ describe('paletteRows without a prefix', () => {
 
   it('fuzzes the commands alone, however many tables, columns, comments and memos hold the keyword', () => {
     expect(rowsFor('auto')[0].name).toBe('Auto Layout');
-    expect(names(rowsFor('replace'))[0]).toBe('Find and Replace');
+    expect(names(rowsFor('replace'))[0]).toBe('Toggle Explorer');
 
     for (const keyword of ['user', 'users', 'us', 'id', 'login', 'Every']) {
       const rows = rowsFor(keyword);

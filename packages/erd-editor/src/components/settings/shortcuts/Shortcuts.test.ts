@@ -25,7 +25,7 @@ const EXPECTED_COMMANDS = [
   'Editing',
   'Stop',
   'Search',
-  'Find and Replace',
+  'Toggle Explorer',
   'Undo',
   'Redo',
   'Add Table',
@@ -133,10 +133,10 @@ describe('Shortcuts', () => {
     ]);
   });
 
-  it('shows Find and Replace on $mod+F', async () => {
+  it('shows Toggle Explorer on $mod+F', async () => {
     await setup();
 
-    const kbd = rowByCommand('Find and Replace').querySelector('.kbd');
+    const kbd = rowByCommand('Toggle Explorer').querySelector('.kbd');
 
     expect(kbd?.textContent?.trim()).toBe('Ctrl + F');
   });

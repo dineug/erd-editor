@@ -227,7 +227,7 @@ describe('ErdContextMenu / ERD type', () => {
       'New TableAlt + N',
       'New MemoAlt + M',
       'New Table GroupAlt + G',
-      'Find and ReplaceCtrl + F',
+      'Toggle ExplorerCtrl + F',
       'Relationship',
       'View Option',
       'Database',
@@ -246,10 +246,10 @@ describe('ErdContextMenu / ERD type', () => {
     expect(iconNameOf(findItem(rootItems(), 'New Memo'))).toBe('sticky-note');
   });
 
-  it('draws Find and Replace with the list-tree icon the palette and the toolbar draw', async () => {
+  it('draws Toggle Explorer with the list-tree icon the palette and the toolbar draw', async () => {
     await mountMenu();
 
-    expect(iconNameOf(findItem(rootItems(), 'Find and Replace'))).toBe(
+    expect(iconNameOf(findItem(rootItems(), 'Toggle Explorer'))).toBe(
       'list-tree'
     );
   });
@@ -263,7 +263,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('asks for Find and Replace and closes the menu', async () => {
+  it("asks for the Explorer's search and closes the menu", async () => {
     const opened: unknown[] = [];
     app.emitter.on({
       openFindReplace: action => {
@@ -272,9 +272,26 @@ describe('ErdContextMenu / ERD type', () => {
     });
     await mountMenu();
 
-    await click(findItem(rootItems(), 'Find and Replace'));
+    await click(findItem(rootItems(), 'Toggle Explorer'));
 
     expect(opened).toEqual([undefined]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the Explorer the toolbar shows pressed, as the find chord does', async () => {
+    const opened: unknown[] = [];
+    app.emitter.on({
+      openFindReplace: action => {
+        opened.push(action.payload);
+      },
+    });
+    openExplorer(app.store);
+    await mountMenu();
+
+    await click(findItem(rootItems(), 'Toggle Explorer'));
+
+    expect(explorerViewOf(app.store).open).toBe(false);
+    expect(opened).toEqual([]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -439,7 +456,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'New TableAlt + N',
       'New MemoAlt + M',
-      'Find and ReplaceCtrl + F',
+      'Toggle ExplorerCtrl + F',
       'Relationship',
       'View Option',
       'Database',
@@ -1905,7 +1922,7 @@ describe('ErdContextMenu / language', () => {
       'ko:New TableAlt + N',
       'ko:New MemoAlt + M',
       'ko:New Table GroupAlt + G',
-      'ko:Find and ReplaceCtrl + F',
+      'ko:Toggle ExplorerCtrl + F',
       'ko:Relationship',
       'ko:View Option',
       'ko:Database',

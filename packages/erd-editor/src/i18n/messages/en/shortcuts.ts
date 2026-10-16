@@ -5,7 +5,7 @@ export const shortcuts = {
   'shortcuts.name.edit': 'Editing',
   'shortcuts.name.stop': 'Stop',
   'shortcuts.name.search': 'Search',
-  'shortcuts.name.findReplace': 'Find and Replace',
+  'shortcuts.name.findReplace': 'Toggle Explorer',
   'shortcuts.name.undo': 'Undo',
   'shortcuts.name.redo': 'Redo',
   'shortcuts.name.addTable': 'Add Table',

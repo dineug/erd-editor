@@ -5,11 +5,11 @@
 
 ## Purpose
 
-`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, the commands and table rows in `actions.tsx`, the prefix grammar in `paletteQuery.ts`, the document scopes in `scopedActions.tsx`, the list's row height in `paletteList.ts` and the Hangul letter matching in `hangul.ts`. A scoped list holds every row it finds and draws only those in view; Find and Replace, the Explorer's search its own row opens, has its rules in `src/components/explorer/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
+`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, the commands and table rows in `actions.tsx`, the prefix grammar in `paletteQuery.ts`, the document scopes in `scopedActions.tsx`, the list's row height in `paletteList.ts` and the Hangul letter matching in `hangul.ts`. A scoped list holds every row it finds and draws only those in view; the Explorer and its search, which its Toggle Explorer row opens, have their rules in `src/components/explorer/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
 
 ## Making a Change
 
-1. **Read the files on the other side.** A change to the Find and Replace row or to what the search opens on reads `src/components/explorer/AGENTS.md`. A change to the list's range reads `src/components/primitives/AGENTS.md` (The tree), which shares `src/utils/virtualRange.ts`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
+1. **Read the files on the other side.** A change to the Toggle Explorer row or to what the search opens on reads `src/components/explorer/AGENTS.md`. A change to the list's range reads `src/components/primitives/AGENTS.md` (The tree), which shares `src/utils/virtualRange.ts`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs here run in that test task, `QuickSearch.browser.test.ts` in real Chromium.
 3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins what `SEARCH_THRESHOLD` takes and lets go. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
 4. **Run the e2e for a visible change.** `e2e/specs/find-replace.spec.ts` drives the palette's field rows in the real element and types through Chromium's own IME (Testing Requirements). `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec, this one included.
@@ -103,7 +103,8 @@
 - **Table and field rows show on every tab.** Picking one takes the ERD tab.
 - **A table row lands by the one jump rule.** It jumps through `goToErdTarget`, as the `@` and `:` rows do (`src/components/erd/AGENTS.md`, The jump rule); the corner it once parked a table at is gone.
 - **No Focus row exists** (AC-52).
-- **Hand-offs leave the list under a takeover.** The Find and Replace row and the Toggle Explorer row leave the list under a takeover (`isTakenOver`), where the Explorer opens on nothing.
+- **One row for the Explorer** (the owner's request of 2026-10-16). Toggle Explorer shows the find chord and does what it does on the canvas (`toggleExplorerSearch`); no Find and Replace row lists the same panel again. Its keywords (`palette.keywords.explorer`) put the find words before the tree words in every language, since Fuse scores where a hit starts and `replce` must still reach it.
+- **The hand-off leaves the list under a takeover.** The Toggle Explorer row leaves the list under a takeover (`isTakenOver`), where the Explorer opens on nothing.
 
 ### Theme and Display Language
 

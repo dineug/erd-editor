@@ -261,7 +261,7 @@ test.describe('Find and Replace', () => {
       ])
     ).toEqual([0, 4]);
 
-    // The palette gives way to it, as its own Find and Replace row does.
+    // The palette gives way to it, as its own Toggle Explorer row does.
     await erd.press(Shortcut.search);
     await erd.page.keyboard.type('auto');
     await expect(palette).toHaveCount(1);

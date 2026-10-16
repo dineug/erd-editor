@@ -10,7 +10,6 @@ export const common = {
   'common.displayLanguage': 'Display Language',
   'common.search': 'Search',
   'common.find': 'Find',
-  'common.findAndReplace': 'Find and Replace',
   'common.newTable': 'New Table',
   'common.newMemo': 'New Memo',
   'common.newTableGroup': 'New Table Group',
