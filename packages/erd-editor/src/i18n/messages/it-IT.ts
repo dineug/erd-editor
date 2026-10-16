@@ -309,6 +309,8 @@ export const itIT = {
   'shortcuts.name.addTable': 'Aggiungi tabella',
   'shortcuts.name.addColumn': 'Aggiungi colonna',
   'shortcuts.name.addMemo': 'Aggiungi memo',
+  'shortcuts.name.addTableGroup': 'Aggiungi gruppo di tabelle',
+  'shortcuts.name.groupSelectedTables': 'Raggruppa le tabelle selezionate',
   'shortcuts.name.removeTable': 'Rimuovi tabelle e memo',
   'shortcuts.name.removeColumn': 'Rimuovi colonna',
   'shortcuts.name.removeSelection': 'Elimina selezione',

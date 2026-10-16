@@ -34,8 +34,8 @@ describe('keyboard-shortcut', () => {
       }
     });
 
-    it('lists all 26 binding names', () => {
-      expect(KeyBindingNameList).toHaveLength(26);
+    it('lists all 28 binding names', () => {
+      expect(KeyBindingNameList).toHaveLength(28);
       expect(KeyBindingNameList).toEqual(Object.values(KeyBindingName));
       expect(KeyBindingNameList).toContain('zenMode');
       expect(KeyBindingNameList).toContain('focusView');
@@ -200,7 +200,7 @@ describe('keyboard-shortcut', () => {
       expect(matchesShortcut(altGr, [{ shortcut: 'Digit1' }])).toBe(false);
     });
 
-    it('tries every option and never matches a sequence of presses', () => {
+    it('tries every option and matches a sequence by its last press alone', () => {
       const event = press({ key: 'Delete', code: 'Delete', altKey: true });
 
       expect(
@@ -209,9 +209,10 @@ describe('keyboard-shortcut', () => {
           { shortcut: 'Alt+Delete' },
         ])
       ).toBe(true);
+      // The press that completes a sequence at the root is the one a panel stops.
       expect(
         matchesShortcut(event, [{ shortcut: 'Alt+KeyG Alt+Delete' }])
-      ).toBe(false);
+      ).toBe(true);
       expect(
         matchesShortcut(event, [{ shortcut: 'Alt+Delete Alt+KeyG' }])
       ).toBe(false);
@@ -259,6 +260,11 @@ describe('keyboard-shortcut', () => {
         stopsAtPanel(press({ key: 's', code: 'KeyS', ctrlKey: true }), map)
       ).toBe(false);
       expect(stopsAtPanel(press({ key: 'a', code: 'KeyA' }), map)).toBe(false);
+    });
+
+    it('stops the G that would group the selected tables, and lets its T go on', () => {
+      expect(stopsAtPanel(press({ key: 'g', code: 'KeyG' }), map)).toBe(true);
+      expect(stopsAtPanel(press({ key: 't', code: 'KeyT' }), map)).toBe(false);
     });
 
     it('lets Escape through for a host that passes stop', () => {
@@ -362,6 +368,26 @@ describe('keyboard-shortcut', () => {
       expect(map.zenMode).toEqual([
         { shortcut: 'Alt+KeyZ', preventDefault: true, stopPropagation: true },
       ]);
+    });
+
+    it('binds a table group to Alt+G and the selected tables to T then G, chords no other binding claims', () => {
+      const map = createKeyBindingMap();
+      const shortcuts = KeyBindingNameList.filter(
+        name =>
+          name !== KeyBindingName.addTableGroup &&
+          name !== KeyBindingName.groupSelectedTables
+      ).flatMap(name => map[name].map(option => option.shortcut));
+
+      expect(map.addTableGroup).toEqual([
+        { shortcut: 'Alt+KeyG', preventDefault: true, stopPropagation: true },
+      ]);
+      expect(map.groupSelectedTables).toEqual([
+        { shortcut: 'KeyT KeyG', preventDefault: true },
+      ]);
+      expect(shortcuts).not.toContain('Alt+KeyG');
+      expect(shortcuts.some(shortcut => /^Key[TG]\b/.test(shortcut))).toBe(
+        false
+      );
     });
 
     it('binds both Backspace and Delete for the remove actions', () => {

@@ -303,6 +303,8 @@ export const euES = {
   'shortcuts.name.addTable': 'Gehitu taula',
   'shortcuts.name.addColumn': 'Gehitu zutabea',
   'shortcuts.name.addMemo': 'Gehitu oharra',
+  'shortcuts.name.addTableGroup': 'Gehitu taula-taldea',
+  'shortcuts.name.groupSelectedTables': 'Taldekatu hautatutako taulak',
   'shortcuts.name.removeTable': 'Kendu taulak eta oharrak',
   'shortcuts.name.removeColumn': 'Kendu zutabea',
   'shortcuts.name.removeSelection': 'Ezabatu hautapena',

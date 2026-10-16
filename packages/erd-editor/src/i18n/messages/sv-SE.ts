@@ -299,6 +299,8 @@ export const svSE = {
   'shortcuts.name.addTable': 'Lägg till tabell',
   'shortcuts.name.addColumn': 'Lägg till kolumn',
   'shortcuts.name.addMemo': 'Lägg till anteckning',
+  'shortcuts.name.addTableGroup': 'Lägg till tabellgrupp',
+  'shortcuts.name.groupSelectedTables': 'Gruppera markerade tabeller',
   'shortcuts.name.removeTable': 'Ta bort tabeller och anteckningar',
   'shortcuts.name.removeColumn': 'Ta bort kolumn',
   'shortcuts.name.removeSelection': 'Ta bort markerade',

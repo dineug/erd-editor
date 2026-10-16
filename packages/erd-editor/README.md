@@ -23,8 +23,9 @@ It is the same editor as [erd-editor.io](https://erd-editor.io), the
   Zero N, One Only, One N)
 - **Quick edits** — `Alt`+`N` adds a table and `Alt`+`Enter` a column, `Alt`+`K` toggles the primary
   key on the focused column, or on every selected column when it is one of them, and `Delete` or
-  `Backspace` removes the selection, each in one undo step; the Shortcuts page of the editor's
-  Settings tab lists every key, and `setKeyBindingMap` remaps them
+  `Backspace` removes the selection, each in one undo step; the floating toolbar adds a table, a
+  memo or a table group, the Shortcuts page of the editor's Settings tab lists every key, and
+  `setKeyBindingMap` remaps them
 - **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or add
   new ones, named after the parent table when the key is one word (`user_id` for `user`'s `id`), and
@@ -38,11 +39,11 @@ It is the same editor as [erd-editor.io](https://erd-editor.io), the
   or more columns as `AK1.1`, `AK1.2`, and SQL import reads a UNIQUE over several columns as one
   such index
 - **Table groups** — draw a box behind related tables, which you name and can color, with
-  **New Table Group** in the canvas menu or the command palette, or group the selected tables from
-  their right-click menu. A table joins a group when you drop it inside and leaves when you drop it
-  outside, dragging a group by its title moves its tables with it, each member's header takes the
-  group's color, View Option hides the groups, and DBML import and the Code Generator's DBML carry
-  them as `TableGroup`s
+  **New Table Group** in the canvas menu, the command palette or the floating toolbar, or `Alt`+`G`,
+  or group the selected tables from their right-click menu or with `T` then `G`. A table joins a
+  group when you drop it inside and leaves when you drop it outside, dragging a group by its title
+  moves its tables with it, each member's header takes the group's color, View Option hides the
+  groups, and DBML import and the Code Generator's DBML carry them as `TableGroup`s
 - **Auto Layout** — place every table again by Force, Flow or a vertical or horizontal tree from the
   canvas menu or the command palette, table groups kept together, in one undo step; Force shows a
   preview you apply or cancel, and the others land at once
@@ -359,15 +360,18 @@ resizes in their quiet period never reach the peers.
 
 `createKeyBindingMap()` returns a new map of the default shortcuts. A chord is its modifiers
 (`Shift`, `Alt`, `Control`, `Meta`, or `$mod`: Cmd on macOS and iOS, Ctrl elsewhere) joined by `+`,
-then a `KeyboardEvent.code` or a `key` in any case, matching only those exact modifiers.
+then a `KeyboardEvent.code` or a `key` in any case, matching only those exact modifiers. A sequence
+is chords separated by a space, pressed in turn, each within a second of the last:
+`groupSelectedTables` defaults to `KeyT KeyG`, which, like the other keys a text field owns, does
+nothing while a field has the caret.
 
 Entries are `ShortcutOption`s, `{ shortcut, preventDefault?, stopPropagation? }`; a remapped one
 without flags lets the browser default run and the keydown bubble. `setKeyBindingMap` replaces each
-list it names. The defaults stop `search`, `findReplace`, `undo`, `redo`, `focusView`, zoom and
-`zenMode`, so bubble-phase listeners miss them while the editor is focused, and a host that takes
-keys first (global hotkeys, a capture listener) must let them through, or leave `$mod+KeyF` to the
-page with `setKeyBindingMap({ findReplace: [] })`; `findReplace` opens the Explorer's search. The
-`KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types are exported.
+list it names. The defaults stop `search`, `findReplace`, `undo`, `redo`, `addTableGroup`,
+`focusView`, zoom and `zenMode`, so bubble-phase listeners miss them while the editor is focused,
+and a host that takes keys first (global hotkeys, a capture listener) must let them through, or
+leave `$mod+KeyF` to the page with `setKeyBindingMap({ findReplace: [] })`; `findReplace` opens the
+Explorer's search. The `KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types are exported.
 
 ## Display language
 

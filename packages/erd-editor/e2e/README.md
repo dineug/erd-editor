@@ -96,7 +96,7 @@ puts over it:
 | `zoom-round-trip.spec.ts`       | A zoom out and back in that returns the reader's own view         |
 | `pinch-zoom.spec.ts`            | A trackpad and a two finger pinch, and the point each one holds   |
 | `infinite-canvas.spec.ts`       | The travel, thumbs, map, compass and image the content now decide |
-| `floating-toolbar.spec.ts`      | The two canvas tools, the notations and what zen mode takes away  |
+| `floating-toolbar.spec.ts`      | The two canvas tools, the table and memo buttons, the notations and what zen mode takes away |
 | `scroll-origin.spec.ts`         | The origin the scene draws with, the legacy pair migrated once, and a new document's view left out of `value` |
 | `export-png.spec.ts`            | The file the browser really receives, and the messages around it  |
 | `memo-editor-drag.spec.ts`      | A press in the overlay textarea, which used to pan the canvas     |
@@ -289,16 +289,17 @@ rows it lists, save `shop-<time>.swift` and `shop-<time>.json`.
 
 `table-group.spec.ts` holds down table groups: New Table Group in the canvas
 menu arms a draw, the box then dragged becomes the group, taking in the tables
-whose centres it holds, and its name editor opens; from a selected table's
-menu, Group selected tables wraps a marquee selection and Remove from group
-takes one table out; a table dropped inside a group joins it, the group
-outlined while the table is held over it, and wears the group's colour on its
-header band, and one dropped outside leaves it; a drag on the title carries the
-group and its tables, which one undo puts back; View Option hides the boxes
-and the colour, a table dragged meanwhile keeping its group, and the box grows
-round it once shown; and the Schema SQL tab's Tables leaves out the tables of an
-unchecked group, writes nothing under its hint with no box checked, and All
-checks every box again.
+whose centres it holds, and its name editor opens; the floating toolbar's
+button arms the same draw, Alt+G arms it and a second press disarms it; from a
+selected table's menu, Group selected tables wraps a marquee selection, as T
+then G does, and Remove from group takes one table out; a table dropped inside
+a group joins it, the group outlined while the table is held over it, and wears
+the group's colour on its header band, and one dropped outside leaves it; a
+drag on the title carries the group and its tables, which one undo puts back;
+View Option hides the boxes and the colour, a table dragged meanwhile keeping
+its group, and the box grows round it once shown; and the Schema SQL tab's
+Tables leaves out the tables of an unchecked group, writes nothing under its
+hint with no box checked, and All checks every box again.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,

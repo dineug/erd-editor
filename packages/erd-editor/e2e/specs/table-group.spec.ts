@@ -210,6 +210,52 @@ test.describe('table groups', () => {
     expect(await groupOf(erd, 'users')).toBe(id);
   });
 
+  test('the floating toolbar and Alt+G arm the same draw, and a second press disarms it', async ({
+    erd,
+  }) => {
+    await erd.seed(ungrouped());
+    const button = erd.floatingToolbar.locator('.add-table-group');
+
+    await button.click();
+    await expect(button).toHaveClass(/\bactive\b/);
+    await erd.drag(await erd.pointAt(120, 100), await erd.pointAt(880, 380));
+
+    await expect(nameInput(erd)).toBeFocused();
+    await erd.press(Shortcut.stop);
+    await expect.poll(() => groupIds(erd)).toHaveLength(1);
+    await expect(button).not.toHaveClass(/\bactive\b/);
+
+    await erd.focusCanvas();
+    await erd.press(Shortcut.addTableGroup);
+    await expect(button).toHaveClass(/\bactive\b/);
+    await erd.press(Shortcut.addTableGroup);
+    await expect(button).not.toHaveClass(/\bactive\b/);
+    expect(await groupIds(erd)).toHaveLength(1);
+  });
+
+  test('T then G groups the selected tables and opens the name editor on the group', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(ungrouped());
+    await erd.marqueeSelect({ x: 120, y: 120 }, { x: 900, y: 340 });
+    await expect(erd.selectedTables()).toHaveCount(2);
+
+    await erd.press('KeyT');
+    await erd.press('KeyG');
+
+    await expect(nameInput(erd)).toBeFocused();
+    await page.keyboard.type(GROUP);
+    await page.keyboard.press('Enter');
+
+    await expect.poll(() => groupIds(erd)).toHaveLength(1);
+    const [id] = await groupIds(erd);
+    expect((await groupEntity(erd, id)).name).toBe(GROUP);
+    expect(await groupOf(erd, 'users')).toBe(id);
+    expect(await groupOf(erd, 'posts')).toBe(id);
+    expect(await groupOf(erd, 'tags')).toBe('');
+  });
+
   test('a table dropped in a group joins it and wears its colour, and one dropped outside leaves it', async ({
     erd,
     page,

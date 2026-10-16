@@ -310,6 +310,8 @@ export const slSI = {
   'shortcuts.name.addTable': 'Dodaj tabelo',
   'shortcuts.name.addColumn': 'Dodaj stolpec',
   'shortcuts.name.addMemo': 'Dodaj beležko',
+  'shortcuts.name.addTableGroup': 'Dodaj skupino tabel',
+  'shortcuts.name.groupSelectedTables': 'Združi izbrane tabele v skupino',
   'shortcuts.name.removeTable': 'Odstrani tabele in beležke',
   'shortcuts.name.removeColumn': 'Odstrani stolpec',
   'shortcuts.name.removeSelection': 'Izbriši izbor',

@@ -311,6 +311,8 @@ export const ptBR = {
   'shortcuts.name.addTable': 'Adicionar tabela',
   'shortcuts.name.addColumn': 'Adicionar coluna',
   'shortcuts.name.addMemo': 'Adicionar nota',
+  'shortcuts.name.addTableGroup': 'Adicionar grupo de tabelas',
+  'shortcuts.name.groupSelectedTables': 'Agrupar tabelas selecionadas',
   'shortcuts.name.removeTable': 'Remover tabelas e notas',
   'shortcuts.name.removeColumn': 'Remover coluna',
   'shortcuts.name.removeSelection': 'Excluir seleção',

@@ -149,6 +149,33 @@ describe('useKeyBindingMap', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it('reads T then G on the canvas as grouping the selected tables, the G prevented', () => {
+    const first = press({ key: 't', code: 'KeyT' });
+    expect(shortcuts).toHaveLength(0);
+    expect(first.defaultPrevented).toBe(false);
+
+    const second = press({ key: 'g', code: 'KeyG' });
+
+    expect(shortcuts.map(({ type }) => type)).toEqual([
+      KeyBindingName.groupSelectedTables,
+    ]);
+    expect(second.defaultPrevented).toBe(true);
+  });
+
+  it('leaves T then G to a caret, where it is part of a word being typed', () => {
+    const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
+    const input = document.createElement('input');
+    $root.append(input);
+
+    // "outgoing" holds the pair.
+    input.dispatchEvent(keydown({ key: 't', code: 'KeyT' }));
+    const event = keydown({ key: 'g', code: 'KeyG' });
+    input.dispatchEvent(event);
+
+    expect(shortcuts).toHaveLength(0);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it('leaves Space to a caret, which owns it as a space', () => {
     const $root = mounted!.container.querySelector('.root') as HTMLDivElement;
     const input = document.createElement('input');

@@ -13,6 +13,7 @@ export const Shortcut = {
   addTable: 'Alt+KeyN',
   addColumn: 'Alt+Enter',
   addMemo: 'Alt+KeyM',
+  addTableGroup: 'Alt+KeyG',
   removeTable: 'ControlOrMeta+Backspace',
   removeColumn: 'Alt+Backspace',
   removeSelection: 'Delete',

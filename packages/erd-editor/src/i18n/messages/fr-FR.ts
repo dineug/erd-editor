@@ -313,6 +313,8 @@ export const frFR = {
   'shortcuts.name.addTable': 'Ajouter une table',
   'shortcuts.name.addColumn': 'Ajouter une colonne',
   'shortcuts.name.addMemo': 'Ajouter un mémo',
+  'shortcuts.name.addTableGroup': 'Ajouter un groupe de tables',
+  'shortcuts.name.groupSelectedTables': 'Grouper les tables sélectionnées',
   'shortcuts.name.removeTable': 'Supprimer une table ou un mémo',
   'shortcuts.name.removeColumn': 'Supprimer une colonne',
   'shortcuts.name.removeSelection': 'Supprimer la sélection',

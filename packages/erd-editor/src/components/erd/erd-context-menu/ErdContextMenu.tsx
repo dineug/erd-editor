@@ -515,6 +515,13 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     <ContextMenu.Menu
                       icon={<Icon name="group" size={14} />}
                       name={t('contextMenu.groupSelectedTables')}
+                      right={
+                        <Kbd
+                          shortcut={
+                            keyBindingMap.groupSelectedTables[0]?.shortcut
+                          }
+                        />
+                      }
                     />
                   }
                 />
@@ -745,6 +752,11 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     <ContextMenu.Menu
                       icon={<Icon name="group" size={14} />}
                       name={t('common.newTableGroup')}
+                      right={
+                        <Kbd
+                          shortcut={keyBindingMap.addTableGroup[0]?.shortcut}
+                        />
+                      }
                     />
                   }
                 />

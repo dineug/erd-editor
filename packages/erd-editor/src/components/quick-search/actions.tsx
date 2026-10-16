@@ -427,6 +427,7 @@ export function createScopeActions(
     {
       icon: <Icon name="group" size={16} />,
       ...named(i18n, 'common.newTableGroup'),
+      shortcut: keyBindingMap.addTableGroup[0]?.shortcut,
       perform: ({ store }) => {
         store.dispatch(changeDrawTableGroupAction({ value: true }));
       },
@@ -435,6 +436,7 @@ export function createScopeActions(
     {
       icon: <Icon name="group" size={16} />,
       ...named(i18n, 'palette.groupSelectedTables'),
+      shortcut: keyBindingMap.groupSelectedTables[0]?.shortcut,
       perform: ({ store }) => {
         addTableGroupAndRename(store, addTableGroupFromTablesAction$());
       },

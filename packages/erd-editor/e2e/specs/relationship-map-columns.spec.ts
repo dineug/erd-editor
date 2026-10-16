@@ -820,7 +820,9 @@ test.describe('where the buttons stand', () => {
       erd,
     }) => {
       const document = usersAndPosts();
-      document.settings.zoomLevel = zoomLevel;
+      // Pinned to the top left, so the card stands clear of the floating
+      // toolbar, which the buttons would otherwise step off to the right.
+      Object.assign(document.settings, { zoomLevel, originX: 0, originY: 0 });
       await erd.seed(document);
       await startDraw(erd, 'users');
 
@@ -828,6 +830,8 @@ test.describe('where the buttons stand', () => {
 
       const pill = await boxOf(pillOf(erd));
       const card = await tableBox(erd, 'posts');
+      const toolbar = await boxOf(erd.floatingToolbar);
+      expect(card.y + card.height).toBeLessThan(toolbar.y);
       expect(pill.width).toBeCloseTo(PILL.width, 0);
       expect(pill.height).toBeCloseTo(PILL.height, 0);
       expect(pill.x + pill.width).toBeCloseTo(card.x - PILL_MARGIN, 0);

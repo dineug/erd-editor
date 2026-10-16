@@ -298,6 +298,8 @@ export const heIL = {
   'shortcuts.name.addTable': 'הוספת טבלה',
   'shortcuts.name.addColumn': 'הוספת עמודה',
   'shortcuts.name.addMemo': 'הוספת פתק',
+  'shortcuts.name.addTableGroup': 'הוספת קבוצת טבלאות',
+  'shortcuts.name.groupSelectedTables': 'קיבוץ הטבלאות שנבחרו',
   'shortcuts.name.removeTable': 'הסרת טבלאות ופתקים',
   'shortcuts.name.removeColumn': 'הסרת עמודה',
   'shortcuts.name.removeSelection': 'מחיקת הבחירה',

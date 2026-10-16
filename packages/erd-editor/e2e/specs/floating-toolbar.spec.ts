@@ -12,8 +12,8 @@ const button = (erd: ErdEditorPage, name: string) =>
   tools(erd).locator(`[title^="${name}"]`);
 
 /**
- * The tools over the canvas: which of the two a press means, the notation the
- * next relationship is drawn in, and the mode that takes the chrome away. Every
+ * The tools over the canvas: which of the two a press means, what to add, the
+ * notation the next relationship is drawn in, and the mode that takes the chrome away. Every
  * one of them is a button and a chord, and both have to land in the same state.
  */
 test.describe('the floating toolbar', () => {
@@ -54,6 +54,23 @@ test.describe('the floating toolbar', () => {
 
     await erd.press(Shortcut.handTool);
     await expect(canvas).toHaveCSS('pointer-events', 'auto');
+  });
+
+  test('adds a table and a memo from their buttons, each named with its chord', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    const addTable = tools(erd).locator('.add-table');
+    const addMemo = tools(erd).locator('.add-memo');
+
+    expect(await addTable.getAttribute('title')).toMatch(/^New Table \(.*N\)$/);
+    expect(await addMemo.getAttribute('title')).toMatch(/^New Memo \(.*M\)$/);
+
+    await addTable.click();
+    await expect.poll(() => erd.tableIds()).toHaveLength(3);
+
+    await addMemo.click();
+    await expect.poll(() => erd.memoIds()).toHaveLength(1);
   });
 
   test('draws a relationship the notation button arms', async ({ erd }) => {
