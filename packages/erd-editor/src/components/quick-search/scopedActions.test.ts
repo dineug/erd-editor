@@ -650,12 +650,11 @@ describe('paletteRows / Hangul', () => {
   });
 
   it('lists every table a Hangul keyword or its letters name, with nothing handed over', () => {
-    const seeded = ['#ㅅㅇㅈ', '#사요', '#사용'].map(
-      keyword => rowsFor(keyword).length
-    );
+    const keywords = ['#ㅅㅇㅈ', '#사요', '#사용'];
+    const seeded = keywords.map(keyword => rowsFor(keyword).length);
     addTables(105, index => `사용자_${index}`);
 
-    ['#ㅅㅇㅈ', '#사요', '#사용'].forEach((keyword, index) => {
+    keywords.forEach((keyword, index) => {
       expect(rowsFor(keyword)).toHaveLength(seeded[index] + 105);
     });
   });

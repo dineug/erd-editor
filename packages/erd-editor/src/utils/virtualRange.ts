@@ -4,10 +4,7 @@ export const VIRTUAL_OVERSCAN = 8;
 /** The rows a list renders, first to last, both included; none while last is below first. */
 export type VirtualRange = { first: number; last: number };
 
-/**
- * The rows the screen shows at a scroll offset, with the overscan either side,
- * so a short scroll finds its rows drawn already.
- */
+/** The rows the screen shows at a scroll offset, with the overscan either side. */
 export function visibleRange(
   count: number,
   scrollTop: number,

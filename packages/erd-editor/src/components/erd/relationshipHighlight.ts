@@ -1,42 +1,33 @@
 import { observable } from '@dineug/r-html';
 
 /**
- * The relationship a jump lights in each editor, keyed by editor.id, each a
- * record of its own so a connector tracks only its own key. It stays out of the
- * store, so no file, history entry or peer ever holds it.
+ * The relationship a jump lights in each editor, one observable flag per
+ * editor.id and relationship id. It stays out of the store, so no file, history
+ * entry or peer ever holds it, and a read of a key never lit adds none.
  */
-const records = new Map<string, Record<string, true>>();
+const lit = observable<Record<string, true>>({});
+const litOf = new Map<string, string>();
 
-function recordOf(editorId: string): Record<string, true> {
-  let record = records.get(editorId);
-
-  if (!record) {
-    record = observable<Record<string, true>>({});
-    records.set(editorId, record);
-  }
-
-  return record;
-}
+const keyOf = (editorId: string, relationshipId: string) =>
+  `${editorId}\u0000${relationshipId}`;
 
 /** Lights one relationship in the editor, and puts out the one it lit before. */
 export function setRelationshipHighlight(
   editorId: string,
   relationshipId: string
 ) {
-  const record = recordOf(editorId);
-
-  Object.keys(record).forEach(id => {
-    if (id !== relationshipId) Reflect.deleteProperty(record, id);
-  });
-  record[relationshipId] = true;
+  clearRelationshipHighlight(editorId);
+  litOf.set(editorId, relationshipId);
+  lit[keyOf(editorId, relationshipId)] = true;
 }
 
 /** Puts out whatever relationship the editor has lit. */
 export function clearRelationshipHighlight(editorId: string) {
-  const record = records.get(editorId);
-  if (!record) return;
+  const relationshipId = litOf.get(editorId);
+  if (relationshipId === undefined) return;
 
-  Object.keys(record).forEach(id => Reflect.deleteProperty(record, id));
+  litOf.delete(editorId);
+  Reflect.deleteProperty(lit, keyOf(editorId, relationshipId));
 }
 
 /** Whether a jump has lit the relationship, read by its connector as it reads a hover. */
@@ -44,11 +35,19 @@ export function isRelationshipHighlighted(
   editorId: string,
   relationshipId: string
 ): boolean {
-  return recordOf(editorId)[relationshipId] === true;
+  return lit[keyOf(editorId, relationshipId)] === true;
 }
 
 /** Forgets an editor that went, whose id nothing reads again. */
 export function dropRelationshipHighlight(editorId: string) {
   clearRelationshipHighlight(editorId);
-  records.delete(editorId);
+}
+
+/**
+ * Test-only probe: the flags the reactive record holds and the editors it
+ * remembers, which a read of an editor never lit must not grow. Nothing
+ * shipping calls it.
+ */
+export function countRelationshipHighlights() {
+  return { flags: Object.keys(lit).length, editors: litOf.size };
 }

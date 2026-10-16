@@ -196,8 +196,15 @@ const DiffTree: FC<DiffTreeProps> = (props, ctx) => {
           <span class={styles.rowIcon}>{icon(item, row.expanded)}</span>
           <span class={styles.name}>{t(FOLDER_LABEL[item.folder])}</span>
           <span class={styles.count}>{item.count}</span>
-          <span class={styles.status} title={statusLabel(null, i18n.value)}>
+          <span
+            class={styles.status}
+            title={statusLabel(null, i18n.value)}
+            aria-hidden="true"
+          >
             {letter}
+          </span>
+          <span class={['diff-tree-status-text', styles.visuallyHidden]}>
+            {statusLabel(null, i18n.value)}
           </span>
         </>
       );
@@ -216,7 +223,12 @@ const DiffTree: FC<DiffTreeProps> = (props, ctx) => {
         >
           {blank ? t('common.unnamed') : entry.name}
         </span>
-        <span class={[styles.status, status]}>{letter}</span>
+        <span class={[styles.status, status]} aria-hidden="true">
+          {letter}
+        </span>
+        <span class={['diff-tree-status-text', styles.visuallyHidden]}>
+          {statusLabel(entry.status, i18n.value)}
+        </span>
       </>
     );
   };

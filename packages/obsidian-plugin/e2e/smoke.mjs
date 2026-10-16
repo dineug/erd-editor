@@ -1379,16 +1379,11 @@ try {
     );
   const narrowBy = 520 - (await editorWidth());
   if (narrowBy > 0) {
-    const cdp = await page.context().newCDPSession(page);
-    try {
-      const { windowId, bounds } = await cdp.send('Browser.getWindowForTarget');
-      await cdp.send('Browser.setWindowBounds', {
-        windowId,
-        bounds: { width: (bounds.width ?? 0) + narrowBy + 40 },
-      });
-    } finally {
-      await cdp.detach().catch(() => undefined);
-    }
+    await page.evaluate(extra => {
+      const win = window.require('@electron/remote').getCurrentWindow();
+      const [width, height] = win.getSize();
+      win.setSize(width + extra, height);
+    }, Math.ceil(narrowBy) + 40);
     await waitFor(async () => (await editorWidth()) >= 520, 2_000, 100);
   }
   const explorerState = () =>

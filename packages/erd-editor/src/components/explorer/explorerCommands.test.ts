@@ -3,8 +3,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import { measureRoot } from '@/components/erd-editor/viewportLayout';
+import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
-import { changeZenModeAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeOpenMapAction,
+  changeZenModeAction,
+} from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 
 import {
@@ -76,6 +80,39 @@ describe('toggleExplorer (N-h)', () => {
   });
 });
 
+describe('under a takeover', () => {
+  it('neither opens nor closes the Explorer, whatever the button says', () => {
+    app.store.dispatchSync(changeOpenMapAction({ [Open.diffViewer]: true }));
+
+    toggleExplorer(app.store);
+    expect(explorerViewOf(app.store).open).toBe(false);
+    openExplorer(app.store);
+    expect(explorerViewOf(app.store).open).toBe(false);
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.diffViewer]: false }));
+    openExplorer(app.store);
+    app.store.dispatchSync(changeOpenMapAction({ [Open.timeTravel]: true }));
+    toggleExplorer(app.store);
+
+    expect(explorerViewOf(app.store).open).toBe(true);
+  });
+});
+
+describe('a takeover on another tab', () => {
+  it('keeps the tab a toggle or an opening would have taken', () => {
+    app.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.generatorCode }),
+      changeOpenMapAction({ [Open.diffViewer]: true })
+    );
+
+    toggleExplorer(app.store);
+    openExplorer(app.store);
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.generatorCode);
+    expect(explorerViewOf(app.store).open).toBe(false);
+  });
+});
+
 describe('closeExplorer and setExplorerWidth', () => {
   it('drops the zen reveal with the panel', () => {
     app.store.dispatchSync(changeZenModeAction({ value: true }));
@@ -87,7 +124,7 @@ describe('closeExplorer and setExplorerWidth', () => {
     expect(explorerViewOf(app.store).zenReveal).toBe(false);
   });
 
-  it('writes nothing for a width it already holds', () => {
+  it('keeps the width a drag rounds to the one it holds', () => {
     openExplorer(app.store);
     const view = explorerViewOf(app.store);
 

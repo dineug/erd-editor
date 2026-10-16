@@ -476,6 +476,10 @@ describe('Toolbar', () => {
 
         expect(menu('Search').nextElementSibling).toBe(explorer());
         expect(explorer().getAttribute('class')).toContain('disabled');
+
+        await press();
+
+        expect(explorerViewOf(app.store).open).toBe(false);
       });
     }
 
@@ -488,6 +492,11 @@ describe('Toolbar', () => {
       await flush();
 
       expect(explorer().getAttribute('class')).toContain('disabled');
+
+      await press();
+
+      expect(explorerViewOf(app.store).open).toBe(false);
+      expect(app.store.state.settings.canvasType).toBe(CanvasType.settings);
     });
 
     it('spares the selection a press anywhere else in the bar clears', async () => {

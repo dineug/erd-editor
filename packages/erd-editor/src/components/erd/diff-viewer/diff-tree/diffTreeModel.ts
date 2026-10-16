@@ -180,7 +180,7 @@ export const statusLabel = (
   { t }: Pick<I18n, 't'>
 ) => t(status ? STATUS_LABEL[status] : 'explorer.status.inside');
 
-const FIELD_LABEL: Partial<Record<DiffField, PlainMessageKey>> = {
+const FIELD_LABEL = {
   [DiffField.name]: 'explorer.diff.field.name',
   [DiffField.comment]: 'explorer.diff.field.comment',
   [DiffField.dataType]: 'explorer.diff.field.dataType',
@@ -194,7 +194,7 @@ const FIELD_LABEL: Partial<Record<DiffField, PlainMessageKey>> = {
   [DiffField.columns]: 'explorer.diff.field.columns',
   [DiffField.relationshipType]: 'explorer.diff.field.relationshipType',
   [DiffField.value]: 'explorer.diff.field.value',
-};
+} as const satisfies Partial<Record<DiffField, PlainMessageKey>>;
 
 /** The keys and clauses a field is named by as written: AI, PK, UQ, NN, UNIQUE and the referential clauses. */
 function fieldLabel(
@@ -216,7 +216,7 @@ function fieldLabel(
     case DiffField.onUpdate:
       return 'ON UPDATE';
     default:
-      return t(FIELD_LABEL[field] ?? 'explorer.diff.field.name');
+      return t(FIELD_LABEL[field]);
   }
 }
 

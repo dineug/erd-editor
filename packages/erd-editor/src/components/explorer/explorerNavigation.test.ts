@@ -15,7 +15,9 @@ import {
   drawStartRelationshipAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import { removeTableAction } from '@/engine/modules/table/atom.actions';
 
 import { activateNode, targetOf } from './explorerNavigation';
 import type { ExplorerNode } from './explorerTree';
@@ -130,6 +132,22 @@ describe('activateNode', () => {
       true
     );
   });
+
+  it.each([
+    ['a relationship removed', () => removeRelationshipAction({ id: 'rel' })],
+    ['its child table removed', () => removeTableAction({ id: 'orders' })],
+  ])(
+    'lights nothing once %s, so an undo brings no stale light',
+    (_, remove) => {
+      app.store.dispatchSync(remove());
+
+      activateNode(app.store, foreignKey);
+
+      expect(isRelationshipHighlighted(app.store.state.editor.id, 'rel')).toBe(
+        false
+      );
+    }
+  );
 
   it('puts the light out on a jump to any other row (AC-N12)', () => {
     activateNode(app.store, foreignKey);

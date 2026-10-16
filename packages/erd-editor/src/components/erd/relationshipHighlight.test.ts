@@ -5,6 +5,7 @@ import { flush } from '@/__test-utils__';
 
 import {
   clearRelationshipHighlight,
+  countRelationshipHighlights,
   dropRelationshipHighlight,
   isRelationshipHighlighted,
   setRelationshipHighlight,
@@ -59,11 +60,37 @@ describe('relationshipHighlight', () => {
     stops.forEach(stop => stop());
   });
 
-  it('forgets an editor that went', () => {
+  it('forgets an editor that went, and a later read brings nothing back', () => {
     setRelationshipHighlight('editor-a', 'rel-1');
+    expect(countRelationshipHighlights()).toEqual({ flags: 1, editors: 1 });
 
     dropRelationshipHighlight('editor-a');
+    isRelationshipHighlighted('editor-a', 'rel-1');
 
+    expect(countRelationshipHighlights()).toEqual({ flags: 0, editors: 0 });
     expect(isRelationshipHighlighted('editor-a', 'rel-1')).toBe(false);
+  });
+
+  it('keeps no entry for the editors it only read', () => {
+    for (let i = 0; i < 50; i++) {
+      isRelationshipHighlighted(`editor-read-${i}`, 'rel-1');
+    }
+
+    expect(countRelationshipHighlights()).toEqual({ flags: 0, editors: 0 });
+  });
+
+  it('wakes a reader of an editor not yet lit once it is lit', async () => {
+    let runs = 0;
+    const stop = observer(() => {
+      runs++;
+      isRelationshipHighlighted('editor-a', 'rel-1');
+    });
+    const before = runs;
+
+    setRelationshipHighlight('editor-a', 'rel-1');
+    await flush();
+
+    expect(runs).toBe(before + 1);
+    stop();
   });
 });

@@ -3,6 +3,7 @@
 import { FC, observable, onUnmounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
   createSceneCursorScope,
@@ -182,7 +183,6 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
     const borderInset = TABLE_GROUP_BORDER / 2;
     const ringInset = RING_WIDTH / 2;
     const diffPaths = diffMapRef.value?.get(group.id);
-    const diffColor = diffOutline(theme, diffPaths);
 
     return (
       <k-group
@@ -286,19 +286,13 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
           strokeWidth={RING_WIDTH}
           listening={false}
         />
-        {diffColor ? (
-          <k-rect
-            name="table-group-diff-outline"
-            x={-DIFF_OUTLINE_WIDTH / 2}
-            y={-DIFF_OUTLINE_WIDTH / 2}
-            width={width + DIFF_OUTLINE_WIDTH}
-            height={height + DIFF_OUTLINE_WIDTH}
-            cornerRadius={TABLE_GROUP_CORNER_RADIUS + DIFF_OUTLINE_WIDTH / 2}
-            stroke={diffColor}
-            strokeWidth={DIFF_OUTLINE_WIDTH}
-            listening={false}
-          />
-        ) : null}
+        {diffOutlineRect({
+          name: 'table-group-diff-outline',
+          stroke: diffOutline(theme, diffPaths),
+          width,
+          height,
+          cornerRadius: TABLE_GROUP_CORNER_RADIUS + DIFF_OUTLINE_WIDTH / 2,
+        })}
         {readonly ? null : (
           <TableGroupSash group={group} box={box} onDraft={handleDraft} />
         )}

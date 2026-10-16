@@ -11,6 +11,15 @@ export const emptyPairing = (): Pairing => ({
   toPrev: new Map(),
 });
 
+/** An id as the current one it stands for: a saved id as the one it pairs with, or one no current id can equal. */
+export function asNextId(
+  pairing: Pairing,
+  id: string,
+  side: 'prev' | 'next'
+): string {
+  return side === 'next' ? id : (pairing.toNext.get(id) ?? `prev:${id}`);
+}
+
 /**
  * A key two entities pair on, read on either side: a saved entity spells the
  * ids it refers to as the current ones they pair with, so equal keys mean the

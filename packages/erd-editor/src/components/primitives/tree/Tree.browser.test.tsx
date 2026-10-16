@@ -11,7 +11,7 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
-import { userEvent } from 'vite-plus/test/browser/context';
+import { cdp, userEvent } from 'vite-plus/test/browser/context';
 
 import { flush, mount, type Mounted } from '@/__test-utils__';
 
@@ -24,6 +24,13 @@ import {
 } from './treeModel';
 
 const HEIGHT = 220;
+
+/** The one CDP command the spec sends, which the provider's session types only under its own config. */
+type MediaSession = {
+  send: (method: string, params: Record<string, unknown>) => Promise<unknown>;
+};
+
+const session = () => cdp() as unknown as MediaSession;
 
 const leaf = (id: string): TreeNode<null> => ({
   id,
@@ -116,6 +123,8 @@ const items = (tree: HTMLElement) =>
   Array.from(tree.querySelectorAll<HTMLElement>('[role="treeitem"]'));
 const labels = (tree: HTMLElement) =>
   items(tree).map(item => item.querySelector('.label')!.textContent);
+const rowOf = (tree: HTMLElement, id: string) =>
+  tree.querySelector<HTMLElement>(`[id$=":${id}"]`);
 const press = (
   tree: HTMLElement,
   key: string,
@@ -138,7 +147,9 @@ beforeEach(() => {
   onActiveChange.mockClear();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await session().send('Emulation.setEmulatedMedia', { features: [] });
   mounted?.unmount();
   mounted = null;
   shadowHost?.remove();
@@ -168,13 +179,13 @@ describe('Tree - rendering', () => {
 
   it('keeps the element of a row that stays in view across a scroll', async () => {
     const tree = await setup(flatRows(500));
-    const before = tree.querySelector('[id$=":row-12"]');
+    const before = rowOf(tree, 'row-12');
 
     tree.scrollTop = TREE_ROW_HEIGHT * 2;
     await settle();
 
     expect(before).not.toBeNull();
-    expect(tree.querySelector('[id$=":row-12"]')).toBe(before);
+    expect(rowOf(tree, 'row-12')).toBe(before);
   });
 
   it('comes back at the scroll position kept outside it', async () => {
@@ -190,7 +201,7 @@ describe('Tree - rendering', () => {
     state.activeId = 'row-400';
     await settle();
 
-    const active = tree.querySelector('[id$=":row-400"]');
+    const active = rowOf(tree, 'row-400');
     expect(active).not.toBeNull();
     expect(tree.getAttribute('aria-activedescendant')).toBe(active!.id);
   });
@@ -232,6 +243,52 @@ describe('Tree - rendering', () => {
 
     expect(top).toBeGreaterThan(0);
     expect(tree.scrollTop).toBe(0);
+  });
+});
+
+describe('Tree - scroll and reveal', () => {
+  it('scrolls a revealed row into view again after the reveal was cleared', async () => {
+    const tree = await setup(flatRows(500));
+
+    state.revealId = 'row-300';
+    await settle();
+    state.revealId = null;
+    await settle();
+    tree.scrollTop = 0;
+    await settle();
+    state.revealId = 'row-300';
+    await settle();
+
+    expect(labels(tree)).toContain('row-300');
+    expect(tree.scrollTop).toBeGreaterThan(0);
+  });
+
+  it('reports the scroll of a key and brings a remounted tree back there', async () => {
+    const tree = await setup(flatRows(500));
+
+    press(tree, 'End');
+    await settle();
+
+    expect(tree.scrollTop).toBeGreaterThan(0);
+    expect(scroll.top).toBe(tree.scrollTop);
+
+    const top = scroll.top;
+    mounted!.unmount();
+    mounted = null;
+    shadowHost!.remove();
+    const again = await setup(flatRows(500), top);
+
+    expect(again.scrollTop).toBe(top);
+    expect(labels(again)).toContain('row-499');
+  });
+
+  it('draws rows at once when they shrink below the scroll offset', async () => {
+    const tree = await setup(flatRows(500), TREE_ROW_HEIGHT * 400);
+
+    state.rows = flatRows(30);
+    await flush();
+
+    expect(labels(tree)).toContain('row-29');
   });
 });
 
@@ -339,9 +396,6 @@ describe('Tree - pointer', () => {
 });
 
 describe('Tree - the keyboard row', () => {
-  const rowOf = (tree: HTMLElement, id: string) =>
-    tree.querySelector(`[id$=":${id}"]`) as HTMLElement;
-
   it('fills the active row as the pointer fills one while the tree holds the keyboard', async () => {
     const tree = await setup(flatRows(5));
     shadowHost!.style.setProperty('--tree-row-hover', 'rgb(1, 2, 3)');
@@ -349,7 +403,7 @@ describe('Tree - the keyboard row', () => {
     shadowHost!.style.setProperty('--active', 'rgb(4, 5, 6)');
     state.activeId = 'row-1';
     await flush();
-    const style = () => getComputedStyle(rowOf(tree, 'row-1'));
+    const style = () => getComputedStyle(rowOf(tree, 'row-1')!);
 
     expect(style().backgroundColor).toBe('rgba(0, 0, 0, 0)');
     tree.focus();
@@ -372,13 +426,83 @@ describe('Tree - the keyboard row', () => {
   });
 
   it('lands a keyboard focus on the current row where one is drawn', async () => {
-    await setup(flatRows(500), 1101);
+    const tree = await setup(flatRows(500), 1101);
     state.currentId = 'row-3';
     await flush();
 
     await userEvent.tab();
 
     expect(onActiveChange).toHaveBeenLastCalledWith('row-3');
+    await settle();
+    const top = TREE_ROW_HEIGHT * 3;
+    expect(top).toBeGreaterThanOrEqual(tree.scrollTop);
+    expect(top + TREE_ROW_HEIGHT).toBeLessThanOrEqual(tree.scrollTop + HEIGHT);
+  });
+
+  it('scrolls an active row that is out of view back into view on a keyboard focus', async () => {
+    const tree = await setup(flatRows(500), 1101);
+    state.activeId = 'row-3';
+    await flush();
+
+    await userEvent.tab();
+    await settle();
+
+    expect(tree.scrollTop).toBeLessThanOrEqual(TREE_ROW_HEIGHT * 3);
+  });
+
+  it("keeps the current row dashed and the focused tree's active row solid under forced colours", async () => {
+    await session().send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'forced-colors', value: 'active' }],
+    });
+    expect(matchMedia('(forced-colors: active)').matches).toBe(true);
+    const tree = await setup(flatRows(5));
+    state.currentId = 'row-1';
+    state.activeId = 'row-2';
+    await flush();
+    const style = (id: string) => getComputedStyle(rowOf(tree, id)!);
+
+    expect(style('row-1').outlineStyle).toBe('dashed');
+    expect(style('row-2').outlineStyle).toBe('none');
+    tree.focus();
+    expect(style('row-2').outlineStyle).toBe('solid');
+    const highlight = style('row-2').outlineColor;
+    expect(style('row-1').outlineColor).not.toBe(highlight);
+
+    state.activeId = 'row-1';
+    await flush();
+    expect(style('row-1').outlineStyle).toBe('dashed');
+    expect(style('row-1').outlineColor).toBe(highlight);
+  });
+
+  it('does not pull a scroll back when the window regains focus on the tree', async () => {
+    const tree = await setup(flatRows(500), 1101);
+    state.activeId = 'row-3';
+    await flush();
+    await userEvent.tab();
+    await settle();
+    tree.scrollTop = 3000;
+    await settle();
+
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    tree.dispatchEvent(new FocusEvent('blur'));
+    vi.restoreAllMocks();
+    tree.dispatchEvent(new FocusEvent('focus'));
+    await settle();
+    expect(tree.scrollTop).toBe(3000);
+
+    tree.dispatchEvent(new FocusEvent('blur'));
+    tree.dispatchEvent(new FocusEvent('focus'));
+    await settle();
+    expect(tree.scrollTop).toBeLessThanOrEqual(TREE_ROW_HEIGHT * 3);
+  });
+
+  it('is not tabbable while it has no rows', async () => {
+    const tree = await setup([]);
+    expect(tree.tabIndex).toBe(-1);
+
+    state.rows = flatRows(3);
+    await flush();
+    expect(tree.tabIndex).toBe(0);
   });
 
   it('keeps the active row on a keyboard focus, and lands nothing on a press', async () => {
@@ -392,7 +516,7 @@ describe('Tree - the keyboard row', () => {
     tree.blur();
     state.activeId = null;
     await flush();
-    await userEvent.click(rowOf(tree, 'row-4'));
+    await userEvent.click(rowOf(tree, 'row-4')!);
     expect(onActiveChange.mock.calls).toEqual([['row-4']]);
   });
 });
@@ -424,7 +548,7 @@ describe('Tree - what a scroll renders (AC-T15)', () => {
 
   it('keeps the rows drawn across ten steps down the keyboard takes', async () => {
     const tree = await setup(flatRows(500));
-    const first = tree.querySelector('[id$=":row-0"]');
+    const first = rowOf(tree, 'row-0');
 
     for (let step = 0; step < 10; step++) {
       press(tree, 'ArrowDown');
@@ -432,7 +556,7 @@ describe('Tree - what a scroll renders (AC-T15)', () => {
     }
 
     expect(state.activeId).toBe('row-9');
-    expect(tree.querySelector('[id$=":row-0"]')).toBe(first);
+    expect(rowOf(tree, 'row-0')).toBe(first);
   });
 
   it('keys new rows of the same count by their own ids', async () => {
@@ -443,7 +567,7 @@ describe('Tree - what a scroll renders (AC-T15)', () => {
 
     expect(labels(tree)[0]).toBe('b-0');
     expect(items(tree)[0].id).toMatch(/:b-0$/);
-    expect(tree.querySelector('[id$=":a-0"]')).toBeNull();
+    expect(rowOf(tree, 'a-0')).toBeNull();
   });
 
   it('renders nothing outside itself on a scroll that moves the range', async () => {

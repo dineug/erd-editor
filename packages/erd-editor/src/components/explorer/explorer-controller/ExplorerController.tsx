@@ -36,6 +36,12 @@ const ExplorerController: FC = (_props, ctx) => {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
 
+  /** Opens the search, or gives a search shown the keyboard back with its current match and run. */
+  const showSearch = () => {
+    const { store, emitter } = app.value;
+    isExplorerShown(store) ? focusSearch(store) : openSearch(store, emitter);
+  };
+
   /**
    * Closes the panel the toolbar button shows pressed, as the button does, and
    * opens the search otherwise. The palette and the dialogs the search trades
@@ -52,7 +58,7 @@ const ExplorerController: FC = (_props, ctx) => {
       closeExplorer(store);
       return;
     }
-    isExplorerShown(store) ? focusSearch(store) : openSearch(store, emitter);
+    showSearch();
   };
 
   onMounted(() => {
@@ -62,14 +68,8 @@ const ExplorerController: FC = (_props, ctx) => {
       shortcut$
         .pipe(filter(({ type }) => type === KeyBindingName.findReplace))
         .subscribe(handleShortcut),
-      emitter.on({
-        // The palette row's and the context menu's: a search shown keeps its
-        // current match and its run, and takes the keyboard back.
-        openFindReplace: () =>
-          isExplorerShown(store)
-            ? focusSearch(store)
-            : openSearch(store, emitter),
-      }),
+      // The palette row's and the context menu's.
+      emitter.on({ openFindReplace: showSearch }),
       new Observable<void>(subscriber =>
         store.subscribe(actions => {
           noteBatch(store, actions) && subscriber.next();

@@ -12,6 +12,7 @@ import {
   endColumnDragPointer,
   moveColumnDragPointer,
 } from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import {
   progressOf,
   transitionKey,
@@ -24,7 +25,6 @@ import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
-  DIFF_OUTLINE_WIDTH,
   documentCardShadow,
   FOCUS_BORDER_HEIGHT,
   mainButtonClick,
@@ -563,7 +563,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     const sharedNameColor = sharedFocusColor(FocusType.tableName);
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
     const ringColor = sharedTableColor ?? sharedSelected;
-    const diffColor = diffOutline(theme, diffMapRef.value?.get(table.id));
+    const diffPaths = diffMapRef.value?.get(table.id);
 
     // A view draws no affordance its measured width has no room for, and its
     // colour edge takes no click, since the gate drops what the picker changes.
@@ -601,6 +601,12 @@ const Table: FC<TableProps> = (props, ctx) => {
     const commentCell = headerCells.find(
       slot => slot.focusType === FocusType.tableComment
     );
+
+    // A comment change the header draws no slot for takes the name's colour,
+    // so a change the tree lists is marked in the pane.
+    const hiddenCommentColor = commentCell
+      ? null
+      : diffTextColor(theme, diffPaths, FocusType.tableComment);
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
@@ -735,19 +741,13 @@ const Table: FC<TableProps> = (props, ctx) => {
             listening={false}
           />
         ) : null}
-        {diffColor ? (
-          <k-rect
-            name="table-diff-outline"
-            x={-DIFF_OUTLINE_WIDTH / 2}
-            y={-DIFF_OUTLINE_WIDTH / 2}
-            width={rect.width + DIFF_OUTLINE_WIDTH}
-            height={rect.height + DIFF_OUTLINE_WIDTH}
-            cornerRadius={TABLE_CORNER_RADIUS}
-            stroke={diffColor}
-            strokeWidth={DIFF_OUTLINE_WIDTH}
-            listening={false}
-          />
-        ) : null}
+        {diffOutlineRect({
+          name: 'table-diff-outline',
+          stroke: diffOutline(theme, diffPaths),
+          width: rect.width,
+          height: rect.height,
+          cornerRadius: TABLE_CORNER_RADIUS,
+        })}
         <k-group name="table-header" x={TABLE_INSET} y={TABLE_INSET}>
           <k-group name="table-header-inputs" y={headerLineY}>
             {sceneIcon({
@@ -765,7 +765,10 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: table.name.trim()
                     ? table.name
                     : i18n.value.t('common.placeholder.table'),
-                  fill: tint?.foreground ?? nameFill(theme, table.name, view),
+                  fill:
+                    hiddenCommentColor ??
+                    tint?.foreground ??
+                    nameFill(theme, table.name, view),
                   focus: hasFocus(FocusType.tableName),
                   edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,

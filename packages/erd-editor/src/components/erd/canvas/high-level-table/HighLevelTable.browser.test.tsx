@@ -1,6 +1,6 @@
 /** @jsxHost konva */
 
-import { type DOMTemplateLiterals } from '@dineug/r-html';
+import { type DOMTemplateLiterals, type FC, useProvider } from '@dineug/r-html';
 import { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Path } from 'konva/lib/shapes/Path';
@@ -27,6 +27,8 @@ import {
   HIGH_LEVEL_FONT_SIZES,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
+import { Diff, type DiffMap } from '@/components/erd/diff-viewer/diff';
+import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { TABLE_BORDER } from '@/constants/layout';
 import { RelationshipType } from '@/constants/schema';
 import {
@@ -59,6 +61,14 @@ type Fixture = {
 
 const teardowns: Array<() => void> = [];
 
+type DiffSceneProps = { diffMap: DiffMap; children: DOMTemplateLiterals };
+
+/** A diff pane's scene: the provider is up before the table resolves it. */
+const DiffScene: FC<DiffSceneProps> = (props, ctx) => {
+  useProvider(ctx, diffContext, props.diffMap);
+  return () => props.children;
+};
+
 afterEach(async () => {
   releasePointer();
   teardowns.splice(0).forEach(teardown => teardown());
@@ -67,7 +77,7 @@ afterEach(async () => {
 
 async function setup(
   columns = 0,
-  props: { visible?: boolean } = {}
+  props: { visible?: boolean; diff?: (tableId: string) => DiffMap } = {}
 ): Promise<Fixture> {
   const app = createTestAppContext();
   const { store } = app;
@@ -84,10 +94,15 @@ async function setup(
   document.body.append(container);
   const theme = createTestTheme();
 
-  const scene: DOMTemplateLiterals = (
+  const layer: DOMTemplateLiterals = (
     <k-layer name="scene">
       <HighLevelTable table={table} visible={props.visible} />
     </k-layer>
+  );
+  const scene = props.diff ? (
+    <DiffScene diffMap={props.diff(tableId)}>{layer}</DiffScene>
+  ) : (
+    layer
   );
 
   const rendered = renderScene({
@@ -223,6 +238,36 @@ describe('the name a simplified table shows', () => {
 
     expect(name.text()).toBe('users');
     expect(name.fill()).toBe(theme.active);
+  });
+
+  it('marks a comment change on the name, as the full card does with its comment hidden', async () => {
+    const { stage, theme } = await setup(0, {
+      diff: id =>
+        new Map([[id, new Map([[FocusType.tableComment, Diff.modify]])]]),
+    });
+
+    expect(named<Text>(rootOf(stage), 'high-level-table-name').fill()).toBe(
+      theme.diffModifyForeground
+    );
+  });
+
+  it('keeps a rename colour ahead of a comment change', async () => {
+    const { stage, theme } = await setup(0, {
+      diff: id =>
+        new Map([
+          [
+            id,
+            new Map([
+              [FocusType.tableName, Diff.rename],
+              [FocusType.tableComment, Diff.modify],
+            ]),
+          ],
+        ]),
+    });
+
+    expect(named<Text>(rootOf(stage), 'high-level-table-name').fill()).toBe(
+      theme.diffRenameForeground
+    );
   });
 
   it('fills the table box inside its border and padding', async () => {

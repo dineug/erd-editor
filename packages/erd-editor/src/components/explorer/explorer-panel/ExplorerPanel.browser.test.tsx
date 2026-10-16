@@ -130,6 +130,7 @@ const rows = () =>
 const rowOf = (nodeId: string) =>
   rows().find(row => row.id.endsWith(`:${nodeId}`)) as HTMLElement;
 const textOf = (row: HTMLElement) => row.textContent?.trim();
+/** Dispatches a keydown, returning false when something prevented its default. */
 const press = (
   target: HTMLElement,
   key: string,
@@ -306,7 +307,14 @@ describe('ExplorerPanel - presses', () => {
     await settle();
     const before = JSON.stringify(app.store.state.doc);
 
-    for (const key of ['ArrowDown', 'Delete', 'Backspace', 'F2', ' ']) {
+    for (const key of [
+      'ArrowDown',
+      'Enter',
+      'Delete',
+      'Backspace',
+      'F2',
+      ' ',
+    ]) {
       press(tree(), key);
     }
     await settle();
@@ -327,6 +335,28 @@ describe('ExplorerPanel - presses', () => {
     expect(app.store.state.editor.selectedMap).toEqual({
       users: SelectType.table,
     });
+  });
+
+  it('leaves an Escape that ends an IME composition to the input (AC-S11)', async () => {
+    await setup();
+    const heard: string[] = [];
+    mounted!.container
+      .querySelector('.frame')!
+      .addEventListener('keydown', event =>
+        heard.push((event as KeyboardEvent).key)
+      );
+
+    const input = panel()!.querySelector('.find-input') as HTMLElement;
+
+    const ended = [
+      press(input, 'Escape', { isComposing: true }),
+      press(input, 'Escape', { keyCode: 229 }),
+    ];
+    await settle();
+
+    expect(ended).toEqual([true, true]);
+    expect(focusBacks.force).toBe(0);
+    expect(heard).toEqual([]);
   });
 
   /** The owner's request of 2026-10-14: each press folds the deepest open level, from the bottom up. */

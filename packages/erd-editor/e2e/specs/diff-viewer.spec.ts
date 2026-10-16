@@ -4,7 +4,7 @@ import { FIXTURE_URL } from '../support/ErdEditorPage';
 import { expect, test } from '../support/fixtures';
 import { ColumnOption, ColumnUIKey, createSchema } from '../support/schema';
 
-/** The five cells a row draws under the default show bits, which a row with no counterpart tints. */
+/** The five cells a row draws under the default show bits, whose text a row with no counterpart writes in the insert colour. */
 const ROW_CELLS = [
   'columnComment',
   'columnDataType',
@@ -63,7 +63,7 @@ const SAVED = createSchema({
 
 /**
  * The current one renames role to role2, comments user_role, drops NOT NULL
- * from user_id and adds a column test. posts is the same table on both sides.
+ * from user_id, makes role_id unique and adds a column test. posts is the same table on both sides.
  */
 const CURRENT = createSchema({
   tables: [
@@ -76,7 +76,7 @@ const CURRENT = createSchema({
       y: 260,
       columns: [
         column('ur_user_id', 'user_id'),
-        column('ur_role_id', 'role_id'),
+        column('ur_role_id', 'role_id', ColumnOption.unique),
         column('ur_test', 'test'),
       ],
     },
@@ -274,6 +274,7 @@ test.describe('diff viewer', () => {
           'table-p_role': ['tableName:delete'],
           'table-ur': ['tableComment:modify'],
           'column-ur_user_id': ['columnNotNull:modify'],
+          'column-ur_role_id': ['columnName:modify'],
         },
         outlines: { 'table-p_role': 'delete' },
       },
@@ -282,6 +283,7 @@ test.describe('diff viewer', () => {
           'table-c_role2': ['tableName:insert'],
           'table-ur': ['tableComment:modify'],
           'column-ur_user_id': ['columnNotNull:modify'],
+          'column-ur_role_id': ['columnName:modify'],
           'column-ur_test': cells(ROW_CELLS, 'insert'),
         },
         outlines: { 'table-c_role2': 'insert' },
@@ -329,21 +331,25 @@ test.describe('diff viewer', () => {
 
     await expect(tree).toHaveCSS('width', '260px');
     await expect(rows).toHaveText([
-      'Tables3~',
-      'roleD',
-      'role2A',
-      'user_roleM',
-      'Columns2~',
-      'user_idM',
-      'testA',
+      'Tables3~Changed inside',
+      'roleDDeleted',
+      'role2AAdded',
+      'user_roleMModified',
+      'Columns3~Changed inside',
+      'user_idMModified',
+      'role_idMModified',
+      'testAAdded',
     ]);
+    await expect(
+      tree.getByRole('treeitem', { name: /role\s*Deleted/ })
+    ).toHaveCount(1);
 
     await tree.locator('.diff-tree-filter').fill('test');
     await expect(rows).toHaveText([
-      'Tables1~',
-      'user_roleM',
-      'Columns1~',
-      'testA',
+      'Tables1~Changed inside',
+      'user_roleMModified',
+      'Columns1~Changed inside',
+      'testAAdded',
     ]);
     await tree.locator('.diff-tree-filter').fill('');
 

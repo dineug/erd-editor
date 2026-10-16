@@ -1,6 +1,6 @@
 /** @jsxHost konva */
 
-import { type DOMTemplateLiterals } from '@dineug/r-html';
+import { type DOMTemplateLiterals, type FC, useProvider } from '@dineug/r-html';
 import { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Path } from 'konva/lib/shapes/Path';
@@ -28,6 +28,8 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import Table from '@/components/erd/canvas/table/Table';
+import { Diff, type DiffMap } from '@/components/erd/diff-viewer/diff';
+import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import {
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
@@ -94,6 +96,7 @@ type SceneProps = {
 
 type SetupOptions = {
   columns?: number;
+  diff?: (tableId: string) => DiffMap;
   props?: SceneProps;
   prepare?: (app: AppContext) => void;
 };
@@ -114,8 +117,17 @@ afterEach(async () => {
   await whenDrawn();
 });
 
+type DiffSceneProps = { diffMap: DiffMap; children: DOMTemplateLiterals };
+
+/** A diff pane's scene: the provider is up before the table resolves it. */
+const DiffScene: FC<DiffSceneProps> = (props, ctx) => {
+  useProvider(ctx, diffContext, props.diffMap);
+  return () => props.children;
+};
+
 async function setup({
   columns = 0,
+  diff,
   props = {},
   prepare,
 }: SetupOptions = {}): Promise<Fixture> {
@@ -139,18 +151,25 @@ async function setup({
   document.body.append(container);
   const theme = createTestTheme();
 
-  const scene = (next: SceneProps): DOMTemplateLiterals => (
-    <k-layer name="scene">
-      <Table
-        table={table}
-        hovered={next.hovered}
-        hoveredColumnId={next.hoveredColumnId}
-        ghostColumnId={next.ghostColumnId}
-        editorFocused={next.editorFocused}
-        visible={next.visible}
-      />
-    </k-layer>
-  );
+  const scene = (next: SceneProps): DOMTemplateLiterals => {
+    const layer = (
+      <k-layer name="scene">
+        <Table
+          table={table}
+          hovered={next.hovered}
+          hoveredColumnId={next.hoveredColumnId}
+          ghostColumnId={next.ghostColumnId}
+          editorFocused={next.editorFocused}
+          visible={next.visible}
+        />
+      </k-layer>
+    );
+    return diff ? (
+      <DiffScene diffMap={diff(tableId)}>{layer}</DiffScene>
+    ) : (
+      layer
+    );
+  };
 
   const rendered = renderScene({
     app,
@@ -588,6 +607,48 @@ describe('the table header', () => {
 
     expect(root.findOne('.tableComment')).toBeUndefined();
     expect(root.findOne('.tableName')).toBeTruthy();
+  });
+
+  it('marks the name with a comment change the header draws no cell for', async () => {
+    const { stage, theme } = await setup({
+      prepare: app => {
+        app.store.dispatchSync(
+          changeShowAction({ show: Show.tableComment, value: false })
+        );
+      },
+      diff: id =>
+        new Map([[id, new Map([[FocusType.tableComment, Diff.modify]])]]),
+    });
+    const name = named<Group>(rootOf(stage), 'tableName').findOne<Text>(
+      '.cell-text'
+    ) as Text;
+
+    expect(name.fill()).toBe(theme.diffModifyForeground);
+  });
+
+  it('keeps a rename colour ahead of a hidden comment change', async () => {
+    const { stage, theme } = await setup({
+      prepare: app => {
+        app.store.dispatchSync(
+          changeShowAction({ show: Show.tableComment, value: false })
+        );
+      },
+      diff: id =>
+        new Map([
+          [
+            id,
+            new Map([
+              [FocusType.tableName, Diff.rename],
+              [FocusType.tableComment, Diff.modify],
+            ]),
+          ],
+        ]),
+    });
+    const name = named<Group>(rootOf(stage), 'tableName').findOne<Text>(
+      '.cell-text'
+    ) as Text;
+
+    expect(name.fill()).toBe(theme.diffRenameForeground);
   });
 
   it('places the comment cell past the table icon, one name width and one gap along', async () => {

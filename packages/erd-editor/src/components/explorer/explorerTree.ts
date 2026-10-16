@@ -3,15 +3,35 @@ import { query } from '@dineug/erd-editor-schema';
 import type { TreeNode } from '@/components/primitives/tree/treeModel';
 import { ColumnUIKey, OrderType } from '@/constants/schema';
 import type { RootState } from '@/engine/state';
-import type { Column, Index, Table } from '@/internal-types';
+import type { Column, Index, Memo, Table, TableGroup } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { FindField, type FindMatch } from '@/utils/find-replace';
 import { isMemoShown } from '@/utils/memo';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
-import { getTableGroupMemberIds, isTableGroupShown } from '@/utils/tableGroup';
+import { getTableGroupMembers, isTableGroupShown } from '@/utils/tableGroup';
 import { getTableIndexIds } from '@/utils/tableKeys';
 
 import { TABLES_FOLDER_ID } from './explorerView';
+
+// Every node id is spelled here alone, the Tables folder's in explorerView, so
+// the two trees, matchRowId and matchAncestorIds cannot name a row differently.
+const TABLE_GROUPS_FOLDER_ID = 'f:tableGroups';
+const MEMOS_FOLDER_ID = 'f:memos';
+const tableRowId = (tableId: string) => `t:${tableId}`;
+const columnsFolderId = (tableId: string) => `${tableRowId(tableId)}/f:columns`;
+const indexesFolderId = (tableId: string) => `${tableRowId(tableId)}/f:indexes`;
+const foreignKeysFolderId = (tableId: string) =>
+  `${tableRowId(tableId)}/f:foreignKeys`;
+const columnRowId = (columnId: string) => `c:${columnId}`;
+const indexRowId = (indexId: string) => `i:${indexId}`;
+const foreignKeyRowId = (relationshipId: string) => `r:${relationshipId}`;
+const groupRowId = (tableGroupId: string) => `g:${tableGroupId}`;
+const groupTableRowId = (tableGroupId: string, tableId: string) =>
+  `${groupRowId(tableGroupId)}/${tableRowId(tableId)}`;
+const memoRowId = (memoId: string) => `m:${memoId}`;
+/** A search's row for one match in a comment or a memo, under the row of what holds it. */
+const excerptRowId = (parentId: string, { field, start }: FindMatch) =>
+  `${parentId}/x:${field}:${start}`;
 
 export type ExplorerFolder =
   | 'tables'
@@ -116,7 +136,7 @@ function columnNodes(state: RootState, table: Table): ExplorerTreeNode[] {
   return query(state.collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds)
-    .map(column => leaf(`c:${column.id}`, columnData(table.id, column)));
+    .map(column => leaf(columnRowId(column.id), columnData(table.id, column)));
 }
 
 function indexData(
@@ -148,7 +168,9 @@ function indexNodes(state: RootState, table: Table): ExplorerTreeNode[] {
   return query(state.collections)
     .collection('indexEntities')
     .selectByIds(getTableIndexIds(state, table.id))
-    .map(index => leaf(`i:${index.id}`, indexData(state, table.id, index)));
+    .map(index =>
+      leaf(indexRowId(index.id), indexData(state, table.id, index))
+    );
 }
 
 /** The relationships this table is the child of, in document order, of a parent still in the document. */
@@ -170,11 +192,8 @@ function foreignKeyNodes(state: RootState, table: Table): ExplorerTreeNode[] {
         relationship.end.tableId === table.id &&
         doc.tableIds.includes(relationship.start.tableId)
     )
-    .map(relationship => ({
-      id: `r:${relationship.id}`,
-      hasChildren: false,
-      children: () => [],
-      data: {
+    .map(relationship =>
+      leaf(foreignKeyRowId(relationship.id), {
         kind: 'foreignKey',
         relationshipId: relationship.id,
         tableId: table.id,
@@ -182,21 +201,23 @@ function foreignKeyNodes(state: RootState, table: Table): ExplorerTreeNode[] {
         columns: names(relationship.end.columnIds),
         parent: tables.selectById(relationship.start.tableId)?.name ?? '',
         parentColumns: names(relationship.start.columnIds),
-      },
-    }));
+      })
+    );
 }
 
 function tableNode(state: RootState, table: Table): ExplorerTreeNode {
-  const base = `t:${table.id}`;
-
   return {
-    id: base,
+    id: tableRowId(table.id),
     hasChildren: true,
     children: () =>
       present([
-        folder(`${base}/f:columns`, 'columns', () => columnNodes(state, table)),
-        folder(`${base}/f:indexes`, 'indexes', () => indexNodes(state, table)),
-        folder(`${base}/f:foreignKeys`, 'foreignKeys', () =>
+        folder(columnsFolderId(table.id), 'columns', () =>
+          columnNodes(state, table)
+        ),
+        folder(indexesFolderId(table.id), 'indexes', () =>
+          indexNodes(state, table)
+        ),
+        folder(foreignKeysFolderId(table.id), 'foreignKeys', () =>
           foreignKeyNodes(state, table)
         ),
       ]),
@@ -204,47 +225,50 @@ function tableNode(state: RootState, table: Table): ExplorerTreeNode {
   };
 }
 
+const tableGroupData = (group: TableGroup): NodeOf<'tableGroup'> => ({
+  kind: 'tableGroup',
+  tableGroupId: group.id,
+  name: group.name,
+  color: group.color,
+});
+
 function tableGroupNodes(state: RootState): ExplorerTreeNode[] {
   const { doc, collections } = state;
-  const tables = query(collections).collection('tableEntities');
+  const groupMembers = getTableGroupMembers(state);
 
   return query(collections)
     .collection('tableGroupEntities')
     .selectByIds(doc.tableGroupIds)
     .sort(orderByNameASC)
     .map(group => {
-      const base = `g:${group.id}`;
       // A member is a row that goes to its table, never a second copy of the
       // table's own folders.
       const members = () =>
-        tables
-          .selectByIds(getTableGroupMemberIds(state, group.id))
+        [...(groupMembers.get(group.id) ?? [])]
           .sort(orderByNameASC)
-          .map<ExplorerTreeNode>(table => ({
-            id: `${base}/t:${table.id}`,
-            hasChildren: false,
-            children: () => [],
-            data: {
+          .map(table =>
+            leaf(groupTableRowId(group.id, table.id), {
               kind: 'groupTable',
               tableGroupId: group.id,
               tableId: table.id,
               name: table.name,
-            },
-          }));
+            })
+          );
 
       return {
-        id: base,
-        hasChildren: getTableGroupMemberIds(state, group.id).length > 0,
+        id: groupRowId(group.id),
+        hasChildren: groupMembers.has(group.id),
         children: members,
-        data: {
-          kind: 'tableGroup',
-          tableGroupId: group.id,
-          name: group.name,
-          color: group.color,
-        },
+        data: tableGroupData(group),
       };
     });
 }
+
+const memoData = (memo: Memo): NodeOf<'memo'> => ({
+  kind: 'memo',
+  memoId: memo.id,
+  text: firstLine(memo.value),
+});
 
 function memoNodes(state: RootState): ExplorerTreeNode[] {
   const { doc, collections } = state;
@@ -252,12 +276,7 @@ function memoNodes(state: RootState): ExplorerTreeNode[] {
   return query(collections)
     .collection('memoEntities')
     .selectByIds(doc.memoIds)
-    .map(memo => ({
-      id: `m:${memo.id}`,
-      hasChildren: false,
-      children: () => [],
-      data: { kind: 'memo', memoId: memo.id, text: firstLine(memo.value) },
-    }));
+    .map(memo => leaf(memoRowId(memo.id), memoData(memo)));
 }
 
 /**
@@ -277,10 +296,12 @@ export function buildExplorerTree(state: RootState): ExplorerTreeNode[] {
         .map(table => tableNode(state, table))
     ),
     isTableGroupShown(state)
-      ? folder('f:tableGroups', 'tableGroups', () => tableGroupNodes(state))
+      ? folder(TABLE_GROUPS_FOLDER_ID, 'tableGroups', () =>
+          tableGroupNodes(state)
+        )
       : null,
     isMemoShown(state)
-      ? folder('f:memos', 'memos', () => memoNodes(state))
+      ? folder(MEMOS_FOLDER_ID, 'memos', () => memoNodes(state))
       : null,
   ]);
 }
@@ -289,22 +310,49 @@ export function buildExplorerTree(state: RootState): ExplorerTreeNode[] {
  * The row a match shows on in the search's tree: a name's own row, or the
  * excerpt row of a comment or memo, one for each match there.
  */
-export function matchRowId({ field, id, start }: FindMatch): string {
+export function matchRowId(match: FindMatch): string {
+  const { field, id } = match;
+
   switch (field) {
     case FindField.tableName:
-      return `t:${id}`;
+      return tableRowId(id);
     case FindField.columnName:
-      return `c:${id}`;
+      return columnRowId(id);
     case FindField.indexName:
-      return `i:${id}`;
+      return indexRowId(id);
     case FindField.tableGroupName:
-      return `g:${id}`;
+      return groupRowId(id);
     case FindField.tableComment:
-      return `t:${id}/x:${field}:${start}`;
+      return excerptRowId(tableRowId(id), match);
     case FindField.columnComment:
-      return `c:${id}/x:${field}:${start}`;
+      return excerptRowId(columnRowId(id), match);
     case FindField.memo:
-      return `m:${id}/x:${field}:${start}`;
+      return excerptRowId(memoRowId(id), match);
+  }
+}
+
+/** The rows above a match's row in the search's tree, which must be open for the row to be drawn. */
+export function matchAncestorIds({ field, id, tableId }: FindMatch): string[] {
+  switch (field) {
+    case FindField.tableName:
+      return [TABLES_FOLDER_ID];
+    case FindField.tableComment:
+      return [TABLES_FOLDER_ID, tableRowId(id)];
+    case FindField.columnName:
+      return [TABLES_FOLDER_ID, tableRowId(tableId), columnsFolderId(tableId)];
+    case FindField.columnComment:
+      return [
+        TABLES_FOLDER_ID,
+        tableRowId(tableId),
+        columnsFolderId(tableId),
+        columnRowId(id),
+      ];
+    case FindField.indexName:
+      return [TABLES_FOLDER_ID, tableRowId(tableId), indexesFolderId(tableId)];
+    case FindField.tableGroupName:
+      return [TABLE_GROUPS_FOLDER_ID];
+    case FindField.memo:
+      return [MEMOS_FOLDER_ID, memoRowId(id)];
   }
 }
 
@@ -323,10 +371,7 @@ type TableHits = {
 };
 
 const excerpt = (parentId: string, match: FindMatch) =>
-  leaf(`${parentId}/x:${match.field}:${match.start}`, {
-    kind: 'excerpt',
-    match,
-  });
+  leaf(excerptRowId(parentId, match), { kind: 'excerpt', match });
 
 const branch = (
   id: string,
@@ -339,7 +384,7 @@ const branch = (
 
 function searchTableNode(state: RootState, hits: TableHits): ExplorerTreeNode {
   const { table } = hits;
-  const base = `t:${table.id}`;
+  const base = tableRowId(table.id);
   const columns = query(state.collections).collection('tableColumnEntities');
   const indexes = query(state.collections).collection('indexEntities');
 
@@ -348,10 +393,10 @@ function searchTableNode(state: RootState, hits: TableHits): ExplorerTreeNode {
     { kind: 'table', tableId: table.id, name: table.name, matches: hits.name },
     present([
       ...hits.comment.map(match => excerpt(base, match)),
-      folder(`${base}/f:columns`, 'columns', () =>
+      folder(columnsFolderId(table.id), 'columns', () =>
         columns.selectByIds([...hits.columns.keys()]).map(column => {
           const found = hits.columns.get(column.id)!;
-          const id = `c:${column.id}`;
+          const id = columnRowId(column.id);
           return branch(
             id,
             { ...columnData(table.id, column), matches: found.name },
@@ -359,13 +404,13 @@ function searchTableNode(state: RootState, hits: TableHits): ExplorerTreeNode {
           );
         })
       ),
-      folder(`${base}/f:indexes`, 'indexes', () =>
+      folder(indexesFolderId(table.id), 'indexes', () =>
         indexes
           .selectByIds(
             getTableIndexIds(state, table.id).filter(id => hits.indexes.has(id))
           )
           .map(index =>
-            leaf(`i:${index.id}`, {
+            leaf(indexRowId(index.id), {
               ...indexData(state, table.id, index),
               matches: hits.indexes.get(index.id),
             })
@@ -462,23 +507,20 @@ export function buildSearchTree(
     folder(TABLES_FOLDER_ID, 'tables', () =>
       [...tableHits.values()].map(hits => searchTableNode(state, hits))
     ),
-    folder('f:tableGroups', 'tableGroups', () =>
+    folder(TABLE_GROUPS_FOLDER_ID, 'tableGroups', () =>
       groups.selectByIds([...groupHits.keys()]).map(group =>
-        leaf(`g:${group.id}`, {
-          kind: 'tableGroup',
-          tableGroupId: group.id,
-          name: group.name,
-          color: group.color,
+        leaf(groupRowId(group.id), {
+          ...tableGroupData(group),
           matches: groupHits.get(group.id),
         })
       )
     ),
-    folder('f:memos', 'memos', () =>
+    folder(MEMOS_FOLDER_ID, 'memos', () =>
       memos.selectByIds([...memoHits.keys()]).map(memo => {
-        const id = `m:${memo.id}`;
+        const id = memoRowId(memo.id);
         return branch(
           id,
-          { kind: 'memo', memoId: memo.id, text: firstLine(memo.value) },
+          memoData(memo),
           memoHits.get(memo.id)!.map(match => excerpt(id, match))
         );
       })

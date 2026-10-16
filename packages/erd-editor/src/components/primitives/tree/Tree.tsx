@@ -23,8 +23,7 @@ import { moveFocus, type TreeRow } from './treeModel';
 
 export const TREE_ROW_HEIGHT = 22;
 export const TREE_OVERSCAN = VIRTUAL_OVERSCAN;
-/** How far each level stands in from its parent. */
-export const TREE_INDENT = 12;
+const TREE_INDENT = 12;
 
 /** The keys the tree answers itself; it prevents these and passes every other. */
 const TREE_KEYS = new Set([
@@ -42,12 +41,11 @@ let treeCount = 0;
 
 export type TreeProps<T = any> = {
   rows: ReadonlyArray<TreeRow<T>>;
-  rowHeight?: number;
   /** The row the keyboard is on, named to a reader by aria-activedescendant. */
   activeId: string | null;
   /** The row a host marks as the current one, such as the match it jumped to. */
   currentId?: string | null;
-  /** Scrolls this row into view each time a different id arrives. */
+  /** Scrolls this row into view each time a different id arrives; a null between two arrivals of one id scrolls it again. */
   revealId?: string | null;
   label: string;
   dir?: 'ltr' | 'rtl';
@@ -76,18 +74,22 @@ const Tree: FC<TreeProps> = props => {
 
   let revealed: string | null = null;
   let mounted = false;
+  let leftWithWindow = false;
 
-  const rowHeight = () => props.rowHeight ?? TREE_ROW_HEIGHT;
   const domId = (id: string) => `${prefix}:${id}`;
   const indexOf = (id: string | null | undefined) =>
     id ? props.rows.findIndex(row => row.node.id === id) : -1;
-  const rangeNow = () =>
-    visibleRange(
-      props.rows.length,
-      measured.scrollTop,
+  // Rows that shrink below a kept offset must not draw from it for a frame.
+  const rangeNow = () => {
+    const count = props.rows.length;
+    const maxScrollTop = Math.max(0, count * TREE_ROW_HEIGHT - measured.height);
+    return visibleRange(
+      count,
+      Math.min(measured.scrollTop, maxScrollTop),
       measured.height,
-      rowHeight()
+      TREE_ROW_HEIGHT
     );
+  };
 
   const syncRange = () => {
     const { first, last } = rangeNow();
@@ -98,21 +100,28 @@ const Tree: FC<TreeProps> = props => {
   const scrollTo = (top: number) => {
     const $root = root.value;
     if (!$root) return;
+    const before = measured.scrollTop;
     $root.scrollTop = top;
     // The browser may clamp it, and its scroll event comes a frame later.
     measured.scrollTop = $root.scrollTop;
     syncRange();
+    // Its scroll event finds the offset equal and reports nothing.
+    if (measured.scrollTop !== before) props.onScroll?.(measured.scrollTop);
   };
 
   const scrollToIndex = (index: number) => {
     scrollTo(
-      offsetToShow(index, measured.scrollTop, measured.height, rowHeight())
+      offsetToShow(index, measured.scrollTop, measured.height, TREE_ROW_HEIGHT)
     );
   };
 
   const applyReveal = () => {
     const id = props.revealId ?? null;
-    if (!mounted || id === null || id === revealed) return;
+    if (id === null) {
+      revealed = null;
+      return;
+    }
+    if (!mounted || id === revealed) return;
     const index = indexOf(id);
     if (index === -1) return;
     revealed = id;
@@ -156,15 +165,27 @@ const Tree: FC<TreeProps> = props => {
     props.onActiveChange?.(move.id);
   };
 
+  /** A blur that leaves with the window keeps the next focus from moving the scroll. */
+  const handleBlur = () => {
+    leftWithWindow = !document.hasFocus();
+  };
+
   /**
-   * A keyboard focus with no row active lands on the current row, or else the
-   * first row wholly in view, so the reader sees where the arrows start. A
-   * press focuses the tree without it, and its click picks the row.
+   * A keyboard focus brings the active row into view, or lands on the current
+   * row or the first row wholly in view, so the reader sees where the arrows
+   * start. A press focuses the tree without it, and its click picks the row.
    */
   const handleFocus = () => {
+    const skipScroll = leftWithWindow;
+    leftWithWindow = false;
     const { rows, activeId, currentId } = props;
-    if (!rows.length || indexOf(activeId) !== -1) return;
-    if (!root.value?.matches(':focus-visible')) return;
+    if (!rows.length || !root.value?.matches(':focus-visible')) return;
+
+    const active = indexOf(activeId);
+    if (active !== -1) {
+      if (!skipScroll) scrollToIndex(active);
+      return;
+    }
 
     const current = indexOf(currentId);
     const index =
@@ -172,8 +193,9 @@ const Tree: FC<TreeProps> = props => {
         ? current
         : Math.min(
             rows.length - 1,
-            Math.ceil(measured.scrollTop / rowHeight())
+            Math.ceil(measured.scrollTop / TREE_ROW_HEIGHT)
           );
+    scrollToIndex(index);
     props.onActiveChange?.(rows[index].node.id);
   };
 
@@ -208,17 +230,14 @@ const Tree: FC<TreeProps> = props => {
 
   const renderItem = (row: TreeRow, index: number) => {
     const { node } = row;
-    const height = rowHeight();
+    const current = node.id === props.currentId;
 
     return (
       <div
         class={[
           'tree-row',
           styles.row,
-          {
-            active: node.id === props.activeId,
-            current: node.id === props.currentId,
-          },
+          { active: node.id === props.activeId, current },
         ]}
         id={domId(node.id)}
         role="treeitem"
@@ -226,10 +245,10 @@ const Tree: FC<TreeProps> = props => {
         aria-setsize={row.setSize}
         aria-posinset={row.posInSet}
         prop:ariaExpanded={node.hasChildren ? String(row.expanded) : null}
-        prop:ariaCurrent={node.id === props.currentId ? 'true' : null}
+        prop:ariaCurrent={current ? 'true' : null}
         style={{
-          height: `${height}px`,
-          transform: `translateY(${index * height}px)`,
+          height: `${TREE_ROW_HEIGHT}px`,
+          transform: `translateY(${index * TREE_ROW_HEIGHT}px)`,
           'padding-inline-start': `${(row.level - 1) * TREE_INDENT}px`,
         }}
         on:click={() => handleRowClick(row)}
@@ -275,17 +294,18 @@ const Tree: FC<TreeProps> = props => {
         class={['tree', 'scrollbar', styles.root]}
         use:ref={ref(root)}
         role="tree"
-        tabindex="0"
+        tabindex={rows.length ? 0 : -1}
         prop:dir={props.dir ?? ''}
         aria-label={props.label}
         aria-activedescendant={active === -1 ? '' : domId(rows[active].node.id)}
         on:keydown={handleKeydown}
         on:focus={handleFocus}
+        on:blur={handleBlur}
         on:scroll={handleScroll}
       >
         <div
           class={styles.space}
-          style={{ height: `${rows.length * rowHeight()}px` }}
+          style={{ height: `${rows.length * TREE_ROW_HEIGHT}px` }}
         >
           {repeat(
             indexes,

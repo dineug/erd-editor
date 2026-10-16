@@ -3,6 +3,7 @@
 
 import { addCSSHost } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { page } from 'vite-plus/test/browser/context';
 
 import {
   createTestAppContext,
@@ -93,7 +94,19 @@ const rows = () =>
   Array.from(tree().querySelectorAll<HTMLElement>('[role="treeitem"]'));
 const rowOf = (nodeId: string) =>
   rows().find(row => row.id.endsWith(`:${nodeId}`)) as HTMLElement;
-const textOf = (row: HTMLElement) => row.textContent?.trim();
+const withoutHidden = (row: HTMLElement) => {
+  const copy = row.cloneNode(true) as HTMLElement;
+  copy
+    .querySelectorAll('.diff-tree-status-text')
+    .forEach(node => node.remove());
+  return copy;
+};
+const textOf = (row: HTMLElement) => withoutHidden(row).textContent?.trim();
+const spokenOf = (row: HTMLElement) => {
+  const copy = row.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll('[aria-hidden="true"]').forEach(node => node.remove());
+  return copy.textContent?.trim();
+};
 const nameOf = (row: HTMLElement) =>
   row.querySelector('span[dir="auto"]') as HTMLElement;
 const click = async (row: HTMLElement) => {
@@ -142,6 +155,21 @@ describe('DiffTree - rows', () => {
       'totalM',
       'tagsA',
     ]);
+    expect(rows().map(spokenOf)).toEqual([
+      'Tables4Changed inside',
+      'legacyDeleted',
+      'membersRenamed',
+      'ordersChanged inside',
+      'Columns1Changed inside',
+      'totalModified',
+      'tagsAdded',
+    ]);
+    await expect
+      .element(page.getByRole('treeitem', { name: /members\s*Renamed/ }))
+      .toBeInTheDocument();
+    expect(
+      rows()[0].querySelector<HTMLElement>('[aria-hidden="true"]')!.title
+    ).toBe('Changed inside');
     const colorOf = (id: string) => getComputedStyle(nameOf(rowOf(id))).color;
     expect(colorOf('t:new')).toBe(COLORS['--diff-insert-foreground']);
     expect(colorOf('t:prev-gone')).toBe(COLORS['--diff-delete-foreground']);

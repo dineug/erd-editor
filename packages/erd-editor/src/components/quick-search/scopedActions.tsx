@@ -191,15 +191,12 @@ export function createFieldActions(
 
   for (const field of walkFields(state, fields)) {
     if (!inTable(field.tableId)) continue;
-    if (!matcher) {
-      if (field.text || field.field === FindField.columnName) {
-        found.push({ field, hit: null });
-      }
-      continue;
+    if (matcher) {
+      const hit = matchText(field.text, matcher, hangul);
+      if (hit) found.push({ field, hit });
+    } else if (field.text || field.field === FindField.columnName) {
+      found.push({ field, hit: null });
     }
-
-    const hit = matchText(field.text, matcher, hangul);
-    if (hit) found.push({ field, hit });
   }
 
   const ranked = hangul ? rankHits(found as RankedHit[]) : found;

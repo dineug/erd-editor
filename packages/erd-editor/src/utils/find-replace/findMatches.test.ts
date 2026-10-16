@@ -25,7 +25,10 @@ import {
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { ActionType as ColumnActionType } from '@/engine/modules/table-column/actions';
-import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  changeColumnCommentAction,
+  changeColumnDataTypeAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { ActionType as TableGroupActionType } from '@/engine/modules/table-group/actions';
 import {
   addTableGroupAction,
@@ -498,7 +501,20 @@ describe('walkFields over index and table group names', () => {
 
   it('finds an index or a group name and nothing in a data type (AC-Q5)', () => {
     addIndexesAndGroup();
+    app.store.dispatchSync(
+      changeColumnDataTypeAction({
+        id: 'total',
+        tableId: 'orders',
+        value: 'user_type',
+      })
+    );
+    expect(app.store.state.collections.tableColumnEntities.total.dataType).toBe(
+      'user_type'
+    );
 
+    expect(
+      findMatches(app.store.state, matcherOf('user_type'), [...FindFieldList])
+    ).toEqual([]);
     expect(
       places(
         findMatches(app.store.state, matcherOf('user'), [

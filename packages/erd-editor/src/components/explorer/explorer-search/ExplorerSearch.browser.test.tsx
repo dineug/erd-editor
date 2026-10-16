@@ -24,6 +24,7 @@ import {
 import Explorer from '@/components/explorer/Explorer';
 import ExplorerController from '@/components/explorer/explorer-controller/ExplorerController';
 import { closeExplorer } from '@/components/explorer/explorerCommands';
+import { focusSearch } from '@/components/explorer/explorerSearch';
 import { explorerViewOf } from '@/components/explorer/explorerView';
 import type { I18n } from '@/i18n/translate';
 import { hasAppleDevice } from '@/utils/device-detect';
@@ -329,6 +330,9 @@ describe('ExplorerSearch - keyboard', () => {
     await open('user');
     expect(panel()).toBeNull();
     const before = activeElement();
+    focusSearch(app.store);
+    expect(explorerViewOf(app.store).focusRequest).toBeGreaterThan(0);
+    await settle();
 
     measureRoot(app.store, { width: 1200, height: 600 });
     await settle();

@@ -32,7 +32,7 @@ import { isTakenOver } from '@/utils/takeover';
 
 import { isExplorerShown, openExplorer } from './explorerCommands';
 import { jumpTo } from './explorerNavigation';
-import { matchRowId } from './explorerTree';
+import { matchAncestorIds, matchRowId } from './explorerTree';
 import { explorerViewOf, type PressStatus } from './explorerView';
 import { showNextMatchAction$, toErdTarget } from './matchTarget';
 
@@ -76,7 +76,7 @@ export function searchRuntimeOf(store: RxStore): SearchRuntime {
   return runtime;
 }
 
-export const isTextAction = arrayHas<string>(FindTextActionTypes);
+const isTextAction = arrayHas<string>(FindTextActionTypes);
 
 const isSameMatch = (a: FindMatch, b: FindMatch) =>
   a.field === b.field && a.id === b.id && a.start === b.start;
@@ -85,7 +85,7 @@ const isSameMatch = (a: FindMatch, b: FindMatch) =>
 export const isSearching = (store: RxStore) =>
   explorerViewOf(store).query.length > 0;
 
-export function statusText(status: PressStatus, { t }: Pick<I18n, 't'>) {
+function statusText(status: PressStatus, { t }: Pick<I18n, 't'>) {
   if (status === 'noMoreMatches') return t('findReplace.noMoreMatches');
   if (status === 'noChanges') return t('findReplace.noChanges');
   return t('findReplace.replaced', { count: status.replaced });
@@ -108,12 +108,13 @@ export function countText(store: RxStore, i18n: Pick<I18n, 't'>): string {
   });
 }
 
+const sameIds = (a: ReadonlyArray<string>, b: ReadonlyArray<string>) =>
+  a.length === b.length && a.every((id, index) => id === b[index]);
+
 const sameOrder = (a: FieldOrder | null, b: FieldOrder) =>
   a !== null &&
-  a.tableIds.length === b.tableIds.length &&
-  a.tableIds.every((id, index) => id === b.tableIds[index]) &&
-  a.tableGroupIds.length === b.tableGroupIds.length &&
-  a.tableGroupIds.every((id, index) => id === b.tableGroupIds[index]);
+  sameIds(a.tableIds, b.tableIds) &&
+  sameIds(a.tableGroupIds, b.tableGroupIds);
 
 /**
  * The matches in another walk order without a search: by table, then by
@@ -124,18 +125,16 @@ function inWalkOrder(
   matches: ReadonlyArray<FindMatch>,
   { tableIds, tableGroupIds }: FieldOrder
 ): FindMatch[] {
-  const rank = new Map<string, number>();
-  tableIds.forEach((id, index) => rank.set(`t:${id}`, index));
-  tableGroupIds.forEach((id, index) =>
-    rank.set(`g:${id}`, tableIds.length + index)
+  const tableRank = new Map(tableIds.map((id, index) => [id, index]));
+  const groupRank = new Map(
+    tableGroupIds.map((id, index) => [id, tableIds.length + index])
   );
   const last = tableIds.length + tableGroupIds.length;
-  const rankOf = ({ field, id, tableId }: FindMatch) =>
-    field === FindField.memo
-      ? last
-      : (rank.get(
-          field === FindField.tableGroupName ? `g:${id}` : `t:${tableId}`
-        ) ?? last);
+  const rankOf = ({ field, id, tableId }: FindMatch): number => {
+    if (field === FindField.memo) return last;
+    if (field === FindField.tableGroupName) return groupRank.get(id) ?? last;
+    return tableRank.get(tableId) ?? last;
+  };
 
   return matches
     .map((match, index) => ({ match, index, rank: rankOf(match) }))
@@ -175,7 +174,7 @@ export function cancelPendingSearch(store: RxStore) {
  * the name order between runs, and the order a run began with while it lasts.
  * The current match stays current while it is still there, when asked.
  */
-export function refresh(store: RxStore, keepCurrent = false) {
+function refresh(store: RxStore, keepCurrent = false) {
   const view = explorerViewOf(store);
   const runtime = searchRuntimeOf(store);
   cancelPendingSearch(store);
@@ -199,14 +198,14 @@ export function refresh(store: RxStore, keepCurrent = false) {
  * A search asked for by a change of query, options or scopes, which starts a
  * new run and shows every row it finds open.
  */
-export function search(store: RxStore) {
+function search(store: RxStore) {
   explorerViewOf(store).searchCollapsed = {};
   newRun(store);
   refresh(store);
 }
 
 /** Searches again for an edit, whose list the count then speaks for rather than the last press. */
-export function searchEdited(store: RxStore) {
+function searchEdited(store: RxStore) {
   explorerViewOf(store).status = null;
   refresh(store, true);
 }
@@ -223,7 +222,7 @@ function searchPending(store: RxStore) {
  * first, and a panel not drawn by then lets it go, so a window widened later
  * draws the panel without taking the keyboard from wherever it went.
  */
-export function requestSearchFocus(store: RxStore) {
+function requestSearchFocus(store: RxStore) {
   const view = explorerViewOf(store);
   view.focusRequest++;
   const request = view.focusRequest;
@@ -292,9 +291,7 @@ export function openSearch(store: RxStore, emitter: Emitter) {
   openExplorer(store);
 
   view.status = null;
-  view.searchCollapsed = {};
-  newRun(store);
-  refresh(store);
+  search(store);
 
   if (!isExplorerShown(store)) {
     openStatusToast(emitter, {
@@ -306,11 +303,21 @@ export function openSearch(store: RxStore, emitter: Emitter) {
   requestSearchFocus(store);
 }
 
+/** Unfolds what hides a match's row, writing nothing when it is drawn already. */
+function revealMatch(store: RxStore, match: FindMatch) {
+  const view = explorerViewOf(store);
+  const hidden = matchAncestorIds(match).filter(id => view.searchCollapsed[id]);
+  if (!hidden.length) return;
+  const next = { ...view.searchCollapsed };
+  hidden.forEach(id => delete next[id]);
+  view.searchCollapsed = next;
+}
+
 /**
  * Takes the canvas to a match and makes it current, which starts a new run;
  * the tree's keyboard row follows it, so an arrow goes on from there.
  */
-export function goTo(store: RxStore, index: number) {
+function goTo(store: RxStore, index: number) {
   const view = explorerViewOf(store);
   const match = view.matches[index];
   if (!match) return;
@@ -318,6 +325,7 @@ export function goTo(store: RxStore, index: number) {
   view.current = index;
   view.status = null;
   view.activeId = matchRowId(match);
+  revealMatch(store, match);
   newRun(store);
   jumpTo(store, toErdTarget(match));
 }
@@ -406,6 +414,10 @@ export function replaceOne(store: RxStore) {
   runtime.stopped = !next && after.length > 0;
   view.status = runtime.stopped ? 'noMoreMatches' : null;
   view.current = step.index;
+  if (next) {
+    view.activeId = matchRowId(next);
+    revealMatch(store, next);
+  }
 }
 
 /** Replaces every match in one dispatch: one history entry and one batch to every peer. */
@@ -436,9 +448,9 @@ export function setQuery(store: RxStore, query: string) {
   const runtime = searchRuntimeOf(store);
   view.query = query;
   view.status = null;
-  newRun(store);
   if (!view.regex) return search(store);
 
+  newRun(store);
   cancelPendingSearch(store);
   runtime.pendingSearch = setTimeout(() => {
     runtime.pendingSearch = null;

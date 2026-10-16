@@ -126,3 +126,13 @@ export const status = css`
     color: var(--diff-rename-foreground);
   }
 `;
+
+/* The status word a screen reader hears where a sighted reader sees the letter. */
+export const visuallyHidden = css`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+`;

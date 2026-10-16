@@ -78,7 +78,7 @@
 
 ## Common Patterns
 
-- **A scrolling panel takes the `scrollbar` hook class** (`src/styles/scrollbar.styles.ts`), whose thin bar every panel's list or body draws: Table Properties, the Settings page, the code tabs' options, the palette, the locale picker and the tree.
+- **A scrolling panel takes the `scrollbar` hook class** (`src/styles/scrollbar.styles.ts`), whose thin bar every DOM box that scrolls draws: Table Properties and its section tabs, the Settings page, the code tabs' code and options, the palette, the locale picker, the tree, the memo field, the data type hint, every dialog and every context menu. A box under one inherits its `scrollbar-color` but not its `scrollbar-width`, so Chrome would draw it a full-width bar.
 - **One directory per component.** It holds `Foo.tsx`, `Foo.styles.ts` and `Foo.test.ts`, and optionally `Foo.stories.tsx`.
 - **A scene component has no `.styles.ts`.** It draws on the Konva canvas, which no stylesheet styles. Its colours come from `@/konva/theme`. Its geometry comes from `src/konva/scene/metrics.ts` and `erd/canvas/sceneTokens.ts`.
 - The Konva JSX pragma and its intrinsics: `src/konva/AGENTS.md`.

@@ -20,9 +20,10 @@ function caseLike(matched: string, replacement: string): string {
   if (matched === matched.toLowerCase()) return replacement.toLowerCase();
 
   const [first] = matched;
+  if (!hasCase(first)) return replacement;
+
   const [lead] = replacement;
   const rest = replacement.slice(lead.length);
-  if (!hasCase(first)) return replacement;
   return first === first.toUpperCase()
     ? lead.toUpperCase() + rest
     : lead.toLowerCase() + rest;

@@ -4,7 +4,7 @@
 // order, the paint a stylesheet selector used to give it, and the hit band the
 // svg path was, which the last block drives at four zooms through konva itself.
 
-import { type DOMTemplateLiterals } from '@dineug/r-html';
+import { type DOMTemplateLiterals, type FC, useProvider } from '@dineug/r-html';
 import type { Container } from 'konva/lib/Container';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
@@ -19,6 +19,12 @@ import {
 } from '@/__test-utils__';
 import { type AppContext } from '@/components/appContext';
 import Relationship from '@/components/erd/canvas/relationship-group/relationship/Relationship';
+import {
+  Diff,
+  type DiffMap,
+  ENTITY_PATH,
+} from '@/components/erd/diff-viewer/diff';
+import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import {
   clearRelationshipHighlight,
   setRelationshipHighlight,
@@ -100,9 +106,42 @@ const sceneOf = (
   </k-layer>
 );
 
+type DiffSceneProps = {
+  relationship: RelationshipType_;
+  strokeWidth: number;
+  diffMap: DiffMap;
+};
+
+/** A diff pane's scene: the provider is up before the connector resolves it. */
+const DiffScene: FC<DiffSceneProps> = (props, ctx) => {
+  useProvider(ctx, diffContext, props.diffMap);
+
+  return () => (
+    <k-layer name="scene">
+      <Relationship
+        relationship={props.relationship}
+        strokeWidth={props.strokeWidth}
+      />
+    </k-layer>
+  );
+};
+
+const diffSceneOf = (
+  relationship: RelationshipType_,
+  strokeWidth: number,
+  diffMap: DiffMap
+): DOMTemplateLiterals => (
+  <DiffScene
+    relationship={relationship}
+    strokeWidth={strokeWidth}
+    diffMap={diffMap}
+  />
+);
+
 async function mountRelationship(
   relationship: RelationshipType_,
-  strokeWidth = RELATIONSHIP_STROKE_WIDTH
+  strokeWidth = RELATIONSHIP_STROKE_WIDTH,
+  diffMap?: DiffMap
 ): Promise<Mounted> {
   const container = document.createElement('div');
   document.body.append(container);
@@ -110,7 +149,9 @@ async function mountRelationship(
   const rendered = renderScene({
     app,
     container,
-    scene: sceneOf(relationship, strokeWidth),
+    scene: diffMap
+      ? diffSceneOf(relationship, strokeWidth, diffMap)
+      : sceneOf(relationship, strokeWidth),
     width: 800,
     height: 600,
     theme: THEME,
@@ -442,6 +483,34 @@ describe('Relationship as konva nodes', () => {
     clearRelationshipHighlight(editorId);
     await settle();
     expect(route.getAttr('stroke')).toBe(THEME.keyFK);
+  });
+
+  it('draws a diff mark in its colour, and the hover and a jump light over it', async () => {
+    const diffMap: DiffMap = new Map([
+      ['r1', new Map([[ENTITY_PATH, Diff.insert]])],
+    ]);
+    const { app, group } = await mountRelationship(
+      makeRelationship(),
+      RELATIONSHIP_STROKE_WIDTH,
+      diffMap
+    );
+    const route = childNamed(group, 'relationship-route');
+    const editorId = app.store.state.editor.id;
+    expect(route.getAttr('stroke')).toBe(THEME.diffInsertForeground);
+
+    setRelationshipHighlight(editorId, 'r1');
+    await settle();
+    expect(route.getAttr('stroke')).toBe(THEME.relationshipHover);
+
+    clearRelationshipHighlight(editorId);
+    await settle();
+    expect(route.getAttr('stroke')).toBe(THEME.diffInsertForeground);
+
+    app.store.dispatchSync(
+      hoverRelationshipMapAction({ relationshipIds: ['r1'] })
+    );
+    await settle();
+    expect(route.getAttr('stroke')).toBe(THEME.relationshipHover);
   });
 
   it('hovers every start and end column on mouseenter and clears them on mouseleave', async () => {

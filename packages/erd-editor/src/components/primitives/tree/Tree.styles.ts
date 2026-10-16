@@ -40,8 +40,18 @@ export const row = css`
   }
 
   @media (forced-colors: active) {
+    &.current {
+      outline: 1px dashed CanvasText;
+      outline-offset: -1px;
+    }
+
     .tree:focus &.active {
       outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
+
+    .tree:focus &.active.current {
+      outline: 1px dashed Highlight;
       outline-offset: -1px;
     }
   }

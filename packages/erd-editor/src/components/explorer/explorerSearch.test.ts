@@ -35,6 +35,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import {
+  addIndexAction,
+  changeIndexNameAction,
+} from '@/engine/modules/index/atom.actions';
+import {
   addMemoAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
@@ -44,6 +48,7 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
+  changeTableCommentAction,
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -51,6 +56,10 @@ import {
   changeColumnCommentAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupNameAction,
+} from '@/engine/modules/table-group/atom.actions';
 import type { Unsubscribe } from '@/internal-types';
 import {
   DEFAULT_FIND_FIELDS,
@@ -70,6 +79,7 @@ import {
   REGEX_INPUT_DELAY,
   replaceAll,
   replaceOne,
+  searchRuntimeOf,
   setQuery,
   setReplacement,
   toggleField,
@@ -450,6 +460,50 @@ describe('explorer search navigation', () => {
   });
 });
 
+describe('explorer search revealing a match', () => {
+  const drawn = () => {
+    const tree = buildSearchTree(app.store.state, view().matches);
+    return flattenTree(
+      tree.roots,
+      searchExpanded(tree.branchIds, view().searchCollapsed)
+    ).map(({ node }) => node.id);
+  };
+
+  beforeEach(async () => {
+    app.store.dispatchSync(
+      changeTableCommentAction({ id: 'orders', value: 'the user orders' }),
+      addIndexAction({ id: 'i_orders', tableId: 'orders' }),
+      changeIndexNameAction({
+        id: 'i_orders',
+        tableId: 'orders',
+        value: 'idx_user',
+      }),
+      addTableGroupAction({
+        id: 'g_users',
+        ui: { x: 0, y: 0, width: 100, height: 100, zIndex: 1 },
+      }),
+      changeTableGroupNameAction({ id: 'g_users', value: 'user accounts' })
+    );
+    await open('user');
+  });
+
+  it.each(FindFieldList.map(field => [field]))(
+    'unfolds the rows above a %s match inside a folded branch, so the current row is drawn',
+    field => {
+      const match = view().matches.find(found => found.field === field)!;
+      expect(match).toBeDefined();
+      const { branchIds } = buildSearchTree(app.store.state, view().matches);
+      view().searchCollapsed = Object.fromEntries(
+        branchIds.map(id => [id, true as const])
+      );
+
+      goToMatch(app.store, match);
+
+      expect(drawn()).toContain(view().activeId);
+    }
+  );
+});
+
 describe('explorer search replacing', () => {
   beforeEach(async () => {
     await open('user');
@@ -463,6 +517,23 @@ describe('explorer search replacing', () => {
     expect(texts().userId).toBe('user_id');
   });
 
+  it('unfolds the rows above the next match a Replace goes to', () => {
+    goToNext(app.store);
+    const tree = buildSearchTree(app.store.state, view().matches);
+    view().searchCollapsed = Object.fromEntries(
+      tree.branchIds.map(id => [id, true as const])
+    );
+
+    replaceOne(app.store);
+
+    const next = buildSearchTree(app.store.state, view().matches);
+    const rows = flattenTree(
+      next.roots,
+      searchExpanded(next.branchIds, view().searchCollapsed)
+    );
+    expect(rows.map(({ node }) => node.id)).toContain(view().activeId);
+  });
+
   it('replaces the current match and goes on to the next', () => {
     goToNext(app.store);
 
@@ -471,6 +542,7 @@ describe('explorer search replacing', () => {
     expect(texts().userId).toBe('member_id');
     expect(count()).toBe('1 of 4');
     expect(app.store.state.editor.selectedMap).toEqual({ users: 'table' });
+    expect(view().activeId).toBe('t:users');
   });
 
   it.each([
@@ -754,7 +826,7 @@ describe('explorer search replacing', () => {
     expect(texts().memo).toBe('a member wrote this');
   });
 
-  it('writes the replacement in the case it replaces once Preserve Case is on, which neither searches nor starts a run (AC-Q15)', () => {
+  it('writes the replacement in the case it replaces once Preserve Case is on, which does not search (AC-Q15)', () => {
     const comment = () =>
       app.store.state.collections.tableEntities.orders.comment;
     setQuery(app.store, 'customer');
@@ -769,6 +841,19 @@ describe('explorer search replacing', () => {
 
     replaceOne(app.store);
     expect(comment()).toBe('Client orders');
+  });
+
+  it('leaves a run in progress as it is when Preserve Case is toggled (AC-Q15)', () => {
+    goToNext(app.store);
+    replaceOne(app.store);
+    const { run } = searchRuntimeOf(app.store);
+    const { order } = view();
+    expect(run).not.toBeNull();
+
+    toggleOption(app.store, 'preserveCase');
+
+    expect(searchRuntimeOf(app.store).run).toBe(run);
+    expect(view().order).toBe(order);
   });
 
   const customers = () => {

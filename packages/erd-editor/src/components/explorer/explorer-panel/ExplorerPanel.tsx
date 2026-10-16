@@ -23,6 +23,7 @@ import type { PlainMessageKey } from '@/i18n/translate';
 import { type FindMatch, snippetOf } from '@/utils/find-replace';
 import { forceFocusEvent } from '@/utils/internalEvents';
 import {
+  isComposing,
   KeyBindingName,
   matchesShortcut,
   stopsAtPanel,
@@ -73,6 +74,12 @@ const keyClass = (primaryKey: boolean, foreignKey: boolean) => ({
   fk: foreignKey && !primaryKey,
   pfk: primaryKey && foreignKey,
 });
+
+/** The match a row of the search's tree goes to: an excerpt's own, or the first in a name. */
+function firstMatchOf(node: ExplorerNode): FindMatch | undefined {
+  if (node.kind === 'excerpt') return node.match;
+  return 'matches' in node ? node.matches?.[0] : undefined;
+}
 
 /** A row's text with the stretches a search found in it marked, while they still fit it. */
 function marked(text: string, matches: ReadonlyArray<FindMatch> = []) {
@@ -152,12 +159,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
       return;
     }
 
-    const match =
-      node.kind === 'excerpt'
-        ? node.match
-        : 'matches' in node
-          ? node.matches?.[0]
-          : undefined;
+    const match = firstMatchOf(node);
     if (match && isSearching(store)) {
       goToMatch(store, match);
       return;
@@ -208,7 +210,10 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
   const handleKeydown = (event: KeyboardEvent) => {
     const { keyBindingMap } = app.value;
 
-    if (matchesShortcut(event, keyBindingMap[KeyBindingName.stop])) {
+    if (
+      !isComposing(event) &&
+      matchesShortcut(event, keyBindingMap[KeyBindingName.stop])
+    ) {
       event.preventDefault();
       event.stopPropagation();
       ctx.host.dispatchEvent(forceFocusEvent());

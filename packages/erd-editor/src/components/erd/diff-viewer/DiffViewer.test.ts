@@ -45,6 +45,21 @@ vi.mock('@/components/erd/relationshipHighlight', async importOriginal => {
   };
 });
 
+const contexts = vi.hoisted(() => ({ created: [] as unknown[] }));
+
+vi.mock('@/components/appContext', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/components/appContext')>();
+  return {
+    ...actual,
+    createAppContext: (...args: Parameters<typeof actual.createAppContext>) => {
+      const app = actual.createAppContext(...args);
+      contexts.created.push(app);
+      return app;
+    },
+  };
+});
+
 type TableSeed = { id: string; name: string; columns?: string[] };
 
 let mounted: Mounted | null = null;
@@ -110,6 +125,12 @@ async function mountDiffViewer({
   return { originApp, onClose };
 }
 
+/** The two panes' apps, the last two the viewer created. */
+const paneWidths = () =>
+  (contexts.created.slice(-2) as AppContext[]).map(
+    app => app.store.state.editor.viewport.width
+  );
+
 const rootOf = () =>
   mounted!.container.querySelector<HTMLElement>(`.${String(styles.root)}`)!;
 const viewportsOf = () =>
@@ -140,6 +161,8 @@ describe('DiffViewer', () => {
     const tree =
       mounted!.container.querySelector<HTMLElement>('.diff-viewer-tree')!;
     expect(tree.style.width).toBe(`${EXPLORER_WIDTH}px`);
+    // Each pane takes half of the 1000 the origin spans less the tree and a border.
+    expect(paneWidths()).toEqual([369, 369]);
     const viewports = viewportsOf();
     // both children were seeded through changeViewportAction on mount
     viewports.forEach(viewport => {
@@ -170,10 +193,12 @@ describe('DiffViewer', () => {
     expect(tree().style.width).toBe('200px');
     await drag(320);
     expect(tree().style.width).toBe('320px');
+    expect(paneWidths()).toEqual([339, 339]);
 
     sash().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     await flush();
     expect(tree().style.width).toBe(`${EXPLORER_WIDTH}px`);
+    expect(paneWidths()).toEqual([369, 369]);
   });
 
   it('lists a table from elsewhere of another name as one removed and one added', async () => {
@@ -184,7 +209,13 @@ describe('DiffViewer', () => {
 
     const labels = Array.from(
       mounted!.container.querySelectorAll<HTMLElement>('[role="treeitem"]')
-    ).map(row => row.textContent?.trim());
+    ).map(row => {
+      const copy = row.cloneNode(true) as HTMLElement;
+      copy
+        .querySelectorAll('.diff-tree-status-text')
+        .forEach(node => node.remove());
+      return copy.textContent?.trim();
+    });
 
     expect(labels).toEqual(['Tables2~', 'membersA', 'usersD']);
   });

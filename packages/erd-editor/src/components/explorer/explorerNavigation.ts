@@ -1,4 +1,8 @@
-import { type ErdTarget, goToErdTarget } from '@/components/erd/goToErdTarget';
+import {
+  type ErdTarget,
+  goToErdTarget,
+  isRelationshipShown,
+} from '@/components/erd/goToErdTarget';
 import {
   clearRelationshipHighlight,
   setRelationshipHighlight,
@@ -50,7 +54,10 @@ export function jumpTo(store: RxStore, target: ErdTarget): void {
     store.dispatchSync(changeOpenMapAction({ [Open.tableProperties]: false }));
   }
   goToErdTarget(store, target);
-  if (target.kind === 'relationship') {
+  if (
+    target.kind === 'relationship' &&
+    isRelationshipShown(store.state, target.relationshipId)
+  ) {
     setRelationshipHighlight(editorId, target.relationshipId);
   }
 }

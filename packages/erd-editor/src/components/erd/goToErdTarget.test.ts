@@ -27,7 +27,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
-import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  addRelationshipAction,
+  removeRelationshipAction,
+} from '@/engine/modules/relationship/atom.actions';
 import {
   changeCanvasTypeAction,
   changeMaxWidthCommentAction,
@@ -40,6 +43,7 @@ import {
   changeTableCommentAction,
   changeTableGroupAction,
   changeTableNameAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -48,6 +52,7 @@ import {
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import { removeTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
 import {
   getColumnRect,
   getTableHeaderRect,
@@ -964,7 +969,7 @@ describe('showErdTargetAction$ to a relationship', () => {
     expect(tableSpanDown(app, 'parent').end).toBeLessThan(0);
   });
 
-  it('asks for nothing for a relationship or a table the document no longer holds', () => {
+  it('asks for nothing for a relationship the document never held', () => {
     const app = seedPair({ x: 60, y: 60 }, { x: 600, y: 60 });
     const batches = recordBatches(app);
 
@@ -973,6 +978,39 @@ describe('showErdTargetAction$ to a relationship', () => {
     );
     expect(batches.flat()).toEqual([]);
   });
+
+  it.each([
+    [
+      'a relationship removed',
+      (app: AppContext) => {
+        app.store.dispatchSync(removeRelationshipAction({ id: 'rel' }));
+        expect(app.store.state.collections.relationshipEntities).toHaveProperty(
+          'rel'
+        );
+      },
+    ],
+    [
+      'a table of it removed',
+      (app: AppContext) => {
+        app.store.dispatchSync(removeTableAction({ id: 'child' }));
+        expect(app.store.state.collections.tableEntities).toHaveProperty(
+          'child'
+        );
+      },
+    ],
+  ])(
+    'asks for nothing once %s but its entity stays in the collection',
+    (_, remove) => {
+      const app = seedPair({ x: 60, y: 60 }, { x: 600, y: 3000 });
+      remove(app);
+      const batches = recordBatches(app);
+
+      app.store.dispatchSync(showErdTargetAction$(relationship));
+
+      expect(batches.flat()).toEqual([]);
+      expect(app.store.state.editor.selectedMap).toEqual({});
+    }
+  );
 });
 
 /** A table group around one member table, its stored box the size given. */
@@ -1046,6 +1084,20 @@ describe('showErdTargetAction$ to a table group', () => {
     app.store.dispatchSync(showErdTargetAction$(group));
 
     expect(batches.flat()).not.toContain('settings.scrollTo');
+    expect(app.store.state.editor.selectedMap).not.toHaveProperty('group');
+  });
+
+  it('goes to no group the document removed, whose entity stays in the collection', () => {
+    const app = seedGroup({ x: 60, y: 2000, width: 400, height: 300 });
+    app.store.dispatchSync(removeTableGroupAction$('group'));
+    expect(app.store.state.collections.tableGroupEntities).toHaveProperty(
+      'group'
+    );
+    const batches = recordBatches(app);
+
+    app.store.dispatchSync(showErdTargetAction$(group));
+
+    expect(batches.flat()).toEqual([]);
     expect(app.store.state.editor.selectedMap).not.toHaveProperty('group');
   });
 });

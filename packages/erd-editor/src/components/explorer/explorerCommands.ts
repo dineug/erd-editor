@@ -6,6 +6,7 @@ import {
 import { EXPLORER_MAX_WIDTH, EXPLORER_MIN_WIDTH } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import type { RxStore } from '@/engine/rx-store';
+import { isTakenOver } from '@/utils/takeover';
 
 import { explorerViewOf } from './explorerView';
 
@@ -31,8 +32,10 @@ export const isExplorerShown = (store: RxStore) => layoutOf(store).reach > 0;
 /**
  * Opens the Explorer on the ERD tab, from whichever tab is up. Under zen mode
  * it shows the panel and leaves zen on (an owner decision of 2026-10-13).
+ * Under a takeover it does nothing.
  */
 export function openExplorer(store: RxStore): void {
+  if (isTakenOver(store.state)) return;
   showErdTab(store);
   // Settles a zen mode turned on since the layout last looked, which would
   // otherwise read this opening's reveal as one from before it and drop it.
@@ -50,8 +53,9 @@ export function closeExplorer(store: RxStore): void {
   applyViewport(store);
 }
 
-/** The toolbar button and the palette row: closes a pressed button's panel, opens any other. */
+/** The toolbar button and the palette row: closes a pressed button's panel, opens any other, and does nothing under a takeover. */
 export function toggleExplorer(store: RxStore): void {
+  if (isTakenOver(store.state)) return;
   isExplorerPressed(store) ? closeExplorer(store) : openExplorer(store);
 }
 

@@ -13,7 +13,7 @@ import type {
 import { bHas } from '@/utils/bit';
 import { getTableGroupMemberIds } from '@/utils/tableGroup';
 
-import type { Pairing } from './pairEntities';
+import { asNextId, type Pairing } from './pairEntities';
 import { type DiffChange, DiffField, type DiffValue } from './types';
 
 /** Both documents and what pairs across them, which every comparison reads. */
@@ -76,7 +76,7 @@ export function compareTables(
   const prevGroup = groupOf(ctx.prev, prev);
   const nextGroup = groupOf(ctx.next, next);
   const pairedGroup = prevGroup
-    ? (ctx.tableGroups.toNext.get(prevGroup) ?? `prev:${prevGroup}`)
+    ? asNextId(ctx.tableGroups, prevGroup, 'prev')
     : '';
 
   return [
@@ -160,13 +160,11 @@ export function indexKeyOf(
   index: Index,
   side: 'prev' | 'next'
 ): string {
-  const state = side === 'prev' ? ctx.prev : ctx.next;
-  return keyColumnsOf(state, index)
-    .map(({ id, descending }) => {
-      const paired =
-        side === 'prev' ? (ctx.columns.toNext.get(id) ?? `prev:${id}`) : id;
-      return `${paired}${descending ? ' DESC' : ''}`;
-    })
+  return keyColumnsOf(ctx[side], index)
+    .map(
+      ({ id, descending }) =>
+        `${asNextId(ctx.columns, id, side)}${descending ? ' DESC' : ''}`
+    )
     .join(',');
 }
 
@@ -203,8 +201,7 @@ export function foreignKeyPairsOf(
   relationship: Relationship,
   side: 'prev' | 'next'
 ): string {
-  const as = (id: string) =>
-    side === 'prev' ? (ctx.columns.toNext.get(id) ?? `prev:${id}`) : id;
+  const as = (id: string) => asNextId(ctx.columns, id, side);
   return relationship.end.columnIds
     .map(
       (id, index) =>
@@ -264,9 +261,8 @@ export function groupMembersOf(
   group: TableGroup,
   side: 'prev' | 'next'
 ): string[] {
-  const state = side === 'prev' ? ctx.prev : ctx.next;
-  return getTableGroupMemberIds(state, group.id).map(id =>
-    side === 'prev' ? (ctx.tables.toNext.get(id) ?? `prev:${id}`) : id
+  return getTableGroupMemberIds(ctx[side], group.id).map(id =>
+    asNextId(ctx.tables, id, side)
   );
 }
 
@@ -282,8 +278,8 @@ export function compareTableGroups(
   prev: TableGroup,
   next: TableGroup
 ): DiffChange[] {
-  const before = [...groupMembersOf(ctx, prev, 'prev')].sort().join(',');
-  const after = [...groupMembersOf(ctx, next, 'next')].sort().join(',');
+  const before = groupMembersOf(ctx, prev, 'prev').sort().join(',');
+  const after = groupMembersOf(ctx, next, 'next').sort().join(',');
 
   return [
     ...changesOf([[DiffField.name, prev.name, next.name]]),

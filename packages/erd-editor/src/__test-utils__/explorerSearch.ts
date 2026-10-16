@@ -23,7 +23,7 @@ export function openSearchOn(
   // A search that opened nothing, under a takeover, takes no query either.
   if (query === undefined || !view.open) return;
 
-  Object.assign(view, DEFAULT_FIND_OPTIONS, { preserveCase: false });
+  Object.assign(view, DEFAULT_FIND_OPTIONS);
   view.fields = fields;
   setQuery(app.store, query);
 }

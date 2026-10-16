@@ -34,7 +34,6 @@ import {
   indexKeyOf,
 } from './compareEntities';
 import {
-  emptyPairing,
   longestCommonIndexes,
   pairByOverlap,
   pairEntities,
@@ -87,11 +86,10 @@ function liveOf(state: RootState) {
 
 type Live = ReturnType<typeof liveOf>;
 
-const named = (name: string) => (name.trim() ? name : null);
+/** What an entry names an entity by: its own name, a foreign key's text, a memo's first line. */
+type Named = { id: string; name: string };
 
-/** A saved id as the current one it pairs with, or one no current id can equal. */
-const toNext = (pairing: Pairing, id: string) =>
-  pairing.toNext.get(id) ?? `prev:${id}`;
+const named = (name: string) => (name.trim() ? name : null);
 
 /** The first line of a memo, the one a row shows. */
 const firstLine = (text: string) => text.split(/\r?\n/, 1)[0].trim();
@@ -106,8 +104,8 @@ function statusOf(changes: DiffChange[]): DiffStatus | null {
 function entry(
   kind: DiffEntry['kind'],
   status: DiffStatus | null,
-  prev: { id: string; name: string } | null,
-  next: { id: string; name: string } | null,
+  prev: Named | null,
+  next: Named | null,
   changes: DiffChange[] = [],
   children: DiffEntry[] = []
 ): DiffEntry {
@@ -129,20 +127,36 @@ function entry(
  * column reads where it stood.
  */
 function inPlace<T extends { id: string }>(
+  kind: DiffKind,
   prev: ReadonlyArray<T>,
   next: ReadonlyArray<T>,
   pairing: Pairing,
-  paired: (prev: T, next: T) => DiffEntry | null,
-  added: (next: T) => DiffEntry,
-  deleted: (prev: T) => DiffEntry
+  compare: (prev: T, next: T) => DiffChange[],
+  nameOf: (item: T, side: 'prev' | 'next') => Named
 ): DiffEntry[] {
+  const pairedEntry = (prevItem: T, nextItem: T) => {
+    const changes = compare(prevItem, nextItem);
+    const status = statusOf(changes);
+    return status
+      ? entry(
+          kind,
+          status,
+          nameOf(prevItem, 'prev'),
+          nameOf(nextItem, 'next'),
+          changes
+        )
+      : null;
+  };
+
   const byNext = new Map(prev.map(item => [pairing.toNext.get(item.id), item]));
   const rows: Array<{ nextId: string | null; entry: DiffEntry | null }> =
     next.map(item => {
       const before = byNext.get(item.id);
       return {
         nextId: item.id,
-        entry: before ? paired(before, item) : added(item),
+        entry: before
+          ? pairedEntry(before, item)
+          : entry(kind, DiffStatus.added, null, nameOf(item, 'next')),
       };
     });
 
@@ -157,7 +171,10 @@ function inPlace<T extends { id: string }>(
       after === null ? -1 : rows.findIndex(row => row.nextId === after);
     let insertAt = at + 1;
     while (insertAt < rows.length && rows[insertAt].nextId === null) insertAt++;
-    rows.splice(insertAt, 0, { nextId: null, entry: deleted(item) });
+    rows.splice(insertAt, 0, {
+      nextId: null,
+      entry: entry(kind, DiffStatus.deleted, nameOf(item, 'prev'), null),
+    });
   }
 
   return rows
@@ -165,7 +182,41 @@ function inPlace<T extends { id: string }>(
     .filter((value): value is DiffEntry => value !== null);
 }
 
-const byName = (a: DiffEntry, b: DiffEntry) => orderByNameASC(a, b);
+/**
+ * The entries of one kind in name order: each saved one gone or changed in or
+ * under it, then each current one that pairs with none.
+ */
+function listedByName<T extends Named>(
+  kind: DiffKind,
+  prev: ReadonlyArray<T>,
+  next: ReadonlyArray<T>,
+  pairing: Pairing,
+  compare: (prev: T, next: T) => DiffChange[],
+  childrenOf: (prev: T, next: T) => DiffEntry[] = () => []
+): DiffEntry[] {
+  const nextById = new Map(next.map(item => [item.id, item]));
+  const entries: DiffEntry[] = [];
+
+  for (const item of prev) {
+    const pairedId = pairing.toNext.get(item.id);
+    const paired = pairedId ? nextById.get(pairedId) : undefined;
+    if (!paired) {
+      entries.push(entry(kind, DiffStatus.deleted, item, null));
+      continue;
+    }
+    const changes = compare(item, paired);
+    const children = childrenOf(item, paired);
+    const status = statusOf(changes);
+    (status || children.length) &&
+      entries.push(entry(kind, status, item, paired, changes, children));
+  }
+  for (const item of next) {
+    pairing.toPrev.has(item.id) ||
+      entries.push(entry(kind, DiffStatus.added, null, item));
+  }
+
+  return entries.sort(orderByNameASC);
+}
 
 /**
  * The columns, indexes and foreign keys of a table both documents hold, each
@@ -199,11 +250,12 @@ function tableChildren(
     columns.findIndex(column => column.id === id) + 1;
 
   const columns = inPlace<Column>(
+    DiffKind.column,
     prevColumns,
     nextColumns,
     ctx.columns,
-    (prev, next) => {
-      const changes = compareColumns(
+    (prev, next) =>
+      compareColumns(
         prev,
         next,
         moved.has(next.id)
@@ -212,67 +264,33 @@ function tableChildren(
               after: placeOf(nextColumns, next.id),
             }
           : null
-      );
-      const status = statusOf(changes);
-      return status
-        ? entry(DiffKind.column, status, prev, next, changes)
-        : null;
-    },
-    next => entry(DiffKind.column, DiffStatus.added, null, next),
-    prev => entry(DiffKind.column, DiffStatus.deleted, prev, null)
+      ),
+    column => column
   );
 
   const indexesOf = (side: Live, table: Table) =>
     side.indexes.filter(({ tableId }) => tableId === table.id);
   const indexes = inPlace<Index>(
+    DiffKind.index,
     indexesOf(live.prev, prevTable),
     indexesOf(live.next, nextTable),
     pairs.indexes,
-    (prev, next) => {
-      const changes = compareIndexes(ctx, prev, next);
-      const status = statusOf(changes);
-      return status ? entry(DiffKind.index, status, prev, next, changes) : null;
-    },
-    next => entry(DiffKind.index, DiffStatus.added, null, next),
-    prev => entry(DiffKind.index, DiffStatus.deleted, prev, null)
+    (prev, next) => compareIndexes(ctx, prev, next),
+    index => index
   );
 
   const foreignKeysOf = (side: Live, table: Table) =>
     side.relationships.filter(({ end }) => end.tableId === table.id);
-  const asForeignKey = (state: RootState, relationship: Relationship) => ({
-    id: relationship.id,
-    name: foreignKeyText(state, relationship),
-  });
   const foreignKeys = inPlace<Relationship>(
+    DiffKind.foreignKey,
     foreignKeysOf(live.prev, prevTable),
     foreignKeysOf(live.next, nextTable),
     pairs.relationships,
-    (prev, next) => {
-      const changes = compareForeignKeys(ctx, prev, next);
-      return changes.length
-        ? entry(
-            DiffKind.foreignKey,
-            DiffStatus.modified,
-            asForeignKey(ctx.prev, prev),
-            asForeignKey(ctx.next, next),
-            changes
-          )
-        : null;
-    },
-    next =>
-      entry(
-        DiffKind.foreignKey,
-        DiffStatus.added,
-        null,
-        asForeignKey(ctx.next, next)
-      ),
-    prev =>
-      entry(
-        DiffKind.foreignKey,
-        DiffStatus.deleted,
-        asForeignKey(ctx.prev, prev),
-        null
-      )
+    (prev, next) => compareForeignKeys(ctx, prev, next),
+    (relationship, side) => ({
+      id: relationship.id,
+      name: foreignKeyText(ctx[side], relationship),
+    })
   );
 
   return [...columns, ...indexes, ...foreignKeys];
@@ -351,31 +369,32 @@ function markEntry(diff: DocumentDiff, item: DiffEntry) {
  */
 export function diffDocuments(prev: RootState, next: RootState): DocumentDiff {
   const live = { prev: liveOf(prev), next: liveOf(next) };
+  const tables = pairEntities(live.prev.tables, live.next.tables, [
+    table => named(table.name),
+  ]);
+  const tableOf = (tableId: string, side: 'prev' | 'next') =>
+    side === 'prev' ? tables.toNext.get(tableId) : tableId;
+  /** A column's or an index's key: the table it is in, as paired, and its name. */
+  const byTableAndName = (
+    item: { tableId: string; name: string },
+    side: 'prev' | 'next'
+  ) => {
+    const name = named(item.name);
+    const table = tableOf(item.tableId, side);
+    return name && table ? `${table}|${name}` : null;
+  };
+
   const ctx: DiffContext = {
     prev,
     next,
-    tables: pairEntities(live.prev.tables, live.next.tables, [
-      table => named(table.name),
+    tables,
+    columns: pairEntities(live.prev.columns, live.next.columns, [
+      byTableAndName,
     ]),
-    columns: emptyPairing(),
-    tableGroups: emptyPairing(),
+    tableGroups: pairEntities(live.prev.tableGroups, live.next.tableGroups, [
+      group => named(group.name),
+    ]),
   };
-
-  ctx.columns = pairEntities(live.prev.columns, live.next.columns, [
-    (column, side) => {
-      const name = named(column.name);
-      if (name === null) return null;
-      const table =
-        side === 'prev'
-          ? ctx.tables.toNext.get(column.tableId)
-          : column.tableId;
-      return table ? `${table}|${name}` : null;
-    },
-  ]);
-
-  ctx.tableGroups = pairEntities(live.prev.tableGroups, live.next.tableGroups, [
-    group => named(group.name),
-  ]);
   pairByOverlap(
     ctx.tableGroups,
     live.prev.tableGroups.filter(group => named(group.name) === null),
@@ -383,14 +402,8 @@ export function diffDocuments(prev: RootState, next: RootState): DocumentDiff {
     (group, side) => groupMembersOf(ctx, group, side)
   );
 
-  const tableOf = (tableId: string, side: 'prev' | 'next') =>
-    side === 'prev' ? ctx.tables.toNext.get(tableId) : tableId;
   const indexes = pairEntities<Index>(live.prev.indexes, live.next.indexes, [
-    (index, side) => {
-      const name = named(index.name);
-      const table = tableOf(index.tableId, side);
-      return name && table ? `${table}|${name}` : null;
-    },
+    byTableAndName,
     (index, side) => {
       const table = tableOf(index.tableId, side);
       return named(index.name) === null && table
@@ -416,85 +429,35 @@ export function diffDocuments(prev: RootState, next: RootState): DocumentDiff {
     memo => `${Math.round(memo.ui.x)},${Math.round(memo.ui.y)}`,
   ]);
 
-  const tableEntries: DiffEntry[] = [];
-  const nextTables = new Map(live.next.tables.map(table => [table.id, table]));
-  for (const table of live.prev.tables) {
-    const pairedId = ctx.tables.toNext.get(table.id);
-    const pairedTable = pairedId ? nextTables.get(pairedId) : undefined;
-    if (!pairedTable) {
-      tableEntries.push(entry(DiffKind.table, DiffStatus.deleted, table, null));
-      continue;
-    }
-    const changes = compareTables(ctx, table, pairedTable);
-    const children = tableChildren(
-      ctx,
-      { indexes, relationships },
-      live,
-      table,
-      pairedTable
-    );
-    const status = statusOf(changes);
-    (status || children.length) &&
-      tableEntries.push(
-        entry(DiffKind.table, status, table, pairedTable, changes, children)
-      );
-  }
-  for (const table of live.next.tables) {
-    ctx.tables.toPrev.has(table.id) ||
-      tableEntries.push(entry(DiffKind.table, DiffStatus.added, null, table));
-  }
-
-  const groupEntries: DiffEntry[] = [];
-  const nextGroups = new Map(
-    live.next.tableGroups.map(group => [group.id, group])
+  const tableEntries = listedByName(
+    DiffKind.table,
+    live.prev.tables,
+    live.next.tables,
+    ctx.tables,
+    (prevTable, nextTable) => compareTables(ctx, prevTable, nextTable),
+    (prevTable, nextTable) =>
+      tableChildren(ctx, { indexes, relationships }, live, prevTable, nextTable)
   );
-  for (const group of live.prev.tableGroups) {
-    const pairedGroup = nextGroups.get(toNext(ctx.tableGroups, group.id));
-    if (!pairedGroup) {
-      groupEntries.push(
-        entry(DiffKind.tableGroup, DiffStatus.deleted, group, null)
-      );
-      continue;
-    }
-    const changes = compareTableGroups(ctx, group, pairedGroup);
-    const status = statusOf(changes);
-    status &&
-      groupEntries.push(
-        entry(DiffKind.tableGroup, status, group, pairedGroup, changes)
-      );
-  }
-  for (const group of live.next.tableGroups) {
-    ctx.tableGroups.toPrev.has(group.id) ||
-      groupEntries.push(
-        entry(DiffKind.tableGroup, DiffStatus.added, null, group)
-      );
-  }
-
-  const asMemo = (memo: Memo) => ({ id: memo.id, name: firstLine(memo.value) });
+  const groupEntries = listedByName(
+    DiffKind.tableGroup,
+    live.prev.tableGroups,
+    live.next.tableGroups,
+    ctx.tableGroups,
+    (prevGroup, nextGroup) => compareTableGroups(ctx, prevGroup, nextGroup)
+  );
   const memoEntries = inPlace<Memo>(
+    DiffKind.memo,
     live.prev.memos,
     live.next.memos,
     memos,
-    (prev, next) => {
-      const changes = compareMemos(prev, next);
-      return changes.length
-        ? entry(
-            DiffKind.memo,
-            DiffStatus.modified,
-            asMemo(prev),
-            asMemo(next),
-            changes
-          )
-        : null;
-    },
-    next => entry(DiffKind.memo, DiffStatus.added, null, asMemo(next)),
-    prev => entry(DiffKind.memo, DiffStatus.deleted, asMemo(prev), null)
+    compareMemos,
+    memo => ({ id: memo.id, name: firstLine(memo.value) })
   );
 
   const diff: DocumentDiff = {
     entries: {
-      tables: tableEntries.sort(byName),
-      tableGroups: groupEntries.sort(byName),
+      tables: tableEntries,
+      tableGroups: groupEntries,
       memos: memoEntries,
     },
     prev: new Map(),

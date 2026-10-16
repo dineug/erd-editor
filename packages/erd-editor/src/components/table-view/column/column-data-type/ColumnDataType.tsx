@@ -187,7 +187,7 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
       />
       {props.edit ? (
         <div
-          class={['data-type-hint', styles.hint]}
+          class={['data-type-hint', 'scrollbar', styles.hint]}
           use:ref={ref(hintList)}
           on:mousedown={handleHintMousedown}
           on:touchstart={handleHintTouchstart}

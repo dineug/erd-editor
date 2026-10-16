@@ -553,13 +553,13 @@ export function createScopeActions(
       perform: ({ emitter }) => {
         emitter.emit(openFindReplaceAction());
       },
-      filter: canOpenFindReplace,
+      filter: canOpenExplorer,
     },
     {
       icon: <Icon name="list-tree" size={16} />,
       ...named(i18n, 'explorer.toggle', 'palette.keywords.explorer'),
       perform: ({ store }) => toggleExplorer(store),
-      filter: canOpenFindReplace,
+      filter: canOpenExplorer,
     },
     ...createPreferenceActions(i18n, preferences),
     ...createTableActions(app, i18n),
@@ -591,8 +591,8 @@ const hasSelectedTable = ({ store }: AppContext) => {
 
 /**
  * The Schema SQL tab's own rows, the statements and the header listing only
- * what the database writes, checked as it writes them; then Export: Schema
- * SQL, on every tab, which opens that tab with its options out to save from.
+ * what the database writes, checked as it writes them, and the options panel
+ * toggle, each only on the Schema SQL tab.
  */
 function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
   const { settings } = app.store.state;
@@ -724,8 +724,8 @@ export function createMatchAction(
   };
 }
 
-/** Whether a row opening Find and Replace or the Explorer would open it: an overlay taking the canvas over keeps both shut. */
-const canOpenFindReplace = ({ store }: AppContext) => !isTakenOver(store.state);
+/** Whether a row opening the Explorer, or Find and Replace above its tree, would open it: an overlay taking the canvas over keeps it shut. */
+const canOpenExplorer = ({ store }: AppContext) => !isTakenOver(store.state);
 
 function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
   const {

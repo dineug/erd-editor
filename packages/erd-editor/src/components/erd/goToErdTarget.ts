@@ -342,21 +342,46 @@ function rangeIn(
 }
 
 /**
+ * The relationship with its two tables while the document lists all three,
+ * else null. A removed entity stays in its collection and leaves only the id
+ * lists, so a relationship or table found there alone is one nobody sees.
+ */
+function findShownRelationship({ doc, collections }: RootState, id: string) {
+  const relationship = query(collections)
+    .collection('relationshipEntities')
+    .selectById(id);
+  if (!relationship || !doc.relationshipIds.includes(id)) return null;
+
+  const tables = query(collections).collection('tableEntities');
+  const start = tables.selectById(relationship.start.tableId);
+  const end = tables.selectById(relationship.end.tableId);
+  if (!start || !doc.tableIds.includes(start.id)) return null;
+  if (!end || !doc.tableIds.includes(end.id)) return null;
+
+  return { relationship, start, end };
+}
+
+/**
+ * Whether a jump to the relationship shows it, as showErdTargetAction$ does
+ * only while it and both its tables stand; a host lights none it did not show.
+ */
+export function isRelationshipShown(
+  state: RootState,
+  relationshipId: string
+): boolean {
+  return findShownRelationship(state, relationshipId) !== null;
+}
+
+/**
  * Brings a relationship's two tables into view as one box and selects the
  * child table alone with its foreign key columns, the first focused. Where the
  * two are too far apart to show together, the child is the part that shows.
  */
 function* showRelationship(state: RootState, relationshipId: string) {
-  const relationship = query(state.collections)
-    .collection('relationshipEntities')
-    .selectById(relationshipId);
-  if (!relationship) return;
+  const shown = findShownRelationship(state, relationshipId);
+  if (!shown) return;
 
-  const tables = query(state.collections).collection('tableEntities');
-  const start = tables.selectById(relationship.start.tableId);
-  const end = tables.selectById(relationship.end.tableId);
-  if (!start || !end) return;
-
+  const { relationship, start, end } = shown;
   const endRect = getTableRect(state, end);
   yield* scrollIntoView(
     state,
@@ -391,7 +416,7 @@ function* showTableGroup(state: RootState, tableGroupId: string) {
   const group = query(state.collections)
     .collection('tableGroupEntities')
     .selectById(tableGroupId);
-  if (!group) return;
+  if (!group || !state.doc.tableGroupIds.includes(tableGroupId)) return;
 
   const box = getTableGroupRect(state, group);
   yield* scrollIntoView(state, box, {

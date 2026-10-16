@@ -328,7 +328,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       isTakenOver(app.value.store.state) &&
       !el.closest(TAKEOVER_CHROME);
 
-    if (canUnselectAll && !middlePan && !middleOverTakeover) {
+    const unselects = canUnselectAll && !middlePan && !middleOverTakeover;
+    if (unselects) {
       const { store } = app.value;
       store.dispatch(unselectAllAction$());
     }
@@ -336,11 +337,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     // A press that changes the selection puts out a jump's light; a pan, by
     // the middle button or the hand tool, leaves it on.
     const { editor } = app.value.store.state;
-    if (
-      !editor.handTool &&
-      ((canUnselectAll && !middlePan && !middleOverTakeover) ||
-        (onEntity && !middlePress))
-    ) {
+    if (!editor.handTool && (unselects || (onEntity && !middlePress))) {
       clearRelationshipHighlight(editor.id);
     }
 

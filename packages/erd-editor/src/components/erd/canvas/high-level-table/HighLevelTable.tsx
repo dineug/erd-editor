@@ -4,10 +4,10 @@ import { FC } from '@dineug/r-html';
 import { isEmpty } from 'es-toolkit/compat';
 
 import { useAppContext } from '@/components/appContext';
+import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
-  DIFF_OUTLINE_WIDTH,
   HIGH_LEVEL_FONT_SIZES,
   mainButtonClick,
   RING_WIDTH,
@@ -104,9 +104,9 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
     const sharedFocus = sharedFocusTableColor();
     const sharedSelected = sharedSelectColor();
     const ringColor = sharedFocus ?? sharedSelected;
-    // Zoomed out, a table in a diff pane is marked as the full card is.
+    // Zoomed out, a table in a diff pane is marked as the full card is, a
+    // comment change on its name, since this card draws no comment.
     const diffPaths = diffMapRef.value?.get(table.id);
-    const diffColor = diffOutline(theme, diffPaths);
 
     return (
       <k-group
@@ -145,19 +145,13 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
             strokeWidth={RING_WIDTH}
           />
         ) : null}
-        {diffColor ? (
-          <k-rect
-            name="table-diff-outline"
-            x={-DIFF_OUTLINE_WIDTH / 2}
-            y={-DIFF_OUTLINE_WIDTH / 2}
-            width={rect.width + DIFF_OUTLINE_WIDTH}
-            height={rect.height + DIFF_OUTLINE_WIDTH}
-            cornerRadius={TABLE_CORNER_RADIUS}
-            stroke={diffColor}
-            strokeWidth={DIFF_OUTLINE_WIDTH}
-            listening={false}
-          />
-        ) : null}
+        {diffOutlineRect({
+          name: 'table-diff-outline',
+          stroke: diffOutline(theme, diffPaths),
+          width: rect.width,
+          height: rect.height,
+          cornerRadius: TABLE_CORNER_RADIUS,
+        })}
         <k-text
           name="high-level-table-name"
           x={TABLE_BORDER}
@@ -167,6 +161,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           text={isEmptyName ? i18n.value.t('common.unnamed') : table.name}
           fill={
             diffTextColor(theme, diffPaths, FocusType.tableName) ??
+            diffTextColor(theme, diffPaths, FocusType.tableComment) ??
             (isEmptyName ? theme.placeholder : theme.active)
           }
           fontFamily={SCENE_FONT_FAMILY}

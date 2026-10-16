@@ -6,15 +6,15 @@ import { focusEvent } from '@/utils/internalEvents';
 
 import ExplorerPanel from './explorer-panel/ExplorerPanel';
 
+export type ExplorerProps = {
+  readonly: boolean;
+};
+
 /**
  * The Explorer's place beside the canvas: the panel at the width the layout
  * reaches, or nothing. It reads the reach alone, so a drag of the edge renders
  * the shell and the panel's root and nothing of the tree.
  */
-export type ExplorerProps = {
-  readonly: boolean;
-};
-
 const Explorer: FC<ExplorerProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   // Unobserved: onBeforeUpdate runs inside the shell's own observer, which

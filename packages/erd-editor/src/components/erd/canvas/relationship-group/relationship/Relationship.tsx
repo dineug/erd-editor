@@ -236,10 +236,11 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       : relationship.identification
         ? theme.keyPFK
         : theme.keyFK;
-    // A diff pane draws an added, removed or changed foreign key in its colour.
-    const unlit =
-      diffOutline(theme, diffMapRef.value?.get(relationship.id)) ??
-      (hover ? theme.relationshipHover : base);
+    // A diff pane draws an added, removed or changed foreign key in its colour,
+    // and a hover or a jump's light wins over it.
+    const unlit = hover
+      ? theme.relationshipHover
+      : (diffOutline(theme, diffMapRef.value?.get(relationship.id)) ?? base);
 
     // A view lights the connectors that reach what it lights, and the colour
     // walks between the two rather than jumping. The document has no light of

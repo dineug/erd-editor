@@ -72,7 +72,7 @@ for both.
 
 ## What is covered
 
-47 spec files. Ten of the groups exist because the DOM scene got their subject
+48 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -86,7 +86,7 @@ for free and the canvas has to draw and dispatch it itself:
 | `draw-preview.spec.ts`          | The dashed preview agreeing with the cursor every frame           |
 | `context-menu-cardinality.spec.ts` | A right click that finds a connector by hit-testing the scene, the cardinality and ON DELETE / ON UPDATE its menu sets, and the `D:C U:R` label, its hover title and the View Option that hides it |
 | `virtual-viewport.spec.ts`      | Culling: what never came near the screen has no node, a table that left stays built but hidden, and the minimap keeps all of it |
-| `diff-viewer.spec.ts`           | The tint a changed cell sits on, on the canvas of both panes      |
+| `diff-viewer.spec.ts`           | A changed cell's text colour and an added or removed table's outline on both canvases, and the diff tree |
 
 Twelve more are the canvas's own geometry, and the DOM the editing overlay
 puts over it:
@@ -117,6 +117,13 @@ one drawn over it in coordinates the document never keeps:
 `shared-workers.spec.ts` holds down what those two and every export stand on:
 that each of the three shared workers starts on the dev server, which serves a
 worker the same component boundaries, Vite client included, that it serves the page.
+
+`explorer.spec.ts` holds down the Explorer in the real element: docked left of
+the canvas it narrows by its width without moving the origin, a click in its
+tree jumping to the table and the keyboard staying in the tree until Escape, a
+foreign key selecting the child table and its key column, its edge sizing it
+up to 480 px, its place on the left in a right-to-left language, and
+its standing aside on a window too narrow for it and coming back.
 
 `import-and-add.spec.ts` holds down what an import lands beside the diagram
 rather than in its place: Import and Add's SQL file placed by Flow below the
