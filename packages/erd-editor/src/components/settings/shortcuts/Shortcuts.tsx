@@ -21,6 +21,8 @@ const ShortcutNameKey = {
   [KeyBindingName.addTable]: 'shortcuts.name.addTable',
   [KeyBindingName.addColumn]: 'shortcuts.name.addColumn',
   [KeyBindingName.addMemo]: 'shortcuts.name.addMemo',
+  [KeyBindingName.addTableGroup]: 'shortcuts.name.addTableGroup',
+  [KeyBindingName.groupSelectedTables]: 'shortcuts.name.groupSelectedTables',
   [KeyBindingName.removeTable]: 'shortcuts.name.removeTable',
   [KeyBindingName.removeColumn]: 'shortcuts.name.removeColumn',
   [KeyBindingName.removeSelection]: 'shortcuts.name.removeSelection',

@@ -31,6 +31,8 @@ const EXPECTED_COMMANDS = [
   'Add Table',
   'Add Column',
   'Add Memo',
+  'Add Table Group',
+  'Group Selected Tables',
   'Remove Table, Memo',
   'Remove Column',
   'Delete Selection',
@@ -137,6 +139,17 @@ describe('Shortcuts', () => {
     const kbd = rowByCommand('Find and Replace').querySelector('.kbd');
 
     expect(kbd?.textContent?.trim()).toBe('Ctrl + F');
+  });
+
+  it('shows Group Selected Tables as its two presses, T then G', async () => {
+    await setup();
+
+    const kbd = rowByCommand('Group Selected Tables').querySelector('.kbd');
+
+    expect(Array.from(kbd?.children ?? [], key => key.textContent)).toEqual([
+      'T',
+      'G',
+    ]);
   });
 
   it('renders modifier combinations joined with +', async () => {

@@ -307,6 +307,8 @@ export const deDE = {
   'shortcuts.name.addTable': 'Tabelle hinzufügen',
   'shortcuts.name.addColumn': 'Spalte hinzufügen',
   'shortcuts.name.addMemo': 'Notiz hinzufügen',
+  'shortcuts.name.addTableGroup': 'Tabellengruppe hinzufügen',
+  'shortcuts.name.groupSelectedTables': 'Ausgewählte Tabellen gruppieren',
   'shortcuts.name.removeTable': 'Tabellen und Notizen entfernen',
   'shortcuts.name.removeColumn': 'Spalte entfernen',
   'shortcuts.name.removeSelection': 'Auswahl löschen',

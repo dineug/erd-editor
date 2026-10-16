@@ -258,6 +258,99 @@ describe('useErdShortcut - creation shortcuts', () => {
   });
 });
 
+describe('useErdShortcut - table group shortcuts', () => {
+  const hideGroups = (app: AppContext) =>
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+
+  it('arms the table group draw and disarms it on the next press, adding no group', async () => {
+    const app = await setup();
+
+    shortcut(app, KeyBindingName.addTableGroup);
+    await flush();
+
+    expect(app.store.state.editor.drawTableGroup).toBe(true);
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+
+    shortcut(app, KeyBindingName.addTableGroup);
+    await flush();
+
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+  });
+
+  it('arms no draw in a readonly editor or while groups are hidden', async () => {
+    let locked = true;
+    const app = await setup(
+      createTestAppContext({ getReadonly: () => locked })
+    );
+
+    shortcut(app, KeyBindingName.addTableGroup);
+    await flush();
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+
+    locked = false;
+    hideGroups(app);
+    shortcut(app, KeyBindingName.addTableGroup);
+    await flush();
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+  });
+
+  it('groups the selected tables and opens the new name, as the table menu does', async () => {
+    const app = await setup();
+    const users = seedTable(app);
+    const orders = seedTable(app);
+    seedTable(app);
+    app.store.dispatchSync(
+      selectAction({ [users]: SelectType.table, [orders]: SelectType.table })
+    );
+
+    shortcut(app, KeyBindingName.groupSelectedTables);
+    await flush();
+
+    const [id] = app.store.state.doc.tableGroupIds;
+    expect(id).toBeDefined();
+    expect(getTable(app, users)?.groupId).toBe(id);
+    expect(getTable(app, orders)?.groupId).toBe(id);
+    expect(app.store.state.editor.editTableGroupId).toBe(id);
+  });
+
+  it('groups nothing without a selected table of the document', async () => {
+    const app = await setup();
+    seedTable(app);
+    app.store.dispatchSync(unselectAllAction());
+
+    shortcut(app, KeyBindingName.groupSelectedTables);
+    await flush();
+
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+  });
+
+  it('groups nothing in a readonly editor or while groups are hidden', async () => {
+    let locked = false;
+    const app = await setup(
+      createTestAppContext({ getReadonly: () => locked })
+    );
+    const tableId = seedTable(app);
+
+    // The readonly filter drops the group alone; the selection the add would
+    // move to it is editor state, which only the guard keeps.
+    locked = true;
+    shortcut(app, KeyBindingName.groupSelectedTables);
+    await flush();
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+    expect({ ...app.store.state.editor.selectedMap }).toEqual({
+      [tableId]: SelectType.table,
+    });
+
+    locked = false;
+    hideGroups(app);
+    shortcut(app, KeyBindingName.groupSelectedTables);
+    await flush();
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+  });
+});
+
 describe('useErdShortcut - while a table group name is edited', () => {
   it('stands the canvas shortcuts down, as for a cell or memo editor', async () => {
     const app = await setup();
@@ -1646,6 +1739,8 @@ const BLOCKED_SHORTCUTS = [
   KeyBindingName.addTable,
   KeyBindingName.addColumn,
   KeyBindingName.addMemo,
+  KeyBindingName.addTableGroup,
+  KeyBindingName.groupSelectedTables,
   KeyBindingName.removeTable,
   KeyBindingName.removeColumn,
   KeyBindingName.removeSelection,
@@ -1686,6 +1781,7 @@ const snapshot = (app: AppContext) => {
   return {
     tableIds: [...doc.tableIds],
     memoIds: [...doc.memoIds],
+    tableGroupIds: [...doc.tableGroupIds],
     columnIds: Object.values(collections.tableEntities).map(table => [
       table.id,
       [...table.columnIds],
@@ -1699,6 +1795,7 @@ const snapshot = (app: AppContext) => {
     openMap: { ...editor.openMap },
     editMemoId: editor.editMemoId,
     drawRelationship: editor.drawRelationship,
+    drawTableGroup: editor.drawTableGroup,
     zoomLevel: settings.zoomLevel,
     focusTable: focusTable
       ? {

@@ -311,6 +311,8 @@ export const ruRU = {
   'shortcuts.name.addTable': 'Добавить таблицу',
   'shortcuts.name.addColumn': 'Добавить столбец',
   'shortcuts.name.addMemo': 'Добавить заметку',
+  'shortcuts.name.addTableGroup': 'Добавить группу таблиц',
+  'shortcuts.name.groupSelectedTables': 'Сгруппировать выделенные таблицы',
   'shortcuts.name.removeTable': 'Удалить таблицы и заметки',
   'shortcuts.name.removeColumn': 'Удалить столбец',
   'shortcuts.name.removeSelection': 'Удалить выделенное',

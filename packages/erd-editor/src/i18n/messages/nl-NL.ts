@@ -305,6 +305,8 @@ export const nlNL = {
   'shortcuts.name.addTable': 'Tabel toevoegen',
   'shortcuts.name.addColumn': 'Kolom toevoegen',
   'shortcuts.name.addMemo': 'Memo toevoegen',
+  'shortcuts.name.addTableGroup': 'Tabelgroep toevoegen',
+  'shortcuts.name.groupSelectedTables': 'Geselecteerde tabellen groeperen',
   'shortcuts.name.removeTable': "Tabellen en memo's verwijderen",
   'shortcuts.name.removeColumn': 'Kolom verwijderen',
   'shortcuts.name.removeSelection': 'Selectie verwijderen',

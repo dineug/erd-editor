@@ -300,6 +300,8 @@ export const trTR = {
   'shortcuts.name.addTable': 'Tablo ekle',
   'shortcuts.name.addColumn': 'Sütun ekle',
   'shortcuts.name.addMemo': 'Not ekle',
+  'shortcuts.name.addTableGroup': 'Tablo grubu ekle',
+  'shortcuts.name.groupSelectedTables': 'Seçili tabloları grupla',
   'shortcuts.name.removeTable': 'Tabloları ve notları kaldır',
   'shortcuts.name.removeColumn': 'Sütunu kaldır',
   'shortcuts.name.removeSelection': 'Seçilenleri sil',

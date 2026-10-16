@@ -11,6 +11,8 @@ export const shortcuts = {
   'shortcuts.name.addTable': 'Add Table',
   'shortcuts.name.addColumn': 'Add Column',
   'shortcuts.name.addMemo': 'Add Memo',
+  'shortcuts.name.addTableGroup': 'Add Table Group',
+  'shortcuts.name.groupSelectedTables': 'Group Selected Tables',
   'shortcuts.name.removeTable': 'Remove Table, Memo',
   'shortcuts.name.removeColumn': 'Remove Column',
   'shortcuts.name.removeSelection': 'Delete Selection',

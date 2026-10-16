@@ -295,6 +295,8 @@ export const idID = {
   'shortcuts.name.addTable': 'Tambahkan tabel',
   'shortcuts.name.addColumn': 'Tambahkan kolom',
   'shortcuts.name.addMemo': 'Tambahkan memo',
+  'shortcuts.name.addTableGroup': 'Tambahkan grup tabel',
+  'shortcuts.name.groupSelectedTables': 'Kelompokkan tabel yang dipilih',
   'shortcuts.name.removeTable': 'Hapus tabel dan memo',
   'shortcuts.name.removeColumn': 'Hapus kolom',
   'shortcuts.name.removeSelection': 'Hapus yang dipilih',

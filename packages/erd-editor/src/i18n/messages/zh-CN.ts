@@ -280,6 +280,8 @@ export const zhCN = {
   'shortcuts.name.addTable': '添加表',
   'shortcuts.name.addColumn': '添加列',
   'shortcuts.name.addMemo': '添加便笺',
+  'shortcuts.name.addTableGroup': '添加表分组',
+  'shortcuts.name.groupSelectedTables': '将所选表分组',
   'shortcuts.name.removeTable': '删除表和便笺',
   'shortcuts.name.removeColumn': '删除列',
   'shortcuts.name.removeSelection': '删除所选项',

@@ -280,6 +280,8 @@ export const zhTW = {
   'shortcuts.name.addTable': '新增資料表',
   'shortcuts.name.addColumn': '新增欄位',
   'shortcuts.name.addMemo': '新增備忘錄',
+  'shortcuts.name.addTableGroup': '新增資料表群組',
+  'shortcuts.name.groupSelectedTables': '將所選資料表組成群組',
   'shortcuts.name.removeTable': '移除資料表和備忘錄',
   'shortcuts.name.removeColumn': '移除欄位',
   'shortcuts.name.removeSelection': '刪除所選項目',

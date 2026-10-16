@@ -310,6 +310,8 @@ export const arSA = {
   'shortcuts.name.addTable': 'إضافة جدول',
   'shortcuts.name.addColumn': 'إضافة عمود',
   'shortcuts.name.addMemo': 'إضافة ملاحظة',
+  'shortcuts.name.addTableGroup': 'إضافة مجموعة جداول',
+  'shortcuts.name.groupSelectedTables': 'تجميع الجداول المحددة',
   'shortcuts.name.removeTable': 'إزالة الجداول والملاحظات',
   'shortcuts.name.removeColumn': 'إزالة عمود',
   'shortcuts.name.removeSelection': 'حذف العناصر المحددة',

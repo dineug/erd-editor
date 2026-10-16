@@ -1,6 +1,7 @@
 import { onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
 import { Open } from '@/constants/open';
 import { RelationshipType } from '@/constants/schema';
 import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
@@ -56,6 +57,7 @@ import {
   removeColumnAction$,
   toggleColumnValueAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import { addTableGroupFromTablesAction$ } from '@/engine/modules/table-group/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { Column, Ctx } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
@@ -81,6 +83,7 @@ import {
   tablePasteFromTextToColumns,
 } from '@/utils/table-clipboard/paste';
 import { CLIPBOARD_MIME, PayloadKind } from '@/utils/table-clipboard/payload';
+import { isTableGroupShown } from '@/utils/tableGroup';
 import { isEditableTarget, isHighLevelTable } from '@/utils/validation';
 
 import { erdShortcutPerformCheck } from './erdShortcutPerformCheck';
@@ -177,6 +180,17 @@ export function useErdShortcut(ctx: Ctx) {
       type === KeyBindingName.addMemo &&
         isMemoShown(store.state) &&
         store.dispatch(addMemoAction$());
+
+      // A group comes only where the menus offer one: groups shown, the store
+      // not readonly. The draw's chord toggles it, as a notation's does.
+      if (!store.getReadonly() && isTableGroupShown(store.state)) {
+        type === KeyBindingName.addTableGroup &&
+          store.dispatch(
+            changeDrawTableGroupAction({ value: !editor.drawTableGroup })
+          );
+        type === KeyBindingName.groupSelectedTables &&
+          addTableGroupAndRename(store, addTableGroupFromTablesAction$());
+      }
 
       type === KeyBindingName.selectAllTable &&
         store.dispatch(selectAllAction());

@@ -313,6 +313,8 @@ export const ukUA = {
   'shortcuts.name.addTable': 'Додати таблицю',
   'shortcuts.name.addColumn': 'Додати стовпець',
   'shortcuts.name.addMemo': 'Додати нотатку',
+  'shortcuts.name.addTableGroup': 'Додати групу таблиць',
+  'shortcuts.name.groupSelectedTables': 'Згрупувати виділені таблиці',
   'shortcuts.name.removeTable': 'Видалити таблиці й нотатки',
   'shortcuts.name.removeColumn': 'Видалити стовпець',
   'shortcuts.name.removeSelection': 'Видалити виділене',

@@ -309,6 +309,8 @@ export const esES = {
   'shortcuts.name.addTable': 'Añadir tabla',
   'shortcuts.name.addColumn': 'Añadir columna',
   'shortcuts.name.addMemo': 'Añadir nota',
+  'shortcuts.name.addTableGroup': 'Añadir grupo de tablas',
+  'shortcuts.name.groupSelectedTables': 'Agrupar las tablas seleccionadas',
   'shortcuts.name.removeTable': 'Eliminar tablas y notas',
   'shortcuts.name.removeColumn': 'Eliminar columna',
   'shortcuts.name.removeSelection': 'Eliminar selección',

@@ -226,7 +226,7 @@ describe('ErdContextMenu / ERD type', () => {
     expect(labelsOf(rootItems())).toEqual([
       'New TableAlt + N',
       'New MemoAlt + M',
-      'New Table Group',
+      'New Table GroupAlt + G',
       'Find and ReplaceCtrl + F',
       'Relationship',
       'View Option',
@@ -1040,7 +1040,7 @@ describe('ErdContextMenu / table type', () => {
         'Focus on this tableAlt + F',
         'Color',
         'Remove color',
-        'Group selected tables',
+        'Group selected tablesTG',
         'DeleteDelete',
       ]);
       expect(findItem(rootItems(), 'Remove color').querySelector('svg')).toBe(
@@ -1537,7 +1537,7 @@ describe('ErdContextMenu / table groups', () => {
 
       const item = findItem(rootItems(), 'New Table Group');
       expect(iconNameOf(item)).toBe('group');
-      expect(item.querySelector('.kbd')).toBeNull();
+      expect(item.querySelector('.kbd')?.textContent?.trim()).toBe('Alt + G');
       await click(item);
 
       expect(app.store.state.editor.drawTableGroup).toBe(true);
@@ -1548,13 +1548,13 @@ describe('ErdContextMenu / table groups', () => {
     it('offers no New Table Group to a readonly editor or while groups are hidden', async () => {
       locked = true;
       await mountMenu();
-      expect(labelsOf(rootItems())).not.toContain('New Table Group');
+      expect(labelsOf(rootItems())).not.toContain('New Table GroupAlt + G');
       mounted?.unmount();
 
       locked = false;
       hideGroups();
       await mountMenu();
-      expect(labelsOf(rootItems())).not.toContain('New Table Group');
+      expect(labelsOf(rootItems())).not.toContain('New Table GroupAlt + G');
     });
   });
 
@@ -1568,6 +1568,11 @@ describe('ErdContextMenu / table groups', () => {
 
       const item = findItem(rootItems(), 'Group selected tables');
       expect(iconNameOf(item)).toBe('group');
+      const keys = item.querySelector('.kbd')?.children ?? [];
+      expect(Array.from(keys, key => key.textContent?.trim())).toEqual([
+        'T',
+        'G',
+      ]);
       await click(item);
 
       const id = app.store.state.doc.tableGroupIds[2];
@@ -1616,7 +1621,7 @@ describe('ErdContextMenu / table groups', () => {
         'Table PropertiesAlt + Space',
         'Focus on this tableAlt + F',
         'Color',
-        'Group selected tables',
+        'Group selected tablesTG',
         'DeleteDelete',
       ]);
       mounted?.unmount();
@@ -1624,7 +1629,7 @@ describe('ErdContextMenu / table groups', () => {
       app.store.dispatchSync(selectAction({ a: SelectType.table }));
       await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
       expect(labelsOf(rootItems()).slice(-3)).toEqual([
-        'Group selected tables',
+        'Group selected tablesTG',
         'Remove from group',
         'Delete selectedDelete',
       ]);
@@ -1635,14 +1640,14 @@ describe('ErdContextMenu / table groups', () => {
       app.store.dispatchSync(selectAction({ a: SelectType.table }));
       locked = true;
       await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
-      expect(labelsOf(rootItems())).not.toContain('Group selected tables');
+      expect(labelsOf(rootItems())).not.toContain('Group selected tablesTG');
       expect(labelsOf(rootItems())).not.toContain('Remove from group');
       mounted?.unmount();
 
       locked = false;
       hideGroups();
       await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
-      expect(labelsOf(rootItems())).not.toContain('Group selected tables');
+      expect(labelsOf(rootItems())).not.toContain('Group selected tablesTG');
       expect(labelsOf(rootItems())).toContain('Remove from group');
     });
 
@@ -1651,7 +1656,7 @@ describe('ErdContextMenu / table groups', () => {
       app.store.dispatchSync(selectAction({ ghost: SelectType.table }));
       await mountMenu({ type: ErdContextMenuType.table, tableId: 'ghost' });
 
-      expect(labelsOf(rootItems())).not.toContain('Group selected tables');
+      expect(labelsOf(rootItems())).not.toContain('Group selected tablesTG');
       expect(labelsOf(rootItems())).not.toContain('Remove from group');
     });
   });
@@ -1899,7 +1904,7 @@ describe('ErdContextMenu / language', () => {
     expect(labelsOf(rootItems())).toEqual([
       'ko:New TableAlt + N',
       'ko:New MemoAlt + M',
-      'ko:New Table Group',
+      'ko:New Table GroupAlt + G',
       'ko:Find and ReplaceCtrl + F',
       'ko:Relationship',
       'ko:View Option',
@@ -1987,7 +1992,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Table PropertiesAlt + Space',
       'ko:Focus on this tableAlt + F',
       'ko:Color',
-      'ko:Group selected tables',
+      'ko:Group selected tablesTG',
       'ko:Delete columnsDelete',
     ]);
   });
@@ -2016,7 +2021,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Focus on selected tablesAlt + F',
       'ko:Color',
       'ko:Remove color',
-      'ko:Group selected tables',
+      'ko:Group selected tablesTG',
       'ko:Delete selectedDelete',
     ]);
   });

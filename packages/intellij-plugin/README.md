@@ -55,11 +55,11 @@ shows as modified. Undo and redo, on the editor's toolbar, are its own history.
   or more columns as `AK1.1`, `AK1.2`, and SQL import reads a UNIQUE over several columns as one
   such index
 - **Table groups** — draw a box behind related tables, which you name and can color, with
-  **New Table Group** in the canvas menu or the command palette, or group the selected tables from
-  their right-click menu. A table joins a group when you drop it inside and leaves when you drop it
-  outside, dragging a group by its title moves its tables with it, each member's header takes the
-  group's color, View Option hides the groups, and DBML import and the Code Generator's DBML carry
-  them as `TableGroup`s
+  **New Table Group** in the canvas menu, the command palette or the floating toolbar, or group the
+  selected tables from their right-click menu. A table joins a group when you drop it inside and
+  leaves when you drop it outside, dragging a group by its title moves its tables with it, each
+  member's header takes the group's color, View Option hides the groups, and DBML import and the
+  Code Generator's DBML carry them as `TableGroup`s
 - **Auto Layout** — place every table again by Force, Flow or a vertical or horizontal tree from the
   canvas menu or the command palette, table groups kept together, in one undo step; Force shows a
   preview you apply or cancel, and the others land at once

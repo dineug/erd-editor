@@ -1184,6 +1184,22 @@ describe('Erd - table properties', () => {
     expect(root.querySelector('[title="Add Index"]')).toBeTruthy();
   });
 
+  it('hands the editor readonly mode to the floating toolbar, whose add buttons follow it', async () => {
+    const { root, props } = await setup({ readonly: true });
+    const addButtons = () =>
+      ['.add-table', '.add-memo', '.add-table-group'].map(selector =>
+        root.querySelector(`.floating-toolbar ${selector}`)
+      );
+
+    expect(root.querySelector('.floating-toolbar')).toBeTruthy();
+    expect(addButtons()).toEqual([null, null, null]);
+
+    props.readonly = false;
+    await flush(6);
+
+    expect(addButtons().every(Boolean)).toBe(true);
+  });
+
   it('drops table ids that no longer exist in the document', async () => {
     const { app, root } = await setup();
     const alpha = seedTable(app, 'alpha');

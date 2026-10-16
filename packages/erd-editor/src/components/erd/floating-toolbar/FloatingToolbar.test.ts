@@ -13,7 +13,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import * as styles from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
-import { RelationshipType } from '@/constants/schema';
+import { RelationshipType, Show } from '@/constants/schema';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
   changeDrawTableGroupAction,
@@ -26,7 +26,10 @@ import {
   viewChangeZoomLevelAction,
   viewOpenAction,
 } from '@/engine/modules/editor/view.actions';
-import { scrollToAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeShowAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
@@ -38,8 +41,14 @@ afterEach(() => {
   mounted = null;
 });
 
-async function setup(app: AppContext = createTestAppContext()) {
-  mounted = await mountAndFlush(html`<${FloatingToolbar} />`, app);
+async function setup(
+  app: AppContext = createTestAppContext(),
+  { readonly = false }: { readonly?: boolean } = {}
+) {
+  mounted = await mountAndFlush(
+    html`<${FloatingToolbar} readonly=${readonly} />`,
+    app
+  );
   const root = mounted.container.querySelector(
     '.floating-toolbar'
   ) as HTMLDivElement;
@@ -53,6 +62,11 @@ const menus = (root: HTMLElement) =>
 const byTitle = (root: HTMLElement, name: string) =>
   root.querySelector<HTMLElement>(`[title^="${name}"]`)!;
 
+const addButton = (
+  root: HTMLElement,
+  kind: 'add-table' | 'add-memo' | 'add-table-group'
+) => root.querySelector<HTMLElement>(`.${kind}`);
+
 const zoom = (root: HTMLElement) =>
   root.querySelector<HTMLElement>(`.${String(styles.readout)}`)?.textContent;
 
@@ -65,12 +79,15 @@ const click = (el: Element) =>
 const isActive = (el: Element) => el.className.includes('active');
 
 describe('FloatingToolbar', () => {
-  it('draws the two tools, the zoom, the four notations and zen mode, in that order', async () => {
+  it('draws the two tools, the three adds, the zoom, the four notations and zen mode, in that order', async () => {
     const { root } = await setup();
 
     expect(menus(root).map(menu => menu.getAttribute('title'))).toEqual([
       'Hand (Space)',
       'Select (Space)',
+      expect.stringMatching(/^New Table \(/),
+      expect.stringMatching(/^New Memo \(/),
+      expect.stringMatching(/^New Table Group \(/),
       expect.stringMatching(/^Zoom out/),
       expect.stringMatching(/^Zoom in/),
       expect.stringMatching(/^Zero One \(/),
@@ -128,6 +145,76 @@ describe('FloatingToolbar', () => {
     expect(app.store.state.editor.drawTableGroup).toBe(false);
     expect(app.store.state.editor.handTool).toBe(false);
     expect(isActive(byTitle(root, 'Select'))).toBe(true);
+  });
+
+  it('adds a table and a memo from their buttons, each named with its chord', async () => {
+    const { app, root } = await setup();
+
+    expect(addButton(root, 'add-table')?.title).toMatch(/^New Table \(.*N\)$/);
+    expect(addButton(root, 'add-memo')?.title).toMatch(/^New Memo \(.*M\)$/);
+
+    click(addButton(root, 'add-table')!);
+    click(addButton(root, 'add-memo')!);
+    await flush();
+
+    expect(app.store.state.doc.tableIds).toHaveLength(1);
+    expect(app.store.state.doc.memoIds).toHaveLength(1);
+  });
+
+  it('arms the table group draw, marks it, and disarms it on a second press', async () => {
+    const { app, root } = await setup();
+    const button = addButton(root, 'add-table-group')!;
+    app.store.dispatchSync(changeHandToolAction({ value: true }));
+    await flush();
+
+    expect(button.title).toMatch(/^New Table Group \(.*G\)$/);
+
+    click(button);
+    await flush();
+
+    expect(app.store.state.editor.drawTableGroup).toBe(true);
+    expect(app.store.state.editor.handTool).toBe(false);
+    expect(app.store.state.doc.tableGroupIds).toEqual([]);
+    expect(isActive(button)).toBe(true);
+    expect(isActive(byTitle(root, 'Select'))).toBe(false);
+
+    click(button);
+    await flush();
+
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+    expect(isActive(button)).toBe(false);
+    expect(isActive(byTitle(root, 'Select'))).toBe(true);
+  });
+
+  it('offers nothing to add to a readonly editor', async () => {
+    const { root } = await setup(createTestAppContext(), { readonly: true });
+
+    expect(addButton(root, 'add-table')).toBeNull();
+    expect(addButton(root, 'add-memo')).toBeNull();
+    expect(addButton(root, 'add-table-group')).toBeNull();
+    expect(root.querySelectorAll(`.${String(styles.divider)}`)).toHaveLength(3);
+  });
+
+  it('offers no New Memo while memos are hidden, nor New Table Group while groups are', async () => {
+    const { app, root } = await setup();
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await flush();
+
+    expect(addButton(root, 'add-table')).toBeTruthy();
+    expect(addButton(root, 'add-memo')).toBeNull();
+    expect(addButton(root, 'add-table-group')).toBeTruthy();
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: false }),
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    await flush();
+
+    expect(addButton(root, 'add-memo')).toBeTruthy();
+    expect(addButton(root, 'add-table-group')).toBeNull();
   });
 
   it('arms a notation, marks it, and puts the pointer back in hand for it', async () => {
@@ -326,6 +413,9 @@ describe('FloatingToolbar', () => {
       expect(menus(root).map(menu => menu.getAttribute('title'))).toEqual([
         'ko:Hand (Space)',
         'ko:Select (Space)',
+        expect.stringMatching(/^ko:New Table \(/),
+        expect.stringMatching(/^ko:New Memo \(/),
+        expect.stringMatching(/^ko:New Table Group \(/),
         expect.stringMatching(/^ko:Zoom out \(/),
         expect.stringMatching(/^ko:Zoom in \(/),
         expect.stringMatching(/^ko:Zero One \(/),

@@ -308,6 +308,8 @@ export const roRO = {
   'shortcuts.name.addTable': 'Adăugare tabel',
   'shortcuts.name.addColumn': 'Adăugare coloană',
   'shortcuts.name.addMemo': 'Adăugare notă',
+  'shortcuts.name.addTableGroup': 'Adăugare grup de tabele',
+  'shortcuts.name.groupSelectedTables': 'Grupare tabele selectate',
   'shortcuts.name.removeTable': 'Eliminare tabele și note',
   'shortcuts.name.removeColumn': 'Eliminare coloană',
   'shortcuts.name.removeSelection': 'Ștergere selecție',

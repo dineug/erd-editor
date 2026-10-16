@@ -308,6 +308,8 @@ export const skSK = {
   'shortcuts.name.addTable': 'Pridať tabuľku',
   'shortcuts.name.addColumn': 'Pridať stĺpec',
   'shortcuts.name.addMemo': 'Pridať poznámku',
+  'shortcuts.name.addTableGroup': 'Pridať skupinu tabuliek',
+  'shortcuts.name.groupSelectedTables': 'Zoskupiť vybraté tabuľky',
   'shortcuts.name.removeTable': 'Odstrániť tabuľky a poznámky',
   'shortcuts.name.removeColumn': 'Odstrániť stĺpec',
   'shortcuts.name.removeSelection': 'Odstrániť vybraté',

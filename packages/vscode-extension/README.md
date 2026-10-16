@@ -43,8 +43,8 @@ not appear in VS Code's Command Palette.
   Zero N, One Only, One N)
 - **Quick edits** — `Alt`+`N` adds a table and `Alt`+`Enter` a column, `Alt`+`K` toggles the primary
   key on the focused column, or on every selected column when it is one of them, and `Delete` or
-  `Backspace` removes the selection, each in one undo step; the Shortcuts page of the editor's
-  Settings tab lists every key
+  `Backspace` removes the selection, each in one undo step; the floating toolbar adds a table, a
+  memo or a table group, and the Shortcuts page of the editor's Settings tab lists every key
 - **Link existing columns** — while you draw a relationship with a mouse or a pen, the buttons
   beside the table it ends on either map the parent's key onto columns that table already has or add
   new ones, named after the parent table when the key is one word (`user_id` for `user`'s `id`), and
@@ -58,11 +58,11 @@ not appear in VS Code's Command Palette.
   or more columns as `AK1.1`, `AK1.2`, and SQL import reads a UNIQUE over several columns as one
   such index
 - **Table groups** — draw a box behind related tables, which you name and can color, with
-  **New Table Group** in the canvas menu or the editor's command palette, or group the selected
-  tables from their right-click menu. A table joins a group when you drop it inside and leaves when
-  you drop it outside, dragging a group by its title moves its tables with it, each member's header
-  takes the group's color, View Option hides the groups, and DBML import and the Code Generator's
-  DBML carry them as `TableGroup`s
+  **New Table Group** in the canvas menu, the editor's command palette or the floating toolbar, or
+  `Alt`+`G`, or group the selected tables from their right-click menu or with `T` then `G`. A table
+  joins a group when you drop it inside and leaves when you drop it outside, dragging a group by its
+  title moves its tables with it, each member's header takes the group's color, View Option hides
+  the groups, and DBML import and the Code Generator's DBML carry them as `TableGroup`s
 - **Auto Layout** — place every table again by Force, Flow or a vertical or horizontal tree from the
   canvas menu or the editor's command palette, table groups kept together, in one undo step; Force
   shows a preview you apply or cancel, and the others land at once

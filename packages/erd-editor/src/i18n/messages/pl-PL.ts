@@ -310,6 +310,8 @@ export const plPL = {
   'shortcuts.name.addTable': 'Dodaj tabelę',
   'shortcuts.name.addColumn': 'Dodaj kolumnę',
   'shortcuts.name.addMemo': 'Dodaj notatkę',
+  'shortcuts.name.addTableGroup': 'Dodaj grupę tabel',
+  'shortcuts.name.groupSelectedTables': 'Grupuj zaznaczone tabele',
   'shortcuts.name.removeTable': 'Usuń tabele i notatki',
   'shortcuts.name.removeColumn': 'Usuń kolumnę',
   'shortcuts.name.removeSelection': 'Usuń zaznaczone',

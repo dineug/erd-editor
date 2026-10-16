@@ -647,7 +647,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             enableLocalePicker={props.enableLocalePicker}
           />
         ) : null}
-        {showFloatingToolbar ? <FloatingToolbar /> : null}
+        {showFloatingToolbar ? (
+          <FloatingToolbar readonly={props.readonly} />
+        ) : null}
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

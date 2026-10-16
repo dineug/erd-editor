@@ -297,6 +297,8 @@ export const jaJP = {
   'shortcuts.name.addTable': 'テーブルを追加',
   'shortcuts.name.addColumn': '列を追加',
   'shortcuts.name.addMemo': 'メモを追加',
+  'shortcuts.name.addTableGroup': 'テーブルグループを追加',
+  'shortcuts.name.groupSelectedTables': '選択したテーブルをグループ化',
   'shortcuts.name.removeTable': 'テーブル・メモを削除',
   'shortcuts.name.removeColumn': '列を削除',
   'shortcuts.name.removeSelection': '選択項目を削除',

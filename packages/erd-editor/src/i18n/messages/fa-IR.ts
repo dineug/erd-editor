@@ -298,6 +298,8 @@ export const faIR = {
   'shortcuts.name.addTable': 'افزودن جدول',
   'shortcuts.name.addColumn': 'افزودن ستون',
   'shortcuts.name.addMemo': 'افزودن یادداشت',
+  'shortcuts.name.addTableGroup': 'افزودن گروه جدول',
+  'shortcuts.name.groupSelectedTables': 'گروه‌بندی جدول‌های انتخاب‌شده',
   'shortcuts.name.removeTable': 'حذف جدول و یادداشت',
   'shortcuts.name.removeColumn': 'حذف ستون',
   'shortcuts.name.removeSelection': 'حذف موارد انتخاب‌شده',

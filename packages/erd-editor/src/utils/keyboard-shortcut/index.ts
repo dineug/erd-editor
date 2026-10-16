@@ -26,6 +26,8 @@ export const KeyBindingName = {
   addTable: 'addTable',
   addColumn: 'addColumn',
   addMemo: 'addMemo',
+  addTableGroup: 'addTableGroup',
+  groupSelectedTables: 'groupSelectedTables',
   removeTable: 'removeTable',
   removeColumn: 'removeColumn',
   removeSelection: 'removeSelection',
@@ -119,6 +121,15 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.addTable]: [{ shortcut: 'Alt+KeyN', preventDefault: true }],
   [KeyBindingName.addColumn]: [{ shortcut: 'Alt+Enter', preventDefault: true }],
   [KeyBindingName.addMemo]: [{ shortcut: 'Alt+KeyM', preventDefault: true }],
+  // Stopped, as Alt+F and Alt+Z are, so a VS Code webview never hands the
+  // press to the workbench, whose Go menu Alt+G opens.
+  [KeyBindingName.addTableGroup]: [
+    { shortcut: 'Alt+KeyG', preventDefault: true, stopPropagation: true },
+  ],
+  // T, then G: two bare letters, which a caret keeps as text (useKeyBindingMap).
+  [KeyBindingName.groupSelectedTables]: [
+    { shortcut: 'KeyT KeyG', preventDefault: true },
+  ],
   [KeyBindingName.removeTable]: [
     { shortcut: '$mod+Backspace', preventDefault: true },
     { shortcut: '$mod+Delete', preventDefault: true },
@@ -174,8 +185,8 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
 
 /**
  * Whether the press is one of the chords given, matched as bindKeys matches a
- * press, so a panel reads a binding as the editor root does. A sequence of
- * presses never matches a single one.
+ * press, so a panel reads a binding as the editor root does. Of a sequence it
+ * is the last press, the one that would complete it at the root.
  */
 export function matchesShortcut(
   event: KeyboardEvent,
@@ -183,7 +194,7 @@ export function matchesShortcut(
 ): boolean {
   return options.some(({ shortcut }) => {
     const presses = parseKeybinding(shortcut);
-    return presses.length === 1 && matchesPress(event, presses[0]);
+    return matchesPress(event, presses[presses.length - 1]);
   });
 }
 

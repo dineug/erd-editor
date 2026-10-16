@@ -288,6 +288,8 @@ export const koKR = {
   'shortcuts.name.addTable': '테이블 추가',
   'shortcuts.name.addColumn': '컬럼 추가',
   'shortcuts.name.addMemo': '메모 추가',
+  'shortcuts.name.addTableGroup': '테이블 그룹 추가',
+  'shortcuts.name.groupSelectedTables': '선택한 테이블을 그룹으로 묶기',
   'shortcuts.name.removeTable': '테이블·메모 제거',
   'shortcuts.name.removeColumn': '컬럼 제거',
   'shortcuts.name.removeSelection': '선택 항목 삭제',

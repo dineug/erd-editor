@@ -18,17 +18,24 @@ import {
   changeZenModeAction,
 } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
+import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeZoomLevelAction$,
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
+import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import type { PlainMessageKey } from '@/i18n/translate';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
+import { isMemoShown } from '@/utils/memo';
+import { isTableGroupShown } from '@/utils/tableGroup';
 import { toZoomFormat } from '@/utils/validation';
 
 import * as styles from './FloatingToolbar.styles';
 
-export type FloatingToolbarProps = {};
+export type FloatingToolbarProps = {
+  /** The editor's readonly, under which the bar offers nothing to add. */
+  readonly?: boolean;
+};
 
 const ICON_SIZE = 16;
 
@@ -67,9 +74,9 @@ const NOTATIONS: Notation[] = [
 ];
 
 /**
- * The bar over the bottom of the canvas: which of the two a press means, the
- * zoom, the notation the next relationship is drawn in, zen mode, and which
- * way the content lies once the screen holds none. It is the one surface zen mode leaves standing.
+ * The bar over the bottom of the canvas: which of the two a press means, what
+ * to add, the zoom, the notation the next relationship is drawn in, zen mode,
+ * and which way the content lies once the screen holds none. It is the one surface zen mode leaves standing.
  */
 const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -85,6 +92,27 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
       ...(store.state.editor.drawTableGroup
         ? [changeDrawTableGroupAction({ value: false })]
         : [])
+    );
+  };
+
+  const handleAddTable = () => {
+    const { store } = app.value;
+    store.dispatch(addTableAction$());
+  };
+
+  const handleAddMemo = () => {
+    const { store } = app.value;
+    store.dispatch(addMemoAction$());
+  };
+
+  /**
+   * Arms the table group draw, whose next main press on the canvas draws the
+   * group, and a second press disarms it, as a notation's does.
+   */
+  const handleAddTableGroup = () => {
+    const { store } = app.value;
+    store.dispatch(
+      changeDrawTableGroupAction({ value: !store.state.editor.drawTableGroup })
     );
   };
 
@@ -149,6 +177,43 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
           <Icon name="mouse-pointer-2" size={ICON_SIZE} />
         </div>
         <div class={styles.divider}></div>
+        {props.readonly ? null : (
+          <>
+            <div
+              class={['add-table', styles.menu]}
+              title={title('common.newTable', KeyBindingName.addTable)}
+              on:click={handleAddTable}
+            >
+              <Icon name="table-2" size={ICON_SIZE} />
+            </div>
+            {isMemoShown(store.state) ? (
+              <div
+                class={['add-memo', styles.menu]}
+                title={title('common.newMemo', KeyBindingName.addMemo)}
+                on:click={handleAddMemo}
+              >
+                <Icon name="sticky-note" size={ICON_SIZE} />
+              </div>
+            ) : null}
+            {isTableGroupShown(store.state) ? (
+              <div
+                class={[
+                  'add-table-group',
+                  styles.menu,
+                  { active: editor.drawTableGroup },
+                ]}
+                title={title(
+                  'common.newTableGroup',
+                  KeyBindingName.addTableGroup
+                )}
+                on:click={handleAddTableGroup}
+              >
+                <Icon name="group" size={ICON_SIZE} />
+              </div>
+            ) : null}
+            <div class={styles.divider}></div>
+          </>
+        )}
         <div
           class={styles.menu}
           title={title('floatingToolbar.zoomOut', KeyBindingName.zoomOut)}

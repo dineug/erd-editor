@@ -15,13 +15,14 @@ import { useUnmounted } from './useUnmounted';
 
 /**
  * The bindings a caret owns first. $mod+A selects all text wherever one is,
- * Space is a space and Delete and Backspace erase a character, so a binding
- * that swallowed one there would spend the press while somebody was typing.
+ * Space is a space, Delete and Backspace erase a character and T then G is a
+ * word being typed, so a binding there would spend the press while somebody typed.
  */
 const YIELDS_TO_A_CARET = new Set<KeyBindingName>([
   KeyBindingName.selectAllTable,
   KeyBindingName.handTool,
   KeyBindingName.removeSelection,
+  KeyBindingName.groupSelectedTables,
 ]);
 
 /**

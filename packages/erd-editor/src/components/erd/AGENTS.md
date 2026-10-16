@@ -193,7 +193,7 @@
   - The minimap and the image export draw none. The content bounds leave them no room, so neither do the scroll ranges, a fit or the export box.
   - Select all takes none. A paste, a duplicate or an Import and Add adds its memos unselected, as hidden memos never stay selected. An append still lands below them, as below hidden groups, since they still stand there.
   - Find and Replace and the palette's `:` walk no memo (`walkFields`), and a show change runs the search again (`FindTextActionTypes`).
-  - Nothing makes a memo while it is set: the canvas menu, the palette and the welcome screen offer no New Memo, and its chord adds none. An agent's `erd_add_memo` still adds one, hidden.
+  - Nothing makes a memo while it is set: the canvas menu, the palette, the floating toolbar and the welcome screen offer no New Memo, and its chord adds none. An agent's `erd_add_memo` still adds one, hidden.
   - It is a paint-only toggle beside the other two hide bits, so it measures nothing either.
 - **Hiding memos drops their selection and editor.** `settings.changeShow` setting `Show.hideMemo`, here, by an undo or by a peer, lets go of every selected memo and closes the memo editor. So does a load (`loadJson`, `initialLoadJson`) that lands the bit, and a load landing `Show.hideTableGroup` lets go of the groups alike (`releaseHidden`, `src/engine/modules/editor/utils/releaseHidden.ts`).
   - A memo sash drag ends at the step that finds the memo hidden or removed, writing nothing more (`MemoSash.tsx`).
@@ -239,9 +239,10 @@
   - Its rows are Select tables (`selectTableGroupTablesAction$`, its member tables alone), Rename, Color, Remove color while the selection holds a color, and Delete.
   - Delete removes that group alone and keeps its tables (`removeTableGroupAction$`). It reads Delete selected while the group is one of two or more selected, as the memo's does.
   - A readonly store gets Select tables alone.
-- **The table menu adds two group rows.** They stand above its Delete. Group selected tables (`addTableGroupFromTablesAction$`) shows while the selection holds a table the document lists. Remove from group (`setTableGroupAction$(ids, '')`) shows while a selected table is in a group.
-- **The canvas menu and the palette create groups.** The canvas menu adds New Table Group after New Memo. The palette adds New Table Group and Group Selected Tables (with a table selected), on the ERD tab alone, each keeping its English as an alias.
-- **No creation under readonly or hidden groups.** None of these rows shows under a readonly store, and none creates a group while groups are hidden. The floating toolbar has no creation buttons, so it has none for groups.
+- **The table menu adds two group rows.** They stand above its Delete. Group selected tables (`addTableGroupFromTablesAction$`) shows while the selection holds a table the document lists, with its chord. Remove from group (`setTableGroupAction$(ids, '')`) shows while a selected table is in a group.
+- **The canvas menu, the palette and the floating toolbar create groups.** The canvas menu adds New Table Group after New Memo. The palette adds New Table Group and Group Selected Tables (with a table selected), on the ERD tab alone, each keeping its English as an alias. The floating toolbar adds New Table Group after New Table and New Memo, marked while the draw is armed.
+- **Two chords create groups** (`useErdShortcut.ts`). `addTableGroup` (`Alt+G`) arms the draw, and a second press disarms it, as the toolbar button does and a notation's chord and button do. `groupSelectedTables` (`T` then `G`, a sequence) runs Group selected tables. The menu and palette rows and the Shortcuts page show both.
+- **No creation under readonly or hidden groups.** None of these rows or buttons shows under a readonly store, and none, nor either chord, creates a group while groups are hidden.
 - **The draw mode is unrecorded editor state.** It is `editor.drawTableGroup`, written by `editor.changeDrawTableGroup`, which no action list holds. So it is never saved, sent or undone, as the hand tool's state is not.
 - **New Table Group arms the draw mode.** Arming puts the hand down and ends a relationship draw, and either of those ends the mode in turn. It takes the stage off the pointer as the hand tool does (`grabMove`). So `handleDragSelect` in `Erd.tsx` hears every press under a crosshair.
 - **A main press draws** (`table-group/useTableGroupDraw.ts`).
@@ -320,7 +321,9 @@
 ### Keys on the canvas
 
 - Find and Replace and its chord: `src/components/explorer/AGENTS.md`. The palette and its prefixes: `src/components/quick-search/AGENTS.md`.
-- **`YIELDS_TO_A_CARET` stands bindings down in fields.** It lives in `src/hooks/useKeyBindingMap.ts`. It stands `selectAllTable`, `handTool` and `removeSelection` down in a text field, per binding. That is because `Enter` / `Escape` still have to reach `handleShortcut` from the cell editor.
+- **`YIELDS_TO_A_CARET` stands bindings down in fields.** It lives in `src/hooks/useKeyBindingMap.ts`. It stands `selectAllTable`, `handTool`, `removeSelection` and `groupSelectedTables` down in a text field, per binding. That is because `Enter` / `Escape` still have to reach `handleShortcut` from the cell editor.
+  - `groupSelectedTables` is two bare letters, so a word typed in any field, the Explorer's find included, would run it there (`outgoing`). The cell, memo and group name editors stand it down through `isEditingText` too.
+  - A panel that stops the map's chords (the Explorer, the diff tree, the color and locale pickers, a script editor) stops its G. `matchesShortcut` reads a sequence by its last press, the one that would complete it at the root, so T then G on a tree row groups nothing.
   - `findReplace` stays out of it: in a field, `$mod+F` means only the page's find, which the editor's replaces.
   - `search` stays out of it too: the palette's `$mod+K` opens from any text field but the cell editor's, the Explorer's find field and the database name included, as a command palette does (an owner decision of 2026-10-11).
   - `YIELDS_TO_A_TAKEOVER` beside it, which leaves `findReplace` to the host's find under a takeover: `src/components/explorer/AGENTS.md`, The search.

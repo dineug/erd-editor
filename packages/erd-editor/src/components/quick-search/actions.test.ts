@@ -740,7 +740,7 @@ describe('createScopeActions / ERD commands', () => {
   it('arms the table group draw from New Table Group, drawn with the group icon', async () => {
     const row = find(scope(), 'New Table Group');
     expect(await iconOf(row)).toBe('group');
-    expect(row.shortcut).toBeUndefined();
+    expect(row.shortcut).toBe(app.keyBindingMap.addTableGroup[0].shortcut);
 
     row.perform?.(app);
     await flush();
@@ -760,6 +760,9 @@ describe('createScopeActions / ERD commands', () => {
 
     const row = find(scope(), 'Group Selected Tables');
     expect(await iconOf(row)).toBe('group');
+    expect(row.shortcut).toBe(
+      app.keyBindingMap.groupSelectedTables[0].shortcut
+    );
     expect(row.filter?.(app)).toBe(true);
     row.perform?.(app);
     await flush();
