@@ -12,8 +12,15 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__/index';
+import {
+  measureRoot,
+  PICKER_INSET,
+} from '@/components/erd-editor/viewportLayout';
+import { openExplorer } from '@/components/explorer/explorerCommands';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import ThemeBuilder from '@/components/theme-builder/ThemeBuilder';
 import * as styles from '@/components/theme-builder/ThemeBuilder.styles';
+import { EXPLORER_WIDTH } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { createI18n } from '@/i18n/translate';
@@ -441,15 +448,19 @@ describe('ThemeBuilder', () => {
       expect(app.store.state.editor.openMap[Open.localePicker]).toBe(false);
     });
 
-    it('closes Find and Replace as it opens', async () => {
+    it('leaves the Explorer open as it opens, beside the canvas it narrows', async () => {
       const { app } = await setup({ open: false });
-      app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+      measureRoot(app.store, { width: 1200, height: 800 });
+      openExplorer(app.store);
 
       app.emitter.emit(openThemeBuilderAction());
       await flush();
 
       expect(app.store.state.editor.openMap[Open.themeBuilder]).toBe(true);
-      expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
+      expect(explorerViewOf(app.store).open).toBe(true);
+      expect(root().style.insetInlineStart).toBe(
+        `${PICKER_INSET + EXPLORER_WIDTH}px`
+      );
     });
 
     it('closes the panel and leaves table properties alone', async () => {

@@ -5,7 +5,7 @@ import {
   getHeaderCellSlots,
   HEADER_CELLS_X,
 } from '@/components/erd/canvas/table/cellLayout';
-import { coveredWidth } from '@/components/find-replace/panelLayout';
+import { TABLE_GROUP_TITLE_HEIGHT } from '@/constants/layout';
 import { CanvasType, Show } from '@/constants/schema';
 import type { EngineContext } from '@/engine/context';
 import type { GeneratorAction } from '@/engine/generator.actions';
@@ -22,6 +22,7 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeZIndexAction } from '@/engine/modules/table/atom.actions';
+import { selectTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
 import type { Table } from '@/internal-types';
@@ -32,17 +33,19 @@ import {
   getTableRect,
   getTableWidths,
   type Rect,
+  unionRect,
 } from '@/konva/scene/metrics';
 import { getOriginToPlace, toScreenPoint } from '@/konva/scene/viewport';
 import { nextZIndex } from '@/utils';
 import { bHas } from '@/utils/bit';
 import { isMemoShown } from '@/utils/memo';
+import { getTableGroupRect, isTableGroupShown } from '@/utils/tableGroup';
 import { isHighLevelTable } from '@/utils/validation';
 
 /** The part of a cell's text a jump is for, a search's match say: text from start to end. */
 export type TextRange = { text: string; start: number; end: number };
 
-/** What a jump to the ERD lands on: a table, one cell of a column, or a memo. */
+/** What a jump to the ERD lands on: a table, one cell of a column, a memo, a relationship or a table group. */
 export type ErdTarget =
   | {
       kind: 'table';
@@ -57,12 +60,17 @@ export type ErdTarget =
       focusType: FocusType;
       range?: TextRange;
     }
-  | { kind: 'memo'; memoId: string };
+  | { kind: 'memo'; memoId: string }
+  | { kind: 'relationship'; relationshipId: string }
+  | { kind: 'tableGroup'; tableGroupId: string };
 
 /** How far in from the edge of the screen a jump keeps what it shows of a rect too long for it. */
-const EDGE_MARGIN = 40;
+export const EDGE_MARGIN = 40;
 
-type Span = { start: number; end: number };
+/** How near, in screen pixels, a start counts as where it stands, so a jump pressed again moves nothing. */
+const STILL = 0.5;
+
+export type Span = { start: number; end: number };
 
 /** The rect where the screen shows it, at the document's own placement, one span an axis. */
 function toScreenSpans({ settings }: RootState, rect: Rect): [Span, Span] {
@@ -83,47 +91,85 @@ const isWithin = (span: Span, from: number, to: number) =>
 
 /**
  * Where on one axis of the screen the rect is to start: its middle on the
- * middle of the span shown, or, when it is longer than that span, as near that
- * as keeps its focus a margin inside the span.
+ * middle of the axis, or, when it is longer than the axis, as near that as
+ * keeps its focus a margin inside.
  */
-function placeOnAxis(rect: Span, focus: Span, from: number, to: number) {
-  const length = rect.end - rect.start;
-  let start = (from + to - length) / 2;
-  if (length <= to - from) return start;
+function placeOnAxis(rect: Span, focus: Span, length: number) {
+  const size = rect.end - rect.start;
+  let start = (length - size) / 2;
+  if (size <= length) return start;
 
   const offset = focus.start - rect.start;
   const focusLength = focus.end - focus.start;
-  start = Math.min(start, to - EDGE_MARGIN - offset - focusLength);
+  start = Math.min(start, length - EDGE_MARGIN - offset - focusLength);
   // The focus's start wins over its end when it is too long to show whole.
-  return Math.max(start, from + EDGE_MARGIN - offset);
+  return Math.max(start, EDGE_MARGIN - offset);
 }
 
 /**
- * The scroll that puts the rect in the middle of what the screen shows at the
- * document's own zoom, unless it is shown whole already, since that scroll is
- * the one change of a jump the host hears of.
+ * Where a jump starts the rect on one axis, or null to leave it: a short rect
+ * keeps its middle in the middle half, a mid one stays while whole or starts a
+ * margin down and centred across, and a long one goes by placeOnAxis.
+ */
+function planAxis(
+  rect: Span,
+  focus: Span,
+  length: number,
+  axis: 'x' | 'y'
+): number | null {
+  const size = rect.end - rect.start;
+
+  if (size <= length / 2) {
+    const middle = (rect.start + rect.end) / 2;
+    const centred = middle >= length / 4 && middle <= (length * 3) / 4;
+    return centred ? null : (length - size) / 2;
+  }
+
+  if (size <= length - EDGE_MARGIN * 2) {
+    if (isWithin(rect, 0, length)) return null;
+    return axis === 'y' ? EDGE_MARGIN : (length - size) / 2;
+  }
+
+  const shown = size <= length ? rect : focus;
+  return isWithin(shown, 0, length) ? null : placeOnAxis(rect, focus, length);
+}
+
+/**
+ * The one jump rule every go-to shares: each axis judged on its own, the one
+ * that is fine left where it is. Where the rect would start on screen, or null
+ * when neither start moves by more than half a pixel, as on a press repeated.
+ *
+ * @example
+ * planJump({ width: 800, height: 600 }, toScreenSpans(state, rect), focusSpans);
+ */
+export function planJump(
+  viewport: { width: number; height: number },
+  [rectX, rectY]: [Span, Span],
+  [focusX, focusY]: [Span, Span]
+): { x: number; y: number } | null {
+  const x = planAxis(rectX, focusX, viewport.width, 'x') ?? rectX.start;
+  const y = planAxis(rectY, focusY, viewport.height, 'y') ?? rectY.start;
+  const still =
+    Math.abs(x - rectX.start) < STILL && Math.abs(y - rectY.start) < STILL;
+  return still ? null : { x, y };
+}
+
+/**
+ * The scroll the jump rule asks for to bring the rect into view at the
+ * document's own zoom, none when it asks for none, since that scroll is the
+ * one change of a jump the host hears of.
  *
  * @param focus The part of a rect too big for the screen that has to show.
  */
-export function* scrollIntoView(
-  state: RootState,
-  rect: Rect,
-  covered = 0,
-  focus = rect
-) {
-  const { width, height } = state.editor.viewport;
-  const [rectX, rectY] = toScreenSpans(state, rect);
-  const [focusX, focusY] = toScreenSpans(state, focus);
-  const fits =
-    rectX.end - rectX.start <= width - covered &&
-    rectY.end - rectY.start <= height;
-  const [shownX, shownY] = fits ? [rectX, rectY] : [focusX, focusY];
-  if (isWithin(shownX, covered, width) && isWithin(shownY, 0, height)) return;
+export function* scrollIntoView(state: RootState, rect: Rect, focus = rect) {
+  const place = planJump(
+    state.editor.viewport,
+    toScreenSpans(state, rect),
+    toScreenSpans(state, focus)
+  );
+  if (!place) return;
 
-  const origin = getOriginToPlace(state.settings.zoomLevel, rect, {
-    x: placeOnAxis(rectX, focusX, covered, width),
-    y: placeOnAxis(rectY, focusY, 0, height),
-  });
+  const origin = getOriginToPlace(state.settings.zoomLevel, rect, place);
   yield scrollToAction({ originX: origin.x, originY: origin.y });
 }
 
@@ -154,16 +200,11 @@ function measureRange({ toWidth }: EngineContext, range: TextRange): Span {
 /**
  * The part of a cell its range covers, cut at the cell's right edge, where the
  * text is cut off, while the cell is too wide to show whole a margin inside the
- * canvas left clear; null for a cell that fits, which shows the range itself.
+ * canvas; null for a cell that fits, which shows the range itself.
  */
-function getRangeRect(
-  state: RootState,
-  cell: Rect,
-  covered: number,
-  range?: Span
-): Rect | null {
+function getRangeRect(state: RootState, cell: Rect, range?: Span): Rect | null {
   const [cellX] = toScreenSpans(state, cell);
-  const clear = state.editor.viewport.width - covered - EDGE_MARGIN * 2;
+  const clear = state.editor.viewport.width - EDGE_MARGIN * 2;
   if (!range || cellX.end - cellX.start <= clear) return null;
 
   const start = Math.min(range.start, cell.width);
@@ -183,7 +224,6 @@ function getTableFocusRect(
   state: RootState,
   table: Table,
   focusType: FocusType,
-  covered: number,
   range?: Span
 ): Rect {
   const name = getTableNameRect(state, table);
@@ -199,7 +239,7 @@ function getTableFocusRect(
     x: name.x + HEADER_CELLS_X + slot.x,
     width: slot.width,
   };
-  const found = getRangeRect(state, cell, covered, range);
+  const found = getRangeRect(state, cell, range);
   if (found) return found;
   return focusType === FocusType.tableComment ? cell : name;
 }
@@ -214,15 +254,13 @@ function getTableFocusRect(
 export function* scrollTableIntoView(
   state: RootState,
   table: Table,
-  covered = 0,
   focusType: FocusType = FocusType.tableName,
   range?: Span
 ) {
   yield* scrollIntoView(
     state,
     getTableRect(state, table),
-    covered,
-    getTableFocusRect(state, table, focusType, covered, range)
+    getTableFocusRect(state, table, focusType, range)
   );
 }
 
@@ -236,7 +274,6 @@ function getColumnFocusRect(
   table: Table,
   index: number,
   focusType: FocusType,
-  covered: number,
   range?: Span
 ): Rect {
   const row = getColumnRect(state, table, index);
@@ -250,7 +287,7 @@ function getColumnFocusRect(
     x: getTableRect(state, table).x + slot.x,
     width: slot.width,
   };
-  return getRangeRect(state, cell, covered, range) ?? cell;
+  return getRangeRect(state, cell, range) ?? cell;
 }
 
 /**
@@ -305,17 +342,107 @@ function rangeIn(
 }
 
 /**
- * Stands the reader on a table, a column cell or a memo the way the Go to ERD
- * button stands them on a table, with the focus ring on the cell asked for. A
- * row too wide goes by the ringed cell, a cell too wide by the range found.
- *
- * @param covered How far in from the left edge a panel over the canvas hides it.
+ * The relationship with its two tables while the document lists all three,
+ * else null. A removed entity stays in its collection and leaves only the id
+ * lists, so a relationship or table found there alone is one nobody sees.
  */
-export const showErdTargetAction$ = (
-  target: ErdTarget,
-  covered = 0
-): GeneratorAction =>
+function findShownRelationship({ doc, collections }: RootState, id: string) {
+  const relationship = query(collections)
+    .collection('relationshipEntities')
+    .selectById(id);
+  if (!relationship || !doc.relationshipIds.includes(id)) return null;
+
+  const tables = query(collections).collection('tableEntities');
+  const start = tables.selectById(relationship.start.tableId);
+  const end = tables.selectById(relationship.end.tableId);
+  if (!start || !doc.tableIds.includes(start.id)) return null;
+  if (!end || !doc.tableIds.includes(end.id)) return null;
+
+  return { relationship, start, end };
+}
+
+/**
+ * Whether a jump to the relationship shows it, as showErdTargetAction$ does
+ * only while it and both its tables stand; a host lights none it did not show.
+ */
+export function isRelationshipShown(
+  state: RootState,
+  relationshipId: string
+): boolean {
+  return findShownRelationship(state, relationshipId) !== null;
+}
+
+/**
+ * Brings a relationship's two tables into view as one box and selects the
+ * child table alone with its foreign key columns, the first focused. Where the
+ * two are too far apart to show together, the child is the part that shows.
+ */
+function* showRelationship(state: RootState, relationshipId: string) {
+  const shown = findShownRelationship(state, relationshipId);
+  if (!shown) return;
+
+  const { relationship, start, end } = shown;
+  const endRect = getTableRect(state, end);
+  yield* scrollIntoView(
+    state,
+    unionRect(getTableRect(state, start), endRect),
+    endRect
+  );
+  yield selectTableAloneAction$(end.id);
+
+  // In the child's own order; each after the first joins the selection, and
+  // the first is focused again last, so the ring stands on it.
+  const columnIds = end.columnIds.filter(id =>
+    relationship.end.columnIds.includes(id)
+  );
+  const focus = (columnId: string, $mod: boolean) =>
+    focusColumnAction({
+      tableId: end.id,
+      columnId,
+      focusType: FocusType.columnName,
+      $mod,
+      shiftKey: false,
+    });
+  for (const [index, columnId] of columnIds.entries()) {
+    yield focus(columnId, index > 0);
+  }
+  if (columnIds.length > 1) yield focus(columnIds[0], true);
+}
+
+/** Brings a table group's box into view by its title bar, and selects it alone. */
+function* showTableGroup(state: RootState, tableGroupId: string) {
+  // A group found before the groups were hidden goes nowhere, as a memo does.
+  if (!isTableGroupShown(state)) return;
+  const group = query(state.collections)
+    .collection('tableGroupEntities')
+    .selectById(tableGroupId);
+  if (!group || !state.doc.tableGroupIds.includes(tableGroupId)) return;
+
+  const box = getTableGroupRect(state, group);
+  yield* scrollIntoView(state, box, {
+    ...box,
+    height: Math.min(box.height, TABLE_GROUP_TITLE_HEIGHT),
+  });
+  yield selectTableGroupAction$(group.id, false);
+}
+
+/**
+ * Stands the reader on a table, a column cell, a memo, a relationship or a
+ * table group by the one jump rule, with the focus ring on the cell asked for.
+ * A row too wide goes by the ringed cell, a cell too wide by the range found.
+ */
+export const showErdTargetAction$ = (target: ErdTarget): GeneratorAction =>
   function* (state, ctx) {
+    if (target.kind === 'relationship') {
+      yield* showRelationship(state, target.relationshipId);
+      return;
+    }
+
+    if (target.kind === 'tableGroup') {
+      yield* showTableGroup(state, target.tableGroupId);
+      return;
+    }
+
     if (target.kind === 'memo') {
       // A row found before the memos were hidden goes nowhere, so neither its
       // selection nor a Delete after it reaches a memo no reader sees.
@@ -325,7 +452,7 @@ export const showErdTargetAction$ = (
         .selectById(target.memoId);
       if (!memo) return;
 
-      yield* scrollIntoView(state, getMemoRect(memo), covered);
+      yield* scrollIntoView(state, getMemoRect(memo));
       yield selectMemoAction$(memo.id, false);
       return;
     }
@@ -342,7 +469,6 @@ export const showErdTargetAction$ = (
       yield* scrollTableIntoView(
         state,
         table,
-        covered,
         focusType,
         rangeIn(ctx, target, focusType)
       );
@@ -359,18 +485,16 @@ export const showErdTargetAction$ = (
     const focusType = visibleFocusType(state, target.focusType);
     // Zoomed out far enough, a table is drawn as its name alone.
     if (isHighLevelTable(state.settings.zoomLevel)) {
-      yield* scrollTableIntoView(state, table, covered);
+      yield* scrollTableIntoView(state, table);
     } else {
       yield* scrollIntoView(
         state,
         getColumnRect(state, table, index),
-        covered,
         getColumnFocusRect(
           state,
           table,
           index,
           focusType,
-          covered,
           rangeIn(ctx, target, focusType)
         )
       );
@@ -398,13 +522,12 @@ export function showErdTab(store: RxStore): void {
 
 /**
  * A jump from outside the canvas, a search result say, to anything it holds,
- * from whichever tab is up. It lands clear of the Find and Replace panel, read
- * once the ERD tab is up, so a panel that tab draws again counts too.
+ * from whichever tab is up, measured on the canvas once the ERD tab is up.
  *
  * @example
  * goToErdTarget(store, { kind: 'memo', memoId: 'note' });
  */
 export function goToErdTarget(store: RxStore, target: ErdTarget): void {
   showErdTab(store);
-  store.dispatchSync(showErdTargetAction$(target, coveredWidth(store.state)));
+  store.dispatchSync(showErdTargetAction$(target));
 }

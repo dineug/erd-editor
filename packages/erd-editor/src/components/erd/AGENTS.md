@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`src/components/erd/` holds the ERD tab: `Erd.tsx`, its Konva scene under `canvas/`, the minimap, the scrollbars, Table Properties, the draw target, the table group commands, the diff viewer's pane, time travel and the welcome screen. This file holds their rules, with the presses and keys the canvas handles. Other nested files touch the same features: `src/components/map-columns/AGENTS.md`, `src/konva/AGENTS.md`, `src/engine/AGENTS.md` (the table-group model), `src/components/primitives/AGENTS.md`, `src/components/find-replace/AGENTS.md`, `src/components/quick-search/AGENTS.md`, `src/services/AGENTS.md` and `src/i18n/AGENTS.md`; each pointer below says what it holds. Paths are relative to this directory, and a bare file name sits in the directory its bullet, its section's first bullet or the Key Files table names. A path that starts with `src/` or `e2e/` is relative to `packages/erd-editor`.
+`src/components/erd/` holds the ERD tab: `Erd.tsx`, its Konva scene under `canvas/`, the minimap, the scrollbars, Table Properties, the draw target, the table group commands, the diff viewer's pane, time travel and the welcome screen. This file holds their rules, with the presses and keys the canvas handles. Other nested files touch the same features: `src/components/map-columns/AGENTS.md`, `src/konva/AGENTS.md`, `src/engine/AGENTS.md` (the table-group model), `src/components/primitives/AGENTS.md`, `src/components/explorer/AGENTS.md`, `src/components/quick-search/AGENTS.md`, `src/services/AGENTS.md` and `src/i18n/AGENTS.md`; each pointer below says what it holds. Paths are relative to this directory, and a bare file name sits in the directory its bullet, its section's first bullet or the Key Files table names. A path that starts with `src/` or `e2e/` is relative to `packages/erd-editor`.
 
 ## Making a Change
 
@@ -19,6 +19,8 @@
 | --- | --- |
 | `Erd.tsx` | The ERD tab's root: `handleDragSelect`, the `canDrag` `closest()` list, `TAKEOVER_CHROME`, `handleContextmenu`; mounts the welcome screen |
 | `hitTest.ts` | Records what konva resolved at dispatch; `ownsPress`, `SceneHit.columnId` |
+| `goToErdTarget.ts` | The one jump rule: `planJump`, `scrollIntoView`, `showErdTargetAction$` over tables, column cells, memos, relationships and table groups, `goToErdTarget` |
+| `relationshipHighlight.ts` | The relationship a jump lights, per `editor.id`, out of the store |
 | `useErdShortcut.ts` | The `stop` branch (Escape) and the `removeSelection` branch (Delete and Backspace) |
 | `canvas/Canvas.tsx` | The stage container, on which `listenMiddleButtonPan` binds in the capture phase |
 | `canvas/CanvasScene.tsx` | `renderCanvasScene`, the paint order and the drag layer's `dragIds` |
@@ -33,6 +35,10 @@
 | `table-properties/` | Table Properties and its three tabs |
 | `minimap/table-group/TableGroup.tsx` | The minimap's group box, `FILL_OPACITY` |
 | `diff-viewer/erd-viewer/ErdViewer.tsx` | A diff pane's scene, with its own `canDrag` list |
+| `diff-viewer/DiffViewer.tsx` | The diff: the two panes, the tree's width and the teardown that puts out both panes' lights |
+| `diff-viewer/diff.ts` | What the scene reads of a diff: `Diff` (insert, delete, modify, rename), `DiffMap`, `diffTextColor`, `diffOutline` and the paths; it imports no engine |
+| `diff-viewer/diff-tree/DiffTree.tsx`, `diffTreeModel.ts` | The diff tree on the shared `Tree`: its rows, filter, tooltips (`describeEntry`) and where a row takes each pane (`diffTargets`) |
+| `src/utils/diff/` | The diff engine: `diffDocuments`, `pairEntities`, `compareEntities` |
 | `welcome-screen/` | The welcome screen, `welcomeTiers`, the hint arrows in `welcome-screen/welcome-hints/` |
 
 ## Rules
@@ -135,6 +141,20 @@
 - **Legacy view fields stay out of `settings`.** `erd-editor-schema` owns their rules, in its `AGENTS.md`. `settings` holds no `width`, `height`, `scrollLeft` or `scrollTop`. `erd-editor-schema`'s parser reads them off a file that has no origin and migrates them into it once.
   - `sortTableAction` wraps its rows at `canvasSizeInRange(doc.tableIds.length * 100)` (`src/utils/validation.ts`), the canvas size the importers once wrote (owner decisions of 2026-10-10).
   - The importer `omit` list (`IMPORT_OMIT_SETTINGS` in `src/engine/modules/editor/generator.actions.ts`) names the view.
+
+### The jump rule
+
+- **Every go-to goes through `showErdTargetAction$`** (`goToErdTarget.ts`): the palette's `#`, `@` and `:` rows, Go to ERD, the diff tree, Find and Replace and Import and Add's landing (`scrollIntoView`). `goToErdTarget` brings the ERD tab up in a dispatch of its own first, since a batch is classified by the state before it. No corner parking is left.
+- **Each axis is judged on its own, and the one that is fine stays** (an owner decision of 2026-10-13, `planJump`). On an axis of length L, a rect of length len:
+  - len up to L/2 stays while its middle is in the middle half, from L/4 to 3L/4, and otherwise goes to the middle.
+  - len up to L less both 40 px margins (`EDGE_MARGIN`) stays while it shows whole, and otherwise starts 40 px down the screen and stands in the middle across.
+  - Longer, it stays while it shows whole, or while its focus does when it is longer than L, and otherwise `placeOnAxis` stands its focus a margin inside.
+- **A jump pressed again moves nothing.** No scroll is sent where both starts come within half a pixel of where the rect stands, which a focus longer than the screen needs; the reducer stores the origin rounded, so an exact comparison would scroll again.
+- **The focus is what has to show of a rect too big.** A table goes by the header cell a jump rings (its name, or the comment asked for), a column row by its ringed cell (`getColumnFocusRect`), a cell too wide by the range found in it, a memo by itself. A relationship goes by the box of its two tables, focused on the child table, and selects the child alone with its foreign key columns in the child's order, the first ringed, since there is no relationship selection (the owner's request of 2026-10-14). A table group goes by its box, focused on its title bar, and is selected alone; while groups are hidden it goes nowhere.
+- **The zoom never changes**, and a jump is one scroll, one undo entry.
+- **A jump lights a relationship through `relationshipHighlight.ts`**, kept per `editor.id` out of the store, so no file, history or peer holds it. The connector and its referential action label read it as they read a hover, in the document scene alone, never in a view. The generator never sets it; the host that jumps does. A press that changes the selection puts it out (`Erd.tsx`, `ErdViewer.tsx`); a pan, by the middle button or the hand tool, leaves it on. The element drops it as it goes.
+- **A jump with a draw armed adds nothing.** Its selection, `selectTableAloneAction$`, leaves out `selectTableAction$`'s relationship-draw branch, and so does every go-to's.
+- **`toErdTarget` fills `ErdTarget.range` from a match** (`explorer/matchTarget.ts`). The range is measured with the store's `toWidth` from the cell's left edge, where the scene starts its text, less the padding that measure adds, and cut at the cell's right edge. A range in a hidden comment is dropped, and the name is ringed in its place.
 
 ### Table groups in the scene
 
@@ -276,7 +296,7 @@
   - It keeps the selection and draws no marquee, whatever modifier is held.
   - It is prevented with its lift (`preventMiddleLift`).
   - So the middle button reads alike in every mode (an owner decision of 2026-10-04).
-- **A takeover's middle press reads the same.** A middle press over a takeover's scene reads the same way (an owner decision of 2026-10-04). The takeovers are the diff viewer, time travel and the automatic placement preview (`isTakenOver`, `src/components/find-replace/panelLayout.ts`).
+- **A takeover's middle press reads the same.** A middle press over a takeover's scene reads the same way (an owner decision of 2026-10-04). The takeovers are the diff viewer, time travel and the automatic placement preview (`isTakenOver`, `src/utils/takeover.ts`).
   - The press leaves the document's selection under it and is prevented with its lift. That is `handleDragSelect` in `Erd.tsx`, which every takeover stands in.
   - Time travel and the preview pan for no button.
   - A diff pane, whose pan the press still drives, keeps its own selection for it too (`diff-viewer/erd-viewer/ErdViewer.tsx`).
@@ -299,11 +319,11 @@
 
 ### Keys on the canvas
 
-- Find and Replace and its chord: `src/components/find-replace/AGENTS.md`. The palette and its prefixes: `src/components/quick-search/AGENTS.md`.
+- Find and Replace and its chord: `src/components/explorer/AGENTS.md`. The palette and its prefixes: `src/components/quick-search/AGENTS.md`.
 - **`YIELDS_TO_A_CARET` stands bindings down in fields.** It lives in `src/hooks/useKeyBindingMap.ts`. It stands `selectAllTable`, `handTool` and `removeSelection` down in a text field, per binding. That is because `Enter` / `Escape` still have to reach `handleShortcut` from the cell editor.
   - `findReplace` stays out of it: in a field, `$mod+F` means only the page's find, which the editor's replaces.
-  - `search` stays out of it too: the palette's `$mod+K` opens from any text field but the cell editor's, the Find and Replace field and the database name included, as a command palette does (an owner decision of 2026-10-11).
-  - `YIELDS_TO_A_TAKEOVER` beside it, which leaves `findReplace` to the host's find under a takeover: `src/components/find-replace/AGENTS.md`, The chord.
+  - `search` stays out of it too: the palette's `$mod+K` opens from any text field but the cell editor's, the Explorer's find field and the database name included, as a command palette does (an owner decision of 2026-10-11).
+  - `YIELDS_TO_A_TAKEOVER` beside it, which leaves `findReplace` to the host's find under a takeover: `src/components/explorer/AGENTS.md`, The search.
 - **Escape is two presses.** The `stop` branch of `useErdShortcut.ts` decides from the state the press arrives in.
   - An open cell, memo or group name editor, a relationship being drawn, or an armed table group draw takes the press alone. Focus, selection and typed text stay.
   - The actions are `editTableEndAction` / `editMemoEndAction` / `editTableGroupEndAction` / `drawEndRelationshipAction` / `changeDrawTableGroupAction`. The relationship draw takes the buttons beside its target with it.
@@ -328,6 +348,16 @@
 - **A Delete row shows the key's first chord.** It has no icon. The key closes an open menu, whose entity it may just have taken.
 - **A memo's right click acts only by menu.** That holds on its body, colour bar or remove button, since only the main button clicks there (`mainButtonClick`, Mouse buttons above).
 
+### The diff viewer
+
+- **One diff, two readers** (`diffDocuments`, `src/utils/diff/`): the entries the tree lists and the marks each pane draws say the same thing, an added entity in the current pane alone, a removed one in the saved pane alone, a change both hold in both (`diffDocuments.test.ts` checks it one to one). An index draws nothing to mark. It is a snapshot of the moment the diff opens.
+- **Pairing is by id first, then one to one by a name it keeps** (owner decisions of 2026-10-13): a table by its name, a column by its paired table and name, an index by its paired table and name or, unnamed, its paired key columns and UNIQUE, a foreign key by its paired tables and column pairs, a memo by what it says then where it stands, a group by its name or, unnamed, the tables it shares most. An unnamed entity never pairs by its name, and renamed is told only of an id pair. Index columns pair by the column they key, since a v2 file's load gives them new ids each time. Only live entities count, never the tombstones a runtime value keeps.
+- **What a change is.** A table: name, comment, group, position, colour. A column: name, comment, type, default, AI, PK, UQ, NN, and a move, for a column outside the longest run both orders share. An index: name, UNIQUE, key columns with their direction. A foreign key: column pairs, kind, ON DELETE and ON UPDATE. A memo: text, position, size, colour. A group: name, members, colour, box. Never a z-index, a width the text gives, or a line's anchors. A rename outranks any other change (R over M), and a table added or removed lists nothing inside it.
+- **The canvas marks text and outlines, never fills** (owner decisions of 2026-10-13): a changed cell's text in amber (`--diff-modify-foreground`; a change to a cell the row does not draw, such as UQ or AI under the default Show, or a key change on a row with no key icon, takes the column name's text instead, and a table comment change with the comment cell hidden takes the table name's, a rename's colour first), a renamed name in blue (`--diff-rename-foreground`), in both panes; a table, memo or group added or removed in a 2 px outline of its colour, with its name alone in it; a column added to or removed from a table both hold in its colour across the row; a foreign key's line in its colour, which a hover or a jump's light covers; an entity only moved, resized, recoloured or regrouped in an amber outline. A zoomed out table is marked as the full card, a comment change on its name, since it draws no comment. With no map provided, nothing draws.
+- **The tree is the Explorer's** (`DiffTree.tsx` on `primitives/tree/Tree.tsx`): its folders, every row open at first, each name in the colour of what happened to it, a removed one struck through, ending on A, M, D or R, a tilde on a row listed for what it holds (the letter is aria-hidden and a visually hidden status word is read in its place). A row's tooltip lists each change as before → after. The name filter reads the current and the saved name and replaces nothing. It opens at 260 px, sized from its edge between 200 and 480, and the next diff opens at 260 again; the panes take what is left.
+- **A row takes each pane to its entity** by the one jump rule: an addition the current pane alone, a removal the saved pane alone, the rest both; a column or index its table, a foreign key its relationship, lit in the pane. The diff drops both panes' lights as it closes, since they are kept by editor ids no element teardown reaches.
+- **Keys in the tree** stop at it as at the Explorer (`stopsAtPanel`), but Escape passes on, which closes the diff.
+
 ### Welcome screen
 
 - **It stands over an empty diagram** (`welcome-screen/`, owner decisions of 2026-10-06). `Erd` mounts it between the minimap and the floating toolbar. `Erd` itself is the ERD tab's alone. It shows while all of these hold:
@@ -339,15 +369,15 @@
   - Import swaps in its formats (`createImportMenus`) behind a Back row, which Escape presses too.
   - Where the canvas has room, hand-drawn arrows point at the toolbar's Search button, at its theme and language buttons, and at the floating toolbar.
 - `requestSettingsPage` and the Settings page it opens (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.
-- **`welcomeTiers` fits the screen to the canvas.** It reads the whole canvas, centred there. Find and Replace stands over it as the theme builder and the locale picker do, and moves nothing (an owner decision of 2026-10-11).
+- **`welcomeTiers` fits the screen to the canvas.** It reads the whole canvas, centred there, the canvas the Explorer leaves while docked; an arrow whose button stands over the Explorer is left out (`measureAnchors`), and a label whose side holds less than a whole label beside it hangs under its arrow's tail instead (`hintPlacement`, the owner's request of 2026-10-14). The theme builder and the locale picker stand over it and move nothing (an owner decision of 2026-10-11).
   - Nothing shows under 320 px wide or 294 px tall.
   - The menu shows alone under 342 px tall.
   - The arrows show from 720 by 562 px, and a row's chord from 480 px wide.
-  - The arrows also leave while Find and Replace, the theme builder or the locale picker is up.
+  - The arrows also leave while the theme builder or the locale picker is up.
 - **The three heights are what the block needs**, measured by `WelcomeScreen.browser.test.ts`.
   - At 294, Import's six rows alone fill the room over the floating toolbar on every platform, since a row keeps its height in any font.
   - At 342, in every language on a Mac, a heading of two lines over them at 320 px wide fills it.
-  - At 562, the arrows clear that block with nothing to spare in the language whose labels wrap the most.
+  - At 562, the arrows clear that block with nothing to spare in the language whose labels wrap the most, and so does a label hung under its arrow beside a 260 px Explorer (4 px in the tightest language, measured 2026-10-14).
 - **Only its menu takes the pointer.** The layer is `pointer-events: none` and the menu `auto`, so a drag over the heading pans. `.welcome-screen-menu` joins the `canDrag` list in `Erd.tsx`, so a press on a row starts no pan.
 - **Arrows find their buttons by anchor classes.** They use the toolbar's anchor classes, `.toolbar-search`, `.toolbar-theme` and `.toolbar-locale` (`measureAnchors`); the theme and language buttons share the point between them.
   - They are measured again as the viewport, the tab, the props or the direction changes.

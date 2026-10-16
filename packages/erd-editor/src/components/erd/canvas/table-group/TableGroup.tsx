@@ -3,11 +3,13 @@
 import { FC, observable, onUnmounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
   createSceneCursorScope,
   CURSOR_INHERIT,
   CURSOR_POINTER,
+  DIFF_OUTLINE_WIDTH,
   mainButtonClick,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
@@ -30,6 +32,12 @@ import {
 } from '@/components/erd/canvas/table-group/titleLayout';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import {
+  diffOutline,
+  diffTextColor,
+  TABLE_GROUP_NAME_PATH,
+} from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { openTableGroupNameEditor } from '@/components/erd/table-group/tableGroupName';
 import { useI18n } from '@/components/localeContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -68,6 +76,7 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  const diffMapRef = useDiffMap(ctx);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.group.id);
   const state = observable({ removeHover: false });
 
@@ -173,6 +182,7 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
     const named = Boolean(group.name.trim());
     const borderInset = TABLE_GROUP_BORDER / 2;
     const ringInset = RING_WIDTH / 2;
+    const diffPaths = diffMapRef.value?.get(group.id);
 
     return (
       <k-group
@@ -224,7 +234,9 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
             height={nameBox.height}
             text={named ? group.name : i18n.value.t('common.unnamed')}
             fill={
-              colors?.foreground ?? (named ? theme.active : theme.placeholder)
+              diffTextColor(theme, diffPaths, TABLE_GROUP_NAME_PATH) ??
+              colors?.foreground ??
+              (named ? theme.active : theme.placeholder)
             }
             fontFamily={SCENE_FONT_FAMILY}
             fontSize={SCENE_FONT_SIZE}
@@ -274,6 +286,13 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
           strokeWidth={RING_WIDTH}
           listening={false}
         />
+        {diffOutlineRect({
+          name: 'table-group-diff-outline',
+          stroke: diffOutline(theme, diffPaths),
+          width,
+          height,
+          cornerRadius: TABLE_GROUP_CORNER_RADIUS + DIFF_OUTLINE_WIDTH / 2,
+        })}
         {readonly ? null : (
           <TableGroupSash group={group} box={box} onDraft={handleDraft} />
         )}

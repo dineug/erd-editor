@@ -20,6 +20,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -28,7 +29,6 @@ import {
   Action,
   createPreferenceActions,
   createScopeActions,
-  createShowAllAction,
   createTabActions,
   keywordHolder,
   named,
@@ -38,7 +38,6 @@ import {
 } from '@/components/quick-search/actions';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import { schemaSQLViewOf } from '@/components/schema-sql/schemaSQLView';
-import { START_X, START_Y } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import {
   CanvasType,
@@ -86,6 +85,7 @@ import { type LocaleOption, LOCALES } from '@/i18n/locales';
 import { en } from '@/i18n/messages/en';
 import { sourceI18n } from '@/i18n/source';
 import { createI18n, type MessageKey, type Messages } from '@/i18n/translate';
+import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { Appearance } from '@/themes/radix-ui-theme';
 import { openFindReplaceAction } from '@/utils/emitter';
@@ -145,8 +145,8 @@ const ERD_TOOLBOX = [
   'One Only',
   'One N',
   'Auto Layout',
-  'Export: Schema SQL',
   'Find and Replace',
+  'Toggle Explorer',
 ];
 
 const recordActions = () => {
@@ -416,8 +416,8 @@ describe('createScopeActions', () => {
       'Schema SQL: Statements',
       'Schema SQL: Header',
       'Schema SQL: Options panel',
-      'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
@@ -430,16 +430,16 @@ describe('createScopeActions', () => {
     expect(visible).toEqual([
       'Tab',
       'Database',
-      'Export: Schema SQL',
       'Language',
       'Table Name Case',
       'Column Name Case',
       'Code Generator: Options panel',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
-  it('keeps the tabs, Find and Replace and the table jumps # lists in the visualization and settings canvases', () => {
+  it('keeps the tabs, Find and Replace, the Explorer and the table jumps # lists in the visualization and settings canvases', () => {
     setCanvasType(CanvasType.ERD);
     addTable('users');
 
@@ -447,7 +447,7 @@ describe('createScopeActions', () => {
       setCanvasType(canvasType);
       expect(
         names(scope().filter(action => action.filter?.(app) ?? true))
-      ).toEqual(['Tab', 'Export: Schema SQL', 'Find and Replace', 'users']);
+      ).toEqual(['Tab', 'Find and Replace', 'Toggle Explorer', 'users']);
     }
   });
 
@@ -947,24 +947,18 @@ describe('createScopeActions / Schema SQL options', () => {
       expect(visible.filter(name => SCHEMA_SQL_ROWS.includes(name))).toEqual(
         []
       );
-      expect(visible).toContain('Export: Schema SQL');
+      // The tab's own row reaches it; the palette offers no second one (the owner's request of 2026-10-15).
+      expect(visible).not.toContain('Export: Schema SQL');
     }
   });
 
-  it('draws each row with its icon', async () => {
+  it('draws each row with its icon, Statements and Header with none, as the context menu does', async () => {
     const actions = scope();
 
-    expect(await iconOf(find(actions, 'Schema SQL: Statements'))).toBe(
-      'settings-2'
-    );
-    expect(await iconOf(find(actions, 'Schema SQL: Header'))).toBe(
-      'settings-2'
-    );
+    expect(await iconOf(find(actions, 'Schema SQL: Statements'))).toBeNull();
+    expect(await iconOf(find(actions, 'Schema SQL: Header'))).toBeNull();
     expect(await iconOf(find(actions, 'Schema SQL: Options panel'))).toBe(
       'panel-right'
-    );
-    expect(await iconOf(find(actions, 'Export: Schema SQL'))).toBe(
-      'file-output'
     );
   });
 
@@ -973,13 +967,12 @@ describe('createScopeActions / Schema SQL options', () => {
       pairs(
         scope()
           .filter(row => row.name.includes(':'))
-          .slice(0, 4)
+          .slice(0, 3)
       )
     ).toEqual([
       ['Schema SQL: Statements', 'create if not exists drop replace'],
       ['Schema SQL: Header', 'use database search_path'],
       ['Schema SQL: Options panel', 'show hide before after scripts'],
-      ['Export: Schema SQL', 'sql ddl file'],
     ]);
     expect(names(searchActions(scope(), 'search_path'))).toContain(
       'Schema SQL: Header'
@@ -1033,15 +1026,15 @@ describe('createScopeActions / Schema SQL options', () => {
     expect(schemaSQLViewOf(app).panel).toBe('open');
   });
 
-  it('opens the Schema SQL tab from any tab with its options out, saving nothing', async () => {
+  it('opens the Schema SQL tab from Export with its options out, saving nothing', async () => {
     const calls: ExportCall[] = [];
     setExportFileCallback((blob, options) =>
       calls.push({ blob, fileName: options.fileName })
     );
-    setCanvasType(CanvasType.settings);
+    setCanvasType(CanvasType.ERD);
     schemaSQLViewOf(app).panel = 'closed';
 
-    find(scope(), 'Export: Schema SQL').perform?.(app);
+    find(find(scope(), 'Export').next ?? [], 'Schema SQL').perform?.(app);
     await flush();
 
     expect(calls).toEqual([]);
@@ -1115,6 +1108,8 @@ describe('createScopeActions / generator code options', () => {
     );
     const action = find(scope(), 'Table Name Case');
 
+    // It draws no icon, as the code tab's context menu does.
+    expect(await iconOf(action)).toBeNull();
     expect(names(action.next ?? [])).toEqual(names(tableNameCaseMenus as any));
     find(action.next ?? [], target!.name).perform?.(app);
     await flush();
@@ -1128,6 +1123,8 @@ describe('createScopeActions / generator code options', () => {
     );
     const action = find(scope(), 'Column Name Case');
 
+    // It draws no icon, as the code tab's context menu does.
+    expect(await iconOf(action)).toBeNull();
     expect(names(action.next ?? [])).toEqual(names(columnNameCaseMenus as any));
     find(action.next ?? [], target!.name).perform?.(app);
     await flush();
@@ -1234,25 +1231,42 @@ describe('createScopeActions / table actions', () => {
   });
 
   /**
-   * The landing point the DOM scene had: the table parks START_X, START_Y in
-   * from the corner, scaled by the zoom, so at 0.5 it sits 100 px in and at 1.5
-   * it sits 300 px in, from a position whose origins the default screen allows.
+   * The one jump rule (AC-N10): a table whose middle is off the middle half
+   * moves to the middle, at 0.5; one whose middle is in it stays, at 1 and 1.5.
+   * No corner parking is left.
    */
-  it.each([0.5, 1, 1.5])(
-    'parks the table a zoomed START_X, START_Y in from the corner at zoom %s',
-    async zoomLevel => {
+  it.each([
+    [0.5, true],
+    [1, false],
+    [1.5, false],
+  ])(
+    'lands the table by the one jump rule at zoom %s',
+    async (zoomLevel, moves) => {
       setCanvasType(CanvasType.ERD);
       const id = addTable('users', 100, 200);
       app.store.dispatchSync(changeZoomLevelAction({ value: zoomLevel }));
+      const recorder = recordActions();
 
       find(scope(), 'users').perform?.(app);
       await flush();
+      recorder.unsubscribe();
 
-      const table = app.store.state.collections.tableEntities[id];
-      const screen = toScreenPoint(app.store.state.settings, table.ui);
+      const { state } = app.store;
+      const table = state.collections.tableEntities[id];
+      const rect = getTableRect(state, table);
+      const middle = toScreenPoint(state.settings, {
+        x: rect.x + rect.width / 2,
+        y: rect.y + rect.height / 2,
+      });
       expect(table.ui).toMatchObject({ x: 300, y: 300 });
-      expect(screen.x).toBeCloseTo(START_X * zoomLevel, 4);
-      expect(screen.y).toBeCloseTo(START_Y * zoomLevel, 4);
+      expect(recorder.types().includes('settings.scrollTo')).toBe(moves);
+      if (moves) {
+        expect(middle.x).toBeCloseTo(state.editor.viewport.width / 2, 4);
+        expect(middle.y).toBeCloseTo(state.editor.viewport.height / 2, 4);
+      } else {
+        expect(state.settings.originX).toBe(0);
+        expect(state.settings.originY).toBe(0);
+      }
     }
   );
 
@@ -1282,64 +1296,6 @@ describe('createScopeActions / table actions', () => {
     expect(collections.tableEntities[orders].columnIds).toEqual(columnIds);
     expect(editor.drawRelationship).toMatchObject({ start: null });
     expect(editor.selectedMap).toEqual({ [orders]: SelectType.table });
-  });
-
-  /** The panel is 380 px wide, 16 px in from the left, and a jump keeps 16 px from it. */
-  it.each([
-    ['ERD', CanvasType.ERD],
-    ['Schema SQL', CanvasType.schemaSQL],
-  ])(
-    'parks the table clear of an open Find and Replace panel, jumping from the %s tab',
-    async (_, canvasType) => {
-      setCanvasType(CanvasType.ERD);
-      const id = addTable('users', 100, 200);
-      app.store.dispatchSync(
-        changeViewportAction({ width: 1440, height: 900 }),
-        changeOpenMapAction({ [Open.findReplace]: true })
-      );
-      setCanvasType(canvasType);
-
-      find(scope(), 'users').perform?.(app);
-      await flush();
-
-      const table = app.store.state.collections.tableEntities[id];
-      const screen = toScreenPoint(app.store.state.settings, table.ui);
-      expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
-      expect(screen.y).toBeCloseTo(START_Y, 4);
-    }
-  );
-
-  it('parks the table in the strip a narrow canvas leaves beside the panel', async () => {
-    setCanvasType(CanvasType.ERD);
-    const id = addTable('users', 100, 200);
-    app.store.dispatchSync(
-      changeViewportAction({ width: 600, height: 400 }),
-      changeOpenMapAction({ [Open.findReplace]: true })
-    );
-
-    find(scope(), 'users').perform?.(app);
-    await flush();
-
-    const table = app.store.state.collections.tableEntities[id];
-    const screen = toScreenPoint(app.store.state.settings, table.ui);
-    expect(screen.x).toBeCloseTo(16 + 380 + 16, 4);
-    expect(screen.y).toBeCloseTo(START_Y, 4);
-  });
-
-  it('keeps its landing point beside a panel that leaves less than 160 px of the canvas clear', async () => {
-    setCanvasType(CanvasType.ERD);
-    const id = addTable('users', 100, 200);
-    app.store.dispatchSync(
-      changeViewportAction({ width: 16 + 380 + 16 + 159, height: 400 }),
-      changeOpenMapAction({ [Open.findReplace]: true })
-    );
-
-    find(scope(), 'users').perform?.(app);
-    await flush();
-
-    const table = app.store.state.collections.tableEntities[id];
-    const screen = toScreenPoint(app.store.state.settings, table.ui);
-    expect(screen.x).toBeCloseTo(START_X, 4);
   });
 
   it('carries the table icon on table actions, drawn as the rows of a field found are', async () => {
@@ -1400,8 +1356,8 @@ describe('createScopeActions / no focus actions', () => {
     const visible = scope().filter(action => action.filter?.(app) ?? true);
     expect(names(visible)).toEqual([
       'Tab',
-      'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
       'users',
     ]);
     expect(find(visible, 'users').keywords).toBe('Table');
@@ -1409,8 +1365,8 @@ describe('createScopeActions / no focus actions', () => {
 });
 
 describe('createScopeActions / Find and Replace', () => {
-  it('draws the text-search icon the toolbar button and the context menu draw', async () => {
-    expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('text-search');
+  it('draws the list-tree icon the context menu and the toolbar draw', async () => {
+    expect(await iconOf(find(scope(), 'Find and Replace'))).toBe('list-tree');
   });
 
   it('shows the find and replace chord and asks the panel to open', () => {
@@ -1462,6 +1418,37 @@ describe('createScopeActions / Find and Replace', () => {
       app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
 
       expect(visibleNames()).not.toContain('Find and Replace');
+    }
+  );
+});
+
+describe('createScopeActions / Toggle Explorer', () => {
+  it('draws the list-tree icon the toolbar button draws', async () => {
+    expect(await iconOf(find(scope(), 'Toggle Explorer'))).toBe('list-tree');
+  });
+
+  it('opens the Explorer on the ERD tab from any tab, and closes it shown', () => {
+    const action = find(scope(), 'Toggle Explorer');
+    expect(searchActions([action], 'tree')).toEqual([action]);
+    setCanvasType(CanvasType.schemaSQL);
+
+    action.perform?.(app);
+
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(explorerViewOf(app.store).open).toBe(true);
+
+    action.perform?.(app);
+    expect(explorerViewOf(app.store).open).toBe(false);
+  });
+
+  it.each([Open.automaticTablePlacement, Open.diffViewer, Open.timeTravel])(
+    'leaves the row out under %s, which takes the canvas over',
+    key => {
+      expect(visibleNames()).toContain('Toggle Explorer');
+
+      app.store.dispatchSync(changeOpenMapAction({ [key]: true }));
+
+      expect(visibleNames()).not.toContain('Toggle Explorer');
     }
   );
 });
@@ -1938,32 +1925,5 @@ describe('createPreferenceActions', () => {
     expect(names(submenu(rows, '테마'))).toEqual(['시스템', 'Light', 'Dark']);
     expect(languages[0]).toMatchObject({ name: '시스템', alias: ['System'] });
     expect(names(searchActions(languages, 'system'))[0]).toBe('시스템');
-  });
-});
-
-describe('createShowAllAction', () => {
-  const payload = { query: 'users', fields: [] };
-
-  it('names the count the panel opens on, one match and many as English has always read them', () => {
-    expect(createShowAllAction(1, payload).name).toBe(
-      'Show 1 match in Find and Replace'
-    );
-    expect(createShowAllAction(3, payload).name).toBe(
-      'Show all 3 matches in Find and Replace'
-    );
-    expect(createShowAllAction(0, payload).name).toBe(
-      'Show all 0 matches in Find and Replace'
-    );
-  });
-
-  it('names the count in the language given, by its own plural rules', () => {
-    const pseudo = createI18n('ru-RU', pseudoMessages('ru'));
-
-    expect(createShowAllAction(21, payload, pseudo).name).toBe(
-      'ru:Show 21 match in Find and Replace'
-    );
-    expect(createShowAllAction(5, payload, pseudo).name).toBe(
-      'ru:Show all 5 matches in Find and Replace'
-    );
   });
 });

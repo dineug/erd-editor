@@ -25,6 +25,7 @@ import ErdContextMenu, {
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
+import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import TableGroupDraft from '@/components/erd/table-group/TableGroupDraft';
 import { useTableGroupDraw } from '@/components/erd/table-group/useTableGroupDraw';
 import TableProperties from '@/components/erd/table-properties/TableProperties';
@@ -32,7 +33,6 @@ import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
 import { isEmptyDocument } from '@/components/erd/welcome-screen/welcomeLayout';
 import WelcomeScreen from '@/components/erd/welcome-screen/WelcomeScreen';
-import { isTakenOver } from '@/components/find-replace/panelLayout';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
@@ -78,6 +78,7 @@ import {
 } from '@/utils/globalEventObservable';
 import { getRelationshipIcon } from '@/utils/icon';
 import { isMod, KeyBindingName } from '@/utils/keyboard-shortcut';
+import { isTakenOver } from '@/utils/takeover';
 
 import * as styles from './Erd.styles';
 import { useErdShortcut } from './useErdShortcut';
@@ -327,9 +328,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       isTakenOver(app.value.store.state) &&
       !el.closest(TAKEOVER_CHROME);
 
-    if (canUnselectAll && !middlePan && !middleOverTakeover) {
+    const unselects = canUnselectAll && !middlePan && !middleOverTakeover;
+    if (unselects) {
       const { store } = app.value;
       store.dispatch(unselectAllAction$());
+    }
+
+    // A press that changes the selection puts out a jump's light; a pan, by
+    // the middle button or the hand tool, leaves it on.
+    const { editor } = app.value.store.state;
+    if (!editor.handTool && (unselects || (onEntity && !middlePress))) {
+      clearRelationshipHighlight(editor.id);
     }
 
     if (canHideColorPicker) {
@@ -411,7 +420,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   /**
    * Escape pressed while the keyboard is elsewhere closes the picker unless something takes it
-   * first, as Find and Replace reads it; removeSelection or removeTable (Delete or Backspace,
+   * first; removeSelection or removeTable (Delete or Backspace,
    * bare or with the mod key) closes it too, since either may just have taken its paint.
    */
   const handleColorPickerShortcut = ({ type }: { type: KeyBindingName }) => {

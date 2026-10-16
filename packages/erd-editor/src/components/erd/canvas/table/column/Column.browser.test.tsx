@@ -30,6 +30,11 @@ import {
 import { getColumnCellSlots } from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
 import {
+  COLUMN_KEY_PATH,
+  Diff,
+  type DiffPaths,
+} from '@/components/erd/diff-viewer/diff';
+import {
   COLUMN_DELETE_WIDTH,
   COLUMN_HEIGHT,
   COLUMN_KEY_WIDTH,
@@ -80,6 +85,7 @@ type SceneProps = {
   sharedFocusDataType?: string | null;
   editorFocused?: boolean;
   preview?: boolean;
+  diffPaths?: DiffPaths | null;
   onDragstart?: (columnId: string, event: SceneMouseEvent) => void;
   onDragend?: () => void;
 };
@@ -161,6 +167,7 @@ async function setup({ props = {}, prepare }: SetupOptions = {}) {
         editDefault={false}
         editComment={false}
         preview={next.preview}
+        diffPaths={next.diffPaths}
         onDragstart={next.onDragstart}
         onDragend={next.onDragend}
       />
@@ -535,6 +542,74 @@ describe('what a cell draws', () => {
     await settle();
 
     expect(textOf(rowOf(stage), 'columnUnique').fill()).toBe(theme.active);
+  });
+});
+
+describe('what a diff pane marks of a row', () => {
+  it('marks the name text for a change to a cell the row does not draw', async () => {
+    const { stage, theme, rerender } = await setup();
+
+    await rerender({
+      diffPaths: new Map([[FocusType.columnUnique, Diff.modify]]),
+    });
+
+    const row = rowOf(stage);
+    expect(textOf(row, FocusType.columnName).fill()).toBe(
+      theme.diffModifyForeground
+    );
+  });
+
+  it('marks only the cell a change touches when the row draws it', async () => {
+    const { stage, theme, rerender } = await setup({
+      prepare: ({ store }) =>
+        store.dispatchSync(
+          changeShowAction({ show: Show.columnUnique, value: true })
+        ),
+    });
+
+    await rerender({
+      diffPaths: new Map([[FocusType.columnUnique, Diff.modify]]),
+    });
+
+    const row = rowOf(stage);
+    expect(textOf(row, FocusType.columnUnique).fill()).toBe(
+      theme.diffModifyForeground
+    );
+    expect(textOf(row, FocusType.columnName).fill()).not.toBe(
+      theme.diffModifyForeground
+    );
+  });
+});
+
+describe('what a diff pane marks of a key change', () => {
+  it('marks the name text for a key change the row draws no icon for', async () => {
+    const { stage, theme, rerender } = await setup();
+
+    await rerender({
+      diffPaths: new Map([[COLUMN_KEY_PATH, Diff.modify]]),
+    });
+
+    expect(textOf(rowOf(stage), FocusType.columnName).fill()).toBe(
+      theme.diffModifyForeground
+    );
+  });
+
+  it('marks the key icon and not the name on a row that draws one', async () => {
+    const { app, stage, column, theme, rerender } = await setup();
+    app.store.state.collections.tableColumnEntities[column.id].ui.keys =
+      ColumnUIKey.primaryKey;
+    await settle();
+
+    await rerender({
+      diffPaths: new Map([[COLUMN_KEY_PATH, Diff.modify]]),
+    });
+
+    expect(strokesOf(rowOf(stage), 'column-key')).toEqual([
+      theme.diffModifyForeground,
+    ]);
+    expect(textOf(rowOf(stage), FocusType.columnName).fill()).not.toBe(
+      theme.diffModifyForeground
+    );
   });
 });
 

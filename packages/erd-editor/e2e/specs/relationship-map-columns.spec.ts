@@ -994,7 +994,7 @@ test.describe('what holds the buttons and the dialog back', () => {
     expect((await erd.column('posts_author_id')).dataType).toBe('varchar(36)');
   });
 
-  test('Cmd+F and Cmd+K close Map Columns for Find and Replace and the palette, and Escape closes it writing nothing', async ({
+  test('Cmd+F and Cmd+K close Map Columns for the Explorer search and the palette, and Escape closes it writing nothing', async ({
     erd,
   }) => {
     await erd.seed(usersAndPosts());
@@ -1005,10 +1005,10 @@ test.describe('what holds the buttons and the dialog back', () => {
     await erd.press(Shortcut.findReplace);
 
     await expect(dialog).toHaveCount(0);
-    const panel = erd.host.locator('.find-replace');
+    const panel = erd.host.locator('.explorer');
     await expect(panel.locator('.find-input')).toBeFocused();
     await erd.press(Shortcut.stop);
-    await expect(panel).toHaveCount(0);
+    await expect(panel.locator('.find-input')).not.toBeFocused();
 
     await openMapFromDraw(erd, 'users', 'posts');
     await erd.press(Shortcut.search);

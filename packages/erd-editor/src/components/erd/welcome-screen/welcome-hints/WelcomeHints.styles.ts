@@ -27,6 +27,20 @@ export const up = css`
 `;
 
 /**
+ * A hint whose label has no room beside its arrow: the label hangs under the
+ * arrow's tail, clear of a label beside the next arrow.
+ */
+export const stacked = css`
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+
+  &.end {
+    align-items: flex-end;
+  }
+`;
+
+/**
  * The hint over the floating toolbar, centred over it as the toolbar is, its
  * arrow's tip clear of the bar's top edge.
  */

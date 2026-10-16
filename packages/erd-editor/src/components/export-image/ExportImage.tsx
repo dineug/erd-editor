@@ -3,6 +3,7 @@ import { FC, observable, onMounted, watch } from '@dineug/r-html';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { editorWidthOf } from '@/components/erd-editor/viewportLayout';
 import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import Dialog, {
@@ -222,12 +223,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     };
     view.measured = false;
 
-    store.dispatch(
-      changeOpenMapAction({
-        [Open.exportImage]: true,
-        [Open.findReplace]: false,
-      })
-    );
+    store.dispatch(changeOpenMapAction({ [Open.exportImage]: true }));
     showPreview(0);
   };
 
@@ -299,7 +295,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
 
     const { store, keyBindingMap } = app.value;
     const { t } = i18n.value;
-    const stacked = store.state.editor.viewport.width < DIALOG_STACK_BELOW;
+    const stacked = editorWidthOf(store) < DIALOG_STACK_BELOW;
     const size = view.measured
       ? getExportSize(
           { width: view.documentWidth, height: view.documentHeight },

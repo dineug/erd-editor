@@ -32,3 +32,20 @@ export const root = css`
 export const scope = css`
   ${container};
 `;
+
+/** The ERD tab's row: the Explorer, when shown, and the canvas beside it. */
+export const erdRow = css`
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+`;
+
+/** The canvas's share of the row, all of it the Explorer leaves. */
+export const erdScope = css`
+  ${container};
+  flex: 1 1 0;
+  min-width: 0;
+`;

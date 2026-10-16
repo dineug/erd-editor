@@ -44,7 +44,7 @@
 
 ### The close button
 
-- **The close button is the editor's `x` tool.** It is the 26 px `x` tool that Table Properties and Find and Replace have, an owner decision (2026-10-05). It is named `common.close`, translated, with the stop key in its title. It calls the handler Escape calls.
+- **The close button is the editor's `x` tool.** It is the 26 px `x` tool that Table Properties and the Explorer have, an owner decision (2026-10-05). It is named `common.close`, translated, with the stop key in its title. It calls the handler Escape calls.
 - **It shares a row with the title.** That grid row of its own heads the options while the preview stands beside them. Once the preview stacks above the options, the row heads the whole box. So the button keeps the top corner the title row ends at either way, and keeps its focus across the switch. Under a right-to-left language that corner is the left one.
 - **First in Tab order, never the first focus.** The first focus goes to PNG, the `data-autofocus` control (The shared modal). Its `scroll-margin` brings its whole focus ring into a short box scrolled down when Tab turns round to it.
 
@@ -57,9 +57,9 @@
 - **Space is stopped inside the dialog.** That way a native button keeps its press from the hand tool's binding.
 - **Focus enters and leaves at fixed points.** The `data-autofocus` control is focused on mount; here that is PNG. Tab turns round at either end of the box, which scrolls in a short editor. On unmount it dispatches `focusEvent`, whatever closed it.
 - **Canvas shortcuts stop while it is open.** `erdShortcutPerformCheck` stops the canvas shortcuts, copy and paste.
-- **The palette and Find and Replace close it.** They close it as they close Table Properties. It closes Find and Replace as it opens, so the panel's chord trades the dialog for the panel opened again.
+- **The palette and Find and Replace close it.** They close it as they close Table Properties. It leaves the Explorer open as it opens, and Find and Replace's chord trades the dialog for the Explorer's search.
 - **The preview stacks above the options when narrow.** It stacks under 640 px of editor width, read from `editor.viewport.width`, since the browser floor has no container query.
-- **Map Columns keeps the same contract.** It is the dialog's second user. The canvas shortcuts, undo and redo stop while it is open, and it closes Find and Replace as it opens. Find and Replace and the palette close it and drop what was picked, by their chords from inside it or any other way they open, an owner decision (2026-10-06).
+- **Map Columns keeps the same contract.** It is the dialog's second user. The canvas shortcuts, undo and redo stop while it is open, and it leaves the Explorer open as it opens. Find and Replace and the palette close it and drop what was picked, by their chords from inside it or any other way they open, an owner decision (2026-10-06).
 - Map Columns' own rules: `src/components/map-columns/AGENTS.md`.
 
 ### What the image draws

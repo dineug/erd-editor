@@ -4,6 +4,7 @@ import { FC, observable, onUnmounted } from '@dineug/r-html';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { useAppContext } from '@/components/appContext';
+import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
 import {
   memoCaretOffsetAt,
@@ -25,6 +26,7 @@ import {
   CURSOR_INHERIT,
   CURSOR_POINTER,
   CURSOR_TEXT,
+  DIFF_OUTLINE_WIDTH,
   documentCardShadow,
   HIT_FILL,
   mainButtonClick,
@@ -35,6 +37,12 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import {
+  diffOutline,
+  diffTextColor,
+  MEMO_VALUE_PATH,
+} from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -70,6 +78,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const diffMapRef = useDiffMap(ctx);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.memo.id);
   const { onMoveStart } = useMoveMemo(ctx, props, sourceRef);
   const state = observable({ hover: false, removeHover: false });
@@ -184,6 +193,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     // so both edges only cover the same pixels from half a width in.
     const bodyInset = MEMO_BORDER / 2;
     const ringInset = RING_WIDTH / 2;
+    const diffPaths = diffMapRef.value?.get(memo.id);
 
     return (
       <k-group
@@ -229,6 +239,13 @@ const Memo: FC<MemoProps> = (props, ctx) => {
           shadowOpacity={shadow?.opacity}
           shadowForStrokeEnabled={shadow ? false : undefined}
         />
+        {diffOutlineRect({
+          name: 'memo-diff-outline',
+          stroke: diffOutline(theme, diffPaths),
+          width,
+          height,
+          cornerRadius: MEMO_CORNER_RADIUS + DIFF_OUTLINE_WIDTH / 2,
+        })}
         <k-group
           name="memo-container"
           kind="memo-container"
@@ -297,7 +314,9 @@ const Memo: FC<MemoProps> = (props, ctx) => {
               offsetY={scrollTop}
               text={value}
               visible={!editing}
-              fill={theme.active}
+              fill={
+                diffTextColor(theme, diffPaths, MEMO_VALUE_PATH) ?? theme.active
+              }
               fontFamily={SCENE_FONT_FAMILY}
               fontSize={SCENE_FONT_SIZE}
               fontStyle={MEMO_FONT_WEIGHT}

@@ -4,5 +4,4 @@ export const toolbar = {
   'toolbar.undo': 'Undo',
   'toolbar.redo': 'Redo',
   'toolbar.timeTravel': 'Time Travel',
-  'toolbar.tableCount': 'Table: {count}',
 } as const;

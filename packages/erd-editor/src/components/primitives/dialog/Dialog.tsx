@@ -141,7 +141,7 @@ const Dialog: FC<DialogProps> = (props, ctx) => {
     >
       <div
         use:ref={ref(content)}
-        class={['dialog', styles.content]}
+        class={['dialog', 'scrollbar', styles.content]}
         style={{ 'max-width': `${props.maxWidth}px` }}
         role="dialog"
         aria-modal="true"

@@ -199,7 +199,7 @@ Deltas from root § Making a Change.
 ### Find and Replace key
 
 - **The element takes `Ctrl`/`Cmd`+`F`, not VS Code.** VS Code's find widget stays off in the webview (no `enableFindWidget`, pinned by `src/erd-editor-provider.test.ts`), and the manifest contributes no keybinding.
-  - On every tab the element binds `Ctrl`/`Cmd`+`F` to its own Find and Replace, bringing the ERD tab up, and stops the keydown. So the webview never hands it to the workbench.
+  - On every tab the element binds `Ctrl`/`Cmd`+`F` to its own Find and Replace, the Explorer's search, bringing the ERD tab up, and stops the keydown. So the webview never hands it to the workbench.
   - While the diff viewer, time travel or the automatic placement preview covers the ERD tab, the element lets the keydown go on, and the workbench gets it.
 - **Only a hand check covers the key.** No spec drives a key through VS Code. It was checked by hand on 2026-09-30 on VS Code 1.139.1, the keys sent over CDP to a throwaway window (`--remote-debugging-port`, its own `--user-data-dir`), which skips the native menu.
   - On the ERD tab, `Cmd`+`F` opened the panel and took what was typed next. The keydown never reached the webview document's window.

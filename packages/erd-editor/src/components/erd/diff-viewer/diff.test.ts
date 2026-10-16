@@ -1,389 +1,75 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, createTestTheme } from '@/__test-utils__/index';
+import { createTestTheme } from '@/__test-utils__/index';
 import {
   Diff,
-  diffFill,
-  DiffMap,
-  diffState,
-  getNameToTableMap,
+  diffOutline,
+  type DiffPaths,
+  diffTextColor,
+  ENTITY_PATH,
 } from '@/components/erd/diff-viewer/diff';
-import {
-  addTableAction,
-  changeTableCommentAction,
-  changeTableNameAction,
-} from '@/engine/modules/table/atom.actions';
-import {
-  addColumnAction,
-  changeColumnCommentAction,
-  changeColumnDataTypeAction,
-  changeColumnDefaultAction,
-  changeColumnNameAction,
-  changeColumnNotNullAction,
-  changeColumnPrimaryKeyAction,
-} from '@/engine/modules/table-column/atom.actions';
-import { RootState } from '@/engine/state';
 
-type ColumnSeed = {
-  id: string;
-  name: string;
-  comment?: string;
-  dataType?: string;
-  default?: string;
-  primaryKey?: boolean;
-  notNull?: boolean;
-};
+const theme = createTestTheme();
+const paths = (entries: Array<[string, number]>): DiffPaths => new Map(entries);
 
-type TableSeed = {
-  id: string;
-  name: string;
-  comment?: string;
-  columns?: ColumnSeed[];
-};
+describe('Diff', () => {
+  it('gives each kind of change a bit of its own', () => {
+    const bits = Object.values(Diff);
 
-function createState(tables: TableSeed[]): RootState {
-  const app = createTestAppContext();
-
-  tables.forEach(table => {
-    app.store.dispatchSync(
-      addTableAction({ id: table.id, ui: { x: 0, y: 0, zIndex: 1 } })
-    );
-    app.store.dispatchSync(
-      changeTableNameAction({ id: table.id, value: table.name })
-    );
-    if (table.comment !== undefined) {
-      app.store.dispatchSync(
-        changeTableCommentAction({ id: table.id, value: table.comment })
-      );
-    }
-
-    (table.columns ?? []).forEach(column => {
-      app.store.dispatchSync(
-        addColumnAction({ tableId: table.id, id: column.id })
-      );
-      app.store.dispatchSync(
-        changeColumnNameAction({
-          tableId: table.id,
-          id: column.id,
-          value: column.name,
-        })
-      );
-      if (column.comment !== undefined) {
-        app.store.dispatchSync(
-          changeColumnCommentAction({
-            tableId: table.id,
-            id: column.id,
-            value: column.comment,
-          })
-        );
-      }
-      if (column.dataType !== undefined) {
-        app.store.dispatchSync(
-          changeColumnDataTypeAction({
-            tableId: table.id,
-            id: column.id,
-            value: column.dataType,
-          })
-        );
-      }
-      if (column.default !== undefined) {
-        app.store.dispatchSync(
-          changeColumnDefaultAction({
-            tableId: table.id,
-            id: column.id,
-            value: column.default,
-          })
-        );
-      }
-      if (column.primaryKey !== undefined) {
-        app.store.dispatchSync(
-          changeColumnPrimaryKeyAction({
-            tableId: table.id,
-            id: column.id,
-            value: column.primaryKey,
-          })
-        );
-      }
-      if (column.notNull !== undefined) {
-        app.store.dispatchSync(
-          changeColumnNotNullAction({
-            tableId: table.id,
-            id: column.id,
-            value: column.notNull,
-          })
-        );
-      }
-    });
-  });
-
-  // Lets go of the store, so nothing its edits set running outlives the
-  // file's environment.
-  const { state } = app.store;
-  app.store.destroy();
-  return state;
-}
-
-const pathsOf = (diffMap: DiffMap, id: string) =>
-  Array.from(diffMap.get(id)?.[1].keys() ?? []);
-
-describe('Diff constants', () => {
-  it('exposes disjoint single bit flags', () => {
-    expect(Diff.insert).toBe(1);
-    expect(Diff.delete).toBe(2);
-    expect(Diff.insert & Diff.delete).toBe(0);
+    expect(bits).toEqual([1, 2, 4, 8]);
+    expect(bits.reduce((all, bit) => all | bit, 0)).toBe(15);
   });
 });
 
-describe('getNameToTableMap', () => {
-  it('indexes tables by name and their columns by column name', () => {
-    const state = createState([
-      {
-        id: 't1',
-        name: 'users',
-        columns: [
-          { id: 'c1', name: 'id' },
-          { id: 'c2', name: 'email' },
-        ],
-      },
-      { id: 't2', name: 'posts' },
+describe('diffTextColor', () => {
+  it('colours a cell by its own change: added, removed, changed or renamed', () => {
+    const cells = paths([
+      ['a', Diff.insert],
+      ['b', Diff.delete],
+      ['c', Diff.modify],
+      ['d', Diff.rename],
     ]);
 
-    const map = getNameToTableMap(state);
+    expect(diffTextColor(theme, cells, 'a')).toBe(theme.diffInsertForeground);
+    expect(diffTextColor(theme, cells, 'b')).toBe(theme.diffDeleteForeground);
+    expect(diffTextColor(theme, cells, 'c')).toBe(theme.diffModifyForeground);
+    expect(diffTextColor(theme, cells, 'd')).toBe(theme.diffRenameForeground);
+  });
 
-    expect(Array.from(map.keys()).sort()).toEqual(['posts', 'users']);
-    expect(map.get('users')?.table.id).toBe('t1');
-    expect(Array.from(map.get('users')!.nameToColumnMap.keys()).sort()).toEqual(
-      ['email', 'id']
+  it('colours every cell of a row by the row as a whole, a cell of its own change first', () => {
+    const row = paths([
+      [ENTITY_PATH, Diff.insert],
+      ['columnComment', Diff.modify],
+    ]);
+
+    expect(diffTextColor(theme, row, 'columnName', true)).toBe(
+      theme.diffInsertForeground
     );
-    expect(map.get('users')?.nameToColumnMap.get('email')?.id).toBe('c2');
-    expect(map.get('posts')?.nameToColumnMap.size).toBe(0);
+    expect(diffTextColor(theme, row, 'columnComment', true)).toBe(
+      theme.diffModifyForeground
+    );
+    expect(diffTextColor(theme, row, 'columnName')).toBeNull();
   });
 
-  it('keeps only the last table when two tables share a name', () => {
-    const state = createState([
-      { id: 't1', name: 'dup', columns: [{ id: 'c1', name: 'a' }] },
-      { id: 't2', name: 'dup', columns: [{ id: 'c2', name: 'b' }] },
-    ]);
-
-    const map = getNameToTableMap(state);
-
-    expect(map.size).toBe(1);
-    expect(map.get('dup')?.table.id).toBe('t2');
-  });
-
-  it('returns an empty map for an empty document', () => {
-    expect(getNameToTableMap(createState([])).size).toBe(0);
+  it('colours nothing outside a diff or for a cell that did not change', () => {
+    expect(diffTextColor(theme, null, 'tableName')).toBeNull();
+    expect(diffTextColor(theme, undefined, 'tableName', true)).toBeNull();
+    expect(diffTextColor(theme, paths([]), 'tableName', true)).toBeNull();
   });
 });
 
-describe('diffState', () => {
-  it('reports nothing when both documents are identical', () => {
-    const seed: TableSeed[] = [
-      {
-        id: 't1',
-        name: 'users',
-        comment: 'people',
-        columns: [{ id: 'c1', name: 'id', dataType: 'int' }],
-      },
-    ];
-
-    const [prevDiffMap, diffMap] = diffState(
-      createState(seed),
-      createState(seed.map(t => ({ ...t, id: 'other-t1' })))
+describe('diffOutline', () => {
+  it('outlines an entity added, removed or only moved, and nothing else', () => {
+    expect(diffOutline(theme, paths([[ENTITY_PATH, Diff.insert]]))).toBe(
+      theme.diffInsertForeground
     );
-
-    expect(prevDiffMap.size).toBe(0);
-    expect(diffMap.size).toBe(0);
-  });
-
-  it('marks an added table as insert only', () => {
-    const [prevDiffMap, diffMap] = diffState(
-      createState([]),
-      createState([{ id: 't1', name: 'users', comment: 'hi' }])
+    expect(diffOutline(theme, paths([[ENTITY_PATH, Diff.delete]]))).toBe(
+      theme.diffDeleteForeground
     );
-
-    expect(prevDiffMap.size).toBe(0);
-    expect(diffMap.get('t1')?.[0]).toBe('tableEntities');
-    expect(pathsOf(diffMap, 't1').sort()).toEqual([
-      'tableComment',
-      'tableName',
-    ]);
-    expect(diffMap.get('t1')?.[1].get('tableName')).toBe(Diff.insert);
-  });
-
-  it('marks a removed table as delete only', () => {
-    const [prevDiffMap, diffMap] = diffState(
-      createState([{ id: 't1', name: 'users', comment: 'hi' }]),
-      createState([])
+    expect(diffOutline(theme, paths([[ENTITY_PATH, Diff.modify]]))).toBe(
+      theme.diffModifyForeground
     );
-
-    expect(diffMap.size).toBe(0);
-    expect(prevDiffMap.get('t1')?.[1].get('tableName')).toBe(Diff.delete);
-    expect(prevDiffMap.get('t1')?.[1].get('tableComment')).toBe(Diff.delete);
-  });
-
-  it('also flags the comment of a renamed table because the lookup misses', () => {
-    const [prevDiffMap, diffMap] = diffState(
-      createState([{ id: 't1', name: 'users' }]),
-      createState([{ id: 't2', name: 'members' }])
-    );
-
-    // both comments are '' but the name lookup fails, so undefined is
-    // compared against '' and the comment is reported as changed too.
-    expect(pathsOf(prevDiffMap, 't1').sort()).toEqual([
-      'tableComment',
-      'tableName',
-    ]);
-    expect(pathsOf(diffMap, 't2').sort()).toEqual([
-      'tableComment',
-      'tableName',
-    ]);
-  });
-
-  it('flags only the changed column paths for a matched column', () => {
-    const prevState = createState([
-      {
-        id: 't1',
-        name: 'users',
-        columns: [
-          { id: 'c1', name: 'id', dataType: 'int', comment: 'pk', default: '' },
-        ],
-      },
-    ]);
-    const state = createState([
-      {
-        id: 't2',
-        name: 'users',
-        columns: [
-          {
-            id: 'c2',
-            name: 'id',
-            dataType: 'bigint',
-            comment: 'pk',
-            default: '',
-          },
-        ],
-      },
-    ]);
-
-    const [prevDiffMap, diffMap] = diffState(prevState, state);
-
-    expect(prevDiffMap.has('t1')).toBe(false);
-    expect(diffMap.has('t2')).toBe(false);
-    expect(pathsOf(prevDiffMap, 'c1')).toEqual(['columnDataType']);
-    expect(prevDiffMap.get('c1')?.[0]).toBe('tableColumnEntities');
-    expect(pathsOf(diffMap, 'c2')).toEqual(['columnDataType']);
-    expect(diffMap.get('c2')?.[1].get('columnDataType')).toBe(Diff.insert);
-  });
-
-  it('flags every path of a column whose name has no counterpart', () => {
-    const [prevDiffMap, diffMap] = diffState(
-      createState([{ id: 't1', name: 'users' }]),
-      createState([
-        { id: 't2', name: 'users', columns: [{ id: 'c2', name: 'email' }] },
-      ])
-    );
-
-    expect(prevDiffMap.size).toBe(0);
-    expect(pathsOf(diffMap, 'c2').sort()).toEqual([
-      'columnAutoIncrement',
-      'columnComment',
-      'columnDataType',
-      'columnDefault',
-      'columnName',
-      'columnNotNull',
-      'columnPrimaryKey',
-      'columnUnique',
-    ]);
-    // no counterpart -> the raw diff flag is used for every option path
-    expect(diffMap.get('c2')?.[1].get('columnPrimaryKey')).toBe(Diff.insert);
-    expect(diffMap.get('c2')?.[1].get('columnDefault')).toBe(Diff.insert);
-  });
-
-  it('flags only the option paths that actually toggled', () => {
-    const prevState = createState([
-      {
-        id: 't1',
-        name: 'users',
-        columns: [{ id: 'c1', name: 'id', primaryKey: true, notNull: false }],
-      },
-    ]);
-    const state = createState([
-      {
-        id: 't2',
-        name: 'users',
-        columns: [{ id: 'c2', name: 'id', primaryKey: true, notNull: true }],
-      },
-    ]);
-
-    const [prevDiffMap, diffMap] = diffState(prevState, state);
-
-    expect(pathsOf(prevDiffMap, 'c1')).toEqual(['columnNotNull']);
-    expect(prevDiffMap.get('c1')?.[1].get('columnNotNull')).toBe(Diff.delete);
-    expect(pathsOf(diffMap, 'c2')).toEqual(['columnNotNull']);
-    expect(diffMap.get('c2')?.[1].get('columnNotNull')).toBe(Diff.insert);
-  });
-
-  it('reports a table rename as a delete on one side and an insert on the other', () => {
-    const [prevDiffMap, diffMap] = diffState(
-      createState([
-        { id: 't1', name: 'users', columns: [{ id: 'c1', name: 'id' }] },
-      ]),
-      createState([
-        { id: 't2', name: 'members', columns: [{ id: 'c2', name: 'id' }] },
-      ])
-    );
-
-    expect(prevDiffMap.get('t1')?.[1].get('tableName')).toBe(Diff.delete);
-    expect(diffMap.get('t2')?.[1].get('tableName')).toBe(Diff.insert);
-    // the columns lose their counterpart together with the table
-    expect(prevDiffMap.has('c1')).toBe(true);
-    expect(diffMap.has('c2')).toBe(true);
-  });
-});
-
-describe('diffFill', () => {
-  const theme = createTestTheme();
-
-  it('paints an inserted path in the insert colour', () => {
-    const paths = new Map([['columnName', Diff.insert]]);
-
-    expect(diffFill(theme, paths, 'columnName')).toBe(
-      theme.diffInsertBackground
-    );
-  });
-
-  it('paints a deleted path in the delete colour', () => {
-    const paths = new Map([['tableName', Diff.delete]]);
-
-    expect(diffFill(theme, paths, 'tableName')).toBe(
-      theme.diffDeleteBackground
-    );
-  });
-
-  it('follows the flag on the path rather than the pane it is drawn in', () => {
-    const paths = new Map([
-      ['columnName', Diff.delete],
-      ['columnComment', Diff.insert],
-    ]);
-
-    expect(diffFill(theme, paths, 'columnName')).toBe(
-      theme.diffDeleteBackground
-    );
-    expect(diffFill(theme, paths, 'columnComment')).toBe(
-      theme.diffInsertBackground
-    );
-  });
-
-  it('paints nothing for a path that did not change or an entity with no entry', () => {
-    const paths = new Map([
-      ['tableName', 0],
-      ['tableComment', Diff.insert],
-    ]);
-
-    expect(diffFill(theme, paths, 'tableName')).toBeNull();
-    expect(diffFill(theme, paths, 'columnName')).toBeNull();
-    expect(diffFill(theme, undefined, 'tableName')).toBeNull();
-    expect(diffFill(theme, null, 'tableName')).toBeNull();
+    expect(diffOutline(theme, paths([['tableName', Diff.rename]]))).toBeNull();
+    expect(diffOutline(theme, null)).toBeNull();
   });
 });

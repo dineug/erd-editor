@@ -3,6 +3,7 @@ import { FC, observable, onMounted, watch } from '@dineug/r-html';
 import { filter } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { editorWidthOf } from '@/components/erd-editor/viewportLayout';
 import { useI18n } from '@/components/localeContext';
 import { localized } from '@/components/localized/Localized';
 import Dialog, {
@@ -206,7 +207,7 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
     const view = buildMapColumns(store.state, session);
     if (view.closed !== null) return null;
 
-    const stacked = store.state.editor.viewport.width < DIALOG_STACK_BELOW;
+    const stacked = editorWidthOf(store) < DIALOG_STACK_BELOW;
 
     return (
       <Dialog

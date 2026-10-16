@@ -105,7 +105,7 @@ const ContextMenuContent: FC<ContextMenuContentProps> = (props, ctx) => {
   return () => (
     <div
       use:ref={ref($content)}
-      class={['context-menu-content', styles.content]}
+      class={['context-menu-content', 'scrollbar', styles.content]}
       style={{
         left: `${props.x + state.dx}px`,
         top: `${props.y + state.dy}px`,

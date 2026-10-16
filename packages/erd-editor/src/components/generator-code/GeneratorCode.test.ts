@@ -792,7 +792,7 @@ describe('GeneratorCode', () => {
     const text = contentOf(mounted)?.textContent ?? '';
     expect(text).toContain('Database');
     expect(text).not.toContain('Options panel');
-    expect(text).not.toContain('Save file…');
+    expect(text).not.toContain('Save file');
   });
 
   it("adds the panel and Save file to the whole document's menu, each closing it", async () => {
@@ -807,7 +807,7 @@ describe('GeneratorCode', () => {
 
     openContextMenu(mounted);
     await flush();
-    menuRowOf(mounted, 'Save file…')?.click();
+    menuRowOf(mounted, 'Save file')?.click();
     await flush();
 
     expect(files).toEqual([expect.stringMatching(/^unnamed-.*\.graphql$/)]);

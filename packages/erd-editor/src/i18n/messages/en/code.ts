@@ -8,7 +8,6 @@ export const code = {
   'code.copy': 'Copy',
   'code.savedInDocument': 'Saved in the document',
   'code.saveFile': 'Save file',
-  'code.saveFileMenu': 'Save file…',
   'code.optionsPanel': 'Options panel',
   'code.hideOptions': 'Hide options',
   'code.showOptions': 'Show options',

@@ -157,6 +157,9 @@ describe('GeneratorCodeContextMenu', () => {
       'Bracket',
     ]);
 
+    const bracketRow = rowsOf(root)[4];
+    expect(bracketRow.querySelectorAll('.icon')).toHaveLength(2);
+
     const submenu = await openSubmenu('Bracket');
     expect(namesOf(submenu)).toEqual([
       'SingleQuote',
@@ -215,7 +218,7 @@ describe('GeneratorCodeContextMenu', () => {
       'Table Name Case',
       'Column Name Case',
       'Options panel',
-      'Save file…',
+      'Save file',
     ]);
     expect(generatorCodeViewOf(app).panel).toBe('open');
 
@@ -229,7 +232,7 @@ describe('GeneratorCodeContextMenu', () => {
     await flush();
     expect(row('Options panel').querySelector('svg')).toBeNull();
 
-    row('Save file…').click();
+    row('Save file').click();
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(2);
   });
@@ -282,13 +285,20 @@ describe('GeneratorCodeContextMenu', () => {
     }
   });
 
-  it('gives each entry a leading icon and a trailing chevron', async () => {
+  /** The owner's request of 2026-10-15: the name cases draw no leading icon. */
+  it('gives Language and Database a leading icon, the name cases none, and each a trailing chevron', async () => {
     await openMenu();
 
     const [root] = contentsOf(mounted as Mounted);
-    rowsOf(root).forEach(row => {
-      expect(row.querySelectorAll('.icon')).toHaveLength(2);
-      expect(row.querySelectorAll('svg').length).toBeGreaterThanOrEqual(2);
+    const rows = rowsOf(root);
+    expect(namesOf(root)).toEqual([
+      'Language',
+      'Database',
+      'Table Name Case',
+      'Column Name Case',
+    ]);
+    rows.forEach((row, index) => {
+      expect(row.querySelectorAll('.icon')).toHaveLength(index < 2 ? 2 : 1);
     });
   });
 

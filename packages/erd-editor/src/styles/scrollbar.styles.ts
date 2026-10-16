@@ -2,7 +2,7 @@ import { css } from '@dineug/r-html';
 
 /**
  * Global, not scoped. The ::-webkit-scrollbar* pseudo elements have no element of their own to
- * hang a component class on, and .scrollbar is a hook class seven components opt into by
+ * hang a component class on, and .scrollbar is a hook class the scrolling panels opt into by
  * literal name (class=${['scrollbar', ...]}) — scoping it would rename it out from under them.
  */
 export const scrollbarStyle = css.global`

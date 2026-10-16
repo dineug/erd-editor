@@ -49,7 +49,7 @@ describe('ThemeBuilder.styles', () => {
     expect(styles.root.values).toEqual([floatingShadow]);
   });
 
-  it('renders the heading in the active color at the size Find and Replace heads with', () => {
+  it('renders the heading in the active color at the size the locale picker heads with', () => {
     const source = styles.title.strings.join('');
 
     expect(source).toContain('color: var(--active)');

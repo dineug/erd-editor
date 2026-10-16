@@ -196,6 +196,8 @@ test.describe('locale picker', () => {
     await erd.press(Shortcut.search);
     await page.keyboard.type('Display Language');
     await palette.getByText('Display Language', { exact: true }).click();
+    // The list draws only the rows in view, so the reader types to reach one.
+    await page.keyboard.type('한국어');
     await palette.getByText('한국어', { exact: true }).click();
 
     await expect(palette).toHaveCount(0);

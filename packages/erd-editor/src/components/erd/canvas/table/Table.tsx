@@ -12,6 +12,7 @@ import {
   endColumnDragPointer,
   moveColumnDragPointer,
 } from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import {
   progressOf,
   transitionKey,
@@ -55,7 +56,7 @@ import Column from '@/components/erd/canvas/table/column/Column';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import { diffFill } from '@/components/erd/diff-viewer/diff';
+import { diffOutline, diffTextColor } from '@/components/erd/diff-viewer/diff';
 import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { focusFlowView } from '@/components/flowCenters';
 import { useI18n } from '@/components/localeContext';
@@ -478,9 +479,9 @@ const Table: FC<TableProps> = (props, ctx) => {
   }: HeaderCellOptions) => {
     const source = sourceRef.value;
     const view = source !== 'document';
-    const diffBackground = diffFill(
+    const diffFill = diffTextColor(
       themeRef.value,
-      diffMapRef.value?.get(props.table.id)?.[1],
+      diffMapRef.value?.get(props.table.id),
       focusType
     );
 
@@ -499,22 +500,13 @@ const Table: FC<TableProps> = (props, ctx) => {
           handleEdit(focusType, event);
         }}
       >
-        {diffBackground ? (
-          <k-rect
-            name="cell-diff-background"
-            width={width + INPUT_MARGIN_RIGHT}
-            height={TABLE_HEADER_INPUT_HEIGHT}
-            fill={diffBackground}
-            listening={false}
-          />
-        ) : null}
         <k-text
           name="cell-text"
           y={getHeaderTextY(source)}
           width={width}
           height={getHeaderTextHeight(source)}
           text={text}
-          fill={fill}
+          fill={diffFill ?? fill}
           fontFamily={SCENE_FONT_FAMILY}
           fontSize={view ? VIEW_TABLE_HEADER_FONT_SIZE : SCENE_FONT_SIZE}
           fontStyle={view ? VIEW_HEADER_FONT_WEIGHT : SCENE_FONT_WEIGHT}
@@ -571,6 +563,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     const sharedNameColor = sharedFocusColor(FocusType.tableName);
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
     const ringColor = sharedTableColor ?? sharedSelected;
+    const diffPaths = diffMapRef.value?.get(table.id);
 
     // A view draws no affordance its measured width has no room for, and its
     // colour edge takes no click, since the gate drops what the picker changes.
@@ -608,6 +601,12 @@ const Table: FC<TableProps> = (props, ctx) => {
     const commentCell = headerCells.find(
       slot => slot.focusType === FocusType.tableComment
     );
+
+    // A comment change the header draws no slot for takes the name's colour,
+    // so a change the tree lists is marked in the pane.
+    const hiddenCommentColor = commentCell
+      ? null
+      : diffTextColor(theme, diffPaths, FocusType.tableComment);
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
@@ -742,6 +741,13 @@ const Table: FC<TableProps> = (props, ctx) => {
             listening={false}
           />
         ) : null}
+        {diffOutlineRect({
+          name: 'table-diff-outline',
+          stroke: diffOutline(theme, diffPaths),
+          width: rect.width,
+          height: rect.height,
+          cornerRadius: TABLE_CORNER_RADIUS,
+        })}
         <k-group name="table-header" x={TABLE_INSET} y={TABLE_INSET}>
           <k-group name="table-header-inputs" y={headerLineY}>
             {sceneIcon({
@@ -759,7 +765,10 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: table.name.trim()
                     ? table.name
                     : i18n.value.t('common.placeholder.table'),
-                  fill: tint?.foreground ?? nameFill(theme, table.name, view),
+                  fill:
+                    hiddenCommentColor ??
+                    tint?.foreground ??
+                    nameFill(theme, table.name, view),
                   focus: hasFocus(FocusType.tableName),
                   edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,
@@ -849,7 +858,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 column={column}
                 source={source}
                 related={props.relatedColumnIds?.has(column.id) ?? false}
-                diffPaths={diffMapRef.value?.get(column.id)?.[1] ?? null}
+                diffPaths={diffMapRef.value?.get(column.id) ?? null}
                 litAlpha={litAlpha}
                 divider={view && index < columnIds.length - 1}
                 last={index === columnIds.length - 1}

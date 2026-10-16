@@ -22,7 +22,7 @@
 | `schema-sql-options/SchemaSQLOptions.tsx` | The options panel; `keepSpace` |
 | `schema-sql-options/ScriptEditor.tsx` | The before and after script editors; `SCRIPT_PASSING_BINDINGS` |
 | `schema-sql-options/dropWarning.ts` | `formatDropWarning`, the warning Drop & re-create shows |
-| `schema-sql-context-menu/` | The tab's menu: Database and Bracket, plus the statements, the header, the panel and Save file in the whole document's tab (`full`); the palette reuses the menus in `menus/` |
+| `schema-sql-context-menu/` | The tab's menu: Database and Bracket, plus the statements, the header, the panel and Save file in the whole document's tab (`full`); the palette reuses the menus in `menus/`. Statements and Header draw no icon, and Save file reads without an ellipsis, as it saves at once (the owner's request of 2026-10-15) |
 
 ## Rules
 
@@ -37,7 +37,7 @@ The rules in this section are owner decisions of 2026-10-07.
 - **Hold what the reader asked for.** The view starts at `ifNotExists` and `createAndUse`. `resolveSchemaSQLOptions` turns a request into what each database has. A segment the database lacks is `aria-disabled`, titled Not in {database} (`schemaSql.notInDatabase`). So a choice outlives a change of database.
 - What each statement and header writes per database, `createSchemaSQL`'s order, `formatScript` and Drop & re-create per vendor: `src/utils/schema-sql/AGENTS.md`.
 - **The panel opens from 640 px of editor.** It opens unless the editor is under 640 px wide (`SCHEMA_SQL_PANEL_COLLAPSE_BELOW`). That is decided when the tab, or its own menu, first reads a measured `editor.viewport.width`. Table Properties' Schema SQL menu leaves it unsettled. Then the panel keeps what it was set to, folded behind a Show options button over the code.
-- **Export ▸ Schema SQL saves nothing at once.** In the canvas menu and the palette, `showSchemaSQLExport` opens the tab with the panel and focuses Save file. Save file names the file by `createName` in `src/utils/file/exportFile.ts`.
+- **Export ▸ Schema SQL saves nothing at once.** In the canvas menu and the palette's Export, `showSchemaSQLExport` opens the tab with the panel and focuses Save file. The palette has no top-level Export: Schema SQL row, since its Tab row reaches the tab (the owner's request of 2026-10-15). Save file names the file by `createName` in `src/utils/file/exportFile.ts`.
 
 ### Tables by table group
 

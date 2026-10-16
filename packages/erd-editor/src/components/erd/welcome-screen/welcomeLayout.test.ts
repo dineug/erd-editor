@@ -4,6 +4,7 @@ import { createTestAppContext } from '@/__test-utils__/index';
 import {
   ARROW_DOWN_BOX,
   ARROW_UP_BOX,
+  HINT_LABEL_MAX_WIDTH,
   hintPlacement,
   isEmptyDocument,
   measureAnchors,
@@ -144,6 +145,7 @@ describe('hintPlacement', () => {
   it('puts a before label left of its arrow in a left-to-right language, the tip on the anchor', () => {
     expect(hintPlacement(300, 1000, 'before', 'ltr')).toEqual({
       labelFirst: true,
+      stacked: false,
       right: 1000 - 300 - reach,
     });
   });
@@ -151,6 +153,7 @@ describe('hintPlacement', () => {
   it('puts an after label right of its mirrored arrow in a left-to-right language', () => {
     expect(hintPlacement(300, 1000, 'after', 'ltr')).toEqual({
       labelFirst: false,
+      stacked: false,
       left: 300 - reach,
     });
   });
@@ -158,11 +161,31 @@ describe('hintPlacement', () => {
   it('flips both sides in a right-to-left language', () => {
     expect(hintPlacement(700, 1000, 'before', 'rtl')).toEqual({
       labelFirst: false,
+      stacked: false,
       left: 700 - reach,
     });
     expect(hintPlacement(700, 1000, 'after', 'rtl')).toEqual({
       labelFirst: true,
+      stacked: false,
       right: 1000 - 700 - reach,
+    });
+  });
+
+  it('hangs a label under its arrow where its side holds less than a whole label, the arrow left where it was', () => {
+    const { tipX } = ARROW_UP_BOX;
+    // Beside a docked Explorer the Search button stands near the canvas edge.
+    const edge = tipX + 4 + HINT_LABEL_MAX_WIDTH;
+
+    expect(hintPlacement(edge, 1000, 'before', 'ltr').stacked).toBe(false);
+    expect(hintPlacement(edge - 1, 1000, 'before', 'ltr')).toEqual({
+      labelFirst: true,
+      stacked: true,
+      left: edge - 1 - tipX,
+    });
+    expect(hintPlacement(1000 - edge + 1, 1000, 'after', 'ltr')).toEqual({
+      labelFirst: false,
+      stacked: true,
+      right: edge - 1 - tipX,
     });
   });
 

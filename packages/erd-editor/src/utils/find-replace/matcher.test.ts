@@ -325,6 +325,36 @@ describe('toUnicodeSource', () => {
   });
 });
 
+describe('Matcher.replace with Preserve Case (AC-R5)', () => {
+  it('cases each replacement the way the text it replaces is', () => {
+    expect(
+      matcherOf('user', { preserveCase: true }).replace(
+        'USER, User, user',
+        'account'
+      ).value
+    ).toBe('ACCOUNT, Account, account');
+  });
+
+  it('cases what a regular expression expands, after $1 is in', () => {
+    expect(
+      matcherOf('(user)_id', { regex: true, preserveCase: true }).replace(
+        'USER_ID',
+        '$1_key'
+      ).value
+    ).toBe('USER_KEY');
+  });
+
+  it('counts no match written back as it was', () => {
+    expect(
+      matcherOf('user', { preserveCase: true }).replace('User', 'user')
+    ).toEqual({ value: 'User', changed: 0 });
+  });
+
+  it('writes the replacement as typed with the option off', () => {
+    expect(matcherOf('user').replace('USER', 'account').value).toBe('account');
+  });
+});
+
 describe('Matcher.replace', () => {
   it('replaces every occurrence with the text as typed, dollar signs included', () => {
     const matcher = matcherOf('id');

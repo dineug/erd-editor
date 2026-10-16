@@ -1,6 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
+import { fieldIcon } from '@/components/explorer/fieldIcon';
 import { RootState } from '@/engine/state';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n, MessageKey } from '@/i18n/translate';
@@ -9,7 +10,6 @@ import {
   DEFAULT_FIND_OPTIONS,
   FindField,
   FindMatch,
-  findMatches,
   Matcher,
   walkFields,
 } from '@/utils/find-replace';
@@ -17,12 +17,12 @@ import {
 import {
   Action,
   createMatchAction,
-  createShowAllAction,
   keywordHolder,
   named,
   searchActions,
 } from './actions';
 import {
+  HangulQuery,
   hangulQueryOf,
   hitRange,
   matchText,
@@ -31,9 +31,6 @@ import {
 } from './hangul';
 import { PALETTE_PREFIXES, PaletteQuery, PaletteScope } from './paletteQuery';
 import * as styles from './QuickSearch.styles';
-
-/** How many rows a prefixed list shows, few enough to draw at once. */
-export const SCOPED_ACTION_LIMIT = 100;
 
 type SearchMessageKey = Extract<MessageKey, `palette.search${string}`>;
 
@@ -54,8 +51,6 @@ export const TEXT_FIELDS: FindField[] = [
 ];
 
 const COLUMN_FIELDS: FindField[] = [FindField.columnName];
-
-const TABLE_FIELDS: FindField[] = [FindField.tableName];
 
 const matcherOf = (keyword: string): Matcher | null =>
   createMatcher(keyword, DEFAULT_FIND_OPTIONS).matcher;
@@ -99,7 +94,7 @@ export function paletteRows(
         ? [...found, ...createPrefixActions(keyword, i18n)]
         : found;
     case PaletteScope.tables:
-      return rankTableActions(app, found, keyword, i18n);
+      return rankTableActions(found, keyword);
     case PaletteScope.columns:
       return createFieldActions(app, COLUMN_FIELDS, keyword, table, i18n);
     case PaletteScope.text:
@@ -109,42 +104,19 @@ export function paletteRows(
   }
 }
 
-/**
- * The table rows the keyword fuzzes to, those holding it as typed or by its
- * Hangul letters first, up to the scoped limit, past which a table whose name
- * the panel finds it in hands the search to Find and Replace over the names.
- */
-export function rankTableActions(
-  app: AppContext,
-  found: Action[],
-  keyword: string,
-  i18n: I18n = sourceI18n
-): Action[] {
+/** The table rows the keyword fuzzes to, every one, those holding it as typed or by its Hangul letters first. */
+export function rankTableActions(found: Action[], keyword: string): Action[] {
   const holds = keywordHolder(keyword);
-  const ranked = [...found.filter(holds), ...found.filter(row => !holds(row))];
-  const rows = ranked.slice(0, SCOPED_ACTION_LIMIT);
-  const matcher = matcherOf(keyword);
-  if (!matcher) return rows;
-
-  // Read in the name, not the row, which says unnamed for a table without one.
-  const { tableEntities } = app.store.state.collections;
-  const hidden = ranked
-    .slice(SCOPED_ACTION_LIMIT)
-    .some(
-      ({ tableId = '' }) =>
-        matcher.find(tableEntities[tableId]?.name ?? '').length > 0
-    );
-  if (!hidden) return rows;
-
-  const count = findMatches(app.store.state, matcher, TABLE_FIELDS).length;
-  return [
-    ...rows,
-    createShowAllAction(count, { query: keyword, fields: TABLE_FIELDS }, i18n),
-  ];
+  return [...found.filter(holds), ...found.filter(row => !holds(row))];
 }
 
-/** A field a search found, and how it holds the keyword. */
-type FieldHit = { field: Omit<FindMatch, 'start' | 'end'>; hit: TextHit };
+/** A field a search found and how it holds the keyword, or one listed with no keyword yet. */
+type FieldHit = {
+  field: Omit<FindMatch, 'start' | 'end'>;
+  hit: TextHit | null;
+};
+
+type RankedHit = FieldHit & { hit: TextHit };
 
 /** Whether a table is one a column search names: any without a table part, else those whose name holds it, Hangul letters too. */
 function tableFilter(
@@ -166,9 +138,43 @@ function tableFilter(
 }
 
 /**
- * One row a field of the kinds given holding the keyword, Hangul letters too,
- * or every column or text, up to the scoped limit, past which one holding it as
- * typed hands it to Find and Replace over those kinds, without the table part.
+ * A field's row, built the first time the list draws or picks it: the range a
+ * Hangul hit lies in spells the text again, so a long list spells only the rows
+ * it shows.
+ */
+function lazyMatchAction(
+  state: RootState,
+  { field, hit }: FieldHit,
+  hangul: HangulQuery | null,
+  i18n: I18n
+): Action {
+  let built: Action | null = null;
+  const build = () =>
+    (built ??= createMatchAction(
+      state,
+      { ...field, ...(hit ? hitRange(field.text, hit, hangul) : NO_RANGE) },
+      i18n
+    ));
+
+  return {
+    icon: fieldIcon(field.field, 16),
+    get name() {
+      return build().name;
+    },
+    get keywords() {
+      return build().keywords;
+    },
+    perform: app => build().perform?.(app),
+  };
+}
+
+/** Where a row with no keyword lights nothing. */
+const NO_RANGE = { start: 0, end: 0 };
+
+/**
+ * One row for each field of the kinds given holding the keyword, Hangul letters
+ * too, or for every column or text that is not empty while there is none, the
+ * table part narrowing a column search; the list draws only the rows in view.
  */
 export function createFieldActions(
   app: AppContext,
@@ -180,57 +186,21 @@ export function createFieldActions(
   const { state } = app.store;
   const matcher = matcherOf(keyword);
   const inTable = tableFilter(state, table);
-  if (!matcher) return listFieldActions(state, fields, inTable, i18n);
-
-  const hangul = hangulQueryOf(keyword);
+  const hangul = matcher ? hangulQueryOf(keyword) : null;
   const found: FieldHit[] = [];
+
   for (const field of walkFields(state, fields)) {
     if (!inTable(field.tableId)) continue;
-
-    const hit = matchText(field.text, matcher, hangul);
-    if (!hit) continue;
-    found.push({ field, hit });
-    // Without Hangul every hit is one the panel finds, so one past the limit
-    // settles the last row; a Hangul search ranks them all before it cuts.
-    if (!hangul && found.length > SCOPED_ACTION_LIMIT) break;
+    if (matcher) {
+      const hit = matchText(field.text, matcher, hangul);
+      if (hit) found.push({ field, hit });
+    } else if (field.text || field.field === FindField.columnName) {
+      found.push({ field, hit: null });
+    }
   }
 
-  const ranked = hangul ? rankHits(found) : found;
-  const rows = ranked
-    .slice(0, SCOPED_ACTION_LIMIT)
-    .map(({ field, hit }) =>
-      createMatchAction(
-        state,
-        { ...field, ...hitRange(field.text, hit, hangul) },
-        i18n
-      )
-    );
-  if (!ranked.slice(SCOPED_ACTION_LIMIT).some(({ hit }) => hit.literal)) {
-    return rows;
-  }
-
-  const count = findMatches(state, matcher, fields).length;
-  return [
-    ...rows,
-    createShowAllAction(count, { query: keyword, fields }, i18n),
-  ];
-}
-
-/** Every column, or every text that is not empty, of the kinds given, up to the scoped limit: a scope with no keyword yet. */
-function listFieldActions(
-  state: RootState,
-  fields: FindField[],
-  inTable: (tableId: string) => boolean,
-  i18n: I18n
-): Action[] {
-  const rows: Action[] = [];
-  for (const field of walkFields(state, fields)) {
-    if (rows.length === SCOPED_ACTION_LIMIT) break;
-    if (!inTable(field.tableId)) continue;
-    if (!field.text && field.field !== FindField.columnName) continue;
-    rows.push(createMatchAction(state, { ...field, start: 0, end: 0 }, i18n));
-  }
-  return rows;
+  const ranked = hangul ? rankHits(found as RankedHit[]) : found;
+  return ranked.map(hit => lazyMatchAction(state, hit, hangul, i18n));
 }
 
 /** A prefix character drawn as a key, the icon of a row that types it. */

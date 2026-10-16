@@ -109,8 +109,11 @@ It is the same editor as [erd-editor.io](https://erd-editor.io), the
   import, export, Auto Layout, tabs, theme, language and more), or to jump to a table after `#`, a
   column after `@`, and a comment or memo after `:`; Korean also matches by its initial consonants
   (`ㅅㅇㅈ` finds 사용자)
-- **Find and replace** — `Ctrl`/`Cmd`+`F` searches table and column names, comments and memos, with
-  match case, whole word and regular expressions, and one undo takes back a Replace All
+- **Explorer** — the toolbar's Explorer button docks a tree of the tables, with their columns,
+  indexes and foreign keys, the table groups and the memos beside the canvas, and a click goes to
+  what a row stands for; `Ctrl`/`Cmd`+`F` searches it, table, column, index and group names,
+  comments and memos, with match case, whole word, regular expressions and Preserve Case, and one
+  undo takes back a Replace All
 - **Visualization** — Graph mode draws a force-directed view of how the tables relate. Flow mode
   lays them out by their relationships, lights a table you hover and the tables it relates to, and
   shows names only, keys only or all fields; **Focus on this table** in a table's right-click menu
@@ -122,7 +125,8 @@ It is the same editor as [erd-editor.io](https://erd-editor.io), the
 - **Time travel** — replay this editing session's history on the canvas and jump to any point in it,
   from the toolbar
 - **Diff viewer** — compare the diagram with another `.json` file from the canvas menu, or from
-  `setDiffValue`
+  `setDiffValue`: a tree lists what was added, changed, removed or renamed, and both panes mark it
+  on the canvas
 - **Undo / redo** — every edit, from the toolbar or `Ctrl`/`Cmd`+`Z` and `Ctrl`/`Cmd`+`Shift`+`Z`,
   in the editor's own history
 
@@ -362,8 +366,8 @@ without flags lets the browser default run and the keydown bubble. `setKeyBindin
 list it names. The defaults stop `search`, `findReplace`, `undo`, `redo`, `focusView`, zoom and
 `zenMode`, so bubble-phase listeners miss them while the editor is focused, and a host that takes
 keys first (global hotkeys, a capture listener) must let them through, or leave `$mod+KeyF` to the
-page with `setKeyBindingMap({ findReplace: [] })`. The `KeyBindingMap`, `KeyBindingName` and
-`ShortcutOption` types are exported.
+page with `setKeyBindingMap({ findReplace: [] })`; `findReplace` opens the Explorer's search. The
+`KeyBindingMap`, `KeyBindingName` and `ShortcutOption` types are exported.
 
 ## Display language
 

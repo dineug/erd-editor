@@ -16,7 +16,6 @@ import {
   measureAnchors,
   welcomeTiers,
 } from '@/components/erd/welcome-screen/welcomeLayout';
-import { isPanelShown } from '@/components/find-replace/panelLayout';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import type { IconName } from '@/components/primitives/icon/icons';
@@ -286,7 +285,6 @@ const WelcomeScreen: FC<WelcomeScreenProps> = (props, ctx) => {
     const { dir, t } = i18n.value;
     const tiers = welcomeTiers(viewport);
     const panelUp =
-      isPanelShown(store.state) ||
       Boolean(openMap[Open.themeBuilder]) ||
       Boolean(openMap[Open.localePicker]);
     const rows = state.level === 'import' ? importRows() : topRows();

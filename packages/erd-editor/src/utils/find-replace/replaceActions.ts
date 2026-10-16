@@ -1,5 +1,6 @@
 import { AnyAction } from '@dineug/r-html';
 
+import { changeIndexNameAction } from '@/engine/modules/index/atom.actions';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeTableCommentAction,
@@ -9,6 +10,7 @@ import {
   changeColumnCommentAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 
 import { FindField, FindMatch } from './findMatches';
 import { Matcher } from './matcher';
@@ -29,6 +31,10 @@ export function toFieldAction(
       return changeColumnCommentAction({ id, tableId, value });
     case FindField.memo:
       return changeMemoValueAction({ id, value });
+    case FindField.indexName:
+      return changeIndexNameAction({ id, tableId, value });
+    case FindField.tableGroupName:
+      return changeTableGroupNameAction({ id, value });
   }
 }
 

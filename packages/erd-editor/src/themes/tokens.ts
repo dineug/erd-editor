@@ -97,12 +97,19 @@ export type Theme = {
   keyFK: string;
   keyPFK: string;
 
-  diffInsertBackground: string;
-  diffDeleteBackground: string;
-  diffCrossBackground: string;
+  treeBackground: string;
+  treeRowHover: string;
+  treeRowCurrent: string;
+  treeMuted: string;
+  treeMatch: string;
+
+  explorerBackground: string;
+  explorerBorder: string;
+
   diffInsertForeground: string;
   diffDeleteForeground: string;
-  diffCrossForeground: string;
+  diffModifyForeground: string;
+  diffRenameForeground: string;
 };
 
 export const ThemeTokens: ReadonlyArray<keyof Theme> = [
@@ -202,12 +209,19 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'keyFK',
   'keyPFK',
 
-  'diffInsertBackground',
-  'diffDeleteBackground',
-  'diffCrossBackground',
+  'treeBackground',
+  'treeRowHover',
+  'treeRowCurrent',
+  'treeMuted',
+  'treeMatch',
+
+  'explorerBackground',
+  'explorerBorder',
+
   'diffInsertForeground',
   'diffDeleteForeground',
-  'diffCrossForeground',
+  'diffModifyForeground',
+  'diffRenameForeground',
 ];
 
 /** The custom property one token is published under on :host. */

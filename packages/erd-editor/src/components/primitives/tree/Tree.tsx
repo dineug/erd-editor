@@ -1,0 +1,321 @@
+import {
+  createRef,
+  DOMTemplateLiterals,
+  FC,
+  observable,
+  onMounted,
+  onUpdated,
+  ref,
+  repeat,
+} from '@dineug/r-html';
+
+import Icon from '@/components/primitives/icon/Icon';
+import { useUnmounted } from '@/hooks/useUnmounted';
+import {
+  offsetToShow,
+  VIRTUAL_OVERSCAN,
+  type VirtualRange,
+  visibleRange,
+} from '@/utils/virtualRange';
+
+import * as styles from './Tree.styles';
+import { moveFocus, type TreeRow } from './treeModel';
+
+export const TREE_ROW_HEIGHT = 22;
+export const TREE_OVERSCAN = VIRTUAL_OVERSCAN;
+const TREE_INDENT = 12;
+
+/** The keys the tree answers itself; it prevents these and passes every other. */
+const TREE_KEYS = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'Home',
+  'End',
+  'Enter',
+  ' ',
+]);
+
+let treeCount = 0;
+
+export type TreeProps<T = any> = {
+  rows: ReadonlyArray<TreeRow<T>>;
+  /** The row the keyboard is on, named to a reader by aria-activedescendant. */
+  activeId: string | null;
+  /** The row a host marks as the current one, such as the match it jumped to. */
+  currentId?: string | null;
+  /** Scrolls this row into view each time a different id arrives; a null between two arrivals of one id scrolls it again. */
+  revealId?: string | null;
+  label: string;
+  dir?: 'ltr' | 'rtl';
+  /** Read once as the tree mounts, so a scroll position kept outside comes back. */
+  getScrollTop: () => number;
+  onScroll?: (top: number) => void;
+  onToggle?: (id: string, expanded: boolean) => void;
+  onActivate?: (row: TreeRow<T>) => void;
+  onActiveChange?: (id: string) => void;
+  renderRow: (row: TreeRow<T>) => DOMTemplateLiterals;
+};
+
+/**
+ * A virtualized tree with fixed-height rows. It renders the rows in view, the
+ * overscan and the active row, answers the tree keys and leaves every policy to
+ * its host: what a row shows, what activating one does, Escape and the chords.
+ */
+const Tree: FC<TreeProps> = props => {
+  const prefix = `tree-${++treeCount}`;
+  const root = createRef<HTMLDivElement>();
+  // Only a new range renders the tree: a scroll within the overscan changes
+  // nothing a reader sees, so the offset and the height stay unobserved.
+  const view = observable<VirtualRange>({ first: 0, last: -1 });
+  const measured = { scrollTop: 0, height: 0 };
+  const { addUnsubscribe } = useUnmounted();
+
+  let revealed: string | null = null;
+  let mounted = false;
+  let leftWithWindow = false;
+
+  const domId = (id: string) => `${prefix}:${id}`;
+  const indexOf = (id: string | null | undefined) =>
+    id ? props.rows.findIndex(row => row.node.id === id) : -1;
+  // Rows that shrink below a kept offset must not draw from it for a frame.
+  const rangeNow = () => {
+    const count = props.rows.length;
+    const maxScrollTop = Math.max(0, count * TREE_ROW_HEIGHT - measured.height);
+    return visibleRange(
+      count,
+      Math.min(measured.scrollTop, maxScrollTop),
+      measured.height,
+      TREE_ROW_HEIGHT
+    );
+  };
+
+  const syncRange = () => {
+    const { first, last } = rangeNow();
+    if (first !== view.first) view.first = first;
+    if (last !== view.last) view.last = last;
+  };
+
+  const scrollTo = (top: number) => {
+    const $root = root.value;
+    if (!$root) return;
+    const before = measured.scrollTop;
+    $root.scrollTop = top;
+    // The browser may clamp it, and its scroll event comes a frame later.
+    measured.scrollTop = $root.scrollTop;
+    syncRange();
+    // Its scroll event finds the offset equal and reports nothing.
+    if (measured.scrollTop !== before) props.onScroll?.(measured.scrollTop);
+  };
+
+  const scrollToIndex = (index: number) => {
+    scrollTo(
+      offsetToShow(index, measured.scrollTop, measured.height, TREE_ROW_HEIGHT)
+    );
+  };
+
+  const applyReveal = () => {
+    const id = props.revealId ?? null;
+    if (id === null) {
+      revealed = null;
+      return;
+    }
+    if (!mounted || id === revealed) return;
+    const index = indexOf(id);
+    if (index === -1) return;
+    revealed = id;
+    scrollToIndex(index);
+  };
+
+  const handleScroll = () => {
+    const $root = root.value;
+    if (!$root || $root.scrollTop === measured.scrollTop) return;
+    measured.scrollTop = $root.scrollTop;
+    props.onScroll?.(measured.scrollTop);
+    syncRange();
+  };
+
+  const handleKeydown = (event: KeyboardEvent) => {
+    if (
+      event.isComposing ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      !TREE_KEYS.has(event.key)
+    ) {
+      return;
+    }
+    event.preventDefault();
+
+    const { rows, activeId } = props;
+    if (event.key === 'Enter' || event.key === ' ') {
+      const index = indexOf(activeId);
+      if (index !== -1) props.onActivate?.(rows[index]);
+      return;
+    }
+
+    const move = moveFocus(rows, activeId, event.key, props.dir);
+    if (!move) return;
+    if (move.type === 'toggle') {
+      props.onToggle?.(move.id, move.expanded);
+      return;
+    }
+    scrollToIndex(move.index);
+    props.onActiveChange?.(move.id);
+  };
+
+  /** A blur that leaves with the window keeps the next focus from moving the scroll. */
+  const handleBlur = () => {
+    leftWithWindow = !document.hasFocus();
+  };
+
+  /**
+   * A keyboard focus brings the active row into view, or lands on the current
+   * row or the first row wholly in view, so the reader sees where the arrows
+   * start. A press focuses the tree without it, and its click picks the row.
+   */
+  const handleFocus = () => {
+    const skipScroll = leftWithWindow;
+    leftWithWindow = false;
+    const { rows, activeId, currentId } = props;
+    if (!rows.length || !root.value?.matches(':focus-visible')) return;
+
+    const active = indexOf(activeId);
+    if (active !== -1) {
+      if (!skipScroll) scrollToIndex(active);
+      return;
+    }
+
+    const current = indexOf(currentId);
+    const index =
+      current !== -1
+        ? current
+        : Math.min(
+            rows.length - 1,
+            Math.ceil(measured.scrollTop / TREE_ROW_HEIGHT)
+          );
+    scrollToIndex(index);
+    props.onActiveChange?.(rows[index].node.id);
+  };
+
+  const handleRowClick = (row: TreeRow) => {
+    props.onActiveChange?.(row.node.id);
+    props.onActivate?.(row);
+  };
+
+  const handleTwistyClick = (event: MouseEvent, row: TreeRow) => {
+    event.stopPropagation();
+    props.onActiveChange?.(row.node.id);
+    props.onToggle?.(row.node.id, !row.expanded);
+  };
+
+  onMounted(() => {
+    const $root = root.value;
+    mounted = true;
+    measured.height = $root.clientHeight;
+    scrollTo(props.getScrollTop());
+    applyReveal();
+
+    const resizeObserver = new ResizeObserver(() => {
+      if ($root.clientHeight === measured.height) return;
+      measured.height = $root.clientHeight;
+      syncRange();
+    });
+    resizeObserver.observe($root);
+    addUnsubscribe(() => resizeObserver.disconnect());
+  });
+
+  onUpdated(applyReveal);
+
+  const renderItem = (row: TreeRow, index: number) => {
+    const { node } = row;
+    const current = node.id === props.currentId;
+
+    return (
+      <div
+        class={[
+          'tree-row',
+          styles.row,
+          { active: node.id === props.activeId, current },
+        ]}
+        id={domId(node.id)}
+        role="treeitem"
+        aria-level={row.level}
+        aria-setsize={row.setSize}
+        aria-posinset={row.posInSet}
+        prop:ariaExpanded={node.hasChildren ? String(row.expanded) : null}
+        prop:ariaCurrent={current ? 'true' : null}
+        style={{
+          height: `${TREE_ROW_HEIGHT}px`,
+          transform: `translateY(${index * TREE_ROW_HEIGHT}px)`,
+          'padding-inline-start': `${(row.level - 1) * TREE_INDENT}px`,
+        }}
+        on:click={() => handleRowClick(row)}
+      >
+        {node.hasChildren ? (
+          <span
+            class={['tree-twisty', styles.twisty, { collapsed: !row.expanded }]}
+            on:click={(event: MouseEvent) => handleTwistyClick(event, row)}
+          >
+            <Icon
+              name={row.expanded ? 'chevron-down' : 'chevron-right'}
+              size={16}
+            />
+          </span>
+        ) : (
+          <span class={styles.twisty}></span>
+        )}
+        {props.renderRow(row)}
+      </div>
+    );
+  };
+
+  return () => {
+    const { rows, activeId } = props;
+    // Read so a new range or a new reveal renders the tree; the range itself
+    // is worked out here, since rows that arrive move it before a scroll does.
+    void view.first;
+    void view.last;
+    void props.revealId;
+    const { first, last } = rangeNow();
+    const active = indexOf(activeId);
+
+    const indexes: number[] = [];
+    for (let index = first; index <= last; index++) indexes.push(index);
+    // The active row stays drawn, so aria-activedescendant names a node that is there.
+    if (active !== -1 && (active < first || active > last)) {
+      indexes.push(active);
+      indexes.sort((a, b) => a - b);
+    }
+
+    return (
+      <div
+        class={['tree', 'scrollbar', styles.root]}
+        use:ref={ref(root)}
+        role="tree"
+        tabindex={rows.length ? 0 : -1}
+        prop:dir={props.dir ?? ''}
+        aria-label={props.label}
+        aria-activedescendant={active === -1 ? '' : domId(rows[active].node.id)}
+        on:keydown={handleKeydown}
+        on:focus={handleFocus}
+        on:blur={handleBlur}
+        on:scroll={handleScroll}
+      >
+        <div
+          class={styles.space}
+          style={{ height: `${rows.length * TREE_ROW_HEIGHT}px` }}
+        >
+          {repeat(
+            indexes,
+            index => rows[index].node.id,
+            index => renderItem(rows[index], index)
+          )}
+        </div>
+      </div>
+    );
+  };
+};
+
+export default Tree;

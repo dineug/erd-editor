@@ -212,12 +212,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
 
     const { store, emitter } = app.value;
     emitter.emit(openTablePropertiesAction({ tableId: props.tableId }));
-    store.dispatch(
-      changeOpenMapAction({
-        [Open.tableProperties]: true,
-        [Open.findReplace]: false,
-      })
-    );
+    store.dispatch(changeOpenMapAction({ [Open.tableProperties]: true }));
     props.onClose();
   };
 
@@ -758,7 +753,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 onClick={handleOpenFindReplace}
                 children={
                   <ContextMenu.Menu
-                    icon={<Icon name="text-search" size={14} />}
+                    icon={<Icon name="list-tree" size={14} />}
                     name={t('common.findAndReplace')}
                     right={
                       <Kbd shortcut={keyBindingMap.findReplace[0]?.shortcut} />

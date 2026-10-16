@@ -5,10 +5,6 @@
 export const palette = {
   'palette.tab': 'Tab',
   'palette.noCommandsMatch': 'No commands match',
-  'palette.showMatches': {
-    one: 'Show {count} match in Find and Replace',
-    other: 'Show all {count} matches in Find and Replace',
-  },
   'palette.searchTables': 'Search tables for "{keyword}"',
   'palette.searchColumns': 'Search columns for "{keyword}"',
   'palette.searchText': 'Search comments & memos for "{keyword}"',
@@ -27,16 +23,15 @@ export const palette = {
   'palette.keywords.aml': 'aml azimutt markup language schema',
   'palette.keywords.image': 'image png svg vector picture clipboard',
   'palette.keywords.findReplace': 'find replace rename',
+  'palette.keywords.explorer': 'tree outline objects',
   'palette.schemaSqlStatements': 'Schema SQL: Statements',
   'palette.schemaSqlHeader': 'Schema SQL: Header',
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Options panel',
   'palette.codeGeneratorOptionsPanel': 'Code Generator: Options panel',
-  'palette.exportSchemaSql': 'Export: Schema SQL',
   'palette.groupSelectedTables': 'Group Selected Tables',
   'palette.keywords.schemaSqlStatements': 'create if not exists drop replace',
   'palette.keywords.schemaSqlHeader': 'use database search_path',
   'palette.keywords.schemaSqlOptionsPanel': 'show hide before after scripts',
   'palette.keywords.codeGeneratorOptionsPanel':
     'show hide database case save file',
-  'palette.keywords.exportSchemaSql': 'sql ddl file',
 } as const;

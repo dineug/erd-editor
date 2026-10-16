@@ -288,7 +288,7 @@ test.describe('zoom, scroll and overlays', () => {
     await erd.focusCanvas();
 
     const quickSearch = erd.host.locator('.quick-search');
-    const rows = quickSearch.locator('.scrollbar > div');
+    const rows = quickSearch.locator('.quick-search-row');
 
     await erd.press(Shortcut.search);
     await expect(quickSearch).toBeVisible();

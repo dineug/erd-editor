@@ -12,7 +12,6 @@ describe('Open', () => {
       localePicker: 'localePicker',
       diffViewer: 'diffViewer',
       timeTravel: 'timeTravel',
-      findReplace: 'findReplace',
       exportImage: 'exportImage',
       mapColumns: 'mapColumns',
     });
@@ -34,7 +33,6 @@ describe('Open', () => {
       'localePicker',
       'diffViewer',
       'timeTravel',
-      'findReplace',
       'exportImage',
       'mapColumns',
     ]);

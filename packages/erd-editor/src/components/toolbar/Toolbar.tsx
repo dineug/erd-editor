@@ -1,7 +1,10 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { isTakenOver } from '@/components/find-replace/panelLayout';
+import {
+  isExplorerPressed,
+  toggleExplorer,
+} from '@/components/explorer/explorerCommands';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { TOOLBAR_DATABASE_NAME_WIDTH } from '@/constants/layout';
@@ -14,12 +17,12 @@ import {
   changeDatabaseNameAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
-  openFindReplaceAction,
   openLocalePickerAction,
   openThemeBuilderAction,
   toggleSearchAction,
 } from '@/utils/emitter';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
+import { isTakenOver } from '@/utils/takeover';
 
 import * as styles from './Toolbar.styles';
 
@@ -66,13 +69,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     emitter.emit(toggleSearchAction());
   };
 
-  /** Shown on every tab, as opening brings the ERD tab up, so the bar never shifts. */
-  const handleFindReplace = () => {
-    const { emitter } = app.value;
-    emitter.emit(openFindReplaceAction());
+  /**
+   * Shown on every tab, as opening brings the ERD tab up, so the bar never
+   * shifts. Pressed while the Explorer is open on the ERD tab; on another tab
+   * a press only opens it there (an owner decision of 2026-10-13).
+   */
+  const handleExplorer = () => {
+    toggleExplorer(app.value.store);
   };
 
-  /** Spares the selection, and with it the ring on the panel's current match, as the chord does. */
+  /** Spares the selection, and with it the ring on a search's current match, as the chord does. */
   const keepSelection = (event: Event) => event.stopPropagation();
 
   const handleTheme = () => {
@@ -96,7 +102,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    const { settings, editor, doc } = store.state;
+    const { settings, editor } = store.state;
     const { t, dir } = i18n.value;
     const title = (name: string, keyBindingName: KeyBindingName) =>
       toShortcutTitle(keyBindingMap, name, keyBindingName);
@@ -193,16 +199,20 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           <Icon name="search" size={16} />
         </div>
         <div
-          class={[styles.menu, { disabled: isTakenOver(store.state) }]}
-          title={title(
-            props.readonly ? t('common.find') : t('common.findAndReplace'),
-            KeyBindingName.findReplace
-          )}
+          class={[
+            'toolbar-explorer',
+            styles.menu,
+            {
+              active: isExplorerPressed(store),
+              disabled: isTakenOver(store.state),
+            },
+          ]}
+          title={title(t('explorer.title'), KeyBindingName.findReplace)}
           on:mousedown={keepSelection}
           on:touchstart={keepSelection}
-          on:click={handleFindReplace}
+          on:click={handleExplorer}
         >
-          <Icon name="text-search" size={16} />
+          <Icon name="list-tree" size={16} />
         </div>
         {props.enableThemeBuilder ? (
           <div
@@ -277,9 +287,6 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
             </div>
           </>
         ) : null}
-        <div class={styles.tableCount}>
-          {t('toolbar.tableCount', { count: doc.tableIds.length })}
-        </div>
       </div>
     );
   };

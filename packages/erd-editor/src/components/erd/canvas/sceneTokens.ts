@@ -123,6 +123,9 @@ export const FOCUS_BORDER_HEIGHT = 1.5;
 /** What the ring outside a table box costs, as outline and box-shadow both do. */
 export const RING_WIDTH = 1;
 
+/** The outline a diff pane draws round an entity added, removed or only moved. */
+export const DIFF_OUTLINE_WIDTH = 2;
+
 /**
  * The drop shadow a view card sits on, deeper than any a document box casts.
  * The alpha is the shadow's own, since the minimap shadow token it borrows is

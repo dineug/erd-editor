@@ -10,6 +10,9 @@ import {
   transitionTo,
 } from '@/components/erd/canvas/highlightTransition';
 import { mixColor } from '@/components/erd/canvas/mixColor';
+import { diffOutline } from '@/components/erd/diff-viewer/diff';
+import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
+import { isRelationshipHighlighted } from '@/components/erd/relationshipHighlight';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { RELATIONSHIP_HIT_STROKE_WIDTH } from '@/constants/layout';
@@ -150,6 +153,7 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const diffMapRef = useDiffMap(ctx);
   const state = observable({ hover: false });
   // The canvas container a pointer resting on this connector titles.
   let titled: HTMLElement | null = null;
@@ -216,11 +220,14 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
     const relationshipPath = getRelationshipPath(relationship, source);
     const { path, line } = relationshipPath;
     const lines = path.path.d();
-    // Both are read, never short-circuited: an unread one is an untracked one,
-    // and the connector would then miss the change that flipped it.
-    const mapHover = Boolean(editor.hoverRelationshipMap[relationship.id]);
-    const hover = state.hover || mapHover;
     const view = source !== 'document';
+    // Each is read, never short-circuited: an unread one is an untracked one,
+    // and the connector would then miss the change that flipped it. A view
+    // lights its own connectors, so it never reads a jump's light.
+    const mapHover = Boolean(editor.hoverRelationshipMap[relationship.id]);
+    const jumped =
+      !view && isRelationshipHighlighted(editor.id, relationship.id);
+    const hover = state.hover || mapHover || jumped;
     // A view has one neutral for every connector, since the reference draws no
     // distinction by kind. The document keeps the two colours and the dash the
     // identifying bit has always picked between.
@@ -229,7 +236,11 @@ const Relationship: FC<RelationshipProps> = (props, ctx) => {
       : relationship.identification
         ? theme.keyPFK
         : theme.keyFK;
-    const unlit = hover ? theme.relationshipHover : base;
+    // A diff pane draws an added, removed or changed foreign key in its colour,
+    // and a hover or a jump's light wins over it.
+    const unlit = hover
+      ? theme.relationshipHover
+      : (diffOutline(theme, diffMapRef.value?.get(relationship.id)) ?? base);
 
     // A view lights the connectors that reach what it lights, and the colour
     // walks between the two rather than jumping. The document has no light of

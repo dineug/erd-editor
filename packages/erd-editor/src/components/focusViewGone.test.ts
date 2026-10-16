@@ -80,7 +80,6 @@ describe('the state the overlay stood on is gone', () => {
       'localePicker',
       'diffViewer',
       'timeTravel',
-      'findReplace',
       'exportImage',
       'mapColumns',
     ]);

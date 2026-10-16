@@ -201,7 +201,13 @@ export const TABLE_PROPERTIES_BODY_PADDING = 12;
 /** How many rows the Table Properties index order shows before it scrolls the rest. */
 export const INDEX_ORDER_MAX_ROWS = 3;
 
-export const DIFF_TREE_WIDTH = 200;
+/** The Explorer's width as it first opens, and the width a double press on its edge gives back. */
+export const EXPLORER_WIDTH = 260;
+/** The narrowest and the widest a drag on the Explorer's edge sets it; narrower than the least, it hides. */
+export const EXPLORER_MIN_WIDTH = 200;
+export const EXPLORER_MAX_WIDTH = 480;
+/** The least of the canvas the Explorer leaves beside it, whatever its width asks. */
+export const EXPLORER_CANVAS_MIN_WIDTH = 320;
 
 /** The width of the options panel beside the code, on the Schema SQL and Code Generator tabs. */
 export const SCHEMA_SQL_PANEL_WIDTH = 300;

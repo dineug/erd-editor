@@ -1,25 +1,31 @@
 import { toJson } from '@dineug/erd-editor-schema';
-import { FC, onMounted, Ref, watch } from '@dineug/r-html';
+import { FC, observable, onMounted, Ref, watch } from '@dineug/r-html';
 
 import {
   AppContext,
   appDestroy,
   createAppContext,
 } from '@/components/appContext';
+import DiffTree from '@/components/erd/diff-viewer/diff-tree/DiffTree';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
-import TreeViewer from '@/components/erd/diff-viewer/tree-viewer/TreeViewer';
+import { dropRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
-import { DIFF_TREE_WIDTH } from '@/constants/layout';
+import {
+  EXPLORER_MAX_WIDTH,
+  EXPLORER_MIN_WIDTH,
+  EXPLORER_WIDTH,
+} from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import { diffDocuments } from '@/utils/diff';
 import { openToastAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { closePromise } from '@/utils/promise';
 
-import { Diff, diffState } from './diff';
+import { Diff } from './diff';
 import * as styles from './DiffViewer.styles';
 
 export type DiffViewerProps = {
@@ -39,6 +45,8 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
   );
   const app = createAppContext({ toWidth: originApp.toWidth }, { getReadonly });
   const { addUnsubscribe } = useUnmounted();
+  // The tree's width lives as long as the diff, so the next diff opens at 260.
+  const tree = observable({ width: EXPLORER_WIDTH });
 
   const getViewport = () => {
     const { store } = originApp;
@@ -46,9 +54,24 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
       editor: { viewport },
     } = store.state;
     return {
-      width: (viewport.width - DIFF_TREE_WIDTH) / 2 - BORDER,
+      width: (viewport.width - tree.width) / 2 - BORDER,
       height: viewport.height,
     };
+  };
+
+  const applyViewport = () => {
+    const viewport = getViewport();
+    prevApp.store.dispatch(changeViewportAction(viewport));
+    app.store.dispatch(changeViewportAction(viewport));
+  };
+
+  const handleResize = (width: number) => {
+    const next = Math.round(
+      Math.min(EXPLORER_MAX_WIDTH, Math.max(EXPLORER_MIN_WIDTH, width))
+    );
+    if (tree.width === next) return;
+    tree.width = next;
+    applyViewport();
   };
 
   // The pane is measured before either document lands in it, so a load pulls
@@ -62,10 +85,11 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
     initialLoadJsonAction$(toJson(originApp.store.state))
   );
 
-  const [prevDiffMap, diffMap] = diffState(
-    prevApp.store.state,
-    app.store.state
-  );
+  const {
+    entries,
+    prev: prevDiffMap,
+    next: diffMap,
+  } = diffDocuments(prevApp.store.state, app.store.state);
 
   const [close, onClose] = closePromise();
 
@@ -97,12 +121,12 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
       originApp.shortcut$.subscribe(({ type }) => {
         type === KeyBindingName.stop && handleClose();
       }),
-      watch(originApp.store.state.editor.viewport).subscribe(() => {
-        const viewport = getViewport();
-        prevApp.store.dispatch(changeViewportAction(viewport));
-        app.store.dispatch(changeViewportAction(viewport));
-      }),
+      watch(originApp.store.state.editor.viewport).subscribe(applyViewport),
       () => {
+        // A pane's light is kept by its editor id, which the element's own
+        // teardown never reaches, so the diff puts out both as it goes.
+        dropRelationshipHighlight(prevApp.store.state.editor.id);
+        dropRelationshipHighlight(app.store.state.editor.id);
         appDestroy(prevApp);
         appDestroy(app);
       }
@@ -112,11 +136,12 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
   return () => (
     <div class={styles.root} prop:dir="ltr">
       <div class={styles.container}>
-        <TreeViewer
+        <DiffTree
           prevApp={prevApp}
-          prevDiffMap={prevDiffMap}
           app={app}
-          diffMap={diffMap}
+          entries={entries}
+          width={tree.width}
+          onResize={handleResize}
         />
         <div class={styles.viewport}>
           <ErdViewer app={prevApp} diff={Diff.delete} diffMap={prevDiffMap} />

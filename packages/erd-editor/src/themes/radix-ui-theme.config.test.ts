@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(81);
+    expect(entries).toHaveLength(86);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -70,12 +70,10 @@ describe('ThemeConfig', () => {
       'keyPK',
       'keyFK',
       'keyPFK',
-      'diffInsertBackground',
-      'diffDeleteBackground',
-      'diffCrossBackground',
       'diffInsertForeground',
       'diffDeleteForeground',
-      'diffCrossForeground',
+      'diffModifyForeground',
+      'diffRenameForeground',
     ]);
 
     customs.forEach(([key, value]) => {
@@ -170,18 +168,16 @@ describe('ThemeConfig', () => {
     expect(ThemeConfig.schemaSqlWarningForeground).toBe('custom-red--11');
   });
 
-  it('pairs each diff background at step 4 with a foreground at step 11', () => {
-    expect(ThemeConfig.diffInsertBackground).toBe('custom-green--4');
-    expect(ThemeConfig.diffDeleteBackground).toBe('custom-red--4');
-    expect(ThemeConfig.diffCrossBackground).toBe('custom-blue--4');
+  it('gives each kind of change a step 11 colour: added green, removed red, changed amber, renamed blue', () => {
     expect(ThemeConfig.diffInsertForeground).toBe('custom-green--11');
     expect(ThemeConfig.diffDeleteForeground).toBe('custom-red--11');
-    expect(ThemeConfig.diffCrossForeground).toBe('custom-blue--11');
+    expect(ThemeConfig.diffModifyForeground).toBe('custom-amber--11');
+    expect(ThemeConfig.diffRenameForeground).toBe('custom-blue--11');
   });
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys and the visualization strokes only', () => {
+  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes and the changed amber only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
@@ -198,6 +194,7 @@ describe('LightThemeConfig', () => {
       visualizationLink: 'gray-8',
       visualizationColumn: 'gray-9',
       visualizationRelationship: 'gray-9',
+      diffModifyForeground: 'override-#895503',
     });
   });
 

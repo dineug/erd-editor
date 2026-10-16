@@ -29,14 +29,11 @@ import {
 import { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
 import { hangulFormsOf } from '@/components/quick-search/hangul';
+import { PALETTE_ROW_HEIGHT } from '@/components/quick-search/paletteList';
 import QuickSearch, {
   type QuickSearchProps,
 } from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
-import {
-  SCOPED_ACTION_LIMIT,
-  TEXT_FIELDS,
-} from '@/components/quick-search/scopedActions';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import {
@@ -58,7 +55,7 @@ import {
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import type { LocaleOption } from '@/i18n/locales';
 import { createI18n, type I18n } from '@/i18n/translate';
-import { openFindReplaceAction, toggleSearchAction } from '@/utils/emitter';
+import { toggleSearchAction } from '@/utils/emitter';
 import { InternalEventType } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -70,7 +67,6 @@ let app: AppContext;
 let mounted: Mounted | null = null;
 let focusEvents = 0;
 let openedFindReplace = 0;
-let handedOver: unknown[] = [];
 
 const countFocusEvent = () => {
   focusEvents++;
@@ -89,6 +85,25 @@ const rowNames = () =>
 
 const input = () =>
   mounted?.container.querySelector('input') as HTMLInputElement;
+
+/** Scrolls the list to its end, as a reader does to reach the last rows, which the list draws only once in view. */
+const scrollToEnd = async () => {
+  const list = mounted?.container.querySelector<HTMLElement>(`.${styles.list}`);
+  if (!list) return;
+  list.scrollTop = rowCount() * PALETTE_ROW_HEIGHT;
+  list.dispatchEvent(new Event('scroll'));
+  await flush();
+};
+
+/** How many rows the list holds, drawn or not, read off the height it lays them out in. */
+const rowCount = () => {
+  const space = mounted?.container.querySelector<HTMLElement>(
+    `.${styles.space}`
+  );
+  return Math.round(
+    parseFloat(space?.style.height ?? '0') / PALETTE_ROW_HEIGHT
+  );
+};
 
 const selectedIndex = () =>
   rows().findIndex(row => row.classList.contains('selected'));
@@ -133,11 +148,9 @@ async function setup(canvasType: string = CanvasType.ERD) {
   app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
   focusEvents = 0;
   openedFindReplace = 0;
-  handedOver = [];
   app.emitter.on({
-    openFindReplace: action => {
+    openFindReplace: () => {
       openedFindReplace++;
-      handedOver.push(action);
     },
   });
   document.body.addEventListener(InternalEventType.focus, countFocusEvent);
@@ -182,8 +195,8 @@ describe('QuickSearch', () => {
       'One Only',
       'One N',
       'Auto Layout',
-      'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
@@ -282,13 +295,14 @@ describe('QuickSearch', () => {
     expect(isOpen()).toBe(true);
   });
 
-  it('renders an icon, keyword column and shortcut only when the action has them', async () => {
+  it('renders an icon, keyword column and shortcut only when the action has them, the icon slot always', async () => {
     await open();
     const [tab] = rows();
     const newTable = rows()[5];
     const zeroOne = rows()[8];
 
-    expect(tab.querySelector(`.${styles.icon}`)).toBeNull();
+    // The slot stays empty, so the name starts in line with the others.
+    expect(tab.querySelector(`.${styles.icon}`)?.childElementCount).toBe(0);
     expect(tab.querySelector(`.${styles.keyword}`)).toBeNull();
     expect(tab.querySelector('.kbd')).toBeNull();
 
@@ -514,20 +528,12 @@ describe('QuickSearch keyboard navigation', () => {
       changeCanvasTypeAction({ value: CanvasType.settings })
     );
     await flush();
-    expect(rowNames()).toEqual([
-      'Tab',
-      'Export: Schema SQL',
-      'Find and Replace',
-    ]);
+    expect(rowNames()).toEqual(['Tab', 'Find and Replace', 'Toggle Explorer']);
 
     await keydown('Enter');
 
     expect(isOpen()).toBe(true);
-    expect(rowNames()).toEqual([
-      'Tab',
-      'Export: Schema SQL',
-      'Find and Replace',
-    ]);
+    expect(rowNames()).toEqual(['Tab', 'Find and Replace', 'Toggle Explorer']);
   });
 });
 
@@ -708,7 +714,6 @@ describe('QuickSearch column, comment and memo matches', () => {
     await click(rows()[index]);
 
     expect(isOpen()).toBe(false);
-    expect(app.store.state.editor.openMap[Open.findReplace]).toBeFalsy();
     expect(openedFindReplace).toBe(1);
   });
 });
@@ -921,8 +926,8 @@ describe('QuickSearch with no command matching', () => {
       'One Only',
       'One N',
       'Auto Layout',
-      'Export: Schema SQL',
       'Find and Replace',
+      'Toggle Explorer',
     ]);
   });
 
@@ -1110,7 +1115,7 @@ describe('QuickSearch prefixes', () => {
     await type('@em');
     expect(rowNames()).toEqual(['email']);
     expect(scopeLabel()).toBe('Columns');
-    expect(iconOf(rows()[0])).toBe('columns-2');
+    expect(iconOf(rows()[0])).toBe('list');
 
     await type('@users.');
     expect(rowNames()).toEqual(['id', 'email']);
@@ -1145,26 +1150,26 @@ describe('QuickSearch prefixes', () => {
     expect(highlighted(rows()[0])).toEqual(['user id']);
   });
 
-  it('hands a scoped search to Find and Replace with its scopes set', async () => {
-    for (let index = 0; index <= SCOPED_ACTION_LIMIT; index++) {
+  it('lists every match however many, drawing only the rows in view, the last once scrolled to', async () => {
+    const memos = 250;
+    for (let index = 0; index < memos; index++) {
       app.store.dispatchSync(
         addMemoAction({ id: `m${index}`, ui: { x: 0, y: 0, zIndex: 1 } }),
-        changeMemoValueAction({ id: `m${index}`, value: 'many user' })
+        changeMemoValueAction({ id: `m${index}`, value: `user note ${index}` })
       );
     }
     await open();
     await type(': user');
-    const last = rows().at(-1) as HTMLDivElement;
-    expect(rowNames().at(-1)).toBe(
-      `Show all ${SCOPED_ACTION_LIMIT + 4} matches in Find and Replace`
-    );
 
-    await click(last);
+    // The seed's two comments that hold it, then every memo.
+    expect(rowCount()).toBe(memos + 2);
+    expect(rows().length).toBeLessThan(30);
+    expect(rowNames()).not.toContain(`user note ${memos - 1}`);
 
-    expect(isOpen()).toBe(false);
-    expect(handedOver).toEqual([
-      openFindReplaceAction({ query: 'user', fields: TEXT_FIELDS }),
-    ]);
+    await scrollToEnd();
+
+    expect(rows().length).toBeLessThan(30);
+    expect(rowNames().at(-1)).toBe(`user note ${memos - 1}`);
   });
 
   it('lists the prefixes after ?, and a chosen one is typed in with the palette left open', async () => {
@@ -1212,11 +1217,7 @@ describe('QuickSearch prefixes', () => {
       changeCanvasTypeAction({ value: CanvasType.settings })
     );
     await open();
-    expect(rowNames()).toEqual([
-      'Tab',
-      'Export: Schema SQL',
-      'Find and Replace',
-    ]);
+    expect(rowNames()).toEqual(['Tab', 'Find and Replace', 'Toggle Explorer']);
 
     await type('#');
     expect(rowNames()).toEqual(['orders', 'users']);
@@ -1420,11 +1421,16 @@ describe('QuickSearch preferences and language', () => {
     await flush();
   };
 
-  const rowNamed = (name: string) => {
-    const row = rows().find(
+  const findRow = (name: string) =>
+    rows().find(
       item =>
         item.querySelector(`.${styles.name}`)?.textContent?.trim() === name
     );
+
+  /** A row by its name, the list scrolled to its end first where the row is past what it draws. */
+  const rowNamed = async (name: string) => {
+    if (!findRow(name)) await scrollToEnd();
+    const row = findRow(name);
     if (!row) throw new Error(`row not found: ${name}`);
     return row;
   };
@@ -1450,6 +1456,7 @@ describe('QuickSearch preferences and language', () => {
     await open();
     await remount(null, { appearance: 'dark', locale: 'ko-KR' });
     await open();
+    await scrollToEnd();
 
     expect(rowNames().slice(-2)).toEqual(['Theme', 'Display Language']);
   });
@@ -1458,49 +1465,48 @@ describe('QuickSearch preferences and language', () => {
     await remount(null, { appearance: 'dark', locale: 'ko-KR' });
     await open();
 
-    await click(rowNamed('Theme'));
+    await click(await rowNamed('Theme'));
     expect(rowNames()).toEqual(['System', 'Light', 'Dark']);
     expect(checkedNames()).toEqual(['Dark']);
 
     await open();
     await open();
-    await click(rowNamed('Display Language'));
-    expect(rows()).toHaveLength(26);
+    await click(await rowNamed('Display Language'));
+    expect(rowCount()).toBe(26);
     expect(checkedNames()).toEqual(['한국어']);
   });
 
   it('opens a submenu on its option in force, scrolled to it, so Enter keeps that option', async () => {
-    const scrolled: string[] = [];
-    const scroll = vi
-      .spyOn(Element.prototype, 'scrollIntoView')
-      .mockImplementation(function (this: Element) {
-        scrolled.push(this.textContent?.trim() ?? '');
-      });
-    try {
-      await remount(null, { appearance: 'dark', locale: 'ko-KR' });
-      await open();
+    await remount(null, { appearance: 'dark', locale: 'ko-KR' });
+    await open();
 
-      await click(rowNamed('Theme'));
-      expect(rowNames()[selectedIndex()]).toBe('Dark');
+    await click(await rowNamed('Theme'));
+    expect(rowNames()[selectedIndex()]).toBe('Dark');
 
-      await open();
-      await open();
-      await click(rowNamed('Display Language'));
-      expect(rowNames()[selectedIndex()]).toBe('한국어');
-      expect(scrolled.at(-1)).toBe('한국어');
+    await open();
+    await open();
+    await click(await rowNamed('Display Language'));
+    const selected = rows()[selectedIndex()];
+    expect(rowNames()[selectedIndex()]).toBe('한국어');
+    // The row stands whole inside the list's view, scrolled to it.
+    const list = mounted!.container.querySelector<HTMLElement>(
+      `.${styles.list}`
+    )!;
+    const top = parseFloat(selected.style.transform.replace(/[^\d.]/g, ''));
+    expect(top).toBeGreaterThanOrEqual(list.scrollTop);
+    expect(top + PALETTE_ROW_HEIGHT).toBeLessThanOrEqual(
+      list.scrollTop + parseFloat(list.style.height)
+    );
 
-      await keydown('ArrowUp');
-      expect(selectedIndex()).toBe(rowNames().indexOf('한국어') - 1);
-    } finally {
-      scroll.mockRestore();
-    }
+    await keydown('ArrowUp');
+    expect(selectedIndex()).toBe(rowNames().indexOf('한국어') - 1);
   });
 
   it('opens a submenu with no option in force on no row', async () => {
     await remount(null, { appearance: 'dark' });
     await open();
 
-    await click(rowNamed('Tab'));
+    await click(await rowNamed('Tab'));
 
     expect(selectedIndex()).toBe(-1);
   });
@@ -1516,7 +1522,7 @@ describe('QuickSearch preferences and language', () => {
     expect(rowNames()[0]).toBe('de:Tab');
     expect(input().getAttribute('placeholder')).toBe('de:Search');
 
-    await click(rowNamed('de:Theme'));
+    await click(await rowNamed('de:Theme'));
     Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
     await flush();
 
@@ -1529,7 +1535,7 @@ describe('QuickSearch preferences and language', () => {
     const i18n = createTestI18n('en');
     await remount(i18n, { appearance: 'dark', locale: 'system' });
     await open();
-    await click(rowNamed('Display Language'));
+    await click(await rowNamed('Display Language'));
     await type('deutsch');
     const found = rowNames();
     expect(found[0]).toBe('Deutsch');
@@ -1554,7 +1560,7 @@ describe('QuickSearch preferences and language', () => {
   it('moves its check when the host changes an option in force while it is open', async () => {
     await remount(null, { appearance: 'dark', locale: 'system' });
     await open();
-    await click(rowNamed('Display Language'));
+    await click(await rowNamed('Display Language'));
     expect(checkedNames()).toEqual(['System']);
 
     await rerender({ appearance: 'dark', locale: 'ja-JP' });
@@ -1566,7 +1572,7 @@ describe('QuickSearch preferences and language', () => {
   it('goes back to the top level when the host takes away the submenu shown', async () => {
     await remount(null, { appearance: 'dark', locale: 'system' });
     await open();
-    await click(rowNamed('Theme'));
+    await click(await rowNamed('Theme'));
 
     await rerender({ locale: 'system' });
 
@@ -1579,11 +1585,11 @@ describe('QuickSearch preferences and language', () => {
   it('keeps the submenu shown when the host takes away a row before it', async () => {
     await remount(null, { appearance: 'dark', locale: 'system' });
     await open();
-    await click(rowNamed('Display Language'));
+    await click(await rowNamed('Display Language'));
 
     await rerender({ locale: 'ja-JP' });
 
-    expect(rows()).toHaveLength(26);
+    expect(rowCount()).toBe(26);
     expect(checkedNames()).toEqual(['日本語']);
     expect(rowNames()[selectedIndex()]).toBe('日本語');
   });
@@ -1620,14 +1626,14 @@ describe('QuickSearch preferences and language', () => {
     await remount(null, { appearance: 'system', locale });
 
     await open();
-    await click(rowNamed('Theme'));
-    await click(rowNamed('Light'));
+    await click(await rowNamed('Theme'));
+    await click(await rowNamed('Light'));
     expect(isOpen()).toBe(false);
 
     await open();
-    await click(rowNamed('Display Language'));
+    await click(await rowNamed('Display Language'));
     await type('kor');
-    await click(rowNamed('한국어'));
+    await click(await rowNamed('한국어'));
 
     expect(isOpen()).toBe(false);
     expect(picked).toEqual([{ appearance: 'light' }, { locale: 'ko-KR' }]);

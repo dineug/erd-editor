@@ -144,7 +144,6 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
             <ContextMenu.Item
               children={
                 <ContextMenu.Menu
-                  icon={<Icon name="case-sensitive" size={14} />}
                   name={t('common.tableNameCase')}
                   right={chevronRightIcon}
                 />
@@ -172,7 +171,6 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
             <ContextMenu.Item
               children={
                 <ContextMenu.Menu
-                  icon={<Icon name="case-sensitive" size={14} />}
                   name={t('common.columnNameCase')}
                   right={chevronRightIcon}
                 />
@@ -228,7 +226,7 @@ const GeneratorCodeContextMenu: FC<GeneratorCodeContextMenuProps> = (
                   children={
                     <ContextMenu.Menu
                       icon={<Icon name="download" size={14} />}
-                      name={t('code.saveFileMenu')}
+                      name={t('code.saveFile')}
                     />
                   }
                 />

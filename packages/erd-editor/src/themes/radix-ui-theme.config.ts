@@ -104,12 +104,26 @@ export const ThemeConfig: Theme = {
   keyFK: `custom-ruby--9`,
   keyPFK: `custom-cyan--9`,
 
-  diffInsertBackground: `custom-green--4`,
-  diffDeleteBackground: `custom-red--4`,
-  diffCrossBackground: `custom-blue--4`,
+  // The tree the Explorer and the diff viewer share: gray-1 under it, where
+  // its muted text and status letters keep 4.5:1, the keyboard's row filled as
+  // the pointer's is.
+  treeBackground: 'gray-1',
+  treeRowHover: 'gray-3',
+  treeRowCurrent: 'accent-4',
+  treeMuted: 'gray-11',
+  treeMatch: 'accent-5',
+
+  // The Explorer's panel; its key glyphs take the table's key colours.
+  explorerBackground: 'gray-1',
+  explorerBorder: 'gray-6',
+
+  // A diff's status letters and the canvas text and outlines it marks: added,
+  // removed, changed and renamed, each at step 11, which keeps 4.5:1 on the
+  // tree and the table body in either appearance.
   diffInsertForeground: `custom-green--11`,
   diffDeleteForeground: `custom-red--11`,
-  diffCrossForeground: `custom-blue--11`,
+  diffModifyForeground: `custom-amber--11`,
+  diffRenameForeground: `custom-blue--11`,
 } as const;
 
 /**
@@ -145,4 +159,7 @@ export const LightThemeConfig: Partial<Theme> = {
   visualizationLink: 'gray-8',
   visualizationColumn: 'gray-9',
   visualizationRelationship: 'gray-9',
+  // Amber step 11 reads under 4.5:1 on a light gray-1, so a changed entry
+  // takes the darker amber an editor's light theme marks a change with.
+  diffModifyForeground: 'override-#895503',
 };

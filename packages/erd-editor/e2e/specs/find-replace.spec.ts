@@ -38,12 +38,31 @@ const schema = () =>
     memos: [{ id: 'note', value: 'Rename user to member', x: 520, y: 560 }],
   });
 
-const panelOf = (erd: ErdEditorPage) => erd.host.locator('.find-replace');
+const panelOf = (erd: ErdEditorPage) => erd.host.locator('.explorer');
 const countOf = (erd: ErdEditorPage) => panelOf(erd).locator('.find-count');
+const findInputOf = (erd: ErdEditorPage) => panelOf(erd).locator('.find-input');
 const scopeOf = (erd: ErdEditorPage, field: string) =>
   panelOf(erd).locator(`.find-scope[data-field="${field}"]`);
 const pressedScopesOf = (erd: ErdEditorPage) =>
   panelOf(erd).locator('.find-scope[aria-pressed="true"]');
+const rowOf = (erd: ErdEditorPage, nodeId: string) =>
+  panelOf(erd).locator(`[role="treeitem"][id$=":${nodeId}"]`);
+
+/** Unfolds the seven scopes past the three dots, where they were folded. */
+async function showScopes(erd: ErdEditorPage) {
+  const toggle = panelOf(erd).locator('.find-scopes-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') {
+    await toggle.click();
+  }
+}
+
+/** Unfolds the Replace row, folded to begin with. */
+async function showReplace(erd: ErdEditorPage) {
+  const toggle = panelOf(erd).locator('.explorer-replace-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') {
+    await toggle.click();
+  }
+}
 
 /** Every change event the host hears from here on, counted on the page. */
 async function countChanges(page: Page) {
@@ -88,7 +107,7 @@ async function attachPeer(page: Page) {
 async function openFind(erd: ErdEditorPage, query: string) {
   await erd.focusHost();
   await erd.press(Shortcut.findReplace);
-  await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+  await expect(findInputOf(erd)).toBeFocused();
   await erd.page.keyboard.type(query);
 }
 
@@ -124,7 +143,7 @@ async function drawnRange(
 }
 
 test.describe('Find and Replace', () => {
-  test('walks the matches on the canvas, typing nothing into it', async ({
+  test('walks the matches on the canvas from the Explorer, typing nothing into it, and Escape hands the keyboard back with the panel open', async ({
     erd,
   }) => {
     await erd.seed(schema());
@@ -135,13 +154,18 @@ test.describe('Find and Replace', () => {
     await erd.press('Enter');
 
     await expect(countOf(erd)).toHaveText('1 of 2');
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    await expect(rowOf(erd, 'c:orders_user_id')).toHaveAttribute(
+      'aria-current',
+      'true'
+    );
+    await expect(findInputOf(erd)).toBeFocused();
     expect(await erd.tableIds()).toEqual(['users', 'orders']);
     await expect(erd.editInput()).toHaveCount(0);
 
     await erd.press('Escape');
 
-    await expect(panelOf(erd)).toHaveCount(0);
+    await expect(panelOf(erd)).toBeVisible();
+    await expect(findInputOf(erd)).not.toBeFocused();
     await erd.expectKeyboardFocusInside();
   });
 
@@ -150,12 +174,16 @@ test.describe('Find and Replace', () => {
   }) => {
     await erd.seed(schema());
     await openFind(erd, 'user');
+    await showScopes(erd);
 
     await expect(pressedScopesOf(erd)).toHaveText([
       'Table names',
       'Column names',
+      'Index names',
+      'Table group names',
     ]);
     await expect(countOf(erd)).toHaveText('2 matches');
+    await showReplace(erd);
     await panelOf(erd).locator('.replace-input').fill('member');
     await panelOf(erd).locator('.find-replace-all').click();
 
@@ -171,20 +199,25 @@ test.describe('Find and Replace', () => {
     expect(collections.tableColumnEntities.users_id.comment).toBe('user id');
     expect(collections.memoEntities.note.value).toBe('Rename user to member');
 
-    // A scope set stays for as long as the element lives.
+    // A scope set stays for as long as the element lives, across the panel
+    // the chord closes and opens again.
     await scopeOf(erd, 'memo').click();
     await erd.press('Escape');
     await erd.focusHost();
+    await erd.press(Shortcut.findReplace);
+    await expect(panelOf(erd)).toHaveCount(0);
     await erd.press(Shortcut.findReplace);
 
     await expect(pressedScopesOf(erd)).toHaveText([
       'Table names',
       'Column names',
       'Memos',
+      'Index names',
+      'Table group names',
     ]);
   });
 
-  test('takes its chord from the canvas, its own field, the palette and a cell editor, no page find opening', async ({
+  test('takes its chord from the canvas, its own field, the palette and a cell editor, toggling the panel, no page find opening', async ({
     erd,
     page,
   }) => {
@@ -206,13 +239,18 @@ test.describe('Find and Replace', () => {
         )
       );
     const palette = erd.host.locator('.quick-search');
-    const findInput = panelOf(erd).locator('.find-input');
+    const findInput = findInputOf(erd);
 
     await openFind(erd, 'user');
     await erd.press('Enter');
     await expect(countOf(erd)).toHaveText('1 of 2');
 
-    // Pressed again in its own field it stays open, the query selected.
+    // Pressed again it closes the panel, as the toolbar button does, and
+    // pressed once more it opens it with the query selected.
+    await erd.press(Shortcut.findReplace);
+    await expect(panelOf(erd)).toHaveCount(0);
+    // The panel hands the keyboard back as it goes, on the next tick.
+    await erd.expectKeyboardFocusInside();
     await erd.press(Shortcut.findReplace);
     await expect(panelOf(erd)).toHaveCount(1);
     await expect(findInput).toBeFocused();
@@ -222,7 +260,6 @@ test.describe('Find and Replace', () => {
         input.selectionEnd,
       ])
     ).toEqual([0, 4]);
-    await expect(countOf(erd)).toHaveText('1 of 2');
 
     // The palette gives way to it, as its own Find and Replace row does.
     await erd.press(Shortcut.search);
@@ -235,18 +272,18 @@ test.describe('Find and Replace', () => {
 
     // A cell editor keeps it, as it keeps the palette's chord.
     await erd.press('Escape');
-    await expect(panelOf(erd)).toHaveCount(0);
+    await expect(findInput).not.toBeFocused();
     const cell = erd.cell(erd.columnEl('users_email'), 'columnName');
     await cell.dblclick();
     await expect(erd.editInput(cell)).toBeFocused();
     await erd.press(Shortcut.findReplace);
     await expect(erd.editInput(cell)).toBeFocused();
-    await expect(panelOf(erd)).toHaveCount(0);
+    await expect(findInput).not.toBeFocused();
 
-    expect(await prevented()).toEqual([true, true, true, true]);
+    expect(await prevented()).toEqual([true, true, true, true, true]);
   });
 
-  test('takes its chord on every other tab too, bringing the ERD tab up, no page find opening', async ({
+  test('takes its chord on every other tab too, bringing the ERD tab up with the Explorer, no page find opening', async ({
     erd,
     page,
   }) => {
@@ -267,7 +304,7 @@ test.describe('Find and Replace', () => {
           event => event.defaultPrevented
         )
       );
-    const findInput = panelOf(erd).locator('.find-input');
+    const findInput = findInputOf(erd);
 
     for (const tab of [
       'Visualization',
@@ -277,16 +314,29 @@ test.describe('Find and Replace', () => {
     ]) {
       await erd.toolbarButton(tab).click();
       expect((await erd.settings()).canvasType).not.toBe('ERD');
+      await expect(panelOf(erd)).toHaveCount(0);
       await erd.focusHost();
       await erd.press(Shortcut.findReplace);
 
       expect((await erd.settings()).canvasType).toBe('ERD');
       await expect(findInput).toBeFocused();
-      await erd.press('Escape');
-      await expect(panelOf(erd)).toHaveCount(0);
     }
     // Prevented, so a browser opens no find bar over any of them.
     expect(await prevented()).toEqual([true, true, true, true]);
+  });
+
+  test('shows the Explorer on its chord under zen mode, zen left on', async ({
+    erd,
+  }) => {
+    await erd.seed(schema());
+    await erd.focusHost();
+    await erd.press(Shortcut.zenMode);
+    await expect(erd.toolbarButton('Undo')).toHaveCount(0);
+
+    await erd.press(Shortcut.findReplace);
+
+    await expect(findInputOf(erd)).toBeFocused();
+    await expect(erd.toolbarButton('Undo')).toHaveCount(0);
   });
 
   test('leaves its chord to the page find under time travel, and takes it once that closes', async ({
@@ -324,15 +374,16 @@ test.describe('Find and Replace', () => {
     await erd.focusHost();
     await erd.press(Shortcut.findReplace);
 
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    await expect(findInputOf(erd)).toBeFocused();
     expect(await heard()).toEqual([false]);
   });
 
-  test('opens from its toolbar button on any tab, which stays put and greys out under time travel', async ({
+  test('toggles the Explorer from the toolbar button where Find stood, on any tab, greyed out under time travel', async ({
     erd,
   }) => {
     await erd.seed(schema());
-    const button = erd.toolbarButton('Find and Replace');
+    const button = erd.toolbarButton('Explorer');
+    const explorer = erd.host.locator('.explorer');
 
     // An edit, so time travel has a history to open on.
     await erd.focusHost();
@@ -342,7 +393,7 @@ test.describe('Find and Replace', () => {
 
     await expect(button).toHaveClass(/\bdisabled\b/);
     await button.click();
-    await expect(panelOf(erd)).toHaveCount(0);
+    await expect(explorer).toHaveCount(0);
 
     await erd.press('Escape');
     await expect(erd.toolbarButton('Undo')).toHaveCount(1);
@@ -354,15 +405,12 @@ test.describe('Find and Replace', () => {
     await button.click();
 
     expect((await erd.settings()).canvasType).toBe('ERD');
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    await expect(explorer).toBeVisible();
+    await expect(button).toHaveClass(/\bactive\b/);
 
-    // Pressed with the panel shown, it keeps the current match, as the chord does.
-    await erd.page.keyboard.type('user');
-    await erd.press('Enter');
-    await expect(countOf(erd)).toHaveText('1 of 2');
     await button.click();
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
-    await expect(countOf(erd)).toHaveText('1 of 2');
+    await expect(explorer).toHaveCount(0);
+    await expect(button).not.toHaveClass(/\bactive\b/);
   });
 
   test('leaves the chords the editor does not bind to the host, and still zooms', async ({
@@ -395,7 +443,7 @@ test.describe('Find and Replace', () => {
     await expect
       .poll(async () => (await erd.settings()).zoomLevel)
       .toBeGreaterThan(before);
-    await expect(panelOf(erd).locator('.find-input')).toBeFocused();
+    await expect(findInputOf(erd)).toBeFocused();
   });
 
   test('replaces every match as one change, one undo and one batch to a peer', async ({
@@ -407,9 +455,11 @@ test.describe('Find and Replace', () => {
     const peerValue = await attachPeer(page);
     await openFind(erd, 'user');
     // A first opening searches the names alone, so the comments and memo are let in.
+    await showScopes(erd);
     for (const field of ['tableComment', 'columnComment', 'memo']) {
       await scopeOf(erd, field).click();
     }
+    await showReplace(erd);
     await panelOf(erd).locator('.replace-input').fill('member');
 
     await panelOf(erd).locator('.find-replace-all').click();
@@ -475,7 +525,7 @@ test.describe('Find and Replace', () => {
     expect(header.y).toBeLessThan(canvas!.y + canvas!.height / 2);
   });
 
-  test('lands a match at the end of a comment wider than the canvas where it shows, clear of the panel', async ({
+  test('lands a match at the end of a comment wider than the canvas where it shows, from its row in the tree', async ({
     erd,
   }) => {
     const comment = `${'the address the courier prints on the label, '.repeat(5)}see zebra`;
@@ -494,10 +544,12 @@ test.describe('Find and Replace', () => {
     );
     await openFind(erd, 'zebra');
     // A first opening searches the names alone, so the column comments are let in.
+    await showScopes(erd);
     await scopeOf(erd, 'columnComment').click();
     await expect(countOf(erd)).toHaveText('1 match');
+    const start = comment.length - 'zebra'.length;
 
-    await panelOf(erd).locator('.find-replace-match').first().click();
+    await rowOf(erd, `c:shipments_address/x:columnComment:${start}`).click();
 
     await expect
       .poll(() => erd.focusRingCells())
@@ -512,18 +564,20 @@ test.describe('Find and Replace', () => {
     const found = await drawnRange(
       erd,
       ['#column-shipments_address', '.columnComment', '.cell-text'],
-      comment.length - 'zebra'.length,
+      start,
       comment.length
     );
-    // Wider than the canvas beside the panel, the cell starts under the panel.
-    expect(cell.width).toBeGreaterThan(
-      canvas!.x + canvas!.width - (panel!.x + panel!.width)
-    );
-    expect(found.left).toBeGreaterThanOrEqual(panel!.x + panel!.width);
+    // The panel narrows the canvas rather than covering it.
+    expect(canvas!.x).toBeCloseTo(panel!.x + panel!.width, 0);
+    expect(cell.width).toBeGreaterThan(canvas!.width);
+    expect(found.left).toBeGreaterThanOrEqual(canvas!.x);
     expect(found.right).toBeLessThanOrEqual(canvas!.x + canvas!.width);
   });
 
-  test('offers no replace in a read-only editor', async ({ erd, page }) => {
+  test('offers nothing to replace with in a read-only editor', async ({
+    erd,
+    page,
+  }) => {
     await erd.seed(schema());
     await page.evaluate(() => {
       document.querySelector('erd-editor')!.readonly = true;
@@ -531,7 +585,9 @@ test.describe('Find and Replace', () => {
 
     await openFind(erd, 'user');
 
-    await expect(panelOf(erd)).toContainText('Find');
+    await expect(panelOf(erd).locator('.explorer-replace-toggle')).toHaveCount(
+      0
+    );
     await expect(panelOf(erd).locator('.replace-input')).toHaveCount(0);
     await expect(countOf(erd)).toHaveText('2 matches');
   });
@@ -608,7 +664,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await expect(palette.locator('.quick-search-empty')).toHaveText(
       'No commands match'
     );
-    await expect(palette.locator('.scrollbar > div')).toHaveText([
+    await expect(palette.locator('.quick-search-row')).toHaveText([
       /^#\s*Search tables for "us"$/,
       /^@\s*Search columns for "us"$/,
       /^:\s*Search comments & memos for "us"$/,
@@ -621,7 +677,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.seed(schema());
     await erd.focusHost();
     const palette = erd.host.locator('.quick-search');
-    const rows = palette.locator('.scrollbar > div');
+    const rows = palette.locator('.quick-search-row');
     const input = palette.locator('input');
 
     await erd.press(Shortcut.search);
@@ -698,7 +754,7 @@ test.describe('quick search over columns, comments and memos', () => {
     await erd.seed(schema());
     await erd.focusHost();
     const palette = erd.host.locator('.quick-search');
-    const rows = palette.locator('.scrollbar > div');
+    const rows = palette.locator('.quick-search-row');
     const input = palette.locator('input');
     /** The three prefixes under the line, users fuzzing to no command at 0.4. */
     const expectListed = async () => {

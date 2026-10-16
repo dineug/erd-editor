@@ -5,11 +5,11 @@
 
 ## Purpose
 
-`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, the commands and table rows in `actions.tsx`, the prefix grammar in `paletteQuery.ts`, the document scopes in `scopedActions.tsx` and the Hangul letter matching in `hangul.ts`. Past its cap a scoped list hands its search to Find and Replace, whose rules are in `src/components/find-replace/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
+`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, the commands and table rows in `actions.tsx`, the prefix grammar in `paletteQuery.ts`, the document scopes in `scopedActions.tsx`, the list's row height in `paletteList.ts` and the Hangul letter matching in `hangul.ts`. A scoped list holds every row it finds and draws only those in view; Find and Replace, the Explorer's search its own row opens, has its rules in `src/components/explorer/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
 
 ## Making a Change
 
-1. **Read the files on the other side.** A change to the hand-off row or to what the panel opens on reads `src/components/find-replace/AGENTS.md`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
+1. **Read the files on the other side.** A change to the Find and Replace row or to what the search opens on reads `src/components/explorer/AGENTS.md`. A change to the list's range reads `src/components/primitives/AGENTS.md` (The tree), which shares `src/utils/virtualRange.ts`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs here run in that test task, `QuickSearch.browser.test.ts` in real Chromium.
 3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins what `SEARCH_THRESHOLD` takes and lets go. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
 4. **Run the e2e for a visible change.** `e2e/specs/find-replace.spec.ts` drives the palette's field rows in the real element and types through Chromium's own IME (Testing Requirements). `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec, this one included.
@@ -18,9 +18,10 @@
 
 | File | Description |
 | --- | --- |
-| `QuickSearch.tsx` | The palette: `rebuild`, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount |
-| `actions.tsx` | `createScopeActions` (the top level), `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, `createPreferenceActions`, and the table rows' parking (`START_X`, `START_Y`, `coveredWidth`) |
-| `scopedActions.tsx` | `scopeBase`, `createPrefixActions`, `createFieldActions`, `SCOPED_ACTION_LIMIT` |
+| `QuickSearch.tsx` | The palette: `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount |
+| `paletteList.ts` | `PALETTE_ROW_HEIGHT` (45, which the row style matches), `PALETTE_LIST_MAX_HEIGHT` (400) and `paletteListHeight` |
+| `actions.tsx` | `createScopeActions` (the top level), `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, `createPreferenceActions`, and the table rows, which jump through `goToErdTarget` |
+| `scopedActions.tsx` | `scopeBase`, `createPrefixActions`, `createFieldActions` and the rows it builds as they are drawn (`lazyMatchAction`), `rankTableActions` |
 | `paletteQuery.ts` | The prefix grammar and `WIDE_PREFIXES` |
 | `hangul.ts` | The Hangul letter matching and ranking, `clearHangulForms`, `hitRange` |
 | `QuickSearch.test.ts` | Pins the search over the level's whole list on each keystroke |
@@ -33,7 +34,7 @@
 
 ### The palette with no prefix
 
-- **With no prefix, list commands alone.** The empty input and every keyword list only what the tab offers (`scopeBase`). They never list a table, column, comment or memo row, and never a hand-off to Find and Replace. The document is searched only under a prefix. This is an owner decision.
+- **With no prefix, list commands alone.** The empty input and every keyword list only what the tab offers (`scopeBase`). They never list a table, column, comment or memo row. The document is searched only under a prefix. This is an owner decision.
 - **The top level still ends with table jumps.** `createScopeActions` still ends with a jump per table, which only `#` hands to Fuse. A table row's `Table` keyword stays out of Fuse's keys (`tableId`), since it fuzzes to most words.
 - **Search the level's whole list each keystroke.** Every keystroke runs Fuse over the level's whole list (`scopeBase`), as VS Code's palette does, never inside its last hits. This holds with no prefix, under a prefix and in a submenu alike. It is an owner decision, pinned in `QuickSearch.test.ts`.
   - What a word lists owes nothing to what was typed before it. So `auto` typed over `qqqq` finds Auto Layout.
@@ -48,7 +49,7 @@
   - fuse.js's default 0.6 fuzzed most words to some command: `memo` to Import and the relationships, `#us` to orders, `users` to Zero One and Zero N.
   - 0.4 still takes a near typo: `tabel` to New Table, `imprt` to Import.
   - 0.4 lets go of a typo no closer than an unrelated command: `talbe`, `mmeo`.
-- **Add back held rows Fuse let go.** Fuse also scores where a hit starts (location 0, distance 100, fuse.js's defaults). So at 0.4 a word starting past index 40 of a long table name fell out of `#`, and with it the hand-off past the cap. `searchActions` therefore adds after Fuse's hits every row that holds a keyword without Hangul as typed and that Fuse let go (`heldPastFuse`). The Hangul ranking adds what its letters spell in the same way.
+- **Add back held rows Fuse let go.** Fuse also scores where a hit starts (location 0, distance 100, fuse.js's defaults). So at 0.4 a word starting past index 40 of a long table name fell out of `#`. `searchActions` therefore adds after Fuse's hits every row that holds a keyword without Hangul as typed and that Fuse let go (`heldPastFuse`). The Hangul ranking adds what its letters spell in the same way.
 - **Data type hints keep their own Fuse.** The data type hints in `src/components/table-view/column/useColumnCell.ts` keep their own Fuse at the default threshold.
 
 ### Prefixes
@@ -67,16 +68,15 @@
 - **The empty input hints the prefixes.** It shows them as a clickable hint line.
 - **Show the scope as a label.** The label follows the input. It sits on the input's right, or on its left under a right-to-left language. This leaves the caret where it was.
 
-### Field rows and the cap
+### Field rows and the list
 
 - **`@` and `:` rows are a substring search.** The field rows (`createFieldActions`) search the column names, or the comments and memos, as substrings. They are rebuilt from the document on each keystroke.
-- **A scoped list caps at `SCOPED_ACTION_LIMIT`.** Past the cap, a row hands Find and Replace the query with that scope's toggles on (`openFindReplace`'s `fields`).
-  - The table part of `@table.col` is left behind, since the panel has none.
-  - The row is named with the count the panel opens on: every occurrence in those kinds, with default options.
-  - What the panel does with a query handed over: `src/components/find-replace/AGENTS.md`, Scopes and options.
-- **Hand off only literal matches past the cap.** Find and Replace stays literal. So the row shows only when the cap leaves out a match holding the keyword as typed, and it counts only those.
-  - For `#` the match is read in the table's name rather than its row, which says `unnamed` for a table without a name.
-  - A list held by Hangul letters alone (`ㅅㅇㅈ`, `사요`) offers no hand-off. What those letters alone find past the cap is left out, with no row saying so.
+- **A scoped list lists every row it finds** (the owner's request of 2026-10-14). `#`, `@` and `:` have no cap and no row handing the rest to Find and Replace, and `openFindReplace` carries no query.
+- **A field row is built as it is drawn.** `lazyMatchAction` builds its snippet, location and jump the first time the list draws or picks it, so a list of thousands builds a few dozen a keystroke.
+- **A row keeps its icon slot without an icon,** so every name starts in one line, as a context menu's does. The Table and Column Name Case rows and Schema SQL's Statements and Header draw none, as the code tabs' context menus do (the owner's request of 2026-10-15).
+- **The list draws only the rows in view** (the owner's request of 2026-10-14). Rows stand at `PALETTE_ROW_HEIGHT`, the list stands as tall as they are up to `PALETTE_LIST_MAX_HEIGHT`, and `visibleRange` (`src/utils/virtualRange.ts`, which the tree shares) takes the rows in view with `VIRTUAL_OVERSCAN` either side. An arrow scrolls the keyboard's row into view (`offsetToShow`) once the list holds it, and a new list, a keystroke's or a submenu's, starts at its top.
+  - `repeat` builds each row outside the render, so the render reads the selection and the range itself; a row reading them would miss a change.
+  - The row style keeps `box-sizing: border-box`, since the offsets assume a row exactly `PALETTE_ROW_HEIGHT` tall.
 
 ### Hangul matching
 
@@ -86,13 +86,13 @@
 - **Compose a decomposed text first.** A text stored decomposed (NFD, as macOS names files) is composed before matching. Its highlight covers each syllable's every jamo.
 - **Rank Hangul hits in three tiers.** Fuse's rows rank whole, then from the start, then inside, then Fuse's own looser hits.
   - The field rows list first those holding the keyword as typed, in document order, as a keyword without Hangul lists them.
-  - Then come those only its letters spell, by the same three tiers. So the cap cuts only those.
+  - Then come those only its letters spell, by the same three tiers.
 - **Widen a highlight to whole syllables.** A highlight covers the whole syllables a jamo reaches.
 - **A keyword without Hangul skips all this.** It takes none of the letter matching or ranking.
 - **Spell each text once per open.** The forms are spelled once per text and kept for one open of the palette, since the palette reads every field again on each keystroke.
   - `clearHangulForms` drops them as the palette opens, closes and unmounts.
   - So however large the document, no text's forms are spelled twice in one open, and none is kept once the palette is gone.
-- **Call `hitRange` only for the rows shown.** `hitRange` finds where a field row's Hangul hit lies, which centres the row's snippet and the jump's range. It spells the text again, so `createFieldActions` reads it only for the rows it shows: at most `SCOPED_ACTION_LIMIT` a keystroke. `scopedActions.test.ts` bounds every spelling of the document's texts over 200 Korean tables by that count. It counts rather than timing the search, which a loaded machine stretches.
+- **Call `hitRange` only for the rows drawn.** `hitRange` finds where a field row's Hangul hit lies, which centres the row's snippet and the jump's range. It spells the text again, so a row reads it only as the list draws or picks it (`lazyMatchAction`). `scopedActions.test.ts` holds the spellings over 200 Korean tables to one per text, then one per row drawn. It counts rather than timing the search, which a loaded machine stretches.
 
 ### Keys and composition
 
@@ -101,9 +101,9 @@
 ### Table and field rows
 
 - **Table and field rows show on every tab.** Picking one takes the ERD tab.
-- **A table row parks its table inset.** It parks the table `START_X`, `START_Y` in from the corner, scaled by the zoom (`actions.tsx`). With Find and Replace open it parks just past the panel, at `x = coveredWidth`. It does so in the strip a narrow canvas leaves beside the panel too.
+- **A table row lands by the one jump rule.** It jumps through `goToErdTarget`, as the `@` and `:` rows do (`src/components/erd/AGENTS.md`, The jump rule); the corner it once parked a table at is gone.
 - **No Focus row exists** (AC-52).
-- **Hand-offs leave the list under a takeover.** The Find and Replace row and the hand-off row past the cap leave the list under a takeover (`isTakenOver`), where the panel opens on nothing.
+- **Hand-offs leave the list under a takeover.** The Find and Replace row and the Toggle Explorer row leave the list under a takeover (`isTakenOver`), where the Explorer opens on nothing.
 
 ### Theme and Display Language
 
@@ -122,7 +122,7 @@
 ### Rules held elsewhere
 
 - The locale picker and the Settings page (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.
-- Find and Replace, the panel the hand-off rows open, and its matcher: `src/components/find-replace/AGENTS.md`.
+- Find and Replace, the Explorer's search its row opens, and its matcher: `src/components/explorer/AGENTS.md`.
 - The palette's New Table Group and Group Selected Tables commands: `src/components/erd/AGENTS.md`.
 - The palette's Import and Import and Add commands: `src/utils/AGENTS.md`.
 
@@ -130,5 +130,6 @@
 
 - `QuickSearch.browser.test.ts` and `e2e/specs/find-replace.spec.ts` type through Chromium's own IME over CDP (`Input.imeSetComposition`, `Input.insertText`). That is the one way a spec sees the steps a real composition hands over.
 - A key pressed during such a composition reaches the input with `isComposing` set, as a real one does.
+- **The e2e finds a row by `.quick-search-row`**, the one class a row keeps whatever the list draws. The list draws only the rows in view, so a spec, like a reader, types or scrolls to reach a row past them; `QuickSearch.browser.test.ts` lays the list out in real Chromium.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

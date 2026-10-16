@@ -339,8 +339,12 @@ describe('SchemaSQLContextMenu for the whole document', () => {
       'Statements',
       'Header',
       'Options panel',
-      'Save file…',
+      'Save file',
     ]);
+    // Statements and Header draw no leading icon, only their chevron (the owner's request of 2026-10-15).
+    for (const name of ['Statements', 'Header']) {
+      expect(topItemByName(name).querySelectorAll('.icon')).toHaveLength(1);
+    }
   });
 
   it('lists the statements, the one the database writes checked and one it lacks noted', async () => {
@@ -417,12 +421,12 @@ describe('SchemaSQLContextMenu for the whole document', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('saves the file from Save file…, closing the menu', async () => {
+  it('saves the file from Save file, closing the menu', async () => {
     const onClose = vi.fn();
     const onSave = vi.fn();
     await open(onClose, undefined, true, onSave);
 
-    click(topItemByName('Save file…'));
+    click(topItemByName('Save file'));
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -445,7 +449,7 @@ describe('SchemaSQLContextMenu for the whole document', () => {
         'ko:Statements',
         'ko:Header',
         'ko:Options panel',
-        'ko:Save file…',
+        'ko:Save file',
       ]);
       expect(
         subItems(await openSubmenu('ko:Statements')).map(el =>

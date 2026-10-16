@@ -1365,28 +1365,78 @@ try {
     JSON.stringify({ searchIn, searchBefore, searchOpened, searchClosed })
   );
 
-  const findReplaceOpen = () =>
-    inEditor(page, 'keys.erd', root =>
-      Boolean(root.querySelector('.find-replace'))
+  // The Explorer stands aside on an editor too narrow for it and its least
+  // canvas, 520 px, so the window widens first where it would.
+  const editorWidth = () =>
+    page.evaluate(
+      path =>
+        window.app.workspace
+          .getLeavesOfType('erd-editor')
+          .find(leaf => leaf.view.file?.path === path)
+          ?.view.contentEl.querySelector('erd-editor')
+          ?.getBoundingClientRect().width ?? 0,
+      'keys.erd'
     );
+  const narrowBy = 520 - (await editorWidth());
+  if (narrowBy > 0) {
+    await page.evaluate(extra => {
+      const win = window.require('@electron/remote').getCurrentWindow();
+      const [width, height] = win.getSize();
+      win.setSize(width + extra, height);
+    }, Math.ceil(narrowBy) + 40);
+    await waitFor(async () => (await editorWidth()) >= 520, 2_000, 100);
+  }
+  const explorerState = () =>
+    inEditor(page, 'keys.erd', root => ({
+      open: Boolean(root.querySelector('.explorer')),
+      inField: root.activeElement?.classList.contains('find-input') ?? false,
+    }));
   await focusDiagram(page, 'keys.erd');
   const findIn = await activeViewType(page);
-  const findBefore = await findReplaceOpen();
+  const findWidth = await editorWidth();
+  const findBefore = await explorerState();
   await page.keyboard.press('ControlOrMeta+KeyF');
-  const findOpened = await waitFor(findReplaceOpen, 2_000, 100);
+  const findOpened = await waitFor(
+    async () => {
+      const state = await explorerState();
+      return state?.open && state.inField;
+    },
+    2_000,
+    100
+  );
   await page.keyboard.press('Escape');
+  const findLeft = await waitFor(
+    async () => {
+      const state = await explorerState();
+      return state?.open && !state.inField;
+    },
+    2_000,
+    100
+  );
+  await clickInEditor(page, 'keys.erd', root =>
+    root.querySelector('.toolbar-explorer')
+  );
   const findClosed = await waitFor(
-    async () => (await findReplaceOpen()) === false,
+    async () => (await explorerState())?.open === false,
     2_000,
     100
   );
   step(
-    "Mod+F, Obsidian's search current file, opens the editor's Find and Replace in the ERD tab, and Escape closes it",
+    "Mod+F, Obsidian's search current file, opens the Explorer on its search in the ERD tab, Escape leaves it open, and its button closes it",
     findIn === 'erd-editor' &&
-      findBefore === false &&
+      findWidth >= 520 &&
+      findBefore?.open === false &&
       Boolean(findOpened) &&
+      Boolean(findLeft) &&
       Boolean(findClosed),
-    JSON.stringify({ findIn, findBefore, findOpened, findClosed })
+    JSON.stringify({
+      findIn,
+      findWidth,
+      findBefore,
+      findOpened,
+      findLeft,
+      findClosed,
+    })
   );
 
   // Nothing waits to be saved, so only Mod+S can write the edit this early.

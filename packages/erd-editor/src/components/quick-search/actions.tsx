@@ -7,18 +7,11 @@ import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
-import {
-  goToErdTarget,
-  selectTableAloneAction$,
-  showErdTab,
-} from '@/components/erd/goToErdTarget';
+import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
-import { fieldIcon } from '@/components/find-replace/fieldIcon';
-import { toErdTarget } from '@/components/find-replace/matchTarget';
-import {
-  coveredWidth,
-  isTakenOver,
-} from '@/components/find-replace/panelLayout';
+import { toggleExplorer } from '@/components/explorer/explorerCommands';
+import { fieldIcon } from '@/components/explorer/fieldIcon';
+import { toErdTarget } from '@/components/explorer/matchTarget';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -41,7 +34,6 @@ import {
   toggleSchemaSQLPanel,
 } from '@/components/schema-sql/schemaSQLView';
 import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
-import { START_X, START_Y } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import { changeDrawTableGroupAction } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
@@ -54,7 +46,6 @@ import {
   changeDatabaseAction,
   changeLanguageAction,
   changeTableNameCaseAction,
-  scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addTableGroupFromTablesAction$ } from '@/engine/modules/table-group/generator.actions';
@@ -63,10 +54,8 @@ import { type LocaleOption, LOCALES, SYSTEM_LOCALE } from '@/i18n/locales';
 import { type LabeledMenu, menuLabel } from '@/i18n/menuLabel';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
-import { getOriginToPlace } from '@/konva/scene/viewport';
 import type { AppearanceOption } from '@/themes/radix-ui-theme';
 import {
-  FindReplaceQuery,
   openAutomaticTablePlacementAction,
   openExportImageAction,
   openFindReplaceAction,
@@ -92,6 +81,7 @@ import { isMemoShown } from '@/utils/memo';
 import { resolveSchemaSQLOptions, schemaSQLSupport } from '@/utils/schema-sql';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { isTableGroupShown } from '@/utils/tableGroup';
+import { isTakenOver } from '@/utils/takeover';
 
 import { HangulQuery, hangulQueryOf, HangulTier, hangulTier } from './hangul';
 
@@ -513,7 +503,6 @@ export function createScopeActions(
       },
     },
     {
-      icon: <Icon name="case-sensitive" size={16} />,
       ...submenuNamed(i18n, 'common.tableNameCase'),
       next: tableNameCaseMenus.map<Action>(menu => ({
         ...checkOf(menu.value === settings.tableNameCase),
@@ -531,7 +520,6 @@ export function createScopeActions(
       },
     },
     {
-      icon: <Icon name="case-sensitive" size={16} />,
       ...submenuNamed(i18n, 'common.columnNameCase'),
       next: columnNameCaseMenus.map<Action>(menu => ({
         ...checkOf(menu.value === settings.columnNameCase),
@@ -559,13 +547,19 @@ export function createScopeActions(
       filter: isGeneratorCodeTab,
     },
     {
-      icon: <Icon name="text-search" size={16} />,
+      icon: <Icon name="list-tree" size={16} />,
       ...named(i18n, 'common.findAndReplace', 'palette.keywords.findReplace'),
       shortcut: keyBindingMap.findReplace[0]?.shortcut,
       perform: ({ emitter }) => {
         emitter.emit(openFindReplaceAction());
       },
-      filter: canOpenFindReplace,
+      filter: canOpenExplorer,
+    },
+    {
+      icon: <Icon name="list-tree" size={16} />,
+      ...named(i18n, 'explorer.toggle', 'palette.keywords.explorer'),
+      perform: ({ store }) => toggleExplorer(store),
+      filter: canOpenExplorer,
     },
     ...createPreferenceActions(i18n, preferences),
     ...createTableActions(app, i18n),
@@ -597,8 +591,8 @@ const hasSelectedTable = ({ store }: AppContext) => {
 
 /**
  * The Schema SQL tab's own rows, the statements and the header listing only
- * what the database writes, checked as it writes them; then Export: Schema
- * SQL, on every tab, which opens that tab with its options out to save from.
+ * what the database writes, checked as it writes them, and the options panel
+ * toggle, each only on the Schema SQL tab.
  */
 function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
   const { settings } = app.store.state;
@@ -612,7 +606,6 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
 
   return [
     {
-      icon: <Icon name="settings-2" size={16} />,
       ...submenuNamed(
         i18n,
         'palette.schemaSqlStatements',
@@ -630,7 +623,6 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
       filter: isSchemaSQLTab,
     },
     {
-      icon: <Icon name="settings-2" size={16} />,
       ...submenuNamed(
         i18n,
         'palette.schemaSqlHeader',
@@ -656,15 +648,6 @@ function createSchemaSQLActions(app: AppContext, i18n: I18n): Action[] {
       ),
       perform: toggleSchemaSQLPanel,
       filter: isSchemaSQLTab,
-    },
-    {
-      icon: <Icon name="file-output" size={16} />,
-      ...named(
-        i18n,
-        'palette.exportSchemaSql',
-        'palette.keywords.exportSchemaSql'
-      ),
-      perform: showSchemaSQLExport,
     },
   ];
 }
@@ -741,24 +724,8 @@ export function createMatchAction(
   };
 }
 
-/** Whether choosing a row that opens Find and Replace would open it: an overlay taking the canvas over keeps it shut. */
-const canOpenFindReplace = ({ store }: AppContext) => !isTakenOver(store.state);
-
-/** The row handing a search to Find and Replace, named with the count the panel opens on. */
-export function createShowAllAction(
-  count: number,
-  payload: FindReplaceQuery,
-  i18n: I18n = sourceI18n
-): Action {
-  return {
-    icon: <Icon name="search" size={16} />,
-    name: i18n.t('palette.showMatches', { count }),
-    perform: ({ emitter }) => {
-      emitter.emit(openFindReplaceAction(payload));
-    },
-    filter: canOpenFindReplace,
-  };
-}
+/** Whether a row opening the Explorer, or Find and Replace above its tree, would open it: an overlay taking the canvas over keeps it shut. */
+const canOpenExplorer = ({ store }: AppContext) => !isTakenOver(store.state);
 
 function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
   const {
@@ -778,21 +745,7 @@ function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
       keywords,
       tableId: table.id,
       perform: ({ store }) => {
-        showErdTab(store);
-        const {
-          settings: { zoomLevel },
-        } = store.state;
-        // The table parks a zoomed START_X, START_Y in from the corner, the
-        // landing point the DOM scene had, kept so a jump looks the same, or
-        // just clear of an open Find and Replace panel.
-        const { x, y } = getOriginToPlace(zoomLevel, table.ui, {
-          x: Math.max(START_X * zoomLevel, coveredWidth(store.state)),
-          y: START_Y * zoomLevel,
-        });
-        store.dispatch(
-          scrollToAction({ originX: x, originY: y }),
-          selectTableAloneAction$(table.id)
-        );
+        goToErdTarget(store, { kind: 'table', tableId: table.id });
       },
     }));
 }

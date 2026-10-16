@@ -2,6 +2,7 @@ import { code } from './code';
 import { colorPicker } from './colorPicker';
 import { common } from './common';
 import { contextMenu } from './contextMenu';
+import { explorer } from './explorer';
 import { exportImage } from './exportImage';
 import { feedback } from './feedback';
 import { findReplace } from './findReplace';
@@ -40,4 +41,5 @@ export const en = {
   ...themeBuilder,
   ...welcome,
   ...mapColumns,
+  ...explorer,
 } as const;

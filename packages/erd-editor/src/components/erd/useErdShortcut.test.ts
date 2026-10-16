@@ -10,6 +10,8 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { useErdShortcut } from '@/components/erd/useErdShortcut';
+import { openExplorer } from '@/components/explorer/explorerCommands';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import { Open } from '@/constants/open';
 import {
   CanvasType,
@@ -590,12 +592,12 @@ describe('useErdShortcut - remove selection', () => {
 });
 
 describe('useErdShortcut - table properties', () => {
-  it('opens the table properties panel for the first selected table, closing Find and Replace', async () => {
+  it('opens the table properties panel for the first selected table, leaving the Explorer open', async () => {
     const app = await setup();
     const tableId = seedTable(app);
     const listener = vi.fn();
     app.emitter.on({ openTableProperties: listener });
-    app.store.dispatchSync(changeOpenMapAction({ [Open.findReplace]: true }));
+    openExplorer(app.store);
 
     shortcut(app, KeyBindingName.tableProperties);
     await flush();
@@ -603,7 +605,7 @@ describe('useErdShortcut - table properties', () => {
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener.mock.calls[0][0].payload).toEqual({ tableId });
     expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(true);
-    expect(app.store.state.editor.openMap[Open.findReplace]).toBe(false);
+    expect(explorerViewOf(app.store).open).toBe(true);
   });
 
   it('does nothing when no table is selected', async () => {

@@ -16,6 +16,10 @@ import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
 import {
+  isRelationshipHighlighted,
+  setRelationshipHighlight,
+} from '@/components/erd/relationshipHighlight';
+import {
   changeViewportAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -45,7 +49,7 @@ function createApp(): AppContext {
 }
 
 const diffMapOf = (): DiffMap =>
-  new Map([['t1', ['tableEntities', new Map([['tableName', Diff.insert]])]]]);
+  new Map([['t1', new Map([['tableName', Diff.insert]])]]);
 
 async function mountViewer(
   diff: number,
@@ -295,6 +299,25 @@ describe('ErdViewer', () => {
     expect(Object.keys(app.store.state.editor.selectedMap)).toEqual(['near']);
     expect(app.store.state.settings.originX).toBe(-30);
     expect(app.store.state.settings.originY).toBe(-50);
+  });
+
+  it('puts out a jump light on a bare press, and keeps it through a middle pan', async () => {
+    const app = createApp();
+    const editorId = app.store.state.editor.id;
+    const { root } = await mountViewer(Diff.insert, new Map(), app);
+    setRelationshipHighlight(editorId, 'rel');
+
+    root.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true, button: 1 })
+    );
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await flush();
+    expect(isRelationshipHighlighted(editorId, 'rel')).toBe(true);
+
+    mousedownAt(root);
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    await flush();
+    expect(isRelationshipHighlighted(editorId, 'rel')).toBe(false);
   });
 
   it('takes the selection off on a middle press on its minimap, as on a main one', async () => {

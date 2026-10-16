@@ -30,7 +30,7 @@ const TablePropertiesTabs: FC<TablePropertiesTabsProps> = (props, ctx) => {
   const i18n = useI18n(ctx);
 
   return () => (
-    <div class={styles.tabs}>
+    <div class={['scrollbar', styles.tabs]}>
       {tabs.map(tab => (
         <div
           class={[styles.tab, { selected: tab === props.value }]}

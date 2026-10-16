@@ -36,7 +36,12 @@ import {
   getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
-import { diffFill, type DiffPaths } from '@/components/erd/diff-viewer/diff';
+import {
+  COLUMN_KEY_PATH,
+  type DiffPaths,
+  diffTextColor,
+  ENTITY_PATH,
+} from '@/components/erd/diff-viewer/diff';
 import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -171,6 +176,7 @@ type CellOptions = {
   opacity?: number;
   align?: 'center' | 'left' | 'right';
   fontFamily?: string;
+  diffFallback?: string | null;
 };
 
 type ColumnOrderTpl = {
@@ -388,21 +394,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     store.dispatch(columnKeyHoverEndAction$());
   };
 
-  /** The tint a changed cell sits on in a diff pane, across its padded box. */
-  const diffBackground = (focusType: FocusType, width: number) => {
-    const fill = diffFill(themeRef.value, props.diffPaths, focusType);
-
-    return fill ? (
-      <k-rect
-        name="cell-diff-background"
-        width={width + INPUT_MARGIN_RIGHT}
-        height={tableRowHeight(props.source)}
-        fill={fill}
-        listening={false}
-      />
-    ) : null;
-  };
-
   /**
    * One cell, laid out the way its div was: the text in the 20px input line,
    * answering a press for the whole box, and the two underlines at their own
@@ -421,6 +412,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     opacity = 1,
     align,
     fontFamily = SCENE_FONT_FAMILY,
+    diffFallback = null,
   }: CellOptions) => (
     <k-group
       name={`column-col ${focusType}`}
@@ -438,14 +430,17 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         handleEdit(focusType, event);
       }}
     >
-      {diffBackground(focusType, width)}
       <k-text
         name="cell-text"
         y={getColumnTextY(props.source)}
         width={width}
         height={getColumnTextHeight(props.source, fontFamily)}
         text={text}
-        fill={fill}
+        fill={
+          diffTextColor(themeRef.value, props.diffPaths, focusType, true) ??
+          diffFallback ??
+          fill
+        }
         fontFamily={fontFamily}
         fontSize={SCENE_FONT_SIZE}
         align={align}
@@ -479,12 +474,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   );
 
   /** One cell, filled in with what its own column type puts in the box. */
-  const cellOf = ({
-    columnType,
-    focusType,
-    x,
-    width,
-  }: ColumnCellSlot): DOMTemplateLiterals | null => {
+  const cellOf = (
+    { columnType, focusType, x, width }: ColumnCellSlot,
+    diffFallback: string | null
+  ): DOMTemplateLiterals | null => {
     const { column } = props;
     const theme = themeRef.value;
     const view = props.source !== 'document';
@@ -503,6 +496,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           edit: props.editName,
           sharedFocus: props.sharedFocusName,
           ellipsis: true,
+          diffFallback,
         });
       case ColumnType.columnDefault:
         return cell({
@@ -594,10 +588,32 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     return null;
   };
 
-  const getColumnOrder = (slots: ColumnCellSlot[]): ColumnOrderTpl[] =>
-    slots
-      .map(slot => ({ columnType: slot.columnType, template: cellOf(slot) }))
+  /**
+   * The diff colour a change to a cell this row does not draw takes on the
+   * name instead, so a change the tree lists is marked in the pane.
+   */
+  const hiddenDiffColor = (slots: ColumnCellSlot[], theme: Theme) => {
+    const { diffPaths } = props;
+    if (!diffPaths) return null;
+    for (const path of diffPaths.keys()) {
+      if (path === ENTITY_PATH) continue;
+      if (path === COLUMN_KEY_PATH && props.column.ui.keys !== 0) continue;
+      if (slots.some(slot => slot.focusType === path)) continue;
+      const color = diffTextColor(theme, diffPaths, path);
+      if (color) return color;
+    }
+    return null;
+  };
+
+  const getColumnOrder = (slots: ColumnCellSlot[]): ColumnOrderTpl[] => {
+    const fallback = hiddenDiffColor(slots, themeRef.value);
+    return slots
+      .map(slot => ({
+        columnType: slot.columnType,
+        template: cellOf(slot, fallback),
+      }))
       .filter(({ template }) => Boolean(template));
+  };
 
   /**
    * The alternate key mark, one margin past the last cell whatever the order,
@@ -682,7 +698,11 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           name: 'column-col column-key',
           kind: 'column-col',
           size: keySize,
-          color: keyFill(column.ui.keys, theme),
+          color:
+            column.ui.keys === 0
+              ? TRANSPARENT
+              : (diffTextColor(theme, props.diffPaths, COLUMN_KEY_PATH, true) ??
+                keyFill(column.ui.keys, theme)),
           x: TABLE_INSET,
           y: (rowHeight - keySize) / 2,
           mouseenter: handleKeyMouseenter,

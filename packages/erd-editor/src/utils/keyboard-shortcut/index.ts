@@ -63,6 +63,37 @@ export const PANEL_PASSING_BINDINGS: ReadonlyArray<KeyBindingName> = [
 
 export type KeyBindingMap = Record<KeyBindingName, ShortcutOption[]>;
 
+/** The keys a panel moves or presses with, which the canvas would read as a move or an edit. */
+const PANEL_KEYS = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'Tab',
+  'Enter',
+  ' ',
+  'Home',
+  'End',
+]);
+
+/**
+ * Whether a press inside a panel stops there: a press an IME still holds, a
+ * chord of the map outside the passing list, or a key the panel moves or
+ * presses with. A host that leaves Escape to the editor passes stop through.
+ */
+export function stopsAtPanel(
+  event: KeyboardEvent,
+  keyBindingMap: KeyBindingMap,
+  passing: ReadonlyArray<KeyBindingName> = PANEL_PASSING_BINDINGS
+): boolean {
+  if (isComposing(event)) return true;
+
+  const matches = (name: KeyBindingName) =>
+    matchesShortcut(event, keyBindingMap[name]);
+  if (passing.some(matches)) return false;
+  return PANEL_KEYS.has(event.key) || KeyBindingNameList.some(matches);
+}
+
 export const createKeyBindingMap = (): KeyBindingMap => ({
   [KeyBindingName.edit]: [{ shortcut: 'Enter' }],
   [KeyBindingName.stop]: [{ shortcut: 'Escape' }],

@@ -55,7 +55,7 @@
   - Where those rules give no Flow, the block takes the grid `sortTable` lays a replace out in, run on the document's own copy.
 - **An append supersedes nothing.** Placed imports land in the order they started (`placeAndLand`). An append waits for those started before it and lands on the document a replace among them brings. Only a load or a placed replace started after it drops it.
 - **Land the append selected and in view.** The editor lands it in one dispatch with the new tables, memos and table groups alone selected, the memos only while memos are shown and the groups only while groups are shown. A group is selected beside its members, so a drag of the block carries it and its drop judges none of them. An unselected group would lose them all once the block left its stored rect. A hidden group or memo is never selected, and a drag then judges no group.
-- **The same dispatch scrolls the block into view.** It runs `scrollIntoView` on their box, clear of an open Find and Replace panel (`coveredWidth`, as `goToErdTarget` lands). So one undo takes back the adds, the selection and the scroll.
+- **The same dispatch scrolls the block into view.** It runs `scrollIntoView` on their box, by the one jump rule every go-to shares (`src/components/erd/AGENTS.md`). So one undo takes back the adds, the selection and the scroll.
 - **Show the ERD tab in an earlier dispatch.** `showErdTab` takes the ERD tab from any other before the landing dispatch, because a batch is classified by the state before it. The owner decision of 2026-10-04 names Graph mode, Schema SQL and Code Generator. Settings follows it as another tab off the canvas. A Flow view must give way too, since `viewIgnoreFilter` would drop every add.
 - **Unreadable or empty input changes nothing.** Text the parser cannot read, or a document with nothing in it, adds nothing and switches no tab.
 - **The engine generators append on the grid.** `appendSchemaAction$` and `appendSchemaJsonAction$` are in the editor barrel. `mcp-server`'s imports run them for `mode: 'append'`: the grid, no selection, no scroll.
@@ -80,8 +80,9 @@
 - `tableColor.ts` (`toOpaqueHex`, the first reading the color picker's `resolveColor` tries): `src/components/primitives/AGENTS.md`.
 - `tableGroup.ts` (the DOM-free table-group helpers, inside the peer graph): `src/engine/AGENTS.md`.
 - `file/exportFile.ts` (how Save file and every export name the file): `src/components/generator-code/AGENTS.md`.
-- `find-replace/`, which has no file of its own (the matcher, `findMatches.ts`, `replaceActions.ts`): `src/components/find-replace/AGENTS.md`.
+- `find-replace/`, which has no file of its own (the matcher, `findMatches.ts`, `replaceActions.ts`): `src/components/explorer/AGENTS.md`.
 - `map-columns/` (the pure half of Map Columns): `src/components/map-columns/AGENTS.md`.
+- `diff/` (the diff engine the diff viewer's tree and panes read): `src/components/erd/AGENTS.md`, The diff viewer.
 - `referentialAction.ts` (the referential action codes a connector's child end shows): `draw-relationship/AGENTS.md`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

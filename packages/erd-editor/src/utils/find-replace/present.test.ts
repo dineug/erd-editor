@@ -43,7 +43,34 @@ describe('FindFieldLabel', () => {
   it('names every field a search covers', () => {
     expect(
       FindFieldList.map(field => sourceI18n.t(FindFieldLabel[field]))
-    ).toEqual(['Table', 'Table comment', 'Column', 'Column comment', 'Memo']);
+    ).toEqual([
+      'Table',
+      'Table comment',
+      'Column',
+      'Column comment',
+      'Memo',
+      'Index',
+      'Table group',
+    ]);
+  });
+});
+
+describe('locationOf for an index or a table group', () => {
+  it('names the table an index is on, and nothing for a group, which stands on its own', () => {
+    const { state } = app.store;
+
+    expect(
+      locationOf(
+        state,
+        match({ field: FindField.indexName, id: 'index', tableId: 'orders' })
+      )
+    ).toBe('orders');
+    expect(
+      locationOf(
+        state,
+        match({ field: FindField.tableGroupName, id: 'group', tableId: '' })
+      )
+    ).toBe('');
   });
 });
 

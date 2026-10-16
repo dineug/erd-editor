@@ -4,6 +4,9 @@ import type { ActionType } from '@/engine/actions';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
 import { isMemoShown } from '@/utils/memo';
+import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { isTableGroupShown } from '@/utils/tableGroup';
+import { getTableIndexIds } from '@/utils/tableKeys';
 
 import { Matcher } from './matcher';
 
@@ -13,25 +16,29 @@ export const FindField = {
   columnName: 'columnName',
   columnComment: 'columnComment',
   memo: 'memo',
+  indexName: 'indexName',
+  tableGroupName: 'tableGroupName',
 } as const;
 export type FindField = ValuesType<typeof FindField>;
 export const FindFieldList: ReadonlyArray<FindField> = Object.values(FindField);
 
 /**
- * The kinds of text Find and Replace first opens on, the names of tables and
- * columns alone (an owner decision): a comment or memo is prose a rename
- * should not reach unasked. A search given no fields still reads every kind.
+ * The kinds of text Find and Replace first opens on, the names alone of
+ * tables, columns, indexes and table groups (an owner decision): a comment or
+ * memo is prose a rename should not reach unasked. No fields reads every kind.
  */
 export const DEFAULT_FIND_FIELDS: ReadonlyArray<FindField> = Object.freeze([
   FindField.tableName,
   FindField.columnName,
+  FindField.indexName,
+  FindField.tableGroupName,
 ]);
 
 export type FindMatch = {
   field: FindField;
-  /** The entity holding the text: a table, a column or a memo. */
+  /** The entity holding the text: a table, a column, an index, a table group or a memo. */
   id: string;
-  /** The table of a table or column field; empty for a memo. */
+  /** The table of a table, column or index field; empty for a memo or a table group. */
   tableId: string;
   /** Where the field stands in the walk, so a match keeps its place when its text changes. */
   slot: number;
@@ -61,7 +68,14 @@ export const FindTextActionTypes: ReadonlyArray<ActionType> = [
   'memo.add',
   'memo.remove',
   'memo.changeValue',
-  // Hiding or showing the memos takes them out of the walk or brings them back.
+  'index.add',
+  'index.remove',
+  'index.changeName',
+  'tableGroup.add',
+  'tableGroup.remove',
+  'tableGroup.changeName',
+  // Hiding or showing the memos or the groups takes them out of the walk or
+  // brings them back.
   'settings.changeShow',
   'editor.loadJson',
   'editor.clear',
@@ -70,13 +84,55 @@ export const FindTextActionTypes: ReadonlyArray<ActionType> = [
 ];
 
 /**
- * Every text field the fields given cover, in document order: each table's
- * name and comment, then its columns' names and comments, then the memos.
- * The walk reads the live id lists, since a removed entity keeps its record.
+ * The order a walk takes the tables and the table groups in. A search on the
+ * tree reads them by name; a run of Replace presses keeps the order it began
+ * with, so a rename that moves a table in the name order is not met again.
+ */
+export type FieldOrder = {
+  tableIds: ReadonlyArray<string>;
+  tableGroupIds: ReadonlyArray<string>;
+};
+
+/** The tables and the table groups by name, as the tree lists them, ties in document order. */
+export function treeOrderOf({ doc, collections }: RootState): FieldOrder {
+  const tables = query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .sort(orderByNameASC);
+  const groups = query(collections)
+    .collection('tableGroupEntities')
+    .selectByIds(doc.tableGroupIds)
+    .sort(orderByNameASC);
+
+  return {
+    tableIds: tables.map(({ id }) => id),
+    tableGroupIds: groups.map(({ id }) => id),
+  };
+}
+
+/** The live entities in the order given, those it has not met after them by name; with no order, as they are. */
+function inOrder<T extends { id: string; name: string }>(
+  live: T[],
+  order?: ReadonlyArray<string>
+): T[] {
+  if (!order) return live;
+
+  const byId = new Map(live.map(entity => [entity.id, entity]));
+  const known = new Set(order);
+  const kept = order.flatMap(id => byId.get(id) ?? []);
+  const added = live.filter(({ id }) => !known.has(id)).sort(orderByNameASC);
+  return [...kept, ...added];
+}
+
+/**
+ * Every text field the fields given cover: each table's name and comment,
+ * its columns' names and comments and its index names, then the table groups'
+ * names and the memos, in document order or in the order given.
  */
 export function walkFields(
   state: RootState,
-  fields: ReadonlyArray<FindField>
+  fields: ReadonlyArray<FindField>,
+  order?: FieldOrder
 ): Field[] {
   const { doc, collections } = state;
   const has = new Set(fields);
@@ -85,9 +141,13 @@ export function walkFields(
     result.push({ ...field, slot: result.length });
   };
   const columnCollection = query(collections).collection('tableColumnEntities');
-  const tables = query(collections)
-    .collection('tableEntities')
-    .selectByIds(doc.tableIds);
+  const indexCollection = query(collections).collection('indexEntities');
+  const tables = inOrder(
+    query(collections).collection('tableEntities').selectByIds(doc.tableIds),
+    order?.tableIds
+  );
+  const walksColumns =
+    has.has(FindField.columnName) || has.has(FindField.columnComment);
 
   for (const table of tables) {
     const tableId = table.id;
@@ -107,11 +167,10 @@ export function walkFields(
         text: table.comment,
       });
 
-    if (!has.has(FindField.columnName) && !has.has(FindField.columnComment)) {
-      continue;
-    }
-
-    for (const column of columnCollection.selectByIds(table.columnIds)) {
+    const columns = walksColumns
+      ? columnCollection.selectByIds(table.columnIds)
+      : [];
+    for (const column of columns) {
       has.has(FindField.columnName) &&
         push({
           field: FindField.columnName,
@@ -127,9 +186,39 @@ export function walkFields(
           text: column.comment,
         });
     }
+
+    const indexes = has.has(FindField.indexName)
+      ? indexCollection.selectByIds(getTableIndexIds(state, tableId))
+      : [];
+    for (const index of indexes) {
+      push({
+        field: FindField.indexName,
+        id: index.id,
+        tableId,
+        text: index.name,
+      });
+    }
   }
 
-  // Hidden memos are found and replaced no more than they are seen.
+  // Hidden groups and memos are found and replaced no more than they are seen.
+  if (has.has(FindField.tableGroupName) && isTableGroupShown(state)) {
+    const groups = inOrder(
+      query(collections)
+        .collection('tableGroupEntities')
+        .selectByIds(doc.tableGroupIds),
+      order?.tableGroupIds
+    );
+
+    for (const group of groups) {
+      push({
+        field: FindField.tableGroupName,
+        id: group.id,
+        tableId: '',
+        text: group.name,
+      });
+    }
+  }
+
   if (has.has(FindField.memo) && isMemoShown(state)) {
     const memos = query(collections)
       .collection('memoEntities')
@@ -150,7 +239,7 @@ export function walkFields(
 
 /**
  * Every occurrence the matcher finds in the fields given, one entry each, in
- * document order.
+ * document order or in the order given.
  *
  * @example
  * findMatches(store.state, matcher, [FindField.columnName]);
@@ -158,9 +247,10 @@ export function walkFields(
 export function findMatches(
   state: RootState,
   matcher: Matcher,
-  fields: ReadonlyArray<FindField> = FindFieldList
+  fields: ReadonlyArray<FindField> = FindFieldList,
+  order?: FieldOrder
 ): FindMatch[] {
-  return walkFields(state, fields).flatMap(field =>
+  return walkFields(state, fields, order).flatMap(field =>
     field.text
       ? matcher.find(field.text).map(({ start, end }) => ({
           ...field,
@@ -232,11 +322,12 @@ export type ReplaceRun = Pick<FindMatch, 'field' | 'id' | 'slot' | 'start'> & {
 export function resumeRun(
   state: RootState,
   fields: ReadonlyArray<FindField>,
-  run: ReplaceRun | null
+  run: ReplaceRun | null,
+  order?: FieldOrder
 ): ReplaceRun | null {
   if (!run) return null;
 
-  const found = walkFields(state, fields).find(
+  const found = walkFields(state, fields, order).find(
     ({ field, id }) => field === run.field && id === run.id
   );
   return found?.text === run.text ? { ...run, slot: found.slot } : null;
