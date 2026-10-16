@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-16
+
+### Added
+
+- The Explorer, docked left of the canvas, lists the diagram's tables, table groups and memos, and
+  each table's columns, indexes and foreign keys. Open it from the toolbar; a click on a row goes
+  to it, and a foreign key lights its relationship.
+- Find and Replace also searches index and table group names, and Preserve Case gives the
+  replacement the case of the text it replaces.
+- The bottom toolbar gains New Table, New Memo and New Table Group.
+
+### Changed
+
+- Find and Replace moves from its floating panel to the top of the Explorer, where the matches
+  show in the tree.
+- The Diff Viewer lists what changed in the Explorer's tree, marked A, M, D or R. Against an
+  earlier version of the same file, a rename shows as one rename instead of a removal and an
+  addition. The canvas colors changed text and outlines added, removed or moved items instead of
+  filling them.
+- A jump from the command palette, the Explorer or the Diff Viewer leaves the view alone when the
+  target already shows well, and the same jump again does not move it.
+- The command palette's `#`, `@` and `:` lists show every match.
+- The toolbar's table count moves to the Explorer's Tables folder.
+
 ## [1.0.0] - 2026-10-12
 
 ### Added
