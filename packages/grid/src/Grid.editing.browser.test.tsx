@@ -355,6 +355,21 @@ describe('starting an edit', () => {
 
     expect(view.onCommit).not.toHaveBeenCalled();
   });
+
+  it('opens no edit from an input holding a line break, and empties it', async () => {
+    const view = await mount();
+    press(view, cellPoint(view, 1, 1));
+    view.textarea.focus();
+
+    view.textarea.value = 'a\nb';
+    view.textarea.dispatchEvent(
+      new InputEvent('input', { inputType: 'insertText', bubbles: true })
+    );
+    await nextFrame();
+
+    expect(editorOpen(view)).toBe(false);
+    expect(view.textarea.value).toBe('');
+  });
 });
 
 describe('ending an edit', () => {
@@ -828,6 +843,24 @@ describe('an IME composition', () => {
     expect(view.textarea.value).toBe('');
     expect(editorOpen(view)).toBe(false);
     expect(lastSelection(view)?.active).toEqual({ row: 3, col: 3 });
+  });
+
+  it('opens nothing on a double click while a composition runs', async () => {
+    const view = await mount();
+    press(view, cellPoint(view, 1, 1));
+    view.textarea.focus();
+    await compose('한');
+
+    dblclick(view, cellPoint(view, 3, 3));
+    await nextFrame();
+    expect(editorOpen(view)).toBe(false);
+    expect(view.textarea.value).not.toBe(valueOf(3, 3));
+
+    await finishComposition('한');
+    expect(editorOpen(view)).toBe(false);
+    expect(view.textarea.value).toBe('');
+    expect(view.onCommit).toHaveBeenCalledTimes(1);
+    expect(lastCommit(view)?.changes).toEqual([change(1, 1, '한')]);
   });
 
   it('drops a composition on a readonly cell once it ends', async () => {
@@ -1437,7 +1470,24 @@ describe('a column’s own editor', () => {
     press(view, cellPoint(view, 2, 2));
     key(view, 'F2');
     expect(key(view, 'Escape').defaultPrevented).toBe(true);
+    expect(reasons).toEqual(['escape', 'outside', 'escape']);
+
+    // Enter and Tab in the textarea beside the editor end nothing and move
+    // nothing, and the editor's own commit later moves no selection either.
+    const selected = view.onSelectionChange.mock.calls.length;
+    view.textarea.focus();
     expect(key(view, 'Enter').defaultPrevented).toBe(true);
+    expect(key(view, 'Tab').defaultPrevented).toBe(true);
+    await nextFrame();
+    expect(at(view.slot)).toEqual(cellBox(view, 2, 2));
+    expect(view.onSelectionChange).toHaveBeenCalledTimes(selected);
+
+    (ctx as unknown as EditorContext).commit('late');
+    expect(lastCommit(view)).toEqual({
+      changes: [change(2, 2, 'late')],
+      source: 'edit',
+    });
+    expect(view.onSelectionChange).toHaveBeenCalledTimes(selected);
     expect(reasons).toEqual(['escape', 'outside', 'escape']);
   });
 
@@ -1539,6 +1589,27 @@ describe('a column’s own editor', () => {
 
     expect(lastCommit(view)?.changes).toEqual([change(1, 2, 'picked')]);
     expect(document.activeElement).toBe(view.textarea);
+  });
+
+  it('keeps the textarea empty and the cells unwritten beside it, and copies the selection still', async () => {
+    const editor = vi.fn<(ctx: EditorContext) => void>();
+    const view = await mount({ columns: withEditor(2, editor) });
+    press(view, cellPoint(view, 1, 2));
+    view.textarea.focus();
+    key(view, 'Enter');
+    expect(editor).toHaveBeenCalledTimes(1);
+
+    await userEvent.keyboard('z');
+    expect(view.textarea.value).toBe('');
+
+    expect(paste(view, 'x').defaultPrevented).toBe(true);
+    const { event, data } = clipboardEvent(view, 'copy');
+    expect(event.defaultPrevented).toBe(true);
+    expect(data.getData('text/plain')).toBe(valueOf(1, 2));
+
+    expect(view.onCommit).not.toHaveBeenCalled();
+    expect(view.textarea.value).toBe('');
+    expect(at(view.slot)).toEqual(cellBox(view, 1, 2));
   });
 
   it('keeps the wheel for a list in the slot that can still scroll, and hands it on once it cannot', async () => {

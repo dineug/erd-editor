@@ -277,6 +277,22 @@ describe('the pointer', () => {
     expect(document.activeElement).not.toBe(view.textarea);
   });
 
+  it('fits no column and opens no editor on a double tap', async () => {
+    const view = await mount();
+    const tap = { pointerType: 'touch' };
+
+    for (const point of [edgePoint(view, 1), cellPoint(view, 2, 2)]) {
+      pointer(view, 'pointerdown', point, tap);
+      pointer(view, 'pointerup', point, tap);
+      mouse(view, 'dblclick', point, { detail: 2 });
+    }
+    await nextFrame();
+
+    expect(view.onColumnResize).not.toHaveBeenCalled();
+    expect(getComputedStyle(view.textarea).opacity).toBe('0');
+    expect(view.textarea.value).toBe('');
+  });
+
   it('takes Ctrl with the main button on an Apple platform as the right click it is there', async () => {
     vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
     const menu = vi.fn<(event: CellContextMenuEvent) => void>();
@@ -486,6 +502,13 @@ describe('the pointer', () => {
     expect(Math.abs(width - expected)).toBeLessThanOrEqual(2);
 
     mouse(view, 'dblclick', cellPoint(view, 3, 1), { detail: 2 });
+    expect(view.onColumnResize).toHaveBeenCalledTimes(1);
+
+    view.props.columns = COLUMNS.map((column, index) =>
+      index === 1 ? { ...column, width } : column
+    );
+    await drawn();
+    mouse(view, 'dblclick', edgePoint(view, 1), { detail: 2 });
     expect(view.onColumnResize).toHaveBeenCalledTimes(1);
   });
 
@@ -860,6 +883,23 @@ describe('the wheel and the focus', () => {
     expect(view.scroller.scrollLeft).toBe(50);
   });
 
+  it('scrolls nothing for a wheel over the focus textarea that something before the grid prevented', async () => {
+    const view = await mount();
+    const prevent = (event: Event) => event.preventDefault();
+    view.host.addEventListener('wheel', prevent, {
+      capture: true,
+      passive: false,
+    });
+    teardowns.push(() =>
+      view.host.removeEventListener('wheel', prevent, { capture: true })
+    );
+
+    expect(wheel(view, { deltaY: 100 }).defaultPrevented).toBe(true);
+    await drawn();
+    expect(view.scroller.scrollTop).toBe(0);
+    expect(geometry(view).top).toBe(0);
+  });
+
   it('scrolls under a real wheel over the active cell, which the textarea lets through', async () => {
     const view = await mount();
     await userEvent.click(view.scroller);
@@ -1095,6 +1135,23 @@ describe('the scene it drives', () => {
     expect(view.onViewportChange).toHaveBeenCalledTimes(2);
   });
 
+  it('reports nothing for a scroll or a resize that leaves the same cells in view', async () => {
+    const view = await mount();
+    const shown = lastViewport(view);
+    const calls = view.onViewportChange.mock.calls.length;
+
+    view.scroller.scrollTop = 5;
+    await drawn();
+    await nextFrame();
+    view.host.style.width = `${WIDTH + 1}px`;
+    await drawn();
+    await nextFrame();
+
+    expect(geometry(view).top).toBe(5);
+    expect(view.onViewportChange).toHaveBeenCalledTimes(calls);
+    expect(lastViewport(view)).toEqual(shown);
+  });
+
   it('hands each prop it watches to the scene that draws it', async () => {
     const view = await mount();
     const body = node(view, 'grid-body') as unknown as Layer;
@@ -1141,14 +1198,30 @@ describe('the scene it drives', () => {
     await drawn();
     expect(reads).toContain('0:0');
 
+    view.props.version = 3;
+    await drawn();
+    view.props.getCellStyle = undefined;
     view.props.theme = undefined;
     view.props.font = undefined;
     view.props.rowHeight = undefined;
     view.props.frozenColumns = undefined;
-    view.props.version = undefined;
     await drawn();
     expect(geometry(view).headerHeight).toBe(ROW_HEIGHT);
     expect(view.textarea.style.font).not.toBe('20px serif');
+    expect(geometry(view).frozen.width).toBe(0);
+    expect(near(clear(), rgba(lightTheme.background))).toBe(true);
+
+    reads.length = 0;
+    view.props.version = undefined;
+    await drawn();
+    expect(reads).toContain('0:0');
+
+    // The version a missing prop leaves is 0, so a host writing 0 then has
+    // nothing read again.
+    reads.length = 0;
+    view.props.version = 0;
+    await drawn();
+    expect(reads).toEqual([]);
   });
 
   it('measures and draws its font again once faces it names load after the mount', async () => {
