@@ -631,6 +631,32 @@ export const Grid: FC<GridProps> = props => {
     });
   };
 
+  /**
+   * A menu the keyboard opens, with Shift+F10 or the menu key, which fires on
+   * the focused textarea: while no edit is open and the host takes them, the
+   * host's menu opens on the active cell, at the middle of where it shows.
+   */
+  const onKeyboardContextMenu = (event: MouseEvent) => {
+    const listener = props.onCellContextMenu;
+    const container = containerRef.value;
+    const { state } = scene;
+    const { active } = selection;
+    if (!listener || !container || editing.editing()) return;
+    if (active.row >= state.rowCount || active.col >= state.columns.length) {
+      return;
+    }
+
+    event.preventDefault();
+    const box = holdInside(cellRect(state, active), cellArea(state));
+    const rect = container.getBoundingClientRect();
+    listener({
+      row: active.row,
+      col: active.col,
+      clientX: rect.left + box.x + box.width / 2,
+      clientY: rect.top + box.y + box.height / 2,
+    });
+  };
+
   /** Draws each layer at the screen's pixel ratio, which konva read once as it loaded. */
   const applyPixelRatio = () => {
     const next = window.devicePixelRatio || 1;
@@ -823,6 +849,7 @@ export const Grid: FC<GridProps> = props => {
           on:copy={editing.copy}
           on:paste={editing.paste}
           on:blur={editing.blur}
+          on:contextmenu={onKeyboardContextMenu}
         ></textarea>
         <div
           style={slotStyle(observed, open)}

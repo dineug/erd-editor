@@ -82,8 +82,8 @@ edge drags to resize its column, and a double click fits it to the rows in view;
 the width through `onColumnResize` and the host keeps it in `columns`, or the column goes back.
 Raise `version` once the data has changed, and the cells in view are read again.
 `onViewportChange` reports the rows and columns in view once a frame. With `onCellContextMenu`, a
-right click on a cell opens no browser menu and hands the host its cell and point; without it, the
-browser's menu opens as usual.
+right click on a cell opens no browser menu and hands the host its cell and point, and a menu the
+keyboard opens does the same for the active cell; without it, the browser's menu opens as usual.
 
 The grid changes no cell itself: every edit, paste or clear reaches the host as one
 `onCommit({ changes, source })`, each change naming its row, column, column id and value, and the

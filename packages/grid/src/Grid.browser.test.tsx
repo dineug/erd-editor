@@ -753,6 +753,41 @@ describe('the keyboard', () => {
     expect(geometry(view).left).toBe(offsets[columns + 2] - g.body.width);
   });
 
+  it('hands the host a menu the keyboard opens on the focused textarea, while no edit is open', async () => {
+    const menu = vi.fn<(event: CellContextMenuEvent) => void>();
+    const view = await mount({ onCellContextMenu: menu });
+    const rect = view.container.getBoundingClientRect();
+    const opened = () => {
+      const event = new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      view.textarea.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    press(view, cellPoint(view, 3, 2));
+    view.onSelectionChange.mockClear();
+
+    expect(opened()).toBe(true);
+    const middle = cellPoint(view, 3, 2);
+    expect(menu).toHaveBeenCalledWith({
+      row: 3,
+      col: 2,
+      clientX: rect.left + middle.x,
+      clientY: rect.top + middle.y,
+    });
+    expect(view.onSelectionChange).not.toHaveBeenCalled();
+
+    key(view, 'F2');
+    expect(opened()).toBe(false);
+    key(view, 'Escape');
+    view.props.onCellContextMenu = undefined;
+    await nextFrame();
+    expect(opened()).toBe(false);
+    expect(menu).toHaveBeenCalledTimes(1);
+  });
+
   it('moves on a real key press in the focused textarea', async () => {
     const view = await mount();
     view.textarea.focus();
