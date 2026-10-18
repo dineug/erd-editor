@@ -83,11 +83,11 @@
   | `setSelection` | the overlay, every call, the same selection again included: trading one off-screen range for another writes nothing to a `k-rect` and still moves a header highlight |
   | `setGetters` | the body, the only layer that reads a getter |
   | `setTheme`, `setFont`, `setVersion`, `setColumns`, `setRowCount`, `setFrozenColumns`, `setRowHeight`, `setResize` | the body and the overlay |
-  | `setSize` | neither; the stage draws every layer as it resizes |
+  | `setSize` | neither; the stage draws every layer once as it resizes, and the templates it moves mark the layers they sit on |
 
   A setter handed what the state holds marks nothing, `setSelection` aside. A layer draw that ran out of measurements marks its own layer again from its `draw.grid` handler (Text).
 - **The grid keeps no cell values.** Every draw asks the getters for every cell it paints, once each, and the measure cache keys on the text itself; a host shows a data change by raising `version` or handing new getters.
-- **Size the stage after the templates.** `setSize` lays the regions out again, keeps the size pending and calls `requestFlush`; `GridScene`'s `onBeforeFlush` listener, which runs after r-html's drain in the same commit, calls `stage.size()`. Konva's Stage draws every layer at once when it resizes, so sizing it before the drain would draw the old regions and ask the getters for the old range.
+- **Size the stage after the templates, once.** `setSize` lays the regions out again, keeps the size pending and calls `requestFlush`; `GridScene`'s `onBeforeFlush` listener, which runs after r-html's drain in the same commit, resizes the stage. Konva's Stage draws every layer at once on each of its `widthChange` and `heightChange` events, so with both axes new the listener writes the width past its setter and lets the height's event alone resize. That draw reads the templates: sizing the stage before the drain would draw the overlay's clip groups and scrollbars at the old size for a frame, while the body, which reads the raw state `setSize` already laid out, draws the new range either way.
 - **A layer draw settles its frame first.** Each layer's `beforeDraw.grid` handler sets the visible range, the header selections (overlay only), the fitter's font and budget and its capacity before the first shape paints. The unbinding `bindLayers` returns removes the `.grid` handlers, and `GridScene` runs it at unmount with `bindScene`'s and its `onBeforeFlush` listener's.
 
 ### The scene

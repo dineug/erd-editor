@@ -868,24 +868,73 @@ describe('a grid with no rows or no columns', () => {
 });
 
 describe('a new size', () => {
-  it('reaches the stage after the templates, so the first draw already reads the new range', async () => {
+  /** What the overlay's templates hold each time it draws, read as the draw begins. */
+  function overlayDraws({ stage, overlay }: Mounted) {
+    const draws: Array<{ track: number; clipWidth: number }> = [];
+
+    overlay.on('beforeDraw.spec', () => {
+      draws.push({
+        track: stage.findOne('.grid-vertical-track')?.x() ?? Number.NaN,
+        clipWidth: stage.findOne('.grid-body-clip')?.getAttr('clipWidth'),
+      });
+    });
+
+    return draws;
+  }
+
+  it('reaches the stage after the templates, so its resize already draws the new regions', async () => {
     const view = await mount();
     const { stage, scene } = view;
     const draws = countGetters(view);
+    const overlay = overlayDraws(view);
     await drawn();
 
     draws.length = 0;
+    overlay.length = 0;
     scene.setSize(700.4, 400);
     await drawn();
 
-    const { lower, upper } = getterBounds(scene);
-    const [first] = draws;
+    const { layout } = scene.state;
 
     expect(stage.size()).toEqual({ width: 700, height: 400 });
-    expect(scene.state.layout.width).toBe(700);
-    expect(first.cell).toBeGreaterThanOrEqual(lower);
-    expect(first.cell).toBeLessThanOrEqual(upper);
-    expect(stage.findOne('.grid-vertical-track')?.x()).toBe(700 - 12);
+    expect(layout.width).toBe(700);
+    expect(overlay.length).toBeGreaterThan(0);
+    expect(overlay).toEqual(
+      overlay.map(() => ({ track: 700 - 12, clipWidth: layout.body.width }))
+    );
+    expectWithin(draws, scene);
+  });
+
+  it('resizes the stage once when both axes change, and once when one does', async () => {
+    const view = await mount();
+    const { stage, scene } = view;
+    const draws = countGetters(view);
+    const overlay = overlayDraws(view);
+    let resizes = 0;
+    // Konva's Stage resizes its canvases and draws on each of these events.
+    stage.on('widthChange.spec heightChange.spec', () => {
+      resizes++;
+    });
+    await drawn();
+
+    for (const [width, height] of [
+      [700, 400],
+      [700, 500],
+      [800, 500],
+    ]) {
+      draws.length = 0;
+      overlay.length = 0;
+      resizes = 0;
+      scene.setSize(width, height);
+      await drawn();
+
+      // The resize draws each layer once, and the commit's own frame draws
+      // the layers its templates marked once more.
+      expect(resizes).toBe(1);
+      expect(draws).toHaveLength(2);
+      expect(overlay).toHaveLength(2);
+      expect(stage.size()).toEqual({ width, height });
+    }
   });
 });
 

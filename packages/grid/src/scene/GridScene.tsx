@@ -81,6 +81,21 @@ const clipGroup = (name: string, rect: SceneRect, children: unknown) => (
   </k-group>
 );
 
+/**
+ * Resizes the stage once. Konva's Stage draws every layer as either axis's
+ * change event fires, so with both axes new the width is written past its
+ * setter and the height's event alone resizes, reading both.
+ */
+function sizeStage(stage: Stage, size: { width: number; height: number }) {
+  if (size.height === stage.height()) {
+    stage.width(size.width);
+    return;
+  }
+
+  stage.attrs.width = size.width;
+  stage.height(size.height);
+}
+
 /** A scrollbar track or thumb, in stage coordinates. */
 const barRect = (
   name: string,
@@ -124,7 +139,7 @@ const GridScene: FC<GridSceneProps> = props => {
     unbinds.push(
       onBeforeFlush(() => {
         const size = scene.takePendingSize();
-        if (size) stage.size(size);
+        if (size) sizeStage(stage, size);
       })
     );
     requestFlush();
