@@ -179,7 +179,7 @@ const GridScene: FC<GridSceneProps> = props => {
           listening={false}
         >
           {selection.ranges.flatMap(range => {
-            const edge = rangeBox(range, view, geometry);
+            const edge = rangeBox(range, view, geometry, frozen);
             const fills = fillBoxes(range, selection.active, view, geometry);
 
             return [

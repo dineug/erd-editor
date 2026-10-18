@@ -107,12 +107,52 @@ describe('rangeBox', () => {
   it('hides a range wholly outside the view, the same box for any of them', () => {
     for (const range of [
       { startRow: 0, startCol: 0, endRow: 19, endCol: 9 },
-      { startRow: 40, startCol: 0, endRow: 50, endCol: 9 },
+      { startRow: 41, startCol: 0, endRow: 50, endCol: 9 },
       { startRow: 0, startCol: 0, endRow: 999, endCol: 1 },
-      { startRow: 0, startCol: 6, endRow: 999, endCol: 9 },
+      { startRow: 0, startCol: 7, endRow: 999, endCol: 9 },
     ]) {
       expect(rangeBox(range, view, geometry)).toBe(HIDDEN_BOX);
     }
+  });
+
+  it('draws the leading edge of a range that starts just past the view on the last line in it', () => {
+    // Row 39's own bottom line is pixel 799 and column 5's right line pixel
+    // 599, both inside a view that ends at 800 down and 600 across.
+    expect(
+      rangeBox(
+        { startRow: 40, startCol: 0, endRow: 50, endCol: 9 },
+        view,
+        geometry
+      )
+    ).toEqual({ visible: true, x: 199.5, y: 799.5, width: 401, height: 1 });
+    expect(
+      rangeBox(
+        { startRow: 0, startCol: 6, endRow: 999, endCol: 9 },
+        view,
+        geometry
+      )
+    ).toEqual({ visible: true, x: 599.5, y: 399.5, width: 1, height: 401 });
+  });
+
+  it('leaves the frozen region’s right edge to the frozen border, under a range that starts past it', () => {
+    const frozenView = { ...view, left: 0, right: 600 };
+
+    expect(
+      rangeBox(
+        { startRow: 0, startCol: 6, endRow: 999, endCol: 9 },
+        frozenView,
+        geometry,
+        true
+      )
+    ).toBe(HIDDEN_BOX);
+    expect(
+      rangeBox(
+        { startRow: 40, startCol: 0, endRow: 50, endCol: 9 },
+        frozenView,
+        geometry,
+        true
+      )
+    ).toEqual({ visible: true, x: 0.5, y: 799.5, width: 600, height: 1 });
   });
 
   it('holds a range to the grid and hides one that starts past its end', () => {
@@ -233,6 +273,23 @@ describe('activeBox', () => {
     ).toBe(true);
   });
 
+  it('draws the edge of a cell just past the view on the last line in it', () => {
+    expect(activeBox({ row: 40, col: 3 }, false, 2, view, geometry)).toEqual({
+      visible: true,
+      x: 300,
+      y: 800,
+      width: 99,
+      height: 19,
+    });
+    expect(activeBox({ row: 21, col: 6 }, false, 2, view, geometry)).toEqual({
+      visible: true,
+      x: 600,
+      y: 420,
+      width: 99,
+      height: 19,
+    });
+  });
+
   it('hides the cell in the other region, outside the grid or out of view', () => {
     for (const [row, col, frozen] of [
       [21, 1, false],
@@ -242,8 +299,8 @@ describe('activeBox', () => {
       [21, -1, false],
       [21, 10, false],
       [19, 3, false],
-      [40, 3, false],
-      [21, 6, false],
+      [41, 3, false],
+      [21, 7, false],
     ] as const) {
       expect(activeBox({ row, col }, frozen, 2, view, geometry)).toBe(
         HIDDEN_BOX

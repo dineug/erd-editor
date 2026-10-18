@@ -107,6 +107,17 @@ const outOfView = (rect: ContentRect, view: RegionView) =>
   rect.top >= view.bottom;
 
 /**
+ * Whether an edge drawn on the lines around a rect shows nothing in the view.
+ * One that starts just past the far side still takes the line before it, the
+ * last cell's own, except across a frozen region, whose last line is its border.
+ */
+const edgeOutOfView = (rect: ContentRect, view: RegionView, across = true) =>
+  rect.right <= view.left ||
+  rect.left - (across ? GRID_LINE : 0) >= view.right ||
+  rect.bottom <= view.top ||
+  rect.top - GRID_LINE >= view.bottom;
+
+/**
  * The pixel a range's left or top edge draws on: the grid line of the cell
  * before, else its own first pixel where that line is the region's edge, out
  * of the clip, else the pixel before the view where the range is cut.
@@ -125,13 +136,14 @@ function leadingEdge(start: number, viewStart: number): number {
 export function rangeBox(
   range: CellRange,
   view: RegionView,
-  geometry: OverlayGeometry
+  geometry: OverlayGeometry,
+  frozen = false
 ): Readonly<OverlayBox> {
   const held = heldRange(range, geometry);
   if (!held) return HIDDEN_BOX;
 
   const rect = cellsRect(held, geometry);
-  if (outOfView(rect, view)) return HIDDEN_BOX;
+  if (edgeOutOfView(rect, view, !frozen)) return HIDDEN_BOX;
 
   const left = leadingEdge(rect.left, view.left);
   const top = leadingEdge(rect.top, view.top);
@@ -237,7 +249,7 @@ export function activeBox(
     { startRow: row, startCol: col, endRow: row, endCol: col },
     geometry
   );
-  if (outOfView(cell, view)) return HIDDEN_BOX;
+  if (edgeOutOfView(cell, view)) return HIDDEN_BOX;
 
   // The line before a cell that starts the view is the region's edge, out of
   // the clip, so the edge takes the cell's first two pixels there instead.
