@@ -36,8 +36,8 @@ export interface IndexSpan {
 
 /**
  * The rows or the columns a header paints as selected, sorted and merged:
- * intersected holds every index a range reaches, covered only the ones a
- * range spans from the first cell to the last across the other axis.
+ * intersected holds every index a range in the grid reaches, covered only the
+ * ones a range spans from the first cell to the last across the other axis.
  */
 export interface HeaderSelection {
   intersected: IndexSpan[];
@@ -382,6 +382,14 @@ function mergeSpans(spans: IndexSpan[]): IndexSpan[] {
   return merged;
 }
 
+/**
+ * Whether a range holds a cell of the grid. One that starts past the last row
+ * or column, as a default selection on an empty grid or one left behind by
+ * fewer rows does, lights no header, as the overlay draws no box for it.
+ */
+const holdsCell = (range: CellRange, bounds: GridBounds) =>
+  range.startRow < bounds.rowCount && range.startCol < bounds.colCount;
+
 /** The rows the row number header paints; a row is covered when a range spans every column. */
 export function selectedRows(
   sel: GridSelection,
@@ -391,15 +399,13 @@ export function selectedRows(
   const covered: IndexSpan[] = [];
 
   for (const range of sel.ranges) {
+    if (!holdsCell(range, bounds)) continue;
+
     const span = { start: range.startRow, end: range.endRow };
 
     intersected.push(span);
 
-    if (
-      bounds.colCount > 0 &&
-      range.startCol <= 0 &&
-      range.endCol >= bounds.colCount - 1
-    ) {
+    if (range.startCol <= 0 && range.endCol >= bounds.colCount - 1) {
       covered.push(span);
     }
   }
@@ -416,15 +422,13 @@ export function selectedColumns(
   const covered: IndexSpan[] = [];
 
   for (const range of sel.ranges) {
+    if (!holdsCell(range, bounds)) continue;
+
     const span = { start: range.startCol, end: range.endCol };
 
     intersected.push(span);
 
-    if (
-      bounds.rowCount > 0 &&
-      range.startRow <= 0 &&
-      range.endRow >= bounds.rowCount - 1
-    ) {
+    if (range.startRow <= 0 && range.endRow >= bounds.rowCount - 1) {
       covered.push(span);
     }
   }

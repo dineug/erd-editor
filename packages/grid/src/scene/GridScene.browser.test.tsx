@@ -776,6 +776,25 @@ describe('a selection that moves no rectangle', () => {
   });
 });
 
+describe('a grid with no rows or no columns', () => {
+  it('lights no header for the default selection, as it draws no box for it', async () => {
+    for (const init of [{ rowCount: 0 }, { rowCount: 5, columns: [] }]) {
+      const view = await mount(init);
+      const { stage, scene, overlay } = view;
+      const boxes = stage.find('.grid-range, .grid-active-cell');
+
+      expect(boxes.length).toBeGreaterThan(0);
+      expect(boxes.every(node => !node.visible())).toBe(true);
+      expect(
+        colourAt(overlay, clearOfLabel(columnHeaderBox(scene, 0)))[3]
+      ).toBe(0);
+      expect(colourAt(overlay, clearOfLabel(rowHeaderBox(scene, 0)))[3]).toBe(
+        0
+      );
+    }
+  });
+});
+
 describe('a new size', () => {
   it('reaches the stage after the templates, so the first draw already reads the new range', async () => {
     const view = await mount();

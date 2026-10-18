@@ -488,12 +488,34 @@ describe('what a header paints', () => {
     ]);
   });
 
-  it('covers nothing on a grid with no rows or no columns', () => {
+  it('lights nothing on a grid with no rows or no columns', () => {
     const sel = selection(0, 0, range(0, 0, 0, 0));
+    const none = { intersected: [], covered: [] };
 
-    expect(selectedRows(sel, { rowCount: 1, colCount: 0 }).covered).toEqual([]);
-    expect(selectedColumns(sel, { rowCount: 0, colCount: 1 }).covered).toEqual(
-      []
+    for (const bounds of [
+      { rowCount: 0, colCount: 30 },
+      { rowCount: 10, colCount: 0 },
+    ]) {
+      expect(selectedRows(sel, bounds)).toEqual(none);
+      expect(selectedColumns(sel, bounds)).toEqual(none);
+    }
+  });
+
+  it('lights no header for a range that starts past the last row or column', () => {
+    const sel = selection(
+      50,
+      2,
+      range(1, 1, 2, 1),
+      range(50, 2, 60, 3),
+      range(4, 12, 5, 14)
     );
+    const fewer = { rowCount: 10, colCount: 10 };
+
+    expect(selectedColumns(sel, fewer).intersected).toEqual([
+      { start: 1, end: 1 },
+    ]);
+    expect(selectedRows(sel, fewer).intersected).toEqual([
+      { start: 1, end: 2 },
+    ]);
   });
 });
