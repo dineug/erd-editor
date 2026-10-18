@@ -1028,6 +1028,31 @@ describe('the clipboard', () => {
     expect(view.textarea.value).toBe('');
   });
 
+  it('opens the grid’s own editor on one line, and pastes a tab or line break into it as a space', async () => {
+    const view = await mount({
+      getCell: (row, col) =>
+        row === 1 && col === 1 ? 'top\nbottom' : valueOf(row, col),
+    });
+    await editAt(view, 1, 1);
+    expect(view.textarea.value).toBe('top bottom');
+    key(view, 'Enter');
+    expect(view.onCommit).not.toHaveBeenCalled();
+
+    await editAt(view, 2, 1);
+    view.textarea.select();
+    expect(paste(view, 'a\tb\r\nc\r\n').defaultPrevented).toBe(true);
+    expect(view.textarea.value).toBe('a b  c');
+    key(view, 'Enter');
+    expect(lastCommit(view)?.changes).toEqual([change(2, 1, 'a b  c')]);
+
+    vi.spyOn(document, 'execCommand').mockReturnValue(false);
+    await editAt(view, 3, 1);
+    expect(paste(view, 'x\ny').defaultPrevented).toBe(true);
+    expect(view.textarea.value).toBe('3:1x y');
+    key(view, 'Enter');
+    expect(lastCommit(view)?.changes).toEqual([change(3, 1, '3:1x y')]);
+  });
+
   it('leaves copy and paste to the open editor', async () => {
     const view = await mount();
     await editAt(view, 1, 1);

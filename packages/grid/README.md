@@ -88,9 +88,10 @@ keyboard opens does the same for the active cell; without it, the browser's menu
 The grid changes no cell itself: every edit, paste or clear reaches the host as one
 `onCommit({ changes, source })`, each change naming its row, column, column id and value, and the
 host applies it and raises `version`. Enter, F2 and a double click turn the hidden textarea into the
-editor over the cell, holding its value; typing on the active cell replaces the value, an IME
-composition included. Enter and Tab commit and move down or right (Shift goes back), a press
-anywhere else or the focus leaving commits, and Escape cancels. Delete and Backspace clear every
+editor over the cell, holding its value on one line as the cell draws it; typing on the active
+cell replaces the value, an IME composition included. Enter and Tab commit and move down or right
+(Shift goes back), a press anywhere else or the focus leaving commits, and Escape cancels.
+Delete and Backspace clear every
 selected range. Copy writes the selection as tab-separated `text/plain`, several ranges only when
 they share their rows or their columns (else `onReject({ reason: 'multi-range-copy' })`); paste
 reads `text/plain` into the cells from the active one, fills every range from a one-cell clipboard,

@@ -32,7 +32,7 @@ export interface ActiveEdit {
   /** The id of the cell's column when the edit started, which the change carries. */
   columnId: string;
   mode: EditMode;
-  /** What the host's getter answered for the cell when the edit started. */
+  /** What the host's getter answered for the cell when the edit started, as the editor opened on it. */
   original: string;
   /** What the editor opens with: the value kept, or the text typed. */
   initialValue: string;
@@ -56,7 +56,7 @@ export interface CellChange extends CellWrite {
 export interface EditRequest {
   cell: CellRef;
   column: ColumnDef;
-  /** What the host's getter answers for the cell. */
+  /** What the host's getter answers for the cell, on one line for the grid's own editor. */
   value: string;
   /** What the host's style hook answers for the cell, whose readonly skips it like the column's. */
   style?: CellStyle;

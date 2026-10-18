@@ -20,6 +20,7 @@ import {
 } from '@/model/editing';
 import type { KeyAction } from '@/model/keys';
 import type { SelectModifiers } from '@/model/selection';
+import { normalizeCellText } from '@/model/text';
 import {
   copyableRanges,
   copyRows,
@@ -100,6 +101,9 @@ export const NO_INSETS: Readonly<Insets> = Object.freeze({
 
 /** A text that would split the cell into two rows, which typing never opens an edit with. */
 const LINE_BREAK = /[\r\n]/;
+
+/** The line breaks at the end of a pasted text, which a paste onto the cells drops too. */
+const TRAILING_BREAKS = /[\r\n]+$/;
 
 /** A shadow root, told by its node type and its host, since another realm's has another class. */
 const isShadowRoot = (node: Node): node is ShadowRoot =>
@@ -404,10 +408,14 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     const style = getCellStyle?.(cell.row, cell.col);
     const custom = typeof column.editor === 'function';
+    const value = getCell(cell.row, cell.col);
+    // The grid's own editor holds one line, so it opens on the text the cell
+    // draws and measures its draft against that: one left as it opened commits
+    // nothing, whatever tab or line break the value holds.
     const next = startEdit(edit, {
       cell,
       column,
-      value: getCell(cell.row, cell.col),
+      value: custom ? value : normalizeCellText(value),
       style,
       custom,
       trigger,
@@ -422,6 +430,24 @@ export function createEditingInput(host: EditingHost): EditingInput {
       openOwn(next, style, trigger);
     }
     return true;
+  };
+
+  /**
+   * A paste into the grid's own editor, which keeps its one line: a text with
+   * a tab or line break goes in with the breaks at its end dropped and each
+   * other one a space, through the command that keeps the textarea's undo.
+   */
+  const pasteLine = (event: ClipboardEvent, text: string) => {
+    const { textarea } = host;
+    const line = normalizeCellText(text.replace(TRAILING_BREAKS, ''));
+    if (line === text) return;
+
+    event.preventDefault();
+    if (!textarea.ownerDocument.execCommand('insertText', false, line)) {
+      const { selectionStart, selectionEnd } = textarea;
+      textarea.setRangeText(line, selectionStart, selectionEnd, 'end');
+    }
+    syncDraft();
   };
 
   /** Empties every selected cell the host lets the grid write, as one commit. */
@@ -548,7 +574,11 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     paste(event) {
       const data = event.clipboardData;
-      if (!data || (edit.status === 'editing' && !edit.custom)) return;
+      if (!data) return;
+      if (edit.status === 'editing' && !edit.custom) {
+        pasteLine(event, data.getData('text/plain'));
+        return;
+      }
 
       // Unprevented, the text would land in the textarea and open an edit.
       event.preventDefault();
