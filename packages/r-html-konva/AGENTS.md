@@ -61,7 +61,7 @@
 
 ### The ledger
 
-- **z-order belongs to the ledger.** `setAttribute` refuses `class`, `style` and `zIndex`, and `src/zOrder.scan.test.ts` allows a z-order call (`setZIndex`, `moveTo*`, `moveUp` / `moveDown`) only in `host.ts` and in `host.marker.test.ts`, which breaks the order on purpose to prove the next commit repairs it. A consumer keeps its own scan (`erd-editor`'s `src/konva/zOrder.test.ts`, with nothing allowed).
+- **z-order belongs to the ledger.** `setAttribute` refuses `class`, `style` and `zIndex`, and `src/zOrder.scan.test.ts` allows a z-order call (`setZIndex`, `moveTo*`, `moveUp` / `moveDown`) only in `host.ts` and in `host.marker.test.ts`, which breaks the order on purpose to prove the next commit repairs it. Each consumer keeps its own scan with nothing allowed: `erd-editor`'s `src/konva/zOrder.test.ts` and `grid`'s `src/zOrder.test.ts`.
 - **An id belongs to the main canvas.** `setAttribute` refuses an `id` on any node under a Stage named `MINIMAP_STAGE_NAME`, read through the ledger root, so an id scan over the live stages never meets two spellings of one id. A minimap node is found by `name` plus a `tableId` attribute.
 - **Some names are the editor's.** `MINIMAP_STAGE_NAME` and the attributes `src/jsx.ts` types for the scene (`selected`, `sharedFocus`, `sharedSelect`, `tableId`, `kind`) are `erd-editor`'s; they stayed here as they were when the host left that package, and a change to them is a change to its scene.
 
