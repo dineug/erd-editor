@@ -68,7 +68,7 @@ export const darkTheme: Readonly<GridTheme> = Object.freeze({
   activeCellBorder: '#8ab4f8',
   selectedHeaderBackground: '#24392b',
   selectedHeaderText: '#ffffff',
-  fullSelectionBackground: '#1e8e3e',
+  fullSelectionBackground: '#198639',
   readonlyBackground: '#2a2b2e',
   scrollbarThumb: '#5f6368',
   scrollbarTrack: '#242526',
