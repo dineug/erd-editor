@@ -680,13 +680,14 @@ describe('the editor and its cell', () => {
     expect(view.textarea.value).toBe(`2:1${long}`);
     key(view, 'Escape');
 
-    // The column cut at the right edge is widened to run past the container,
-    // so its editor's caret does too once the text outgrows the part in view.
+    // The column cut at the right edge is wider than the cells in view, so
+    // the edit opens on its left edge and runs past the container, and the
+    // caret does too once the text outgrows the part in view.
     view.handle.scrollTo(0, 0);
     await drawn();
     const edge = Math.floor((geometry(view).body.width - 1) / 120);
     view.props.columns = COLUMNS.map((column, index) =>
-      index === edge ? { ...column, width: 400 } : column
+      index === edge ? { ...column, width: 1600 } : column
     );
     view.handle.select({
       active: { row: 0, col: edge },
@@ -694,18 +695,45 @@ describe('the editor and its cell', () => {
     });
     key(view, 'F2');
     await drawn();
+    const opened = view.scroller.scrollLeft;
     expect(at(view.textarea).x + at(view.textarea).width).toBeGreaterThan(
       view.container.clientWidth
     );
     expect(insetOf(view.textarea)?.[1]).toBeGreaterThan(0);
-    await userEvent.keyboard(long);
+    await userEvent.keyboard(long.repeat(2));
     await drawn();
 
     expect([view.container.scrollTop, view.container.scrollLeft]).toEqual([
       0, 0,
     ]);
-    expect(view.scroller.scrollLeft).toBe(0);
+    expect(view.scroller.scrollLeft).toBe(opened);
     expect(at(view.textarea)).toEqual(inner(cellBox(view, 0, edge)));
+  });
+
+  it('scrolls the cell an edit opens on into view, by the least distance, past the frozen columns', async () => {
+    const view = await mount({ frozenColumns: 2 });
+    press(view, cellPoint(view, 5, 3));
+    view.textarea.focus();
+    view.scroller.scrollTop = 2000;
+    await drawn();
+
+    await userEvent.keyboard('typed');
+    await drawn();
+    expect(view.textarea.value).toBe('typed');
+    expect(editorOpen(view)).toBe(true);
+    expect(at(view.textarea)).toEqual(inner(cellBox(view, 5, 3)));
+    expect(geometry(view).top).toBe(5 * 28);
+    key(view, 'Escape');
+
+    view.scroller.scrollLeft = 150;
+    await drawn();
+    press(view, cellPoint(view, 6, 3));
+    key(view, 'F2');
+    await drawn();
+    expect(view.scroller.scrollLeft).toBe(120);
+    expect(editorOpen(view)).toBe(true);
+    expect(insetOf(view.textarea)).toBeNull();
+    expect(at(view.textarea)).toEqual(inner(cellBox(view, 6, 3)));
   });
 
   it('scrolls the grid under a real wheel over the open editor', async () => {

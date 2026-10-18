@@ -190,6 +190,8 @@ export interface EditingHost {
   onScrollbar(event: PointerEvent): boolean;
   /** Moves the selection as Enter or Tab does, once an edit they commit has ended. */
   move(key: 'Enter' | 'Tab', mods: SelectModifiers): void;
+  /** Scrolls the least distance that shows a cell whole, as a keyboard move does. */
+  reveal(cell: CellRef): void;
   commit(event: CommitEvent): void;
   reject(event: RejectEvent): void;
 }
@@ -440,6 +442,9 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     edit = next;
     watchPresses(true);
+    // An edit opens on a cell the user can see whole, wherever a scroll left
+    // it; one that leaves the view once open stays open and hidden.
+    host.reveal(cell);
     if (custom) {
       openCustom(next, column.editor);
     } else {

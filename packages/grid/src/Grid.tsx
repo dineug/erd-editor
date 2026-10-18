@@ -364,6 +364,7 @@ export const Grid: FC<GridProps> = props => {
     selection: () => selection,
     onScrollbar,
     move: (key, mods) => navigate(key, mods),
+    reveal: cell => reveal(cell),
     commit: event => props.onCommit?.(event),
     reject: event => props.onReject?.(event),
   });
