@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
-import { builtinModules } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   defineConfig,
@@ -19,8 +19,30 @@ export interface DtsPluginOptions {
   compilerOptions: { declarationMap: true };
 }
 
+export interface JsxLibraryOptions {
+  konvaImportSource: string;
+}
+
+/** The one export of the r-html plugin package this factory calls. */
+export interface RHtmlPluginModule {
+  rHtml: (options: {
+    jsx: JsxLibraryOptions;
+    refresh: false;
+  }) => PluginOption[];
+}
+
+export type RHtmlPluginLoader = (
+  packageDir: string
+) => Promise<RHtmlPluginModule>;
+
 interface LibraryConfigOptions {
   dts: (options: DtsPluginOptions) => PluginOption;
+  /**
+   * Compiles .tsx through r-html's JSX plugin, which the package must list as
+   * a devDependency, with hot refresh off; konvaImportSource names the module
+   * a konva-host file's tags come from.
+   */
+  jsx?: JsxLibraryOptions;
   minify?: false;
   /**
    * A library that runs on Node: its builtins stay imports, bare or with the
@@ -102,10 +124,23 @@ export function createLibraryTasks(
   return tasks;
 }
 
+/**
+ * Resolves the r-html plugin from the package being built, since the root links
+ * no workspace package and so cannot resolve it for a library.
+ */
+async function loadRHtmlPlugin(packageDir: string): Promise<RHtmlPluginModule> {
+  const entry = createRequire(join(packageDir, 'package.json')).resolve(
+    '@dineug/vite-plugin-r-html'
+  );
+  return import(pathToFileURL(entry).href);
+}
+
 export function createLibraryConfig(
   packageDir: string,
-  options: LibraryConfigOptions
+  options: LibraryConfigOptions,
+  loadJsxPlugin: RHtmlPluginLoader = loadRHtmlPlugin
 ): ViteUserConfig {
+  const { jsx } = options;
   const metadata = loadLibraryMetadata(packageDir);
   const external = createExternal(
     metadata.manifest,
@@ -144,7 +179,16 @@ export function createLibraryConfig(
         '@': join(packageDir, 'src'),
       },
     },
+    // Task metadata is read before the workspace builds the plugin, and
+    // lazyPlugins runs nothing then, so the loader waits for a real build.
     plugins: lazyPlugins(() => [
+      ...(jsx
+        ? [
+            loadJsxPlugin(packageDir).then(({ rHtml }) =>
+              rHtml({ jsx, refresh: false })
+            ),
+          ]
+        : []),
       options.dts(dtsOptions),
       ...(options.workers ? [libraryWorkerUrls()] : []),
     ]),
