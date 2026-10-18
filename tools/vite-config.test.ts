@@ -204,6 +204,7 @@ test('reading task metadata never loads the jsx plugin', () => {
       {
         dts: () => ({ name: 'test-dts' }),
         jsx: { konvaImportSource: '@/host' },
+        workers: true,
       },
       async () => {
         loads += 1;
@@ -211,6 +212,7 @@ test('reading task metadata never loads the jsx plugin', () => {
       }
     );
     assert.equal(config.plugins, undefined);
+    assert.deepEqual(config.worker?.plugins?.(), [undefined]);
     assert.ok(config.run?.tasks?.build);
   } finally {
     if (saved === undefined) {
@@ -271,6 +273,29 @@ test('a library that spawns a worker gets the shared worker build', () => {
   });
   assert.equal(config.worker?.format, 'es');
   assert.ok(config.worker?.rolldownOptions?.external instanceof RegExp);
+});
+
+test('a jsx library compiles its workers through the r-html plugin too', async () => {
+  const jsx = { konvaImportSource: '@/host' };
+  const call = { packageDir: rHtmlDir, options: { jsx, refresh: false } };
+  const loader = recordingLoader();
+  const config = createLibraryConfig(
+    rHtmlDir,
+    { dts: () => ({ name: 'test-dts' }), jsx, workers: true },
+    loader.load
+  );
+
+  assert.deepEqual(await pluginNames(config.worker?.plugins?.()), [
+    'test-r-html',
+  ]);
+  await pluginNames(config.plugins);
+  assert.deepEqual(loader.calls, [call, call]);
+
+  const withoutJsx = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+    workers: true,
+  });
+  assert.equal(withoutJsx.worker?.plugins, undefined);
 });
 
 test('a package may append a build step after the standard one', () => {

@@ -46,7 +46,7 @@
   - erd-editor's `vite.config.ts`, in `plugins` and again in `worker.plugins`, which inherits nothing;
   - erd-editor's `vite.umd.config.ts`;
   - erd-editor's `vitest.config.ts`, with `refresh: false`;
-  - r-html-konva's `vite.config.ts`, as `defineLibraryConfig`'s `jsx` option, which adds `refresh: false` itself, and its `vitest.config.ts`, with `refresh: false`;
+  - r-html-konva's `vite.config.ts`, as `defineLibraryConfig`'s `jsx` option, which adds `refresh: false` itself and, with `workers`, adds the plugin to `worker.plugins` too, and its `vitest.config.ts`, with `refresh: false`;
   - grid's `vite.config.ts` and `vitest.config.ts`, the same way as r-html-konva's.
 - **Load the plugin lazily in `vite.config.ts`.** erd-editor's `vite.config.ts` loads the plugin lazily, through `lazyPlugins` and `await import(rHtmlPackage)` with `const rHtmlPackage: string`, because its `run.tasks` is read before this package is built on a clean checkout. `tools/vite-config.test.ts` (task metadata does not require generated workspace plugins) fails on a static import or a literal `import('@dineug/vite-plugin-r-html')` there. `vite.umd.config.ts` loads it the same way, though it runs only inside the `build` task, after its dependencies build, and `vitest.config.ts` imports it statically. `defineLibraryConfig` loads it lazily too, through `lazyPlugins`, from the own dependencies of the library being built (`tools/vite/library-config.ts`).
 
