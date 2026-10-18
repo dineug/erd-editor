@@ -3,14 +3,18 @@ import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 import type * as font from '@/font';
 import * as grid from '@/Grid';
 import type {
+  CellChange,
+  CellContextMenuEvent,
   CellGetter,
   CellRange,
   CellRef,
   CellStyle,
   CellStyleGetter,
+  CloseReason,
   ColumnDef,
   ColumnResize,
   CommitEvent,
+  EditMode,
   EditorContext,
   FontMetrics,
   GridBounds,
@@ -19,14 +23,17 @@ import type {
   GridProps,
   GridSelection,
   GridTheme,
+  RejectEvent,
   SceneData,
   SceneInit,
   SceneLayout,
   SceneRect,
   SceneState,
+  ViewportChange,
   VisibleRange,
 } from '@/index';
 import * as entry from '@/index';
+import type * as editing from '@/model/editing';
 import type * as model from '@/model/types';
 import type * as viewport from '@/model/viewport';
 import type * as cells from '@/scene/draw/cells';
@@ -56,6 +63,28 @@ describe('the package entry', () => {
     expectTypeOf<GridHandle>().toEqualTypeOf<grid.GridHandle>();
     expectTypeOf<CommitEvent>().toEqualTypeOf<grid.CommitEvent>();
     expectTypeOf<EditorContext>().toEqualTypeOf<grid.EditorContext>();
+  });
+
+  it('names the types the callbacks and the editor context hand a host', () => {
+    expectTypeOf<RejectEvent>().toEqualTypeOf<grid.RejectEvent>();
+    expectTypeOf<ViewportChange>().toEqualTypeOf<grid.ViewportChange>();
+    expectTypeOf<CellContextMenuEvent>().toEqualTypeOf<grid.CellContextMenuEvent>();
+    expectTypeOf<CellChange>().toEqualTypeOf<editing.CellChange>();
+    expectTypeOf<CommitEvent['changes'][number]>().toEqualTypeOf<CellChange>();
+    expectTypeOf<CloseReason>().toEqualTypeOf<editing.CloseReason>();
+    expectTypeOf<EditMode>().toEqualTypeOf<EditorContext['mode']>();
+    expectTypeOf<
+      Parameters<NonNullable<GridProps['onReject']>>[0]
+    >().toEqualTypeOf<RejectEvent>();
+    expectTypeOf<
+      Parameters<NonNullable<GridProps['onViewportChange']>>[0]
+    >().toEqualTypeOf<ViewportChange>();
+    expectTypeOf<
+      Parameters<NonNullable<GridProps['onCellContextMenu']>>[0]
+    >().toEqualTypeOf<CellContextMenuEvent>();
+    expectTypeOf<
+      Parameters<Parameters<EditorContext['onClose']>[0]>[0]
+    >().toEqualTypeOf<CloseReason>();
   });
 
   it('names the model, theme and font types a host builds its props from', () => {

@@ -17,7 +17,9 @@ scrollbars. It is private, not on npm, and depended on as `"@dineug/grid": "work
 ## Usage
 
 `src/index.ts` exports `Grid`, the r-html component, with its `GridProps`, `GridColumn`,
-`GridHandle`, `CommitEvent` and `EditorContext`; the two default themes, `lightTheme` and
+`GridHandle`, `CommitEvent` and `EditorContext`; the `RejectEvent`, `ViewportChange` and
+`CellContextMenuEvent` its callbacks take, and the `CellChange`, `CloseReason` and `EditMode` a
+commit and an editor context carry; the two default themes, `lightTheme` and
 `darkTheme`; and the types a host builds on: `GridTheme`, `CellRef`, `CellRange`, `GridSelection`,
 `GridBounds`, `CellStyle`, `ColumnDef`, `CellGetter`, `CellStyleGetter`, `VisibleRange`,
 `FontMetrics`, and the scene's `SceneInit`, `SceneState`, `SceneData`, `SceneLayout`, `SceneRect`

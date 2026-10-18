@@ -1,12 +1,16 @@
 export type { FontMetrics } from '@/font';
 export {
+  type CellContextMenuEvent,
   type CommitEvent,
   type EditorContext,
   Grid,
   type GridColumn,
   type GridHandle,
   type GridProps,
+  type RejectEvent,
+  type ViewportChange,
 } from '@/Grid';
+export type { CellChange, CloseReason, EditMode } from '@/model/editing';
 export type {
   CellRange,
   CellRef,
