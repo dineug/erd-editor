@@ -91,18 +91,21 @@ export async function cleanup(): Promise<void> {
 /**
  * Mounts a grid through a host template whose props are observable, so a
  * spec changes a prop by writing it, as a host's own state would, and waits
- * for the first draw and the first viewport report.
+ * for the first draw and the first viewport report, in a shadow root if asked.
  */
 export async function mount(
   init: Partial<GridProps> = {},
   size = { width: WIDTH, height: HEIGHT },
-  before?: HTMLElement
+  before?: HTMLElement,
+  shadow?: ShadowRootMode
 ): Promise<View> {
   const host = document.createElement('div');
   host.style.width = `${size.width}px`;
   host.style.height = `${size.height}px`;
   if (before) document.body.append(before);
-  document.body.append(host);
+  const outer = shadow ? document.createElement('div') : host;
+  if (shadow) outer.attachShadow({ mode: shadow }).append(host);
+  document.body.append(outer);
 
   const onSelectionChange = vi.fn<(selection: GridSelection) => void>();
   const onViewportChange = vi.fn<(viewport: ViewportChange) => void>();
@@ -186,6 +189,7 @@ export async function mount(
     unmount: () => {
       render(host, null);
       host.remove();
+      outer.remove();
       before?.remove();
     },
   };

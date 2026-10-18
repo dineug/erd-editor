@@ -465,6 +465,44 @@ describe('ending an edit', () => {
     expect(view.textarea.value).toBe(valueOf(2, 1));
   });
 
+  it('reads a press inside a closed shadow root as it does one in the document', async () => {
+    const reasons: string[] = [];
+    const editor = (ctx: EditorContext) => {
+      ctx.container.append(document.createElement('input'));
+      ctx.onClose(reason => reasons.push(reason));
+    };
+    const view = await mount(
+      { columns: withEditor(2, editor) },
+      undefined,
+      undefined,
+      'closed'
+    );
+    const pressOn = (target: Element) =>
+      target.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, composed: true })
+      );
+
+    await editAt(view, 2, 1);
+    await userEvent.keyboard('!');
+    pressOn(view.textarea);
+    press(view, centreOf(view, 'grid-vertical-thumb'));
+    await nextFrame();
+    expect(view.onCommit).not.toHaveBeenCalled();
+    expect(editorOpen(view)).toBe(true);
+
+    pressOn(document.body);
+    expect(lastCommit(view)?.changes).toEqual([change(2, 1, '2:1!')]);
+
+    press(view, cellPoint(view, 1, 2));
+    key(view, 'Enter');
+    pressOn(view.slot.firstElementChild as Element);
+    press(view, centreOf(view, 'grid-vertical-thumb'));
+    expect(reasons).toEqual([]);
+
+    pressOn(document.body);
+    expect(reasons).toEqual(['outside']);
+  });
+
   it('leaves the draft alone when the host raises the version meanwhile', async () => {
     const view = await mount();
     await editAt(view, 1, 1);
@@ -480,13 +518,21 @@ describe('ending an edit', () => {
   });
 
   it('lets go of the document once the grid unmounts with an edit open', async () => {
+    const added = vi.spyOn(document, 'addEventListener');
+    const removed = vi.spyOn(document, 'removeEventListener');
     const view = await mount();
     await editAt(view, 1, 1);
     await userEvent.keyboard('!');
+    const [, listener] =
+      added.mock.calls.find(
+        ([type, , options]) => type === 'pointerdown' && options === true
+      ) ?? [];
+    expect(listener).toBeTypeOf('function');
 
     expect(document.activeElement).toBe(view.textarea);
     view.unmount();
     views.splice(views.indexOf(view), 1);
+    expect(removed).toHaveBeenCalledWith('pointerdown', listener, true);
     document.body.dispatchEvent(
       new PointerEvent('pointerdown', { bubbles: true, composed: true })
     );

@@ -101,6 +101,10 @@ export const NO_INSETS: Readonly<Insets> = Object.freeze({
 /** A text that would split the cell into two rows, which typing never opens an edit with. */
 const LINE_BREAK = /[\r\n]/;
 
+/** A shadow root, told by its node type and its host, since another realm's has another class. */
+const isShadowRoot = (node: Node): node is ShadowRoot =>
+  node.nodeType === 11 && Boolean((node as ShadowRoot).host);
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
@@ -228,7 +232,9 @@ export function createEditingInput(host: EditingHost): EditingInput {
   let listeners: Array<(reason: CloseReason) => void> = [];
   /** Counts the edits that ended, so a custom editor's context answers for its own edit alone. */
   let generation = 0;
-  let pressTarget: Document | null = null;
+  /** The roots a press passes through on its way to the grid, each with the capture listener it holds while an edit is open. */
+  const pressRoots: Array<{ root: Node; listener: (event: Event) => void }> =
+    [];
 
   /** Empties the textarea, which an IME composition keeps until it ends, when compositionend empties it. */
   const clearText = () => {
@@ -310,14 +316,35 @@ export function createEditingInput(host: EditingHost): EditingInput {
     close('outside');
   };
 
-  /** Listens for every press in the document while an edit is open, first, before the press selects. */
+  /**
+   * Listens for every press while an edit is open, first, before the press
+   * selects: on the textarea's own root, which sees the whole path, and on
+   * each root around it, which reads a press past the host it holds.
+   */
   function watchPresses(on: boolean) {
-    if (on && !pressTarget) {
-      pressTarget = host.textarea.ownerDocument;
-      pressTarget.addEventListener('pointerdown', onPress, true);
-    } else if (!on && pressTarget) {
-      pressTarget.removeEventListener('pointerdown', onPress, true);
-      pressTarget = null;
+    if (on && pressRoots.length === 0) {
+      let root: Node = host.textarea.getRootNode();
+      let inner: Element | null = null;
+
+      for (;;) {
+        const within = inner;
+        // A listener outside a closed shadow root sees none of its nodes on
+        // the path, so it reads only whether the press reached the host.
+        const listener = (event: Event) => {
+          if (!within) onPress(event as PointerEvent);
+          else if (!event.composedPath().includes(within)) close('outside');
+        };
+        root.addEventListener('pointerdown', listener, true);
+        pressRoots.push({ root, listener });
+
+        if (!isShadowRoot(root)) break;
+        inner = root.host;
+        root = inner.getRootNode();
+      }
+    } else if (!on) {
+      for (const { root, listener } of pressRoots.splice(0)) {
+        root.removeEventListener('pointerdown', listener, true);
+      }
     }
   }
 
