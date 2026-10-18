@@ -1,6 +1,6 @@
 // AC-L6: konva is reached through konva/lib entry points and never through the
 // package root. The root barrel pulls every shape, filter and DOM binding into
-// a build that names eleven classes, and nothing else would fail if it crept in.
+// the build, and nothing else would fail if it crept in.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
