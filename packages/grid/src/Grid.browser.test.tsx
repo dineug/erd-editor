@@ -44,6 +44,7 @@ import {
 import { drawn, near, nextFrame, pixelAt, rgba } from '@/__test-utils__/scene';
 import { DEFAULT_FONT } from '@/font';
 import type { CellContextMenuEvent, ViewportChange } from '@/Grid';
+import { MISS_BUDGET } from '@/model/text';
 import type { CellStyle } from '@/model/types';
 import { darkTheme, lightTheme } from '@/theme';
 
@@ -415,12 +416,14 @@ describe('the pointer', () => {
     expect(view.onColumnResize).toHaveBeenCalledTimes(1);
     expect(view.onColumnResize).toHaveBeenCalledWith(1, 170);
     expect(view.onSelectionChange).not.toHaveBeenCalled();
+    await drawn();
+    expect(spacerSize(view).width).toBe(width);
 
     view.props.columns = COLUMNS.map((column, index) =>
-      index === 1 ? { ...column, width: 170 } : column
+      index === 1 ? { ...column, width: 150 } : column
     );
     await drawn();
-    expect(spacerSize(view).width).toBe(width + 50);
+    expect(spacerSize(view).width).toBe(width + 30);
   });
 
   it('holds a resize to the minimum width, and lets a cancelled one go back', async () => {
@@ -888,6 +891,24 @@ describe('the scene it drives', () => {
     return draws;
   }
 
+  /** Holds every draw between the cells in view and the overscan, and the last at the cells in view at least. */
+  function expectBounded(draws: GetterCounts[], viewport: ViewportChange) {
+    const rows = viewport.rowEnd - viewport.rowStart + 1;
+    const cols = viewport.colEnd - viewport.colStart + 1;
+    const lower = rows * cols;
+    const upper = (rows + 4) * (cols + 2);
+
+    expect(draws.length).toBeGreaterThan(0);
+    for (const draw of draws) {
+      expect(draw.cell).toBeLessThanOrEqual(upper);
+      expect(draw.style).toBeLessThanOrEqual(upper);
+    }
+    expect(draws[draws.length - 1].cell).toBeGreaterThanOrEqual(lower);
+    expect(draws[draws.length - 1].style).toBeGreaterThanOrEqual(lower);
+
+    return lower;
+  }
+
   it('reads each getter once per drawn cell, the overscan at most, at any scroll', async () => {
     const counts: GetterCounts = { cell: 0, style: 0 };
     const view = await mount({
@@ -913,20 +934,34 @@ describe('the scene it drives', () => {
       await nextFrame();
 
       const viewport = lastViewport(view) as ViewportChange;
-      const rows = viewport.rowEnd - viewport.rowStart + 1;
-      const cols = viewport.colEnd - viewport.colStart + 1;
-      const lower = rows * cols;
-      const upper = (rows + 4) * (cols + 2);
-
       expect(viewport.rowEnd).toBeGreaterThanOrEqual(row);
-      expect(draws.length).toBeGreaterThan(0);
-      for (const draw of draws) {
-        expect(draw.cell).toBeLessThanOrEqual(upper);
-        expect(draw.style).toBeLessThanOrEqual(upper);
-      }
-      expect(draws[draws.length - 1].cell).toBeGreaterThanOrEqual(lower);
-      expect(draws[draws.length - 1].style).toBeGreaterThanOrEqual(lower);
+      expectBounded(draws, viewport);
     }
+  });
+
+  it('keeps to the same bounds when long texts outrun the measure budget, each frame of it', async () => {
+    const counts: GetterCounts = { cell: 0, style: 0 };
+    const view = await mount({
+      rowCount: MILLION,
+      columns: COLUMNS.map(column => ({ ...column, width: 60 })),
+      getCell: (row, col) => {
+        counts.cell++;
+        return `${row}:${col} a text far wider than its column`;
+      },
+      getCellStyle: () => {
+        counts.style++;
+        return undefined;
+      },
+    });
+    const draws = countDraws(view, counts);
+
+    view.handle.scrollTo(500_000, 20);
+    await drawn();
+    await nextFrame();
+
+    const lower = expectBounded(draws, lastViewport(view) as ViewportChange);
+    expect(lower).toBeGreaterThan(MISS_BUDGET);
+    expect(draws.length).toBeGreaterThan(1);
   });
 
   it('reads every cell in view again when the version goes up, and only then', async () => {
@@ -1136,10 +1171,16 @@ describe('the handle', () => {
     expect(document.activeElement).toBe(view.textarea);
   });
 
-  it('does nothing once the grid is gone, and a grid with no rows scrolls nowhere', async () => {
+  it('does nothing once the grid is gone, and a grid with no rows or no columns scrolls nowhere', async () => {
     const empty = await mount({ rowCount: 0 });
-    empty.handle.scrollTo(4, 4);
+    empty.handle.scrollTo(4, 29);
+    expect(empty.scroller.scrollLeft).toBe(0);
     expect(empty.scroller.scrollTop).toBe(0);
+
+    const bare = await mount({ columns: [] });
+    bare.handle.scrollTo(500, 0);
+    expect(bare.scroller.scrollTop).toBe(0);
+    expect(bare.scroller.scrollLeft).toBe(0);
 
     const view = await mount();
     const { handle } = view;
