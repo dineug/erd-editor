@@ -1,4 +1,4 @@
-import { observable } from '@dineug/r-html';
+import { nextTick, observable } from '@dineug/r-html';
 
 import { cellArea, cellRect, regionOf } from '@/input/pointer';
 import {
@@ -363,6 +363,12 @@ export function createEditingInput(host: EditingHost): EditingInput {
     textarea.value = state.initialValue;
     const end = textarea.value.length;
     textarea.setSelectionRange(end, end);
+    // Chrome scrolls no caret a script placed into view, so once the template
+    // has laid the editor out over its cell, its text scrolls to the end.
+    const own = generation;
+    nextTick(() => {
+      if (own === generation) textarea.scrollLeft = textarea.scrollWidth;
+    });
   };
 
   const openCustom = (state: ActiveEdit, editor: GridColumn['editor']) => {

@@ -261,6 +261,33 @@ describe('starting an edit', () => {
     expect(view.onCommit).not.toHaveBeenCalled();
   });
 
+  it('scrolls a value longer than its cell to the caret at its end, on Enter, F2 and a double click', async () => {
+    const long = 'a value far longer than one column of the grid holds';
+    const view = await mount({
+      getCell: (row, col) => (col === 1 ? `${long} ${row}` : valueOf(row, col)),
+    });
+    const { textarea } = view;
+    const atEnd = () =>
+      textarea.scrollLeft > 0 &&
+      textarea.scrollLeft + textarea.clientWidth >= textarea.scrollWidth - 1;
+
+    await editAt(view, 2, 1);
+    expect(textarea.value).toBe(`${long} 2`);
+    expect(atEnd()).toBe(true);
+    key(view, 'Escape');
+
+    press(view, cellPoint(view, 3, 1));
+    key(view, 'Enter');
+    await nextFrame();
+    expect(atEnd()).toBe(true);
+    key(view, 'Escape');
+
+    dblclick(view, cellPoint(view, 4, 1));
+    await nextFrame();
+    expect(textarea.value).toBe(`${long} 4`);
+    expect(atEnd()).toBe(true);
+  });
+
   it('paints the editor in the colours the style hook gives the cell', async () => {
     const view = await mount({
       getCellStyle: (row, col) =>
