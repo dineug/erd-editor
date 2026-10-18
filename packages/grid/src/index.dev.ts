@@ -39,14 +39,14 @@ const CHOICE_COLUMN = 8;
 const CHOICES = ['TRUE', 'FALSE'];
 
 /** A spreadsheet's column letters, bijective base 26: A to Z, then AA, AB and on. */
-const columnLabel = (index: number) => {
+function columnLabel(index: number): string {
   let label = '';
   for (let rest = index + 1; rest > 0; rest = Math.floor((rest - 1) / 26)) {
     label = String.fromCharCode(65 + ((rest - 1) % 26)) + label;
   }
 
   return label;
-};
+}
 
 const FIRST_NAMES = [
   'Alice',
@@ -249,12 +249,13 @@ function choiceEditor(ctx: EditorContext) {
 
 const COLUMNS: GridColumn[] = Array.from(
   { length: COLUMN_COUNT },
-  (_, index) => ({
-    id: `c${index}`,
-    label: columnLabel(index),
-    ...(index === 0 ? { readonly: true } : {}),
-    ...(index === CHOICE_COLUMN ? { editor: choiceEditor } : {}),
-  })
+  (_, index) => {
+    const column: GridColumn = { id: `c${index}`, label: columnLabel(index) };
+    if (index === 0) column.readonly = true;
+    if (index === CHOICE_COLUMN) column.editor = choiceEditor;
+
+    return column;
+  }
 );
 
 /** The props as they are, which the getters read without a proxy's trap. */
@@ -271,6 +272,12 @@ const raw: DemoState = {
 /** The same props behind a shallow proxy, so a write re-renders the grid with them. */
 const demo = observable(raw, { shallow: true });
 
+/** Makes every generated value new and raises the version, so the grid draws them. */
+function renewData() {
+  generation++;
+  demo.version = raw.version + 1;
+}
+
 /** The style hook: a colour on the TRUE and FALSE columns, and a read-only amount now and then. */
 function getCellStyle(row: number, col: number): CellStyle | undefined {
   const kind = col % 10;
@@ -285,7 +292,7 @@ function getCellStyle(row: number, col: number): CellStyle | undefined {
   return undefined;
 }
 
-const CHEVRON = (colour: string) =>
+const chevron = (colour: string) =>
   `url("data:image/svg+xml,${encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='${colour}' stroke-width='1.5'/></svg>`
   )}")`;
@@ -367,24 +374,26 @@ container.className = 'grid';
 const status = document.createElement('footer');
 status.className = 'status';
 
-const statusPart = (name: string) => {
+function statusPart(name: string): HTMLSpanElement {
   const part = document.createElement('span');
   part.dataset.part = name;
   status.append(part);
 
   return part;
-};
+}
 
 const selectionText = statusPart('selection');
 const viewportText = statusPart('viewport');
 const noticeText = statusPart('notice');
 noticeText.setAttribute('role', 'status');
 
-document.body.append(...(BENCH ? [container] : [toolbar, container, status]));
+if (BENCH) document.body.append(container);
+else document.body.append(toolbar, container, status);
 
 function paintPage() {
   const root = document.documentElement.style;
   const { theme } = raw;
+  const dark = theme === darkTheme;
 
   root.setProperty('--grid-background', theme.background);
   root.setProperty('--grid-header', theme.headerBackground);
@@ -393,12 +402,9 @@ function paintPage() {
   root.setProperty('--grid-border', theme.frozenBorder);
   root.setProperty('--grid-accent', theme.selectionBorder);
   root.setProperty('--grid-active', theme.activeCellBorder);
-  root.setProperty('--grid-chevron', CHEVRON(theme.headerText));
-  root.setProperty(
-    '--grid-warning',
-    theme === darkTheme ? '#fdd663' : '#b06000'
-  );
-  root.colorScheme = theme === darkTheme ? 'dark' : 'light';
+  root.setProperty('--grid-chevron', chevron(theme.headerText));
+  root.setProperty('--grid-warning', dark ? '#fdd663' : '#b06000');
+  root.colorScheme = dark ? 'dark' : 'light';
 }
 
 const cellName = (row: number, col: number) => `${columnLabel(col)}${row + 1}`;
@@ -586,8 +592,8 @@ const gridStage = (): Stage | undefined =>
   stages.find(stage => container.contains(stage.container()));
 
 const nextFrame = () =>
-  new Promise<number>(resolve => {
-    requestAnimationFrame(resolve);
+  new Promise<void>(resolve => {
+    requestAnimationFrame(() => resolve());
   });
 
 function resetTotals() {
@@ -614,7 +620,7 @@ async function mount(): Promise<FirstDraw> {
   render(container, html`<${Demo} />`);
   timeEvents();
   await whenDrawn();
-  const committed = performance.now();
+  const committedAt = performance.now();
 
   // The host attaches the layers to the stage at the commit, and konva draws
   // them on the next animation frame, so this is the last point before it.
@@ -624,7 +630,7 @@ async function mount(): Promise<FirstDraw> {
 
   return {
     wallMs: performance.now() - start,
-    workMs: committed - start + totals.drawMs,
+    workMs: committedAt - start + totals.drawMs,
     cells: totals.cells,
   };
 }
@@ -673,12 +679,13 @@ function choices(
 function goToRow(row: number) {
   if (!handle) return;
 
-  const cell = { row, col: selection.active.col };
-  handle.scrollTo(cell.row, cell.col);
-  handle.select(selectCell(cell));
+  const col = selection.active.col;
+  const next = selectCell({ row, col });
+  handle.scrollTo(row, col);
+  handle.select(next);
   handle.focus();
   // The grid echoes no selection its host made, so the line shows it here.
-  selection = selectCell(cell);
+  selection = next;
   showSelection();
 }
 
@@ -707,8 +714,7 @@ function buildToolbar() {
   bump.type = 'button';
   bump.textContent = 'New data';
   bump.addEventListener('click', () => {
-    generation++;
-    demo.version = raw.version + 1;
+    renewData();
     handle?.focus();
   });
 
@@ -847,10 +853,7 @@ function stepOf(scenario: Scenario): (() => void) | null {
         );
     }
     case 'version':
-      return () => {
-        generation++;
-        demo.version = raw.version + 1;
-      };
+      return renewData;
     default:
       return null;
   }
@@ -998,7 +1001,7 @@ const bench: GridBench = {
     return loop.done;
   },
 
-  nextFrame: () => nextFrame().then(() => {}),
+  nextFrame,
 
   async toTop() {
     handle?.scrollTo(0, 0);

@@ -32,14 +32,14 @@ export const MILLION = 1_000_000;
 export const ROW_HEIGHT = 28;
 
 /** A spreadsheet's column letters, bijective base 26: A to Z, then AA, AB and on. */
-const columnLabel = (index: number) => {
+function columnLabel(index: number): string {
   let label = '';
   for (let rest = index + 1; rest > 0; rest = Math.floor((rest - 1) / 26)) {
     label = String.fromCharCode(65 + ((rest - 1) % 26)) + label;
   }
 
   return label;
-};
+}
 
 export const COLUMNS: GridColumn[] = Array.from({ length: 30 }, (_, index) => ({
   id: `c${index}`,
@@ -90,7 +90,7 @@ export const sizePage = () => page.viewport(WIDTH + 200, HEIGHT + 200);
 /** Unmounts every grid a spec mounted and restores what it changed, after each spec. */
 export async function cleanup(): Promise<void> {
   for (const view of views.splice(0)) view.unmount();
-  teardowns.splice(0).forEach(teardown => teardown());
+  for (const teardown of teardowns.splice(0)) teardown();
   await whenDrawn();
   vi.restoreAllMocks();
 }
@@ -280,17 +280,24 @@ export function edgePoint(view: View, col: number): Point {
   };
 }
 
-export const centreOf = (view: View, name: string): Point => {
+export function centreOf(view: View, name: string): Point {
   const rect = node(view, name);
 
   return { x: rect.x() + rect.width() / 2, y: rect.y() + rect.height() / 2 };
-};
+}
 
 type PointerType =
   | 'pointerdown'
   | 'pointermove'
   | 'pointerup'
   | 'pointercancel';
+
+/** A container point in the client coordinates a synthetic event on the scroller carries. */
+function clientAt(view: View, point: Point) {
+  const rect = view.scroller.getBoundingClientRect();
+
+  return { clientX: rect.left + point.x, clientY: rect.top + point.y };
+}
 
 /** A synthetic pointer event on the scroller at a container point, as the main mouse button makes it. */
 export function pointer(
@@ -299,7 +306,6 @@ export function pointer(
   point: Point,
   init: PointerEventInit = {}
 ): PointerEvent {
-  const rect = view.scroller.getBoundingClientRect();
   const event = new PointerEvent(type, {
     bubbles: true,
     cancelable: true,
@@ -309,8 +315,7 @@ export function pointer(
     isPrimary: true,
     button: type === 'pointermove' ? -1 : 0,
     buttons: type === 'pointerdown' || type === 'pointermove' ? 1 : 0,
-    clientX: rect.left + point.x,
-    clientY: rect.top + point.y,
+    ...clientAt(view, point),
     ...init,
   });
 
@@ -329,13 +334,11 @@ export function mouse(
   point: Point,
   init: MouseEventInit = {}
 ) {
-  const rect = view.scroller.getBoundingClientRect();
   const event = new MouseEvent(type, {
     bubbles: true,
     cancelable: true,
     composed: true,
-    clientX: rect.left + point.x,
-    clientY: rect.top + point.y,
+    ...clientAt(view, point),
     ...init,
   });
 
