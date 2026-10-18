@@ -1,17 +1,17 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-18 -->
 
 # r-html
 
 ## Purpose
 
-`@dineug/r-html` (private) is the rendering framework `@dineug/erd-editor` is built on and inlines; `mcp-server` imports its store's action types. It provides `html` / `svg` / `css` tagged templates, Proxy reactivity batched by a microtask scheduler, function components with lifecycle hooks and `defineCustomElement`, and a Redux-like `createStore`. The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html` / `svg` / `render` triple over any `HostAdapter`. The DOM adapter ships here, and `packages/erd-editor/src/konva/host.ts` is the second production host. A change keeps the DOM behaviour the frozen specs pin (Testing Requirements) and the host adapter contract both hosts rest on (Rules).
+`@dineug/r-html` (private) is the rendering framework `@dineug/erd-editor` is built on and inlines; `mcp-server` imports its store's action types. It provides `html` / `svg` / `css` tagged templates, Proxy reactivity batched by a microtask scheduler, function components with lifecycle hooks and `defineCustomElement`, and a Redux-like `createStore`. The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html` / `svg` / `render` triple over any `HostAdapter`. The DOM adapter ships here, and `@dineug/r-html-konva` (`packages/r-html-konva/src/host.ts`) is the second production host, the one every Konva scene renders through. A change keeps the DOM behaviour the frozen specs pin (Testing Requirements) and the host adapter contract both hosts rest on (Rules).
 
 ## Making a Change
 
-1. Read this file (root step 1). For a change to the host seam (`HostAdapter`, `HostNode`, `createHostTemplate`, a Part that writes through the helper), also read `packages/erd-editor/src/konva/AGENTS.md`, the file for `src/konva/host.ts`, the Konva `HostAdapter`. For a change to `src/render/hmr.ts`, read `packages/vite-plugin-r-html/AGENTS.md`, the other side of its event contract. For a change to an export or a type, read `packages/erd-editor/AGENTS.md`, and `packages/mcp-server/AGENTS.md` where the store's action types change.
+1. Read this file (root step 1). For a change to the host seam (`HostAdapter`, `HostNode`, `createHostTemplate`, a Part that writes through the helper), also read `packages/r-html-konva/AGENTS.md`, the file for its `src/host.ts`, the Konva `HostAdapter`. For a change to `src/render/hmr.ts`, read `packages/vite-plugin-r-html/AGENTS.md`, the other side of its event contract. For a change to an export or a type, read `packages/erd-editor/AGENTS.md`, and `packages/mcp-server/AGENTS.md` where the store's action types change.
 2. Write the change with what it carries (root step 2). A new text-position value kind or lifecycle hook goes into every place Rules § Parts and lifecycle hooks lists. Add new specs or cases; leave each spec that predates the host seam as it is (Testing Requirements).
-3. Run root step 3 as `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test`. Run `pnpm test` as well for a change to an export, a type or the host seam. `erd-editor` and `mcp-server` type-check against this package's `dist/**/*.d.ts`, and `erd-editor`'s Konva host implements `HostAdapter`.
+3. Run root step 3 as `pnpm exec vp run --filter @dineug/r-html --fail-if-no-match test`. Run `pnpm test` as well for a change to an export, a type or the host seam. `erd-editor`, `r-html-konva`, `grid` and `mcp-server` type-check against this package's `dist/**/*.d.ts`, and `r-html-konva`'s Konva host implements `HostAdapter`.
 4. After a change to any spec file, run the frozen-spec check and confirm every line shows zero deletions:
 
    ```

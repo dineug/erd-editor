@@ -5,6 +5,7 @@
 // a theme change costs, which is the seam the theme resolver later writes to.
 
 import { useProvider } from '@dineug/r-html';
+import { renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -12,8 +13,6 @@ import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import { appContext } from '@/components/appContext';
 import Memo from '@/components/erd/canvas/memo/Memo';
 import { themeContext } from '@/components/themeContext';
-import { whenDrawn } from '@/konva/batchDraw';
-import { renderKonva } from '@/konva/host';
 import type { Theme } from '@/themes/tokens';
 import { createMemo } from '@/utils/collection/memo.entity';
 

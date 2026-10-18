@@ -1,8 +1,8 @@
+import { onBeforeFlush, whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { type Stage, stages } from 'konva/lib/Stage';
 
-import { onBeforeFlush, whenDrawn } from '@/konva/batchDraw';
 import { toThemeVariableName } from '@/themes/tokens';
 
 // Projects every live Konva stage into positioned elements so a Playwright css

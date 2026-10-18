@@ -4,6 +4,7 @@
 // the DOM memo's own, restated as numbers so that moving either the scene or
 // the layout constants has to be deliberate.
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import { Group } from 'konva/lib/Group';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -50,7 +51,6 @@ import {
 } from '@/engine/modules/memo/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { Memo as MemoType } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { type RenderedScene, renderScene } from '@/konva/scene/renderScene';
 import {
   AccentColor,

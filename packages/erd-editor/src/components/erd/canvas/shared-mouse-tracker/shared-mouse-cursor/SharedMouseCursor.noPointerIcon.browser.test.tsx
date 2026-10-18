@@ -4,6 +4,7 @@
 // whatever lucide hands back for its icon name. Mocked here so that lookup
 // carries none at all, which the real icon set never leaves reachable.
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Path } from 'konva/lib/shapes/Path';
 import type { Stage } from 'konva/lib/Stage';
@@ -12,7 +13,6 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createTestAppContext, flush } from '@/__test-utils__';
 import SharedMouseCursor from '@/components/erd/canvas/shared-mouse-tracker/shared-mouse-cursor/SharedMouseCursor';
 import type { SharedMouseTracker } from '@/engine/modules/editor/state';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 
 vi.mock('@/components/primitives/icon/icons', async importOriginal => {

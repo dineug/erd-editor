@@ -1,0 +1,134 @@
+import { prepare } from '@chenglou/pretext';
+
+/**
+ * The face erd-editor draws its canvas cells in, so a grid shown inside the
+ * editor reads as the same text. The editor is a sibling the grid cannot
+ * import, which is why the stack is written out here.
+ */
+export const DEFAULT_FONT_FAMILY =
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Open Sans', system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'";
+
+/** The size a grid draws its text at when its host names no font. */
+export const DEFAULT_FONT_SIZE = 13;
+
+/** The CSS font shorthand a grid draws and measures with when its host names none. */
+export const DEFAULT_FONT = `${DEFAULT_FONT_SIZE}px ${DEFAULT_FONT_FAMILY}`;
+
+/** What a scene needs of a font before it draws a line of it. */
+export interface FontMetrics {
+  /** The px above the baseline a canvas centres a line by. */
+  ascent: number;
+  /** The px below the baseline a canvas centres a line by. */
+  descent: number;
+  /** The widest advance among a Latin, a Hangul, a Han and an emoji glyph. */
+  maxAdvance: number;
+}
+
+/**
+ * The glyphs whose widest advance bounds what one character of a cell can
+ * take: a wide Latin capital, a Hangul syllable, a Han character and an
+ * emoji. A glyph wider than all four is left to the column clip.
+ */
+export const ADVANCE_PROBES = ['W', '가', '漢', '😀'] as const;
+
+/** The probes as one text, which pretext meets to calibrate a font's emoji widths. */
+const PROBE_TEXT = ADVANCE_PROBES.join('');
+
+/**
+ * Whether the faces a font names have loaded, so a canvas measures it in them
+ * rather than in a fallback. One that names no web face counts as loaded, as
+ * does any font in a realm without a font set or one the set cannot parse.
+ */
+export function fontLoaded(font: string): boolean {
+  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+  if (!fonts) return true;
+
+  try {
+    return fonts.check(font);
+  } catch {
+    return true;
+  }
+}
+
+/** What a realm with no canvas answers, which no cache keeps, so a later call measures. */
+const NO_METRICS: FontMetrics = Object.freeze({
+  ascent: 0,
+  descent: 0,
+  maxAdvance: 0,
+});
+
+const measured = new Map<string, FontMetrics>();
+
+/** The fonts pretext has calibrated its emoji widths for, which it forgets with the rest of its caches. */
+const calibrated = new Set<string>();
+
+/**
+ * Has pretext meet the probes in a font. It calibrates its emoji widths
+ * against a DOM span the first time a font meets an emoji, and doing it here
+ * keeps that layout read out of a draw.
+ */
+function calibrate(font: string): void {
+  prepare(PROBE_TEXT, font);
+  calibrated.add(font);
+}
+
+/**
+ * Has pretext calibrate every font measured so far again, as it must once its
+ * caches were emptied, so the next emoji a draw measures reads no DOM. Call
+ * it outside any sceneFunc.
+ */
+export function recalibrateFonts(): void {
+  for (const font of calibrated) prepare(PROBE_TEXT, font);
+}
+
+/**
+ * The metrics of a font, measured on the first call for it once its faces have
+ * loaded and kept after. Call it outside any sceneFunc: it also has pretext
+ * measure an emoji, which reads the DOM once per font.
+ *
+ * @example
+ * const { ascent, descent, maxAdvance } = measureFont(DEFAULT_FONT);
+ */
+export function measureFont(font: string): FontMetrics {
+  const held = measured.get(font);
+  if (held) return held;
+  if (typeof document === 'undefined') return NO_METRICS;
+
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) return NO_METRICS;
+
+  context.font = font;
+  const metrics = context.measureText('M');
+  const ascent =
+    metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent;
+  const descent =
+    metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent;
+  if (!Number.isFinite(ascent) || !Number.isFinite(descent)) {
+    return NO_METRICS;
+  }
+
+  let maxAdvance = 0;
+  for (const probe of ADVANCE_PROBES) {
+    maxAdvance = Math.max(maxAdvance, context.measureText(probe).width);
+  }
+
+  calibrate(font);
+
+  const result: FontMetrics = Object.freeze({ ascent, descent, maxAdvance });
+  // A fallback face stands in until the font's own load, so its metrics are
+  // answered but not kept, and the next call measures again.
+  if (fontLoaded(font)) measured.set(font, result);
+
+  return result;
+}
+
+/**
+ * The widest advance one character of a cell is held to in the font given:
+ * text no longer than the content width over it fits without being measured.
+ *
+ * @example
+ * const fits = text.length * maxAdvance(font) <= contentWidth;
+ */
+export function maxAdvance(font: string): number {
+  return measureFont(font).maxAdvance;
+}

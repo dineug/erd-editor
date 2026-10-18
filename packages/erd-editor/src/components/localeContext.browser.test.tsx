@@ -5,6 +5,7 @@
 // placeholders of empty fields, and a node mounted after the switch reads it too.
 
 import { type DOMTemplateLiterals, useProvider } from '@dineug/r-html';
+import { renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import type { Text } from 'konva/lib/shapes/Text';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -28,8 +29,6 @@ import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { createI18n, type I18n } from '@/i18n/translate';
-import { whenDrawn } from '@/konva/batchDraw';
-import { renderKonva } from '@/konva/host';
 import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
 
 const teardowns: Array<() => void> = [];

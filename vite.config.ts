@@ -219,11 +219,15 @@ export default defineConfig({
       },
       {
         /**
-         * erd-editor's .tsx is JSX, not React: it compiles to r-html tagged
-         * templates. Scoped rather than global because app is React 19, where
-         * these three rules mean what they say.
+         * The .tsx of erd-editor, r-html-konva and grid is JSX, not React: it
+         * compiles to r-html tagged templates. Scoped rather than global because
+         * app is React 19, where these three rules mean what they say.
          */
-        files: ['packages/erd-editor/src/**/*.tsx'],
+        files: [
+          'packages/erd-editor/src/**/*.tsx',
+          'packages/grid/src/**/*.tsx',
+          'packages/r-html-konva/src/**/*.tsx',
+        ],
         rules: {
           // There is no key prop to add. List identity is the repeat()
           // directive's job, and it takes the key function as its second
@@ -246,6 +250,17 @@ export default defineConfig({
          * emits declarations and does not copy hand-written ones.
          */
         files: ['packages/r-html/src/jsx-runtime.ts'],
+        rules: {
+          'typescript/no-namespace': 'off',
+        },
+      },
+      {
+        /**
+         * The k-* tags reach a consumer by merging into the JSX namespace of
+         * r-html's jsx-runtime, and a declaration merge has to name that
+         * namespace; it is a .ts so vite-plugin-dts emits it to dist.
+         */
+        files: ['packages/r-html-konva/src/jsx.ts'],
         rules: {
           'typescript/no-namespace': 'off',
         },

@@ -11,11 +11,10 @@ import {
   ref,
   repeat,
 } from '@dineug/r-html';
+import { konva, renderKonva } from '@dineug/r-html-konva';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-
-import { konva, renderKonva } from '@/konva/host';
 
 type Scene = {
   className: string;

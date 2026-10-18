@@ -5,6 +5,7 @@
 // reaches and a parent that filtered would have to route every connector again.
 
 import { type DOMTemplateLiterals, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -25,7 +26,6 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { Relationship as RelationshipType_ } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { type CullingRect } from '@/konva/scene/viewport';
 import { createRelationship } from '@/utils/collection/relationship.entity';

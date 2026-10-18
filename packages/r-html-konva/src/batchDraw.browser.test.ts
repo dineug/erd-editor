@@ -16,7 +16,7 @@ import {
   endAnimation,
   markDirty,
   whenDrawn,
-} from '@/konva/batchDraw';
+} from '@/batchDraw';
 
 const stages: Stage[] = [];
 

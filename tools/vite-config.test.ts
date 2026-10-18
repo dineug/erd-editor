@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
+import type { PluginOption } from 'vite-plus';
+
 import { BROWSER_TARGET } from '../build-target.ts';
 import {
   assertInlineWorkersEncoded,
@@ -15,6 +17,7 @@ import {
   createLibraryConfig,
   createLibraryTasks,
   createWorkerOptions,
+  type RHtmlPluginLoader,
 } from './vite/library-config.ts';
 import {
   createExternal,
@@ -31,6 +34,7 @@ import {
 } from './vite/worker-url.ts';
 
 const workspaceDir = join(import.meta.dirname, '..');
+const factorySource = join(import.meta.dirname, 'vite/library-config.ts');
 const editorDir = join(workspaceDir, 'packages/erd-editor');
 const rHtmlDir = join(workspaceDir, 'packages/r-html');
 const replicationStoreWorkerDir = join(
@@ -49,6 +53,29 @@ type LibraryTask = {
 };
 type LibraryTasks = { build: LibraryTask; test?: LibraryTask };
 type Mutation = [label: string, mutate: (tasks: LibraryTasks) => void];
+
+async function pluginNames(plugins: PluginOption[] | undefined) {
+  const names: string[] = [];
+  for (const plugin of await Promise.all(plugins ?? [])) {
+    if (Array.isArray(plugin)) {
+      names.push(...(await pluginNames(plugin)));
+    } else if (plugin) {
+      names.push(plugin.name);
+    }
+  }
+  return names;
+}
+
+function recordingLoader() {
+  const calls: Array<{ packageDir: string; options: unknown }> = [];
+  const load: RHtmlPluginLoader = async packageDir => ({
+    rHtml: options => {
+      calls.push({ packageDir, options });
+      return [{ name: 'test-r-html' }];
+    },
+  });
+  return { calls, load };
+}
 
 test('package metadata derives the external policy', () => {
   const { manifest } = loadLibraryMetadata(rHtmlDir);
@@ -80,7 +107,9 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
       pattern: 'packages/erd-editor-schema/dist/**/*.d.ts',
       base: 'workspace',
     },
+    { pattern: 'packages/grid/dist/**/*.d.ts', base: 'workspace' },
     { pattern: 'packages/r-html/dist/**/*.d.ts', base: 'workspace' },
+    { pattern: 'packages/r-html-konva/dist/**/*.d.ts', base: 'workspace' },
     {
       pattern: 'packages/schema-sql-parser/dist/**/*.d.ts',
       base: 'workspace',
@@ -138,6 +167,63 @@ test('standard library factory preserves build policies', () => {
   assert.equal(config.worker, undefined);
 });
 
+test('a jsx library loads the r-html plugin through its own package', async () => {
+  const jsx = { konvaImportSource: '@/host' };
+  const loader = recordingLoader();
+  const config = createLibraryConfig(
+    rHtmlDir,
+    { dts: () => ({ name: 'test-dts' }), jsx },
+    loader.load
+  );
+
+  assert.deepEqual((await pluginNames(config.plugins)).sort(), [
+    'test-dts',
+    'test-r-html',
+  ]);
+  assert.deepEqual(loader.calls, [
+    { packageDir: rHtmlDir, options: { jsx, refresh: false } },
+  ]);
+
+  const plain = recordingLoader();
+  const withoutJsx = createLibraryConfig(
+    rHtmlDir,
+    { dts: () => ({ name: 'test-dts' }) },
+    plain.load
+  );
+  assert.deepEqual(await pluginNames(withoutJsx.plugins), ['test-dts']);
+  assert.deepEqual(plain.calls, []);
+});
+
+test('reading task metadata never loads the jsx plugin', () => {
+  const saved = process.env['VP_RESOLVING_CONFIG_METADATA'];
+  let loads = 0;
+  process.env['VP_RESOLVING_CONFIG_METADATA'] = '1';
+  try {
+    const config = createLibraryConfig(
+      rHtmlDir,
+      {
+        dts: () => ({ name: 'test-dts' }),
+        jsx: { konvaImportSource: '@/host' },
+        workers: true,
+      },
+      async () => {
+        loads += 1;
+        return { rHtml: () => [] };
+      }
+    );
+    assert.equal(config.plugins, undefined);
+    assert.deepEqual(config.worker?.plugins?.(), [undefined]);
+    assert.ok(config.run?.tasks?.build);
+  } finally {
+    if (saved === undefined) {
+      delete process.env['VP_RESOLVING_CONFIG_METADATA'];
+    } else {
+      process.env['VP_RESOLVING_CONFIG_METADATA'] = saved;
+    }
+  }
+  assert.equal(loads, 0);
+});
+
 test('a node library keeps its builtins as imports and targets node', () => {
   const config = createLibraryConfig(rHtmlDir, {
     dts: () => ({ name: 'test-dts' }),
@@ -189,6 +275,29 @@ test('a library that spawns a worker gets the shared worker build', () => {
   assert.ok(config.worker?.rolldownOptions?.external instanceof RegExp);
 });
 
+test('a jsx library compiles its workers through the r-html plugin too', async () => {
+  const jsx = { konvaImportSource: '@/host' };
+  const call = { packageDir: rHtmlDir, options: { jsx, refresh: false } };
+  const loader = recordingLoader();
+  const config = createLibraryConfig(
+    rHtmlDir,
+    { dts: () => ({ name: 'test-dts' }), jsx, workers: true },
+    loader.load
+  );
+
+  assert.deepEqual(await pluginNames(config.worker?.plugins?.()), [
+    'test-r-html',
+  ]);
+  await pluginNames(config.plugins);
+  assert.deepEqual(loader.calls, [call, call]);
+
+  const withoutJsx = createLibraryConfig(rHtmlDir, {
+    dts: () => ({ name: 'test-dts' }),
+    workers: true,
+  });
+  assert.equal(withoutJsx.worker?.plugins, undefined);
+});
+
 test('a package may append a build step after the standard one', () => {
   const tasks = createLibraryTasks(editorDir, {
     build: ['vp build -c vite.umd.config.ts'],
@@ -216,6 +325,14 @@ test('task metadata does not require generated workspace plugins', () => {
     /const rHtmlPackage: string = ['"]@dineug\/vite-plugin-r-html['"]/
   );
   assert.match(config, /await import\(rHtmlPackage\)/);
+
+  const factory = readFileSync(factorySource, 'utf8');
+  assert.doesNotMatch(factory, /from ['"]@dineug\//);
+  assert.doesNotMatch(factory, /import\(['"]@dineug\//);
+  assert.match(
+    factory,
+    /createRequire\(join\(packageDir, 'package\.json'\)\)\.resolve\(\s*'@dineug\/vite-plugin-r-html'\s*\)/
+  );
 });
 
 test('required task contracts reject cache-gate mutations', () => {

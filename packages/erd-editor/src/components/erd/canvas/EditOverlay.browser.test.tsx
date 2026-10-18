@@ -1,4 +1,5 @@
 import { addCSSHost, createRef, render, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
@@ -91,7 +92,6 @@ import {
   removeTableGroupAction,
 } from '@/engine/modules/table-group/atom.actions';
 import { createI18n } from '@/i18n/translate';
-import { whenDrawn } from '@/konva/batchDraw';
 import {
   getColumnRect,
   getTableRect,

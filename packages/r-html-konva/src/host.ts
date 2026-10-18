@@ -8,6 +8,7 @@ import { Container } from 'konva/lib/Container';
 import { Group } from 'konva/lib/Group';
 import { Layer } from 'konva/lib/Layer';
 import { Node as KonvaNode } from 'konva/lib/Node';
+import { Shape } from 'konva/lib/Shape';
 import { Circle } from 'konva/lib/shapes/Circle';
 import { Line } from 'konva/lib/shapes/Line';
 import { Path } from 'konva/lib/shapes/Path';
@@ -20,7 +21,7 @@ import {
   markDirty,
   onBeforeFlush,
   requestFlush,
-} from '@/konva/batchDraw';
+} from '@/batchDraw';
 
 const SLOT = Symbol('r-html/konva-slot');
 const LEDGER = Symbol('r-html/konva-ledger');
@@ -114,6 +115,7 @@ const KONVA_TAG_FACTORY: Record<string, () => KonvaNode> = {
   'k-path': () => new Path(),
   'k-line': () => new Line(),
   'k-circle': () => new Circle(),
+  'k-shape': () => new Shape({}),
 };
 
 function noValidate() {}
@@ -202,7 +204,7 @@ function layerOf(node: HostNode): Layer | null {
 
 function markLayer(node: HostNode) {
   const layer = layerOf(node);
-  layer && markDirty(layer);
+  if (layer) markDirty(layer);
 }
 
 /**
@@ -249,9 +251,9 @@ function link(parent: HostNode, slot: Slot, before: Slot | null) {
 }
 
 /**
- * The placement half of AC-G9. A fragment is exempt on purpose: every template
- * is assembled inside one before it is spliced into its real parent, so a layer
- * passes through a fragment on its way to the Stage.
+ * A Stage holds layers alone, a layer sits under nothing else, and a shape holds
+ * no children. A fragment is exempt: every template is assembled inside one
+ * before its splice, so a layer passes through a fragment on its way to the Stage.
  */
 function assertPlacement(parent: HostNode, node: HostNode) {
   if (!isKonva(node) || isFragmentNode(parent)) return;
@@ -347,12 +349,13 @@ function sameOrder(children: KonvaNode[], desired: KonvaNode[]) {
  * order of its canvas element inside the container.
  */
 function orderLayers(stage: Stage, desired: KonvaNode[]) {
-  desired.forEach((node, index) => {
-    if (stage.children[index] === node) return;
+  for (let index = 0; index < desired.length; index++) {
+    const node = desired[index];
+    if (stage.children[index] === node) continue;
 
     hostStats.setZIndex += 1;
     node.setZIndex(index);
-  });
+  }
 }
 
 /**
@@ -372,7 +375,7 @@ function orderChildren(parent: Container, desired: KonvaNode[]) {
 }
 
 /**
- * Invariant I1 for one parent: the ledger owns membership, and the order of the
+ * Holds one parent to its ledger: the ledger owns membership, and the order of the
  * real nodes it holds is written back onto the konva children. Order that drifted
  * meanwhile, from a moveToTop or a remove behind the host's back, is restored here.
  */
@@ -383,7 +386,7 @@ function reconcile(parent: HostNode) {
   const desired: KonvaNode[] = [];
   for (let slot = ledgerOf(parent).first; slot; slot = slot.next) {
     hostStats.scan += 1;
-    isKonva(slot.node) && desired.push(slot.node);
+    if (isKonva(slot.node)) desired.push(slot.node);
   }
 
   for (const node of desired) {
@@ -397,20 +400,22 @@ function reconcile(parent: HostNode) {
   hostStats.order += 1;
 
   if (parent instanceof Stage) {
-    dropped.forEach(node => node.remove());
+    for (const node of dropped) {
+      node.remove();
+    }
     orderLayers(parent, desired);
   } else {
-    dropped.forEach(node => {
+    for (const node of dropped) {
       node.parent = null;
       node.index = 0;
       node.remove();
-    });
+    }
     orderChildren(parent, desired);
   }
 
   for (const node of dropped) {
     hostStats.drop += 1;
-    slotOf(node).doomed && destroyNode(node);
+    if (slotOf(node).doomed) destroyNode(node);
   }
 }
 
@@ -449,9 +454,9 @@ function rootOf(node: HostNode): HostNode {
 }
 
 /**
- * The id half of the P0-2 convention, enforced where an id is written. Only a
- * node of the main canvas may carry one, so a minimap that borrowed an id could
- * not make an id scan over the live stages ambiguous.
+ * The id convention, enforced where an id is written. Only a node of the main
+ * canvas may carry one, so a minimap that borrowed an id could not make an id
+ * scan over the live stages ambiguous.
  */
 function assertIdConvention(node: KonvaNode, value: any) {
   if (!value) return;
@@ -503,7 +508,7 @@ export const konvaAdapter: HostAdapter = {
     if (!isKonva(node)) return;
 
     slot.doomed = true;
-    node.getParent() || destroyNode(node);
+    if (!node.getParent()) destroyNode(node);
   },
   parentOf,
   nextSiblingOf,
@@ -530,7 +535,7 @@ export const konvaAdapter: HostAdapter = {
     }
 
     const next = isSingleMarker ? value : String(value);
-    name === 'id' && assertIdConvention(node, next);
+    if (name === 'id') assertIdConvention(node, next);
     if (node.attrs[name] === next) return;
 
     node.setAttrs({ [name]: next });
@@ -553,9 +558,11 @@ export const konvaAdapter: HostAdapter = {
   isFragment: (value: any): value is HostNode => isFragmentNode(value),
 
   addEventListener(node: HostNode, type: string, listener: any, options?: any) {
-    isKonva(node)
-      ? node.on(`${type}.rhtml`, listener)
-      : (node as EventTarget).addEventListener(type, listener, options);
+    if (isKonva(node)) {
+      node.on(`${type}.rhtml`, listener);
+    } else {
+      (node as EventTarget).addEventListener(type, listener, options);
+    }
   },
   removeEventListener(
     node: HostNode,
@@ -563,9 +570,11 @@ export const konvaAdapter: HostAdapter = {
     listener: any,
     options?: any
   ) {
-    isKonva(node)
-      ? node.off(`${type}.rhtml`, listener)
-      : (node as EventTarget).removeEventListener(type, listener, options);
+    if (isKonva(node)) {
+      node.off(`${type}.rhtml`, listener);
+    } else {
+      (node as EventTarget).removeEventListener(type, listener, options);
+    }
   },
 
   getRoot: rootOf,

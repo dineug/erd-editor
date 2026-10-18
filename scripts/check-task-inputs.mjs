@@ -10,7 +10,11 @@ import { createLibraryTasks } from '../tools/vite/library-config.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 const packagesDir = path.join(root, 'packages');
-const packageDirs = fs.readdirSync(packagesDir);
+// Only a folder with a manifest is a package; the OS and local tools leave
+// others beside them, such as .DS_Store and .omc.
+const packageDirs = fs
+  .readdirSync(packagesDir)
+  .filter(dir => fs.existsSync(path.join(packagesDir, dir, 'package.json')));
 const packagesByName = new Map();
 const problems = [];
 
@@ -162,9 +166,7 @@ function extendedConfigInputs(configPath, packageDir, packageName) {
 }
 
 for (const dir of packageDirs) {
-  const packageDir = path.join(packagesDir, dir);
-  const manifestPath = path.join(packageDir, 'package.json');
-  if (!fs.existsSync(manifestPath)) continue;
+  const manifestPath = path.join(packagesDir, dir, 'package.json');
 
   packagesByName.set(readJson(manifestPath).name, {
     dir,
@@ -313,10 +315,7 @@ let sharedTaskCount = 0;
 
 for (const dir of packageDirs) {
   const packageDir = path.join(packagesDir, dir);
-  const manifestPath = path.join(packageDir, 'package.json');
-  if (!fs.existsSync(manifestPath)) continue;
-
-  const manifest = readJson(manifestPath);
+  const manifest = readJson(path.join(packageDir, 'package.json'));
   const configPath = findViteConfig(packageDir);
   if (!configPath) continue;
 
@@ -356,11 +355,11 @@ for (const dir of packageDirs) {
   }
 }
 
-if (libraryCount !== 11) {
-  problems.push(`expected 11 library configs, found ${libraryCount}`);
+if (libraryCount !== 13) {
+  problems.push(`expected 13 library configs, found ${libraryCount}`);
 }
-if (factoryCount !== 10) {
-  problems.push(`expected 10 defineLibraryConfig consumers, found ${factoryCount}`);
+if (factoryCount !== 12) {
+  problems.push(`expected 12 defineLibraryConfig consumers, found ${factoryCount}`);
 }
 if (sharedTaskCount !== 1) {
   problems.push(

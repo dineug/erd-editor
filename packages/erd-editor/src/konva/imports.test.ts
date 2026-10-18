@@ -1,6 +1,6 @@
 // AC-L6: konva is reached through konva/lib entry points and never through the
 // package root. The root barrel pulls every shape, filter and DOM binding into
-// a build that names eleven classes, and nothing else would fail if it crept in.
+// the build, and nothing else would fail if it crept in.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -18,17 +18,14 @@ const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*'([^']+)'/g;
 const KONVA_ROOT = 'konva';
 
 /**
- * What a file that ships may name. Global carries the namespace object the host
- * configures, DragAndDrop the one registry entry that object reads back, and
- * each remaining entry is one class the scene constructs.
+ * What a file that ships may name: each entry is one class the scene constructs
+ * or tests against. Container stays here although what ships names it by type,
+ * because a spec constructs one and the type-alone check below reads the specs.
  */
 const RUNTIME_MODULES = new Set([
   'konva/lib/Container',
-  'konva/lib/DragAndDrop',
-  'konva/lib/Global',
   'konva/lib/Group',
   'konva/lib/Layer',
-  'konva/lib/Node',
   'konva/lib/Stage',
   'konva/lib/shapes/Circle',
   'konva/lib/shapes/Line',
@@ -42,21 +39,29 @@ const RUNTIME_MODULES = new Set([
 const TWEEN_OWNER = 'konva/scene/konvaFlip.ts';
 
 /**
- * Two more a shipped file may name by type alone: the context and the shape a
- * hit function is handed. Neither is constructed here, so the build never
- * carries them, and the spec below holds each to an import type.
+ * Three more a shipped file may name by type alone: the node and event types a
+ * handler reads, and the context and the shape a hit function is handed. None
+ * is constructed here, and the spec below holds each to an import type.
  */
-const TYPE_ONLY_MODULES = new Set(['konva/lib/Context', 'konva/lib/Shape']);
+const TYPE_ONLY_MODULES = new Set([
+  'konva/lib/Context',
+  'konva/lib/Node',
+  'konva/lib/Shape',
+]);
 
 /** A static import with its type keyword, if it carries one, and its specifier. */
 const IMPORT_FORM = /\bimport\s+(type\s+)?[^;]*?\bfrom\s*'([^']+)'/g;
 
 /**
- * Two more a spec may name. Animation drives konva's own draw loop, which the
- * specs pin as upstream behaviour rather than call, and Core is the barrel that
- * reaches it and costs 3.3 kB gzipped to name from a build.
+ * Three more a spec may name. Animation drives konva's own draw loop, Core is
+ * the barrel that reaches it at 3.3 kB gzipped, and Global is the namespace a
+ * spec reads the host's registration on, which the host package configures.
  */
-const SPEC_ONLY_MODULES = new Set(['konva/lib/Animation', 'konva/lib/Core']);
+const SPEC_ONLY_MODULES = new Set([
+  'konva/lib/Animation',
+  'konva/lib/Core',
+  'konva/lib/Global',
+]);
 
 const isSpec = (file: string) => /\.test\.tsx?$/.test(file);
 
@@ -110,13 +115,13 @@ describe('konva enters this package through konva/lib only (AC-L6)', () => {
     expect(barrel).toEqual([]);
   });
 
-  it('names only the modules the host and the scene construct, or types', () => {
+  it('names only the modules the scene constructs, or types', () => {
     const allowed = new Set([...RUNTIME_MODULES, ...TYPE_ONLY_MODULES]);
 
     expect(offenders(allowed, file => !isSpec(file))).toEqual([]);
   });
 
-  it('names the hit function types by type alone', () => {
+  it('names the handler and hit function types by type alone', () => {
     const valued: string[] = [];
 
     for (const path of sourceFiles(SOURCE_ROOT)) {
@@ -132,7 +137,7 @@ describe('konva enters this package through konva/lib only (AC-L6)', () => {
     expect(valued).toEqual([]);
   });
 
-  it('lets a spec add the draw loop modules and their barrel, and no more', () => {
+  it('lets a spec add the spec-only modules, and no more', () => {
     const allowed = new Set([
       ...RUNTIME_MODULES,
       ...TYPE_ONLY_MODULES,
@@ -153,7 +158,7 @@ describe('konva enters this package through konva/lib only (AC-L6)', () => {
     expect(owners).toEqual([TWEEN_OWNER]);
   });
 
-  it('keeps the draw loop modules and their barrel out of what ships', () => {
+  it('keeps the spec-only modules out of what ships', () => {
     const shipped = konvaReferences()
       .filter(({ file }) => !isSpec(file))
       .map(({ specifier }) => specifier);
@@ -170,7 +175,9 @@ describe('konva enters this package through konva/lib only (AC-L6)', () => {
     expect(references.map(({ specifier }) => specifier)).toContain(
       'konva/lib/Global'
     );
-    expect(references.map(({ file }) => file)).toContain('konva/host.ts');
+    expect(references.map(({ file }) => file)).toContain(
+      'konva/scene/konvaFlip.ts'
+    );
   });
 });
 

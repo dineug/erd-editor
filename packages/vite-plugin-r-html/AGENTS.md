@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-18 -->
 
 # vite-plugin-r-html
 
 ## Purpose
 
-`@dineug/vite-plugin-r-html` is a private workspace package whose `rHtml(options)` returns two Vite plugins. `vite:r-html-jsx` compiles `.tsx` into the `html` / `svg` tagged templates `@dineug/r-html` reads, or into `konva` ones for a file carrying the host pragma. `vite:r-html-refresh`, applied on serve only, makes component modules HMR boundaries whose `accept` dispatches `hmr:r-html` for r-html's `hmr.ts` to swap components in place. `@dineug/erd-editor` is its only consumer. A change keeps the DOM output of pragma-less files and the `hmr:r-html` event contract with r-html intact.
+`@dineug/vite-plugin-r-html` is a private workspace package whose `rHtml(options)` returns two Vite plugins. `vite:r-html-jsx` compiles `.tsx` into the `html` / `svg` tagged templates `@dineug/r-html` reads, or into `konva` ones for a file carrying the host pragma. `vite:r-html-refresh`, applied on serve only, makes component modules HMR boundaries whose `accept` dispatches `hmr:r-html` for r-html's `hmr.ts` to swap components in place. Its consumers are `@dineug/erd-editor`, `@dineug/r-html-konva`, the Konva host, and `@dineug/grid`, the canvas grid on that host; the builds of the last two load it through `defineLibraryConfig`'s `jsx` option. A change keeps the DOM output of pragma-less files and the `hmr:r-html` event contract with r-html intact.
 
 ## Making a Change
 
@@ -42,11 +42,13 @@
   - a string or number child under `k-*`;
   - a spread, `class`, `style` or `zIndex` on `k-*`.
 - **Write the pragma as a tags-only block.** It must satisfy `local/jsdoc-attached` (`tools/eslint-rules/jsdoc-attached.js`), so `/** Konva scene. @jsxHost konva */` is a lint error. Put no second JSDoc block before the same statement; otherwise the pragma is the block reported as stacked.
-- **Pass `konvaImportSource` in every erd-editor config.** It has no default, so a konva file compiled without it is a compile error. Every erd-editor config that compiles `.tsx` passes `jsx: { konvaImportSource: '@/konva/host' }`, and a new one must too:
-  - `vite.config.ts`, in `plugins` and again in `worker.plugins`, which inherits nothing;
-  - `vite.umd.config.ts`;
-  - `vitest.config.ts`, with `refresh: false`.
-- **Load the plugin lazily in `vite.config.ts`.** `vite.config.ts` loads the plugin lazily, through `lazyPlugins` and `await import(rHtmlPackage)` with `const rHtmlPackage: string`, because its `run.tasks` is read before this package is built on a clean checkout. `tools/vite-config.test.ts` (task metadata does not require generated workspace plugins) fails on a static import or a literal `import('@dineug/vite-plugin-r-html')` there. `vite.umd.config.ts` loads it the same way, though it runs only inside the `build` task, after its dependencies build, and `vitest.config.ts` imports it statically.
+- **Pass `konvaImportSource` in every config that compiles `.tsx`.** It has no default, so a konva file compiled without it is a compile error. erd-editor's and grid's configs pass `jsx: { konvaImportSource: '@dineug/r-html-konva' }`, the host package, and r-html-konva's own pass `'@/host'`, its host module; a new config must pass it too:
+  - erd-editor's `vite.config.ts`, in `plugins` and again in `worker.plugins`, which inherits nothing;
+  - erd-editor's `vite.umd.config.ts`;
+  - erd-editor's `vitest.config.ts`, with `refresh: false`;
+  - r-html-konva's `vite.config.ts`, as `defineLibraryConfig`'s `jsx` option, which adds `refresh: false` itself and, with `workers`, adds the plugin to `worker.plugins` too, and its `vitest.config.ts`, with `refresh: false`;
+  - grid's `vite.config.ts` and `vitest.config.ts`, the same way as r-html-konva's.
+- **Load the plugin lazily in `vite.config.ts`.** erd-editor's `vite.config.ts` loads the plugin lazily, through `lazyPlugins` and `await import(rHtmlPackage)` with `const rHtmlPackage: string`, because its `run.tasks` is read before this package is built on a clean checkout. `tools/vite-config.test.ts` (task metadata does not require generated workspace plugins) fails on a static import or a literal `import('@dineug/vite-plugin-r-html')` there. `vite.umd.config.ts` loads it the same way, though it runs only inside the `build` task, after its dependencies build, and `vitest.config.ts` imports it statically. `defineLibraryConfig` loads it lazily too, through `lazyPlugins`, from the own dependencies of the library being built (`tools/vite/library-config.ts`).
 
 ### HMR boundaries
 
@@ -74,7 +76,7 @@
 
 ### Internal
 
-None. The package works with `@dineug/r-html`'s `hmr.ts` through the event contract alone, and `@dineug/erd-editor` is its only consumer.
+None. The package works with `@dineug/r-html`'s `hmr.ts` through the event contract alone, and `@dineug/erd-editor`, `@dineug/r-html-konva` and `@dineug/grid` are its consumers, each through a devDependency.
 
 ### External
 

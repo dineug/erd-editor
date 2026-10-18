@@ -22,7 +22,10 @@ const createSharedConfig = (): UserWorkspaceConfig => ({
   // intact. The HMR half is off, and the konva specifier is what a @jsxHost
   // konva spec compiles against; the plugin refuses the pragma without it.
   plugins: [
-    rHtml({ jsx: { konvaImportSource: '@/konva/host' }, refresh: false }),
+    rHtml({
+      jsx: { konvaImportSource: '@dineug/r-html-konva' },
+      refresh: false,
+    }),
   ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),

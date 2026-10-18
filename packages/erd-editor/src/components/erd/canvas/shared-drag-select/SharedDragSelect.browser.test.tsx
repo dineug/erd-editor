@@ -1,5 +1,6 @@
 /** @jsxHost konva */
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Rect as KonvaRect } from 'konva/lib/shapes/Rect';
 import type { Stage } from 'konva/lib/Stage';
@@ -13,7 +14,6 @@ import {
   sharedDragSelectTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import { Tag } from '@/engine/tag';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Rect } from '@/utils/dragSelect';
 import { SharedColors, toSharedColor } from '@/utils/sharedColor';

@@ -1,5 +1,6 @@
 /** @jsxHost konva */
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import { Container } from 'konva/lib/Container';
 import type { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
@@ -23,7 +24,6 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { duplicateDragStartAction } from '@/utils/emitter';
 

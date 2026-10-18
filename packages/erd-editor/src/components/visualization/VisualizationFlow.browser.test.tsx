@@ -3,6 +3,11 @@
 // that never reaches that landing, and the hover that fades the rest.
 
 import { type AnyAction, useProvider } from '@dineug/r-html';
+import {
+  MINIMAP_STAGE_NAME,
+  onBeforeFlush,
+  whenDrawn,
+} from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Layer } from 'konva/lib/Layer';
 import type { Shape } from 'konva/lib/Shape';
@@ -73,8 +78,6 @@ import {
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { Tag } from '@/engine/tag';
-import { onBeforeFlush, whenDrawn } from '@/konva/batchDraw';
-import { MINIMAP_STAGE_NAME } from '@/konva/host';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
 import { getTableRect } from '@/konva/scene/metrics';

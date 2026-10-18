@@ -3,6 +3,7 @@
 // and the bar the Flow does carry is the one that says what it stands at.
 
 import { useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -22,7 +23,6 @@ import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { toZoomFormat } from '@/utils/validation';
 
 /**

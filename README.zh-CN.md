@@ -126,10 +126,10 @@ document.body.appendChild(editor);
 
 ## 包
 
-这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor) 和 [`@dineug/erd-editor-mcp`](./packages/mcp-server) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库。
+这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor) 和 [`@dineug/erd-editor-mcp`](./packages/mcp-server) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库，只有画布网格 `grid` 目前还没有任何构建引入。
 
 <details>
-<summary>全部 18 个包</summary>
+<summary>全部 20 个包</summary>
 
 | 文件夹 | npm 名称 | 说明 |
 | --- | --- | --- |
@@ -139,6 +139,8 @@ document.body.appendChild(editor);
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 和 Uuid25 编码，编辑器生成的 id |
 | [`r-html`](./packages/r-html) | `@dineug/r-html` | 编辑器所基于的标签模板渲染框架和 store |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | `@dineug/vite-plugin-r-html` | JSX → 标签模板，外加 HMR 边界 |
+| [`r-html-konva`](./packages/r-html-konva) | `@dineug/r-html-konva` | r-html 模板的 Konva 宿主，编辑器的画布经由它渲染 |
+| [`grid`](./packages/grid) | `@dineug/grid` | 基于 `r-html-konva` 的 Konva 画布电子表格网格，只绘制可见的单元格 |
 | [`app`](./packages/app) | `@dineug/erd-editor-app` | erd-editor.io 的 React PWA，含 `/gdrive` 的 Google Drive 编辑器，其 OAuth 中继是 `functions/` 中的 Pages Function |
 | [`vscode-extension`](./packages/vscode-extension) | `vuerd-vscode` | 已发布的 VS Code 扩展，含编码代理中枢在扩展这一侧的实现 |
 | [`vscode-webview`](./packages/vscode-webview) | `@dineug/erd-editor-vscode-webview` | VS Code webview 内的捆绑包 |

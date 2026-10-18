@@ -1,4 +1,5 @@
 import { type DOMTemplateLiterals, useProvider } from '@dineug/r-html';
+import { renderKonva } from '@dineug/r-html-konva';
 import { Stage } from 'konva/lib/Stage';
 
 import { type AppContext, appContext } from '@/components/appContext';
@@ -6,7 +7,6 @@ import { trackSceneHits } from '@/components/erd/hitTest';
 import { localeContext } from '@/components/localeContext';
 import { themeContext } from '@/components/themeContext';
 import type { I18n } from '@/i18n/translate';
-import { renderKonva } from '@/konva/host';
 import type { Theme } from '@/themes/tokens';
 
 /**

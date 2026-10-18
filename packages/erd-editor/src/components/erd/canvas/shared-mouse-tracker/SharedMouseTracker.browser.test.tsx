@@ -1,5 +1,6 @@
 /** @jsxHost konva */
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Text } from 'konva/lib/shapes/Text';
 import type { Stage } from 'konva/lib/Stage';
@@ -10,7 +11,6 @@ import { AppContext } from '@/components/appContext';
 import SharedMouseTracker from '@/components/erd/canvas/shared-mouse-tracker/SharedMouseTracker';
 import { sharedMouseTrackerAction } from '@/engine/modules/editor/atom.actions';
 import { Tag } from '@/engine/tag';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 
 let stage: Stage | null = null;

@@ -4,6 +4,7 @@ import {
   render,
   useProvider,
 } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { type Stage, stages } from 'konva/lib/Stage';
@@ -30,7 +31,6 @@ import {
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { diffDocuments } from '@/utils/diff';
 
 const VIEWPORT = { width: 1200, height: 700 };

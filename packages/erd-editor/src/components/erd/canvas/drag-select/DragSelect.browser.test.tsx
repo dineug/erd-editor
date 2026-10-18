@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { createRef, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Rect } from 'konva/lib/shapes/Rect';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -21,7 +22,6 @@ import {
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import { type Rect as DragRect } from '@/utils/dragSelect';

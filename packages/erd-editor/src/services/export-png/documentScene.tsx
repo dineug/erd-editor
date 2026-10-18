@@ -1,5 +1,6 @@
 /** @jsxHost konva */
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import { isNumber } from 'es-toolkit';
 import type { Stage } from 'konva/lib/Stage';
 
@@ -7,7 +8,6 @@ import { appDestroy, createAppContext } from '@/components/appContext';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { createI18n, type LocaleMessages } from '@/i18n/translate';
-import { whenDrawn } from '@/konva/batchDraw';
 import type { Rect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';

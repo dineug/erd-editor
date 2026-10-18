@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { type DOMTemplateLiterals } from '@dineug/r-html';
+import { renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Rect } from 'konva/lib/shapes/Rect';
@@ -63,8 +64,6 @@ import {
   toggleColumnValueAction$,
 } from '@/engine/modules/table-column/generator.actions';
 import type { Column as ColumnEntity } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
-import { renderKonva } from '@/konva/host';
 import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';

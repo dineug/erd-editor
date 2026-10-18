@@ -51,6 +51,7 @@ playwright-report
 blob-report
 packages/*/e2e/.results
 packages/*/e2e/.results-bench
+packages/*/bench/.results-bench
 packages/*/e2e/.report
 # `e2e:bench` output; the baseline is written on demand and stays local.
 packages/*/e2e/.bench

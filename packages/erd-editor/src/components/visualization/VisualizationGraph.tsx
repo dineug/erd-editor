@@ -7,13 +7,13 @@ import {
   ref,
   watch,
 } from '@dineug/r-html';
+import { renderKonva } from '@dineug/r-html-konva';
 import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
 import Table from '@/components/visualization/table/Table';
 import { hasViewport } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
 import { createPinch, isPinchWheel, pinchWheelScale } from '@/utils/pinch';
 

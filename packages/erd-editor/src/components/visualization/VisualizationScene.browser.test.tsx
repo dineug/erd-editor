@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { observable } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group as KonvaGroup } from 'konva/lib/Group';
 import type { Layer } from 'konva/lib/Layer';
 import type { Circle } from 'konva/lib/shapes/Circle';
@@ -48,7 +49,6 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { createI18n, type I18n } from '@/i18n/translate';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { TextFontFamily } from '@/styles/fonts.styles';
 import type { Theme } from '@/themes/tokens';

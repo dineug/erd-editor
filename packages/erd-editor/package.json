@@ -81,7 +81,9 @@
   "devDependencies": {
     "@dbml/parse": "10.1.1",
     "@dineug/erd-editor-schema": "workspace:*",
+    "@dineug/grid": "workspace:*",
     "@dineug/r-html": "workspace:*",
+    "@dineug/r-html-konva": "workspace:*",
     "@dineug/schema-sql-parser": "workspace:*",
     "@dineug/uuid": "workspace:*",
     "@dineug/vite-plugin-r-html": "workspace:*",

@@ -5,6 +5,7 @@
 // ghost stands in for it on the presence layer, and only over no drop target.
 
 import { createRef } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Text } from 'konva/lib/shapes/Text';
 import type { Stage } from 'konva/lib/Stage';
@@ -37,7 +38,6 @@ import { changeColumnNameAction } from '@/engine/modules/table-column/atom.actio
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { createI18n } from '@/i18n/translate';
 import type { Point, Table } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import { dragendColumnAllAction } from '@/utils/emitter';

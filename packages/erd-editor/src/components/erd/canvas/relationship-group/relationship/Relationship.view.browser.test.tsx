@@ -5,6 +5,7 @@
 // the view's boxes; a sibling with no provider draws the same entity at the document's.
 
 import { useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
@@ -34,7 +35,6 @@ import {
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { Point, Relationship as RelationshipType_ } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { getAnchors } from '@/utils/draw-relationship';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';

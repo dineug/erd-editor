@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { FC, repeat } from '@dineug/r-html';
+import { renderKonva } from '@dineug/r-html-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 
@@ -23,7 +24,6 @@ import {
   TABLE_RADIUS,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
-import { renderKonva } from '@/konva/host';
 import { TextFontFamily } from '@/styles/fonts.styles';
 
 export type VisualizationSceneProps = {

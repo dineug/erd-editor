@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-18 -->
 
 # erd-editor
 
 ## Purpose
 
-The editor core, published on npm as `@dineug/erd-editor`: the framework-free `<erd-editor>` custom element on `@dineug/r-html`, whose Redux-like store's actions carry a Lamport clock version and merge through the LWW registers in `@dineug/erd-editor-schema`. Beside the element it ships two DOM-free entries, `engine.js`, the headless replica, and `peer.js`, a headless collaboration peer that edits by dispatching actions instead of by a pointer; six workspace packages consume the three (Rules § Entries and Consumers). The ERD scene is a Konva `<canvas>` rendered through a second r-html host (`src/konva/`), and the toolbar, panels, menus and the editing overlay stay DOM. The same scene components also draw the one view, the Visualization tab's Flow mode, and a `GeometrySource` tells them which they draw; a view is the reader's own placement, zoom and rows, never in the file, the history or a peer. A change here keeps the peer graph free of the DOM, and a change to an entry's surface updates the spec that pins it (`src/index.test.ts`, `src/engine/index.test.ts`, `src/peer/index.test.ts`).
+The editor core, published on npm as `@dineug/erd-editor`: the framework-free `<erd-editor>` custom element on `@dineug/r-html`, whose Redux-like store's actions carry a Lamport clock version and merge through the LWW registers in `@dineug/erd-editor-schema`. Beside the element it ships two DOM-free entries, `engine.js`, the headless replica, and `peer.js`, a headless collaboration peer that edits by dispatching actions instead of by a pointer; six workspace packages consume the three (Rules § Entries and Consumers). The ERD scene is a Konva `<canvas>` rendered through a second r-html host, `@dineug/r-html-konva`, over the scene geometry in `src/konva/`, and the toolbar, panels, menus and the editing overlay stay DOM. The same scene components also draw the one view, the Visualization tab's Flow mode, and a `GeometrySource` tells them which they draw; a view is the reader's own placement, zoom and rows, never in the file, the history or a peer. A change here keeps the peer graph free of the DOM, and a change to an entry's surface updates the spec that pins it (`src/index.test.ts`, `src/engine/index.test.ts`, `src/peer/index.test.ts`).
 
 ## Making a Change
 
@@ -51,7 +51,7 @@ The editor core, published on npm as `@dineug/erd-editor`: the framework-free `<
 | `src/components/sceneSourceContext.ts` | `sceneSourceContext` / `useSceneSource`, default `'document'` |
 | `src/konva/scene/viewLayout.ts` | What a view shows: `getVisibleIds`, `getVisibleColumnIds`, `getTablePoint`, `getReachedTableIds`, `getHighlightIds` |
 | `src/components/visualization/flowLayout.tsx` | The one Flow placement authority: `ensureFlowPlaced`, `keepFlowPlaced`, `fitFlowView` |
-| `src/konva/host.ts`, `src/konva/batchDraw.ts` | The Konva `HostAdapter`; the only draw authority (`Konva.autoDrawEnabled = false`, one `batchDraw` per dirty layer per commit) |
+| `packages/r-html-konva/` | `@dineug/r-html-konva`, inlined: the Konva `HostAdapter` and the only draw authority (`Konva.autoDrawEnabled = false`, one `batchDraw` per dirty layer per commit). Scene files import it by package name, and the three Vite configs name it as `konvaImportSource` |
 | `src/konva/scene/viewport.ts` | The coordinate canon and the culling rect |
 | `src/utils/generator-code/columnTypes.ts`, `jsonShape.ts` | The vendor type classifier the code generators read (`getColumnType`; `src/utils/generator-code/AGENTS.md`), `rustTypes.ts` its sqlx layer for Rust and SeaORM, and the JSON shape of a column's value that `zod.ts`, `jsonSchema.ts` and `typescript.ts` share (`getJsonShape`) |
 | `src/workers/spawn.ts`, `spawn.inline.ts` | The only place the three SharedWorkers are constructed; the umd build aliases in the inline twin |
@@ -79,7 +79,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 | `src/components/quick-search/` | `AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |
 | `src/components/primitives/` | `AGENTS.md`: the color picker, removing a color, and the native list in `select/Select.tsx` |
 | `src/i18n/` | The display language runtime and `messages/`: `en/`, one file per part of the editor and the source every language follows, a `<code>.ts` per other language, and `index.ts`'s `messagesOf`; `imports.test.ts` holds the peer, engine and worker graphs to the rules in its `AGENTS.md`, which governs the option on the element, the one `I18n` object, `locale` naming, dictionaries, keys and parameters, what stays as written, the left-to-right canvas, the peer and worker graphs, the locale picker, `settingsPage.ts`, specs in English |
-| `src/konva/` | Render host (`host.ts`, `batchDraw.ts`, `theme.ts`, `testHandle.ts`, `jsx.d.ts`) and `scene/` geometry. `AGENTS.md`: konva only through `konva/lib/*`, scene roots exported in lower case, `ParticleLayer`, `viewLayout.ts`, the `@jsxHost konva` pragma and its intrinsics, the host adapter |
+| `src/konva/` | The scene's side of the render host (`theme.ts`, `testHandle.ts`, `workerDomStubs.ts`) over `@dineug/r-html-konva`, and `scene/` geometry. `AGENTS.md`: konva only through `konva/lib/*`, scene roots exported in lower case, `ParticleLayer`, `viewLayout.ts`, the `@jsxHost konva` pragma and its intrinsics, and where the host's own rules live |
 | `src/services/` | SharedWorker services: `export-png/` falls back in-process; `elk-layout/` refuses a host with no worker; `shiki/` answers null (plain text). `AGENTS.md`: automatic placement keeping table groups together and `toHints` (`elk-layout/`), the export worker's hot swap, scene and language (`export-png/`); the highlighting rules are in `src/components/generator-code/AGENTS.md` |
 | `src/utils/` | `schema-sql/` writes DDL per vendor. `generator-code/` holds a module per code language behind `index.ts`'s `createGeneratorCode` and `createGeneratorCodeTable`, on the classifier in Key Files. The importers are `schema-{sql,graphql,dbml,aml}-parser/`; in the last three, `parser.ts` / `tokenizer.ts` own the grammar or `graphql` AST, and `convert.ts` never sees it. `draw-relationship/` and `table-clipboard/` sit beside them. `keyboard-shortcut/` holds the chord syntax, `bindKeys`, the keydown binder `useKeyBindingMap` listens through, and `matchesPress`, which `matchesShortcut` shares with it. `device-detect/` reads `navigator.platform`: `$mod` and the AltGraph aliases. `find-replace/` is the DOM-free search and replace core the palette and the Explorer's search share. `diff/` is the diff viewer's DOM-free engine: what pairs across two documents, what changed and what each pane marks. `map-columns/` is Map Columns' DOM-free core: the keys a parent offers, the rows over a session, the checks and the batch a mapping writes. `highlightWords.ts` holds the chunks `HighlightedText` lights, `virtualRange.ts` the rows a virtual list draws, which the tree and the palette share, and `deepMerge.ts` the entity factories' defaults. `AGENTS.md`: file import (placed before it lands; Import and Add) and duplicates (`table-clipboard/`) |
 | `src/utils/draw-relationship/` | `AGENTS.md`: relationship geometry: `sort.ts`, the WeakMap sort channels, `viewVersions`, referential actions at the child end, compact ends and round corners, the sort hooks' window |
@@ -104,7 +104,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 
 ### Packaging and Externals
 
-- **No `sideEffects` field, no `preserveModules`.** Vite reads the package's own field against `src/`, so a `./dist/…` list marks `customElementRegistry.ts` pure and drops element registration. A future list needs `**/` globs covering the entry, `customElementRegistry`, `ErdEditor`, `GlobalStyles`, `konva/batchDraw`, `konva/host`, `konva/workerDomStubs` and `services/elk-layout/elkWorkerRealm`.
+- **No `sideEffects` field, no `preserveModules`.** Vite reads the package's own field against `src/`, so a `./dist/…` list marks `customElementRegistry.ts` pure and drops element registration. A future list needs `**/` globs covering the entry, `customElementRegistry`, `ErdEditor`, `GlobalStyles`, `konva/workerDomStubs` and `services/elk-layout/elkWorkerRealm`. The draw gate's top-level writes belong to `@dineug/r-html-konva`, whose own `sideEffects: false` holds because every host export reaches them (`packages/r-html-konva/AGENTS.md`).
 - **Put a shipped `src/` third-party import in `dependencies`.** The lib and worker builds externalize exactly that list, so a `devDependencies` entry inlines and its types stop resolving for consumers (root § Working In This Directory, Externals).
 - **The private `@dineug/*` libraries inline.** The public `.d.ts` still name `@dineug/r-html` and `@dineug/erd-editor-schema`.
 
@@ -140,7 +140,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
   - `${ref(r)}` → `use:ref={ref(r)}`; `...${o}` → `{...o}`.
   - Component props take no dot, because the transform adds it, so `onFoo` is never an event.
   - `<C>{t}</C>` compiles to `` .children=${html`${t}`} ``.
-- **Konva scene files open with `/** @jsxHost konva */`.** The pragma, its intrinsics and what fails its compile: `src/konva/AGENTS.md`.
+- **Konva scene files open with `/** @jsxHost konva */`**, which compiles against `@dineug/r-html-konva`. The pragma, its intrinsics and what fails its compile: `src/konva/AGENTS.md`.
 - **Component conventions live in `src/components/AGENTS.md`.** That covers one directory per component, a second binding of one event, icon colour and the lucide table icon.
 - The native list in `primitives/select/Select.tsx`: `src/components/primitives/AGENTS.md`.
 - **Name actions by kind.** `somethingAction$` generators live in `generator.actions.ts`, `somethingAction` creators in `atom.actions.ts`. Bitmask flags go through `src/utils/bit.ts`.
@@ -153,11 +153,11 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 
 ### Internal
 
-`@dineug/r-html`, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` and `@dineug/uuid`, whose `uuid25` mints every id the editor makes (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR).
+`@dineug/r-html`, `@dineug/r-html-konva`, the Konva host the scene renders through, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` and `@dineug/uuid`, whose `uuid25` mints every id the editor makes (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR); `@dineug/grid`, the Konva canvas grid, which no source here imports yet, so none of it ships in `dist/`.
 
 ### External
 
-- `konva` `^10.3.2` via `konva/lib/*` only; a caret so a consumer dedupes to one copy, since `batchDraw.ts` patches the namespace. `@chenglou/pretext` lays out memo text. `src/konva/imports.test.ts` keeps `html-to-image` out.
+- `konva` `^10.3.2` via `konva/lib/*` only; a caret so a consumer dedupes to one copy, since `@dineug/r-html-konva`'s draw gate patches the namespace and names konva as a peer, which this package's `dependencies` supply. `@chenglou/pretext` lays out memo text. `src/konva/imports.test.ts` keeps `html-to-image` out.
 - `elkjs` only from the elk-layout worker, `shiki` + `@shikijs/langs` / `themes` only from the shiki worker (`createHighlighterCore`, JavaScript regex engine, so no `wasm-unsafe-eval`); `comlink` on all three worker boundaries; `d3-force` for Graph mode and automatic placement.
 - `rxjs`; `graphql`, only in `schema-graphql-parser/parser.ts`, which sits in the `loadValue` chunk all three entries share, so `peer.js` carries it too; `fuse.js`; `es-hangul` (the quick search's Hangul matching, `disassembleToGroups` alone, from `quick-search/hangul.ts`, which the peer graph never reaches); `lucide`; `@radix-ui/colors`; `stylis` for the inlined r-html. Key bindings, platform detection, word highlighting, deep merge and the export file name's timestamp are written here, not taken from a dependency.
 - `es-toolkit`: `get`, `set`, `isEmpty`, `round` come from `es-toolkit/compat` on purpose, because the main entry lacks the first three and rounds exact `.xx5` ties down into persisted LWW state. The main entry has no integer check and `es-toolkit/compat`'s `isInteger` returns a plain `boolean`, which narrows nothing, so `clock.ts` and `tag.ts` spell `isNumber(x) && Number.isInteger(x)`.

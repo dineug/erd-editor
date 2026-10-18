@@ -18,7 +18,7 @@ pnpm --filter @dineug/erd-editor e2e:bench      # benchmarks — see e2e/bench/R
 ```
 
 `e2e` and `e2e:bench` build first. `e2e:dev`, `e2e:headed` and `e2e:typecheck`
-do not, and they read the workspace libraries' `dist/` (`r-html`,
+do not, and they read the workspace libraries' `dist/` (`r-html`, `r-html-konva`,
 `erd-editor-schema`, `schema-sql-parser`, `uuid`, `vite-plugin-r-html`): run
 `pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build`, or `e2e`
 once, before them, and again after changing one of those libraries. A local run
@@ -572,8 +572,9 @@ Checked against the running editor or read from the code, not inferred:
 | `Escape` while editing or drawing | ends only that edit or the armed relationship or table group draw, prevented, and the selection stays; a cell or memo does **not** revert, since edits commit as you type, while a table group's name editor writes nothing |
 | `Escape` otherwise            | unselects, and reaches the page unprevented         |
 
-Column reordering is **not** native HTML5 drag-and-drop any more. `konva/jsx.d.ts`
-types `draggable` and every `on:drag*` as `never`, so the row runs on the same
+Column reordering is **not** native HTML5 drag-and-drop any more. The Konva
+host's JSX types (`packages/r-html-konva/src/jsx.ts`) type `draggable` and every
+`on:drag*` as `never`, so the row runs on the same
 `drag$` stream as everything else: `Column.tsx` arms on mousedown and reports a
 start on the first move, and `Table.tsx` answers which row a drop landed on with
 `findColumnDropTarget`, arithmetic over the rects the scene laid out. Where the

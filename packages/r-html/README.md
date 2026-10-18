@@ -9,7 +9,8 @@ is host-neutral: the exported `html` / `svg` / `render` are its DOM instance, an
 never published to npm. [`erd-editor`](../erd-editor) is built on it, since the editor core needs
 a custom element with no third-party UI framework runtime, and lists it as a devDependency,
 `"@dineug/r-html": "workspace:*"`, so its build inlines it; it also renders its Konva scene through
-a second host, [`packages/erd-editor/src/konva/host.ts`](../erd-editor/src/konva/host.ts).
+a second host, [`r-html-konva`](../r-html-konva), which depends on this package, as the canvas grid
+[`grid`](../grid) on that host does.
 [`mcp-server`](../mcp-server) lists it the same way for the store's action types (`AnyAction`,
 `CompositionActions`) and, in its specs, `compositionActionsFlat`.
 
@@ -100,10 +101,11 @@ Every name below comes from `src/index.ts`.
 
 r-html has no JSX runtime functions: the tags are the runtime. `@dineug/erd-editor` writes JSX,
 which [`vite-plugin-r-html`](../vite-plugin-r-html) rewrites into these tags under `dev`
-and `build` alike (`html` / `svg` from this package, or the Konva host's tag in a
-`/** @jsxHost konva */` file); under `dev` it also wires HMR through the exported `hmr()`.
-The JSX types live here, in the declarations-only `./jsx-runtime` entry: set `"jsx": "preserve"`
-and `"jsxImportSource": "@dineug/r-html"`, as `packages/erd-editor/tsconfig.json` does.
+and `build` alike (`html` / `svg` from this package, or the `konva` tag of
+[`r-html-konva`](../r-html-konva) in a `/** @jsxHost konva */` file); under `dev` it also wires
+HMR through the exported `hmr()`. The JSX types live here, in the declarations-only
+`./jsx-runtime` entry: set `"jsx": "preserve"` and `"jsxImportSource": "@dineug/r-html"`, as
+`packages/erd-editor/tsconfig.json` does.
 
 ## Development
 

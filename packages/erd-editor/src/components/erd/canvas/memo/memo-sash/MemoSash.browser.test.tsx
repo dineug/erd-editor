@@ -4,6 +4,7 @@
 // DOM sash laid out, and the resize gesture each of them starts.
 
 import { query } from '@dineug/erd-editor-schema';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { Layer } from 'konva/lib/Layer';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Rect } from 'konva/lib/shapes/Rect';
@@ -38,7 +39,6 @@ import {
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import type { Memo } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 
 /** The border box of a memo whose body is 200 by 150, and the box a sash spans. */

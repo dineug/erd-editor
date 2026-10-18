@@ -5,6 +5,7 @@
 // kind, a sibling with no provider stays on the document, all from one store.
 
 import { createRef, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Layer } from 'konva/lib/Layer';
 import type { Stage } from 'konva/lib/Stage';
@@ -42,7 +43,6 @@ import {
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import type { Point } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';

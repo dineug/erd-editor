@@ -148,10 +148,11 @@ document.body.appendChild(editor);
 
 pnpm 워크스페이스입니다. [`@dineug/erd-editor`](./packages/erd-editor)와
 [`@dineug/erd-editor-mcp`](./packages/mcp-server)는 npm에 게시되고, 플러그인 셋은 각자의 스토어로
-배포되며, `app`은 erd-editor.io이고, 나머지는 이 빌드들이 가져다 쓰는 비공개 라이브러리입니다.
+배포되며, `app`은 erd-editor.io이고, 나머지는 이 빌드들이 가져다 쓰는 비공개 라이브러리입니다. 다만
+캔버스 그리드인 `grid`는 아직 어느 빌드도 가져다 쓰지 않습니다.
 
 <details>
-<summary>18개 패키지 전체</summary>
+<summary>20개 패키지 전체</summary>
 
 | 폴더 | npm 이름 | 설명 |
 | --- | --- | --- |
@@ -161,6 +162,8 @@ pnpm 워크스페이스입니다. [`@dineug/erd-editor`](./packages/erd-editor)�
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7과 Uuid25 인코딩, 편집기가 만드는 id |
 | [`r-html`](./packages/r-html) | `@dineug/r-html` | 편집기의 바탕인 태그드 템플릿 렌더링 프레임워크와 스토어 |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | `@dineug/vite-plugin-r-html` | JSX → 태그드 템플릿 변환과 HMR 경계 |
+| [`r-html-konva`](./packages/r-html-konva) | `@dineug/r-html-konva` | 편집기의 캔버스가 렌더링을 거치는, r-html 템플릿의 Konva 호스트 |
+| [`grid`](./packages/grid) | `@dineug/grid` | 보이는 셀만 그리는, `r-html-konva` 위의 Konva 캔버스 스프레드시트 그리드 |
 | [`app`](./packages/app) | `@dineug/erd-editor-app` | erd-editor.io의 React PWA. `/gdrive`의 Google Drive 편집기를 포함하며, 그 OAuth 릴레이는 `functions/`의 Pages Function |
 | [`vscode-extension`](./packages/vscode-extension) | `vuerd-vscode` | 게시된 VS Code 확장과 코딩 에이전트 허브의 확장 쪽 |
 | [`vscode-webview`](./packages/vscode-webview) | `@dineug/erd-editor-vscode-webview` | VS Code 웹뷰 안의 번들 |

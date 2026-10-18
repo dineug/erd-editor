@@ -2,6 +2,7 @@
 // other browser spec installs a themeContext provider of its own. Without this
 // one a missing provider paints an empty stage and no other test notices.
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -9,7 +10,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { flush } from '@/__test-utils__/index';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
-import { whenDrawn } from '@/konva/batchDraw';
 import {
   Appearance,
   GrayColor,

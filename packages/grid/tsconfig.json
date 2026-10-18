@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    // The scene files compile JSX against r-html, whose jsx-runtime subpath is
+    // types only, and preserve hands that JSX to the r-html plugin untouched,
+    // the same pair erd-editor's tsconfig.json sets and explains.
+    "jsxImportSource": "@dineug/r-html",
+    "jsx": "preserve",
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

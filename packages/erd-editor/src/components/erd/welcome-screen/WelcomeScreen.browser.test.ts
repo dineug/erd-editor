@@ -3,6 +3,7 @@
 // element has one, under a toolbar laid out as the real one is.
 
 import { addCSSHost, html, render, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { page, server } from 'vite-plus/test/browser/context';
 
@@ -28,7 +29,6 @@ import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { type LocaleCode, LOCALES } from '@/i18n/locales';
-import { whenDrawn } from '@/konva/batchDraw';
 import { InternalEventType } from '@/utils/internalEvents';
 
 const WIDTH = 1000;

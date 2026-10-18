@@ -3,6 +3,7 @@
 // end an edit before the key binding reads it; a synthetic press never does.
 
 import { createRef, FC, ref, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
@@ -33,7 +34,6 @@ import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
-import { whenDrawn } from '@/konva/batchDraw';
 import { forceFocusEvent } from '@/utils/internalEvents';
 
 const MEMO_ID = 'note';

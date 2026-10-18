@@ -1,4 +1,5 @@
 import { useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Layer } from 'konva/lib/Layer';
 import type { Circle } from 'konva/lib/shapes/Circle';
 import type { Stage } from 'konva/lib/Stage';
@@ -38,7 +39,6 @@ import {
   addColumnAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 
 /** How far right of the pointer the preview opens. */
 const MARGIN = 20;

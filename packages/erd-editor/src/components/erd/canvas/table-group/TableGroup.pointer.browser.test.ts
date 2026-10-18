@@ -3,6 +3,7 @@
 // the window, where the drag streams listen.
 
 import { html, render, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Layer } from 'konva/lib/Layer';
 import type { Node as KonvaNode } from 'konva/lib/Node';
@@ -46,7 +47,6 @@ import {
   addTableGroupAction,
   removeTableGroupAction,
 } from '@/engine/modules/table-group/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getTableRect } from '@/konva/scene/metrics';
 import { getTableGroupRect, padRect } from '@/utils/tableGroup';
 

@@ -4,6 +4,7 @@
 
 import { toJson } from '@dineug/erd-editor-schema';
 import { createRef, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
@@ -38,7 +39,6 @@ import {
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { openColorPickerAction, openDiffViewerAction } from '@/utils/emitter';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';
 import { TAKEOVERS } from '@/utils/takeover';

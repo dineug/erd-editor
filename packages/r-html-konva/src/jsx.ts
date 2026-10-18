@@ -26,13 +26,15 @@ type KonvaEventName =
   | 'touchstart'
   | 'wheel';
 
+type KonvaDrawFunction = (context: Context, shape: Shape) => void;
+
 type KonvaEventHandlers = {
   [K in KonvaEventName as `on:${K}${DuplicateSuffix}`]?: EventHandler<any>;
 };
 
 /**
- * What every k-* tag carries. The never members are AC-L7 and the two rules it
- * leans on: the DOM sigils write through paths a Konva node has none of, and
+ * What every k-* tag carries. The never members keep out what a Konva node
+ * cannot take: the DOM sigils write through paths a Konva node has none of, and
  * z-order and dragging belong to the host and to the scene's own mouse streams.
  */
 interface KonvaBaseAttributes extends KonvaEventHandlers {
@@ -48,7 +50,7 @@ interface KonvaBaseAttributes extends KonvaEventHandlers {
   style?: never;
   zIndex?: never;
   children?: unknown;
-  /** The P0-2 convention: main canvas nodes only, and the minimap uses name. */
+  /** Main canvas nodes only: a minimap node is found by name plus tableId. */
   id?: string;
   /** What an ancestor walk reads in place of the DOM closest it replaces. */
   kind?: string;
@@ -66,7 +68,7 @@ interface KonvaBaseAttributes extends KonvaEventHandlers {
   sharedFocus?: string | null;
   /** The colour a collaborator's selection paints, null when nobody holds it. */
   sharedSelect?: string | null;
-  /** The minimap's half of P0-2, where an id would make an id scan ambiguous. */
+  /** What finds a minimap node beside its name, since an id there is refused. */
   tableId?: string;
   visible?: boolean;
   x?: number;
@@ -77,7 +79,7 @@ interface KonvaShapeAttributes extends KonvaBaseAttributes {
   dash?: number[];
   fill?: string;
   /** What the shape puts on the hit canvas in place of what it paints. */
-  hitFunc?: (context: Context, shape: Shape) => void;
+  hitFunc?: KonvaDrawFunction;
   hitStrokeWidth?: number;
   lineCap?: 'butt' | 'round' | 'square';
   lineJoin?: 'bevel' | 'miter' | 'round';
@@ -141,16 +143,41 @@ interface KonvaCircleAttributes extends KonvaShapeAttributes {
   radius?: number;
 }
 
+/**
+ * A shape that paints itself. It takes no fill or stroke of its own, since its
+ * scene function draws everything it shows in the shape's own space.
+ */
+interface KonvaCustomShapeAttributes extends KonvaBaseAttributes {
+  height?: number;
+  /** What goes on the hit canvas; konva falls back to sceneFunc without one. */
+  hitFunc?: KonvaDrawFunction;
+  /**
+   * Called on every draw of the layer. The host skips a write of the same
+   * reference, so a function that reads changed state asks markDirty instead.
+   */
+  sceneFunc?: KonvaDrawFunction;
+  width?: number;
+}
+
+/** The eight k-* tags the host constructs, each with the attributes it takes. */
+export interface KonvaIntrinsicElements {
+  'k-circle': KonvaCircleAttributes;
+  'k-group': KonvaContainerAttributes;
+  'k-layer': KonvaLayerAttributes;
+  'k-line': KonvaLineAttributes;
+  'k-path': KonvaPathAttributes;
+  'k-rect': KonvaRectAttributes;
+  'k-shape': KonvaCustomShapeAttributes;
+  'k-text': KonvaTextAttributes;
+}
+
+/**
+ * Merged into r-html's own map, which has no index signature, so a consumer's
+ * JSX accepts the k-* tags once its program reads this file through the type
+ * the entry re-exports.
+ */
 declare module '@dineug/r-html/jsx-runtime' {
   namespace JSX {
-    interface IntrinsicElements {
-      'k-circle': KonvaCircleAttributes;
-      'k-group': KonvaContainerAttributes;
-      'k-layer': KonvaLayerAttributes;
-      'k-line': KonvaLineAttributes;
-      'k-path': KonvaPathAttributes;
-      'k-rect': KonvaRectAttributes;
-      'k-text': KonvaTextAttributes;
-    }
+    interface IntrinsicElements extends KonvaIntrinsicElements {}
   }
 }

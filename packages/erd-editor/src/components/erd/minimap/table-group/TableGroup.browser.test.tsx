@@ -1,5 +1,6 @@
 /** @jsxHost konva */
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -20,7 +21,6 @@ import {
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { getTableGroupMembers, getTableGroupRect } from '@/utils/tableGroup';
 

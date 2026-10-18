@@ -3,6 +3,7 @@
 // P3-31: the minimap's memo box. Same geometry the dom minimap laid out with,
 // and the id rides in the name because a second stage may carry none.
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -12,7 +13,6 @@ import Memo from '@/components/erd/minimap/memo/Memo';
 import { MINIMAP_MARK_MIN } from '@/components/erd/minimap/minimapGeometry';
 import { MEMO_BORDER } from '@/constants/layout';
 import type { Memo as MemoType } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';

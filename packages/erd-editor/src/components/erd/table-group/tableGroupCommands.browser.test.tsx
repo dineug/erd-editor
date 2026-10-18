@@ -10,6 +10,7 @@ import {
   ref,
   useProvider,
 } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { type Stage, stages } from 'konva/lib/Stage';
@@ -55,7 +56,6 @@ import {
 } from '@/engine/modules/table-group/atom.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import type { Point } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
 import { forceFocusEvent } from '@/utils/internalEvents';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';

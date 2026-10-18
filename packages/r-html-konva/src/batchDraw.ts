@@ -56,7 +56,7 @@ function flush() {
 
       // A layer no Stage owns has nowhere to draw, and konva's own batchDraw
       // reaches through the parent for a window it would not find there.
-      layer.getStage() instanceof Stage && layer.batchDraw();
+      if (layer.getStage() instanceof Stage) layer.batchDraw();
     }
 
     dirty.clear();
@@ -136,7 +136,11 @@ export function beginAnimation(layer: Layer): void {
  */
 export function endAnimation(layer: Layer): void {
   const open = (animating.get(layer) ?? 0) - 1;
-  open > 0 ? animating.set(layer, open) : animating.delete(layer);
+  if (open > 0) {
+    animating.set(layer, open);
+  } else {
+    animating.delete(layer);
+  }
 
   endWaiters.splice(0).forEach(resolve => resolve());
 
@@ -148,7 +152,7 @@ export function endAnimation(layer: Layer): void {
 /** Resolves on the next endAnimation, whichever layer it closes. */
 function nextEndAnimation(): Promise<void> {
   return new Promise<void>(resolve => {
-    endWaiters.push(() => resolve());
+    endWaiters.push(resolve);
   });
 }
 
@@ -162,6 +166,6 @@ export function whenDrawn(): Promise<void> {
   if (!armed) return Promise.resolve();
 
   return new Promise<void>(resolve => {
-    waiters.push(() => resolve());
+    waiters.push(resolve);
   });
 }

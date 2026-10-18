@@ -14,8 +14,8 @@ import { Group } from 'konva/lib/Group';
 import { Node as KonvaNode } from 'konva/lib/Node';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { currentEpoch, whenDrawn } from '@/konva/batchDraw';
-import { hostStats, konva, konvaAdapter, resetHostStats } from '@/konva/host';
+import { currentEpoch, whenDrawn } from '@/batchDraw';
+import { hostStats, konva, konvaAdapter, resetHostStats } from '@/host';
 
 const konvaTemplate = createHostTemplate<Group>(konvaAdapter);
 
@@ -256,7 +256,7 @@ describe('a fragment is a ledger parent like any other', () => {
         : konva`<k-group name=${'b1'}></k-group>`
     )}</k-group>`;
 
-  it('parks a cached branch in a fragment, holding I1 inside it too', async () => {
+  it('parks a cached branch in a fragment, whose ledger keeps its own order', async () => {
     const root = new Group();
     const list = await drawKonva(root, cachedView(true));
     const parked = list.findOne('.a1') as KonvaNode;

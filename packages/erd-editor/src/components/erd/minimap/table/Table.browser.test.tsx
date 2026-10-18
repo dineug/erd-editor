@@ -4,6 +4,7 @@
 // the numbers below are the ones the dom minimap laid out with, restated
 // against a rect whose stroke centres on its edge instead of sitting outside.
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -19,7 +20,6 @@ import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import type { Table as TableType } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 
