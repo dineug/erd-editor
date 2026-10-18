@@ -103,7 +103,8 @@ column's `editor(ctx)` opens in place of the textarea: the host renders into `ct
 over the cell, with the cell's `rect`, the `mode` and the `initialValue` to start from, and answers
 with `ctx.commit(value)` or `ctx.cancel()`. `ctx.onClose` hands it `'escape'` or `'outside'` when
 Escape or a press outside asks it to close, and the grid waits for that answer; the host removes
-what it rendered. Every other key, Ctrl+Z among them, reaches the host.
+what it rendered. Every other key, Ctrl+Z among them, reaches the host; the textarea's own undo
+stays inside the open edit and does nothing while none is open.
 
 A theme is fifteen CSS colours, and a host maps its own onto them: `selectionFill` keeps an alpha
 channel so the cells show through, and the header highlights stay opaque. A column with no `width`

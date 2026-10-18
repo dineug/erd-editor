@@ -108,6 +108,9 @@ const TRAILING_BREAKS = /[\r\n]+$/;
 /** What the cell draws as a space and the one-line editor never holds: a tab, a line feed, a form feed, a carriage return. */
 const CELL_BREAK = /[\t\n\f\r]/;
 
+/** An undo or a redo in the textarea's own history. */
+const HISTORY = /^history/;
+
 /** The input types that would split the editor's line, which the grid prevents whatever key or menu asks for them. */
 const LINE_INPUTS = new Set(['insertLineBreak', 'insertParagraph']);
 
@@ -214,7 +217,7 @@ export interface EditingInput {
   act(action: KeyAction, key: string): void;
   /** Opens an edit on the cell a double click landed on. */
   doubleClick(cell: CellRef): void;
-  /** An input about to land in the textarea, a line break prevented. */
+  /** An input about to land in the textarea: a line break prevented, and an undo or a redo kept inside the open edit. */
   beforeinput(event: InputEvent): void;
   input(event: Event): void;
   compositionstart(): void;
@@ -248,6 +251,10 @@ export function createEditingInput(host: EditingHost): EditingInput {
   let listeners: Array<(reason: CloseReason) => void> = [];
   /** Counts the edits that ended, so a custom editor's context answers for its own edit alone. */
   let generation = 0;
+  /** The value the open editor held before its first input of its own, which an undo in the textarea stops at. */
+  let undoFloor = '';
+  /** The undos taken inside the open edit, which are all a redo may take back. */
+  let redos = 0;
   /** The roots a press passes through on its way to the grid, each with the capture listener it holds while an edit is open. */
   const pressRoots: Array<{ root: Node; listener: (event: Event) => void }> =
     [];
@@ -449,6 +456,10 @@ export function createEditingInput(host: EditingHost): EditingInput {
     if (next.status !== 'editing') return false;
 
     edit = next;
+    // Typing opens the edit with the keys it was opened by already in the
+    // undo history, and every other trigger writes the value as a script.
+    undoFloor = trigger.kind === 'type' ? '' : next.initialValue;
+    redos = 0;
     watchPresses(true);
     // An edit opens on a cell the user can see whole, wherever a scroll left
     // it; one that leaves the view once open stays open and hidden.
@@ -561,9 +572,22 @@ export function createEditingInput(host: EditingHost): EditingInput {
     },
 
     beforeinput(event) {
+      const { inputType } = event;
+      const own = edit.status === 'editing' && !edit.custom;
+
       // A modified Return in Safari, or a menu, asks for a line break that no
       // keydown the grid sees names; the editor holds one line, as the cell.
-      if (LINE_INPUTS.has(event.inputType)) event.preventDefault();
+      if (LINE_INPUTS.has(inputType)) {
+        event.preventDefault();
+      } else if (inputType === 'historyUndo') {
+        // One history serves every edit of the textarea, so an undo past the
+        // open edit's start, or with none open, would bring another's text.
+        if (!own || host.textarea.value === undoFloor) event.preventDefault();
+        else redos++;
+      } else if (inputType === 'historyRedo') {
+        if (!own || redos === 0) event.preventDefault();
+        else redos--;
+      }
     },
 
     input(event) {
@@ -572,13 +596,22 @@ export function createEditingInput(host: EditingHost): EditingInput {
           clearText();
           return;
         }
-        if ((event as InputEvent).inputType === 'insertFromDrop') dropLine();
+        const { inputType } = event as InputEvent;
+        if (inputType === 'insertFromDrop') dropLine();
+        // An input of its own starts a new history step, past which no redo goes.
+        if (!HISTORY.test(inputType)) redos = 0;
         syncDraft();
         return;
       }
       // A composition opened its edit as it started, or opens one or drops
       // its text as it ends.
       if (composing || (event as InputEvent).isComposing) return;
+      // An undo no beforeinput reached, as a script's execCommand, brings back
+      // another edit's text, which opens nothing.
+      if (HISTORY.test((event as InputEvent).inputType)) {
+        clearText();
+        return;
+      }
 
       const text = host.textarea.value;
       if (

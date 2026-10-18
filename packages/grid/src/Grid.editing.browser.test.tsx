@@ -1215,6 +1215,65 @@ describe('the clipboard', () => {
   });
 });
 
+describe('the textarea’s own undo', () => {
+  /** Undo and redo as the platform's keys ask Chrome for them, which the grid leaves unprevented. */
+  const [undo, redo] = MOD.metaKey
+    ? ['{Meta>}z{/Meta}', '{Meta>}{Shift>}z{/Shift}{/Meta}']
+    : ['{Control>}z{/Control}', '{Control>}{Shift>}z{/Shift}{/Control}'];
+
+  it('opens no edit from an undo or a redo while none is open', async () => {
+    const view = await mount();
+    press(view, cellPoint(view, 3, 1));
+    view.textarea.focus();
+    await userEvent.keyboard('abc');
+    key(view, 'Escape');
+    await nextFrame();
+
+    await userEvent.keyboard(undo);
+    await userEvent.keyboard(redo);
+    await nextFrame();
+    expect(editorOpen(view)).toBe(false);
+    expect(view.textarea.value).toBe('');
+
+    document.execCommand('undo');
+    document.execCommand('redo');
+    await nextFrame();
+    expect(editorOpen(view)).toBe(false);
+    expect(view.textarea.value).toBe('');
+    expect(view.onCommit).not.toHaveBeenCalled();
+  });
+
+  it('undoes and redoes inside the open edit alone, never past its start', async () => {
+    const view = await mount();
+    press(view, cellPoint(view, 3, 1));
+    view.textarea.focus();
+    await userEvent.keyboard('abc{Enter}');
+    expect(lastCommit(view)?.changes).toEqual([change(3, 1, 'abc')]);
+
+    key(view, 'F2');
+    await nextFrame();
+    await userEvent.keyboard(undo);
+    await userEvent.keyboard(redo);
+    expect(view.textarea.value).toBe(valueOf(4, 1));
+
+    await userEvent.keyboard('x');
+    expect(view.textarea.value).toBe(`${valueOf(4, 1)}x`);
+    await userEvent.keyboard(undo);
+    expect(view.textarea.value).toBe(valueOf(4, 1));
+    await userEvent.keyboard(undo);
+    expect(view.textarea.value).toBe(valueOf(4, 1));
+    await userEvent.keyboard(redo);
+    expect(view.textarea.value).toBe(`${valueOf(4, 1)}x`);
+    await userEvent.keyboard(redo);
+    expect(view.textarea.value).toBe(`${valueOf(4, 1)}x`);
+
+    key(view, 'Enter');
+    expect(lastCommit(view)?.changes).toEqual([
+      change(4, 1, `${valueOf(4, 1)}x`),
+    ]);
+  });
+});
+
 describe('a column’s own editor', () => {
   it('opens on Enter, F2, a double click and typing, over its cell in the slot', async () => {
     const contexts: EditorContext[] = [];
