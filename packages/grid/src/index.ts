@@ -1,4 +1,12 @@
 export type { FontMetrics } from '@/font';
+export {
+  type CommitEvent,
+  type EditorContext,
+  Grid,
+  type GridColumn,
+  type GridHandle,
+  type GridProps,
+} from '@/Grid';
 export type {
   CellRange,
   CellRef,

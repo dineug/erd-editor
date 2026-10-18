@@ -1,17 +1,22 @@
-import { markDirty, renderKonva, whenDrawn } from '@dineug/r-html-konva';
+import { type FC, html, nextTick, observable, render } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Layer } from 'konva/lib/Layer';
-import { Stage } from 'konva/lib/Stage';
+import { type Stage, stages } from 'konva/lib/Stage';
 
-import { clickColumnHeader, selectCell, spanOf } from '@/model/selection';
-import type {
-  CellRef,
-  CellStyle,
-  ColumnDef,
-  GridSelection,
-} from '@/model/types';
-import { scrollMapping } from '@/model/viewport';
-import { renderGridScene } from '@/scene/GridScene';
-import { createSceneState, type SceneState } from '@/scene/state';
+import { DEFAULT_FONT } from '@/font';
+import Grid, {
+  type CellContextMenuEvent,
+  type CommitEvent,
+  type EditorContext,
+  type GridColumn,
+  type GridHandle,
+  type RejectEvent,
+  type ViewportChange,
+} from '@/Grid';
+import { columnOffsets } from '@/model/columns';
+import { selectCell } from '@/model/selection';
+import type { CellRange, CellStyle, GridSelection } from '@/model/types';
+import { DEFAULT_ROW_HEIGHT, scrollMapping } from '@/model/viewport';
 import { darkTheme, type GridTheme, lightTheme } from '@/theme';
 
 const ROW_COUNT = 1_000_000;
@@ -28,17 +33,13 @@ const VERSION_SHIFT = 7919;
 /** A bench run's page fills the window with the grid alone, the size the bench reports at. */
 const BENCH = new URLSearchParams(location.search).has('bench');
 
+/** The column whose cells open a select of two values in the editor slot, in place of the grid's own editor. */
+const CHOICE_COLUMN = 8;
+
+const CHOICES = ['TRUE', 'FALSE'];
+
 const columnLabel = (index: number) =>
   String.fromCharCode(65 + (index % 26)).repeat(Math.floor(index / 26) + 1);
-
-const COLUMNS: ColumnDef[] = Array.from(
-  { length: COLUMN_COUNT },
-  (_, index) => ({
-    id: `c${index}`,
-    label: columnLabel(index),
-    readonly: index === 0 ? true : undefined,
-  })
-);
 
 const FIRST_NAMES = [
   'Alice',
@@ -115,14 +116,11 @@ function sentence(seed: number, length: number): string {
   return text;
 }
 
-/** How many times the data has changed; it only grows, so a bump never brings back a string the cache still holds. */
+/** How many times the data was made new; it only grows, so a bump never brings back a string the cache still holds. */
 let generation = 0;
 
-/** The getCell calls since the bench last read them, which is the cells the scene drew. */
-let cellReads = 0;
-
 /**
- * The display string of a cell, decided by its indices and the generation:
+ * The generated string of a cell, decided by its indices and the generation:
  * ten kinds of value repeat across the columns, from row numbers to long
  * sentences that need an ellipsis, Hangul, emoji and cells left empty.
  */
@@ -161,11 +159,20 @@ function valueAt(row: number, col: number): string {
   }
 }
 
-/** The getter the scene reads, which counts its calls; the style hook reads valueAt, so only the drawn cells count. */
-function getCell(row: number, col: number): string {
-  cellReads++;
+/** The values onCommit wrote, keyed by row * COLUMN_COUNT + col, which win over the generated ones. */
+const committed = new Map<number, string>();
 
-  return valueAt(row, col);
+const cellValue = (row: number, col: number) =>
+  committed.get(row * COLUMN_COUNT + col) ?? valueAt(row, col);
+
+/** The page's own measures for the bench: layer draws, input events and getCell calls since the frame loop last read them. */
+const totals = { drawMs: 0, draws: 0, eventMs: 0, events: 0, cells: 0 };
+
+/** The getter the grid reads, which counts its calls; the style hook reads cellValue, so only the drawn cells count. */
+function getCell(row: number, col: number): string {
+  totals.cells++;
+
+  return cellValue(row, col);
 }
 
 const LIGHT_STYLES = {
@@ -180,24 +187,94 @@ const DARK_STYLES = {
 
 const READONLY: CellStyle = Object.freeze({ readonly: true });
 
-let theme: Readonly<GridTheme> = matchMedia('(prefers-color-scheme: dark)')
-  .matches
-  ? darkTheme
-  : lightTheme;
+/** What the page hands the grid as props. */
+interface DemoState {
+  rowCount: number;
+  columns: readonly GridColumn[];
+  theme: Readonly<GridTheme>;
+  frozenColumns: number;
+  version: number;
+}
+
+/**
+ * A column's own editor: a native select of the two values, laid over the
+ * active cell's edge. Picking a value, Enter, Tab and a press outside commit
+ * it, and Escape cancels; the select is removed as the edit closes.
+ */
+function choiceEditor(ctx: EditorContext) {
+  const select = document.createElement('select');
+  const typed = ctx.initialValue.trim().toUpperCase();
+
+  for (const choice of CHOICES) {
+    const option = document.createElement('option');
+    option.value = choice;
+    option.textContent = choice;
+    select.append(option);
+  }
+  select.className = 'choice-editor';
+  select.setAttribute('aria-label', 'Value');
+  select.value = CHOICES.find(choice => choice.startsWith(typed)) ?? CHOICES[0];
+
+  const close = (value: string | null) => {
+    select.remove();
+    if (value === null) ctx.cancel();
+    else ctx.commit(value);
+  };
+
+  select.addEventListener('change', () => close(select.value));
+  select.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== 'Tab') return;
+
+    event.preventDefault();
+    close(select.value);
+  });
+  ctx.onClose(reason => close(reason === 'escape' ? null : select.value));
+  ctx.container.append(select);
+  select.focus({ preventScroll: true });
+}
+
+const COLUMNS: GridColumn[] = Array.from(
+  { length: COLUMN_COUNT },
+  (_, index) => ({
+    id: `c${index}`,
+    label: columnLabel(index),
+    ...(index === 0 ? { readonly: true } : {}),
+    ...(index === CHOICE_COLUMN ? { editor: choiceEditor } : {}),
+  })
+);
+
+/** The props as they are, which the getters read without a proxy's trap. */
+const raw: DemoState = {
+  rowCount: ROW_COUNT,
+  columns: COLUMNS,
+  theme: matchMedia('(prefers-color-scheme: dark)').matches
+    ? darkTheme
+    : lightTheme,
+  frozenColumns: 0,
+  version: 0,
+};
+
+/** The same props behind a shallow proxy, so a write re-renders the grid with them. */
+const demo = observable(raw, { shallow: true });
 
 /** The style hook: a colour on the TRUE and FALSE columns, and a read-only amount now and then. */
 function getCellStyle(row: number, col: number): CellStyle | undefined {
   const kind = col % 10;
 
   if (kind === 8) {
-    const styles = theme === darkTheme ? DARK_STYLES : LIGHT_STYLES;
+    const styles = raw.theme === darkTheme ? DARK_STYLES : LIGHT_STYLES;
 
-    return valueAt(row, col) === 'TRUE' ? styles.yes : styles.no;
+    return cellValue(row, col) === 'TRUE' ? styles.yes : styles.no;
   }
   if (kind === 5 && row % 17 === 0) return READONLY;
 
   return undefined;
 }
+
+const CHEVRON = (colour: string) =>
+  `url("data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='${colour}' stroke-width='1.5'/></svg>`
+  )}")`;
 
 const style = document.createElement('style');
 style.textContent = `
@@ -209,18 +286,26 @@ style.textContent = `
     color: var(--grid-text);
     font: 13px system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
-  .toolbar {
+  .toolbar, .status {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 16px;
     padding: 8px 16px;
     background: var(--grid-header);
-    border-bottom: 1px solid var(--grid-border);
     color: var(--grid-header-text);
   }
+  .toolbar { border-bottom: 1px solid var(--grid-border); }
+  .status {
+    gap: 4px 16px;
+    padding: 4px 16px;
+    border-top: 1px solid var(--grid-border);
+    font-variant-numeric: tabular-nums;
+  }
+  .status [data-part='notice'] { margin-left: auto; color: var(--grid-text); }
+  .status [data-part='notice'][data-tone='warning'] { color: var(--grid-warning); }
   .toolbar h1 { margin: 0; font-size: 14px; font-weight: 600; color: var(--grid-text); }
-  .toolbar .size { opacity: 0.75; }
+  .toolbar .size, .toolbar .hint { opacity: 0.75; }
   .group { display: flex; align-items: center; gap: 4px; }
   .group > span { margin-right: 4px; }
   .toolbar button, .toolbar input {
@@ -238,6 +323,24 @@ style.textContent = `
   }
   .toolbar input { width: 96px; }
   .grid { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+  .choice-editor {
+    position: absolute;
+    left: -1px;
+    top: -1px;
+    width: calc(100% + 1px);
+    height: calc(100% + 1px);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 22px 0 7px;
+    border: 2px solid var(--grid-active);
+    border-radius: 0;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    font: ${DEFAULT_FONT};
+    color: var(--grid-text);
+    background: var(--grid-background) var(--grid-chevron) no-repeat right 8px center;
+  }
 `;
 document.head.append(style);
 
@@ -247,10 +350,27 @@ toolbar.className = 'toolbar';
 const container = document.createElement('div');
 container.className = 'grid';
 
-document.body.append(...(BENCH ? [container] : [toolbar, container]));
+const status = document.createElement('footer');
+status.className = 'status';
+
+const statusPart = (name: string) => {
+  const part = document.createElement('span');
+  part.dataset.part = name;
+  status.append(part);
+
+  return part;
+};
+
+const selectionText = statusPart('selection');
+const viewportText = statusPart('viewport');
+const noticeText = statusPart('notice');
+noticeText.setAttribute('role', 'status');
+
+document.body.append(...(BENCH ? [container] : [toolbar, container, status]));
 
 function paintPage() {
   const root = document.documentElement.style;
+  const { theme } = raw;
 
   root.setProperty('--grid-background', theme.background);
   root.setProperty('--grid-header', theme.headerBackground);
@@ -258,14 +378,133 @@ function paintPage() {
   root.setProperty('--grid-text', theme.text);
   root.setProperty('--grid-border', theme.frozenBorder);
   root.setProperty('--grid-accent', theme.selectionBorder);
+  root.setProperty('--grid-active', theme.activeCellBorder);
+  root.setProperty('--grid-chevron', CHEVRON(theme.headerText));
+  root.setProperty(
+    '--grid-warning',
+    theme === darkTheme ? '#fdd663' : '#b06000'
+  );
   root.colorScheme = theme === darkTheme ? 'dark' : 'light';
 }
 
-let stage: Stage | null = null;
-let scene: SceneState | null = null;
+const cellName = (row: number, col: number) => `${columnLabel(col)}${row + 1}`;
 
-/** The Konva layers' draw time and count since the bench last read them. */
-const pending = { drawMs: 0, draws: 0 };
+const rangeName = (range: CellRange) =>
+  range.startRow === range.endRow && range.startCol === range.endCol
+    ? cellName(range.startRow, range.startCol)
+    : `${cellName(range.startRow, range.startCol)}:${cellName(range.endRow, range.endCol)}`;
+
+/** The ranges the status line names before it counts the rest. */
+const NAMED_RANGES = 3;
+
+let handle: GridHandle | null = null;
+let selection: GridSelection = selectCell({ row: 0, col: 0 });
+let viewport: ViewportChange | null = null;
+let noticeTimer = 0;
+
+function showSelection() {
+  if (BENCH) return;
+
+  const { active, ranges } = selection;
+  const named = ranges.slice(0, NAMED_RANGES).map(rangeName).join(', ');
+  const more =
+    ranges.length > NAMED_RANGES ? ` +${ranges.length - NAMED_RANGES}` : '';
+  const count = `${ranges.length} ${ranges.length === 1 ? 'range' : 'ranges'}`;
+
+  selectionText.textContent = `Active ${cellName(active.row, active.col)} · ${count}: ${named}${more}`;
+}
+
+function showViewport() {
+  if (BENCH || !viewport) return;
+
+  const { rowStart, rowEnd, colStart, colEnd } = viewport;
+  viewportText.textContent = `Rows ${grouped(rowStart + 1)}–${grouped(rowEnd + 1)} of ${grouped(raw.rowCount)} · Columns ${columnLabel(colStart)}–${columnLabel(colEnd)}`;
+}
+
+/** Shows a passing message at the end of the status line, a warning in its own colour. */
+function notify(message: string, tone: 'info' | 'warning' = 'info') {
+  if (BENCH) return;
+
+  noticeText.textContent = message;
+  noticeText.dataset.tone = tone;
+  clearTimeout(noticeTimer);
+  noticeTimer = window.setTimeout(() => {
+    noticeText.textContent = '';
+  }, 4000);
+}
+
+/** Writes the changes over the generated values, adds the rows a paste reached past the last, and bumps the version. */
+function onCommit({ changes, source }: CommitEvent) {
+  let last = raw.rowCount - 1;
+
+  for (const { row, col, value } of changes) {
+    committed.set(row * COLUMN_COUNT + col, value);
+    last = Math.max(last, row);
+  }
+  if (last >= raw.rowCount) demo.rowCount = last + 1;
+  demo.version = raw.version + 1;
+
+  const cells = `${changes.length} ${changes.length === 1 ? 'cell' : 'cells'}`;
+  notify(`${source}: ${cells} written`);
+}
+
+const REJECTIONS: Record<RejectEvent['reason'], string> = {
+  'multi-range-copy':
+    'Copy turned down: the ranges share neither their rows nor their columns',
+  'paste-beyond-columns': 'Paste: the columns past the last were dropped',
+};
+
+const onReject = ({ reason }: RejectEvent) =>
+  notify(REJECTIONS[reason], 'warning');
+
+function onSelectionChange(next: GridSelection) {
+  selection = next;
+  showSelection();
+}
+
+function onViewportChange(next: ViewportChange) {
+  viewport = next;
+  showViewport();
+}
+
+/** Keeps the width a resize ended on, since the grid holds no column of its own. */
+function onColumnResize(col: number, width: number) {
+  demo.columns = raw.columns.map((column, index) =>
+    index === col ? { ...column, width } : column
+  );
+  notify(`Column ${columnLabel(col)} is ${width}px wide`);
+}
+
+function onCellContextMenu(event: CellContextMenuEvent) {
+  console.info('onCellContextMenu', event);
+  notify(`Context menu on ${cellName(event.row, event.col)}`);
+}
+
+function onReady(next: GridHandle) {
+  handle = next;
+  if (!BENCH) next.focus();
+}
+
+const Demo: FC = () => () =>
+  html`
+    <${Grid}
+      .rowCount=${demo.rowCount}
+      .columns=${demo.columns}
+      .getCell=${getCell}
+      .getCellStyle=${getCellStyle}
+      .frozenColumns=${demo.frozenColumns}
+      .theme=${demo.theme}
+      .version=${demo.version}
+      .ariaLabel=${'Sample sheet'}
+      .onCommit=${onCommit}
+      .onReject=${onReject}
+      .onSelectionChange=${onSelectionChange}
+      .onColumnResize=${onColumnResize}
+      .onViewportChange=${onViewportChange}
+      .onCellContextMenu=${onCellContextMenu}
+      .onReady=${onReady}
+    />
+  `;
 
 /**
  * Times every layer draw: the scene canvas, its clear, the hit canvas sync and
@@ -285,176 +524,108 @@ function timeLayerDraws(layer: Layer) {
     try {
       return draw.call(this);
     } finally {
-      pending.drawMs += performance.now() - start;
-      pending.draws++;
+      totals.drawMs += performance.now() - start;
+      totals.draws++;
     }
   };
 }
 
-/** Draws each layer at the screen's pixel ratio, which konva read once when it loaded. */
-function matchPixelRatio() {
-  const ratio = window.devicePixelRatio || 1;
+/** The input the grid's scroller handles, timed from a capture listener on the page's container to one on the scroller after the grid's own. */
+const TIMED_EVENTS = ['scroll', 'pointerdown', 'pointermove', 'pointerup'];
 
-  for (const layer of stage?.getLayers() ?? []) {
-    if (layer.getCanvas().getPixelRatio() === ratio) continue;
+let scroller: HTMLElement | null = null;
+let eventStart = 0;
 
-    layer.getCanvas().setPixelRatio(ratio);
-    markDirty(layer);
+function beginEvent(event: Event) {
+  if (event.target === scroller) eventStart = performance.now();
+}
+
+/**
+ * Closes an event's span after the grid's listener and the microtask
+ * checkpoint that follows it, so the template drain and the commit it books
+ * fall inside, and the layer draws konva runs in the next frame do not.
+ */
+function endEvent() {
+  if (!eventStart) return;
+
+  totals.eventMs += performance.now() - eventStart;
+  totals.events++;
+  eventStart = 0;
+}
+
+for (const type of TIMED_EVENTS) {
+  container.addEventListener(type, beginEvent, {
+    capture: true,
+    passive: true,
+  });
+}
+
+/** Listens on a newly mounted scroller, after the grid, which bound its own listeners as it rendered. */
+function timeEvents() {
+  scroller = container.querySelector<HTMLElement>('.dineug-grid-scroller');
+  for (const type of TIMED_EVENTS) {
+    scroller?.addEventListener(type, endEvent, { passive: true });
   }
 }
 
-function watchPixelRatio() {
-  matchMedia(
-    `(resolution: ${window.devicePixelRatio || 1}dppx)`
-  ).addEventListener(
-    'change',
-    () => {
-      matchPixelRatio();
-      watchPixelRatio();
-    },
-    { once: true }
-  );
-}
+const gridStage = (): Stage | undefined =>
+  stages.find(stage => container.contains(stage.container()));
 
 const nextFrame = () =>
   new Promise<number>(resolve => {
     requestAnimationFrame(resolve);
   });
 
-/** One mount, timed from the scene's creation to the first frame after the first commit. */
+function resetTotals() {
+  totals.drawMs = 0;
+  totals.draws = 0;
+  totals.eventMs = 0;
+  totals.events = 0;
+  totals.cells = 0;
+}
+
+/** One mount, timed from the Grid's render call to the frame after its first whenDrawn. */
 export interface FirstDraw {
-  /** From creating the scene to the frame that follows its first whenDrawn, waits included. */
+  /** From rendering the Grid to the frame that follows its first whenDrawn, waits included. */
   wallMs: number;
-  /** The scene's creation and render, the commit and the layer draws: the work in that span. */
+  /** The render, the commit and the layer draws: the work in that span. */
   workMs: number;
   cells: number;
 }
 
 async function mount(): Promise<FirstDraw> {
-  const previous = scene?.state;
+  resetTotals();
   const start = performance.now();
-  const rect = container.getBoundingClientRect();
 
-  pending.drawMs = 0;
-  pending.draws = 0;
-  cellReads = 0;
-
-  stage = new Stage({
-    container,
-    width: rect.width,
-    height: rect.height,
-    listening: false,
-  });
-  scene = createSceneState({
-    width: rect.width,
-    height: rect.height,
-    rowCount: ROW_COUNT,
-    columns: COLUMNS,
-    getCell,
-    getCellStyle,
-    frozenColumns: previous?.frozenColumns,
-    theme,
-    version: generation,
-    selection: previous?.selection,
-  });
-  renderGridScene(stage, scene);
+  render(container, html`<${Demo} />`);
+  timeEvents();
   await whenDrawn();
   const committed = performance.now();
 
   // The host attaches the layers to the stage at the commit, and konva draws
   // them on the next animation frame, so this is the last point before it.
-  const body = stage.findOne<Layer>('.grid-body');
+  const body = gridStage()?.findOne<Layer>('.grid-body');
   if (body) timeLayerDraws(body);
-  matchPixelRatio();
   await nextFrame();
 
   return {
     wallMs: performance.now() - start,
-    workMs: committed - start + pending.drawMs,
-    cells: cellReads,
+    workMs: committed - start + totals.drawMs,
+    cells: totals.cells,
   };
 }
 
 function unmount() {
-  if (!stage) return;
-
-  renderKonva(stage, null);
-  stage.destroy();
-  stage = null;
-}
-
-new ResizeObserver(() => {
-  const rect = container.getBoundingClientRect();
-  scene?.setSize(rect.width, rect.height);
-}).observe(container);
-
-/** Content pixels per DOM pixel of scroll: the scroll mapping's ratio, which a DOM scroller over these rows scales by. */
-const verticalRatio = () =>
-  scene ? scrollMapping(scene.state.layout.contentHeight).ratio : 1;
-
-container.addEventListener(
-  'wheel',
-  event => {
-    if (!scene) return;
-    event.preventDefault();
-
-    const { rowHeight, layout, scrollTop, scrollLeft } = scene.state;
-    const unit =
-      event.deltaMode === WheelEvent.DOM_DELTA_LINE
-        ? rowHeight
-        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-          ? layout.cellHeight
-          : 1;
-    const sideways = event.shiftKey && event.deltaX === 0;
-    const dy = sideways ? 0 : event.deltaY * unit;
-    const dx = (sideways ? event.deltaY : event.deltaX) * unit;
-
-    scene.setScroll(scrollTop + dy * verticalRatio(), scrollLeft + dx);
-  },
-  { passive: false }
-);
-
-const bounds = () => ({ rowCount: ROW_COUNT, colCount: COLUMN_COUNT });
-
-/** A selection placed against the first row and column in view, so a preset lands on screen. */
-function preset(kind: string): GridSelection {
-  const view = scene!.visibleRange({ rows: 0, cols: 0 });
-  const row = Math.max(0, view.rowStart);
-  const col = view.frozenEnd >= 0 ? 0 : view.colStart;
-  const at = (dr: number, dc: number): CellRef => ({
-    row: Math.min(ROW_COUNT - 1, row + dr),
-    col: Math.min(COLUMN_COUNT - 1, col + dc),
-  });
-
-  switch (kind) {
-    case 'range':
-      return { active: at(2, 1), ranges: [spanOf(at(2, 1), at(7, 3))] };
-    case 'ranges':
-      return {
-        active: at(7, 2),
-        ranges: [
-          spanOf(at(1, 1), at(4, 2)),
-          spanOf(at(3, 4), at(8, 5)),
-          spanOf(at(7, 2), at(10, 4)),
-        ],
-      };
-    case 'column':
-      return clickColumnHeader(
-        selectCell(at(0, 3)),
-        at(0, 3).col,
-        {},
-        bounds()
-      );
-    default:
-      return selectCell(at(2, 1));
-  }
+  render(container, null);
+  handle = null;
+  scroller = null;
 }
 
 /** A group of toolbar buttons where one choice is pressed at a time. */
 function choices(
   label: string,
   options: Array<[string, string]>,
-  pressed: string | null,
+  pressed: string,
   choose: (value: string) => void
 ) {
   const group = document.createElement('div');
@@ -470,12 +641,11 @@ function choices(
     button.dataset.value = value;
     button.setAttribute('aria-pressed', String(value === pressed));
     button.addEventListener('click', () => {
-      if (pressed !== null) {
-        buttons.forEach(other =>
-          other.setAttribute('aria-pressed', String(other === button))
-        );
-      }
+      buttons.forEach(other =>
+        other.setAttribute('aria-pressed', String(other === button))
+      );
       choose(value);
+      handle?.focus();
     });
 
     return button;
@@ -485,12 +655,28 @@ function choices(
   return group;
 }
 
+/** Moves the selection to a row, keeping its column, and scrolls it into view. */
+function goToRow(row: number) {
+  if (!handle) return;
+
+  const cell = { row, col: selection.active.col };
+  handle.scrollTo(cell.row, cell.col);
+  handle.select(selectCell(cell));
+  handle.focus();
+  // The grid echoes no selection its host made, so the line shows it here.
+  selection = selectCell(cell);
+  showSelection();
+}
+
 function buildToolbar() {
   const title = document.createElement('h1');
   const size = document.createElement('span');
+  const hint = document.createElement('span');
   title.textContent = '@dineug/grid';
   size.className = 'size';
   size.textContent = `${grouped(ROW_COUNT)} rows × ${COLUMN_COUNT} columns`;
+  hint.className = 'hint';
+  hint.textContent = `Column ${columnLabel(CHOICE_COLUMN)} edits in a select; column A and every 17th amount are read-only`;
 
   const goTo = document.createElement('input');
   goTo.type = 'number';
@@ -499,8 +685,8 @@ function buildToolbar() {
   goTo.placeholder = 'Go to row';
   goTo.setAttribute('aria-label', 'Go to row');
   goTo.addEventListener('change', () => {
-    const row = Math.min(ROW_COUNT, Math.max(1, Number(goTo.value) || 1)) - 1;
-    scene?.setScroll(row * scene.state.rowHeight, scene.state.scrollLeft);
+    const row = Math.min(raw.rowCount, Math.max(1, Number(goTo.value) || 1));
+    goToRow(row - 1);
   });
 
   const bump = document.createElement('button');
@@ -508,7 +694,8 @@ function buildToolbar() {
   bump.textContent = 'New data';
   bump.addEventListener('click', () => {
     generation++;
-    scene?.setVersion(generation);
+    demo.version = raw.version + 1;
+    handle?.focus();
   });
 
   toolbar.append(
@@ -520,11 +707,10 @@ function buildToolbar() {
         ['light', 'Light'],
         ['dark', 'Dark'],
       ],
-      theme === darkTheme ? 'dark' : 'light',
+      raw.theme === darkTheme ? 'dark' : 'light',
       value => {
-        theme = value === 'dark' ? darkTheme : lightTheme;
+        demo.theme = value === 'dark' ? darkTheme : lightTheme;
         paintPage();
-        scene?.setTheme(theme);
       }
     ),
     choices(
@@ -533,22 +719,14 @@ function buildToolbar() {
         ['0', 'None'],
         ['2', '2 columns'],
       ],
-      '0',
-      value => scene?.setFrozenColumns(Number(value))
-    ),
-    choices(
-      'Select',
-      [
-        ['cell', 'Cell'],
-        ['range', 'One range'],
-        ['ranges', 'Several ranges'],
-        ['column', 'Full column'],
-      ],
-      null,
-      value => scene?.setSelection(preset(value))
+      String(raw.frozenColumns),
+      value => {
+        demo.frozenColumns = Number(value);
+      }
     ),
     bump,
-    goTo
+    goTo,
+    hint
   );
 }
 
@@ -559,20 +737,28 @@ export interface FrameSample {
   /** Konva layer draws in the frame. */
   drawMs: number;
   draws: number;
-  /** The state writes of the frame's scroll, jump or version bump. */
-  scrollMs: number;
+  /** The scroller's scroll and pointer events, each with the drain and commit after its listener. */
+  eventMs: number;
+  events: number;
+  /** The writes of a step the page ran in the frame: a jump or a version bump. */
+  stepMs: number;
   /** From those writes to whenDrawn: the template drain and the commit that marks the layers. */
   flushMs: number;
   /** getCell calls in the frame, one per cell the body drew. */
   cells: number;
 }
 
-/** What the bench drives one step of per frame. */
+/** What the page steps once per frame itself; the wheel and the thumb drag come from the bench's real input. */
 export type Scenario =
   | { kind: 'idle' }
-  | { kind: 'step'; domPx: number }
   | { kind: 'jump'; seed: number }
   | { kind: 'version' };
+
+/** A point in the page's client coordinates. */
+export interface ClientPoint {
+  x: number;
+  y: number;
+}
 
 export interface BenchInfo {
   /** Whether the page is cross-origin isolated, which narrows performance.now from 100 microseconds to 5. */
@@ -585,24 +771,33 @@ export interface BenchInfo {
   columnCount: number;
   /** Content pixels a DOM pixel of scroll moves. */
   scrollRatio: number;
-  /** The cells in view, with no overscan, at the current scroll offsets. */
+  /** The cells in view with no overscan, as onViewportChange last reported them. */
   visibleCells: number;
+  /** The scroller's DOM offset, which tells how far a wheel moved it. */
+  scrollTop: number;
 }
 
 /** The page's bench hooks, which only this demo installs. */
 export interface GridBench {
   firstDraw: FirstDraw | null;
-  /** Unmounts the scene and mounts a new one, timed as firstDraw is. */
+  /** Unmounts the grid and renders a new one, timed as firstDraw is. */
   remount(): Promise<FirstDraw>;
-  /** Scrolls by DOM pixels down and right, as a wheel would, and waits for the commit. */
-  scrollBy(domTop: number, left?: number): Promise<void>;
-  jumpToRow(row: number, left?: number): Promise<void>;
-  /** Moves the rows every string is made from, so the cache holds none in view, and bumps the version. */
-  bumpVersion(): Promise<void>;
   /** Runs one step of a scenario per frame, frames times, and returns each frame's sample. */
   run(scenario: Scenario, frames: number): Promise<FrameSample[]>;
-  /** The samples of the last run. */
-  samples(): FrameSample[];
+  /** Samples every frame from now, while the bench drives the page's real input. */
+  record(): void;
+  /** Ends the recording once the frames after the last input have drawn, and returns its samples. */
+  stop(): Promise<FrameSample[]>;
+  nextFrame(): Promise<void>;
+  /** Scrolls back to the first cell through the handle and waits for the draw. */
+  toTop(): Promise<void>;
+  /** The middle of the cells in view, where a wheel lands on the scroller. */
+  bodyPoint(): ClientPoint;
+  /** The middle of a cell at the scroll offsets now, for input aimed at one. */
+  cellPoint(row: number, col: number): ClientPoint;
+  /** The vertical thumb's middle, and the pointer height past which it reaches the end of its track. */
+  thumb(): ClientPoint & { end: number };
+  viewport(): ViewportChange | null;
   info(): BenchInfo;
 }
 
@@ -612,7 +807,7 @@ declare global {
   }
 }
 
-/** A seeded generator, so two runs jump through the same rows. */
+/** A seeded generator, so two runs jump through the same cells. */
 function random(seed: number) {
   let state = seed >>> 0;
 
@@ -626,87 +821,119 @@ function random(seed: number) {
   };
 }
 
-function stepOf(scenario: Scenario): () => void {
-  const current = scene!;
-
+function stepOf(scenario: Scenario): (() => void) | null {
   switch (scenario.kind) {
-    case 'step':
-      return () =>
-        current.setScroll(
-          current.state.scrollTop + scenario.domPx * verticalRatio(),
-          current.state.scrollLeft
-        );
     case 'jump': {
       const next = random(scenario.seed);
 
-      return () => {
-        const { layout, rowHeight } = current.state;
-        current.setScroll(
-          Math.floor(next() * ROW_COUNT) * rowHeight,
-          Math.floor(next() * layout.maxScrollLeft)
+      return () =>
+        handle?.scrollTo(
+          Math.floor(next() * raw.rowCount),
+          Math.floor(next() * COLUMN_COUNT)
         );
-      };
     }
     case 'version':
       return () => {
         generation++;
-        current.setVersion(generation);
+        demo.version = raw.version + 1;
       };
     default:
-      return () => {};
+      return null;
   }
 }
 
-let lastRun: FrameSample[] = [];
+const drained = () => nextTick(() => {});
+
+/** The frame loop of a run or a recording, which ends once no frames are left to step and nothing drew. */
+interface FrameLoop {
+  left: number;
+  done: Promise<FrameSample[]>;
+}
+
+let loop: FrameLoop | null = null;
 
 /**
- * Steps once per frame, after that frame's layer draw: the step's writes and
- * commit book the next frame's draw, so every frame holds one draw and one
- * step, and the frames after the last step run until no draw is left.
+ * Samples every frame: the animation frame callback opens a sample, steps the
+ * scenario if one is left, and posts a message, which runs once the frame's
+ * draws and paint are done and closes the sample with what they took.
  */
-function run(scenario: Scenario, frames: number): Promise<FrameSample[]> {
-  const step = stepOf(scenario);
+function frameLoop(step: (() => void) | null, frames: number): FrameLoop {
   const samples: FrameSample[] = [];
-  let left = frames;
+  const channel = new MessageChannel();
+  let open: FrameSample | null = null;
+  /** Whether the open sample, and the last one closed, began after the last step or the end of a recording. */
+  let openTrailing = false;
+  let lastTrailing = false;
+  let finish!: (samples: FrameSample[]) => void;
+  const state: FrameLoop = {
+    left: frames,
+    done: new Promise(resolve => {
+      finish = resolve;
+    }),
+  };
 
-  pending.drawMs = 0;
-  pending.draws = 0;
-  cellReads = 0;
+  const close = () => {
+    const sample = open;
+    if (!sample) return;
 
-  return new Promise(resolve => {
-    const tick = async (time: number) => {
-      const sample: FrameSample = {
-        time,
-        drawMs: pending.drawMs,
-        draws: pending.draws,
-        scrollMs: 0,
-        flushMs: 0,
-        cells: cellReads,
-      };
-      pending.drawMs = 0;
-      pending.draws = 0;
-      cellReads = 0;
+    open = null;
+    lastTrailing = openTrailing;
+    sample.drawMs = totals.drawMs;
+    sample.draws = totals.draws;
+    sample.eventMs = totals.eventMs;
+    sample.events = totals.events;
+    sample.cells = totals.cells;
+    resetTotals();
+    samples.push(sample);
+  };
 
-      if (left > 0) {
-        left--;
-        const start = performance.now();
-        step();
-        const written = performance.now();
-        await whenDrawn();
-        sample.scrollMs = written - start;
-        sample.flushMs = performance.now() - written;
-      } else if (sample.draws === 0) {
-        lastRun = samples;
-        resolve(samples);
-        return;
-      }
+  const tick = async (time: number) => {
+    // A message the frame before posted that has not run yet closes first.
+    close();
 
-      samples.push(sample);
-      requestAnimationFrame(tick);
-    };
+    // A frame after the last step that drew nothing and handled no input
+    // ends the loop, and is not a sample of it.
+    const last = samples[samples.length - 1];
+    if (lastTrailing && last && last.draws === 0 && last.events === 0) {
+      channel.port1.close();
+      samples.pop();
+      finish(samples);
+      return;
+    }
 
     requestAnimationFrame(tick);
-  });
+    const sample: FrameSample = {
+      time,
+      drawMs: 0,
+      draws: 0,
+      eventMs: 0,
+      events: 0,
+      stepMs: 0,
+      flushMs: 0,
+      cells: 0,
+    };
+    open = sample;
+    openTrailing = state.left <= 0;
+    channel.port2.postMessage(null);
+
+    if (openTrailing) return;
+    state.left--;
+    if (!step) return;
+
+    const start = performance.now();
+    step();
+    const written = performance.now();
+    await drained();
+    await whenDrawn();
+    sample.stepMs = written - start;
+    sample.flushMs = performance.now() - written;
+  };
+
+  channel.port1.onmessage = close;
+  resetTotals();
+  requestAnimationFrame(tick);
+
+  return state;
 }
 
 async function settle() {
@@ -714,6 +941,19 @@ async function settle() {
   await nextFrame();
   await whenDrawn();
   await nextFrame();
+}
+
+/** A stage node's rectangle in the page's client coordinates. */
+function clientRect(name: string) {
+  const node = gridStage()?.findOne(`.${name}`);
+  const origin = container.getBoundingClientRect();
+
+  return {
+    x: origin.left + (node?.x() ?? 0),
+    y: origin.top + (node?.y() ?? 0),
+    width: node?.width() ?? 0,
+    height: node?.height() ?? 0,
+  };
 }
 
 const bench: GridBench = {
@@ -728,51 +968,88 @@ const bench: GridBench = {
     return result;
   },
 
-  async scrollBy(domTop, left = 0) {
-    const { scrollTop, scrollLeft } = scene!.state;
-    scene!.setScroll(scrollTop + domTop * verticalRatio(), scrollLeft + left);
+  run(scenario, frames) {
+    loop = frameLoop(stepOf(scenario), frames);
+    return loop.done;
+  },
+
+  record() {
+    loop = frameLoop(null, Infinity);
+  },
+
+  stop() {
+    if (!loop) return Promise.resolve([]);
+
+    loop.left = 0;
+    return loop.done;
+  },
+
+  nextFrame: () => nextFrame().then(() => {}),
+
+  async toTop() {
+    handle?.scrollTo(0, 0);
     await settle();
   },
 
-  async jumpToRow(row, left = 0) {
-    scene!.setScroll(row * scene!.state.rowHeight, left);
-    await settle();
+  bodyPoint() {
+    const body = clientRect('grid-body-cells');
+
+    return { x: body.x + body.width / 2, y: body.y + body.height / 2 };
   },
 
-  async bumpVersion() {
-    generation++;
-    scene!.setVersion(generation);
-    await settle();
+  cellPoint(row, col) {
+    const body = clientRect('grid-body-cells');
+    const frozen = clientRect('grid-frozen-cells');
+    const scroll = gridStage()?.findOne('.grid-body-scroll');
+    const offsets = columnOffsets(raw.columns);
+    const left =
+      col < raw.frozenColumns ? frozen.x : body.x + (scroll?.x() ?? 0);
+    const top = body.y + (scroll?.y() ?? 0);
+
+    return {
+      x: left + (offsets[col] + offsets[col + 1]) / 2,
+      y: top + (row + 0.5) * DEFAULT_ROW_HEIGHT,
+    };
   },
 
-  run,
+  thumb() {
+    const thumb = clientRect('grid-vertical-thumb');
+    const body = clientRect('grid-body-cells');
+    const y = thumb.y + thumb.height / 2;
+    const travel = body.height - thumb.height;
 
-  samples: () => lastRun,
+    return {
+      x: thumb.x + thumb.width / 2,
+      y,
+      end: Math.min(window.innerHeight - 1, y + travel + 4),
+    };
+  },
+
+  viewport: () => viewport,
 
   info() {
-    const { state } = scene!;
-    const view = scene!.visibleRange({ rows: 0, cols: 0 });
-    const rows = view.rowEnd - view.rowStart + 1;
-    const cols = view.frozenEnd + 1 + (view.colEnd - view.colStart + 1);
+    const rows = viewport ? viewport.rowEnd - viewport.rowStart + 1 : 0;
+    const cols = viewport ? viewport.colEnd - viewport.colStart + 1 : 0;
+    const body = gridStage()?.findOne<Layer>('.grid-body');
 
     return {
       isolated: self.crossOriginIsolated,
       devicePixelRatio: window.devicePixelRatio,
-      canvasPixelRatio:
-        stage?.findOne<Layer>('.grid-body')?.getCanvas().getPixelRatio() ?? 0,
-      width: state.width,
-      height: state.height,
-      rowCount: state.rowCount,
-      columnCount: state.columns.length,
-      scrollRatio: verticalRatio(),
+      canvasPixelRatio: body?.getCanvas().getPixelRatio() ?? 0,
+      width: container.clientWidth,
+      height: container.clientHeight,
+      rowCount: raw.rowCount,
+      columnCount: raw.columns.length,
+      scrollRatio: scrollMapping(raw.rowCount * DEFAULT_ROW_HEIGHT).ratio,
       visibleCells: rows * cols,
+      scrollTop: scroller?.scrollTop ?? 0,
     };
   },
 };
 
 paintPage();
 if (!BENCH) buildToolbar();
-watchPixelRatio();
+showSelection();
 window.__gridBench = bench;
 
 mount().then(result => {

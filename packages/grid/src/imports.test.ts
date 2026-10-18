@@ -214,7 +214,7 @@ describe('a sibling package is reached by its name alone', () => {
   });
 });
 
-it('scanned the package sources, specs and the scene included', () => {
+it('scanned the package sources, specs, the scene and the component included', () => {
   const files = sourceFiles(SOURCE_ROOT).map(posix);
   const specifiers = references().map(({ specifier }) => specifier);
 
@@ -223,6 +223,11 @@ it('scanned the package sources, specs and the scene included', () => {
       'index.ts',
       'theme.ts',
       'imports.test.ts',
+      'Grid.tsx',
+      'Grid.browser.test.tsx',
+      'Grid.editing.browser.test.tsx',
+      'input/pointer.ts',
+      'input/editing.ts',
       'scene/GridScene.tsx',
       'scene/paint.ts',
       'scene/GridScene.browser.test.tsx',
@@ -231,6 +236,10 @@ it('scanned the package sources, specs and the scene included', () => {
   expect(specifiers).toEqual(
     expect.arrayContaining([
       '@/theme',
+      '@/Grid',
+      '@/input/pointer',
+      '@/input/editing',
+      '@dineug/r-html',
       '@dineug/r-html-konva',
       'konva/lib/Layer',
       'konva/lib/Stage',

@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
 import type * as font from '@/font';
+import * as grid from '@/Grid';
 import type {
   CellGetter,
   CellRange,
@@ -9,8 +10,13 @@ import type {
   CellStyleGetter,
   ColumnDef,
   ColumnResize,
+  CommitEvent,
+  EditorContext,
   FontMetrics,
   GridBounds,
+  GridColumn,
+  GridHandle,
+  GridProps,
   GridSelection,
   GridTheme,
   SceneData,
@@ -29,13 +35,27 @@ import type * as scene from '@/scene/state';
 import * as theme from '@/theme';
 
 describe('the package entry', () => {
-  it('exposes the two default themes, and nothing else at runtime', () => {
-    expect(Object.keys(entry).sort()).toEqual(['darkTheme', 'lightTheme']);
+  it('exposes the component and the two default themes, and nothing else at runtime', () => {
+    expect(Object.keys(entry).sort()).toEqual([
+      'Grid',
+      'darkTheme',
+      'lightTheme',
+    ]);
   });
 
   it('re-exports the modules a host would otherwise reach into', () => {
+    expect(entry.Grid).toBe(grid.Grid);
+    expect(entry.Grid).toBe(grid.default);
     expect(entry.lightTheme).toBe(theme.lightTheme);
     expect(entry.darkTheme).toBe(theme.darkTheme);
+  });
+
+  it('names the component types a host mounts the grid with', () => {
+    expectTypeOf<GridProps>().toEqualTypeOf<grid.GridProps>();
+    expectTypeOf<GridColumn>().toEqualTypeOf<grid.GridColumn>();
+    expectTypeOf<GridHandle>().toEqualTypeOf<grid.GridHandle>();
+    expectTypeOf<CommitEvent>().toEqualTypeOf<grid.CommitEvent>();
+    expectTypeOf<EditorContext>().toEqualTypeOf<grid.EditorContext>();
   });
 
   it('names the model, theme and font types a host builds its props from', () => {

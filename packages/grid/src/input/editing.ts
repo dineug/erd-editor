@@ -1,0 +1,554 @@
+import { observable } from '@dineug/r-html';
+
+import { cellArea, cellRect, regionOf } from '@/input/pointer';
+import {
+  type ActiveEdit,
+  cancelEdit,
+  type CellChange,
+  type CellSource,
+  closeEdit,
+  type CloseReason,
+  commitEdit,
+  type CommitOutcome,
+  EDIT_IDLE,
+  type EditMode,
+  type EditState,
+  type EditTrigger,
+  inputDraft,
+  startEdit,
+  writableChanges,
+} from '@/model/editing';
+import type { KeyAction } from '@/model/keys';
+import type { SelectModifiers } from '@/model/selection';
+import {
+  copyableRanges,
+  copyRows,
+  fillTargets,
+  parse,
+  pasteTargets,
+  serialize,
+} from '@/model/tsv';
+import type {
+  CellRef,
+  CellStyle,
+  ColumnDef,
+  GridSelection,
+} from '@/model/types';
+import type { SceneRect } from '@/scene/layout';
+import type { SceneData, SceneState } from '@/scene/state';
+
+/**
+ * What a column's own editor is handed as an edit opens on one of its cells.
+ * The host renders into the container placed over the cell and answers with
+ * commit or cancel; the grid only tells it, through onClose, why to close.
+ */
+export interface EditorContext {
+  /** The editor slot, a sibling of the scroller placed over the cell. */
+  container: HTMLElement;
+  /** The cell's rectangle, in the grid container's coordinates. */
+  rect: DOMRect;
+  mode: EditMode;
+  /** The text typed when typing opened the editor, or else the cell's value. */
+  initialValue: string;
+  commit(value: string): void;
+  cancel(): void;
+  /** Escape asks for a cancel and a press outside for a commit; the edit waits for the answer. */
+  onClose(listener: (reason: CloseReason) => void): void;
+}
+
+/** One column the host defines; editor, when given, opens in place of the grid's own. */
+export interface GridColumn extends ColumnDef {
+  editor?: (ctx: EditorContext) => void;
+}
+
+/** The one change request the grid makes: every cell an edit, a paste or a clear writes. */
+export interface CommitEvent {
+  changes: CellChange[];
+  source: 'edit' | 'paste' | 'clear';
+}
+
+/** A request the grid turned down: a copy over ranges that share no rows or columns, or a paste past the last column. */
+export interface RejectEvent {
+  reason: 'multi-range-copy' | 'paste-beyond-columns';
+}
+
+/** How far a box sits inside a rectangle on each side, or how much of it a clip hides. */
+export interface Insets {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Where an editor sits over its cell at the scroll offsets now. A cell the
+ * view cuts keeps its box, which the clip trims to the region; a cell out of
+ * view is not shown and its box is held inside the cell area.
+ */
+export interface EditorPlacement {
+  box: SceneRect;
+  clip: Insets | null;
+  shown: boolean;
+}
+
+export const NO_INSETS: Readonly<Insets> = Object.freeze({
+  left: 0,
+  top: 0,
+  right: 0,
+  bottom: 0,
+});
+
+/** A text that would split the cell into two rows, which typing never opens an edit with. */
+const LINE_BREAK = /[\r\n]/;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+/** A rectangle moved and cut to lie inside an area, its size kept where it fits. */
+export function holdInside(rect: SceneRect, area: SceneRect): SceneRect {
+  const width = Math.max(0, Math.min(rect.width, area.width));
+  const height = Math.max(0, Math.min(rect.height, area.height));
+
+  return {
+    x: clamp(rect.x, area.x, area.x + area.width - width),
+    y: clamp(rect.y, area.y, area.y + area.height - height),
+    width,
+    height,
+  };
+}
+
+/**
+ * Where an editor sits over a cell, the insets taken off its rectangle. A
+ * focused element held inside the cell area never asks a scroll container
+ * to scroll to its caret, so one whose cell left the view moves in there.
+ */
+export function placeEditor(
+  state: Readonly<SceneData>,
+  cell: CellRef,
+  insets: Readonly<Insets> = NO_INSETS
+): EditorPlacement {
+  const rect = cellRect(state, cell);
+  const box = {
+    x: rect.x + insets.left,
+    y: rect.y + insets.top,
+    width: Math.max(0, rect.width - insets.left - insets.right),
+    height: Math.max(0, rect.height - insets.top - insets.bottom),
+  };
+  const region = regionOf(state, cell.col);
+  const left = Math.max(box.x, region.x);
+  const top = Math.max(box.y, region.y);
+  const right = Math.min(box.x + box.width, region.x + region.width);
+  const bottom = Math.min(box.y + box.height, region.y + region.height);
+  const exists =
+    cell.row >= 0 &&
+    cell.row < state.rowCount &&
+    cell.col >= 0 &&
+    cell.col < state.columns.length;
+
+  if (!exists || right <= left || bottom <= top) {
+    return { box: holdInside(box, cellArea(state)), clip: null, shown: false };
+  }
+
+  const clip = {
+    left: left - box.x,
+    top: top - box.y,
+    right: box.x + box.width - right,
+    bottom: box.y + box.height - bottom,
+  };
+  const whole =
+    clip.left === 0 && clip.top === 0 && clip.right === 0 && clip.bottom === 0;
+
+  return { box, clip: whole ? null : clip, shown: true };
+}
+
+/** The open editor as the template places it: its cell, whose editor it is, and the cell's style when it opened. */
+export interface OpenEditor {
+  cell: CellRef;
+  custom: boolean;
+  style: CellStyle | undefined;
+}
+
+/** What the editing input reads from the grid and asks of it. */
+export interface EditingHost {
+  readonly scene: SceneState;
+  /** The focus textarea, which becomes the grid's own editor. */
+  readonly textarea: HTMLTextAreaElement;
+  /** The custom editors' container, a sibling of the scroller. */
+  readonly slot: HTMLElement;
+  /** The host's columns, whose editors the scene's copy does not type. */
+  columns(): readonly GridColumn[];
+  selection(): GridSelection;
+  /** Whether a press lands on a scrollbar, which scrolls the cell under an open editor and keeps the edit. */
+  onScrollbar(event: PointerEvent): boolean;
+  /** Moves the selection as Enter or Tab does, once an edit they commit has ended. */
+  move(key: 'Enter' | 'Tab', mods: SelectModifiers): void;
+  commit(event: CommitEvent): void;
+  reject(event: RejectEvent): void;
+}
+
+/** The handlers the grid binds on its focus textarea and its editor slot. */
+export interface EditingInput {
+  /** The open editor, null while none is, behind the proxy the template reads. */
+  readonly view: Readonly<{ open: OpenEditor | null }>;
+  /** Whether an edit is open, which keyAction reads the keys under. */
+  editing(): boolean;
+  /** A key keyAction answered with an edit, a clear, a commit or a cancel, which the caller prevented. */
+  act(action: KeyAction, key: string): void;
+  /** Opens an edit on the cell a double click landed on. */
+  doubleClick(cell: CellRef): void;
+  input(event: Event): void;
+  compositionstart(): void;
+  compositionend(): void;
+  copy(event: ClipboardEvent): void;
+  paste(event: ClipboardEvent): void;
+  blur(): void;
+  /** A key inside a column's own editor: Escape asks it to close, unless the editor took it. */
+  slotKeydown(event: KeyboardEvent): void;
+  /** Drops the open edit and the press listener, as an unmount does. */
+  dispose(): void;
+}
+
+/**
+ * The grid's editing input: the focus textarea becomes the editor over the
+ * cell, so a composition begun on the cell carries on in it, and a column's
+ * own editor opens in the slot. An edit, a paste or a clear is one commit.
+ */
+export function createEditingInput(host: EditingHost): EditingInput {
+  const { scene } = host;
+  const view = observable<{ open: OpenEditor | null }>(
+    { open: null },
+    { shallow: true }
+  );
+  let edit: EditState = EDIT_IDLE;
+  let composing = false;
+  /** A composition began on a column with its own editor, which opens with the composed text once it ends. */
+  let deferred = false;
+  let listeners: Array<(reason: CloseReason) => void> = [];
+  /** Counts the edits that ended, so a custom editor's context answers for its own edit alone. */
+  let generation = 0;
+  let pressTarget: Document | null = null;
+
+  /** Empties the textarea, which an IME composition keeps until it ends, when compositionend empties it. */
+  const clearText = () => {
+    const { textarea } = host;
+    if (!composing && textarea.value !== '') textarea.value = '';
+  };
+
+  const source = (): CellSource => ({
+    rowCount: scene.state.rowCount,
+    columns: host.columns(),
+    getCellStyle: scene.state.getCellStyle,
+  });
+
+  /** The draft of the grid's own editor, which only the textarea's input writes during an edit. */
+  const syncDraft = () => {
+    if (edit.status === 'editing' && !edit.custom) {
+      edit = inputDraft(edit, host.textarea.value);
+    }
+  };
+
+  /** Puts the focus back in the textarea where a closing editor held it or let it drop. */
+  const reclaimFocus = () => {
+    const { textarea, slot } = host;
+    const root = textarea.getRootNode() as Document | ShadowRoot;
+    const active = root.activeElement;
+    const { activeElement, body } = textarea.ownerDocument;
+
+    if (
+      (active && slot.contains(active)) ||
+      !activeElement ||
+      activeElement === body
+    ) {
+      textarea.focus({ preventScroll: true });
+    }
+  };
+
+  const finish = ({ change }: CommitOutcome) => {
+    const custom = edit.status === 'editing' && edit.custom;
+
+    edit = EDIT_IDLE;
+    generation++;
+    listeners = [];
+    view.open = null;
+    watchPresses(false);
+    clearText();
+    if (custom) reclaimFocus();
+    if (change) host.commit({ changes: [change], source: 'edit' });
+  };
+
+  /**
+   * Escape or a press outside. The grid's own editor cancels or commits; a
+   * column's own editor is handed the reason and stays open until its host
+   * answers through the context.
+   */
+  const close = (reason: CloseReason) => {
+    if (edit.status !== 'editing') return;
+
+    syncDraft();
+    const outcome = closeEdit(edit, reason);
+    if (!outcome.signal) {
+      finish(outcome);
+      return;
+    }
+
+    for (const listener of listeners.slice()) listener(outcome.signal);
+  };
+
+  /** A press anywhere while an edit is open: one outside the editor and off the scrollbars closes it. */
+  const onPress = (event: PointerEvent) => {
+    if (edit.status !== 'editing') return;
+
+    const editor = edit.custom ? host.slot : host.textarea;
+    if (event.composedPath().includes(editor) || host.onScrollbar(event)) {
+      return;
+    }
+
+    close('outside');
+  };
+
+  /** Listens for every press in the document while an edit is open, first, before the press selects. */
+  function watchPresses(on: boolean) {
+    if (on && !pressTarget) {
+      pressTarget = host.textarea.ownerDocument;
+      pressTarget.addEventListener('pointerdown', onPress, true);
+    } else if (!on && pressTarget) {
+      pressTarget.removeEventListener('pointerdown', onPress, true);
+      pressTarget = null;
+    }
+  }
+
+  const openOwn = (
+    state: ActiveEdit,
+    style: CellStyle | undefined,
+    trigger: EditTrigger
+  ) => {
+    const { textarea } = host;
+    view.open = { cell: state.cell, custom: false, style };
+    // Typing has already put its text in the textarea, or a composition is
+    // filling it, and writing the value now would end the composition.
+    if (trigger.kind === 'type') return;
+
+    textarea.focus({ preventScroll: true });
+    textarea.value = state.initialValue;
+    const end = textarea.value.length;
+    textarea.setSelectionRange(end, end);
+  };
+
+  const openCustom = (state: ActiveEdit, editor: GridColumn['editor']) => {
+    const own = generation;
+    const live = () => own === generation;
+    const rect = cellRect(scene.state, state.cell);
+
+    view.open = { cell: state.cell, custom: true, style: undefined };
+    clearText();
+    editor?.({
+      container: host.slot,
+      rect: new DOMRect(rect.x, rect.y, rect.width, rect.height),
+      mode: state.mode,
+      initialValue: state.initialValue,
+      commit: value => {
+        if (live()) finish(commitEdit(edit, value));
+      },
+      cancel: () => {
+        if (live()) finish({ state: cancelEdit(), change: null });
+      },
+      onClose: listener => {
+        if (live()) listeners.push(listener);
+      },
+    });
+  };
+
+  /** Opens an edit on a cell, in the column's own editor where it has one; answers whether one opened. */
+  const open = (cell: CellRef, trigger: EditTrigger): boolean => {
+    const { rowCount, getCell, getCellStyle } = scene.state;
+    const column = host.columns()[cell.col];
+    if (edit.status === 'editing' || !column) return false;
+    if (cell.row < 0 || cell.row >= rowCount) return false;
+
+    const style = getCellStyle?.(cell.row, cell.col);
+    const custom = typeof column.editor === 'function';
+    const next = startEdit(edit, {
+      cell,
+      column,
+      value: getCell(cell.row, cell.col),
+      style,
+      custom,
+      trigger,
+    });
+    if (next.status !== 'editing') return false;
+
+    edit = next;
+    watchPresses(true);
+    if (custom) {
+      openCustom(next, column.editor);
+    } else {
+      openOwn(next, style, trigger);
+    }
+    return true;
+  };
+
+  /** Empties every selected cell the host lets the grid write, as one commit. */
+  const clear = () => {
+    const writes = fillTargets(host.selection().ranges, '');
+    const { changes } = writableChanges(writes, source());
+
+    if (changes.length > 0) host.commit({ changes, source: 'clear' });
+  };
+
+  /** Whether the column of the active cell brings its own editor. */
+  const activeIsCustom = () =>
+    typeof host.columns()[host.selection().active.col]?.editor === 'function';
+
+  return {
+    view,
+
+    editing: () => edit.status === 'editing',
+
+    act(action, key) {
+      switch (action.type) {
+        case 'edit':
+          open(host.selection().active, {
+            kind: key === 'F2' ? 'f2' : 'enter',
+          });
+          return;
+        case 'clear':
+          clear();
+          return;
+        case 'commit':
+          // A column's own editor commits itself; Enter or Tab in the
+          // textarea beside it does nothing.
+          if (edit.status !== 'editing' || edit.custom) return;
+
+          syncDraft();
+          finish(commitEdit(edit));
+          host.move(action.key, action.mods);
+          return;
+        case 'cancel':
+          close('escape');
+      }
+    },
+
+    doubleClick(cell) {
+      if (!composing) open(cell, { kind: 'doubleClick' });
+    },
+
+    input(event) {
+      if (edit.status === 'editing') {
+        if (edit.custom) clearText();
+        else syncDraft();
+        return;
+      }
+      // A composition opened its edit as it started, or opens one or drops
+      // its text as it ends.
+      if (composing || (event as InputEvent).isComposing) return;
+
+      const text = host.textarea.value;
+      if (
+        text !== '' &&
+        !LINE_BREAK.test(text) &&
+        open(host.selection().active, { kind: 'type', text })
+      ) {
+        return;
+      }
+
+      clearText();
+    },
+
+    compositionstart() {
+      composing = true;
+      if (edit.status === 'editing') return;
+
+      // A column's own editor cannot take over a composition in the
+      // textarea, so it opens with the composed text once it ends.
+      if (activeIsCustom()) {
+        deferred = true;
+        return;
+      }
+
+      open(host.selection().active, { kind: 'type', text: '' });
+    },
+
+    compositionend() {
+      composing = false;
+      if (edit.status === 'editing') {
+        if (edit.custom) clearText();
+        else syncDraft();
+        return;
+      }
+
+      const text = host.textarea.value;
+      const opens = deferred && text !== '' && !LINE_BREAK.test(text);
+      deferred = false;
+      clearText();
+      if (opens) open(host.selection().active, { kind: 'type', text });
+    },
+
+    copy(event) {
+      const data = event.clipboardData;
+      if (!data || (edit.status === 'editing' && !edit.custom)) return;
+
+      event.preventDefault();
+      const area = copyableRanges(host.selection().ranges);
+      if (!area) {
+        host.reject({ reason: 'multi-range-copy' });
+        return;
+      }
+
+      data.setData(
+        'text/plain',
+        serialize(copyRows(area, scene.state.getCell))
+      );
+    },
+
+    paste(event) {
+      const data = event.clipboardData;
+      if (!data || (edit.status === 'editing' && !edit.custom)) return;
+
+      // Unprevented, the text would land in the textarea and open an edit.
+      event.preventDefault();
+      if (edit.status === 'editing') return;
+
+      const matrix = parse(data.getData('text/plain'));
+      if (matrix.length === 0) return;
+
+      const { changes, beyondColumns } = writableChanges(
+        pasteTargets(host.selection(), matrix),
+        source()
+      );
+      if (changes.length > 0) host.commit({ changes, source: 'paste' });
+      if (beyondColumns) host.reject({ reason: 'paste-beyond-columns' });
+    },
+
+    blur() {
+      const { textarea } = host;
+      if (edit.status !== 'editing' || edit.custom) return;
+
+      // A window losing the focus leaves the textarea the active element, and
+      // an unmount blurs it as it takes it out; neither ends the edit, so the
+      // blur is read once the removal is done.
+      const own = generation;
+      queueMicrotask(() => {
+        const root = textarea.getRootNode() as Document | ShadowRoot;
+        if (own !== generation || !textarea.isConnected) return;
+        if (root.activeElement !== textarea) close('outside');
+      });
+    },
+
+    slotKeydown(event) {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (event.isComposing || edit.status !== 'editing' || !edit.custom) {
+        return;
+      }
+
+      event.preventDefault();
+      close('escape');
+    },
+
+    dispose() {
+      watchPresses(false);
+      edit = EDIT_IDLE;
+      generation++;
+      listeners = [];
+    },
+  };
+}
