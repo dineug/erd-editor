@@ -41,6 +41,9 @@ renderKonva(
   </k-layer>
 );
 await whenDrawn();
+// The commit has asked konva for the layer's draw, which it paints on the next
+// animation frame: read the canvas pixels or the hit canvas one frame later.
+await new Promise(resolve => requestAnimationFrame(resolve));
 ```
 
 A template's root is a `k-layer`, and the tags are `k-circle`, `k-group`, `k-layer`, `k-line`,
@@ -48,11 +51,12 @@ A template's root is a `k-layer`, and the tags are `k-circle`, `k-group`, `k-lay
 calls with the layer's context on every draw of the layer: keep one function and ask a redraw with
 `markDirty(layer)`, since writing the same function again draws nothing. Konva is imported through
 `konva/lib/*` modules, never its barrel. Nothing draws behind the gate: `Konva.autoDrawEnabled` is
-off, a write marks its layer and `whenDrawn()` resolves once the commit drew it; a Tween hands a
-layer over with `beginAnimation` / `endAnimation`. `class`, `style`, `zIndex`, a spread, Konva's
-own dragging and the DOM sigils (`bool:`, `prop:`) are refused, at compile time or by the types. A
-component reads a context provided on a DOM element above the Stage container, as a DOM component
-does.
+off, a write marks its layer and `whenDrawn()` resolves once the commit has asked konva for each
+layer it marked, which konva paints on the next animation frame: a read of a layer canvas's pixels
+or of `stage.getIntersection()` waits one `requestAnimationFrame` more. A Tween hands a layer over
+with `beginAnimation` / `endAnimation`. `class`, `style`, `zIndex`, a spread, Konva's own dragging
+and the DOM sigils (`bool:`, `prop:`) are refused, at compile time or by the types. A component
+reads a context provided on a DOM element above the Stage container, as a DOM component does.
 
 ## Development
 
