@@ -35,6 +35,7 @@ const wholeFitter: TextFitter = {
   fit: text => text,
   hasDeferred: () => true,
   reserve() {},
+  trim() {},
 };
 
 interface TextCall {

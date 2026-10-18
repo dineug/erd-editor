@@ -12,7 +12,7 @@ import {
 } from '@/model/text';
 
 const pretext = vi.hoisted(() => {
-  type Prepared = { text: string; font: string };
+  type Prepared = { text: string; font: string; segments: string[] };
   const CHAR_WIDTH = 10;
 
   return {
@@ -20,7 +20,10 @@ const pretext = vi.hoisted(() => {
     prepareWithSegments: vi.fn((text: string, font: string): Prepared => ({
       text,
       font,
+      segments: [text],
     })),
+    prepare: vi.fn(),
+    clearCache: vi.fn(),
     measureNaturalWidth: vi.fn(
       (prepared: Prepared) => prepared.text.length * CHAR_WIDTH
     ),

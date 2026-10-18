@@ -2,6 +2,7 @@
 // a scroll, how many cells a draw reads, where text and selection are clipped
 // and what each setter redraws, every pixel and count read after drawn().
 
+import { prepareWithSegments } from '@chenglou/pretext';
 import { markDirty, renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import { Konva } from 'konva/lib/Global';
 import type { Layer } from 'konva/lib/Layer';
@@ -9,6 +10,7 @@ import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { drawn, near, pixelAt, rgba } from '@/__test-utils__/scene';
+import { DEFAULT_FONT } from '@/font';
 import { clickColumnHeader, selectCell } from '@/model/selection';
 import { ELLIPSIS, MISS_BUDGET } from '@/model/text';
 import type { CellStyle, ColumnDef, GridSelection } from '@/model/types';
@@ -1122,6 +1124,63 @@ describe('the scrollbars', () => {
       rgba(theme.background)
     );
     expect(layout.verticalBar || layout.horizontalBar).toBe(false);
+  });
+});
+
+describe('pretext’s own caches', () => {
+  /** Whether pretext measures a segment it met before with the canvas again, as it does once its caches are emptied. */
+  function measuresAgain(segment: string) {
+    const measureText = vi.spyOn(
+      OffscreenCanvasRenderingContext2D.prototype,
+      'measureText'
+    );
+    prepareWithSegments(segment, DEFAULT_FONT);
+    const again = measureText.mock.calls.some(([text]) => text === segment);
+    measureText.mockRestore();
+
+    return again;
+  }
+
+  it('are emptied once the distinct texts drawn outgrow the fitter’s bound, and no draw reads the DOM after', async () => {
+    const view = await mount();
+    const { scene, body } = view;
+    const probe = 'zqxvw';
+    let version = 0;
+    // Each version draws a few hundred texts never seen before, an emoji
+    // among them, so the segments pretext keeps pass the bound within a few
+    // dozen versions, and an emoji calibration lost with them would show.
+    scene.setGetters((row, col) =>
+      version === 0 && row === 0 && col === 0
+        ? `${probe} opens the first frame`
+        : `version ${version} of row ${row} in column ${col} 😀`
+    );
+    await drawn();
+    expect(measuresAgain(probe)).toBe(false);
+
+    let drawing = false;
+    body.on('beforeDraw.spec', () => {
+      drawing = true;
+    });
+    body.on('draw.spec', () => {
+      drawing = false;
+    });
+    const append = document.body.appendChild.bind(document.body);
+    const appendedInDraw: boolean[] = [];
+    vi.spyOn(document.body, 'appendChild').mockImplementation(node => {
+      appendedInDraw.push(drawing);
+      return append(node);
+    });
+
+    let emptied = false;
+    for (version = 1; version <= 40 && !emptied; version++) {
+      scene.setVersion(version);
+      await drawn();
+      emptied = measuresAgain(probe);
+    }
+
+    expect(emptied).toBe(true);
+    expect(version).toBeGreaterThan(2);
+    expect(appendedInDraw.some(inside => inside)).toBe(false);
   });
 });
 

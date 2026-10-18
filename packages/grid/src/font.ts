@@ -40,6 +40,28 @@ const NO_METRICS: FontMetrics = Object.freeze({
 
 const measured = new Map<string, FontMetrics>();
 
+/** The fonts pretext has calibrated its emoji widths for, which it forgets with the rest of its caches. */
+const calibrated = new Set<string>();
+
+/**
+ * Has pretext meet the probes in a font. It calibrates its emoji widths
+ * against a DOM span the first time a font meets an emoji, and doing it here
+ * keeps that layout read out of a draw.
+ */
+function calibrate(font: string): void {
+  prepare(ADVANCE_PROBES.join(''), font);
+  calibrated.add(font);
+}
+
+/**
+ * Has pretext calibrate every font measured so far again, as it must once its
+ * caches were emptied, so the next emoji a draw measures reads no DOM. Call
+ * it outside any sceneFunc.
+ */
+export function recalibrateFonts(): void {
+  for (const font of calibrated) prepare(ADVANCE_PROBES.join(''), font);
+}
+
 /**
  * The metrics of a font, measured on the first call for it and kept after.
  * Call it when the grid mounts or its font changes, outside any sceneFunc: it
@@ -71,9 +93,7 @@ export function measureFont(font: string): FontMetrics {
     maxAdvance = Math.max(maxAdvance, context.measureText(probe).width);
   }
 
-  // pretext calibrates its emoji widths against a DOM span the first time a
-  // font meets an emoji. Doing it here keeps that layout read out of a draw.
-  prepare(ADVANCE_PROBES.join(''), font);
+  calibrate(font);
 
   const result: FontMetrics = Object.freeze({ ascent, descent, maxAdvance });
   measured.set(font, result);

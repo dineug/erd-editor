@@ -101,6 +101,21 @@ describe('measureFont', () => {
     expect(prepare).toHaveBeenCalledWith(ADVANCE_PROBES.join(''), '14px serif');
   });
 
+  it('has pretext calibrate every font it measured again, once pretext’s caches were emptied', async () => {
+    stubCanvas(fontBox);
+    const { ADVANCE_PROBES, measureFont, recalibrateFonts } = await freshFont();
+
+    measureFont('14px serif');
+    measureFont('28px serif');
+    prepare.mockClear();
+    recalibrateFonts();
+
+    expect(prepare.mock.calls).toEqual([
+      [ADVANCE_PROBES.join(''), '14px serif'],
+      [ADVANCE_PROBES.join(''), '28px serif'],
+    ]);
+  });
+
   it('measures a font once and answers the same metrics after', async () => {
     const measures = stubCanvas(fontBox);
     const { maxAdvance, measureFont } = await freshFont();

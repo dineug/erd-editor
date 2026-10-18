@@ -1,4 +1,4 @@
-import { measureNaturalWidth, prepareWithSegments } from '@chenglou/pretext';
+import { measureNaturalWidth } from '@chenglou/pretext';
 
 import {
   clampColumnWidth,
@@ -14,7 +14,7 @@ import {
   clickRowHeader,
   dragTo,
 } from '@/model/selection';
-import { normalizeCellText } from '@/model/text';
+import { normalizeCellText, prepareCellText } from '@/model/text';
 import type { CellRef, GridBounds, GridSelection } from '@/model/types';
 import { rowAt } from '@/model/viewport';
 import { CELL_PADDING } from '@/scene/draw/context';
@@ -51,9 +51,6 @@ export const AUTO_SCROLL_MAX = 48;
 const NONE: GridHit = Object.freeze({ kind: 'none' });
 
 const CORNER: GridHit = Object.freeze({ kind: 'corner' });
-
-/** pretext's default collapses spaces a canvas draws, as the text fitter says. */
-const PREPARE_OPTIONS = { whiteSpace: 'pre-wrap' } as const;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -299,9 +296,7 @@ export function fitWidth(scene: SceneState, col: number): number {
 
     widest = Math.max(
       widest,
-      measureNaturalWidth(
-        prepareWithSegments(text, state.font, PREPARE_OPTIONS)
-      )
+      measureNaturalWidth(prepareCellText(text, state.font))
     );
   }
 

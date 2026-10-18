@@ -138,6 +138,9 @@ const GridScene: FC<GridSceneProps> = props => {
     // arming the gate lets a size set before the mount reach the stage too.
     unbinds.push(
       onBeforeFlush(() => {
+        // pretext keeps every segment it measured until its caches are
+        // emptied, which happens here, before the commit books its draws.
+        scene.fitter.trim();
         const size = scene.takePendingSize();
         if (size) sizeStage(stage, size);
       })

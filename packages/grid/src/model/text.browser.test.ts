@@ -2,7 +2,8 @@
 // the canvas stays inside its content box, a wide enough column shows the
 // whole text, and the unmeasured bound never passes a text drawn wider.
 
-import { describe, expect, it } from 'vite-plus/test';
+import { prepareWithSegments } from '@chenglou/pretext';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { ADVANCE_PROBES, DEFAULT_FONT, measureFont } from '@/font';
 import { createTextFitter, ELLIPSIS } from '@/model/text';
@@ -121,5 +122,63 @@ describe('the bound a text fits under unmeasured', () => {
         text.length * metrics.maxAdvance
       );
     }
+  });
+});
+
+describe('pretext’s own caches', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Whether pretext measures a segment it was handed before with the canvas again, as it does once its caches are emptied. */
+  function measuresAgain(segment: string) {
+    const measureText = vi.spyOn(
+      OffscreenCanvasRenderingContext2D.prototype,
+      'measureText'
+    );
+    prepareWithSegments(segment, DEFAULT_FONT);
+    const again = measureText.mock.calls.some(([text]) => text === segment);
+    measureText.mockRestore();
+
+    return again;
+  }
+
+  it('are kept under a fitter’s bound and emptied once its texts outgrow it', () => {
+    // A cache of one entry bounds pretext at sixteen segments, and one of
+    // four thousand at sixty-five thousand, which these texts never reach.
+    const small = createTextFitter(1);
+    const large = createTextFitter(4096);
+    small.beginFrame(DEFAULT_FONT, metrics.maxAdvance);
+    large.beginFrame(DEFAULT_FONT, metrics.maxAdvance);
+    small.trim();
+
+    small.fit('zqxvw kept segment probe', CONTENT_WIDTH);
+    large.trim();
+    expect(measuresAgain('zqxvw')).toBe(false);
+
+    for (let index = 0; index < 20; index++) {
+      small.fit(`a distinct value ${index}`, CONTENT_WIDTH);
+    }
+    large.trim();
+    expect(measuresAgain('zqxvw')).toBe(false);
+    small.trim();
+    expect(measuresAgain('zqxvw')).toBe(true);
+  });
+
+  it('keep the fitter’s own cuts, which need no measure once emptied', () => {
+    const fitter = createTextFitter(1);
+    fitter.beginFrame(DEFAULT_FONT, metrics.maxAdvance);
+    const text = SAMPLES[0];
+    const cut = fitter.fit(text, CONTENT_WIDTH);
+
+    for (let index = 0; index < 20; index++) {
+      fitter.fit(`a distinct value ${index}`, CONTENT_WIDTH);
+    }
+    fitter.trim();
+    fitter.beginFrame(DEFAULT_FONT, metrics.maxAdvance);
+
+    expect(fitter.fit(text, CONTENT_WIDTH - 40)).not.toBe(cut);
+    expect(fitter.fit(text, CONTENT_WIDTH)).toBe(cut);
+    expect(fitter.hasDeferred()).toBe(false);
   });
 });

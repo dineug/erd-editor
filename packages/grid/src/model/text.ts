@@ -1,10 +1,13 @@
 import {
+  clearCache,
   type LayoutCursor,
   layoutNextLine,
   measureNaturalWidth,
   type PreparedTextWithSegments,
   prepareWithSegments,
 } from '@chenglou/pretext';
+
+import { recalibrateFonts } from '@/font';
 
 /** What a cell draws in place of the text cut off its end. */
 export const ELLIPSIS = '…';
@@ -24,6 +27,16 @@ export const CACHE_FACTOR = 4;
  * draws with its overscan, about 35 rows by 14 columns, rounded up.
  */
 export const DEFAULT_CAPACITY = 2048;
+
+/**
+ * How many of pretext's own segment measures a fitter lets its caches keep per
+ * entry of its own cache. pretext keeps every segment it measures, per font,
+ * until its caches are emptied, and a scroll meets millions of distinct texts.
+ */
+export const SEGMENT_FACTOR = 16;
+
+/** The segments the grid has handed pretext to measure since its caches were last emptied, counted from what each prepare returned. */
+let segmentsMeasured = 0;
 
 /**
  * Spaces kept as they are, each one measured. pretext collapses runs of them
@@ -59,6 +72,20 @@ const TEXT_START: LayoutCursor = Object.freeze({
  */
 export function normalizeCellText(text: string): string {
   return WHITESPACE.test(text) ? text.replace(WHITESPACE_ALL, ' ') : text;
+}
+
+/**
+ * A cell's text as pretext prepares it, in pre-wrap, its segments counted
+ * against the bound a fitter's trim keeps pretext's caches under.
+ */
+export function prepareCellText(
+  text: string,
+  font: string
+): PreparedTextWithSegments {
+  const prepared = prepareWithSegments(text, font, PREPARE_OPTIONS);
+  segmentsMeasured += prepared.segments.length;
+
+  return prepared;
 }
 
 /** A text with the spaces at its end dropped, which an ellipsis would otherwise sit after. */
@@ -131,6 +158,12 @@ export interface TextFitter {
   hasDeferred(): boolean;
   /** Grows the cache to hold four times the cells a viewport shows; it never shrinks. */
   reserve(visibleCells: number): void;
+  /**
+   * Empties pretext's own caches once the segments measured into them outgrow
+   * this fitter's bound, and has it calibrate the fonts measured so far again.
+   * Call it outside any draw; what this fitter's cache holds stays valid.
+   */
+  trim(): void;
 }
 
 /**
@@ -153,9 +186,7 @@ export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
 
   const measureEllipsis = () => {
     if (ellipsisWidth < 0) {
-      ellipsisWidth = measureNaturalWidth(
-        prepareWithSegments(ELLIPSIS, font, PREPARE_OPTIONS)
-      );
+      ellipsisWidth = measureNaturalWidth(prepareCellText(ELLIPSIS, font));
     }
 
     return ellipsisWidth;
@@ -207,7 +238,7 @@ export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
         }
 
         misses++;
-        const prepared = prepareWithSegments(drawn, font, PREPARE_OPTIONS);
+        const prepared = prepareCellText(drawn, font);
         const width = measureNaturalWidth(prepared);
         entry =
           width > contentWidth
@@ -235,6 +266,14 @@ export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
     reserve(visibleCells) {
       capacity = Math.max(capacity, Math.ceil(visibleCells) * CACHE_FACTOR);
       cache.capacity = capacity;
+    },
+
+    trim() {
+      if (segmentsMeasured <= capacity * SEGMENT_FACTOR) return;
+
+      clearCache();
+      segmentsMeasured = 0;
+      recalibrateFonts();
     },
   };
 }
