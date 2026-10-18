@@ -42,6 +42,7 @@ describe('the package entry', () => {
       | 'k-line'
       | 'k-path'
       | 'k-rect'
+      | 'k-shape'
       | 'k-text'
     >();
   });

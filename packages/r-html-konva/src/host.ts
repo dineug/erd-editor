@@ -8,6 +8,7 @@ import { Container } from 'konva/lib/Container';
 import { Group } from 'konva/lib/Group';
 import { Layer } from 'konva/lib/Layer';
 import { Node as KonvaNode } from 'konva/lib/Node';
+import { Shape } from 'konva/lib/Shape';
 import { Circle } from 'konva/lib/shapes/Circle';
 import { Line } from 'konva/lib/shapes/Line';
 import { Path } from 'konva/lib/shapes/Path';
@@ -114,6 +115,7 @@ const KONVA_TAG_FACTORY: Record<string, () => KonvaNode> = {
   'k-path': () => new Path(),
   'k-line': () => new Line(),
   'k-circle': () => new Circle(),
+  'k-shape': () => new Shape({}),
 };
 
 function noValidate() {}

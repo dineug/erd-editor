@@ -17,7 +17,7 @@
 
 | File | Description |
 | --- | --- |
-| `packages/r-html-konva/` | `@dineug/r-html-konva`, which every scene file imports by package name: the Konva `HostAdapter`, the `konva` tag that `konvaImportSource: '@dineug/r-html-konva'` points compiled Konva JSX at, the draw gate (`whenDrawn`, `markDirty`, `beginAnimation` / `endAnimation`, `onBeforeFlush`) and the seven `k-*` intrinsics |
+| `packages/r-html-konva/` | `@dineug/r-html-konva`, which every scene file imports by package name: the Konva `HostAdapter`, the `konva` tag that `konvaImportSource: '@dineug/r-html-konva'` points compiled Konva JSX at, the draw gate (`whenDrawn`, `markDirty`, `beginAnimation` / `endAnimation`, `onBeforeFlush`) and the eight `k-*` intrinsics |
 | `intrinsics.test-d.ts` | A `k-*` tag as this package's program sees it, run by the `tsc --noEmit` gate |
 | `imports.test.ts` | The allowlist of `konva/lib/*` modules, the barrel ban, the owner of `Tween` |
 | `zOrder.test.ts` | No z-order call in this package's sources, since the order is the host's ledger |
@@ -47,10 +47,10 @@
 ### Konva JSX
 
 - **Open a Konva file with `/** @jsxHost konva */`.** It compiles against `konvaImportSource: '@dineug/r-html-konva'`, which all three Vite configs set: `vite.config.ts`, `vite.umd.config.ts` and `vitest.config.ts`. `vite-plugin-r-html` refuses the pragma without that option, since nothing else tells it where the `konva` tag lives.
-- **Use the seven intrinsics the host package declares.** They are `k-circle`, `k-group`, `k-layer`, `k-line`, `k-path`, `k-rect` and `k-text`, in `packages/r-html-konva/src/jsx.ts`, which merges them into r-html's `JSX.IntrinsicElements`; this program reads them from the package's `dist/jsx.d.ts`.
+- **Use the eight intrinsics the host package declares.** They are `k-circle`, `k-group`, `k-layer`, `k-line`, `k-path`, `k-rect`, `k-shape` and `k-text`, in `packages/r-html-konva/src/jsx.ts`, which merges them into r-html's `JSX.IntrinsicElements`; this program reads them from the package's `dist/jsx.d.ts`.
 - **One host per file and named attributes only.** Mixing hosts in a file, `class` / `style` / `zIndex`, a spread or a text child fail the compile. `class` and `style` commit through an `HTMLElement` check a Konva node never passes, and z-order belongs to the host's ledger. A spread would reach the node through `Reflect.set`, which the Konva host does not read.
 - **`bool:`, `prop:`, `draggable`, `on:drag*` are typed `never`.** The DOM sigils write through paths a Konva node does not have. Konva's own dragging moves a node behind the ledger and reorders its siblings, so a column drag is `drag$` over the scene's mouse stream instead.
-- **Three specs gate the Konva JSX.** `src/__jsx-parity__/parity.konva.browser.test.tsx` gates the rules above. The host package's `src/jsx-types.test-d.ts` holds the `never` types against its source, and `intrinsics.test-d.ts` holds one of them as this program sees it, so a build of the package that stops shipping the merge fails here.
+- **Three specs gate the Konva JSX.** `src/__jsx-parity__/parity.konva.browser.test.tsx` gates the rules above. The host package's `src/jsx-types.test-d.ts` holds the `never` types against its source, and `intrinsics.test-d.ts` holds one of them and the `k-shape` `sceneFunc` type as this program sees them, so a build of the package that stops shipping the merge fails here.
 
 ### What a view shows
 

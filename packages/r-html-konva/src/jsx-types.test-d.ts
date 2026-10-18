@@ -3,6 +3,8 @@
 // tsc --noEmit gate that fronts both the build and the test task.
 
 import type { JSX } from '@dineug/r-html/jsx-runtime';
+import type { Context } from 'konva/lib/Context';
+import type { Shape, ShapeConfig } from 'konva/lib/Shape';
 
 type Intrinsics = JSX.IntrinsicElements;
 
@@ -75,7 +77,7 @@ type BansKonvaDragging<E extends KonvaTag> = All<
   ]
 >;
 
-/** The seven tags the host constructs; an eighth would let a typo typecheck. */
+/** The eight tags the host constructs; a ninth would let a typo typecheck. */
 type _TagSet = Expect<
   Equals<
     KonvaTag,
@@ -85,6 +87,7 @@ type _TagSet = Expect<
     | 'k-line'
     | 'k-path'
     | 'k-rect'
+    | 'k-shape'
     | 'k-text'
   >
 >;
@@ -95,6 +98,7 @@ type _LayerBans = Expect<BansTheHostsKeys<'k-layer'>>;
 type _LineBans = Expect<BansTheHostsKeys<'k-line'>>;
 type _PathBans = Expect<BansTheHostsKeys<'k-path'>>;
 type _RectBans = Expect<BansTheHostsKeys<'k-rect'>>;
+type _ShapeBans = Expect<BansTheHostsKeys<'k-shape'>>;
 type _TextBans = Expect<BansTheHostsKeys<'k-text'>>;
 
 type _CircleDrag = Expect<BansKonvaDragging<'k-circle'>>;
@@ -103,7 +107,26 @@ type _LayerDrag = Expect<BansKonvaDragging<'k-layer'>>;
 type _LineDrag = Expect<BansKonvaDragging<'k-line'>>;
 type _PathDrag = Expect<BansKonvaDragging<'k-path'>>;
 type _RectDrag = Expect<BansKonvaDragging<'k-rect'>>;
+type _ShapeDrag = Expect<BansKonvaDragging<'k-shape'>>;
 type _TextDrag = Expect<BansKonvaDragging<'k-text'>>;
+
+type DrawFunc = (context: Context, shape: Shape) => void;
+
+/**
+ * The custom shape's two draw functions take konva's own signature, so one
+ * written against Context and Shape needs no cast at the tag, and a bump that
+ * changed konva's would fail here rather than at the first draw.
+ */
+type _ShapeDrawsAsKonvaCalls = Expect<
+  All<
+    [
+      Equals<Exclude<Intrinsics['k-shape']['sceneFunc'], undefined>, DrawFunc>,
+      Equals<Exclude<Intrinsics['k-shape']['hitFunc'], undefined>, DrawFunc>,
+      Equals<Exclude<ShapeConfig['sceneFunc'], undefined>, DrawFunc>,
+      Not<Accepts<'k-shape', { sceneFunc: 'fillRect' }>>,
+    ]
+  >
+>;
 
 /**
  * The control half. Without it every assertion above would still hold on an
@@ -122,6 +145,11 @@ type _AcceptsWhatAKonvaNodeCarries = Expect<
       Accepts<'k-group', { id: 'table-t1'; name: 'table'; kind: 'table' }>,
       Accepts<'k-group', { name: 'minimap-table'; tableId: 't1' }>,
       Accepts<'k-layer', { clearBeforeDraw: true; width: 10 }>,
+      Accepts<
+        'k-shape',
+        { sceneFunc: DrawFunc; hitFunc: DrawFunc; width: 3; height: 4 }
+      >,
+      Accepts<'k-shape', { x: 1; y: 2; listening: false; name: 'body' }>,
       Accepts<'k-rect', { 'on:click': Handler }>,
       Accepts<'k-rect', { 'on:mousedown__2': Handler }>,
       Accepts<'k-rect', { 'use:ref': unknown }>,

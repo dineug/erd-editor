@@ -29,6 +29,7 @@ const RUNTIME_MODULES = new Set([
   'konva/lib/Group',
   'konva/lib/Layer',
   'konva/lib/Node',
+  'konva/lib/Shape',
   'konva/lib/Stage',
   'konva/lib/shapes/Circle',
   'konva/lib/shapes/Line',
@@ -38,11 +39,11 @@ const RUNTIME_MODULES = new Set([
 ]);
 
 /**
- * Two more a shipped file may name by type alone: the context and the shape a
- * hit function is handed. Neither is constructed here, so the build never
- * carries them, and the spec below holds each to an import type.
+ * One more a shipped file may name by type alone: the context a scene or hit
+ * function is handed. Nothing here constructs one, so the build never carries
+ * it, and the spec below holds it to an import type.
  */
-const TYPE_ONLY_MODULES = new Set(['konva/lib/Context', 'konva/lib/Shape']);
+const TYPE_ONLY_MODULES = new Set(['konva/lib/Context']);
 
 /** A static import with its type keyword, if it carries one, and its specifier. */
 const IMPORT_FORM = /\bimport\s+(type\s+)?[^;]*?\bfrom\s*'([^']+)'/g;
@@ -116,7 +117,7 @@ describe('konva enters this package through konva/lib only (AC-L6)', () => {
     expect(offenders(allowed, file => !isSpec(file))).toEqual([]);
   });
 
-  it('names the hit function types by type alone', () => {
+  it('names the draw function context by type alone', () => {
     const valued: string[] = [];
 
     for (const path of sourceFiles(SOURCE_ROOT)) {

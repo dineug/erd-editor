@@ -43,12 +43,15 @@ await whenDrawn();
 ```
 
 A template's root is a `k-layer`, and the tags are `k-circle`, `k-group`, `k-layer`, `k-line`,
-`k-path`, `k-rect` and `k-text`. Konva is imported through `konva/lib/*` modules, never its
-barrel. Nothing draws behind the gate: `Konva.autoDrawEnabled` is off, a write marks its layer and
-`whenDrawn()` resolves once the commit drew it; a Tween hands a layer over with `beginAnimation` /
-`endAnimation`. `class`, `style`, `zIndex`, a spread, Konva's own dragging and the DOM sigils
-(`bool:`, `prop:`) are refused, at compile time or by the types. A component reads a context
-provided on a DOM element above the Stage container, as a DOM component does.
+`k-path`, `k-rect`, `k-shape` and `k-text`. A `k-shape` paints through its `sceneFunc`, which konva
+calls with the layer's context on every draw of the layer: keep one function and ask a redraw with
+`markDirty(layer)`, since writing the same function again draws nothing. Konva is imported through
+`konva/lib/*` modules, never its barrel. Nothing draws behind the gate: `Konva.autoDrawEnabled` is
+off, a write marks its layer and `whenDrawn()` resolves once the commit drew it; a Tween hands a
+layer over with `beginAnimation` / `endAnimation`. `class`, `style`, `zIndex`, a spread, Konva's
+own dragging and the DOM sigils (`bool:`, `prop:`) are refused, at compile time or by the types. A
+component reads a context provided on a DOM element above the Stage container, as a DOM component
+does.
 
 ## Development
 

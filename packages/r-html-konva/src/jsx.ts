@@ -141,7 +141,23 @@ interface KonvaCircleAttributes extends KonvaShapeAttributes {
   radius?: number;
 }
 
-/** The seven k-* tags the host constructs, each with the attributes it takes. */
+/**
+ * A shape that paints itself. It takes no fill or stroke of its own, since its
+ * scene function draws everything it shows in the shape's own space.
+ */
+interface KonvaCustomShapeAttributes extends KonvaBaseAttributes {
+  height?: number;
+  /** What goes on the hit canvas; konva falls back to sceneFunc without one. */
+  hitFunc?: (context: Context, shape: Shape) => void;
+  /**
+   * Called on every draw of the layer. The host skips a write of the same
+   * reference, so a function that reads changed state asks markDirty instead.
+   */
+  sceneFunc?: (context: Context, shape: Shape) => void;
+  width?: number;
+}
+
+/** The eight k-* tags the host constructs, each with the attributes it takes. */
 export interface KonvaIntrinsicElements {
   'k-circle': KonvaCircleAttributes;
   'k-group': KonvaContainerAttributes;
@@ -149,6 +165,7 @@ export interface KonvaIntrinsicElements {
   'k-line': KonvaLineAttributes;
   'k-path': KonvaPathAttributes;
   'k-rect': KonvaRectAttributes;
+  'k-shape': KonvaCustomShapeAttributes;
   'k-text': KonvaTextAttributes;
 }
 

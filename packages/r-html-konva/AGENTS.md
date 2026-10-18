@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`@dineug/r-html-konva` (`private: true`) is the second `@dineug/r-html` host, the one that renders templates into a Konva `Stage` instead of the DOM. It holds the host adapter (`konvaAdapter`), the `konva` tag and `renderKonva` that compiled Konva JSX calls, the draw gate (`batchDraw.ts`), the only draw authority outside an animation, and the seven `k-*` intrinsics. `erd-editor` draws its ERD scene through it and lists it as a devDependency, so its build inlines it. A change keeps the ledger the one owner of membership and order (Rules § The ledger), the gate the one thing that draws (Rules § Drawing) and every `k-*` type reachable from a consumer's program (Rules § Konva JSX).
+`@dineug/r-html-konva` (`private: true`) is the second `@dineug/r-html` host, the one that renders templates into a Konva `Stage` instead of the DOM. It holds the host adapter (`konvaAdapter`), the `konva` tag and `renderKonva` that compiled Konva JSX calls, the draw gate (`batchDraw.ts`), the only draw authority outside an animation, and the eight `k-*` intrinsics. `erd-editor` draws its ERD scene through it and lists it as a devDependency, so its build inlines it. A change keeps the ledger the one owner of membership and order (Rules § The ledger), the gate the one thing that draws (Rules § Drawing) and every `k-*` type reachable from a consumer's program (Rules § Konva JSX).
 
 ## Making a Change
 
@@ -34,13 +34,14 @@
 | `src/index.ts` | The package surface: the host's `konva`, `konvaAdapter`, `renderKonva`, `hostStats`, `resetHostStats`, `MINIMAP_STAGE_NAME` and `HostStats`; the gate's `currentEpoch`, `onBeforeFlush`, `requestFlush`, `markDirty`, `beginAnimation`, `endAnimation` and `whenDrawn`; and the type `KonvaIntrinsicElements`. Pinned by `src/index.test.ts` |
 | `src/host.ts` | The Konva `HostAdapter`: the ledger of slots that holds membership, order and the markers a Konva tree cannot, reconciled once per parent per commit; the `konva` tag and `renderKonva` |
 | `src/batchDraw.ts` | The draw gate: `Konva.autoDrawEnabled = false`, one `batchDraw` per dirty layer per commit at the microtask fixed point, the Tween windows, and the `Konva.DD` registration |
-| `src/jsx.ts` | `KonvaIntrinsicElements`, the seven `k-*` tags and the attributes each takes, merged into r-html's `JSX.IntrinsicElements`; types only |
+| `src/jsx.ts` | `KonvaIntrinsicElements`, the eight `k-*` tags and the attributes each takes, merged into r-html's `JSX.IntrinsicElements`; types only |
 | `src/jsx-types.test-d.ts` | Type assertions on `src/jsx.ts`, run by the `tsc --noEmit` gate alone |
 | `src/imports.test.ts` | The allowlist of `konva/lib/*` modules and the barrel ban |
 | `src/zOrder.scan.test.ts`, `src/zOrder.adapter.test.ts` | z-order calls only in `host.ts` and `host.marker.test.ts`; the refused attributes and the id convention |
 | `src/host.marker.test.ts` | The ledger against the DOM host's answers, and its cost counted in host operations |
 | `src/host.browser.test.tsx`, `src/hostContext.browser.test.tsx` | A template on a live Stage: the placement rules, one draw per layer per commit, the id convention; DI through a DOM provider, a component's own event bus and a bridged fragment |
 | `src/batchDraw.browser.test.ts` | The commit as the fixed point microtask flush, and the Tween window |
+| `src/kShape.browser.test.tsx` | A `k-shape` painting through its `sceneFunc`: the pixels it fills, no redraw for the same function until `markDirty`, one for a new function, and its `hitFunc` box |
 | `src/konvaUpstream.browser.test.ts`, `src/konvaId.browser.test.ts` | Konva behaviour the gate, the `zIndex` ban and the id convention rest on, pinned against the installed konva |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, jsx: { konvaImportSource: '@/host' }, minify: false, preserveModules: true })` (root § Working In This Directory, Library builds) |
 | `vitest.config.ts` | `unit` (happy-dom) and `browser` (headless Chromium) projects, each with the JSX plugin against `@/host`; one root coverage block |
@@ -68,7 +69,8 @@
 
 - **Ship the intrinsics as a type re-export.** `src/index.ts` writes `export type { KonvaIntrinsicElements } from '@/jsx'`, which keeps `export type … from './jsx'` in `dist/index.d.ts`, so a consumer's program reads `dist/jsx.d.ts` and its `declare module '@dineug/r-html/jsx-runtime'` merge. A bare `import '@/jsx'` is dropped from the emitted declarations, and a hand-written `.d.ts` is never copied to `dist/`. Keep `src/jsx.ts` a module; the root `vite.config.ts` turns `typescript/no-namespace` off for it, since the merge must name the `JSX` namespace.
 - **Open a Konva spec with `/** @jsxHost konva */`.** It compiles against `konvaImportSource: '@/host'`, which `vite.config.ts` and `vitest.config.ts` set; a consumer sets `'@dineug/r-html-konva'`. One host per file and named attributes only: a DOM tag, a spread, a text child, `class`, `style` or `zIndex` fail the compile.
-- **`bool:`, `prop:`, `draggable` and `on:drag*` are typed `never`.** The DOM sigils write through paths a Konva node does not have, and konva's own dragging moves a node behind the ledger. `src/jsx-types.test-d.ts` holds these types, and the tag set at seven.
+- **`bool:`, `prop:`, `draggable` and `on:drag*` are typed `never`.** The DOM sigils write through paths a Konva node does not have, and konva's own dragging moves a node behind the ledger. `src/jsx-types.test-d.ts` holds these types, and the tag set at eight.
+- **Hand a `k-shape` one `sceneFunc` and redraw it with `markDirty`.** `setAttribute` skips a value the node already holds, so a fixed function that reads changed state draws again only once its layer is marked, and a function built per render marks its layer on every commit. `src/kShape.browser.test.tsx` holds both, and `src/jsx-types.test-d.ts` holds `sceneFunc` and `hitFunc` to konva's own signature.
 
 ## Testing Requirements
 
