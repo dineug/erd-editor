@@ -38,8 +38,15 @@ const CHOICE_COLUMN = 8;
 
 const CHOICES = ['TRUE', 'FALSE'];
 
-const columnLabel = (index: number) =>
-  String.fromCharCode(65 + (index % 26)).repeat(Math.floor(index / 26) + 1);
+/** A spreadsheet's column letters, bijective base 26: A to Z, then AA, AB and on. */
+const columnLabel = (index: number) => {
+  let label = '';
+  for (let rest = index + 1; rest > 0; rest = Math.floor((rest - 1) / 26)) {
+    label = String.fromCharCode(65 + ((rest - 1) % 26)) + label;
+  }
+
+  return label;
+};
 
 const FIRST_NAMES = [
   'Alice',
@@ -161,8 +168,8 @@ function valueAt(row: number, col: number): string {
 
 /**
  * The values onCommit wrote, one array per column indexed by row, which win
- * over the generated ones. A clear of every cell writes thirty million, past
- * the 2^24 entries one Map holds, and an array costs a pointer per row.
+ * over the generated ones. A clear of every writable cell writes nearly thirty
+ * million, past the 2^24 entries one Map holds; an array costs a pointer a row.
  */
 const committed: Array<Array<string | undefined>> = Array.from(
   { length: COLUMN_COUNT },

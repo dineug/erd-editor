@@ -31,8 +31,15 @@ export const MILLION = 1_000_000;
 
 export const ROW_HEIGHT = 28;
 
-const columnLabel = (index: number) =>
-  String.fromCharCode(65 + (index % 26)).repeat(Math.floor(index / 26) + 1);
+/** A spreadsheet's column letters, bijective base 26: A to Z, then AA, AB and on. */
+const columnLabel = (index: number) => {
+  let label = '';
+  for (let rest = index + 1; rest > 0; rest = Math.floor((rest - 1) / 26)) {
+    label = String.fromCharCode(65 + ((rest - 1) % 26)) + label;
+  }
+
+  return label;
+};
 
 export const COLUMNS: GridColumn[] = Array.from({ length: 30 }, (_, index) => ({
   id: `c${index}`,
