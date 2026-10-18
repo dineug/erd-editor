@@ -192,6 +192,8 @@ export interface EditingInput {
   readonly view: Readonly<{ open: OpenEditor | null }>;
   /** Whether an edit is open, which keyAction reads the keys under. */
   editing(): boolean;
+  /** Whether a column's own editor is open with the focus in the slot, where a press on the grid leaves it. */
+  holdsFocus(): boolean;
   /** A key keyAction answered with an edit, a clear, a commit or a cancel, which the caller prevented. */
   act(action: KeyAction, key: string): void;
   /** Opens an edit on the cell a double click landed on. */
@@ -247,18 +249,20 @@ export function createEditingInput(host: EditingHost): EditingInput {
     }
   };
 
+  /** Whether the focus lies in the slot, read in the root the grid is mounted in. */
+  const focusInSlot = () => {
+    const root = host.textarea.getRootNode() as Document | ShadowRoot;
+    const active = root.activeElement;
+
+    return Boolean(active && host.slot.contains(active));
+  };
+
   /** Puts the focus back in the textarea where a closing editor held it or let it drop. */
   const reclaimFocus = () => {
-    const { textarea, slot } = host;
-    const root = textarea.getRootNode() as Document | ShadowRoot;
-    const active = root.activeElement;
+    const { textarea } = host;
     const { activeElement, body } = textarea.ownerDocument;
 
-    if (
-      (active && slot.contains(active)) ||
-      !activeElement ||
-      activeElement === body
-    ) {
+    if (focusInSlot() || !activeElement || activeElement === body) {
       textarea.focus({ preventScroll: true });
     }
   };
@@ -403,6 +407,8 @@ export function createEditingInput(host: EditingHost): EditingInput {
     view,
 
     editing: () => edit.status === 'editing',
+
+    holdsFocus: () => edit.status === 'editing' && edit.custom && focusInSlot(),
 
     act(action, key) {
       switch (action.type) {

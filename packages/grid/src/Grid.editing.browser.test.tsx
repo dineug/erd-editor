@@ -1078,6 +1078,41 @@ describe('a column’s own editor', () => {
     expect(reasons).toEqual(['escape', 'outside', 'escape']);
   });
 
+  it('leaves the focus in the editor through a real press on a scrollbar or a cell, until it answers', async () => {
+    let ctx: EditorContext | null = null;
+    const editor = (next: EditorContext) => {
+      ctx = next;
+      const input = document.createElement('input');
+      input.value = next.initialValue;
+      next.container.append(input);
+      input.focus();
+    };
+    const view = await mount({ columns: withEditor(2, editor) });
+    press(view, cellPoint(view, 1, 2));
+    view.textarea.focus();
+    key(view, 'Enter');
+    await nextFrame();
+    const field = view.slot.querySelector('input') as HTMLInputElement;
+    expect(document.activeElement).toBe(field);
+
+    await userEvent.click(view.scroller, {
+      position: centreOf(view, 'grid-vertical-thumb'),
+    });
+    expect(document.activeElement).toBe(field);
+    await userEvent.keyboard('x');
+    expect(field.value).toBe(`${valueOf(1, 2)}x`);
+
+    await userEvent.click(view.scroller, { position: cellPoint(view, 4, 4) });
+    expect(document.activeElement).toBe(field);
+    expect(lastSelection(view)?.active).toEqual({ row: 4, col: 4 });
+
+    (ctx as unknown as EditorContext).commit(field.value);
+    expect(lastCommit(view)?.changes).toEqual([
+      change(1, 2, `${valueOf(1, 2)}x`),
+    ]);
+    expect(document.activeElement).toBe(view.textarea);
+  });
+
   it('keeps the wheel for a list in the slot that can still scroll, and hands it on once it cannot', async () => {
     const editor = (ctx: EditorContext) => {
       const list = document.createElement('div');

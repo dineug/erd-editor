@@ -595,14 +595,16 @@ export const Grid: FC<GridProps> = props => {
 
   /**
    * Focus and text selection are a mousedown's defaults, so preventing it
-   * keeps the textarea focused; the pointerdown before it stays uncancelled,
+   * keeps the focus where it is; the pointerdown before it stays uncancelled,
    * since that would stop the mousedown. A tap leaves the focus alone.
    */
   const onMouseDown = (event: MouseEvent) => {
     if (lastPointerType === 'touch') return;
 
     event.preventDefault();
-    focusRef.value?.focus({ preventScroll: true });
+    // A column's own editor keeps the focus it holds until its edit closes,
+    // which hands the focus back to the textarea.
+    if (!editing.holdsFocus()) focusRef.value?.focus({ preventScroll: true });
   };
 
   /**
