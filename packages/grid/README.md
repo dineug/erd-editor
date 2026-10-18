@@ -82,6 +82,7 @@ does, from the cells, the headers and the corner; the arrows, Home, End, PageUp,
 Shift+Enter and Ctrl+A move the selection from a hidden textarea that holds the focus. A header
 edge drags to resize its column, and a double click fits it to the rows in view; the grid reports
 the width through `onColumnResize` and the host keeps it in `columns`, or the column goes back.
+No key resizes a column: a keyboard path to a width, such as a menu, is the host's to give.
 Raise `version` once the data has changed, and the cells in view are read again.
 `onViewportChange` reports the rows and columns in view once a frame. With `onCellContextMenu`, a
 right click on a cell opens no browser menu and hands the host its cell and point, and a menu the
