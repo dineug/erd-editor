@@ -319,8 +319,10 @@ export function moveActive(
     return selectAll(sel, bounds);
   }
 
+  const active = clampCell(sel.active, bounds);
+
   if (key === 'Tab' || key === 'Enter') {
-    const { row, col } = clampCell(sel.active, bounds);
+    const { row, col } = active;
     const delta = mods.shift ? -1 : 1;
     const target =
       key === 'Tab' ? { row, col: col + delta } : { row: row + delta, col };
@@ -331,7 +333,6 @@ export function moveActive(
   const toEdge = Boolean(mods.ctrl);
 
   if (mods.shift) {
-    const anchor = clampCell(sel.active, bounds);
     const focus = step(
       clampCell(focusOf(sel), bounds),
       key,
@@ -341,17 +342,12 @@ export function moveActive(
     );
 
     return settle(sel, {
-      active: anchor,
-      ranges: replaceLast(sel.ranges, spanOf(anchor, focus)),
+      active,
+      ranges: replaceLast(sel.ranges, spanOf(active, focus)),
     });
   }
 
-  return settle(
-    sel,
-    selectCell(
-      step(clampCell(sel.active, bounds), key, toEdge, bounds, pageRows)
-    )
-  );
+  return settle(sel, selectCell(step(active, key, toEdge, bounds, pageRows)));
 }
 
 const contains = (range: CellRange, cell: CellRef) =>
@@ -476,12 +472,17 @@ function inSpans(spans: IndexSpan[], index: number): boolean {
 }
 
 /** How the header of one row or column paints, read off selectedRows or selectedColumns. */
-export const headerState = (
+export function headerState(
   header: HeaderSelection,
   index: number
-): HeaderState =>
-  inSpans(header.covered, index)
-    ? 'covered'
-    : inSpans(header.intersected, index)
-      ? 'intersected'
-      : 'none';
+): HeaderState {
+  if (inSpans(header.covered, index)) {
+    return 'covered';
+  }
+
+  if (inSpans(header.intersected, index)) {
+    return 'intersected';
+  }
+
+  return 'none';
+}

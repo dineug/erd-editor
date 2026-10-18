@@ -143,7 +143,7 @@ export interface SceneState {
 const NO_HEADERS: HeaderSelection = Object.freeze({
   intersected: [],
   covered: [],
-}) as HeaderSelection;
+});
 
 const digitWidths = new Map<string, number>();
 
@@ -203,6 +203,12 @@ function drawnOffsets(
   );
 }
 
+function sameResize(a: ColumnResize | null, b: ColumnResize | null): boolean {
+  if (a === b) return true;
+
+  return a !== null && b !== null && a.col === b.col && a.width === b.width;
+}
+
 /**
  * A scene's state, which renderGridScene draws and a host changes through the
  * setters alone. The stage size is the host's to give: a size change reaches
@@ -215,8 +221,10 @@ function drawnOffsets(
  */
 export function createSceneState(init: SceneInit): SceneState {
   const font = init.font ?? DEFAULT_FONT;
+  const theme = init.theme ?? lightTheme;
+  const selection = init.selection ?? selectCell({ row: 0, col: 0 });
   const columns = init.columns;
-  const offsets = drawnOffsets(columns, null);
+  const offsets = columnOffsets(columns);
   const rowCount = wholeCount(init.rowCount);
   const rowHeight =
     init.rowHeight !== undefined && init.rowHeight > 0
@@ -237,14 +245,14 @@ export function createSceneState(init: SceneInit): SceneState {
     offsets,
     frozenColumns,
     rowHeight,
-    theme: trackable(init.theme ?? lightTheme),
+    theme: trackable(theme),
     font,
     metrics: measureFont(font),
     digitWidth,
     version: init.version ?? 0,
     getCell: init.getCell,
     getCellStyle: init.getCellStyle,
-    selection: trackable(init.selection ?? selectCell({ row: 0, col: 0 })),
+    selection: trackable(selection),
     resize: null,
     layout: computeLayout({
       width,
@@ -269,8 +277,8 @@ export function createSceneState(init: SceneInit): SceneState {
   let pendingSize: { width: number; height: number } | null = null;
   /** Whether the font was measured before its faces loaded, in a fallback's metrics. */
   let provisional = !fontLoaded(font);
-  let themeSource = init.theme ?? lightTheme;
-  let selectionSource = init.selection ?? state.selection;
+  let themeSource = theme;
+  let selectionSource = selection;
 
   const mark = (body: boolean, overlay: boolean) => {
     if (body && layers.body) markDirty(layers.body);
@@ -290,6 +298,14 @@ export function createSceneState(init: SceneInit): SceneState {
     }
   };
 
+  /** Measures the font the state holds, places the regions for its digits and draws in it. */
+  const remeasure = () => {
+    observed.metrics = measureFont(state.font);
+    observed.digitWidth = measureDigitWidth(state.font);
+    relayout();
+    mark(true, true);
+  };
+
   const range = (overscan: Readonly<Overscan> = DEFAULT_OVERSCAN) =>
     visibleRange(
       state.scrollTop,
@@ -305,11 +321,6 @@ export function createSceneState(init: SceneInit): SceneState {
       overscan
     );
 
-  const bounds = (): GridBounds => ({
-    rowCount: state.rowCount,
-    colCount: state.columns.length,
-  });
-
   /** Settles what a layer draw reads, and binds the fitter to this draw's font. */
   const beginFrame = (headers: boolean) => {
     const next = range();
@@ -318,11 +329,25 @@ export function createSceneState(init: SceneInit): SceneState {
 
     frame.range = next;
     if (headers) {
-      frame.rows = selectedRows(state.selection, bounds());
-      frame.columns = selectedColumns(state.selection, bounds());
+      const bounds: GridBounds = {
+        rowCount: state.rowCount,
+        colCount: state.columns.length,
+      };
+      frame.rows = selectedRows(state.selection, bounds);
+      frame.columns = selectedColumns(state.selection, bounds);
     }
     fitter.beginFrame(state.font, state.metrics.maxAdvance);
     fitter.reserve(rows * cols + cols);
+  };
+
+  /** Settles a layer's frame before each of its draws. */
+  const bindFrame = (layer: Layer, headers: boolean) => {
+    layer.on('beforeDraw.grid', () => beginFrame(headers));
+    // A draw that ran out of measurements drew some texts whole under their
+    // column clip, so the next frame measures the rest and cuts them.
+    layer.on('draw.grid', () => {
+      if (fitter.hasDeferred()) markDirty(layer);
+    });
   };
 
   return {
@@ -381,11 +406,8 @@ export function createSceneState(init: SceneInit): SceneState {
       if (nextFont === state.font) return;
 
       observed.font = nextFont;
-      observed.metrics = measureFont(nextFont);
-      observed.digitWidth = measureDigitWidth(nextFont);
+      remeasure();
       provisional = !fontLoaded(nextFont);
-      relayout();
-      mark(true, true);
     },
 
     refreshFont() {
@@ -396,10 +418,7 @@ export function createSceneState(init: SceneInit): SceneState {
       provisional = false;
       emptyPretextCaches();
       fitter.reset();
-      observed.metrics = measureFont(state.font);
-      observed.digitWidth = measureDigitWidth(state.font);
-      relayout();
-      mark(true, true);
+      remeasure();
     },
 
     setVersion(version) {
@@ -455,16 +474,7 @@ export function createSceneState(init: SceneInit): SceneState {
     },
 
     setResize(resize) {
-      const held = state.resize;
-      if (
-        resize === held ||
-        (resize &&
-          held &&
-          resize.col === held.col &&
-          resize.width === held.width)
-      ) {
-        return;
-      }
+      if (sameResize(resize, state.resize)) return;
 
       observed.resize = resize;
       observed.offsets = drawnOffsets(state.columns, resize);
@@ -473,23 +483,10 @@ export function createSceneState(init: SceneInit): SceneState {
     },
 
     bindLayers(body, overlay) {
-      const beginBody = () => beginFrame(false);
-      const beginOverlay = () => beginFrame(true);
-      // A draw that ran out of measurements drew some texts whole under their
-      // column clip, so the next frame measures the rest and cuts them.
-      const finishBody = () => {
-        if (fitter.hasDeferred()) markDirty(body);
-      };
-      const finishOverlay = () => {
-        if (fitter.hasDeferred()) markDirty(overlay);
-      };
-
       layers.body = body;
       layers.overlay = overlay;
-      body.on('beforeDraw.grid', beginBody);
-      body.on('draw.grid', finishBody);
-      overlay.on('beforeDraw.grid', beginOverlay);
-      overlay.on('draw.grid', finishOverlay);
+      bindFrame(body, false);
+      bindFrame(overlay, true);
 
       return () => {
         body.off('beforeDraw.grid draw.grid');

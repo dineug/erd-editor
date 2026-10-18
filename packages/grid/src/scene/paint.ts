@@ -5,7 +5,6 @@ import type { Stage } from 'konva/lib/Stage';
 import type { HeaderSelection } from '@/model/selection';
 import { drawCells } from '@/scene/draw/cells';
 import { drawHeaders, type HeaderBlock } from '@/scene/draw/headers';
-import type { SceneRect } from '@/scene/layout';
 import type { SceneState } from '@/scene/state';
 
 /** What konva calls with a layer's context on each draw of the layer. */
@@ -32,7 +31,7 @@ function sceneOf(shape: Shape): SceneState | undefined {
   return stage ? scenes.get(stage) : undefined;
 }
 
-function paintCells(context: Context, shape: Shape, frozen: boolean) {
+function paintCells(context: Context, shape: Shape, frozen: boolean): void {
   const scene = sceneOf(shape);
   if (!scene) return;
 
@@ -73,20 +72,11 @@ type HeaderRegion = 'corner' | 'column' | 'frozen' | 'row';
 /** The header block of one region, in the region's own coordinates. */
 function headerBlock(scene: SceneState, region: HeaderRegion): HeaderBlock {
   const { state, frame } = scene;
-  const { layout, offsets } = state;
+  const { layout } = state;
   const { range } = frame;
-  const rects: Record<HeaderRegion, SceneRect> = {
-    corner: layout.corner,
-    column: layout.columnHeader,
-    frozen: layout.frozenHeader,
-    row: layout.rowHeader,
-  };
-  const { width, height } = rects[region];
   const shared = {
-    width,
-    height,
     rowHeight: state.rowHeight,
-    offsets,
+    offsets: state.offsets,
     columns: state.columns,
   };
 
@@ -94,6 +84,8 @@ function headerBlock(scene: SceneState, region: HeaderRegion): HeaderBlock {
     case 'corner':
       return {
         ...shared,
+        width: layout.corner.width,
+        height: layout.corner.height,
         axis: 'column',
         origin: 0,
         start: 0,
@@ -104,6 +96,8 @@ function headerBlock(scene: SceneState, region: HeaderRegion): HeaderBlock {
     case 'column':
       return {
         ...shared,
+        width: layout.columnHeader.width,
+        height: layout.columnHeader.height,
         axis: 'column',
         origin: layout.scrollOrigin + state.scrollLeft,
         start: range.colStart,
@@ -114,6 +108,8 @@ function headerBlock(scene: SceneState, region: HeaderRegion): HeaderBlock {
     case 'frozen':
       return {
         ...shared,
+        width: layout.frozenHeader.width,
+        height: layout.frozenHeader.height,
         axis: 'column',
         origin: 0,
         start: 0,
@@ -124,6 +120,8 @@ function headerBlock(scene: SceneState, region: HeaderRegion): HeaderBlock {
     case 'row':
       return {
         ...shared,
+        width: layout.rowHeader.width,
+        height: layout.rowHeader.height,
         axis: 'row',
         origin: state.scrollTop,
         start: range.rowStart,
@@ -139,16 +137,13 @@ function paintHeaders(
   shape: Shape,
   region: HeaderRegion,
   highlight: boolean
-) {
+): void {
   const scene = sceneOf(shape);
   if (!scene) return;
 
   const { state, frame } = scene;
-  const selection: HeaderSelection | undefined = highlight
-    ? region === 'row'
-      ? frame.rows
-      : frame.columns
-    : undefined;
+  let selection: HeaderSelection | undefined;
+  if (highlight) selection = region === 'row' ? frame.rows : frame.columns;
 
   drawHeaders(
     context._context,

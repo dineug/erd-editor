@@ -24,8 +24,12 @@ export interface TextPaint {
  * on a whole pixel. Without metrics, as in a realm with no canvas, it is the
  * row's middle.
  */
-export const baselineOffset = (rowHeight: number, metrics: FontMetrics) =>
-  Math.round((rowHeight + metrics.ascent - metrics.descent) / 2);
+export function baselineOffset(
+  rowHeight: number,
+  metrics: FontMetrics
+): number {
+  return Math.round((rowHeight + metrics.ascent - metrics.descent) / 2);
+}
 
 /** Restricts what follows to a rectangle, until the matching restore. */
 export function clipTo(

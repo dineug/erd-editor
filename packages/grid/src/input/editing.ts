@@ -264,6 +264,8 @@ export function createEditingInput(host: EditingHost): EditingInput {
   /** The roots a press passes through on its way to the grid, each with the capture listener it holds while an edit is open. */
   const pressRoots: Array<{ root: Node; listener: (event: Event) => void }> =
     [];
+  /** The blur the slot is dispatching, kept to read where the focus is going while it lasts. */
+  let slotBlur: FocusEvent | null = null;
 
   /** Empties the textarea, which an IME composition keeps until it ends, when compositionend empties it. */
   const clearText = () => {
@@ -277,11 +279,15 @@ export function createEditingInput(host: EditingHost): EditingInput {
     getCellStyle: scene.state.getCellStyle,
   });
 
+  /** Whether an edit is open in the grid's own editor, the focus textarea. */
+  const ownEditorOpen = () => edit.status === 'editing' && !edit.custom;
+
+  /** Whether an edit is open in a column's own editor, in the slot. */
+  const customEditorOpen = () => edit.status === 'editing' && edit.custom;
+
   /** The draft of the grid's own editor, which only the textarea's input writes during an edit. */
   const syncDraft = () => {
-    if (edit.status === 'editing' && !edit.custom) {
-      edit = inputDraft(edit, host.textarea.value);
-    }
+    if (ownEditorOpen()) edit = inputDraft(edit, host.textarea.value);
   };
 
   /** Whether the focus lies in the slot, read in the root the grid is mounted in. */
@@ -291,9 +297,6 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     return Boolean(active && host.slot.contains(active));
   };
-
-  /** The blur the slot is dispatching, kept to read where the focus is going while it lasts. */
-  let slotBlur: FocusEvent | null = null;
 
   /**
    * Puts the focus back in the textarea where a closing editor held it or let
@@ -316,14 +319,19 @@ export function createEditingInput(host: EditingHost): EditingInput {
     }
   };
 
-  const finish = ({ change }: CommitOutcome) => {
-    const custom = edit.status === 'editing' && edit.custom;
-
+  /** Drops the open edit and the press listeners, so its context and its pending callbacks answer for nothing. */
+  const dropEdit = () => {
     edit = EDIT_IDLE;
     generation++;
     listeners = [];
+    unwatchPresses();
+  };
+
+  const finish = ({ change }: CommitOutcome) => {
+    const custom = customEditorOpen();
+
+    dropEdit();
     view.open = null;
-    watchPresses(false);
     clearText();
     if (custom) reclaimFocus();
     if (change) host.commit({ changes: [change], source: 'edit' });
@@ -364,30 +372,33 @@ export function createEditingInput(host: EditingHost): EditingInput {
    * selects: on the textarea's own root, which sees the whole path, and on
    * each root around it, which reads a press past the host it holds.
    */
-  function watchPresses(on: boolean) {
-    if (on && pressRoots.length === 0) {
-      let root: Node = host.textarea.getRootNode();
-      let inner: Element | null = null;
+  function watchPresses() {
+    if (pressRoots.length > 0) return;
 
-      for (;;) {
-        const within = inner;
-        // A listener outside a closed shadow root sees none of its nodes on
-        // the path, so it reads only whether the press reached the host.
-        const listener = (event: Event) => {
-          if (!within) onPress(event as PointerEvent);
-          else if (!event.composedPath().includes(within)) close('outside');
-        };
-        root.addEventListener('pointerdown', listener, true);
-        pressRoots.push({ root, listener });
+    let root: Node = host.textarea.getRootNode();
+    let inner: Element | null = null;
 
-        if (!isShadowRoot(root)) break;
-        inner = root.host;
-        root = inner.getRootNode();
-      }
-    } else if (!on) {
-      for (const { root, listener } of pressRoots.splice(0)) {
-        root.removeEventListener('pointerdown', listener, true);
-      }
+    for (;;) {
+      const within = inner;
+      // A listener outside a closed shadow root sees none of its nodes on
+      // the path, so it reads only whether the press reached the host.
+      const listener = (event: Event) => {
+        if (!within) onPress(event as PointerEvent);
+        else if (!event.composedPath().includes(within)) close('outside');
+      };
+      root.addEventListener('pointerdown', listener, true);
+      pressRoots.push({ root, listener });
+
+      if (!isShadowRoot(root)) break;
+      inner = root.host;
+      root = inner.getRootNode();
+    }
+  }
+
+  /** Removes every listener watchPresses added, once the edit has ended. */
+  function unwatchPresses() {
+    for (const { root, listener } of pressRoots.splice(0)) {
+      root.removeEventListener('pointerdown', listener, true);
     }
   }
 
@@ -466,7 +477,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
     // undo history, and every other trigger writes the value as a script.
     undoFloor = trigger.kind === 'type' ? '' : next.initialValue;
     redos = 0;
-    watchPresses(true);
+    watchPresses();
     // An edit opens on a cell the user can see whole, wherever a scroll left
     // it; one that leaves the view once open stays open and hidden.
     host.reveal(cell);
@@ -477,6 +488,9 @@ export function createEditingInput(host: EditingHost): EditingInput {
     }
     return true;
   };
+
+  /** Whether typing or a composition may open an edit with a text: it holds something, all on one line. */
+  const isTypedLine = (text: string) => text !== '' && !LINE_BREAK.test(text);
 
   /** A text as the grid's own editor holds it: the breaks at its end dropped and each other tab or line break a space. */
   const oneLine = (text: string) =>
@@ -578,7 +592,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     editing: () => edit.status === 'editing',
 
-    holdsFocus: () => edit.status === 'editing' && edit.custom && focusInSlot(),
+    holdsFocus: () => customEditorOpen() && focusInSlot(),
 
     act(action, key) {
       switch (action.type) {
@@ -593,7 +607,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
         case 'commit':
           // A column's own editor commits itself; Enter or Tab in the
           // textarea beside it does nothing.
-          if (edit.status !== 'editing' || edit.custom) return;
+          if (!ownEditorOpen()) return;
 
           syncDraft();
           finish(commitEdit(edit));
@@ -610,7 +624,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     beforeinput(event) {
       const { inputType } = event;
-      const own = edit.status === 'editing' && !edit.custom;
+      const own = ownEditorOpen();
 
       // A modified Return in Safari, or a menu, asks for a line break that no
       // keydown the grid sees names; the editor holds one line, as the cell.
@@ -628,12 +642,13 @@ export function createEditingInput(host: EditingHost): EditingInput {
     },
 
     input(event) {
+      const { inputType, isComposing } = event as InputEvent;
+
       if (edit.status === 'editing') {
         if (edit.custom) {
           clearText();
           return;
         }
-        const { inputType } = event as InputEvent;
         if (inputType === 'insertFromDrop') dropLine();
         // An input of its own starts a new history step, past which no redo goes.
         if (!HISTORY.test(inputType)) redos = 0;
@@ -642,18 +657,17 @@ export function createEditingInput(host: EditingHost): EditingInput {
       }
       // A composition opened its edit as it started, or opens one or drops
       // its text as it ends.
-      if (composing || (event as InputEvent).isComposing) return;
+      if (composing || isComposing) return;
       // An undo no beforeinput reached, as a script's execCommand, brings back
       // another edit's text, which opens nothing.
-      if (HISTORY.test((event as InputEvent).inputType)) {
+      if (HISTORY.test(inputType)) {
         clearText();
         return;
       }
 
       const text = host.textarea.value;
       if (
-        text !== '' &&
-        !LINE_BREAK.test(text) &&
+        isTypedLine(text) &&
         open(host.selection().active, { kind: 'type', text })
       ) {
         return;
@@ -695,8 +709,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
         cell.row === active.row &&
         cell.col === active.col &&
         activeIsCustom() &&
-        text !== '' &&
-        !LINE_BREAK.test(text);
+        isTypedLine(text);
       deferred = null;
       clearText();
       if (opens) open(active, { kind: 'type', text });
@@ -704,7 +717,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     copy(event) {
       const data = event.clipboardData;
-      if (!data || (edit.status === 'editing' && !edit.custom)) return;
+      if (!data || ownEditorOpen()) return;
 
       event.preventDefault();
       const ranges = heldRanges();
@@ -735,14 +748,14 @@ export function createEditingInput(host: EditingHost): EditingInput {
     paste(event) {
       const data = event.clipboardData;
       if (!data) return;
-      if (edit.status === 'editing' && !edit.custom) {
+      if (ownEditorOpen()) {
         pasteLine(event, data.getData('text/plain'));
         return;
       }
 
       // Unprevented, the text would land in the textarea and open an edit.
       event.preventDefault();
-      if (edit.status === 'editing') return;
+      if (customEditorOpen()) return;
 
       const matrix = parse(data.getData('text/plain'));
       if (matrix.length === 0) return;
@@ -759,7 +772,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     blur() {
       const { textarea } = host;
-      if (edit.status !== 'editing' || edit.custom) return;
+      if (!ownEditorOpen()) return;
 
       // A window losing the focus leaves the textarea the active element, and
       // an unmount blurs it as it takes it out; neither ends the edit, so the
@@ -777,7 +790,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
       // WebKit sends the key that ends a composition after compositionend,
       // isComposing false and key code 229, which keyAction holds as well.
       if (event.isComposing || event.keyCode === 229) return;
-      if (edit.status !== 'editing' || !edit.custom) return;
+      if (!customEditorOpen()) return;
 
       event.preventDefault();
       close('escape');
@@ -788,10 +801,7 @@ export function createEditingInput(host: EditingHost): EditingInput {
     },
 
     dispose() {
-      watchPresses(false);
-      edit = EDIT_IDLE;
-      generation++;
-      listeners = [];
+      dropEdit();
     },
   };
 }

@@ -31,6 +31,9 @@ export interface FontMetrics {
  */
 export const ADVANCE_PROBES = ['W', '가', '漢', '😀'] as const;
 
+/** The probes as one text, which pretext meets to calibrate a font's emoji widths. */
+const PROBE_TEXT = ADVANCE_PROBES.join('');
+
 /**
  * Whether the faces a font names have loaded, so a canvas measures it in them
  * rather than in a fallback. One that names no web face counts as loaded, as
@@ -65,7 +68,7 @@ const calibrated = new Set<string>();
  * keeps that layout read out of a draw.
  */
 function calibrate(font: string): void {
-  prepare(ADVANCE_PROBES.join(''), font);
+  prepare(PROBE_TEXT, font);
   calibrated.add(font);
 }
 
@@ -75,7 +78,7 @@ function calibrate(font: string): void {
  * it outside any sceneFunc.
  */
 export function recalibrateFonts(): void {
-  for (const font of calibrated) prepare(ADVANCE_PROBES.join(''), font);
+  for (const font of calibrated) prepare(PROBE_TEXT, font);
 }
 
 /**

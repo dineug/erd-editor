@@ -44,6 +44,7 @@ export function drawHeaders(
   const { axis, width, height, origin, rowHeight, offsets, columns } = block;
   const { theme, fitter } = paint;
   const baseline = baselineOffset(rowHeight, paint.metrics);
+  const column = axis === 'column';
 
   /** The frozen border where an area painted just now meets the region's edge. */
   const edges = (x: number, y: number, w: number, h: number) => {
@@ -69,7 +70,6 @@ export function drawHeaders(
     const state = selection ? headerState(selection, index) : 'none';
     if (selection && state === 'none') continue;
 
-    const column = axis === 'column';
     const x = column ? offsets[index] - origin : 0;
     const y = column ? 0 : index * rowHeight - origin;
     const w = column ? offsets[index + 1] - offsets[index] : width;

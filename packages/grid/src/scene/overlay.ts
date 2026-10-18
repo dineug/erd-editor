@@ -1,5 +1,5 @@
 import type { CellRange, CellRef } from '@/model/types';
-import type { SceneLayout, SceneRect } from '@/scene/layout';
+import type { SceneLayout } from '@/scene/layout';
 
 /** The 1px edge every selected range draws. */
 export const RANGE_BORDER = 1;
@@ -64,7 +64,7 @@ export function regionView(
   scrollTop: number,
   scrollLeft: number
 ): RegionView {
-  const region: SceneRect = frozen ? layout.frozenBody : layout.body;
+  const region = frozen ? layout.frozenBody : layout.body;
   const left = frozen ? 0 : layout.scrollOrigin + scrollLeft;
 
   return {
@@ -98,6 +98,16 @@ function cellsRect(range: CellRange, geometry: OverlayGeometry): ContentRect {
     right: offsets[range.endCol + 1],
     bottom: (range.endRow + 1) * rowHeight,
   };
+}
+
+/** The content pixels one cell covers, as the range of that cell alone. */
+function cellRect(cell: CellRef, geometry: OverlayGeometry): ContentRect {
+  const { row, col } = cell;
+
+  return cellsRect(
+    { startRow: row, startCol: col, endRow: row, endCol: col },
+    geometry
+  );
 }
 
 const outOfView = (rect: ContentRect, view: RegionView) =>
@@ -207,10 +217,7 @@ export function fillBoxes(
     return [fillBox(rect, view), HIDDEN_BOX, HIDDEN_BOX, HIDDEN_BOX];
   }
 
-  const cell = cellsRect(
-    { startRow: row, startCol: col, endRow: row, endCol: col },
-    geometry
-  );
+  const cell = cellRect(active, geometry);
 
   return [
     fillBox({ ...rect, bottom: cell.top }, view),
@@ -245,10 +252,7 @@ export function activeBox(
     return HIDDEN_BOX;
   }
 
-  const cell = cellsRect(
-    { startRow: row, startCol: col, endRow: row, endCol: col },
-    geometry
-  );
+  const cell = cellRect(active, geometry);
   if (edgeOutOfView(cell, view)) return HIDDEN_BOX;
 
   // The line before a cell that starts the view is the region's edge, out of

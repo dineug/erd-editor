@@ -98,11 +98,11 @@ export function copyableRanges(ranges: readonly CellRange[]): CopyArea | null {
   const cols = ranges.map(colSpan);
 
   if (rows.every(span => sameSpan(span, rows[0]))) {
-    return { rows: [{ ...rows[0] }], cols: mergeSpans(cols) };
+    return { rows: [rows[0]], cols: mergeSpans(cols) };
   }
 
   if (cols.every(span => sameSpan(span, cols[0]))) {
-    return { rows: mergeSpans(rows), cols: [{ ...cols[0] }] };
+    return { rows: mergeSpans(rows), cols: [cols[0]] };
   }
 
   return null;

@@ -81,20 +81,21 @@ const clipGroup = (name: string, rect: SceneRect, children: unknown) => (
   </k-group>
 );
 
-/**
- * Resizes the stage once. Konva's Stage draws every layer as either axis's
- * change event fires, so with both axes new the width is written past its
- * setter and the height's event alone resizes, reading both.
- */
-function sizeStage(stage: Stage, size: { width: number; height: number }) {
-  if (size.height === stage.height()) {
-    stage.width(size.width);
-    return;
-  }
-
-  stage.attrs.width = size.width;
-  stage.height(size.height);
-}
+/** A header region's highlight, in the region's own coordinates. */
+const headerHighlight = (name: string, rect: SceneRect, sceneFunc: SceneFunc) =>
+  clipGroup(
+    `${name}-clip`,
+    rect,
+    <k-shape
+      name={name}
+      x={0}
+      y={0}
+      width={rect.width}
+      height={rect.height}
+      listening={false}
+      sceneFunc={sceneFunc}
+    />
+  );
 
 /** A scrollbar track or thumb, in stage coordinates. */
 const barRect = (
@@ -116,6 +117,21 @@ const barRect = (
     listening={false}
   />
 );
+
+/**
+ * Resizes the stage once. Konva's Stage draws every layer as either axis's
+ * change event fires, so with both axes new the width is written past its
+ * setter and the height's event alone resizes, reading both.
+ */
+function sizeStage(stage: Stage, size: { width: number; height: number }) {
+  if (size.height === stage.height()) {
+    stage.width(size.width);
+    return;
+  }
+
+  stage.attrs.width = size.width;
+  stage.height(size.height);
+}
 
 /**
  * The body layer, one self-painting shape per region, and the overlay of the
@@ -228,22 +244,6 @@ const GridScene: FC<GridSceneProps> = props => {
       );
     };
 
-    /** A header region's highlight, in the region's own coordinates. */
-    const highlight = (name: string, rect: SceneRect, sceneFunc: SceneFunc) =>
-      clipGroup(
-        `${name}-clip`,
-        rect,
-        <k-shape
-          name={name}
-          x={0}
-          y={0}
-          width={rect.width}
-          height={rect.height}
-          listening={false}
-          sceneFunc={sceneFunc}
-        />
-      );
-
     return (
       <>
         <k-layer name="grid-body" listening={false} use:ref={ref(bodyRef)}>
@@ -269,17 +269,21 @@ const GridScene: FC<GridSceneProps> = props => {
         >
           {clipGroup('grid-body-clip', layout.body, cellOverlay(false))}
           {clipGroup('grid-frozen-clip', layout.frozenBody, cellOverlay(true))}
-          {highlight(
+          {headerHighlight(
             'grid-column-highlight',
             layout.columnHeader,
             paintColumnHighlight
           )}
-          {highlight(
+          {headerHighlight(
             'grid-frozen-highlight',
             layout.frozenHeader,
             paintFrozenHighlight
           )}
-          {highlight('grid-row-highlight', layout.rowHeader, paintRowHighlight)}
+          {headerHighlight(
+            'grid-row-highlight',
+            layout.rowHeader,
+            paintRowHighlight
+          )}
           {barRect(
             'grid-vertical-track',
             bars.vertical.visible,

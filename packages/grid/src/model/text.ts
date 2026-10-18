@@ -189,8 +189,9 @@ export interface TextFitter {
  * context.fillText(fitter.fit(getCell(row, col), width - 16), x + 8, baseline);
  */
 export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
-  const caches = new Map<string, LruCache<Entry>>();
   let cache = new LruCache<Entry>(capacity);
+  /** The font the cache holds widths in, none until a frame binds one or once reset lets them go. */
+  let cacheFont: string | undefined;
   let font = '';
   let advance = 0;
   let ellipsisWidth = -1;
@@ -220,16 +221,10 @@ export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
       misses = 0;
       deferred = false;
       advance = maxAdvance;
+      if (nextFont === cacheFont) return;
 
-      const held = caches.get(nextFont);
-      if (held) {
-        cache = held;
-        return;
-      }
-
-      caches.clear();
       cache = new LruCache<Entry>(capacity);
-      caches.set(nextFont, cache);
+      cacheFont = nextFont;
       font = nextFont;
       ellipsisWidth = -1;
     },
@@ -286,7 +281,7 @@ export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
     },
 
     reset() {
-      caches.clear();
+      cacheFont = undefined;
       ellipsisWidth = -1;
     },
   };

@@ -55,6 +55,10 @@ const CORNER: GridHit = Object.freeze({ kind: 'corner' });
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
+/** A column's width, from its left offset to its right. */
+const columnWidth = (offsets: readonly number[], col: number) =>
+  offsets[col + 1] - offsets[col];
+
 /** The row under a stage y in the cell area, or -1 above it, below it or past the last row. */
 export function rowAtY(state: Readonly<SceneData>, y: number): number {
   const { layout } = state;
@@ -265,8 +269,12 @@ export function cellNear(
 }
 
 /** How far a point lies past a span, negative before it and positive after it. */
-const past = (value: number, start: number, end: number) =>
-  value < start ? value - start : value > end ? value - end : 0;
+function past(value: number, start: number, end: number): number {
+  if (value < start) return value - start;
+  if (value > end) return value - end;
+
+  return 0;
+}
 
 /** The DOM pixels an edge drag scrolls this frame, faster the farther past the edge. */
 export function autoScrollStep(distance: number): number {
@@ -309,14 +317,29 @@ export interface ScrollDelta {
   top: number;
 }
 
+/** The DOM pixels one unit of a wheel's delta stands for: deltaMode 1 counts lines, 2 pages, any other pixels. */
+function wheelUnit(
+  deltaMode: number,
+  lineHeight: number,
+  pageHeight: number
+): number {
+  switch (deltaMode) {
+    case 1:
+      return lineHeight;
+    case 2:
+      return pageHeight;
+    default:
+      return 1;
+  }
+}
+
 /** The scroll a wheel event asks for, in DOM pixels, a line counted as a row and a page as the view. */
 export function wheelScroll(
   event: Pick<WheelEvent, 'deltaX' | 'deltaY' | 'deltaMode' | 'shiftKey'>,
   lineHeight: number,
   pageHeight: number
 ): ScrollDelta {
-  const unit =
-    event.deltaMode === 1 ? lineHeight : event.deltaMode === 2 ? pageHeight : 1;
+  const unit = wheelUnit(event.deltaMode, lineHeight, pageHeight);
   // A plain mouse wheel under Shift scrolls across, as a native scroller does.
   const sideways = event.shiftKey && event.deltaX === 0;
 
@@ -329,21 +352,24 @@ export function wheelScroll(
 const scrollable = (overflow: string) =>
   overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay';
 
+/** Whether a scroll offset has room the way a delta asks: back while above 0, on while a whole pixel short of max. */
+const hasRoom = (offset: number, max: number, delta: number) =>
+  delta < 0 ? offset > 0 : delta > 0 && Math.ceil(offset) < max;
+
 /** Whether an element scrolls and can still move the way a scroll asks, by a whole pixel at least. */
 function canScroll(element: Element, { left, top }: ScrollDelta): boolean {
   const style = getComputedStyle(element);
-  const room = (offset: number, max: number, delta: number) =>
-    delta < 0 ? offset > 0 : delta > 0 && Math.ceil(offset) < max;
+
+  if (
+    scrollable(style.overflowY) &&
+    hasRoom(element.scrollTop, element.scrollHeight - element.clientHeight, top)
+  ) {
+    return true;
+  }
 
   return (
-    (scrollable(style.overflowY) &&
-      room(
-        element.scrollTop,
-        element.scrollHeight - element.clientHeight,
-        top
-      )) ||
-    (scrollable(style.overflowX) &&
-      room(element.scrollLeft, element.scrollWidth - element.clientWidth, left))
+    scrollable(style.overflowX) &&
+    hasRoom(element.scrollLeft, element.scrollWidth - element.clientWidth, left)
   );
 }
 
@@ -465,23 +491,26 @@ export function createPointerInput(host: PointerHost): PointerInput {
 
   /** Extends the selection to the point a select drag holds, the scroll offsets as they are now. */
   const extend = (held: SelectDrag) => {
-    const { state } = scene;
-    const selection = host.selection();
-
-    if (held.kind === 'cells') {
-      const cell = cellNear(state, held.point);
-      if (cell) host.select(dragTo(selection, cell));
-      return;
-    }
-
-    const cell = cellNear(state, held.point);
+    const cell = cellNear(scene.state, held.point);
     if (!cell) return;
 
-    host.select(
-      held.kind === 'columns'
-        ? clickColumnHeader(selection, cell.col, { shift: true }, bounds())
-        : clickRowHeader(selection, cell.row, { shift: true }, bounds())
-    );
+    const selection = host.selection();
+
+    switch (held.kind) {
+      case 'cells':
+        host.select(dragTo(selection, cell));
+        break;
+      case 'columns':
+        host.select(
+          clickColumnHeader(selection, cell.col, { shift: true }, bounds())
+        );
+        break;
+      case 'rows':
+        host.select(
+          clickRowHeader(selection, cell.row, { shift: true }, bounds())
+        );
+        break;
+    }
   };
 
   /** How far past the cell area a select drag's point is, on the axes its kind scrolls. */
@@ -610,7 +639,7 @@ export function createPointerInput(host: PointerHost): PointerInput {
           host.select(clickCorner(selection, mods, bounds()));
           return;
         case 'edge': {
-          const width = state.offsets[hit.col + 1] - state.offsets[hit.col];
+          const width = columnWidth(state.offsets, hit.col);
           drag = {
             kind: 'resize',
             pointerId,
@@ -705,7 +734,7 @@ export function createPointerInput(host: PointerHost): PointerInput {
 
       const { offsets } = scene.state;
       const width = fitWidth(scene, hit.col);
-      if (width !== offsets[hit.col + 1] - offsets[hit.col]) {
+      if (width !== columnWidth(offsets, hit.col)) {
         host.columnResized(hit.col, width);
       }
     },

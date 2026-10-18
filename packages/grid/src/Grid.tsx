@@ -364,7 +364,7 @@ export const Grid: FC<GridProps> = props => {
     selection: () => selection,
     onScrollbar,
     move: (key, mods) => navigate(key, mods),
-    select: next => changeSelection(next),
+    select: changeSelection,
     reveal: cell => reveal(cell),
     commit: event => props.onCommit?.(event),
     reject: event => props.onReject?.(event),
@@ -787,7 +787,7 @@ export const Grid: FC<GridProps> = props => {
       scrollContentTo,
       syncScroll: pullScroll,
       columnResized: (col, width) => props.onColumnResize?.(col, width),
-      cellDoubleClicked: cell => editing.doubleClick(cell),
+      cellDoubleClicked: editing.doubleClick,
     });
 
     ratio = scrollMapping(scene.state.layout.contentHeight).ratio;

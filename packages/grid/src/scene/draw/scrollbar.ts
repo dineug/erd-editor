@@ -10,8 +10,11 @@ export const MIN_THUMB_LENGTH = 24;
 /** The gap between a thumb and the long sides of its track. */
 export const THUMB_INSET = 2;
 
+/** How thick a thumb is across its track, the track less the inset each side. */
+const THUMB_THICKNESS = SCROLLBAR_SIZE - THUMB_INSET * 2;
+
 /** The thumb's rounding, half its thickness, so its ends are round. */
-export const THUMB_RADIUS = (SCROLLBAR_SIZE - THUMB_INSET * 2) / 2;
+export const THUMB_RADIUS = THUMB_THICKNESS / 2;
 
 /** One scrollbar: its track along the stage edge and the thumb inside it. */
 export interface ScrollbarAxis {
@@ -60,7 +63,6 @@ export function scrollbars(
   scrollLeft: number
 ): Scrollbars {
   const { width, height, body } = layout;
-  const thickness = SCROLLBAR_SIZE - THUMB_INSET * 2;
   let vertical = HIDDEN;
   let horizontal = HIDDEN;
 
@@ -74,7 +76,7 @@ export function scrollbars(
       thumb: {
         x: x + THUMB_INSET,
         y: body.y + thumb.start,
-        width: thickness,
+        width: THUMB_THICKNESS,
         height: thumb.length,
       },
     };
@@ -96,7 +98,7 @@ export function scrollbars(
         x: body.x + thumb.start,
         y: y + THUMB_INSET,
         width: thumb.length,
-        height: thickness,
+        height: THUMB_THICKNESS,
       },
     };
   }

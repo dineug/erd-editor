@@ -114,22 +114,22 @@ export function visibleRange(
   let rowEnd = -1;
 
   if (rowCount > 0 && height > 0 && rowHeight > 0) {
-    const first = Math.floor(top / rowHeight);
-    const last = Math.ceil((top + height) / rowHeight) - 1;
+    const firstRow = Math.floor(top / rowHeight);
+    const lastRow = Math.ceil((top + height) / rowHeight) - 1;
 
-    rowEnd = Math.min(rowCount - 1, last + overscan.rows);
-    rowStart = Math.min(rowEnd + 1, Math.max(0, first - overscan.rows));
+    rowEnd = Math.min(rowCount - 1, lastRow + overscan.rows);
+    rowStart = Math.min(rowEnd + 1, Math.max(0, firstRow - overscan.rows));
   }
 
   const frozenEnd = Math.min(frozen - 1, lastColumnBefore(offsets, width));
   const viewLeft = offsets[frozen] + left;
-  const first = frozen < count ? columnAt(offsets, viewLeft) : -1;
+  const firstColumn = frozen < count ? columnAt(offsets, viewLeft) : -1;
 
   let colStart = frozen;
   let colEnd = frozen - 1;
 
-  if (first >= 0 && width > offsets[frozen]) {
-    colStart = Math.max(frozen, first - overscan.cols);
+  if (firstColumn >= 0 && width > offsets[frozen]) {
+    colStart = Math.max(frozen, firstColumn - overscan.cols);
     colEnd = Math.min(
       count - 1,
       lastColumnBefore(offsets, left + width) + overscan.cols
