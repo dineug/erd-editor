@@ -390,6 +390,30 @@ function mergeSpans(spans: IndexSpan[]): IndexSpan[] {
 const holdsCell = (range: CellRange, bounds: GridBounds) =>
   range.startRow < bounds.rowCount && range.startCol < bounds.colCount;
 
+/**
+ * The ranges held to the grid's last row and column, any that holds none of
+ * its cells dropped, so a clear or a copy after the host took rows or columns
+ * away reaches only the cells the grid still has.
+ */
+export function rangesInGrid(
+  ranges: readonly CellRange[],
+  bounds: GridBounds
+): CellRange[] {
+  const held: CellRange[] = [];
+
+  for (const range of ranges) {
+    if (!holdsCell(range, bounds)) continue;
+
+    held.push({
+      ...range,
+      endRow: Math.min(range.endRow, bounds.rowCount - 1),
+      endCol: Math.min(range.endCol, bounds.colCount - 1),
+    });
+  }
+
+  return held;
+}
+
 /** The rows the row number header paints; a row is covered when a range spans every column. */
 export function selectedRows(
   sel: GridSelection,

@@ -9,6 +9,7 @@ import {
   headerState,
   isSelected,
   moveActive,
+  rangesInGrid,
   selectAll,
   selectCell,
   selectedColumns,
@@ -517,5 +518,26 @@ describe('what a header paints', () => {
     expect(selectedRows(sel, fewer).intersected).toEqual([
       { start: 1, end: 2 },
     ]);
+  });
+});
+
+describe('the ranges the grid still holds', () => {
+  it('cuts each range at the last row and column, and drops one past either', () => {
+    expect(
+      rangesInGrid(
+        [range(0, 0, 199, 9), range(50, 8, 120, 20), range(100, 0, 105, 2)],
+        { rowCount: 100, colCount: 9 }
+      )
+    ).toEqual([range(0, 0, 99, 8), range(50, 8, 99, 8)]);
+  });
+
+  it('keeps a range inside the grid as it is, and holds none on an empty grid', () => {
+    expect(rangesInGrid([range(1, 1, 2, 2)], BOUNDS)).toEqual([
+      range(1, 1, 2, 2),
+    ]);
+    expect(rangesInGrid([range(0, 0, 0, 0)], EMPTY)).toEqual([]);
+    expect(
+      rangesInGrid([range(0, 0, 0, 0)], { rowCount: 5, colCount: 0 })
+    ).toEqual([]);
   });
 });

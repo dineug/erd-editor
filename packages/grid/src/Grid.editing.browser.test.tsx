@@ -875,6 +875,31 @@ describe('Delete and Backspace', () => {
     expect(editorOpen(view)).toBe(false);
   });
 
+  it('clear only the cells the grid holds once its rows shrink under the selection, and none on an empty grid', async () => {
+    const view = await mount({ rowCount: 20 });
+    view.handle.select({
+      active: { row: 0, col: 0 },
+      ranges: [range(0, 0, 19, 29)],
+    });
+    view.props.rowCount = 10;
+    await drawn();
+
+    key(view, 'Delete');
+    const changes = lastCommit(view)?.changes ?? [];
+    expect(changes).toHaveLength(10 * COLUMNS.length);
+    expect(changes.every(each => each.row < 10)).toBe(true);
+
+    view.handle.select({ active: { row: 5, col: 1 }, ranges: [range(5, 1)] });
+    view.props.rowCount = 3;
+    await drawn();
+    key(view, 'Delete');
+    expect(view.onCommit).toHaveBeenCalledTimes(1);
+
+    const empty = await mount({ rowCount: 0 });
+    expect(key(empty, 'Delete').defaultPrevented).toBe(true);
+    expect(empty.onCommit).not.toHaveBeenCalled();
+  });
+
   it('delete text inside an open editor, as its own keys', async () => {
     const view = await mount();
     await editAt(view, 1, 1);
@@ -928,6 +953,34 @@ describe('the clipboard', () => {
     expect(refused.data.types).toEqual([]);
     expect(view.onReject).toHaveBeenCalledTimes(1);
     expect(view.onReject).toHaveBeenCalledWith({ reason: 'multi-range-copy' });
+  });
+
+  it('copies only the cells the grid holds once its rows or columns shrink under the selection', async () => {
+    const getCell = vi.fn(valueOf);
+    const view = await mount({ rowCount: 20, getCell });
+    view.handle.select({
+      active: { row: 0, col: 1 },
+      ranges: [range(0, 1, 19, 2)],
+    });
+    view.props.rowCount = 3;
+    await drawn();
+    getCell.mockClear();
+
+    expect(clipboardEvent(view, 'copy').data.getData('text/plain')).toBe(
+      '0:1\t0:2\n1:1\t1:2\n2:1\t2:2'
+    );
+    expect(getCell.mock.calls.every(([row]) => row < 3)).toBe(true);
+
+    view.handle.select({ active: { row: 2, col: 5 }, ranges: [range(2, 5)] });
+    view.props.columns = COLUMNS.slice(0, 3);
+    await drawn();
+    getCell.mockClear();
+    const { event, data } = clipboardEvent(view, 'copy');
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(data.types).toEqual([]);
+    expect(getCell).not.toHaveBeenCalled();
+    expect(view.onReject).not.toHaveBeenCalled();
   });
 
   it('copies nothing and throws nothing once the selection’s text outgrows the longest string', async () => {

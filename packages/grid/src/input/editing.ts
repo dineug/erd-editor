@@ -19,7 +19,7 @@ import {
   writableChanges,
 } from '@/model/editing';
 import type { KeyAction } from '@/model/keys';
-import type { SelectModifiers } from '@/model/selection';
+import { rangesInGrid, type SelectModifiers } from '@/model/selection';
 import { normalizeCellText } from '@/model/text';
 import {
   copyableRanges,
@@ -450,9 +450,16 @@ export function createEditingInput(host: EditingHost): EditingInput {
     syncDraft();
   };
 
+  /** The selected ranges held to the cells the grid has now, which fewer rows or columns may have left a selection past. */
+  const heldRanges = () =>
+    rangesInGrid(host.selection().ranges, {
+      rowCount: scene.state.rowCount,
+      colCount: host.columns().length,
+    });
+
   /** Empties every selected cell the host lets the grid write, as one commit. */
   const clear = () => {
-    const writes = fillTargets(host.selection().ranges, '');
+    const writes = fillTargets(heldRanges(), '');
     const { changes } = writableChanges(writes, source());
 
     if (changes.length > 0) host.commit({ changes, source: 'clear' });
@@ -553,7 +560,11 @@ export function createEditingInput(host: EditingHost): EditingInput {
       if (!data || (edit.status === 'editing' && !edit.custom)) return;
 
       event.preventDefault();
-      const area = copyableRanges(host.selection().ranges);
+      const ranges = heldRanges();
+      // No cell left to copy puts nothing on the clipboard, as a refused copy.
+      if (ranges.length === 0) return;
+
+      const area = copyableRanges(ranges);
       if (!area) {
         host.reject({ reason: 'multi-range-copy' });
         return;
