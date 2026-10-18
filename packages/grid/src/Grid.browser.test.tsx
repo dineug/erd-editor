@@ -329,6 +329,27 @@ describe('the pointer', () => {
     expect(view.onColumnResize).not.toHaveBeenCalled();
   });
 
+  it('ends a resize whose pointerup never came on the next press, its width going back unreported', async () => {
+    const view = await mount();
+    const edge = edgePoint(view, 1);
+    const width = spacerSize(view).width;
+
+    pointer(view, 'pointerdown', edge);
+    pointer(view, 'pointermove', { x: edge.x + 40, y: edge.y });
+    await drawn();
+    expect(spacerSize(view).width).toBe(width + 40);
+
+    press(view, cellPoint(view, 3, 3));
+    await drawn();
+    expect(spacerSize(view).width).toBe(width);
+    expect(lastSelection(view)?.active).toEqual({ row: 3, col: 3 });
+
+    view.props.columns = [...COLUMNS];
+    await drawn();
+    expect(spacerSize(view).width).toBe(width);
+    expect(view.onColumnResize).not.toHaveBeenCalled();
+  });
+
   it('keeps the focus textarea focused through a real press on the scroller', async () => {
     const view = await mount();
     view.textarea.focus();

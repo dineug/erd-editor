@@ -592,7 +592,9 @@ export function createPointerInput(host: PointerHost): PointerInput {
       const selection = host.selection();
       const { pointerId } = event;
 
-      stop();
+      // A drag still held here lost its pointerup, as to a native menu, so it
+      // ends as a cancelled one: a resize drops the width it drew.
+      cancel();
 
       switch (hit.kind) {
         case 'cell':
