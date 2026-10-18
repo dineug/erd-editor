@@ -1143,6 +1143,8 @@ describe('a column’s own editor', () => {
 
     const composing = key(view, 'Escape', { isComposing: true }, field);
     expect(composing.defaultPrevented).toBe(false);
+    const ending = key(view, 'Escape', { keyCode: 229 }, field);
+    expect(ending.defaultPrevented).toBe(false);
     expect(reasons).toEqual(['escape']);
 
     field.value = 'busy';
@@ -1243,6 +1245,38 @@ describe('a column’s own editor', () => {
     expect(view.scroller.scrollTop).toBeGreaterThan(0);
     expect(at(view.slot)).toEqual(cellBox(view, 5, 2));
     expect(shown(view.slot)).toBe(true);
+  });
+
+  it('leaves a wheel an element in the slot prevented to it, the rows staying put', async () => {
+    let turns = 0;
+    const editor = (ctx: EditorContext) => {
+      const spinner = document.createElement('div');
+      spinner.style.height = '24px';
+      spinner.style.background = 'white';
+      spinner.addEventListener(
+        'wheel',
+        event => {
+          event.preventDefault();
+          turns++;
+        },
+        { passive: false }
+      );
+      ctx.container.append(spinner);
+    };
+    const view = await mount({ columns: withEditor(2, editor) });
+    press(view, cellPoint(view, 5, 2));
+    view.textarea.focus();
+    key(view, 'Enter');
+    await nextFrame();
+
+    await userEvent.wheel(view.slot.firstElementChild as HTMLElement, {
+      delta: { y: 60 },
+    });
+    await drawn();
+
+    expect(turns).toBe(1);
+    expect(view.scroller.scrollTop).toBe(0);
+    expect(at(view.slot)).toEqual(cellBox(view, 5, 2));
   });
 
   it('hides the slot inside the cell area once its cell leaves the view', async () => {

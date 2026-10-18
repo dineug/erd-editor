@@ -582,9 +582,10 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
     slotKeydown(event) {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
-      if (event.isComposing || edit.status !== 'editing' || !edit.custom) {
-        return;
-      }
+      // WebKit sends the key that ends a composition after compositionend,
+      // isComposing false and key code 229, which keyAction holds as well.
+      if (event.isComposing || event.keyCode === 229) return;
+      if (edit.status !== 'editing' || !edit.custom) return;
 
       event.preventDefault();
       close('escape');

@@ -550,11 +550,11 @@ export const Grid: FC<GridProps> = props => {
   /**
    * A wheel over the textarea, or over the editor slot, which lie beside the
    * scroller rather than in it, so the scroll reaches it by hand. Ctrl with a
-   * wheel is a pinch zoom, left to the browser.
+   * wheel is a pinch zoom, left to the browser, and a prevented one scrolls nothing.
    */
   const forwardWheel = (event: WheelEvent) => {
     const scroller = scrollerRef.value;
-    if (!scroller || event.ctrlKey) return;
+    if (!scroller || event.ctrlKey || event.defaultPrevented) return;
 
     event.preventDefault();
     const { rowHeight, layout } = scene.state;
@@ -564,10 +564,10 @@ export const Grid: FC<GridProps> = props => {
   /** One tuple for every render, so the template never rebinds the listener; non-passive, to prevent the page's scroll. */
   const wheelListener = [forwardWheel, { passive: false }] as const;
 
-  /** A wheel over a column's own editor, which an element in it that can still scroll that way keeps. */
+  /** A wheel over a column's own editor, which an element in it that prevented it or can still scroll that way keeps. */
   const slotWheel = (event: WheelEvent) => {
     const slot = slotRef.value;
-    if (!slot || event.ctrlKey) return;
+    if (!slot || event.ctrlKey || event.defaultPrevented) return;
 
     const { rowHeight, layout } = scene.state;
     const delta = wheelScroll(event, rowHeight, layout.cellHeight);
