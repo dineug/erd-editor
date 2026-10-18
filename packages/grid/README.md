@@ -98,7 +98,7 @@ selected range. Copy writes the selection as tab-separated `text/plain`, several
 they share their rows or their columns (else `onReject({ reason: 'multi-range-copy' })`); paste
 reads `text/plain` into the cells from the active one, fills every range from a one-cell clipboard,
 keeps the rows past the last for the host to add, and drops the columns past the last with
-`onReject({ reason: 'paste-beyond-columns' })`. A read-only cell takes no edit, paste or clear. A
+`onReject({ reason: 'paste-beyond-columns' })`; a paste of several cells then selects them. A read-only cell takes no edit, paste or clear. A
 column's `editor(ctx)` opens in place of the textarea: the host renders into `ctx.container`, placed
 over the cell, with the cell's `rect`, the `mode` and the `initialValue` to start from, and answers
 with `ctx.commit(value)` or `ctx.cancel()`. `ctx.onClose` hands it `'escape'` or `'outside'` when

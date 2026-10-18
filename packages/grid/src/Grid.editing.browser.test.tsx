@@ -1113,6 +1113,35 @@ describe('the clipboard', () => {
     expect(view.textarea.value).toBe('');
   });
 
+  it('selects the block a paste of several cells wrote, once, and keeps the ranges a one-cell clipboard filled', async () => {
+    const view = await mount({ rowCount: 10 });
+    press(view, cellPoint(view, 1, 1));
+    const pressed = view.onSelectionChange.mock.calls.length;
+
+    paste(view, 'a\tb\tc\nd\te\n');
+    expect(view.onSelectionChange).toHaveBeenCalledTimes(pressed + 1);
+    expect(lastSelection(view)).toEqual({
+      active: { row: 1, col: 1 },
+      ranges: [range(1, 1, 2, 3)],
+    });
+    paste(view, 'f\tg\th\ni\tj');
+    expect(view.onSelectionChange).toHaveBeenCalledTimes(pressed + 1);
+
+    view.handle.select({ active: { row: 8, col: 28 }, ranges: [range(8, 28)] });
+    paste(view, '1\t2\t3\n4\t5\t6\n7\t8\t9');
+    expect(lastSelection(view)).toEqual({
+      active: { row: 8, col: 28 },
+      ranges: [range(8, 28, 10, 29)],
+    });
+
+    press(view, cellPoint(view, 1, 1));
+    press(view, cellPoint(view, 2, 2), { shiftKey: true });
+    const extended = view.onSelectionChange.mock.calls.length;
+    paste(view, 'x');
+    expect(view.onSelectionChange).toHaveBeenCalledTimes(extended);
+    expect(lastSelection(view)?.ranges).toEqual([range(1, 1, 2, 2)]);
+  });
+
   it('fills every range from a one-cell clipboard, readonly cells left out', async () => {
     const columns = COLUMNS.map((column, index) =>
       index === 2 ? { ...column, readonly: true } : column

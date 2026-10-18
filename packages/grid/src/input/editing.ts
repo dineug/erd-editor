@@ -19,7 +19,11 @@ import {
   writableChanges,
 } from '@/model/editing';
 import type { KeyAction } from '@/model/keys';
-import { rangesInGrid, type SelectModifiers } from '@/model/selection';
+import {
+  rangesInGrid,
+  selectionEquals,
+  type SelectModifiers,
+} from '@/model/selection';
 import { normalizeCellText } from '@/model/text';
 import {
   copyableRanges,
@@ -199,6 +203,8 @@ export interface EditingHost {
   onScrollbar(event: PointerEvent): boolean;
   /** Moves the selection as Enter or Tab does, once an edit they commit has ended. */
   move(key: 'Enter' | 'Tab', mods: SelectModifiers): void;
+  /** Takes a new selection the editing input made, which reaches the scene and the host once. */
+  select(selection: GridSelection): void;
   /** Scrolls the least distance that shows a cell whole, as a keyboard move does. */
   reveal(cell: CellRef): void;
   commit(event: CommitEvent): void;
@@ -532,6 +538,37 @@ export function createEditingInput(host: EditingHost): EditingInput {
     if (changes.length > 0) host.commit({ changes, source: 'clear' });
   };
 
+  /**
+   * Selects the block a paste of several cells wrote from the active cell, as
+   * a spreadsheet does, cut at the last column and past the last row for the
+   * host to add. A one-cell clipboard filled the ranges and keeps them.
+   */
+  const selectPasted = (
+    selection: GridSelection,
+    matrix: readonly (readonly string[])[]
+  ) => {
+    let width = 0;
+    for (const row of matrix) width = Math.max(width, row.length);
+    if (matrix.length === 1 && width === 1) return;
+
+    const { row, col } = selection.active;
+    const endCol = Math.min(col + width, host.columns().length) - 1;
+    if (endCol < col) return;
+
+    const next: GridSelection = {
+      active: { row, col },
+      ranges: [
+        {
+          startRow: row,
+          startCol: col,
+          endRow: row + matrix.length - 1,
+          endCol,
+        },
+      ],
+    };
+    if (!selectionEquals(selection, next)) host.select(next);
+  };
+
   /** Whether the column of the active cell brings its own editor. */
   const activeIsCustom = () =>
     typeof host.columns()[host.selection().active.col]?.editor === 'function';
@@ -710,12 +747,14 @@ export function createEditingInput(host: EditingHost): EditingInput {
       const matrix = parse(data.getData('text/plain'));
       if (matrix.length === 0) return;
 
+      const selection = host.selection();
       const { changes, beyondColumns } = writableChanges(
-        pasteTargets(host.selection(), matrix),
+        pasteTargets(selection, matrix),
         source()
       );
       if (changes.length > 0) host.commit({ changes, source: 'paste' });
       if (beyondColumns) host.reject({ reason: 'paste-beyond-columns' });
+      selectPasted(selection, matrix);
     },
 
     blur() {
