@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  areaCellCount,
+  CELL_LIMIT,
+  cellCount,
   copyableRanges,
   copyRows,
   fillTargets,
   parse,
+  pasteCellCount,
   pasteTargets,
   serialize,
 } from '@/model/tsv';
@@ -26,29 +30,30 @@ const selection = (
 const cellName = (row: number, col: number) => `r${row}c${col}`;
 
 describe('serialize', () => {
-  it('writes a tab between cells and a newline between rows, with none after the last', () => {
+  it('writes a tab between cells and a newline after every row, the last too', () => {
     expect(
       serialize([
         ['a', 'b'],
         ['c', 'd'],
       ])
-    ).toBe('a\tb\nc\td');
+    ).toBe('a\tb\nc\td\n');
   });
 
   it('keeps empty cells and rows as their separators alone', () => {
-    expect(serialize([['', ''], ['']])).toBe('\t\n');
+    expect(serialize([['', ''], ['']])).toBe('\t\n\n');
+    expect(serialize([['']])).toBe('\n');
     expect(serialize([])).toBe('');
   });
 
   it('turns a tab or a line break inside a value into a space, so the shape survives a paste', () => {
     const text = serialize([['one\ttwo', 'three\r\nfour'], ['five\nsix']]);
 
-    expect(text).toBe('one two\tthree  four\nfive six');
+    expect(text).toBe('one two\tthree  four\nfive six\n');
     expect(parse(text)).toEqual([['one two', 'three  four'], ['five six']]);
   });
 
   it('writes quotes as they are', () => {
-    expect(serialize([['"a"', "it's"]])).toBe('"a"\tit\'s');
+    expect(serialize([['"a"', "it's"]])).toBe('"a"\tit\'s\n');
   });
 });
 
@@ -64,9 +69,9 @@ describe('parse', () => {
     ]);
   });
 
-  it('drops every empty line at the end, as a spreadsheet writes one after its last row', () => {
+  it('drops the one newline after the last row, and keeps the empty rows before it', () => {
     expect(parse('a\tb\r\n')).toEqual([['a', 'b']]);
-    expect(parse('a\n\n\r\n')).toEqual([['a']]);
+    expect(parse('a\n\n\r\n')).toEqual([['a'], [''], ['']]);
   });
 
   it('keeps an empty line between rows, and a row of empty cells at the end', () => {
@@ -74,9 +79,10 @@ describe('parse', () => {
     expect(parse('a\n\t\n')).toEqual([['a'], ['', '']]);
   });
 
-  it('reads nothing out of empty text or of line breaks alone', () => {
+  it('reads nothing out of empty text, and an empty cell out of a newline alone', () => {
     expect(parse('')).toEqual([]);
-    expect(parse('\r\n\n')).toEqual([]);
+    expect(parse('\n')).toEqual([['']]);
+    expect(parse('\r\n\n')).toEqual([[''], ['']]);
   });
 
   it('reads quotes as text, so a quoted tab still ends its cell', () => {
@@ -195,6 +201,46 @@ describe('copyRows', () => {
     const rows = copyRows(copyableRanges([range(0, 0, 1, 1)])!, cellName);
 
     expect(parse(serialize(rows))).toEqual(rows);
+  });
+
+  it('round-trips one column whose last cells are empty, and one empty cell', () => {
+    const column = [['x'], ['y'], [''], ['']];
+
+    expect(parse(serialize(column))).toEqual(column);
+    expect(parse(serialize([['']]))).toEqual([['']]);
+  });
+});
+
+describe('cell counts', () => {
+  it('counts the cells ranges cover, one two ranges share once', () => {
+    expect(cellCount([])).toBe(0);
+    expect(cellCount([range(0, 0, 1, 2)])).toBe(6);
+    expect(cellCount([range(0, 0, 1, 1), range(1, 1, 2, 2)])).toBe(7);
+    expect(cellCount([range(0, 0, 3, 3), range(1, 1, 2, 2)])).toBe(16);
+    expect(cellCount([range(0, 0), range(0, 0)])).toBe(1);
+    expect(cellCount([range(0, 0, 0, 1), range(5, 3, 6, 3)])).toBe(4);
+  });
+
+  it('counts a whole million-row sheet without walking its cells', () => {
+    expect(cellCount([range(0, 0, 999_999, 29)])).toBe(30_000_000);
+  });
+
+  it('counts the cells a copy area reads', () => {
+    expect(areaCellCount({ rows: [], cols: [] })).toBe(0);
+    expect(
+      areaCellCount(copyableRanges([range(0, 0, 1, 1), range(0, 4, 1, 4)])!)
+    ).toBe(6);
+  });
+
+  it('counts the cells a paste writes, a one-cell clipboard filling its ranges', () => {
+    const sel = selection({ row: 0, col: 0 }, range(0, 0, 9, 9));
+
+    expect(pasteCellCount(sel, [['v']])).toBe(100);
+    expect(pasteCellCount(sel, [['a', 'b'], ['c']])).toBe(3);
+  });
+
+  it('holds a request to a million cells', () => {
+    expect(CELL_LIMIT).toBe(1_000_000);
   });
 });
 

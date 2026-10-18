@@ -26,10 +26,14 @@ import {
 } from '@/model/selection';
 import { normalizeCellText } from '@/model/text';
 import {
+  areaCellCount,
+  CELL_LIMIT,
+  cellCount,
   copyableRanges,
   copyRows,
   fillTargets,
   parse,
+  pasteCellCount,
   pasteTargets,
   serialize,
 } from '@/model/tsv';
@@ -72,9 +76,13 @@ export interface CommitEvent {
   source: 'edit' | 'paste' | 'clear';
 }
 
-/** A request the grid turned down: a copy over ranges that share no rows or columns, or a paste past the last column. */
+/**
+ * A request the grid turned down: a copy over ranges that share no rows or
+ * columns, a paste past the last column, or a copy, paste or clear of more
+ * cells than the grid handles at once, a million, which it does not start.
+ */
 export interface RejectEvent {
-  reason: 'multi-range-copy' | 'paste-beyond-columns';
+  reason: 'multi-range-copy' | 'paste-beyond-columns' | 'too-many-cells';
 }
 
 /** How far a box sits inside a rectangle on each side, or how much of it a clip hides. */
@@ -546,7 +554,13 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
   /** Empties every selected cell the host lets the grid write, as one commit. */
   const clear = () => {
-    const writes = fillTargets(heldRanges(), '');
+    const ranges = heldRanges();
+    if (cellCount(ranges) > CELL_LIMIT) {
+      host.reject({ reason: 'too-many-cells' });
+      return;
+    }
+
+    const writes = fillTargets(ranges, '');
     const { changes } = writableChanges(writes, source());
 
     if (changes.length > 0) host.commit({ changes, source: 'clear' });
@@ -729,6 +743,10 @@ export function createEditingInput(host: EditingHost): EditingInput {
         host.reject({ reason: 'multi-range-copy' });
         return;
       }
+      if (areaCellCount(area) > CELL_LIMIT) {
+        host.reject({ reason: 'too-many-cells' });
+        return;
+      }
 
       // The getter runs outside the catch, so an error of its own, a
       // RangeError included, reaches the host as it would from a draw.
@@ -761,6 +779,11 @@ export function createEditingInput(host: EditingHost): EditingInput {
       if (matrix.length === 0) return;
 
       const selection = host.selection();
+      if (pasteCellCount(selection, matrix) > CELL_LIMIT) {
+        host.reject({ reason: 'too-many-cells' });
+        return;
+      }
+
       const { changes, beyondColumns } = writableChanges(
         pasteTargets(selection, matrix),
         source()

@@ -94,11 +94,13 @@ editor over the cell, holding its value on one line as the cell draws it; typing
 cell replaces the value, an IME composition included. An edit scrolls its cell into view first. Enter and Tab commit and move down or right
 (Shift goes back), a press anywhere else or the focus leaving commits, and Escape cancels.
 Delete and Backspace clear every
-selected range. Copy writes the selection as tab-separated `text/plain`, several ranges only when
-they share their rows or their columns (else `onReject({ reason: 'multi-range-copy' })`); paste
-reads `text/plain` into the cells from the active one, fills every range from a one-cell clipboard,
-keeps the rows past the last for the host to add, and drops the columns past the last with
-`onReject({ reason: 'paste-beyond-columns' })`; a paste of several cells then selects them. A read-only cell takes no edit, paste or clear. A
+selected range. Copy writes the selection as tab-separated `text/plain`, each row ending in a
+newline, several ranges only when they share their rows or their columns (else
+`onReject({ reason: 'multi-range-copy' })`); paste reads `text/plain` into the cells from the
+active one, fills every range from a one-cell clipboard, keeps the rows past the last for the host
+to add, and drops the columns past the last with `onReject({ reason: 'paste-beyond-columns' })`; a
+paste of several cells then selects them. A copy, paste or clear of more than a million cells does
+nothing and reports `onReject({ reason: 'too-many-cells' })`. A read-only cell takes no edit, paste or clear. A
 column's `editor(ctx)` opens in place of the textarea: the host renders into `ctx.container`, placed
 over the cell, with the cell's `rect`, the `mode` and the `initialValue` to start from, and answers
 with `ctx.commit(value)` or `ctx.cancel()`. `ctx.onClose` hands it `'escape'` or `'outside'` when

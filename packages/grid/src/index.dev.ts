@@ -168,8 +168,8 @@ function valueAt(row: number, col: number): string {
 
 /**
  * The values onCommit wrote, one array per column indexed by row, which win
- * over the generated ones. A clear of every writable cell writes nearly thirty
- * million, past the 2^24 entries one Map holds; an array costs a pointer a row.
+ * over the generated ones. Clears of a million cells each add up to nearly
+ * thirty million, past the 2^24 entries one Map holds; an array costs a pointer a row.
  */
 const committed: Array<Array<string | undefined>> = Array.from(
   { length: COLUMN_COUNT },
@@ -472,6 +472,7 @@ const REJECTIONS: Record<RejectEvent['reason'], string> = {
   'multi-range-copy':
     'Copy turned down: the ranges share neither their rows nor their columns',
   'paste-beyond-columns': 'Paste: the columns past the last were dropped',
+  'too-many-cells': 'Turned down: more than a million cells at once',
 };
 
 const onReject = ({ reason }: RejectEvent) =>

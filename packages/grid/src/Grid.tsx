@@ -103,7 +103,7 @@ export interface GridProps {
   ariaLabel?: string;
   /** Every edit, paste or clear, one request per action; the grid writes no cell itself. */
   onCommit?(event: CommitEvent): void;
-  /** A copy or a paste the grid turned down, in whole or in part. */
+  /** A copy, a paste or a clear the grid turned down, in whole or in part. */
   onReject?(event: RejectEvent): void;
   onSelectionChange?(selection: GridSelection): void;
   /** A column resized by a drag, once it ends, or fit to its visible rows by a double click. */

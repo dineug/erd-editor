@@ -14,6 +14,7 @@ import {
   geometry,
   key,
   lastSelection,
+  MILLION,
   MOD,
   mount,
   mouse,
@@ -978,6 +979,27 @@ describe('Delete and Backspace', () => {
     expect(empty.onCommit).not.toHaveBeenCalled();
   });
 
+  it('refuse a clear of more than a million cells, and take one of a million however its ranges overlap', async () => {
+    const view = await mount({ rowCount: MILLION });
+    view.handle.select({
+      active: { row: 0, col: 0 },
+      ranges: [range(0, 0, MILLION - 1, 29)],
+    });
+
+    expect(key(view, 'Delete').defaultPrevented).toBe(true);
+    expect(view.onCommit).not.toHaveBeenCalled();
+    expect(view.onReject).toHaveBeenCalledTimes(1);
+    expect(view.onReject).toHaveBeenCalledWith({ reason: 'too-many-cells' });
+
+    view.handle.select({
+      active: { row: 0, col: 0 },
+      ranges: [range(0, 0, 99_999, 9), range(0, 0, 99_999, 9)],
+    });
+    key(view, 'Delete');
+    expect(lastCommit(view)?.changes).toHaveLength(1_000_000);
+    expect(view.onReject).toHaveBeenCalledTimes(1);
+  });
+
   it('delete text inside an open editor, as its own keys', async () => {
     const view = await mount();
     await editAt(view, 1, 1);
@@ -997,7 +1019,7 @@ describe('the clipboard', () => {
     const { event, data } = clipboardEvent(view, 'copy');
 
     expect(event.defaultPrevented).toBe(true);
-    expect(data.getData('text/plain')).toBe('1:1\t1:2\t1:3\n2:1\t2:2\t2:3');
+    expect(data.getData('text/plain')).toBe('1:1\t1:2\t1:3\n2:1\t2:2\t2:3\n');
     expect(view.onReject).not.toHaveBeenCalled();
   });
 
@@ -1010,7 +1032,7 @@ describe('the clipboard', () => {
     pointer(view, 'pointermove', cellPoint(view, 2, 4), MOD);
     pointer(view, 'pointerup', cellPoint(view, 2, 4), MOD);
     expect(clipboardEvent(view, 'copy').data.getData('text/plain')).toBe(
-      '1:1\t1:3\t1:4\n2:1\t2:3\t2:4'
+      '1:1\t1:3\t1:4\n2:1\t2:3\t2:4\n'
     );
 
     view.handle.select({
@@ -1018,7 +1040,7 @@ describe('the clipboard', () => {
       ranges: [range(1, 1, 1, 2), range(4, 1, 5, 2)],
     });
     expect(clipboardEvent(view, 'copy').data.getData('text/plain')).toBe(
-      '1:1\t1:2\n4:1\t4:2\n5:1\t5:2'
+      '1:1\t1:2\n4:1\t4:2\n5:1\t5:2\n'
     );
 
     view.handle.select({
@@ -1045,7 +1067,7 @@ describe('the clipboard', () => {
     getCell.mockClear();
 
     expect(clipboardEvent(view, 'copy').data.getData('text/plain')).toBe(
-      '0:1\t0:2\n1:1\t1:2\n2:1\t2:2'
+      '0:1\t0:2\n1:1\t1:2\n2:1\t2:2\n'
     );
     expect(getCell.mock.calls.every(([row]) => row < 3)).toBe(true);
 
@@ -1085,6 +1107,24 @@ describe('the clipboard', () => {
     expect(view.onReject).not.toHaveBeenCalled();
   });
 
+  it('refuses a copy of more than a million cells before it reads one', async () => {
+    const getCell = vi.fn(valueOf);
+    const view = await mount({ rowCount: MILLION, getCell });
+    view.handle.select({
+      active: { row: 0, col: 0 },
+      ranges: [range(0, 0, MILLION - 1, 29)],
+    });
+    await drawn();
+    getCell.mockClear();
+
+    const { event, data } = clipboardEvent(view, 'copy');
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(data.types).toEqual([]);
+    expect(getCell).not.toHaveBeenCalled();
+    expect(view.onReject).toHaveBeenCalledWith({ reason: 'too-many-cells' });
+  });
+
   it('hands on a RangeError the host’s getter throws as it copies, as any other of its errors', async () => {
     const thrown = new RangeError('Invalid time value');
     const view = await mount({
@@ -1106,6 +1146,25 @@ describe('the clipboard', () => {
 
     expect(errors).toEqual([thrown]);
     expect(data.types).toEqual([]);
+  });
+
+  it('refuses a paste of more than a million cells, filled or written, and selects nothing', async () => {
+    const view = await mount({ rowCount: MILLION });
+    view.handle.select({
+      active: { row: 0, col: 0 },
+      ranges: [range(0, 0, MILLION - 1, 29)],
+    });
+
+    expect(paste(view, 'v').defaultPrevented).toBe(true);
+    const row = Array.from({ length: 30 }, () => 'a').join('\t');
+    paste(view, Array.from({ length: 33_334 }, () => row).join('\n'));
+
+    expect(view.onCommit).not.toHaveBeenCalled();
+    expect(view.onReject.mock.calls).toEqual([
+      [{ reason: 'too-many-cells' }],
+      [{ reason: 'too-many-cells' }],
+    ]);
+    expect(view.onSelectionChange).not.toHaveBeenCalled();
   });
 
   it('pastes from the active cell as one commit, past the last row, dropping columns past the last', async () => {
@@ -1605,7 +1664,7 @@ describe('a column’s own editor', () => {
     expect(paste(view, 'x').defaultPrevented).toBe(true);
     const { event, data } = clipboardEvent(view, 'copy');
     expect(event.defaultPrevented).toBe(true);
-    expect(data.getData('text/plain')).toBe(valueOf(1, 2));
+    expect(data.getData('text/plain')).toBe(`${valueOf(1, 2)}\n`);
 
     expect(view.onCommit).not.toHaveBeenCalled();
     expect(view.textarea.value).toBe('');
