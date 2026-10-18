@@ -276,6 +276,58 @@ describe('the pointer', () => {
     expect(document.activeElement).not.toBe(view.textarea);
   });
 
+  it('takes Ctrl with the main button on an Apple platform as the right click it is there', async () => {
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
+    const menu = vi.fn<(event: CellContextMenuEvent) => void>();
+    const view = await mount({ onCellContextMenu: menu });
+    press(view, cellPoint(view, 1, 1));
+    press(view, cellPoint(view, 3, 3), { shiftKey: true });
+    press(view, cellPoint(view, 6, 5), { metaKey: true });
+    expect(lastSelection(view)?.ranges).toEqual([
+      range(1, 1, 3, 3),
+      range(6, 5),
+    ]);
+    view.onSelectionChange.mockClear();
+
+    // Blink sends a Mac's Ctrl+click as a press of the main button, then a
+    // contextmenu, and the button may move before it comes up.
+    const inside = cellPoint(view, 2, 2);
+    const held = { ctrlKey: true };
+    pointer(view, 'pointerdown', inside, held);
+    mouse(view, 'mousedown', inside, held);
+    mouse(view, 'contextmenu', inside, held);
+    pointer(view, 'pointermove', cellPoint(view, 8, 6), held);
+    pointer(view, 'pointerup', cellPoint(view, 8, 6), held);
+
+    expect(view.onSelectionChange).not.toHaveBeenCalled();
+    expect(menu).toHaveBeenCalledTimes(1);
+    expect(menu.mock.calls[0][0]).toMatchObject({ row: 2, col: 2 });
+  });
+
+  it('ends a drag once a move finds its button up, as when no pointerup reached the scroller', async () => {
+    const view = await mount();
+    pointer(view, 'pointerdown', cellPoint(view, 1, 1));
+    pointer(view, 'pointermove', cellPoint(view, 3, 3));
+    expect(lastSelection(view)?.ranges).toEqual([range(1, 1, 3, 3)]);
+
+    pointer(view, 'pointermove', cellPoint(view, 5, 5), { buttons: 0 });
+    pointer(view, 'pointermove', cellPoint(view, 6, 6));
+    expect(lastSelection(view)?.ranges).toEqual([range(1, 1, 3, 3)]);
+
+    const edge = edgePoint(view, 1);
+    const width = spacerSize(view).width;
+    pointer(view, 'pointerdown', edge);
+    pointer(view, 'pointermove', { x: edge.x + 30, y: edge.y });
+    await drawn();
+    expect(spacerSize(view).width).toBe(width + 30);
+
+    pointer(view, 'pointermove', { x: edge.x + 60, y: edge.y }, { buttons: 0 });
+    pointer(view, 'pointerup', { x: edge.x + 60, y: edge.y });
+    await drawn();
+    expect(spacerSize(view).width).toBe(width);
+    expect(view.onColumnResize).not.toHaveBeenCalled();
+  });
+
   it('keeps the focus textarea focused through a real press on the scroller', async () => {
     const view = await mount();
     view.textarea.focus();

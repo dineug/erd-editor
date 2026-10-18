@@ -528,6 +528,13 @@ export function createPointerInput(host: PointerHost): PointerInput {
     drag = null;
   };
 
+  /** Ends a drag without its result, so a resize goes back to the column's width. */
+  const cancel = () => {
+    const ended = drag;
+    stop();
+    if (ended?.kind === 'resize') scene.setResize(null);
+  };
+
   /** A press on a track pages the content one view toward the press. */
   const pageTrack = (axis: ScrollAxis, direction: -1 | 1) => {
     const { layout, scrollTop, scrollLeft } = scene.state;
@@ -574,6 +581,9 @@ export function createPointerInput(host: PointerHost): PointerInput {
 
     pointerdown(event) {
       if (event.pointerType === 'touch' || event.button !== 0) return;
+      // An Apple platform makes Ctrl with the main button a right click, and
+      // its contextmenu follows, so the press selects and drags nothing.
+      if (apple && event.ctrlKey) return;
 
       const point = pointOf(event);
       const { state } = scene;
@@ -645,6 +655,12 @@ export function createPointerInput(host: PointerHost): PointerInput {
       }
 
       if (event.pointerId !== drag.pointerId) return;
+      // The button went up where no pointerup reached the scroller, as when a
+      // native menu took it, so the drag ends as a cancelled one does.
+      if ((event.buttons & 1) === 0) {
+        cancel();
+        return;
+      }
 
       switch (drag.kind) {
         case 'resize':
@@ -678,11 +694,7 @@ export function createPointerInput(host: PointerHost): PointerInput {
     },
 
     pointercancel(event) {
-      if (!drag || event.pointerId !== drag.pointerId) return;
-
-      const ended = drag;
-      stop();
-      if (ended.kind === 'resize') scene.setResize(null);
+      if (drag && event.pointerId === drag.pointerId) cancel();
     },
 
     dblclick(event) {
