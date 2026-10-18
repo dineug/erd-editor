@@ -1007,6 +1007,29 @@ describe('the clipboard', () => {
     expect(view.onReject).not.toHaveBeenCalled();
   });
 
+  it('hands on a RangeError the host’s getter throws as it copies, as any other of its errors', async () => {
+    const thrown = new RangeError('Invalid time value');
+    const view = await mount({
+      getCell: (row, col) => {
+        if (row === 900) throw thrown;
+        return valueOf(row, col);
+      },
+    });
+    const errors: unknown[] = [];
+    const onError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener('error', onError);
+    teardowns.push(() => window.removeEventListener('error', onError));
+    view.handle.select({
+      active: { row: 900, col: 1 },
+      ranges: [range(900, 1)],
+    });
+
+    const { data } = clipboardEvent(view, 'copy');
+
+    expect(errors).toEqual([thrown]);
+    expect(data.types).toEqual([]);
+  });
+
   it('pastes from the active cell as one commit, past the last row, dropping columns past the last', async () => {
     const view = await mount({ rowCount: 10 });
 

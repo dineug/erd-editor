@@ -570,13 +570,15 @@ export function createEditingInput(host: EditingHost): EditingInput {
         return;
       }
 
+      // The getter runs outside the catch, so an error of its own, a
+      // RangeError included, reaches the host as it would from a draw.
+      const rows = copyRows(area, scene.state.getCell);
       let text: string;
       try {
-        text = serialize(copyRows(area, scene.state.getCell));
+        text = serialize(rows);
       } catch (error) {
-        // A selection whose text outgrows the longest string the engine
-        // holds copies nothing, as a refused copy puts nothing on the
-        // clipboard; any other error is the getter's own.
+        // A text that outgrows the longest string the engine holds copies
+        // nothing, as a refused copy puts nothing on the clipboard.
         if (error instanceof RangeError) return;
         throw error;
       }
