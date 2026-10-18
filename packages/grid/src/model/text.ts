@@ -39,6 +39,17 @@ export const SEGMENT_FACTOR = 16;
 let segmentsMeasured = 0;
 
 /**
+ * Empties pretext's caches and has it calibrate every measured font again, as
+ * a bound on them or a face that loaded after it measured asks. Call it
+ * outside any draw: the calibration reads the DOM.
+ */
+export function emptyPretextCaches(): void {
+  clearCache();
+  segmentsMeasured = 0;
+  recalibrateFonts();
+}
+
+/**
  * Spaces kept as they are, each one measured. pretext collapses runs of them
  * by default, and a canvas draws every one, so the measured width would fall
  * short of the drawn one.
@@ -164,6 +175,8 @@ export interface TextFitter {
    * Call it outside any draw; what this fitter's cache holds stays valid.
    */
   trim(): void;
+  /** Empties this fitter's cache, whose widths a face that loaded since then would draw otherwise. */
+  reset(): void;
 }
 
 /**
@@ -269,11 +282,12 @@ export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
     },
 
     trim() {
-      if (segmentsMeasured <= capacity * SEGMENT_FACTOR) return;
+      if (segmentsMeasured > capacity * SEGMENT_FACTOR) emptyPretextCaches();
+    },
 
-      clearCache();
-      segmentsMeasured = 0;
-      recalibrateFonts();
+    reset() {
+      caches.clear();
+      ellipsisWidth = -1;
     },
   };
 }

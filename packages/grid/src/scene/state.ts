@@ -2,7 +2,12 @@ import { observable } from '@dineug/r-html';
 import { markDirty, requestFlush } from '@dineug/r-html-konva';
 import type { Layer } from 'konva/lib/Layer';
 
-import { DEFAULT_FONT, type FontMetrics, measureFont } from '@/font';
+import {
+  DEFAULT_FONT,
+  fontLoaded,
+  type FontMetrics,
+  measureFont,
+} from '@/font';
 import { columnOffsets } from '@/model/columns';
 import {
   type HeaderSelection,
@@ -10,7 +15,11 @@ import {
   selectedColumns,
   selectedRows,
 } from '@/model/selection';
-import { createTextFitter, type TextFitter } from '@/model/text';
+import {
+  createTextFitter,
+  emptyPretextCaches,
+  type TextFitter,
+} from '@/model/text';
 import type { ColumnDef, GridBounds, GridSelection } from '@/model/types';
 import {
   DEFAULT_OVERSCAN,
@@ -119,6 +128,12 @@ export interface SceneState {
   setRowHeight(rowHeight: number): void;
   setGetters(getCell: CellGetter, getCellStyle?: CellStyleGetter): void;
   setResize(resize: ColumnResize | null): void;
+  /**
+   * Measures the font again once the faces it names have loaded, where it was
+   * measured in a fallback's, and draws in what it measured. A grid calls it
+   * as the document's fonts finish loading; it does nothing otherwise.
+   */
+  refreshFont(): void;
   /** Hands the scene its layers and returns the unbinding; GridScene calls it at mount. */
   bindLayers(body: Layer, overlay: Layer): () => void;
   /** The size a commit still owes the stage, cleared by the read. */
@@ -153,7 +168,8 @@ function measureDigitWidth(font: string): number {
     width = Math.max(width, context.measureText(digit).width);
   }
 
-  digitWidths.set(font, width);
+  // A fallback face measured until the font's own loads is not kept.
+  if (fontLoaded(font)) digitWidths.set(font, width);
   return width;
 }
 
@@ -251,6 +267,8 @@ export function createSceneState(init: SceneInit): SceneState {
     columns: NO_HEADERS,
   };
   let pendingSize: { width: number; height: number } | null = null;
+  /** Whether the font was measured before its faces loaded, in a fallback's metrics. */
+  let provisional = !fontLoaded(font);
   let themeSource = init.theme ?? lightTheme;
   let selectionSource = init.selection ?? state.selection;
 
@@ -365,6 +383,21 @@ export function createSceneState(init: SceneInit): SceneState {
       observed.font = nextFont;
       observed.metrics = measureFont(nextFont);
       observed.digitWidth = measureDigitWidth(nextFont);
+      provisional = !fontLoaded(nextFont);
+      relayout();
+      mark(true, true);
+    },
+
+    refreshFont() {
+      if (!provisional || !fontLoaded(state.font)) return;
+
+      // Every width measured meanwhile is the fallback's: pretext's and the
+      // fitter's caches go before the font is measured again in its own face.
+      provisional = false;
+      emptyPretextCaches();
+      fitter.reset();
+      observed.metrics = measureFont(state.font);
+      observed.digitWidth = measureDigitWidth(state.font);
       relayout();
       mark(true, true);
     },

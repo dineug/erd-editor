@@ -31,6 +31,22 @@ export interface FontMetrics {
  */
 export const ADVANCE_PROBES = ['W', '가', '漢', '😀'] as const;
 
+/**
+ * Whether the faces a font names have loaded, so a canvas measures it in them
+ * rather than in a fallback. One that names no web face counts as loaded, as
+ * does any font in a realm without a font set or one the set cannot parse.
+ */
+export function fontLoaded(font: string): boolean {
+  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+  if (!fonts) return true;
+
+  try {
+    return fonts.check(font);
+  } catch {
+    return true;
+  }
+}
+
 /** What a realm with no canvas answers, which no cache keeps, so a later call measures. */
 const NO_METRICS: FontMetrics = Object.freeze({
   ascent: 0,
@@ -63,9 +79,9 @@ export function recalibrateFonts(): void {
 }
 
 /**
- * The metrics of a font, measured on the first call for it and kept after.
- * Call it when the grid mounts or its font changes, outside any sceneFunc: it
- * also has pretext measure an emoji, which reads the DOM once per font.
+ * The metrics of a font, measured on the first call for it once its faces have
+ * loaded and kept after. Call it outside any sceneFunc: it also has pretext
+ * measure an emoji, which reads the DOM once per font.
  *
  * @example
  * const { ascent, descent, maxAdvance } = measureFont(DEFAULT_FONT);
@@ -96,7 +112,9 @@ export function measureFont(font: string): FontMetrics {
   calibrate(font);
 
   const result: FontMetrics = Object.freeze({ ascent, descent, maxAdvance });
-  measured.set(font, result);
+  // A fallback face stands in until the font's own load, so its metrics are
+  // answered but not kept, and the next call measures again.
+  if (fontLoaded(font)) measured.set(font, result);
 
   return result;
 }

@@ -798,6 +798,12 @@ export const Grid: FC<GridProps> = props => {
     });
     observer.observe(container);
 
+    // A web face the font names may load after the grid measured it in a
+    // fallback, and the scene measures it again once one does.
+    const fonts = container.ownerDocument.fonts as FontFaceSet | undefined;
+    const onFontsLoaded = () => scene.refreshFont();
+    fonts?.addEventListener('loadingdone', onFontsLoaded);
+
     // The stage goes first, its template torn down before it is destroyed, so
     // the scene's own unmount lets go of its layers and its flush listener.
     disposers.push(
@@ -806,6 +812,7 @@ export const Grid: FC<GridProps> = props => {
         stage.destroy();
       },
       () => observer.disconnect(),
+      () => fonts?.removeEventListener('loadingdone', onFontsLoaded),
       () => resolution?.removeEventListener('change', onResolution),
       () => cancelAnimationFrame(viewportFrame),
       () => pointer?.dispose(),

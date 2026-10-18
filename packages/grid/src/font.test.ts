@@ -129,6 +129,45 @@ describe('measureFont', () => {
     expect(Object.isFrozen(first)).toBe(true);
   });
 
+  it('keeps no metrics while the font’s faces have not loaded, and keeps them once they have', async () => {
+    const measures = stubCanvas(fontBox);
+    let loaded = false;
+    vi.stubGlobal('document', {
+      ...document,
+      fonts: { check: () => loaded },
+    });
+    const { fontLoaded, measureFont } = await freshFont();
+    const count = () => measures.filter(({ text }) => text === 'M').length;
+
+    expect(fontLoaded('14px serif')).toBe(false);
+    measureFont('14px serif');
+    measureFont('14px serif');
+    expect(count()).toBe(2);
+
+    loaded = true;
+    const first = measureFont('14px serif');
+    expect(measureFont('14px serif')).toBe(first);
+    expect(count()).toBe(3);
+  });
+
+  it('counts a font as loaded where the font set cannot read it or there is none', async () => {
+    stubCanvas(fontBox);
+    const { fontLoaded } = await freshFont();
+    expect(fontLoaded('14px serif')).toBe(true);
+
+    vi.stubGlobal('document', {
+      fonts: {
+        check: () => {
+          throw new SyntaxError('not a font');
+        },
+      },
+    });
+    expect(fontLoaded('not a font')).toBe(true);
+
+    vi.stubGlobal('document', undefined);
+    expect(fontLoaded('14px serif')).toBe(true);
+  });
+
   it('measures each font on its own', async () => {
     const measures = stubCanvas(text => ({
       ...fontBox(text),

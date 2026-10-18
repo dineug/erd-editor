@@ -208,6 +208,31 @@ describe('each setter marks the layers its field draws on', () => {
     expect(scene.state.selection).toBe(selection);
   });
 
+  it('both for a font measured before its faces loaded, once they load, and nothing otherwise', () => {
+    let loaded = false;
+    Object.defineProperty(document, 'fonts', {
+      configurable: true,
+      value: { check: () => loaded },
+    });
+    try {
+      const scene = create({ font: '14px "Late Face", serif' });
+      const { body, overlay } = bound(scene);
+
+      scene.refreshFont();
+      expect(marked(body.layer, overlay.layer)).toEqual([]);
+
+      loaded = true;
+      scene.refreshFont();
+      expect(marked(body.layer, overlay.layer)).toEqual(['body', 'overlay']);
+
+      gate.markDirty.mockClear();
+      scene.refreshFont();
+      expect(marked(body.layer, overlay.layer)).toEqual([]);
+    } finally {
+      Reflect.deleteProperty(document, 'fonts');
+    }
+  });
+
   it('nothing before layers are bound, and nothing after they are let go', () => {
     const scene = create();
 

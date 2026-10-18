@@ -1151,6 +1151,28 @@ describe('the scene it drives', () => {
     expect(view.textarea.style.font).not.toBe('20px serif');
   });
 
+  it('measures and draws its font again once faces it names load after the mount', async () => {
+    let loaded = false;
+    vi.spyOn(document.fonts, 'check').mockImplementation(() => loaded);
+    const getCell = vi.fn(valueOf);
+    const view = await mount({
+      getCell,
+      font: '13px "Grid Late Face", sans-serif',
+    });
+    const fontsLoaded = async () => {
+      getCell.mockClear();
+      document.fonts.dispatchEvent(new Event('loadingdone'));
+      await drawn();
+      return getCell.mock.calls.length;
+    };
+
+    expect(await fontsLoaded()).toBe(0);
+    loaded = true;
+    expect(await fontsLoaded()).toBeGreaterThan(0);
+    expect(await fontsLoaded()).toBe(0);
+    expect(view.textarea.style.font).toContain('Grid Late Face');
+  });
+
   it('keeps the row shown when a new row count rescales the scroll range', async () => {
     const view = await mount();
 
@@ -1267,6 +1289,7 @@ describe('an unmount', () => {
       queries.push(list);
       return list;
     });
+    const unwatchFonts = vi.spyOn(document.fonts, 'removeEventListener');
 
     const view = await mount();
     const { stage, host, stageHost } = view;
@@ -1284,6 +1307,10 @@ describe('an unmount', () => {
     expect(disconnect).toHaveBeenCalled();
     expect(queries[0].removeEventListener).toHaveBeenCalledWith(
       'change',
+      expect.any(Function)
+    );
+    expect(unwatchFonts).toHaveBeenCalledWith(
+      'loadingdone',
       expect.any(Function)
     );
 

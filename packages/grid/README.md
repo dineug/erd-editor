@@ -107,7 +107,8 @@ what it rendered. Every other key, Ctrl+Z among them, reaches the host; the text
 stays inside the open edit and does nothing while none is open.
 
 A theme is fifteen CSS colours, and a host maps its own onto them: `selectionFill` keeps an alpha
-channel so the cells show through, and the header highlights stay opaque. A column with no `width`
+channel so the cells show through, and the header highlights stay opaque. `font` is a CSS font
+shorthand, and a web face it names that loads after the grid mounts is measured again once it does. A column with no `width`
 takes 120px, and none draws under 24px. A cell's style hook may set its `background`, its text
 `color` and `readonly`, and the grid's own editor opened on the cell takes its colours.
 
