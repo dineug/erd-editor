@@ -233,8 +233,8 @@ export function createEditingInput(host: EditingHost): EditingInput {
   );
   let edit: EditState = EDIT_IDLE;
   let composing = false;
-  /** A composition began on a column with its own editor, which opens with the composed text once it ends. */
-  let deferred = false;
+  /** The cell a composition began on whose column has its own editor, which opens there with the composed text once it ends. */
+  let deferred: CellRef | null = null;
   let listeners: Array<(reason: CloseReason) => void> = [];
   /** Counts the edits that ended, so a custom editor's context answers for its own edit alone. */
   let generation = 0;
@@ -549,7 +549,8 @@ export function createEditingInput(host: EditingHost): EditingInput {
       // A column's own editor cannot take over a composition in the
       // textarea, so it opens with the composed text once it ends.
       if (activeIsCustom()) {
-        deferred = true;
+        const { row, col } = host.selection().active;
+        deferred = { row, col };
         return;
       }
 
@@ -564,11 +565,21 @@ export function createEditingInput(host: EditingHost): EditingInput {
         return;
       }
 
+      // The composed text goes to the cell it was typed on alone: once the
+      // active cell has moved, or its column lost its editor, it is dropped.
       const text = host.textarea.value;
-      const opens = deferred && text !== '' && !LINE_BREAK.test(text);
-      deferred = false;
+      const cell = deferred;
+      const { active } = host.selection();
+      const opens =
+        cell !== null &&
+        cell.row === active.row &&
+        cell.col === active.col &&
+        activeIsCustom() &&
+        text !== '' &&
+        !LINE_BREAK.test(text);
+      deferred = null;
       clearText();
-      if (opens) open(host.selection().active, { kind: 'type', text });
+      if (opens) open(active, { kind: 'type', text });
     },
 
     copy(event) {

@@ -835,6 +835,23 @@ describe('an IME composition', () => {
     });
     expect(view.textarea.value).toBe('');
   });
+
+  it('drops a composition held for a column’s own editor once the active cell moved before it ended', async () => {
+    const editor = vi.fn<(ctx: EditorContext) => void>();
+    const view = await mount({ columns: withEditor(2, editor) });
+    press(view, cellPoint(view, 1, 2));
+    view.textarea.focus();
+
+    await compose('한');
+    view.handle.select({ active: { row: 3, col: 3 }, ranges: [range(3, 3)] });
+    await finishComposition('한');
+
+    expect(editor).not.toHaveBeenCalled();
+    expect(editorOpen(view)).toBe(false);
+    expect(view.textarea.value).toBe('');
+    press(view, cellPoint(view, 5, 5));
+    expect(view.onCommit).not.toHaveBeenCalled();
+  });
 });
 
 describe('Delete and Backspace', () => {
