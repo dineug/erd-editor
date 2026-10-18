@@ -1,6 +1,6 @@
-// AC-L7 and AC-G16, and tsc is what runs them. This repository configures no
-// vitest typecheck project, so the assertions below are enforced by the
-// tsc --noEmit gate that fronts both the build and the test task.
+// The eight k-* tags, the keys each refuses and the attributes it takes, which
+// tsc checks: no vitest typecheck project is configured, so the tsc --noEmit
+// gate that fronts both the build and the test task enforces the assertions.
 
 import type { JSX } from '@dineug/r-html/jsx-runtime';
 import type { Context } from 'konva/lib/Context';

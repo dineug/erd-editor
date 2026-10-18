@@ -251,9 +251,9 @@ function link(parent: HostNode, slot: Slot, before: Slot | null) {
 }
 
 /**
- * The placement half of AC-G9. A fragment is exempt on purpose: every template
- * is assembled inside one before it is spliced into its real parent, so a layer
- * passes through a fragment on its way to the Stage.
+ * A Stage holds layers alone, a layer sits under nothing else, and a shape holds
+ * no children. A fragment is exempt: every template is assembled inside one
+ * before its splice, so a layer passes through a fragment on its way to the Stage.
  */
 function assertPlacement(parent: HostNode, node: HostNode) {
   if (!isKonva(node) || isFragmentNode(parent)) return;
@@ -374,7 +374,7 @@ function orderChildren(parent: Container, desired: KonvaNode[]) {
 }
 
 /**
- * Invariant I1 for one parent: the ledger owns membership, and the order of the
+ * Holds one parent to its ledger: the ledger owns membership, and the order of the
  * real nodes it holds is written back onto the konva children. Order that drifted
  * meanwhile, from a moveToTop or a remove behind the host's back, is restored here.
  */
@@ -451,9 +451,9 @@ function rootOf(node: HostNode): HostNode {
 }
 
 /**
- * The id half of the P0-2 convention, enforced where an id is written. Only a
- * node of the main canvas may carry one, so a minimap that borrowed an id could
- * not make an id scan over the live stages ambiguous.
+ * The id convention, enforced where an id is written. Only a node of the main
+ * canvas may carry one, so a minimap that borrowed an id could not make an id
+ * scan over the live stages ambiguous.
  */
 function assertIdConvention(node: KonvaNode, value: any) {
   if (!value) return;

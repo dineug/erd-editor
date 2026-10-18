@@ -31,8 +31,8 @@ type KonvaEventHandlers = {
 };
 
 /**
- * What every k-* tag carries. The never members are AC-L7 and the two rules it
- * leans on: the DOM sigils write through paths a Konva node has none of, and
+ * What every k-* tag carries. The never members keep out what a Konva node
+ * cannot take: the DOM sigils write through paths a Konva node has none of, and
  * z-order and dragging belong to the host and to the scene's own mouse streams.
  */
 interface KonvaBaseAttributes extends KonvaEventHandlers {
@@ -48,7 +48,7 @@ interface KonvaBaseAttributes extends KonvaEventHandlers {
   style?: never;
   zIndex?: never;
   children?: unknown;
-  /** The P0-2 convention: main canvas nodes only, and the minimap uses name. */
+  /** Main canvas nodes only: a minimap node is found by name plus tableId. */
   id?: string;
   /** What an ancestor walk reads in place of the DOM closest it replaces. */
   kind?: string;
@@ -66,7 +66,7 @@ interface KonvaBaseAttributes extends KonvaEventHandlers {
   sharedFocus?: string | null;
   /** The colour a collaborator's selection paints, null when nobody holds it. */
   sharedSelect?: string | null;
-  /** The minimap's half of P0-2, where an id would make an id scan ambiguous. */
+  /** What finds a minimap node beside its name, since an id there is refused. */
   tableId?: string;
   visible?: boolean;
   x?: number;
