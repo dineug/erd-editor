@@ -26,6 +26,8 @@ type KonvaEventName =
   | 'touchstart'
   | 'wheel';
 
+type KonvaDrawFunction = (context: Context, shape: Shape) => void;
+
 type KonvaEventHandlers = {
   [K in KonvaEventName as `on:${K}${DuplicateSuffix}`]?: EventHandler<any>;
 };
@@ -77,7 +79,7 @@ interface KonvaShapeAttributes extends KonvaBaseAttributes {
   dash?: number[];
   fill?: string;
   /** What the shape puts on the hit canvas in place of what it paints. */
-  hitFunc?: (context: Context, shape: Shape) => void;
+  hitFunc?: KonvaDrawFunction;
   hitStrokeWidth?: number;
   lineCap?: 'butt' | 'round' | 'square';
   lineJoin?: 'bevel' | 'miter' | 'round';
@@ -148,12 +150,12 @@ interface KonvaCircleAttributes extends KonvaShapeAttributes {
 interface KonvaCustomShapeAttributes extends KonvaBaseAttributes {
   height?: number;
   /** What goes on the hit canvas; konva falls back to sceneFunc without one. */
-  hitFunc?: (context: Context, shape: Shape) => void;
+  hitFunc?: KonvaDrawFunction;
   /**
    * Called on every draw of the layer. The host skips a write of the same
    * reference, so a function that reads changed state asks markDirty instead.
    */
-  sceneFunc?: (context: Context, shape: Shape) => void;
+  sceneFunc?: KonvaDrawFunction;
   width?: number;
 }
 

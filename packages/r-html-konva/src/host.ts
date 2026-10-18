@@ -204,7 +204,7 @@ function layerOf(node: HostNode): Layer | null {
 
 function markLayer(node: HostNode) {
   const layer = layerOf(node);
-  layer && markDirty(layer);
+  if (layer) markDirty(layer);
 }
 
 /**
@@ -349,12 +349,13 @@ function sameOrder(children: KonvaNode[], desired: KonvaNode[]) {
  * order of its canvas element inside the container.
  */
 function orderLayers(stage: Stage, desired: KonvaNode[]) {
-  desired.forEach((node, index) => {
-    if (stage.children[index] === node) return;
+  for (let index = 0; index < desired.length; index++) {
+    const node = desired[index];
+    if (stage.children[index] === node) continue;
 
     hostStats.setZIndex += 1;
     node.setZIndex(index);
-  });
+  }
 }
 
 /**
@@ -385,7 +386,7 @@ function reconcile(parent: HostNode) {
   const desired: KonvaNode[] = [];
   for (let slot = ledgerOf(parent).first; slot; slot = slot.next) {
     hostStats.scan += 1;
-    isKonva(slot.node) && desired.push(slot.node);
+    if (isKonva(slot.node)) desired.push(slot.node);
   }
 
   for (const node of desired) {
@@ -399,20 +400,22 @@ function reconcile(parent: HostNode) {
   hostStats.order += 1;
 
   if (parent instanceof Stage) {
-    dropped.forEach(node => node.remove());
+    for (const node of dropped) {
+      node.remove();
+    }
     orderLayers(parent, desired);
   } else {
-    dropped.forEach(node => {
+    for (const node of dropped) {
       node.parent = null;
       node.index = 0;
       node.remove();
-    });
+    }
     orderChildren(parent, desired);
   }
 
   for (const node of dropped) {
     hostStats.drop += 1;
-    slotOf(node).doomed && destroyNode(node);
+    if (slotOf(node).doomed) destroyNode(node);
   }
 }
 
@@ -505,7 +508,7 @@ export const konvaAdapter: HostAdapter = {
     if (!isKonva(node)) return;
 
     slot.doomed = true;
-    node.getParent() || destroyNode(node);
+    if (!node.getParent()) destroyNode(node);
   },
   parentOf,
   nextSiblingOf,
@@ -532,7 +535,7 @@ export const konvaAdapter: HostAdapter = {
     }
 
     const next = isSingleMarker ? value : String(value);
-    name === 'id' && assertIdConvention(node, next);
+    if (name === 'id') assertIdConvention(node, next);
     if (node.attrs[name] === next) return;
 
     node.setAttrs({ [name]: next });
@@ -555,9 +558,11 @@ export const konvaAdapter: HostAdapter = {
   isFragment: (value: any): value is HostNode => isFragmentNode(value),
 
   addEventListener(node: HostNode, type: string, listener: any, options?: any) {
-    isKonva(node)
-      ? node.on(`${type}.rhtml`, listener)
-      : (node as EventTarget).addEventListener(type, listener, options);
+    if (isKonva(node)) {
+      node.on(`${type}.rhtml`, listener);
+    } else {
+      (node as EventTarget).addEventListener(type, listener, options);
+    }
   },
   removeEventListener(
     node: HostNode,
@@ -565,9 +570,11 @@ export const konvaAdapter: HostAdapter = {
     listener: any,
     options?: any
   ) {
-    isKonva(node)
-      ? node.off(`${type}.rhtml`, listener)
-      : (node as EventTarget).removeEventListener(type, listener, options);
+    if (isKonva(node)) {
+      node.off(`${type}.rhtml`, listener);
+    } else {
+      (node as EventTarget).removeEventListener(type, listener, options);
+    }
   },
 
   getRoot: rootOf,
