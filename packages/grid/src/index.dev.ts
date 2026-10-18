@@ -18,7 +18,11 @@ const ROW_COUNT = 1_000_000;
 
 const COLUMN_COUNT = 30;
 
-/** How far each version bump moves the rows the strings are made from, so every one is new. */
+/**
+ * How far each version bump moves the rows the strings are made from. Every
+ * string a cell measures repeats only past hundreds of rows, so the cache holds
+ * none a bump brings into view.
+ */
 const VERSION_SHIFT = 7919;
 
 /** A bench run's page fills the window with the grid alone, the size the bench reports at. */
@@ -111,7 +115,7 @@ function sentence(seed: number, length: number): string {
   return text;
 }
 
-/** How many times the data has changed; it only grows, so a bump never brings back a string a cache saw. */
+/** How many times the data has changed; it only grows, so a bump never brings back a string the cache still holds. */
 let generation = 0;
 
 /** The getCell calls since the bench last read them, which is the cells the scene drew. */
@@ -122,9 +126,7 @@ let cellReads = 0;
  * ten kinds of value repeat across the columns, from row numbers to long
  * sentences that need an ellipsis, Hangul, emoji and cells left empty.
  */
-function getCell(row: number, col: number): string {
-  cellReads++;
-
+function valueAt(row: number, col: number): string {
   const r = row + generation * VERSION_SHIFT;
 
   switch (col % 10) {
@@ -133,11 +135,11 @@ function getCell(row: number, col: number): string {
     case 1:
       return r % 11 === 0
         ? ''
-        : `${FIRST_NAMES[(r + col) % FIRST_NAMES.length]} ${LAST_NAMES[(r * 7 + col) % LAST_NAMES.length]}`;
+        : `${FIRST_NAMES[(r + col) % FIRST_NAMES.length]} ${LAST_NAMES[(r * 7 + col) % LAST_NAMES.length]} ${r % 1000}`;
     case 2:
       return `${PLACES[(r + col) % PLACES.length]} ${(r % 997) + 1}`;
     case 3:
-      return `${TAGS[(r * 3 + col) % TAGS.length]} ${r % 100}`;
+      return `${TAGS[(r * 3 + col) % TAGS.length]} ${r % 1000}`;
     case 4:
       return `${r}. ${sentence(r * 7 + col, 6 + (r % 9))}`;
     case 5: {
@@ -151,12 +153,19 @@ function getCell(row: number, col: number): string {
       return `${2016 + Math.floor(day / 365)}-${pad(Math.floor((day % 365) / 31) + 1)}-${pad((day % 28) + 1)} ${pad(r % 24)}:${pad((r * 7) % 60)}`;
     }
     case 7:
-      return r % 3 === 0 ? `${WORDS[r % WORDS.length]} ${r % 100}` : '';
+      return r % 3 === 0 ? `${WORDS[r % WORDS.length]} ${r % 1000}` : '';
     case 8:
       return (r * 7 + col) % 3 === 0 ? 'FALSE' : 'TRUE';
     default:
       return `${FIRST_NAMES[(r + col) % FIRST_NAMES.length].toLowerCase()}.${r % 1000}@example.com`;
   }
+}
+
+/** The getter the scene reads, which counts its calls; the style hook reads valueAt, so only the drawn cells count. */
+function getCell(row: number, col: number): string {
+  cellReads++;
+
+  return valueAt(row, col);
 }
 
 const LIGHT_STYLES = {
@@ -183,7 +192,7 @@ function getCellStyle(row: number, col: number): CellStyle | undefined {
   if (kind === 8) {
     const styles = theme === darkTheme ? DARK_STYLES : LIGHT_STYLES;
 
-    return getCell(row, col) === 'TRUE' ? styles.yes : styles.no;
+    return valueAt(row, col) === 'TRUE' ? styles.yes : styles.no;
   }
   if (kind === 5 && row % 17 === 0) return READONLY;
 
@@ -588,7 +597,7 @@ export interface GridBench {
   /** Scrolls by DOM pixels down and right, as a wheel would, and waits for the commit. */
   scrollBy(domTop: number, left?: number): Promise<void>;
   jumpToRow(row: number, left?: number): Promise<void>;
-  /** Changes every string the getter returns and bumps the version. */
+  /** Moves the rows every string is made from, so the cache holds none in view, and bumps the version. */
   bumpVersion(): Promise<void>;
   /** Runs one step of a scenario per frame, frames times, and returns each frame's sample. */
   run(scenario: Scenario, frames: number): Promise<FrameSample[]>;

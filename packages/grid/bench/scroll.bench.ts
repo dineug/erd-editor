@@ -107,7 +107,7 @@ function firstDrawLine(label: string, draw: FirstDraw) {
   return `${label}: ${draw.wallMs.toFixed(1)} ms to the frame after the first whenDrawn (work ${draw.workMs.toFixed(1)} ms, ${draw.cells} cells); within ${FIRST_DRAW_BUDGET_MS} ms: ${verdict(draw.wallMs <= FIRST_DRAW_BUDGET_MS)}`;
 }
 
-test('a million-row scene keeps each frame under budget', async ({ page }) => {
+test('reports the frame work of a million-row scene', async ({ page }) => {
   await isolate(page);
   await page.goto('/index.html?bench');
   await page.waitForFunction(() => Boolean(window.__gridBench?.firstDraw));
@@ -181,7 +181,7 @@ test('a million-row scene keeps each frame under budget', async ({ page }) => {
       `Grid scroll bench: ${info.rowCount.toLocaleString('en-US')} rows x ${info.columnCount} columns on a ${info.width}x${info.height} stage, devicePixelRatio ${info.devicePixelRatio}, canvas pixel ratio ${info.canvasPixelRatio}, ${info.visibleCells} cells in view`,
       'Frame work is the konva layer draws (the scene canvas and the hit canvas sync, each clear included), the scroll handler and the commit flush, summed per animation frame.',
       `Style, layout and raster time are not included. The page is ${info.isolated ? '' : 'not '}cross-origin isolated, so performance.now steps by ${info.isolated ? '5 microseconds' : '100 microseconds'}.`,
-      `A small step goes through the scroll mapping: ${STEP_DOM_PX} DOM px is ${(STEP_DOM_PX * info.scrollRatio).toFixed(0)} content px (ratio ${info.scrollRatio}). A jump lands on a random row and scrollLeft every frame; a version bump changes every string in view every frame.`,
+      `A small step goes through the scroll mapping: ${STEP_DOM_PX} DOM px is ${(STEP_DOM_PX * info.scrollRatio).toFixed(0)} content px (ratio ${info.scrollRatio}). A jump lands on a random row and scrollLeft every frame; a version bump every frame leaves the measure cache holding none of the strings in view.`,
       'The page has no pointer input, so no scrollbar thumb drag is measured.',
       '',
       firstDrawLine('First draw, cold', cold),
