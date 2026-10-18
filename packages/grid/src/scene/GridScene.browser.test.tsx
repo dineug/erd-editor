@@ -666,9 +666,11 @@ describe('the selection at the frozen boundary', () => {
     for (const x of [boundary - 2, boundary - 1, boundary, boundary + 1]) {
       expect(alpha(x)).toBe(fillAlpha);
     }
-    expect(alpha(boundary - 10, rangeTop)).toBe(255);
-    expect(alpha(boundary + 10, rangeTop)).toBe(255);
-    expect(alpha(boundary - 10, rangeTop - 1)).toBe(0);
+    // The top edge runs on the grid line of the row above, on both sides.
+    expect(alpha(boundary - 10, rangeTop - 1)).toBe(255);
+    expect(alpha(boundary + 10, rangeTop - 1)).toBe(255);
+    expect(alpha(boundary - 10, rangeTop)).toBe(fillAlpha);
+    expect(alpha(boundary - 10, rangeTop - 2)).toBe(0);
     expect(pixelAt(body, boundary - 1, y)).toEqual(
       rgba(lightTheme.frozenBorder)
     );
@@ -738,6 +740,74 @@ describe('the selection at the frozen boundary', () => {
   });
 });
 
+describe('a selected range', () => {
+  it('draws its edge on the grid lines around it and leaves the active cell unfilled', async () => {
+    const view = await mount();
+    const { scene, overlay } = view;
+    const fillAlpha = rgba(lightTheme.selectionFill)[3];
+    const border = rgba(lightTheme.selectionBorder);
+    const activeBorder = rgba(lightTheme.activeCellBorder);
+
+    scene.setSelection({
+      active: { row: 3, col: 3 },
+      ranges: [{ startRow: 2, startCol: 2, endRow: 5, endCol: 4 }],
+    });
+    await drawn();
+
+    const first = cellBox(scene, 2, 2);
+    const last = cellBox(scene, 5, 4);
+    const active = cellBox(scene, 3, 3);
+    const midY = first.y + 10;
+    const midX = first.x + 10;
+    const right = last.x + last.width - 1;
+    const bottom = last.y + last.height - 1;
+
+    expect(pixelAt(overlay, first.x - 1, midY)).toEqual(border);
+    expect(pixelAt(overlay, first.x - 2, midY)[3]).toBe(0);
+    expect(pixelAt(overlay, first.x, midY)[3]).toBe(fillAlpha);
+    expect(pixelAt(overlay, right, midY)).toEqual(border);
+    expect(pixelAt(overlay, right + 1, midY)[3]).toBe(0);
+    expect(pixelAt(overlay, midX, first.y - 1)).toEqual(border);
+    expect(pixelAt(overlay, midX, first.y - 2)[3]).toBe(0);
+    expect(pixelAt(overlay, midX, bottom)).toEqual(border);
+    expect(pixelAt(overlay, midX, bottom + 1)[3]).toBe(0);
+
+    expect(pixelAt(overlay, active.x - 1, active.y + 10)).toEqual(activeBorder);
+    expect(pixelAt(overlay, active.x, active.y + 10)).toEqual(activeBorder);
+    expect(colourAt(overlay, clearOfText(active))[3]).toBe(0);
+    expect(colourAt(overlay, clearOfText(cellBox(scene, 2, 3)))[3]).toBe(
+      fillAlpha
+    );
+    expect(colourAt(overlay, clearOfText(cellBox(scene, 3, 2)))[3]).toBe(
+      fillAlpha
+    );
+    expect(colourAt(overlay, clearOfText(cellBox(scene, 3, 4)))[3]).toBe(
+      fillAlpha
+    );
+    expect(colourAt(overlay, clearOfText(cellBox(scene, 4, 3)))[3]).toBe(
+      fillAlpha
+    );
+  });
+
+  it('fills nothing for one cell, which the active cell edge alone marks', async () => {
+    const view = await mount();
+    const { stage, scene, overlay } = view;
+
+    scene.setSelection(selectCell({ row: 1, col: 1 }));
+    await drawn();
+
+    const cell = cellBox(scene, 1, 1);
+
+    expect(stage.find('.grid-range-fill').every(node => !node.visible())).toBe(
+      true
+    );
+    expect(pixelAt(overlay, cell.x - 1, cell.y + 10)).toEqual(
+      rgba(lightTheme.activeCellBorder)
+    );
+    expect(colourAt(overlay, clearOfText(cell))[3]).toBe(0);
+  });
+});
+
 describe('a selection that moves no rectangle', () => {
   it('still moves the column header highlight', async () => {
     const view = await mount();
@@ -750,9 +820,9 @@ describe('a selection that moves no rectangle', () => {
     });
     const tint = rgba(lightTheme.selectedHeaderBackground);
     const rects = () =>
-      stage.find('.grid-range, .grid-active-cell').map(node => ({
-        ...node.attrs,
-      }));
+      stage
+        .find('.grid-range, .grid-range-fill, .grid-active-cell')
+        .map(node => ({ ...node.attrs }));
 
     scene.setSelection(offscreen(1));
     await drawn();
@@ -781,7 +851,9 @@ describe('a grid with no rows or no columns', () => {
     for (const init of [{ rowCount: 0 }, { rowCount: 5, columns: [] }]) {
       const view = await mount(init);
       const { stage, scene, overlay } = view;
-      const boxes = stage.find('.grid-range, .grid-active-cell');
+      const boxes = stage.find(
+        '.grid-range, .grid-range-fill, .grid-active-cell'
+      );
 
       expect(boxes.length).toBeGreaterThan(0);
       expect(boxes.every(node => !node.visible())).toBe(true);

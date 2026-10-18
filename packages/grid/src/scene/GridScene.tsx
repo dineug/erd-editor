@@ -16,6 +16,7 @@ import type { SceneRect } from '@/scene/layout';
 import {
   ACTIVE_BORDER,
   activeBox,
+  fillBoxes,
   type OverlayGeometry,
   RANGE_BORDER,
   rangeBox,
@@ -153,6 +154,8 @@ const GridScene: FC<GridSceneProps> = props => {
         geometry
       );
 
+      // Each range draws its fill around the active cell, then its edge, so a
+      // later range tints an earlier one's edge as it tints its cells.
       return (
         <k-group
           name={frozen ? 'grid-frozen-scroll' : 'grid-body-scroll'}
@@ -160,24 +163,36 @@ const GridScene: FC<GridSceneProps> = props => {
           y={-scrollTop}
           listening={false}
         >
-          {selection.ranges.map(range => {
-            const box = rangeBox(range, view, geometry);
+          {selection.ranges.flatMap(range => {
+            const edge = rangeBox(range, view, geometry);
+            const fills = fillBoxes(range, selection.active, view, geometry);
 
-            return (
+            return [
+              ...fills.map(box => (
+                <k-rect
+                  name="grid-range-fill"
+                  visible={box.visible}
+                  x={box.x}
+                  y={box.y}
+                  width={box.width}
+                  height={box.height}
+                  fill={theme.selectionFill}
+                  listening={false}
+                />
+              )),
               <k-rect
                 name="grid-range"
-                visible={box.visible}
-                x={box.x}
-                y={box.y}
-                width={box.width}
-                height={box.height}
-                fill={theme.selectionFill}
+                visible={edge.visible}
+                x={edge.x}
+                y={edge.y}
+                width={edge.width}
+                height={edge.height}
                 stroke={theme.selectionBorder}
                 strokeWidth={RANGE_BORDER}
                 perfectDrawEnabled={false}
                 listening={false}
-              />
-            );
+              />,
+            ];
           })}
           <k-rect
             name="grid-active-cell"

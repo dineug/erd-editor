@@ -4,6 +4,7 @@ import { columnOffsets } from '@/model/columns';
 import { computeLayout } from '@/scene/layout';
 import {
   activeBox,
+  fillBoxes,
   HIDDEN_BOX,
   type OverlayGeometry,
   rangeBox,
@@ -53,19 +54,37 @@ describe('regionView', () => {
 });
 
 describe('rangeBox', () => {
-  it('puts the edge inside a range that is in view', () => {
+  it('puts the edge on the grid lines around a range that is in view', () => {
     const box = rangeBox(
       { startRow: 21, startCol: 3, endRow: 22, endCol: 4 },
       view,
       geometry
     );
 
+    // The line before column 3 is pixel 299, column 4's own is pixel 499, and
+    // a 1px stroke sits on a pixel from its middle.
     expect(box).toEqual({
       visible: true,
-      x: 300.5,
-      y: 420.5,
-      width: 199,
-      height: 39,
+      x: 299.5,
+      y: 419.5,
+      width: 200,
+      height: 40,
+    });
+  });
+
+  it('keeps the left and top edges inside a range that starts at the view, where the line before is outside the clip', () => {
+    const box = rangeBox(
+      { startRow: 20, startCol: 2, endRow: 22, endCol: 4 },
+      view,
+      geometry
+    );
+
+    expect(box).toEqual({
+      visible: true,
+      x: 200.5,
+      y: 400.5,
+      width: 299,
+      height: 59,
     });
   });
 
@@ -107,10 +126,10 @@ describe('rangeBox', () => {
       )
     ).toEqual({
       visible: true,
-      x: 800.5,
-      y: 19_800.5,
-      width: 199,
-      height: 199,
+      x: 799.5,
+      y: 19_799.5,
+      width: 200,
+      height: 200,
     });
     expect(
       rangeBox(
@@ -129,12 +148,77 @@ describe('rangeBox', () => {
   });
 });
 
+describe('fillBoxes', () => {
+  it('fills a range without the active cell with its first box, cut to the view', () => {
+    expect(
+      fillBoxes(
+        { startRow: 10, startCol: 3, endRow: 22, endCol: 4 },
+        { row: 0, col: 0 },
+        view,
+        geometry
+      )
+    ).toEqual([
+      { visible: true, x: 300, y: 400, width: 200, height: 60 },
+      HIDDEN_BOX,
+      HIDDEN_BOX,
+      HIDDEN_BOX,
+    ]);
+  });
+
+  it('leaves the active cell out, filling above, below, left and right of it', () => {
+    expect(
+      fillBoxes(
+        { startRow: 21, startCol: 2, endRow: 24, endCol: 4 },
+        { row: 22, col: 3 },
+        view,
+        geometry
+      )
+    ).toEqual([
+      { visible: true, x: 200, y: 420, width: 300, height: 20 },
+      { visible: true, x: 200, y: 460, width: 300, height: 40 },
+      { visible: true, x: 200, y: 440, width: 100, height: 20 },
+      { visible: true, x: 400, y: 440, width: 100, height: 20 },
+    ]);
+  });
+
+  it('fills nothing for a range that is only the active cell', () => {
+    expect(
+      fillBoxes(
+        { startRow: 22, startCol: 3, endRow: 22, endCol: 3 },
+        { row: 22, col: 3 },
+        view,
+        geometry
+      ).every(box => box === HIDDEN_BOX)
+    ).toBe(true);
+  });
+
+  it('fills nothing for a range out of view or past the grid', () => {
+    for (const range of [
+      { startRow: 0, startCol: 0, endRow: 19, endCol: 9 },
+      { startRow: 1000, startCol: 0, endRow: 1003, endCol: 2 },
+    ]) {
+      expect(
+        fillBoxes(range, { row: 0, col: 0 }, view, geometry).every(
+          box => box === HIDDEN_BOX
+        )
+      ).toBe(true);
+    }
+  });
+});
+
 describe('activeBox', () => {
-  it('puts the 2px edge inside the active cell in its own region', () => {
+  it('puts the 2px edge on the grid lines around the active cell and the pixel inside each', () => {
     expect(activeBox({ row: 21, col: 3 }, false, 2, view, geometry)).toEqual({
       visible: true,
-      x: 301,
-      y: 421,
+      x: 300,
+      y: 420,
+      width: 99,
+      height: 19,
+    });
+    expect(activeBox({ row: 20, col: 2 }, false, 2, view, geometry)).toEqual({
+      visible: true,
+      x: 201,
+      y: 401,
       width: 98,
       height: 18,
     });
