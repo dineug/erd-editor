@@ -2,12 +2,12 @@
 // gate, so every way one can end has to hand it back. A window left open parks
 // its layer forever, hence cases about the closing rather than the motion.
 
+import { markDirty, whenDrawn } from '@dineug/r-html-konva';
 import { Layer } from 'konva/lib/Layer';
 import { Rect } from 'konva/lib/shapes/Rect';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { markDirty, whenDrawn } from '@/konva/batchDraw';
 import { createKonvaFlip, FLIP_DURATION } from '@/konva/scene/konvaFlip';
 
 const stages: Stage[] = [];

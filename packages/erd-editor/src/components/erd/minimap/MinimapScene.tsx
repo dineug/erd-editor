@@ -2,6 +2,7 @@
 
 import { query } from '@dineug/erd-editor-schema';
 import { FC, repeat } from '@dineug/r-html';
+import { renderKonva } from '@dineug/r-html-konva';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
@@ -14,7 +15,6 @@ import {
 import Table from '@/components/erd/minimap/table/Table';
 import TableGroup from '@/components/erd/minimap/table-group/TableGroup';
 import { useSceneSource } from '@/components/sceneSourceContext';
-import { renderKonva } from '@/konva/host';
 import { stackedKey, stackTablesAndMemos } from '@/konva/scene/stacking';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { isMemoShown } from '@/utils/memo';

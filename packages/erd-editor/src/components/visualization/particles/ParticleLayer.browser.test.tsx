@@ -3,6 +3,7 @@
 // loop that stops with the tab (AC-33, AC-51, AC-70).
 
 import { type AnyAction, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Layer } from 'konva/lib/Layer';
 import type { Circle } from 'konva/lib/shapes/Circle';
@@ -39,7 +40,6 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { Tag } from '@/engine/tag';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getAnchors } from '@/utils/draw-relationship';
 
 import { getParticleEdges } from './particleEdges';

@@ -7,6 +7,7 @@ import {
   render,
   useProvider,
 } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Text } from 'konva/lib/shapes/Text';
 import { type Stage, stages } from 'konva/lib/Stage';
@@ -50,7 +51,6 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 
 const VIEWPORT = { width: 1200, height: 700 };

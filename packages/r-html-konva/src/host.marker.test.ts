@@ -14,8 +14,8 @@ import { Group } from 'konva/lib/Group';
 import { Node as KonvaNode } from 'konva/lib/Node';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { currentEpoch, whenDrawn } from '@/konva/batchDraw';
-import { hostStats, konva, konvaAdapter, resetHostStats } from '@/konva/host';
+import { currentEpoch, whenDrawn } from '@/batchDraw';
+import { hostStats, konva, konvaAdapter, resetHostStats } from '@/host';
 
 const konvaTemplate = createHostTemplate<Group>(konvaAdapter);
 

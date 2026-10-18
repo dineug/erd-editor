@@ -5,6 +5,7 @@
 // hides one that scrolled off rather than building it again on the way back.
 
 import { createRef, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Layer } from 'konva/lib/Layer';
 import type { Text } from 'konva/lib/shapes/Text';
@@ -58,7 +59,6 @@ import {
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { Point } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { getViewHoverTable } from '@/konva/scene/viewLayout';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';

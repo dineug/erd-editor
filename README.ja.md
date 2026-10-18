@@ -129,7 +129,7 @@ document.body.appendChild(editor);
 pnpm ワークスペースです。[`@dineug/erd-editor`](./packages/erd-editor) と [`@dineug/erd-editor-mcp`](./packages/mcp-server) は npm に公開され、3 つのプラグインはそれぞれのストアで配布され、`app` は erd-editor.io で、残りはそれらのビルドが取り込む非公開のライブラリーです。
 
 <details>
-<summary>全 18 パッケージ</summary>
+<summary>全 19 パッケージ</summary>
 
 | フォルダー | npm 名 | 説明 |
 | --- | --- | --- |
@@ -139,6 +139,7 @@ pnpm ワークスペースです。[`@dineug/erd-editor`](./packages/erd-editor)
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 と Uuid25 エンコーディング。エディターが発行する id |
 | [`r-html`](./packages/r-html) | `@dineug/r-html` | エディターの基盤となるタグ付きテンプレートのレンダリングフレームワークとストア |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | `@dineug/vite-plugin-r-html` | JSX → タグ付きテンプレート、および HMR 境界 |
+| [`r-html-konva`](./packages/r-html-konva) | `@dineug/r-html-konva` | エディターのキャンバスが描画に使う、r-html テンプレートの Konva ホスト |
 | [`app`](./packages/app) | `@dineug/erd-editor-app` | erd-editor.io の React PWA。`/gdrive` の Google Drive エディターを含み、その OAuth リレーは `functions/` の Pages Function |
 | [`vscode-extension`](./packages/vscode-extension) | `vuerd-vscode` | 公開中の VS Code 拡張機能と、コーディングエージェントハブの拡張機能側 |
 | [`vscode-webview`](./packages/vscode-webview) | `@dineug/erd-editor-vscode-webview` | VS Code の Webview 内のバンドル |

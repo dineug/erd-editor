@@ -61,6 +61,10 @@
       "path": "packages/vite-plugin-r-html",
     },
     {
+      "name": "r-html-konva",
+      "path": "packages/r-html-konva",
+    },
+    {
       "name": "agent-hub",
       "path": "packages/agent-hub",
     },

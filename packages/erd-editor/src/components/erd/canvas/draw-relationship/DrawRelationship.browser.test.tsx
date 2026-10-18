@@ -9,6 +9,7 @@ import {
   type FC,
   type Ref,
 } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -24,7 +25,6 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { DrawRelationship as DrawRelationshipType } from '@/engine/modules/editor/state';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { PointToPoint } from '@/utils/draw-relationship';
 import { getDraw } from '@/utils/draw-relationship/draw';

@@ -4,6 +4,7 @@
 // comment, their placeholders and the header icons in the black or white that
 // reads best on it, and keeps its own color on the left edge.
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Text } from 'konva/lib/shapes/Text';
@@ -26,7 +27,6 @@ import {
   addTableGroupAction,
   changeTableGroupColorAction,
 } from '@/engine/modules/table-group/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 
 const TABLE_ID = 'table-1';

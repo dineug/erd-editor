@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { observable, repeat } from '@dineug/r-html';
+import { renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import type { Circle } from 'konva/lib/shapes/Circle';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -31,8 +32,6 @@ import {
 } from '@/components/visualization/visualizationView';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
-import { renderKonva } from '@/konva/host';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';

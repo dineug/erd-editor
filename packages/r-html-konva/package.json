@@ -1,0 +1,43 @@
+{
+  "name": "@dineug/r-html-konva",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Konva host for r-html templates",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "scripts": {
+    "test:dev": "vp test dev",
+    "test:coverage": "vp test run --coverage"
+  },
+  "dependencies": {
+    "@dineug/r-html": "workspace:*"
+  },
+  "peerDependencies": {
+    "konva": "^10.3.2"
+  },
+  "devDependencies": {
+    "@dineug/vite-plugin-r-html": "workspace:*",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^22.20.1",
+    "@typescript/typescript6": "6.0.2",
+    "@vitest/browser-playwright": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "happy-dom": "^20.11.2",
+    "konva": "^10.3.2",
+    "typescript": "7.0.2",
+    "vite": "catalog:",
+    "vite-plugin-dts": "^5.0.3",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

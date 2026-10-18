@@ -20,7 +20,7 @@ import {
   markDirty,
   onBeforeFlush,
   requestFlush,
-} from '@/konva/batchDraw';
+} from '@/batchDraw';
 
 const SLOT = Symbol('r-html/konva-slot');
 const LEDGER = Symbol('r-html/konva-ledger');

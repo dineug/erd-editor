@@ -11,8 +11,8 @@ import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { whenDrawn } from '@/konva/batchDraw';
-import { MINIMAP_STAGE_NAME, renderKonva } from '@/konva/host';
+import { whenDrawn } from '@/batchDraw';
+import { MINIMAP_STAGE_NAME, renderKonva } from '@/host';
 
 const stages: Stage[] = [];
 

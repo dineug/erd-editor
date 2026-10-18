@@ -141,16 +141,24 @@ interface KonvaCircleAttributes extends KonvaShapeAttributes {
   radius?: number;
 }
 
+/** The seven k-* tags the host constructs, each with the attributes it takes. */
+export interface KonvaIntrinsicElements {
+  'k-circle': KonvaCircleAttributes;
+  'k-group': KonvaContainerAttributes;
+  'k-layer': KonvaLayerAttributes;
+  'k-line': KonvaLineAttributes;
+  'k-path': KonvaPathAttributes;
+  'k-rect': KonvaRectAttributes;
+  'k-text': KonvaTextAttributes;
+}
+
+/**
+ * Merged into r-html's own map, which has no index signature, so a consumer's
+ * JSX accepts the k-* tags once its program reads this file through the type
+ * the entry re-exports.
+ */
 declare module '@dineug/r-html/jsx-runtime' {
   namespace JSX {
-    interface IntrinsicElements {
-      'k-circle': KonvaCircleAttributes;
-      'k-group': KonvaContainerAttributes;
-      'k-layer': KonvaLayerAttributes;
-      'k-line': KonvaLineAttributes;
-      'k-path': KonvaPathAttributes;
-      'k-rect': KonvaRectAttributes;
-      'k-text': KonvaTextAttributes;
-    }
+    interface IntrinsicElements extends KonvaIntrinsicElements {}
   }
 }

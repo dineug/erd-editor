@@ -10,7 +10,7 @@ const { manifest } = loadLibraryMetadata(packageDir);
 const rHtmlPackage: string = '@dineug/vite-plugin-r-html';
 const rHtmlPlugins = lazyPlugins(async () => {
   const { rHtml } = await import(rHtmlPackage);
-  return [rHtml({ jsx: { konvaImportSource: '@/konva/host' } })];
+  return [rHtml({ jsx: { konvaImportSource: '@dineug/r-html-konva' } })];
 });
 
 // The script-tag build, run after the es one by the build task: one file with

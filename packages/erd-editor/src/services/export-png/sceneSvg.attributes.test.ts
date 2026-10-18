@@ -19,7 +19,10 @@ const SOURCE_ROOT = join(process.cwd(), 'src');
 
 const ENTRY = join(SOURCE_ROOT, 'services', 'export-png', 'ExportScene.tsx');
 
-/** The konva class each scene tag is built as, which konva/host.ts decides. */
+/**
+ * The konva class each scene tag is built as, which the tag factory in
+ * packages/r-html-konva/src/host.ts decides.
+ */
 const TAG_KINDS: Record<string, SvgNodeKind> = {
   'k-layer': 'Layer',
   'k-group': 'Group',

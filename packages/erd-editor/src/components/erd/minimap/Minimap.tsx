@@ -1,4 +1,5 @@
 import { createRef, FC, onMounted, ref } from '@dineug/r-html';
+import { MINIMAP_STAGE_NAME, renderKonva } from '@dineug/r-html-konva';
 import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
@@ -16,7 +17,6 @@ import { useSceneSource } from '@/components/sceneSourceContext';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { sceneScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { MINIMAP_STAGE_NAME, renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
 import { isMouseEvent } from '@/utils/domEvent';
 

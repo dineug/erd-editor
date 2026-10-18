@@ -43,7 +43,7 @@ export default defineConfig({
     rolldownOptions: {
       // Runtime dependencies stay bare imports for the consumer's bundler to
       // resolve, dedupe and tree-shake by their own sideEffects fields. The
-      // four private workspace libraries are not on npm, so they still inline.
+      // five private workspace libraries are not on npm, so they still inline.
       external,
     },
   },
@@ -66,7 +66,7 @@ export default defineConfig({
     plugins: () => [
       lazyPlugins(async () => {
         const { rHtml } = await import(rHtmlPackage);
-        return [rHtml({ jsx: { konvaImportSource: '@/konva/host' } })];
+        return [rHtml({ jsx: { konvaImportSource: '@dineug/r-html-konva' } })];
       }),
     ],
   },
@@ -76,7 +76,7 @@ export default defineConfig({
   plugins: [
     lazyPlugins(async () => {
       const { rHtml } = await import(rHtmlPackage);
-      return [rHtml({ jsx: { konvaImportSource: '@/konva/host' } })];
+      return [rHtml({ jsx: { konvaImportSource: '@dineug/r-html-konva' } })];
     }),
     dts({
       tsconfigPath: './tsconfig.build.json',

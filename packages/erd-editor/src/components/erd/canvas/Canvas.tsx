@@ -1,4 +1,5 @@
 import { FC, onMounted, Ref, ref, watch } from '@dineug/r-html';
+import { renderKonva } from '@dineug/r-html-konva';
 import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
@@ -10,7 +11,6 @@ import { useContextMenuRootContext } from '@/components/primitives/context-menu/
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { sceneStreamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import { renderKonva } from '@/konva/host';
 import { registerStage, unregisterStage } from '@/konva/testHandle';
 import { closeColorPickerAction } from '@/utils/emitter';
 import type { DragMove } from '@/utils/globalEventObservable';

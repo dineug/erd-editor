@@ -3,6 +3,7 @@
 // and the screen wherever a pan has taken it, not of a fixed box.
 
 import { render, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Layer } from 'konva/lib/Layer';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -58,7 +59,6 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import type { Point } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import { freezeView, thawView } from '@/konva/scene/viewFreeze';

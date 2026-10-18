@@ -3,6 +3,7 @@
 // press on the canvas is konva's, so the strip and the outline are held to both.
 
 import { addCSSHost, AnyAction, render, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, beforeAll, describe, expect, it } from 'vite-plus/test';
 import { page } from 'vite-plus/test/browser/context';
 
@@ -35,7 +36,6 @@ import { attachActionsTag, Tag } from '@/engine/tag';
 import type { LocaleCode } from '@/i18n/locales';
 import { messagesOf } from '@/i18n/messages/index';
 import type { Point } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getTableRect } from '@/konva/scene/metrics';
 import { getSceneTransform, toScreenPoint } from '@/konva/scene/viewport';
 

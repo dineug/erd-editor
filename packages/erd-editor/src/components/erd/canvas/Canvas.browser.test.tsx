@@ -3,6 +3,7 @@
 // the Stage that hangs in the inner one, the size both take and the middle pan.
 
 import { createRef, useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -26,7 +27,6 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 
 const teardowns: Array<() => void> = [];
 

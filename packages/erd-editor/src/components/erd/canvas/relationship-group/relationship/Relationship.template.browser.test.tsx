@@ -5,6 +5,7 @@
 // carries its own paint and one flat point list, so both are asserted here.
 
 import { type DOMTemplateLiterals } from '@dineug/r-html';
+import { renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import type { Layer } from 'konva/lib/Layer';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Stage } from 'konva/lib/Stage';
@@ -16,8 +17,6 @@ import {
 } from '@/components/erd/canvas/relationship-group/relationship/Relationship.template';
 import { VIEW_RELATIONSHIP_STROKE_WIDTH } from '@/constants/layout';
 import { Direction, RelationshipType } from '@/constants/schema';
-import { whenDrawn } from '@/konva/batchDraw';
-import { renderKonva } from '@/konva/host';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { PointToPoint, RelationshipPath } from '@/utils/draw-relationship';
 import { getRelationshipPath } from '@/utils/draw-relationship/pathFinding';

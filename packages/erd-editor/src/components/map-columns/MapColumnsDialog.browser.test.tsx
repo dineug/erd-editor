@@ -12,6 +12,7 @@ import {
   render,
   useProvider,
 } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { page, userEvent } from 'vite-plus/test/browser/context';
 
@@ -66,7 +67,6 @@ import { attachActionsTag, Tag } from '@/engine/tag';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import type { LocaleCode } from '@/i18n/locales';
 import { messagesOf } from '@/i18n/messages/index';
-import { whenDrawn } from '@/konva/batchDraw';
 import { hasAppleDevice } from '@/utils/device-detect';
 import { openFindReplaceAction } from '@/utils/emitter';
 

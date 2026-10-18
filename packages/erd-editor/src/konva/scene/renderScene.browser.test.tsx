@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { type FC } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import { Konva } from 'konva/lib/Global';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -23,7 +24,6 @@ import { useI18n } from '@/components/localeContext';
 import { themeContext, useThemeContext } from '@/components/themeContext';
 import { sourceI18n } from '@/i18n/source';
 import { createI18n, type I18n } from '@/i18n/translate';
-import { whenDrawn } from '@/konva/batchDraw';
 import { type RenderedScene, renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 

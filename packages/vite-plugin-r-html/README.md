@@ -6,7 +6,8 @@
 templates `@dineug/r-html` renders, or into `konva` templates in a Konva scene file, so a package
 is written in JSX with its tooling while the runtime reads only tagged templates. The HMR half, in
 serve mode only, lets r-html swap an edited component in place. The package is private, never
-published; [`erd-editor`](../erd-editor), its only consumer, lists it in `devDependencies` as
+published; its consumers, [`erd-editor`](../erd-editor) and the Konva host
+[`r-html-konva`](../r-html-konva), list it in `devDependencies` as
 `"@dineug/vite-plugin-r-html": "workspace:*"`.
 
 ## Usage
@@ -19,7 +20,7 @@ const rHtmlPackage: string = '@dineug/vite-plugin-r-html';
 const rHtmlPlugins = () =>
   lazyPlugins(async () => {
     const { rHtml } = await import(rHtmlPackage);
-    return [rHtml({ jsx: { konvaImportSource: '@/konva/host' } })];
+    return [rHtml({ jsx: { konvaImportSource: '@dineug/r-html-konva' } })];
   });
 
 export default defineConfig({
@@ -83,7 +84,7 @@ A file with a `/** @jsxHost konva */` block comment above its first statement is
 every template in it, component children included, is tagged `konva`, imported as `__rKonva` from
 `jsx.konvaImportSource` instead of r-html. It holds only `k-*` intrinsic tags and components, since
 the host is the file's, never a tag's. `@dineug/erd-editor` writes its Konva scene this way, against
-`@/konva/host`. `@jsxHost dom`, the default, is accepted too.
+`@dineug/r-html-konva`. `@jsxHost dom`, the default, is accepted too.
 
 Unsupported constructs fail the build with a `[r-html-jsx] file:line:column` message. In any file
 these include spread children, an unknown `ns:` prefix, `use:` without an expression value, and a

@@ -12,6 +12,7 @@ import {
   useContext,
   useProvider,
 } from '@dineug/r-html';
+import { konvaAdapter, renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import { Layer } from 'konva/lib/Layer';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
@@ -22,8 +23,6 @@ import {
   appContext,
   useAppContext,
 } from '@/components/appContext';
-import { whenDrawn } from '@/konva/batchDraw';
-import { konvaAdapter, renderKonva } from '@/konva/host';
 
 type ComponentCtx = Parameters<FC>[1];
 

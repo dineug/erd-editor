@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import type { DOMTemplateLiterals } from '@dineug/r-html';
+import { renderKonva, whenDrawn } from '@dineug/r-html-konva';
 import { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Circle } from 'konva/lib/shapes/Circle';
@@ -13,8 +14,6 @@ import { iconHit } from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import { ICON_VIEW_SIZE } from '@/components/erd/canvas/sceneTokens';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
-import { whenDrawn } from '@/konva/batchDraw';
-import { renderKonva } from '@/konva/host';
 
 const stages: Stage[] = [];
 

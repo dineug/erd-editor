@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vite-plus/test';
 
-const KONVA_ROOT = join(process.cwd(), 'src', 'konva');
+const KONVA_ROOT = join(process.cwd(), '..', 'r-html-konva', 'src');
 
 const CONTEXT_ROOT = join(process.cwd(), '..', 'r-html', 'src', 'context');
 

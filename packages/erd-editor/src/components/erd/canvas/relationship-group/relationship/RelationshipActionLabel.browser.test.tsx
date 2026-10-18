@@ -4,6 +4,7 @@
 // route so a crossing connector runs under its rim: its text, where it stands
 // at each end, the bit that hides it, the zoom that drops it and its hover.
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Stage } from 'konva/lib/Stage';
@@ -27,7 +28,6 @@ import {
 import { hoverRelationshipMapAction } from '@/engine/modules/editor/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { Point, Relationship } from '@/internal-types';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { LINE_SIZE } from '@/utils/draw-relationship';

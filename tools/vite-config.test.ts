@@ -108,6 +108,7 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
       base: 'workspace',
     },
     { pattern: 'packages/r-html/dist/**/*.d.ts', base: 'workspace' },
+    { pattern: 'packages/r-html-konva/dist/**/*.d.ts', base: 'workspace' },
     {
       pattern: 'packages/schema-sql-parser/dist/**/*.d.ts',
       base: 'workspace',

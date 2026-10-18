@@ -1,5 +1,6 @@
 /** @jsxHost konva */
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Text } from 'konva/lib/shapes/Text';
@@ -64,7 +65,6 @@ import {
 } from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { I18n } from '@/i18n/translate';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';

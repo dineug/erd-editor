@@ -1,5 +1,6 @@
 /** @jsxHost konva */
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Path } from 'konva/lib/shapes/Path';
 import type { Text } from 'konva/lib/shapes/Text';
@@ -9,7 +10,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, flush } from '@/__test-utils__';
 import SharedMouseCursor from '@/components/erd/canvas/shared-mouse-tracker/shared-mouse-cursor/SharedMouseCursor';
 import type { SharedMouseTracker } from '@/engine/modules/editor/state';
-import { whenDrawn } from '@/konva/batchDraw';
 import { renderScene } from '@/konva/scene/renderScene';
 import { SharedColors, toSharedColor } from '@/utils/sharedColor';
 

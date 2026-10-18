@@ -3,6 +3,7 @@
 // alone fails here rather than in a screenshot.
 
 import { useProvider } from '@dineug/r-html';
+import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Layer } from 'konva/lib/Layer';
 import type { Rect } from 'konva/lib/shapes/Rect';
@@ -46,7 +47,6 @@ import {
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { whenDrawn } from '@/konva/batchDraw';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
 import { getHighlightIds, getViewPinnedTable } from '@/konva/scene/viewLayout';

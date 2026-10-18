@@ -1,8 +1,11 @@
+import {
+  beginAnimation,
+  endAnimation,
+  onBeforeFlush,
+} from '@dineug/r-html-konva';
 import type { Layer } from 'konva/lib/Layer';
 import type { Node as KonvaNode } from 'konva/lib/Node';
 import { Easings, Tween } from 'konva/lib/Tween';
-
-import { beginAnimation, endAnimation, onBeforeFlush } from '@/konva/batchDraw';
 
 /** The 0.3s transform transition Table.styles gave the dom column-row-move. */
 export const FLIP_DURATION = 0.3;

@@ -3,10 +3,10 @@
 
 import '@/index';
 
+import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { flush } from '@/__test-utils__';
-import { whenDrawn } from '@/konva/batchDraw';
 
 afterEach(async () => {
   document.body.replaceChildren();

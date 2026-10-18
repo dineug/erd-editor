@@ -2,6 +2,7 @@
 
 import { query } from '@dineug/erd-editor-schema';
 import { cache, FC, Ref, repeat } from '@dineug/r-html';
+import { renderKonva } from '@dineug/r-html-konva';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
@@ -26,7 +27,6 @@ import { Show } from '@/constants/schema';
 import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { Relationship, Table as TableEntity } from '@/internal-types';
-import { renderKonva } from '@/konva/host';
 import {
   type StackedEntity,
   stackedKey,
