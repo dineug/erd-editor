@@ -105,6 +105,12 @@ const LINE_BREAK = /[\r\n]/;
 /** The line breaks at the end of a pasted text, which a paste onto the cells drops too. */
 const TRAILING_BREAKS = /[\r\n]+$/;
 
+/** What the cell draws as a space and the one-line editor never holds: a tab, a line feed, a form feed, a carriage return. */
+const CELL_BREAK = /[\t\n\f\r]/;
+
+/** The input types that would split the editor's line, which the grid prevents whatever key or menu asks for them. */
+const LINE_INPUTS = new Set(['insertLineBreak', 'insertParagraph']);
+
 /** A shadow root, told by its node type and its host, since another realm's has another class. */
 const isShadowRoot = (node: Node): node is ShadowRoot =>
   node.nodeType === 11 && Boolean((node as ShadowRoot).host);
@@ -208,6 +214,8 @@ export interface EditingInput {
   act(action: KeyAction, key: string): void;
   /** Opens an edit on the cell a double click landed on. */
   doubleClick(cell: CellRef): void;
+  /** An input about to land in the textarea, a line break prevented. */
+  beforeinput(event: InputEvent): void;
   input(event: Event): void;
   compositionstart(): void;
   compositionend(): void;
@@ -453,22 +461,49 @@ export function createEditingInput(host: EditingHost): EditingInput {
     return true;
   };
 
-  /**
-   * A paste into the grid's own editor, which keeps its one line: a text with
-   * a tab or line break goes in with the breaks at its end dropped and each
-   * other one a space, through the command that keeps the textarea's undo.
-   */
-  const pasteLine = (event: ClipboardEvent, text: string) => {
-    const { textarea } = host;
-    const line = normalizeCellText(text.replace(TRAILING_BREAKS, ''));
-    if (line === text) return;
+  /** A text as the grid's own editor holds it: the breaks at its end dropped and each other tab or line break a space. */
+  const oneLine = (text: string) =>
+    normalizeCellText(text.replace(TRAILING_BREAKS, ''));
 
-    event.preventDefault();
+  /** Puts a line in place of the editor's selection, through the command that keeps the textarea's undo. */
+  const insertLine = (line: string) => {
+    const { textarea } = host;
     if (!textarea.ownerDocument.execCommand('insertText', false, line)) {
       const { selectionStart, selectionEnd } = textarea;
       textarea.setRangeText(line, selectionStart, selectionEnd, 'end');
     }
+  };
+
+  /**
+   * A paste into the grid's own editor, which keeps its one line: a text with
+   * a tab or line break goes in with the breaks at its end dropped and each
+   * other one a space.
+   */
+  const pasteLine = (event: ClipboardEvent, text: string) => {
+    const line = oneLine(text);
+    if (line === text) return;
+
+    event.preventDefault();
+    insertLine(line);
     syncDraft();
+  };
+
+  /**
+   * A drop into the grid's own editor, which no listener can place before it
+   * lands. A drop selects the text it put in, which goes in again as one line;
+   * where an engine selects nothing, each break becomes a space where it is.
+   */
+  const dropLine = () => {
+    const { textarea } = host;
+    const { value, selectionStart, selectionEnd } = textarea;
+    const dropped = value.slice(selectionStart, selectionEnd);
+
+    if (CELL_BREAK.test(dropped)) {
+      insertLine(oneLine(dropped));
+    } else if (CELL_BREAK.test(value)) {
+      textarea.value = normalizeCellText(value);
+      textarea.setSelectionRange(selectionEnd, selectionEnd);
+    }
   };
 
   /** The selected ranges held to the cells the grid has now, which fewer rows or columns may have left a selection past. */
@@ -525,10 +560,20 @@ export function createEditingInput(host: EditingHost): EditingInput {
       if (!composing) open(cell, { kind: 'doubleClick' });
     },
 
+    beforeinput(event) {
+      // A modified Return in Safari, or a menu, asks for a line break that no
+      // keydown the grid sees names; the editor holds one line, as the cell.
+      if (LINE_INPUTS.has(event.inputType)) event.preventDefault();
+    },
+
     input(event) {
       if (edit.status === 'editing') {
-        if (edit.custom) clearText();
-        else syncDraft();
+        if (edit.custom) {
+          clearText();
+          return;
+        }
+        if ((event as InputEvent).inputType === 'insertFromDrop') dropLine();
+        syncDraft();
         return;
       }
       // A composition opened its edit as it started, or opens one or drops

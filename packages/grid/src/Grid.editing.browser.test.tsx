@@ -1174,6 +1174,35 @@ describe('the clipboard', () => {
     expect(lastCommit(view)?.changes).toEqual([change(3, 1, '3:1x y')]);
   });
 
+  it('keeps a dropped text and a line break on the open editor’s one line', async () => {
+    const view = await mount();
+    await editAt(view, 2, 1);
+    const rect = view.textarea.getBoundingClientRect();
+    const point = { x: rect.right - 8, y: rect.top + rect.height / 2 };
+    const data = {
+      items: [{ mimeType: 'text/plain', data: 'a\tb\nc\n' }],
+      dragOperationsMask: 1,
+    };
+    for (const type of ['dragEnter', 'dragOver', 'drop']) {
+      await session().send('Input.dispatchDragEvent', { type, ...point, data });
+    }
+    await nextFrame();
+    expect(view.textarea.value).toBe('2:1a b c');
+
+    for (const inputType of ['insertLineBreak', 'insertParagraph']) {
+      const event = new InputEvent('beforeinput', {
+        inputType,
+        bubbles: true,
+        cancelable: true,
+      });
+      view.textarea.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
+
+    key(view, 'Enter');
+    expect(lastCommit(view)?.changes).toEqual([change(2, 1, '2:1a b c')]);
+  });
+
   it('leaves copy and paste to the open editor', async () => {
     const view = await mount();
     await editAt(view, 1, 1);

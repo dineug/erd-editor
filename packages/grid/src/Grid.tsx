@@ -869,6 +869,7 @@ export const Grid: FC<GridProps> = props => {
           use:ref={ref(focusRef)}
           on:keydown={onKeyDown}
           on:wheel={wheelListener}
+          on:beforeinput={editing.beforeinput}
           on:input={editing.input}
           on:compositionstart={editing.compositionstart}
           on:compositionend={editing.compositionend}
