@@ -159,11 +159,18 @@ function valueAt(row: number, col: number): string {
   }
 }
 
-/** The values onCommit wrote, keyed by row * COLUMN_COUNT + col, which win over the generated ones. */
-const committed = new Map<number, string>();
+/**
+ * The values onCommit wrote, one array per column indexed by row, which win
+ * over the generated ones. A clear of every cell writes thirty million, past
+ * the 2^24 entries one Map holds, and an array costs a pointer per row.
+ */
+const committed: Array<Array<string | undefined>> = Array.from(
+  { length: COLUMN_COUNT },
+  () => []
+);
 
 const cellValue = (row: number, col: number) =>
-  committed.get(row * COLUMN_COUNT + col) ?? valueAt(row, col);
+  committed[col]?.[row] ?? valueAt(row, col);
 
 /** The page's own measures for the bench: layer draws, input events and getCell calls since the frame loop last read them. */
 const totals = { drawMs: 0, draws: 0, eventMs: 0, events: 0, cells: 0 };
@@ -438,7 +445,7 @@ function onCommit({ changes, source }: CommitEvent) {
   let last = raw.rowCount - 1;
 
   for (const { row, col, value } of changes) {
-    committed.set(row * COLUMN_COUNT + col, value);
+    committed[col][row] = value;
     last = Math.max(last, row);
   }
   if (last >= raw.rowCount) demo.rowCount = last + 1;
