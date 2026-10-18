@@ -18,7 +18,7 @@ pnpm --filter @dineug/erd-editor e2e:bench      # benchmarks — see e2e/bench/R
 ```
 
 `e2e` and `e2e:bench` build first. `e2e:dev`, `e2e:headed` and `e2e:typecheck`
-do not, and they read the workspace libraries' `dist/` (`r-html`,
+do not, and they read the workspace libraries' `dist/` (`r-html`, `r-html-konva`,
 `erd-editor-schema`, `schema-sql-parser`, `uuid`, `vite-plugin-r-html`): run
 `pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build`, or `e2e`
 once, before them, and again after changing one of those libraries. A local run
