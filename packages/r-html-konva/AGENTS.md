@@ -76,8 +76,9 @@
 
 - **The `test` task runs both projects.** `tsc --noEmit` first, then `unit` in happy-dom and `browser` in headless Chromium. The `.browser.` infix alone picks the project. Neither retries a spec, so a failure is real.
 - **`src/jsx-types.test-d.ts` runs under `tsc --noEmit` alone.** No Vitest typecheck project is configured, and `src/jsx.ts` is out of coverage, being types only.
-- **Count the work, not the clock.** `host.marker.test.ts` judges the reconcile by `hostStats` and `setZIndex` calls; its one wall-clock bound is loose enough for any runner. The browser specs spy on each layer's `batchDraw` after `whenDrawn`, so none rides a frame.
+- **Count the work, not the clock.** `host.marker.test.ts` judges the reconcile by `hostStats` and `setZIndex` calls; its one wall-clock bound is loose enough for any runner. `host.browser.test.tsx` and `batchDraw.browser.test.ts` count each layer's `batchDraw` calls after `whenDrawn`; the second's Tween case waits for the Tween's `onFinish` and counts against the frames it ran. `kShape.browser.test.tsx` reads pixels, so it waits one animation frame after `whenDrawn`, since konva's `Layer.batchDraw` paints on the next `requestAnimationFrame`. The upstream pins in `konvaUpstream.browser.test.ts` run konva's own `Animation` for a set number of frames and a `Tween` to its `onFinish`.
 - **The upstream pins run first on a konva bump.** `konvaUpstream.browser.test.ts` and `konvaId.browser.test.ts` test konva, not this package: what the gate and the id convention assume of it.
+- **`erd-editor` holds this package to having no context module.** A component's `ctx.host` is the Stage's container, a real element, so r-html's own context system serves a Konva scene (`src/hostContext.browser.test.tsx`). `erd-editor`'s `src/konva/moduleLayout.test.ts` reads this package's `src/`, refuses a `context*.ts` module there and expects `host.ts` in it, so a change that adds the one or moves the other also runs `erd-editor`'s `test` task.
 
 ## Dependencies
 
