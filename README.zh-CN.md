@@ -126,7 +126,7 @@ document.body.appendChild(editor);
 
 ## 包
 
-这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor) 和 [`@dineug/erd-editor-mcp`](./packages/mcp-server) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库。
+这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor) 和 [`@dineug/erd-editor-mcp`](./packages/mcp-server) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库，只有画布网格 `grid` 目前还没有任何构建引入。
 
 <details>
 <summary>全部 20 个包</summary>

@@ -31,8 +31,9 @@ export interface KeyOptions {
 }
 
 /**
- * Every key value the grid may consume, in either mode; the A key counts with
- * Ctrl or Cmd alone. A key outside this list always reaches the host.
+ * The key values the grid may consume in either mode. The A key counts with
+ * Ctrl or Cmd alone, also as A under Caps Lock and, on a non-Latin layout, as
+ * the physical KeyA; every other key reaches the host.
  */
 export const GRID_KEYS: readonly string[] = Object.freeze([
   'ArrowUp',

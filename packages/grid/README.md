@@ -5,13 +5,14 @@
 The grid draws a host's rows on a Konva `Stage` through [`r-html-konva`](../r-html-konva) and keeps
 none of them: the host gives it a row count, the columns and a `getCell(row, col)` getter, and a
 draw reads only the cells in view, so what a frame costs follows the cells on screen, not the rows
-behind them. Each region (the corner, the column labels, the row numbers, the frozen columns and
-the scrolling cells) is one `k-shape` that paints its cells, with one line of left-aligned text
-cut by an ellipsis through [`@chenglou/pretext`](https://github.com/chenglou/pretext), and an
-overlay layer draws the selection, the header highlights and the scrollbars. It is private, not
-on npm, and depended on as `"@dineug/grid": "workspace:*"`; [`erd-editor`](../erd-editor) lists it
-in `devDependencies` and imports nothing from it yet. `konva` is a peer: the consumer supplies the
-one copy.
+behind them. Each of six regions (the corner, the column header, the frozen column header, the
+row-number header, the frozen cells and the scrolling cells) is one `k-shape` that paints its
+cells. A cell holds one line of left-aligned text, cut by an ellipsis through
+[`@chenglou/pretext`](https://github.com/chenglou/pretext); a column label, cut the same way, and a
+row number sit centred. An overlay layer draws the selection, the header highlights and the
+scrollbars. It is private, not on npm, and depended on as `"@dineug/grid": "workspace:*"`;
+[`erd-editor`](../erd-editor) lists it in `devDependencies` and imports nothing from it yet.
+`konva` is a peer: the consumer supplies the one copy.
 
 ## Usage
 

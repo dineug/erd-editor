@@ -300,9 +300,9 @@ function step(
 }
 
 /**
- * A navigation key, as a spreadsheet moves. With no modifier the selection
- * becomes the cell it lands on; Shift moves the far corner of the last range;
- * Tab and Enter read Shift as the way back and stop at the grid's last cell.
+ * A navigation key, as a spreadsheet moves: alone, the selection becomes the
+ * cell it lands on, and Shift moves the far corner of the last range. Tab stops
+ * at either end of its row and Enter of its column, and Shift turns both back.
  */
 export function moveActive(
   sel: GridSelection,

@@ -62,8 +62,8 @@ const regionShape = (name: string, rect: SceneRect, sceneFunc: SceneFunc) => (
 
 /**
  * The fixed clip of a region's overlay. Konva clips a group in its own space,
- * so this one stays at the region's origin while a group inside it scrolls; a
- * group with no clip size draws unclipped, which is why an empty region hides.
+ * so this one stays at the region's origin while a group inside it scrolls; an
+ * empty region's 0px clip draws nothing, and hiding it skips walking its nodes.
  */
 const clipGroup = (name: string, rect: SceneRect, children: unknown) => (
   <k-group
@@ -310,9 +310,9 @@ const GridScene: FC<GridSceneProps> = props => {
 };
 
 /**
- * Renders a grid scene as the root of a Stage. Named in lower case on
- * purpose: the r-html refresh boundary treats an all upper case export list
- * as a component module and would self-accept this one.
+ * Renders a grid scene as the root of a Stage. It is a call that mounts the
+ * scene, not a component a template mounts, so it is named in lower case, as
+ * erd-editor's scene roots are.
  *
  * @example
  * const scene = createSceneState({ rowCount, columns, getCell, width, height });
