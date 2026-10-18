@@ -527,10 +527,17 @@ export function createEditingInput(host: EditingHost): EditingInput {
         return;
       }
 
-      data.setData(
-        'text/plain',
-        serialize(copyRows(area, scene.state.getCell))
-      );
+      let text: string;
+      try {
+        text = serialize(copyRows(area, scene.state.getCell));
+      } catch (error) {
+        // A selection whose text outgrows the longest string the engine
+        // holds copies nothing, as a refused copy puts nothing on the
+        // clipboard; any other error is the getter's own.
+        if (error instanceof RangeError) return;
+        throw error;
+      }
+      data.setData('text/plain', text);
     },
 
     paste(event) {

@@ -23,6 +23,7 @@ import {
   range,
   ROW_COUNT,
   sizePage,
+  teardowns,
   valueOf,
   type View,
   views,
@@ -900,6 +901,30 @@ describe('the clipboard', () => {
     expect(refused.data.types).toEqual([]);
     expect(view.onReject).toHaveBeenCalledTimes(1);
     expect(view.onReject).toHaveBeenCalledWith({ reason: 'multi-range-copy' });
+  });
+
+  it('copies nothing and throws nothing once the selection’s text outgrows the longest string', async () => {
+    // Five values of 2^27 characters make a text past the 2^29 - 24 that V8
+    // holds in one string; they sit in a row out of view, which no draw reads.
+    const long = 'x'.repeat(2 ** 27);
+    const view = await mount({
+      getCell: (row, col) => (row === 900 ? long : valueOf(row, col)),
+    });
+    const errors: unknown[] = [];
+    const onError = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener('error', onError);
+    teardowns.push(() => window.removeEventListener('error', onError));
+    view.handle.select({
+      active: { row: 900, col: 1 },
+      ranges: [range(900, 1, 900, 5)],
+    });
+
+    const { event, data } = clipboardEvent(view, 'copy');
+
+    expect(errors).toEqual([]);
+    expect(event.defaultPrevented).toBe(true);
+    expect(data.types).toEqual([]);
+    expect(view.onReject).not.toHaveBeenCalled();
   });
 
   it('pastes from the active cell as one commit, past the last row, dropping columns past the last', async () => {
