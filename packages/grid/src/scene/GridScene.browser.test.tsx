@@ -2,7 +2,8 @@
 // a scroll, how many cells a draw reads, where text and selection are clipped
 // and what each setter redraws, every pixel and count read after drawn().
 
-import { renderKonva, whenDrawn } from '@dineug/r-html-konva';
+import { markDirty, renderKonva, whenDrawn } from '@dineug/r-html-konva';
+import { Konva } from 'konva/lib/Global';
 import type { Layer } from 'konva/lib/Layer';
 import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -262,16 +263,31 @@ function expectWithin(draws: GetterCounts[], scene: SceneState) {
 }
 
 describe('the fixed regions', () => {
-  function expectFixedRegions({ scene, body }: Mounted) {
-    const { layout } = scene.state;
-    const { theme } = scene.state;
-    const header = columnHeaderBox(scene, layout.frozenCount + 1);
+  /** The first scrolling column whose left edge is in view, where the column header region starts. */
+  function firstScrollingColumn(scene: SceneState): number {
+    const { layout, offsets, scrollLeft } = scene.state;
+    let col = layout.frozenCount;
+
+    while (offsets[col] < layout.scrollOrigin + scrollLeft) col++;
+
+    return col;
+  }
+
+  function expectFixedRegions({ scene, body }: Mounted, calls: TextCall[]) {
+    const { layout, theme } = scene.state;
+    const col = firstScrollingColumn(scene);
+    const header = columnHeaderBox(scene, col);
     const frozenEdge = layout.frozenBody.x + layout.frozenWidth - 1;
     const midBody = layout.body.y + layout.body.height / 2;
+    const label = textsOn(calls, body).filter(
+      call => call.text === COLUMNS[col].label
+    );
 
+    expect(header.x).toBeGreaterThanOrEqual(layout.columnHeader.x);
     expect(colourAt(body, clearOfLabel(header))).toEqual(
       rgba(theme.headerBackground)
     );
+    expect(label.map(call => call.x)).toContain(header.x + header.width / 2);
     expect(pixelAt(body, 4, 4)).toEqual(rgba(theme.headerBackground));
     expect(pixelAt(body, header.x + 30, layout.headerHeight - 1)).toEqual(
       rgba(theme.frozenBorder)
@@ -295,7 +311,7 @@ describe('the fixed regions', () => {
     const cell = cellBox(scene, 1, 3);
     const texts = textsOn(calls, body).map(call => call.text);
 
-    expectFixedRegions(view);
+    expectFixedRegions(view, calls);
     expect(colourAt(body, clearOfText(cell))).toEqual(rgba(theme.background));
     expect(pixelAt(body, cell.x + cell.width - 1, cell.y + 10)).toEqual(
       rgba(theme.gridLine)
@@ -310,7 +326,7 @@ describe('the fixed regions', () => {
 
   it('keeps them in place after a vertical and a horizontal scroll', async () => {
     const view = await mount({ frozenColumns: 2 });
-    const { scene, body } = view;
+    const { stage, scene, body } = view;
     const calls = spyText();
     const top = 500_000 * 28 + 14;
 
@@ -329,7 +345,8 @@ describe('the fixed regions', () => {
     const headerBackground = rgba(scene.state.theme.headerBackground).join();
 
     expect(scene.state.scrollTop).toBe(top);
-    expectFixedRegions(view);
+    expect(firstScrollingColumn(scene)).toBe(5);
+    expectFixedRegions(view, calls);
     expect(rowNumbers.map(call => call.text)).toContain('500001');
     // Half of row 500000 is in view under the column header, its number ink.
     expect(
@@ -343,12 +360,35 @@ describe('the fixed regions', () => {
     expect(frozenCells.map(call => call.text)).toEqual(
       expect.arrayContaining(['A', 'B', '500000:0', '500001:1'])
     );
-    // The first scrolling column in view is the one 300px past the frozen
-    // ones, whose cells start left of the boundary and are clipped there.
-    expect(texts.map(call => call.text)).toContain('500001:4');
+
+    // Columns 3 and 4 start left of the boundary, 300px of scroll past the
+    // frozen ones, and draw there; with the frozen shapes hidden, nothing of
+    // them shows left of it, so the scrolling regions' own clip cut them.
+    const row = cellBox(scene, 500_001, 0);
+    const across = (y: number) =>
+      Array.from({ length: layout.frozenWidth }, (_, dx) =>
+        pixelAt(body, layout.frozenBody.x + dx, y)
+      );
+
     expect(
-      texts.some(call => call.text === '500001:2' && call.x < frozenRight)
-    ).toBe(false);
+      texts.filter(call => call.x < frozenRight).map(call => call.text)
+    ).toEqual(expect.arrayContaining(['500001:3', '500001:4', 'D']));
+
+    for (const name of ['.grid-frozen-cells', '.grid-frozen-header']) {
+      stage.findOne(name)?.visible(false);
+    }
+    markDirty(body);
+    await drawn();
+
+    expect(across(row.y + row.height / 2).every(([, , , a]) => a === 0)).toBe(
+      true
+    );
+    expect(across(layout.headerHeight / 2).every(([, , , a]) => a === 0)).toBe(
+      true
+    );
+    expect(pixelAt(body, frozenRight, row.y + 4)).toEqual(
+      rgba(scene.state.theme.background)
+    );
   });
 });
 
@@ -935,6 +975,94 @@ describe('a new size', () => {
       expect(overlay).toHaveLength(2);
       expect(stage.size()).toEqual({ width, height });
     }
+  });
+});
+
+describe('a pixel ratio of 2', () => {
+  /** The two device pixels a stage pixel covers at a ratio of 2 along an axis, and the one before them. */
+  function devicePixels(layer: Layer, x: number, y: number, axis = 'x') {
+    const at = (step: number) =>
+      axis === 'x' ? pixelAt(layer, x + step, y) : pixelAt(layer, x, y + step);
+
+    return { before: at(-0.5), first: at(0), second: at(0.5) };
+  }
+
+  /** Mounts with konva's ratio at 2, as on a screen of that ratio, which konva reads as each canvas is made. */
+  async function mountAtTwo(init: Partial<SceneInit>): Promise<Mounted> {
+    const ratio = Konva.pixelRatio;
+    Konva.pixelRatio = 2;
+
+    try {
+      return await mount(init);
+    } finally {
+      Konva.pixelRatio = ratio;
+    }
+  }
+
+  it('lands every line, edge and label on the device pixels of its stage pixel', async () => {
+    const calls = spyText();
+    const view = await mountAtTwo({
+      frozenColumns: 2,
+      selection: {
+        active: { row: 3, col: 3 },
+        ranges: [{ startRow: 2, startCol: 3, endRow: 5, endCol: 4 }],
+      },
+    });
+    const { scene, body, overlay } = view;
+    const { layout, theme } = scene.state;
+    const frozenEdge = layout.frozenBody.x + layout.frozenWidth - 1;
+    const midBody = layout.body.y + layout.body.height / 2;
+    const cell = cellBox(scene, 1, 3);
+    const line = cell.x + cell.width - 1;
+    const first = cellBox(scene, 2, 3);
+    const active = cellBox(scene, 3, 3);
+    const header = columnHeaderBox(scene, 3);
+    const both = (colour: string) => ({
+      first: rgba(colour),
+      second: rgba(colour),
+    });
+
+    expect(body.getCanvas().getPixelRatio()).toBe(2);
+    expect(overlay.getNativeCanvasElement().width).toBe(WIDTH * 2);
+
+    expect(devicePixels(body, frozenEdge, midBody)).toEqual({
+      before: rgba(theme.background),
+      ...both(theme.frozenBorder),
+    });
+    expect(devicePixels(body, line, cell.y + 10)).toEqual({
+      before: rgba(theme.background),
+      ...both(theme.gridLine),
+    });
+    expect(
+      devicePixels(body, header.x + 30, layout.headerHeight - 1, 'y')
+    ).toEqual({
+      before: rgba(theme.headerBackground),
+      ...both(theme.frozenBorder),
+    });
+
+    const edge = devicePixels(overlay, first.x - 1, first.y + 10);
+    expect(edge.before[3]).toBe(0);
+    expect([edge.first, edge.second]).toEqual([
+      rgba(theme.selectionBorder),
+      rgba(theme.selectionBorder),
+    ]);
+    expect(pixelAt(overlay, first.x, first.y + 10)[3]).toBe(
+      rgba(theme.selectionFill)[3]
+    );
+
+    const activeEdge = [-1, -0.5, 0, 0.5].map(dx =>
+      pixelAt(overlay, active.x + dx, active.y + 10)
+    );
+    expect(activeEdge).toEqual(
+      activeEdge.map(() => rgba(theme.activeCellBorder))
+    );
+    expect(pixelAt(overlay, active.x + 1, active.y + 10)[3]).toBe(0);
+
+    expect(
+      textsOn(calls, body)
+        .filter(call => call.text === 'D')
+        .map(call => call.x)
+    ).toContain(header.x + header.width / 2);
   });
 });
 
