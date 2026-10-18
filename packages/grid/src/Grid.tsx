@@ -326,6 +326,8 @@ export const Grid: FC<GridProps> = props => {
   let ratio = 0;
   /** The DOM offset a content offset was written as, so reading it back loses no precision. */
   let held: { dom: number; content: number } | null = null;
+  /** Whether the scroller dropped the offsets last written to it, as one display: none does, so they are written again. */
+  let unsynced = false;
   let viewportFrame = 0;
   let viewport: ViewportChange | null = null;
   let resolution: MediaQueryList | null = null;
@@ -409,6 +411,10 @@ export const Grid: FC<GridProps> = props => {
     return mapping;
   };
 
+  /** Whether an element has a box, which one under display: none has not. */
+  const rendered = (element: HTMLElement) =>
+    element.getClientRects().length > 0;
+
   /** Writes the scene's scroll offsets to the DOM scroller, which follows the content. */
   const pushScroll = () => {
     const scroller = scrollerRef.value;
@@ -422,7 +428,14 @@ export const Grid: FC<GridProps> = props => {
       scroller.scrollTop = domTop;
     }
     if (scroller.scrollLeft !== scrollLeft) scroller.scrollLeft = scrollLeft;
-    held = { dom: scroller.scrollTop, content: scrollTop };
+
+    // A scroller that is not rendered keeps no offset and reads 0, so the
+    // content offsets wait for the next layout or scroll to be written again.
+    unsynced =
+      (Math.abs(scroller.scrollTop - domTop) >= 0.5 ||
+        Math.abs(scroller.scrollLeft - scrollLeft) >= 0.5) &&
+      !rendered(scroller);
+    held = unsynced ? null : { dom: scroller.scrollTop, content: scrollTop };
   };
 
   /** Reads the DOM scroller into the scene, as a scroll event does. */
@@ -447,19 +460,28 @@ export const Grid: FC<GridProps> = props => {
   /**
    * A new layout: the spacer follows it, and the scroll follows the DOM unless
    * the rows' scale changed, when the content offset stays and the DOM moves.
+   * A scroller under display: none reads 0, so the content offset stays too.
    */
   const onLayout = () => {
     const next = scrollMapping(scene.state.layout.contentHeight).ratio;
+    const scroller = scrollerRef.value;
 
-    if (next !== ratio) {
+    if (next !== ratio || unsynced) {
       ratio = next;
       pushScroll();
+    } else if (scroller && !rendered(scroller)) {
+      writeSpacer();
+      unsynced = true;
+      held = null;
     } else {
       writeSpacer();
       pullScroll();
     }
     scheduleViewport();
   };
+
+  /** A scroll event: the DOM scroller read into the scene, unless it lost the offsets the scene wrote, which go back first. */
+  const onScroll = () => (unsynced ? pushScroll() : pullScroll());
 
   const scrollContentTo = (top: number, left: number) => {
     scene.setScroll(top, left);
@@ -822,7 +844,7 @@ export const Grid: FC<GridProps> = props => {
           tabindex={-1}
           style={SCROLLER_STYLE}
           use:ref={ref(scrollerRef)}
-          on:scroll={pullScroll}
+          on:scroll={onScroll}
           on:pointerdown={onPointerDown}
           on:pointermove={onPointerMove}
           on:pointerup={onPointerUp}

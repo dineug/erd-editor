@@ -1192,6 +1192,47 @@ describe('the handle', () => {
     expect(document.activeElement).toBe(view.textarea);
   });
 
+  it('scrolls while its container is display: none, and the scroller takes the offset once it shows', async () => {
+    const view = await mount();
+    /** Hides or shows the host and waits for the size observer to answer, a frame after the layout. */
+    const display = async (value: string) => {
+      view.host.style.display = value;
+      await nextFrame();
+      await drawn();
+    };
+    /** Whether the scroller and the scene hold one scroll, and the row shows. */
+    const holds = (row: number) => {
+      const g = geometry(view);
+      const rowTop = row * ROW_HEIGHT;
+
+      expect(view.scroller.scrollTop).toBe(g.top);
+      expect(rowTop).toBeGreaterThanOrEqual(g.top);
+      expect(rowTop + ROW_HEIGHT).toBeLessThanOrEqual(g.top + g.body.height);
+    };
+
+    await display('none');
+    view.handle.scrollTo(500, 0);
+    await display('');
+    holds(500);
+    view.scroller.scrollTop += 100;
+    await drawn();
+    expect(geometry(view).top).toBe(view.scroller.scrollTop);
+
+    await display('none');
+    view.handle.scrollTo(100, 0);
+    await display('');
+    holds(100);
+
+    await display('none');
+    view.props.rowCount = MILLION;
+    await display('');
+    const top = geometry(view).top;
+    expect(top).toBe(100 * ROW_HEIGHT);
+    view.scroller.scrollTop += 1;
+    await drawn();
+    expect(geometry(view).top).toBeGreaterThan(top);
+  });
+
   it('does nothing once the grid is gone, and a grid with no rows or no columns scrolls nowhere', async () => {
     const empty = await mount({ rowCount: 0 });
     empty.handle.scrollTo(4, 29);
