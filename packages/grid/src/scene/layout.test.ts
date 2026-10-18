@@ -104,13 +104,46 @@ describe('computeLayout', () => {
     expect(layout.cellHeight).toBe(20 * 28 - SCROLLBAR_SIZE);
   });
 
-  it('cuts frozen columns wider than the cell area, leaving the scrolling region empty', () => {
+  it('cuts frozen columns wider than the cell area, leaving the scrolling region empty and nothing to scroll across', () => {
     const layout = computeLayout(input({ width: 250, frozenColumns: 5 }));
 
     expect(layout.frozenWidth).toBe(layout.cellWidth);
     expect(layout.scrollOrigin).toBe(500);
     expect(layout.body.width).toBe(0);
     expect(layout.columnHeader.width).toBe(0);
+    expect(layout.horizontalBar).toBe(false);
+    expect(layout.maxScrollLeft).toBe(0);
+    expect(layout.verticalBar).toBe(true);
+    expect(layout.cellHeight).toBe(600 - 28);
+  });
+
+  it('drops the horizontal bar when every column is frozen and the frozen ones overflow', () => {
+    const layout = computeLayout(
+      input({ width: 400, rowCount: 5, frozenColumns: 30 })
+    );
+
+    expect(layout.scrollOrigin).toBe(layout.contentWidth);
+    expect(layout.horizontalBar).toBe(false);
+    expect(layout.verticalBar).toBe(false);
+    expect(layout.maxScrollLeft).toBe(0);
+    expect(layout.cellHeight).toBe(600 - 28);
+  });
+
+  it('keeps the vertical bar it settled when the frozen columns fill the area only beside it', () => {
+    // Fifty rows fit under the header, not above the horizontal strip too, and
+    // the 200px of frozen columns fit beside the 40px of row numbers only
+    // without the vertical strip.
+    const layout = computeLayout(
+      input({ width: 40 + 205, height: 28 + 50 * 28 + 6, rowCount: 50 })
+    );
+
+    expect(layout.rowHeaderWidth).toBe(40);
+    expect(layout.verticalBar).toBe(true);
+    expect(layout.horizontalBar).toBe(false);
+    expect(layout.cellWidth).toBe(205 - SCROLLBAR_SIZE);
+    expect(layout.frozenWidth).toBe(layout.cellWidth);
+    expect(layout.maxScrollLeft).toBe(0);
+    expect(layout.maxScrollTop).toBe(0);
   });
 
   it('holds a stage too small for the headers, no columns and no rows to empty regions', () => {

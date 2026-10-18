@@ -76,8 +76,8 @@ const rect = (
 
 /**
  * The regions for a stage of the size given. A scrollbar shows on an axis
- * whose content outgrows the cell area, and taking its strip can make the
- * other axis need one too, so the two are settled together.
+ * whose content outgrows the cell area, the horizontal one only while a column
+ * is left to scroll across, and taking its strip can make the other need one.
  */
 export function computeLayout(input: LayoutInput): SceneLayout {
   const { width, height, rowHeight, offsets } = input;
@@ -113,6 +113,14 @@ export function computeLayout(input: LayoutInput): SceneLayout {
     horizontalBar = horizontal;
   }
 
+  // Frozen columns that fill the cell area leave no column to scroll across,
+  // so the bar goes and its strip is given back to the rows. The vertical bar
+  // stays as settled: dropping it could hand the frozen columns room again.
+  if (horizontalBar && scrollOrigin >= cellWidth) {
+    horizontalBar = false;
+    cellHeight = Math.max(0, height - headerHeight);
+  }
+
   const frozenWidth = Math.min(scrollOrigin, cellWidth);
   const scrollingWidth = cellWidth - frozenWidth;
 
@@ -129,7 +137,7 @@ export function computeLayout(input: LayoutInput): SceneLayout {
     contentWidth,
     contentHeight,
     maxScrollTop: Math.max(0, contentHeight - cellHeight),
-    maxScrollLeft: Math.max(0, contentWidth - cellWidth),
+    maxScrollLeft: horizontalBar ? contentWidth - cellWidth : 0,
     verticalBar,
     horizontalBar,
     corner: rect(0, 0, headerWidth, headerHeight),
