@@ -9,7 +9,8 @@ is host-neutral: the exported `html` / `svg` / `render` are its DOM instance, an
 never published to npm. [`erd-editor`](../erd-editor) is built on it, since the editor core needs
 a custom element with no third-party UI framework runtime, and lists it as a devDependency,
 `"@dineug/r-html": "workspace:*"`, so its build inlines it; it also renders its Konva scene through
-a second host, [`r-html-konva`](../r-html-konva), which depends on this package.
+a second host, [`r-html-konva`](../r-html-konva), which depends on this package, as the canvas grid
+[`grid`](../grid) on that host does.
 [`mcp-server`](../mcp-server) lists it the same way for the store's action types (`AnyAction`,
 `CompositionActions`) and, in its specs, `compositionActionsFlat`.
 

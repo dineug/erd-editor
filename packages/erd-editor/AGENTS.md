@@ -153,7 +153,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 
 ### Internal
 
-`@dineug/r-html`, `@dineug/r-html-konva`, the Konva host the scene renders through, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` and `@dineug/uuid`, whose `uuid25` mints every id the editor makes (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR).
+`@dineug/r-html`, `@dineug/r-html-konva`, the Konva host the scene renders through, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` and `@dineug/uuid`, whose `uuid25` mints every id the editor makes (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR); `@dineug/grid`, the Konva canvas grid, which no source here imports yet, so none of it ships in `dist/`.
 
 ### External
 

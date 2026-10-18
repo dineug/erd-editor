@@ -155,7 +155,7 @@ through their stores, `app` is erd-editor.io, and the rest are private libraries
 in.
 
 <details>
-<summary>All 19 packages</summary>
+<summary>All 20 packages</summary>
 
 | Folder | npm name | Description |
 | --- | --- | --- |
@@ -166,6 +166,7 @@ in.
 | [`r-html`](./packages/r-html) | `@dineug/r-html` | The tagged-template rendering framework and store the editor is built on |
 | [`vite-plugin-r-html`](./packages/vite-plugin-r-html) | `@dineug/vite-plugin-r-html` | JSX → tagged templates, plus HMR boundaries |
 | [`r-html-konva`](./packages/r-html-konva) | `@dineug/r-html-konva` | The Konva host for r-html templates, which the editor's canvas renders through |
+| [`grid`](./packages/grid) | `@dineug/grid` | A spreadsheet grid on a Konva canvas, built on `r-html-konva`, that draws only the cells in view |
 | [`app`](./packages/app) | `@dineug/erd-editor-app` | The React PWA at erd-editor.io, with the Google Drive editor at `/gdrive`, whose OAuth relay is the Pages Function in `functions/` |
 | [`vscode-extension`](./packages/vscode-extension) | `vuerd-vscode` | The published VS Code extension, with its side of the coding-agent hub |
 | [`vscode-webview`](./packages/vscode-webview) | `@dineug/erd-editor-vscode-webview` | The bundle inside the VS Code webview |

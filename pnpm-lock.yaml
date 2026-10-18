@@ -312,6 +312,9 @@ importers:
       '@dineug/erd-editor-schema':
         specifier: workspace:*
         version: link:../erd-editor-schema
+      '@dineug/grid':
+        specifier: workspace:*
+        version: link:../grid
       '@dineug/r-html':
         specifier: workspace:*
         version: link:../r-html
@@ -397,6 +400,58 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
+        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)'
+      vite-plugin-dts:
+        specifier: ^5.0.3
+        version: 5.0.3(@microsoft/api-extractor@7.51.1(@types/node@22.20.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(rolldown@1.2.4)(rollup@4.62.4)(typescript@7.0.2)(webpack@5.91.0)
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.0.0(@types/node@22.20.1)(@vitest/browser-playwright@5.0.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(playwright@1.62.1)(vitest@5.0.1))(@vitest/coverage-v8@5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1))(@vitest/ui@5.0.1(vitest@5.0.1))(happy-dom@20.11.2)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@22.20.1)(@vitest/browser-playwright@5.0.1)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)
+
+  packages/grid:
+    dependencies:
+      '@chenglou/pretext':
+        specifier: ^0.0.8
+        version: 0.0.8
+      '@dineug/r-html':
+        specifier: workspace:*
+        version: link:../r-html
+      '@dineug/r-html-konva':
+        specifier: workspace:*
+        version: link:../r-html-konva
+    devDependencies:
+      '@dineug/vite-plugin-r-html':
+        specifier: workspace:*
+        version: link:../vite-plugin-r-html
+      '@playwright/test':
+        specifier: ^1.62.1
+        version: 1.62.1
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      '@typescript/typescript6':
+        specifier: 6.0.2
+        version: 6.0.2
+      '@vitest/browser-playwright':
+        specifier: 'catalog:'
+        version: 5.0.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(playwright@1.62.1)(vitest@5.0.1)
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      happy-dom:
+        specifier: ^20.11.2
+        version: 20.11.2
+      konva:
+        specifier: ^10.3.2
+        version: 10.3.2
       typescript:
         specifier: 7.0.2
         version: 7.0.2

@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  // The bench runs in the Playwright runner on Node, outside the package
+  // program, so this one checks it and the config that starts it.
+  "include": ["../bench", "../playwright.bench.config.ts"]
+}

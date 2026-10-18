@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`@dineug/r-html-konva` (`private: true`) is the second `@dineug/r-html` host, the one that renders templates into a Konva `Stage` instead of the DOM. It holds the host adapter (`konvaAdapter`), the `konva` tag and `renderKonva` that compiled Konva JSX calls, the draw gate (`batchDraw.ts`), the only draw authority outside an animation, and the eight `k-*` intrinsics. `erd-editor` draws its ERD scene through it and lists it as a devDependency, so its build inlines it. A change keeps the ledger the one owner of membership and order (Rules § The ledger), the gate the one thing that draws (Rules § Drawing) and every `k-*` type reachable from a consumer's program (Rules § Konva JSX).
+`@dineug/r-html-konva` (`private: true`) is the second `@dineug/r-html` host, the one that renders templates into a Konva `Stage` instead of the DOM. It holds the host adapter (`konvaAdapter`), the `konva` tag and `renderKonva` that compiled Konva JSX calls, the draw gate (`batchDraw.ts`), the only draw authority outside an animation, and the eight `k-*` intrinsics. `erd-editor` draws its ERD scene through it and lists it as a devDependency, so its build inlines it. `grid`, the canvas grid, draws through it too and names it in `dependencies`, so its `dist/` keeps the import bare. A change keeps the ledger the one owner of membership and order (Rules § The ledger), the gate the one thing that draws (Rules § Drawing) and every `k-*` type reachable from a consumer's program (Rules § Konva JSX).
 
 ## Making a Change
 
@@ -17,7 +17,7 @@
    pnpm exec vp run --filter @dineug/r-html-konva --fail-if-no-match test
    ```
 
-   When the `browser` project fails to start, install Chromium with `pnpm --filter @dineug/r-html-konva exec playwright install chromium` and run the task again. A change to an export, a type or an intrinsic runs `pnpm test` instead, since `erd-editor` type-checks against this package's `dist/**/*.d.ts`.
+   When the `browser` project fails to start, install Chromium with `pnpm --filter @dineug/r-html-konva exec playwright install chromium` and run the task again. A change to an export, a type or an intrinsic runs `pnpm test` instead, since `erd-editor` and `grid` type-check against this package's `dist/**/*.d.ts`.
 4. **Run the coverage gate** (root step 4), both projects at 80% per file:
 
    ```

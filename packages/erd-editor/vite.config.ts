@@ -43,7 +43,7 @@ export default defineConfig({
     rolldownOptions: {
       // Runtime dependencies stay bare imports for the consumer's bundler to
       // resolve, dedupe and tree-shake by their own sideEffects fields. The
-      // five private workspace libraries are not on npm, so they still inline.
+      // private workspace libraries are not on npm, so they still inline.
       external,
     },
   },

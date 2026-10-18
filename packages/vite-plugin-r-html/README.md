@@ -6,8 +6,9 @@
 templates `@dineug/r-html` renders, or into `konva` templates in a Konva scene file, so a package
 is written in JSX with its tooling while the runtime reads only tagged templates. The HMR half, in
 serve mode only, lets r-html swap an edited component in place. The package is private, never
-published; its consumers, [`erd-editor`](../erd-editor) and the Konva host
-[`r-html-konva`](../r-html-konva), list it in `devDependencies` as
+published; its consumers, [`erd-editor`](../erd-editor), the Konva host
+[`r-html-konva`](../r-html-konva) and the canvas grid [`grid`](../grid) on that host, list it in
+`devDependencies` as
 `"@dineug/vite-plugin-r-html": "workspace:*"`.
 
 ## Usage

@@ -65,6 +65,10 @@
       "path": "packages/r-html-konva",
     },
     {
+      "name": "grid",
+      "path": "packages/grid",
+    },
+    {
       "name": "agent-hub",
       "path": "packages/agent-hub",
     },

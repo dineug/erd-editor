@@ -107,6 +107,7 @@ test('type-gate inputs come from tsconfig and workspace manifests', () => {
       pattern: 'packages/erd-editor-schema/dist/**/*.d.ts',
       base: 'workspace',
     },
+    { pattern: 'packages/grid/dist/**/*.d.ts', base: 'workspace' },
     { pattern: 'packages/r-html/dist/**/*.d.ts', base: 'workspace' },
     { pattern: 'packages/r-html-konva/dist/**/*.d.ts', base: 'workspace' },
     {

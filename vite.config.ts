@@ -219,12 +219,13 @@ export default defineConfig({
       },
       {
         /**
-         * The .tsx of erd-editor and r-html-konva is JSX, not React: it compiles
-         * to r-html tagged templates. Scoped rather than global because app is
-         * React 19, where these three rules mean what they say.
+         * The .tsx of erd-editor, r-html-konva and grid is JSX, not React: it
+         * compiles to r-html tagged templates. Scoped rather than global because
+         * app is React 19, where these three rules mean what they say.
          */
         files: [
           'packages/erd-editor/src/**/*.tsx',
+          'packages/grid/src/**/*.tsx',
           'packages/r-html-konva/src/**/*.tsx',
         ],
         rules: {

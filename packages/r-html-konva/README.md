@@ -7,7 +7,8 @@ Konva `Stage` instead of the DOM: a ledger that holds the order and the markers 
 cannot, reconciled once per parent per commit, and a draw gate that draws each layer a commit
 touched once. It is private, not on npm, and depended on as `"@dineug/r-html-konva": "workspace:*"`.
 [`erd-editor`](../erd-editor) draws its ERD scene through it and lists it in `devDependencies`, so
-its build inlines it. `konva` is a peer: the consumer supplies the one copy.
+its build inlines it; [`grid`](../grid), the canvas grid, draws through it too and lists it in
+`dependencies`. `konva` is a peer: the consumer supplies the one copy.
 
 ## Usage
 
