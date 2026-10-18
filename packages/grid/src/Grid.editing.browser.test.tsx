@@ -1314,6 +1314,71 @@ describe('a column’s own editor', () => {
     expect(document.activeElement).toBe(view.textarea);
   });
 
+  it('leaves the focus where a Tab or a press moved it, for an editor that commits as its field blurs', async () => {
+    const outside = document.createElement('input');
+    const after = document.createElement('input');
+    const editor = (ctx: EditorContext) => {
+      const field = document.createElement('input');
+      field.value = ctx.initialValue;
+      field.addEventListener('blur', () => {
+        ctx.commit(field.value);
+        queueMicrotask(() => field.remove());
+      });
+      ctx.container.append(field);
+      field.focus();
+    };
+    const view = await mount(
+      { columns: withEditor(2, editor) },
+      undefined,
+      outside
+    );
+    document.body.append(after);
+    teardowns.push(() => after.remove());
+
+    for (const [row, leave, target] of [
+      [1, () => userEvent.tab(), after],
+      [2, () => userEvent.click(outside), outside],
+    ] as const) {
+      view.textarea.focus();
+      press(view, cellPoint(view, row, 2));
+      key(view, 'Enter');
+      await nextFrame();
+      await userEvent.keyboard('x');
+
+      await leave();
+      await nextFrame();
+      expect(lastCommit(view)?.changes).toEqual([
+        change(row, 2, `${valueOf(row, 2)}x`),
+      ]);
+      expect(document.activeElement).toBe(target);
+    }
+    expect(view.onCommit).toHaveBeenCalledTimes(2);
+  });
+
+  it('takes the focus back once the editor removed the field that held it, then commits', async () => {
+    let ctx: EditorContext | null = null;
+    const editor = (next: EditorContext) => {
+      ctx = next;
+      const field = document.createElement('input');
+      next.container.append(field);
+      field.focus();
+    };
+    const view = await mount({ columns: withEditor(2, editor) });
+    press(view, cellPoint(view, 1, 2));
+    view.textarea.focus();
+    key(view, 'Enter');
+    await nextFrame();
+    const field = view.slot.querySelector('input') as HTMLInputElement;
+    expect(document.activeElement).toBe(field);
+
+    field.remove();
+    expect(document.activeElement).toBe(document.body);
+    (ctx as unknown as EditorContext).commit('picked');
+
+    expect(lastCommit(view)?.changes).toEqual([change(1, 2, 'picked')]);
+    expect(document.activeElement).toBe(view.textarea);
+  });
+
   it('keeps the wheel for a list in the slot that can still scroll, and hands it on once it cannot', async () => {
     const editor = (ctx: EditorContext) => {
       const list = document.createElement('div');

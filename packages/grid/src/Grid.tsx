@@ -598,6 +598,9 @@ export const Grid: FC<GridProps> = props => {
 
   const slotWheelListener = [slotWheel, { passive: false }] as const;
 
+  /** The slot's blur, in the capture phase, so an editor that commits from its own blur finds where the focus is going. */
+  const slotBlurListener = [editing.slotBlur, { capture: true }] as const;
+
   const onPointerDown = (event: PointerEvent) => {
     lastPointerType = event.pointerType;
     pointer?.pointerdown(event);
@@ -878,6 +881,7 @@ export const Grid: FC<GridProps> = props => {
           use:ref={ref(slotRef)}
           on:keydown={editing.slotKeydown}
           on:wheel={slotWheelListener}
+          on:blur={slotBlurListener}
         ></div>
       </div>
     );

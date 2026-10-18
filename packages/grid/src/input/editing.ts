@@ -214,6 +214,8 @@ export interface EditingInput {
   blur(): void;
   /** A key inside a column's own editor: Escape asks it to close, unless the editor took it. */
   slotKeydown(event: KeyboardEvent): void;
+  /** A blur inside the slot, taken in the capture phase before the editor's own listener. */
+  slotBlur(event: FocusEvent): void;
   /** Drops the open edit and the press listener, as an unmount does. */
   dispose(): void;
 }
@@ -267,12 +269,26 @@ export function createEditingInput(host: EditingHost): EditingInput {
     return Boolean(active && host.slot.contains(active));
   };
 
-  /** Puts the focus back in the textarea where a closing editor held it or let it drop. */
+  /** The blur the slot is dispatching, kept to read where the focus is going while it lasts. */
+  let slotBlur: FocusEvent | null = null;
+
+  /**
+   * Puts the focus back in the textarea where a closing editor held it or let
+   * it drop. A blur reads the body as the active element while the focus is
+   * still on its way to its related target, which keeps it.
+   */
   const reclaimFocus = () => {
     const { textarea } = host;
     const { activeElement, body } = textarea.ownerDocument;
+    const leaving =
+      slotBlur !== null &&
+      slotBlur.eventPhase !== Event.NONE &&
+      slotBlur.relatedTarget !== null;
 
-    if (focusInSlot() || !activeElement || activeElement === body) {
+    if (
+      focusInSlot() ||
+      (!leaving && (!activeElement || activeElement === body))
+    ) {
       textarea.focus({ preventScroll: true });
     }
   };
@@ -632,6 +648,10 @@ export function createEditingInput(host: EditingHost): EditingInput {
 
       event.preventDefault();
       close('escape');
+    },
+
+    slotBlur(event) {
+      slotBlur = event;
     },
 
     dispose() {
