@@ -165,7 +165,8 @@ export const toForeignKeyActions = (
       tableId: endTableId,
     };
     const dataType = toReferenceDataType(startColumn.dataType, database);
-    // A serial key's copy takes another type, which its domain would not hold.
+    // A copy given another type than its key's, as a serial key's can be, would
+    // sit off the domain's type.
     const domainId =
       dataType === startColumn.dataType &&
       isListed(domainIds, startColumn.domainId)

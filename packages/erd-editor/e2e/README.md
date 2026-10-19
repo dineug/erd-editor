@@ -730,13 +730,15 @@ cost when you hit them blind.
   backs `value` — serialises a copy, so reading either never moves the live
   view. Both write each locked setting at its lock, not live: the origin and the
   zoom while the viewport lock of `lockSettings` is on, and likewise
-  `canvasType`, `language`, `tableNameCase`, `columnNameCase` and `bracketType`.
-  Every seed keeps `lockSettings` at `0`, all unlocked; the unseeded element is a
-  new document, every lock on, so a spec that reads the view, the tab or a code
-  setting from either seeds first. A seed without the field would open as a
-  file saved before the locks: every lock on, and its view reset to the origin
-  at zoom 1 on the ERD tab, so `runtimeValue` and `value` keep writing that view
-  whatever the spec pans or zooms to.
+  `canvasType`, `language`, `tableNameCase`, `columnNameCase`, `bracketType` and
+  `nameViewMode`. Every seed keeps `lockSettings` at `0`, which turns every lock
+  off but the name view's: its bit, `64`, unlocks it while set, so `0` keeps it
+  locked, and a seed that needs its switch shared and saved sets `lockSettings`
+  to `64`. The unseeded element is a new document, every lock on, so a spec that
+  reads the view, the tab or a code setting from either seeds first. A seed
+  without the field would open as a file saved before the locks: every lock on,
+  and its view reset to the origin at zoom 1 on the ERD tab, so `runtimeValue`
+  and `value` keep writing that view whatever the spec pans or zooms to.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root
   `.root` div, with bubble-phase listeners. Dispatching at `document` or at the
   host element will not reach them.
