@@ -14,11 +14,15 @@ describe('createColumn', () => {
     expect(column.dataType).toBe('');
     expect(column.default).toBe('');
     expect(column.options).toBe(0);
+    expect(column.logicalName).toBe('');
+    expect(column.domainId).toBe('');
     expect(column.ui).toEqual({
       keys: 0,
       widthName: COLUMN_MIN_WIDTH,
+      widthLogicalName: COLUMN_MIN_WIDTH,
       widthComment: COLUMN_MIN_WIDTH,
       widthDataType: COLUMN_MIN_WIDTH,
+      widthDomain: COLUMN_MIN_WIDTH,
       widthDefault: COLUMN_MIN_WIDTH,
     });
     expect(column).not.toHaveProperty('meta');
@@ -56,8 +60,10 @@ describe('createColumn', () => {
     expect(column.ui).toEqual({
       keys: ColumnUIKey.primaryKey,
       widthName: 80,
+      widthLogicalName: COLUMN_MIN_WIDTH,
       widthComment: COLUMN_MIN_WIDTH,
       widthDataType: COLUMN_MIN_WIDTH,
+      widthDomain: COLUMN_MIN_WIDTH,
       widthDefault: COLUMN_MIN_WIDTH,
     });
   });

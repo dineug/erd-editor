@@ -8,15 +8,18 @@ describe('createTable', () => {
     const table = createTable();
 
     expect(table.name).toBe('');
+    expect(table.logicalName).toBe('');
     expect(table.comment).toBe('');
     expect(table.columnIds).toEqual([]);
     expect(table.seqColumnIds).toEqual([]);
     expect(table.groupId).toBe('');
+    expect(table.nameDerived).toBe(false);
     expect(table.ui).toEqual({
       x: 200,
       y: 100,
       zIndex: 2,
       widthName: COLUMN_MIN_WIDTH,
+      widthLogicalName: COLUMN_MIN_WIDTH,
       widthComment: COLUMN_MIN_WIDTH,
       color: '',
     });
@@ -51,6 +54,7 @@ describe('createTable', () => {
       y: 100,
       zIndex: 2,
       widthName: 120,
+      widthLogicalName: COLUMN_MIN_WIDTH,
       widthComment: COLUMN_MIN_WIDTH,
       color: '#ff0000',
     });
@@ -80,6 +84,7 @@ describe('createTable', () => {
       y: 100,
       zIndex: 2,
       widthName: COLUMN_MIN_WIDTH,
+      widthLogicalName: COLUMN_MIN_WIDTH,
       widthComment: COLUMN_MIN_WIDTH,
       color: '',
     });

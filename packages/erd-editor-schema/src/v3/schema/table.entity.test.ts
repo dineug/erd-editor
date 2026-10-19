@@ -6,15 +6,18 @@ import { Table, TableUI } from '@/v3/schema/table.entity';
 const buildTable = (id: string, columnIds: string[] = []): Table => ({
   id,
   name: `table_${id}`,
+  logicalName: '',
   comment: '',
   columnIds,
   seqColumnIds: [...columnIds],
   groupId: '',
+  nameDerived: false,
   ui: {
     x: 0,
     y: 0,
     zIndex: 2,
     widthName: 60,
+    widthLogicalName: 60,
     widthComment: 60,
     color: '',
   },
@@ -31,16 +34,19 @@ describe('v3/schema/table.entity', () => {
       y: 240,
       zIndex: 7,
       widthName: 84,
+      widthLogicalName: 72,
       widthComment: 60,
       color: '#ff0000',
     };
     const table: Table = {
       id: 'table-1',
       name: 'actor',
+      logicalName: 'Actor',
       comment: 'film actors',
       columnIds: ['column-1', 'column-2'],
       seqColumnIds: ['column-1', 'column-2', 'column-3'],
       groupId: 'group-1',
+      nameDerived: true,
       ui,
     };
 

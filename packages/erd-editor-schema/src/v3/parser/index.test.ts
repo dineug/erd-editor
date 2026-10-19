@@ -32,6 +32,9 @@ describe('parser', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
     expect(result.collections).toEqual({
       tableEntities: {},
@@ -41,6 +44,9 @@ describe('parser', () => {
       indexColumnEntities: {},
       memoEntities: {},
       tableGroupEntities: {},
+      wordEntities: {},
+      termEntities: {},
+      domainEntities: {},
     });
   });
 
@@ -123,7 +129,10 @@ describe('parser', () => {
         indexColumnEntities: { ic1: { id: 'ic1', meta } },
         memoEntities: { m1: { id: 'm1', meta } },
         tableGroupEntities: { g1: { id: 'g1', meta } },
-      },
+        wordEntities: { fields: ['id', 'meta'], rows: [['w1', meta]] },
+        termEntities: { fields: ['id', 'meta'], rows: [['tm1', meta]] },
+        domainEntities: { fields: ['id', 'meta'], rows: [['d1', meta]] },
+      } as any,
     });
 
     for (const entities of Object.values(result.collections)) {
@@ -133,7 +142,7 @@ describe('parser', () => {
     }
     expect(
       Object.values(result.collections).map(e => Object.keys(e).length)
-    ).toEqual([1, 1, 1, 1, 1, 1, 1]);
+    ).toEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
   });
 
   it('stacks entities saved without a z-index in their doc order', () => {
@@ -268,6 +277,134 @@ describe('parser', () => {
     const second = parser(first);
 
     expect(second).toEqual(first);
+  });
+});
+
+describe('the dictionaries a parse reads', () => {
+  const WORD_FIELDS = ['id', 'name', 'abbreviation'];
+
+  it('reads each row by the names of the header, an unknown one ignored', () => {
+    const result = parser({
+      collections: {
+        wordEntities: {
+          fields: ['abbreviation', 'unit', 'id', 'name'],
+          rows: [['MBR', 'person', 'w1', '회원']],
+        },
+      },
+    });
+
+    expect(result.collections.wordEntities).toEqual({
+      w1: {
+        id: 'w1',
+        name: '회원',
+        abbreviation: 'MBR',
+        englishName: '',
+        description: '',
+        synonyms: '',
+        forbiddenWords: '',
+      },
+    });
+  });
+
+  it('takes the order of the rows where the doc names none, each id once', () => {
+    const result = parser({
+      collections: {
+        wordEntities: {
+          fields: WORD_FIELDS,
+          rows: [
+            ['w2', 'b'],
+            ['w1', 'a'],
+            ['w2', 'b again'],
+            ['', 'no id'],
+            [7, 'numeric id'],
+          ],
+        },
+        termEntities: { fields: ['id'], rows: [['10'], ['9']] },
+      },
+    });
+
+    expect(result.doc.wordIds).toEqual(['w2', 'w1']);
+    expect(result.doc.termIds).toEqual(['10', '9']);
+    expect(result.doc.domainIds).toEqual([]);
+    expect(result.collections.wordEntities.w2.name).toBe('b again');
+  });
+
+  it('takes the order the doc names, leaving a removed row out of it', () => {
+    const result = parser({
+      doc: { wordIds: ['w1'] },
+      collections: {
+        wordEntities: {
+          fields: WORD_FIELDS,
+          rows: [
+            ['w2', 'removed'],
+            ['w1', 'kept'],
+          ],
+        },
+      },
+    });
+
+    expect(result.doc.wordIds).toEqual(['w1']);
+    expect(Object.keys(result.collections.wordEntities)).toEqual(['w2', 'w1']);
+  });
+
+  it('clears a domain link naming no domain, on a column and on a term', () => {
+    const result = parser({
+      doc: { domainIds: ['d1'] },
+      collections: {
+        tableColumnEntities: {
+          c1: { id: 'c1', domainId: 'd1' },
+          c2: { id: 'c2', domainId: 'missing', dataType: 'INT' },
+          c3: { id: 'c3', domainId: 'd2' },
+        },
+        termEntities: {
+          fields: ['id', 'name', 'physicalName', 'domainId'],
+          rows: [
+            ['tm1', 'a', '', 'missing'],
+            ['tm2', 'b', '', 'd1'],
+          ],
+        },
+        domainEntities: {
+          fields: ['id', 'name'],
+          rows: [
+            ['d1', 'kept'],
+            ['d2', 'removed'],
+          ],
+        },
+      },
+    });
+    const { tableColumnEntities, termEntities } = result.collections;
+
+    expect(tableColumnEntities.c1.domainId).toBe('d1');
+    expect(tableColumnEntities.c2.domainId).toBe('');
+    expect(tableColumnEntities.c2.dataType).toBe('INT');
+    expect(tableColumnEntities.c3.domainId).toBe('d2');
+    expect(termEntities.tm1.domainId).toBe('');
+    expect(termEntities.tm2.domainId).toBe('d1');
+  });
+
+  it('reads the dictionaries of a document an editor holds, keyed by id', () => {
+    const held = parser({
+      collections: {
+        wordEntities: { fields: WORD_FIELDS, rows: [['w1', 'a', 'A']] },
+        domainEntities: { fields: ['id', 'name'], rows: [['d1', 'amount']] },
+      },
+    });
+
+    expect(parser(held)).toEqual(held);
+  });
+
+  it('reads a header without rows, or a collection of another shape, as empty', () => {
+    const result = parser({
+      collections: {
+        wordEntities: { fields: WORD_FIELDS },
+        termEntities: [['tm1']],
+        domainEntities: 'd1',
+      },
+    } as any);
+
+    expect(result.collections.wordEntities).toEqual({});
+    expect(result.collections.termEntities).toEqual({});
+    expect(result.collections.domainEntities).toEqual({});
   });
 });
 

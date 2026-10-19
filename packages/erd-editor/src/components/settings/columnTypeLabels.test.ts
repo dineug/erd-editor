@@ -17,7 +17,9 @@ describe('ColumnTypeToMessageKey', () => {
 
     expect(names).toEqual({
       [ColumnType.columnName]: 'Name',
+      [ColumnType.columnLogicalName]: 'Logical Name',
       [ColumnType.columnDataType]: 'DataType',
+      [ColumnType.columnDomain]: 'Domain',
       [ColumnType.columnNotNull]: 'Not Null',
       [ColumnType.columnUnique]: 'Unique',
       [ColumnType.columnAutoIncrement]: 'Auto Increment',

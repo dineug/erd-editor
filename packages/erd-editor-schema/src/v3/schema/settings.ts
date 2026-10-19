@@ -72,13 +72,14 @@ export const CanvasType = {
   schemaSQL: '@dineug/erd-editor/builtin-schema-sql',
   generatorCode: '@dineug/erd-editor/builtin-generator-code',
   settings: 'settings',
+  dictionary: '@dineug/erd-editor/builtin-dictionary',
 } as const;
 export type CanvasType = ValuesType<typeof CanvasType>;
 export const CanvasTypeList: ReadonlyArray<string> = Object.values(CanvasType);
 
-// Append only, like the lists below. columnAlternateKey is off in documents that
-// predate it, so a diagram keeps its layout; the hide bits read the other way
-// round, so every document shows action labels, table groups and memos first.
+// Append only, like the lists below. columnAlternateKey and columnDomain stay
+// off where a document lacks them, so a diagram keeps its layout; the hide bits
+// read the other way round, so a document shows labels, groups and memos first.
 export const Show = {
   tableComment: 1,
   columnComment: 2,
@@ -93,8 +94,11 @@ export const Show = {
   hideReferentialAction: 1024,
   hideTableGroup: 2048,
   hideMemo: 4096,
+  columnDomain: 8192,
 } as const;
 
+// Append only. A document saves the order in seven entries while the logical
+// name and the domain stand where a parse puts them into an older one.
 export const ColumnType = {
   columnName: 1,
   columnDataType: 2,
@@ -103,6 +107,8 @@ export const ColumnType = {
   columnAutoIncrement: 16,
   columnDefault: 32,
   columnComment: 64,
+  columnLogicalName: 128,
+  columnDomain: 256,
 } as const;
 export const ColumnTypeList: ReadonlyArray<number> = Object.values(ColumnType);
 

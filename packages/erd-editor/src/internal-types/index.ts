@@ -18,6 +18,9 @@ export type Relationship = GetEntity<'relationshipEntities'>;
 export type Index = GetEntity<'indexEntities'>;
 export type IndexColumn = GetEntity<'indexColumnEntities'>;
 export type TableGroup = GetEntity<'tableGroupEntities'>;
+export type Word = GetEntity<'wordEntities'>;
+export type Term = GetEntity<'termEntities'>;
+export type Domain = GetEntity<'domainEntities'>;
 
 export type TableEntities = GetEntities<'tableEntities'>;
 export type TableColumnEntities = GetEntities<'tableColumnEntities'>;
@@ -26,6 +29,9 @@ export type RelationshipEntities = GetEntities<'relationshipEntities'>;
 export type IndexEntities = GetEntities<'indexEntities'>;
 export type IndexColumnEntities = GetEntities<'indexColumnEntities'>;
 export type TableGroupEntities = GetEntities<'tableGroupEntities'>;
+export type WordEntities = GetEntities<'wordEntities'>;
+export type TermEntities = GetEntities<'termEntities'>;
+export type DomainEntities = GetEntities<'domainEntities'>;
 
 export type Doc = ERDEditorSchemaV3['doc'];
 export type Collections = ERDEditorSchemaV3['collections'];

@@ -1,0 +1,218 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "originX": -320.5,
+    "originY": 180,
+    "zoomLevel": 0.75,
+    "show": 1957,
+    "database": 8,
+    "databaseName": "LIBRARY",
+    "canvasType": "@dineug/erd-editor/builtin-schema-sql",
+    "language": 8,
+    "tableNameCase": 8,
+    "columnNameCase": 8,
+    "bracketType": 2,
+    "relationshipDataTypeSync": false,
+    "columnOrder": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "maxWidthComment": 120,
+    "lockSettings": 0,
+    "ddlScripts": {
+      "before": "",
+      "after": "COMMIT;"
+    }
+  },
+  "doc": {
+    "tableIds": [
+      "book",
+      "author"
+    ],
+    "relationshipIds": [
+      "written_by"
+    ],
+    "indexIds": [
+      "ix_book_title"
+    ],
+    "memoIds": [
+      "shelf_note"
+    ],
+    "tableGroupIds": [
+      "catalog"
+    ]
+  },
+  "collections": {
+    "tableEntities": {
+      "author": {
+        "id": "author",
+        "name": "author",
+        "comment": "people who write books",
+        "columnIds": [
+          "author_id",
+          "author_name",
+          "author_born"
+        ],
+        "groupId": "catalog",
+        "ui": {
+          "x": 120,
+          "y": 80,
+          "color": ""
+        }
+      },
+      "book": {
+        "id": "book",
+        "name": "book",
+        "comment": "",
+        "columnIds": [
+          "book_id",
+          "book_author_id",
+          "book_title",
+          "book_isbn"
+        ],
+        "groupId": "catalog",
+        "ui": {
+          "x": 560.5,
+          "y": 140,
+          "color": "#e5484d"
+        }
+      }
+    },
+    "tableColumnEntities": {
+      "author_born": {
+        "id": "author_born",
+        "tableId": "author",
+        "name": "born_on",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 0
+      },
+      "author_id": {
+        "id": "author_id",
+        "tableId": "author",
+        "name": "id",
+        "comment": "",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 11
+      },
+      "author_name": {
+        "id": "author_name",
+        "tableId": "author",
+        "name": "name",
+        "comment": "pen name when one is used",
+        "dataType": "VARCHAR(120)",
+        "default": "",
+        "options": 8
+      },
+      "book_author_id": {
+        "id": "book_author_id",
+        "tableId": "book",
+        "name": "author_id",
+        "comment": "",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8
+      },
+      "book_id": {
+        "id": "book_id",
+        "tableId": "book",
+        "name": "id",
+        "comment": "",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 11
+      },
+      "book_isbn": {
+        "id": "book_isbn",
+        "tableId": "book",
+        "name": "isbn",
+        "comment": "",
+        "dataType": "CHAR(13)",
+        "default": "",
+        "options": 4
+      },
+      "book_title": {
+        "id": "book_title",
+        "tableId": "book",
+        "name": "title",
+        "comment": "as printed on the cover",
+        "dataType": "VARCHAR(255)",
+        "default": "'untitled'",
+        "options": 8
+      }
+    },
+    "relationshipEntities": {
+      "written_by": {
+        "id": "written_by",
+        "relationshipType": 4,
+        "onDelete": 4,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "author",
+          "columnIds": [
+            "author_id"
+          ]
+        },
+        "end": {
+          "tableId": "book",
+          "columnIds": [
+            "book_author_id"
+          ]
+        }
+      }
+    },
+    "indexEntities": {
+      "ix_book_title": {
+        "id": "ix_book_title",
+        "name": "ix_book_title",
+        "tableId": "book",
+        "indexColumnIds": [
+          "ix_book_title_title"
+        ],
+        "unique": false
+      }
+    },
+    "indexColumnEntities": {
+      "ix_book_title_title": {
+        "id": "ix_book_title_title",
+        "indexId": "ix_book_title",
+        "columnId": "book_title",
+        "orderType": 1
+      }
+    },
+    "memoEntities": {
+      "shelf_note": {
+        "id": "shelf_note",
+        "value": "one author writes many books",
+        "ui": {
+          "x": 120,
+          "y": 360,
+          "width": 200,
+          "height": 120,
+          "color": "#ffc53d"
+        }
+      }
+    },
+    "tableGroupEntities": {
+      "catalog": {
+        "id": "catalog",
+        "name": "catalog",
+        "color": "#30a46c",
+        "ui": {
+          "x": 80,
+          "y": 40,
+          "width": 760,
+          "height": 300
+        }
+      }
+    }
+  }
+}

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
   "title": "ERD Editor document",
-  "description": "The storage form an ERD Editor file holds (.erd, .erd.json, .vuerd, .vuerd.json): the live entities alone, each collection keyed in id order, without what an editor derives on load or keeps while it is open",
+  "description": "The storage form an ERD Editor file holds (.erd, .erd.json, .vuerd, .vuerd.json): the live entities alone, each collection keyed in id order but the dictionaries, a header and one row per entry in document order, without what an editor derives on load or keeps while it is open",
   "type": "object",
   "properties": {
     "$schema": {
@@ -41,6 +41,15 @@
         },
         "tableGroupEntities": {
           "$ref": "#/$defs/tableGroupEntities"
+        },
+        "wordEntities": {
+          "$ref": "#/$defs/wordEntities"
+        },
+        "termEntities": {
+          "$ref": "#/$defs/termEntities"
+        },
+        "domainEntities": {
+          "$ref": "#/$defs/domainEntities"
         }
       },
       "required": [
@@ -72,7 +81,7 @@
           "maximum": 1.5
         },
         "show": {
-          "description": "bit value (tableComment: 1) | (columnComment: 2) | (columnDataType: 4) | (columnDefault: 8) | (columnAutoIncrement: 16) | (columnPrimaryKey: 32) | (columnUnique: 64) | (columnNotNull: 128) | (relationship: 256) | (columnAlternateKey: 512) | (hideReferentialAction: 1024) | (hideTableGroup: 2048) | (hideMemo: 4096); the three hide bits hide what they name while set",
+          "description": "bit value (tableComment: 1) | (columnComment: 2) | (columnDataType: 4) | (columnDefault: 8) | (columnAutoIncrement: 16) | (columnPrimaryKey: 32) | (columnUnique: 64) | (columnNotNull: 128) | (relationship: 256) | (columnAlternateKey: 512) | (hideReferentialAction: 1024) | (hideTableGroup: 2048) | (hideMemo: 4096) | (columnDomain: 8192); the three hide bits hide what they name while set",
           "type": "integer"
         },
         "database": {
@@ -89,7 +98,8 @@
             "@dineug/erd-editor/builtin-visualization",
             "@dineug/erd-editor/builtin-schema-sql",
             "@dineug/erd-editor/builtin-generator-code",
-            "settings"
+            "settings",
+            "@dineug/erd-editor/builtin-dictionary"
           ]
         },
         "language": {
@@ -116,7 +126,7 @@
           "type": "boolean"
         },
         "columnOrder": {
-          "description": "bit value (columnName: 1) | (columnDataType: 2) | (columnNotNull: 4) | (columnUnique: 8) | (columnAutoIncrement: 16) | (columnDefault: 32) | (columnComment: 64)",
+          "description": "bit value (columnName: 1) | (columnDataType: 2) | (columnNotNull: 4) | (columnUnique: 8) | (columnAutoIncrement: 16) | (columnDefault: 32) | (columnComment: 64) | (columnLogicalName: 128) | (columnDomain: 256); seven entries without the last two while the logical name stands just before the name and the domain just after the data type, all nine otherwise",
           "type": "array",
           "prefixItems": [
             { "type": "integer" },
@@ -125,10 +135,14 @@
             { "type": "integer" },
             { "type": "integer" },
             { "type": "integer" },
+            { "type": "integer" },
+            { "type": "integer" },
             { "type": "integer" }
           ],
-          "minItems": 7,
-          "maxItems": 7
+          "anyOf": [
+            { "minItems": 7, "maxItems": 7 },
+            { "minItems": 9, "maxItems": 9 }
+          ]
         },
         "maxWidthComment": {
           "type": "integer"
@@ -217,6 +231,10 @@
           "name": {
             "type": "string"
           },
+          "logicalName": {
+            "description": "The name the logical view shows; absent means none",
+            "type": "string"
+          },
           "comment": {
             "type": "string"
           },
@@ -229,6 +247,11 @@
           "groupId": {
             "description": "Id of the table group in doc.tableGroupIds the table belongs to; absent means none",
             "type": "string"
+          },
+          "nameDerived": {
+            "description": "The dictionaries filled the name, so a new logical name derives it again; absent means a name someone wrote",
+            "type": "boolean",
+            "const": true
           },
           "ui": {
             "type": "object",
@@ -275,8 +298,16 @@
             "type": "string"
           },
           "options": {
-            "description": "bit value (autoIncrement: 1) | (primaryKey: 2) | (unique: 4) | (notNull: 8)",
+            "description": "bit value (autoIncrement: 1) | (primaryKey: 2) | (unique: 4) | (notNull: 8) | (nameDerived: 16); nameDerived is set while the dictionaries filled the name",
             "type": "integer"
+          },
+          "logicalName": {
+            "description": "The name the logical view shows; absent means none",
+            "type": "string"
+          },
+          "domainId": {
+            "description": "Id of the domain in domainEntities that governs the data type; absent means none",
+            "type": "string"
           }
         },
         "required": [
@@ -456,6 +487,90 @@
         "required": ["id", "name", "color", "ui"],
         "additionalProperties": false
       }
+    },
+    "wordEntities": {
+      "description": "The words of the dictionary, the parts a logical name is composed of, each with its abbreviation in a physical name. Written while a word exists; absent means none",
+      "type": "object",
+      "properties": {
+        "fields": {
+          "const": ["id", "name", "abbreviation", "englishName", "description", "synonyms", "forbiddenWords"]
+        },
+        "rows": {
+          "description": "One row per entry in document order, its values in the order fields names them; values past the name are left out from the last empty one back",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" }
+            ],
+            "items": false,
+            "minItems": 2
+          }
+        }
+      },
+      "required": ["fields", "rows"],
+      "additionalProperties": false
+    },
+    "termEntities": {
+      "description": "The terms of the dictionary, logical names a column matches by its text, each with its physical name and domain id. Written while a term exists; absent means none",
+      "type": "object",
+      "properties": {
+        "fields": {
+          "const": ["id", "name", "physicalName", "domainId", "description", "synonyms"]
+        },
+        "rows": {
+          "description": "One row per entry in document order, its values in the order fields names them; values past the name are left out from the last empty one back",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" }
+            ],
+            "items": false,
+            "minItems": 2
+          }
+        }
+      },
+      "required": ["fields", "rows"],
+      "additionalProperties": false
+    },
+    "domainEntities": {
+      "description": "The domains of the dictionary, named data types a column or a term links to by id. Written while a domain exists; absent means none",
+      "type": "object",
+      "properties": {
+        "fields": {
+          "const": ["id", "name", "category", "dataType", "description"]
+        },
+        "rows": {
+          "description": "One row per entry in document order, its values in the order fields names them; values past the name are left out from the last empty one back",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" },
+              { "type": "string" }
+            ],
+            "items": false,
+            "minItems": 2
+          }
+        }
+      },
+      "required": ["fields", "rows"],
+      "additionalProperties": false
     },
     "RelationshipPoint": {
       "type": "object",

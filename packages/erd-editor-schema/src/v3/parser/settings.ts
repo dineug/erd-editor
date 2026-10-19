@@ -77,8 +77,10 @@ const createSettings = (): Settings => {
     bracketType: BracketType.none,
     relationshipDataTypeSync: true,
     columnOrder: [
+      ColumnType.columnLogicalName,
       ColumnType.columnName,
       ColumnType.columnDataType,
+      ColumnType.columnDomain,
       ColumnType.columnNotNull,
       ColumnType.columnUnique,
       ColumnType.columnAutoIncrement,
@@ -91,6 +93,60 @@ const createSettings = (): Settings => {
   };
   return { ...settings, lockedValues: toLockedValues(settings) };
 };
+
+/** The column types of a document saved before the logical name and domain. */
+const SEVEN_COLUMN_TYPES = ColumnTypeList.filter(
+  columnType =>
+    columnType !== ColumnType.columnLogicalName &&
+    columnType !== ColumnType.columnDomain
+);
+
+const isOrderOf = (
+  columnTypes: ReadonlyArray<number>,
+  order: ReadonlyArray<unknown>
+) =>
+  order.length === columnTypes.length &&
+  difference(columnTypes, order as number[]).length === 0;
+
+/**
+ * A saved column order as the full one: seven entries take the logical name
+ * just before the name and the domain just after the data type, every column
+ * type in any order stays as it is, and anything else is null.
+ */
+export function toFullColumnOrder(order: unknown): number[] | null {
+  if (!Array.isArray(order)) return null;
+  if (isOrderOf(ColumnTypeList, order)) return order;
+  if (!isOrderOf(SEVEN_COLUMN_TYPES, order)) return null;
+
+  return order.flatMap((columnType: number) =>
+    columnType === ColumnType.columnName
+      ? [ColumnType.columnLogicalName, columnType]
+      : columnType === ColumnType.columnDataType
+        ? [columnType, ColumnType.columnDomain]
+        : [columnType]
+  );
+}
+
+/**
+ * The column order a document saves: seven entries while the logical name and
+ * the domain stand where toFullColumnOrder would put them, so a file that never
+ * moved them keeps its bytes and an older release keeps its order.
+ */
+export function toSavedColumnOrder(order: number[]): number[] {
+  if (!Array.isArray(order)) return order;
+
+  const seven = order.filter(
+    columnType =>
+      columnType !== ColumnType.columnLogicalName &&
+      columnType !== ColumnType.columnDomain
+  );
+  const full = toFullColumnOrder(seven);
+
+  return full?.length === order.length &&
+    full.every((columnType, index) => columnType === order[index])
+    ? seven
+    : order;
+}
 
 const LEGACY_CANVAS_SIZE = 2000;
 
@@ -151,13 +207,8 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   assign(validNumber(NameCaseList), settings, json)('columnNameCase');
   assign(validNumber(BracketTypeList), settings, json)('bracketType');
 
-  if (
-    Array.isArray(json.columnOrder) &&
-    ColumnTypeList.length === json.columnOrder.length &&
-    difference(ColumnTypeList, json.columnOrder).length === 0
-  ) {
-    settings.columnOrder = json.columnOrder as number[];
-  }
+  settings.columnOrder =
+    toFullColumnOrder(json.columnOrder) ?? settings.columnOrder;
 
   if (isFiniteNumber(json.originX) && isFiniteNumber(json.originY)) {
     settings.originX = json.originX;

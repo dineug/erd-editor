@@ -1,6 +1,8 @@
 export type Table = {
   id: string;
   name: string;
+  /** The name a reader sees in the logical view, '' for none. */
+  logicalName: string;
   comment: string;
   columnIds: string[];
   seqColumnIds: string[];
@@ -9,6 +11,11 @@ export type Table = {
    * doc.tableGroupIds reads as none.
    */
   groupId: string;
+  /**
+   * True while the dictionaries filled the name, which a new logical name then
+   * derives again; false for a name someone wrote, which nothing rewrites.
+   */
+  nameDerived: boolean;
   ui: TableUI;
 };
 
@@ -17,6 +24,7 @@ export type TableUI = {
   y: number;
   zIndex: number;
   widthName: number;
+  widthLogicalName: number;
   widthComment: number;
   color: string;
 };

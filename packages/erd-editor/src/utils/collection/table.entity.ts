@@ -9,15 +9,18 @@ export const createTable = (value?: DeepPartial<Table>): Table =>
     {
       id: uuid25(),
       name: '',
+      logicalName: '',
       comment: '',
       columnIds: [],
       seqColumnIds: [],
       groupId: '',
+      nameDerived: false,
       ui: {
         x: 200,
         y: 100,
         zIndex: 2,
         widthName: COLUMN_MIN_WIDTH,
+        widthLogicalName: COLUMN_MIN_WIDTH,
         widthComment: COLUMN_MIN_WIDTH,
         color: '',
       },

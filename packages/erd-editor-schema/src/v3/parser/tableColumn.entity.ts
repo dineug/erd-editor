@@ -12,11 +12,15 @@ export const createColumn = (): Column => ({
   dataType: '',
   default: '',
   options: 0,
+  logicalName: '',
+  domainId: '',
   ui: {
     keys: 0,
     widthName: 60,
+    widthLogicalName: 60,
     widthComment: 60,
     widthDataType: 60,
+    widthDomain: 60,
     widthDefault: 60,
   },
 });
@@ -41,11 +45,15 @@ export function createAndMergeTableColumnEntities(
     assignString('dataType');
     assignString('default');
     assignNumber('options');
+    assignString('logicalName');
+    assignString('domainId');
 
     uiAssignNumber('keys');
     uiAssignNumber('widthName');
+    uiAssignNumber('widthLogicalName');
     uiAssignNumber('widthComment');
     uiAssignNumber('widthDataType');
+    uiAssignNumber('widthDomain');
     uiAssignNumber('widthDefault');
 
     if (target.id) {

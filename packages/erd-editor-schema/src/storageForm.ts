@@ -1,3 +1,8 @@
+import {
+  DictionaryRows,
+  stringifyDocument,
+  toDictionaryRows,
+} from '@/dictionaryRows';
 import { NormalizedSettings, normalizeSettings } from '@/normalizeSettings';
 import { ERDEditorSchemaV3 } from '@/v3/schema';
 import { Doc } from '@/v3/schema/doc';
@@ -17,11 +22,16 @@ const SCHEMA_URL =
   'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
 
 type DocumentTable = Pick<Table, 'id' | 'name' | 'comment' | 'columnIds'> & {
+  logicalName?: string;
   groupId?: string;
+  nameDerived?: boolean;
   ui: Pick<TableUI, 'x' | 'y' | 'color'>;
 };
 
-type DocumentColumn = Omit<Column, 'ui'>;
+type DocumentColumn = Omit<Column, 'ui' | 'logicalName' | 'domainId'> & {
+  logicalName?: string;
+  domainId?: string;
+};
 
 type DocumentRelationshipPoint = Pick<
   RelationshipPoint,
@@ -50,7 +60,9 @@ export type ERDEditorDocumentV3 = Pick<
   '$schema' | 'version'
 > & {
   settings: NormalizedSettings;
-  doc: Omit<Doc, 'tableGroupIds'> & { tableGroupIds?: string[] };
+  doc: Omit<Doc, 'tableGroupIds' | 'wordIds' | 'termIds' | 'domainIds'> & {
+    tableGroupIds?: string[];
+  };
   collections: {
     tableEntities: Record<string, DocumentTable>;
     tableColumnEntities: Record<string, DocumentColumn>;
@@ -59,6 +71,9 @@ export type ERDEditorDocumentV3 = Pick<
     indexColumnEntities: Record<string, IndexColumn>;
     memoEntities: Record<string, DocumentMemo>;
     tableGroupEntities?: Record<string, DocumentTableGroup>;
+    wordEntities?: DictionaryRows;
+    termEntities?: DictionaryRows;
+    domainEntities?: DictionaryRows;
   };
 };
 
@@ -109,14 +124,20 @@ function toDocumentSettings(settings: Settings): NormalizedSettings {
 
 /**
  * The storage form of a document as an object: the live entities alone, each
- * collection sorted by id, without the fields an editor derives on load or
- * keeps for one instance.
+ * collection sorted by id but the dictionaries, rows in their own order, and
+ * none of the fields an editor derives on load or keeps for one instance.
  */
 export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
   const { doc, collections } = schema;
   const tableGroupEntities = collections.tableGroupEntities ?? {};
   const tableGroupIds = liveIds(doc.tableGroupIds ?? [], tableGroupEntities);
   const keptGroups = new Set(tableGroupIds);
+
+  const wordEntities = collections.wordEntities ?? {};
+  const termEntities = collections.termEntities ?? {};
+  const domainEntities = collections.domainEntities ?? {};
+  const domainIds = liveIds(doc.domainIds ?? [], domainEntities);
+  const keptDomains = new Set(domainIds);
 
   const tableIds = liveIds(doc.tableIds, collections.tableEntities);
   const keptTables = new Set(tableIds);
@@ -130,9 +151,11 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
     return {
       id: table.id,
       name: table.name,
+      ...(table.logicalName ? { logicalName: table.logicalName } : {}),
       comment: table.comment,
       columnIds,
       ...(keptGroups.has(table.groupId) ? { groupId: table.groupId } : {}),
+      ...(table.nameDerived === true ? { nameDerived: true } : {}),
       ui: { x: table.ui.x, y: table.ui.y, color: table.ui.color },
     };
   });
@@ -149,6 +172,10 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
         dataType: column.dataType,
         default: column.default,
         options: column.options,
+        ...(column.logicalName ? { logicalName: column.logicalName } : {}),
+        ...(keptDomains.has(column.domainId)
+          ? { domainId: column.domainId }
+          : {}),
       };
     }
   );
@@ -243,6 +270,15 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
 
   const hasGroups = tableGroups.length !== 0;
 
+  const words = liveIds(doc.wordIds ?? [], wordEntities).map(
+    id => wordEntities[id]
+  );
+  const terms = liveIds(doc.termIds ?? [], termEntities).map(id => {
+    const term = termEntities[id];
+    return keptDomains.has(term.domainId) ? term : { ...term, domainId: '' };
+  });
+  const domains = domainIds.map(id => domainEntities[id]);
+
   return {
     $schema: SCHEMA_URL,
     version: '3.0.0',
@@ -268,15 +304,24 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
       ),
       memoEntities: toRecord(memos),
       ...(hasGroups ? { tableGroupEntities: toRecord(tableGroups) } : {}),
+      ...(words.length !== 0
+        ? { wordEntities: toDictionaryRows('wordEntities', words) }
+        : {}),
+      ...(terms.length !== 0
+        ? { termEntities: toDictionaryRows('termEntities', terms) }
+        : {}),
+      ...(domains.length !== 0
+        ? { domainEntities: toDictionaryRows('domainEntities', domains) }
+        : {}),
     },
   };
 }
 
 /**
  * The storage form a file holds, as text: what toDocument returns, indented by
- * two spaces and ending with a newline, so each save of the same document
- * writes the same bytes.
+ * two spaces, a dictionary row to a line, and ending with a newline, so each
+ * save of the same document writes the same bytes.
  */
 export function toDocumentJson(schema: ERDEditorSchemaV3): string {
-  return `${JSON.stringify(toDocument(schema), null, 2)}\n`;
+  return `${stringifyDocument(toDocument(schema))}\n`;
 }

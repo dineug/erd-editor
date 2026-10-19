@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vite-plus/test';
 import { parser, toJson } from '@/parser';
 import { toDocumentJson } from '@/storageForm';
 import { createSchema, SchemaV3Constants } from '@/v3';
+import { createDomain } from '@/v3/parser/domain.entity';
+import { createTerm } from '@/v3/parser/term.entity';
+import { createWord } from '@/v3/parser/word.entity';
 
 import schema from '../../../json-schema/schema.json';
 
@@ -18,8 +21,9 @@ type JsonSchema = {
   properties?: Record<string, JsonSchema>;
   required?: string[];
   additionalProperties?: boolean | JsonSchema;
-  items?: JsonSchema;
+  items?: boolean | JsonSchema;
   prefixItems?: JsonSchema[];
+  anyOf?: JsonSchema[];
   minItems?: number;
   maxItems?: number;
   $defs?: Record<string, JsonSchema>;
@@ -61,8 +65,14 @@ function validate(
     (node.type === 'number' && type === 'integer');
 
   if (!fits) return [`${at}: ${type} is not ${node.type}`];
-  if ('const' in node && node.const !== value) {
+  if ('const' in node && JSON.stringify(node.const) !== JSON.stringify(value)) {
     errors.push(`${at}: not ${JSON.stringify(node.const)}`);
+  }
+  if (
+    node.anyOf &&
+    !node.anyOf.some(branch => validate(value, branch, at, where).length === 0)
+  ) {
+    errors.push(`${at}: fits none of anyOf`);
   }
   if (node.enum && !node.enum.includes(value)) {
     errors.push(`${at}: ${JSON.stringify(value)} is outside the enum`);
@@ -85,7 +95,9 @@ function validate(
     }
     value.forEach((item, index) => {
       const itemNode = node.prefixItems?.[index] ?? node.items;
-      if (itemNode) {
+      if (itemNode === false) {
+        errors.push(`${at}[${index}]: is not allowed`);
+      } else if (typeof itemNode === 'object') {
         errors.push(
           ...validate(item, itemNode, `${at}[${index}]`, where, reached)
         );
@@ -151,11 +163,16 @@ function namedProperties(
     ...(typeof node.additionalProperties === 'object'
       ? namedProperties(node.additionalProperties, `${where}/*`, seen)
       : []),
-    ...(node.items ? namedProperties(node.items, where, seen) : []),
+    ...(typeof node.items === 'object'
+      ? namedProperties(node.items, where, seen)
+      : []),
   ];
 }
 
-/** A document that reaches every saved field: groups, scripts, every entity. */
+/**
+ * A document that reaches every saved field: groups, scripts, logical names,
+ * domain links, a full row in each dictionary and every other entity.
+ */
 const FULL = toDocumentJson(
   parser(
     JSON.stringify({
@@ -174,11 +191,25 @@ const FULL = toDocumentJson(
       },
       collections: {
         tableEntities: {
-          t1: { id: 't1', name: 'users', columnIds: ['c1'], groupId: 'g1' },
+          t1: {
+            id: 't1',
+            name: 'users',
+            logicalName: 'User',
+            columnIds: ['c1'],
+            groupId: 'g1',
+            nameDerived: true,
+          },
           t2: { id: 't2', name: 'orders', columnIds: ['c2'] },
         },
         tableColumnEntities: {
-          c1: { id: 'c1', tableId: 't1', name: 'id', options: 2 },
+          c1: {
+            id: 'c1',
+            tableId: 't1',
+            name: 'USER_NO',
+            options: 2 | 16,
+            logicalName: 'User Number',
+            domainId: 'd1',
+          },
           c2: { id: 'c2', tableId: 't2', name: 'user_id' },
         },
         relationshipEntities: {
@@ -202,6 +233,18 @@ const FULL = toDocumentJson(
         },
         memoEntities: { m1: { id: 'm1', value: 'note' } },
         tableGroupEntities: { g1: { id: 'g1', name: 'billing' } },
+        wordEntities: {
+          fields: Object.keys(createWord()),
+          rows: [['w1', 'user', 'USER', 'user', 'one', 'member', 'client']],
+        },
+        termEntities: {
+          fields: Object.keys(createTerm()),
+          rows: [['tm1', 'User Number', 'USER_NO', 'd1', 'one', 'user id']],
+        },
+        domainEntities: {
+          fields: Object.keys(createDomain()),
+          rows: [['d1', 'NumberN10', 'number', 'NUMERIC(10)', 'a count']],
+        },
       },
     })
   )
@@ -247,6 +290,9 @@ describe('json-schema/schema.json', () => {
     ['settings', 'lockedValues', {}],
     ['collections.tableEntities.t1', 'meta', { updateAt: 1, createAt: 1 }],
     ['collections.tableEntities.t1.ui', 'widthName', 60],
+    ['collections.tableEntities.t1.ui', 'widthLogicalName', 60],
+    ['collections.tableColumnEntities.c1', 'ui', { widthDomain: 60 }],
+    ['doc', 'wordIds', ['w1']],
     ['collections.relationshipEntities.r1', 'identification', false],
     ['collections.relationshipEntities.r1', 'startRelationshipType', 2],
     ['collections.relationshipEntities.r1.start', 'direction', 2],
@@ -261,6 +307,49 @@ describe('json-schema/schema.json', () => {
     target[key] = value;
 
     expect(validate(document)).toEqual([`$.${path}: ${key} is not allowed`]);
+  });
+
+  it('accepts a column order of nine with the new column types moved', () => {
+    const document = full();
+    document.settings.columnOrder = [1, 128, 2, 4, 8, 16, 32, 64, 256];
+
+    expect(validate(document)).toEqual([]);
+  });
+
+  it.each([
+    ['eight', [1, 2, 4, 8, 16, 32, 64, 128]],
+    ['six', [1, 2, 4, 8, 16, 32]],
+  ])('refuses a column order of %s entries', (_, columnOrder) => {
+    const document = full();
+    document.settings.columnOrder = columnOrder;
+
+    expect(validate(document)).toEqual([
+      '$.settings.columnOrder: fits none of anyOf',
+    ]);
+  });
+
+  it('refuses a dictionary row past its fields, short of a name, or a header of its own', () => {
+    const document = full();
+    document.collections.wordEntities.rows.push(['w2']);
+    document.collections.domainEntities.rows[0].push('extra');
+    document.collections.termEntities.fields = ['id', 'name'];
+
+    expect(validate(document)).toEqual([
+      '$.collections.wordEntities.rows[1]: fewer than 2 items',
+      `$.collections.termEntities.fields: not ${JSON.stringify(
+        Object.keys(createTerm())
+      )}`,
+      '$.collections.domainEntities.rows[0][5]: is not allowed',
+    ]);
+  });
+
+  it('refuses a derived flag that is not true, which the storage form leaves out', () => {
+    const document = full();
+    document.collections.tableEntities.t1.nameDerived = false;
+
+    expect(validate(document)).toEqual([
+      '$.collections.tableEntities.t1.nameDerived: not true',
+    ]);
   });
 
   it('refuses a document without a field the storage form always writes', () => {

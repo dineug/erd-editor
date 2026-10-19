@@ -1,0 +1,112 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "originX": 0,
+    "originY": 0,
+    "zoomLevel": 1,
+    "show": 431,
+    "database": 4,
+    "databaseName": "",
+    "canvasType": "ERD",
+    "language": 1,
+    "tableNameCase": 4,
+    "columnNameCase": 2,
+    "bracketType": 1,
+    "relationshipDataTypeSync": true,
+    "columnOrder": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "maxWidthComment": -1,
+    "lockSettings": 63
+  },
+  "doc": {
+    "tableIds": [
+      "a41506e3-20b1-b67d-ee82-e3fd5609adb0",
+      "8795e11d-a105-7907-b9dd-c7763f3f6271"
+    ],
+    "relationshipIds": [],
+    "indexIds": [],
+    "memoIds": []
+  },
+  "collections": {
+    "tableEntities": {
+      "8795e11d-a105-7907-b9dd-c7763f3f6271": {
+        "id": "8795e11d-a105-7907-b9dd-c7763f3f6271",
+        "name": "avatar_tag",
+        "comment": "",
+        "columnIds": [
+          "e9d2a44d-c0ef-7c12-da87-b21b71cb2805",
+          "5211dc4e-7688-a8c7-fced-bfd651753c82"
+        ],
+        "ui": {
+          "x": 456,
+          "y": 50,
+          "color": ""
+        }
+      },
+      "a41506e3-20b1-b67d-ee82-e3fd5609adb0": {
+        "id": "a41506e3-20b1-b67d-ee82-e3fd5609adb0",
+        "name": "user_role",
+        "comment": "",
+        "columnIds": [
+          "4c6b94a0-0188-943b-c119-43c9aca850ed",
+          "d868c8a9-8145-114a-5a9d-fdf53d545dbb"
+        ],
+        "ui": {
+          "x": 50,
+          "y": 50,
+          "color": ""
+        }
+      }
+    },
+    "tableColumnEntities": {
+      "5211dc4e-7688-a8c7-fced-bfd651753c82": {
+        "id": "5211dc4e-7688-a8c7-fced-bfd651753c82",
+        "tableId": "8795e11d-a105-7907-b9dd-c7763f3f6271",
+        "name": "tag_id",
+        "comment": "",
+        "dataType": "INT",
+        "default": "",
+        "options": 0
+      },
+      "e9d2a44d-c0ef-7c12-da87-b21b71cb2805": {
+        "id": "e9d2a44d-c0ef-7c12-da87-b21b71cb2805",
+        "tableId": "8795e11d-a105-7907-b9dd-c7763f3f6271",
+        "name": "avatar_tags_id",
+        "comment": "",
+        "dataType": "INT",
+        "default": "",
+        "options": 0
+      },
+      "4c6b94a0-0188-943b-c119-43c9aca850ed": {
+        "id": "4c6b94a0-0188-943b-c119-43c9aca850ed",
+        "tableId": "a41506e3-20b1-b67d-ee82-e3fd5609adb0",
+        "name": "user_id",
+        "comment": "",
+        "dataType": "INT",
+        "default": "",
+        "options": 10
+      },
+      "d868c8a9-8145-114a-5a9d-fdf53d545dbb": {
+        "id": "d868c8a9-8145-114a-5a9d-fdf53d545dbb",
+        "tableId": "a41506e3-20b1-b67d-ee82-e3fd5609adb0",
+        "name": "role_id",
+        "comment": "",
+        "dataType": "INT",
+        "default": "",
+        "options": 10
+      }
+    },
+    "relationshipEntities": {},
+    "indexEntities": {},
+    "indexColumnEntities": {},
+    "memoEntities": {}
+  }
+}

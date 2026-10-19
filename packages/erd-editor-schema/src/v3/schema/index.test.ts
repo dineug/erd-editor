@@ -191,21 +191,27 @@ describe('v3/schema/index', () => {
           indexIds: [],
           memoIds: [],
           tableGroupIds: ['group-1'],
+          wordIds: ['word-1'],
+          termIds: [],
+          domainIds: [],
         },
         collections: {
           tableEntities: {
             'table-1': {
               id: 'table-1',
               name: 'actor',
+              logicalName: '',
               comment: '',
               columnIds: [],
               seqColumnIds: [],
               groupId: 'group-1',
+              nameDerived: false,
               ui: {
                 x: 0,
                 y: 0,
                 zIndex: 2,
                 widthName: 60,
+                widthLogicalName: 60,
                 widthComment: 60,
                 color: '',
               },
@@ -224,12 +230,26 @@ describe('v3/schema/index', () => {
               ui: { x: -40, y: -40, width: 400, height: 300, zIndex: 1 },
             },
           },
+          wordEntities: {
+            'word-1': {
+              id: 'word-1',
+              name: '회원',
+              abbreviation: 'MBR',
+              englishName: 'member',
+              description: '',
+              synonyms: '',
+              forbiddenWords: '',
+            },
+          },
+          termEntities: {},
+          domainEntities: {},
         },
       };
 
       expect(schema.version).toBe('3.0.0');
       expect(schema.$schema).toMatch(/json-schema\/schema\.json$/);
       expect(Object.keys(schema.collections).sort()).toEqual([
+        'domainEntities',
         'indexColumnEntities',
         'indexEntities',
         'memoEntities',
@@ -237,6 +257,8 @@ describe('v3/schema/index', () => {
         'tableColumnEntities',
         'tableEntities',
         'tableGroupEntities',
+        'termEntities',
+        'wordEntities',
       ]);
       expect(
         schema.doc.tableIds.every(id => id in schema.collections.tableEntities)

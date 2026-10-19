@@ -1,5 +1,4 @@
 import { uuid25 } from '@dineug/uuid';
-import { difference } from 'es-toolkit';
 
 import { propOr } from '@/helper';
 import { type ERDEditorSchemaV2 } from '@/v2';
@@ -13,7 +12,7 @@ import { createIndexColumn } from '@/v3/parser/indexColumn.entity';
 import { createMemo } from '@/v3/parser/memo.entity';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
 import { createRelationship } from '@/v3/parser/relationship.entity';
-import { toLockedValues } from '@/v3/parser/settings';
+import { toFullColumnOrder, toLockedValues } from '@/v3/parser/settings';
 import { createTable } from '@/v3/parser/table.entity';
 import { createColumn } from '@/v3/parser/tableColumn.entity';
 
@@ -83,15 +82,10 @@ function assignCanvas(
 
   target.relationshipDataTypeSync = source.setting.relationshipDataTypeSync;
 
-  const newColumnOrder = source.setting.columnOrder.map(
-    key => SchemaV3Constants.ColumnType[key]
-  );
-
-  if (
-    difference(SchemaV3Constants.ColumnTypeList, newColumnOrder).length === 0
-  ) {
-    target.columnOrder = newColumnOrder;
-  }
+  target.columnOrder =
+    toFullColumnOrder(
+      source.setting.columnOrder.map(key => SchemaV3Constants.ColumnType[key])
+    ) ?? target.columnOrder;
 
   target.lockedValues = toLockedValues(target);
 }

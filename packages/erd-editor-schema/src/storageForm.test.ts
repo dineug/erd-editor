@@ -885,3 +885,461 @@ describe('the settings toDocumentJson writes', () => {
     });
   });
 });
+
+const WORD_FIELDS = [
+  'id',
+  'name',
+  'abbreviation',
+  'englishName',
+  'description',
+  'synonyms',
+  'forbiddenWords',
+];
+const TERM_FIELDS = [
+  'id',
+  'name',
+  'physicalName',
+  'domainId',
+  'description',
+  'synonyms',
+];
+const DOMAIN_FIELDS = ['id', 'name', 'category', 'dataType', 'description'];
+
+/**
+ * A document with a logical name on a table and a column, a domain link, and a
+ * dictionary of each kind, each holding a removed entry; the column notes and
+ * the second term link a removed domain.
+ */
+const DICTIONARY = {
+  version: '3.0.0',
+  doc: {
+    tableIds: ['t1'],
+    wordIds: ['w2', 'w1'],
+    termIds: ['tm1', 'tm2'],
+    domainIds: ['d1'],
+  },
+  collections: {
+    tableEntities: {
+      t1: {
+        id: 't1',
+        name: 'member',
+        logicalName: '회원',
+        columnIds: ['c1', 'c2'],
+        nameDerived: true,
+      },
+    },
+    tableColumnEntities: {
+      c1: {
+        id: 'c1',
+        tableId: 't1',
+        name: 'MBR_NO',
+        dataType: 'NUMERIC(10)',
+        options: 18,
+        logicalName: '회원 번호',
+        domainId: 'd1',
+      },
+      c2: {
+        id: 'c2',
+        tableId: 't1',
+        name: 'note',
+        dataType: 'TEXT',
+        domainId: 'd9',
+      },
+    },
+    wordEntities: {
+      fields: WORD_FIELDS,
+      rows: [
+        ['w1', '회원', 'MBR', 'member'],
+        ['w2', '번호', 'NO', '', '', 'NUM'],
+        ['w3', 'removed', 'RMV'],
+      ],
+    },
+    termEntities: {
+      fields: TERM_FIELDS,
+      rows: [
+        ['tm1', '회원 번호', 'MBR_NO', 'd1'],
+        ['tm2', '가입 일시', '', 'd9', 'joined at'],
+        ['tm3', 'removed'],
+      ],
+    },
+    domainEntities: {
+      fields: DOMAIN_FIELDS,
+      rows: [
+        ['d1', '번호N10', '번호', 'NUMERIC(10)'],
+        ['d9', 'removed', '', 'TEXT'],
+      ],
+    },
+  },
+};
+
+const lines = (...rows: string[]) => `${rows.join('\n')}\n`;
+
+/** The storage form of DICTIONARY, written out as the file holds it. */
+const DICTIONARY_JSON = lines(
+  '{',
+  `  "$schema": "${V3_SCHEMA_URL}",`,
+  '  "version": "3.0.0",',
+  '  "settings": {',
+  '    "originX": 0,',
+  '    "originY": 0,',
+  '    "zoomLevel": 1,',
+  '    "show": 431,',
+  '    "database": 4,',
+  '    "databaseName": "",',
+  '    "canvasType": "ERD",',
+  '    "language": 1,',
+  '    "tableNameCase": 4,',
+  '    "columnNameCase": 2,',
+  '    "bracketType": 1,',
+  '    "relationshipDataTypeSync": true,',
+  '    "columnOrder": [',
+  '      1,',
+  '      2,',
+  '      4,',
+  '      8,',
+  '      16,',
+  '      32,',
+  '      64',
+  '    ],',
+  '    "maxWidthComment": -1,',
+  '    "lockSettings": 63',
+  '  },',
+  '  "doc": {',
+  '    "tableIds": [',
+  '      "t1"',
+  '    ],',
+  '    "relationshipIds": [],',
+  '    "indexIds": [],',
+  '    "memoIds": []',
+  '  },',
+  '  "collections": {',
+  '    "tableEntities": {',
+  '      "t1": {',
+  '        "id": "t1",',
+  '        "name": "member",',
+  '        "logicalName": "회원",',
+  '        "comment": "",',
+  '        "columnIds": [',
+  '          "c1",',
+  '          "c2"',
+  '        ],',
+  '        "nameDerived": true,',
+  '        "ui": {',
+  '          "x": 200,',
+  '          "y": 100,',
+  '          "color": ""',
+  '        }',
+  '      }',
+  '    },',
+  '    "tableColumnEntities": {',
+  '      "c1": {',
+  '        "id": "c1",',
+  '        "tableId": "t1",',
+  '        "name": "MBR_NO",',
+  '        "comment": "",',
+  '        "dataType": "NUMERIC(10)",',
+  '        "default": "",',
+  '        "options": 18,',
+  '        "logicalName": "회원 번호",',
+  '        "domainId": "d1"',
+  '      },',
+  '      "c2": {',
+  '        "id": "c2",',
+  '        "tableId": "t1",',
+  '        "name": "note",',
+  '        "comment": "",',
+  '        "dataType": "TEXT",',
+  '        "default": "",',
+  '        "options": 0',
+  '      }',
+  '    },',
+  '    "relationshipEntities": {},',
+  '    "indexEntities": {},',
+  '    "indexColumnEntities": {},',
+  '    "memoEntities": {},',
+  '    "wordEntities": {',
+  '      "fields": [',
+  '        "id",',
+  '        "name",',
+  '        "abbreviation",',
+  '        "englishName",',
+  '        "description",',
+  '        "synonyms",',
+  '        "forbiddenWords"',
+  '      ],',
+  '      "rows": [',
+  '        ["w2","번호","NO","","","NUM"],',
+  '        ["w1","회원","MBR","member"]',
+  '      ]',
+  '    },',
+  '    "termEntities": {',
+  '      "fields": [',
+  '        "id",',
+  '        "name",',
+  '        "physicalName",',
+  '        "domainId",',
+  '        "description",',
+  '        "synonyms"',
+  '      ],',
+  '      "rows": [',
+  '        ["tm1","회원 번호","MBR_NO","d1"],',
+  '        ["tm2","가입 일시","","","joined at"]',
+  '      ]',
+  '    },',
+  '    "domainEntities": {',
+  '      "fields": [',
+  '        "id",',
+  '        "name",',
+  '        "category",',
+  '        "dataType",',
+  '        "description"',
+  '      ],',
+  '      "rows": [',
+  '        ["d1","번호N10","번호","NUMERIC(10)"]',
+  '      ]',
+  '    }',
+  '  }',
+  '}'
+);
+
+const dictionary = () => parser(JSON.stringify(DICTIONARY));
+
+describe('the dictionaries and new fields toDocumentJson writes', () => {
+  it('writes the dictionaries as a header and one row a line, byte for byte', () => {
+    expect(toDocumentJson(dictionary())).toBe(DICTIONARY_JSON);
+  });
+
+  it('writes the same bytes for its own output parsed back', () => {
+    expect(toDocumentJson(parser(DICTIONARY_JSON))).toBe(DICTIONARY_JSON);
+  });
+
+  it('reads the rows back in their order with every value they held', () => {
+    const { doc, collections } = parser(DICTIONARY_JSON);
+
+    expect(doc.wordIds).toEqual(['w2', 'w1']);
+    expect(doc.termIds).toEqual(['tm1', 'tm2']);
+    expect(doc.domainIds).toEqual(['d1']);
+    expect(collections.wordEntities).toEqual({
+      w1: {
+        id: 'w1',
+        name: '회원',
+        abbreviation: 'MBR',
+        englishName: 'member',
+        description: '',
+        synonyms: '',
+        forbiddenWords: '',
+      },
+      w2: {
+        id: 'w2',
+        name: '번호',
+        abbreviation: 'NO',
+        englishName: '',
+        description: '',
+        synonyms: 'NUM',
+        forbiddenWords: '',
+      },
+    });
+    expect(collections.termEntities.tm2).toEqual({
+      id: 'tm2',
+      name: '가입 일시',
+      physicalName: '',
+      domainId: '',
+      description: 'joined at',
+      synonyms: '',
+    });
+    expect(collections.domainEntities.d1.dataType).toBe('NUMERIC(10)');
+  });
+
+  it('writes no dictionary order in the doc', () => {
+    const { doc } = JSON.parse(toDocumentJson(dictionary()));
+
+    expect(Object.keys(doc)).toEqual([
+      'tableIds',
+      'relationshipIds',
+      'indexIds',
+      'memoIds',
+    ]);
+  });
+
+  it('writes the dictionaries after every other collection, words, terms, then domains', () => {
+    const { collections } = JSON.parse(toDocumentJson(dictionary()));
+
+    expect(Object.keys(collections)).toEqual([
+      'tableEntities',
+      'tableColumnEntities',
+      'relationshipEntities',
+      'indexEntities',
+      'indexColumnEntities',
+      'memoEntities',
+      'wordEntities',
+      'termEntities',
+      'domainEntities',
+    ]);
+  });
+
+  it('writes a dictionary only while it holds a live entry', () => {
+    const schema = dictionary();
+    schema.doc.wordIds = [];
+    schema.doc.domainIds = ['gone'];
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
+
+    expect(collections).not.toHaveProperty('wordEntities');
+    expect(collections).not.toHaveProperty('domainEntities');
+    expect(collections.termEntities.rows).toHaveLength(2);
+  });
+
+  it('leaves a link to a removed domain out and keeps the data type it gave', () => {
+    const schema = dictionary();
+
+    expect(schema.collections.tableColumnEntities.c2.domainId).toBe('d9');
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
+
+    expect(collections.tableColumnEntities.c2).not.toHaveProperty('domainId');
+    expect(collections.tableColumnEntities.c2.dataType).toBe('TEXT');
+    expect(collections.termEntities.rows[1]).toEqual([
+      'tm2',
+      '가입 일시',
+      '',
+      '',
+      'joined at',
+    ]);
+  });
+
+  it('writes no logical name, domain or derived flag while they hold none', () => {
+    const schema = dictionary();
+    Object.assign(schema.collections.tableEntities.t1, {
+      logicalName: '',
+      nameDerived: false,
+    });
+    Object.assign(schema.collections.tableColumnEntities.c1, {
+      logicalName: '',
+      domainId: '',
+    });
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
+
+    expect(Object.keys(collections.tableEntities.t1)).toEqual([
+      'id',
+      'name',
+      'comment',
+      'columnIds',
+      'ui',
+    ]);
+    expect(Object.keys(collections.tableColumnEntities.c1)).toEqual([
+      'id',
+      'tableId',
+      'name',
+      'comment',
+      'dataType',
+      'default',
+      'options',
+    ]);
+  });
+
+  it('keeps the derived name bit in the options a column saves', () => {
+    const schema = dictionary();
+    schema.collections.tableColumnEntities.c1.options = 16;
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
+
+    expect(collections.tableColumnEntities.c1.options).toBe(16);
+    expect(
+      parser(toDocumentJson(schema)).collections.tableColumnEntities.c1.options
+    ).toBe(16);
+  });
+
+  it('writes a value holding the text of a placeholder as any other string', () => {
+    const schema = dictionary();
+    schema.collections.wordEntities.w1.description = '"rows": []';
+    schema.collections.tableEntities.t1.comment = '\n      "rows": []';
+
+    const json = toDocumentJson(schema);
+    const reopened = parser(json);
+
+    expect(reopened.collections.wordEntities.w1.description).toBe('"rows": []');
+    expect(reopened.collections.tableEntities.t1.comment).toBe(
+      '\n      "rows": []'
+    );
+    expect(toDocumentJson(reopened)).toBe(json);
+  });
+
+  it('writes any text a dictionary holds as it is and reads it back', () => {
+    const schema = dictionary();
+    const text = 'Größe 会員 😀 "quoted", comma \\ slash\ttab\nline';
+    schema.collections.wordEntities.w1.name = text;
+    schema.collections.domainEntities.d1.description = text;
+
+    const json = toDocumentJson(schema);
+    const reopened = parser(json);
+
+    expect(json).toContain('Größe 会員 😀');
+    expect(reopened.collections.wordEntities.w1.name).toBe(text);
+    expect(reopened.collections.domainEntities.d1.description).toBe(text);
+    expect(
+      json.split('\n').filter(line => line.includes('Größe'))
+    ).toHaveLength(2);
+  });
+
+  it('keeps an empty value in the middle of a row', () => {
+    const schema = dictionary();
+    schema.collections.domainEntities.d1.category = '';
+    schema.collections.domainEntities.d1.description = 'a number';
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
+
+    expect(collections.domainEntities.rows).toEqual([
+      ['d1', '번호N10', '', 'NUMERIC(10)', 'a number'],
+    ]);
+  });
+});
+
+describe('the column order toDocumentJson writes', () => {
+  const { ColumnType } = SchemaV3Constants;
+  const orderOf = (columnOrder: number[]) => {
+    const schema = createSchema();
+    schema.settings.columnOrder = columnOrder;
+    return JSON.parse(toDocumentJson(schema)).settings.columnOrder;
+  };
+
+  it('writes seven entries while the logical name and the domain stand where a parse puts them', () => {
+    expect(orderOf(createSchema().settings.columnOrder)).toEqual([
+      1, 2, 4, 8, 16, 32, 64,
+    ]);
+    expect(
+      orderOf([
+        ColumnType.columnComment,
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnLogicalName,
+        ColumnType.columnName,
+        ColumnType.columnDefault,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+      ])
+    ).toEqual([64, 2, 1, 32, 4, 8, 16]);
+  });
+
+  it.each([
+    ['the logical name after the name', [1, 128, 2, 256, 4, 8, 16, 32, 64]],
+    ['the domain before the data type', [128, 1, 256, 2, 4, 8, 16, 32, 64]],
+    ['the domain last', [128, 1, 2, 4, 8, 16, 32, 64, 256]],
+  ])('writes all nine with %s', (_, columnOrder) => {
+    expect(orderOf(columnOrder)).toEqual(columnOrder);
+    expect(
+      parser(JSON.stringify({ version: '3.0.0', settings: { columnOrder } }))
+        .settings.columnOrder
+    ).toEqual(columnOrder);
+  });
+
+  it('writes the order of raw JSON as it stands', () => {
+    const raw = JSON.parse(toDocumentJson(createSchema()));
+    delete raw.settings.columnOrder;
+
+    expect(JSON.parse(toDocumentJson(raw)).settings).not.toHaveProperty(
+      'columnOrder'
+    );
+  });
+});

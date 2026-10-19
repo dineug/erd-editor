@@ -114,8 +114,10 @@ describe('the agent snapshot', () => {
       bracketType: 'none',
       relationshipDataTypeSync: true,
       columnOrder: [
+        'columnLogicalName',
         'columnName',
         'columnDataType',
+        'columnDomain',
         'columnNotNull',
         'columnUnique',
         'columnAutoIncrement',
@@ -136,6 +138,7 @@ describe('the agent snapshot', () => {
         hideReferentialAction: false,
         hideTableGroup: false,
         hideMemo: false,
+        columnDomain: false,
       },
       maxWidthComment: -1,
       // The seed starts as a new document, every setting locked.

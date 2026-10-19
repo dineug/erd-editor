@@ -10,6 +10,9 @@ const createDoc = (): Doc => ({
   indexIds: [],
   memoIds: [],
   tableGroupIds: [],
+  wordIds: [],
+  termIds: [],
+  domainIds: [],
 });
 
 export function createAndMergeDoc(json?: DeepPartial<Doc>): Doc {
@@ -23,6 +26,9 @@ export function createAndMergeDoc(json?: DeepPartial<Doc>): Doc {
   assignArray('indexIds');
   assignArray('memoIds');
   assignArray('tableGroupIds');
+  assignArray('wordIds');
+  assignArray('termIds');
+  assignArray('domainIds');
 
   return doc;
 }

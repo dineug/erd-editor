@@ -61,8 +61,10 @@ const defaultShow =
   Show.relationship;
 
 const defaultColumnOrder = [
+  ColumnType.columnLogicalName,
   ColumnType.columnName,
   ColumnType.columnDataType,
+  ColumnType.columnDomain,
   ColumnType.columnNotNull,
   ColumnType.columnUnique,
   ColumnType.columnAutoIncrement,
@@ -529,6 +531,58 @@ describe('createAndMergeSettings', () => {
       expect(
         createAndMergeSettings({ columnOrder: 'nope' as any }).columnOrder
       ).toEqual(defaultColumnOrder);
+    });
+
+    it('puts the logical name before the name and the domain after the data type into an order of seven', () => {
+      const columnOrder = [
+        ColumnType.columnComment,
+        ColumnType.columnDataType,
+        ColumnType.columnName,
+        ColumnType.columnDefault,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+      ];
+
+      expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual([
+        ColumnType.columnComment,
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnLogicalName,
+        ColumnType.columnName,
+        ColumnType.columnDefault,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+      ]);
+    });
+
+    it('reads the order of seven a document saved before the new column types as the default', () => {
+      const columnOrder = defaultColumnOrder.filter(
+        columnType =>
+          columnType !== ColumnType.columnLogicalName &&
+          columnType !== ColumnType.columnDomain
+      );
+
+      expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual(
+        defaultColumnOrder
+      );
+    });
+
+    it.each([
+      ['eight entries', defaultColumnOrder.slice(1)],
+      [
+        'seven entries naming a new column type',
+        defaultColumnOrder.slice(0, 7),
+      ],
+      [
+        'nine entries naming one twice',
+        [...defaultColumnOrder.slice(0, 8), ColumnType.columnName],
+      ],
+    ])('rejects %s', (_, columnOrder) => {
+      expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual(
+        defaultColumnOrder
+      );
     });
   });
 });

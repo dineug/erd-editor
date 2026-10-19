@@ -46,6 +46,9 @@ describe('v3/index', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
     expect(result.collections.tableEntities).toEqual({});
     expect(result.collections.tableGroupEntities).toEqual({});

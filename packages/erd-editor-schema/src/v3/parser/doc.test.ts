@@ -10,6 +10,9 @@ describe('createAndMergeDoc', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
   });
 
@@ -33,6 +36,9 @@ describe('createAndMergeDoc', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
   });
 
@@ -43,6 +49,9 @@ describe('createAndMergeDoc', () => {
       indexIds: ['i1'],
       memoIds: ['m1'],
       tableGroupIds: ['g1'],
+      wordIds: ['w1'],
+      termIds: ['tm1'],
+      domainIds: ['d1'],
     });
 
     expect(doc).toEqual({
@@ -51,6 +60,9 @@ describe('createAndMergeDoc', () => {
       indexIds: ['i1'],
       memoIds: ['m1'],
       tableGroupIds: ['g1'],
+      wordIds: ['w1'],
+      termIds: ['tm1'],
+      domainIds: ['d1'],
     });
   });
 
@@ -61,6 +73,7 @@ describe('createAndMergeDoc', () => {
       indexIds: 1 as any,
       memoIds: null as any,
       tableGroupIds: { g1: true } as any,
+      wordIds: 'w1' as any,
     });
 
     expect(doc).toEqual({
@@ -69,6 +82,9 @@ describe('createAndMergeDoc', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
   });
 
@@ -88,6 +104,9 @@ describe('createAndMergeDoc', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
     expect((doc as any).foo).toBeUndefined();
   });

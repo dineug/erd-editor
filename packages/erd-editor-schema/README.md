@@ -44,7 +44,8 @@ The two strings are two serializations of one document, and `parser` reads both.
 fields an editor derives on load or keeps for one instance, in a fixed key order, so saving the
 same document twice writes the same bytes. `toJson` writes the runtime value: the collections as an
 editor holds them, the tombstones of removed entities included, which a collaborator or a second
-view needs to undo a removal it did not see.
+view needs to undo a removal it did not see. Both write the three dictionaries (words, terms and
+domains) as a header and one row per line.
 
 A field that fails validation falls back to its default, so `schemaV3Parser({})` is a complete
 empty document. The input itself can still throw. `parser` throws on text that is not JSON, and a

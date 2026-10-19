@@ -1,0 +1,191 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "originX": -40,
+    "originY": 90,
+    "zoomLevel": 0.8,
+    "show": 431,
+    "database": 16,
+    "databaseName": "shop",
+    "canvasType": "ERD",
+    "language": 16,
+    "tableNameCase": 4,
+    "columnNameCase": 2,
+    "bracketType": 1,
+    "relationshipDataTypeSync": true,
+    "columnOrder": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "maxWidthComment": -1,
+    "lockSettings": 0
+  },
+  "doc": {
+    "tableIds": [
+      "tb",
+      "ta"
+    ],
+    "relationshipIds": [
+      "r1"
+    ],
+    "indexIds": [
+      "ib"
+    ],
+    "memoIds": [
+      "m1"
+    ],
+    "tableGroupIds": [
+      "g1"
+    ]
+  },
+  "collections": {
+    "tableEntities": {
+      "ta": {
+        "id": "ta",
+        "name": "member",
+        "comment": "",
+        "columnIds": [
+          "cd",
+          "cb"
+        ],
+        "groupId": "g1",
+        "ui": {
+          "x": 10.125,
+          "y": 20,
+          "color": ""
+        }
+      },
+      "tb": {
+        "id": "tb",
+        "name": "order",
+        "comment": "placed orders",
+        "columnIds": [
+          "ca",
+          "cc"
+        ],
+        "ui": {
+          "x": 400,
+          "y": -60.5,
+          "color": ""
+        }
+      }
+    },
+    "tableColumnEntities": {
+      "cb": {
+        "id": "cb",
+        "tableId": "ta",
+        "name": "id",
+        "comment": "",
+        "dataType": "INT",
+        "default": "",
+        "options": 11
+      },
+      "cd": {
+        "id": "cd",
+        "tableId": "ta",
+        "name": "name",
+        "comment": "display name",
+        "dataType": "VARCHAR(64)",
+        "default": "''",
+        "options": 8
+      },
+      "ca": {
+        "id": "ca",
+        "tableId": "tb",
+        "name": "id",
+        "comment": "",
+        "dataType": "INT",
+        "default": "",
+        "options": 10
+      },
+      "cc": {
+        "id": "cc",
+        "tableId": "tb",
+        "name": "member_id",
+        "comment": "",
+        "dataType": "INT",
+        "default": "",
+        "options": 8
+      }
+    },
+    "relationshipEntities": {
+      "r1": {
+        "id": "r1",
+        "relationshipType": 16,
+        "onDelete": 4,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "ta",
+          "columnIds": [
+            "cb"
+          ]
+        },
+        "end": {
+          "tableId": "tb",
+          "columnIds": [
+            "cc",
+            "cy"
+          ]
+        }
+      }
+    },
+    "indexEntities": {
+      "ib": {
+        "id": "ib",
+        "name": "ix_order_member",
+        "tableId": "tb",
+        "indexColumnIds": [
+          "iy",
+          "ix"
+        ],
+        "unique": false
+      }
+    },
+    "indexColumnEntities": {
+      "ix": {
+        "id": "ix",
+        "indexId": "ib",
+        "columnId": "cc",
+        "orderType": 2
+      },
+      "iy": {
+        "id": "iy",
+        "indexId": "ib",
+        "columnId": "ca",
+        "orderType": 1
+      }
+    },
+    "memoEntities": {
+      "m1": {
+        "id": "m1",
+        "value": "billing notes",
+        "ui": {
+          "x": -80,
+          "y": 300,
+          "width": 116,
+          "height": 100,
+          "color": ""
+        }
+      }
+    },
+    "tableGroupEntities": {
+      "g1": {
+        "id": "g1",
+        "name": "members",
+        "color": "#0090ff",
+        "ui": {
+          "x": -20,
+          "y": -40,
+          "width": 640,
+          "height": 360
+        }
+      }
+    }
+  }
+}

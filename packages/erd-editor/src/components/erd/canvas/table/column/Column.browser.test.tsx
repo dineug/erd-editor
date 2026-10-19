@@ -710,7 +710,7 @@ describe('the alternate key mark', () => {
         store.dispatchSync(
           changeColumnOrderAction({
             value: ColumnType.columnComment,
-            target: ColumnType.columnName,
+            target: ColumnType.columnLogicalName,
           })
         );
       },

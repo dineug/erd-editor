@@ -403,7 +403,7 @@ describe('Settings', () => {
           .querySelector(`.${styles.columnOrderList}`)
           ?.parentElement?.firstElementChild?.textContent?.trim()
       ).toBe('ko:Column Order');
-      expect(columnOrderItems()[0].textContent?.trim()).toBe('ko:Name');
+      expect(columnOrderItems()[0].textContent?.trim()).toBe('ko:Logical Name');
     });
 
     it('names each lock and its button in one sentence of the language provided', async () => {
@@ -621,8 +621,10 @@ describe('Settings', () => {
         app.store.state.settings.columnOrder.map(String)
       );
       expect(items.map(el => el.textContent?.trim())).toEqual([
+        'Logical Name',
         'Name',
         'DataType',
+        'Domain',
         'Not Null',
         'Unique',
         'Auto Increment',
@@ -688,18 +690,22 @@ describe('Settings', () => {
       await flush();
 
       expect(app.store.state.settings.columnOrder).toEqual([
-        ColumnType.columnDataType,
-        ColumnType.columnNotNull,
         ColumnType.columnName,
+        ColumnType.columnDataType,
+        ColumnType.columnLogicalName,
+        ColumnType.columnDomain,
+        ColumnType.columnNotNull,
         ColumnType.columnUnique,
         ColumnType.columnAutoIncrement,
         ColumnType.columnDefault,
         ColumnType.columnComment,
       ]);
       expect(columnOrderItems().map(el => el.textContent?.trim())).toEqual([
-        'DataType',
-        'Not Null',
         'Name',
+        'DataType',
+        'Logical Name',
+        'Domain',
+        'Not Null',
         'Unique',
         'Auto Increment',
         'Default',
@@ -747,16 +753,16 @@ describe('Settings', () => {
       vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
       const items = columnOrderItems();
 
-      fire(items[6], 'dragstart');
+      fire(items[8], 'dragstart');
       fire(items[0], 'dragover');
       await wait(120);
       await flush();
 
       const [held, ...pushed] = columnOrderItems();
-      expect(held).toBe(items[6]);
+      expect(held).toBe(items[8]);
       expect(held.style.transform).toBe('');
       expect(pushed.map(el => el.style.transform)).toEqual(
-        Array(6).fill('translate(0px,-32px)')
+        Array(8).fill('translate(0px,-32px)')
       );
     });
 

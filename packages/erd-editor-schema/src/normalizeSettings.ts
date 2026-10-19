@@ -1,6 +1,7 @@
 import { pick } from 'es-toolkit';
 
 import { bHas } from '@/utils/bit';
+import { toSavedColumnOrder } from '@/v3/parser/settings';
 import {
   DDLScripts,
   LockSettingFields,
@@ -17,13 +18,14 @@ export type NormalizedSettings = Omit<
 
 /**
  * The settings every serialization writes, as a copy: each locked setting at
- * its lock, every other as it stands, the locked values left out, the scripts
- * only while one of them holds text.
+ * its lock, every other as it stands, the column order in seven entries where
+ * it can be, no locked values, the scripts only while one holds text.
  */
 export function normalizeSettings(source: Settings): NormalizedSettings {
   const { lockedValues, lockSettings, ddlScripts, ...rest } = source;
   const settings: NormalizedSettings = {
     ...rest,
+    columnOrder: toSavedColumnOrder(rest.columnOrder),
     lockSettings,
     ...(ddlScripts && (ddlScripts.before !== '' || ddlScripts.after !== '')
       ? { ddlScripts: { before: ddlScripts.before, after: ddlScripts.after } }

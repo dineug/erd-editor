@@ -9,6 +9,9 @@ const createDoc = (): Doc => ({
   indexIds: [],
   memoIds: [],
   tableGroupIds: [],
+  wordIds: [],
+  termIds: [],
+  domainIds: [],
 });
 
 describe('v3/schema/doc', () => {
@@ -16,13 +19,16 @@ describe('v3/schema/doc', () => {
     expect(Object.keys(docModule)).toEqual([]);
   });
 
-  it('declares exactly the five id lists that drive rendering order', () => {
+  it('declares exactly the eight id lists that order the entities', () => {
     expect(Object.keys(createDoc()).sort()).toEqual([
+      'domainIds',
       'indexIds',
       'memoIds',
       'relationshipIds',
       'tableGroupIds',
       'tableIds',
+      'termIds',
+      'wordIds',
     ]);
   });
 
@@ -47,6 +53,9 @@ describe('v3/schema/doc', () => {
       indexIds: ['index-1'],
       memoIds: ['memo-1'],
       tableGroupIds: ['group-1'],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     };
 
     doc.tableIds = doc.tableIds.filter(id => id !== 'table-1');

@@ -1001,8 +1001,8 @@ describe('settings/atom.actions', () => {
   describe('changeColumnOrder', () => {
     it('moves the value in front of the target when moving backwards', () => {
       const before = [...store.state.settings.columnOrder];
-      expect(before[0]).toBe(ColumnType.columnName);
-      expect(before[6]).toBe(ColumnType.columnComment);
+      expect(before[0]).toBe(ColumnType.columnLogicalName);
+      expect(before[8]).toBe(ColumnType.columnComment);
 
       store.dispatchSync(
         changeColumnOrderAction({
@@ -1012,9 +1012,11 @@ describe('settings/atom.actions', () => {
       );
 
       expect(store.state.settings.columnOrder).toEqual([
+        ColumnType.columnLogicalName,
         ColumnType.columnComment,
         ColumnType.columnName,
         ColumnType.columnDataType,
+        ColumnType.columnDomain,
         ColumnType.columnNotNull,
         ColumnType.columnUnique,
         ColumnType.columnAutoIncrement,
@@ -1031,7 +1033,9 @@ describe('settings/atom.actions', () => {
       );
 
       expect(store.state.settings.columnOrder).toEqual([
+        ColumnType.columnLogicalName,
         ColumnType.columnDataType,
+        ColumnType.columnDomain,
         ColumnType.columnNotNull,
         ColumnType.columnUnique,
         ColumnType.columnAutoIncrement,
