@@ -28,6 +28,7 @@ describe('the English dictionary', () => {
         'colorPicker',
         'common',
         'contextMenu',
+        'dictionary',
         'explorer',
         'exportImage',
         'feedback',

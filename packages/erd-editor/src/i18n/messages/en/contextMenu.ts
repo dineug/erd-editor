@@ -21,6 +21,7 @@ export const contextMenu = {
   'contextMenu.diffViewer': 'Diff Viewer',
   'contextMenu.show.tableComment': 'Table Comment',
   'contextMenu.show.columnComment': 'Column Comment',
+  'contextMenu.show.columnDomain': 'Domain',
   'contextMenu.show.alternateKey': 'Alternate Key',
   'contextMenu.show.referentialActions': 'Referential Actions',
   'contextMenu.show.tableGroups': 'Table Groups',
