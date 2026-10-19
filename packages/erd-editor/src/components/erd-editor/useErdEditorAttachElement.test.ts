@@ -165,7 +165,8 @@ const loadedDocument = (x = 0) =>
 
 /**
  * The two-table PostgreSQL document the Schema SQL options fixtures were
- * written from, with no lock, so the bracket type it saves is the one shown.
+ * written from, every lock off but the name view's, which its clear bit locks,
+ * so the bracket type it saves is the one shown.
  */
 function schemaSQLSampleDocument(ddlScripts?: {
   before: string;

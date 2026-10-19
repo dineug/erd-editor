@@ -541,6 +541,38 @@ describe('changeColumnDataTypeAction$', () => {
     ]);
   });
 
+  it('unlinks the key a foreign key typed off its own domain reaches back to', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    addTable(store, 't2', ['c2']);
+    addRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] }
+    );
+    linkDomain(store, 'd1', 'int', [['t1', 'c1']]);
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId: 't2', id: 'c2', value: 'int' }),
+      changeRelationshipDataTypeSyncAction({ value: true })
+    );
+
+    expect(
+      flatten(
+        store,
+        changeColumnDataTypeAction$({
+          tableId: 't2',
+          id: 'c2',
+          value: 'bigint',
+        })
+      ).map(({ type, payload: { id, value } }) => [type, id, value])
+    ).toEqual([
+      ['column.changeDataType', 'c2', 'bigint'],
+      ['column.changeDataType', 'c1', 'bigint'],
+      ['column.changeDomain', 'c1', ''],
+    ]);
+  });
+
   it('recomputes the rendered data-type width', () => {
     const store = setup();
     addTable(store, 't1', ['c1']);

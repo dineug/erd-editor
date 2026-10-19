@@ -28,8 +28,9 @@ const CREATED = Date.UTC(2026, 8, 1, 9);
 const OPENED = Date.UTC(2026, 8, 19, 9);
 
 /**
- * A stored schema whose locks are all off, so it saves the scroll and the zoom
- * as a reader leaves them, as every one did before new documents locked them.
+ * A stored schema whose locks are all off but the name view's, which its clear
+ * bit locks, so it saves the scroll and the zoom as a reader leaves them, as
+ * every one did before new documents locked them.
  */
 const SAVED_WITH_THE_VIEW = '{"version":"3.0.0","settings":{"lockSettings":0}}';
 

@@ -1224,7 +1224,7 @@ describe('toCreateEntityActions — values only', () => {
     );
   });
 
-  it('sends every field by default, as a paste does', () => {
+  it('sends every field but an unset logical name, domain link and derived flag by default, as a paste does', () => {
     const { actions } = toCreateEntityActions(blankInput(), placed());
 
     expect(toTypes(actions)).toHaveLength(19);
