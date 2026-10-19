@@ -504,26 +504,26 @@ export const frFR = {
   'dictionary.check.synonymWord': 'Synonyme',
   'dictionary.check.physicalNameMismatch': 'Nom physique non conforme',
   'dictionary.toast.imported':
-    'Ajoutées : {added} · mises à jour : {updated} · ignorées : {skipped}',
+    'Ajoutées : {added} · mises à jour : {updated} · ignorées : {skipped}',
   'dictionary.toast.unknownDomains': {
-    one: '{count} domaine inconnu : {names}',
-    many: '{count} domaines inconnus : {names}',
-    other: '{count} domaines inconnus : {names}',
+    one: '{count} domaine inconnu : {names}',
+    many: '{count} domaines inconnus : {names}',
+    other: '{count} domaines inconnus : {names}',
   },
   'dictionary.toast.unknownFormat':
     'Impossible de lire ce fichier comme des mots, des termes ou des domaines',
   'dictionary.toast.duplicateNames': {
-    one: 'Rien n’a été enregistré : {count} nom figure déjà dans cette feuille ({names})',
-    many: 'Rien n’a été enregistré : {count} noms figurent déjà dans cette feuille ({names})',
+    one: 'Rien n’a été enregistré : {count} nom figure déjà dans cette feuille ({names})',
+    many: 'Rien n’a été enregistré : {count} noms figurent déjà dans cette feuille ({names})',
     other:
-      'Rien n’a été enregistré : {count} noms figurent déjà dans cette feuille ({names})',
+      'Rien n’a été enregistré : {count} noms figurent déjà dans cette feuille ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Rien n’a été enregistré : {count} nom de domaine est inconnu ({names})',
-    many: 'Rien n’a été enregistré : {count} noms de domaine sont inconnus ({names})',
+    one: 'Rien n’a été enregistré : {count} nom de domaine est inconnu ({names})',
+    many: 'Rien n’a été enregistré : {count} noms de domaine sont inconnus ({names})',
     other:
-      'Rien n’a été enregistré : {count} noms de domaine sont inconnus ({names})',
+      'Rien n’a été enregistré : {count} noms de domaine sont inconnus ({names})',
   },
   'dictionary.toast.rowRemoved':
-    'Rien n’a été enregistré : la ligne a été supprimée',
+    'Rien n’a été enregistré : la ligne a été supprimée',
 } satisfies Messages;
