@@ -24,7 +24,8 @@ export type ColumnUI = {
 };
 
 // Append only: a document stores the bits as one number. nameDerived is set
-// while the dictionaries filled the name, so a file without it rewrites none.
+// while the dictionaries filled the name, so a file without it rewrites none;
+// a release before the bit keeps it through a rename, so it can be stale.
 export const ColumnOption = {
   autoIncrement: 1,
   primaryKey: 2,

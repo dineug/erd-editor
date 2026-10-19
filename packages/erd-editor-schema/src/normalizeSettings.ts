@@ -33,7 +33,7 @@ export function normalizeSettings(source: Settings): NormalizedSettings {
   };
 
   // A document no parser built, raw JSON say, carries no locked values: its
-  // saved fields are what it holds, so they are written as they stand.
+  // saved fields are what it holds, so no lock writes over them.
   LockSettingTypeList.forEach(lockSettingType => {
     if (lockedValues && bHas(lockSettings, lockSettingType)) {
       Object.assign(
