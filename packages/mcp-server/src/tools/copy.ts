@@ -204,7 +204,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_change_column_data_type: {
     description:
-      "Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there. A column linked to a dictionary domain is unlinked from it when set to another type than the domain's, and so is a foreign key the sync reaches whose new type differs from its own domain's.",
+      "Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there. A column linked to a dictionary domain is unlinked from it when set to another type than the domain's, and so is any column the sync reaches, a foreign key or the key it copies, whose new type differs from its own domain's.",
     args: { value: 'The data type text.' },
   },
   erd_change_column_name: {

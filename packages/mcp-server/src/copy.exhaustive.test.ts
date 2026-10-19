@@ -243,14 +243,14 @@ describe('the words on a foreign key data type', () => {
     );
   });
 
-  it('say erd_change_column_data_type unlinks a domain the new type leaves, a synced foreign key too', () => {
+  it('say erd_change_column_data_type unlinks a domain the new type leaves, on any column the sync reaches too', () => {
     const text = describeTool('erd_change_column_data_type');
 
     expect(text).toContain(
       "A column linked to a dictionary domain is unlinked from it when set to another type than the domain's"
     );
     expect(text).toContain(
-      "a foreign key the sync reaches whose new type differs from its own domain's"
+      "and so is any column the sync reaches, a foreign key or the key it copies, whose new type differs from its own domain's"
     );
   });
 
