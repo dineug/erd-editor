@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import { ColumnOption } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   focusColumnAction,
   selectAction,
@@ -17,6 +18,9 @@ import { changeRelationshipDataTypeSyncAction } from '@/engine/modules/settings/
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
+  changeColumnNameDerivedAction,
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -83,6 +87,25 @@ const column = (store: Store, id: string) =>
   query(store.state.collections)
     .collection('tableColumnEntities')
     .selectById(id)!;
+
+const flatten = (store: Store, action: unknown) =>
+  compositionActionsFlat(store.state, store.context, [action as any]);
+
+/** Adds a domain of that type and links each column to it, typed as it is. */
+function linkDomain(
+  store: Store,
+  id: string,
+  dataType: string,
+  columns: Array<[tableId: string, columnId: string]>
+) {
+  store.dispatchSync(
+    addDictionaryAction({ kind: 'domain', id, values: { name: id, dataType } }),
+    ...columns.flatMap(([tableId, columnId]) => [
+      changeColumnDataTypeAction({ tableId, id: columnId, value: dataType }),
+      changeColumnDomainAction({ tableId, id: columnId, value: id }),
+    ])
+  );
+}
 
 describe('isToggleColumnTypes / isChangeColumnTypes', () => {
   it('accepts only the three boolean option focus types', () => {
@@ -439,6 +462,85 @@ describe('changeColumnDataTypeAction$', () => {
     expect(column(store, 'c3').dataType).toBe('bigint');
   });
 
+  it('unlinks a linked column typed off its domain in the same dispatch, and keeps one typed to it', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2']);
+    linkDomain(store, 'd1', 'bigint', [
+      ['t1', 'c1'],
+      ['t1', 'c2'],
+    ]);
+    store.dispatchSync(changeRelationshipDataTypeSyncAction({ value: false }));
+
+    expect(
+      flatten(
+        store,
+        changeColumnDataTypeAction$({ tableId: 't1', id: 'c1', value: 'int' })
+      )
+    ).toEqual([
+      expect.objectContaining({
+        type: 'column.changeDataType',
+        payload: { tableId: 't1', id: 'c1', value: 'int' },
+      }),
+      expect.objectContaining({
+        type: 'column.changeDomain',
+        payload: { tableId: 't1', id: 'c1', value: '' },
+      }),
+    ]);
+
+    store.dispatchSync(
+      changeColumnDataTypeAction$({ tableId: 't1', id: 'c1', value: 'int' }),
+      changeColumnDataTypeAction$({ tableId: 't1', id: 'c2', value: 'bigint' })
+    );
+
+    expect(column(store, 'c1')).toMatchObject({
+      dataType: 'int',
+      domainId: '',
+    });
+    expect(column(store, 'c2')).toMatchObject({
+      dataType: 'bigint',
+      domainId: 'd1',
+    });
+  });
+
+  it('unlinks a foreign key the sync takes off the domain it links, sending none it leaves equal', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    addTable(store, 't2', ['c2']);
+    addTable(store, 't3', ['c3']);
+    addRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] }
+    );
+    addRelationship(
+      store,
+      'r2',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't3', columnIds: ['c3'] }
+    );
+    linkDomain(store, 'd2', 'int', [['t2', 'c2']]);
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId: 't3', id: 'c3', value: 'bigint' }),
+      changeRelationshipDataTypeSyncAction({ value: true })
+    );
+
+    expect(
+      flatten(
+        store,
+        changeColumnDataTypeAction$({
+          tableId: 't1',
+          id: 'c1',
+          value: 'bigint',
+        })
+      ).map(({ type, payload: { id, value } }) => [type, id, value])
+    ).toEqual([
+      ['column.changeDataType', 'c1', 'bigint'],
+      ['column.changeDataType', 'c2', 'bigint'],
+      ['column.changeDomain', 'c2', ''],
+    ]);
+  });
+
   it('recomputes the rendered data-type width', () => {
     const store = setup();
     addTable(store, 't1', ['c1']);
@@ -493,6 +595,34 @@ describe('changeColumnValueAction$', () => {
 
     expect(column(store, 'c1').name).toBe('user_id');
     expect(column(store, 'c1').ui.widthName).toBe(70);
+  });
+
+  it('turns the derived flag off in the dispatch that writes the name, and sends none while it is off', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2']);
+    store.dispatchSync(
+      changeColumnNameDerivedAction({ tableId: 't1', id: 'c1', value: true })
+    );
+    const typesOf = (columnId: string) =>
+      flatten(
+        store,
+        changeColumnValueAction$(FocusType.columnName, 't1', columnId, 'no')
+      ).map(({ type, payload }) => [type, payload.value]);
+
+    expect(typesOf('c1')).toEqual([
+      ['column.changeName', 'no'],
+      ['column.changeNameDerived', false],
+    ]);
+    expect(typesOf('c2')).toEqual([['column.changeName', 'no']]);
+
+    store.dispatchSync(
+      changeColumnValueAction$(FocusType.columnName, 't1', 'c1', 'member_no')
+    );
+
+    expect(column(store, 'c1').name).toBe('member_no');
+    expect(bHas(column(store, 'c1').options, ColumnOption.nameDerived)).toBe(
+      false
+    );
   });
 
   it('routes the data type through the sync-aware generator', () => {

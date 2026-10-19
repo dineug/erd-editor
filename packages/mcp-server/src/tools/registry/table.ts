@@ -65,9 +65,7 @@ export const tableTools: readonly ActionTool[] = [
   },
   {
     name: 'erd_change_table_name',
-    kind: 'atom',
-    atomReason:
-      'The table module has no generator that renames a table; the name cell dispatches this atom itself.',
+    kind: 'generator',
     actionTypes: ['table.changeName'],
     undoable: true,
     stream: false,
@@ -77,7 +75,7 @@ export const tableTools: readonly ActionTool[] = [
     snapshotPaths: ['tables[tableId].name'],
     args: [TABLE_ID, TEXT_VALUE],
     toActions: ({ tableId, value }) => [
-      tableActions.changeTableNameAction({ id: tableId, value }),
+      tableActions$.changeTableNameAction$(tableId, value),
     ],
   },
   {

@@ -19,6 +19,7 @@ import {
   DictionaryKindList,
   ReducerType,
 } from './actions';
+import { raiseDictionaryGeneration } from './dictionaryIndex';
 import { getLiveDomainName, listId, unlistId } from './membership';
 
 const COLLECTION_KEY = {
@@ -140,6 +141,7 @@ const addDictionary: ReducerType<typeof ActionType.addDictionary> = (
 ) => {
   if (!hasDictionaryKind(kind)) return;
 
+  raiseDictionaryGeneration(state, kind);
   const safeVersion = version ?? ctx.clock.getVersion();
   const collection = dictionaryCollection(state, kind);
   collection.getOrCreate(id, id => CREATE[kind]({ id }));
@@ -167,6 +169,7 @@ const updateDictionary: ReducerType<typeof ActionType.updateDictionary> = (
 ) => {
   if (!hasDictionaryKind(kind)) return;
 
+  raiseDictionaryGeneration(state, kind);
   const safeVersion = version ?? ctx.clock.getVersion();
   dictionaryCollection(state, kind).getOrCreate(id, id => CREATE[kind]({ id }));
 
@@ -190,6 +193,7 @@ const removeDictionary: ReducerType<typeof ActionType.removeDictionary> = (
 ) => {
   if (!hasDictionaryKind(kind)) return;
 
+  raiseDictionaryGeneration(state, kind);
   const safeVersion = version ?? ctx.clock.getVersion();
   let unlisted = false;
   dictionaryCollection(state, kind).removeOperator(

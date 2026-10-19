@@ -47,10 +47,8 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
-import {
-  changeTableCommentAction,
-  changeTableNameAction,
-} from '@/engine/modules/table/atom.actions';
+import { changeTableCommentAction } from '@/engine/modules/table/atom.actions';
+import { changeTableNameAction$ } from '@/engine/modules/table/generator.actions';
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
 import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 import type { RootState } from '@/engine/state';
@@ -523,11 +521,10 @@ const EditOverlay: FC = (_, ctx) => {
       return;
     }
 
-    const payload = { id: target.tableId, value: input.value };
     store.dispatch(
       target.focusType === FocusType.tableName
-        ? changeTableNameAction(payload)
-        : changeTableCommentAction(payload)
+        ? changeTableNameAction$(target.tableId, input.value)
+        : changeTableCommentAction({ id: target.tableId, value: input.value })
     );
   };
 

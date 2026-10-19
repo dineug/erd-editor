@@ -106,7 +106,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 
 ### Replace All
 
-- **Replace All is one `dispatchSync`.** It dispatches the atom actions `src/utils/find-replace/replaceActions.ts` builds, so it makes one history entry and one batch to every peer.
+- **Replace All is one `dispatchSync`.** It dispatches the field actions `src/utils/find-replace/replaceActions.ts` builds, so it makes one history entry and one batch to every peer. A table or column name goes through its generator (`changeTableNameAction$`, `changeColumnValueAction$`), which also turns a derived name's flag off in the same dispatch, as a rename by hand does; every other field goes through its atom action.
 - **It reads a fresh search, never the screen.** A peer or the canvas may have changed a text since the last search, and a value built on the old text would undo that change.
 - **It counts only the matches it changed.** The count is `toReplaceActions`' `replaced`. A match written back as it was counts for none, and a press that changes nothing says `No changes`.
 - **Find and Replace adds no action type.** Nothing new enters the action lists, so `mcp-server` has nothing to declare. Its `erd_list` search is its own, a word ranking for paging, not this substring match.

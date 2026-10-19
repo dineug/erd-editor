@@ -32,6 +32,7 @@ export {
 } from '@/engine/actions';
 export { createEngineContext, type EngineContext } from '@/engine/context';
 export type { GeneratorAction } from '@/engine/generator.actions';
+export { actions$ as dictionaryActions$ } from '@/engine/modules/dictionary/generator.actions';
 export { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
 export { FocusType, SelectType } from '@/engine/modules/editor/state';
 export { actions as indexActions } from '@/engine/modules/index/atom.actions';

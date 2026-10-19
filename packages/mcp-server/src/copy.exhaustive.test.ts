@@ -242,6 +242,23 @@ describe('the words on a foreign key data type', () => {
       'except a serial key, which keeps its type and stops the change there'
     );
   });
+
+  it('say erd_change_column_data_type unlinks a domain the new type leaves, a synced foreign key too', () => {
+    const text = describeTool('erd_change_column_data_type');
+
+    expect(text).toContain(
+      "A column linked to a dictionary domain is unlinked from it when set to another type than the domain's"
+    );
+    expect(text).toContain(
+      "a foreign key the sync reaches whose new type differs from its own domain's"
+    );
+  });
+
+  it('say erd_add_relationship links the key’s domain, unless a serial key changes the type', () => {
+    expect(describeTool('erd_add_relationship')).toContain(
+      "Each foreign key column also links the dictionary domain its key links, unless a serial key gives it another type than the domain's"
+    );
+  });
 });
 
 describe('the words on an import', () => {

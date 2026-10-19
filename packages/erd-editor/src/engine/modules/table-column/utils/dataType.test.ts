@@ -418,6 +418,54 @@ describe('getDataTypeSyncColumns and serial keys', () => {
   });
 });
 
+describe('getDataTypeSyncColumns with settled columns', () => {
+  function relatedPair() {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    addTable(store, 't2', ['c2', 'c3']);
+    addRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] }
+    );
+    addRelationship(
+      store,
+      'r2',
+      { tableId: 't2', columnIds: ['c2'] },
+      { tableId: 't2', columnIds: ['c3'] }
+    );
+    return store;
+  }
+
+  it('keeps each settled column at its own value, whichever the stack pops first', () => {
+    const store = relatedPair();
+    const key = payload('c1', 't1', 'bigint');
+    const foreignKey = payload('c2', 't2', 'numeric');
+
+    const result = getDataTypeSyncColumns(
+      [key, foreignKey],
+      store.state,
+      [],
+      undefined,
+      new Set(['c1', 'c2'])
+    );
+
+    expect(result).toEqual([foreignKey, payload('c3', 't2', 'numeric'), key]);
+  });
+
+  it('lets the last settled column overwrite the first without them', () => {
+    const store = relatedPair();
+
+    const result = getDataTypeSyncColumns(
+      [payload('c1', 't1', 'bigint'), payload('c2', 't2', 'numeric')],
+      store.state
+    );
+
+    expect(result).toContainEqual(payload('c1', 't1', 'numeric'));
+  });
+});
+
 describe('getDataTypeSyncColumns over the relationships it is handed', () => {
   it('follows a relationship the document does not hold yet', () => {
     const store = setup();

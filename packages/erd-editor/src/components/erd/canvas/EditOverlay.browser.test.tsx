@@ -77,7 +77,10 @@ import {
   changeZoomLevelAction,
   streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeTableGroupAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeTableGroupAction,
+  changeTableNameDerivedAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addTableAction$,
   removeTableAction$,
@@ -357,6 +360,36 @@ describe('the editing overlay', () => {
     expect(
       fixture.app.store.state.collections.tableEntities[fixture.tableId].name
     ).toBe('members');
+  });
+
+  it('turns a derived table name off as its name is typed, in the batch that writes it', async () => {
+    const fixture = await setup();
+    const { store } = fixture.app;
+    store.dispatchSync(
+      changeTableNameDerivedAction({ id: fixture.tableId, value: true })
+    );
+    await editTableName(fixture);
+    const batches: string[][] = [];
+    const unsubscribe = store.subscribe(actions => {
+      batches.push(actions.map(({ type }) => type));
+    });
+    teardowns.push(unsubscribe);
+
+    const input = inputOf(fixture.mounted);
+    for (const value of ['m', 'me']) {
+      input.value = value;
+      input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      await flush();
+    }
+
+    // The history's own bookkeeping batches ride beside the edits.
+    expect(batches.filter(types => types[0].startsWith('table.'))).toEqual([
+      ['table.changeName', 'table.changeNameDerived'],
+      ['table.changeName'],
+    ]);
+    expect(
+      store.state.collections.tableEntities[fixture.tableId]
+    ).toMatchObject({ name: 'me', nameDerived: false });
   });
 
   it('writes the typed table comment back into the store', async () => {

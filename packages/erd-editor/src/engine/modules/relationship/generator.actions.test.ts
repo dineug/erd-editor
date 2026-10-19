@@ -16,6 +16,7 @@ import {
 } from '@/constants/schema';
 import { actions as rootActions } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   actions$,
@@ -35,6 +36,7 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
@@ -644,6 +646,39 @@ describe('addRelationshipAction$ through a real store', () => {
     );
 
     expect(dataTypes()).toEqual(['serial', 'bigint', 'integer']);
+  });
+
+  it('links the foreign key to the live domain its key links, in the same undo', () => {
+    const rxStore = createRxTestStore();
+    rxStore.dispatchSync(changeRelationshipDataTypeSyncAction({ value: true }));
+    seedTable(rxStore, 't1', [idColumn], 'user');
+    seedTable(rxStore, 't2', [], 'post');
+    rxStore.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Identifier', dataType: 'int' },
+      }),
+      changeColumnDomainAction({ id: 'c1', tableId: 't1', value: 'd1' })
+    );
+    vi.advanceTimersByTime(300);
+
+    rxStore.dispatchSync(
+      addRelationshipAction$('t1', 't2', RelationshipType.OneN)
+    );
+
+    const [relationship] = relationshipsOf(rxStore);
+    const foreignKeyId = relationship.end.columnIds[0];
+    expect(columnOf(rxStore, foreignKeyId)).toMatchObject({
+      dataType: 'int',
+      domainId: 'd1',
+    });
+
+    rxStore.undo();
+
+    expect(rxStore.state.doc.relationshipIds).toEqual([]);
+    expect(rxStore.state.collections.tableEntities.t2.columnIds).toEqual([]);
+    expect(columnOf(rxStore, 'c1').domainId).toBe('d1');
   });
 
   it('numbers a kept key name on a second relationship and a self reference', () => {

@@ -22,6 +22,8 @@ export type DataTypeSyncRelationship = {
  *
  * @param relationships The relationships to follow, the document's by default;
  * a caller about to change one hands the list as it will stand.
+ * @param settledIds The columns the batch writes a type of their own, which the
+ * walk starts from and never writes again, so no stack order decides them.
  */
 export function getDataTypeSyncColumns(
   stack: ChangeColumnValuePayload[],
@@ -29,7 +31,8 @@ export function getDataTypeSyncColumns(
   payloads: ChangeColumnValuePayload[] = [],
   relationships: DataTypeSyncRelationship[] = query(state.collections)
     .collection('relationshipEntities')
-    .selectByIds(state.doc.relationshipIds)
+    .selectByIds(state.doc.relationshipIds),
+  settledIds: ReadonlySet<string> = new Set()
 ): ChangeColumnValuePayload[] {
   const {
     collections,
@@ -49,7 +52,7 @@ export function getDataTypeSyncColumns(
 
       if (startIndex !== -1) {
         const id = end.columnIds[startIndex];
-        if (id === undefined) continue;
+        if (id === undefined || settledIds.has(id)) continue;
 
         stack.push({ id, tableId: end.tableId, value: foreignKeyValue });
         continue;
@@ -59,7 +62,7 @@ export function getDataTypeSyncColumns(
       if (endIndex === -1) continue;
 
       const id = start.columnIds[endIndex];
-      if (id === undefined) continue;
+      if (id === undefined || settledIds.has(id)) continue;
 
       const column = columns.selectById(id);
       if (column && isSerialType(column.dataType)) continue;

@@ -32,12 +32,14 @@ import {
 import {
   addTableAction,
   changeTableGroupAction,
+  changeTableNameDerivedAction,
   removeTableAction,
   sortTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   actions$,
   addTableAction$,
+  changeTableNameAction$,
   pasteTableAction$,
   removeTableAction$,
   selectTableAction$,
@@ -48,7 +50,9 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
@@ -644,6 +648,62 @@ describe('pasteTableAction$', () => {
     ]);
   });
 
+  it('turns the derived flag off of a column whose name the paste writes over, in the same dispatch', () => {
+    seedFocusedPaste();
+    store.dispatchSync(
+      changeColumnNameDerivedAction({ tableId: 't1', id: 'c2', value: true })
+    );
+
+    const flags = flatten(store, pasteTableAction$([columnA, columnB]))
+      .filter(({ type }) => type === changeColumnNameDerivedAction.type)
+      .map(({ payload }) => payload);
+    expect(flags).toEqual([{ tableId: 't1', id: 'c2', value: false }]);
+
+    store.dispatchSync(pasteTableAction$([columnA, columnB]));
+
+    expect(columnOf(store, 'c2').name).toBe('a');
+    expect(bHas(columnOf(store, 'c2').options, ColumnOption.nameDerived)).toBe(
+      false
+    );
+  });
+
+  it('unlinks a column the pasted type takes off its domain, keeping one pasted to it', () => {
+    seedFocusedPaste();
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount', dataType: 'bigint' },
+      }),
+      ...['c2', 'c3'].flatMap(id => [
+        changeColumnDataTypeAction({ tableId: 't1', id, value: 'bigint' }),
+        changeColumnDomainAction({ tableId: 't1', id, value: 'd1' }),
+      ])
+    );
+    const pasted = [columnA, makeColumn({ name: 'b', dataType: 'bigint' })];
+
+    // The columns the paste adds to the other selected table link nothing.
+    expect(
+      flatten(store, pasteTableAction$(pasted))
+        .filter(
+          ({ type, payload }) =>
+            type === changeColumnDomainAction.type && payload.tableId === 't1'
+        )
+        .map(({ payload }) => payload)
+    ).toEqual([{ tableId: 't1', id: 'c2', value: '' }]);
+
+    store.dispatchSync(pasteTableAction$(pasted));
+
+    expect(columnOf(store, 'c2')).toMatchObject({
+      dataType: 'int',
+      domainId: '',
+    });
+    expect(columnOf(store, 'c3')).toMatchObject({
+      dataType: 'bigint',
+      domainId: 'd1',
+    });
+  });
+
   it('applies the unique and autoIncrement columns once they are shown', () => {
     seedFocusedPaste();
     store.dispatchSync(
@@ -837,10 +897,48 @@ describe('sortTablesToMoveAction$', () => {
   });
 });
 
+describe('changeTableNameAction$', () => {
+  it('renames the table and turns its derived flag off in the same dispatch', () => {
+    const store = createTestStore();
+    seedTable(store, 't1');
+    store.dispatchSync(changeTableNameDerivedAction({ id: 't1', value: true }));
+
+    expect(flatten(store, changeTableNameAction$('t1', 'members'))).toEqual([
+      expect.objectContaining({
+        type: 'table.changeName',
+        payload: { id: 't1', value: 'members' },
+      }),
+      expect.objectContaining({
+        type: 'table.changeNameDerived',
+        payload: { id: 't1', value: false },
+      }),
+    ]);
+
+    store.dispatchSync(changeTableNameAction$('t1', 'members'));
+    expect(store.state.collections.tableEntities.t1).toMatchObject({
+      name: 'members',
+      nameDerived: false,
+    });
+  });
+
+  it('renames alone while the flag is off, as for a table it does not hold', () => {
+    const store = createTestStore();
+    seedTable(store, 't1');
+
+    expect(typesOf(store, changeTableNameAction$('t1', 'members'))).toEqual([
+      'table.changeName',
+    ]);
+    expect(typesOf(store, changeTableNameAction$('ghost', 'members'))).toEqual([
+      'table.changeName',
+    ]);
+  });
+});
+
 describe('actions$', () => {
   it('exposes every generator action of the table module', () => {
     expect(Object.keys(actions$).sort()).toEqual([
       'addTableAction$',
+      'changeTableNameAction$',
       'pasteTableAction$',
       'removeTableAction$',
       'selectTableAction$',

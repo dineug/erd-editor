@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`src/utils/` holds the helpers the editor's components, engine and services share: file import and export (`file/`), the clipboard (`table-clipboard/`), relationship geometry, the code and SQL writers, the parsers of the import formats, and single-purpose modules such as `tableKeys.ts` and `pinch.ts`. This file holds the rules for importing a file, as a placed replace or as Import and Add (`file/importSchema.ts`), and for duplicating entities through the clipboard (`table-clipboard/`). Three subdirectories have files of their own, listed under Subdirectories. The settings an import keeps and the table groups an append or a paste carries are in `src/engine/AGENTS.md`. The ELK placement that keeps table groups together is in `src/services/AGENTS.md`. The palette's Import and Import and Add commands point here from `src/components/quick-search/AGENTS.md`.
+`src/utils/` holds the helpers the editor's components, engine and services share: file import and export (`file/`), the clipboard (`table-clipboard/`), relationship geometry, the code and SQL writers, the parsers of the import formats, the DOM-free CSV codec of the dictionaries (`dictionary-csv/`), and single-purpose modules such as `tableKeys.ts` and `pinch.ts`. This file holds the rules for importing a file, as a placed replace or as Import and Add (`file/importSchema.ts`), for duplicating entities through the clipboard (`table-clipboard/`), and for reading and writing a dictionary's CSV file (`dictionary-csv/`). Three subdirectories have files of their own, listed under Subdirectories. The settings an import keeps and the table groups an append or a paste carries are in `src/engine/AGENTS.md`. The ELK placement that keeps table groups together is in `src/services/AGENTS.md`. The palette's Import and Import and Add commands point here from `src/components/quick-search/AGENTS.md`.
 
 ## Key Files
 
@@ -74,6 +74,14 @@
   - `toCreateEntityActions` sends these fields only when they hold something, so a document without them copies in the batch it did before.
 - **`PayloadKind.columns` carries no relationships or indexes.** Its payload carries neither the `relationships` nor the `indexes` array.
 - **Every HTML cell goes through `escapeHtml`.** Every cell of the HTML table a copy writes beside `text/plain` goes through `escapeHtml` (`rowsToHtmlTable`, `copy.ts`), the escape the hidden JSON attribute uses. A spreadsheet, a document editor or a paste that reads only the HTML takes each cell's text content, and an unescaped `<b>` or `&amp;` would come back changed.
+
+### Dictionary CSV
+
+- **The header tells the sheet and the format** (owner decisions of 2026-10-20, `dictionary-csv/dictionaryCsv.ts`). `readDictionaryCsv` matches it to one of six layouts, the editor's own and the public standard's for words, terms and domains, each header cell taken without its spaces or byte order mark and composed (NFC). A header that names no layout, or two, reads as null, which the caller refuses.
+- **The own format writes no id.** Its columns are the dictionary fields (`DictionaryCsvColumns`, held to `DictionaryFields` by its spec), a term's `domainId` written as `domain`, the domain's name. So a file carries into another document whole, and its cells are read as written, so an export reads back to the same bytes.
+- **The public standard's columns map by name, the rest dropped.** Its cells are trimmed. A domain's `데이터타입`, `데이터길이` and `데이터소수점길이` join into one data type (`NUMERIC(15,2)`, `CHAR(8)`, `DATE` with no length), a zero scale left out as the default.
+- **A row needs a name.** A record with an empty name counts in `skipped`, and one of empty cells is no row. A column the file lacks leaves its field out of every row, so an import writes only the fields a file carries. Folding the rows of one name and finding a term's domain by its name are the import generator's, which reads the sheet.
+- **Bytes read as UTF-8, else as EUC-KR** (`decodeCsvBytes`): UTF-8 drops its byte order mark and fails on any byte it cannot read, and EUC-KR, which an older public-standard file comes in, reads the rest. `serializeCsv` writes a byte order mark and a CRLF after every record, quoting only a field that needs it.
 
 ### Rules on files here kept elsewhere
 

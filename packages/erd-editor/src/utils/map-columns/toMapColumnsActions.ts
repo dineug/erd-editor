@@ -82,6 +82,7 @@ export function toMapColumnsActions(
         .selectByIds(endTable.columnIds)
         .map(({ name }) => name),
       database: state.settings.database,
+      domainIds: state.doc.domainIds,
     }),
     ...toAlignTypeActions(state, {
       relationshipId: ends.relationship?.id,

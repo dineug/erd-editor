@@ -28,7 +28,7 @@
 | `src/utils/map-columns/prefill.ts` | `toPrefillNames` and `prefillPicks`, the names a child column may hold and the rows they fill |
 | `src/utils/map-columns/buildRows.ts` | `openCreateSession`, `openEditSession`, `buildMapColumns`, `changeMapColumnsKey`, `pickMapColumn` |
 | `src/utils/map-columns/validate.ts` | `validateMapping` (the issues of each row and of the mapping) and `isSameResult` (whether the state already holds the result) |
-| `src/utils/map-columns/alignTypes.ts` | `toAlignTypeActions`, the data type changes the sync makes |
+| `src/utils/map-columns/alignTypes.ts` | `toAlignTypeActions`, the data type changes the sync makes and the domain links they break |
 | `src/utils/map-columns/toMapColumnsActions.ts` | `toMapColumnsActions`, the batch a confirmed mapping writes |
 | `src/utils/map-columns/mapping.ts` | `MapColumnsDraft`, `MappingRow`, `ColumnPick` and the list helpers |
 | `src/components/erd/erd-context-menu/ErdContextMenu.tsx` | The relationship menu's row (`handleOpenMapColumns`) |
@@ -65,7 +65,7 @@
 
 - **Map or Save is one dispatch.** It dispatches `mapColumnsAction$` once, so the mapping is one version and one undo. The batch holds, in this order:
   1. the New column rows' columns, made as the pointer draw makes them;
-  2. the data type changes the sync makes;
+  2. the data type changes the sync makes, then the unlink (`column.changeDomain` with `''`) of each column they leave off its live domain's type;
   3. `relationship.add` with a new id, or `relationship.changeColumns` on the relationship edited.
 - Foreign key names of a New column row, and the type sync for related existing columns: `src/engine/AGENTS.md`.
 - **An edit keeps the relationship's other fields.** `relationship.changeColumns` keeps the relationship's id, its place, its constraint name, its type and its referential actions.

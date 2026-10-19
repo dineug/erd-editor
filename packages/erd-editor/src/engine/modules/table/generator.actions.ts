@@ -4,6 +4,7 @@ import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
+import { toDomainUnlinkActions } from '@/engine/modules/dictionary/domainTypes';
 import { toLiveDomainId } from '@/engine/modules/dictionary/membership';
 import {
   drawEndRelationshipAction,
@@ -34,6 +35,7 @@ import {
   changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -49,6 +51,8 @@ import { getTableGroupId } from '@/utils/tableGroup';
 import { ActionType } from './actions';
 import {
   addTableAction,
+  changeTableNameAction,
+  changeTableNameDerivedAction,
   changeZIndexAction,
   moveToTableAction,
   removeTableAction,
@@ -136,7 +140,7 @@ export const selectTableAction$ = (
   $mod: boolean
 ): GeneratorAction =>
   function* ({
-    doc: { tableIds, memoIds },
+    doc: { tableIds, memoIds, domainIds },
     collections,
     editor: { drawRelationship },
     settings: { database },
@@ -186,6 +190,7 @@ export const selectTableAction$ = (
           .selectByIds(endTable.columnIds)
           .map(({ name }) => name),
         database,
+        domainIds,
       });
       yield addRelationshipAction({
         id: uuid25(),
@@ -286,6 +291,11 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
     );
     const columnIdsRange = [...columnIds, ...additionalColumnIds];
     const showColumnOrder = getShowColumnOrder(show, columnOrder);
+    const pastesName = showColumnOrder.includes(ColumnType.columnName);
+    const pastesDataType = showColumnOrder.includes(ColumnType.columnDataType);
+    const columnCollection = query(collections).collection(
+      'tableColumnEntities'
+    );
 
     yield focusTableEndAction();
 
@@ -298,6 +308,20 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
         id: columnId,
         tableId: table.id,
       };
+      const target = columnCollection.selectById(columnId);
+      // A paste writes over a column's cells as typing into them does.
+      const directWrites: AnyAction[] = [
+        ...(pastesName &&
+        target &&
+        bHas(target.options, ColumnOption.nameDerived)
+          ? [changeColumnNameDerivedAction({ ...payload, value: false })]
+          : []),
+        ...(pastesDataType
+          ? toDomainUnlinkActions(state, [
+              { ...payload, value: column.dataType },
+            ])
+          : []),
+      ];
 
       yield [
         ...(showColumnOrder
@@ -343,6 +367,7 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
             }
           })
           .filter(Boolean) as AnyAction[]),
+        ...directWrites,
         focusColumnAction({
           tableId: table.id,
           columnId: columnId,
@@ -465,10 +490,30 @@ export const sortTablesToMoveAction$ = (): GeneratorAction =>
       );
   };
 
+/**
+ * Renames a table as typed by hand, so the dictionaries leave its name alone
+ * from then on: the derived flag goes off in the same dispatch while it is on.
+ */
+export const changeTableNameAction$ = (
+  id: string,
+  value: string
+): GeneratorAction =>
+  function* ({ collections }) {
+    const table = query(collections).collection('tableEntities').selectById(id);
+
+    yield [
+      changeTableNameAction({ id, value }),
+      ...(table?.nameDerived
+        ? [changeTableNameDerivedAction({ id, value: false })]
+        : []),
+    ];
+  };
+
 export const actions$ = {
   addTableAction$,
   removeTableAction$,
   selectTableAction$,
   pasteTableAction$,
   sortTablesToMoveAction$,
+  changeTableNameAction$,
 };

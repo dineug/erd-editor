@@ -2,6 +2,7 @@ import {
   ChangeActionTypes,
   createEngineContext,
   defaultToWidth,
+  dictionaryActions$,
   editorActions$,
   FocusType,
   indexActions$,
@@ -40,6 +41,7 @@ const MODULES = [
   memoActions$,
   tableGroupActions$,
   settingsActions$,
+  dictionaryActions$,
 ];
 
 /**
@@ -60,6 +62,9 @@ const CENSUS: Census = {
     ]),
   ],
   sortTablesToMoveAction$: () => [tableActions$.sortTablesToMoveAction$()],
+  changeTableNameAction$: () => [
+    tableActions$.changeTableNameAction$(SEED.users, 'members'),
+  ],
   addColumnAction$: () => [tableColumnActions$.addColumnAction$(SEED.empty)],
   removeColumnAction$: () => [
     tableColumnActions$.removeColumnAction$(SEED.orders, [
@@ -184,6 +189,84 @@ const CENSUS: Census = {
   changeLockSettingsAction$: () => [
     settingsActions$.changeLockSettingsAction$(LockSettingType.language, false),
   ],
+  addDictionaryEntryAction$: () => [
+    dictionaryActions$.addDictionaryEntryAction$('word', {
+      name: 'member',
+      abbreviation: 'MBR',
+    }),
+    dictionaryActions$.addDictionaryEntryAction$('domain', {
+      name: 'money',
+      dataType: 'NUMERIC(15,2)',
+    }),
+    dictionaryActions$.addDictionaryEntryAction$('term', { name: 'member id' }),
+    dictionaryActions$.addDictionaryEntryAction$('term', {
+      name: 'order id',
+      domainId: 'gone',
+    }),
+    dictionaryActions$.addDictionaryEntryAction$('word'),
+  ],
+  updateDictionaryEntryAction$: () => [
+    dictionaryActions$.updateDictionaryEntryAction$('domain', 'gone', {
+      dataType: 'TEXT',
+    }),
+  ],
+  removeDictionaryEntriesAction$: () => [
+    dictionaryActions$.removeDictionaryEntriesAction$('word', ['gone']),
+  ],
+  importDictionaryAction$: () => [
+    dictionaryActions$.importDictionaryAction$('domain', [
+      { name: 'money', dataType: 'NUMERIC(15,2)' },
+      { name: 'money', dataType: 'NUMERIC(18,2)' },
+    ]),
+    dictionaryActions$.importDictionaryAction$('term', [
+      { name: 'member id', domain: 'unknown' },
+    ]),
+  ],
+  commitDictionaryCellsAction$: () => [
+    dictionaryActions$.commitDictionaryCellsAction$('word', [
+      { values: { name: 'order' } },
+      { id: 'gone', values: { name: 'item' } },
+    ]),
+    dictionaryActions$.commitDictionaryCellsAction$('word', [
+      { values: { name: 'order' } },
+      { values: { name: 'order' } },
+    ]),
+  ],
+  setColumnLogicalNameAction$: () => [
+    dictionaryActions$.setColumnLogicalNameAction$(
+      SEED.users,
+      SEED.userName,
+      'member name'
+    ),
+    dictionaryActions$.setColumnLogicalNameAction$(SEED.users, 'gone', 'x'),
+  ],
+  setTableLogicalNameAction$: () => [
+    dictionaryActions$.setTableLogicalNameAction$(SEED.users, 'member'),
+    dictionaryActions$.setTableLogicalNameAction$('gone', 'x'),
+  ],
+  deriveColumnNameAction$: () => [
+    dictionaryActions$.deriveColumnNameAction$(SEED.users, SEED.userName),
+  ],
+  deriveTableNameAction$: () => [
+    dictionaryActions$.deriveTableNameAction$(SEED.users),
+  ],
+  rederiveNamesAction$: () =>
+    (
+      [
+        { scope: 'column', tableId: SEED.users, columnId: SEED.userName },
+        { scope: 'table', tableId: SEED.users },
+        { scope: 'selection' },
+        { scope: 'document' },
+      ] as const
+    ).map(dictionaryActions$.rederiveNamesAction$),
+  setColumnDomainAction$: () =>
+    ['', 'gone'].map(domainId =>
+      dictionaryActions$.setColumnDomainAction$(
+        SEED.users,
+        SEED.userName,
+        domainId
+      )
+    ),
 };
 
 /**

@@ -1,9 +1,18 @@
+import {
+  type AnyAction,
+  type CompositionAction,
+  compositionActionsFlat,
+} from '@dineug/r-html';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
 import { FIND_SEED, seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
+import { ColumnOption } from '@/constants/schema';
 import { ChangeActionTypes, HistoryActionTypes } from '@/engine/actions';
+import { changeTableNameDerivedAction } from '@/engine/modules/table/atom.actions';
+import { changeColumnNameDerivedAction } from '@/engine/modules/table-column/atom.actions';
+import { bHas } from '@/utils/bit';
 import {
   createMatcher,
   DEFAULT_FIND_OPTIONS,
@@ -17,6 +26,32 @@ import {
 } from '@/utils/find-replace';
 
 let app: AppContext;
+
+/** The atom actions a dispatch of these would reduce, read off the store as it stands. */
+const flat = (actions: CompositionAction[]) =>
+  compositionActionsFlat(
+    app.store.state,
+    app.store.context,
+    actions
+  ) as AnyAction[];
+
+/** Where a field action lands: a column of the seed for a column name, which must exist. */
+const atOf = (field: FindField) =>
+  field === FindField.columnName
+    ? { id: 'users_id', tableId: 'users' }
+    : { id: 'users', tableId: 'users' };
+
+/** Turns the derived flags of the users table and its id column on. */
+function deriveUsers() {
+  app.store.dispatchSync(
+    changeTableNameDerivedAction({ id: 'users', value: true }),
+    changeColumnNameDerivedAction({
+      id: 'users_id',
+      tableId: 'users',
+      value: true,
+    })
+  );
+}
 
 const matcherOf = (query: string, options: Partial<FindOptions> = {}) =>
   createMatcher(query, { ...DEFAULT_FIND_OPTIONS, ...options })
@@ -60,18 +95,16 @@ afterEach(() => {
 });
 
 describe('toFieldAction', () => {
-  it('writes each field through the atom action an edit by hand dispatches', () => {
+  it('writes each field but a name through the atom action an edit by hand dispatches', () => {
     const at = { id: 'c', tableId: 't' };
+    const names: FindField[] = [FindField.tableName, FindField.columnName];
 
     expect(
-      FindFieldList.map(field => toFieldAction({ ...at, field }, 'v'))
+      FindFieldList.filter(field => !names.includes(field)).map(field =>
+        toFieldAction({ ...at, field }, 'v')
+      )
     ).toEqual([
-      { type: 'table.changeName', payload: { id: 'c', value: 'v' } },
       { type: 'table.changeComment', payload: { id: 'c', value: 'v' } },
-      {
-        type: 'column.changeName',
-        payload: { id: 'c', tableId: 't', value: 'v' },
-      },
       {
         type: 'column.changeComment',
         payload: { id: 'c', tableId: 't', value: 'v' },
@@ -85,11 +118,52 @@ describe('toFieldAction', () => {
     ]);
   });
 
-  it('writes only types that are saved, undone and sent to every peer', () => {
-    const types = FindFieldList.map(
-      field => toFieldAction({ field, id: 'c', tableId: 't' }, 'v').type
-    );
+  it('writes a name through the generator a rename by hand sends, turning a derived flag off', () => {
+    const named = () => [
+      toFieldAction(
+        { field: FindField.tableName, ...atOf(FindField.tableName) },
+        'v'
+      ),
+      toFieldAction(
+        { field: FindField.columnName, ...atOf(FindField.columnName) },
+        'v'
+      ),
+    ];
 
+    expect(flat(named())).toEqual([
+      { type: 'table.changeName', payload: { id: 'users', value: 'v' } },
+      {
+        type: 'column.changeName',
+        payload: { id: 'users_id', tableId: 'users', value: 'v' },
+      },
+    ]);
+
+    deriveUsers();
+
+    expect(flat(named())).toEqual([
+      { type: 'table.changeName', payload: { id: 'users', value: 'v' } },
+      {
+        type: 'table.changeNameDerived',
+        payload: { id: 'users', value: false },
+      },
+      {
+        type: 'column.changeName',
+        payload: { id: 'users_id', tableId: 'users', value: 'v' },
+      },
+      {
+        type: 'column.changeNameDerived',
+        payload: { id: 'users_id', tableId: 'users', value: false },
+      },
+    ]);
+  });
+
+  it('writes only types that are saved, undone and sent to every peer', () => {
+    deriveUsers();
+    const types = flat(
+      FindFieldList.map(field => toFieldAction({ field, ...atOf(field) }, 'v'))
+    ).map(({ type }) => type);
+
+    expect(types).toContain('column.changeNameDerived');
     for (const type of types) {
       expect(ChangeActionTypes).toContain(type);
       expect(HistoryActionTypes).toContain(type);
@@ -102,7 +176,7 @@ describe('toReplaceActions', () => {
     const matcher = matcherOf('user');
     const matches = findMatches(app.store.state, matcher);
 
-    expect(toReplaceActions(matches, matcher, 'member').actions).toEqual([
+    expect(flat(toReplaceActions(matches, matcher, 'member').actions)).toEqual([
       {
         type: 'column.changeName',
         payload: {
@@ -236,5 +310,35 @@ describe('toReplaceActions', () => {
     app.store.redo();
 
     expect(texts().memo).toBe('Every member_id points at members.id');
+  });
+
+  it('turns the derived flags of the names it writes off, within its one history entry', () => {
+    deriveUsers();
+    const matcher = matcherOf('users?', { regex: true, wholeWord: true });
+    const derived = () => [
+      app.store.state.collections.tableEntities.users.nameDerived,
+      bHas(
+        app.store.state.collections.tableColumnEntities.users_id.options,
+        ColumnOption.nameDerived
+      ),
+    ];
+    const historySize = app.store.history.size;
+
+    app.store.dispatchSync(
+      toReplaceActions(
+        findMatches(app.store.state, matcher),
+        matcher,
+        'members'
+      ).actions
+    );
+
+    expect(texts().tables.users[0]).toBe('members');
+    expect(derived()).toEqual([false, true]);
+    expect(app.store.history.size).toBe(historySize + 1);
+
+    app.store.undo();
+
+    expect(texts().tables.users[0]).toBe('users');
+    expect(derived()).toEqual([true, true]);
   });
 });

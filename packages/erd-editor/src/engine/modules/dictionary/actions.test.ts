@@ -64,7 +64,19 @@ describe('dictionary/actions', () => {
     ).toEqual(types);
   });
 
-  it('exports an empty generator barrel', () => {
-    expect(actions$).toEqual({});
+  it('exports the eleven generators of the dictionaries and the names they derive', () => {
+    expect(Object.keys(actions$).sort()).toEqual([
+      'addDictionaryEntryAction$',
+      'commitDictionaryCellsAction$',
+      'deriveColumnNameAction$',
+      'deriveTableNameAction$',
+      'importDictionaryAction$',
+      'rederiveNamesAction$',
+      'removeDictionaryEntriesAction$',
+      'setColumnDomainAction$',
+      'setColumnLogicalNameAction$',
+      'setTableLogicalNameAction$',
+      'updateDictionaryEntryAction$',
+    ]);
   });
 });
