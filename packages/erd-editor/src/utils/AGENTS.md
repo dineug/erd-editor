@@ -69,7 +69,7 @@
 - **An index rides whole or not at all.** An index column has no identity outside its index (`ClipboardIndex`, `table-clipboard/payload.ts`). `index.add` goes before its `indexColumn.add`s.
 - **`CLIPBOARD_VERSION` stays 1.** A bump makes shipped editors refuse new copies.
 - **Logical names, derived flags and domain links ride by name.** A duplicate, a column dragged to another table (`dragoverColumnAction$`) and a paste carry each table's and column's `logicalName`, the derived flag (`nameDerived`, a column's `ColumnOption.nameDerived` bit) and a column's `domainId`. The payload's fields for them are optional, so a copy an older editor made pastes with none.
-  - A paste links only a domain the document it lands in lists (`toLiveDomainId`), since a copy from another document names domains this one lacks. A duplicate and a drag stay in one document and carry the link as it is.
+  - A paste links only a domain the document it lands in lists and whose data type the copied column holds (`toPastedDomainId`), and keeps the type it copied. A copy from another document names domains this one lacks, and one taken before its domain's type changed holds the old type, which a link would leave off its domain's (`src/engine/AGENTS.md`, Dictionaries and derived names). A duplicate and a drag stay in one document and carry the link as it is.
   - The columns a paste adds to the selected tables (`pasteTableAction$`) take no derived flag, since a paste writes the name as typed.
   - `toCreateEntityActions` sends these fields only when they hold something, so a document without them copies in the batch it did before.
 - **`PayloadKind.columns` carries no relationships or indexes.** Its payload carries neither the `relationships` nor the `indexes` array.

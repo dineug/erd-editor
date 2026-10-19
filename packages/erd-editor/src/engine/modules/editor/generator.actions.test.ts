@@ -21,6 +21,7 @@ import {
   addDictionaryAction,
   removeDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
+import { updateDictionaryEntryAction$ } from '@/engine/modules/dictionary/generator.actions';
 import {
   clearAction,
   dragstartColumnAction,
@@ -1945,6 +1946,57 @@ describe('the logical names and domain links a paste or a duplicate carries', ()
     expect(column.domainId).toBe('');
     expect(columnOf(store, table.columnIds[1]).domainId).toBe('');
     expect(column.logicalName).toBe('Member number');
+  });
+
+  it('links no domain whose type moved since the copy, keeping the type it copied', () => {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount', dataType: 'NUMERIC(10)' },
+      })
+    );
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(
+      changeColumnDataTypeAction({
+        tableId: 't1',
+        id: 'c1',
+        value: 'NUMERIC(10)',
+      }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'd1' }),
+      selectAction({ t1: SelectType.table })
+    );
+    const before = entitiesCopyToPayload(store.state)!;
+    store.dispatchSync(
+      updateDictionaryEntryAction$('domain', 'd1', {
+        dataType: 'NUMERIC(15,2)',
+      })
+    );
+    expect(columnOf(store, 'c1')).toMatchObject({
+      dataType: 'NUMERIC(15,2)',
+      domainId: 'd1',
+    });
+
+    const tableIds = [...store.state.doc.tableIds];
+    store.dispatchSync(pasteEntitiesAction$(before, 1));
+    expect(copyOf(tableIds).column).toMatchObject({
+      dataType: 'NUMERIC(10)',
+      domainId: '',
+    });
+
+    // A copy taken after the change holds the domain's type and keeps it.
+    store.dispatchSync(
+      unselectAllAction$(),
+      selectAction({ t1: SelectType.table })
+    );
+    const after = entitiesCopyToPayload(store.state)!;
+    const pastedIds = [...store.state.doc.tableIds];
+    store.dispatchSync(pasteEntitiesAction$(after, 2));
+    expect(copyOf(pastedIds).column).toMatchObject({
+      dataType: 'NUMERIC(15,2)',
+      domainId: 'd1',
+    });
   });
 
   it('pastes a copy made before the dictionaries with none of their fields', () => {

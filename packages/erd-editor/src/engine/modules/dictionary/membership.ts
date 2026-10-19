@@ -57,6 +57,21 @@ export const toLiveDomainId = (state: RootState, domainId?: string): string =>
   domainId && isListed(state.doc.domainIds, domainId) ? domainId : '';
 
 /**
+ * The domain a pasted column keeps: a live one whose data type the column holds,
+ * else ''. A copy can name a domain whose type changed since it was taken, and a
+ * link off its domain's type would break the rule that a domain governs its type.
+ */
+export function toPastedDomainId(
+  state: RootState,
+  domainId: string | undefined,
+  dataType: string
+): string {
+  const id = toLiveDomainId(state, domainId);
+  const domainType = state.collections.domainEntities[id]?.dataType ?? '';
+  return id && domainType === dataType ? id : '';
+}
+
+/**
  * The name of the domain an id links, or '' while it links none in the
  * document: a removed domain's name is kept for its undo and shown nowhere.
  */

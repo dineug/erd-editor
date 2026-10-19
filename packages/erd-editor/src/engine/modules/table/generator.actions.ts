@@ -5,7 +5,7 @@ import { uuid25 } from '@dineug/uuid';
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
 import { toDomainUnlinkActions } from '@/engine/modules/dictionary/domainTypes';
-import { toLiveDomainId } from '@/engine/modules/dictionary/membership';
+import { toPastedDomainId } from '@/engine/modules/dictionary/membership';
 import {
   drawEndRelationshipAction,
   focusColumnAction,
@@ -265,10 +265,11 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
             ...payload,
             value: column.logicalName,
           }),
-          // A copy from another document links domains this one does not list.
+          // A copy from another document, or one taken before its domain's
+          // type changed, keeps no link to a domain off the type it pastes.
           changeColumnDomainAction({
             ...payload,
-            value: toLiveDomainId(state, column.domainId),
+            value: toPastedDomainId(state, column.domainId, column.dataType),
           }),
         ];
       }

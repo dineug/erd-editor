@@ -11,6 +11,7 @@ import {
   isListed,
   listId,
   toLiveDomainId,
+  toPastedDomainId,
   unlistId,
 } from '@/engine/modules/dictionary/membership';
 import {
@@ -148,6 +149,38 @@ describe('toLiveDomainId', () => {
     expect(toLiveDomainId(store.state, 'd2')).toBe('');
     expect(toLiveDomainId(store.state, 'ghost')).toBe('');
     expect(toLiveDomainId(store.state, undefined)).toBe('');
+  });
+});
+
+describe('toPastedDomainId', () => {
+  it('keeps an id while its domain is listed and holds the pasted type', () => {
+    const store = createStore({
+      toWidth: text => text.length,
+      clock: new Clock(),
+    });
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { dataType: 'INT' },
+      }),
+      addDictionaryAction({ kind: 'domain', id: 'd2' }),
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd3',
+        values: { dataType: 'INT' },
+      }),
+      removeDictionaryAction({ kind: 'domain', id: 'd3' })
+    );
+
+    expect(toPastedDomainId(store.state, 'd1', 'INT')).toBe('d1');
+    expect(toPastedDomainId(store.state, 'd1', 'BIGINT')).toBe('');
+    expect(toPastedDomainId(store.state, 'd1', '')).toBe('');
+    expect(toPastedDomainId(store.state, 'd2', '')).toBe('d2');
+    expect(toPastedDomainId(store.state, 'd2', 'INT')).toBe('');
+    expect(toPastedDomainId(store.state, 'd3', 'INT')).toBe('');
+    expect(toPastedDomainId(store.state, 'ghost', '')).toBe('');
+    expect(toPastedDomainId(store.state, undefined, '')).toBe('');
   });
 });
 

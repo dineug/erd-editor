@@ -13,6 +13,7 @@ import {
   addDictionaryAction,
   removeDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
+import { updateDictionaryEntryAction$ } from '@/engine/modules/dictionary/generator.actions';
 import {
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
@@ -580,6 +581,34 @@ describe('pasteTableAction$', () => {
     expect(foreign.domainId).toBe('');
     // A paste writes the name as typed, so nothing derived it.
     expect(bHas(live.options, ColumnOption.nameDerived)).toBe(false);
+  });
+
+  it('appends a link only to a domain whose type the copy holds, keeping the type it copied', () => {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount', dataType: 'bigint' },
+      })
+    );
+    seedTable(store, 't1');
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c1', value: 'bigint' }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'd1' })
+    );
+    const before = { ...columnOf(store, 'c1') };
+    store.dispatchSync(
+      updateDictionaryEntryAction$('domain', 'd1', { dataType: 'int' })
+    );
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+    const after = { ...columnOf(store, 'c1') };
+
+    store.dispatchSync(pasteTableAction$([before, after]));
+
+    const [, moved, kept] = columnsOf(store, 't1');
+    expect(moved).toMatchObject({ dataType: 'bigint', domainId: '' });
+    expect(kept).toMatchObject({ dataType: 'int', domainId: 'd1' });
   });
 
   it('appends to the focused table too when the focus is on the table itself', () => {

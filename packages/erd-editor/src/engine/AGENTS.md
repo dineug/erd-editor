@@ -33,7 +33,7 @@
 | `modules/relationship/endFlags.ts`, `modules/table-column/keys.ts` | The relationship fields and the foreign key bits, read whole off the document |
 | `modules/relationship/referenceType.ts` | `toReferenceDataType` |
 | `modules/table-group/` | The table group model |
-| `modules/dictionary/` | The words, terms and domains; `membership.ts` holds `isListed`, `listId`, `unlistId`, `toLiveDomainId` and `getLiveDomainName` |
+| `modules/dictionary/` | The words, terms and domains; `membership.ts` holds `isListed`, `listId`, `unlistId`, `toLiveDomainId`, `toPastedDomainId` and `getLiveDomainName` |
 | `modules/dictionary/dictionaryIndex.ts`, `derive.ts`, `checks.ts`, `termIndex.ts` | The DOM-free reads of the dictionaries: the cached name indexes and `normalizeDictionaryName`, the word split and composition (`decompose`, `compose`, `derivePhysical`), the checks a cell marks and the check sheet lists, and the sorted term index completion reads |
 | `modules/dictionary/generator.actions.ts` | The eleven dictionary generators, `RederiveScope`; the helpers they share are exported by name: `toDomainTypeActions` and `toDomainUnlinkActions` (`domainTypes.ts`), `validateDictionaryValues`, `toDictionaryCommit` and `toDictionaryImport` (`entryWrites.ts`), `toColumnNameWrites` and `toTableNameWrites` (`derivedNames.ts`) |
 
@@ -241,6 +241,7 @@
   - `setColumnDomainAction$` links a live domain and writes its type the same way, and `''` unlinks alone. A column whose type a dispatch leaves equal is sent nothing.
   - A typed type unlinks the same way. `changeColumnDataTypeAction$`, which the type cell and `mcp-server`'s `erd_change_column_data_type` send, passes the column as a direct write, always sent, and the sync spreads from it.
   - A paste over a column's type cell and Map Columns' alignment (`toAlignTypeActions`) take step 3 alone (`toDomainUnlinkActions`): a paste spreads no sync, and Map Columns spreads it over the relationships as the mapping leaves them, not the document's.
+  - A paste of new columns (`pasteEntitiesAction$`, and the columns `pasteTableAction$` adds to the selected tables) writes the type it copied and links its domain only while that domain is live and holds that type (`toPastedDomainId`). So a copy taken before its domain's type changed, or one from another copy of the file whose domain of the same id holds another type, lands unlinked.
 - **A dictionary write goes row by row, then once over its domains.** `addDictionaryEntryAction$`, `updateDictionaryEntryAction$`, `commitDictionaryCellsAction$` and `importDictionaryAction$` send only the fields that change (a new row only its values that are not empty), then the column writes of every domain whose type they change, in one dispatch.
   - `validateDictionaryValues` gives the reasons a write is refused: a name another listed row of the sheet or another row of the same write holds, or a term's domain the document does not list. A refused add or update sends nothing, and a commit with one refused row sends none of it (`toDictionaryCommit`). A row a peer removed meanwhile is passed over.
   - A term given a name while it holds no physical name gets the one its words compose.

@@ -11,7 +11,7 @@ import { APPEND_GAP, START_ADD, TABLE_SORT_START } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
 import type { EngineContext } from '@/engine/context';
 import { GeneratorAction } from '@/engine/generator.actions';
-import { toLiveDomainId } from '@/engine/modules/dictionary/membership';
+import { toPastedDomainId } from '@/engine/modules/dictionary/membership';
 import {
   changeMemoColorAction,
   moveMemoAction,
@@ -246,10 +246,11 @@ export const pasteEntitiesAction$ = (
     yield* createEntities$(state, {
       input: {
         tables: payload.tables,
-        // A copy from another document links domains this one does not list.
+        // A copy from another document, or one taken before its domain's type
+        // changed, keeps no link to a domain off the type it pastes.
         columns: payload.columns.map(column => ({
           ...column,
-          domainId: toLiveDomainId(state, column.domainId),
+          domainId: toPastedDomainId(state, column.domainId, column.dataType),
         })),
         memos: payload.memos,
         relationships: payload.relationships ?? [],
