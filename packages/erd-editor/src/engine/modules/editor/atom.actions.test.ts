@@ -23,6 +23,11 @@ import {
 import { ChangeActionTypes, SharedActionTypes } from '@/engine/actions';
 import { Clock } from '@/engine/clock';
 import {
+  addDictionaryAction,
+  removeDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import {
   changeDrawTableGroupAction,
   changeHandToolAction,
   changeHasHistoryAction,
@@ -51,6 +56,7 @@ import {
   hoverRelationshipMapAction,
   initialClearAction,
   initialLoadJsonAction,
+  keepsDictionaries,
   loadJsonAction,
   mergeLWWAction,
   scrollMemoAction,
@@ -620,6 +626,125 @@ describe('editor.clear / initialClear', () => {
 
     expect(store.state.doc.tableIds).toEqual([]);
     expect(store.state.collections.tableEntities).toEqual({});
+  });
+});
+
+describe('editor.clear / loadJson that keep the dictionaries', () => {
+  /** A word, a term and a domain, one more domain removed, and a table. */
+  function seedDictionaries() {
+    seedTableWithColumns(store);
+    store.dispatchSync(
+      addDictionaryAction({ kind: 'word', id: 'w1', values: { name: 'W' } }),
+      addDictionaryAction({ kind: 'term', id: 't1', values: { name: 'T' } }),
+      addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'D' } }),
+      addDictionaryAction({ kind: 'domain', id: 'd2', values: { name: 'R' } }),
+      removeDictionaryAction({ kind: 'domain', id: 'd2' })
+    );
+  }
+
+  const dictionariesOf = ({ doc, collections }: Store['state']) => ({
+    wordIds: doc.wordIds,
+    termIds: doc.termIds,
+    domainIds: doc.domainIds,
+    wordEntities: collections.wordEntities,
+    termEntities: collections.termEntities,
+    domainEntities: collections.domainEntities,
+  });
+
+  /** A document of one table and a dictionary row of its own in each sheet. */
+  const OTHER = JSON.stringify({
+    version: '3.0.0',
+    doc: { tableIds: ['other'] },
+    collections: {
+      tableEntities: { other: { id: 'other', name: 'other' } },
+      wordEntities: { fields: ['id', 'name'], rows: [['wx', 'X']] },
+      termEntities: { fields: ['id', 'name'], rows: [['tx', 'X']] },
+      domainEntities: { fields: ['id', 'name'], rows: [['dx', 'X']] },
+    },
+  });
+
+  it('keeps the three dictionaries and their own lists through a flagged clear', () => {
+    seedDictionaries();
+    const before = dictionariesOf(store.state);
+
+    store.dispatchSync(clearAction({ keepDictionaries: true }));
+
+    expect(store.state.doc.tableIds).toEqual([]);
+    expect(store.state.collections.tableEntities).toEqual({});
+    expect(dictionariesOf(store.state)).toEqual(before);
+    expect(store.state.doc.domainIds).toBe(before.domainIds);
+    expect(store.state.collections.domainEntities.d2.name).toBe('R');
+  });
+
+  it('keeps them through a flagged load, whatever dictionaries its text holds', () => {
+    seedDictionaries();
+    const before = dictionariesOf(store.state);
+
+    store.dispatchSync(
+      clearAction({ keepDictionaries: true }),
+      loadJsonAction({ value: OTHER, keepDictionaries: true })
+    );
+
+    expect(store.state.doc.tableIds).toEqual(['other']);
+    expect(dictionariesOf(store.state)).toEqual(before);
+    expect(store.state.doc.wordIds).toEqual(['w1']);
+    expect(store.state.collections.wordEntities).not.toHaveProperty('wx');
+  });
+
+  it('replaces them, removed rows included, through a clear or a load without the flag', () => {
+    seedDictionaries();
+
+    store.dispatchSync(clearAction());
+
+    expect(store.state.doc.wordIds).toEqual([]);
+    expect(store.state.collections.domainEntities).toEqual({});
+
+    seedDictionaries();
+    store.dispatchSync(
+      clearAction(),
+      loadJsonAction({ value: OTHER, keepDictionaries: false })
+    );
+
+    expect(store.state.doc.wordIds).toEqual(['wx']);
+    expect(store.state.doc.domainIds).toEqual(['dx']);
+    expect(Object.keys(store.state.collections.domainEntities)).toEqual(['dx']);
+  });
+
+  it('measures each column linking a kept domain by its name on a flagged load', () => {
+    seedDictionaries();
+    const value = JSON.stringify({
+      version: '3.0.0',
+      doc: { tableIds: ['t2'], domainIds: ['d1'] },
+      collections: {
+        tableEntities: { t2: { id: 't2', name: 't2', columnIds: ['c9'] } },
+        tableColumnEntities: {
+          c9: { id: 'c9', tableId: 't2', name: 'c9', domainId: 'd1' },
+        },
+        domainEntities: { fields: ['id', 'name'], rows: [['d1', 'Old']] },
+      },
+    });
+
+    store.dispatchSync(
+      updateDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Money amount' },
+      }),
+      clearAction({ keepDictionaries: true }),
+      loadJsonAction({ value, keepDictionaries: true })
+    );
+
+    const column = store.state.collections.tableColumnEntities.c9;
+    expect(column.domainId).toBe('d1');
+    expect(store.state.collections.domainEntities.d1.name).toBe('Money amount');
+    expect(column.ui.widthDomain).toBe('Money amount'.length * 10);
+  });
+
+  it('reads a flag only when it is true, a later release sending another value', () => {
+    expect(keepsDictionaries({ keepDictionaries: true })).toBe(true);
+    expect(keepsDictionaries({ keepDictionaries: 'yes' })).toBe(false);
+    expect(keepsDictionaries({})).toBe(false);
+    expect(keepsDictionaries(undefined)).toBe(false);
   });
 });
 

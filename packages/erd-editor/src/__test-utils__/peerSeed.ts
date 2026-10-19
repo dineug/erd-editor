@@ -4,6 +4,7 @@ import { cloneDeep } from 'es-toolkit';
 
 import { RelationshipType } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
@@ -18,6 +19,7 @@ import {
 import {
   addColumnAction,
   changeColumnDataTypeAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
@@ -54,6 +56,10 @@ export const SEED = {
   userIndexColumn: 'orders_user_id_index_column',
   memo: 'memo',
   group: 'group',
+  memberWord: 'word_member',
+  nameWord: 'word_name',
+  term: 'term_member_name',
+  domain: 'domain_name',
 } as const;
 
 const column = (
@@ -90,9 +96,9 @@ function buildValue(...actions: AnyAction[][]): string {
 }
 
 /**
- * Two related tables, an empty one, a two column index, a memo and a group
- * holding users: every entity an edit can name, and one relationship and index
- * for a removal to cascade into. Built through the reducers they accept.
+ * Two related tables, an empty one, a two column index, a memo, a group holding
+ * users, two words, a term and a domain users.name links: every entity an edit
+ * can name, with a relationship and an index for a removal to cascade into.
  */
 export function createSeedValue(): string {
   return buildValue(
@@ -140,6 +146,41 @@ export function createSeedValue(): string {
       }),
       changeTableGroupNameAction({ id: SEED.group, value: 'accounts' }),
       changeTableGroupAction({ id: SEED.users, value: SEED.group }),
+    ],
+    [
+      addDictionaryAction({
+        kind: 'word',
+        id: SEED.memberWord,
+        values: { name: 'Member', abbreviation: 'MBR', englishName: 'Member' },
+      }),
+      addDictionaryAction({
+        kind: 'word',
+        id: SEED.nameWord,
+        values: { name: 'Name', abbreviation: 'NM', englishName: 'Name' },
+      }),
+      addDictionaryAction({
+        kind: 'domain',
+        id: SEED.domain,
+        values: {
+          name: 'Short Text',
+          category: 'Text',
+          dataType: 'VARCHAR(255)',
+        },
+      }),
+      addDictionaryAction({
+        kind: 'term',
+        id: SEED.term,
+        values: {
+          name: 'Member Name',
+          physicalName: 'MBR_NM',
+          domainId: SEED.domain,
+        },
+      }),
+      changeColumnDomainAction({
+        id: SEED.userName,
+        tableId: SEED.users,
+        value: SEED.domain,
+      }),
     ]
   );
 }

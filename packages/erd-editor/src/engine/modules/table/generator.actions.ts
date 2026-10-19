@@ -4,6 +4,7 @@ import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
+import { toLiveDomainId } from '@/engine/modules/dictionary/membership';
 import {
   drawEndRelationshipAction,
   focusColumnAction,
@@ -30,6 +31,8 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnUniqueAction,
@@ -203,11 +206,12 @@ export const selectTableAction$ = (
   };
 
 export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
-  function* ({
-    editor: { selectedMap, focusTable },
-    settings: { show, columnOrder },
-    collections,
-  }) {
+  function* (state) {
+    const {
+      editor: { selectedMap, focusTable },
+      settings: { show, columnOrder },
+      collections,
+    } = state;
     const isFit = focusTable && !isTableFocusType(focusTable.focusType);
     const selectedTableIds = Object.entries(selectedMap)
       .filter(([, type]) => type === SelectType.table)
@@ -251,6 +255,15 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
           changeColumnAutoIncrementAction({
             ...payload,
             value: bHas(column.options, ColumnOption.autoIncrement),
+          }),
+          changeColumnLogicalNameAction({
+            ...payload,
+            value: column.logicalName,
+          }),
+          // A copy from another document links domains this one does not list.
+          changeColumnDomainAction({
+            ...payload,
+            value: toLiveDomainId(state, column.domainId),
           }),
         ];
       }

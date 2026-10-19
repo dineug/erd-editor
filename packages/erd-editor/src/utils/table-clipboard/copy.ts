@@ -275,8 +275,10 @@ function toClipboardTable(table: Table): ClipboardTable {
   return {
     sourceId: table.id,
     name: table.name,
+    logicalName: table.logicalName,
     comment: table.comment,
     columnIds: [...table.columnIds],
+    nameDerived: table.nameDerived,
     ui: {
       x: table.ui.x,
       y: table.ui.y,
@@ -297,6 +299,8 @@ function toClipboardColumn(column: Column): ClipboardColumn {
     dataType: column.dataType,
     default: column.default,
     options: column.options,
+    logicalName: column.logicalName,
+    domainId: column.domainId,
     ui: {
       keys: column.ui.keys,
       widthName: column.ui.widthName,

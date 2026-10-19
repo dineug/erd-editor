@@ -1,6 +1,8 @@
 import { query } from '@dineug/erd-editor-schema';
 
+import { ColumnOption } from '@/constants/schema';
 import { PushUndoHistory } from '@/engine/history.actions';
+import { bHas } from '@/utils/bit';
 
 import { ActionType } from './actions';
 import {
@@ -9,7 +11,10 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
@@ -173,6 +178,63 @@ const changeColumnUnique: PushUndoHistory = (
   );
 };
 
+const changeColumnLogicalName: PushUndoHistory = (
+  undoActions,
+  {
+    payload: { id, tableId },
+  }: ReturnType<typeof changeColumnLogicalNameAction>,
+  { collections }
+) => {
+  const column = query(collections)
+    .collection('tableColumnEntities')
+    .selectById(id);
+  if (!column) return;
+
+  undoActions.push(
+    changeColumnLogicalNameAction({ id, tableId, value: column.logicalName })
+  );
+};
+
+const changeColumnDomain: PushUndoHistory = (
+  undoActions,
+  { payload: { id, tableId } }: ReturnType<typeof changeColumnDomainAction>,
+  { collections }
+) => {
+  const column = query(collections)
+    .collection('tableColumnEntities')
+    .selectById(id);
+  if (!column) return;
+
+  undoActions.push(
+    changeColumnDomainAction({ id, tableId, value: column.domainId })
+  );
+};
+
+/**
+ * Undoes with the bit the column held before the batch, unlike the other
+ * option bits' negation, so an undo of a write that changed nothing keeps it.
+ */
+const changeColumnNameDerived: PushUndoHistory = (
+  undoActions,
+  {
+    payload: { id, tableId },
+  }: ReturnType<typeof changeColumnNameDerivedAction>,
+  { collections }
+) => {
+  const column = query(collections)
+    .collection('tableColumnEntities')
+    .selectById(id);
+  if (!column) return;
+
+  undoActions.push(
+    changeColumnNameDerivedAction({
+      id,
+      tableId,
+      value: bHas(column.options, ColumnOption.nameDerived),
+    })
+  );
+};
+
 const moveColumn: PushUndoHistory = (
   undoActions,
   { payload: { id, tableId, targetId } }: ReturnType<typeof moveColumnAction>,
@@ -213,4 +275,7 @@ export const tableColumnPushUndoHistoryMap = {
   [ActionType.changeColumnPrimaryKey]: changeColumnPrimaryKey,
   [ActionType.changeColumnUnique]: changeColumnUnique,
   [ActionType.moveColumn]: moveColumn,
+  [ActionType.changeColumnLogicalName]: changeColumnLogicalName,
+  [ActionType.changeColumnDomain]: changeColumnDomain,
+  [ActionType.changeColumnNameDerived]: changeColumnNameDerived,
 };

@@ -10,6 +10,10 @@ import {
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
+  addDictionaryAction,
+  removeDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import {
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
   focusColumnAction,
@@ -536,6 +540,42 @@ describe('pasteTableAction$', () => {
     seedTable(store, 't1');
 
     expect(typesOf(store, pasteTableAction$([columnA]))).toEqual([]);
+  });
+
+  it('appends the logical names, linking only a domain this document lists', () => {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Membership number' },
+      }),
+      addDictionaryAction({ kind: 'domain', id: 'd2' }),
+      removeDictionaryAction({ kind: 'domain', id: 'd2' })
+    );
+    seedTable(store, 't1');
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+    const linked = (domainId: string) =>
+      makeColumn({
+        name: domainId,
+        logicalName: `Linked to ${domainId}`,
+        domainId,
+        options: ColumnOption.nameDerived,
+      });
+
+    store.dispatchSync(
+      pasteTableAction$([linked('d1'), linked('d2'), linked('elsewhere')])
+    );
+
+    const [live, removed, foreign] = columnsOf(store, 't1');
+    expect(live).toMatchObject({ logicalName: 'Linked to d1', domainId: 'd1' });
+    expect(live.ui.widthDomain).toBe('Membership number'.length * 10);
+    expect(removed).toMatchObject({
+      logicalName: 'Linked to d2',
+      domainId: '',
+    });
+    expect(foreign.domainId).toBe('');
+    // A paste writes the name as typed, so nothing derived it.
+    expect(bHas(live.options, ColumnOption.nameDerived)).toBe(false);
   });
 
   it('appends to the focused table too when the focus is on the table itself', () => {

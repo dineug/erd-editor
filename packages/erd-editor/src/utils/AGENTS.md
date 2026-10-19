@@ -47,6 +47,7 @@
 - **An append adds the file as new entities.** It makes them the way a paste does. `toSchemaAppend` (`src/engine/modules/editor/generator.actions.ts`) reads the document through `toDuplicateInput` and `toCreateEntityActions` with `valuesOnly`, which sends no field left at what a new entity starts with. As a result:
   - every table gets a new id, and a table whose name is already there stays beside it;
   - relationships and indexes ride only between the tables the file brings, since the converters link nothing outside it, so a foreign key to an existing table is dropped;
+  - the logical names and derived flags ride, while no column links a domain and no dictionary row is added, since the file's dictionaries stay behind;
   - no setting changes.
 - **The block lands below the diagram.** It stands `APPEND_GAP` below `getContentRect` of the document at dispatch time, united with the boxes of its table groups while they are hidden, since a hidden group still holds its tables (an owner decision of 2026-10-10), and with its memos while they are hidden, which still stand there. It starts in line with that box's left edge, or at `TABLE_SORT_START` in an empty document. The block is stacked over the document: its tables and memos take z-indexes above the document's (`nextZIndex`), and its groups above the document's groups (`nextTableGroupZIndex`, `toAppendTableGroups`).
 - **The block's layout depends on the file.**
@@ -67,6 +68,10 @@
 - **A relationship rides only with both ends.** It rides only when both of its ends are copied.
 - **An index rides whole or not at all.** An index column has no identity outside its index (`ClipboardIndex`, `table-clipboard/payload.ts`). `index.add` goes before its `indexColumn.add`s.
 - **`CLIPBOARD_VERSION` stays 1.** A bump makes shipped editors refuse new copies.
+- **Logical names, derived flags and domain links ride by name.** A duplicate, a column dragged to another table (`dragoverColumnAction$`) and a paste carry each table's and column's `logicalName`, the derived flag (`nameDerived`, a column's `ColumnOption.nameDerived` bit) and a column's `domainId`. The payload's fields for them are optional, so a copy an older editor made pastes with none.
+  - A paste links only a domain the document it lands in lists (`toLiveDomainId`), since a copy from another document names domains this one lacks. A duplicate and a drag stay in one document and carry the link as it is.
+  - The columns a paste adds to the selected tables (`pasteTableAction$`) take no derived flag, since a paste writes the name as typed.
+  - `toCreateEntityActions` sends these fields only when they hold something, so a document without them copies in the batch it did before.
 - **`PayloadKind.columns` carries no relationships or indexes.** Its payload carries neither the `relationships` nor the `indexes` array.
 - **Every HTML cell goes through `escapeHtml`.** Every cell of the HTML table a copy writes beside `text/plain` goes through `escapeHtml` (`rowsToHtmlTable`, `copy.ts`), the escape the hidden JSON attribute uses. A spreadsheet, a document editor or a paste that reads only the HTML takes each cell's text content, and an unescaped `<b>` or `&amp;` would come back changed.
 

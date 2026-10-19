@@ -17,6 +17,10 @@ import {
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
+import {
+  addDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
   addRelationshipAction,
@@ -167,6 +171,26 @@ describe('peer store in a realm with no DOM (AC-E2)', () => {
     expect(peer.state.collections.tableEntities[SEED.empty].groupId).toBe(
       report.createdIds[0]
     );
+  });
+
+  it('hands back the id of a dictionary row it added, and none of a row it changed', () => {
+    const peer = peerOf({ presence: false });
+    peer.setInitialValue(createSeedValue());
+
+    const added = peer.dispatch([
+      addDictionaryAction({ kind: 'term', id: 'term-1' }),
+    ]);
+    const changed = peer.dispatch([
+      updateDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member number' },
+      }),
+    ]);
+
+    expect(added.createdIds).toEqual(['term-1']);
+    expect(peer.state.doc.termIds).toEqual([SEED.term, 'term-1']);
+    expect(changed.createdIds).toEqual([]);
   });
 
   it('focuses the table or the column a dispatch names before its edit', () => {

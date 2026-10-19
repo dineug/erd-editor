@@ -3,6 +3,7 @@ import { createStore as runStore, Store as StoreType } from '@dineug/r-html';
 
 import { RootActionMap } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
+import { dictionaryReducers } from '@/engine/modules/dictionary/atom.actions';
 import { editorReducers } from '@/engine/modules/editor/atom.actions';
 import { createEditor } from '@/engine/modules/editor/state';
 import { indexReducers } from '@/engine/modules/index/atom.actions';
@@ -38,6 +39,7 @@ export function createStore(
       ...indexReducers,
       ...indexColumnReducers,
       ...tableGroupReducers,
+      ...dictionaryReducers,
     },
     enableObservable: enableObservable ?? true,
   });

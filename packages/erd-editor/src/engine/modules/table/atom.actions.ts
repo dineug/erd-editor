@@ -115,6 +115,51 @@ const changeTableName: ReducerType<typeof ActionType.changeTableName> = (
   });
 };
 
+export const changeTableLogicalNameAction = createAction<
+  ActionMap[typeof ActionType.changeTableLogicalName]
+>(ActionType.changeTableLogicalName);
+
+const changeTableLogicalName: ReducerType<
+  typeof ActionType.changeTableLogicalName
+> = (
+  { collections, lww },
+  { payload: { id, value }, version },
+  { toWidth, clock }
+) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('tableEntities');
+  collection.getOrCreate(id, id => createTable({ id }));
+
+  collection.replaceOperator(lww, safeVersion, id, 'logicalName', () => {
+    collection.updateOne(id, table => {
+      table.logicalName = value;
+      table.ui.widthLogicalName = textInRange(toWidth(value));
+    });
+  });
+};
+
+export const changeTableNameDerivedAction = createAction<
+  ActionMap[typeof ActionType.changeTableNameDerived]
+>(ActionType.changeTableNameDerived);
+
+/**
+ * Whether the dictionaries filled the table's name, which its next logical
+ * name then derives again; false leaves the name to whoever wrote it.
+ */
+const changeTableNameDerived: ReducerType<
+  typeof ActionType.changeTableNameDerived
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('tableEntities');
+  collection.getOrCreate(id, id => createTable({ id }));
+
+  collection.replaceOperator(lww, safeVersion, id, 'nameDerived', () => {
+    collection.updateOne(id, table => {
+      table.nameDerived = value;
+    });
+  });
+};
+
 export const changeTableCommentAction = createAction<
   ActionMap[typeof ActionType.changeTableComment]
 >(ActionType.changeTableComment);
@@ -358,6 +403,8 @@ export const tableReducers = {
   [ActionType.changeTableGroup]: changeTableGroup,
   [ActionType.changeZIndex]: changeZIndex,
   [ActionType.sortTable]: sortTable,
+  [ActionType.changeTableLogicalName]: changeTableLogicalName,
+  [ActionType.changeTableNameDerived]: changeTableNameDerived,
 };
 
 export const actions = {
@@ -371,4 +418,6 @@ export const actions = {
   changeTableGroupAction,
   changeZIndexAction,
   sortTableAction,
+  changeTableLogicalNameAction,
+  changeTableNameDerivedAction,
 };

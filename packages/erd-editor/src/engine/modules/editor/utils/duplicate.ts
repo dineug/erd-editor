@@ -20,7 +20,9 @@ import {
   addTableAction,
   changeTableCommentAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
+  changeTableNameDerivedAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -28,7 +30,10 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
@@ -102,6 +107,11 @@ export function toCreateEntityActions(
   const set = (holds: boolean, action: AnyAction) => {
     (holds || !valuesOnly) && actions.push(action);
   };
+  // The dictionary fields ride only when set, so a document holding none
+  // copies in the batch it did before them.
+  const carry = (holds: boolean, action: AnyAction) => {
+    holds && actions.push(action);
+  };
   const tableIds: string[] = [];
   const memoIds: string[] = [];
   const tableGroupIds: string[] = [];
@@ -134,9 +144,20 @@ export function toCreateEntityActions(
       !!table.name,
       changeTableNameAction({ id: tableId, value: table.name })
     );
+    carry(
+      !!table.logicalName,
+      changeTableLogicalNameAction({
+        id: tableId,
+        value: table.logicalName ?? '',
+      })
+    );
     set(
       !!table.comment,
       changeTableCommentAction({ id: tableId, value: table.comment })
+    );
+    carry(
+      table.nameDerived === true,
+      changeTableNameDerivedAction({ id: tableId, value: true })
     );
 
     for (const sourceColumnId of table.columnIds) {
@@ -156,9 +177,20 @@ export function toCreateEntityActions(
         !!column.name,
         changeColumnNameAction({ ...payload, value: column.name })
       );
+      carry(
+        !!column.logicalName,
+        changeColumnLogicalNameAction({
+          ...payload,
+          value: column.logicalName ?? '',
+        })
+      );
       set(
         !!column.dataType,
         changeColumnDataTypeAction({ ...payload, value: column.dataType })
+      );
+      carry(
+        !!column.domainId,
+        changeColumnDomainAction({ ...payload, value: column.domainId ?? '' })
       );
       set(
         !!column.default,
@@ -177,6 +209,10 @@ export function toCreateEntityActions(
       set(
         autoIncrement,
         changeColumnAutoIncrementAction({ ...payload, value: autoIncrement })
+      );
+      carry(
+        bHas(column.options, ColumnOption.nameDerived),
+        changeColumnNameDerivedAction({ ...payload, value: true })
       );
     }
   }

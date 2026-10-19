@@ -26,13 +26,14 @@
 | `replication-store.ts` | `createReplicationStore`, the replica whose `change` carries `changed` |
 | `peer-store.ts` | `createPeerStore`, the store `peer.js` exports, with its labelled undo units |
 | `rx-operators/` | The batch operators (`readonlyIgnoreFilter`, `lockIgnoreFilter`, `viewActionRedirect`, `viewIgnoreFilter`, `groupByStreamActions`, `flushOnNotifier`); `index.ts` is the barrel `index.test.ts` pins |
-| `modules/<module>/` | Nine modules (`editor`, `settings`, `table`, `table-column`, `index`, `index-column`, `relationship`, `memo`, `table-group`), each with `actions.ts`, `atom.actions.ts`, `generator.actions.ts`, `history.ts` |
+| `modules/<module>/` | Ten modules (`editor`, `settings`, `table`, `table-column`, `index`, `index-column`, `relationship`, `memo`, `table-group`, `dictionary`), each with `actions.ts`, `atom.actions.ts`, `generator.actions.ts`, `history.ts` |
 | `modules/editor/generator.actions.ts` | `toSchemaImportJson`, `withImportSettings`, `withGridPoints`, `toSchemaAppend`, `loadSchemaAction$` |
 | `modules/settings/atom.actions.ts` | `landLoadedSettings`, `CodeLockSettings`, `UnlockCarriedSettings`, `toNameViewModeAction` |
 | `modules/relationship/fkColumns.ts` | `toForeignKeyNames`, pinned by `fkColumns.test.ts` |
 | `modules/relationship/endFlags.ts`, `modules/table-column/keys.ts` | The relationship fields and the foreign key bits, read whole off the document |
 | `modules/relationship/referenceType.ts` | `toReferenceDataType` |
 | `modules/table-group/` | The table group model |
+| `modules/dictionary/` | The words, terms and domains; `membership.ts` holds `isListed`, `listId`, `unlistId`, `toLiveDomainId` and `getLiveDomainName` |
 
 ## Rules
 
@@ -42,6 +43,7 @@
 - **The action lists enforce readonly.** Readonly is enforced by those lists: while the editor is readonly, `readonlyIgnoreFilter` (`engine/rx-operators/`) drops its own `ReadonlyIgnoreActionTypes` actions (every `ChangeActionTypes` type but the viewport and setting changes `hasReadonlyIgnore` names; a peer's `Tag.shared` actions pass), so a component that hides a control from a reader is not what refuses the edit. A path that does more than dispatch reads `store.getReadonly()` itself before it starts, since the filter drops only its document actions: `undo` / `redo` in `engine/rx-store.ts`, whose replay passes the filter, and the placed imports and appends (`src/utils/AGENTS.md`).
 - **The `actions$` barrels are `mcp-server`'s catalog.** A new change type also needs a tool or an exclusion reason in `mcp-server`'s reachability spec (`src/tools/reachability.test.ts`). Every generator a module's `actions$` barrel exports is part of the catalog `mcp-server` builds its tools from: its `tools/registry.kind.test.ts` holds a census of every key and a reason for each editor generator, so a helper that the barrel's generators call (`loadSchemaAction$`, `toSchemaImportJson`, `withGridPoints`) is exported by name and stays out of the barrel.
 - **Reducers write through the LWW operators.** Use the operators from `@dineug/erd-editor-schema` with `action.version`. A direct write wins every merge and corrupts collaborative sessions.
+- **A flag undoes to the value it held.** The undo of `table.changeNameDerived` and `column.changeNameDerived` records the flag the entity held before the batch, where the other option bits record the negation of the value sent. So an undo of a write that changed nothing leaves the flag as it was.
 - **Reader-only state stays out of every list.** `editor.views`, `visualizationMode`, `handTool`, `zenMode`, `openMap` and `lastCanvasType` are in no list. So they are never saved, undone or sent to a peer. `engine/actions.test.ts` pins the ten `editor.view*` types and `editor.changeVisualizationMode` out of all of them.
 
 ### Settings that travel as changes
@@ -93,7 +95,11 @@
   - A source given to an element with no value, as `app`'s `convertSource` does, so becomes a new document too.
   - A source imported into a file keeps that file's locks (`useErdEditorAttachElement.test.ts`).
   - Placed imports and Import and Add appends: `src/utils/AGENTS.md`.
-- **`clear()` keeps every setting**, so a cleared file keeps its locks.
+- **An import keeps the dictionaries too** (owner decisions of 2026-10-20). The clear and the load of a SQL, DBML, AML or GraphQL import carry `keepDictionaries: true`: `loadSchemaAction$` and a placed import's landing pass it to `loadJsonAction$`. Both reducers then leave the store's words, terms and domains and its three `doc` lists as they are, the arrays themselves, so no membership set is built again. The text holds no dictionary, so nothing copies one into it.
+  - The undo of a flagged clear or load carries the flag, and its text leaves out the words, the terms, `doc.wordIds` and `doc.termIds`. It keeps the domains, since the parser clears every column's link to a domain the text does not hold.
+  - So an import's undo and redo leave a dictionary edit made in between as it is, and its undo batch carries no word or term (`editor/history.test.ts`).
+  - Every other replace takes the whole document, dictionaries included: a JSON replace, the `value` setter, the element's `clear()` and the undo of an unflagged load. Such an undo puts the rows back as they stood before the load, over an edit a peer made since.
+- **`clear()` keeps every setting**, so a cleared file keeps its locks. It empties the dictionaries with the rest; only a schema import's `keepDictionaries` keeps them.
 - **Unreadable text empties the document.** Text the parser cannot read, such as a file with merge-conflict markers, empties the document and changes no setting (r-html logs the reducer's throw). So a store that loaded nothing before shows a new document (`replication-store.test.ts`).
 - **Time Travel's preview opens on the reader's view.** It opens on the reader's scroll and zoom whatever the lock says (`toPreviewJson`), since it is the reader's own screen.
 - **A replacing load keeps each locked screen.** Every load that replaces the open document goes through `landLoadedSettings` (for imports, an owner decision of 2026-10-06). Such a load is `editor.loadJson`: an import, the undo of a load or a clear, a peer's load, the `value` setter.
@@ -196,6 +202,25 @@
 - **A drop's regroup undoes with the drag.** A drop's `table.changeGroup` carries the `groupId` it replaces as `prevValue`, and `Tag.drag`. The `@@move` regroup in `rx-store.ts` takes it in by tag (`groupByStreamActions`), so its undo closes into the drag's entry. The undo builder reads `prevValue`, since that entry is built once the reducer has run.
 - **Adding a group takes a name and color.** `addTableGroupAction$` and `addTableGroupFromTablesAction$` take an optional name and color. `mcp-server`'s `erd_add_table_group` sets them in the batch that adds the group, where the editor names a group by its name editor afterwards.
 - **`peer.js` exports both group barrels** for `mcp-server`'s group tools. Those tools send every group change type but `tableGroup.moveTo`, which no gesture sends either.
+
+### Dictionaries and derived names
+
+- **Three dictionaries in one module** (owner decisions of 2026-10-20). `engine/modules/dictionary/` holds the words, terms and domains. `dictionary.add`, `dictionary.update` and `dictionary.remove` name the row by its `kind` (`DictionaryKind`: `word`, `term`, `domain`) and `id`. An add or an update carries `values`, the fields `DictionaryFields` lists for the kind. A kind, a field or a value that is no string, which a later release could send, is passed over.
+- **An add makes the identity, then writes each field.** `dictionary.add` makes the row with `getOrCreate` and its id alone and lists it through `addOperator`. Then it writes each value it carries through `replaceOperator` at the add's own version, one register per field, as `dictionary.update` does.
+  - Never `addOne` with the values: a peer's update that arrives first leaves a stub, `addOne` passes over a row that is there, and the values are lost. `table.add`, `memo.add` and `tableGroup.add` still carry their `ui` that way, so they are no model for a new add.
+  - `column.add` carries the identity alone, as the dictionaries do.
+- **A remove keeps the values, and its undo carries none.** `dictionary.remove` unlists the row and keeps its values in the collection. Its undo is an add without values, so the row comes back with what its registers hold, a peer's edit made meanwhile included.
+  - The add lists at the end, so an undone removal puts the row last in its sheet, as an undone table removal does.
+  - An update's undo is the value the row held before the batch in each field the update writes. An add that lands on a row already listed lists nothing, so its undo is those values too, never a remove.
+- **Membership is one set per list.** `membership.ts` keeps a set per `doc.wordIds`, `doc.termIds` and `doc.domainIds` array in a `WeakMap`, which `isListed` reads and `listId` and `unlistId` write with the list. A load brings new arrays, so a set is built once per list a load brings; one that keeps the dictionaries keeps the arrays and builds none. A list whose length moved past those two writes is read again.
+  - Never ask a dictionary list through `arrayHas` in a reducer: it builds a set on every call, which turns an import of thousands of rows quadratic. `membership.test.ts` counts the builds over 13,176 adds.
+- **A removed domain keeps its links.** Removing a domain clears no column's `domainId` and keeps the column's `dataType`. `getLiveDomainName` names no domain for an id no row lists, so nothing shows the link, and the file form leaves it out (`packages/erd-editor-schema/AGENTS.md`, Entities).
+- **The domain cell is measured by the domain's name.** A column's `ui.widthDomain` is the width of `getLiveDomainName` of its link: nothing while the domain is not listed.
+  - `column.changeDomain` measures its column. A rename of the domain, an add that lists it or renames it (an undone removal's included) and a remove that unlists it measure every column linking it.
+  - Those writes measure a removed column too, so each width reads the domain as it stands whatever order a peer heard the domain's and the column's changes in.
+  - `settleDocument` measures every live column on a load, the logical names' widths beside it.
+- **Logical names are plain fields.** `table.changeLogicalName` and `column.changeLogicalName` write `logicalName` through a register of its own and measure `ui.widthLogicalName`. The derived flags are `table.changeNameDerived` (the table's `nameDerived`) and `column.changeNameDerived` (the `ColumnOption.nameDerived` bit, path `options(nameDerived)`).
+- **`mcp-server` reaches none of the eight yet.** The three dictionary types and the five field types sit in its `PENDING_COVERAGE` (`tools/reachability.ts`) until its tools send them. The dictionary barrel `actions$` is empty and not in `peer.js`.
 
 ### Peer store internals
 

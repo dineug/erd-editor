@@ -247,6 +247,59 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
   });
 });
 
+describe('the dictionaries through a replace', () => {
+  /** A word, a term and a domain, which the user adds in the editor. */
+  const DICTIONARY_ROWS = [
+    { kind: 'word', id: 'w1', values: { name: 'Member' } },
+    { kind: 'term', id: 't1', values: { name: 'Member number' } },
+    { kind: 'domain', id: 'd1', values: { name: 'Number' } },
+  ].map(payload => ({ type: 'dictionary.add', payload }));
+
+  const dictionaryIds = ({ doc }: RootState) => ({
+    words: [...doc.wordIds],
+    terms: [...doc.termIds],
+    domains: [...doc.domainIds],
+  });
+
+  it.each(SCHEMA_IMPORTS)(
+    '%s keeps every word, term and domain on both sides',
+    async (name, table) => {
+      const session = open();
+      await quiet();
+      const { agent, other } = session;
+      other.dispatch(DICTIONARY_ROWS, { label: 'dictionary' });
+      await quiet();
+
+      runTool(agent, name, TOOL_SCENARIOS[name]);
+      await quiet();
+
+      const kept = { words: ['w1'], terms: ['t1'], domains: ['d1'] };
+      expect(tableNames(agent.state)).toEqual([table]);
+      expect(dictionaryIds(agent.state)).toEqual(kept);
+      expect(dictionaryIds(other.state)).toEqual(kept);
+      expect(JSON.parse(agent.value).collections.termEntities.rows).toEqual([
+        ['t1', 'Member number'],
+      ]);
+      expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
+    }
+  );
+
+  it('erd_import_json replaces them with the document it loads', async () => {
+    const session = open();
+    await quiet();
+    const { agent, other } = session;
+    other.dispatch(DICTIONARY_ROWS, { label: 'dictionary' });
+    await quiet();
+
+    runTool(agent, 'erd_import_json', TOOL_SCENARIOS.erd_import_json);
+    await quiet();
+
+    const none = { words: [], terms: [], domains: [] };
+    expect(dictionaryIds(agent.state)).toEqual(none);
+    expect(dictionaryIds(other.state)).toEqual(none);
+  });
+});
+
 describe('a DBML TableGroup', () => {
   it.each(['replace', 'append'] as const)(
     'erd_import_dbml with mode %s makes a TableGroup a table group round its tables on both sides',

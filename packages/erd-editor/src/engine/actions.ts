@@ -3,6 +3,9 @@ import {
   pushStreamHistoryMap,
   pushUndoHistoryMap,
 } from '@/engine/history.actions';
+import { ActionMap as DictionaryActionMap } from '@/engine/modules/dictionary/actions';
+import { actions as dictionaryActions } from '@/engine/modules/dictionary/atom.actions';
+import { actions$ as dictionaryActions$ } from '@/engine/modules/dictionary/generator.actions';
 import { ActionMap as EditorActionMap } from '@/engine/modules/editor/actions';
 import { actions as editorActions } from '@/engine/modules/editor/atom.actions';
 import { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
@@ -49,7 +52,9 @@ export type Actions = typeof editorActions &
   typeof tableColumnActions &
   typeof tableColumnActions$ &
   typeof tableGroupActions &
-  typeof tableGroupActions$;
+  typeof tableGroupActions$ &
+  typeof dictionaryActions &
+  typeof dictionaryActions$;
 
 export type RootActionMap = EditorActionMap &
   TableActionMap &
@@ -59,7 +64,8 @@ export type RootActionMap = EditorActionMap &
   SettingsActionMap &
   IndexActionMap &
   IndexColumnActionMap &
-  TableGroupActionMap;
+  TableGroupActionMap &
+  DictionaryActionMap;
 
 export type ActionType = keyof RootActionMap;
 
@@ -82,6 +88,8 @@ export const actions: Actions = Object.freeze({
   ...tableColumnActions$,
   ...tableGroupActions,
   ...tableGroupActions$,
+  ...dictionaryActions,
+  ...dictionaryActions$,
 });
 
 export const ChangeActionTypes: ReadonlyArray<ActionType> = [
@@ -95,6 +103,8 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'table.changeColor',
   'table.changeGroup',
   'table.sort',
+  'table.changeLogicalName',
+  'table.changeNameDerived',
   // column
   'column.add',
   'column.remove',
@@ -107,6 +117,9 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'column.changeUnique',
   'column.changeNotNull',
   'column.move',
+  'column.changeLogicalName',
+  'column.changeDomain',
+  'column.changeNameDerived',
   // relationship
   'relationship.add',
   'relationship.remove',
@@ -140,6 +153,10 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'tableGroup.resize',
   'tableGroup.changeName',
   'tableGroup.changeColor',
+  // dictionary
+  'dictionary.add',
+  'dictionary.update',
+  'dictionary.remove',
   // settings
   'settings.changeDatabaseName',
   'settings.changeZoomLevel',

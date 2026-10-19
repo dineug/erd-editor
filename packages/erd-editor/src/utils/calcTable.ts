@@ -28,6 +28,7 @@ import {
 } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
@@ -382,24 +383,35 @@ export function calcTableHeight(
 /** A table's header text widths as toWidth measures them. */
 const tableTextWidths = (table: Table, toWidth: EngineContext['toWidth']) => ({
   widthName: textInRange(toWidth(table.name)),
+  widthLogicalName: textInRange(toWidth(table.logicalName)),
   widthComment: textInRange(toWidth(table.comment)),
 });
 
-/** A column's text widths as toWidth measures them. */
+/**
+ * A column's text widths as toWidth measures them, its domain cell by the name
+ * of the domain it links, which the state holds, or by none.
+ */
 const columnTextWidths = (
+  state: RootState,
   column: Column,
   toWidth: EngineContext['toWidth']
 ) => ({
   widthName: textInRange(toWidth(column.name)),
+  widthLogicalName: textInRange(toWidth(column.logicalName)),
   widthDataType: textInRange(toWidth(column.dataType)),
+  widthDomain: textInRange(toWidth(getLiveDomainName(state, column.domainId))),
   widthDefault: textInRange(toWidth(column.default)),
   widthComment: textInRange(toWidth(column.comment)),
 });
 
 export function recalculateTableWidth(
-  { doc: { tableIds }, collections }: RootState,
+  state: RootState,
   { toWidth }: EngineContext
 ) {
+  const {
+    doc: { tableIds },
+    collections,
+  } = state;
   // Rewrites every ui.width* without dispatching an action, so a size cache
   // has no other way to learn it went stale.
   invalidateTableWidths();
@@ -415,7 +427,7 @@ export function recalculateTableWidth(
     const columns = columnCollection.selectByIds(table.columnIds);
 
     for (const column of columns) {
-      Object.assign(column.ui, columnTextWidths(column, toWidth));
+      Object.assign(column.ui, columnTextWidths(state, column, toWidth));
     }
   }
 }
@@ -435,7 +447,7 @@ export function measureTableSize(
     .selectByIds(table.columnIds)
     .map(column => ({
       ...column,
-      ui: { ...column.ui, ...columnTextWidths(column, toWidth) },
+      ui: { ...column.ui, ...columnTextWidths(state, column, toWidth) },
     }));
   const measured = {
     ...table,

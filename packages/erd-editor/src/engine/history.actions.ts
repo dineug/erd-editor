@@ -2,6 +2,7 @@ import { AnyAction } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 
 import { History } from '@/engine/history';
+import { dictionaryPushUndoHistoryMap } from '@/engine/modules/dictionary/history';
 import { editorPushUndoHistoryMap } from '@/engine/modules/editor/history';
 import { indexPushUndoHistoryMap } from '@/engine/modules/index/history';
 import { indexColumnPushUndoHistoryMap } from '@/engine/modules/index-column/history';
@@ -49,6 +50,7 @@ export const pushUndoHistoryMap: Record<string, PushUndoHistory> = {
   ...indexPushUndoHistoryMap,
   ...indexColumnPushUndoHistoryMap,
   ...tableGroupPushUndoHistoryMap,
+  ...dictionaryPushUndoHistoryMap,
 };
 
 export const pushStreamHistoryMap: Record<string, PushStreamHistory> = {

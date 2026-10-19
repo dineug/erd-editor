@@ -38,6 +38,7 @@ import {
   recalculateTableWidth,
   viewHeaderNameWidth,
 } from '@/utils/calcTable';
+import { createDomain } from '@/utils/collection/domain.entity';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createTable } from '@/utils/collection/table.entity';
@@ -628,6 +629,47 @@ describe('recalculateTableWidth', () => {
     expect(column.ui.widthDataType).toBe(90);
     expect(column.ui.widthDefault).toBe(60);
     expect(column.ui.widthComment).toBe(60);
+  });
+
+  it('measures the logical names, and the domain cell by the name of the domain a column links while a row lists it', () => {
+    const linked = createColumn({
+      id: 'column-1',
+      tableId: 'table-1',
+      logicalName: 'Created at',
+      domainId: 'domain-1',
+    });
+    const removed = createColumn({
+      id: 'column-2',
+      tableId: 'table-1',
+      domainId: 'domain-2',
+      ui: { widthDomain: 900 },
+    });
+    const table = createTable({
+      id: 'table-1',
+      logicalName: 'Member list',
+      columnIds: ['column-1', 'column-2'],
+    });
+    const state = createState({ tables: [table], columns: [linked, removed] });
+    state.collections.domainEntities['domain-1'] = createDomain({
+      id: 'domain-1',
+      name: 'datetime_utc',
+    });
+    state.collections.domainEntities['domain-2'] = createDomain({
+      id: 'domain-2',
+      name: 'a removed domain',
+    });
+    state.doc.domainIds = ['domain-1'];
+
+    recalculateTableWidth(
+      state,
+      createEngineContext({ toWidth: text => text.length * 10 })
+    );
+
+    expect(table.ui.widthLogicalName).toBe(110);
+    expect(linked.ui.widthLogicalName).toBe(100);
+    expect(linked.ui.widthDomain).toBe(120);
+    expect(removed.ui.widthLogicalName).toBe(60);
+    expect(removed.ui.widthDomain).toBe(60);
   });
 
   it('leaves tables that are not referenced by the doc untouched', () => {

@@ -641,6 +641,33 @@ describe('entitiesCopyToPayload', () => {
     });
   });
 
+  it('writes the logical names, the derived flag and the domain link', () => {
+    const { state } = createEntitiesState();
+    Object.assign(state.collections.tableEntities['table-1'], {
+      logicalName: 'User',
+      nameDerived: true,
+    });
+    Object.assign(state.collections.tableColumnEntities['column-id'], {
+      logicalName: 'User number',
+      domainId: 'domain-1',
+    });
+
+    const payload = entitiesCopyToPayload(state);
+
+    expect(payload?.tables[0]).toMatchObject({
+      logicalName: 'User',
+      nameDerived: true,
+    });
+    expect(payload?.tables[1]).toMatchObject({
+      logicalName: '',
+      nameDerived: false,
+    });
+    expect(payload?.columns[0]).toMatchObject({
+      logicalName: 'User number',
+      domainId: 'domain-1',
+    });
+  });
+
   it('returns null when nothing is selected (AC-5)', () => {
     const { usersTable, idColumn } = createEntitiesFixture();
     const state = createState({ tables: [usersTable], columns: [idColumn] });

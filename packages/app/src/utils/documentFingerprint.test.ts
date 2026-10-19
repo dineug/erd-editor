@@ -546,4 +546,53 @@ describe('toDriveFingerprint', () => {
       expect(toDriveFingerprint(TWO_MORE)).not.toBe(toDriveFingerprint(VALUE));
     });
   });
+
+  describe('the dictionaries, which a file keeps as rows', () => {
+    /** VALUE with two rows in each dictionary, in the file form a replica hands out. */
+    function dictionaryValue() {
+      const store = createReplicationStore({ toWidth });
+      store.setInitialValue(VALUE);
+      store.dispatchSync(
+        (['word', 'term', 'domain'] as const).flatMap(kind =>
+          ['a', 'b'].map(id => ({
+            type: 'dictionary.add',
+            payload: { kind, id: `${kind}.${id}`, values: { name: id } },
+          }))
+        ) as any
+      );
+      const value = store.value;
+      store.destroy();
+      return value;
+    }
+
+    const WITH_ROWS = dictionaryValue();
+    const DICTIONARIES = ['wordEntities', 'termEntities', 'domainEntities'];
+
+    it.each(DICTIONARIES)('tells an edit of a %s row apart in both', key => {
+      const edited = changed(({ collections }) => {
+        const { fields, rows } = collections[key];
+        rows[1][fields.indexOf('name')] = 'renamed';
+      }, WITH_ROWS);
+
+      for (const [, fingerprint] of fingerprints) {
+        expect(fingerprint(edited)).not.toBe(fingerprint(WITH_ROWS));
+      }
+    });
+
+    it.each(DICTIONARIES)(
+      'holds the %s rows to no order in the Drive fingerprint',
+      key => {
+        const reordered = changed(
+          ({ collections }) => collections[key].rows.reverse(),
+          WITH_ROWS
+        );
+
+        expect(JSON.parse(WITH_ROWS).collections[key].rows).toHaveLength(2);
+        expect(reordered).not.toBe(WITH_ROWS);
+        expect(toDriveFingerprint(reordered)).toBe(
+          toDriveFingerprint(WITH_ROWS)
+        );
+      }
+    );
+  });
 });

@@ -16,6 +16,9 @@ export const ActionType = {
   changeColumnUnique: 'column.changeUnique',
   changeColumnNotNull: 'column.changeNotNull',
   moveColumn: 'column.move',
+  changeColumnLogicalName: 'column.changeLogicalName',
+  changeColumnDomain: 'column.changeDomain',
+  changeColumnNameDerived: 'column.changeNameDerived',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -41,6 +44,10 @@ export type ActionMap = {
     tableId: string;
     targetId: string;
   };
+  [ActionType.changeColumnLogicalName]: ChangeColumnValuePayload;
+  /** The id of the domain the column links, '' for none. */
+  [ActionType.changeColumnDomain]: ChangeColumnValuePayload;
+  [ActionType.changeColumnNameDerived]: ChangeColumnOptionPayload;
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

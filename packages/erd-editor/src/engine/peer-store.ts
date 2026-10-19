@@ -156,6 +156,7 @@ const hasCreateActionTypes = arrayHas<string>([
   'indexColumn.add',
   'relationship.add',
   'tableGroup.add',
+  'dictionary.add',
 ]);
 
 /**

@@ -70,6 +70,14 @@ export const ActionType = {
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
+/**
+ * Set on the clear and the load of a schema import, and of their undo, which
+ * leave the store's words, terms and domains and their lists as they are.
+ */
+export type DictionaryLoadFlag = {
+  keepDictionaries?: boolean;
+};
+
 export type ActionMap = {
   [ActionType.changeHasHistory]: {
     hasUndo: boolean;
@@ -82,8 +90,8 @@ export type ActionMap = {
     width: number;
     height: number;
   };
-  [ActionType.clear]: void;
-  [ActionType.loadJson]: {
+  [ActionType.clear]: DictionaryLoadFlag | void;
+  [ActionType.loadJson]: DictionaryLoadFlag & {
     value: string;
   };
   [ActionType.initialClear]: void;

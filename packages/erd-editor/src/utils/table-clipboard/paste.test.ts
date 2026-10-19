@@ -612,4 +612,17 @@ describe('payloadToColumns', () => {
   it('returns an empty array when the payload carries no columns', () => {
     expect(payloadToColumns({ ...payload, columns: [] })).toEqual([]);
   });
+
+  it('keeps the logical name and the domain link, and reads none from an older copy', () => {
+    const [linked] = payloadToColumns({
+      ...payload,
+      columns: [
+        { ...payload.columns[0], logicalName: 'Number', domainId: 'd1' },
+      ],
+    });
+    const [older] = payloadToColumns(payload);
+
+    expect(linked).toMatchObject({ logicalName: 'Number', domainId: 'd1' });
+    expect(older).toMatchObject({ logicalName: '', domainId: '' });
+  });
 });

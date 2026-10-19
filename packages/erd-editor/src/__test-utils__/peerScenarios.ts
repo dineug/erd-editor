@@ -19,6 +19,11 @@ import {
 } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import {
+  addDictionaryAction,
+  removeDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import {
   appendSchemaAction$,
   appendSchemaJsonAction$,
   loadJsonAction$,
@@ -77,7 +82,9 @@ import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.a
 import {
   changeTableColorAction,
   changeTableCommentAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
+  changeTableNameDerivedAction,
   moveToTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -87,6 +94,9 @@ import {
 } from '@/engine/modules/table/generator.actions';
 import {
   changeColumnAutoIncrementAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
@@ -407,6 +417,18 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
   colorTable: () => colorTable(SEED.users, '#ff8800'),
   moveTable: () => moveTable(SEED.users, 40, 60),
   sortTables: () => sortTables(),
+  setTableLogicalName: () =>
+    edit(
+      'setTableLogicalName',
+      [changeTableLogicalNameAction({ id: SEED.users, value: 'Member' })],
+      tableFocus(SEED.users)
+    ),
+  setTableNameDerived: () =>
+    edit(
+      'setTableNameDerived',
+      [changeTableNameDerivedAction({ id: SEED.users, value: true })],
+      tableFocus(SEED.users)
+    ),
 
   addColumn: () => addColumn(SEED.empty),
   removeColumns: () =>
@@ -475,6 +497,43 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
         targetId: SEED.orderId,
       }),
     ]),
+  setColumnLogicalName: () =>
+    edit(
+      'setColumnLogicalName',
+      [
+        changeColumnLogicalNameAction({
+          tableId: SEED.users,
+          id: SEED.userName,
+          value: 'Member Name',
+        }),
+      ],
+      columnFocus(SEED.users, SEED.userName, FocusType.columnName)
+    ),
+  // The note links the domain users.name already links.
+  setColumnDomain: () =>
+    edit(
+      'setColumnDomain',
+      [
+        changeColumnDomainAction({
+          tableId: SEED.orders,
+          id: SEED.orderNote,
+          value: SEED.domain,
+        }),
+      ],
+      columnFocus(SEED.orders, SEED.orderNote, FocusType.columnName)
+    ),
+  setColumnNameDerived: () =>
+    edit(
+      'setColumnNameDerived',
+      [
+        changeColumnNameDerivedAction({
+          tableId: SEED.users,
+          id: SEED.userName,
+          value: true,
+        }),
+      ],
+      columnFocus(SEED.users, SEED.userName, FocusType.columnName)
+    ),
 
   // A start table with no key, so the relationship brings one of its own.
   addRelationship: () =>
@@ -606,6 +665,48 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
     ]),
   setTableGroup: () =>
     edit('setTableGroup', [setTableGroupAction$([SEED.orders], SEED.group)]),
+
+  addWord: () =>
+    edit('addWord', [
+      addDictionaryAction({
+        kind: 'word',
+        id: 'word_number',
+        values: { name: 'Number', abbreviation: 'NO', englishName: 'Number' },
+      }),
+    ]),
+  // A term on the seed's domain, so it adds a row and names one listed.
+  addTerm: () =>
+    edit('addTerm', [
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term_member_number',
+        values: {
+          name: 'Member Number',
+          physicalName: 'MBR_NO',
+          domainId: SEED.domain,
+        },
+      }),
+    ]),
+  addDomain: () =>
+    edit('addDomain', [
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain_number',
+        values: { name: 'Number', category: 'Number', dataType: 'INT' },
+      }),
+    ]),
+  updateTerm: () =>
+    edit('updateTerm', [
+      updateDictionaryAction({
+        kind: 'term',
+        id: SEED.term,
+        values: { physicalName: 'MBR_NAME', description: 'what others see' },
+      }),
+    ]),
+  removeWord: () =>
+    edit('removeWord', [
+      removeDictionaryAction({ kind: 'word', id: SEED.nameWord }),
+    ]),
 
   setDatabaseName: () =>
     edit('setDatabaseName', [changeDatabaseNameAction({ value: 'shop' })]),

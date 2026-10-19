@@ -15,6 +15,7 @@ import {
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   appendSchemaAction$,
   appendSchemaJsonAction$,
@@ -42,11 +43,16 @@ import {
 import {
   addTableAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
+  changeTableNameDerivedAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -371,6 +377,49 @@ describe('appendSchemaJsonAction$', () => {
     expect(store.state.doc.tableIds).toHaveLength(2);
     expect(store.state.doc.relationshipIds).toEqual([]);
     expect(store.state.doc.indexIds).toHaveLength(1);
+  });
+
+  it('carries the logical names and derived flags, and no domain link or dictionary row', () => {
+    const store = createDiagram();
+    store.dispatchSync(
+      addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'N' } })
+    );
+    const file = createTestStore();
+    file.dispatchSync(
+      addDictionaryAction({ kind: 'word', id: 'w1', values: { name: 'W' } }),
+      addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'N' } }),
+      addTableAction({ id: 'users', ui: { x: 0, y: 0, zIndex: 2 } }),
+      changeTableNameAction({ id: 'users', value: 'users' }),
+      changeTableLogicalNameAction({ id: 'users', value: 'Member' }),
+      changeTableNameDerivedAction({ id: 'users', value: true }),
+      ...column('users', 'users_no', 'no'),
+      changeColumnLogicalNameAction({
+        id: 'users_no',
+        tableId: 'users',
+        value: 'Member number',
+      }),
+      changeColumnDomainAction({
+        id: 'users_no',
+        tableId: 'users',
+        value: 'd1',
+      }),
+      changeColumnNameDerivedAction({
+        id: 'users_no',
+        tableId: 'users',
+        value: true,
+      })
+    );
+
+    store.dispatchSync(appendSchemaJsonAction$(toJson(file.state)));
+
+    const users = tableByName(store.state, 'users');
+    const no = store.state.collections.tableColumnEntities[users.columnIds[0]];
+    expect(users).toMatchObject({ logicalName: 'Member', nameDerived: true });
+    expect(no.logicalName).toBe('Member number');
+    expect(bHas(no.options, ColumnOption.nameDerived)).toBe(true);
+    expect(no.domainId).toBe('');
+    expect(store.state.doc.wordIds).toEqual([]);
+    expect(store.state.doc.domainIds).toEqual(['d1']);
   });
 });
 

@@ -12,7 +12,9 @@ import {
   changeTableColorAction,
   changeTableCommentAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
+  changeTableNameDerivedAction,
   changeZIndexAction,
   moveTableAction,
   moveToTableAction,
@@ -422,6 +424,99 @@ describe('table/atom.actions changeTableGroup', () => {
 
     expect(table('ghost').groupId).toBe('g1');
     expect(store.state.lww.ghost[3]).toEqual({ groupId: 6 });
+  });
+});
+
+describe('table/atom.actions changeTableLogicalName', () => {
+  it('sets the logical name under its own path and measures its width', () => {
+    addTable(TABLE_A);
+
+    store.dispatchSync(
+      versioned(changeTableNameAction({ id: TABLE_A, value: 'members' }), 2),
+      versioned(
+        changeTableLogicalNameAction({ id: TABLE_A, value: 'Member list' }),
+        4
+      )
+    );
+
+    expect(table(TABLE_A).logicalName).toBe('Member list');
+    expect(table(TABLE_A).name).toBe('members');
+    expect(table(TABLE_A).ui.widthLogicalName).toBe(110);
+    expect(store.state.lww[TABLE_A][3]).toEqual({ name: 2, logicalName: 4 });
+  });
+
+  it('keeps the newer logical name whatever order two writes arrive in', () => {
+    addTable(TABLE_A);
+    addTable(TABLE_B);
+
+    store.dispatchSync(
+      versioned(
+        changeTableLogicalNameAction({ id: TABLE_A, value: 'newer' }),
+        8
+      ),
+      versioned(
+        changeTableLogicalNameAction({ id: TABLE_A, value: 'older' }),
+        5
+      ),
+      versioned(
+        changeTableLogicalNameAction({ id: TABLE_B, value: 'older' }),
+        5
+      ),
+      versioned(
+        changeTableLogicalNameAction({ id: TABLE_B, value: 'newer' }),
+        8
+      )
+    );
+
+    expect(table(TABLE_A).logicalName).toBe('newer');
+    expect(table(TABLE_B).logicalName).toBe('newer');
+  });
+
+  it('clears to the minimum width and creates a missing entity at the clock version', () => {
+    clock.merge(3);
+
+    store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'ghost', value: '' })
+    );
+
+    expect(table('ghost').logicalName).toBe('');
+    expect(table('ghost').ui.widthLogicalName).toBe(60);
+    expect(store.state.lww.ghost[3]).toEqual({ logicalName: 3 });
+    expect(store.state.doc.tableIds).toEqual([]);
+  });
+});
+
+describe('table/atom.actions changeTableNameDerived', () => {
+  it('sets the flag under its own path, apart from the name', () => {
+    addTable(TABLE_A);
+
+    store.dispatchSync(
+      versioned(changeTableNameAction({ id: TABLE_A, value: 'members' }), 2),
+      versioned(changeTableNameDerivedAction({ id: TABLE_A, value: true }), 3)
+    );
+
+    expect(table(TABLE_A).nameDerived).toBe(true);
+    expect(table(TABLE_A).name).toBe('members');
+    expect(store.state.lww[TABLE_A][3]).toEqual({ name: 2, nameDerived: 3 });
+  });
+
+  it('keeps the newer flag whatever order two writes arrive in', () => {
+    addTable(TABLE_A);
+
+    store.dispatchSync(
+      versioned(changeTableNameDerivedAction({ id: TABLE_A, value: false }), 7),
+      versioned(changeTableNameDerivedAction({ id: TABLE_A, value: true }), 6)
+    );
+
+    expect(table(TABLE_A).nameDerived).toBe(false);
+  });
+
+  it('creates the entity when it is missing', () => {
+    store.dispatchSync(
+      changeTableNameDerivedAction({ id: 'ghost', value: true })
+    );
+
+    expect(table('ghost').nameDerived).toBe(true);
   });
 });
 

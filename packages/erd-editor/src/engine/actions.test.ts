@@ -24,6 +24,7 @@ import {
   pushStreamHistoryMap,
   pushUndoHistoryMap,
 } from '@/engine/history.actions';
+import { ActionType as DictionaryActionType } from '@/engine/modules/dictionary/actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
 import { ActionType as IndexActionType } from '@/engine/modules/index/actions';
 import { ActionType as IndexColumnActionType } from '@/engine/modules/index-column/actions';
@@ -45,6 +46,7 @@ const allActionTypes = new Set<string>([
   ...Object.values(IndexActionType),
   ...Object.values(IndexColumnActionType),
   ...Object.values(TableGroupActionType),
+  ...Object.values(DictionaryActionType),
 ]);
 
 const atomActionTypes = new Set<string>(
@@ -137,6 +139,7 @@ describe('ChangeActionTypes', () => {
 
     expect([...namespaces].sort()).toEqual([
       'column',
+      'dictionary',
       'editor',
       'index',
       'indexColumn',
@@ -148,8 +151,8 @@ describe('ChangeActionTypes', () => {
     ]);
   });
 
-  it('counts sixty-eight change types, the Schema SQL scripts and the name view among them', () => {
-    expect(ChangeActionTypes).toHaveLength(68);
+  it('counts seventy-six change types, the Schema SQL scripts and the name view among them', () => {
+    expect(ChangeActionTypes).toHaveLength(76);
     expect(ChangeActionTypes).toContain('settings.changeDDLScript');
     expect(ChangeActionTypes).toContain('settings.changeNameViewMode');
   });
@@ -229,6 +232,46 @@ describe('the table group changes', () => {
     expect(allActionTypes.has('tableGroup.changeZIndex')).toBe(true);
     expect(HistoryActionTypes).not.toContain('tableGroup.changeZIndex');
     expect(SharedActionTypes).not.toContain('tableGroup.changeZIndex');
+  });
+});
+
+describe('the dictionary and logical name changes', () => {
+  const DICTIONARY_CHANGES = [
+    'dictionary.add',
+    'dictionary.update',
+    'dictionary.remove',
+    'table.changeLogicalName',
+    'table.changeNameDerived',
+    'column.changeLogicalName',
+    'column.changeDomain',
+    'column.changeNameDerived',
+  ];
+
+  it('reach the file, the peers, the replica and the history, and no readonly host or view makes one', () => {
+    for (const type of DICTIONARY_CHANGES) {
+      expect(ChangeActionTypes).toContain(type);
+      expect(ReplicaChangeActionTypes).toContain(type);
+      expect(ReplicaActionTypes).toContain(type);
+      expect(SharedActionTypes).toContain(type);
+      expect(ReadonlyIgnoreActionTypes).toContain(type);
+      expect(ViewIgnoreActionTypes).toContain(type);
+      expect(HistoryActionTypes).toContain(type);
+      expect(atomActionTypes.has(type)).toBe(true);
+    }
+  });
+
+  it('are no stream, no lock and no following', () => {
+    for (const type of DICTIONARY_CHANGES) {
+      expect(StreamActionTypes).not.toContain(type);
+      expect(LockSettingActionTypes).not.toHaveProperty(type);
+      expect(SharedFollowingActionTypes).not.toContain(type);
+    }
+  });
+
+  it('are every type the dictionary module declares', () => {
+    expect(
+      DICTIONARY_CHANGES.filter(type => type.startsWith('dictionary.'))
+    ).toEqual(Object.values(DictionaryActionType));
   });
 });
 

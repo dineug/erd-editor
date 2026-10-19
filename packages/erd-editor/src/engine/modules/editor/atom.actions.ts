@@ -7,7 +7,7 @@ import {
   schemaV3Parser,
 } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { isNil, isString, noop } from 'es-toolkit';
+import { isNil, isPlainObject, isString, noop } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType, Show } from '@/constants/schema';
@@ -131,8 +131,31 @@ export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
   ActionType.clear
 );
 
-const clear: ReducerType<typeof ActionType.clear> = state => {
+/** Whether a clear or a load carries the flag that keeps the dictionaries. */
+export const keepsDictionaries = (payload: unknown): boolean =>
+  isPlainObject(payload) && payload.keepDictionaries === true;
+
+/**
+ * Hands the store's words, terms and domains, and their own id lists, to the
+ * document that replaces it, so a membership set built on a list still holds.
+ */
+function keepDictionaries(
+  state: RootState,
+  { doc, collections }: Pick<RootState, 'doc' | 'collections'>
+) {
+  doc.wordIds = state.doc.wordIds;
+  doc.termIds = state.doc.termIds;
+  doc.domainIds = state.doc.domainIds;
+  collections.wordEntities = state.collections.wordEntities;
+  collections.termEntities = state.collections.termEntities;
+  collections.domainEntities = state.collections.domainEntities;
+}
+
+const clear: ReducerType<typeof ActionType.clear> = (state, { payload }) => {
   const { doc, collections } = schemaV3Parser({});
+  if (keepsDictionaries(payload)) {
+    keepDictionaries(state, { doc, collections });
+  }
   state.doc = doc;
   state.collections = collections;
   state.editor.scrollPullPending = false;
@@ -170,12 +193,15 @@ export const loadJsonAction = createAction<
  */
 const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
-  { payload: { value }, version: actionVersion },
+  { payload, version: actionVersion },
   ctx
 ) => {
-  const { version, settings, doc, collections } = parser(value);
+  const { version, settings, doc, collections } = parser(payload.value);
   if (!hasCanvasType(settings.canvasType)) {
     settings.canvasType = CanvasType.ERD;
+  }
+  if (keepsDictionaries(payload)) {
+    keepDictionaries(state, { doc, collections });
   }
 
   rememberCanvasType(state);

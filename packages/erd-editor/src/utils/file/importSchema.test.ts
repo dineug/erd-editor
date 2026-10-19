@@ -18,6 +18,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
 import { CanvasType, Database, Language, Show } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeViewportAction,
   clearAction,
@@ -292,6 +293,24 @@ const KEPT_LOCKS = {
   file: [CanvasType.ERD, Language.GraphQL],
 };
 
+/** A row in each dictionary, which no schema text brings. */
+const dictionaryRows = () => [
+  addDictionaryAction({ kind: 'word', id: 'w1', values: { name: 'W' } }),
+  addDictionaryAction({ kind: 'term', id: 't1', values: { name: 'T' } }),
+  addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'D' } }),
+];
+
+const KEPT_IDS = { words: ['w1'], terms: ['t1'], domains: ['d1'] };
+
+function dictionaryIds(app: AppContext) {
+  const { doc } = app.store.state;
+  return {
+    words: [...doc.wordIds],
+    terms: [...doc.termIds],
+    domains: [...doc.domainIds],
+  };
+}
+
 describe('importSchema', () => {
   it('replaces the document at once with the tables in the grid', () => {
     const app = createApp();
@@ -358,6 +377,16 @@ describe('importSchema', () => {
     expect(tableNames(app)).toEqual([name]);
   });
 
+  it('keeps the words, terms and domains of the document it replaces', () => {
+    const app = createApp();
+    app.store.dispatchSync(...dictionaryRows());
+
+    importSchema(app, 'sql', UNRELATED_SQL);
+
+    expect(tableNames(app).sort()).toEqual(['posts', 'users']);
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+  });
+
   it('wraps a DBML table group round its members where the grid puts them', () => {
     const app = createApp();
 
@@ -417,6 +446,30 @@ describe('importSchemaPlaced', () => {
 
     expect(tableNames(app)).toEqual(['old']);
     expect(cornerOf(app, 'old')).toEqual({ x: 900, y: 900 });
+  });
+
+  it('keeps the words, terms and domains, through its undo and redo too', async () => {
+    const app = createApp();
+    app.store.dispatchSync(...dictionaryRows());
+    hoisted.elkLayout = columnLayout;
+    const batches = recordActions(app);
+
+    await importSchemaPlaced(app, 'sql', FAN_SQL);
+
+    expect(batches[0].map(({ payload }) => payload?.keepDictionaries)).toEqual([
+      true,
+      true,
+    ]);
+    expect(tableNames(app).sort()).toEqual(['photos', 'posts', 'users']);
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+
+    app.store.undo();
+    expect(tableNames(app)).toEqual(['old']);
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+
+    app.store.redo();
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+    expect(app.store.state.collections.termEntities.t1.name).toBe('T');
   });
 
   it('keeps every setting of the document it replaces but the view', async () => {
