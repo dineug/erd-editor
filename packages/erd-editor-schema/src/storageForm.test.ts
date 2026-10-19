@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { parser, toJson } from '@/parser';
 import { toDocument, toDocumentJson } from '@/storageForm';
 import { createSchema, SchemaV3Constants } from '@/v3';
+import { createDomain } from '@/v3/parser/domain.entity';
 import { createTable } from '@/v3/parser/table.entity';
 
 const V3_SCHEMA_URL =
@@ -736,6 +737,46 @@ describe('the order toDocumentJson writes', () => {
     ]);
   });
 
+  it('writes the newer table and column fields in schema order beside a kept group', () => {
+    const schema = legacy();
+    Object.assign(schema.collections.tableEntities.ta, {
+      logicalName: 'Member',
+      nameDerived: true,
+    });
+    Object.assign(schema.collections.tableColumnEntities.cb, {
+      logicalName: 'Member Number',
+      domainId: 'd1',
+    });
+    schema.collections.domainEntities = {
+      d1: { ...createDomain(), id: 'd1', name: 'Number' },
+    };
+    schema.doc.domainIds = ['d1'];
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
+
+    expect(Object.keys(collections.tableEntities.ta)).toEqual([
+      'id',
+      'name',
+      'logicalName',
+      'comment',
+      'columnIds',
+      'groupId',
+      'nameDerived',
+      'ui',
+    ]);
+    expect(Object.keys(collections.tableColumnEntities.cb)).toEqual([
+      'id',
+      'tableId',
+      'name',
+      'comment',
+      'dataType',
+      'default',
+      'options',
+      'logicalName',
+      'domainId',
+    ]);
+  });
+
   it('sorts columns by table first and index columns by index first', () => {
     const schema = legacy();
     schema.collections.indexColumnEntities.ix.indexId = 'ic';
@@ -1334,12 +1375,27 @@ describe('the column order toDocumentJson writes', () => {
     ).toEqual(columnOrder);
   });
 
-  it('writes the order of raw JSON as it stands', () => {
+  it('leaves out the order of raw JSON that holds none', () => {
     const raw = JSON.parse(toDocumentJson(createSchema()));
     delete raw.settings.columnOrder;
 
     expect(JSON.parse(toDocumentJson(raw)).settings).not.toHaveProperty(
       'columnOrder'
     );
+  });
+
+  it('writes the default order of raw JSON in seven entries and a moved one as it stands', () => {
+    const rawOrder = (columnOrder: number[]) => {
+      const raw = JSON.parse(toDocumentJson(createSchema()));
+      raw.settings.columnOrder = columnOrder;
+      return JSON.parse(toDocumentJson(raw)).settings.columnOrder;
+    };
+
+    expect(rawOrder([128, 1, 2, 256, 4, 8, 16, 32, 64])).toEqual([
+      1, 2, 4, 8, 16, 32, 64,
+    ]);
+    expect(rawOrder([1, 128, 2, 256, 4, 8, 16, 32, 64])).toEqual([
+      1, 128, 2, 256, 4, 8, 16, 32, 64,
+    ]);
   });
 });
