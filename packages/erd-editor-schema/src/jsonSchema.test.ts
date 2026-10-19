@@ -9,7 +9,8 @@ import { createWord } from '@/v3/parser/word.entity';
 
 import schema from '../../../json-schema/schema.json';
 
-const { Database, OrderType, RelationshipType } = SchemaV3Constants;
+const { Database, LockSettingType, NameViewMode, OrderType, RelationshipType } =
+  SchemaV3Constants;
 
 type JsonSchema = {
   $ref?: string;
@@ -171,7 +172,7 @@ function namedProperties(
 
 /**
  * A document that reaches every saved field: groups, scripts, logical names,
- * domain links, a full row in each dictionary and every other entity.
+ * an unlocked name view, domain links, a full row in each dictionary and more.
  */
 const FULL = toDocumentJson(
   parser(
@@ -180,7 +181,9 @@ const FULL = toDocumentJson(
       settings: {
         database: Database.PostgreSQL,
         databaseName: 'shop',
+        lockSettings: 63 | LockSettingType.unlockNameViewMode,
         ddlScripts: { before: 'SET search_path = shop;', after: '' },
+        nameViewMode: NameViewMode.both,
       },
       doc: {
         tableIds: ['t1', 't2'],
@@ -340,6 +343,20 @@ describe('json-schema/schema.json', () => {
         Object.keys(createTerm())
       )}`,
       '$.collections.domainEntities.rows[0][5]: is not allowed',
+    ]);
+  });
+
+  it('refuses the physical name view, which the storage form leaves out, and one no editor shows', () => {
+    const document = full();
+    document.settings.nameViewMode = NameViewMode.physical;
+
+    expect(validate(document)).toEqual([
+      '$.settings.nameViewMode: "physical" is outside the enum',
+    ]);
+
+    document.settings.nameViewMode = 'tree';
+    expect(validate(document)).toEqual([
+      '$.settings.nameViewMode: "tree" is outside the enum',
     ]);
   });
 

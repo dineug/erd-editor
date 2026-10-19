@@ -49,8 +49,13 @@ const lockableViewChanges: Array<[string, (json: any) => void]> = [
   ['canvasType', json => (json.settings.canvasType = 'settings')],
 ];
 
-/** VALUE with no lock on, where a new document has every one. */
-const UNLOCKED = changed(json => (json.settings.lockSettings = 0));
+/**
+ * VALUE with no lock on, where a new document has every one: only the name
+ * view's bit is set, since that lock is off while its bit is set.
+ */
+const UNLOCKED = changed(
+  json => (json.settings.lockSettings = LockSettingType.unlockNameViewMode)
+);
 
 const documentChanges: Array<[string, (json: any) => void]> = [
   ['the database', json => (json.settings.database += 1)],
@@ -125,6 +130,60 @@ describe('toFingerprint', () => {
       before: '',
       after: 'GRANT SELECT ON users TO app;',
     });
+  });
+});
+
+describe('a name view switch, on a peer', () => {
+  const opened: PeerStore[] = [];
+
+  afterEach(() => opened.splice(0).forEach(store => store.destroy()));
+
+  function open(value: string) {
+    const store = createPeerStore({ nickname: 'reader', presence: false });
+    store.setInitialValue(value);
+    opened.push(store);
+    return store;
+  }
+
+  const switchNames = (store: PeerStore, shared: boolean) =>
+    store.dispatch([
+      settingsActions.changeNameViewModeAction({
+        value: 'logical',
+        shared,
+        editorId: store.state.editor.id,
+      }),
+    ]);
+
+  it.each(fingerprints)(
+    'leaves %s as it was after a switch while locked, which shows on that screen alone',
+    (_name, fingerprint) => {
+      const store = open(VALUE);
+      const before = store.value;
+
+      switchNames(store, false);
+
+      expect(store.state.settings.nameViewMode).toBe('logical');
+      expect(fingerprint(store.value)).toBe(fingerprint(before));
+    }
+  );
+
+  it('tells a shared switch apart by the Drive fingerprint alone, as the file saves the view while unlocked', () => {
+    const store = open(VALUE);
+    store.dispatch([
+      settingsActions$.changeLockSettingsAction$(
+        LockSettingType.unlockNameViewMode,
+        false
+      ),
+    ]);
+    const before = store.value;
+
+    switchNames(store, true);
+
+    expect(JSON.parse(store.value).settings.nameViewMode).toBe('logical');
+    expect(toDriveFingerprint(store.value)).not.toBe(
+      toDriveFingerprint(before)
+    );
+    expect(toFingerprint(store.value)).toBe(toFingerprint(before));
   });
 });
 

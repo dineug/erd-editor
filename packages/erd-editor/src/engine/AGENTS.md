@@ -28,7 +28,7 @@
 | `rx-operators/` | The batch operators (`readonlyIgnoreFilter`, `lockIgnoreFilter`, `viewActionRedirect`, `viewIgnoreFilter`, `groupByStreamActions`, `flushOnNotifier`); `index.ts` is the barrel `index.test.ts` pins |
 | `modules/<module>/` | Nine modules (`editor`, `settings`, `table`, `table-column`, `index`, `index-column`, `relationship`, `memo`, `table-group`), each with `actions.ts`, `atom.actions.ts`, `generator.actions.ts`, `history.ts` |
 | `modules/editor/generator.actions.ts` | `toSchemaImportJson`, `withImportSettings`, `withGridPoints`, `toSchemaAppend`, `loadSchemaAction$` |
-| `modules/settings/atom.actions.ts` | `landLoadedSettings`, `CodeLockSettings` |
+| `modules/settings/atom.actions.ts` | `landLoadedSettings`, `CodeLockSettings`, `UnlockCarriedSettings`, `toNameViewModeAction` |
 | `modules/relationship/fkColumns.ts` | `toForeignKeyNames`, pinned by `fkColumns.test.ts` |
 | `modules/relationship/endFlags.ts`, `modules/table-column/keys.ts` | The relationship fields and the foreign key bits, read whole off the document |
 | `modules/relationship/referenceType.ts` | `toReferenceDataType` |
@@ -58,28 +58,34 @@
 
 ### Locks
 
-- **The locks cover the view and code settings** (owner decisions of 2026-10-06). `settings.lockSettings` (`LockSettingType`) locks the viewport, the tab, the language, both name cases and the bracket type. The viewport lock takes the origin and the zoom as one, since one saved without the other opens elsewhere. Every lock is on in a new document.
+- **The locks cover the view and code settings** (owner decisions of 2026-10-06). `settings.lockSettings` (`LockSettingType`) locks the viewport, the tab, the language, both name cases, the bracket type and the name view. The viewport lock takes the origin and the zoom as one, since one saved without the other opens elsewhere. Every lock is on in a new document.
+- **The name view's lock reads the other way round** (owner decisions of 2026-10-19). `LockSettingType.unlockNameViewMode` (64) unlocks `settings.nameViewMode` while set, so a new document keeps 63 and every file, with `lockSettings` or without, opens with the name view locked. Every read of a lock bit goes through `erd-editor-schema`'s `isSettingLocked` and every write through `setSettingLock`, which take one bit and throw a `RangeError` on a mask; a mask is read bit by bit over `LockSettingTypeList`.
+  - `settings.changeNameViewMode` carries `shared` and `editorId`, which `toNameViewModeAction(state, value, readonly)` sets: `shared` while the lock is off and the store is not readonly. The caller passes `store.getReadonly()`, which no state holds.
+  - A shared switch writes the name view's register (`replaceNameViewMode`, `settings.nameViewMode`) on every peer and replica, so it is saved and followed.
+  - Any other switch shows on the store whose `editor.id` the payload names alone, outside the register, and every other store drops it, whatever its tags. A replica strips the tags before its reducers and its `editor.id` names no window, so it drops every one: a window's own switch and the one a host relays from another view alike. A switch without `shared` reads as not shared, one without `editorId` as another store's.
+  - The `editorId` rides in the payload, since the shared store adds `meta.editorId` only to what it sends, so the sender's own dispatch has none.
+  - It is in `SharedFollowingActionTypes`, readonly lets it through (`hasReadonlyIgnore`), as the reader's own screen, and it makes no undo entry.
 - **A locked setting saves its locked value.** `toDocumentJson`, the file form every `value` getter returns, writes a locked setting at `settings.lockedValues`, as `toJson` does. So a change to it comes out `changed` false, and the hosts write nothing and mark nothing modified. Those hosts are `vscode-extension`'s `erd-editor.ts`, `obsidian-plugin`'s `ErdView.ts` and `intellij-plugin`'s `ErdEditor.kt`.
   - `app`'s Drive save leaves a view no lock holds out of its fingerprint.
   - The element's `change` event leaves such a change out. `lockIgnoreFilter` on `rx-store.ts`'s `change$` filters it by `LockSettingActionTypes`, reading the lock as the batch passes. The replica still reports it for the hubs.
 - **Locking and unlocking carry values.**
   - `changeLockSettingsAction$` locks at what the store holds and carries the values, so every peer and the replica hold one lock.
-  - An unlock carries what the store shows of the code settings it names. Those are `CodeLockSettings`: the language, both name cases and the bracket type, whose setters every peer applies. Every peer and replica then show those values, so all save one value.
+  - An unlock carries what the store shows of the settings it names in `UnlockCarriedSettings`: `CodeLockSettings` (the language, both name cases and the bracket type, whose setters every peer applies) and the name view, which each reader held as its own while locked. Every peer and replica then show those values, so all save one value.
   - A reader that opened the file while the lock was on still shows the value it held (`replication-store.test.ts`, an unlock after a reader joined from the file).
   - An unlock of the viewport or the tab carries nothing, since each reader's screen is its own.
   - Taken on the Settings tab, a tab lock locks `editor.lastCanvasType`: the last tab other than Settings the reader stood on. `changeCanvasType` and both load reducers record it before and after they move the tab.
   - Locking a setting is a change of its own, readonly-ignored like the rest.
-- **Each lock bit is a register.** The reducer writes each bit through `replaceOperator` (`settings.lockSettings`, the bit as the path). So the latest lock or unlock of a setting wins on every peer.
+- **Each lock bit is a register.** The reducer writes each bit through `replaceOperator` (`settings.lockSettings`, the bit as the path), setting it with `setSettingLock`. So the latest lock or unlock of a setting wins on every peer.
   - The reducer refuses a lock whose values the setting's own setter would refuse, the Settings tab included.
   - An unlock sets what it carries whether it wins the bit or not, skipping a value the setter would refuse.
-  - The four code setters and an unlock's values write through one register per setting, outside the bit's (`replaceCodeSetting`, `settings.code`, the field as the path). So a setter and an unlock that cross land one value on every peer.
+  - The four code setters and an unlock's values write through one register per setting, outside the bit's (`replaceCodeSetting`, `settings.code`, the field as the path). The shared name view switch and an unlock's name view share `replaceNameViewMode`'s. So a setter and an unlock that cross land one value on every peer.
   - An unlock and a newer relock that cross show one value on every screen while the relock holds the file (`replication-store.test.ts`, an unlock crossing a newer relock). A version tie is the exception, as everywhere.
 - **The replaced switch stays for older agents.** `settings.changeIgnoreSaveSettings`, the switch the locks replaced, has a reducer that changes nothing. It is in the replica's lists alone (`ReplicaChangeActionTypes`, which `ReplicaActionTypes` takes in), not `ChangeActionTypes`. So the replica reports a batch an agent written before the locks sends (`changed` false), and the hub waiting on it confirms the save. The element fires no `change`, and no peer is sent it.
-- **The Lock rows show each lock's value.** The Settings tab's Lock rows (`components/settings/lockSettingRows.ts`) show the value each lock holds, or the live value dimmed while the lock is off. Each value reads by the name the menu that sets it gives. The viewport shows as its zoom and its origin, the origin shortened with the unit the content compass prints (`formatDistance`: `12k`, `-2.4k`).
+- **The Lock rows show each lock's value.** The Settings tab's Lock rows (`components/settings/lockSettingRows.ts`) show the value each lock holds, or the live value dimmed while the lock is off. Each value reads by the name the menu that sets it gives, and the name view's as Physical Names, Logical Names or Both Names. The viewport shows as its zoom and its origin, the origin shortened with the unit the content compass prints (`formatDistance`: `12k`, `-2.4k`).
 
 ### Loads and new documents
 
-- **A new document starts with every lock on**, so looking around a new diagram never changes its file. The store's initial state is `erd-editor-schema`'s `createSchema()` (`lockSettings` 63).
+- **A new document starts with every lock on**, so looking around a new diagram never changes its file. The store's initial state is `erd-editor-schema`'s `createSchema()` (`lockSettings` 63, whose clear 64 bit is the name view's lock).
   - That document is what an element given no value shows. A replica's or a peer's `value` shows it before a load (`app`'s new Drive file, `mcp-server`'s `createEmptyDocument`), and so does every empty value a load takes.
   - `utils/loadValue.ts`'s `toLoadValue` turns an empty text into that document's JSON for `setInitialValue`, the `value` setter, `setDiffValue`, the replica and the peer. So the replicated `editor.loadJson` carries text that any peer, a released one included, parses to the same document.
 - **A file keeps the locks it names.** One that names none (an older v3 file, a v2 `.vuerd`) opens with all of them on. Its origin, zoom and tab are where a new document's are (`erd-editor-schema`'s `resetPreLockView`). A load from a release before the locks names none, so it turns every lock on, as opening a file it wrote would.
@@ -231,6 +237,7 @@ The peer entry's Node and import rules and its key set spec: `src/peer/AGENTS.md
   - the viewport locked and unlocked, and a locked view held at its lock wherever the screen goes;
   - a zoom saved with the origin it moved once unlocked;
   - a tab switch, and a language locked and unlocked;
+  - a name view switch in a new document, a file saving 63 and one saved before the locks, saved once unlocked, and a reader's own switch on an unlocked file;
   - a batch of the switch the locks replaced, and a file saved before the locks;
   - another machine's widths, which reopen to its bytes, and a file without the origin;
   - an add undone within one change, an edit on a removed table, and a load that restacks alone;

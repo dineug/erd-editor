@@ -28,10 +28,10 @@ import { zoomLevelInRange } from '@/utils/validation';
 import {
   changeLockSettingsAction,
   changeZoomLevelAction,
-  CodeLockSettings,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
+  UnlockCarriedSettings,
 } from './atom.actions';
 
 /**
@@ -169,15 +169,17 @@ export const pinchZoomAction$ = (
 
 /**
  * Locks the settings named at what they hold now, or unlocks them carrying the
- * code settings among them as they show here. A canvas type locked on the
- * Settings tab holds the tab the reader came from.
+ * code settings and the name view among them as they show here. A canvas type
+ * locked on the Settings tab holds the tab the reader came from.
  */
 export const changeLockSettingsAction$ = (
   lockSettingType: number,
   value: boolean
 ): GeneratorAction =>
   function* ({ settings, editor }) {
-    const named = value ? lockSettingType : lockSettingType & CodeLockSettings;
+    const named = value
+      ? lockSettingType
+      : lockSettingType & UnlockCarriedSettings;
     const fields = LockSettingTypeList.filter(bit => bHas(named, bit)).flatMap(
       bit => LockSettingFields[bit]
     );

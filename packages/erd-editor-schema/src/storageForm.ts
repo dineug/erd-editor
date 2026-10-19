@@ -118,6 +118,9 @@ function toDocumentSettings(settings: Settings): NormalizedSettings {
   if (source.ddlScripts) {
     written.ddlScripts = source.ddlScripts;
   }
+  if (source.nameViewMode !== undefined) {
+    written.nameViewMode = source.nameViewMode;
+  }
 
   return written;
 }

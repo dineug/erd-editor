@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { query, toJson } from '@dineug/erd-editor-schema';
+import { isSettingLocked, query, toJson } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 import {
@@ -39,6 +39,8 @@ import { mapColumnsAction$ } from '@/components/map-columns/mapColumnsAction';
 import {
   ColumnOption,
   ColumnUIKey,
+  LockSettingType,
+  NameViewMode,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
@@ -58,7 +60,11 @@ import {
   changeRelationshipColumnsAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
-import { changeDDLScriptAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeDDLScriptAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
+import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   changeTableNameAction,
   sortTableAction,
@@ -545,6 +551,123 @@ describe('the Schema SQL scripts converge', () => {
         expect(scriptsOf(side)).toEqual({ before: winner, after: '' });
       }
       expectConverged(session);
+    }
+  );
+});
+
+describe('the name view converges on every peer and its replica', () => {
+  const { unlockNameViewMode } = LockSettingType;
+  const meshes: Mesh[] = [];
+
+  /** Lets every hook a batch woke run: the 5 ms windows and the microtasks. */
+  const settleHooks = async () => {
+    await vi.advanceTimersByTimeAsync(20);
+  };
+
+  /** Three peers on one value, each with a replica, past the opening handshake. */
+  async function open(value?: string): Promise<Mesh> {
+    const mesh = createMesh(3, { value, settle: settleHooks, replicas: true });
+    meshes.push(mesh);
+    await settleHooks();
+    await mesh.deliverAll();
+    return mesh;
+  }
+
+  /** The seed with the name view unlocked, its bit set as the file saves it. */
+  const unlockedSeed = () => {
+    const json = JSON.parse(createSeedValue());
+    json.settings.lockSettings |= unlockNameViewMode;
+    return JSON.stringify(json);
+  };
+
+  const isNameViewLocked = (peer: PeerStore) =>
+    isSettingLocked(peer.state.settings.lockSettings, unlockNameViewMode);
+
+  /** Every peer holds the same runtime bytes, and every replica the same file. */
+  const expectSameBytes = ({ peers, replicas }: Mesh) => {
+    const [runtime, ...runtimes] = peers.map(peer => peer.runtimeValue);
+    runtimes.forEach(other => expect(other).toBe(runtime));
+    const [file, ...files] = replicas.map(replica => replica.value);
+    expect(replicas).toHaveLength(3);
+    files.forEach(other => expect(other).toBe(file));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    meshes.splice(0).forEach(mesh => mesh.destroy());
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['the switch', [1, 0]],
+    ['the unlock', [0, 1]],
+  ])(
+    'settles a locked switch crossing an unlock on the view the unlock carried, the third peer hearing %s first',
+    async (_first, order) => {
+      const mesh = await open();
+      const [unlocker, switcher] = mesh.peers;
+
+      unlocker.dispatch([
+        toNameViewModeAction(unlocker.state, NameViewMode.both, false),
+      ]);
+      unlocker.dispatch([changeLockSettingsAction$(unlockNameViewMode, false)]);
+      switcher.dispatch([
+        toNameViewModeAction(switcher.state, NameViewMode.logical, false),
+      ]);
+      expect(switcher.state.settings.nameViewMode).toBe(NameViewMode.logical);
+
+      await mesh.deliver(2, order);
+      await mesh.deliverAll();
+
+      for (const peer of mesh.peers) {
+        expect(isNameViewLocked(peer)).toBe(false);
+        expect(peer.state.settings.nameViewMode).toBe(NameViewMode.both);
+      }
+      expectSameBytes(mesh);
+      for (const replica of mesh.replicas) {
+        expect(JSON.parse(replica.value).settings.nameViewMode).toBe(
+          NameViewMode.both
+        );
+      }
+    }
+  );
+
+  it.each([
+    ['the switch', [0, 2]],
+    ['the relock', [2, 0]],
+  ])(
+    'saves the view the relock holds when a shared switch crosses it, the third peer hearing %s first',
+    async (_first, order) => {
+      const mesh = await open(unlockedSeed());
+      const [switcher, , relocker] = mesh.peers;
+
+      const switched = toNameViewModeAction(
+        switcher.state,
+        NameViewMode.logical,
+        false
+      );
+      expect(switched.payload.shared).toBe(true);
+      switcher.dispatch([switched]);
+      relocker.dispatch([changeLockSettingsAction$(unlockNameViewMode, true)]);
+
+      await mesh.deliver(1, order);
+      await mesh.deliverAll();
+
+      for (const peer of mesh.peers) {
+        expect(isNameViewLocked(peer)).toBe(true);
+        expect(peer.state.settings.lockedValues.nameViewMode).toBe(
+          NameViewMode.physical
+        );
+      }
+      expectSameBytes(mesh);
+      for (const replica of mesh.replicas) {
+        expect(JSON.parse(replica.value).settings).not.toHaveProperty(
+          'nameViewMode'
+        );
+      }
     }
   );
 });

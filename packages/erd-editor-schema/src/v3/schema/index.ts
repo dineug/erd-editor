@@ -33,6 +33,7 @@ import {
   DatabaseList,
   DDLScriptPosition,
   DDLScriptPositionList,
+  InvertedLockSettings,
   Language,
   LanguageList,
   LockSettingFields,
@@ -40,6 +41,8 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
+  NameViewMode,
+  NameViewModeList,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -107,4 +110,7 @@ export const SchemaV3Constants = {
   CANVAS_ZOOM_MIN,
   DDLScriptPosition,
   DDLScriptPositionList,
+  NameViewMode,
+  NameViewModeList,
+  InvertedLockSettings,
 } as const;

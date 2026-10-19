@@ -14,8 +14,13 @@ import { connectMcp, type McpHarness } from '@/__test-utils__/mcp';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
 import { createEmptyDocument } from '@/session/disk';
 
-/** A new document locks every setting, so no reader's view is saved. */
-const NEW_LOCKS = Object.values(LockSettingType).reduce((a, b) => a | b, 0);
+/**
+ * A new document locks every setting, so no reader's view is saved. The name
+ * view's bit stays clear, since it unlocks while set.
+ */
+const NEW_LOCKS = Object.values(LockSettingType)
+  .filter(bit => bit !== LockSettingType.unlockNameViewMode)
+  .reduce((a, b) => a | b, 0);
 
 let io: MemoryHost;
 let mcp: McpHarness;

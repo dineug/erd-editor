@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { parser, toJson } from '@/parser';
 import { createSchema, SchemaV3Constants } from '@/v3';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
+import { setSettingLock } from '@/v3/schema/settings';
 
 const V3_SCHEMA_URL =
   'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
@@ -11,10 +12,12 @@ const V3_SCHEMA_URL =
 const {
   BracketType,
   CanvasType,
+  InvertedLockSettings,
   Language,
   LockSettingFields,
   LockSettingType,
   NameCase,
+  NameViewMode,
 } = SchemaV3Constants;
 const LOCK_ALL = 63;
 
@@ -225,10 +228,13 @@ describe('toJson', () => {
       LockSettingFields[bit],
     ])
   )('writes %s alone at its lock when only it is locked', (_, bit, fields) => {
+    const lockSettings = setSettingLock(InvertedLockSettings, bit, true);
     const schema = parser(
-      JSON.stringify({ version: '3.0.0', settings: { lockSettings: bit } })
+      JSON.stringify({ version: '3.0.0', settings: { lockSettings } })
     );
-    Object.assign(schema.settings, LIVE);
+    Object.assign(schema.settings, LIVE, {
+      nameViewMode: NameViewMode.logical,
+    });
 
     const { settings } = JSON.parse(toJson(schema));
 
@@ -237,6 +243,9 @@ describe('toJson', () => {
         fields.includes(field) ? DEFAULTS[field] : LIVE[field]
       );
     }
+    expect(settings.nameViewMode).toBe(
+      fields.includes('nameViewMode') ? undefined : NameViewMode.logical
+    );
   });
 
   it('locks the origin and the zoom together as the viewport', () => {
@@ -361,7 +370,11 @@ describe('the locks of a new document and of a file', () => {
 
     expect(settings.lockSettings).toBe(LOCK_ALL);
     expect(settings).toMatchObject({ ...DEFAULT_VIEW, ...SAVED_CODE });
-    expect(settings.lockedValues).toEqual({ ...DEFAULT_VIEW, ...SAVED_CODE });
+    expect(settings.lockedValues).toEqual({
+      ...DEFAULT_VIEW,
+      ...SAVED_CODE,
+      nameViewMode: NameViewMode.physical,
+    });
   });
 
   it('keeps the locks a file names and the values it saved', () => {
@@ -375,7 +388,10 @@ describe('the locks of a new document and of a file', () => {
     const parsed = parser(source).settings;
 
     expect(parsed).toMatchObject(settings);
-    expect(parsed.lockedValues).toEqual(omit(settings, ['lockSettings']));
+    expect(parsed.lockedValues).toEqual({
+      ...omit(settings, ['lockSettings']),
+      nameViewMode: NameViewMode.physical,
+    });
   });
 
   it('keeps the bits no lock owns and writes them back', () => {
@@ -389,14 +405,19 @@ describe('the locks of a new document and of a file', () => {
   });
 
   it('locks nothing with a bit no lock owns', () => {
+    const lockSettings = 128 | LockSettingType.unlockNameViewMode;
     const schema = parser(
-      JSON.stringify({ version: '3.0.0', settings: { lockSettings: 64 } })
+      JSON.stringify({ version: '3.0.0', settings: { lockSettings } })
     );
-    Object.assign(schema.settings, LIVE);
+    Object.assign(schema.settings, LIVE, { nameViewMode: NameViewMode.both });
 
     const { settings } = JSON.parse(toJson(schema));
 
-    expect(settings).toMatchObject(LIVE);
+    expect(settings).toMatchObject({
+      ...LIVE,
+      nameViewMode: NameViewMode.both,
+      lockSettings,
+    });
   });
 });
 

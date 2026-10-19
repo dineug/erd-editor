@@ -1,9 +1,11 @@
+import type { LockSettingType as LockSettingBit } from '@dineug/erd-editor-schema';
+
 import { formatDistance } from '@/components/erd/content-compass/compassGeometry';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
-import { CanvasType, LockSettingType } from '@/constants/schema';
+import { CanvasType, LockSettingType, NameViewMode } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { type LabeledMenu, menuLabel } from '@/i18n/menuLabel';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
@@ -15,7 +17,7 @@ type Translator = Pick<I18n, 't'>;
 
 export type LockSettingRow = {
   nameKey: PlainMessageKey;
-  lockSettingType: number;
+  lockSettingType: LockSettingBit;
   toText: (values: LockedValues, i18n: Translator) => string;
 };
 
@@ -35,6 +37,18 @@ const canvasTypeText = (canvasType: string, i18n: Translator) => {
 
   const key = CanvasTypeToMessageKey[canvasType];
   return key ? i18n.t(key) : canvasType;
+};
+
+/** What each name view is called wherever a reader picks one. */
+const NameViewModeToMessageKey: Readonly<Record<string, PlainMessageKey>> = {
+  [NameViewMode.physical]: 'common.physicalNames',
+  [NameViewMode.logical]: 'common.logicalNames',
+  [NameViewMode.both]: 'common.bothNames',
+};
+
+const nameViewModeText = (nameViewMode: string, i18n: Translator) => {
+  const key = NameViewModeToMessageKey[nameViewMode];
+  return key ? i18n.t(key) : nameViewMode;
 };
 
 const nameOf = (
@@ -89,5 +103,10 @@ export const lockSettingRows: ReadonlyArray<LockSettingRow> = [
     nameKey: 'settings.lockRow.bracketType',
     lockSettingType: LockSettingType.bracketType,
     toText: ({ bracketType }, i18n) => nameOf(bracketMenus, bracketType, i18n),
+  },
+  {
+    nameKey: 'settings.lockRow.nameViewMode',
+    lockSettingType: LockSettingType.unlockNameViewMode,
+    toText: ({ nameViewMode }, i18n) => nameViewModeText(nameViewMode, i18n),
   },
 ];

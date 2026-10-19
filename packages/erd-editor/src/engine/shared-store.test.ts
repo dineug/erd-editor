@@ -9,7 +9,7 @@ import {
 } from 'vite-plus/test';
 
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
-import { RelationshipType } from '@/constants/schema';
+import { NameViewMode, RelationshipType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { getLWWAction } from '@/engine/modules/editor/atom.actions';
@@ -25,7 +25,10 @@ import {
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeZoomLevelAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableColorAction,
@@ -195,6 +198,33 @@ describe('createSharedStore', () => {
     expect(action).toBeTruthy();
     expect(bHas(action!.tags!, Tag.following)).toBe(true);
     expect(bHas(action!.tags!, Tag.shared)).toBe(true);
+  });
+
+  it('sends a name view switch as a follow, naming in its payload the editor that made it', () => {
+    const fixture = make();
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+    const { editor } = fixture.store.state;
+
+    fixture.store.dispatchSync(
+      toNameViewModeAction(fixture.store.state, NameViewMode.logical, false)
+    );
+
+    const action = fixture.seen
+      .flat()
+      .find(a => a.type === 'settings.changeNameViewMode');
+    expect(action).toBeTruthy();
+    expect(bHas(action!.tags!, Tag.following)).toBe(true);
+    expect(bHas(action!.tags!, Tag.shared)).toBe(true);
+    expect(action!.payload).toEqual({
+      value: NameViewMode.logical,
+      shared: false,
+      editorId: editor.id,
+    });
+    expect(action!.meta).toMatchObject({ editorId: editor.id });
+    expect(fixture.store.state.settings.nameViewMode).toBe(
+      NameViewMode.logical
+    );
   });
 
   it('ignores actions that are already tagged shared', () => {

@@ -158,6 +158,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'settings.changeMaxWidthComment',
   'settings.changeLockSettings',
   'settings.changeDDLScript',
+  'settings.changeNameViewMode',
   // editor
   'editor.loadJson',
   'editor.clear',
@@ -192,6 +193,7 @@ const hasReadonlyIgnore = arrayHas([
   'settings.changeTableNameCase',
   'settings.changeColumnNameCase',
   'settings.changeBracketType',
+  'settings.changeNameViewMode',
 ]);
 
 export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
@@ -228,6 +230,7 @@ export const LockSettingActionTypes: Readonly<
   'settings.changeTableNameCase': LockSettingType.tableNameCase,
   'settings.changeColumnNameCase': LockSettingType.columnNameCase,
   'settings.changeBracketType': LockSettingType.bracketType,
+  'settings.changeNameViewMode': LockSettingType.unlockNameViewMode,
 };
 
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
@@ -250,6 +253,7 @@ export const SharedFollowingActionTypes: ReadonlyArray<ActionType> = [
   'settings.scrollTo',
   'settings.streamScrollTo',
   'settings.changeCanvasType',
+  'settings.changeNameViewMode',
 ];
 
 export const StreamRegroupMoveActionTypes: ReadonlyArray<ActionType> = [

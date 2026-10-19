@@ -6,9 +6,11 @@ import {
   BracketType,
   CanvasType,
   Database,
+  InvertedLockSettings,
   Language,
   LockSettingTypeList,
   NameCase,
+  NameViewMode,
 } from '@/v3/schema/settings';
 
 const SCHEMA_URL =
@@ -413,7 +415,8 @@ describe('createSchema', () => {
     const { lockSettings, lockedValues } = createSchema().settings;
 
     expect(lockSettings).toBe(
-      LockSettingTypeList.reduce((acc, bit) => acc | bit, 0)
+      LockSettingTypeList.reduce((acc, bit) => acc | bit, 0) &
+        ~InvertedLockSettings
     );
     expect(lockedValues).toEqual({
       originX: 0,
@@ -424,6 +427,7 @@ describe('createSchema', () => {
       tableNameCase: NameCase.pascalCase,
       columnNameCase: NameCase.camelCase,
       bracketType: BracketType.none,
+      nameViewMode: NameViewMode.physical,
     });
   });
 

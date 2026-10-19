@@ -9,6 +9,7 @@ import { appContext } from '@/components/appContext';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Settings from '@/components/settings/Settings';
 import * as styles from '@/components/settings/Settings.styles';
+import { LockSettingType } from '@/constants/schema';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { messagesOf } from '@/i18n/messages';
 import { createI18n } from '@/i18n/translate';
@@ -27,7 +28,7 @@ async function setup(locale?: 'de-DE') {
       JSON.stringify({
         version: '3.0.0',
         settings: {
-          lockSettings: 0,
+          lockSettings: LockSettingType.unlockNameViewMode,
           zoomLevel: 1.5,
           originX: -1234,
           originY: -3456,

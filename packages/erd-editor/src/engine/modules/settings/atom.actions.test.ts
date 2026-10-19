@@ -12,6 +12,7 @@ import {
   Language,
   LockSettingType,
   NameCase,
+  NameViewMode,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
@@ -43,6 +44,7 @@ import {
   changeLanguageAction,
   changeLockSettingsAction,
   changeMaxWidthCommentAction,
+  changeNameViewModeAction,
   changeRelationshipDataTypeSyncAction,
   changeShowAction,
   changeTableNameCaseAction,
@@ -56,6 +58,7 @@ import {
   settingsReducers,
   streamScrollToAction,
   streamZoomLevelAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -1430,6 +1433,186 @@ describe('settings/atom.actions', () => {
     );
   });
 
+  describe('changeNameViewMode', () => {
+    const { unlockNameViewMode } = LockSettingType;
+    const { physical, logical, both } = NameViewMode;
+
+    const switchTo = (
+      value: string,
+      shared: boolean,
+      editorId: string,
+      version?: number
+    ): AnyAction => ({
+      ...changeNameViewModeAction({ value: value as any, shared, editorId }),
+      ...(version === undefined ? {} : { version }),
+    });
+    const unlockAt = (version: number, nameViewMode: string) => ({
+      ...changeLockSettingsAction({
+        lockSettingType: unlockNameViewMode,
+        value: false,
+        values: { nameViewMode: nameViewMode as any },
+      }),
+      version,
+    });
+
+    /** The settings of two peers handed both actions, one in each order. */
+    const inBothOrders = (a: AnyAction, b: AnyAction) =>
+      [
+        [a, b],
+        [b, a],
+      ].map(order => {
+        const peer = createTestStore();
+        order.forEach(action => peer.dispatchSync(action));
+        return peer.state.settings;
+      });
+
+    it('starts on the physical names, locked with its bit clear', () => {
+      expect(store.state.settings.nameViewMode).toBe(physical);
+      expect(bHas(store.state.settings.lockSettings, unlockNameViewMode)).toBe(
+        false
+      );
+    });
+
+    it('writes a shared switch through its register, the latest winning whatever order', () => {
+      store.dispatchSync(
+        switchTo(both, true, 'someone', 8),
+        switchTo(logical, true, 'someone else', 6)
+      );
+
+      expect(store.state.settings.nameViewMode).toBe(both);
+      expect(store.state.lww['settings.nameViewMode']).toEqual([
+        'settings',
+        -1,
+        -1,
+        { nameViewMode: 8 },
+      ]);
+    });
+
+    it('shows a switch its own editor made off the register, on this store alone', () => {
+      const own = store.state.editor.id;
+
+      store.dispatchSync(switchTo(logical, false, own, 3));
+
+      expect(store.state.settings.nameViewMode).toBe(logical);
+      expect(store.state.lww).not.toHaveProperty('settings.nameViewMode');
+
+      store.dispatchSync(switchTo(both, true, own, 2));
+
+      expect(store.state.settings.nameViewMode).toBe(both);
+    });
+
+    it.each([
+      ['untagged', undefined],
+      ['tagged as a follow from a peer', Tag.shared | Tag.following],
+    ])(
+      'drops a switch another editor made for its own screen, %s',
+      (_, tags) => {
+        const action = switchTo(logical, false, 'another editor');
+
+        store.dispatchSync(tags === undefined ? action : tag(action, tags));
+
+        expect(store.state.settings.nameViewMode).toBe(physical);
+      }
+    );
+
+    it('reads a switch without its flags as another editor’s own', () => {
+      store.dispatchSync({
+        type: ActionType.changeNameViewMode,
+        payload: { value: logical },
+      });
+
+      expect(store.state.settings.nameViewMode).toBe(physical);
+    });
+
+    it('ignores a name view no editor shows', () => {
+      store.dispatchSync(
+        switchTo('tree', true, 'someone'),
+        switchTo('tree', false, store.state.editor.id)
+      );
+
+      expect(store.state.settings.nameViewMode).toBe(physical);
+      expect(store.state.lww).not.toHaveProperty('settings.nameViewMode');
+    });
+
+    it('unlocks by setting its bit and shows the value carried through the same register', () => {
+      store.dispatchSync(unlockAt(5, both));
+
+      expect(store.state.settings.lockSettings).toBe(63 | unlockNameViewMode);
+      expect(store.state.settings.nameViewMode).toBe(both);
+      expect(store.state.lww['settings.nameViewMode'][3]).toEqual({
+        nameViewMode: 5,
+      });
+      expect(store.state.settings.lockedValues.nameViewMode).toBe(physical);
+    });
+
+    it('locks by clearing its bit at the value carried, and refuses one no editor shows', () => {
+      store.dispatchSync(unlockAt(1, both));
+      store.dispatchSync({
+        ...changeLockSettingsAction({
+          lockSettingType: unlockNameViewMode,
+          value: true,
+          values: { nameViewMode: 'tree' as any },
+        }),
+        version: 2,
+      });
+
+      expect(store.state.settings.lockSettings).toBe(63 | unlockNameViewMode);
+
+      store.dispatchSync({
+        ...changeLockSettingsAction({
+          lockSettingType: unlockNameViewMode,
+          value: true,
+          values: { nameViewMode: logical },
+        }),
+        version: 3,
+      });
+
+      expect(store.state.settings.lockSettings).toBe(63);
+      expect(store.state.settings.lockedValues.nameViewMode).toBe(logical);
+    });
+
+    it.each([
+      ['newer', 11, logical],
+      ['older', 9, both],
+    ])(
+      'lands one name view whichever order an unlock meets a shared switch %s than it in',
+      (_, switchVersion, landed) => {
+        const peers = inBothOrders(
+          unlockAt(10, both),
+          switchTo(logical, true, 'someone', switchVersion)
+        );
+
+        expect(peers.map(settings => settings.nameViewMode)).toEqual([
+          landed,
+          landed,
+        ]);
+      }
+    );
+
+    it('shares a reader’s switch only while the lock is off and the store may edit', () => {
+      const { state } = store;
+
+      expect(toNameViewModeAction(state, logical, false)).toEqual(
+        changeNameViewModeAction({
+          value: logical,
+          shared: false,
+          editorId: state.editor.id,
+        })
+      );
+
+      store.dispatchSync(unlockAt(1, physical));
+
+      expect(toNameViewModeAction(state, both, false).payload).toEqual({
+        value: both,
+        shared: true,
+        editorId: state.editor.id,
+      });
+      expect(toNameViewModeAction(state, both, true).payload.shared).toBe(
+        false
+      );
+    });
+  });
+
   describe('changeIgnoreSaveSettings', () => {
     it('changes nothing, the locks having replaced the switch', () => {
       const before = JSON.stringify(store.state.settings);
@@ -1543,6 +1726,7 @@ describe('settings/atom.actions', () => {
         'changeLanguageAction',
         'changeLockSettingsAction',
         'changeMaxWidthCommentAction',
+        'changeNameViewModeAction',
         'changeRelationshipDataTypeSyncAction',
         'changeShowAction',
         'changeTableNameCaseAction',

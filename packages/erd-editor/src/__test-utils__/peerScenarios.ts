@@ -11,6 +11,7 @@ import {
   Language,
   LockSettingType,
   NameCase,
+  NameViewMode,
   OrderType,
   ReferentialAction,
   RelationshipType,
@@ -70,6 +71,7 @@ import {
   changeRelationshipDataTypeSyncAction,
   changeShowAction,
   changeTableNameCaseAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import {
@@ -113,6 +115,7 @@ import type {
   DispatchReport,
   PeerStore,
 } from '@/engine/peer-store';
+import type { ValuesType } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
 /**
@@ -367,6 +370,17 @@ export const mapWithNewColumn = (
     ),
   ],
 });
+
+/**
+ * Switches the names the sender shows as a reader would, the lock of the seed
+ * keeping the switch to the sender's own screen.
+ */
+const nameViewModeAction$ = (
+  value: ValuesType<typeof NameViewMode>
+): GeneratorAction =>
+  function* (state) {
+    yield toNameViewModeAction(state, value, false);
+  };
 
 /** A scenario under its own label, for the edits only the seed map makes. */
 const edit = (
@@ -630,6 +644,12 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
   setLockSettings: () =>
     edit('setLockSettings', [
       changeLockSettingsAction$(LockSettingType.language, false),
+    ]),
+  setNameViewMode: () =>
+    edit('setNameViewMode', [nameViewModeAction$(NameViewMode.logical)]),
+  unlockNameViewMode: () =>
+    edit('unlockNameViewMode', [
+      changeLockSettingsAction$(LockSettingType.unlockNameViewMode, false),
     ]),
   setDDLScript: () =>
     edit('setDDLScript', [

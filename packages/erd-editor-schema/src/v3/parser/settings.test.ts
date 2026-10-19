@@ -13,10 +13,12 @@ import {
   CanvasType,
   ColumnType,
   Database,
+  isSettingLocked,
   Language,
   LanguageList,
   LockSettingType,
   NameCase,
+  NameViewMode,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -99,8 +101,10 @@ describe('createAndMergeSettings', () => {
         tableNameCase: NameCase.pascalCase,
         columnNameCase: NameCase.camelCase,
         bracketType: BracketType.none,
+        nameViewMode: NameViewMode.physical,
       },
       ddlScripts: { before: '', after: '' },
+      nameViewMode: NameViewMode.physical,
     });
   });
 
@@ -430,6 +434,27 @@ describe('createAndMergeSettings', () => {
     });
   });
 
+  describe('nameViewMode', () => {
+    it('keeps a name view mode it knows and locks it at what the file saved', () => {
+      const settings = createAndMergeSettings({
+        nameViewMode: NameViewMode.both,
+      });
+
+      expect(settings.nameViewMode).toBe(NameViewMode.both);
+      expect(settings.lockedValues.nameViewMode).toBe(NameViewMode.both);
+    });
+
+    it.each([
+      ['an unknown name', 'tree'],
+      ['a non-string', 2],
+    ])('opens %s at the physical names', (_label, nameViewMode) => {
+      expect(
+        createAndMergeSettings({ nameViewMode: nameViewMode as any })
+          .nameViewMode
+      ).toBe(NameViewMode.physical);
+    });
+  });
+
   describe('ddlScripts', () => {
     it('starts both scripts empty', () => {
       expect(createAndMergeSettings().ddlScripts).toEqual({
@@ -720,12 +745,25 @@ describe('a document saved before the locks', () => {
     expect(lockedValues).toMatchObject(code);
   });
 
+  it('opens with the name view locked, as a file that names every other lock does', () => {
+    for (const json of [saved, { ...saved, lockSettings: LOCK_ALL }]) {
+      const { lockSettings } = mergeSettings(json);
+
+      expect(
+        isSettingLocked(lockSettings, LockSettingType.unlockNameViewMode)
+      ).toBe(true);
+    }
+  });
+
   it('keeps everything a file that names its locks saved, unlocked or not', () => {
     const settings = mergeSettings({ ...saved, lockSettings: 0 });
 
     expect(settings.lockSettings).toBe(0);
     expect(settings).toMatchObject(saved);
-    expect(settings.lockedValues).toEqual(saved);
+    expect(settings.lockedValues).toEqual({
+      ...saved,
+      nameViewMode: NameViewMode.physical,
+    });
   });
 });
 
@@ -773,7 +811,7 @@ describe('the view and the tab a lock can hold', () => {
   ])(
     'keeps a bit no lock owns beside a tab %s at Settings',
     (_label, bit, canvasType) => {
-      const lockSettings = 64 | bit;
+      const lockSettings = 128 | bit;
       const settings = mergeSettings({
         canvasType: CanvasType.settings,
         lockSettings,

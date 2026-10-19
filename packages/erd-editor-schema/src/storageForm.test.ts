@@ -9,7 +9,14 @@ import { createTable } from '@/v3/parser/table.entity';
 const V3_SCHEMA_URL =
   'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
 
-const { BracketType, CanvasType, Language, NameCase } = SchemaV3Constants;
+const {
+  BracketType,
+  CanvasType,
+  Language,
+  LockSettingType,
+  NameCase,
+  NameViewMode,
+} = SchemaV3Constants;
 
 const meta = { updateAt: 1_760_000_000_000, createAt: 1_750_000_000_000 };
 
@@ -924,6 +931,56 @@ describe('the settings toDocumentJson writes', () => {
       before: '',
       after: 'SELECT 1;',
     });
+  });
+
+  it('writes the name view mode last, only while its lock is off and it is not physical', () => {
+    const schema = createSchema();
+    schema.settings.ddlScripts = { before: 'SELECT 1;', after: '' };
+    schema.settings.nameViewMode = NameViewMode.logical;
+    const keys = () => Object.keys(JSON.parse(toDocumentJson(schema)).settings);
+
+    expect(keys()).not.toContain('nameViewMode');
+
+    schema.settings.lockSettings |= LockSettingType.unlockNameViewMode;
+    const unlocked = toDocumentJson(schema);
+
+    expect(keys().slice(-3)).toEqual([
+      'lockSettings',
+      'ddlScripts',
+      'nameViewMode',
+    ]);
+    expect(JSON.parse(unlocked).settings.nameViewMode).toBe(
+      NameViewMode.logical
+    );
+    expect(toDocumentJson(parser(unlocked))).toBe(unlocked);
+    expect(toDocument(schema).settings).toEqual(
+      JSON.parse(toJson(schema)).settings
+    );
+
+    schema.settings.nameViewMode = NameViewMode.physical;
+
+    expect(keys()).not.toContain('nameViewMode');
+  });
+
+  it('writes a locked name view mode at its lock, the physical names left out', () => {
+    const schema = parser(
+      JSON.stringify({
+        version: '3.0.0',
+        settings: { lockSettings: 63, nameViewMode: NameViewMode.both },
+      })
+    );
+    schema.settings.nameViewMode = NameViewMode.physical;
+
+    expect(JSON.parse(toDocumentJson(schema)).settings.nameViewMode).toBe(
+      NameViewMode.both
+    );
+
+    schema.settings.lockedValues.nameViewMode = NameViewMode.physical;
+    schema.settings.nameViewMode = NameViewMode.logical;
+
+    expect(JSON.parse(toDocumentJson(schema)).settings).not.toHaveProperty(
+      'nameViewMode'
+    );
   });
 });
 

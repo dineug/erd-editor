@@ -13,6 +13,7 @@ import {
   DatabaseList,
   LanguageList,
   NameCaseList,
+  NameViewModeList,
 } from '@/constants/schema';
 import { DatabaseVendorList } from '@/constants/sql/database';
 import { arrayHas } from '@/utils/arrayHas';
@@ -55,6 +56,7 @@ export const hasLanguage = arrayHas(LanguageList);
 export const hasColumnType = arrayHas(ColumnTypeList);
 export const hasDatabaseVendor = arrayHas(DatabaseVendorList);
 export const hasCanvasType = arrayHas(CanvasTypeList);
+export const hasNameViewMode = arrayHas<string>(NameViewModeList);
 
 export function textInRange(width: number) {
   return Math.max(width, COLUMN_MIN_WIDTH);

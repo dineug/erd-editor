@@ -9,9 +9,8 @@ import {
   pick,
 } from 'es-toolkit';
 
-import { assign, validNumber } from '@/helper';
+import { assign, validNumber, validString } from '@/helper';
 import { DeepPartial } from '@/internal-types';
-import { bHas } from '@/utils/bit';
 import {
   type LegacyScrollBox,
   migrateScrollToOrigin,
@@ -28,6 +27,8 @@ import {
   ColumnTypeList,
   Database,
   DatabaseList,
+  InvertedLockSettings,
+  isSettingLocked,
   Language,
   LanguageList,
   LockedValues,
@@ -36,6 +37,8 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
+  NameViewMode,
+  NameViewModeList,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -49,7 +52,10 @@ const defaultShow =
   Show.columnNotNull |
   Show.relationship;
 
-const LOCK_ALL = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
+/** Every lock on: each bit set but the inverted ones, which lock while clear. */
+const LOCK_ALL =
+  LockSettingTypeList.reduce((acc, bit) => acc | bit, 0) &
+  ~InvertedLockSettings;
 
 const LOCKED_FIELDS = LockSettingTypeList.flatMap(
   bit => LockSettingFields[bit]
@@ -90,6 +96,7 @@ const createSettings = (): Settings => {
     maxWidthComment: -1,
     lockSettings: LOCK_ALL,
     ddlScripts: { before: '', after: '' },
+    nameViewMode: NameViewMode.physical,
   };
   return { ...settings, lockedValues: toLockedValues(settings) };
 };
@@ -206,6 +213,7 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
   assign(validNumber(NameCaseList), settings, json)('tableNameCase');
   assign(validNumber(NameCaseList), settings, json)('columnNameCase');
   assign(validNumber(BracketTypeList), settings, json)('bracketType');
+  assign(validString(NameViewModeList), settings, json)('nameViewMode');
 
   settings.columnOrder =
     toFullColumnOrder(json.columnOrder) ?? settings.columnOrder;
@@ -227,7 +235,7 @@ export function createAndMergeSettings(json?: DeepPartial<Settings>): Settings {
     settings.lockSettings = json.lockSettings | 0;
     // A tab no editor locks, which only a hand edit can have written.
     if (
-      bHas(settings.lockSettings, LockSettingType.canvasType) &&
+      isSettingLocked(settings.lockSettings, LockSettingType.canvasType) &&
       settings.canvasType === CanvasType.settings
     ) {
       settings.canvasType = CanvasType.ERD;

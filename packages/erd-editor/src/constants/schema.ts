@@ -31,6 +31,10 @@ export const OrderTypeList = SchemaV3Constants.OrderTypeList;
 export const LockSettingType = SchemaV3Constants.LockSettingType;
 export const LockSettingTypeList = SchemaV3Constants.LockSettingTypeList;
 export const LockSettingFields = SchemaV3Constants.LockSettingFields;
+export const InvertedLockSettings = SchemaV3Constants.InvertedLockSettings;
+export const NameViewMode = SchemaV3Constants.NameViewMode;
+export const NameViewModeList: ReadonlyArray<ValuesType<typeof NameViewMode>> =
+  SchemaV3Constants.NameViewModeList;
 export const CANVAS_SIZE_MAX = SchemaV3Constants.CANVAS_SIZE_MAX;
 export const CANVAS_SIZE_MIN = SchemaV3Constants.CANVAS_SIZE_MIN;
 export const CANVAS_ZOOM_MAX = SchemaV3Constants.CANVAS_ZOOM_MAX;

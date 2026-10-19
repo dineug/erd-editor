@@ -81,12 +81,24 @@ export const NON_EDIT_ACTIONS: ReadonlySet<unknown> = new Set([
   'settings.scrollTo',
   'settings.streamScrollTo',
   'settings.changeCanvasType',
+  'settings.changeNameViewMode',
   'editor.getLWW',
   'editor.mergeLWW',
 ]);
 
-const isEdit = (action: unknown) =>
-  !NON_EDIT_ACTIONS.has((action as { type?: unknown } | null)?.type);
+const NAME_VIEW_SWITCH = 'settings.changeNameViewMode';
+
+/**
+ * Whether the file may take the action: anything outside NON_EDIT_ACTIONS, and
+ * a name view switch only when shared, made while its lock was off, since any
+ * other shows on this tab alone.
+ */
+const isEdit = (action: unknown) => {
+  const { type, payload } =
+    (action as { type?: unknown; payload?: { shared?: unknown } } | null) ?? {};
+  if (type === NAME_VIEW_SWITCH) return payload?.shared === true;
+  return !NON_EDIT_ACTIONS.has(type);
+};
 
 /** Where the file stands; waiting-token is a load that found no token, which the session opens again. */
 export type DocumentPhase =

@@ -1,3 +1,4 @@
+import { isSettingLocked } from '@dineug/erd-editor-schema';
 import {
   createRef,
   FC,
@@ -35,7 +36,6 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import { fontSize6 } from '@/styles/typography.styles';
-import { bHas } from '@/utils/bit';
 import { recalculateTableWidth } from '@/utils/calcTable';
 import { onPrevent } from '@/utils/domEvent';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
@@ -235,7 +235,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   <Separator space={12} />
                   <div class={styles.lockList}>
                     {lockSettingRows.map(row => {
-                      const locked = bHas(
+                      const locked = isSettingLocked(
                         settings.lockSettings,
                         row.lockSettingType
                       );

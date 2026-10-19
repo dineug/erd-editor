@@ -21,6 +21,7 @@ import {
   DDLScriptPositionList,
   Direction,
   DirectionList,
+  InvertedLockSettings,
   Language,
   LanguageList,
   LockSettingFields,
@@ -28,6 +29,8 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
+  NameViewMode,
+  NameViewModeList,
   OrderType,
   OrderTypeList,
   RelationshipType,
@@ -69,6 +72,9 @@ describe('schema constant re-exports', () => {
     expect(LockSettingFields).toBe(SchemaV3Constants.LockSettingFields);
     expect(DDLScriptPosition).toBe(SchemaV3Constants.DDLScriptPosition);
     expect(DDLScriptPositionList).toBe(SchemaV3Constants.DDLScriptPositionList);
+    expect(InvertedLockSettings).toBe(SchemaV3Constants.InvertedLockSettings);
+    expect(NameViewMode).toBe(SchemaV3Constants.NameViewMode);
+    expect(NameViewModeList).toBe(SchemaV3Constants.NameViewModeList);
   });
 
   it('re-exports the canvas bounds as plain numbers', () => {

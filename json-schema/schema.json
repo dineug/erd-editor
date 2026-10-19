@@ -148,7 +148,7 @@
           "type": "integer"
         },
         "lockSettings": {
-          "description": "bit value (viewport: 1) | (canvasType: 2) | (language: 4) | (tableNameCase: 8) | (columnNameCase: 16) | (bracketType: 32); a locked setting is saved as it stood when locked, the viewport being originX, originY and zoomLevel",
+          "description": "bit value (viewport: 1) | (canvasType: 2) | (language: 4) | (tableNameCase: 8) | (columnNameCase: 16) | (bracketType: 32) | (unlockNameViewMode: 64); a locked setting is saved as it stood when locked, the viewport being originX, originY and zoomLevel. The last bit reads the other way round: set, the name view mode is unlocked, and clear, as in a file saved before it, locked",
           "type": "integer"
         },
         "ddlScripts": {
@@ -160,6 +160,10 @@
           },
           "required": ["before", "after"],
           "additionalProperties": false
+        },
+        "nameViewMode": {
+          "description": "The names the diagram shows: the logical ones, or both the physical and the logical. Absent while it shows the physical names, the default",
+          "enum": ["logical", "both"]
         }
       },
       "required": [

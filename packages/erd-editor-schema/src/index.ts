@@ -17,3 +17,8 @@ export {
   schemaV3Parser,
 } from '@/v3';
 export type { LWW, LWWTuple } from '@/v3/schema/lww';
+export {
+  isSettingLocked,
+  type LockSettingType,
+  setSettingLock,
+} from '@/v3/schema/settings';

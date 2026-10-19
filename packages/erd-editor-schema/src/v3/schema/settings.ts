@@ -1,4 +1,5 @@
 import { ValuesType } from '@/internal-types';
+import { bHas } from '@/utils/bit';
 
 export type Settings = {
   /**
@@ -20,7 +21,8 @@ export type Settings = {
   maxWidthComment: number;
   /**
    * The LockSettingType bits of the settings a document saves as they stood
-   * when locked; every other setting is saved as it stands.
+   * when locked, every other saved as it stands; the name view's bit is set
+   * while it is unlocked instead.
    */
   lockSettings: number;
   /**
@@ -33,7 +35,22 @@ export type Settings = {
    * text.
    */
   ddlScripts: DDLScripts;
+  /**
+   * The names a diagram shows; a file saves it last, at its lock's value while
+   * locked, and only while what it saves is not physical.
+   */
+  nameViewMode: NameViewMode;
 };
+
+/** The names a diagram shows: the physical ones, the logical ones or both. */
+export const NameViewMode = {
+  physical: 'physical',
+  logical: 'logical',
+  both: 'both',
+} as const;
+export type NameViewMode = ValuesType<typeof NameViewMode>;
+export const NameViewModeList: ReadonlyArray<NameViewMode> =
+  Object.values(NameViewMode);
 
 export type DDLScripts = {
   /**
@@ -64,6 +81,7 @@ export type LockedValues = Pick<
   | 'tableNameCase'
   | 'columnNameCase'
   | 'bracketType'
+  | 'nameViewMode'
 >;
 
 export const CanvasType = {
@@ -172,7 +190,8 @@ export const BracketTypeList: ReadonlyArray<number> =
   Object.values(BracketType);
 
 // Append only, like the lists above. The viewport locks the origin and the zoom
-// together, since an origin saved without its zoom opens on another place.
+// together, since an origin saved without its zoom opens on another place. The
+// name view's bit reads the other way round, so a file without it opens locked.
 export const LockSettingType = {
   viewport: 1,
   canvasType: 2,
@@ -180,9 +199,18 @@ export const LockSettingType = {
   tableNameCase: 8,
   columnNameCase: 16,
   bracketType: 32,
+  unlockNameViewMode: 64,
 } as const;
-export const LockSettingTypeList: ReadonlyArray<number> =
+export type LockSettingType =
+  (typeof LockSettingType)[keyof typeof LockSettingType];
+export const LockSettingTypeList: ReadonlyArray<LockSettingType> =
   Object.values(LockSettingType);
+
+/**
+ * The lock bits that unlock their setting while set, as the hide bits of Show
+ * hide while set: a document saved before one holds it clear, and so locked.
+ */
+export const InvertedLockSettings: number = LockSettingType.unlockNameViewMode;
 
 /** The fields each lock holds. */
 export const LockSettingFields: Readonly<
@@ -194,7 +222,41 @@ export const LockSettingFields: Readonly<
   [LockSettingType.tableNameCase]: ['tableNameCase'],
   [LockSettingType.columnNameCase]: ['columnNameCase'],
   [LockSettingType.bracketType]: ['bracketType'],
+  [LockSettingType.unlockNameViewMode]: ['nameViewMode'],
 };
+
+const assertSingleBit = (bit: number): void => {
+  if (!Number.isInteger(bit) || bit <= 0 || (bit & (bit - 1)) !== 0) {
+    throw new RangeError(`A lock is one bit, not ${bit}`);
+  }
+};
+
+/**
+ * Whether the lock of one bit is on, an inverted bit locking while it is clear.
+ * A mask of several bits throws, since each bit of it may read its own way.
+ */
+export function isSettingLocked(
+  lockSettings: number,
+  bit: LockSettingType
+): boolean {
+  assertSingleBit(bit);
+  return bHas(lockSettings, bit) !== bHas(InvertedLockSettings, bit);
+}
+
+/**
+ * The lock bits with the lock of one bit turned on or off, an inverted bit
+ * cleared to lock and set to unlock. A mask of several bits throws.
+ */
+export function setSettingLock(
+  lockSettings: number,
+  bit: LockSettingType,
+  locked: boolean
+): number {
+  assertSingleBit(bit);
+  return locked !== bHas(InvertedLockSettings, bit)
+    ? lockSettings | bit
+    : lockSettings & ~bit;
+}
 
 export const CANVAS_ZOOM_MIN = 0.1;
 export const CANVAS_ZOOM_MAX = 1.5;

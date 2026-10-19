@@ -64,6 +64,7 @@ const READONLY_IGNORED = [
   'settings.changeTableNameCase',
   'settings.changeColumnNameCase',
   'settings.changeBracketType',
+  'settings.changeNameViewMode',
 ];
 
 describe('actions registry', () => {
@@ -147,9 +148,24 @@ describe('ChangeActionTypes', () => {
     ]);
   });
 
-  it('counts sixty-seven change types, the Schema SQL scripts among them', () => {
-    expect(ChangeActionTypes).toHaveLength(67);
+  it('counts sixty-eight change types, the Schema SQL scripts and the name view among them', () => {
+    expect(ChangeActionTypes).toHaveLength(68);
     expect(ChangeActionTypes).toContain('settings.changeDDLScript');
+    expect(ChangeActionTypes).toContain('settings.changeNameViewMode');
+  });
+
+  it('carries a name view switch to the replica and the peers, follows it, takes it from a readonly reader and undoes none', () => {
+    const type = 'settings.changeNameViewMode';
+
+    expect(ReplicaActionTypes).toContain(type);
+    expect(SharedActionTypes).toContain(type);
+    expect(SharedFollowingActionTypes).toContain(type);
+    expect(ReadonlyIgnoreActionTypes).not.toContain(type);
+    expect(ViewIgnoreActionTypes).not.toContain(type);
+    expect(HistoryActionTypes).not.toContain(type);
+    expect(LockSettingActionTypes[type]).toBe(
+      LockSettingType.unlockNameViewMode
+    );
   });
 
   it('carries a script edit to the replica, the peers and the history, and lets no readonly host or view make one', () => {
@@ -277,6 +293,7 @@ describe('LockSettingActionTypes', () => {
       'settings.changeTableNameCase': LockSettingType.tableNameCase,
       'settings.changeColumnNameCase': LockSettingType.columnNameCase,
       'settings.changeBracketType': LockSettingType.bracketType,
+      'settings.changeNameViewMode': LockSettingType.unlockNameViewMode,
     });
   });
 
@@ -424,6 +441,7 @@ describe('shared action types', () => {
       'settings.scrollTo',
       'settings.streamScrollTo',
       'settings.changeCanvasType',
+      'settings.changeNameViewMode',
     ]);
   });
 });

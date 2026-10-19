@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import {
   addOperator,
   createSchema,
+  isSettingLocked,
   migrateScrollToOrigin,
   parser,
   query,
@@ -12,6 +13,7 @@ import {
   schemaV2Parser,
   SchemaV3Constants,
   schemaV3Parser,
+  setSettingLock,
   toDocumentJson,
   toJson,
 } from '@/index';
@@ -52,6 +54,15 @@ describe('public entry point', () => {
     expect(parser(toJson(createSchema())).settings.lockSettings).toBe(
       lockSettings
     );
+  });
+
+  it('exposes the lock reads, the name view bit read the other way round', () => {
+    const { lockSettings } = createSchema().settings;
+    const { language, unlockNameViewMode } = SchemaV3Constants.LockSettingType;
+
+    expect(isSettingLocked(lockSettings, language)).toBe(true);
+    expect(isSettingLocked(lockSettings, unlockNameViewMode)).toBe(true);
+    expect(setSettingLock(lockSettings, unlockNameViewMode, false)).toBe(127);
   });
 
   it('exposes the collections query factory', () => {

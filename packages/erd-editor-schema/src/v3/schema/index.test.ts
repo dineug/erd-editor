@@ -27,6 +27,7 @@ import {
   DatabaseList,
   DDLScriptPosition,
   DDLScriptPositionList,
+  InvertedLockSettings,
   Language,
   LanguageList,
   LockSettingFields,
@@ -34,6 +35,8 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
+  NameViewMode,
+  NameViewModeList,
   Show,
 } from '@/v3/schema/settings';
 import { ColumnOption, ColumnUIKey } from '@/v3/schema/tableColumn.entity';
@@ -61,6 +64,7 @@ describe('v3/schema/index', () => {
           'DDLScriptPositionList',
           'Direction',
           'DirectionList',
+          'InvertedLockSettings',
           'Language',
           'LanguageList',
           'LockSettingFields',
@@ -68,6 +72,8 @@ describe('v3/schema/index', () => {
           'LockSettingTypeList',
           'NameCase',
           'NameCaseList',
+          'NameViewMode',
+          'NameViewModeList',
           'OrderType',
           'OrderTypeList',
           'ReferentialAction',
@@ -120,6 +126,9 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants.DDLScriptPositionList).toBe(
         DDLScriptPositionList
       );
+      expect(SchemaV3Constants.NameViewMode).toBe(NameViewMode);
+      expect(SchemaV3Constants.NameViewModeList).toBe(NameViewModeList);
+      expect(SchemaV3Constants.InvertedLockSettings).toBe(InvertedLockSettings);
     });
 
     it('names the two script positions by themselves', () => {
@@ -147,7 +156,7 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants).not.toHaveProperty('Table');
       expect(SchemaV3Constants).not.toHaveProperty('Memo');
       expect(SchemaV3Constants).not.toHaveProperty('TableGroup');
-      expect(Object.keys(SchemaV3Constants)).toHaveLength(34);
+      expect(Object.keys(SchemaV3Constants)).toHaveLength(37);
     });
   });
 
@@ -182,8 +191,10 @@ describe('v3/schema/index', () => {
             tableNameCase: NameCase.pascalCase,
             columnNameCase: NameCase.camelCase,
             bracketType: BracketType.doubleQuote,
+            nameViewMode: NameViewMode.physical,
           },
           ddlScripts: { before: '', after: '' },
+          nameViewMode: NameViewMode.physical,
         },
         doc: {
           tableIds: ['table-1'],

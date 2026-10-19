@@ -141,7 +141,8 @@ describe('the agent snapshot', () => {
         columnDomain: false,
       },
       maxWidthComment: -1,
-      // The seed starts as a new document, every setting locked.
+      // The seed starts as a new document, every setting locked; the name
+      // view's flag is clear, since its bit is set while it is unlocked.
       lockSettings: {
         viewport: true,
         canvasType: true,
@@ -149,6 +150,7 @@ describe('the agent snapshot', () => {
         tableNameCase: true,
         columnNameCase: true,
         bracketType: true,
+        unlockNameViewMode: false,
       },
       ddlScripts: { before: '', after: '' },
     });
