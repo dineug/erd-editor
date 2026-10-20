@@ -63,7 +63,7 @@ export const ARG_COPY: Readonly<Record<string, string>> = {
   color: COLOR,
   x: X,
   y: Y,
-  mode: 'replace, the default, loads the import in place of every table, relationship, index, memo and table group and keeps the settings but the view, which goes to the start of the canvas, and the word, term and domain dictionaries; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
+  mode: 'replace, the default, loads the import in place of every table, relationship, index, memo and table group and keeps the settings but the view, which goes to the start of the canvas, and keeps the word, term and domain dictionaries; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
   wordId: 'Word id, from erd_list or the createdIds of erd_add_word.',
   termId: 'Term id, from erd_list or the createdIds of erd_add_term.',
   domainName:
@@ -87,6 +87,8 @@ const TERM_DOMAIN_ID =
   'Domain id the term gives a column, from erd_list or the createdIds of erd_add_domain; null or an empty string for none.';
 const DOMAIN_ID =
   'Domain id, from erd_list or the createdIds of erd_add_domain.';
+const SYNC_UNLINK =
+  "A column the sync reaches whose new type differs from its own domain's is unlinked from that domain.";
 
 const setting = (subject: string, value: string): ToolCopy => ({
   description: `Sets ${subject}. ${NO_UNDO}`,
@@ -99,7 +101,7 @@ const flag = (subject: string): ToolCopy => ({
 });
 
 const importer = (language: string, more = ''): ToolCopy => ({
-  description: `Replaces every table, relationship, index, memo and table group of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas, and its word, term and domain dictionaries; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.${more}`,
+  description: `Replaces every table, relationship, index, memo and table group of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas, and keeping its word, term and domain dictionaries; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.${more}`,
   args: { value: `The ${language} source text.` },
 });
 
@@ -197,7 +199,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_change_table_name: {
     description:
-      'Renames a table. The name is then its own: nameDerived goes off, so a later logical name leaves it as it is.',
+      'Renames a table. The name is then its own: nameDerived goes off, so a later logical name leaves a name that is not empty as it is.',
     args: { value: 'The new table name.' },
   },
   erd_change_table_comment: {
@@ -243,7 +245,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_change_column_name: {
     description:
-      'Renames a column. The name is then its own: nameDerived goes off, so a later logical name leaves it as it is.',
+      'Renames a column. The name is then its own: nameDerived goes off, so a later logical name leaves a name that is not empty as it is.',
     args: { value: 'The new column name.' },
   },
   erd_change_column_default: {
@@ -255,11 +257,11 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { value: 'The comment; an empty string clears it.' },
   },
   erd_set_column_logical_name: {
-    description: `Sets the logical name of a column. While its physical name is empty or derived, the dictionaries derive it: a term of that name gives its physical name and links its domain, otherwise the words of the name compose one, their abbreviations joined with underscores. A physical name written by hand stays. ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Sets the logical name of a column. While its physical name is empty or derived, the dictionaries derive it: a term of that name gives its physical name and links its domain, otherwise the words of the name compose one, their abbreviations joined with underscores. A physical name written by hand stays. The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
     args: { value: 'The logical name; an empty string clears it.' },
   },
   erd_set_column_domain: {
-    description: `Links a column to a dictionary domain, which gives it the domain's data type, spread along relationships while relationship data type sync is on; null or an empty name unlinks it and keeps its type. ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Links a column to a dictionary domain, which gives it the domain's data type, spread along relationships while relationship data type sync is on; null or an empty name unlinks it and keeps its type. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
     args: {
       domainId:
         'Domain id to link, from erd_list or the createdIds of erd_add_domain; null or an empty string unlinks.',
@@ -454,7 +456,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { name: 'The domain name, such as Identifier.' },
   },
   erd_update_domain: {
-    description: `Changes the fields of a domain that the call passes and leaves the rest; values it already holds change nothing. A new data type reaches every column linking the domain, and along relationships while relationship data type sync is on. ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Changes the fields of a domain that the call passes and leaves the rest; values it already holds change nothing. A new data type reaches every column linking the domain, and along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
     args: { domainId: DOMAIN_ID, name: 'The new domain name.' },
   },
   erd_remove_domain: {
@@ -487,7 +489,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   ),
   erd_import_aml: importer('AML'),
   erd_import_json: {
-    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings. ${OLDER_EDITOR_GROUPS_IMPORT}`,
+    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings. ${OLDER_EDITOR_GROUPS_IMPORT} ${OLDER_EDITOR_DICTIONARY}`,
     args: {
       value:
         'The .erd.json document text; empty gives an empty document, and is refused with mode append.',

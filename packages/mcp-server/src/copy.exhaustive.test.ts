@@ -253,12 +253,35 @@ describe('the words on the dictionaries and logical names', () => {
     }
   });
 
-  it('say a rename by hand turns the derived flag off, so a logical name leaves the name', () => {
+  it('say a rename by hand turns the derived flag off, so a logical name leaves a name that is not empty', () => {
     for (const name of ['erd_change_table_name', 'erd_change_column_name']) {
       expect(describeTool(name), name).toContain(
-        'The name is then its own: nameDerived goes off, so a later logical name leaves it as it is.'
+        'The name is then its own: nameDerived goes off, so a later logical name leaves a name that is not empty as it is.'
       );
     }
+  });
+
+  it('say a domain type the sync spreads unlinks a column it reaches off its own domain', () => {
+    for (const name of [
+      'erd_update_domain',
+      'erd_set_column_domain',
+      'erd_set_column_logical_name',
+    ]) {
+      expect(describeTool(name), name).toContain(
+        "A column the sync reaches whose new type differs from its own domain's is unlinked from that domain."
+      );
+    }
+    expect(describeTool('erd_set_column_logical_name')).toContain(
+      'The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on.'
+    );
+  });
+
+  it('end erd_import_json, which brings them with table groups, on both older editor sentences', () => {
+    expect(
+      describeTool('erd_import_json').endsWith(
+        ` An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it. ${OLDER}`
+      )
+    ).toBe(true);
   });
 
   it('say the four schema imports keep the dictionaries, by replace and in the mode argument', () => {
@@ -269,10 +292,10 @@ describe('the words on the dictionaries and logical names', () => {
       'erd_import_aml',
     ]) {
       expect(describeTool(name), name).toContain(
-        'which goes to the start of the canvas, and its word, term and domain dictionaries; erd_undo restores'
+        'which goes to the start of the canvas, and keeping its word, term and domain dictionaries; erd_undo restores'
       );
       expect(describeArg(name, 'mode'), name).toContain(
-        'which goes to the start of the canvas, and the word, term and domain dictionaries; append adds'
+        'which goes to the start of the canvas, and keeps the word, term and domain dictionaries; append adds'
       );
     }
   });
@@ -371,11 +394,13 @@ describe('the words on an import', () => {
     }
   });
 
-  it('end the two imports that bring table groups on an editor released before groups dropping them', () => {
+  it('warn on the two imports that bring table groups that an editor released before groups drops them', () => {
+    const older =
+      'An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it.';
+
+    expect(describeTool('erd_import_dbml').endsWith(` ${older}`)).toBe(true);
+    expect(describeTool('erd_import_json')).toContain(` ${older} `);
     for (const name of ['erd_import_dbml', 'erd_import_json']) {
-      expect(describeTool(name), name).toMatch(
-        /An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it\.$/
-      );
       expect(describeTool(name), name).not.toMatch(/\d+\.\d+/);
     }
   });

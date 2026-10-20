@@ -308,6 +308,36 @@ describe('a rename by hand turns the derived flag off', () => {
     });
   });
 
+  it('derives a name again once a rename by hand left it empty', () => {
+    const peer = seeded();
+
+    runTool(peer, 'erd_change_table_name', { tableId: SEED.users, value: '' });
+    runTool(peer, 'erd_change_column_name', {
+      tableId: SEED.users,
+      columnId: SEED.userName,
+      value: '',
+    });
+    runTool(peer, 'erd_set_table_logical_name', {
+      tableId: SEED.users,
+      value: 'Member Number',
+    });
+    runTool(peer, 'erd_set_column_logical_name', {
+      tableId: SEED.users,
+      columnId: SEED.userName,
+      value: 'Member Number',
+    });
+
+    expect(tableOf(peer, SEED.users)).toMatchObject({
+      name: 'MBR_NO',
+      nameDerived: true,
+    });
+    expect(isDerived(peer, SEED.userName)).toBe(true);
+    expect(columnOf(peer, SEED.userName)).toMatchObject({
+      name: 'MBR_NO',
+      domainId: SEED.domain,
+    });
+  });
+
   it('sends the rename alone where the name was not derived', () => {
     const peer = seeded();
 
