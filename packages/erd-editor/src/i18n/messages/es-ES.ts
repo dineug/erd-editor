@@ -288,6 +288,10 @@ export const esES = {
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Panel de opciones',
   'palette.codeGeneratorOptionsPanel': 'Generador de código: Panel de opciones',
   'palette.groupSelectedTables': 'Agrupar las tablas seleccionadas',
+  'palette.keywords.deriveColumn': 'columna',
+  'palette.keywords.deriveTable': 'tabla',
+  'palette.keywords.deriveSelection': 'tablas seleccionadas',
+  'palette.keywords.deriveDocument': 'documento completo',
   'palette.keywords.schemaSqlStatements':
     'crear si no existe eliminar reemplazar',
   'palette.keywords.schemaSqlHeader': 'use base de datos search_path',

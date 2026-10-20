@@ -29,6 +29,7 @@ import {
 } from '@/engine/modules/dictionary/atom.actions';
 import {
   editTableAction,
+  editTableEndAction,
   focusColumnAction,
   focusTableAction,
   sharedFocusTrackerAction,
@@ -474,7 +475,7 @@ describe('the marks on the cells a name view adds', () => {
     expect(textOf(name).visible()).toBe(false);
   });
 
-  it('keeps the text of the type cell standing for the domain under a focus put in edit', async () => {
+  it('hands the text of the type cell standing for the domain to the picker a focus put in edit opens', async () => {
     const { app, stage, theme } = await setup({
       dictionaries: true,
       mode: NameViewMode.logical,
@@ -493,8 +494,8 @@ describe('the marks on the cells a name view adds', () => {
     await settle();
 
     const type = rowCell(stage, NAMED, FocusType.columnDomain);
-    expect(focusBorderOf(type)?.fill()).toBe(theme.focus);
-    expect(textOf(type).visible()).toBe(true);
+    expect(focusBorderOf(type)?.fill()).toBe(theme.inputActive);
+    expect(textOf(type).visible()).toBe(false);
   });
 
   it('marks the logical name and domain cells of the view of both on their own focus', async () => {
@@ -534,9 +535,19 @@ describe('the marks on the cells a name view adds', () => {
     );
     await settle();
 
+    const domain = rowCell(stage, NAMED, FocusType.columnDomain);
+    expect(focusBorderOf(domain)?.fill()).toBe(theme.inputActive);
+    expect(textOf(domain).visible()).toBe(false);
+
+    store.dispatchSync(editTableEndAction());
+    await settle();
+
     expect(
       focusBorderOf(rowCell(stage, NAMED, FocusType.columnDomain))?.fill()
     ).toBe(theme.focus);
+    expect(
+      focusBorderOf(rowCell(stage, NAMED, FocusType.columnLogicalName))
+    ).toBeUndefined();
   });
 
   it('underlines the cells a peer is focused on in the peer colour', async () => {

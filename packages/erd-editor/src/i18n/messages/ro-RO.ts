@@ -288,6 +288,10 @@ export const roRO = {
   'palette.schemaSqlOptionsPanel': 'Schemă SQL: Panou de opțiuni',
   'palette.codeGeneratorOptionsPanel': 'Generator de cod: Panou de opțiuni',
   'palette.groupSelectedTables': 'Grupare tabele selectate',
+  'palette.keywords.deriveColumn': 'coloană',
+  'palette.keywords.deriveTable': 'tabel',
+  'palette.keywords.deriveSelection': 'tabelele selectate',
+  'palette.keywords.deriveDocument': 'întregul document',
   'palette.keywords.schemaSqlStatements':
     'creare dacă nu există ștergere înlocuire',
   'palette.keywords.schemaSqlHeader': 'use bază de date search_path',

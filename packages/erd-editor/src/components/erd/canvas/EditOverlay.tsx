@@ -22,6 +22,7 @@ import {
 } from '@/components/erd/canvas/sceneTokens';
 import { blankLogicalName } from '@/components/erd/canvas/table/blankLogicalName';
 import {
+  type ColumnCellSlot,
   getCellTextHeight,
   getColumnCellSlots,
   getColumnTextY,
@@ -35,11 +36,15 @@ import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
+import ColumnDomain from '@/components/table-view/column/column-domain/ColumnDomain';
+import ColumnLogicalName from '@/components/table-view/column/column-logical-name/ColumnLogicalName';
 import {
   MEMO_BORDER,
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
 } from '@/constants/layout';
+import { ColumnType } from '@/constants/schema';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import {
   editMemoEndAction,
   editTableEndAction,
@@ -86,6 +91,7 @@ const EDITABLE: Partial<Record<FocusType, PlainMessageKey>> = {
   [FocusType.columnName]: 'common.placeholder.column',
   [FocusType.columnLogicalName]: 'common.placeholder.logicalName',
   [FocusType.columnDataType]: 'common.placeholder.dataType',
+  [FocusType.columnDomain]: 'common.column.domain',
   [FocusType.columnDefault]: 'common.placeholder.default',
   [FocusType.columnComment]: 'common.placeholder.comment',
 };
@@ -133,8 +139,9 @@ type TableGroupTarget = {
 type EditTarget = CellTarget | MemoTarget | TableGroupTarget;
 
 /**
- * The column field a cell editor writes into. Only the five column focus types
- * EDITABLE names reach here, so the comment cell is what is left over.
+ * The column field a cell editor writes into. Only the six column focus types
+ * EDITABLE names reach here, so the comment cell is what is left over; the
+ * domain picker opens on no text, since it searches and writes none.
  */
 function getColumnValue(column: Column, focusType: FocusType): string {
   switch (focusType) {
@@ -144,6 +151,8 @@ function getColumnValue(column: Column, focusType: FocusType): string {
       return column.logicalName;
     case FocusType.columnDataType:
       return column.dataType;
+    case FocusType.columnDomain:
+      return '';
     case FocusType.columnDefault:
       return column.default;
     default:
@@ -189,6 +198,20 @@ const toPlaceholder = (
   );
   return { placeholderKey: key, standIn };
 };
+
+/**
+ * What a domain picker shows while nothing is typed: what its cell drew, the
+ * domain's name, or the type the logical view's type cell draws in its place.
+ */
+function domainStandIn(
+  state: RootState,
+  column: Column,
+  slot: ColumnCellSlot
+): string {
+  const name = getLiveDomainName(state, column.domainId);
+  if (name || slot.columnType !== ColumnType.columnDataType) return name;
+  return column.dataType.trim() ? column.dataType : '';
+}
 
 const keyOf = (target: EditTarget) =>
   target.kind === 'memo'
@@ -263,7 +286,9 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     y: getColumnRect(state, table, index).y + getColumnTextY(),
     width: slot.width,
     value: getColumnValue(column, slot.focusType),
-    ...toPlaceholder(state, slot.focusType, column.name, placeholderKey),
+    ...(slot.focusType === FocusType.columnDomain
+      ? { placeholderKey, standIn: domainStandIn(state, column, slot) }
+      : toPlaceholder(state, slot.focusType, column.name, placeholderKey)),
     textColor: null,
   };
 }
@@ -590,6 +615,39 @@ const EditOverlay: FC = (_, ctx) => {
 
     if (target.kind === 'tableGroup') {
       return <TableGroupNameEditor target={target} placeholder={placeholder} />;
+    }
+
+    const { focusType, tableId, columnId } = target;
+
+    if (
+      focusType === FocusType.tableLogicalName ||
+      focusType === FocusType.columnLogicalName
+    ) {
+      return (
+        <ColumnLogicalName
+          tableId={tableId}
+          columnId={columnId}
+          width={target.width}
+          value={target.value}
+          placeholder={placeholder}
+          onBlur={handleEditEnd}
+          onEditEnd={handleEditEnd}
+          onInput={handleInput}
+        />
+      );
+    }
+
+    if (focusType === FocusType.columnDomain && columnId) {
+      return (
+        <ColumnDomain
+          tableId={tableId}
+          columnId={columnId}
+          width={target.width}
+          placeholder={placeholder}
+          onBlur={handleEditEnd}
+          onEditEnd={handleEditEnd}
+        />
+      );
     }
 
     if (target.focusType === FocusType.columnDataType && target.columnId) {

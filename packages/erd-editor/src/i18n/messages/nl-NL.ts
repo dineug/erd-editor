@@ -286,6 +286,10 @@ export const nlNL = {
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Optiepaneel',
   'palette.codeGeneratorOptionsPanel': 'Codegenerator: Optiepaneel',
   'palette.groupSelectedTables': 'Geselecteerde tabellen groeperen',
+  'palette.keywords.deriveColumn': 'kolom',
+  'palette.keywords.deriveTable': 'tabel',
+  'palette.keywords.deriveSelection': 'geselecteerde tabellen',
+  'palette.keywords.deriveDocument': 'hele document',
   'palette.keywords.schemaSqlStatements':
     'maken als niet bestaat verwijderen vervangen',
   'palette.keywords.schemaSqlHeader': 'use database search_path',

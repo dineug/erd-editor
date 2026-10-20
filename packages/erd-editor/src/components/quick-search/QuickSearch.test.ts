@@ -915,6 +915,7 @@ describe('QuickSearch with no command matching', () => {
     expect(rowNames()).toEqual([
       'Tab',
       'Name View',
+      'Derive Physical Names Again',
       'Database',
       'Import',
       'Import and Add',

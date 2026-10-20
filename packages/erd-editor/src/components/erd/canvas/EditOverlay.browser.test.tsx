@@ -40,6 +40,7 @@ import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleL
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
+import * as logicalNameStyles from '@/components/table-view/column/column-logical-name/ColumnLogicalName.styles';
 import { themeContext } from '@/components/themeContext';
 import {
   INPUT_HEIGHT,
@@ -90,6 +91,7 @@ import {
   removeTableAction$,
 } from '@/engine/modules/table/generator.actions';
 import {
+  changeColumnDataTypeAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNameDerivedAction,
@@ -962,15 +964,120 @@ describe('the cell editor in the name views', () => {
     expect(inputOf(both.mounted).placeholder).toBe('logical');
   });
 
-  it('opens nothing on a domain, which no editor writes', async () => {
+  it('opens the term list under a logical name cell and ends the edit on the term Enter picks', async () => {
+    const fixture = await setupView(NameViewMode.both);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no', physicalName: 'mbr_no' },
+      }),
+      changeColumnNameDerivedAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: true,
+      })
+    );
+
+    await edit(fixture, FocusType.columnLogicalName);
+    await userEvent.keyboard('mem');
+    await flush();
+    expect(
+      Array.from(
+        cellOf(fixture.mounted).querySelectorAll(
+          `.${logicalNameStyles.hintItem}`
+        )
+      ).map(row => row.querySelector(':scope > span')?.textContent?.trim())
+    ).toEqual(['Member no']);
+
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await flush();
+
+    expect(store.state.editor.focusTable?.edit).toBe(false);
+    expect(inputOf(fixture.mounted)).toBeNull();
+    expect(
+      store.state.collections.tableColumnEntities[fixture.columnId]
+    ).toMatchObject({ logicalName: 'Member no', name: 'mbr_no' });
+  });
+
+  it('derives a header name once its editor closes on a logical name typed', async () => {
     const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member', physicalName: 'mbr' },
+      }),
+      changeTableNameDerivedAction({ id: fixture.tableId, value: true })
+    );
+
+    await edit(fixture, FocusType.tableName);
+    expect(await type(fixture, ['Member'])).toEqual([
+      ['table.changeLogicalName'],
+    ]);
+    expect(store.state.collections.tableEntities[fixture.tableId].name).toBe(
+      'member'
+    );
+
+    store.dispatchSync(editTableEndAction());
+    await flush();
+
+    expect(
+      store.state.collections.tableEntities[fixture.tableId]
+    ).toMatchObject({ name: 'mbr', logicalName: 'Member' });
+  });
+
+  it('opens the domain picker on a domain, showing what the cell drew, and links the domain picked', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    const { tableId, columnId } = fixture;
 
     await edit(fixture, FocusType.columnDataType);
-
-    expect(fixture.app.store.state.editor.focusTable?.focusType).toBe(
+    expect(store.state.editor.focusTable?.focusType).toBe(
       FocusType.columnDomain
     );
-    expect(inputOf(fixture.mounted)).toBeNull();
+    expect(inputOf(fixture.mounted).value).toBe('');
+    expect(inputOf(fixture.mounted).placeholder).toBe('Domain');
+    expect(
+      cellOf(fixture.mounted).querySelector(`.${logicalNameStyles.hint}`)
+    ).toBeNull();
+
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId, id: columnId, value: 'INT' })
+    );
+    await edit(fixture, FocusType.columnDomain);
+    expect(inputOf(fixture.mounted).placeholder).toBe('INT');
+
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-1',
+        values: { name: 'Identifier', dataType: 'BIGINT' },
+      })
+    );
+    await edit(fixture, FocusType.columnDomain);
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await flush();
+
+    expect(store.state.collections.tableColumnEntities[columnId]).toMatchObject(
+      { domainId: 'domain-1', dataType: 'BIGINT' }
+    );
+    expect(store.state.editor.focusTable?.edit).toBe(false);
+
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDomain, value: true })
+    );
+    await edit(fixture, FocusType.columnDomain);
+    expect(inputOf(fixture.mounted).placeholder).toBe('Identifier');
+    expect(
+      Array.from(
+        cellOf(fixture.mounted).querySelectorAll(
+          `.${logicalNameStyles.hintItem}.selected`
+        )
+      ).map(row => row.querySelector(':scope > span')?.textContent?.trim())
+    ).toEqual(['Identifier']);
   });
 });
 

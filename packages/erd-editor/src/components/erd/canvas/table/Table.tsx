@@ -941,7 +941,8 @@ const Table: FC<TableProps> = (props, ctx) => {
                   FocusType.columnLogicalName,
                   column.id
                 )}
-                editDataType={cellEdit(FocusType.columnDataType, column.id)}
+                editDataType={cellEdit(typeFocus, column.id)}
+                editDomain={cellEdit(FocusType.columnDomain, column.id)}
                 editDefault={cellEdit(FocusType.columnDefault, column.id)}
                 editComment={cellEdit(FocusType.columnComment, column.id)}
                 sharedFocusName={sharedFocusColor(nameFocus, column.id)}

@@ -289,6 +289,10 @@ export const skSK = {
   'palette.schemaSqlOptionsPanel': 'Schéma SQL: Panel možností',
   'palette.codeGeneratorOptionsPanel': 'Generátor kódu: Panel možností',
   'palette.groupSelectedTables': 'Zoskupiť vybraté tabuľky',
+  'palette.keywords.deriveColumn': 'stĺpec',
+  'palette.keywords.deriveTable': 'tabuľka',
+  'palette.keywords.deriveSelection': 'vybraté tabuľky',
+  'palette.keywords.deriveDocument': 'celý dokument',
   'palette.keywords.schemaSqlStatements':
     'vytvoriť ak neexistuje odstrániť nahradiť',
   'palette.keywords.schemaSqlHeader': 'use databáza search_path',

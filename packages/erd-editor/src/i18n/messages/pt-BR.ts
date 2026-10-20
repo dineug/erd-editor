@@ -291,6 +291,10 @@ export const ptBR = {
   'palette.schemaSqlOptionsPanel': 'Esquema SQL: Painel de opções',
   'palette.codeGeneratorOptionsPanel': 'Gerador de código: Painel de opções',
   'palette.groupSelectedTables': 'Agrupar tabelas selecionadas',
+  'palette.keywords.deriveColumn': 'coluna',
+  'palette.keywords.deriveTable': 'tabela',
+  'palette.keywords.deriveSelection': 'tabelas selecionadas',
+  'palette.keywords.deriveDocument': 'documento inteiro',
   'palette.keywords.schemaSqlStatements':
     'criar se não existir excluir substituir',
   'palette.keywords.schemaSqlHeader': 'use banco de dados search_path',

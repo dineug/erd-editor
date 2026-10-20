@@ -284,6 +284,10 @@ export const euES = {
   'palette.schemaSqlOptionsPanel': 'SQL eskema: Aukeren panela',
   'palette.codeGeneratorOptionsPanel': 'Kode-sortzailea: Aukeren panela',
   'palette.groupSelectedTables': 'Taldekatu hautatutako taulak',
+  'palette.keywords.deriveColumn': 'zutabea',
+  'palette.keywords.deriveTable': 'taula',
+  'palette.keywords.deriveSelection': 'hautatutako taulak',
+  'palette.keywords.deriveDocument': 'dokumentu osoa',
   'palette.keywords.schemaSqlStatements': 'sortu ez badago ezabatu ordeztu',
   'palette.keywords.schemaSqlHeader': 'use datu-basea search_path',
   'palette.keywords.schemaSqlOptionsPanel':

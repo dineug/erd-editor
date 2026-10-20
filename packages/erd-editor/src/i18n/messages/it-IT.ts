@@ -289,6 +289,10 @@ export const itIT = {
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Pannello opzioni',
   'palette.codeGeneratorOptionsPanel': 'Generatore di codice: Pannello opzioni',
   'palette.groupSelectedTables': 'Raggruppa le tabelle selezionate',
+  'palette.keywords.deriveColumn': 'colonna',
+  'palette.keywords.deriveTable': 'tabella',
+  'palette.keywords.deriveSelection': 'tabelle selezionate',
+  'palette.keywords.deriveDocument': 'intero documento',
   'palette.keywords.schemaSqlStatements':
     'crea se non esiste elimina sostituisci',
   'palette.keywords.schemaSqlHeader': 'use database search_path',

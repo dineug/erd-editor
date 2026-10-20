@@ -165,6 +165,7 @@ export type ColumnProps = {
   editDefault: boolean;
   editComment: boolean;
   editLogicalName?: boolean;
+  editDomain?: boolean;
   hovered?: boolean;
   /** The placeholder row for a column dragged in from another table. */
   ghost?: boolean;
@@ -644,8 +645,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           null
         );
       case ColumnType.columnDomain:
-        // A column linking no listed domain leaves the cell empty, and no
-        // editor writes a domain, so the cell keeps its text, as a flag does.
+        // A column linking no listed domain leaves the cell empty.
         return cell({
           focusType,
           x,
@@ -653,7 +653,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           text: getLiveDomainName(app.value.store.state, column.domainId),
           fill: theme.active,
           focus: props.focusDomain ?? false,
-          edit: false,
+          edit: props.editDomain ?? false,
           sharedFocus: props.sharedFocusDomain ?? null,
           ellipsis: true,
         });

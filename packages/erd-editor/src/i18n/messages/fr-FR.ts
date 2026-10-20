@@ -293,6 +293,10 @@ export const frFR = {
   'palette.codeGeneratorOptionsPanel':
     'Générateur de code : Panneau des options',
   'palette.groupSelectedTables': 'Grouper les tables sélectionnées',
+  'palette.keywords.deriveColumn': 'colonne',
+  'palette.keywords.deriveTable': 'table',
+  'palette.keywords.deriveSelection': 'tables sélectionnées',
+  'palette.keywords.deriveDocument': 'document entier',
   'palette.keywords.schemaSqlStatements':
     'créer si n’existe pas supprimer remplacer',
   'palette.keywords.schemaSqlHeader': 'use base de données search_path',

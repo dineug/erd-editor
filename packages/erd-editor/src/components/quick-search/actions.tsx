@@ -36,6 +36,11 @@ import {
 } from '@/components/schema-sql/schemaSQLView';
 import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
 import { CanvasType } from '@/constants/schema';
+import {
+  rederiveNamesAction$,
+  type RederiveNamesTarget,
+  RederiveScope,
+} from '@/engine/modules/dictionary/generator.actions';
 import { changeDrawTableGroupAction } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
@@ -343,6 +348,7 @@ export function createScopeActions(
         return store.state.settings.canvasType === CanvasType.ERD;
       },
     },
+    ...createRederiveActions(i18n),
     {
       icon: <Icon name="database" size={16} />,
       ...submenuNamed(i18n, 'common.database'),
@@ -598,6 +604,97 @@ const hasSelectedTable = ({ store }: AppContext) => {
     doc.tableIds.includes(id)
   );
 };
+
+/** What one of the four derivations again covers now, or null while it has nothing to cover. */
+type RederiveTargetOf = (state: RootState) => RederiveNamesTarget | null;
+
+/** The focused column, while its table is listed and still holds it. */
+const focusedColumnTarget: RederiveTargetOf = ({
+  doc,
+  editor,
+  collections,
+}) => {
+  const { focusTable } = editor;
+  if (!focusTable?.columnId || !doc.tableIds.includes(focusTable.tableId)) {
+    return null;
+  }
+
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(focusTable.tableId);
+  return table?.columnIds.includes(focusTable.columnId)
+    ? {
+        scope: RederiveScope.column,
+        tableId: focusTable.tableId,
+        columnId: focusTable.columnId,
+      }
+    : null;
+};
+
+const focusedTableTarget: RederiveTargetOf = ({ doc, editor }) => {
+  const tableId = editor.focusTable?.tableId;
+  return tableId && doc.tableIds.includes(tableId)
+    ? { scope: RederiveScope.table, tableId }
+    : null;
+};
+
+/** The selected tables, while two or more of them are listed. */
+const selectionTarget: RederiveTargetOf = ({ doc, editor }) =>
+  getSelectTypeIds(editor.selectedMap).tableIds.filter(id =>
+    doc.tableIds.includes(id)
+  ).length > 1
+    ? { scope: RederiveScope.selection }
+    : null;
+
+const documentTarget: RederiveTargetOf = ({ doc }) =>
+  doc.tableIds.length ? { scope: RederiveScope.document } : null;
+
+const REDERIVE_ROWS: ReadonlyArray<{
+  labelKey: PlainMessageKey;
+  keywordsKey: PlainMessageKey;
+  targetOf: RederiveTargetOf;
+}> = [
+  {
+    labelKey: 'common.derivePhysicalName',
+    keywordsKey: 'palette.keywords.deriveColumn',
+    targetOf: focusedColumnTarget,
+  },
+  {
+    labelKey: 'common.derivePhysicalNames',
+    keywordsKey: 'palette.keywords.deriveTable',
+    targetOf: focusedTableTarget,
+  },
+  {
+    labelKey: 'common.derivePhysicalNames',
+    keywordsKey: 'palette.keywords.deriveSelection',
+    targetOf: selectionTarget,
+  },
+  {
+    labelKey: 'common.derivePhysicalNames',
+    keywordsKey: 'palette.keywords.deriveDocument',
+    targetOf: documentTarget,
+  },
+];
+
+/**
+ * A derivation again of the focused column, the focused table, the selected
+ * tables and the document, each told apart by its keywords and shown on the
+ * ERD tab of an editor that is not readonly while it has something to cover.
+ */
+function createRederiveActions(i18n: Pick<I18n, 't'>): Action[] {
+  return REDERIVE_ROWS.map<Action>(({ labelKey, keywordsKey, targetOf }) => ({
+    icon: <Icon name="refresh-cw" size={16} />,
+    ...named(i18n, labelKey, keywordsKey),
+    perform: ({ store }) => {
+      const target = targetOf(store.state);
+      if (target) store.dispatch(rederiveNamesAction$(target));
+    },
+    filter: ({ store }) =>
+      store.state.settings.canvasType === CanvasType.ERD &&
+      !store.getReadonly() &&
+      targetOf(store.state) !== null,
+  }));
+}
 
 /**
  * The Schema SQL tab's own rows, the statements and the header listing only

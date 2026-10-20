@@ -292,6 +292,10 @@ export const ruRU = {
   'palette.schemaSqlOptionsPanel': 'Схема SQL: Панель параметров',
   'palette.codeGeneratorOptionsPanel': 'Генератор кода: Панель параметров',
   'palette.groupSelectedTables': 'Сгруппировать выделенные таблицы',
+  'palette.keywords.deriveColumn': 'столбец',
+  'palette.keywords.deriveTable': 'таблица',
+  'palette.keywords.deriveSelection': 'выделенные таблицы',
+  'palette.keywords.deriveDocument': 'весь документ',
   'palette.keywords.schemaSqlStatements':
     'создать если не существует удалить заменить',
   'palette.keywords.schemaSqlHeader': 'use база данных search_path',

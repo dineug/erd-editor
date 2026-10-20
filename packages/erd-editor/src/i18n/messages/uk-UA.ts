@@ -294,6 +294,10 @@ export const ukUA = {
   'palette.schemaSqlOptionsPanel': 'Схема SQL: Панель параметрів',
   'palette.codeGeneratorOptionsPanel': 'Генератор коду: Панель параметрів',
   'palette.groupSelectedTables': 'Згрупувати виділені таблиці',
+  'palette.keywords.deriveColumn': 'стовпець',
+  'palette.keywords.deriveTable': 'таблиця',
+  'palette.keywords.deriveSelection': 'виділені таблиці',
+  'palette.keywords.deriveDocument': 'весь документ',
   'palette.keywords.schemaSqlStatements':
     'створити якщо не існує видалити замінити',
   'palette.keywords.schemaSqlHeader': 'use база даних search_path',

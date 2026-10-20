@@ -20,7 +20,7 @@
 | --- | --- |
 | `QuickSearch.tsx` | The palette: `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount |
 | `paletteList.ts` | `PALETTE_ROW_HEIGHT` (45, which the row style matches), `PALETTE_LIST_MAX_HEIGHT` (400) and `paletteListHeight` |
-| `actions.tsx` | `createScopeActions` (the top level), `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, `createPreferenceActions`, and the table rows, which jump through `goToErdTarget` |
+| `actions.tsx` | `createScopeActions` (the top level), `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, `createPreferenceActions`, `createRederiveActions`, and the table rows, which jump through `goToErdTarget` |
 | `scopedActions.tsx` | `scopeBase`, `createPrefixActions`, `createFieldActions` and the rows it builds as they are drawn (`lazyMatchAction`), `rankTableActions` |
 | `paletteQuery.ts` | The prefix grammar and `WIDE_PREFIXES` |
 | `hangul.ts` | The Hangul letter matching and ranking, `clearHangulForms`, `hitRange` |
@@ -125,6 +125,7 @@
 - The locale picker and the Settings page (`src/components/settings/settingsPage.ts`): `src/i18n/AGENTS.md`.
 - Find and Replace, the Explorer's search its row opens, and its matcher: `src/components/explorer/AGENTS.md`.
 - The palette's New Table Group and Group Selected Tables commands: `src/components/erd/AGENTS.md`.
+- The palette's Name View and its four Derive Physical Names Again rows, each shown only while it has something to reach: `src/components/erd/AGENTS.md`, Name views.
 - The palette's Import and Import and Add commands: `src/utils/AGENTS.md`.
 
 ## Testing Requirements

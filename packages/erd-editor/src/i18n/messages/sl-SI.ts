@@ -289,6 +289,10 @@ export const slSI = {
   'palette.schemaSqlOptionsPanel': 'Shema SQL: Plošča z možnostmi',
   'palette.codeGeneratorOptionsPanel': 'Generator kode: Plošča z možnostmi',
   'palette.groupSelectedTables': 'Združi izbrane tabele v skupino',
+  'palette.keywords.deriveColumn': 'stolpec',
+  'palette.keywords.deriveTable': 'tabela',
+  'palette.keywords.deriveSelection': 'izbrane tabele',
+  'palette.keywords.deriveDocument': 'celoten dokument',
   'palette.keywords.schemaSqlStatements':
     'ustvari če ne obstaja izbriši zamenjaj',
   'palette.keywords.schemaSqlHeader': 'use zbirka podatkov search_path',

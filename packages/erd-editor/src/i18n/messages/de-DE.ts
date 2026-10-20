@@ -287,6 +287,10 @@ export const deDE = {
   'palette.schemaSqlOptionsPanel': 'Schema SQL: Optionsbereich',
   'palette.codeGeneratorOptionsPanel': 'Codegenerator: Optionsbereich',
   'palette.groupSelectedTables': 'Ausgewählte Tabellen gruppieren',
+  'palette.keywords.deriveColumn': 'Spalte',
+  'palette.keywords.deriveTable': 'Tabelle',
+  'palette.keywords.deriveSelection': 'ausgewählte Tabellen',
+  'palette.keywords.deriveDocument': 'ganzes Dokument',
   'palette.keywords.schemaSqlStatements':
     'erstellen falls nicht vorhanden löschen ersetzen',
   'palette.keywords.schemaSqlHeader': 'use datenbank search_path',

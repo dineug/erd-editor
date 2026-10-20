@@ -292,6 +292,10 @@ export const plPL = {
   'palette.schemaSqlOptionsPanel': 'Schemat SQL: Panel opcji',
   'palette.codeGeneratorOptionsPanel': 'Generator kodu: Panel opcji',
   'palette.groupSelectedTables': 'Grupuj zaznaczone tabele',
+  'palette.keywords.deriveColumn': 'kolumna',
+  'palette.keywords.deriveTable': 'tabela',
+  'palette.keywords.deriveSelection': 'zaznaczone tabele',
+  'palette.keywords.deriveDocument': 'cały dokument',
   'palette.keywords.schemaSqlStatements':
     'utwórz jeśli nie istnieje usuń zastąp',
   'palette.keywords.schemaSqlHeader': 'use baza danych search_path',

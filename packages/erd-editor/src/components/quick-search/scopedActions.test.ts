@@ -120,6 +120,7 @@ const addColumns = (
 const ERD_COMMANDS = [
   'Tab',
   'Name View',
+  'Derive Physical Names Again',
   'Database',
   'Import',
   'Import and Add',

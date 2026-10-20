@@ -117,10 +117,10 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 74 style modules', () => {
+  it('loads 75 style modules', () => {
     // A style module added or removed is meant to move this number, which is
     // why it is pinned rather than derived.
-    expect(modulePaths).toHaveLength(74);
+    expect(modulePaths).toHaveLength(75);
   });
 
   it('adopts 617 rules, none of them a duplicate', () => {

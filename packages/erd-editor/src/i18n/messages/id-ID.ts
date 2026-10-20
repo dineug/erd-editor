@@ -276,6 +276,10 @@ export const idID = {
   'palette.schemaSqlOptionsPanel': 'Skema SQL: Panel opsi',
   'palette.codeGeneratorOptionsPanel': 'Generator kode: Panel opsi',
   'palette.groupSelectedTables': 'Kelompokkan tabel yang dipilih',
+  'palette.keywords.deriveColumn': 'kolom',
+  'palette.keywords.deriveTable': 'tabel',
+  'palette.keywords.deriveSelection': 'tabel yang dipilih',
+  'palette.keywords.deriveDocument': 'seluruh dokumen',
   'palette.keywords.schemaSqlStatements': 'buat jika belum ada hapus ganti',
   'palette.keywords.schemaSqlHeader': 'use database search_path',
   'palette.keywords.schemaSqlOptionsPanel':

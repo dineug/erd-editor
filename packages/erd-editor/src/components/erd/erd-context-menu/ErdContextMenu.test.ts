@@ -47,6 +47,7 @@ import {
   Show,
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeOpenMapAction,
   drawStartRelationshipAction,
@@ -73,9 +74,13 @@ import {
   addTableAction,
   changeTableColorAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
+  changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnLogicalNameAction,
+  changeColumnNameAction,
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -198,6 +203,57 @@ async function openSubMenu(item: HTMLElement): Promise<HTMLElement> {
 async function click(item: HTMLElement, init: MouseEventInit = {}) {
   item.dispatchEvent(new MouseEvent('click', { bubbles: true, ...init }));
   await flush();
+}
+
+/**
+ * Two words, then a table per id given whose name and two columns' names were
+ * typed by hand, under logical names the words spell.
+ */
+function seedNamedTables(...ids: string[]) {
+  app.store.dispatchSync(
+    addDictionaryAction({
+      kind: 'word',
+      id: 'word-member',
+      values: { name: 'Member', abbreviation: 'MBR' },
+    }),
+    addDictionaryAction({
+      kind: 'word',
+      id: 'word-name',
+      values: { name: 'Name', abbreviation: 'NM' },
+    })
+  );
+  ids.forEach((id, index) => {
+    const columns: Array<[columnId: string, logicalName: string]> = [
+      [`${id}-member-name`, 'Member Name'],
+      [`${id}-name`, 'Name'],
+    ];
+    app.store.dispatchSync(
+      addTableAction({ id, ui: { x: index * 400, y: 0, zIndex: index + 1 } }),
+      changeTableNameAction({ id, value: `${id}_typed` }),
+      changeTableLogicalNameAction({ id, value: 'Member' }),
+      ...columns.flatMap(([columnId, logicalName]) => [
+        addColumnAction({ id: columnId, tableId: id }),
+        changeColumnNameAction({ tableId: id, id: columnId, value: 'typed' }),
+        changeColumnLogicalNameAction({
+          tableId: id,
+          id: columnId,
+          value: logicalName,
+        }),
+      ])
+    );
+  });
+}
+
+/** A table's name, then its columns' names in order. */
+function namesOf(tableId: string): string[] {
+  const { collections } = app.store.state;
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(tableId);
+  const columns = query(collections)
+    .collection('tableColumnEntities')
+    .selectByIds(table?.columnIds ?? []);
+  return [table?.name ?? '', ...columns.map(column => column.name)];
 }
 
 beforeEach(() => {
@@ -449,6 +505,35 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('derives every name of the document again after Name View, and closes', async () => {
+    seedNamedTables('a', 'b');
+    await mountMenu();
+
+    const labels = labelsOf(rootItems());
+    expect(labels[labels.indexOf('Name View') + 1]).toBe(
+      'Derive Physical Names Again'
+    );
+    const item = findItem(rootItems(), 'Derive Physical Names Again');
+    expect(iconNameOf(item)).toBe('refresh-cw');
+
+    await click(item);
+
+    expect(namesOf('a')).toEqual(['MBR', 'MBR_NM', 'NM']);
+    expect(namesOf('b')).toEqual(['MBR', 'MBR_NM', 'NM']);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no derivation of the document to a readonly editor, or while it lists no table', async () => {
+    await mountMenu();
+    expect(labelsOf(rootItems())).not.toContain('Derive Physical Names Again');
+    mounted?.unmount();
+
+    app = createTestAppContext({ getReadonly: () => true });
+    seedNamedTables('a');
+    await mountMenu();
+    expect(labelsOf(rootItems())).not.toContain('Derive Physical Names Again');
+  });
+
   it('requests a json import from the import submenu', async () => {
     await mountMenu();
 
@@ -602,6 +687,7 @@ describe('ErdContextMenu / table type', () => {
       'Primary KeyAlt + K',
       'Table PropertiesAlt + Space',
       'Focus on this tableAlt + F',
+      'Derive Physical Names Again',
       'Color',
       'DeleteDelete',
     ]);
@@ -849,6 +935,114 @@ describe('ErdContextMenu / table type', () => {
     });
   });
 
+  describe('Derive Physical Names Again', () => {
+    const select = (...ids: string[]) =>
+      app.store.dispatchSync(
+        selectAction(
+          Object.fromEntries(ids.map(id => [id, SelectType.table] as const))
+        )
+      );
+
+    it('derives the table, its name and every column, when raised off its rows', async () => {
+      seedNamedTables('a', 'b');
+      select('a');
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'a' });
+
+      const item = findItem(rootItems(), 'Derive Physical Names Again');
+      expect(iconNameOf(item)).toBe('refresh-cw');
+      await click(item);
+
+      expect(namesOf('a')).toEqual(['MBR', 'MBR_NM', 'NM']);
+      expect(namesOf('b')).toEqual(['b_typed', 'typed', 'typed']);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('derives the column alone, named in the singular, when raised over its row', async () => {
+      seedNamedTables('a');
+      select('a');
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: 'a',
+        columnId: 'a-name',
+      });
+
+      expect(labelsOf(rootItems())).not.toContain(
+        'Derive Physical Names Again'
+      );
+      await click(findItem(rootItems(), 'Derive Physical Name Again'));
+
+      expect(namesOf('a')).toEqual(['a_typed', 'typed', 'NM']);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('goes back to the table for a row its table no longer holds', async () => {
+      seedNamedTables('a');
+      app.store.dispatchSync(
+        removeColumnAction({ tableId: 'a', id: 'a-name' })
+      );
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: 'a',
+        columnId: 'a-name',
+      });
+
+      await click(findItem(rootItems(), 'Derive Physical Names Again'));
+
+      expect(namesOf('a')).toEqual(['MBR', 'MBR_NM']);
+    });
+
+    it('derives the selected tables it is one of, over a row too, the rest kept', async () => {
+      seedNamedTables('a', 'b', 'c');
+      select('a', 'b');
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: 'a',
+        columnId: 'a-name',
+      });
+
+      await click(findItem(rootItems(), 'Derive Physical Names Again'));
+
+      expect(namesOf('a')).toEqual(['MBR', 'MBR_NM', 'NM']);
+      expect(namesOf('b')).toEqual(['MBR', 'MBR_NM', 'NM']);
+      expect(namesOf('c')).toEqual(['c_typed', 'typed', 'typed']);
+    });
+
+    it('counts a memo or a table the document no longer lists out of the selection', async () => {
+      seedNamedTables('a', 'b');
+      app.store.dispatchSync(
+        addMemoAction({ id: 'memo-1', ui: { x: 0, y: 400, zIndex: 9 } }),
+        selectAction({
+          a: SelectType.table,
+          ghost: SelectType.table,
+          'memo-1': SelectType.memo,
+        })
+      );
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: 'a',
+        columnId: 'a-name',
+      });
+
+      await click(findItem(rootItems(), 'Derive Physical Name Again'));
+
+      expect(namesOf('a')).toEqual(['a_typed', 'typed', 'NM']);
+    });
+
+    it('offers none to a readonly editor', async () => {
+      app = createTestAppContext({ getReadonly: () => true });
+      seedNamedTables('a');
+      await mountMenu({
+        type: ErdContextMenuType.table,
+        tableId: 'a',
+        columnId: 'a-name',
+      });
+
+      expect(
+        labelsOf(rootItems()).filter(label => label.startsWith('Derive'))
+      ).toEqual([]);
+    });
+  });
+
   it('toggles the focused column primary key', async () => {
     seedTable();
     focusColumn();
@@ -1078,6 +1272,7 @@ describe('ErdContextMenu / table type', () => {
         'Primary KeyAlt + K',
         'Table PropertiesAlt + Space',
         'Focus on this tableAlt + F',
+        'Derive Physical Names Again',
         'Color',
         'Remove color',
         'Group selected tablesTG',
@@ -1660,6 +1855,7 @@ describe('ErdContextMenu / table groups', () => {
         'Primary KeyAlt + K',
         'Table PropertiesAlt + Space',
         'Focus on this tableAlt + F',
+        'Derive Physical Names Again',
         'Color',
         'Group selected tablesTG',
         'DeleteDelete',
@@ -2037,6 +2233,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Primary Key on selected columnsAlt + K',
       'ko:Table PropertiesAlt + Space',
       'ko:Focus on this tableAlt + F',
+      'ko:Derive Physical Name Again',
       'ko:Color',
       'ko:Group selected tablesTG',
       'ko:Delete columnsDelete',
@@ -2065,6 +2262,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Primary KeyAlt + K',
       'ko:Table PropertiesAlt + Space',
       'ko:Focus on selected tablesAlt + F',
+      'ko:Derive Physical Names Again',
       'ko:Color',
       'ko:Remove color',
       'ko:Group selected tablesTG',
