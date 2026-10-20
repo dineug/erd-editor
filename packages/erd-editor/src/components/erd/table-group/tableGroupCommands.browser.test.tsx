@@ -888,8 +888,7 @@ describe('the name editor', () => {
     await doubleClickTitle(editor);
 
     const cell = nameInputOf(editor)!.parentElement!;
-    expect(cell.style.getPropertyValue('--active')).toBe('#ffffff');
-    expect(cell.style.getPropertyValue('--placeholder')).toBe('#ffffff');
+    expect(cell.style.getPropertyValue('--cell-text-color')).toBe('#ffffff');
     expect(getComputedStyle(nameInputOf(editor)!).color).toBe(
       'rgb(255, 255, 255)'
     );

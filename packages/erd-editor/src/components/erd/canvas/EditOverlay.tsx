@@ -560,8 +560,8 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
         outline: 'none',
         'box-sizing': 'border-box',
         'background-color': 'transparent',
-        color: 'var(--active)',
-        'caret-color': 'var(--active)',
+        color: 'var(--cell-text-color, var(--active))',
+        'caret-color': 'var(--cell-text-color, var(--active))',
         'font-family': SCENE_FONT_FAMILY,
         'font-size': `${SCENE_FONT_SIZE}px`,
         'font-weight': TABLE_GROUP_TITLE_FONT_WEIGHT,
@@ -730,6 +730,7 @@ const EditOverlay: FC = (_, ctx) => {
               class={[
                 'edit-overlay-cell',
                 item.kind === 'cell' ? styles.cell : null,
+                item.kind === 'cell' && item.textColor ? styles.tinted : null,
               ]}
               style={{
                 position: 'absolute',
@@ -746,13 +747,10 @@ const EditOverlay: FC = (_, ctx) => {
                       '--cell-text-height': `${getCellTextHeight()}px`,
                     }
                   : {}),
-                // The input reads these two for its value and its placeholder,
-                // so a tinted header or a colored group keeps its text color.
+                // A tinted header or a colored group keeps its text color in
+                // its input alone, not in a list the input opens.
                 ...(item.kind !== 'memo' && item.textColor
-                  ? {
-                      '--active': item.textColor,
-                      '--placeholder': item.textColor,
-                    }
+                  ? { '--cell-text-color': item.textColor }
                   : {}),
               }}
             >

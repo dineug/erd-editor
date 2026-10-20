@@ -302,7 +302,7 @@
   - It runs from `TABLE_GROUP_NAME_X` (past the icon) to a header icon gap short of the remove button, the box the bar's name takes.
   - It takes the bar's font and weight, in the box konva centres the name in. That box is `getTableGroupNameBox` (`canvas/table-group/titleLayout.ts`), a cell's text height on a whole pixel. So the baselines meet.
   - `common.unnamed` is its placeholder.
-  - A colored bar's text color goes to `--active` and `--placeholder` on its cell, as a tinted header's does.
+  - A colored bar's text color goes to `--cell-text-color` on its cell, which its input reads before `--active`. A tinted header's goes there too, and `EditOverlay.styles.ts`'s `tinted` hands it to the cell's input alone as `--active` and `--placeholder`, so the term list a header's logical name opens keeps the theme's text on its own background.
 - **The name editor writes once.** Enter or a blur commits a changed name as one `tableGroup.changeName`, one undo entry. A name left as it was writes nothing. Escape raises a flag before the stop branch's focus change blurs the input, so that press closes it writing nothing.
 - **The name is set once, not bound.** It goes in as the editor opens, not as a binding. So a peer's rename leaves what is being typed.
 

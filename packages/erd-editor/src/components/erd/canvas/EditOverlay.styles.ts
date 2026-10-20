@@ -14,3 +14,15 @@ export const cell = css`
     vertical-align: top;
   }
 `;
+
+/**
+ * A tinted header's text color, on the input alone: the term list a logical
+ * name opens under it paints the table's background, so its text and keys
+ * keep the theme's colors, which read there.
+ */
+export const tinted = css`
+  & .edit-input {
+    --active: var(--cell-text-color);
+    --placeholder: var(--cell-text-color);
+  }
+`;

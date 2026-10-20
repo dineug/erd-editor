@@ -38,6 +38,8 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
+import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
+import * as kbdStyles from '@/components/primitives/kbd/Kbd.styles';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
 import * as logicalNameStyles from '@/components/table-view/column/column-logical-name/ColumnLogicalName.styles';
@@ -112,6 +114,14 @@ import {
   getTableRect,
   getTableWidths,
 } from '@/konva/scene/metrics';
+import {
+  AccentColor,
+  Appearance,
+  createTheme,
+  GrayColor,
+} from '@/themes/radix-ui-theme';
+import { themeToTokensString } from '@/themes/tokens';
+import { contrastRatio, relativeLuminance } from '@/utils/contrastText';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { focusEvent } from '@/utils/internalEvents';
 
@@ -587,13 +597,18 @@ describe('the editing overlay', () => {
     const header = await tinted();
     await editTableComment(header);
     const cell = cellOf(header.mounted);
-    expect(cell.style.getPropertyValue('--active')).toBe('#ffffff');
-    expect(cell.style.getPropertyValue('--placeholder')).toBe('#ffffff');
+    expect(cell.style.getPropertyValue('--cell-text-color')).toBe('#ffffff');
+    expect(cell.classList.contains(String(overlayStyles.tinted))).toBe(true);
 
     const row = await tinted();
     await editColumnName(row);
     expect(inputOf(row.mounted)).toBeTruthy();
-    expect(cellOf(row.mounted).style.getPropertyValue('--active')).toBe('');
+    expect(
+      cellOf(row.mounted).style.getPropertyValue('--cell-text-color')
+    ).toBe('');
+    expect(
+      cellOf(row.mounted).classList.contains(String(overlayStyles.tinted))
+    ).toBe(false);
   });
 
   it('places the editor on the header cell it replaces', async () => {
@@ -2127,8 +2142,10 @@ describe('the table group name editor', () => {
     expect(input.style.width).toBe(`${nameBox.width}px`);
     expect(input.style.height).toBe(`${getTableGroupNameBox().height}px`);
     expect(input.style.fontWeight).toBe('bold');
-    // An uncolored bar keeps the theme's text, so the cell sets neither.
-    expect(cellOf(fixture.mounted).style.getPropertyValue('--active')).toBe('');
+    // An uncolored bar keeps the theme's text, so the cell sets no color.
+    expect(
+      cellOf(fixture.mounted).style.getPropertyValue('--cell-text-color')
+    ).toBe('');
   });
 
   it('writes nothing for an Enter the IME still holds, and the name once it is done', async () => {
@@ -2264,5 +2281,113 @@ describe('the overlay under a view source', () => {
       5
     );
     expect(transform.scale).toBe(1);
+  });
+});
+
+describe('the term list over a tinted header', () => {
+  /** A light editor's scene with its real tokens, a table of a dark group in the view of both names. */
+  async function setupTinted(): Promise<Fixture> {
+    const $host = document.createElement('div');
+    document.body.append($host);
+    const shadow = $host.attachShadow({ mode: 'open' });
+    addCSSHost(shadow);
+
+    const theme = createTheme({
+      appearance: Appearance.light,
+      grayColor: GrayColor.slate,
+      accentColor: AccentColor.indigo,
+    });
+    const tokens = document.createElement('style');
+    tokens.textContent = `:host {\n${themeToTokensString(theme)}\n}`;
+    const globals = document.createElement('div');
+    const container = document.createElement('div');
+    const $root = document.createElement('div');
+    shadow.append(tokens, globals, container, $root);
+
+    const root = createRef<HTMLDivElement>($root);
+    const canvas = createRef<HTMLDivElement>();
+    const app = createTestAppContext();
+    // oxlint-disable-next-line react-hooks/rules-of-hooks
+    const provider = useProvider(container as any, appContext, app);
+    // oxlint-disable-next-line react-hooks/rules-of-hooks
+    const themeProvider = useProvider(container as any, themeContext, theme);
+    render(globals, <GlobalStyles />);
+    render(container, <Canvas root={root} canvas={canvas} />);
+
+    const { store } = app;
+    store.dispatchSync(addTableAction$());
+    const tableId = store.state.doc.tableIds[0];
+    store.dispatchSync(addColumnAction$(tableId));
+    const columnId =
+      store.state.collections.tableEntities[tableId].columnIds[0];
+    store.dispatchSync(
+      toNameViewModeAction(store.state, NameViewMode.both, false),
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no', physicalName: 'mbr_no' },
+      }),
+      addTableGroupAction({
+        id: 'g1',
+        color: '#1e3a8a',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: tableId, value: 'g1' })
+    );
+    await flush();
+    await whenDrawn();
+
+    const mounted: Mounted = {
+      container,
+      app,
+      unmount: () => {
+        render(container, null);
+        render(globals, null);
+      },
+    };
+    teardowns.push(() => {
+      mounted.unmount();
+      provider.destroy();
+      themeProvider.destroy();
+      $host.remove();
+    });
+
+    return { app, mounted, tableId, columnId };
+  }
+
+  const contrast = (a: string, b: string) =>
+    contrastRatio(relativeLuminance(a) ?? 0, relativeLuminance(b) ?? 0);
+
+  it("keeps the header's text color on the input and the theme's on the list it opens", async () => {
+    const fixture = await setupTinted();
+    fixture.app.store.dispatchSync(
+      focusTableAction({
+        tableId: fixture.tableId,
+        focusType: FocusType.tableLogicalName,
+      }),
+      editTableAction()
+    );
+    await flush();
+    await userEvent.keyboard('mem');
+    await flush();
+    await userEvent.keyboard('{ArrowDown}');
+    await flush();
+
+    const cell = cellOf(fixture.mounted);
+    const row = cell.querySelector(
+      `.${logicalNameStyles.hintItem}.selected`
+    ) as HTMLElement;
+    const lit = row.querySelector(
+      `.${highlightStyles.highlighted}`
+    ) as HTMLElement;
+    const badge = row.querySelector(`.${kbdStyles.mini}`) as HTMLElement;
+    const under = getComputedStyle(row).backgroundColor;
+
+    expect(getComputedStyle(inputOf(fixture.mounted)).color).toBe(
+      'rgb(255, 255, 255)'
+    );
+    expect(lit.textContent).toBe('Mem');
+    expect(contrast(getComputedStyle(lit).color, under)).toBeGreaterThan(4.5);
+    expect(contrast(getComputedStyle(badge).color, under)).toBeGreaterThan(4.5);
   });
 });
