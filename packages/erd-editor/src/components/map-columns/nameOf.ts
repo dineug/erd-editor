@@ -8,9 +8,9 @@ import type { I18n } from '@/i18n/translate';
 type ViewSettings = Pick<RootState['settings'], 'nameViewMode'>;
 
 /**
- * A table's or column's name as Map Columns and the draw-target buttons write
- * it: the one the name view shows, the name after the logical name in the
- * view of both, and unnamed where it shows none.
+ * A table's or column's name as Map Columns, the draw-target buttons and the
+ * check sheet write it: the one the name view shows, the name after the
+ * logical name in the view of both, and unnamed where it shows none.
  */
 export function nameOf(
   entity: { name: string; logicalName: string } | undefined,

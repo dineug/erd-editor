@@ -3,6 +3,7 @@ import type { GridColumn } from '@dineug/grid';
 
 import { toSearchText } from '@/components/dictionary/sheets';
 import type { ErdTarget } from '@/components/erd/goToErdTarget';
+import { nameOf } from '@/components/map-columns/nameOf';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import { selectDictionaryRow } from '@/engine/modules/dictionary/atom.actions';
 import {
@@ -64,19 +65,28 @@ export function checkSheetColumns(
   }));
 }
 
-/** A table by its name, a column as its table's name and its own joined by a dot, a dictionary row by its name. */
-function targetText(state: RootState, { target }: DictionaryCheck): string {
+/**
+ * A table by the names its view shows, a column as its table's and its own
+ * joined by a dot, unnamed where the view shows none, nothing for an entity
+ * the document no longer holds; a dictionary row by its name.
+ */
+function targetText(
+  state: RootState,
+  { target }: DictionaryCheck,
+  i18n: Pick<I18n, 't'>
+): string {
   const tables = query(state.collections).collection('tableEntities');
+  const named = (entity?: { name: string; logicalName: string }) =>
+    entity ? nameOf(entity, i18n, state.settings) : '';
 
   switch (target.kind) {
     case 'table':
-      return tables.selectById(target.id)?.name ?? '';
+      return named(tables.selectById(target.id));
     case 'column': {
       const column = query(state.collections)
         .collection('tableColumnEntities')
         .selectById(target.id);
-      const table = tables.selectById(target.tableId);
-      return `${table?.name ?? ''}.${column?.name ?? ''}`;
+      return `${named(tables.selectById(target.tableId))}.${named(column)}`;
     }
     case DictionaryKind.word:
     case DictionaryKind.term:
@@ -109,7 +119,7 @@ export function checkCellText(
     case CheckColumn.type:
       return i18n.t(CHECK_LABEL_KEY[check.code]);
     case CheckColumn.target:
-      return targetText(state, check);
+      return targetText(state, check, i18n);
     case CheckColumn.detail:
       return detailText(check, i18n);
     default:

@@ -8,6 +8,7 @@ import {
   checkRows,
   checkSheetColumns,
 } from '@/components/dictionary/checkSheet';
+import { NameViewMode } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   type DictionaryAddPayload,
@@ -16,6 +17,7 @@ import {
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import type { DictionaryCheck } from '@/engine/modules/dictionary/checks';
 import { FocusType } from '@/engine/modules/editor/state';
+import { changeNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableLogicalNameAction,
@@ -128,6 +130,57 @@ describe('checkRows', () => {
     );
     expect(checkCellText(store.state, check, 'target', i18n)).toBe('번호');
     expect(checkCellText(store.state, check, 'id', i18n)).toBe('');
+  });
+
+  it('names a table or a column as the name view does, unnamed where the view shows none', () => {
+    const store = seed();
+    const switchTo = (
+      value: (typeof NameViewMode)[keyof typeof NameViewMode]
+    ) =>
+      store.dispatchSync(
+        changeNameViewModeAction({
+          value,
+          shared: false,
+          editorId: store.state.editor.id,
+        })
+      );
+    const targets = () =>
+      cells(store, checkRows(store.state))
+        .slice(6)
+        .map(([, target]) => target);
+
+    switchTo(NameViewMode.logical);
+    expect(targets()).toEqual(['멤버', '멤버.회원번호']);
+
+    switchTo(NameViewMode.both);
+    expect(targets()).toEqual([
+      '멤버 (member)',
+      '멤버 (member).회원번호 (mbr_no)',
+    ]);
+
+    store.dispatchSync(
+      changeColumnNameAction({ id: 'c1', tableId: 'member', value: '' }),
+      changeColumnLogicalNameAction({ id: 'c1', tableId: 'member', value: '' })
+    );
+    switchTo(NameViewMode.physical);
+    store.dispatchSync(
+      addColumnAction({ id: 'c2', tableId: 'member' }),
+      changeColumnLogicalNameAction({
+        id: 'c2',
+        tableId: 'member',
+        value: '회원주소',
+      })
+    );
+    expect(
+      cells(store, checkRows(store.state, '주소')).map(([, target]) => target)
+    ).toEqual(['member.unnamed']);
+
+    switchTo(NameViewMode.logical);
+    expect(
+      cells(store, checkRows(store.state, '회원주소')).map(
+        ([, target]) => target
+      )
+    ).toEqual(['멤버.회원주소']);
   });
 
   it('shows nothing of a target the document no longer holds', () => {

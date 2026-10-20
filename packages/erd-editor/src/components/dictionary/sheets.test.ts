@@ -16,6 +16,7 @@ import {
   sheetRowIds,
   toSearchText,
 } from '@/components/dictionary/sheets';
+import { LockSettingType, NameViewMode } from '@/constants/schema';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import {
   addDictionaryAction,
@@ -28,7 +29,11 @@ import {
   initialLoadJsonAction,
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeLockSettingsAction,
+  changeNameViewModeAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   moveTableAction,
@@ -435,6 +440,27 @@ describe('bumpedSheets', () => {
         word('w', { name: 'a' }),
       ])
     ).toEqual(ALL);
+  });
+
+  it('raises the checks alone for a name view switch or a lock, whose targets follow the view', () => {
+    expect(
+      bumpedSheets([
+        changeNameViewModeAction({
+          value: NameViewMode.logical,
+          shared: true,
+          editorId: 'e',
+        }),
+      ])
+    ).toEqual(['check']);
+    expect(
+      bumpedSheets([
+        changeLockSettingsAction({
+          lockSettingType: LockSettingType.unlockNameViewMode,
+          value: false,
+          values: { nameViewMode: NameViewMode.both },
+        }),
+      ])
+    ).toEqual(['check']);
   });
 
   it('raises nothing for a batch that writes neither', () => {

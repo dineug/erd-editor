@@ -20,6 +20,7 @@ import {
 } from '@/engine/modules/dictionary/dictionaryIndex';
 import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
+import { ActionType as SettingsActionType } from '@/engine/modules/settings/actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import { ActionType as ColumnActionType } from '@/engine/modules/table-column/actions';
 import type { RootState } from '@/engine/state';
@@ -260,15 +261,18 @@ const isReload = arrayHas<string>([
 
 const isDictionaryWrite = arrayHas<string>(Object.values(DictionaryActionType));
 
+/** A table's or a column's write, or a switch of the name view the check targets follow. */
 const isSchemaWrite = arrayHas<string>([
   ...Object.values(TableActionType),
   ...Object.values(ColumnActionType),
+  SettingsActionType.changeNameViewMode,
+  SettingsActionType.changeLockSettings,
 ]);
 
 /**
- * The sheets whose version a batch raises. A dictionary's write or a load
- * raises all four, since a term shows its domain's name and the checks read
- * every dictionary; a table's or a column's write raises the checks alone.
+ * The sheets a batch raises: all four for a dictionary's write or a load,
+ * since a term shows its domain's name and the checks read every dictionary;
+ * the checks alone for a table's or a column's write or a name view switch.
  */
 export function bumpedSheets(
   actions: ReadonlyArray<AnyAction>
