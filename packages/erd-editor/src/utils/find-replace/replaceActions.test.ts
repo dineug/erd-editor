@@ -8,16 +8,20 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import { FIND_SEED, seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, RelationshipType } from '@/constants/schema';
 import { ChangeActionTypes, HistoryActionTypes } from '@/engine/actions';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
+import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeTableLogicalNameAction,
   changeTableNameDerivedAction,
 } from '@/engine/modules/table/atom.actions';
 import {
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameDerivedAction,
+  changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 import {
@@ -465,6 +469,118 @@ describe('toReplaceActions', () => {
       logicalName: 'users',
       name: 'users',
       nameDerived: true,
+    });
+  });
+
+  describe('over a key and its foreign key under the data type sync', () => {
+    const KEY = { id: 'users_id', tableId: 'users' };
+    const FOREIGN_KEY = { id: 'orders_user_id', tableId: 'orders' };
+    const column = (id: string) =>
+      app.store.state.collections.tableColumnEntities[id];
+    const typeAndDomain = (id: string) => [
+      column(id).dataType,
+      column(id).domainId,
+    ];
+
+    const linkedAndNamed = (at: typeof KEY, logicalName: string) => [
+      changeColumnDataTypeAction({ ...at, value: 'VARCHAR(10)' }),
+      changeColumnDomainAction({ ...at, value: 'd-old' }),
+      changeColumnLogicalNameAction({ ...at, value: logicalName }),
+      changeColumnNameDerivedAction({ ...at, value: true }),
+    ];
+
+    /** Links both columns to a VARCHAR domain and names them, derived, before the replace. */
+    function seedPair(keyName: string, foreignKeyName: string) {
+      app.store.dispatchSync(
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd-old',
+          values: { name: 'Code', dataType: 'VARCHAR(10)' },
+        }),
+        changeColumnPrimaryKeyAction({ ...KEY, value: true }),
+        addRelationshipAction({
+          id: 'r-orders-users',
+          relationshipType: RelationshipType.ZeroN,
+          start: { tableId: KEY.tableId, columnIds: [KEY.id] },
+          end: { tableId: FOREIGN_KEY.tableId, columnIds: [FOREIGN_KEY.id] },
+        }),
+        ...linkedAndNamed(KEY, keyName),
+        ...linkedAndNamed(FOREIGN_KEY, foreignKeyName)
+      );
+      app.store.resetHistory();
+    }
+
+    const replaceAll = () => {
+      const matcher = matcherOf('User');
+      app.store.dispatchSync(
+        toReplaceActions(
+          findMatches(app.store.state, matcher, [FindField.logicalName]),
+          matcher,
+          'Member'
+        ).actions
+      );
+    };
+
+    it('links both to the domain their terms share, each holding its type', () => {
+      expect(app.store.state.settings.relationshipDataTypeSync).toBe(true);
+      app.store.dispatchSync(
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd-new',
+          values: { name: 'Number', dataType: 'INT' },
+        }),
+        addDictionaryAction({
+          kind: 'term',
+          id: 't-member-key',
+          values: {
+            name: 'Member Key',
+            physicalName: 'member_key',
+            domainId: 'd-new',
+          },
+        })
+      );
+      seedPair('User Key', 'User Key');
+
+      replaceAll();
+
+      expect(typeAndDomain(KEY.id)).toEqual(['INT', 'd-new']);
+      expect(typeAndDomain(FOREIGN_KEY.id)).toEqual(['INT', 'd-new']);
+
+      app.store.undo();
+
+      expect(typeAndDomain(KEY.id)).toEqual(['VARCHAR(10)', 'd-old']);
+      expect(typeAndDomain(FOREIGN_KEY.id)).toEqual(['VARCHAR(10)', 'd-old']);
+    });
+
+    it("leaves each linking its own term's domain at that domain's type, where the two differ", () => {
+      app.store.dispatchSync(
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd-int',
+          values: { name: 'Number', dataType: 'INT' },
+        }),
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd-bigint',
+          values: { name: 'Big number', dataType: 'BIGINT' },
+        }),
+        addDictionaryAction({
+          kind: 'term',
+          id: 't-member-key',
+          values: { name: 'Member Key', domainId: 'd-int' },
+        }),
+        addDictionaryAction({
+          kind: 'term',
+          id: 't-member-owner',
+          values: { name: 'Member Owner', domainId: 'd-bigint' },
+        })
+      );
+      seedPair('User Key', 'User Owner');
+
+      replaceAll();
+
+      expect(typeAndDomain(KEY.id)).toEqual(['INT', 'd-int']);
+      expect(typeAndDomain(FOREIGN_KEY.id)).toEqual(['BIGINT', 'd-bigint']);
     });
   });
 

@@ -118,27 +118,41 @@ export const importDictionaryAction$ = <K extends DictionaryKind>(
     if (actions.length) yield actions;
   };
 
-/** The column writes of a logical name and the domain it links, in one list. */
+/** A column's new logical name, or null to derive from the one it holds. */
+type ColumnLogicalName = {
+  tableId: string;
+  columnId: string;
+  logicalName: string | null;
+};
+
+/**
+ * The column writes of each logical name, then those of every domain they
+ * link, read once over all the links, so a key and its foreign key renamed
+ * together each settle on their own domain's type.
+ */
 function columnNameActions(
   state: RootState,
-  tableId: string,
-  columnId: string,
-  logicalName: string | null
+  names: ReadonlyArray<ColumnLogicalName>
 ): AnyAction[] {
-  const column = columnOf(state, columnId);
-  if (!column) return [];
+  const actions: AnyAction[] = [];
+  const links: ChangeColumnValuePayload[] = [];
 
-  const value = logicalName ?? column.logicalName;
-  const actions: AnyAction[] =
-    logicalName !== null && logicalName !== column.logicalName
-      ? [changeColumnLogicalNameAction({ tableId, id: columnId, value })]
-      : [];
-  const writes = toColumnNameWrites(state, tableId, column, value);
+  for (const { tableId, columnId, logicalName } of names) {
+    const column = columnOf(state, columnId);
+    if (!column) continue;
 
-  actions.push(...writes.actions);
-  if (writes.link) {
-    actions.push(...toDomainTypeActions(state, { links: [writes.link] }));
+    const value = logicalName ?? column.logicalName;
+    if (logicalName !== null && logicalName !== column.logicalName) {
+      actions.push(
+        changeColumnLogicalNameAction({ tableId, id: columnId, value })
+      );
+    }
+    const writes = toColumnNameWrites(state, tableId, column, value);
+    actions.push(...writes.actions);
+    if (writes.link) links.push(writes.link);
   }
+
+  if (links.length) actions.push(...toDomainTypeActions(state, { links }));
   return actions;
 }
 
@@ -171,7 +185,29 @@ export const setColumnLogicalNameAction$ = (
   value: string
 ): GeneratorAction =>
   function* (state) {
-    const actions = columnNameActions(state, tableId, columnId, value);
+    const actions = columnNameActions(state, [
+      { tableId, columnId, logicalName: value },
+    ]);
+    if (actions.length) yield actions;
+  };
+
+/**
+ * The logical names of several columns and what the dictionaries derive of
+ * them in one dispatch, as Replace All writes them; the domains they link are
+ * read over all of them at once, which separate generators would not do.
+ */
+export const setColumnLogicalNamesAction$ = (
+  names: ReadonlyArray<{ tableId: string; columnId: string; value: string }>
+): GeneratorAction =>
+  function* (state) {
+    const actions = columnNameActions(
+      state,
+      names.map(({ tableId, columnId, value }) => ({
+        tableId,
+        columnId,
+        logicalName: value,
+      }))
+    );
     if (actions.length) yield actions;
   };
 
@@ -191,7 +227,9 @@ export const deriveColumnNameAction$ = (
   columnId: string
 ): GeneratorAction =>
   function* (state) {
-    const actions = columnNameActions(state, tableId, columnId, null);
+    const actions = columnNameActions(state, [
+      { tableId, columnId, logicalName: null },
+    ]);
     if (actions.length) yield actions;
   };
 

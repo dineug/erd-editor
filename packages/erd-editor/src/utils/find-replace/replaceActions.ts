@@ -2,6 +2,7 @@ import { CompositionAction } from '@dineug/r-html';
 
 import {
   setColumnLogicalNameAction$,
+  setColumnLogicalNamesAction$,
   setTableLogicalNameAction$,
 } from '@/engine/modules/dictionary/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
@@ -70,7 +71,13 @@ export function toReplaceActions(
   only?: FindMatch
 ): ReplaceActions {
   const actions: CompositionAction[] = [];
+  const columnLogicalNames: Array<{
+    tableId: string;
+    columnId: string;
+    value: string;
+  }> = [];
   const seen = new Set<number>();
+  let columnLogicalNamesAt = -1;
   let replaced = 0;
 
   for (const match of only ? [only] : matches) {
@@ -83,7 +90,28 @@ export function toReplaceActions(
       only?.start
     );
     replaced += changed;
-    value !== match.text && actions.push(toFieldAction(match, value));
+    if (value === match.text) continue;
+
+    if (match.field === FindField.logicalName && !isTableLogicalName(match)) {
+      if (columnLogicalNamesAt < 0) columnLogicalNamesAt = actions.length;
+      columnLogicalNames.push({
+        tableId: match.tableId,
+        columnId: match.id,
+        value,
+      });
+    } else {
+      actions.push(toFieldAction(match, value));
+    }
+  }
+
+  // The column logical names go as one generator where the first stood, ahead
+  // of every name written after it, so the domains they link are read at once.
+  if (columnLogicalNamesAt >= 0) {
+    actions.splice(
+      columnLogicalNamesAt,
+      0,
+      setColumnLogicalNamesAction$(columnLogicalNames)
+    );
   }
 
   return { actions, replaced };
