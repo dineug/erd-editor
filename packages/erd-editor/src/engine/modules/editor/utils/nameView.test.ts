@@ -32,6 +32,7 @@ import {
 import {
   changeLockSettingsAction,
   changeNameViewModeAction,
+  changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
@@ -448,6 +449,50 @@ describe('the focus a name view switch moves', () => {
       focusType: FocusType.tableComment,
       edit: true,
     });
+  });
+
+  it('moves the focus onto the cell that draws it once the Domain bit turns, as a switch does', () => {
+    const store = createTestStore();
+    const focusType = () => store.state.editor.focusTable?.focusType;
+    store.dispatchSync(
+      changeShowAction({
+        show: Show.columnDataType | Show.columnDomain,
+        value: true,
+      })
+    );
+    switchTo(store, NameViewMode.logical);
+    store.dispatchSync(
+      focusColumnAction({
+        tableId: 't1',
+        columnId: 'c1',
+        focusType: FocusType.columnDataType,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+    store.state.editor.focusTable!.edit = true;
+
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDomain, value: false })
+    );
+    expect(store.state.editor.focusTable).toMatchObject({
+      focusType: FocusType.columnDomain,
+      edit: false,
+    });
+    expect(getColumnFocusTypes(store.state.settings)).toContain(focusType());
+
+    // The domain's own cell back, the focus stays on the domain it stood on.
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDomain, value: true })
+    );
+    expect(focusType()).toBe(FocusType.columnDomain);
+
+    switchTo(store, NameViewMode.physical);
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDomain, value: false })
+    );
+    expect(focusType()).toBe(FocusType.columnDataType);
+    store.destroy();
   });
 
   it('reads a domain row the store lists, whatever the view', () => {

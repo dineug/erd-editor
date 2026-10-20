@@ -208,9 +208,9 @@ export function toShownFocusType(
 }
 
 /**
- * Moves the focus onto the cell that shows it once the name view changed,
- * the logical name's cell for the name's, and closes an editor it moves off.
- * A focus neither cell of its pair shows is left as a hidden show bit leaves it.
+ * Moves the focus onto the cell that shows it once the name view or the Domain
+ * bit changed, the logical name's cell for the name's, and closes an editor it
+ * moves off. A focus neither cell of its pair shows is left as a hidden bit leaves it.
  */
 export function keepFocusShown(state: RootState): void {
   const { focusTable } = state.editor;

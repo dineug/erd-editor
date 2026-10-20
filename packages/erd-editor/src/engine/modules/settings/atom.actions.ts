@@ -310,6 +310,9 @@ const changeShow: ReducerType<typeof ActionType.changeShow> = (
   settings.show = value ? settings.show | show : settings.show & ~show;
   if (value && bHas(show, Show.hideTableGroup)) releaseTableGroups(state);
   if (value && bHas(show, Show.hideMemo)) releaseMemos(state);
+  // The domain's own cell decides whether the logical view's type cell stands
+  // for the domain, so a focus there moves onto the cell that now draws it.
+  if (bHas(show, Show.columnDomain)) keepFocusShown(state);
 };
 
 export const changeDatabaseAction = createAction<
