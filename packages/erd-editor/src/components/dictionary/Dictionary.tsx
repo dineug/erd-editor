@@ -17,6 +17,7 @@ import {
   onUpdated,
   ref,
   repeat,
+  watch,
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
@@ -543,6 +544,13 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
         const asked = pending;
         pending = null;
         refresh(selectionAfter(asked));
+      }),
+      // The check sheet's search reads its cells in the language shown, which
+      // a switch changes in place without a batch.
+      watch(i18n.value).subscribe(name => {
+        if (name === 'locale' && session.sheet === DictionarySheet.check) {
+          refresh();
+        }
       })
     );
   });

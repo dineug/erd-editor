@@ -999,6 +999,26 @@ describe('the Dictionary tab', () => {
     expect(status(fixture)).toBe('0 rows');
   });
 
+  it('searches the check sheet again in the language a switch shows it in', async () => {
+    const fixture = await setup({
+      seed: [word('a', 'Member'), word('b', 'Member')],
+    });
+    const rowCount = (count: number) =>
+      fixture.i18n.t('dictionary.rowCount', { count });
+    await click(sheetButtons(fixture)[3]);
+    await userEvent.click(search(fixture));
+    await press('duplicate');
+    expect(status(fixture)).toBe('2 rows 1 selected');
+
+    Object.assign(fixture.i18n, createI18n('ko-KR', messagesOf('ko-KR')));
+    await drawn();
+    expect(status(fixture)).toBe(rowCount(0));
+
+    Object.assign(fixture.i18n, createI18n('en', messagesOf('en')));
+    await drawn();
+    expect(status(fixture)).toBe('2 rows 1 selected');
+  });
+
   it("lists the checks again after a table's or a column's edit, while the check sheet shows", async () => {
     const fixture = await setup({
       seed: [word('member', '회원'), ...memberTable('회원', '회원')],
