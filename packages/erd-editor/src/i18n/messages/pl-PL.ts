@@ -514,17 +514,18 @@ export const plPL = {
   'dictionary.toast.unknownFormat':
     'Nie udało się odczytać tego pliku jako słów, terminów ani domen',
   'dictionary.toast.duplicateNames': {
-    one: 'Nic nie zapisano: {count} nazwa już istnieje w tym arkuszu ({names})',
-    few: 'Nic nie zapisano: {count} nazwy już istnieją w tym arkuszu ({names})',
-    many: 'Nic nie zapisano: {count} nazw już istnieje w tym arkuszu ({names})',
+    one: 'Nic nie zapisano: {count} wiersz ma nazwę innego wiersza ({names})',
+    few: 'Nic nie zapisano: {count} wiersze mają nazwę innego wiersza ({names})',
+    many: 'Nic nie zapisano: {count} wierszy ma nazwę innego wiersza ({names})',
     other:
-      'Nic nie zapisano: {count} nazwy już istnieje w tym arkuszu ({names})',
+      'Nic nie zapisano: {count} wiersza ma nazwę innego wiersza ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nic nie zapisano: {count} nieznana nazwa domeny ({names})',
-    few: 'Nic nie zapisano: {count} nieznane nazwy domen ({names})',
-    many: 'Nic nie zapisano: {count} nieznanych nazw domen ({names})',
-    other: 'Nic nie zapisano: {count} nieznanej nazwy domeny ({names})',
+    one: 'Nic nie zapisano: {count} wiersz wskazuje nieznaną domenę ({names})',
+    few: 'Nic nie zapisano: {count} wiersze wskazują nieznaną domenę ({names})',
+    many: 'Nic nie zapisano: {count} wierszy wskazuje nieznaną domenę ({names})',
+    other:
+      'Nic nie zapisano: {count} wiersza wskazuje nieznaną domenę ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nic nie zapisano: wiersz został usunięty',
 } satisfies Messages;

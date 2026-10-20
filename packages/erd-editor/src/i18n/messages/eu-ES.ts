@@ -503,13 +503,14 @@ export const euES = {
   'dictionary.toast.unknownFormat':
     'Ezin izan da fitxategi hau hitz, termino edo domeinu gisa irakurri',
   'dictionary.toast.duplicateNames': {
-    one: 'Ez da ezer gorde: izen {count} badago dagoeneko orri honetan ({names})',
+    one: 'Ez da ezer gorde: errenkada {count} beste errenkada baten izenarekin dago ({names})',
     other:
-      'Ez da ezer gorde: {count} izen badaude dagoeneko orri honetan ({names})',
+      'Ez da ezer gorde: {count} errenkada beste errenkada baten izenarekin daude ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Ez da ezer gorde: domeinu-izen {count} ezezaguna da ({names})',
-    other: 'Ez da ezer gorde: {count} domeinu-izen ezezagunak dira ({names})',
+    one: 'Ez da ezer gorde: errenkada {count} domeinu ezezagun batekin dago ({names})',
+    other:
+      'Ez da ezer gorde: {count} errenkada domeinu ezezagun batekin daude ({names})',
   },
   'dictionary.toast.rowRemoved': 'Ez da ezer gorde: errenkada kendu da',
 } satisfies Messages;

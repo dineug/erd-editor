@@ -462,10 +462,10 @@ export const zhTW = {
   },
   'dictionary.toast.unknownFormat': '無法將此檔案讀取為詞彙、術語或定義域',
   'dictionary.toast.duplicateNames': {
-    other: '未儲存：此工作表中已有 {count} 個相同名稱（{names}）',
+    other: '未儲存：{count} 列的名稱與其他列重複（{names}）',
   },
   'dictionary.toast.unknownDomainNames': {
-    other: '未儲存：找不到 {count} 個定義域（{names}）',
+    other: '未儲存：{count} 列指定了未知的定義域（{names}）',
   },
   'dictionary.toast.rowRemoved': '未儲存：該列已被移除',
 } satisfies Messages;

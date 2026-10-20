@@ -513,16 +513,16 @@ export const esES = {
   'dictionary.toast.unknownFormat':
     'No se pudo leer este archivo como palabras, términos o dominios',
   'dictionary.toast.duplicateNames': {
-    one: 'No se ha guardado nada: {count} nombre ya existe en esta hoja ({names})',
-    many: 'No se ha guardado nada: {count} de nombres ya existen en esta hoja ({names})',
+    one: 'No se ha guardado nada: {count} fila comparte nombre con otra fila ({names})',
+    many: 'No se ha guardado nada: {count} de filas comparten nombre con otra fila ({names})',
     other:
-      'No se ha guardado nada: {count} nombres ya existen en esta hoja ({names})',
+      'No se ha guardado nada: {count} filas comparten nombre con otra fila ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'No se ha guardado nada: hay {count} nombre de dominio desconocido ({names})',
-    many: 'No se ha guardado nada: hay {count} de nombres de dominio desconocidos ({names})',
+    one: 'No se ha guardado nada: {count} fila indica un dominio desconocido ({names})',
+    many: 'No se ha guardado nada: {count} de filas indican un dominio desconocido ({names})',
     other:
-      'No se ha guardado nada: hay {count} nombres de dominio desconocidos ({names})',
+      'No se ha guardado nada: {count} filas indican un dominio desconocido ({names})',
   },
   'dictionary.toast.rowRemoved':
     'No se ha guardado nada: se ha eliminado la fila',

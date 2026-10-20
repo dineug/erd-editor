@@ -512,16 +512,16 @@ export const itIT = {
   'dictionary.toast.unknownFormat':
     'Impossibile leggere questo file come parole, termini o domini',
   'dictionary.toast.duplicateNames': {
-    one: 'Nessuna modifica salvata: {count} nome è già presente in questo foglio ({names})',
-    many: 'Nessuna modifica salvata: {count} nomi sono già presenti in questo foglio ({names})',
+    one: 'Nessuna modifica salvata: {count} riga ha lo stesso nome di un’altra riga ({names})',
+    many: 'Nessuna modifica salvata: {count} righe hanno lo stesso nome di un’altra riga ({names})',
     other:
-      'Nessuna modifica salvata: {count} nomi sono già presenti in questo foglio ({names})',
+      'Nessuna modifica salvata: {count} righe hanno lo stesso nome di un’altra riga ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nessuna modifica salvata: {count} nome di dominio è sconosciuto ({names})',
-    many: 'Nessuna modifica salvata: {count} nomi di dominio sono sconosciuti ({names})',
+    one: 'Nessuna modifica salvata: {count} riga indica un dominio sconosciuto ({names})',
+    many: 'Nessuna modifica salvata: {count} righe indicano un dominio sconosciuto ({names})',
     other:
-      'Nessuna modifica salvata: {count} nomi di dominio sono sconosciuti ({names})',
+      'Nessuna modifica salvata: {count} righe indicano un dominio sconosciuto ({names})',
   },
   'dictionary.toast.rowRemoved':
     'Nessuna modifica salvata: la riga è stata rimossa',

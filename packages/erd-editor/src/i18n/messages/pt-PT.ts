@@ -511,15 +511,16 @@ export const ptPT = {
   'dictionary.toast.unknownFormat':
     'Não foi possível ler este ficheiro como palavras, termos ou domínios',
   'dictionary.toast.duplicateNames': {
-    one: 'Nada foi guardado: {count} nome já existe nesta folha ({names})',
-    many: 'Nada foi guardado: {count} de nomes já existem nesta folha ({names})',
-    other: 'Nada foi guardado: {count} nomes já existem nesta folha ({names})',
+    one: 'Nada foi guardado: {count} linha tem o mesmo nome de outra linha ({names})',
+    many: 'Nada foi guardado: {count} de linhas têm o mesmo nome de outra linha ({names})',
+    other:
+      'Nada foi guardado: {count} linhas têm o mesmo nome de outra linha ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nada foi guardado: {count} nome de domínio é desconhecido ({names})',
-    many: 'Nada foi guardado: {count} de nomes de domínio são desconhecidos ({names})',
+    one: 'Nada foi guardado: {count} linha indica um domínio desconhecido ({names})',
+    many: 'Nada foi guardado: {count} de linhas indicam um domínio desconhecido ({names})',
     other:
-      'Nada foi guardado: {count} nomes de domínio são desconhecidos ({names})',
+      'Nada foi guardado: {count} linhas indicam um domínio desconhecido ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nada foi guardado: a linha foi removida',
 } satisfies Messages;

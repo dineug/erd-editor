@@ -495,13 +495,13 @@ export const svSE = {
   'dictionary.toast.unknownFormat':
     'Det gick inte att läsa filen som ord, termer eller domäner',
   'dictionary.toast.duplicateNames': {
-    one: 'Inget sparades: {count} namn finns redan i det här bladet ({names})',
+    one: 'Inget sparades: {count} rad har samma namn som en annan rad ({names})',
     other:
-      'Inget sparades: {count} namn finns redan i det här bladet ({names})',
+      'Inget sparades: {count} rader har samma namn som en annan rad ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Inget sparades: {count} domännamn är okänt ({names})',
-    other: 'Inget sparades: {count} domännamn är okända ({names})',
+    one: 'Inget sparades: {count} rad anger en okänd domän ({names})',
+    other: 'Inget sparades: {count} rader anger en okänd domän ({names})',
   },
   'dictionary.toast.rowRemoved': 'Inget sparades: raden togs bort',
 } satisfies Messages;

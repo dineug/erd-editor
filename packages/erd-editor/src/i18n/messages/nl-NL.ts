@@ -504,12 +504,14 @@ export const nlNL = {
   'dictionary.toast.unknownFormat':
     'Kan dit bestand niet lezen als woorden, termen of domeinen',
   'dictionary.toast.duplicateNames': {
-    one: 'Niets opgeslagen: {count} naam staat al in dit blad ({names})',
-    other: 'Niets opgeslagen: {count} namen staan al in dit blad ({names})',
+    one: 'Niets opgeslagen: {count} rij heeft dezelfde naam als een andere rij ({names})',
+    other:
+      'Niets opgeslagen: {count} rijen hebben dezelfde naam als een andere rij ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Niets opgeslagen: {count} domeinnaam is onbekend ({names})',
-    other: 'Niets opgeslagen: {count} domeinnamen zijn onbekend ({names})',
+    one: 'Niets opgeslagen: {count} rij noemt een onbekend domein ({names})',
+    other:
+      'Niets opgeslagen: {count} rijen noemen een onbekend domein ({names})',
   },
   'dictionary.toast.rowRemoved': 'Niets opgeslagen: de rij is verwijderd',
 } satisfies Messages;

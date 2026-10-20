@@ -493,13 +493,14 @@ export const trTR = {
   'dictionary.toast.unknownFormat':
     'Bu dosya sözcük, terim veya değer alanı olarak okunamadı',
   'dictionary.toast.duplicateNames': {
-    one: 'Hiçbir şey kaydedilmedi: {count} ad bu sayfada zaten var ({names})',
-    other: 'Hiçbir şey kaydedilmedi: {count} ad bu sayfada zaten var ({names})',
+    one: 'Hiçbir şey kaydedilmedi: {count} satırın adı başka bir satırınkiyle aynı ({names})',
+    other:
+      'Hiçbir şey kaydedilmedi: {count} satırın adı başka bir satırınkiyle aynı ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Hiçbir şey kaydedilmedi: {count} değer alanı adı bilinmiyor ({names})',
+    one: 'Hiçbir şey kaydedilmedi: {count} satır bilinmeyen bir değer alanını gösteriyor ({names})',
     other:
-      'Hiçbir şey kaydedilmedi: {count} değer alanı adı bilinmiyor ({names})',
+      'Hiçbir şey kaydedilmedi: {count} satır bilinmeyen bir değer alanını gösteriyor ({names})',
   },
   'dictionary.toast.rowRemoved': 'Hiçbir şey kaydedilmedi: satır kaldırıldı',
 } satisfies Messages;

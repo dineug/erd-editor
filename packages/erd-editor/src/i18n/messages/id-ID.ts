@@ -487,11 +487,11 @@ export const idID = {
     'Tidak dapat membaca file ini sebagai kata, istilah, atau domain',
   'dictionary.toast.duplicateNames': {
     other:
-      'Tidak ada yang disimpan: {count} nama sudah ada di lembar ini ({names})',
+      'Tidak ada yang disimpan: {count} baris memakai nama yang dipakai baris lain ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
     other:
-      'Tidak ada yang disimpan: {count} nama domain tidak dikenal ({names})',
+      'Tidak ada yang disimpan: {count} baris menyebut domain yang tidak dikenal ({names})',
   },
   'dictionary.toast.rowRemoved': 'Tidak ada yang disimpan: baris telah dihapus',
 } satisfies Messages;

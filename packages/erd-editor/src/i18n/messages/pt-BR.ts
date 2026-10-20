@@ -513,15 +513,16 @@ export const ptBR = {
   'dictionary.toast.unknownFormat':
     'Não foi possível ler este arquivo como palavras, termos ou domínios',
   'dictionary.toast.duplicateNames': {
-    one: 'Nada foi salvo: {count} nome já existe nesta planilha ({names})',
-    many: 'Nada foi salvo: {count} de nomes já existem nesta planilha ({names})',
-    other: 'Nada foi salvo: {count} nomes já existem nesta planilha ({names})',
+    one: 'Nada foi salvo: {count} linha tem o mesmo nome de outra linha ({names})',
+    many: 'Nada foi salvo: {count} de linhas têm o mesmo nome de outra linha ({names})',
+    other:
+      'Nada foi salvo: {count} linhas têm o mesmo nome de outra linha ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nada foi salvo: {count} nome de domínio é desconhecido ({names})',
-    many: 'Nada foi salvo: {count} de nomes de domínio são desconhecidos ({names})',
+    one: 'Nada foi salvo: {count} linha indica um domínio desconhecido ({names})',
+    many: 'Nada foi salvo: {count} de linhas indicam um domínio desconhecido ({names})',
     other:
-      'Nada foi salvo: {count} nomes de domínio são desconhecidos ({names})',
+      'Nada foi salvo: {count} linhas indicam um domínio desconhecido ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nada foi salvo: a linha foi removida',
 } satisfies Messages;

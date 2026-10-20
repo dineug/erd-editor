@@ -404,7 +404,7 @@ describe('commitDictionaryCells', () => {
       'dictionary.toast.duplicateNames:4:A\nB\nC',
     ]);
     expect(await toastText(sheet.toasts[0])).toBe(
-      'Nothing saved: 4 names are already in this sheet (A, B, C)'
+      'Nothing saved: 4 rows share a name with another row (A, B, C)'
     );
   });
 
@@ -417,13 +417,16 @@ describe('commitDictionaryCells', () => {
     expect(wordNames(sheet)).toEqual(['B', 'A']);
   });
 
-  it('names a duplicate once however many rows of the commit write it', () => {
+  it('names a duplicate once however many rows of the commit write it, a name no listed row holds included', async () => {
     const sheet = open(DictionaryKind.word, [word('a', 'A')]);
 
     expect(commit(sheet, paste([1, 'name', 'X'], [2, 'name', 'X']))).toBe(
       false
     );
     expect(toastKeys(sheet)).toEqual(['dictionary.toast.duplicateNames:2:X']);
+    expect(await toastText(sheet.toasts[0])).toBe(
+      'Nothing saved: 2 rows share a name with another row (X)'
+    );
   });
 
   describe("a term's domain", () => {
@@ -547,7 +550,21 @@ describe('commitDictionaryCells', () => {
         'dictionary.toast.unknownDomainNames:2:Nope\nGone',
       ]);
       expect(await toastText(sheet.toasts[1])).toBe(
-        'Nothing saved: 2 domain names are unknown (Nope, Gone)'
+        'Nothing saved: 2 rows name an unknown domain (Nope, Gone)'
+      );
+    });
+
+    it('counts the rows that name an unknown domain, however few names they share', async () => {
+      const sheet = open(DictionaryKind.term, DOMAINS);
+
+      expect(
+        commit(sheet, paste([0, 'domainId', 'X'], [1, 'domainId', 'X']))
+      ).toBe(false);
+      expect(toastKeys(sheet)).toEqual([
+        'dictionary.toast.unknownDomainNames:2:X',
+      ]);
+      expect(await toastText(sheet.toasts[0])).toBe(
+        'Nothing saved: 2 rows name an unknown domain (X)'
       );
     });
 

@@ -517,16 +517,16 @@ export const frFR = {
   'dictionary.toast.unknownFormat':
     'Impossible de lire ce fichier comme des mots, des termes ou des domaines',
   'dictionary.toast.duplicateNames': {
-    one: 'Rien n’a été enregistré : {count} nom figure déjà dans cette feuille ({names})',
-    many: 'Rien n’a été enregistré : {count} noms figurent déjà dans cette feuille ({names})',
+    one: 'Rien n’a été enregistré : {count} ligne porte le nom d’une autre ligne ({names})',
+    many: 'Rien n’a été enregistré : {count} lignes portent le nom d’une autre ligne ({names})',
     other:
-      'Rien n’a été enregistré : {count} noms figurent déjà dans cette feuille ({names})',
+      'Rien n’a été enregistré : {count} lignes portent le nom d’une autre ligne ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Rien n’a été enregistré : {count} nom de domaine est inconnu ({names})',
-    many: 'Rien n’a été enregistré : {count} noms de domaine sont inconnus ({names})',
+    one: 'Rien n’a été enregistré : {count} ligne indique un domaine inconnu ({names})',
+    many: 'Rien n’a été enregistré : {count} lignes indiquent un domaine inconnu ({names})',
     other:
-      'Rien n’a été enregistré : {count} noms de domaine sont inconnus ({names})',
+      'Rien n’a été enregistré : {count} lignes indiquent un domaine inconnu ({names})',
   },
   'dictionary.toast.rowRemoved':
     'Rien n’a été enregistré : la ligne a été supprimée',

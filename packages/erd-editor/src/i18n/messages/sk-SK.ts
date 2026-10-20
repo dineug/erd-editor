@@ -510,17 +510,17 @@ export const skSK = {
   'dictionary.toast.unknownFormat':
     'Tento súbor sa nepodarilo prečítať ako slová, termíny ani domény',
   'dictionary.toast.duplicateNames': {
-    one: 'Nič sa neuložilo: {count} názov už v tomto hárku existuje ({names})',
-    few: 'Nič sa neuložilo: {count} názvy už v tomto hárku existujú ({names})',
-    many: 'Nič sa neuložilo: {count} názvu už v tomto hárku existuje ({names})',
+    one: 'Nič sa neuložilo: {count} riadok má rovnaký názov ako iný riadok ({names})',
+    few: 'Nič sa neuložilo: {count} riadky majú rovnaký názov ako iný riadok ({names})',
+    many: 'Nič sa neuložilo: {count} riadka má rovnaký názov ako iný riadok ({names})',
     other:
-      'Nič sa neuložilo: {count} názvov už v tomto hárku existuje ({names})',
+      'Nič sa neuložilo: {count} riadkov má rovnaký názov ako iný riadok ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nič sa neuložilo: {count} neznámy názov domény ({names})',
-    few: 'Nič sa neuložilo: {count} neznáme názvy domén ({names})',
-    many: 'Nič sa neuložilo: {count} neznámeho názvu domény ({names})',
-    other: 'Nič sa neuložilo: {count} neznámych názvov domén ({names})',
+    one: 'Nič sa neuložilo: {count} riadok uvádza neznámu doménu ({names})',
+    few: 'Nič sa neuložilo: {count} riadky uvádzajú neznámu doménu ({names})',
+    many: 'Nič sa neuložilo: {count} riadka uvádza neznámu doménu ({names})',
+    other: 'Nič sa neuložilo: {count} riadkov uvádza neznámu doménu ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nič sa neuložilo: riadok bol odstránený',
 } satisfies Messages;

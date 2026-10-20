@@ -512,16 +512,16 @@ export const roRO = {
   'dictionary.toast.unknownFormat':
     'Fișierul nu a putut fi citit ca cuvinte, termeni sau domenii',
   'dictionary.toast.duplicateNames': {
-    one: 'Nu s-a salvat nimic: {count} nume există deja în această foaie ({names})',
-    few: 'Nu s-a salvat nimic: {count} nume există deja în această foaie ({names})',
+    one: 'Nu s-a salvat nimic: {count} rând are numele altui rând ({names})',
+    few: 'Nu s-a salvat nimic: {count} rânduri au numele altui rând ({names})',
     other:
-      'Nu s-a salvat nimic: {count} de nume există deja în această foaie ({names})',
+      'Nu s-a salvat nimic: {count} de rânduri au numele altui rând ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nu s-a salvat nimic: {count} nume de domeniu este necunoscut ({names})',
-    few: 'Nu s-a salvat nimic: {count} nume de domeniu sunt necunoscute ({names})',
+    one: 'Nu s-a salvat nimic: {count} rând indică un domeniu necunoscut ({names})',
+    few: 'Nu s-a salvat nimic: {count} rânduri indică un domeniu necunoscut ({names})',
     other:
-      'Nu s-a salvat nimic: {count} de nume de domeniu sunt necunoscute ({names})',
+      'Nu s-a salvat nimic: {count} de rânduri indică un domeniu necunoscut ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nu s-a salvat nimic: rândul a fost șters',
 } satisfies Messages;

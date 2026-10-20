@@ -462,10 +462,10 @@ export const zhCN = {
   },
   'dictionary.toast.unknownFormat': '无法将此文件读取为词根、术语或域',
   'dictionary.toast.duplicateNames': {
-    other: '未保存：此工作表中已存在 {count} 个名称（{names}）',
+    other: '未保存：{count} 行的名称与其他行重复（{names}）',
   },
   'dictionary.toast.unknownDomainNames': {
-    other: '未保存：找不到 {count} 个域（{names}）',
+    other: '未保存：{count} 行指定了未知的域（{names}）',
   },
   'dictionary.toast.rowRemoved': '未保存：该行已被删除',
 } satisfies Messages;

@@ -489,12 +489,14 @@ export const faIR = {
   'dictionary.toast.unknownFormat':
     'خواندن این فایل به‌صورت واژه‌ها، اصطلاحات یا دامنه‌ها ممکن نشد',
   'dictionary.toast.duplicateNames': {
-    one: 'چیزی ذخیره نشد: {count} نام از قبل در این برگه وجود دارد ({names})',
-    other: 'چیزی ذخیره نشد: {count} نام از قبل در این برگه وجود دارد ({names})',
+    one: 'چیزی ذخیره نشد: {count} ردیف نامی دارد که ردیف دیگری هم دارد ({names})',
+    other:
+      'چیزی ذخیره نشد: {count} ردیف نامی دارد که ردیف دیگری هم دارد ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'چیزی ذخیره نشد: {count} نام دامنه ناشناخته است ({names})',
-    other: 'چیزی ذخیره نشد: {count} نام دامنه ناشناخته است ({names})',
+    one: 'چیزی ذخیره نشد: {count} ردیف به دامنه‌ای ناشناخته اشاره می‌کند ({names})',
+    other:
+      'چیزی ذخیره نشد: {count} ردیف به دامنه‌ای ناشناخته اشاره می‌کند ({names})',
   },
   'dictionary.toast.rowRemoved': 'چیزی ذخیره نشد: ردیف حذف شد',
 } satisfies Messages;

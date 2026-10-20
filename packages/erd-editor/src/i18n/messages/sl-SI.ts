@@ -511,16 +511,18 @@ export const slSI = {
   'dictionary.toast.unknownFormat':
     'Te datoteke ni bilo mogoče prebrati kot besed, izrazov ali domen',
   'dictionary.toast.duplicateNames': {
-    one: 'Nič ni bilo shranjeno: {count} ime je že na tem listu ({names})',
-    two: 'Nič ni bilo shranjeno: {count} imeni sta že na tem listu ({names})',
-    few: 'Nič ni bilo shranjeno: {count} imena so že na tem listu ({names})',
-    other: 'Nič ni bilo shranjeno: {count} imen je že na tem listu ({names})',
+    one: 'Nič ni bilo shranjeno: {count} vrstica ima enako ime kot druga vrstica ({names})',
+    two: 'Nič ni bilo shranjeno: {count} vrstici imata enako ime kot druga vrstica ({names})',
+    few: 'Nič ni bilo shranjeno: {count} vrstice imajo enako ime kot druga vrstica ({names})',
+    other:
+      'Nič ni bilo shranjeno: {count} vrstic ima enako ime kot druga vrstica ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nič ni bilo shranjeno: {count} ime domene je neznano ({names})',
-    two: 'Nič ni bilo shranjeno: {count} imeni domen sta neznani ({names})',
-    few: 'Nič ni bilo shranjeno: {count} imena domen so neznana ({names})',
-    other: 'Nič ni bilo shranjeno: {count} imen domen je neznanih ({names})',
+    one: 'Nič ni bilo shranjeno: {count} vrstica navaja neznano domeno ({names})',
+    two: 'Nič ni bilo shranjeno: {count} vrstici navajata neznano domeno ({names})',
+    few: 'Nič ni bilo shranjeno: {count} vrstice navajajo neznano domeno ({names})',
+    other:
+      'Nič ni bilo shranjeno: {count} vrstic navaja neznano domeno ({names})',
   },
   'dictionary.toast.rowRemoved':
     'Nič ni bilo shranjeno: vrstica je bila odstranjena',

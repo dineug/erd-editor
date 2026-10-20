@@ -494,11 +494,11 @@ export const jaJP = {
     'このファイルは単語、用語、ドメインのいずれとしても読み込めませんでした',
   'dictionary.toast.duplicateNames': {
     other:
-      '保存されませんでした: {count} 件の名前はすでにこのシートにあります（{names}）',
+      '保存されませんでした: {count} 行の名前が別の行と重複しています（{names}）',
   },
   'dictionary.toast.unknownDomainNames': {
     other:
-      '保存されませんでした: {count} 件のドメイン名が見つかりません（{names}）',
+      '保存されませんでした: {count} 行が不明なドメインを指定しています（{names}）',
   },
   'dictionary.toast.rowRemoved': '保存されませんでした: 行が削除されました',
 } satisfies Messages;

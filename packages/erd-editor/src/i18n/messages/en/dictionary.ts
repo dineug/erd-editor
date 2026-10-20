@@ -50,12 +50,13 @@ export const dictionary = {
   'dictionary.toast.unknownFormat':
     "Couldn't read this file as words, terms or domains",
   'dictionary.toast.duplicateNames': {
-    one: 'Nothing saved: {count} name is already in this sheet ({names})',
-    other: 'Nothing saved: {count} names are already in this sheet ({names})',
+    one: 'Nothing saved: {count} row shares a name with another row ({names})',
+    other:
+      'Nothing saved: {count} rows share a name with another row ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nothing saved: {count} domain name is unknown ({names})',
-    other: 'Nothing saved: {count} domain names are unknown ({names})',
+    one: 'Nothing saved: {count} row names an unknown domain ({names})',
+    other: 'Nothing saved: {count} rows name an unknown domain ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nothing saved: the row was removed',
 } as const;

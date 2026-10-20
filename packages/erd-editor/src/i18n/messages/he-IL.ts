@@ -488,14 +488,14 @@ export const heIL = {
   'dictionary.toast.unknownFormat':
     'לא ניתן היה לקרוא את הקובץ הזה כמילים, כמונחים או כתחומים',
   'dictionary.toast.duplicateNames': {
-    one: 'שום דבר לא נשמר: {count} שם כבר קיים בגיליון הזה ({names})',
-    two: 'שום דבר לא נשמר: {count} שמות כבר קיימים בגיליון הזה ({names})',
-    other: 'שום דבר לא נשמר: {count} שמות כבר קיימים בגיליון הזה ({names})',
+    one: 'שום דבר לא נשמר: {count} שורה נושאת שם של שורה אחרת ({names})',
+    two: 'שום דבר לא נשמר: {count} שורות נושאות שם של שורה אחרת ({names})',
+    other: 'שום דבר לא נשמר: {count} שורות נושאות שם של שורה אחרת ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'שום דבר לא נשמר: {count} שם תחום לא ידוע ({names})',
-    two: 'שום דבר לא נשמר: {count} שמות תחומים לא ידועים ({names})',
-    other: 'שום דבר לא נשמר: {count} שמות תחומים לא ידועים ({names})',
+    one: 'שום דבר לא נשמר: {count} שורה מציינת תחום לא ידוע ({names})',
+    two: 'שום דבר לא נשמר: {count} שורות מציינות תחום לא ידוע ({names})',
+    other: 'שום דבר לא נשמר: {count} שורות מציינות תחום לא ידוע ({names})',
   },
   'dictionary.toast.rowRemoved': 'שום דבר לא נשמר: השורה הוסרה',
 } satisfies Messages;

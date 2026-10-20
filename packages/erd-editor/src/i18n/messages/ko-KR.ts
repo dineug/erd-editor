@@ -477,10 +477,11 @@ export const koKR = {
     '이 파일은 단어, 용어, 도메인 중 어느 형식으로도 읽을 수 없습니다',
   'dictionary.toast.duplicateNames': {
     other:
-      '저장하지 않았습니다: 이름 {count}개가 이미 이 시트에 있습니다 ({names})',
+      '저장하지 않았습니다: 행 {count}개의 이름이 다른 행과 겹칩니다 ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    other: '저장하지 않았습니다: 알 수 없는 도메인 이름 {count}개 ({names})',
+    other:
+      '저장하지 않았습니다: 행 {count}개가 알 수 없는 도메인을 가리킵니다 ({names})',
   },
   'dictionary.toast.rowRemoved': '저장하지 않았습니다: 행이 삭제되었습니다',
 } satisfies Messages;

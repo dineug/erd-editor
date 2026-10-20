@@ -511,13 +511,14 @@ export const deDE = {
   'dictionary.toast.unknownFormat':
     'Diese Datei konnte nicht als Wörter, Begriffe oder Domänen gelesen werden',
   'dictionary.toast.duplicateNames': {
-    one: 'Nichts gespeichert: {count} Name ist in diesem Blatt bereits vorhanden ({names})',
+    one: 'Nichts gespeichert: {count} Zeile teilt einen Namen mit einer anderen Zeile ({names})',
     other:
-      'Nichts gespeichert: {count} Namen sind in diesem Blatt bereits vorhanden ({names})',
+      'Nichts gespeichert: {count} Zeilen teilen einen Namen mit einer anderen Zeile ({names})',
   },
   'dictionary.toast.unknownDomainNames': {
-    one: 'Nichts gespeichert: {count} Domänenname ist unbekannt ({names})',
-    other: 'Nichts gespeichert: {count} Domänennamen sind unbekannt ({names})',
+    one: 'Nichts gespeichert: {count} Zeile nennt eine unbekannte Domäne ({names})',
+    other:
+      'Nichts gespeichert: {count} Zeilen nennen eine unbekannte Domäne ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nichts gespeichert: Die Zeile wurde entfernt',
 } satisfies Messages;
