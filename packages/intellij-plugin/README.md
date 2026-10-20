@@ -20,6 +20,8 @@ your project, and the editor never connects to a database.
 
 - **Design** — tables, columns, memos and table groups, four relationship cardinalities, ON DELETE
   and ON UPDATE, alternate keys, Auto Layout
+- **Naming standards** — logical and physical names, physical names and data types derived from
+  word, term and domain dictionaries, which have their own tab with CSV import and export and checks
 - **Import** — SQL DDL, GraphQL SDL, DBML and AML, replacing the diagram or adding to it
 - **Export** — DDL for eight databases, code in 22 languages and ORMs, PNG and SVG
 - **Navigate** — a command palette, an Explorer tree with find and replace, Graph and Flow views
