@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import { CanvasType, Direction, Show } from '@/constants/schema';
 import {
+  addDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import {
   ShowMode,
   ViewKind,
   VisualizationMode,
@@ -38,6 +42,7 @@ import {
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -382,6 +387,62 @@ describe('the view sort hook on the document actions', () => {
     await settle();
 
     expect(sorts('flow')).toBe(0);
+  });
+
+  it('sorts the view for a logical name inside what it shows alone', async () => {
+    const store = createScene();
+    await openFocused(store);
+
+    store.dispatchSync(
+      shared(
+        changeColumnLogicalNameAction({ id: 'c-t3', tableId: 't3', value: 'x' })
+      )
+    );
+    await settle();
+    expect(sorts('flow')).toBe(0);
+    expect(sorts('document')).toBe(1);
+
+    store.dispatchSync(
+      shared(
+        changeColumnLogicalNameAction({ id: 'c-t1', tableId: 't1', value: 'y' })
+      )
+    );
+    await settle();
+    expect(sorts('flow')).toBe(1);
+  });
+
+  it('lays no view out for a word commit, and every view for a domain renamed', async () => {
+    const store = createScene();
+    await openFocused(store);
+
+    store.dispatchSync(
+      shared(
+        addDictionaryAction({ kind: 'word', id: 'w1', values: { name: 'w' } })
+      ),
+      shared(
+        updateDictionaryAction({
+          kind: 'domain',
+          id: 'd1',
+          values: { dataType: 'INT' },
+        })
+      )
+    );
+    await settle();
+    expect(sorts('flow')).toBe(0);
+    expect(sorts('document')).toBe(0);
+
+    store.dispatchSync(
+      shared(
+        updateDictionaryAction({
+          kind: 'domain',
+          id: 'd1',
+          values: { name: 'Amount' },
+        })
+      )
+    );
+    await settle();
+    expect(sorts('flow')).toBe(1);
+    expect(sorts('document')).toBe(1);
   });
 
   it('does not sort the view for a table added outside it', async () => {

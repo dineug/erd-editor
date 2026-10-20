@@ -22,7 +22,7 @@
 | `src/components/erd/canvas/relationship-group/RelationshipGroup.tsx` | Draws every referential action label after every route |
 | `src/components/erd/canvas/relationship-group/relationship/RelationshipActionLabel.tsx` | The referential action label at a connector's child end |
 | `src/components/erd/canvas/relationship-group/relationship/Relationship.tsx` | A connector; sets the stage container's `title` while the pointer is on it |
-| `src/engine/modules/relationship/hooks.ts` | The sort hooks; `isPaintOnlyToggle` |
+| `src/engine/modules/relationship/hooks.ts` | The sort hooks; `isPaintOnlyToggle`, `reachesLayout` |
 
 ## Rules
 
@@ -63,5 +63,6 @@
 ### Sort hooks
 
 - **Drags sort in a 5 ms window.** The sort hooks (`src/engine/modules/relationship/hooks.ts`) open a 5 ms window for a `Tag.drag` action and sort in a microtask otherwise. A timer would lose to the next frame, which draws moved tables with stale connectors.
+- **Only a domain's name moves a table among the dictionary writes.** Both hooks' filters run `reachesLayout`: a `dictionary.add` or `remove` of a domain, or an `update` whose `values` carry a domain's `name`, passes, and so does a lock change only as an unlock of the name view. A word or term commit, or a domain's type alone, which reaches the columns through `column.changeDataType`, neither bumps the width generation nor sorts (`hooks.test.ts`). The name views: `src/components/erd/AGENTS.md`, Name views.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

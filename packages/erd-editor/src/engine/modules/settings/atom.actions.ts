@@ -17,6 +17,7 @@ import {
   Show,
 } from '@/constants/schema';
 import { Viewport } from '@/engine/modules/editor/state';
+import { keepFocusShown } from '@/engine/modules/editor/utils/nameView';
 import {
   releaseMemos,
   releaseTableGroups,
@@ -607,23 +608,30 @@ const changeDDLScript: ReducerType<typeof ActionType.changeDDLScript> = (
 type NameViewModeValue = ValuesType<typeof NameViewMode>;
 
 /**
+ * Shows another name view on this store's screen, the focus going onto the
+ * cell that now draws what it stood on.
+ */
+function showNameViewMode(state: RootState, value: NameViewModeValue): void {
+  state.settings.nameViewMode = value;
+  keepFocusShown(state);
+}
+
+/**
  * Writes the name view through its register, which the shared setter and an
  * unlock both write through, so the latest of them wins on every peer.
  */
 function replaceNameViewMode(
-  { settings, lww }: RootState,
+  state: RootState,
   version: number,
   value: NameViewModeValue
 ): void {
   replaceOperator(
-    lww,
+    state.lww,
     version,
     'settings.nameViewMode',
     'settings',
     'nameViewMode',
-    () => {
-      settings.nameViewMode = value;
-    }
+    () => showNameViewMode(state, value)
   );
 }
 
@@ -646,7 +654,7 @@ const changeNameViewMode: ReducerType<typeof ActionType.changeNameViewMode> = (
   if (shared === true) {
     replaceNameViewMode(state, version ?? clock.getVersion(), value);
   } else if (editorId === state.editor.id) {
-    state.settings.nameViewMode = value;
+    showNameViewMode(state, value);
   }
 };
 

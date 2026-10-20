@@ -20,7 +20,12 @@ import {
   showErdTargetAction$,
   type Span,
 } from '@/components/erd/goToErdTarget';
-import { CanvasType, RelationshipType, Show } from '@/constants/schema';
+import {
+  CanvasType,
+  NameViewMode,
+  RelationshipType,
+  Show,
+} from '@/constants/schema';
 import {
   changeViewportAction,
   drawStartRelationshipAction,
@@ -34,6 +39,7 @@ import {
 import {
   changeCanvasTypeAction,
   changeMaxWidthCommentAction,
+  changeNameViewModeAction,
   changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -241,6 +247,56 @@ describe('showErdTargetAction$', () => {
     expect(app.store.state.editor.focusTable?.focusType).toBe(
       FocusType.tableName
     );
+  });
+
+  it('rings the cell the name view draws a name in, and back', () => {
+    const app = seed();
+    const viewAs = (value: (typeof NameViewMode)[keyof typeof NameViewMode]) =>
+      app.store.dispatchSync(
+        changeNameViewModeAction({
+          value,
+          shared: false,
+          editorId: app.store.state.editor.id,
+        })
+      );
+    const focusType = () => app.store.state.editor.focusTable?.focusType;
+
+    viewAs(NameViewMode.logical);
+    app.store.dispatchSync(
+      showErdTargetAction$({
+        kind: 'table',
+        tableId: 'tall',
+        focusType: FocusType.tableName,
+      })
+    );
+    expect(focusType()).toBe(FocusType.tableLogicalName);
+
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c1', FocusType.columnName))
+    );
+    expect(focusType()).toBe(FocusType.columnLogicalName);
+
+    hide(app, Show.columnComment);
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c2', FocusType.columnComment))
+    );
+    expect(focusType()).toBe(FocusType.columnLogicalName);
+
+    viewAs(NameViewMode.physical);
+    app.store.dispatchSync(
+      showErdTargetAction$(column('c3', FocusType.columnLogicalName))
+    );
+    expect(focusType()).toBe(FocusType.columnName);
+
+    viewAs(NameViewMode.both);
+    app.store.dispatchSync(
+      showErdTargetAction$({
+        kind: 'table',
+        tableId: 'tall',
+        focusType: FocusType.tableName,
+      })
+    );
+    expect(focusType()).toBe(FocusType.tableName);
   });
 
   it('leaves the ring where selecting puts it when no focus type is asked for', () => {

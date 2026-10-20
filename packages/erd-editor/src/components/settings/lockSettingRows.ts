@@ -1,11 +1,12 @@
 import type { LockSettingType as LockSettingBit } from '@dineug/erd-editor-schema';
 
 import { formatDistance } from '@/components/erd/content-compass/compassGeometry';
+import { menus as nameViewMenus } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
-import { CanvasType, LockSettingType, NameViewMode } from '@/constants/schema';
+import { CanvasType, LockSettingType } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { type LabeledMenu, menuLabel } from '@/i18n/menuLabel';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
@@ -39,16 +40,9 @@ const canvasTypeText = (canvasType: string, i18n: Translator) => {
   return key ? i18n.t(key) : canvasType;
 };
 
-/** What each name view is called wherever a reader picks one. */
-const NameViewModeToMessageKey: Readonly<Record<string, PlainMessageKey>> = {
-  [NameViewMode.physical]: 'common.physicalNames',
-  [NameViewMode.logical]: 'common.logicalNames',
-  [NameViewMode.both]: 'common.bothNames',
-};
-
 const nameViewModeText = (nameViewMode: string, i18n: Translator) => {
-  const key = NameViewModeToMessageKey[nameViewMode];
-  return key ? i18n.t(key) : nameViewMode;
+  const menu = nameViewMenus.find(menu => menu.value === nameViewMode);
+  return menu ? i18n.t(menu.labelKey) : nameViewMode;
 };
 
 const nameOf = (

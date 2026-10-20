@@ -5,7 +5,7 @@ import {
   VIEW_COLUMN_HEIGHT,
   VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
-import { ColumnUIKey } from '@/constants/schema';
+import { ColumnUIKey, NameViewMode } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { ShowMode, ViewKind } from '@/engine/modules/editor/state';
 import { createSceneView } from '@/engine/modules/editor/view';
@@ -13,7 +13,7 @@ import { RootState } from '@/engine/state';
 import { createStore } from '@/engine/store';
 import { Table } from '@/internal-types';
 import { getVisibleColumnIds } from '@/konva/scene/viewLayout';
-import { calcViewTableWidths } from '@/utils/calcTable';
+import { calcTableWidths, calcViewTableWidths } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
@@ -139,6 +139,28 @@ describe('tableToObjectPoint', () => {
     // 1 + 8 + (12 + 8 + 60 + 8 + 28) + 8 + 1 = 134
     expect(withoutComment).toBe(134);
     expect(withoutComment).toBeLessThan(withComment);
+  });
+
+  it('keys the size on the name view and the header logical name, which no width generation names', () => {
+    const state = createState();
+    state.settings.show = 0;
+    const table = addTable(
+      state,
+      createTable({
+        id: 'table-a',
+        logicalName: 'Members of the club',
+        ui: { x: 0, y: 0, widthLogicalName: 300 },
+      })
+    );
+    const physical = tableToObjectPoint(state, table).width;
+
+    state.settings.nameViewMode = NameViewMode.logical;
+    const logical = tableToObjectPoint(state, table).width;
+    expect(logical).toBe(calcTableWidths(table, state).width);
+    expect(logical).toBe(physical - 60 + 300);
+
+    table.ui.widthLogicalName = 400;
+    expect(tableToObjectPoint(state, table).width).toBe(logical + 100);
   });
 });
 

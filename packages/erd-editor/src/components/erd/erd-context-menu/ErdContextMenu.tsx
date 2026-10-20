@@ -71,6 +71,7 @@ import { createDatabaseMenus } from './menus/databaseMenus';
 import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
 import { createExportMenus } from './menus/exportMenus';
 import { createImportMenus } from './menus/importMenus';
+import { createNameViewMenus } from './menus/nameViewMenus';
 import {
   createReferentialActionMenus,
   createRelationshipMenus,
@@ -811,6 +812,33 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 subChildren={
                   <>
                     {createShowMenus(app.value, i18n.value).map(menu => (
+                      <ContextMenu.Item
+                        onClick={menu.onClick}
+                        children={
+                          <ContextMenu.Menu
+                            icon={
+                              menu.checked ? (
+                                <Icon name="check" size={14} />
+                              ) : null
+                            }
+                            name={menu.name}
+                          />
+                        }
+                      />
+                    ))}
+                  </>
+                }
+              />
+              <ContextMenu.Item
+                children={
+                  <ContextMenu.Menu
+                    name={t('common.nameView')}
+                    right={chevronRightIcon}
+                  />
+                }
+                subChildren={
+                  <>
+                    {createNameViewMenus(app.value, i18n.value).map(menu => (
                       <ContextMenu.Item
                         onClick={menu.onClick}
                         children={

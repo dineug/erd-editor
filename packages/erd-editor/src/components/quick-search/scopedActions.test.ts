@@ -119,6 +119,7 @@ const addColumns = (
 
 const ERD_COMMANDS = [
   'Tab',
+  'Name View',
   'Database',
   'Import',
   'Import and Add',

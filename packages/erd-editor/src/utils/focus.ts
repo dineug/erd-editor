@@ -13,8 +13,9 @@ export function isFocus(
   if (!focusTable || tableId !== focusTable.tableId) return false;
 
   switch (focusType) {
-    case 'tableName':
-    case 'tableComment':
+    case FocusType.tableName:
+    case FocusType.tableLogicalName:
+    case FocusType.tableComment:
       return focusType === focusTable.focusType;
   }
 
@@ -39,6 +40,7 @@ export function isEdit(
 
   switch (focusType) {
     case FocusType.tableName:
+    case FocusType.tableLogicalName:
     case FocusType.tableComment:
       return focusType === focusTable.focusType && focusTable.edit;
   }

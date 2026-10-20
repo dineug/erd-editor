@@ -6,6 +6,7 @@ import Fues from 'fuse.js';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
+import { menus as nameViewMenus } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
 import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
@@ -46,6 +47,7 @@ import {
   changeDatabaseAction,
   changeLanguageAction,
   changeTableNameCaseAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addTableGroupFromTablesAction$ } from '@/engine/modules/table-group/generator.actions';
@@ -325,6 +327,21 @@ export function createScopeActions(
     {
       ...submenuNamed(i18n, 'palette.tab'),
       next: createTabActions(i18n),
+    },
+    {
+      ...submenuNamed(i18n, 'common.nameView'),
+      next: nameViewMenus.map<Action>(menu => ({
+        ...checkOf(menu.value === settings.nameViewMode),
+        ...named(i18n, menu.labelKey),
+        perform: ({ store }) => {
+          store.dispatch(
+            toNameViewModeAction(store.state, menu.value, store.getReadonly())
+          );
+        },
+      })),
+      filter: ({ store }) => {
+        return store.state.settings.canvasType === CanvasType.ERD;
+      },
     },
     {
       icon: <Icon name="database" size={16} />,

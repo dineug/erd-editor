@@ -116,12 +116,14 @@ describe('isToggleColumnTypes / isChangeColumnTypes', () => {
     expect(isToggleColumnTypes(FocusType.tableName)).toBe(false);
   });
 
-  it('accepts only the four textual focus types', () => {
+  it('accepts only the five textual focus types', () => {
     expect(isChangeColumnTypes(FocusType.columnName)).toBe(true);
+    expect(isChangeColumnTypes(FocusType.columnLogicalName)).toBe(true);
     expect(isChangeColumnTypes(FocusType.columnDataType)).toBe(true);
     expect(isChangeColumnTypes(FocusType.columnDefault)).toBe(true);
     expect(isChangeColumnTypes(FocusType.columnComment)).toBe(true);
     expect(isChangeColumnTypes(FocusType.columnNotNull)).toBe(false);
+    expect(isChangeColumnTypes(FocusType.columnDomain)).toBe(false);
     expect(isChangeColumnTypes(FocusType.tableComment)).toBe(false);
   });
 });
@@ -654,6 +656,49 @@ describe('changeColumnValueAction$', () => {
     expect(column(store, 'c1').name).toBe('member_no');
     expect(bHas(column(store, 'c1').options, ColumnOption.nameDerived)).toBe(
       false
+    );
+  });
+
+  it('writes the logical name alone, deriving no name from a term that matches it', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no', physicalName: 'member_no' },
+      }),
+      changeColumnNameDerivedAction({ tableId: 't1', id: 'c1', value: true })
+    );
+
+    expect(
+      flatten(
+        store,
+        changeColumnValueAction$(
+          FocusType.columnLogicalName,
+          't1',
+          'c1',
+          'Member no'
+        )
+      ).map(({ type, payload }) => [type, payload.value])
+    ).toEqual([['column.changeLogicalName', 'Member no']]);
+
+    store.dispatchSync(
+      changeColumnValueAction$(
+        FocusType.columnLogicalName,
+        't1',
+        'c1',
+        'Member no'
+      )
+    );
+
+    expect(column(store, 'c1')).toMatchObject({
+      logicalName: 'Member no',
+      name: '',
+    });
+    expect(column(store, 'c1').ui.widthLogicalName).toBe(90);
+    expect(bHas(column(store, 'c1').options, ColumnOption.nameDerived)).toBe(
+      true
     );
   });
 

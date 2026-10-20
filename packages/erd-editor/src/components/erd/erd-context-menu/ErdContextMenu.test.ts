@@ -41,6 +41,7 @@ import {
   CanvasType,
   ColumnOption,
   Database,
+  NameViewMode,
   ReferentialAction,
   RelationshipType,
   Show,
@@ -230,6 +231,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Toggle ExplorerCtrl + F',
       'Relationship',
       'View Option',
+      'Name View',
       'Database',
       'Import',
       'Import and Add',
@@ -385,6 +387,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Table Comment',
       'Column Comment',
       'DataType',
+      'Domain',
       'Default',
       'Not Null',
       'Unique',
@@ -427,6 +430,25 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('switches the name view from the Name View submenu, the view in force checked, and keeps the menu open', async () => {
+    await mountMenu();
+
+    const sub = await openSubMenu(findItem(rootItems(), 'Name View'));
+    const items = itemsOf(sub);
+
+    expect(labelsOf(items)).toEqual([
+      'Physical Names',
+      'Logical Names',
+      'Both Names',
+    ]);
+    expect(items.map(iconNameOf)).toEqual(['check', null, null]);
+
+    await click(findItem(items, 'Both Names'));
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.both);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('requests a json import from the import submenu', async () => {
     await mountMenu();
 
@@ -459,6 +481,7 @@ describe('ErdContextMenu / ERD type', () => {
       'Toggle ExplorerCtrl + F',
       'Relationship',
       'View Option',
+      'Name View',
       'Database',
       'Import',
       'Export',
@@ -1925,6 +1948,7 @@ describe('ErdContextMenu / language', () => {
       'ko:Toggle ExplorerCtrl + F',
       'ko:Relationship',
       'ko:View Option',
+      'ko:Name View',
       'ko:Database',
       'ko:Import',
       'ko:Import and Add',
@@ -1952,6 +1976,11 @@ describe('ErdContextMenu / language', () => {
       'ko:Table Comment',
       'ko:Column Comment',
       'ko:DataType',
+    ]);
+    expect(await labelsUnder('ko:Name View')).toEqual([
+      'ko:Physical Names',
+      'ko:Logical Names',
+      'ko:Both Names',
     ]);
     expect(await labelsUnder('ko:Database')).toContain('PostgreSQL');
     expect(await labelsUnder('ko:Import')).toEqual([

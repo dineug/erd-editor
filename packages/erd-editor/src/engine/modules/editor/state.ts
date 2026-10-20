@@ -178,6 +178,9 @@ export const FocusType = {
   columnAutoIncrement: 'columnAutoIncrement',
   columnDefault: 'columnDefault',
   columnComment: 'columnComment',
+  tableLogicalName: 'tableLogicalName',
+  columnLogicalName: 'columnLogicalName',
+  columnDomain: 'columnDomain',
 } as const;
 export type FocusType = ValuesType<typeof FocusType>;
 

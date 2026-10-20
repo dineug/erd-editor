@@ -28,7 +28,7 @@
 
 | Directory | Purpose |
 | --- | --- |
-| `erd/` | `erd/AGENTS.md`: keys and alternate keys, Table Properties, the buttons beside a draw's target, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, pointer and key handling (`YIELDS_TO_A_CARET`, Escape, Delete, Backspace), the welcome screen |
+| `erd/` | `erd/AGENTS.md`: the name views, keys and alternate keys, Table Properties, the buttons beside a draw's target, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, pointer and key handling (`YIELDS_TO_A_CARET`, Escape, Delete, Backspace), the welcome screen |
 | `export-image/` | `export-image/AGENTS.md`: the one dialog every image export goes through, PNG and SVG, and the contract of the shared modal `primitives/dialog/Dialog.tsx` |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the Schema SQL tab, its options panel and its script editors |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator tab, its options panel, the language menu, Save file and highlighting |

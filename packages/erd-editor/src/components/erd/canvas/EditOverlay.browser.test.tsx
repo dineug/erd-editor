@@ -49,7 +49,8 @@ import {
   TABLE_HEADER_ICON_GAP,
   TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
-import { Database, Show } from '@/constants/schema';
+import { Database, NameViewMode, Show } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   editMemoAction,
   editMemoEndAction,
@@ -76,15 +77,23 @@ import {
   changeShowAction,
   changeZoomLevelAction,
   streamScrollToAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   changeTableGroupAction,
+  changeTableLogicalNameAction,
+  changeTableNameAction,
   changeTableNameDerivedAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addTableAction$,
   removeTableAction$,
 } from '@/engine/modules/table/generator.actions';
+import {
+  changeColumnLogicalNameAction,
+  changeColumnNameAction,
+  changeColumnNameDerivedAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   addColumnAction$,
   removeColumnAction$,
@@ -753,6 +762,217 @@ function domLineCount(value: string, width: number): number {
 
   return count;
 }
+
+describe('the cell editor in the name views', () => {
+  type Mode = (typeof NameViewMode)[keyof typeof NameViewMode];
+
+  /** The overlay over a named table and column, in the view given. */
+  async function setupView(mode: Mode) {
+    const fixture = await setup();
+    const { store } = fixture.app;
+    const { tableId, columnId } = fixture;
+    store.dispatchSync(
+      changeTableNameAction({ id: tableId, value: 'member' }),
+      changeColumnNameAction({ tableId, id: columnId, value: 'member_no' }),
+      toNameViewModeAction(store.state, mode, false)
+    );
+    await flush();
+    return fixture;
+  }
+
+  /**
+   * Closes the editor open, then focuses a cell by the focus type given and
+   * opens its editor, as a reader moving between cells does.
+   */
+  async function edit(fixture: Fixture, focusType: FocusType) {
+    const { store } = fixture.app;
+    store.dispatchSync(editTableEndAction());
+    await flush();
+    store.dispatchSync(
+      focusType.startsWith('column')
+        ? focusColumnAction({
+            tableId: fixture.tableId,
+            columnId: fixture.columnId,
+            focusType,
+            $mod: false,
+            shiftKey: false,
+          })
+        : focusTableAction({ tableId: fixture.tableId, focusType }),
+      editTableAction()
+    );
+    await flush();
+  }
+
+  /** Types each value into the open editor and gives back the batches the edits sent. */
+  async function type(fixture: Fixture, values: string[]) {
+    const batches: string[][] = [];
+    const unsubscribe = fixture.app.store.subscribe(actions => {
+      batches.push(actions.map(({ type }) => type));
+    });
+    teardowns.push(unsubscribe);
+
+    const input = inputOf(fixture.mounted);
+    for (const value of values) {
+      input.value = value;
+      input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      await flush();
+    }
+
+    // The history's own bookkeeping batches ride beside the edits.
+    return batches.filter(
+      types => types[0].startsWith('table.') || types[0].startsWith('column.')
+    );
+  }
+
+  it('writes the logical name alone from the name cells of the logical view, on every key', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no', physicalName: 'mbr_no' },
+      }),
+      changeTableNameDerivedAction({ id: fixture.tableId, value: true }),
+      changeColumnNameDerivedAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: true,
+      })
+    );
+
+    await edit(fixture, FocusType.tableName);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.tableLogicalName
+    );
+    expect(await type(fixture, ['M', 'Me'])).toEqual([
+      ['table.changeLogicalName'],
+      ['table.changeLogicalName'],
+    ]);
+
+    await edit(fixture, FocusType.columnName);
+    expect(await type(fixture, ['Member no'])).toEqual([
+      ['column.changeLogicalName'],
+    ]);
+
+    const { tableEntities, tableColumnEntities } = store.state.collections;
+    expect(tableEntities[fixture.tableId]).toMatchObject({
+      name: 'member',
+      logicalName: 'Me',
+      nameDerived: true,
+    });
+    expect(tableColumnEntities[fixture.columnId]).toMatchObject({
+      name: 'member_no',
+      logicalName: 'Member no',
+    });
+  });
+
+  it('gives each cell of the view of both its own field, a name typed by hand leaving the dictionaries', async () => {
+    const fixture = await setupView(NameViewMode.both);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      changeColumnNameDerivedAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: true,
+      })
+    );
+
+    await edit(fixture, FocusType.tableLogicalName);
+    expect(await type(fixture, ['Member'])).toEqual([
+      ['table.changeLogicalName'],
+    ]);
+
+    await edit(fixture, FocusType.columnLogicalName);
+    expect(await type(fixture, ['Member no'])).toEqual([
+      ['column.changeLogicalName'],
+    ]);
+
+    await edit(fixture, FocusType.columnName);
+    expect(await type(fixture, ['member_number'])).toEqual([
+      ['column.changeName', 'column.changeNameDerived'],
+    ]);
+
+    expect(
+      store.state.collections.tableColumnEntities[fixture.columnId]
+    ).toMatchObject({
+      name: 'member_number',
+      logicalName: 'Member no',
+    });
+    expect(
+      store.state.collections.tableEntities[fixture.tableId]
+    ).toMatchObject({ name: 'member', logicalName: 'Member' });
+  });
+
+  it('opens on the logical name held and on the slot the scene drew it in', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      changeTableLogicalNameAction({ id: fixture.tableId, value: 'Member' }),
+      changeColumnLogicalNameAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: 'Member no',
+      })
+    );
+
+    await edit(fixture, FocusType.tableName);
+    const table = store.state.collections.tableEntities[fixture.tableId];
+    const rect = getTableRect(store.state, table);
+    expect(inputOf(fixture.mounted).value).toBe('Member');
+    expect(transformOf(fixture.mounted).x).toBeCloseTo(
+      rect.x + HEADER_CELLS_X + NAME_X,
+      5
+    );
+    expect(cellOf(fixture.mounted).style.width).toBe(
+      `${table.ui.widthLogicalName}px`
+    );
+
+    await edit(fixture, FocusType.columnName);
+    const slot = getColumnCellSlots(
+      store.state,
+      getTableWidths(store.state, table)
+    ).find(candidate => candidate.focusType === FocusType.columnLogicalName);
+    expect(inputOf(fixture.mounted).value).toBe('Member no');
+    expect(slot).toBeDefined();
+    expect(transformOf(fixture.mounted).x).toBeCloseTo(
+      rect.x + (slot?.x ?? 0),
+      5
+    );
+  });
+
+  it('shows what a blank logical name cell draws as the placeholder', async () => {
+    const logical = await setupView(NameViewMode.logical);
+
+    await edit(logical, FocusType.tableName);
+    expect(inputOf(logical.mounted).placeholder).toBe('member');
+    await edit(logical, FocusType.columnName);
+    expect(inputOf(logical.mounted).placeholder).toBe('member_no');
+
+    logical.app.store.dispatchSync(
+      changeTableNameAction({ id: logical.tableId, value: '' })
+    );
+    await edit(logical, FocusType.tableName);
+    expect(inputOf(logical.mounted).placeholder).toBe('table');
+
+    const both = await setupView(NameViewMode.both);
+    await edit(both, FocusType.tableLogicalName);
+    expect(inputOf(both.mounted).placeholder).toBe('logical');
+    await edit(both, FocusType.columnLogicalName);
+    expect(inputOf(both.mounted).placeholder).toBe('logical');
+  });
+
+  it('opens nothing on a domain, which no editor writes', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+
+    await edit(fixture, FocusType.columnDataType);
+
+    expect(fixture.app.store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDomain
+    );
+    expect(inputOf(fixture.mounted)).toBeNull();
+  });
+});
 
 describe('the memo body editor over the scene', () => {
   it('opens one textarea, focused, and no more of them', async () => {

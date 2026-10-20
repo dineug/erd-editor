@@ -1,7 +1,11 @@
-import { ColumnType, Show } from '@/constants/schema';
+import { ColumnType } from '@/constants/schema';
+import {
+  ColumnTypeShown,
+  isLogicalNameView,
+} from '@/engine/modules/editor/utils/nameView';
+import type { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
-import { bHas } from '@/utils/bit';
 
 export * from './payload';
 export * from './placement';
@@ -17,29 +21,30 @@ export const CellType = {
   columnAutoIncrement: 'columnAutoIncrement',
   columnDefault: 'columnDefault',
   columnComment: 'columnComment',
+  columnLogicalName: 'columnLogicalName',
+  columnDomain: 'columnDomain',
 } as const;
 export type CellType = ValuesType<typeof CellType>;
 export const hasCellType = arrayHas<string>(Object.values(CellType));
 
-export function getShowColumnOrder(show: number, columnOrder: number[]) {
-  return columnOrder.filter(columnType => {
-    switch (columnType) {
-      case ColumnType.columnName:
-        return true;
-      case ColumnType.columnDataType:
-        return bHas(show, Show.columnDataType);
-      case ColumnType.columnDefault:
-        return bHas(show, Show.columnDefault);
-      case ColumnType.columnComment:
-        return bHas(show, Show.columnComment);
-      case ColumnType.columnAutoIncrement:
-        return bHas(show, Show.columnAutoIncrement);
-      case ColumnType.columnUnique:
-        return bHas(show, Show.columnUnique);
-      case ColumnType.columnNotNull:
-        return bHas(show, Show.columnNotNull);
-      default:
-        return false;
-    }
-  });
+/**
+ * The column types of a row's cells in their order, as the name view lays
+ * them out: the logical view's name cell holds the logical name. A column
+ * type this release does not know has no cell.
+ */
+export function getShowColumnOrder(
+  show: number,
+  columnOrder: number[],
+  nameViewMode: RootState['settings']['nameViewMode']
+): number[] {
+  const settings = { show, nameViewMode };
+  const logical = isLogicalNameView(settings);
+
+  return columnOrder
+    .filter(columnType => ColumnTypeShown[columnType]?.(settings) === true)
+    .map(columnType =>
+      logical && columnType === ColumnType.columnName
+        ? ColumnType.columnLogicalName
+        : columnType
+    );
 }

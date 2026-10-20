@@ -117,9 +117,20 @@ const sides = ({ peer, user }: Session) => [
   JSON.parse(toJson(user.rxStore.state)),
 ];
 
+/**
+ * Both sides hold the same document. A relationship's anchors stand on the
+ * tables as each side draws them, and a name view a lock keeps to one side
+ * widens that side's tables alone, so then the anchors are left out.
+ */
 const expectConverged = (session: Session) => {
   const [peer, user] = sides(session);
-  expect(peer).toEqual(user);
+  const view = ({ state }: HasState) => state.settings.nameViewMode;
+
+  if (view(session.peer) === view(session.user.rxStore)) {
+    expect(peer).toEqual(user);
+  } else {
+    expect(splitAnchors(peer).document).toEqual(splitAnchors(user).document);
+  }
 };
 
 describe('a peer store and an element’s store converge (AC-E5)', () => {

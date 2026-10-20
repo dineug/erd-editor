@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   ColumnOption,
   ColumnType,
+  NameViewMode,
   OrderType,
   ReferentialAction,
   RelationshipType,
@@ -17,12 +18,14 @@ import {
 import { RootState } from '@/engine/state';
 import {
   Column,
+  Domain,
   Index,
   IndexColumn,
   Memo,
   Relationship,
   Table,
 } from '@/internal-types';
+import { createDomain } from '@/utils/collection/domain.entity';
 import { createIndex } from '@/utils/collection/index.entity';
 import { createIndexColumn } from '@/utils/collection/indexColumn.entity';
 import { createMemo } from '@/utils/collection/memo.entity';
@@ -83,6 +86,9 @@ type Options = {
   selectedMap?: Record<string, SelectType>;
   show?: number;
   columnOrder?: number[];
+  nameViewMode?: RootState['settings']['nameViewMode'];
+  domains?: Domain[];
+  domainIds?: string[];
   focusTable?: Partial<{
     tableId: string;
     selectColumnIds: string[];
@@ -102,6 +108,9 @@ function createState({
   selectedMap = {},
   show = ALL_SHOW,
   columnOrder = FULL_COLUMN_ORDER,
+  nameViewMode = NameViewMode.physical,
+  domains = [],
+  domainIds = domains.map(({ id }) => id),
   focusTable = null,
 }: Options = {}): RootState {
   const state: RootState = {
@@ -112,6 +121,7 @@ function createState({
 
   state.settings.show = show;
   state.settings.columnOrder = columnOrder;
+  state.settings.nameViewMode = nameViewMode;
 
   for (const table of tables) {
     state.collections.tableEntities[table.id] = table;
@@ -131,9 +141,13 @@ function createState({
   for (const indexColumn of indexColumns) {
     state.collections.indexColumnEntities[indexColumn.id] = indexColumn;
   }
+  for (const domain of domains) {
+    state.collections.domainEntities[domain.id] = domain;
+  }
 
   state.doc.relationshipIds = [...relationshipIds];
   state.doc.indexIds = [...indexIds];
+  state.doc.domainIds = [...domainIds];
   state.editor.selectedMap = { ...selectedMap };
 
   if (focusTable) {
@@ -389,6 +403,126 @@ describe('tableCopyToHtml', () => {
 
   it('returns an empty string when there is nothing to copy', () => {
     expect(tableCopyToHtml(createState())).toBe('');
+  });
+});
+
+/**
+ * A table of two columns, one linking a listed domain and one a domain the
+ * document no longer lists, laid out in the order a new document saves.
+ */
+function createNamedState(
+  nameViewMode: RootState['settings']['nameViewMode'],
+  show: number = Show.columnDataType
+) {
+  const linked = createColumn({
+    id: 'column-linked',
+    tableId: 'table-1',
+    name: 'member_id',
+    logicalName: 'Member ID',
+    dataType: 'int',
+    domainId: 'domain-live',
+  });
+  const unlinked = createColumn({
+    id: 'column-unlinked',
+    tableId: 'table-1',
+    name: 'nick',
+    dataType: 'varchar',
+    domainId: 'domain-removed',
+  });
+  const table = createTable({
+    id: 'table-1',
+    name: 'members',
+    columnIds: [linked.id, unlinked.id],
+  });
+
+  return createState({
+    tables: [table],
+    columns: [linked, unlinked],
+    domains: [
+      createDomain({ id: 'domain-live', name: 'Identifier', dataType: 'int' }),
+      createDomain({ id: 'domain-removed', name: 'Nickname' }),
+    ],
+    domainIds: ['domain-live'],
+    show,
+    columnOrder: [
+      ColumnType.columnLogicalName,
+      ColumnType.columnName,
+      ColumnType.columnDataType,
+      ColumnType.columnDomain,
+    ],
+    nameViewMode,
+    selectedMap: { 'table-1': SelectType.table },
+    focusTable: {
+      tableId: 'table-1',
+      selectColumnIds: [linked.id, unlinked.id],
+    },
+  });
+}
+
+describe('the name views', () => {
+  it('copies the logical name in the name cell and a listed domain in the type cell of the logical view', () => {
+    const state = createNamedState(NameViewMode.logical);
+
+    expect(tableCopyToText(state)).toBe('Member ID\tIdentifier\n\tvarchar');
+    expect(tableCopyToHtml(state)).toBe(
+      '<table><tbody>' +
+        '<tr><td data-type="columnLogicalName">Member ID</td>' +
+        '<td data-type="columnDomain">Identifier</td></tr>' +
+        '<tr><td data-type="columnLogicalName"></td>' +
+        '<td data-type="columnDataType">varchar</td></tr>' +
+        '</tbody></table>'
+    );
+  });
+
+  it('keeps the type in the type cell while the domain has a cell of its own', () => {
+    const state = createNamedState(
+      NameViewMode.logical,
+      Show.columnDataType | Show.columnDomain
+    );
+
+    expect(tableCopyToText(state)).toBe(
+      'Member ID\tint\tIdentifier\n\tvarchar\t'
+    );
+  });
+
+  it('copies both names, then the type and the domain, in the view of both', () => {
+    const state = createNamedState(
+      NameViewMode.both,
+      Show.columnDataType | Show.columnDomain
+    );
+
+    expect(tableCopyToText(state)).toBe(
+      'Member ID\tmember_id\tint\tIdentifier\n\tnick\tvarchar\t'
+    );
+    expect(tableCopyToHtml(state)).toContain(
+      '<td data-type="columnLogicalName">Member ID</td>' +
+        '<td data-type="columnName">member_id</td>' +
+        '<td data-type="columnDataType">int</td>' +
+        '<td data-type="columnDomain">Identifier</td>'
+    );
+  });
+
+  it('copies the physical row and its domain cell in the physical view', () => {
+    const state = createNamedState(
+      NameViewMode.physical,
+      Show.columnDataType | Show.columnDomain
+    );
+
+    expect(tableCopyToText(state)).toBe(
+      'member_id\tint\tIdentifier\nnick\tvarchar\t'
+    );
+  });
+
+  it('writes a table copy in the view it is copied in', () => {
+    const state = createNamedState(NameViewMode.logical);
+    const payload = entitiesCopyToPayload(state)!;
+
+    expect(entitiesToTsv(payload, state)).toBe(
+      'Member ID\tIdentifier\n\tvarchar'
+    );
+    expect(entitiesToHtmlTable(payload, state)).toContain(
+      '<td data-type="columnDomain">Identifier</td>'
+    );
   });
 });
 
@@ -780,7 +914,7 @@ describe('entitiesToTsv', () => {
     const { state } = createEntitiesState();
     const payload = entitiesCopyToPayload(state)!;
 
-    expect(entitiesToTsv(payload, state.settings)).toBe(
+    expect(entitiesToTsv(payload, state)).toBe(
       [
         ['id', 'int', 'NOT NULL', 'FALSE', 'TRUE', '', 'pk'].join('\t'),
         [
@@ -806,9 +940,9 @@ describe('entitiesToTsv', () => {
       columns: payload.columns,
     });
 
-    const tsv = entitiesToTsv(payload, state.settings);
+    const tsv = entitiesToTsv(payload, state);
 
-    expect(tsv).toBe(entitiesToTsv(withoutMemos, state.settings));
+    expect(tsv).toBe(entitiesToTsv(withoutMemos, state));
     expect(tsv).not.toContain('second');
     expect(tsv.split('\n')).toHaveLength(3);
     for (const line of tsv.split('\n')) {
@@ -822,7 +956,7 @@ describe('entitiesToTsv', () => {
     });
     const payload = entitiesCopyToPayload(state)!;
 
-    expect(entitiesToTsv(payload, state.settings)).toBe(
+    expect(entitiesToTsv(payload, state)).toBe(
       'first memo\n\nsecond\tmemo\nwith a newline'
     );
   });
@@ -849,14 +983,14 @@ describe('entitiesToTsv', () => {
       ],
     });
 
-    expect(entitiesToTsv(payload, state.settings)).toBe('');
+    expect(entitiesToTsv(payload, state)).toBe('');
   });
 
   it('returns an empty string for an empty payload', () => {
     const state = createState();
 
     expect(
-      entitiesToTsv(createPayload({ kind: PayloadKind.tables }), state.settings)
+      entitiesToTsv(createPayload({ kind: PayloadKind.tables }), state)
     ).toBe('');
   });
 });
@@ -869,7 +1003,7 @@ describe('entitiesToHtmlTable', () => {
     });
     const payload = entitiesCopyToPayload(state)!;
 
-    expect(entitiesToHtmlTable(payload, state.settings)).toBe(
+    expect(entitiesToHtmlTable(payload, state)).toBe(
       '<table><tbody>' +
         '<tr><td data-type="columnName">id</td></tr>' +
         '<tr><td data-type="columnName">name</td></tr>' +
@@ -884,7 +1018,7 @@ describe('entitiesToHtmlTable', () => {
     });
     const payload = entitiesCopyToPayload(state)!;
 
-    expect(entitiesToHtmlTable(payload, state.settings)).toContain(
+    expect(entitiesToHtmlTable(payload, state)).toContain(
       '<tr>' +
         '<td data-type="columnName">id</td>' +
         '<td data-type="columnDataType">int</td>' +
@@ -903,7 +1037,7 @@ describe('entitiesToHtmlTable', () => {
     });
     const payload = entitiesCopyToPayload(state)!;
 
-    expect(entitiesToHtmlTable(payload, state.settings)).toBe('');
+    expect(entitiesToHtmlTable(payload, state)).toBe('');
   });
 });
 
@@ -911,7 +1045,7 @@ describe('payloadToHtml', () => {
   it('hides the payload on a span wrapping the visible table', () => {
     const { state } = createEntitiesState();
     const payload = entitiesCopyToPayload(state)!;
-    const tableHtml = entitiesToHtmlTable(payload, state.settings);
+    const tableHtml = entitiesToHtmlTable(payload, state);
 
     const html = payloadToHtml(payload, tableHtml);
 
@@ -940,10 +1074,7 @@ describe('payloadToHtml', () => {
       ],
     });
 
-    const html = payloadToHtml(
-      payload,
-      entitiesToHtmlTable(payload, state.settings)
-    );
+    const html = payloadToHtml(payload, entitiesToHtmlTable(payload, state));
 
     expect(html).toContain('&amp;');
     expect(html).toContain('&lt;');
@@ -1007,10 +1138,7 @@ describe('AC-40d — the generated text/html never yields a memo derived column'
   it('parses back into exactly the copied columns', () => {
     const { state } = createEntitiesState();
     const payload = entitiesCopyToPayload(state)!;
-    const html = payloadToHtml(
-      payload,
-      entitiesToHtmlTable(payload, state.settings)
-    );
+    const html = payloadToHtml(payload, entitiesToHtmlTable(payload, state));
 
     const columns = tablePasteFromHtmlToColumns(state, html);
 
@@ -1024,10 +1152,7 @@ describe('AC-40d — the generated text/html never yields a memo derived column'
       selectedMap: MEMOS_SELECTED,
     });
     const payload = entitiesCopyToPayload(state)!;
-    const html = payloadToHtml(
-      payload,
-      entitiesToHtmlTable(payload, state.settings)
-    );
+    const html = payloadToHtml(payload, entitiesToHtmlTable(payload, state));
 
     expect(tablePasteFromHtmlToColumns(state, html)).toHaveLength(0);
   });
@@ -1091,7 +1216,7 @@ describe('a cell value holding markup', () => {
 
     return {
       state,
-      visibleTable: entitiesToHtmlTable(payload, state.settings),
+      visibleTable: entitiesToHtmlTable(payload, state),
     };
   };
 
@@ -1348,11 +1473,11 @@ describe('the column path carries no graph', () => {
     const plainPayload = entitiesCopyToPayload(plain.state)!;
     const graphPayload = entitiesCopyToPayload(withGraph.state)!;
 
-    expect(entitiesToTsv(graphPayload, withGraph.state.settings)).toBe(
-      entitiesToTsv(plainPayload, plain.state.settings)
+    expect(entitiesToTsv(graphPayload, withGraph.state)).toBe(
+      entitiesToTsv(plainPayload, plain.state)
     );
-    expect(entitiesToHtmlTable(graphPayload, withGraph.state.settings)).toBe(
-      entitiesToHtmlTable(plainPayload, plain.state.settings)
+    expect(entitiesToHtmlTable(graphPayload, withGraph.state)).toBe(
+      entitiesToHtmlTable(plainPayload, plain.state)
     );
   });
 });

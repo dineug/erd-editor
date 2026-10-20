@@ -44,6 +44,7 @@ import {
   CanvasType,
   Database,
   Language,
+  NameViewMode,
   RelationshipType,
   Show,
 } from '@/constants/schema';
@@ -70,6 +71,7 @@ import {
   changeCanvasTypeAction,
   changeDatabaseAction,
   changeLanguageAction,
+  changeNameViewModeAction,
   changeShowAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -134,6 +136,7 @@ const visibleNames = () =>
 /** Every row the ERD canvas offers, which is the whole of what its scope holds. */
 const ERD_TOOLBOX = [
   'Tab',
+  'Name View',
   'Database',
   'Import',
   'Import and Add',
@@ -523,6 +526,70 @@ describe('createScopeActions / Database', () => {
     expect(database.filter?.(app)).toBe(false);
     setCanvasType(CanvasType.settings);
     expect(database.filter?.(app)).toBe(false);
+  });
+});
+
+describe('createScopeActions / Name View', () => {
+  beforeEach(() => {
+    setCanvasType(CanvasType.ERD);
+  });
+
+  const nameView = () => find(scope(), 'Name View');
+
+  it('follows Tab with the three views, the one in force checked', async () => {
+    expect(names(scope()).slice(0, 2)).toEqual(['Tab', 'Name View']);
+    expect(nameView().icon).toBeUndefined();
+    expect(names(nameView().next ?? [])).toEqual([
+      'Physical Names',
+      'Logical Names',
+      'Both Names',
+    ]);
+    expect(
+      await Promise.all((nameView().next ?? []).map(action => iconOf(action)))
+    ).toEqual(['check', null, null]);
+    expect((nameView().next ?? []).map(action => action.checked)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it("switches the reader's own view while the lock holds it", async () => {
+    const recorded = recordActions();
+
+    find(nameView().next ?? [], 'Logical Names').perform?.(app);
+    await flush();
+    recorded.unsubscribe();
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(
+      recorded.dispatched
+        .filter(({ type }) => type === changeNameViewModeAction.type)
+        .map(({ payload }) => payload)
+    ).toEqual([
+      {
+        value: NameViewMode.logical,
+        shared: false,
+        editorId: app.store.state.editor.id,
+      },
+    ]);
+    expect((nameView().next ?? []).find(action => action.checked)?.name).toBe(
+      'Logical Names'
+    );
+  });
+
+  it('shows on the ERD tab alone, whose rows it lays out', () => {
+    for (const canvasType of [
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      expect(nameView().filter?.(app)).toBe(false);
+    }
+    setCanvasType(CanvasType.ERD);
+    expect(nameView().filter?.(app)).toBe(true);
   });
 });
 
@@ -1622,7 +1689,7 @@ describe('createScopeActions / translated', () => {
 
     const translated = ids(pseudo);
 
-    expect(translated).toHaveLength(14);
+    expect(translated).toHaveLength(15);
     expect(translated.every(Boolean)).toBe(true);
     expect(new Set(translated).size).toBe(translated.length);
     expect(ids(sourceI18n)).toEqual(translated);
@@ -1704,8 +1771,10 @@ describe('createScopeActions / translated', () => {
     );
 
     expect(names(searchActions(commands, 'new table'))[0]).toBe('새 테이블');
+    // Fuse fuzzes rename to Name View, after the row whose keyword holds it.
     expect(names(searchActions(commands, 'rename'))).toEqual([
       '탐색기 열기/닫기',
+      'Name View',
     ]);
     expect(names(searchActions(commands, '새 메모'))[0]).toBe('새 메모');
     expect(keywordHolder('Toggle Ex')(find(commands, '탐색기 열기/닫기'))).toBe(

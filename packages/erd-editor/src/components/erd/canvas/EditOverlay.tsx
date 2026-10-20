@@ -20,6 +20,7 @@ import {
   SCENE_FONT_SIZE,
   TABLE_GROUP_TITLE_FONT_WEIGHT,
 } from '@/components/erd/canvas/sceneTokens';
+import { blankLogicalName } from '@/components/erd/canvas/table/blankLogicalName';
 import {
   getCellTextHeight,
   getColumnCellSlots,
@@ -47,13 +48,16 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
-import { changeTableCommentAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeTableCommentAction,
+  changeTableLogicalNameAction,
+} from '@/engine/modules/table/atom.actions';
 import { changeTableNameAction$ } from '@/engine/modules/table/generator.actions';
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
 import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 import type { RootState } from '@/engine/state';
 import type { PlainMessageKey } from '@/i18n/translate';
-import type { Column } from '@/internal-types';
+import type { Column, Table } from '@/internal-types';
 import {
   getColumnRect,
   getTableRect,
@@ -77,8 +81,10 @@ import * as styles from './EditOverlay.styles';
 /** What an editor writes into, and the key of what it shows while the value is empty. */
 const EDITABLE: Partial<Record<FocusType, PlainMessageKey>> = {
   [FocusType.tableName]: 'common.placeholder.table',
+  [FocusType.tableLogicalName]: 'common.placeholder.logicalName',
   [FocusType.tableComment]: 'common.placeholder.comment',
   [FocusType.columnName]: 'common.placeholder.column',
+  [FocusType.columnLogicalName]: 'common.placeholder.logicalName',
   [FocusType.columnDataType]: 'common.placeholder.dataType',
   [FocusType.columnDefault]: 'common.placeholder.default',
   [FocusType.columnComment]: 'common.placeholder.comment',
@@ -95,6 +101,8 @@ type CellTarget = {
   width: number;
   value: string;
   placeholderKey: PlainMessageKey;
+  /** The name the cell draws dimmed in its place while the value is blank, shown in the key's stead; '' for none. */
+  standIn: string;
   /** The text color a header its group tints takes, its value and placeholder alike; null for the theme's. */
   textColor: string | null;
 };
@@ -125,13 +133,15 @@ type TableGroupTarget = {
 type EditTarget = CellTarget | MemoTarget | TableGroupTarget;
 
 /**
- * The column field a cell editor writes into. Only the four column focus types
+ * The column field a cell editor writes into. Only the five column focus types
  * EDITABLE names reach here, so the comment cell is what is left over.
  */
 function getColumnValue(column: Column, focusType: FocusType): string {
   switch (focusType) {
     case FocusType.columnName:
       return column.name;
+    case FocusType.columnLogicalName:
+      return column.logicalName;
     case FocusType.columnDataType:
       return column.dataType;
     case FocusType.columnDefault:
@@ -140,6 +150,45 @@ function getColumnValue(column: Column, focusType: FocusType): string {
       return column.comment;
   }
 }
+
+/** The header field a cell editor writes into, the comment again what is left over. */
+function getTableValue(table: Table, focusType: FocusType): string {
+  switch (focusType) {
+    case FocusType.tableName:
+      return table.name;
+    case FocusType.tableLogicalName:
+      return table.logicalName;
+    default:
+      return table.comment;
+  }
+}
+
+/**
+ * The placeholder a logical name editor shows: what its cell draws while it is
+ * blank, the name in the logical view, so the editor opens on the text it hides.
+ */
+const toPlaceholder = (
+  state: RootState,
+  focusType: FocusType,
+  name: string,
+  placeholderKey: PlainMessageKey
+): Pick<CellTarget, 'placeholderKey' | 'standIn'> => {
+  if (
+    focusType !== FocusType.tableLogicalName &&
+    focusType !== FocusType.columnLogicalName
+  ) {
+    return { placeholderKey, standIn: '' };
+  }
+
+  const { standIn, key } = blankLogicalName(
+    state.settings,
+    name,
+    focusType === FocusType.tableLogicalName
+      ? 'common.placeholder.table'
+      : 'common.placeholder.column'
+  );
+  return { placeholderKey: key, standIn };
+};
 
 const keyOf = (target: EditTarget) =>
   target.kind === 'memo'
@@ -186,9 +235,8 @@ function resolveCellTarget(state: RootState): CellTarget | null {
       x: rect.x + HEADER_CELLS_X + slot.x,
       y: rect.y + getHeaderCellsY() + getHeaderTextY(),
       width: slot.width,
-      value:
-        slot.focusType === FocusType.tableName ? table.name : table.comment,
-      placeholderKey,
+      value: getTableValue(table, slot.focusType),
+      ...toPlaceholder(state, slot.focusType, table.name, placeholderKey),
       textColor: getTableHeaderTint(state, table)?.foreground ?? null,
     };
   }
@@ -215,7 +263,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     y: getColumnRect(state, table, index).y + getColumnTextY(),
     width: slot.width,
     value: getColumnValue(column, slot.focusType),
-    placeholderKey,
+    ...toPlaceholder(state, slot.focusType, column.name, placeholderKey),
     textColor: null,
   };
 }
@@ -521,10 +569,14 @@ const EditOverlay: FC = (_, ctx) => {
       return;
     }
 
+    // A key writes the logical name alone and derives no name from it.
+    const payload = { id: target.tableId, value: input.value };
     store.dispatch(
       target.focusType === FocusType.tableName
         ? changeTableNameAction$(target.tableId, input.value)
-        : changeTableCommentAction({ id: target.tableId, value: input.value })
+        : target.focusType === FocusType.tableLogicalName
+          ? changeTableLogicalNameAction(payload)
+          : changeTableCommentAction(payload)
     );
   };
 
@@ -582,7 +634,7 @@ const EditOverlay: FC = (_, ctx) => {
     // Read here rather than in the editor, which repeat draws outside this pass.
     const placeholder =
       target?.kind === 'cell'
-        ? i18n.value.t(target.placeholderKey)
+        ? target.standIn || i18n.value.t(target.placeholderKey)
         : target?.kind === 'tableGroup'
           ? i18n.value.t('common.unnamed')
           : '';

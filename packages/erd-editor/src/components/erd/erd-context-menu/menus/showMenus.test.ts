@@ -23,6 +23,7 @@ const NAME_TO_SHOW: Array<[string, number]> = [
   ['Table Comment', Show.tableComment],
   ['Column Comment', Show.columnComment],
   ['DataType', Show.columnDataType],
+  ['Domain', Show.columnDomain],
   ['Default', Show.columnDefault],
   ['Not Null', Show.columnNotNull],
   ['Unique', Show.columnUnique],
@@ -124,6 +125,18 @@ describe('showMenus', () => {
 
     expect(bHas(app.store.state.settings.show, Show.hideMemo)).toBe(false);
     expect(memos()?.checked).toBe(true);
+  });
+
+  it('shows the domain cell under its own bit, which a new document leaves off', async () => {
+    const domain = () =>
+      createShowMenus(app, sourceI18n).find(menu => menu.name === 'Domain');
+    expect(domain()?.checked).toBe(false);
+
+    domain()?.onClick();
+    await flush();
+
+    expect(bHas(app.store.state.settings.show, Show.columnDomain)).toBe(true);
+    expect(domain()?.checked).toBe(true);
   });
 
   it('derives checked from the settings show bitmask', () => {

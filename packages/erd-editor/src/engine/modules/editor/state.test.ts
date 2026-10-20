@@ -208,9 +208,12 @@ describe('editor/state', () => {
       for (const [key, value] of Object.entries(FocusType)) {
         expect(value).toBe(key);
       }
-      expect(Object.keys(FocusType)).toHaveLength(9);
+      expect(Object.keys(FocusType)).toHaveLength(12);
       expect(FocusType.tableName).toBe('tableName');
       expect(FocusType.columnAutoIncrement).toBe('columnAutoIncrement');
+      expect(FocusType.tableLogicalName).toBe('tableLogicalName');
+      expect(FocusType.columnLogicalName).toBe('columnLogicalName');
+      expect(FocusType.columnDomain).toBe('columnDomain');
     });
 
     it('MoveKey values mirror their keys', () => {

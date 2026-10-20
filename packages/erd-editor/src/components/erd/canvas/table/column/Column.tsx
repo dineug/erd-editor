@@ -25,6 +25,7 @@ import {
   TABLE_INSET,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
+import { blankLogicalName } from '@/components/erd/canvas/table/blankLogicalName';
 import {
   type ColumnCellSlot,
   focusBorderFill,
@@ -57,6 +58,7 @@ import {
   ColumnType,
   ColumnUIKey,
 } from '@/constants/schema';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import {
   editTableAction,
   focusColumnAction,
@@ -123,6 +125,10 @@ export type ColumnProps = {
   widthDataType: number;
   widthDefault: number;
   widthComment: number;
+  /** The logical name's own cell, 0 while the name view lays out none. */
+  widthLogicalName?: number;
+  /** The domain's own cell, 0 while its show bit is off. */
+  widthDomain?: number;
   /**
    * The room the table keeps for alternate key marks after the last cell, 0
    * while it draws none; the same for every row, so the marks stay in line.
@@ -130,6 +136,11 @@ export type ColumnProps = {
   widthAlternateKey?: number;
   /** The mark this row carries in that room, AK1.2 or several comma joined. */
   alternateKey?: string;
+  /**
+   * The name and type cells' marks, under whichever focus the name view gives
+   * them: the logical view's name cell takes the logical name's, and its type
+   * cell the domain's while the domain has no cell of its own.
+   */
   focusName: boolean;
   focusDataType: boolean;
   focusNotNull: boolean;
@@ -137,6 +148,9 @@ export type ColumnProps = {
   focusComment: boolean;
   focusUnique: boolean;
   focusAutoIncrement: boolean;
+  /** The marks of the logical name and domain cells, which a row lays out in some views alone. */
+  focusLogicalName?: boolean;
+  focusDomain?: boolean;
   sharedFocusName: string | null;
   sharedFocusDataType: string | null;
   sharedFocusNotNull: string | null;
@@ -144,10 +158,13 @@ export type ColumnProps = {
   sharedFocusComment: string | null;
   sharedFocusUnique: string | null;
   sharedFocusAutoIncrement: string | null;
+  sharedFocusLogicalName?: string | null;
+  sharedFocusDomain?: string | null;
   editName: boolean;
   editDataType: boolean;
   editDefault: boolean;
   editComment: boolean;
+  editLogicalName?: boolean;
   hovered?: boolean;
   /** The placeholder row for a column dragged in from another table. */
   ghost?: boolean;
@@ -177,6 +194,8 @@ type CellOptions = {
   align?: 'center' | 'left' | 'right';
   fontFamily?: string;
   diffFallback?: string | null;
+  /** The diff path of what the cell draws, its focus type unless it says otherwise. */
+  diffPath?: string;
 };
 
 type ColumnOrderTpl = {
@@ -413,6 +432,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     align,
     fontFamily = SCENE_FONT_FAMILY,
     diffFallback = null,
+    diffPath = focusType,
   }: CellOptions) => (
     <k-group
       name={`column-col ${focusType}`}
@@ -437,7 +457,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         height={getColumnTextHeight(props.source, fontFamily)}
         text={text}
         fill={
-          diffTextColor(themeRef.value, props.diffPaths, focusType, true) ??
+          diffTextColor(themeRef.value, props.diffPaths, diffPath, true) ??
           diffFallback ??
           fill
         }
@@ -473,17 +493,75 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     </k-group>
   );
 
+  /**
+   * A logical name cell: the logical name, or while it is blank what stands in
+   * for it, dimmed, the name in the logical view and else the placeholder.
+   */
+  const logicalNameCell = (
+    { focusType, x, width }: ColumnCellSlot,
+    marks: Pick<CellOptions, 'focus' | 'edit' | 'sharedFocus'>,
+    diffFallback: string | null
+  ) => {
+    const { column } = props;
+    const theme = themeRef.value;
+    const filled = column.logicalName.trim() !== '';
+    let text = column.logicalName;
+
+    if (!filled) {
+      const { standIn, key } = blankLogicalName(
+        app.value.store.state.settings,
+        column.name,
+        'common.placeholder.column'
+      );
+      text = standIn || i18n.value.t(key);
+    }
+
+    return cell({
+      focusType,
+      x,
+      width,
+      text,
+      fill: filled ? theme.active : theme.placeholder,
+      ...marks,
+      ellipsis: true,
+      diffFallback,
+    });
+  };
+
+  /**
+   * The diff path a slot marks: its focus type, but the type's for the type
+   * cell in every view, since it draws the type or the domain governing it.
+   */
+  const diffPathOf = (slot: ColumnCellSlot): string =>
+    slot.columnType === ColumnType.columnDataType
+      ? FocusType.columnDataType
+      : slot.focusType;
+
   /** One cell, filled in with what its own column type puts in the box. */
   const cellOf = (
-    { columnType, focusType, x, width }: ColumnCellSlot,
+    slot: ColumnCellSlot,
     diffFallback: string | null
   ): DOMTemplateLiterals | null => {
+    const { columnType, focusType, x, width } = slot;
     const { column } = props;
     const theme = themeRef.value;
     const view = props.source !== 'document';
 
     switch (columnType) {
       case ColumnType.columnName:
+        // The logical view sets the logical name in the name's place.
+        if (focusType === FocusType.columnLogicalName) {
+          return logicalNameCell(
+            slot,
+            {
+              focus: props.focusName,
+              edit: props.editName,
+              sharedFocus: props.sharedFocusName,
+            },
+            diffFallback
+          );
+        }
+
         return cell({
           focusType,
           x,
@@ -526,15 +604,25 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           sharedFocus: props.sharedFocusComment,
           ellipsis: true,
         });
-      case ColumnType.columnDataType:
+      case ColumnType.columnDataType: {
+        // Where the type cell takes the domain's focus it stands for the
+        // domain, and draws its name while the column links a listed one.
+        const domainName =
+          focusType === FocusType.columnDomain
+            ? getLiveDomainName(app.value.store.state, column.domainId)
+            : '';
+        const filled = domainName !== '' || column.dataType.trim() !== '';
+
         return cell({
           focusType,
           x,
           width,
-          text: column.dataType.trim()
-            ? column.dataType
-            : i18n.value.t('common.placeholder.dataType'),
-          fill: column.dataType.trim() ? theme.active : theme.placeholder,
+          text:
+            domainName ||
+            (column.dataType.trim()
+              ? column.dataType
+              : i18n.value.t('common.placeholder.dataType')),
+          fill: filled ? theme.active : theme.placeholder,
           focus: props.focusDataType,
           edit: props.editDataType,
           sharedFocus: props.sharedFocusDataType,
@@ -542,6 +630,32 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           opacity: view ? (props.litAlpha ?? 0) : 1,
           align: view ? 'right' : undefined,
           fontFamily: view ? SCENE_CODE_FONT_FAMILY : undefined,
+          diffPath: diffPathOf(slot),
+        });
+      }
+      case ColumnType.columnLogicalName:
+        return logicalNameCell(
+          slot,
+          {
+            focus: props.focusLogicalName ?? false,
+            edit: props.editLogicalName ?? false,
+            sharedFocus: props.sharedFocusLogicalName ?? null,
+          },
+          null
+        );
+      case ColumnType.columnDomain:
+        // A column linking no listed domain leaves the cell empty, and no
+        // editor writes a domain, so the cell keeps its text, as a flag does.
+        return cell({
+          focusType,
+          x,
+          width,
+          text: getLiveDomainName(app.value.store.state, column.domainId),
+          fill: theme.active,
+          focus: props.focusDomain ?? false,
+          edit: false,
+          sharedFocus: props.sharedFocusDomain ?? null,
+          ellipsis: true,
         });
       case ColumnType.columnNotNull:
         return cell({
@@ -598,7 +712,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     for (const path of diffPaths.keys()) {
       if (path === ENTITY_PATH) continue;
       if (path === COLUMN_KEY_PATH && props.column.ui.keys !== 0) continue;
-      if (slots.some(slot => slot.focusType === path)) continue;
+      if (slots.some(slot => diffPathOf(slot) === path)) continue;
       const color = diffTextColor(theme, diffPaths, path);
       if (color) return color;
     }
@@ -662,8 +776,10 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       store.state,
       {
         name: props.widthName,
+        logicalName: props.widthLogicalName ?? 0,
         comment: props.widthComment,
         dataType: props.widthDataType,
+        domain: props.widthDomain ?? 0,
         default: props.widthDefault,
       },
       props.source

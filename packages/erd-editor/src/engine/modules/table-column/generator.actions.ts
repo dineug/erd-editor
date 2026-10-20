@@ -22,6 +22,7 @@ import {
   changeColumnAutoIncrementAction,
   changeColumnCommentAction,
   changeColumnDefaultAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNameDerivedAction,
   changeColumnNotNullAction,
@@ -38,6 +39,7 @@ export const isToggleColumnTypes = arrayHas<FocusType>([
 
 export const isChangeColumnTypes = arrayHas<FocusType>([
   FocusType.columnName,
+  FocusType.columnLogicalName,
   FocusType.columnDataType,
   FocusType.columnDefault,
   FocusType.columnComment,
@@ -232,6 +234,10 @@ export const changeColumnValueAction$ = (
             ? [changeColumnNameDerivedAction({ ...payload, value: false })]
             : []),
         ];
+        break;
+      case FocusType.columnLogicalName:
+        // Each key writes the logical name alone, deriving no name from it.
+        yield changeColumnLogicalNameAction(payload);
         break;
       case FocusType.columnDataType:
         yield changeColumnDataTypeAction$(payload);

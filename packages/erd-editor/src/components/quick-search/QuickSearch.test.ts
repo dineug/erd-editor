@@ -183,6 +183,7 @@ describe('QuickSearch', () => {
     expect(input().getAttribute('placeholder')).toBe('Search');
     expect(rowNames()).toEqual([
       'Tab',
+      'Name View',
       'Database',
       'Import',
       'Import and Add',
@@ -297,8 +298,8 @@ describe('QuickSearch', () => {
   it('renders an icon, keyword column and shortcut only when the action has them, the icon slot always', async () => {
     await open();
     const [tab] = rows();
-    const newTable = rows()[5];
-    const zeroOne = rows()[8];
+    const newTable = rows()[rowNames().indexOf('New Table')];
+    const zeroOne = rows()[rowNames().indexOf('Zero One')];
 
     // The slot stays empty, so the name starts in line with the others.
     expect(tab.querySelector(`.${styles.icon}`)?.childElementCount).toBe(0);
@@ -325,7 +326,7 @@ describe('QuickSearch keyword filtering', () => {
     await type('New Memo');
 
     expect(rowNames()).toContain('New Memo');
-    expect(rowNames().length).toBeLessThan(14);
+    expect(rowNames().length).toBeLessThan(15);
     expect(input().value).toBe('New Memo');
   });
 
@@ -346,7 +347,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('');
 
-    expect(rowNames()).toHaveLength(14);
+    expect(rowNames()).toHaveLength(15);
     expect(rowNames()[0]).toBe('Tab');
   });
 
@@ -356,7 +357,7 @@ describe('QuickSearch keyword filtering', () => {
 
     await type('   ');
 
-    expect(rowNames()).toHaveLength(14);
+    expect(rowNames()).toHaveLength(15);
   });
 
   it('lists no command when nothing matches, only the prefixes to search the document by', async () => {
@@ -410,10 +411,10 @@ describe('QuickSearch keyboard navigation', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(selectedIndex()).toBe(0);
 
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < 14; i++) {
       await keydown('ArrowDown');
     }
-    expect(selectedIndex()).toBe(13);
+    expect(selectedIndex()).toBe(14);
 
     await keydown('ArrowDown');
     expect(selectedIndex()).toBe(0);
@@ -425,7 +426,7 @@ describe('QuickSearch keyboard navigation', () => {
     const event = await keydown('ArrowUp');
 
     expect(event.defaultPrevented).toBe(true);
-    expect(selectedIndex()).toBe(13);
+    expect(selectedIndex()).toBe(14);
   });
 
   it('clears the selection on the horizontal arrows', async () => {
@@ -455,15 +456,15 @@ describe('QuickSearch keyboard navigation', () => {
 
     expect(event.cancelBubble).toBe(false);
     expect(isOpen()).toBe(true);
-    expect(rowNames()).toHaveLength(14);
+    expect(rowNames()).toHaveLength(15);
   });
 
   it('performs the selected action on Enter and closes the palette', async () => {
     await open();
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 8; i++) {
       await keydown('ArrowDown');
     }
-    expect(rowNames()[6]).toBe('New Memo');
+    expect(rowNames()[7]).toBe('New Memo');
 
     await keydown('Enter');
 
@@ -521,7 +522,7 @@ describe('QuickSearch keyboard navigation', () => {
   it('ignores Enter when the selected index no longer exists', async () => {
     await open();
     await keydown('ArrowUp');
-    expect(selectedIndex()).toBe(13);
+    expect(selectedIndex()).toBe(14);
 
     app.store.dispatchSync(
       changeCanvasTypeAction({ value: CanvasType.settings })
@@ -541,7 +542,7 @@ describe('QuickSearch mouse interaction', () => {
     await open();
     focusEvents = 0;
 
-    await click(rows()[5]);
+    await click(rows()[rowNames().indexOf('New Table')]);
 
     expect(app.store.state.doc.tableIds).toHaveLength(1);
     expect(isOpen()).toBe(false);
@@ -913,6 +914,7 @@ describe('QuickSearch with no command matching', () => {
     expect(empty()).toBeNull();
     expect(rowNames()).toEqual([
       'Tab',
+      'Name View',
       'Database',
       'Import',
       'Import and Add',
@@ -1699,7 +1701,7 @@ describe('QuickSearch preferences and language', () => {
 
   it('lets the name and the keywords of a row take the direction of their own text', async () => {
     await open();
-    const zeroOne = rows()[8];
+    const zeroOne = rows()[rowNames().indexOf('Zero One')];
 
     expect(zeroOne.querySelector(`.${styles.name}`)?.getAttribute('dir')).toBe(
       'auto'

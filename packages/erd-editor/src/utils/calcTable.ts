@@ -29,6 +29,14 @@ import {
 import { Show } from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
 import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
+import { FocusType } from '@/engine/modules/editor/state';
+import {
+  drawsDomainInTypeCell,
+  drawsNameForLogicalName,
+  getTableFocusTypes,
+  isBothNameView,
+  isLogicalNameView,
+} from '@/engine/modules/editor/utils/nameView';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
@@ -91,28 +99,47 @@ export function calcAlternateKeyWidth(table: Table, state: RootState): number {
   );
 }
 
-export function calcTableWidths(table: Table, state: RootState): ColumnWidth {
-  const {
-    settings: { show, maxWidthComment },
-    collections,
-  } = state;
-  let width = TABLE_HEADER_NAME_X + table.ui.widthName + INPUT_MARGIN_RIGHT;
-  if (bHas(show, Show.tableComment)) {
-    const widthComment =
-      maxWidthComment === -1
+/**
+ * The width a document header gives the cell of a focus type: the comment at
+ * its clamp, and the logical name at its own width in the view of both names
+ * or, in the logical view, at the name's while it holds none, which that view draws.
+ */
+export function headerCellWidth(
+  state: RootState,
+  table: Table,
+  focusType: FocusType
+): number {
+  const { settings } = state;
+
+  switch (focusType) {
+    case FocusType.tableComment:
+      return settings.maxWidthComment === -1 ||
+        settings.maxWidthComment >= table.ui.widthComment
         ? table.ui.widthComment
-        : maxWidthComment < table.ui.widthComment
-          ? maxWidthComment
-          : table.ui.widthComment;
-    width += widthComment + INPUT_MARGIN_RIGHT;
+        : settings.maxWidthComment;
+    case FocusType.tableLogicalName:
+      return drawsNameForLogicalName(settings, table)
+        ? table.ui.widthName
+        : table.ui.widthLogicalName;
+    default:
+      return table.ui.widthName;
   }
+}
+
+export function calcTableWidths(table: Table, state: RootState): ColumnWidth {
+  const { settings, collections } = state;
+  let width = getTableFocusTypes(settings).reduce(
+    (acc, focusType) =>
+      acc + headerCellWidth(state, table, focusType) + INPUT_MARGIN_RIGHT,
+    TABLE_HEADER_NAME_X
+  );
   // The two buttons share the header line, so the line keeps their room past
   // the last cell and a long name ends before them rather than under them.
   width += TABLE_HEADER_BUTTONS_WIDTH;
 
   const alternateKey = calcAlternateKeyWidth(table, state);
   const defaultWidthColumns =
-    calcDefaultWidthColumns(show) +
+    calcDefaultWidthColumns(settings) +
     (alternateKey ? alternateKey + INPUT_MARGIN_RIGHT : 0);
   if (width < defaultWidthColumns) {
     width = defaultWidthColumns;
@@ -122,12 +149,7 @@ export function calcTableWidths(table: Table, state: RootState): ColumnWidth {
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds);
 
-  const maxWidthColumn = calcMaxWidthColumn(
-    columns,
-    show,
-    maxWidthComment,
-    alternateKey
-  );
+  const maxWidthColumn = calcMaxWidthColumn(columns, state, alternateKey);
   if (width < maxWidthColumn.width) {
     width = maxWidthColumn.width;
   }
@@ -151,6 +173,10 @@ const DEFAULT_WIDTH_COLUMNS: Array<{
     width: COLUMN_MIN_WIDTH,
   },
   {
+    key: Show.columnDomain,
+    width: COLUMN_MIN_WIDTH,
+  },
+  {
     key: Show.columnDefault,
     width: COLUMN_MIN_WIDTH,
   },
@@ -168,25 +194,42 @@ const DEFAULT_WIDTH_COLUMNS: Array<{
   },
 ];
 
-function calcDefaultWidthColumns(show: number) {
-  return DEFAULT_WIDTH_COLUMNS.reduce(
+/**
+ * The least row a document lays out: every cell shown at its least width, the
+ * logical name's among them in the view of both names.
+ */
+function calcDefaultWidthColumns(settings: RootState['settings']) {
+  const shown = DEFAULT_WIDTH_COLUMNS.reduce(
     (acc, { key, width }) =>
-      bHas(show, key) ? acc + width + INPUT_MARGIN_RIGHT : acc,
+      bHas(settings.show, key) ? acc + width + INPUT_MARGIN_RIGHT : acc,
     COLUMN_KEY_WIDTH +
       INPUT_MARGIN_RIGHT +
       COLUMN_MIN_WIDTH +
       INPUT_MARGIN_RIGHT +
       COLUMN_DELETE_WIDTH
   );
+
+  return isBothNameView(settings)
+    ? shown + COLUMN_MIN_WIDTH + INPUT_MARGIN_RIGHT
+    : shown;
 }
 
+/**
+ * The width of each cell a document row lays out in the view the settings
+ * show, at the widest row, 0 for a cell it leaves out. The name and the type
+ * are the cells in their places, which the logical view fills its own way.
+ */
 export type ColumnWidth = {
   width: number;
   /** The alternate key marks' room after a row's last cell, 0 while none is drawn. */
   alternateKey: number;
   name: number;
+  /** The logical name's own cell, which the view of both names alone lays out. */
+  logicalName: number;
   comment: number;
   dataType: number;
+  /** The domain's own cell, laid out while its show bit is set. */
+  domain: number;
   default: number;
   notNull: number;
   autoIncrement: number;
@@ -199,8 +242,10 @@ function createColumnWidth(): ColumnWidth {
     width: 0,
     alternateKey: 0,
     name: 0,
+    logicalName: 0,
     comment: 0,
     dataType: 0,
+    domain: 0,
     default: 0,
     notNull: 0,
     autoIncrement: 0,
@@ -210,16 +255,28 @@ function createColumnWidth(): ColumnWidth {
 
 function calcMaxWidthColumn(
   columns: Column[],
-  show: number,
-  maxWidthComment: number,
+  state: RootState,
   alternateKey: number
 ): ColumnWidth {
+  const { settings } = state;
+  const { show, maxWidthComment } = settings;
+  const logical = isLogicalNameView(settings);
+  const both = isBothNameView(settings);
   const columnWidth = createColumnWidth();
   columnWidth.alternateKey = alternateKey;
 
   for (const column of columns) {
-    if (columnWidth.name < column.ui.widthName) {
-      columnWidth.name = column.ui.widthName;
+    // The logical view draws the name in a row whose logical name is blank.
+    const widthName =
+      logical && !drawsNameForLogicalName(settings, column)
+        ? column.ui.widthLogicalName
+        : column.ui.widthName;
+    if (columnWidth.name < widthName) {
+      columnWidth.name = widthName;
+    }
+
+    if (both && columnWidth.logicalName < column.ui.widthLogicalName) {
+      columnWidth.logicalName = column.ui.widthLogicalName;
     }
 
     if (
@@ -235,11 +292,20 @@ function calcMaxWidthColumn(
       columnWidth.comment = widthComment;
     }
 
+    if (bHas(show, Show.columnDataType)) {
+      const widthDataType = drawsDomainInTypeCell(state, column)
+        ? column.ui.widthDomain
+        : column.ui.widthDataType;
+      if (columnWidth.dataType < widthDataType) {
+        columnWidth.dataType = widthDataType;
+      }
+    }
+
     if (
-      bHas(show, Show.columnDataType) &&
-      columnWidth.dataType < column.ui.widthDataType
+      bHas(show, Show.columnDomain) &&
+      columnWidth.domain < column.ui.widthDomain
     ) {
-      columnWidth.dataType = column.ui.widthDataType;
+      columnWidth.domain = column.ui.widthDomain;
     }
 
     if (

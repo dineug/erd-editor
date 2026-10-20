@@ -61,7 +61,8 @@ function documentTableSize(state: RootState, table: Table): PendingSize {
   const show =
     settings.show &
     ~(Show.hideReferentialAction | Show.hideTableGroup | Show.hideMemo);
-  const key = `${getWidthGeneration()}|${show}|${settings.maxWidthComment}|${table.ui.widthName}|${table.ui.widthComment}|${table.columnIds.length}`;
+  // The name view picks which header names the width adds up.
+  const key = `${getWidthGeneration()}|${show}|${settings.maxWidthComment}|${settings.nameViewMode}|${table.ui.widthName}|${table.ui.widthLogicalName}|${table.ui.widthComment}|${table.columnIds.length}`;
 
   return {
     key,

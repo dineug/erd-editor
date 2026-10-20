@@ -1,6 +1,8 @@
 import { last } from 'es-toolkit';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
+import { findDomain } from '@/engine/modules/dictionary/dictionaryIndex';
+import { isDomainInTypeCell } from '@/engine/modules/editor/utils/nameView';
 import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
@@ -24,38 +26,103 @@ import {
 const hasTruthy = arrayHas(['true', '1', 'yes', 'y']);
 const hasNotNullTruthy = arrayHas(['true', '1', 'yes', 'y', 'not null']);
 
+const CellTypeOf: Readonly<Record<number, CellType>> = {
+  [ColumnType.columnName]: CellType.columnName,
+  [ColumnType.columnLogicalName]: CellType.columnLogicalName,
+  [ColumnType.columnDataType]: CellType.columnDataType,
+  [ColumnType.columnDomain]: CellType.columnDomain,
+  [ColumnType.columnNotNull]: CellType.columnNotNull,
+  [ColumnType.columnUnique]: CellType.columnUnique,
+  [ColumnType.columnAutoIncrement]: CellType.columnAutoIncrement,
+  [ColumnType.columnDefault]: CellType.columnDefault,
+  [ColumnType.columnComment]: CellType.columnComment,
+};
+
+/** A row as it is read: its column, the name its domain cell gave and whether a cell gave its type. */
+type PastedRow = {
+  column: Column;
+  domainName: string | null;
+  typed: boolean;
+};
+
+const createPastedRow = (): PastedRow => ({
+  column: createColumn(),
+  domainName: null,
+  typed: false,
+});
+
+/**
+ * What the cell in a column type's place holds. The logical view's type cell
+ * draws a domain by its name, so a text naming a domain the document lists is
+ * that domain there, and any other text a type.
+ */
+function cellTypeAt(
+  state: RootState,
+  columnType: number,
+  value: string
+): CellType | '' {
+  if (
+    columnType === ColumnType.columnDataType &&
+    isDomainInTypeCell(state.settings)
+  ) {
+    return findDomain(state, value)
+      ? CellType.columnDomain
+      : CellType.columnDataType;
+  }
+  return CellTypeOf[columnType] ?? '';
+}
+
+/**
+ * The column a row reads into. A domain cell links the domain of its name the
+ * document lists, none where it lists no such domain, and gives the column
+ * that domain's type unless a cell of the row gave one.
+ */
+function toPastedColumn(
+  state: RootState,
+  { column, domainName, typed }: PastedRow
+): Column {
+  if (domainName === null) return column;
+
+  const domain = findDomain(state, domainName);
+  column.domainId = domain?.id ?? '';
+  if (domain && !typed) column.dataType = domain.dataType;
+  return column;
+}
+
 export function tablePasteFromTextToColumns(
-  { settings: { show, columnOrder } }: RootState,
+  state: RootState,
   text: string
 ): Column[] {
+  const { show, columnOrder, nameViewMode } = state.settings;
   const lines = text.split(/\r?\n/);
-  // Excel and LibreOffice end the last row with a line break too, which closes
-  // that row rather than opening an empty one.
+  // A spreadsheet ends the last row with a line break too, which closes that
+  // row rather than opening an empty one.
   if (lines.length > 1 && last(lines) === '') lines.pop();
 
   const rows = lines.map(line => line.split('\t'));
-  const showColumnOrder = getShowColumnOrder(show, columnOrder);
+  const showColumnOrder = getShowColumnOrder(show, columnOrder, nameViewMode);
 
-  return rows.map(row => {
-    const column = createColumn();
+  return rows.map(cells => {
+    const row = createPastedRow();
 
     showColumnOrder.forEach((columnType, index) => {
-      const value = row[index];
+      const value = cells[index];
       if (!value) return;
 
       const newValue = value.trim();
-      assignColumn(column, newValue, columnType);
+      assignCell(row, newValue, cellTypeAt(state, columnType, newValue));
     });
 
-    return column;
+    return toPastedColumn(state, row);
   });
 }
 
 export function tablePasteFromHtmlToColumns(
-  { settings: { show, columnOrder } }: RootState,
+  state: RootState,
   html: string
 ): Column[] {
-  const showColumnOrder = getShowColumnOrder(show, columnOrder);
+  const { show, columnOrder, nameViewMode } = state.settings;
+  const showColumnOrder = getShowColumnOrder(show, columnOrder, nameViewMode);
   const template = document.createElement('template');
   template.innerHTML = html;
 
@@ -67,26 +134,29 @@ export function tablePasteFromHtmlToColumns(
     ])
   );
 
-  return rows.map(row => {
-    const column = createColumn();
+  return rows.map(cells => {
+    const row = createPastedRow();
 
     showColumnOrder.forEach((columnType, index) => {
-      const cell = row[index];
+      const cell = cells[index];
       if (!cell) return;
 
       const [type, value] = cell;
       const newValue = value.trim();
-      assignColumn(column, newValue, columnType, type);
+      assignCell(
+        row,
+        newValue,
+        hasCellType(type) ? type : cellTypeAt(state, columnType, newValue)
+      );
     });
 
-    row
+    cells
       .filter(([type]) => hasCellType(type))
       .forEach(([type, value]) => {
-        const newValue = value.trim();
-        assignColumn(column, newValue, 0, type);
+        assignCell(row, value.trim(), type);
       });
 
-    return column;
+    return toPastedColumn(state, row);
   });
 }
 
@@ -127,69 +197,40 @@ export function payloadToColumns({ columns }: ClipboardPayload): Column[] {
   );
 }
 
-function assignColumn(
-  column: Column,
-  value: string,
-  columnType: number,
-  cellType: CellType | '' = ''
-) {
-  if (hasCellType(cellType)) {
-    switch (cellType) {
-      case CellType.columnName:
-        column.name = value;
-        break;
-      case CellType.columnDataType:
-        column.dataType = value;
-        break;
-      case CellType.columnDefault:
-        column.default = value;
-        break;
-      case CellType.columnComment:
-        column.comment = value;
-        break;
-      case CellType.columnAutoIncrement:
-        if (isTruthy(value)) {
-          column.options |= ColumnOption.autoIncrement;
-        }
-        break;
-      case CellType.columnUnique:
-        if (isTruthy(value)) {
-          column.options |= ColumnOption.unique;
-        }
-        break;
-      case CellType.columnNotNull:
-        if (hasNotNullTruthy(value.trim().toLowerCase())) {
-          column.options |= ColumnOption.notNull;
-        }
-        break;
-    }
-    return;
-  }
+function assignCell(row: PastedRow, value: string, cellType: CellType | '') {
+  const { column } = row;
 
-  switch (columnType) {
-    case ColumnType.columnName:
+  switch (cellType) {
+    case CellType.columnName:
       column.name = value;
       break;
-    case ColumnType.columnDataType:
-      column.dataType = value;
+    case CellType.columnLogicalName:
+      column.logicalName = value;
       break;
-    case ColumnType.columnDefault:
+    case CellType.columnDataType:
+      column.dataType = value;
+      row.typed = true;
+      break;
+    case CellType.columnDomain:
+      row.domainName = value;
+      break;
+    case CellType.columnDefault:
       column.default = value;
       break;
-    case ColumnType.columnComment:
+    case CellType.columnComment:
       column.comment = value;
       break;
-    case ColumnType.columnAutoIncrement:
+    case CellType.columnAutoIncrement:
       if (isTruthy(value)) {
         column.options |= ColumnOption.autoIncrement;
       }
       break;
-    case ColumnType.columnUnique:
+    case CellType.columnUnique:
       if (isTruthy(value)) {
         column.options |= ColumnOption.unique;
       }
       break;
-    case ColumnType.columnNotNull:
+    case CellType.columnNotNull:
       if (hasNotNullTruthy(value.trim().toLowerCase())) {
         column.options |= ColumnOption.notNull;
       }

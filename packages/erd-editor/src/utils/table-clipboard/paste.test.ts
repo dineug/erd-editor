@@ -1,11 +1,23 @@
 import { schemaV3Parser } from '@dineug/erd-editor-schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { ColumnOption, ColumnType, Show } from '@/constants/schema';
-import { createEditor } from '@/engine/modules/editor/state';
+import {
+  ColumnOption,
+  ColumnType,
+  NameViewMode,
+  Show,
+} from '@/constants/schema';
+import { createEditor, FocusType } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
-import { payloadToHtml } from '@/utils/table-clipboard/copy';
+import { createDomain } from '@/utils/collection/domain.entity';
+import { createTable } from '@/utils/collection/table.entity';
+import { createColumn } from '@/utils/collection/tableColumn.entity';
+import {
+  payloadToHtml,
+  tableCopyToHtml,
+  tableCopyToText,
+} from '@/utils/table-clipboard/copy';
 import {
   payloadToColumns,
   readClipboardPayload,
@@ -46,7 +58,8 @@ const FULL_COLUMN_ORDER = [
 
 function createState(
   show: number = ALL_SHOW,
-  columnOrder: number[] = FULL_COLUMN_ORDER
+  columnOrder: number[] = FULL_COLUMN_ORDER,
+  nameViewMode: RootState['settings']['nameViewMode'] = NameViewMode.physical
 ): RootState {
   const state: RootState = {
     ...schemaV3Parser({}),
@@ -55,6 +68,7 @@ function createState(
   };
   state.settings.show = show;
   state.settings.columnOrder = columnOrder;
+  state.settings.nameViewMode = nameViewMode;
   return state;
 }
 
@@ -624,5 +638,149 @@ describe('payloadToColumns', () => {
 
     expect(linked).toMatchObject({ logicalName: 'Number', domainId: 'd1' });
     expect(older).toMatchObject({ logicalName: '', domainId: '' });
+  });
+});
+
+const NAMED_ORDER = [
+  ColumnType.columnLogicalName,
+  ColumnType.columnName,
+  ColumnType.columnDataType,
+  ColumnType.columnDomain,
+];
+
+/** A state in a name view whose document lists the Identifier domain and no longer lists Nickname. */
+function createNamedState(
+  nameViewMode: RootState['settings']['nameViewMode'],
+  show: number = Show.columnDataType
+): RootState {
+  const state = createState(show, NAMED_ORDER, nameViewMode);
+  const live = createDomain({
+    id: 'domain-live',
+    name: 'Identifier',
+    dataType: 'int',
+  });
+  const removed = createDomain({
+    id: 'domain-removed',
+    name: 'Nickname',
+    dataType: 'text',
+  });
+
+  state.collections.domainEntities[live.id] = live;
+  state.collections.domainEntities[removed.id] = removed;
+  state.doc.domainIds = [live.id];
+  return state;
+}
+
+describe('the name views', () => {
+  it("reads the logical view's name cell into the logical name, its type cell into a listed domain or else a type", () => {
+    const [linked, typed] = tablePasteFromTextToColumns(
+      createNamedState(NameViewMode.logical),
+      'Member ID\t Identifier \nNick\tvarchar'
+    );
+
+    expect(linked).toMatchObject({
+      name: '',
+      logicalName: 'Member ID',
+      domainId: 'domain-live',
+      dataType: 'int',
+    });
+    expect(typed).toMatchObject({
+      logicalName: 'Nick',
+      domainId: '',
+      dataType: 'varchar',
+    });
+  });
+
+  it('reads each cell of the view of both into its own field', () => {
+    const [column] = tablePasteFromTextToColumns(
+      createNamedState(
+        NameViewMode.both,
+        Show.columnDataType | Show.columnDomain
+      ),
+      'Member ID\tmember_id\tbigint\tIdentifier'
+    );
+
+    // A type cell beside the domain keeps the type it pastes.
+    expect(column).toMatchObject({
+      logicalName: 'Member ID',
+      name: 'member_id',
+      dataType: 'bigint',
+      domainId: 'domain-live',
+    });
+  });
+
+  it('links no domain the document does not list, and gives an empty domain cell none', () => {
+    const state = createNamedState(NameViewMode.physical, Show.columnDomain);
+    const [removed, unknown, empty] = tablePasteFromTextToColumns(
+      state,
+      'nick\tNickname\nnote\tMemo\nid\t'
+    );
+
+    expect(removed).toMatchObject({ domainId: '', dataType: '' });
+    expect(unknown).toMatchObject({ domainId: '', dataType: '' });
+    expect(empty).toMatchObject({ name: 'id', domainId: '' });
+  });
+
+  it('gives a pasted domain its type where the row pastes none', () => {
+    const [column] = tablePasteFromTextToColumns(
+      createNamedState(NameViewMode.physical, Show.columnDomain),
+      'id\tIdentifier'
+    );
+
+    expect(column).toMatchObject({ domainId: 'domain-live', dataType: 'int' });
+  });
+
+  it('reads the typed cells of the html by their type, the domain by its name', () => {
+    const [column] = tablePasteFromHtmlToColumns(
+      createNamedState(NameViewMode.physical),
+      '<table><tr>' +
+        '<td data-type="columnDomain">Identifier</td>' +
+        '<td data-type="columnLogicalName">Member ID</td>' +
+        '</tr></table>'
+    );
+
+    expect(column).toMatchObject({
+      name: '',
+      logicalName: 'Member ID',
+      domainId: 'domain-live',
+      dataType: 'int',
+    });
+  });
+
+  it('reads back what a copy of the logical view writes', () => {
+    const state = createNamedState(NameViewMode.logical);
+    const linked = createColumn({
+      id: 'linked',
+      logicalName: 'Member ID',
+      dataType: 'int',
+      domainId: 'domain-live',
+    });
+    const typed = createColumn({ id: 'typed', dataType: 'varchar' });
+    state.collections.tableEntities.t1 = createTable({
+      id: 't1',
+      columnIds: [linked.id, typed.id],
+    });
+    state.collections.tableColumnEntities[linked.id] = linked;
+    state.collections.tableColumnEntities[typed.id] = typed;
+    state.editor.focusTable = {
+      tableId: 't1',
+      columnId: linked.id,
+      focusType: FocusType.columnLogicalName,
+      selectColumnIds: [linked.id, typed.id],
+      prevSelectColumnId: null,
+      edit: false,
+    };
+    const fields = ({ logicalName, dataType, domainId }: typeof linked) => ({
+      logicalName,
+      dataType,
+      domainId,
+    });
+
+    for (const columns of [
+      tablePasteFromTextToColumns(state, tableCopyToText(state)),
+      tablePasteFromHtmlToColumns(state, tableCopyToHtml(state)),
+    ]) {
+      expect(columns.map(fields)).toEqual([fields(linked), fields(typed)]);
+    }
   });
 });

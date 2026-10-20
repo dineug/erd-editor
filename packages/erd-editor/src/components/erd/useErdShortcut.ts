@@ -353,13 +353,10 @@ export function useErdShortcut(ctx: Ctx) {
       event.clipboardData.setData('text/plain', tableCopyToText(state));
       event.clipboardData.setData('text/html', tableCopyToHtml(state));
     } else {
-      event.clipboardData.setData(
-        'text/plain',
-        entitiesToTsv(payload, settings)
-      );
+      event.clipboardData.setData('text/plain', entitiesToTsv(payload, state));
       event.clipboardData.setData(
         'text/html',
-        payloadToHtml(payload, entitiesToHtmlTable(payload, settings))
+        payloadToHtml(payload, entitiesToHtmlTable(payload, state))
       );
     }
 

@@ -43,6 +43,7 @@ import {
   VIEW_HEADER_FONT_WEIGHT,
   viewCardShadow,
 } from '@/components/erd/canvas/sceneTokens';
+import { blankLogicalName } from '@/components/erd/canvas/table/blankLogicalName';
 import {
   CELL_UNDERLINE_Y,
   focusBorderFill,
@@ -85,6 +86,7 @@ import {
   dragstartColumnAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
+import { toNameViewFocusType } from '@/engine/modules/editor/utils/nameView';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -540,9 +542,26 @@ const Table: FC<TableProps> = (props, ctx) => {
     );
   };
 
+  /**
+   * The logical name a header cell draws, or while it is blank what stands in
+   * for it, dimmed: the name in the logical view, else the placeholder.
+   */
+  const logicalNameText = () => {
+    const { table } = props;
+    if (table.logicalName.trim()) return table.logicalName;
+
+    const { settings } = app.value.store.state;
+    const { standIn, key } = blankLogicalName(
+      settings,
+      table.name,
+      'common.placeholder.table'
+    );
+    return standIn || i18n.value.t(key);
+  };
+
   return () => {
     const { store } = app.value;
-    const { editor, collections } = store.state;
+    const { editor, collections, settings } = store.state;
     const { table } = props;
     const theme = themeRef.value;
     const selected = Boolean(editor.selectedMap[table.id]);
@@ -561,6 +580,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     const sharedTableColor = sharedFocusTableColor();
     const sharedSelected = sharedSelectColor();
     const sharedNameColor = sharedFocusColor(FocusType.tableName);
+    const sharedLogicalNameColor = sharedFocusColor(FocusType.tableLogicalName);
     const sharedCommentColor = sharedFocusColor(FocusType.tableComment);
     const ringColor = sharedTableColor ?? sharedSelected;
     const diffPaths = diffMapRef.value?.get(table.id);
@@ -595,20 +615,34 @@ const Table: FC<TableProps> = (props, ctx) => {
       !view && hasEdit(focusType, columnId);
 
     const headerCells = getHeaderCellSlots(store.state, table, source);
-    const nameCell = headerCells.find(
-      slot => slot.focusType === FocusType.tableName
-    );
-    const commentCell = headerCells.find(
-      slot => slot.focusType === FocusType.tableComment
-    );
+    const headerCellOf = (focusType: FocusType) =>
+      headerCells.find(slot => slot.focusType === focusType);
+    const nameCell = headerCellOf(FocusType.tableName);
+    const logicalNameCell = headerCellOf(FocusType.tableLogicalName);
+    const commentCell = headerCellOf(FocusType.tableComment);
 
     // A comment change the header draws no slot for takes the name's colour,
-    // so a change the tree lists is marked in the pane.
+    // so a change the tree lists is marked in the pane. The logical view draws
+    // no name cell, so its logical name cell takes both, a rename's first.
     const hiddenCommentColor = commentCell
       ? null
       : diffTextColor(theme, diffPaths, FocusType.tableComment);
+    const hiddenNameColor = nameCell
+      ? null
+      : (diffTextColor(theme, diffPaths, FocusType.tableName) ??
+        hiddenCommentColor);
+    const logicalNameFilled = table.logicalName.trim() !== '';
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
+
+    // A row's name and type cells take the focus the name view gives them,
+    // which a view, keeping the physical row, never does.
+    const nameFocus = view
+      ? FocusType.columnName
+      : toNameViewFocusType(settings, FocusType.columnName);
+    const typeFocus = view
+      ? FocusType.columnDataType
+      : toNameViewFocusType(settings, FocusType.columnDataType);
 
     // A member of a colored group wears the color across its header, the text
     // and icons on it in the black or white that reads best there, and keeps
@@ -759,6 +793,19 @@ const Table: FC<TableProps> = (props, ctx) => {
               x: 0,
               y: view ? 0 : (TABLE_HEADER_INPUT_HEIGHT - headerIconSize) / 2,
             })}
+            {logicalNameCell
+              ? headerCell({
+                  ...logicalNameCell,
+                  text: logicalNameText(),
+                  fill:
+                    hiddenNameColor ??
+                    tint?.foreground ??
+                    (logicalNameFilled ? theme.active : theme.placeholder),
+                  focus: hasFocus(FocusType.tableLogicalName),
+                  edit: cellEdit(FocusType.tableLogicalName),
+                  sharedFocus: sharedLogicalNameColor,
+                })
+              : null}
             {nameCell
               ? headerCell({
                   ...nameCell,
@@ -867,13 +914,20 @@ const Table: FC<TableProps> = (props, ctx) => {
                 selected={hasSelectColumn(column.id)}
                 hovered={column.id === props.hoveredColumnId}
                 widthName={tableWidths.name}
+                widthLogicalName={tableWidths.logicalName}
                 widthDataType={tableWidths.dataType}
+                widthDomain={tableWidths.domain}
                 widthDefault={tableWidths.default}
                 widthComment={tableWidths.comment}
                 widthAlternateKey={tableWidths.alternateKey}
                 alternateKey={alternateKeyMarks[column.id]}
-                focusName={hasFocus(FocusType.columnName, column.id)}
-                focusDataType={hasFocus(FocusType.columnDataType, column.id)}
+                focusName={hasFocus(nameFocus, column.id)}
+                focusLogicalName={hasFocus(
+                  FocusType.columnLogicalName,
+                  column.id
+                )}
+                focusDataType={hasFocus(typeFocus, column.id)}
+                focusDomain={hasFocus(FocusType.columnDomain, column.id)}
                 focusNotNull={hasFocus(FocusType.columnNotNull, column.id)}
                 focusDefault={hasFocus(FocusType.columnDefault, column.id)}
                 focusComment={hasFocus(FocusType.columnComment, column.id)}
@@ -882,16 +936,22 @@ const Table: FC<TableProps> = (props, ctx) => {
                   FocusType.columnAutoIncrement,
                   column.id
                 )}
-                editName={cellEdit(FocusType.columnName, column.id)}
+                editName={cellEdit(nameFocus, column.id)}
+                editLogicalName={cellEdit(
+                  FocusType.columnLogicalName,
+                  column.id
+                )}
                 editDataType={cellEdit(FocusType.columnDataType, column.id)}
                 editDefault={cellEdit(FocusType.columnDefault, column.id)}
                 editComment={cellEdit(FocusType.columnComment, column.id)}
-                sharedFocusName={sharedFocusColor(
-                  FocusType.columnName,
+                sharedFocusName={sharedFocusColor(nameFocus, column.id)}
+                sharedFocusLogicalName={sharedFocusColor(
+                  FocusType.columnLogicalName,
                   column.id
                 )}
-                sharedFocusDataType={sharedFocusColor(
-                  FocusType.columnDataType,
+                sharedFocusDataType={sharedFocusColor(typeFocus, column.id)}
+                sharedFocusDomain={sharedFocusColor(
+                  FocusType.columnDomain,
                   column.id
                 )}
                 sharedFocusNotNull={sharedFocusColor(
