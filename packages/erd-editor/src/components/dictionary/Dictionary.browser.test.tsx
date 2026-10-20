@@ -753,6 +753,50 @@ describe('the Dictionary tab', () => {
     expect(toasts).toEqual(['dictionary.toast.pasteBeyondColumns']);
   });
 
+  describe('a paste past the last column that writes nothing', () => {
+    const toastsOf = (fixture: Fixture) => {
+      const toasts: Array<string | undefined> = [];
+      teardowns.push(
+        fixture.app.emitter.on({
+          openToast: ({ payload }) => toasts.push(payload.key),
+        })
+      );
+      return toasts;
+    };
+    const WIDE = 'X\tXX\tEx\tFirst\t\t\tPast\n';
+
+    it('says nothing in a read-only document', async () => {
+      const fixture = await setup({ readonly: true });
+      const toasts = toastsOf(fixture);
+
+      await paste(fixture, WIDE);
+      expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+      expect(dictionaryBatches(fixture)).toEqual([]);
+      expect(toasts).toEqual([]);
+    });
+
+    it('says nothing on the check sheet, whose columns are read-only', async () => {
+      const fixture = await setup({ seed: [word('a', 'A'), word('b', 'A')] });
+      await click(sheetButtons(fixture)[3]);
+      const toasts = toastsOf(fixture);
+
+      await paste(fixture, 'X\tY\tZ\tPast\n');
+      expect(pressedSheet(fixture)).toEqual(['Checks']);
+      expect(dictionaryBatches(fixture)).toEqual([]);
+      expect(toasts).toEqual([]);
+    });
+
+    it('says only why a refused commit sent nothing', async () => {
+      const fixture = await setup();
+      const toasts = toastsOf(fixture);
+
+      await paste(fixture, 'B\tBB\tBee\tFirst\t\t\tPast\n');
+      expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+      expect(dictionaryBatches(fixture)).toEqual([]);
+      expect(toasts).toEqual(['dictionary.toast.duplicateNames:1:B']);
+    });
+  });
+
   it('sends one edit as one dispatch, which one undo takes back and one redo brings again', async () => {
     const fixture = await setup();
 

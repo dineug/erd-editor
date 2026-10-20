@@ -366,14 +366,32 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     rememberWidth(view, session.sheet, columns[col].id, width);
   };
 
+  // The grid hands a paste's commit, then its refusal of the columns past the
+  // last, within the one paste event, so the refusal reads whether the commit
+  // before it landed; one that wrote nothing has nothing to say of the rest.
+  let pasteLanded = false;
+
   const handleCommit = (event: CommitEvent) => {
     const { sheet, rows } = session;
     if (!isEntrySheet(sheet)) return;
 
-    commitDictionaryCells(app.value, sheet, rows, event, i18n.value);
+    const landed = commitDictionaryCells(
+      app.value,
+      sheet,
+      rows,
+      event,
+      i18n.value
+    );
+    if (landed && event.source === 'paste') {
+      pasteLanded = true;
+      queueMicrotask(() => {
+        pasteLanded = false;
+      });
+    }
   };
 
   const handleReject = (event: RejectEvent) => {
+    if (event.reason === 'paste-beyond-columns' && !pasteLanded) return;
     reportGridRefusal(app.value, event);
   };
 
