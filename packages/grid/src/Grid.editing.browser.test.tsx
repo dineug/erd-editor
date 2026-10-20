@@ -1,6 +1,6 @@
 // Editing in real Chromium: the focus textarea as the editor over its cell,
 // what ends an edit, a composition through Chrome's own IME, Delete, the
-// clipboard and a column's own editor in the slot.
+// clipboard, a column's own editor in the slot and what isEditing answers.
 
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { cdp, page, userEvent } from 'vite-plus/test/browser/context';
@@ -1750,5 +1750,187 @@ describe('a column’s own editor', () => {
     expect(shown(view.slot)).toBe(false);
     expect(getComputedStyle(view.slot).pointerEvents).toBe('none');
     expect(at(view.slot).y).toBe(geometry(view).body.y);
+  });
+});
+
+describe('whether an edit is open', () => {
+  /** What the handle answered as each commit reached the host. */
+  function answersInCommit(view: View) {
+    const answers: boolean[] = [];
+    view.onCommit.mockImplementation(() => {
+      answers.push(view.handle.isEditing());
+    });
+
+    return answers;
+  }
+
+  it('answers true from Enter, F2, a double click or typing until Enter, Tab or Escape ends the edit', async () => {
+    const view = await mount();
+    const { handle } = view;
+    await userEvent.click(view.scroller, { position: cellPoint(view, 1, 1) });
+    expect(document.activeElement).toBe(view.textarea);
+    expect(handle.isEditing()).toBe(false);
+
+    await userEvent.keyboard('{Enter}');
+    expect(handle.isEditing()).toBe(true);
+    await userEvent.keyboard('{Enter}');
+    expect(handle.isEditing()).toBe(false);
+    expect(lastSelection(view)?.active).toEqual({ row: 2, col: 1 });
+
+    await userEvent.keyboard('{F2}');
+    expect(handle.isEditing()).toBe(true);
+    await userEvent.keyboard('{Tab}');
+    expect(handle.isEditing()).toBe(false);
+    expect(lastSelection(view)?.active).toEqual({ row: 2, col: 2 });
+
+    await userEvent.keyboard('x');
+    expect(handle.isEditing()).toBe(true);
+    await userEvent.keyboard('{Escape}');
+    expect(handle.isEditing()).toBe(false);
+
+    await userEvent.dblClick(view.scroller, {
+      position: cellPoint(view, 4, 3),
+    });
+    expect(view.textarea.value).toBe(valueOf(4, 3));
+    expect(handle.isEditing()).toBe(true);
+    await userEvent.keyboard('{Escape}');
+    expect(handle.isEditing()).toBe(false);
+    expect(view.onCommit).not.toHaveBeenCalled();
+  });
+
+  it('answers false inside onCommit and after it, for an edit Enter, Tab, a press on another cell or a blur commits', async () => {
+    const outside = document.createElement('input');
+    const view = await mount({}, undefined, outside);
+    const answers = answersInCommit(view);
+    await userEvent.click(view.scroller, { position: cellPoint(view, 1, 1) });
+
+    await userEvent.keyboard('a{Enter}');
+    expect(view.handle.isEditing()).toBe(false);
+    await userEvent.keyboard('b{Tab}');
+    expect(view.handle.isEditing()).toBe(false);
+    await userEvent.keyboard('c');
+    await userEvent.click(view.scroller, { position: cellPoint(view, 5, 5) });
+    expect(view.handle.isEditing()).toBe(false);
+
+    await userEvent.keyboard('d');
+    expect(view.handle.isEditing()).toBe(true);
+    outside.focus();
+    await nextFrame();
+    expect(view.handle.isEditing()).toBe(false);
+
+    expect(view.onCommit.mock.calls.map(([event]) => event.changes)).toEqual([
+      [change(1, 1, 'a')],
+      [change(2, 1, 'b')],
+      [change(2, 2, 'c')],
+      [change(5, 5, 'd')],
+    ]);
+    expect(answers).toEqual([false, false, false, false]);
+  });
+
+  it('answers false on a readonly column, whatever would open an edit there, a composition included', async () => {
+    const columns = COLUMNS.map((column, index) =>
+      index === 1 ? { ...column, readonly: true } : column
+    );
+    const view = await mount({ columns });
+    await userEvent.click(view.scroller, { position: cellPoint(view, 1, 1) });
+
+    for (const keys of ['{Enter}', '{F2}', 'q']) {
+      await userEvent.keyboard(keys);
+      expect(view.handle.isEditing()).toBe(false);
+    }
+    await userEvent.dblClick(view.scroller, {
+      position: cellPoint(view, 2, 1),
+    });
+    expect(view.handle.isEditing()).toBe(false);
+
+    await compose('한');
+    expect(view.handle.isEditing()).toBe(false);
+    await finishComposition('한');
+    expect(view.handle.isEditing()).toBe(false);
+    expect(view.onCommit).not.toHaveBeenCalled();
+  });
+
+  it('answers true through a composition that opened the edit, and false once the edit commits under one', async () => {
+    const view = await mount();
+    const answers = answersInCommit(view);
+    await userEvent.click(view.scroller, { position: cellPoint(view, 1, 1) });
+
+    await compose('ㅎ');
+    expect(view.handle.isEditing()).toBe(true);
+    await compose('한');
+    await finishComposition('한');
+    expect(view.handle.isEditing()).toBe(true);
+    await userEvent.keyboard('{Enter}');
+    expect(view.handle.isEditing()).toBe(false);
+
+    await compose('글');
+    expect(view.handle.isEditing()).toBe(true);
+    press(view, cellPoint(view, 4, 4));
+    expect(view.handle.isEditing()).toBe(false);
+    await finishComposition('글');
+    expect(view.handle.isEditing()).toBe(false);
+
+    expect(view.onCommit.mock.calls.map(([event]) => event.changes)).toEqual([
+      [change(1, 1, '한')],
+      [change(2, 1, '글')],
+    ]);
+    expect(answers).toEqual([false, false]);
+  });
+
+  it('answers true for a column’s own editor until it commits or cancels, through each close it was asked for', async () => {
+    const reasons: string[] = [];
+    let ctx: EditorContext | null = null;
+    const editor = (next: EditorContext) => {
+      ctx = next;
+      const field = document.createElement('input');
+      field.value = next.initialValue;
+      next.container.replaceChildren(field);
+      field.focus();
+      next.onClose(reason => reasons.push(reason));
+    };
+    const context = () => ctx as unknown as EditorContext;
+    const view = await mount({ columns: withEditor(2, editor) });
+    const answers = answersInCommit(view);
+    await userEvent.click(view.scroller, { position: cellPoint(view, 1, 2) });
+
+    await userEvent.keyboard('{Enter}');
+    expect(document.activeElement).toBe(view.slot.firstElementChild);
+    expect(view.handle.isEditing()).toBe(true);
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(view.scroller, { position: cellPoint(view, 4, 2) });
+    expect(reasons).toEqual(['escape', 'outside']);
+    expect(view.handle.isEditing()).toBe(true);
+
+    context().commit('picked');
+    expect(view.handle.isEditing()).toBe(false);
+    expect(lastCommit(view)?.changes).toEqual([change(1, 2, 'picked')]);
+    expect(answers).toEqual([false]);
+
+    await userEvent.keyboard('{F2}');
+    expect(view.handle.isEditing()).toBe(true);
+    context().cancel();
+    expect(view.handle.isEditing()).toBe(false);
+
+    // A composition for a column's own editor opens it only as it ends.
+    await compose('가');
+    expect(view.handle.isEditing()).toBe(false);
+    await finishComposition('가');
+    expect(context().initialValue).toBe('가');
+    expect(view.handle.isEditing()).toBe(true);
+    context().cancel();
+    expect(view.handle.isEditing()).toBe(false);
+  });
+
+  it('answers false once the grid unmounts with an edit open', async () => {
+    const view = await mount();
+    const { handle } = view;
+    await userEvent.click(view.scroller, { position: cellPoint(view, 1, 1) });
+    await userEvent.keyboard('{F2}');
+    expect(handle.isEditing()).toBe(true);
+
+    view.unmount();
+    views.splice(views.indexOf(view), 1);
+    expect(handle.isEditing()).toBe(false);
+    expect(view.onCommit).not.toHaveBeenCalled();
   });
 });

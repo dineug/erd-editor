@@ -72,8 +72,10 @@ render(host, <Words />);
 ```
 
 `host` is any sized element, and `rows`, `applyChanges` and `openMenu` are the host's own. The
-handle's `grid.scrollTo(row, col)` scrolls the least distance that shows a cell, and
-`grid.select({ active, ranges })` moves the selection without `onSelectionChange` echoing it back.
+handle's `grid.scrollTo(row, col)` scrolls the least distance that shows a cell,
+`grid.select({ active, ranges })` moves the selection without `onSelectionChange` echoing it back,
+and `grid.isEditing()` answers whether an edit is open, a column's own editor included, from the
+moment it opens until it commits or cancels, so a host can leave Ctrl+Z to the open editor.
 
 The grid fills the element it is mounted in and follows its size. It draws the cells in view
 under a transparent native scroller, which takes the wheel, the trackpad and touch scrolling, and

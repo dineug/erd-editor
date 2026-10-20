@@ -81,6 +81,12 @@ export interface GridHandle {
   select(selection: GridSelection): void;
   /** Moves the keyboard focus into the grid. */
   focus(): void;
+  /**
+   * Whether an edit is open, in the grid's own editor or a column's own, from
+   * its opening until it commits or cancels, so false once onCommit hears of
+   * it; a host reads it to leave its undo keys to an open edit.
+   */
+  isEditing(): boolean;
 }
 
 /**
@@ -760,6 +766,7 @@ export const Grid: FC<GridProps> = props => {
     focus() {
       if (mounted) focusRef.value?.focus({ preventScroll: true });
     },
+    isEditing: () => editing.editing(),
   };
 
   onMounted(() => {
