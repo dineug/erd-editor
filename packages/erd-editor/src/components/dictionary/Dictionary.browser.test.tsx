@@ -17,6 +17,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { page, userEvent } from 'vite-plus/test/browser/context';
 
 import { createTestAppContext, flush } from '@/__test-utils__';
+import { createTestI18n, provideI18n } from '@/__test-utils__/i18n';
 import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
 import {
   type AppContext,
@@ -54,6 +55,8 @@ import {
 } from '@/engine/modules/table-column/atom.actions';
 import { createSharedStore } from '@/engine/shared-store';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import { messagesOf } from '@/i18n/messages/index';
+import { createI18n, type I18n } from '@/i18n/translate';
 import {
   AccentColor,
   Appearance,
@@ -92,6 +95,8 @@ type Fixture = {
   app: AppContext;
   shadow: ShadowRoot;
   theme: ThemeTokens;
+  /** The display language the tab reads, which a case switches in place as the element does. */
+  i18n: I18n;
   /** Every batch the store took since the mount. */
   batches: AnyAction[][];
   /** Every chord the editor root's binder read. */
@@ -100,7 +105,7 @@ type Fixture = {
   clipboard: string[];
 };
 
-const host = observable({ readonly: false, shown: true });
+const host = observable({ readonly: false, shown: true, width: WIDTH });
 const teardowns: Array<() => void> = [];
 let texts: TextCall[] = [];
 let fills: string[] = [];
@@ -198,6 +203,7 @@ async function setup({
   spyTexts();
   host.readonly = false;
   host.shown = true;
+  host.width = WIDTH;
 
   const app = createTestAppContext({ getReadonly: () => host.readonly });
   if (seed.length) app.store.dispatchSync(seed);
@@ -205,10 +211,12 @@ async function setup({
   host.readonly = readonly;
 
   const theme = observable<ThemeTokens>({ ...DARK }, { shallow: true });
+  const i18n = createTestI18n('en');
   const fixture: Fixture = {
     app,
     shadow: null as unknown as ShadowRoot,
     theme,
+    i18n,
     batches: [],
     shortcuts: [],
     clipboard: [],
@@ -225,7 +233,7 @@ async function setup({
         class="root"
         use:ref={ref(root)}
         tabindex="-1"
-        style={{ width: `${WIDTH}px`, height: `${HEIGHT}px` }}
+        style={{ width: `${host.width}px`, height: `${HEIGHT}px` }}
         on:keydown={(event: KeyboardEvent) =>
           current.value.keydown$.next(event)
         }
@@ -268,6 +276,7 @@ async function setup({
     useProvider(container as any, appContext, app),
     // oxlint-disable-next-line react-hooks/rules-of-hooks
     useProvider(container as any, themeContext, theme),
+    provideI18n(container, i18n),
   ];
   render(
     globals,
@@ -769,6 +778,39 @@ describe('the Dictionary tab', () => {
     host.readonly = true;
     await drawn();
     expect(hint(fixture)).toBeNull();
+  });
+
+  it('wraps its bar so every button stays inside the tab, in a narrow pane and a long language', async () => {
+    const fixture = await setup();
+    /** The bar's buttons any part of which lies past the tab's edges. */
+    const clipped = () => {
+      const { left, right } = tab(fixture).getBoundingClientRect();
+      return Array.from(tab(fixture).querySelectorAll('button'))
+        .filter(button => {
+          const box = button.getBoundingClientRect();
+          return box.left < left || box.right > right;
+        })
+        .map(button => button.textContent?.trim());
+    };
+
+    host.width = 600;
+    await drawn();
+    expect(clipped()).toEqual([]);
+
+    host.width = WIDTH;
+    Object.assign(fixture.i18n, createI18n('fr-FR', messagesOf('fr-FR')));
+    await drawn();
+    expect(buttonNamed(fixture, 'Exporter au format CSV')).not.toBeNull();
+    expect(clipped()).toEqual([]);
+
+    host.width = 600;
+    await drawn();
+    expect(clipped()).toEqual([]);
+    const sheet = textarea(fixture).closest('.dineug-grid') as HTMLElement;
+    expect(sheet.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      buttonNamed(fixture, 'Exporter au format CSV')!.getBoundingClientRect()
+        .bottom
+    );
   });
 
   it('stops the editor chords at the tab but the palette, undo, redo and find, and leaves undo and redo to an open edit', async () => {

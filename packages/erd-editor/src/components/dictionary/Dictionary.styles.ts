@@ -13,12 +13,17 @@ export const root = css`
   ${typography.paragraph};
 `;
 
-/** The sheet switch, the search and the row and file buttons, on one line. */
+/**
+ * The sheet switch, the search and the row and file buttons, on one line while
+ * they fit and on more where they do not, since the tab clips what overflows
+ * it and a narrow pane or a long language would hide the file buttons.
+ */
 export const bar = css`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   flex: 0 0 auto;
-  gap: 8px;
+  gap: 6px 8px;
   min-width: 0;
   padding: 8px 12px;
   border-bottom: 1px solid var(--dictionary-grid-line);
@@ -76,11 +81,13 @@ export const search = css`
   }
 `;
 
-/** The row and file buttons, pushed to the bar's end. */
+/** The row and file buttons, pushed to the bar's end, wrapping among themselves on a line too narrow for all four. */
 export const actions = css`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   margin-inline-start: auto;
 `;
 
