@@ -154,7 +154,8 @@ An attribute is on when present with no value or `"true"`.
 - Save `value`. `runtimeValue` also keeps removed entities and only seeds a
   [collaborator](#collaboration).
 - `change` fires 200 ms after the last change, never under `readonly`, and never for scroll, zoom,
-  the open tab or the code settings while the document locks them, which a new document does.
+  the open tab, the name view or the code settings while the document locks them, which a new
+  document does.
 - A file written by hand or by another release can differ from `value` once loaded, so detect edits
   with a [replica](#headless-replica)'s `changed`, not by comparing bytes.
 

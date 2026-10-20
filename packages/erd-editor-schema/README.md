@@ -74,6 +74,9 @@ The surface (`src/index.ts`):
 - `migrateScrollToOrigin`, with its `LegacyScrollBox` / `Origin` types — the one-way conversion
   of the scroll pair a file saved before `originX` / `originY`, with the canvas box and zoom it
   was measured against, into an origin.
+- `isSettingLocked(lockSettings, bit)`, `setSettingLock(lockSettings, bit, locked)`, with the
+  `LockSettingType` type — read and set one lock of `lockSettings`. The name view's bit reads the
+  other way round, locked while clear, and both throw a `RangeError` on a mask of several bits.
 - `ERDEditorSchemaV3`, `ERDEditorSchemaV2` — the document types.
 - `SchemaV3Constants`, `SchemaV2Constants` — the constant sets each version allows (`Database`,
   `NameCase`, `RelationshipType`, …) and each version's canvas size and zoom bounds.
