@@ -11,7 +11,8 @@ cells. A cell holds one line of left-aligned text, cut by an ellipsis through
 [`@chenglou/pretext`](https://github.com/chenglou/pretext); a column label, cut the same way, and a
 row number sit centred. An overlay layer draws the selection, the header highlights and the
 scrollbars. It is private, not on npm, and depended on as `"@dineug/grid": "workspace:*"`;
-[`erd-editor`](../erd-editor) lists it in `devDependencies` and imports nothing from it yet.
+[`erd-editor`](../erd-editor) lists it in `devDependencies` and inlines it into its build, where
+the Dictionary tab mounts it.
 `konva` is a peer: the consumer supplies the one copy.
 
 ## Usage

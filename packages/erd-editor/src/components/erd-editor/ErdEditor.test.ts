@@ -268,6 +268,7 @@ describe('<erd-editor>', () => {
       CanvasType.visualization,
       CanvasType.schemaSQL,
       CanvasType.generatorCode,
+      CanvasType.dictionary,
       CanvasType.settings,
     ]) {
       app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));

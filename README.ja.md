@@ -126,7 +126,7 @@ document.body.appendChild(editor);
 
 ## パッケージ
 
-pnpm ワークスペースです。[`@dineug/erd-editor`](./packages/erd-editor) と [`@dineug/erd-editor-mcp`](./packages/mcp-server) は npm に公開され、3 つのプラグインはそれぞれのストアで配布され、`app` は erd-editor.io で、残りはそれらのビルドが取り込む非公開のライブラリーです。ただしキャンバスグリッドの `grid` は、まだどのビルドも取り込んでいません。
+pnpm ワークスペースです。[`@dineug/erd-editor`](./packages/erd-editor) と [`@dineug/erd-editor-mcp`](./packages/mcp-server) は npm に公開され、3 つのプラグインはそれぞれのストアで配布され、`app` は erd-editor.io で、残りはそれらのビルドが取り込む非公開のライブラリーです。
 
 <details>
 <summary>全 20 パッケージ</summary>

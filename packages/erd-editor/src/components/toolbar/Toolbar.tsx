@@ -183,6 +183,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         <div
           class={[
             styles.menu,
+            { active: settings.canvasType === CanvasType.dictionary },
+          ]}
+          title={t('common.tab.dictionary')}
+          on:click={() => handleChangeCanvasType(CanvasType.dictionary)}
+        >
+          <Icon name="book-a" size={16} />
+        </div>
+        <div
+          class={[
+            styles.menu,
             { active: settings.canvasType === CanvasType.settings },
           ]}
           title={t('common.tab.settings')}

@@ -346,13 +346,25 @@ describe('searchActions / threshold', () => {
 });
 
 describe('createTabActions', () => {
-  it('holds the five canvas tabs, named as the toolbar names them', () => {
+  it('holds the six canvas tabs, named as the toolbar names them', () => {
     expect(names(createTabActions())).toEqual([
       'Entity Relationship Diagram',
       'Visualization',
       'Schema SQL',
       'Code Generator',
+      'Dictionary',
       'Settings',
+    ]);
+  });
+
+  it('draws the glyph the toolbar draws for each tab', async () => {
+    expect(await Promise.all(createTabActions().map(iconOf))).toEqual([
+      'workflow',
+      'share-2',
+      'database',
+      'code',
+      'book-a',
+      'settings',
     ]);
   });
 
@@ -374,10 +386,11 @@ describe('createTabActions', () => {
     expect(visible(CanvasType.ERD)).not.toContain(
       'Entity Relationship Diagram'
     );
-    expect(visible(CanvasType.ERD)).toHaveLength(4);
+    expect(visible(CanvasType.ERD)).toHaveLength(5);
     expect(visible(CanvasType.visualization)).not.toContain('Visualization');
     expect(visible(CanvasType.schemaSQL)).not.toContain('Schema SQL');
     expect(visible(CanvasType.generatorCode)).not.toContain('Code Generator');
+    expect(visible(CanvasType.dictionary)).not.toContain('Dictionary');
     expect(visible(CanvasType.settings)).not.toContain('Settings');
   });
 
@@ -389,6 +402,7 @@ describe('createTabActions', () => {
       ['Visualization', CanvasType.visualization],
       ['Schema SQL', CanvasType.schemaSQL],
       ['Code Generator', CanvasType.generatorCode],
+      ['Dictionary', CanvasType.dictionary],
       ['Settings', CanvasType.settings],
       ['Entity Relationship Diagram', CanvasType.ERD],
     ] as const) {
@@ -1970,6 +1984,7 @@ describe('createScopeActions / translated', () => {
       'de:Visualization',
       'de:Schema SQL',
       'de:Code Generator',
+      'de:Dictionary',
       'de:Settings',
     ]);
     expect(names(submenu(actions, 'de:Import'))).toEqual([

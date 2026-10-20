@@ -123,6 +123,13 @@ export const ThemeConfig: Theme = {
   dictionaryErrorBackground: `custom-red--4`,
   dictionaryWarningForeground: `custom-amber--11`,
   dictionaryWarningBackground: `custom-amber--4`,
+  // The Dictionary tab's sheet: its cells, header band, cell lines and the
+  // header a selection meets, on the steps of a table's body, header and edge
+  // and of a selected column row.
+  dictionaryBackground: 'gray-2',
+  dictionaryHeaderBackground: 'gray-5',
+  dictionaryGridLine: 'gray-6',
+  dictionaryHeaderSelect: 'accent-3',
 
   // A diff's status letters and the canvas text and outlines it marks: added,
   // removed, changed and renamed, each at step 11, which keeps 4.5:1 on the
@@ -171,6 +178,12 @@ export const LightThemeConfig: Partial<Theme> = {
   // so the marks take a darker red and amber, which their step 4 fills keep too.
   dictionaryErrorForeground: 'override-#b1252a',
   dictionaryWarningForeground: 'override-#835103',
+  // The Dictionary tab's sheet goes white with gray-8 lines, as a table does,
+  // and its header band a step lighter, since gray-11 labels read under 4.5:1
+  // on a light gray-5.
+  dictionaryBackground: 'override-#ffffff',
+  dictionaryHeaderBackground: 'gray-4',
+  dictionaryGridLine: 'gray-8',
   // Amber step 11 reads under 4.5:1 on a light gray-1, so a changed entry
   // takes the darker amber an editor's light theme marks a change with.
   diffModifyForeground: 'override-#895503',

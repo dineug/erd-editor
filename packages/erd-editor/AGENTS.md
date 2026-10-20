@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-18 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-20 -->
 
 # erd-editor
 
@@ -9,7 +9,7 @@ The editor core, published on npm as `@dineug/erd-editor`: the framework-free `<
 
 ## Making a Change
 
-1. **Read the nested `AGENTS.md` files first.** Open the one in each `src/` directory the change touches and in each directory above it, up to this file; Subdirectories lists all eighteen. Root step 1 says which reads load them on their own, so open each one yourself. For a change another package sees, read that package's file too (root step 1): `mcp-server`'s for `peer.js`, `replication-store-worker`'s and `app`'s for `engine.js`, and `webview-client`'s, `obsidian-plugin`'s and `app`'s for the element's API.
+1. **Read the nested `AGENTS.md` files first.** Open the one in each `src/` directory the change touches and in each directory above it, up to this file; Subdirectories lists all nineteen. Root step 1 says which reads load them on their own, so open each one yourself. For a change another package sees, read that package's file too (root step 1): `mcp-server`'s for `peer.js`, `replication-store-worker`'s and `app`'s for `engine.js`, and `webview-client`'s, `obsidian-plugin`'s and `app`'s for the element's API.
 2. **Write the change with its specs** (root step 2). A spec's file name picks its project and its extension follows how it mounts (Testing Requirements). A string a user sees follows `src/i18n/AGENTS.md`: a dictionary key, or a literal where it stays as written.
 3. **Run the package's `test` task** (root step 3), which runs `tsc --noEmit`, then the `unit` and `browser` projects:
 
@@ -69,11 +69,12 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 | --- | --- |
 | `src/engine/` | Stores (`store`, `rx-store`, `shared-store`, `replication-store`, `peer-store`), `clock`, `history`, `tag`, `rx-operators/`, and `modules/` (ten, each `actions.ts` / `atom.actions.ts` / `generator.actions.ts` / `history.ts`); the peer store's plumbing is in Key Files. `AGENTS.md`: the store, actions and reducers, LWW merging, locks, `changed`, the foreign key bits, reader-only state, the view seams, foreign key column names, the table-group model and the peer store's internals |
 | `src/peer/` | The `peer.js` entry, `index.ts`; `imports.test.ts` holds its sources to the peer graph's rules. `AGENTS.md`: the peer graph runs in Node with no DOM, and the entry carries values, never tools |
-| `src/components/` | r-html FCs: `erd/` (scene in `canvas/` and `minimap/`, DOM shell, menus, the buttons beside a draw's target in `draw-target/`, diff viewer, time travel, automatic placement, `welcome-screen/`), `visualization/` (Graph, Flow, `particles/`), `table-view/`, `primitives/`, the panels, `locale-picker/` among them, and the two code tabs, `schema-sql/` and `generator-code/`, whose options panel is built on the first's shell; `localeContext.ts` and `localized/`, how a component reads the display language. `AGENTS.md`: scene sources and views (`GeometrySource`, `getActiveView`, `flowLayout.tsx`) and the component conventions: one directory per component, a second binding of one event, icon colour, the lucide table icon |
+| `src/components/` | r-html FCs: `erd/` (scene in `canvas/` and `minimap/`, DOM shell, menus, the buttons beside a draw's target in `draw-target/`, diff viewer, time travel, automatic placement, `welcome-screen/`), `visualization/` (Graph, Flow, `particles/`), `table-view/`, `primitives/`, the panels, `locale-picker/` among them, the two code tabs, `schema-sql/` and `generator-code/`, whose options panel is built on the first's shell, and `dictionary/`, the Dictionary tab on `@dineug/grid`; `localeContext.ts` and `localized/`, how a component reads the display language. `AGENTS.md`: scene sources and views (`GeometrySource`, `getActiveView`, `flowLayout.tsx`) and the component conventions: one directory per component, a second binding of one event, icon colour, the lucide table icon |
 | `src/components/erd/` | `AGENTS.md`: the name views, keys and alternate keys, Table Properties, the draw target's buttons, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, the header press, the middle button, `YIELDS_TO_A_CARET`, Escape, Delete and Backspace, the welcome screen |
 | `src/components/export-image/` | `AGENTS.md`: every image export goes through one dialog; the contract of the shared modal `primitives/dialog/Dialog.tsx` it is built on; the image is the document as opened; SVG writes the same scene as vectors |
 | `src/components/schema-sql/` | `AGENTS.md`: the Schema SQL tab's options panel and the window's own choices, Tables by table group, one commit per edit in a script editor |
 | `src/components/generator-code/` | `AGENTS.md`: the Code Generator tab's options panel and when it shows, the code as a snapshot, Save file, the language menu's three groups, highlighting |
+| `src/components/dictionary/` | `AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, the rows each version shows, how a grid commit resolves to row ids, where a version comes from, the keys it passes and stops, the grid's theme and a read-only document |
 | `src/components/map-columns/` | `AGENTS.md`: Map Columns and `relationship.changeColumns` |
 | `src/components/explorer/` | `AGENTS.md`: the Explorer docked left of the canvas, its state, its tree, where a row goes, and Find and Replace above its tree with the matcher in `src/utils/find-replace/`, which has no file of its own |
 | `src/components/quick-search/` | `AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |
@@ -154,7 +155,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 
 ### Internal
 
-`@dineug/r-html`, `@dineug/r-html-konva`, the Konva host the scene renders through, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` and `@dineug/uuid`, whose `uuid25` mints every id the editor makes (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR); `@dineug/grid`, the Konva canvas grid, which no source here imports yet, so none of it ships in `dist/`.
+`@dineug/r-html`, `@dineug/r-html-konva`, the Konva host the scene renders through, `@dineug/erd-editor-schema`, `@dineug/schema-sql-parser` and `@dineug/uuid`, whose `uuid25` mints every id the editor makes (inlined into `dist/`); `@dineug/vite-plugin-r-html` (the JSX transform every build and test config runs, plus HMR); `@dineug/grid`, the Konva canvas grid the Dictionary tab mounts, which only `src/components/` imports and which ships inlined in `dist/index.js` and the UMD build, never in a worker or `peer.js` (`src/components/dictionary/AGENTS.md`).
 
 ### External
 

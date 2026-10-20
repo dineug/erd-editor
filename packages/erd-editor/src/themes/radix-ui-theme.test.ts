@@ -521,6 +521,54 @@ describe('the dictionary marks', () => {
   });
 });
 
+describe('the Dictionary tab sheet', () => {
+  /**
+   * Measured 2026-10-20: gray-11 labels read 4.48:1 at the least on a light
+   * gray-5 band and 4.19:1 on a light gray-6, so light takes a gray-4 band, at
+   * 4.82:1 the least, and a neutral accent keeps accent-3, at 5.10:1 the least.
+   */
+  it('keeps the cell text and the header labels at 4.5:1 on each fill of its own they are drawn on', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+      // The grid writes a cell in active and a header label in foreground,
+      // which a header keeps where a selected range meets its row or column.
+      const pairs = [
+        [theme.active, theme.dictionaryBackground],
+        [theme.foreground, theme.dictionaryHeaderBackground],
+        [theme.foreground, theme.dictionaryHeaderSelect],
+      ];
+
+      pairs.forEach(([text, fill]) => {
+        expect(
+          contrast(text, fill),
+          `${labelOf(options)} ${text} on ${fill}`
+        ).toBeGreaterThanOrEqual(4.5);
+      });
+    });
+  });
+
+  /** The least CIE76 step an eye tells apart; light gray under the gray accent, the nearest, measures 2.8. */
+  const MIN_VISIBLE_DELTA_E = 2.3;
+
+  /** Twice that, as the table header band keeps; light olive, the nearest, measures 7.95. */
+  const MIN_BAND_DELTA_E = 5;
+
+  it('sets its header band apart from its cells, and a selected header apart from the band', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        deltaE(theme.dictionaryHeaderBackground, theme.dictionaryBackground),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_BAND_DELTA_E);
+      expect(
+        deltaE(theme.dictionaryHeaderSelect, theme.dictionaryHeaderBackground),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_VISIBLE_DELTA_E);
+    });
+  });
+});
+
 describe('the table header band', () => {
   /** Twice the least visible CIE76 step. Light sand, the nearest to its canvas, measures 5.32. */
   const MIN_BAND_DELTA_E = 5;

@@ -117,26 +117,26 @@ describe('selector-list scope widening', () => {
 });
 
 describe('rule-count invariance', () => {
-  it('loads 75 style modules', () => {
+  it('loads 76 style modules', () => {
     // A style module added or removed is meant to move this number, which is
     // why it is pinned rather than derived.
-    expect(modulePaths).toHaveLength(75);
+    expect(modulePaths).toHaveLength(76);
   });
 
-  it('adopts 620 rules, none of them a duplicate', () => {
+  it('adopts 633 rules, none of them a duplicate', () => {
     // Pinned rather than derived, so a rule added or lost anywhere in the
     // package has to be accounted for here.
-    expect(cumulative).toHaveLength(620);
-    expect(new Set(cumulative).size).toBe(620);
+    expect(cumulative).toHaveLength(633);
+    expect(new Set(cumulative).size).toBe(633);
   });
 
-  it('splits into 20 global rules ahead of 600 component rules', () => {
+  it('splits into 20 global rules ahead of 613 component rules', () => {
     // A shadow root applies its own styleSheets before its adoptedStyleSheets,
     // so the only thing keeping the reset ahead of the components is the bucket,
     // which is what this asserts positionally. Both halves move independently.
-    expect(sheetsOfEachKind).toEqual({ global: 4, component: 342 });
+    expect(sheetsOfEachKind).toEqual({ global: 4, component: 350 });
     expect(globalRules).toHaveLength(20);
-    expect(componentRules).toHaveLength(600);
+    expect(componentRules).toHaveLength(613);
     expect(cumulative).toEqual([...globalRules, ...componentRules]);
   });
 
@@ -153,7 +153,7 @@ describe('rule-count invariance', () => {
     // Identifiers are content hashes now, so a rule's text is the same whether its module is
     // rendered alone or with the other 71 — which is exactly what makes this comparison mean
     // "nothing was lost to dedup" rather than "the class names differ".
-    expect(union.size).toBe(620);
+    expect(union.size).toBe(633);
     expect(droppedByLoadingTogether).toEqual([]);
   });
 

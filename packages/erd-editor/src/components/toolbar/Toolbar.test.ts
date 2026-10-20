@@ -150,6 +150,7 @@ describe('Toolbar', () => {
           'ko:Visualization',
           'ko:Schema SQL',
           'ko:Code Generator',
+          'ko:Dictionary',
           'ko:Settings',
           toShortcutTitle(
             app.keyBindingMap,
@@ -240,8 +241,22 @@ describe('Toolbar', () => {
       ['Visualization', CanvasType.visualization],
       ['Schema SQL', CanvasType.schemaSQL],
       ['Code Generator', CanvasType.generatorCode],
+      ['Dictionary', CanvasType.dictionary],
       ['Settings', CanvasType.settings],
     ];
+
+    it('draws a glyph per tab, the Dictionary book between Code Generator and Settings', async () => {
+      await setup();
+
+      expect(cases.map(([title]) => iconNameOf(menu(title)))).toEqual([
+        'workflow',
+        'share-2',
+        'database',
+        'code',
+        'book-a',
+        'settings',
+      ]);
+    });
 
     it('marks only the current canvas type as active', async () => {
       await setup();
@@ -440,6 +455,7 @@ describe('Toolbar', () => {
       CanvasType.visualization,
       CanvasType.schemaSQL,
       CanvasType.generatorCode,
+      CanvasType.dictionary,
       CanvasType.settings,
     ]) {
       it(`shows unpressed on the ${canvasType} tab, where a press takes the ERD tab and opens it (N-h)`, async () => {

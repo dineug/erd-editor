@@ -114,6 +114,7 @@ describe('lockSettingRows', () => {
     [CanvasType.ERD, 'ERD'],
     [CanvasType.schemaSQL, 'Schema SQL'],
     [CanvasType.generatorCode, 'Code Generator'],
+    [CanvasType.dictionary, 'Dictionary'],
     [CanvasType.settings, 'Settings'],
   ])('names the tab %s as the toolbar does', (canvasType, name) => {
     expect(textOf(LockSettingType.canvasType, { ...values, canvasType })).toBe(

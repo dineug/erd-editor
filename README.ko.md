@@ -148,8 +148,7 @@ document.body.appendChild(editor);
 
 pnpm 워크스페이스입니다. [`@dineug/erd-editor`](./packages/erd-editor)와
 [`@dineug/erd-editor-mcp`](./packages/mcp-server)는 npm에 게시되고, 플러그인 셋은 각자의 스토어로
-배포되며, `app`은 erd-editor.io이고, 나머지는 이 빌드들이 가져다 쓰는 비공개 라이브러리입니다. 다만
-캔버스 그리드인 `grid`는 아직 어느 빌드도 가져다 쓰지 않습니다.
+배포되며, `app`은 erd-editor.io이고, 나머지는 이 빌드들이 가져다 쓰는 비공개 라이브러리입니다.
 
 <details>
 <summary>20개 패키지 전체</summary>

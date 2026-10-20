@@ -30,6 +30,7 @@ const CanvasTypeToMessageKey: Readonly<Record<string, PlainMessageKey>> = {
   [CanvasType.visualization]: 'common.tab.visualization',
   [CanvasType.schemaSQL]: 'common.tab.schemaSql',
   [CanvasType.generatorCode]: 'common.tab.codeGenerator',
+  [CanvasType.dictionary]: 'common.tab.dictionary',
   [CanvasType.settings]: 'common.tab.settings',
 };
 

@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-20 -->
 
 # components
 
 ## Purpose
 
-`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels and the two code tabs. This file holds the rules that tell a scene component which geometry it draws, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
+`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels, the two code tabs and the Dictionary tab. This file holds the rules that tell a scene component which geometry it draws, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
 
 ## Making a Change
 
@@ -32,6 +32,7 @@
 | `export-image/` | `export-image/AGENTS.md`: the one dialog every image export goes through, PNG and SVG, and the contract of the shared modal `primitives/dialog/Dialog.tsx` |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the Schema SQL tab, its options panel and its script editors |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator tab, its options panel, the language menu, Save file and highlighting |
+| `dictionary/` | `dictionary/AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, how a grid commit resolves to row ids, where a sheet's version comes from, its keys, the grid's theme and a read-only document |
 | `map-columns/` | `map-columns/AGENTS.md`: Map Columns and `relationship.changeColumns` |
 | `explorer/` | `explorer/AGENTS.md`: the Explorer docked left of the canvas, its tree, where a row goes, Find and Replace above it and the matcher in `src/utils/find-replace/` |
 | `quick-search/` | `quick-search/AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |

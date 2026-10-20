@@ -483,6 +483,7 @@ describe('QuickSearch keyboard navigation', () => {
       'Visualization',
       'Schema SQL',
       'Code Generator',
+      'Dictionary',
       'Settings',
     ]);
     expect(selectedIndex()).toBe(-1);
@@ -515,6 +516,7 @@ describe('QuickSearch keyboard navigation', () => {
       'Visualization',
       'Schema SQL',
       'Code Generator',
+      'Dictionary',
       'Settings',
     ]);
   });
@@ -559,6 +561,7 @@ describe('QuickSearch mouse interaction', () => {
       'Visualization',
       'Schema SQL',
       'Code Generator',
+      'Dictionary',
       'Settings',
     ]);
   });
@@ -1008,6 +1011,7 @@ describe('QuickSearch prefixes', () => {
         'Visualization',
         'Schema SQL',
         'Code Generator',
+        'Dictionary',
         'Settings',
       ]).toContain(name);
     }

@@ -884,7 +884,7 @@ function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
     }));
 }
 
-/** The five tabs in the toolbar's order. */
+/** The six tabs in the toolbar's order. */
 const TABS: ReadonlyArray<{
   canvasType: string;
   icon: IconName;
@@ -907,13 +907,18 @@ const TABS: ReadonlyArray<{
     labelKey: 'common.tab.codeGenerator',
   },
   {
+    canvasType: CanvasType.dictionary,
+    icon: 'book-a',
+    labelKey: 'common.tab.dictionary',
+  },
+  {
     canvasType: CanvasType.settings,
     icon: 'settings',
     labelKey: 'common.tab.settings',
   },
 ];
 
-/** The five tabs the Tab row opens, each but the one shown. */
+/** The six tabs the Tab row opens, each but the one shown. */
 export function createTabActions(i18n: I18n = sourceI18n): Action[] {
   return TABS.map<Action>(({ canvasType, icon, labelKey }) => ({
     icon: <Icon name={icon} size={16} />,

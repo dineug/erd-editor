@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(90);
+    expect(entries).toHaveLength(94);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -181,7 +181,7 @@ describe('ThemeConfig', () => {
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes, the two dictionary marks and the darker amber of a change only', () => {
+  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes, the two dictionary marks, the dictionary sheet and the darker amber of a change only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
@@ -200,6 +200,9 @@ describe('LightThemeConfig', () => {
       visualizationRelationship: 'gray-9',
       dictionaryErrorForeground: 'override-#b1252a',
       dictionaryWarningForeground: 'override-#835103',
+      dictionaryBackground: 'override-#ffffff',
+      dictionaryHeaderBackground: 'gray-4',
+      dictionaryGridLine: 'gray-8',
       diffModifyForeground: 'override-#895503',
     });
   });
@@ -236,5 +239,20 @@ describe('the dictionary part', () => {
     );
     expect(LightThemeConfig.dictionaryErrorBackground).toBeUndefined();
     expect(LightThemeConfig.dictionaryWarningBackground).toBeUndefined();
+  });
+
+  it('draws the Dictionary tab sheet on tokens of its own, at the steps of a table body, header, edge and selected row', () => {
+    expect(ThemeConfig.dictionaryBackground).toBe('gray-2');
+    expect(ThemeConfig.dictionaryHeaderBackground).toBe('gray-5');
+    expect(ThemeConfig.dictionaryGridLine).toBe('gray-6');
+    expect(ThemeConfig.dictionaryHeaderSelect).toBe('accent-3');
+  });
+
+  it('turns the sheet white with gray-8 lines and a gray-4 band in light, and keeps accent-3 under a neutral accent', () => {
+    expect(LightThemeConfig.dictionaryBackground).toBe('override-#ffffff');
+    expect(LightThemeConfig.dictionaryHeaderBackground).toBe('gray-4');
+    expect(LightThemeConfig.dictionaryGridLine).toBe('gray-8');
+    expect(LightThemeConfig.dictionaryHeaderSelect).toBeUndefined();
+    expect(NeutralAccentThemeConfig.dictionaryHeaderSelect).toBeUndefined();
   });
 });
