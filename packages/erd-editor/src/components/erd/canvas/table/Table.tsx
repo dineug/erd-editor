@@ -54,7 +54,10 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { getColorEdgePath } from '@/components/erd/canvas/table/colorEdge';
 import Column from '@/components/erd/canvas/table/column/Column';
-import { tableMarkFill } from '@/components/erd/canvas/table/dictionaryMarks';
+import {
+  readableMarkFill,
+  tableMarkFill,
+} from '@/components/erd/canvas/table/dictionaryMarks';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
@@ -644,10 +647,13 @@ const Table: FC<TableProps> = (props, ctx) => {
     // marks are the document scene's alone, and a blank cell keeps its dimmed
     // placeholder whatever a check finds.
     const checkMarks = (props.checkMarks ?? true) && !view && !diffMapRef.value;
-    const markFill = (field: 'name' | 'logicalName') =>
-      checkMarks && table[field].trim()
-        ? tableMarkFill(store, theme, table, field)
-        : null;
+    // On a coloured group's header a mark keeps only a readable contrast.
+    const markFill = (field: 'name' | 'logicalName') => {
+      if (!checkMarks || !table[field].trim()) return null;
+
+      const fill = tableMarkFill(store, theme, table, field);
+      return tint ? readableMarkFill(fill, tint.background) : fill;
+    };
 
     const columnIds = getVisibleColumnIds(store.state, table, source);
 

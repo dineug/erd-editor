@@ -11,6 +11,7 @@ import {
 import type { RxStore } from '@/engine/rx-store';
 import type { Column, Table } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
+import { contrastRatio, relativeLuminance } from '@/utils/contrastText';
 
 type Writes = { count: number };
 
@@ -57,6 +58,27 @@ export const dictionaryMarkFill = (
   }
   return null;
 };
+
+/** The least WCAG 2 contrast ratio a mark keeps on a coloured group's header. */
+const MARK_MIN_CONTRAST = 4.5;
+
+/**
+ * The mark while it reads at 4.5:1 on the header fill under it, else null, so
+ * the header's own black or white takes its place: a group's colour is the
+ * reader's pick, and a mark of a near hue would hide the name it marks.
+ */
+export function readableMarkFill(
+  mark: string | null,
+  background: string
+): string | null {
+  if (!mark) return null;
+
+  const text = relativeLuminance(mark);
+  const fill = relativeLuminance(background);
+  if (text === null || fill === null) return mark;
+
+  return contrastRatio(text, fill) >= MARK_MIN_CONTRAST ? mark : null;
+}
 
 /**
  * The colour a header cell's text takes for what the checks find in the field

@@ -9,7 +9,10 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
-import { dictionaryMarkFill } from '@/components/erd/canvas/table/dictionaryMarks';
+import {
+  dictionaryMarkFill,
+  readableMarkFill,
+} from '@/components/erd/canvas/table/dictionaryMarks';
 import Table from '@/components/erd/canvas/table/Table';
 import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { NameViewMode, Show } from '@/constants/schema';
@@ -37,7 +40,12 @@ import {
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
-import { CONTRAST_WHITE } from '@/utils/contrastText';
+import {
+  CONTRAST_BLACK,
+  CONTRAST_WHITE,
+  contrastRatio,
+  relativeLuminance,
+} from '@/utils/contrastText';
 
 type Mode = (typeof NameViewMode)[keyof typeof NameViewMode];
 
@@ -206,6 +214,9 @@ const tableOf = (stage: Stage, id = TABLE) =>
 
 const textOf = (cell: Group) => cell.findOne<Text>('.cell-text') as Text;
 
+const contrastOf = (text: string, fill: string) =>
+  contrastRatio(relativeLuminance(text)!, relativeLuminance(fill)!);
+
 const headerFill = (stage: Stage, focusType: FocusType, id = TABLE) =>
   textOf(tableOf(stage, id).findOne<Group>(`.${focusType}`) as Group).fill();
 
@@ -334,15 +345,31 @@ describe('the check marks with filled dictionaries', () => {
     expect(logicalNameFills()).toEqual([theme.active, theme.active]);
   });
 
-  it("writes a mark over a coloured group's header text, as a diff colour is written", async () => {
+  it("writes a mark over a coloured group's header text while it reads there at 4.5:1", async () => {
+    const { stage, theme } = await setup({
+      mode: NameViewMode.both,
+      groupColor: '#fef3c7',
+    });
+
+    expect(
+      contrastOf(theme.dictionaryErrorForeground, '#fef3c7')
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(headerFill(stage, FocusType.tableLogicalName)).toBe(
+      theme.dictionaryErrorForeground
+    );
+    expect(headerFill(stage, FocusType.tableName)).toBe(CONTRAST_BLACK);
+  });
+
+  it("writes a name in the header's own black or white where its mark would read under 4.5:1 on the group's colour", async () => {
     const { stage, theme } = await setup({
       mode: NameViewMode.both,
       groupColor: '#1e3a8a',
     });
 
-    expect(headerFill(stage, FocusType.tableLogicalName)).toBe(
-      theme.dictionaryErrorForeground
+    expect(contrastOf(theme.dictionaryErrorForeground, '#1e3a8a')).toBeLessThan(
+      4.5
     );
+    expect(headerFill(stage, FocusType.tableLogicalName)).toBe(CONTRAST_WHITE);
     expect(headerFill(stage, FocusType.tableName)).toBe(CONTRAST_WHITE);
   });
 
@@ -364,6 +391,19 @@ describe('the check marks with filled dictionaries', () => {
 
     expect(fillsOf(stage)).not.toContain(theme.dictionaryErrorForeground);
     expect(fillsOf(stage)).not.toContain(theme.dictionaryWarningForeground);
+  });
+});
+
+describe('readableMarkFill', () => {
+  it('keeps a mark at 4.5:1 or more on the fill, and gives none under it or for none', () => {
+    expect(readableMarkFill('#ffffff', '#000000')).toBe('#ffffff');
+    expect(readableMarkFill('#ff0000', '#dc2626')).toBeNull();
+    expect(readableMarkFill(null, '#000000')).toBeNull();
+  });
+
+  it('keeps a mark whose colour or fill it cannot read', () => {
+    expect(readableMarkFill('#ff0000', 'transparent')).toBe('#ff0000');
+    expect(readableMarkFill('currentColor', '#000000')).toBe('currentColor');
   });
 });
 
