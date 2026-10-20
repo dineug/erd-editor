@@ -16,7 +16,11 @@ import {
   selectedRowIds,
   type SheetRows,
 } from '@/components/dictionary/dictionaryCommit';
-import { bumpedSheets, sheetRowIds } from '@/components/dictionary/sheets';
+import {
+  bumpedSheets,
+  sheetCellMark,
+  sheetRowIds,
+} from '@/components/dictionary/sheets';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import {
   addDictionaryAction,
@@ -492,6 +496,32 @@ describe('commitDictionaryCells', () => {
         description: 'kept',
       });
       expect(termOf(sheet, 'balance').domainId).toBe('');
+    });
+
+    it("unlinks a removed domain when its cell is cleared, which takes the cell's mark away", async () => {
+      const sheet = open(DictionaryKind.term, DOMAINS);
+      const mark = () =>
+        sheetCellMark(
+          sheet.app.store.state,
+          DictionaryKind.term,
+          'amount',
+          'domainId'
+        );
+      sheet.app.store.dispatchSync(
+        removeDictionaryAction({ kind: DictionaryKind.domain, id: 'money' })
+      );
+      expect(mark()).toBe('error');
+
+      expect(
+        commit(sheet, {
+          source: 'clear',
+          changes: [{ row: 0, col: 2, columnId: 'domainId', value: '' }],
+        })
+      ).toBe(true);
+      await flush();
+
+      expect(termOf(sheet, 'amount').domainId).toBe('');
+      expect(mark()).toBeNull();
     });
 
     it('refuses the whole commit for a name no listed domain has, naming it', async () => {

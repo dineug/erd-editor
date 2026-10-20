@@ -166,15 +166,20 @@ type EntryWrite = {
 };
 
 /**
- * The domain a term's domain cell names, as an id: the one it links while
- * the text is the name the cell showed, '' for no text, else the first listed
- * domain of that name; null when no listed domain has it.
+ * The domain a term's domain cell names, as an id: '' for a clear, the one it
+ * links while the text is the name the cell showed, '' for no text, else the
+ * first listed domain of that name; null when no listed domain has it.
  */
 function toDomainId(
   state: RootState,
   linked: string,
-  text: string
+  text: string,
+  cleared: boolean
 ): string | null {
+  // A clear asks for an empty cell, a removed domain's link included, which
+  // shows as nothing but keeps the cell's unknown domain mark.
+  if (cleared) return '';
+
   const name = normalizeDictionaryName(text);
   if (name === normalizeDictionaryName(getLiveDomainName(state, linked))) {
     return linked;
@@ -187,7 +192,8 @@ function toDomainId(
 function toEntryWrite(
   state: RootState,
   kind: DictionaryKind,
-  { id, cells }: ResolvedRow
+  { id, cells }: ResolvedRow,
+  cleared: boolean
 ): EntryWrite {
   const existing = id === null ? null : selectDictionaryRow(state, kind, id);
   const values: Record<string, string> = {};
@@ -199,7 +205,12 @@ function toEntryWrite(
 
     if (kind === DictionaryKind.term && field === 'domainId') {
       const linked: unknown = existing && Reflect.get(existing, 'domainId');
-      const domainId = toDomainId(state, isString(linked) ? linked : '', text);
+      const domainId = toDomainId(
+        state,
+        isString(linked) ? linked : '',
+        text,
+        cleared
+      );
       if (domainId === null) unknownDomain = text.trim();
       else values.domainId = domainId;
       continue;
@@ -315,7 +326,8 @@ export function commitDictionaryCells(
     return false;
   }
 
-  const writes = resolved.map(row => toEntryWrite(state, kind, row));
+  const cleared = event.source === 'clear';
+  const writes = resolved.map(row => toEntryWrite(state, kind, row, cleared));
   const changes = writes.map(({ change }) => change);
   const refusals = [
     ...writes.flatMap((write, index) =>
