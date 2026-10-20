@@ -85,6 +85,26 @@ const updateDictionary: PushUndoHistory = (
   pushPreviousValues(undoActions, payload, state);
 };
 
+const isListing = ({ type }: AnyAction) =>
+  type === ActionType.addDictionary || type === ActionType.removeDictionary;
+
+/**
+ * Turns round the adds and removes an undo sends, in the slots they hold: the
+ * undo of an import then takes its rows off the end of each list, and the undo
+ * of a removal sent from the end puts the rows back in their order.
+ */
+export function reverseDictionaryListings(undoActions: AnyAction[]) {
+  const slots = undoActions.flatMap((action, index) =>
+    isListing(action) ? [index] : []
+  );
+
+  for (let low = 0, high = slots.length - 1; low < high; low++, high--) {
+    const action = undoActions[slots[low]];
+    undoActions[slots[low]] = undoActions[slots[high]];
+    undoActions[slots[high]] = action;
+  }
+}
+
 export const dictionaryPushUndoHistoryMap = {
   [ActionType.addDictionary]: addDictionary,
   [ActionType.updateDictionary]: updateDictionary,

@@ -37,12 +37,16 @@ export function listId(list: string[], id: string): boolean {
   return true;
 }
 
-/** Takes the id out of the list if it holds it; true when it did. */
+/**
+ * Takes the id out of the list if it holds it; true when it did. It looks from
+ * the end, where a removal and an undo send their rows, since every element a
+ * splice moves in a state list goes through its proxy.
+ */
 export function unlistId(list: string[], id: string): boolean {
   const listing = listingOf(list);
   if (!listing.ids.has(id)) return false;
 
-  const index = list.indexOf(id);
+  const index = list.lastIndexOf(id);
   if (index !== -1) list.splice(index, 1);
   listing.ids.delete(id);
   listing.length = list.length;

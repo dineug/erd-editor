@@ -10,7 +10,10 @@ import {
   removeDictionaryAction,
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
-import { dictionaryPushUndoHistoryMap } from '@/engine/modules/dictionary/history';
+import {
+  dictionaryPushUndoHistoryMap,
+  reverseDictionaryListings,
+} from '@/engine/modules/dictionary/history';
 import {
   addColumnAction,
   changeColumnDomainAction,
@@ -137,6 +140,38 @@ describe('dictionaryPushUndoHistoryMap', () => {
   });
 });
 
+describe('reverseDictionaryListings', () => {
+  it('turns round the adds and removes an undo sends, leaving every other action in its slot', () => {
+    const unlink = changeColumnDomainAction({
+      id: 'c1',
+      tableId: 't1',
+      value: '',
+    });
+    const update = updateDictionaryAction({
+      kind: 'word',
+      id: 'w9',
+      values: { name: 'A' },
+    });
+    const undoActions: AnyAction[] = [
+      removeDictionaryAction({ kind: 'word', id: 'w1' }),
+      unlink,
+      addDictionaryAction({ kind: 'term', id: 't1' }),
+      update,
+      removeDictionaryAction({ kind: 'word', id: 'w2' }),
+    ];
+
+    reverseDictionaryListings(undoActions);
+
+    expect(undoActions).toEqual([
+      removeDictionaryAction({ kind: 'word', id: 'w2' }),
+      unlink,
+      addDictionaryAction({ kind: 'term', id: 't1' }),
+      update,
+      removeDictionaryAction({ kind: 'word', id: 'w1' }),
+    ]);
+  });
+});
+
 describe('dictionary undo and redo through the rx store', () => {
   let app: AppContext;
 
@@ -188,6 +223,30 @@ describe('dictionary undo and redo through the rx store', () => {
 
     store.redo();
     expect(store.state.doc.wordIds).toEqual(['w2']);
+  });
+
+  it('puts rows removed from the end back in their order, and takes added rows off the end', () => {
+    const { store } = app;
+    const ids = ['w1', 'w2', 'w3'];
+    store.dispatchSync(
+      ...ids.map(id =>
+        addDictionaryAction({ kind: 'word', id, values: { name: id } })
+      )
+    );
+    store.dispatchSync(
+      ...[...ids]
+        .reverse()
+        .map(id => removeDictionaryAction({ kind: 'word', id }))
+    );
+
+    store.undo();
+    expect(store.state.doc.wordIds).toEqual(ids);
+
+    store.undo();
+    expect(store.state.doc.wordIds).toEqual([]);
+
+    store.redo();
+    expect(store.state.doc.wordIds).toEqual(ids);
   });
 
   it('puts an updated row back and forth', () => {

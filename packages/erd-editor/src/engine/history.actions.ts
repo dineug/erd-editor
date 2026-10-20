@@ -2,7 +2,10 @@ import { AnyAction } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 
 import { History } from '@/engine/history';
-import { dictionaryPushUndoHistoryMap } from '@/engine/modules/dictionary/history';
+import {
+  dictionaryPushUndoHistoryMap,
+  reverseDictionaryListings,
+} from '@/engine/modules/dictionary/history';
 import { editorPushUndoHistoryMap } from '@/engine/modules/editor/history';
 import { indexPushUndoHistoryMap } from '@/engine/modules/index/history';
 import { indexColumnPushUndoHistoryMap } from '@/engine/modules/index-column/history';
@@ -71,6 +74,8 @@ function push(store: Store, history: History, actions: AnyAction[]) {
     pushUndoHistory(undoActions, action, store.state);
     redoActions.push(cloneDeep(action));
   }
+
+  reverseDictionaryListings(undoActions);
 
   for (const key of Object.keys(pushStreamHistoryMap)) {
     pushStreamHistoryMap[key](undoActions, redoActions, actions);

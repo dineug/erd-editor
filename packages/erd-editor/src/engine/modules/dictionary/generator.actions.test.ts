@@ -983,7 +983,7 @@ describe('dictionary rows', () => {
     ]);
   });
 
-  it('removes each listed row named once, in one dispatch an undo takes back whole', () => {
+  it('removes each listed row named once from the end back, in one dispatch an undo takes back whole', () => {
     const peer = setup(WORDS);
 
     const report = send(
@@ -1001,6 +1001,10 @@ describe('dictionary rows', () => {
       'dictionary.remove',
       'dictionary.remove',
     ]);
+    expect(report.actions.map(({ payload }) => payload.id)).toEqual([
+      'w-name',
+      'w-member',
+    ]);
     expect(peer.state.doc.wordIds).toEqual(['w-number']);
     expect(
       send(peer, removeDictionaryEntriesAction$('word', ['ghost'])).actions
@@ -1008,11 +1012,7 @@ describe('dictionary rows', () => {
 
     peer.undo();
 
-    expect([...peer.state.doc.wordIds].sort()).toEqual([
-      'w-member',
-      'w-name',
-      'w-number',
-    ]);
+    expect(peer.state.doc.wordIds).toEqual(['w-number', 'w-member', 'w-name']);
   });
 
   it('passes over a kind this release does not know', () => {

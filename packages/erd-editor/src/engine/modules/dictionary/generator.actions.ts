@@ -68,7 +68,10 @@ export const updateDictionaryEntryAction$ = <K extends DictionaryKind>(
     yield* commit(state, kind, [{ id, values }]);
   };
 
-/** Removes each listed row named, once, in one dispatch. */
+/**
+ * Removes each listed row named, once, in one dispatch, from the end of the
+ * list back, so each row leaves from the end and no splice moves the rest.
+ */
 export const removeDictionaryEntriesAction$ = (
   kind: DictionaryKind,
   ids: ReadonlyArray<string>
@@ -77,10 +80,14 @@ export const removeDictionaryEntriesAction$ = (
     if (!hasDictionaryKind(kind)) return;
 
     const listed = dictionaryIds(state, kind);
-    const removed = new Set(ids.filter(id => isListed(listed, id)));
-    if (removed.size) {
-      yield [...removed].map(id => removeDictionaryAction({ kind, id }));
+    const named = new Set(ids.filter(id => isListed(listed, id)));
+    if (!named.size) return;
+
+    const removed: string[] = [];
+    for (let index = listed.length - 1; index >= 0; index--) {
+      if (named.has(listed[index])) removed.push(listed[index]);
     }
+    yield removed.map(id => removeDictionaryAction({ kind, id }));
   };
 
 /**
