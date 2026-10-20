@@ -275,18 +275,25 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
     const leadsLogical =
       node.logicalName.trim() !== '' &&
       (isLogicalNameView(settings) || isBothNameView(settings));
+    const [shownMatches, hiddenMatches] = leadsLogical
+      ? [logicalMatches, nameMatches]
+      : [nameMatches, logicalMatches];
+    // A row found only in the name the view leaves out shows that name after
+    // its label, muted as in the view of both, so the row says why it is here.
+    const second =
+      after ||
+      (!shownMatches.length && hiddenMatches.length
+        ? leadsLogical
+          ? node.name
+          : node.logicalName
+        : '');
 
     return (
       <>
-        {label(
-          text,
-          unnamed,
-          leadsLogical ? logicalMatches : nameMatches,
-          standIn
-        )}
-        {after ? (
-          <span class={styles.muted} title={after}>
-            {marked(after, nameMatches)}
+        {label(text, unnamed, shownMatches, standIn)}
+        {second ? (
+          <span class={styles.muted} title={second}>
+            {marked(second, hiddenMatches)}
           </span>
         ) : null}
       </>

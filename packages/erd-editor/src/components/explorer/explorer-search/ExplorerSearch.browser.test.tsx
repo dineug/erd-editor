@@ -461,6 +461,22 @@ describe('ExplorerSearch - the tree it searches', () => {
     expect(rowOf('f:tables').textContent?.trim()).toBe('Tables2');
   });
 
+  it('shows a name the logical view leaves out after a row found in it alone, muted and marked', async () => {
+    await setup();
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'users', value: 'Members' }),
+      toNameViewModeAction(app.store.state, NameViewMode.logical, false)
+    );
+    await open('user');
+
+    expect(rowOf('t:users').textContent?.trim()).toBe('Membersusers');
+    expect(marksOf('t:users')).toEqual(['user']);
+    const [, second] = Array.from(
+      rowOf('t:users').querySelectorAll<HTMLElement>('[title]')
+    );
+    expect(second.textContent).toBe('users');
+  });
+
   it('marks a logical name where the name view draws it, and the name apart from it', async () => {
     await setup();
     app.store.dispatchSync(
@@ -478,7 +494,9 @@ describe('ExplorerSearch - the tree it searches', () => {
     };
 
     expect(rowIds().slice(0, 2)).toEqual(['f:tables', 't:orders']);
-    expect(marksOf('t:orders')).toEqual([]);
+    expect(rowOf('t:orders').textContent?.trim()).toBe('ordersUser Orders');
+    expect(marksOf('t:orders')).toEqual(['User']);
+    expect(rowOf('t:users').textContent?.trim()).toBe('users');
     expect(marksOf('t:users')).toEqual(['user']);
 
     await view(NameViewMode.both);
