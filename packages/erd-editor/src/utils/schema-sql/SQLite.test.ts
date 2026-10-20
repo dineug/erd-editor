@@ -1004,4 +1004,30 @@ describe('SQLite logical names as comments', () => {
     expect(written).not.toContain('User');
     expect(createSchema(state)).not.toContain('Post');
   });
+
+  it('writes the line breaks of a comment or a logical name as a space, so no line of it runs as SQL', () => {
+    const { state } = createFixture();
+    const { tableEntities, tableColumnEntities } = state.collections;
+    tableEntities['t-users'].comment = 'user\ntable';
+    tableEntities['t-posts'].logicalName = 'Blog\r\n\r\npost';
+    tableColumnEntities['c-user-id'].comment = 'user\rid';
+    tableColumnEntities['c-post-user-id'].logicalName =
+      'first line\nsecond line';
+
+    const written = createSchema(state, undefined, {
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain('\n-- user table\nCREATE TABLE users\n');
+    expect(written).toContain('\n-- Blog post\nCREATE TABLE posts\n');
+    expect(written).toContain('\n  -- user id\n  id ');
+    expect(written).toContain(
+      '\n  -- first line second line\n  user_id INT NOT NULL,\n'
+    );
+    expect(written).not.toContain('\r');
+    const lines = written.split('\n').map(line => line.trim());
+    for (const leaked of ['table', 'post', 'id', 'second line']) {
+      expect(lines).not.toContain(leaked);
+    }
+  });
 });

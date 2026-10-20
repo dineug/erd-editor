@@ -34,6 +34,10 @@ import {
 
 const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
 
+// A line break would end the comment line and run the text after it as SQL.
+const toCommentLine = (comment: string) =>
+  `-- ${comment.replace(/[\r\n]+/g, ' ')}`;
+
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
@@ -122,7 +126,7 @@ export function formatTable(
 
   const comment = commentToWrite(table, logicalNameAsComment);
   if (comment !== '') {
-    buffer.push(`-- ${comment}`);
+    buffer.push(toCommentLine(comment));
   }
   buffer.push(
     `CREATE TABLE${ifNotExists(statements)} ${bracket}${table.name}${bracket}`
@@ -193,7 +197,7 @@ function formatColumn(
   const comment = commentToWrite(column, logicalNameAsComment);
 
   if (comment !== '') {
-    buffer.push(`  -- ${comment}`);
+    buffer.push(`  ${toCommentLine(comment)}`);
   }
 
   stringBuffer.push(

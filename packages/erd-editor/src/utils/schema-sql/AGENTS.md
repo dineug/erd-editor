@@ -71,8 +71,9 @@
   - SQL Server an `MS_Description` call per table and column (SQL Server comments, above);
   - Snowflake inline, `COMMENT = 'x'` on the table;
   - Databricks inline, in its Spark string literal (Quoting and string literals, above);
-  - SQLite a `--` comment line above the table or column, since it keeps no comment.
+  - SQLite a `--` comment line above the table or column, since it keeps no comment, its line breaks written as a space (below).
 - **A comment that is not blank stays.** The logical name never replaces or joins it.
+- **SQLite writes a line break as a space** (an owner decision of 2026-10-20). A line break would end the `--` line and run the text after it as SQL, so `SQLite.ts` writes each run of line breaks in a comment or a logical name as one space (`toCommentLine`). On 2026-10-20 SQLite 3.54 refused the earlier output of a table comment on two lines and created neither table of the document; it ran this output clean.
 - **Only `true` turns it on.** `createSchemaSQL` reads any other value, from a host's `getSchemaSQL()` or an agent's read, as left out. The Schema SQL tab's switch (`src/components/schema-sql/AGENTS.md`) passes the window's choice; Table Properties' one table never writes it.
 - **Measured on 2026-10-20.** MySQL 8.4, MariaDB 11.4, PostgreSQL 17, SQL Server 2022, Oracle AI Database 26ai Free and SQLite 3.54 ran the DDL of a document whose tables and columns had logical names and no comment, Korean ones and one with a quote among them, beside a table comment and a column comment. Each catalog held every logical name and comment on its table and column, SQL Server's once its descriptions were national literals (SQL Server comments, above). SQLite's schema text keeps the column lines alone, since a table's line stands before its `CREATE TABLE`.
 
