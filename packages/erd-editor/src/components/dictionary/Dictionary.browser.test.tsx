@@ -1,6 +1,6 @@
 // The Dictionary tab in Chromium with real keys: the sheets, the search, the
-// row buttons, a paste past the end, one undo per commit, a read-only document,
-// the empty sheet, the editor's chords and what a peer's batch shows.
+// row and file buttons, a paste past the end, one undo per commit, a read-only
+// document, the empty sheet, the chords, a peer's batch, the checks and marks.
 
 import {
   addCSSHost,
@@ -30,6 +30,7 @@ import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
 import { themeContext } from '@/components/themeContext';
+import { CanvasType } from '@/constants/schema';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import {
   addDictionaryAction,
@@ -37,6 +38,20 @@ import {
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
+import {
+  changeCanvasTypeAction,
+  changeDatabaseNameAction,
+} from '@/engine/modules/settings/atom.actions';
+import {
+  addTableAction,
+  changeTableLogicalNameAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
+import {
+  addColumnAction,
+  changeColumnLogicalNameAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { createSharedStore } from '@/engine/shared-store';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import {
@@ -48,6 +63,7 @@ import {
 import type { Theme as ThemeTokens } from '@/themes/tokens';
 import { hasAppleDevice } from '@/utils/device-detect';
 import { copyAction, pasteAction } from '@/utils/emitter';
+import { setExportFileCallback } from '@/utils/file/exportFile';
 import type { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 await import('@/components/erd-editor/ErdEditor');
@@ -87,6 +103,7 @@ type Fixture = {
 const host = observable({ readonly: false, shown: true });
 const teardowns: Array<() => void> = [];
 let texts: TextCall[] = [];
+let fills: string[] = [];
 
 beforeAll(() => page.viewport(WIDTH + 200, HEIGHT + 200));
 
@@ -96,15 +113,22 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-/** Records the text every canvas draws with its fill, and still draws it. */
+/** Records the text every canvas draws with its fill, and each rectangle's fill, and still draws both. */
 function spyTexts() {
   texts = [];
-  const original = CanvasRenderingContext2D.prototype.fillText;
+  fills = [];
+  const { fillText, fillRect } = CanvasRenderingContext2D.prototype;
 
   vi.spyOn(CanvasRenderingContext2D.prototype, 'fillText').mockImplementation(
     function (this: CanvasRenderingContext2D, text, x, y, maxWidth) {
       texts.push({ text, fill: String(this.fillStyle) });
-      original.call(this, text, x, y, maxWidth);
+      fillText.call(this, text, x, y, maxWidth);
+    }
+  );
+  vi.spyOn(CanvasRenderingContext2D.prototype, 'fillRect').mockImplementation(
+    function (this: CanvasRenderingContext2D, x, y, width, height) {
+      fills.push(String(this.fillStyle));
+      fillRect.call(this, x, y, width, height);
     }
   );
 }
@@ -143,6 +167,27 @@ const word = (id: string, name: string, values: Record<string, string> = {}) =>
     id,
     values: { name, ...values },
   });
+
+const term = (id: string, values: Record<string, string>) =>
+  addDictionaryAction({ kind: DictionaryKind.term, id, values });
+
+/** A table member, its logical name the one given, with one column mbr_addr of its own. */
+const memberTable = (tableName: string, columnName: string): AnyAction[] => [
+  addTableAction({ id: 'member', ui: { x: 0, y: 0, zIndex: 1 } }),
+  changeTableNameAction({ id: 'member', value: 'member' }),
+  changeTableLogicalNameAction({ id: 'member', value: tableName }),
+  addColumnAction({ id: 'address', tableId: 'member' }),
+  changeColumnNameAction({
+    id: 'address',
+    tableId: 'member',
+    value: 'mbr_addr',
+  }),
+  changeColumnLogicalNameAction({
+    id: 'address',
+    tableId: 'member',
+    value: columnName,
+  }),
+];
 
 const WORDS = [word('a', 'A'), word('b', 'B'), word('c', 'C'), word('d', 'D')];
 
@@ -273,6 +318,9 @@ const pressedSheet = (fixture: Fixture) =>
 const search = ({ shadow }: Fixture) =>
   shadow.querySelector('input[title="Search"]') as HTMLInputElement;
 
+const fileInput = ({ shadow }: Fixture) =>
+  shadow.querySelector<HTMLInputElement>('input[type="file"]');
+
 /** The status line's parts, the row count and the rows selected, each read alone. */
 const status = (fixture: Fixture) =>
   Array.from(tab(fixture).lastElementChild?.children ?? [], part =>
@@ -357,6 +405,66 @@ async function addRange(fixture: Fixture, row: number) {
 const undo = () => press(`{${MOD}>}z{/${MOD}}`);
 const redo = () => press(`{${MOD}>}{Shift>}z{/Shift}{/${MOD}}`);
 
+/**
+ * Picks a CSV file in the input Import CSV opens, as the file dialog hands one
+ * over, and waits for the toast the import opens, which names its outcome.
+ */
+async function pick(fixture: Fixture, name: string, ...records: string[]) {
+  const input = fileInput(fixture);
+  expect(input).not.toBeNull();
+
+  const picked = new DataTransfer();
+  picked.items.add(
+    new File([`${records.join('\r\n')}\r\n`], name, { type: 'text/csv' })
+  );
+  const toasted = new Promise<string | undefined>(resolve => {
+    const off = fixture.app.emitter.on({
+      openToast: ({ payload }) => {
+        off();
+        resolve(payload.key);
+      },
+    });
+  });
+
+  input!.files = picked.files;
+  input!.dispatchEvent(new Event('change', { bubbles: true }));
+  const key = await toasted;
+  await drawn();
+  return key;
+}
+
+/** The scroller's point at the middle of a body row, in its first column. */
+const cellPoint = (row: number) => ({ x: 100, y: rowY(row) });
+
+/** A real double click on the grid's scroller, its two presses and the dblclick after. */
+async function doubleClick(
+  { shadow }: Fixture,
+  position: { x: number; y: number }
+) {
+  const scroller = shadow.querySelector(
+    '.dineug-grid-scroller'
+  ) as HTMLDivElement;
+  await userEvent.dblClick(scroller, { position });
+  await drawn();
+}
+
+/** The fill a text was last drawn in, lower case as a canvas spells it. */
+const fillOf = (text: string) =>
+  texts.filter(call => call.text === text).pop()?.fill ?? null;
+
+/** Every file the tab saved, its bytes and its name. */
+function captureExports() {
+  const saved: Array<{ bytes: Promise<Uint8Array>; fileName: string }> = [];
+  setExportFileCallback((blob, { fileName }) =>
+    saved.push({
+      bytes: blob.arrayBuffer().then(buffer => new Uint8Array(buffer)),
+      fileName,
+    })
+  );
+  teardowns.push(() => setExportFileCallback(null));
+  return saved;
+}
+
 /** A paste on the grid's textarea, as the browser fires one for Cmd or Ctrl with V. */
 async function paste(fixture: Fixture, text: string) {
   const clipboardData = new DataTransfer();
@@ -431,6 +539,9 @@ describe('the Dictionary tab', () => {
     expect(status(fixture)).toBe('3 rows 1 selected');
     expect(buttonNamed(fixture, 'Add Row')).toBeNull();
     expect(buttonNamed(fixture, 'Delete Rows')).toBeNull();
+    expect(buttonNamed(fixture, 'Import CSV')).toBeNull();
+    expect(buttonNamed(fixture, 'Export CSV')).toBeNull();
+    expect(fileInput(fixture)).toBeNull();
 
     await click(sheetButtons(fixture)[0]);
     expect(drawnTexts()).toEqual(
@@ -589,11 +700,14 @@ describe('the Dictionary tab', () => {
     ).toBe('MB');
   });
 
-  it('keeps every cell read-only and hides the row buttons in a read-only document', async () => {
+  it('keeps every cell read-only and hides the row and file buttons in a read-only document', async () => {
     const fixture = await setup({ readonly: true });
 
     expect(buttonNamed(fixture, 'Add Row')).toBeNull();
     expect(buttonNamed(fixture, 'Delete Rows')).toBeNull();
+    expect(buttonNamed(fixture, 'Import CSV')).toBeNull();
+    expect(buttonNamed(fixture, 'Export CSV')).toBeNull();
+    expect(fileInput(fixture)).toBeNull();
 
     await press('Z{Enter}');
     await paste(fixture, 'Y\n');
@@ -771,6 +885,205 @@ describe('the Dictionary tab', () => {
     expect(status(fixture)).toBe('0 rows');
   });
 
+  it("lists the checks again after a table's or a column's edit, while the check sheet shows", async () => {
+    const fixture = await setup({
+      seed: [word('member', '회원'), ...memberTable('회원', '회원')],
+    });
+    await click(sheetButtons(fixture)[3]);
+    expect(status(fixture)).toBe('0 rows');
+    await press('{Enter}');
+    expect(pressedSheet(fixture)).toEqual(['Checks']);
+    drawnTexts();
+
+    fixture.app.store.dispatchSync(
+      changeColumnLogicalNameAction({
+        id: 'address',
+        tableId: 'member',
+        value: '회원주소',
+      })
+    );
+    await drawn();
+    expect(status(fixture)).toBe('1 row 1 selected');
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining(['Unregistered word', 'member.mbr_addr', '주소'])
+    );
+
+    fixture.app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'member', value: '회원정보' })
+    );
+    await drawn();
+    expect(status(fixture)).toBe('2 rows 1 selected');
+    expect(drawnTexts()).toEqual(expect.arrayContaining(['member', '정보']));
+
+    // An edit made on the ERD tab, while the tab is away, shows as it mounts.
+    host.shown = false;
+    await drawn();
+    fixture.app.store.dispatchSync(
+      changeColumnLogicalNameAction({
+        id: 'address',
+        tableId: 'member',
+        value: '회원',
+      })
+    );
+    host.shown = true;
+    await drawn();
+    expect(pressedSheet(fixture)).toEqual(['Checks']);
+    expect(status(fixture)).toBe('1 row 1 selected');
+  });
+
+  it("goes to a word's row on its own sheet by Enter and by a double click, the search that hid it cleared", async () => {
+    const seed = Array.from({ length: 60 }, (_, index) =>
+      word(`w${index}`, [45, 50].includes(index) ? 'Twin' : `W${index}`)
+    );
+    const fixture = await setup({ seed });
+    const view = dictionaryViewOf(fixture.app);
+
+    await userEvent.click(search(fixture));
+    await press('W1');
+    expect(status(fixture)).toBe('11 rows 1 selected');
+
+    await click(sheetButtons(fixture)[3]);
+    expect(status(fixture)).toBe('2 rows 1 selected');
+    drawnTexts();
+
+    await press('{Enter}');
+    expect(pressedSheet(fixture)).toEqual(['Words']);
+    expect(search(fixture).value).toBe('');
+    expect(status(fixture)).toBe('60 rows 1 selected');
+    expect(view.sheets.word.selection?.active).toEqual({ row: 45, col: 0 });
+    expect(drawnTexts()).toEqual(expect.arrayContaining(['Twin', 'W46']));
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+    await press('Pair{Enter}');
+    expect(fixture.app.store.state.collections.wordEntities.w45.name).toBe(
+      'Pair'
+    );
+
+    await click(sheetButtons(fixture)[3]);
+    expect(status(fixture)).toBe('0 rows');
+    fixture.app.store.dispatchSync(
+      updateDictionaryAction({
+        kind: DictionaryKind.word,
+        id: 'w50',
+        values: { name: 'Pair' },
+      })
+    );
+    await drawn();
+    await doubleClick(fixture, cellPoint(1));
+    expect(pressedSheet(fixture)).toEqual(['Words']);
+    expect(view.sheets.word.selection?.active).toEqual({ row: 50, col: 0 });
+    expect(view.sheets.check.selection?.active).toEqual({ row: 1, col: 0 });
+  });
+
+  it("goes to a table's and a column's cell on the ERD tab by Enter and by a double click", async () => {
+    const fixture = await setup({
+      seed: [
+        word('member', '회원'),
+        ...memberTable('회원정보', '회원주소'),
+        changeCanvasTypeAction({ value: CanvasType.dictionary }),
+      ],
+    });
+    const { store } = fixture.app;
+    await click(sheetButtons(fixture)[3]);
+    expect(status(fixture)).toBe('2 rows 1 selected');
+
+    await press('{Enter}');
+    expect(store.state.settings.canvasType).toBe(CanvasType.ERD);
+    expect(store.state.editor.focusTable).toMatchObject({
+      tableId: 'member',
+      columnId: null,
+      focusType: FocusType.tableName,
+    });
+    expect(store.state.editor.selectedMap).toEqual({ member: 'table' });
+
+    await doubleClick(fixture, cellPoint(1));
+    expect(store.state.editor.focusTable).toMatchObject({
+      tableId: 'member',
+      columnId: 'address',
+      focusType: FocusType.columnName,
+    });
+    expect(dictionaryBatches(fixture)).toEqual([]);
+  });
+
+  it('goes nowhere on a double click on a header, a column edge or below the rows', async () => {
+    const fixture = await setup({
+      seed: [word('member', '회원'), ...memberTable('회원정보', '회원주소')],
+    });
+    const { store } = fixture.app;
+    await click(sheetButtons(fixture)[3]);
+    const canvasType = store.state.settings.canvasType;
+
+    const edge = Array.from({ length: 300 }, (_, x) => x + 40).find(
+      x =>
+        pointer(fixture, 'pointermove', x, 14, { buttons: 0 }).style.cursor ===
+        'col-resize'
+    );
+    expect(edge).toBeDefined();
+    await doubleClick(fixture, { x: edge!, y: 14 });
+    await doubleClick(fixture, { x: 100, y: 14 });
+    await doubleClick(fixture, cellPoint(6));
+
+    expect(pressedSheet(fixture)).toEqual(['Checks']);
+    expect(store.state.settings.canvasType).toBe(canvasType);
+    expect(store.state.editor.focusTable).toBeNull();
+  });
+
+  it('marks no cell while the sheets a check reads are empty', async () => {
+    const fixture = await setup({
+      seed: [term('t1', { name: '회원주소', domainId: 'gone' })],
+    });
+    await click(sheetButtons(fixture)[1]);
+
+    expect(fillOf('회원주소')).toBe(toGridTheme(DARK).text.toLowerCase());
+    expect(fills).not.toContain(DARK.dictionaryWarningBackground.toLowerCase());
+    expect(fills).not.toContain(DARK.dictionaryErrorBackground.toLowerCase());
+  });
+
+  it('marks the cells the checks name, each level in its own text on its own fill, in a read-only document too', async () => {
+    const errorText = DARK.dictionaryErrorForeground.toLowerCase();
+    const errorFill = DARK.dictionaryErrorBackground.toLowerCase();
+    const warningText = DARK.dictionaryWarningForeground.toLowerCase();
+    const warningFill = DARK.dictionaryWarningBackground.toLowerCase();
+    const plainText = toGridTheme(DARK).text.toLowerCase();
+
+    const fixture = await setup({
+      seed: [
+        word('a', '회원', { abbreviation: 'MBR', synonyms: '멤버' }),
+        word('b', '번호', { abbreviation: 'NO' }),
+        word('c', '번호', { abbreviation: 'NUM' }),
+        term('t1', { name: '회원주소', physicalName: 'MBR_ADDR' }),
+        term('t2', { name: '멤버번호', physicalName: 'MBR_NO' }),
+      ],
+    });
+    expect(fillOf('번호')).toBe(errorText);
+    expect(fillOf('회원')).toBe(plainText);
+    expect(fills).toContain(errorFill);
+
+    fills = [];
+    await click(sheetButtons(fixture)[1]);
+    expect(fillOf('회원주소')).toBe(warningText);
+    expect(fillOf('멤버번호')).toBe(warningText);
+    expect(fillOf('MBR_ADDR')).toBe(plainText);
+    expect(fills).toContain(warningFill);
+
+    fixture.app.store.dispatchSync(
+      updateDictionaryAction({
+        kind: DictionaryKind.word,
+        id: 'a',
+        values: { synonyms: '', forbiddenWords: '멤버' },
+      })
+    );
+    await drawn();
+    expect(fillOf('멤버번호')).toBe(errorText);
+
+    fixture.theme.dictionaryWarningForeground = '#123456';
+    await drawn();
+    expect(fillOf('회원주소')).toBe('#123456');
+
+    host.readonly = true;
+    await drawn();
+    expect(fillOf('회원주소')).toBe('#123456');
+  });
+
   it("commits typing on the active cell before any gesture to the first row's id", async () => {
     const fixture = await setup();
 
@@ -778,6 +1091,136 @@ describe('the Dictionary tab', () => {
     await press('Zed{Enter}');
 
     expect(fixture.app.store.state.collections.wordEntities.a.name).toBe('Zed');
+  });
+
+  it("imports each sheet's file into the sheet its header names, one dispatch each, which one undo takes back whole", async () => {
+    const fixture = await setup({ seed: [] });
+    const { store } = fixture.app;
+    const input = fileInput(fixture)!;
+    const opened = vi.spyOn(input, 'click').mockImplementation(() => {});
+
+    await click(buttonNamed(fixture, 'Import CSV'));
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(input.accept).toBe('.csv');
+
+    await pick(
+      fixture,
+      'words.csv',
+      '공통표준단어명,공통표준단어영문약어명,공통표준단어 영문명,공통표준단어 설명',
+      '회원,MBR,Member,',
+      '이름,NM,Name,',
+      '금액,AMT,Amount,'
+    );
+    expect(input.files).toHaveLength(0);
+    expect(pressedSheet(fixture)).toEqual(['Words']);
+    expect(names(fixture)).toEqual(['회원', '이름', '금액']);
+    expect(status(fixture)).toBe('3 rows 1 selected');
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+
+    expect(
+      await pick(
+        fixture,
+        'domains.csv',
+        'name,category,dataType,description',
+        'Short Text,Text,VARCHAR(100),',
+        'Amount,Number,"NUMERIC(15,2)",'
+      )
+    ).toBe('dictionary.toast.imported:2:0:0:0:');
+    expect(pressedSheet(fixture)).toEqual(['Domains']);
+    expect(status(fixture)).toBe('2 rows 1 selected');
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining(['Short Text', 'NUMERIC(15,2)'])
+    );
+
+    expect(
+      await pick(
+        fixture,
+        'terms.csv',
+        'name,physicalName,domain,description,synonyms',
+        '회원이름,,Short Text,,',
+        '결제금액,PAY_AMT,Amount,,',
+        '회원번호,MBR_NO,Number,,'
+      )
+    ).toBe('dictionary.toast.imported:3:0:0:1:Number');
+    expect(pressedSheet(fixture)).toEqual(['Terms']);
+    expect(status(fixture)).toBe('3 rows 1 selected');
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining(['회원이름', 'MBR_NM', 'Short Text', 'Amount'])
+    );
+    expect(dictionaryBatches(fixture)).toHaveLength(3);
+    expect(store.history.size).toBe(3);
+
+    await undo();
+    expect(names(fixture, DictionaryKind.term)).toEqual([]);
+    expect(hint(fixture)).toBe('Import a CSV file or add a row');
+    expect(names(fixture, DictionaryKind.domain)).toHaveLength(2);
+    await undo();
+    expect(names(fixture, DictionaryKind.domain)).toEqual([]);
+    expect(names(fixture)).toHaveLength(3);
+    await undo();
+    expect(names(fixture)).toEqual([]);
+  });
+
+  it('refuses a file whose header names no sheet, sending nothing and staying on the sheet', async () => {
+    const fixture = await setup();
+
+    expect(await pick(fixture, 'people.csv', 'id,email', '1,a@b.c')).toBe(
+      'dictionary.toast.unknownFormat'
+    );
+    expect(dictionaryBatches(fixture)).toEqual([]);
+    expect(pressedSheet(fixture)).toEqual(['Words']);
+    expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it("exports every row of the sheet shown, whatever the search shows, as its own file's bytes", async () => {
+    const fixture = await setup({
+      seed: [
+        changeDatabaseNameAction({ value: 'shop' }),
+        word('a', 'Member', { abbreviation: 'MBR' }),
+        word('b', 'Name, "Full"'),
+        addDictionaryAction({
+          kind: DictionaryKind.domain,
+          id: 'd',
+          values: { name: 'Short Text', dataType: 'VARCHAR(100)' },
+        }),
+        addDictionaryAction({
+          kind: DictionaryKind.term,
+          id: 't',
+          values: {
+            name: 'Member Name',
+            physicalName: 'MBR_NM',
+            domainId: 'd',
+          },
+        }),
+      ],
+    });
+    const saved = captureExports();
+    const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
+
+    await userEvent.click(search(fixture));
+    await press('mem');
+    expect(status(fixture)).toBe('1 row 1 selected');
+    await click(buttonNamed(fixture, 'Export CSV'));
+
+    const words = await saved[0].bytes;
+    expect(Array.from(words.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    expect(decoder.decode(words)).toBe(
+      '\uFEFFname,abbreviation,englishName,description,synonyms,forbiddenWords\r\n' +
+        'Member,MBR,,,,\r\n' +
+        '"Name, ""Full""",,,,,\r\n'
+    );
+    expect(saved[0].fileName).toMatch(
+      /^shop-\d{4}-\d\d-\d\dT\d\d_\d\d_\d\d-words\.csv$/
+    );
+
+    await click(sheetButtons(fixture)[1]);
+    await click(buttonNamed(fixture, 'Export CSV'));
+    expect(decoder.decode(await saved[1].bytes)).toBe(
+      '\uFEFFname,physicalName,domain,description,synonyms\r\n' +
+        'Member Name,MBR_NM,Short Text,,\r\n'
+    );
+    expect(saved[1].fileName).toMatch(/-terms\.csv$/);
+    expect(dictionaryBatches(fixture)).toEqual([]);
   });
 
   it('hands the grid the light or dark palette the theme context holds, following a switch', async () => {
@@ -832,6 +1275,34 @@ describe('the Dictionary tab in the editor', () => {
 
   const toolbarButton = (shadow: ShadowRoot, title: string) =>
     shadow.querySelector(`.toolbar [title="${title}"]`) as HTMLElement;
+
+  it("goes from a column's check to the ERD tab, the canvas taking the keyboard", async () => {
+    spyTexts();
+    const { el, shadow } = await createEditor();
+    const sharedStore = el.getSharedStore();
+    teardowns.push(sharedStore.destroy);
+
+    sharedStore.dispatchSync(
+      changeColumnLogicalNameAction({
+        id: SEED.userName,
+        tableId: SEED.users,
+        value: 'Member Nickname',
+      })
+    );
+    await click(toolbarButton(shadow, 'Dictionary'));
+    const checks = Array.from(
+      shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
+    ).find(button => button.textContent === 'Checks');
+    await click(checks ?? null);
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining(['Unregistered word', 'users.name', 'Nickname'])
+    );
+
+    await press('{Enter}');
+    expect(shadow.querySelector('.dictionary')).toBeNull();
+    expect(document.activeElement).toBe(el);
+    expect(shadow.activeElement).toBe(shadow.querySelector('.root'));
+  });
 
   it("writes a domain's new type to its columns in the same batch, which the ERD tab's type cell shows", async () => {
     spyTexts();

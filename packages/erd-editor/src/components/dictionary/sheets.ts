@@ -9,6 +9,12 @@ import {
 } from '@/engine/modules/dictionary/actions';
 import { selectDictionaryRow } from '@/engine/modules/dictionary/atom.actions';
 import {
+  checkDictionaryRow,
+  type DictionaryCheckField,
+  type DictionaryCheckLevel,
+  markOf,
+} from '@/engine/modules/dictionary/checks';
+import {
   dictionaryCache,
   type DictionaryRowOf,
 } from '@/engine/modules/dictionary/dictionaryIndex';
@@ -140,6 +146,32 @@ export function sheetCellText(
   return kind === DictionaryKind.term && field === 'domainId'
     ? getLiveDomainName(state, value)
     : value;
+}
+
+/** The cells a row's checks read: its name, and a term's domain. */
+const CHECKED_FIELDS: ReadonlyArray<string> = [
+  'name',
+  'domainId',
+] satisfies DictionaryCheckField[];
+
+const isCheckedField = (columnId: string): columnId is DictionaryCheckField =>
+  CHECKED_FIELDS.includes(columnId);
+
+/**
+ * How loud a row's cell shows what the checks find in it: an error, a warning,
+ * or null for nothing found, a column no check reads or an id with no row. It
+ * reads the dictionaries' indexes, so a draw marks only the cells it paints.
+ */
+export function sheetCellMark(
+  state: RootState,
+  kind: DictionaryKind,
+  id: string,
+  columnId: string
+): DictionaryCheckLevel | null {
+  if (!isCheckedField(columnId) || !sheetField(kind, columnId)) return null;
+
+  const row = selectDictionaryRow(state, kind, id);
+  return row ? markOf(checkDictionaryRow(state, kind, row, columnId)) : null;
 }
 
 /** The fields a search reads of each sheet's rows. */

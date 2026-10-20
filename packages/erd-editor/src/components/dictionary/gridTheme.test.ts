@@ -2,7 +2,7 @@ import type { GridTheme } from '@dineug/grid';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { createTestTheme } from '@/__test-utils__';
-import { toGridTheme } from '@/components/dictionary/gridTheme';
+import { toCellMarks, toGridTheme } from '@/components/dictionary/gridTheme';
 import {
   AccentColor,
   Appearance,
@@ -132,5 +132,49 @@ describe('toGridTheme', () => {
     );
     expect(accent).not.toBe(first);
     expect(accent.selectionBorder).toBe('#000000');
+  });
+});
+
+describe('toCellMarks', () => {
+  it("writes each level's text on its own fill, from the tab's four mark tokens alone", () => {
+    const theme = createTestTheme();
+
+    expect(toCellMarks(theme)).toEqual({
+      error: {
+        color: theme.dictionaryErrorForeground,
+        background: theme.dictionaryErrorBackground,
+      },
+      warning: {
+        color: theme.dictionaryWarningForeground,
+        background: theme.dictionaryWarningBackground,
+      },
+    });
+  });
+
+  it('hands back the marks it was given while both pairs match, and new ones once one changes', () => {
+    const dark = createTheme({
+      appearance: Appearance.dark,
+      grayColor: GrayColor.slate,
+      accentColor: AccentColor.indigo,
+    });
+    const marks = toCellMarks(dark);
+
+    expect(Object.isFrozen(marks)).toBe(true);
+    expect(Object.isFrozen(marks.error)).toBe(true);
+    expect(toCellMarks({ ...dark }, marks)).toBe(marks);
+    expect(toCellMarks({ ...dark, accentColor9: '#000000' }, marks)).toBe(
+      marks
+    );
+
+    const warned = toCellMarks(
+      { ...dark, dictionaryWarningBackground: '#000000' },
+      marks
+    );
+    expect(warned).not.toBe(marks);
+    expect(warned.warning.background).toBe('#000000');
+    expect(
+      toCellMarks({ ...dark, dictionaryErrorForeground: '#000000' }, marks)
+        .error.color
+    ).toBe('#000000');
   });
 });

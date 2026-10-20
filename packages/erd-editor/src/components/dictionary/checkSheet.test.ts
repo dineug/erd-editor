@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { createTestI18n, pseudoMessages } from '@/__test-utils__/index';
 import {
   checkCellText,
+  checkDestination,
   checkRows,
   checkSheetColumns,
 } from '@/components/dictionary/checkSheet';
@@ -14,6 +15,7 @@ import {
 } from '@/engine/modules/dictionary/actions';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import type { DictionaryCheck } from '@/engine/modules/dictionary/checks';
+import { FocusType } from '@/engine/modules/editor/state';
 import {
   addTableAction,
   changeTableLogicalNameAction,
@@ -145,5 +147,63 @@ describe('checkRows', () => {
         checkCellText(store.state, gone(kind), 'target')
       )
     ).toEqual(['', '.', '', '', '']);
+  });
+});
+
+describe('checkDestination', () => {
+  const check = (
+    target: DictionaryCheck['target'],
+    field: DictionaryCheck['field']
+  ): DictionaryCheck => ({
+    code: 'unregisteredWord',
+    target,
+    field,
+    text: 'x',
+    suggestions: [],
+  });
+
+  it('leads a dictionary row to the cell of its field on its own sheet', () => {
+    expect(
+      checkDestination(check({ kind: 'word', id: 'w', tableId: '' }, 'name'))
+    ).toEqual({ kind: 'entry', sheet: 'word', id: 'w', columnId: 'name' });
+    expect(
+      checkDestination(
+        check({ kind: 'term', id: 't', tableId: '' }, 'domainId')
+      )
+    ).toEqual({ kind: 'entry', sheet: 'term', id: 't', columnId: 'domainId' });
+  });
+
+  it("leads a column to the cell of its field on the ERD tab, and a table to its header's", () => {
+    const column = { kind: 'column', id: 'c', tableId: 't' } as const;
+    const table = { kind: 'table', id: 't', tableId: 't' } as const;
+
+    expect(
+      (['name', 'logicalName', 'domainId'] as const).map(field =>
+        checkDestination(check(column, field))
+      )
+    ).toEqual(
+      [
+        FocusType.columnName,
+        FocusType.columnLogicalName,
+        FocusType.columnDomain,
+      ].map(focusType => ({
+        kind: 'erd',
+        target: { kind: 'column', tableId: 't', columnId: 'c', focusType },
+      }))
+    );
+    expect(
+      (['name', 'logicalName', 'domainId'] as const).map(field =>
+        checkDestination(check(table, field))
+      )
+    ).toEqual(
+      [
+        FocusType.tableName,
+        FocusType.tableLogicalName,
+        FocusType.tableName,
+      ].map(focusType => ({
+        kind: 'erd',
+        target: { kind: 'table', tableId: 't', focusType },
+      }))
+    );
   });
 });

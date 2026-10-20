@@ -32,7 +32,7 @@
 | `export-image/` | `export-image/AGENTS.md`: the one dialog every image export goes through, PNG and SVG, and the contract of the shared modal `primitives/dialog/Dialog.tsx` |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the Schema SQL tab, its options panel and its script editors |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator tab, its options panel, the language menu, Save file and highlighting |
-| `dictionary/` | `dictionary/AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, how a grid commit resolves to row ids, where a sheet's version comes from, its keys, the grid's theme and a read-only document |
+| `dictionary/` | `dictionary/AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, how a grid commit resolves to row ids, where a sheet's version comes from, where a check leads and the marks on the cells it names, its keys, the grid's theme, a read-only document, and its CSV import and export |
 | `map-columns/` | `map-columns/AGENTS.md`: Map Columns and `relationship.changeColumns` |
 | `explorer/` | `explorer/AGENTS.md`: the Explorer docked left of the canvas, its tree, where a row goes, Find and Replace above it and the matcher in `src/utils/find-replace/` |
 | `quick-search/` | `quick-search/AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |

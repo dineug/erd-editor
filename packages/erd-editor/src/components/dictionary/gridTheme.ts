@@ -1,5 +1,6 @@
-import type { GridTheme } from '@dineug/grid';
+import type { CellStyle, GridTheme } from '@dineug/grid';
 
+import type { DictionaryCheckLevel } from '@/engine/modules/dictionary/checks';
 import type { Theme } from '@/themes/tokens';
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -64,4 +65,37 @@ export function toGridTheme(
 
   const keys = Object.keys(next) as Array<keyof GridTheme>;
   return keys.every(key => previous[key] === next[key]) ? previous : next;
+}
+
+/** The style a sheet gives a cell the checks mark, by the loudest level they find. */
+export type CellMarks = Readonly<
+  Record<DictionaryCheckLevel, Readonly<CellStyle>>
+>;
+
+const sameStyle = (a: Readonly<CellStyle>, b: Readonly<CellStyle>) =>
+  a.color === b.color && a.background === b.background;
+
+/**
+ * Each level's text on its own fill, from the tab's four mark tokens: the
+ * error pair and the warning pair. The marks handed before come back while
+ * both pairs match, so the tab hands the grid a new style getter only then.
+ */
+export function toCellMarks(theme: Theme, previous?: CellMarks): CellMarks {
+  const error: CellStyle = Object.freeze({
+    color: theme.dictionaryErrorForeground,
+    background: theme.dictionaryErrorBackground,
+  });
+  const warning: CellStyle = Object.freeze({
+    color: theme.dictionaryWarningForeground,
+    background: theme.dictionaryWarningBackground,
+  });
+
+  if (
+    previous &&
+    sameStyle(previous.error, error) &&
+    sameStyle(previous.warning, warning)
+  ) {
+    return previous;
+  }
+  return Object.freeze({ error, warning });
 }

@@ -13,7 +13,7 @@ export const root = css`
   ${typography.paragraph};
 `;
 
-/** The sheet switch, the search and the row buttons, on one line. */
+/** The sheet switch, the search and the row and file buttons, on one line. */
 export const bar = css`
   display: flex;
   align-items: center;
@@ -76,7 +76,7 @@ export const search = css`
   }
 `;
 
-/** The row buttons, pushed to the bar's end. */
+/** The row and file buttons, pushed to the bar's end. */
 export const actions = css`
   display: flex;
   align-items: center;

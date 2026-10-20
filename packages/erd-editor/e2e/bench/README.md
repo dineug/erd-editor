@@ -4,8 +4,10 @@ Measures what a table drag costs and how much the relationship drawing
 overlaps. It judges no number and runs in no CI job — a runner's noise floor is
 wider than the differences it exists to resolve. A run still fails when it
 measured the wrong thing: `routing.bench.ts` expects its second load to draw
-every connector, and the Flow rows of `view.bench.ts` and the Flow shots of
-`visualization-shots.bench.ts` fail if the view they aim at never lands.
+every connector, the Flow rows of `view.bench.ts` and the Flow shots of
+`visualization-shots.bench.ts` fail if the view they aim at never lands, and
+`dictionary.bench.ts` fails if a scroll drew none of the grid or a file's rows
+never list (The Dictionary tab, below).
 
 ```bash
 pnpm --filter @dineug/erd-editor e2e:bench                      # compare against the saved baseline
@@ -14,19 +16,22 @@ E2E_BENCH_BASELINE=1 pnpm --filter @dineug/erd-editor e2e:bench # save this run 
 E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench      # include the diagnostics below
 E2E_BENCH_ALL=1 E2E_BENCH_CORPUS=xlarge E2E_BENCH_TIMEOUT=900000 \
   pnpm --filter @dineug/erd-editor e2e:bench
+E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench dictionary.bench.ts # the Dictionary tab alone
 ```
 
 `testMatch` in `playwright.bench.config.ts` selects `routing.bench.ts` alone
 unless `E2E_BENCH_ALL` is set to any non-empty value (`0` counts too). A command
 that means to run the diagnostics has to carry it; one that forgets exits green
-having run the routing bench instead, which is why both lines above that want
-them spell it out.
+having run the routing bench instead, which is why every line above that wants
+them spells it out. Naming a file narrows what `testMatch` selects and never
+widens it, so `dictionary.bench.ts` without the variable finds no test and fails.
 
 `E2E_BENCH_CORPUS` names the row of `CORPORA` that `attribution.bench.ts`,
 `scaling.bench.ts`, `screenshot.bench.ts` and the `erd hover` row of
 `view.bench.ts` run against — `small`, `medium`, `large` (the default), `x150`,
 `x400` or `xlarge`; any other name throws. `visualization-shots.bench.ts` and
-the other `view.bench.ts` rows use corpora of their own. It does not reach
+the other `view.bench.ts` rows use corpora of their own, and
+`dictionary.bench.ts` builds its own dictionaries. It does not reach
 `routing.bench.ts`, which walks all six whatever it is set to.
 `E2E_BENCH_TIMEOUT` raises the per-test ceiling from its 180000ms default,
 which `xlarge` can need on a slow machine. It does not reach the three 300-table
@@ -50,13 +55,14 @@ request, so a comparison is always against a baseline someone chose.
 | ---------------------- | -------------------------------------------------------------- |
 | `routing.bench.ts`     | The benchmark. The only file the default run executes           |
 | `corpus.ts`            | Seeded generators at six scales: `small`, `medium` and `large` sized against the root `data/` (sakila, OKKY, Magento2-sales), then `x150`, `x400` and `xlarge` up to 1000 tables |
-| `harness.ts`           | In-page measurement — drives the drag, hover and edit passes (`runDragBench`, `runHoverBench`, `runEditBench`) and times the pipeline |
+| `harness.ts`           | In-page measurement — drives the drag, hover and edit passes (`runDragBench`, `runHoverBench`, `runEditBench`) and times the pipeline; `installGridFrames`, the frame sampler of the Dictionary tab's grid |
 | `geometry.ts`          | Overlap metrics, computed from the segments actually drawn      |
 | `attribution.bench.ts` | Diagnostic: which painter owns the frame                        |
 | `scaling.bench.ts`     | Diagnostic: does cost track what changed, or what is on screen? |
 | `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG for a person to look at; with `visualization-shots.bench.ts`, the only whole-image review in this package (its e2e specs and browser tests read pixels for one property each) |
 | `view.bench.ts`        | Diagnostic: what the Flow view costs — a hover and a document edit |
 | `visualization-shots.bench.ts` | Twelve frames of the Visualization tab for a person to judge; it measures nothing |
+| `dictionary.bench.ts`  | Diagnostic: the Dictionary tab at the public standard's sizes — an import with the tab open, the term sheet's scroll frames and the term list's keys, each against its bound |
 | `report.ts`            | The JSON report every bench but `routing.bench.ts` writes through |
 | `baselines/`           | Committed results that cannot be re-measured from the working tree |
 
@@ -695,3 +701,50 @@ shots, name the file, which pnpm appends to the `playwright test` call:
 `E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench visualization-shots`.
 The variable is still needed, since without it `testMatch` holds
 `routing.bench.ts` alone.
+
+## The Dictionary tab
+
+`dictionary.bench.ts` measures the Dictionary tab at the public standard's
+sizes: 129 domains, 3,284 words and 13,176 terms. The rows are synthetic, built
+from a fixed seed under the three public-standard files' headers, the columns no
+layout reads included, and written as UTF-8 with a byte order mark; no real
+file is read. Each of its three tests starts on a fresh page:
+
+- **The import** hands the three files to the input Import CSV opens
+  (`setInputFiles`), the domains, the words, then the terms, with the tab open
+  over an empty document. Each file is timed from the input's `change` event to
+  the first `requestIdleCallback` that finds its rows listed on its sheet and
+  that sheet's grid drawn, with the longest task between (`PerformanceObserver`
+  `longtask`, which reports a task of 50 ms or more). Decoding, parsing, the
+  dispatch and the render all fall inside it.
+- **The scroll** runs the scenarios of the grid's own bench
+  (`packages/grid/bench/scroll.bench.ts`) on the term sheet: 60 wheel notches
+  thrown away, an idle control, then 300 notches of 100 px, 300 jumps to seeded
+  offsets and a thumb dragged to the end of its track in 300 moves. Frame work
+  is the grid's layer draws, the scroller's scroll and pointer events with the
+  microtasks after each, and a step with its microtasks, summed per animation
+  frame; style, layout and raster are not in it. The grid keeps its sampler in
+  its demo page alone, so `installGridFrames` (`harness.ts`) wraps konva's
+  `Layer.prototype.draw`, reached through a layer of `__erdStages.canvas`, and
+  listens on the scroller through `__erdShadowRoot`; a draw counts as the
+  grid's when its stage sits inside the tab's grid. The tab keeps the grid's
+  `GridHandle` to itself, so a jump writes the scroller with `Element.scrollTo`,
+  which the grid reads in the next scroll event, inside the event span.
+- **The keys** type term names a syllable at a time into a column's logical
+  name on the ERD tab (`insertText`, then two Backspaces), 60 keys thrown away
+  and 300 timed, a frame between keys. Each key is timed from its first event,
+  a `keydown` or the `beforeinput` an inserted syllable makes, to the
+  `MutationObserver` callback that sees the term list change.
+
+It prints each figure beside its bound and whether it is within it: frame work
+p95 within 16 ms for each scroll scenario, key p95 within 16 ms, and for each
+file 2,000 ms from change to idle with no task over 1,000 ms. It fails on none
+of them. It fails when it measured the wrong thing: a scroll scenario that drew
+none of the grid, a wheel that moved nothing, a thumb drag short of the end, a
+wheel point or a thumb over something other than the scroller, a file whose rows
+never list, a key the list never answered, or a page error. Its report is
+`dictionary.latest.json`.
+
+```bash
+E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench dictionary.bench.ts
+```

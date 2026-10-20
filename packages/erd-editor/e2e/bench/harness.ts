@@ -79,6 +79,7 @@ export type AttrCounts = {
 declare global {
   interface Window {
     __erdBench?: BenchHarness;
+    __erdGridFrames?: GridFrameSampler;
   }
 }
 
@@ -1129,4 +1130,428 @@ export async function runEditBench(
     sceneContexts,
     edits,
   };
+}
+
+/** One animation frame's main-thread work on the Dictionary tab's grid, as the frame sampler reads it back. */
+export type GridFrameSample = {
+  /** The frame's requestAnimationFrame timestamp. */
+  time: number;
+  /** Layer draws of the grid's stage in the frame, the scene canvas, the hit canvas sync and their clears. */
+  drawMs: number;
+  draws: number;
+  /** Layer draws of any other stage, which a scroll of the grid should never cause. */
+  otherDraws: number;
+  /** The scroller's scroll and pointer events, each with the grid's listener and the microtasks after it. */
+  eventMs: number;
+  events: number;
+  /** The write of a step the sampler ran in the frame: a jump. */
+  stepMs: number;
+  /** From that write to the end of the microtasks it queued. */
+  flushMs: number;
+};
+
+/** What the sampler steps once a frame itself; the wheel and the thumb drag come from the bench's real input. */
+export type GridFrameScenario =
+  | { kind: 'idle' }
+  | { kind: 'jump'; seed: number };
+
+export type ClientPoint = { x: number; y: number };
+
+export type GridFrameInfo = {
+  /** Whether the page is cross-origin isolated, which narrows performance.now from 100 microseconds to 5. */
+  isolated: boolean;
+  devicePixelRatio: number;
+  canvasPixelRatio: number;
+  width: number;
+  height: number;
+  /** The DOM scroller's offset and range, which say how far a wheel or a drag moved it. */
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+};
+
+type GridFrameSampler = {
+  /** Listens on the scroller of the grid the tab shows now, and reads its size. */
+  attach(): GridFrameInfo;
+  /** Runs one step of a scenario per frame, frames times, and returns each frame's sample. */
+  run(scenario: GridFrameScenario, frames: number): Promise<GridFrameSample[]>;
+  /** Samples every frame from now, while the bench drives the page's real input. */
+  record(): void;
+  /** Ends the recording once the frames after the last input have drawn, and returns its samples. */
+  stop(): Promise<GridFrameSample[]>;
+  nextFrame(): Promise<void>;
+  /** Resolves once two frames in a row drew nothing of the grid. */
+  settle(): Promise<void>;
+  /** Scrolls the scroller back to its first cell and waits for the draw. */
+  toTop(): Promise<void>;
+  /** The middle of the cells in view, where a wheel lands on the scroller. */
+  bodyPoint(): ClientPoint;
+  /** The vertical thumb's middle, and the pointer height past which it reaches the end of its track. */
+  thumb(): ClientPoint & { end: number };
+  /** Grid layer draws since the sampler was installed, never reset. */
+  drawsSeen(): number;
+  info(): GridFrameInfo;
+};
+
+/**
+ * Defines window.__erdGridFrames, the frame sampler of the Dictionary tab's
+ * grid, which the grid's own package keeps in its demo page alone. Installed
+ * before the tab mounts a grid, so the stage of each grid is seen as it draws.
+ *
+ * @example
+ * await installGridFrames(page);
+ */
+export async function installGridFrames(page: Page) {
+  await page.evaluate(() => {
+    if (window.__erdGridFrames) return;
+
+    // The fixture page publishes the element's shadow root in either mode.
+    const root = Reflect.get(window, '__erdShadowRoot') as
+      | ShadowRoot
+      | undefined;
+    if (!root) throw new Error('the fixture published no shadow root');
+
+    /** The shape of a konva node this sampler reaches through, and no more. */
+    type SceneNode = {
+      getStage(): SceneNode | null;
+      getLayers(): SceneNode[];
+      container(): HTMLElement;
+      findOne(selector: string): SceneNode | undefined;
+      getAbsolutePosition(): { x: number; y: number };
+      width(): number;
+      height(): number;
+      getCanvas(): { getPixelRatio(): number };
+      draw(): unknown;
+    };
+
+    const canvas = (
+      (Reflect.get(window, '__erdStages') ?? {}) as Record<string, SceneNode>
+    ).canvas;
+    const [layer] = canvas?.getLayers() ?? [];
+    if (!layer) {
+      throw new Error('the canvas stage has no layer to reach konva through');
+    }
+
+    const totals = {
+      drawMs: 0,
+      draws: 0,
+      otherDraws: 0,
+      eventMs: 0,
+      events: 0,
+    };
+    const resetTotals = () => {
+      totals.drawMs = 0;
+      totals.draws = 0;
+      totals.otherDraws = 0;
+      totals.eventMs = 0;
+      totals.events = 0;
+    };
+
+    const gridOf = () =>
+      root.querySelector<HTMLElement>('.dictionary .dineug-grid');
+
+    /** The stage of the grid the tab shows, learnt from the first of its layers to draw. */
+    let gridStage: SceneNode | null = null;
+    let drawsSeen = 0;
+
+    // The dev server loads konva as one module, so the class the canvas layer
+    // comes from is the class every grid layer comes from too.
+    const prototype = Object.getPrototypeOf(layer) as SceneNode & {
+      __dictionaryBenchTimed?: true;
+    };
+    if (!prototype.__dictionaryBenchTimed) {
+      const draw = prototype.draw;
+      prototype.__dictionaryBenchTimed = true;
+      prototype.draw = function (this: SceneNode) {
+        const start = performance.now();
+        try {
+          return draw.call(this);
+        } finally {
+          const spent = performance.now() - start;
+          const stage = this.getStage();
+          const grid = gridOf();
+
+          if (stage && grid?.contains(stage.container())) {
+            totals.drawMs += spent;
+            totals.draws++;
+            drawsSeen++;
+            gridStage = stage;
+          } else {
+            totals.otherDraws++;
+          }
+        }
+      };
+    }
+
+    const TIMED_EVENTS = ['scroll', 'pointerdown', 'pointermove', 'pointerup'];
+    let scroller: HTMLElement | null = null;
+    let eventStart = 0;
+
+    const beginEvent = (event: Event) => {
+      if (scroller && event.target === scroller) {
+        eventStart = performance.now();
+      }
+    };
+
+    /**
+     * Closes an event's span after the grid's listener and the microtask
+     * checkpoint that follows it, so the drain and the commit it books fall
+     * inside, and the layer draws konva runs in the next frame do not.
+     */
+    const endEvent = () => {
+      if (!eventStart) return;
+
+      totals.eventMs += performance.now() - eventStart;
+      totals.events++;
+      eventStart = 0;
+    };
+
+    // A capture listener on the shadow root runs before the grid's own.
+    for (const type of TIMED_EVENTS) {
+      root.addEventListener(type, beginEvent, { capture: true, passive: true });
+    }
+    const bound = new WeakSet<HTMLElement>();
+
+    const nextFrame = () =>
+      new Promise<void>(resolve => {
+        requestAnimationFrame(() => resolve());
+      });
+
+    const settle = async () => {
+      await nextFrame();
+      await nextFrame();
+      let quiet = 0;
+      for (let frame = 0; frame < 600 && quiet < 2; frame++) {
+        const before = drawsSeen;
+        await nextFrame();
+        quiet = drawsSeen === before ? quiet + 1 : 0;
+      }
+    };
+
+    const stageOf = () => {
+      const grid = gridOf();
+      if (!gridStage || !grid?.contains(gridStage.container())) {
+        throw new Error('no layer of the grid shown has drawn yet');
+      }
+      return gridStage;
+    };
+
+    /** A stage node's rectangle in the page's client coordinates. */
+    const clientRect = (name: string) => {
+      const stage = stageOf();
+      const node = stage.findOne(`.${name}`);
+      if (!node) throw new Error(`the grid has no ${name} node`);
+
+      const origin = stage.container().getBoundingClientRect();
+      const at = node.getAbsolutePosition();
+      return {
+        x: origin.left + at.x,
+        y: origin.top + at.y,
+        width: node.width(),
+        height: node.height(),
+      };
+    };
+
+    const info = () => {
+      const grid = gridOf();
+      const body = gridStage?.findOne('.grid-body');
+
+      return {
+        isolated: self.crossOriginIsolated,
+        devicePixelRatio: window.devicePixelRatio,
+        canvasPixelRatio: body?.getCanvas().getPixelRatio() ?? 0,
+        width: grid?.clientWidth ?? 0,
+        height: grid?.clientHeight ?? 0,
+        scrollTop: scroller?.scrollTop ?? 0,
+        scrollHeight: scroller?.scrollHeight ?? 0,
+        clientHeight: scroller?.clientHeight ?? 0,
+      };
+    };
+
+    /** A seeded generator, so two runs jump through the same offsets. */
+    const random = (seed: number) => {
+      let state = seed >>> 0;
+
+      return () => {
+        state = (state + 0x6d2b79f5) >>> 0;
+        let value = state;
+        value = Math.imul(value ^ (value >>> 15), value | 1);
+        value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+
+        return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
+      };
+    };
+
+    /**
+     * A jump writes the scroller through Element.scrollTo, since the tab keeps
+     * the grid's handle to itself; the grid reads the offset in the scroll
+     * event of the next frame, which the event span times.
+     */
+    const stepOf = (scenario: GridFrameScenario): (() => void) | null => {
+      if (scenario.kind !== 'jump' || !scroller) return null;
+
+      const target = scroller;
+      const next = random(scenario.seed);
+      const maxTop = Math.max(0, target.scrollHeight - target.clientHeight);
+      const maxLeft = Math.max(0, target.scrollWidth - target.clientWidth);
+
+      return () =>
+        target.scrollTo(
+          Math.floor(next() * maxLeft),
+          Math.floor(next() * maxTop)
+        );
+    };
+
+    type FrameLoop = { left: number; done: Promise<GridFrameSample[]> };
+    let loop: FrameLoop | null = null;
+
+    /**
+     * Samples every frame: the animation frame callback opens a sample, steps
+     * the scenario if one is left, and posts a message, which runs once the
+     * frame's draws and paint are done and closes the sample with what they took.
+     */
+    const frameLoop = (
+      step: (() => void) | null,
+      frames: number
+    ): FrameLoop => {
+      const samples: GridFrameSample[] = [];
+      const channel = new MessageChannel();
+      let open: GridFrameSample | null = null;
+      let openTrailing = false;
+      let lastTrailing = false;
+      let finish!: (samples: GridFrameSample[]) => void;
+      const state: FrameLoop = {
+        left: frames,
+        done: new Promise(resolve => {
+          finish = resolve;
+        }),
+      };
+
+      const close = () => {
+        const sample = open;
+        if (!sample) return;
+
+        open = null;
+        lastTrailing = openTrailing;
+        sample.drawMs = totals.drawMs;
+        sample.draws = totals.draws;
+        sample.otherDraws = totals.otherDraws;
+        sample.eventMs = totals.eventMs;
+        sample.events = totals.events;
+        resetTotals();
+        samples.push(sample);
+      };
+
+      const tick = async (time: number) => {
+        // A message the frame before posted that has not run yet closes first.
+        close();
+
+        // A frame after the last step that drew nothing and handled no input
+        // ends the loop, and is not a sample of it.
+        const last = samples[samples.length - 1];
+        if (lastTrailing && last && last.draws === 0 && last.events === 0) {
+          channel.port1.close();
+          samples.pop();
+          finish(samples);
+          return;
+        }
+
+        requestAnimationFrame(tick);
+        const sample: GridFrameSample = {
+          time,
+          drawMs: 0,
+          draws: 0,
+          otherDraws: 0,
+          eventMs: 0,
+          events: 0,
+          stepMs: 0,
+          flushMs: 0,
+        };
+        open = sample;
+        openTrailing = state.left <= 0;
+        channel.port2.postMessage(null);
+
+        if (openTrailing) return;
+        state.left--;
+        if (!step) return;
+
+        const start = performance.now();
+        step();
+        const written = performance.now();
+        await new Promise<void>(resolve => queueMicrotask(resolve));
+        sample.stepMs = written - start;
+        sample.flushMs = performance.now() - written;
+      };
+
+      channel.port1.onmessage = close;
+      resetTotals();
+      requestAnimationFrame(tick);
+
+      return state;
+    };
+
+    window.__erdGridFrames = {
+      attach() {
+        const found = gridOf()?.querySelector<HTMLElement>(
+          '.dineug-grid-scroller'
+        );
+        if (!found) throw new Error('the Dictionary tab shows no grid');
+
+        // Bound after the grid's own listeners, which it bound as it rendered.
+        if (!bound.has(found)) {
+          for (const type of TIMED_EVENTS) {
+            found.addEventListener(type, endEvent, { passive: true });
+          }
+          bound.add(found);
+        }
+        scroller = found;
+        return info();
+      },
+
+      run(scenario, frames) {
+        loop = frameLoop(stepOf(scenario), frames);
+        return loop.done;
+      },
+
+      record() {
+        loop = frameLoop(null, Infinity);
+      },
+
+      stop() {
+        if (!loop) return Promise.resolve([]);
+
+        loop.left = 0;
+        return loop.done;
+      },
+
+      nextFrame,
+      settle,
+
+      async toTop() {
+        scroller?.scrollTo(0, 0);
+        await settle();
+      },
+
+      bodyPoint() {
+        const body = clientRect('grid-body-cells');
+        return { x: body.x + body.width / 2, y: body.y + body.height / 2 };
+      },
+
+      thumb() {
+        const thumb = clientRect('grid-vertical-thumb');
+        const body = clientRect('grid-body-cells');
+        const y = thumb.y + thumb.height / 2;
+        const travel = body.height - thumb.height;
+
+        return {
+          x: thumb.x + thumb.width / 2,
+          y,
+          end: Math.min(window.innerHeight - 1, y + travel + 4),
+        };
+      },
+
+      drawsSeen: () => drawsSeen,
+      info,
+    };
+  });
 }

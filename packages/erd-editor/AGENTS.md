@@ -74,7 +74,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 | `src/components/export-image/` | `AGENTS.md`: every image export goes through one dialog; the contract of the shared modal `primitives/dialog/Dialog.tsx` it is built on; the image is the document as opened; SVG writes the same scene as vectors |
 | `src/components/schema-sql/` | `AGENTS.md`: the Schema SQL tab's options panel and the window's own choices, Tables by table group, one commit per edit in a script editor |
 | `src/components/generator-code/` | `AGENTS.md`: the Code Generator tab's options panel and when it shows, the code as a snapshot, Save file, the language menu's three groups, highlighting |
-| `src/components/dictionary/` | `AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, the rows each version shows, how a grid commit resolves to row ids, where a version comes from, the keys it passes and stops, the grid's theme and a read-only document |
+| `src/components/dictionary/` | `AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, the rows each version shows, how a grid commit resolves to row ids, where a version comes from, where a check leads and the marks on the cells it names, the keys it passes and stops, the grid's theme, a read-only document, and its CSV import and export |
 | `src/components/map-columns/` | `AGENTS.md`: Map Columns and `relationship.changeColumns` |
 | `src/components/explorer/` | `AGENTS.md`: the Explorer docked left of the canvas, its state, its tree, where a row goes, and Find and Replace above its tree with the matcher in `src/utils/find-replace/`, which has no file of its own |
 | `src/components/quick-search/` | `AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |
@@ -100,7 +100,7 @@ A row that names an `AGENTS.md` has a nested file of rules for that directory. O
 
 ### The Element and Its Hosts
 
-- **Keep host integrations on `ErdEditorElement`.** `webview-client`'s `mountWebview` sets the import callback only when a host passes `importFile` (VSCode does, IntelliJ does not), so the built-in `<input type=file>` is IntelliJ's only import path.
+- **Keep host integrations on `ErdEditorElement`.** `webview-client`'s `mountWebview` sets the import callback only when a host passes `importFile` (VSCode does, IntelliJ does not), so the built-in `<input type=file>` is IntelliJ's only import path. The Dictionary tab's Import CSV opens a built-in input in every host, since the callback's types name no CSV, and its export goes through the export callback (`src/components/dictionary/AGENTS.md`).
 - **The theme's `system` appearance** (`SYSTEM_APPEARANCE`, `themes/radix-ui-theme.ts`) is a third `ThemeOptions.appearance` beside light and dark. The theme builder lists it first and `changePresetTheme` reports it unchanged. `resolveAppearance()` in `useErdEditorAttachElement.ts` resolves it to the light or dark a host named with `setSystemAppearance`, or to the OS colour scheme `useDarkMode` reads once that is `null`. So `createTheme` takes `ResolvedThemeOptions`, `hasDarkMode()` asks the resolved appearance, and `systemDarkMode` picks `system` when turned on and keeps what `system` shows when turned off. An IDE host names its own light or dark because its page cannot see it, and the hosts keep storing `auto` (`packages/webview-client/AGENTS.md`).
 
 ### Packaging and Externals

@@ -237,8 +237,8 @@ function unknownDomainRefusal(
   };
 }
 
-/** How many names a refusal toast shows before it counts the rest in its number alone. */
-const NAMED_REFUSALS = 3;
+/** How many names a toast shows before it counts the rest in its number alone. */
+export const NAMES_SHOWN = 3;
 
 const REFUSAL_MESSAGE = {
   [DictionaryRefusalCode.duplicateName]: 'dictionary.toast.duplicateNames',
@@ -252,7 +252,7 @@ const ROW_REMOVED = 'dictionary.toast.rowRemoved';
  * under a right-to-left one, in a list that says no more than its items do,
  * since the number before it counts the rows it leaves out.
  */
-function formatNames(
+export function formatNames(
   i18n: Pick<I18n, 'locale' | 'dir'>,
   names: ReadonlyArray<string>
 ): string {
@@ -277,7 +277,7 @@ function reportRefusals(
     const count = new Set(refused.map(({ index }) => index)).size;
     const named = [...new Set(refused.map(({ value }) => value))].slice(
       0,
-      NAMED_REFUSALS
+      NAMES_SHOWN
     );
     const message = REFUSAL_MESSAGE[code];
 

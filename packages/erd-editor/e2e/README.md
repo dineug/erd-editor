@@ -72,7 +72,7 @@ for both.
 
 ## What is covered
 
-49 spec files. Ten of the groups exist because the DOM scene got their subject
+50 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -301,6 +301,17 @@ View Option hides the boxes and the colour, a table dragged meanwhile keeping
 its group, and the box grows round it once shown; and the Schema SQL tab's
 Tables leaves out the tables of an unchecked group, writes nothing under its
 hint with no box checked, and All checks every box again.
+
+`dictionary.spec.ts` holds down the Dictionary tab's files and its check
+sheet: three CSV files handed to the dialog Import CSV opens, the domains, the
+words and the terms in that order, each shown on its own sheet with its row
+count and its toast, a term's domain the id of the domain its file named, the
+same file again leaving nothing to undo, and one undo by key taking back one
+whole file, the last first, three entries in all; Export CSV saving each sheet
+whole whatever its search shows, as `shop-<time>-words.csv` and the like, in
+the bytes its file came in: the byte order mark, the header and CRLF; and a
+double click on a column's check landing on that column's name on the ERD tab,
+the canvas holding the keyboard. Its sample files are written in the spec.
 
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
@@ -716,6 +727,12 @@ cost when you hit them blind.
 - `cache()` swaps a whole subtree out rather than destroying it, and the
   projection retires whatever it can no longer walk. Assert `toHaveCount(0)`,
   not `toBeHidden()`.
+- The Dictionary tab's grid paints each region's cells inside one shape, so
+  the projection holds no cell and no text of it. Read a sheet's rows off
+  `erd.value()` (`doc.wordIds` and the header and rows of
+  `collections.wordEntities`) and the status line under the grid, and press a
+  cell at a point on `.dineug-grid-scroller`, its 28 px header and rows counted
+  from its top, as `dictionary.spec.ts` does.
 
 **Platform**
 

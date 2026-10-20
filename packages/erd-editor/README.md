@@ -229,7 +229,9 @@ setImportFileCallback(async ({ type, op, accept, mode }) => {
 ```
 
 Skip a `type` you do not handle: a replacing `setSchemaJSON()` empties the document on any other
-payload. Unset or `null`, the browser's download and file picker work.
+payload. Unset or `null`, the browser's download and file picker work. The Dictionary tab's Import
+CSV always opens the browser's file picker, since no `type` names CSV, and its Export CSV goes
+through the export callback.
 
 ## Headless replica
 

@@ -2,13 +2,16 @@ import { query } from '@dineug/erd-editor-schema';
 import type { GridColumn } from '@dineug/grid';
 
 import { toSearchText } from '@/components/dictionary/sheets';
+import type { ErdTarget } from '@/components/erd/goToErdTarget';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import { selectDictionaryRow } from '@/engine/modules/dictionary/atom.actions';
 import {
   type DictionaryCheck,
   type DictionaryCheckCode,
+  type DictionaryCheckField,
   listDictionaryChecks,
 } from '@/engine/modules/dictionary/checks';
+import { FocusType } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
@@ -111,6 +114,60 @@ export function checkCellText(
       return detailText(check, i18n);
     default:
       return '';
+  }
+}
+
+/** Where a check leads: a dictionary row's cell on its own sheet, or a table's or a column's cell on the ERD tab. */
+export type CheckDestination =
+  | { kind: 'entry'; sheet: DictionaryKind; id: string; columnId: string }
+  | { kind: 'erd'; target: ErdTarget };
+
+/** The cell of a column row a check's field rings. */
+const COLUMN_FOCUS: Readonly<Record<DictionaryCheckField, FocusType>> = {
+  name: FocusType.columnName,
+  logicalName: FocusType.columnLogicalName,
+  domainId: FocusType.columnDomain,
+};
+
+/** The header cell a check's field rings; a table has no domain, so its name stands in. */
+const TABLE_FOCUS: Readonly<Record<DictionaryCheckField, FocusType>> = {
+  name: FocusType.tableName,
+  logicalName: FocusType.tableLogicalName,
+  domainId: FocusType.tableName,
+};
+
+/** The cell a check names: a dictionary row's by its field, a table's or a column's on the canvas, the name view left to the jump. */
+export function checkDestination({
+  target,
+  field,
+}: DictionaryCheck): CheckDestination {
+  switch (target.kind) {
+    case 'table':
+      return {
+        kind: 'erd',
+        target: {
+          kind: 'table',
+          tableId: target.id,
+          focusType: TABLE_FOCUS[field],
+        },
+      };
+    case 'column':
+      return {
+        kind: 'erd',
+        target: {
+          kind: 'column',
+          tableId: target.tableId,
+          columnId: target.id,
+          focusType: COLUMN_FOCUS[field],
+        },
+      };
+    default:
+      return {
+        kind: 'entry',
+        sheet: target.kind,
+        id: target.id,
+        columnId: field,
+      };
   }
 }
 

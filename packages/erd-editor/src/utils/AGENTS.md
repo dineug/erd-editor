@@ -87,6 +87,7 @@
 - **The public standard's columns map by name, the rest dropped.** Its cells are trimmed. A domain's `데이터타입`, `데이터길이` and `데이터소수점길이` join into one data type (`NUMERIC(15,2)`, `CHAR(8)`, `DATE` with no length), a zero scale left out as the default.
 - **A row needs a name.** A record with an empty name counts in `skipped`, and one of empty cells is no row. A column the file lacks leaves its field out of every row, so an import writes only the fields a file carries. Folding the rows of one name and finding a term's domain by its name are the import generator's, which reads the sheet.
 - **Bytes read as UTF-8, else as EUC-KR** (`decodeCsvBytes`): UTF-8 drops its byte order mark and fails on any byte it cannot read, and EUC-KR, which an older public-standard file comes in, reads the rest. `serializeCsv` writes a byte order mark and a CRLF after every record, quoting only a field that needs it.
+- **The Dictionary tab reads and saves the files** (`src/components/dictionary/AGENTS.md`, CSV files). `exportCSV` (`file/exportFile.ts`) writes the text as given, so the byte order mark and the CRLF the codec writes reach the file, and names it after the database and the sheet.
 
 ### Rules on files here kept elsewhere
 

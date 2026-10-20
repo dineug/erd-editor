@@ -9,6 +9,7 @@ import {
   DictionarySheetLabelKey,
   DictionarySheetList,
   isEntrySheet,
+  sheetCellMark,
   sheetCellText,
   sheetColumns,
   sheetField,
@@ -197,6 +198,91 @@ describe('sheetCellText', () => {
     );
     expect(domainOf('t')).toBe('');
     expect(store.state.collections.termEntities.t.domainId).toBe('d');
+  });
+});
+
+describe('sheetCellMark', () => {
+  /** The level each cell of a row shows, by column id, the cells no check marks left out. */
+  const marksOf = (
+    app: AppContext,
+    kind: DictionaryKind,
+    id: string
+  ): Record<string, string> =>
+    Object.fromEntries(
+      sheetColumns(kind, { readonly: false }).flatMap(({ id: columnId }) => {
+        const level = sheetCellMark(app.store.state, kind, id, columnId);
+        return level ? [[columnId, level]] : [];
+      })
+    );
+
+  it('marks nothing while the sheets a check reads are empty', () => {
+    const app = setup(term('t', { name: '회원주소', domainId: 'gone' }));
+
+    expect(marksOf(app, DictionaryKind.term, 't')).toEqual({});
+  });
+
+  it('marks a name another row of its sheet holds as an error, on each of the three sheets', () => {
+    const app = setup(
+      word('w1', { name: '회원', abbreviation: 'MBR' }),
+      word('w2', { name: ' 회원 ', abbreviation: 'MEM' }),
+      word('w3', { name: '번호', abbreviation: 'NO' }),
+      term('t1', { name: '회원번호', physicalName: 'MBR_NO' }),
+      term('t2', { name: '회원번호' }),
+      domain('d1', { name: '번호N10' }),
+      domain('d2', { name: '번호N10' })
+    );
+
+    expect(marksOf(app, DictionaryKind.word, 'w1')).toEqual({ name: 'error' });
+    expect(marksOf(app, DictionaryKind.word, 'w2')).toEqual({ name: 'error' });
+    expect(marksOf(app, DictionaryKind.word, 'w3')).toEqual({});
+    expect(marksOf(app, DictionaryKind.term, 't2')).toEqual({ name: 'error' });
+    expect(marksOf(app, DictionaryKind.domain, 'd1')).toEqual({
+      name: 'error',
+    });
+  });
+
+  it("marks a term's name by the loudest of its words, and its domain while it links none listed", () => {
+    const app = setup(
+      word('w1', { name: '회원', abbreviation: 'MBR', synonyms: '멤버' }),
+      word('w2', { name: '번호', abbreviation: 'NO', forbiddenWords: '넘버' }),
+      domain('d', { name: '번호N10' }),
+      term('synonym', { name: '멤버번호', domainId: 'd' }),
+      term('unregistered', { name: '회원주소' }),
+      term('forbidden', { name: '멤버넘버' }),
+      term('unknown', { name: '회원번호', domainId: 'gone' })
+    );
+
+    expect(marksOf(app, DictionaryKind.term, 'synonym')).toEqual({
+      name: 'warning',
+    });
+    expect(marksOf(app, DictionaryKind.term, 'unregistered')).toEqual({
+      name: 'warning',
+    });
+    expect(marksOf(app, DictionaryKind.term, 'forbidden')).toEqual({
+      name: 'error',
+    });
+    expect(marksOf(app, DictionaryKind.term, 'unknown')).toEqual({
+      domainId: 'error',
+    });
+  });
+
+  it('marks nothing for an id with no row or a column the sheet lacks', () => {
+    const app = setup(
+      word('w1', { name: '회원' }),
+      word('w2', { name: '회원' })
+    );
+    const { state } = app.store;
+
+    expect(sheetCellMark(state, DictionaryKind.word, 'w1', 'name')).toBe(
+      'error'
+    );
+    expect(sheetCellMark(state, DictionaryKind.word, 'gone', 'name')).toBe(
+      null
+    );
+    expect(sheetCellMark(state, DictionaryKind.word, 'w1', 'domainId')).toBe(
+      null
+    );
+    expect(sheetCellMark(state, DictionaryKind.word, 'w1', 'id')).toBe(null);
   });
 });
 

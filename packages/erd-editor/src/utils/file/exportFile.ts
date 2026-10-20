@@ -1,3 +1,4 @@
+import type { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import {
   createDocumentPng,
   createDocumentSvg,
@@ -57,6 +58,27 @@ export function exportJSON(json: string, name?: string) {
 export function exportSchemaSQL(sql: string, name?: string) {
   performExport(new Blob([sql]), {
     fileName: createName('.sql', name),
+  });
+}
+
+/** What a dictionary's CSV file is named after, the sheet it holds. */
+const DICTIONARY_CSV_SUFFIX: Readonly<Record<DictionaryKind, string>> = {
+  word: '-words.csv',
+  term: '-terms.csv',
+  domain: '-domains.csv',
+};
+
+/**
+ * One dictionary's sheet as a CSV file, named as the other exports are with
+ * the sheet after the time. The text is written as given, so the byte order
+ * mark and the CRLF line ends the dictionary codec writes reach the file.
+ *
+ * @example
+ * exportCSV(writeDictionaryCsv('word', words), 'word', databaseName);
+ */
+export function exportCSV(csv: string, sheet: DictionaryKind, name?: string) {
+  performExport(new Blob([csv], { type: 'text/csv' }), {
+    fileName: createName(DICTIONARY_CSV_SUFFIX[sheet], name),
   });
 }
 
