@@ -1347,6 +1347,30 @@ describe('the Dictionary tab in the editor', () => {
     expect(shadow.activeElement).toBe(shadow.querySelector('.root'));
   });
 
+  it('keeps an open edit through the find and palette chords, prevented, as a cell editor on the canvas keeps them', async () => {
+    spyTexts();
+    const { el, shadow } = await createEditor();
+    await click(toolbarButton(shadow, 'Dictionary'));
+    await press('{ArrowRight}Draft');
+    const prevented = vi.spyOn(Event.prototype, 'preventDefault');
+
+    await press(`{${MOD}>}f{/${MOD}}{${MOD}>}k{/${MOD}}`);
+    expect(shadow.querySelector('.dictionary')).not.toBeNull();
+    expect(shadow.querySelector('.quick-search')).toBeNull();
+    expect(
+      prevented.mock.contexts
+        .filter(event => event instanceof KeyboardEvent)
+        .map(event => (event as KeyboardEvent).key)
+    ).toEqual(['f', 'k']);
+
+    await press('{Enter}');
+    // A dictionary is written as its fields and then a row of values per entry.
+    const { fields, rows } = JSON.parse(el.runtimeValue).collections
+      .wordEntities as { fields: string[]; rows: string[][] };
+    const member = rows.find(([id]) => id === SEED.memberWord);
+    expect(member?.[fields.indexOf('abbreviation')]).toBe('Draft');
+  });
+
   it("writes a domain's new type to its columns in the same batch, which the ERD tab's type cell shows", async () => {
     spyTexts();
     const { el, shadow } = await createEditor();
