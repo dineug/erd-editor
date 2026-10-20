@@ -116,7 +116,7 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
   columns take one call.
 - A logical name set with `erd_set_table_logical_name` or `erd_set_column_logical_name` gives the
   physical name, and a column its domain, from the word, term and domain dictionaries, as in the
-  editor; a name set by hand stays.
+  editor; a name set by hand stays while it is not empty.
 - The import tools replace the diagram by default and add to it with `mode: "append"`. The SQL,
   GraphQL, DBML and AML imports keep the dictionaries.
 - The agent sets the database, its name and the Schema SQL scripts; the view and code settings stay

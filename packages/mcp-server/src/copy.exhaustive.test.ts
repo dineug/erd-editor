@@ -300,11 +300,22 @@ describe('the words on the dictionaries and logical names', () => {
     }
   });
 
-  it('name the logical name tools in the server instructions, and that a name set by hand stays', () => {
+  it('name the logical name tools in the server instructions, and that a name set by hand stays while it is not empty', () => {
     expect(SERVER_INSTRUCTIONS).toContain(
       'erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries'
     );
-    expect(SERVER_INSTRUCTIONS).toContain('unless that name was set by hand');
+    expect(SERVER_INSTRUCTIONS).toContain(
+      'unless a name that is not empty was set by hand'
+    );
+  });
+
+  it('say an append of erd_import_json links no domain and adds no dictionary row, by tool and in the mode argument', () => {
+    expect(describeTool('erd_import_json')).toContain(
+      'the tables bring their logical names and derived flags, but no column links a domain and none of the document'
+    );
+    expect(describeArg('erd_import_json', 'mode')).toContain(
+      'with no domain link on any column and no word, term or domain row'
+    );
   });
 
   it('say erd_list pages through the dictionary rows it never searches, and erd_get gives them whole', () => {
