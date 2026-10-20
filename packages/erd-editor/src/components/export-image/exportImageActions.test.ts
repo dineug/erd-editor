@@ -25,6 +25,7 @@ import {
   type ImageRequest,
 } from '@/components/export-image/exportImageActions';
 import * as toastStyles from '@/components/primitives/toast/Toast.styles';
+import { NameViewMode } from '@/constants/schema';
 import type { I18n } from '@/i18n/translate';
 import {
   createDocumentPng,
@@ -281,6 +282,24 @@ describe('exportImageSvg', () => {
     const [options] = vi.mocked(createDocumentSvg).mock.calls[0];
     expect(options.i18n).toBe(i18n);
     expect(Reflect.has(options, 'pixelRatio')).toBe(false);
+  });
+
+  it('draws the svg in the name view the dialog snapshotted, as the png is', async () => {
+    await exportImageSvg(
+      app,
+      { ...request(), nameViewMode: NameViewMode.logical },
+      'shop'
+    );
+    await exportImagePng(
+      app,
+      { ...request(), nameViewMode: NameViewMode.logical },
+      'shop'
+    );
+
+    const [svg] = vi.mocked(createDocumentSvg).mock.calls[0];
+    const [png] = vi.mocked(createDocumentPng).mock.calls[0];
+    expect(svg.nameViewMode).toBe(NameViewMode.logical);
+    expect(png.nameViewMode).toBe(NameViewMode.logical);
   });
 
   it('says nothing when the svg is written quickly', async () => {

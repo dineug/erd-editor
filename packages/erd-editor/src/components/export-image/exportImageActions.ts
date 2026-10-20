@@ -155,17 +155,17 @@ export async function exportImagePng(
  * a failure is reported once the file is done.
  *
  * @example
- * await exportImageSvg(app, { doc, theme, toWidth, i18n }, databaseName);
+ * await exportImageSvg(app, { doc, theme, toWidth, i18n, nameViewMode }, databaseName);
  */
 export async function exportImageSvg(
   { emitter }: AppContext,
-  { doc, theme, toWidth, i18n }: SvgRequest,
+  { doc, theme, toWidth, i18n, nameViewMode }: SvgRequest,
   databaseName: string
 ) {
   await writeImageFile(
     emitter,
     'SVG',
-    exportSVG({ doc, theme, toWidth, i18n }, databaseName)
+    exportSVG({ doc, theme, toWidth, i18n, nameViewMode }, databaseName)
   );
 }
 
