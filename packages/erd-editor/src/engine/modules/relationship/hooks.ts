@@ -171,11 +171,17 @@ const isDictionaryWrite = arrayHas<string>([
 ]);
 
 /**
- * Whether a dictionary write or a lock change can move a table: only a domain
- * a cell names by its name, added, renamed or removed, and only an unlock of
- * the name view, which can bring another view onto the screen. Others pass.
+ * Whether a dictionary write, a lock change or a name view switch can move a
+ * table: a domain named by a cell added, renamed or removed, an unlock of the
+ * name view, and a switch this store shows, shared or its own. Others pass.
  */
-const reachesLayout = ({ type, payload }: AnyAction): boolean => {
+const reachesLayout = (
+  { type, payload }: AnyAction,
+  state: RootState
+): boolean => {
+  if (type === changeNameViewModeAction.type) {
+    return payload.shared === true || payload.editorId === state.editor.id;
+  }
   if (isDictionaryWrite(type)) {
     return (
       payload?.kind === DictionaryKind.domain &&
@@ -201,7 +207,7 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
           (!isAlternateKeyAction(action.type) ||
             bHas(getState().settings.show, Show.columnAlternateKey)) &&
           !isPaintOnlyToggle(action) &&
-          reachesLayout(action)
+          reachesLayout(action, getState())
       ),
       // Invalidation reads every action, the sort reads one per window. Putting
       // this after the throttle would drop the width-changing action whenever
@@ -216,15 +222,23 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
     });
 
 /**
- * Document actions a view's geometry never sees: a view draws no memo and no
- * alternate key mark, reads none of the show bits or the comment width, and a
- * column move reorders its rows without resizing a box.
+ * Document actions a view's geometry never sees: no memo, alternate key mark,
+ * show bit or comment width, and in every name view the physical row and name,
+ * which no domain or logical name sizes. A column move resizes no box.
  */
 const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,
   changeMaxWidthCommentAction.type,
   moveMemoAction.type,
   ...alternateKeyActionTypes,
+  changeNameViewModeAction.type,
+  changeLockSettingsAction.type,
+  changeTableLogicalNameAction.type,
+  changeColumnLogicalNameAction.type,
+  changeColumnDomainAction.type,
+  addDictionaryAction.type,
+  updateDictionaryAction.type,
+  removeDictionaryAction.type,
 ]);
 
 /** View actions that move the placement a view is looked at through, and nothing in it. */
@@ -271,7 +285,6 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [removeTableAction.type]: idOf,
   [moveToTableAction.type]: idOf,
   [changeTableNameAction.type]: idOf,
-  [changeTableLogicalNameAction.type]: idOf,
   [changeTableCommentAction.type]: idOf,
   [addRelationshipAction.type]: idOf,
   [removeRelationshipAction.type]: idOf,
@@ -285,10 +298,8 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [addColumnAction.type]: tableIdOf,
   [removeColumnAction.type]: tableIdOf,
   [changeColumnNameAction.type]: tableIdOf,
-  [changeColumnLogicalNameAction.type]: tableIdOf,
   [changeColumnCommentAction.type]: tableIdOf,
   [changeColumnDataTypeAction.type]: tableIdOf,
-  [changeColumnDomainAction.type]: tableIdOf,
   [changeColumnDefaultAction.type]: tableIdOf,
   [changeColumnPrimaryKeyAction.type]: tableIdOf,
 };
@@ -338,10 +349,10 @@ const viewRelationshipSortHook: HookEffect = (action$, getState) => {
   return action$
     .pipe(
       filter(action => {
-        // A word or a term commit would otherwise lay every view out again.
-        if (!reachesLayout(action)) return false;
-
         const state = getState();
+        // A word or a term commit would otherwise lay every view out again.
+        if (!reachesLayout(action, state)) return false;
+
         let touched = false;
         for (const source of VIEW_SOURCES) {
           if (

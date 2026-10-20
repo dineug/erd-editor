@@ -1052,6 +1052,14 @@ describe('relationship/hooks across the name views and the dictionaries', () => 
         values: {},
       }),
     ],
+    [
+      'a switch another reader shows on its own screen, which this store drops',
+      changeNameViewModeAction({
+        value: NameViewMode.logical,
+        shared: false,
+        editorId: 'another',
+      }),
+    ],
   ])('neither sorts nor measures after %s', async (_, action) => {
     const store = createTestStore();
     const { dispatch } = await run(relationshipSortHook, store);

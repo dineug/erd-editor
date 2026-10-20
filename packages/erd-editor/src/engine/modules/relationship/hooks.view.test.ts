@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
-import { CanvasType, Direction, Show } from '@/constants/schema';
+import {
+  CanvasType,
+  Direction,
+  LockSettingType,
+  NameViewMode,
+  Show,
+} from '@/constants/schema';
 import {
   addDictionaryAction,
+  removeDictionaryAction,
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
 import {
@@ -35,13 +42,17 @@ import {
 import { hooks } from '@/engine/modules/relationship/hooks';
 import {
   changeCanvasTypeAction,
+  changeLockSettingsAction,
+  changeNameViewModeAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
+  changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
@@ -389,29 +400,40 @@ describe('the view sort hook on the document actions', () => {
     expect(sorts('flow')).toBe(0);
   });
 
-  it('sorts the view for a logical name inside what it shows alone', async () => {
+  it('sorts no view for a name view, a logical name or a domain link, which a view never draws', async () => {
     const store = createScene();
     await openFocused(store);
 
     store.dispatchSync(
       shared(
-        changeColumnLogicalNameAction({ id: 'c-t3', tableId: 't3', value: 'x' })
+        changeColumnLogicalNameAction({ id: 'c-t1', tableId: 't1', value: 'y' })
+      ),
+      shared(changeTableLogicalNameAction({ id: 't1', value: 'Member' })),
+      shared(
+        changeColumnDomainAction({ id: 'c-t1', tableId: 't1', value: 'd1' })
+      ),
+      shared(
+        changeNameViewModeAction({
+          value: NameViewMode.both,
+          shared: true,
+          editorId: 'another',
+        })
+      ),
+      shared(
+        changeLockSettingsAction({
+          lockSettingType: LockSettingType.unlockNameViewMode,
+          value: false,
+          values: { nameViewMode: NameViewMode.logical },
+        })
       )
     );
     await settle();
+
     expect(sorts('flow')).toBe(0);
     expect(sorts('document')).toBe(1);
-
-    store.dispatchSync(
-      shared(
-        changeColumnLogicalNameAction({ id: 'c-t1', tableId: 't1', value: 'y' })
-      )
-    );
-    await settle();
-    expect(sorts('flow')).toBe(1);
   });
 
-  it('lays no view out for a word commit, and every view for a domain renamed', async () => {
+  it('lays no view out for a dictionary write, and the document alone for a domain renamed', async () => {
     const store = createScene();
     await openFocused(store);
 
@@ -438,10 +460,11 @@ describe('the view sort hook on the document actions', () => {
           id: 'd1',
           values: { name: 'Amount' },
         })
-      )
+      ),
+      shared(removeDictionaryAction({ kind: 'domain', id: 'd1' }))
     );
     await settle();
-    expect(sorts('flow')).toBe(1);
+    expect(sorts('flow')).toBe(0);
     expect(sorts('document')).toBe(1);
   });
 
