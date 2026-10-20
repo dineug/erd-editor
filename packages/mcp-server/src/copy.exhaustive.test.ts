@@ -22,6 +22,7 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
       'vendor',
       'statements',
       'header',
+      'logicalNameAsComment',
       'tableIds',
       'tableNames',
       'groupNames',

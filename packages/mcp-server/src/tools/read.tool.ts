@@ -53,6 +53,11 @@ export const ReadParams = Schema.Struct({
   vendor: literalsField(READ_TOOL, 'vendor', SQL_VENDORS),
   statements: literalsField(READ_TOOL, 'statements', SchemaSQLStatementsList),
   header: literalsField(READ_TOOL, 'header', SchemaSQLHeaderList),
+  logicalNameAsComment: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description: describeArg(READ_TOOL, 'logicalNameAsComment'),
+    })
+  ),
   tableIds: stringsField(READ_TOOL, 'tableIds'),
   tableNames: stringsField(READ_TOOL, 'tableNames'),
   groupNames: stringsField(READ_TOOL, 'groupNames'),
@@ -190,6 +195,7 @@ export const registerReadTools = Effect.gen(function* () {
       vendor,
       statements,
       header,
+      logicalNameAsComment,
       tableIds,
       tableNames,
       groupNames,
@@ -199,7 +205,7 @@ export const registerReadTools = Effect.gen(function* () {
           format,
           vendor,
           { tableIds, tableNames, groupNames },
-          { statements, header }
+          { statements, header, logicalNameAsComment }
         )
       )
   );

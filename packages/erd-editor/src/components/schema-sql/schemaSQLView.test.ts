@@ -43,10 +43,11 @@ afterEach(() => {
 });
 
 describe('schemaSQLViewOf', () => {
-  it('starts on if not exists, create and use, every table, an unset panel and no focus asked', () => {
+  it('starts on if not exists, create and use, no logical name comments, every table, an unset panel and no focus asked', () => {
     expect({ ...schemaSQLViewOf(createApp()) }).toEqual({
       statements: 'ifNotExists',
       header: 'createAndUse',
+      logicalNameAsComment: false,
       tables: { groups: {}, noGroup: true },
       panel: 'unset',
       focusSave: false,
@@ -62,7 +63,9 @@ describe('schemaSQLViewOf', () => {
     expect(schemaSQLViewOf(other)).not.toBe(schemaSQLViewOf(app));
 
     schemaSQLViewOf(app).statements = 'recreate';
+    schemaSQLViewOf(app).logicalNameAsComment = true;
     expect(schemaSQLViewOf(other).statements).toBe('ifNotExists');
+    expect(schemaSQLViewOf(other).logicalNameAsComment).toBe(false);
   });
 
   it('tells a watcher which choice changed, and dispatches nothing', async () => {
@@ -74,9 +77,10 @@ describe('schemaSQLViewOf', () => {
     const unsubscribe = app.store.subscribe(dispatched);
 
     view.header = 'use';
+    view.logicalNameAsComment = true;
     await flush();
 
-    expect(changed).toEqual(['header']);
+    expect(changed).toEqual(['header', 'logicalNameAsComment']);
     expect(dispatched).not.toHaveBeenCalled();
     stopWatching();
     unsubscribe();

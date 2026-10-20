@@ -722,3 +722,57 @@ describe('schema-sql/MySQL header and drop block', () => {
     );
   });
 });
+
+describe('schema-sql/MySQL logical names as comments', () => {
+  // posts and its title have only a logical name; users and its name column
+  // keep the comments they hold beside one.
+  function withLogicalNames() {
+    const fixture = createFixture();
+    const columns = fixture.state.collections.tableColumnEntities;
+    fixture.users.logicalName = 'User';
+    fixture.posts.logicalName = 'Post';
+    columns['col-name'].logicalName = 'Name';
+    columns['col-title'].logicalName = "Post's title";
+    return fixture;
+  }
+
+  it('writes the logical name where the table or column comment is empty', () => {
+    const { state, users, posts } = withLogicalNames();
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table: posts, logicalNameAsComment: true });
+    formatTable(state, { buffer, table: users, logicalNameAsComment: true });
+
+    expect(buffer).toEqual([
+      'CREATE TABLE posts',
+      '(',
+      "  title   VARCHAR(20) NOT NULL COMMENT 'Post''s title',",
+      '  user_id INT         NULL    ',
+      ") COMMENT 'Post';",
+      'CREATE TABLE users',
+      '(',
+      '  id   INT         NOT NULL AUTO_INCREMENT,',
+      "  name VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',",
+      '  age  INT         NULL    ,',
+      '  PRIMARY KEY (id)',
+      ") COMMENT 'user table';",
+    ]);
+  });
+
+  it('writes the logical names into the ifNotExists batch too, and none without the option', () => {
+    const { state } = withLogicalNames();
+    const ifNotExists = { statements: 'ifNotExists' } as const;
+
+    const written = createSchema(state, undefined, {
+      ...ifNotExists,
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain(
+      "\n  title   VARCHAR(20) NOT NULL COMMENT 'Post''s title',\n"
+    );
+    expect(written).toContain("\n) COMMENT 'Post';\n");
+    expect(createSchema(state, undefined, ifNotExists)).not.toContain('Post');
+    expect(createSchema(state)).not.toContain('Post');
+  });
+});

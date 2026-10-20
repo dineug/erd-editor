@@ -7,6 +7,7 @@ import { bHas } from '@/utils/bit';
 
 import {
   autoNameIgnoreCase,
+  commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
   formatDefault,
@@ -36,7 +37,7 @@ const ACTION_SUPPORT = referentialActionSupport(Database.SQLite);
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {}
+  { statements, written, logicalNameAsComment }: CreateSchemaOptions = {}
 ): string {
   const indexNames: Name[] = [];
   const stringBuffer: string[] = [''];
@@ -44,7 +45,12 @@ export function createSchema(
 
   tables.forEach(table => {
     written?.tables.push(table);
-    formatTable(state, { table, buffer: stringBuffer, statements });
+    formatTable(state, {
+      table,
+      buffer: stringBuffer,
+      statements,
+      logicalNameAsComment,
+    });
     stringBuffer.push('');
   });
 
@@ -73,7 +79,7 @@ export function isIntegerFamily(dataType: string): boolean {
 
 export function formatTable(
   state: RootState,
-  { buffer, table, statements }: FormatTableOptions
+  { buffer, table, statements, logicalNameAsComment }: FormatTableOptions
 ) {
   const {
     settings: { bracketType },
@@ -114,8 +120,9 @@ export function formatTable(
   // here: one whose table or columns are gone writes no clause.
   const hasForeignKey = foreignKeys.length !== 0;
 
-  if (table.comment.trim() !== '') {
-    buffer.push(`-- ${table.comment}`);
+  const comment = commentToWrite(table, logicalNameAsComment);
+  if (comment !== '') {
+    buffer.push(`-- ${comment}`);
   }
   buffer.push(
     `CREATE TABLE${ifNotExists(statements)} ${bracket}${table.name}${bracket}`
@@ -130,6 +137,7 @@ export function formatTable(
       isComma: pk || hasForeignKey || columns.length !== i + 1,
       spaceSize,
       buffer,
+      logicalNameAsComment,
     });
   });
 
@@ -172,13 +180,20 @@ export function formatTable(
 
 function formatColumn(
   { settings: { bracketType } }: RootState,
-  { buffer, column, isComma, spaceSize }: FormatColumnOptions
+  {
+    buffer,
+    column,
+    isComma,
+    spaceSize,
+    logicalNameAsComment,
+  }: FormatColumnOptions
 ) {
   const bracket = getBracket(bracketType);
   const stringBuffer: string[] = [];
+  const comment = commentToWrite(column, logicalNameAsComment);
 
-  if (column.comment.trim() !== '') {
-    buffer.push(`  -- ${column.comment}`);
+  if (comment !== '') {
+    buffer.push(`  -- ${comment}`);
   }
 
   stringBuffer.push(

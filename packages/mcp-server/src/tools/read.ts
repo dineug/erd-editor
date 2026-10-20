@@ -154,8 +154,8 @@ const SERIALIZER: Readonly<
 
 /**
  * Serializes a document as an agent asked: the snapshot it edits by, the DDL of
- * a vendor (the document's by default) with the statements and header asked
- * for, the file's own JSON, or the two Schema SQL scripts alone.
+ * a vendor (the document's by default) with the statements, header and logical
+ * names asked for, the file's own JSON, or the two Schema SQL scripts alone.
  */
 export function readDocument(
   state: RootState,
@@ -178,6 +178,11 @@ export function readDocument(
   ) {
     throw refused(
       `statements and header apply to the sql format only, not ${format}`
+    );
+  }
+  if (options?.logicalNameAsComment !== undefined && format !== 'sql') {
+    throw refused(
+      `logicalNameAsComment applies to the sql format only, not ${format}`
     );
   }
   const filtered =

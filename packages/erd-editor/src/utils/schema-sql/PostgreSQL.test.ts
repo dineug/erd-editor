@@ -837,3 +837,26 @@ describe('PostgreSQL options', () => {
     );
   });
 });
+
+describe('PostgreSQL logical names as comments', () => {
+  it('writes COMMENT ON for a logical name where the comment is empty, a comment kept, and none without the option', () => {
+    const { state, users, posts, userId, postUserId } = createFixture();
+    users.logicalName = 'User';
+    posts.logicalName = 'Post';
+    userId.logicalName = 'User ID';
+    postUserId.logicalName = "Post's writer";
+
+    const written = createSchema(state, undefined, {
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain("\nCOMMENT ON TABLE posts IS 'Post';\n");
+    expect(written).toContain(
+      "\nCOMMENT ON COLUMN posts.user_id IS 'Post''s writer';\n"
+    );
+    expect(written).toContain("\nCOMMENT ON TABLE users IS 'user table';\n");
+    expect(written).toContain("\nCOMMENT ON COLUMN users.id IS 'user id';\n");
+    expect(written).not.toContain('User');
+    expect(createSchema(state)).not.toContain('Post');
+  });
+});

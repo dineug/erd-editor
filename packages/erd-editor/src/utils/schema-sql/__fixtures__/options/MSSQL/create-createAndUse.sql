@@ -19,7 +19,7 @@ ALTER TABLE member
 GO
 
 EXECUTE sys.sp_addextendedproperty 'MS_Description',
-  'Members', 'schema', 'dbo', 'table', 'member'
+  N'Members', 'schema', 'dbo', 'table', 'member'
 GO
 
 CREATE TABLE post

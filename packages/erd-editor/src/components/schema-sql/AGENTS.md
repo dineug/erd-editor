@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-20 -->
 
 # schema-sql
 
@@ -31,12 +31,13 @@
 The rules in this section are owner decisions of 2026-10-07.
 
 - **The DDL sits beside a 300 px panel.** The tab draws the DDL of the whole document, or of the tables chosen under Tables. The code sits on the left in every language, beside a 300 px panel (`SCHEMA_SQL_PANEL_WIDTH`).
-- **The panel holds the DDL's controls.** From the top: the Database and Bracket selects, then Statements (Create, If not exists, Drop & re-create) and Header (None, `USE`, `CREATE + USE`). Tables follows while the document lists a table group. Last come the before and after script editors, with Save file and Copy at the panel's foot.
+- **The panel holds the DDL's controls.** From the top: the Database and Bracket selects, then Statements (Create, If not exists, Drop & re-create), Header (None, `USE`, `CREATE + USE`) and the switch that writes logical names into empty comments (`schemaSql.logicalNameAsComment`). Tables follows while the document lists a table group. Last come the before and after script editors, with Save file and Copy at the panel's foot.
 - **Table Properties' Schema SQL tab stays plain code.** It is always Create, with no header or script.
-- **Keep the window's choices in `schemaSQLViewOf(app)`.** Statements, Header, Tables and whether the panel shows live there (`schemaSQLView.ts`), a `WeakMap` over the store. They are never in the store, the file, a change event or storage. They are kept across tab switches until the element goes, one set per editor. They are no setting, so no action, file or peer carries them.
-- **Hold what the reader asked for.** The view starts at `ifNotExists` and `createAndUse`. `resolveSchemaSQLOptions` turns a request into what each database has. A segment the database lacks is `aria-disabled`, titled Not in {database} (`schemaSql.notInDatabase`). So a choice outlives a change of database.
+- **Keep the window's choices in `schemaSQLViewOf(app)`.** Statements, Header, the logical name switch, Tables and whether the panel shows live there (`schemaSQLView.ts`), a `WeakMap` over the store. They are never in the store, the file, a change event or storage. They are kept across tab switches until the element goes, one set per editor. They are no setting, so no action, file or peer carries them.
+- **Hold what the reader asked for.** The view starts at `ifNotExists` and `createAndUse`, the logical name switch off. `resolveSchemaSQLOptions` turns a request into what each database has. A segment the database lacks is `aria-disabled`, titled Not in {database} (`schemaSql.notInDatabase`). So a choice outlives a change of database.
 - What each statement and header writes per database, `createSchemaSQL`'s order, `formatScript` and Drop & re-create per vendor: `src/utils/schema-sql/AGENTS.md`.
 - **The panel opens from 640 px of editor.** It opens unless the editor is under 640 px wide (`SCHEMA_SQL_PANEL_COLLAPSE_BELOW`). That is decided when the tab, or its own menu, first reads a measured `editor.viewport.width`. Table Properties' Schema SQL menu leaves it unsettled. Then the panel keeps what it was set to, folded behind a Show options button over the code.
+- **The logical name switch is the panel's alone.** It sits in the This window only group, a `Switch` whose label wraps beside it, and no palette or context menu entry turns it (an owner decision). It passes `logicalNameAsComment` to `createSchemaSQL`; what each database writes for it: `src/utils/schema-sql/AGENTS.md`, Logical names as comments. A readonly editor turns it too, since nothing of it enters the document.
 - **Export ▸ Schema SQL saves nothing at once.** In the canvas menu and the palette's Export, `showSchemaSQLExport` opens the tab with the panel and focuses Save file. The palette has no top-level Export: Schema SQL row, since its Tab row reaches the tab (the owner's request of 2026-10-15). Save file names the file by `createName` in `src/utils/file/exportFile.ts`.
 
 ### Tables by table group
@@ -65,9 +66,9 @@ The rules in this section are owner decisions of 2026-10-07.
 
 ## Testing Requirements
 
-- **`schemaSQLView.test.ts`** holds the view's first values, one view per editor, the 640 px rule, `showSchemaSQLExport`, the table choice and `chosenTableIds`.
-- **`SchemaSQL.test.ts`** holds what the tab writes for the window's choices, Save file and Copy, the one table Table Properties shows, and the `SchemaSQL tables by group` cases.
-- **`schema-sql-options/SchemaSQLOptions.test.ts` and `SchemaSQLOptions.browser.test.tsx`** hold the segments, the drop warning, the scripts' commits through the panel and `keepSpace`. The browser spec also holds the 300 px width, the 640 px fold, the Tables boxes and Space on a real keyboard.
+- **`schemaSQLView.test.ts`** holds the view's first values, the logical name switch off among them, one view per editor, the 640 px rule, `showSchemaSQLExport`, the table choice and `chosenTableIds`.
+- **`SchemaSQL.test.ts`** holds what the tab writes for the window's choices, the logical name switch among them, Save file and Copy, the one table Table Properties shows, and the `SchemaSQL tables by group` cases.
+- **`schema-sql-options/SchemaSQLOptions.test.ts` and `SchemaSQLOptions.browser.test.tsx`** hold the segments, the logical name switch, the drop warning, the scripts' commits through the panel and `keepSpace`. The browser spec also holds the 300 px width, the 640 px fold, the Tables boxes, the switch kept whole beside a label that wraps and Space on a real keyboard.
 - **`schema-sql-options/dropWarning.test.ts`** holds `formatDropWarning`: no warning with no table, up to five names in full, the first four of more and a count of the rest, Snowflake's replace in place, and each name isolated in a right-to-left language.
 - **`SchemaSQL.styles.test.ts`** holds the tab's layout: the code and the options panel side by side, the code taking what the panel leaves, and Show options painted in the colour of the code block it sits on.
 - **`schema-sql-options/ScriptEditor.test.ts` and `ScriptEditor.browser.test.tsx`** hold the commit once per edit, the draft, the growth, the keyboard and the paste.

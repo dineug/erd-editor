@@ -103,6 +103,8 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
         'For the sql format: create (default), ifNotExists, which writes CREATE TABLE IF NOT EXISTS on MySQL, MariaDB, PostgreSQL, SQLite and Databricks and falls back to create elsewhere, or recreate, which drops the tables first (Snowflake writes CREATE OR REPLACE TABLE).',
       header:
         "For the sql format: none (default), use, which selects the database or schema the document's database name gives, or createAndUse, which creates it first. Oracle has use alone, so createAndUse writes use there; PostgreSQL has createAndUse alone, so use writes no header there; SQLite has neither and writes none. No header is written while the database name is empty or not a plain identifier.",
+      logicalNameAsComment:
+        'For the sql format: true writes the logical name of a table or column whose comment is empty as its comment, keeping every comment that is not empty; false (default) writes no logical name.',
       tableIds:
         'For the sql format: the DDL of these tables only, with the foreign keys they hold, which name the tables they reference.',
       tableNames:

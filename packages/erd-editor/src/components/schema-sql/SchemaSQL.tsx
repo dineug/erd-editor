@@ -55,6 +55,7 @@ const hasPropName = arrayHas<string | number | symbol>([
 const hasViewPropName = arrayHas<string | number | symbol>([
   'statements',
   'header',
+  'logicalNameAsComment',
   'tables',
 ]);
 
@@ -93,7 +94,8 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
         state.sql = createSchemaSQLTable(store.state, table);
       }
     } else {
-      const { statements, header, tables } = schemaSQLViewOf(app.value);
+      const { statements, header, logicalNameAsComment, tables } =
+        schemaSQLViewOf(app.value);
       const tableIds = chosenTableIds(store.state, tables);
       const none = isNoTableChosen(tables, store.state.doc.tableGroupIds);
 
@@ -104,6 +106,7 @@ const SchemaSQL: FC<SchemaSQLProps> = (props, ctx) => {
         : createSchemaSQL(store.state, undefined, tableIds, {
             statements,
             header,
+            logicalNameAsComment,
             scripts: true,
           });
       state.tables = none ? [] : schemaSQLTables(store.state, tableIds);

@@ -29,6 +29,8 @@ export type SchemaSQLView = {
   statements: SchemaSQLStatements;
   /** The header asked for, resolved the same way. */
   header: SchemaSQLHeader;
+  /** Whether an empty comment writes the logical name; off at first. */
+  logicalNameAsComment: boolean;
   /** Replaced whole, never changed in place, so a watcher hears one change. */
   tables: SchemaSQLTableChoice;
   panel: OptionsPanelState;
@@ -51,6 +53,7 @@ export function schemaSQLViewOf({
     view = observable<SchemaSQLView>({
       statements: SchemaSQLStatements.ifNotExists,
       header: SchemaSQLHeader.createAndUse,
+      logicalNameAsComment: false,
       tables: { groups: {}, noGroup: true },
       panel: 'unset',
       focusSave: false,

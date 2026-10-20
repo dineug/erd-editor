@@ -124,7 +124,7 @@ An attribute is on when present with no value or `"true"`.
 | Method | Description |
 | --- | --- |
 | `setInitialValue(value)` | Load a document with no undo entry; `''` starts a new one. |
-| `getSchemaSQL(vendor?, options?)` | DDL for one of the eight databases, by default the document's. `options`: `statements` (`create`, `ifNotExists`, `recreate`), `header` (`none`, `use`, `createAndUse`). |
+| `getSchemaSQL(vendor?, options?)` | DDL for one of the eight databases, by default the document's. `options`: `statements` (`create`, `ifNotExists`, `recreate`), `header` (`none`, `use`, `createAndUse`), `logicalNameAsComment` (`true` writes a table's or column's logical name where its comment is empty). |
 | `setSchemaSQL(value, options?)`, `setSchemaGraphQL`, `setSchemaDBML`, `setSchemaAML` | Replace the document with parsed DDL, GraphQL SDL, DBML or AML, or append it ([Importing a schema](#importing-a-schema)). |
 | `setSchemaJSON(value, options?)` | Load an `.erd.json` document as `value` does, or append it. |
 | `setDiffValue(value)` | Diff another document over the ERD tab. |

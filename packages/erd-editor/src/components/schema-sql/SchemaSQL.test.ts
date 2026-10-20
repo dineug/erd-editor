@@ -32,6 +32,7 @@ import {
 import {
   addTableAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
@@ -202,6 +203,29 @@ describe('SchemaSQL', () => {
     view.panel = 'closed';
     await flush();
     expect(codeOf(mounted).textContent).toContain('CREATE TABLE users');
+  });
+
+  it("writes a logical name into an empty comment while the window's switch is on, off at first", async () => {
+    const app = createApp();
+    seedTable(app, 't1', 'users');
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 't1', value: 'Users' })
+    );
+    mounted = await mountAndFlush(
+      html`<${SchemaSQL} isDarkMode=${false} />`,
+      app
+    );
+    const view = schemaSQLViewOf(app);
+
+    expect(codeOf(mounted).textContent).not.toContain("COMMENT 'Users'");
+
+    view.logicalNameAsComment = true;
+    await flush();
+    expect(codeOf(mounted).textContent).toContain(") COMMENT 'Users';");
+
+    view.logicalNameAsComment = false;
+    await flush();
+    expect(codeOf(mounted).textContent).not.toContain("COMMENT 'Users'");
   });
 
   it('writes again when the scripts or the database name change', async () => {

@@ -13,6 +13,7 @@ import { bHas } from '@/utils/bit';
 import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoName,
+  commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
   FormatIndexOptions,
@@ -45,7 +46,7 @@ const toBracket = (bracketType: number) =>
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {}
+  { statements, written, logicalNameAsComment }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -54,7 +55,12 @@ export function createSchema(
 
   tables.forEach(table => {
     written?.tables.push(table);
-    formatTable(state, { table, buffer: stringBuffer, statements });
+    formatTable(state, {
+      table,
+      buffer: stringBuffer,
+      statements,
+      logicalNameAsComment,
+    });
     stringBuffer.push('');
   });
 
@@ -81,7 +87,7 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table, statements }: FormatTableOptions
+  { buffer, table, statements, logicalNameAsComment }: FormatTableOptions
 ) {
   const {
     collections,
@@ -108,6 +114,7 @@ export function formatTable(
       isComma: pk || columns.length !== i + 1,
       spaceSize,
       buffer,
+      logicalNameAsComment,
     });
   });
 
@@ -121,17 +128,24 @@ export function formatTable(
     );
   }
 
-  if (table.comment.trim() === '') {
+  const comment = commentToWrite(table, logicalNameAsComment);
+  if (comment === '') {
     buffer.push(`);`);
   } else {
     buffer.push(`)`);
-    buffer.push(`COMMENT = ${toStringLiteral(table.comment)};`);
+    buffer.push(`COMMENT = ${toStringLiteral(comment)};`);
   }
 }
 
 function formatColumn(
   { settings: { bracketType } }: RootState,
-  { buffer, column, isComma, spaceSize }: FormatColumnOptions
+  {
+    buffer,
+    column,
+    isComma,
+    spaceSize,
+    logicalNameAsComment,
+  }: FormatColumnOptions
 ) {
   const bracket = toBracket(bracketType);
   const stringBuffer: string[] = [];
@@ -164,8 +178,9 @@ function formatColumn(
   } else if (column.default.trim() !== '') {
     stringBuffer.push(`DEFAULT ${column.default}`);
   }
-  if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT ${toStringLiteral(column.comment)}`);
+  const comment = commentToWrite(column, logicalNameAsComment);
+  if (comment !== '') {
+    stringBuffer.push(`COMMENT ${toStringLiteral(comment)}`);
   }
 
   buffer.push(stringBuffer.join(' ').trimEnd() + `${isComma ? ',' : ''}`);

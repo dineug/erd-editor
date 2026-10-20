@@ -309,6 +309,31 @@ describe('the Schema SQL options panel on a real layout', () => {
   });
 });
 
+describe('the logical name switch on a real layout', () => {
+  it('keeps the switch whole beside a label that wraps in a long language, the press on the label too', async () => {
+    const fixture = await setup(1000, () => {}, 'ru-RU');
+    const panel = fixture.panel()!.getBoundingClientRect();
+    const row = fixture
+      .panel()!
+      .querySelector<HTMLElement>('.schema-sql-options-logical-name')!;
+    const label = row.firstElementChild as HTMLElement;
+    const toggle = row.querySelector<HTMLButtonElement>('[role="switch"]')!;
+    const box = toggle.getBoundingClientRect();
+
+    expect(box.width).toBe(28);
+    expect(box.right).toBeLessThanOrEqual(panel.right - 20);
+    expect(label.getBoundingClientRect().right).toBeLessThan(box.left);
+    expect(label.getBoundingClientRect().height).toBeGreaterThan(
+      parseFloat(getComputedStyle(label).lineHeight)
+    );
+
+    label.click();
+    await flush();
+    expect(schemaSQLViewOf(fixture.app).logicalNameAsComment).toBe(true);
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+  });
+});
+
 describe('the drop warning on a real layout', () => {
   /** The warning box, its text and its icon, with tables named as given, Drop & re-create chosen. */
   async function warningFor(names: string[]) {
@@ -445,6 +470,23 @@ describe('the Schema SQL options panel on a real keyboard', () => {
     await flush();
     expect(fixture.shadow.activeElement).toBe(unnamed);
     expect(unnamed.checked).toBe(false);
+  });
+
+  it('turns the logical name comments on with Space on the switch, which the hand tool never takes', async () => {
+    const fixture = await setup();
+    const toggle = fixture
+      .panel()!
+      .querySelector<HTMLButtonElement>(
+        '.schema-sql-options-logical-name [role="switch"]'
+      )!;
+    toggle.focus();
+
+    await userEvent.keyboard(' ');
+    await flush();
+
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(schemaSQLViewOf(fixture.app).logicalNameAsComment).toBe(true);
+    expect(fixture.app.store.state.editor.handTool).toBe(false);
   });
 
   it('saves the file once with Space on Save file', async () => {

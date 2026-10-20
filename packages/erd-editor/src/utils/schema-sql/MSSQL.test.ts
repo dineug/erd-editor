@@ -212,15 +212,15 @@ describe('MSSQL createSchema', () => {
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'user table', 'schema', 'dbo', 'table', 'users'",
+        "  N'user table', 'schema', 'dbo', 'table', 'users'",
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'user id', 'schema', 'dbo', 'table', 'users', 'column', 'id'",
+        "  N'user id', 'schema', 'dbo', 'table', 'users', 'column', 'id'",
         'GO',
         '',
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
-        "  'email address', 'schema', 'dbo', 'table', 'users', 'column', 'email'",
+        "  N'email address', 'schema', 'dbo', 'table', 'users', 'column', 'email'",
         'GO',
         '',
         'ALTER TABLE posts',
@@ -340,10 +340,10 @@ describe('MSSQL createSchema', () => {
     const sql = createSchema(state);
 
     expect(sql).toContain(
-      "  'user''s table', 'schema', 'dbo', 'table', 'o''users'\nGO"
+      "  N'user''s table', 'schema', 'dbo', 'table', 'o''users'\nGO"
     );
     expect(sql).toContain(
-      "  'it''s the id', 'schema', 'dbo', 'table', 'o''users', 'column', 'user''s id'\nGO"
+      "  N'it''s the id', 'schema', 'dbo', 'table', 'o''users', 'column', 'user''s id'\nGO"
     );
   });
 
@@ -361,11 +361,11 @@ describe('MSSQL createSchema', () => {
     expect(sql).toContain('CREATE TABLE sales.users\n');
     expect(sql).toContain(
       "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
-        "  'user table', 'schema', 'sales', 'table', 'users'\nGO"
+        "  N'user table', 'schema', 'sales', 'table', 'users'\nGO"
     );
     expect(sql).toContain(
       "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
-        "  'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
+        "  N'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
     );
   });
 
@@ -383,11 +383,11 @@ describe('MSSQL createSchema', () => {
     expect(sql).toContain('CREATE TABLE shop.sales.users\n');
     expect(sql).toContain(
       "EXECUTE shop.sys.sp_addextendedproperty 'MS_Description',\n" +
-        "  'user table', 'schema', 'sales', 'table', 'users'\nGO"
+        "  N'user table', 'schema', 'sales', 'table', 'users'\nGO"
     );
     expect(sql).toContain(
       "EXECUTE shop.sys.sp_addextendedproperty 'MS_Description',\n" +
-        "  'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
+        "  N'user id', 'schema', 'sales', 'table', 'users', 'column', 'id'\nGO"
     );
     expect(sql).not.toContain('EXECUTE sys.');
   });
@@ -414,11 +414,11 @@ describe('MSSQL createSchema', () => {
 
       expect(sql).toContain(
         `EXECUTE ${database}.sys.sp_addextendedproperty 'MS_Description',\n` +
-          `  'user table', 'schema', '${schema}', 'table', 'users'\nGO`
+          `  N'user table', 'schema', '${schema}', 'table', 'users'\nGO`
       );
       expect(sql).toContain(
         `EXECUTE ${database}.sys.sp_addextendedproperty 'MS_Description',\n` +
-          `  'user id', 'schema', '${schema}', 'table', 'users', 'column', 'id'\nGO`
+          `  N'user id', 'schema', '${schema}', 'table', 'users', 'column', 'id'\nGO`
       );
     }
   );
@@ -442,7 +442,7 @@ describe('MSSQL createSchema', () => {
 
       expect(sql).toContain(
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
-          `  'user table', 'schema', '${schema}', 'table', 'users'\nGO`
+          `  N'user table', 'schema', '${schema}', 'table', 'users'\nGO`
       );
       expect(sql).not.toContain('.sys.sp_addextendedproperty');
     }
@@ -475,11 +475,11 @@ describe('MSSQL createSchema', () => {
 
       expect(sql).toContain(
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
-          `  'user table', 'schema', '${schema}', 'table', '${table}'\nGO`
+          `  N'user table', 'schema', '${schema}', 'table', '${table}'\nGO`
       );
       expect(sql).toContain(
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
-          `  'user id', 'schema', '${schema}', 'table', '${table}', 'column', 'id'\nGO`
+          `  N'user id', 'schema', '${schema}', 'table', '${table}', 'column', 'id'\nGO`
       );
     }
   );
@@ -496,10 +496,10 @@ describe('MSSQL createSchema', () => {
 
     expect(sql).toContain('CREATE TABLE "sales.users"\n');
     expect(sql).toContain(
-      "  'user table', 'schema', 'dbo', 'table', 'sales.users'\nGO"
+      "  N'user table', 'schema', 'dbo', 'table', 'sales.users'\nGO"
     );
     expect(sql).toContain(
-      "  'user id', 'schema', 'dbo', 'table', 'sales.users', 'column', 'id'\nGO"
+      "  N'user id', 'schema', 'dbo', 'table', 'sales.users', 'column', 'id'\nGO"
     );
   });
 
@@ -517,7 +517,7 @@ describe('MSSQL createSchema', () => {
 
       expect(createSchema(state)).toContain(
         "EXECUTE sys.sp_addextendedproperty 'MS_Description',\n" +
-          `  'user table', 'schema', 'dbo', 'table', '${name}'\nGO`
+          `  N'user table', 'schema', 'dbo', 'table', '${name}'\nGO`
       );
     }
   );
@@ -530,7 +530,7 @@ describe('MSSQL createSchema', () => {
     state.doc.indexIds = [];
 
     expect(createSchema(state)).toContain(
-      "  'user table', 'schema', 'o''sales', 'table', 'o''users'\nGO"
+      "  N'user table', 'schema', 'o''sales', 'table', 'o''users'\nGO"
     );
   });
 });
@@ -1036,5 +1036,64 @@ describe('MSSQL header', () => {
       /^\nUSE shop\nGO\n\nCREATE SCHEMA app\nGO\n\nCREATE TABLE posts\n/
     );
     expect(sql).toMatch(/\nGO\n\nEXEC a\ngo 2\n$/);
+  });
+});
+
+describe('MSSQL logical names as comments', () => {
+  it('takes the option in createSchema and writes MS_Description for a logical name where the comment is empty', () => {
+    const { state, users, posts, userId, postUserId } = createFixture();
+    users.logicalName = 'User';
+    posts.logicalName = 'Post';
+    userId.logicalName = 'User ID';
+    postUserId.logicalName = "Post's writer";
+
+    const written = createSchema(state, undefined, {
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain(
+      [
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
+        "  N'Post', 'schema', 'dbo', 'table', 'posts'",
+        'GO',
+        '',
+        "EXECUTE sys.sp_addextendedproperty 'MS_Description',",
+        "  N'Post''s writer', 'schema', 'dbo', 'table', 'posts', 'column', 'user_id'",
+        'GO',
+      ].join('\n')
+    );
+    expect(written).toContain(
+      "  N'user table', 'schema', 'dbo', 'table', 'users'\n"
+    );
+    expect(written).toContain(
+      "  N'user id', 'schema', 'dbo', 'table', 'users', 'column', 'id'\n"
+    );
+    expect(written).not.toContain('User');
+    expect(createSchema(state)).not.toContain('Post');
+  });
+
+  // Under its default collation, SQL_Latin1_General_CP1_CI_AS, SQL Server 2022
+  // stored the Korean text of a plain literal as question marks.
+  it('writes each MS_Description as a national literal, so text outside the code page is kept', () => {
+    const { state, users, userId, userEmail } = createFixture();
+    users.comment = '';
+    users.logicalName = '회원';
+    userId.comment = '';
+    userId.logicalName = '회원 ID';
+    userEmail.comment = '로그인 주소';
+
+    const written = createSchema(state, undefined, {
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain(
+      "  N'회원', 'schema', 'dbo', 'table', 'users'\nGO"
+    );
+    expect(written).toContain(
+      "  N'회원 ID', 'schema', 'dbo', 'table', 'users', 'column', 'id'\nGO"
+    );
+    expect(written).toContain(
+      "  N'로그인 주소', 'schema', 'dbo', 'table', 'users', 'column', 'email'\nGO"
+    );
   });
 });

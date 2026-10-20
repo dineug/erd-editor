@@ -76,6 +76,15 @@ export const row = css`
   min-height: 28px;
 `;
 
+/** A label beside its switch: the label wraps, the switch keeps its size and the label takes the press. */
+export const toggle = css`
+  cursor: pointer;
+
+  & > [role='switch'] {
+    flex: none;
+  }
+`;
+
 /* A label over its control. */
 export const column = css`
   display: flex;

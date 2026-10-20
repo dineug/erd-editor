@@ -9,6 +9,7 @@ import { bHas } from '@/utils/bit';
 import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoName,
+  commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
   FormatIndexOptions,
@@ -62,7 +63,7 @@ function takesIdentity(column: Column): boolean {
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {}
+  { statements, written, logicalNameAsComment }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -71,7 +72,12 @@ export function createSchema(
 
   tables.forEach(table => {
     written?.tables.push(table);
-    formatTable(state, { table, buffer: stringBuffer, statements });
+    formatTable(state, {
+      table,
+      buffer: stringBuffer,
+      statements,
+      logicalNameAsComment,
+    });
     stringBuffer.push('');
 
     formatUnique(state, { table, buffer: stringBuffer });
@@ -101,7 +107,7 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table, statements }: FormatTableOptions
+  { buffer, table, statements, logicalNameAsComment }: FormatTableOptions
 ) {
   const { collections } = state;
   const columns = query(collections)
@@ -121,6 +127,7 @@ export function formatTable(
       isComma: pk || columns.length !== i + 1,
       spaceSize,
       buffer,
+      logicalNameAsComment,
     });
   });
 
@@ -136,11 +143,12 @@ export function formatTable(
 
   buffer.push(`)`);
 
-  if (table.comment.trim() === '') {
+  const comment = commentToWrite(table, logicalNameAsComment);
+  if (comment === '') {
     buffer.push(`USING DELTA;`);
   } else {
     buffer.push(`USING DELTA`);
-    buffer.push(`COMMENT ${toSparkStringLiteral(table.comment)};`);
+    buffer.push(`COMMENT ${toSparkStringLiteral(comment)};`);
   }
 
   const withoutIdentity = columns.filter(
@@ -179,7 +187,13 @@ export function formatUnique(
 
 function formatColumn(
   _: RootState,
-  { buffer, column, isComma, spaceSize }: FormatColumnOptions
+  {
+    buffer,
+    column,
+    isComma,
+    spaceSize,
+    logicalNameAsComment,
+  }: FormatColumnOptions
 ) {
   const stringBuffer: string[] = [];
 
@@ -208,8 +222,9 @@ function formatColumn(
   ) {
     stringBuffer.push(`DEFAULT ${column.default}`);
   }
-  if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT ${toSparkStringLiteral(column.comment)}`);
+  const comment = commentToWrite(column, logicalNameAsComment);
+  if (comment !== '') {
+    stringBuffer.push(`COMMENT ${toSparkStringLiteral(comment)}`);
   }
 
   buffer.push(stringBuffer.join(' ').trimEnd() + `${isComma ? ',' : ''}`);

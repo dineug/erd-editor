@@ -9,6 +9,7 @@ import { SchemaSQLHeader } from './options';
 import {
   autoName,
   autoNameIgnoreCase,
+  commentToWrite,
   CreateSchemaOptions,
   createWrittenObjects,
   FormatColumnOptions,
@@ -43,7 +44,7 @@ const ACTION_SUPPORT = referentialActionSupport(Database.Oracle);
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { written }: CreateSchemaOptions = {}
+  { written, logicalNameAsComment }: CreateSchemaOptions = {}
 ): string {
   const {
     settings: { bracketType },
@@ -108,7 +109,11 @@ export function createSchema(
       }
     });
 
-    formatComment(state, { table, buffer: stringBuffer });
+    formatComment(state, {
+      table,
+      buffer: stringBuffer,
+      logicalNameAsComment,
+    });
   });
 
   relationships.forEach(relationship => {
@@ -239,13 +244,14 @@ function formatColumn(
 
 function formatComment(
   { settings: { bracketType }, collections }: RootState,
-  { table, buffer }: FormatCommentOptions
+  { table, buffer, logicalNameAsComment }: FormatCommentOptions
 ) {
   const bracket = getBracket(bracketType);
+  const tableComment = commentToWrite(table, logicalNameAsComment);
 
-  if (table.comment.trim() !== '') {
+  if (tableComment !== '') {
     buffer.push(
-      `COMMENT ON TABLE ${bracket}${table.name}${bracket} IS ${toStringLiteral(table.comment)};`
+      `COMMENT ON TABLE ${bracket}${table.name}${bracket} IS ${toStringLiteral(tableComment)};`
     );
     buffer.push('');
   }
@@ -253,9 +259,10 @@ function formatComment(
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds)
     .forEach(column => {
-      if (column.comment.trim() !== '') {
+      const comment = commentToWrite(column, logicalNameAsComment);
+      if (comment !== '') {
         buffer.push(
-          `COMMENT ON COLUMN ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} IS ${toStringLiteral(column.comment)};`
+          `COMMENT ON COLUMN ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} IS ${toStringLiteral(comment)};`
         );
         buffer.push('');
       }

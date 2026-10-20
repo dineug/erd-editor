@@ -7,6 +7,7 @@ import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import Icon from '@/components/primitives/icon/Icon';
 import Select from '@/components/primitives/select/Select';
+import Switch from '@/components/primitives/switch/Switch';
 import { menus as bracketMenus } from '@/components/schema-sql/schema-sql-context-menu/menus/bracketMenus';
 import {
   headerHint,
@@ -107,8 +108,8 @@ type Choice = {
 
 /**
  * The options beside the Schema SQL: the database and the bracket, then this
- * window's statements, header and tables, then the scripts the document
- * saves, and the buttons that save and copy the text.
+ * window's statements, header, logical name comments and tables, then the
+ * scripts the document saves, and the buttons that save and copy the text.
  */
 const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -138,6 +139,10 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
     const value = Number((event.target as HTMLSelectElement).value);
 
     store.dispatch(changeDatabaseAction({ value }));
+  };
+
+  const handleLogicalNameAsComment = (value: boolean) => {
+    schemaSQLViewOf(app.value).logicalNameAsComment = value;
   };
 
   const handleBracket = (event: Event) => {
@@ -410,6 +415,20 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
                 })}
               </p>
             ) : null}
+            <label
+              class={[
+                'schema-sql-options-logical-name',
+                styles.row,
+                styles.toggle,
+              ]}
+            >
+              <span>{t('schemaSql.logicalNameAsComment')}</span>
+              <Switch
+                size="1"
+                value={view.logicalNameAsComment}
+                onChange={handleLogicalNameAsComment}
+              />
+            </label>
             {renderTables()}
             {warning ? (
               <div

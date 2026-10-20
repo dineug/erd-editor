@@ -978,3 +978,30 @@ describe('SQLite options', () => {
     );
   });
 });
+
+describe('SQLite logical names as comments', () => {
+  it('writes a logical name where the comment is empty as a comment line, a comment kept, and none without the option', () => {
+    const { state } = createFixture();
+    const { tableEntities, tableColumnEntities } = state.collections;
+    tableEntities['t-users'].logicalName = 'User';
+    tableEntities['t-posts'].logicalName = 'Post';
+    tableColumnEntities['c-user-id'].logicalName = 'User ID';
+    tableColumnEntities['c-post-user-id'].logicalName = "Post's writer";
+
+    const written = createSchema(state, undefined, {
+      statements: 'ifNotExists',
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain('\n-- Post\nCREATE TABLE IF NOT EXISTS posts\n');
+    expect(written).toContain(
+      "\n  -- Post's writer\n  user_id INT NOT NULL,\n"
+    );
+    expect(written).toContain(
+      '\n-- user table\nCREATE TABLE IF NOT EXISTS users\n'
+    );
+    expect(written).toContain('\n  -- user id\n  id ');
+    expect(written).not.toContain('User');
+    expect(createSchema(state)).not.toContain('Post');
+  });
+});

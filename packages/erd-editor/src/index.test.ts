@@ -106,7 +106,7 @@ describe('@dineug/erd-editor entry point', () => {
     expect(editor.setSystemLocale).toBeTypeOf('function');
   });
 
-  it('types getSchemaSQL’s options as SchemaSQLOptions, the statements and the header', () => {
+  it('types getSchemaSQL’s options as SchemaSQLOptions, the statements, the header and the logical name comments', () => {
     const editor = document.createElement('erd-editor');
 
     expectTypeOf(editor.getSchemaSQL)
@@ -115,6 +115,7 @@ describe('@dineug/erd-editor entry point', () => {
     expectTypeOf<SchemaSQLOptions>().toEqualTypeOf<{
       statements?: 'create' | 'ifNotExists' | 'recreate';
       header?: 'none' | 'use' | 'createAndUse';
+      logicalNameAsComment?: boolean;
     }>();
     expect(editor.getSchemaSQL).toBeTypeOf('function');
   });

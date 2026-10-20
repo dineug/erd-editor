@@ -25,6 +25,8 @@ export type SchemaSQLOptions = {
   statements?: SchemaSQLStatements;
   /** none when left out. */
   header?: SchemaSQLHeader;
+  /** Whether a table or column with an empty comment writes its logical name as one; off when left out. */
+  logicalNameAsComment?: boolean;
 };
 
 /** The name a header may write: a plain identifier, so no vendor needs it escaped. */

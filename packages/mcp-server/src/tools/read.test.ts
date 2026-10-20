@@ -9,6 +9,7 @@ import {
   settingsActions,
   settingsActions$,
   tableActions,
+  tableColumnActions,
   tableGroupActions,
 } from '@dineug/erd-editor/peer.js';
 import { toDocumentJson } from '@dineug/erd-editor-schema';
@@ -488,6 +489,124 @@ describe('the statements and header of the DDL', () => {
   });
 });
 
+/**
+ * The seed with logical names: users, its id and orders.note have no comment,
+ * and orders and users.name keep a comment of their own.
+ */
+function createLogicalNamePeer() {
+  const named = createSeededPeer();
+  named.dispatch([
+    tableActions.changeTableLogicalNameAction({
+      id: SEED.users,
+      value: 'Member',
+    }),
+    tableActions.changeTableLogicalNameAction({
+      id: SEED.orders,
+      value: 'Order',
+    }),
+    tableActions.changeTableCommentAction({
+      id: SEED.orders,
+      value: 'Placed orders',
+    }),
+    tableColumnActions.changeColumnLogicalNameAction({
+      tableId: SEED.users,
+      id: SEED.userId,
+      value: 'Member ID',
+    }),
+    tableColumnActions.changeColumnLogicalNameAction({
+      tableId: SEED.users,
+      id: SEED.userName,
+      value: 'Member name',
+    }),
+    tableColumnActions.changeColumnCommentAction({
+      tableId: SEED.users,
+      id: SEED.userName,
+      value: 'Shown to others',
+    }),
+    tableColumnActions.changeColumnLogicalNameAction({
+      tableId: SEED.orders,
+      id: SEED.orderNote,
+      value: "Buyer's note",
+    }),
+  ]);
+  return named;
+}
+
+describe('the logical names the DDL writes where a comment is empty', () => {
+  const named = createLogicalNamePeer();
+  const on = { logicalNameAsComment: true } as const;
+
+  afterAll(() => named.destroy());
+
+  it('writes every vendor as the generator does with the option on', () => {
+    for (const vendor of SQL_VENDORS) {
+      const database = DatabaseVendorToDatabase[vendor as DatabaseVendor];
+
+      expect(
+        readDocument(named.state, 'sql', vendor, undefined, on),
+        vendor
+      ).toBe(createSchemaSQL(named.state, database, undefined, on));
+    }
+  });
+
+  it('writes a logical name for an empty comment and keeps every other comment', () => {
+    const sql = readDocument(named.state, 'sql', 'PostgreSQL', undefined, on);
+
+    expect(sql).toContain("COMMENT ON TABLE users IS 'Member';");
+    expect(sql).toContain("COMMENT ON COLUMN users.id IS 'Member ID';");
+    expect(sql).toContain("COMMENT ON COLUMN orders.note IS 'Buyer''s note';");
+    expect(sql).toContain("COMMENT ON TABLE orders IS 'Placed orders';");
+    expect(sql).toContain("COMMENT ON COLUMN users.name IS 'Shown to others';");
+    expect(sql).not.toContain("'Order'");
+    expect(sql).not.toContain("'Member name'");
+  });
+
+  it('writes no logical name when left out or false', () => {
+    const plain = readDocument(named.state, 'sql', 'PostgreSQL');
+
+    expect(
+      readDocument(named.state, 'sql', 'PostgreSQL', undefined, {
+        logicalNameAsComment: false,
+      })
+    ).toBe(plain);
+    expect(plain).toContain("COMMENT ON TABLE orders IS 'Placed orders';");
+    expect(plain).not.toContain('Member');
+    expect(plain).not.toContain('Buyer');
+  });
+
+  it('writes them into the DDL of some tables too, beside the statements asked for', () => {
+    const sql = readDocument(
+      named.state,
+      'sql',
+      'MySQL',
+      { tableNames: ['users'] },
+      { statements: 'ifNotExists', logicalNameAsComment: true }
+    );
+
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS users');
+    expect(sql).toMatch(/id +INT +NOT NULL COMMENT 'Member ID'/);
+    expect(sql).toContain(") COMMENT 'Member';");
+    expect(sql).not.toContain('orders');
+  });
+
+  it('takes it for the sql format only, false too', () => {
+    for (const format of ['json', 'snapshot'] as const) {
+      for (const logicalNameAsComment of [true, false]) {
+        const error = refusal(() =>
+          readDocument(named.state, format, undefined, undefined, {
+            logicalNameAsComment,
+          })
+        );
+
+        expect(error.code).toBe(ToolErrorCode.invalidArgs);
+        expect(error.message).toBe(
+          `logicalNameAsComment applies to the sql format only, not ${format}`
+        );
+      }
+    }
+  });
+});
+
 describe('the before and after scripts in the DDL', () => {
   const before = 'CREATE EXTENSION IF NOT EXISTS pgcrypto;';
   const after = 'GRANT SELECT ON users, orders TO PUBLIC;';
@@ -635,6 +754,13 @@ describe('the scripts format', () => {
             header: 'use',
           }),
         'statements and header apply to the sql format only, not scripts',
+      ],
+      [
+        () =>
+          readDocument(peer.state, 'scripts', undefined, undefined, {
+            logicalNameAsComment: true,
+          }),
+        'logicalNameAsComment applies to the sql format only, not scripts',
       ],
       [
         () =>
