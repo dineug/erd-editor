@@ -48,7 +48,7 @@ const pressedScopesOf = (erd: ErdEditorPage) =>
 const rowOf = (erd: ErdEditorPage, nodeId: string) =>
   panelOf(erd).locator(`[role="treeitem"][id$=":${nodeId}"]`);
 
-/** Unfolds the seven scopes past the three dots, where they were folded. */
+/** Unfolds the eight scopes past the three dots, where they were folded. */
 async function showScopes(erd: ErdEditorPage) {
   const toggle = panelOf(erd).locator('.find-scopes-toggle');
   if ((await toggle.getAttribute('aria-expanded')) === 'false') {
@@ -181,6 +181,7 @@ test.describe('Find and Replace', () => {
       'Column names',
       'Index names',
       'Table group names',
+      'Logical names',
     ]);
     await expect(countOf(erd)).toHaveText('2 matches');
     await showReplace(erd);
@@ -214,6 +215,7 @@ test.describe('Find and Replace', () => {
       'Memos',
       'Index names',
       'Table group names',
+      'Logical names',
     ]);
   });
 

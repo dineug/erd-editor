@@ -43,20 +43,25 @@ import {
   scopeBase,
   TEXT_FIELDS,
 } from '@/components/quick-search/scopedActions';
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, NameViewMode } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
   addMemoAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnCommentAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { createI18n, type I18n } from '@/i18n/translate';
@@ -138,6 +143,20 @@ const ERD_COMMANDS = [
 
 /** A name holding history from index 42, past the 40 at which Fuse still lets a hit start. */
 const LONG_TABLE_NAME = 'application_user_notification_preferences_history';
+
+/** Logical names on the users table and its email column. */
+const addLogicalNames = () =>
+  app.store.dispatchSync(
+    changeTableLogicalNameAction({ id: 'users', value: 'Member Accounts' }),
+    changeColumnLogicalNameAction({
+      id: 'email',
+      tableId: 'users',
+      value: 'Login Mail',
+    })
+  );
+
+const showNames = (mode: (typeof NameViewMode)[keyof typeof NameViewMode]) =>
+  app.store.dispatchSync(toNameViewModeAction(app.store.state, mode, false));
 
 beforeEach(() => {
   app = createTestAppContext();
@@ -368,6 +387,21 @@ describe('paletteRows / # tables', () => {
     expect(names(rowsFor('#us'))).not.toContain('orders');
   });
 
+  it('finds a table by its name and its logical name, whatever the name view draws', () => {
+    addLogicalNames();
+
+    expect(names(rowsFor('#member'))).toEqual(['users']);
+    expect(names(rowsFor('#users'))).toEqual(['users']);
+
+    showNames(NameViewMode.logical);
+    expect(names(rowsFor('#member'))).toEqual(['Member Accounts']);
+    expect(names(rowsFor('#users'))).toEqual(['Member Accounts']);
+
+    showNames(NameViewMode.both);
+    expect(names(rowsFor('#accounts'))).toEqual(['Member Accounts (users)']);
+    expect(names(rowsFor('#users'))).toEqual(['Member Accounts (users)']);
+  });
+
   it('stays quick over a schema of hundreds of tables', () => {
     addTables(600, index => `table_${index}_items`);
 
@@ -453,6 +487,30 @@ describe('paletteRows / @ columns', () => {
       tableId: 'orders',
       columnId: 'orders_user_id',
     });
+  });
+
+  it("lists a column by its logical name too, whatever the name view draws, the table part reading a table's", () => {
+    addLogicalNames();
+
+    for (const mode of [NameViewMode.physical, NameViewMode.logical]) {
+      showNames(mode);
+      expect(pairs(rowsFor('@login'))).toEqual([
+        ['Login Mail', 'users.email · Logical name'],
+      ]);
+      expect(names(rowsFor('@mail'))).toEqual(['Login Mail', 'email']);
+      expect(names(rowsFor('@member.'))).toEqual(['id', 'email']);
+      expect(names(rowsFor('@member.login'))).toEqual(['Login Mail']);
+      // A table's logical name is no column of it.
+      expect(rowsFor('@member')).toEqual([]);
+      // With no keyword each column lists once, by its name.
+      expect(names(rowsFor('@'))).toEqual([
+        'order_id',
+        'user_id',
+        'total',
+        'id',
+        'email',
+      ]);
+    }
   });
 
   it('lists every column the keyword names, however many, the table part narrowing them', () => {

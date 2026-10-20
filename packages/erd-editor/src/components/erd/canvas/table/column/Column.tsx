@@ -36,6 +36,7 @@ import {
   getColumnTextY,
   getColumnUnderlineY,
 } from '@/components/erd/canvas/table/cellLayout';
+import { columnMarkFill } from '@/components/erd/canvas/table/dictionaryMarks';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import {
   COLUMN_KEY_PATH,
@@ -169,6 +170,11 @@ export type ColumnProps = {
   hovered?: boolean;
   /** The placeholder row for a column dragged in from another table. */
   ghost?: boolean;
+  /**
+   * Whether the name cells write what the dictionaries' checks find in their
+   * colours, which the table decides for every row it draws.
+   */
+  checkMarks?: boolean;
   /** Drawn inside a copy of the table, which owns none of its ids. */
   preview?: boolean;
   editorFocused?: boolean;
@@ -414,6 +420,14 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     store.dispatch(columnKeyHoverEndAction$());
   };
 
+  /** What the checks find in a filled name cell, in their colour; null for none or a blank one. */
+  const markFill = (field: 'name' | 'logicalName') => {
+    const { column } = props;
+    if (!props.checkMarks || !column[field].trim()) return null;
+
+    return columnMarkFill(app.value.store, themeRef.value, column, field);
+  };
+
   /**
    * One cell, laid out the way its div was: the text in the 20px input line,
    * answering a press for the whole box, and the two underlines at their own
@@ -522,7 +536,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       x,
       width,
       text,
-      fill: filled ? theme.active : theme.placeholder,
+      fill:
+        markFill('logicalName') ?? (filled ? theme.active : theme.placeholder),
       ...marks,
       ellipsis: true,
       diffFallback,
@@ -570,7 +585,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           text: column.name.trim()
             ? column.name
             : i18n.value.t('common.placeholder.column'),
-          fill: column.name.trim() ? theme.active : theme.placeholder,
+          fill:
+            markFill('name') ??
+            (column.name.trim() ? theme.active : theme.placeholder),
           focus: props.focusName,
           edit: props.editName,
           sharedFocus: props.sharedFocusName,

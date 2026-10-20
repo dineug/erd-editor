@@ -18,9 +18,14 @@ import {
   type TreeRow,
 } from '@/components/primitives/tree/treeModel';
 import { EXPLORER_WIDTH } from '@/constants/layout';
+import {
+  isBothNameView,
+  isLogicalNameView,
+  toNameLabel,
+} from '@/engine/modules/editor/utils/nameView';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { PlainMessageKey } from '@/i18n/translate';
-import { type FindMatch, snippetOf } from '@/utils/find-replace';
+import { FindField, type FindMatch, snippetOf } from '@/utils/find-replace';
 import { forceFocusEvent } from '@/utils/internalEvents';
 import {
   isComposing,
@@ -80,6 +85,9 @@ function firstMatchOf(node: ExplorerNode): FindMatch | undefined {
   if (node.kind === 'excerpt') return node.match;
   return 'matches' in node ? node.matches?.[0] : undefined;
 }
+
+const isLogicalNameMatch = ({ field }: FindMatch) =>
+  field === FindField.logicalName;
 
 /** A row's text with the stretches a search found in it marked, while they still fit it. */
 function marked(text: string, matches: ReadonlyArray<FindMatch> = []) {
@@ -235,16 +243,53 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
   const label = (
     text: string,
     unnamed: string,
-    matches?: ReadonlyArray<FindMatch>
+    matches?: ReadonlyArray<FindMatch>,
+    standIn = false
   ) => {
     const blank = !text.trim();
     return (
       <span
-        class={[styles.name, { unnamed: blank }]}
+        class={[styles.name, { unnamed: blank, 'stand-in': standIn }]}
         title={blank ? unnamed : text}
       >
         {blank ? unnamed : marked(text, matches)}
       </span>
+    );
+  };
+
+  /**
+   * A table's or column's names as the name view shows them: the logical
+   * name, the name dimmed in its place while it is blank, and in the view of
+   * both the name after it, muted, each marking the matches found in it alone.
+   */
+  const nameLabel = (
+    node: { name: string; logicalName: string },
+    unnamed: string,
+    matches: ReadonlyArray<FindMatch> = []
+  ) => {
+    const { settings } = app.value.store.state;
+    const { text, after, standIn } = toNameLabel(settings, node);
+    const logicalMatches = matches.filter(isLogicalNameMatch);
+    const nameMatches = matches.filter(match => !isLogicalNameMatch(match));
+    // A logical name the view draws leads, and the name follows it or stands in.
+    const leadsLogical =
+      node.logicalName.trim() !== '' &&
+      (isLogicalNameView(settings) || isBothNameView(settings));
+
+    return (
+      <>
+        {label(
+          text,
+          unnamed,
+          leadsLogical ? logicalMatches : nameMatches,
+          standIn
+        )}
+        {after ? (
+          <span class={styles.muted} title={after}>
+            {marked(after, nameMatches)}
+          </span>
+        ) : null}
+      </>
     );
   };
 
@@ -274,7 +319,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             <span class={styles.rowIcon}>
               <Icon name="table-2" size={14} />
             </span>
-            {label(node.name, unnamed, node.matches)}
+            {nameLabel(node, unnamed, node.matches)}
           </>
         );
       case 'groupTable':
@@ -283,7 +328,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
             <span class={styles.rowIcon}>
               <Icon name="table-2" size={14} />
             </span>
-            {label(node.name, unnamed)}
+            {nameLabel(node, unnamed)}
           </>
         );
       case 'column': {
@@ -310,7 +355,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
                 <Icon name="list" size={14} />
               </span>
             )}
-            {label(node.name, unnamed, node.matches)}
+            {nameLabel(node, unnamed, node.matches)}
             <span class={styles.muted} title={detail} prop:dir="ltr">
               {detail}
             </span>

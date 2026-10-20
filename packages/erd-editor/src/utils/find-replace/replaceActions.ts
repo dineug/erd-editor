@@ -1,5 +1,9 @@
 import { CompositionAction } from '@dineug/r-html';
 
+import {
+  setColumnLogicalNameAction$,
+  setTableLogicalNameAction$,
+} from '@/engine/modules/dictionary/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import { changeIndexNameAction } from '@/engine/modules/index/atom.actions';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
@@ -9,18 +13,20 @@ import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.ac
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
 import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 
-import { FindField, FindMatch } from './findMatches';
+import { FindField, FindMatch, isTableLogicalName } from './findMatches';
 import { Matcher } from './matcher';
 
 /**
  * What writes a new value into the field a match was found in, as an edit by
- * hand does: a name through the generator that turns its derived flag off,
- * every other field through its atom action.
+ * hand does: a name through the generator that turns its derived flag off, a
+ * logical name through the one that derives its name, the rest by atom action.
  */
 export function toFieldAction(
-  { field, id, tableId }: Pick<FindMatch, 'field' | 'id' | 'tableId'>,
+  match: Pick<FindMatch, 'field' | 'id' | 'tableId'>,
   value: string
 ): CompositionAction {
+  const { field, id, tableId } = match;
+
   switch (field) {
     case FindField.tableName:
       return changeTableNameAction$(id, value);
@@ -36,6 +42,10 @@ export function toFieldAction(
       return changeIndexNameAction({ id, tableId, value });
     case FindField.tableGroupName:
       return changeTableGroupNameAction({ id, value });
+    case FindField.logicalName:
+      return isTableLogicalName(match)
+        ? setTableLogicalNameAction$(id, value)
+        : setColumnLogicalNameAction$(tableId, id, value);
   }
 }
 

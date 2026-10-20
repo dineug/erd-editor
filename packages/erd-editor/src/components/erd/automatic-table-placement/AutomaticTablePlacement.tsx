@@ -21,6 +21,7 @@ import {
   getScrollToCenter,
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
+import { readerNameViewAction } from '@/components/erd/readerNameView';
 import { useI18n } from '@/components/localeContext';
 import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
@@ -168,8 +169,11 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
     centerOfRect(contentRect)
   );
 
+  // The preview opens in the reader's name view, so the tables it places are
+  // as wide as the ones the reader sees.
   store.dispatchSync(
     initialLoadJsonAction$(toJson(originState)),
+    readerNameViewAction(store.state, originState),
     changeViewportAction(getViewport()),
     changeZoomLevelAction({ value: zoomLevel }),
     scrollToAction({ originX: previewOrigin.x, originY: previewOrigin.y })

@@ -106,6 +106,11 @@ export type Theme = {
   explorerBackground: string;
   explorerBorder: string;
 
+  dictionaryErrorForeground: string;
+  dictionaryErrorBackground: string;
+  dictionaryWarningForeground: string;
+  dictionaryWarningBackground: string;
+
   diffInsertForeground: string;
   diffDeleteForeground: string;
   diffModifyForeground: string;
@@ -217,6 +222,11 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
 
   'explorerBackground',
   'explorerBorder',
+
+  'dictionaryErrorForeground',
+  'dictionaryErrorBackground',
+  'dictionaryWarningForeground',
+  'dictionaryWarningBackground',
 
   'diffInsertForeground',
   'diffDeleteForeground',

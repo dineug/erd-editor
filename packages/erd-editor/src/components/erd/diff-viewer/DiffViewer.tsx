@@ -8,6 +8,7 @@ import {
 } from '@/components/appContext';
 import DiffTree from '@/components/erd/diff-viewer/diff-tree/DiffTree';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
+import { readerNameViewAction } from '@/components/erd/readerNameView';
 import { dropRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
@@ -76,13 +77,16 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
 
   // The pane is measured before either document lands in it, so a load pulls
   // its origin against the pane rather than against the store's default size.
+  // Both open in the reader's name view, whatever the file locks.
   prevApp.store.dispatchSync(
     changeViewportAction(getViewport()),
-    initialLoadJsonAction$(props.initialValue)
+    initialLoadJsonAction$(props.initialValue),
+    readerNameViewAction(prevApp.store.state, originApp.store.state)
   );
   app.store.dispatchSync(
     changeViewportAction(getViewport()),
-    initialLoadJsonAction$(toJson(originApp.store.state))
+    initialLoadJsonAction$(toJson(originApp.store.state)),
+    readerNameViewAction(app.store.state, originApp.store.state)
   );
 
   const {

@@ -23,7 +23,7 @@
 | `MapColumnsDialog.styles.ts` | The dialog's one column and its native lists drawn in the editor's appearance |
 | `mapColumnsAction.ts` | `mapColumnsAction$`, the one batch Map or Save dispatches, judged on the state it lands on |
 | `openMapColumns.ts` | `openMapColumns`, which opens the dialog on the session the opening names |
-| `nameOf.ts` | `nameOf`, a table's or column's name as Map Columns and the draw-target buttons write it, unnamed where it has none |
+| `nameOf.ts` | `nameOf`, a table's or column's name as Map Columns and the draw-target buttons write it: the one the name view shows, the name after the logical name in brackets in the view of both, unnamed where it shows none |
 | `src/utils/map-columns/candidateKeys.ts` | `getCandidateKeys`: the primary key in column order, then each unique column |
 | `src/utils/map-columns/prefill.ts` | `toPrefillNames` and `prefillPicks`, the names a child column may hold and the rows they fill |
 | `src/utils/map-columns/buildRows.ts` | `openCreateSession`, `openEditSession`, `buildMapColumns`, `changeMapColumnsKey`, `pickMapColumn` |

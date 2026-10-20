@@ -18,15 +18,20 @@ import {
   COLUMN_NOT_NULL_WIDTH,
   COLUMN_UNIQUE_WIDTH,
 } from '@/constants/layout';
-import { ColumnType, Show } from '@/constants/schema';
+import { ColumnType, NameViewMode, Show } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeColumnOrderAction,
   changeShowAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
   changeColumnAutoIncrementAction,
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
@@ -383,6 +388,126 @@ describe('visualization Column', () => {
 
       expect(dataTypeCell.querySelector('input')).toBeNull();
       expect(dataTypeCell.querySelector('.edit-input')).toBeTruthy();
+    });
+  });
+
+  describe('name views', () => {
+    const WIDTH_LOGICAL_NAME = 50;
+    const WIDTH_DOMAIN = 40;
+
+    const viewTemplate = () => html`
+      <${Column}
+        column=${column}
+        widthName=${WIDTH_NAME}
+        widthDataType=${WIDTH_DATA_TYPE}
+        widthDefault=${WIDTH_DEFAULT}
+        widthComment=${WIDTH_COMMENT}
+        widthLogicalName=${WIDTH_LOGICAL_NAME}
+        widthDomain=${WIDTH_DOMAIN}
+      />
+    `;
+
+    const switchTo = (mode: (typeof NameViewMode)[keyof typeof NameViewMode]) =>
+      app.store.dispatchSync(
+        toNameViewModeAction(app.store.state, mode, false)
+      );
+
+    // A member_id INT row linking the Identifier domain, no other cell shown.
+    beforeEach(() => {
+      app.store.dispatchSync(
+        changeColumnNameAction({
+          id: COLUMN_ID,
+          tableId: TABLE_ID,
+          value: 'member_id',
+        }),
+        changeColumnDataTypeAction({
+          id: COLUMN_ID,
+          tableId: TABLE_ID,
+          value: 'INT',
+        }),
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd1',
+          values: { name: 'Identifier', dataType: 'INT' },
+        }),
+        changeColumnDomainAction({
+          id: COLUMN_ID,
+          tableId: TABLE_ID,
+          value: 'd1',
+        }),
+        changeShowAction({ show: Show.columnNotNull, value: false }),
+        changeShowAction({ show: Show.columnDefault, value: false }),
+        changeShowAction({ show: Show.columnComment, value: false })
+      );
+    });
+
+    it('draws the logical name in the name cell and the domain in the type cell in the logical view', async () => {
+      app.store.dispatchSync(
+        changeColumnLogicalNameAction({
+          id: COLUMN_ID,
+          tableId: TABLE_ID,
+          value: 'Member ID',
+        })
+      );
+      switchTo(NameViewMode.logical);
+      mounted = await mountAndFlush(viewTemplate(), app);
+
+      expect(cellTexts(mounted)).toEqual(['Member ID', 'Identifier']);
+      expect(
+        (cellsOf(mounted)[0].firstElementChild as HTMLElement).style.width
+      ).toBe(`${WIDTH_NAME}px`);
+    });
+
+    it('dims the name standing in for a blank logical name in the logical view', async () => {
+      switchTo(NameViewMode.logical);
+      mounted = await mountAndFlush(viewTemplate(), app);
+      const nameCell = cellsOf(mounted)[0].firstElementChild as HTMLElement;
+
+      expect(nameCell.textContent?.trim()).toBe('member_id');
+      expect(nameCell.classList.contains('placeholder')).toBe(true);
+    });
+
+    it('adds the logical name cell before the name in the view of both, the type kept', async () => {
+      switchTo(NameViewMode.both);
+      mounted = await mountAndFlush(viewTemplate(), app);
+      const [logicalName] = cellsOf(mounted).map(
+        cell => cell.firstElementChild as HTMLElement
+      );
+
+      expect(cellTexts(mounted)).toEqual(['logical', 'member_id', 'INT']);
+      expect(logicalName.classList.contains('placeholder')).toBe(true);
+      expect(logicalName.style.width).toBe(`${WIDTH_LOGICAL_NAME}px`);
+    });
+
+    it('shows the domain cell under its bit in every view, the logical type cell then keeping the type', async () => {
+      app.store.dispatchSync(
+        changeShowAction({ show: Show.columnDomain, value: true })
+      );
+      switchTo(NameViewMode.logical);
+      mounted = await mountAndFlush(viewTemplate(), app);
+
+      expect(cellTexts(mounted)).toEqual(['member_id', 'INT', 'Identifier']);
+      expect(
+        (cellsOf(mounted)[2].firstElementChild as HTMLElement).style.width
+      ).toBe(`${WIDTH_DOMAIN}px`);
+
+      switchTo(NameViewMode.physical);
+      await flush();
+      expect(cellTexts(mounted)).toEqual(['member_id', 'INT', 'Identifier']);
+    });
+
+    it('leaves the domain cell empty for a column linking no domain', async () => {
+      app.store.dispatchSync(
+        changeColumnDomainAction({
+          id: COLUMN_ID,
+          tableId: TABLE_ID,
+          value: '',
+        }),
+        changeShowAction({ show: Show.columnDomain, value: true })
+      );
+      mounted = await mountAndFlush(viewTemplate(), app);
+
+      expect(cellTexts(mounted)).toEqual(['member_id', 'INT', '']);
     });
   });
 });

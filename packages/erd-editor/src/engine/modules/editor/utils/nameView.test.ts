@@ -24,6 +24,8 @@ import {
   isDomainInTypeCell,
   isLogicalNameView,
   keepFocusShown,
+  nameLabelText,
+  toNameLabel,
   toNameViewFocusType,
   toShownFocusType,
 } from '@/engine/modules/editor/utils/nameView';
@@ -136,6 +138,76 @@ describe('the name view a document draws', () => {
 
     state.settings.nameViewMode = NameViewMode.physical;
     expect(drawsDomainInTypeCell(state, { domainId: 'd1' })).toBe(false);
+  });
+});
+
+describe('the names a label shows', () => {
+  const named = { name: 'member', logicalName: 'Member' };
+  const blank = { name: 'member', logicalName: '  ' };
+  const nameless = { name: ' ', logicalName: '' };
+
+  it('shows the name alone in the physical view', () => {
+    const physical = settingsOf(NameViewMode.physical);
+
+    expect(toNameLabel(physical, named)).toEqual({
+      text: 'member',
+      after: '',
+      standIn: false,
+    });
+    expect(toNameLabel(physical, nameless)).toEqual({
+      text: ' ',
+      after: '',
+      standIn: false,
+    });
+  });
+
+  it('shows the logical name in the logical view, the name standing in while it is blank', () => {
+    const logical = settingsOf(NameViewMode.logical);
+
+    expect(toNameLabel(logical, named)).toEqual({
+      text: 'Member',
+      after: '',
+      standIn: false,
+    });
+    expect(toNameLabel(logical, blank)).toEqual({
+      text: 'member',
+      after: '',
+      standIn: true,
+    });
+    expect(toNameLabel(logical, nameless)).toEqual({
+      text: ' ',
+      after: '',
+      standIn: false,
+    });
+  });
+
+  it('shows the logical name with the name after it in the view of both, while each is filled', () => {
+    const both = settingsOf(NameViewMode.both);
+
+    expect(toNameLabel(both, named)).toEqual({
+      text: 'Member',
+      after: 'member',
+      standIn: false,
+    });
+    expect(toNameLabel(both, blank)).toEqual({
+      text: 'member',
+      after: '',
+      standIn: false,
+    });
+    expect(toNameLabel(both, { name: '', logicalName: 'Member' })).toEqual({
+      text: 'Member',
+      after: '',
+      standIn: false,
+    });
+  });
+
+  it('writes the name after the logical name in brackets as one text', () => {
+    expect(
+      nameLabelText(toNameLabel(settingsOf(NameViewMode.both), named))
+    ).toBe('Member (member)');
+    expect(
+      nameLabelText(toNameLabel(settingsOf(NameViewMode.logical), named))
+    ).toBe('Member');
   });
 });
 

@@ -27,9 +27,13 @@ import {
   type TreeRow,
 } from '@/components/primitives/tree/treeModel';
 import { EXPLORER_WIDTH } from '@/constants/layout';
+import {
+  type NameLabel,
+  toNameLabel,
+} from '@/engine/modules/editor/utils/nameView';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { PlainMessageKey } from '@/i18n/translate';
-import { type DiffEntries, DiffKind } from '@/utils/diff';
+import { type DiffEntries, type DiffEntry, DiffKind } from '@/utils/diff';
 import {
   KeyBindingName,
   PANEL_PASSING_BINDINGS,
@@ -185,6 +189,15 @@ const DiffTree: FC<DiffTreeProps> = (props, ctx) => {
     }
   };
 
+  /**
+   * The names a row shows: a table's or column's in the name view the panes
+   * opened in, every other entry's own name as it stands.
+   */
+  const namesOf = (entry: DiffEntry): NameLabel =>
+    entry.kind === DiffKind.table || entry.kind === DiffKind.column
+      ? toNameLabel(props.app.store.state.settings, entry)
+      : { text: entry.name, after: '', standIn: false };
+
   const renderRow = (row: TreeRow<DiffTreeItem>): DOMTemplateLiterals => {
     const { t } = i18n.value;
     const item = row.node.data;
@@ -211,7 +224,8 @@ const DiffTree: FC<DiffTreeProps> = (props, ctx) => {
     }
 
     const { entry } = item;
-    const blank = !entry.name.trim();
+    const names = namesOf(entry);
+    const blank = !names.text.trim();
     const status = entry.status ?? '';
     return (
       <>
@@ -221,8 +235,13 @@ const DiffTree: FC<DiffTreeProps> = (props, ctx) => {
           title={describeEntry(entry, i18n.value)}
           prop:dir="auto"
         >
-          {blank ? t('common.unnamed') : entry.name}
+          {blank ? t('common.unnamed') : names.text}
         </span>
+        {names.after ? (
+          <span class={[styles.after, status]} prop:dir="auto">
+            {names.after}
+          </span>
+        ) : null}
         <span class={[styles.status, status]} aria-hidden="true">
           {letter}
         </span>

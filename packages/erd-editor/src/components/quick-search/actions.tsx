@@ -43,6 +43,10 @@ import {
 } from '@/engine/modules/dictionary/generator.actions';
 import { changeDrawTableGroupAction } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  nameLabelText,
+  toNameLabel,
+} from '@/engine/modules/editor/utils/nameView';
 import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
@@ -98,6 +102,8 @@ export type Action = {
   shortcut?: string;
   /** The table a row jumps to, whose keyword names the kind of row, not the table. */
   tableId?: string;
+  /** A table row's own names, its name and logical name, which a search reads whatever the name view shows. */
+  tableNames?: string[];
   /** What choosing the row types into the input, which stays open, instead of running a command. */
   insert?: string;
   /** The English of a translated name and keywords, each its own text, which a search also reads and the list never shows. */
@@ -113,9 +119,19 @@ export type Action = {
 
 const isNonEmpty = (text: string | undefined): text is string => Boolean(text);
 
-/** The texts of a row a search reads: its name, and the keywords and English alias of a row that is no table. */
-const textsOf = ({ name, keywords, alias = [], tableId }: Action): string[] =>
-  tableId ? [name] : [name, keywords, ...alias].filter(isNonEmpty);
+/** What a search reads of a table row: its table's own names, or its label while the table has none. */
+function tableTextsOf({ name, tableNames = [] }: Action): string[] {
+  const names = tableNames.filter(isNonEmpty);
+  return names.length ? names : [name];
+}
+
+/** The texts of a row a search reads: a table's names, or the name, keywords and English alias of a row that is no table. */
+const textsOf = (action: Action): string[] => {
+  const { name, keywords, alias = [], tableId } = action;
+  return tableId
+    ? tableTextsOf(action)
+    : [name, keywords, ...alias].filter(isNonEmpty);
+};
 
 /** What names a row: a message key, or a shared menu whose name stays as written where it has no key. */
 type RowLabel = PlainMessageKey | LabeledMenu;
@@ -200,7 +216,11 @@ export const SEARCH_THRESHOLD = 0.4;
 export function searchActions(actions: Action[], keyword: string): Action[] {
   const fuse = new Fues(actions, {
     keys: [
-      'name',
+      // A table is found by its name and logical name, whatever the view draws.
+      {
+        name: 'name',
+        getFn: action => (action.tableId ? tableTextsOf(action) : action.name),
+      },
       // A table row's Table would fuzz to most keywords and list every table.
       {
         name: 'keywords',
@@ -838,19 +858,26 @@ function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
   const {
     doc: { tableIds },
     collections,
+    settings,
   } = store.state;
   const unnamed = i18n.t('common.unnamed');
   const keywords = i18n.t('common.table');
+  const nameOf = (table: { name: string; logicalName: string }) => {
+    const name = nameLabelText(toNameLabel(settings, table));
+    return isEmpty(name.trim()) ? unnamed : name;
+  };
 
+  // A row names its table as the name view does, still listed by the name.
   return query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds)
     .sort(orderByNameASC)
     .map<Action>(table => ({
       icon: fieldIcon(FindField.tableName, 16),
-      name: isEmpty(table.name.trim()) ? unnamed : table.name,
+      name: nameOf(table),
       keywords,
       tableId: table.id,
+      tableNames: [table.name, table.logicalName],
       perform: ({ store }) => {
         goToErdTarget(store, { kind: 'table', tableId: table.id });
       },

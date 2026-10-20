@@ -9,6 +9,12 @@ import ColumnKey from '@/components/table-view/column/column-key/ColumnKey';
 import ColumnNotNull from '@/components/table-view/column/column-not-null/ColumnNotNull';
 import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import {
+  domainCellText,
+  logicalNameCellText,
+  nameCellText,
+  typeCellText,
+} from '@/components/table-view/column/columnViewText';
+import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_UNIQUE_WIDTH,
 } from '@/constants/layout';
@@ -17,6 +23,7 @@ import {
   ColumnType,
   Show,
 } from '@/constants/schema';
+import { isBothNameView } from '@/engine/modules/editor/utils/nameView';
 import type { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 
@@ -26,6 +33,10 @@ export type ColumnProps = {
   widthDataType: number;
   widthDefault: number;
   widthComment: number;
+  /** The logical name's own cell, which the view of both names alone lays out. */
+  widthLogicalName?: number;
+  /** The domain's own cell, laid out while its show bit is set. */
+  widthDomain?: number;
   /** The room the table keeps for alternate key marks, 0 while it draws none. */
   widthAlternateKey?: number;
   /** The mark this row carries in that room, last, as the ERD scene draws it. */
@@ -53,16 +64,51 @@ const Column: FC<ColumnProps> = (props, ctx) => {
         let template: DOMTemplateLiterals | null = null;
 
         switch (columnType) {
-          case ColumnType.columnName:
+          case ColumnType.columnName: {
+            const { value, placeholder } = nameCellText(
+              settings,
+              column,
+              i18n.value
+            );
             template = (
               <div class="column-col">
                 <EditInput
-                  placeholder={t('common.placeholder.column')}
+                  placeholder={placeholder}
                   width={widthName}
-                  value={column.name}
+                  value={value}
                 />
               </div>
             );
+            break;
+          }
+          case ColumnType.columnLogicalName: {
+            if (!isBothNameView(settings)) break;
+            const { value, placeholder } = logicalNameCellText(
+              settings,
+              column,
+              'common.placeholder.column',
+              i18n.value
+            );
+            template = (
+              <div class="column-col">
+                <EditInput
+                  placeholder={placeholder}
+                  width={props.widthLogicalName ?? 0}
+                  value={value}
+                />
+              </div>
+            );
+            break;
+          }
+          case ColumnType.columnDomain:
+            template = bHas(settings.show, Show.columnDomain) ? (
+              <div class="column-col">
+                <EditInput
+                  width={props.widthDomain ?? 0}
+                  value={domainCellText(store.state, column)}
+                />
+              </div>
+            ) : null;
             break;
           case ColumnType.columnDefault:
             template = bHas(settings.show, Show.columnDefault) ? (
@@ -93,7 +139,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
                   tableId={column.tableId}
                   columnId={column.id}
                   width={widthDataType}
-                  value={column.dataType}
+                  value={typeCellText(store.state, column)}
                 />
               </div>
             ) : null;

@@ -13,6 +13,7 @@ import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import type { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { openMapColumnsAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -39,14 +40,21 @@ export type MapColumnsDialogProps = {
 
 const DIALOG_MAX_WIDTH = 600;
 
+type TableRemovedTextProps = {
+  name: string;
+  logicalName: string;
+  /** The name view the store showed as the table went, which names it. */
+  nameViewMode: RootState['settings']['nameViewMode'];
+};
+
 /** The toast a removed table closes the dialog with, read where it renders, its unnamed too. */
-const TableRemovedText: FC<{ name: string }> = (props, ctx) => {
+const TableRemovedText: FC<TableRemovedTextProps> = (props, ctx) => {
   const i18n = useI18n(ctx);
 
   return () => (
     <>
       {i18n.value.t('mapColumns.closedTableRemoved', {
-        table: nameOf(props, i18n.value),
+        table: nameOf(props, i18n.value, props),
       })}
     </>
   );
@@ -92,7 +100,13 @@ const MapColumnsDialog: FC<MapColumnsDialogProps> = (props, ctx) => {
     const table = query(app.value.store.state.collections)
       .collection('tableEntities')
       .selectById(closed.tableId);
-    return <TableRemovedText name={table?.name ?? ''} />;
+    return (
+      <TableRemovedText
+        name={table?.name ?? ''}
+        logicalName={table?.logicalName ?? ''}
+        nameViewMode={app.value.store.state.settings.nameViewMode}
+      />
+    );
   };
 
   const open = ({ payload }: ReturnType<typeof openMapColumnsAction>) => {

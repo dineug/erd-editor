@@ -26,6 +26,9 @@ import ExplorerController from '@/components/explorer/explorer-controller/Explor
 import { closeExplorer } from '@/components/explorer/explorerCommands';
 import { focusSearch } from '@/components/explorer/explorerSearch';
 import { explorerViewOf } from '@/components/explorer/explorerView';
+import { NameViewMode } from '@/constants/schema';
+import { toNameViewModeAction } from '@/engine/modules/settings/atom.actions';
+import { changeTableLogicalNameAction } from '@/engine/modules/table/atom.actions';
 import type { I18n } from '@/i18n/translate';
 import { hasAppleDevice } from '@/utils/device-detect';
 import { DEFAULT_FIND_FIELDS, FindFieldList } from '@/utils/find-replace';
@@ -216,7 +219,7 @@ describe('ExplorerSearch - layout', () => {
     expect(toggle.getBoundingClientRect().bottom).toBe(bottom);
   });
 
-  it('shows the seven kinds of text past the three dots, the names alone pressed at first (AC-Q2)', async () => {
+  it('shows the eight kinds of text past the three dots, the names alone pressed at first (AC-Q2)', async () => {
     await setup();
     await open();
 
@@ -247,7 +250,7 @@ describe('ExplorerSearch - layout', () => {
     await open();
 
     expect(replaceInput()).not.toBeNull();
-    expect(panel()!.querySelectorAll('.find-scope')).toHaveLength(7);
+    expect(panel()!.querySelectorAll('.find-scope')).toHaveLength(8);
   });
 
   it('offers nothing to replace with in a read-only editor', async () => {
@@ -456,6 +459,37 @@ describe('ExplorerSearch - the tree it searches', () => {
       'Every user_id points at users.id'
     );
     expect(rowOf('f:tables').textContent?.trim()).toBe('Tables2');
+  });
+
+  it('marks a logical name where the name view draws it, and the name apart from it', async () => {
+    await setup();
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'users', value: 'users' }),
+      changeTableLogicalNameAction({ id: 'orders', value: 'User Orders' })
+    );
+    await open('user');
+    const view = async (
+      mode: (typeof NameViewMode)[keyof typeof NameViewMode]
+    ) => {
+      app.store.dispatchSync(
+        toNameViewModeAction(app.store.state, mode, false)
+      );
+      await settle();
+    };
+
+    expect(rowIds().slice(0, 2)).toEqual(['f:tables', 't:orders']);
+    expect(marksOf('t:orders')).toEqual([]);
+    expect(marksOf('t:users')).toEqual(['user']);
+
+    await view(NameViewMode.both);
+    expect(marksOf('t:orders')).toEqual(['User']);
+    expect(rowOf('t:users').textContent?.trim()).toBe('usersusers');
+    expect(marksOf('t:users')).toEqual(['user', 'user']);
+
+    await view(NameViewMode.logical);
+    expect(rowOf('t:orders').textContent?.trim()).toBe('User Orders');
+    expect(marksOf('t:orders')).toEqual(['User']);
+    expect(marksOf('t:users')).toEqual(['user']);
   });
 
   it('goes to the match a row holds on a click, the first of a name, and where any other row stands for', async () => {

@@ -31,6 +31,7 @@ const SCOPE_LABEL: Record<FindField, PlainMessageKey> = {
   [FindField.memo]: 'findReplace.scope.memo',
   [FindField.indexName]: 'findReplace.scope.indexName',
   [FindField.tableGroupName]: 'findReplace.scope.tableGroupName',
+  [FindField.logicalName]: 'findReplace.scope.logicalName',
 };
 
 export type ExplorerSearchProps = {

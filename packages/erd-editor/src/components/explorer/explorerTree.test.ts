@@ -12,10 +12,14 @@ import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   changeTableCommentAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
-import { changeColumnCommentAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  changeColumnCommentAction,
+  changeColumnLogicalNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   createMatcher,
   FindFieldList,
@@ -27,6 +31,7 @@ import {
   buildExplorerTree,
   buildSearchTree,
   type ExplorerNode,
+  matchAncestorIds,
   matchRowId,
   searchExpanded,
 } from './explorerTree';
@@ -136,6 +141,7 @@ describe('buildExplorerTree', () => {
       tableGroupId: 'billing',
       tableId: 'orders',
       name: 'orders',
+      logicalName: '',
     });
     expect(nodeOf('g:billing')).toMatchObject({ color: '#ff0000' });
     expect(nodeOf('m:note')).toEqual({
@@ -143,6 +149,28 @@ describe('buildExplorerTree', () => {
       memoId: 'note',
       text: 'Order states',
     });
+  });
+
+  it('carries the logical names a label shows, and orders the tables by their names alone', () => {
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'users', value: 'Accounts' }),
+      changeTableLogicalNameAction({ id: 'orders', value: 'Zeta' }),
+      changeColumnLogicalNameAction({
+        id: 'orders.total',
+        tableId: 'orders',
+        value: 'Total',
+      })
+    );
+
+    expect(nodeOf('t:users')).toMatchObject({ logicalName: 'Accounts' });
+    expect(nodeOf('c:orders.total')).toMatchObject({ logicalName: 'Total' });
+    expect(nodeOf('c:orders.id')).toMatchObject({ logicalName: '' });
+    expect(nodeOf('g:billing/t:orders')).toMatchObject({ logicalName: 'Zeta' });
+    expect(ids().filter(id => /^t:[^/]+$/.test(id))).toEqual([
+      't:apple',
+      't:orders',
+      't:users',
+    ]);
   });
 
   it('orders tables and groups by name, any case, and memos as the document has them (AC-T6)', () => {
@@ -243,6 +271,52 @@ describe('buildSearchTree', () => {
       columns: 'user_id DESC, total',
       matches: [{ field: 'indexName', start: 0, end: 5 }],
     });
+  });
+
+  it("marks a table's or a column's logical name on its own row, beside its name", () => {
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'users', value: 'Order Owner' }),
+      changeColumnLogicalNameAction({
+        id: 'orders.total',
+        tableId: 'orders',
+        value: 'Order Total',
+      })
+    );
+    const rows = searchRows('order');
+    const node = (id: string) => rows.find(row => row.node.id === id)?.node;
+
+    expect(rows.map(row => row.node.id)).toEqual([
+      'f:tables',
+      't:orders',
+      't:orders/f:columns',
+      'c:orders.total',
+      't:orders/f:indexes',
+      'i:idx',
+      't:users',
+      'f:memos',
+      'm:note',
+      'm:note/x:memo:0',
+    ]);
+    expect(node('t:users')?.data).toMatchObject({
+      kind: 'table',
+      logicalName: 'Order Owner',
+      matches: [{ field: 'logicalName', start: 0, end: 5 }],
+    });
+    expect(node('c:orders.total')?.data).toMatchObject({
+      kind: 'column',
+      matches: [{ field: 'logicalName', start: 0, end: 5 }],
+    });
+
+    const [ownerMatch] = matchesOf('owner');
+    const [totalMatch] = matchesOf('order total');
+    expect(matchRowId(ownerMatch)).toBe('t:users');
+    expect(matchAncestorIds(ownerMatch)).toEqual(['f:tables']);
+    expect(matchRowId(totalMatch)).toBe('c:orders.total');
+    expect(matchAncestorIds(totalMatch)).toEqual([
+      'f:tables',
+      't:orders',
+      't:orders/f:columns',
+    ]);
   });
 
   it('gives each match in a comment or a memo a row of its own (N-k)', () => {

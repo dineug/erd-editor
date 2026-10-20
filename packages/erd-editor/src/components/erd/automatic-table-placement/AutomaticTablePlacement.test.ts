@@ -34,27 +34,32 @@ import {
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import { MINIMAP_MARGIN } from '@/constants/layout';
 import { Open } from '@/constants/open';
+import { NameViewMode } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeZoomLevelAction,
   scrollToAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createI18n, type I18n } from '@/i18n/translate';
 import { getContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
-import type { Rect } from '@/konva/scene/metrics';
+import { getTableRect, type Rect } from '@/konva/scene/metrics';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 const hoisted = vi.hoisted(() => ({
   simulations: [] as any[],
+  /** The preview state each simulation was built over. */
+  states: [] as any[],
   throwOnCreate: false,
 }));
 
@@ -79,6 +84,7 @@ vi.mock(
         const simulation = actual.createAutomaticTablePlacement(state);
         simulation.stop();
         hoisted.simulations.push(simulation);
+        hoisted.states.push(state);
         return simulation;
       },
     };
@@ -229,6 +235,7 @@ function clickButton(container: HTMLElement, text: string) {
 
 beforeEach(() => {
   hoisted.simulations.length = 0;
+  hoisted.states.length = 0;
   hoisted.throwOnCreate = false;
 });
 
@@ -331,6 +338,27 @@ describe('AutomaticTablePlacement', () => {
       expect(visible.height).toBeGreaterThan(content.height);
       expect(centerOf(visible).x).toBeCloseTo(centerOf(content).x, 6);
       expect(centerOf(visible).y).toBeCloseTo(centerOf(content).y, 6);
+    });
+
+    it("places the tables at the widths the reader's name view gives them, which the file leaves out", async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users');
+      app.store.dispatchSync(
+        changeTableLogicalNameAction({
+          id: 't1',
+          value: 'Every account that signs in',
+        }),
+        toNameViewModeAction(app.store.state, NameViewMode.logical, false)
+      );
+      expect(app.store.state.settings.lockSettings).toBe(63);
+
+      await open(app, vi.fn());
+      const [placed] = hoisted.states;
+      const widthOf = (state: any) =>
+        getTableRect(state, state.collections.tableEntities.t1).width;
+
+      expect(placed.settings.nameViewMode).toBe(NameViewMode.logical);
+      expect(widthOf(placed)).toBe(widthOf(app.store.state));
     });
 
     it('mirrors the origin viewport into the preview store', async () => {

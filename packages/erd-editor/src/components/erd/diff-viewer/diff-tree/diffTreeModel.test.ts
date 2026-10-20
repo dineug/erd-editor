@@ -147,6 +147,42 @@ describe('buildDiffTree', () => {
     expect(ids(entries, 'nothing like it')).toEqual([]);
   });
 
+  it('keeps what the filter finds by the current or the saved logical name too, whatever the view', () => {
+    const entries = entriesOf(
+      {
+        tables: [
+          { ...USERS, logicalName: 'Customer' },
+          { id: 'old', name: 'old', logicalName: 'Archive' },
+        ],
+      },
+      {
+        tables: [
+          {
+            ...USERS,
+            name: 'members',
+            logicalName: 'Member',
+            columns: [
+              USERS.columns[0],
+              { ...USERS.columns[1], logicalName: 'Login', comment: 'x' },
+            ],
+          },
+        ],
+      }
+    );
+
+    const users = ['f:tables', 't:users', 't:users/f:columns', 'c:u.email'];
+
+    expect(ids(entries, 'custom')).toEqual(users);
+    expect(ids(entries, 'MEMBER')).toEqual(users);
+    expect(ids(entries, 'login')).toEqual([
+      'f:tables',
+      't:users',
+      't:users/f:columns',
+      'c:u.email',
+    ]);
+    expect(ids(entries, 'archive')).toEqual(['f:tables', 't:prev-old']);
+  });
+
   it('builds nothing for no changes', () => {
     expect(buildDiffTree({ tables: [], tableGroups: [], memos: [] })).toEqual({
       roots: [],

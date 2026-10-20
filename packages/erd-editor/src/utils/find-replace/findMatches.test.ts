@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import { seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
-import { Show } from '@/constants/schema';
+import { NameViewMode, Show } from '@/constants/schema';
 import { ChangeActionTypes } from '@/engine/actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
 import { ActionType as IndexActionType } from '@/engine/modules/index/actions';
@@ -17,10 +17,14 @@ import {
   removeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import { ActionType as SettingsActionType } from '@/engine/modules/settings/actions';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeShowAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -28,6 +32,7 @@ import { ActionType as ColumnActionType } from '@/engine/modules/table-column/ac
 import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
+  changeColumnLogicalNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { ActionType as TableGroupActionType } from '@/engine/modules/table-group/actions';
 import {
@@ -36,6 +41,7 @@ import {
 } from '@/engine/modules/table-group/atom.actions';
 import {
   createMatcher,
+  DEFAULT_FIND_FIELDS,
   DEFAULT_FIND_OPTIONS,
   FindField,
   FindFieldList,
@@ -43,6 +49,7 @@ import {
   findMatches,
   FindTextActionTypes,
   indexAfter,
+  isTableLogicalName,
   Matcher,
   nextReplace,
   rematchField,
@@ -76,18 +83,25 @@ describe('walkFields', () => {
     const fields = walkFields(app.store.state, FindFieldList);
 
     expect(fields.map(({ field, id }) => `${field}:${id}`)).toEqual([
+      'logicalName:orders',
       'tableName:orders',
       'tableComment:orders',
+      'logicalName:order_id',
       'columnName:order_id',
       'columnComment:order_id',
+      'logicalName:orders_user_id',
       'columnName:orders_user_id',
       'columnComment:orders_user_id',
+      'logicalName:total',
       'columnName:total',
       'columnComment:total',
+      'logicalName:users',
       'tableName:users',
       'tableComment:users',
+      'logicalName:users_id',
       'columnName:users_id',
       'columnComment:users_id',
+      'logicalName:email',
       'columnName:email',
       'columnComment:email',
       'memo:note',
@@ -95,8 +109,8 @@ describe('walkFields', () => {
     expect(fields.map(({ slot }) => slot)).toEqual(
       fields.map((_, index) => index)
     );
-    expect(fields[4]).toMatchObject({ tableId: 'orders', text: 'user_id' });
-    expect(fields[14]).toMatchObject({ tableId: '', text: expect.any(String) });
+    expect(fields[7]).toMatchObject({ tableId: 'orders', text: 'user_id' });
+    expect(fields[21]).toMatchObject({ tableId: '', text: expect.any(String) });
   });
 
   it('walks only the fields asked for, and no column at all when neither column field is', () => {
@@ -118,7 +132,17 @@ describe('walkFields', () => {
 
     expect(
       walkFields(app.store.state, FindFieldList).map(({ id }) => id)
-    ).toEqual(['users', 'users', 'users_id', 'users_id', 'email', 'email']);
+    ).toEqual([
+      'users',
+      'users',
+      'users',
+      'users_id',
+      'users_id',
+      'users_id',
+      'email',
+      'email',
+      'email',
+    ]);
   });
 });
 
@@ -138,7 +162,7 @@ describe('findMatches', () => {
       text: 'user_id',
       start: 0,
       end: 4,
-      slot: 4,
+      slot: 7,
     });
   });
 
@@ -179,6 +203,90 @@ describe('findMatches', () => {
   });
 });
 
+/** Logical names on the orders table and its user column, and on the users table. */
+function addLogicalNames() {
+  app.store.dispatchSync(
+    changeTableLogicalNameAction({ id: 'orders', value: 'Order' }),
+    changeColumnLogicalNameAction({
+      id: 'orders_user_id',
+      tableId: 'orders',
+      value: 'Buyer User',
+    }),
+    changeTableLogicalNameAction({ id: 'users', value: 'Member' })
+  );
+}
+
+describe('walkFields over logical names', () => {
+  it("walks a table's and a column's logical name before its name, in one kind", () => {
+    addLogicalNames();
+
+    expect(
+      walkFields(app.store.state, [
+        FindField.logicalName,
+        FindField.tableName,
+        FindField.columnName,
+      ])
+        .slice(0, 9)
+        .map(({ field, id, text }) => `${field}:${id}=${text}`)
+    ).toEqual([
+      'logicalName:orders=Order',
+      'tableName:orders=orders',
+      'logicalName:order_id=',
+      'columnName:order_id=order_id',
+      'logicalName:orders_user_id=Buyer User',
+      'columnName:orders_user_id=user_id',
+      'logicalName:total=',
+      'columnName:total=total',
+      'logicalName:users=Member',
+    ]);
+  });
+
+  it('walks the columns for their logical names though no other column field is asked for', () => {
+    addLogicalNames();
+
+    expect(walked([FindField.logicalName])).toEqual([
+      'logicalName:orders',
+      'logicalName:order_id',
+      'logicalName:orders_user_id',
+      'logicalName:total',
+      'logicalName:users',
+      'logicalName:users_id',
+      'logicalName:email',
+    ]);
+  });
+
+  it("tells a table's logical name, which bears the table's id, from a column's", () => {
+    const [table, column] = walkFields(app.store.state, [
+      FindField.logicalName,
+    ]);
+
+    expect(isTableLogicalName(table)).toBe(true);
+    expect(isTableLogicalName(column)).toBe(false);
+    expect(
+      isTableLogicalName({ field: FindField.tableName, id: 'a', tableId: 'a' })
+    ).toBe(false);
+  });
+
+  it('finds a logical name whatever the name view draws', () => {
+    addLogicalNames();
+    const found = () =>
+      places(
+        findMatches(app.store.state, matcherOf('user'), [FindField.logicalName])
+      );
+
+    expect(found()).toEqual(['logicalName:orders_user_id@6']);
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, NameViewMode.logical, false)
+    );
+    expect(found()).toEqual(['logicalName:orders_user_id@6']);
+  });
+
+  it('opens on the logical names among the names', () => {
+    expect(DEFAULT_FIND_FIELDS).toContain(FindField.logicalName);
+    expect(DEFAULT_FIND_FIELDS).not.toContain(FindField.tableComment);
+  });
+});
+
 describe('FindTextActionTypes', () => {
   it('names actions the engine has, every one an edit a host saves or a load', () => {
     const known = new Set<string>([
@@ -198,6 +306,11 @@ describe('FindTextActionTypes', () => {
         true
       );
     }
+  });
+
+  it('runs a search again as a table or column logical name changes', () => {
+    expect(FindTextActionTypes).toContain('table.changeLogicalName');
+    expect(FindTextActionTypes).toContain('column.changeLogicalName');
   });
 
   it('runs a search again as the memos are hidden or shown, which takes them out of the walk or brings them back', () => {
@@ -277,15 +390,15 @@ describe('indexAfter', () => {
   const matches = () => findMatches(app.store.state, matcherOf('user'));
 
   it('goes to the next match in the same field past the offset', () => {
-    expect(indexAfter(matches(), 14, 7)).toBe(4);
+    expect(indexAfter(matches(), 21, 7)).toBe(4);
   });
 
   it('goes on to a later field', () => {
-    expect(indexAfter(matches(), 4, 4)).toBe(1);
+    expect(indexAfter(matches(), 7, 4)).toBe(1);
   });
 
   it('wraps to the first match past the last one', () => {
-    expect(indexAfter(matches(), 14, 30)).toBe(0);
+    expect(indexAfter(matches(), 21, 30)).toBe(0);
   });
 
   it('has nowhere to go without a match', () => {
@@ -317,7 +430,7 @@ describe('nextReplace', () => {
     expect(step.run).toEqual({
       field: FindField.columnName,
       id: 'orders_user_id',
-      slot: 4,
+      slot: 7,
       start: 0,
       text: 'super_user_id',
       wrapped: false,
@@ -354,7 +467,7 @@ describe('nextReplace', () => {
     expect(step.run).toEqual({
       field: FindField.tableComment,
       id: 'orders',
-      slot: 1,
+      slot: 2,
       start: 0,
       text: 'Big Customer orders',
       wrapped: true,
@@ -394,7 +507,7 @@ describe('resumeRun', () => {
   const memoRun = (): ReplaceRun => ({
     field: FindField.memo,
     id: 'note',
-    slot: 14,
+    slot: 21,
     start: 0,
     text: 'Every user_id points at users.id',
     wrapped: true,
@@ -405,7 +518,7 @@ describe('resumeRun', () => {
 
     expect(resumeRun(app.store.state, FindFieldList, memoRun())).toEqual({
       ...memoRun(),
-      slot: 8,
+      slot: 12,
     });
   });
 

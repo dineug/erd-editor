@@ -600,6 +600,31 @@ describe('createScopeActions / Name View', () => {
     setCanvasType(CanvasType.ERD);
     expect(nameView().filter?.(app)).toBe(true);
   });
+
+  it('names the table jumps # lists as the view in force does, still in name order', async () => {
+    const users = addTable('users');
+    addTable('orders');
+    addTable('');
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: users, value: 'Accounts' })
+    );
+    const jumps = () =>
+      scope()
+        .filter(action => action.tableId)
+        .map(action => action.name);
+    const switchTo = async (name: string) => {
+      find(nameView().next ?? [], name).perform?.(app);
+      await flush();
+    };
+
+    expect(jumps()).toEqual(['unnamed', 'orders', 'users']);
+
+    await switchTo('Logical Names');
+    expect(jumps()).toEqual(['unnamed', 'orders', 'Accounts']);
+
+    await switchTo('Both Names');
+    expect(jumps()).toEqual(['unnamed', 'orders', 'Accounts (users)']);
+  });
 });
 
 describe('createScopeActions / Derive Physical Names Again', () => {

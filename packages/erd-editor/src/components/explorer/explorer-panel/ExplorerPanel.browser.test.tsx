@@ -38,16 +38,23 @@ import {
   TREE_OVERSCAN,
   TREE_ROW_HEIGHT,
 } from '@/components/primitives/tree/Tree';
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, NameViewMode } from '@/constants/schema';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
-import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnLogicalNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { InternalEventType } from '@/utils/internalEvents';
 
 const counts = vi.hoisted(() => ({ builds: 0, layouts: 0 }));
@@ -255,6 +262,76 @@ describe('ExplorerPanel - rows', () => {
     expect(unnamed!.querySelector('[title]')?.getAttribute('title')).toBe(
       'unnamed'
     );
+  });
+});
+
+describe('ExplorerPanel - name views', () => {
+  const seedNames = (app: AppContext) => {
+    seedExplorerDocument(app);
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'orders', value: 'Zeta Orders' }),
+      changeTableLogicalNameAction({ id: 'users', value: 'Alpha Users' }),
+      changeColumnLogicalNameAction({
+        id: 'orders.total',
+        tableId: 'orders',
+        value: 'Total Amount',
+      })
+    );
+  };
+  const switchTo = async (
+    mode: (typeof NameViewMode)[keyof typeof NameViewMode]
+  ) => {
+    app.store.dispatchSync(toNameViewModeAction(app.store.state, mode, false));
+    await settle();
+  };
+  const tableRows = () => rows().slice(1, 4).map(textOf);
+
+  it('names a table and a column by its logical name in the logical view, still sorted by name', async () => {
+    await setup(seedNames);
+    explorerViewOf(app.store).expanded = {
+      'f:tables': true,
+      't:orders': true,
+      't:orders/f:columns': true,
+      'f:tableGroups': true,
+      'g:billing': true,
+    };
+    await settle();
+    const before = counts.builds;
+
+    await switchTo(NameViewMode.logical);
+
+    expect(tableRows()).toEqual(['Apple', 'Zeta Orders', 'Columns3']);
+    expect(textOf(rowOf('t:users'))).toBe('Alpha Users');
+    expect(textOf(rowOf('c:orders.total'))).toBe('Total AmountNUMERIC');
+    expect(textOf(rowOf('c:orders.id'))).toBe('idBIGINT PK');
+    expect(textOf(rowOf('g:billing/t:orders'))).toBe('Zeta Orders');
+    expect(counts.builds).toBe(before);
+
+    const name = (nodeId: string) =>
+      rowOf(nodeId).querySelector('[title]') as HTMLElement;
+    expect(name('c:orders.id').classList.contains('stand-in')).toBe(true);
+    expect(name('c:orders.total').classList.contains('stand-in')).toBe(false);
+    expect(getComputedStyle(name('c:orders.id')).fontStyle).toBe('normal');
+  });
+
+  it('mutes the name after the logical name in the view of both', async () => {
+    await setup(seedNames);
+    explorerViewOf(app.store).expanded = {
+      'f:tables': true,
+      't:orders': true,
+      't:orders/f:columns': true,
+    };
+    await switchTo(NameViewMode.both);
+
+    expect(textOf(rowOf('t:orders'))).toBe('Zeta Ordersorders');
+    expect(textOf(rowOf('c:orders.total'))).toBe('Total AmounttotalNUMERIC');
+    expect(textOf(rowOf('c:orders.id'))).toBe('idBIGINT PK');
+    expect(textOf(rowOf('t:apple'))).toBe('Apple');
+    const [, second] = Array.from(
+      rowOf('t:orders').querySelectorAll<HTMLElement>('[title]')
+    );
+    expect(second.textContent).toBe('orders');
+    expect(second.getAttribute('title')).toBe('orders');
   });
 });
 

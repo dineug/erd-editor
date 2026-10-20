@@ -14,8 +14,10 @@ import Switch from '@/components/primitives/switch/Switch';
 import { useThemeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import type { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { LocaleMessages } from '@/i18n/translate';
+import type { Settings } from '@/internal-types';
 import { createDocumentPreview } from '@/services/export-png';
 import { getExportSize } from '@/services/export-png/exportBox';
 import { createExportTheme } from '@/services/export-png/exportTheme';
@@ -51,6 +53,21 @@ export const PREVIEW_DEBOUNCE_MS = 200;
 
 const DIALOG_MAX_WIDTH = 1024;
 
+/**
+ * The document an image is drawn from: the words and terms left out, which
+ * only the checks read and an image marks none of, and the domains kept,
+ * whose names the logical view's type cells draw.
+ *
+ * @example
+ * const doc = toExportJson(store.state);
+ */
+export const toExportJson = (state: RootState): string =>
+  toJson({
+    ...state,
+    doc: { ...state.doc, wordIds: [], termIds: [] },
+    collections: { ...state.collections, wordEntities: {}, termEntities: {} },
+  });
+
 /** One opening of the dialog: the document and palette as they were then, and its previews. */
 type Session = {
   doc: string;
@@ -60,6 +77,8 @@ type Session = {
   isDarkMode: boolean;
   /** The language the scene's own words are drawn in, as the editor showed it then. */
   i18n: LocaleMessages;
+  /** The names the reader saw then, which a locked file saves no trace of. */
+  nameViewMode: Settings['nameViewMode'];
   /** Object urls by background and dark mode, the only options a preview shows. */
   previews: Map<string, string>;
   /** Counts the changes of the options, so a preview that lands after one is not shown. */
@@ -121,6 +140,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
         toWidth: app.value.toWidth,
         maxSide: PREVIEW_MAX_SIDE,
         i18n: current.i18n,
+        nameViewMode: current.nameViewMode,
       });
       if (session !== current) return;
 
@@ -211,12 +231,13 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     // Fixed here, so the preview and every file written from it show the
     // document and the palette as they were when the dialog opened.
     session = {
-      doc: toJson(store.state),
+      doc: toExportJson(store.state),
       databaseName: settings.databaseName,
       sceneTheme: { ...themeRef.value },
       themeOptions: { ...props.themeOptions },
       isDarkMode: props.isDarkMode,
       i18n: { locale: i18n.value.locale, messages: i18n.value.messages },
+      nameViewMode: settings.nameViewMode,
       previews: new Map(),
       request: 0,
       timer: undefined,
@@ -238,6 +259,7 @@ const ExportImage: FC<ExportImageProps> = (props, ctx) => {
     toWidth: app.value.toWidth,
     pixelRatio: options.scale,
     i18n: current.i18n,
+    nameViewMode: current.nameViewMode,
   });
 
   const handleBackground = (value: boolean) => {

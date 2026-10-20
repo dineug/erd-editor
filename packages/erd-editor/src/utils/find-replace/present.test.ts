@@ -51,7 +51,30 @@ describe('FindFieldLabel', () => {
       'Memo',
       'Index',
       'Table group',
+      'Logical name',
     ]);
+  });
+});
+
+describe('locationOf for a logical name', () => {
+  it("names the table of a table's logical name and the table and column of a column's", () => {
+    const { state } = app.store;
+
+    expect(
+      locationOf(state, match({ field: FindField.logicalName, id: 'orders' }))
+    ).toBe('orders');
+    expect(
+      locationOf(
+        state,
+        match({ field: FindField.logicalName, id: 'orders_user_id' })
+      )
+    ).toBe('orders.user_id');
+    expect(
+      describeMatch(
+        state,
+        match({ field: FindField.logicalName, id: 'orders_user_id' })
+      )
+    ).toBe('orders.user_id · Logical name');
   });
 });
 

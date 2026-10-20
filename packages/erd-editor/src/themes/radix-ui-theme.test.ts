@@ -466,6 +466,49 @@ describe('the tree', () => {
   });
 });
 
+describe('the dictionary marks', () => {
+  it('keeps the error and warning text at 4.5:1 on a table, where the canvas writes a marked cell in them', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      [
+        theme.dictionaryErrorForeground,
+        theme.dictionaryWarningForeground,
+      ].forEach(mark => {
+        expect(
+          contrast(mark, theme.tableBackground),
+          labelOf(options)
+        ).toBeGreaterThanOrEqual(4.5);
+      });
+    });
+  });
+
+  /**
+   * Measured 2026-10-20: red step 11 reads 4.07:1 on a light red-4, the step
+   * proposed for the error fill, so light takes red-3, where it reads 4.54:1.
+   */
+  it('keeps the text of each level at 4.5:1 on its own fill, where a sheet marks a cell', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        contrast(
+          theme.dictionaryErrorForeground,
+          theme.dictionaryErrorBackground
+        ),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast(
+          theme.dictionaryWarningForeground,
+          theme.dictionaryWarningBackground
+        ),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+});
+
 describe('the table header band', () => {
   /** Twice the least visible CIE76 step. Light sand, the nearest to its canvas, measures 5.32. */
   const MIN_BAND_DELTA_E = 5;

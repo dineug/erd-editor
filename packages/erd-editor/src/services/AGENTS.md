@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`src/services/` holds the editor's three SharedWorker services. `elk-layout/` runs ELK for automatic placement and the Flow view, `export-png/` draws the PNG, SVG and preview exports, and `shiki/` highlights the code tabs. This file holds the rules of automatic placement with table groups, the coordinate hints ELK reads, and the export worker's hot swap, scene and language. The same features have rules in other nested files. The Export image dialog's are in `src/components/export-image/AGENTS.md`, and the Code Generator tab's highlighting in `src/components/generator-code/AGENTS.md`. An import's placement is in `src/utils/AGENTS.md`, and the scene modules the export draws in `src/konva/AGENTS.md`. A change here keeps table groups together in every placement but the views' preset. It keeps every export drawn at 100%, in the language it is handed.
+`src/services/` holds the editor's three SharedWorker services. `elk-layout/` runs ELK for automatic placement and the Flow view, `export-png/` draws the PNG, SVG and preview exports, and `shiki/` highlights the code tabs. This file holds the rules of automatic placement with table groups, the coordinate hints ELK reads, and the export worker's hot swap, scene, language and name view. The same features have rules in other nested files. The Export image dialog's are in `src/components/export-image/AGENTS.md`, and the Code Generator tab's highlighting in `src/components/generator-code/AGENTS.md`. An import's placement is in `src/utils/AGENTS.md`, and the scene modules the export draws in `src/konva/AGENTS.md`. A change here keeps table groups together in every placement but the views' preset. It keeps every export drawn at 100%, in the language and the name view it is handed.
 
 ## Making a Change
 
@@ -25,8 +25,8 @@
 | `elk-layout/elkWorkerRealm.ts` | The `document` stub ELK's bundle looks for in a realm with no document |
 | `elk-layout/elkLayout.shared-worker.ts` | The ELK worker's entry |
 | `export-png/index.ts` | `createDocumentPng`, `createDocumentSvg`, `createDocumentPreview`: worker first, the main thread when the worker is missing or hands the drawing back |
-| `export-png/documentScene.tsx` | `renderDocumentScene`: the export's own store at `EXPORT_ZOOM_LEVEL`, the scale, `createI18n` |
-| `export-png/ExportScene.tsx` | The scene an export draws: the whole document on one layer, the groups behind it, no culling |
+| `export-png/documentScene.tsx` | `renderDocumentScene`: the export's own store at `EXPORT_ZOOM_LEVEL` and in the name view asked for, the scale, `createI18n` |
+| `export-png/ExportScene.tsx` | The scene an export draws: the whole document on one layer, the groups behind it, no culling, no check marked |
 | `export-png/exportBox.ts` | `EXPORT_ZOOM_LEVEL`, `getExportRect`, `getExportScale`, `getExportSize`, `getStageSize` |
 | `export-png/pixelRatio.ts` | The canvas ceilings `CANVAS_AREA_MAX` and `CANVAS_SIDE_MAX`, `fitPixelRatio` |
 | `export-png/exportPngService.ts`, `exportPng.shared-worker.ts` | `ExportPngService`, which draws off the thread that asked, and the worker's entry |
@@ -91,6 +91,9 @@
 - The dialog's snapshot of `{ locale, messages }` (`LocaleMessages`), taken as it opens and handed with every preview, PNG and SVG request: `src/components/export-image/AGENTS.md`, What the image draws.
 - **The scene reads it through `localeContext`.** `documentScene` builds `createI18n` from it, and `renderScene` (`src/konva/scene/renderScene.ts`) provides `localeContext`. So a file draws its placeholders in the language the dialog opened in. `realm.test.ts` and `renderSvg.browser.test.ts` check this.
 - The `i18n/` modules the export worker may reach, since it is handed its dictionary: `src/i18n/AGENTS.md`.
+- **Exports draw in the name view they are handed.** `nameViewMode` rides beside the language on every preview, PNG and SVG request, the reader's view the dialog fixed as it opened. `renderDocumentScene` sends `toNameViewModeAction(store.state, mode, true)` once the JSON is loaded, as it sends the zoom.
+  - Readonly, the switch is `shared: false` with the scene store's own `editorId`, so it shows on that store alone and writes no register, whatever lock the document holds.
+  - A request without one draws the view the document holds, which is the lock's for a locked file. `realm.test.ts` and `renderSvg.browser.test.ts` check this, the second in the worker too.
 
 ### The Highlighting Worker
 
@@ -100,8 +103,8 @@
 ## Testing Requirements
 
 - `elk-layout/elkLayoutService.test.ts`: its packing case ("packs what nothing joins beside a component, as it packs it with no group") guards the root's options. `ElkLayoutService under the views preset` (AC-60) shows what `toHints` buys, with a case that reads raw coordinates back as one layer per table.
-- `export-png/realm.test.ts`: the two realms an export falls through, worker then main thread, and the language every request carries.
-- `export-png/renderSvg.browser.test.ts`: the svg in the language it is asked in, and English when asked in none.
+- `export-png/realm.test.ts`: the two realms an export falls through, worker then main thread, and the language and the name view every request carries.
+- `export-png/renderSvg.browser.test.ts`: the svg in the language it is asked in, and English when asked in none; in the name view it is asked in, and the document's when asked in none; no check marked.
 - `export-png/worker.browser.test.ts`: a document saved zoomed out exports at 100% in the worker and on the main thread.
 - Each `*.browser.test.ts` here runs in real Chromium, in the package's `browser` project.
 

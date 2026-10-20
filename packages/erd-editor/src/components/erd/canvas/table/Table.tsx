@@ -54,6 +54,7 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { getColorEdgePath } from '@/components/erd/canvas/table/colorEdge';
 import Column from '@/components/erd/canvas/table/column/Column';
+import { tableMarkFill } from '@/components/erd/canvas/table/dictionaryMarks';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
@@ -148,6 +149,12 @@ export type TableProps = {
    * reads the group list once for every table; a table drawn alone reads its own.
    */
   tableGroupId?: string;
+  /**
+   * Whether the cells write what the dictionaries' checks find in their colours,
+   * on unless the scene says otherwise. Only the document scene outside a diff
+   * pane draws them, and an export turns them off.
+   */
+  checkMarks?: boolean;
 };
 
 type HeaderCellOptions = {
@@ -633,6 +640,15 @@ const Table: FC<TableProps> = (props, ctx) => {
         hiddenCommentColor);
     const logicalNameFilled = table.logicalName.trim() !== '';
 
+    // A diff pane writes its changes in colours a check would share, so the
+    // marks are the document scene's alone, and a blank cell keeps its dimmed
+    // placeholder whatever a check finds.
+    const checkMarks = (props.checkMarks ?? true) && !view && !diffMapRef.value;
+    const markFill = (field: 'name' | 'logicalName') =>
+      checkMarks && table[field].trim()
+        ? tableMarkFill(store, theme, table, field)
+        : null;
+
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
     // A row's name and type cells take the focus the name view gives them,
@@ -799,6 +815,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                   text: logicalNameText(),
                   fill:
                     hiddenNameColor ??
+                    markFill('logicalName') ??
                     tint?.foreground ??
                     (logicalNameFilled ? theme.active : theme.placeholder),
                   focus: hasFocus(FocusType.tableLogicalName),
@@ -814,6 +831,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                     : i18n.value.t('common.placeholder.table'),
                   fill:
                     hiddenCommentColor ??
+                    markFill('name') ??
                     tint?.foreground ??
                     nameFill(theme, table.name, view),
                   focus: hasFocus(FocusType.tableName),
@@ -976,6 +994,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                   column.id
                 )}
                 ghost={column.id === ghostColumnId}
+                checkMarks={checkMarks}
                 preview={props.preview}
                 editorFocused={props.editorFocused}
                 onDragstart={handleDragstartColumn}

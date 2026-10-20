@@ -18,6 +18,7 @@ import {
 } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import Minimap from '@/components/erd/minimap/Minimap';
+import { readerNameViewAction } from '@/components/erd/readerNameView';
 import { useI18n } from '@/components/localeContext';
 import Button from '@/components/primitives/button/Button';
 import Slider from '@/components/primitives/slider/Slider';
@@ -84,7 +85,8 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
   // the screen it is shown on rather than against the store's default size.
   store.dispatchSync(
     changeViewportAction(getViewport()),
-    initialLoadJsonAction$(toPreviewJson(originApp.store.state))
+    initialLoadJsonAction$(toPreviewJson(originApp.store.state)),
+    readerNameViewAction(store.state, originApp.store.state)
   );
 
   const runTimeTravel = (cursor: number) => {

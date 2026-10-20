@@ -58,12 +58,12 @@
 - **Read a prefix at the top level only.** A submenu filters its own rows.
 - **A prefix is the first character past spaces.** A space typed before it does not hide it, because read as a keyword, ` #users` would reach the prefix rows, which type a second prefix before it. An optional space may follow the prefix.
 - **Four prefixes, each with its scope.**
-  - `#` searches tables.
-  - `@` searches column names.
+  - `#` searches tables, by their names and logical names whatever the name view draws (`tableNames`, which Fuse reads in place of a table row's label).
+  - `@` searches column names and column logical names, whatever the name view draws, one row a field. A table's logical name lists no row there.
   - `:` searches table comments, column comments and memos, an owner decision (2026-10-03). It walks no memo while View Option hides them (`walkFields`), and a row found before they were hidden goes nowhere (`showErdTargetAction$`). A double quote reads as plain text, and a quote is searched as typed.
   - `?` lists the prefixes as rows whose `insert` types one in and keeps the palette open.
-- **`@` splits on the first dot.** In `@users.em` the table part (`users`) matches as a substring of the table name. `@users.` lists every column of those tables.
-- **With no keyword, a scope lists all rows.** `:` lists only the non-empty texts.
+- **`@` splits on the first dot.** In `@users.em` the table part (`users`) matches as a substring of the table name or its logical name. `@users.` lists every column of those tables.
+- **With no keyword, a scope lists all rows.** `@` lists each column once, by its name row, and `:` lists only the non-empty texts.
 - **Read full-width prefixes as the ASCII ones.** A Japanese IME, or a Chinese one in its punctuation mode, types full-width forms. They count as what they stand for (`WIDE_PREFIXES`: `＃` `＠` `：` `？`), as the first character only, like the ASCII ones. `．` and `。` count as the dot.
 - **The empty input hints the prefixes.** It shows them as a clickable hint line.
 - **Show the scope as a label.** The label follows the input. It sits on the input's right, or on its left under a right-to-left language. This leaves the caret where it was.
@@ -102,6 +102,7 @@
 
 - **Table and field rows show on every tab.** Picking one takes the ERD tab.
 - **A table row lands by the one jump rule.** It jumps through `goToErdTarget`, as the `@` and `:` rows do (`src/components/erd/AGENTS.md`, The jump rule); the corner it once parked a table at is gone.
+- **A table row names its table as the name view does** (`createTableActions`, `toNameLabel`): the logical name in the logical view, the name while that is blank, and in the view of both the name after the logical name in brackets. The rows stay in the order of the names, and a search reads the table's own names, never the label (`tableTextsOf`), so `#` lists the same tables in the same order in every view; a table with neither name is searched by its label.
 - **No Focus row exists** (AC-52).
 - **One row for the Explorer** (the owner's request of 2026-10-16). Toggle Explorer shows the find chord and does what it does on the canvas (`toggleExplorerSearch`); no Find and Replace row lists the same panel again. Its keywords (`palette.keywords.explorer`) put the find words before the tree words in every language, since Fuse scores where a hit starts and `replce` must still reach it.
 - **The hand-off leaves the list under a takeover.** The Toggle Explorer row leaves the list under a takeover (`isTakenOver`), where the Explorer opens on nothing.

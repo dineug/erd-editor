@@ -10,8 +10,15 @@ import { FIND_SEED, seedFindDocument } from '@/__test-utils__/findSeed';
 import type { AppContext } from '@/components/appContext';
 import { ColumnOption } from '@/constants/schema';
 import { ChangeActionTypes, HistoryActionTypes } from '@/engine/actions';
-import { changeTableNameDerivedAction } from '@/engine/modules/table/atom.actions';
-import { changeColumnNameDerivedAction } from '@/engine/modules/table-column/atom.actions';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
+import {
+  changeTableLogicalNameAction,
+  changeTableNameDerivedAction,
+} from '@/engine/modules/table/atom.actions';
+import {
+  changeColumnLogicalNameAction,
+  changeColumnNameDerivedAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { bHas } from '@/utils/bit';
 import {
   createMatcher,
@@ -40,6 +47,22 @@ const atOf = (field: FindField) =>
   field === FindField.columnName
     ? { id: 'users_id', tableId: 'users' }
     : { id: 'users', tableId: 'users' };
+
+/** The words a logical name of the specs below derives a name from. */
+function addWords() {
+  app.store.dispatchSync(
+    addDictionaryAction({
+      kind: 'word',
+      id: 'w-member',
+      values: { name: 'Members', abbreviation: 'MBRS' },
+    }),
+    addDictionaryAction({
+      kind: 'word',
+      id: 'w-key',
+      values: { name: 'Key', abbreviation: 'KEY' },
+    })
+  );
+}
 
 /** Turns the derived flags of the users table and its id column on. */
 function deriveUsers() {
@@ -97,7 +120,11 @@ afterEach(() => {
 describe('toFieldAction', () => {
   it('writes each field but a name through the atom action an edit by hand dispatches', () => {
     const at = { id: 'c', tableId: 't' };
-    const names: FindField[] = [FindField.tableName, FindField.columnName];
+    const names: FindField[] = [
+      FindField.tableName,
+      FindField.columnName,
+      FindField.logicalName,
+    ];
 
     expect(
       FindFieldList.filter(field => !names.includes(field)).map(field =>
@@ -153,6 +180,43 @@ describe('toFieldAction', () => {
       {
         type: 'column.changeNameDerived',
         payload: { id: 'users_id', tableId: 'users', value: false },
+      },
+    ]);
+  });
+
+  it("writes a logical name through the generator that derives the name it leaves derived, a table's or a column's", () => {
+    addWords();
+    deriveUsers();
+    const logical = (id: string, value: string) =>
+      flat([
+        toFieldAction(
+          { field: FindField.logicalName, id, tableId: 'users' },
+          value
+        ),
+      ]);
+
+    expect(logical('users', 'Members')).toEqual([
+      {
+        type: 'table.changeLogicalName',
+        payload: { id: 'users', value: 'Members' },
+      },
+      { type: 'table.changeName', payload: { id: 'users', value: 'MBRS' } },
+    ]);
+    expect(logical('users_id', 'Key')).toEqual([
+      {
+        type: 'column.changeLogicalName',
+        payload: { id: 'users_id', tableId: 'users', value: 'Key' },
+      },
+      {
+        type: 'column.changeName',
+        payload: { id: 'users_id', tableId: 'users', value: 'KEY' },
+      },
+    ]);
+    // A name typed by hand stays: the logical name alone is written.
+    expect(logical('email', 'Key')).toEqual([
+      {
+        type: 'column.changeLogicalName',
+        payload: { id: 'email', tableId: 'users', value: 'Key' },
       },
     ]);
   });
@@ -310,6 +374,98 @@ describe('toReplaceActions', () => {
     app.store.redo();
 
     expect(texts().memo).toBe('Every member_id points at members.id');
+  });
+
+  it('replaces a logical name and derives the name from it, within its one history entry', () => {
+    addWords();
+    app.store.dispatchSync(
+      changeColumnLogicalNameAction({
+        id: 'email',
+        tableId: 'users',
+        value: 'User Key',
+      })
+    );
+    app.store.resetHistory();
+    const matcher = matcherOf('User ');
+
+    app.store.dispatchSync(
+      toReplaceActions(
+        findMatches(app.store.state, matcher, [FindField.logicalName]),
+        matcher,
+        'Members '
+      ).actions
+    );
+
+    const email = () => app.store.state.collections.tableColumnEntities.email;
+    expect(email()).toMatchObject({
+      logicalName: 'Members Key',
+      name: 'email',
+    });
+
+    app.store.undo();
+    app.store.dispatchSync(
+      changeColumnNameDerivedAction({
+        id: 'email',
+        tableId: 'users',
+        value: true,
+      })
+    );
+    app.store.resetHistory();
+    app.store.dispatchSync(
+      toReplaceActions(
+        findMatches(app.store.state, matcher, [FindField.logicalName]),
+        matcher,
+        'Members '
+      ).actions
+    );
+
+    expect(email()).toMatchObject({
+      logicalName: 'Members Key',
+      name: 'MBRS_KEY',
+    });
+    expect(bHas(email().options, ColumnOption.nameDerived)).toBe(true);
+
+    app.store.undo();
+
+    expect(email()).toMatchObject({ logicalName: 'User Key', name: 'email' });
+  });
+
+  it('writes the name a Replace All finds over the one its logical name derives, as a rename by hand does', () => {
+    addWords();
+    deriveUsers();
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'users', value: 'users' })
+    );
+    app.store.resetHistory();
+    const matcher = matcherOf('users');
+    const matches = findMatches(app.store.state, matcher, [
+      FindField.tableName,
+      FindField.logicalName,
+    ]);
+    const users = () => app.store.state.collections.tableEntities.users;
+
+    expect(matches.map(({ field }) => field)).toEqual([
+      FindField.logicalName,
+      FindField.tableName,
+    ]);
+
+    app.store.dispatchSync(
+      toReplaceActions(matches, matcher, 'Members').actions
+    );
+
+    expect(users()).toMatchObject({
+      logicalName: 'Members',
+      name: 'Members',
+      nameDerived: false,
+    });
+
+    app.store.undo();
+
+    expect(users()).toMatchObject({
+      logicalName: 'users',
+      name: 'users',
+      nameDerived: true,
+    });
   });
 
   it('turns the derived flags of the names it writes off, within its one history entry', () => {

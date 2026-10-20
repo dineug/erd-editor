@@ -5,6 +5,8 @@ import {
   nearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
 import type { Viewport } from '@/engine/modules/editor/state';
+import { toNameLabel } from '@/engine/modules/editor/utils/nameView';
+import type { RootState } from '@/engine/state';
 import type { Point } from '@/internal-types';
 import type { Rect } from '@/konva/scene/metrics';
 
@@ -38,19 +40,38 @@ export function truncateName(name: string): string {
   return chars.slice(0, NAME_MAX_LENGTH).join('') + ELLIPSIS;
 }
 
-/** The text a table's label draws: its name cut to length, or the placeholder its input shows. */
-export function labelOf(
-  node: Pick<VisualizationNode, 'name'>,
-  placeholder: string
-): string {
-  const name = node.name.trim();
+type LabelNode = Pick<VisualizationNode, 'name' | 'logicalName'>;
 
-  return name ? truncateName(name) : placeholder;
+type ViewSettings = Pick<RootState['settings'], 'nameViewMode'>;
+
+/**
+ * The text a table's label draws in the name view: the name it shows cut to
+ * length, the name after the logical name on a second line in the view of
+ * both, or the placeholder its input shows while it shows no name.
+ */
+export function labelOf(
+  node: LabelNode,
+  placeholder: string,
+  settings: ViewSettings
+): string {
+  const { text, after } = toNameLabel(settings, node);
+  const name = text.trim();
+  if (!name) return placeholder;
+
+  return after
+    ? `${truncateName(name)}\n${truncateName(after.trim())}`
+    : truncateName(name);
 }
 
-/** Whether a table has a name of its own, which is what its label is painted by. */
-export const hasName = (node: Pick<VisualizationNode, 'name'>): boolean =>
-  node.name.trim().length > 0;
+/**
+ * Whether a table's label draws a name of its own, which paints it in the
+ * foreground: not the placeholder, nor the name standing in for a blank
+ * logical name in the logical view.
+ */
+export function hasName(node: LabelNode, settings: ViewSettings): boolean {
+  const { text, standIn } = toNameLabel(settings, node);
+  return !standIn && text.trim().length > 0;
+}
 
 export const TABLE_RADIUS = 8;
 

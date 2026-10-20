@@ -7,7 +7,9 @@ import {
   toErdTarget,
   withReplacement,
 } from '@/components/explorer/matchTarget';
+import { NameViewMode } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
+import { toNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
 import { FindField, FindMatch, toFieldAction } from '@/utils/find-replace';
 
@@ -50,6 +52,22 @@ describe('toErdTarget', () => {
       tableId: 't',
       columnId: 'c',
       focusType: FocusType.columnComment,
+      range,
+    });
+  });
+
+  it("rings a table's or a column's logical name cell, which the view draws in the name's place or beside it", () => {
+    expect(toErdTarget(match(FindField.logicalName, 't', 't'))).toEqual({
+      kind: 'table',
+      tableId: 't',
+      focusType: FocusType.tableLogicalName,
+      range,
+    });
+    expect(toErdTarget(match(FindField.logicalName, 'c', 't'))).toEqual({
+      kind: 'column',
+      tableId: 't',
+      columnId: 'c',
+      focusType: FocusType.columnLogicalName,
       range,
     });
   });
@@ -129,6 +147,27 @@ describe('withReplacement', () => {
     expect(projected.box).toBeGreaterThan(before.box);
     expect(projected).toEqual(widthsOf(app.store.state));
   });
+
+  it.each([['orders'], ['orders_user_id']])(
+    'measures the table as the logical name reducer of %s leaves it, in the view of both',
+    id => {
+      const app = seeded();
+      app.store.dispatchSync(
+        toNameViewModeAction(app.store.state, NameViewMode.both, false)
+      );
+      const found = match(FindField.logicalName, id, 'orders');
+      const value = 'Customer Account Identifier For Billing';
+      const before = widthsOf(app.store.state);
+
+      const projected = widthsOf(
+        withReplacement(app.store.state, app.store.context, found, value)
+      );
+      app.store.dispatchSync(toFieldAction(found, value));
+
+      expect(projected.box).toBeGreaterThan(before.box);
+      expect(projected).toEqual(widthsOf(app.store.state));
+    }
+  );
 
   it('leaves the state as it is for a memo, or for a table or column gone', () => {
     const app = seeded();

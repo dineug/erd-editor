@@ -12,6 +12,10 @@ import Icon from '@/components/primitives/icon/Icon';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import {
+  nameLabelText,
+  toNameLabel,
+} from '@/engine/modules/editor/utils/nameView';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { onStop } from '@/utils/domEvent';
 import { focusEvent } from '@/utils/internalEvents';
@@ -89,7 +93,7 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    const { collections } = store.state;
+    const { collections, settings } = store.state;
     const { tableIds } = props;
     const { t } = i18n.value;
 
@@ -120,21 +124,22 @@ const TableProperties: FC<TablePropertiesProps> = (props, ctx) => {
               </span>
             ) : null}
             <div class={['scrollbar', styles.tables]}>
-              {tables.map(table => (
-                <div
-                  class={[
-                    styles.tableChip,
-                    { selected: table.id === props.tableId },
-                  ]}
-                  title={table.name}
-                  prop:dir="auto"
-                  on:click={() => props.onChange(table.id)}
-                >
-                  <span>
-                    {table.name.trim() ? table.name : t('common.unnamed')}
-                  </span>
-                </div>
-              ))}
+              {tables.map(table => {
+                const name = nameLabelText(toNameLabel(settings, table));
+                return (
+                  <div
+                    class={[
+                      styles.tableChip,
+                      { selected: table.id === props.tableId },
+                    ]}
+                    title={name}
+                    prop:dir="auto"
+                    on:click={() => props.onChange(table.id)}
+                  >
+                    <span>{name.trim() ? name : t('common.unnamed')}</span>
+                  </div>
+                );
+              })}
             </div>
             <button
               class={['table-properties-close', styles.close]}

@@ -54,6 +54,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import {
   changeColumnCommentAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import {
@@ -198,7 +199,7 @@ describe('explorer search opening', () => {
   });
 
   /** An owner decision: a comment or memo is prose, which a rename across the names would rewrite too. */
-  it('searches first the names of tables, columns, indexes and table groups alone (AC-Q2)', async () => {
+  it('searches first the names and logical names of tables, columns, indexes and table groups alone (AC-Q2)', async () => {
     await open();
     setQuery(app.store, 'user');
 
@@ -223,6 +224,7 @@ describe('explorer search opening', () => {
       FindField.memo,
       FindField.indexName,
       FindField.tableGroupName,
+      FindField.logicalName,
     ]);
 
     await setup();
@@ -482,7 +484,12 @@ describe('explorer search revealing a match', () => {
         id: 'g_users',
         ui: { x: 0, y: 0, width: 100, height: 100, zIndex: 1 },
       }),
-      changeTableGroupNameAction({ id: 'g_users', value: 'user accounts' })
+      changeTableGroupNameAction({ id: 'g_users', value: 'user accounts' }),
+      changeColumnLogicalNameAction({
+        id: 'total',
+        tableId: 'orders',
+        value: 'User Total',
+      })
     );
     await open('user');
   });

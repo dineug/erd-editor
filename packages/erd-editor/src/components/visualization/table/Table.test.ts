@@ -13,21 +13,26 @@ import {
 import { AppContext } from '@/components/appContext';
 import * as styles from '@/components/table-view/Table.styles';
 import Table from '@/components/visualization/table/Table';
-import { Show } from '@/constants/schema';
+import { NameViewMode, Show } from '@/constants/schema';
 import {
   addIndexAction,
   changeIndexUniqueAction,
 } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeShowAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableColorAction,
   changeTableCommentAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { createI18n } from '@/i18n/translate';
@@ -317,6 +322,77 @@ describe('visualization Table', () => {
       await flush();
 
       expect(rowsOf(mounted)).toHaveLength(2);
+    });
+  });
+
+  describe('name views', () => {
+    const switchTo = (mode: (typeof NameViewMode)[keyof typeof NameViewMode]) =>
+      app.store.dispatchSync(
+        toNameViewModeAction(app.store.state, mode, false)
+      );
+    const texts = (elements: HTMLElement[]) =>
+      elements.map(element => element.textContent?.trim());
+
+    beforeEach(() => {
+      addColumn('c1', 'member_id');
+      app.store.dispatchSync(
+        changeShowAction({ show: Show.tableComment, value: false }),
+        changeTableLogicalNameAction({ id: TABLE_ID, value: 'Site Users' }),
+        changeColumnLogicalNameAction({
+          id: 'c1',
+          tableId: TABLE_ID,
+          value: 'Member ID',
+        })
+      );
+    });
+
+    it('puts the logical name in the header in the logical view, at its own width', async () => {
+      switchTo(NameViewMode.logical);
+      mounted = await mountAndFlush(tableTemplate(table), app);
+      const [name] = headerInputs(mounted);
+
+      expect(texts(headerInputs(mounted))).toEqual(['Site Users']);
+      expect(name.style.width).toBe(`${table.ui.widthLogicalName}px`);
+      expect(table.ui.widthLogicalName).not.toBe(table.ui.widthName);
+    });
+
+    it('dims the name standing in for a blank logical name, at the name width', async () => {
+      app.store.dispatchSync(
+        changeTableLogicalNameAction({ id: TABLE_ID, value: '' })
+      );
+      switchTo(NameViewMode.logical);
+      mounted = await mountAndFlush(tableTemplate(table), app);
+      const [name] = headerInputs(mounted);
+
+      expect(name.textContent?.trim()).toBe('users');
+      expect(name.classList.contains('placeholder')).toBe(true);
+      expect(name.style.width).toBe(`${table.ui.widthName}px`);
+    });
+
+    it('sets the logical name before the name in the view of both, header and rows', async () => {
+      switchTo(NameViewMode.both);
+      mounted = await mountAndFlush(tableTemplate(table), app);
+      const widths = calcTableWidths(table, app.store.state);
+      const [logicalName] =
+        rowsOf(mounted)[0].querySelectorAll<HTMLElement>('.edit-input');
+
+      expect(texts(headerInputs(mounted))).toEqual(['Site Users', 'users']);
+      expect(logicalName.textContent?.trim()).toBe('Member ID');
+      expect(logicalName.style.width).toBe(`${widths.logicalName}px`);
+      expect(rootOf(mounted).style.width).toBe(`${widths.width}px`);
+    });
+
+    it('follows a switch while it is open', async () => {
+      mounted = await mountAndFlush(tableTemplate(table), app);
+      expect(texts(headerInputs(mounted))).toEqual(['users']);
+
+      switchTo(NameViewMode.logical);
+      await flush();
+
+      expect(texts(headerInputs(mounted))).toEqual(['Site Users']);
+      expect(
+        rowsOf(mounted)[0].querySelector('.edit-input')?.textContent?.trim()
+      ).toBe('Member ID');
     });
   });
 });

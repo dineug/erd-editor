@@ -117,6 +117,13 @@ export const ThemeConfig: Theme = {
   explorerBackground: 'gray-1',
   explorerBorder: 'gray-6',
 
+  // What the dictionaries' checks find: an error in red and a warning in
+  // amber, the text at step 11 on a table and on its own step 4 in a sheet.
+  dictionaryErrorForeground: `custom-red--11`,
+  dictionaryErrorBackground: `custom-red--4`,
+  dictionaryWarningForeground: `custom-amber--11`,
+  dictionaryWarningBackground: `custom-amber--4`,
+
   // A diff's status letters and the canvas text and outlines it marks: added,
   // removed, changed and renamed, each at step 11, which keeps 4.5:1 on the
   // tree and the table body in either appearance.
@@ -159,6 +166,12 @@ export const LightThemeConfig: Partial<Theme> = {
   visualizationLink: 'gray-8',
   visualizationColumn: 'gray-9',
   visualizationRelationship: 'gray-9',
+  // Red step 11 reads 4.07:1 on a light red-4, so an error cell of a sheet
+  // takes the step under it, where the text keeps 4.54:1.
+  dictionaryErrorBackground: 'custom-red--3',
+  // Amber step 11 reads under 4.5:1 on a light amber-4, so a warning takes
+  // the darker amber a changed entry takes.
+  dictionaryWarningForeground: 'override-#895503',
   // Amber step 11 reads under 4.5:1 on a light gray-1, so a changed entry
   // takes the darker amber an editor's light theme marks a change with.
   diffModifyForeground: 'override-#895503',

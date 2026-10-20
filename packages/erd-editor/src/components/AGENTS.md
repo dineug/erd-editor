@@ -21,7 +21,7 @@
 | `visualization/VisualizationFlow.tsx` | `FlowScene`, the scene root of the Flow view |
 | `flowCenters.ts` | Narrows the Flow view to the tables given and their one hop, and widens it back (`focusFlowView`, `showAllFlowView`) |
 | `erd/canvas/SceneIcon.template.tsx` | Draws the `getIcon` data in the scene |
-| `explorer/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
+| `explorer/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, and for a logical name, which only the palette's `@` rows list, a column's, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
 | `primitives/icon/icons.ts` | The registered icons and `getIcon`; `icons.test.ts` beside it |
 
 ## Subdirectories

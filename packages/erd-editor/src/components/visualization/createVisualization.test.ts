@@ -16,10 +16,12 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 
@@ -115,6 +117,25 @@ describe('convertVisualization', () => {
       ['t1', Group.table, 'users', null],
       ['c1', Group.column, 'id', 't1'],
       ['c2', Group.column, 'name', 't1'],
+    ]);
+  });
+
+  it('carries each logical name, which a label draws in the name views', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addColumn(app, 't1', 'c1', 'id');
+    addColumn(app, 't1', 'c2', 'name');
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 't1', value: 'Users' }),
+      changeColumnLogicalNameAction({ id: 'c1', tableId: 't1', value: 'ID' })
+    );
+
+    const { nodes } = convertVisualization(app.store.state);
+
+    expect(nodes.map(({ id, logicalName }) => [id, logicalName])).toEqual([
+      ['t1', 'Users'],
+      ['c1', 'ID'],
+      ['c2', ''],
     ]);
   });
 

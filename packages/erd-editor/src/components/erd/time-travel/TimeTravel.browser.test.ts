@@ -2,6 +2,7 @@
 // project, where a Stage can be built and its nodes counted.
 
 import { html } from '@dineug/r-html';
+import type { Text } from 'konva/lib/shapes/Text';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
@@ -24,13 +25,19 @@ import TimeTravel from '@/components/erd/time-travel/TimeTravel';
 import * as styles from '@/components/erd/time-travel/TimeTravel.styles';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import * as sliderStyles from '@/components/primitives/slider/Slider.styles';
+import { NameViewMode } from '@/constants/schema';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import {
   changeZoomLevelAction,
   scrollToAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableAction,
+  changeTableLogicalNameAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 let mounted: Mounted | null = null;
@@ -78,12 +85,15 @@ type Setup = {
   tableIds?: string[];
   viewport?: { width: number; height: number };
   view?: { originX: number; originY: number; zoomLevel: number };
+  /** Edits the origin store makes before the preview opens. */
+  prepare?: (app: AppContext) => void;
 };
 
 async function setup({
   tableIds = ['t1', 't2'],
   viewport = { width: 1000, height: 800 },
   view,
+  prepare,
 }: Setup = {}) {
   const histories: History[] = [];
   const originApp: AppContext = createTestAppContext({
@@ -102,6 +112,7 @@ async function setup({
       changeZoomLevelAction({ value: zoomLevel })
     );
   }
+  prepare?.(originApp);
   await flush();
 
   const onChange = vi.fn();
@@ -276,6 +287,30 @@ describe('TimeTravel', () => {
       expect(table.getAbsoluteScale().x).toBeCloseTo(1.5, 5);
       expect(table.getAbsolutePosition().x).toBeCloseTo(120, 5);
       expect(table.getAbsolutePosition().y).toBeCloseTo(80, 5);
+    });
+
+    it("opens in the reader's name view, which a locked file leaves out", async () => {
+      const { originApp } = await setup({
+        tableIds: ['t1'],
+        prepare: app =>
+          app.store.dispatchSync(
+            changeTableNameAction({ id: 't1', value: 'member' }),
+            changeTableLogicalNameAction({ id: 't1', value: 'Member' }),
+            toNameViewModeAction(app.store.state, NameViewMode.logical, false)
+          ),
+      });
+      expect(originApp.store.state.settings.lockSettings).toBe(63);
+
+      const stages: Record<string, Stage> = Reflect.get(
+        globalThis,
+        '__erdStages'
+      );
+      const texts = stages.canvas
+        .find<Text>('.cell-text')
+        .map(text => text.text());
+
+      expect(texts).toContain('Member');
+      expect(texts).not.toContain('member');
     });
 
     it('follows later viewport changes on the origin store', async () => {

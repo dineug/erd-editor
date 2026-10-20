@@ -18,9 +18,12 @@ import { AppContext } from '@/components/appContext';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import * as styles from '@/components/erd/diff-viewer/DiffViewer.styles';
 import { EXPLORER_WIDTH } from '@/constants/layout';
+import { NameViewMode } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
+import { toNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -60,7 +63,12 @@ vi.mock('@/components/appContext', async importOriginal => {
   };
 });
 
-type TableSeed = { id: string; name: string; columns?: string[] };
+type TableSeed = {
+  id: string;
+  name: string;
+  logicalName?: string;
+  columns?: string[];
+};
 
 let mounted: Mounted | null = null;
 let toastMounted: Mounted | null = null;
@@ -81,7 +89,11 @@ function seed(app: AppContext, tables: TableSeed[]) {
       })
     );
     app.store.dispatchSync(
-      changeTableNameAction({ id: table.id, value: table.name })
+      changeTableNameAction({ id: table.id, value: table.name }),
+      changeTableLogicalNameAction({
+        id: table.id,
+        value: table.logicalName ?? '',
+      })
     );
     (table.columns ?? []).forEach((name, columnIndex) => {
       const id = `${table.id}-c${columnIndex}`;
@@ -110,8 +122,12 @@ async function mountDiffViewer({
   origin = [{ id: 'n1', name: 'users' }] as TableSeed[],
   initial = [{ id: 'p1', name: 'users' }] as TableSeed[],
   onClose = vi.fn(),
+  nameViewMode = NameViewMode.physical as (typeof NameViewMode)[keyof typeof NameViewMode],
 } = {}) {
   const originApp = createOriginApp(origin);
+  originApp.store.dispatchSync(
+    toNameViewModeAction(originApp.store.state, nameViewMode, false)
+  );
   const appRef = createRef<AppContext>(originApp);
 
   mounted = await mountAndFlush(
@@ -218,6 +234,32 @@ describe('DiffViewer', () => {
     });
 
     expect(labels).toEqual(['Tables2~', 'membersA', 'usersD']);
+  });
+
+  it("opens both panes in the reader's name view, which neither file holds, and names the tree by it", async () => {
+    const { originApp } = await mountDiffViewer({
+      origin: [{ id: 'n1', name: 'members', logicalName: 'Members' }],
+      initial: [{ id: 'p1', name: 'users', logicalName: 'Users' }],
+      nameViewMode: NameViewMode.logical,
+    });
+    expect(originApp.store.state.settings.lockSettings).toBe(63);
+
+    const labels = Array.from(
+      mounted!.container.querySelectorAll<HTMLElement>('[role="treeitem"]')
+    ).map(row => {
+      const copy = row.cloneNode(true) as HTMLElement;
+      copy
+        .querySelectorAll('.diff-tree-status-text')
+        .forEach(node => node.remove());
+      return copy.textContent?.trim();
+    });
+
+    expect(
+      (contexts.created.slice(-2) as AppContext[]).map(
+        app => app.store.state.settings.nameViewMode
+      )
+    ).toEqual([NameViewMode.logical, NameViewMode.logical]);
+    expect(labels).toEqual(['Tables2~', 'MembersA', 'UsersD']);
   });
 
   it('puts out the lights of both panes as it goes, kept by editor ids no teardown of its own reaches (AC-D19)', async () => {

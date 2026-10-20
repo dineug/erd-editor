@@ -40,6 +40,7 @@ const table = (tableId: string): ExplorerNode => ({
   kind: 'table',
   tableId,
   name: tableId,
+  logicalName: '',
 });
 const foreignKey: ExplorerNode = {
   kind: 'foreignKey',
@@ -73,6 +74,7 @@ describe('targetOf', () => {
         tableGroupId: 'billing',
         tableId: 'orders',
         name: 'orders',
+        logicalName: '',
       })
     ).toEqual({ kind: 'table', tableId: 'orders' });
     expect(
@@ -81,6 +83,7 @@ describe('targetOf', () => {
         tableId: 'orders',
         columnId: 'orders.id',
         name: 'id',
+        logicalName: '',
         dataType: '',
         primaryKey: true,
         foreignKey: false,

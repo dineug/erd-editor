@@ -14,13 +14,20 @@ import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_UNIQUE_WIDTH,
 } from '@/constants/layout';
-import { Show } from '@/constants/schema';
+import { NameViewMode, Show } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeShowAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -242,6 +249,91 @@ describe('IndexesCheckboxColumn', () => {
       );
 
       expect(cellTextsOf(rowsOf(mounted)[0])).toEqual(['', '', 'user_id']);
+    });
+  });
+
+  describe('name views', () => {
+    const mount = () =>
+      mountAndFlush(
+        html`
+          <${IndexesCheckboxColumn} tableId=${TABLE_ID} index=${indexOf(app)} />
+        `,
+        app
+      );
+    const switchTo = (mode: (typeof NameViewMode)[keyof typeof NameViewMode]) =>
+      app.store.dispatchSync(
+        toNameViewModeAction(app.store.state, mode, false)
+      );
+
+    beforeEach(() => {
+      app.store.dispatchSync(
+        changeColumnLogicalNameAction({
+          id: COLUMN_A,
+          tableId: TABLE_ID,
+          value: 'User ID',
+        }),
+        changeColumnDataTypeAction({
+          id: COLUMN_A,
+          tableId: TABLE_ID,
+          value: 'INT',
+        }),
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd1',
+          values: { name: 'Identifier', dataType: 'INT' },
+        }),
+        changeColumnDomainAction({
+          id: COLUMN_A,
+          tableId: TABLE_ID,
+          value: 'd1',
+        }),
+        changeShowAction({ show: Show.columnNotNull, value: false }),
+        changeShowAction({ show: Show.columnDefault, value: false }),
+        changeShowAction({ show: Show.columnComment, value: false })
+      );
+    });
+
+    it('draws the logical name and the domain in the name and type cells of the logical view', async () => {
+      switchTo(NameViewMode.logical);
+      mounted = await mount();
+      const [first, second] = rowsOf(mounted);
+
+      expect(cellTextsOf(first)).toEqual(['', '', 'User ID', 'Identifier']);
+      expect(cellTextsOf(second)).toEqual(['', '', 'email', 'dataType']);
+      expect(
+        second.querySelector('.edit-input')?.classList.contains('placeholder')
+      ).toBe(true);
+    });
+
+    it('adds the logical name cell in the view of both and the domain cell under its bit', async () => {
+      app.store.dispatchSync(
+        changeShowAction({ show: Show.columnDomain, value: true })
+      );
+      switchTo(NameViewMode.both);
+      mounted = await mount();
+      const widths = calcTableWidths(
+        app.store.state.collections.tableEntities[TABLE_ID],
+        app.store.state
+      );
+      const [first] = rowsOf(mounted);
+      const inputs = Array.from(
+        first.querySelectorAll('.edit-input')
+      ) as HTMLElement[];
+
+      expect(cellTextsOf(first)).toEqual([
+        '',
+        '',
+        'User ID',
+        'user_id',
+        'INT',
+        'Identifier',
+      ]);
+      expect(inputs.map(el => el.style.width)).toEqual([
+        `${widths.logicalName}px`,
+        `${widths.name}px`,
+        `${widths.dataType}px`,
+        `${widths.domain}px`,
+      ]);
     });
   });
 

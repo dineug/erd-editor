@@ -29,6 +29,48 @@ export const drawsNameForLogicalName = (
   { logicalName }: { logicalName: string }
 ): boolean => isLogicalNameView(settings) && !logicalName.trim();
 
+/** What a label outside the canvas shows of a table's or a column's names. */
+export type NameLabel = {
+  /** The name it leads with, blank while there is none to show. */
+  text: string;
+  /** The name after it, muted where it can be: the view of both's own, '' otherwise. */
+  after: string;
+  /** Whether the text is the name standing in for a blank logical name, which a label dims. */
+  standIn: boolean;
+};
+
+/**
+ * What a label shows in the name view: the logical name in the logical view,
+ * the name standing in while it is blank, and in the view of both the logical
+ * name with the name after it, or the name alone while the logical one is blank.
+ */
+export function toNameLabel(
+  settings: Pick<Settings, 'nameViewMode'>,
+  { name, logicalName }: { name: string; logicalName: string }
+): NameLabel {
+  const logical = logicalName.trim() ? logicalName : '';
+
+  if (isLogicalNameView(settings)) {
+    return logical
+      ? { text: logical, after: '', standIn: false }
+      : { text: name, after: '', standIn: name.trim() !== '' };
+  }
+  if (isBothNameView(settings) && logical) {
+    return { text: logical, after: name.trim() ? name : '', standIn: false };
+  }
+  return { text: name, after: '', standIn: false };
+}
+
+/**
+ * A label as one text, where it cannot set its names apart: the name after
+ * the logical name stands in brackets.
+ *
+ * @example
+ * nameLabelText({ text: 'Member', after: 'member', standIn: false }); // 'Member (member)'
+ */
+export const nameLabelText = ({ text, after }: NameLabel): string =>
+  after ? `${text} (${after})` : text;
+
 /**
  * Whether a document row's type cell stands for its domain: in the logical
  * view while the domain has no cell of its own, so a row never draws the

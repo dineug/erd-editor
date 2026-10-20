@@ -65,6 +65,10 @@ export type DiffEntry = {
   name: string;
   /** What the saved document calls it, the same as name unless renamed or added. */
   prevName: string;
+  /** A table's or column's logical name, as name is taken, which a label shows and no change counts; '' for any other. */
+  logicalName: string;
+  /** The saved document's logical name, as prevName is taken. */
+  prevLogicalName: string;
   changes: DiffChange[];
   /** A table's columns, indexes and foreign keys, in that order. */
   children: DiffEntry[];

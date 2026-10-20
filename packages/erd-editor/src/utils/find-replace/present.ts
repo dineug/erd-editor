@@ -4,7 +4,7 @@ import { RootState } from '@/engine/state';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n, PlainMessageKey } from '@/i18n/translate';
 
-import { FindField, FindMatch } from './findMatches';
+import { FindField, FindMatch, isTableLogicalName } from './findMatches';
 
 /** The kind of text a match was found in, as its result row names it. */
 export const FindFieldLabel: Record<FindField, PlainMessageKey> = {
@@ -15,6 +15,7 @@ export const FindFieldLabel: Record<FindField, PlainMessageKey> = {
   [FindField.memo]: 'findReplace.field.memo',
   [FindField.indexName]: 'findReplace.field.indexName',
   [FindField.tableGroupName]: 'findReplace.field.tableGroupName',
+  [FindField.logicalName]: 'findReplace.field.logicalName',
 };
 
 const nameOf = (name: string | undefined, { t }: Pick<I18n, 't'>) =>
@@ -27,9 +28,10 @@ const nameOf = (name: string | undefined, { t }: Pick<I18n, 't'>) =>
  */
 export function locationOf(
   { collections }: RootState,
-  { field, id, tableId }: FindMatch,
+  match: FindMatch,
   i18n: Pick<I18n, 't'> = sourceI18n
 ): string {
+  const { field, id, tableId } = match;
   if (field === FindField.memo || field === FindField.tableGroupName) return '';
 
   const table = query(collections)
@@ -39,7 +41,8 @@ export function locationOf(
   if (
     field === FindField.tableName ||
     field === FindField.tableComment ||
-    field === FindField.indexName
+    field === FindField.indexName ||
+    isTableLogicalName(match)
   ) {
     return tableName;
   }
