@@ -70,7 +70,8 @@ export const updateDictionaryEntryAction$ = <K extends DictionaryKind>(
 
 /**
  * Removes each listed row named, once, in one dispatch, from the end of the
- * list back, so each row leaves from the end and no splice moves the rest.
+ * list back, each after every named row behind it: removing a whole sheet or
+ * its tail moves no other row, while rows a scattered pick leaves still move.
  */
 export const removeDictionaryEntriesAction$ = (
   kind: DictionaryKind,
