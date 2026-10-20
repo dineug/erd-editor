@@ -568,8 +568,9 @@ export const sortTablesToMoveAction$ = (): GeneratorAction =>
   };
 
 /**
- * Renames a table as typed by hand, so the dictionaries leave its name alone
- * from then on: the derived flag goes off in the same dispatch while it is on.
+ * Renames a table as typed by hand, so the dictionaries leave a name that is
+ * not empty alone from then on: the derived flag goes off in the same dispatch
+ * while it is on.
  */
 export const changeTableNameAction$ = (
   id: string,

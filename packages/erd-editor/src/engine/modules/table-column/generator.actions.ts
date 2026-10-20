@@ -227,7 +227,8 @@ export const changeColumnValueAction$ = (
     switch (focusType) {
       case FocusType.columnName:
         // A name typed by hand is the column's own, so no logical name
-        // derives it again until the derived flag is taken back.
+        // derives it again while it is not empty, until the derived flag is
+        // taken back.
         yield [
           changeColumnNameAction(payload),
           ...(bHas(column.options, ColumnOption.nameDerived)
