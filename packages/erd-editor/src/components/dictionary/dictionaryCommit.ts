@@ -69,8 +69,8 @@ export type SheetRows = {
   activate(row: number): void;
   /**
    * Reads the active id again from the rows the grid shows, unless an edit is
-   * open. The tab calls it as a key, a double click or a composition reaches
-   * the grid, in the capture phase, before any of them opens an edit.
+   * open. The tab calls it as a key, a double click, a composition or an input
+   * reaches the grid, in the capture phase, before any of them opens an edit.
    */
   settle(editing: boolean): void;
   /** The rows a commit writes, in row order, or none for an edit on no row. */

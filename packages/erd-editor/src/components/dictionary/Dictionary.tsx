@@ -92,8 +92,17 @@ export type DictionaryProps = {
 /** The file format the empty sheet's hint and the file buttons name, which no language translates. */
 const CSV = 'CSV';
 
-/** The presses that may open an edit, read before the grid's own listeners. */
-const SETTLING_EVENTS = ['keydown', 'dblclick', 'compositionstart'] as const;
+/**
+ * The events that may open an edit, read before the grid's own listeners: a
+ * beforeinput too, since text an emoji picker or dictation inserts opens one
+ * with no keydown before it.
+ */
+const SETTLING_EVENTS = [
+  'keydown',
+  'dblclick',
+  'compositionstart',
+  'beforeinput',
+] as const;
 
 /**
  * One mount of the grid on one sheet: the rows each version handed it, the

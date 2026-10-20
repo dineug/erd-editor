@@ -14,7 +14,7 @@ import {
 } from '@dineug/r-html';
 import { currentEpoch, whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
-import { page, userEvent } from 'vite-plus/test/browser/context';
+import { cdp, page, userEvent } from 'vite-plus/test/browser/context';
 
 import { createTestAppContext, flush } from '@/__test-utils__';
 import { createTestI18n, provideI18n } from '@/__test-utils__/i18n';
@@ -104,6 +104,13 @@ type Fixture = {
   /** Every copy or paste the editor root handed its emitter. */
   clipboard: string[];
 };
+
+/** The one CDP command the spec sends, which the provider's session types only under its own config. */
+type InputSession = {
+  send: (method: string, params: Record<string, unknown>) => Promise<unknown>;
+};
+
+const session = () => cdp() as unknown as InputSession;
 
 const host = observable({ readonly: false, shown: true, width: WIDTH });
 const teardowns: Array<() => void> = [];
@@ -911,6 +918,28 @@ describe('the Dictionary tab', () => {
     await press('{Enter}');
 
     expect(names(fixture)).toEqual(['B', 'X', 'D']);
+  });
+
+  it('commits text inserted with no keydown, after an edit rows moved under was cancelled, to the row the cell shows', async () => {
+    const fixture = await setup();
+    const shared = createSharedStore(fixture.app.store, {
+      getNickname: () => 'peer',
+    });
+    teardowns.push(shared.destroy);
+
+    await press('{ArrowDown}{ArrowDown}X');
+    shared.dispatchSync(
+      removeDictionaryAction({ kind: DictionaryKind.word, id: 'a' })
+    );
+    await drawn();
+    await press('{Escape}');
+
+    // As the emoji picker or dictation inserts it: an input with no key before it.
+    await session().send('Input.insertText', { text: 'Z' });
+    await drawn();
+    await press('{Enter}');
+
+    expect(names(fixture)).toEqual(['B', 'C', 'Z']);
   });
 
   it('keeps the selection, the scroll and a resized width as the tab mounts again', async () => {
