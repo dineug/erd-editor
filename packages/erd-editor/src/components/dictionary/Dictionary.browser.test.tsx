@@ -771,7 +771,7 @@ describe('the Dictionary tab', () => {
     expect(hint(fixture)).toBeNull();
   });
 
-  it('stops the editor chords at the tab but the palette, undo, redo and find, and leaves undo to an open edit', async () => {
+  it('stops the editor chords at the tab but the palette, undo, redo and find, and leaves undo and redo to an open edit', async () => {
     const fixture = await setup();
     const { store } = fixture.app;
     const abbreviation = () =>
@@ -798,6 +798,17 @@ describe('the Dictionary tab', () => {
     await undo();
     expect(abbreviation()).toBe('MB');
     expect(fixture.shortcuts).toEqual(['undo']);
+    fixture.shortcuts.length = 0;
+
+    await press('xy');
+    await redo();
+    expect(abbreviation()).toBe('MB');
+    expect(fixture.shortcuts).toEqual([]);
+
+    await press('{Escape}');
+    await redo();
+    expect(abbreviation()).toBe('');
+    expect(fixture.shortcuts).toEqual(['redo']);
   });
 
   it('leaves undo to the search field, and keeps a copy from the editor root', async () => {
