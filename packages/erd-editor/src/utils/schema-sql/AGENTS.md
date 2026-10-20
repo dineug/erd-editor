@@ -67,13 +67,14 @@
 
 - **An empty comment can write the logical name**, as the owner decided. Under `logicalNameAsComment` (`SchemaSQLOptions`, off when left out), a table or column whose comment is blank writes its logical name where its comment would go. `commentToWrite` (`utils.ts`) picks the text: the comment while not blank, else the logical name while the option is on and it is not blank, else nothing. Every table and column comment place of the eight writers calls it, so each vendor writes a logical name in the form it writes a comment:
   - MySQL and MariaDB inline (`COMMENT 'x'` on the column, `) COMMENT 'x';` on the table), MySQL's ifNotExists batch too;
-  - PostgreSQL and Oracle `COMMENT ON TABLE` / `COMMENT ON COLUMN` after the table;
+  - PostgreSQL and Oracle `COMMENT ON TABLE` / `COMMENT ON COLUMN` after the table, Oracle's blank lines written as one line break (below);
   - SQL Server an `MS_Description` call per table and column (SQL Server comments, above);
   - Snowflake inline, `COMMENT = 'x'` on the table;
   - Databricks inline, in its Spark string literal (Quoting and string literals, above);
   - SQLite a `--` comment line above the table or column, since it keeps no comment, its line breaks written as a space (below).
 - **A comment that is not blank stays.** The logical name never replaces or joins it.
 - **SQLite writes a line break as a space** (an owner decision of 2026-10-20). A line break would end the `--` line and run the text after it as SQL, so `SQLite.ts` writes each run of line breaks in a comment or a logical name as one space (`toCommentLine`). On 2026-10-20 SQLite 3.54 refused the earlier output of a table comment on two lines and created neither table of the document; it ran this output clean.
+- **Oracle writes a run of blank lines as one line break** (an owner decision of 2026-10-21). SQL*Plus ends a statement at a blank line, one of spaces or tabs alike, and skips the rest of it, and `WHENEVER SQLERROR EXIT FAILURE` still exits 0. So `Oracle.ts` writes each run of blank lines in a comment or a logical name as one line break (`toCommentLiteral`). On 2026-10-21 SQL*Plus on Oracle AI Database 26ai Free dropped, with exit 0, the 16 comments of the earlier output that held a blank line in one of eight shapes; it kept all 18 of this output.
 - **Only `true` turns it on.** `createSchemaSQL` reads any other value, from a host's `getSchemaSQL()` or an agent's read, as left out. The Schema SQL tab's switch (`src/components/schema-sql/AGENTS.md`) passes the window's choice; Table Properties' one table never writes it.
 - **Measured on 2026-10-20.** MySQL 8.4, MariaDB 11.4, PostgreSQL 17, SQL Server 2022, Oracle AI Database 26ai Free and SQLite 3.54 ran the DDL of a document whose tables and columns had logical names and no comment, Korean ones and one with a quote among them, beside a table comment and a column comment. Each catalog held every logical name and comment on its table and column, SQL Server's once its descriptions were national literals (SQL Server comments, above). SQLite's schema text keeps the column lines alone, since a table's line stands before its `CREATE TABLE`.
 

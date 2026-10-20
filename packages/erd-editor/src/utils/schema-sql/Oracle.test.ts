@@ -1075,4 +1075,34 @@ describe('Oracle logical names as comments', () => {
     expect(written).not.toContain('User');
     expect(createSchema(state)).not.toContain('Post');
   });
+
+  it('writes each run of blank lines in a comment or a logical name as one line break, which SQL*Plus keeps in the statement', () => {
+    const { state } = createFixture();
+    const { tableEntities, tableColumnEntities } = state.collections;
+    tableEntities['t-users'].comment = 'user\n\ntable';
+    tableEntities['t-posts'].logicalName = 'Blog\r\n \r\n\t\r\npost';
+    tableColumnEntities['c-user-id'].comment = '\n\nuser id\n\n';
+    tableColumnEntities['c-post-user-id'].logicalName = 'first\nsecond';
+
+    const written = createSchema(state, undefined, {
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain("\nCOMMENT ON TABLE users IS 'user\ntable';\n");
+    expect(written).toContain("\nCOMMENT ON TABLE posts IS 'Blog\r\npost';\n");
+    expect(written).toContain(
+      "\nCOMMENT ON COLUMN users.id IS '\nuser id\n';\n"
+    );
+    expect(written).toContain(
+      "\nCOMMENT ON COLUMN posts.user_id IS 'first\nsecond';\n"
+    );
+    // SQL*Plus reads a line of nothing but spaces and tabs as blank too.
+    const comments = written
+      .split(/\n[ \t\r]*\n/)
+      .filter(statement => statement.startsWith('COMMENT ON'));
+    expect(comments).toHaveLength(5);
+    for (const statement of comments) {
+      expect(statement).toMatch(/';$/);
+    }
+  });
 });

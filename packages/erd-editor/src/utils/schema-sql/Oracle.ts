@@ -242,6 +242,11 @@ function formatColumn(
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }
 
+// SQL*Plus ends a statement at a blank line and skips the rest of it, exiting 0,
+// so each run of blank lines in a comment is written as one line break.
+const toCommentLiteral = (comment: string) =>
+  toStringLiteral(comment.replace(/(\r?\n)(?:[ \t\r]*\n)+/g, '$1'));
+
 function formatComment(
   { settings: { bracketType }, collections }: RootState,
   { table, buffer, logicalNameAsComment }: FormatCommentOptions
@@ -251,7 +256,7 @@ function formatComment(
 
   if (tableComment !== '') {
     buffer.push(
-      `COMMENT ON TABLE ${bracket}${table.name}${bracket} IS ${toStringLiteral(tableComment)};`
+      `COMMENT ON TABLE ${bracket}${table.name}${bracket} IS ${toCommentLiteral(tableComment)};`
     );
     buffer.push('');
   }
@@ -262,7 +267,7 @@ function formatComment(
       const comment = commentToWrite(column, logicalNameAsComment);
       if (comment !== '') {
         buffer.push(
-          `COMMENT ON COLUMN ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} IS ${toStringLiteral(comment)};`
+          `COMMENT ON COLUMN ${bracket}${table.name}${bracket}.${bracket}${column.name}${bracket} IS ${toCommentLiteral(comment)};`
         );
         buffer.push('');
       }
