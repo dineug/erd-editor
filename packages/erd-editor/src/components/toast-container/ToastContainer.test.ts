@@ -174,6 +174,21 @@ describe('ToastContainer', () => {
     expect(getToasts(mounted)).toHaveLength(0);
   });
 
+  it('auto closes a toast whose close is given as undefined, as a status toast sends it', async () => {
+    vi.useFakeTimers();
+    mounted = await mountAndFlush(html`<${ToastContainer} />`);
+
+    mounted.app.emitter.emit(
+      openToastAction({ message: html`status`, close: undefined })
+    );
+    await flush();
+    expect(getToasts(mounted)).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(5000);
+    await flush();
+    expect(getToasts(mounted)).toHaveLength(0);
+  });
+
   it('marks a toast as animation-one once its entry animation ended', async () => {
     mounted = await mountAndFlush(html`<${ToastContainer} />`);
     const first = createDeferred();
