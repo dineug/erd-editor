@@ -38,6 +38,7 @@ import {
   removeDictionaryAction,
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
+import { listDictionaryChecks } from '@/engine/modules/dictionary/checks';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
   changeCanvasTypeAction,
@@ -68,6 +69,15 @@ import { hasAppleDevice } from '@/utils/device-detect';
 import { copyAction, pasteAction } from '@/utils/emitter';
 import { setExportFileCallback } from '@/utils/file/exportFile';
 import type { KeyBindingName } from '@/utils/keyboard-shortcut';
+
+vi.mock('@/engine/modules/dictionary/checks', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('@/engine/modules/dictionary/checks')>();
+  return {
+    ...actual,
+    listDictionaryChecks: vi.fn(actual.listDictionaryChecks),
+  };
+});
 
 await import('@/components/erd-editor/ErdEditor');
 
@@ -1063,6 +1073,33 @@ describe('the Dictionary tab', () => {
     await drawn();
     expect(pressedSheet(fixture)).toEqual(['Checks']);
     expect(status(fixture)).toBe('1 row 1 selected');
+  });
+
+  it("lists the checks once a frame while batches keep coming, as a peer's drag sends them", async () => {
+    const fixture = await setup({
+      seed: [word('member', '회원'), ...memberTable('회원', '회원')],
+    });
+    await click(sheetButtons(fixture)[3]);
+    expect(status(fixture)).toBe('0 rows');
+    const listChecks = vi.mocked(listDictionaryChecks);
+    listChecks.mockClear();
+
+    ['회원정보', '회원', '회원주소'].forEach(value =>
+      fixture.app.store.dispatchSync(
+        changeColumnLogicalNameAction({
+          id: 'address',
+          tableId: 'member',
+          value,
+        })
+      )
+    );
+    expect(listChecks).not.toHaveBeenCalled();
+
+    await nextFrame();
+    expect(listChecks).toHaveBeenCalledTimes(1);
+    await drawn();
+    expect(status(fixture)).toBe('1 row 1 selected');
+    expect(listChecks).toHaveBeenCalledTimes(1);
   });
 
   it("goes to a word's row on its own sheet by Enter and by a double click, the search that hid it cleared", async () => {

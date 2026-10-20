@@ -188,6 +188,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   let session = openSession(view.sheet);
   let pending: Pending = null;
   let revealRow: number | null = null;
+  let checksFrame: number | null = null;
   let gridTheme: Readonly<GridTheme> | undefined;
 
   let columns: GridColumn[] = [];
@@ -264,6 +265,20 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       state.empty = false;
     }
     countSelected();
+  }
+
+  /**
+   * Lists the checks again on the next frame, once however many batches come
+   * before it, since a list walks the whole document and a peer's drag sends a
+   * batch every frame. A switch away by then has listed nothing to redo.
+   */
+  function refreshChecks() {
+    if (checksFrame !== null) return;
+
+    checksFrame = requestAnimationFrame(() => {
+      checksFrame = null;
+      if (!isEntrySheet(session.sheet)) refresh();
+    });
   }
 
   function openSession(sheet: DictionarySheet): SheetSession {
@@ -540,6 +555,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     addUnsubscribe(
       store.subscribe(actions => {
         if (!bumpedSheets(actions).includes(session.sheet)) return;
+        if (!isEntrySheet(session.sheet)) return refreshChecks();
 
         const asked = pending;
         pending = null;
@@ -551,7 +567,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
         if (name === 'locale' && session.sheet === DictionarySheet.check) {
           refresh();
         }
-      })
+      }),
+      () => {
+        if (checksFrame !== null) cancelAnimationFrame(checksFrame);
+      }
     );
   });
 
