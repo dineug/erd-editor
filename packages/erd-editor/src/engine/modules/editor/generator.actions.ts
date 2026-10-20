@@ -640,11 +640,14 @@ export function toSchemaAppend(
   };
 
   const points = toLayoutPoints(state, schema, input, layout, ctx);
+  // Measured as the tables land, with none of the file's domains listed, so a
+  // type cell or a domain cell takes no width from a link the append drops.
+  const appended: RootState = { ...read, doc: { ...doc, domainIds: [] } };
   const sizes = new Map(
     query(collections)
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
-      .map(table => [table.id, measureTableSize(table, read, ctx.toWidth)])
+      .map(table => [table.id, measureTableSize(table, appended, ctx.toWidth)])
   );
   let minX = Infinity;
   let minY = Infinity;

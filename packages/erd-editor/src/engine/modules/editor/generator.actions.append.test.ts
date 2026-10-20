@@ -10,6 +10,7 @@ import {
 } from '@/constants/layout';
 import {
   ColumnOption,
+  NameViewMode,
   OrderType,
   RelationshipType,
   Show,
@@ -38,6 +39,7 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeDatabaseNameAction,
+  changeNameViewModeAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -49,6 +51,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
   changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
@@ -543,6 +546,63 @@ describe('toSchemaAppend', () => {
     expect(append.memoIds).toHaveLength(1);
     expect(append.rect).toEqual(boxes.reduce(unionRect));
   });
+
+  it.each([
+    [
+      'the logical view, where the type cell stands for a short domain',
+      'M',
+      false,
+    ],
+    ['a domain cell, under a long domain name', 'The money of an order', true],
+  ])(
+    'measures the box at the widths its rows draw, the file domains left behind, in %s',
+    (_, name, domainCell) => {
+      const store = createDiagram();
+      store.dispatchSync(
+        domainCell
+          ? changeShowAction({ show: Show.columnDomain, value: true })
+          : changeNameViewModeAction({
+              value: NameViewMode.logical,
+              shared: false,
+              editorId: store.state.editor.id,
+            })
+      );
+      const file = createTestStore();
+      file.dispatchSync(
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd1',
+          values: { name, dataType: 'DECIMAL(19,4)' },
+        }),
+        addTableAction({ id: 'prices', ui: { x: 0, y: 0, zIndex: 2 } }),
+        changeTableNameAction({ id: 'prices', value: 'prices' }),
+        ...column('prices', 'amount', 'amount'),
+        changeColumnDataTypeAction({
+          id: 'amount',
+          tableId: 'prices',
+          value: 'DECIMAL(19,4)',
+        }),
+        changeColumnDomainAction({
+          id: 'amount',
+          tableId: 'prices',
+          value: 'd1',
+        })
+      );
+
+      const append = toSchemaAppend(
+        store.state,
+        toJson(file.state),
+        'file',
+        store.context
+      )!;
+      store.dispatchSync(append.actions);
+
+      const [id] = append.tableIds;
+      expect(append.rect).toEqual(
+        getTableRect(store.state, store.state.collections.tableEntities[id])
+      );
+    }
+  );
 
   it('answers null where nothing is to be added', () => {
     const store = createDiagram();
