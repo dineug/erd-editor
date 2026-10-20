@@ -86,8 +86,9 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
 
 - `erd_open_document` with `create` makes a missing file, adding `.erd.json` to a name with no
   extension. In an Obsidian vault, name it `.erd`, which the file explorer lists.
-- `erd_list` lists the tables by id, 100 to a page, and finds them by name or comment with
-  `query`. `erd_get` reads entities by id or table name.
+- `erd_list` lists the tables by id, 100 to a page, then the table groups, memos and dictionary
+  rows, and finds tables by name, logical name or comment with `query`. `erd_get` reads entities by
+  id or table name.
 - `erd_read` answers the whole document as a `snapshot`, as `sql` for any of the eight databases,
   as `json` or as its `scripts`, or the DDL of just the tables or table groups it names.
 - A read answers at most 40,000 characters, or one larger entity whole: `erd_read` says how to
@@ -99,12 +100,13 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
 | Group | Tools |
 | --- | --- |
 | Session | `erd_list_documents`, `erd_open_document`, `erd_list`, `erd_get`, `erd_read`, `erd_save`, `erd_undo`, `erd_redo` |
-| Tables | `erd_add_table`, `erd_remove_table`, `erd_change_table_name`, `erd_change_table_comment`, `erd_change_table_color`, `erd_move_table`, `erd_move_tables`, `erd_sort_tables` |
-| Columns | `erd_add_column`, `erd_remove_columns`, `erd_change_column_name`, `erd_change_column_data_type`, `erd_change_column_default`, `erd_change_column_comment`, `erd_set_column_primary_key`, `erd_set_column_unique`, `erd_set_column_not_null`, `erd_set_column_auto_increment`, `erd_move_column` |
+| Tables | `erd_add_table`, `erd_remove_table`, `erd_change_table_name`, `erd_change_table_comment`, `erd_set_table_logical_name`, `erd_change_table_color`, `erd_move_table`, `erd_move_tables`, `erd_sort_tables` |
+| Columns | `erd_add_column`, `erd_remove_columns`, `erd_change_column_name`, `erd_change_column_data_type`, `erd_change_column_default`, `erd_change_column_comment`, `erd_set_column_logical_name`, `erd_set_column_domain`, `erd_set_column_primary_key`, `erd_set_column_unique`, `erd_set_column_not_null`, `erd_set_column_auto_increment`, `erd_move_column` |
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
 | Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
 | Table groups | `erd_add_table_group`, `erd_remove_table_group`, `erd_change_table_group_name`, `erd_change_table_group_color`, `erd_move_table_group`, `erd_resize_table_group`, `erd_set_table_group` |
+| Dictionaries | `erd_add_word`, `erd_update_word`, `erd_remove_word`, `erd_add_term`, `erd_update_term`, `erd_remove_term`, `erd_add_domain`, `erd_update_domain`, `erd_remove_domain` |
 | Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_ddl_script` |
 | Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |
 | Batch | `erd_batch` |
@@ -112,7 +114,11 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
 - `erd_batch` runs up to 100 edits in order as one, all or none, and one `erd_undo` reverts it. A
   step named with `as` passes the ids it creates to later steps as `$name`, so a table and its
   columns take one call.
-- The import tools replace the diagram by default and add to it with `mode: "append"`.
+- A logical name set with `erd_set_table_logical_name` or `erd_set_column_logical_name` gives the
+  physical name, and a column its domain, from the word, term and domain dictionaries, as in the
+  editor; a name set by hand stays.
+- The import tools replace the diagram by default and add to it with `mode: "append"`. The SQL,
+  GraphQL, DBML and AML imports keep the dictionaries.
 - The agent sets the database, its name and the Schema SQL scripts; the view and code settings stay
   yours to set in the editor.
 - The edit and read tools refuse an unknown or mistyped argument before the document changes.

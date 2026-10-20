@@ -42,6 +42,9 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
       'indexIds',
       'memoIds',
       'tableGroupIds',
+      'wordIds',
+      'termIds',
+      'domainIds',
     ],
   },
   { name: 'erd_save', args: ['path'] },
@@ -214,6 +217,83 @@ describe('the words on a table group', () => {
     for (const name of GROUP_TOOLS) {
       expect(describeTool(name)).not.toMatch(/\d+\.\d+/);
     }
+  });
+});
+
+describe('the words on the dictionaries and logical names', () => {
+  const DICTIONARY_TOOLS = [
+    'erd_set_table_logical_name',
+    'erd_set_column_logical_name',
+    'erd_set_column_domain',
+    'erd_add_word',
+    'erd_update_word',
+    'erd_remove_word',
+    'erd_add_term',
+    'erd_update_term',
+    'erd_remove_term',
+    'erd_add_domain',
+    'erd_update_domain',
+    'erd_remove_domain',
+  ];
+  const OLDER =
+    'An ERD Editor extension or plugin released before dictionaries, logical names and domains ignores what this edit writes of them and leaves them out when it saves, so the user should update it.';
+
+  it('reach the nine dictionary tools and the three that set a logical name or a domain', () => {
+    expect(
+      actionTools
+        .map(({ name }) => name)
+        .filter(name => /logical_name|domain|word|term/.test(name))
+    ).toEqual(DICTIONARY_TOOLS);
+  });
+
+  it('end each of them on an editor released before dictionaries leaving out what it writes, so the user updates it', () => {
+    for (const name of DICTIONARY_TOOLS) {
+      expect(describeTool(name).endsWith(` ${OLDER}`), name).toBe(true);
+      expect(describeTool(name), name).not.toMatch(/\d+\.\d+/);
+    }
+  });
+
+  it('say a rename by hand turns the derived flag off, so a logical name leaves the name', () => {
+    for (const name of ['erd_change_table_name', 'erd_change_column_name']) {
+      expect(describeTool(name), name).toContain(
+        'The name is then its own: nameDerived goes off, so a later logical name leaves it as it is.'
+      );
+    }
+  });
+
+  it('say the four schema imports keep the dictionaries, by replace and in the mode argument', () => {
+    for (const name of [
+      'erd_import_sql',
+      'erd_import_graphql',
+      'erd_import_dbml',
+      'erd_import_aml',
+    ]) {
+      expect(describeTool(name), name).toContain(
+        'which goes to the start of the canvas, and its word, term and domain dictionaries; erd_undo restores'
+      );
+      expect(describeArg(name, 'mode'), name).toContain(
+        'which goes to the start of the canvas, and the word, term and domain dictionaries; append adds'
+      );
+    }
+  });
+
+  it('name the logical name tools in the server instructions, and that a name set by hand stays', () => {
+    expect(SERVER_INSTRUCTIONS).toContain(
+      'erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries'
+    );
+    expect(SERVER_INSTRUCTIONS).toContain('unless that name was set by hand');
+  });
+
+  it('say erd_list pages through the dictionary rows it never searches, and erd_get gives them whole', () => {
+    expect(describeTool('erd_list')).toContain(
+      'then the rows of the domain, term and word dictionaries'
+    );
+    expect(describeArg('erd_list', 'query')).toContain(
+      'Dictionary rows are not searched.'
+    );
+    expect(describeTool('erd_get')).toContain(
+      'and words, terms and domains with every field'
+    );
   });
 });
 

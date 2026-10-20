@@ -40,6 +40,9 @@ const LISTED: Record<string, (peer: PeerStore) => string[]> = {
   ],
   erd_link_columns: peer => peer.state.doc.relationshipIds,
   erd_add_table_group: peer => peer.state.doc.tableGroupIds,
+  erd_add_word: peer => peer.state.doc.wordIds,
+  erd_add_term: peer => peer.state.doc.termIds,
+  erd_add_domain: peer => peer.state.doc.domainIds,
 };
 
 describe('creation tools hand back the ids they drew (AC-E7)', () => {

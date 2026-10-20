@@ -11,6 +11,8 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     erd_remove_table: { tableId: SEED.orders },
     erd_change_table_name: { tableId: SEED.users, value: 'members' },
     erd_change_table_comment: { tableId: SEED.users, value: 'who signs in' },
+    // The derived users table takes the term's physical name.
+    erd_set_table_logical_name: { tableId: SEED.users, value: 'Member Number' },
     erd_change_table_color: { tableId: SEED.users, color: '#ff8800' },
     erd_move_table: { tableId: SEED.users, x: 40, y: 60 },
     erd_move_tables: {
@@ -45,6 +47,17 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
       columnId: SEED.userName,
       value: 'shown to others',
     },
+    // The derived name column takes the term's physical name and its domain.
+    erd_set_column_logical_name: {
+      tableId: SEED.users,
+      columnId: SEED.userName,
+      value: 'Member Number',
+    },
+    erd_set_column_domain: {
+      tableId: SEED.users,
+      columnId: SEED.userName,
+      domainName: 'Identifier',
+    },
     erd_set_column_primary_key: {
       tableId: SEED.users,
       columnId: SEED.userName,
@@ -70,9 +83,9 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
       columnId: SEED.orderNote,
       targetColumnId: SEED.orderId,
     },
-    // A start table with no key, so the relationship brings one of its own.
+    // Users to itself: its key links a domain, which the foreign key copies.
     erd_add_relationship: {
-      startTableId: SEED.empty,
+      startTableId: SEED.users,
       endTableId: SEED.users,
       relationshipType: 'ZeroN',
     },
@@ -138,6 +151,17 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
       height: 420,
     },
     erd_set_table_group: { tableIds: [SEED.orders], groupId: SEED.group },
+    erd_add_word: { name: 'Order', abbreviation: 'ORD', englishName: 'Order' },
+    erd_update_word: { wordId: SEED.memberWord, englishName: 'Club member' },
+    erd_remove_word: { wordId: SEED.numberWord },
+    // A physical name the words compose, and a domain by its name.
+    erd_add_term: { name: 'Number', domainName: 'Identifier' },
+    erd_update_term: { termId: SEED.term, description: 'Signs a member in' },
+    erd_remove_term: { termId: SEED.term },
+    erd_add_domain: { name: 'Text', category: 'Text', dataType: 'TEXT' },
+    // The key of users links the domain, and the data type sync reaches orders.
+    erd_update_domain: { domainId: SEED.domain, dataType: 'BIGINT' },
+    erd_remove_domain: { domainId: SEED.domain },
     erd_set_database_name: { value: 'shop' },
     erd_set_database: { value: 'PostgreSQL' },
     erd_set_ddl_script: {

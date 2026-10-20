@@ -93,6 +93,9 @@ export const ENTITY_ID_ARGS = Object.freeze([
   'indexIds',
   'memoIds',
   'tableGroupIds',
+  'wordIds',
+  'termIds',
+  'domainIds',
 ] as const);
 
 export const GetParams = Schema.Struct({
@@ -103,6 +106,9 @@ export const GetParams = Schema.Struct({
   indexIds: stringsField(GET_TOOL, 'indexIds'),
   memoIds: stringsField(GET_TOOL, 'memoIds'),
   tableGroupIds: stringsField(GET_TOOL, 'tableGroupIds'),
+  wordIds: stringsField(GET_TOOL, 'wordIds'),
+  termIds: stringsField(GET_TOOL, 'termIds'),
+  domainIds: stringsField(GET_TOOL, 'domainIds'),
 });
 
 /** erd_get needs one id at least, in any of its lists. */

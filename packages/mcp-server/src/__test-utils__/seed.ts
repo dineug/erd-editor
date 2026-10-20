@@ -1,5 +1,6 @@
 import {
   createPeerStore,
+  dictionaryActions,
   indexActions,
   indexColumnActions,
   memoActions,
@@ -32,6 +33,10 @@ export const SEED = {
   userIndexColumn: 'orders_user_id_index_column',
   memo: 'memo',
   group: 'users_group',
+  memberWord: 'word_member',
+  numberWord: 'word_number',
+  term: 'term_member_number',
+  domain: 'domain_identifier',
 } as const;
 
 const column = (
@@ -80,9 +85,61 @@ const group = (
 ];
 
 /**
- * Two related tables, an empty one, a two column index, a memo and a group of
- * the first table: every entity an edit can name, and one relationship and
- * index for a removal to cascade into. Built through the reducers.
+ * Two words, a term giving a domain that the key of users links, and users
+ * and its name column derived, with logical names of their own, so the
+ * dictionary tools and the derivation have rows to read.
+ */
+const dictionaries = (): AnyAction[] => [
+  dictionaryActions.addDictionaryAction({
+    kind: 'word',
+    id: SEED.memberWord,
+    values: { name: 'Member', abbreviation: 'MBR', englishName: 'Member' },
+  }),
+  dictionaryActions.addDictionaryAction({
+    kind: 'word',
+    id: SEED.numberWord,
+    values: { name: 'Number', abbreviation: 'NO', englishName: 'Number' },
+  }),
+  dictionaryActions.addDictionaryAction({
+    kind: 'domain',
+    id: SEED.domain,
+    values: { name: 'Identifier', category: 'Number', dataType: 'INT' },
+  }),
+  dictionaryActions.addDictionaryAction({
+    kind: 'term',
+    id: SEED.term,
+    values: {
+      name: 'Member Number',
+      physicalName: 'MBR_NO',
+      domainId: SEED.domain,
+    },
+  }),
+  tableColumnActions.changeColumnDomainAction({
+    tableId: SEED.users,
+    id: SEED.userId,
+    value: SEED.domain,
+  }),
+  tableActions.changeTableLogicalNameAction({
+    id: SEED.users,
+    value: 'Member',
+  }),
+  tableActions.changeTableNameDerivedAction({ id: SEED.users, value: true }),
+  tableColumnActions.changeColumnLogicalNameAction({
+    tableId: SEED.users,
+    id: SEED.userName,
+    value: 'Member Name',
+  }),
+  tableColumnActions.changeColumnNameDerivedAction({
+    tableId: SEED.users,
+    id: SEED.userName,
+    value: true,
+  }),
+];
+
+/**
+ * Two related tables, an empty one, a two column index, a memo, a group of
+ * the first table and the dictionaries above: every entity an edit can name,
+ * and one relationship and index for a removal to cascade into.
  */
 export function createSeedValue(): string {
   return buildValue(
@@ -139,7 +196,8 @@ export function createSeedValue(): string {
     ],
     group(SEED.group, 'accounts', { x: 40, y: 20, width: 560, height: 300 }, [
       SEED.users,
-    ])
+    ]),
+    dictionaries()
   );
 }
 

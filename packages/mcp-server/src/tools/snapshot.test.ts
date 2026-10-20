@@ -44,22 +44,27 @@ describe('the agent snapshot', () => {
     expect(snapshot.tables[1]).toEqual({
       id: SEED.orders,
       name: 'orders',
+      logicalName: '',
       comment: '',
       color: '',
       groupId: '',
+      nameDerived: false,
       x: 500,
       y: 100,
       columns: [
         {
           id: SEED.orderId,
           name: 'id',
+          logicalName: '',
           dataType: 'INT',
+          domainId: '',
           default: '',
           comment: '',
           primaryKey: true,
           notNull: true,
           unique: false,
           autoIncrement: false,
+          nameDerived: false,
         },
         expect.objectContaining({ id: SEED.orderUser, primaryKey: false }),
         expect.objectContaining({ id: SEED.orderNote, dataType: 'TEXT' }),
@@ -102,6 +107,102 @@ describe('the agent snapshot', () => {
         height: MEMO_MIN_HEIGHT,
       },
     ]);
+  });
+
+  it('gives each table and column its logical name, its domain and whether the dictionaries named it', () => {
+    const users = snapshot.tables[0];
+
+    expect(users).toMatchObject({ logicalName: 'Member', nameDerived: true });
+    expect(
+      users.columns.map(({ id, logicalName, domainId, nameDerived }) => ({
+        id,
+        logicalName,
+        domainId,
+        nameDerived,
+      }))
+    ).toEqual([
+      {
+        id: SEED.userId,
+        logicalName: '',
+        domainId: SEED.domain,
+        nameDerived: false,
+      },
+      {
+        id: SEED.userName,
+        logicalName: 'Member Name',
+        domainId: '',
+        nameDerived: true,
+      },
+    ]);
+  });
+
+  it('gives the rows of the three dictionaries in full, in document order', () => {
+    expect(snapshot.words).toEqual([
+      {
+        id: SEED.memberWord,
+        name: 'Member',
+        abbreviation: 'MBR',
+        englishName: 'Member',
+        description: '',
+        synonyms: '',
+        forbiddenWords: '',
+      },
+      {
+        id: SEED.numberWord,
+        name: 'Number',
+        abbreviation: 'NO',
+        englishName: 'Number',
+        description: '',
+        synonyms: '',
+        forbiddenWords: '',
+      },
+    ]);
+    expect(snapshot.terms).toEqual([
+      {
+        id: SEED.term,
+        name: 'Member Number',
+        physicalName: 'MBR_NO',
+        domainId: SEED.domain,
+        description: '',
+        synonyms: '',
+      },
+    ]);
+    expect(snapshot.domains).toEqual([
+      {
+        id: SEED.domain,
+        name: 'Identifier',
+        category: 'Number',
+        dataType: 'INT',
+        description: '',
+      },
+    ]);
+  });
+
+  it('reads a link to a removed domain as none, as the file form does, the link kept for an undo', () => {
+    const other = createSeededPeer();
+    runTool(other, 'erd_remove_domain', { domainId: SEED.domain });
+    const { tables, terms, domains } = toAgentSnapshot(other.state);
+    const file = JSON.parse(other.value);
+
+    expect(domains).toEqual([]);
+    expect(tables[0].columns[0]).toMatchObject({
+      id: SEED.userId,
+      domainId: '',
+      dataType: 'INT',
+    });
+    expect(terms[0].domainId).toBe('');
+    expect(
+      file.collections.tableColumnEntities[SEED.userId]
+    ).not.toHaveProperty('domainId');
+    expect(
+      other.state.collections.tableColumnEntities[SEED.userId].domainId
+    ).toBe(SEED.domain);
+
+    other.undo();
+    expect(toAgentSnapshot(other.state).tables[0].columns[0].domainId).toBe(
+      SEED.domain
+    );
+    other.destroy();
   });
 
   it('names each setting by its enum name, the tab left out', () => {
@@ -162,8 +263,10 @@ describe('the agent snapshot', () => {
 
     for (const derived of [
       'widthName',
+      'widthLogicalName',
       'widthComment',
       'widthDataType',
+      'widthDomain',
       'widthDefault',
       'meta',
       'seqColumnIds',
@@ -181,6 +284,7 @@ describe('the agent snapshot', () => {
       'scrollLeft',
       'zoomLevel',
       'canvasType',
+      'nameViewMode',
       'lockedValues',
     ]) {
       expect(settings, view).not.toContain(view);
@@ -286,16 +390,17 @@ describe('the agent snapshot', () => {
 
   it('holds nothing for a document with no entity', () => {
     const empty = createPeerStore({ nickname: 'agent', presence: false });
-    const { tables, relationships, indexes, memos, tableGroups } =
-      toAgentSnapshot(empty.state);
-
-    expect([tables, relationships, indexes, memos, tableGroups]).toEqual([
-      [],
-      [],
-      [],
-      [],
-      [],
-    ]);
+    expect(toAgentSnapshot(empty.state)).toEqual({
+      settings: expect.any(Object),
+      tables: [],
+      relationships: [],
+      indexes: [],
+      memos: [],
+      tableGroups: [],
+      words: [],
+      terms: [],
+      domains: [],
+    });
     empty.destroy();
   });
 });

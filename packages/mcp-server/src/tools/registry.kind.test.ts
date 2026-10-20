@@ -84,13 +84,14 @@ const CENSUS: Census = {
         SEED.userName
       )
     ),
-  changeColumnDataTypeAction$: () => [
-    tableColumnActions$.changeColumnDataTypeAction$({
-      tableId: SEED.users,
-      id: SEED.userName,
-      value: 'TEXT',
-    }),
-  ],
+  changeColumnDataTypeAction$: () =>
+    [SEED.userName, SEED.userId].map(id =>
+      tableColumnActions$.changeColumnDataTypeAction$({
+        tableId: SEED.users,
+        id,
+        value: 'TEXT',
+      })
+    ),
   changeColumnValueAction$: () =>
     [
       FocusType.columnName,
@@ -191,65 +192,110 @@ const CENSUS: Census = {
   ],
   addDictionaryEntryAction$: () => [
     dictionaryActions$.addDictionaryEntryAction$('word', {
-      name: 'member',
-      abbreviation: 'MBR',
+      name: 'Order',
+      abbreviation: 'ORD',
     }),
     dictionaryActions$.addDictionaryEntryAction$('domain', {
-      name: 'money',
+      name: 'Money',
       dataType: 'NUMERIC(15,2)',
     }),
-    dictionaryActions$.addDictionaryEntryAction$('term', { name: 'member id' }),
+    // A physical name the seed's words compose, a live domain, a name the
+    // sheet holds and an unknown domain, both refused, and an empty row.
     dictionaryActions$.addDictionaryEntryAction$('term', {
-      name: 'order id',
+      name: 'Number Member',
+    }),
+    dictionaryActions$.addDictionaryEntryAction$('term', {
+      name: 'Order Number',
+      domainId: SEED.domain,
+    }),
+    dictionaryActions$.addDictionaryEntryAction$('word', { name: 'Member' }),
+    dictionaryActions$.addDictionaryEntryAction$('term', {
+      name: 'Order Id',
       domainId: 'gone',
     }),
     dictionaryActions$.addDictionaryEntryAction$('word'),
   ],
   updateDictionaryEntryAction$: () => [
+    // The domain's new type reaches the key of users and, by the sync, orders.
+    dictionaryActions$.updateDictionaryEntryAction$('domain', SEED.domain, {
+      dataType: 'BIGINT',
+    }),
+    dictionaryActions$.updateDictionaryEntryAction$('term', SEED.term, {
+      name: 'Number Member',
+      physicalName: '',
+    }),
+    dictionaryActions$.updateDictionaryEntryAction$('word', SEED.memberWord, {
+      name: 'Number',
+    }),
     dictionaryActions$.updateDictionaryEntryAction$('domain', 'gone', {
       dataType: 'TEXT',
     }),
   ],
   removeDictionaryEntriesAction$: () => [
-    dictionaryActions$.removeDictionaryEntriesAction$('word', ['gone']),
+    dictionaryActions$.removeDictionaryEntriesAction$('word', [
+      SEED.numberWord,
+      SEED.memberWord,
+      'gone',
+    ]),
+    dictionaryActions$.removeDictionaryEntriesAction$('domain', ['gone']),
   ],
   importDictionaryAction$: () => [
     dictionaryActions$.importDictionaryAction$('domain', [
-      { name: 'money', dataType: 'NUMERIC(15,2)' },
-      { name: 'money', dataType: 'NUMERIC(18,2)' },
+      { name: 'Identifier', dataType: 'BIGINT' },
+      { name: 'Money', dataType: 'NUMERIC(15,2)' },
+      { name: 'Money', dataType: 'NUMERIC(18,2)' },
     ]),
     dictionaryActions$.importDictionaryAction$('term', [
-      { name: 'member id', domain: 'unknown' },
+      { name: 'Member Number', domain: 'Identifier' },
+      { name: 'Number Member', domain: 'unknown' },
     ]),
   ],
   commitDictionaryCellsAction$: () => [
     dictionaryActions$.commitDictionaryCellsAction$('word', [
-      { values: { name: 'order' } },
-      { id: 'gone', values: { name: 'item' } },
+      { values: { name: 'Order' } },
+      { id: SEED.memberWord, values: { abbreviation: 'MEM' } },
+      { id: 'gone', values: { name: 'Item' } },
     ]),
     dictionaryActions$.commitDictionaryCellsAction$('word', [
-      { values: { name: 'order' } },
-      { values: { name: 'order' } },
+      { values: { name: 'Order' } },
+      { values: { name: 'Order' } },
+    ]),
+    dictionaryActions$.commitDictionaryCellsAction$('word', [
+      { id: SEED.memberWord, values: { name: 'Number' } },
+      { id: SEED.numberWord, values: { name: 'Member' } },
     ]),
   ],
   setColumnLogicalNameAction$: () => [
+    // The derived name column takes a term, then a composition; the note
+    // column, named by hand, keeps its name.
     dictionaryActions$.setColumnLogicalNameAction$(
       SEED.users,
       SEED.userName,
-      'member name'
+      'Member Number'
+    ),
+    dictionaryActions$.setColumnLogicalNameAction$(
+      SEED.users,
+      SEED.userName,
+      'Number Member'
+    ),
+    dictionaryActions$.setColumnLogicalNameAction$(
+      SEED.orders,
+      SEED.orderNote,
+      'Member Number'
     ),
     dictionaryActions$.setColumnLogicalNameAction$(SEED.users, 'gone', 'x'),
   ],
   setTableLogicalNameAction$: () => [
-    dictionaryActions$.setTableLogicalNameAction$(SEED.users, 'member'),
+    dictionaryActions$.setTableLogicalNameAction$(SEED.users, 'Member Number'),
+    dictionaryActions$.setTableLogicalNameAction$(SEED.orders, 'Member'),
     dictionaryActions$.setTableLogicalNameAction$('gone', 'x'),
   ],
-  deriveColumnNameAction$: () => [
-    dictionaryActions$.deriveColumnNameAction$(SEED.users, SEED.userName),
-  ],
-  deriveTableNameAction$: () => [
-    dictionaryActions$.deriveTableNameAction$(SEED.users),
-  ],
+  deriveColumnNameAction$: () =>
+    [SEED.userName, SEED.userId, 'gone'].map(columnId =>
+      dictionaryActions$.deriveColumnNameAction$(SEED.users, columnId)
+    ),
+  deriveTableNameAction$: () =>
+    [SEED.users, SEED.orders].map(dictionaryActions$.deriveTableNameAction$),
   rederiveNamesAction$: () =>
     (
       [
@@ -259,14 +305,16 @@ const CENSUS: Census = {
         { scope: 'document' },
       ] as const
     ).map(dictionaryActions$.rederiveNamesAction$),
-  setColumnDomainAction$: () =>
-    ['', 'gone'].map(domainId =>
+  setColumnDomainAction$: () => [
+    ...[SEED.domain, '', 'gone'].map(domainId =>
       dictionaryActions$.setColumnDomainAction$(
         SEED.users,
         SEED.userName,
         domainId
       )
     ),
+    dictionaryActions$.setColumnDomainAction$(SEED.users, SEED.userId, ''),
+  ],
 };
 
 /**

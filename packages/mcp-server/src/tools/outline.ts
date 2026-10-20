@@ -9,22 +9,29 @@ import { omit } from 'es-toolkit';
 import { MAX_READ_CHARS } from '@/tools/budget';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import {
+  type AgentSnapshotDomain,
   type AgentSnapshotIndex,
   type AgentSnapshotMemo,
   type AgentSnapshotRelationship,
   type AgentSnapshotSettings,
   type AgentSnapshotTable,
   type AgentSnapshotTableGroup,
+  type AgentSnapshotTerm,
+  type AgentSnapshotWord,
+  liveDomainIds,
   liveIndexes,
   liveRelationships,
   relationshipTypeName,
   tableGroupIdOf,
+  toSnapshotDomain,
   toSnapshotIndex,
   toSnapshotMemo,
   toSnapshotRelationship,
   toSnapshotSettings,
   toSnapshotTable,
   toSnapshotTableGroup,
+  toSnapshotTerm,
+  toSnapshotWord,
   toTableGroupMembers,
 } from '@/tools/snapshot';
 
@@ -34,6 +41,8 @@ export type TableSize = { width: number; height: number };
 export type ListedTable = {
   id: string;
   name: string;
+  /** The name the logical view shows, left out for none. */
+  logicalName?: string;
   /** The table group it is in, left out for none. */
   groupId?: string;
   x: number;
@@ -77,6 +86,20 @@ export type ListedTableGroup = {
   tableCount: number;
 };
 
+/** A word by what a composed name takes of it. */
+export type ListedWord = { id: string; name: string; abbreviation: string };
+
+/** A term by what it gives a column whose logical name it matches. */
+export type ListedTerm = {
+  id: string;
+  name: string;
+  physicalName: string;
+  domainId: string;
+};
+
+/** A domain by the data type it gives each column linking it. */
+export type ListedDomain = { id: string; name: string; dataType: string };
+
 /** How erd_list narrows a document too large to list whole. */
 export type ListOptions = {
   readonly query?: string;
@@ -90,7 +113,8 @@ export const DEFAULT_PAGE_SIZE = 100;
 
 /**
  * What erd_list answers: the settings, the counts, and a page of tables with
- * their indexes and the relationships they own, then table groups and memos.
+ * their indexes and the relationships they own, then table groups, memos,
+ * domains, terms and words.
  */
 export type DocumentList = {
   /** The snapshot settings less the scripts, which would take a page of their own. */
@@ -101,6 +125,9 @@ export type DocumentList = {
   indexCount: number;
   memoCount: number;
   tableGroupCount: number;
+  wordCount: number;
+  termCount: number;
+  domainCount: number;
   matchCount?: number;
   nextOffset?: number;
   note?: string;
@@ -109,6 +136,9 @@ export type DocumentList = {
   indexes: ListedIndex[];
   tableGroups: ListedTableGroup[];
   memos: ListedMemo[];
+  domains: ListedDomain[];
+  terms: ListedTerm[];
+  words: ListedWord[];
 };
 
 /** What erd_list answers with namesOnly: the table names alone, which fit where rows do not. */
@@ -130,6 +160,9 @@ export type EntityIds = {
   readonly indexIds?: readonly string[];
   readonly memoIds?: readonly string[];
   readonly tableGroupIds?: readonly string[];
+  readonly wordIds?: readonly string[];
+  readonly termIds?: readonly string[];
+  readonly domainIds?: readonly string[];
 };
 
 /**
@@ -142,6 +175,9 @@ export type EntityDetails = {
   indexes?: AgentSnapshotIndex[];
   memos?: AgentSnapshotMemo[];
   tableGroups?: AgentSnapshotTableGroup[];
+  words?: AgentSnapshotWord[];
+  terms?: AgentSnapshotTerm[];
+  domains?: AgentSnapshotDomain[];
   missing?: string[];
   notReturned?: string[];
   note?: string;
@@ -153,6 +189,9 @@ type RelationshipEntity =
 type IndexEntity = RootState['collections']['indexEntities'][string];
 type MemoEntity = RootState['collections']['memoEntities'][string];
 type TableGroupEntity = RootState['collections']['tableGroupEntities'][string];
+type WordEntity = RootState['collections']['wordEntities'][string];
+type TermEntity = RootState['collections']['termEntities'][string];
+type DomainEntity = RootState['collections']['domainEntities'][string];
 
 /**
  * A table's box as the table sort sizes it once the peer's hooks have measured
@@ -197,9 +236,9 @@ function queryWords(text: string): string[] {
 }
 
 /**
- * The tables a query finds, best first: those whose names hold more of its
- * words, then by a score where a word in the name counts 4, in the comment 2
- * and in a column name or comment 1; ties keep document order.
+ * The tables a query finds, best first: those whose name or logical name holds
+ * more of its words, then by a score where a word there counts 4, in the comment
+ * 2 and in a column name, logical name or comment 1; ties keep document order.
  */
 function searchTables(
   select: Select,
@@ -218,14 +257,17 @@ function searchTables(
       let named = 0;
       let score = 0;
       for (const word of words) {
-        if (inside(table.name, word)) {
+        if (inside(table.name, word) || inside(table.logicalName, word)) {
           named++;
           score += 4;
         } else if (inside(table.comment, word)) {
           score += 2;
         } else if (
           columns.some(
-            ({ name, comment }) => inside(name, word) || inside(comment, word)
+            ({ name, logicalName, comment }) =>
+              inside(name, word) ||
+              inside(logicalName, word) ||
+              inside(comment, word)
           )
         ) {
           score += 1;
@@ -252,10 +294,10 @@ function candidates(state: RootState, text: string | undefined) {
 }
 
 const NO_MATCH =
-  'No table matches the query. Each word is looked for inside table and column names and comments, in any case; try other words';
+  'No table matches the query. Each word is looked for inside table and column names, logical names and comments, in any case; try other words';
 
 const SEARCH_HINT =
-  ' query finds tables by a word in a table or column name or comment, and namesOnly lists table names alone.';
+  ' query finds tables by a word in a table or column name, logical name or comment, and namesOnly lists table names alone.';
 
 const count = (n: number, noun: string) =>
   `${n} ${noun}${n === 1 ? '' : noun.endsWith('x') ? 'es' : 's'}`;
@@ -293,6 +335,28 @@ const toListedMemo = ({ id, ui }: MemoEntity): ListedMemo => ({
   width: ui.width,
   height: ui.height,
 });
+
+const toListedWord = ({ id, name, abbreviation }: WordEntity): ListedWord => ({
+  id,
+  name,
+  abbreviation,
+});
+
+const toListedTerm = (
+  { id, name, physicalName, domainId }: TermEntity,
+  domains: ReadonlySet<string>
+): ListedTerm => ({
+  id,
+  name,
+  physicalName,
+  domainId: domains.has(domainId) ? domainId : '',
+});
+
+const toListedDomain = ({
+  id,
+  name,
+  dataType,
+}: DomainEntity): ListedDomain => ({ id, name, dataType });
 
 const toListedTableGroup = (
   { id, name, color, ui }: TableGroupEntity,
@@ -385,9 +449,20 @@ function leftOutNote(
 }
 
 /**
- * One page of the document list: the tables, then, unsearched, the table
- * groups and the memos, from offset on, at most limit of them and as many as
- * one read holds. A table brings its indexes and the relationships it owns.
+ * A kind of row the unsearched list gives after its tables: all of them, where
+ * they start in the one offset, and those the page lists.
+ */
+type Section<R> = {
+  readonly noun: string;
+  readonly rows: readonly R[];
+  readonly listed: R[];
+  start: number;
+};
+
+/**
+ * One page of the document list from offset on, at most limit entries and as
+ * many as one read holds: the tables, each with its indexes and the relationships
+ * it owns, then, unsearched, the groups, memos, domains, terms and words.
  */
 export function toDocumentList(
   state: RootState,
@@ -399,20 +474,47 @@ export function toDocumentList(
   const relationships = liveRelationships(state);
   const indexes = liveIndexes(state);
   const members = toTableGroupMembers(state);
-  const groups = searched
-    ? []
-    : select
-        .collection('tableGroupEntities')
-        .selectByIds(doc.tableGroupIds)
-        .map(group =>
-          toListedTableGroup(group, members.get(group.id)?.length ?? 0)
-        );
-  const memos = searched
-    ? []
-    : select
-        .collection('memoEntities')
-        .selectByIds(doc.memoIds)
-        .map(toListedMemo);
+  const words = select.collection('wordEntities').selectByIds(doc.wordIds);
+  const terms = select.collection('termEntities').selectByIds(doc.termIds);
+  const domains = select
+    .collection('domainEntities')
+    .selectByIds(doc.domainIds);
+  const section = <R>(noun: string, rows: () => R[]): Section<R> => ({
+    noun,
+    rows: searched ? [] : rows(),
+    listed: [],
+    start: 0,
+  });
+  const groups = section('table group', () =>
+    select
+      .collection('tableGroupEntities')
+      .selectByIds(doc.tableGroupIds)
+      .map(group =>
+        toListedTableGroup(group, members.get(group.id)?.length ?? 0)
+      )
+  );
+  const memos = section('memo', () =>
+    select.collection('memoEntities').selectByIds(doc.memoIds).map(toListedMemo)
+  );
+  const listedDomains = section('domain', () => domains.map(toListedDomain));
+  const listedTerms = section('term', () => {
+    const domainIds = liveDomainIds(state);
+    return terms.map(term => toListedTerm(term, domainIds));
+  });
+  const listedWords = section('word', () => words.map(toListedWord));
+  // Past the tables one offset runs through each of these in turn.
+  const rest: Array<Section<unknown>> = [
+    groups,
+    memos,
+    listedDomains,
+    listedTerms,
+    listedWords,
+  ];
+  let total = found.length;
+  for (const kind of rest) {
+    kind.start = total;
+    total += kind.rows.length;
+  }
   const owned = ownRelationships(relationships, found);
   const indexesOf = groupBy(indexes, ({ tableId }) => [tableId]);
 
@@ -423,32 +525,29 @@ export function toDocumentList(
     indexCount: indexes.length,
     memoCount: doc.memoIds.length,
     tableGroupCount: doc.tableGroupIds.length,
+    wordCount: words.length,
+    termCount: terms.length,
+    domainCount: domains.length,
   };
   let used = cost(head) + NOTE_ROOM;
   const tables: ListedTable[] = [];
-  const listedGroups: ListedTableGroup[] = [];
-  const listedMemos: ListedMemo[] = [];
   const listed = new Set<string>();
   const listedIndexes = new Set<string>();
-  // Past the tables one offset runs through the groups, then the memos.
-  const rest = [
-    ...groups.map(group => ({ group })),
-    ...memos.map(memo => ({ memo })),
-  ];
-  const total = found.length + rest.length;
   const leftOut = { relationship: 0, index: 0 };
   let shown = 0;
   let at = offset;
+  let kindAt = 0;
 
   for (; at < total && shown < limit; at++) {
     const first = !shown;
     if (at >= found.length) {
-      const entry = rest[at - found.length];
-      const rowCost = cost('group' in entry ? entry.group : entry.memo);
+      while (at >= rest[kindAt].start + rest[kindAt].rows.length) kindAt++;
+      const kind = rest[kindAt];
+      const row = kind.rows[at - kind.start];
+      const rowCost = cost(row);
       if (!first && used + rowCost > MAX_READ_CHARS) break;
       used += rowCost;
-      if ('group' in entry) listedGroups.push(entry.group);
-      else listedMemos.push(entry.memo);
+      kind.listed.push(row);
       shown++;
       continue;
     }
@@ -458,6 +557,7 @@ export function toDocumentList(
     const row: ListedTable = {
       id: table.id,
       name: table.name,
+      ...(table.logicalName ? { logicalName: table.logicalName } : {}),
       ...(groupId ? { groupId } : {}),
       x: table.ui.x,
       y: table.ui.y,
@@ -498,8 +598,6 @@ export function toDocumentList(
   }
 
   const nextOffset = at < total ? at : undefined;
-  const firstGroup = Math.max(offset - found.length, 0);
-  const firstMemo = Math.max(offset - found.length - groups.length, 0);
   let note: string | undefined;
   if (!found.length && searched) {
     note = `${NO_MATCH}, or namesOnly for every table name.`;
@@ -509,8 +607,9 @@ export function toDocumentList(
         ? `${count(found.length, 'table')} matching the query`
         : sentence([
             count(found.length, 'table'),
-            ...(groups.length ? [count(groups.length, 'table group')] : []),
-            count(memos.length, 'memo'),
+            ...rest
+              .filter(kind => kind.rows.length)
+              .map(kind => count(kind.rows.length, kind.noun)),
           ])
     }.`;
   } else if (
@@ -531,19 +630,16 @@ export function toDocumentList(
             ),
           ]
         : []),
-      ...(listedGroups.length
-        ? [
-            span(
-              'table groups',
-              firstGroup,
-              listedGroups.length,
-              `${groups.length}`
-            ),
-          ]
-        : []),
-      ...(listedMemos.length
-        ? [span('memos', firstMemo, listedMemos.length, `${memos.length}`)]
-        : []),
+      ...rest
+        .filter(kind => kind.listed.length)
+        .map(kind =>
+          span(
+            `${kind.noun}s`,
+            Math.max(offset - kind.start, 0),
+            kind.listed.length,
+            `${kind.rows.length}`
+          )
+        ),
     ];
     note = `This page lists ${sentence(spans)}${
       nextOffset === undefined ? '.' : nextPage(nextOffset, searched)
@@ -564,8 +660,11 @@ export function toDocumentList(
     indexes: indexes
       .filter(({ id }) => listedIndexes.has(id))
       .map(toListedIndex),
-    tableGroups: listedGroups,
-    memos: listedMemos,
+    tableGroups: groups.listed,
+    memos: memos.listed,
+    domains: listedDomains.listed,
+    terms: listedTerms.listed,
+    words: listedWords.listed,
   };
 }
 
@@ -696,6 +795,21 @@ export function toEntityDetails(
         .collection('tableGroupEntities')
         .selectByIds(pick(ids.tableGroupIds, doc.tableGroupIds))
     : undefined;
+  const words = ids.wordIds
+    ? select
+        .collection('wordEntities')
+        .selectByIds(pick(ids.wordIds, doc.wordIds))
+    : undefined;
+  const terms = ids.termIds
+    ? select
+        .collection('termEntities')
+        .selectByIds(pick(ids.termIds, doc.termIds))
+    : undefined;
+  const domains = ids.domainIds
+    ? select
+        .collection('domainEntities')
+        .selectByIds(pick(ids.domainIds, doc.domainIds))
+    : undefined;
 
   // What the ids from each position on would cost, listed as notReturned.
   const asked = [
@@ -704,6 +818,9 @@ export function toEntityDetails(
     ...(indexes ?? []),
     ...(memos ?? []),
     ...(tableGroups ?? []),
+    ...(words ?? []),
+    ...(terms ?? []),
+    ...(domains ?? []),
   ];
   const idsFrom: number[] = new Array(asked.length + 1).fill(0);
   for (let at = asked.length - 1; at >= 0; at--) {
@@ -749,12 +866,14 @@ export function toEntityDetails(
   };
 
   const details: EntityDetails = {};
+  const domainIds = liveDomainIds(state);
   if (tables) {
     details.tables = fit(tables, table => {
       const { columns, ...rest } = toSnapshotTable(
         select,
         table,
-        tableGroupIdOf(state, table)
+        tableGroupIdOf(state, table),
+        domainIds
       );
       return { ...rest, ...tableSize(table, state), columns };
     });
@@ -772,6 +891,11 @@ export function toEntityDetails(
       toSnapshotTableGroup(group, members.get(group.id) ?? [])
     );
   }
+  if (words) details.words = fit(words, toSnapshotWord);
+  if (terms) {
+    details.terms = fit(terms, term => toSnapshotTerm(term, domainIds));
+  }
+  if (domains) details.domains = fit(domains, toSnapshotDomain);
   if (missing.size) details.missing = [...missing];
   if (notReturned.length) {
     details.notReturned = notReturned;

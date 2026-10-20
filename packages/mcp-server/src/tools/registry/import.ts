@@ -22,17 +22,21 @@ const DOCUMENT_PATHS = ['tables', 'relationships', 'indexes', 'memos'];
 /**
  * What an append adds, the entities of a paste: every table with its columns,
  * the relationships and indexes between them and, from a document, its memos.
- * A field left at what a new entity starts with is not sent.
+ * A field left at what a new entity starts with is not sent, nor a domain link.
  */
 const APPEND_TYPES: readonly ActionType[] = [
   'table.add',
   'table.changeName',
   'table.changeComment',
+  'table.changeLogicalName',
+  'table.changeNameDerived',
   'column.add',
   'column.changeName',
   'column.changeDataType',
   'column.changeDefault',
   'column.changeComment',
+  'column.changeLogicalName',
+  'column.changeNameDerived',
   'column.changePrimaryKey',
   'column.changeNotNull',
   'column.changeUnique',

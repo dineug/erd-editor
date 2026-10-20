@@ -77,13 +77,4 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
  * reachability spec reads it alongside the tools, and a type the engine adds
  * without a tool must be named here or fail it.
  */
-export const PENDING_COVERAGE: readonly ActionType[] = Object.freeze([
-  'table.changeLogicalName',
-  'table.changeNameDerived',
-  'column.changeLogicalName',
-  'column.changeDomain',
-  'column.changeNameDerived',
-  'dictionary.add',
-  'dictionary.update',
-  'dictionary.remove',
-]);
+export const PENDING_COVERAGE: readonly ActionType[] = Object.freeze([]);

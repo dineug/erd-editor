@@ -254,14 +254,14 @@
   - A table: `changeTableNameAction$` (`table/generator.actions.ts`), which the canvas header cell, a find and replace of a table name and `mcp-server`'s `erd_change_table_name` send.
   - A column: the name branch of `changeColumnValueAction$` (`table-column/generator.actions.ts`), which the name cell and `mcp-server`'s `erd_change_column_name` send, a find and replace of a column name (`toFieldAction`), and a paste over an existing column's name cell (`pasteTableAction$`).
   - A write that makes a table or column (a foreign key copy, a paste of new columns) leaves the flag off, as a new entity starts, and a duplicate or a column drag carries the source's flag.
-- **`mcp-server` declares none of the eight yet.** The three dictionary types and the five field types sit in its `PENDING_COVERAGE` (`tools/reachability.ts`) until its tools declare them. Its table and column rename, column type and relationship tools already go through the generators above, so on a document with dictionaries they send a flag off, an unlink or a foreign key's link as the editor does; its seed holds no dictionary row, so no scenario sends one.
-  - `peer.js` exports the dictionary barrel as `dictionaryActions$`, which only `mcp-server`'s generator census reads until its dictionary tools come (Peer store internals).
+- **`mcp-server` declares all eight.** Its dictionary tools send the three dictionary types through the generators above, and its logical name and domain tools the five field types. Its table and column rename, column type and relationship tools go through the same generators, so on a document with dictionaries they send a flag off, an unlink or a foreign key's link as the editor does. Its seed holds two words, a term, a domain the key of users links, and a derived table and column, so a scenario sends each type.
+  - `peer.js` exports the dictionary barrel as `dictionaryActions$`, which those tools send, the atom barrel as `dictionaryActions`, which only the seed writes rows with (Peer store internals), and `validateDictionaryValues`, the reasons the tools refuse a write as the sheet refuses it.
 
 ### Peer store internals
 
 The peer entry's Node and import rules and its key set spec: `src/peer/AGENTS.md`.
 
-- **Eight `peer.js` keys serve specs alone**: `createEngineContext`, `ChangeActionTypes`, `StreamActionTypes`, `SharedFollowingActionTypes`, `SelectType`, `settingsActions$`, `dictionaryActions$` (the dictionary generators, which `mcp-server`'s generator census reads until its dictionary tools send them) and `CanvasType` (a tab the snapshot and fingerprint specs move to).
+- **Eight `peer.js` keys serve specs alone**: `createEngineContext`, `ChangeActionTypes`, `StreamActionTypes`, `SharedFollowingActionTypes`, `SelectType`, `settingsActions$`, `dictionaryActions` (the dictionary atoms, which `mcp-server`'s seed writes its rows with by fixed ids) and `CanvasType` (a tab the snapshot and fingerprint specs move to).
   - `defaultToWidth` serves those specs and also sizes tables for `erd_list` (`mcp-server`'s `src/tools/outline.ts`).
   - Keep them in the entry. `mcp-server` holds each tool declaration to what the engine measurably does, so its specs need the real context, the real text measure, the real type lists and the real generator barrel. A `./peer/testing.js` subpath would make a fourth entry and split the chunks again.
   - `mcp-server`'s `src/peerSurface.test.ts` proves no key is dead.

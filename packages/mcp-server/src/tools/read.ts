@@ -62,12 +62,15 @@ export type TableFilter = Pick<EntityIds, 'tableIds' | 'tableNames'> & {
   readonly groupNames?: readonly string[];
 };
 
+/** Where the dictionaries come from in parts, which a whole document carries too. */
+const DICTIONARY_PAGES =
+  'erd_list pages through the domains, terms and words after the tables, and erd_get gives them in full by domainIds, termIds and wordIds';
+
 /** What each format tells an agent to do when the document is too large for one read. */
 const NARROWER: Readonly<Record<ReadFormat, string>> = {
   sql: 'pass tableIds, tableNames or groupNames for the tables the task needs, which erd_list with query or namesOnly finds',
-  snapshot:
-    'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
-  json: 'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
+  snapshot: `find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames; ${DICTIONARY_PAGES}`,
+  json: `find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames; ${DICTIONARY_PAGES}`,
   scripts:
     "no read gives the scripts in parts, so ask the user to shorten them in the options of the editor's Schema SQL tab",
 };

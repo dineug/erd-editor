@@ -20,22 +20,32 @@ type Names = Readonly<Record<string, string | number>>;
 export type AgentSnapshotColumn = {
   id: string;
   name: string;
+  /** The name the logical view shows, '' for none. */
+  logicalName: string;
   dataType: string;
+  /** The domain that governs the data type, '' for none or one the document does not list. */
+  domainId: string;
   default: string;
   comment: string;
   primaryKey: boolean;
   notNull: boolean;
   unique: boolean;
   autoIncrement: boolean;
+  /** True while the dictionaries filled the name, so a new logical name derives it again. */
+  nameDerived: boolean;
 };
 
 export type AgentSnapshotTable = {
   id: string;
   name: string;
+  /** The name the logical view shows, '' for none. */
+  logicalName: string;
   comment: string;
   color: string;
   /** The table group it is in, '' for none. */
   groupId: string;
+  /** True while the dictionaries filled the name, so a new logical name derives it again. */
+  nameDerived: boolean;
   x: number;
   y: number;
   columns: AgentSnapshotColumn[];
@@ -66,6 +76,37 @@ export type AgentSnapshotMemo = {
   y: number;
   width: number;
   height: number;
+};
+
+/** A word of the dictionary, which a logical name is composed of. */
+export type AgentSnapshotWord = {
+  id: string;
+  name: string;
+  abbreviation: string;
+  englishName: string;
+  description: string;
+  synonyms: string;
+  forbiddenWords: string;
+};
+
+/** A term of the dictionary, matched to a logical name by its text. */
+export type AgentSnapshotTerm = {
+  id: string;
+  name: string;
+  physicalName: string;
+  /** The domain it gives a column, '' for none or one the document does not list. */
+  domainId: string;
+  description: string;
+  synonyms: string;
+};
+
+/** A domain of the dictionary, whose data type every column linking it holds. */
+export type AgentSnapshotDomain = {
+  id: string;
+  name: string;
+  category: string;
+  dataType: string;
+  description: string;
 };
 
 /** A table group by its stored rect; the editor draws it grown to hold each member. */
@@ -100,9 +141,9 @@ export type AgentSnapshotSettings = {
 export type AgentSnapshotScripts = { before: string; after: string };
 
 /**
- * What an agent reads to edit: every entity under its id and the settings as
- * the file saves them, each by its enum name, leaving out what differs per
- * reader: the measured widths, the stacking order, the viewport and the tab.
+ * What an agent reads to edit: every entity and dictionary row under its id
+ * and the settings as the file saves them, by enum name, leaving out what each
+ * reader has its own: widths, stacking order, viewport, tab and name view.
  */
 export type AgentSnapshot = {
   settings: AgentSnapshotSettings;
@@ -111,6 +152,9 @@ export type AgentSnapshot = {
   indexes: AgentSnapshotIndex[];
   memos: AgentSnapshotMemo[];
   tableGroups: AgentSnapshotTableGroup[];
+  words: AgentSnapshotWord[];
+  terms: AgentSnapshotTerm[];
+  domains: AgentSnapshotDomain[];
 };
 
 /** The name a tool takes for a stored value, or the value itself when unnamed. */
@@ -137,6 +181,9 @@ type RelationshipEntity =
 type IndexEntity = RootState['collections']['indexEntities'][string];
 type MemoEntity = RootState['collections']['memoEntities'][string];
 type TableGroupEntity = RootState['collections']['tableGroupEntities'][string];
+type WordEntity = RootState['collections']['wordEntities'][string];
+type TermEntity = RootState['collections']['termEntities'][string];
+type DomainEntity = RootState['collections']['domainEntities'][string];
 
 /** The field each code setting's lock holds, the view's and the tab's aside. */
 const CODE_LOCK_FIELDS = [
@@ -216,19 +263,41 @@ export function toTableGroupMembers(
   return members;
 }
 
+/**
+ * The domains a document lists, those a link reads by: a removed domain keeps
+ * its links in memory, which the file form leaves out, so a reader sees none.
+ */
+export function liveDomainIds({
+  doc,
+  collections,
+}: Pick<RootState, 'doc' | 'collections'>): ReadonlySet<string> {
+  return new Set(
+    query(collections)
+      .collection('domainEntities')
+      .selectByIds(doc.domainIds)
+      .map(({ id }) => id)
+  );
+}
+
+const linkedDomainId = (domains: ReadonlySet<string>, domainId: string) =>
+  domainId && domains.has(domainId) ? domainId : '';
+
 export function toSnapshotTable(
   select: Select,
   table: TableEntity,
-  groupId: string
+  groupId: string,
+  domains: ReadonlySet<string>
 ): AgentSnapshotTable {
-  const { id, name, comment, columnIds, ui } = table;
+  const { id, name, logicalName, comment, columnIds, nameDerived, ui } = table;
 
   return {
     id,
     name,
+    logicalName,
     comment,
     color: ui.color,
     groupId,
+    nameDerived,
     x: ui.x,
     y: ui.y,
     columns: select
@@ -237,13 +306,16 @@ export function toSnapshotTable(
       .map(column => ({
         id: column.id,
         name: column.name,
+        logicalName: column.logicalName,
         dataType: column.dataType,
+        domainId: linkedDomainId(domains, column.domainId),
         default: column.default,
         comment: column.comment,
         primaryKey: bHas(column.options, ColumnOption.primaryKey),
         notNull: bHas(column.options, ColumnOption.notNull),
         unique: bHas(column.options, ColumnOption.unique),
         autoIncrement: bHas(column.options, ColumnOption.autoIncrement),
+        nameDerived: bHas(column.options, ColumnOption.nameDerived),
       })),
   };
 }
@@ -329,6 +401,50 @@ export function toSnapshotTableGroup(
   };
 }
 
+export const toSnapshotWord = ({
+  id,
+  name,
+  abbreviation,
+  englishName,
+  description,
+  synonyms,
+  forbiddenWords,
+}: WordEntity): AgentSnapshotWord => ({
+  id,
+  name,
+  abbreviation,
+  englishName,
+  description,
+  synonyms,
+  forbiddenWords,
+});
+
+export const toSnapshotTerm = (
+  { id, name, physicalName, domainId, description, synonyms }: TermEntity,
+  domains: ReadonlySet<string>
+): AgentSnapshotTerm => ({
+  id,
+  name,
+  physicalName,
+  domainId: linkedDomainId(domains, domainId),
+  description,
+  synonyms,
+});
+
+export const toSnapshotDomain = ({
+  id,
+  name,
+  category,
+  dataType,
+  description,
+}: DomainEntity): AgentSnapshotDomain => ({
+  id,
+  name,
+  category,
+  dataType,
+  description,
+});
+
 type DocumentState = Pick<RootState, 'doc' | 'collections'>;
 
 const liveTableIds = ({ doc, collections }: DocumentState) =>
@@ -363,11 +479,12 @@ export function liveIndexes(state: DocumentState): IndexEntity[] {
     .filter(({ tableId }) => tableIds.has(tableId));
 }
 
-/** The live entities of a document, as its id lists hold them, in their order. */
+/** The live entities and dictionary rows of a document, as its id lists hold them, in their order. */
 export function toAgentSnapshot(state: RootState): AgentSnapshot {
   const { settings, doc, collections } = state;
   const select = query(collections);
   const members = toTableGroupMembers(state);
+  const domains = liveDomainIds(state);
 
   return {
     settings: toSnapshotSettings(settings),
@@ -375,7 +492,7 @@ export function toAgentSnapshot(state: RootState): AgentSnapshot {
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
       .map(table =>
-        toSnapshotTable(select, table, tableGroupIdOf(state, table))
+        toSnapshotTable(select, table, tableGroupIdOf(state, table), domains)
       ),
     relationships: liveRelationships(state).map(toSnapshotRelationship),
     indexes: liveIndexes(state).map(index => toSnapshotIndex(select, index)),
@@ -387,5 +504,17 @@ export function toAgentSnapshot(state: RootState): AgentSnapshot {
       .collection('tableGroupEntities')
       .selectByIds(doc.tableGroupIds)
       .map(group => toSnapshotTableGroup(group, members.get(group.id) ?? [])),
+    words: select
+      .collection('wordEntities')
+      .selectByIds(doc.wordIds)
+      .map(toSnapshotWord),
+    terms: select
+      .collection('termEntities')
+      .selectByIds(doc.termIds)
+      .map(term => toSnapshotTerm(term, domains)),
+    domains: select
+      .collection('domainEntities')
+      .selectByIds(doc.domainIds)
+      .map(toSnapshotDomain),
   };
 }

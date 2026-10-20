@@ -250,9 +250,9 @@ describe('an import replaces the document on both sides (AC-E13)', () => {
 describe('the dictionaries through a replace', () => {
   /** A word, a term and a domain, which the user adds in the editor. */
   const DICTIONARY_ROWS = [
-    { kind: 'word', id: 'w1', values: { name: 'Member' } },
-    { kind: 'term', id: 't1', values: { name: 'Member number' } },
-    { kind: 'domain', id: 'd1', values: { name: 'Number' } },
+    { kind: 'word', id: 'w1', values: { name: 'Order' } },
+    { kind: 'term', id: 't1', values: { name: 'Order number' } },
+    { kind: 'domain', id: 'd1', values: { name: 'Money' } },
   ].map(payload => ({ type: 'dictionary.add', payload }));
 
   const dictionaryIds = ({ doc }: RootState) => ({
@@ -273,13 +273,17 @@ describe('the dictionaries through a replace', () => {
       runTool(agent, name, TOOL_SCENARIOS[name]);
       await quiet();
 
-      const kept = { words: ['w1'], terms: ['t1'], domains: ['d1'] };
+      const kept = {
+        words: [SEED.memberWord, SEED.numberWord, 'w1'],
+        terms: [SEED.term, 't1'],
+        domains: [SEED.domain, 'd1'],
+      };
       expect(tableNames(agent.state)).toEqual([table]);
       expect(dictionaryIds(agent.state)).toEqual(kept);
       expect(dictionaryIds(other.state)).toEqual(kept);
-      expect(JSON.parse(agent.value).collections.termEntities.rows).toEqual([
-        ['t1', 'Member number'],
-      ]);
+      expect(
+        JSON.parse(agent.value).collections.termEntities.rows.slice(-1)
+      ).toEqual([['t1', 'Order number']]);
       expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
     }
   );

@@ -159,6 +159,26 @@ describe('erd_get', () => {
     expect(JSON.parse(text).missing).toEqual(['gone']);
   });
 
+  it('takes words, terms and domains by id', async () => {
+    const { mcp } = await connect();
+    const ids = {
+      wordIds: [SEED.memberWord],
+      termIds: [SEED.term],
+      domainIds: [SEED.domain, 'gone'],
+    };
+    const text = await mcp.text('erd_get', { path: DOCUMENT, ...ids });
+
+    expect(text).toBe(
+      JSON.stringify(fromSeed(peer => toEntityDetails(peer.state, ids)))
+    );
+    expect(Object.keys(JSON.parse(text))).toEqual([
+      'words',
+      'terms',
+      'domains',
+      'missing',
+    ]);
+  });
+
   it('takes tables by name', async () => {
     const { mcp } = await connect();
     const ids = { tableNames: ['Orders', 'gone'] };
@@ -178,7 +198,7 @@ describe('erd_get', () => {
         error: {
           code: 'invalidArgs',
           message:
-            'name at least one entity in tableIds, tableNames, relationshipIds, indexIds, memoIds, tableGroupIds; erd_list lists them',
+            'name at least one entity in tableIds, tableNames, relationshipIds, indexIds, memoIds, tableGroupIds, wordIds, termIds, domainIds; erd_list lists them',
         },
       });
     }

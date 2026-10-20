@@ -321,7 +321,10 @@ describe('a read too large for one answer', () => {
       /pass tableIds, tableNames or groupNames for the tables the task needs/,
     ],
     ['snapshot', /find tables with erd_list \(query, namesOnly\)/],
-    ['json', /read them with erd_get, or the sql format with tableNames$/],
+    [
+      'json',
+      /tableNames; erd_list pages through the domains, terms and words after the tables, and erd_get gives them in full by domainIds, termIds and wordIds$/,
+    ],
   ] as const)(
     'is refused in the %s format with how to narrow it',
     (format, how) => {

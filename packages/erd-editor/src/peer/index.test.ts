@@ -7,6 +7,8 @@ import { Database, DDLScriptPosition, Show } from '@/constants/schema';
 import { DatabaseVendorList } from '@/constants/sql/database';
 import { ChangeActionTypes } from '@/engine/actions';
 import { createEngineContext } from '@/engine/context';
+import { actions as dictionaryActions } from '@/engine/modules/dictionary/atom.actions';
+import { validateDictionaryValues } from '@/engine/modules/dictionary/entryWrites';
 import { actions$ as dictionaryActions$ } from '@/engine/modules/dictionary/generator.actions';
 import { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
@@ -32,7 +34,7 @@ import {
 import { getTablesGroupRect } from '@/utils/tableGroup';
 
 describe('peer barrel (AC-B2)', () => {
-  it('exposes exactly the 53 values the headless peer needs', () => {
+  it('exposes exactly the 55 values the headless peer needs', () => {
     expect(Object.keys(peer).sort()).toEqual(
       [
         'createPeerStore',
@@ -58,6 +60,8 @@ describe('peer barrel (AC-B2)', () => {
         'relationshipActions',
         'settingsActions',
         'tableGroupActions',
+        'dictionaryActions',
+        'validateDictionaryValues',
         'ChangeActionTypes',
         'StreamActionTypes',
         'SharedFollowingActionTypes',
@@ -90,7 +94,7 @@ describe('peer barrel (AC-B2)', () => {
         'getTablesGroupRect',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(53);
+    expect(Object.keys(peer)).toHaveLength(55);
   });
 
   it('re-exports each name from the module that owns it', () => {
@@ -106,6 +110,8 @@ describe('peer barrel (AC-B2)', () => {
     expect(peer.tableGroupActions).toBe(tableGroupActions);
     expect(peer.tableGroupActions$).toBe(tableGroupActions$);
     expect(peer.dictionaryActions$).toBe(dictionaryActions$);
+    expect(peer.dictionaryActions).toBe(dictionaryActions);
+    expect(peer.validateDictionaryValues).toBe(validateDictionaryValues);
     expect(peer.ChangeActionTypes).toBe(ChangeActionTypes);
     expect(peer.FocusType).toBe(FocusType);
     expect(peer.Database).toBe(Database);

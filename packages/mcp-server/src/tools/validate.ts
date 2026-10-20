@@ -20,6 +20,9 @@ const ENTITY_LABEL: Record<ToolEntity, string> = {
   indexColumn: 'index column',
   memo: 'memo',
   tableGroup: 'table group',
+  word: 'word',
+  term: 'term',
+  domain: 'domain',
 };
 
 const typeName = (value: unknown) =>
@@ -55,6 +58,12 @@ function isLive(
       return doc.memoIds.includes(id);
     case 'tableGroup':
       return doc.tableGroupIds.includes(id);
+    case 'word':
+      return doc.wordIds.includes(id);
+    case 'term':
+      return doc.termIds.includes(id);
+    case 'domain':
+      return doc.domainIds.includes(id);
     case 'column': {
       if (!parent) {
         return doc.tableIds.some(tableId =>
