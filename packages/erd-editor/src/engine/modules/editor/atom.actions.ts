@@ -30,6 +30,7 @@ import { arrowDown, arrowLeft, arrowRight, arrowUp } from './utils/focus';
 import {
   getColumnFocusTypes,
   getTableFocusTypes,
+  keepFocusShown,
   toShownFocusType,
 } from './utils/nameView';
 import { releaseHidden } from './utils/releaseHidden';
@@ -217,6 +218,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   rememberCanvasType(state);
   clearViews(state.editor);
   releaseHidden(state);
+  keepFocusShown(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
@@ -261,6 +263,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   rememberCanvasType(state);
   clearViews(state.editor);
   releaseHidden(state);
+  keepFocusShown(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };

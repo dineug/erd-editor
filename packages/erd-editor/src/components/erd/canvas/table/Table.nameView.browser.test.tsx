@@ -596,6 +596,84 @@ describe('the marks on the cells a name view adds', () => {
   });
 });
 
+describe("a peer's focus from another name view", () => {
+  const peerFocusOf = (cell: Group | undefined) =>
+    cell?.findOne<Rect>('.cell-shared-focus-border')?.fill() ?? null;
+  const track = (app: AppContext, focus: SharedFocus) => {
+    app.store.dispatchSync({
+      ...sharedFocusTrackerAction({ focus }),
+      tags: Tag.shared,
+      meta: { editorId: 'remote-1' },
+    });
+  };
+
+  it("underlines in the logical view the cells drawn in the place of a physical peer's", async () => {
+    const { app, stage } = await setup({ mode: NameViewMode.logical });
+
+    track(app, {
+      tableId: TABLE,
+      columnId: null,
+      focusType: FocusType.tableName,
+    });
+    await settle();
+    const color = peerFocusOf(headerCell(stage, FocusType.tableLogicalName));
+    expect(color).not.toBeNull();
+
+    track(app, {
+      tableId: TABLE,
+      columnId: NAMED,
+      focusType: FocusType.columnName,
+    });
+    await settle();
+    expect(
+      peerFocusOf(rowCell(stage, NAMED, FocusType.columnLogicalName))
+    ).toBe(color);
+
+    track(app, {
+      tableId: TABLE,
+      columnId: NAMED,
+      focusType: FocusType.columnDataType,
+    });
+    await settle();
+    expect(peerFocusOf(rowCell(stage, NAMED, FocusType.columnDomain))).toBe(
+      color
+    );
+  });
+
+  it("underlines in the physical view the cells drawn in the place of a logical peer's", async () => {
+    const { app, stage } = await setup();
+
+    track(app, {
+      tableId: TABLE,
+      columnId: null,
+      focusType: FocusType.tableLogicalName,
+    });
+    await settle();
+    const color = peerFocusOf(headerCell(stage, FocusType.tableName));
+    expect(color).not.toBeNull();
+
+    track(app, {
+      tableId: TABLE,
+      columnId: NAMED,
+      focusType: FocusType.columnLogicalName,
+    });
+    await settle();
+    expect(peerFocusOf(rowCell(stage, NAMED, FocusType.columnName))).toBe(
+      color
+    );
+
+    track(app, {
+      tableId: TABLE,
+      columnId: NAMED,
+      focusType: FocusType.columnDomain,
+    });
+    await settle();
+    expect(peerFocusOf(rowCell(stage, NAMED, FocusType.columnDataType))).toBe(
+      color
+    );
+  });
+});
+
 describe('a diff pane in the logical view', () => {
   it('marks a rename and a hidden comment change on the logical name the header draws', async () => {
     const renamed = await setup({

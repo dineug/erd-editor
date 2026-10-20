@@ -18,6 +18,7 @@ import {
   CanvasType,
   Language,
   LockSettingType,
+  NameViewMode,
   Show,
 } from '@/constants/schema';
 import { ChangeActionTypes, SharedActionTypes } from '@/engine/actions';
@@ -936,6 +937,70 @@ describe('editor.loadJson / initialLoadJson', () => {
         t1: SelectType.table,
       });
       expect(store.state.editor.editMemoId).toBeNull();
+    }
+  );
+
+  it.each([
+    ['loadJson', loadJsonAction],
+    ['initialLoadJson', initialLoadJsonAction],
+  ])(
+    'moves the focus onto the header cell the name view %s lands draws, closing its editor',
+    (_, load) => {
+      store.dispatchSync(load({ value: buildJson(CanvasType.ERD) }));
+      store.dispatchSync(
+        focusTableAction({ tableId: 't1' }),
+        editTableAction()
+      );
+      const json = JSON.parse(buildJson(CanvasType.ERD));
+      json.settings.lockSettings = LockSettingType.unlockNameViewMode;
+      json.settings.nameViewMode = NameViewMode.logical;
+
+      store.dispatchSync(load({ value: JSON.stringify(json) }));
+
+      expect(store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+      expect(store.state.editor.focusTable).toMatchObject({
+        tableId: 't1',
+        focusType: FocusType.tableLogicalName,
+        edit: false,
+      });
+    }
+  );
+
+  it.each([
+    ['loadJson', loadJsonAction],
+    ['initialLoadJson', initialLoadJsonAction],
+  ])(
+    'moves the focus onto the domain the type cell draws once %s turns the Domain bit off',
+    (_, load) => {
+      const json = JSON.parse(buildJson(CanvasType.ERD));
+      json.settings.lockSettings = LockSettingType.unlockNameViewMode;
+      json.settings.nameViewMode = NameViewMode.logical;
+      json.settings.show = Show.columnDataType | Show.columnDomain;
+      json.doc.tableIds = ['t1'];
+      json.collections.tableEntities.t1.columnIds = ['c1'];
+      json.collections.tableColumnEntities = {
+        c1: { id: 'c1', tableId: 't1', name: 'c1' },
+      };
+      store.dispatchSync(load({ value: JSON.stringify(json) }));
+      store.dispatchSync(
+        focusColumnAction({
+          tableId: 't1',
+          columnId: 'c1',
+          focusType: FocusType.columnDataType,
+          $mod: false,
+          shiftKey: false,
+        }),
+        editTableAction()
+      );
+      json.settings.show = Show.columnDataType;
+
+      store.dispatchSync(load({ value: JSON.stringify(json) }));
+
+      expect(store.state.editor.focusTable).toMatchObject({
+        columnId: 'c1',
+        focusType: FocusType.columnDomain,
+        edit: false,
+      });
     }
   );
 
