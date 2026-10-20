@@ -166,12 +166,11 @@ export const LightThemeConfig: Partial<Theme> = {
   visualizationLink: 'gray-8',
   visualizationColumn: 'gray-9',
   visualizationRelationship: 'gray-9',
-  // Red step 11 reads 4.07:1 on a light red-4, so an error cell of a sheet
-  // takes the step under it, where the text keeps 4.54:1.
-  dictionaryErrorBackground: 'custom-red--3',
-  // Amber step 11 reads under 4.5:1 on a light amber-4, so a warning takes
-  // the darker amber a changed entry takes.
-  dictionaryWarningForeground: 'override-#895503',
+  // Red and amber step 11 read under 4.5:1 on the gray-5 header band and on
+  // a neutral accent's gray-6 selected row, where a marked name is written,
+  // so the marks take a darker red and amber, which their step 4 fills keep too.
+  dictionaryErrorForeground: 'override-#b1252a',
+  dictionaryWarningForeground: 'override-#835103',
   // Amber step 11 reads under 4.5:1 on a light gray-1, so a changed entry
   // takes the darker amber an editor's light theme marks a change with.
   diffModifyForeground: 'override-#895503',

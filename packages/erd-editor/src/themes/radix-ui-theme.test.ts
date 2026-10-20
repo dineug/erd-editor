@@ -467,26 +467,38 @@ describe('the tree', () => {
 });
 
 describe('the dictionary marks', () => {
-  it('keeps the error and warning text at 4.5:1 on a table, where the canvas writes a marked cell in them', () => {
+  /**
+   * Measured 2026-10-20: light red and amber step 11 read 3.95:1 and under on
+   * the gray-5 band, so light takes #b1252a and #835103, whose least, 4.70:1
+   * and 4.73:1, is on the gray-6 a neutral accent selects a row with.
+   */
+  it('keeps the error and warning text at 4.5:1 on every fill the canvas writes a marked cell on', () => {
     everyThemeOptions.forEach(options => {
       const theme = createTheme(options);
+      // A header's names sit on its band, a row's on the body or on the fill a
+      // hover or a selection gives the row.
+      const fills = [
+        theme.tableBackground,
+        theme.tableHeaderBackground,
+        theme.columnHover,
+        theme.columnSelect,
+        theme.columnSelectHover,
+      ];
 
       [
         theme.dictionaryErrorForeground,
         theme.dictionaryWarningForeground,
       ].forEach(mark => {
-        expect(
-          contrast(mark, theme.tableBackground),
-          labelOf(options)
-        ).toBeGreaterThanOrEqual(4.5);
+        fills.forEach(fill => {
+          expect(
+            contrast(mark, fill),
+            `${labelOf(options)} ${mark} on ${fill}`
+          ).toBeGreaterThanOrEqual(4.5);
+        });
       });
     });
   });
 
-  /**
-   * Measured 2026-10-20: red step 11 reads 4.07:1 on a light red-4, the step
-   * proposed for the error fill, so light takes red-3, where it reads 4.54:1.
-   */
   it('keeps the text of each level at 4.5:1 on its own fill, where a sheet marks a cell', () => {
     everyThemeOptions.forEach(options => {
       const theme = createTheme(options);

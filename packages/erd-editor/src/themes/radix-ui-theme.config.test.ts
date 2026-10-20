@@ -181,7 +181,7 @@ describe('ThemeConfig', () => {
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes, the dictionary error fill and the two darker ambers only', () => {
+  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes, the two dictionary marks and the darker amber of a change only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
@@ -198,8 +198,8 @@ describe('LightThemeConfig', () => {
       visualizationLink: 'gray-8',
       visualizationColumn: 'gray-9',
       visualizationRelationship: 'gray-9',
-      dictionaryErrorBackground: 'custom-red--3',
-      dictionaryWarningForeground: 'override-#895503',
+      dictionaryErrorForeground: 'override-#b1252a',
+      dictionaryWarningForeground: 'override-#835103',
       diffModifyForeground: 'override-#895503',
     });
   });
@@ -226,10 +226,15 @@ describe('the dictionary part', () => {
     expect(ThemeConfig.dictionaryWarningBackground).toBe('custom-amber--4');
   });
 
-  it('takes the red fill a step lighter and the darker amber of a change in light', () => {
-    expect(LightThemeConfig.dictionaryErrorBackground).toBe('custom-red--3');
+  it('takes a darker red and amber text of its own in light, over the same fills', () => {
+    expect(LightThemeConfig.dictionaryErrorForeground).toBe('override-#b1252a');
     expect(LightThemeConfig.dictionaryWarningForeground).toBe(
+      'override-#835103'
+    );
+    expect(LightThemeConfig.dictionaryWarningForeground).not.toBe(
       LightThemeConfig.diffModifyForeground
     );
+    expect(LightThemeConfig.dictionaryErrorBackground).toBeUndefined();
+    expect(LightThemeConfig.dictionaryWarningBackground).toBeUndefined();
   });
 });
