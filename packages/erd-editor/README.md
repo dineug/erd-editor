@@ -165,6 +165,9 @@ An attribute is on when present with no value or `"true"`.
 - `'grid'`, the default, lands at once in rows. `'auto'` lays the tables out as the Import menu does
   and returns a `Promise` that resolves when they land; a later load supersedes it.
 - `mode: 'append'` adds the tables below the diagram, as Import and Add does.
+- A replace by the four text methods keeps the document's word, term and domain dictionaries, which
+  the text cannot hold; a replacing `setSchemaJSON` takes the ones its document holds, as `value`
+  does.
 
 ### Theme and language
 
