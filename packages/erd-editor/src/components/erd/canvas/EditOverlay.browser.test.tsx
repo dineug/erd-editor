@@ -92,6 +92,7 @@ import {
 } from '@/engine/modules/table/generator.actions';
 import {
   changeColumnDataTypeAction,
+  changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNameDerivedAction,
@@ -1029,27 +1030,18 @@ describe('the cell editor in the name views', () => {
     ).toMatchObject({ name: 'mbr', logicalName: 'Member' });
   });
 
-  it('opens the domain picker on a domain, showing what the cell drew, and links the domain picked', async () => {
+  /** The names of the picker's rows marked as the one picked. */
+  const pickedRowsOf = (fixture: Fixture) =>
+    Array.from(
+      cellOf(fixture.mounted).querySelectorAll(
+        `.${logicalNameStyles.hintItem}.selected`
+      )
+    ).map(row => row.querySelector(':scope > span')?.textContent?.trim());
+
+  it('edits the type in the type cell of a row that links no domain, which draws the type', async () => {
     const fixture = await setupView(NameViewMode.logical);
     const { store } = fixture.app;
     const { tableId, columnId } = fixture;
-
-    await edit(fixture, FocusType.columnDataType);
-    expect(store.state.editor.focusTable?.focusType).toBe(
-      FocusType.columnDomain
-    );
-    expect(inputOf(fixture.mounted).value).toBe('');
-    expect(inputOf(fixture.mounted).placeholder).toBe('Domain');
-    expect(
-      cellOf(fixture.mounted).querySelector(`.${logicalNameStyles.hint}`)
-    ).toBeNull();
-
-    store.dispatchSync(
-      changeColumnDataTypeAction({ tableId, id: columnId, value: 'INT' })
-    );
-    await edit(fixture, FocusType.columnDomain);
-    expect(inputOf(fixture.mounted).placeholder).toBe('INT');
-
     store.dispatchSync(
       addDictionaryAction({
         kind: 'domain',
@@ -1057,27 +1049,95 @@ describe('the cell editor in the name views', () => {
         values: { name: 'Identifier', dataType: 'BIGINT' },
       })
     );
+
+    await edit(fixture, FocusType.columnDataType);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDomain
+    );
+    expect(inputOf(fixture.mounted).value).toBe('');
+    expect(inputOf(fixture.mounted).placeholder).toBe('dataType');
+    expect(
+      cellOf(fixture.mounted).querySelector('.data-type-hint')
+    ).not.toBeNull();
+    expect(await type(fixture, ['INT'])).toEqual([['column.changeDataType']]);
+
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId, id: columnId, value: 'VARCHAR' })
+    );
     await edit(fixture, FocusType.columnDomain);
+    expect(inputOf(fixture.mounted).value).toBe('VARCHAR');
+    expect(store.state.collections.tableColumnEntities[columnId]).toMatchObject(
+      { dataType: 'VARCHAR', domainId: '' }
+    );
+  });
+
+  it('opens the domain picker on a type cell that draws a domain, showing its name, and links the domain picked', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    const { tableId, columnId } = fixture;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-1',
+        values: { name: 'Identifier', dataType: 'BIGINT' },
+      }),
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-2',
+        values: { name: 'Amount', dataType: 'DECIMAL(19,4)' },
+      }),
+      changeColumnDomainAction({ tableId, id: columnId, value: 'domain-1' })
+    );
+
+    await edit(fixture, FocusType.columnDataType);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDomain
+    );
+    expect(inputOf(fixture.mounted).value).toBe('');
+    expect(inputOf(fixture.mounted).placeholder).toBe('Identifier');
+    expect(pickedRowsOf(fixture)).toEqual(['Identifier']);
+
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await flush();
+
+    expect(store.state.collections.tableColumnEntities[columnId]).toMatchObject(
+      { domainId: 'domain-2', dataType: 'DECIMAL(19,4)' }
+    );
+    expect(store.state.editor.focusTable?.edit).toBe(false);
+  });
+
+  it('picks a domain in the domain cell, showing the name it drew or its key over a blank cell', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    const { columnId } = fixture;
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDomain, value: true }),
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-1',
+        values: { name: 'Identifier', dataType: 'BIGINT' },
+      })
+    );
+
+    await edit(fixture, FocusType.columnDomain);
+    expect(inputOf(fixture.mounted).placeholder).toBe('Domain');
     await userEvent.keyboard('{ArrowDown}{Enter}');
     await flush();
 
     expect(store.state.collections.tableColumnEntities[columnId]).toMatchObject(
       { domainId: 'domain-1', dataType: 'BIGINT' }
     );
-    expect(store.state.editor.focusTable?.edit).toBe(false);
 
-    store.dispatchSync(
-      changeShowAction({ show: Show.columnDomain, value: true })
-    );
     await edit(fixture, FocusType.columnDomain);
     expect(inputOf(fixture.mounted).placeholder).toBe('Identifier');
-    expect(
-      Array.from(
-        cellOf(fixture.mounted).querySelectorAll(
-          `.${logicalNameStyles.hintItem}.selected`
-        )
-      ).map(row => row.querySelector(':scope > span')?.textContent?.trim())
-    ).toEqual(['Identifier']);
+    expect(pickedRowsOf(fixture)).toEqual(['Identifier']);
+
+    // While the domain has a cell of its own, the type cell keeps the type.
+    await edit(fixture, FocusType.columnDataType);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDataType
+    );
+    expect(inputOf(fixture.mounted).value).toBe('BIGINT');
   });
 });
 

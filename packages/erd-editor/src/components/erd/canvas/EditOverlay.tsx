@@ -52,6 +52,7 @@ import {
   scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
+import { drawsDomainInTypeCell } from '@/engine/modules/editor/utils/nameView';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeTableCommentAction,
@@ -98,6 +99,7 @@ const EDITABLE: Partial<Record<FocusType, PlainMessageKey>> = {
 
 type CellTarget = {
   kind: 'cell';
+  /** The field the editor writes, which picks the editor too (toEditedFocusType). */
   focusType: FocusType;
   tableId: string;
   columnId: string | null;
@@ -200,17 +202,20 @@ const toPlaceholder = (
 };
 
 /**
- * What a domain picker shows while nothing is typed: what its cell drew, the
- * domain's name, or the type the logical view's type cell draws in its place.
+ * The field a row's cell editor writes: the one its slot's focus names, but
+ * the type for the logical view's type cell while it draws the type, since a
+ * row that links no listed domain by a name shows its type there.
  */
-function domainStandIn(
+function toEditedFocusType(
   state: RootState,
   column: Column,
   slot: ColumnCellSlot
-): string {
-  const name = getLiveDomainName(state, column.domainId);
-  if (name || slot.columnType !== ColumnType.columnDataType) return name;
-  return column.dataType.trim() ? column.dataType : '';
+): FocusType {
+  return slot.focusType === FocusType.columnDomain &&
+    slot.columnType === ColumnType.columnDataType &&
+    !drawsDomainInTypeCell(state, column)
+    ? FocusType.columnDataType
+    : slot.focusType;
 }
 
 const keyOf = (target: EditTarget) =>
@@ -277,18 +282,26 @@ function resolveCellTarget(state: RootState): CellTarget | null {
   );
   if (!slot) return null;
 
+  const focusType = toEditedFocusType(state, column, slot);
+  // EDITABLE names the type's key too, so the lookup always finds one.
+  const key = EDITABLE[focusType] as PlainMessageKey;
+
   return {
     kind: 'cell',
-    focusType: slot.focusType,
+    focusType,
     tableId: table.id,
     columnId: column.id,
     x: rect.x + slot.x,
     y: getColumnRect(state, table, index).y + getColumnTextY(),
     width: slot.width,
-    value: getColumnValue(column, slot.focusType),
-    ...(slot.focusType === FocusType.columnDomain
-      ? { placeholderKey, standIn: domainStandIn(state, column, slot) }
-      : toPlaceholder(state, slot.focusType, column.name, placeholderKey)),
+    value: getColumnValue(column, focusType),
+    // A domain picker shows the name its cell drew, or its key over a blank cell.
+    ...(focusType === FocusType.columnDomain
+      ? {
+          placeholderKey: key,
+          standIn: getLiveDomainName(state, column.domainId),
+        }
+      : toPlaceholder(state, focusType, column.name, key)),
     textColor: null,
   };
 }
