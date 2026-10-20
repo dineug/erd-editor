@@ -17,16 +17,18 @@ import {
 import { AppContext } from '@/components/appContext';
 import IndexesColumn from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn';
 import * as styles from '@/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn.styles';
-import { OrderType } from '@/constants/schema';
+import { NameViewMode, OrderType } from '@/constants/schema';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import {
   addIndexColumnAction,
   changeIndexColumnOrderTypeAction,
   moveIndexColumnAction,
 } from '@/engine/modules/index-column/atom.actions';
+import { changeNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import type { Index } from '@/internal-types';
@@ -270,6 +272,51 @@ describe('IndexesColumn', () => {
         INDEX_COLUMN_B,
       ]);
       expect(marksOf(mounted)).toEqual([null, 'AK1.1', 'AK1.2']);
+    });
+  });
+
+  describe('name views', () => {
+    /** The name cell of each row, the last cell before a mark. */
+    const namesOf = (mounted: Mounted) =>
+      rowsOf(mounted).map(row => {
+        const cells = row.querySelectorAll(':scope > .column-col');
+        return cells[cells.length - 1].textContent?.trim();
+      });
+
+    const switchTo = (
+      value: (typeof NameViewMode)[keyof typeof NameViewMode]
+    ) =>
+      app.store.dispatchSync(
+        changeNameViewModeAction({
+          value,
+          shared: false,
+          editorId: app.store.state.editor.id,
+        })
+      );
+
+    it('names each column as the name view shows it, as the columns above do', async () => {
+      app.store.dispatchSync(
+        changeColumnLogicalNameAction({
+          id: COLUMN_A,
+          tableId: TABLE_ID,
+          value: 'User ID',
+        })
+      );
+      switchTo(NameViewMode.logical);
+      mounted = await mountAndFlush(
+        html`<${IndexesColumn} index=${index} />`,
+        app
+      );
+
+      expect(namesOf(mounted)).toEqual(['User ID', 'email']);
+
+      switchTo(NameViewMode.both);
+      await flush();
+      expect(namesOf(mounted)).toEqual(['User ID (user_id)', 'email']);
+
+      switchTo(NameViewMode.physical);
+      await flush();
+      expect(namesOf(mounted)).toEqual(['user_id', 'email']);
     });
   });
 

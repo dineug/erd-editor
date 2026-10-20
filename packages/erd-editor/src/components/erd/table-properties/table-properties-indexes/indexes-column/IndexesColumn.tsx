@@ -7,6 +7,10 @@ import Icon from '@/components/primitives/icon/Icon';
 import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import { OrderType } from '@/constants/schema';
 import {
+  nameLabelText,
+  toNameLabel,
+} from '@/engine/modules/editor/utils/nameView';
+import {
   changeIndexColumnOrderTypeAction$,
   moveIndexColumnAction$,
 } from '@/engine/modules/index-column/generator.actions';
@@ -104,7 +108,7 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
 
   return () => {
     const { store } = app.value;
-    const { collections } = store.state;
+    const { collections, settings } = store.state;
     const { alternateKey = 0, readonly } = props;
 
     const table = query(collections)
@@ -170,7 +174,11 @@ const IndexesColumn: FC<IndexesColumnProps> = (props, ctx) => {
                   title={toOrderTitle(indexColumn.orderType)}
                 />
               </div>
-              <div class="column-col">{indexColumn.column?.name}</div>
+              <div class="column-col">
+                {indexColumn.column
+                  ? nameLabelText(toNameLabel(settings, indexColumn.column))
+                  : ''}
+              </div>
               {indexColumn.mark ? (
                 <span class={styles.mark}>{indexColumn.mark}</span>
               ) : null}
