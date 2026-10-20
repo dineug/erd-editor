@@ -484,4 +484,10 @@ export const koKR = {
       '저장하지 않았습니다: 행 {count}개가 알 수 없는 도메인을 가리킵니다 ({names})',
   },
   'dictionary.toast.rowRemoved': '저장하지 않았습니다: 행이 삭제되었습니다',
+  'dictionary.toast.multiRangeCopy':
+    '복사하지 않았습니다: 범위끼리 겹치는 행이나 열이 없습니다',
+  'dictionary.toast.pasteBeyondColumns':
+    '마지막 열을 넘는 열은 붙여넣지 않았습니다',
+  'dictionary.toast.tooManyCells':
+    '실행하지 않았습니다: 선택한 셀이 너무 많습니다',
 } satisfies Messages;

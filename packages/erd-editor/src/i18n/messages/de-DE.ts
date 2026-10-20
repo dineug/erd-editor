@@ -521,4 +521,10 @@ export const deDE = {
       'Nichts gespeichert: {count} Zeilen nennen eine unbekannte Domäne ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nichts gespeichert: Die Zeile wurde entfernt',
+  'dictionary.toast.multiRangeCopy':
+    'Nichts kopiert: Die Bereiche teilen weder Zeilen noch Spalten',
+  'dictionary.toast.pasteBeyondColumns':
+    'Spalten nach der letzten wurden nicht eingefügt',
+  'dictionary.toast.tooManyCells':
+    'Nichts geändert: Die Auswahl umfasst zu viele Zellen',
 } satisfies Messages;

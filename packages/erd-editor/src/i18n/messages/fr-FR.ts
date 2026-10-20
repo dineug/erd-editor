@@ -530,4 +530,10 @@ export const frFR = {
   },
   'dictionary.toast.rowRemoved':
     'Rien n’a été enregistré : la ligne a été supprimée',
+  'dictionary.toast.multiRangeCopy':
+    'Rien n’a été copié : les plages n’ont ni ligne ni colonne en commun',
+  'dictionary.toast.pasteBeyondColumns':
+    'Les colonnes au-delà de la dernière n’ont pas été collées',
+  'dictionary.toast.tooManyCells':
+    'Rien n’a été fait : la sélection couvre trop de cellules',
 } satisfies Messages;

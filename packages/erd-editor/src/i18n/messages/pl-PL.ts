@@ -528,4 +528,10 @@ export const plPL = {
       'Nic nie zapisano: {count} wiersza wskazuje nieznaną domenę ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nic nie zapisano: wiersz został usunięty',
+  'dictionary.toast.multiRangeCopy':
+    'Nic nie skopiowano: zakresy nie mają wspólnych wierszy ani kolumn',
+  'dictionary.toast.pasteBeyondColumns':
+    'Kolumny za ostatnią nie zostały wklejone',
+  'dictionary.toast.tooManyCells':
+    'Nic nie zrobiono: zaznaczenie obejmuje zbyt wiele komórek',
 } satisfies Messages;

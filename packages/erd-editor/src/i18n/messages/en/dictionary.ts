@@ -59,4 +59,10 @@ export const dictionary = {
     other: 'Nothing saved: {count} rows name an unknown domain ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nothing saved: the row was removed',
+  'dictionary.toast.multiRangeCopy':
+    'Nothing copied: the ranges share no rows or columns',
+  'dictionary.toast.pasteBeyondColumns':
+    "Columns past the last one weren't pasted",
+  'dictionary.toast.tooManyCells':
+    'Nothing done: the selection covers too many cells',
 } as const;

@@ -13,6 +13,7 @@ import {
   commitDictionaryCells,
   createSheetRows,
   removeSelectedRows,
+  reportGridRefusal,
   selectedRowIds,
   type SheetRows,
 } from '@/components/dictionary/dictionaryCommit';
@@ -621,6 +622,35 @@ const selection = (
     endRow,
     endCol: 2,
   })),
+});
+
+describe('reportGridRefusal', () => {
+  it.each([
+    [
+      'multi-range-copy',
+      'Nothing copied: the ranges share no rows or columns',
+      'error',
+    ],
+    ['paste-beyond-columns', "Columns past the last one weren't pasted", null],
+    [
+      'too-many-cells',
+      'Nothing done: the selection covers too many cells',
+      'error',
+    ],
+  ] as const)(
+    'says the grid refused a %s, one toast however often it repeats',
+    async (reason, text, tone) => {
+      const sheet = open(DictionaryKind.word);
+
+      reportGridRefusal(sheet.app, { reason });
+      reportGridRefusal(sheet.app, { reason });
+
+      expect(new Set(toastKeys(sheet)).size).toBe(1);
+      expect(await toastText(sheet.toasts[0])).toBe(text);
+      const mark = mounted?.container.querySelector('[data-tone]');
+      expect(mark?.getAttribute('data-tone') ?? null).toBe(tone);
+    }
+  );
 });
 
 describe('removeSelectedRows', () => {

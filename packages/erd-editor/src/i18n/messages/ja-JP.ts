@@ -501,4 +501,10 @@ export const jaJP = {
       '保存されませんでした: {count} 行が不明なドメインを指定しています（{names}）',
   },
   'dictionary.toast.rowRemoved': '保存されませんでした: 行が削除されました',
+  'dictionary.toast.multiRangeCopy':
+    'コピーされませんでした: 範囲が行も列も共有していません',
+  'dictionary.toast.pasteBeyondColumns':
+    '最後の列より後の列は貼り付けられませんでした',
+  'dictionary.toast.tooManyCells':
+    '実行されませんでした: 選択範囲のセルが多すぎます',
 } satisfies Messages;

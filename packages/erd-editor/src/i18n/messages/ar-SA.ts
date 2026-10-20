@@ -531,4 +531,9 @@ export const arSA = {
     other: 'لم يُحفظ شيء: {count} صف بمجال غير معروف ({names})',
   },
   'dictionary.toast.rowRemoved': 'لم يُحفظ شيء: تمت إزالة الصف',
+  'dictionary.toast.multiRangeCopy':
+    'لم يُنسخ شيء: لا تشترك النطاقات في أي صف أو عمود',
+  'dictionary.toast.pasteBeyondColumns':
+    'لم تُلصق الأعمدة التي تتجاوز العمود الأخير',
+  'dictionary.toast.tooManyCells': 'لم يُنفَّذ شيء: يشمل التحديد خلايا كثيرة جدًا',
 } satisfies Messages;

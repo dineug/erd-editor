@@ -523,4 +523,9 @@ export const skSK = {
     other: 'Nič sa neuložilo: {count} riadkov uvádza neznámu doménu ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nič sa neuložilo: riadok bol odstránený',
+  'dictionary.toast.multiRangeCopy':
+    'Nič sa neskopírovalo: rozsahy nemajú spoločné riadky ani stĺpce',
+  'dictionary.toast.pasteBeyondColumns': 'Stĺpce za posledným sa nevložili',
+  'dictionary.toast.tooManyCells':
+    'Nič sa nevykonalo: výber obsahuje príliš veľa buniek',
 } satisfies Messages;

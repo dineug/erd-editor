@@ -468,4 +468,7 @@ export const zhCN = {
     other: '未保存：{count} 行指定了未知的域（{names}）',
   },
   'dictionary.toast.rowRemoved': '未保存：该行已被删除',
+  'dictionary.toast.multiRangeCopy': '未复制：这些区域没有共同的行或列',
+  'dictionary.toast.pasteBeyondColumns': '超出最后一列的列未粘贴',
+  'dictionary.toast.tooManyCells': '未执行：选中的单元格过多',
 } satisfies Messages;

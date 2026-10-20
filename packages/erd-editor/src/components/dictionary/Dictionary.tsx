@@ -6,6 +6,7 @@ import {
   type GridHandle,
   type GridSelection,
   type GridTheme,
+  type RejectEvent,
   type ViewportChange,
 } from '@dineug/grid';
 import {
@@ -31,6 +32,7 @@ import {
   commitDictionaryCells,
   createSheetRows,
   removeSelectedRows,
+  reportGridRefusal,
   type SheetRows,
 } from '@/components/dictionary/dictionaryCommit';
 import {
@@ -371,6 +373,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     commitDictionaryCells(app.value, sheet, rows, event, i18n.value);
   };
 
+  const handleReject = (event: RejectEvent) => {
+    reportGridRefusal(app.value, event);
+  };
+
   const handleSearch = (event: InputEvent) => {
     const { sheet } = session;
     changeSearch(view, sheet, (event.target as HTMLInputElement).value);
@@ -683,6 +689,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 version={version}
                 ariaLabel={t(DictionarySheetLabelKey[sheet])}
                 onCommit={handleCommit}
+                onReject={handleReject}
                 onSelectionChange={handleSelectionChange}
                 onViewportChange={handleViewportChange}
                 onColumnResize={handleColumnResize}

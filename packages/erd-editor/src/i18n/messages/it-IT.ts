@@ -525,4 +525,10 @@ export const itIT = {
   },
   'dictionary.toast.rowRemoved':
     'Nessuna modifica salvata: la riga è stata rimossa',
+  'dictionary.toast.multiRangeCopy':
+    'Nulla copiato: gli intervalli non condividono righe né colonne',
+  'dictionary.toast.pasteBeyondColumns':
+    'Le colonne oltre l’ultima non sono state incollate',
+  'dictionary.toast.tooManyCells':
+    'Nessuna operazione eseguita: la selezione copre troppe celle',
 } satisfies Messages;

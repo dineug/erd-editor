@@ -526,4 +526,10 @@ export const esES = {
   },
   'dictionary.toast.rowRemoved':
     'No se ha guardado nada: se ha eliminado la fila',
+  'dictionary.toast.multiRangeCopy':
+    'No se ha copiado nada: los rangos no comparten filas ni columnas',
+  'dictionary.toast.pasteBeyondColumns':
+    'No se han pegado las columnas posteriores a la última',
+  'dictionary.toast.tooManyCells':
+    'No se ha hecho nada: la selección abarca demasiadas celdas',
 } satisfies Messages;

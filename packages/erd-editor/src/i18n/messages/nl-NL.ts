@@ -514,4 +514,10 @@ export const nlNL = {
       'Niets opgeslagen: {count} rijen noemen een onbekend domein ({names})',
   },
   'dictionary.toast.rowRemoved': 'Niets opgeslagen: de rij is verwijderd',
+  'dictionary.toast.multiRangeCopy':
+    'Niets gekopieerd: de bereiken delen geen rijen of kolommen',
+  'dictionary.toast.pasteBeyondColumns':
+    'Kolommen na de laatste zijn niet geplakt',
+  'dictionary.toast.tooManyCells':
+    'Niets gedaan: de selectie beslaat te veel cellen',
 } satisfies Messages;

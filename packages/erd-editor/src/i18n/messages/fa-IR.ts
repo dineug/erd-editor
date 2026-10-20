@@ -499,4 +499,10 @@ export const faIR = {
       'چیزی ذخیره نشد: {count} ردیف به دامنه‌ای ناشناخته اشاره می‌کند ({names})',
   },
   'dictionary.toast.rowRemoved': 'چیزی ذخیره نشد: ردیف حذف شد',
+  'dictionary.toast.multiRangeCopy':
+    'چیزی کپی نشد: محدوده‌ها هیچ ردیف یا ستون مشترکی ندارند',
+  'dictionary.toast.pasteBeyondColumns':
+    'ستون‌های بعد از آخرین ستون جای‌گذاری نشدند',
+  'dictionary.toast.tooManyCells':
+    'کاری انجام نشد: انتخاب شامل سلول‌های بسیار زیادی است',
 } satisfies Messages;

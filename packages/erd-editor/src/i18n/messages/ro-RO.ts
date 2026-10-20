@@ -524,4 +524,10 @@ export const roRO = {
       'Nu s-a salvat nimic: {count} de rânduri indică un domeniu necunoscut ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nu s-a salvat nimic: rândul a fost șters',
+  'dictionary.toast.multiRangeCopy':
+    'Nu s-a copiat nimic: zonele nu au rânduri sau coloane comune',
+  'dictionary.toast.pasteBeyondColumns':
+    'Coloanele de după ultima nu au fost lipite',
+  'dictionary.toast.tooManyCells':
+    'Nu s-a făcut nimic: selecția cuprinde prea multe celule',
 } satisfies Messages;

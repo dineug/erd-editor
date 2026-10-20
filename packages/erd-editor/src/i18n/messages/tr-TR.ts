@@ -503,4 +503,10 @@ export const trTR = {
       'Hiçbir şey kaydedilmedi: {count} satır bilinmeyen bir değer alanını gösteriyor ({names})',
   },
   'dictionary.toast.rowRemoved': 'Hiçbir şey kaydedilmedi: satır kaldırıldı',
+  'dictionary.toast.multiRangeCopy':
+    'Hiçbir şey kopyalanmadı: aralıkların ortak satırı veya sütunu yok',
+  'dictionary.toast.pasteBeyondColumns':
+    'Son sütundan sonraki sütunlar yapıştırılmadı',
+  'dictionary.toast.tooManyCells':
+    'Hiçbir şey yapılmadı: seçim çok fazla hücre içeriyor',
 } satisfies Messages;

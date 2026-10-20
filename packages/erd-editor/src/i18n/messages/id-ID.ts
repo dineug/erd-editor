@@ -494,4 +494,10 @@ export const idID = {
       'Tidak ada yang disimpan: {count} baris menyebut domain yang tidak dikenal ({names})',
   },
   'dictionary.toast.rowRemoved': 'Tidak ada yang disimpan: baris telah dihapus',
+  'dictionary.toast.multiRangeCopy':
+    'Tidak ada yang disalin: rentang tidak berbagi baris atau kolom',
+  'dictionary.toast.pasteBeyondColumns':
+    'Kolom setelah kolom terakhir tidak ditempel',
+  'dictionary.toast.tooManyCells':
+    'Tidak ada yang dilakukan: pilihan mencakup terlalu banyak sel',
 } satisfies Messages;

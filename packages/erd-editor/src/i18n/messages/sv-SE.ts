@@ -504,4 +504,10 @@ export const svSE = {
     other: 'Inget sparades: {count} rader anger en okänd domän ({names})',
   },
   'dictionary.toast.rowRemoved': 'Inget sparades: raden togs bort',
+  'dictionary.toast.multiRangeCopy':
+    'Inget kopierades: områdena delar inga rader eller kolumner',
+  'dictionary.toast.pasteBeyondColumns':
+    'Kolumner efter den sista klistrades inte in',
+  'dictionary.toast.tooManyCells':
+    'Inget gjordes: markeringen omfattar för många celler',
 } satisfies Messages;

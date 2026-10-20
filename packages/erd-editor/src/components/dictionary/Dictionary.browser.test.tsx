@@ -738,6 +738,21 @@ describe('the Dictionary tab', () => {
     expect(names(fixture)).toEqual(['A', 'B']);
   });
 
+  it('writes the columns a paste reaches and says it left out those past the last', async () => {
+    const fixture = await setup({ seed: [word('a', 'A')] });
+    const toasts: Array<string | undefined> = [];
+    teardowns.push(
+      fixture.app.emitter.on({
+        openToast: ({ payload }) => toasts.push(payload.key),
+      })
+    );
+
+    await paste(fixture, 'A2\tAA\tAye\tFirst\t\t\tPast\tPast\tPast\n');
+    expect(names(fixture)).toEqual(['A2']);
+    expect(dictionaryBatches(fixture)).toHaveLength(1);
+    expect(toasts).toEqual(['dictionary.toast.pasteBeyondColumns']);
+  });
+
   it('sends one edit as one dispatch, which one undo takes back and one redo brings again', async () => {
     const fixture = await setup();
 

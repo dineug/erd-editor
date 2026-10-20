@@ -526,4 +526,10 @@ export const slSI = {
   },
   'dictionary.toast.rowRemoved':
     'Nič ni bilo shranjeno: vrstica je bila odstranjena',
+  'dictionary.toast.multiRangeCopy':
+    'Nič ni bilo kopirano: obsegi nimajo skupnih vrstic ali stolpcev',
+  'dictionary.toast.pasteBeyondColumns':
+    'Stolpci za zadnjim niso bili prilepljeni',
+  'dictionary.toast.tooManyCells':
+    'Nič ni bilo storjeno: izbor zajema preveč celic',
 } satisfies Messages;

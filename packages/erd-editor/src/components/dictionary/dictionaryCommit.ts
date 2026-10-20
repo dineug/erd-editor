@@ -1,4 +1,4 @@
-import type { CommitEvent, GridSelection } from '@dineug/grid';
+import type { CommitEvent, GridSelection, RejectEvent } from '@dineug/grid';
 import { isString } from 'es-toolkit';
 
 import type { AppContext } from '@/components/appContext';
@@ -34,7 +34,7 @@ import {
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
 import { sourceI18n } from '@/i18n/source';
-import { type I18n, isolate } from '@/i18n/translate';
+import { type I18n, isolate, type PlainMessageKey } from '@/i18n/translate';
 
 /** One row a commit writes: a listed row by its id, or null for one past the end. */
 export type ResolvedRow = {
@@ -257,6 +257,30 @@ const REFUSAL_MESSAGE = {
 } as const;
 
 const ROW_REMOVED = 'dictionary.toast.rowRemoved';
+
+const GRID_REFUSAL_MESSAGE: Record<RejectEvent['reason'], PlainMessageKey> = {
+  'multi-range-copy': 'dictionary.toast.multiRangeCopy',
+  'paste-beyond-columns': 'dictionary.toast.pasteBeyondColumns',
+  'too-many-cells': 'dictionary.toast.tooManyCells',
+};
+
+/**
+ * Says what the grid refused, under one key per reason so a press repeated
+ * shows one toast: a copy or a clear that did nothing is an error, while a
+ * paste whose columns ran past the last wrote the rest.
+ */
+export function reportGridRefusal(
+  { emitter }: Pick<AppContext, 'emitter'>,
+  { reason }: RejectEvent
+) {
+  const message = GRID_REFUSAL_MESSAGE[reason];
+
+  openStatusToast(emitter, {
+    key: message,
+    tone: reason === 'paste-beyond-columns' ? undefined : 'error',
+    title: localized(message),
+  });
+}
 
 /**
  * The names a toast shows in the reader's language, each in its own direction

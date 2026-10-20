@@ -513,4 +513,10 @@ export const euES = {
       'Ez da ezer gorde: {count} errenkada domeinu ezezagun batekin daude ({names})',
   },
   'dictionary.toast.rowRemoved': 'Ez da ezer gorde: errenkada kendu da',
+  'dictionary.toast.multiRangeCopy':
+    'Ez da ezer kopiatu: barrutiek ez dute errenkadarik ez zutaberik partekatzen',
+  'dictionary.toast.pasteBeyondColumns':
+    'Azkenaren ondoko zutabeak ez dira itsatsi',
+  'dictionary.toast.tooManyCells':
+    'Ez da ezer egin: hautapenak gelaxka gehiegi hartzen ditu',
 } satisfies Messages;

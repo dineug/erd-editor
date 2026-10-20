@@ -468,4 +468,7 @@ export const zhTW = {
     other: '未儲存：{count} 列指定了未知的定義域（{names}）',
   },
   'dictionary.toast.rowRemoved': '未儲存：該列已被移除',
+  'dictionary.toast.multiRangeCopy': '未複製：這些範圍沒有共同的列或欄',
+  'dictionary.toast.pasteBeyondColumns': '超出最後一欄的欄未貼上',
+  'dictionary.toast.tooManyCells': '未執行：選取的儲存格過多',
 } satisfies Messages;

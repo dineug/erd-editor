@@ -530,4 +530,10 @@ export const ukUA = {
       'Нічого не збережено: {count} рядка вказують невідомий домен ({names})',
   },
   'dictionary.toast.rowRemoved': 'Нічого не збережено: рядок видалено',
+  'dictionary.toast.multiRangeCopy':
+    'Нічого не скопійовано: діапазони не мають спільних рядків чи стовпців',
+  'dictionary.toast.pasteBeyondColumns':
+    'Стовпці після останнього не вставлено',
+  'dictionary.toast.tooManyCells':
+    'Нічого не зроблено: виділено забагато клітинок',
 } satisfies Messages;

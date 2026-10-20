@@ -523,4 +523,10 @@ export const ptPT = {
       'Nada foi guardado: {count} linhas indicam um domínio desconhecido ({names})',
   },
   'dictionary.toast.rowRemoved': 'Nada foi guardado: a linha foi removida',
+  'dictionary.toast.multiRangeCopy':
+    'Nada foi copiado: os intervalos não partilham linhas nem colunas',
+  'dictionary.toast.pasteBeyondColumns':
+    'As colunas depois da última não foram coladas',
+  'dictionary.toast.tooManyCells':
+    'Nada foi feito: a seleção abrange demasiadas células',
 } satisfies Messages;

@@ -498,4 +498,9 @@ export const heIL = {
     other: 'שום דבר לא נשמר: {count} שורות מציינות תחום לא ידוע ({names})',
   },
   'dictionary.toast.rowRemoved': 'שום דבר לא נשמר: השורה הוסרה',
+  'dictionary.toast.multiRangeCopy':
+    'שום דבר לא הועתק: לטווחים אין שורות או עמודות משותפות',
+  'dictionary.toast.pasteBeyondColumns': 'עמודות שמעבר לאחרונה לא הודבקו',
+  'dictionary.toast.tooManyCells':
+    'שום דבר לא בוצע: הבחירה כוללת יותר מדי תאים',
 } satisfies Messages;

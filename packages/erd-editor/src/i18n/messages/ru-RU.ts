@@ -528,4 +528,10 @@ export const ruRU = {
       'Ничего не сохранено: {count} строки указывают неизвестный домен ({names})',
   },
   'dictionary.toast.rowRemoved': 'Ничего не сохранено: строка удалена',
+  'dictionary.toast.multiRangeCopy':
+    'Ничего не скопировано: у диапазонов нет общих строк или столбцов',
+  'dictionary.toast.pasteBeyondColumns':
+    'Столбцы после последнего не вставлены',
+  'dictionary.toast.tooManyCells':
+    'Ничего не сделано: выделено слишком много ячеек',
 } satisfies Messages;
