@@ -552,6 +552,38 @@ describe('the Dictionary tab', () => {
     expect(dictionaryViewOf(fixture.app).sheet).toBe(DictionaryKind.word);
   });
 
+  it('switches between two empty sheets, the sheet shown taking the writes and the file', async () => {
+    const fixture = await setup({ seed: [] });
+    const saved = captureExports();
+    drawnTexts();
+
+    await click(sheetButtons(fixture)[1]);
+    expect(pressedSheet(fixture)).toEqual(['Terms']);
+    expect(textarea(fixture).getAttribute('aria-label')).toBe('Terms');
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining(['Term', 'Physical Name'])
+    );
+
+    await click(sheetButtons(fixture)[2]);
+    expect(pressedSheet(fixture)).toEqual(['Domains']);
+    expect(textarea(fixture).getAttribute('aria-label')).toBe('Domains');
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining(['Domain', 'Category', 'Data Type'])
+    );
+
+    await click(buttonNamed(fixture, 'Export CSV'));
+    expect(saved[0].fileName).toMatch(/-domains\.csv$/);
+
+    await paste(fixture, 'Short Text\tText\tVARCHAR(100)\n');
+    expect(names(fixture, DictionaryKind.domain)).toEqual(['Short Text']);
+    expect(names(fixture, DictionaryKind.term)).toEqual([]);
+    expect(names(fixture)).toEqual([]);
+    const [domainId] = fixture.app.store.state.doc.domainIds;
+    expect(
+      fixture.app.store.state.collections.domainEntities[domainId].dataType
+    ).toBe('VARCHAR(100)');
+  });
+
   it('filters the rows by the search, case and composition aside, the selection back on the first', async () => {
     const fixture = await setup({
       seed: [

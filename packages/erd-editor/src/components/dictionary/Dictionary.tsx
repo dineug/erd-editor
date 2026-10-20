@@ -165,7 +165,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   const fileRef = createRef<HTMLInputElement>();
   const view = dictionaryViewOf(app.value);
 
+  // The render reads the sheet shown here, not off the session: two empty
+  // sheets open on the same counts, so a switch between them moves nothing else.
   const state = observable({
+    sheet: view.sheet,
     version: 0,
     rowCount: 0,
     selectedRows: 0,
@@ -263,6 +266,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       ? []
       : checkRows(store.state, search, i18n.value);
 
+    state.sheet = sheet;
     state.version = 0;
     state.rowCount = isEntrySheet(sheet) ? ids.length : checks.length;
     state.empty =
@@ -547,9 +551,8 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   return () => {
     const i18nValue = i18n.value;
     const { t } = i18nValue;
-    const { sheet } = session;
+    const { sheet, version, rowCount, selectedRows, empty } = state;
     const entry = isEntrySheet(sheet);
-    const { version, rowCount, selectedRows, empty } = state;
     const gridColumns = columnsOf(sheet, i18nValue);
 
     gridTheme = toGridTheme(theme.value, gridTheme);
