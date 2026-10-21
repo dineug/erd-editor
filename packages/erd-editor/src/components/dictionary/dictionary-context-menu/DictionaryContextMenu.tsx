@@ -91,7 +91,7 @@ const DictionaryContextMenu: FC<DictionaryContextMenuProps> = (props, ctx) => {
               onClick={props.onImport}
               children={
                 <ContextMenu.Menu
-                  icon={<Icon name="file-up" size={14} />}
+                  icon={<Icon name="upload" size={14} />}
                   name={t('dictionary.import', { format })}
                 />
               }
@@ -100,7 +100,7 @@ const DictionaryContextMenu: FC<DictionaryContextMenuProps> = (props, ctx) => {
               onClick={props.onExport}
               children={
                 <ContextMenu.Menu
-                  icon={<Icon name="file-down" size={14} />}
+                  icon={<Icon name="download" size={14} />}
                   name={t('dictionary.export', { format })}
                 />
               }

@@ -975,7 +975,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 })}
                 on:click={handleImport}
               >
-                <Icon name="file-up" size={16} />
+                <Icon name="upload" size={16} />
               </button>
               <button
                 type="button"
@@ -988,7 +988,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 })}
                 on:click={handleExport}
               >
-                <Icon name="file-down" size={16} />
+                <Icon name="download" size={16} />
               </button>
               <input
                 type="file"
