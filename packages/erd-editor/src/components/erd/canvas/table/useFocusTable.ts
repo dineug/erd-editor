@@ -1,7 +1,7 @@
 import { useAppContext } from '@/components/appContext';
 import { FocusType } from '@/engine/modules/editor/state';
 import { Ctx } from '@/internal-types';
-import { isEdit, isFocus, isSelectColumn } from '@/utils/focus';
+import { isEdit, isFocus, isFocusColumn, isSelectColumn } from '@/utils/focus';
 
 export function useFocusTable(ctx: Ctx, tableId: string) {
   const app = useAppContext(ctx);
@@ -17,9 +17,13 @@ export function useFocusTable(ctx: Ctx, tableId: string) {
   const hasSelectColumn = (columnId: string) =>
     isSelectColumn(getFocusTable(), tableId, columnId);
 
+  const hasFocusColumn = (columnId: string) =>
+    isFocusColumn(getFocusTable(), tableId, columnId);
+
   return {
     hasFocus,
     hasEdit,
     hasSelectColumn,
+    hasFocusColumn,
   };
 }

@@ -24,7 +24,11 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
-import { COLUMN_HEIGHT } from '@/constants/layout';
+import {
+  COLUMN_DRAG_HANDLE_GAP,
+  COLUMN_DRAG_HANDLE_WIDTH,
+  COLUMN_HEIGHT,
+} from '@/constants/layout';
 import { NameViewMode } from '@/constants/schema';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
@@ -142,18 +146,28 @@ function focus(fixture: Fixture, index: number, $mod = false) {
   );
 }
 
-/** Presses one row and moves off it by a pixel, which starts the drag. */
-async function pressRow(fixture: Fixture, index: number, $mod = false) {
-  const { stage, table } = fixture;
-  const point = clientOf(fixture, rowCentre(fixture, table, index));
-  const row = stage.findOne(`#column-${table.columnIds[index]}`)!;
+/** The centre of the drag handle left of one row, in canvas units. */
+function handleCentre({ app }: Fixture, table: Table, index: number): Point {
+  const row = getColumnRect(app.store.state, table, index);
+  const { x } = getTableRect(app.store.state, table);
 
-  fireScenePointer(row, 'mousedown', {
-    button: 0,
-    metaKey: $mod,
-    ctrlKey: $mod,
-    ...point,
-  });
+  return {
+    x: x - COLUMN_DRAG_HANDLE_GAP - COLUMN_DRAG_HANDLE_WIDTH / 2,
+    y: row.y + row.height / 2,
+  };
+}
+
+/** Presses the focused row's handle and moves off it by a pixel, which starts the drag. */
+async function pressHandle(fixture: Fixture, index: number) {
+  const { stage, table } = fixture;
+  // The handle comes with the focus, which the scene draws a commit later.
+  await settle();
+  const point = clientOf(fixture, handleCentre(fixture, table, index));
+  const handle = stage
+    .findOne<Group>(`#column-${table.columnIds[index]}`)!
+    .findOne('.column-drag-handle')!;
+
+  fireScenePointer(handle, 'mousedown', { button: 0, ...point });
   movePointer(point.clientX + 1, point.clientY + 1);
   await settle();
 }
@@ -172,10 +186,10 @@ const expectNear = (actual: number, expected: number) => {
 const ghostOf = (stage: Stage) =>
   stage.findOne<Group>('.column-drag-ghost') ?? null;
 
-/** The offset from the ghost's corner a press at a row centre holds. */
+/** The offset from the ghost's corner a press on a row's handle holds. */
 function grabOf(fixture: Fixture, index: number, stackIndex = 0): Point {
   const { app, table } = fixture;
-  const press = rowCentre(fixture, table, index);
+  const press = handleCentre(fixture, table, index);
   const row = getColumnRect(app.store.state, table, index);
 
   return {
@@ -194,7 +208,7 @@ describe('the ghost a column drag carries', () => {
   it('follows the pointer over bare canvas where it took the row, on a layer no hit reaches', async () => {
     const fixture = await setup();
     focus(fixture, 1);
-    await pressRow(fixture, 1);
+    await pressHandle(fixture, 1);
 
     const grab = grabOf(fixture, 1);
     await moveTo(fixture, { x: 500, y: 600 });
@@ -230,7 +244,7 @@ describe('the ghost a column drag carries', () => {
     Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
 
     focus(fixture, 1);
-    await pressRow(fixture, 1);
+    await pressHandle(fixture, 1);
     await moveTo(fixture, { x: 500, y: 600 });
 
     const texts = ghostOf(fixture.stage)!
@@ -276,7 +290,7 @@ describe('the ghost a column drag carries', () => {
 
     focus(fixture, 1);
     focus(fixture, 2, true);
-    await pressRow(fixture, 2, true);
+    await pressHandle(fixture, 2);
     await moveTo(fixture, { x: 500, y: 600 });
 
     const rows = ghostOf(fixture.stage)!
@@ -300,7 +314,7 @@ describe('the ghost a column drag carries', () => {
     const fixture = await setup();
     focus(fixture, 0);
     focus(fixture, 2, true);
-    await pressRow(fixture, 2, true);
+    await pressHandle(fixture, 2);
     await moveTo(fixture, { x: 500, y: 600 });
 
     const ghost = ghostOf(fixture.stage)!;
@@ -309,7 +323,7 @@ describe('the ghost a column drag carries', () => {
     expectNear(ghost.y(), 600 - grab.y);
   });
 
-  it('keeps the pointer on the ghost after the row moves into a narrower table', async () => {
+  it('hangs the rows right of the pointer, across from the handle they were taken by, into a narrower table too', async () => {
     const fixture = await setup();
     const { app, stage, table } = fixture;
     const { store } = app;
@@ -332,20 +346,11 @@ describe('the ghost a column drag carries', () => {
 
     const tableOf = (id: string) => store.state.collections.tableEntities[id];
     focus(fixture, 1);
-    const row = getColumnRect(store.state, table, 1);
-    const press = { x: row.x + row.width - 10, y: row.y + row.height / 2 };
-    const { clientX, clientY } = clientOf(fixture, press);
-    const rowNode = stage.findOne(`#column-${table.columnIds[1]}`)!;
-    fireScenePointer(rowNode, 'mousedown', { button: 0, clientX, clientY });
-    movePointer(clientX + 1, clientY + 1);
-    await settle();
+    await pressHandle(fixture, 1);
+    const grab = grabOf(fixture, 1);
+    expect(grab.x).toBeLessThan(0);
 
-    const narrowWidth = getTableRect(store.state, tableOf(narrowId)).width;
-    expect(press.x - getTableRect(store.state, table).x).toBeGreaterThan(
-      narrowWidth
-    );
-
-    await moveTo(fixture, { x: press.x, y: 300 });
+    await moveTo(fixture, { x: handleCentre(fixture, table, 1).x, y: 300 });
     await moveTo(fixture, rowCentre(fixture, tableOf(narrowId), 0));
     expect(store.state.editor.draggableColumn?.tableId).toBe(narrowId);
 
@@ -353,18 +358,15 @@ describe('the ghost a column drag carries', () => {
     await moveTo(fixture, bare);
 
     const ghost = ghostOf(stage)!;
-    const body = ghost.findOne('.column-drag-ghost-body')!;
     expect(ghost.isVisible()).toBe(true);
-    expect(bare.x).toBeGreaterThanOrEqual(ghost.x());
-    expect(bare.x).toBeLessThanOrEqual(ghost.x() + body.width());
-    expect(bare.y).toBeGreaterThanOrEqual(ghost.y());
-    expect(bare.y).toBeLessThanOrEqual(ghost.y() + body.height());
+    expectNear(ghost.x(), bare.x - grab.x);
+    expectNear(ghost.y(), bare.y - grab.y);
   });
 
   it('hides over a drop target, where the row itself is under the pointer', async () => {
     const fixture = await setup();
     focus(fixture, 1);
-    await pressRow(fixture, 1);
+    await pressHandle(fixture, 1);
     await moveTo(fixture, { x: 500, y: 600 });
 
     await moveTo(fixture, rowCentre(fixture, fixture.table, 0));
@@ -375,7 +377,7 @@ describe('the ghost a column drag carries', () => {
   it('is gone once the drag is released', async () => {
     const fixture = await setup();
     focus(fixture, 1);
-    await pressRow(fixture, 1);
+    await pressHandle(fixture, 1);
     await moveTo(fixture, { x: 500, y: 600 });
 
     releasePointer();
@@ -387,7 +389,7 @@ describe('the ghost a column drag carries', () => {
   it('is gone once every table is told the column drag ended', async () => {
     const fixture = await setup();
     focus(fixture, 1);
-    await pressRow(fixture, 1);
+    await pressHandle(fixture, 1);
     await moveTo(fixture, { x: 500, y: 600 });
 
     fixture.app.emitter.emit(dragendColumnAllAction());

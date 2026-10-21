@@ -112,9 +112,6 @@ const ColumnDragGhost: FC<ColumnDragGhostProps> = (props, ctx) => {
         columnType === ColumnType.columnDataType
     );
     const { width } = getTableRect(store.state, table);
-    // A drag into another table sizes the ghost to that table, which can be
-    // narrower than where the row was taken, so the grab stays inside it.
-    const grabX = Math.min(pointer.grabX, width - TABLE_BORDER);
 
     // Over a drop target the real row is already under the pointer, moved
     // there by the dragover, and a ghost on top of it would draw it twice.
@@ -122,7 +119,7 @@ const ColumnDragGhost: FC<ColumnDragGhostProps> = (props, ctx) => {
       <k-group
         name="column-drag-ghost"
         kind="column-drag-ghost"
-        x={pointer.x - grabX}
+        x={pointer.x - pointer.grabX}
         y={pointer.y - pointer.grabY}
         opacity={GHOST_OPACITY}
         visible={!pointer.over}

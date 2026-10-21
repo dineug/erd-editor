@@ -54,6 +54,13 @@ export const ThemeConfig: Theme = {
   columnSelectHover: 'accent-4',
   columnHover: 'gray-4',
 
+  // The column drag handle: a button in the table's own body and border at
+  // rest, lifted to the header's step under the pointer, as a hovered button is.
+  columnHandleBackground: 'gray-2',
+  columnHandleBorder: 'gray-6',
+  columnHandleHoverBackground: 'gray-5',
+  columnHandleHoverBorder: 'gray-7',
+
   relationshipHover: 'accent-8',
 
   visualizationLink: 'gray-7',
@@ -161,6 +168,9 @@ export const LightThemeConfig: Partial<Theme> = {
   memoBackground: 'override-#ffffff',
   memoBorder: 'gray-8',
   tableShadow: 'override-rgba(0, 0, 0, 0.18)',
+  columnHandleBackground: 'override-#ffffff',
+  columnHandleBorder: 'gray-8',
+  columnHandleHoverBorder: 'gray-8',
   memoShadow: 'override-rgba(0, 0, 0, 0.18)',
   tableGroupHeaderBackground: 'gray-8',
   tableGroupBorder: 'gray-8',

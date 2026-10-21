@@ -84,12 +84,13 @@ async function setup(): Promise<Fixture> {
 }
 
 describe('useFocusTable', () => {
-  it('exposes the three focus predicates', async () => {
+  it('exposes the four focus predicates', async () => {
     const { api } = await setup();
 
     expect(Object.keys(api).sort()).toEqual([
       'hasEdit',
       'hasFocus',
+      'hasFocusColumn',
       'hasSelectColumn',
     ]);
   });
@@ -145,6 +146,30 @@ describe('useFocusTable', () => {
     expect(api.hasFocus(FocusType.columnName, columnIds[0])).toBe(true);
     expect(api.hasFocus(FocusType.columnName, columnIds[1])).toBe(false);
     expect(api.hasFocus(FocusType.columnDataType, columnIds[0])).toBe(false);
+  });
+
+  it('marks the focused column whichever of its cells holds the focus, in its own table alone', async () => {
+    const { app, tableId, columnIds, api, otherApi } = await setup();
+
+    app.store.dispatchSync(
+      focusColumnAction({
+        tableId,
+        columnId: columnIds[0],
+        focusType: FocusType.columnDataType,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+
+    expect(api.hasFocusColumn(columnIds[0])).toBe(true);
+    expect(api.hasFocusColumn(columnIds[1])).toBe(false);
+    expect(otherApi.hasFocusColumn(columnIds[0])).toBe(false);
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId, focusType: FocusType.tableName })
+    );
+
+    expect(api.hasFocusColumn(columnIds[0])).toBe(false);
   });
 
   it('turns hasEdit on only once editTable is dispatched for the focused cell', async () => {

@@ -121,6 +121,7 @@ import {
 } from './utils/duplicate';
 import { findRelationshipColumn } from './utils/findRelationshipColumn';
 import {
+  getFocusedColumnIds,
   isColumns,
   isLastColumn,
   isLastRowColumn,
@@ -1133,14 +1134,18 @@ export const loadSchemaDBMLAction$ = (value: string): GeneratorAction =>
 export const loadSchemaAMLAction$ = (value: string): GeneratorAction =>
   loadSchemaAction$('aml', value);
 
-export const dragstartColumnAction$ = ($mod: boolean): GeneratorAction =>
-  function* ({ editor: { focusTable } }) {
-    if (!focusTable || !focusTable.columnId) return;
+/**
+ * Lifts the focused column, or the whole selection while the focused column is
+ * one of two or more selected in its table, as a table's press lifts the
+ * selected tables.
+ */
+export const dragstartColumnAction$ = (): GeneratorAction =>
+  function* (state) {
+    const { focusTable } = state.editor;
+    const columnIds = getFocusedColumnIds(state);
+    if (!focusTable || columnIds.length === 0) return;
 
-    yield dragstartColumnAction({
-      tableId: focusTable.tableId,
-      columnIds: $mod ? [...focusTable.selectColumnIds] : [focusTable.columnId],
-    });
+    yield dragstartColumnAction({ tableId: focusTable.tableId, columnIds });
   };
 
 type MoveColumnAction = ReturnType<typeof moveColumnAction>;

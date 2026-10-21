@@ -70,6 +70,20 @@ export const TABLE_HEADER_BUTTONS_WIDTH =
 export const COLUMN_DELETE_WIDTH = 12;
 export const COLUMN_KEY_WIDTH = 12;
 
+/** The button a column drag starts from, beside the focused row and outside the table. */
+export const COLUMN_DRAG_HANDLE_WIDTH = 16;
+export const COLUMN_DRAG_HANDLE_HEIGHT = INPUT_HEIGHT;
+export const COLUMN_DRAG_HANDLE_ICON_SIZE = 12;
+
+/** The room between that button and the table's left edge. */
+export const COLUMN_DRAG_HANDLE_GAP = 4;
+
+/**
+ * The strip left of a table the handle answers a press in and a column drop is
+ * judged in, so a drag that runs straight down along the handle still reorders.
+ */
+export const COLUMN_DRAG_HANDLE_LANE = 24;
+
 /** The table icon before the name, at the key badge's size so the two stand in one column. */
 export const TABLE_HEADER_ICON_SIZE = COLUMN_KEY_WIDTH;
 

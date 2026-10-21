@@ -113,6 +113,7 @@ import {
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
   moveColumnAction,
+  removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
@@ -1292,17 +1293,17 @@ describe('the four importers open the new document at the origin', () => {
 
 describe('dragstartColumnAction$', () => {
   it('emits nothing when no table is focused', () => {
-    expect(typesOf(store, dragstartColumnAction$(false))).toEqual([]);
+    expect(typesOf(store, dragstartColumnAction$())).toEqual([]);
   });
 
   it('emits nothing when the focus is on the table itself', () => {
     seedTable(store, 't1');
     store.dispatchSync(focusTableAction({ tableId: 't1' }));
 
-    expect(typesOf(store, dragstartColumnAction$(false))).toEqual([]);
+    expect(typesOf(store, dragstartColumnAction$())).toEqual([]);
   });
 
-  it('drags the focused column only', () => {
+  it('drags every selected column while the focused one is among them', () => {
     seedTable(store, 't1');
     seedColumn(store, 't1', 'c1');
     seedColumn(store, 't1', 'c2');
@@ -1325,7 +1326,33 @@ describe('dragstartColumnAction$', () => {
       })
     );
 
-    store.dispatchSync(dragstartColumnAction$(false));
+    store.dispatchSync(dragstartColumnAction$());
+
+    expect(store.state.editor.draggableColumn).toEqual({
+      tableId: 't1',
+      columnIds: ['c1', 'c2'],
+    });
+    expect(store.state.editor.draggingColumnMap).toEqual({
+      c1: true,
+      c2: true,
+    });
+  });
+
+  it('drags the focused column alone when it is the only one selected', () => {
+    seedTable(store, 't1');
+    seedColumn(store, 't1', 'c1');
+    seedColumn(store, 't1', 'c2');
+    store.dispatchSync(
+      focusColumnAction({
+        tableId: 't1',
+        columnId: 'c2',
+        focusType: FocusType.columnName,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+
+    store.dispatchSync(dragstartColumnAction$());
 
     expect(store.state.editor.draggableColumn).toEqual({
       tableId: 't1',
@@ -1334,7 +1361,7 @@ describe('dragstartColumnAction$', () => {
     expect(store.state.editor.draggingColumnMap).toEqual({ c2: true });
   });
 
-  it('drags every selected column when $mod is set', () => {
+  it('drags the focused column alone once the other selected one has left the table', () => {
     seedTable(store, 't1');
     seedColumn(store, 't1', 'c1');
     seedColumn(store, 't1', 'c2');
@@ -1357,11 +1384,15 @@ describe('dragstartColumnAction$', () => {
       })
     );
 
-    store.dispatchSync(dragstartColumnAction$(true));
+    // A peer, an agent or an undo can take a column out and leave it selected.
+    store.dispatchSync(removeColumnAction({ id: 'c1', tableId: 't1' }));
 
+    store.dispatchSync(dragstartColumnAction$());
+
+    expect(store.state.editor.focusTable?.selectColumnIds).toContain('c1');
     expect(store.state.editor.draggableColumn).toEqual({
       tableId: 't1',
-      columnIds: ['c1', 'c2'],
+      columnIds: ['c2'],
     });
   });
 });

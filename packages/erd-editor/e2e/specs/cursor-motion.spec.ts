@@ -212,7 +212,7 @@ test.describe('cursor and motion', () => {
     // the store agrees the rows have swapped.
     await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
 
-    const from = await erd.columnPoint('users_name');
+    const from = await erd.columnHandlePoint('users_name');
     const to = await erd.columnPoint('users_id');
     await erd.page.mouse.move(from.x, from.y);
     await erd.page.mouse.down();

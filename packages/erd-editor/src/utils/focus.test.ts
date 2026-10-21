@@ -8,6 +8,7 @@ import {
 import {
   isEdit,
   isFocus,
+  isFocusColumn,
   isSelectColumn,
   lastCursorFocus,
   toSharedFocus,
@@ -151,6 +152,29 @@ describe('isSelectColumn', () => {
 
   it('returns false when nothing is selected', () => {
     expect(isSelectColumn(createFocusTable(), 'table-1', 'column-1')).toBe(
+      false
+    );
+  });
+});
+
+describe('isFocusColumn', () => {
+  it('returns false when there is no focus table', () => {
+    expect(isFocusColumn(null, 'table-1', 'column-1')).toBe(false);
+  });
+
+  it('matches the focused column whatever its cell, in its own table alone', () => {
+    const focusTable = createFocusTable({
+      columnId: 'column-1',
+      focusType: FocusType.columnComment,
+    });
+
+    expect(isFocusColumn(focusTable, 'table-1', 'column-1')).toBe(true);
+    expect(isFocusColumn(focusTable, 'table-1', 'column-2')).toBe(false);
+    expect(isFocusColumn(focusTable, 'table-2', 'column-1')).toBe(false);
+  });
+
+  it('returns false while the focus stands on the table itself', () => {
+    expect(isFocusColumn(createFocusTable(), 'table-1', 'column-1')).toBe(
       false
     );
   });

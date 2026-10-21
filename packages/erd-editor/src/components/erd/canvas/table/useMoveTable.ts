@@ -6,16 +6,16 @@ import { Ctx, Table } from '@/internal-types';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 /**
- * Where a table drag never starts: the colour edge opens the picker, a column
- * row starts its own drag and an icon is a button.
+ * Where a table drag never starts: the colour edge opens the picker, the
+ * column drag handle starts the column's own drag and an icon is a button.
  */
-const BLOCKED_KINDS = ['table-header-color', 'column-row', 'icon'];
+const BLOCKED_KINDS = ['table-header-color', 'column-drag-handle', 'icon'];
 
 /**
- * A header cell takes focus and carries the table too, once the pointer has
- * travelled, since the same press doubled is what opens its editor.
+ * A header cell or a column row takes focus and carries the table too, once
+ * the pointer has travelled, since the same press doubled opens its editor.
  */
-const CLICK_KINDS = ['input-padding'];
+const CLICK_KINDS = ['input-padding', 'column-row'];
 
 /**
  * Where a view card's drag never starts: its two header buttons. A view draws

@@ -7,6 +7,11 @@ import {
   getHeaderTextY,
 } from '@/components/erd/canvas/table/cellLayout';
 import {
+  COLUMN_DRAG_HANDLE_GAP,
+  COLUMN_DRAG_HANDLE_HEIGHT,
+  COLUMN_DRAG_HANDLE_LANE,
+  COLUMN_DRAG_HANDLE_WIDTH,
+  COLUMN_HEIGHT,
   INPUT_MARGIN_RIGHT,
   TABLE_HEADER_INPUT_HEIGHT,
   VIEW_TABLE_HEADER_HEIGHT,
@@ -81,6 +86,21 @@ function headerCellHitOf(source: GeometrySource): HitFunc {
 export const headerCellHit: Record<GeometrySource, HitFunc> = {
   document: headerCellHitOf('document'),
   flow: headerCellHitOf('flow'),
+};
+
+/**
+ * The column drag handle's box: a row high, from a little left of its button
+ * to the table's edge, so a press beside the button still takes the handle.
+ */
+export const columnDragHandleHit: HitFunc = (context, shape) => {
+  hitBox(
+    context,
+    shape,
+    COLUMN_DRAG_HANDLE_WIDTH + COLUMN_DRAG_HANDLE_GAP - COLUMN_DRAG_HANDLE_LANE,
+    (COLUMN_DRAG_HANDLE_HEIGHT - COLUMN_HEIGHT) / 2,
+    COLUMN_DRAG_HANDLE_LANE,
+    COLUMN_HEIGHT
+  );
 };
 
 /**

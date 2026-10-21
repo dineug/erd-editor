@@ -608,7 +608,7 @@ test.describe('mouse drag', () => {
     expectClose(after.width, held.width, PIXEL_TOLERANCE);
   });
 
-  test('reordering a column by native drag-and-drop moves it in the store and the DOM', async ({
+  test('reordering a column by its drag handle moves it in the store and the DOM', async ({
     erd,
   }) => {
     await erd.seed(oneTable());
@@ -621,14 +621,13 @@ test.describe('mouse drag', () => {
     expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
     expect(await domOrder()).toEqual(['users_id', 'users_name']);
 
-    // handleDragstartColumn bails unless a column already holds focus, so the
-    // focus ring is a precondition rather than a nicety.
+    // The handle stands beside the focused row alone, so the focus ring is a
+    // precondition rather than a nicety.
     await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
 
-    // Column rows use native drag-and-drop, and dragTo() drops too fast:
-    // fromShadowDraggable debounces dragover and tears down on dragend, so a
-    // drag that releases immediately never emits.
-    const source = await erd.centerOf(erd.columnEl('users_name'));
+    // The drag reports itself once the pointer has moved and the drop keeps
+    // what the moves applied, so the press is held open over a few steps.
+    const source = await erd.columnHandlePoint('users_name');
     const target = await erd.centerOf(erd.columnEl('users_id'));
     await dragHold(erd, source, target, 6);
 
@@ -646,13 +645,29 @@ test.describe('mouse drag', () => {
     expect(await erd.tableIds()).toEqual(['users']);
   });
 
+  test('a press on a column row carries its table and leaves the column order', async ({
+    erd,
+  }) => {
+    await erd.seed(oneTable());
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+    const before = await erd.table('users');
+
+    const from = await erd.columnPoint('users_name');
+    await erd.drag(from, { x: from.x + 120, y: from.y + 80 });
+
+    const after = await erd.table('users');
+    expectClose(after.ui.x - before.ui.x, 120, PIXEL_TOLERANCE);
+    expectClose(after.ui.y - before.ui.y, 80, PIXEL_TOLERANCE);
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+  });
+
   test('a column dragged under the last row of another table is appended to it', async ({
     erd,
   }) => {
     await erd.seed(twoTables());
     await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
 
-    const source = await erd.columnPoint('users_name');
+    const source = await erd.columnHandlePoint('users_name');
     const under = await underRows(erd, 'posts');
     const posts = await erd.sceneBox('#table-posts');
     // Round the rows of posts and up into the band under it from below, so the
@@ -680,15 +695,18 @@ test.describe('mouse drag', () => {
     await erd.seed(twoTables());
     await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
 
-    const source = await erd.columnPoint('users_name');
+    const source = await erd.columnHandlePoint('users_name');
     const bare = { x: source.x, y: source.y + 200 };
     await holdAlong(erd, [source, bare]);
 
     const ghost = erd.canvas.locator('.column-drag-ghost');
     await expect(ghost).toContainText('varchar(255)');
     const box = await erd.sceneBox('.column-drag-ghost');
-    expect(box.x).toBeLessThan(bare.x);
-    expect(box.x + box.width).toBeGreaterThan(bare.x);
+    // The handle is held left of the row, so the row hangs right of the
+    // pointer, across from the handle as it stood beside the table. The card's
+    // body is the measure, since the table's own box takes the handle in too.
+    const users = await erd.sceneBox(['#table-users', '.table-body']);
+    expectClose(box.x, users.x, PIXEL_TOLERANCE);
     expect(box.y).toBeLessThan(bare.y);
     expect(box.y + box.height).toBeGreaterThan(bare.y);
 
@@ -719,7 +737,7 @@ test.describe('mouse drag', () => {
     );
     await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
 
-    const source = await erd.columnPoint('users_name');
+    const source = await erd.columnHandlePoint('users_name');
     const under = await underRows(erd, 'tags');
     const tags = await erd.sceneBox('#table-tags');
     const below = tags.y + tags.height + 40;

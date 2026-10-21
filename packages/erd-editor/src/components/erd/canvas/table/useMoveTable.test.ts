@@ -240,7 +240,7 @@ describe('useMoveTable', () => {
     expect(move.defaultPrevented).toBe(false);
   });
 
-  it.each([['table-header-color'], ['column-row'], ['icon']])(
+  it.each([['table-header-color'], ['column-drag-handle'], ['icon']])(
     'never starts a drag from a %s node',
     async kind => {
       const { app, table, fire } = await setup();
@@ -301,6 +301,32 @@ describe('useMoveTable', () => {
     expect(table.ui.x).toBe(startX + CLICK_DRAG_MIN_MOVE);
   });
 
+  /**
+   * A column row is the table's own body, as the header is, and its cells open
+   * an editor on a double click, so its press waits the same way.
+   */
+  it('keeps a column row press on the row until the pointer travels, then carries the table', async () => {
+    const { app, table, fire } = await setup();
+
+    const startX = table.ui.x;
+    const startY = table.ui.y;
+    const text = node('cell-text', inside('column-row'));
+
+    fire(text, mousedown({ clientX: 0, clientY: 0 }));
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+
+    mousemove(CLICK_DRAG_MIN_MOVE - 1, 0);
+    await flush();
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+    expect(table.ui.x).toBe(startX);
+
+    mousemove(80, 90);
+    await flush();
+    expect(isEntityDragActive(app.store.state)).toBe(true);
+    expect(table.ui.x).toBe(startX + 80);
+    expect(table.ui.y).toBe(startY + 90);
+  });
+
   it('lifts the table at the press anywhere else on it', async () => {
     const { app, fire } = await setup();
 
@@ -332,7 +358,10 @@ describe('useMoveTable', () => {
     const { table, fire } = await setup();
 
     const startX = table.ui.x;
-    const cell = node('cell-text', inside('column-row'));
+    const cell = node(
+      'column-drag-handle-button',
+      inside('column-drag-handle')
+    );
 
     fire(cell, mousedown({ clientX: 0, clientY: 0 }));
     mousemove(80, 0);
@@ -370,6 +399,20 @@ describe('useMoveTable', () => {
     expect(table.ui.y).toBe(startY);
   });
 
+  it('hands an Alt+drag from a column row to the duplicate ghost, as from the header', async () => {
+    const { app, table, fire } = await setup();
+    const duplicateDragStart = vi.fn();
+    app.emitter.on({ duplicateDragStart });
+
+    const startX = table.ui.x;
+    fire(node('cell-text', inside('column-row')), mousedown({ altKey: true }));
+    mousemove(130, 150);
+    await flush();
+
+    expect(duplicateDragStart).toHaveBeenCalledOnce();
+    expect(table.ui.x).toBe(startX);
+  });
+
   it('keeps a multi selection when the Alt+drag starts on a selected table', async () => {
     const { app, table, otherTable, fire } = await setup();
     const selected = {
@@ -384,18 +427,23 @@ describe('useMoveTable', () => {
     expect({ ...app.store.state.editor.selectedMap }).toEqual(selected);
   });
 
-  it('never starts a duplicate from an area the drag is blocked on', async () => {
-    const { app, table, fire } = await setup();
-    const duplicateDragStart = vi.fn();
-    app.emitter.on({ duplicateDragStart });
+  it.each([['icon'], ['column-drag-handle']])(
+    'never starts a duplicate from a %s node, where the drag is blocked',
+    async kind => {
+      const { app, table, fire } = await setup();
+      const duplicateDragStart = vi.fn();
+      app.emitter.on({ duplicateDragStart });
 
-    fire(inside('icon'), mousedown({ altKey: true }));
-    await flush();
+      fire(inside(kind), mousedown({ altKey: true }));
+      await flush();
 
-    expect(duplicateDragStart).not.toHaveBeenCalled();
-    // the blocked area still selects, exactly as it does without Alt
-    expect(app.store.state.editor.selectedMap[table.id]).toBe(SelectType.table);
-  });
+      expect(duplicateDragStart).not.toHaveBeenCalled();
+      // the blocked area still selects, exactly as it does without Alt
+      expect(app.store.state.editor.selectedMap[table.id]).toBe(
+        SelectType.table
+      );
+    }
+  );
 
   it('never starts a duplicate from a non-primary button', async () => {
     const { app, table, fire } = await setup();
