@@ -23,7 +23,11 @@ import {
 } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
-import { pushHistory, pushSheetHistory } from '@/engine/history.actions';
+import {
+  isDictionaryAction,
+  pushHistory,
+  pushSheetHistory,
+} from '@/engine/history.actions';
 import {
   DictionaryKind,
   DictionaryKindList,
@@ -120,8 +124,10 @@ export function createRxStore(
       return [sheet, sheetHistory];
     })
   ) as Record<DictionaryKind, History>;
+  const clearSheetHistories = () =>
+    DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
   const sheetHistoryOf = (actions: ReadonlyArray<AnyAction>) => {
-    const row = actions.find(({ type }) => type.startsWith('dictionary.'));
+    const row = actions.find(isDictionaryAction);
     return row ? sheetHistories[row.payload?.kind as DictionaryKind] : null;
   };
   /**
@@ -131,7 +137,7 @@ export function createRxStore(
    */
   const toHistory = (actions: Array<AnyAction>) => {
     if (actions.some(({ type }) => isDocumentReplace(type))) {
-      DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
+      clearSheetHistories();
     }
 
     const sheetHistory = hasActionTag(actions, Tag.dictionarySheet)
@@ -215,7 +221,7 @@ export function createRxStore(
     store.destroy();
     hooks.destroy();
     history.clear();
-    DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
+    clearSheetHistories();
     dispatch$.complete();
     flush$.complete();
   };
@@ -224,7 +230,7 @@ export function createRxStore(
   const resetHistory = () => {
     historyReset$.next();
     history.clear();
-    DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
+    clearSheetHistories();
   };
 
   // A replay reaches the store through historyOptions.dispatch, past the seam

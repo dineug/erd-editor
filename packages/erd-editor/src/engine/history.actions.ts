@@ -107,7 +107,8 @@ export const pushHistory =
     safeCallback(push, store, history, actions);
   };
 
-const isDictionaryAction = ({ type }: AnyAction) =>
+/** Whether an action writes a dictionary row, the actions a sheet's history holds. */
+export const isDictionaryAction = ({ type }: AnyAction) =>
   type.startsWith('dictionary.');
 
 /** The data type each domain row of these actions writes, by the row's id. */

@@ -63,6 +63,16 @@ export type DictionaryInsertAnchor = {
   place: 'before' | 'after';
 } | null;
 
+/** The index inserted rows go in at among a sheet's rows: beside the anchor, or at the end once it is gone. */
+function insertIndexOf(
+  rows: ReadonlyArray<{ id: string }>,
+  anchor: DictionaryInsertAnchor
+): number {
+  const index = anchor ? rows.findIndex(({ id }) => id === anchor.id) : -1;
+  if (!anchor || index === -1) return rows.length;
+  return anchor.place === 'after' ? index + 1 : index;
+}
+
 /**
  * Inserts empty rows before or after a row in one dispatch, at the end when it
  * is gone, keying the rows around the place again where no key fits between
@@ -77,14 +87,11 @@ export const insertDictionaryEntriesAction$ = (
     if (!hasDictionaryKind(kind) || count <= 0) return;
 
     const rows = orderedDictionaryRows(state, kind);
-    const index = anchor ? rows.findIndex(({ id }) => id === anchor.id) : -1;
-    const at =
-      index === -1
-        ? rows.length
-        : anchor?.place === 'after'
-          ? index + 1
-          : index;
-    const { keys, rekeyed } = placeOrderKeys(rows, at, count);
+    const { keys, rekeyed } = placeOrderKeys(
+      rows,
+      insertIndexOf(rows, anchor),
+      count
+    );
 
     yield* commit(state, kind, [
       ...rekeyed.map(({ id, order }) => ({ id, values: { order } })),

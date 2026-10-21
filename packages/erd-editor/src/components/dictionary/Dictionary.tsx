@@ -190,6 +190,24 @@ const topRow = ({ active, ranges }: GridSelection) =>
     active.row
   );
 
+/** The last row a selection covers, after which the menu's Insert below goes. */
+const bottomRow = ({ active, ranges }: GridSelection) =>
+  ranges.reduce(
+    (bottom, { startRow, endRow }) => Math.max(bottom, startRow, endRow),
+    active.row
+  );
+
+/** Where count rows inserted by an anchor begin among the rows shown: beside it, or last of all once it is gone. */
+function insertedStart(
+  ids: ReadonlyArray<string>,
+  count: number,
+  anchor: DictionaryInsertAnchor
+): number {
+  const at = anchor ? ids.indexOf(anchor.id) : -1;
+  if (!anchor || at === -1) return ids.length - count;
+  return anchor.place === 'after' ? at + 1 : at - count;
+}
+
 /** How long an idle task may wait for the browser to go idle before it runs anyway. */
 const IDLE_TIMEOUT_MS = 1000;
 
@@ -518,12 +536,14 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   };
 
   /** A sheet button's count, the check sheet's in the colour of its loudest check. */
-  const countClass = (item: DictionarySheet) =>
-    item !== DictionarySheet.check || state.counts.check === 0
-      ? styles.count
-      : state.checkMark === DictionaryCheckLevel.error
-        ? styles.countError
-        : styles.countWarning;
+  const countClass = (item: DictionarySheet) => {
+    if (item !== DictionarySheet.check || state.counts.check === 0) {
+      return styles.count;
+    }
+    return state.checkMark === DictionaryCheckLevel.error
+      ? styles.countError
+      : styles.countWarning;
+  };
 
   /** A tool's tooltip: its name, and the chord that does the same in the grid while one is bound. */
   const withChord = (name: string, shortcut?: string) =>
@@ -600,11 +620,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   /** The first and the last row the selection covers, among the rows the grid received. */
   const selectedEnds = () => {
     const { selection, rows } = session;
-    const bottom = selection.ranges.reduce(
-      (last, { startRow, endRow }) => Math.max(last, startRow, endRow),
-      selection.active.row
-    );
-    return { top: rows.ids[topRow(selection)], bottom: rows.ids[bottom] };
+    return {
+      top: rows.ids[topRow(selection)],
+      bottom: rows.ids[bottomRow(selection)],
+    };
   };
 
   const handleMenuInsertAbove = () => {
@@ -694,13 +713,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
 
     if (asked.kind === 'add') {
       const { anchor, count } = asked;
-      const at = anchor ? ids.indexOf(anchor.id) : -1;
-      const start =
-        at === -1
-          ? ids.length - count
-          : anchor?.place === 'after'
-            ? at + 1
-            : at - count;
+      const start = insertedStart(ids, count, anchor);
       const first = Math.min(Math.max(start, 0), ids.length - 1);
       const last = Math.min(first + count - 1, ids.length - 1);
       revealRows = { first, last };
@@ -846,12 +859,12 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
         pending = null;
         refresh(selectionAfter(asked));
       }),
-      // The check sheet's search reads its cells in the language shown, which
-      // a switch changes in place without a batch.
       // A document turned read-only takes no row or file command.
       watch(props).subscribe(name => {
         if (name === 'readonly') closeMenu();
       }),
+      // The check sheet's search reads its cells in the language shown, which
+      // a switch changes in place without a batch.
       watch(i18n.value).subscribe(name => {
         if (name === 'locale' && session.sheet === DictionarySheet.check) {
           refresh();

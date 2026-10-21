@@ -246,9 +246,9 @@ function placeNewRows(
   kind: DictionaryKind,
   rows: ReadonlyArray<EntryRow>
 ): Ordered[] {
-  const unplaced = rows.filter(({ existing, values }) => {
-    return !existing && !values.order;
-  });
+  const unplaced = rows.filter(
+    ({ existing, values }) => !existing && !values.order
+  );
   if (!unplaced.length) return [];
 
   const sheet = orderedDictionaryRows(state, kind);

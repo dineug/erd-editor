@@ -101,8 +101,8 @@ const framingOf = (view: SceneView): string =>
 
 /**
  * What a placement was computed over: the centers, the show mode, the name
- * view, whose cells size the cards, and the document's own lists. Never the positions a landing
- * writes, since the loop reading this asks again on a change and would otherwise be reading its own answer.
+ * view, whose cells size the cards, and the document's own lists. Never the
+ * positions a landing writes, or the loop reading this would ask again on its own answer.
  */
 function placedKey(state: RootState): string {
   const view = state.editor.views.flow;
@@ -143,8 +143,8 @@ export function fitFlowView(store: RxStore): void {
 
 /**
  * Stands the view on the positions given, and moves the screen to them only
- * where the reader asked to be moved: a first placement, a framing they changed, a name view they
- * switched here, a Tidy up. A return to the tab and a peer's edit, a peer's switch too, keep the viewport.
+ * where the reader asked: a first placement, a framing they changed, a name
+ * view they switched here, a Tidy up. A return to the tab and a peer's edit or switch keep the viewport.
  */
 function standFlowView(
   store: RxStore,

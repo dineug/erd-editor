@@ -15,6 +15,7 @@ import { CanvasType } from '@/constants/schema';
 import type { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
+import type { HasHistory } from '@/engine/modules/editor/state';
 import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
@@ -52,17 +53,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     store.dispatch(changeCanvasTypeAction({ value }));
   };
 
+  const onDictionaryTab = () =>
+    app.value.store.state.settings.canvasType === CanvasType.dictionary;
+
   /** The dictionary sheet whose history the buttons run on the Dictionary tab, null elsewhere and on the check sheet. */
   const shownSheet = (): DictionaryKind | null => {
-    const { store } = app.value;
-    if (store.state.settings.canvasType !== CanvasType.dictionary) return null;
+    if (!onDictionaryTab()) return null;
 
     const { sheet } = dictionaryViewOf(app.value);
     return isEntrySheet(sheet) ? sheet : null;
   };
-
-  const onDictionaryTab = () =>
-    app.value.store.state.settings.canvasType === CanvasType.dictionary;
 
   // The Dictionary tab undoes the sheet shown alone, and nothing on the check
   // sheet, so its greyed buttons never reach the document's history.
@@ -153,11 +153,9 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const onDictionary =
       settings.canvasType === CanvasType.dictionary && !props.readonly;
     const sheet = onDictionary ? shownSheet() : null;
-    const has = sheet
-      ? editor.dictionaryHistory[sheet]
-      : onDictionary
-        ? { hasUndo: false, hasRedo: false }
-        : editor;
+    let has: HasHistory = editor;
+    if (sheet) has = editor.dictionaryHistory[sheet];
+    else if (onDictionary) has = { hasUndo: false, hasRedo: false };
     const showUndoRedo = showDocumentHistory || onDictionary;
 
     return (
