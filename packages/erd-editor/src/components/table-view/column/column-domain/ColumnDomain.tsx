@@ -6,15 +6,14 @@ import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
+import {
+  type DomainOption,
+  searchDomainOptions,
+} from '@/components/table-view/column/column-domain/domainOptions';
 import * as styles from '@/components/table-view/column/column-logical-name/ColumnLogicalName.styles';
 import { useHintList } from '@/components/table-view/column/useHintList';
-import {
-  getDomainNames,
-  normalizeDictionaryName,
-} from '@/engine/modules/dictionary/dictionaryIndex';
 import { setColumnDomainAction$ } from '@/engine/modules/dictionary/generator.actions';
 import { toLiveDomainId } from '@/engine/modules/dictionary/membership';
-import type { RootState } from '@/engine/state';
 import { isComposing } from '@/utils/keyboard-shortcut';
 
 export type ColumnDomainProps = {
@@ -26,32 +25,6 @@ export type ColumnDomainProps = {
   onBlur?: (event: FocusEvent) => void;
   onEditEnd?: () => void;
 };
-
-/** A row of the picker: a domain by its id and name, or the empty id that unlinks. */
-type DomainOption = {
-  id: string;
-  name: string;
-};
-
-/** The row that links no domain. */
-const NONE: DomainOption = { id: '', name: '' };
-
-/**
- * The rows a search offers: every named domain in sheet order after the row
- * that unlinks while nothing is typed, else the domains whose names hold the
- * text in any case; none at all while the sheet lists no named domain.
- */
-function searchDomainOptions(state: RootState, typed: string): DomainOption[] {
-  const named = getDomainNames(state).rows.flatMap(({ id, name }) => {
-    const normalized = normalizeDictionaryName(name);
-    return normalized ? [{ id, name: normalized }] : [];
-  });
-
-  const key = normalizeDictionaryName(typed).toLowerCase();
-  if (!key) return named.length ? [NONE, ...named] : [];
-
-  return named.filter(({ name }) => name.toLowerCase().includes(key));
-}
 
 /**
  * The domain editor of a row: a search over the domain sheet by name that only

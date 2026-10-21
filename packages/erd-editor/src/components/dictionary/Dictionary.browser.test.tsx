@@ -935,6 +935,123 @@ describe('the Dictionary tab', () => {
     expect(fixture.shortcuts).toEqual([]);
   });
 
+  it("picks a term's domain from the domain sheet's names, None unlinking, and writes no text typed", async () => {
+    const domain = (id: string, name: string) =>
+      addDictionaryAction({
+        kind: DictionaryKind.domain,
+        id,
+        values: { name, dataType: 'BIGINT', order: nextSeedKey() },
+      });
+    const fixture = await setup({
+      seed: [
+        domain('d1', '번호'),
+        domain('d2', '금액'),
+        term('t1', { name: '회원번호' }),
+      ],
+    });
+    const linked = () =>
+      fixture.app.store.state.collections.termEntities.t1.domainId;
+    const picker = () =>
+      fixture.shadow.querySelector('.dictionary-domain-editor');
+    const options = () =>
+      Array.from(
+        fixture.shadow.querySelectorAll(
+          '.dictionary-domain-editor [role="option"]'
+        ),
+        option => option.firstElementChild?.textContent?.trim()
+      );
+    const picked = () =>
+      fixture.shadow
+        .querySelector('.dictionary-domain-editor [aria-selected="true"]')
+        ?.firstElementChild?.textContent?.trim();
+
+    await click(sheetButtons(fixture)[1]);
+    textarea(fixture).focus();
+    await press('{ArrowRight}{ArrowRight}{Enter}');
+    expect(options()).toEqual(['None', '번호', '금액']);
+    expect(picked()).toBe('None');
+
+    await press('{ArrowDown}{Enter}');
+    expect(picker()).toBeNull();
+    expect(linked()).toBe('d1');
+    expect(dictionaryBatches(fixture)).toHaveLength(1);
+
+    // Typing opens it searched by what was typed, and Escape writes nothing.
+    await press('금');
+    expect(options()).toEqual(['금액']);
+    await press('{Escape}');
+    expect(picker()).toBeNull();
+    expect(linked()).toBe('d1');
+
+    // It opens on the domain linked; a click picks, and None unlinks.
+    await press('{Enter}');
+    expect(picked()).toBe('번호');
+    await click(
+      fixture.shadow.querySelectorAll(
+        '.dictionary-domain-editor [role="option"]'
+      )[2]
+    );
+    expect(linked()).toBe('d2');
+    await press('{Enter}{ArrowUp}{ArrowUp}{Tab}');
+    expect(picker()).toBeNull();
+    expect(linked()).toBe('');
+    expect(dictionaryBatches(fixture)).toHaveLength(3);
+  });
+
+  it("opens a term's domain list above a cell near the grid's foot, round either end, and leaves on Tab or a press outside with no pick", async () => {
+    const fixture = await setup({
+      seed: [
+        addDictionaryAction({
+          kind: DictionaryKind.domain,
+          id: 'd1',
+          values: { name: '번호', order: nextSeedKey() },
+        }),
+        ...Array.from({ length: 12 }, (_, index) =>
+          term(`t${index}`, { name: `용어${index}` })
+        ),
+      ],
+    });
+    const editor = () =>
+      fixture.shadow.querySelector('.dictionary-domain-editor');
+    const list = () =>
+      fixture.shadow.querySelector<HTMLElement>(
+        '.dictionary-domain-editor [role="listbox"]'
+      );
+    const picked = () =>
+      fixture.shadow
+        .querySelector('.dictionary-domain-editor [aria-selected="true"]')
+        ?.firstElementChild?.textContent?.trim();
+
+    await click(sheetButtons(fixture)[1]);
+    textarea(fixture).focus();
+    await press(`${'{ArrowDown}'.repeat(10)}{ArrowRight}{ArrowRight}{Enter}`);
+    expect(list()?.style.bottom).toBe('100%');
+    expect(picked()).toBe('None');
+    await press('{ArrowUp}');
+    expect(picked()).toBe('번호');
+    await press('{ArrowDown}');
+    expect(picked()).toBe('None');
+
+    // A search nothing matches lists nothing, which Enter leaves open and Tab closes unwritten.
+    await press('xyz');
+    expect(list()).toBeNull();
+    await press('{Enter}');
+    expect(editor()).not.toBeNull();
+    await press('{Tab}');
+    expect(editor()).toBeNull();
+
+    await press('{Enter}');
+    expect(editor()).not.toBeNull();
+    pointer(fixture, 'pointerdown', 100, rowY(1));
+    pointer(fixture, 'pointerup', 100, rowY(1));
+    await drawn();
+    expect(editor()).toBeNull();
+    expect(fixture.app.store.state.collections.termEntities.t10.domainId).toBe(
+      ''
+    );
+    expect(dictionaryBatches(fixture)).toHaveLength(0);
+  });
+
   it('inserts as many rows above the selection as it covers on the add column chord with Shift held', async () => {
     const fixture = await setup();
     fixture.shortcuts.length = 0;

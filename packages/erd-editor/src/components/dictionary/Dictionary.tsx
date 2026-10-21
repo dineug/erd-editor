@@ -59,6 +59,7 @@ import {
   restoreScroll,
   storedSelection,
 } from '@/components/dictionary/dictionaryView';
+import { openDomainCellEditor } from '@/components/dictionary/domain-cell-editor/openDomainCellEditor';
 import {
   type CellMarks,
   toCellMarks,
@@ -207,6 +208,22 @@ function insertedStart(
   return anchor.place === 'after' ? at + 1 : at - count;
 }
 
+/** A sheet's columns, a term's domain picked from a list as the ERD tab's domain cell is. */
+const withDomainPicker = (
+  sheet: DictionarySheet,
+  columns: GridColumn[]
+): GridColumn[] =>
+  sheet === DictionarySheet.term
+    ? columns.map(column =>
+        column.id === 'domainId'
+          ? {
+              ...column,
+              editor: editor => openDomainCellEditor(editor, column.label),
+            }
+          : column
+      )
+    : columns;
+
 /**
  * The Dictionary tab: the sheet switch, the search and the row and file tools
  * over a grid of the sheet shown, and its row count and selection under it.
@@ -271,7 +288,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
 
     columnsKey = key;
     columns = isEntrySheet(sheet)
-      ? sheetColumns(sheet, { readonly: props.readonly, widths }, i18nValue)
+      ? withDomainPicker(
+          sheet,
+          sheetColumns(sheet, { readonly: props.readonly, widths }, i18nValue)
+        )
       : checkSheetColumns(widths, i18nValue);
     return columns;
   }
