@@ -2,9 +2,10 @@ import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { cloneDeep, isString } from 'es-toolkit';
 
-import { Command, History } from '@/engine/history';
+import { History, Replay } from '@/engine/history';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import {
+  domainTypeIn,
   toDomainTypeActions,
   toDomainUnlinkActions,
 } from '@/engine/modules/dictionary/domainTypes';
@@ -151,12 +152,19 @@ function replayedLinks(
   return [...links.values()].filter(({ value }) => value !== '');
 }
 
-const typedColumnIds = (actions: ReadonlyArray<AnyAction>) =>
-  new Set(
-    actions
-      .filter(({ type }) => type === ColumnActionType.changeColumnDataType)
-      .map(({ payload }) => payload.id as string)
-  );
+/** The last data type write a batch makes to each column, by the column's id. */
+function typeWritesOf(actions: ReadonlyArray<AnyAction>) {
+  const writes = new Map<string, ChangeColumnValuePayload>();
+  for (const { type, payload } of actions) {
+    if (type === ColumnActionType.changeColumnDataType) {
+      writes.set(payload.id, payload);
+    }
+  }
+  return writes;
+}
+
+const isUnlink = ({ type, payload }: AnyAction) =>
+  type === ColumnActionType.changeColumnDomain && payload.value === '';
 
 const columnWriteKey = ({ type, payload }: AnyAction) =>
   `${type}:${payload?.id}`;
@@ -176,21 +184,10 @@ function withWrites(
 /** The type each column ends a replay with: its last write in it, else its own. */
 function endTypeOf(state: RootState, sent: ReadonlyArray<AnyAction>) {
   const columns = query(state.collections).collection('tableColumnEntities');
-  const written = new Map<string, string>();
-  for (const { type, payload } of sent) {
-    if (type === ColumnActionType.changeColumnDataType) {
-      written.set(payload.id, payload.value);
-    }
-  }
+  const written = typeWritesOf(sent);
   return (id: string) =>
-    written.get(id) ?? columns.selectById(id)?.dataType ?? '';
+    written.get(id)?.value ?? columns.selectById(id)?.dataType ?? '';
 }
-
-/** A domain's type at a replay: the one the replay writes it, else its own. */
-const domainTypeIn =
-  (state: RootState, domainTypes: ReadonlyMap<string, string>) =>
-  (id: string) =>
-    domainTypes.get(id) ?? state.collections.domainEntities[id]?.dataType ?? '';
 
 /**
  * The unlinks that close a replay (step 3): each column of these links or one
@@ -205,10 +202,8 @@ function replayUnlinks(
 ) {
   const typeOf = endTypeOf(state, batch);
   const judged = new Map(links.map(({ tableId, id }) => [id, tableId]));
-  for (const { type, payload } of batch) {
-    if (type === ColumnActionType.changeColumnDataType) {
-      judged.set(payload.id, payload.tableId);
-    }
+  for (const { tableId, id } of typeWritesOf(batch).values()) {
+    judged.set(id, tableId);
   }
   return toDomainUnlinkActions(
     state,
@@ -248,11 +243,8 @@ function toReplayBatch(
         toDomainTypeActions(state, {
           domainTypes,
           links: drifted,
-          replaced: typedColumnIds(actions),
-        }).filter(
-          ({ type, payload }) =>
-            type !== ColumnActionType.changeColumnDomain || payload.value !== ''
-        )
+          replaced: new Set(typeWritesOf(actions).keys()),
+        }).filter(action => !isUnlink(action))
       )
     : actions;
   return withWrites(batch, replayUnlinks(state, batch, links, domainTypes));
@@ -280,7 +272,7 @@ const isKeptLoad = ({ type, payload }: AnyAction) =>
  * types of their domains (toReplayBatch), a kept load's columns among them.
  */
 const replayDocument =
-  (store: Store, actions: AnyAction[]): Command[keyof Command] =>
+  (store: Store, actions: AnyAction[]): Replay =>
   (dispatch, getNextVersion, getState = () => store.state) => {
     const state = getState();
     const domainTypes = domainTypesOf(actions);
@@ -329,11 +321,7 @@ type SheetUnlinks = { links: ReadonlyArray<SheetUnlink> };
  * and one the last replay unlinked, still unlinked at that type, links again.
  */
 const replayRows =
-  (
-    store: Store,
-    rows: AnyAction[],
-    unlinked: SheetUnlinks
-  ): Command[keyof Command] =>
+  (store: Store, rows: AnyAction[], unlinked: SheetUnlinks): Replay =>
   (dispatch, getNextVersion, getState = () => store.state) => {
     const state = getState();
     const held = query(state.collections).collection('tableColumnEntities');
@@ -368,15 +356,13 @@ const replayRows =
 function unlinksOf(state: RootState, actions: ReadonlyArray<AnyAction>) {
   const columns = query(state.collections).collection('tableColumnEntities');
   const typeOf = endTypeOf(state, actions);
-  return actions.flatMap(({ type, payload }): SheetUnlink[] => {
-    if (type !== ColumnActionType.changeColumnDomain || payload.value !== '') {
-      return [];
-    }
-    const { tableId, id } = payload;
-    const value = columns.selectById(id)?.domainId ?? '';
-    const link = { tableId, id, value };
-    return value === '' ? [] : [{ link, dataType: typeOf(id) }];
-  });
+  return actions
+    .filter(isUnlink)
+    .flatMap(({ payload: { tableId, id } }): SheetUnlink[] => {
+      const value = columns.selectById(id)?.domainId ?? '';
+      if (value === '') return [];
+      return [{ link: { tableId, id, value }, dataType: typeOf(id) }];
+    });
 }
 
 function pushSheet(store: Store, history: History, actions: AnyAction[]) {

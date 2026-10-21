@@ -159,6 +159,19 @@ const textField = <K extends string>(
 ): Partial<Record<K, string>> =>
   value === '' ? {} : ({ [key]: value } as Record<K, string>);
 
+/**
+ * A logical name as the file holds it: one of only blanks is none, as every
+ * view reads it, and raw JSON handed over unparsed may hold none at all.
+ */
+const logicalNameField = (logicalName: unknown): { logicalName?: string } =>
+  typeof logicalName === 'string' && logicalName.trim() !== ''
+    ? { logicalName }
+    : {};
+
+/** A dictionary's header and rows, none while it holds no row. */
+const writtenRows = (key: DictionaryKey, entities: ReadonlyArray<object>) =>
+  entities.length !== 0 ? toDictionaryRows(key, entities) : undefined;
+
 const holdsEntries = (value: unknown) =>
   Array.isArray(value)
     ? value.length !== 0
@@ -178,13 +191,6 @@ function withEntries<T extends Record<string, unknown>>(
     ? (Object.fromEntries(held) as Partial<T>)
     : undefined;
 }
-
-/**
- * Whether a logical name goes into the file: one of only blanks is none, as
- * every view reads it, and raw JSON handed over unparsed may hold none at all.
- */
-const isWritten = (logicalName: unknown): logicalName is string =>
-  typeof logicalName === 'string' && logicalName.trim() !== '';
 
 /**
  * The storage form of a document as an object: the live entities alone, keyed
@@ -227,9 +233,7 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
     return {
       id: table.id,
       ...textField('name', table.name),
-      ...(isWritten(table.logicalName)
-        ? { logicalName: table.logicalName }
-        : {}),
+      ...logicalNameField(table.logicalName),
       ...textField('comment', table.comment),
       columnIds,
       ...(keptGroups.has(table.groupId) ? { groupId: table.groupId } : {}),
@@ -254,9 +258,7 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
         ...textField('dataType', column.dataType),
         ...textField('default', column.default),
         options: column.options,
-        ...(isWritten(column.logicalName)
-          ? { logicalName: column.logicalName }
-          : {}),
+        ...logicalNameField(column.logicalName),
         ...(keptDomains.has(column.domainId)
           ? { domainId: column.domainId }
           : {}),
@@ -387,14 +389,9 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
     ),
     memoEntities: toRecord(memos),
     tableGroupEntities: toRecord(tableGroups),
-    wordEntities:
-      words.length !== 0 ? toDictionaryRows('wordEntities', words) : undefined,
-    termEntities:
-      terms.length !== 0 ? toDictionaryRows('termEntities', terms) : undefined,
-    domainEntities:
-      domains.length !== 0
-        ? toDictionaryRows('domainEntities', domains)
-        : undefined,
+    wordEntities: writtenRows('wordEntities', words),
+    termEntities: writtenRows('termEntities', terms),
+    domainEntities: writtenRows('domainEntities', domains),
   });
 
   return {

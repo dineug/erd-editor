@@ -29,6 +29,16 @@ export type DomainTypeWrites = {
 const NO_DOMAIN_TYPES: ReadonlyMap<string, string> = new Map();
 const NO_COLUMNS: ReadonlySet<string> = new Set();
 
+/** A domain's type in one dispatch: the one it writes the domain, else the domain's own. */
+export function domainTypeIn(
+  state: RootState,
+  domainTypes: ReadonlyMap<string, string>
+) {
+  const { domainEntities } = state.collections;
+  return (id: string) =>
+    domainTypes.get(id) ?? domainEntities[id]?.dataType ?? '';
+}
+
 /** How one dispatch reads a column's domain and a domain's type, its own writes first. */
 function readDomains(
   state: RootState,
@@ -42,8 +52,7 @@ function readDomains(
   return {
     columns,
     isLiveDomain: (id: string) => id !== '' && isListed(doc.domainIds, id),
-    domainTypeOf: (id: string) =>
-      domainTypes.get(id) ?? collections.domainEntities[id]?.dataType ?? '',
+    domainTypeOf: domainTypeIn(state, domainTypes),
     domainIdOf: (id: string) =>
       linkOf.get(id) ?? columns.selectById(id)?.domainId ?? '',
   };

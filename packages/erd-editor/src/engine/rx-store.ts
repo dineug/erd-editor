@@ -137,10 +137,7 @@ export function createRxStore(
     const row = actions.find(isDictionaryAction);
     return row ? sheetHistories[row.payload?.kind as DictionaryKind] : null;
   };
-  /**
-   * A Dictionary tab batch to its sheet's history, every other to the
-   * document's.
-   */
+  /** A Dictionary tab batch to its sheet's history, every other to the document's. */
   const toHistory = (actions: Array<AnyAction>) => {
     const sheetHistory = hasActionTag(actions, Tag.dictionarySheet)
       ? sheetHistoryOf(actions)

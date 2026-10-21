@@ -667,7 +667,7 @@ export const Grid: FC<GridProps> = props => {
       if (!isSelected(selection, cell)) {
         changeSelection(clickCell(selection, cell));
       }
-      listener({ row: cell.row, col: cell.col, clientX, clientY });
+      listener({ ...cell, clientX, clientY });
       return;
     }
 

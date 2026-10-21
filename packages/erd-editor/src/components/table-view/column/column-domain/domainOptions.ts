@@ -11,7 +11,7 @@ export type DomainOption = {
 };
 
 /** The row that links no domain. */
-export const NO_DOMAIN: DomainOption = { id: '', name: '' };
+const NO_DOMAIN: DomainOption = { id: '', name: '' };
 
 /**
  * The rows a search offers: every named domain in sheet order after the row

@@ -213,21 +213,19 @@ function insertedStart(
 }
 
 /** A sheet's columns, a term's domain picked from a list as the ERD tab's domain cell is. */
-const withDomainPicker = (
+function withDomainPicker(
   sheet: DictionarySheet,
   columns: GridColumn[],
   openPicker: (editor: EditorContext, label: string) => void
-): GridColumn[] =>
-  sheet === DictionarySheet.term
-    ? columns.map(column =>
-        column.id === 'domainId'
-          ? {
-              ...column,
-              editor: editor => openPicker(editor, column.label),
-            }
-          : column
-      )
-    : columns;
+): GridColumn[] {
+  if (sheet !== DictionarySheet.term) return columns;
+
+  return columns.map(column =>
+    column.id === 'domainId'
+      ? { ...column, editor: editor => openPicker(editor, column.label) }
+      : column
+  );
+}
 
 /**
  * The Dictionary tab: the sheet switch, the search and the row and file tools
@@ -354,12 +352,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
    */
   function heldInside(rowCount: number): GridSelection | undefined {
     const { selection, handle } = session;
-    const end = Math.max(rowCount, 1);
-    const past =
-      selection.active.row >= end ||
-      selection.ranges.some(
-        ({ startRow, endRow }) => Math.max(startRow, endRow) >= end
-      );
+    const past = bottomRow(selection) >= Math.max(rowCount, 1);
     if (!past || handle.isEditing()) return;
 
     return clampSelection(selection, rowCount, columns.length);
@@ -377,9 +370,9 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     const entry = isEntrySheet(sheet);
     const ids = entry ? sheetRowIds(store.state, sheet, search) : [];
     if (!entry) session.checks = listChecks(search);
+    const rowCount = entry ? ids.length : session.checks.length;
 
-    const selection =
-      select ?? heldInside(entry ? ids.length : session.checks.length);
+    const selection = select ?? heldInside(rowCount);
     if (selection) {
       handle.select(selection);
       session.selection = selection;
@@ -389,13 +382,12 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
 
     if (entry) {
       state.version = rows.bump(ids, handle.isEditing());
-      state.rowCount = ids.length;
       state.empty = sheetRowIds(store.state, sheet).length === 0;
     } else {
       state.version += 1;
-      state.rowCount = session.checks.length;
       state.empty = false;
     }
+    state.rowCount = rowCount;
     countSelected();
   }
 

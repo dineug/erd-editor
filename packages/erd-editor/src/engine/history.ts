@@ -6,7 +6,7 @@ type Dispatch = (actions: AnyAction[]) => void;
 type GetNextVersion = () => number;
 type GetState = () => RootState;
 
-type Replay = (
+export type Replay = (
   dispatch: Dispatch,
   getNextVersion: GetNextVersion,
   getState?: GetState

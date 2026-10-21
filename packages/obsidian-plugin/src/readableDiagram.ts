@@ -1,7 +1,5 @@
-const isObject = (json: object, key: string) => {
-  const value: unknown = Reflect.get(json, key);
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-};
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * Whether a diagram file's text is one the tab can read: empty, which starts a
@@ -13,12 +11,10 @@ export function isReadableDiagram(text: string): boolean {
   try {
     const json: unknown = JSON.parse(text);
     return (
-      typeof json === 'object' &&
-      json !== null &&
+      isRecord(json) &&
       ('doc' in json ||
         'canvas' in json ||
-        (Reflect.get(json, 'version') === '3.0.0' &&
-          isObject(json, 'settings')))
+        (json.version === '3.0.0' && isRecord(json.settings)))
     );
   } catch {
     return false;
