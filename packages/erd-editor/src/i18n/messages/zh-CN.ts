@@ -428,6 +428,7 @@ export const zhCN = {
   'dictionary.deleteRows': '删除所选行',
   'dictionary.import': '导入 {format}',
   'dictionary.export': '导出 {format}',
+  'dictionary.clearSearch': '清除搜索',
   'dictionary.menu.insertAbove': {
     other: '在上方插入 {count} 行',
   },

@@ -470,6 +470,7 @@ export const plPL = {
   'dictionary.deleteRows': 'Usuń wiersze',
   'dictionary.import': 'Importuj {format}',
   'dictionary.export': 'Eksportuj {format}',
+  'dictionary.clearSearch': 'Wyczyść wyszukiwanie',
   'dictionary.menu.insertAbove': {
     one: 'Wstaw {count} wiersz powyżej',
     few: 'Wstaw {count} wiersze powyżej',

@@ -457,6 +457,7 @@ export const svSE = {
   'dictionary.deleteRows': 'Ta bort rader',
   'dictionary.import': 'Importera {format}',
   'dictionary.export': 'Exportera {format}',
+  'dictionary.clearSearch': 'Rensa sökning',
   'dictionary.menu.insertAbove': {
     one: 'Infoga {count} rad ovanför',
     other: 'Infoga {count} rader ovanför',

@@ -465,6 +465,7 @@ export const arSA = {
   'dictionary.deleteRows': 'حذف الصفوف',
   'dictionary.import': 'استيراد {format}',
   'dictionary.export': 'تصدير {format}',
+  'dictionary.clearSearch': 'مسح البحث',
   'dictionary.menu.insertAbove': {
     zero: 'إدراج {count} صف في الأعلى',
     one: 'إدراج {count} صف في الأعلى',

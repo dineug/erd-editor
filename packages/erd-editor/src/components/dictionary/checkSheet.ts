@@ -184,14 +184,14 @@ export function checkDestination({
 /**
  * The checks the sheet lists, in the order the document gives them, those
  * whose three cells hold the search's text while it holds any. It walks the
- * whole document, so only a mounted check sheet asks for it.
+ * whole document unless handed the checks a caller already listed.
  */
 export function checkRows(
   state: RootState,
   search = '',
-  i18n: Translator = sourceI18n
+  i18n: Translator = sourceI18n,
+  checks: ReadonlyArray<DictionaryCheck> = listDictionaryChecks(state)
 ): ReadonlyArray<DictionaryCheck> {
-  const checks = listDictionaryChecks(state);
   const needle = toSearchText(search.trim());
   if (!needle) return Object.freeze(checks);
 

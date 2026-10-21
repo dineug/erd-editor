@@ -457,6 +457,7 @@ export const jaJP = {
   'dictionary.deleteRows': '選択した行を削除',
   'dictionary.import': '{format} をインポート',
   'dictionary.export': '{format} をエクスポート',
+  'dictionary.clearSearch': '検索をクリア',
   'dictionary.menu.insertAbove': {
     other: '上に {count} 行を挿入',
   },

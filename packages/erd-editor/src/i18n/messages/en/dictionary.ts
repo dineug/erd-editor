@@ -12,6 +12,7 @@ export const dictionary = {
   'dictionary.deleteRows': 'Delete Rows',
   'dictionary.import': 'Import {format}',
   'dictionary.export': 'Export {format}',
+  'dictionary.clearSearch': 'Clear search',
   'dictionary.menu.insertAbove': {
     one: 'Insert {count} row above',
     other: 'Insert {count} rows above',

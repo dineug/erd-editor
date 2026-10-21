@@ -14,9 +14,9 @@ export const root = css`
 `;
 
 /**
- * The sheet switch, the search and the row and file buttons, on one line while
+ * The sheet switch, the search and the row and file tools, on one line while
  * they fit and on more where they do not, since the tab clips what overflows
- * it and a narrow pane or a long language would hide the file buttons.
+ * it and a narrow pane would hide the tools. Each control stands 28px high.
  */
 export const bar = css`
   display: flex;
@@ -38,7 +38,10 @@ export const segments = css`
 `;
 
 export const segment = css`
-  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
   padding: 0 10px;
   color: var(--foreground);
   cursor: pointer;
@@ -65,14 +68,62 @@ export const segment = css`
   }
 `;
 
-/** The search takes what the switch and the buttons leave, up to a width that keeps it a field. */
+/** A sheet's row count beside its name, quieter than the name. */
+export const count = css`
+  color: var(--placeholder);
+  font-variant-numeric: tabular-nums;
+
+  [aria-pressed='true'] > & {
+    color: inherit;
+    opacity: 0.72;
+  }
+`;
+
+/** The check sheet's count in the colour of the loudest check it holds. */
+export const countError = css`
+  color: var(--dictionary-error-foreground);
+  font-weight: 500;
+
+  [aria-pressed='true'] > & {
+    color: var(--dictionary-error-foreground);
+    opacity: 1;
+  }
+`;
+
+export const countWarning = css`
+  color: var(--dictionary-warning-foreground);
+  font-weight: 500;
+
+  [aria-pressed='true'] > & {
+    color: var(--dictionary-warning-foreground);
+    opacity: 1;
+  }
+`;
+
+/** The search takes what the switch and the tools leave, up to a width that keeps it a field. */
+export const searchField = css`
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 1 260px;
+  min-width: 120px;
+  height: 28px;
+  color: var(--placeholder);
+`;
+
+export const searchIcon = css`
+  position: absolute;
+  inset-inline-start: 8px;
+  display: flex;
+  pointer-events: none;
+`;
+
 export const search = css`
-  flex: 0 1 240px;
-  min-width: 80px;
-  height: 26px;
-  padding: 0 8px;
+  width: 100%;
+  height: 100%;
+  padding-inline: 28px;
   border: 1px solid var(--dictionary-grid-line);
-  border-radius: 4px;
+  border-radius: 6px;
   background-color: var(--dictionary-background);
   ${typography.paragraph};
 
@@ -81,14 +132,73 @@ export const search = css`
   }
 `;
 
-/** The row and file buttons, pushed to the bar's end, wrapping among themselves on a line too narrow for all four. */
-export const actions = css`
+/** Clears the search, shown while it holds text. */
+export const clear = css`
+  position: absolute;
+  inset-inline-end: 4px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--placeholder);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--active);
+    background-color: var(--gray-color-4);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+`;
+
+/** The row and file tools, pushed to the bar's end, a rule between the two groups. */
+export const tools = css`
+  display: flex;
+  align-items: center;
+  gap: 2px;
   margin-inline-start: auto;
+`;
+
+export const tool = css`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--foreground);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--active);
+    background-color: var(--gray-color-4);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+`;
+
+/** Delete, which reads as the one tool that takes rows away once it is under the pointer. */
+export const toolDanger = css`
+  &:hover {
+    color: var(--dictionary-error-foreground);
+  }
+`;
+
+export const divider = css`
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background-color: var(--dictionary-grid-line);
 `;
 
 /** The grid fills what the bar and the status line leave. */

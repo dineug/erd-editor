@@ -262,9 +262,9 @@ export function markOf(
 }
 
 /**
- * Every check of the document, for the sheet that lists them: the words, the
- * terms and the domains in sheet order, then each table and its columns in
- * document order. It walks everything, so only that sheet asks for it.
+ * Every check of the document, for the sheet that lists them and the count on
+ * its button: the words, the terms and the domains in sheet order, then each
+ * table and its columns in document order. It walks everything.
  */
 export function listDictionaryChecks(state: RootState): DictionaryCheck[] {
   const { doc, collections } = state;

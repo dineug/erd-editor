@@ -451,6 +451,7 @@ export const faIR = {
   'dictionary.deleteRows': 'حذف ردیف‌ها',
   'dictionary.import': 'وارد کردن {format}',
   'dictionary.export': 'صادر کردن {format}',
+  'dictionary.clearSearch': 'پاک کردن جستجو',
   'dictionary.menu.insertAbove': {
     one: 'درج {count} ردیف در بالا',
     other: 'درج {count} ردیف در بالا',

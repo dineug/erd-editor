@@ -82,11 +82,13 @@ const tabOf = (erd: ErdEditorPage) => erd.host.locator('.dictionary');
 const tabButton = (erd: ErdEditorPage, name: string) =>
   tabOf(erd).getByRole('button', { name, exact: true });
 
-/** The sheet button the tab shows pressed. */
+/** The name on the sheet button the tab shows pressed, without its count. */
 const shownSheet = (erd: ErdEditorPage) =>
   tabOf(erd)
     .getByRole('group', { name: 'Dictionary' })
-    .getByRole('button', { pressed: true });
+    .getByRole('button', { pressed: true })
+    .locator('span')
+    .first();
 
 /** The status line's row count: the rows the sheet shown lists under its search. */
 const rowCount = (erd: ErdEditorPage, count: number) =>

@@ -472,6 +472,7 @@ export const ptBR = {
   'dictionary.deleteRows': 'Excluir linhas',
   'dictionary.import': 'Importar {format}',
   'dictionary.export': 'Exportar {format}',
+  'dictionary.clearSearch': 'Limpar pesquisa',
   'dictionary.menu.insertAbove': {
     one: 'Inserir {count} linha acima',
     many: 'Inserir {count} de linhas acima',

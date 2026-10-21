@@ -26,6 +26,7 @@ import {
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { PlainMessageKey } from '@/i18n/translate';
 import { FindField, type FindMatch, snippetOf } from '@/utils/find-replace';
+import { formatCount } from '@/utils/formatCount';
 import { forceFocusEvent } from '@/utils/internalEvents';
 import {
   isComposing,
@@ -317,7 +318,9 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
               )}
             </span>
             {label(t(FOLDER_LABEL[node.folder]), unnamed)}
-            <span class={styles.count}>{node.count}</span>
+            <span class={styles.count}>
+              {formatCount(i18n.value.locale, node.count)}
+            </span>
           </>
         );
       case 'table':

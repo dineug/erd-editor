@@ -447,6 +447,7 @@ export const heIL = {
   'dictionary.deleteRows': 'מחיקת שורות',
   'dictionary.import': 'ייבוא {format}',
   'dictionary.export': 'ייצוא {format}',
+  'dictionary.clearSearch': 'ניקוי החיפוש',
   'dictionary.menu.insertAbove': {
     one: 'הוספת {count} שורה מעל',
     two: 'הוספת {count} שורות מעל',

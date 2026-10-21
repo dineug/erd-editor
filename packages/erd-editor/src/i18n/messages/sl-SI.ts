@@ -467,6 +467,7 @@ export const slSI = {
   'dictionary.deleteRows': 'Izbriši vrstice',
   'dictionary.import': 'Uvozi {format}',
   'dictionary.export': 'Izvozi {format}',
+  'dictionary.clearSearch': 'Počisti iskanje',
   'dictionary.menu.insertAbove': {
     one: 'Vstavi {count} vrstico nad',
     two: 'Vstavi {count} vrstici nad',

@@ -470,6 +470,7 @@ export const ruRU = {
   'dictionary.deleteRows': 'Удалить строки',
   'dictionary.import': 'Импорт {format}',
   'dictionary.export': 'Экспорт {format}',
+  'dictionary.clearSearch': 'Очистить поиск',
   'dictionary.menu.insertAbove': {
     one: 'Вставить {count} строку выше',
     few: 'Вставить {count} строки выше',

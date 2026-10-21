@@ -472,6 +472,7 @@ export const ukUA = {
   'dictionary.deleteRows': 'Видалити рядки',
   'dictionary.import': 'Імпортувати {format}',
   'dictionary.export': 'Експортувати {format}',
+  'dictionary.clearSearch': 'Очистити пошук',
   'dictionary.menu.insertAbove': {
     one: 'Вставити {count} рядок вище',
     few: 'Вставити {count} рядки вище',

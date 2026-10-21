@@ -471,6 +471,7 @@ export const itIT = {
   'dictionary.deleteRows': 'Elimina righe',
   'dictionary.import': 'Importa {format}',
   'dictionary.export': 'Esporta {format}',
+  'dictionary.clearSearch': 'Cancella ricerca',
   'dictionary.menu.insertAbove': {
     one: 'Inserisci {count} riga sopra',
     many: 'Inserisci {count} righe sopra',

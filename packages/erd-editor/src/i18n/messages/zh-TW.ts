@@ -428,6 +428,7 @@ export const zhTW = {
   'dictionary.deleteRows': '刪除所選列',
   'dictionary.import': '匯入 {format}',
   'dictionary.export': '匯出 {format}',
+  'dictionary.clearSearch': '清除搜尋',
   'dictionary.menu.insertAbove': {
     other: '在上方插入 {count} 列',
   },

@@ -451,6 +451,7 @@ export const idID = {
   'dictionary.deleteRows': 'Hapus baris yang dipilih',
   'dictionary.import': 'Impor {format}',
   'dictionary.export': 'Ekspor {format}',
+  'dictionary.clearSearch': 'Hapus pencarian',
   'dictionary.menu.insertAbove': {
     other: 'Sisipkan {count} baris di atas',
   },

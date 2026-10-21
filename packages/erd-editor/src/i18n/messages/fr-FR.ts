@@ -476,6 +476,7 @@ export const frFR = {
   'dictionary.deleteRows': 'Supprimer les lignes',
   'dictionary.import': 'Importer un fichier {format}',
   'dictionary.export': 'Exporter au format {format}',
+  'dictionary.clearSearch': 'Effacer la recherche',
   'dictionary.menu.insertAbove': {
     one: 'Insérer {count} ligne au-dessus',
     many: 'Insérer {count} lignes au-dessus',

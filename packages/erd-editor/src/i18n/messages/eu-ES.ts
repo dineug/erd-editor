@@ -464,6 +464,7 @@ export const euES = {
   'dictionary.deleteRows': 'Ezabatu errenkadak',
   'dictionary.import': 'Inportatu {format}',
   'dictionary.export': 'Esportatu {format}',
+  'dictionary.clearSearch': 'Garbitu bilaketa',
   'dictionary.menu.insertAbove': {
     one: 'Txertatu errenkada {count} gainean',
     other: 'Txertatu {count} errenkada gainean',

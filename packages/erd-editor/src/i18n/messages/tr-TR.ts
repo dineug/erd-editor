@@ -455,6 +455,7 @@ export const trTR = {
   'dictionary.deleteRows': 'Satırları sil',
   'dictionary.import': '{format} içe aktar',
   'dictionary.export': '{format} dışa aktar',
+  'dictionary.clearSearch': 'Aramayı temizle',
   'dictionary.menu.insertAbove': {
     one: 'Üste {count} satır ekle',
     other: 'Üste {count} satır ekle',

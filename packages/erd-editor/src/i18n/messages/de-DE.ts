@@ -472,6 +472,7 @@ export const deDE = {
   'dictionary.deleteRows': 'Zeilen löschen',
   'dictionary.import': '{format} importieren',
   'dictionary.export': '{format} exportieren',
+  'dictionary.clearSearch': 'Suche löschen',
   'dictionary.menu.insertAbove': {
     one: '{count} Zeile oberhalb einfügen',
     other: '{count} Zeilen oberhalb einfügen',

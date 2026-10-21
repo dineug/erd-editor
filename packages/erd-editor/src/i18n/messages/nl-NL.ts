@@ -466,6 +466,7 @@ export const nlNL = {
   'dictionary.deleteRows': 'Rijen verwijderen',
   'dictionary.import': '{format} importeren',
   'dictionary.export': '{format} exporteren',
+  'dictionary.clearSearch': 'Zoekopdracht wissen',
   'dictionary.menu.insertAbove': {
     one: '{count} rij erboven invoegen',
     other: '{count} rijen erboven invoegen',

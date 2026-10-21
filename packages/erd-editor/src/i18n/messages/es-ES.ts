@@ -472,6 +472,7 @@ export const esES = {
   'dictionary.deleteRows': 'Eliminar filas',
   'dictionary.import': 'Importar {format}',
   'dictionary.export': 'Exportar {format}',
+  'dictionary.clearSearch': 'Borrar búsqueda',
   'dictionary.menu.insertAbove': {
     one: 'Insertar {count} fila encima',
     many: 'Insertar {count} de filas encima',

@@ -26,6 +26,7 @@ import {
   useAppContext,
 } from '@/components/appContext';
 import Dictionary from '@/components/dictionary/Dictionary';
+import * as styles from '@/components/dictionary/Dictionary.styles';
 import { dictionaryViewOf } from '@/components/dictionary/dictionaryView';
 import { toGridTheme } from '@/components/dictionary/gridTheme';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
@@ -337,9 +338,11 @@ const tab = ({ shadow }: Fixture) =>
 const textarea = ({ shadow }: Fixture) =>
   shadow.querySelector('.dineug-grid textarea') as HTMLTextAreaElement;
 
+/** A button by the name it reads out: a tool's label, else its text. */
 const buttonNamed = ({ shadow }: Fixture, name: string) =>
   Array.from(shadow.querySelectorAll('button')).find(
-    button => button.textContent?.trim() === name
+    button =>
+      (button.getAttribute('aria-label') ?? button.textContent?.trim()) === name
   ) ?? null;
 
 const sheetButtons = ({ shadow }: Fixture) =>
@@ -347,10 +350,14 @@ const sheetButtons = ({ shadow }: Fixture) =>
     shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
   );
 
+/** A sheet button's name, without the count beside it. */
+const sheetName = (button: Element) =>
+  button.firstElementChild?.textContent?.trim();
+
 const pressedSheet = (fixture: Fixture) =>
   sheetButtons(fixture)
     .filter(button => button.getAttribute('aria-pressed') === 'true')
-    .map(button => button.textContent?.trim());
+    .map(sheetName);
 
 const search = ({ shadow }: Fixture) =>
   shadow.querySelector('input[title="Search"]') as HTMLInputElement;
@@ -563,7 +570,7 @@ describe('the Dictionary tab', () => {
       ],
     });
 
-    expect(sheetButtons(fixture).map(button => button.textContent)).toEqual([
+    expect(sheetButtons(fixture).map(sheetName)).toEqual([
       'Words',
       'Terms',
       'Domains',
@@ -713,6 +720,105 @@ describe('the Dictionary tab', () => {
     expect(names(fixture)).toEqual(['A', 'B', 'C', 'D', '']);
     await undo();
     expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('counts each sheet on its button, the checks once the browser is idle, in the colour of the loudest', async () => {
+    const counts = (fixture: Fixture) =>
+      sheetButtons(fixture).map(button => button.lastElementChild!);
+    const idle = () =>
+      new Promise(resolve => requestIdleCallback(() => resolve(undefined)));
+
+    const fixture = await setup({ seed: [...WORDS, word('e', 'A')] });
+    await idle();
+    await drawn();
+    expect(counts(fixture).map(count => count.textContent)).toEqual([
+      '5',
+      '0',
+      '0',
+      '2',
+    ]);
+    // The count reads out with nothing, since the name is the button's name.
+    expect(counts(fixture)[0].getAttribute('aria-hidden')).toBe('true');
+    expect(
+      counts(fixture)[3].classList.contains(String(styles.countError))
+    ).toBe(true);
+
+    await press('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
+    await click(buttonNamed(fixture, 'Delete Rows'));
+    await idle();
+    await drawn();
+    expect(counts(fixture).map(count => count.textContent)).toEqual([
+      '4',
+      '0',
+      '0',
+      '0',
+    ]);
+    expect(counts(fixture)[3].classList.contains(String(styles.count))).toBe(
+      true
+    );
+  });
+
+  it("colours the check sheet's count as a warning while every check is one", async () => {
+    const counts = (fixture: Fixture) =>
+      sheetButtons(fixture).map(button => button.lastElementChild!);
+    const idle = () =>
+      new Promise(resolve => requestIdleCallback(() => resolve(undefined)));
+
+    // An unregistered word in a column's logical name is a warning alone.
+    const warned = await setup({
+      seed: [word('m', '회원'), ...memberTable('회원', '주소')],
+    });
+    await idle();
+    await drawn();
+    expect(counts(warned)[3].textContent).toBe('1');
+    expect(
+      counts(warned)[3].classList.contains(String(styles.countWarning))
+    ).toBe(true);
+
+    // The check sheet counts what it lists, with no idle wait.
+    await click(sheetButtons(warned)[3]);
+    expect(counts(warned)[3].textContent).toBe('1');
+  });
+
+  it('clears the search by its button and by Escape, the field keeping the keyboard', async () => {
+    const fixture = await setup();
+    const clear = () => buttonNamed(fixture, 'Clear search');
+    expect(clear()).toBeNull();
+
+    await userEvent.click(search(fixture));
+    await press('B');
+    expect(status(fixture)).toBe('1 row 1 selected');
+    expect(clear()?.title).toBe('Clear search');
+
+    await click(clear());
+    expect(search(fixture).value).toBe('');
+    expect(status(fixture)).toBe('4 rows 1 selected');
+    expect(clear()).toBeNull();
+    expect(fixture.shadow.activeElement).toBe(search(fixture));
+
+    fixture.shortcuts.length = 0;
+    await press('C{Escape}');
+    expect(search(fixture).value).toBe('');
+    expect(status(fixture)).toBe('4 rows 1 selected');
+    expect(fixture.shortcuts).toEqual([]);
+  });
+
+  it('names each tool for the pointer and the reader, Delete with the chord that deletes in the grid', async () => {
+    const fixture = await setup();
+    const tools = ['Add Row', 'Delete Rows', 'Import CSV', 'Export CSV'].map(
+      name => buttonNamed(fixture, name)
+    );
+
+    expect(tools.map(tool => tool?.title)).toEqual([
+      'Add Row',
+      expect.stringMatching(/^Delete Rows \(.+\)$/),
+      'Import CSV',
+      'Export CSV',
+    ]);
+
+    fixture.app.keyBindingMap.removeColumn = [];
+    await drawn();
+    expect(buttonNamed(fixture, 'Delete Rows')?.title).toBe('Delete Rows');
   });
 
   it('counts each row the ranges cover once, however they overlap', async () => {
@@ -1197,7 +1303,7 @@ describe('the Dictionary tab', () => {
           const box = button.getBoundingClientRect();
           return box.left < left || box.right > right;
         })
-        .map(button => button.textContent?.trim());
+        .map(button => button.getAttribute('aria-label') ?? sheetName(button));
     };
 
     host.width = 600;
@@ -1865,7 +1971,7 @@ describe('the Dictionary tab in the editor', () => {
     await click(toolbarButton(shadow, 'Dictionary'));
     const checks = Array.from(
       shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
-    ).find(button => button.textContent === 'Checks');
+    ).find(button => sheetName(button) === 'Checks');
     await click(checks ?? null);
     expect(drawnTexts()).toEqual(
       expect.arrayContaining(['Unregistered word', 'users.name', 'Nickname'])
@@ -1914,7 +2020,7 @@ describe('the Dictionary tab in the editor', () => {
     await click(toolbarButton(shadow, 'Dictionary'));
     const domains = Array.from(
       shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
-    ).find(button => button.textContent === 'Domains');
+    ).find(button => sheetName(button) === 'Domains');
     await click(domains ?? null);
     await press('{ArrowRight}{ArrowRight}TEXT{Enter}');
 
@@ -1951,7 +2057,7 @@ describe('the Dictionary tab in the editor', () => {
     await click(toolbarButton(shadow, 'Dictionary'));
     const domains = Array.from(
       shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
-    ).find(button => button.textContent === 'Domains');
+    ).find(button => sheetName(button) === 'Domains');
     await click(domains ?? null);
     await press('{ArrowRight}{ArrowRight}TEXT{Enter}');
 

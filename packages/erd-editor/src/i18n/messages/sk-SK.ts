@@ -466,6 +466,7 @@ export const skSK = {
   'dictionary.deleteRows': 'Odstrániť riadky',
   'dictionary.import': 'Importovať {format}',
   'dictionary.export': 'Exportovať {format}',
+  'dictionary.clearSearch': 'Vymazať vyhľadávanie',
   'dictionary.menu.insertAbove': {
     one: 'Vložiť {count} riadok nad',
     few: 'Vložiť {count} riadky nad',

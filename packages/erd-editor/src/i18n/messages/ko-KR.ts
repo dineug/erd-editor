@@ -441,6 +441,7 @@ export const koKR = {
   'dictionary.deleteRows': '선택한 행 삭제',
   'dictionary.import': '{format} 가져오기',
   'dictionary.export': '{format} 내보내기',
+  'dictionary.clearSearch': '검색 지우기',
   'dictionary.menu.insertAbove': {
     other: '위에 행 {count}개 삽입',
   },

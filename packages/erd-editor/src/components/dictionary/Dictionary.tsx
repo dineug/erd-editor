@@ -75,15 +75,20 @@ import {
 } from '@/components/dictionary/sheets';
 import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { useI18n } from '@/components/localeContext';
-import Button from '@/components/primitives/button/Button';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import Icon from '@/components/primitives/icon/Icon';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { useThemeContext } from '@/components/themeContext';
 import {
   DictionaryFields,
   type DictionaryKind,
 } from '@/engine/modules/dictionary/actions';
-import type { DictionaryCheck } from '@/engine/modules/dictionary/checks';
+import {
+  type DictionaryCheck,
+  DictionaryCheckLevel,
+  listDictionaryChecks,
+  markOf,
+} from '@/engine/modules/dictionary/checks';
 import {
   type DictionaryInsertAnchor,
   DictionarySortDirection,
@@ -94,8 +99,13 @@ import { attachDictionarySheetTag$ } from '@/engine/tag';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { I18n } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
+import { formatCount } from '@/utils/formatCount';
 import { forceFocusEvent } from '@/utils/internalEvents';
-import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
+import {
+  isComposing,
+  KeyBindingName,
+  simpleShortcutToString,
+} from '@/utils/keyboard-shortcut';
 
 import * as styles from './Dictionary.styles';
 
@@ -180,10 +190,23 @@ const topRow = ({ active, ranges }: GridSelection) =>
     active.row
   );
 
+/** How long an idle task may wait for the browser to go idle before it runs anyway. */
+const IDLE_TIMEOUT_MS = 1000;
+
+/** Runs a task once the browser is idle, or on a timer where it names no idle time, and hands back its cancel. */
+function whenIdle(task: () => void): () => void {
+  if (typeof requestIdleCallback === 'function') {
+    const id = requestIdleCallback(task, { timeout: IDLE_TIMEOUT_MS });
+    return () => cancelIdleCallback(id);
+  }
+  const id = setTimeout(task, 0);
+  return () => clearTimeout(id);
+}
+
 /**
- * The Dictionary tab: the sheet switch, the search and the row buttons over a
- * grid of the sheet shown, and its row count and selection under it. Every
- * edit, paste or clear the grid commits is one dispatch and one undo.
+ * The Dictionary tab: the sheet switch, the search and the row and file tools
+ * over a grid of the sheet shown, and its row count and selection under it.
+ * Every edit, paste or clear the grid commits is one dispatch and one undo.
  */
 const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -192,6 +215,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   const sheetRef = createRef<HTMLDivElement>();
   const fileRef = createRef<HTMLInputElement>();
+  const searchRef = createRef<HTMLDivElement>();
   const contextMenu = useContextMenuRootProvider(ctx);
   const view = dictionaryViewOf(app.value);
 
@@ -203,14 +227,23 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     rowCount: 0,
     selectedRows: 0,
     empty: false,
+    // What each sheet button counts: the listed rows, and the checks with the
+    // loudest of their levels, which colours the check sheet's count.
+    counts: { word: 0, term: 0, domain: 0, check: 0 } as Record<
+      DictionarySheet,
+      number
+    >,
+    checkMark: null as DictionaryCheckLevel | null,
   });
 
   let session = openSession(view.sheet);
+  countEntries();
   let pending: Pending = null;
   let revealRows: { first: number; last: number } | null = null;
   // The column a menu opened on, which its sorts order the sheet by.
   let menuColumn: GridColumn | null = null;
   let checksFrame: number | null = null;
+  let cancelCheckCount: (() => void) | null = null;
   let gridTheme: Readonly<GridTheme> | undefined;
 
   let columns: GridColumn[] = [];
@@ -281,12 +314,53 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       state.rowCount = ids.length;
       state.empty = sheetRowIds(store.state, sheet).length === 0;
     } else {
-      session.checks = checkRows(store.state, search, i18n.value);
+      session.checks = listChecks(search);
       state.version += 1;
       state.rowCount = session.checks.length;
       state.empty = false;
     }
     countSelected();
+  }
+
+  /** Counts the listed rows of each entry sheet, which their buttons show. */
+  function countEntries() {
+    const { state: rootState } = app.value.store;
+    state.counts = {
+      ...state.counts,
+      word: sheetRowIds(rootState, DictionarySheet.word).length,
+      term: sheetRowIds(rootState, DictionarySheet.term).length,
+      domain: sheetRowIds(rootState, DictionarySheet.domain).length,
+    };
+  }
+
+  /** Puts the number of checks and the loudest of their levels on the check sheet's button. */
+  function countChecks(checks: ReadonlyArray<DictionaryCheck>) {
+    state.counts = { ...state.counts, check: checks.length };
+    state.checkMark = markOf(checks);
+  }
+
+  /** The check sheet's rows under the search, counted on the way from the one walk. */
+  function listChecks(search: string): ReadonlyArray<DictionaryCheck> {
+    const { state: rootState } = app.value.store;
+    const checks = listDictionaryChecks(rootState);
+    countChecks(checks);
+    return checkRows(rootState, search, i18n.value, checks);
+  }
+
+  /**
+   * Counts the checks again once the browser is idle, while an entry sheet is
+   * shown, since that walks the whole document; the check sheet counts them
+   * as it lists them, once a frame.
+   */
+  function recountChecks() {
+    if (cancelCheckCount !== null || !isEntrySheet(session.sheet)) return;
+
+    cancelCheckCount = whenIdle(() => {
+      cancelCheckCount = null;
+      if (isEntrySheet(session.sheet)) {
+        countChecks(listDictionaryChecks(app.value.store.state));
+      }
+    });
   }
 
   /**
@@ -309,9 +383,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     const ids = isEntrySheet(sheet)
       ? sheetRowIds(store.state, sheet, search)
       : [];
-    const checks = isEntrySheet(sheet)
-      ? []
-      : checkRows(store.state, search, i18n.value);
+    const checks = isEntrySheet(sheet) ? [] : listChecks(search);
 
     state.sheet = sheet;
     state.version = 0;
@@ -432,11 +504,44 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     reportGridRefusal(app.value, event);
   };
 
-  const handleSearch = (event: InputEvent) => {
+  const search = (text: string) => {
     const { sheet } = session;
-    changeSearch(view, sheet, (event.target as HTMLInputElement).value);
+    changeSearch(view, sheet, text);
     refresh(storedSelection(view, sheet, state.rowCount, columns.length));
     session.handle.scrollTo(0, 0);
+  };
+
+  const handleSearch = (event: InputEvent) => {
+    search((event.target as HTMLInputElement).value);
+  };
+
+  /** A sheet button's count, the check sheet's in the colour of its loudest check. */
+  const countClass = (item: DictionarySheet) =>
+    item !== DictionarySheet.check || state.counts.check === 0
+      ? styles.count
+      : state.checkMark === DictionaryCheckLevel.error
+        ? styles.countError
+        : styles.countWarning;
+
+  /** A tool's tooltip: its name, and the chord that does the same in the grid while one is bound. */
+  const withChord = (name: string, shortcut?: string) =>
+    shortcut ? `${name} (${simpleShortcutToString(shortcut)})` : name;
+
+  /** Empties the search and hands the field the keyboard back. */
+  const clearSearch = () => {
+    search('');
+    searchRef.value?.querySelector('input')?.focus();
+  };
+
+  // Escape empties a search first, as a field's own clear does, and goes on
+  // as before once there is nothing to clear.
+  const handleSearchKeydown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || isComposing(event)) return;
+    if (!view.sheets[session.sheet].search) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    clearSearch();
   };
 
   /** Inserts empty rows by a row, or at the end for none, in one dispatch. */
@@ -727,7 +832,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
 
     addUnsubscribe(
       store.subscribe(actions => {
-        if (!bumpedSheets(actions).includes(session.sheet)) return;
+        const bumped = bumpedSheets(actions);
+        if (bumped.some(isEntrySheet)) countEntries();
+        if (bumped.length) recountChecks();
+        if (!bumped.includes(session.sheet)) return;
         // The rows the menu counted may have moved under it.
         closeMenu();
         if (!isEntrySheet(session.sheet)) return refreshChecks();
@@ -749,8 +857,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       }),
       () => {
         if (checksFrame !== null) cancelAnimationFrame(checksFrame);
+        cancelCheckCount?.();
       }
     );
+    recountChecks();
   });
 
   // The grid takes a new row count a tick after the render that hands it over,
@@ -800,48 +910,91 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 aria-pressed={item === sheet ? 'true' : 'false'}
                 on:click={() => switchSheet(item)}
               >
-                {t(DictionarySheetLabelKey[item])}
+                <span>{t(DictionarySheetLabelKey[item])}</span>
+                <span class={countClass(item)} aria-hidden="true">
+                  {formatCount(i18nValue.locale, state.counts[item])}
+                </span>
               </button>
             ))}
           </div>
-          <TextInput
-            class={styles.search}
-            title={t('common.search')}
-            placeholder={t('common.search')}
-            dir="auto"
-            value={view.sheets[sheet].search}
-            onInput={handleSearch}
-          />
+          <div class={styles.searchField} use:ref={ref(searchRef)}>
+            <span class={styles.searchIcon}>
+              <Icon name="search" size={14} />
+            </span>
+            <TextInput
+              class={styles.search}
+              title={t('common.search')}
+              placeholder={t('common.search')}
+              dir="auto"
+              value={view.sheets[sheet].search}
+              onInput={handleSearch}
+              onKeydown={handleSearchKeydown}
+            />
+            {view.sheets[sheet].search ? (
+              <button
+                type="button"
+                class={styles.clear}
+                title={t('dictionary.clearSearch')}
+                aria-label={t('dictionary.clearSearch')}
+                on:click={clearSearch}
+              >
+                <Icon name="x" size={14} />
+              </button>
+            ) : null}
+          </div>
           {entry && !props.readonly ? (
-            <div class={styles.actions}>
-              <Button
-                size="1"
-                variant="soft"
-                text={t('dictionary.addRow')}
-                onClick={handleAddRow}
-              />
-              <Button
-                size="1"
-                variant="soft"
-                text={t('dictionary.deleteRows')}
-                onClick={handleDeleteRows}
-              />
-              <Button
-                size="1"
-                variant="soft"
-                text={t('dictionary.import', {
+            <div class={styles.tools}>
+              <button
+                type="button"
+                class={styles.tool}
+                title={t('dictionary.addRow')}
+                aria-label={t('dictionary.addRow')}
+                on:click={handleAddRow}
+              >
+                <Icon name="plus" size={16} />
+              </button>
+              <button
+                type="button"
+                class={[styles.tool, styles.toolDanger]}
+                title={withChord(
+                  t('dictionary.deleteRows'),
+                  rowChordOf(
+                    app.value.keyBindingMap,
+                    KeyBindingName.removeColumn
+                  )
+                )}
+                aria-label={t('dictionary.deleteRows')}
+                on:click={handleDeleteRows}
+              >
+                <Icon name="trash-2" size={16} />
+              </button>
+              <span class={styles.divider} aria-hidden="true" />
+              <button
+                type="button"
+                class={styles.tool}
+                title={t('dictionary.import', {
                   format: DICTIONARY_FILE_FORMAT,
                 })}
-                onClick={handleImport}
-              />
-              <Button
-                size="1"
-                variant="soft"
-                text={t('dictionary.export', {
+                aria-label={t('dictionary.import', {
                   format: DICTIONARY_FILE_FORMAT,
                 })}
-                onClick={handleExport}
-              />
+                on:click={handleImport}
+              >
+                <Icon name="file-input" size={16} />
+              </button>
+              <button
+                type="button"
+                class={styles.tool}
+                title={t('dictionary.export', {
+                  format: DICTIONARY_FILE_FORMAT,
+                })}
+                aria-label={t('dictionary.export', {
+                  format: DICTIONARY_FILE_FORMAT,
+                })}
+                on:click={handleExport}
+              >
+                <Icon name="file-output" size={16} />
+              </button>
               <input
                 type="file"
                 prop:accept={DICTIONARY_FILE_ACCEPT}

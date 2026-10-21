@@ -471,6 +471,7 @@ export const roRO = {
   'dictionary.deleteRows': 'Ștergere rânduri',
   'dictionary.import': 'Import {format}',
   'dictionary.export': 'Export {format}',
+  'dictionary.clearSearch': 'Șterge căutarea',
   'dictionary.menu.insertAbove': {
     one: 'Inserare {count} rând deasupra',
     few: 'Inserare {count} rânduri deasupra',
