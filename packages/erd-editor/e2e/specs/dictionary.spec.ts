@@ -258,6 +258,30 @@ test.describe('the Dictionary tab', () => {
     );
   });
 
+  test('inserts as many rows above the selection as it covers on Alt+Shift+Enter, the add chord with Shift held', async ({
+    erd,
+  }) => {
+    await erd.seed(createSchema({ databaseName: 'shop' }));
+    await openTab(erd);
+    await importCsv(erd, WORDS);
+    await expect(rowCount(erd, WORDS.rows)).toBeVisible();
+
+    // The sheet's order is each row's order key, compared in code unit order.
+    const sheetNames = async () =>
+      (await listedRows(erd, 'word'))
+        .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0))
+        .map(({ name }) => name);
+    const imported = await sheetNames();
+
+    await tabOf(erd)
+      .locator('.dineug-grid-scroller')
+      .click({ position: { x: 100, y: ROW_HEIGHT + ROW_HEIGHT / 2 } });
+    await erd.page.keyboard.press('Shift+ArrowDown');
+    await erd.page.keyboard.press('Alt+Shift+Enter');
+    await expect(rowCount(erd, WORDS.rows + 2)).toBeVisible();
+    expect(await sheetNames()).toEqual(['', '', ...imported]);
+  });
+
   test('saves each sheet whole as the bytes its file came in: a byte order mark, the header and CRLF', async ({
     erd,
   }) => {

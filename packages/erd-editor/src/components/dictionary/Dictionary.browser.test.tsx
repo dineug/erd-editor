@@ -914,7 +914,7 @@ describe('the Dictionary tab', () => {
     await rightClick(fixture, 1);
     expect(menuChord(fixture, 'Insert 2 rows below')).toMatch(/Enter$/);
     expect(menuChord(fixture, 'Delete 2 rows')).toMatch(/⌫$/);
-    expect(menuChord(fixture, 'Insert 2 rows above')).toBe('');
+    expect(menuChord(fixture, 'Insert 2 rows above')).toMatch(/Enter$/);
 
     await press('{Alt>}{Enter}{/Alt}');
     expect(menu(fixture)).toBeNull();
@@ -932,6 +932,21 @@ describe('the Dictionary tab', () => {
     await press('{Alt>}{Backspace}{/Alt}');
     expect(names(fixture)).toEqual(['A', 'B', 'C']);
     expect(dictionaryBatches(fixture)).toHaveLength(3);
+    expect(fixture.shortcuts).toEqual([]);
+  });
+
+  it('inserts as many rows above the selection as it covers on the add column chord with Shift held', async () => {
+    const fixture = await setup();
+    fixture.shortcuts.length = 0;
+
+    await press('{ArrowDown}{Shift>}{ArrowDown}{/Shift}');
+    await press('{Alt>}{Shift>}{Enter}{/Shift}{/Alt}');
+    expect(names(fixture)).toEqual(['A', '', '', 'B', 'C', 'D']);
+    expect(dictionaryBatches(fixture)).toHaveLength(1);
+    expect(dictionaryViewOf(fixture.app).sheets.word.selection).toEqual({
+      active: { row: 1, col: 0 },
+      ranges: [{ startRow: 1, startCol: 0, endRow: 2, endCol: 0 }],
+    });
     expect(fixture.shortcuts).toEqual([]);
   });
 

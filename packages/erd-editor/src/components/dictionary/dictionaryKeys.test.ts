@@ -4,6 +4,7 @@ import {
   type DictionaryKeyContext,
   handleDictionaryKeydown,
   rowChordOf,
+  RowCommand,
 } from '@/components/dictionary/dictionaryKeys';
 import { createKeyBindingMap, KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -20,6 +21,7 @@ const PALETTE = { key: 'k', code: 'KeyK', ctrlKey: true };
 const UNDO = { key: 'z', code: 'KeyZ', ctrlKey: true };
 const REDO = { key: 'z', code: 'KeyZ', ctrlKey: true, shiftKey: true };
 const INSERT = { key: 'Enter', code: 'Enter', altKey: true };
+const INSERT_ABOVE = { ...INSERT, shiftKey: true };
 const DELETE = { key: 'Delete', code: 'Delete', altKey: true };
 const BACKSPACE = { key: 'Backspace', code: 'Backspace', altKey: true };
 
@@ -34,6 +36,7 @@ function handle(
     undo: vi.fn(),
     redo: vi.fn(),
     insertRows: vi.fn(),
+    insertRowsAbove: vi.fn(),
     deleteRows: vi.fn(),
   };
 
@@ -110,6 +113,44 @@ describe('handleDictionaryKeydown', () => {
     }
   });
 
+  it('inserts above by the add chord with Shift held as well, never below', () => {
+    const above = handle(INSERT_ABOVE);
+    expect(above).toMatchObject({ passed: false, prevented: true });
+    expect(above.sheet.insertRowsAbove).toHaveBeenCalledTimes(1);
+    expect(above.sheet.insertRows).not.toHaveBeenCalled();
+
+    const below = handle(INSERT);
+    expect(below.sheet.insertRowsAbove).not.toHaveBeenCalled();
+    expect(rowChordOf(createKeyBindingMap(), RowCommand.insertAbove)).toBe(
+      'Alt+Shift+Enter'
+    );
+  });
+
+  it('moves the chord that inserts above with a rebound add chord, and gives none to one that holds Shift', () => {
+    const keyBindingMap = createKeyBindingMap();
+    keyBindingMap[KeyBindingName.addColumn] = [
+      { shortcut: 'Alt+KeyR', preventDefault: true },
+      { shortcut: 'Shift+Alt+KeyI' },
+    ];
+
+    const rebound = handle(
+      { key: 'R', code: 'KeyR', altKey: true, shiftKey: true },
+      { keyBindingMap }
+    );
+    expect(rebound).toMatchObject({ passed: false, prevented: true });
+    expect(rebound.sheet.insertRowsAbove).toHaveBeenCalledTimes(1);
+    expect(rowChordOf(keyBindingMap, RowCommand.insertAbove)).toBe(
+      'Alt+Shift+KeyR'
+    );
+
+    const held = handle(
+      { key: 'I', code: 'KeyI', altKey: true, shiftKey: true },
+      { keyBindingMap }
+    );
+    expect(held.sheet.insertRows).toHaveBeenCalledTimes(1);
+    expect(held.sheet.insertRowsAbove).not.toHaveBeenCalled();
+  });
+
   it('reads the rows by the bindings the editor holds, so a rebound column chord moves them too', () => {
     const keyBindingMap = createKeyBindingMap();
     keyBindingMap[KeyBindingName.addColumn] = [{ shortcut: 'Alt+KeyR' }];
@@ -143,8 +184,9 @@ describe('handleDictionaryKeydown', () => {
       expect(typed.sheet.insertRows).not.toHaveBeenCalled();
       expect(typed.sheet.deleteRows).not.toHaveBeenCalled();
     }
-    expect(rowChordOf(keyBindingMap, KeyBindingName.addColumn)).toBeUndefined();
-    expect(rowChordOf(createKeyBindingMap(), KeyBindingName.removeColumn)).toBe(
+    expect(rowChordOf(keyBindingMap, RowCommand.insertBelow)).toBeUndefined();
+    expect(rowChordOf(keyBindingMap, RowCommand.insertAbove)).toBeUndefined();
+    expect(rowChordOf(createKeyBindingMap(), RowCommand.deleteRows)).toBe(
       'Alt+Backspace'
     );
   });
@@ -154,10 +196,11 @@ describe('handleDictionaryKeydown', () => {
       { isEditing: () => true },
       { inGrid: false, isEditing: () => false },
     ]) {
-      for (const chord of [INSERT, BACKSPACE]) {
+      for (const chord of [INSERT, INSERT_ABOVE, BACKSPACE]) {
         const kept = handle(chord, context);
         expect(kept).toMatchObject({ passed: false, prevented: false });
         expect(kept.sheet.insertRows).not.toHaveBeenCalled();
+        expect(kept.sheet.insertRowsAbove).not.toHaveBeenCalled();
         expect(kept.sheet.deleteRows).not.toHaveBeenCalled();
       }
     }

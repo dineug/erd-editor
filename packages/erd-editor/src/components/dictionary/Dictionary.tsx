@@ -48,6 +48,7 @@ import {
   handleDictionaryKeydown,
   keepClipboard,
   rowChordOf,
+  RowCommand,
 } from '@/components/dictionary/dictionaryKeys';
 import {
   changeSearch,
@@ -103,11 +104,7 @@ import type { I18n } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
 import { formatCount } from '@/utils/formatCount';
 import { forceFocusEvent } from '@/utils/internalEvents';
-import {
-  isComposing,
-  KeyBindingName,
-  simpleShortcutToString,
-} from '@/utils/keyboard-shortcut';
+import { isComposing, simpleShortcutToString } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Dictionary.styles';
 
@@ -801,6 +798,9 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       insertRows: () => {
         if (!props.readonly) handleMenuInsertBelow();
       },
+      insertRowsAbove: () => {
+        if (!props.readonly) handleMenuInsertAbove();
+      },
       deleteRows: () => {
         if (!props.readonly) handleMenuDeleteRows();
       },
@@ -953,10 +953,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 class={[styles.tool, styles.toolDanger]}
                 title={withChord(
                   t('dictionary.deleteRows'),
-                  rowChordOf(
-                    app.value.keyBindingMap,
-                    KeyBindingName.removeColumn
-                  )
+                  rowChordOf(app.value.keyBindingMap, RowCommand.deleteRows)
                 )}
                 aria-label={t('dictionary.deleteRows')}
                 on:click={handleDeleteRows}
@@ -1040,13 +1037,17 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
           <DictionaryContextMenu
             count={menuRowCount()}
             column={menuColumn?.label ?? ''}
+            insertAboveShortcut={rowChordOf(
+              app.value.keyBindingMap,
+              RowCommand.insertAbove
+            )}
             insertShortcut={rowChordOf(
               app.value.keyBindingMap,
-              KeyBindingName.addColumn
+              RowCommand.insertBelow
             )}
             deleteShortcut={rowChordOf(
               app.value.keyBindingMap,
-              KeyBindingName.removeColumn
+              RowCommand.deleteRows
             )}
             onInsertAbove={handleMenuInsertAbove}
             onInsertBelow={handleMenuInsertBelow}

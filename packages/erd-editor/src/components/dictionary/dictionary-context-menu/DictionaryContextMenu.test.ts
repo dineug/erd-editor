@@ -77,15 +77,24 @@ describe('DictionaryContextMenu', () => {
     ).toHaveLength(2);
   });
 
-  it('shows the chords that insert below and delete in the grid beside their rows', async () => {
+  it('shows the chords that insert and delete in the grid beside their rows', async () => {
     await open({
       count: 2,
       ...handlers(),
+      insertAboveShortcut: 'Alt+Shift+Enter',
       insertShortcut: 'Alt+Enter',
       deleteShortcut: 'Alt+Backspace',
     });
 
-    expect(chords()).toEqual(['', 'Alt + Enter', 'Alt + ⌫', '', '', '', '']);
+    expect(chords()).toEqual([
+      'Alt + Shift + Enter',
+      'Alt + Enter',
+      'Alt + ⌫',
+      '',
+      '',
+      '',
+      '',
+    ]);
   });
 
   it('runs the handler of the row pressed', async () => {

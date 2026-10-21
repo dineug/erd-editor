@@ -11,6 +11,8 @@ export type DictionaryContextMenuProps = {
   count: number;
   /** The header of the column right clicked, which the sorts order the sheet by. */
   column: string;
+  /** The chord that inserts above in the grid, shown beside its row. */
+  insertAboveShortcut?: string;
   /** The chord that inserts below in the grid, shown beside its row. */
   insertShortcut?: string;
   /** The chord that deletes in the grid, shown beside its row. */
@@ -47,6 +49,7 @@ const DictionaryContextMenu: FC<DictionaryContextMenuProps> = (props, ctx) => {
                 <ContextMenu.Menu
                   icon={<Icon name="arrow-up" size={14} />}
                   name={t('dictionary.menu.insertAbove', { count })}
+                  right={<Kbd shortcut={props.insertAboveShortcut} />}
                 />
               }
             />

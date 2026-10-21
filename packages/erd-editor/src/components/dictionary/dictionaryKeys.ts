@@ -1,3 +1,4 @@
+import type { ValuesType } from '@/internal-types';
 import {
   isComposing,
   type KeyBindingMap,
@@ -31,20 +32,21 @@ const KEPT_BY_AN_EDIT: ReadonlyArray<KeyBindingName> = [
   KeyBindingName.findReplace,
 ];
 
-/**
- * The column chords a sheet reads as its rows' own, Insert below and Delete,
- * as the ERD tab adds and removes a table's columns by them.
- */
-const ROW_CHORDS: ReadonlyArray<KeyBindingName> = [
-  KeyBindingName.addColumn,
-  KeyBindingName.removeColumn,
-];
+/** What a press does to a sheet's rows in the grid. */
+export const RowCommand = {
+  insertBelow: 'insertBelow',
+  insertAbove: 'insertAbove',
+  deleteRows: 'deleteRows',
+} as const;
+export type RowCommand = ValuesType<typeof RowCommand>;
+
+const RowCommandList = Object.values(RowCommand);
 
 /**
  * The options of a column chord the grid runs: those of one press, since a key
  * matches a sequence by its last press alone, and the grid keeps no sequence.
  */
-const rowOptions = (
+const onePressOptions = (
   keyBindingMap: KeyBindingMap,
   name: KeyBindingName
 ): ShortcutOption[] =>
@@ -52,22 +54,52 @@ const rowOptions = (
     ({ shortcut }) => shortcutToTuple(shortcut).length === 1
   );
 
-/** The chord a menu row shows for a column chord the grid runs, if one is bound. */
+/** A one-press option with Shift held as well, none for one that holds it already. */
+function withShift({ shortcut, ...option }: ShortcutOption): ShortcutOption[] {
+  const mods = shortcut.split(/\b\+/);
+  const key = mods.pop() as string;
+  return mods.includes('Shift')
+    ? []
+    : [{ ...option, shortcut: [...mods, 'Shift', key].join('+') }];
+}
+
+/**
+ * The chords of a row command: Insert below and Delete on the column chords,
+ * as the ERD tab adds and removes a table's columns by them, and Insert above
+ * on the add chord with Shift held as well.
+ */
+function rowOptions(
+  keyBindingMap: KeyBindingMap,
+  command: RowCommand
+): ShortcutOption[] {
+  switch (command) {
+    case RowCommand.insertBelow:
+      return onePressOptions(keyBindingMap, KeyBindingName.addColumn);
+    case RowCommand.insertAbove:
+      return onePressOptions(keyBindingMap, KeyBindingName.addColumn).flatMap(
+        withShift
+      );
+    case RowCommand.deleteRows:
+      return onePressOptions(keyBindingMap, KeyBindingName.removeColumn);
+  }
+}
+
+/** The chord a menu row shows for a row command, if one is bound. */
 export const rowChordOf = (
   keyBindingMap: KeyBindingMap,
-  name: KeyBindingName
-): string | undefined => rowOptions(keyBindingMap, name)[0]?.shortcut;
+  command: RowCommand
+): string | undefined => rowOptions(keyBindingMap, command)[0]?.shortcut;
 
-/** The column chord a press runs in the grid, with the option it matched. */
+/** The row command a press runs in the grid, with the option it matched. */
 function rowChord(
   event: KeyboardEvent,
   keyBindingMap: KeyBindingMap
-): { name: KeyBindingName; option: ShortcutOption } | undefined {
-  for (const name of ROW_CHORDS) {
-    const option = rowOptions(keyBindingMap, name).find(option =>
+): { command: RowCommand; option: ShortcutOption } | undefined {
+  for (const command of RowCommandList) {
+    const option = rowOptions(keyBindingMap, command).find(option =>
       matchesShortcut(event, [option])
     );
-    if (option) return { name, option };
+    if (option) return { command, option };
   }
   return undefined;
 }
@@ -93,13 +125,15 @@ export type DictionaryKeyContext = {
   isEditing: () => boolean;
   /** Inserts as many rows below the selection as it covers. */
   insertRows: () => void;
+  /** Inserts as many rows above the selection as it covers. */
+  insertRowsAbove: () => void;
   /** Deletes the rows the selection covers. */
   deleteRows: () => void;
 };
 
 /**
  * Reads a press at the tab's root: undo and redo undo the sheet shown unless an
- * edit or a field takes them, the column chords insert and delete rows in a grid
+ * edit or a field takes them, the row chords insert and delete rows in a grid
  * with no edit open, which keeps find and the palette, and the rest stops.
  */
 export function handleDictionaryKeydown(
@@ -111,6 +145,7 @@ export function handleDictionaryKeydown(
     inGrid,
     isEditing,
     insertRows,
+    insertRowsAbove,
     deleteRows,
   }: DictionaryKeyContext
 ) {
@@ -136,7 +171,12 @@ export function handleDictionaryKeydown(
     if (row) {
       if (row.option.preventDefault) event.preventDefault();
       event.stopPropagation();
-      row.name === KeyBindingName.addColumn ? insertRows() : deleteRows();
+      const run = {
+        [RowCommand.insertBelow]: insertRows,
+        [RowCommand.insertAbove]: insertRowsAbove,
+        [RowCommand.deleteRows]: deleteRows,
+      }[row.command];
+      run();
       return;
     }
 
