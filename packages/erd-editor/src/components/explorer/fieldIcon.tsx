@@ -3,12 +3,16 @@ import { DOMTemplateLiterals } from '@dineug/r-html';
 import Icon from '@/components/primitives/icon/Icon';
 import { FindField } from '@/utils/find-replace';
 
-/** The icon a result row carries for the kind of text it was found in. */
+/**
+ * The icon a result row carries for the kind of text it was found in. A
+ * logical name draws a column's, since only the column search lists one.
+ */
 export function fieldIcon(field: FindField, size = 14): DOMTemplateLiterals {
   switch (field) {
     case FindField.tableName:
       return <Icon name="table-2" size={size} />;
     case FindField.columnName:
+    case FindField.logicalName:
       return <Icon name="list" size={size} />;
     case FindField.memo:
       return <Icon name="sticky-note" size={size} />;

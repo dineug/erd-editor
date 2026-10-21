@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { Show } from '@/constants/schema';
+import { NameViewMode, Show } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
 import {
   focusColumnAction,
@@ -25,6 +25,7 @@ import {
 } from '@/engine/modules/editor/utils/focus';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
+  changeNameViewModeAction,
   changeShowAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -101,6 +102,20 @@ function focusMissingTable(store: Store, focusType: FocusType) {
   };
 }
 
+/** The reader's own switch of the name view, as a locked document takes it. */
+function view(
+  store: Store,
+  value: (typeof NameViewMode)[keyof typeof NameViewMode]
+) {
+  store.dispatchSync(
+    changeNameViewModeAction({
+      value,
+      shared: false,
+      editorId: store.state.editor.id,
+    })
+  );
+}
+
 function hide(store: Store, show: number) {
   store.dispatchSync(changeShowAction({ show, value: false }));
 }
@@ -113,6 +128,12 @@ describe('isTableFocusType', () => {
   it('is true only for the table focus types', () => {
     expect(isTableFocusType(FocusType.tableName)).toBe(true);
     expect(isTableFocusType(FocusType.tableComment)).toBe(true);
+  });
+
+  it('is true for the logical name a header lays out beside or for the name', () => {
+    expect(isTableFocusType(FocusType.tableLogicalName)).toBe(true);
+    expect(isTableFocusType(FocusType.columnLogicalName)).toBe(false);
+    expect(isTableFocusType(FocusType.columnDomain)).toBe(false);
   });
 
   it('is false for every column focus type', () => {
@@ -1019,5 +1040,141 @@ describe('focusMoveTable integration', () => {
       focusMoveTableAction({ moveKey: MoveKey.ArrowUp, shiftKey: false })
     );
     expect(getFocus(store).columnId).toBe('c1');
+  });
+});
+
+describe('the focus across the name views', () => {
+  it('walks the logical name, the name and the comment of a header in the view of both', () => {
+    const store = createTestStore(['c1']);
+    view(store, NameViewMode.both);
+    focusTable(store, FocusType.tableLogicalName);
+
+    arrowRight(store.state, move(MoveKey.ArrowRight));
+    expect(getFocus(store).focusType).toBe(FocusType.tableName);
+
+    arrowRight(store.state, move(MoveKey.ArrowRight));
+    expect(getFocus(store).focusType).toBe(FocusType.tableComment);
+    expect(isLastTable(store.state)).toBe(true);
+
+    arrowLeft(store.state, move(MoveKey.ArrowLeft));
+    arrowLeft(store.state, move(MoveKey.ArrowLeft));
+    expect(getFocus(store).focusType).toBe(FocusType.tableLogicalName);
+  });
+
+  it('starts a row of the view of both on its logical name and leaves it for the first header cell', () => {
+    const store = createTestStore(['c1', 'c2']);
+    view(store, NameViewMode.both);
+    focusTable(store, FocusType.tableLogicalName);
+
+    arrowDown(store.state, move(MoveKey.ArrowDown));
+    expect(getFocus(store)).toMatchObject({
+      focusType: FocusType.columnLogicalName,
+      columnId: 'c1',
+    });
+
+    arrowRight(store.state, move(MoveKey.ArrowRight));
+    expect(getFocus(store).focusType).toBe(FocusType.columnName);
+
+    arrowLeft(store.state, move(MoveKey.ArrowLeft));
+    arrowLeft(store.state, move(MoveKey.ArrowLeft));
+    expect(getFocus(store)).toMatchObject({
+      focusType: FocusType.tableComment,
+      columnId: null,
+    });
+
+    focusColumn(store, 'c1', FocusType.columnLogicalName);
+    arrowUp(store.state, move(MoveKey.ArrowUp));
+    expect(getFocus(store).focusType).toBe(FocusType.tableLogicalName);
+  });
+
+  it('walks the logical name and the domain in the name and type cells of the logical view', () => {
+    const store = createTestStore(['c1', 'c2']);
+    view(store, NameViewMode.logical);
+    focusTable(store, FocusType.tableLogicalName);
+
+    arrowDown(store.state, move(MoveKey.ArrowDown));
+    expect(getFocus(store).focusType).toBe(FocusType.columnLogicalName);
+
+    arrowRight(store.state, move(MoveKey.ArrowRight));
+    expect(getFocus(store).focusType).toBe(FocusType.columnDomain);
+
+    arrowDown(store.state, move(MoveKey.ArrowDown));
+    expect(getFocus(store)).toMatchObject({
+      focusType: FocusType.columnDomain,
+      columnId: 'c2',
+    });
+
+    focusColumn(store, 'c2', FocusType.columnComment);
+    arrowDown(store.state, move(MoveKey.ArrowDown));
+    expect(getFocus(store)).toMatchObject({
+      focusType: FocusType.tableLogicalName,
+      columnId: null,
+    });
+  });
+
+  it('walks the type and the domain apart while the domain shows a cell of its own', () => {
+    const store = createTestStore(['c1']);
+    reveal(store, Show.columnDomain);
+    focusColumn(store, 'c1', FocusType.columnDataType);
+
+    arrowRight(store.state, move(MoveKey.ArrowRight));
+    expect(getFocus(store).focusType).toBe(FocusType.columnDomain);
+
+    view(store, NameViewMode.logical);
+    arrowLeft(store.state, move(MoveKey.ArrowLeft));
+    expect(getFocus(store).focusType).toBe(FocusType.columnDataType);
+    arrowLeft(store.state, move(MoveKey.ArrowLeft));
+    expect(getFocus(store).focusType).toBe(FocusType.columnLogicalName);
+  });
+
+  it('walks on from the cell the view draws in place of a focus taken in another', () => {
+    const store = createTestStore(['c1']);
+    focusTable(store, FocusType.tableName);
+    // The view is set by hand, so no switch moves the focus onto its cells.
+    store.state.settings.nameViewMode = NameViewMode.logical;
+
+    arrowRight(store.state, move(MoveKey.ArrowRight));
+    expect(getFocus(store).focusType).toBe(FocusType.tableComment);
+
+    focusColumn(store, 'c1', FocusType.columnDomain);
+    store.state.settings.nameViewMode = NameViewMode.physical;
+    arrowRight(store.state, move(MoveKey.ArrowRight));
+    expect(getFocus(store).focusType).toBe(FocusType.columnNotNull);
+  });
+
+  it('lands a focus asked for by the name on the cell the view draws it in', () => {
+    const store = createTestStore(['c1']);
+    view(store, NameViewMode.logical);
+
+    focusTable(store, FocusType.tableName);
+    expect(getFocus(store).focusType).toBe(FocusType.tableLogicalName);
+
+    focusColumn(store, 'c1', FocusType.columnName);
+    expect(getFocus(store).focusType).toBe(FocusType.columnLogicalName);
+
+    focusColumn(store, 'c1', FocusType.columnDataType);
+    expect(getFocus(store).focusType).toBe(FocusType.columnDomain);
+  });
+
+  it('lands a focus on another table at the first header cell the view lays out', () => {
+    const store = createTestStore(['c1']);
+    store.dispatchSync(
+      addTableAction({ id: 'table-2', ui: { x: 0, y: 0, zIndex: 3 } })
+    );
+    view(store, NameViewMode.both);
+
+    store.dispatchSync(focusTableAction({ tableId: 'table-2' }));
+    expect(getFocus(store)).toMatchObject({
+      tableId: 'table-2',
+      focusType: FocusType.tableLogicalName,
+    });
+
+    store.dispatchSync(
+      focusTableAction({ tableId: TABLE_ID, focusType: FocusType.tableName })
+    );
+    expect(getFocus(store)).toMatchObject({
+      tableId: TABLE_ID,
+      focusType: FocusType.tableName,
+    });
   });
 });

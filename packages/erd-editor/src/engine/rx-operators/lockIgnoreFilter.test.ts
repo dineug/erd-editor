@@ -52,6 +52,22 @@ describe('lockIgnoreFilter', () => {
     expect(emitted).toEqual([]);
   });
 
+  it('reads the name view bit the other way round, dropping its switch while the bit is clear', () => {
+    const { unlockNameViewMode } = LockSettingType;
+    let locks = 63;
+    const { source$, emitted } = run(() => locks);
+    const view = action('settings.changeNameViewMode');
+    const scroll = action('settings.scrollTo');
+
+    source$.next([view, scroll]);
+    locks = 63 | unlockNameViewMode;
+    source$.next([view, scroll]);
+    locks = unlockNameViewMode;
+    source$.next([view, scroll]);
+
+    expect(emitted).toEqual([[view], [view, scroll]]);
+  });
+
   it('reads the locks again for each batch', () => {
     let locks: number = viewport;
     const { source$, emitted } = run(() => locks);

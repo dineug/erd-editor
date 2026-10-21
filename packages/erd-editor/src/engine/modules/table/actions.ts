@@ -15,6 +15,8 @@ export const ActionType = {
   changeTableGroup: 'table.changeGroup',
   changeZIndex: 'table.changeZIndex',
   sortTable: 'table.sort',
+  changeTableLogicalName: 'table.changeLogicalName',
+  changeTableNameDerived: 'table.changeNameDerived',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -60,6 +62,11 @@ export type ActionMap = {
     zIndex: number;
   };
   [ActionType.sortTable]: void;
+  [ActionType.changeTableLogicalName]: ChangeTableValuePayload;
+  [ActionType.changeTableNameDerived]: {
+    id: string;
+    value: boolean;
+  };
 };
 
 export type ReducerType<T extends keyof ActionMap> = Reducer<

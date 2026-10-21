@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import { v2ToV3 } from '@/convert/v2ToV3';
+import { toDocumentJson } from '@/storageForm';
 import { type ERDEditorSchemaV2, schemaV2Parser } from '@/v2';
 import { SchemaV3Constants } from '@/v3';
 import { migrateScrollToOrigin } from '@/v3/parser/migrateScroll';
@@ -262,6 +263,7 @@ describe('v2ToV3', () => {
       'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json'
     );
     expect(Object.keys(result.collections).sort()).toEqual([
+      'domainEntities',
       'indexColumnEntities',
       'indexEntities',
       'memoEntities',
@@ -269,6 +271,8 @@ describe('v2ToV3', () => {
       'tableColumnEntities',
       'tableEntities',
       'tableGroupEntities',
+      'termEntities',
+      'wordEntities',
     ]);
   });
 
@@ -414,10 +418,26 @@ describe('v2ToV3', () => {
       expect(settings.bracketType).toBe(BracketType.none);
     });
 
-    it('translates a complete columnOrder', () => {
+    it('translates a complete columnOrder, the logical name before the name and the domain after the data type', () => {
       const { settings } = v2ToV3(createSchemaV2());
 
       expect(settings.columnOrder).toEqual([
+        ColumnType.columnComment,
+        ColumnType.columnDefault,
+        ColumnType.columnAutoIncrement,
+        ColumnType.columnUnique,
+        ColumnType.columnNotNull,
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnLogicalName,
+        ColumnType.columnName,
+      ]);
+    });
+
+    it('saves the order of a v2 document in the seven entries it held', () => {
+      const schema = v2ToV3(createSchemaV2());
+
+      expect(JSON.parse(toDocumentJson(schema)).settings.columnOrder).toEqual([
         ColumnType.columnComment,
         ColumnType.columnDefault,
         ColumnType.columnAutoIncrement,
@@ -433,8 +453,10 @@ describe('v2ToV3', () => {
       schemaV2.canvas.setting.columnOrder = ['columnName'] as any;
 
       expect(v2ToV3(schemaV2).settings.columnOrder).toEqual([
+        ColumnType.columnLogicalName,
         ColumnType.columnName,
         ColumnType.columnDataType,
+        ColumnType.columnDomain,
         ColumnType.columnNotNull,
         ColumnType.columnUnique,
         ColumnType.columnAutoIncrement,
@@ -695,6 +717,9 @@ describe('v2ToV3', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
     expect(result.collections.tableEntities).toEqual({});
     expect(result.collections.tableColumnEntities).toEqual({});
@@ -703,6 +728,9 @@ describe('v2ToV3', () => {
     expect(result.collections.memoEntities).toEqual({});
     expect(result.collections.tableGroupEntities).toEqual({});
     expect(result.collections.relationshipEntities).toEqual({});
+    expect(result.collections.wordEntities).toEqual({});
+    expect(result.collections.termEntities).toEqual({});
+    expect(result.collections.domainEntities).toEqual({});
     expect(result.settings.show).toBe(
       Show.tableComment |
         Show.columnComment |

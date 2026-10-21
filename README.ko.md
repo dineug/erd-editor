@@ -22,6 +22,8 @@ Obsidian, 여러분의 앱 안, 그리고 코딩 에이전트의 손에서도.
 
 - **설계** — 테이블, 컬럼, 메모, 테이블 그룹, 네 가지 관계 카디널리티, ON DELETE와 ON UPDATE,
   대체 키, 자동 배치
+- **명명 표준** — 논리명과 물리명, 단어·용어·도메인 사전에서 정해지는 물리명과 데이터 타입, CSV
+  가져오기·내보내기와 검사를 갖춘 사전 탭
 - **가져오기** — SQL DDL, GraphQL SDL, DBML, AML. 다이어그램을 바꾸거나 기존 다이어그램에 더합니다
 - **내보내기** — 데이터베이스 8종의 DDL, 22개 언어·ORM의 코드, PNG와 SVG
 - **탐색** — 명령 팔레트(`Ctrl`/`Cmd`+`K`), 찾기·바꾸기가 있는 탐색기 트리, Graph와 Flow 뷰
@@ -148,8 +150,7 @@ document.body.appendChild(editor);
 
 pnpm 워크스페이스입니다. [`@dineug/erd-editor`](./packages/erd-editor)와
 [`@dineug/erd-editor-mcp`](./packages/mcp-server)는 npm에 게시되고, 플러그인 셋은 각자의 스토어로
-배포되며, `app`은 erd-editor.io이고, 나머지는 이 빌드들이 가져다 쓰는 비공개 라이브러리입니다. 다만
-캔버스 그리드인 `grid`는 아직 어느 빌드도 가져다 쓰지 않습니다.
+배포되며, `app`은 erd-editor.io이고, 나머지는 이 빌드들이 가져다 쓰는 비공개 라이브러리입니다.
 
 <details>
 <summary>20개 패키지 전체</summary>

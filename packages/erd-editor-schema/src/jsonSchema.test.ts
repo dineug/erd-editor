@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { DictionaryFields } from '@/dictionaryRows';
 import { parser, toJson } from '@/parser';
 import { toDocumentJson } from '@/storageForm';
 import { createSchema, SchemaV3Constants } from '@/v3';
 
 import schema from '../../../json-schema/schema.json';
 
-const { Database, OrderType, RelationshipType } = SchemaV3Constants;
+const { Database, LockSettingType, NameViewMode, OrderType, RelationshipType } =
+  SchemaV3Constants;
 
 type JsonSchema = {
   $ref?: string;
@@ -18,8 +20,9 @@ type JsonSchema = {
   properties?: Record<string, JsonSchema>;
   required?: string[];
   additionalProperties?: boolean | JsonSchema;
-  items?: JsonSchema;
+  items?: boolean | JsonSchema;
   prefixItems?: JsonSchema[];
+  anyOf?: JsonSchema[];
   minItems?: number;
   maxItems?: number;
   $defs?: Record<string, JsonSchema>;
@@ -61,8 +64,14 @@ function validate(
     (node.type === 'number' && type === 'integer');
 
   if (!fits) return [`${at}: ${type} is not ${node.type}`];
-  if ('const' in node && node.const !== value) {
+  if ('const' in node && JSON.stringify(node.const) !== JSON.stringify(value)) {
     errors.push(`${at}: not ${JSON.stringify(node.const)}`);
+  }
+  if (
+    node.anyOf &&
+    !node.anyOf.some(branch => validate(value, branch, at, where).length === 0)
+  ) {
+    errors.push(`${at}: fits none of anyOf`);
   }
   if (node.enum && !node.enum.includes(value)) {
     errors.push(`${at}: ${JSON.stringify(value)} is outside the enum`);
@@ -85,7 +94,9 @@ function validate(
     }
     value.forEach((item, index) => {
       const itemNode = node.prefixItems?.[index] ?? node.items;
-      if (itemNode) {
+      if (itemNode === false) {
+        errors.push(`${at}[${index}]: is not allowed`);
+      } else if (typeof itemNode === 'object') {
         errors.push(
           ...validate(item, itemNode, `${at}[${index}]`, where, reached)
         );
@@ -151,11 +162,17 @@ function namedProperties(
     ...(typeof node.additionalProperties === 'object'
       ? namedProperties(node.additionalProperties, `${where}/*`, seen)
       : []),
-    ...(node.items ? namedProperties(node.items, where, seen) : []),
+    ...(typeof node.items === 'object'
+      ? namedProperties(node.items, where, seen)
+      : []),
   ];
 }
 
-/** A document that reaches every saved field: groups, scripts, every entity. */
+/**
+ * A document that reaches every saved field: groups, scripts, logical names,
+ * an unlocked name view, domain links, a full row in each dictionary and more.
+ * Its second table and column hold no text past a name, which a save leaves out.
+ */
 const FULL = toDocumentJson(
   parser(
     JSON.stringify({
@@ -163,7 +180,9 @@ const FULL = toDocumentJson(
       settings: {
         database: Database.PostgreSQL,
         databaseName: 'shop',
+        lockSettings: 63 | LockSettingType.unlockNameViewMode,
         ddlScripts: { before: 'SET search_path = shop;', after: '' },
+        nameViewMode: NameViewMode.both,
       },
       doc: {
         tableIds: ['t1', 't2'],
@@ -174,11 +193,30 @@ const FULL = toDocumentJson(
       },
       collections: {
         tableEntities: {
-          t1: { id: 't1', name: 'users', columnIds: ['c1'], groupId: 'g1' },
+          t1: {
+            id: 't1',
+            name: 'users',
+            logicalName: 'User',
+            comment: 'who signs in',
+            columnIds: ['c1'],
+            groupId: 'g1',
+            nameDerived: true,
+            ui: { color: '#0090ff' },
+          },
           t2: { id: 't2', name: 'orders', columnIds: ['c2'] },
         },
         tableColumnEntities: {
-          c1: { id: 'c1', tableId: 't1', name: 'id', options: 2 },
+          c1: {
+            id: 'c1',
+            tableId: 't1',
+            name: 'USER_NO',
+            comment: 'the number a user signs in with',
+            dataType: 'NUMERIC(10)',
+            default: '0',
+            options: 2 | 16,
+            logicalName: 'User Number',
+            domainId: 'd1',
+          },
           c2: { id: 'c2', tableId: 't2', name: 'user_id' },
         },
         relationshipEntities: {
@@ -200,8 +238,24 @@ const FULL = toDocumentJson(
             orderType: OrderType.DESC,
           },
         },
-        memoEntities: { m1: { id: 'm1', value: 'note' } },
-        tableGroupEntities: { g1: { id: 'g1', name: 'billing' } },
+        memoEntities: {
+          m1: { id: 'm1', value: 'note', ui: { color: '#ffcd00' } },
+        },
+        tableGroupEntities: {
+          g1: { id: 'g1', name: 'billing', color: '#30a46c' },
+        },
+        wordEntities: {
+          fields: [...DictionaryFields.wordEntities],
+          rows: [['w1', 'user', 'USER', 'user', 'one', 'member', 'client']],
+        },
+        termEntities: {
+          fields: [...DictionaryFields.termEntities],
+          rows: [['tm1', 'User Number', 'USER_NO', 'd1', 'one', 'user id']],
+        },
+        domainEntities: {
+          fields: [...DictionaryFields.domainEntities],
+          rows: [['d1', 'NumberN10', 'number', 'NUMERIC(10)', 'a count']],
+        },
       },
     })
   )
@@ -216,6 +270,75 @@ describe('json-schema/schema.json', () => {
 
   it('accepts the storage form of a new document, which holds no group', () => {
     expect(validate(JSON.parse(toDocumentJson(createSchema())))).toEqual([]);
+  });
+
+  it('accepts the storage form of a document whose empty text it leaves out', () => {
+    const { collections } = full();
+    const document = JSON.parse(
+      toDocumentJson(
+        parser(
+          JSON.stringify({
+            version: '3.0.0',
+            doc: {
+              tableIds: ['t1'],
+              indexIds: ['i1'],
+              memoIds: ['m1'],
+              tableGroupIds: ['g1'],
+            },
+            collections: {
+              tableEntities: { t1: { id: 't1', columnIds: ['c1'] } },
+              tableColumnEntities: { c1: { id: 'c1', tableId: 't1' } },
+              indexEntities: { i1: { id: 'i1', tableId: 't1' } },
+              memoEntities: { m1: { id: 'm1' } },
+              tableGroupEntities: { g1: { id: 'g1' } },
+            },
+          })
+        )
+      )
+    );
+
+    expect(validate(document)).toEqual([]);
+    expect(collections.tableEntities.t2).not.toHaveProperty('comment');
+    expect(collections.tableEntities.t2.ui).not.toHaveProperty('color');
+    expect(Object.keys(document.collections.tableEntities.t1)).toEqual([
+      'id',
+      'columnIds',
+      'ui',
+    ]);
+    expect(Object.keys(document.collections.tableColumnEntities.c1)).toEqual([
+      'id',
+      'tableId',
+      'options',
+    ]);
+    expect(Object.keys(document.collections.indexEntities.i1)).toEqual([
+      'id',
+      'tableId',
+      'indexColumnIds',
+      'unique',
+    ]);
+    expect(Object.keys(document.collections.memoEntities.m1.ui)).toEqual([
+      'x',
+      'y',
+      'width',
+      'height',
+    ]);
+    expect(Object.keys(document.collections.tableGroupEntities.g1)).toEqual([
+      'id',
+      'ui',
+    ]);
+  });
+
+  it('accepts the empty text an earlier release wrote', () => {
+    const document = full();
+    document.collections.tableEntities.t2.comment = '';
+    document.collections.tableEntities.t2.ui.color = '';
+    Object.assign(document.collections.tableColumnEntities.c2, {
+      comment: '',
+      dataType: '',
+      default: '',
+    });
+
+    expect(validate(document)).toEqual([]);
   });
 
   it('names no property the storage form never writes', () => {
@@ -247,6 +370,9 @@ describe('json-schema/schema.json', () => {
     ['settings', 'lockedValues', {}],
     ['collections.tableEntities.t1', 'meta', { updateAt: 1, createAt: 1 }],
     ['collections.tableEntities.t1.ui', 'widthName', 60],
+    ['collections.tableEntities.t1.ui', 'widthLogicalName', 60],
+    ['collections.tableColumnEntities.c1', 'ui', { widthDomain: 60 }],
+    ['doc', 'wordIds', ['w1']],
     ['collections.relationshipEntities.r1', 'identification', false],
     ['collections.relationshipEntities.r1', 'startRelationshipType', 2],
     ['collections.relationshipEntities.r1.start', 'direction', 2],
@@ -263,14 +389,73 @@ describe('json-schema/schema.json', () => {
     expect(validate(document)).toEqual([`$.${path}: ${key} is not allowed`]);
   });
 
+  it('accepts a column order of nine with the new column types moved', () => {
+    const document = full();
+    document.settings.columnOrder = [1, 128, 2, 4, 8, 16, 32, 64, 256];
+
+    expect(validate(document)).toEqual([]);
+  });
+
+  it.each([
+    ['eight', [1, 2, 4, 8, 16, 32, 64, 128]],
+    ['six', [1, 2, 4, 8, 16, 32]],
+  ])('refuses a column order of %s entries', (_, columnOrder) => {
+    const document = full();
+    document.settings.columnOrder = columnOrder;
+
+    expect(validate(document)).toEqual([
+      '$.settings.columnOrder: fits none of anyOf',
+    ]);
+  });
+
+  it('refuses a dictionary row past its fields, short of a name, or a header of its own', () => {
+    const document = full();
+    document.collections.wordEntities.rows.push(['w2']);
+    document.collections.domainEntities.rows[0].push('extra');
+    document.collections.termEntities.fields = ['id', 'name'];
+
+    expect(validate(document)).toEqual([
+      '$.collections.wordEntities.rows[1]: fewer than 2 items',
+      `$.collections.termEntities.fields: not ${JSON.stringify(
+        DictionaryFields.termEntities
+      )}`,
+      '$.collections.domainEntities.rows[0][5]: is not allowed',
+    ]);
+  });
+
+  it('refuses the physical name view, which the storage form leaves out, and one no editor shows', () => {
+    const document = full();
+    document.settings.nameViewMode = NameViewMode.physical;
+
+    expect(validate(document)).toEqual([
+      '$.settings.nameViewMode: "physical" is outside the enum',
+    ]);
+
+    document.settings.nameViewMode = 'tree';
+    expect(validate(document)).toEqual([
+      '$.settings.nameViewMode: "tree" is outside the enum',
+    ]);
+  });
+
+  it('refuses a derived flag that is not true, which the storage form leaves out', () => {
+    const document = full();
+    document.collections.tableEntities.t1.nameDerived = false;
+
+    expect(validate(document)).toEqual([
+      '$.collections.tableEntities.t1.nameDerived: not true',
+    ]);
+  });
+
   it('refuses a document without a field the storage form always writes', () => {
     const document = full();
     delete document.settings.lockSettings;
-    delete document.collections.tableEntities.t2.ui.color;
+    delete document.collections.tableEntities.t2.ui.x;
+    delete document.collections.tableColumnEntities.c2.options;
 
     expect(validate(document)).toEqual([
       '$.settings: missing lockSettings',
-      '$.collections.tableEntities.t2.ui: missing color',
+      '$.collections.tableEntities.t2.ui: missing x',
+      '$.collections.tableColumnEntities.c2: missing options',
     ]);
   });
 });

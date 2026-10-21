@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { createSchema } from '@/v3/parser';
 import {
   BracketType,
   BracketTypeList,
@@ -15,6 +16,8 @@ import {
   DatabaseList,
   DDLScriptPosition,
   DDLScriptPositionList,
+  InvertedLockSettings,
+  isSettingLocked,
   Language,
   LanguageList,
   LockSettingFields,
@@ -22,6 +25,9 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
+  NameViewMode,
+  NameViewModeList,
+  setSettingLock,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -38,6 +44,7 @@ describe('v3/schema/settings', () => {
         schemaSQL: '@dineug/erd-editor/builtin-schema-sql',
         generatorCode: '@dineug/erd-editor/builtin-generator-code',
         settings: 'settings',
+        dictionary: '@dineug/erd-editor/builtin-dictionary',
       });
     });
 
@@ -48,17 +55,18 @@ describe('v3/schema/settings', () => {
         '@dineug/erd-editor/builtin-schema-sql',
         '@dineug/erd-editor/builtin-generator-code',
         'settings',
+        '@dineug/erd-editor/builtin-dictionary',
       ]);
       expect(CanvasTypeList).toHaveLength(Object.keys(CanvasType).length);
       expect(new Set(CanvasTypeList).size).toBe(CanvasTypeList.length);
     });
 
-    it('prefixes the three builtin plugin canvases with the package scope', () => {
+    it('prefixes the four builtin plugin canvases with the package scope', () => {
       const builtins = CanvasTypeList.filter(value =>
         value.startsWith('@dineug/erd-editor/builtin-')
       );
 
-      expect(builtins).toHaveLength(3);
+      expect(builtins).toHaveLength(4);
       expect(builtins).not.toContain(CanvasType.ERD);
       expect(builtins).not.toContain(CanvasType.settings);
     });
@@ -80,6 +88,7 @@ describe('v3/schema/settings', () => {
         hideReferentialAction: 1024,
         hideTableGroup: 2048,
         hideMemo: 4096,
+        columnDomain: 8192,
       });
       expect(Object.values(Show).every(isPowerOfTwo)).toBe(true);
     });
@@ -93,16 +102,16 @@ describe('v3/schema/settings', () => {
       expect(mask & ~Show.relationship).toBe(65);
     });
 
-    it('sums all flags to a contiguous 13-bit mask', () => {
+    it('sums all flags to a contiguous 14-bit mask', () => {
       const all = Object.values(Show).reduce((acc, flag) => acc | flag, 0);
 
-      expect(all).toBe(0b1111111111111);
+      expect(all).toBe(0b11111111111111);
       expect(all).toBe(2 ** Object.keys(Show).length - 1);
     });
   });
 
   describe('ColumnType', () => {
-    it('assigns 7 distinct single-bit flags', () => {
+    it('assigns 9 distinct single-bit flags', () => {
       expect(ColumnType).toEqual({
         columnName: 1,
         columnDataType: 2,
@@ -111,13 +120,15 @@ describe('v3/schema/settings', () => {
         columnAutoIncrement: 16,
         columnDefault: 32,
         columnComment: 64,
+        columnLogicalName: 128,
+        columnDomain: 256,
       });
       expect(Object.values(ColumnType).every(isPowerOfTwo)).toBe(true);
     });
 
     it('lists the values in declaration order', () => {
-      expect(ColumnTypeList).toEqual([1, 2, 4, 8, 16, 32, 64]);
-      expect(ColumnTypeList).toHaveLength(7);
+      expect(ColumnTypeList).toEqual([1, 2, 4, 8, 16, 32, 64, 128, 256]);
+      expect(ColumnTypeList).toHaveLength(9);
     });
   });
 
@@ -222,6 +233,7 @@ describe('v3/schema/settings', () => {
         tableNameCase: 8,
         columnNameCase: 16,
         bracketType: 32,
+        unlockNameViewMode: 64,
       });
       expect(LockSettingTypeList).toEqual(Object.values(LockSettingType));
     });
@@ -241,12 +253,60 @@ describe('v3/schema/settings', () => {
           'canvasType',
           'columnNameCase',
           'language',
+          'nameViewMode',
           'originX',
           'originY',
           'tableNameCase',
           'zoomLevel',
         ].sort()
       );
+    });
+
+    it('reads the name view bit the other way round, set unlocking, and every other bit as it is', () => {
+      const { unlockNameViewMode } = LockSettingType;
+
+      expect(unlockNameViewMode).toBe(64);
+      expect(InvertedLockSettings).toBe(unlockNameViewMode);
+      expect(isSettingLocked(63, unlockNameViewMode)).toBe(true);
+      expect(isSettingLocked(127, unlockNameViewMode)).toBe(false);
+      expect(setSettingLock(63, unlockNameViewMode, false)).toBe(127);
+      expect(setSettingLock(127, unlockNameViewMode, true)).toBe(63);
+      for (const bit of LockSettingTypeList.filter(
+        bit => bit !== unlockNameViewMode
+      )) {
+        expect(isSettingLocked(63, bit)).toBe(true);
+        expect(isSettingLocked(63 & ~bit, bit)).toBe(false);
+        expect(setSettingLock(0, bit, true)).toBe(bit);
+        expect(setSettingLock(63, bit, false)).toBe(63 & ~bit);
+      }
+      expect(createSchema().settings.lockSettings).toBe(63);
+      expect(() => isSettingLocked(63, 63 as LockSettingType)).toThrow(
+        RangeError
+      );
+      expect(() => setSettingLock(63, 63 as LockSettingType, true)).toThrow(
+        RangeError
+      );
+    });
+
+    it('takes a lock bit no list names yet, one bit at a time', () => {
+      expect(isSettingLocked(128, 128 as LockSettingType)).toBe(true);
+      expect(setSettingLock(0, 128 as LockSettingType, true)).toBe(128);
+      for (const bit of [0, -1, 1.5]) {
+        expect(() => isSettingLocked(63, bit as LockSettingType)).toThrow(
+          RangeError
+        );
+      }
+    });
+  });
+
+  describe('NameViewMode', () => {
+    it('names the three views of the names, the physical one first', () => {
+      expect(NameViewMode).toEqual({
+        physical: 'physical',
+        logical: 'logical',
+        both: 'both',
+      });
+      expect(NameViewModeList).toEqual(['physical', 'logical', 'both']);
     });
   });
 
@@ -301,8 +361,10 @@ describe('v3/schema/settings', () => {
         tableNameCase: NameCase.pascalCase,
         columnNameCase: NameCase.camelCase,
         bracketType: BracketType.backtick,
+        nameViewMode: NameViewMode.physical,
       },
       ddlScripts: { before: '', after: '' },
+      nameViewMode: NameViewMode.both,
     };
 
     expect(CanvasTypeList).toContain(settings.canvasType);

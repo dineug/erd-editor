@@ -21,6 +21,7 @@ import {
   type RejectEvent,
 } from '@/input/editing';
 import {
+  blankAt,
   cellArea,
   cellRect,
   createPointerInput,
@@ -65,10 +66,16 @@ export interface ViewportChange {
   colEnd: number;
 }
 
-/** A right click on a cell, at the client point the host opens its menu at. */
+/**
+ * A right click on a cell, or on the cell area's space past the last row or
+ * column, which leaves the selection, at the client point the host opens its
+ * menu at.
+ */
 export interface CellContextMenuEvent {
-  row: number;
-  col: number;
+  /** The row clicked, or null below the last row. */
+  row: number | null;
+  /** The column clicked, or null right of the last column. */
+  col: number | null;
   clientX: number;
   clientY: number;
 }
@@ -81,6 +88,12 @@ export interface GridHandle {
   select(selection: GridSelection): void;
   /** Moves the keyboard focus into the grid. */
   focus(): void;
+  /**
+   * Whether an edit is open, in the grid's own editor or a column's own, from
+   * its opening until it commits or cancels, so false once onCommit hears of
+   * it; a host reads it to leave its undo keys to an open edit.
+   */
+  isEditing(): boolean;
 }
 
 /**
@@ -109,7 +122,7 @@ export interface GridProps {
   /** A column resized by a drag, once it ends, or fit to its visible rows by a double click. */
   onColumnResize?(col: number, width: number): void;
   onViewportChange?(viewport: ViewportChange): void;
-  /** Given, a right click on a cell opens no native menu and hands its point here. */
+  /** Given, a right click in the cell area opens no native menu and hands its point here. */
   onCellContextMenu?(event: CellContextMenuEvent): void;
   /** Called once the grid has mounted, with the commands it takes. */
   onReady?(handle: GridHandle): void;
@@ -635,27 +648,34 @@ export const Grid: FC<GridProps> = props => {
   };
 
   /**
-   * A right click on a cell, while the host takes them: outside the selection
-   * it moves the active cell there first, and no native menu opens.
+   * A right click on a cell or past the last one, while the host takes them:
+   * on a cell outside the selection it moves the active cell there first,
+   * past the last it leaves the selection, and no native menu opens.
    */
   const onContextMenu = (event: MouseEvent) => {
     const listener = props.onCellContextMenu;
     if (!listener || !pointer) return;
 
-    const hit = hitTest(scene.state, pointer.pointOf(event));
-    if (hit.kind !== 'cell') return;
+    const { state } = scene;
+    const point = pointer.pointOf(event);
+    const hit = hitTest(state, point);
+    const { clientX, clientY } = event;
+
+    if (hit.kind === 'cell') {
+      event.preventDefault();
+      const cell = { row: hit.row, col: hit.col };
+      if (!isSelected(selection, cell)) {
+        changeSelection(clickCell(selection, cell));
+      }
+      listener({ ...cell, clientX, clientY });
+      return;
+    }
+
+    const blank = hit.kind === 'none' ? blankAt(state, point) : null;
+    if (!blank) return;
 
     event.preventDefault();
-    const cell = { row: hit.row, col: hit.col };
-    if (!isSelected(selection, cell)) {
-      changeSelection(clickCell(selection, cell));
-    }
-    listener({
-      row: cell.row,
-      col: cell.col,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
+    listener({ ...blank, clientX, clientY });
   };
 
   /**
@@ -760,6 +780,7 @@ export const Grid: FC<GridProps> = props => {
     focus() {
       if (mounted) focusRef.value?.focus({ preventScroll: true });
     },
+    isEditing: () => editing.editing(),
   };
 
   onMounted(() => {

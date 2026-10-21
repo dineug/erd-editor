@@ -45,6 +45,17 @@ function ownFocusActions(name: string): string[] {
     .filter(type => FOCUS_TYPES.has(type));
 }
 
+/**
+ * The cell the seed's physical name view draws where a declared cell has no
+ * place of its own, as the editor's focus moves to it: no logical name cell,
+ * and no domain cell while the domain column is hidden.
+ */
+const SHOWN_IN_PHYSICAL_VIEW: Readonly<Record<string, string>> = {
+  tableLogicalName: 'tableName',
+  columnLogicalName: 'columnName',
+  columnDomain: 'columnDataType',
+};
+
 describe('focus is moved once per call', () => {
   it('lets no tool that declares a focus emit one of its own', () => {
     const doubled = actionTools
@@ -77,7 +88,7 @@ describe('focus is moved once per call', () => {
       expect(peer.state.editor.focusTable).toMatchObject({
         tableId: args[focus.tableArg],
         columnId: focus.columnArg ? args[focus.columnArg] : null,
-        focusType: focus.focusType,
+        focusType: SHOWN_IN_PHYSICAL_VIEW[focus.focusType] ?? focus.focusType,
       });
     }
   );

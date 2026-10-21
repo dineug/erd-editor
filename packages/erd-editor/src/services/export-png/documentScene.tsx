@@ -6,8 +6,12 @@ import type { Stage } from 'konva/lib/Stage';
 
 import { appDestroy, createAppContext } from '@/components/appContext';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeZoomLevelAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import { createI18n, type LocaleMessages } from '@/i18n/translate';
+import type { Settings } from '@/internal-types';
 import type { Rect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
@@ -36,6 +40,11 @@ export type DocumentSceneOptions = {
    * with no name say. Left out, the scene draws them in English.
    */
   i18n?: LocaleMessages;
+  /**
+   * The names the scene draws, the reader's view, which a lock never saved.
+   * Left out, the scene draws the view the document holds.
+   */
+  nameViewMode?: Settings['nameViewMode'];
 };
 
 export type DocumentScene = {
@@ -68,6 +77,7 @@ export async function renderDocumentScene({
   toWidth,
   maxSide,
   i18n,
+  nameViewMode,
 }: DocumentSceneOptions): Promise<DocumentScene> {
   const app = createAppContext({ toWidth }, { devtools: false });
   app.store.dispatchSync(initialLoadJsonAction$(doc));
@@ -75,6 +85,14 @@ export async function renderDocumentScene({
   // Written over the zoom the document was saved with, because whether a
   // connector shows its referential action label reads this field.
   app.store.dispatchSync(changeZoomLevelAction({ value: EXPORT_ZOOM_LEVEL }));
+
+  // Shown on this store alone, as a readonly reader's switch is, so the view
+  // reaches the scene whatever the document's lock holds.
+  if (nameViewMode) {
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, nameViewMode, true)
+    );
+  }
 
   await delay(SETTLE_MS);
 

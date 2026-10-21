@@ -8,6 +8,7 @@ import {
   CanvasType,
   Language,
   LockSettingType,
+  NameViewMode,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
@@ -28,6 +29,7 @@ import {
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   actions$,
@@ -178,6 +180,34 @@ describe('settings/generator.actions', () => {
         CanvasType.schemaSQL
       );
       expect(store.state.settings.canvasType).toBe(CanvasType.settings);
+    });
+
+    it('carries the name view this reader shows to unlock it, and locks at what it shows', () => {
+      const { unlockNameViewMode } = LockSettingType;
+      store.dispatchSync(
+        toNameViewModeAction(store.state, NameViewMode.both, false)
+      );
+
+      expect(
+        flatten(store, changeLockSettingsAction$(unlockNameViewMode, false))
+      ).toEqual([
+        changeLockSettingsAction({
+          lockSettingType: unlockNameViewMode,
+          value: false,
+          values: { nameViewMode: NameViewMode.both },
+        }),
+      ]);
+
+      store.dispatchSync(changeLockSettingsAction$(unlockNameViewMode, false));
+      store.dispatchSync(
+        toNameViewModeAction(store.state, NameViewMode.logical, false)
+      );
+      store.dispatchSync(changeLockSettingsAction$(unlockNameViewMode, true));
+
+      expect(store.state.settings.lockSettings).toBe(63);
+      expect(store.state.settings.lockedValues.nameViewMode).toBe(
+        NameViewMode.logical
+      );
     });
 
     it('locks the tab shown when taken on any other tab', () => {

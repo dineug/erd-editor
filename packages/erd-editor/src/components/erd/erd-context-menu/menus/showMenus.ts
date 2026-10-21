@@ -26,6 +26,10 @@ const menus: Menu[] = [
     show: Show.columnDataType,
   },
   {
+    labelKey: 'contextMenu.show.columnDomain',
+    show: Show.columnDomain,
+  },
+  {
     labelKey: 'common.column.default',
     show: Show.columnDefault,
   },

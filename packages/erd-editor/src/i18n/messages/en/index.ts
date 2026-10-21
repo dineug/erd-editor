@@ -2,6 +2,7 @@ import { code } from './code';
 import { colorPicker } from './colorPicker';
 import { common } from './common';
 import { contextMenu } from './contextMenu';
+import { dictionary } from './dictionary';
 import { explorer } from './explorer';
 import { exportImage } from './exportImage';
 import { feedback } from './feedback';
@@ -42,4 +43,5 @@ export const en = {
   ...welcome,
   ...mapColumns,
   ...explorer,
+  ...dictionary,
 } as const;

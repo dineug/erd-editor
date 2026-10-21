@@ -51,10 +51,10 @@ export const FOREIGN_ERD = JSON.stringify({
   edges: [],
 });
 
-/** The names of a document's tables, in the order its doc lists them. */
+/** The names of a document's tables, in the order its doc lists them, none left out. */
 export function tableNames(value: string): string[] {
   const { doc, collections } = JSON.parse(value);
-  return doc.tableIds.map(
+  return (doc.tableIds ?? []).map(
     (id: string) => collections.tableEntities[id]?.name as string
   );
 }

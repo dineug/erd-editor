@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(86);
+    expect(entries).toHaveLength(94);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -70,6 +70,10 @@ describe('ThemeConfig', () => {
       'keyPK',
       'keyFK',
       'keyPFK',
+      'dictionaryErrorForeground',
+      'dictionaryErrorBackground',
+      'dictionaryWarningForeground',
+      'dictionaryWarningBackground',
       'diffInsertForeground',
       'diffDeleteForeground',
       'diffModifyForeground',
@@ -177,7 +181,7 @@ describe('ThemeConfig', () => {
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes and the changed amber only', () => {
+  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes, the two dictionary marks, the dictionary sheet and the darker amber of a change only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
@@ -194,6 +198,11 @@ describe('LightThemeConfig', () => {
       visualizationLink: 'gray-8',
       visualizationColumn: 'gray-9',
       visualizationRelationship: 'gray-9',
+      dictionaryErrorForeground: 'override-#b1252a',
+      dictionaryWarningForeground: 'override-#835103',
+      dictionaryBackground: 'override-#ffffff',
+      dictionaryHeaderBackground: 'gray-4',
+      dictionaryGridLine: 'gray-8',
       diffModifyForeground: 'override-#895503',
     });
   });
@@ -209,5 +218,41 @@ describe('LightThemeConfig', () => {
   it('spells its white as the hex the scene mixes a view tint against', () => {
     // mixColor reads hex only, so a named colour would snap a tint instead of fading it
     expect(LightThemeConfig.tableBackground).toMatch(/^override-#[0-9a-f]{6}$/);
+  });
+});
+
+describe('the dictionary part', () => {
+  it('writes an error in red and a warning in amber, the text at step 11 over its step 4 fill', () => {
+    expect(ThemeConfig.dictionaryErrorForeground).toBe('custom-red--11');
+    expect(ThemeConfig.dictionaryErrorBackground).toBe('custom-red--4');
+    expect(ThemeConfig.dictionaryWarningForeground).toBe('custom-amber--11');
+    expect(ThemeConfig.dictionaryWarningBackground).toBe('custom-amber--4');
+  });
+
+  it('takes a darker red and amber text of its own in light, over the same fills', () => {
+    expect(LightThemeConfig.dictionaryErrorForeground).toBe('override-#b1252a');
+    expect(LightThemeConfig.dictionaryWarningForeground).toBe(
+      'override-#835103'
+    );
+    expect(LightThemeConfig.dictionaryWarningForeground).not.toBe(
+      LightThemeConfig.diffModifyForeground
+    );
+    expect(LightThemeConfig.dictionaryErrorBackground).toBeUndefined();
+    expect(LightThemeConfig.dictionaryWarningBackground).toBeUndefined();
+  });
+
+  it('draws the Dictionary tab sheet on tokens of its own, at the steps of a table body, header, edge and selected row', () => {
+    expect(ThemeConfig.dictionaryBackground).toBe('gray-2');
+    expect(ThemeConfig.dictionaryHeaderBackground).toBe('gray-5');
+    expect(ThemeConfig.dictionaryGridLine).toBe('gray-6');
+    expect(ThemeConfig.dictionaryHeaderSelect).toBe('accent-3');
+  });
+
+  it('turns the sheet white with gray-8 lines and a gray-4 band in light, and keeps accent-3 under a neutral accent', () => {
+    expect(LightThemeConfig.dictionaryBackground).toBe('override-#ffffff');
+    expect(LightThemeConfig.dictionaryHeaderBackground).toBe('gray-4');
+    expect(LightThemeConfig.dictionaryGridLine).toBe('gray-8');
+    expect(LightThemeConfig.dictionaryHeaderSelect).toBeUndefined();
+    expect(NeutralAccentThemeConfig.dictionaryHeaderSelect).toBeUndefined();
   });
 });

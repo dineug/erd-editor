@@ -405,3 +405,36 @@ describe('the language every drawing is asked in', () => {
     expect(state.renderSvg.mock.calls[0][0].i18n).toBeUndefined();
   });
 });
+
+describe('the name view every drawing is asked in', () => {
+  it('goes with the png, the preview and the svg, in the worker and on the main thread', async () => {
+    state.render.mockRejectedValue(new Error('no'));
+    state.renderSvg.mockRejectedValue(new Error('no'));
+    const { createDocumentPng, createDocumentPreview, createDocumentSvg } =
+      await load();
+    const nameViewMode = 'logical' as const;
+
+    await createDocumentPng({ ...options(), nameViewMode });
+    await createDocumentPreview({ ...options(), maxSide: 960, nameViewMode });
+    await createDocumentSvg({ ...options(), nameViewMode });
+
+    expect(
+      [
+        ...state.render.mock.calls,
+        ...state.renderSvg.mock.calls,
+        ...mainRender.mock.calls,
+        ...mainRenderSvg.mock.calls,
+      ].map(([request]) => request.nameViewMode)
+    ).toEqual(Array(6).fill(nameViewMode));
+  });
+
+  it('is left out of a drawing asked in none, which draws the view the document holds', async () => {
+    const { createDocumentPng, createDocumentSvg } = await load();
+
+    await createDocumentPng(options());
+    await createDocumentSvg(options());
+
+    expect(state.render.mock.calls[0][0].nameViewMode).toBeUndefined();
+    expect(state.renderSvg.mock.calls[0][0].nameViewMode).toBeUndefined();
+  });
+});

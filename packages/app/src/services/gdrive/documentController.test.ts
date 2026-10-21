@@ -1,5 +1,7 @@
 import {
+  LockSettingType,
   settingsActions,
+  settingsActions$,
   SharedFollowingActionTypes,
   tableActions,
   tableActions$,
@@ -88,6 +90,17 @@ const REMOVED_TABLE = (() => {
   });
   return { id, value };
 })();
+
+/** Users with the name view unlocked, so a switch is shared and saved. */
+const NAME_VIEW_UNLOCKED = documentWith(store => {
+  store.setInitialValue(USERS_DOCUMENT);
+  store.dispatch([
+    settingsActions$.changeLockSettingsAction$(
+      LockSettingType.unlockNameViewMode,
+      false
+    ),
+  ]);
+});
 
 let env: DriveEnv;
 const tabs: Tab[] = [];
@@ -1225,6 +1238,47 @@ describe('the page around it', () => {
     await settle(10_000);
     expect(saveRequestsOf('b')).toHaveLength(0);
     expect(env.patches()).toHaveLength(0);
+  });
+
+  it('takes a follower’s switch of a locked name view for no edit, shown on that tab alone', async () => {
+    const a = await open('a');
+    const b = await open('b');
+
+    b.edit([
+      settingsActions.changeNameViewModeAction({
+        value: 'logical',
+        shared: false,
+        editorId: b.editor.store.state.editor.id,
+      }),
+    ]);
+
+    expect(b.editor.store.state.settings.nameViewMode).toBe('logical');
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
+    await settle(10_000);
+    expect(a.editor.store.state.settings.nameViewMode).toBe('physical');
+    expect(saveRequestsOf('b')).toHaveLength(0);
+    expect(env.patches()).toHaveLength(0);
+  });
+
+  it('counts a follower’s switch of an unlocked name view as its edit until the leader saves it', async () => {
+    env.drive.files.get('file-1')!.content = NAME_VIEW_UNLOCKED;
+    const a = await open('a');
+    const b = await open('b');
+
+    b.edit([
+      settingsActions.changeNameViewModeAction({
+        value: 'logical',
+        shared: true,
+        editorId: b.editor.store.state.editor.id,
+      }),
+    ]);
+
+    expect(b.controller.hasUnsavedChanges()).toBe(true);
+    await settle(10_000);
+    expect(a.editor.store.state.settings.nameViewMode).toBe('logical');
+    expect(env.patches().map(env.tabOf)).toEqual(['a']);
+    expect(JSON.parse(driveContent()).settings.nameViewMode).toBe('logical');
+    expect(b.controller.hasUnsavedChanges()).toBe(false);
   });
 
   it('counts nothing a follower does on a file it may not edit', async () => {

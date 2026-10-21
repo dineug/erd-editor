@@ -5,10 +5,16 @@ import { START_ADD, START_X, START_Y } from '@/constants/layout';
 import {
   ColumnOption,
   Database,
+  NameViewMode,
   RelationshipType,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
+import {
+  addDictionaryAction,
+  removeDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import { updateDictionaryEntryAction$ } from '@/engine/modules/dictionary/generator.actions';
 import {
   drawStartAddRelationshipAction,
   drawStartRelationshipAction,
@@ -24,16 +30,19 @@ import {
   changeDatabaseAction,
   changeRelationshipDataTypeSyncAction,
   changeShowAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
+  changeTableNameDerivedAction,
   removeTableAction,
   sortTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   actions$,
   addTableAction$,
+  changeTableNameAction$,
   pasteTableAction$,
   removeTableAction$,
   selectTableAction$,
@@ -44,7 +53,9 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
@@ -538,6 +549,70 @@ describe('pasteTableAction$', () => {
     expect(typesOf(store, pasteTableAction$([columnA]))).toEqual([]);
   });
 
+  it('appends the logical names, linking only a domain this document lists', () => {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Membership number' },
+      }),
+      addDictionaryAction({ kind: 'domain', id: 'd2' }),
+      removeDictionaryAction({ kind: 'domain', id: 'd2' })
+    );
+    seedTable(store, 't1');
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+    const linked = (domainId: string) =>
+      makeColumn({
+        name: domainId,
+        logicalName: `Linked to ${domainId}`,
+        domainId,
+        options: ColumnOption.nameDerived,
+      });
+
+    store.dispatchSync(
+      pasteTableAction$([linked('d1'), linked('d2'), linked('elsewhere')])
+    );
+
+    const [live, removed, foreign] = columnsOf(store, 't1');
+    expect(live).toMatchObject({ logicalName: 'Linked to d1', domainId: 'd1' });
+    expect(live.ui.widthDomain).toBe('Membership number'.length * 10);
+    expect(removed).toMatchObject({
+      logicalName: 'Linked to d2',
+      domainId: '',
+    });
+    expect(foreign.domainId).toBe('');
+    // A paste writes the name as typed, so nothing derived it.
+    expect(bHas(live.options, ColumnOption.nameDerived)).toBe(false);
+  });
+
+  it('appends a link only to a domain whose type the copy holds, keeping the type it copied', () => {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount', dataType: 'bigint' },
+      })
+    );
+    seedTable(store, 't1');
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c1', value: 'bigint' }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'd1' })
+    );
+    const before = { ...columnOf(store, 'c1') };
+    store.dispatchSync(
+      updateDictionaryEntryAction$('domain', 'd1', { dataType: 'int' })
+    );
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+    const after = { ...columnOf(store, 'c1') };
+
+    store.dispatchSync(pasteTableAction$([before, after]));
+
+    const [, moved, kept] = columnsOf(store, 't1');
+    expect(moved).toMatchObject({ dataType: 'bigint', domainId: '' });
+    expect(kept).toMatchObject({ dataType: 'int', domainId: 'd1' });
+  });
+
   it('appends to the focused table too when the focus is on the table itself', () => {
     seedTable(store, 't1');
     store.dispatchSync(selectAction({ t1: SelectType.table }));
@@ -602,6 +677,257 @@ describe('pasteTableAction$', () => {
       'c3',
       columns[3].id,
     ]);
+  });
+
+  it('turns the derived flag off of a column whose name the paste writes over, in the same dispatch', () => {
+    seedFocusedPaste();
+    store.dispatchSync(
+      changeColumnNameDerivedAction({ tableId: 't1', id: 'c2', value: true })
+    );
+
+    const flags = flatten(store, pasteTableAction$([columnA, columnB]))
+      .filter(({ type }) => type === changeColumnNameDerivedAction.type)
+      .map(({ payload }) => payload);
+    expect(flags).toEqual([{ tableId: 't1', id: 'c2', value: false }]);
+
+    store.dispatchSync(pasteTableAction$([columnA, columnB]));
+
+    expect(columnOf(store, 'c2').name).toBe('a');
+    expect(bHas(columnOf(store, 'c2').options, ColumnOption.nameDerived)).toBe(
+      false
+    );
+  });
+
+  it('unlinks a column the pasted type takes off its domain, keeping one pasted to it', () => {
+    seedFocusedPaste();
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount', dataType: 'bigint' },
+      }),
+      ...['c2', 'c3'].flatMap(id => [
+        changeColumnDataTypeAction({ tableId: 't1', id, value: 'bigint' }),
+        changeColumnDomainAction({ tableId: 't1', id, value: 'd1' }),
+      ])
+    );
+    const pasted = [columnA, makeColumn({ name: 'b', dataType: 'bigint' })];
+
+    // The columns the paste adds to the other selected table link nothing.
+    expect(
+      flatten(store, pasteTableAction$(pasted))
+        .filter(
+          ({ type, payload }) =>
+            type === changeColumnDomainAction.type && payload.tableId === 't1'
+        )
+        .map(({ payload }) => payload)
+    ).toEqual([{ tableId: 't1', id: 'c2', value: '' }]);
+
+    store.dispatchSync(pasteTableAction$(pasted));
+
+    expect(columnOf(store, 'c2')).toMatchObject({
+      dataType: 'int',
+      domainId: '',
+    });
+    expect(columnOf(store, 'c3')).toMatchObject({
+      dataType: 'bigint',
+      domainId: 'd1',
+    });
+  });
+
+  /** A domain and the term that names it, then the name view the paste lands in. */
+  function seedNameView(
+    nameViewMode: (typeof NameViewMode)[keyof typeof NameViewMode]
+  ) {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Identifier', dataType: 'uuid' },
+      }),
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term1',
+        values: {
+          name: 'Member ID',
+          physicalName: 'member_id',
+          domainId: 'd1',
+        },
+      })
+    );
+    store.dispatchSync(toNameViewModeAction(store.state, nameViewMode, false));
+  }
+
+  const isDerived = (id: string) =>
+    bHas(columnOf(store, id).options, ColumnOption.nameDerived);
+
+  it('writes the logical names of the logical view and derives each name a row leaves empty', () => {
+    seedFocusedPaste();
+    seedNameView(NameViewMode.logical);
+    store.dispatchSync(
+      changeColumnNameAction({ tableId: 't1', id: 'c3', value: 'kept' })
+    );
+
+    store.dispatchSync(
+      pasteTableAction$([
+        makeColumn({ logicalName: 'Member ID' }),
+        makeColumn({ logicalName: 'Nickname', dataType: 'varchar' }),
+        makeColumn({ logicalName: 'Member ID' }),
+      ])
+    );
+
+    const derived = {
+      name: 'member_id',
+      logicalName: 'Member ID',
+      domainId: 'd1',
+      dataType: 'uuid',
+    };
+    const [, c2, c3, added] = columnsOf(store, 't1');
+    expect(c2).toMatchObject(derived);
+    expect(isDerived('c2')).toBe(true);
+    // A name typed by hand stays, as typing the logical name leaves it.
+    expect(c3).toMatchObject({
+      name: 'kept',
+      logicalName: 'Nickname',
+      dataType: 'varchar',
+      domainId: '',
+    });
+    expect(isDerived('c3')).toBe(false);
+    expect(added).toMatchObject(derived);
+    expect(isDerived(added.id)).toBe(true);
+  });
+
+  it('derives no name a row of the view of both pastes, but the one it leaves empty', () => {
+    seedFocusedPaste();
+    seedNameView(NameViewMode.both);
+    store.dispatchSync(
+      changeColumnNameDerivedAction({ tableId: 't1', id: 'c2', value: true })
+    );
+
+    store.dispatchSync(
+      pasteTableAction$([
+        makeColumn({ logicalName: 'Member ID', name: 'mid' }),
+        makeColumn({ logicalName: 'Member ID', name: '' }),
+      ])
+    );
+
+    expect(columnOf(store, 'c2')).toMatchObject({
+      name: 'mid',
+      logicalName: 'Member ID',
+      domainId: '',
+    });
+    expect(isDerived('c2')).toBe(false);
+    expect(columnOf(store, 'c3')).toMatchObject({
+      name: 'member_id',
+      domainId: 'd1',
+    });
+    expect(isDerived('c3')).toBe(true);
+  });
+
+  it("writes over the logical view's type cell the domain it names, or the type that unlinks one", () => {
+    seedFocusedPaste();
+    seedNameView(NameViewMode.logical);
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c2', value: 'uuid' }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c2', value: 'd1' }),
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c3', value: 'int' })
+    );
+
+    store.dispatchSync(
+      pasteTableAction$([
+        makeColumn({ dataType: 'varchar' }),
+        makeColumn({ dataType: 'uuid', domainId: 'd1' }),
+      ])
+    );
+
+    // The type cell drew the domain, so a type pasted over it takes its place.
+    expect(columnOf(store, 'c2')).toMatchObject({
+      dataType: 'varchar',
+      domainId: '',
+    });
+    expect(columnOf(store, 'c3')).toMatchObject({
+      dataType: 'uuid',
+      domainId: 'd1',
+    });
+  });
+
+  it('links the domain a domain cell names, its type following, and unlinks for an unknown one', () => {
+    seedFocusedPaste();
+    seedNameView(NameViewMode.physical);
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDomain, value: true }),
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c3', value: 'uuid' }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c3', value: 'd1' })
+    );
+
+    store.dispatchSync(
+      pasteTableAction$([
+        makeColumn({ name: 'a', dataType: 'uuid', domainId: 'd1' }),
+        makeColumn({ name: 'b', dataType: 'uuid' }),
+      ])
+    );
+
+    expect(columnOf(store, 'c2')).toMatchObject({
+      dataType: 'uuid',
+      domainId: 'd1',
+    });
+    expect(columnOf(store, 'c3')).toMatchObject({
+      dataType: 'uuid',
+      domainId: '',
+    });
+
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDataType, value: false }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c2', value: '' }),
+      changeColumnDataTypeAction({ tableId: 't1', id: 'c2', value: 'int' })
+    );
+    store.dispatchSync(
+      focusColumnAction({
+        tableId: 't1',
+        columnId: 'c2',
+        focusType: FocusType.columnName,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+    const linked = makeColumn({ dataType: 'uuid', domainId: 'd1' });
+    store.dispatchSync(pasteTableAction$([linked]));
+
+    // With no type cell the domain brings its own type.
+    expect(columnOf(store, 'c2')).toMatchObject({
+      dataType: 'uuid',
+      domainId: 'd1',
+    });
+  });
+
+  it("derives the name of a column it adds with a logical name and no name, linking the term's domain the type allows", () => {
+    seedNameView(NameViewMode.logical);
+    seedTable(store, 't1');
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+    store.dispatchSync(
+      pasteTableAction$([
+        makeColumn({ logicalName: 'Member ID' }),
+        makeColumn({ logicalName: 'Member ID', dataType: 'int' }),
+        makeColumn({ logicalName: 'Member ID', name: 'typed' }),
+      ])
+    );
+
+    const [linked, typed, named] = columnsOf(store, 't1');
+    expect(linked).toMatchObject({
+      name: 'member_id',
+      domainId: 'd1',
+      dataType: 'uuid',
+    });
+    expect(isDerived(linked.id)).toBe(true);
+    // A type off the domain's keeps the column off the domain.
+    expect(typed).toMatchObject({
+      name: 'member_id',
+      domainId: '',
+      dataType: 'int',
+    });
+    expect(named).toMatchObject({ name: 'typed', domainId: '' });
+    expect(isDerived(named.id)).toBe(false);
   });
 
   it('applies the unique and autoIncrement columns once they are shown', () => {
@@ -797,10 +1123,48 @@ describe('sortTablesToMoveAction$', () => {
   });
 });
 
+describe('changeTableNameAction$', () => {
+  it('renames the table and turns its derived flag off in the same dispatch', () => {
+    const store = createTestStore();
+    seedTable(store, 't1');
+    store.dispatchSync(changeTableNameDerivedAction({ id: 't1', value: true }));
+
+    expect(flatten(store, changeTableNameAction$('t1', 'members'))).toEqual([
+      expect.objectContaining({
+        type: 'table.changeName',
+        payload: { id: 't1', value: 'members' },
+      }),
+      expect.objectContaining({
+        type: 'table.changeNameDerived',
+        payload: { id: 't1', value: false },
+      }),
+    ]);
+
+    store.dispatchSync(changeTableNameAction$('t1', 'members'));
+    expect(store.state.collections.tableEntities.t1).toMatchObject({
+      name: 'members',
+      nameDerived: false,
+    });
+  });
+
+  it('renames alone while the flag is off, as for a table it does not hold', () => {
+    const store = createTestStore();
+    seedTable(store, 't1');
+
+    expect(typesOf(store, changeTableNameAction$('t1', 'members'))).toEqual([
+      'table.changeName',
+    ]);
+    expect(typesOf(store, changeTableNameAction$('ghost', 'members'))).toEqual([
+      'table.changeName',
+    ]);
+  });
+});
+
 describe('actions$', () => {
   it('exposes every generator action of the table module', () => {
     expect(Object.keys(actions$).sort()).toEqual([
       'addTableAction$',
+      'changeTableNameAction$',
       'pasteTableAction$',
       'removeTableAction$',
       'selectTableAction$',

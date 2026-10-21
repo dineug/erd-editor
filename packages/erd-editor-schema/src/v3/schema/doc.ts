@@ -4,4 +4,7 @@ export type Doc = {
   indexIds: string[];
   memoIds: string[];
   tableGroupIds: string[];
+  wordIds: string[];
+  termIds: string[];
+  domainIds: string[];
 };

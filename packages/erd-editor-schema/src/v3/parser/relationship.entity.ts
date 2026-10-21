@@ -6,7 +6,7 @@ import {
   isString,
 } from 'es-toolkit';
 
-import { assign, validNumber } from '@/helper';
+import { assign, entryId, validNumber } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import {
   Direction,
@@ -49,8 +49,8 @@ export function createAndMergeRelationshipEntities(
   const entities: Record<string, Relationship> = {};
   if (!isPlainObject(json) || isNil(json)) return entities;
 
-  for (const value of Object.values(json)) {
-    if (!value) continue;
+  for (const [key, value] of Object.entries(json)) {
+    if (!isPlainObject(value)) continue;
     const target = createRelationship();
     const assignString = assign(isString, target, value);
     const assignBoolean = assign(isBoolean, target, value);
@@ -59,7 +59,7 @@ export function createAndMergeRelationshipEntities(
     const endAssignNumber = assign(isNumber, target.end, value.end);
     const endAssignString = assign(isString, target.end, value.end);
 
-    assignString('id');
+    target.id = entryId(key, value);
     assignBoolean('identification');
     assign(
       validNumber(RelationshipTypeList),

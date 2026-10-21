@@ -9,14 +9,15 @@ import {
 
 describe('v3/schema/tableColumn.entity', () => {
   describe('ColumnOption', () => {
-    it('exposes four distinct single-bit options', () => {
+    it('exposes five distinct single-bit options', () => {
       expect(ColumnOption).toEqual({
         autoIncrement: 1,
         primaryKey: 2,
         unique: 4,
         notNull: 8,
+        nameDerived: 16,
       });
-      expect(new Set(Object.values(ColumnOption)).size).toBe(4);
+      expect(new Set(Object.values(ColumnOption)).size).toBe(5);
     });
 
     it('adds and removes options through bit arithmetic', () => {
@@ -32,13 +33,13 @@ describe('v3/schema/tableColumn.entity', () => {
       expect(options).toBe(ColumnOption.notNull);
     });
 
-    it('sums all options to a contiguous 4-bit mask', () => {
+    it('sums all options to a contiguous 5-bit mask', () => {
       const all = Object.values(ColumnOption).reduce(
         (acc, flag) => acc | flag,
         0
       );
 
-      expect(all).toBe(0b1111);
+      expect(all).toBe(0b11111);
     });
   });
 
@@ -66,8 +67,10 @@ describe('v3/schema/tableColumn.entity', () => {
     const ui: ColumnUI = {
       keys: ColumnUIKey.primaryKey,
       widthName: 60,
+      widthLogicalName: 60,
       widthComment: 60,
       widthDataType: 60,
+      widthDomain: 60,
       widthDefault: 60,
     };
     const column: Column = {
@@ -78,6 +81,8 @@ describe('v3/schema/tableColumn.entity', () => {
       dataType: 'int',
       default: '',
       options: ColumnOption.primaryKey | ColumnOption.autoIncrement,
+      logicalName: 'Identifier',
+      domainId: '',
       ui,
     };
 

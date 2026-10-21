@@ -2,15 +2,27 @@ import { uuid25 } from '@dineug/uuid';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
+import type { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import { Point, ValuesType } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { Rect } from '@/utils/dragSelect';
+
+/** Whether a history can undo and redo. */
+export type HasHistory = {
+  hasUndo: boolean;
+  hasRedo: boolean;
+};
 
 export type Editor = {
   id: string;
   selectedMap: Record<string, SelectType>;
   hasUndo: boolean;
   hasRedo: boolean;
+  /**
+   * Whether each dictionary sheet's own history can undo and redo: the Dictionary
+   * tab's edits go there, never into the document's (hasUndo, hasRedo).
+   */
+  dictionaryHistory: Record<DictionaryKind, HasHistory>;
   viewport: Viewport;
   /**
    * Whether a loaded origin still waits to be pulled into the content's travel
@@ -178,6 +190,9 @@ export const FocusType = {
   columnAutoIncrement: 'columnAutoIncrement',
   columnDefault: 'columnDefault',
   columnComment: 'columnComment',
+  tableLogicalName: 'tableLogicalName',
+  columnLogicalName: 'columnLogicalName',
+  columnDomain: 'columnDomain',
 } as const;
 export type FocusType = ValuesType<typeof FocusType>;
 
@@ -214,6 +229,11 @@ export const createEditor = (): Editor => ({
   selectedMap: {},
   hasUndo: false,
   hasRedo: false,
+  dictionaryHistory: {
+    word: { hasUndo: false, hasRedo: false },
+    term: { hasUndo: false, hasRedo: false },
+    domain: { hasUndo: false, hasRedo: false },
+  },
   viewport: {
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,

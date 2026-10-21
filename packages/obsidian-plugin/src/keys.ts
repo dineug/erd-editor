@@ -1,5 +1,7 @@
 import type { Modifier } from 'obsidian';
 
+import type { ErdEditorModule } from '@/loadErdEditor';
+
 /** A press as Obsidian's Scope.register takes it: the modifiers, and the key it compares with the event's. */
 export type ScopeKey = { modifiers: Modifier[]; key: string };
 
@@ -61,4 +63,25 @@ export function scopeKeysOf(
     }
   }
   return [...keys.values()];
+}
+
+/**
+ * Every press the loaded editor listens for: its default map's, and the
+ * Dictionary tab's row chords that map derives, which no binding names. A
+ * module an earlier plugin version loaded may lack either.
+ */
+export function editorScopeKeys({
+  createKeyBindingMap,
+  dictionaryRowChords,
+}: Pick<
+  ErdEditorModule,
+  'createKeyBindingMap' | 'dictionaryRowChords'
+>): ScopeKey[] {
+  const keyBindingMap = createKeyBindingMap?.();
+  if (!keyBindingMap) return [];
+
+  return scopeKeysOf({
+    ...keyBindingMap,
+    dictionaryRows: dictionaryRowChords?.(keyBindingMap) ?? [],
+  });
 }

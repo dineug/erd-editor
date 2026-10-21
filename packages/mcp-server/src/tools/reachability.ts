@@ -16,6 +16,7 @@ export const NOT_EMITTED: ReadonlyArray<ActionType> = Object.freeze([
   'settings.changeColumnNameCase',
   'settings.changeBracketType',
   'settings.changeLockSettings',
+  'settings.changeNameViewMode',
   'memo.move',
   'tableGroup.moveTo',
   'relationship.changeColumns',
@@ -57,6 +58,8 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
     'settings.changeBracketType': CODE,
     'settings.changeLockSettings':
       'A lock keeps a setting of the user’s as they saved it, so the user takes or releases one in the editor Settings tab; an agent changes locks only by loading a whole document with erd_import_json, which takes the locks it carries, every one on when it carries none, or by undoing an import.',
+    'settings.changeNameViewMode':
+      'Which names the diagram shows is each reader’s own while its lock holds, so a switch shows only on the store that made it, and once unlocked the user picks it in the editor; an agent edits the schema whatever the view.',
     'memo.move':
       'A relative drag step; memo.moveTo places a memo where the agent names.',
     'tableGroup.moveTo':

@@ -28,6 +28,8 @@ describe('fieldIcon', () => {
       [FindField.memo, 'sticky-note'],
       [FindField.indexName, 'logs'],
       [FindField.tableGroupName, 'group'],
+      // Only the column search lists a logical name as a row, a column's.
+      [FindField.logicalName, 'list'],
     ];
 
     for (const [field, name] of expected) {

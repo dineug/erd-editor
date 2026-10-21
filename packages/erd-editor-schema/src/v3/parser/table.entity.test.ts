@@ -11,15 +11,18 @@ describe('createTable', () => {
 
     expect(table.id).toBe('');
     expect(table.name).toBe('');
+    expect(table.logicalName).toBe('');
     expect(table.comment).toBe('');
     expect(table.columnIds).toEqual([]);
     expect(table.seqColumnIds).toEqual([]);
     expect(table.groupId).toBe('');
+    expect(table.nameDerived).toBe(false);
     expect(table.ui).toEqual({
       x: 200,
       y: 100,
       zIndex: 2,
       widthName: 60,
+      widthLogicalName: 60,
       widthComment: 60,
       color: '',
     });
@@ -37,13 +40,16 @@ describe('createAndMergeTableEntities', () => {
     expect(createAndMergeTableEntities(source as any)).toEqual({});
   });
 
-  it('skips falsy entries and entries without an id', () => {
+  it('skips an entry that is not an object, and keys one without an id by its key', () => {
     const entities = createAndMergeTableEntities({
       a: null as any,
       b: { name: 'no-id' },
+      c: 'users' as any,
+      '': { name: 'no key' },
     });
 
-    expect(entities).toEqual({});
+    expect(Object.keys(entities)).toEqual(['b']);
+    expect(entities.b).toMatchObject({ id: 'b', name: 'no-id' });
   });
 
   it('merges every field', () => {
@@ -51,15 +57,18 @@ describe('createAndMergeTableEntities', () => {
       key: {
         id: 't1',
         name: 'users',
+        logicalName: 'User',
         comment: 'user table',
         columnIds: ['c1', 'c2'],
         seqColumnIds: ['c1', 'c2', 'c3'],
         groupId: 'g1',
+        nameDerived: true,
         ui: {
           x: 10,
           y: 20,
           zIndex: 5,
           widthName: 80,
+          widthLogicalName: 70,
           widthComment: 90,
           color: '#123456',
         },
@@ -69,15 +78,18 @@ describe('createAndMergeTableEntities', () => {
     expect(entities.t1).toEqual({
       id: 't1',
       name: 'users',
+      logicalName: 'User',
       comment: 'user table',
       columnIds: ['c1', 'c2'],
       seqColumnIds: ['c1', 'c2', 'c3'],
       groupId: 'g1',
+      nameDerived: true,
       ui: {
         x: 10,
         y: 20,
         zIndex: 5,
         widthName: 80,
+        widthLogicalName: 70,
         widthComment: 90,
         color: '#123456',
       },
@@ -89,16 +101,20 @@ describe('createAndMergeTableEntities', () => {
       key: {
         id: 't1',
         name: 1 as any,
+        logicalName: null as any,
         columnIds: 'c1' as any,
         groupId: 7 as any,
+        nameDerived: 1 as any,
         ui: { x: '10' as any, color: 3 as any, widthName: 80 },
       },
     });
 
     const table = entities.t1;
     expect(table.name).toBe('');
+    expect(table.logicalName).toBe('');
     expect(table.columnIds).toEqual([]);
     expect(table.groupId).toBe('');
+    expect(table.nameDerived).toBe(false);
     expect(table.ui.x).toBe(200);
     expect(table.ui.color).toBe('');
     expect(table.ui.widthName).toBe(80);
@@ -120,6 +136,7 @@ describe('createAndMergeTableEntities', () => {
       y: 100,
       zIndex: 2,
       widthName: 60,
+      widthLogicalName: 60,
       widthComment: 60,
       color: '',
     });

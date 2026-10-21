@@ -28,6 +28,7 @@ import {
   changeTableColorAction,
   changeTableCommentAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -37,6 +38,7 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
@@ -52,6 +54,7 @@ import type { RootState } from '@/engine/state';
 export type ColumnSeed = {
   id: string;
   name: string;
+  logicalName?: string;
   comment?: string;
   dataType?: string;
   default?: string;
@@ -64,6 +67,7 @@ export type ColumnSeed = {
 export type TableSeed = {
   id: string;
   name: string;
+  logicalName?: string;
   comment?: string;
   x?: number;
   y?: number;
@@ -137,6 +141,15 @@ function columnActions(tableId: string, column: ColumnSeed): AnyAction[] {
   return [
     addColumnAction({ id, tableId }),
     changeColumnNameAction({ id, tableId, value: column.name }),
+    ...(column.logicalName !== undefined
+      ? [
+          changeColumnLogicalNameAction({
+            id,
+            tableId,
+            value: column.logicalName,
+          }),
+        ]
+      : []),
     ...(column.comment !== undefined
       ? [changeColumnCommentAction({ id, tableId, value: column.comment })]
       : []),
@@ -214,6 +227,14 @@ export function seedDiff(app: AppContext, seed: DiffSeed): void {
         },
       }),
       changeTableNameAction({ id: table.id, value: table.name }),
+      ...(table.logicalName !== undefined
+        ? [
+            changeTableLogicalNameAction({
+              id: table.id,
+              value: table.logicalName,
+            }),
+          ]
+        : []),
       ...(table.comment !== undefined
         ? [changeTableCommentAction({ id: table.id, value: table.comment })]
         : []),

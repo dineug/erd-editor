@@ -59,13 +59,16 @@ describe('createAndMergeRelationshipEntities', () => {
     expect(createAndMergeRelationshipEntities(source as any)).toEqual({});
   });
 
-  it('skips falsy entries and entries without an id', () => {
-    expect(
-      createAndMergeRelationshipEntities({
-        a: null as any,
-        b: { identification: true },
-      })
-    ).toEqual({});
+  it('skips an entry that is not an object, and keys one without an id by its key', () => {
+    const entities = createAndMergeRelationshipEntities({
+      a: null as any,
+      b: { identification: true },
+      c: true as any,
+      '': { identification: true },
+    });
+
+    expect(Object.keys(entities)).toEqual(['b']);
+    expect(entities.b).toMatchObject({ id: 'b', identification: true });
   });
 
   it('merges every field', () => {

@@ -2,6 +2,8 @@ import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
+import { relinkDomainColumn } from '@/engine/modules/dictionary/domainLinks';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import { arrayHas } from '@/utils/arrayHas';
 import { addAndSort } from '@/utils/collection/sequence';
 import { createTable } from '@/utils/collection/table.entity';
@@ -261,6 +263,87 @@ const changeColumnNotNull: ReducerType<
   });
 };
 
+export const changeColumnLogicalNameAction = createAction<
+  ActionMap[typeof ActionType.changeColumnLogicalName]
+>(ActionType.changeColumnLogicalName);
+
+const changeColumnLogicalName: ReducerType<
+  typeof ActionType.changeColumnLogicalName
+> = (
+  { collections, lww },
+  { payload: { id, value }, version },
+  { toWidth, clock }
+) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('tableColumnEntities');
+  collection.getOrCreate(id, id => createColumn({ id }));
+
+  collection.replaceOperator(lww, safeVersion, id, 'logicalName', () => {
+    collection.updateOne(id, column => {
+      column.logicalName = value;
+      column.ui.widthLogicalName = textInRange(toWidth(value));
+    });
+  });
+};
+
+export const changeColumnDomainAction = createAction<
+  ActionMap[typeof ActionType.changeColumnDomain]
+>(ActionType.changeColumnDomain);
+
+/**
+ * Links the column to a domain by its id, or to none for ''. The domain cell
+ * is measured by the domain's name, nothing while the id names no listed one.
+ */
+const changeColumnDomain: ReducerType<typeof ActionType.changeColumnDomain> = (
+  state,
+  { payload: { id, value }, version },
+  { toWidth, clock }
+) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(state.collections).collection('tableColumnEntities');
+  collection.getOrCreate(id, id => createColumn({ id }));
+
+  collection.replaceOperator(state.lww, safeVersion, id, 'domainId', () => {
+    collection.updateOne(id, column => {
+      relinkDomainColumn(state, id, column.domainId, value);
+      column.domainId = value;
+      column.ui.widthDomain = textInRange(
+        toWidth(getLiveDomainName(state, value))
+      );
+    });
+  });
+};
+
+export const changeColumnNameDerivedAction = createAction<
+  ActionMap[typeof ActionType.changeColumnNameDerived]
+>(ActionType.changeColumnNameDerived);
+
+/**
+ * Whether the dictionaries filled the column's name, its options' nameDerived
+ * bit, written through a register of its own like every other option bit.
+ */
+const changeColumnNameDerived: ReducerType<
+  typeof ActionType.changeColumnNameDerived
+> = ({ collections, lww }, { payload: { id, value }, version }, { clock }) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('tableColumnEntities');
+  collection.getOrCreate(id, id => createColumn({ id }));
+
+  collection.replaceOperator(
+    lww,
+    safeVersion,
+    id,
+    'options(nameDerived)',
+    () => {
+      collection.updateOne(id, column => {
+        column.options = value
+          ? column.options | ColumnOption.nameDerived
+          : column.options & ~ColumnOption.nameDerived;
+      });
+    }
+  );
+};
+
 export const moveColumnAction = createAction<
   ActionMap[typeof ActionType.moveColumn]
 >(ActionType.moveColumn);
@@ -308,6 +391,9 @@ export const tableColumnReducers = {
   [ActionType.changeColumnUnique]: changeColumnUnique,
   [ActionType.changeColumnNotNull]: changeColumnNotNull,
   [ActionType.moveColumn]: moveColumn,
+  [ActionType.changeColumnLogicalName]: changeColumnLogicalName,
+  [ActionType.changeColumnDomain]: changeColumnDomain,
+  [ActionType.changeColumnNameDerived]: changeColumnNameDerived,
 };
 
 export const actions = {
@@ -322,4 +408,7 @@ export const actions = {
   changeColumnUniqueAction,
   changeColumnNotNullAction,
   moveColumnAction,
+  changeColumnLogicalNameAction,
+  changeColumnDomainAction,
+  changeColumnNameDerivedAction,
 };

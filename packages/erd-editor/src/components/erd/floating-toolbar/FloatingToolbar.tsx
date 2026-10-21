@@ -5,6 +5,7 @@ import {
   getContentCompass,
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
+import { useNameViewDropdown } from '@/components/erd/floating-toolbar/nameViewDropdown';
 import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
@@ -75,13 +76,14 @@ const NOTATIONS: Notation[] = [
 
 /**
  * The bar over the bottom of the canvas: which of the two a press means, what
- * to add, the zoom, the notation the next relationship is drawn in, zen mode,
+ * to add, the zoom, the notation the next relationship is drawn in, the name view, zen mode,
  * and which way the content lies once the screen holds none. It is the one surface zen mode leaves standing.
  */
 const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  const nameView = useNameViewDropdown(ctx);
 
   // Select is the plain pointer, so it ends a table group draw armed as well,
   // which the hand going up ends on its own.
@@ -158,115 +160,120 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
       toShortcutTitle(keyBindingMap, t(labelKey), keyBindingName);
 
     return (
-      <div class={['floating-toolbar', styles.root]} prop:dir="ltr">
-        <div
-          class={[styles.menu, { active: editor.handTool }]}
-          title={title('floatingToolbar.hand', KeyBindingName.handTool)}
-          on:click={handleHandTool(true)}
-        >
-          <Icon name="hand" size={ICON_SIZE} />
-        </div>
-        <div
-          class={[
-            styles.menu,
-            { active: !editor.handTool && !editor.drawTableGroup },
-          ]}
-          title={title('floatingToolbar.select', KeyBindingName.handTool)}
-          on:click={handleHandTool(false)}
-        >
-          <Icon name="mouse-pointer-2" size={ICON_SIZE} />
-        </div>
-        <div class={styles.divider}></div>
-        {props.readonly ? null : (
-          <>
-            <div
-              class={['add-table', styles.menu]}
-              title={title('common.newTable', KeyBindingName.addTable)}
-              on:click={handleAddTable}
-            >
-              <Icon name="table-2" size={ICON_SIZE} />
-            </div>
-            {isMemoShown(store.state) ? (
-              <div
-                class={['add-memo', styles.menu]}
-                title={title('common.newMemo', KeyBindingName.addMemo)}
-                on:click={handleAddMemo}
-              >
-                <Icon name="sticky-note" size={ICON_SIZE} />
-              </div>
-            ) : null}
-            {isTableGroupShown(store.state) ? (
-              <div
-                class={[
-                  'add-table-group',
-                  styles.menu,
-                  { active: editor.drawTableGroup },
-                ]}
-                title={title(
-                  'common.newTableGroup',
-                  KeyBindingName.addTableGroup
-                )}
-                on:click={handleAddTableGroup}
-              >
-                <Icon name="group" size={ICON_SIZE} />
-              </div>
-            ) : null}
-            <div class={styles.divider}></div>
-          </>
-        )}
-        <div
-          class={styles.menu}
-          title={title('floatingToolbar.zoomOut', KeyBindingName.zoomOut)}
-          on:click={handleZoomStep(-ZOOM_STEP)}
-        >
-          <Icon name="minus" size={ICON_SIZE} />
-        </div>
-        <div
-          class={['zoom-level', styles.readout]}
-          title={title('floatingToolbar.resetZoom', KeyBindingName.zoomReset)}
-          on:click={handleZoomReset}
-        >
-          {toZoomFormat(settings.zoomLevel)}
-        </div>
-        <div
-          class={styles.menu}
-          title={title('floatingToolbar.zoomIn', KeyBindingName.zoomIn)}
-          on:click={handleZoomStep(ZOOM_STEP)}
-        >
-          <Icon name="plus" size={ICON_SIZE} />
-        </div>
-        <div class={styles.divider}></div>
-        {NOTATIONS.map(notation => (
+      <>
+        <div class={['floating-toolbar', styles.root]} prop:dir="ltr">
+          <div
+            class={[styles.menu, { active: editor.handTool }]}
+            title={title('floatingToolbar.hand', KeyBindingName.handTool)}
+            on:click={handleHandTool(true)}
+          >
+            <Icon name="hand" size={ICON_SIZE} />
+          </div>
           <div
             class={[
               styles.menu,
-              { active: drawing === notation.relationshipType },
+              { active: !editor.handTool && !editor.drawTableGroup },
             ]}
-            title={title(notation.labelKey, notation.keyBindingName)}
-            on:click={handleDrawRelationship(notation.relationshipType)}
+            title={title('floatingToolbar.select', KeyBindingName.handTool)}
+            on:click={handleHandTool(false)}
           >
-            <Icon name={notation.iconName} size={ICON_SIZE} />
+            <Icon name="mouse-pointer-2" size={ICON_SIZE} />
           </div>
-        ))}
-        <div class={styles.divider}></div>
-        <div
-          class={['zen-mode', styles.menu, { active: editor.zenMode }]}
-          title={title('floatingToolbar.zenMode', KeyBindingName.zenMode)}
-          on:click={handleZenMode}
-        >
-          {editor.zenMode ? (
-            <Icon name="minimize" size={ICON_SIZE} />
-          ) : (
-            <Icon name="maximize" size={ICON_SIZE} />
+          <div class={styles.divider}></div>
+          {props.readonly ? null : (
+            <>
+              <div
+                class={['add-table', styles.menu]}
+                title={title('common.newTable', KeyBindingName.addTable)}
+                on:click={handleAddTable}
+              >
+                <Icon name="table-2" size={ICON_SIZE} />
+              </div>
+              {isMemoShown(store.state) ? (
+                <div
+                  class={['add-memo', styles.menu]}
+                  title={title('common.newMemo', KeyBindingName.addMemo)}
+                  on:click={handleAddMemo}
+                >
+                  <Icon name="sticky-note" size={ICON_SIZE} />
+                </div>
+              ) : null}
+              {isTableGroupShown(store.state) ? (
+                <div
+                  class={[
+                    'add-table-group',
+                    styles.menu,
+                    { active: editor.drawTableGroup },
+                  ]}
+                  title={title(
+                    'common.newTableGroup',
+                    KeyBindingName.addTableGroup
+                  )}
+                  on:click={handleAddTableGroup}
+                >
+                  <Icon name="group" size={ICON_SIZE} />
+                </div>
+              ) : null}
+              <div class={styles.divider}></div>
+            </>
           )}
+          <div
+            class={styles.menu}
+            title={title('floatingToolbar.zoomOut', KeyBindingName.zoomOut)}
+            on:click={handleZoomStep(-ZOOM_STEP)}
+          >
+            <Icon name="minus" size={ICON_SIZE} />
+          </div>
+          <div
+            class={['zoom-level', styles.readout]}
+            title={title('floatingToolbar.resetZoom', KeyBindingName.zoomReset)}
+            on:click={handleZoomReset}
+          >
+            {toZoomFormat(settings.zoomLevel)}
+          </div>
+          <div
+            class={styles.menu}
+            title={title('floatingToolbar.zoomIn', KeyBindingName.zoomIn)}
+            on:click={handleZoomStep(ZOOM_STEP)}
+          >
+            <Icon name="plus" size={ICON_SIZE} />
+          </div>
+          <div class={styles.divider}></div>
+          {NOTATIONS.map(notation => (
+            <div
+              class={[
+                styles.menu,
+                { active: drawing === notation.relationshipType },
+              ]}
+              title={title(notation.labelKey, notation.keyBindingName)}
+              on:click={handleDrawRelationship(notation.relationshipType)}
+            >
+              <Icon name={notation.iconName} size={ICON_SIZE} />
+            </div>
+          ))}
+          <div class={styles.divider}></div>
+          {nameView.trigger()}
+          <div class={styles.divider}></div>
+          <div
+            class={['zen-mode', styles.menu, { active: editor.zenMode }]}
+            title={title('floatingToolbar.zenMode', KeyBindingName.zenMode)}
+            on:click={handleZenMode}
+          >
+            {editor.zenMode ? (
+              <Icon name="minimize" size={ICON_SIZE} />
+            ) : (
+              <Icon name="maximize" size={ICON_SIZE} />
+            )}
+          </div>
+          {toolbarCompass({
+            compass,
+            title: t('floatingToolbar.goToContent'),
+            className: 'content-compass',
+            onClick: handleCompass,
+          })}
         </div>
-        {toolbarCompass({
-          compass,
-          title: t('floatingToolbar.goToContent'),
-          className: 'content-compass',
-          onClick: handleCompass,
-        })}
-      </div>
+        {nameView.menu()}
+      </>
     );
   };
 };

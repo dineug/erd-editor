@@ -9,6 +9,7 @@ import { bHas } from '@/utils/bit';
 import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
   autoNameIgnoreCase,
+  commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
   formatDefault,
@@ -48,10 +49,10 @@ const FOREIGN_KEY_CHECKS_RESTORE =
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {}
+  { statements, written, logicalNameAsComment }: CreateSchemaOptions = {}
 ): string {
   if (statements === SchemaSQLStatements.ifNotExists) {
-    return createInlineSchema(state, tableIds, written);
+    return createInlineSchema(state, tableIds, written, logicalNameAsComment);
   }
 
   const fkNames: Name[] = [];
@@ -61,7 +62,7 @@ export function createSchema(
 
   tables.forEach(table => {
     written?.tables.push(table);
-    formatTable(state, { table, buffer: stringBuffer });
+    formatTable(state, { table, buffer: stringBuffer, logicalNameAsComment });
     stringBuffer.push('');
 
     formatUnique(state, { table, buffer: stringBuffer });
@@ -96,7 +97,8 @@ export function createSchema(
 function createInlineSchema(
   state: RootState,
   tableIds: readonly string[] | undefined,
-  written: WrittenObjects | undefined
+  written: WrittenObjects | undefined,
+  logicalNameAsComment: boolean | undefined
 ): string {
   const {
     settings: { bracketType },
@@ -137,13 +139,20 @@ function createInlineSchema(
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds);
 
-    writeTable(state, stringBuffer, table, SchemaSQLStatements.ifNotExists, [
-      ...uniqueColumns(columns).map(column => [
-        `  ${uniqueConstraint(bracketType, table, column)}`,
-      ]),
-      ...(tableIndexes.get(table.id) ?? []),
-      ...(foreignKeys.get(table.id) ?? []),
-    ]);
+    writeTable(
+      state,
+      stringBuffer,
+      table,
+      SchemaSQLStatements.ifNotExists,
+      [
+        ...uniqueColumns(columns).map(column => [
+          `  ${uniqueConstraint(bracketType, table, column)}`,
+        ]),
+        ...(tableIndexes.get(table.id) ?? []),
+        ...(foreignKeys.get(table.id) ?? []),
+      ],
+      logicalNameAsComment
+    );
     stringBuffer.push('');
   });
   stringBuffer.push(FOREIGN_KEY_CHECKS_RESTORE, '');
@@ -153,9 +162,9 @@ function createInlineSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table, statements }: FormatTableOptions
+  { buffer, table, statements, logicalNameAsComment }: FormatTableOptions
 ) {
-  writeTable(state, buffer, table, statements, []);
+  writeTable(state, buffer, table, statements, [], logicalNameAsComment);
 }
 
 // The CREATE TABLE, its columns, its primary key and then the elements handed
@@ -165,7 +174,8 @@ function writeTable(
   buffer: string[],
   table: Table,
   statements: SchemaSQLStatements | undefined,
-  elements: string[][]
+  elements: string[][],
+  logicalNameAsComment: boolean | undefined
 ) {
   const {
     settings: { bracketType },
@@ -190,6 +200,7 @@ function writeTable(
       isComma: pk || more || columns.length !== i + 1,
       spaceSize,
       buffer,
+      logicalNameAsComment,
     });
   });
   // PK
@@ -203,10 +214,11 @@ function writeTable(
     buffer.push(...lines);
     if (i !== elements.length - 1) buffer[buffer.length - 1] += ',';
   });
-  if (table.comment.trim() === '') {
+  const comment = commentToWrite(table, logicalNameAsComment);
+  if (comment === '') {
     buffer.push(`);`);
   } else {
-    buffer.push(`) COMMENT ${toStringLiteral(table.comment)};`);
+    buffer.push(`) COMMENT ${toStringLiteral(comment)};`);
   }
 }
 
@@ -243,7 +255,13 @@ export function formatUnique(
 
 function formatColumn(
   { settings: { bracketType } }: RootState,
-  { buffer, column, isComma, spaceSize }: FormatColumnOptions
+  {
+    buffer,
+    column,
+    isComma,
+    spaceSize,
+    logicalNameAsComment,
+  }: FormatColumnOptions
 ) {
   const bracket = getBracket(bracketType);
   const stringBuffer: string[] = [];
@@ -270,8 +288,9 @@ function formatColumn(
       );
     }
   }
-  if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT ${toStringLiteral(column.comment)}`);
+  const comment = commentToWrite(column, logicalNameAsComment);
+  if (comment !== '') {
+    stringBuffer.push(`COMMENT ${toStringLiteral(comment)}`);
   }
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }

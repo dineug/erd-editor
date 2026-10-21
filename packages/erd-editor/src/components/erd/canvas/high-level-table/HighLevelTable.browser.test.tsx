@@ -31,7 +31,7 @@ import {
 import { Diff, type DiffMap } from '@/components/erd/diff-viewer/diff';
 import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { TABLE_BORDER } from '@/constants/layout';
-import { RelationshipType } from '@/constants/schema';
+import { NameViewMode, RelationshipType } from '@/constants/schema';
 import {
   drawStartRelationshipAction,
   sharedFocusTrackerAction,
@@ -39,8 +39,14 @@ import {
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
-import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeZoomLevelAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
+import {
+  changeTableLogicalNameAction,
+  changeTableNameAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addTableAction$,
   selectTableAction$,
@@ -294,6 +300,74 @@ describe('the name a simplified table shows', () => {
     expect(await sizeAt(0.45)).toBe(HIGH_LEVEL_FONT_SIZES[2]);
     expect(await sizeAt(0.35)).toBe(HIGH_LEVEL_FONT_SIZES[3]);
     expect(await sizeAt(0.25)).toBe(HIGH_LEVEL_FONT_SIZES[4]);
+  });
+});
+
+describe('the name a simplified table shows in each name view', () => {
+  const name = (stage: Stage) =>
+    named<Text>(rootOf(stage), 'high-level-table-name');
+
+  async function setupNames(logicalName: string) {
+    const fixture = await setup();
+    const { id } = fixture.table;
+    fixture.app.store.dispatchSync(
+      changeTableNameAction({ id, value: 'member' }),
+      changeTableLogicalNameAction({ id, value: logicalName })
+    );
+    await settle();
+    return fixture;
+  }
+
+  const switchTo = async (
+    app: AppContext,
+    mode: (typeof NameViewMode)[keyof typeof NameViewMode]
+  ) => {
+    app.store.dispatchSync(toNameViewModeAction(app.store.state, mode, false));
+    await settle();
+  };
+
+  it('shows the logical name in the logical view and the name again in the physical one', async () => {
+    const { app, stage, theme } = await setupNames('Member');
+
+    expect(name(stage).text()).toBe('member');
+
+    await switchTo(app, NameViewMode.logical);
+    expect(name(stage).text()).toBe('Member');
+    expect(name(stage).fill()).toBe(theme.active);
+
+    await switchTo(app, NameViewMode.physical);
+    expect(name(stage).text()).toBe('member');
+  });
+
+  it('dims the name standing in for a blank logical name in the logical view', async () => {
+    const { app, stage, theme } = await setupNames(' ');
+
+    await switchTo(app, NameViewMode.logical);
+
+    expect(name(stage).text()).toBe('member');
+    expect(name(stage).fill()).toBe(theme.placeholder);
+  });
+
+  it('puts the name under the logical name in the view of both', async () => {
+    const { app, stage, theme } = await setupNames('Member');
+
+    await switchTo(app, NameViewMode.both);
+
+    expect(name(stage).text()).toBe('Member\nmember');
+    expect(name(stage).fill()).toBe(theme.active);
+  });
+
+  it('follows a logical name typed while the view shows it', async () => {
+    const { app, stage, table } = await setupNames('');
+
+    await switchTo(app, NameViewMode.both);
+    expect(name(stage).text()).toBe('member');
+
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: table.id, value: 'Member' })
+    );
+    await settle();
+    expect(name(stage).text()).toBe('Member\nmember');
   });
 });
 

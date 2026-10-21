@@ -5,13 +5,20 @@ import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
+  addDictionaryAction,
+  removeDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import {
   actions,
   addColumnAction,
   changeColumnAutoIncrementAction,
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
@@ -242,6 +249,13 @@ describe('table-column atom.actions', () => {
       field: 'default',
       widthField: 'widthDefault',
     },
+    {
+      label: 'changeColumnLogicalName',
+      action: changeColumnLogicalNameAction,
+      path: 'logicalName',
+      field: 'logicalName',
+      widthField: 'widthLogicalName',
+    },
   ] as const;
 
   for (const { label, action, path, field, widthField } of valueCases) {
@@ -383,6 +397,12 @@ describe('table-column atom.actions', () => {
       path: 'options(notNull)',
       mask: ColumnOption.notNull,
     },
+    {
+      label: 'changeColumnNameDerived',
+      action: changeColumnNameDerivedAction,
+      path: 'options(nameDerived)',
+      mask: ColumnOption.nameDerived,
+    },
   ] as const;
 
   for (const { label, action, path, mask } of optionCases) {
@@ -440,6 +460,73 @@ describe('table-column atom.actions', () => {
       });
     });
   }
+
+  describe('changeColumnDomain', () => {
+    const addDomain = (store: Store, id: string, name: string) =>
+      store.dispatchSync(
+        addDictionaryAction({ kind: 'domain', id, values: { name } })
+      );
+
+    it('links the domain under its own path and measures the domain name', () => {
+      const { store } = setup();
+      store.dispatchSync(addColumnAction({ id: 'c1', tableId: 't1' }));
+      addDomain(store, 'd1', 'amount_n15_x');
+
+      store.dispatchSync({
+        ...changeColumnDomainAction({ id: 'c1', tableId: 't1', value: 'd1' }),
+        version: 7,
+      });
+
+      expect(selectColumn(store, 'c1')).toMatchObject({
+        domainId: 'd1',
+        ui: { widthDomain: 120 },
+      });
+      expect(lwwOf(store, 'c1')[3]).toEqual({ domainId: 7 });
+    });
+
+    it('measures no name for a domain no row lists, and unlinks with an empty id', () => {
+      const { store } = setup();
+      store.dispatchSync(addColumnAction({ id: 'c1', tableId: 't1' }));
+      addDomain(store, 'd1', 'amount_n15_x');
+      store.dispatchSync(removeDictionaryAction({ kind: 'domain', id: 'd1' }));
+
+      store.dispatchSync(
+        changeColumnDomainAction({ id: 'c1', tableId: 't1', value: 'd1' })
+      );
+      expect(selectColumn(store, 'c1')).toMatchObject({
+        domainId: 'd1',
+        ui: { widthDomain: COLUMN_MIN_WIDTH },
+      });
+
+      store.dispatchSync(
+        changeColumnDomainAction({ id: 'c1', tableId: 't1', value: 'ghost' })
+      );
+      expect(selectColumn(store, 'c1')?.ui.widthDomain).toBe(COLUMN_MIN_WIDTH);
+
+      store.dispatchSync(
+        changeColumnDomainAction({ id: 'c1', tableId: 't1', value: '' })
+      );
+      expect(selectColumn(store, 'c1')?.domainId).toBe('');
+    });
+
+    it('keeps the newer link whatever order two writes arrive in', () => {
+      const { store } = setup();
+      const link = (id: string, value: string, version: number) => ({
+        ...changeColumnDomainAction({ id, tableId: 't1', value }),
+        version,
+      });
+
+      store.dispatchSync(
+        link('c1', 'newer', 8),
+        link('c1', 'older', 5),
+        link('c2', 'older', 5),
+        link('c2', 'newer', 8)
+      );
+
+      expect(selectColumn(store, 'c1')?.domainId).toBe('newer');
+      expect(selectColumn(store, 'c2')?.domainId).toBe('newer');
+    });
+  });
 
   describe('changeColumnPrimaryKey ui keys', () => {
     it('mirrors the option onto ui.keys and leaves foreignKey alone', () => {
@@ -562,7 +649,10 @@ describe('table-column atom.actions', () => {
           'column.changeComment',
           'column.changeDataType',
           'column.changeDefault',
+          'column.changeDomain',
+          'column.changeLogicalName',
           'column.changeName',
+          'column.changeNameDerived',
           'column.changeNotNull',
           'column.changePrimaryKey',
           'column.changeUnique',
@@ -576,7 +666,7 @@ describe('table-column atom.actions', () => {
     });
 
     it('exposes every action creator', () => {
-      expect(Object.keys(actions)).toHaveLength(11);
+      expect(Object.keys(actions)).toHaveLength(14);
       expect(actions.addColumnAction).toBe(addColumnAction);
       expect(actions.moveColumnAction).toBe(moveColumnAction);
       expect(String(removeColumnAction)).toBe('column.remove');

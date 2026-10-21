@@ -25,6 +25,7 @@ import { explorerViewOf } from '@/components/explorer/explorerView';
 import ExportImage, {
   PREVIEW_DEBOUNCE_MS,
   PREVIEW_MAX_SIDE,
+  toExportJson,
 } from '@/components/export-image/ExportImage';
 import * as styles from '@/components/export-image/ExportImage.styles';
 import {
@@ -34,6 +35,8 @@ import {
 } from '@/components/export-image/exportImageActions';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
+import { NameViewMode } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeOpenMapAction,
   changeViewportAction,
@@ -41,6 +44,7 @@ import {
 import {
   changeDatabaseNameAction,
   changeZoomLevelAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { en } from '@/i18n/messages/en';
@@ -92,6 +96,8 @@ const themeOptions: ThemeOptions = {
   grayColor: GrayColor.slate,
   accentColor: AccentColor.indigo,
 };
+
+type Mode = (typeof NameViewMode)[keyof typeof NameViewMode];
 
 type Mounted = {
   container: HTMLDivElement;
@@ -699,6 +705,7 @@ describe('ExportImage buttons', () => {
       toWidth: app.toWidth,
       pixelRatio: 3,
       i18n: { locale: 'en', messages: en },
+      nameViewMode: NameViewMode.physical,
     });
     expect(databaseName).toBe('shop');
     expect(dialog()).not.toBeNull();
@@ -838,6 +845,92 @@ describe('ExportImage language', () => {
       locale: 'de-DE',
       messages: german,
     });
+  });
+});
+
+describe('ExportImage name view', () => {
+  /** A switch as the canvas menu sends it, which a locked file keeps to this screen. */
+  const showNames = (app: AppContext, mode: Mode) =>
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, mode, app.store.getReadonly())
+    );
+
+  it('draws in the names the reader sees, not the view the lock saves, as they were at opening', async () => {
+    const app = await setup();
+    showNames(app, NameViewMode.logical);
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(JSON.parse(toJson(app.store.state)).settings).not.toHaveProperty(
+      'nameViewMode'
+    );
+
+    await open(app);
+    showNames(app, NameViewMode.both);
+    await flush();
+    await click(buttonOf('PNG'));
+    await click(buttonOf('SVG'));
+    await click(buttonOf('Copy to clipboard'));
+
+    expect(preview.mock.calls[0][0].nameViewMode).toBe(NameViewMode.logical);
+    expect(vi.mocked(exportImagePng).mock.calls[0][1].nameViewMode).toBe(
+      NameViewMode.logical
+    );
+    expect(vi.mocked(exportImageSvg).mock.calls[0][1].nameViewMode).toBe(
+      NameViewMode.logical
+    );
+    expect(vi.mocked(copyImagePng).mock.calls[0][1].nameViewMode).toBe(
+      NameViewMode.logical
+    );
+  });
+
+  it('takes the names again at the next opening', async () => {
+    const app = await setup();
+    await open(app);
+    await pressStop(app);
+
+    showNames(app, NameViewMode.both);
+    await open(app);
+
+    expect(preview.mock.calls.at(-1)?.[0].nameViewMode).toBe(NameViewMode.both);
+  });
+});
+
+describe('ExportImage dictionaries', () => {
+  it('leaves the words and terms out of the document it draws, the domains kept', async () => {
+    const app = await setup();
+    app.store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Identifier', dataType: 'INT' },
+      }),
+      addDictionaryAction({
+        kind: 'word',
+        id: 'w1',
+        values: { name: 'Member', abbreviation: 'MBR' },
+      }),
+      addDictionaryAction({
+        kind: 'term',
+        id: 't1',
+        values: { name: 'Member ID', physicalName: 'member_id' },
+      })
+    );
+
+    await open(app);
+
+    const [options] = preview.mock.calls[0];
+    expect(options.doc).toBe(toExportJson(app.store.state));
+    const { doc, collections } = JSON.parse(options.doc);
+    expect(doc).not.toHaveProperty('wordIds');
+    expect(doc).not.toHaveProperty('termIds');
+    expect(collections).not.toHaveProperty('wordEntities');
+    expect(collections).not.toHaveProperty('termEntities');
+    expect(doc.domainIds).toEqual(['d1']);
+    expect(collections.domainEntities).toEqual(
+      JSON.parse(toJson(app.store.state)).collections.domainEntities
+    );
+    // The editor keeps every row; only the image's copy goes without them.
+    expect(app.store.state.doc.wordIds).toEqual(['w1']);
+    expect(app.store.state.doc.termIds).toEqual(['t1']);
   });
 });
 

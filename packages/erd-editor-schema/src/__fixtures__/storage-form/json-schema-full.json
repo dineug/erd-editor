@@ -1,0 +1,167 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "originX": 0,
+    "originY": 0,
+    "zoomLevel": 1,
+    "show": 431,
+    "database": 16,
+    "databaseName": "shop",
+    "canvasType": "ERD",
+    "language": 1,
+    "tableNameCase": 4,
+    "columnNameCase": 2,
+    "bracketType": 1,
+    "relationshipDataTypeSync": true,
+    "columnOrder": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "maxWidthComment": -1,
+    "lockSettings": 63,
+    "ddlScripts": {
+      "before": "SET search_path = shop;",
+      "after": ""
+    }
+  },
+  "doc": {
+    "tableIds": [
+      "t1",
+      "t2"
+    ],
+    "relationshipIds": [
+      "r1"
+    ],
+    "indexIds": [
+      "i1"
+    ],
+    "memoIds": [
+      "m1"
+    ],
+    "tableGroupIds": [
+      "g1"
+    ]
+  },
+  "collections": {
+    "tableEntities": {
+      "t1": {
+        "id": "t1",
+        "name": "users",
+        "comment": "",
+        "columnIds": [
+          "c1"
+        ],
+        "groupId": "g1",
+        "ui": {
+          "x": 200,
+          "y": 100,
+          "color": ""
+        }
+      },
+      "t2": {
+        "id": "t2",
+        "name": "orders",
+        "comment": "",
+        "columnIds": [
+          "c2"
+        ],
+        "ui": {
+          "x": 200,
+          "y": 100,
+          "color": ""
+        }
+      }
+    },
+    "tableColumnEntities": {
+      "c1": {
+        "id": "c1",
+        "tableId": "t1",
+        "name": "id",
+        "comment": "",
+        "dataType": "",
+        "default": "",
+        "options": 2
+      },
+      "c2": {
+        "id": "c2",
+        "tableId": "t2",
+        "name": "user_id",
+        "comment": "",
+        "dataType": "",
+        "default": "",
+        "options": 0
+      }
+    },
+    "relationshipEntities": {
+      "r1": {
+        "id": "r1",
+        "relationshipType": 16,
+        "onDelete": 1,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "t1",
+          "columnIds": [
+            "c1"
+          ]
+        },
+        "end": {
+          "tableId": "t2",
+          "columnIds": [
+            "c2"
+          ]
+        }
+      }
+    },
+    "indexEntities": {
+      "i1": {
+        "id": "i1",
+        "name": "ix",
+        "tableId": "t2",
+        "indexColumnIds": [
+          "ic1"
+        ],
+        "unique": false
+      }
+    },
+    "indexColumnEntities": {
+      "ic1": {
+        "id": "ic1",
+        "indexId": "i1",
+        "columnId": "c2",
+        "orderType": 2
+      }
+    },
+    "memoEntities": {
+      "m1": {
+        "id": "m1",
+        "value": "note",
+        "ui": {
+          "x": 200,
+          "y": 100,
+          "width": 116,
+          "height": 100,
+          "color": ""
+        }
+      }
+    },
+    "tableGroupEntities": {
+      "g1": {
+        "id": "g1",
+        "name": "billing",
+        "color": "",
+        "ui": {
+          "x": 200,
+          "y": 100,
+          "width": 400,
+          "height": 300
+        }
+      }
+    }
+  }
+}

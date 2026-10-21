@@ -1,4 +1,4 @@
-import { settingsActions } from '@dineug/erd-editor/peer.js';
+import { settingsActions, tableActions } from '@dineug/erd-editor/peer.js';
 import { Effect } from 'effect';
 import {
   afterEach,
@@ -12,7 +12,7 @@ import {
 import { stubSessions } from '@/__test-utils__/effect';
 import { connectLayer, connectMcp, RpcError } from '@/__test-utils__/mcp';
 import { createMemoryHost } from '@/__test-utils__/memoryHost';
-import { createSeededPeer } from '@/__test-utils__/seed';
+import { createSeededPeer, SEED } from '@/__test-utils__/seed';
 import { layerWithSessions } from '@/server';
 import { readDocument } from '@/tools/read';
 import { ReadParams } from '@/tools/read.tool';
@@ -75,6 +75,57 @@ describe('the DDL erd_read writes', () => {
     expect(refused.json.error).toEqual({
       code: 'invalidArgs',
       message: 'statements and header apply to the sql format only, not json',
+    });
+    peer.destroy();
+    await mcp.close();
+  });
+
+  it('hands the logical name option to the generator, a boolean alone and for the sql format only', async () => {
+    const peer = createSeededPeer();
+    peer.dispatch([
+      tableActions.changeTableLogicalNameAction({
+        id: SEED.users,
+        value: 'Member',
+      }),
+    ]);
+    const io = createMemoryHost();
+    io.put(DOCUMENT, peer.value);
+    const mcp = await connectMcp({ host: io });
+    const read = (args: Record<string, unknown>) =>
+      mcp.call('erd_read', { path: DOCUMENT, ...args });
+
+    const sql = await mcp.text('erd_read', {
+      path: DOCUMENT,
+      format: 'sql',
+      vendor: 'PostgreSQL',
+      logicalNameAsComment: true,
+    });
+    expect(sql).toBe(
+      readDocument(peer.state, 'sql', 'PostgreSQL', undefined, {
+        logicalNameAsComment: true,
+      })
+    );
+    expect(sql).toContain("COMMENT ON TABLE users IS 'Member';");
+    expect(
+      await mcp.text('erd_read', {
+        path: DOCUMENT,
+        format: 'sql',
+        vendor: 'PostgreSQL',
+      })
+    ).not.toContain('Member');
+
+    const error = await read({
+      format: 'sql',
+      logicalNameAsComment: 'true',
+    }).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(RpcError);
+    expect(error).toMatchObject({ code: -32602 });
+
+    const refused = await read({ format: 'json', logicalNameAsComment: false });
+    expect(refused.isError).toBe(true);
+    expect(refused.json.error).toEqual({
+      code: 'invalidArgs',
+      message: 'logicalNameAsComment applies to the sql format only, not json',
     });
     peer.destroy();
     await mcp.close();
@@ -148,7 +199,7 @@ describe('a call that fails unexpectedly', () => {
       'a tool call failed',
       expect.stringContaining('TypeError: bug')
     );
-    expect((await mcp.listTools()).tools).toHaveLength(63);
+    expect((await mcp.listTools()).tools).toHaveLength(75);
     await mcp.close();
   });
 

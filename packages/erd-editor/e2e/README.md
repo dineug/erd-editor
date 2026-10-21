@@ -56,7 +56,7 @@ for both.
 | `playwright.bench.config.ts`    | The bench project — own testDir, one worker; its few expects check that the page reached what it measures, never a measured number |
 | `e2e/tsconfig.json`             | The `e2e:typecheck` program, with the `@/*` → `src/*` alias the support files use |
 | `e2e/fixture/`                  | The page under test — a deterministic `<erd-editor>` mount, the theme builder, locale picker and welcome screen off until `erd.enable()` |
-| `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes, table groups |
+| `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes, table groups, the three dictionaries, logical names and the name view |
 | `e2e/support/graph.ts`          | A relationship or index read back by the names it joins           |
 | `e2e/support/connectorDrift.ts` | How far each scene draw puts a connector end off its own table    |
 | `e2e/support/listDrag.ts`       | Drags a native drag-and-drop list from inside the page, one dragover a frame, and returns every painted frame |
@@ -72,7 +72,7 @@ for both.
 
 ## What is covered
 
-48 spec files. Ten of the groups exist because the DOM scene got their subject
+50 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -88,7 +88,7 @@ for free and the canvas has to draw and dispatch it itself:
 | `virtual-viewport.spec.ts`      | Culling: what never came near the screen has no node, a table that left stays built but hidden, and the minimap keeps all of it |
 | `diff-viewer.spec.ts`           | A changed cell's text colour and an added or removed table's outline on both canvases, and the diff tree |
 
-Twelve more are the canvas's own geometry, and the DOM the editing overlay
+Thirteen more are the canvas's own geometry, and the DOM the editing overlay
 puts over it:
 
 | Spec                            | What it holds down                                                |
@@ -104,6 +104,7 @@ puts over it:
 | `cell-editor-alignment.spec.ts` | The drawn cell and its input, on both device grids                |
 | `cell-editor-underline.spec.ts` | The underline the two rasterisers have to agree on                |
 | `data-type-hint.spec.ts`        | The autocomplete DOM the stage cannot hit test                    |
+| `logical-names.spec.ts`         | The cells each name view draws, switched from the canvas menu and the palette, and the term list under a logical name: the name and domain a term fills, a name typed by hand kept, and Derive Physical Name Again |
 | `relationship-hover.spec.ts`    | Every part a connector draws, hovered one at a time               |
 
 Two more are the placements a worker computes, one landed in the document and
@@ -301,6 +302,20 @@ its group, and the box grows round it once shown; and the Schema SQL tab's
 Tables leaves out the tables of an unchecked group, writes nothing under its
 hint with no box checked, and All checks every box again.
 
+`dictionary.spec.ts` holds down the Dictionary tab's files, its row keys and
+its check sheet: three CSV files handed to the dialog Import CSV opens, the
+domains, the words and the terms in that order, each shown on its own sheet
+with its row count and its toast, a term's domain the id of the domain its file
+named, the same file again leaving nothing to undo, and one undo taking back
+one whole file from its own sheet's history, by key on the sheet shown and by
+the toolbar's Undo on the other two, leaving the ERD tab nothing to undo;
+Alt+Enter inserting as many rows below the selection as it covers and
+Alt+Delete deleting those rows, no word of the file; Export CSV saving each sheet
+whole whatever its search shows, as `shop-<time>-words.csv` and the like, in
+the bytes its file came in: the byte order mark, the header and CRLF; and a
+double click on a column's check landing on that column's name on the ERD tab,
+the canvas holding the keyboard. Its sample files are written in the spec.
+
 The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `clipboard`, `cascade`, `alt-drag-duplicate`, `shared-presence`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
@@ -398,7 +413,7 @@ keys will tell you nothing was deleted. `ErdEditorPage#tableIds()`,
 The element's `runtimeValue` getter serialises the live store on read, a locked
 setting excepted (Known traps), with what the file form `value` leaves out:
 removed entities, `zIndex`, the measured widths, the relationship anchors and
-flags. `erd.value()` reads it. That is what assertions should compare against —
+flags, and the empty text, lists and collections. `erd.value()` reads it. That is what assertions should compare against —
 the scene is a projection of it. A view (Flow mode's placement, zoom and rows)
 and the selection are never in it: read the first off the stage
 (`window.__erdStages.canvas`), as `visualization-flow.spec.ts` does, and the
@@ -688,6 +703,11 @@ cost when you hit them blind.
   highlights nothing, and ArrowUp/ArrowDown are only prevented while it lists
   hints. When traversing through it, press no arrow key in that cell, or press
   `Escape` first.
+- A logical name cell's term list (`.logical-name-hint-item`) takes Enter only
+  once an arrow has selected a term, and Escape while it lists any: that first
+  Escape closes the list alone and leaves the editor open. Each close of the
+  editor on a logical name it changed derives the name once more, an undo entry
+  of its own after the keys' whenever that writes anything.
 
 **Selectors**
 
@@ -710,6 +730,12 @@ cost when you hit them blind.
 - `cache()` swaps a whole subtree out rather than destroying it, and the
   projection retires whatever it can no longer walk. Assert `toHaveCount(0)`,
   not `toBeHidden()`.
+- The Dictionary tab's grid paints each region's cells inside one shape, so
+  the projection holds no cell and no text of it. Read a sheet's rows off
+  `erd.value()` (`doc.wordIds` and the header and rows of
+  `collections.wordEntities`) and the status line under the grid, and press a
+  cell at a point on `.dineug-grid-scroller`, its 28 px header and rows counted
+  from its top, as `dictionary.spec.ts` does.
 
 **Platform**
 
@@ -730,13 +756,17 @@ cost when you hit them blind.
   backs `value` — serialises a copy, so reading either never moves the live
   view. Both write each locked setting at its lock, not live: the origin and the
   zoom while the viewport lock of `lockSettings` is on, and likewise
-  `canvasType`, `language`, `tableNameCase`, `columnNameCase` and `bracketType`.
-  Every seed keeps `lockSettings` at `0`, all unlocked; the unseeded element is a
-  new document, every lock on, so a spec that reads the view, the tab or a code
-  setting from either seeds first. A seed without the field would open as a
-  file saved before the locks: every lock on, and its view reset to the origin
-  at zoom 1 on the ERD tab, so `runtimeValue` and `value` keep writing that view
-  whatever the spec pans or zooms to.
+  `canvasType`, `language`, `tableNameCase`, `columnNameCase`, `bracketType` and
+  `nameViewMode`. `createSchema` writes `lockSettings` at `0` unless the seed
+  names one, which turns every lock off but the name view's: its bit, `64`
+  (`UNLOCK_NAME_VIEW`), unlocks it while set, so `0` keeps it locked, and a seed
+  that needs its switch shared and saved names `lockSettings: UNLOCK_NAME_VIEW`,
+  as `logical-names.spec.ts` does. The unseeded element is a new document, every
+  lock on, so a spec that reads the view, the tab or a code setting from either
+  seeds first. A seed without the field would open as a file saved before the
+  locks: every lock on, and its view reset to the origin at zoom 1 on the ERD
+  tab, so `runtimeValue` and `value` keep writing that view whatever the spec
+  pans or zooms to.
 - Clipboard copy/paste is driven by native `ClipboardEvent`s on the shadow-root
   `.root` div, with bubble-phase listeners. Dispatching at `document` or at the
   host element will not reach them.

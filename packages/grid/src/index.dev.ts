@@ -497,8 +497,13 @@ function onColumnResize(col: number, width: number) {
 }
 
 function onCellContextMenu(event: CellContextMenuEvent) {
+  const { row, col } = event;
   console.info('onCellContextMenu', event);
-  notify(`Context menu on ${cellName(event.row, event.col)}`);
+  notify(
+    row !== null && col !== null
+      ? `Context menu on ${cellName(row, col)}`
+      : 'Context menu past the last cell'
+  );
 }
 
 function onReady(next: GridHandle) {

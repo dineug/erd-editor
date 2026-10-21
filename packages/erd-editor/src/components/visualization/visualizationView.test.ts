@@ -31,6 +31,7 @@ import {
   ZOOM_MIN,
   zoomAt,
 } from '@/components/visualization/visualizationView';
+import { NameViewMode } from '@/constants/schema';
 
 /** The scene point a stage point stands over, the view read backwards. */
 const toScene = (view: VisualizationView, x: number, y: number) => ({
@@ -62,22 +63,46 @@ describe('truncateName', () => {
 });
 
 describe('labelOf', () => {
+  const physical = { nameViewMode: NameViewMode.physical };
+  const logical = { nameViewMode: NameViewMode.logical };
+  const both = { nameViewMode: NameViewMode.both };
+  const named = (name: string, logicalName = '') => ({ name, logicalName });
+
   it('draws the cut name where there is one', () => {
-    expect(labelOf({ name: 'users' }, 'table')).toBe('users');
-    expect(labelOf({ name: 'x'.repeat(20) }, 'table')).toBe(
+    expect(labelOf(named('users'), 'table', physical)).toBe('users');
+    expect(labelOf(named('x'.repeat(20)), 'table', physical)).toBe(
       'x'.repeat(NAME_MAX_LENGTH) + '…'
     );
   });
 
   it('falls back to the placeholder it is handed, the one the preview input shows', () => {
-    expect(labelOf({ name: '' }, 'table')).toBe('table');
-    expect(labelOf({ name: '   ' }, 'table')).toBe('table');
-    expect(labelOf({ name: '' }, 'ko:table')).toBe('ko:table');
+    expect(labelOf(named(''), 'table', physical)).toBe('table');
+    expect(labelOf(named('   '), 'table', physical)).toBe('table');
+    expect(labelOf(named(''), 'ko:table', physical)).toBe('ko:table');
   });
 
   it('tells a named table from a placeholder one', () => {
-    expect(hasName({ name: 'users' })).toBe(true);
-    expect(hasName({ name: ' ' })).toBe(false);
+    expect(hasName(named('users'), physical)).toBe(true);
+    expect(hasName(named(' '), physical)).toBe(false);
+  });
+
+  it('draws the logical name in the logical view, the name dimmed while it is blank', () => {
+    expect(labelOf(named('users', 'Users'), 'table', logical)).toBe('Users');
+    expect(hasName(named('users', 'Users'), logical)).toBe(true);
+    expect(labelOf(named('users', ' '), 'table', logical)).toBe('users');
+    expect(hasName(named('users', ' '), logical)).toBe(false);
+    expect(labelOf(named('', ''), 'table', logical)).toBe('table');
+  });
+
+  it('draws the name under the logical name in the view of both, each cut on its own', () => {
+    expect(labelOf(named('users', 'Users'), 'table', both)).toBe(
+      'Users\nusers'
+    );
+    expect(labelOf(named('u'.repeat(20), 'U'.repeat(20)), 'table', both)).toBe(
+      `${'U'.repeat(NAME_MAX_LENGTH)}…\n${'u'.repeat(NAME_MAX_LENGTH)}…`
+    );
+    expect(labelOf(named('users'), 'table', both)).toBe('users');
+    expect(hasName(named('users', 'Users'), both)).toBe(true);
   });
 });
 
@@ -98,6 +123,7 @@ describe('highlightOf', () => {
     id,
     group,
     name: id,
+    logicalName: '',
     tableId,
     x: 0,
     y: 0,
@@ -276,6 +302,7 @@ const node = (
   id,
   group,
   name: id,
+  logicalName: '',
   tableId: group === Group.table ? null : 't',
   x,
   y,

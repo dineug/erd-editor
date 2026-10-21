@@ -18,9 +18,12 @@ import type { AppContext } from '@/components/appContext';
 import DiffTree from '@/components/erd/diff-viewer/diff-tree/DiffTree';
 import { isRelationshipHighlighted } from '@/components/erd/relationshipHighlight';
 import { EXPLORER_WIDTH } from '@/constants/layout';
-import { ReferentialAction } from '@/constants/schema';
+import { NameViewMode, ReferentialAction } from '@/constants/schema';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
-import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeZoomLevelAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
 import { diffDocuments } from '@/utils/diff';
@@ -208,6 +211,116 @@ describe('DiffTree - rows', () => {
     await settle();
 
     expect(rows().map(textOf)).toEqual(['Tables1~', 'membersR']);
+  });
+});
+
+describe('DiffTree - name views', () => {
+  const PREV: DiffSeed = {
+    tables: [
+      {
+        id: 'u',
+        name: 'users',
+        logicalName: 'Users',
+        columns: [{ id: 'uc', name: 'email', logicalName: 'Login ID' }],
+      },
+      { id: 'g', name: 'legacy' },
+    ],
+    memos: [{ id: 'm', value: 'draft' }],
+  };
+  const NEXT: DiffSeed = {
+    tables: [
+      {
+        id: 'u',
+        name: 'members',
+        logicalName: 'Members',
+        columns: [
+          {
+            id: 'uc',
+            name: 'email',
+            logicalName: 'Login ID',
+            comment: 'login',
+          },
+        ],
+      },
+    ],
+    memos: [{ id: 'm', value: 'final' }],
+  };
+
+  async function switchTo(
+    app: AppContext,
+    mode: (typeof NameViewMode)[keyof typeof NameViewMode]
+  ) {
+    app.store.dispatchSync(toNameViewModeAction(app.store.state, mode, true));
+    await settle();
+  }
+
+  it('names tables and columns as the panes show them, every other row by its own name', async () => {
+    const { app } = await setup(PREV, NEXT);
+    expect(rows().map(textOf)).toEqual([
+      'Tables2~',
+      'legacyD',
+      'membersR',
+      'Columns1~',
+      'emailM',
+      'Memos1~',
+      'finalM',
+    ]);
+
+    await switchTo(app, NameViewMode.logical);
+    expect(rows().map(textOf)).toEqual([
+      'Tables2~',
+      'legacyD',
+      'MembersR',
+      'Columns1~',
+      'Login IDM',
+      'Memos1~',
+      'finalM',
+    ]);
+    expect(getComputedStyle(nameOf(rowOf('t:u'))).color).toBe(
+      COLORS['--diff-rename-foreground']
+    );
+  });
+
+  it('mutes the name after the logical name in the view of both, struck through with a removal', async () => {
+    const { app } = await setup(
+      {
+        tables: [
+          ...PREV.tables!,
+          { id: 'x', name: 'tags', logicalName: 'Tags' },
+        ],
+      },
+      NEXT
+    );
+
+    await switchTo(app, NameViewMode.both);
+    const afterOf = (id: string) =>
+      rowOf(id).querySelectorAll<HTMLElement>('span[dir="auto"]')[1];
+
+    expect(nameOf(rowOf('t:u')).textContent?.trim()).toBe('Members');
+    expect(afterOf('t:u').textContent?.trim()).toBe('members');
+    expect(afterOf('t:prev-x').textContent?.trim()).toBe('tags');
+    expect(getComputedStyle(afterOf('t:prev-x')).textDecorationLine).toBe(
+      'line-through'
+    );
+    expect(afterOf('t:prev-g')).toBeUndefined();
+  });
+
+  it('filters by a logical name in any view', async () => {
+    await setup(PREV, NEXT);
+    const filter = tree().querySelector(
+      '.diff-tree-filter'
+    ) as HTMLInputElement;
+
+    filter.value = 'login id';
+    filter.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await settle();
+
+    expect(rows().map(textOf)).toEqual([
+      'Tables1~',
+      'membersR',
+      'Columns1~',
+      'emailM',
+    ]);
   });
 });
 

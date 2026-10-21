@@ -205,6 +205,37 @@ export function hitTest(state: Readonly<SceneData>, point: GridPoint): GridHit {
   return row >= 0 && col >= 0 ? { kind: 'cell', row, col } : NONE;
 }
 
+/** The row and the column a point in the cell area lies in, each null past the last. */
+export interface BlankRef {
+  row: number | null;
+  col: number | null;
+}
+
+/**
+ * Where a stage point lies in the cell area's space past the last row or
+ * column, or null off it: on a cell, or outside the cell area. The scrollbars
+ * lie outside it, so a hit of nothing there is this space.
+ */
+export function blankAt(
+  state: Readonly<SceneData>,
+  point: GridPoint
+): BlankRef | null {
+  const area = cellArea(state);
+
+  if (
+    !inSpan(point.x, area.x, area.width) ||
+    !inSpan(point.y, area.y, area.height)
+  ) {
+    return null;
+  }
+
+  const row = rowAtY(state, point.y);
+  const col = columnAtX(state, point.x);
+  if (row >= 0 && col >= 0) return null;
+
+  return { row: row >= 0 ? row : null, col: col >= 0 ? col : null };
+}
+
 /**
  * Where a cell sits on the stage at the scroll offsets, unclipped: a frozen
  * column from the frozen region's left, a scrolling one moved by the scroll.

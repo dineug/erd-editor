@@ -10,11 +10,13 @@ import {
 } from '@/constants/layout';
 import {
   ColumnOption,
+  NameViewMode,
   OrderType,
   RelationshipType,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   appendSchemaAction$,
   appendSchemaJsonAction$,
@@ -37,16 +39,23 @@ import {
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeDatabaseNameAction,
+  changeNameViewModeAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
+  changeTableNameDerivedAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -372,6 +381,49 @@ describe('appendSchemaJsonAction$', () => {
     expect(store.state.doc.relationshipIds).toEqual([]);
     expect(store.state.doc.indexIds).toHaveLength(1);
   });
+
+  it('carries the logical names and derived flags, and no domain link or dictionary row', () => {
+    const store = createDiagram();
+    store.dispatchSync(
+      addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'N' } })
+    );
+    const file = createTestStore();
+    file.dispatchSync(
+      addDictionaryAction({ kind: 'word', id: 'w1', values: { name: 'W' } }),
+      addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'N' } }),
+      addTableAction({ id: 'users', ui: { x: 0, y: 0, zIndex: 2 } }),
+      changeTableNameAction({ id: 'users', value: 'users' }),
+      changeTableLogicalNameAction({ id: 'users', value: 'Member' }),
+      changeTableNameDerivedAction({ id: 'users', value: true }),
+      ...column('users', 'users_no', 'no'),
+      changeColumnLogicalNameAction({
+        id: 'users_no',
+        tableId: 'users',
+        value: 'Member number',
+      }),
+      changeColumnDomainAction({
+        id: 'users_no',
+        tableId: 'users',
+        value: 'd1',
+      }),
+      changeColumnNameDerivedAction({
+        id: 'users_no',
+        tableId: 'users',
+        value: true,
+      })
+    );
+
+    store.dispatchSync(appendSchemaJsonAction$(toJson(file.state)));
+
+    const users = tableByName(store.state, 'users');
+    const no = store.state.collections.tableColumnEntities[users.columnIds[0]];
+    expect(users).toMatchObject({ logicalName: 'Member', nameDerived: true });
+    expect(no.logicalName).toBe('Member number');
+    expect(bHas(no.options, ColumnOption.nameDerived)).toBe(true);
+    expect(no.domainId).toBe('');
+    expect(store.state.doc.wordIds).toEqual([]);
+    expect(store.state.doc.domainIds).toEqual(['d1']);
+  });
 });
 
 describe('appendSchemaAction$', () => {
@@ -494,6 +546,63 @@ describe('toSchemaAppend', () => {
     expect(append.memoIds).toHaveLength(1);
     expect(append.rect).toEqual(boxes.reduce(unionRect));
   });
+
+  it.each([
+    [
+      'the logical view, where the type cell stands for a short domain',
+      'M',
+      false,
+    ],
+    ['a domain cell, under a long domain name', 'The money of an order', true],
+  ])(
+    'measures the box at the widths its rows draw, the file domains left behind, in %s',
+    (_, name, domainCell) => {
+      const store = createDiagram();
+      store.dispatchSync(
+        domainCell
+          ? changeShowAction({ show: Show.columnDomain, value: true })
+          : changeNameViewModeAction({
+              value: NameViewMode.logical,
+              shared: false,
+              editorId: store.state.editor.id,
+            })
+      );
+      const file = createTestStore();
+      file.dispatchSync(
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'd1',
+          values: { name, dataType: 'DECIMAL(19,4)' },
+        }),
+        addTableAction({ id: 'prices', ui: { x: 0, y: 0, zIndex: 2 } }),
+        changeTableNameAction({ id: 'prices', value: 'prices' }),
+        ...column('prices', 'amount', 'amount'),
+        changeColumnDataTypeAction({
+          id: 'amount',
+          tableId: 'prices',
+          value: 'DECIMAL(19,4)',
+        }),
+        changeColumnDomainAction({
+          id: 'amount',
+          tableId: 'prices',
+          value: 'd1',
+        })
+      );
+
+      const append = toSchemaAppend(
+        store.state,
+        toJson(file.state),
+        'file',
+        store.context
+      )!;
+      store.dispatchSync(append.actions);
+
+      const [id] = append.tableIds;
+      expect(append.rect).toEqual(
+        getTableRect(store.state, store.state.collections.tableEntities[id])
+      );
+    }
+  );
 
   it('answers null where nothing is to be added', () => {
     const store = createDiagram();

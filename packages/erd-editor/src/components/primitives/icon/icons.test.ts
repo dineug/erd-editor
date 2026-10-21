@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { SchemaV2Constants } from '@dineug/erd-editor-schema';
+import { BookType } from 'lucide';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -235,6 +236,11 @@ describe('icons', () => {
         resolved: true,
       });
     }
+  });
+
+  it("registers lucide's book-type, which the toolbar and the palette draw for the Dictionary tab", () => {
+    expect(getIcon('book-type')?.node).toBe(BookType);
+    expect(referencedNames().has('book-type')).toBe(true);
   });
 
   it('registers no icon nothing references', () => {

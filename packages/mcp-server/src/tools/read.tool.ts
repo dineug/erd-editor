@@ -53,6 +53,11 @@ export const ReadParams = Schema.Struct({
   vendor: literalsField(READ_TOOL, 'vendor', SQL_VENDORS),
   statements: literalsField(READ_TOOL, 'statements', SchemaSQLStatementsList),
   header: literalsField(READ_TOOL, 'header', SchemaSQLHeaderList),
+  logicalNameAsComment: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description: describeArg(READ_TOOL, 'logicalNameAsComment'),
+    })
+  ),
   tableIds: stringsField(READ_TOOL, 'tableIds'),
   tableNames: stringsField(READ_TOOL, 'tableNames'),
   groupNames: stringsField(READ_TOOL, 'groupNames'),
@@ -88,6 +93,9 @@ export const ENTITY_ID_ARGS = Object.freeze([
   'indexIds',
   'memoIds',
   'tableGroupIds',
+  'wordIds',
+  'termIds',
+  'domainIds',
 ] as const);
 
 export const GetParams = Schema.Struct({
@@ -98,6 +106,9 @@ export const GetParams = Schema.Struct({
   indexIds: stringsField(GET_TOOL, 'indexIds'),
   memoIds: stringsField(GET_TOOL, 'memoIds'),
   tableGroupIds: stringsField(GET_TOOL, 'tableGroupIds'),
+  wordIds: stringsField(GET_TOOL, 'wordIds'),
+  termIds: stringsField(GET_TOOL, 'termIds'),
+  domainIds: stringsField(GET_TOOL, 'domainIds'),
 });
 
 /** erd_get needs one id at least, in any of its lists. */
@@ -190,6 +201,7 @@ export const registerReadTools = Effect.gen(function* () {
       vendor,
       statements,
       header,
+      logicalNameAsComment,
       tableIds,
       tableNames,
       groupNames,
@@ -199,7 +211,7 @@ export const registerReadTools = Effect.gen(function* () {
           format,
           vendor,
           { tableIds, tableNames, groupNames },
-          { statements, header }
+          { statements, header, logicalNameAsComment }
         )
       )
   );

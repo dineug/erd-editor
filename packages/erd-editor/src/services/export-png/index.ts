@@ -1,6 +1,7 @@
 import * as Comlink from 'comlink';
 
 import type { LocaleMessages } from '@/i18n/translate';
+import type { Settings } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { withTimeout } from '@/utils/promise';
 import { spawnExportPngWorker } from '@/workers/spawn';
@@ -50,6 +51,11 @@ export type DocumentPngOptions = {
    * Left out, the scene draws them in English.
    */
   i18n?: LocaleMessages;
+  /**
+   * The names the scene draws, the reader's view rather than the one a lock
+   * saves. Left out, the scene draws the view the document holds.
+   */
+  nameViewMode?: Settings['nameViewMode'];
   /**
    * Called once, after a file exists, when the pixels the scale asked for
    * outran what a canvas holds, with those and the pixels written. A caller
@@ -215,6 +221,7 @@ export async function createDocumentPng({
   toWidth,
   pixelRatio = DEFAULT_PIXEL_RATIO,
   i18n,
+  nameViewMode,
   onResolutionReduced,
   onProgress,
 }: DocumentPngOptions): Promise<Blob> {
@@ -226,6 +233,7 @@ export async function createDocumentPng({
     theme: { ...theme },
     pixelRatio,
     i18n: copyLocale(i18n),
+    nameViewMode,
   };
   const { result, realm } = await renderInRealm(request, toWidth, onProgress);
 
@@ -234,7 +242,7 @@ export async function createDocumentPng({
 
 export type DocumentPreviewOptions = Pick<
   DocumentPngOptions,
-  'doc' | 'theme' | 'toWidth' | 'i18n'
+  'doc' | 'theme' | 'toWidth' | 'i18n' | 'nameViewMode'
 > & {
   /** The longest side the preview may take, in pixels. */
   maxSide: number;
@@ -264,6 +272,7 @@ export async function createDocumentPreview({
   toWidth,
   maxSide,
   i18n,
+  nameViewMode,
 }: DocumentPreviewOptions): Promise<DocumentPreview> {
   const request = {
     doc,
@@ -271,6 +280,7 @@ export async function createDocumentPreview({
     pixelRatio: DEFAULT_PIXEL_RATIO,
     maxSide,
     i18n: copyLocale(i18n),
+    nameViewMode,
   };
   const { result } = await renderInRealm(request, toWidth);
 
@@ -285,7 +295,7 @@ export async function createDocumentPreview({
 
 export type DocumentSvgOptions = Pick<
   DocumentPngOptions,
-  'doc' | 'theme' | 'toWidth' | 'i18n'
+  'doc' | 'theme' | 'toWidth' | 'i18n' | 'nameViewMode'
 >;
 
 /**
@@ -301,9 +311,15 @@ export async function createDocumentSvg({
   theme,
   toWidth,
   i18n,
+  nameViewMode,
 }: DocumentSvgOptions): Promise<string> {
   // Copied for the reason the png copies it: a proxy does not clone.
-  const request = { doc, theme: { ...theme }, i18n: copyLocale(i18n) };
+  const request = {
+    doc,
+    theme: { ...theme },
+    i18n: copyLocale(i18n),
+    nameViewMode,
+  };
   const { result } = await drawInRealm(
     {
       inWorker: (remote, fontProbe) =>

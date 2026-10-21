@@ -21,6 +21,7 @@ import {
 import { type DocumentRegistry, type HubTab } from '@/hub';
 import { ERD_ICON } from '@/icon';
 import { type ScopeKey } from '@/keys';
+import { isReadableDiagram } from '@/readableDiagram';
 import {
   type EditorLocale,
   type EditorTheme,
@@ -65,21 +66,6 @@ const SAVING_WAIT_MS = 2_000;
 /** A .erd.json or .vuerd.json file, which Obsidian itself sees as json. */
 export function isDiagramJson(file: TFile): boolean {
   return file.extension === 'json' && DIAGRAM_JSON_SUFFIX.test(file.basename);
-}
-
-/** Empty starts a new diagram; otherwise a v3 document or the v2 one .vuerd files hold. */
-function isReadableDiagram(text: string): boolean {
-  if (text.trim() === '') return true;
-  try {
-    const json: unknown = JSON.parse(text);
-    return (
-      typeof json === 'object' &&
-      json !== null &&
-      ('doc' in json || 'canvas' in json)
-    );
-  } catch {
-    return false;
-  }
 }
 
 /**

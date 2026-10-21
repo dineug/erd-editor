@@ -27,6 +27,7 @@ import {
   DatabaseList,
   DDLScriptPosition,
   DDLScriptPositionList,
+  InvertedLockSettings,
   Language,
   LanguageList,
   LockSettingFields,
@@ -34,6 +35,8 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
+  NameViewMode,
+  NameViewModeList,
   Show,
 } from '@/v3/schema/settings';
 import { ColumnOption, ColumnUIKey } from '@/v3/schema/tableColumn.entity';
@@ -61,6 +64,7 @@ describe('v3/schema/index', () => {
           'DDLScriptPositionList',
           'Direction',
           'DirectionList',
+          'InvertedLockSettings',
           'Language',
           'LanguageList',
           'LockSettingFields',
@@ -68,6 +72,8 @@ describe('v3/schema/index', () => {
           'LockSettingTypeList',
           'NameCase',
           'NameCaseList',
+          'NameViewMode',
+          'NameViewModeList',
           'OrderType',
           'OrderTypeList',
           'ReferentialAction',
@@ -120,6 +126,9 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants.DDLScriptPositionList).toBe(
         DDLScriptPositionList
       );
+      expect(SchemaV3Constants.NameViewMode).toBe(NameViewMode);
+      expect(SchemaV3Constants.NameViewModeList).toBe(NameViewModeList);
+      expect(SchemaV3Constants.InvertedLockSettings).toBe(InvertedLockSettings);
     });
 
     it('names the two script positions by themselves', () => {
@@ -147,7 +156,7 @@ describe('v3/schema/index', () => {
       expect(SchemaV3Constants).not.toHaveProperty('Table');
       expect(SchemaV3Constants).not.toHaveProperty('Memo');
       expect(SchemaV3Constants).not.toHaveProperty('TableGroup');
-      expect(Object.keys(SchemaV3Constants)).toHaveLength(34);
+      expect(Object.keys(SchemaV3Constants)).toHaveLength(37);
     });
   });
 
@@ -182,8 +191,10 @@ describe('v3/schema/index', () => {
             tableNameCase: NameCase.pascalCase,
             columnNameCase: NameCase.camelCase,
             bracketType: BracketType.doubleQuote,
+            nameViewMode: NameViewMode.physical,
           },
           ddlScripts: { before: '', after: '' },
+          nameViewMode: NameViewMode.physical,
         },
         doc: {
           tableIds: ['table-1'],
@@ -191,21 +202,27 @@ describe('v3/schema/index', () => {
           indexIds: [],
           memoIds: [],
           tableGroupIds: ['group-1'],
+          wordIds: ['word-1'],
+          termIds: [],
+          domainIds: [],
         },
         collections: {
           tableEntities: {
             'table-1': {
               id: 'table-1',
               name: 'actor',
+              logicalName: '',
               comment: '',
               columnIds: [],
               seqColumnIds: [],
               groupId: 'group-1',
+              nameDerived: false,
               ui: {
                 x: 0,
                 y: 0,
                 zIndex: 2,
                 widthName: 60,
+                widthLogicalName: 60,
                 widthComment: 60,
                 color: '',
               },
@@ -224,12 +241,27 @@ describe('v3/schema/index', () => {
               ui: { x: -40, y: -40, width: 400, height: 300, zIndex: 1 },
             },
           },
+          wordEntities: {
+            'word-1': {
+              id: 'word-1',
+              name: '회원',
+              abbreviation: 'MBR',
+              englishName: 'member',
+              description: '',
+              synonyms: '',
+              forbiddenWords: '',
+              order: 'a0',
+            },
+          },
+          termEntities: {},
+          domainEntities: {},
         },
       };
 
       expect(schema.version).toBe('3.0.0');
       expect(schema.$schema).toMatch(/json-schema\/schema\.json$/);
       expect(Object.keys(schema.collections).sort()).toEqual([
+        'domainEntities',
         'indexColumnEntities',
         'indexEntities',
         'memoEntities',
@@ -237,6 +269,8 @@ describe('v3/schema/index', () => {
         'tableColumnEntities',
         'tableEntities',
         'tableGroupEntities',
+        'termEntities',
+        'wordEntities',
       ]);
       expect(
         schema.doc.tableIds.every(id => id in schema.collections.tableEntities)

@@ -4,8 +4,10 @@ Measures what a table drag costs and how much the relationship drawing
 overlaps. It judges no number and runs in no CI job — a runner's noise floor is
 wider than the differences it exists to resolve. A run still fails when it
 measured the wrong thing: `routing.bench.ts` expects its second load to draw
-every connector, and the Flow rows of `view.bench.ts` and the Flow shots of
-`visualization-shots.bench.ts` fail if the view they aim at never lands.
+every connector, the Flow rows of `view.bench.ts` and the Flow shots of
+`visualization-shots.bench.ts` fail if the view they aim at never lands, and
+`dictionary.bench.ts` fails if a scroll drew none of the grid or a file's rows
+never list (The Dictionary tab, below).
 
 ```bash
 pnpm --filter @dineug/erd-editor e2e:bench                      # compare against the saved baseline
@@ -14,19 +16,22 @@ E2E_BENCH_BASELINE=1 pnpm --filter @dineug/erd-editor e2e:bench # save this run 
 E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench      # include the diagnostics below
 E2E_BENCH_ALL=1 E2E_BENCH_CORPUS=xlarge E2E_BENCH_TIMEOUT=900000 \
   pnpm --filter @dineug/erd-editor e2e:bench
+E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench dictionary.bench.ts # the Dictionary tab alone
 ```
 
 `testMatch` in `playwright.bench.config.ts` selects `routing.bench.ts` alone
 unless `E2E_BENCH_ALL` is set to any non-empty value (`0` counts too). A command
 that means to run the diagnostics has to carry it; one that forgets exits green
-having run the routing bench instead, which is why both lines above that want
-them spell it out.
+having run the routing bench instead, which is why every line above that wants
+them spells it out. Naming a file narrows what `testMatch` selects and never
+widens it, so `dictionary.bench.ts` without the variable finds no test and fails.
 
 `E2E_BENCH_CORPUS` names the row of `CORPORA` that `attribution.bench.ts`,
 `scaling.bench.ts`, `screenshot.bench.ts` and the `erd hover` row of
 `view.bench.ts` run against — `small`, `medium`, `large` (the default), `x150`,
 `x400` or `xlarge`; any other name throws. `visualization-shots.bench.ts` and
-the other `view.bench.ts` rows use corpora of their own. It does not reach
+the other `view.bench.ts` rows use corpora of their own, and
+`dictionary.bench.ts` builds its own dictionaries. It does not reach
 `routing.bench.ts`, which walks all six whatever it is set to.
 `E2E_BENCH_TIMEOUT` raises the per-test ceiling from its 180000ms default,
 which `xlarge` can need on a slow machine. It does not reach the three 300-table
@@ -50,13 +55,14 @@ request, so a comparison is always against a baseline someone chose.
 | ---------------------- | -------------------------------------------------------------- |
 | `routing.bench.ts`     | The benchmark. The only file the default run executes           |
 | `corpus.ts`            | Seeded generators at six scales: `small`, `medium` and `large` sized against the root `data/` (sakila, OKKY, Magento2-sales), then `x150`, `x400` and `xlarge` up to 1000 tables |
-| `harness.ts`           | In-page measurement — drives the drag, hover and edit passes (`runDragBench`, `runHoverBench`, `runEditBench`) and times the pipeline |
+| `harness.ts`           | In-page measurement — drives the drag, hover and edit passes (`runDragBench`, `runHoverBench`, `runEditBench`) and times the pipeline; `installGridFrames`, the frame sampler of the Dictionary tab's grid |
 | `geometry.ts`          | Overlap metrics, computed from the segments actually drawn      |
 | `attribution.bench.ts` | Diagnostic: which painter owns the frame                        |
 | `scaling.bench.ts`     | Diagnostic: does cost track what changed, or what is on screen? |
 | `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG for a person to look at; with `visualization-shots.bench.ts`, the only whole-image review in this package (its e2e specs and browser tests read pixels for one property each) |
 | `view.bench.ts`        | Diagnostic: what the Flow view costs — a hover and a document edit |
 | `visualization-shots.bench.ts` | Twelve frames of the Visualization tab for a person to judge; it measures nothing |
+| `dictionary.bench.ts`  | Diagnostic: the Dictionary tab at the public standard's sizes — an import with the tab open, the term sheet's scroll frames, the term list's keys, the checks' walk after each kind of write and the domains removed and imported beside 15,000 columns, each against its bound |
 | `report.ts`            | The JSON report every bench but `routing.bench.ts` writes through |
 | `baselines/`           | Committed results that cannot be re-measured from the working tree |
 
@@ -695,3 +701,81 @@ shots, name the file, which pnpm appends to the `playwright test` call:
 `E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench visualization-shots`.
 The variable is still needed, since without it `testMatch` holds
 `routing.bench.ts` alone.
+
+## The Dictionary tab
+
+`dictionary.bench.ts` measures the Dictionary tab at the public standard's
+sizes: 129 domains, 3,284 words and 13,176 terms. The rows are synthetic, built
+from a fixed seed under the three public-standard files' headers, the columns no
+layout reads included, and written as UTF-8 with a byte order mark; no real
+file is read. Each of its five tests starts on a fresh page:
+
+- **The import** hands the three files to the input Import CSV opens
+  (`setInputFiles`), the domains, the words, then the terms, with the tab open
+  over an empty document. Each file is timed from the input's `change` event to
+  the first `requestIdleCallback` that finds its rows listed on its sheet and
+  that sheet's grid drawn, with the longest task between (`PerformanceObserver`
+  `longtask`, which reports a task of 50 ms or more). Decoding, parsing, the
+  dispatch and the render all fall inside it.
+- **The scroll** runs the scenarios of the grid's own bench
+  (`packages/grid/bench/scroll.bench.ts`) on the term sheet: 60 wheel notches
+  thrown away, an idle control, then 300 notches of 100 px, 300 jumps to seeded
+  offsets and a thumb dragged to the end of its track in 300 moves. Frame work
+  is the grid's layer draws, the scroller's scroll and pointer events with the
+  microtasks after each, and a step with its microtasks, summed per animation
+  frame; style, layout and raster are not in it. The grid keeps its sampler in
+  its demo page alone, so `installGridFrames` (`harness.ts`) wraps konva's
+  `Layer.prototype.draw`, reached through a layer of `__erdStages.canvas`, and
+  listens on the scroller through `__erdShadowRoot`; a draw counts as the
+  grid's when its stage sits inside the tab's grid. The tab keeps the grid's
+  `GridHandle` to itself, so a jump writes the scroller with `Element.scrollTo`,
+  which the grid reads in the next scroll event, inside the event span.
+- **The keys** type term names a syllable at a time into a column's logical
+  name on the ERD tab (`insertText`, then two Backspaces), 60 keys thrown away
+  and 300 timed, a frame between keys. Each key is timed from its first event,
+  a `keydown` or the `beforeinput` an inserted syllable makes, to the
+  `MutationObserver` callback that sees the term list change.
+- **The checks** put the three dictionaries beside 500 tables of 30 columns,
+  most named by a term and the rest by words no term lists, an unregistered
+  syllable, a synonym or a forbidden word, a few with a hand-written name. The
+  element hands out no store, so the probe builds one of the editor's
+  observable kind from the dev server's modules and times
+  `listDictionaryChecks` in it, 15 runs a case, each after the index rebuild
+  the write cost, timed apart: a walk with nothing written, then after a
+  table's name, a column's logical name, a word's abbreviation and a term's
+  physical name, and last a cold walk after the document opens again, whose
+  dropped documents cost one collection of a few hundred milliseconds that
+  would land in the case after it. Before them it walks `walkDictionaryChecks`
+  a step at a time after a word's write: its longest step is what one slice of
+  the tab's idle count costs at least.
+- **The domain writes** take the checks' document into a store of the same
+  kind, most of its 15,000 columns linking a domain, and time one dispatch
+  each, 15 runs, each on the document opened again: every domain removed
+  (`removeDictionaryEntriesAction$`, as Delete Rows over the whole sheet), then
+  the domain file imported into the emptied sheet (`importDictionaryAction$`,
+  as Import CSV). Each listing or unlisting measures the domain cell of every
+  column linking that domain, as a sheet's undo or redo of either and a peer
+  applying them do too.
+
+It prints each figure beside its bound and whether it is within it: frame work
+p95 within 16 ms for each scroll scenario, key p95 within 16 ms, for each file
+2,000 ms from change to idle with no task over 1,000 ms, and each checks case's
+walk p50 and the longest step's p50 within 16 ms, and each domain write's p50
+within 1,000 ms. It fails on none of them. It fails when it measured the wrong
+thing: a scroll scenario that drew none of the grid, a wheel that moved nothing,
+a thumb drag short of the end, a wheel point or a thumb over something other
+than the scroller, a file whose rows never list, a key the list never answered,
+a document whose walk found no check, a domain write that left the sheet other
+than empty or whole, or a page error. Its report is `dictionary.latest.json`.
+
+The checks measured on 2026-10-21, on an Apple M5 with 24 GB under macOS in
+headless Chromium 151, once each target's checks were held across walks: walk
+p50 7.5 ms with nothing written, 7.4 ms after a table's name, 7.1 ms after a
+column's logical name, 10.0 ms after a term's physical name, 34.8 ms after a
+word's abbreviation, which every name reads again and which is why the idle
+count walks in slices, and 39.8 ms cold; the longest step after a word's write
+2.9 ms. Another suite running beside it doubles them.
+
+```bash
+E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench dictionary.bench.ts
+```

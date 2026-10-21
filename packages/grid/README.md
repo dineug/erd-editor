@@ -11,7 +11,8 @@ cells. A cell holds one line of left-aligned text, cut by an ellipsis through
 [`@chenglou/pretext`](https://github.com/chenglou/pretext); a column label, cut the same way, and a
 row number sit centred. An overlay layer draws the selection, the header highlights and the
 scrollbars. It is private, not on npm, and depended on as `"@dineug/grid": "workspace:*"`;
-[`erd-editor`](../erd-editor) lists it in `devDependencies` and imports nothing from it yet.
+[`erd-editor`](../erd-editor) lists it in `devDependencies` and inlines it into its build, where
+the Dictionary tab mounts it.
 `konva` is a peer: the consumer supplies the one copy.
 
 ## Usage
@@ -72,8 +73,10 @@ render(host, <Words />);
 ```
 
 `host` is any sized element, and `rows`, `applyChanges` and `openMenu` are the host's own. The
-handle's `grid.scrollTo(row, col)` scrolls the least distance that shows a cell, and
-`grid.select({ active, ranges })` moves the selection without `onSelectionChange` echoing it back.
+handle's `grid.scrollTo(row, col)` scrolls the least distance that shows a cell,
+`grid.select({ active, ranges })` moves the selection without `onSelectionChange` echoing it back,
+and `grid.isEditing()` answers whether an edit is open, a column's own editor included, from the
+moment it opens until it commits or cancels, so a host can leave Ctrl+Z to the open editor.
 
 The grid fills the element it is mounted in and follows its size. It draws the cells in view
 under a transparent native scroller, which takes the wheel, the trackpad and touch scrolling, and
@@ -85,8 +88,10 @@ the width through `onColumnResize` and the host keeps it in `columns`, or the co
 No key resizes a column: a keyboard path to a width, such as a menu, is the host's to give.
 Raise `version` once the data has changed, and the cells in view are read again.
 `onViewportChange` reports the rows and columns in view once a frame. With `onCellContextMenu`, a
-right click on a cell opens no browser menu and hands the host its cell and point, and a menu the
-keyboard opens does the same for the active cell; without it, the browser's menu opens as usual.
+right click on a cell opens no browser menu and hands the host its cell and point. One past the last
+row or column does the same with the selection left as it is, `null` for the row or the column it
+lies past, and a menu the keyboard opens does it for the active cell; without the callback, the
+browser's menu opens as usual.
 
 The grid changes no cell itself: every edit, paste or clear reaches the host as one
 `onCommit({ changes, source })`, each change naming its row, column, column id and value, and the

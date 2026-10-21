@@ -16,6 +16,11 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 import { Open } from '@/constants/open';
 import { GeneratorAction } from '@/engine/generator.actions';
 import {
+  rederiveNamesAction$,
+  type RederiveNamesTarget,
+  RederiveScope,
+} from '@/engine/modules/dictionary/generator.actions';
+import {
   changeDrawTableGroupAction,
   changeOpenMapAction,
   drawEndRelationshipAction,
@@ -54,6 +59,7 @@ import {
   selectTableGroupTablesAction$,
   setTableGroupAction$,
 } from '@/engine/modules/table-group/generator.actions';
+import type { RootState } from '@/engine/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { menuLabel } from '@/i18n/menuLabel';
 import type { PlainMessageKey } from '@/i18n/translate';
@@ -71,6 +77,7 @@ import { createDatabaseMenus } from './menus/databaseMenus';
 import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
 import { createExportMenus } from './menus/exportMenus';
 import { createImportMenus } from './menus/importMenus';
+import { createNameViewMenus } from './menus/nameViewMenus';
 import {
   createReferentialActionMenus,
   createRelationshipMenus,
@@ -124,6 +131,20 @@ const isOneOfSelection = (
   selectedMap: Record<string, SelectType>,
   id: string
 ) => Boolean(selectedMap[id]) && Object.keys(selectedMap).length > 1;
+
+/** What a menu's derivation again reads and covers. */
+type Rederive = {
+  labelKey: PlainMessageKey;
+  target: RederiveNamesTarget;
+};
+
+/** Whether the table is one of two or more selected tables the document lists. */
+const isOneOfSelectedTables = (state: RootState, tableId: string) => {
+  const listed = getSelectTypeIds(state.editor.selectedMap).tableIds.filter(
+    id => state.doc.tableIds.includes(id)
+  );
+  return listed.length > 1 && listed.includes(tableId);
+};
 
 const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -309,6 +330,46 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   };
 
   /**
+   * What a derivation again reaches from the table the menu was raised over:
+   * the selected tables it is one of, else the column whose row the press
+   * landed on, else the table, its name and every column.
+   */
+  const getTableRederive = (tableId: string): Rederive => {
+    const { state } = app.value.store;
+
+    if (isOneOfSelectedTables(state, tableId)) {
+      return {
+        labelKey: 'common.derivePhysicalNames',
+        target: { scope: RederiveScope.selection },
+      };
+    }
+    const table = query(state.collections)
+      .collection('tableEntities')
+      .selectById(tableId);
+    if (props.columnId && table?.columnIds.includes(props.columnId)) {
+      return {
+        labelKey: 'common.derivePhysicalName',
+        target: {
+          scope: RederiveScope.column,
+          tableId,
+          columnId: props.columnId,
+        },
+      };
+    }
+    return {
+      labelKey: 'common.derivePhysicalNames',
+      target: { scope: RederiveScope.table, tableId },
+    };
+  };
+
+  /** Derives again what the row showed it would, as the menu last drew it. */
+  const handleRederive = (target: RederiveNamesTarget) => {
+    const { store } = app.value;
+    store.dispatch(rederiveNamesAction$(target));
+    props.onClose();
+  };
+
+  /**
    * What Delete reaches from the memo the menu was raised over: the selection
    * the memo is one of, or the memo alone.
    */
@@ -440,6 +501,10 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
       props.type === ErdContextMenuType.table
         ? getTableGroupRows()
         : { canGroup: false, canUngroup: false };
+    const tableRederive =
+      props.type === ErdContextMenuType.table && props.tableId && !readonly
+        ? getTableRederive(props.tableId)
+        : null;
     const removeColorItem = hasColoredSelection(store.state) ? (
       <ContextMenu.Item
         onClick={handleRemoveColor}
@@ -498,6 +563,17 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
+              {tableRederive ? (
+                <ContextMenu.Item
+                  onClick={() => handleRederive(tableRederive.target)}
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name="refresh-cw" size={14} />}
+                      name={t(tableRederive.labelKey)}
+                    />
+                  }
+                />
+              ) : null}
               <ContextMenu.Item
                 onClick={handleOpenColorPicker}
                 children={
@@ -828,6 +904,46 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
+              <ContextMenu.Item
+                children={
+                  <ContextMenu.Menu
+                    name={t('common.nameView')}
+                    right={chevronRightIcon}
+                  />
+                }
+                subChildren={
+                  <>
+                    {createNameViewMenus(app.value, i18n.value).map(menu => (
+                      <ContextMenu.Item
+                        onClick={menu.onClick}
+                        children={
+                          <ContextMenu.Menu
+                            icon={
+                              menu.checked ? (
+                                <Icon name="check" size={14} />
+                              ) : null
+                            }
+                            name={menu.name}
+                          />
+                        }
+                      />
+                    ))}
+                  </>
+                }
+              />
+              {readonly || !store.state.doc.tableIds.length ? null : (
+                <ContextMenu.Item
+                  onClick={() =>
+                    handleRederive({ scope: RederiveScope.document })
+                  }
+                  children={
+                    <ContextMenu.Menu
+                      icon={<Icon name="refresh-cw" size={14} />}
+                      name={t('common.derivePhysicalNames')}
+                    />
+                  }
+                />
+              )}
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu

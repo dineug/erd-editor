@@ -15,6 +15,8 @@ leaking styles either way. It is the same editor as [erd-editor.io](https://erd-
 
 - **Design** — tables, columns, memos and table groups, four relationship cardinalities, ON DELETE
   and ON UPDATE, alternate keys, Auto Layout
+- **Naming standards** — logical and physical names, physical names and data types derived from
+  word, term and domain dictionaries, which have their own tab with CSV import and export and checks
 - **Import** — SQL DDL, GraphQL SDL, DBML and AML from the menu or [`setSchema*`](#importing-a-schema),
   replacing the diagram or adding to it
 - **Export** — DDL for eight databases, also from `getSchemaSQL()`, code in 22 languages and ORMs,
@@ -86,7 +88,8 @@ export default {
 ### Script tag
 
 `dist/erd-editor.umd.js` bundles every dependency and worker, registers `<erd-editor>` and puts
-`setExportFileCallback`, `setImportFileCallback` and `createKeyBindingMap` on `window.ErdEditor`.
+`setExportFileCallback`, `setImportFileCallback`, `createKeyBindingMap` and `dictionaryRowChords`
+on `window.ErdEditor`.
 Its workers are `data:` URLs, so a strict CSP needs `worker-src data:`. Pin a version beyond a demo.
 
 ```html
@@ -124,7 +127,7 @@ An attribute is on when present with no value or `"true"`.
 | Method | Description |
 | --- | --- |
 | `setInitialValue(value)` | Load a document with no undo entry; `''` starts a new one. |
-| `getSchemaSQL(vendor?, options?)` | DDL for one of the eight databases, by default the document's. `options`: `statements` (`create`, `ifNotExists`, `recreate`), `header` (`none`, `use`, `createAndUse`). |
+| `getSchemaSQL(vendor?, options?)` | DDL for one of the eight databases, by default the document's. `options`: `statements` (`create`, `ifNotExists`, `recreate`), `header` (`none`, `use`, `createAndUse`), `logicalNameAsComment` (`true` writes a table's or column's logical name where its comment is empty). |
 | `setSchemaSQL(value, options?)`, `setSchemaGraphQL`, `setSchemaDBML`, `setSchemaAML` | Replace the document with parsed DDL, GraphQL SDL, DBML or AML, or append it ([Importing a schema](#importing-a-schema)). |
 | `setSchemaJSON(value, options?)` | Load an `.erd.json` document as `value` does, or append it. |
 | `setDiffValue(value)` | Diff another document over the ERD tab. |
@@ -152,7 +155,8 @@ An attribute is on when present with no value or `"true"`.
 - Save `value`. `runtimeValue` also keeps removed entities and only seeds a
   [collaborator](#collaboration).
 - `change` fires 200 ms after the last change, never under `readonly`, and never for scroll, zoom,
-  the open tab or the code settings while the document locks them, which a new document does.
+  the open tab, the name view or the code settings while the document locks them, which a new
+  document does.
 - A file written by hand or by another release can differ from `value` once loaded, so detect edits
   with a [replica](#headless-replica)'s `changed`, not by comparing bytes.
 
@@ -163,6 +167,9 @@ An attribute is on when present with no value or `"true"`.
 - `'grid'`, the default, lands at once in rows. `'auto'` lays the tables out as the Import menu does
   and returns a `Promise` that resolves when they land; a later load supersedes it.
 - `mode: 'append'` adds the tables below the diagram, as Import and Add does.
+- A replace by the four text methods keeps the document's word, term and domain dictionaries, which
+  the text cannot hold; a replacing `setSchemaJSON` takes the ones its document holds, as `value`
+  does.
 
 ### Theme and language
 
@@ -194,6 +201,10 @@ names. A chord is modifiers (`Shift`, `Alt`, `Control`, `Meta`, or `$mod` for Cm
 elsewhere) joined by `+` with a `KeyboardEvent.code` or `key`; a space separates the chords of a
 sequence, such as `KeyT KeyG`. Several defaults, search and find and replace among them, stop the
 keydown, so to leave `$mod+KeyF` to the page, call `setKeyBindingMap({ findReplace: [] })`.
+`dictionaryRowChords(map)` lists the chords the Dictionary tab's grid inserts and deletes rows by
+under a map: the one-press chords of `addColumn` and `removeColumn`, and those of `addColumn` with
+`Shift` held as well, for Insert above, which no binding names. A host that keeps its own hotkeys
+off the editor's keys takes both lists.
 
 ## Display language
 
@@ -229,7 +240,9 @@ setImportFileCallback(async ({ type, op, accept, mode }) => {
 ```
 
 Skip a `type` you do not handle: a replacing `setSchemaJSON()` empties the document on any other
-payload. Unset or `null`, the browser's download and file picker work.
+payload. Unset or `null`, the browser's download and file picker work. The Dictionary tab's Import
+CSV always opens the browser's file picker, since no `type` names CSV, and its Export CSV goes
+through the export callback.
 
 ## Headless replica
 

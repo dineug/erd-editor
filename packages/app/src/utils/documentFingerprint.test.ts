@@ -2,6 +2,7 @@ import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import {
   CanvasType,
   createPeerStore,
+  dictionaryActions$,
   LockSettingType,
   type PeerStore,
   settingsActions,
@@ -49,8 +50,13 @@ const lockableViewChanges: Array<[string, (json: any) => void]> = [
   ['canvasType', json => (json.settings.canvasType = 'settings')],
 ];
 
-/** VALUE with no lock on, where a new document has every one. */
-const UNLOCKED = changed(json => (json.settings.lockSettings = 0));
+/**
+ * VALUE with no lock on, where a new document has every one: only the name
+ * view's bit is set, since that lock is off while its bit is set.
+ */
+const UNLOCKED = changed(
+  json => (json.settings.lockSettings = LockSettingType.unlockNameViewMode)
+);
 
 const documentChanges: Array<[string, (json: any) => void]> = [
   ['the database', json => (json.settings.database += 1)],
@@ -128,6 +134,60 @@ describe('toFingerprint', () => {
   });
 });
 
+describe('a name view switch, on a peer', () => {
+  const opened: PeerStore[] = [];
+
+  afterEach(() => opened.splice(0).forEach(store => store.destroy()));
+
+  function open(value: string) {
+    const store = createPeerStore({ nickname: 'reader', presence: false });
+    store.setInitialValue(value);
+    opened.push(store);
+    return store;
+  }
+
+  const switchNames = (store: PeerStore, shared: boolean) =>
+    store.dispatch([
+      settingsActions.changeNameViewModeAction({
+        value: 'logical',
+        shared,
+        editorId: store.state.editor.id,
+      }),
+    ]);
+
+  it.each(fingerprints)(
+    'leaves %s as it was after a switch while locked, which shows on that screen alone',
+    (_name, fingerprint) => {
+      const store = open(VALUE);
+      const before = store.value;
+
+      switchNames(store, false);
+
+      expect(store.state.settings.nameViewMode).toBe('logical');
+      expect(fingerprint(store.value)).toBe(fingerprint(before));
+    }
+  );
+
+  it('tells a shared switch apart by the Drive fingerprint alone, as the file saves the view while unlocked', () => {
+    const store = open(VALUE);
+    store.dispatch([
+      settingsActions$.changeLockSettingsAction$(
+        LockSettingType.unlockNameViewMode,
+        false
+      ),
+    ]);
+    const before = store.value;
+
+    switchNames(store, true);
+
+    expect(JSON.parse(store.value).settings.nameViewMode).toBe('logical');
+    expect(toDriveFingerprint(store.value)).not.toBe(
+      toDriveFingerprint(before)
+    );
+    expect(toFingerprint(store.value)).toBe(toFingerprint(before));
+  });
+});
+
 describe('the file form both fingerprints read', () => {
   const stores: Array<{ destroy: () => void }> = [];
 
@@ -147,11 +207,7 @@ describe('the file form both fingerprints read', () => {
     expect(collections.tableColumnEntities['users.id']).not.toHaveProperty(
       'ui'
     );
-    expect(Object.keys(collections.tableEntities.users.ui)).toEqual([
-      'x',
-      'y',
-      'color',
-    ]);
+    expect(Object.keys(collections.tableEntities.users.ui)).toEqual(['x', 'y']);
   });
 
   it.each(fingerprints)(
@@ -221,6 +277,19 @@ describe('the file form both fingerprints read', () => {
 });
 
 describe('toDriveFingerprint', () => {
+  it('reads a value without a doc or collections as one that holds them empty', () => {
+    const { settings } = JSON.parse(VALUE);
+    const bare = JSON.stringify({ version: '3.0.0', settings });
+    const empty = JSON.stringify({
+      version: '3.0.0',
+      settings,
+      doc: {},
+      collections: {},
+    });
+
+    expect(toDriveFingerprint(bare)).toBe(toDriveFingerprint(empty));
+  });
+
   it.each(lockableViewChanges)(
     'ignores %s while no lock holds it',
     (_name, change) => {
@@ -485,6 +554,117 @@ describe('toDriveFingerprint', () => {
 
     it('still tells an id the document gained apart', () => {
       expect(toDriveFingerprint(TWO_MORE)).not.toBe(toDriveFingerprint(VALUE));
+    });
+  });
+
+  describe('the dictionaries, which a file keeps as rows', () => {
+    /** VALUE with two rows in each dictionary, in the file form a replica hands out. */
+    function dictionaryValue() {
+      const store = createReplicationStore({ toWidth });
+      store.setInitialValue(VALUE);
+      store.dispatchSync(
+        (['word', 'term', 'domain'] as const).flatMap(kind =>
+          ['a', 'b'].map(id => ({
+            type: 'dictionary.add',
+            payload: { kind, id: `${kind}.${id}`, values: { name: id } },
+          }))
+        ) as any
+      );
+      const value = store.value;
+      store.destroy();
+      return value;
+    }
+
+    const WITH_ROWS = dictionaryValue();
+    const DICTIONARIES = ['wordEntities', 'termEntities', 'domainEntities'];
+
+    /** The names of a dictionary's rows, in the order a value writes them. */
+    function namesOf(value: string, key: string) {
+      const { fields, rows } = JSON.parse(value).collections[key];
+      return rows.map((row: string[]) => row[fields.indexOf('name')]);
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it.each(DICTIONARIES)('tells an edit of a %s row apart in both', key => {
+      const edited = changed(({ collections }) => {
+        const { fields, rows } = collections[key];
+        rows[1][fields.indexOf('name')] = 'renamed';
+      }, WITH_ROWS);
+
+      for (const [, fingerprint] of fingerprints) {
+        expect(fingerprint(edited)).not.toBe(fingerprint(WITH_ROWS));
+      }
+    });
+
+    it.each(DICTIONARIES)(
+      'tells a reorder of the %s rows apart in both',
+      key => {
+        const reordered = changed(
+          ({ collections }) => collections[key].rows.reverse(),
+          WITH_ROWS
+        );
+
+        expect(namesOf(WITH_ROWS, key)).toEqual(['a', 'b']);
+        expect(namesOf(reordered, key)).toEqual(['b', 'a']);
+        for (const [, fingerprint] of fingerprints) {
+          expect(fingerprint(reordered)).not.toBe(fingerprint(WITH_ROWS));
+        }
+      }
+    );
+
+    it.each(['word', 'term', 'domain'] as const)(
+      'tells a sort of the %s sheet apart in both, though it writes order keys alone',
+      kind => {
+        const store = createReplicationStore({ toWidth });
+        store.setInitialValue(WITH_ROWS);
+        // What a sort sends: a row's new order key, and no other field.
+        store.dispatchSync([
+          {
+            type: 'dictionary.update',
+            payload: { kind, id: `${kind}.b`, values: { order: 'Zz' } },
+          },
+        ] as any);
+        const sorted = store.value;
+        store.destroy();
+
+        expect(namesOf(sorted, `${kind}Entities`)).toEqual(['b', 'a']);
+        for (const [, fingerprint] of fingerprints) {
+          expect(fingerprint(sorted)).not.toBe(fingerprint(WITH_ROWS));
+        }
+      }
+    );
+
+    it('is the same for two replicas that each added a word before hearing the other', () => {
+      vi.useFakeTimers({ now: Date.UTC(2026, 8, 25) });
+      const here = createPeerStore({ nickname: 'here', presence: false });
+      const there = createPeerStore({ nickname: 'there', presence: false });
+      here.setInitialValue(WITH_ROWS);
+      there.setInitialValue(WITH_ROWS);
+      const fromHere: unknown[][] = [];
+      const fromThere: unknown[][] = [];
+      here.subscribe(actions => fromHere.push(actions));
+      there.subscribe(actions => fromThere.push(actions));
+
+      const add = (name: string) =>
+        dictionaryActions$.addDictionaryEntryAction$('word', { name });
+      here.dispatch([add('mine')]);
+      there.dispatch([add('theirs')]);
+      here.flushStreamBuffers();
+      there.flushStreamBuffers();
+      vi.advanceTimersByTime(1000);
+      for (const actions of fromThere) here.receive(actions as any);
+      for (const actions of fromHere) there.receive(actions as any);
+
+      // Both rows take the key after the last, and a tie goes by id.
+      const names = namesOf(here.value, 'wordEntities');
+      expect(names).toHaveLength(4);
+      expect(namesOf(there.value, 'wordEntities')).toEqual(names);
+      expect(toDriveFingerprint(there.value)).toBe(
+        toDriveFingerprint(here.value)
+      );
+      here.destroy();
+      there.destroy();
     });
   });
 });

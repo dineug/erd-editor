@@ -13,8 +13,14 @@ import {
   createFlowRequest,
   placeByFlow,
 } from '@/components/erd/automatic-table-placement/flowPlacement';
+import { NameViewMode } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
-import { toSchemaImportJson } from '@/engine/modules/editor/generator.actions';
+import {
+  loadJsonAction$,
+  toSchemaImportJson,
+} from '@/engine/modules/editor/generator.actions';
+import { toNameViewModeAction } from '@/engine/modules/settings/atom.actions';
+import { getTableRect } from '@/konva/scene/metrics';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 
 type Layout = (request: ElkLayoutRequest) => Promise<ElkLayoutPoint[]>;
@@ -127,6 +133,26 @@ describe('createFlowRequest', () => {
 
     expect(request?.nodes).toHaveLength(2);
     expect(request?.edges).toEqual([]);
+  });
+
+  it('measures each table at the width the reader sees in the view of both', () => {
+    const app = createApp();
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, NameViewMode.both, false)
+    );
+    const json = importJson(app, RELATED_SQL);
+
+    const request = createFlowRequest(app, json);
+    app.store.dispatchSync(loadJsonAction$(json));
+
+    const { state } = app.store;
+    expect(state.settings.nameViewMode).toBe(NameViewMode.both);
+    expect(request?.nodes.map(({ id, width }) => ({ id, width }))).toEqual(
+      state.doc.tableIds.map(id => ({
+        id,
+        width: getTableRect(state, state.collections.tableEntities[id]).width,
+      }))
+    );
   });
 
   it('measures on a store of its own, leaving the editor document as it was', () => {

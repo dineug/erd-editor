@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 import { Database } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import {
+  isSerialType,
+  toReferenceDataType,
+} from '@/engine/modules/relationship/referenceType';
 import { changeDatabaseAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { ChangeColumnValuePayload } from '@/engine/modules/table-column/actions';
@@ -10,7 +14,10 @@ import {
   addColumnAction,
   changeColumnDataTypeAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { getDataTypeSyncColumns } from '@/engine/modules/table-column/utils/dataType';
+import {
+  type DataTypeSyncRelationship,
+  getDataTypeSyncColumns,
+} from '@/engine/modules/table-column/utils/dataType';
 import { createStore, Store } from '@/engine/store';
 
 function setup() {
@@ -418,6 +425,54 @@ describe('getDataTypeSyncColumns and serial keys', () => {
   });
 });
 
+describe('getDataTypeSyncColumns with settled columns', () => {
+  function relatedPair() {
+    const store = setup();
+    addTable(store, 't1', ['c1']);
+    addTable(store, 't2', ['c2', 'c3']);
+    addRelationship(
+      store,
+      'r1',
+      { tableId: 't1', columnIds: ['c1'] },
+      { tableId: 't2', columnIds: ['c2'] }
+    );
+    addRelationship(
+      store,
+      'r2',
+      { tableId: 't2', columnIds: ['c2'] },
+      { tableId: 't2', columnIds: ['c3'] }
+    );
+    return store;
+  }
+
+  it('keeps each settled column at its own value, whichever the stack pops first', () => {
+    const store = relatedPair();
+    const key = payload('c1', 't1', 'bigint');
+    const foreignKey = payload('c2', 't2', 'numeric');
+
+    const result = getDataTypeSyncColumns(
+      [key, foreignKey],
+      store.state,
+      [],
+      undefined,
+      new Set(['c1', 'c2'])
+    );
+
+    expect(result).toEqual([foreignKey, payload('c3', 't2', 'numeric'), key]);
+  });
+
+  it('lets the last settled column overwrite the first without them', () => {
+    const store = relatedPair();
+
+    const result = getDataTypeSyncColumns(
+      [payload('c1', 't1', 'bigint'), payload('c2', 't2', 'numeric')],
+      store.state
+    );
+
+    expect(result).toContainEqual(payload('c1', 't1', 'numeric'));
+  });
+});
+
 describe('getDataTypeSyncColumns over the relationships it is handed', () => {
   it('follows a relationship the document does not hold yet', () => {
     const store = setup();
@@ -488,5 +543,142 @@ describe('getDataTypeSyncColumns over the relationships it is handed', () => {
       target,
       payload('c2', 't2', 'int'),
     ]);
+  });
+});
+
+describe('getDataTypeSyncColumns from many columns at once', () => {
+  // The walk as it read each relationship for every column it popped, which a
+  // domain linked by thousands of columns made seconds of proxy reads.
+  function walkEachRelationship(
+    stack: ChangeColumnValuePayload[],
+    state: Store['state'],
+    relationships: DataTypeSyncRelationship[],
+    settledIds: ReadonlySet<string>
+  ): ChangeColumnValuePayload[] {
+    const payloads: ChangeColumnValuePayload[] = [];
+    const { database } = state.settings;
+    for (let target = stack.pop(); target; target = stack.pop()) {
+      const { id: targetId, value } = target;
+      if (payloads.some(({ id }) => id === targetId)) continue;
+      payloads.push(target);
+      const foreignKeyValue = toReferenceDataType(value, database);
+      for (const { start, end } of relationships) {
+        const startIndex = start.columnIds.indexOf(targetId);
+        if (startIndex !== -1) {
+          const id = end.columnIds[startIndex];
+          if (id === undefined || settledIds.has(id)) continue;
+          stack.push({ id, tableId: end.tableId, value: foreignKeyValue });
+          continue;
+        }
+        const endIndex = end.columnIds.indexOf(targetId);
+        if (endIndex === -1) continue;
+        const id = start.columnIds[endIndex];
+        if (id === undefined || settledIds.has(id)) continue;
+        const column = state.collections.tableColumnEntities[id];
+        if (column && isSerialType(column.dataType)) continue;
+        stack.push({ id, tableId: start.tableId, value });
+      }
+    }
+    return payloads;
+  }
+
+  function randomGraph(seed: number) {
+    let a = seed;
+    const random = () => {
+      a = (a * 1103515245 + 12345) % 2147483648;
+      return a / 2147483648;
+    };
+    const pick = <T>(list: T[]) => list[Math.floor(random() * list.length)];
+    const store = setup();
+    store.dispatchSync(changeDatabaseAction({ value: Database.PostgreSQL }));
+    const columns: Array<{ id: string; tableId: string }> = [];
+    for (let t = 0; t < 12; t++) {
+      const ids = Array.from({ length: 4 }, (_, c) => `c${t}_${c}`);
+      addTable(store, `t${t}`, ids);
+      ids.forEach(id => columns.push({ id, tableId: `t${t}` }));
+    }
+    for (const { id, tableId } of columns) {
+      if (random() < 0.2) {
+        store.dispatchSync(
+          changeColumnDataTypeAction({ id, tableId, value: 'serial' })
+        );
+      }
+    }
+    // Uneven ends, a column twice on one end and on both ends of one
+    // relationship, so every branch of the walk is taken.
+    const end = () => {
+      const table = `t${Math.floor(random() * 12)}`;
+      const own = columns.filter(({ tableId }) => tableId === table);
+      const length = 1 + Math.floor(random() * 3);
+      return {
+        tableId: table,
+        columnIds: Array.from({ length }, () =>
+          random() < 0.1 ? pick(columns).id : pick(own).id
+        ),
+      };
+    };
+    const relationships = Array.from({ length: 30 }, () => ({
+      start: end(),
+      end: end(),
+    }));
+    const settledIds = new Set(
+      columns.filter(() => random() < 0.15).map(({ id }) => id)
+    );
+    const stack = columns
+      .filter(() => random() < 0.4)
+      .map(({ id, tableId }) =>
+        payload(id, tableId, pick(['int', 'bigserial', 'text', 'serial']))
+      );
+    return { store, relationships, settledIds, stack };
+  }
+
+  it('lists what a walk of every relationship for each column lists, in its order', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const { store, relationships, settledIds, stack } = randomGraph(seed);
+
+      expect(
+        getDataTypeSyncColumns(
+          [...stack],
+          store.state,
+          [],
+          relationships,
+          settledIds
+        )
+      ).toEqual(
+        walkEachRelationship([...stack], store.state, relationships, settledIds)
+      );
+    }
+  });
+
+  it("reads each relationship's columns once, however many columns it starts from", () => {
+    const store = setup();
+    let reads = 0;
+    const counted = (tableId: string, columnIds: string[]) => ({
+      tableId,
+      get columnIds() {
+        reads += 1;
+        return columnIds;
+      },
+    });
+    const relationships: DataTypeSyncRelationship[] = [];
+    const stack: ChangeColumnValuePayload[] = [];
+    for (let t = 1; t <= 50; t++) {
+      addTable(store, `t${t}`, [`k${t}`, `f${t}`]);
+      relationships.push({
+        start: counted(`t${t - 1}`, [`k${t - 1}`]),
+        end: counted(`t${t}`, [`f${t}`]),
+      });
+      stack.push(payload(`k${t}`, `t${t}`, 'bigint'));
+    }
+
+    const result = getDataTypeSyncColumns(
+      stack,
+      store.state,
+      [],
+      relationships
+    );
+
+    expect(result).toHaveLength(99);
+    expect(reads).toBe(relationships.length * 2);
   });
 });

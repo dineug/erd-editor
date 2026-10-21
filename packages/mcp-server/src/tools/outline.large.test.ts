@@ -90,7 +90,7 @@ function refusal(call: () => unknown): ToolError {
 }
 
 const SEARCH_HINT =
-  ' query finds tables by a word in a table or column name or comment, and namesOnly lists table names alone.';
+  ' query finds tables by a word in a table or column name, logical name or comment, and namesOnly lists table names alone.';
 
 describe('a page of a large document list', () => {
   it('lists 100 tables a page and says where the next page starts', () => {
@@ -240,17 +240,20 @@ describe('a page of a large document list', () => {
     expect(pages[1].note).toMatch(/^This page lists memos \d+ to \d+ of 601/);
   });
 
-  it('lists a table with its indexes, and the table groups and memos only in an unsearched list', () => {
+  it('lists a table with its indexes, and the table groups, memos and dictionaries only in an unsearched list', () => {
     const peer = seeded();
     const pages = allPages(offset =>
       toDocumentList(peer.state, { offset, limit: 1 })
     );
 
     expect(
-      pages.map(({ tables, tableGroups, memos }) => [
+      pages.map(({ tables, tableGroups, memos, domains, terms, words }) => [
         ...ids(tables),
         ...ids(tableGroups),
         ...ids(memos),
+        ...ids(domains),
+        ...ids(terms),
+        ...ids(words),
       ])
     ).toEqual([
       [SEED.users],
@@ -258,10 +261,18 @@ describe('a page of a large document list', () => {
       [SEED.empty],
       [SEED.group],
       [SEED.memo],
+      [SEED.domain],
+      [SEED.term],
+      [SEED.memberWord],
+      [SEED.numberWord],
     ]);
     expect(pages.map(({ indexes }) => ids(indexes))).toEqual([
       [],
       [SEED.index],
+      [],
+      [],
+      [],
+      [],
       [],
       [],
       [],
@@ -272,35 +283,77 @@ describe('a page of a large document list', () => {
     expect(pages[3].note).toBe(
       `This page lists table groups 1 to 1 of 1; for the next page pass offset 4.${SEARCH_HINT}`
     );
-    expect(pages[4]).not.toHaveProperty('note');
+    expect(pages[4].note).toBe(
+      `This page lists memos 1 to 1 of 1; for the next page pass offset 5.${SEARCH_HINT}`
+    );
+    expect(pages[7].note).toBe(
+      `This page lists words 1 to 1 of 2; for the next page pass offset 8.${SEARCH_HINT}`
+    );
+    expect(pages[8]).not.toHaveProperty('note');
     expect(toDocumentList(peer.state, { offset: 2, limit: 2 }).note).toBe(
       `This page lists tables 3 to 3 of 3 and table groups 1 to 1 of 1; for the next page pass offset 4.${SEARCH_HINT}`
     );
-    expect(toDocumentList(peer.state, { offset: 2, limit: 3 }).note).toBe(
+    expect(toDocumentList(peer.state, { offset: 4, limit: 4 }).note).toBe(
+      `This page lists memos 1 to 1 of 1, domains 1 to 1 of 1, terms 1 to 1 of 1 and words 1 to 1 of 2; for the next page pass offset 8.${SEARCH_HINT}`
+    );
+    expect(toDocumentList(peer.state, { offset: 2, limit: 7 }).note).toBe(
       undefined
     );
     const searched = toDocumentList(peer.state, { query: 'users' });
-    expect(searched.memos).toEqual([]);
-    expect(searched.tableGroups).toEqual([]);
+    expect(searched).toMatchObject({
+      memos: [],
+      tableGroups: [],
+      domains: [],
+      terms: [],
+      words: [],
+    });
     expect(searched.tables[0].groupId).toBe(SEED.group);
+  });
+
+  it('lists the words after the tables however many there are, each page fitting one read', () => {
+    const peer = seeded();
+    for (let i = 0; i < 100; i++) {
+      runTool(peer, 'erd_add_word', {
+        name: `word ${i} ${'x'.repeat(400)}`,
+        abbreviation: `W${i}`,
+      });
+    }
+
+    const pages = allPages(offset => toDocumentList(peer.state, { offset }));
+    const words = pages.flatMap(({ words }) => ids(words));
+
+    pages.forEach(fitsOneRead);
+    expect(pages.length).toBeGreaterThan(1);
+    expect(words).toEqual(peer.state.doc.wordIds);
+    expect(pages[0].wordCount).toBe(102);
+    expect(pages[0].note).toMatch(
+      /, terms 1 to 1 of 1 and words 1 to \d+ of 102; for the next page pass offset \d+\./
+    );
+    expect(
+      pages.slice(1).map(page => [page.tables.length, page.words.length > 0])
+    ).toEqual(pages.slice(1).map(() => [0, true]));
   });
 
   it('says so when the offset is past the end', () => {
     const peer = seeded();
 
-    expect(toDocumentList(peer.state, { offset: 9 })).toMatchObject({
+    expect(toDocumentList(peer.state, { offset: 20 })).toMatchObject({
       tables: [],
       tableGroups: [],
       memos: [],
-      note: 'offset 9 is past the end of the 3 tables, 1 table group and 1 memo.',
+      domains: [],
+      terms: [],
+      words: [],
+      note: 'offset 20 is past the end of the 3 tables, 1 table group, 1 memo, 1 domain, 1 term and 2 words.',
     });
     runTool(peer, 'erd_remove_table_group', { groupId: SEED.group });
-    expect(toDocumentList(peer.state, { offset: 9 }).note).toBe(
-      'offset 9 is past the end of the 3 tables and 1 memo.'
+    runTool(peer, 'erd_remove_term', { termId: SEED.term });
+    expect(toDocumentList(peer.state, { offset: 20 }).note).toBe(
+      'offset 20 is past the end of the 3 tables, 1 memo, 1 domain and 2 words.'
     );
-    expect(toDocumentList(peer.state, { query: 'users', offset: 9 }).note).toBe(
-      'offset 9 is past the end of the 1 table matching the query.'
-    );
+    expect(
+      toDocumentList(peer.state, { query: 'users', offset: 20 }).note
+    ).toBe('offset 20 is past the end of the 1 table matching the query.');
   });
 
   it('gives no note to a list that is whole', () => {
@@ -371,6 +424,41 @@ describe('searching the tables', () => {
     expect(
       toDocumentList(peer.state, { query: 'charged', limit: 500 }).matchCount
     ).toBe(40);
+  });
+
+  it('reads a logical name as the name beside it, above a comment, and no dictionary row', () => {
+    const peer = seeded();
+    runTool(peer, 'erd_set_table_logical_name', {
+      tableId: SEED.orders,
+      value: 'Purchase',
+    });
+    runTool(peer, 'erd_change_table_comment', {
+      tableId: SEED.users,
+      value: 'Who made a purchase',
+    });
+    runTool(peer, 'erd_set_column_logical_name', {
+      tableId: SEED.orders,
+      columnId: SEED.orderNote,
+      value: 'Remark',
+    });
+
+    const purchase = toDocumentList(peer.state, { query: 'PURCHASE' });
+    expect(ids(purchase.tables)).toEqual([SEED.orders, SEED.users]);
+    expect(purchase.tables[0]).toMatchObject({
+      name: 'orders',
+      logicalName: 'Purchase',
+    });
+    expect(ids(toDocumentList(peer.state, { query: 'remark' }).tables)).toEqual(
+      [SEED.orders]
+    );
+    expect(
+      toTableNameList(peer.state, { query: 'purchase remark' }).tableNames
+    ).toEqual(['orders', 'users']);
+    // The seed's words name Number, which only the dictionary holds.
+    expect(toDocumentList(peer.state, { query: 'number' })).toMatchObject({
+      matchCount: 0,
+      words: [],
+    });
   });
 
   it('keeps the query in the note of a later page', () => {

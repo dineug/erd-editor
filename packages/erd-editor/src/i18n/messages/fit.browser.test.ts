@@ -50,9 +50,11 @@ describe('text the editor gives a fixed width', () => {
     expect(PLACEHOLDERS).toEqual([
       'common.placeholder.table',
       'common.placeholder.column',
+      'common.placeholder.logicalName',
       'common.placeholder.comment',
       'common.placeholder.default',
       'common.placeholder.dataType',
+      'common.placeholder.domain',
     ]);
   });
 

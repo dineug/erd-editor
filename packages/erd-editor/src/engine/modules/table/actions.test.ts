@@ -16,12 +16,14 @@ describe('table/actions', () => {
       changeTableGroup: 'table.changeGroup',
       changeZIndex: 'table.changeZIndex',
       sortTable: 'table.sort',
+      changeTableLogicalName: 'table.changeLogicalName',
+      changeTableNameDerived: 'table.changeNameDerived',
     });
   });
 
   it('namespaces every action type under "table."', () => {
     const values = Object.values(ActionType);
-    expect(values.length).toBe(10);
+    expect(values.length).toBe(12);
 
     for (const type of values) {
       expect(type.startsWith('table.')).toBe(true);

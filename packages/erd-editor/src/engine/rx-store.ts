@@ -23,8 +23,20 @@ import {
 } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
-import { pushHistory } from '@/engine/history.actions';
-import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
+import {
+  isDictionaryAction,
+  pushHistory,
+  pushSheetHistory,
+} from '@/engine/history.actions';
+import {
+  DictionaryKind,
+  DictionaryKindList,
+} from '@/engine/modules/dictionary/actions';
+import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
+import {
+  changeHasHistoryAction,
+  keepsDictionaries,
+} from '@/engine/modules/editor/atom.actions';
 import { getActiveView } from '@/engine/modules/editor/view';
 import {
   actionsFilter,
@@ -38,13 +50,19 @@ import { viewActionRedirect } from '@/engine/rx-operators/viewActionRedirect';
 import { viewIgnoreFilter } from '@/engine/rx-operators/viewIgnoreFilter';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
-import { Tag } from '@/engine/tag';
+import { hasActionTag, Tag } from '@/engine/tag';
 import type { Unsubscribe } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 
 export type RxStore = Store & {
   undo: () => void;
   redo: () => void;
   history: History;
+  /** The history of each dictionary sheet, which holds the Dictionary tab's edits of it. */
+  sheetHistories: Readonly<Record<DictionaryKind, History>>;
+  /** Undoes the last edit the Dictionary tab made on a sheet, as undo does the document's. */
+  undoSheet: (sheet: DictionaryKind) => void;
+  redoSheet: (sheet: DictionaryKind) => void;
   resetHistory: () => void;
   change$: Observable<Array<AnyAction>>;
   /**
@@ -70,6 +88,15 @@ export type RxStoreOptions = {
 
 export const HISTORY_LIMIT = 2048;
 
+const isLoadOrClear = arrayHas<string>([
+  EditorActionType.loadJson,
+  EditorActionType.clear,
+]);
+
+/** An action that replaces the rows the sheets' entries were made on. */
+const isDocumentReplace = ({ type, payload }: AnyAction) =>
+  isLoadOrClear(type) && !keepsDictionaries(payload);
+
 export function createRxStore(
   context: EngineContext,
   {
@@ -86,9 +113,38 @@ export function createRxStore(
     notify: payload => store.dispatch(changeHasHistoryAction(payload)),
     dispatch: store.dispatchSync,
     getNextVersion: () => context.clock.getNextVersion(),
+    getState: () => store.state,
   };
   const history = getHistory?.(historyOptions) ?? createHistory(historyOptions);
   history.setLimit(HISTORY_LIMIT);
+
+  // Each dictionary sheet keeps the Dictionary tab's edits of it apart from the
+  // document's, so an undo on the tab or on the canvas reaches only its own.
+  const sheetHistories = Object.fromEntries(
+    DictionaryKindList.map(sheet => {
+      const sheetHistory = createHistory({
+        ...historyOptions,
+        notify: payload =>
+          store.dispatch(changeHasHistoryAction({ ...payload, sheet })),
+      });
+      sheetHistory.setLimit(HISTORY_LIMIT);
+      return [sheet, sheetHistory];
+    })
+  ) as Record<DictionaryKind, History>;
+  const clearSheetHistories = () =>
+    DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
+  const sheetHistoryOf = (actions: ReadonlyArray<AnyAction>) => {
+    const row = actions.find(isDictionaryAction);
+    return row ? sheetHistories[row.payload?.kind as DictionaryKind] : null;
+  };
+  /** A Dictionary tab batch to its sheet's history, every other to the document's. */
+  const toHistory = (actions: Array<AnyAction>) => {
+    const sheetHistory = hasActionTag(actions, Tag.dictionarySheet)
+      ? sheetHistoryOf(actions)
+      : null;
+    if (sheetHistory) pushSheetHistory(store, sheetHistory)(actions);
+    else historyInput$.next(actions);
+  };
 
   const getView = () => getActiveView(store.state);
 
@@ -164,6 +220,7 @@ export function createRxStore(
     store.destroy();
     hooks.destroy();
     history.clear();
+    clearSheetHistories();
     dispatch$.complete();
     flush$.complete();
   };
@@ -172,6 +229,7 @@ export function createRxStore(
   const resetHistory = () => {
     historyReset$.next();
     history.clear();
+    clearSheetHistories();
   };
 
   // A replay reaches the store through historyOptions.dispatch, past the seam
@@ -186,6 +244,16 @@ export function createRxStore(
     history.redo();
   };
 
+  const undoSheet = (sheet: DictionaryKind) => {
+    if (getReadonly() || getView()) return;
+    sheetHistories[sheet]?.undo();
+  };
+
+  const redoSheet = (sheet: DictionaryKind) => {
+    if (getReadonly() || getView()) return;
+    sheetHistories[sheet]?.redo();
+  };
+
   // The history groups stream actions in one stage, so a single tick closes it.
   const flushStreamBuffers = () => {
     if (manualStreamFlush) flush$.next();
@@ -197,6 +265,14 @@ export function createRxStore(
     });
   };
 
+  // A load or a clear that lands with rows of its own, a peer's or a history
+  // replay's included, replaces the rows the sheets' entries were made on, so
+  // it empties them, or an undo would bring an old row back into the new ones.
+  const clearSheetsOnReplace = () =>
+    store.subscribe(actions => {
+      if (actions.some(isDocumentReplace)) clearSheetHistories();
+    });
+
   subscriptionSet
     .add(history$.subscribe(pushHistory(store, history)))
     .add(
@@ -207,7 +283,7 @@ export function createRxStore(
           readonlyIgnoreFilter(getReadonly),
           viewIgnoreFilter(getView)
         )
-        .subscribe(historyInput$)
+        .subscribe(toHistory)
     )
     .add(
       redirected$
@@ -217,7 +293,8 @@ export function createRxStore(
         )
         .subscribe(store.dispatchSync)
     )
-    .add(mergeClock());
+    .add(mergeClock())
+    .add(clearSheetsOnReplace());
 
   return Object.freeze({
     ...store,
@@ -227,6 +304,9 @@ export function createRxStore(
     undo,
     redo,
     history,
+    sheetHistories,
+    undoSheet,
+    redoSheet,
     resetHistory,
     change$,
     flushStreamBuffers,

@@ -13,6 +13,7 @@ import {
 import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
+import Dictionary from '@/components/dictionary/Dictionary';
 import Erd from '@/components/erd/Erd';
 import { dropRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import Explorer from '@/components/explorer/Explorer';
@@ -408,6 +409,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           ) : settings.canvasType === CanvasType.generatorCode ? (
             <div class={styles.scope}>
               <GeneratorCode isDarkMode={isDarkMode} />
+            </div>
+          ) : settings.canvasType === CanvasType.dictionary ? (
+            <div class={styles.scope}>
+              <Dictionary readonly={props.readonly} />
             </div>
           ) : settings.canvasType === CanvasType.settings ? (
             <div class={styles.scope}>

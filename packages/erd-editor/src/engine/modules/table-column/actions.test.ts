@@ -17,6 +17,9 @@ describe('table-column ActionType', () => {
       'changeColumnUnique',
       'changeColumnNotNull',
       'moveColumn',
+      'changeColumnLogicalName',
+      'changeColumnDomain',
+      'changeColumnNameDerived',
     ]);
   });
 
@@ -33,6 +36,9 @@ describe('table-column ActionType', () => {
       changeColumnUnique: 'column.changeUnique',
       changeColumnNotNull: 'column.changeNotNull',
       moveColumn: 'column.move',
+      changeColumnLogicalName: 'column.changeLogicalName',
+      changeColumnDomain: 'column.changeDomain',
+      changeColumnNameDerived: 'column.changeNameDerived',
     });
   });
 

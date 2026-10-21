@@ -9,6 +9,7 @@ import {
   LockSettingType,
   LockSettingTypeList,
   NameCase,
+  NameViewMode,
 } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { sourceI18n } from '@/i18n/source';
@@ -23,6 +24,7 @@ const values: RootState['settings']['lockedValues'] = {
   tableNameCase: NameCase.snakeCase,
   columnNameCase: NameCase.none,
   bracketType: BracketType.singleQuote,
+  nameViewMode: NameViewMode.both,
 };
 
 const pseudo = createI18n('ko-KR', pseudoMessages('ko'));
@@ -48,6 +50,7 @@ describe('lockSettingRows', () => {
       'Table Name Case',
       'Column Name Case',
       'Bracket Type',
+      'Name View',
     ]);
   });
 
@@ -59,6 +62,7 @@ describe('lockSettingRows', () => {
       'ko:Table Name Case',
       'ko:Column Name Case',
       'ko:Bracket Type',
+      'ko:Name View',
     ]);
   });
 
@@ -70,10 +74,11 @@ describe('lockSettingRows', () => {
       'Snake',
       'None',
       'SingleQuote',
+      'Both Names',
     ]);
   });
 
-  it('translates the tab and None, and keeps codes, cases and quotes as written', () => {
+  it('translates the tab, None and the name view, and keeps codes, cases and quotes as written', () => {
     expect(lockSettingRows.map(row => row.toText(values, pseudo))).toEqual([
       '75% · -40, 91',
       'ko:Visualization',
@@ -81,6 +86,7 @@ describe('lockSettingRows', () => {
       'Snake',
       'ko:None',
       'SingleQuote',
+      'ko:Both Names',
     ]);
     expect(
       textOf(
@@ -108,11 +114,22 @@ describe('lockSettingRows', () => {
     [CanvasType.ERD, 'ERD'],
     [CanvasType.schemaSQL, 'Schema SQL'],
     [CanvasType.generatorCode, 'Code Generator'],
+    [CanvasType.dictionary, 'Dictionary'],
     [CanvasType.settings, 'Settings'],
   ])('names the tab %s as the toolbar does', (canvasType, name) => {
     expect(textOf(LockSettingType.canvasType, { ...values, canvasType })).toBe(
       name
     );
+  });
+
+  it.each([
+    [NameViewMode.physical, 'Physical Names'],
+    [NameViewMode.logical, 'Logical Names'],
+    [NameViewMode.both, 'Both Names'],
+  ])('names the name view %s as its switch does', (nameViewMode, name) => {
+    expect(
+      textOf(LockSettingType.unlockNameViewMode, { ...values, nameViewMode })
+    ).toBe(name);
   });
 
   it('keeps ERD as written in every language', () => {
@@ -133,6 +150,7 @@ describe('lockSettingRows', () => {
       tableNameCase: 3,
       columnNameCase: 3,
       bracketType: 3,
+      nameViewMode: 'plugin-view' as (typeof values)['nameViewMode'],
     };
 
     expect(textOf(LockSettingType.canvasType, unknown)).toBe('plugin-canvas');
@@ -140,5 +158,8 @@ describe('lockSettingRows', () => {
     expect(textOf(LockSettingType.tableNameCase, unknown)).toBe('3');
     expect(textOf(LockSettingType.columnNameCase, unknown)).toBe('3');
     expect(textOf(LockSettingType.bracketType, unknown)).toBe('3');
+    expect(textOf(LockSettingType.unlockNameViewMode, unknown)).toBe(
+      'plugin-view'
+    );
   });
 });

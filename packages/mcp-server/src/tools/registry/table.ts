@@ -1,4 +1,5 @@
 import {
+  dictionaryActions$,
   FocusType,
   type GeneratorAction,
   tableActions,
@@ -65,19 +66,17 @@ export const tableTools: readonly ActionTool[] = [
   },
   {
     name: 'erd_change_table_name',
-    kind: 'atom',
-    atomReason:
-      'The table module has no generator that renames a table; the name cell dispatches this atom itself.',
-    actionTypes: ['table.changeName'],
+    kind: 'generator',
+    actionTypes: ['table.changeName', 'table.changeNameDerived'],
     undoable: true,
     stream: false,
     expectedBatches: 1,
     expectedHistory: 1,
     focus: TABLE_FOCUS,
-    snapshotPaths: ['tables[tableId].name'],
+    snapshotPaths: ['tables[tableId].name', 'tables[tableId].nameDerived'],
     args: [TABLE_ID, TEXT_VALUE],
     toActions: ({ tableId, value }) => [
-      tableActions.changeTableNameAction({ id: tableId, value }),
+      tableActions$.changeTableNameAction$(tableId, value),
     ],
   },
   {
@@ -95,6 +94,26 @@ export const tableTools: readonly ActionTool[] = [
     args: [TABLE_ID, TEXT_VALUE],
     toActions: ({ tableId, value }) => [
       tableActions.changeTableCommentAction({ id: tableId, value }),
+    ],
+  },
+  {
+    name: 'erd_set_table_logical_name',
+    kind: 'generator',
+    actionTypes: [
+      'table.changeLogicalName',
+      'table.changeName',
+      'table.changeNameDerived',
+    ],
+    undoable: true,
+    stream: false,
+    // Nothing goes out when the logical name and the name it derives hold.
+    expectedBatches: { min: 0, max: 1 },
+    expectedHistory: { min: 0, max: 1 },
+    focus: { ...TABLE_FOCUS, focusType: FocusType.tableLogicalName },
+    snapshotPaths: ['tables[tableId].logicalName', 'tables[tableId].name'],
+    args: [TABLE_ID, TEXT_VALUE],
+    toActions: ({ tableId, value }) => [
+      dictionaryActions$.setTableLogicalNameAction$(tableId, value),
     ],
   },
   {

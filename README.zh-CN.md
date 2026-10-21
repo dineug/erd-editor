@@ -16,6 +16,7 @@
 ## 功能
 
 - **设计** — 表、列、备注、表分组，四种关系基数，ON DELETE 与 ON UPDATE，备用键，自动布局
+- **命名规范** — 逻辑名与物理名，由词根、术语、域词典得出的物理名和数据类型，以及支持 CSV 导入导出和检查的独立词典标签页
 - **导入** — SQL DDL、GraphQL SDL、DBML、AML，可替换整张图，也可追加到现有的图中
 - **导出** — 8 种数据库的 DDL，22 种语言和 ORM 的代码，PNG 与 SVG
 - **导航** — 命令面板（`Ctrl`/`Cmd`+`K`）、带查找与替换的对象资源管理器树、Graph 视图和 Flow 视图
@@ -126,7 +127,7 @@ document.body.appendChild(editor);
 
 ## 包
 
-这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor) 和 [`@dineug/erd-editor-mcp`](./packages/mcp-server) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库，只有画布网格 `grid` 目前还没有任何构建引入。
+这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor) 和 [`@dineug/erd-editor-mcp`](./packages/mcp-server) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库。
 
 <details>
 <summary>全部 20 个包</summary>

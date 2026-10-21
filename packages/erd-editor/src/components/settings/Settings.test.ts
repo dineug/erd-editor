@@ -23,6 +23,7 @@ import {
   ColumnType,
   Language,
   LockSettingType,
+  NameViewMode,
 } from '@/constants/schema';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
@@ -232,9 +233,13 @@ describe('Settings', () => {
   });
 
   describe('lock rows', () => {
-    const { viewport, canvasType, language, bracketType } = LockSettingType;
+    const { viewport, canvasType, language, bracketType, unlockNameViewMode } =
+      LockSettingType;
 
-    /** A file whose locks are all off, its view and code settings named. */
+    /**
+     * A file whose locks are all off, its view, code and name view settings
+     * named. The name view's bit is the one set, since it unlocks while set.
+     */
     async function setupUnlocked() {
       const opened = await setup();
       opened.app.store.dispatchSync(
@@ -242,12 +247,13 @@ describe('Settings', () => {
           JSON.stringify({
             version: '3.0.0',
             settings: {
-              lockSettings: 0,
+              lockSettings: unlockNameViewMode,
               originX: -40.4,
               originY: 90.6,
               zoomLevel: 0.5,
               language: Language.Kotlin,
               bracketType: BracketType.backtick,
+              nameViewMode: NameViewMode.logical,
             },
           })
         )
@@ -266,6 +272,7 @@ describe('Settings', () => {
         'Table Name Case',
         'Column Name Case',
         'Bracket Type',
+        'Name View',
       ]);
     });
 
@@ -273,7 +280,15 @@ describe('Settings', () => {
       await setup();
 
       expect(lockRows().map(row => lockValue(row).textContent?.trim())).toEqual(
-        ['100% · 0, 0', 'ERD', 'GraphQL', 'Pascal', 'Camel', 'None']
+        [
+          '100% · 0, 0',
+          'ERD',
+          'GraphQL',
+          'Pascal',
+          'Camel',
+          'None',
+          'Physical Names',
+        ]
       );
       for (const row of lockRows()) {
         expect(lockButton(row).getAttribute('aria-pressed')).toBe('true');
@@ -299,11 +314,13 @@ describe('Settings', () => {
     it('shows the live value, dimmed, of an unlocked setting', async () => {
       await setupUnlocked();
 
-      const [view, , code, , , bracket] = lockRows();
+      const [view, , code, , , bracket, nameView] = lockRows();
       expect(lockValue(view).textContent?.trim()).toBe('50% · -40, 91');
       expect(lockValue(code).textContent?.trim()).toBe('Kotlin');
       expect(lockValue(bracket).textContent?.trim()).toBe('Backtick');
+      expect(lockValue(nameView).textContent?.trim()).toBe('Logical Names');
       expect(lockValue(view).hasAttribute('data-locked')).toBe(false);
+      expect(lockValue(nameView).hasAttribute('data-locked')).toBe(false);
       expect(lockButton(view).getAttribute('aria-pressed')).toBe('false');
       expect(lockButton(view).title).toBe('Lock Viewport');
     });
@@ -315,7 +332,7 @@ describe('Settings', () => {
       await flush();
 
       const { lockSettings, lockedValues } = app.store.state.settings;
-      expect(lockSettings).toBe(language);
+      expect(lockSettings).toBe(language | unlockNameViewMode);
       expect(lockedValues.language).toBe(Language.Kotlin);
       expect(lockButton(lockRows()[2]).getAttribute('aria-pressed')).toBe(
         'true'
@@ -328,7 +345,9 @@ describe('Settings', () => {
       click(lockButton(lockRows()[0]));
       await flush();
 
-      expect(app.store.state.settings.lockSettings).toBe(viewport);
+      expect(app.store.state.settings.lockSettings).toBe(
+        viewport | unlockNameViewMode
+      );
       expect(app.store.state.settings.lockedValues).toMatchObject({
         originX: -40.4,
         originY: 90.6,
@@ -350,7 +369,9 @@ describe('Settings', () => {
       click(lockButton(lockRows()[1]));
       await flush();
 
-      expect(app.store.state.settings.lockSettings).toBe(canvasType);
+      expect(app.store.state.settings.lockSettings).toBe(
+        canvasType | unlockNameViewMode
+      );
       expect(app.store.state.settings.lockedValues.canvasType).toBe(
         CanvasType.generatorCode
       );
@@ -369,6 +390,27 @@ describe('Settings', () => {
       expect(lockButton(lockRows()[5]).getAttribute('aria-pressed')).toBe(
         'false'
       );
+    });
+
+    it('unlocks the name view by setting its bit and locks it again by clearing it', async () => {
+      const { app } = await setup();
+      const nameView = () => lockRows()[6];
+
+      click(lockButton(nameView()));
+      await flush();
+
+      expect(app.store.state.settings.lockSettings).toBe(
+        63 | unlockNameViewMode
+      );
+      expect(lockButton(nameView()).getAttribute('aria-pressed')).toBe('false');
+      expect(lockButton(nameView()).title).toBe('Lock Name View');
+      expect(lockValue(nameView()).textContent?.trim()).toBe('Physical Names');
+
+      click(lockButton(nameView()));
+      await flush();
+
+      expect(app.store.state.settings.lockSettings).toBe(63);
+      expect(lockButton(nameView()).getAttribute('aria-pressed')).toBe('true');
     });
   });
 
@@ -403,7 +445,7 @@ describe('Settings', () => {
           .querySelector(`.${styles.columnOrderList}`)
           ?.parentElement?.firstElementChild?.textContent?.trim()
       ).toBe('ko:Column Order');
-      expect(columnOrderItems()[0].textContent?.trim()).toBe('ko:Name');
+      expect(columnOrderItems()[0].textContent?.trim()).toBe('ko:Logical Name');
     });
 
     it('names each lock and its button in one sentence of the language provided', async () => {
@@ -417,6 +459,7 @@ describe('Settings', () => {
         'ko:Table Name Case',
         'ko:Column Name Case',
         'ko:Bracket Type',
+        'ko:Name View',
       ]);
       expect(lockButton(lockRows()[0]).title).toBe('ko:Unlock ko:Viewport');
       expect(lockValue(lockRows()[0]).title).toBe('ko:Locked value');
@@ -621,8 +664,10 @@ describe('Settings', () => {
         app.store.state.settings.columnOrder.map(String)
       );
       expect(items.map(el => el.textContent?.trim())).toEqual([
+        'Logical Name',
         'Name',
         'DataType',
+        'Domain',
         'Not Null',
         'Unique',
         'Auto Increment',
@@ -688,18 +733,22 @@ describe('Settings', () => {
       await flush();
 
       expect(app.store.state.settings.columnOrder).toEqual([
-        ColumnType.columnDataType,
-        ColumnType.columnNotNull,
         ColumnType.columnName,
+        ColumnType.columnDataType,
+        ColumnType.columnLogicalName,
+        ColumnType.columnDomain,
+        ColumnType.columnNotNull,
         ColumnType.columnUnique,
         ColumnType.columnAutoIncrement,
         ColumnType.columnDefault,
         ColumnType.columnComment,
       ]);
       expect(columnOrderItems().map(el => el.textContent?.trim())).toEqual([
-        'DataType',
-        'Not Null',
         'Name',
+        'DataType',
+        'Logical Name',
+        'Domain',
+        'Not Null',
         'Unique',
         'Auto Increment',
         'Default',
@@ -747,16 +796,16 @@ describe('Settings', () => {
       vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
       const items = columnOrderItems();
 
-      fire(items[6], 'dragstart');
+      fire(items[8], 'dragstart');
       fire(items[0], 'dragover');
       await wait(120);
       await flush();
 
       const [held, ...pushed] = columnOrderItems();
-      expect(held).toBe(items[6]);
+      expect(held).toBe(items[8]);
       expect(held.style.transform).toBe('');
       expect(pushed.map(el => el.style.transform)).toEqual(
-        Array(6).fill('translate(0px,-32px)')
+        Array(8).fill('translate(0px,-32px)')
       );
     });
 

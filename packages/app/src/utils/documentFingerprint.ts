@@ -48,11 +48,12 @@ const inIdOrder = (doc: Record<string, string[]>) =>
 
 /**
  * What a Drive save compares: the document and its settings but a view no lock
- * holds. The file is the whole document, so a changed database, column order or
- * locked view reaches it, while a zoom or a scroll never does.
+ * holds. The file is the whole document, so a changed database, column order,
+ * sheet order or locked view reaches it, while a zoom or a scroll never does.
  */
 export function toDriveFingerprint(value: string) {
-  const { doc, collections, settings } = JSON.parse(value);
+  // A doc or collections left out reads as one that holds nothing.
+  const { doc = {}, collections = {}, settings } = JSON.parse(value);
   return JSON.stringify({
     doc: inIdOrder(doc),
     collections,

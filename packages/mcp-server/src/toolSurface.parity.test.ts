@@ -15,7 +15,7 @@ const fixture = readToolSurfaceFixture();
 
 /**
  * The tools that advertise no result schema: the read tools answer plain
- * text, added by hand. The 60 toolkit tools declare theirs; the recording has none.
+ * text, added by hand. The toolkit tools declare theirs; the recording has none.
  */
 const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
   'erd_read',
@@ -25,7 +25,10 @@ const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
 
 /** The tools the server gained after the recording was made. */
 const ADDED_TOOLS: readonly string[] = [
+  'erd_add_domain',
   'erd_add_table_group',
+  'erd_add_term',
+  'erd_add_word',
   'erd_batch',
   'erd_change_relationship_on_delete',
   'erd_change_relationship_on_update',
@@ -35,10 +38,19 @@ const ADDED_TOOLS: readonly string[] = [
   'erd_list',
   'erd_move_table_group',
   'erd_move_tables',
+  'erd_remove_domain',
   'erd_remove_table_group',
+  'erd_remove_term',
+  'erd_remove_word',
   'erd_resize_table_group',
+  'erd_set_column_domain',
+  'erd_set_column_logical_name',
   'erd_set_ddl_script',
   'erd_set_table_group',
+  'erd_set_table_logical_name',
+  'erd_update_domain',
+  'erd_update_term',
+  'erd_update_word',
 ];
 
 /**
@@ -85,7 +97,14 @@ const namesIn = (surface: readonly ToolSurface[], names: readonly string[]) =>
 
 /** The optional arguments a recorded tool gained after the recording was made. */
 const ADDED_ARGS: Readonly<Record<string, readonly string[]>> = {
-  erd_read: ['tableIds', 'tableNames', 'groupNames', 'statements', 'header'],
+  erd_read: [
+    'tableIds',
+    'tableNames',
+    'groupNames',
+    'statements',
+    'header',
+    'logicalNameAsComment',
+  ],
   erd_add_relationship: ['onDelete', 'onUpdate'],
   erd_link_columns: ['onDelete', 'onUpdate'],
   erd_import_sql: ['mode'],
@@ -125,9 +144,9 @@ const recorded = () =>
 const kept = () => fixture.filter(({ name }) => !REMOVED_TOOLS.includes(name));
 
 describe('the tool surface against the SDK-based server recording', () => {
-  it('holds the 59 recorded tools less the 10 removed, and the 14 added since', () => {
+  it('holds the 59 recorded tools less the 10 removed, and the 26 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(63);
+    expect(tools).toHaveLength(75);
     expect(namesIn(fixture, ADDED_TOOLS)).toEqual([]);
     expect(namesIn(live, ADDED_TOOLS)).toEqual(ADDED_TOOLS);
     expect(namesIn(fixture, REMOVED_TOOLS)).toEqual(REMOVED_TOOLS);
@@ -179,7 +198,7 @@ describe('the tool surface against the SDK-based server recording', () => {
         hasOutputSchema: !PLAIN_TEXT_TOOLS.has(name),
       }))
     );
-    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(60);
+    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(72);
   });
 
   it('takes an object for its arguments, in every tool', () => {

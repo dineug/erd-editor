@@ -1,4 +1,5 @@
 import { Doc } from '@/v3/schema/doc';
+import { Domain } from '@/v3/schema/domain.entity';
 import { Index } from '@/v3/schema/index.entity';
 import {
   IndexColumn,
@@ -32,6 +33,7 @@ import {
   DatabaseList,
   DDLScriptPosition,
   DDLScriptPositionList,
+  InvertedLockSettings,
   Language,
   LanguageList,
   LockSettingFields,
@@ -39,6 +41,8 @@ import {
   LockSettingTypeList,
   NameCase,
   NameCaseList,
+  NameViewMode,
+  NameViewModeList,
   Settings,
   Show,
 } from '@/v3/schema/settings';
@@ -49,6 +53,8 @@ import {
   ColumnUIKey,
 } from '@/v3/schema/tableColumn.entity';
 import { TableGroup } from '@/v3/schema/tableGroup.entity';
+import { Term } from '@/v3/schema/term.entity';
+import { Word } from '@/v3/schema/word.entity';
 
 export interface ERDEditorSchemaV3 {
   $schema: 'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
@@ -63,6 +69,9 @@ export interface ERDEditorSchemaV3 {
     indexColumnEntities: Record<string, IndexColumn>;
     memoEntities: Record<string, Memo>;
     tableGroupEntities: Record<string, TableGroup>;
+    wordEntities: Record<string, Word>;
+    termEntities: Record<string, Term>;
+    domainEntities: Record<string, Domain>;
   };
 }
 
@@ -101,4 +110,7 @@ export const SchemaV3Constants = {
   CANVAS_ZOOM_MIN,
   DDLScriptPosition,
   DDLScriptPositionList,
+  NameViewMode,
+  NameViewModeList,
+  InvertedLockSettings,
 } as const;

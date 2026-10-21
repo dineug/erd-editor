@@ -403,7 +403,12 @@ describe('Tree - the keyboard row', () => {
     shadowHost!.style.setProperty('--active', 'rgb(4, 5, 6)');
     state.activeId = 'row-1';
     await flush();
-    const style = () => getComputedStyle(rowOf(tree, 'row-1')!);
+    const style = (id = 'row-1') => getComputedStyle(rowOf(tree, id)!);
+
+    // The pointer rests where the last spec file in this page left it, which
+    // can be over the active row, so the spec puts it on another row first.
+    await userEvent.hover(rowOf(tree, 'row-3')!);
+    expect(style('row-3').backgroundColor).toBe('rgb(1, 2, 3)');
 
     expect(style().backgroundColor).toBe('rgba(0, 0, 0, 0)');
     tree.focus();

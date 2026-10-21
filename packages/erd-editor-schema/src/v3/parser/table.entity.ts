@@ -1,21 +1,30 @@
-import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
+import {
+  isBoolean,
+  isNil,
+  isNumber,
+  isPlainObject,
+  isString,
+} from 'es-toolkit';
 
-import { assign, restoreSequence } from '@/helper';
+import { assign, entryId, restoreSequence } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Table } from '@/v3/schema/table.entity';
 
 export const createTable = (): Table => ({
   id: '',
   name: '',
+  logicalName: '',
   comment: '',
   columnIds: [],
   seqColumnIds: [],
   groupId: '',
+  nameDerived: false,
   ui: {
     x: 200,
     y: 100,
     zIndex: 2,
     widthName: 60,
+    widthLogicalName: 60,
     widthComment: 60,
     color: '',
   },
@@ -27,18 +36,21 @@ export function createAndMergeTableEntities(
   const entities: Record<string, Table> = {};
   if (!isPlainObject(json) || isNil(json)) return entities;
 
-  for (const value of Object.values(json)) {
-    if (!value) continue;
+  for (const [key, value] of Object.entries(json)) {
+    if (!isPlainObject(value)) continue;
     const target = createTable();
     const assignString = assign(isString, target, value);
     const assignArray = assign(Array.isArray, target, value);
+    const assignBoolean = assign(isBoolean, target, value);
     const uiAssignNumber = assign(isNumber, target.ui, value.ui);
     const uiAssignString = assign(isString, target.ui, value.ui);
 
-    assignString('id');
+    target.id = entryId(key, value);
     assignString('name');
+    assignString('logicalName');
     assignString('comment');
     assignString('groupId');
+    assignBoolean('nameDerived');
     assignArray('columnIds');
     assignArray('seqColumnIds');
 
@@ -47,6 +59,7 @@ export function createAndMergeTableEntities(
     uiAssignNumber('y');
     uiAssignNumber('zIndex');
     uiAssignNumber('widthName');
+    uiAssignNumber('widthLogicalName');
     uiAssignNumber('widthComment');
 
     target.seqColumnIds = restoreSequence(

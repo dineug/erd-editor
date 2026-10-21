@@ -117,6 +117,20 @@ export const ThemeConfig: Theme = {
   explorerBackground: 'gray-1',
   explorerBorder: 'gray-6',
 
+  // What the dictionaries' checks find: an error in red and a warning in
+  // amber, the text at step 11 on a table and on its own step 4 in a sheet.
+  dictionaryErrorForeground: `custom-red--11`,
+  dictionaryErrorBackground: `custom-red--4`,
+  dictionaryWarningForeground: `custom-amber--11`,
+  dictionaryWarningBackground: `custom-amber--4`,
+  // The Dictionary tab's sheet: its cells, header band, cell lines and the
+  // header a selection meets, on the steps of a table's body, header and edge
+  // and of a selected column row.
+  dictionaryBackground: 'gray-2',
+  dictionaryHeaderBackground: 'gray-5',
+  dictionaryGridLine: 'gray-6',
+  dictionaryHeaderSelect: 'accent-3',
+
   // A diff's status letters and the canvas text and outlines it marks: added,
   // removed, changed and renamed, each at step 11, which keeps 4.5:1 on the
   // tree and the table body in either appearance.
@@ -159,6 +173,17 @@ export const LightThemeConfig: Partial<Theme> = {
   visualizationLink: 'gray-8',
   visualizationColumn: 'gray-9',
   visualizationRelationship: 'gray-9',
+  // Red and amber step 11 read under 4.5:1 on the gray-5 header band and on
+  // a neutral accent's gray-6 selected row, where a marked name is written,
+  // so the marks take a darker red and amber, which their step 4 fills keep too.
+  dictionaryErrorForeground: 'override-#b1252a',
+  dictionaryWarningForeground: 'override-#835103',
+  // The Dictionary tab's sheet goes white with gray-8 lines, as a table does,
+  // and its header band a step lighter, since gray-11 labels read under 4.5:1
+  // on a light gray-5.
+  dictionaryBackground: 'override-#ffffff',
+  dictionaryHeaderBackground: 'gray-4',
+  dictionaryGridLine: 'gray-8',
   // Amber step 11 reads under 4.5:1 on a light gray-1, so a changed entry
   // takes the darker amber an editor's light theme marks a change with.
   diffModifyForeground: 'override-#895503',

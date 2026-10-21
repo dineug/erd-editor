@@ -466,6 +466,109 @@ describe('the tree', () => {
   });
 });
 
+describe('the dictionary marks', () => {
+  /**
+   * Measured 2026-10-20: light red and amber step 11 read 3.95:1 and under on
+   * the gray-5 band, so light takes #b1252a and #835103, whose least, 4.70:1
+   * and 4.73:1, is on the gray-6 a neutral accent selects a row with.
+   */
+  it('keeps the error and warning text at 4.5:1 on every fill the canvas writes a marked cell on', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+      // A header's names sit on its band, a row's on the body or on the fill a
+      // hover or a selection gives the row.
+      const fills = [
+        theme.tableBackground,
+        theme.tableHeaderBackground,
+        theme.columnHover,
+        theme.columnSelect,
+        theme.columnSelectHover,
+      ];
+
+      [
+        theme.dictionaryErrorForeground,
+        theme.dictionaryWarningForeground,
+      ].forEach(mark => {
+        fills.forEach(fill => {
+          expect(
+            contrast(mark, fill),
+            `${labelOf(options)} ${mark} on ${fill}`
+          ).toBeGreaterThanOrEqual(4.5);
+        });
+      });
+    });
+  });
+
+  it('keeps the text of each level at 4.5:1 on its own fill, where a sheet marks a cell', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        contrast(
+          theme.dictionaryErrorForeground,
+          theme.dictionaryErrorBackground
+        ),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast(
+          theme.dictionaryWarningForeground,
+          theme.dictionaryWarningBackground
+        ),
+        labelOf(options)
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+});
+
+describe('the Dictionary tab sheet', () => {
+  /**
+   * Measured 2026-10-20: gray-11 labels read 4.48:1 at the least on a light
+   * gray-5 band and 4.19:1 on a light gray-6, so light takes a gray-4 band, at
+   * 4.82:1 the least, and a neutral accent keeps accent-3, at 5.10:1 the least.
+   */
+  it('keeps the cell text and the header labels at 4.5:1 on each fill of its own they are drawn on', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+      // The grid writes a cell in active and a header label in foreground,
+      // which a header keeps where a selected range meets its row or column.
+      const pairs = [
+        [theme.active, theme.dictionaryBackground],
+        [theme.foreground, theme.dictionaryHeaderBackground],
+        [theme.foreground, theme.dictionaryHeaderSelect],
+      ];
+
+      pairs.forEach(([text, fill]) => {
+        expect(
+          contrast(text, fill),
+          `${labelOf(options)} ${text} on ${fill}`
+        ).toBeGreaterThanOrEqual(4.5);
+      });
+    });
+  });
+
+  /** The least CIE76 step an eye tells apart; light gray under the gray accent, the nearest, measures 2.8. */
+  const MIN_VISIBLE_DELTA_E = 2.3;
+
+  /** Twice that, as the table header band keeps; light olive, the nearest, measures 7.95. */
+  const MIN_BAND_DELTA_E = 5;
+
+  it('sets its header band apart from its cells, and a selected header apart from the band', () => {
+    everyThemeOptions.forEach(options => {
+      const theme = createTheme(options);
+
+      expect(
+        deltaE(theme.dictionaryHeaderBackground, theme.dictionaryBackground),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_BAND_DELTA_E);
+      expect(
+        deltaE(theme.dictionaryHeaderSelect, theme.dictionaryHeaderBackground),
+        labelOf(options)
+      ).toBeGreaterThan(MIN_VISIBLE_DELTA_E);
+    });
+  });
+});
+
 describe('the table header band', () => {
   /** Twice the least visible CIE76 step. Light sand, the nearest to its canvas, measures 5.32. */
   const MIN_BAND_DELTA_E = 5;

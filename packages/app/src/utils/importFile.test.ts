@@ -144,10 +144,12 @@ describe('classifyImportFile', () => {
 });
 
 describe('isEditorDocument', () => {
-  it('takes the version 3 shape with its doc', () => {
+  it('takes the version 3 shape with its doc or its settings', () => {
     expect(isEditorDocument({ version: '3.0.0', doc: {} })).toBe(true);
+    expect(isEditorDocument({ version: '3.0.0', settings: {} })).toBe(true);
     expect(isEditorDocument({ version: '3.0.0', collections: {} })).toBe(false);
     expect(isEditorDocument({ version: '3.0.0', doc: [] })).toBe(false);
+    expect(isEditorDocument({ version: '3.0.0', settings: 'x' })).toBe(false);
   });
 
   it('takes the version 2 shape with its canvas and table', () => {

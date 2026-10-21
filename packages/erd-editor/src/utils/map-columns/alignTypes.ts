@@ -1,6 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 
+import { toDomainUnlinkActions } from '@/engine/modules/dictionary/domainTypes';
 import { toReferenceDataType } from '@/engine/modules/relationship/referenceType';
 import { ChangeColumnValuePayload } from '@/engine/modules/table-column/actions';
 import { changeColumnDataTypeAction } from '@/engine/modules/table-column/atom.actions';
@@ -23,9 +24,9 @@ export type AlignTypesInput = {
 };
 
 /**
- * The data type changes that bring each existing child column of the mapping
- * to its parent's, through the data type sync over the relationships as they
- * will stand, while the sync is on; a column already at its value takes none.
+ * While the sync is on, the type changes the sync makes over the relationships
+ * as they will stand to bring each existing child column to its parent's, none
+ * for one already there, then the unlink of each left off its domain's type.
  */
 export function toAlignTypeActions(
   state: RootState,
@@ -66,12 +67,20 @@ export function toAlignTypeActions(
     mapping,
   ];
 
-  return getDataTypeSyncColumns(seeds.reverse(), state, [], relationships)
-    .filter(({ id, value }) => {
-      const column = columns.selectById(id);
-      return !isNew(id) && !!column && column.dataType !== value;
-    })
-    .map(payload => changeColumnDataTypeAction(payload));
+  const written = getDataTypeSyncColumns(
+    seeds.reverse(),
+    state,
+    [],
+    relationships
+  ).filter(({ id, value }) => {
+    const column = columns.selectById(id);
+    return !isNew(id) && !!column && column.dataType !== value;
+  });
+
+  return [
+    ...written.map(payload => changeColumnDataTypeAction(payload)),
+    ...toDomainUnlinkActions(state, written),
+  ];
 }
 
 /**

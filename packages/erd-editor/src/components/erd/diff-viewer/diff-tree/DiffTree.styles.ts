@@ -98,6 +98,21 @@ export const name = css`
   }
 `;
 
+/* The name after the logical name in the view of both, muted, and struck through with it where it is gone. */
+export const after = css`
+  flex: 0 1000 auto;
+  min-width: 0;
+  margin-inline-start: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tree-muted);
+
+  &.deleted {
+    text-decoration: line-through;
+  }
+`;
+
 export const count = css`
   flex: 0 0 auto;
   margin-inline-start: 6px;

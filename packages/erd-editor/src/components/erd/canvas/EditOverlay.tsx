@@ -20,7 +20,9 @@ import {
   SCENE_FONT_SIZE,
   TABLE_GROUP_TITLE_FONT_WEIGHT,
 } from '@/components/erd/canvas/sceneTokens';
+import { blankLogicalName } from '@/components/erd/canvas/table/blankLogicalName';
 import {
+  type ColumnCellSlot,
   getCellTextHeight,
   getColumnCellSlots,
   getColumnTextY,
@@ -34,11 +36,15 @@ import { useI18n } from '@/components/localeContext';
 import EditInput from '@/components/primitives/edit-input/EditInput';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import ColumnDataType from '@/components/table-view/column/column-data-type/ColumnDataType';
+import ColumnDomain from '@/components/table-view/column/column-domain/ColumnDomain';
+import ColumnLogicalName from '@/components/table-view/column/column-logical-name/ColumnLogicalName';
 import {
   MEMO_BORDER,
   MEMO_HEADER_HEIGHT,
   MEMO_PADDING,
 } from '@/constants/layout';
+import { ColumnType } from '@/constants/schema';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import {
   editMemoEndAction,
   editTableEndAction,
@@ -46,16 +52,18 @@ import {
   scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
+import { drawsDomainInTypeCell } from '@/engine/modules/editor/utils/nameView';
 import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeTableCommentAction,
-  changeTableNameAction,
+  changeTableLogicalNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { changeTableNameAction$ } from '@/engine/modules/table/generator.actions';
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
 import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 import type { RootState } from '@/engine/state';
 import type { PlainMessageKey } from '@/i18n/translate';
-import type { Column } from '@/internal-types';
+import type { Column, Table } from '@/internal-types';
 import {
   getColumnRect,
   getTableRect,
@@ -79,15 +87,19 @@ import * as styles from './EditOverlay.styles';
 /** What an editor writes into, and the key of what it shows while the value is empty. */
 const EDITABLE: Partial<Record<FocusType, PlainMessageKey>> = {
   [FocusType.tableName]: 'common.placeholder.table',
+  [FocusType.tableLogicalName]: 'common.placeholder.logicalName',
   [FocusType.tableComment]: 'common.placeholder.comment',
   [FocusType.columnName]: 'common.placeholder.column',
+  [FocusType.columnLogicalName]: 'common.placeholder.logicalName',
   [FocusType.columnDataType]: 'common.placeholder.dataType',
+  [FocusType.columnDomain]: 'common.placeholder.domain',
   [FocusType.columnDefault]: 'common.placeholder.default',
   [FocusType.columnComment]: 'common.placeholder.comment',
 };
 
 type CellTarget = {
   kind: 'cell';
+  /** The field the editor writes, which picks the editor too (toEditedFocusType). */
   focusType: FocusType;
   tableId: string;
   columnId: string | null;
@@ -97,6 +109,8 @@ type CellTarget = {
   width: number;
   value: string;
   placeholderKey: PlainMessageKey;
+  /** The name the cell draws dimmed in its place while the value is blank, shown in the key's stead; '' for none. */
+  standIn: string;
   /** The text color a header its group tints takes, its value and placeholder alike; null for the theme's. */
   textColor: string | null;
 };
@@ -127,20 +141,81 @@ type TableGroupTarget = {
 type EditTarget = CellTarget | MemoTarget | TableGroupTarget;
 
 /**
- * The column field a cell editor writes into. Only the four column focus types
- * EDITABLE names reach here, so the comment cell is what is left over.
+ * The column field a cell editor writes into. Only the six column focus types
+ * EDITABLE names reach here, so the comment cell is what is left over; the
+ * domain picker opens on no text, since it searches and writes none.
  */
 function getColumnValue(column: Column, focusType: FocusType): string {
   switch (focusType) {
     case FocusType.columnName:
       return column.name;
+    case FocusType.columnLogicalName:
+      return column.logicalName;
     case FocusType.columnDataType:
       return column.dataType;
+    case FocusType.columnDomain:
+      return '';
     case FocusType.columnDefault:
       return column.default;
     default:
       return column.comment;
   }
+}
+
+/** The header field a cell editor writes into, the comment again what is left over. */
+function getTableValue(table: Table, focusType: FocusType): string {
+  switch (focusType) {
+    case FocusType.tableName:
+      return table.name;
+    case FocusType.tableLogicalName:
+      return table.logicalName;
+    default:
+      return table.comment;
+  }
+}
+
+/**
+ * The placeholder a logical name editor shows: what its cell draws while it is
+ * blank, the name in the logical view, so the editor opens on the text it hides.
+ */
+const toPlaceholder = (
+  state: RootState,
+  focusType: FocusType,
+  name: string,
+  placeholderKey: PlainMessageKey
+): Pick<CellTarget, 'placeholderKey' | 'standIn'> => {
+  if (
+    focusType !== FocusType.tableLogicalName &&
+    focusType !== FocusType.columnLogicalName
+  ) {
+    return { placeholderKey, standIn: '' };
+  }
+
+  const { standIn, key } = blankLogicalName(
+    state.settings,
+    name,
+    focusType === FocusType.tableLogicalName
+      ? 'common.placeholder.table'
+      : 'common.placeholder.column'
+  );
+  return { placeholderKey: key, standIn };
+};
+
+/**
+ * The field a row's cell editor writes: the one its slot's focus names, but
+ * the type for the logical view's type cell while it draws the type, since a
+ * row that links no listed domain by a name shows its type there.
+ */
+function toEditedFocusType(
+  state: RootState,
+  column: Column,
+  slot: ColumnCellSlot
+): FocusType {
+  return slot.focusType === FocusType.columnDomain &&
+    slot.columnType === ColumnType.columnDataType &&
+    !drawsDomainInTypeCell(state, column)
+    ? FocusType.columnDataType
+    : slot.focusType;
 }
 
 const keyOf = (target: EditTarget) =>
@@ -188,9 +263,8 @@ function resolveCellTarget(state: RootState): CellTarget | null {
       x: rect.x + HEADER_CELLS_X + slot.x,
       y: rect.y + getHeaderCellsY() + getHeaderTextY(),
       width: slot.width,
-      value:
-        slot.focusType === FocusType.tableName ? table.name : table.comment,
-      placeholderKey,
+      value: getTableValue(table, slot.focusType),
+      ...toPlaceholder(state, slot.focusType, table.name, placeholderKey),
       textColor: getTableHeaderTint(state, table)?.foreground ?? null,
     };
   }
@@ -208,16 +282,26 @@ function resolveCellTarget(state: RootState): CellTarget | null {
   );
   if (!slot) return null;
 
+  const focusType = toEditedFocusType(state, column, slot);
+  // EDITABLE names the type's key too, so the lookup always finds one.
+  const key = EDITABLE[focusType] as PlainMessageKey;
+
   return {
     kind: 'cell',
-    focusType: slot.focusType,
+    focusType,
     tableId: table.id,
     columnId: column.id,
     x: rect.x + slot.x,
     y: getColumnRect(state, table, index).y + getColumnTextY(),
     width: slot.width,
-    value: getColumnValue(column, slot.focusType),
-    placeholderKey,
+    value: getColumnValue(column, focusType),
+    // A domain picker shows the name its cell drew, or the placeholder a blank one drew.
+    ...(focusType === FocusType.columnDomain
+      ? {
+          placeholderKey: key,
+          standIn: getLiveDomainName(state, column.domainId),
+        }
+      : toPlaceholder(state, focusType, column.name, key)),
     textColor: null,
   };
 }
@@ -476,8 +560,8 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
         outline: 'none',
         'box-sizing': 'border-box',
         'background-color': 'transparent',
-        color: 'var(--active)',
-        'caret-color': 'var(--active)',
+        color: 'var(--cell-text-color, var(--active))',
+        'caret-color': 'var(--cell-text-color, var(--active))',
         'font-family': SCENE_FONT_FAMILY,
         'font-size': `${SCENE_FONT_SIZE}px`,
         'font-weight': TABLE_GROUP_TITLE_FONT_WEIGHT,
@@ -523,11 +607,14 @@ const EditOverlay: FC = (_, ctx) => {
       return;
     }
 
+    // A key writes the logical name alone and derives no name from it.
     const payload = { id: target.tableId, value: input.value };
     store.dispatch(
       target.focusType === FocusType.tableName
-        ? changeTableNameAction(payload)
-        : changeTableCommentAction(payload)
+        ? changeTableNameAction$(target.tableId, input.value)
+        : target.focusType === FocusType.tableLogicalName
+          ? changeTableLogicalNameAction(payload)
+          : changeTableCommentAction(payload)
     );
   };
 
@@ -541,6 +628,39 @@ const EditOverlay: FC = (_, ctx) => {
 
     if (target.kind === 'tableGroup') {
       return <TableGroupNameEditor target={target} placeholder={placeholder} />;
+    }
+
+    const { focusType, tableId, columnId } = target;
+
+    if (
+      focusType === FocusType.tableLogicalName ||
+      focusType === FocusType.columnLogicalName
+    ) {
+      return (
+        <ColumnLogicalName
+          tableId={tableId}
+          columnId={columnId}
+          width={target.width}
+          value={target.value}
+          placeholder={placeholder}
+          onBlur={handleEditEnd}
+          onEditEnd={handleEditEnd}
+          onInput={handleInput}
+        />
+      );
+    }
+
+    if (focusType === FocusType.columnDomain && columnId) {
+      return (
+        <ColumnDomain
+          tableId={tableId}
+          columnId={columnId}
+          width={target.width}
+          placeholder={placeholder}
+          onBlur={handleEditEnd}
+          onEditEnd={handleEditEnd}
+        />
+      );
     }
 
     if (target.focusType === FocusType.columnDataType && target.columnId) {
@@ -585,7 +705,7 @@ const EditOverlay: FC = (_, ctx) => {
     // Read here rather than in the editor, which repeat draws outside this pass.
     const placeholder =
       target?.kind === 'cell'
-        ? i18n.value.t(target.placeholderKey)
+        ? target.standIn || i18n.value.t(target.placeholderKey)
         : target?.kind === 'tableGroup'
           ? i18n.value.t('common.unnamed')
           : '';
@@ -610,6 +730,7 @@ const EditOverlay: FC = (_, ctx) => {
               class={[
                 'edit-overlay-cell',
                 item.kind === 'cell' ? styles.cell : null,
+                item.kind === 'cell' && item.textColor ? styles.tinted : null,
               ]}
               style={{
                 position: 'absolute',
@@ -626,13 +747,10 @@ const EditOverlay: FC = (_, ctx) => {
                       '--cell-text-height': `${getCellTextHeight()}px`,
                     }
                   : {}),
-                // The input reads these two for its value and its placeholder,
-                // so a tinted header or a colored group keeps its text color.
+                // A tinted header or a colored group keeps its text color in
+                // its input alone, not in a list the input opens.
                 ...(item.kind !== 'memo' && item.textColor
-                  ? {
-                      '--active': item.textColor,
-                      '--placeholder': item.textColor,
-                    }
+                  ? { '--cell-text-color': item.textColor }
                   : {}),
               }}
             >

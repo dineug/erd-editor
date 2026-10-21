@@ -18,11 +18,11 @@
 
 | File | Description |
 | --- | --- |
-| `ExportImage.tsx` | The dialog: its options, the preview (`createDocumentPreview`, `PREVIEW_MAX_SIDE`, `PREVIEW_DEBOUNCE_MS`) and the PNG size it states before a file exists |
+| `ExportImage.tsx` | The dialog: its options, the preview (`createDocumentPreview`, `PREVIEW_MAX_SIDE`, `PREVIEW_DEBOUNCE_MS`), the PNG size it states before a file exists, and `toExportJson`, the document an image is drawn from |
 | `ExportImage.styles.ts` | The dialog's layout and its close button's `scroll-margin` |
 | `exportImageActions.ts` | PNG, SVG and Copy to clipboard, their toasts, `describeAskedSize` and `describeReduction` |
 | `exportImageActions.test.ts` | Pins which button answers in a toast, and when |
-| `ExportImage.test.ts` | The dialog's opening, preview, buttons and language |
+| `ExportImage.test.ts` | The dialog's opening, preview, buttons, language, name view and the dictionaries it leaves out |
 | `src/components/primitives/dialog/Dialog.tsx` | The shared modal the dialog is built on; `DIALOG_STACK_BELOW` is the 640 px stacking width |
 | `src/services/export-png/exportBox.ts` | `EXPORT_ZOOM_LEVEL`, `getExportSize`, `getStageSize` |
 | `src/services/export-png/exportTheme.ts` | `createExportTheme`, the export's theme for the appearance picked |
@@ -64,10 +64,13 @@
 
 ### What the image draws
 
-- **The image is the document as opened.** At opening the dialog fixes `toJson`, the palette (scene theme, preset options, appearance) and the display language (`{ locale, messages }`). The preview and every file use what it fixed. The preview, PNG and SVG requests all carry the language.
-- The export worker's own scene and the language it draws in: `src/services/AGENTS.md`.
+- **The image is the document as opened.** At opening the dialog fixes the document (`toExportJson`), the palette (scene theme, preset options, appearance), the display language (`{ locale, messages }`) and the name view (`settings.nameViewMode`). The preview and every file use what it fixed. The preview, PNG and SVG requests all carry the language and the name view.
+  - The name view is the one the reader sees, not the one `toJson` writes, which is the lock's while the view is locked. So the image draws the names the screen drew, a view switched on this screen alone included.
+  - `toExportJson` is `toJson` without the words, the terms and their two `doc` lists. Only the checks read them, and an image marks no check. The domains stay, since the logical view's type cell draws a domain's name.
+- The export worker's own scene, the language and the name view it draws in: `src/services/AGENTS.md`.
 - **Every export is drawn at 100%.** This holds for the PNG, the SVG, Copy to clipboard and the preview alike, an owner decision (2026-10-06). It holds whatever zoom the editor shows or the document was saved with.
 - **`ExportScene` draws every table in full.** It draws each with `Table`, never `HighLevelTable`. At 100% every referential action label View Option leaves shown is drawn too, since `RelationshipActionLabel` hides it at a zoom of 0.7 or below.
+- **No export marks a check.** `ExportScene` hands each `Table` `checkMarks={false}`, so a name the dictionaries flag is drawn in the colour of any other name (an owner decision of 2026-10-20), whatever document an export is handed.
 - How the export's own store is held at `EXPORT_ZOOM_LEVEL` (`src/services/export-png/exportBox.ts`), with no caller passing a zoom: `src/services/AGENTS.md`, The Export Worker.
 - **The PNG's size is box times scale.** The scale is `pixelRatio` of `createDocumentPng`, and the canvas ceilings cut the size. The dialog states that size before any file exists, from `getExportSize` over the box the preview measured. It states it as the PNG's size (`PNG 1200 × 800 px`), since the svg ignores the scale and meets no canvas ceiling.
 - **The reduction toast repeats the dialog's words.** It reports after the export, asked and written, in the same pixels and words as the dialog's statement. `describeAskedSize` and `describeReduction` return the templates `localized` builds from `exportImage.reducedFrom` and `exportImage.reducedFromTo`. The toast's pixels come from the `getExportSize` run by the realm that drew the file.

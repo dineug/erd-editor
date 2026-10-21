@@ -1,9 +1,11 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import { SelectType } from '@/engine/modules/editor/state';
+import { drawsDomainInTypeCell } from '@/engine/modules/editor/utils/nameView';
 import { RootState } from '@/engine/state';
-import { Column, Memo, Settings, Table } from '@/internal-types';
+import { Column, Memo, Table } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import {
@@ -35,11 +37,12 @@ export function tableCopyToHtml(state: RootState): string {
   return rowsToHtmlTable(getTableData(state));
 }
 
-function getTableData({
-  editor: { focusTable },
-  settings: { show, columnOrder },
-  collections,
-}: RootState): Row[] {
+function getTableData(state: RootState): Row[] {
+  const {
+    editor: { focusTable },
+    settings: { show, columnOrder, nameViewMode },
+    collections,
+  } = state;
   const rows: Row[] = [];
   if (
     !focusTable ||
@@ -60,38 +63,10 @@ function getTableData({
     .selectByIds(table.columnIds)
     .filter(column => hasColumnIds(column.id));
 
-  const showColumnOrder = getShowColumnOrder(show, columnOrder);
+  const showColumnOrder = getShowColumnOrder(show, columnOrder, nameViewMode);
 
   return columns.map(column =>
-    showColumnOrder.map(columnType => {
-      switch (columnType) {
-        case ColumnType.columnName:
-          return [CellType.columnName, column.name];
-        case ColumnType.columnDataType:
-          return [CellType.columnDataType, column.dataType];
-        case ColumnType.columnDefault:
-          return [CellType.columnDefault, column.default];
-        case ColumnType.columnComment:
-          return [CellType.columnComment, column.comment];
-        case ColumnType.columnAutoIncrement:
-          return [
-            CellType.columnAutoIncrement,
-            bHas(column.options, ColumnOption.autoIncrement) ? 'TRUE' : 'FALSE',
-          ];
-        case ColumnType.columnUnique:
-          return [
-            CellType.columnUnique,
-            bHas(column.options, ColumnOption.unique) ? 'TRUE' : 'FALSE',
-          ];
-        case ColumnType.columnNotNull:
-          return [
-            CellType.columnNotNull,
-            bHas(column.options, ColumnOption.notNull) ? 'NOT NULL' : 'NULL',
-          ];
-        default:
-          return ['', ''];
-      }
-    })
+    showColumnOrder.map(columnType => toCell(state, column, columnType))
   );
 }
 
@@ -244,20 +219,20 @@ export function columnsCopyToPayload({
 
 export function entitiesToTsv(
   payload: ClipboardPayload,
-  settings: Settings
+  state: RootState
 ): string {
   return payload.tables.length === 0
     ? payload.memos.map(({ value }) => value).join('\n\n')
-    : toEntityRows(payload, settings)
+    : toEntityRows(payload, state)
         .map(row => row.map(([, value]) => value).join('\t'))
         .join('\n');
 }
 
 export function entitiesToHtmlTable(
   payload: ClipboardPayload,
-  settings: Settings
+  state: RootState
 ): string {
-  return rowsToHtmlTable(toEntityRows(payload, settings));
+  return rowsToHtmlTable(toEntityRows(payload, state));
 }
 
 export function payloadToHtml(
@@ -275,8 +250,10 @@ function toClipboardTable(table: Table): ClipboardTable {
   return {
     sourceId: table.id,
     name: table.name,
+    logicalName: table.logicalName,
     comment: table.comment,
     columnIds: [...table.columnIds],
+    nameDerived: table.nameDerived,
     ui: {
       x: table.ui.x,
       y: table.ui.y,
@@ -297,6 +274,8 @@ function toClipboardColumn(column: Column): ClipboardColumn {
     dataType: column.dataType,
     default: column.default,
     options: column.options,
+    logicalName: column.logicalName,
+    domainId: column.domainId,
     ui: {
       keys: column.ui.keys,
       widthName: column.ui.widthName,
@@ -340,11 +319,9 @@ function cellToHtml([type, value]: Cell): string {
   return `<td data-type="${escapeHtml(type)}">${escapeHtml(value)}</td>`;
 }
 
-function toEntityRows(
-  payload: ClipboardPayload,
-  { show, columnOrder }: Settings
-): Row[] {
-  const showColumnOrder = getShowColumnOrder(show, columnOrder);
+function toEntityRows(payload: ClipboardPayload, state: RootState): Row[] {
+  const { show, columnOrder, nameViewMode } = state.settings;
+  const showColumnOrder = getShowColumnOrder(show, columnOrder, nameViewMode);
   const columnMap = new Map(
     payload.columns.map(column => [column.sourceId, column])
   );
@@ -354,17 +331,45 @@ function toEntityRows(
       .map(columnId => columnMap.get(columnId))
       .filter((column): column is ClipboardColumn => Boolean(column))
       .map(column =>
-        showColumnOrder.map(columnType => toEntityCell(column, columnType))
+        showColumnOrder.map(columnType => toCell(state, column, columnType))
       )
   );
 }
 
-function toEntityCell(column: ClipboardColumn, columnType: number): Cell {
+type CellColumn = Pick<
+  ClipboardColumn,
+  | 'name'
+  | 'logicalName'
+  | 'dataType'
+  | 'domainId'
+  | 'default'
+  | 'comment'
+  | 'options'
+>;
+
+/**
+ * The cell a column writes for a column type, as its row draws it: a domain
+ * by its name, nothing for one the document does not list, and the logical
+ * view's type cell the domain while it draws one there.
+ */
+function toCell(
+  state: RootState,
+  column: CellColumn,
+  columnType: number
+): Cell {
+  const domainId = column.domainId ?? '';
+
   switch (columnType) {
     case ColumnType.columnName:
       return [CellType.columnName, column.name];
+    case ColumnType.columnLogicalName:
+      return [CellType.columnLogicalName, column.logicalName ?? ''];
     case ColumnType.columnDataType:
-      return [CellType.columnDataType, column.dataType];
+      return drawsDomainInTypeCell(state, { domainId })
+        ? [CellType.columnDomain, getLiveDomainName(state, domainId)]
+        : [CellType.columnDataType, column.dataType];
+    case ColumnType.columnDomain:
+      return [CellType.columnDomain, getLiveDomainName(state, domainId)];
     case ColumnType.columnDefault:
       return [CellType.columnDefault, column.default];
     case ColumnType.columnComment:

@@ -654,3 +654,35 @@ describe('Snowflake options', () => {
     );
   });
 });
+
+describe('Snowflake logical names as comments', () => {
+  it('writes the logical name where the table or column comment is empty, and none without the option', () => {
+    const { state, users, posts } = createFixture();
+    const columns = state.collections.tableColumnEntities;
+    users.logicalName = 'User';
+    posts.logicalName = 'Post';
+    columns['col-name'].logicalName = 'Name';
+    columns['col-title'].logicalName = "Post's title";
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table: posts, logicalNameAsComment: true });
+
+    expect(buffer).toEqual([
+      'CREATE TABLE posts',
+      '(',
+      "  title   VARCHAR(20) NOT NULL COMMENT 'Post''s title',",
+      '  user_id INT',
+      ')',
+      "COMMENT = 'Post';",
+    ]);
+
+    const written = createSchema(state, undefined, {
+      statements: 'recreate',
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain("\nCOMMENT = 'user table';\n");
+    expect(written).toContain("\nCOMMENT = 'Post';\n");
+    expect(createSchema(state)).not.toContain('Post');
+  });
+});

@@ -25,6 +25,8 @@ import {
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
 import { COLUMN_HEIGHT } from '@/constants/layout';
+import { NameViewMode } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeViewportAction,
   focusColumnAction,
@@ -32,9 +34,15 @@ import {
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType } from '@/engine/modules/editor/state';
+import { changeNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import { moveToTableAction } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
-import { changeColumnNameAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { createI18n } from '@/i18n/translate';
 import type { Point, Table } from '@/internal-types';
@@ -229,6 +237,63 @@ describe('the ghost a column drag carries', () => {
       .find<Text>('Text')
       .map(text => text.text());
     expect(texts.sort()).toEqual(['ko:column', 'ko:dataType']);
+  });
+
+  it('writes each dragged row in the names and the domain its row draws in the logical view', async () => {
+    const fixture = await setup();
+    const { app, table } = fixture;
+    const { store } = app;
+    const theme = createTestTheme();
+    const named = table.columnIds[1];
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'money',
+        values: { name: 'Money', dataType: 'DECIMAL(19,4)' },
+      }),
+      changeColumnLogicalNameAction({
+        tableId: table.id,
+        id: named,
+        value: 'Member Name',
+      }),
+      changeColumnDataTypeAction({
+        tableId: table.id,
+        id: named,
+        value: 'DECIMAL(19,4)',
+      }),
+      changeColumnDomainAction({
+        tableId: table.id,
+        id: named,
+        value: 'money',
+      }),
+      changeNameViewModeAction({
+        value: NameViewMode.logical,
+        shared: false,
+        editorId: store.state.editor.id,
+      })
+    );
+    await settle();
+
+    focus(fixture, 1);
+    focus(fixture, 2, true);
+    await pressRow(fixture, 2, true);
+    await moveTo(fixture, { x: 500, y: 600 });
+
+    const rows = ghostOf(fixture.stage)!
+      .find<Group>('.column-drag-ghost-row')
+      .map(row =>
+        row.find<Text>('Text').map(text => [text.text(), text.fill()])
+      );
+    expect(rows).toEqual([
+      [
+        ['Member Name', theme.active],
+        ['Money', theme.active],
+      ],
+      [
+        ['column_2', theme.placeholder],
+        ['dataType', theme.placeholder],
+      ],
+    ]);
   });
 
   it('stacks every dragged row and holds the pressed one where it was taken', async () => {

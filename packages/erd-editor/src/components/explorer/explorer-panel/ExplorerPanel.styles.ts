@@ -102,6 +102,10 @@ export const name = css`
     font-style: italic;
     color: var(--tree-muted);
   }
+
+  &.stand-in {
+    color: var(--tree-muted);
+  }
 `;
 
 /* It gives way before the name does, so a long type or column list is cut first. */

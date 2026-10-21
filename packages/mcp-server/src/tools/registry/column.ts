@@ -2,14 +2,26 @@ import {
   type ActionType,
   bHas,
   ColumnOption,
+  dictionaryActions$,
   FocusType,
   type GeneratorAction,
+  type RootState,
   tableColumnActions,
   tableColumnActions$,
 } from '@dineug/erd-editor/peer.js';
 import { query } from '@dineug/erd-editor-schema';
 
-import type { ActionTool, ToolArg, ToolFocus } from '@/tools/registry';
+import type {
+  ActionTool,
+  ToolArg,
+  ToolArgValues,
+  ToolFocus,
+} from '@/tools/registry';
+import {
+  DOMAIN_ARGS,
+  domainOf,
+  refineDomain,
+} from '@/tools/registry/dictionary';
 
 const TABLE_ID: ToolArg = {
   name: 'tableId',
@@ -42,9 +54,8 @@ const columnFocus = (focusType: FocusType): ToolFocus => ({
   focusType,
 });
 
-const columnPath = (field: string) => [
-  `tables[tableId].columns[columnId].${field}`,
-];
+const columnPath = (...fields: string[]) =>
+  fields.map(field => `tables[tableId].columns[columnId].${field}`);
 
 type OptionActionCreator =
   | typeof tableColumnActions.changeColumnPrimaryKeyAction
@@ -111,19 +122,19 @@ const flagTool = ({
 
 const valueTool = (
   name: string,
-  actionType: ActionType,
+  actionTypes: readonly ActionType[],
   focusType: FocusType,
-  field: string
+  fields: readonly string[]
 ): ActionTool => ({
   name,
   kind: 'generator',
-  actionTypes: [actionType],
+  actionTypes,
   undoable: true,
   stream: false,
   expectedBatches: 1,
   expectedHistory: 1,
   focus: columnFocus(focusType),
-  snapshotPaths: columnPath(field),
+  snapshotPaths: columnPath(...fields),
   args: [TABLE_ID, COLUMN_ID, TEXT_VALUE],
   toActions: ({ tableId, columnId, value }) => [
     tableColumnActions$.changeColumnValueAction$(
@@ -134,6 +145,27 @@ const valueTool = (
     ),
   ],
 });
+
+/** Links the domain a call names, its name read as the call runs. */
+const setColumnDomainAction$ = (args: ToolArgValues): GeneratorAction =>
+  function* (state) {
+    yield dictionaryActions$.setColumnDomainAction$(
+      args.tableId,
+      args.columnId,
+      domainOf(args, state) ?? ''
+    );
+  };
+
+/** A domain comes by id or by name, one of the two. */
+function refineColumnDomain(
+  args: ToolArgValues,
+  state: RootState
+): string | undefined {
+  if (args.domainId === undefined && args.domainName === undefined) {
+    return 'pass domainId or domainName; null, or an empty name, unlinks';
+  }
+  return refineDomain(args, state);
+}
 
 const TOGGLE_REASON =
   'toggleColumnValueAction$ flips the flag the state holds, so a repeated call undoes itself';
@@ -175,13 +207,13 @@ export const columnTools: readonly ActionTool[] = [
   {
     name: 'erd_change_column_data_type',
     kind: 'generator',
-    actionTypes: ['column.changeDataType'],
+    actionTypes: ['column.changeDataType', 'column.changeDomain'],
     undoable: true,
     stream: false,
     expectedBatches: 1,
     expectedHistory: 1,
     focus: columnFocus(FocusType.columnDataType),
-    snapshotPaths: columnPath('dataType'),
+    snapshotPaths: columnPath('dataType', 'domainId'),
     args: [TABLE_ID, COLUMN_ID, TEXT_VALUE],
     toActions: ({ tableId, columnId, value }) => [
       tableColumnActions$.changeColumnDataTypeAction$({
@@ -193,22 +225,59 @@ export const columnTools: readonly ActionTool[] = [
   },
   valueTool(
     'erd_change_column_name',
-    'column.changeName',
+    ['column.changeName', 'column.changeNameDerived'],
     FocusType.columnName,
-    'name'
+    ['name', 'nameDerived']
   ),
   valueTool(
     'erd_change_column_default',
-    'column.changeDefault',
+    ['column.changeDefault'],
     FocusType.columnDefault,
-    'default'
+    ['default']
   ),
   valueTool(
     'erd_change_column_comment',
-    'column.changeComment',
+    ['column.changeComment'],
     FocusType.columnComment,
-    'comment'
+    ['comment']
   ),
+  {
+    name: 'erd_set_column_logical_name',
+    kind: 'generator',
+    actionTypes: [
+      'column.changeLogicalName',
+      'column.changeName',
+      'column.changeNameDerived',
+      'column.changeDomain',
+      'column.changeDataType',
+    ],
+    undoable: true,
+    stream: false,
+    // Nothing goes out when the logical name and all it derives hold.
+    expectedBatches: { min: 0, max: 1 },
+    expectedHistory: { min: 0, max: 1 },
+    focus: columnFocus(FocusType.columnLogicalName),
+    snapshotPaths: columnPath('logicalName', 'name', 'domainId', 'dataType'),
+    args: [TABLE_ID, COLUMN_ID, TEXT_VALUE],
+    toActions: ({ tableId, columnId, value }) => [
+      dictionaryActions$.setColumnLogicalNameAction$(tableId, columnId, value),
+    ],
+  },
+  {
+    name: 'erd_set_column_domain',
+    kind: 'generator',
+    actionTypes: ['column.changeDomain', 'column.changeDataType'],
+    undoable: true,
+    stream: false,
+    // A link the column already holds, with its domain's type, sends nothing.
+    expectedBatches: { min: 0, max: 1 },
+    expectedHistory: { min: 0, max: 1 },
+    focus: columnFocus(FocusType.columnDomain),
+    snapshotPaths: columnPath('domainId', 'dataType'),
+    args: [TABLE_ID, COLUMN_ID, ...DOMAIN_ARGS],
+    refine: refineColumnDomain,
+    toActions: args => [setColumnDomainAction$(args)],
+  },
   flagTool({
     name: 'erd_set_column_primary_key',
     atomReason:

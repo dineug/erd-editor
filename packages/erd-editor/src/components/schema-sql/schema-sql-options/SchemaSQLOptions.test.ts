@@ -287,6 +287,47 @@ describe('SchemaSQLOptions', () => {
     expect(pressedOf(headersOf())).toEqual(['USE']);
   });
 
+  it("switches the logical name comments in this window's group, off at first, and dispatches nothing", async () => {
+    const app = createApp();
+    await mountPanel(app);
+    const view = schemaSQLViewOf(app);
+    const dispatched = vi.fn();
+    const unsubscribe = app.store.subscribe(dispatched);
+    const row = query('.schema-sql-options-logical-name')!;
+    const toggle = row.querySelector<HTMLButtonElement>('[role="switch"]')!;
+
+    expect(row.tagName).toBe('LABEL');
+    expect(row.closest('section')?.getAttribute('aria-label')).toBe(
+      'This window only'
+    );
+    expect(row.textContent).toBe('Write logical names into empty comments');
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+
+    toggle.click();
+    await flush();
+    expect(view.logicalNameAsComment).toBe(true);
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+
+    toggle.click();
+    await flush();
+    expect(view.logicalNameAsComment).toBe(false);
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    expect(dispatched).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  it('switches the logical name comments in a readonly editor too, since the document keeps nothing of them', async () => {
+    const app = createApp();
+    await mountPanel(app, { readonly: true });
+
+    query<HTMLButtonElement>(
+      '.schema-sql-options-logical-name [role="switch"]'
+    )!.click();
+    await flush();
+
+    expect(schemaSQLViewOf(app).logicalNameAsComment).toBe(true);
+  });
+
   it('ignores a press on a choice the database lacks, which still takes the focus', async () => {
     const app = createApp(Database.Oracle);
     await mountPanel(app);

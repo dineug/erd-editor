@@ -16,6 +16,7 @@ import {
   ALL_REFERENTIAL_ACTIONS,
   autoName,
   autoNameIgnoreCase,
+  commentToWrite,
   formatDefault,
   formatNames,
   formatReferentialActions,
@@ -37,6 +38,28 @@ import {
 } from '@/utils/schema-sql/utils';
 
 describe('schema-sql/utils', () => {
+  describe('commentToWrite', () => {
+    it('keeps a comment that is not blank, whatever the option', () => {
+      const entity = { comment: ' paid ', logicalName: 'Order' };
+
+      expect(commentToWrite(entity)).toBe(' paid ');
+      expect(commentToWrite(entity, true)).toBe(' paid ');
+    });
+
+    it('takes the logical name for a blank comment only under the option', () => {
+      const entity = { comment: '  ', logicalName: 'Order' };
+
+      expect(commentToWrite(entity, true)).toBe('Order');
+      expect(commentToWrite(entity, false)).toBe('');
+      expect(commentToWrite(entity)).toBe('');
+    });
+
+    it('writes nothing where the logical name is blank too', () => {
+      expect(commentToWrite({ comment: '', logicalName: ' ' }, true)).toBe('');
+      expect(commentToWrite({ comment: '', logicalName: '' }, true)).toBe('');
+    });
+  });
+
   describe('formatNames', () => {
     it('joins names with ", " when no bracket is given', () => {
       expect(formatNames([{ name: 'a' }, { name: 'b' }, { name: 'c' }])).toBe(

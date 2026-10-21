@@ -182,11 +182,13 @@ export async function importSchemaPlaced(
 
   await placeAndLand(app, json, true, points => {
     // A placement that could not be had leaves the grid, which a failure, a
-    // host with no worker and Cancel all land without a word.
+    // host with no worker and Cancel all land without a word. The words,
+    // terms and domains stay, as loadSchemaAction$ keeps them.
     const landing = toLandingJson(json, store.state, points);
     store.dispatchSync(
       loadJsonAction$(
-        points ? landing : withGridPoints(landing, store.state, app)
+        points ? landing : withGridPoints(landing, store.state, app),
+        { keepDictionaries: true }
       )
     );
   });

@@ -16,6 +16,12 @@ import {
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import { isTableFocusType } from '@/engine/modules/editor/utils/focus';
+import {
+  getColumnFocusTypes,
+  getTableFocusTypes,
+  toShownFocusType,
+} from '@/engine/modules/editor/utils/nameView';
 import { selectMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
   changeCanvasTypeAction,
@@ -291,19 +297,29 @@ function getColumnFocusRect(
 }
 
 /**
- * The cell a comment is found in, or the name beside it while the comments
- * are hidden, so the focus ring never lands on a cell nobody can see.
+ * The cell a target is found in, or the name beside a comment while the
+ * comments are hidden, so the focus ring never lands on a cell nobody can see.
+ * The name view draws the logical name in the name's place, and back.
  */
 function visibleFocusType(state: RootState, focusType: FocusType): FocusType {
-  const { show } = state.settings;
+  const { settings } = state;
+  const { show } = settings;
+  let asked = focusType;
 
-  if (focusType === FocusType.tableComment) {
-    return bHas(show, Show.tableComment) ? focusType : FocusType.tableName;
+  if (focusType === FocusType.tableComment && !bHas(show, Show.tableComment)) {
+    asked = FocusType.tableName;
   }
-  if (focusType === FocusType.columnComment) {
-    return bHas(show, Show.columnComment) ? focusType : FocusType.columnName;
+  if (
+    focusType === FocusType.columnComment &&
+    !bHas(show, Show.columnComment)
+  ) {
+    asked = FocusType.columnName;
   }
-  return focusType;
+
+  const types = isTableFocusType(asked)
+    ? getTableFocusTypes(settings)
+    : getColumnFocusTypes(settings);
+  return toShownFocusType(settings, types, asked) ?? asked;
 }
 
 /**
@@ -463,9 +479,10 @@ export const showErdTargetAction$ = (target: ErdTarget): GeneratorAction =>
     if (!table) return;
 
     if (target.kind === 'table') {
-      const focusType = target.focusType
-        ? visibleFocusType(state, target.focusType)
-        : FocusType.tableName;
+      const focusType = visibleFocusType(
+        state,
+        target.focusType ?? FocusType.tableName
+      );
       yield* scrollTableIntoView(
         state,
         table,

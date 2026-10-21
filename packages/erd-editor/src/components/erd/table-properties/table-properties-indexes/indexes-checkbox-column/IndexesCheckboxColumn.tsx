@@ -10,6 +10,12 @@ import ColumnKey from '@/components/table-view/column/column-key/ColumnKey';
 import ColumnNotNull from '@/components/table-view/column/column-not-null/ColumnNotNull';
 import ColumnOption from '@/components/table-view/column/column-option/ColumnOption';
 import {
+  domainCellText,
+  logicalNameCellText,
+  nameCellText,
+  typeCellText,
+} from '@/components/table-view/column/columnViewText';
+import {
   COLUMN_AUTO_INCREMENT_WIDTH,
   COLUMN_UNIQUE_WIDTH,
 } from '@/constants/layout';
@@ -18,6 +24,7 @@ import {
   ColumnType,
   Show,
 } from '@/constants/schema';
+import { isBothNameView } from '@/engine/modules/editor/utils/nameView';
 import {
   addIndexColumnAction$,
   removeIndexColumnAction$,
@@ -66,16 +73,52 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
         let template: DOMTemplateLiterals | null = null;
 
         switch (columnType) {
-          case ColumnType.columnName:
+          case ColumnType.columnName: {
+            const { value, placeholder } = nameCellText(
+              settings,
+              column,
+              i18n.value
+            );
             template = (
               <div class="column-col">
                 <EditInput
-                  placeholder={t('common.placeholder.column')}
+                  placeholder={placeholder}
                   width={columnWidth.name}
-                  value={column.name}
+                  value={value}
                 />
               </div>
             );
+            break;
+          }
+          case ColumnType.columnLogicalName: {
+            if (!isBothNameView(settings)) break;
+            const { value, placeholder } = logicalNameCellText(
+              settings,
+              column,
+              'common.placeholder.column',
+              i18n.value
+            );
+            template = (
+              <div class="column-col">
+                <EditInput
+                  placeholder={placeholder}
+                  width={columnWidth.logicalName}
+                  value={value}
+                />
+              </div>
+            );
+            break;
+          }
+          case ColumnType.columnDomain:
+            template = bHas(settings.show, Show.columnDomain) ? (
+              <div class="column-col">
+                <EditInput
+                  placeholder={t('common.placeholder.domain')}
+                  width={columnWidth.domain}
+                  value={domainCellText(store.state, column)}
+                />
+              </div>
+            ) : null;
             break;
           case ColumnType.columnDefault:
             template = bHas(settings.show, Show.columnDefault) ? (
@@ -106,7 +149,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
                   tableId={column.tableId}
                   columnId={column.id}
                   width={columnWidth.dataType}
-                  value={column.dataType}
+                  value={typeCellText(store.state, column)}
                 />
               </div>
             ) : null;

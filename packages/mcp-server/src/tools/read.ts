@@ -62,12 +62,15 @@ export type TableFilter = Pick<EntityIds, 'tableIds' | 'tableNames'> & {
   readonly groupNames?: readonly string[];
 };
 
+/** Where the dictionaries come from in parts, which a whole document carries too. */
+const DICTIONARY_PAGES =
+  'erd_list pages through the domains, terms and words after the tables, and erd_get gives them in full by domainIds, termIds and wordIds';
+
 /** What each format tells an agent to do when the document is too large for one read. */
 const NARROWER: Readonly<Record<ReadFormat, string>> = {
   sql: 'pass tableIds, tableNames or groupNames for the tables the task needs, which erd_list with query or namesOnly finds',
-  snapshot:
-    'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
-  json: 'find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames',
+  snapshot: `find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames; ${DICTIONARY_PAGES}`,
+  json: `find tables with erd_list (query, namesOnly) and read them with erd_get, or the sql format with tableNames; ${DICTIONARY_PAGES}`,
   scripts:
     "no read gives the scripts in parts, so ask the user to shorten them in the options of the editor's Schema SQL tab",
 };
@@ -154,8 +157,8 @@ const SERIALIZER: Readonly<
 
 /**
  * Serializes a document as an agent asked: the snapshot it edits by, the DDL of
- * a vendor (the document's by default) with the statements and header asked
- * for, the file's own JSON, or the two Schema SQL scripts alone.
+ * a vendor (the document's by default) with the statements, header and logical
+ * names asked for, the file's own JSON, or the two Schema SQL scripts alone.
  */
 export function readDocument(
   state: RootState,
@@ -178,6 +181,11 @@ export function readDocument(
   ) {
     throw refused(
       `statements and header apply to the sql format only, not ${format}`
+    );
+  }
+  if (options?.logicalNameAsComment !== undefined && format !== 'sql') {
+    throw refused(
+      `logicalNameAsComment applies to the sql format only, not ${format}`
     );
   }
   const filtered =

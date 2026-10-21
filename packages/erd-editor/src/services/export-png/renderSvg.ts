@@ -1,4 +1,5 @@
 import type { LocaleMessages } from '@/i18n/translate';
+import type { Settings } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
@@ -11,6 +12,8 @@ export type RenderSvgRequest = {
   theme: Theme;
   /** The language the scene's own words are drawn in; English when left out. */
   i18n?: LocaleMessages;
+  /** The names the scene draws; the document's own view when left out. */
+  nameViewMode?: Settings['nameViewMode'];
 };
 
 /**
@@ -32,6 +35,7 @@ export async function renderDocumentSvg({
   doc,
   theme,
   i18n,
+  nameViewMode,
   toWidth,
 }: RenderSvgRequest & { toWidth: ToWidth }): Promise<string> {
   const scene = await renderDocumentScene({
@@ -40,6 +44,7 @@ export async function renderDocumentSvg({
     toWidth,
     maxSide: STAGE_MAX_SIDE,
     i18n,
+    nameViewMode,
   });
 
   try {

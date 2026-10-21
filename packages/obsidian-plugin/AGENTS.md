@@ -26,7 +26,8 @@ Deltas from root § Making a Change.
 | `src/ErdView.ts` | The tab, a `HubTab`: load, replica, relay, seeding, `saveBeforeExit`, read-only fallback, theme and language events, welcome screen, shortcut `scope` |
 | `src/settings.ts` | `PluginSettings` (`data.json`), `DEFAULT_SETTINGS`, `readSettings` / `readTheme`, `editorTheme`, `themeFromBuilder`, `ThemeHost`, `LOCALES` / `LOCALE_NAMES`, `editorLocale`, `localeFromPicker`, `obsidianLanguage`, `LocaleHost` |
 | `src/tabSave.ts` | `viewData`, `currentValue`, `hasUnsavedValue`, `exitSave`, `seedValue`, pure functions of `TabSaveState` |
-| `src/keys.ts` | `scopeKeysOf` / `toScopeKey`: the editor's chords as `Scope.register` modifiers and key, each press once |
+| `src/keys.ts` | `scopeKeysOf` / `toScopeKey`: the editor's chords as `Scope.register` modifiers and key, each press once; `editorScopeKeys`, every press the loaded module listens for |
+| `src/readableDiagram.ts` | `isReadableDiagram`: whether a file's text is a diagram the tab can read (Unreadable files open read-only) |
 | `src/icon.ts` | `ERD_ICON` / `ERD_ICON_SVG`, for the tab and the New ERD menu item |
 | `src/loadErdEditor.ts` | Requires `@dineug/erd-editor` once per window (§ Build) |
 | `src/hub/registry.ts` | `DocumentRegistry` (§ Coding-agent hub), with `seedWhenQuiet`, `setActive` / `keepActive`, `shutdown` |
@@ -56,7 +57,7 @@ Deltas from root § Making a Change.
 ### Opening files
 
 - **`.erd.json` / `.vuerd.json` go through a wrapped `openFile`.** Obsidian types a file by its last extension, `registerExtensions(['erd.json'])` does nothing, and registering `json` would claim every JSON file. So `main.ts` wraps `WorkspaceLeaf.prototype.openFile` with `monkey-around`, mirroring the core (the `file` guard, `active` defaulting to the active leaf, `group`, `eState`), and matches the suffix in any case (`a.ERD.json`), like the hub and the MCP server. The file explorer and quick switcher show these files only with Detect all file extensions on.
-- **Unreadable files open read-only** (not JSON, or no `doc` or `canvas` at the top), and `getViewData` returns their text, so a merge conflict or a cut-off sync never becomes an empty diagram. It returns the text, not `editor.value`, since `readonly` still lets viewport actions through.
+- **Unreadable files open read-only** (not JSON, or at the top no `doc`, no `canvas`, and no `settings` beside a `version` of `3.0.0`, which takes a file a later release may write without `doc`), and `getViewData` returns their text, so a merge conflict or a cut-off sync never becomes an empty diagram. It returns the text, not `editor.value`, since `readonly` still lets viewport actions through.
 - **`isPlaintext` is false**: an outside change during an unsaved edit wins and drops the edit; the default merges both into the JSON as text.
 - **A load settles what the editor derives** (key marks, widths, anchors, relationship flags) before its reducer returns, and the file form keeps none of it, so an inconsistent document (FK flags with no relationship) changes only with an edit.
 - **The welcome screen waits for a document.** `onOpen` creates the editor, often before the tab has its file, with no document and `enableWelcomeScreen` off; `loadDocument` turns it on right after `setInitialValue`. The editor then shows it while the diagram has no table, memo or shown table group and is not read-only. So it never shows before a tab's first file is in, over a tab waiting to seed (read-only, after a file switch too) or over an unreadable file. An empty file loads as an empty diagram and opens on it. The first table, memo or shown table group takes it away.
@@ -124,11 +125,11 @@ Deltas from root § Making a Change.
 ### Shortcuts
 
 - **Obsidian's hotkeys take keys before the page**: its keymap listens for `keydown` on the window in the capture phase, sending a key matching a hotkey to its command, prevented and stopped, even where the command does not apply. `Alt+Enter` (add column) is Follow link under cursor, `$mod+K` (search) Insert Markdown link, `$mod+F` (Find and Replace, the Explorer's search) Search current file, and a user's hotkey can take any shortcut.
-- **The view's `scope` hands the editor its keys.** The workspace asks the active leaf's `view.scope` first, as for Obsidian's canvas view; `Scope.handleKey` returns the first matching registration's result, and the keymap prevents the key only on `false`. So `ErdView` sets `this.scope = new Scope(this.app.scope)` and registers every press of the loaded module's `createKeyBindingMap()` (the element's defaults, never a copy) with a handler returning `true`: no command runs, and the key reaches the editor.
+- **The view's `scope` hands the editor its keys.** The workspace asks the active leaf's `view.scope` first, as for Obsidian's canvas view; `Scope.handleKey` returns the first matching registration's result, and the keymap prevents the key only on `false`. So `ErdView` sets `this.scope = new Scope(this.app.scope)` and registers every press of the loaded module's `createKeyBindingMap()` (the element's defaults, never a copy) with a handler returning `true`: no command runs, and the key reaches the editor. `editorScopeKeys` adds the Dictionary tab's row chords that map gives (`dictionaryRowChords`), since Insert above's, `Alt+Shift+Enter`, is in no binding, and the keymap matches modifiers exactly, so `Alt+Enter`'s registration never covers it.
 - **`scopeKeysOf` spells keys as the keymap matches them**, reading the key code as a letter, digit or name: `$mod` → `Mod`, `Control` → `Ctrl`, `KeyK` → `K`, `Digit1` → `1`, `Space` → `' '`, `Equal` → `=`, `Minus` → `-`.
 - **Other hotkeys fall through to `app.scope`** (the command palette, the quick switcher, closing a tab, settings). The scope holds only while the ERD leaf is active, wherever focus is in it; a modal or a menu pushes its own scope, which the view's never reaches.
 - **`Mod+S` stays Obsidian's Save current file** (`editor:save-file`, unregistered by the plugin), saving the active `TextFileView`: the writer writes its replica's last value at once, another tab nothing, its `getViewData` being the file's text. A save within 200 ms of an edit writes the value before it; the autosave writes the edit 2 s later.
-- **A module from an earlier plugin version**, which `loadErdEditor` keeps until a restart, has no `createKeyBindingMap`: its tabs register nothing and Obsidian's hotkeys win.
+- **A module from an earlier plugin version**, which `loadErdEditor` keeps until a restart, has no `createKeyBindingMap`: its tabs register nothing and Obsidian's hotkeys win. One with the map but no `dictionaryRowChords` registers the map's presses alone.
 
 ### Icon
 
@@ -173,7 +174,7 @@ Measured on macOS unless Windows is named.
 - **What the specs pin.**
   - `settings.test.ts`: the defaults, the fallback of unknown values, and every function and constant the `src/settings.ts` row names.
   - `tabSave.test.ts`: what a tab hands Obsidian to save, a tab waiting to load among them, what `exitSave` does as the window goes, and what `seedValue` gives a tab opened beside others.
-  - `keys.test.ts`: how each spelling the editor's shortcuts use becomes a scope key.
+  - `keys.test.ts`: how each spelling the editor's shortcuts use becomes a scope key, and that the row chords the loaded module derives join its map's presses.
   - The hub specs: `registry.test.ts` (tabs, relays, quiet waits, seeding, content, the runtime value, the lock's documents, shutdown), `join.test.ts` (the join window, an agent joining after a removal the tab then undoes, and over a real socket, a named pipe on Windows, the response ahead of queued actions), `handlers.test.ts` and `runtime.test.ts` run the registry and the handler over `createHubHarness`, beside `host.test.ts`, `lifecycle.test.ts` and `imports.test.ts`.
   - `runtime.test.ts` uses its own memory doubles of `agent-hub-host`'s `HubEnvironment`, `HubListener` and `LockFile` services, never the node layers, which would write a lock under the real home.
 - **`smoke` runs by hand**, on macOS or Windows with Obsidian installed: it is the check that the plugin works, and CI does not run it.

@@ -16,8 +16,10 @@ import {
 } from '@/__test-utils__';
 import { useAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import * as listStyles from '@/components/table-view/column/column-logical-name/ColumnLogicalName.styles';
 import { themeContext } from '@/components/themeContext';
-import { RelationshipType } from '@/constants/schema';
+import { NameViewMode, RelationshipType, Show } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeViewportAction,
   drawStartAddRelationshipAction,
@@ -31,6 +33,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  changeShowAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
@@ -257,6 +263,76 @@ describe('Escape on a real keyboard - a cell editor', () => {
       ];
     expect(table.name).toBe('accounts');
     expect(editorOf(fixture).focusTable?.edit).toBe(false);
+  });
+});
+
+describe('Escape on a real keyboard - the lists under a cell editor', () => {
+  /** The view of both, with a term and a domain listed and the domain cell shown. */
+  async function setupDictionaries() {
+    const fixture = await setup();
+    const { store } = fixture.mounted.app;
+    store.dispatchSync(
+      toNameViewModeAction(store.state, NameViewMode.both, false),
+      changeShowAction({ show: Show.columnDomain, value: true }),
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no' },
+      }),
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-1',
+        values: { name: 'Identifier', dataType: 'BIGINT' },
+      })
+    );
+    await flush();
+    return fixture;
+  }
+
+  const listOf = ({ mounted }: Fixture) =>
+    mounted.container.querySelector(`.edit-overlay .${listStyles.hint}`);
+
+  it('closes the term list alone first, then the editor, then unselects', async () => {
+    const fixture = await setupDictionaries();
+    const before = await editCell(fixture, FocusType.columnLogicalName);
+    await userEvent.keyboard('mem');
+    await flush();
+    expect(listOf(fixture)).not.toBeNull();
+
+    await pressEscape();
+
+    expect(listOf(fixture)).toBeNull();
+    expect(openEditorOf(fixture)).toBeInstanceOf(HTMLInputElement);
+    expect(editorOf(fixture).focusTable?.edit).toBe(true);
+    expect(fixture.heard).toEqual([]);
+
+    await pressEscape();
+
+    expect(snapshot(fixture)).toEqual(before);
+    expect(openEditorOf(fixture)).toBeNull();
+    expect(fixture.heard).toEqual([true]);
+
+    await pressEscape();
+
+    expect(editorOf(fixture).selectedMap).toEqual({});
+    expect(fixture.heard).toEqual([true, false]);
+  });
+
+  it('ends the domain picker on the first press, its list with it, linking nothing', async () => {
+    const fixture = await setupDictionaries();
+    const before = await editCell(fixture, FocusType.columnDomain);
+    expect(listOf(fixture)).not.toBeNull();
+
+    await pressEscape();
+
+    expect(snapshot(fixture)).toEqual(before);
+    expect(openEditorOf(fixture)).toBeNull();
+    expect(fixture.heard).toEqual([true]);
+    expect(
+      fixture.mounted.app.store.state.collections.tableColumnEntities[
+        fixture.columnId
+      ].domainId
+    ).toBe('');
   });
 });
 

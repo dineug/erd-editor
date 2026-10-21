@@ -10,6 +10,7 @@ import {
   DEFAULT_FIND_OPTIONS,
   FindField,
   FindMatch,
+  isTableLogicalName,
   Matcher,
   walkFields,
 } from '@/utils/find-replace';
@@ -50,7 +51,11 @@ export const TEXT_FIELDS: FindField[] = [
   FindField.memo,
 ];
 
-const COLUMN_FIELDS: FindField[] = [FindField.columnName];
+/** What the at sign searches: a column's name and logical name, whatever the view draws. */
+const COLUMN_FIELDS: FindField[] = [
+  FindField.columnName,
+  FindField.logicalName,
+];
 
 const matcherOf = (keyword: string): Matcher | null =>
   createMatcher(keyword, DEFAULT_FIND_OPTIONS).matcher;
@@ -118,7 +123,7 @@ type FieldHit = {
 
 type RankedHit = FieldHit & { hit: TextHit };
 
-/** Whether a table is one a column search names: any without a table part, else those whose name holds it, Hangul letters too. */
+/** Whether a table is one a column search names: any without a table part, else those whose name or logical name holds it, Hangul letters too. */
 function tableFilter(
   { doc, collections }: RootState,
   table: string | null
@@ -131,7 +136,11 @@ function tableFilter(
     query(collections)
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
-      .filter(({ name }) => matchText(name, matcher, hangul))
+      .filter(
+        ({ name, logicalName }) =>
+          matchText(name, matcher, hangul) ||
+          (logicalName !== '' && matchText(logicalName, matcher, hangul))
+      )
       .map(({ id }) => id)
   );
   return tableId => ids.has(tableId);
@@ -173,8 +182,8 @@ const NO_RANGE = { start: 0, end: 0 };
 
 /**
  * One row for each field of the kinds given holding the keyword, Hangul letters
- * too, or for every column or text that is not empty while there is none, the
- * table part narrowing a column search; the list draws only the rows in view.
+ * too, or for every column name or text that is not empty while there is none,
+ * the table part narrowing a column search; the list draws only the rows in view.
  */
 export function createFieldActions(
   app: AppContext,
@@ -191,10 +200,16 @@ export function createFieldActions(
 
   for (const field of walkFields(state, fields)) {
     if (!inTable(field.tableId)) continue;
+    // A table's logical name is no column's.
+    if (isTableLogicalName(field)) continue;
     if (matcher) {
       const hit = matchText(field.text, matcher, hangul);
       if (hit) found.push({ field, hit });
-    } else if (field.text || field.field === FindField.columnName) {
+    } else if (
+      // With no keyword a column lists once, by its name.
+      field.field === FindField.columnName ||
+      (field.text && field.field !== FindField.logicalName)
+    ) {
       found.push({ field, hit: null });
     }
   }

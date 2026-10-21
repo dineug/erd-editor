@@ -8,8 +8,10 @@ import {
 } from 'vite-plus/test';
 
 import { createDocumentPng, createDocumentSvg } from '@/services/export-png';
+import { writeDictionaryCsv } from '@/utils/dictionary-csv';
 import {
   exportCode,
+  exportCSV,
   exportJSON,
   exportPNG,
   exportSchemaSQL,
@@ -143,6 +145,56 @@ describe('exportFile', () => {
       expect(blob.type).toBe('');
       expect(options.fileName).toBe(`shop-${STAMP}.ts`);
       expect(calls[1][1].fileName).toBe(`unnamed-${STAMP}.json`);
+    });
+  });
+
+  describe('exportCSV', () => {
+    it('writes the codec text byte for byte as text/csv, its byte order mark and CRLF included', async () => {
+      const calls: Array<[Blob, { fileName: string }]> = [];
+      setExportFileCallback((blob, options) => calls.push([blob, options]));
+
+      exportCSV(
+        writeDictionaryCsv('word', [
+          {
+            name: 'Member',
+            abbreviation: 'MBR',
+            englishName: 'member',
+            description: 'One who joined, "the" member',
+            synonyms: '',
+            forbiddenWords: '',
+          },
+        ]),
+        'word',
+        'shop'
+      );
+
+      const [blob, options] = calls[0];
+      expect(blob.type).toBe('text/csv');
+      expect(
+        Array.from(new Uint8Array(await blob.arrayBuffer())).slice(0, 3)
+      ).toEqual([0xef, 0xbb, 0xbf]);
+      expect(await readBlob(blob)).toBe(
+        '\uFEFFname,abbreviation,englishName,description,synonyms,forbiddenWords\r\n' +
+          'Member,MBR,member,"One who joined, ""the"" member",,\r\n'
+      );
+      expect(options.fileName).toBe(`shop-${STAMP}-words.csv`);
+    });
+
+    it('names each sheet its own file, unnamed while the database has no name', () => {
+      const calls: Array<{ fileName: string }> = [];
+      setExportFileCallback((_blob, options) => calls.push(options));
+
+      exportCSV('', 'term', 'shop');
+      exportCSV('', 'domain', 'shop');
+      exportCSV('', 'word');
+      exportCSV('', 'term', '  ');
+
+      expect(calls.map(({ fileName }) => fileName)).toEqual([
+        `shop-${STAMP}-terms.csv`,
+        `shop-${STAMP}-domains.csv`,
+        `unnamed-${STAMP}-words.csv`,
+        `unnamed-${STAMP}-terms.csv`,
+      ]);
     });
   });
 

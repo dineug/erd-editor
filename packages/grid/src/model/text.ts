@@ -1,6 +1,5 @@
 import {
   clearCache,
-  type LayoutCursor,
   layoutNextLine,
   measureNaturalWidth,
   type PreparedTextWithSegments,
@@ -31,7 +30,7 @@ export const DEFAULT_CAPACITY = 2048;
 /**
  * How many of pretext's own segment measures a fitter lets its caches keep per
  * entry of its own cache. pretext keeps every segment it measures, per font,
- * until its caches are emptied, and a scroll meets millions of distinct texts.
+ * until 262,144 between all fonts, and a scroll meets millions of distinct texts.
  */
 export const SEGMENT_FACTOR = 16;
 
@@ -66,12 +65,6 @@ const WHITESPACE = /[\t\n\f\r]/;
 const WHITESPACE_ALL = /[\t\n\f\r]/g;
 
 const SPACE = 0x20;
-
-/** Where a line starts at the head of a text; layoutNextLine reads it and never writes it. */
-const TEXT_START: LayoutCursor = Object.freeze({
-  segmentIndex: 0,
-  graphemeIndex: 0,
-});
 
 /**
  * A cell value as a canvas draws it: each tab, line feed, form feed and
@@ -211,7 +204,7 @@ export function createTextFitter(capacity = DEFAULT_CAPACITY): TextFitter {
     if (available <= 0) return ELLIPSIS;
 
     // An overflow is never empty, so its first line always exists.
-    const line = layoutNextLine(overflow.prepared, TEXT_START, available)!;
+    const line = layoutNextLine(overflow.prepared, available)!;
 
     return trimTrailingSpaces(line.text) + ELLIPSIS;
   };

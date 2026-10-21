@@ -13,6 +13,7 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -537,5 +538,68 @@ describe('toForeignKeyActions', () => {
       'BIGINT',
       'serial(4)',
     ]);
+  });
+});
+
+describe('the domain of a copy', () => {
+  const linked = (id: string, dataType: string, domainId: string) =>
+    makeColumn({ id, tableId: 't1', name: id, dataType, domainId });
+  const domainsOf = (actions: ReturnType<typeof toForeignKeyActions>) =>
+    actions.filter(({ type }) => type === changeColumnDomainAction.type);
+
+  it('links the copy to the domain its key links while the document lists it', () => {
+    const actions = toForeignKeyActions(
+      [linked('c1', 'int', 'd1'), linked('c2', 'char(2)', '')],
+      't2',
+      ['f1', 'f2'],
+      { ...unnamed, domainIds: ['d1'] }
+    );
+
+    expect(domainsOf(actions)).toEqual([
+      changeColumnDomainAction({ id: 'f1', tableId: 't2', value: 'd1' }),
+    ]);
+    expect(actions.slice(0, 7).map(({ type }) => type)).toEqual([
+      addColumnAction.type,
+      changeColumnNotNullAction.type,
+      changeColumnNameAction.type,
+      changeColumnDataTypeAction.type,
+      changeColumnDefaultAction.type,
+      changeColumnCommentAction.type,
+      changeColumnDomainAction.type,
+    ]);
+  });
+
+  it('links none for a domain the document no longer lists, or with no list given', () => {
+    const keys = [linked('c1', 'int', 'gone')];
+
+    expect(
+      domainsOf(
+        toForeignKeyActions(keys, 't2', ['f1'], {
+          ...unnamed,
+          domainIds: ['d1'],
+        })
+      )
+    ).toEqual([]);
+    expect(
+      domainsOf(
+        toForeignKeyActions([linked('c1', 'int', 'd1')], 't2', ['f1'], unnamed)
+      )
+    ).toEqual([]);
+  });
+
+  it('links none for the copy of a serial key, which takes another type', () => {
+    const keys = [linked('c1', 'serial', 'd1'), linked('c2', 'serial', 'd1')];
+    const copies = (database: number) =>
+      domainsOf(
+        toForeignKeyActions(keys, 't2', ['f1', 'f2'], {
+          ...unnamed,
+          database,
+          domainIds: ['d1'],
+        })
+      ).map(({ payload }) => payload.id);
+
+    expect(copies(Database.PostgreSQL)).toEqual([]);
+    // Elsewhere a bare serial keeps its name, so the copy keeps the domain.
+    expect(copies(Database.SQLite)).toEqual(['f1', 'f2']);
   });
 });

@@ -108,7 +108,7 @@
 
 ### The canvas stays left to right
 
-- **Give each stage root `dir="ltr"`.** Each root that owns an on-screen stage carries it, since konva's `Text` reads the direction through its canvas. The roots are `Canvas.tsx`, `Minimap.tsx` and `VisualizationGraph.tsx`. The Flow view, the diff viewer, time travel and the placement preview reuse `Canvas.tsx`.
+- **Give each stage root `dir="ltr"`.** Each root that owns an on-screen stage carries it, since konva's `Text` reads the direction through its canvas. The roots are `Canvas.tsx`, `Minimap.tsx` and `VisualizationGraph.tsx`. The Flow view, the diff viewer, time travel and the placement preview reuse `Canvas.tsx`. The Dictionary tab's grid needs none from the editor: `@dineug/grid` sets `dir="ltr"` on its own container and draws its text on a left-to-right context.
 - **The export stage resolves to `ltr`.** It is detached, so it takes no direction from a root.
 - **Give left-to-right parts `dir="ltr"` too.** The parts that read left to right in any language carry it on their roots:
   - the floating and Visualization toolbars, the content compass and the scrollbars;

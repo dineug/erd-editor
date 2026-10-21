@@ -39,6 +39,8 @@ export interface CreateSchemaOptions {
   /** Already what the database writes (resolveSchemaSQLOptions); create when left out. */
   statements?: SchemaSQLStatements;
   written?: WrittenObjects;
+  /** Whether an empty comment writes the logical name (commentToWrite); off when left out. */
+  logicalNameAsComment?: boolean;
 }
 
 export interface FormatTableOptions {
@@ -47,6 +49,8 @@ export interface FormatTableOptions {
   /** create when left out. */
   statements?: SchemaSQLStatements;
   written?: WrittenObjects;
+  /** off when left out. */
+  logicalNameAsComment?: boolean;
 }
 
 export interface FormatColumnOptions {
@@ -54,6 +58,8 @@ export interface FormatColumnOptions {
   column: Column;
   isComma: boolean;
   spaceSize: MaxLength;
+  /** off when left out. */
+  logicalNameAsComment?: boolean;
 }
 
 export interface FormatRelationOptions {
@@ -77,6 +83,22 @@ export interface FormatIndexOptions {
 export interface FormatCommentOptions {
   buffer: string[];
   table: Table;
+  /** off when left out. */
+  logicalNameAsComment?: boolean;
+}
+
+/**
+ * The comment the DDL writes on a table or column: its own while not blank,
+ * else its logical name while logicalNameAsComment is on and that is not
+ * blank, else the empty string, which writes no comment.
+ */
+export function commentToWrite(
+  { comment, logicalName }: Pick<Table | Column, 'comment' | 'logicalName'>,
+  logicalNameAsComment = false
+): string {
+  if (comment.trim() !== '') return comment;
+
+  return logicalNameAsComment && logicalName.trim() !== '' ? logicalName : '';
 }
 
 export interface Name {

@@ -20,7 +20,11 @@ import {
   ensureFlowPlaced,
   keepFlowPlaced,
 } from '@/components/visualization/flowLayout';
-import { CANVAS_ZOOM_MAX, RelationshipType } from '@/constants/schema';
+import {
+  CANVAS_ZOOM_MAX,
+  NameViewMode,
+  RelationshipType,
+} from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { ShowMode, ViewKind } from '@/engine/modules/editor/state';
@@ -38,7 +42,12 @@ import {
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import {
+  changeNameViewModeAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
+import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -50,6 +59,7 @@ import { Tag } from '@/engine/tag';
 import { createI18n } from '@/i18n/translate';
 import { getSceneContentRect } from '@/konva/scene/contentBounds';
 import { previewZoomLevel } from '@/konva/scene/fitZoom';
+import { getTableRect } from '@/konva/scene/metrics';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
 
 const hoisted = vi.hoisted(() => ({
@@ -454,6 +464,86 @@ describe('the loop that keeps the Flow view placed', () => {
     expect(flowOf(app)!.zoomLevel).not.toBe(1);
     expect(flowOf(app)!.originX).not.toBe(300);
     expect(flowOf(app)!.originY).not.toBe(200);
+  });
+
+  // A name view writes other names on every card, and so other widths, so a
+  // switch places the cards again and fits them as a row display does.
+  it('asks again and fits on a name view switch, and not on one the store drops', async () => {
+    const app = seed();
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({
+        id: 't1',
+        value: 'A logical name far wider than the table name',
+      })
+    );
+    mountFlow(app);
+    await settle();
+    const before = getTableRect(
+      app.store.state,
+      app.store.state.collections.tableEntities.t1,
+      'flow'
+    ).width;
+
+    app.store.dispatchSync(
+      viewChangeZoomLevelAction({ value: 1, kind: ViewKind.flow }),
+      viewScrollToAction({ originX: 300, originY: 200, kind: ViewKind.flow })
+    );
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, NameViewMode.logical, false)
+    );
+    await settle();
+
+    expect(hoisted.requests).toHaveLength(2);
+    const t1 = hoisted.requests[1].nodes
+      .flatMap((node: any) => node.children ?? [node])
+      .find((node: any) => node.id === 't1');
+    expect(t1.width).toBeGreaterThan(before);
+    expect(flowOf(app)!.zoomLevel).toBe(fitZoomOf(app));
+    expect(flowOf(app)!.originX).not.toBe(300);
+
+    // Another reader's own switch never reaches this store's settings.
+    app.store.dispatchSync(
+      shared(
+        changeNameViewModeAction({
+          value: NameViewMode.both,
+          shared: false,
+          editorId: 'another',
+        })
+      )
+    );
+    await settle();
+    expect(hoisted.requests).toHaveLength(2);
+  });
+
+  // A peer's switch of an unlocked view does reach it, and resizes the cards
+  // as the reader's own does, but the screen is the reader's, as below.
+  it("places the cards again on a peer's shared switch and leaves the reader's screen where it was", async () => {
+    const app = seed();
+    mountFlow(app);
+    await settle();
+    app.store.dispatchSync(
+      viewChangeZoomLevelAction({ value: 1, kind: ViewKind.flow }),
+      viewScrollToAction({ originX: 300, originY: 200, kind: ViewKind.flow })
+    );
+
+    app.store.dispatchSync(
+      shared(
+        changeNameViewModeAction({
+          value: NameViewMode.logical,
+          shared: true,
+          editorId: 'another',
+        })
+      )
+    );
+    await settle();
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(hoisted.requests).toHaveLength(2);
+    expect(flowOf(app)).toMatchObject({
+      zoomLevel: 1,
+      originX: 300,
+      originY: 200,
+    });
   });
 
   it('asks again without a neighbour a peer removed', async () => {

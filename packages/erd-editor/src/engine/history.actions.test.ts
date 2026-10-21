@@ -79,6 +79,11 @@ describe('pushUndoHistoryMap / pushStreamHistoryMap', () => {
         'tableGroup.add',
         'tableGroup.resize',
         'table.changeGroup',
+        'table.changeLogicalName',
+        'column.changeDomain',
+        'dictionary.add',
+        'dictionary.update',
+        'dictionary.remove',
       ])
     );
   });

@@ -24,11 +24,17 @@ export type PayloadKind = ValuesType<typeof PayloadKind>;
 
 const hasPayloadKind = arrayHas<string>(Object.values(PayloadKind));
 
+/**
+ * A copied table. Its logical name and derived flag, like a column's logical
+ * name and domain, are absent from a copy made before the dictionaries.
+ */
 export type ClipboardTable = {
   sourceId: string;
   name: string;
+  logicalName?: string;
   comment: string;
   columnIds: string[];
+  nameDerived?: boolean;
   ui: {
     x: number;
     y: number;
@@ -47,6 +53,12 @@ export type ClipboardColumn = {
   dataType: string;
   default: string;
   options: number;
+  logicalName?: string;
+  /**
+   * The domain the column linked where it was copied, which a paste keeps
+   * only while the document it lands in lists it.
+   */
+  domainId?: string;
   ui: {
     keys: number;
     widthName: number;

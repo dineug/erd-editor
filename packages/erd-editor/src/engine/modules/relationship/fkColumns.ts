@@ -2,11 +2,13 @@ import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 
 import { ColumnOption } from '@/constants/schema';
+import { isListed } from '@/engine/modules/dictionary/membership';
 import {
   addColumnAction,
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -20,12 +22,18 @@ const SEPARATOR = '_';
 
 /**
  * The start table's name and the names the end table's columns hold, which
- * name the copies, and the document's database, which types a serial key's copy.
+ * name the copies, the document's database, which types a serial key's copy,
+ * and its domains, which the copies link.
  */
 export type ForeignKeyContext = {
   startTableName: string;
   endColumnNames: string[];
   database: number;
+  /**
+   * The document's domain list: a copy links its start column's domain while
+   * the list holds it and toReferenceDataType leaves the type as it was.
+   */
+  domainIds?: string[];
 };
 
 /**
@@ -131,14 +139,19 @@ export function toForeignKeyNames(
 
 /**
  * Adds a NOT NULL copy of each start column to the end table under the id at
- * the same index of endColumnIds, named by toForeignKeyNames, typed by
- * toReferenceDataType, with its default and comment. The caller owns the ids.
+ * the same index of endColumnIds, the caller's, named by toForeignKeyNames and
+ * typed by toReferenceDataType, with its default, comment and domain.
  */
 export const toForeignKeyActions = (
   startColumns: Column[],
   endTableId: string,
   endColumnIds: string[],
-  { startTableName, endColumnNames, database }: ForeignKeyContext
+  {
+    startTableName,
+    endColumnNames,
+    database,
+    domainIds = [],
+  }: ForeignKeyContext
 ): AnyAction[] => {
   const names = toForeignKeyNames(
     startTableName,
@@ -151,6 +164,14 @@ export const toForeignKeyActions = (
       id: endColumnIds[index],
       tableId: endTableId,
     };
+    const dataType = toReferenceDataType(startColumn.dataType, database);
+    // A copy given another type than its key's, as a serial key's can be, would
+    // sit off the domain's type.
+    const domainId =
+      dataType === startColumn.dataType &&
+      isListed(domainIds, startColumn.domainId)
+        ? startColumn.domainId
+        : '';
 
     return [
       addColumnAction(payload),
@@ -164,7 +185,7 @@ export const toForeignKeyActions = (
       }),
       changeColumnDataTypeAction({
         ...payload,
-        value: toReferenceDataType(startColumn.dataType, database),
+        value: dataType,
       }),
       changeColumnDefaultAction({
         ...payload,
@@ -174,6 +195,9 @@ export const toForeignKeyActions = (
         ...payload,
         value: startColumn.comment,
       }),
+      ...(domainId
+        ? [changeColumnDomainAction({ ...payload, value: domainId })]
+        : []),
     ];
   });
 };

@@ -26,7 +26,7 @@ export type ExportSceneProps = {
 /**
  * Everything the document draws on one layer, the groups behind it all, with
  * no culling and every table in full, as at the export's zoom. The scroll and
- * the viewport do not reach it, so the whole document is held.
+ * the viewport do not reach it, so the whole document is held, no check marked.
  */
 const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -76,7 +76,7 @@ const ExportScene: FC<ExportSceneProps> = (props, ctx) => {
         ) : null}
         {repeat(stack, stackedKey, item =>
           item.kind === 'table' ? (
-            <Table table={item.entity} />
+            <Table table={item.entity} checkMarks={false} />
           ) : (
             <Memo memo={item.entity} />
           )

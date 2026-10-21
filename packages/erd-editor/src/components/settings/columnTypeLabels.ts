@@ -9,7 +9,9 @@ import type { PlainMessageKey } from '@/i18n/translate';
 export const ColumnTypeToMessageKey: Readonly<Record<number, PlainMessageKey>> =
   {
     [ColumnType.columnName]: 'common.column.name',
+    [ColumnType.columnLogicalName]: 'common.column.logicalName',
     [ColumnType.columnDataType]: 'common.column.dataType',
+    [ColumnType.columnDomain]: 'common.column.domain',
     [ColumnType.columnDefault]: 'common.column.default',
     [ColumnType.columnComment]: 'common.column.comment',
     [ColumnType.columnAutoIncrement]: 'common.column.autoIncrement',

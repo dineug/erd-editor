@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { query, toJson } from '@dineug/erd-editor-schema';
+import { isSettingLocked, query, toJson } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 import {
@@ -39,16 +39,28 @@ import { mapColumnsAction$ } from '@/components/map-columns/mapColumnsAction';
 import {
   ColumnOption,
   ColumnUIKey,
+  LockSettingType,
+  NameViewMode,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
 import { createEngineContext } from '@/engine/context';
+import {
+  addDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import { orderedDictionaryRows } from '@/engine/modules/dictionary/dictionaryIndex';
+import {
+  insertDictionaryEntriesAction$,
+  sortDictionaryAction$,
+} from '@/engine/modules/dictionary/generator.actions';
 import {
   changeViewportAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
   initialLoadJsonAction$,
+  loadSchemaSQLAction$,
   moveAllAction$,
   type MoveAllGesture,
 } from '@/engine/modules/editor/generator.actions';
@@ -58,7 +70,11 @@ import {
   changeRelationshipColumnsAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
-import { changeDDLScriptAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeDDLScriptAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
+import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   changeTableNameAction,
   sortTableAction,
@@ -67,6 +83,8 @@ import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction,
   changeColumnCommentAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
@@ -104,9 +122,20 @@ const sides = ({ peer, user }: Session) => [
   JSON.parse(toJson(user.rxStore.state)),
 ];
 
+/**
+ * Both sides hold the same document. A relationship's anchors stand on the
+ * tables as each side draws them, and a name view a lock keeps to one side
+ * widens that side's tables alone, so then the anchors are left out.
+ */
 const expectConverged = (session: Session) => {
   const [peer, user] = sides(session);
-  expect(peer).toEqual(user);
+  const view = ({ state }: HasState) => state.settings.nameViewMode;
+
+  if (view(session.peer) === view(session.user.rxStore)) {
+    expect(peer).toEqual(user);
+  } else {
+    expect(splitAnchors(peer).document).toEqual(splitAnchors(user).document);
+  }
 };
 
 describe('a peer store and an element’s store converge (AC-E5)', () => {
@@ -545,6 +574,425 @@ describe('the Schema SQL scripts converge', () => {
         expect(scriptsOf(side)).toEqual({ before: winner, after: '' });
       }
       expectConverged(session);
+    }
+  );
+});
+
+describe('the name view converges on every peer and its replica', () => {
+  const { unlockNameViewMode } = LockSettingType;
+  const meshes: Mesh[] = [];
+
+  /** Lets every hook a batch woke run: the 5 ms windows and the microtasks. */
+  const settleHooks = async () => {
+    await vi.advanceTimersByTimeAsync(20);
+  };
+
+  /** Three peers on one value, each with a replica, past the opening handshake. */
+  async function open(value?: string): Promise<Mesh> {
+    const mesh = createMesh(3, { value, settle: settleHooks, replicas: true });
+    meshes.push(mesh);
+    await settleHooks();
+    await mesh.deliverAll();
+    return mesh;
+  }
+
+  /** The seed with the name view unlocked, its bit set as the file saves it. */
+  const unlockedSeed = () => {
+    const json = JSON.parse(createSeedValue());
+    json.settings.lockSettings |= unlockNameViewMode;
+    return JSON.stringify(json);
+  };
+
+  const isNameViewLocked = (peer: PeerStore) =>
+    isSettingLocked(peer.state.settings.lockSettings, unlockNameViewMode);
+
+  /** Every peer holds the same runtime bytes, and every replica the same file. */
+  const expectSameBytes = ({ peers, replicas }: Mesh) => {
+    const [runtime, ...runtimes] = peers.map(peer => peer.runtimeValue);
+    runtimes.forEach(other => expect(other).toBe(runtime));
+    const [file, ...files] = replicas.map(replica => replica.value);
+    expect(replicas).toHaveLength(3);
+    files.forEach(other => expect(other).toBe(file));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    meshes.splice(0).forEach(mesh => mesh.destroy());
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['the switch', [1, 0]],
+    ['the unlock', [0, 1]],
+  ])(
+    'settles a locked switch crossing an unlock on the view the unlock carried, the third peer hearing %s first',
+    async (_first, order) => {
+      const mesh = await open();
+      const [unlocker, switcher] = mesh.peers;
+
+      unlocker.dispatch([
+        toNameViewModeAction(unlocker.state, NameViewMode.both, false),
+      ]);
+      unlocker.dispatch([changeLockSettingsAction$(unlockNameViewMode, false)]);
+      switcher.dispatch([
+        toNameViewModeAction(switcher.state, NameViewMode.logical, false),
+      ]);
+      expect(switcher.state.settings.nameViewMode).toBe(NameViewMode.logical);
+
+      await mesh.deliver(2, order);
+      await mesh.deliverAll();
+
+      for (const peer of mesh.peers) {
+        expect(isNameViewLocked(peer)).toBe(false);
+        expect(peer.state.settings.nameViewMode).toBe(NameViewMode.both);
+      }
+      expectSameBytes(mesh);
+      for (const replica of mesh.replicas) {
+        expect(JSON.parse(replica.value).settings.nameViewMode).toBe(
+          NameViewMode.both
+        );
+      }
+    }
+  );
+
+  it.each([
+    ['the switch', [0, 2]],
+    ['the relock', [2, 0]],
+  ])(
+    'saves the view the relock holds when a shared switch crosses it, the third peer hearing %s first',
+    async (_first, order) => {
+      const mesh = await open(unlockedSeed());
+      const [switcher, , relocker] = mesh.peers;
+
+      const switched = toNameViewModeAction(
+        switcher.state,
+        NameViewMode.logical,
+        false
+      );
+      expect(switched.payload.shared).toBe(true);
+      switcher.dispatch([switched]);
+      relocker.dispatch([changeLockSettingsAction$(unlockNameViewMode, true)]);
+
+      await mesh.deliver(1, order);
+      await mesh.deliverAll();
+
+      for (const peer of mesh.peers) {
+        expect(isNameViewLocked(peer)).toBe(true);
+        expect(peer.state.settings.lockedValues.nameViewMode).toBe(
+          NameViewMode.physical
+        );
+      }
+      expectSameBytes(mesh);
+      for (const replica of mesh.replicas) {
+        expect(JSON.parse(replica.value).settings).not.toHaveProperty(
+          'nameViewMode'
+        );
+      }
+    }
+  );
+});
+
+describe('the dictionaries and the logical names converge on every peer', () => {
+  const meshes: Mesh[] = [];
+
+  /** Lets every hook a batch woke run: the 5 ms windows and the microtasks. */
+  const settleHooks = async () => {
+    await vi.advanceTimersByTimeAsync(20);
+  };
+
+  /** Peers on the seed that have heard each other's opening handshake. */
+  async function open(
+    count: number,
+    options: Omit<MeshOptions, 'settle'> = {}
+  ): Promise<Mesh> {
+    const mesh = createMesh(count, { ...options, settle: settleHooks });
+    meshes.push(mesh);
+    await settleHooks();
+    await mesh.deliverAll();
+    return mesh;
+  }
+
+  const SEED_WORDS = [SEED.memberWord, SEED.nameWord];
+
+  /** The word sheet's ids in the order it shows them. */
+  const sheetIds = ({ state }: HasState) =>
+    orderedDictionaryRows(state, 'word').map(({ id }) => id);
+
+  const wordOf = ({ state }: HasState, id: string) =>
+    state.collections.wordEntities[id];
+
+  const noteOf = ({ state }: HasState) =>
+    state.collections.tableColumnEntities[SEED.orderNote];
+
+  /** A dictionary row of a serialized document, its values read by the header. */
+  const rowOf = (text: string, key: string, id: string) => {
+    const { fields, rows } = JSON.parse(text).collections[key];
+    const row: unknown[] = rows.find((cells: unknown[]) => cells[0] === id);
+    return Object.fromEntries(
+      fields.map((field: string, index: number) => [field, row[index]])
+    );
+  };
+
+  /** Every store's document, the runtime value or the file form given. */
+  const expectSame = (documents: string[]) => {
+    const [first, ...rest] = documents.map(text => JSON.parse(text));
+    rest.forEach(document => expect(document).toEqual(first));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    meshes.splice(0).forEach(mesh => mesh.destroy());
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['the update', [1, 0]],
+    ['the add', [0, 1]],
+  ])(
+    'keeps the name an add carries and the abbreviation a later update of its row writes, the third peer hearing %s first',
+    async (_first, order) => {
+      const mesh = await open(3);
+      const [adder, updater, third] = mesh.peers;
+
+      adder.dispatch([
+        addDictionaryAction({
+          kind: 'word',
+          id: 'word_order',
+          values: { name: 'Order', abbreviation: 'ORD' },
+        }),
+      ]);
+      await mesh.deliver(1, [0]);
+      updater.dispatch([
+        updateDictionaryAction({
+          kind: 'word',
+          id: 'word_order',
+          values: { abbreviation: 'ODR' },
+        }),
+      ]);
+      await mesh.deliver(2, order);
+
+      expect(wordOf(third, 'word_order')).toMatchObject({
+        name: 'Order',
+        abbreviation: 'ODR',
+      });
+      await mesh.deliverAll();
+
+      for (const peer of mesh.peers) {
+        expect(peer.state.doc.wordIds).toEqual([...SEED_WORDS, 'word_order']);
+        expect(wordOf(peer, 'word_order')).toMatchObject({
+          name: 'Order',
+          abbreviation: 'ODR',
+        });
+      }
+      expectSame(mesh.peers.map(peer => peer.value));
+      expectSame(mesh.peers.map(peer => peer.runtimeValue));
+    }
+  );
+
+  it('keeps both of two words two peers add at once, each peer listing them in the order it heard them', async () => {
+    const mesh = await open(2);
+    const [first, second] = mesh.peers;
+
+    first.dispatch([
+      addDictionaryAction({
+        kind: 'word',
+        id: 'word_order',
+        values: { name: 'Order', abbreviation: 'ORD' },
+      }),
+    ]);
+    second.dispatch([
+      addDictionaryAction({
+        kind: 'word',
+        id: 'word_date',
+        values: { name: 'Date', abbreviation: 'DT' },
+      }),
+    ]);
+    await mesh.deliverAll();
+
+    expect(first.state.doc.wordIds).toEqual([
+      ...SEED_WORDS,
+      'word_order',
+      'word_date',
+    ]);
+    expect(second.state.doc.wordIds).toEqual([
+      ...SEED_WORDS,
+      'word_date',
+      'word_order',
+    ]);
+    // The runtime value writes the rows in the order the peer made them.
+    const [firstDocument, secondDocument] = mesh.peers.map(peer => {
+      const document = JSON.parse(peer.runtimeValue);
+      document.doc.wordIds.sort();
+      document.collections.wordEntities.rows.sort(
+        ([a]: string[], [b]: string[]) => a.localeCompare(b)
+      );
+      return document;
+    });
+    expect(firstDocument).toEqual(secondDocument);
+    // The sheet and the file show the rows by key, the same on both.
+    expect(sheetIds(first)).toEqual(sheetIds(second));
+    expectSame(mesh.peers.map(peer => peer.value));
+  });
+
+  it('shows the rows two peers insert at one place at once in one order on both', async () => {
+    const mesh = await open(2);
+    const [first, second] = mesh.peers;
+
+    first.dispatch([
+      insertDictionaryEntriesAction$('word', 2, {
+        id: SEED.memberWord,
+        place: 'after',
+      }),
+    ]);
+    second.dispatch([
+      insertDictionaryEntriesAction$('word', 1, {
+        id: SEED.memberWord,
+        place: 'after',
+      }),
+      sortDictionaryAction$('word', 'name', 'descending', 'en'),
+    ]);
+    await mesh.deliverAll();
+
+    expect(sheetIds(first)).toHaveLength(SEED_WORDS.length + 3);
+    expect(sheetIds(first)).toEqual(sheetIds(second));
+    expectSame(mesh.peers.map(peer => peer.value));
+  });
+
+  it.each([
+    ['the logical name', [0, 1]],
+    ['the domain', [1, 0]],
+  ])(
+    'keeps a logical name and a domain two peers give one column at once, measured alike, the third peer hearing %s first',
+    async (_first, order) => {
+      const mesh = await open(3);
+      const [namer, linker] = mesh.peers;
+
+      namer.dispatch([
+        changeColumnLogicalNameAction({
+          tableId: SEED.orders,
+          id: SEED.orderNote,
+          value: 'Order Note',
+        }),
+      ]);
+      linker.dispatch([
+        changeColumnDomainAction({
+          tableId: SEED.orders,
+          id: SEED.orderNote,
+          value: SEED.domain,
+        }),
+      ]);
+      await mesh.deliver(2, order);
+      await mesh.deliverAll();
+
+      for (const peer of mesh.peers) {
+        const { collections } = peer.state;
+        expect(noteOf(peer)).toMatchObject({
+          logicalName: 'Order Note',
+          domainId: SEED.domain,
+        });
+        expect(noteOf(peer).ui.widthDomain).toBe(
+          collections.tableColumnEntities[SEED.userName].ui.widthDomain
+        );
+        expect(noteOf(peer).ui.widthDomain).not.toBe(
+          collections.tableColumnEntities[SEED.orderId].ui.widthDomain
+        );
+      }
+      expectSame(mesh.peers.map(peer => peer.runtimeValue));
+    }
+  );
+
+  // The domain's winning write is older than the logical name's, so a register
+  // the two fields shared would turn it away on the peer that wrote the name.
+  it('settles each field of one column on its own later write when two peers write both at once', async () => {
+    const mesh = await open(2);
+    const [first, second] = mesh.peers;
+    const note = { tableId: SEED.orders, id: SEED.orderNote };
+
+    first.dispatch([
+      {
+        ...changeColumnLogicalNameAction({ ...note, value: 'Order Note' }),
+        version: VERSION,
+      },
+    ]);
+    first.dispatch([
+      {
+        ...changeColumnDomainAction({ ...note, value: SEED.domain }),
+        version: VERSION,
+      },
+    ]);
+    second.dispatch([
+      {
+        ...changeColumnLogicalNameAction({ ...note, value: 'Remark' }),
+        version: VERSION + 1,
+      },
+    ]);
+    second.dispatch([
+      {
+        ...changeColumnDomainAction({ ...note, value: '' }),
+        version: VERSION - 1,
+      },
+    ]);
+    await mesh.deliverAll();
+
+    for (const peer of mesh.peers) {
+      expect(noteOf(peer)).toMatchObject({
+        logicalName: 'Remark',
+        domainId: SEED.domain,
+      });
+    }
+    expectSame(mesh.peers.map(peer => peer.runtimeValue));
+  });
+
+  it.each([
+    ['the import', [0, 1]],
+    ['the edit', [1, 0]],
+  ])(
+    'keeps a word edit that crosses a SQL import on every peer and replica, the third peer hearing %s first',
+    async (_first, order) => {
+      const mesh = await open(3, { replicas: true });
+      const [importer, editor] = mesh.peers;
+
+      importer.dispatch([
+        loadSchemaSQLAction$(
+          'CREATE TABLE accounts (id INT NOT NULL PRIMARY KEY, email VARCHAR(255));'
+        ),
+      ]);
+      editor.dispatch([
+        updateDictionaryAction({
+          kind: 'word',
+          id: SEED.memberWord,
+          values: { abbreviation: 'MEM' },
+        }),
+      ]);
+      await mesh.deliver(2, order);
+      await mesh.deliverAll();
+
+      for (const peer of mesh.peers) {
+        const { doc, collections } = peer.state;
+        expect(
+          doc.tableIds.map(id => collections.tableEntities[id].name)
+        ).toEqual(['accounts']);
+        expect(doc.wordIds).toEqual(SEED_WORDS);
+        expect(doc.termIds).toEqual([SEED.term]);
+        expect(doc.domainIds).toEqual([SEED.domain]);
+        expect(wordOf(peer, SEED.memberWord)).toMatchObject({
+          name: 'Member',
+          abbreviation: 'MEM',
+        });
+      }
+      expect(mesh.replicas).toHaveLength(3);
+      for (const replica of mesh.replicas) {
+        expect(
+          rowOf(replica.runtimeValue, 'wordEntities', SEED.memberWord)
+        ).toMatchObject({ name: 'Member', abbreviation: 'MEM' });
+      }
+      expectSame([...mesh.peers, ...mesh.replicas].map(store => store.value));
     }
   );
 });

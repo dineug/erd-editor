@@ -6,8 +6,8 @@
     "dist (reachable from exports)": {
       "bytes": 1142812,
       "gzip": 276422,
-      "budgetGzip": 600000,
-      "budgetNote": "600,000 B set by the owner (2026-10-02) when six priority features from the GitHub wishlist were about to reach main together: FK referential actions, composite unique keys with AK marks, user-defined SQL types, FK column naming, view-only saves, and find and replace with palette scopes and Hangul search. Measured against main's 316,485 B, they add +3,787, +5,301, +2,849, +764, +24 and +12,987 B, about 342,197 B together, past the 340,000 B budget set for them before. The budget stays a regression watch with room for the features after these, not a measured margin."
+      "budgetGzip": 800000,
+      "budgetNote": "800,000 B set by the owner (2026-10-21) when logical names and the word, term and domain dictionaries landed with the Dictionary tab on @dineug/grid. They measure 671,645 B against main's 593,899 B: about 19.5 kB for the grid, 19.3 kB for the dictionaries, 17.5 kB for their strings in 24 languages, and about 12 kB for logical names and domains through the engine, the canvas and the document schema. The budget stays a regression watch with room for the features after these, not a measured margin."
     }
   }
 }

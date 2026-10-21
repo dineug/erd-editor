@@ -20,11 +20,10 @@ import {
 import type { AppContext } from '@/components/appContext';
 import { toOptionValue, toPick } from '@/components/map-columns/MapColumnsBody';
 import MapColumnsDialog from '@/components/map-columns/MapColumnsDialog';
-import { nameOf } from '@/components/map-columns/nameOf';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
 import ToastContainer from '@/components/toast-container/ToastContainer';
 import { Open } from '@/constants/open';
-import { CanvasType, RelationshipType } from '@/constants/schema';
+import { CanvasType, NameViewMode, RelationshipType } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeViewportAction,
@@ -36,14 +35,18 @@ import {
 import {
   changeCanvasTypeAction,
   changeRelationshipDataTypeSyncAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
-import { removeTableAction } from '@/engine/modules/table/atom.actions';
 import {
+  changeTableLogicalNameAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
+import {
+  changeColumnLogicalNameAction,
   changeColumnPrimaryKeyAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { attachActionsTag, Tag } from '@/engine/tag';
-import { sourceI18n } from '@/i18n/source';
 import { createI18n } from '@/i18n/translate';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -159,17 +162,6 @@ const relationships = () =>
 const shared = (...actions: AnyAction[]) =>
   app.store.dispatchSync(attachActionsTag(Tag.shared, actions));
 
-describe('the names the dialog writes', () => {
-  it('keeps a name as written and calls a blank or missing one unnamed', () => {
-    expect(nameOf({ name: ' users ' }, sourceI18n)).toBe(' users ');
-    expect(nameOf({ name: '  ' }, sourceI18n)).toBe('unnamed');
-    expect(nameOf(undefined, sourceI18n)).toBe('unnamed');
-    expect(
-      nameOf({ name: '' }, createI18n('ko-KR', pseudoMessages('ko')))
-    ).toBe('ko:unnamed');
-  });
-});
-
 describe('the option values of a row', () => {
   it('round trip a pick, never mistaking a column named new for a new column', () => {
     expect(toOptionValue(null)).toBe('');
@@ -202,6 +194,37 @@ describe('MapColumnsDialog opening and closing', () => {
     expect(rowSelects()[0].value).toBe('column:o_user');
     expect(confirmButton().textContent?.trim()).toBe('Map');
     expect(confirmButton().disabled).toBe(false);
+  });
+
+  it('names the tables and columns as the name view shows them', async () => {
+    seed();
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: 'u', value: 'Users' }),
+      changeColumnLogicalNameAction({ id: 'u_id', tableId: 'u', value: 'ID' }),
+      changeColumnLogicalNameAction({
+        id: 'o_user',
+        tableId: 'o',
+        value: 'User ID',
+      }),
+      toNameViewModeAction(app.store.state, NameViewMode.both, false)
+    );
+    await mountDialog();
+    await openCreate();
+
+    expect(root().querySelector('.map-columns-subtitle')?.textContent).toBe(
+      'Users (users) → orders · One N'
+    );
+    expect(parentCells()).toContain('ID (id)int');
+    expect(optionTexts(rowSelects()[0])).toContain(
+      'User ID (users_id) (bigint)'
+    );
+
+    shared(removeTableAction({ id: 'u' }));
+    await flush();
+
+    expect(toastText()).toEqual([
+      'Map Columns closed: Users (users) was removed',
+    ]);
   });
 
   it('closes on Cancel, Escape and a press on the dim, writing nothing', async () => {

@@ -4,6 +4,8 @@ export const ColumnOption = {
   primaryKey: 2,
   unique: 4,
   notNull: 8,
+  /** The dictionaries filled the name, so a new logical name derives it again. */
+  nameDerived: 16,
 } as const;
 
 /** ColumnUIKey bits — the key badge rendered on a column row. */
@@ -54,7 +56,18 @@ export const Show = {
   hideTableGroup: 2048,
   /** The third: the memos, wherever a reader would meet them. */
   hideMemo: 4096,
+  /** The domain cell of a row, in every name view. */
+  columnDomain: 8192,
 } as const;
+
+/** The views settings.nameViewMode names; a document that names none is physical. */
+export type NameViewMode = 'physical' | 'logical' | 'both';
+
+/**
+ * The lockSettings bit that unlocks the name view while set, the other way
+ * round from every other lock, so a seed's 0 keeps the view locked.
+ */
+export const UNLOCK_NAME_VIEW = 64;
 
 /** The editor's own default for settings.show. */
 export const DEFAULT_SHOW =
@@ -84,11 +97,19 @@ export type ColumnSeed = {
   options?: number;
   /** Bitmask of ColumnUIKey. */
   keys?: number;
+  /** Left out of the entity when the seed leaves it out, as a column with none is saved. */
+  logicalName?: string;
+  /** The domain it links by id; left out of the entity when the seed leaves it out. */
+  domainId?: string;
 };
 
 export type TableSeed = {
   id: string;
   name?: string;
+  /** Left out of the entity when the seed leaves it out. */
+  logicalName?: string;
+  /** Written only while true, as the editor saves it. */
+  nameDerived?: boolean;
   comment?: string;
   x?: number;
   y?: number;
@@ -157,6 +178,37 @@ export type IndexSeed = {
   columns?: IndexColumnSeed[];
 };
 
+/** One row of the word sheet; a field the seed leaves out is ''. */
+export type WordSeed = {
+  id: string;
+  name: string;
+  abbreviation?: string;
+  englishName?: string;
+  description?: string;
+  synonyms?: string;
+  forbiddenWords?: string;
+};
+
+/** One row of the term sheet; a field the seed leaves out is ''. */
+export type TermSeed = {
+  id: string;
+  name: string;
+  physicalName?: string;
+  /** The domain it links by id. */
+  domainId?: string;
+  description?: string;
+  synonyms?: string;
+};
+
+/** One row of the domain sheet; a field the seed leaves out is ''. */
+export type DomainSeed = {
+  id: string;
+  name: string;
+  category?: string;
+  dataType?: string;
+  description?: string;
+};
+
 export type SchemaSeed = {
   tables?: TableSeed[];
   memos?: MemoSeed[];
@@ -164,6 +216,14 @@ export type SchemaSeed = {
   indexes?: IndexSeed[];
   /** Written only when the seed holds one, as the editor writes a document without groups. */
   tableGroups?: TableGroupSeed[];
+  /** The three dictionaries, each written only when the seed holds a row of it. */
+  words?: WordSeed[];
+  terms?: TermSeed[];
+  domains?: DomainSeed[];
+  /** Written only when the seed names one, as a file that never left physical is saved. */
+  nameViewMode?: NameViewMode;
+  /** 0 when the seed leaves it out: every lock off but the name view's. */
+  lockSettings?: number;
   zoomLevel?: number;
   scrollTop?: number;
   scrollLeft?: number;
@@ -206,6 +266,8 @@ export type ErdDocument = {
     lockSettings: number;
     /** The Schema SQL scripts, written only while one of them holds text. */
     ddlScripts?: { before: string; after: string };
+    /** Written only while it is not physical, at the lock's value while the view is locked. */
+    nameViewMode?: NameViewMode;
   };
   doc: {
     tableIds: string[];
@@ -214,6 +276,10 @@ export type ErdDocument = {
     memoIds: string[];
     /** Written while it or tableGroupEntities holds an entry, a removed group's too. */
     tableGroupIds?: string[];
+    /** The dictionaries' order, which the runtime value writes and a file and a seed do not. */
+    wordIds?: string[];
+    termIds?: string[];
+    domainIds?: string[];
   };
   collections: {
     tableEntities: Record<string, TableEntity>;
@@ -224,8 +290,22 @@ export type ErdDocument = {
     memoEntities: Record<string, MemoEntity>;
     /** Written while it or doc.tableGroupIds holds an entry, a removed group's too. */
     tableGroupEntities?: Record<string, TableGroupEntity>;
+    /** Each written while it holds an entry, as a header and a row per entry. */
+    wordEntities?: DictionaryRows;
+    termEntities?: DictionaryRows;
+    domainEntities?: DictionaryRows;
   };
   lww?: Record<string, unknown>;
+};
+
+/**
+ * A dictionary as a document writes it: the field names once, then one row
+ * per entry holding its values in that order. The runtime value writes the
+ * removed entries too, which only its doc list leaves out.
+ */
+export type DictionaryRows = {
+  fields: string[];
+  rows: unknown[][];
 };
 
 /**
@@ -239,11 +319,15 @@ export type LiveSettings = ErdDocument['settings'] &
 export type TableEntity = {
   id: string;
   name: string;
+  /** Written while not empty. */
+  logicalName?: string;
   comment: string;
   columnIds: string[];
   seqColumnIds: string[];
   /** The table group it is in, written while not empty, a removed group's id too. */
   groupId?: string;
+  /** Written only while true. */
+  nameDerived?: boolean;
   ui: {
     x: number;
     y: number;
@@ -274,7 +358,12 @@ export type ColumnEntity = {
   comment: string;
   dataType: string;
   default: string;
+  /** Bitmask of ColumnOption. */
   options: number;
+  /** Written while not empty. */
+  logicalName?: string;
+  /** Written while it names a domain, by id. */
+  domainId?: string;
   ui: {
     keys: number;
     widthName: number;
@@ -365,6 +454,66 @@ function seededLegacyView({
   );
 }
 
+/** The header each dictionary is written with, id first, as the editor names its fields. */
+const DICTIONARY_FIELDS = {
+  wordEntities: [
+    'id',
+    'name',
+    'abbreviation',
+    'englishName',
+    'description',
+    'synonyms',
+    'forbiddenWords',
+  ],
+  termEntities: [
+    'id',
+    'name',
+    'physicalName',
+    'domainId',
+    'description',
+    'synonyms',
+  ],
+  domainEntities: ['id', 'name', 'category', 'dataType', 'description'],
+} as const;
+
+type DictionaryKey = keyof typeof DICTIONARY_FIELDS;
+
+/** One dictionary's header and a row per seed, every value the seed leaves out ''. */
+function dictionaryRows(
+  key: DictionaryKey,
+  seeds: ReadonlyArray<WordSeed | TermSeed | DomainSeed>
+): DictionaryRows {
+  const fields: ReadonlyArray<string> = DICTIONARY_FIELDS[key];
+  return {
+    fields: [...fields],
+    rows: seeds.map(seed =>
+      fields.map(field => Reflect.get(seed, field) ?? '')
+    ),
+  };
+}
+
+/**
+ * The dictionaries a seed holds, after every other collection as a file keeps
+ * them, each only when the seed holds a row of it. A file writes no order of
+ * its own beside the rows, so neither does a seed.
+ */
+function dictionariesOf({ words = [], terms = [], domains = [] }: SchemaSeed) {
+  const seeded: [
+    DictionaryKey,
+    ReadonlyArray<WordSeed | TermSeed | DomainSeed>,
+  ][] = [
+    ['wordEntities', words],
+    ['termEntities', terms],
+    ['domainEntities', domains],
+  ];
+
+  return Object.fromEntries(
+    seeded
+      .filter(([, seeds]) => seeds.length)
+      .map(([key, seeds]) => [key, dictionaryRows(key, seeds)])
+  ) as Partial<Record<DictionaryKey, DictionaryRows>>;
+}
+
 export function createSchema(seed: SchemaSeed = {}): ErdDocument {
   const tables = seed.tables ?? [];
   const memos = seed.memos ?? [];
@@ -449,6 +598,9 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
     tableEntities[table.id] = {
       id: table.id,
       name: table.name ?? '',
+      ...(table.logicalName === undefined
+        ? {}
+        : { logicalName: table.logicalName }),
       comment: table.comment ?? '',
       columnIds: columns.map(column => column.id),
       seqColumnIds: columns.map(column => column.id),
@@ -461,6 +613,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         color: table.color ?? '',
       },
       ...(table.groupId === undefined ? {} : { groupId: table.groupId }),
+      ...(table.nameDerived ? { nameDerived: true } : {}),
     };
 
     columns.forEach(column => {
@@ -472,6 +625,10 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         dataType: column.dataType ?? '',
         default: column.default ?? '',
         options: column.options ?? 0,
+        ...(column.logicalName === undefined
+          ? {}
+          : { logicalName: column.logicalName }),
+        ...(column.domainId === undefined ? {} : { domainId: column.domainId }),
         ui: {
           keys: column.keys ?? 0,
           widthName: 60,
@@ -523,7 +680,10 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       relationshipDataTypeSync: true,
       columnOrder: [...DEFAULT_COLUMN_ORDER],
       maxWidthComment: -1,
-      lockSettings: 0,
+      lockSettings: seed.lockSettings ?? 0,
+      ...(seed.nameViewMode === undefined
+        ? {}
+        : { nameViewMode: seed.nameViewMode }),
     },
     doc: {
       tableIds: tables.map(table => table.id),
@@ -540,6 +700,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
       indexColumnEntities,
       memoEntities,
       ...groups.entities,
+      ...dictionariesOf(seed),
     },
   };
 }

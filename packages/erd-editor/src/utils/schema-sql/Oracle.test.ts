@@ -1053,3 +1053,56 @@ describe('Oracle header and drop block', () => {
     expect(formatDropBlock(state, createWrittenObjects())).toBe('');
   });
 });
+
+describe('Oracle logical names as comments', () => {
+  it('takes the option in createSchema and writes COMMENT ON for a logical name where the comment is empty', () => {
+    const { state, users, posts, userId, postUserId } = createFixture();
+    users.logicalName = 'User';
+    posts.logicalName = 'Post';
+    userId.logicalName = 'User ID';
+    postUserId.logicalName = "Post's writer";
+
+    const written = createSchema(state, undefined, {
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain("\nCOMMENT ON TABLE posts IS 'Post';\n");
+    expect(written).toContain(
+      "\nCOMMENT ON COLUMN posts.user_id IS 'Post''s writer';\n"
+    );
+    expect(written).toContain("\nCOMMENT ON TABLE users IS 'user table';\n");
+    expect(written).toContain("\nCOMMENT ON COLUMN users.id IS 'user id';\n");
+    expect(written).not.toContain('User');
+    expect(createSchema(state)).not.toContain('Post');
+  });
+
+  it('writes each run of blank lines in a comment or a logical name as one line break, which SQL*Plus keeps in the statement', () => {
+    const { state } = createFixture();
+    const { tableEntities, tableColumnEntities } = state.collections;
+    tableEntities['t-users'].comment = 'user\n\ntable';
+    tableEntities['t-posts'].logicalName = 'Blog\r\n \r\n\t\r\npost';
+    tableColumnEntities['c-user-id'].comment = '\n\nuser id\n\n';
+    tableColumnEntities['c-post-user-id'].logicalName = 'first\nsecond';
+
+    const written = createSchema(state, undefined, {
+      logicalNameAsComment: true,
+    });
+
+    expect(written).toContain("\nCOMMENT ON TABLE users IS 'user\ntable';\n");
+    expect(written).toContain("\nCOMMENT ON TABLE posts IS 'Blog\r\npost';\n");
+    expect(written).toContain(
+      "\nCOMMENT ON COLUMN users.id IS '\nuser id\n';\n"
+    );
+    expect(written).toContain(
+      "\nCOMMENT ON COLUMN posts.user_id IS 'first\nsecond';\n"
+    );
+    // SQL*Plus reads a line of nothing but spaces and tabs as blank too.
+    const comments = written
+      .split(/\n[ \t\r]*\n/)
+      .filter(statement => statement.startsWith('COMMENT ON'));
+    expect(comments).toHaveLength(5);
+    for (const statement of comments) {
+      expect(statement).toMatch(/';$/);
+    }
+  });
+});

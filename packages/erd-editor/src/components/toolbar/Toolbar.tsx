@@ -1,6 +1,8 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { dictionaryViewOf } from '@/components/dictionary/dictionaryView';
+import { isEntrySheet } from '@/components/dictionary/sheets';
 import {
   isExplorerPressed,
   toggleExplorer,
@@ -10,8 +12,10 @@ import Icon from '@/components/primitives/icon/Icon';
 import { TOOLBAR_DATABASE_NAME_WIDTH } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import type { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
+import type { HasHistory } from '@/engine/modules/editor/state';
 import {
   changeCanvasTypeAction,
   changeDatabaseNameAction,
@@ -49,14 +53,36 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     store.dispatch(changeCanvasTypeAction({ value }));
   };
 
+  const onDictionaryTab = () =>
+    app.value.store.state.settings.canvasType === CanvasType.dictionary;
+
+  /** The dictionary sheet whose history the buttons run on the Dictionary tab, null elsewhere and on the check sheet. */
+  const shownSheet = (): DictionaryKind | null => {
+    if (!onDictionaryTab()) return null;
+
+    const { sheet } = dictionaryViewOf(app.value);
+    return isEntrySheet(sheet) ? sheet : null;
+  };
+
+  // The Dictionary tab undoes the sheet shown alone, and nothing on the check
+  // sheet, so its greyed buttons never reach the document's history.
   const handleUndo = () => {
     const { store } = app.value;
-    store.undo();
+    const sheet = shownSheet();
+    if (sheet) store.undoSheet(sheet);
+    else if (!onDictionaryTab()) store.undo();
   };
 
   const handleRedo = () => {
     const { store } = app.value;
-    store.redo();
+    const sheet = shownSheet();
+    if (sheet) store.redoSheet(sheet);
+    else if (!onDictionaryTab()) store.redo();
+  };
+
+  /** Keeps the keyboard where it was on the Dictionary tab, in the grid or the search, which a press would hand the editor's root. */
+  const keepFocus = (event: MouseEvent) => {
+    if (onDictionaryTab()) event.preventDefault();
   };
 
   const handleUnselectAll = () => {
@@ -115,13 +141,22 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     const showTimeTravel = editor.openMap[Open.timeTravel];
     const showDiffViewer = editor.openMap[Open.diffViewer];
 
-    const showUndoRedo =
+    const showDocumentHistory =
       settings.canvasType === CanvasType.ERD &&
       !showAutomaticTablePlacement &&
       !showTableProperties &&
       !showDiffViewer &&
       !showTimeTravel &&
       !props.readonly;
+    // The Dictionary tab's buttons run the sheet shown's own history, none on
+    // the check sheet, which no edit reaches.
+    const onDictionary =
+      settings.canvasType === CanvasType.dictionary && !props.readonly;
+    const sheet = onDictionary ? shownSheet() : null;
+    let has: HasHistory = editor;
+    if (sheet) has = editor.dictionaryHistory[sheet];
+    else if (onDictionary) has = { hasUndo: false, hasRedo: false };
+    const showUndoRedo = showDocumentHistory || onDictionary;
 
     return (
       <div
@@ -183,6 +218,16 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         <div
           class={[
             styles.menu,
+            { active: settings.canvasType === CanvasType.dictionary },
+          ]}
+          title={t('common.tab.dictionary')}
+          on:click={() => handleChangeCanvasType(CanvasType.dictionary)}
+        >
+          <Icon name="book-type" size={16} />
+        </div>
+        <div
+          class={[
+            styles.menu,
             { active: settings.canvasType === CanvasType.settings },
           ]}
           title={t('common.tab.settings')}
@@ -240,10 +285,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                 'undo-redo',
                 styles.menu,
                 {
-                  active: editor.hasUndo,
+                  active: has.hasUndo,
                 },
               ]}
               title={title(t('toolbar.undo'), KeyBindingName.undo)}
+              on:mousedown={keepFocus}
               on:click={handleUndo}
             >
               {mirrored ? (
@@ -257,10 +303,11 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                 'undo-redo',
                 styles.menu,
                 {
-                  active: editor.hasRedo,
+                  active: has.hasRedo,
                 },
               ]}
               title={title(t('toolbar.redo'), KeyBindingName.redo)}
+              on:mousedown={keepFocus}
               on:click={handleRedo}
             >
               {mirrored ? (
@@ -269,22 +316,24 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                 <Icon name="redo-2" size={16} />
               )}
             </div>
-            <div
-              class={[
-                'undo-redo',
-                styles.menu,
-                {
-                  active: editor.hasUndo || editor.hasRedo,
-                },
-              ]}
-              title={t('toolbar.timeTravel')}
-              style={{
-                'max-width': '26px',
-              }}
-              on:click={handleOpenTimeTravel}
-            >
-              <Icon name="rotate-ccw-clock" size={16} />
-            </div>
+            {showDocumentHistory ? (
+              <div
+                class={[
+                  'undo-redo',
+                  styles.menu,
+                  {
+                    active: editor.hasUndo || editor.hasRedo,
+                  },
+                ]}
+                title={t('toolbar.timeTravel')}
+                style={{
+                  'max-width': '26px',
+                }}
+                on:click={handleOpenTimeTravel}
+              >
+                <Icon name="rotate-ccw-clock" size={16} />
+              </div>
+            ) : null}
           </>
         ) : null}
       </div>

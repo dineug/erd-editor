@@ -18,10 +18,17 @@ import {
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
+  addDictionaryAction,
+  removeDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import { updateDictionaryEntryAction$ } from '@/engine/modules/dictionary/generator.actions';
+import {
+  clearAction,
   dragstartColumnAction,
   drawStartRelationshipAction,
   focusColumnAction,
   focusTableAction,
+  loadJsonAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -88,7 +95,9 @@ import {
   addTableAction,
   changeTableColorAction,
   changeTableCommentAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
+  changeTableNameDerivedAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -96,7 +105,10 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
@@ -299,6 +311,63 @@ describe('loadJsonAction$', () => {
       'editor.clear',
       'editor.loadJson',
     ]);
+  });
+
+  it('sends the payloads it always did unless asked to keep the dictionaries', () => {
+    expect(flatten(store, loadJsonAction$(json))).toEqual([
+      clearAction(),
+      loadJsonAction({ value: json }),
+    ]);
+    expect(
+      flatten(store, loadJsonAction$(json, { keepDictionaries: true }))
+    ).toEqual([
+      clearAction({ keepDictionaries: true }),
+      loadJsonAction({ value: json, keepDictionaries: true }),
+    ]);
+  });
+});
+
+/**
+ * A replace by a schema import keeps the words, terms and domains, which its
+ * text never holds; a replace by a document takes the document's.
+ */
+describe('the dictionaries through a replace', () => {
+  function seedDictionaries() {
+    store.dispatchSync(
+      addDictionaryAction({ kind: 'word', id: 'w1', values: { name: 'W' } }),
+      addDictionaryAction({ kind: 'term', id: 't1', values: { name: 'T' } }),
+      addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'D' } })
+    );
+  }
+
+  const listed = () => ({
+    words: [...store.state.doc.wordIds],
+    terms: [...store.state.doc.termIds],
+    domains: [...store.state.doc.domainIds],
+  });
+
+  it.each([
+    ['sql', loadSchemaSQLAction$('CREATE TABLE orders (id INT);')],
+    ['graphql', loadSchemaGraphQLAction$('type Order { id: ID! }')],
+    ['dbml', loadSchemaDBMLAction$('Table orders {\n  id int\n}')],
+    ['aml', loadSchemaAMLAction$('orders\n  id int pk')],
+  ])('keeps them through a %s import', (_, load) => {
+    seedDictionaries();
+
+    store.dispatchSync(load);
+
+    expect(store.state.doc.tableIds).toHaveLength(1);
+    expect(listed()).toEqual({ words: ['w1'], terms: ['t1'], domains: ['d1'] });
+    expect(store.state.collections.termEntities.t1.name).toBe('T');
+  });
+
+  it('replaces them with the document a JSON replace loads', () => {
+    seedDictionaries();
+
+    store.dispatchSync(loadJsonAction$(toJson(schemaV3Parser({}))));
+
+    expect(listed()).toEqual({ words: [], terms: [], domains: [] });
+    expect(store.state.collections.wordEntities).toEqual({});
   });
 });
 
@@ -1470,6 +1539,44 @@ describe('dragoverColumnAction$', () => {
     });
     expect(store.state.editor.focusTable?.tableId).toBe('t2');
   });
+
+  it('carries the logical name, the domain link and the derived flag into the other table', () => {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Membership number' },
+      })
+    );
+    seedTable(store, 't1');
+    seedColumn(store, 't1', 'c1');
+    seedColumn(store, 't1', 'c2');
+    store.dispatchSync(
+      changeColumnLogicalNameAction({
+        tableId: 't1',
+        id: 'c1',
+        value: 'Member number',
+      }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'd1' }),
+      changeColumnNameDerivedAction({ tableId: 't1', id: 'c1', value: true })
+    );
+    seedTable(store, 't2');
+    store.dispatchSync(
+      dragstartColumnAction({ tableId: 't1', columnIds: ['c1', 'c2'] })
+    );
+
+    store.dispatchSync(dragoverColumnAction$(null, 't2'));
+
+    const [moved, plain] = tableOf(store, 't2').columnIds.map(id =>
+      columnOf(store, id)
+    );
+    expect(moved.logicalName).toBe('Member number');
+    expect(moved.domainId).toBe('d1');
+    expect(moved.ui.widthDomain).toBe('Membership number'.length * 10);
+    expect(bHas(moved.options, ColumnOption.nameDerived)).toBe(true);
+    expect(plain).toMatchObject({ logicalName: '', domainId: '' });
+    expect(bHas(plain.options, ColumnOption.nameDerived)).toBe(false);
+  });
 });
 
 describe('columnKeyHoverStartAction$ / columnKeyHoverEndAction$', () => {
@@ -1766,6 +1873,166 @@ describe('pasteEntitiesAction$', () => {
     seedTable(store, 't-ref', 900, 900);
     store.dispatchSync(changeTableNameAction({ id: 't-ref', value: 'users' }));
     expect(tableCopy.ui.widthName).toBe(tableOf(store, 't-ref').ui.widthName);
+  });
+});
+
+describe('the logical names and domain links a paste or a duplicate carries', () => {
+  /** Table t1 named logically and derived, its column c1 linking domain d1. */
+  function seedNamed() {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Membership number' },
+      })
+    );
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(
+      changeTableNameAction({ id: 't1', value: 'member' }),
+      changeTableLogicalNameAction({ id: 't1', value: 'Member' }),
+      changeTableNameDerivedAction({ id: 't1', value: true }),
+      changeColumnLogicalNameAction({
+        tableId: 't1',
+        id: 'c1',
+        value: 'Member number',
+      }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'd1' }),
+      changeColumnNameDerivedAction({ tableId: 't1', id: 'c1', value: true })
+    );
+  }
+
+  const copyOf = (sourceIds: string[]) => {
+    const [id] = addedIds(sourceIds, store.state.doc.tableIds);
+    const table = tableOf(store, id);
+    return { table, column: columnOf(store, table.columnIds[0]) };
+  };
+
+  it('pastes a copy of this document with every name, flag and link', () => {
+    seedNamed();
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+
+    store.dispatchSync(
+      pasteEntitiesAction$(entitiesCopyToPayload(store.state)!, 1)
+    );
+
+    const { table, column } = copyOf(['t1']);
+    expect(table).toMatchObject({ logicalName: 'Member', nameDerived: true });
+    expect(column).toMatchObject({
+      logicalName: 'Member number',
+      domainId: 'd1',
+    });
+    expect(column.ui.widthDomain).toBe('Membership number'.length * 10);
+    expect(bHas(column.options, ColumnOption.nameDerived)).toBe(true);
+  });
+
+  it('links no domain this document does not list, a removed one included', () => {
+    seedNamed();
+    store.dispatchSync(selectAction({ t1: SelectType.table }));
+    const payload = entitiesCopyToPayload(store.state)!;
+    payload.columns.push(
+      clipboardColumn('c-elsewhere', 't1', { domainId: 'elsewhere' })
+    );
+    payload.tables[0].columnIds.push('c-elsewhere');
+    store.dispatchSync(removeDictionaryAction({ kind: 'domain', id: 'd1' }));
+
+    const actions = flatten(store, pasteEntitiesAction$(payload, 1));
+    store.dispatchSync(actions);
+
+    expect(actions.map(({ type }) => type)).not.toContain(
+      'column.changeDomain'
+    );
+    const { table, column } = copyOf(['t1']);
+    expect(column.domainId).toBe('');
+    expect(columnOf(store, table.columnIds[1]).domainId).toBe('');
+    expect(column.logicalName).toBe('Member number');
+  });
+
+  it('links no domain whose type moved since the copy, keeping the type it copied', () => {
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount', dataType: 'NUMERIC(10)' },
+      })
+    );
+    seedTable(store, 't1', 100, 100);
+    seedColumn(store, 't1', 'c1');
+    store.dispatchSync(
+      changeColumnDataTypeAction({
+        tableId: 't1',
+        id: 'c1',
+        value: 'NUMERIC(10)',
+      }),
+      changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'd1' }),
+      selectAction({ t1: SelectType.table })
+    );
+    const before = entitiesCopyToPayload(store.state)!;
+    store.dispatchSync(
+      updateDictionaryEntryAction$('domain', 'd1', {
+        dataType: 'NUMERIC(15,2)',
+      })
+    );
+    expect(columnOf(store, 'c1')).toMatchObject({
+      dataType: 'NUMERIC(15,2)',
+      domainId: 'd1',
+    });
+
+    const tableIds = [...store.state.doc.tableIds];
+    store.dispatchSync(pasteEntitiesAction$(before, 1));
+    expect(copyOf(tableIds).column).toMatchObject({
+      dataType: 'NUMERIC(10)',
+      domainId: '',
+    });
+
+    // A copy taken after the change holds the domain's type and keeps it.
+    store.dispatchSync(
+      unselectAllAction$(),
+      selectAction({ t1: SelectType.table })
+    );
+    const after = entitiesCopyToPayload(store.state)!;
+    const pastedIds = [...store.state.doc.tableIds];
+    store.dispatchSync(pasteEntitiesAction$(after, 2));
+    expect(copyOf(pastedIds).column).toMatchObject({
+      dataType: 'NUMERIC(15,2)',
+      domainId: 'd1',
+    });
+  });
+
+  it('pastes a copy made before the dictionaries with none of their fields', () => {
+    store.dispatchSync(
+      pasteEntitiesAction$(
+        entitiesPayload({
+          tables: [clipboardTable('t1', 0, 0, { columnIds: ['c1'] })],
+          columns: [clipboardColumn('c1', 't1', { name: 'id' })],
+        }),
+        1
+      )
+    );
+
+    const { table, column } = copyOf([]);
+    expect(table).toMatchObject({ logicalName: '', nameDerived: false });
+    expect(column).toMatchObject({ logicalName: '', domainId: '' });
+  });
+
+  it('duplicates every name, flag and link, as the document holds them', () => {
+    seedNamed();
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        offset: { x: 20, y: 20 },
+        escapeCollision: false,
+      })
+    );
+
+    const { table, column } = copyOf(['t1']);
+    expect(table).toMatchObject({ logicalName: 'Member', nameDerived: true });
+    expect(column).toMatchObject({
+      logicalName: 'Member number',
+      domainId: 'd1',
+    });
+    expect(bHas(column.options, ColumnOption.nameDerived)).toBe(true);
   });
 });
 

@@ -7,6 +7,7 @@ import { bHas } from '@/utils/bit';
 
 import {
   autoNameIgnoreCase,
+  commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
   formatDefault,
@@ -41,7 +42,7 @@ const ACTION_SUPPORT = referentialActionSupport(Database.MariaDB);
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { statements, written }: CreateSchemaOptions = {}
+  { statements, written, logicalNameAsComment }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -50,7 +51,12 @@ export function createSchema(
 
   tables.forEach(table => {
     written?.tables.push(table);
-    formatTable(state, { table, buffer: stringBuffer, statements });
+    formatTable(state, {
+      table,
+      buffer: stringBuffer,
+      statements,
+      logicalNameAsComment,
+    });
     stringBuffer.push('');
 
     formatUnique(state, { table, buffer: stringBuffer, statements });
@@ -81,7 +87,7 @@ export function createSchema(
 
 export function formatTable(
   state: RootState,
-  { buffer, table, statements }: FormatTableOptions
+  { buffer, table, statements, logicalNameAsComment }: FormatTableOptions
 ) {
   const {
     settings: { bracketType },
@@ -106,6 +112,7 @@ export function formatTable(
         isComma: true,
         spaceSize,
         buffer,
+        logicalNameAsComment,
       });
     } else {
       formatColumn(state, {
@@ -113,6 +120,7 @@ export function formatTable(
         isComma: columns.length !== i + 1,
         spaceSize,
         buffer,
+        logicalNameAsComment,
       });
     }
   });
@@ -121,10 +129,11 @@ export function formatTable(
     const pkColumns = primaryKeyColumns(columns);
     buffer.push(`  PRIMARY KEY (${formatNames(pkColumns, bracket)})`);
   }
-  if (table.comment.trim() === '') {
+  const comment = commentToWrite(table, logicalNameAsComment);
+  if (comment === '') {
     buffer.push(`);`);
   } else {
-    buffer.push(`) COMMENT ${toStringLiteral(table.comment)};`);
+    buffer.push(`) COMMENT ${toStringLiteral(comment)};`);
   }
 }
 
@@ -154,7 +163,13 @@ export function formatUnique(
 
 function formatColumn(
   { settings: { bracketType } }: RootState,
-  { buffer, column, isComma, spaceSize }: FormatColumnOptions
+  {
+    buffer,
+    column,
+    isComma,
+    spaceSize,
+    logicalNameAsComment,
+  }: FormatColumnOptions
 ) {
   const bracket = getBracket(bracketType);
   const stringBuffer: string[] = [];
@@ -181,8 +196,9 @@ function formatColumn(
       );
     }
   }
-  if (column.comment.trim() !== '') {
-    stringBuffer.push(`COMMENT ${toStringLiteral(column.comment)}`);
+  const comment = commentToWrite(column, logicalNameAsComment);
+  if (comment !== '') {
+    stringBuffer.push(`COMMENT ${toStringLiteral(comment)}`);
   }
   buffer.push(stringBuffer.join(' ') + `${isComma ? ',' : ''}`);
 }

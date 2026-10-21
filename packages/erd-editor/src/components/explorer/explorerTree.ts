@@ -5,7 +5,11 @@ import { ColumnUIKey, OrderType } from '@/constants/schema';
 import type { RootState } from '@/engine/state';
 import type { Column, Index, Memo, Table, TableGroup } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { FindField, type FindMatch } from '@/utils/find-replace';
+import {
+  FindField,
+  type FindMatch,
+  isTableLogicalName,
+} from '@/utils/find-replace';
 import { isMemoShown } from '@/utils/memo';
 import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { getTableGroupMembers, isTableGroupShown } from '@/utils/tableGroup';
@@ -47,12 +51,18 @@ type NameMatches = { matches?: ReadonlyArray<FindMatch> };
 /** What one row of the Explorer stands for, and what it shows of it. */
 export type ExplorerNode =
   | { kind: 'folder'; folder: ExplorerFolder; count: number }
-  | ({ kind: 'table'; tableId: string; name: string } & NameMatches)
+  | ({
+      kind: 'table';
+      tableId: string;
+      name: string;
+      logicalName: string;
+    } & NameMatches)
   | ({
       kind: 'column';
       tableId: string;
       columnId: string;
       name: string;
+      logicalName: string;
       dataType: string;
       primaryKey: boolean;
       foreignKey: boolean;
@@ -81,7 +91,13 @@ export type ExplorerNode =
       name: string;
       color: string;
     } & NameMatches)
-  | { kind: 'groupTable'; tableGroupId: string; tableId: string; name: string }
+  | {
+      kind: 'groupTable';
+      tableGroupId: string;
+      tableId: string;
+      name: string;
+      logicalName: string;
+    }
   | { kind: 'memo'; memoId: string; text: string }
   /** One match in a comment or a memo, shown as the stretch of text around it. */
   | { kind: 'excerpt'; match: FindMatch };
@@ -127,6 +143,7 @@ const columnData = (tableId: string, column: Column): NodeOf<'column'> => ({
   tableId,
   columnId: column.id,
   name: column.name,
+  logicalName: column.logicalName,
   dataType: column.dataType,
   primaryKey: bHas(column.ui.keys, ColumnUIKey.primaryKey),
   foreignKey: bHas(column.ui.keys, ColumnUIKey.foreignKey),
@@ -205,6 +222,13 @@ function foreignKeyNodes(state: RootState, table: Table): ExplorerTreeNode[] {
     );
 }
 
+const tableData = (table: Table): NodeOf<'table'> => ({
+  kind: 'table',
+  tableId: table.id,
+  name: table.name,
+  logicalName: table.logicalName,
+});
+
 function tableNode(state: RootState, table: Table): ExplorerTreeNode {
   return {
     id: tableRowId(table.id),
@@ -221,7 +245,7 @@ function tableNode(state: RootState, table: Table): ExplorerTreeNode {
           foreignKeyNodes(state, table)
         ),
       ]),
-    data: { kind: 'table', tableId: table.id, name: table.name },
+    data: tableData(table),
   };
 }
 
@@ -252,6 +276,7 @@ function tableGroupNodes(state: RootState): ExplorerTreeNode[] {
               tableGroupId: group.id,
               tableId: table.id,
               name: table.name,
+              logicalName: table.logicalName,
             })
           );
 
@@ -318,6 +343,8 @@ export function matchRowId(match: FindMatch): string {
       return tableRowId(id);
     case FindField.columnName:
       return columnRowId(id);
+    case FindField.logicalName:
+      return isTableLogicalName(match) ? tableRowId(id) : columnRowId(id);
     case FindField.indexName:
       return indexRowId(id);
     case FindField.tableGroupName:
@@ -332,10 +359,16 @@ export function matchRowId(match: FindMatch): string {
 }
 
 /** The rows above a match's row in the search's tree, which must be open for the row to be drawn. */
-export function matchAncestorIds({ field, id, tableId }: FindMatch): string[] {
+export function matchAncestorIds(match: FindMatch): string[] {
+  const { field, id, tableId } = match;
+
   switch (field) {
     case FindField.tableName:
       return [TABLES_FOLDER_ID];
+    case FindField.logicalName:
+      return isTableLogicalName(match)
+        ? [TABLES_FOLDER_ID]
+        : [TABLES_FOLDER_ID, tableRowId(tableId), columnsFolderId(tableId)];
     case FindField.tableComment:
       return [TABLES_FOLDER_ID, tableRowId(id)];
     case FindField.columnName:
@@ -390,7 +423,7 @@ function searchTableNode(state: RootState, hits: TableHits): ExplorerTreeNode {
 
   return branch(
     base,
-    { kind: 'table', tableId: table.id, name: table.name, matches: hits.name },
+    { ...tableData(table), matches: hits.name },
     present([
       ...hits.comment.map(match => excerpt(base, match)),
       folder(columnsFolderId(table.id), 'columns', () =>
@@ -473,15 +506,20 @@ function gatherHits(state: RootState, matches: ReadonlyArray<FindMatch>) {
         add(hits.indexes, match.id, match);
         break;
       default: {
+        // A table's logical name is marked on its own row, as its name is.
+        if (isTableLogicalName(match)) {
+          hits.name.push(match);
+          break;
+        }
         if (!table.columnIds.includes(match.id)) break;
         let column = hits.columns.get(match.id);
         if (!column) {
           column = { name: [], comment: [] };
           hits.columns.set(match.id, column);
         }
-        match.field === FindField.columnName
-          ? column.name.push(match)
-          : column.comment.push(match);
+        match.field === FindField.columnComment
+          ? column.comment.push(match)
+          : column.name.push(match);
       }
     }
   }

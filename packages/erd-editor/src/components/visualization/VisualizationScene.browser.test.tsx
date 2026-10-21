@@ -39,9 +39,12 @@ import {
   TABLE_RADIUS,
   type VisualizationState,
 } from '@/components/visualization/visualizationView';
+import { NameViewMode } from '@/constants/schema';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
+import { toNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
@@ -404,6 +407,39 @@ describe('the visualization scene', () => {
       await settle();
       expect(labels.opacity()).toBe(1);
       expect(labels.visible()).toBe(true);
+    });
+
+    it('follows the name view, the name dimmed for a blank logical name and under it in the view of both', async () => {
+      const { app, stage, theme, settle } = await setup(app => {
+        seedGraph(app);
+        app.store.dispatchSync(
+          changeTableNameAction({ id: 't2', value: 'posts' }),
+          changeTableLogicalNameAction({ id: 't2', value: 'Posts' })
+        );
+      });
+      const switchTo = async (
+        mode: (typeof NameViewMode)[keyof typeof NameViewMode]
+      ) => {
+        app.store.dispatchSync(
+          toNameViewModeAction(app.store.state, mode, false)
+        );
+        await settle();
+      };
+      const cut = LONG_NAME.slice(0, NAME_MAX_LENGTH) + '…';
+
+      expect(textsOf(stage)).toEqual([cut, 'posts']);
+
+      await switchTo(NameViewMode.logical);
+      const [standIn, logical] = stage.find<Text>('.visualization-label');
+      expect(textsOf(stage)).toEqual([cut, 'Posts']);
+      expect(standIn.fill()).toBe(theme.placeholder);
+      expect(logical.fill()).toBe(theme.foreground);
+
+      await switchTo(NameViewMode.both);
+      expect(textsOf(stage)).toEqual([cut, 'Posts\nposts']);
+      expect(stage.find<Text>('.visualization-label')[0].fill()).toBe(
+        theme.foreground
+      );
     });
 
     it('gives a column no name however far the reader zooms in', async () => {

@@ -1,0 +1,196 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "originX": -24,
+    "originY": 36,
+    "zoomLevel": 0.9,
+    "show": 495,
+    "database": 16,
+    "databaseName": "library",
+    "canvasType": "ERD",
+    "language": 16,
+    "tableNameCase": 4,
+    "columnNameCase": 2,
+    "bracketType": 1,
+    "relationshipDataTypeSync": true,
+    "columnOrder": [
+      64,
+      2,
+      1,
+      32,
+      4,
+      8,
+      16
+    ],
+    "maxWidthComment": -1,
+    "lockSettings": 63
+  },
+  "doc": {
+    "tableIds": [
+      "author",
+      "book"
+    ],
+    "relationshipIds": [
+      "written_by"
+    ],
+    "indexIds": [
+      "ix_book_title"
+    ],
+    "memoIds": [
+      "shelf_note"
+    ]
+  },
+  "collections": {
+    "tableEntities": {
+      "author": {
+        "id": "author",
+        "name": "author",
+        "comment": "people who write books",
+        "columnIds": [
+          "author_id",
+          "author_name",
+          "author_born"
+        ],
+        "ui": {
+          "x": 120,
+          "y": 80,
+          "color": ""
+        }
+      },
+      "book": {
+        "id": "book",
+        "name": "book",
+        "comment": "",
+        "columnIds": [
+          "book_id",
+          "book_author_id",
+          "book_title",
+          "book_isbn"
+        ],
+        "ui": {
+          "x": 560.5,
+          "y": 140,
+          "color": "#e5484d"
+        }
+      }
+    },
+    "tableColumnEntities": {
+      "author_born": {
+        "id": "author_born",
+        "tableId": "author",
+        "name": "born_on",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 0
+      },
+      "author_id": {
+        "id": "author_id",
+        "tableId": "author",
+        "name": "id",
+        "comment": "",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 11
+      },
+      "author_name": {
+        "id": "author_name",
+        "tableId": "author",
+        "name": "name",
+        "comment": "pen name when one is used",
+        "dataType": "VARCHAR(120)",
+        "default": "",
+        "options": 8
+      },
+      "book_author_id": {
+        "id": "book_author_id",
+        "tableId": "book",
+        "name": "author_id",
+        "comment": "",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 8
+      },
+      "book_id": {
+        "id": "book_id",
+        "tableId": "book",
+        "name": "id",
+        "comment": "",
+        "dataType": "BIGINT",
+        "default": "",
+        "options": 11
+      },
+      "book_isbn": {
+        "id": "book_isbn",
+        "tableId": "book",
+        "name": "isbn",
+        "comment": "",
+        "dataType": "CHAR(13)",
+        "default": "",
+        "options": 4
+      },
+      "book_title": {
+        "id": "book_title",
+        "tableId": "book",
+        "name": "title",
+        "comment": "as printed on the cover",
+        "dataType": "VARCHAR(255)",
+        "default": "'untitled'",
+        "options": 8
+      }
+    },
+    "relationshipEntities": {
+      "written_by": {
+        "id": "written_by",
+        "relationshipType": 4,
+        "onDelete": 4,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "author",
+          "columnIds": [
+            "author_id"
+          ]
+        },
+        "end": {
+          "tableId": "book",
+          "columnIds": [
+            "book_author_id"
+          ]
+        }
+      }
+    },
+    "indexEntities": {
+      "ix_book_title": {
+        "id": "ix_book_title",
+        "name": "ix_book_title",
+        "tableId": "book",
+        "indexColumnIds": [
+          "ix_book_title_title"
+        ],
+        "unique": false
+      }
+    },
+    "indexColumnEntities": {
+      "ix_book_title_title": {
+        "id": "ix_book_title_title",
+        "indexId": "ix_book_title",
+        "columnId": "book_title",
+        "orderType": 1
+      }
+    },
+    "memoEntities": {
+      "shelf_note": {
+        "id": "shelf_note",
+        "value": "one author writes many books",
+        "ui": {
+          "x": 120,
+          "y": 360,
+          "width": 200,
+          "height": 120,
+          "color": ""
+        }
+      }
+    }
+  }
+}

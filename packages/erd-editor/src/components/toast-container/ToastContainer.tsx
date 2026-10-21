@@ -55,13 +55,12 @@ const ToastContainer: FC<ToastContainerProps> = (props, ctx) => {
             : undefined;
           shown && handleClose(shown.id);
 
-          const toast = Object.assign(
-            {
-              close: delay(DEFAULT_TIME),
-            },
-            payload,
-            { id: uuid25() }
-          );
+          // A status toast sends close as undefined when it was given none,
+          // which must not take the place of the default.
+          const toast = Object.assign({}, payload, {
+            close: payload.close ?? delay(DEFAULT_TIME),
+            id: uuid25(),
+          });
           toasts.push(toast);
           toast.close.finally(() => handleClose(toast.id));
         },

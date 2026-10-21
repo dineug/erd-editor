@@ -1,4 +1,5 @@
 import type { LocaleMessages } from '@/i18n/translate';
+import type { Settings } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 
 import { renderDocumentScene } from './documentScene';
@@ -24,6 +25,8 @@ export type RenderPngRequest = {
   maxSide?: number;
   /** The language the scene's own words are drawn in; English when left out. */
   i18n?: LocaleMessages;
+  /** The names the scene draws; the document's own view when left out. */
+  nameViewMode?: Settings['nameViewMode'];
 };
 
 export type RenderPngResult = {
@@ -71,6 +74,7 @@ export async function renderDocumentPng({
   pixelRatio,
   maxSide,
   i18n,
+  nameViewMode,
   toWidth,
 }: RenderPngRequest & { toWidth: ToWidth }): Promise<RenderPngResult> {
   const scene = await renderDocumentScene({
@@ -79,6 +83,7 @@ export async function renderDocumentPng({
     toWidth,
     maxSide,
     i18n,
+    nameViewMode,
   });
 
   try {

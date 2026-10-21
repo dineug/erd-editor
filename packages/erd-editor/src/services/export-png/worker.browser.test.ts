@@ -39,8 +39,9 @@ function createDoc(zoomLevel = 1) {
       originX: 0,
       originY: 0,
       zoomLevel,
-      // Nothing locked, which is how an editor that saves the zoom it is read
-      // at writes it; one saved before the locks opens at 100% whatever it saved.
+      // No lock on but the name view's, which is how an editor that saves the
+      // zoom it is read at writes it; one saved before the locks opens at 100%
+      // whatever it saved.
       lockSettings: 0,
       databaseName: 'worker',
     },

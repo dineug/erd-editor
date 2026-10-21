@@ -16,8 +16,19 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
-import { CanvasType, Database, Language, Show } from '@/constants/schema';
+import {
+  APPEND_GAP,
+  TABLE_SORT_MARGIN,
+  TABLE_SORT_START,
+} from '@/constants/layout';
+import {
+  CanvasType,
+  Database,
+  Language,
+  NameViewMode,
+  Show,
+} from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeViewportAction,
   clearAction,
@@ -48,6 +59,7 @@ import {
   changeLanguageAction,
   changeShowAction,
   scrollToAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -200,6 +212,34 @@ function membersBox(app: AppContext, names: string[]) {
   );
 }
 
+/** Three tables of one column, which the grid lays out in one row. */
+const ROW_SQL = `
+CREATE TABLE a (id INT);
+CREATE TABLE b (id INT);
+CREATE TABLE c (id INT);
+`;
+
+/** The gaps between neighbours in a row of the tables named, as the scene draws them. */
+function rowGaps(app: AppContext, names: string[]): number[] {
+  const { state } = app.store;
+  const rects = Object.values(state.collections.tableEntities)
+    .filter(table => names.includes(table.name))
+    .map(table => getTableRect(state, table))
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+
+  return rects.slice(1).flatMap((rect, index) => {
+    const before = rects[index];
+    return rect.y === before.y ? [rect.x - before.x - before.width] : [];
+  });
+}
+
+/** The reader's own switch to the view of both, which the name view's lock keeps out of the file. */
+function showBothNames(app: AppContext) {
+  app.store.dispatchSync(
+    toNameViewModeAction(app.store.state, NameViewMode.both, false)
+  );
+}
+
 /** The batches that reach the document, past the history's own bookkeeping. */
 function recordActions(app: AppContext): AnyAction[][] {
   const batches: AnyAction[][] = [];
@@ -292,6 +332,24 @@ const KEPT_LOCKS = {
   file: [CanvasType.ERD, Language.GraphQL],
 };
 
+/** A row in each dictionary, which no schema text brings. */
+const dictionaryRows = () => [
+  addDictionaryAction({ kind: 'word', id: 'w1', values: { name: 'W' } }),
+  addDictionaryAction({ kind: 'term', id: 't1', values: { name: 'T' } }),
+  addDictionaryAction({ kind: 'domain', id: 'd1', values: { name: 'D' } }),
+];
+
+const KEPT_IDS = { words: ['w1'], terms: ['t1'], domains: ['d1'] };
+
+function dictionaryIds(app: AppContext) {
+  const { doc } = app.store.state;
+  return {
+    words: [...doc.wordIds],
+    terms: [...doc.termIds],
+    domains: [...doc.domainIds],
+  };
+}
+
 describe('importSchema', () => {
   it('replaces the document at once with the tables in the grid', () => {
     const app = createApp();
@@ -358,6 +416,16 @@ describe('importSchema', () => {
     expect(tableNames(app)).toEqual([name]);
   });
 
+  it('keeps the words, terms and domains of the document it replaces', () => {
+    const app = createApp();
+    app.store.dispatchSync(...dictionaryRows());
+
+    importSchema(app, 'sql', UNRELATED_SQL);
+
+    expect(tableNames(app).sort()).toEqual(['posts', 'users']);
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+  });
+
   it('wraps a DBML table group round its members where the grid puts them', () => {
     const app = createApp();
 
@@ -365,6 +433,19 @@ describe('importSchema', () => {
 
     expect(groupOf(app)).toMatchObject({ name: 'accounts', color: '#3498db' });
     expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+  });
+
+  it('lays the grid out at the widths the reader sees in the view of both', () => {
+    const app = createApp();
+    showBothNames(app);
+
+    importSchema(app, 'sql', ROW_SQL);
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.both);
+    expect(rowGaps(app, ['a', 'b', 'c'])).toEqual([
+      TABLE_SORT_MARGIN,
+      TABLE_SORT_MARGIN,
+    ]);
   });
 });
 
@@ -417,6 +498,30 @@ describe('importSchemaPlaced', () => {
 
     expect(tableNames(app)).toEqual(['old']);
     expect(cornerOf(app, 'old')).toEqual({ x: 900, y: 900 });
+  });
+
+  it('keeps the words, terms and domains, through its undo and redo too', async () => {
+    const app = createApp();
+    app.store.dispatchSync(...dictionaryRows());
+    hoisted.elkLayout = columnLayout;
+    const batches = recordActions(app);
+
+    await importSchemaPlaced(app, 'sql', FAN_SQL);
+
+    expect(batches[0].map(({ payload }) => payload?.keepDictionaries)).toEqual([
+      true,
+      true,
+    ]);
+    expect(tableNames(app).sort()).toEqual(['photos', 'posts', 'users']);
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+
+    app.store.undo();
+    expect(tableNames(app)).toEqual(['old']);
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+
+    app.store.redo();
+    expect(dictionaryIds(app)).toEqual(KEPT_IDS);
+    expect(app.store.state.collections.termEntities.t1.name).toBe('T');
   });
 
   it('keeps every setting of the document it replaces but the view', async () => {
@@ -728,6 +833,18 @@ describe('appendSchema', () => {
       expect(cornerOf(app, name).y).toBe(corner.y);
     }
     expect(hoisted.requests).toEqual([]);
+  });
+
+  it('lays its grid out at the widths the reader sees in the view of both', () => {
+    const app = createScreenApp();
+    showBothNames(app);
+
+    appendSchema(app, 'sql', ROW_SQL);
+
+    expect(rowGaps(app, ['a', 'b', 'c'])).toEqual([
+      TABLE_SORT_MARGIN,
+      TABLE_SORT_MARGIN,
+    ]);
   });
 
   it('selects what it adds alone and brings it on screen', () => {

@@ -4,6 +4,9 @@ import { uuid25 } from '@dineug/uuid';
 
 import { ColumnOption, ColumnType } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
+import { toColumnNameWrites } from '@/engine/modules/dictionary/derivedNames';
+import { toDomainUnlinkActions } from '@/engine/modules/dictionary/domainTypes';
+import { toPastedDomainId } from '@/engine/modules/dictionary/membership';
 import {
   drawEndRelationshipAction,
   focusColumnAction,
@@ -15,6 +18,7 @@ import {
 import { drawStartAddRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import { isTableFocusType } from '@/engine/modules/editor/utils/focus';
+import { isDomainInTypeCell } from '@/engine/modules/editor/utils/nameView';
 import { removeIndexAction } from '@/engine/modules/index/atom.actions';
 import {
   addRelationshipAction,
@@ -30,7 +34,10 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnUniqueAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -46,6 +53,8 @@ import { getTableGroupId } from '@/utils/tableGroup';
 import { ActionType } from './actions';
 import {
   addTableAction,
+  changeTableNameAction,
+  changeTableNameDerivedAction,
   changeZIndexAction,
   moveToTableAction,
   removeTableAction,
@@ -133,7 +142,7 @@ export const selectTableAction$ = (
   $mod: boolean
 ): GeneratorAction =>
   function* ({
-    doc: { tableIds, memoIds },
+    doc: { tableIds, memoIds, domainIds },
     collections,
     editor: { drawRelationship },
     settings: { database },
@@ -183,6 +192,7 @@ export const selectTableAction$ = (
           .selectByIds(endTable.columnIds)
           .map(({ name }) => name),
         database,
+        domainIds,
       });
       yield addRelationshipAction({
         id: uuid25(),
@@ -202,12 +212,183 @@ export const selectTableAction$ = (
     }
   };
 
+/** Which of a column's names, type and domain a pasted row writes. */
+type PastedCells = {
+  name: boolean;
+  logicalName: boolean;
+  dataType: boolean;
+  domain: boolean;
+};
+
+/** A row a paste adds as a new column writes every field it carries. */
+const EVERY_CELL: PastedCells = {
+  name: true,
+  logicalName: true,
+  dataType: true,
+  domain: true,
+};
+
+/**
+ * The names, type and domain the cells of a row write. The logical view's
+ * type cell writes the type and the domain it draws, as a domain cell beside
+ * a type cell does.
+ */
+function toPastedCells(
+  settings: RootState['settings'],
+  showColumnOrder: number[]
+): PastedCells {
+  const dataType = showColumnOrder.includes(ColumnType.columnDataType);
+
+  return {
+    name: showColumnOrder.includes(ColumnType.columnName),
+    logicalName: showColumnOrder.includes(ColumnType.columnLogicalName),
+    dataType,
+    domain:
+      showColumnOrder.includes(ColumnType.columnDomain) ||
+      (dataType && isDomainInTypeCell(settings)),
+  };
+}
+
+/** The writes of the pasted cells that are no name, type or domain. */
+function toPastedValueActions(
+  payload: { tableId: string; id: string },
+  column: Column,
+  showColumnOrder: number[]
+): AnyAction[] {
+  return showColumnOrder.flatMap<AnyAction>(columnType => {
+    switch (columnType) {
+      case ColumnType.columnDefault:
+        return [
+          changeColumnDefaultAction({ ...payload, value: column.default }),
+        ];
+      case ColumnType.columnComment:
+        return [
+          changeColumnCommentAction({ ...payload, value: column.comment }),
+        ];
+      case ColumnType.columnAutoIncrement:
+        return [
+          changeColumnAutoIncrementAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.autoIncrement),
+          }),
+        ];
+      case ColumnType.columnUnique:
+        return [
+          changeColumnUniqueAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.unique),
+          }),
+        ];
+      case ColumnType.columnNotNull:
+        return [
+          changeColumnNotNullAction({
+            ...payload,
+            value: bHas(column.options, ColumnOption.notNull),
+          }),
+        ];
+      default:
+        return [];
+    }
+  });
+}
+
+/**
+ * What a pasted row writes of a column's names, type and domain. A name
+ * written by hand leaves the dictionaries, a logical name derives the name the
+ * row leaves empty or derived, and no write spreads the data type sync.
+ */
+function toPastedNameDomainActions(
+  state: RootState,
+  payload: { tableId: string; id: string },
+  current: Column | undefined,
+  pasted: Column,
+  cells: PastedCells
+): AnyAction[] {
+  const actions: AnyAction[] = [];
+  const wasDerived = current
+    ? bHas(current.options, ColumnOption.nameDerived)
+    : false;
+  const domainTypeOf = (id: string) =>
+    state.collections.domainEntities[id]?.dataType ?? '';
+
+  if (cells.name) {
+    actions.push(changeColumnNameAction({ ...payload, value: pasted.name }));
+    if (wasDerived) {
+      actions.push(changeColumnNameDerivedAction({ ...payload, value: false }));
+    }
+  }
+
+  // A domain cell links what it names only while the type the row pastes
+  // agrees; '' unlinks, and null leaves the link to the type written.
+  let link = cells.domain
+    ? toPastedDomainId(state, pasted.domainId, pasted.dataType)
+    : null;
+  const dataType = cells.dataType ? pasted.dataType : null;
+
+  if (cells.logicalName) {
+    actions.push(
+      changeColumnLogicalNameAction({ ...payload, value: pasted.logicalName })
+    );
+
+    // The derivation reads the name and the flag the row leaves behind.
+    const left: Column = {
+      ...pasted,
+      id: payload.id,
+      name: cells.name ? pasted.name : (current?.name ?? ''),
+      options: !cells.name && wasDerived ? ColumnOption.nameDerived : 0,
+    };
+    const writes = toColumnNameWrites(
+      state,
+      payload.tableId,
+      left,
+      pasted.logicalName
+    );
+    const termDomainId = writes.link?.value ?? '';
+
+    actions.push(...writes.actions);
+    if (
+      termDomainId &&
+      !link &&
+      (!dataType || domainTypeOf(termDomainId) === dataType)
+    ) {
+      link = termDomainId;
+    }
+  }
+
+  if (link) {
+    const domainType = domainTypeOf(link);
+    if (current?.domainId !== link) {
+      actions.push(changeColumnDomainAction({ ...payload, value: link }));
+    }
+    if (dataType !== null || current?.dataType !== domainType) {
+      actions.push(
+        changeColumnDataTypeAction({ ...payload, value: domainType })
+      );
+    }
+    return actions;
+  }
+
+  if (link === '' && current?.domainId !== '') {
+    actions.push(changeColumnDomainAction({ ...payload, value: '' }));
+  }
+  if (dataType !== null) {
+    actions.push(changeColumnDataTypeAction({ ...payload, value: dataType }));
+    if (link === null) {
+      actions.push(
+        ...toDomainUnlinkActions(state, [{ ...payload, value: dataType }])
+      );
+    }
+  }
+  return actions;
+}
+
 export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
-  function* ({
-    editor: { selectedMap, focusTable },
-    settings: { show, columnOrder },
-    collections,
-  }) {
+  function* (state) {
+    const {
+      editor: { selectedMap, focusTable },
+      settings,
+      collections,
+    } = state;
     const isFit = focusTable && !isTableFocusType(focusTable.focusType);
     const selectedTableIds = Object.entries(selectedMap)
       .filter(([, type]) => type === SelectType.table)
@@ -224,14 +405,6 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
 
         yield [
           addColumnAction(payload),
-          changeColumnNameAction({
-            ...payload,
-            value: column.name,
-          }),
-          changeColumnDataTypeAction({
-            ...payload,
-            value: column.dataType,
-          }),
           changeColumnDefaultAction({
             ...payload,
             value: column.default,
@@ -252,6 +425,15 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
             ...payload,
             value: bHas(column.options, ColumnOption.autoIncrement),
           }),
+          // A copy from another document, or one taken before its domain's
+          // type changed, keeps no link to a domain off the type it pastes.
+          ...toPastedNameDomainActions(
+            state,
+            payload,
+            undefined,
+            column,
+            EVERY_CELL
+          ),
         ];
       }
     }
@@ -272,7 +454,15 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
       table.columnIds.indexOf(columnIds[columnIds.length - 1]) + 1
     );
     const columnIdsRange = [...columnIds, ...additionalColumnIds];
-    const showColumnOrder = getShowColumnOrder(show, columnOrder);
+    const showColumnOrder = getShowColumnOrder(
+      settings.show,
+      settings.columnOrder,
+      settings.nameViewMode
+    );
+    const cells = toPastedCells(settings, showColumnOrder);
+    const columnCollection = query(collections).collection(
+      'tableColumnEntities'
+    );
 
     yield focusTableEndAction();
 
@@ -286,50 +476,16 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
         tableId: table.id,
       };
 
+      // A paste writes over a column's cells as typing into them does.
       yield [
-        ...(showColumnOrder
-          .map(columnType => {
-            switch (columnType) {
-              case ColumnType.columnName:
-                return changeColumnNameAction({
-                  ...payload,
-                  value: column.name,
-                });
-              case ColumnType.columnDataType:
-                return changeColumnDataTypeAction({
-                  ...payload,
-                  value: column.dataType,
-                });
-              case ColumnType.columnDefault:
-                return changeColumnDefaultAction({
-                  ...payload,
-                  value: column.default,
-                });
-              case ColumnType.columnComment:
-                return changeColumnCommentAction({
-                  ...payload,
-                  value: column.comment,
-                });
-              case ColumnType.columnAutoIncrement:
-                return changeColumnAutoIncrementAction({
-                  ...payload,
-                  value: bHas(column.options, ColumnOption.autoIncrement),
-                });
-              case ColumnType.columnUnique:
-                return changeColumnUniqueAction({
-                  ...payload,
-                  value: bHas(column.options, ColumnOption.unique),
-                });
-              case ColumnType.columnNotNull:
-                return changeColumnNotNullAction({
-                  ...payload,
-                  value: bHas(column.options, ColumnOption.notNull),
-                });
-              default:
-                return null;
-            }
-          })
-          .filter(Boolean) as AnyAction[]),
+        ...toPastedValueActions(payload, column, showColumnOrder),
+        ...toPastedNameDomainActions(
+          state,
+          payload,
+          columnCollection.selectById(columnId),
+          column,
+          cells
+        ),
         focusColumnAction({
           tableId: table.id,
           columnId: columnId,
@@ -351,49 +507,8 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
 
       yield [
         addColumnAction(payload),
-        ...(showColumnOrder
-          .map(columnType => {
-            switch (columnType) {
-              case ColumnType.columnName:
-                return changeColumnNameAction({
-                  ...payload,
-                  value: column.name,
-                });
-              case ColumnType.columnDataType:
-                return changeColumnDataTypeAction({
-                  ...payload,
-                  value: column.dataType,
-                });
-              case ColumnType.columnDefault:
-                return changeColumnDefaultAction({
-                  ...payload,
-                  value: column.default,
-                });
-              case ColumnType.columnComment:
-                return changeColumnCommentAction({
-                  ...payload,
-                  value: column.comment,
-                });
-              case ColumnType.columnAutoIncrement:
-                return changeColumnAutoIncrementAction({
-                  ...payload,
-                  value: bHas(column.options, ColumnOption.autoIncrement),
-                });
-              case ColumnType.columnUnique:
-                return changeColumnUniqueAction({
-                  ...payload,
-                  value: bHas(column.options, ColumnOption.unique),
-                });
-              case ColumnType.columnNotNull:
-                return changeColumnNotNullAction({
-                  ...payload,
-                  value: bHas(column.options, ColumnOption.notNull),
-                });
-              default:
-                return null;
-            }
-          })
-          .filter(Boolean) as AnyAction[]),
+        ...toPastedValueActions(payload, column, showColumnOrder),
+        ...toPastedNameDomainActions(state, payload, undefined, column, cells),
         focusColumnAction({
           tableId: table.id,
           columnId: id,
@@ -452,10 +567,31 @@ export const sortTablesToMoveAction$ = (): GeneratorAction =>
       );
   };
 
+/**
+ * Renames a table as typed by hand, so the dictionaries leave a name that is
+ * not empty alone from then on: the derived flag goes off in the same dispatch
+ * while it is on.
+ */
+export const changeTableNameAction$ = (
+  id: string,
+  value: string
+): GeneratorAction =>
+  function* ({ collections }) {
+    const table = query(collections).collection('tableEntities').selectById(id);
+
+    yield [
+      changeTableNameAction({ id, value }),
+      ...(table?.nameDerived
+        ? [changeTableNameDerivedAction({ id, value: false })]
+        : []),
+    ];
+  };
+
 export const actions$ = {
   addTableAction$,
   removeTableAction$,
   selectTableAction$,
   pasteTableAction$,
   sortTablesToMoveAction$,
+  changeTableNameAction$,
 };

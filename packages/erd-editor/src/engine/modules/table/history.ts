@@ -9,7 +9,9 @@ import {
   changeTableColorAction,
   changeTableCommentAction,
   changeTableGroupAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
+  changeTableNameDerivedAction,
   moveTableAction,
   moveToTableAction,
   removeTableAction,
@@ -46,6 +48,36 @@ const changeTableName: PushUndoHistory = (
   if (!table) return;
 
   undoActions.push(changeTableNameAction({ id, value: table.name }));
+};
+
+const changeTableLogicalName: PushUndoHistory = (
+  undoActions,
+  { payload: { id } }: ReturnType<typeof changeTableLogicalNameAction>,
+  { collections }
+) => {
+  const table = query(collections).collection('tableEntities').selectById(id);
+  if (!table) return;
+
+  undoActions.push(
+    changeTableLogicalNameAction({ id, value: table.logicalName })
+  );
+};
+
+/**
+ * Undoes with the flag the table held before the batch, not the flag's
+ * negation, so an undo of a write that changed nothing leaves it as it was.
+ */
+const changeTableNameDerived: PushUndoHistory = (
+  undoActions,
+  { payload: { id } }: ReturnType<typeof changeTableNameDerivedAction>,
+  { collections }
+) => {
+  const table = query(collections).collection('tableEntities').selectById(id);
+  if (!table) return;
+
+  undoActions.push(
+    changeTableNameDerivedAction({ id, value: table.nameDerived })
+  );
 };
 
 const changeTableComment: PushUndoHistory = (
@@ -102,6 +134,8 @@ export const tablePushUndoHistoryMap = {
   [ActionType.changeTableGroup]: changeTableGroup,
   [ActionType.moveToTable]: moveToTable,
   [ActionType.sortTable]: sortTable,
+  [ActionType.changeTableLogicalName]: changeTableLogicalName,
+  [ActionType.changeTableNameDerived]: changeTableNameDerived,
 };
 
 const moveTable: PushStreamHistory = (undoActions, redoActions, actions) => {

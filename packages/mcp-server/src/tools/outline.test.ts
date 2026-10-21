@@ -1,6 +1,7 @@
 import {
   createPeerStore,
   defaultToWidth,
+  dictionaryActions,
   Language,
   measureTableSize,
   type PeerStore,
@@ -50,6 +51,9 @@ describe('the document list', () => {
       indexCount: 1,
       memoCount: 1,
       tableGroupCount: 1,
+      wordCount: 2,
+      termCount: 1,
+      domainCount: 1,
     });
     expect(Object.keys(list)).toEqual([
       'settings',
@@ -58,11 +62,17 @@ describe('the document list', () => {
       'indexCount',
       'memoCount',
       'tableGroupCount',
+      'wordCount',
+      'termCount',
+      'domainCount',
       'tables',
       'relationships',
       'indexes',
       'tableGroups',
       'memos',
+      'domains',
+      'terms',
+      'words',
     ]);
     expect(
       list.tables.map(({ id, name, groupId, x, y, columnCount }) => ({
@@ -100,6 +110,8 @@ describe('the document list', () => {
       },
     ]);
     expect(Object.keys(list.tables[1])).not.toContain('groupId');
+    expect(list.tables[0].logicalName).toBe('Member');
+    expect(Object.keys(list.tables[1])).not.toContain('logicalName');
     expect(list.tableGroups).toEqual([
       {
         id: SEED.group,
@@ -133,6 +145,62 @@ describe('the document list', () => {
       'width',
       'height',
     ]);
+    expect(list.domains).toEqual([
+      { id: SEED.domain, name: 'Identifier', dataType: 'INT' },
+    ]);
+    expect(list.terms).toEqual([
+      {
+        id: SEED.term,
+        name: 'Member Number',
+        physicalName: 'MBR_NO',
+        domainId: SEED.domain,
+      },
+    ]);
+    expect(list.words).toEqual([
+      { id: SEED.memberWord, name: 'Member', abbreviation: 'MBR' },
+      { id: SEED.numberWord, name: 'Number', abbreviation: 'NO' },
+    ]);
+  });
+
+  // A row the sheet inserted or sorted keeps its place in doc but not its
+  // turn, so the list and the snapshot read the keys, as the sheet does.
+  it("lists each dictionary's rows in the order of their keys, which the document's lists need not share", () => {
+    const peer = seeded();
+    peer.dispatch([
+      dictionaryActions.updateDictionaryAction({
+        kind: 'word',
+        id: SEED.memberWord,
+        values: { order: 'b0' },
+      }),
+      dictionaryActions.updateDictionaryAction({
+        kind: 'word',
+        id: SEED.numberWord,
+        values: { order: 'a0' },
+      }),
+    ]);
+    expect(peer.state.doc.wordIds).toEqual([SEED.memberWord, SEED.numberWord]);
+
+    const keyed = [SEED.numberWord, SEED.memberWord];
+    expect(toDocumentList(peer.state).words.map(({ id }) => id)).toEqual(keyed);
+    expect(toAgentSnapshot(peer.state).words.map(({ id }) => id)).toEqual(
+      keyed
+    );
+  });
+
+  it('lists and counts only the dictionary rows the document lists, a link to a removed domain as none', () => {
+    const peer = seeded();
+    runTool(peer, 'erd_remove_domain', { domainId: SEED.domain });
+    runTool(peer, 'erd_remove_word', { wordId: SEED.memberWord });
+
+    const list = toDocumentList(peer.state);
+
+    expect(peer.state.collections.domainEntities[SEED.domain]).toBeDefined();
+    expect(list).toMatchObject({ wordCount: 1, termCount: 1, domainCount: 0 });
+    expect(list.domains).toEqual([]);
+    expect(list.terms.map(({ id, domainId }) => [id, domainId])).toEqual([
+      [SEED.term, ''],
+    ]);
+    expect(list.words.map(({ id }) => id)).toEqual([SEED.numberWord]);
   });
 
   it('lists a locked code setting at the value the file saves, as the snapshot does', () => {
@@ -250,7 +318,7 @@ describe('the document list', () => {
     expect(list).toMatchObject({ relationshipCount: 0, indexCount: 1 });
     expect(list.relationships).toEqual([]);
     expect(list.indexes.map(({ id }) => id)).toEqual([kept.usersIndex]);
-    expect(file.doc.relationshipIds).toEqual([]);
+    expect(file.doc.relationshipIds ?? []).toEqual([]);
     expect(file.doc.indexIds).toEqual([kept.usersIndex]);
   });
 
@@ -356,6 +424,39 @@ describe('the entity details', () => {
     expect(
       toEntityDetails(peer.state, { memoIds: [SEED.memo] })
     ).not.toHaveProperty('missing');
+  });
+
+  it('gives words, terms and domains as the snapshot does, in the order asked, a removed one as missing', () => {
+    const peer = seeded();
+    const snapshot = toAgentSnapshot(peer.state);
+
+    expect(
+      toEntityDetails(peer.state, {
+        domainIds: [SEED.domain],
+        termIds: [SEED.term],
+        wordIds: [SEED.numberWord, SEED.memberWord],
+      })
+    ).toEqual({
+      words: [snapshot.words[1], snapshot.words[0]],
+      terms: snapshot.terms,
+      domains: snapshot.domains,
+    });
+
+    runTool(peer, 'erd_remove_domain', { domainId: SEED.domain });
+    expect(
+      toEntityDetails(peer.state, {
+        termIds: [SEED.term],
+        domainIds: [SEED.domain, 'nope'],
+      })
+    ).toEqual({
+      terms: [{ ...snapshot.terms[0], domainId: '' }],
+      domains: [],
+      missing: [SEED.domain, 'nope'],
+    });
+    expect(
+      toEntityDetails(peer.state, { tableIds: [SEED.users] }).tables![0]
+        .columns[0].domainId
+    ).toBe('');
   });
 
   it('gives a table group with its tables as the snapshot does, and a removed one as missing', () => {

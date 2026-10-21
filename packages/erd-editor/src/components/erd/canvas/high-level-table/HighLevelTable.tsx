@@ -1,7 +1,6 @@
 /** @jsxHost konva */
 
 import { FC } from '@dineug/r-html';
-import { isEmpty } from 'es-toolkit/compat';
 
 import { useAppContext } from '@/components/appContext';
 import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
@@ -29,6 +28,7 @@ import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_BORDER } from '@/constants/layout';
 import { FocusType } from '@/engine/modules/editor/state';
+import { toNameLabel } from '@/engine/modules/editor/utils/nameView';
 import { Table } from '@/internal-types';
 import { getTableRect } from '@/konva/scene/metrics';
 import { getSceneTransform } from '@/konva/scene/viewport';
@@ -54,6 +54,13 @@ const nameFontSize = (zoomLevel: number) => {
   if (zoomLevel > 0.3) return HIGH_LEVEL_FONT_SIZES[3];
   return HIGH_LEVEL_FONT_SIZES[4];
 };
+
+/**
+ * The text the card draws in the name view: the name it leads with, and in
+ * the view of both the name after the logical name on a line of its own.
+ */
+const nameText = ({ text, after }: { text: string; after: string }) =>
+  after ? `${text}\n${after}` : text;
 
 const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -100,7 +107,8 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
     const rect = getTableRect(store.state, table, source);
     const { zoomLevel } = getSceneTransform(store.state, source);
 
-    const isEmptyName = isEmpty(table.name.trim());
+    const label = toNameLabel(store.state.settings, table);
+    const isEmptyName = !label.text.trim();
     const sharedFocus = sharedFocusTableColor();
     const sharedSelected = sharedSelectColor();
     const ringColor = sharedFocus ?? sharedSelected;
@@ -158,11 +166,11 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           y={TABLE_INSET}
           width={rect.width - TABLE_BORDER * 2}
           height={rect.height - TABLE_INSET * 2}
-          text={isEmptyName ? i18n.value.t('common.unnamed') : table.name}
+          text={isEmptyName ? i18n.value.t('common.unnamed') : nameText(label)}
           fill={
             diffTextColor(theme, diffPaths, FocusType.tableName) ??
             diffTextColor(theme, diffPaths, FocusType.tableComment) ??
-            (isEmptyName ? theme.placeholder : theme.active)
+            (isEmptyName || label.standIn ? theme.placeholder : theme.active)
           }
           fontFamily={SCENE_FONT_FAMILY}
           fontSize={nameFontSize(zoomLevel)}

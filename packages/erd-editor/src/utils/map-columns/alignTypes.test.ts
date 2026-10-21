@@ -7,11 +7,15 @@ import {
   seedMapTable,
 } from '@/__test-utils__/mapColumnsSeed';
 import { Database } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeDatabaseAction,
   changeRelationshipDataTypeSyncAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeColumnDataTypeAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   getTypeNote,
   toAlignTypeActions,
@@ -148,6 +152,42 @@ describe('toAlignTypeActions', () => {
     expect(toAlignTypeActions(store.state, link(['id'], ['a']))).toEqual([
       type('a', 'c', 'int'),
       type('old', 'c', 'int'),
+    ]);
+  });
+
+  it('unlinks each column it takes off its domain, one the sync reaches included', () => {
+    const store = setup(
+      [
+        { id: 'id', dataType: 'int' },
+        { id: 'code', dataType: 'bigint' },
+      ],
+      [
+        { id: 'a', dataType: 'bigint' },
+        { id: 'b', dataType: 'bigint' },
+      ]
+    );
+    seedMapTable(store, 'g', 'lines', [{ id: 'ga', dataType: 'bigint' }]);
+    seedMapRelationship(store, 'line', ['c', ['a']], ['g', ['ga']]);
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount', dataType: 'bigint' },
+      }),
+      changeColumnDomainAction({ tableId: 'c', id: 'a', value: 'd1' }),
+      changeColumnDomainAction({ tableId: 'c', id: 'b', value: 'd1' }),
+      changeColumnDomainAction({ tableId: 'g', id: 'ga', value: 'd1' })
+    );
+    const unlink = (id: string, tableId: string) =>
+      changeColumnDomainAction({ id, tableId, value: '' });
+
+    expect(
+      toAlignTypeActions(store.state, link(['id', 'code'], ['a', 'b']))
+    ).toEqual([
+      type('a', 'c', 'int'),
+      type('ga', 'g', 'int'),
+      unlink('a', 'c'),
+      unlink('ga', 'g'),
     ]);
   });
 });

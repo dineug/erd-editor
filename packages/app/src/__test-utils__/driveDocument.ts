@@ -283,10 +283,10 @@ export function openTab(env: DriveEnv, options: TabOptions) {
 
 export type Tab = ReturnType<typeof openTab>;
 
-/** The names of a document's tables, sorted, to compare what two replicas hold. */
+/** The names of a document's tables, sorted, to compare what two replicas hold, none left out. */
 export function tableNames(value: string): string[] {
   const { doc, collections } = JSON.parse(value);
-  return doc.tableIds
+  return (doc.tableIds ?? [])
     .map((id: string) => collections.tableEntities[id].name)
     .sort();
 }

@@ -165,12 +165,18 @@ const loadedDocument = (x = 0) =>
 
 /**
  * The two-table PostgreSQL document the Schema SQL options fixtures were
- * written from, with no lock, so the bracket type it saves is the one shown.
+ * written from, every lock off but the name view's, which its clear bit locks,
+ * so the bracket type it saves is the one shown.
  */
-function schemaSQLSampleDocument(ddlScripts?: {
-  before: string;
-  after: string;
-}) {
+function schemaSQLSampleDocument(
+  ddlScripts?: {
+    before: string;
+    after: string;
+  },
+  { logicalNames = false } = {}
+) {
+  // The logical names and the comment the logical name rule file was written from.
+  const named = (logicalName: string) => (logicalNames ? { logicalName } : {});
   const key =
     ColumnOption.primaryKey | ColumnOption.notNull | ColumnOption.autoIncrement;
   const columns = [
@@ -180,6 +186,7 @@ function schemaSQLSampleDocument(ddlScripts?: {
       name: 'id',
       dataType: 'INT',
       options: key,
+      ...named('Member ID'),
     }),
     createColumn({
       id: 'm2',
@@ -187,6 +194,9 @@ function schemaSQLSampleDocument(ddlScripts?: {
       name: 'email',
       dataType: 'VARCHAR(255)',
       options: ColumnOption.notNull | ColumnOption.unique,
+      ...(logicalNames
+        ? { logicalName: 'Email', comment: 'Sign-in address' }
+        : {}),
     }),
     createColumn({
       id: 'p1',
@@ -201,6 +211,7 @@ function schemaSQLSampleDocument(ddlScripts?: {
       name: 'member_id',
       dataType: 'INT',
       options: ColumnOption.notNull,
+      ...named("Author's member"),
     }),
     createColumn({
       id: 'p3',
@@ -208,6 +219,7 @@ function schemaSQLSampleDocument(ddlScripts?: {
       name: 'title',
       dataType: 'VARCHAR(200)',
       options: ColumnOption.notNull,
+      ...named('Title'),
     }),
   ];
 
@@ -229,12 +241,14 @@ function schemaSQLSampleDocument(ddlScripts?: {
           comment: 'Members',
           columnIds: ['m1', 'm2'],
           seqColumnIds: ['m1', 'm2'],
+          ...named('Member'),
         }),
         tp: createTable({
           id: 'tp',
           name: 'post',
           columnIds: ['p1', 'p2', 'p3'],
           seqColumnIds: ['p1', 'p2', 'p3'],
+          ...named('Post'),
         }),
       },
       tableColumnEntities: Object.fromEntries(
@@ -1079,6 +1093,26 @@ describe('useErdEditorAttachElement', () => {
         header: 'createAndUse',
       })
     ).toBe(schemaSQLFixture('Oracle/create-use.sql'));
+  });
+
+  it('writes a logical name where a comment is empty under logicalNameAsComment, any other value read as left out', async () => {
+    const { ctx } = await setup();
+    ctx.setInitialValue(
+      schemaSQLSampleDocument(undefined, { logicalNames: true })
+    );
+    const named = schemaSQLFixture(
+      'PostgreSQL/logical-name-comment-create-none.sql'
+    );
+
+    expect(ctx.getSchemaSQL('PostgreSQL', { logicalNameAsComment: true })).toBe(
+      named
+    );
+    expect(ctx.getSchemaSQL('PostgreSQL')).not.toContain("'Post'");
+    for (const value of [false, 'true', 1]) {
+      expect(
+        ctx.getSchemaSQL('PostgreSQL', { logicalNameAsComment: value } as any)
+      ).toBe(ctx.getSchemaSQL('PostgreSQL'));
+    }
   });
 
   it('ignores options that are no object, and any value or key getSchemaSQL does not know', async () => {

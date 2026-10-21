@@ -616,3 +616,34 @@ describe('schema-sql/MariaDB ifNotExists', () => {
     );
   });
 });
+
+describe('schema-sql/MariaDB logical names as comments', () => {
+  it('writes the logical name where the table or column comment is empty, and none without the option', () => {
+    const { state, users, posts } = createFixture();
+    const columns = state.collections.tableColumnEntities;
+    users.logicalName = 'User';
+    posts.logicalName = 'Post';
+    columns['col-name'].logicalName = 'Name';
+    columns['col-title'].logicalName = "Post's title";
+    const buffer: string[] = [];
+
+    formatTable(state, { buffer, table: posts, logicalNameAsComment: true });
+
+    expect(buffer).toEqual([
+      'CREATE TABLE posts',
+      '(',
+      "  title   VARCHAR(20) NOT NULL COMMENT 'Post''s title',",
+      '  user_id INT         NULL    ',
+      ") COMMENT 'Post';",
+    ]);
+    expect(
+      createSchema(state, undefined, {
+        statements: 'ifNotExists',
+        logicalNameAsComment: true,
+      })
+    ).toContain(
+      "\n  name VARCHAR(50) NOT NULL DEFAULT 'guest' COMMENT 'user name',\n"
+    );
+    expect(createSchema(state)).not.toContain('Post');
+  });
+});

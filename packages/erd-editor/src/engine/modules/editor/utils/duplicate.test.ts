@@ -37,7 +37,10 @@ const ALLOWED_ACTION_TYPES = [
   'column.changeComment',
   'column.changeDataType',
   'column.changeDefault',
+  'column.changeDomain',
+  'column.changeLogicalName',
   'column.changeName',
+  'column.changeNameDerived',
   'column.changeNotNull',
   'column.changePrimaryKey',
   'column.changeUnique',
@@ -51,7 +54,9 @@ const ALLOWED_ACTION_TYPES = [
   'relationship.add',
   'table.add',
   'table.changeComment',
+  'table.changeLogicalName',
   'table.changeName',
+  'table.changeNameDerived',
 ];
 
 /**
@@ -188,6 +193,8 @@ const createColourfulBatch = () => {
     tables: [
       createClipboardTable('t1', {
         columnIds: ['c1', 'c2'],
+        logicalName: 'Member',
+        nameDerived: true,
         ui: {
           x: 100,
           y: 200,
@@ -204,7 +211,10 @@ const createColourfulBatch = () => {
           ColumnOption.primaryKey |
           ColumnOption.notNull |
           ColumnOption.unique |
-          ColumnOption.autoIncrement,
+          ColumnOption.autoIncrement |
+          ColumnOption.nameDerived,
+        logicalName: 'Member number',
+        domainId: 'd1',
       }),
       createClipboardColumn('c2', 't1'),
     ],
@@ -1175,14 +1185,23 @@ describe('toCreateEntityActions — values only', () => {
   it('still sends every field that holds something else', () => {
     const { actions } = toCreateEntityActions(
       createInput({
-        tables: [createClipboardTable('t1', { columnIds: ['c1'] })],
+        tables: [
+          createClipboardTable('t1', {
+            columnIds: ['c1'],
+            logicalName: 'Member',
+            nameDerived: true,
+          }),
+        ],
         columns: [
           createClipboardColumn('c1', 't1', {
             options:
               ColumnOption.primaryKey |
               ColumnOption.notNull |
               ColumnOption.unique |
-              ColumnOption.autoIncrement,
+              ColumnOption.autoIncrement |
+              ColumnOption.nameDerived,
+            logicalName: 'Member number',
+            domainId: 'd1',
           }),
         ],
         memos: [createClipboardMemo('m1')],
@@ -1205,9 +1224,53 @@ describe('toCreateEntityActions — values only', () => {
     );
   });
 
-  it('sends every field by default, as a paste does', () => {
+  it('sends every field but an unset logical name, domain link and derived flag by default, as a paste does', () => {
     const { actions } = toCreateEntityActions(blankInput(), placed());
 
     expect(toTypes(actions)).toHaveLength(19);
+  });
+
+  it('sends a logical name, a domain link and a derived flag only when set, by default too', () => {
+    const DICTIONARY_FIELDS = [
+      'table.changeLogicalName',
+      'table.changeNameDerived',
+      'column.changeLogicalName',
+      'column.changeDomain',
+      'column.changeNameDerived',
+    ];
+    const input = blankInput();
+    input.tables[0] = {
+      ...input.tables[0],
+      logicalName: 'Member',
+      nameDerived: true,
+    };
+    input.columns[0] = {
+      ...input.columns[0],
+      logicalName: 'Member number',
+      domainId: 'd1',
+      options: ColumnOption.nameDerived,
+    };
+
+    const blank = toCreateEntityActions(blankInput(), placed()).actions;
+    const { actions, tableIds } = toCreateEntityActions(input, placed());
+    const [columnAdd] = filterActions(actions, 'column.add');
+
+    expect(
+      toTypes(blank).filter(type => DICTIONARY_FIELDS.includes(type))
+    ).toEqual([]);
+    expect(
+      actions
+        .filter(({ type }) => DICTIONARY_FIELDS.includes(type))
+        .map(({ type, payload }) => [type, payload])
+    ).toEqual([
+      ['table.changeLogicalName', { id: tableIds[0], value: 'Member' }],
+      ['table.changeNameDerived', { id: tableIds[0], value: true }],
+      [
+        'column.changeLogicalName',
+        { ...columnAdd.payload, value: 'Member number' },
+      ],
+      ['column.changeDomain', { ...columnAdd.payload, value: 'd1' }],
+      ['column.changeNameDerived', { ...columnAdd.payload, value: true }],
+    ]);
   });
 });

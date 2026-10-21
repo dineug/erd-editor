@@ -1,4 +1,8 @@
-import { replaceOperator } from '@dineug/erd-editor-schema';
+import {
+  isSettingLocked,
+  replaceOperator,
+  setSettingLock,
+} from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { clamp, isNil, isNumber, isString, pick } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
@@ -9,9 +13,11 @@ import {
   LockSettingFields,
   LockSettingType,
   LockSettingTypeList,
+  NameViewMode,
   Show,
 } from '@/constants/schema';
 import { Viewport } from '@/engine/modules/editor/state';
+import { keepFocusShown } from '@/engine/modules/editor/utils/nameView';
 import {
   releaseMemos,
   releaseTableGroups,
@@ -22,7 +28,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
-import { Point } from '@/internal-types';
+import { Point, ValuesType } from '@/internal-types';
 import { getFrozenOrigin, getViewContentRect } from '@/konva/scene/viewFreeze';
 import { getSceneTransform } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
@@ -34,6 +40,7 @@ import {
   hasDatabase,
   hasLanguage,
   hasNameCase,
+  hasNameViewMode,
   maxWidthCommentInRange,
   zoomInRange,
   zoomLevelInRange,
@@ -303,6 +310,9 @@ const changeShow: ReducerType<typeof ActionType.changeShow> = (
   settings.show = value ? settings.show | show : settings.show & ~show;
   if (value && bHas(show, Show.hideTableGroup)) releaseTableGroups(state);
   if (value && bHas(show, Show.hideMemo)) releaseMemos(state);
+  // The domain's own cell decides whether the logical view's type cell stands
+  // for the domain, so a focus there moves onto the cell that now draws it.
+  if (bHas(show, Show.columnDomain)) keepFocusShown(state);
 };
 
 export const changeDatabaseAction = createAction<
@@ -479,6 +489,7 @@ const isLockedValue: Record<keyof LockedValues, (value: any) => boolean> = {
   tableNameCase: hasNameCase,
   columnNameCase: hasNameCase,
   bracketType: hasBracketType,
+  nameViewMode: hasNameViewMode,
 };
 
 /**
@@ -492,9 +503,16 @@ export const CodeLockSettings =
   LockSettingType.bracketType;
 
 /**
+ * The locks whose unlock carries the unlocker's value onto every peer: the
+ * code settings, and the name view each reader held as its own while locked.
+ */
+export const UnlockCarriedSettings =
+  CodeLockSettings | LockSettingType.unlockNameViewMode;
+
+/**
  * Locks each setting named at the values the payload carries, the last lock
  * or unlock of it winning on every peer, and leaves one sent wrong as it was.
- * An unlock sets each valid code value it carries as a setter would, won or not.
+ * An unlock sets each valid value it carries as a shared setter would, won or not.
  */
 const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
   state,
@@ -519,25 +537,31 @@ const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
       'settings',
       String(bit),
       () => {
-        if (value) {
-          Object.assign(settings.lockedValues, carried);
-          settings.lockSettings |= bit;
-        } else {
-          settings.lockSettings &= ~bit;
-        }
+        if (value) Object.assign(settings.lockedValues, carried);
+        settings.lockSettings = setSettingLock(
+          settings.lockSettings,
+          bit,
+          value
+        );
       }
     );
 
     // Outside the lock's register, so an unlock that crosses a newer relock
     // shows the same value on every peer whichever of the two comes first.
-    if (value || !bHas(CodeLockSettings, bit)) return;
+    if (value || !bHas(UnlockCarriedSettings, bit)) return;
     valid.forEach(field =>
-      replaceCodeSetting(
-        state,
-        safeVersion,
-        field as CodeSetting,
-        carried[field] as number
-      )
+      field === 'nameViewMode'
+        ? replaceNameViewMode(
+            state,
+            safeVersion,
+            carried.nameViewMode as NameViewModeValue
+          )
+        : replaceCodeSetting(
+            state,
+            safeVersion,
+            field as CodeSetting,
+            carried[field] as number
+          )
     );
   });
 };
@@ -584,6 +608,80 @@ const changeDDLScript: ReducerType<typeof ActionType.changeDDLScript> = (
   );
 };
 
+type NameViewModeValue = ValuesType<typeof NameViewMode>;
+
+/**
+ * Shows another name view on this store's screen, the focus going onto the
+ * cell that now draws what it stood on.
+ */
+function showNameViewMode(state: RootState, value: NameViewModeValue): void {
+  state.settings.nameViewMode = value;
+  keepFocusShown(state);
+}
+
+/**
+ * Writes the name view through its register, which the shared setter and an
+ * unlock both write through, so the latest of them wins on every peer.
+ */
+function replaceNameViewMode(
+  state: RootState,
+  version: number,
+  value: NameViewModeValue
+): void {
+  replaceOperator(
+    state.lww,
+    version,
+    'settings.nameViewMode',
+    'settings',
+    'nameViewMode',
+    () => showNameViewMode(state, value)
+  );
+}
+
+export const changeNameViewModeAction = createAction<
+  ActionMap[typeof ActionType.changeNameViewMode]
+>(ActionType.changeNameViewMode);
+
+/**
+ * A shared switch writes the register every peer and replica share. Any other
+ * shows on the store whose editor sent it alone, outside the register, and the
+ * rest drop it whatever its tags say, since a replica strips them.
+ */
+const changeNameViewMode: ReducerType<typeof ActionType.changeNameViewMode> = (
+  state,
+  { payload: { value, shared, editorId }, version },
+  { clock }
+) => {
+  if (!hasNameViewMode(value)) return;
+
+  if (shared === true) {
+    replaceNameViewMode(state, version ?? clock.getVersion(), value);
+  } else if (editorId === state.editor.id) {
+    showNameViewMode(state, value);
+  }
+};
+
+/**
+ * The switch a reader makes: shared while the lock is off and the store may
+ * edit, its own screen otherwise. The caller passes the store's readonly flag,
+ * which no state holds.
+ */
+export const toNameViewModeAction = (
+  state: RootState,
+  value: NameViewModeValue,
+  readonly: boolean
+) =>
+  changeNameViewModeAction({
+    value,
+    shared:
+      !readonly &&
+      !isSettingLocked(
+        state.settings.lockSettings,
+        LockSettingType.unlockNameViewMode
+      ),
+    editorId: state.editor.id,
+  });
+
 /** Every lock this release knows, the rest of lockSettings a later one's. */
 const LOCK_KNOWN = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
 
@@ -620,7 +718,10 @@ export function landLoadedSettings(
         Object.assign(settings.lockedValues, pick(loaded.lockedValues, fields));
       }
     );
-    if (bit !== LockSettingType.viewport && bHas(settings.lockSettings, bit)) {
+    if (
+      bit !== LockSettingType.viewport &&
+      isSettingLocked(settings.lockSettings, bit)
+    ) {
       Object.assign(settings, pick(screen, fields));
     }
   });
@@ -645,6 +746,7 @@ export const settingsReducers = {
   [ActionType.changeLockSettings]: changeLockSettings,
   [ActionType.changeIgnoreSaveSettings]: changeIgnoreSaveSettings,
   [ActionType.changeDDLScript]: changeDDLScript,
+  [ActionType.changeNameViewMode]: changeNameViewMode,
 };
 
 export const actions = {
@@ -666,4 +768,5 @@ export const actions = {
   changeLockSettingsAction,
   changeIgnoreSaveSettingsAction,
   changeDDLScriptAction,
+  changeNameViewModeAction,
 };

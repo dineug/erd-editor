@@ -6,11 +6,18 @@ import { createTestAppContext } from '@/__test-utils__';
 import {
   ColumnOption,
   Direction,
+  LockSettingType,
+  NameViewMode,
   Show,
   StartRelationshipType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import type { HookEffect } from '@/engine/hooks';
+import {
+  addDictionaryAction,
+  removeDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
 import {
   addIndexAction,
   changeIndexUniqueAction,
@@ -26,14 +33,21 @@ import {
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import { hooks } from '@/engine/modules/relationship/hooks';
-import { changeShowAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeLockSettingsAction,
+  changeNameViewModeAction,
+  changeShowAction,
+} from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   moveColumnAction,
@@ -194,6 +208,14 @@ describe('relationship/hooks registration', () => {
       'indexColumn.remove',
       'indexColumn.move',
       'column.move',
+      'settings.changeNameViewMode',
+      'settings.changeLockSettings',
+      'table.changeLogicalName',
+      'column.changeLogicalName',
+      'column.changeDomain',
+      'dictionary.add',
+      'dictionary.update',
+      'dictionary.remove',
     ]);
   });
 });
@@ -924,5 +946,195 @@ describe('relationship/hooks relationshipSortHook', () => {
 
     expect(rel(store, 'r1').start.direction).toBe(Direction.right);
     expect(relationshipSort).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('relationship/hooks across the name views and the dictionaries', () => {
+  it('lays the connectors out again on the widths a name view switch gives', async () => {
+    const { store } = createTestAppContext();
+    rxStores.push(store);
+    store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      addColumnAction({ id: 'c1', tableId: 't1' }),
+      changeColumnLogicalNameAction({
+        id: 'c1',
+        tableId: 't1',
+        value: 'the moment the member signed up for the club',
+      }),
+      addTableAction({ id: 't2', ui: { x: 3_000, y: 0, zIndex: 2 } }),
+      addRelationshipAction({
+        id: 'r1',
+        relationshipType: 4,
+        start: { tableId: 't1', columnIds: ['c1'] },
+        end: { tableId: 't2', columnIds: [] },
+      })
+    );
+    await settle();
+    const table = store.state.collections.tableEntities.t1;
+    const physical = calcTableWidths(table, store.state).width;
+    expect(store.state.collections.relationshipEntities.r1.start.x).toBe(
+      physical
+    );
+    vi.mocked(relationshipSort).mockClear();
+
+    store.dispatchSync(
+      changeNameViewModeAction({
+        value: NameViewMode.both,
+        shared: false,
+        editorId: store.state.editor.id,
+      })
+    );
+    await settle();
+
+    const both = calcTableWidths(table, store.state).width;
+    expect(both).toBeGreaterThan(physical);
+    expect(relationshipSort).toHaveBeenCalledTimes(1);
+    expect(tableToObjectPoint(store.state, table).width).toBe(both);
+    expect(store.state.collections.relationshipEntities.r1.start.x).toBe(both);
+  });
+
+  it.each([
+    [
+      'a word add',
+      addDictionaryAction({
+        kind: 'word',
+        id: 'w1',
+        values: { name: 'member' },
+      }),
+    ],
+    [
+      'a word update',
+      updateDictionaryAction({
+        kind: 'word',
+        id: 'w1',
+        values: { name: 'members' },
+      }),
+    ],
+    ['a word removal', removeDictionaryAction({ kind: 'word', id: 'w1' })],
+    [
+      'a term add',
+      addDictionaryAction({
+        kind: 'term',
+        id: 't1',
+        values: { name: 'join date' },
+      }),
+    ],
+    [
+      'a term update',
+      updateDictionaryAction({
+        kind: 'term',
+        id: 't1',
+        values: { domainId: 'd1' },
+      }),
+    ],
+    ['a term removal', removeDictionaryAction({ kind: 'term', id: 't1' })],
+    [
+      'a domain update of its type alone',
+      updateDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { dataType: 'BIGINT' },
+      }),
+    ],
+    [
+      'a relock of the name view',
+      changeLockSettingsAction({
+        lockSettingType: LockSettingType.unlockNameViewMode,
+        value: true,
+        values: { nameViewMode: NameViewMode.logical },
+      }),
+    ],
+    [
+      'an unlock of another setting',
+      changeLockSettingsAction({
+        lockSettingType: LockSettingType.canvasType,
+        value: false,
+        values: {},
+      }),
+    ],
+    [
+      'a switch another reader shows on its own screen, which this store drops',
+      changeNameViewModeAction({
+        value: NameViewMode.logical,
+        shared: false,
+        editorId: 'another',
+      }),
+    ],
+  ])('neither sorts nor measures after %s', async (_, action) => {
+    const store = createTestStore();
+    const { dispatch } = await run(relationshipSortHook, store);
+    const generation = getWidthGeneration();
+
+    dispatch(action);
+    await settle();
+
+    expect(relationshipSort).not.toHaveBeenCalled();
+    expect(getWidthGeneration()).toBe(generation);
+  });
+
+  it.each([
+    [
+      'a domain add',
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Amount' },
+      }),
+    ],
+    [
+      'a domain add an undo brings back with no values',
+      addDictionaryAction({ kind: 'domain', id: 'd1' }),
+    ],
+    [
+      'a domain rename',
+      updateDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { name: 'Money', dataType: 'INT' },
+      }),
+    ],
+    ['a domain removal', removeDictionaryAction({ kind: 'domain', id: 'd1' })],
+    [
+      'an unlock of the name view',
+      changeLockSettingsAction({
+        lockSettingType: LockSettingType.unlockNameViewMode,
+        value: false,
+        values: { nameViewMode: NameViewMode.logical },
+      }),
+    ],
+    [
+      'a name view switch',
+      changeNameViewModeAction({
+        value: NameViewMode.logical,
+        shared: true,
+        editorId: 'e1',
+      }),
+    ],
+    [
+      'a table logical name',
+      changeTableLogicalNameAction({ id: 't1', value: 'Member' }),
+    ],
+    [
+      'a column logical name',
+      changeColumnLogicalNameAction({
+        id: 'c1',
+        tableId: 't1',
+        value: 'Joined',
+      }),
+    ],
+    [
+      'a domain link',
+      changeColumnDomainAction({ id: 'c1', tableId: 't1', value: 'd1' }),
+    ],
+  ])('sorts and measures again after %s', async (_, action) => {
+    const store = createTestStore();
+    const { dispatch } = await run(relationshipSortHook, store);
+    const generation = getWidthGeneration();
+
+    dispatch(action);
+    await settle();
+
+    expect(relationshipSort).toHaveBeenCalledTimes(1);
+    expect(getWidthGeneration()).toBe(generation + 1);
   });
 });

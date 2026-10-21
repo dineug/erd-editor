@@ -19,6 +19,7 @@ export default defineConfig({
       include: [
         'src/hub/**/*.ts',
         'src/keys.ts',
+        'src/readableDiagram.ts',
         'src/settings.ts',
         'src/tabSave.ts',
       ],

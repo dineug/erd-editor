@@ -195,6 +195,8 @@ export function createSchemaSQL(
     writer.createSchema(state, tableIds, {
       statements: resolved.statements,
       written,
+      // Any value but true, from a host or an agent, reads as left out.
+      logicalNameAsComment: options?.logicalNameAsComment === true,
     })
   );
   // The scripts belong to the whole document, so a few of its tables write

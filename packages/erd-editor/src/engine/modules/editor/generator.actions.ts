@@ -11,6 +11,7 @@ import { APPEND_GAP, START_ADD, TABLE_SORT_START } from '@/constants/layout';
 import { ColumnOption } from '@/constants/schema';
 import type { EngineContext } from '@/engine/context';
 import { GeneratorAction } from '@/engine/generator.actions';
+import { toPastedDomainId } from '@/engine/modules/dictionary/membership';
 import {
   changeMemoColorAction,
   moveMemoAction,
@@ -28,7 +29,10 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
@@ -89,6 +93,7 @@ import {
   padRect,
 } from '@/utils/tableGroup';
 
+import { DictionaryLoadFlag } from './actions';
 import {
   clearAction,
   dragstartColumnAction,
@@ -128,10 +133,23 @@ import { viewActions$ } from './view.generator.actions';
 
 const CENTER_BOX_SIZE = 15;
 
-export const loadJsonAction$ = (value: string): GeneratorAction =>
+/**
+ * Replaces the document. A schema import passes keepDictionaries, since its
+ * text holds no dictionary and the store's words, terms and domains stay.
+ *
+ * @example
+ * store.dispatch(loadJsonAction$(json, { keepDictionaries: true }));
+ */
+export const loadJsonAction$ = (
+  value: string,
+  { keepDictionaries = false }: DictionaryLoadFlag = {}
+): GeneratorAction =>
   function* () {
-    yield clearAction();
-    yield loadJsonAction({ value });
+    // An unflagged load sends the payloads it always did.
+    const flag = keepDictionaries ? { keepDictionaries } : undefined;
+
+    yield clearAction(flag);
+    yield loadJsonAction({ value, ...flag });
   };
 
 export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
@@ -228,7 +246,12 @@ export const pasteEntitiesAction$ = (
     yield* createEntities$(state, {
       input: {
         tables: payload.tables,
-        columns: payload.columns,
+        // A copy from another document, or one taken before its domain's type
+        // changed, keeps no link to a domain off the type it pastes.
+        columns: payload.columns.map(column => ({
+          ...column,
+          domainId: toPastedDomainId(state, column.domainId, column.dataType),
+        })),
         memos: payload.memos,
         relationships: payload.relationships ?? [],
         indexes: payload.indexes ?? [],
@@ -335,9 +358,9 @@ function roundPlacement(
 }
 
 /**
- * What a duplicate or an append makes new entities from. Only an append names
- * groups, each with the copied tables it holds; a duplicate, like a paste,
- * brings none and no membership.
+ * What a duplicate or an append makes new entities from, the logical names,
+ * derived flags and domain links included. Only an append names groups, each
+ * with the copied tables it holds; a duplicate, like a paste, brings none.
  */
 function toDuplicateInput(
   state: RootState,
@@ -366,8 +389,10 @@ function toDuplicateInput(
     tables: tables.map(table => ({
       sourceId: table.id,
       name: table.name,
+      logicalName: table.logicalName,
       comment: table.comment,
       columnIds: [...table.columnIds],
+      nameDerived: table.nameDerived,
       ui: {
         x: table.ui.x,
         y: table.ui.y,
@@ -385,6 +410,8 @@ function toDuplicateInput(
       dataType: column.dataType,
       default: column.default,
       options: column.options,
+      logicalName: column.logicalName,
+      domainId: column.domainId,
       ui: {
         keys: column.ui.keys,
         widthName: column.ui.widthName,
@@ -435,14 +462,19 @@ export type SchemaAppend = CreateEntityActions & { rect: Rect };
 /**
  * Lays a parsed document's tables out in the grid and wraps its groups round
  * them, in place: the sort, on the document's own copy, its widths measured
- * first as this store measures them, so the points are this store's alone.
+ * first as this store measures them, in the name view it shows, so the points are this store's alone.
  */
 function sortGrid(
   state: RootState,
   schema: ERDEditorSchemaV3,
   ctx: EngineContext
 ): void {
-  const copy: RootState = { ...state, ...schema };
+  const { nameViewMode } = state.settings;
+  const copy: RootState = {
+    ...state,
+    ...schema,
+    settings: { ...schema.settings, nameViewMode },
+  };
 
   recalculateTableWidth(copy, ctx);
   tableReducers[TableActionType.sortTable](
@@ -581,9 +613,9 @@ function toAppendOrigin(state: RootState): Point {
 }
 
 /**
- * A document's tables, relationships, indexes and memos as new entities of this
- * one, made as a paste makes them with no field at its default sent, their block
- * a gap under the diagram. Null for unreadable text or a document holding nothing.
+ * A document's tables, relationships, indexes and memos as new entities here,
+ * made as a paste makes them, no field at its default and no domain link sent,
+ * a gap under the diagram. Null for unreadable text or a document of nothing.
  *
  * @example
  * const append = toSchemaAppend(state, json, 'grid', ctx);
@@ -603,15 +635,24 @@ export function toSchemaAppend(
 
   const { doc, collections } = schema;
   const read: RootState = { ...state, doc, collections };
-  const input = toDuplicateInput(read, doc);
-  if (!input.tables.length && !input.memos.length) return null;
+  const copied = toDuplicateInput(read, doc);
+  if (!copied.tables.length && !copied.memos.length) return null;
+
+  // The file's dictionaries stay behind, so no column links one of its domains.
+  const input: CreateEntityInput = {
+    ...copied,
+    columns: copied.columns.map(column => ({ ...column, domainId: '' })),
+  };
 
   const points = toLayoutPoints(state, schema, input, layout, ctx);
+  // Measured as the tables land, with none of the file's domains listed, so a
+  // type cell or a domain cell takes no width from a link the append drops.
+  const appended: RootState = { ...read, doc: { ...doc, domainIds: [] } };
   const sizes = new Map(
     query(collections)
       .collection('tableEntities')
       .selectByIds(doc.tableIds)
-      .map(table => [table.id, measureTableSize(table, read, ctx.toWidth)])
+      .map(table => [table.id, measureTableSize(table, appended, ctx.toWidth)])
   );
   let minX = Infinity;
   let minY = Infinity;
@@ -1066,7 +1107,8 @@ export function toSchemaImportJson(
 
 /**
  * The load each of the four text imports runs: the parsed document replaces
- * this one, its tables at the points the grid gives them here.
+ * this one, its tables at the points the grid gives them here, while the
+ * words, terms and domains stay, since the text brings none.
  */
 export const loadSchemaAction$ = (
   type: SchemaImportType,
@@ -1074,7 +1116,8 @@ export const loadSchemaAction$ = (
 ): GeneratorAction =>
   function* (state, ctx) {
     yield loadJsonAction$(
-      withGridPoints(toSchemaImportJson(type, value, state, ctx), state, ctx)
+      withGridPoints(toSchemaImportJson(type, value, state, ctx), state, ctx),
+      { keepDictionaries: true }
     );
   };
 
@@ -1220,6 +1263,18 @@ export const dragoverColumnAction$ = (
         changeColumnAutoIncrementAction({
           ...payload,
           value: bHas(column.options, ColumnOption.autoIncrement),
+        }),
+        changeColumnLogicalNameAction({
+          ...payload,
+          value: column.logicalName,
+        }),
+        changeColumnDomainAction({
+          ...payload,
+          value: column.domainId,
+        }),
+        changeColumnNameDerivedAction({
+          ...payload,
+          value: bHas(column.options, ColumnOption.nameDerived),
         }),
         // An append keeps the end of the table, where addColumn put it.
         ...(targetId === null

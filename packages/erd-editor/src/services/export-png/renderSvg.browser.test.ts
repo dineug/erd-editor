@@ -8,6 +8,7 @@ import {
   ColumnOption,
   ColumnUIKey,
   Direction,
+  NameViewMode,
   ReferentialAction,
   RelationshipType,
   StartRelationshipType,
@@ -215,6 +216,46 @@ function createUnnamedDoc() {
   return JSON.stringify(json);
 }
 
+/**
+ * That document with logical names on both tables and the foreign key, which
+ * links a domain, and a word sheet forbidding the second table's logical name.
+ */
+function createNamedDoc() {
+  const json = JSON.parse(createDoc(1, ''));
+  const { doc, collections } = json;
+  Object.assign(collections.tableEntities.users, { logicalName: 'User' });
+  Object.assign(collections.tableEntities.orders, { logicalName: 'Order' });
+  Object.assign(collections.tableColumnEntities.orders_user, {
+    logicalName: 'User ID',
+    domainId: 'identifier',
+  });
+  doc.domainIds = ['identifier'];
+  doc.wordIds = ['member'];
+  collections.domainEntities = {
+    fields: ['id', 'name', 'category', 'dataType', 'description'],
+    rows: [['identifier', 'Identifier', '', 'INT']],
+  };
+  collections.wordEntities = {
+    fields: [
+      'id',
+      'name',
+      'abbreviation',
+      'englishName',
+      'description',
+      'synonyms',
+      'forbiddenWords',
+    ],
+    rows: [['member', 'Member', 'MBR', '', '', '', 'Order']],
+  };
+  return JSON.stringify(json);
+}
+
+/** The text elements that write the given text. */
+const textsOf = (root: Element, text: string) =>
+  Array.from(root.querySelectorAll('text')).filter(
+    element => element.textContent === text
+  );
+
 /** A language whose every word is tagged, so a word read from it is told from English. */
 const pseudo = { locale: 'de-DE' as const, messages: pseudoMessages('xx') };
 
@@ -395,6 +436,56 @@ describe('the svg in the language it is asked in', () => {
   });
 });
 
+describe('the svg in the name view it is asked in', () => {
+  it('writes the logical names in the place of the names, and the domain in the type cell', async () => {
+    const root = parse(
+      await renderDocumentSvg({
+        doc: createNamedDoc(),
+        theme,
+        toWidth,
+        nameViewMode: NameViewMode.logical,
+      })
+    );
+
+    expect(texts(root)).toEqual(
+      expect.arrayContaining(['User', 'Order', 'User ID', 'Identifier'])
+    );
+    expect(texts(root)).not.toContain('users');
+    expect(texts(root)).not.toContain('user_id');
+  });
+
+  it('writes the names the document holds when it is asked in none', async () => {
+    const root = parse(
+      await renderDocumentSvg({ doc: createNamedDoc(), theme, toWidth })
+    );
+
+    expect(texts(root)).toEqual(
+      expect.arrayContaining(['users', 'orders', 'user_id', 'INT'])
+    );
+    expect(texts(root)).not.toContain('User ID');
+  });
+
+  it('marks no check, a forbidden word written in the colour of any other name', async () => {
+    const root = parse(
+      await renderDocumentSvg({
+        doc: createNamedDoc(),
+        theme,
+        toWidth,
+        nameViewMode: NameViewMode.logical,
+      })
+    );
+    const fills = Array.from(root.querySelectorAll('text')).map(text =>
+      text.getAttribute('fill')
+    );
+
+    expect(
+      textsOf(root, 'Order').map(text => text.getAttribute('fill'))
+    ).toEqual([theme.active]);
+    expect(fills).not.toContain(theme.dictionaryErrorForeground);
+    expect(fills).not.toContain(theme.dictionaryWarningForeground);
+  });
+});
+
 describe('the attributes konva holds for the export scene', () => {
   /** Every node under the Stage, the layers included, with what konva keeps for each. */
   function attributesOf(stage: Stage) {
@@ -570,6 +661,25 @@ describe('the svg in the shared worker', () => {
     expect(texts(parse(fromWorker))).toContain('xx:table');
     expect(fromWorker).toBe(
       await renderDocumentSvg({ doc, theme, toWidth, i18n: pseudo })
+    );
+  });
+
+  it('is written in the worker in the name view it is asked in', async () => {
+    const warn = vi.spyOn(console, 'warn');
+    const doc = createNamedDoc();
+    const nameViewMode = NameViewMode.logical;
+
+    const fromWorker = await createDocumentSvg({
+      doc,
+      theme,
+      toWidth,
+      nameViewMode,
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(texts(parse(fromWorker))).toContain('User ID');
+    expect(fromWorker).toBe(
+      await renderDocumentSvg({ doc, theme, toWidth, nameViewMode })
     );
   });
 

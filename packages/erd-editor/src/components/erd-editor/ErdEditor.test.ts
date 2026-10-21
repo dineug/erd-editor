@@ -268,6 +268,7 @@ describe('<erd-editor>', () => {
       CanvasType.visualization,
       CanvasType.schemaSQL,
       CanvasType.generatorCode,
+      CanvasType.dictionary,
       CanvasType.settings,
     ]) {
       app.store.dispatchSync(changeCanvasTypeAction({ value: canvasType }));
@@ -899,7 +900,7 @@ describe('<erd-editor>', () => {
 
     el.clear();
     await flush();
-    expect(JSON.parse(el.value).doc.tableIds).toEqual([]);
+    expect(JSON.parse(el.value).doc.tableIds ?? []).toEqual([]);
   });
 
   it('repaints when the preset theme is switched to light', async () => {

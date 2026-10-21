@@ -38,8 +38,11 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { getTableGroupNameBox } from '@/components/erd/canvas/table-group/titleLayout';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
+import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
+import * as kbdStyles from '@/components/primitives/kbd/Kbd.styles';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import * as dataTypeStyles from '@/components/table-view/column/column-data-type/ColumnDataType.styles';
+import * as logicalNameStyles from '@/components/table-view/column/column-logical-name/ColumnLogicalName.styles';
 import { themeContext } from '@/components/themeContext';
 import {
   INPUT_HEIGHT,
@@ -49,7 +52,8 @@ import {
   TABLE_HEADER_ICON_GAP,
   TABLE_HEADER_ICON_SIZE,
 } from '@/constants/layout';
-import { Database, Show } from '@/constants/schema';
+import { Database, NameViewMode, Show } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   editMemoAction,
   editMemoEndAction,
@@ -76,12 +80,25 @@ import {
   changeShowAction,
   changeZoomLevelAction,
   streamScrollToAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeTableGroupAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeTableGroupAction,
+  changeTableLogicalNameAction,
+  changeTableNameAction,
+  changeTableNameDerivedAction,
+} from '@/engine/modules/table/atom.actions';
 import {
   addTableAction$,
   removeTableAction$,
 } from '@/engine/modules/table/generator.actions';
+import {
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
+  changeColumnNameAction,
+  changeColumnNameDerivedAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   addColumnAction$,
   removeColumnAction$,
@@ -97,6 +114,14 @@ import {
   getTableRect,
   getTableWidths,
 } from '@/konva/scene/metrics';
+import {
+  AccentColor,
+  Appearance,
+  createTheme,
+  GrayColor,
+} from '@/themes/radix-ui-theme';
+import { themeToTokensString } from '@/themes/tokens';
+import { contrastRatio, relativeLuminance } from '@/utils/contrastText';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { focusEvent } from '@/utils/internalEvents';
 
@@ -359,6 +384,36 @@ describe('the editing overlay', () => {
     ).toBe('members');
   });
 
+  it('turns a derived table name off as its name is typed, in the batch that writes it', async () => {
+    const fixture = await setup();
+    const { store } = fixture.app;
+    store.dispatchSync(
+      changeTableNameDerivedAction({ id: fixture.tableId, value: true })
+    );
+    await editTableName(fixture);
+    const batches: string[][] = [];
+    const unsubscribe = store.subscribe(actions => {
+      batches.push(actions.map(({ type }) => type));
+    });
+    teardowns.push(unsubscribe);
+
+    const input = inputOf(fixture.mounted);
+    for (const value of ['m', 'me']) {
+      input.value = value;
+      input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      await flush();
+    }
+
+    // The history's own bookkeeping batches ride beside the edits.
+    expect(batches.filter(types => types[0].startsWith('table.'))).toEqual([
+      ['table.changeName', 'table.changeNameDerived'],
+      ['table.changeName'],
+    ]);
+    expect(
+      store.state.collections.tableEntities[fixture.tableId]
+    ).toMatchObject({ name: 'me', nameDerived: false });
+  });
+
   it('writes the typed table comment back into the store', async () => {
     const fixture = await setup();
     const { store } = fixture.app;
@@ -542,13 +597,18 @@ describe('the editing overlay', () => {
     const header = await tinted();
     await editTableComment(header);
     const cell = cellOf(header.mounted);
-    expect(cell.style.getPropertyValue('--active')).toBe('#ffffff');
-    expect(cell.style.getPropertyValue('--placeholder')).toBe('#ffffff');
+    expect(cell.style.getPropertyValue('--cell-text-color')).toBe('#ffffff');
+    expect(cell.classList.contains(String(overlayStyles.tinted))).toBe(true);
 
     const row = await tinted();
     await editColumnName(row);
     expect(inputOf(row.mounted)).toBeTruthy();
-    expect(cellOf(row.mounted).style.getPropertyValue('--active')).toBe('');
+    expect(
+      cellOf(row.mounted).style.getPropertyValue('--cell-text-color')
+    ).toBe('');
+    expect(
+      cellOf(row.mounted).classList.contains(String(overlayStyles.tinted))
+    ).toBe(false);
   });
 
   it('places the editor on the header cell it replaces', async () => {
@@ -720,6 +780,381 @@ function domLineCount(value: string, width: number): number {
 
   return count;
 }
+
+describe('the cell editor in the name views', () => {
+  type Mode = (typeof NameViewMode)[keyof typeof NameViewMode];
+
+  /** The overlay over a named table and column, in the view given. */
+  async function setupView(mode: Mode) {
+    const fixture = await setup();
+    const { store } = fixture.app;
+    const { tableId, columnId } = fixture;
+    store.dispatchSync(
+      changeTableNameAction({ id: tableId, value: 'member' }),
+      changeColumnNameAction({ tableId, id: columnId, value: 'member_no' }),
+      toNameViewModeAction(store.state, mode, false)
+    );
+    await flush();
+    return fixture;
+  }
+
+  /**
+   * Closes the editor open, then focuses a cell by the focus type given and
+   * opens its editor, as a reader moving between cells does.
+   */
+  async function edit(fixture: Fixture, focusType: FocusType) {
+    const { store } = fixture.app;
+    store.dispatchSync(editTableEndAction());
+    await flush();
+    store.dispatchSync(
+      focusType.startsWith('column')
+        ? focusColumnAction({
+            tableId: fixture.tableId,
+            columnId: fixture.columnId,
+            focusType,
+            $mod: false,
+            shiftKey: false,
+          })
+        : focusTableAction({ tableId: fixture.tableId, focusType }),
+      editTableAction()
+    );
+    await flush();
+  }
+
+  /** Types each value into the open editor and gives back the batches the edits sent. */
+  async function type(fixture: Fixture, values: string[]) {
+    const batches: string[][] = [];
+    const unsubscribe = fixture.app.store.subscribe(actions => {
+      batches.push(actions.map(({ type }) => type));
+    });
+    teardowns.push(unsubscribe);
+
+    const input = inputOf(fixture.mounted);
+    for (const value of values) {
+      input.value = value;
+      input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      await flush();
+    }
+
+    // The history's own bookkeeping batches ride beside the edits.
+    return batches.filter(
+      types => types[0].startsWith('table.') || types[0].startsWith('column.')
+    );
+  }
+
+  it('writes the logical name alone from the name cells of the logical view, on every key', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no', physicalName: 'mbr_no' },
+      }),
+      changeTableNameDerivedAction({ id: fixture.tableId, value: true }),
+      changeColumnNameDerivedAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: true,
+      })
+    );
+
+    await edit(fixture, FocusType.tableName);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.tableLogicalName
+    );
+    expect(await type(fixture, ['M', 'Me'])).toEqual([
+      ['table.changeLogicalName'],
+      ['table.changeLogicalName'],
+    ]);
+
+    await edit(fixture, FocusType.columnName);
+    expect(await type(fixture, ['Member no'])).toEqual([
+      ['column.changeLogicalName'],
+    ]);
+
+    const { tableEntities, tableColumnEntities } = store.state.collections;
+    expect(tableEntities[fixture.tableId]).toMatchObject({
+      name: 'member',
+      logicalName: 'Me',
+      nameDerived: true,
+    });
+    expect(tableColumnEntities[fixture.columnId]).toMatchObject({
+      name: 'member_no',
+      logicalName: 'Member no',
+    });
+  });
+
+  it('gives each cell of the view of both its own field, a name typed by hand leaving the dictionaries', async () => {
+    const fixture = await setupView(NameViewMode.both);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      changeColumnNameDerivedAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: true,
+      })
+    );
+
+    await edit(fixture, FocusType.tableLogicalName);
+    expect(await type(fixture, ['Member'])).toEqual([
+      ['table.changeLogicalName'],
+    ]);
+
+    await edit(fixture, FocusType.columnLogicalName);
+    expect(await type(fixture, ['Member no'])).toEqual([
+      ['column.changeLogicalName'],
+    ]);
+
+    await edit(fixture, FocusType.columnName);
+    expect(await type(fixture, ['member_number'])).toEqual([
+      ['column.changeName', 'column.changeNameDerived'],
+    ]);
+
+    expect(
+      store.state.collections.tableColumnEntities[fixture.columnId]
+    ).toMatchObject({
+      name: 'member_number',
+      logicalName: 'Member no',
+    });
+    expect(
+      store.state.collections.tableEntities[fixture.tableId]
+    ).toMatchObject({ name: 'member', logicalName: 'Member' });
+  });
+
+  it('opens on the logical name held and on the slot the scene drew it in', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      changeTableLogicalNameAction({ id: fixture.tableId, value: 'Member' }),
+      changeColumnLogicalNameAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: 'Member no',
+      })
+    );
+
+    await edit(fixture, FocusType.tableName);
+    const table = store.state.collections.tableEntities[fixture.tableId];
+    const rect = getTableRect(store.state, table);
+    expect(inputOf(fixture.mounted).value).toBe('Member');
+    expect(transformOf(fixture.mounted).x).toBeCloseTo(
+      rect.x + HEADER_CELLS_X + NAME_X,
+      5
+    );
+    expect(cellOf(fixture.mounted).style.width).toBe(
+      `${table.ui.widthLogicalName}px`
+    );
+
+    await edit(fixture, FocusType.columnName);
+    const slot = getColumnCellSlots(
+      store.state,
+      getTableWidths(store.state, table)
+    ).find(candidate => candidate.focusType === FocusType.columnLogicalName);
+    expect(inputOf(fixture.mounted).value).toBe('Member no');
+    expect(slot).toBeDefined();
+    expect(transformOf(fixture.mounted).x).toBeCloseTo(
+      rect.x + (slot?.x ?? 0),
+      5
+    );
+  });
+
+  it('shows what a blank logical name cell draws as the placeholder', async () => {
+    const logical = await setupView(NameViewMode.logical);
+
+    await edit(logical, FocusType.tableName);
+    expect(inputOf(logical.mounted).placeholder).toBe('member');
+    await edit(logical, FocusType.columnName);
+    expect(inputOf(logical.mounted).placeholder).toBe('member_no');
+
+    logical.app.store.dispatchSync(
+      changeTableNameAction({ id: logical.tableId, value: '' })
+    );
+    await edit(logical, FocusType.tableName);
+    expect(inputOf(logical.mounted).placeholder).toBe('table');
+
+    const both = await setupView(NameViewMode.both);
+    await edit(both, FocusType.tableLogicalName);
+    expect(inputOf(both.mounted).placeholder).toBe('logical');
+    await edit(both, FocusType.columnLogicalName);
+    expect(inputOf(both.mounted).placeholder).toBe('logical');
+  });
+
+  it('opens the term list under a logical name cell and ends the edit on the term Enter picks', async () => {
+    const fixture = await setupView(NameViewMode.both);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no', physicalName: 'mbr_no' },
+      }),
+      changeColumnNameDerivedAction({
+        tableId: fixture.tableId,
+        id: fixture.columnId,
+        value: true,
+      })
+    );
+
+    await edit(fixture, FocusType.columnLogicalName);
+    await userEvent.keyboard('mem');
+    await flush();
+    expect(
+      Array.from(
+        cellOf(fixture.mounted).querySelectorAll(
+          `.${logicalNameStyles.hintItem}`
+        )
+      ).map(row => row.querySelector(':scope > span')?.textContent?.trim())
+    ).toEqual(['Member no']);
+
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await flush();
+
+    expect(store.state.editor.focusTable?.edit).toBe(false);
+    expect(inputOf(fixture.mounted)).toBeNull();
+    expect(
+      store.state.collections.tableColumnEntities[fixture.columnId]
+    ).toMatchObject({ logicalName: 'Member no', name: 'mbr_no' });
+  });
+
+  it('derives a header name once its editor closes on a logical name typed', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member', physicalName: 'mbr' },
+      }),
+      changeTableNameDerivedAction({ id: fixture.tableId, value: true })
+    );
+
+    await edit(fixture, FocusType.tableName);
+    expect(await type(fixture, ['Member'])).toEqual([
+      ['table.changeLogicalName'],
+    ]);
+    expect(store.state.collections.tableEntities[fixture.tableId].name).toBe(
+      'member'
+    );
+
+    store.dispatchSync(editTableEndAction());
+    await flush();
+
+    expect(
+      store.state.collections.tableEntities[fixture.tableId]
+    ).toMatchObject({ name: 'mbr', logicalName: 'Member' });
+  });
+
+  /** The names of the picker's rows marked as the one picked. */
+  const pickedRowsOf = (fixture: Fixture) =>
+    Array.from(
+      cellOf(fixture.mounted).querySelectorAll(
+        `.${logicalNameStyles.hintItem}.selected`
+      )
+    ).map(row => row.querySelector(':scope > span')?.textContent?.trim());
+
+  it('edits the type in the type cell of a row that links no domain, which draws the type', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    const { tableId, columnId } = fixture;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-1',
+        values: { name: 'Identifier', dataType: 'BIGINT' },
+      })
+    );
+
+    await edit(fixture, FocusType.columnDataType);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDomain
+    );
+    expect(inputOf(fixture.mounted).value).toBe('');
+    expect(inputOf(fixture.mounted).placeholder).toBe('dataType');
+    expect(
+      cellOf(fixture.mounted).querySelector('.data-type-hint')
+    ).not.toBeNull();
+    expect(await type(fixture, ['INT'])).toEqual([['column.changeDataType']]);
+
+    store.dispatchSync(
+      changeColumnDataTypeAction({ tableId, id: columnId, value: 'VARCHAR' })
+    );
+    await edit(fixture, FocusType.columnDomain);
+    expect(inputOf(fixture.mounted).value).toBe('VARCHAR');
+    expect(store.state.collections.tableColumnEntities[columnId]).toMatchObject(
+      { dataType: 'VARCHAR', domainId: '' }
+    );
+  });
+
+  it('opens the domain picker on a type cell that draws a domain, showing its name, and links the domain picked', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    const { tableId, columnId } = fixture;
+    store.dispatchSync(
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-1',
+        values: { name: 'Identifier', dataType: 'BIGINT' },
+      }),
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-2',
+        values: { name: 'Amount', dataType: 'DECIMAL(19,4)' },
+      }),
+      changeColumnDomainAction({ tableId, id: columnId, value: 'domain-1' })
+    );
+
+    await edit(fixture, FocusType.columnDataType);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDomain
+    );
+    expect(inputOf(fixture.mounted).value).toBe('');
+    expect(inputOf(fixture.mounted).placeholder).toBe('Identifier');
+    expect(pickedRowsOf(fixture)).toEqual(['Identifier']);
+
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await flush();
+
+    expect(store.state.collections.tableColumnEntities[columnId]).toMatchObject(
+      { domainId: 'domain-2', dataType: 'DECIMAL(19,4)' }
+    );
+    expect(store.state.editor.focusTable?.edit).toBe(false);
+  });
+
+  it('picks a domain in the domain cell, showing the name or the placeholder it drew', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    const { store } = fixture.app;
+    const { columnId } = fixture;
+    store.dispatchSync(
+      changeShowAction({ show: Show.columnDomain, value: true }),
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'domain-1',
+        values: { name: 'Identifier', dataType: 'BIGINT' },
+      })
+    );
+
+    await edit(fixture, FocusType.columnDomain);
+    expect(inputOf(fixture.mounted).placeholder).toBe('domain');
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await flush();
+
+    expect(store.state.collections.tableColumnEntities[columnId]).toMatchObject(
+      { domainId: 'domain-1', dataType: 'BIGINT' }
+    );
+
+    await edit(fixture, FocusType.columnDomain);
+    expect(inputOf(fixture.mounted).placeholder).toBe('Identifier');
+    expect(pickedRowsOf(fixture)).toEqual(['Identifier']);
+
+    // While the domain has a cell of its own, the type cell keeps the type.
+    await edit(fixture, FocusType.columnDataType);
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDataType
+    );
+    expect(inputOf(fixture.mounted).value).toBe('BIGINT');
+  });
+});
 
 describe('the memo body editor over the scene', () => {
   it('opens one textarea, focused, and no more of them', async () => {
@@ -1707,8 +2142,10 @@ describe('the table group name editor', () => {
     expect(input.style.width).toBe(`${nameBox.width}px`);
     expect(input.style.height).toBe(`${getTableGroupNameBox().height}px`);
     expect(input.style.fontWeight).toBe('bold');
-    // An uncolored bar keeps the theme's text, so the cell sets neither.
-    expect(cellOf(fixture.mounted).style.getPropertyValue('--active')).toBe('');
+    // An uncolored bar keeps the theme's text, so the cell sets no color.
+    expect(
+      cellOf(fixture.mounted).style.getPropertyValue('--cell-text-color')
+    ).toBe('');
   });
 
   it('writes nothing for an Enter the IME still holds, and the name once it is done', async () => {
@@ -1844,5 +2281,113 @@ describe('the overlay under a view source', () => {
       5
     );
     expect(transform.scale).toBe(1);
+  });
+});
+
+describe('the term list over a tinted header', () => {
+  /** A light editor's scene with its real tokens, a table of a dark group in the view of both names. */
+  async function setupTinted(): Promise<Fixture> {
+    const $host = document.createElement('div');
+    document.body.append($host);
+    const shadow = $host.attachShadow({ mode: 'open' });
+    addCSSHost(shadow);
+
+    const theme = createTheme({
+      appearance: Appearance.light,
+      grayColor: GrayColor.slate,
+      accentColor: AccentColor.indigo,
+    });
+    const tokens = document.createElement('style');
+    tokens.textContent = `:host {\n${themeToTokensString(theme)}\n}`;
+    const globals = document.createElement('div');
+    const container = document.createElement('div');
+    const $root = document.createElement('div');
+    shadow.append(tokens, globals, container, $root);
+
+    const root = createRef<HTMLDivElement>($root);
+    const canvas = createRef<HTMLDivElement>();
+    const app = createTestAppContext();
+    // oxlint-disable-next-line react-hooks/rules-of-hooks
+    const provider = useProvider(container as any, appContext, app);
+    // oxlint-disable-next-line react-hooks/rules-of-hooks
+    const themeProvider = useProvider(container as any, themeContext, theme);
+    render(globals, <GlobalStyles />);
+    render(container, <Canvas root={root} canvas={canvas} />);
+
+    const { store } = app;
+    store.dispatchSync(addTableAction$());
+    const tableId = store.state.doc.tableIds[0];
+    store.dispatchSync(addColumnAction$(tableId));
+    const columnId =
+      store.state.collections.tableEntities[tableId].columnIds[0];
+    store.dispatchSync(
+      toNameViewModeAction(store.state, NameViewMode.both, false),
+      addDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member no', physicalName: 'mbr_no' },
+      }),
+      addTableGroupAction({
+        id: 'g1',
+        color: '#1e3a8a',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: tableId, value: 'g1' })
+    );
+    await flush();
+    await whenDrawn();
+
+    const mounted: Mounted = {
+      container,
+      app,
+      unmount: () => {
+        render(container, null);
+        render(globals, null);
+      },
+    };
+    teardowns.push(() => {
+      mounted.unmount();
+      provider.destroy();
+      themeProvider.destroy();
+      $host.remove();
+    });
+
+    return { app, mounted, tableId, columnId };
+  }
+
+  const contrast = (a: string, b: string) =>
+    contrastRatio(relativeLuminance(a) ?? 0, relativeLuminance(b) ?? 0);
+
+  it("keeps the header's text color on the input and the theme's on the list it opens", async () => {
+    const fixture = await setupTinted();
+    fixture.app.store.dispatchSync(
+      focusTableAction({
+        tableId: fixture.tableId,
+        focusType: FocusType.tableLogicalName,
+      }),
+      editTableAction()
+    );
+    await flush();
+    await userEvent.keyboard('mem');
+    await flush();
+    await userEvent.keyboard('{ArrowDown}');
+    await flush();
+
+    const cell = cellOf(fixture.mounted);
+    const row = cell.querySelector(
+      `.${logicalNameStyles.hintItem}.selected`
+    ) as HTMLElement;
+    const lit = row.querySelector(
+      `.${highlightStyles.highlighted}`
+    ) as HTMLElement;
+    const badge = row.querySelector(`.${kbdStyles.mini}`) as HTMLElement;
+    const under = getComputedStyle(row).backgroundColor;
+
+    expect(getComputedStyle(inputOf(fixture.mounted)).color).toBe(
+      'rgb(255, 255, 255)'
+    );
+    expect(lit.textContent).toBe('Mem');
+    expect(contrast(getComputedStyle(lit).color, under)).toBeGreaterThan(4.5);
+    expect(contrast(getComputedStyle(badge).color, under)).toBeGreaterThan(4.5);
   });
 });

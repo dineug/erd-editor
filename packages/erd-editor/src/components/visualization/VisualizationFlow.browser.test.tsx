@@ -40,6 +40,7 @@ import { Open } from '@/constants/open';
 import {
   CANVAS_ZOOM_MAX,
   CanvasType,
+  NameViewMode,
   RelationshipType,
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
@@ -70,10 +71,12 @@ import {
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -343,6 +346,24 @@ async function chooseShowMode(mounted: Mounted, title: string) {
   await settle();
 }
 
+/** Opens the bar's Name View list and picks the view it names. */
+async function chooseNameView(mounted: Mounted, title: string) {
+  click(
+    mounted.container.querySelector('.visualization-toolbar .name-view-trigger')
+  );
+  await settle();
+  const option =
+    Array.from(
+      mounted.container.querySelectorAll<HTMLElement>(
+        '.name-view-menu .context-menu-content > [data-id]'
+      )
+    ).find(item => item.textContent?.trim() === title) ?? null;
+  // A pick on nothing would leave the view as it was, as an unopened list does.
+  expect(option).not.toBeNull();
+  click(option);
+  await settle();
+}
+
 /** One keyboard chord, as the editor's own key handler would put it on the stream. */
 const chord = (app: AppContext, type: KeyBindingName) =>
   app.shortcut$.next({
@@ -545,6 +566,14 @@ const drawnConnectorIds = (ids: string[]) =>
   ids.filter(id => flowStage().findOne(`.${id}`) !== undefined);
 
 const rowCountOf = (id: string) => tableOf(id)!.find('.column-row').length;
+
+/** The text of a card's header cells, then of its row cells, in the order drawn. */
+const namesOf = (id: string) =>
+  tableOf(id)!
+    .find<Group>('.input-padding, .column-col')
+    .map(cell => cell.findOne<Shape>('.cell-text'))
+    .filter(text => text !== undefined)
+    .map(text => text.getAttr('text'));
 
 const typeOpacityOf = (id: string) =>
   tableOf(id)!
@@ -1751,6 +1780,46 @@ describe('the display set of the Flow view', () => {
     );
   });
 
+  it('redraws the cards in the name view picked on the bar and places them again at their new size', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({
+        id: 't1',
+        value: 'Registered users of the shop',
+      }),
+      changeColumnLogicalNameAction({
+        tableId: 't1',
+        id: 'c1',
+        value: 'User ID',
+      })
+    );
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    const t1 = app.store.state.collections.tableEntities.t1;
+    const physical = bodyOf('t1').width();
+
+    expect(namesOf('t1')).toEqual(['users', 'id', 'dataType']);
+    expect(hoisted.requests).toHaveLength(1);
+
+    await chooseNameView(mounted, 'Logical Names');
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(namesOf('t1')).toEqual([
+      'Registered users of the shop',
+      'User ID',
+      'dataType',
+    ]);
+    // A name view writes other names on every card, so the placement is
+    // stale and asked for anew at the size the switch gives.
+    expect(hoisted.requests).toHaveLength(2);
+    const node = hoisted.requests[1].nodes.find(({ id }) => id === 't1');
+    const { width } = getTableRect(app.store.state, t1, ViewKind.flow);
+    expect(node.width).toBe(width);
+    expect(bodyOf('t1').width()).toBe(width - TABLE_BORDER);
+    expect(width).toBeGreaterThan(physical);
+  });
+
   it('shows the union of what several centers reach (AC-24)', async () => {
     const app = createTestAppContext();
     seedFields(app);
@@ -1788,7 +1857,7 @@ describe('the display set of the Flow view', () => {
     });
   });
 
-  it('lights the type cells of the hovered table and its hop, and leaves the rest dark (AC-27)', async () => {
+  it('draws the type cells of every card, whatever a hover lights (an owner decision of 2026-10-21)', async () => {
     const app = createTestAppContext();
     seedFields(app);
     const mounted = await mountVisualization(app);
@@ -1801,25 +1870,18 @@ describe('the display set of the Flow view', () => {
     );
     await settle();
 
+    const types = () => ['t1', 't2', 't3'].map(typeOpacityOf);
     expect(drawnTableIds()).toEqual(['t1', 't2', 't3', 't4']);
-    expect(typeOpacityOf('t1')).toEqual([0]);
-    expect(typeOpacityOf('t2')).toEqual([0]);
-    expect(typeOpacityOf('t3')).toEqual([0]);
+    expect(types()).toEqual([[1], [1], [1]]);
 
     fireScenePointer(tableOf('t1')!, 'mouseenter');
     await settle();
-
-    expect(typeOpacityOf('t1')).toEqual([1]);
-    expect(typeOpacityOf('t2')).toEqual([1]);
-    expect(typeOpacityOf('t3')).toEqual([0]);
+    expect(types()).toEqual([[1], [1], [1]]);
 
     fireScenePointer(tableOf('t1')!, 'mouseleave');
     fireScenePointer(tableOf('t3')!, 'mouseenter');
     await settle();
-
-    expect(typeOpacityOf('t3')).toEqual([1]);
-    expect(typeOpacityOf('t2')).toEqual([1]);
-    expect(typeOpacityOf('t1')).toEqual([0]);
+    expect(types()).toEqual([[1], [1], [1]]);
   });
 
   it('places the view again when an edit changes what a center reaches, and not when it does not (AC-13)', async () => {

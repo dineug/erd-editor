@@ -22,6 +22,7 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
       'vendor',
       'statements',
       'header',
+      'logicalNameAsComment',
       'tableIds',
       'tableNames',
       'groupNames',
@@ -41,6 +42,9 @@ const SURFACE: Array<{ name: string; args: string[] }> = [
       'indexIds',
       'memoIds',
       'tableGroupIds',
+      'wordIds',
+      'termIds',
+      'domainIds',
     ],
   },
   { name: 'erd_save', args: ['path'] },
@@ -216,6 +220,117 @@ describe('the words on a table group', () => {
   });
 });
 
+describe('the words on the dictionaries and logical names', () => {
+  const DICTIONARY_TOOLS = [
+    'erd_set_table_logical_name',
+    'erd_set_column_logical_name',
+    'erd_set_column_domain',
+    'erd_add_word',
+    'erd_update_word',
+    'erd_remove_word',
+    'erd_add_term',
+    'erd_update_term',
+    'erd_remove_term',
+    'erd_add_domain',
+    'erd_update_domain',
+    'erd_remove_domain',
+  ];
+  const OLDER =
+    'An ERD Editor extension or plugin released before dictionaries, logical names and domains ignores what this edit writes of them and leaves them out when it saves, so the user should update it.';
+
+  it('reach the nine dictionary tools and the three that set a logical name or a domain', () => {
+    expect(
+      actionTools
+        .map(({ name }) => name)
+        .filter(name => /logical_name|domain|word|term/.test(name))
+    ).toEqual(DICTIONARY_TOOLS);
+  });
+
+  it('end each of them on an editor released before dictionaries leaving out what it writes, so the user updates it', () => {
+    for (const name of DICTIONARY_TOOLS) {
+      expect(describeTool(name).endsWith(` ${OLDER}`), name).toBe(true);
+      expect(describeTool(name), name).not.toMatch(/\d+\.\d+/);
+    }
+  });
+
+  it('say a rename by hand turns the derived flag off, so a logical name leaves a name that is not empty', () => {
+    for (const name of ['erd_change_table_name', 'erd_change_column_name']) {
+      expect(describeTool(name), name).toContain(
+        'The name is then its own: nameDerived goes off, so a later logical name leaves a name that is not empty as it is.'
+      );
+    }
+  });
+
+  it('say a domain type the sync spreads unlinks a column it reaches off its own domain', () => {
+    for (const name of [
+      'erd_update_domain',
+      'erd_set_column_domain',
+      'erd_set_column_logical_name',
+    ]) {
+      expect(describeTool(name), name).toContain(
+        "A column the sync reaches whose new type differs from its own domain's is unlinked from that domain."
+      );
+    }
+    expect(describeTool('erd_set_column_logical_name')).toContain(
+      'The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on.'
+    );
+  });
+
+  it('end erd_import_json, which brings them with table groups, on both older editor sentences', () => {
+    expect(
+      describeTool('erd_import_json').endsWith(
+        ` An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it. ${OLDER}`
+      )
+    ).toBe(true);
+  });
+
+  it('say the four schema imports keep the dictionaries, by replace and in the mode argument', () => {
+    for (const name of [
+      'erd_import_sql',
+      'erd_import_graphql',
+      'erd_import_dbml',
+      'erd_import_aml',
+    ]) {
+      expect(describeTool(name), name).toContain(
+        'which goes to the start of the canvas, and keeping its word, term and domain dictionaries; erd_undo restores'
+      );
+      expect(describeArg(name, 'mode'), name).toContain(
+        'which goes to the start of the canvas, and keeps the word, term and domain dictionaries; append adds'
+      );
+    }
+  });
+
+  it('name the logical name tools in the server instructions, and that a name set by hand stays while it is not empty', () => {
+    expect(SERVER_INSTRUCTIONS).toContain(
+      'erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries'
+    );
+    expect(SERVER_INSTRUCTIONS).toContain(
+      'unless a name that is not empty was set by hand'
+    );
+  });
+
+  it('say an append of erd_import_json links no domain and adds no dictionary row, by tool and in the mode argument', () => {
+    expect(describeTool('erd_import_json')).toContain(
+      'the tables bring their logical names and derived flags, but no column links a domain and none of the document'
+    );
+    expect(describeArg('erd_import_json', 'mode')).toContain(
+      'with no domain link on any column and no word, term or domain row'
+    );
+  });
+
+  it('say erd_list pages through the dictionary rows it never searches, and erd_get gives them whole', () => {
+    expect(describeTool('erd_list')).toContain(
+      'then the rows of the domain, term and word dictionaries'
+    );
+    expect(describeArg('erd_list', 'query')).toContain(
+      'Dictionary rows are not searched.'
+    );
+    expect(describeTool('erd_get')).toContain(
+      'and words, terms and domains with every field'
+    );
+  });
+});
+
 describe('the words on a foreign key data type', () => {
   it('give erd_add_relationship the integer each serial key copies as', () => {
     const text = describeTool('erd_add_relationship');
@@ -240,6 +355,23 @@ describe('the words on a foreign key data type', () => {
     expect(text).toContain('from a foreign key back to the key it copies');
     expect(text).toContain(
       'except a serial key, which keeps its type and stops the change there'
+    );
+  });
+
+  it('say erd_change_column_data_type unlinks a domain the new type leaves, on any column the sync reaches too', () => {
+    const text = describeTool('erd_change_column_data_type');
+
+    expect(text).toContain(
+      "A column linked to a dictionary domain is unlinked from it when set to another type than the domain's"
+    );
+    expect(text).toContain(
+      "and so is any column the sync reaches, a foreign key or the key it copies, whose new type differs from its own domain's"
+    );
+  });
+
+  it('say erd_add_relationship links the key’s domain, unless a serial key changes the type', () => {
+    expect(describeTool('erd_add_relationship')).toContain(
+      "Each foreign key column also links the dictionary domain its key links, unless a serial key gives it another type than the domain's"
     );
   });
 });
@@ -273,11 +405,13 @@ describe('the words on an import', () => {
     }
   });
 
-  it('end the two imports that bring table groups on an editor released before groups dropping them', () => {
+  it('warn on the two imports that bring table groups that an editor released before groups drops them', () => {
+    const older =
+      'An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it.';
+
+    expect(describeTool('erd_import_dbml').endsWith(` ${older}`)).toBe(true);
+    expect(describeTool('erd_import_json')).toContain(` ${older} `);
     for (const name of ['erd_import_dbml', 'erd_import_json']) {
-      expect(describeTool(name), name).toMatch(
-        /An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it\.$/
-      );
       expect(describeTool(name), name).not.toMatch(/\d+\.\d+/);
     }
   });

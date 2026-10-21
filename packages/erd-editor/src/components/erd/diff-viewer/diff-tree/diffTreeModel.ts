@@ -76,13 +76,17 @@ function folder(
 const present = <T>(nodes: Array<T | null>): T[] =>
   nodes.filter((node): node is T => node !== null);
 
-/** Whether a name filter keeps an entry: its current name or the saved one holds what is typed, in any case. */
+/**
+ * Whether a name filter keeps an entry: its current name or the saved one,
+ * or either logical name, holds what is typed, in any case and in any view.
+ */
 export function matchesFilter(entry: DiffEntry, filter: string): boolean {
   const needle = filter.trim().toLowerCase();
   return (
     !needle ||
-    entry.name.toLowerCase().includes(needle) ||
-    entry.prevName.toLowerCase().includes(needle)
+    [entry.name, entry.prevName, entry.logicalName, entry.prevLogicalName].some(
+      name => name.toLowerCase().includes(needle)
+    )
   );
 }
 

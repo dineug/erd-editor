@@ -11,18 +11,31 @@ import {
   renameTable,
   SEED_SCENARIOS,
 } from '@/__test-utils__/peerScenarios';
-import { createSeedValue, SEED, settle } from '@/__test-utils__/peerSeed';
+import {
+  createSeedValue,
+  createUserStore,
+  SEED,
+  settle,
+} from '@/__test-utils__/peerSeed';
 import {
   ColumnOption,
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
+import {
+  addDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import { setColumnLogicalNameAction$ } from '@/engine/modules/dictionary/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
   addRelationshipAction,
   changeRelationshipColumnsAction,
 } from '@/engine/modules/relationship/atom.actions';
-import { changeColumnPrimaryKeyAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  addColumnAction,
+  changeColumnPrimaryKeyAction,
+} from '@/engine/modules/table-column/atom.actions';
 import {
   createPeerStore,
   type PeerStore,
@@ -169,6 +182,77 @@ describe('peer store in a realm with no DOM (AC-E2)', () => {
     );
   });
 
+  it('hands back the id of a dictionary row it added, and none of a row it changed', () => {
+    const peer = peerOf({ presence: false });
+    peer.setInitialValue(createSeedValue());
+
+    const added = peer.dispatch([
+      addDictionaryAction({ kind: 'term', id: 'term-1' }),
+    ]);
+    const changed = peer.dispatch([
+      updateDictionaryAction({
+        kind: 'term',
+        id: 'term-1',
+        values: { name: 'Member number' },
+      }),
+    ]);
+
+    expect(added.createdIds).toEqual(['term-1']);
+    expect(peer.state.doc.termIds).toEqual([SEED.term, 'term-1']);
+    expect(changed.createdIds).toEqual([]);
+  });
+
+  it('derives a physical name from the dictionaries as an element store does', () => {
+    const value = createSeedValue();
+    const peer = peerOf({ presence: false });
+    peer.setInitialValue(value);
+    const user = createUserStore(value);
+    const add = (id: string) => [addColumnAction({ id, tableId: SEED.empty })];
+    const derive = (id: string, logicalName: string) => [
+      setColumnLogicalNameAction$(SEED.empty, id, logicalName),
+    ];
+    const read = (state: PeerStore['state'], id: string) => {
+      const { name, domainId, dataType, options } =
+        state.collections.tableColumnEntities[id];
+      return {
+        name,
+        domainId,
+        dataType,
+        derived: bHas(options, ColumnOption.nameDerived),
+      };
+    };
+
+    try {
+      for (const [id, logicalName] of [
+        ['by_term', 'Member Name'],
+        ['by_words', 'Name Member'],
+      ]) {
+        peer.dispatch(add(id));
+        user.rxStore.dispatchSync(add(id));
+        peer.dispatch(derive(id, logicalName));
+        user.rxStore.dispatchSync(derive(id, logicalName));
+      }
+
+      expect(read(peer.state, 'by_term')).toEqual({
+        name: 'MBR_NM',
+        domainId: SEED.domain,
+        dataType: 'VARCHAR(255)',
+        derived: true,
+      });
+      expect(read(peer.state, 'by_words')).toEqual({
+        name: 'NM_MBR',
+        domainId: '',
+        dataType: '',
+        derived: true,
+      });
+      for (const id of ['by_term', 'by_words']) {
+        expect(read(user.rxStore.state, id)).toEqual(read(peer.state, id));
+      }
+    } finally {
+      user.destroy();
+    }
+  });
+
   it('focuses the table or the column a dispatch names before its edit', () => {
     const peer = peerOf({ presence: false });
     peer.setInitialValue(createSeedValue());
@@ -257,7 +341,7 @@ describe('peer store reseed', () => {
 
     peer.setInitialValue('');
 
-    expect(JSON.parse(peer.value).doc.tableIds).toEqual([]);
+    expect(JSON.parse(peer.value).doc.tableIds ?? []).toEqual([]);
   });
 
   it('drops the focus the old document held', () => {

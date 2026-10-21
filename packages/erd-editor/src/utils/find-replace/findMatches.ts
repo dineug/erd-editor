@@ -18,20 +18,22 @@ export const FindField = {
   memo: 'memo',
   indexName: 'indexName',
   tableGroupName: 'tableGroupName',
+  logicalName: 'logicalName',
 } as const;
 export type FindField = ValuesType<typeof FindField>;
 export const FindFieldList: ReadonlyArray<FindField> = Object.values(FindField);
 
 /**
  * The kinds of text Find and Replace first opens on, the names alone of
- * tables, columns, indexes and table groups (an owner decision): a comment or
- * memo is prose a rename should not reach unasked. No fields reads every kind.
+ * tables, columns, indexes and table groups and the logical names (owner
+ * decisions): a comment or memo is prose a rename should not reach unasked.
  */
 export const DEFAULT_FIND_FIELDS: ReadonlyArray<FindField> = Object.freeze([
   FindField.tableName,
   FindField.columnName,
   FindField.indexName,
   FindField.tableGroupName,
+  FindField.logicalName,
 ]);
 
 export type FindMatch = {
@@ -50,6 +52,17 @@ export type FindMatch = {
 type Field = Omit<FindMatch, 'start' | 'end'>;
 
 /**
+ * Whether a logical name field is a table's, which bears its table's id as
+ * its own, rather than a column's: the one field kind both of them hold.
+ */
+export const isTableLogicalName = ({
+  field,
+  id,
+  tableId,
+}: Pick<FindMatch, 'field' | 'id' | 'tableId'>): boolean =>
+  field === FindField.logicalName && id === tableId;
+
+/**
  * What changes a text the search reads, or which fields it walks: the actions
  * a search on screen runs again on. A hover, a selection or a scroll changes
  * none, and a slow pattern would stall the tab on every one of them.
@@ -58,11 +71,13 @@ export const FindTextActionTypes: ReadonlyArray<ActionType> = [
   'table.add',
   'table.remove',
   'table.changeName',
+  'table.changeLogicalName',
   'table.changeComment',
   'table.sort',
   'column.add',
   'column.remove',
   'column.changeName',
+  'column.changeLogicalName',
   'column.changeComment',
   'column.move',
   'memo.add',
@@ -125,8 +140,8 @@ function inOrder<T extends { id: string; name: string }>(
 }
 
 /**
- * Every text field the fields given cover: each table's name and comment,
- * its columns' names and comments and its index names, then the table groups'
+ * Every text field the fields given cover: each table's logical name, name
+ * and comment, its columns' alike and its index names, then the table groups'
  * names and the memos, in document order or in the order given.
  */
 export function walkFields(
@@ -147,11 +162,23 @@ export function walkFields(
     order?.tableIds
   );
   const walksColumns =
-    has.has(FindField.columnName) || has.has(FindField.columnComment);
+    has.has(FindField.columnName) ||
+    has.has(FindField.columnComment) ||
+    has.has(FindField.logicalName);
 
+  // A logical name comes before its name, so a Replace All that writes both
+  // writes the name last and the name derived from the new logical name
+  // gives way to the one the replacement writes, as a rename by hand does.
   for (const table of tables) {
     const tableId = table.id;
 
+    has.has(FindField.logicalName) &&
+      push({
+        field: FindField.logicalName,
+        id: tableId,
+        tableId,
+        text: table.logicalName,
+      });
     has.has(FindField.tableName) &&
       push({
         field: FindField.tableName,
@@ -171,6 +198,13 @@ export function walkFields(
       ? columnCollection.selectByIds(table.columnIds)
       : [];
     for (const column of columns) {
+      has.has(FindField.logicalName) &&
+        push({
+          field: FindField.logicalName,
+          id: column.id,
+          tableId,
+          text: column.logicalName,
+        });
       has.has(FindField.columnName) &&
         push({
           field: FindField.columnName,

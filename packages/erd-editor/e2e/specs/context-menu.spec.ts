@@ -556,7 +556,18 @@ test.describe('context menu at the window edge', () => {
   }) => {
     await erd.seed(oneTable());
 
-    const at = { x: 850, y: 164 };
+    // A press low enough pushes the menu to one place, its bottom on the
+    // window's, so a menu opened low first shows where New Table lands and the
+    // pointer goes there, whatever rows the menu holds.
+    const low = { x: 850, y: 500 };
+    await erd.hoverAt(low);
+    await erd.clickAt(low, { button: 'right' });
+    const pushed = await rowOf(rootMenu(erd), 'New Table').boundingBox();
+    if (!pushed) throw new Error('no New Table row');
+    await page.keyboard.press('Escape');
+    await expect(rootMenu(erd)).toHaveCount(0);
+
+    const at = { x: low.x, y: Math.round(pushed.y + pushed.height / 2) };
     await erd.hoverAt(at);
     await erd.clickAt(at, { button: 'right' });
     await expect(erd.contextMenuItem('New Table')).toBeVisible();
@@ -624,12 +635,20 @@ test.describe('context menu at the window edge', () => {
       if (!box) throw new Error('the menu has no box');
       const { originX, originY } = await erd.settings();
 
+      // One wheel past the whole overflow, whatever rows the menu holds.
+      const overflow = await menu.evaluate(
+        el => el.scrollHeight - el.clientHeight
+      );
+      expect(overflow).toBeGreaterThan(0);
+
       await page.mouse.move(box.x + box.width - 16, at.y, { steps: 4 });
-      await page.mouse.wheel(0, 200);
+      await page.mouse.wheel(0, overflow + 100);
 
       await expect
-        .poll(() => menu.evaluate(el => el.scrollTop))
-        .toBeGreaterThan(0);
+        .poll(() =>
+          menu.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)
+        )
+        .toBeLessThan(1);
       await erd.whenDrawn();
       expect(await erd.settings()).toMatchObject({ originX, originY });
 

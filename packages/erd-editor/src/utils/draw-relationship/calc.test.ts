@@ -5,7 +5,7 @@ import {
   VIEW_COLUMN_HEIGHT,
   VIEW_TABLE_HEADER_HEIGHT,
 } from '@/constants/layout';
-import { ColumnUIKey } from '@/constants/schema';
+import { ColumnUIKey, NameViewMode } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { ShowMode, ViewKind } from '@/engine/modules/editor/state';
 import { createSceneView } from '@/engine/modules/editor/view';
@@ -13,7 +13,7 @@ import { RootState } from '@/engine/state';
 import { createStore } from '@/engine/store';
 import { Table } from '@/internal-types';
 import { getVisibleColumnIds } from '@/konva/scene/viewLayout';
-import { calcViewTableWidths } from '@/utils/calcTable';
+import { calcTableWidths, calcViewTableWidths } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import {
@@ -140,6 +140,28 @@ describe('tableToObjectPoint', () => {
     expect(withoutComment).toBe(134);
     expect(withoutComment).toBeLessThan(withComment);
   });
+
+  it('keys the size on the name view and the header logical name, which no width generation names', () => {
+    const state = createState();
+    state.settings.show = 0;
+    const table = addTable(
+      state,
+      createTable({
+        id: 'table-a',
+        logicalName: 'Members of the club',
+        ui: { x: 0, y: 0, widthLogicalName: 300 },
+      })
+    );
+    const physical = tableToObjectPoint(state, table).width;
+
+    state.settings.nameViewMode = NameViewMode.logical;
+    const logical = tableToObjectPoint(state, table).width;
+    expect(logical).toBe(calcTableWidths(table, state).width);
+    expect(logical).toBe(physical - 60 + 300);
+
+    table.ui.widthLogicalName = 400;
+    expect(tableToObjectPoint(state, table).width).toBe(logical + 100);
+  });
 });
 
 describe('tableToObjectPoint for a view', () => {
@@ -264,6 +286,32 @@ describe('tableToObjectPoint for a view', () => {
     const after = tableToObjectPoint(state, table, 'flow');
     expect(after).toEqual(before);
     expect(after.width).not.toBe(viewWidths(table, state).width);
+  });
+
+  /** The names a view header sets follow the name view, which no width generation names. */
+  it('keys a view on the name view and the header logical name', () => {
+    const { state, table } = seed(ShowMode.nameOnly);
+    table.logicalName = 'Members of the club';
+    table.ui.widthLogicalName = 300;
+    const physical = tableToObjectPoint(state, table, 'flow').width;
+
+    state.settings.nameViewMode = NameViewMode.logical;
+    const logical = tableToObjectPoint(state, table, 'flow').width;
+    expect(logical).toBe(viewWidths(table, state).width);
+    expect(logical).toBeGreaterThan(physical);
+
+    table.ui.widthLogicalName = 400;
+    const wider = tableToObjectPoint(state, table, 'flow').width;
+    expect(wider).toBe(viewWidths(table, state).width);
+    expect(wider).toBeGreaterThan(logical);
+
+    state.settings.nameViewMode = NameViewMode.both;
+    expect(tableToObjectPoint(state, table, 'flow').width).toBe(
+      viewWidths(table, state).width
+    );
+    expect(tableToObjectPoint(state, table, 'flow').width).toBeGreaterThan(
+      wider
+    );
   });
 
   it('follows the show mode from one read to the next', () => {

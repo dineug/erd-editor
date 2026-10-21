@@ -159,6 +159,70 @@ describe('diffDocuments', () => {
     });
   });
 
+  it('carries the logical names on each table and column entry, a change to one alone listing nothing', () => {
+    const named = (table: string, column: string) => ({
+      tables: [
+        {
+          ...USERS,
+          logicalName: table,
+          columns: [
+            USERS.columns[0],
+            { ...USERS.columns[1], logicalName: column },
+          ],
+        },
+      ],
+    });
+
+    expect(
+      all(diff(named('Users', 'Email'), named('Members', 'Mail')))
+    ).toEqual([]);
+
+    const renamed = diff(named('Users', 'Email'), {
+      tables: [
+        {
+          ...named('Members', 'Mail').tables[0],
+          name: 'members',
+          columns: [
+            USERS.columns[0],
+            { ...USERS.columns[1], name: 'mail', logicalName: 'Mail' },
+          ],
+        },
+      ],
+    });
+    const [table] = renamed.entries.tables;
+
+    expect(table).toMatchObject({
+      name: 'members',
+      prevName: 'users',
+      logicalName: 'Members',
+      prevLogicalName: 'Users',
+    });
+    expect(table.children[0]).toMatchObject({
+      logicalName: 'Mail',
+      prevLogicalName: 'Email',
+    });
+  });
+
+  it('gives an entry of any other kind no logical name', () => {
+    const result = diff(
+      {
+        memos: [{ id: 'm', value: 'draft' }],
+        groups: [{ id: 'g', name: 'A' }],
+      },
+      { memos: [{ id: 'm', value: 'final' }], groups: [{ id: 'g', name: 'B' }] }
+    );
+
+    expect(
+      [...result.entries.memos, ...result.entries.tableGroups].map(entry => [
+        entry.logicalName,
+        entry.prevLogicalName,
+      ])
+    ).toEqual([
+      ['', ''],
+      ['', ''],
+    ]);
+  });
+
   it('never pairs two unnamed entities by their name', () => {
     const result = diff(
       { tables: [{ id: 'a', name: '' }] },

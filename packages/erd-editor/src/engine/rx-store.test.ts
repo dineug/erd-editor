@@ -2,16 +2,42 @@ import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { CanvasType, Language, LockSettingType } from '@/constants/schema';
+import {
+  CanvasType,
+  Database,
+  Language,
+  LockSettingType,
+  Show,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import {
+  addDictionaryAction,
+  removeDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
+import {
+  removeDictionaryEntriesAction$,
+  setColumnDomainAction$,
+  updateDictionaryEntryAction$,
+} from '@/engine/modules/dictionary/generator.actions';
+import { isListed } from '@/engine/modules/dictionary/membership';
+import {
   clearAction,
+  focusColumnAction,
   loadJsonAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
-import { ViewKind, VisualizationMode } from '@/engine/modules/editor/state';
+import {
+  initialLoadJsonAction$,
+  loadJsonAction$,
+} from '@/engine/modules/editor/generator.actions';
+import {
+  FocusType,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
 import { getActiveView } from '@/engine/modules/editor/view';
 import {
   changeVisualizationModeAction,
@@ -24,9 +50,12 @@ import {
   changeBracketTypeAction,
   changeCanvasTypeAction,
   changeColumnNameCaseAction,
+  changeDatabaseAction,
   changeIgnoreSaveSettingsAction,
   changeLanguageAction,
   changeLockSettingsAction,
+  changeRelationshipDataTypeSyncAction,
+  changeShowAction,
   changeTableNameCaseAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -43,15 +72,33 @@ import {
   changeTableGroupAction,
   changeTableNameAction,
   moveTableAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
+  pasteTableAction$,
+  removeTableAction$,
+} from '@/engine/modules/table/generator.actions';
+import {
   addColumnAction,
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
+import {
+  changeColumnDataTypeAction$,
+  removeColumnAction$,
+} from '@/engine/modules/table-column/generator.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createRxStore, HISTORY_LIMIT, RxStore } from '@/engine/rx-store';
-import { attachActionTag, Tag } from '@/engine/tag';
+import {
+  attachActionsTag,
+  attachActionTag,
+  attachDictionarySheetTag$,
+  hasActionTag,
+  Tag,
+} from '@/engine/tag';
 import { bHas } from '@/utils/bit';
+import { createColumn } from '@/utils/collection/tableColumn.entity';
 
 const unlock = (lockSettingType: number) =>
   changeLockSettingsAction({ lockSettingType, value: false, values: {} });
@@ -348,6 +395,1216 @@ describe('createRxStore', () => {
 
     expect(store.state.doc.tableIds).toEqual(['t1']);
     expect(store.history.size).toBe(0);
+  });
+
+  describe('the dictionary sheets', () => {
+    const addWord = (id: string, name: string) =>
+      addDictionaryAction({ kind: 'word', id, values: { name } });
+    const addTerm = (id: string, name: string) =>
+      addDictionaryAction({ kind: 'term', id, values: { name } });
+    const fromTab = (action: AnyAction) =>
+      attachActionTag(Tag.dictionarySheet, action);
+
+    it("keeps each sheet's tab edits in its own history, and every other edit in the document's", async () => {
+      const store = make(createContext());
+
+      store.dispatchSync(fromTab(addWord('w1', 'Member')));
+      store.dispatchSync(fromTab(addTerm('t1', 'Member No')));
+      store.dispatchSync(fromTab(addWord('w2', 'Name')));
+      store.dispatchSync(addTable('t1'));
+      store.dispatchSync(addWord('w3', 'Code'));
+      await tick();
+
+      expect(store.sheetHistories.word.size).toBe(2);
+      expect(store.sheetHistories.term.size).toBe(1);
+      expect(store.sheetHistories.domain.size).toBe(0);
+      expect(store.history.size).toBe(2);
+      expect(store.state.editor.dictionaryHistory.word).toEqual({
+        hasUndo: true,
+        hasRedo: false,
+      });
+
+      store.undoSheet('word');
+      expect(store.state.doc.wordIds).toEqual(['w1', 'w3']);
+      expect(store.state.doc.termIds).toEqual(['t1']);
+      expect(store.state.doc.tableIds).toEqual(['t1']);
+
+      store.undo();
+      store.undo();
+      expect(store.state.doc.wordIds).toEqual(['w1']);
+      expect(store.state.doc.tableIds).toEqual([]);
+
+      store.redoSheet('word');
+      expect(store.state.doc.wordIds).toEqual(['w1', 'w2']);
+      await tick();
+      expect(store.state.editor.dictionaryHistory.word).toEqual({
+        hasUndo: true,
+        hasRedo: false,
+      });
+      expect(store.state.editor.hasUndo).toBe(false);
+    });
+
+    it.each([
+      [
+        'load',
+        (store: RxStore) => loadJsonAction({ value: toJson(store.state) }),
+      ],
+      ['clear', () => clearAction()],
+    ])(
+      'empties every sheet on a %s, so an undo brings no row of the old document back',
+      (_, replace) => {
+        const store = make(createContext());
+        store.dispatchSync(fromTab(addWord('w1', 'Member')));
+        store.dispatchSync(fromTab(addTerm('t1', 'Member No')));
+        expect(store.sheetHistories.word.size).toBe(1);
+
+        store.dispatchSync(replace(store));
+
+        expect(store.sheetHistories.word.size).toBe(0);
+        expect(store.sheetHistories.term.size).toBe(0);
+        const listed = [...store.state.doc.wordIds];
+        store.undoSheet('word');
+        expect(store.state.doc.wordIds).toEqual(listed);
+      }
+    );
+
+    it.each([
+      [
+        'load',
+        (store: RxStore) => loadJsonAction({ value: toJson(store.state) }),
+      ],
+      ['clear', () => clearAction()],
+    ])(
+      "empties every sheet on a peer's %s, so an undo lists no row of the old document",
+      (_, replace) => {
+        const store = make(createContext());
+        store.dispatchSync(fromTab(addWord('w1', 'Member')));
+        store.dispatchSync(
+          fromTab(removeDictionaryAction({ kind: 'word', id: 'w1' }))
+        );
+
+        store.dispatchSync(attachActionTag(Tag.shared, replace(store)));
+
+        expect(store.sheetHistories.word.size).toBe(0);
+        store.undoSheet('word');
+        expect(store.state.doc.wordIds).toEqual([]);
+      }
+    );
+
+    it.each([
+      [
+        'load',
+        (store: RxStore) => loadJsonAction({ value: toJson(store.state) }),
+      ],
+      ['clear', () => clearAction()],
+    ])(
+      'empties every sheet when the document history undoes or redoes a %s',
+      (_, replace) => {
+        const store = make(createContext());
+        store.dispatchSync(addWord('w1', 'Old'));
+        store.dispatchSync(replace(store));
+        store.dispatchSync(fromTab(addWord('w2', 'New')));
+        expect(store.sheetHistories.word.size).toBe(1);
+
+        store.undo();
+        expect(store.sheetHistories.word.size).toBe(0);
+        const listed = [...store.state.doc.wordIds];
+        store.undoSheet('word');
+        expect(store.state.doc.wordIds).toEqual(listed);
+
+        store.dispatchSync(fromTab(addWord('w3', 'Other')));
+        store.redo();
+        expect(store.sheetHistories.word.size).toBe(0);
+      }
+    );
+
+    it('keeps every sheet through a schema import, its undo and its redo, which keep the rows the entries were made on', () => {
+      const store = make(createContext());
+      store.dispatchSync(addWord('w1', 'Old'));
+      store.dispatchSync(
+        loadJsonAction$(toJson(store.state), { keepDictionaries: true })
+      );
+      store.dispatchSync(
+        fromTab(
+          updateDictionaryAction({
+            kind: 'word',
+            id: 'w1',
+            values: { name: 'Edited' },
+          })
+        )
+      );
+
+      store.undo();
+      store.redo();
+      store.undo();
+      expect(store.sheetHistories.word.size).toBe(1);
+
+      store.undoSheet('word');
+      expect(store.state.collections.wordEntities.w1.name).toBe('Old');
+    });
+
+    it("unlinks a column typed off a removed domain's type, so undoing the removal leaves it as typed", () => {
+      const store = make(createContext());
+      store.dispatchSync(
+        addTable('t1'),
+        addColumnAction({ id: 'c1', tableId: 't1' }),
+        addDictionaryAction({
+          kind: 'domain',
+          id: 'D',
+          values: { name: 'Amount', dataType: 'DECIMAL(15,2)' },
+        }),
+        changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'D' }),
+        changeColumnDataTypeAction({
+          tableId: 't1',
+          id: 'c1',
+          value: 'DECIMAL(15,2)',
+        })
+      );
+      const column = () => store.state.collections.tableColumnEntities.c1;
+
+      store.dispatchSync(
+        fromTab(removeDictionaryAction({ kind: 'domain', id: 'D' }))
+      );
+      store.dispatchSync(
+        changeColumnDataTypeAction$({ tableId: 't1', id: 'c1', value: 'INT' })
+      );
+      expect(column()).toMatchObject({ domainId: '', dataType: 'INT' });
+
+      store.undoSheet('domain');
+      expect(store.state.doc.domainIds).toEqual(['D']);
+      expect(column()).toMatchObject({ domainId: '', dataType: 'INT' });
+    });
+
+    describe('a removed domain a sheet replay types', () => {
+      /** Domain D, typed INT on its sheet from TEXT, then c1 linked to it at INT. */
+      function seed(store: RxStore) {
+        store.dispatchSync(
+          addTable('t1'),
+          addColumnAction({ id: 'c1', tableId: 't1' }),
+          changeColumnDataTypeAction({
+            tableId: 't1',
+            id: 'c1',
+            value: 'VARCHAR',
+          }),
+          addDictionaryAction({
+            kind: 'domain',
+            id: 'D',
+            values: { name: 'D', dataType: 'TEXT' },
+          })
+        );
+        store.dispatchSync(
+          attachDictionarySheetTag$(
+            updateDictionaryEntryAction$('domain', 'D', { dataType: 'INT' })
+          )
+        );
+        store.dispatchSync(setColumnDomainAction$('t1', 'c1', 'D'));
+      }
+      const removeD = () => removeDictionaryEntriesAction$('domain', ['D']);
+      const domainOf = (store: RxStore) => ({
+        listed: isListed(store.state.doc.domainIds, 'D'),
+        dataType: store.state.collections.domainEntities.D.dataType,
+      });
+      const c1 = (store: RxStore) =>
+        store.state.collections.tableColumnEntities.c1;
+
+      it('unlinks a column it leaves off that type, so listing the domain again keeps every link at its type', () => {
+        const store = make(createContext());
+        seed(store);
+        store.dispatchSync(removeD());
+
+        store.undoSheet('domain');
+        expect(c1(store)).toMatchObject({ domainId: '', dataType: 'INT' });
+
+        store.undo();
+        expect(domainOf(store)).toEqual({ listed: true, dataType: 'TEXT' });
+        expect(c1(store)).toMatchObject({ domainId: '', dataType: 'INT' });
+
+        store.redoSheet('domain');
+        expect(c1(store)).toMatchObject({ domainId: 'D', dataType: 'INT' });
+      });
+
+      it('unlinks it on both of two peers when the other one lists the domain again from its own sheet', () => {
+        const [a, b] = [make(createContext()), make(createContext())];
+        const forward = (to: RxStore) => (actions: AnyAction[]) => {
+          if (hasActionTag(actions, Tag.shared)) return;
+          to.dispatchSync(attachActionsTag(Tag.shared, actions));
+        };
+        a.subscribe(forward(b));
+        b.subscribe(forward(a));
+        seed(a);
+        b.dispatchSync(attachDictionarySheetTag$(removeD()));
+
+        a.undoSheet('domain');
+        b.undoSheet('domain');
+        for (const store of [a, b]) {
+          expect(domainOf(store)).toEqual({ listed: true, dataType: 'TEXT' });
+          expect(c1(store)).toMatchObject({ domainId: '', dataType: 'INT' });
+        }
+      });
+    });
+
+    describe("a domain's type undone from its sheet", () => {
+      const domain = (id: string, dataType: string) =>
+        addDictionaryAction({
+          kind: 'domain',
+          id,
+          values: { name: id, dataType },
+        });
+      const linked = (domainId: string, dataType: string) => [
+        changeColumnDomainAction({ tableId: 't1', id: 'c1', value: domainId }),
+        changeColumnDataTypeAction({
+          tableId: 't1',
+          id: 'c1',
+          value: dataType,
+        }),
+      ];
+
+      /** Domain D at INT linking c1, then the tab's change of D to BIGINT, which spreads to c1. */
+      function seed() {
+        const store = make(createContext());
+        store.dispatchSync(
+          addTable('t1'),
+          addColumnAction({ id: 'c1', tableId: 't1' }),
+          domain('D', 'INT'),
+          domain('E', 'VARCHAR'),
+          ...linked('D', 'INT')
+        );
+        store.dispatchSync(
+          fromTab(
+            updateDictionaryAction({
+              kind: 'domain',
+              id: 'D',
+              values: { dataType: 'BIGINT' },
+            })
+          ),
+          fromTab(
+            changeColumnDataTypeAction({
+              tableId: 't1',
+              id: 'c1',
+              value: 'BIGINT',
+            })
+          )
+        );
+        const column = () => store.state.collections.tableColumnEntities.c1;
+        return { store, column };
+      }
+
+      it('takes back the columns the domain still links, and the domain', () => {
+        const { store, column } = seed();
+        expect(column().dataType).toBe('BIGINT');
+
+        store.undoSheet('domain');
+        expect(store.state.collections.domainEntities.D.dataType).toBe('INT');
+        expect(column().dataType).toBe('INT');
+
+        store.redoSheet('domain');
+        expect(column().dataType).toBe('BIGINT');
+      });
+
+      it('leaves a column the canvas linked elsewhere since, at the type of the domain it links now', () => {
+        const { store, column } = seed();
+        store.dispatchSync(...linked('E', 'VARCHAR'));
+
+        store.undoSheet('domain');
+        expect(store.state.collections.domainEntities.D.dataType).toBe('INT');
+        expect(column()).toMatchObject({ domainId: 'E', dataType: 'VARCHAR' });
+
+        store.redoSheet('domain');
+        expect(column()).toMatchObject({ domainId: 'E', dataType: 'VARCHAR' });
+      });
+
+      /**
+       * Key pk at D1 and foreign key fk at D2, both INT, then the tab's change
+       * of D1 to BIGINT, which the sync carries to fk and so off D2.
+       */
+      function seedRelated({ removed = false, d2Type = 'INT' } = {}) {
+        const store = make(createContext());
+        const link = (
+          tableId: string,
+          id: string,
+          domainId: string,
+          dataType: string
+        ) => [
+          changeColumnDomainAction({ tableId, id, value: domainId }),
+          changeColumnDataTypeAction({ tableId, id, value: dataType }),
+        ];
+        store.dispatchSync(
+          addTable('t1'),
+          addTable('t2'),
+          addColumnAction({ id: 'pk', tableId: 't1' }),
+          addColumnAction({ id: 'fk', tableId: 't2' }),
+          domain('D1', 'INT'),
+          domain('D2', d2Type),
+          domain('E', 'INT'),
+          domain('F', 'BIGINT'),
+          ...link('t1', 'pk', 'D1', 'INT'),
+          ...link('t2', 'fk', 'D2', 'INT'),
+          addRelationshipAction({
+            id: 'r1',
+            relationshipType: 4,
+            start: { tableId: 't1', columnIds: ['pk'] },
+            end: { tableId: 't2', columnIds: ['fk'] },
+          })
+        );
+        if (removed) {
+          store.dispatchSync(
+            fromTab(removeDictionaryAction({ kind: 'domain', id: 'D2' }))
+          );
+        }
+        store.dispatchSync(
+          attachDictionarySheetTag$(
+            updateDictionaryEntryAction$('domain', 'D1', { dataType: 'BIGINT' })
+          )
+        );
+        const columnOf = (id: string) =>
+          store.state.collections.tableColumnEntities[id];
+        return { store, columnOf, link };
+      }
+
+      it('links again a column its own entry carried off another domain', () => {
+        const { store, columnOf } = seedRelated();
+        expect(columnOf('fk')).toMatchObject({
+          domainId: '',
+          dataType: 'BIGINT',
+        });
+
+        store.undoSheet('domain');
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'INT',
+        });
+        expect(columnOf('fk')).toMatchObject({
+          domainId: 'D2',
+          dataType: 'INT',
+        });
+
+        store.redoSheet('domain');
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'BIGINT',
+        });
+        expect(columnOf('fk')).toMatchObject({
+          domainId: '',
+          dataType: 'BIGINT',
+        });
+      });
+
+      it('leaves the link the canvas gave that column since', () => {
+        const { store, columnOf, link } = seedRelated();
+        store.dispatchSync(...link('t2', 'fk', 'E', 'INT'));
+
+        store.undoSheet('domain');
+        expect(columnOf('fk')).toMatchObject({
+          domainId: 'E',
+          dataType: 'INT',
+        });
+      });
+
+      it.each([
+        ['at', 'INT', 'D2'],
+        ['off', 'VARCHAR', ''],
+      ])(
+        "links again a column its own entry carried off a removed domain only while it ends %s that domain's type",
+        (_, d2Type, domainId) => {
+          const { store, columnOf } = seedRelated({ removed: true, d2Type });
+          expect(columnOf('fk')).toMatchObject({
+            domainId: '',
+            dataType: 'BIGINT',
+          });
+
+          store.undoSheet('domain');
+          expect(columnOf('fk')).toMatchObject({ domainId, dataType: 'INT' });
+
+          store.undoSheet('domain');
+          expect(store.state.doc.domainIds).toContain('D2');
+          expect(columnOf('fk')).toMatchObject({ domainId, dataType: 'INT' });
+        }
+      );
+
+      it('links again on an undo the link its redo took off, one the canvas gave since', () => {
+        const { store, columnOf, link } = seedRelated();
+        store.undoSheet('domain');
+        store.dispatchSync(...link('t2', 'fk', 'E', 'INT'));
+
+        store.redoSheet('domain');
+        expect(columnOf('fk')).toMatchObject({
+          domainId: '',
+          dataType: 'BIGINT',
+        });
+
+        store.undoSheet('domain');
+        expect(columnOf('fk')).toMatchObject({
+          domainId: 'E',
+          dataType: 'INT',
+        });
+      });
+
+      it('links again on a redo the link its undo took off', () => {
+        const { store, columnOf, link } = seedRelated();
+        store.dispatchSync(...link('t2', 'fk', 'F', 'BIGINT'));
+
+        store.undoSheet('domain');
+        expect(columnOf('fk')).toMatchObject({
+          domainId: '',
+          dataType: 'INT',
+        });
+
+        store.redoSheet('domain');
+        expect(columnOf('fk')).toMatchObject({
+          domainId: 'F',
+          dataType: 'BIGINT',
+        });
+      });
+
+      const typeFk = (store: RxStore) =>
+        store.dispatchSync(
+          changeColumnDataTypeAction$({
+            tableId: 't2',
+            id: 'fk',
+            value: 'TEXT',
+          })
+        );
+
+      it('leaves a column typed by hand since unlinked at its type, and the key the sync carried with it', () => {
+        const { store, columnOf } = seedRelated();
+        typeFk(store);
+
+        store.undoSheet('domain');
+        expect(columnOf('fk')).toMatchObject({
+          domainId: '',
+          dataType: 'TEXT',
+        });
+        expect(columnOf('pk')).toMatchObject({
+          domainId: '',
+          dataType: 'TEXT',
+        });
+      });
+
+      it.each([
+        ['the sheet first', ['undoSheet', 'undo']],
+        ['the canvas first', ['undo', 'undoSheet']],
+      ] as const)(
+        'leaves the columns of a typed type the canvas undoes and redoes around the undone sheet as typed, %s',
+        (_, undos) => {
+          const { store, columnOf } = seedRelated();
+          typeFk(store);
+
+          for (const undo of undos) {
+            if (undo === 'undo') store.undo();
+            else store.undoSheet('domain');
+          }
+          store.redo();
+
+          expect(columnOf('fk')).toMatchObject({
+            domainId: '',
+            dataType: 'TEXT',
+          });
+          expect(columnOf('pk')).toMatchObject({
+            domainId: '',
+            dataType: 'TEXT',
+          });
+        }
+      );
+    });
+
+    describe('a link the document history replays', () => {
+      /** Domain d1 at INT linking c1, typed INT. */
+      function seed() {
+        const store = make(createContext());
+        store.dispatchSync(
+          addTable('t1'),
+          addColumnAction({ id: 'c1', tableId: 't1' }),
+          addDictionaryAction({
+            kind: 'domain',
+            id: 'd1',
+            values: { name: 'Identifier', dataType: 'INT' },
+          }),
+          changeColumnDomainAction({ tableId: 't1', id: 'c1', value: 'd1' }),
+          changeColumnDataTypeAction({ tableId: 't1', id: 'c1', value: 'INT' })
+        );
+        const toBigint = () =>
+          store.dispatchSync(
+            attachDictionarySheetTag$(
+              updateDictionaryEntryAction$('domain', 'd1', {
+                dataType: 'BIGINT',
+              })
+            )
+          );
+        const column = () => store.state.collections.tableColumnEntities.c1;
+        return { store, toBigint, column };
+      }
+      const batchesOf = (store: RxStore, replay: () => void) => {
+        let batches = 0;
+        const unsubscribe = store.subscribe(() => batches++);
+        replay();
+        unsubscribe();
+        return batches;
+      };
+
+      it.each(['TEXT', 'BIGINT'])(
+        'gives the column an undone %s type takes off the domain the type the domain holds now',
+        typed => {
+          const { store, toBigint, column } = seed();
+          store.dispatchSync(
+            changeColumnDataTypeAction$({
+              tableId: 't1',
+              id: 'c1',
+              value: typed,
+            })
+          );
+          toBigint();
+
+          store.undo();
+          expect(column()).toMatchObject({
+            domainId: 'd1',
+            dataType: 'BIGINT',
+          });
+
+          store.redo();
+          expect(column()).toMatchObject({ domainId: '', dataType: typed });
+        }
+      );
+
+      it('gives a link redone the type its domain holds now', () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(
+          changeColumnDomainAction({ tableId: 't1', id: 'c1', value: '' }),
+          changeColumnDataTypeAction({
+            tableId: 't1',
+            id: 'c1',
+            value: 'VARCHAR',
+          })
+        );
+        store.dispatchSync(setColumnDomainAction$('t1', 'c1', 'd1'));
+        store.undo();
+        expect(column()).toMatchObject({ domainId: '', dataType: 'VARCHAR' });
+        toBigint();
+
+        store.redo();
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it('gives the columns of a table brought back the type their domain holds now', () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(removeTableAction$('t1'));
+        toBigint();
+        expect(column().dataType).toBe('INT');
+
+        store.undo();
+        expect(store.state.doc.tableIds).toEqual(['t1']);
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it('gives a column brought back on its own the type its domain holds now', () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(removeColumnAction$('t1', ['c1']));
+        toBigint();
+        expect(column().dataType).toBe('INT');
+
+        store.undo();
+        expect(store.state.collections.tableEntities.t1.columnIds).toEqual([
+          'c1',
+        ]);
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it("sends a replay as the one batch it recorded where every column ends at its domain's type, and settles the rest in a second", () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(
+          changeColumnDataTypeAction$({
+            tableId: 't1',
+            id: 'c1',
+            value: 'TEXT',
+          })
+        );
+
+        expect(batchesOf(store, store.undo)).toBe(1);
+        expect(batchesOf(store, store.redo)).toBe(1);
+        toBigint();
+        expect(batchesOf(store, store.undo)).toBe(2);
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it('settles no column of a table a peer removed since, sending the one batch it recorded', () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(
+          changeColumnDataTypeAction$({
+            tableId: 't1',
+            id: 'c1',
+            value: 'TEXT',
+          })
+        );
+        store.dispatchSync(
+          attachActionTag(Tag.shared, removeTableAction({ id: 't1' }))
+        );
+        toBigint();
+
+        expect(batchesOf(store, store.undo)).toBe(1);
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'INT' });
+      });
+
+      const removeD1 = (store: RxStore) =>
+        store.dispatchSync(
+          attachDictionarySheetTag$(
+            removeDictionaryEntriesAction$('domain', ['d1'])
+          )
+        );
+
+      it.each([
+        [
+          'an undone type',
+          (store: RxStore) =>
+            store.dispatchSync(
+              changeColumnDataTypeAction$({
+                tableId: 't1',
+                id: 'c1',
+                value: 'TEXT',
+              })
+            ),
+        ],
+        [
+          'the column of a table brought back',
+          (store: RxStore) => store.dispatchSync(removeTableAction$('t1')),
+        ],
+      ])(
+        'unlinks %s off the type of the removed domain it links, so undoing the removal leaves it unlinked',
+        (_, edit) => {
+          const { store, toBigint, column } = seed();
+          edit(store);
+          toBigint();
+          removeD1(store);
+
+          store.undo();
+          expect(column()).toMatchObject({ domainId: '', dataType: 'INT' });
+
+          store.undoSheet('domain');
+          expect(store.state.doc.domainIds).toEqual(['d1']);
+          expect(column()).toMatchObject({ domainId: '', dataType: 'INT' });
+        }
+      );
+
+      it("reads a domain's type the entry writes as the replay's own, as a peer's history holds the domain sheet's edit", () => {
+        const store = make(createContext());
+        store.dispatchSync(
+          addTable('t1'),
+          addTable('t2'),
+          addColumnAction({ id: 'pk', tableId: 't1' }),
+          addColumnAction({ id: 'fk', tableId: 't2' }),
+          ...['D1', 'D2'].map(id =>
+            addDictionaryAction({
+              kind: 'domain',
+              id,
+              values: { name: id, dataType: 'INT' },
+            })
+          ),
+          changeColumnDomainAction({ tableId: 't1', id: 'pk', value: 'D1' }),
+          changeColumnDataTypeAction({ tableId: 't1', id: 'pk', value: 'INT' }),
+          changeColumnDomainAction({ tableId: 't2', id: 'fk', value: 'D2' }),
+          changeColumnDataTypeAction({ tableId: 't2', id: 'fk', value: 'INT' }),
+          addRelationshipAction({
+            id: 'r1',
+            relationshipType: 4,
+            start: { tableId: 't1', columnIds: ['pk'] },
+            end: { tableId: 't2', columnIds: ['fk'] },
+          })
+        );
+        store.dispatchSync(
+          updateDictionaryEntryAction$('domain', 'D1', { dataType: 'BIGINT' })
+        );
+        const columnOf = (id: string) =>
+          store.state.collections.tableColumnEntities[id];
+
+        store.undo();
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'INT',
+        });
+        expect(columnOf('fk')).toMatchObject({
+          domainId: 'D2',
+          dataType: 'INT',
+        });
+
+        store.redo();
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'BIGINT',
+        });
+        expect(columnOf('fk')).toMatchObject({
+          domainId: '',
+          dataType: 'BIGINT',
+        });
+      });
+
+      it('keeps a link it brings back to a removed domain at its type', () => {
+        const { store, column } = seed();
+        store.dispatchSync(
+          changeColumnDataTypeAction$({
+            tableId: 't1',
+            id: 'c1',
+            value: 'TEXT',
+          })
+        );
+        removeD1(store);
+
+        store.undo();
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'INT' });
+      });
+
+      it("works the links out on the state of the store it replays into, as Time Travel's preview does", () => {
+        const origin = make(createContext());
+        origin.dispatchSync(
+          ...[
+            addTable('t1'),
+            addTable('t2'),
+            addColumnAction({ id: 'pk', tableId: 't1' }),
+            addColumnAction({ id: 'fk', tableId: 't2' }),
+            changeColumnDataTypeAction({
+              tableId: 't1',
+              id: 'pk',
+              value: 'TEXT',
+            }),
+            changeColumnDataTypeAction({
+              tableId: 't2',
+              id: 'fk',
+              value: 'VARCHAR',
+            }),
+            addDictionaryAction({
+              kind: 'domain',
+              id: 'd1',
+              values: { name: 'Identifier', dataType: 'INT' },
+            }),
+          ].map(action => attachActionTag(Tag.shared, action))
+        );
+        origin.dispatchSync(setColumnDomainAction$('t1', 'pk', 'd1'));
+        origin.dispatchSync(
+          addRelationshipAction({
+            id: 'r1',
+            relationshipType: 4,
+            start: { tableId: 't1', columnIds: ['pk'] },
+            end: { tableId: 't2', columnIds: ['fk'] },
+          })
+        );
+
+        const preview = make(createContext(), {
+          getHistory: origin.history.clone,
+        });
+        preview.dispatchSync(initialLoadJsonAction$(toJson(origin.state)));
+        origin.dispatchSync(
+          attachDictionarySheetTag$(
+            updateDictionaryEntryAction$('domain', 'd1', { dataType: 'BIGINT' })
+          )
+        );
+        preview.undo();
+        preview.undo();
+        preview.redo();
+
+        expect(preview.state.doc.relationshipIds).toEqual([]);
+        expect(preview.state.collections.tableColumnEntities.pk).toMatchObject({
+          domainId: 'd1',
+          dataType: 'INT',
+        });
+        expect(preview.state.collections.tableColumnEntities.fk.dataType).toBe(
+          'VARCHAR'
+        );
+      });
+
+      /** Key pk and foreign key fk, related, with the domains and types given. */
+      function seedKeyed(...actions: AnyAction[]) {
+        const store = make(createContext());
+        store.dispatchSync(
+          addTable('t1'),
+          addTable('t2'),
+          addColumnAction({ id: 'pk', tableId: 't1' }),
+          addColumnAction({ id: 'fk', tableId: 't2' }),
+          ...actions,
+          addRelationshipAction({
+            id: 'r1',
+            relationshipType: 4,
+            start: { tableId: 't1', columnIds: ['pk'] },
+            end: { tableId: 't2', columnIds: ['fk'] },
+          })
+        );
+        const columnOf = (id: string) =>
+          store.state.collections.tableColumnEntities[id];
+        return { store, columnOf };
+      }
+      const domain = (id: string, dataType: string) =>
+        addDictionaryAction({
+          kind: 'domain',
+          id,
+          values: { name: id, dataType },
+        });
+      const typed = (tableId: string, id: string, value: string) =>
+        changeColumnDataTypeAction({ tableId, id, value });
+      const linked = (tableId: string, id: string, value: string) =>
+        changeColumnDomainAction({ tableId, id, value });
+      const focusOn = (store: RxStore, tableId: string, columnId: string) =>
+        store.dispatchSync(
+          focusColumnAction({
+            tableId,
+            columnId,
+            focusType: FocusType.columnName,
+            $mod: false,
+            shiftKey: false,
+          })
+        );
+
+      it.each([
+        ['an unlink', () => setColumnDomainAction$('t1', 'pk', '')],
+        [
+          'a typed type',
+          () =>
+            changeColumnDataTypeAction$({
+              tableId: 't1',
+              id: 'pk',
+              value: 'TEXT',
+            }),
+        ],
+      ])(
+        'undoes %s of a key as recorded, leaving a foreign key off the key as it was',
+        (_, edit) => {
+          const { store, columnOf } = seedKeyed(
+            domain('D1', 'INT'),
+            linked('t1', 'pk', 'D1'),
+            typed('t1', 'pk', 'INT'),
+            typed('t2', 'fk', 'BIGINT')
+          );
+          store.dispatchSync(edit());
+
+          store.undo();
+          expect(columnOf('pk')).toMatchObject({
+            domainId: 'D1',
+            dataType: 'INT',
+          });
+          expect(columnOf('fk')).toMatchObject({
+            domainId: '',
+            dataType: 'BIGINT',
+          });
+        }
+      );
+
+      it("undoes a serial key's unlink as recorded, leaving its foreign key on the domain it links", () => {
+        const { store, columnOf } = seedKeyed(
+          changeDatabaseAction({ value: Database.MySQL }),
+          domain('D1', 'SERIAL'),
+          domain('D2', 'BIGINT'),
+          linked('t1', 'pk', 'D1'),
+          typed('t1', 'pk', 'SERIAL'),
+          typed('t2', 'fk', 'BIGINT UNSIGNED')
+        );
+        store.dispatchSync(setColumnDomainAction$('t2', 'fk', 'D2'));
+        store.dispatchSync(setColumnDomainAction$('t1', 'pk', ''));
+
+        store.undo();
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'SERIAL',
+        });
+        expect(columnOf('fk')).toMatchObject({
+          domainId: 'D2',
+          dataType: 'BIGINT',
+        });
+      });
+
+      it("keeps a foreign key's link the replay brings back where the sync reaches it at that domain's type, over a peer's link since", () => {
+        const { store, columnOf } = seedKeyed(
+          domain('D1', 'INT'),
+          domain('D2', 'TEXT'),
+          domain('E', 'BIGINT'),
+          domain('F', 'VARCHAR'),
+          linked('t1', 'pk', 'D1'),
+          typed('t1', 'pk', 'INT'),
+          linked('t2', 'fk', 'E'),
+          typed('t2', 'fk', 'BIGINT')
+        );
+        store.dispatchSync(setColumnDomainAction$('t1', 'pk', 'D2'));
+        expect(columnOf('fk')).toMatchObject({
+          domainId: '',
+          dataType: 'TEXT',
+        });
+        store.dispatchSync(
+          attachDictionarySheetTag$(
+            updateDictionaryEntryAction$('domain', 'D1', { dataType: 'BIGINT' })
+          )
+        );
+        store.dispatchSync(
+          ...[linked('t2', 'fk', 'F'), typed('t2', 'fk', 'VARCHAR')].map(
+            action => attachActionTag(Tag.shared, action)
+          )
+        );
+
+        store.undo();
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'BIGINT',
+        });
+        expect(columnOf('fk')).toMatchObject({
+          domainId: 'E',
+          dataType: 'BIGINT',
+        });
+      });
+
+      it('gives a column a peer linked since to a domain the replay types that type', () => {
+        const { store, column } = seed();
+        store.dispatchSync(
+          updateDictionaryEntryAction$('domain', 'd1', { dataType: 'BIGINT' })
+        );
+        store.dispatchSync(
+          ...[
+            addTable('t2'),
+            addColumnAction({ id: 'c2', tableId: 't2' }),
+            changeColumnDomainAction({ tableId: 't2', id: 'c2', value: 'd1' }),
+            changeColumnDataTypeAction({
+              tableId: 't2',
+              id: 'c2',
+              value: 'BIGINT',
+            }),
+          ].map(action => attachActionTag(Tag.shared, action))
+        );
+        const c2 = () => store.state.collections.tableColumnEntities.c2;
+
+        store.undo();
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'INT' });
+        expect(c2()).toMatchObject({ domainId: 'd1', dataType: 'INT' });
+
+        store.redo();
+        expect(c2()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it('spreads the type it gives a key brought back over the relationships brought back with it', () => {
+        const { store, columnOf } = seedKeyed(
+          addTable('t3'),
+          addColumnAction({ id: 'fk2', tableId: 't3' }),
+          domain('D1', 'INT'),
+          typed('t1', 'pk', 'INT'),
+          typed('t2', 'fk', 'INT'),
+          typed('t3', 'fk2', 'INT'),
+          addRelationshipAction({
+            id: 'r2',
+            relationshipType: 4,
+            start: { tableId: 't1', columnIds: ['pk'] },
+            end: { tableId: 't3', columnIds: ['fk2'] },
+          })
+        );
+        store.dispatchSync(setColumnDomainAction$('t1', 'pk', 'D1'));
+        store.dispatchSync(removeTableAction$('t1'));
+        store.dispatchSync(
+          attachDictionarySheetTag$(
+            updateDictionaryEntryAction$('domain', 'D1', { dataType: 'BIGINT' })
+          )
+        );
+
+        store.undo();
+        expect(store.state.doc.relationshipIds).toHaveLength(2);
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'BIGINT',
+        });
+        expect(columnOf('fk').dataType).toBe('BIGINT');
+        expect(columnOf('fk2').dataType).toBe('BIGINT');
+      });
+
+      it('redoes a paste of a domain cell as recorded, spreading no type to the foreign key', () => {
+        const { store, columnOf } = seedKeyed(
+          domain('d1', 'uuid'),
+          typed('t1', 'pk', 'INT'),
+          typed('t2', 'fk', 'INT'),
+          changeShowAction({ show: Show.columnDomain, value: true })
+        );
+        focusOn(store, 't1', 'pk');
+        store.dispatchSync(
+          pasteTableAction$([
+            createColumn({ dataType: 'uuid', domainId: 'd1' }),
+          ])
+        );
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'd1',
+          dataType: 'uuid',
+        });
+
+        store.undo();
+        expect(columnOf('pk')).toMatchObject({ domainId: '', dataType: 'INT' });
+        store.redo();
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'd1',
+          dataType: 'uuid',
+        });
+        expect(columnOf('fk').dataType).toBe('INT');
+      });
+
+      it('unlinks a column an undone paste types off the type its domain holds now, as a typed type does', () => {
+        const { store, toBigint, column } = seed();
+        focusOn(store, 't1', 'c1');
+        store.dispatchSync(
+          pasteTableAction$([createColumn({ dataType: 'INT' })])
+        );
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'INT' });
+        toBigint();
+
+        store.undo();
+        expect(column()).toMatchObject({ domainId: '', dataType: 'INT' });
+      });
+
+      it.each([
+        ['gives a column the type its listed domain holds now', false, 'd1'],
+        ['unlinks a column off the type its removed domain holds', true, ''],
+      ])(
+        "%s when a schema import's undo brings it back",
+        (_, removed, domainId) => {
+          const { store, toBigint, column } = seed();
+          const empty = make(createContext());
+          store.dispatchSync(
+            loadJsonAction$(toJson(empty.state), { keepDictionaries: true })
+          );
+          expect(store.state.doc.tableIds).toEqual([]);
+          toBigint();
+          if (removed) removeD1(store);
+
+          store.undo();
+          expect(store.state.doc.tableIds).toEqual(['t1']);
+          expect(column()).toMatchObject({
+            domainId,
+            dataType: removed ? 'INT' : 'BIGINT',
+          });
+        }
+      );
+    });
+
+    it("keeps every live column linking a listed domain at its type through random edits, a peer's among them, undos and redos", () => {
+      let seed = 20261022;
+      const pick = <T>(list: ReadonlyArray<T>): T => {
+        seed = (seed * 48271) % 2147483647;
+        return list[seed % list.length];
+      };
+      const types = ['INT', 'BIGINT', 'TEXT', 'SERIAL'];
+      const domainIds = ['D1', 'D2', 'D3'];
+      const columns = [
+        ['t1', 'pk'],
+        ['t2', 'fk'],
+        ['t3', 'fk2'],
+      ];
+      const violations: string[] = [];
+
+      for (let run = 0; run < 300; run++) {
+        const store = make(createContext());
+        store.dispatchSync(
+          ...columns.flatMap(([tableId, id]) => [
+            addTable(tableId),
+            addColumnAction({ tableId, id }),
+          ]),
+          ...domainIds.map(id =>
+            addDictionaryAction({
+              kind: 'domain',
+              id,
+              values: { name: id, dataType: pick(types) },
+            })
+          ),
+          ...['fk', 'fk2'].map((id, i) =>
+            addRelationshipAction({
+              id: `r${i}`,
+              relationshipType: 4,
+              start: { tableId: 't1', columnIds: ['pk'] },
+              end: { tableId: `t${i + 2}`, columnIds: [id] },
+            })
+          )
+        );
+        store.resetHistory();
+        const toDomain = (
+          edit: Parameters<typeof attachDictionarySheetTag$>[0]
+        ) => store.dispatchSync(attachDictionarySheetTag$(edit));
+        const steps = [
+          () => {
+            const [tableId, id] = pick(columns);
+            const value = pick(types);
+            store.dispatchSync(
+              changeColumnDataTypeAction$({ tableId, id, value })
+            );
+          },
+          () => {
+            const [tableId, id] = pick(columns);
+            store.dispatchSync(
+              setColumnDomainAction$(tableId, id, pick(['', ...domainIds]))
+            );
+          },
+          () =>
+            toDomain(
+              updateDictionaryEntryAction$('domain', pick(domainIds), {
+                dataType: pick(types),
+              })
+            ),
+          () =>
+            toDomain(
+              removeDictionaryEntriesAction$('domain', [pick(domainIds)])
+            ),
+          () =>
+            store.dispatchSync(
+              updateDictionaryEntryAction$('domain', pick(domainIds), {
+                dataType: pick(types),
+              })
+            ),
+          () => {
+            const [tableId, id] = pick(columns);
+            const value = pick(domainIds);
+            const { dataType } = store.state.collections.domainEntities[value];
+            store.dispatchSync(
+              ...[
+                changeColumnDomainAction({ tableId, id, value }),
+                changeColumnDataTypeAction({ tableId, id, value: dataType }),
+              ].map(action => attachActionTag(Tag.shared, action))
+            );
+          },
+          () =>
+            store.dispatchSync(
+              changeRelationshipDataTypeSyncAction({
+                value: !store.state.settings.relationshipDataTypeSync,
+              })
+            ),
+          () => store.undo(),
+          () => store.redo(),
+          () => store.undoSheet('domain'),
+          () => store.redoSheet('domain'),
+        ];
+
+        for (let step = 0; step < 30; step++) {
+          pick(steps)();
+          const { doc, collections } = store.state;
+          for (const [tableId, id] of columns) {
+            if (!doc.tableIds.includes(tableId)) continue;
+            const { domainId, dataType } = collections.tableColumnEntities[id];
+            const domainType = collections.domainEntities[domainId]?.dataType;
+            if (isListed(doc.domainIds, domainId) && dataType !== domainType) {
+              violations.push(`${run}:${step} ${id} ${dataType} ${domainType}`);
+            }
+          }
+        }
+      }
+
+      expect(violations).toEqual([]);
+    });
+
+    it('puts a tagged batch with no dictionary row into the document history', () => {
+      const store = make(createContext());
+
+      store.dispatchSync(fromTab(addTable('t1')));
+
+      expect(store.history.size).toBe(1);
+      expect(store.sheetHistories.word.size).toBe(0);
+    });
+
+    it('refuses a sheet undo in a read-only document, and empties every sheet on reset', () => {
+      let readonly = false;
+      const store = make(createContext(), { getReadonly: () => readonly });
+
+      store.dispatchSync(fromTab(addWord('w1', 'Member')));
+      readonly = true;
+      store.undoSheet('word');
+      store.redoSheet('word');
+      expect(store.state.doc.wordIds).toEqual(['w1']);
+
+      readonly = false;
+      store.resetHistory();
+      expect(store.sheetHistories.word.size).toBe(0);
+    });
   });
 
   describe('readonly', () => {

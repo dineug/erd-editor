@@ -11,7 +11,10 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
@@ -112,6 +115,16 @@ describe('table-column history', () => {
       action: changeColumnCommentAction,
       field: 'comment',
     },
+    {
+      type: ActionType.changeColumnLogicalName,
+      action: changeColumnLogicalNameAction,
+      field: 'logicalName',
+    },
+    {
+      type: ActionType.changeColumnDomain,
+      action: changeColumnDomainAction,
+      field: 'domainId',
+    },
   ] as const;
 
   for (const { type, action, field } of valueCases) {
@@ -205,6 +218,50 @@ describe('table-column history', () => {
       });
     });
   }
+
+  describe(ActionType.changeColumnNameDerived, () => {
+    const derive = (id: string, value: boolean) =>
+      changeColumnNameDerivedAction({ id, tableId: 't1', value });
+
+    it('undoes with the bit the column held, so an undo of a write that changed nothing keeps it', () => {
+      const store = withColumns();
+      store.dispatchSync(derive('c2', true));
+
+      expect(
+        pushUndo(
+          ActionType.changeColumnNameDerived,
+          derive('c1', false),
+          store.state
+        )
+      ).toEqual([derive('c1', false)]);
+      expect(
+        pushUndo(
+          ActionType.changeColumnNameDerived,
+          derive('c2', true),
+          store.state
+        )
+      ).toEqual([derive('c2', true)]);
+      expect(
+        pushUndo(
+          ActionType.changeColumnNameDerived,
+          derive('c2', false),
+          store.state
+        )
+      ).toEqual([derive('c2', true)]);
+    });
+
+    it('pushes nothing when the column is unknown', () => {
+      const store = withColumns();
+
+      expect(
+        pushUndo(
+          ActionType.changeColumnNameDerived,
+          derive('ghost', true),
+          store.state
+        )
+      ).toEqual([]);
+    });
+  });
 
   describe('moveColumn', () => {
     it('targets the next column when moving forward', () => {

@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-20 -->
 
 # components
 
 ## Purpose
 
-`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels and the two code tabs. This file holds the rules that tell a scene component which geometry it draws, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
+`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels, the two code tabs and the Dictionary tab. This file holds the rules that tell a scene component which geometry it draws, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
 
 ## Making a Change
 
@@ -21,17 +21,18 @@
 | `visualization/VisualizationFlow.tsx` | `FlowScene`, the scene root of the Flow view |
 | `flowCenters.ts` | Narrows the Flow view to the tables given and their one hop, and widens it back (`focusFlowView`, `showAllFlowView`) |
 | `erd/canvas/SceneIcon.template.tsx` | Draws the `getIcon` data in the scene |
-| `explorer/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
+| `explorer/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, and for a logical name, which only the palette's `@` rows list, a column's, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
 | `primitives/icon/icons.ts` | The registered icons and `getIcon`; `icons.test.ts` beside it |
 
 ## Subdirectories
 
 | Directory | Purpose |
 | --- | --- |
-| `erd/` | `erd/AGENTS.md`: keys and alternate keys, Table Properties, the buttons beside a draw's target, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, pointer and key handling (`YIELDS_TO_A_CARET`, Escape, Delete, Backspace), the welcome screen |
+| `erd/` | `erd/AGENTS.md`: the name views, keys and alternate keys, Table Properties, the buttons beside a draw's target, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, pointer and key handling (`YIELDS_TO_A_CARET`, Escape, Delete, Backspace), the welcome screen |
 | `export-image/` | `export-image/AGENTS.md`: the one dialog every image export goes through, PNG and SVG, and the contract of the shared modal `primitives/dialog/Dialog.tsx` |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the Schema SQL tab, its options panel and its script editors |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator tab, its options panel, the language menu, Save file and highlighting |
+| `dictionary/` | `dictionary/AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, how a grid commit resolves to row ids, where a sheet's version comes from, where a check leads and the marks on the cells it names, its keys, the grid's theme, a read-only document, and its CSV import and export |
 | `map-columns/` | `map-columns/AGENTS.md`: Map Columns and `relationship.changeColumns` |
 | `explorer/` | `explorer/AGENTS.md`: the Explorer docked left of the canvas, its tree, where a row goes, Find and Replace above it and the matcher in `src/utils/find-replace/` |
 | `quick-search/` | `quick-search/AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |
@@ -46,7 +47,7 @@
 - **Outside any provider, read `getActiveView`.** Code that must follow the reader and runs outside any provider reads `getActiveView` (`src/engine/modules/editor/view*.ts`). That is the zoom generators, through `getActiveTransform`, and the view reducers.
 - **A scene writes to the slot it reads.** Each write names its source: `sceneScrollToAction(source, …)`, `changeZoomLevelAction$(value, source)`, `moveAllAction$(dx, dy, source)`, and `kind` on a view payload. An unnamed scroll or zoom lands on the active view. An unnamed `moveAllAction$` goes to the document, and an open view drops it.
 - What a view shows, `src/konva/scene/viewLayout.ts`: `src/konva/AGENTS.md`.
-- **`flowLayout.tsx` alone asks for a Flow placement.** It asks with `TablePlacement.viewLayered`. It caches landings under `placedKey`: the centers, the show mode and the doc's id lists, never `positions`. A key holding `positions` would make the loop re-ask on its own answer.
+- **`flowLayout.tsx` alone asks for a Flow placement.** It asks with `TablePlacement.viewLayered`. It caches landings under `placedKey`: the centers, the show mode, the name view and the doc's id lists, never `positions`. A key holding `positions` would make the loop re-ask on its own answer. The centers and the show mode are the framing (`framingOf`): each resizes every card, so a change of either places the view again and fits it to the screen. The name view resizes them too and places the view again, but fits it only for the reader's own switch made with the view drawn (`isOwnNameViewSwitch`, the payload's `editorId`): a peer's shared switch, as any peer's edit, and a switch made on another tab keep the reader's screen.
 - **Narrow or widen only through `flowCenters.ts` or `focusFlowTableAction$`.** Both dispatch state alone and run no layout. The placement loop in `flowLayout.tsx` reads the display set they name and asks for the layout, so a narrowing and the Flow mount never hold two answers to one question.
 - Coordinate hints for ELK, `toHints` in `src/services/elk-layout/elkGraph.ts`: `src/services/AGENTS.md`.
 

@@ -266,9 +266,9 @@ describe('CollaborativeHostService', () => {
     edit(host, [tableActions$.removeTableAction$(tableId)]);
     await vi.waitFor(
       () =>
-        expect(JSON.parse(rows.get('schema-1')!.value).doc.tableIds).toEqual(
-          []
-        ),
+        expect(
+          JSON.parse(rows.get('schema-1')!.value).doc.tableIds ?? []
+        ).toEqual([]),
       { interval: 20, timeout: 2000 }
     );
 

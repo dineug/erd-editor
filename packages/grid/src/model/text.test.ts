@@ -27,16 +27,11 @@ const pretext = vi.hoisted(() => {
     measureNaturalWidth: vi.fn(
       (prepared: Prepared) => prepared.text.length * CHAR_WIDTH
     ),
-    layoutNextLine: vi.fn(
-      (
-        prepared: Prepared,
-        start: { segmentIndex: number; graphemeIndex: number },
-        maxWidth: number
-      ) => {
-        const text = prepared.text.slice(0, Math.floor(maxWidth / CHAR_WIDTH));
-        return { text, width: text.length * CHAR_WIDTH, start, end: start };
-      }
-    ),
+    layoutNextLine: vi.fn((prepared: Prepared, maxWidth: number) => {
+      const text = prepared.text.slice(0, Math.floor(maxWidth / CHAR_WIDTH));
+      const start = { segmentIndex: 0, graphemeIndex: 0 };
+      return { text, width: text.length * CHAR_WIDTH, start, end: start };
+    }),
   };
 });
 
@@ -136,7 +131,6 @@ describe('the cut of a text wider than its cell', () => {
     expect(fitter.fit('abcdefghijklmno', WIDTH)).toBe(`abcdefghi${ELLIPSIS}`);
     expect(pretext.layoutNextLine).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ text: 'abcdefghijklmno' }),
-      { segmentIndex: 0, graphemeIndex: 0 },
       WIDTH - pretext.CHAR_WIDTH
     );
   });

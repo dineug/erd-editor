@@ -408,7 +408,7 @@ const DrawTargetButtons: FC<DrawTargetButtonsProps> = (props, ctx) => {
     const newTitle = start.hasKey
       ? t('mapColumns.createNew')
       : t('mapColumns.noPrimaryKeyToCopy', {
-          table: nameOf(start.table, i18n.value),
+          table: nameOf(start.table, i18n.value, state.settings),
         });
 
     return (

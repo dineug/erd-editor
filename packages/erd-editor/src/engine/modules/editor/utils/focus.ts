@@ -1,49 +1,44 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import { ColumnType, Show } from '@/constants/schema';
 import { ActionMap, ActionType } from '@/engine/modules/editor/actions';
 import { FocusType, MoveKey } from '@/engine/modules/editor/state';
 import { RootState } from '@/engine/state';
 import { arrayHas } from '@/utils/arrayHas';
-import { bHas } from '@/utils/bit';
 import { isHighLevelTable } from '@/utils/validation';
 
+import {
+  getColumnFocusTypes,
+  getTableFocusTypes,
+  toShownFocusType,
+} from './nameView';
 import { appendSelectColumns } from './selectRangeColumn';
 
 type Payload = ActionMap[typeof ActionType.focusMoveTable];
 
-const ColumnTypeToShowType: Record<number, number | true> = {
-  [ColumnType.columnName]: true,
-  [ColumnType.columnDataType]: Show.columnDataType,
-  [ColumnType.columnNotNull]: Show.columnNotNull,
-  [ColumnType.columnUnique]: Show.columnUnique,
-  [ColumnType.columnAutoIncrement]: Show.columnAutoIncrement,
-  [ColumnType.columnDefault]: Show.columnDefault,
-  [ColumnType.columnComment]: Show.columnComment,
-};
-const ColumnTypeToFocusType: Record<number, FocusType> = {
-  [ColumnType.columnName]: FocusType.columnName,
-  [ColumnType.columnDataType]: FocusType.columnDataType,
-  [ColumnType.columnNotNull]: FocusType.columnNotNull,
-  [ColumnType.columnUnique]: FocusType.columnUnique,
-  [ColumnType.columnAutoIncrement]: FocusType.columnAutoIncrement,
-  [ColumnType.columnDefault]: FocusType.columnDefault,
-  [ColumnType.columnComment]: FocusType.columnComment,
-};
+/** The focus types a table's own fields take, whichever view lays them out. */
 const TableFocusTypes: FocusType[] = [
   FocusType.tableName,
+  FocusType.tableLogicalName,
   FocusType.tableComment,
 ];
 
-function getColumnTypes({
-  settings: { show, columnOrder },
-}: RootState): FocusType[] {
-  return columnOrder
-    .filter(key => {
-      const showType = ColumnTypeToShowType[key];
-      return showType === true ? true : bHas(show, showType);
-    })
-    .map(key => ColumnTypeToFocusType[key]);
+function getColumnTypes({ settings }: RootState): FocusType[] {
+  return getColumnFocusTypes(settings);
+}
+
+/**
+ * Where the focus stands among the cells given: its own cell, or the one the
+ * name view draws in its place, so a focus taken in another view walks on
+ * from where the reader sees it.
+ */
+function indexOfFocus(
+  { settings }: RootState,
+  types: FocusType[],
+  focusType: FocusType
+): number {
+  return types.indexOf(
+    toShownFocusType(settings, types, focusType) ?? focusType
+  );
 }
 
 export function isColumns({ collections, editor: { focusTable } }: RootState) {
@@ -61,7 +56,7 @@ export function isLastColumn(state: RootState) {
   if (!focusTable) return true;
 
   const columnTypes = getColumnTypes(state);
-  const index = columnTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, columnTypes, focusTable.focusType);
   return index === columnTypes.length - 1;
 }
 
@@ -72,7 +67,7 @@ function isFirstColumn(state: RootState) {
   if (!focusTable) return true;
 
   const columnTypes = getColumnTypes(state);
-  const index = columnTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, columnTypes, focusTable.focusType);
   return index === 0;
 }
 
@@ -124,7 +119,7 @@ function getNextRightColumnType(state: RootState): FocusType {
   if (!focusTable) return FocusType.columnName;
 
   const columnTypes = getColumnTypes(state);
-  const index = columnTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, columnTypes, focusTable.focusType);
   return isLastColumn(state) ? columnTypes[0] : columnTypes[index + 1];
 }
 
@@ -135,7 +130,7 @@ function getNextLeftColumnType(state: RootState): FocusType {
   if (!focusTable) return FocusType.columnName;
 
   const columnTypes = getColumnTypes(state);
-  const index = columnTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, columnTypes, focusTable.focusType);
   return isFirstColumn(state)
     ? columnTypes[columnTypes.length - 1]
     : columnTypes[index - 1];
@@ -233,10 +228,19 @@ export function getRemovableColumns({
   return columnIds.length ? { tableId: focusTable.tableId, columnIds } : null;
 }
 
-function getTableTypes({ settings: { show } }: RootState): FocusType[] {
-  return bHas(show, Show.tableComment)
-    ? TableFocusTypes
-    : [FocusType.tableName];
+function getTableTypes({ settings }: RootState): FocusType[] {
+  return getTableFocusTypes(settings);
+}
+
+/** The header cell a focus leaving the rows forwards lands on, the first the view lays out. */
+function getFirstTableType(state: RootState): FocusType {
+  return getTableTypes(state)[0];
+}
+
+/** The header cell a focus leaving the rows backwards lands on, the last the view lays out. */
+function getLastTableType(state: RootState): FocusType {
+  const tableTypes = getTableTypes(state);
+  return tableTypes[tableTypes.length - 1];
 }
 
 export function isLastTable(state: RootState) {
@@ -246,7 +250,7 @@ export function isLastTable(state: RootState) {
   if (!focusTable) return true;
 
   const tableTypes = getTableTypes(state);
-  const index = tableTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, tableTypes, focusTable.focusType);
   return index === tableTypes.length - 1;
 }
 
@@ -257,7 +261,7 @@ function isFirstTable(state: RootState) {
   if (!focusTable) return true;
 
   const tableTypes = getTableTypes(state);
-  const index = tableTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, tableTypes, focusTable.focusType);
   return index === 0;
 }
 
@@ -270,7 +274,7 @@ function getNextRightTableType(state: RootState): FocusType {
   if (!focusTable) return FocusType.tableName;
 
   const tableTypes = getTableTypes(state);
-  const index = tableTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, tableTypes, focusTable.focusType);
   return isLastTable(state) ? tableTypes[0] : tableTypes[index + 1];
 }
 
@@ -281,7 +285,7 @@ function getNextLeftTableType(state: RootState): FocusType {
   if (!focusTable) return FocusType.tableName;
 
   const tableTypes = getTableTypes(state);
-  const index = tableTypes.indexOf(focusTable.focusType);
+  const index = indexOfFocus(state, tableTypes, focusTable.focusType);
   return isFirstTable(state)
     ? tableTypes[tableTypes.length - 1]
     : tableTypes[index - 1];
@@ -310,7 +314,7 @@ export function arrowUp(state: RootState, payload: Payload) {
     }
   } else {
     if (isFirstRowColumn(state)) {
-      focusTable.focusType = FocusType.tableName;
+      focusTable.focusType = getFirstTableType(state);
       focusTable.columnId = null;
       focusTable.prevSelectColumnId = null;
       focusTable.selectColumnIds = [];
@@ -355,7 +359,7 @@ export function arrowDown(state: RootState, payload: Payload) {
     }
   } else {
     if (isLastRowColumn(state)) {
-      focusTable.focusType = FocusType.tableName;
+      focusTable.focusType = getFirstTableType(state);
       focusTable.columnId = null;
       focusTable.prevSelectColumnId = null;
       focusTable.selectColumnIds = [];
@@ -407,9 +411,7 @@ export function arrowLeft(state: RootState, payload: Payload) {
   } else {
     if (isFirstColumn(state)) {
       if (isFirstRowColumn(state)) {
-        focusTable.focusType = bHas(state.settings.show, Show.tableComment)
-          ? FocusType.tableComment
-          : FocusType.tableName;
+        focusTable.focusType = getLastTableType(state);
         focusTable.columnId = null;
         focusTable.prevSelectColumnId = null;
         focusTable.selectColumnIds = [];
@@ -469,7 +471,7 @@ export function arrowRight(state: RootState, payload: Payload) {
   } else {
     if (isLastColumn(state)) {
       if (isLastRowColumn(state)) {
-        focusTable.focusType = FocusType.tableName;
+        focusTable.focusType = getFirstTableType(state);
         focusTable.columnId = null;
         focusTable.prevSelectColumnId = null;
         focusTable.selectColumnIds = [];

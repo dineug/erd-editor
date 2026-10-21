@@ -1,9 +1,15 @@
 import type { AnyAction } from '@dineug/r-html';
-import { isNil } from 'es-toolkit';
+import { isNil, isString } from 'es-toolkit';
 import { asapScheduler, filter, observeOn, tap, throttle, timer } from 'rxjs';
 
-import { Show } from '@/constants/schema';
+import { LockSettingType, NameViewMode, Show } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
+import { DictionaryKind } from '@/engine/modules/dictionary/actions';
+import {
+  addDictionaryAction,
+  removeDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
 import { ViewKind } from '@/engine/modules/editor/state';
 import { getActiveView, isViewShown } from '@/engine/modules/editor/view';
 import {
@@ -35,12 +41,15 @@ import {
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import {
+  changeLockSettingsAction,
   changeMaxWidthCommentAction,
+  changeNameViewModeAction,
   changeShowAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableCommentAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
   moveTableAction,
   moveToTableAction,
@@ -52,6 +61,8 @@ import {
   changeColumnCommentAction,
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
@@ -153,6 +164,39 @@ const isPaintOnlyToggle = (action: AnyAction) =>
   action.type === changeShowAction.type &&
   isPaintOnlyShow(action.payload?.show);
 
+const isDictionaryWrite = arrayHas<string>([
+  addDictionaryAction.type,
+  updateDictionaryAction.type,
+  removeDictionaryAction.type,
+]);
+
+/**
+ * Whether a dictionary write, a lock change or a name view switch can move a
+ * table: a domain named by a cell added, renamed or removed, an unlock of the
+ * name view, and a switch this store shows, shared or its own. Others pass.
+ */
+const reachesLayout = (
+  { type, payload }: AnyAction,
+  state: RootState
+): boolean => {
+  if (type === changeNameViewModeAction.type) {
+    return payload.shared === true || payload.editorId === state.editor.id;
+  }
+  if (isDictionaryWrite(type)) {
+    return (
+      payload?.kind === DictionaryKind.domain &&
+      (type !== updateDictionaryAction.type || isString(payload.values?.name))
+    );
+  }
+  if (type === changeLockSettingsAction.type) {
+    return (
+      payload?.value === false &&
+      bHas(payload.lockSettingType, LockSettingType.unlockNameViewMode)
+    );
+  }
+  return true;
+};
+
 const relationshipSortHook: HookEffect = (action$, getState) =>
   action$
     .pipe(
@@ -162,7 +206,8 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
         action =>
           (!isAlternateKeyAction(action.type) ||
             bHas(getState().settings.show, Show.columnAlternateKey)) &&
-          !isPaintOnlyToggle(action)
+          !isPaintOnlyToggle(action) &&
+          reachesLayout(action, getState())
       ),
       // Invalidation reads every action, the sort reads one per window. Putting
       // this after the throttle would drop the width-changing action whenever
@@ -177,15 +222,28 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
     });
 
 /**
- * Document actions a view's geometry never sees: a view draws no memo and no
- * alternate key mark, reads none of the show bits or the comment width, and a
- * column move reorders its rows without resizing a box.
+ * Document actions a view's geometry never sees: no memo, alternate key mark,
+ * show bit or comment width. A column move resizes no box.
  */
 const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,
   changeMaxWidthCommentAction.type,
   moveMemoAction.type,
   ...alternateKeyActionTypes,
+]);
+
+/**
+ * Document actions a view reads outside the physical view alone: a logical
+ * name, a domain link and a domain renamed size the cells the logical view and
+ * the view of both draw, and none the physical view does.
+ */
+const isNameViewOnly = arrayHas<string>([
+  changeTableLogicalNameAction.type,
+  changeColumnLogicalNameAction.type,
+  changeColumnDomainAction.type,
+  addDictionaryAction.type,
+  updateDictionaryAction.type,
+  removeDictionaryAction.type,
 ]);
 
 /** View actions that move the placement a view is looked at through, and nothing in it. */
@@ -232,6 +290,7 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [removeTableAction.type]: idOf,
   [moveToTableAction.type]: idOf,
   [changeTableNameAction.type]: idOf,
+  [changeTableLogicalNameAction.type]: idOf,
   [changeTableCommentAction.type]: idOf,
   [addRelationshipAction.type]: idOf,
   [removeRelationshipAction.type]: idOf,
@@ -245,6 +304,8 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [addColumnAction.type]: tableIdOf,
   [removeColumnAction.type]: tableIdOf,
   [changeColumnNameAction.type]: tableIdOf,
+  [changeColumnLogicalNameAction.type]: tableIdOf,
+  [changeColumnDomainAction.type]: tableIdOf,
   [changeColumnCommentAction.type]: tableIdOf,
   [changeColumnDataTypeAction.type]: tableIdOf,
   [changeColumnDefaultAction.type]: tableIdOf,
@@ -269,6 +330,12 @@ function touchesView(
   source: ViewSource
 ): boolean {
   if (isDocumentOnly(action.type) || isViewTransform(action.type)) return false;
+  if (
+    isNameViewOnly(action.type) &&
+    state.settings.nameViewMode === NameViewMode.physical
+  ) {
+    return false;
+  }
 
   const aimed = aimedKind[action.type];
   if (aimed && aimed(state, action.payload) !== source) return false;
@@ -297,6 +364,9 @@ const viewRelationshipSortHook: HookEffect = (action$, getState) => {
     .pipe(
       filter(action => {
         const state = getState();
+        // A word or a term commit would otherwise lay every view out again.
+        if (!reachesLayout(action, state)) return false;
+
         let touched = false;
         for (const source of VIEW_SOURCES) {
           if (
@@ -350,6 +420,16 @@ const layoutActions = [
   changeColumnDefaultAction,
   sortTableAction,
   ...alternateKeyActions,
+  // The name view picks the cells a row lays out and the text each is measured
+  // by, and a domain's name sizes the cells that name it.
+  changeNameViewModeAction,
+  changeLockSettingsAction,
+  changeTableLogicalNameAction,
+  changeColumnLogicalNameAction,
+  changeColumnDomainAction,
+  addDictionaryAction,
+  updateDictionaryAction,
+  removeDictionaryAction,
 ];
 
 /**

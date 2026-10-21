@@ -14,6 +14,7 @@ import {
   Language,
   LockSettingType,
   NameCase,
+  NameViewMode,
   StartRelationshipType,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
@@ -36,6 +37,7 @@ import {
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   changeLockSettingsAction$,
@@ -172,8 +174,8 @@ describe('createReplicationStore', () => {
     const json = parse(store);
 
     expect(json.version).toBe('3.0.0');
-    expect(json.doc.tableIds).toEqual([]);
-    expect(json.collections.tableEntities).toEqual({});
+    expect(json.doc.tableIds ?? []).toEqual([]);
+    expect(json.collections?.tableEntities ?? {}).toEqual({});
     expect(Object.isFrozen(store)).toBe(true);
   });
 
@@ -187,7 +189,7 @@ describe('createReplicationStore', () => {
     store.setInitialValue('   ');
     await settle();
 
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
     expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
   });
 
@@ -197,7 +199,7 @@ describe('createReplicationStore', () => {
     store.setInitialValue(undefined as unknown as string);
     await settle();
 
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
     expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
   });
 
@@ -222,7 +224,7 @@ describe('createReplicationStore', () => {
     await settle();
 
     expect(error).toHaveBeenCalled();
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
     expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
     error.mockRestore();
   });
@@ -273,7 +275,7 @@ describe('createReplicationStore', () => {
     expect(Object.keys(parseRuntime(store).collections.tableEntities)).toEqual([
       'fresh',
     ]);
-    expect(parse(store).collections.tableEntities).toEqual({});
+    expect(parse(store).collections?.tableEntities ?? {}).toEqual({});
   });
 
   it('dispatchSync applies change actions', () => {
@@ -312,7 +314,7 @@ describe('createReplicationStore', () => {
     const store = make();
 
     store.dispatch(addTable('t1'));
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
 
     await Promise.resolve();
     await Promise.resolve();
@@ -655,6 +657,130 @@ describe('createReplicationStore', () => {
         false,
         true,
       ]);
+    });
+  });
+
+  /**
+   * The names a window shows, which a file saves only once the lock that reads
+   * the other way round is off: the replica saves for the window over it.
+   */
+  describe('a name view switch', () => {
+    const { unlockNameViewMode } = LockSettingType;
+
+    async function opened(file: string) {
+      vi.useFakeTimers();
+      const window = openWindow(file);
+      await vi.advanceTimersByTimeAsync(10);
+      const change = vi.fn();
+      window.replica.on({ change });
+      return { ...window, change };
+    }
+
+    /** The window's reader switches, and its element hands the batch to the replica. */
+    function switchTo(
+      { user, replica }: Awaited<ReturnType<typeof opened>>,
+      value: (typeof NameViewMode)[keyof typeof NameViewMode],
+      readonly = false
+    ) {
+      const action = toNameViewModeAction(user.rxStore.state, value, readonly);
+      user.rxStore.dispatchSync(action);
+      replica.dispatchSync(action);
+      vi.advanceTimersByTime(250);
+      return action;
+    }
+
+    /** The window unlocks the name view, carrying what it shows, to its replica too. */
+    function unlockIn({ user, replica }: Awaited<ReturnType<typeof opened>>) {
+      const actions = compositionActionsFlat(
+        user.rxStore.state,
+        user.rxStore.context,
+        [changeLockSettingsAction$(unlockNameViewMode, false)]
+      );
+      user.rxStore.dispatchSync(actions);
+      replica.dispatchSync(actions);
+      vi.advanceTimersByTime(250);
+    }
+
+    it.each([
+      ['a new document', ''],
+      [
+        'a file saving every other lock on',
+        JSON.stringify({ version: '3.0.0', settings: { lockSettings: 63 } }),
+      ],
+      [
+        'a file saved before the locks',
+        JSON.stringify({ version: '3.0.0', settings: {} }),
+      ],
+    ])(
+      'changes nothing on %s, whose name view is locked, and is still reported',
+      async (_, file) => {
+        const window = await opened(file);
+        const before = window.replica.value;
+
+        const action = switchTo(window, NameViewMode.logical);
+
+        expect(action.payload.shared).toBe(false);
+        expect(window.change).toHaveBeenCalledTimes(1);
+        expect(window.change).toHaveBeenCalledWith({
+          value: before,
+          changed: false,
+        });
+        expect(parseRuntime(window.replica).settings).not.toHaveProperty(
+          'nameViewMode'
+        );
+        expect(window.user.rxStore.state.settings.nameViewMode).toBe(
+          NameViewMode.logical
+        );
+      }
+    );
+
+    it('saves the name view the window showed once it unlocks, and each shared switch after', async () => {
+      const window = await opened('');
+      switchTo(window, NameViewMode.both);
+
+      unlockIn(window);
+
+      expect(window.change).toHaveBeenLastCalledWith({
+        value: window.replica.value,
+        changed: true,
+      });
+      expect(parse(window.replica).settings).toMatchObject({
+        lockSettings: LOCK_ALL | unlockNameViewMode,
+        nameViewMode: NameViewMode.both,
+      });
+
+      const action = switchTo(window, NameViewMode.logical);
+
+      expect(action.payload.shared).toBe(true);
+      expect(window.change).toHaveBeenLastCalledWith({
+        value: window.replica.value,
+        changed: true,
+      });
+      expect(parse(window.replica).settings.nameViewMode).toBe(
+        NameViewMode.logical
+      );
+    });
+
+    it('keeps an unlocked name view through a reader’s own switch, which reaches it untagged', async () => {
+      const window = await opened('');
+      unlockIn(window);
+      switchTo(window, NameViewMode.logical);
+      const saved = window.replica.value;
+
+      const action = switchTo(window, NameViewMode.both, true);
+
+      expect(action.payload).toMatchObject({
+        shared: false,
+        editorId: window.user.rxStore.state.editor.id,
+      });
+      expect(action).not.toHaveProperty('tags');
+      expect(window.change).toHaveBeenLastCalledWith({
+        value: saved,
+        changed: false,
+      });
+      expect(parseRuntime(window.replica).settings.nameViewMode).toBe(
+        NameViewMode.logical
+      );
     });
   });
 
@@ -1404,6 +1530,6 @@ describe('createReplicationStore', () => {
     vi.advanceTimersByTime(250);
 
     expect(change).not.toHaveBeenCalled();
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
   });
 });

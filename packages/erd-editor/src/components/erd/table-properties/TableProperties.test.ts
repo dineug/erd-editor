@@ -22,9 +22,12 @@ import * as tabStyles from '@/components/erd/table-properties/table-properties-t
 import TableProperties from '@/components/erd/table-properties/TableProperties';
 import * as styles from '@/components/erd/table-properties/TableProperties.styles';
 import { Open } from '@/constants/open';
+import { NameViewMode } from '@/constants/schema';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
+import { toNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
@@ -276,6 +279,44 @@ describe('TableProperties', () => {
       await flush();
 
       expect(onChange).toHaveBeenCalledExactlyOnceWith(TABLE_B);
+    });
+
+    it('names each table as the name view does, following a switch', async () => {
+      app.store.dispatchSync(
+        changeTableLogicalNameAction({ id: TABLE_A, value: 'Users' }),
+        changeTableNameAction({ id: TABLE_B, value: 'orders' })
+      );
+      mounted = await mountAndFlush(template(), app);
+      const names = () =>
+        tableTabsOf(mounted!).map(tab => [
+          tab.textContent?.trim(),
+          tab.getAttribute('title'),
+        ]);
+      const switchTo = async (
+        mode: (typeof NameViewMode)[keyof typeof NameViewMode]
+      ) => {
+        app.store.dispatchSync(
+          toNameViewModeAction(app.store.state, mode, false)
+        );
+        await flush();
+      };
+
+      expect(names()).toEqual([
+        ['users', 'users'],
+        ['orders', 'orders'],
+      ]);
+
+      await switchTo(NameViewMode.logical);
+      expect(names()).toEqual([
+        ['Users', 'Users'],
+        ['orders', 'orders'],
+      ]);
+
+      await switchTo(NameViewMode.both);
+      expect(names()).toEqual([
+        ['Users (users)', 'Users (users)'],
+        ['orders', 'orders'],
+      ]);
     });
 
     it('skips table ids that do not resolve to an entity', async () => {

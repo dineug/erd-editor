@@ -8,6 +8,7 @@ import { useI18n } from '@/components/localeContext';
 import * as buttonStyles from '@/components/primitives/button/Button.styles';
 import Icon from '@/components/primitives/icon/Icon';
 import Select from '@/components/primitives/select/Select';
+import { toNameLabel } from '@/engine/modules/editor/utils/nameView';
 import { Column, Table } from '@/internal-types';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import {
@@ -72,19 +73,23 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
   const columnsOf = () =>
     query(app.value.store.state.collections).collection('tableColumnEntities');
 
+  /** A name in the name view the store shows, unnamed where it shows none. */
+  const named = (entity: { name: string; logicalName: string } | undefined) =>
+    nameOf(entity, i18n.value, app.value.store.state.settings);
+
   const keyLabel = (key: CandidateKey) => {
     const { t } = i18n.value;
     if (key.kind === 'primaryKey') return t('common.primaryKey');
     if (key.kind === 'current') return t('mapColumns.currentColumns');
 
     const column = columnsOf().selectById(key.columnIds[0]);
-    return t('mapColumns.unique', { column: nameOf(column, i18n.value) });
+    return t('mapColumns.unique', { column: named(column) });
   };
 
   const mappingMessage = (emptyIndex: number): Message | null => {
     const { issues, notice, keyId, parentTable } = props.view;
     const { t } = i18n.value;
-    const table = nameOf(parentTable, i18n.value);
+    const table = named(parentTable);
 
     if (issues.set.includes('selfOnly')) {
       return { text: t('mapColumns.selfOnly'), error: true };
@@ -136,7 +141,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     return note.kind === 'becomes'
       ? {
           text: t('mapColumns.becomesType', {
-            column: nameOf(child, i18n.value),
+            column: named(child),
             dataType: note.dataType,
           }),
           changes: true,
@@ -155,7 +160,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     <div class={styles.heading}>
       <Icon class={styles.headingIcon} name="table-2" size={14} />
       <span class={styles.tableName} prop:dir="auto">
-        {nameOf(table, i18n.value)}
+        {named(table)}
       </span>
       <span class={styles.role}>{role}</span>
     </div>
@@ -183,10 +188,14 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
       <div class={styles.parent}>
         <span
           id={nameId}
-          class={isBlank(column.name) ? styles.dim : null}
+          class={
+            isBlank(toNameLabel(app.value.store.state.settings, column).text)
+              ? styles.dim
+              : null
+          }
           prop:dir="auto"
         >
-          {nameOf(column, i18n.value)}
+          {named(column)}
         </span>
         <span class={styles.dataType} prop:dir="ltr">
           {column.dataType}
@@ -200,7 +209,7 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
     const inUse = used.has(column.id);
     const text = i18n.value.t(
       inUse ? 'mapColumns.columnOptionInUse' : 'mapColumns.columnOption',
-      { name: nameOf(column, i18n.value), dataType: column.dataType }
+      { name: named(column), dataType: column.dataType }
     );
 
     return (
@@ -320,8 +329,8 @@ const MapColumnsBody: FC<MapColumnsBodyProps> = (props, ctx) => {
         </div>
         <div class={['map-columns-subtitle', styles.subtitle]}>
           {t('mapColumns.subtitle', {
-            parent: nameOf(parentTable, i18n.value),
-            child: nameOf(childTable, i18n.value),
+            parent: named(parentTable),
+            child: named(childTable),
             relationshipType: relationshipTypeName(
               relationshipType,
               i18n.value

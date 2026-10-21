@@ -4,6 +4,7 @@ import { last } from 'es-toolkit';
 
 import { ColumnOption } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
+import { toDomainTypeActions } from '@/engine/modules/dictionary/domainTypes';
 import {
   focusColumnAction,
   focusTableAction,
@@ -20,15 +21,15 @@ import {
   addColumnAction,
   changeColumnAutoIncrementAction,
   changeColumnCommentAction,
-  changeColumnDataTypeAction,
   changeColumnDefaultAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
+  changeColumnNameDerivedAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
   changeColumnUniqueAction,
   removeColumnAction,
 } from './atom.actions';
-import { getDataTypeSyncColumns } from './utils/dataType';
 
 export const isToggleColumnTypes = arrayHas<FocusType>([
   FocusType.columnNotNull,
@@ -38,6 +39,7 @@ export const isToggleColumnTypes = arrayHas<FocusType>([
 
 export const isChangeColumnTypes = arrayHas<FocusType>([
   FocusType.columnName,
+  FocusType.columnLogicalName,
   FocusType.columnDataType,
   FocusType.columnDefault,
   FocusType.columnComment,
@@ -188,20 +190,16 @@ export const toggleColumnValueAction$ = (
     }
   };
 
+/**
+ * Writes a column's type as typed, with what the data type sync spreads from
+ * it, and unlinks in the same dispatch each written column, a foreign key the
+ * sync reached included, off the type of its domain, listed or removed.
+ */
 export const changeColumnDataTypeAction$ = (
   payload: ChangeColumnValuePayload
 ): GeneratorAction =>
   function* (state) {
-    const {
-      settings: { relationshipDataTypeSync },
-    } = state;
-    let payloads: ChangeColumnValuePayload[] = [payload];
-
-    if (relationshipDataTypeSync) {
-      payloads = getDataTypeSyncColumns([payload], state);
-    }
-
-    yield payloads.map(changeColumnDataTypeAction);
+    yield toDomainTypeActions(state, { dataTypes: [payload] });
   };
 
 export const changeColumnValueAction$ = (
@@ -228,7 +226,19 @@ export const changeColumnValueAction$ = (
 
     switch (focusType) {
       case FocusType.columnName:
-        yield changeColumnNameAction(payload);
+        // A name typed by hand is the column's own, so no logical name
+        // derives it again while it is not empty, until the derived flag is
+        // taken back.
+        yield [
+          changeColumnNameAction(payload),
+          ...(bHas(column.options, ColumnOption.nameDerived)
+            ? [changeColumnNameDerivedAction({ ...payload, value: false })]
+            : []),
+        ];
+        break;
+      case FocusType.columnLogicalName:
+        // Each key writes the logical name alone, deriving no name from it.
+        yield changeColumnLogicalNameAction(payload);
         break;
       case FocusType.columnDataType:
         yield changeColumnDataTypeAction$(payload);

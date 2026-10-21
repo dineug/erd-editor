@@ -22,23 +22,30 @@ import {
   VIEW_TABLE_HEADER_ICON_SIZE,
   VIEW_TABLE_HEADER_NAME_X,
 } from '@/constants/layout';
-import { ColumnType, Show } from '@/constants/schema';
+import { ColumnType } from '@/constants/schema';
 import { FocusType } from '@/engine/modules/editor/state';
+import {
+  ColumnTypeShown,
+  getTableFocusTypes,
+  getViewColumnTypes,
+  sceneNameSettings,
+  toNameViewFocusType,
+} from '@/engine/modules/editor/utils/nameView';
 import type { RootState } from '@/engine/state';
 import type { Table } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
-import { bHas } from '@/utils/bit';
 import {
   type ColumnWidth,
+  headerCellWidth,
   tableRowHeight,
   viewHeaderNameWidth,
 } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
-/** The four widths a column row measures from its table; the rest are fixed. */
+/** The six widths a column row measures from its table; the rest are fixed. */
 export type ColumnCellWidths = Pick<
   ColumnWidth,
-  'comment' | 'dataType' | 'default' | 'name'
+  'comment' | 'dataType' | 'default' | 'domain' | 'logicalName' | 'name'
 >;
 
 /** One editable box on a table, positioned inside the table's own group. */
@@ -199,17 +206,13 @@ export function getAlternateKeyMarkHeight(): number {
 
 /** The comment width a table draws at, clamped by the setting when it is set. */
 export function getWidthComment(state: RootState, table: Table): number {
-  const { maxWidthComment } = state.settings;
-
-  return maxWidthComment === -1 || maxWidthComment >= table.ui.widthComment
-    ? table.ui.widthComment
-    : maxWidthComment;
+  return headerCellWidth(state, table, FocusType.tableComment);
 }
 
 /**
  * The name and comment boxes past a header's table icon. One list feeds the
  * scene that draws them and the overlay that edits them, so an editor never
- * sits anywhere but on the text it replaces. A view draws the name alone.
+ * sits anywhere but on the text it replaces. A view draws the names alone.
  */
 export function getHeaderCellSlots(
   state: RootState,
@@ -217,88 +220,94 @@ export function getHeaderCellSlots(
   source: GeometrySource = 'document'
 ): CellSlot[] {
   const view = source !== 'document';
-  const nameX = view ? VIEW_TABLE_HEADER_NAME_X : TABLE_HEADER_NAME_X;
-  const slots: CellSlot[] = [
-    {
-      focusType: FocusType.tableName,
-      x: nameX,
-      width: view
-        ? viewHeaderNameWidth(table.ui.widthName)
-        : table.ui.widthName,
-    },
-  ];
+  // The name view picks the name cells, the logical name in the name's place
+  // or before it, and each cell starts past the ones before it and a margin.
+  const slots: CellSlot[] = [];
+  let cursor = view ? VIEW_TABLE_HEADER_NAME_X : TABLE_HEADER_NAME_X;
 
-  if (!view && bHas(state.settings.show, Show.tableComment)) {
-    slots.push({
-      focusType: FocusType.tableComment,
-      x: nameX + table.ui.widthName + INPUT_MARGIN_RIGHT,
-      width: getWidthComment(state, table),
-    });
+  for (const focusType of getTableFocusTypes(
+    sceneNameSettings(state.settings, source)
+  )) {
+    const measured = headerCellWidth(state, table, focusType);
+    const width = view ? viewHeaderNameWidth(measured) : measured;
+    slots.push({ focusType, x: cursor, width });
+    cursor += width + INPUT_MARGIN_RIGHT;
   }
 
   return slots;
 }
 
+/**
+ * Where each column type's cell goes in a row. The focus is the physical
+ * view's, which the name view turns into its own; the document lays the cell
+ * out only while the visible predicate holds.
+ */
 const COLUMN_SLOTS: Array<{
   columnType: number;
   focusType: FocusType;
-  show: number | null;
+  visible: (settings: RootState['settings']) => boolean;
   width: (widths: ColumnCellWidths) => number;
 }> = [
   {
+    columnType: ColumnType.columnLogicalName,
+    focusType: FocusType.columnLogicalName,
+    visible: ColumnTypeShown[ColumnType.columnLogicalName],
+    width: widths => widths.logicalName,
+  },
+  {
     columnType: ColumnType.columnName,
     focusType: FocusType.columnName,
-    show: null,
+    visible: ColumnTypeShown[ColumnType.columnName],
     width: widths => widths.name,
   },
   {
     columnType: ColumnType.columnDefault,
     focusType: FocusType.columnDefault,
-    show: Show.columnDefault,
+    visible: ColumnTypeShown[ColumnType.columnDefault],
     width: widths => widths.default,
   },
   {
     columnType: ColumnType.columnComment,
     focusType: FocusType.columnComment,
-    show: Show.columnComment,
+    visible: ColumnTypeShown[ColumnType.columnComment],
     width: widths => widths.comment,
   },
   {
     columnType: ColumnType.columnDataType,
     focusType: FocusType.columnDataType,
-    show: Show.columnDataType,
+    visible: ColumnTypeShown[ColumnType.columnDataType],
     width: widths => widths.dataType,
+  },
+  {
+    columnType: ColumnType.columnDomain,
+    focusType: FocusType.columnDomain,
+    visible: ColumnTypeShown[ColumnType.columnDomain],
+    width: widths => widths.domain,
   },
   {
     columnType: ColumnType.columnNotNull,
     focusType: FocusType.columnNotNull,
-    show: Show.columnNotNull,
+    visible: ColumnTypeShown[ColumnType.columnNotNull],
     width: () => COLUMN_NOT_NULL_WIDTH,
   },
   {
     columnType: ColumnType.columnUnique,
     focusType: FocusType.columnUnique,
-    show: Show.columnUnique,
+    visible: ColumnTypeShown[ColumnType.columnUnique],
     width: () => COLUMN_UNIQUE_WIDTH,
   },
   {
     columnType: ColumnType.columnAutoIncrement,
     focusType: FocusType.columnAutoIncrement,
-    show: Show.columnAutoIncrement,
+    visible: ColumnTypeShown[ColumnType.columnAutoIncrement],
     width: () => COLUMN_AUTO_INCREMENT_WIDTH,
   },
-];
-
-/** The cells a view draws in every row, whatever the settings show or order. */
-const VIEW_COLUMN_ORDER: number[] = [
-  ColumnType.columnName,
-  ColumnType.columnDataType,
 ];
 
 /**
  * The cells of one column row, in the order the settings put them and at the x
  * each lands on once the ones before it have taken their width. A view lays
- * out the name and the type and reads neither the show bits nor the order.
+ * out the cells its name view names and reads neither the show bits nor the order.
  */
 export function getColumnCellSlots(
   state: RootState,
@@ -306,28 +315,25 @@ export function getColumnCellSlots(
   source: GeometrySource = 'document'
 ): ColumnCellSlot[] {
   const { settings } = state;
+  const inDocument = source === 'document';
+  const shown = sceneNameSettings(settings, source);
   const slots: ColumnCellSlot[] = [];
   let cursor = getColumnCellsX(source);
-  const order =
-    source === 'document' ? settings.columnOrder : VIEW_COLUMN_ORDER;
+  const order = inDocument
+    ? settings.columnOrder
+    : getViewColumnTypes(settings);
 
   for (const columnType of order) {
     const definition = COLUMN_SLOTS.find(
       slot => slot.columnType === columnType
     );
     if (!definition) continue;
-    if (
-      source === 'document' &&
-      definition.show !== null &&
-      !bHas(settings.show, definition.show)
-    ) {
-      continue;
-    }
+    if (inDocument && !definition.visible(settings)) continue;
 
     const width = definition.width(widths);
     slots.push({
       columnType,
-      focusType: definition.focusType,
+      focusType: toNameViewFocusType(shown, definition.focusType),
       x: cursor,
       width,
     });

@@ -10,7 +10,9 @@ import {
   SCENE_FONT_SIZE,
   TABLE_CORNER_RADIUS,
 } from '@/components/erd/canvas/sceneTokens';
+import { blankLogicalName } from '@/components/erd/canvas/table/blankLogicalName';
 import {
+  type ColumnCellSlot,
   getColumnCellSlots,
   getColumnTextHeight,
   getColumnTextY,
@@ -19,6 +21,9 @@ import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import { COLUMN_HEIGHT, TABLE_BORDER } from '@/constants/layout';
 import { ColumnType } from '@/constants/schema';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
+import { FocusType } from '@/engine/modules/editor/state';
+import type { RootState } from '@/engine/state';
 import type { I18n } from '@/i18n/translate';
 import type { Column } from '@/internal-types';
 import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
@@ -29,15 +34,36 @@ const GHOST_OPACITY = 0.6;
 
 export type ColumnDragGhostProps = {};
 
-/** The text of the two cells a dragged row is told apart by, placeholder included. */
+/**
+ * The text of the two cells a dragged row is told apart by, as its row draws
+ * them in the name view: the logical name in the name's place, the name
+ * dimmed while it is blank, and the domain's name where the type cell draws it.
+ */
 const cellText = (
+  state: RootState,
   theme: Theme,
   column: Column,
-  columnType: number,
+  { columnType, focusType }: ColumnCellSlot,
   i18n: Pick<I18n, 't'>
 ) => {
+  if (focusType === FocusType.columnLogicalName) {
+    if (column.logicalName.trim()) {
+      return { text: column.logicalName, fill: theme.active };
+    }
+    const { standIn, key } = blankLogicalName(
+      state.settings,
+      column.name,
+      'common.placeholder.column'
+    );
+    return { text: standIn || i18n.t(key), fill: theme.placeholder };
+  }
+
   const isName = columnType === ColumnType.columnName;
-  const value = isName ? column.name : column.dataType;
+  const value = isName
+    ? column.name
+    : (focusType === FocusType.columnDomain &&
+        getLiveDomainName(state, column.domainId)) ||
+      column.dataType;
 
   return value.trim()
     ? { text: value, fill: theme.active }
@@ -121,9 +147,10 @@ const ColumnDragGhost: FC<ColumnDragGhostProps> = (props, ctx) => {
                 slot => slot.columnType,
                 slot => {
                   const { text, fill } = cellText(
+                    store.state,
                     theme,
                     column,
-                    slot.columnType,
+                    slot,
                     i18n.value
                   );
 

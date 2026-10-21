@@ -7,7 +7,7 @@ import {
   schemaV3Parser,
 } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
-import { isNil, isString, noop } from 'es-toolkit';
+import { isNil, isPlainObject, isString, noop } from 'es-toolkit';
 import { isEmpty, round } from 'es-toolkit/compat';
 
 import { CanvasType, Show } from '@/constants/schema';
@@ -27,6 +27,12 @@ import { hasCanvasType } from '@/utils/validation';
 import { ActionMap, ActionType, ReducerType } from './actions';
 import { FocusType, MoveKey, SelectType } from './state';
 import { arrowDown, arrowLeft, arrowRight, arrowUp } from './utils/focus';
+import {
+  getColumnFocusTypes,
+  getTableFocusTypes,
+  keepFocusShown,
+  toShownFocusType,
+} from './utils/nameView';
 import { releaseHidden } from './utils/releaseHidden';
 import {
   appendSelectColumns,
@@ -45,8 +51,12 @@ export const changeHasHistoryAction = createAction<
 
 const changeHasHistory: ReducerType<typeof ActionType.changeHasHistory> = (
   { editor },
-  { payload: { hasRedo, hasUndo } }
+  { payload: { hasRedo, hasUndo, sheet } }
 ) => {
+  if (sheet) {
+    editor.dictionaryHistory[sheet] = { hasRedo, hasUndo };
+    return;
+  }
   editor.hasRedo = hasRedo;
   editor.hasUndo = hasUndo;
 };
@@ -131,8 +141,31 @@ export const clearAction = createAction<ActionMap[typeof ActionType.clear]>(
   ActionType.clear
 );
 
-const clear: ReducerType<typeof ActionType.clear> = state => {
+/** Whether a clear or a load carries the flag that keeps the dictionaries. */
+export const keepsDictionaries = (payload: unknown): boolean =>
+  isPlainObject(payload) && payload.keepDictionaries === true;
+
+/**
+ * Hands the store's words, terms and domains, and their own id lists, to the
+ * document that replaces it, so a membership set built on a list still holds.
+ */
+function keepDictionaries(
+  state: RootState,
+  { doc, collections }: Pick<RootState, 'doc' | 'collections'>
+) {
+  doc.wordIds = state.doc.wordIds;
+  doc.termIds = state.doc.termIds;
+  doc.domainIds = state.doc.domainIds;
+  collections.wordEntities = state.collections.wordEntities;
+  collections.termEntities = state.collections.termEntities;
+  collections.domainEntities = state.collections.domainEntities;
+}
+
+const clear: ReducerType<typeof ActionType.clear> = (state, { payload }) => {
   const { doc, collections } = schemaV3Parser({});
+  if (keepsDictionaries(payload)) {
+    keepDictionaries(state, { doc, collections });
+  }
   state.doc = doc;
   state.collections = collections;
   state.editor.scrollPullPending = false;
@@ -170,12 +203,15 @@ export const loadJsonAction = createAction<
  */
 const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
-  { payload: { value }, version: actionVersion },
+  { payload, version: actionVersion },
   ctx
 ) => {
-  const { version, settings, doc, collections } = parser(value);
+  const { version, settings, doc, collections } = parser(payload.value);
   if (!hasCanvasType(settings.canvasType)) {
     settings.canvasType = CanvasType.ERD;
+  }
+  if (keepsDictionaries(payload)) {
+    keepDictionaries(state, { doc, collections });
   }
 
   rememberCanvasType(state);
@@ -186,6 +222,7 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   rememberCanvasType(state);
   clearViews(state.editor);
   releaseHidden(state);
+  keepFocusShown(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
@@ -230,6 +267,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   rememberCanvasType(state);
   clearViews(state.editor);
   releaseHidden(state);
+  keepFocusShown(state);
   settleDocument(state, ctx);
   pullScrollIntoRange(state);
 };
@@ -238,14 +276,29 @@ export const focusTableAction = createAction<
   ActionMap[typeof ActionType.focusTable]
 >(ActionType.focusTable);
 
+/**
+ * The header cell a focus asked for lands on: its own, or the cell of its pair
+ * while the name view hides its own, so a caller naming the name reaches the
+ * logical name the logical view draws in its place.
+ */
+const toShownTableFocus = (
+  settings: RootState['settings'],
+  focusType: FocusType
+): FocusType =>
+  toShownFocusType(settings, getTableFocusTypes(settings), focusType) ??
+  focusType;
+
 const focusTable: ReducerType<typeof ActionType.focusTable> = (
-  { editor, collections },
+  { editor, collections, settings },
   { payload }
 ) => {
   const collection = query(collections).collection('tableEntities');
 
   if (editor.focusTable?.tableId === payload.tableId && payload.focusType) {
-    editor.focusTable.focusType = payload.focusType;
+    editor.focusTable.focusType = toShownTableFocus(
+      settings,
+      payload.focusType
+    );
     editor.focusTable.columnId = null;
     editor.focusTable.prevSelectColumnId = null;
     editor.focusTable.selectColumnIds = [];
@@ -255,7 +308,7 @@ const focusTable: ReducerType<typeof ActionType.focusTable> = (
 
     editor.focusTable = {
       tableId: table.id,
-      focusType: payload.focusType,
+      focusType: toShownTableFocus(settings, payload.focusType),
       columnId: null,
       prevSelectColumnId: null,
       selectColumnIds: [],
@@ -267,7 +320,7 @@ const focusTable: ReducerType<typeof ActionType.focusTable> = (
 
     editor.focusTable = {
       tableId: table.id,
-      focusType: FocusType.tableName,
+      focusType: getTableFocusTypes(settings)[0],
       columnId: null,
       prevSelectColumnId: null,
       selectColumnIds: [],
@@ -281,10 +334,18 @@ export const focusColumnAction = createAction<
 >(ActionType.focusColumn);
 
 const focusColumn: ReducerType<typeof ActionType.focusColumn> = (
-  { editor, collections },
+  { editor, collections, settings },
   { payload }
 ) => {
   const collection = query(collections).collection('tableEntities');
+  // A caller naming the name or the type reaches the logical name or the
+  // domain the logical view draws in their place, and the other way round.
+  const focusType =
+    toShownFocusType(
+      settings,
+      getColumnFocusTypes(settings),
+      payload.focusType
+    ) ?? payload.focusType;
 
   if (editor.focusTable?.tableId === payload.tableId) {
     const table = collection.selectById(payload.tableId);
@@ -292,7 +353,7 @@ const focusColumn: ReducerType<typeof ActionType.focusColumn> = (
 
     const focusTable = editor.focusTable;
     focusTable.columnId = payload.columnId;
-    focusTable.focusType = payload.focusType;
+    focusTable.focusType = focusType;
 
     if (payload.$mod && payload.shiftKey) {
       focusTable.selectColumnIds = appendSelectRangeColumns(
@@ -323,7 +384,7 @@ const focusColumn: ReducerType<typeof ActionType.focusColumn> = (
 
     editor.focusTable = {
       tableId: table.id,
-      focusType: payload.focusType,
+      focusType,
       columnId: payload.columnId,
       prevSelectColumnId: payload.columnId,
       selectColumnIds: [payload.columnId],

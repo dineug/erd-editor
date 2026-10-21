@@ -17,5 +17,6 @@ export const settings = {
   'settings.lockRow.viewport': 'Viewport',
   'settings.lockRow.canvasType': 'Canvas Type',
   'settings.lockRow.bracketType': 'Bracket Type',
+  'settings.lockRow.nameViewMode': 'Name View',
   'settings.columnOrder': 'Column Order',
 } as const;

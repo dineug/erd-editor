@@ -281,6 +281,35 @@ function withDeadIndex(state: RootState): RootState {
   return state;
 }
 
+/**
+ * Gives the sample logical names: member keeps its comment beside one, post and
+ * most columns have none, email keeps a comment of its own, and post's id has
+ * neither; member_id's logical name holds a quote.
+ */
+function withLogicalNames(state: RootState): RootState {
+  const { tableEntities, tableColumnEntities } = state.collections;
+  tableEntities.tm.logicalName = 'Member';
+  tableEntities.tp.logicalName = 'Post';
+  tableColumnEntities.m1.logicalName = 'Member ID';
+  tableColumnEntities.m2.logicalName = 'Email';
+  tableColumnEntities.m2.comment = 'Sign-in address';
+  tableColumnEntities.p2.logicalName = "Author's member";
+  tableColumnEntities.p3.logicalName = 'Title';
+  return state;
+}
+
+/** The same document with every logical name taken out. */
+function withoutLogicalNames(state: RootState): RootState {
+  const { tableEntities, tableColumnEntities } = state.collections;
+  [
+    ...Object.values(tableEntities),
+    ...Object.values(tableColumnEntities),
+  ].forEach(entity => {
+    entity.logicalName = '';
+  });
+  return state;
+}
+
 function createEmptyState(ddlScripts?: Scripts): RootState {
   const state = {
     ...schemaV3Parser(ddlScripts ? { settings: { ddlScripts } } : {}),
@@ -355,6 +384,34 @@ describe('createSchemaSQL options', () => {
       expect(createSchemaSQL(state, Database[vendor])).toBe(
         CREATE_SCHEMA[vendor](state)
       );
+    });
+
+    it('writes a logical name where a table or column comment is empty, a comment kept, under logicalNameAsComment', () => {
+      expect(
+        createSchemaSQL(
+          withLogicalNames(createSampleState()),
+          Database[vendor],
+          undefined,
+          { logicalNameAsComment: true }
+        )
+      ).toBe(readFixture(`${vendor}/logical-name-comment-create-none.sql`));
+    });
+
+    it('writes no logical name as a comment by default or with any value but true', () => {
+      const plain = createSchemaSQL(
+        withoutLogicalNames(withLogicalNames(createSampleState())),
+        Database[vendor]
+      );
+      const state = withLogicalNames(createSampleState());
+
+      expect(createSchemaSQL(state, Database[vendor])).toBe(plain);
+      [false, undefined, 'true', 1].forEach(value => {
+        expect(
+          createSchemaSQL(state, Database[vendor], undefined, {
+            logicalNameAsComment: value,
+          } as never)
+        ).toBe(plain);
+      });
     });
 
     it('writes the create batch with no header when given no options', () => {

@@ -4,6 +4,7 @@
  */
 export const schemaSql = {
   'schemaSql.thisWindowOnly': 'This window only',
+  'schemaSql.logicalNameAsComment': 'Write logical names into empty comments',
   'schemaSql.statements': 'Statements',
   'schemaSql.header': 'Header',
   'schemaSql.tables': 'Tables',

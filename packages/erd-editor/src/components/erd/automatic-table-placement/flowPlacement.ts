@@ -3,6 +3,7 @@ import {
   appDestroy,
   createAppContext,
 } from '@/components/appContext';
+import { readerNameViewAction } from '@/components/erd/readerNameView';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
@@ -15,15 +16,15 @@ import {
 import { layoutByElk } from './elkPlacement';
 
 /**
- * What a Flow placement of a document asks ELK, measured on a plain store of
- * its own with the editor's text measure, so nothing reaches the editor's
- * store. Null under two tables or with no relationship, the grid's cases.
+ * What a Flow placement of a document asks ELK, measured in the reader's name
+ * view on a plain store of its own with the editor's text measure, so nothing
+ * reaches the editor's store. Null under two tables or with no relationship, the grid's cases.
  *
  * @example
  * const request = createFlowRequest(app, json);
  */
 export function createFlowRequest(
-  { toWidth }: AppContext,
+  { toWidth, store }: AppContext,
   json: string
 ): ElkLayoutRequest | null {
   const scratch = createAppContext(
@@ -32,7 +33,10 @@ export function createFlowRequest(
   );
 
   try {
-    scratch.store.dispatchSync(initialLoadJsonAction$(json));
+    scratch.store.dispatchSync(
+      initialLoadJsonAction$(json),
+      readerNameViewAction(scratch.store.state, store.state)
+    );
 
     const { doc } = scratch.store.state;
     if (doc.tableIds.length < 2 || !doc.relationshipIds.length) return null;

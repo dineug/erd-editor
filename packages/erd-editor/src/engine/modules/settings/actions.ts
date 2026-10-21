@@ -1,6 +1,6 @@
 import { Reducer } from '@dineug/r-html';
 
-import { DDLScriptPosition } from '@/constants/schema';
+import { DDLScriptPosition, NameViewMode } from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
@@ -24,6 +24,7 @@ export const ActionType = {
   changeLockSettings: 'settings.changeLockSettings',
   changeIgnoreSaveSettings: 'settings.changeIgnoreSaveSettings',
   changeDDLScript: 'settings.changeDDLScript',
+  changeNameViewMode: 'settings.changeNameViewMode',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -82,8 +83,8 @@ export type ActionMap = {
     value: boolean;
     /**
      * The settings named as the sending store shows them: a lock holds them,
-     * and an unlock shows the code settings among them on every peer, so each
-     * saves one value. The viewport and the tab carry none to unlock.
+     * and an unlock shows the code settings and the name view among them on
+     * every peer, so each saves one value. The viewport and the tab carry none.
      */
     values: Partial<RootState['settings']['lockedValues']>;
   };
@@ -94,6 +95,15 @@ export type ActionMap = {
   [ActionType.changeDDLScript]: {
     position: ValuesType<typeof DDLScriptPosition>;
     value: string;
+  };
+  [ActionType.changeNameViewMode]: {
+    value: ValuesType<typeof NameViewMode>;
+    /**
+     * Whether every peer takes it: the sender's lock was off and it could
+     * edit. Otherwise only the store whose editor sent it shows it.
+     */
+    shared: boolean;
+    editorId: string;
   };
 };
 

@@ -3,6 +3,11 @@ import { cloneDeep } from 'es-toolkit';
 
 import { createSeedValue } from '@/__test-utils__/peerSeed';
 import { createPeerStore, type PeerStore } from '@/engine/peer-store';
+import {
+  createReplicationStore,
+  type ReplicationStore,
+} from '@/engine/replication-store';
+import { defaultToWidth } from '@/engine/to-width';
 
 export type MeshPeerOptions = {
   /**
@@ -17,6 +22,8 @@ export type Mesh = {
   peers: PeerStore[];
   /** Every batch each peer sent, presence off, copied as it left. */
   sent: AnyAction[][][];
+  /** Each peer's replica by index, none unless the mesh was built with them. */
+  replicas: ReplicationStore[];
   /**
    * Hands the peer every batch the senders sent since it last heard from them,
    * sender after sender in the order given, the hooks run after each batch.
@@ -35,6 +42,11 @@ export type MeshOptions = {
   settle: () => Promise<void>;
   /** Per peer by index, what it is built with. */
   peers?: MeshPeerOptions[];
+  /**
+   * Gives each peer a replica, as a host gives each window, fed every batch
+   * the peer sent and every one it took, in the order the peer met them.
+   */
+  replicas?: boolean;
 };
 
 /**
@@ -44,10 +56,16 @@ export type MeshOptions = {
  */
 export function createMesh(
   count: number,
-  { value = createSeedValue(), settle, peers: options = [] }: MeshOptions
+  {
+    value = createSeedValue(),
+    settle,
+    peers: options = [],
+    replicas: withReplicas = false,
+  }: MeshOptions
 ): Mesh {
   const peers: PeerStore[] = [];
   const sent: AnyAction[][][] = [];
+  const replicas: ReplicationStore[] = [];
   const unknown: Array<ReadonlySet<string>> = [];
   /** heard[to][from]: how many of from's batches to has received. */
   const heard: number[][] = [];
@@ -60,6 +78,11 @@ export function createMesh(
       presence: false,
     });
     peer.setInitialValue(initialValue);
+    if (withReplicas) {
+      const replica = createReplicationStore({ toWidth: defaultToWidth });
+      replica.setInitialValue(initialValue);
+      replicas.push(replica);
+    }
 
     peers.push(peer);
     sent.push([]);
@@ -67,7 +90,10 @@ export function createMesh(
     heard.forEach(row => row.push(0));
     heard.push(peers.map(() => 0));
     unsubscribes.push(
-      peer.subscribe(actions => sent[index].push(cloneDeep(actions)))
+      peer.subscribe(actions => {
+        sent[index].push(cloneDeep(actions));
+        replicas[index]?.dispatchSync(cloneDeep(actions));
+      })
     );
 
     return index;
@@ -81,7 +107,10 @@ export function createMesh(
     });
 
     const kept = batch.filter(({ type }) => !unknown[to].has(type));
-    if (kept.length) peer.receive(cloneDeep(kept));
+    if (kept.length) {
+      peer.receive(cloneDeep(kept));
+      replicas[to]?.dispatchSync(cloneDeep(kept));
+    }
   };
 
   const deliver = async (
@@ -118,12 +147,14 @@ export function createMesh(
   return {
     peers,
     sent,
+    replicas,
     deliver,
     deliverAll,
     join,
     destroy: () => {
       unsubscribes.forEach(unsubscribe => unsubscribe());
       peers.forEach(peer => peer.destroy());
+      replicas.forEach(replica => replica.destroy());
     },
   };
 }

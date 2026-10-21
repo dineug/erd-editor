@@ -11,7 +11,7 @@ export type ToolCopy = {
 
 /** What the client hands the model once, beside the tool list. */
 export const SERVER_INSTRUCTIONS =
-  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Never write a document file yourself. When an editor serves the document (the ERD Editor extension in VS Code, or its plugin in Obsidian or a JetBrains IDE), edits appear live in its ERD editor: VS Code keeps them unsaved until erd_save, while Obsidian and JetBrains IDEs save them as they save the user’s edits and erd_save writes them at once. Otherwise they are written to the file at once.';
+  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Tables and columns also take a logical name: erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries the physical name and a column’s domain, unless a name that is not empty was set by hand. Never write a document file yourself. When an editor serves the document (the ERD Editor extension in VS Code, or its plugin in Obsidian or a JetBrains IDE), edits appear live in its ERD editor: VS Code keeps them unsaved until erd_save, while Obsidian and JetBrains IDEs save them as they save the user’s edits and erd_save writes them at once. Otherwise they are written to the file at once.';
 
 const TABLE_ID = 'Table id, from erd_list or the createdIds of erd_add_table.';
 const COLUMN_ID =
@@ -34,6 +34,8 @@ const OLDER_EDITOR_GROUP_MOVE =
   'An ERD Editor extension or plugin released before table groups moves only the tables of the group and drops every group when it saves, so the user should update it.';
 const OLDER_EDITOR_GROUPS_IMPORT =
   'An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it.';
+const OLDER_EDITOR_DICTIONARY =
+  'An ERD Editor extension or plugin released before dictionaries, logical names and domains ignores what this edit writes of them and leaves them out when it saves, so the user should update it.';
 const NO_UNDO =
   'erd_undo cannot revert it: the editor keeps no undo entry for this setting.';
 
@@ -61,8 +63,32 @@ export const ARG_COPY: Readonly<Record<string, string>> = {
   color: COLOR,
   x: X,
   y: Y,
-  mode: 'replace, the default, loads the import in place of every table, relationship, index, memo and table group and keeps the settings but the view, which goes to the start of the canvas; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
+  mode: 'replace, the default, loads the import in place of every table, relationship, index, memo and table group and keeps the settings but the view, which goes to the start of the canvas, and keeps the word, term and domain dictionaries; append adds what the import holds as new tables below the diagram and keeps everything already there, a table of the same name included.',
+  wordId: 'Word id, from erd_list or the createdIds of erd_add_word.',
+  termId: 'Term id, from erd_list or the createdIds of erd_add_term.',
+  domainName:
+    'A domain by its name instead of domainId, trimmed and compared in its case, as the editor compares names; an empty string for none.',
+  abbreviation:
+    'What the word writes into a physical name, such as MBR for Member.',
+  englishName: 'The English name of the word.',
+  forbiddenWords: 'Words that must not be used in its place, comma separated.',
+  synonyms: 'Other spellings of it, comma separated.',
+  physicalName:
+    'The physical name the term gives a table or column; empty, the words compose one.',
+  category: 'The group the domain belongs to, such as Number or Text.',
+  dataType:
+    'The data type every column linking the domain takes, such as INT or VARCHAR(255).',
+  description: 'What it means, for whoever reads the dictionary.',
 };
+
+const DICTIONARY_NAME =
+  'A name another row of the same dictionary holds is refused.';
+const TERM_DOMAIN_ID =
+  'Domain id the term gives a column, from erd_list or the createdIds of erd_add_domain; null or an empty string for none.';
+const DOMAIN_ID =
+  'Domain id, from erd_list or the createdIds of erd_add_domain.';
+const SYNC_UNLINK =
+  "A column the sync reaches whose new type differs from its own domain's is unlinked from that domain.";
 
 const setting = (subject: string, value: string): ToolCopy => ({
   description: `Sets ${subject}. ${NO_UNDO}`,
@@ -75,7 +101,7 @@ const flag = (subject: string): ToolCopy => ({
 });
 
 const importer = (language: string, more = ''): ToolCopy => ({
-  description: `Replaces every table, relationship, index, memo and table group of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.${more}`,
+  description: `Replaces every table, relationship, index, memo and table group of the document with the schema parsed from ${language}, keeping its settings but the view, which goes to the start of the canvas, and keeping its word, term and domain dictionaries; erd_undo restores what it replaced. With mode append it instead adds the schema's tables, relationships and indexes as new ones in a grid below the diagram, leaving every table and setting already there as it is; a foreign key to a table the text does not declare is dropped.${more}`,
   args: { value: `The ${language} source text.` },
 });
 
@@ -96,13 +122,15 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
       "Reads a document as a snapshot, as DDL, as its raw JSON or, with the scripts format, its before and after scripts alone. The sql format of the whole document includes the document's before and after scripts. The sql format with tableIds, tableNames or groupNames gives the DDL of just those tables, the way to read a large schema; a read too large for one answer is refused with how to narrow it. For ids and details prefer erd_list and erd_get. Change a document only through the erd_ tools, never by writing its file.",
     args: {
       format:
-        "snapshot: compact JSON with every id, column and table group, large on a big schema. sql: DDL of a vendor. json: the whole raw .erd.json document, larger still; never write this into the file. scripts: just the document's before and after scripts, as JSON { before, after }, each empty when unset, whatever the size of the schema.",
+        "snapshot: compact JSON with every id, column, table group and dictionary row, large on a big schema. sql: DDL of a vendor. json: the whole raw .erd.json document, larger still; never write this into the file. scripts: just the document's before and after scripts, as JSON { before, after }, each empty when unset, whatever the size of the schema.",
       vendor:
         'Database for the sql format; defaults to the database the document is set to.',
       statements:
         'For the sql format: create (default), ifNotExists, which writes CREATE TABLE IF NOT EXISTS on MySQL, MariaDB, PostgreSQL, SQLite and Databricks and falls back to create elsewhere, or recreate, which drops the tables first (Snowflake writes CREATE OR REPLACE TABLE).',
       header:
         "For the sql format: none (default), use, which selects the database or schema the document's database name gives, or createAndUse, which creates it first. Oracle has use alone, so createAndUse writes use there; PostgreSQL has createAndUse alone, so use writes no header there; SQLite has neither and writes none. No header is written while the database name is empty or not a plain identifier.",
+      logicalNameAsComment:
+        'For the sql format: true writes the logical name of a table or column whose comment is empty as its comment, keeping every comment that is not empty; false (default) writes no logical name.',
       tableIds:
         'For the sql format: the DDL of these tables only, with the foreign keys they hold, which name the tables they reference.',
       tableNames:
@@ -113,10 +141,10 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_list: {
     description:
-      'Lists a document: its settings and counts, then a page of tables, each with its id, position and size on the ERD canvas (the width approximate, the height exact), with their indexes and relationships (each relationship once, with one of its tables) and, for a table in a table group, its groupId; after the tables come the table groups, then the memos. A small schema fits in one page. On a larger one, nextOffset and note say how to go on: query finds tables by a word, namesOnly lists every table name in a call or a few. Columns, comments, memo text and the tables of a group come from erd_get; the foreign keys a table holds, from erd_read sql with tableNames.',
+      'Lists a document: its settings and counts, then a page of tables, each with its id, position and size on the ERD canvas (the width approximate, the height exact), with their indexes and relationships (each relationship once, with one of its tables) and, for a table in a table group or with a logical name, its groupId or logicalName; after the tables come the table groups, the memos, then the rows of the domain, term and word dictionaries, each with its name and what it gives a physical name or column. A small schema fits in one page. On a larger one, nextOffset and note say how to go on: query finds tables by a word, namesOnly lists every table name in a call or a few. Columns, comments, memo text, the tables of a group and every field of a dictionary row come from erd_get; the foreign keys a table holds, from erd_read sql with tableNames.',
     args: {
       query:
-        'Words to look for inside table names and comments and column names and comments, in any case; tables whose names hold more of the words come first.',
+        'Words to look for inside table names, logical names and comments and column names, logical names and comments, in any case; tables whose names or logical names hold more of the words come first. Dictionary rows are not searched.',
       offset:
         'Where the page starts in the list, 0 by default; pass the nextOffset of the page before, with the same query.',
       limit:
@@ -127,7 +155,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_get: {
     description:
-      'Gives the entities named, in full: tables with their columns and size, relationships with their columns, indexes with their columns, memos with their text, table groups with their tables. Ids and names that name nothing live are listed in missing; ids one answer has no room for are listed in notReturned, to ask for again.',
+      'Gives the entities named, in full: tables with their columns and size, relationships with their columns, indexes with their columns, memos with their text, table groups with their tables, and words, terms and domains with every field. Ids and names that name nothing live are listed in missing; ids one answer has no room for are listed in notReturned, to ask for again.',
     args: {
       tableIds: 'Table ids, from erd_list.',
       tableNames:
@@ -136,6 +164,9 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
       indexIds: 'Index ids, from erd_list.',
       memoIds: 'Memo ids, from erd_list.',
       tableGroupIds: 'Table group ids, from erd_list.',
+      wordIds: 'Word ids, from erd_list.',
+      termIds: 'Term ids, from erd_list.',
+      domainIds: 'Domain ids, from erd_list.',
     },
   },
   erd_batch: {
@@ -167,12 +198,17 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
       'Removes a table with its columns, indexes and every relationship that touches it.',
   },
   erd_change_table_name: {
-    description: 'Renames a table.',
+    description:
+      'Renames a table. The name is then its own: nameDerived goes off, so a later logical name leaves a name that is not empty as it is.',
     args: { value: 'The new table name.' },
   },
   erd_change_table_comment: {
     description: 'Sets the comment of a table.',
     args: { value: 'The comment; an empty string clears it.' },
+  },
+  erd_set_table_logical_name: {
+    description: `Sets the logical name of a table. While its physical name is empty or derived, the dictionaries derive it as erd_set_column_logical_name does, a term giving no domain to a table. ${OLDER_EDITOR_DICTIONARY}`,
+    args: { value: 'The logical name; an empty string clears it.' },
   },
   erd_change_table_color: {
     description: 'Sets the color of a table.',
@@ -204,11 +240,12 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_change_column_data_type: {
     description:
-      'Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there.',
+      "Sets the data type of a column, such as INT or VARCHAR(255). With relationship data type sync on, the change spreads along relationships both ways: into the foreign keys that copy the column, a serial type as the integer it stores (as erd_add_relationship copies it), and from a foreign key back to the key it copies, except a serial key, which keeps its type and stops the change there. A column linked to a dictionary domain is unlinked from it when set to another type than the domain's, and so is any column the sync reaches, a foreign key or the key it copies, whose new type differs from its own domain's.",
     args: { value: 'The data type text.' },
   },
   erd_change_column_name: {
-    description: 'Renames a column.',
+    description:
+      'Renames a column. The name is then its own: nameDerived goes off, so a later logical name leaves a name that is not empty as it is.',
     args: { value: 'The new column name.' },
   },
   erd_change_column_default: {
@@ -218,6 +255,17 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   erd_change_column_comment: {
     description: 'Sets the comment of a column.',
     args: { value: 'The comment; an empty string clears it.' },
+  },
+  erd_set_column_logical_name: {
+    description: `Sets the logical name of a column. While its physical name is empty or derived, the dictionaries derive it: a term of that name gives its physical name and links its domain, otherwise the words of the name compose one, their abbreviations joined with underscores. A physical name written by hand stays. The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
+    args: { value: 'The logical name; an empty string clears it.' },
+  },
+  erd_set_column_domain: {
+    description: `Links a column to a dictionary domain, which gives it the domain's data type, spread along relationships while relationship data type sync is on; null or an empty name unlinks it and keeps its type. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
+    args: {
+      domainId:
+        'Domain id to link, from erd_list or the createdIds of erd_add_domain; null or an empty string unlinks.',
+    },
   },
   erd_set_column_primary_key: flag('part of the primary key'),
   erd_set_column_unique: flag('unique'),
@@ -233,7 +281,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
 
   erd_add_relationship: {
     description:
-      'Relates two tables: copies the parent primary key into the child as foreign key columns, creating an unnamed primary key column first if the parent has none (its foreign key column is unnamed too). Each foreign key column is named from its key: a key of one word, only letters and digits with no camelCase break and no switch between cased letters and caseless ones such as Hangul or kana (id, ID, uuid, id2), gets the parent table and an underscore in front (users_id for the key id of users), any other key (member_id, userId, UserID, 회원ID, _id, order-no) or one equal to the table name stays as it is, and a name the child already has is numbered (users_id_2). Each foreign key column copies the data type of its key, but a serial key gives the integer it stores: serial4 integer, smallserial and serial2 smallint, bigserial and serial8 bigint, and a bare serial integer under PostgreSQL, bigint unsigned under MySQL and MariaDB and serial elsewhere, written in capitals when the type of the key is. Name the parent table first: an unnamed parent gives the key name alone (id), and a later rename leaves these names as they are. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.',
+      "Relates two tables: copies the parent primary key into the child as foreign key columns, creating an unnamed primary key column first if the parent has none (its foreign key column is unnamed too). Each foreign key column is named from its key: a key of one word, only letters and digits with no camelCase break and no switch between cased letters and caseless ones such as Hangul or kana (id, ID, uuid, id2), gets the parent table and an underscore in front (users_id for the key id of users), any other key (member_id, userId, UserID, 회원ID, _id, order-no) or one equal to the table name stays as it is, and a name the child already has is numbered (users_id_2). Each foreign key column copies the data type of its key, but a serial key gives the integer it stores: serial4 integer, smallserial and serial2 smallint, bigserial and serial8 bigint, and a bare serial integer under PostgreSQL, bigint unsigned under MySQL and MariaDB and serial elsewhere, written in capitals when the type of the key is. Each foreign key column also links the dictionary domain its key links, unless a serial key gives it another type than the domain's. Name the parent table first: an unnamed parent gives the key name alone (id), and a later rename leaves these names as they are. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.",
     args: {
       startTableId:
         'Parent table id, the referenced side that holds the primary key.',
@@ -375,6 +423,47 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     },
   },
 
+  erd_add_word: {
+    description: `Adds a word to the word dictionary, the standard words a logical name is composed of, and returns its id in createdIds. ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
+    args: { name: 'The word as a logical name spells it, such as Member.' },
+  },
+  erd_update_word: {
+    description: `Changes the fields of a word that the call passes and leaves the rest; values it already holds change nothing. ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
+    args: { name: 'The new spelling of the word.' },
+  },
+  erd_remove_word: {
+    description: `Removes a word from the word dictionary; the names it composed stay as they are. ${OLDER_EDITOR_DICTIONARY}`,
+  },
+  erd_add_term: {
+    description: `Adds a term, a logical name with the physical name and the domain it gives, and returns its id in createdIds. Without a physical name the words compose one. ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
+    args: {
+      name: 'The logical name the term matches, such as Member Number.',
+      domainId: TERM_DOMAIN_ID,
+    },
+  },
+  erd_update_term: {
+    description: `Changes the fields of a term that the call passes and leaves the rest; values it already holds change nothing. The tables and columns named from it keep their names and domains. ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
+    args: {
+      name: 'The new logical name of the term.',
+      domainId: TERM_DOMAIN_ID,
+    },
+  },
+  erd_remove_term: {
+    description: `Removes a term; the tables and columns named from it keep their names and domains. ${OLDER_EDITOR_DICTIONARY}`,
+  },
+  erd_add_domain: {
+    description: `Adds a domain, a named data type columns link to, and returns its id in createdIds. ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
+    args: { name: 'The domain name, such as Identifier.' },
+  },
+  erd_update_domain: {
+    description: `Changes the fields of a domain that the call passes and leaves the rest; values it already holds change nothing. A new data type reaches every column linking the domain, and along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${DICTIONARY_NAME} ${OLDER_EDITOR_DICTIONARY}`,
+    args: { domainId: DOMAIN_ID, name: 'The new domain name.' },
+  },
+  erd_remove_domain: {
+    description: `Removes a domain; the columns linking it keep their data type and show no domain. ${OLDER_EDITOR_DICTIONARY}`,
+    args: { domainId: DOMAIN_ID },
+  },
+
   erd_set_database_name: setting(
     'the database name of the document',
     'The database name.'
@@ -400,11 +489,11 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   ),
   erd_import_aml: importer('AML'),
   erd_import_json: {
-    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings. ${OLDER_EDITOR_GROUPS_IMPORT}`,
+    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings; the tables bring their logical names and derived flags, but no column links a domain and none of the document's words, terms and domains is added. ${OLDER_EDITOR_GROUPS_IMPORT} ${OLDER_EDITOR_DICTIONARY}`,
     args: {
       value:
         'The .erd.json document text; empty gives an empty document, and is refused with mode append.',
-      mode: 'replace, the default, loads the document in place of this one, its settings included; append adds its tables, relationships, indexes, memos and table groups below the diagram and keeps everything already there, a table of the same name included.',
+      mode: 'replace, the default, loads the document in place of this one, its settings included; append adds its tables, relationships, indexes, memos and table groups below the diagram, with no domain link on any column and no word, term or domain row, and keeps everything already there, a table of the same name included.',
     },
   },
 };

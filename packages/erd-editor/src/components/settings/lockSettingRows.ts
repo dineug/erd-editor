@@ -1,4 +1,7 @@
+import type { LockSettingType as LockSettingBit } from '@dineug/erd-editor-schema';
+
 import { formatDistance } from '@/components/erd/content-compass/compassGeometry';
+import { menus as nameViewMenus } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -15,7 +18,7 @@ type Translator = Pick<I18n, 't'>;
 
 export type LockSettingRow = {
   nameKey: PlainMessageKey;
-  lockSettingType: number;
+  lockSettingType: LockSettingBit;
   toText: (values: LockedValues, i18n: Translator) => string;
 };
 
@@ -27,6 +30,7 @@ const CanvasTypeToMessageKey: Readonly<Record<string, PlainMessageKey>> = {
   [CanvasType.visualization]: 'common.tab.visualization',
   [CanvasType.schemaSQL]: 'common.tab.schemaSql',
   [CanvasType.generatorCode]: 'common.tab.codeGenerator',
+  [CanvasType.dictionary]: 'common.tab.dictionary',
   [CanvasType.settings]: 'common.tab.settings',
 };
 
@@ -35,6 +39,11 @@ const canvasTypeText = (canvasType: string, i18n: Translator) => {
 
   const key = CanvasTypeToMessageKey[canvasType];
   return key ? i18n.t(key) : canvasType;
+};
+
+const nameViewModeText = (nameViewMode: string, i18n: Translator) => {
+  const menu = nameViewMenus.find(menu => menu.value === nameViewMode);
+  return menu ? i18n.t(menu.labelKey) : nameViewMode;
 };
 
 const nameOf = (
@@ -89,5 +98,10 @@ export const lockSettingRows: ReadonlyArray<LockSettingRow> = [
     nameKey: 'settings.lockRow.bracketType',
     lockSettingType: LockSettingType.bracketType,
     toText: ({ bracketType }, i18n) => nameOf(bracketMenus, bracketType, i18n),
+  },
+  {
+    nameKey: 'settings.lockRow.nameViewMode',
+    lockSettingType: LockSettingType.unlockNameViewMode,
+    toText: ({ nameViewMode }, i18n) => nameViewModeText(nameViewMode, i18n),
   },
 ];

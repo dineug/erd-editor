@@ -86,8 +86,11 @@ function liveOf(state: RootState) {
 
 type Live = ReturnType<typeof liveOf>;
 
-/** What an entry names an entity by: its own name, a foreign key's text, a memo's first line. */
-type Named = { id: string; name: string };
+/**
+ * What an entry names an entity by: its own name, a foreign key's text, a
+ * memo's first line, and a table's or column's logical name beside it.
+ */
+type Named = { id: string; name: string; logicalName?: string };
 
 const named = (name: string) => (name.trim() ? name : null);
 
@@ -116,6 +119,8 @@ function entry(
     nextId: next?.id ?? null,
     name: (next ?? prev)!.name,
     prevName: (prev ?? next)!.name,
+    logicalName: (next ?? prev)!.logicalName ?? '',
+    prevLogicalName: (prev ?? next)!.logicalName ?? '',
     changes,
     children,
   };

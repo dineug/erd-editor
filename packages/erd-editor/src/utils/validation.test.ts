@@ -8,6 +8,7 @@ import {
   Database,
   Language,
   NameCase,
+  NameViewMode,
 } from '@/constants/schema';
 import { DatabaseVendor } from '@/constants/sql/database';
 import {
@@ -19,6 +20,7 @@ import {
   hasDatabaseVendor,
   hasLanguage,
   hasNameCase,
+  hasNameViewMode,
   isEditableTarget,
   isHighLevelTable,
   maxWidthCommentInRange,
@@ -150,6 +152,12 @@ describe('membership helpers', () => {
     expect(hasLanguage(Language.TypeScript)).toBe(true);
     expect(hasLanguage(Language.GraphQL)).toBe(true);
     expect(hasLanguage(9999)).toBe(false);
+  });
+
+  it('hasNameViewMode', () => {
+    expect(hasNameViewMode(NameViewMode.physical)).toBe(true);
+    expect(hasNameViewMode(NameViewMode.both)).toBe(true);
+    expect(hasNameViewMode('tree')).toBe(false);
   });
 
   it('hasColumnType', () => {

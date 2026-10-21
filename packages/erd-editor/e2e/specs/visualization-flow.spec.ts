@@ -873,11 +873,12 @@ test.describe('the visualization tab and the flow view over the document', () =>
       const box = await menu.boundingBox();
       if (!trigger || !box) return null;
 
+      // A centre a hair to the left rounds to -0, which toEqual tells from 0.
       return {
         gap: Math.round(trigger.y - (box.y + box.height)),
-        offset: Math.round(
-          box.x + box.width / 2 - (trigger.x + trigger.width / 2)
-        ),
+        offset:
+          Math.round(box.x + box.width / 2 - (trigger.x + trigger.width / 2)) ||
+          0,
       };
     };
 

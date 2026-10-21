@@ -6,6 +6,7 @@ import Fues from 'fuse.js';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
+import { menus as nameViewMenus } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
 import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
@@ -35,8 +36,17 @@ import {
 } from '@/components/schema-sql/schemaSQLView';
 import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
 import { CanvasType } from '@/constants/schema';
+import {
+  rederiveNamesAction$,
+  type RederiveNamesTarget,
+  RederiveScope,
+} from '@/engine/modules/dictionary/generator.actions';
 import { changeDrawTableGroupAction } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  nameLabelText,
+  toNameLabel,
+} from '@/engine/modules/editor/utils/nameView';
 import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import {
@@ -46,6 +56,7 @@ import {
   changeDatabaseAction,
   changeLanguageAction,
   changeTableNameCaseAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addTableGroupFromTablesAction$ } from '@/engine/modules/table-group/generator.actions';
@@ -91,6 +102,8 @@ export type Action = {
   shortcut?: string;
   /** The table a row jumps to, whose keyword names the kind of row, not the table. */
   tableId?: string;
+  /** A table row's own names, its name and logical name, which a search reads whatever the name view shows. */
+  tableNames?: string[];
   /** What choosing the row types into the input, which stays open, instead of running a command. */
   insert?: string;
   /** The English of a translated name and keywords, each its own text, which a search also reads and the list never shows. */
@@ -106,9 +119,19 @@ export type Action = {
 
 const isNonEmpty = (text: string | undefined): text is string => Boolean(text);
 
-/** The texts of a row a search reads: its name, and the keywords and English alias of a row that is no table. */
-const textsOf = ({ name, keywords, alias = [], tableId }: Action): string[] =>
-  tableId ? [name] : [name, keywords, ...alias].filter(isNonEmpty);
+/** What a search reads of a table row: its table's own names, or its label while the table has none. */
+function tableTextsOf({ name, tableNames = [] }: Action): string[] {
+  const names = tableNames.filter(isNonEmpty);
+  return names.length ? names : [name];
+}
+
+/** The texts of a row a search reads: a table's names, or the name, keywords and English alias of a row that is no table. */
+const textsOf = (action: Action): string[] => {
+  const { name, keywords, alias = [], tableId } = action;
+  return tableId
+    ? tableTextsOf(action)
+    : [name, keywords, ...alias].filter(isNonEmpty);
+};
 
 /** What names a row: a message key, or a shared menu whose name stays as written where it has no key. */
 type RowLabel = PlainMessageKey | LabeledMenu;
@@ -193,7 +216,11 @@ export const SEARCH_THRESHOLD = 0.4;
 export function searchActions(actions: Action[], keyword: string): Action[] {
   const fuse = new Fues(actions, {
     keys: [
-      'name',
+      // A table is found by its name and logical name, whatever the view draws.
+      {
+        name: 'name',
+        getFn: action => (action.tableId ? tableTextsOf(action) : action.name),
+      },
       // A table row's Table would fuzz to most keywords and list every table.
       {
         name: 'keywords',
@@ -326,6 +353,22 @@ export function createScopeActions(
       ...submenuNamed(i18n, 'palette.tab'),
       next: createTabActions(i18n),
     },
+    {
+      ...submenuNamed(i18n, 'common.nameView'),
+      next: nameViewMenus.map<Action>(menu => ({
+        ...checkOf(menu.value === settings.nameViewMode),
+        ...named(i18n, menu.labelKey),
+        perform: ({ store }) => {
+          store.dispatch(
+            toNameViewModeAction(store.state, menu.value, store.getReadonly())
+          );
+        },
+      })),
+      filter: ({ store }) => {
+        return store.state.settings.canvasType === CanvasType.ERD;
+      },
+    },
+    ...createRederiveActions(i18n),
     {
       icon: <Icon name="database" size={16} />,
       ...submenuNamed(i18n, 'common.database'),
@@ -582,6 +625,97 @@ const hasSelectedTable = ({ store }: AppContext) => {
   );
 };
 
+/** What one of the four derivations again covers now, or null while it has nothing to cover. */
+type RederiveTargetOf = (state: RootState) => RederiveNamesTarget | null;
+
+/** The focused column, while its table is listed and still holds it. */
+const focusedColumnTarget: RederiveTargetOf = ({
+  doc,
+  editor,
+  collections,
+}) => {
+  const { focusTable } = editor;
+  if (!focusTable?.columnId || !doc.tableIds.includes(focusTable.tableId)) {
+    return null;
+  }
+
+  const table = query(collections)
+    .collection('tableEntities')
+    .selectById(focusTable.tableId);
+  return table?.columnIds.includes(focusTable.columnId)
+    ? {
+        scope: RederiveScope.column,
+        tableId: focusTable.tableId,
+        columnId: focusTable.columnId,
+      }
+    : null;
+};
+
+const focusedTableTarget: RederiveTargetOf = ({ doc, editor }) => {
+  const tableId = editor.focusTable?.tableId;
+  return tableId && doc.tableIds.includes(tableId)
+    ? { scope: RederiveScope.table, tableId }
+    : null;
+};
+
+/** The selected tables, while two or more of them are listed. */
+const selectionTarget: RederiveTargetOf = ({ doc, editor }) =>
+  getSelectTypeIds(editor.selectedMap).tableIds.filter(id =>
+    doc.tableIds.includes(id)
+  ).length > 1
+    ? { scope: RederiveScope.selection }
+    : null;
+
+const documentTarget: RederiveTargetOf = ({ doc }) =>
+  doc.tableIds.length ? { scope: RederiveScope.document } : null;
+
+const REDERIVE_ROWS: ReadonlyArray<{
+  labelKey: PlainMessageKey;
+  keywordsKey: PlainMessageKey;
+  targetOf: RederiveTargetOf;
+}> = [
+  {
+    labelKey: 'common.derivePhysicalName',
+    keywordsKey: 'palette.keywords.deriveColumn',
+    targetOf: focusedColumnTarget,
+  },
+  {
+    labelKey: 'common.derivePhysicalNames',
+    keywordsKey: 'palette.keywords.deriveTable',
+    targetOf: focusedTableTarget,
+  },
+  {
+    labelKey: 'common.derivePhysicalNames',
+    keywordsKey: 'palette.keywords.deriveSelection',
+    targetOf: selectionTarget,
+  },
+  {
+    labelKey: 'common.derivePhysicalNames',
+    keywordsKey: 'palette.keywords.deriveDocument',
+    targetOf: documentTarget,
+  },
+];
+
+/**
+ * A derivation again of the focused column, the focused table, the selected
+ * tables and the document, each told apart by its keywords and shown on the
+ * ERD tab of an editor that is not readonly while it has something to cover.
+ */
+function createRederiveActions(i18n: Pick<I18n, 't'>): Action[] {
+  return REDERIVE_ROWS.map<Action>(({ labelKey, keywordsKey, targetOf }) => ({
+    icon: <Icon name="refresh-cw" size={16} />,
+    ...named(i18n, labelKey, keywordsKey),
+    perform: ({ store }) => {
+      const target = targetOf(store.state);
+      if (target) store.dispatch(rederiveNamesAction$(target));
+    },
+    filter: ({ store }) =>
+      store.state.settings.canvasType === CanvasType.ERD &&
+      !store.getReadonly() &&
+      targetOf(store.state) !== null,
+  }));
+}
+
 /**
  * The Schema SQL tab's own rows, the statements and the header listing only
  * what the database writes, checked as it writes them, and the options panel
@@ -724,26 +858,33 @@ function createTableActions({ store }: AppContext, i18n: I18n): Action[] {
   const {
     doc: { tableIds },
     collections,
+    settings,
   } = store.state;
   const unnamed = i18n.t('common.unnamed');
   const keywords = i18n.t('common.table');
+  const nameOf = (table: { name: string; logicalName: string }) => {
+    const name = nameLabelText(toNameLabel(settings, table));
+    return isEmpty(name.trim()) ? unnamed : name;
+  };
 
+  // A row names its table as the name view does, still listed by the name.
   return query(collections)
     .collection('tableEntities')
     .selectByIds(tableIds)
     .sort(orderByNameASC)
     .map<Action>(table => ({
       icon: fieldIcon(FindField.tableName, 16),
-      name: isEmpty(table.name.trim()) ? unnamed : table.name,
+      name: nameOf(table),
       keywords,
       tableId: table.id,
+      tableNames: [table.name, table.logicalName],
       perform: ({ store }) => {
         goToErdTarget(store, { kind: 'table', tableId: table.id });
       },
     }));
 }
 
-/** The five tabs in the toolbar's order. */
+/** The six tabs in the toolbar's order. */
 const TABS: ReadonlyArray<{
   canvasType: string;
   icon: IconName;
@@ -766,13 +907,18 @@ const TABS: ReadonlyArray<{
     labelKey: 'common.tab.codeGenerator',
   },
   {
+    canvasType: CanvasType.dictionary,
+    icon: 'book-type',
+    labelKey: 'common.tab.dictionary',
+  },
+  {
     canvasType: CanvasType.settings,
     icon: 'settings',
     labelKey: 'common.tab.settings',
   },
 ];
 
-/** The five tabs the Tab row opens, each but the one shown. */
+/** The six tabs the Tab row opens, each but the one shown. */
 export function createTabActions(i18n: I18n = sourceI18n): Action[] {
   return TABS.map<Action>(({ canvasType, icon, labelKey }) => ({
     icon: <Icon name={icon} size={16} />,

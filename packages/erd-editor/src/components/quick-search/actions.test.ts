@@ -44,19 +44,24 @@ import {
   CanvasType,
   Database,
   Language,
+  NameViewMode,
   RelationshipType,
   Show,
 } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ChangeActionTypes } from '@/engine/actions';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeOpenMapAction,
   changeViewportAction,
   drawStartRelationshipAction,
+  focusColumnAction,
+  focusTableAction,
   selectAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
+  FocusType,
   SelectType,
   ViewKind,
   VisualizationMode,
@@ -70,17 +75,23 @@ import {
   changeCanvasTypeAction,
   changeDatabaseAction,
   changeLanguageAction,
+  changeNameViewModeAction,
   changeShowAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
+  addTableAction,
+  changeTableLogicalNameAction,
   changeTableNameAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import {
   addColumnAction,
+  changeColumnLogicalNameAction,
+  changeColumnNameAction,
   changeColumnPrimaryKeyAction,
+  removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { type LocaleOption, LOCALES } from '@/i18n/locales';
 import { en } from '@/i18n/messages/en';
@@ -134,6 +145,7 @@ const visibleNames = () =>
 /** Every row the ERD canvas offers, which is the whole of what its scope holds. */
 const ERD_TOOLBOX = [
   'Tab',
+  'Name View',
   'Database',
   'Import',
   'Import and Add',
@@ -334,13 +346,25 @@ describe('searchActions / threshold', () => {
 });
 
 describe('createTabActions', () => {
-  it('holds the five canvas tabs, named as the toolbar names them', () => {
+  it('holds the six canvas tabs, named as the toolbar names them', () => {
     expect(names(createTabActions())).toEqual([
       'Entity Relationship Diagram',
       'Visualization',
       'Schema SQL',
       'Code Generator',
+      'Dictionary',
       'Settings',
+    ]);
+  });
+
+  it('draws the glyph the toolbar draws for each tab', async () => {
+    expect(await Promise.all(createTabActions().map(iconOf))).toEqual([
+      'workflow',
+      'share-2',
+      'database',
+      'code',
+      'book-type',
+      'settings',
     ]);
   });
 
@@ -362,10 +386,11 @@ describe('createTabActions', () => {
     expect(visible(CanvasType.ERD)).not.toContain(
       'Entity Relationship Diagram'
     );
-    expect(visible(CanvasType.ERD)).toHaveLength(4);
+    expect(visible(CanvasType.ERD)).toHaveLength(5);
     expect(visible(CanvasType.visualization)).not.toContain('Visualization');
     expect(visible(CanvasType.schemaSQL)).not.toContain('Schema SQL');
     expect(visible(CanvasType.generatorCode)).not.toContain('Code Generator');
+    expect(visible(CanvasType.dictionary)).not.toContain('Dictionary');
     expect(visible(CanvasType.settings)).not.toContain('Settings');
   });
 
@@ -377,6 +402,7 @@ describe('createTabActions', () => {
       ['Visualization', CanvasType.visualization],
       ['Schema SQL', CanvasType.schemaSQL],
       ['Code Generator', CanvasType.generatorCode],
+      ['Dictionary', CanvasType.dictionary],
       ['Settings', CanvasType.settings],
       ['Entity Relationship Diagram', CanvasType.ERD],
     ] as const) {
@@ -523,6 +549,315 @@ describe('createScopeActions / Database', () => {
     expect(database.filter?.(app)).toBe(false);
     setCanvasType(CanvasType.settings);
     expect(database.filter?.(app)).toBe(false);
+  });
+});
+
+describe('createScopeActions / Name View', () => {
+  beforeEach(() => {
+    setCanvasType(CanvasType.ERD);
+  });
+
+  const nameView = () => find(scope(), 'Name View');
+
+  it('follows Tab with the three views, the one in force checked', async () => {
+    expect(names(scope()).slice(0, 2)).toEqual(['Tab', 'Name View']);
+    expect(nameView().icon).toBeUndefined();
+    expect(names(nameView().next ?? [])).toEqual([
+      'Physical Names',
+      'Logical Names',
+      'Both Names',
+    ]);
+    expect(
+      await Promise.all((nameView().next ?? []).map(action => iconOf(action)))
+    ).toEqual(['check', null, null]);
+    expect((nameView().next ?? []).map(action => action.checked)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it("switches the reader's own view while the lock holds it", async () => {
+    const recorded = recordActions();
+
+    find(nameView().next ?? [], 'Logical Names').perform?.(app);
+    await flush();
+    recorded.unsubscribe();
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(
+      recorded.dispatched
+        .filter(({ type }) => type === changeNameViewModeAction.type)
+        .map(({ payload }) => payload)
+    ).toEqual([
+      {
+        value: NameViewMode.logical,
+        shared: false,
+        editorId: app.store.state.editor.id,
+      },
+    ]);
+    expect((nameView().next ?? []).find(action => action.checked)?.name).toBe(
+      'Logical Names'
+    );
+  });
+
+  it('shows on the ERD tab alone, whose rows it lays out', () => {
+    for (const canvasType of [
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      expect(nameView().filter?.(app)).toBe(false);
+    }
+    setCanvasType(CanvasType.ERD);
+    expect(nameView().filter?.(app)).toBe(true);
+  });
+
+  it('names the table jumps # lists as the view in force does, still in name order', async () => {
+    const users = addTable('users');
+    addTable('orders');
+    addTable('');
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: users, value: 'Accounts' })
+    );
+    const jumps = () =>
+      scope()
+        .filter(action => action.tableId)
+        .map(action => action.name);
+    const switchTo = async (name: string) => {
+      find(nameView().next ?? [], name).perform?.(app);
+      await flush();
+    };
+
+    expect(jumps()).toEqual(['unnamed', 'orders', 'users']);
+
+    await switchTo('Logical Names');
+    expect(jumps()).toEqual(['unnamed', 'orders', 'Accounts']);
+
+    await switchTo('Both Names');
+    expect(jumps()).toEqual(['unnamed', 'orders', 'Accounts (users)']);
+  });
+});
+
+describe('createScopeActions / Derive Physical Names Again', () => {
+  beforeEach(() => {
+    setCanvasType(CanvasType.ERD);
+  });
+
+  /**
+   * Two words, then a table per id given whose name and two columns' names
+   * were typed by hand, under logical names the words spell.
+   */
+  function seedNamedTables(...ids: string[]) {
+    app.store.dispatchSync(
+      addDictionaryAction({
+        kind: 'word',
+        id: 'word-member',
+        values: { name: 'Member', abbreviation: 'MBR' },
+      }),
+      addDictionaryAction({
+        kind: 'word',
+        id: 'word-name',
+        values: { name: 'Name', abbreviation: 'NM' },
+      })
+    );
+    ids.forEach((id, index) => {
+      const columns: Array<[columnId: string, logicalName: string]> = [
+        [`${id}-member-name`, 'Member Name'],
+        [`${id}-name`, 'Name'],
+      ];
+      app.store.dispatchSync(
+        addTableAction({ id, ui: { x: index * 400, y: 0, zIndex: index + 1 } }),
+        changeTableNameAction({ id, value: `${id}_typed` }),
+        changeTableLogicalNameAction({ id, value: 'Member' }),
+        ...columns.flatMap(([columnId, logicalName]) => [
+          addColumnAction({ id: columnId, tableId: id }),
+          changeColumnNameAction({ tableId: id, id: columnId, value: 'typed' }),
+          changeColumnLogicalNameAction({
+            tableId: id,
+            id: columnId,
+            value: logicalName,
+          }),
+        ])
+      );
+    });
+  }
+
+  /** A table's name, then its columns' names in order. */
+  function namesOf(tableId: string): string[] {
+    const { tableEntities, tableColumnEntities } = app.store.state.collections;
+    const table = tableEntities[tableId];
+    return [
+      table.name,
+      ...table.columnIds.map(columnId => tableColumnEntities[columnId].name),
+    ];
+  }
+
+  const focusColumn = (tableId: string, columnId: string) =>
+    app.store.dispatchSync(
+      focusColumnAction({
+        tableId,
+        columnId,
+        focusType: FocusType.columnName,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+
+  const rederiveRows = () =>
+    scope().filter(action => action.name.startsWith('Derive Physical'));
+
+  const shown = () => rederiveRows().filter(action => action.filter?.(app));
+
+  const rowOf = (keywords: string): Action => {
+    const row = rederiveRows().find(action => action.keywords === keywords);
+    if (!row) throw new Error(`row not found: ${keywords}`);
+    return row;
+  };
+
+  const perform = async (keywords: string) => {
+    rowOf(keywords).perform?.(app);
+    await flush();
+  };
+
+  it('follows Name View with the four, told apart by their keywords and drawn with refresh-cw', async () => {
+    seedNamedTables('a', 'b');
+    focusColumn('a', 'a-name');
+    app.store.dispatchSync(
+      selectAction({ a: SelectType.table, b: SelectType.table })
+    );
+
+    const visible = scope().filter(action => action.filter?.(app) ?? true);
+    const at = names(visible).indexOf('Name View');
+    expect(pairs(visible.slice(at + 1, at + 5))).toEqual([
+      ['Derive Physical Name Again', 'column'],
+      ['Derive Physical Names Again', 'table'],
+      ['Derive Physical Names Again', 'selected tables'],
+      ['Derive Physical Names Again', 'whole document'],
+    ]);
+    expect(await Promise.all(shown().map(row => iconOf(row)))).toEqual([
+      'refresh-cw',
+      'refresh-cw',
+      'refresh-cw',
+      'refresh-cw',
+    ]);
+  });
+
+  it('shows each only while it has something to cover', () => {
+    expect(shown()).toEqual([]);
+
+    seedNamedTables('a', 'b');
+    expect(pairs(shown())).toEqual([
+      ['Derive Physical Names Again', 'whole document'],
+    ]);
+
+    app.store.dispatchSync(
+      focusTableAction({ tableId: 'a', focusType: FocusType.tableName })
+    );
+    expect(shown().map(row => row.keywords)).toEqual([
+      'table',
+      'whole document',
+    ]);
+
+    app.store.dispatchSync(
+      selectAction({ a: SelectType.table, ghost: SelectType.table })
+    );
+    expect(shown().map(row => row.keywords)).toEqual([
+      'table',
+      'whole document',
+    ]);
+  });
+
+  it('derives the focused column alone', async () => {
+    seedNamedTables('a');
+    focusColumn('a', 'a-name');
+
+    await perform('column');
+
+    expect(namesOf('a')).toEqual(['a_typed', 'typed', 'NM']);
+  });
+
+  it('shows no column row for a focused column its table no longer holds', () => {
+    seedNamedTables('a');
+    focusColumn('a', 'a-name');
+    expect(rowOf('column').filter?.(app)).toBe(true);
+
+    app.store.dispatchSync(removeColumnAction({ tableId: 'a', id: 'a-name' }));
+    expect(app.store.state.editor.focusTable?.columnId).toBe('a-name');
+    expect(rowOf('column').filter?.(app)).toBe(false);
+  });
+
+  it('derives the focused table, its name and every column, the rest kept', async () => {
+    seedNamedTables('a', 'b');
+    focusColumn('a', 'a-name');
+
+    await perform('table');
+
+    expect(namesOf('a')).toEqual(['MBR', 'MBR_NM', 'NM']);
+    expect(namesOf('b')).toEqual(['b_typed', 'typed', 'typed']);
+  });
+
+  it('derives the selected tables alone', async () => {
+    seedNamedTables('a', 'b', 'c');
+    app.store.dispatchSync(
+      selectAction({ a: SelectType.table, c: SelectType.table })
+    );
+
+    await perform('selected tables');
+
+    expect(namesOf('a')).toEqual(['MBR', 'MBR_NM', 'NM']);
+    expect(namesOf('b')).toEqual(['b_typed', 'typed', 'typed']);
+    expect(namesOf('c')).toEqual(['MBR', 'MBR_NM', 'NM']);
+  });
+
+  it('derives every table of the document', async () => {
+    seedNamedTables('a', 'b');
+
+    await perform('whole document');
+
+    expect(namesOf('a')).toEqual(['MBR', 'MBR_NM', 'NM']);
+    expect(namesOf('b')).toEqual(['MBR', 'MBR_NM', 'NM']);
+  });
+
+  it('sends nothing once what a row covered is gone', async () => {
+    seedNamedTables('a');
+    const row = rowOf('table');
+    app.store.dispatchSync(
+      focusTableAction({ tableId: 'ghost', focusType: FocusType.tableName })
+    );
+    const recorded = recordActions();
+
+    row.perform?.(app);
+    await flush();
+    recorded.unsubscribe();
+
+    expect(
+      recorded
+        .types()
+        .filter(type => new Set<string>(ChangeActionTypes).has(type))
+    ).toEqual([]);
+  });
+
+  it('offers none off the ERD tab or to a readonly editor', () => {
+    let locked = false;
+    app.store.destroy();
+    app = createTestAppContext({ getReadonly: () => locked });
+    setCanvasType(CanvasType.ERD);
+    seedNamedTables('a', 'b');
+    focusColumn('a', 'a-name');
+    app.store.dispatchSync(
+      selectAction({ a: SelectType.table, b: SelectType.table })
+    );
+    expect(shown()).toHaveLength(4);
+
+    setCanvasType(CanvasType.schemaSQL);
+    expect(shown()).toEqual([]);
+
+    setCanvasType(CanvasType.ERD);
+    locked = true;
+    expect(shown()).toEqual([]);
   });
 });
 
@@ -1327,7 +1662,15 @@ describe('createScopeActions / no focus actions', () => {
     // it carried, where the filter below only catches the one that was taken out.
     expect(visibleNames()).toEqual([
       ...ERD_TOOLBOX.flatMap(name =>
-        name === 'New Table Group' ? [name, 'Group Selected Tables'] : [name]
+        name === 'New Table Group'
+          ? [name, 'Group Selected Tables']
+          : name === 'Name View'
+            ? [
+                name,
+                'Derive Physical Names Again',
+                'Derive Physical Names Again',
+              ]
+            : [name]
       ),
       'users',
     ]);
@@ -1622,7 +1965,7 @@ describe('createScopeActions / translated', () => {
 
     const translated = ids(pseudo);
 
-    expect(translated).toHaveLength(14);
+    expect(translated).toHaveLength(15);
     expect(translated.every(Boolean)).toBe(true);
     expect(new Set(translated).size).toBe(translated.length);
     expect(ids(sourceI18n)).toEqual(translated);
@@ -1641,6 +1984,7 @@ describe('createScopeActions / translated', () => {
       'de:Visualization',
       'de:Schema SQL',
       'de:Code Generator',
+      'de:Dictionary',
       'de:Settings',
     ]);
     expect(names(submenu(actions, 'de:Import'))).toEqual([
@@ -1704,8 +2048,10 @@ describe('createScopeActions / translated', () => {
     );
 
     expect(names(searchActions(commands, 'new table'))[0]).toBe('새 테이블');
+    // Fuse fuzzes rename to Name View, after the row whose keyword holds it.
     expect(names(searchActions(commands, 'rename'))).toEqual([
       '탐색기 열기/닫기',
+      'Name View',
     ]);
     expect(names(searchActions(commands, '새 메모'))[0]).toBe('새 메모');
     expect(keywordHolder('Toggle Ex')(find(commands, '탐색기 열기/닫기'))).toBe(

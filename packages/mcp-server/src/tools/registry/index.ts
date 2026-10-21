@@ -6,6 +6,7 @@ import type {
 import type { CompositionActions } from '@dineug/r-html';
 
 import { columnTools } from '@/tools/registry/column';
+import { dictionaryTools } from '@/tools/registry/dictionary';
 import { importTools } from '@/tools/registry/import';
 import { indexTools } from '@/tools/registry/indexes';
 import { memoTools } from '@/tools/registry/memo';
@@ -22,7 +23,10 @@ export type ToolEntity =
   | 'index'
   | 'indexColumn'
   | 'memo'
-  | 'tableGroup';
+  | 'tableGroup'
+  | 'word'
+  | 'term'
+  | 'domain';
 
 /**
  * What an argument holds. An entity id names a live entity, inside the one
@@ -109,6 +113,7 @@ export const actionTools: readonly ActionTool[] = Object.freeze([
   ...indexTools,
   ...memoTools,
   ...tableGroupTools,
+  ...dictionaryTools,
   ...settingsTools,
   ...importTools,
 ]);

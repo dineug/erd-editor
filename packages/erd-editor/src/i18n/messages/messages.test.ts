@@ -134,7 +134,7 @@ describe('the dictionaries', () => {
   });
 
   it('follow an English file for every part, none of them empty', () => {
-    expect(englishParts).toHaveLength(19);
+    expect(englishParts).toHaveLength(20);
     for (const { name, messages } of englishParts) {
       expect(Object.keys(messages).length, name).toBeGreaterThan(0);
     }

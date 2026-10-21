@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vite-plus/test';
+import type { KeyBindingMap } from '@dineug/erd-editor';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
-import { scopeKeysOf, toScopeKey } from '@/keys';
+import { editorScopeKeys, scopeKeysOf, toScopeKey } from '@/keys';
 
 const bindings = (...shortcuts: string[]) => ({
   name: shortcuts.map(shortcut => ({ shortcut })),
@@ -65,5 +66,45 @@ describe('scopeKeysOf', () => {
       { modifiers: ['Mod'], key: 'G' },
       { modifiers: [], key: 'I' },
     ]);
+  });
+});
+
+describe('editorScopeKeys', () => {
+  /** A loaded module's map, cut to the column chords the Dictionary tab's rows follow. */
+  const keyBindingMap = {
+    addColumn: [{ shortcut: 'Alt+Enter' }],
+    removeColumn: [{ shortcut: 'Alt+Backspace' }],
+  } as unknown as KeyBindingMap;
+
+  it("registers the row chords the map derives, Insert above's among them, beside the map's own presses", () => {
+    const dictionaryRowChords = vi.fn(() => [
+      { shortcut: 'Alt+Enter' },
+      { shortcut: 'Alt+Shift+Enter' },
+      { shortcut: 'Alt+Backspace' },
+    ]);
+
+    const keys = editorScopeKeys({
+      createKeyBindingMap: () => keyBindingMap,
+      dictionaryRowChords,
+    });
+
+    expect(dictionaryRowChords).toHaveBeenCalledWith(keyBindingMap);
+    expect(keys).toEqual([
+      { modifiers: ['Alt'], key: 'Enter' },
+      { modifiers: ['Alt'], key: 'Backspace' },
+      { modifiers: ['Alt', 'Shift'], key: 'Enter' },
+    ]);
+  });
+
+  it('registers the map alone from a module with no row chords, and nothing from one with no map', () => {
+    expect(
+      editorScopeKeys({ createKeyBindingMap: () => keyBindingMap })
+    ).toEqual([
+      { modifiers: ['Alt'], key: 'Enter' },
+      { modifiers: ['Alt'], key: 'Backspace' },
+    ]);
+    expect(editorScopeKeys({ dictionaryRowChords: vi.fn(() => []) })).toEqual(
+      []
+    );
   });
 });

@@ -10,12 +10,15 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__/index';
+import { dictionaryViewOf } from '@/components/dictionary/dictionaryView';
+import { DictionarySheet } from '@/components/dictionary/sheets';
 import { layoutOf } from '@/components/erd-editor/viewportLayout';
 import { explorerViewOf } from '@/components/explorer/explorerView';
 import Toolbar from '@/components/toolbar/Toolbar';
 import * as styles from '@/components/toolbar/Toolbar.styles';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeOpenMapAction,
   selectAction,
@@ -33,6 +36,7 @@ import {
 } from '@/engine/modules/editor/view.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { attachActionTag, Tag } from '@/engine/tag';
 import { createI18n } from '@/i18n/translate';
 import {
   openLocalePickerAction,
@@ -150,6 +154,7 @@ describe('Toolbar', () => {
           'ko:Visualization',
           'ko:Schema SQL',
           'ko:Code Generator',
+          'ko:Dictionary',
           'ko:Settings',
           toShortcutTitle(
             app.keyBindingMap,
@@ -240,8 +245,22 @@ describe('Toolbar', () => {
       ['Visualization', CanvasType.visualization],
       ['Schema SQL', CanvasType.schemaSQL],
       ['Code Generator', CanvasType.generatorCode],
+      ['Dictionary', CanvasType.dictionary],
       ['Settings', CanvasType.settings],
     ];
+
+    it('draws a glyph per tab, the Dictionary book between Code Generator and Settings', async () => {
+      await setup();
+
+      expect(cases.map(([title]) => iconNameOf(menu(title)))).toEqual([
+        'workflow',
+        'share-2',
+        'database',
+        'code',
+        'book-type',
+        'settings',
+      ]);
+    });
 
     it('marks only the current canvas type as active', async () => {
       await setup();
@@ -440,6 +459,7 @@ describe('Toolbar', () => {
       CanvasType.visualization,
       CanvasType.schemaSQL,
       CanvasType.generatorCode,
+      CanvasType.dictionary,
       CanvasType.settings,
     ]) {
       it(`shows unpressed on the ${canvasType} tab, where a press takes the ERD tab and opens it (N-h)`, async () => {
@@ -630,6 +650,104 @@ describe('Toolbar', () => {
       await flush();
 
       expect(app.store.state.doc.tableIds).toEqual(['t1']);
+    });
+
+    describe('on the Dictionary tab', () => {
+      const addWord = (id: string) =>
+        attachActionTag(
+          Tag.dictionarySheet,
+          addDictionaryAction({ kind: 'word', id, values: { name: id } })
+        );
+
+      /** The Dictionary tab on the word sheet, the one the specs below write. */
+      async function onDictionary() {
+        const mounted = await setup();
+        dictionaryViewOf(mounted.app).sheet = DictionarySheet.word;
+        mounted.app.store.dispatchSync(
+          changeCanvasTypeAction({ value: CanvasType.dictionary })
+        );
+        await flush();
+        return mounted;
+      }
+
+      it('shows undo and redo, and no time travel, which replays the document', async () => {
+        await onDictionary();
+
+        expect(root().querySelectorAll('.undo-redo')).toHaveLength(2);
+        expect(menu('Time Travel')).toBeNull();
+      });
+
+      it("runs the sheet shown's own history, never the document's", async () => {
+        const { app } = await onDictionary();
+        app.store.dispatchSync(addTable('t1'));
+        app.store.dispatchSync(addWord('w1'));
+        await flush();
+
+        expect(menu('Undo').getAttribute('class')).toContain('active');
+        menu('Undo').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await flush();
+
+        expect(app.store.state.doc.wordIds).toEqual([]);
+        expect(app.store.state.doc.tableIds).toEqual(['t1']);
+        expect(menu('Undo').getAttribute('class')).not.toContain('active');
+        expect(menu('Redo').getAttribute('class')).toContain('active');
+
+        menu('Redo').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await flush();
+        expect(app.store.state.doc.wordIds).toEqual(['w1']);
+      });
+
+      it('shows both inactive on another sheet, and on the check sheet, which reaches neither history', async () => {
+        const { app } = await onDictionary();
+        // A document entry the check sheet's greyed buttons must leave alone.
+        app.store.dispatchSync(addTable('t1'));
+        app.store.dispatchSync(addWord('w1'));
+        const view = dictionaryViewOf(app);
+
+        view.sheet = DictionarySheet.term;
+        await flush();
+        expect(menu('Undo').getAttribute('class')).not.toContain('active');
+
+        view.sheet = DictionarySheet.check;
+        await flush();
+        expect(menu('Undo').getAttribute('class')).not.toContain('active');
+        menu('Undo').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        menu('Redo').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await flush();
+        expect(app.store.state.doc.wordIds).toEqual(['w1']);
+        expect(app.store.state.doc.tableIds).toEqual(['t1']);
+      });
+
+      it('keeps the keyboard where it was on the Dictionary tab, and lets a press take it elsewhere', async () => {
+        await onDictionary();
+        const press = () => {
+          const event = new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+          });
+          menu('Undo').dispatchEvent(event);
+          return event.defaultPrevented;
+        };
+
+        expect(press()).toBe(true);
+
+        const { app } = await setup();
+        await flush();
+        expect(app.store.state.settings.canvasType).not.toBe(
+          CanvasType.dictionary
+        );
+        expect(press()).toBe(false);
+      });
+
+      it('hides both in a read-only document', async () => {
+        const { app } = await setup({ readonly: true });
+        app.store.dispatchSync(
+          changeCanvasTypeAction({ value: CanvasType.dictionary })
+        );
+        await flush();
+
+        expect(root().querySelectorAll('.undo-redo')).toHaveLength(0);
+      });
     });
   });
 

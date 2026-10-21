@@ -36,8 +36,12 @@ describe('RootState', () => {
       indexIds: [],
       memoIds: [],
       tableGroupIds: [],
+      wordIds: [],
+      termIds: [],
+      domainIds: [],
     });
     expect(Object.keys(state.collections).sort()).toEqual([
+      'domainEntities',
       'indexColumnEntities',
       'indexEntities',
       'memoEntities',
@@ -45,6 +49,8 @@ describe('RootState', () => {
       'tableColumnEntities',
       'tableEntities',
       'tableGroupEntities',
+      'termEntities',
+      'wordEntities',
     ]);
     store.destroy();
   });

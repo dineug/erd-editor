@@ -1,9 +1,9 @@
+import { isSettingLocked } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { Observable } from 'rxjs';
 
 import { LockSettingActionTypes } from '@/engine/actions';
 import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
-import { bHas } from '@/utils/bit';
 
 /**
  * Drops each setting action whose lock is on, read as the batch passes: it
@@ -12,7 +12,7 @@ import { bHas } from '@/utils/bit';
 export const lockIgnoreFilter = (getLockSettings: () => number) => {
   const predicate = (lockSettings: number) => (action: AnyAction) => {
     const lock = Reflect.get(LockSettingActionTypes, action.type);
-    return !lock || !bHas(lockSettings, lock);
+    return !lock || !isSettingLocked(lockSettings, lock);
   };
 
   return (source$: Observable<Array<AnyAction>>) =>

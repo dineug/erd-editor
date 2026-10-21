@@ -8,15 +8,18 @@ function createTable(id: string, name = id): Table {
   return {
     id,
     name,
+    logicalName: '',
     comment: '',
     columnIds: [],
     seqColumnIds: [],
     groupId: '',
+    nameDerived: false,
     ui: {
       x: 0,
       y: 0,
       zIndex: 2,
       widthName: 60,
+      widthLogicalName: 60,
       widthComment: 60,
       color: '',
     },
@@ -35,6 +38,9 @@ function createCollections(...tables: Table[]): Collections {
     indexColumnEntities: {},
     memoEntities: {},
     tableGroupEntities: {},
+    wordEntities: {},
+    termEntities: {},
+    domainEntities: {},
   };
 }
 

@@ -6,22 +6,32 @@ export type Column = {
   dataType: string;
   default: string;
   options: number;
+  /** The name a reader sees in the logical view, '' for none. */
+  logicalName: string;
+  /** The domain that governs the data type, '' for none. */
+  domainId: string;
   ui: ColumnUI;
 };
 
 export type ColumnUI = {
   keys: number;
   widthName: number;
+  widthLogicalName: number;
   widthComment: number;
   widthDataType: number;
+  widthDomain: number;
   widthDefault: number;
 };
 
+// Append only: a document stores the bits as one number. nameDerived is set
+// while the dictionaries filled the name, so a file without it rewrites none;
+// a release before the bit keeps it through a rename, so it can be stale.
 export const ColumnOption = {
   autoIncrement: 1,
   primaryKey: 2,
   unique: 4,
   notNull: 8,
+  nameDerived: 16,
 } as const;
 
 export const ColumnUIKey = {

@@ -68,13 +68,16 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
     const { graph, state } = props;
     const { store } = app.value;
     const { viewport } = store.state.editor;
+    // Read here for the same reason as the placeholder below: the labels
+    // repeat draws outside this pass, and a switch of view has to reach them.
+    const settings = { nameViewMode: store.state.settings.nameViewMode };
     const theme = themeRef.value;
     const { x, y, scale, hoveredTableId } = state;
     const opacity = labelOpacity(scale);
     const tables = graph.nodes.filter(node => node.group === Group.table);
     // Read here rather than in the labels, which repeat draws outside this
     // pass, and only while a table without a name has a label to put it in.
-    const placeholder = tables.every(hasName)
+    const placeholder = tables.every(node => hasName(node, settings))
       ? ''
       : i18n.value.t('common.placeholder.table');
     const highlight = hoveredTableId
@@ -163,8 +166,12 @@ const VisualizationScene: FC<VisualizationSceneProps> = (props, ctx) => {
                   x={node.x - LABEL_WIDTH / 2}
                   y={node.y + TABLE_RADIUS + LABEL_GAP}
                   width={LABEL_WIDTH}
-                  text={labelOf(node, placeholder)}
-                  fill={hasName(node) ? theme.foreground : theme.placeholder}
+                  text={labelOf(node, placeholder, settings)}
+                  fill={
+                    hasName(node, settings)
+                      ? theme.foreground
+                      : theme.placeholder
+                  }
                   fontFamily={TextFontFamily}
                   fontSize={LABEL_FONT_SIZE}
                   fontStyle="bold"

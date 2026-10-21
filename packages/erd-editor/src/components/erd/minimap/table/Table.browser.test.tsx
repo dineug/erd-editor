@@ -39,15 +39,18 @@ const createTable = (
 ): TableType => ({
   id: 'table-1',
   name: 'users',
+  logicalName: '',
   comment: '',
   columnIds,
   seqColumnIds: [...columnIds],
   groupId,
+  nameDerived: false,
   ui: {
     x: 11,
     y: 22,
     zIndex: 5,
     widthName: 60,
+    widthLogicalName: 60,
     widthComment: 60,
     color: '',
     ...ui,

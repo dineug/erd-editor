@@ -1,11 +1,11 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-20 -->
 
 # schema-sql
 
 ## Purpose
 
-`src/utils/schema-sql/` writes the DDL of the eight databases: one writer per vendor, `createSchemaSQL` in `index.ts`, the statements and header in `options.ts`, and the helpers the writers share in `utils.ts`. The Schema SQL tab, the element's `getSchemaSQL()` and `mcp-server`'s `erd_read` call `createSchemaSQL`. Each rule below records deliberate behaviour, not a bug to fix. Other files hold the rest of the feature:
+`src/utils/schema-sql/` writes the DDL of the eight databases: one writer per vendor, `createSchemaSQL` in `index.ts`, the options (statements, header, logical names as comments) in `options.ts`, and the helpers the writers share in `utils.ts`. The Schema SQL tab, the element's `getSchemaSQL()` and `mcp-server`'s `erd_read` call `createSchemaSQL`. Each rule below records deliberate behaviour, not a bug to fix. Other files hold the rest of the feature:
 
 - The Schema SQL tab, its options panel, its Tables choice by table group and its script editors: `src/components/schema-sql/AGENTS.md`.
 - The scripts as document content (`settings.ddlScripts`): `src/engine/AGENTS.md`.
@@ -29,8 +29,8 @@
 | File | Description |
 | --- | --- |
 | `index.ts` | `createSchemaSQL` and `CreateSchemaSQLOptions`: the parts in order, the table filter, the scripts |
-| `options.ts` | `schemaSQLSupport`, `resolveSchemaSQLOptions`, `HEADER_NAME_PATTERN`, `formatScript` |
-| `utils.ts` | What the writers share: `toStringLiteral`, `formatDefault`, the name split (`splitNameParts`, `unquoteNamePart`, `splitTableName`, `tableNamePart`, `splitsTableName`), `autoName` and `autoNameIgnoreCase`, `toForeignKeyPairs`, `toSchemaEntities`, `selectIndexColumns`, `referentialActionSupport` |
+| `options.ts` | `SchemaSQLOptions`, `schemaSQLSupport`, `resolveSchemaSQLOptions`, `HEADER_NAME_PATTERN`, `formatScript` |
+| `utils.ts` | What the writers share: `commentToWrite`, `toStringLiteral`, `formatDefault`, the name split (`splitNameParts`, `unquoteNamePart`, `splitTableName`, `tableNamePart`, `splitsTableName`), `autoName` and `autoNameIgnoreCase`, `toForeignKeyPairs`, `toSchemaEntities`, `selectIndexColumns`, `referentialActionSupport` |
 | `MySQL.ts`, `MariaDB.ts`, `PostgreSQL.ts`, `MSSQL.ts`, `Oracle.ts`, `SQLite.ts`, `Snowflake.ts`, `Databricks.ts` | One writer per database; `Oracle.ts` also holds `oracleLongNames` |
 | `__fixtures__/options/<vendor>/` | The bytes each combination writes, and the bytes of a few rules on their own |
 
@@ -60,7 +60,23 @@
 - **A quoted name goes whole to level 1.** It goes to level 1 in `dbo`, the one table `CREATE TABLE "dbo.users"` makes, which reads back as `dbo.users`.
 - **Level 1 holds the importer's table name.** Either way, quoted or not, level 1 holds the name the importer gives the table: `sales.users` quoted; `users` for `[sales].[users]`, `[sales.v2].users` or `shop.sales.users`; `x.y.z` for `[x.y.z]`. So the comments survive the round trip. The exception is `[x]]y]`, which the importer reads as a table `x` with no columns.
 - **A column name reaches level 2 as typed.** So a bracketed one in an unquoted export (`'[Order Id]'`) is refused by SQL Server (Msg 15135). It also matches no column the importer reads (`Order Id`). The owner has not decided this case.
+- **The text is a national literal.** `MSSQL.ts` writes each `MS_Description` value as `N'…'` (`toDescription`), the form SSMS writes. SQL Server reads a plain literal as varchar in the database's code page. On 2026-10-20, SQL Server 2022 under its default collation, `SQL_Latin1_General_CP1_CI_AS`, kept the Korean `회원` of a plain literal as `??` and of a national one as written. The level names stay plain literals, so the same day a table named `회원` failed its call with Msg 15135, a case the owner has not decided. The importer reads either form.
 - **Older exports keep their comments.** `findCommentTable` (`src/utils/schema-sql-parser/index.ts`) reads a call naming an unquoted `dbo.users` whole at level 1 by its last part. So a file an older export wrote (`'user', dbo, 'table', 'dbo.users'`, which SQL Server refuses) keeps its comments. Its `CREATE TABLE dbo.users` reads back as `users`.
+
+### Logical names as comments
+
+- **An empty comment can write the logical name**, as the owner decided. Under `logicalNameAsComment` (`SchemaSQLOptions`, off when left out), a table or column whose comment is blank writes its logical name where its comment would go. `commentToWrite` (`utils.ts`) picks the text: the comment while not blank, else the logical name while the option is on and it is not blank, else nothing. Every table and column comment place of the eight writers calls it, so each vendor writes a logical name in the form it writes a comment:
+  - MySQL and MariaDB inline (`COMMENT 'x'` on the column, `) COMMENT 'x';` on the table), MySQL's ifNotExists batch too;
+  - PostgreSQL and Oracle `COMMENT ON TABLE` / `COMMENT ON COLUMN` after the table, Oracle's blank lines written as one line break (below);
+  - SQL Server an `MS_Description` call per table and column (SQL Server comments, above);
+  - Snowflake inline, `COMMENT = 'x'` on the table;
+  - Databricks inline, in its Spark string literal (Quoting and string literals, above);
+  - SQLite a `--` comment line above the table or column, since it keeps no comment, its line breaks written as a space (below).
+- **A comment that is not blank stays.** The logical name never replaces or joins it.
+- **SQLite writes a line break as a space** (an owner decision of 2026-10-20). A line break would end the `--` line and run the text after it as SQL, so `SQLite.ts` writes each run of line breaks in a comment or a logical name as one space (`toCommentLine`). On 2026-10-20 SQLite 3.54 refused the earlier output of a table comment on two lines and created neither table of the document; it ran this output clean.
+- **Oracle writes a run of blank lines as one line break** (an owner decision of 2026-10-21). SQL*Plus ends a statement at a blank line, one of spaces or tabs alike, and skips the rest of it, and `WHENEVER SQLERROR EXIT FAILURE` still exits 0. So `Oracle.ts` writes each run of blank lines in a comment or a logical name as one line break (`toCommentLiteral`). On 2026-10-21 SQL*Plus on Oracle AI Database 26ai Free dropped, with exit 0, the 16 comments of the earlier output that held a blank line in one of eight shapes; it kept all 18 of this output.
+- **Only `true` turns it on.** `createSchemaSQL` reads any other value, from a host's `getSchemaSQL()` or an agent's read, as left out. The Schema SQL tab's switch (`src/components/schema-sql/AGENTS.md`) passes the window's choice; Table Properties' one table never writes it.
+- **Measured on 2026-10-20.** MySQL 8.4, MariaDB 11.4, PostgreSQL 17, SQL Server 2022, Oracle AI Database 26ai Free and SQLite 3.54 ran the DDL of a document whose tables and columns had logical names and no comment, Korean ones and one with a quote among them, beside a table comment and a column comment. Each catalog held every logical name and comment on its table and column, SQL Server's once its descriptions were national literals (SQL Server comments, above). SQLite's schema text keeps the column lines alone, since a table's line stands before its `CREATE TABLE`.
 
 ### Column defaults
 
@@ -114,8 +130,8 @@
 
 - **Write the parts in a fixed order.** `createSchemaSQL(state, database?, tableIds?, options?)` in `index.ts` writes the header, the before script, the DROP block, the tables and the after script, in that order (owner decisions of 2026-10-07). Each part has no blank lines at its edges, and one blank line stands between two.
 - **Keep output without an after script unchanged.** The blank line an index with no column left leaves at the tables' end is dropped only before an after script. So an output without one stays byte for byte what it was.
-- **No options write Create and no header.** `getSchemaSQL()` and `mcp-server`'s `erd_read` write that by default.
-- **Scripts follow the whole document by default.** The scripts go into the whole document's DDL by default and into that of some tables (`tableIds`) only under `scripts: true`. `scripts: false` leaves them out of either. The option is a field of `CreateSchemaSQLOptions`. The Schema SQL tab passes `scripts: true`; `getSchemaSQL()`, which picks the statements and header alone, and `erd_read` never do.
+- **No options write Create, no header and no logical name.** `getSchemaSQL()` and `mcp-server`'s `erd_read` write that by default.
+- **Scripts follow the whole document by default.** The scripts go into the whole document's DDL by default and into that of some tables (`tableIds`) only under `scripts: true`. `scripts: false` leaves them out of either. The option is a field of `CreateSchemaSQLOptions`. The Schema SQL tab passes `scripts: true`; `getSchemaSQL()`, which picks the statements, the header and the logical names alone, and `erd_read` never do.
 - **An empty document writes `''`.** A document with neither tables nor scripts writes `''` under any option.
 - **Resolve options per database in `options.ts`.** It resolves the statements and header asked for per database (`schemaSQLSupport`, `resolveSchemaSQLOptions`).
   - Statements: IF NOT EXISTS on MySQL, MariaDB, PostgreSQL, SQLite and Databricks, Create elsewhere.
@@ -173,6 +189,7 @@
   - IDENTITY left off a key type PostgreSQL or Databricks does not take it on, and kept on Databricks' BIGINT.
   - Snowflake's referential actions.
   - A database name that is no plain identifier, which writes no header and no schema on PostgreSQL's DROP (`*-invalid-name.sql`).
-- **`compose.test.ts` and the vendor specs read them.** `compose.test.ts` reads the combination files, Oracle's long names, PostgreSQL's identity comment under the editor defaults (`non-integer-identity-ifNotExists-createAndUse.sql`) and the invalid names. `Oracle.test.ts`, `SQLite.test.ts`, `PostgreSQL.test.ts`, `Databricks.test.ts` and `Snowflake.test.ts` read their own rule files.
+  - Logical names as comments, one per database (`logical-name-comment-create-none.sql`): tables and columns with a logical name and no comment, a table and a column whose comments stay, and a logical name holding a quote.
+- **`compose.test.ts` and the vendor specs read them.** `compose.test.ts` reads the combination files, Oracle's long names, PostgreSQL's identity comment under the editor defaults (`non-integer-identity-ifNotExists-createAndUse.sql`), the invalid names and the logical name files, and holds that no option writes no logical name. Each vendor spec holds its own form of a logical name comment. `Oracle.test.ts`, `SQLite.test.ts`, `PostgreSQL.test.ts`, `Databricks.test.ts` and `Snowflake.test.ts` read their own rule files.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

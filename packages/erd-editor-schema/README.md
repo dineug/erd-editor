@@ -41,10 +41,11 @@ const runtimeValue = toJson(schema); // what a collaborator or a second view see
 
 The two strings are two serializations of one document, and `parser` reads both.
 `toDocumentJson` writes the storage form, what a file holds: the live entities alone, without the
-fields an editor derives on load or keeps for one instance, in a fixed key order, so saving the
-same document twice writes the same bytes. `toJson` writes the runtime value: the collections as an
+fields an editor derives on load or keeps for one instance, or the text, lists and collections left
+empty, in a fixed key order, so saving the same document twice writes the same bytes. `toJson` writes the runtime value: the collections as an
 editor holds them, the tombstones of removed entities included, which a collaborator or a second
-view needs to undo a removal it did not see.
+view needs to undo a removal it did not see. Both write the three dictionaries (words, terms and
+domains) as a header and one row per line.
 
 A field that fails validation falls back to its default, so `schemaV3Parser({})` is a complete
 empty document. The input itself can still throw. `parser` throws on text that is not JSON, and a
@@ -67,12 +68,22 @@ The surface (`src/index.ts`):
   (`selectById`, `selectByIds`, `selectAll`, `selectEntities`, `setOne` / `setMany` / `setAll`,
   `addOne` / `addMany`, `updateOne` / `updateMany`, `removeOne` / `removeMany` / `removeAll`,
   `getOrCreate`) and the three LWW operators bound to that collection.
+- `compareByOrder(a, b)`, `generateOrderKeyBetween(a, b)`, `generateOrderKeys(a, b, n)`,
+  `isOrderKey(value)`, with the `Ordered` type — a dictionary row's order key, a fractional index
+  key, and a sheet's order. `compareByOrder` sorts rows by key in code unit order, a row with no
+  key after every row with one, and rows of one key, or none, by id. The two generators make one
+  key, or `n` keys in order, between `a` and `b`, `null` for no bound on that side; each bound
+  must be a key, `a` below `b`, or they throw a `RangeError`. The runtime value alone holds the
+  key; a file writes its rows in this order.
 - `addOperator`, `removeOperator`, `replaceOperator`, and the `LWW` / `LWWTuple` types — the
   same operators unbound, taking the register's `tag` as an argument: a collection key, or another
   name, such as the `'settings'` tag of the editor core's settings registers.
 - `migrateScrollToOrigin`, with its `LegacyScrollBox` / `Origin` types — the one-way conversion
   of the scroll pair a file saved before `originX` / `originY`, with the canvas box and zoom it
   was measured against, into an origin.
+- `isSettingLocked(lockSettings, bit)`, `setSettingLock(lockSettings, bit, locked)`, with the
+  `LockSettingType` type — read and set one lock of `lockSettings`. The name view's bit reads the
+  other way round, locked while clear, and both throw a `RangeError` on a mask of several bits.
 - `ERDEditorSchemaV3`, `ERDEditorSchemaV2` — the document types.
 - `SchemaV3Constants`, `SchemaV2Constants` — the constant sets each version allows (`Database`,
   `NameCase`, `RelationshipType`, …) and each version's canvas size and zoom bounds.

@@ -8,6 +8,7 @@ import { bHas } from '@/utils/bit';
 import { SchemaSQLHeader } from './options';
 import {
   autoNameIgnoreCase,
+  commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
   FormatCommentOptions,
@@ -46,7 +47,7 @@ const DEFAULT_SCHEMA = 'dbo';
 export function createSchema(
   state: RootState,
   tableIds?: readonly string[],
-  { written }: CreateSchemaOptions = {}
+  { written, logicalNameAsComment }: CreateSchemaOptions = {}
 ): string {
   const fkNames: Name[] = [];
   const indexNames: Name[] = [];
@@ -60,7 +61,11 @@ export function createSchema(
 
     formatUnique(state, { table, buffer: stringBuffer });
 
-    formatComment(state, { table, buffer: stringBuffer });
+    formatComment(state, {
+      table,
+      buffer: stringBuffer,
+      logicalNameAsComment,
+    });
   });
 
   relationships.forEach(relationship => {
@@ -223,28 +228,36 @@ function formatLevels(
   };
 }
 
+/**
+ * A comment as a national literal. A plain one is varchar in the database's
+ * code page, and SQL Server stores each character outside it as a question mark.
+ */
+const toDescription = (comment: string) => `N${toStringLiteral(comment)}`;
+
 function formatComment(
   { settings: { bracketType }, collections }: RootState,
-  { table, buffer }: FormatCommentOptions
+  { table, buffer, logicalNameAsComment }: FormatCommentOptions
 ) {
   const { procedure, levels } = formatLevels(
     table.name,
     getBracket(bracketType)
   );
+  const tableComment = commentToWrite(table, logicalNameAsComment);
 
-  if (table.comment.trim() !== '') {
+  if (tableComment !== '') {
     buffer.push(`EXECUTE ${procedure} 'MS_Description',`);
-    buffer.push(`  ${toStringLiteral(table.comment)}, ${levels}\nGO`);
+    buffer.push(`  ${toDescription(tableComment)}, ${levels}\nGO`);
     buffer.push('');
   }
   query(collections)
     .collection('tableColumnEntities')
     .selectByIds(table.columnIds)
     .forEach(column => {
-      if (column.comment.trim() !== '') {
+      const comment = commentToWrite(column, logicalNameAsComment);
+      if (comment !== '') {
         buffer.push(`EXECUTE ${procedure} 'MS_Description',`);
         buffer.push(
-          `  ${toStringLiteral(column.comment)}, ${levels}, 'column', ${toStringLiteral(column.name)}\nGO`
+          `  ${toDescription(comment)}, ${levels}, 'column', ${toStringLiteral(column.name)}\nGO`
         );
         buffer.push('');
       }

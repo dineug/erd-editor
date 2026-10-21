@@ -26,6 +26,8 @@ export type VisualizationNode = {
   id: string;
   group: Group;
   name: string;
+  /** The logical name, which a table's label draws in the name views that show one. */
+  logicalName: string;
   /** The table a column hangs off; a table node has none. */
   tableId: string | null;
   x: number;
@@ -86,12 +88,13 @@ const UNPLACED = Number.NaN;
 const createNode = (
   id: string,
   group: Group,
-  name: string,
+  { name, logicalName }: { name: string; logicalName: string },
   tableId: string | null
 ): VisualizationNode => ({
   id,
   group,
   name,
+  logicalName,
   tableId,
   x: UNPLACED,
   y: UNPLACED,
@@ -120,12 +123,12 @@ export function convertVisualization({
   const linkIdSet = new Set<string>();
 
   tables.forEach(table => {
-    nodes.push(createNode(table.id, Group.table, table.name, null));
+    nodes.push(createNode(table.id, Group.table, table, null));
     query(collections)
       .collection('tableColumnEntities')
       .selectByIds(table.columnIds)
       .forEach(column => {
-        nodes.push(createNode(column.id, Group.column, column.name, table.id));
+        nodes.push(createNode(column.id, Group.column, column, table.id));
         links.push({
           id: `${table.id}-${column.id}`,
           kind: LinkKind.column,
