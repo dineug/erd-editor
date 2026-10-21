@@ -335,6 +335,25 @@ describe('IndexesCheckboxColumn', () => {
         `${widths.domain}px`,
       ]);
     });
+
+    it('dims the domain placeholder in the domain cell of a row linking no domain', async () => {
+      app.store.dispatchSync(
+        changeShowAction({ show: Show.columnDomain, value: true })
+      );
+      mounted = await mount();
+      const second = rowsOf(mounted)[1];
+      const inputs = second.querySelectorAll('.edit-input');
+      const domainCell = inputs[inputs.length - 1];
+
+      expect(cellTextsOf(second)).toEqual([
+        '',
+        '',
+        'email',
+        'dataType',
+        'domain',
+      ]);
+      expect(domainCell?.classList.contains('placeholder')).toBe(true);
+    });
   });
 
   describe('checkbox state', () => {

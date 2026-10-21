@@ -44,7 +44,7 @@ import {
   pidSandbox,
 } from '@/hub';
 import { ERD_ICON, ERD_ICON_SVG } from '@/icon';
-import { scopeKeysOf } from '@/keys';
+import { editorScopeKeys } from '@/keys';
 import { type ErdEditorModule, loadErdEditor } from '@/loadErdEditor';
 import {
   ACCENT_COLORS,
@@ -134,9 +134,7 @@ export default class ErdEditorPlugin extends Plugin {
 
     addIcon(ERD_ICON, ERD_ICON_SVG);
     this.register(() => removeIcon(ERD_ICON));
-    const editorKeys = scopeKeysOf(
-      this.erdEditor.createKeyBindingMap?.() ?? {}
-    );
+    const editorKeys = editorScopeKeys(this.erdEditor);
     this.registerView(
       VIEW_TYPE_ERD,
       leaf => new ErdView(leaf, registry, this.theme, this.locale, editorKeys)

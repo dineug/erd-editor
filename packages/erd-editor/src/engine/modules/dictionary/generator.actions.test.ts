@@ -810,7 +810,7 @@ describe('a domain type the dictionaries change', () => {
     expect(columnOf(peer, 'fk').dataType).toBe('BIGINT');
   });
 
-  it('leaves the columns of a removed table, and of a domain no longer listed, alone', () => {
+  it('leaves the columns of a removed table alone, and unlinks a foreign key the sync takes off a removed domain', () => {
     const peer = governed();
     peer.dispatch([
       addTableAction({ id: 'gone', ui: { x: 0, y: 0, zIndex: 1 } }),
@@ -827,7 +827,7 @@ describe('a domain type the dictionaries change', () => {
     expect(columnOf(peer, 'stale').dataType).toBe('INT');
     expect(columnOf(peer, 'code')).toMatchObject({
       dataType: 'BIGINT',
-      domainId: 'd-code',
+      domainId: '',
     });
   });
 });

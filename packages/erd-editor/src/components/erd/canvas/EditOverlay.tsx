@@ -92,7 +92,7 @@ const EDITABLE: Partial<Record<FocusType, PlainMessageKey>> = {
   [FocusType.columnName]: 'common.placeholder.column',
   [FocusType.columnLogicalName]: 'common.placeholder.logicalName',
   [FocusType.columnDataType]: 'common.placeholder.dataType',
-  [FocusType.columnDomain]: 'common.column.domain',
+  [FocusType.columnDomain]: 'common.placeholder.domain',
   [FocusType.columnDefault]: 'common.placeholder.default',
   [FocusType.columnComment]: 'common.placeholder.comment',
 };
@@ -295,7 +295,7 @@ function resolveCellTarget(state: RootState): CellTarget | null {
     y: getColumnRect(state, table, index).y + getColumnTextY(),
     width: slot.width,
     value: getColumnValue(column, focusType),
-    // A domain picker shows the name its cell drew, or its key over a blank cell.
+    // A domain picker shows the name its cell drew, or the placeholder a blank one drew.
     ...(focusType === FocusType.columnDomain
       ? {
           placeholderKey: key,

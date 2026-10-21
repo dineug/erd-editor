@@ -16,8 +16,18 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { APPEND_GAP, TABLE_SORT_START } from '@/constants/layout';
-import { CanvasType, Database, Language, Show } from '@/constants/schema';
+import {
+  APPEND_GAP,
+  TABLE_SORT_MARGIN,
+  TABLE_SORT_START,
+} from '@/constants/layout';
+import {
+  CanvasType,
+  Database,
+  Language,
+  NameViewMode,
+  Show,
+} from '@/constants/schema';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   changeViewportAction,
@@ -49,6 +59,7 @@ import {
   changeLanguageAction,
   changeShowAction,
   scrollToAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -198,6 +209,34 @@ function membersBox(app: AppContext, names: string[]) {
       .filter(table => names.includes(table.name))
       .map(table => getTableRect(state, table))
       .reduce(unionRect)
+  );
+}
+
+/** Three tables of one column, which the grid lays out in one row. */
+const ROW_SQL = `
+CREATE TABLE a (id INT);
+CREATE TABLE b (id INT);
+CREATE TABLE c (id INT);
+`;
+
+/** The gaps between neighbours in a row of the tables named, as the scene draws them. */
+function rowGaps(app: AppContext, names: string[]): number[] {
+  const { state } = app.store;
+  const rects = Object.values(state.collections.tableEntities)
+    .filter(table => names.includes(table.name))
+    .map(table => getTableRect(state, table))
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+
+  return rects.slice(1).flatMap((rect, index) => {
+    const before = rects[index];
+    return rect.y === before.y ? [rect.x - before.x - before.width] : [];
+  });
+}
+
+/** The reader's own switch to the view of both, which the name view's lock keeps out of the file. */
+function showBothNames(app: AppContext) {
+  app.store.dispatchSync(
+    toNameViewModeAction(app.store.state, NameViewMode.both, false)
   );
 }
 
@@ -394,6 +433,19 @@ describe('importSchema', () => {
 
     expect(groupOf(app)).toMatchObject({ name: 'accounts', color: '#3498db' });
     expect(groupRect(app)).toEqual(membersBox(app, ['users', 'posts']));
+  });
+
+  it('lays the grid out at the widths the reader sees in the view of both', () => {
+    const app = createApp();
+    showBothNames(app);
+
+    importSchema(app, 'sql', ROW_SQL);
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.both);
+    expect(rowGaps(app, ['a', 'b', 'c'])).toEqual([
+      TABLE_SORT_MARGIN,
+      TABLE_SORT_MARGIN,
+    ]);
   });
 });
 
@@ -781,6 +833,18 @@ describe('appendSchema', () => {
       expect(cornerOf(app, name).y).toBe(corner.y);
     }
     expect(hoisted.requests).toEqual([]);
+  });
+
+  it('lays its grid out at the widths the reader sees in the view of both', () => {
+    const app = createScreenApp();
+    showBothNames(app);
+
+    appendSchema(app, 'sql', ROW_SQL);
+
+    expect(rowGaps(app, ['a', 'b', 'c'])).toEqual([
+      TABLE_SORT_MARGIN,
+      TABLE_SORT_MARGIN,
+    ]);
   });
 
   it('selects what it adds alone and brings it on screen', () => {

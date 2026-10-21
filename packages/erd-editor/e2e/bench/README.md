@@ -62,7 +62,7 @@ request, so a comparison is always against a baseline someone chose.
 | `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG for a person to look at; with `visualization-shots.bench.ts`, the only whole-image review in this package (its e2e specs and browser tests read pixels for one property each) |
 | `view.bench.ts`        | Diagnostic: what the Flow view costs — a hover and a document edit |
 | `visualization-shots.bench.ts` | Twelve frames of the Visualization tab for a person to judge; it measures nothing |
-| `dictionary.bench.ts`  | Diagnostic: the Dictionary tab at the public standard's sizes — an import with the tab open, the term sheet's scroll frames, the term list's keys and the checks' walk after each kind of write, each against its bound |
+| `dictionary.bench.ts`  | Diagnostic: the Dictionary tab at the public standard's sizes — an import with the tab open, the term sheet's scroll frames, the term list's keys, the checks' walk after each kind of write and the domains removed and imported beside 15,000 columns, each against its bound |
 | `report.ts`            | The JSON report every bench but `routing.bench.ts` writes through |
 | `baselines/`           | Committed results that cannot be re-measured from the working tree |
 
@@ -708,7 +708,7 @@ The variable is still needed, since without it `testMatch` holds
 sizes: 129 domains, 3,284 words and 13,176 terms. The rows are synthetic, built
 from a fixed seed under the three public-standard files' headers, the columns no
 layout reads included, and written as UTF-8 with a byte order mark; no real
-file is read. Each of its four tests starts on a fresh page:
+file is read. Each of its five tests starts on a fresh page:
 
 - **The import** hands the three files to the input Import CSV opens
   (`setInputFiles`), the domains, the words, then the terms, with the tab open
@@ -748,16 +748,25 @@ file is read. Each of its four tests starts on a fresh page:
   would land in the case after it. Before them it walks `walkDictionaryChecks`
   a step at a time after a word's write: its longest step is what one slice of
   the tab's idle count costs at least.
+- **The domain writes** take the checks' document into a store of the same
+  kind, most of its 15,000 columns linking a domain, and time one dispatch
+  each, 15 runs, each on the document opened again: every domain removed
+  (`removeDictionaryEntriesAction$`, as Delete Rows over the whole sheet), then
+  the domain file imported into the emptied sheet (`importDictionaryAction$`,
+  as Import CSV). Each listing or unlisting measures the domain cell of every
+  column linking that domain, as a sheet's undo or redo of either and a peer
+  applying them do too.
 
 It prints each figure beside its bound and whether it is within it: frame work
 p95 within 16 ms for each scroll scenario, key p95 within 16 ms, for each file
 2,000 ms from change to idle with no task over 1,000 ms, and each checks case's
-walk p50 and the longest step's p50 within 16 ms. It fails on none of them. It
-fails when it measured the wrong thing: a scroll scenario that drew none of the
-grid, a wheel that moved nothing, a thumb drag short of the end, a wheel point
-or a thumb over something other than the scroller, a file whose rows never
-list, a key the list never answered, a document whose walk found no check, or a
-page error. Its report is `dictionary.latest.json`.
+walk p50 and the longest step's p50 within 16 ms, and each domain write's p50
+within 1,000 ms. It fails on none of them. It fails when it measured the wrong
+thing: a scroll scenario that drew none of the grid, a wheel that moved nothing,
+a thumb drag short of the end, a wheel point or a thumb over something other
+than the scroller, a file whose rows never list, a key the list never answered,
+a document whose walk found no check, a domain write that left the sheet other
+than empty or whole, or a page error. Its report is `dictionary.latest.json`.
 
 The checks measured on 2026-10-21, on an Apple M5 with 24 GB under macOS in
 headless Chromium 151, once each target's checks were held across walks: walk

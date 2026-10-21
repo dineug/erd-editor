@@ -33,7 +33,10 @@ import {
   DictionaryKindList,
 } from '@/engine/modules/dictionary/actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
-import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
+import {
+  changeHasHistoryAction,
+  keepsDictionaries,
+} from '@/engine/modules/editor/atom.actions';
 import { getActiveView } from '@/engine/modules/editor/view';
 import {
   actionsFilter,
@@ -85,11 +88,14 @@ export type RxStoreOptions = {
 
 export const HISTORY_LIMIT = 2048;
 
-/** A local batch that replaces the document the sheets' entries were made on. */
-const isDocumentReplace = arrayHas<string>([
+const isLoadOrClear = arrayHas<string>([
   EditorActionType.loadJson,
   EditorActionType.clear,
 ]);
+
+/** An action that replaces the rows the sheets' entries were made on. */
+const isDocumentReplace = ({ type, payload }: AnyAction) =>
+  isLoadOrClear(type) && !keepsDictionaries(payload);
 
 export function createRxStore(
   context: EngineContext,
@@ -107,6 +113,7 @@ export function createRxStore(
     notify: payload => store.dispatch(changeHasHistoryAction(payload)),
     dispatch: store.dispatchSync,
     getNextVersion: () => context.clock.getNextVersion(),
+    getState: () => store.state,
   };
   const history = getHistory?.(historyOptions) ?? createHistory(historyOptions);
   history.setLimit(HISTORY_LIMIT);
@@ -132,14 +139,9 @@ export function createRxStore(
   };
   /**
    * A Dictionary tab batch to its sheet's history, every other to the
-   * document's. A load or a clear replaces the document the sheets' entries
-   * were made on, so it empties them, or an undo would bring an old row back.
+   * document's.
    */
   const toHistory = (actions: Array<AnyAction>) => {
-    if (actions.some(({ type }) => isDocumentReplace(type))) {
-      clearSheetHistories();
-    }
-
     const sheetHistory = hasActionTag(actions, Tag.dictionarySheet)
       ? sheetHistoryOf(actions)
       : null;
@@ -266,6 +268,14 @@ export function createRxStore(
     });
   };
 
+  // A load or a clear that lands with rows of its own, a peer's or a history
+  // replay's included, replaces the rows the sheets' entries were made on, so
+  // it empties them, or an undo would bring an old row back into the new ones.
+  const clearSheetsOnReplace = () =>
+    store.subscribe(actions => {
+      if (actions.some(isDocumentReplace)) clearSheetHistories();
+    });
+
   subscriptionSet
     .add(history$.subscribe(pushHistory(store, history)))
     .add(
@@ -286,7 +296,8 @@ export function createRxStore(
         )
         .subscribe(store.dispatchSync)
     )
-    .add(mergeClock());
+    .add(mergeClock())
+    .add(clearSheetsOnReplace());
 
   return Object.freeze({
     ...store,

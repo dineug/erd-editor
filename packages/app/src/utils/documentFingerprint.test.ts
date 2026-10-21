@@ -2,6 +2,7 @@ import { createReplicationStore } from '@dineug/erd-editor/engine.js';
 import {
   CanvasType,
   createPeerStore,
+  dictionaryActions$,
   LockSettingType,
   type PeerStore,
   settingsActions,
@@ -577,6 +578,14 @@ describe('toDriveFingerprint', () => {
     const WITH_ROWS = dictionaryValue();
     const DICTIONARIES = ['wordEntities', 'termEntities', 'domainEntities'];
 
+    /** The names of a dictionary's rows, in the order a value writes them. */
+    function namesOf(value: string, key: string) {
+      const { fields, rows } = JSON.parse(value).collections[key];
+      return rows.map((row: string[]) => row[fields.indexOf('name')]);
+    }
+
+    afterEach(() => vi.useRealTimers());
+
     it.each(DICTIONARIES)('tells an edit of a %s row apart in both', key => {
       const edited = changed(({ collections }) => {
         const { fields, rows } = collections[key];
@@ -589,19 +598,73 @@ describe('toDriveFingerprint', () => {
     });
 
     it.each(DICTIONARIES)(
-      'holds the %s rows to no order in the Drive fingerprint',
+      'tells a reorder of the %s rows apart in both',
       key => {
         const reordered = changed(
           ({ collections }) => collections[key].rows.reverse(),
           WITH_ROWS
         );
 
-        expect(JSON.parse(WITH_ROWS).collections[key].rows).toHaveLength(2);
-        expect(reordered).not.toBe(WITH_ROWS);
-        expect(toDriveFingerprint(reordered)).toBe(
-          toDriveFingerprint(WITH_ROWS)
-        );
+        expect(namesOf(WITH_ROWS, key)).toEqual(['a', 'b']);
+        expect(namesOf(reordered, key)).toEqual(['b', 'a']);
+        for (const [, fingerprint] of fingerprints) {
+          expect(fingerprint(reordered)).not.toBe(fingerprint(WITH_ROWS));
+        }
       }
     );
+
+    it.each(['word', 'term', 'domain'] as const)(
+      'tells a sort of the %s sheet apart in both, though it writes order keys alone',
+      kind => {
+        const store = createReplicationStore({ toWidth });
+        store.setInitialValue(WITH_ROWS);
+        // What a sort sends: a row's new order key, and no other field.
+        store.dispatchSync([
+          {
+            type: 'dictionary.update',
+            payload: { kind, id: `${kind}.b`, values: { order: 'Zz' } },
+          },
+        ] as any);
+        const sorted = store.value;
+        store.destroy();
+
+        expect(namesOf(sorted, `${kind}Entities`)).toEqual(['b', 'a']);
+        for (const [, fingerprint] of fingerprints) {
+          expect(fingerprint(sorted)).not.toBe(fingerprint(WITH_ROWS));
+        }
+      }
+    );
+
+    it('is the same for two replicas that each added a word before hearing the other', () => {
+      vi.useFakeTimers({ now: Date.UTC(2026, 8, 25) });
+      const here = createPeerStore({ nickname: 'here', presence: false });
+      const there = createPeerStore({ nickname: 'there', presence: false });
+      here.setInitialValue(WITH_ROWS);
+      there.setInitialValue(WITH_ROWS);
+      const fromHere: unknown[][] = [];
+      const fromThere: unknown[][] = [];
+      here.subscribe(actions => fromHere.push(actions));
+      there.subscribe(actions => fromThere.push(actions));
+
+      const add = (name: string) =>
+        dictionaryActions$.addDictionaryEntryAction$('word', { name });
+      here.dispatch([add('mine')]);
+      there.dispatch([add('theirs')]);
+      here.flushStreamBuffers();
+      there.flushStreamBuffers();
+      vi.advanceTimersByTime(1000);
+      for (const actions of fromThere) here.receive(actions as any);
+      for (const actions of fromHere) there.receive(actions as any);
+
+      // Both rows take the key after the last, and a tie goes by id.
+      const names = namesOf(here.value, 'wordEntities');
+      expect(names).toHaveLength(4);
+      expect(namesOf(there.value, 'wordEntities')).toEqual(names);
+      expect(toDriveFingerprint(there.value)).toBe(
+        toDriveFingerprint(here.value)
+      );
+      here.destroy();
+      there.destroy();
+    });
   });
 });

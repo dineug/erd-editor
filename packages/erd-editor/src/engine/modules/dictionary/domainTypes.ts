@@ -19,9 +19,15 @@ export type DomainTypeWrites = {
   links?: ReadonlyArray<ChangeColumnValuePayload>;
   /** The columns given a data type directly, as a type cell writes one. */
   dataTypes?: ReadonlyArray<ChangeColumnValuePayload>;
+  /**
+   * The columns the same dispatch writes a type to otherwise, as a replay
+   * does, which are sent the type worked out here even where they hold it now.
+   */
+  replaced?: ReadonlySet<string>;
 };
 
 const NO_DOMAIN_TYPES: ReadonlyMap<string, string> = new Map();
+const NO_COLUMNS: ReadonlySet<string> = new Set();
 
 /** How one dispatch reads a column's domain and a domain's type, its own writes first. */
 function readDomains(
@@ -45,8 +51,8 @@ function readDomains(
 
 /**
  * The unlinks that close a dispatch writing these column types: each column
- * whose type then differs from the type of the live domain it links, read with
- * the domain types and links the same dispatch writes.
+ * whose type then differs from the type of the domain it links, listed or
+ * removed, read with the domain types and links the same dispatch writes.
  */
 export function toDomainUnlinkActions(
   state: RootState,
@@ -56,16 +62,12 @@ export function toDomainUnlinkActions(
     links = [],
   }: Pick<DomainTypeWrites, 'domainTypes' | 'links'> = {}
 ): AnyAction[] {
-  const { isLiveDomain, domainTypeOf, domainIdOf } = readDomains(
-    state,
-    domainTypes,
-    links
-  );
+  const { domainTypeOf, domainIdOf } = readDomains(state, domainTypes, links);
 
   return written
     .filter(({ id, value }) => {
       const domainId = domainIdOf(id);
-      return isLiveDomain(domainId) && domainTypeOf(domainId) !== value;
+      return domainId !== '' && domainTypeOf(domainId) !== value;
     })
     .map(({ tableId, id }) =>
       changeColumnDomainAction({ tableId, id, value: '' })
@@ -83,6 +85,7 @@ export function toDomainTypeActions(
     domainTypes = NO_DOMAIN_TYPES,
     links = [],
     dataTypes = [],
+    replaced = NO_COLUMNS,
   }: DomainTypeWrites
 ): AnyAction[] {
   const { collections, doc, settings } = state;
@@ -139,7 +142,9 @@ export function toDomainTypeActions(
   const direct = new Set(dataTypes.map(({ id }) => id));
   const written = payloads.filter(
     ({ id, value }) =>
-      direct.has(id) || columns.selectById(id)?.dataType !== value
+      direct.has(id) ||
+      replaced.has(id) ||
+      columns.selectById(id)?.dataType !== value
   );
   const linkActions = sentLinks
     .filter(({ id, value }) => columns.selectById(id)?.domainId !== value)

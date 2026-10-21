@@ -4,6 +4,7 @@ import { isString } from 'es-toolkit';
 import type { AppContext } from '@/components/appContext';
 import { sheetField } from '@/components/dictionary/sheets';
 import { localized } from '@/components/localized/Localized';
+import type { DomainOption } from '@/components/table-view/column/column-domain/domainOptions';
 import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import {
   DictionaryKind,
@@ -30,6 +31,7 @@ import {
 import {
   getLiveDomainName,
   isListed,
+  toLiveDomainId,
 } from '@/engine/modules/dictionary/membership';
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
@@ -259,6 +261,15 @@ const REFUSAL_MESSAGE = {
 
 const ROW_REMOVED = 'dictionary.toast.rowRemoved';
 
+/** Says a commit sent nothing since a peer removed its row meanwhile. */
+function reportRowRemoved({ emitter }: Pick<AppContext, 'emitter'>) {
+  openStatusToast(emitter, {
+    key: ROW_REMOVED,
+    tone: 'error',
+    title: localized(ROW_REMOVED),
+  });
+}
+
 const GRID_REFUSAL_MESSAGE: Record<RejectEvent['reason'], PlainMessageKey> = {
   'multi-range-copy': 'dictionary.toast.multiRangeCopy',
   'paste-beyond-columns': 'dictionary.toast.pasteBeyondColumns',
@@ -343,11 +354,7 @@ export function commitDictionaryCells(
   const { state } = store;
   const listed = dictionaryIds(state, kind);
   if (resolved.some(({ id }) => id !== null && !isListed(listed, id))) {
-    openStatusToast(emitter, {
-      key: ROW_REMOVED,
-      tone: 'error',
-      title: localized(ROW_REMOVED),
-    });
+    reportRowRemoved({ emitter });
     return false;
   }
 
@@ -370,6 +377,66 @@ export function commitDictionaryCells(
 
   store.dispatch(
     attachDictionarySheetTag$(commitDictionaryCellsAction$(kind, changes))
+  );
+  return true;
+}
+
+/** The domain the active row's term links, '' for none or a removed one: the row a term's domain picker opens on. */
+export function activeTermDomain(
+  state: RootState,
+  rows: Pick<SheetRows, 'activeId'>
+): string {
+  const term =
+    rows.activeId === null
+      ? undefined
+      : selectDictionaryRow(state, DictionaryKind.term, rows.activeId);
+  const linked: unknown = term && Reflect.get(term, 'domainId');
+  return toLiveDomainId(state, isString(linked) ? linked : '');
+}
+
+/**
+ * Links the term the picker's edit opened on to the domain picked, by its id,
+ * None unlinking whatever it linked, a removed domain too, in one dispatch and
+ * one undo; nothing for the link it holds, or with a toast for a peer's removal.
+ */
+export function commitTermDomain(
+  { store, emitter }: Pick<AppContext, 'store' | 'emitter'>,
+  rows: Pick<SheetRows, 'activeId'>,
+  { id: domainId, name }: DomainOption,
+  i18n: Pick<I18n, 'locale' | 'dir'> = sourceI18n
+): boolean {
+  const { activeId: id } = rows;
+  if (id === null) return false;
+
+  const { state } = store;
+  if (!isListed(dictionaryIds(state, DictionaryKind.term), id)) {
+    reportRowRemoved({ emitter });
+    return false;
+  }
+
+  const term = selectDictionaryRow(state, DictionaryKind.term, id);
+  if (term && Reflect.get(term, 'domainId') === domainId) return false;
+
+  const changes = [{ id, values: { domainId } }];
+  // The engine names a domain by its id, and the toast by the name picked.
+  const refusals = validateDictionaryValues(
+    state,
+    DictionaryKind.term,
+    changes
+  ).map(refusal =>
+    refusal.code === DictionaryRefusalCode.unknownDomain
+      ? { ...refusal, value: name }
+      : refusal
+  );
+  if (refusals.length) {
+    reportRefusals({ emitter }, refusals, i18n);
+    return false;
+  }
+
+  store.dispatch(
+    attachDictionarySheetTag$(
+      commitDictionaryCellsAction$(DictionaryKind.term, changes)
+    )
   );
   return true;
 }

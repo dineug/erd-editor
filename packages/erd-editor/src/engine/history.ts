@@ -1,11 +1,20 @@
 import { AnyAction } from '@dineug/r-html';
 
+import type { RootState } from '@/engine/state';
+
 type Dispatch = (actions: AnyAction[]) => void;
 type GetNextVersion = () => number;
+type GetState = () => RootState;
+
+type Replay = (
+  dispatch: Dispatch,
+  getNextVersion: GetNextVersion,
+  getState?: GetState
+) => void;
 
 export type Command = {
-  undo: (dispatch: Dispatch, getNextVersion: GetNextVersion) => void;
-  redo: (dispatch: Dispatch, getNextVersion: GetNextVersion) => void;
+  undo: Replay;
+  redo: Replay;
 };
 
 export type CommandKey = keyof Command;
@@ -32,6 +41,11 @@ export type HistoryOptions = {
   notify: (has: HasHistory) => void;
   dispatch: Dispatch;
   getNextVersion: GetNextVersion;
+  /**
+   * The state of the store a replay dispatches into, which a command reads, so
+   * a clone replaying into another store reads that store's.
+   */
+  getState?: GetState;
 };
 
 type HistoryState = {
@@ -41,7 +55,7 @@ type HistoryState = {
 };
 
 export function createHistory(
-  { notify, dispatch, getNextVersion }: HistoryOptions,
+  { notify, dispatch, getNextVersion, getState }: HistoryOptions,
   initialState?: HistoryState
 ): History {
   let commands: Command[] = initialState?.commands ?? [];
@@ -60,7 +74,7 @@ export function createHistory(
 
   const execute = (command: Command, key: CommandKey) => {
     executable = false;
-    command[key](dispatch, getNextVersion);
+    command[key](dispatch, getNextVersion, getState);
     executable = true;
   };
 

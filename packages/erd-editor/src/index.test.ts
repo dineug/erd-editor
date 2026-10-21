@@ -27,6 +27,7 @@ describe('@dineug/erd-editor entry point', () => {
   it('exposes exactly the documented public surface', () => {
     expect(Object.keys(index).sort()).toEqual([
       'createKeyBindingMap',
+      'dictionaryRowChords',
       'setExportFileCallback',
       'setImportFileCallback',
     ]);

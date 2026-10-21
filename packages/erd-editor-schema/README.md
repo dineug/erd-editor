@@ -68,6 +68,13 @@ The surface (`src/index.ts`):
   (`selectById`, `selectByIds`, `selectAll`, `selectEntities`, `setOne` / `setMany` / `setAll`,
   `addOne` / `addMany`, `updateOne` / `updateMany`, `removeOne` / `removeMany` / `removeAll`,
   `getOrCreate`) and the three LWW operators bound to that collection.
+- `compareByOrder(a, b)`, `generateOrderKeyBetween(a, b)`, `generateOrderKeys(a, b, n)`,
+  `isOrderKey(value)`, with the `Ordered` type — a dictionary row's order key, a fractional index
+  key, and a sheet's order. `compareByOrder` sorts rows by key in code unit order, a row with no
+  key after every row with one, and rows of one key, or none, by id. The two generators make one
+  key, or `n` keys in order, between `a` and `b`, `null` for no bound on that side; each bound
+  must be a key, `a` below `b`, or they throw a `RangeError`. The runtime value alone holds the
+  key; a file writes its rows in this order.
 - `addOperator`, `removeOperator`, `replaceOperator`, and the `LWW` / `LWWTuple` types — the
   same operators unbound, taking the register's `tag` as an argument: a collection key, or another
   name, such as the `'settings'` tag of the editor core's settings registers.

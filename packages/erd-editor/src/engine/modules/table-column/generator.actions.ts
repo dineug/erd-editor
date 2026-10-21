@@ -192,8 +192,8 @@ export const toggleColumnValueAction$ = (
 
 /**
  * Writes a column's type as typed, with what the data type sync spreads from
- * it, and unlinks in the same dispatch each written column whose type then
- * differs from its live domain's, a foreign key the sync reached included.
+ * it, and unlinks in the same dispatch each written column, a foreign key the
+ * sync reached included, off the type of its domain, listed or removed.
  */
 export const changeColumnDataTypeAction$ = (
   payload: ChangeColumnValuePayload

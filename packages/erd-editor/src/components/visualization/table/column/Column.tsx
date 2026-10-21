@@ -104,6 +104,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
             template = bHas(settings.show, Show.columnDomain) ? (
               <div class="column-col">
                 <EditInput
+                  placeholder={t('common.placeholder.domain')}
                   width={props.widthDomain ?? 0}
                   value={domainCellText(store.state, column)}
                 />

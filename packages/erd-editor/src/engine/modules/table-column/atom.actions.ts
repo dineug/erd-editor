@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 
 import { ColumnOption, ColumnUIKey } from '@/constants/schema';
+import { relinkDomainColumn } from '@/engine/modules/dictionary/domainLinks';
 import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import { arrayHas } from '@/utils/arrayHas';
 import { addAndSort } from '@/utils/collection/sequence';
@@ -304,6 +305,7 @@ const changeColumnDomain: ReducerType<typeof ActionType.changeColumnDomain> = (
 
   collection.replaceOperator(state.lww, safeVersion, id, 'domainId', () => {
     collection.updateOne(id, column => {
+      relinkDomainColumn(state, id, column.domainId, value);
       column.domainId = value;
       column.ui.widthDomain = textInRange(
         toWidth(getLiveDomainName(state, value))

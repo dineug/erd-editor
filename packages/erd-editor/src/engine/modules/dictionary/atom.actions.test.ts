@@ -1,3 +1,4 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
@@ -6,15 +7,20 @@ import { Clock } from '@/engine/clock';
 import {
   addDictionaryAction,
   dictionaryEntries,
+  measureDomainColumns,
   removeDictionaryAction,
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
+import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
+import { loadJsonAction } from '@/engine/modules/editor/atom.actions';
 import {
   addColumnAction,
   changeColumnDomainAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { RootState } from '@/engine/state';
 import { createStore, Store } from '@/engine/store';
+import { textInRange } from '@/utils/validation';
 
 let store: Store;
 let clock: Clock;
@@ -403,6 +409,203 @@ describe('dictionary/atom.actions domain cells', () => {
 
     expect(column('c1').ui.widthDomain).toBe(999);
   });
+
+  it("reads each column's link once over a batch of many domains listed and one unlisting them", () => {
+    const COLUMNS = 3_000;
+    const DOMAINS = 500;
+    const plain = createStore(
+      { toWidth: text => text.length * 10, clock: new Clock() },
+      false
+    );
+    plain.dispatchSync(
+      ...Array.from({ length: COLUMNS }, (_, index) => {
+        const target = { id: `c${index}`, tableId: `t${index % 30}` };
+        return [
+          addColumnAction(target),
+          changeColumnDomainAction({
+            ...target,
+            value: `d${index % DOMAINS}`,
+          }),
+        ];
+      }).flat()
+    );
+
+    let reads = 0;
+    const columns = plain.state.collections.tableColumnEntities;
+    for (const entity of Object.values(columns)) {
+      let { domainId } = entity;
+      Object.defineProperty(entity, 'domainId', {
+        get: () => {
+          reads += 1;
+          return domainId;
+        },
+        set: (value: string) => {
+          domainId = value;
+        },
+        enumerable: true,
+      });
+    }
+
+    plain.dispatchSync(
+      ...Array.from({ length: DOMAINS }, (_, index) =>
+        addDictionaryAction({
+          kind: 'domain',
+          id: `d${index}`,
+          values: { name: `domain_${index}` },
+        })
+      )
+    );
+    expect(columns.c1.ui.widthDomain).toBe(80);
+    expect(columns.c2999.ui.widthDomain).toBe(100);
+
+    plain.dispatchSync(
+      ...Array.from({ length: DOMAINS }, (_, index) =>
+        removeDictionaryAction({
+          kind: 'domain',
+          id: `d${DOMAINS - 1 - index}`,
+        })
+      )
+    );
+    expect(columns.c1.ui.widthDomain).toBe(COLUMN_MIN_WIDTH);
+    expect(reads).toBe(COLUMNS);
+  });
+});
+
+describe('measureDomainColumns over random edits', () => {
+  // The measure as it walked every column for each domain, which an import of
+  // hundreds of domains into thousands of columns made seconds of reads.
+  function measureEveryColumn(
+    state: RootState,
+    domainId: string,
+    toWidth: (text: string) => number
+  ) {
+    const width = textInRange(toWidth(getLiveDomainName(state, domainId)));
+    for (const column of Object.values(state.collections.tableColumnEntities)) {
+      if (column.domainId === domainId) column.ui.widthDomain = width;
+    }
+  }
+
+  const DOMAIN_IDS = ['d0', 'd1', 'd2', 'd3'];
+  const LINKS = ['', ...DOMAIN_IDS, 'gone'];
+  const NAMES = ['N', 'amount', 'amount_n15_x', ''];
+  const COLUMN_IDS = Array.from({ length: 12 }, (_, index) => `c${index}`);
+
+  /** A seeded generator, so a failing seed fails again. */
+  function createRng(seed: number) {
+    let state = seed >>> 0;
+    return () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let value = Math.imul(state ^ (state >>> 15), state | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
+    };
+  }
+
+  function randomWrite(random: () => number): AnyAction {
+    const pick = <T>(list: ReadonlyArray<T>): T =>
+      list[Math.floor(random() * list.length)];
+    const id = pick(COLUMN_IDS);
+    const tableId = `t${COLUMN_IDS.indexOf(id) % 3}`;
+    const domain = pick(DOMAIN_IDS);
+    const roll = random();
+
+    if (roll < 0.15) return addColumnAction({ id, tableId });
+    if (roll < 0.25) return removeColumnAction({ id, tableId });
+    if (roll < 0.5) {
+      return changeColumnDomainAction({ id, tableId, value: pick(LINKS) });
+    }
+    if (roll < 0.65) {
+      return addDictionaryAction({
+        kind: 'domain',
+        id: domain,
+        ...(random() < 0.5 ? { values: { name: pick(NAMES) } } : {}),
+      });
+    }
+    if (roll < 0.8) {
+      return updateDictionaryAction({
+        kind: 'domain',
+        id: domain,
+        values: { name: pick(NAMES) },
+      });
+    }
+    return removeDictionaryAction({ kind: 'domain', id: domain });
+  }
+
+  const widths = (state: Pick<RootState, 'collections'>) =>
+    Object.fromEntries(
+      Object.entries(state.collections.tableColumnEntities).map(
+        ([id, column]) => [id, column.ui.widthDomain]
+      )
+    );
+
+  it.each([
+    [20_261_022, false],
+    [20_261_023, true],
+    [20_261_024, false],
+    [20_261_025, true],
+  ])(
+    'measures the columns a walk of every column measures, after every write and load (seed %i, observable %s)',
+    (seed, observable) => {
+      const random = createRng(seed);
+      const store = createStore(
+        { toWidth: text => text.length * 10, clock: new Clock() },
+        observable
+      );
+      const met = new Set<string>();
+      let version = 1;
+
+      for (let step = 0; step < 400; step++) {
+        if (random() < 0.03) {
+          store.dispatchSync(loadJsonAction({ value: toJson(store.state) }));
+        } else {
+          const count = 1 + Math.floor(random() * 3);
+          store.dispatchSync(
+            ...Array.from({ length: count }, () =>
+              // A peer's write older than what the registers hold, which they refuse.
+              at(randomWrite(random), random() < 0.15 ? 1 : ++version)
+            )
+          );
+        }
+
+        const { state } = store;
+        for (const domainId of LINKS) {
+          // Every cell starts unmeasured, so a column measured wrongly or not at all shows.
+          for (const column of Object.values(
+            state.collections.tableColumnEntities
+          )) {
+            column.ui.widthDomain = 0;
+          }
+          const walked = {
+            ...state,
+            collections: {
+              ...state.collections,
+              tableColumnEntities: JSON.parse(
+                JSON.stringify(state.collections.tableColumnEntities)
+              ),
+            },
+          };
+
+          measureEveryColumn(walked, domainId, store.context.toWidth);
+          measureDomainColumns(state, domainId, store.context);
+          expect(widths(state), `step ${step}, ${domainId}`).toEqual(
+            widths(walked)
+          );
+
+          if (!getLiveDomainName(state, domainId)) continue;
+          for (const [id, width] of Object.entries(widths(state))) {
+            if (width === 0) continue;
+            const { tableId } = state.collections.tableColumnEntities[id];
+            const listed =
+              state.collections.tableEntities[tableId]?.columnIds.includes(id);
+            met.add(listed ? 'listed column' : 'removed column');
+          }
+        }
+      }
+
+      // The run must measure a named domain's live and removed columns, or it proves nothing of them.
+      expect([...met].sort()).toEqual(['listed column', 'removed column']);
+    }
+  );
 });
 
 describe('dictionaryEntries', () => {

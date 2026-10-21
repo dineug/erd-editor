@@ -90,6 +90,16 @@ export const rowChordOf = (
   command: RowCommand
 ): string | undefined => rowOptions(keyBindingMap, command)[0]?.shortcut;
 
+/**
+ * Every chord the grid runs a row command by under the bindings given, Insert
+ * above's among them, which no binding names: what a host that keeps its own
+ * hotkeys off the editor's keys registers beside the binding map's.
+ */
+export const dictionaryRowChords = (
+  keyBindingMap: KeyBindingMap
+): ShortcutOption[] =>
+  RowCommandList.flatMap(command => rowOptions(keyBindingMap, command));
+
 /** The row command a press runs in the grid, with the option it matched. */
 function rowChord(
   event: KeyboardEvent,

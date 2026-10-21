@@ -30,7 +30,7 @@
 - **An import is placed before it lands** (owner decisions of 2026-10-04, `file/importSchema.ts`). One picked from the menu, the palette or a host's file dialog is placed; `webview-client` passes `placement: 'auto'` for a host's. A `setSchema*` call is placed only when given `{ placement: 'auto' }`. `app`'s `convertSource` passes it on a detached element and waits for the Promise before it reads `value`.
 - **A placed replace runs in four steps.**
   1. It parses once (`toSchemaImportJson`).
-  2. It measures that document on a store of its own (`src/components/erd/automatic-table-placement/flowPlacement.ts`), as the PNG export draws on its own.
+  2. It measures that document on a store of its own (`src/components/erd/automatic-table-placement/flowPlacement.ts`), as the PNG export draws on its own, opened in the reader's name view (`readerNameViewAction`), so Flow places the tables at the widths the reader sees. The grid's sort measures in that view too.
   3. It lays the document out by Flow on the ELK worker through `layoutByElk` (`elkPlacement.tsx`, in the same directory).
   4. It replaces the document with one `loadJsonAction$` carrying the points, which start from `TABLE_SORT_START`. So one undo puts the previous document back, and no grid shows in between.
 - **`layoutByElk` is the core `runElkPlacement` shares.** It takes the app context and nothing of `Erd`. Its Cancel and its stop key take the toast down at once, Auto Layout's toast included.

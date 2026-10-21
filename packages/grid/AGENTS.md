@@ -163,7 +163,7 @@
 
 ### Browser floor
 
-- **Ship nothing the floor lacks.** `build-target.ts` sets chrome91, firefox93 and safari16.4, so shipping code calls no `Array.prototype.at` or `Object.hasOwn` (read the last element by index) and relies on no CSS a floor browser lacks without a fallback: the component pairs `scrollbar-width` with `::-webkit-scrollbar` and `overflow: clip` with `overflow: hidden` (The component). pretext segments text with `Intl.Segmenter`, which firefox93 lacks; erd-editor's memo text shares that gap.
+- **Ship nothing the floor lacks.** `build-target.ts` sets chrome91, firefox93 and safari16.4, so shipping code calls no `Array.prototype.at` or `Object.hasOwn` (read the last element by index) and relies on no CSS a floor browser lacks without a fallback: the component pairs `scrollbar-width` with `::-webkit-scrollbar` and `overflow: clip` with `overflow: hidden` (The component). pretext asks for `Intl.Segmenter`, which firefox93 lacks, only to break a run of Thai, Lao, Khmer or Myanmar letters (its graphemes and every other line break come from its own rule tables), so there such text throws as pretext prepares it; erd-editor's memo text shares that gap.
 
 ## Testing Requirements
 

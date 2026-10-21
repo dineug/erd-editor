@@ -65,7 +65,7 @@
 
 - **Map or Save is one dispatch.** It dispatches `mapColumnsAction$` once, so the mapping is one version and one undo. The batch holds, in this order:
   1. the New column rows' columns, made as the pointer draw makes them;
-  2. the data type changes the sync makes, then the unlink (`column.changeDomain` with `''`) of each column they leave off its live domain's type;
+  2. the data type changes the sync makes, then the unlink (`column.changeDomain` with `''`) of each column they leave off the type of the domain it links, listed or removed;
   3. `relationship.add` with a new id, or `relationship.changeColumns` on the relationship edited.
 - Foreign key names of a New column row, and the type sync for related existing columns: `src/engine/AGENTS.md`.
 - **An edit keeps the relationship's other fields.** `relationship.changeColumns` keeps the relationship's id, its place, its constraint name, its type and its referential actions.

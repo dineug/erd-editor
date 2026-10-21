@@ -20,6 +20,7 @@ import {
   ReducerType,
 } from './actions';
 import { raiseDictionaryGeneration } from './dictionaryIndex';
+import { domainColumnIds } from './domainLinks';
 import { getLiveDomainName, listId, unlistId } from './membership';
 
 const COLLECTION_KEY = {
@@ -120,11 +121,18 @@ export function measureDomainColumns(
   { toWidth }: EngineContext
 ) {
   const width = textInRange(toWidth(getLiveDomainName(state, domainId)));
+  const columns = state.collections.tableColumnEntities;
 
-  for (const column of Object.values(state.collections.tableColumnEntities)) {
-    if (column.domainId === domainId) {
-      column.ui.widthDomain = width;
+  // An empty id, which no editor mints, names every column linking none.
+  if (!domainId) {
+    for (const column of Object.values(columns)) {
+      if (column.domainId === domainId) column.ui.widthDomain = width;
     }
+    return;
+  }
+
+  for (const id of domainColumnIds(state, domainId)) {
+    columns[id].ui.widthDomain = width;
   }
 }
 

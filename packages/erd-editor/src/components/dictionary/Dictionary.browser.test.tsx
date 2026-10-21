@@ -206,6 +206,28 @@ const term = (id: string, values: Record<string, string>) =>
     values: { order: nextSeedKey(), ...values },
   });
 
+const domain = (id: string, name: string) =>
+  addDictionaryAction({
+    kind: DictionaryKind.domain,
+    id,
+    values: { name, dataType: 'BIGINT', order: nextSeedKey() },
+  });
+
+// The picker a term's domain cell opens, its options, and the index of the
+// option the keyboard is on.
+const domainEditor = ({ shadow }: Fixture) =>
+  shadow.querySelector('.dictionary-domain-editor');
+
+const domainOptions = ({ shadow }: Fixture) =>
+  Array.from(
+    shadow.querySelectorAll('.dictionary-domain-editor [role="option"]')
+  );
+
+const pickedDomain = (fixture: Fixture) =>
+  domainOptions(fixture).findIndex(
+    option => option.getAttribute('aria-selected') === 'true'
+  );
+
 /** A table member, its logical name the one given, with one column mbr_addr of its own. */
 const memberTable = (tableName: string, columnName: string): AnyAction[] => [
   addTableAction({ id: 'member', ui: { x: 0, y: 0, zIndex: 1 } }),
@@ -758,6 +780,116 @@ describe('the Dictionary tab', () => {
     expect(names(fixture)).toEqual(['A', 'B', 'C', 'D', '']);
     await undo();
     expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+
+    // The undo took the active cell's row away, so it lands on the last left.
+    expect(status(fixture)).toBe('4 rows 1 selected');
+    await press('F{Enter}');
+    expect(names(fixture)).toEqual(['A', 'B', 'C', 'F']);
+  });
+
+  it("holds the selection inside the rows a peer's removal of the active row leaves, typing reaching the new last", async () => {
+    const fixture = await setup();
+    const shared = createSharedStore(fixture.app.store, {
+      getNickname: () => 'peer',
+    });
+    teardowns.push(shared.destroy);
+
+    await press('{ArrowDown}{ArrowDown}{ArrowDown}');
+    shared.dispatchSync(
+      removeDictionaryAction({ kind: DictionaryKind.word, id: 'd' })
+    );
+    await drawn();
+
+    expect(status(fixture)).toBe('3 rows 1 selected');
+    expect(dictionaryViewOf(fixture.app).sheets.word.selection?.active).toEqual(
+      { row: 2, col: 0 }
+    );
+    await press('X{Enter}');
+    expect(names(fixture)).toEqual(['A', 'B', 'X']);
+  });
+
+  it("holds the selection inside the rows a peer's removal under an open domain list leaves, once a pick or Escape closes it", async () => {
+    const fixture = await setup({
+      seed: [
+        domain('d1', '번호'),
+        term('t1', { name: '가' }),
+        term('t2', { name: '나' }),
+        term('t3', { name: '다' }),
+        term('t4', { name: '라' }),
+      ],
+    });
+    const shared = createSharedStore(fixture.app.store, {
+      getNickname: () => 'peer',
+    });
+    const toasts: Array<string | undefined> = [];
+    teardowns.push(
+      shared.destroy,
+      fixture.app.emitter.on({
+        openToast: ({ payload }) => toasts.push(payload.key),
+      })
+    );
+    const removeTerm = async (id: string) => {
+      shared.dispatchSync(
+        removeDictionaryAction({ kind: DictionaryKind.term, id })
+      );
+      await drawn();
+    };
+
+    await click(sheetButton(fixture, 'Terms'));
+    textarea(fixture).focus();
+    await press('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowRight}{ArrowRight}');
+    await press('{Enter}');
+    await removeTerm('t4');
+
+    // The pick names a row the peer removed, so it sends nothing.
+    await press('{ArrowDown}{Enter}');
+    expect(domainEditor(fixture)).toBeNull();
+    expect(toasts).toEqual(['dictionary.toast.rowRemoved']);
+    expect(status(fixture)).toBe('3 rows 1 selected');
+    expect(dictionaryViewOf(fixture.app).sheets.term.selection?.active).toEqual(
+      { row: 2, col: 2 }
+    );
+
+    await press('{Enter}');
+    expect(domainEditor(fixture)).not.toBeNull();
+    await removeTerm('t3');
+    await press('{Escape}');
+    expect(domainEditor(fixture)).toBeNull();
+    expect(status(fixture)).toBe('2 rows 1 selected');
+
+    // Typing opens the list on the new last row, which a pick then links.
+    await press('번');
+    expect(domainEditor(fixture)).not.toBeNull();
+    await press('{Enter}');
+    const { termEntities } = fixture.app.store.state.collections;
+    expect(termEntities.t2.domainId).toBe('d1');
+  });
+
+  it("holds the check sheet's selection inside the checks a batch leaves", async () => {
+    // Two words share a name, and a column's logical name holds a word none
+    // lists: three checks, two of which go with the second word.
+    const fixture = await setup({
+      seed: [
+        word('m', '회원'),
+        word('e', '회원'),
+        ...memberTable('회원', '주소'),
+      ],
+    });
+
+    await click(sheetButton(fixture, 'Checks'));
+    await press('{ArrowDown}{ArrowDown}');
+    expect(status(fixture)).toBe('3 rows 1 selected');
+
+    fixture.app.store.dispatchSync(
+      removeDictionaryAction({ kind: DictionaryKind.word, id: 'e' })
+    );
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await drawn();
+
+    expect(status(fixture)).toBe('1 row 1 selected');
+    expect(
+      dictionaryViewOf(fixture.app).sheets.check.selection?.active
+    ).toEqual({ row: 0, col: 0 });
   });
 
   it('counts each sheet on its button, the checks once the browser is idle, in the colour of the loudest', async () => {
@@ -974,12 +1106,6 @@ describe('the Dictionary tab', () => {
   });
 
   it("picks a term's domain from the domain sheet's names, None unlinking, and writes no text typed", async () => {
-    const domain = (id: string, name: string) =>
-      addDictionaryAction({
-        kind: DictionaryKind.domain,
-        id,
-        values: { name, dataType: 'BIGINT', order: nextSeedKey() },
-      });
     const fixture = await setup({
       seed: [
         domain('d1', '번호'),
@@ -1088,6 +1214,67 @@ describe('the Dictionary tab', () => {
       ''
     );
     expect(dictionaryBatches(fixture)).toHaveLength(0);
+  });
+
+  it("links the domain picked by its id, the second of one name too, and unlinks a removed domain's link on None", async () => {
+    const fixture = await setup({
+      seed: [
+        domain('d1', '금액'),
+        domain('d2', '금액'),
+        domain('d3', '번호'),
+        term('t1', { name: '잔액', domainId: 'd3' }),
+        removeDictionaryAction({ kind: DictionaryKind.domain, id: 'd3' }),
+      ],
+    });
+    const { store } = fixture.app;
+    const linked = () => store.state.collections.termEntities.t1.domainId;
+
+    await click(sheetButton(fixture, 'Terms'));
+    textarea(fixture).focus();
+    await press('{ArrowRight}{ArrowRight}{Enter}');
+    expect(pickedDomain(fixture)).toBe(0);
+    await press('{Enter}');
+    expect(domainEditor(fixture)).toBeNull();
+    expect(linked()).toBe('');
+
+    await press('{Enter}{ArrowDown}{ArrowDown}{Enter}');
+    expect(linked()).toBe('d2');
+
+    // It opens on the second again, and Enter there keeps it, sending nothing.
+    await press('{Enter}');
+    expect(pickedDomain(fixture)).toBe(2);
+    await press('{Enter}');
+    expect(linked()).toBe('d2');
+    expect(dictionaryBatches(fixture)).toHaveLength(2);
+    expect(store.sheetHistories.term.size).toBe(2);
+  });
+
+  it("leaves Enter with Alt, Ctrl or Meta to a term's open domain list, inserting no row, and stops the keys it acts on", async () => {
+    const fixture = await setup({
+      seed: [domain('d1', '번호'), term('t1', { name: '회원번호' })],
+    });
+    const linked = () =>
+      fixture.app.store.state.collections.termEntities.t1.domainId;
+
+    await click(sheetButton(fixture, 'Terms'));
+    textarea(fixture).focus();
+    await press('{ArrowRight}{ArrowRight}{Enter}{ArrowDown}');
+    expect(pickedDomain(fixture)).toBe(1);
+
+    await press(
+      `{Alt>}{Enter}{/Alt}{Alt>}{Shift>}{Enter}{/Shift}{/Alt}{${MOD}>}{Enter}{/${MOD}}`
+    );
+    expect(domainEditor(fixture)).not.toBeNull();
+    expect(names(fixture, DictionaryKind.term)).toEqual(['회원번호']);
+    expect(linked()).toBe('');
+    expect(dictionaryBatches(fixture)).toHaveLength(0);
+
+    const reached: string[] = [];
+    tab(fixture).addEventListener('keydown', event => reached.push(event.key));
+    await press('{ArrowUp}{ArrowDown}{Enter}');
+    expect(domainEditor(fixture)).toBeNull();
+    expect(linked()).toBe('d1');
+    expect(reached).toEqual([]);
   });
 
   it('inserts as many rows above the selection as it covers on the add column chord with Shift held', async () => {

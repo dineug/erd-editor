@@ -508,6 +508,37 @@ describe('the checks a walk holds', () => {
     expect(listDictionaryChecks(store.state)).toEqual(freshChecks(store.state));
   });
 
+  it('checks the domain sheet of a walk resumed past a write on the index it began on', () => {
+    const { store } = seeded();
+    send(store, [
+      updateDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { dataType: 'INT' },
+      }),
+    ]);
+
+    // The walk began on a domain sheet holding one N10; a second lands before its step.
+    const walk = walkDictionaryChecks(store.state);
+    walk.next();
+    send(store, [
+      addDictionaryAction({
+        kind: 'domain',
+        id: 'd2',
+        values: { name: 'N10' },
+      }),
+    ]);
+
+    expect(
+      walked(walk).filter(({ target }) => target.kind === 'domain')
+    ).toEqual([]);
+    const after = listDictionaryChecks(store.state);
+    expect(after).toEqual(freshChecks(store.state));
+    expect(
+      ['d1', 'd2'].flatMap(id => ofTarget(after, id).map(({ code }) => code))
+    ).toEqual(['duplicateName', 'duplicateName']);
+  });
+
   it('walks a sheet, a term, a table or a column a step, the term sheet one step while its indexes stand', () => {
     const { store } = seeded();
     send(store, [

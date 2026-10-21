@@ -462,14 +462,19 @@ export type SchemaAppend = CreateEntityActions & { rect: Rect };
 /**
  * Lays a parsed document's tables out in the grid and wraps its groups round
  * them, in place: the sort, on the document's own copy, its widths measured
- * first as this store measures them, so the points are this store's alone.
+ * first as this store measures them, in the name view it shows, so the points are this store's alone.
  */
 function sortGrid(
   state: RootState,
   schema: ERDEditorSchemaV3,
   ctx: EngineContext
 ): void {
-  const copy: RootState = { ...state, ...schema };
+  const { nameViewMode } = state.settings;
+  const copy: RootState = {
+    ...state,
+    ...schema,
+    settings: { ...schema.settings, nameViewMode },
+  };
 
   recalculateTableWidth(copy, ctx);
   tableReducers[TableActionType.sortTable](

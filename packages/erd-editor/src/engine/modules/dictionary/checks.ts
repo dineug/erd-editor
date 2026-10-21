@@ -438,16 +438,20 @@ const termPhysicalName = (terms: NameIndex<Term>, name: string) =>
 
 const sheetChecksOf = new WeakMap<object, ReadonlyArray<DictionaryCheck>>();
 
-/** The checks of the word or the domain sheet, which read that sheet alone: held per index. */
+/**
+ * The checks of the word or the domain sheet, a name two of its rows share,
+ * read on the index handed, which a walk takes as it begins: held per index.
+ */
 function sheetChecks(
-  state: RootState,
   kind: typeof DictionaryKind.word | typeof DictionaryKind.domain,
   index: NameIndex<NamedRow>
 ): ReadonlyArray<DictionaryCheck> {
   let checks = sheetChecksOf.get(index);
   if (!checks) {
     checks = index.rows.flatMap(row =>
-      checkDictionaryRow(state, kind, row as DictionaryRowOf[typeof kind])
+      collect({ kind, id: row.id, tableId: '' }, undefined, (_, push) =>
+        duplicateCheck(index, row, push)
+      )
     );
     sheetChecksOf.set(index, checks);
   }
@@ -523,9 +527,9 @@ export function* walkDictionaryChecks(
   // A logical name a term holds reads the same, so the term sheet's readings serve the tables too.
   const readings = new Map<string, Reading>();
 
-  yield sheetChecks(state, DictionaryKind.word, words);
+  yield sheetChecks(DictionaryKind.word, words);
   yield* termSheetSteps(state, readings, words, terms, domains);
-  yield sheetChecks(state, DictionaryKind.domain, domains);
+  yield sheetChecks(DictionaryKind.domain, domains);
 
   const tableKept = beginWalk(collections.tableEntities);
   const tableWalk = tableKept.walk;

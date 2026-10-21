@@ -1121,7 +1121,7 @@ describe('the cell editor in the name views', () => {
     expect(store.state.editor.focusTable?.edit).toBe(false);
   });
 
-  it('picks a domain in the domain cell, showing the name it drew or its key over a blank cell', async () => {
+  it('picks a domain in the domain cell, showing the name or the placeholder it drew', async () => {
     const fixture = await setupView(NameViewMode.logical);
     const { store } = fixture.app;
     const { columnId } = fixture;
@@ -1135,7 +1135,7 @@ describe('the cell editor in the name views', () => {
     );
 
     await edit(fixture, FocusType.columnDomain);
-    expect(inputOf(fixture.mounted).placeholder).toBe('Domain');
+    expect(inputOf(fixture.mounted).placeholder).toBe('domain');
     await userEvent.keyboard('{ArrowDown}{Enter}');
     await flush();
 

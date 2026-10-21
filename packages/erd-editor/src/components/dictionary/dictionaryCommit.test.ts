@@ -10,7 +10,9 @@ import {
 } from '@/__test-utils__/index';
 import type { AppContext } from '@/components/appContext';
 import {
+  activeTermDomain,
   commitDictionaryCells,
+  commitTermDomain,
   createSheetRows,
   removeSelectedRows,
   reportGridRefusal,
@@ -612,6 +614,115 @@ describe('commitDictionaryCells', () => {
 
     expect(commit(sheet, edit(0, 'name', 'A'))).toBe(false);
     expect(sheet.toasts).toEqual([]);
+  });
+});
+
+describe('commitTermDomain', () => {
+  const domain = (id: string, name: string) =>
+    addDictionaryAction({
+      kind: DictionaryKind.domain,
+      id,
+      values: { name, dataType: 'BIGINT' },
+    });
+
+  // Two domains share a name, and the one term links a removed domain.
+  const SEED = [
+    domain('first', 'Money'),
+    domain('second', 'Money'),
+    domain('gone', 'Gone'),
+    addDictionaryAction({
+      kind: DictionaryKind.term,
+      id: 'amount',
+      values: { name: '금액', domainId: 'gone' },
+    }),
+    removeDictionaryAction({ kind: DictionaryKind.domain, id: 'gone' }),
+  ];
+
+  /** A term sheet with the picker's edit open on its one row, which keeps that row through a batch. */
+  const openPicker = () => {
+    const sheet = open(DictionaryKind.term, SEED);
+    sheet.rows.activate(0);
+    sheet.editing = true;
+    return sheet;
+  };
+
+  const pick = (sheet: Sheet, id: string, name = '') =>
+    commitTermDomain(sheet.app, sheet.rows, { id, name });
+
+  const linked = ({ app }: Sheet) =>
+    app.store.state.collections.termEntities.amount.domainId;
+
+  it("unlinks a removed domain's link on None, taking the cell's mark away, in one undo of the sheet", async () => {
+    const sheet = openPicker();
+    const { store } = sheet.app;
+    const mark = () =>
+      sheetCellMark(store.state, DictionaryKind.term, 'amount', 'domainId');
+    expect(mark()).toBe('error');
+
+    expect(pick(sheet, '')).toBe(true);
+    await flush();
+
+    expect(linked(sheet)).toBe('');
+    expect(mark()).toBeNull();
+    expect(store.sheetHistories.term.size).toBe(1);
+    store.undoSheet('term');
+    expect(linked(sheet)).toBe('gone');
+  });
+
+  it('links the second of two domains of one name by its id, and sends nothing for the link the row holds', async () => {
+    const sheet = openPicker();
+    const { store } = sheet.app;
+
+    expect(pick(sheet, 'second', 'Money')).toBe(true);
+    await flush();
+    expect(linked(sheet)).toBe('second');
+
+    expect(pick(sheet, 'second', 'Money')).toBe(false);
+    await flush();
+    expect(store.sheetHistories.term.size).toBe(1);
+    expect(sheet.toasts).toEqual([]);
+  });
+
+  it('sends nothing for a row or a domain a peer removed while the list was open, and says why', async () => {
+    const sheet = openPicker();
+    sheet.app.store.dispatchSync(
+      removeDictionaryAction({ kind: DictionaryKind.domain, id: 'first' })
+    );
+
+    expect(pick(sheet, 'first', 'Money')).toBe(false);
+    expect(linked(sheet)).toBe('gone');
+    expect(toastKeys(sheet)).toEqual([
+      'dictionary.toast.unknownDomainNames:1:Money',
+    ]);
+    expect(await toastText(sheet.toasts[0])).toBe(
+      'Nothing saved: 1 row names an unknown domain (Money)'
+    );
+
+    sheet.app.store.dispatchSync(
+      removeDictionaryAction({ kind: DictionaryKind.term, id: 'amount' })
+    );
+    expect(pick(sheet, 'second', 'Money')).toBe(false);
+    expect(linked(sheet)).toBe('gone');
+    expect(toastKeys(sheet)).toContain('dictionary.toast.rowRemoved');
+  });
+
+  it('sends nothing while the edit opened on no row', () => {
+    const sheet = open(DictionaryKind.term, SEED);
+
+    expect(pick(sheet, 'second', 'Money')).toBe(false);
+    expect(sheet.toasts).toEqual([]);
+  });
+
+  it('opens the list on the live domain the row links, none for a removed one or no row', async () => {
+    const sheet = open(DictionaryKind.term, SEED);
+    const opensOn = () => activeTermDomain(sheet.app.store.state, sheet.rows);
+    expect(opensOn()).toBe('');
+
+    sheet.rows.activate(0);
+    expect(opensOn()).toBe('');
+    expect(pick(sheet, 'second', 'Money')).toBe(true);
+    await flush();
+    expect(opensOn()).toBe('second');
   });
 });
 

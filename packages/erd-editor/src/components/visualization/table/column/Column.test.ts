@@ -496,7 +496,7 @@ describe('visualization Column', () => {
       expect(cellTexts(mounted)).toEqual(['member_id', 'INT', 'Identifier']);
     });
 
-    it('leaves the domain cell empty for a column linking no domain', async () => {
+    it('dims the domain placeholder in the domain cell of a column linking no domain', async () => {
       app.store.dispatchSync(
         changeColumnDomainAction({
           id: COLUMN_ID,
@@ -506,8 +506,10 @@ describe('visualization Column', () => {
         changeShowAction({ show: Show.columnDomain, value: true })
       );
       mounted = await mountAndFlush(viewTemplate(), app);
+      const domainCell = cellsOf(mounted)[2].firstElementChild as HTMLElement;
 
-      expect(cellTexts(mounted)).toEqual(['member_id', 'INT', '']);
+      expect(cellTexts(mounted)).toEqual(['member_id', 'INT', 'domain']);
+      expect(domainCell.classList.contains('placeholder')).toBe(true);
     });
   });
 });

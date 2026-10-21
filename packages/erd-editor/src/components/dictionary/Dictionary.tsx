@@ -2,6 +2,7 @@ import {
   type CellContextMenuEvent,
   type CellStyleGetter,
   type CommitEvent,
+  type EditorContext,
   Grid,
   type GridColumn,
   type GridHandle,
@@ -32,7 +33,9 @@ import {
 } from '@/components/dictionary/checkSheet';
 import DictionaryContextMenu from '@/components/dictionary/dictionary-context-menu/DictionaryContextMenu';
 import {
+  activeTermDomain,
   commitDictionaryCells,
+  commitTermDomain,
   createSheetRows,
   removeSelectedRows,
   reportGridRefusal,
@@ -52,6 +55,7 @@ import {
 } from '@/components/dictionary/dictionaryKeys';
 import {
   changeSearch,
+  clampSelection,
   dictionaryViewOf,
   rememberScroll,
   rememberSelection,
@@ -211,14 +215,15 @@ function insertedStart(
 /** A sheet's columns, a term's domain picked from a list as the ERD tab's domain cell is. */
 const withDomainPicker = (
   sheet: DictionarySheet,
-  columns: GridColumn[]
+  columns: GridColumn[],
+  openPicker: (editor: EditorContext, label: string) => void
 ): GridColumn[] =>
   sheet === DictionarySheet.term
     ? columns.map(column =>
         column.id === 'domainId'
           ? {
               ...column,
-              editor: editor => openDomainCellEditor(editor, column.label),
+              editor: editor => openPicker(editor, column.label),
             }
           : column
       )
@@ -291,10 +296,29 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     columns = isEntrySheet(sheet)
       ? withDomainPicker(
           sheet,
-          sheetColumns(sheet, { readonly: props.readonly, widths }, i18nValue)
+          sheetColumns(sheet, { readonly: props.readonly, widths }, i18nValue),
+          openDomainPicker
         )
       : checkSheetColumns(widths, i18nValue);
     return columns;
+  }
+
+  /**
+   * Opens a term's domain picker on the domain its row links, a pick linking
+   * that row by the id picked. Its close may send no batch, so a selection a
+   * removal under it left past the last row is held inside the rows there.
+   */
+  function openDomainPicker(editor: EditorContext, label: string) {
+    const { rows } = session;
+    openDomainCellEditor(editor, {
+      label,
+      linkedId: activeTermDomain(app.value.store.state, rows),
+      onPick: option => commitTermDomain(app.value, rows, option, i18n.value),
+      onClose: () => {
+        const held = heldInside(state.rowCount);
+        if (held) refresh(held);
+      },
+    });
   }
 
   /**
@@ -324,29 +348,50 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   }
 
   /**
+   * The selection held inside the rows a batch left, once it reaches past the
+   * last of them, the first row kept on a sheet with none; none while it fits
+   * or an edit is open, which keeps the row it opened on.
+   */
+  function heldInside(rowCount: number): GridSelection | undefined {
+    const { selection, handle } = session;
+    const end = Math.max(rowCount, 1);
+    const past =
+      selection.active.row >= end ||
+      selection.ranges.some(
+        ({ startRow, endRow }) => Math.max(startRow, endRow) >= end
+      );
+    if (!past || handle.isEditing()) return;
+
+    return clampSelection(selection, rowCount, columns.length);
+  }
+
+  /**
    * Takes the rows of the sheet shown again under the next version, after
-   * handing the grid a selection when one is given. Rows are read here, never
-   * in the render, since reading them walks the store's proxies.
+   * handing the grid the selection given or the one it holds cut to the rows
+   * left. Rows are read here, never in the render: reading walks the proxies.
    */
   function refresh(select?: GridSelection) {
     const { store } = app.value;
     const { sheet, handle, rows } = session;
     const { search } = view.sheets[sheet];
+    const entry = isEntrySheet(sheet);
+    const ids = entry ? sheetRowIds(store.state, sheet, search) : [];
+    if (!entry) session.checks = listChecks(search);
 
-    if (select) {
-      handle.select(select);
-      session.selection = select;
-      rows.activate(select.active.row);
-      rememberSelection(view, sheet, select);
+    const selection =
+      select ?? heldInside(entry ? ids.length : session.checks.length);
+    if (selection) {
+      handle.select(selection);
+      session.selection = selection;
+      rows.activate(selection.active.row);
+      rememberSelection(view, sheet, selection);
     }
 
-    if (isEntrySheet(sheet)) {
-      const ids = sheetRowIds(store.state, sheet, search);
+    if (entry) {
       state.version = rows.bump(ids, handle.isEditing());
       state.rowCount = ids.length;
       state.empty = sheetRowIds(store.state, sheet).length === 0;
     } else {
-      session.checks = listChecks(search);
       state.version += 1;
       state.rowCount = session.checks.length;
       state.empty = false;

@@ -58,7 +58,10 @@ export const typeCellText = (
     ? getLiveDomainName(state, column.domainId)
     : column.dataType;
 
-/** What the domain cell of a row drawn in the DOM shows: the listed domain's name, or nothing. */
+/**
+ * What the domain cell of a row drawn in the DOM holds: the listed domain's
+ * name, or nothing, over which the row dims the domain placeholder.
+ */
 export const domainCellText = (
   state: RootState,
   column: Pick<Column, 'domainId'>

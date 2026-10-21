@@ -26,7 +26,7 @@ Deltas from root § Making a Change.
 | `src/ErdView.ts` | The tab, a `HubTab`: load, replica, relay, seeding, `saveBeforeExit`, read-only fallback, theme and language events, welcome screen, shortcut `scope` |
 | `src/settings.ts` | `PluginSettings` (`data.json`), `DEFAULT_SETTINGS`, `readSettings` / `readTheme`, `editorTheme`, `themeFromBuilder`, `ThemeHost`, `LOCALES` / `LOCALE_NAMES`, `editorLocale`, `localeFromPicker`, `obsidianLanguage`, `LocaleHost` |
 | `src/tabSave.ts` | `viewData`, `currentValue`, `hasUnsavedValue`, `exitSave`, `seedValue`, pure functions of `TabSaveState` |
-| `src/keys.ts` | `scopeKeysOf` / `toScopeKey`: the editor's chords as `Scope.register` modifiers and key, each press once |
+| `src/keys.ts` | `scopeKeysOf` / `toScopeKey`: the editor's chords as `Scope.register` modifiers and key, each press once; `editorScopeKeys`, every press the loaded module listens for |
 | `src/readableDiagram.ts` | `isReadableDiagram`: whether a file's text is a diagram the tab can read (Unreadable files open read-only) |
 | `src/icon.ts` | `ERD_ICON` / `ERD_ICON_SVG`, for the tab and the New ERD menu item |
 | `src/loadErdEditor.ts` | Requires `@dineug/erd-editor` once per window (§ Build) |
@@ -125,11 +125,11 @@ Deltas from root § Making a Change.
 ### Shortcuts
 
 - **Obsidian's hotkeys take keys before the page**: its keymap listens for `keydown` on the window in the capture phase, sending a key matching a hotkey to its command, prevented and stopped, even where the command does not apply. `Alt+Enter` (add column) is Follow link under cursor, `$mod+K` (search) Insert Markdown link, `$mod+F` (Find and Replace, the Explorer's search) Search current file, and a user's hotkey can take any shortcut.
-- **The view's `scope` hands the editor its keys.** The workspace asks the active leaf's `view.scope` first, as for Obsidian's canvas view; `Scope.handleKey` returns the first matching registration's result, and the keymap prevents the key only on `false`. So `ErdView` sets `this.scope = new Scope(this.app.scope)` and registers every press of the loaded module's `createKeyBindingMap()` (the element's defaults, never a copy) with a handler returning `true`: no command runs, and the key reaches the editor.
+- **The view's `scope` hands the editor its keys.** The workspace asks the active leaf's `view.scope` first, as for Obsidian's canvas view; `Scope.handleKey` returns the first matching registration's result, and the keymap prevents the key only on `false`. So `ErdView` sets `this.scope = new Scope(this.app.scope)` and registers every press of the loaded module's `createKeyBindingMap()` (the element's defaults, never a copy) with a handler returning `true`: no command runs, and the key reaches the editor. `editorScopeKeys` adds the Dictionary tab's row chords that map gives (`dictionaryRowChords`), since Insert above's, `Alt+Shift+Enter`, is in no binding, and the keymap matches modifiers exactly, so `Alt+Enter`'s registration never covers it.
 - **`scopeKeysOf` spells keys as the keymap matches them**, reading the key code as a letter, digit or name: `$mod` → `Mod`, `Control` → `Ctrl`, `KeyK` → `K`, `Digit1` → `1`, `Space` → `' '`, `Equal` → `=`, `Minus` → `-`.
 - **Other hotkeys fall through to `app.scope`** (the command palette, the quick switcher, closing a tab, settings). The scope holds only while the ERD leaf is active, wherever focus is in it; a modal or a menu pushes its own scope, which the view's never reaches.
 - **`Mod+S` stays Obsidian's Save current file** (`editor:save-file`, unregistered by the plugin), saving the active `TextFileView`: the writer writes its replica's last value at once, another tab nothing, its `getViewData` being the file's text. A save within 200 ms of an edit writes the value before it; the autosave writes the edit 2 s later.
-- **A module from an earlier plugin version**, which `loadErdEditor` keeps until a restart, has no `createKeyBindingMap`: its tabs register nothing and Obsidian's hotkeys win.
+- **A module from an earlier plugin version**, which `loadErdEditor` keeps until a restart, has no `createKeyBindingMap`: its tabs register nothing and Obsidian's hotkeys win. One with the map but no `dictionaryRowChords` registers the map's presses alone.
 
 ### Icon
 
@@ -174,7 +174,7 @@ Measured on macOS unless Windows is named.
 - **What the specs pin.**
   - `settings.test.ts`: the defaults, the fallback of unknown values, and every function and constant the `src/settings.ts` row names.
   - `tabSave.test.ts`: what a tab hands Obsidian to save, a tab waiting to load among them, what `exitSave` does as the window goes, and what `seedValue` gives a tab opened beside others.
-  - `keys.test.ts`: how each spelling the editor's shortcuts use becomes a scope key.
+  - `keys.test.ts`: how each spelling the editor's shortcuts use becomes a scope key, and that the row chords the loaded module derives join its map's presses.
   - The hub specs: `registry.test.ts` (tabs, relays, quiet waits, seeding, content, the runtime value, the lock's documents, shutdown), `join.test.ts` (the join window, an agent joining after a removal the tab then undoes, and over a real socket, a named pipe on Windows, the response ahead of queued actions), `handlers.test.ts` and `runtime.test.ts` run the registry and the handler over `createHubHarness`, beside `host.test.ts`, `lifecycle.test.ts` and `imports.test.ts`.
   - `runtime.test.ts` uses its own memory doubles of `agent-hub-host`'s `HubEnvironment`, `HubListener` and `LockFile` services, never the node layers, which would write a lock under the real home.
 - **`smoke` runs by hand**, on macOS or Windows with Obsidian installed: it is the check that the plugin works, and CI does not run it.

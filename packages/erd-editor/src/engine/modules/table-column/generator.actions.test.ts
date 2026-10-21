@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext } from '@/__test-utils__';
 import { ColumnOption } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
-import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
+import {
+  addDictionaryAction,
+  removeDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
 import {
   focusColumnAction,
   selectAction,
@@ -488,6 +491,33 @@ describe('changeColumnDataTypeAction$', () => {
         payload: { tableId: 't1', id: 'c1', value: '' },
       }),
     ]);
+
+    store.dispatchSync(
+      changeColumnDataTypeAction$({ tableId: 't1', id: 'c1', value: 'int' }),
+      changeColumnDataTypeAction$({ tableId: 't1', id: 'c2', value: 'bigint' })
+    );
+
+    expect(column(store, 'c1')).toMatchObject({
+      dataType: 'int',
+      domainId: '',
+    });
+    expect(column(store, 'c2')).toMatchObject({
+      dataType: 'bigint',
+      domainId: 'd1',
+    });
+  });
+
+  it('unlinks a column typed off the type of a removed domain it links, and keeps one typed to it', () => {
+    const store = setup();
+    addTable(store, 't1', ['c1', 'c2']);
+    linkDomain(store, 'd1', 'bigint', [
+      ['t1', 'c1'],
+      ['t1', 'c2'],
+    ]);
+    store.dispatchSync(
+      changeRelationshipDataTypeSyncAction({ value: false }),
+      removeDictionaryAction({ kind: 'domain', id: 'd1' })
+    );
 
     store.dispatchSync(
       changeColumnDataTypeAction$({ tableId: 't1', id: 'c1', value: 'int' }),

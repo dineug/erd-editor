@@ -113,6 +113,7 @@ const IndexesCheckboxColumn: FC<IndexesCheckboxColumnProps> = (props, ctx) => {
             template = bHas(settings.show, Show.columnDomain) ? (
               <div class="column-col">
                 <EditInput
+                  placeholder={t('common.placeholder.domain')}
                   width={columnWidth.domain}
                   value={domainCellText(store.state, column)}
                 />

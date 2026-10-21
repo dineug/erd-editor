@@ -12,9 +12,9 @@ import {
 } from './harness';
 import { createReport, writeReport } from './report';
 
-// The Dictionary tab at the public standard's sizes: the three files imported
-// with the tab open, the frames a scroll of the term sheet costs, the term list
-// as each key lands and the checks' walk. It fails no number it measures.
+// The Dictionary tab at the public standard's sizes: the files imported with
+// the tab open, a scroll of the term sheet, the term list as each key lands,
+// the checks' walk and the domain writes. It fails no number it measures.
 
 /** The rows of each public-standard file, which the synthetic files keep. */
 const DOMAIN_ROWS = 129;
@@ -1600,6 +1600,120 @@ test('walks the dictionary checks of 500 tables of 30 columns', async ({
   );
 
   expect(measured.checks).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
+/** Each run's removal of every domain and import of the domain file, each one dispatch. */
+type DomainWritesMeasure = {
+  listed: { removed: number; imported: number };
+  removeMs: number[];
+  importMs: number[];
+};
+
+const DOMAIN_CASES: ReadonlyArray<[string, string]> = [
+  [
+    'remove',
+    'every domain removed in one dispatch, as Delete Rows over the whole sheet sends it',
+  ],
+  ['import', 'the domain file into the emptied sheet, as Import CSV sends it'],
+];
+
+test('removes and imports the domains beside 500 tables of 30 columns', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await openFixture(page);
+  const document = toChecksDocument(DICTIONARIES);
+  const columns = Object.values(document.collections.tableColumnEntities);
+  const linked = columns.filter(column => column.domainId).length;
+  const domainRows = DICTIONARIES.domains.map(
+    ({ name, category, type, description }) => ({
+      name,
+      category,
+      dataType: type,
+      description,
+    })
+  );
+
+  // The checks probe's store; each run opens the document again, so its first
+  // write reads the columns linking each domain afresh.
+  const measured: DomainWritesMeasure = await page.evaluate(
+    async ({ json, runs, domainRows }) => {
+      const paths = [
+        '/src/engine/store.ts',
+        '/src/engine/clock.ts',
+        '/src/engine/modules/editor/generator.actions.ts',
+        '/src/engine/modules/dictionary/generator.actions.ts',
+      ];
+      const [store, clock, editor, dictionary] = await Promise.all(
+        paths.map(path => import(path))
+      );
+      const engine = store.createStore({
+        toWidth: (text: string) => text.length * 7,
+        clock: new clock.Clock(),
+      });
+
+      const removeMs: number[] = [];
+      const importMs: number[] = [];
+      let listed = { removed: -1, imported: -1 };
+      for (let run = 0; run < runs; run++) {
+        engine.dispatchSync(editor.initialLoadJsonAction$(json));
+        const ids = [...engine.state.doc.domainIds];
+
+        let start = performance.now();
+        engine.dispatchSync(
+          dictionary.removeDictionaryEntriesAction$('domain', ids)
+        );
+        removeMs.push(performance.now() - start);
+        const removed = engine.state.doc.domainIds.length;
+
+        start = performance.now();
+        engine.dispatchSync(
+          dictionary.importDictionaryAction$('domain', domainRows)
+        );
+        importMs.push(performance.now() - start);
+        listed = { removed, imported: engine.state.doc.domainIds.length };
+      }
+
+      return { listed, removeMs, importMs };
+    },
+    { json: JSON.stringify(document), runs: CHECK_RUNS, domainRows }
+  );
+
+  lines.push(
+    '',
+    `Domain writes beside ${CHECK_TABLES} tables of ${CHECK_COLUMNS} columns, ${linked} of the ${columns.length} columns linking a domain: each case ${CHECK_RUNS} runs, each on the document opened again, the one dispatch timed in a store of the editor's observable kind.`,
+    [
+      'case'.padEnd(20),
+      '      p50',
+      '      max',
+      `p50 <= ${IMPORT_TASK_BUDGET_MS} ms`,
+    ].join('  ')
+  );
+  const samples = { remove: measured.removeMs, import: measured.importMs };
+  for (const [name] of DOMAIN_CASES) {
+    const measure = stats(samples[name as keyof typeof samples]);
+    const within = measure.p50 <= IMPORT_TASK_BUDGET_MS;
+    rows.push({
+      scenario: `domains-${name}`,
+      name: 'dispatch p50',
+      value: measure.p50,
+      budget: IMPORT_TASK_BUDGET_MS,
+      within,
+      detail: { runs: measure.count, max: measure.max, linked },
+    });
+    lines.push(
+      [
+        name.padEnd(20),
+        ms(measure.p50).padStart(9),
+        ms(measure.max).padStart(9),
+        verdict(within).padStart(15),
+      ].join('  ')
+    );
+  }
+  lines.push(...DOMAIN_CASES.map(([name, meaning]) => `${name}: ${meaning}.`));
+
+  expect(measured.listed).toEqual({ removed: 0, imported: DOMAIN_ROWS });
   expect(errors).toEqual([]);
 });
 

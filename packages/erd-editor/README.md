@@ -88,7 +88,8 @@ export default {
 ### Script tag
 
 `dist/erd-editor.umd.js` bundles every dependency and worker, registers `<erd-editor>` and puts
-`setExportFileCallback`, `setImportFileCallback` and `createKeyBindingMap` on `window.ErdEditor`.
+`setExportFileCallback`, `setImportFileCallback`, `createKeyBindingMap` and `dictionaryRowChords`
+on `window.ErdEditor`.
 Its workers are `data:` URLs, so a strict CSP needs `worker-src data:`. Pin a version beyond a demo.
 
 ```html
@@ -200,6 +201,10 @@ names. A chord is modifiers (`Shift`, `Alt`, `Control`, `Meta`, or `$mod` for Cm
 elsewhere) joined by `+` with a `KeyboardEvent.code` or `key`; a space separates the chords of a
 sequence, such as `KeyT KeyG`. Several defaults, search and find and replace among them, stop the
 keydown, so to leave `$mod+KeyF` to the page, call `setKeyBindingMap({ findReplace: [] })`.
+`dictionaryRowChords(map)` lists the chords the Dictionary tab's grid inserts and deletes rows by
+under a map: the one-press chords of `addColumn` and `removeColumn`, and those of `addColumn` with
+`Shift` held as well, for Insert above, which no binding names. A host that keeps its own hotkeys
+off the editor's keys takes both lists.
 
 ## Display language
 

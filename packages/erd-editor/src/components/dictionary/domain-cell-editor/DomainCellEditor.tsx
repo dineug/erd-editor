@@ -17,7 +17,6 @@ import {
   type DomainOption,
   searchDomainOptions,
 } from '@/components/table-view/column/column-domain/domainOptions';
-import { normalizeDictionaryName } from '@/engine/modules/dictionary/dictionaryIndex';
 import { isComposing } from '@/utils/keyboard-shortcut';
 
 import * as styles from './DomainCellEditor.styles';
@@ -26,7 +25,11 @@ export type DomainCellEditorProps = {
   editor: EditorContext;
   /** The column's header, which names the search field. */
   label: string;
-  /** Takes the picker out of the slot once its edit has closed. */
+  /** The id of the domain the cell's row links, '' for none, which the list opens on. */
+  linkedId: string;
+  /** Links the row to the domain picked, by its id, '' for None. */
+  onPick: (option: DomainOption) => void;
+  /** Runs once its edit has closed, after onPick for a pick. */
   onClose: () => void;
 };
 
@@ -44,8 +47,8 @@ const ABOVE = {
 
 /**
  * A term's domain cell editor: a search over the domain sheet by name that only
- * picks, as the ERD tab's domain cell does. A pick commits the domain's name,
- * which the sheet's commit reads back to its id, and None commits no text.
+ * picks, as the ERD tab's domain cell does. The grid's edit writes no text: a
+ * pick cancels it and hands the tab the domain picked by its id, None as ''.
  */
 const DomainCellEditor: FC<DomainCellEditorProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -61,13 +64,12 @@ const DomainCellEditor: FC<DomainCellEditorProps> = (props, ctx) => {
     maxHeight: styles.OPTION_HEIGHT * MAX_OPTIONS,
   });
 
-  /** A search lands on its first row, and the empty one on the domain the cell showed. */
+  /** A search lands on its first row, and the empty one on the domain the row links. */
   const setRows = (typed: string) => {
     const rows = searchDomainOptions(app.value.store.state, typed);
-    const shown = normalizeDictionaryName(editor.initialValue);
     const linked = typed.trim()
       ? -1
-      : rows.findIndex(({ id, name }) => (id ? name : '') === shown);
+      : rows.findIndex(({ id }) => id === props.linkedId);
 
     state.typed = typed;
     state.rows = rows;
@@ -81,8 +83,8 @@ const DomainCellEditor: FC<DomainCellEditorProps> = (props, ctx) => {
     if (closed) return;
     closed = true;
 
-    if (option) editor.commit(option.id ? option.name : '');
-    else editor.cancel();
+    editor.cancel();
+    if (option) props.onPick(option);
     props.onClose();
   };
 
@@ -110,7 +112,11 @@ const DomainCellEditor: FC<DomainCellEditorProps> = (props, ctx) => {
     if (input) setRows(input.value);
   };
 
-  /** The picker's keys; a composition keeps the arrows and Enter until it ends. */
+  /**
+   * The picker's keys, each stopped here so the tab reads none as a row chord
+   * once the edit has closed; a composition keeps them until it ends, and
+   * Enter or Tab with Alt, Ctrl or Meta stays the open edit's, as the grid's own.
+   */
   const handleKeydown = (event: KeyboardEvent) => {
     if (isComposing(event)) return;
 
@@ -118,11 +124,15 @@ const DomainCellEditor: FC<DomainCellEditorProps> = (props, ctx) => {
       case 'ArrowUp':
       case 'ArrowDown':
         event.preventDefault();
+        event.stopPropagation();
         step(event.key === 'ArrowUp' ? -1 : 1);
         break;
       case 'Enter':
       case 'Tab':
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+
         event.preventDefault();
+        event.stopPropagation();
         if (state.index !== -1) close(state.rows[state.index]);
         else if (event.key === 'Tab') close(null);
         break;

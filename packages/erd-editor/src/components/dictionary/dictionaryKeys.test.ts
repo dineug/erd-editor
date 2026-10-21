@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   type DictionaryKeyContext,
+  dictionaryRowChords,
   handleDictionaryKeydown,
   rowChordOf,
   RowCommand,
@@ -224,5 +225,29 @@ describe('handleDictionaryKeydown', () => {
     expect(handle({ key: 'a', code: 'KeyA' })).toMatchObject({
       passed: true,
     });
+  });
+});
+
+describe('dictionaryRowChords', () => {
+  it("lists every chord the grid runs a row command by, Insert above's, which no binding names, among them", () => {
+    expect(
+      dictionaryRowChords(createKeyBindingMap()).map(({ shortcut }) => shortcut)
+    ).toEqual(['Alt+Enter', 'Alt+Shift+Enter', 'Alt+Backspace', 'Alt+Delete']);
+  });
+
+  it('follows rebound column chords, leaving out a sequence and a Shift held already, as the grid does', () => {
+    const keyBindingMap = createKeyBindingMap();
+    keyBindingMap[KeyBindingName.addColumn] = [
+      { shortcut: 'Alt+KeyR', preventDefault: true },
+      { shortcut: 'Shift+Alt+KeyI' },
+      { shortcut: 'KeyC KeyA' },
+    ];
+    keyBindingMap[KeyBindingName.removeColumn] = [];
+
+    expect(dictionaryRowChords(keyBindingMap)).toEqual([
+      { shortcut: 'Alt+KeyR', preventDefault: true },
+      { shortcut: 'Shift+Alt+KeyI' },
+      { shortcut: 'Alt+Shift+KeyR', preventDefault: true },
+    ]);
   });
 });
