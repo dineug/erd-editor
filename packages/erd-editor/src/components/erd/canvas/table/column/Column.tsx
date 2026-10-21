@@ -5,14 +5,23 @@ import {
   FC,
   observable,
   repeat,
+  watch,
 } from '@dineug/r-html';
+import type { Node as KonvaNode } from 'konva/lib/Node';
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import { mixColor } from '@/components/erd/canvas/mixColor';
-import { columnCellHit } from '@/components/erd/canvas/sceneHit';
+import {
+  columnCellHit,
+  columnDragHandleHit,
+} from '@/components/erd/canvas/sceneHit';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
+  COLUMN_DRAG_HANDLE_RADIUS,
+  COLUMN_DRAG_HANDLE_REST_OPACITY,
+  createSceneCursorScope,
+  CURSOR_GRAB,
   CURSOR_INHERIT,
   CURSOR_POINTER,
   FOCUS_BORDER_HEIGHT,
@@ -20,6 +29,7 @@ import {
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,
   type SceneMouseEvent,
+  type ScenePointerEvent,
   setSceneCursor,
   TABLE_CORNER_RADIUS,
   TABLE_INSET,
@@ -48,6 +58,10 @@ import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
   COLUMN_DELETE_WIDTH,
+  COLUMN_DRAG_HANDLE_GAP,
+  COLUMN_DRAG_HANDLE_HEIGHT,
+  COLUMN_DRAG_HANDLE_ICON_SIZE,
+  COLUMN_DRAG_HANDLE_WIDTH,
   COLUMN_HEIGHT,
   COLUMN_KEY_WIDTH,
   INPUT_MARGIN_RIGHT,
@@ -79,7 +93,11 @@ import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import { tableRowHeight } from '@/utils/calcTable';
-import { isMainButtonPress, isSecondaryButtonPress } from '@/utils/domEvent';
+import {
+  isMainButtonPress,
+  isMultiTouch,
+  isSecondaryButtonPress,
+} from '@/utils/domEvent';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { drag$ } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
@@ -179,11 +197,17 @@ export type ColumnProps = {
   preview?: boolean;
   editorFocused?: boolean;
   /**
+   * Whether the row carries the handle a column drag starts from, outside the
+   * table's left edge. The table gives it to its focused row alone, and only
+   * where a reader can reorder: the document, unlocked, never a copy.
+   */
+  dragHandle?: boolean;
+  /**
    * The one pair of callbacks the scene keeps. A drop lands between siblings,
    * so the table that owns the order is the only thing that can judge one, and
    * the row can only say that a drag of it started and that it ended.
    */
-  onDragstart?: (columnId: string, event: SceneMouseEvent) => void;
+  onDragstart?: (columnId: string, event: ScenePointerEvent) => void;
   onDragend?: () => void;
 };
 
@@ -251,9 +275,14 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
   // Read only where a field is empty, so a switch redraws the empty cells alone.
   const i18n = useI18n(ctx);
-  const state = observable({ hover: false, removeHover: false });
+  const state = observable({
+    hover: false,
+    removeHover: false,
+    handleHover: false,
+  });
   const { addUnsubscribe } = useUnmounted();
   const doubleClick = createDoubleClickGuard();
+  const handleCursor = createSceneCursorScope();
 
   let dragSubscription: Subscription | null = null;
 
@@ -262,18 +291,43 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     dragSubscription = null;
   };
 
-  addUnsubscribe(endDrag);
+  /** The handle the pointer is on, which a leave has to start from. */
+  let hoveredHandle: KonvaNode | null = null;
 
   /**
-   * Arms a column drag on the press and reports it once the pointer has moved,
-   * which is the moment the browser used to call a dragstart. A press that never
-   * moves stays a click, so a button and a cell focus still work.
+   * Konva sends no leave to a node taken away from under the pointer, so the
+   * handle gives its hover and cursor back itself when the focus moves off it,
+   * and tells the row and the table it stands outside that the pointer left.
    */
-  const handleDragstart = (event: SceneMouseEvent) => {
-    if (props.preview || props.ghost || !isMainButtonPress(event.evt)) return;
-    // A view reorders no row, and a second subscriber to the pointer stream
-    // reads no movement, so an armed row would hold still the card it drags.
-    if (props.source !== 'document') return;
+  const releaseHandle = () => {
+    const left = state.handleHover ? hoveredHandle : null;
+    hoveredHandle = null;
+    state.handleHover = false;
+    handleCursor.release();
+
+    let node = left?.getParent() ?? null;
+    while (node && node.getType() === 'Group') {
+      node.fire('mouseleave');
+      if (node.getAttr('kind') === 'table') break;
+      node = node.getParent();
+    }
+  };
+
+  addUnsubscribe(
+    endDrag,
+    releaseHandle,
+    watch(props).subscribe(name => {
+      if (name === 'dragHandle' && !props.dragHandle) releaseHandle();
+    })
+  );
+
+  /**
+   * Arms a column drag on a press of the handle and reports it once the pointer
+   * has moved, which is the moment the browser used to call a dragstart. A
+   * press that never moves stays a click, and a second finger is a pinch's.
+   */
+  const handleDragstart = (event: ScenePointerEvent) => {
+    if (!isMainButtonPress(event.evt) || isMultiTouch(event.evt)) return;
 
     endDrag();
     let started = false;
@@ -305,7 +359,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
    */
   const handlePress = (event: SceneMouseEvent) => {
     pressDraws = Boolean(app.value.store.state.editor.drawRelationship);
-    handleDragstart(event);
 
     const focused = focusedPress === event.evt;
     focusedPress = null;
@@ -327,6 +380,18 @@ const Column: FC<ColumnProps> = (props, ctx) => {
 
   const handleMouseleave = () => {
     state.hover = false;
+  };
+
+  const handleHandleMouseenter = (event: SceneMouseEvent) => {
+    hoveredHandle = event.currentTarget;
+    state.handleHover = true;
+    handleCursor.set(event, CURSOR_GRAB);
+  };
+
+  const handleHandleMouseleave = (event: SceneMouseEvent) => {
+    hoveredHandle = null;
+    state.handleHover = false;
+    handleCursor.set(event, CURSOR_INHERIT);
   };
 
   /** What the remove button had as its hover colour and its pointer cursor. */
@@ -774,6 +839,57 @@ const Column: FC<ColumnProps> = (props, ctx) => {
       />
     ) : null;
 
+  /**
+   * The handle a column drag starts from, outside the table's left edge on the
+   * row's middle: a button at half strength until the pointer is on it, which
+   * then shows it whole on the hover step. Its box runs back to the table's edge.
+   */
+  const dragHandle = (rowHeight: number, theme: Theme) => {
+    const hover = state.handleHover;
+
+    return (
+      <k-group
+        name="column-drag-handle"
+        kind="column-drag-handle"
+        x={-(COLUMN_DRAG_HANDLE_GAP + COLUMN_DRAG_HANDLE_WIDTH)}
+        y={(rowHeight - COLUMN_DRAG_HANDLE_HEIGHT) / 2}
+        opacity={hover ? 1 : COLUMN_DRAG_HANDLE_REST_OPACITY}
+        on:mousedown={handleDragstart}
+        on:touchstart={handleDragstart}
+        on:mouseenter={handleHandleMouseenter}
+        on:mouseleave={handleHandleMouseleave}
+      >
+        <k-rect
+          name="column-drag-handle-button"
+          x={TABLE_BORDER / 2}
+          y={TABLE_BORDER / 2}
+          width={COLUMN_DRAG_HANDLE_WIDTH - TABLE_BORDER}
+          height={COLUMN_DRAG_HANDLE_HEIGHT - TABLE_BORDER}
+          cornerRadius={COLUMN_DRAG_HANDLE_RADIUS}
+          fill={
+            hover
+              ? theme.columnHandleHoverBackground
+              : theme.columnHandleBackground
+          }
+          stroke={
+            hover ? theme.columnHandleHoverBorder : theme.columnHandleBorder
+          }
+          strokeWidth={TABLE_BORDER}
+          hitFunc={columnDragHandleHit}
+        />
+        {sceneIcon({
+          icon: 'grip-vertical',
+          name: 'column-drag-handle-icon',
+          kind: 'column-drag-handle',
+          size: COLUMN_DRAG_HANDLE_ICON_SIZE,
+          color: hover ? theme.active : theme.foreground,
+          x: (COLUMN_DRAG_HANDLE_WIDTH - COLUMN_DRAG_HANDLE_ICON_SIZE) / 2,
+          y: (COLUMN_DRAG_HANDLE_HEIGHT - COLUMN_DRAG_HANDLE_ICON_SIZE) / 2,
+        })}
+      </k-group>
+    );
+  };
+
   return () => {
     const { store } = app.value;
     const { editor } = store.state;
@@ -875,6 +991,9 @@ const Column: FC<ColumnProps> = (props, ctx) => {
               mouseenter: handleRemoveMouseenter,
               mouseleave: handleRemoveMouseleave,
             })}
+        {props.dragHandle && !view && !props.preview && !props.ghost
+          ? dragHandle(rowHeight, theme)
+          : null}
       </k-group>
     );
   };

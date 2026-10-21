@@ -640,9 +640,18 @@ export class ErdEditorPage {
     return { x: box.x + box.width / 2, y: box.y + 8 };
   }
 
-  /** The centre of one column row, which is where a column drag starts. */
+  /** The centre of one column row, where a press carries its table. */
   async columnPoint(id: string): Promise<Point> {
     const box = await this.sceneBox(`#column-${id}`);
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }
+
+  /**
+   * The centre of the drag handle left of a focused column row, which is where
+   * a column drag starts. It waits for the handle, which comes with the focus.
+   */
+  async columnHandlePoint(id: string): Promise<Point> {
+    const box = await this.sceneBox([`#column-${id}`, '.column-drag-handle']);
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   }
 

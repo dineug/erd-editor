@@ -258,6 +258,43 @@ test.describe('Alt+drag duplicate', () => {
     await expect(ghosts(erd)).toHaveCount(0);
   });
 
+  // A column row is the table's own body, so Alt on it duplicates the table as
+  // the header does, and the column drag handle beside it copies nothing.
+  test('duplicates the table from a column row, as from its header', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    const from = await erd.columnPoint('users_name');
+
+    await erd.page.keyboard.down('Alt');
+    await erd.drag(from, { x: from.x + 100, y: from.y + 60 });
+    await erd.page.keyboard.up('Alt');
+
+    await expect.poll(() => erd.tableIds()).toHaveLength(3);
+    expect(await erd.columnIds('users')).toEqual(['users_id', 'users_name']);
+  });
+
+  test('moves the column from its drag handle with Alt held, and duplicates nothing', async ({
+    erd,
+  }) => {
+    await erd.seed(twoTables());
+    await erd.focusCell(erd.cell(erd.columnEl('users_name'), 'columnName'));
+    const from = await erd.columnHandlePoint('users_name');
+    const to = await erd.columnPoint('users_id');
+
+    await erd.page.keyboard.down('Alt');
+    await erd.page.mouse.move(from.x, from.y);
+    await erd.page.mouse.down();
+    await erd.page.mouse.move(from.x, to.y, { steps: 8 });
+    await expect
+      .poll(() => erd.columnIds('users'))
+      .toEqual(['users_name', 'users_id']);
+    await expect(ghosts(erd)).toHaveCount(0);
+    await endAltDrag(erd);
+
+    expect(await erd.tableIds()).toEqual(['users', 'posts']);
+  });
+
   // A duplicate carries the graph its tables span: a relationship whose two
   // ends are both in the copied set is rebuilt onto the copies, and every index
   // of a copied table rides with it, columns and order type included.

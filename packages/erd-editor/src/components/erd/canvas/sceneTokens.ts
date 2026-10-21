@@ -117,6 +117,12 @@ export const TABLE_INSET = TABLE_BORDER + TABLE_PADDING;
 /** The radius Table.styles rounds a table box with. */
 export const TABLE_CORNER_RADIUS = 6;
 
+/** How much of the column drag handle shows while the pointer is off it. */
+export const COLUMN_DRAG_HANDLE_REST_OPACITY = 0.5;
+
+/** The corner the column drag handle's button is rounded by. */
+export const COLUMN_DRAG_HANDLE_RADIUS = 4;
+
 /** The 1.5px underline EditInput draws for a focused, edited or shared cell. */
 export const FOCUS_BORDER_HEIGHT = 1.5;
 
@@ -233,6 +239,9 @@ export function documentCardShadow(
 
 /** The hand a clickable scene node asks for, as the dom scene spelt it in css. */
 export const CURSOR_POINTER = 'pointer';
+
+/** The open hand the column drag handle asks for under the pointer. */
+export const CURSOR_GRAB = 'grab';
 
 /** The beam a textarea carried on its own, which a drawn body has to ask for. */
 export const CURSOR_TEXT = 'text';

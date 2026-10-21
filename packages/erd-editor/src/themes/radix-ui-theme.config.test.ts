@@ -14,7 +14,7 @@ const entries = Object.entries(ThemeConfig);
 describe('ThemeConfig', () => {
   it('declares exactly one mapping per theme token', () => {
     expect(Object.keys(ThemeConfig).sort()).toEqual([...ThemeTokens].sort());
-    expect(entries).toHaveLength(94);
+    expect(entries).toHaveLength(98);
   });
 
   it('keeps placeholder on an alpha scale, which CodeBlock paints its selection band from', () => {
@@ -126,6 +126,13 @@ describe('ThemeConfig', () => {
     });
   });
 
+  it('draws the column drag handle as the table body at rest and the header step under the pointer', () => {
+    expect(ThemeConfig.columnHandleBackground).toBe('gray-2');
+    expect(ThemeConfig.columnHandleBorder).toBe('gray-6');
+    expect(ThemeConfig.columnHandleHoverBackground).toBe('gray-5');
+    expect(ThemeConfig.columnHandleHoverBorder).toBe('gray-7');
+  });
+
   it('uses the alpha gray scale for the scrollbar track and the placeholder', () => {
     expect(ThemeConfig.scrollbarTrack).toBe('grayA-3');
     expect(ThemeConfig.placeholder).toBe('grayA-10');
@@ -181,10 +188,13 @@ describe('ThemeConfig', () => {
 });
 
 describe('LightThemeConfig', () => {
-  it('overrides the boxes and their shadows, the group bar and frame, the minimap edge, the keys, the visualization strokes, the two dictionary marks, the dictionary sheet and the darker amber of a change only', () => {
+  it('overrides the boxes and their shadows, the column drag handle, the group bar and frame, the minimap edge, the keys, the visualization strokes, the two dictionary marks, the dictionary sheet and the darker amber of a change only', () => {
     expect(LightThemeConfig).toEqual({
       tableBackground: 'override-#ffffff',
       tableBorder: 'gray-8',
+      columnHandleBackground: 'override-#ffffff',
+      columnHandleBorder: 'gray-8',
+      columnHandleHoverBorder: 'gray-8',
       memoBackground: 'override-#ffffff',
       memoBorder: 'gray-8',
       tableShadow: 'override-rgba(0, 0, 0, 0.18)',

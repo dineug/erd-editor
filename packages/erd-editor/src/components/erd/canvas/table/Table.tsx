@@ -27,6 +27,7 @@ import {
   CURSOR_POINTER,
   documentCardShadow,
   FOCUS_BORDER_HEIGHT,
+  holdSceneCursor,
   mainButtonClick,
   RING_WIDTH,
   SCENE_FONT_FAMILY,
@@ -90,6 +91,7 @@ import {
   dragstartColumnAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
+import { getFocusedColumnIds } from '@/engine/modules/editor/utils/focus';
 import {
   sceneNameSettings,
   toNameViewFocusType,
@@ -117,7 +119,7 @@ import type { Theme } from '@/themes/tokens';
 import { tableHeaderHeight } from '@/utils/calcTable';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
-import { isMod } from '@/utils/keyboard-shortcut';
+import { CURSOR_GRABBING } from '@/utils/stageCursor';
 import {
   getTableGroupTint,
   getTableHeaderTint,
@@ -208,7 +210,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
   const diffMapRef = useDiffMap(ctx);
-  const { hasEdit, hasFocus, hasSelectColumn } = useFocusTable(
+  const { hasEdit, hasFocus, hasSelectColumn, hasFocusColumn } = useFocusTable(
     ctx,
     props.table.id
   );
@@ -427,10 +429,13 @@ const Table: FC<TableProps> = (props, ctx) => {
 
   /**
    * The drop half of a column drag. Which row a drop lands on is a question
-   * about the whole sibling order, so the table answers it while the row that
-   * was pressed only says that a drag of it began.
+   * about the whole sibling order, so the table answers it while the row whose
+   * handle was pressed only says that a drag of it began.
    */
-  const handleDragstartColumn = (columnId: string, event: SceneMouseEvent) => {
+  const handleDragstartColumn = (
+    columnId: string,
+    event: ScenePointerEvent
+  ) => {
     const { store } = app.value;
     // A view reorders nothing: the gate drops what a drag would dispatch, so
     // arming one here would only run the flip and the drop search for nothing.
@@ -449,16 +454,17 @@ const Table: FC<TableProps> = (props, ctx) => {
     state.dragstartId = columnId;
     flip ??= createKonvaFlip(() => stage.find<KonvaNode>('.column-row'));
 
-    const $mod = isMod(event.evt);
+    // The handle of a row among two or more selected carries the selection,
+    // as a table's press carries the selected tables; any other, its row.
     const press = toCanvasPoint(event.evt);
     if (press) {
       beginColumnDragPointer(store.state, props.table, press, {
         columnId,
-        columnIds: $mod ? focusTable.selectColumnIds : [columnId],
+        columnIds: getFocusedColumnIds(store.state),
       });
     }
 
-    store.dispatch(dragstartColumnAction$($mod));
+    store.dispatch(dragstartColumnAction$());
 
     dragoverSubscription = drag$.subscribe({
       next: ({ event: move }) => {
@@ -466,6 +472,7 @@ const Table: FC<TableProps> = (props, ctx) => {
       },
       complete: handleDragendColumn,
     });
+    dragoverSubscription.add(holdSceneCursor(event, CURSOR_GRABBING));
   };
 
   onMounted(() => {
@@ -711,6 +718,8 @@ const Table: FC<TableProps> = (props, ctx) => {
     const columns = query(collections)
       .collection('tableColumnEntities')
       .selectByIds(ghostColumnId ? [...columnIds, ghostColumnId] : columnIds);
+    // The focused row carries the column drag handle where a reader can reorder.
+    const reorders = !view && !props.preview && !store.getReadonly();
     // Read only where the width sum kept room for a mark, which only the
     // document does and only while the setting shows them.
     const alternateKeyMarks = tableWidths.alternateKey
@@ -953,6 +962,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 y={getColumnRect(store.state, table, index, source).y - rect.y}
                 width={rect.width}
                 selected={hasSelectColumn(column.id)}
+                dragHandle={reorders && hasFocusColumn(column.id)}
                 hovered={column.id === props.hoveredColumnId}
                 widthName={tableWidths.name}
                 widthLogicalName={tableWidths.logicalName}

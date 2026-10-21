@@ -12,19 +12,23 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
   createTestAppContext,
   createTestTheme,
+  createTouch,
   fireScenePointer,
+  fireSceneTouch,
   flush,
   movePointer,
   moveScenePointer,
+  moveTouch,
   releasePointer,
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
+  COLUMN_DRAG_HANDLE_REST_OPACITY,
   getSceneFontMetrics,
   SCENE_CODE_FONT_FAMILY,
   SCENE_FONT_SIZE,
-  type SceneMouseEvent,
+  type ScenePointerEvent,
   TABLE_INSET,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
@@ -37,6 +41,10 @@ import {
 } from '@/components/erd/diff-viewer/diff';
 import {
   COLUMN_DELETE_WIDTH,
+  COLUMN_DRAG_HANDLE_GAP,
+  COLUMN_DRAG_HANDLE_HEIGHT,
+  COLUMN_DRAG_HANDLE_LANE,
+  COLUMN_DRAG_HANDLE_WIDTH,
   COLUMN_HEIGHT,
   COLUMN_KEY_WIDTH,
   COLUMN_NOT_NULL_WIDTH,
@@ -85,7 +93,10 @@ type SceneProps = {
   editorFocused?: boolean;
   preview?: boolean;
   diffPaths?: DiffPaths | null;
-  onDragstart?: (columnId: string, event: SceneMouseEvent) => void;
+  dragHandle?: boolean;
+  /** Where the row stands across the stage, so the handle left of it lands on the canvas. */
+  sceneX?: number;
+  onDragstart?: (columnId: string, event: ScenePointerEvent) => void;
   onDragend?: () => void;
 };
 
@@ -131,7 +142,7 @@ async function setup({ props = {}, prepare }: SetupOptions = {}) {
   const rect = getTableRect(store.state, table);
 
   const scene = (next: SceneProps): DOMTemplateLiterals => (
-    <k-layer name="scene">
+    <k-layer name="scene" x={next.sceneX ?? 0}>
       <Column
         column={column}
         source={next.source ?? 'document'}
@@ -167,6 +178,7 @@ async function setup({ props = {}, prepare }: SetupOptions = {}) {
         editComment={false}
         preview={next.preview}
         diffPaths={next.diffPaths}
+        dragHandle={next.dragHandle}
         onDragstart={next.onDragstart}
         onDragend={next.onDragend}
       />
@@ -1053,28 +1065,150 @@ describe('what a right press on a row focuses', () => {
   });
 });
 
-// P4-41 and P4-40: the row owns the gesture on itself and the cells own their
-// own edit entry, so both are asserted through the store and through the one
-// callback pair the scene keeps.
+// P4-41 and P4-40: the row owns the gesture on its handle and the cells own
+// their own edit entry, so both are asserted through the store and through the
+// one callback pair the scene keeps.
 
-describe('the row reports its own drag to the table that owns the order', () => {
+const handleOf = (stage: Stage) =>
+  rowOf(stage).findOne<Group>('.column-drag-handle') ?? null;
+
+/** Where the specs that hit test the handle stand the row, so the handle is on the canvas. */
+const ROW_X = 60;
+
+/** The colours of the grip's six dots, which lucide draws as circles. */
+const gripDotsOf = (handle: Group) =>
+  named<Group>(handle, 'column-drag-handle-icon')
+    .find('Circle')
+    .map(node => node.getAttr('fill'));
+
+describe('the column drag handle', () => {
+  it('draws none on a row the table gives none', async () => {
+    const { stage } = await setup();
+
+    expect(handleOf(stage)).toBeNull();
+  });
+
+  it.each([
+    ['a view', { source: 'flow' as const }],
+    ['a copy of the table', { preview: true }],
+    ['the placeholder row of a column dragged in', { ghost: true }],
+  ])('draws none in %s, which reorders nothing', async (_, props) => {
+    const { stage } = await setup({ props: { dragHandle: true, ...props } });
+
+    expect(handleOf(stage)).toBeNull();
+  });
+
+  it('stands outside the left edge on the row middle, at half strength while the pointer is off it', async () => {
+    const { stage, theme } = await setup({ props: { dragHandle: true } });
+    const handle = handleOf(stage) as Group;
+
+    expect(handle.getAttr('kind')).toBe('column-drag-handle');
+    expect(handle.x()).toBe(
+      -(COLUMN_DRAG_HANDLE_GAP + COLUMN_DRAG_HANDLE_WIDTH)
+    );
+    expect(handle.y()).toBe((COLUMN_HEIGHT - COLUMN_DRAG_HANDLE_HEIGHT) / 2);
+    expect(handle.opacity()).toBe(COLUMN_DRAG_HANDLE_REST_OPACITY);
+
+    const button = named<Rect>(handle, 'column-drag-handle-button');
+    expect(button.fill()).toBe(theme.columnHandleBackground);
+    expect(button.stroke()).toBe(theme.columnHandleBorder);
+    expect(new Set(gripDotsOf(handle))).toEqual(new Set([theme.foreground]));
+  });
+
+  it('shows whole on the hover step under the pointer and asks for the open hand', async () => {
+    const { stage, theme } = await setup({ props: { dragHandle: true } });
+    const container = stage.container();
+    const handle = handleOf(stage) as Group;
+
+    fireScenePointer(handle, 'mouseenter');
+    await settle();
+
+    expect(handle.opacity()).toBe(1);
+    const button = named<Rect>(handle, 'column-drag-handle-button');
+    expect(button.fill()).toBe(theme.columnHandleHoverBackground);
+    expect(button.stroke()).toBe(theme.columnHandleHoverBorder);
+    expect(new Set(gripDotsOf(handle))).toEqual(new Set([theme.active]));
+    expect(container.style.cursor).toBe('grab');
+
+    fireScenePointer(handle, 'mouseleave');
+    await settle();
+
+    expect(handle.opacity()).toBe(COLUMN_DRAG_HANDLE_REST_OPACITY);
+    expect(container.style.cursor).toBe('');
+  });
+
+  it('gives the cursor and its hover back when the focus leaves the row under the pointer', async () => {
+    const { stage, rerender } = await setup({ props: { dragHandle: true } });
+    const container = stage.container();
+
+    fireScenePointer(handleOf(stage) as Group, 'mouseenter');
+    await settle();
+    expect(container.style.cursor).toBe('grab');
+
+    await rerender({ dragHandle: false });
+    expect(handleOf(stage)).toBeNull();
+    expect(container.style.cursor).toBe('');
+
+    await rerender({ dragHandle: true });
+    expect((handleOf(stage) as Group).opacity()).toBe(
+      COLUMN_DRAG_HANDLE_REST_OPACITY
+    );
+  });
+
+  it('hands the row its leave when the focus takes the handle from under the pointer', async () => {
+    const { stage, rerender } = await setup({ props: { dragHandle: true } });
+
+    fireScenePointer(handleOf(stage) as Group, 'mouseenter');
+    await settle();
+    expect(named<Rect>(rowOf(stage), 'column-row-background').fill()).not.toBe(
+      TRANSPARENT
+    );
+
+    await rerender({ dragHandle: false });
+
+    expect(named<Rect>(rowOf(stage), 'column-row-background').fill()).toBe(
+      TRANSPARENT
+    );
+  });
+
+  it('answers a press beside its button, back to the table edge, and nowhere past its lane', async () => {
+    const { stage } = await setup({
+      props: { dragHandle: true, sceneX: ROW_X },
+    });
+    await whenPainted();
+    const middle = COLUMN_HEIGHT / 2;
+    const hitKind = (x: number) =>
+      stage
+        .getIntersection({ x, y: middle })
+        ?.findAncestor('.column-drag-handle')
+        ? 'handle'
+        : 'other';
+
+    expect(hitKind(ROW_X - 1)).toBe('handle');
+    expect(hitKind(ROW_X - COLUMN_DRAG_HANDLE_GAP - 1)).toBe('handle');
+    expect(hitKind(ROW_X - COLUMN_DRAG_HANDLE_LANE + 1)).toBe('handle');
+    expect(hitKind(ROW_X - COLUMN_DRAG_HANDLE_LANE - 2)).toBe('other');
+  });
+});
+
+describe('the handle reports its row drag to the table that owns the order', () => {
   it('hands the start and the end to the table once the pointer moves', async () => {
     const onDragstart = vi.fn();
     const onDragend = vi.fn();
     const { stage, column } = await setup({
-      props: { onDragstart, onDragend },
+      props: { dragHandle: true, onDragstart, onDragend },
     });
 
-    fireScenePointer(rowOf(stage), 'mousedown', { button: 0 });
+    fireScenePointer(handleOf(stage) as Group, 'mousedown', { button: 0 });
     expect(onDragstart).not.toHaveBeenCalled();
 
-    movePointer(24, 0);
+    movePointer(0, 24);
     await settle();
     expect(onDragstart).toHaveBeenCalledTimes(1);
     expect(onDragstart.mock.calls[0][0]).toBe(column.id);
 
     // A second move is the same drag, not a second start.
-    movePointer(48, 0);
+    movePointer(0, 48);
     await settle();
     expect(onDragstart).toHaveBeenCalledTimes(1);
 
@@ -1083,12 +1217,67 @@ describe('the row reports its own drag to the table that owns the order', () => 
     expect(onDragend).toHaveBeenCalledTimes(1);
   });
 
+  it('starts a drag from a finger on the handle too', async () => {
+    const onDragstart = vi.fn();
+    const onDragend = vi.fn();
+    const { stage } = await setup({
+      props: { dragHandle: true, onDragstart, onDragend },
+    });
+
+    fireSceneTouch(handleOf(stage) as Group, 'touchstart');
+    moveTouch(0, 24);
+    await settle();
+    expect(onDragstart).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(createTouch('touchend'));
+    await settle();
+    expect(onDragend).toHaveBeenCalledTimes(1);
+  });
+
+  it('never starts a drag from a second finger, which is a pinch', async () => {
+    const onDragstart = vi.fn();
+    const { stage } = await setup({
+      props: { dragHandle: true, onDragstart },
+    });
+    const evt = new Event('touchstart', { bubbles: true, cancelable: true });
+    Object.defineProperty(evt, 'touches', {
+      value: [
+        { clientX: 0, clientY: 0 },
+        { clientX: 40, clientY: 0 },
+      ],
+    });
+
+    window.dispatchEvent(evt);
+    (handleOf(stage) as Group).fire('touchstart', { evt }, true);
+    moveTouch(0, 24);
+    await settle();
+    window.dispatchEvent(createTouch('touchend'));
+
+    expect(onDragstart).not.toHaveBeenCalled();
+  });
+
+  it('never starts a drag from a press on the row itself, which belongs to the table', async () => {
+    const onDragstart = vi.fn();
+    const { stage } = await setup({
+      props: { dragHandle: true, onDragstart },
+    });
+
+    fireScenePointer(rowOf(stage), 'mousedown', { button: 0 });
+    movePointer(0, 24);
+    await settle();
+    releasePointer();
+
+    expect(onDragstart).not.toHaveBeenCalled();
+  });
+
   it('never starts a drag from a press that does not move', async () => {
     const onDragstart = vi.fn();
     const onDragend = vi.fn();
-    const { stage } = await setup({ props: { onDragstart, onDragend } });
+    const { stage } = await setup({
+      props: { dragHandle: true, onDragstart, onDragend },
+    });
 
-    fireScenePointer(rowOf(stage), 'mousedown', { button: 0 });
+    fireScenePointer(handleOf(stage) as Group, 'mousedown', { button: 0 });
     releasePointer();
     await settle();
 
@@ -1096,20 +1285,14 @@ describe('the row reports its own drag to the table that owns the order', () => 
     expect(onDragend).not.toHaveBeenCalled();
   });
 
-  it('never starts a drag from a row with no id, or from another button', async () => {
+  it('never starts a drag from another button', async () => {
     const onDragstart = vi.fn();
-    const { stage, rerender } = await setup({ props: { onDragstart } });
+    const { stage } = await setup({
+      props: { dragHandle: true, onDragstart },
+    });
 
-    fireScenePointer(rowOf(stage), 'mousedown', { button: 2 });
-    movePointer(24, 0);
-    await settle();
-    releasePointer();
-
-    await rerender({ preview: true, onDragstart });
-    expect(rowOf(stage).id()).toBe('');
-
-    fireScenePointer(rowOf(stage), 'mousedown', { button: 0 });
-    movePointer(24, 0);
+    fireScenePointer(handleOf(stage) as Group, 'mousedown', { button: 2 });
+    movePointer(0, 24);
     await settle();
     releasePointer();
 

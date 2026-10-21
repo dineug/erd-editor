@@ -49,6 +49,11 @@ export type Theme = {
   columnSelectHover: string;
   columnHover: string;
 
+  columnHandleBackground: string;
+  columnHandleBorder: string;
+  columnHandleHoverBackground: string;
+  columnHandleHoverBorder: string;
+
   relationshipHover: string;
 
   visualizationLink: string;
@@ -169,6 +174,11 @@ export const ThemeTokens: ReadonlyArray<keyof Theme> = [
   'columnSelect',
   'columnSelectHover',
   'columnHover',
+
+  'columnHandleBackground',
+  'columnHandleBorder',
+  'columnHandleHoverBackground',
+  'columnHandleHoverBorder',
 
   'relationshipHover',
 
