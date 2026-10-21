@@ -497,6 +497,7 @@ export const heIL = {
   'dictionary.check.forbiddenWord': 'מילה אסורה',
   'dictionary.check.synonymWord': 'מילה נרדפת',
   'dictionary.check.physicalNameMismatch': 'אי-התאמה בשם הפיזי',
+  'dictionary.check.domainTypeMismatch': 'אי-התאמה לסוג הנתונים של התחום',
   'dictionary.toast.imported':
     'נוספו {added} · עודכנו {updated} · דולגו {skipped}',
   'dictionary.toast.unknownDomains': {

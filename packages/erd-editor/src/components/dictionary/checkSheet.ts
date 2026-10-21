@@ -44,6 +44,7 @@ const CHECK_LABEL_KEY: Readonly<Record<DictionaryCheckCode, PlainMessageKey>> =
     forbiddenWord: 'dictionary.check.forbiddenWord',
     synonymWord: 'dictionary.check.synonymWord',
     physicalNameMismatch: 'dictionary.check.physicalNameMismatch',
+    domainTypeMismatch: 'dictionary.check.domainTypeMismatch',
   };
 
 type Translator = Pick<I18n, 't' | 'locale'>;
@@ -95,7 +96,7 @@ function targetText(
   }
 }
 
-/** What the check found, then after an arrow the words or the name the dictionaries offer instead. */
+/** What the check found, then after an arrow the words, the name or the type the dictionaries offer instead. */
 function detailText(
   { text, suggestions }: DictionaryCheck,
   i18n: Pick<I18n, 'locale'>

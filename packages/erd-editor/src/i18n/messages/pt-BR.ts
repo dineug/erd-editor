@@ -524,6 +524,7 @@ export const ptBR = {
   'dictionary.check.forbiddenWord': 'Palavra proibida',
   'dictionary.check.synonymWord': 'Sinônimo',
   'dictionary.check.physicalNameMismatch': 'Nome físico divergente',
+  'dictionary.check.domainTypeMismatch': 'Tipo divergente do domínio',
   'dictionary.toast.imported':
     'Adicionadas: {added} · Atualizadas: {updated} · Ignoradas: {skipped}',
   'dictionary.toast.unknownDomains': {

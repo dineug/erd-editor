@@ -510,6 +510,7 @@ export const euES = {
   'dictionary.check.forbiddenWord': 'Hitz debekatua',
   'dictionary.check.synonymWord': 'Sinonimoa',
   'dictionary.check.physicalNameMismatch': 'Izen fisikoa ez dator bat',
+  'dictionary.check.domainTypeMismatch': 'Domeinuaren datu mota ez dator bat',
   'dictionary.toast.imported':
     '{added} gehituta · {updated} eguneratuta · {skipped} saltatuta',
   'dictionary.toast.unknownDomains': {

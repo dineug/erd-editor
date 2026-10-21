@@ -527,6 +527,7 @@ export const ukUA = {
   'dictionary.check.forbiddenWord': 'Заборонене слово',
   'dictionary.check.synonymWord': 'Синонім',
   'dictionary.check.physicalNameMismatch': 'Невідповідність фізичної назви',
+  'dictionary.check.domainTypeMismatch': 'Невідповідність типу домену',
   'dictionary.toast.imported':
     'Додано: {added} · оновлено: {updated} · пропущено: {skipped}',
   'dictionary.toast.unknownDomains': {

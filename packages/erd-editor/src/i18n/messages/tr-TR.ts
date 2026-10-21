@@ -500,6 +500,7 @@ export const trTR = {
   'dictionary.check.forbiddenWord': 'Yasaklı sözcük',
   'dictionary.check.synonymWord': 'Eş anlamlı',
   'dictionary.check.physicalNameMismatch': 'Fiziksel ad uyuşmazlığı',
+  'dictionary.check.domainTypeMismatch': 'Değer alanı türü uyuşmazlığı',
   'dictionary.toast.imported':
     '{added} eklendi · {updated} güncellendi · {skipped} atlandı',
   'dictionary.toast.unknownDomains': {

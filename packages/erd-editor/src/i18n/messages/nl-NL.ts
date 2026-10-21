@@ -511,6 +511,7 @@ export const nlNL = {
   'dictionary.check.forbiddenWord': 'Verboden woord',
   'dictionary.check.synonymWord': 'Synoniem',
   'dictionary.check.physicalNameMismatch': 'Afwijkende fysieke naam',
+  'dictionary.check.domainTypeMismatch': 'Afwijking van het domeintype',
   'dictionary.toast.imported':
     '{added} toegevoegd · {updated} bijgewerkt · {skipped} overgeslagen',
   'dictionary.toast.unknownDomains': {

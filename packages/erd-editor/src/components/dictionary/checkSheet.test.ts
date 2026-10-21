@@ -25,6 +25,8 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -181,6 +183,31 @@ describe('checkRows', () => {
         ([, target]) => target
       )
     ).toEqual(['멤버.회원주소']);
+  });
+
+  it("shows a column off its domain's type by its type, then the domain's, and leads to its domain cell", () => {
+    const store = seed();
+    store.dispatchSync(
+      row('domain', 'd3', { name: '금액', dataType: 'NUMERIC(15)' }),
+      addColumnAction({ id: 'c2', tableId: 'member' }),
+      changeColumnNameAction({ id: 'c2', tableId: 'member', value: 'amt' }),
+      changeColumnDomainAction({ id: 'c2', tableId: 'member', value: 'd3' }),
+      changeColumnDataTypeAction({ id: 'c2', tableId: 'member', value: 'INT' })
+    );
+    const checks = checkRows(store.state, 'amt');
+
+    expect(cells(store, checks)).toEqual([
+      ['Domain type mismatch', 'member.amt', 'INT → NUMERIC(15)'],
+    ]);
+    expect(checkDestination(checks[0])).toEqual({
+      kind: 'erd',
+      target: {
+        kind: 'column',
+        tableId: 'member',
+        columnId: 'c2',
+        focusType: FocusType.columnDomain,
+      },
+    });
   });
 
   it('shows nothing of a target the document no longer holds', () => {

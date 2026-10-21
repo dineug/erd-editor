@@ -491,6 +491,7 @@ export const idID = {
   'dictionary.check.forbiddenWord': 'Kata terlarang',
   'dictionary.check.synonymWord': 'Sinonim',
   'dictionary.check.physicalNameMismatch': 'Nama fisik tidak sesuai',
+  'dictionary.check.domainTypeMismatch': 'Tipe tidak sesuai dengan domain',
   'dictionary.toast.imported':
     '{added} ditambahkan · {updated} diperbarui · {skipped} dilewati',
   'dictionary.toast.unknownDomains': {

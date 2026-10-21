@@ -521,6 +521,7 @@ export const skSK = {
   'dictionary.check.forbiddenWord': 'Zakázané slovo',
   'dictionary.check.synonymWord': 'Synonymum',
   'dictionary.check.physicalNameMismatch': 'Nezhoda fyzického názvu',
+  'dictionary.check.domainTypeMismatch': 'Nezhoda typu s doménou',
   'dictionary.toast.imported':
     'Pridané: {added} · aktualizované: {updated} · preskočené: {skipped}',
   'dictionary.toast.unknownDomains': {

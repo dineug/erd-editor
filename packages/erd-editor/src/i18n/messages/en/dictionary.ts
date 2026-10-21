@@ -1,6 +1,6 @@
 /**
  * The Dictionary tab's own text: its sheets and their column headers, the bar,
- * the grid's menu, the status line, the six kinds of check and the toasts. The
+ * the grid's menu, the status line, the seven kinds of check and the toasts. The
  * file format a button or the empty sheet names enters as a placeholder.
  */
 export const dictionary = {
@@ -56,6 +56,7 @@ export const dictionary = {
   'dictionary.check.forbiddenWord': 'Forbidden word',
   'dictionary.check.synonymWord': 'Synonym',
   'dictionary.check.physicalNameMismatch': 'Physical name mismatch',
+  'dictionary.check.domainTypeMismatch': 'Domain type mismatch',
   'dictionary.toast.imported':
     '{added} added · {updated} updated · {skipped} skipped',
   'dictionary.toast.unknownDomains': {

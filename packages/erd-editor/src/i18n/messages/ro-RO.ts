@@ -521,6 +521,7 @@ export const roRO = {
   'dictionary.check.forbiddenWord': 'Cuvânt interzis',
   'dictionary.check.synonymWord': 'Sinonim',
   'dictionary.check.physicalNameMismatch': 'Nume fizic neconform',
+  'dictionary.check.domainTypeMismatch': 'Tip neconform cu domeniul',
   'dictionary.toast.imported':
     'Adăugate: {added} · actualizate: {updated} · omise: {skipped}',
   'dictionary.toast.unknownDomains': {

@@ -32,6 +32,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
   changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
@@ -132,6 +133,9 @@ function textOf(rng: Rng): string {
 const physicalOf = (rng: Rng) =>
   pick(rng, ['MBR_NO', 'NO', ' MBR_NO ', 'MBR_NM', 'x', '']);
 
+/** The types a domain and a column take, written apart by the atoms, so a link and its type part. */
+const typeOf = (rng: Rng) => pick(rng, ['INT', 'VARCHAR(20)', '']);
+
 function rowValues(rng: Rng, kind: DictionaryKind): Record<string, string> {
   const values: Record<string, string> = {};
   if (rng() < 0.7) {
@@ -153,7 +157,7 @@ function rowValues(rng: Rng, kind: DictionaryKind): Record<string, string> {
     if (rng() < 0.5) values.physicalName = physicalOf(rng);
     if (rng() < 0.4) values.domainId = pick(rng, [...ROW_IDS.domain, '']);
   }
-  if (kind === 'domain' && rng() < 0.3) values.dataType = 'INT';
+  if (kind === 'domain' && rng() < 0.4) values.dataType = typeOf(rng);
   return values;
 }
 
@@ -204,11 +208,14 @@ function columnWrite(
       ? [moveColumnAction({ ...ids, targetId: pick(rng, siblings) })]
       : [];
   }
-  if (roll < 0.55) {
+  if (roll < 0.5) {
     return [changeColumnNameAction({ ...ids, value: physicalOf(rng) })];
   }
-  if (roll < 0.85) {
+  if (roll < 0.75) {
     return [changeColumnLogicalNameAction({ ...ids, value: textOf(rng) })];
+  }
+  if (roll < 0.88) {
+    return [changeColumnDataTypeAction({ ...ids, value: typeOf(rng) })];
   }
   const value = pick(rng, [...ROW_IDS.domain, '', 'gone']);
   return [changeColumnDomainAction({ ...ids, value })];
@@ -275,6 +282,7 @@ function initialWrites(rng: Rng): AnyAction[] {
           tableId,
           value: pick(rng, ROW_IDS.domain),
         }),
+        changeColumnDataTypeAction({ id, tableId, value: typeOf(rng) }),
       ]),
     ]),
   ];
@@ -347,6 +355,7 @@ describe('listDictionaryChecks over random edits', () => {
     (seed, observable) => {
       // The run must meet every check on every kind of target it can mark, or it proves nothing of them.
       expect([...runRandom(seed, observable, 600)].sort()).toEqual([
+        'column domainTypeMismatch',
         'column forbiddenWord',
         'column physicalNameMismatch',
         'column synonymWord',
@@ -440,6 +449,37 @@ describe('the checks a walk holds', () => {
     expect(ofTarget(after, 'a')[0].suggestions).toEqual(['MEMBER_NO']);
     // The columns name no term, so their checks are the ones held.
     expect(ofTarget(after, 'a1')[0]).toBe(ofTarget(checks, 'a1')[0]);
+  });
+
+  it("builds again the columns a domain's type moves, and a column's own type that column alone", () => {
+    const { store, checks } = seeded();
+    const codes = (found: DictionaryCheck[], id: string) =>
+      ofTarget(found, id).map(({ code }) => code);
+    const held = codes(checks, 'a1');
+
+    send(store, [
+      updateDictionaryAction({
+        kind: 'domain',
+        id: 'd1',
+        values: { dataType: 'INT' },
+      }),
+    ]);
+    const typed = listDictionaryChecks(store.state);
+    expect(typed).toEqual(freshChecks(store.state));
+    expect([codes(typed, 'a1'), codes(typed, 'b1')]).toEqual([
+      [...held, 'domainTypeMismatch'],
+      [...held, 'domainTypeMismatch'],
+    ]);
+
+    send(store, [
+      changeColumnDataTypeAction({ id: 'a1', tableId: 'a', value: 'INT' }),
+    ]);
+    const after = listDictionaryChecks(store.state);
+    expect(after).toEqual(freshChecks(store.state));
+    expect(codes(after, 'a1')).toEqual(held);
+    ofTarget(after, 'b1').forEach((check, index) =>
+      expect(check).toBe(ofTarget(typed, 'b1')[index])
+    );
   });
 
   it('reads every name again after a word changes', () => {

@@ -496,6 +496,7 @@ export const faIR = {
   'dictionary.check.forbiddenWord': 'واژه ممنوع',
   'dictionary.check.synonymWord': 'مترادف',
   'dictionary.check.physicalNameMismatch': 'ناهمخوانی نام فیزیکی',
+  'dictionary.check.domainTypeMismatch': 'ناهمخوانی نوع داده دامنه',
   'dictionary.toast.imported':
     '{added} افزوده شد · {updated} به‌روز شد · {skipped} رد شد',
   'dictionary.toast.unknownDomains': {

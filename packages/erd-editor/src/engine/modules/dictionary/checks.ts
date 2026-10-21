@@ -16,7 +16,7 @@ import {
 } from './dictionaryIndex';
 import { isListed } from './membership';
 
-/** The six checks the dictionaries run over the tables, columns and rows. */
+/** The seven checks the dictionaries run over the tables, columns and rows. */
 export const DictionaryCheckCode = {
   duplicateName: 'duplicateName',
   unknownDomain: 'unknownDomain',
@@ -24,6 +24,7 @@ export const DictionaryCheckCode = {
   forbiddenWord: 'forbiddenWord',
   synonymWord: 'synonymWord',
   physicalNameMismatch: 'physicalNameMismatch',
+  domainTypeMismatch: 'domainTypeMismatch',
 } as const;
 export type DictionaryCheckCode = ValuesType<typeof DictionaryCheckCode>;
 
@@ -39,8 +40,8 @@ export type DictionaryCheckLevel = ValuesType<typeof DictionaryCheckLevel>;
 
 /**
  * A name two rows share, a link to no listed domain and a forbidden word are
- * errors; an unregistered word, a synonym and a physical name the term would
- * not give are warnings.
+ * errors; an unregistered word, a synonym, a physical name the term would not
+ * give and a type other than the linked domain's are warnings.
  */
 export const DictionaryCheckLevelOf: Readonly<
   Record<DictionaryCheckCode, DictionaryCheckLevel>
@@ -51,6 +52,7 @@ export const DictionaryCheckLevelOf: Readonly<
   forbiddenWord: DictionaryCheckLevel.error,
   synonymWord: DictionaryCheckLevel.warning,
   physicalNameMismatch: DictionaryCheckLevel.warning,
+  domainTypeMismatch: DictionaryCheckLevel.warning,
 };
 
 /** What a check is about: a table, a column or a dictionary row. */
@@ -62,7 +64,7 @@ export type DictionaryCheckField = 'name' | 'logicalName' | 'domainId';
 /**
  * One finding, read only since the walks hand the same one out again. The
  * target's table id is '' for a dictionary row; suggestions are the standard
- * words or the physical name the dictionaries offer instead of the text.
+ * words, the physical name or the type the dictionaries offer instead of the text.
  */
 export type DictionaryCheck = Readonly<{
   code: DictionaryCheckCode;
@@ -196,6 +198,34 @@ function domainCheck(
   });
 }
 
+/** The type of the listed domain a link names, null for no link or a domain not listed. */
+function linkedDomainType(
+  state: RootState,
+  domainId: string,
+  domainIds = state.doc.domainIds
+): string | null {
+  if (!domainId || !isListed(domainIds, domainId)) return null;
+  return state.collections.domainEntities[domainId]?.dataType ?? null;
+}
+
+/** A column's type other than the one the listed domain it links gives, which a peer's link beside a type change can leave. */
+function domainTypeCheck(
+  state: RootState,
+  { domainId, dataType }: Column,
+  push: Push,
+  domainIds = state.doc.domainIds
+) {
+  const domainType = linkedDomainType(state, domainId, domainIds);
+  if (domainType === null || domainType === dataType) return;
+
+  push({
+    code: DictionaryCheckCode.domainTypeMismatch,
+    field: 'domainId',
+    text: dataType,
+    suggestions: domainType ? [domainType] : [],
+  });
+}
+
 type NamedRow = { id: string; name: string };
 
 const NAME_INDEX: Record<
@@ -265,7 +295,7 @@ export const checkTable = (
     }
   );
 
-/** The checks of a column, or of one of its cells: a table's two and its domain link. */
+/** The checks of a column, or of one of its cells: a table's two, its domain link and its type against that domain's. */
 export const checkColumn = (
   state: RootState,
   column: Column,
@@ -285,7 +315,9 @@ export const checkColumn = (
           column.name,
           push
         );
-      wants('domainId') && domainCheck(state, column.domainId, push);
+      if (!wants('domainId')) return;
+      domainCheck(state, column.domainId, push);
+      domainTypeCheck(state, column, push);
     }
   );
 
@@ -557,7 +589,7 @@ export function* walkDictionaryChecks(
     );
 
     for (const column of columns.selectByIds(table.columnIds)) {
-      const { id, tableId, logicalName, name, domainId } = column;
+      const { id, tableId, logicalName, name, domainId, dataType } = column;
       yield heldChecks(
         columnKept,
         readings,
@@ -569,11 +601,14 @@ export function* walkDictionaryChecks(
           name,
           termPhysicalName(terms, reading.name),
           unknownDomainText(state, domainId, domainIds),
+          dataType,
+          linkedDomainType(state, domainId, domainIds),
         ],
         (push, reading) => {
           pushFindings(reading.findings, 'logicalName', push);
           mismatchCheck(terms, words, logicalName, name, push);
           domainCheck(state, domainId, push, domainIds);
+          domainTypeCheck(state, column, push, domainIds);
         }
       );
     }

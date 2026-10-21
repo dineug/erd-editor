@@ -438,6 +438,12 @@ describe('bumpedSheets', () => {
         changeColumnNameAction({ tableId: 't', id: 'c', value: 'name' }),
       ])
     ).toEqual(['check']);
+    // A column's type is checked against the type of the domain it links.
+    expect(
+      bumpedSheets([
+        changeColumnDataTypeAction({ tableId: 't', id: 'c', value: 'INT' }),
+      ])
+    ).toEqual(['check']);
     expect(
       bumpedSheets([
         moveTableAction({ movementX: 1, movementY: 1, ids: ['t'] }),
@@ -473,7 +479,7 @@ describe('bumpedSheets', () => {
   });
 
   // A peer's drag sends one batch a frame, and each would walk the document.
-  it('raises nothing for a table move, a colour or a column type, which no check reads', () => {
+  it('raises nothing for a table move or a colour, which no check reads', () => {
     expect(
       bumpedSheets([
         moveTableAction({ movementX: 1, movementY: 1, ids: ['t'] }),
@@ -482,7 +488,6 @@ describe('bumpedSheets', () => {
     expect(
       bumpedSheets([
         changeTableColorAction({ id: 't', color: '#ffffff', prevColor: '' }),
-        changeColumnDataTypeAction({ tableId: 't', id: 'c', value: 'INT' }),
       ])
     ).toEqual([]);
   });

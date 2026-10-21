@@ -498,6 +498,7 @@ export const jaJP = {
   'dictionary.check.forbiddenWord': '禁止語',
   'dictionary.check.synonymWord': '同義語',
   'dictionary.check.physicalNameMismatch': '物理名の不一致',
+  'dictionary.check.domainTypeMismatch': 'ドメインとのデータ型の不一致',
   'dictionary.toast.imported':
     '追加 {added} 件 · 更新 {updated} 件 · スキップ {skipped} 件',
   'dictionary.toast.unknownDomains': {

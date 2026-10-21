@@ -522,6 +522,7 @@ export const slSI = {
   'dictionary.check.forbiddenWord': 'Prepovedana beseda',
   'dictionary.check.synonymWord': 'Sopomenka',
   'dictionary.check.physicalNameMismatch': 'Neujemanje fizičnega imena',
+  'dictionary.check.domainTypeMismatch': 'Neujemanje tipa z domeno',
   'dictionary.toast.imported':
     'Dodano: {added} · posodobljeno: {updated} · preskočeno: {skipped}',
   'dictionary.toast.unknownDomains': {

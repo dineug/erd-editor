@@ -481,6 +481,7 @@ export const koKR = {
   'dictionary.check.forbiddenWord': '금칙어',
   'dictionary.check.synonymWord': '이음동의어',
   'dictionary.check.physicalNameMismatch': '물리명 불일치',
+  'dictionary.check.domainTypeMismatch': '도메인 타입 불일치',
   'dictionary.toast.imported':
     '{added}개 추가 · {updated}개 수정 · {skipped}개 건너뜀',
   'dictionary.toast.unknownDomains': {

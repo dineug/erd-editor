@@ -530,6 +530,7 @@ export const arSA = {
   'dictionary.check.forbiddenWord': 'كلمة محظورة',
   'dictionary.check.synonymWord': 'مرادف',
   'dictionary.check.physicalNameMismatch': 'عدم تطابق الاسم المادي',
+  'dictionary.check.domainTypeMismatch': 'عدم تطابق نوع بيانات المجال',
   'dictionary.toast.imported':
     'تمت إضافة {added} · تم تحديث {updated} · تم تخطي {skipped}',
   'dictionary.toast.unknownDomains': {

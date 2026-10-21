@@ -502,6 +502,7 @@ export const svSE = {
   'dictionary.check.forbiddenWord': 'Förbjudet ord',
   'dictionary.check.synonymWord': 'Synonym',
   'dictionary.check.physicalNameMismatch': 'Avvikande fysiskt namn',
+  'dictionary.check.domainTypeMismatch': 'Avvikelse från domäntypen',
   'dictionary.toast.imported':
     '{added} tillagda · {updated} uppdaterade · {skipped} överhoppade',
   'dictionary.toast.unknownDomains': {

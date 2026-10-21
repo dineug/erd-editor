@@ -521,6 +521,7 @@ export const itIT = {
   'dictionary.check.forbiddenWord': 'Parola vietata',
   'dictionary.check.synonymWord': 'Sinonimo',
   'dictionary.check.physicalNameMismatch': 'Nome fisico non conforme',
+  'dictionary.check.domainTypeMismatch': 'Tipo non conforme al dominio',
   'dictionary.toast.imported':
     'Aggiunte: {added} · aggiornate: {updated} · ignorate: {skipped}',
   'dictionary.toast.unknownDomains': {

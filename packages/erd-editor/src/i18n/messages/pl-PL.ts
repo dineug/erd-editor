@@ -525,6 +525,7 @@ export const plPL = {
   'dictionary.check.forbiddenWord': 'Słowo zakazane',
   'dictionary.check.synonymWord': 'Synonim',
   'dictionary.check.physicalNameMismatch': 'Niezgodna nazwa fizyczna',
+  'dictionary.check.domainTypeMismatch': 'Typ niezgodny z domeną',
   'dictionary.toast.imported':
     'Dodano: {added} · zaktualizowano: {updated} · pominięto: {skipped}',
   'dictionary.toast.unknownDomains': {

@@ -266,8 +266,8 @@ const isDictionaryWrite = arrayHas<string>(Object.values(DictionaryActionType));
 
 /**
  * A write the checks read: a table's or a column's listing, order, name,
- * logical name or domain link, or a switch of the name view the check targets
- * follow. A move, a colour or a type changes no check, so it lists nothing again.
+ * logical name, type or domain link, or a switch of the name view the check
+ * targets follow. A move or a colour changes no check, so it lists nothing again.
  */
 const isSchemaWrite = arrayHas<string>([
   TableActionType.addTable,
@@ -280,6 +280,7 @@ const isSchemaWrite = arrayHas<string>([
   ColumnActionType.moveColumn,
   ColumnActionType.changeColumnName,
   ColumnActionType.changeColumnLogicalName,
+  ColumnActionType.changeColumnDataType,
   ColumnActionType.changeColumnDomain,
   SettingsActionType.changeNameViewMode,
   SettingsActionType.changeLockSettings,

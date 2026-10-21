@@ -522,6 +522,7 @@ export const esES = {
   'dictionary.check.forbiddenWord': 'Palabra prohibida',
   'dictionary.check.synonymWord': 'Sinónimo',
   'dictionary.check.physicalNameMismatch': 'Discrepancia de nombre físico',
+  'dictionary.check.domainTypeMismatch': 'Discrepancia de tipo de dominio',
   'dictionary.toast.imported':
     'Añadidas: {added} · actualizadas: {updated} · omitidas: {skipped}',
   'dictionary.toast.unknownDomains': {

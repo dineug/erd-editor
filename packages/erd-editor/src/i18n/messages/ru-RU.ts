@@ -525,6 +525,7 @@ export const ruRU = {
   'dictionary.check.forbiddenWord': 'Запрещенное слово',
   'dictionary.check.synonymWord': 'Синоним',
   'dictionary.check.physicalNameMismatch': 'Несоответствие физического имени',
+  'dictionary.check.domainTypeMismatch': 'Несоответствие типа домену',
   'dictionary.toast.imported':
     'Добавлено: {added} · обновлено: {updated} · пропущено: {skipped}',
   'dictionary.toast.unknownDomains': {

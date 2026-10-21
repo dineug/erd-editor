@@ -526,6 +526,7 @@ export const frFR = {
   'dictionary.check.forbiddenWord': 'Mot interdit',
   'dictionary.check.synonymWord': 'Synonyme',
   'dictionary.check.physicalNameMismatch': 'Nom physique non conforme',
+  'dictionary.check.domainTypeMismatch': 'Type non conforme au domaine',
   'dictionary.toast.imported':
     'Ajoutées : {added} · mises à jour : {updated} · ignorées : {skipped}',
   'dictionary.toast.unknownDomains': {

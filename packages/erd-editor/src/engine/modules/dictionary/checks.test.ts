@@ -28,6 +28,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
   changeColumnDomainAction,
   changeColumnLogicalNameAction,
   changeColumnNameAction,
@@ -52,16 +53,18 @@ function table(id: string, name: string, logicalName: string): AnyAction[] {
   ];
 }
 
+/** A column as the atoms write it, so its type and its link need not agree as a generator keeps them. */
 function column(
   tableId: string,
   id: string,
-  { name = '', logicalName = '', domainId = '' }
+  { name = '', logicalName = '', domainId = '', dataType = '' }
 ): AnyAction[] {
   return [
     addColumnAction({ id, tableId }),
     changeColumnNameAction({ id, tableId, value: name }),
     changeColumnLogicalNameAction({ id, tableId, value: logicalName }),
     changeColumnDomainAction({ id, tableId, value: domainId }),
+    changeColumnDataTypeAction({ id, tableId, value: dataType }),
   ];
 }
 
@@ -72,6 +75,7 @@ const SCHEMA: AnyAction[] = [
     name: 'MBR_NO',
     logicalName: '회원번호',
     domainId: 'd1',
+    dataType: 'NUMERIC(10)',
   }),
   ...column('member', 'c2', { name: ' member_no ', logicalName: '회원번호' }),
   ...column('member', 'c3', { name: 'm', logicalName: '멤버넘버' }),
@@ -106,7 +110,7 @@ const DICTIONARIES: AnyAction[] = [
   row('term', 't4', { name: '멤버이름' }),
   row('domain', 'd1', { name: '번호N10', dataType: 'NUMERIC(10)' }),
   row('domain', 'd2', { name: '번호N10' }),
-  row('domain', 'd3', { name: '삭제된도메인' }),
+  row('domain', 'd3', { name: '삭제된도메인', dataType: 'TEXT' }),
   removeDictionaryAction({ kind: 'domain', id: 'd3' }),
 ];
 
@@ -238,6 +242,31 @@ describe('dictionary checks', () => {
     ]);
   });
 
+  it("marks a column off the type of the listed domain it links, by its type and the domain's", () => {
+    const store = seed(SCHEMA, DICTIONARIES, [
+      ...column('member', 'c7', { domainId: 'd1', dataType: 'INT' }),
+      ...column('member', 'c8', { domainId: 'd2', dataType: 'INT' }),
+      ...column('member', 'c9', { dataType: 'INT' }),
+    ]);
+
+    expect(read(checkColumn(store.state, columnOf(store, 'c7')))).toEqual([
+      ['domainTypeMismatch', 'domainId', 'INT', ['NUMERIC(10)']],
+    ]);
+    // A domain with no type gives its columns none, so it offers nothing to write.
+    expect(read(checkColumn(store.state, columnOf(store, 'c8')))).toEqual([
+      ['domainTypeMismatch', 'domainId', 'INT', []],
+    ]);
+    expect(checkColumn(store.state, columnOf(store, 'c1'))).toEqual([]);
+    expect(checkColumn(store.state, columnOf(store, 'c9'))).toEqual([]);
+    // c5 links the removed d3 off its type: the unknown domain alone.
+    expect(read(checkColumn(store.state, columnOf(store, 'c5')))).toEqual([
+      ['unknownDomain', 'domainId', '삭제된도메인', []],
+    ]);
+    expect(markOf(checkColumn(store.state, columnOf(store, 'c7')))).toBe(
+      'warning'
+    );
+  });
+
   it('keeps each check silent while its own sheet is empty', () => {
     const terms = seed(SCHEMA, [
       row('term', 't1', { name: '회원번호', physicalName: 'MBR_NO' }),
@@ -327,7 +356,7 @@ describe('markOf', () => {
     );
   });
 
-  it('gives each of the six checks a level', () => {
+  it('gives each of the seven checks a level', () => {
     expect(DictionaryCheckCodeList).toEqual([
       'duplicateName',
       'unknownDomain',
@@ -335,18 +364,29 @@ describe('markOf', () => {
       'forbiddenWord',
       'synonymWord',
       'physicalNameMismatch',
+      'domainTypeMismatch',
     ]);
     expect(
       DictionaryCheckCodeList.map(code => DictionaryCheckLevelOf[code])
-    ).toEqual(['error', 'error', 'warning', 'error', 'warning', 'warning']);
+    ).toEqual([
+      'error',
+      'error',
+      'warning',
+      'error',
+      'warning',
+      'warning',
+      'warning',
+    ]);
   });
 });
 
 describe('listDictionaryChecks', () => {
   it('lists the sheets in their order, then each table and its columns, the removed left out', () => {
     const store = seed(SCHEMA, DICTIONARIES, [
+      ...column('member', 'c7', { domainId: 'd1', dataType: 'INT' }),
       ...table('gone', 'gone', '고객'),
       ...column('gone', 'c10', { name: 'q', domainId: 'never' }),
+      ...column('gone', 'c11', { domainId: 'd1', dataType: 'INT' }),
       removeTableAction({ id: 'gone' }),
     ]);
 
@@ -372,6 +412,7 @@ describe('listDictionaryChecks', () => {
       ['column', 'c4', 'unregisteredWord'],
       ['column', 'c5', 'unknownDomain'],
       ['column', 'c6', 'unknownDomain'],
+      ['column', 'c7', 'domainTypeMismatch'],
       ['table', 'customer', 'unregisteredWord'],
     ]);
   });

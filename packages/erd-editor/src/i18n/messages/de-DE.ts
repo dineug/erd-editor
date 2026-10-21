@@ -518,6 +518,7 @@ export const deDE = {
   'dictionary.check.forbiddenWord': 'Verbotenes Wort',
   'dictionary.check.synonymWord': 'Synonym',
   'dictionary.check.physicalNameMismatch': 'Abweichender physischer Name',
+  'dictionary.check.domainTypeMismatch': 'Abweichung vom Datentyp der Domäne',
   'dictionary.toast.imported':
     '{added} hinzugefügt · {updated} aktualisiert · {skipped} übersprungen',
   'dictionary.toast.unknownDomains': {

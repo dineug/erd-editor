@@ -468,6 +468,7 @@ export const zhTW = {
   'dictionary.check.forbiddenWord': '禁用詞',
   'dictionary.check.synonymWord': '同義詞',
   'dictionary.check.physicalNameMismatch': '物理名稱不符',
+  'dictionary.check.domainTypeMismatch': '定義域資料類型不符',
   'dictionary.toast.imported':
     '新增 {added} 筆 · 更新 {updated} 筆 · 略過 {skipped} 筆',
   'dictionary.toast.unknownDomains': {

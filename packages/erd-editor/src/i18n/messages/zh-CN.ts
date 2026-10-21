@@ -468,6 +468,7 @@ export const zhCN = {
   'dictionary.check.forbiddenWord': '禁用词',
   'dictionary.check.synonymWord': '同义词',
   'dictionary.check.physicalNameMismatch': '物理名不一致',
+  'dictionary.check.domainTypeMismatch': '域数据类型不一致',
   'dictionary.toast.imported':
     '添加 {added} 项 · 更新 {updated} 项 · 跳过 {skipped} 项',
   'dictionary.toast.unknownDomains': {
