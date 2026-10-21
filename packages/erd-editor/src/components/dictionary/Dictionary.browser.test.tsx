@@ -725,18 +725,12 @@ describe('the Dictionary tab', () => {
   it('counts each sheet on its button, the checks once the browser is idle, in the colour of the loudest', async () => {
     const counts = (fixture: Fixture) =>
       sheetButtons(fixture).map(button => button.lastElementChild!);
-    const idle = () =>
-      new Promise(resolve => requestIdleCallback(() => resolve(undefined)));
+    // The checks are counted over as many idle periods as the walk takes.
+    const texts = (fixture: Fixture) =>
+      counts(fixture).map(count => count.textContent);
 
     const fixture = await setup({ seed: [...WORDS, word('e', 'A')] });
-    await idle();
-    await drawn();
-    expect(counts(fixture).map(count => count.textContent)).toEqual([
-      '5',
-      '0',
-      '0',
-      '2',
-    ]);
+    await expect.poll(() => texts(fixture)).toEqual(['5', '0', '0', '2']);
     // The count reads out with nothing, since the name is the button's name.
     expect(counts(fixture)[0].getAttribute('aria-hidden')).toBe('true');
     expect(
@@ -745,14 +739,7 @@ describe('the Dictionary tab', () => {
 
     await press('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
     await click(buttonNamed(fixture, 'Delete Rows'));
-    await idle();
-    await drawn();
-    expect(counts(fixture).map(count => count.textContent)).toEqual([
-      '4',
-      '0',
-      '0',
-      '0',
-    ]);
+    await expect.poll(() => texts(fixture)).toEqual(['4', '0', '0', '0']);
     expect(counts(fixture)[3].classList.contains(String(styles.count))).toBe(
       true
     );
@@ -761,16 +748,12 @@ describe('the Dictionary tab', () => {
   it("colours the check sheet's count as a warning while every check is one", async () => {
     const counts = (fixture: Fixture) =>
       sheetButtons(fixture).map(button => button.lastElementChild!);
-    const idle = () =>
-      new Promise(resolve => requestIdleCallback(() => resolve(undefined)));
 
     // An unregistered word in a column's logical name is a warning alone.
     const warned = await setup({
       seed: [word('m', '회원'), ...memberTable('회원', '주소')],
     });
-    await idle();
-    await drawn();
-    expect(counts(warned)[3].textContent).toBe('1');
+    await expect.poll(() => counts(warned)[3].textContent).toBe('1');
     expect(
       counts(warned)[3].classList.contains(String(styles.countWarning))
     ).toBe(true);

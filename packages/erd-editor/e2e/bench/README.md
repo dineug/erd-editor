@@ -62,7 +62,7 @@ request, so a comparison is always against a baseline someone chose.
 | `screenshot.bench.ts`  | Renders three scenes plus the selected corpus to PNG for a person to look at; with `visualization-shots.bench.ts`, the only whole-image review in this package (its e2e specs and browser tests read pixels for one property each) |
 | `view.bench.ts`        | Diagnostic: what the Flow view costs — a hover and a document edit |
 | `visualization-shots.bench.ts` | Twelve frames of the Visualization tab for a person to judge; it measures nothing |
-| `dictionary.bench.ts`  | Diagnostic: the Dictionary tab at the public standard's sizes — an import with the tab open, the term sheet's scroll frames and the term list's keys, each against its bound |
+| `dictionary.bench.ts`  | Diagnostic: the Dictionary tab at the public standard's sizes — an import with the tab open, the term sheet's scroll frames, the term list's keys and the checks' walk after each kind of write, each against its bound |
 | `report.ts`            | The JSON report every bench but `routing.bench.ts` writes through |
 | `baselines/`           | Committed results that cannot be re-measured from the working tree |
 
@@ -708,7 +708,7 @@ The variable is still needed, since without it `testMatch` holds
 sizes: 129 domains, 3,284 words and 13,176 terms. The rows are synthetic, built
 from a fixed seed under the three public-standard files' headers, the columns no
 layout reads included, and written as UTF-8 with a byte order mark; no real
-file is read. Each of its three tests starts on a fresh page:
+file is read. Each of its four tests starts on a fresh page:
 
 - **The import** hands the three files to the input Import CSV opens
   (`setInputFiles`), the domains, the words, then the terms, with the tab open
@@ -735,15 +735,37 @@ file is read. Each of its three tests starts on a fresh page:
   and 300 timed, a frame between keys. Each key is timed from its first event,
   a `keydown` or the `beforeinput` an inserted syllable makes, to the
   `MutationObserver` callback that sees the term list change.
+- **The checks** put the three dictionaries beside 500 tables of 30 columns,
+  most named by a term and the rest by words no term lists, an unregistered
+  syllable, a synonym or a forbidden word, a few with a hand-written name. The
+  element hands out no store, so the probe builds one of the editor's
+  observable kind from the dev server's modules and times
+  `listDictionaryChecks` in it, 15 runs a case, each after the index rebuild
+  the write cost, timed apart: a walk with nothing written, then after a
+  table's name, a column's logical name, a word's abbreviation and a term's
+  physical name, and last a cold walk after the document opens again, whose
+  dropped documents cost one collection of a few hundred milliseconds that
+  would land in the case after it. Before them it walks `walkDictionaryChecks`
+  a step at a time after a word's write: its longest step is what one slice of
+  the tab's idle count costs at least.
 
 It prints each figure beside its bound and whether it is within it: frame work
-p95 within 16 ms for each scroll scenario, key p95 within 16 ms, and for each
-file 2,000 ms from change to idle with no task over 1,000 ms. It fails on none
-of them. It fails when it measured the wrong thing: a scroll scenario that drew
-none of the grid, a wheel that moved nothing, a thumb drag short of the end, a
-wheel point or a thumb over something other than the scroller, a file whose rows
-never list, a key the list never answered, or a page error. Its report is
-`dictionary.latest.json`.
+p95 within 16 ms for each scroll scenario, key p95 within 16 ms, for each file
+2,000 ms from change to idle with no task over 1,000 ms, and each checks case's
+walk p50 and the longest step's p50 within 16 ms. It fails on none of them. It
+fails when it measured the wrong thing: a scroll scenario that drew none of the
+grid, a wheel that moved nothing, a thumb drag short of the end, a wheel point
+or a thumb over something other than the scroller, a file whose rows never
+list, a key the list never answered, a document whose walk found no check, or a
+page error. Its report is `dictionary.latest.json`.
+
+The checks measured on 2026-10-21, on an Apple M5 with 24 GB under macOS in
+headless Chromium 151, once each target's checks were held across walks: walk
+p50 7.5 ms with nothing written, 7.4 ms after a table's name, 7.1 ms after a
+column's logical name, 10.0 ms after a term's physical name, 34.8 ms after a
+word's abbreviation, which every name reads again and which is why the idle
+count walks in slices, and 39.8 ms cold; the longest step after a word's write
+2.9 ms. Another suite running beside it doubles them.
 
 ```bash
 E2E_BENCH_ALL=1 pnpm --filter @dineug/erd-editor e2e:bench dictionary.bench.ts

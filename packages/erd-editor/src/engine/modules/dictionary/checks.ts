@@ -1,10 +1,10 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import type { RootState } from '@/engine/state';
-import type { Column, Table, ValuesType } from '@/internal-types';
+import type { Column, Domain, Table, Term, ValuesType } from '@/internal-types';
 
-import { DictionaryKind, DictionaryKindList } from './actions';
-import { decompose, derivePhysical, WordTokenKind } from './derive';
+import { DictionaryKind } from './actions';
+import { compose, decompose, WordTokenKind } from './derive';
 import {
   DictionaryRowOf,
   getDomainNames,
@@ -12,6 +12,7 @@ import {
   getWordIndex,
   NameIndex,
   normalizeDictionaryName,
+  WordIndex,
 } from './dictionaryIndex';
 import { isListed } from './membership';
 
@@ -59,24 +60,25 @@ export type DictionaryCheckTargetKind = 'table' | 'column' | DictionaryKind;
 export type DictionaryCheckField = 'name' | 'logicalName' | 'domainId';
 
 /**
- * One finding. The target's table id is set for a table or a column and ''
- * for a dictionary row. The text is what the check found, and suggestions are
- * the standard words or the physical name the dictionaries offer instead.
+ * One finding, read only since the walks hand the same one out again. The
+ * target's table id is '' for a dictionary row; suggestions are the standard
+ * words or the physical name the dictionaries offer instead of the text.
  */
-export type DictionaryCheck = {
+export type DictionaryCheck = Readonly<{
   code: DictionaryCheckCode;
-  target: {
+  target: Readonly<{
     kind: DictionaryCheckTargetKind;
     id: string;
     tableId: string;
-  };
+  }>;
   field: DictionaryCheckField;
   text: string;
-  suggestions: string[];
-};
+  suggestions: ReadonlyArray<string>;
+}>;
 
 type Target = DictionaryCheck['target'];
-type Push = (check: Omit<DictionaryCheck, 'target'>) => void;
+type Found = Omit<DictionaryCheck, 'target'>;
+type Push = (check: Found) => void;
 
 const TOKEN_CODE = {
   [WordTokenKind.synonym]: DictionaryCheckCode.synonymWord,
@@ -88,16 +90,19 @@ const uniqueNames = (rows: ReadonlyArray<{ name: string }>): string[] => [
   ...new Set(rows.map(({ name }) => normalizeDictionaryName(name))),
 ];
 
-/** The words a name uses that the word sheet lists as no standard word; silent with no word. */
-function wordChecks(
-  state: RootState,
-  field: DictionaryCheckField,
-  name: string,
-  push: Push
-) {
-  const index = getWordIndex(state);
-  if (index.byName.size === 0) return;
+/** A word check before the cell it marks is known, the same for every target whose text it read. */
+type WordFinding = Omit<Found, 'field'>;
 
+const NONE: ReadonlyArray<never> = Object.freeze([]);
+
+/** The words a name uses that the word sheet lists as no standard word; none with no word. */
+function wordFindings(
+  index: WordIndex,
+  name: string
+): ReadonlyArray<WordFinding> {
+  if (index.byName.size === 0) return NONE;
+
+  const findings: WordFinding[] = [];
   const seen = new Set<string>();
   for (const token of decompose(index, name)) {
     if (token.kind === WordTokenKind.word) continue;
@@ -107,45 +112,86 @@ function wordChecks(
     if (seen.has(key)) continue;
 
     seen.add(key);
-    push({
+    findings.push({
       code,
-      field,
       text: token.text,
       suggestions: uniqueNames(token.words),
     });
   }
+  return findings.length ? findings : NONE;
 }
 
-/** A physical name other than the one the matched term gives; silent with no term. */
-function mismatchCheck(
+function pushFindings(
+  findings: ReadonlyArray<WordFinding>,
+  field: DictionaryCheckField,
+  push: Push
+) {
+  for (const { code, text, suggestions } of findings) {
+    push({ code, field, text, suggestions });
+  }
+}
+
+const wordChecks = (
   state: RootState,
+  field: DictionaryCheckField,
+  name: string,
+  push: Push
+) => pushFindings(wordFindings(getWordIndex(state), name), field, push);
+
+/**
+ * A physical name other than the one the matched term gives, read from the
+ * indexes handed, which a walk takes as it begins; silent with no term.
+ */
+function mismatchCheck(
+  terms: NameIndex<Term>,
+  words: WordIndex,
   logicalName: string,
   physicalName: string,
   push: Push
 ) {
-  const derived = derivePhysical(state, logicalName);
-  if (!derived?.term || !derived.physicalName) return;
-  if (physicalName.trim() === derived.physicalName) return;
+  const name = normalizeDictionaryName(logicalName);
+  const term = name ? terms.byName.get(name)?.[0] : undefined;
+  if (!term) return;
+
+  // What derivePhysical gives on these indexes: the term's own, else the words composed.
+  const derived =
+    term.physicalName.trim() ||
+    (words.byName.size === 0 ? '' : (compose(decompose(words, name)) ?? ''));
+  if (!derived || physicalName.trim() === derived) return;
 
   push({
     code: DictionaryCheckCode.physicalNameMismatch,
     field: 'name',
     text: physicalName,
-    suggestions: [derived.physicalName],
+    suggestions: [derived],
   });
 }
 
-/** A link to a domain the document does not list; silent with no domain listed. */
-function domainCheck(state: RootState, domainId: string, push: Push) {
-  const { domainIds } = state.doc;
+/** The text a link to a domain the document does not list shows, null for none; silent with no domain listed. */
+function unknownDomainText(
+  state: RootState,
+  domainId: string,
+  domainIds = state.doc.domainIds
+): string | null {
   if (!domainId || domainIds.length === 0 || isListed(domainIds, domainId)) {
-    return;
+    return null;
   }
+  return state.collections.domainEntities[domainId]?.name || domainId;
+}
+
+function domainCheck(
+  state: RootState,
+  domainId: string,
+  push: Push,
+  domainIds = state.doc.domainIds
+) {
+  const text = unknownDomainText(state, domainId, domainIds);
+  if (text === null) return;
 
   push({
     code: DictionaryCheckCode.unknownDomain,
     field: 'domainId',
-    text: state.collections.domainEntities[domainId]?.name || domainId,
+    text,
     suggestions: [],
   });
 }
@@ -161,13 +207,15 @@ const NAME_INDEX: Record<
   [DictionaryKind.domain]: getDomainNames,
 };
 
-/** A name another listed row of the same sheet holds; a row without a name has none. */
+/** Whether another listed row of the sheet holds the normalized name; an empty name has none. */
+function sharesName(index: NameIndex<NamedRow>, name: string, id: string) {
+  const named = name ? index.byName.get(name) : undefined;
+  return !!named && named.length > 1 && named.some(row => row.id === id);
+}
+
 function duplicateCheck(index: NameIndex<NamedRow>, row: NamedRow, push: Push) {
   const name = normalizeDictionaryName(row.name);
-  const named = name ? index.byName.get(name) : undefined;
-  if (!named || named.length < 2 || !named.some(({ id }) => id === row.id)) {
-    return;
-  }
+  if (!sharesName(index, name, row.id)) return;
 
   push({
     code: DictionaryCheckCode.duplicateName,
@@ -207,7 +255,13 @@ export const checkTable = (
       wants('logicalName') &&
         wordChecks(state, 'logicalName', table.logicalName, push);
       wants('name') &&
-        mismatchCheck(state, table.logicalName, table.name, push);
+        mismatchCheck(
+          getTermNames(state),
+          getWordIndex(state),
+          table.logicalName,
+          table.name,
+          push
+        );
     }
   );
 
@@ -224,7 +278,13 @@ export const checkColumn = (
       wants('logicalName') &&
         wordChecks(state, 'logicalName', column.logicalName, push);
       wants('name') &&
-        mismatchCheck(state, column.logicalName, column.name, push);
+        mismatchCheck(
+          getTermNames(state),
+          getWordIndex(state),
+          column.logicalName,
+          column.name,
+          push
+        );
       wants('domainId') && domainCheck(state, column.domainId, push);
     }
   );
@@ -261,38 +321,273 @@ export function markOf(
   return mark;
 }
 
-/**
- * Every check of the document, for the sheet that lists them and the count on
- * its button: the words, the terms and the domains in sheet order, then each
- * table and its columns in document order. It walks everything.
- */
-export function listDictionaryChecks(state: RootState): DictionaryCheck[] {
-  const { doc, collections } = state;
-  const checks: DictionaryCheck[] = [];
+/** What the words read in a text, a term's name or a logical name: held while the text and the word index are the same. */
+type Reading = {
+  words: WordIndex;
+  text: string;
+  /** The text as every lookup compares it. */
+  name: string;
+  findings: ReadonlyArray<WordFinding>;
+};
 
-  for (const kind of DictionaryKindList) {
-    for (const row of NAME_INDEX[kind](state).rows) {
-      checks.push(
-        ...checkDictionaryRow(
-          state,
-          kind,
-          row as DictionaryRowOf[DictionaryKind]
-        )
-      );
-    }
+/** What a walk last found for one target, and the values its checks read to find it. */
+type Held = {
+  walk: number;
+  reading: Reading;
+  inputs: ReadonlyArray<unknown>;
+  checks: ReadonlyArray<DictionaryCheck>;
+};
+
+/** What the walks hold of one collection's targets, by id, and how many the current walk met. */
+type Kept = { held: Map<string, Held>; walk: number; met: number };
+
+const keptOf = new WeakMap<object, Kept>();
+
+/**
+ * Starts a walk over a collection's targets. A load brings new collections,
+ * so nothing held over the document before is read again.
+ */
+function beginWalk(collection: object): Kept {
+  let kept = keptOf.get(collection);
+  if (!kept) {
+    kept = { held: new Map(), walk: 0, met: 0 };
+    keptOf.set(collection, kept);
+  }
+  kept.walk++;
+  kept.met = 0;
+  return kept;
+}
+
+/** Forgets the targets a walk run to its end did not meet, unless a later walk began meanwhile. */
+function endWalk(kept: Kept, walk: number) {
+  if (kept.walk !== walk || kept.held.size === kept.met) return;
+
+  for (const [id, held] of kept.held) {
+    if (held.walk !== walk) kept.held.delete(id);
+  }
+}
+
+const sameInputs = (a: ReadonlyArray<unknown>, b: ReadonlyArray<unknown>) =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+/** The reading a target held while its text and the words stand, else the walk's of the text, read once per walk. */
+function readingOf(
+  held: Held | undefined,
+  readings: Map<string, Reading>,
+  words: WordIndex,
+  text: string
+): Reading {
+  const reading = held?.reading;
+  if (reading && reading.words === words && reading.text === text) {
+    return reading;
   }
 
+  let read = readings.get(text);
+  if (!read) {
+    read = {
+      words,
+      text,
+      name: normalizeDictionaryName(text),
+      findings: wordFindings(words, text),
+    };
+    readings.set(text, read);
+  }
+  return read;
+}
+
+/**
+ * The checks of one target, built again only once its reading or a value
+ * they read changes: its own fields and what the indexes answer for them,
+ * never the entity object, which the store writes in place.
+ */
+function heldChecks(
+  kept: Kept,
+  readings: Map<string, Reading>,
+  target: Target,
+  words: WordIndex,
+  text: string,
+  inputsOf: (reading: Reading) => ReadonlyArray<unknown>,
+  run: (push: Push, reading: Reading) => void
+): ReadonlyArray<DictionaryCheck> {
+  let held = kept.held.get(target.id);
+  if (held?.walk !== kept.walk) kept.met++;
+
+  const reading = readingOf(held, readings, words, text);
+  const inputs = inputsOf(reading);
+
+  if (!held || held.reading !== reading || !sameInputs(held.inputs, inputs)) {
+    const checks: DictionaryCheck[] = [];
+    run(check => checks.push({ ...check, target }), reading);
+
+    held = {
+      walk: kept.walk,
+      reading,
+      inputs,
+      checks: checks.length ? checks : NONE,
+    };
+    kept.held.set(target.id, held);
+  }
+
+  held.walk = kept.walk;
+  return held.checks;
+}
+
+/** The physical name of the term a name matches, which the mismatch reads, null with no term. */
+const termPhysicalName = (terms: NameIndex<Term>, name: string) =>
+  terms.byName.get(name)?.[0]?.physicalName ?? null;
+
+const sheetChecksOf = new WeakMap<object, ReadonlyArray<DictionaryCheck>>();
+
+/** The checks of the word or the domain sheet, which read that sheet alone: held per index. */
+function sheetChecks(
+  state: RootState,
+  kind: typeof DictionaryKind.word | typeof DictionaryKind.domain,
+  index: NameIndex<NamedRow>
+): ReadonlyArray<DictionaryCheck> {
+  let checks = sheetChecksOf.get(index);
+  if (!checks) {
+    checks = index.rows.flatMap(row =>
+      checkDictionaryRow(state, kind, row as DictionaryRowOf[typeof kind])
+    );
+    sheetChecksOf.set(index, checks);
+  }
+  return checks;
+}
+
+type TermSheetChecks = {
+  words: WordIndex;
+  domains: NameIndex<Domain>;
+  checks: ReadonlyArray<DictionaryCheck>;
+};
+
+const termSheetChecksOf = new WeakMap<object, TermSheetChecks>();
+
+/** The term sheet's checks one term at a time, or all at once while the three indexes they read stand. */
+function* termSheetSteps(
+  state: RootState,
+  readings: Map<string, Reading>,
+  words: WordIndex,
+  terms: NameIndex<Term>,
+  domains: NameIndex<Domain>
+): Generator<ReadonlyArray<DictionaryCheck>, void, undefined> {
+  const sheet = termSheetChecksOf.get(terms);
+  if (sheet && sheet.words === words && sheet.domains === domains) {
+    yield sheet.checks;
+    return;
+  }
+
+  const kept = beginWalk(state.collections.termEntities);
+  const { walk } = kept;
+  const { domainIds } = state.doc;
+  const checks: DictionaryCheck[] = [];
+
+  for (const term of terms.rows) {
+    const { id, name, domainId } = term;
+    const found = heldChecks(
+      kept,
+      readings,
+      { kind: DictionaryKind.term, id, tableId: '' },
+      words,
+      name,
+      reading => [
+        sharesName(terms, reading.name, id),
+        unknownDomainText(state, domainId, domainIds),
+      ],
+      (push, reading) => {
+        duplicateCheck(terms, term, push);
+        pushFindings(reading.findings, 'name', push);
+        domainCheck(state, domainId, push, domainIds);
+      }
+    );
+    for (const check of found) checks.push(check);
+    yield found;
+  }
+
+  endWalk(kept, walk);
+  termSheetChecksOf.set(terms, { words, domains, checks });
+}
+
+/**
+ * Every check of the document in the order listDictionaryChecks gives them,
+ * a sheet, a term, a table or a column at a time, so a caller can stop
+ * between two and go on while the state stays as it was.
+ */
+export function* walkDictionaryChecks(
+  state: RootState
+): Generator<ReadonlyArray<DictionaryCheck>, void, undefined> {
+  const { doc, collections } = state;
+  const words = getWordIndex(state);
+  const terms = getTermNames(state);
+  const domains = getDomainNames(state);
+
+  // A logical name a term holds reads the same, so the term sheet's readings serve the tables too.
+  const readings = new Map<string, Reading>();
+
+  yield sheetChecks(state, DictionaryKind.word, words);
+  yield* termSheetSteps(state, readings, words, terms, domains);
+  yield sheetChecks(state, DictionaryKind.domain, domains);
+
+  const tableKept = beginWalk(collections.tableEntities);
+  const tableWalk = tableKept.walk;
+  const columnKept = beginWalk(collections.tableColumnEntities);
+  const columnWalk = columnKept.walk;
+  const { domainIds } = doc;
   const tables = query(collections)
     .collection('tableEntities')
     .selectByIds(doc.tableIds);
   const columns = query(collections).collection('tableColumnEntities');
 
   for (const table of tables) {
-    checks.push(...checkTable(state, table));
+    const { id, logicalName, name } = table;
+    yield heldChecks(
+      tableKept,
+      readings,
+      { kind: 'table', id, tableId: id },
+      words,
+      logicalName,
+      reading => [name, termPhysicalName(terms, reading.name)],
+      (push, reading) => {
+        pushFindings(reading.findings, 'logicalName', push);
+        mismatchCheck(terms, words, logicalName, name, push);
+      }
+    );
+
     for (const column of columns.selectByIds(table.columnIds)) {
-      checks.push(...checkColumn(state, column));
+      const { id, tableId, logicalName, name, domainId } = column;
+      yield heldChecks(
+        columnKept,
+        readings,
+        { kind: 'column', id, tableId },
+        words,
+        logicalName,
+        reading => [
+          tableId,
+          name,
+          termPhysicalName(terms, reading.name),
+          unknownDomainText(state, domainId, domainIds),
+        ],
+        (push, reading) => {
+          pushFindings(reading.findings, 'logicalName', push);
+          mismatchCheck(terms, words, logicalName, name, push);
+          domainCheck(state, domainId, push, domainIds);
+        }
+      );
     }
   }
 
+  endWalk(tableKept, tableWalk);
+  endWalk(columnKept, columnWalk);
+}
+
+/**
+ * Every check of the document, for the sheet that lists them: the words, the
+ * terms and the domains in sheet order, then each table and its columns in
+ * document order, each target checked again only once a value it read moved.
+ */
+export function listDictionaryChecks(state: RootState): DictionaryCheck[] {
+  const checks: DictionaryCheck[] = [];
+  for (const step of walkDictionaryChecks(state)) {
+    for (const check of step) checks.push(check);
+  }
   return checks;
 }

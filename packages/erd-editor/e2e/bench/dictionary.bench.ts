@@ -13,8 +13,8 @@ import {
 import { createReport, writeReport } from './report';
 
 // The Dictionary tab at the public standard's sizes: the three files imported
-// with the tab open, the frames a scroll of the term sheet costs, and the term
-// list under a logical name as each key lands. It fails no number it measures.
+// with the tab open, the frames a scroll of the term sheet costs, the term list
+// as each key lands and the checks' walk. It fails no number it measures.
 
 /** The rows of each public-standard file, which the synthetic files keep. */
 const DOMAIN_ROWS = 129;
@@ -40,6 +40,12 @@ const WARM_UP_KEYS = 60;
 
 /** How long one key may go without the list changing before the run counts it as missed. */
 const KEY_TIMEOUT_MS = 10_000;
+
+/** The schema the checks probe walks beside the dictionaries, and the runs of each case it takes the median of. */
+const CHECK_TABLES = 500;
+const CHECK_COLUMNS = 30;
+const CHECK_SEED = 20_261_021;
+const CHECK_RUNS = 15;
 
 /** The frame a scroll and a key must each stay within, and an import's two bounds. */
 const FRAME_BUDGET_MS = 16;
@@ -564,6 +570,90 @@ function toPublicStandardFiles({
 
 const DICTIONARIES = buildDictionaries(DATA_SEED);
 const FILES = toPublicStandardFiles(DICTIONARIES);
+
+/**
+ * The dictionaries as document rows and tables of columns named from them:
+ * most by a term, the rest by words no term lists, an unregistered syllable,
+ * a synonym or a forbidden word, a few with a hand-written name or a lost domain.
+ */
+function toChecksDocument({
+  domains,
+  words,
+  terms,
+}: ReturnType<typeof buildDictionaries>) {
+  const rng = createRng(CHECK_SEED);
+  const domainIds = new Map(
+    domains.map((domain, index) => [domain.name, `domain-${index}`])
+  );
+  const modifiers = words.filter(word => !word.classWord);
+  const classWords = words.filter(word => word.classWord);
+  const synonyms = words.filter(word => word.synonyms);
+  const forbidden = words.filter(word => word.forbiddenWords);
+
+  const named = (index: number) => {
+    const roll = rng();
+    if (roll < 0.7) {
+      const term = pick(rng, terms);
+      return {
+        logicalName: term.name,
+        name: rng() < 0.05 ? `name_${index}` : term.physicalName,
+        domainId: rng() < 0.02 ? 'domain-gone' : domainIds.get(term.domain),
+      };
+    }
+
+    const modifier = pick(rng, modifiers);
+    const classWord = pick(rng, classWords);
+    const prefix =
+      roll < 0.85
+        ? modifier.name
+        : roll < 0.93
+          ? syntheticWord(rng).name
+          : roll < 0.97
+            ? pick(rng, synonyms).synonyms
+            : pick(rng, forbidden).forbiddenWords;
+    return {
+      logicalName: `${prefix}${classWord.name}`,
+      name: `${modifier.abbreviation}_${classWord.abbreviation}`,
+    };
+  };
+
+  return createSchema({
+    words: words.map((word, index) => ({
+      id: `word-${index}`,
+      name: word.name,
+      abbreviation: word.abbreviation,
+      synonyms: word.synonyms,
+      forbiddenWords: word.forbiddenWords,
+    })),
+    terms: terms.map((term, index) => ({
+      id: `term-${index}`,
+      name: term.name,
+      physicalName: term.physicalName,
+      domainId: domainIds.get(term.domain),
+      synonyms: term.synonyms,
+    })),
+    domains: domains.map((domain, index) => ({
+      id: `domain-${index}`,
+      name: domain.name,
+      category: domain.category,
+      dataType: domain.type,
+    })),
+    tables: Array.from({ length: CHECK_TABLES }, (_, table) => {
+      const { logicalName, name } = named(table);
+      return {
+        id: `table-${table}`,
+        name,
+        logicalName,
+        x: (table % 25) * 400,
+        y: Math.floor(table / 25) * 900,
+        columns: Array.from({ length: CHECK_COLUMNS }, (_, column) => ({
+          id: `table-${table}-column-${column}`,
+          ...named(CHECK_TABLES + table * CHECK_COLUMNS + column),
+        })),
+      };
+    }),
+  });
+}
 
 /** One file's import, from the input's change event to the first idle period after its rows are listed and drawn. */
 type ImportMeasure = {
@@ -1292,6 +1382,224 @@ test('lists the terms a logical name starts as each key lands', async ({
   );
 
   expect(measured.filter(key => key.missed)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+/** One case of the checks probe: each run's index rebuild, then the walk over the indexes it built. */
+type ChecksCase = { name: string; indexMs: number[]; walkMs: number[] };
+
+type ChecksMeasure = {
+  checks: number;
+  codes: Record<string, number>;
+  cases: ChecksCase[];
+  /** The steps of walkDictionaryChecks after a word's write, and each run's longest. */
+  steps: number;
+  longestStepMs: number[];
+};
+
+// Cold runs last: each opens the document again, and the documents it drops
+// cost one long collection that would land in whichever case ran next.
+const CHECK_CASES: ReadonlyArray<[string, string]> = [
+  ['unchanged', 'a walk again with nothing written'],
+  ['table name', "after a table's name is written"],
+  ['column logical name', "after a column's logical name is written"],
+  ['word', "after a word's abbreviation is written"],
+  ['term', "after a term's physical name is written"],
+  ['cold', 'the first walk after the document opens again'],
+];
+
+test('walks the dictionary checks of 500 tables of 30 columns', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await openFixture(page);
+  const document = toChecksDocument(DICTIONARIES);
+  const [table] = document.doc.tableIds;
+  const column = document.collections.tableEntities[table].columnIds[0];
+
+  // The probe holds a store of its own, the editor's observable kind, since the
+  // element hands out none; the modules are the dev server's, as the tab's are.
+  const measured: ChecksMeasure = await page.evaluate(
+    async ({ json, runs, table, column, cases }) => {
+      const paths = [
+        '/src/engine/store.ts',
+        '/src/engine/clock.ts',
+        '/src/engine/modules/editor/generator.actions.ts',
+        '/src/engine/modules/dictionary/checks.ts',
+        '/src/engine/modules/dictionary/dictionaryIndex.ts',
+        '/src/engine/modules/table/atom.actions.ts',
+        '/src/engine/modules/table-column/atom.actions.ts',
+        '/src/engine/modules/dictionary/atom.actions.ts',
+      ];
+      const [
+        store,
+        clock,
+        editor,
+        checks,
+        indexes,
+        tables,
+        columns,
+        dictionary,
+      ] = await Promise.all(paths.map(path => import(path)));
+      const engine = store.createStore({
+        toWidth: (text: string) => text.length * 7,
+        clock: new clock.Clock(),
+      });
+      const open = () =>
+        engine.dispatchSync(editor.initialLoadJsonAction$(json));
+      open();
+
+      const edits: Record<string, (run: number) => unknown[]> = {
+        cold: () => {
+          open();
+          return [];
+        },
+        unchanged: () => [],
+        'table name': run => [
+          tables.changeTableNameAction({ id: table, value: `name_${run}` }),
+        ],
+        'column logical name': run => [
+          columns.changeColumnLogicalNameAction({
+            id: column,
+            tableId: table,
+            value: `${engine.state.collections.termEntities['term-0'].name}${run}`,
+          }),
+        ],
+        word: run => [
+          dictionary.updateDictionaryAction({
+            kind: 'word',
+            id: 'word-0',
+            values: { abbreviation: `WORD${run}` },
+          }),
+        ],
+        term: run => [
+          dictionary.updateDictionaryAction({
+            kind: 'term',
+            id: 'term-0',
+            values: { physicalName: `TERM_${run}` },
+          }),
+        ],
+      };
+
+      const found: Array<{ code: string }> = checks.listDictionaryChecks(
+        engine.state
+      );
+      const codes: Record<string, number> = {};
+      for (const { code } of found) codes[code] = (codes[code] ?? 0) + 1;
+
+      // The walk the tab counts by on idle, timed a step at a time after a word's
+      // write, which every name reads again: one slice costs its longest step at least.
+      let steps = 0;
+      const longestStepMs: number[] = [];
+      for (let run = 0; run < runs; run++) {
+        engine.dispatchSync(...edits.word(-1 - run));
+        const walk = checks.walkDictionaryChecks(engine.state);
+        let longest = 0;
+        steps = 0;
+        for (;;) {
+          const start = performance.now();
+          const step = walk.next();
+          longest = Math.max(longest, performance.now() - start);
+          if (step.done) break;
+          steps++;
+        }
+        longestStepMs.push(longest);
+      }
+
+      const measuredCases = cases.map(name => {
+        const indexMs: number[] = [];
+        const walkMs: number[] = [];
+        for (let run = 0; run < runs; run++) {
+          const actions = edits[name](run);
+          if (actions.length) engine.dispatchSync(...actions);
+
+          const start = performance.now();
+          indexes.getWordIndex(engine.state);
+          indexes.getTermNames(engine.state);
+          indexes.getDomainNames(engine.state);
+          const built = performance.now();
+          checks.listDictionaryChecks(engine.state);
+          const walked = performance.now();
+
+          indexMs.push(built - start);
+          walkMs.push(walked - built);
+        }
+        return { name, indexMs, walkMs };
+      });
+
+      return {
+        checks: found.length,
+        codes,
+        cases: measuredCases,
+        steps,
+        longestStepMs,
+      };
+    },
+    {
+      json: JSON.stringify(document),
+      runs: CHECK_RUNS,
+      table,
+      column,
+      cases: CHECK_CASES.map(([name]) => name),
+    }
+  );
+
+  lines.push(
+    '',
+    `Dictionary checks over ${CHECK_TABLES} tables of ${CHECK_COLUMNS} columns beside the three dictionaries, ${measured.checks} checks found (${Object.entries(
+      measured.codes
+    )
+      .map(([code, count]) => `${code} ${count}`)
+      .join(
+        ', '
+      )}): each case ${CHECK_RUNS} runs, the indexes the write moved built first, then listDictionaryChecks timed alone, in a store of the editor's observable kind.`,
+    [
+      'case'.padEnd(20),
+      'index p50',
+      ' walk p50',
+      ' walk max',
+      `p50 <= ${FRAME_BUDGET_MS} ms`,
+    ].join('  ')
+  );
+  for (const { name, indexMs, walkMs } of measured.cases) {
+    const index = stats(indexMs);
+    const walk = stats(walkMs);
+    const within = walk.p50 <= FRAME_BUDGET_MS;
+    rows.push({
+      scenario: `checks-${name.replace(/ /g, '-')}`,
+      name: 'walk p50',
+      value: walk.p50,
+      budget: FRAME_BUDGET_MS,
+      within,
+      detail: { runs: walk.count, indexP50: index.p50, max: walk.max },
+    });
+    lines.push(
+      [
+        name.padEnd(20),
+        ms(index.p50).padStart(9),
+        ms(walk.p50).padStart(9),
+        ms(walk.max).padStart(9),
+        verdict(within).padStart(13),
+      ].join('  ')
+    );
+  }
+  const longest = stats(measured.longestStepMs);
+  const stepWithin = longest.p50 <= FRAME_BUDGET_MS;
+  rows.push({
+    scenario: 'checks-step',
+    name: 'longest step p50',
+    value: longest.p50,
+    budget: FRAME_BUDGET_MS,
+    within: stepWithin,
+    detail: { steps: measured.steps, max: longest.max },
+  });
+  lines.push(
+    ...CHECK_CASES.map(([name, meaning]) => `${name}: ${meaning}.`),
+    'A cold run opens the document again, so its index column builds all three indexes.',
+    `The idle count's walk after a word's write, ${measured.steps} steps (the word sheet, each term, the domain sheet, each table and column; the indexes built in the first): longest step p50 ${ms(longest.p50).trim()} ms, max ${ms(longest.max).trim()} ms, p50 <= ${FRAME_BUDGET_MS} ms ${verdict(stepWithin)}.`
+  );
+
+  expect(measured.checks).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });
 

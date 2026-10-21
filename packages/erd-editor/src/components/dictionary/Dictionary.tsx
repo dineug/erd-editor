@@ -23,6 +23,7 @@ import {
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { createCheckCount } from '@/components/dictionary/checkCount';
 import {
   checkCellText,
   checkDestination,
@@ -88,6 +89,7 @@ import {
   DictionaryCheckLevel,
   listDictionaryChecks,
   markOf,
+  walkDictionaryChecks,
 } from '@/engine/modules/dictionary/checks';
 import {
   type DictionaryInsertAnchor,
@@ -208,19 +210,6 @@ function insertedStart(
   return anchor.place === 'after' ? at + 1 : at - count;
 }
 
-/** How long an idle task may wait for the browser to go idle before it runs anyway. */
-const IDLE_TIMEOUT_MS = 1000;
-
-/** Runs a task once the browser is idle, or on a timer where it names no idle time, and hands back its cancel. */
-function whenIdle(task: () => void): () => void {
-  if (typeof requestIdleCallback === 'function') {
-    const id = requestIdleCallback(task, { timeout: IDLE_TIMEOUT_MS });
-    return () => cancelIdleCallback(id);
-  }
-  const id = setTimeout(task, 0);
-  return () => clearTimeout(id);
-}
-
 /**
  * The Dictionary tab: the sheet switch, the search and the row and file tools
  * over a grid of the sheet shown, and its row count and selection under it.
@@ -261,7 +250,14 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   // The column a menu opened on, which its sorts order the sheet by.
   let menuColumn: GridColumn | null = null;
   let checksFrame: number | null = null;
-  let cancelCheckCount: (() => void) | null = null;
+  // While an entry sheet shows, the checks are counted over the idle periods
+  // after a batch that raises them, a walk under way dropped, since the batch
+  // may have changed what it walked; the check sheet counts as it lists them.
+  const checkCount = createCheckCount({
+    walk: () => walkDictionaryChecks(app.value.store.state),
+    wanted: () => isEntrySheet(session.sheet),
+    done: countChecks,
+  });
   let gridTheme: Readonly<GridTheme> | undefined;
 
   let columns: GridColumn[] = [];
@@ -352,33 +348,17 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   }
 
   /** Puts the number of checks and the loudest of their levels on the check sheet's button. */
-  function countChecks(checks: ReadonlyArray<DictionaryCheck>) {
-    state.counts = { ...state.counts, check: checks.length };
-    state.checkMark = markOf(checks);
+  function countChecks(count: number, mark: DictionaryCheckLevel | null) {
+    state.counts = { ...state.counts, check: count };
+    state.checkMark = mark;
   }
 
   /** The check sheet's rows under the search, counted on the way from the one walk. */
   function listChecks(search: string): ReadonlyArray<DictionaryCheck> {
     const { state: rootState } = app.value.store;
     const checks = listDictionaryChecks(rootState);
-    countChecks(checks);
+    countChecks(checks.length, markOf(checks));
     return checkRows(rootState, search, i18n.value, checks);
-  }
-
-  /**
-   * Counts the checks again once the browser is idle, while an entry sheet is
-   * shown, since that walks the whole document; the check sheet counts them
-   * as it lists them, once a frame.
-   */
-  function recountChecks() {
-    if (cancelCheckCount !== null || !isEntrySheet(session.sheet)) return;
-
-    cancelCheckCount = whenIdle(() => {
-      cancelCheckCount = null;
-      if (isEntrySheet(session.sheet)) {
-        countChecks(listDictionaryChecks(app.value.store.state));
-      }
-    });
   }
 
   /**
@@ -393,7 +373,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     checksFrame = requestAnimationFrame(() => {
       checksFrame = null;
       if (!isEntrySheet(session.sheet)) refresh();
-      else recountChecks();
+      else checkCount.restart();
     });
   }
 
@@ -849,7 +829,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       store.subscribe(actions => {
         const bumped = bumpedSheets(actions);
         if (bumped.some(isEntrySheet)) countEntries();
-        if (bumped.length) recountChecks();
+        if (bumped.length) checkCount.restart();
         if (!bumped.includes(session.sheet)) return;
         // The rows the menu counted may have moved under it.
         closeMenu();
@@ -872,10 +852,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       }),
       () => {
         if (checksFrame !== null) cancelAnimationFrame(checksFrame);
-        cancelCheckCount?.();
+        checkCount.stop();
       }
     );
-    recountChecks();
+    checkCount.restart();
   });
 
   // The grid takes a new row count a tick after the render that hands it over,
