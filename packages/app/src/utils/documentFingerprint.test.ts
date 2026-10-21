@@ -276,6 +276,19 @@ describe('the file form both fingerprints read', () => {
 });
 
 describe('toDriveFingerprint', () => {
+  it('reads a value without a doc or collections as one that holds them empty', () => {
+    const { settings } = JSON.parse(VALUE);
+    const bare = JSON.stringify({ version: '3.0.0', settings });
+    const empty = JSON.stringify({
+      version: '3.0.0',
+      settings,
+      doc: {},
+      collections: {},
+    });
+
+    expect(toDriveFingerprint(bare)).toBe(toDriveFingerprint(empty));
+  });
+
   it.each(lockableViewChanges)(
     'ignores %s while no lock holds it',
     (_name, change) => {

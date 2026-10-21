@@ -27,6 +27,7 @@ Deltas from root § Making a Change.
 | `src/settings.ts` | `PluginSettings` (`data.json`), `DEFAULT_SETTINGS`, `readSettings` / `readTheme`, `editorTheme`, `themeFromBuilder`, `ThemeHost`, `LOCALES` / `LOCALE_NAMES`, `editorLocale`, `localeFromPicker`, `obsidianLanguage`, `LocaleHost` |
 | `src/tabSave.ts` | `viewData`, `currentValue`, `hasUnsavedValue`, `exitSave`, `seedValue`, pure functions of `TabSaveState` |
 | `src/keys.ts` | `scopeKeysOf` / `toScopeKey`: the editor's chords as `Scope.register` modifiers and key, each press once |
+| `src/readableDiagram.ts` | `isReadableDiagram`: whether a file's text is a diagram the tab can read (Unreadable files open read-only) |
 | `src/icon.ts` | `ERD_ICON` / `ERD_ICON_SVG`, for the tab and the New ERD menu item |
 | `src/loadErdEditor.ts` | Requires `@dineug/erd-editor` once per window (§ Build) |
 | `src/hub/registry.ts` | `DocumentRegistry` (§ Coding-agent hub), with `seedWhenQuiet`, `setActive` / `keepActive`, `shutdown` |
@@ -56,7 +57,7 @@ Deltas from root § Making a Change.
 ### Opening files
 
 - **`.erd.json` / `.vuerd.json` go through a wrapped `openFile`.** Obsidian types a file by its last extension, `registerExtensions(['erd.json'])` does nothing, and registering `json` would claim every JSON file. So `main.ts` wraps `WorkspaceLeaf.prototype.openFile` with `monkey-around`, mirroring the core (the `file` guard, `active` defaulting to the active leaf, `group`, `eState`), and matches the suffix in any case (`a.ERD.json`), like the hub and the MCP server. The file explorer and quick switcher show these files only with Detect all file extensions on.
-- **Unreadable files open read-only** (not JSON, or no `doc` or `canvas` at the top), and `getViewData` returns their text, so a merge conflict or a cut-off sync never becomes an empty diagram. It returns the text, not `editor.value`, since `readonly` still lets viewport actions through.
+- **Unreadable files open read-only** (not JSON, or at the top no `doc`, no `canvas`, and no `settings` beside a `version` of `3.0.0`, which takes a file a later release may write without `doc`), and `getViewData` returns their text, so a merge conflict or a cut-off sync never becomes an empty diagram. It returns the text, not `editor.value`, since `readonly` still lets viewport actions through.
 - **`isPlaintext` is false**: an outside change during an unsaved edit wins and drops the edit; the default merges both into the JSON as text.
 - **A load settles what the editor derives** (key marks, widths, anchors, relationship flags) before its reducer returns, and the file form keeps none of it, so an inconsistent document (FK flags with no relationship) changes only with an edit.
 - **The welcome screen waits for a document.** `onOpen` creates the editor, often before the tab has its file, with no document and `enableWelcomeScreen` off; `loadDocument` turns it on right after `setInitialValue`. The editor then shows it while the diagram has no table, memo or shown table group and is not read-only. So it never shows before a tab's first file is in, over a tab waiting to seed (read-only, after a file switch too) or over an unreadable file. An empty file loads as an empty diagram and opens on it. The first table, memo or shown table group takes it away.

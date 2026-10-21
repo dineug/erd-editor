@@ -1,6 +1,6 @@
 import { isNil, isNumber, isPlainObject, isString } from 'es-toolkit';
 
-import { assign } from '@/helper';
+import { assign, entryId } from '@/helper';
 import { DeepPartial } from '@/internal-types';
 import { Column } from '@/v3/schema/tableColumn.entity';
 
@@ -31,14 +31,14 @@ export function createAndMergeTableColumnEntities(
   const entities: Record<string, Column> = {};
   if (!isPlainObject(json) || isNil(json)) return entities;
 
-  for (const value of Object.values(json)) {
-    if (!value) continue;
+  for (const [key, value] of Object.entries(json)) {
+    if (!isPlainObject(value)) continue;
     const target = createColumn();
     const assignString = assign(isString, target, value);
     const assignNumber = assign(isNumber, target, value);
     const uiAssignNumber = assign(isNumber, target.ui, value.ui);
 
-    assignString('id');
+    target.id = entryId(key, value);
     assignString('tableId');
     assignString('name');
     assignString('comment');

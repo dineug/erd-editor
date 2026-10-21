@@ -33,22 +33,25 @@ describe('createAndMergeMemoEntities', () => {
     expect(createAndMergeMemoEntities(source as any)).toEqual({});
   });
 
-  it('skips falsy entries', () => {
+  it('skips an entry that is not an object', () => {
     const entities = createAndMergeMemoEntities({
       a: null as any,
       b: undefined,
       c: 0 as any,
+      d: 'hello' as any,
     });
 
     expect(entities).toEqual({});
   });
 
-  it('drops entries without an id', () => {
+  it('keys an entry without an id by its key, and drops one without either', () => {
     const entities = createAndMergeMemoEntities({
       a: { value: 'hello' },
+      '': { value: 'no key' },
     });
 
-    expect(entities).toEqual({});
+    expect(Object.keys(entities)).toEqual(['a']);
+    expect(entities.a).toMatchObject({ id: 'a', value: 'hello' });
   });
 
   it('keys the entity by its own id, not the record key', () => {

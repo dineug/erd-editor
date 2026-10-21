@@ -70,15 +70,18 @@ function parseJson(text: string): unknown {
 
 /**
  * Whether JSON is a document the editor opens: the version 3 shape it saves,
- * with its doc, or the version 2 shape of .vuerd files, with canvas and table.
- * The editor's parser takes any object at all and makes an empty schema of it.
+ * with its doc or its settings, or the version 2 shape of .vuerd files, with
+ * canvas and table. The parser takes any object and makes an empty schema of it.
  */
 export function isEditorDocument(json: unknown): boolean {
   if (!isPlainObject(json)) return false;
 
-  const { version, doc, canvas, table } = json as Record<string, unknown>;
+  const { version, doc, settings, canvas, table } = json as Record<
+    string,
+    unknown
+  >;
   return version === '3.0.0'
-    ? isPlainObject(doc)
+    ? isPlainObject(doc) || isPlainObject(settings)
     : isPlainObject(canvas) && isPlainObject(table);
 }
 

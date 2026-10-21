@@ -17,6 +17,15 @@ export function assign<T extends object, K extends keyof T>(
   };
 }
 
+/**
+ * The id an entry of a collection goes by: its own while it holds one, else
+ * the key the collection holds it at, so a file may leave the id out.
+ */
+export function entryId(key: string, entry: object): string {
+  const id: unknown = Reflect.get(entry, 'id');
+  return isString(id) && id !== '' ? id : key;
+}
+
 export function validString(list: ReadonlyArray<string>) {
   return (value: any) => isString(value) && list.includes(value);
 }

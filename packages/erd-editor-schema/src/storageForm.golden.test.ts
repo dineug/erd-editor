@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { isPlainObject } from 'es-toolkit';
+import { isPlainObject, omit } from 'es-toolkit';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { parser, toJson } from '@/parser';
@@ -56,6 +56,48 @@ function withoutEmpty(file: string): string {
   return `${JSON.stringify(document, null, 2)}\n`;
 }
 
+const ORDERED_BY: Readonly<Record<string, string>> = {
+  tableEntities: 'tableIds',
+  relationshipEntities: 'relationshipIds',
+  indexEntities: 'indexIds',
+  memoEntities: 'memoIds',
+  tableGroupEntities: 'tableGroupIds',
+};
+
+const KEYED = [
+  'tableEntities',
+  'tableColumnEntities',
+  'relationshipEntities',
+  'indexEntities',
+  'indexColumnEntities',
+  'memoEntities',
+  'tableGroupEntities',
+];
+
+/**
+ * A saved file as a writer that keeps no doc and no id inside an entry would
+ * write it: each collection the doc orders held in that order, keyed by id,
+ * and the dictionaries, whose rows are not keyed, as they are.
+ */
+function withoutDocOrIds(saved: string): string {
+  const { doc = {}, collections = {}, ...rest } = JSON.parse(saved);
+  const written = Object.fromEntries(
+    Object.entries<Record<string, any>>(collections).map(([name, entities]) => {
+      if (!KEYED.includes(name)) return [name, entities];
+
+      const order: string[] = ORDERED_BY[name]
+        ? doc[ORDERED_BY[name]]
+        : Object.keys(entities);
+      return [
+        name,
+        Object.fromEntries(order.map(id => [id, omit(entities[id], ['id'])])),
+      ];
+    })
+  );
+
+  return JSON.stringify({ ...rest, collections: written });
+}
+
 describe('the storage form an earlier release wrote', () => {
   it('reads every saved fixture', () => {
     expect(names.sort()).toEqual([
@@ -84,6 +126,15 @@ describe('the storage form an earlier release wrote', () => {
 
       expect(toJson(parser(saved))).toBe(toJson(parser(file)));
       expect(toDocumentJson(parser(saved))).toBe(saved);
+    }
+  );
+
+  it.each(Object.entries(files))(
+    'reads %s saved without a doc or an entry id, each collection in its doc order, as it reads it saved',
+    (_, file) => {
+      const saved = toDocumentJson(parser(file));
+
+      expect(parser(withoutDocOrIds(saved))).toEqual(parser(saved));
     }
   );
 });
@@ -249,6 +300,16 @@ describe('a random document an earlier release saved', () => {
       expect(saved, `seed ${seed}`).toBe(withoutEmpty(file));
       expect(toJson(parser(saved)), `seed ${seed}`).toBe(toJson(parser(file)));
       expect(toDocumentJson(parser(saved)), `seed ${seed}`).toBe(saved);
+    }
+  });
+
+  it('reads the same value saved without a doc or an entry id, each collection in its doc order', () => {
+    for (const seed of seeds) {
+      const saved = toDocumentJson(parser(earlierFile(seed)));
+
+      expect(parser(withoutDocOrIds(saved)), `seed ${seed}`).toEqual(
+        parser(saved)
+      );
     }
   });
 

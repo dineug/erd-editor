@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   assign,
+  entryId,
   propOr,
   restoreSequence,
   validNumber,
@@ -49,6 +50,18 @@ describe('assign', () => {
     assign(() => true, target, {})('name');
 
     expect(target.name).toBeUndefined();
+  });
+});
+
+describe('entryId', () => {
+  it('takes the id an entry holds over the key it is held at', () => {
+    expect(entryId('key', { id: 't1' })).toBe('t1');
+  });
+
+  it('takes the key for an entry that holds no id, an empty one or one not a string', () => {
+    expect(entryId('t1', {})).toBe('t1');
+    expect(entryId('t1', { id: '' })).toBe('t1');
+    expect(entryId('t1', { id: 7 })).toBe('t1');
   });
 });
 

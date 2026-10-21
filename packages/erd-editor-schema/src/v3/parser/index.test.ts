@@ -258,6 +258,63 @@ describe('parser', () => {
     expect(result.collections.tableEntities).toEqual({});
   });
 
+  it('lists the entries a collection holds, in the order held, for a doc list the source leaves out', () => {
+    const result = parser({
+      doc: { tableIds: ['t1'] },
+      collections: {
+        tableEntities: { t1: { id: 't1' }, t2: { id: 't2' } },
+        relationshipEntities: {
+          r2: {},
+          a: { id: 'r1' },
+          r1: {},
+          x: 'not an entity',
+        },
+        indexEntities: { i1: { id: 'i1' } },
+        memoEntities: { m2: {}, m1: {} },
+        tableGroupEntities: { g1: { id: 'g1' } },
+      } as any,
+    });
+    const { doc, collections } = result;
+
+    expect(doc).toMatchObject({
+      tableIds: ['t1'],
+      relationshipIds: ['r2', 'r1'],
+      indexIds: ['i1'],
+      memoIds: ['m2', 'm1'],
+      tableGroupIds: ['g1'],
+    });
+    expect(collections.memoEntities.m2.ui.zIndex).toBe(3);
+    expect(collections.memoEntities.m1.ui.zIndex).toBe(4);
+    expect(collections.tableGroupEntities.g1.ui.zIndex).toBe(1);
+  });
+
+  it('keeps an empty doc list the source holds, past every entry it does not name', () => {
+    const result = parser({
+      doc: { tableIds: [], memoIds: [] },
+      collections: {
+        tableEntities: { t1: { id: 't1' } },
+        memoEntities: { m1: { id: 'm1' } },
+      },
+    });
+
+    expect(result.doc.tableIds).toEqual([]);
+    expect(result.doc.memoIds).toEqual([]);
+    expect(Object.keys(result.collections.tableEntities)).toEqual(['t1']);
+  });
+
+  it('stacks an entry without an id by its key', () => {
+    const result = parser({
+      doc: { tableIds: ['t1', 't2'] },
+      collections: {
+        tableEntities: { t1: { ui: { zIndex: 9 } }, t2: {} },
+      },
+    });
+    const { t1, t2 } = result.collections.tableEntities;
+
+    expect(t1.ui.zIndex).toBe(9);
+    expect(t2.ui.zIndex).toBe(3);
+  });
+
   it('drops unknown top level keys', () => {
     const result = parser({ foo: 'bar' });
 

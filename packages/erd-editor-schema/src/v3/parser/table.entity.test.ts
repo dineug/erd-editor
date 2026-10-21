@@ -40,13 +40,16 @@ describe('createAndMergeTableEntities', () => {
     expect(createAndMergeTableEntities(source as any)).toEqual({});
   });
 
-  it('skips falsy entries and entries without an id', () => {
+  it('skips an entry that is not an object, and keys one without an id by its key', () => {
     const entities = createAndMergeTableEntities({
       a: null as any,
       b: { name: 'no-id' },
+      c: 'users' as any,
+      '': { name: 'no key' },
     });
 
-    expect(entities).toEqual({});
+    expect(Object.keys(entities)).toEqual(['b']);
+    expect(entities.b).toMatchObject({ id: 'b', name: 'no-id' });
   });
 
   it('merges every field', () => {

@@ -37,16 +37,19 @@ describe('createAndMergeTableGroupEntities', () => {
     expect(createAndMergeTableGroupEntities(source as any)).toEqual({});
   });
 
-  it('skips falsy entries and entries without an id', () => {
+  it('skips an entry that is not an object, and keys one without an id by its key', () => {
     const entities = createAndMergeTableGroupEntities({
       a: null as any,
       b: undefined,
       c: 0 as any,
       d: { name: 'no-id' },
       e: { id: 5 as any, name: 'numeric id' },
+      '': { name: 'no key' },
     });
 
-    expect(entities).toEqual({});
+    expect(Object.keys(entities)).toEqual(['d', 'e']);
+    expect(entities.d).toMatchObject({ id: 'd', name: 'no-id' });
+    expect(entities.e).toMatchObject({ id: 'e', name: 'numeric id' });
   });
 
   it('keys the entity by its own id, not the record key', () => {

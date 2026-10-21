@@ -79,7 +79,8 @@ function withRowsInIdOrder(collections: Record<string, unknown>) {
  * locked view reaches it, while a zoom or a scroll never does.
  */
 export function toDriveFingerprint(value: string) {
-  const { doc, collections, settings } = JSON.parse(value);
+  // A doc or collections left out reads as one that holds nothing.
+  const { doc = {}, collections = {}, settings } = JSON.parse(value);
   return JSON.stringify({
     doc: inIdOrder(doc),
     collections: withRowsInIdOrder(collections),
