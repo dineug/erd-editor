@@ -2,7 +2,7 @@
 
 // AC-1, AC-2, AC-3, AC-5, AC-27, AC-44 and AC-45: what a table draws inside a
 // view, and what it refuses. The show mode picks the rows, the box is measured
-// for them, the type cell lights where the view does, and no cell is edited.
+// for them, the type cell shows on every card, and no cell is edited.
 
 import { createRef, useProvider } from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
@@ -400,25 +400,27 @@ describe('the rows a view draws', () => {
   });
 });
 
-describe('the type cell a view lights', () => {
-  it('draws it on the hovered table and its neighbours alone', async () => {
+// An owner decision of 2026-10-21: the types show on every card, at rest too,
+// where a hover once brought them up on the cards it lit alone.
+describe('the type cell a view draws', () => {
+  it('draws it on every card, lit or not, and takes a press on each', async () => {
     const { stage } = await mountViewScene();
+
+    expect(typeOpacityOf(stage, 'c')).toEqual([1, 1]);
 
     await hoverTable(stage, 'a');
 
     // Lit: a under the pointer, b across the first link and d across the
-    // third. What the hover does not reach, c and e, is shown and left dark.
+    // third. What the hover does not reach, c and e, draws its types as well.
     expect(typeOpacityOf(stage, 'a')).toEqual([1]);
     expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
-    expect(typeOpacityOf(stage, 'c')).toEqual([0, 0]);
-    expect(typeOpacityOf(stage, 'e')).toEqual([0]);
-    // A cell drawn at nothing takes no press either, so the dark half of a
-    // view cannot be focused through what it does not show.
-    expect(typeListeningOf(stage, 'c')).toEqual([false, false]);
+    expect(typeOpacityOf(stage, 'c')).toEqual([1, 1]);
+    expect(typeOpacityOf(stage, 'e')).toEqual([1]);
+    expect(typeListeningOf(stage, 'c')).toEqual([true, true]);
     expect(typeListeningOf(stage, 'b')).toEqual([true, true, true]);
   });
 
-  it('lights a neighbour whose only rows every field brings back', async () => {
+  it('draws the type of every row every field brings back', async () => {
     const { app, stage } = await mountViewScene();
     await hoverTable(stage, 'a');
 
@@ -427,10 +429,8 @@ describe('the type cell a view lights', () => {
     );
     await settle();
 
-    // d hangs off the hovered table and carries no key row, so the key row
-    // mode has nowhere to show that it is lit; every field gives it forty places.
     expect(typeOpacityOf(stage, 'd')).toEqual(WIDE_COLUMNS.map(() => 1));
-    expect(typeOpacityOf(stage, 'c')).toEqual([0, 0]);
+    expect(typeOpacityOf(stage, 'c')).toEqual([1, 1]);
   });
 
   it('lights the hovered table and what it reaches, at the same width', async () => {
@@ -445,7 +445,7 @@ describe('the type cell a view lights', () => {
     expect(typeOpacityOf(stage, 'e')).toEqual([1]);
   });
 
-  it('puts it out again once the pointer leaves', async () => {
+  it('keeps it once the pointer leaves', async () => {
     const { stage } = await mountViewScene();
 
     await hoverTable(stage, 'c');
@@ -454,8 +454,8 @@ describe('the type cell a view lights', () => {
     moveScenePointer(stage, WIDTH - 2, HEIGHT - 2);
     await settle();
 
-    expect(typeOpacityOf(stage, 'c')).toEqual([0, 0]);
-    expect(typeOpacityOf(stage, 'e')).toEqual([0]);
+    expect(typeOpacityOf(stage, 'c')).toEqual([1, 1]);
+    expect(typeOpacityOf(stage, 'e')).toEqual([1]);
   });
 
   /**
@@ -873,7 +873,7 @@ describe('the colour a view rests a connector at', () => {
  * different spans however the ticker is wound.
  */
 describe('the time a highlight takes', () => {
-  it('brings the border, the glow, the type cell, the tint and the connector up over three hundred milliseconds', async () => {
+  it('brings the border, the glow, the tint and the connector up over three hundred milliseconds, the types drawn throughout', async () => {
     const { stage } = await mountViewScene();
     // Read before the hover, since the grey a connector rests at is what the
     // walk starts from and the case never assumes which grey that is.
@@ -886,7 +886,7 @@ describe('the time a highlight takes', () => {
 
     // The commit the hover lands on draws the card as it was: the walk starts
     // here rather than a step in.
-    expect(typeOpacityOf(stage, 'b')).toEqual([0, 0, 0]);
+    expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
     expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(theme.tableBorder);
     expect(glowOf(stage, 'b')).toHaveLength(0);
     expect(tintOf()).toBe(TRANSPARENT);
@@ -899,7 +899,7 @@ describe('the time a highlight takes', () => {
     // is what every paint here is scaled by.
     const half = 0.875;
     const halfStroke = mixColor(theme.tableBorder, theme.accentColor9, half);
-    expect(typeOpacityOf(stage, 'b')).toEqual([half, half, half]);
+    expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
     expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(halfStroke);
     expect(glowOf(stage, 'b')[0].opacity()).toBe(half);
     expect(tintOf()).toBe(
@@ -927,7 +927,7 @@ describe('the time a highlight takes', () => {
     expect(transitions.frames()).toBeGreaterThan(asked);
   });
 
-  it('takes the same five back out over the same three hundred', async () => {
+  it('takes the same four back out over the same three hundred', async () => {
     const { stage } = await mountViewScene();
     const grey = routeOf(stage, 'r1');
     const tintOf = () => rowBackgroundOf(rowsOf(stage, 'b')[1]);
@@ -941,7 +941,7 @@ describe('the time a highlight takes', () => {
     await commit();
 
     const half = 1 - 0.875;
-    expect(typeOpacityOf(stage, 'b')).toEqual([half, half, half]);
+    expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
     expect(glowOf(stage, 'b')[0].opacity()).toBe(half);
     expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(
       mixColor(theme.tableBorder, theme.accentColor9, half)
@@ -954,7 +954,7 @@ describe('the time a highlight takes', () => {
     transitions.step(TRANSITION_MS / 2);
     await commit();
 
-    expect(typeOpacityOf(stage, 'b')).toEqual([0, 0, 0]);
+    expect(typeOpacityOf(stage, 'b')).toEqual([1, 1, 1]);
     expect(glowOf(stage, 'b')).toHaveLength(0);
     expect(bodyOf(stage, 'b').getAttr('stroke')).toBe(theme.tableBorder);
     expect(tintOf()).toBe(TRANSPARENT);

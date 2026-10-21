@@ -526,7 +526,7 @@ describe('a Flow card', () => {
     ]);
   });
 
-  it('lights the domain cell of the view of both with the type cell it stands beside', async () => {
+  it('draws the domain cell of the view of both with the type cell it stands beside, lit or not', async () => {
     const dark = await setup({
       mode: NameViewMode.both,
       source: 'flow',
@@ -537,7 +537,7 @@ describe('a Flow card', () => {
         rowCell(stage, NAMED, focusType).opacity()
       );
 
-    expect(opacities(dark.stage)).toEqual([0, 0]);
+    expect(opacities(dark.stage)).toEqual([1, 1]);
 
     const lit = await setup({
       mode: NameViewMode.both,

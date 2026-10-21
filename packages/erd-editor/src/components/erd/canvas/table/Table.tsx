@@ -693,8 +693,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     const headerFillsCard = columnIds.length === 0;
 
     // A view lights what a hover or a pin reaches, and nothing at rest. The
-    // card wears that as an accent border and a glow, and a table left unlit
-    // keeps its type column's width and draws nothing in it.
+    // card wears that as an accent border and a glow; its types show either way.
     const lit = view && Boolean(props.lit);
     const shadow = view
       ? viewCardShadow(theme.minimapShadow)

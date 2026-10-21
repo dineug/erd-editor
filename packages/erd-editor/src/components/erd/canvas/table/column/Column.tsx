@@ -103,9 +103,9 @@ export type ColumnProps = {
    */
   diffPaths?: DiffPaths | null;
   /**
-   * How far the light has come up on the card this row is drawn in, which is
-   * what the row tint and the type cell above are both drawn at. One number, so
-   * the two of them come up over the one span of time and a document row reads none of it.
+   * How far the light has come up on the card this row is drawn in, which a
+   * related row's tint is drawn at, so it comes up with the card's border and
+   * glow over the one span of time. A document row reads none of it.
    */
   litAlpha?: number;
   /**
@@ -645,7 +645,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           edit: props.editDataType,
           sharedFocus: props.sharedFocusDataType,
           ellipsis: true,
-          opacity: view ? (props.litAlpha ?? 0) : 1,
           align: view ? 'right' : undefined,
           // A domain's name is measured in the text face, so it keeps it.
           fontFamily: view && !domainName ? SCENE_CODE_FONT_FAMILY : undefined,
@@ -663,8 +662,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           null
         );
       case ColumnType.columnDomain:
-        // A column linking no listed domain leaves the cell empty. A view
-        // lights it with the type it stands for, as its type cell is lit.
+        // A column linking no listed domain leaves the cell empty.
         return cell({
           focusType,
           x,
@@ -675,7 +673,6 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           edit: props.editDomain ?? false,
           sharedFocus: props.sharedFocusDomain ?? null,
           ellipsis: true,
-          opacity: view ? (props.litAlpha ?? 0) : 1,
         });
       case ColumnType.columnNotNull:
         return cell({

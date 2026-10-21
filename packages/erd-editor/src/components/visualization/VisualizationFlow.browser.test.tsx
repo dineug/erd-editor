@@ -1857,7 +1857,7 @@ describe('the display set of the Flow view', () => {
     });
   });
 
-  it('lights the type cells of the hovered table and its hop, and leaves the rest dark (AC-27)', async () => {
+  it('draws the type cells of every card, whatever a hover lights (an owner decision of 2026-10-21)', async () => {
     const app = createTestAppContext();
     seedFields(app);
     const mounted = await mountVisualization(app);
@@ -1870,25 +1870,18 @@ describe('the display set of the Flow view', () => {
     );
     await settle();
 
+    const types = () => ['t1', 't2', 't3'].map(typeOpacityOf);
     expect(drawnTableIds()).toEqual(['t1', 't2', 't3', 't4']);
-    expect(typeOpacityOf('t1')).toEqual([0]);
-    expect(typeOpacityOf('t2')).toEqual([0]);
-    expect(typeOpacityOf('t3')).toEqual([0]);
+    expect(types()).toEqual([[1], [1], [1]]);
 
     fireScenePointer(tableOf('t1')!, 'mouseenter');
     await settle();
-
-    expect(typeOpacityOf('t1')).toEqual([1]);
-    expect(typeOpacityOf('t2')).toEqual([1]);
-    expect(typeOpacityOf('t3')).toEqual([0]);
+    expect(types()).toEqual([[1], [1], [1]]);
 
     fireScenePointer(tableOf('t1')!, 'mouseleave');
     fireScenePointer(tableOf('t3')!, 'mouseenter');
     await settle();
-
-    expect(typeOpacityOf('t3')).toEqual([1]);
-    expect(typeOpacityOf('t2')).toEqual([1]);
-    expect(typeOpacityOf('t1')).toEqual([0]);
+    expect(types()).toEqual([[1], [1], [1]]);
   });
 
   it('places the view again when an edit changes what a center reaches, and not when it does not (AC-13)', async () => {
