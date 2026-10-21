@@ -261,10 +261,23 @@ const isReload = arrayHas<string>([
 
 const isDictionaryWrite = arrayHas<string>(Object.values(DictionaryActionType));
 
-/** A table's or a column's write, or a switch of the name view the check targets follow. */
+/**
+ * A write the checks read: a table's or a column's listing, order, name,
+ * logical name or domain link, or a switch of the name view the check targets
+ * follow. A move, a colour or a type changes no check, so it lists nothing again.
+ */
 const isSchemaWrite = arrayHas<string>([
-  ...Object.values(TableActionType),
-  ...Object.values(ColumnActionType),
+  TableActionType.addTable,
+  TableActionType.removeTable,
+  TableActionType.sortTable,
+  TableActionType.changeTableName,
+  TableActionType.changeTableLogicalName,
+  ColumnActionType.addColumn,
+  ColumnActionType.removeColumn,
+  ColumnActionType.moveColumn,
+  ColumnActionType.changeColumnName,
+  ColumnActionType.changeColumnLogicalName,
+  ColumnActionType.changeColumnDomain,
   SettingsActionType.changeNameViewMode,
   SettingsActionType.changeLockSettings,
 ]);

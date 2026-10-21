@@ -1,6 +1,7 @@
 import {
   bHas,
   ColumnOption,
+  dictionaryActions,
   dictionaryActions$,
   type PeerStore,
 } from '@dineug/erd-editor/peer.js';
@@ -111,6 +112,29 @@ describe('a domain by its name', () => {
       physicalName: 'NO',
       domainId: SEED.domain,
     });
+  });
+
+  it('links the first of two domains sharing a name in the order the sheet shows, as the domain cell does', () => {
+    const peer = seeded();
+    peer.dispatch([
+      dictionaryActions.addDictionaryAction({
+        kind: 'domain',
+        id: 'domain_twin',
+        values: { name: 'Identifier', dataType: 'BIGINT', order: 'a0' },
+      }),
+      dictionaryActions.updateDictionaryAction({
+        kind: 'domain',
+        id: SEED.domain,
+        values: { order: 'b0' },
+      }),
+    ]);
+
+    const [id] = runTool(peer, 'erd_add_term', {
+      name: 'Number',
+      domainName: 'Identifier',
+    }).createdIds;
+
+    expect(termOf(peer, id).domainId).toBe('domain_twin');
   });
 
   it('refuses a name no domain holds, and a domain given both ways', () => {

@@ -36,9 +36,13 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
+  changeTableColorAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
-import { changeColumnNameAction } from '@/engine/modules/table-column/atom.actions';
+import {
+  changeColumnDataTypeAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
 import { createI18n } from '@/i18n/translate';
 
 const apps: AppContext[] = [];
@@ -466,5 +470,20 @@ describe('bumpedSheets', () => {
   it('raises nothing for a batch that writes neither', () => {
     expect(bumpedSheets([])).toEqual([]);
     expect(bumpedSheets([changeZoomLevelAction({ value: 1 })])).toEqual([]);
+  });
+
+  // A peer's drag sends one batch a frame, and each would walk the document.
+  it('raises nothing for a table move, a colour or a column type, which no check reads', () => {
+    expect(
+      bumpedSheets([
+        moveTableAction({ movementX: 1, movementY: 1, ids: ['t'] }),
+      ])
+    ).toEqual([]);
+    expect(
+      bumpedSheets([
+        changeTableColorAction({ id: 't', color: '#ffffff', prevColor: '' }),
+        changeColumnDataTypeAction({ tableId: 't', id: 'c', value: 'INT' }),
+      ])
+    ).toEqual([]);
   });
 });

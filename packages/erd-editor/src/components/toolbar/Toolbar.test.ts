@@ -695,8 +695,10 @@ describe('Toolbar', () => {
         expect(app.store.state.doc.wordIds).toEqual(['w1']);
       });
 
-      it('shows both inactive on another sheet, and on the check sheet, which no edit reaches', async () => {
+      it('shows both inactive on another sheet, and on the check sheet, which reaches neither history', async () => {
         const { app } = await onDictionary();
+        // A document entry the check sheet's greyed buttons must leave alone.
+        app.store.dispatchSync(addTable('t1'));
         app.store.dispatchSync(addWord('w1'));
         const view = dictionaryViewOf(app);
 
@@ -708,8 +710,31 @@ describe('Toolbar', () => {
         await flush();
         expect(menu('Undo').getAttribute('class')).not.toContain('active');
         menu('Undo').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        menu('Redo').dispatchEvent(new MouseEvent('click', { bubbles: true }));
         await flush();
         expect(app.store.state.doc.wordIds).toEqual(['w1']);
+        expect(app.store.state.doc.tableIds).toEqual(['t1']);
+      });
+
+      it('keeps the keyboard where it was on the Dictionary tab, and lets a press take it elsewhere', async () => {
+        await onDictionary();
+        const press = () => {
+          const event = new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+          });
+          menu('Undo').dispatchEvent(event);
+          return event.defaultPrevented;
+        };
+
+        expect(press()).toBe(true);
+
+        const { app } = await setup();
+        await flush();
+        expect(app.store.state.settings.canvasType).not.toBe(
+          CanvasType.dictionary
+        );
+        expect(press()).toBe(false);
       });
 
       it('hides both in a read-only document', async () => {

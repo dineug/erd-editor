@@ -61,18 +61,28 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
     return isEntrySheet(sheet) ? sheet : null;
   };
 
+  const onDictionaryTab = () =>
+    app.value.store.state.settings.canvasType === CanvasType.dictionary;
+
+  // The Dictionary tab undoes the sheet shown alone, and nothing on the check
+  // sheet, so its greyed buttons never reach the document's history.
   const handleUndo = () => {
     const { store } = app.value;
     const sheet = shownSheet();
     if (sheet) store.undoSheet(sheet);
-    else store.undo();
+    else if (!onDictionaryTab()) store.undo();
   };
 
   const handleRedo = () => {
     const { store } = app.value;
     const sheet = shownSheet();
     if (sheet) store.redoSheet(sheet);
-    else store.redo();
+    else if (!onDictionaryTab()) store.redo();
+  };
+
+  /** Keeps the keyboard where it was on the Dictionary tab, in the grid or the search, which a press would hand the editor's root. */
+  const keepFocus = (event: MouseEvent) => {
+    if (onDictionaryTab()) event.preventDefault();
   };
 
   const handleUnselectAll = () => {
@@ -281,6 +291,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                 },
               ]}
               title={title(t('toolbar.undo'), KeyBindingName.undo)}
+              on:mousedown={keepFocus}
               on:click={handleUndo}
             >
               {mirrored ? (
@@ -298,6 +309,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
                 },
               ]}
               title={title(t('toolbar.redo'), KeyBindingName.redo)}
+              on:mousedown={keepFocus}
               on:click={handleRedo}
             >
               {mirrored ? (

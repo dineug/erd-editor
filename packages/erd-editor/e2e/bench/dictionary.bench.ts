@@ -628,8 +628,11 @@ async function openFixture(page: Page) {
 
 const dictionaryTab = (page: Page) => page.locator('erd-editor .dictionary');
 
+/** The name on the sheet button shown pressed, without the count beside it. */
 const shownSheet = (page: Page) =>
-  dictionaryTab(page).locator('[role="group"] button[aria-pressed="true"]');
+  dictionaryTab(page)
+    .locator('[role="group"] button[aria-pressed="true"] > span')
+    .first();
 
 const rowCount = (page: Page, count: number) =>
   dictionaryTab(page).getByText(`${count} ${count === 1 ? 'row' : 'rows'}`, {
@@ -695,7 +698,7 @@ async function installImportProbe(page: Page) {
     const shown = () =>
       root
         .querySelector('.dictionary [role="group"] button[aria-pressed="true"]')
-        ?.textContent?.trim() ?? '';
+        ?.firstElementChild?.textContent?.trim() ?? '';
     const listed = () => {
       for (const span of root.querySelectorAll('.dictionary span')) {
         const text = span.textContent?.trim() ?? '';

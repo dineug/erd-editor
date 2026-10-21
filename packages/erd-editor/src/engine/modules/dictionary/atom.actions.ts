@@ -58,7 +58,7 @@ export const selectDictionaryRow = (
 
 /**
  * The ids of a dictionary's listed rows, in the order they were listed, which
- * membership reads; a sheet shows them in key order (orderedDictionaryIds).
+ * membership reads; a sheet shows them in key order (orderedDictionaryRows).
  */
 export const dictionaryIds = (
   state: RootState,

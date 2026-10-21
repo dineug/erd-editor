@@ -6,7 +6,10 @@ import { CanvasType, Language, LockSettingType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
-import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
+import {
+  addDictionaryAction,
+  updateDictionaryAction,
+} from '@/engine/modules/dictionary/atom.actions';
 import {
   clearAction,
   loadJsonAction,
@@ -47,6 +50,8 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
+  changeColumnDataTypeAction,
+  changeColumnDomainAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
@@ -396,6 +401,101 @@ describe('createRxStore', () => {
         hasRedo: false,
       });
       expect(store.state.editor.hasUndo).toBe(false);
+    });
+
+    it.each([
+      [
+        'load',
+        (store: RxStore) => loadJsonAction({ value: toJson(store.state) }),
+      ],
+      ['clear', () => clearAction()],
+    ])(
+      'empties every sheet on a %s, so an undo brings no row of the old document back',
+      (_, replace) => {
+        const store = make(createContext());
+        store.dispatchSync(fromTab(addWord('w1', 'Member')));
+        store.dispatchSync(fromTab(addTerm('t1', 'Member No')));
+        expect(store.sheetHistories.word.size).toBe(1);
+
+        store.dispatchSync(replace(store));
+
+        expect(store.sheetHistories.word.size).toBe(0);
+        expect(store.sheetHistories.term.size).toBe(0);
+        const listed = [...store.state.doc.wordIds];
+        store.undoSheet('word');
+        expect(store.state.doc.wordIds).toEqual(listed);
+      }
+    );
+
+    describe("a domain's type undone from its sheet", () => {
+      const domain = (id: string, dataType: string) =>
+        addDictionaryAction({
+          kind: 'domain',
+          id,
+          values: { name: id, dataType },
+        });
+      const linked = (domainId: string, dataType: string) => [
+        changeColumnDomainAction({ tableId: 't1', id: 'c1', value: domainId }),
+        changeColumnDataTypeAction({
+          tableId: 't1',
+          id: 'c1',
+          value: dataType,
+        }),
+      ];
+
+      /** Domain D at INT linking c1, then the tab's change of D to BIGINT, which spreads to c1. */
+      function seed() {
+        const store = make(createContext());
+        store.dispatchSync(
+          addTable('t1'),
+          addColumnAction({ id: 'c1', tableId: 't1' }),
+          domain('D', 'INT'),
+          domain('E', 'VARCHAR'),
+          ...linked('D', 'INT')
+        );
+        store.dispatchSync(
+          fromTab(
+            updateDictionaryAction({
+              kind: 'domain',
+              id: 'D',
+              values: { dataType: 'BIGINT' },
+            })
+          ),
+          fromTab(
+            changeColumnDataTypeAction({
+              tableId: 't1',
+              id: 'c1',
+              value: 'BIGINT',
+            })
+          )
+        );
+        const column = () => store.state.collections.tableColumnEntities.c1;
+        return { store, column };
+      }
+
+      it('takes back the columns the domain still links, and the domain', () => {
+        const { store, column } = seed();
+        expect(column().dataType).toBe('BIGINT');
+
+        store.undoSheet('domain');
+        expect(store.state.collections.domainEntities.D.dataType).toBe('INT');
+        expect(column().dataType).toBe('INT');
+
+        store.redoSheet('domain');
+        expect(column().dataType).toBe('BIGINT');
+      });
+
+      it('leaves a column the canvas linked elsewhere since, at the type of the domain it links now', () => {
+        const { store, column } = seed();
+        store.dispatchSync(...linked('E', 'VARCHAR'));
+
+        store.undoSheet('domain');
+        expect(store.state.collections.domainEntities.D.dataType).toBe('INT');
+        expect(column()).toMatchObject({ domainId: 'E', dataType: 'VARCHAR' });
+
+        store.redoSheet('domain');
+        expect(column()).toMatchObject({ domainId: 'E', dataType: 'VARCHAR' });
+      });
     });
 
     it('puts a tagged batch with no dictionary row into the document history', () => {

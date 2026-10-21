@@ -23,11 +23,12 @@ import {
 } from '@/engine/actions';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
-import { pushHistory } from '@/engine/history.actions';
+import { pushHistory, pushSheetHistory } from '@/engine/history.actions';
 import {
   DictionaryKind,
   DictionaryKindList,
 } from '@/engine/modules/dictionary/actions';
+import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
 import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
 import { getActiveView } from '@/engine/modules/editor/view';
 import {
@@ -44,6 +45,7 @@ import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
 import { hasActionTag, Tag } from '@/engine/tag';
 import type { Unsubscribe } from '@/internal-types';
+import { arrayHas } from '@/utils/arrayHas';
 
 export type RxStore = Store & {
   undo: () => void;
@@ -78,6 +80,12 @@ export type RxStoreOptions = {
 };
 
 export const HISTORY_LIMIT = 2048;
+
+/** A local batch that replaces the document the sheets' entries were made on. */
+const isDocumentReplace = arrayHas<string>([
+  EditorActionType.loadJson,
+  EditorActionType.clear,
+]);
 
 export function createRxStore(
   context: EngineContext,
@@ -116,12 +124,20 @@ export function createRxStore(
     const row = actions.find(({ type }) => type.startsWith('dictionary.'));
     return row ? sheetHistories[row.payload?.kind as DictionaryKind] : null;
   };
-  /** A Dictionary tab batch to its sheet's history, every other to the document's. */
+  /**
+   * A Dictionary tab batch to its sheet's history, every other to the
+   * document's. A load or a clear replaces the document the sheets' entries
+   * were made on, so it empties them, or an undo would bring an old row back.
+   */
   const toHistory = (actions: Array<AnyAction>) => {
+    if (actions.some(({ type }) => isDocumentReplace(type))) {
+      DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
+    }
+
     const sheetHistory = hasActionTag(actions, Tag.dictionarySheet)
       ? sheetHistoryOf(actions)
       : null;
-    if (sheetHistory) pushHistory(store, sheetHistory)(actions);
+    if (sheetHistory) pushSheetHistory(store, sheetHistory)(actions);
     else historyInput$.next(actions);
   };
 

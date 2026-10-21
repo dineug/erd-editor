@@ -371,9 +371,11 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   function refreshChecks() {
     if (checksFrame !== null) return;
 
+    // A switch to an entry sheet by then still owes the check sheet's count.
     checksFrame = requestAnimationFrame(() => {
       checksFrame = null;
       if (!isEntrySheet(session.sheet)) refresh();
+      else recountChecks();
     });
   }
 

@@ -53,8 +53,8 @@ export function parser(source: any): ERDEditorSchemaV3 {
   const termEntities = createAndMergeTermEntities(terms);
   const domainEntities = createAndMergeDomainEntities(domains);
 
-  // A file holds no dictionary order but its rows; the runtime value holds one
-  // with the removed entries left out, which the rows still carry.
+  // A file holds a dictionary's membership and order in its rows alone; the
+  // runtime value names the membership, removed rows left out, and keys the rows.
   if (!Array.isArray(json.doc?.wordIds)) doc.wordIds = rowIds(words);
   if (!Array.isArray(json.doc?.termIds)) doc.termIds = rowIds(terms);
   if (!Array.isArray(json.doc?.domainIds)) doc.domainIds = rowIds(domains);

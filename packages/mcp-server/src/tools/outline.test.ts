@@ -1,6 +1,7 @@
 import {
   createPeerStore,
   defaultToWidth,
+  dictionaryActions,
   Language,
   measureTableSize,
   type PeerStore,
@@ -159,6 +160,31 @@ describe('the document list', () => {
       { id: SEED.memberWord, name: 'Member', abbreviation: 'MBR' },
       { id: SEED.numberWord, name: 'Number', abbreviation: 'NO' },
     ]);
+  });
+
+  // A row the sheet inserted or sorted keeps its place in doc but not its
+  // turn, so the list and the snapshot read the keys, as the sheet does.
+  it("lists each dictionary's rows in the order of their keys, which the document's lists need not share", () => {
+    const peer = seeded();
+    peer.dispatch([
+      dictionaryActions.updateDictionaryAction({
+        kind: 'word',
+        id: SEED.memberWord,
+        values: { order: 'b0' },
+      }),
+      dictionaryActions.updateDictionaryAction({
+        kind: 'word',
+        id: SEED.numberWord,
+        values: { order: 'a0' },
+      }),
+    ]);
+    expect(peer.state.doc.wordIds).toEqual([SEED.memberWord, SEED.numberWord]);
+
+    const keyed = [SEED.numberWord, SEED.memberWord];
+    expect(toDocumentList(peer.state).words.map(({ id }) => id)).toEqual(keyed);
+    expect(toAgentSnapshot(peer.state).words.map(({ id }) => id)).toEqual(
+      keyed
+    );
   });
 
   it('lists and counts only the dictionary rows the document lists, a link to a removed domain as none', () => {

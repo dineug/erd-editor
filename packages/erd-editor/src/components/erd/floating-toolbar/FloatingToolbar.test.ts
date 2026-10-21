@@ -13,7 +13,12 @@ import {
 import { AppContext } from '@/components/appContext';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import * as styles from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
-import { NameViewMode, RelationshipType, Show } from '@/constants/schema';
+import {
+  LockSettingType,
+  NameViewMode,
+  RelationshipType,
+  Show,
+} from '@/constants/schema';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
   changeDrawTableGroupAction,
@@ -27,9 +32,11 @@ import {
   viewOpenAction,
 } from '@/engine/modules/editor/view.actions';
 import {
+  changeNameViewModeAction,
   changeShowAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
+import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
@@ -467,9 +474,34 @@ describe('FloatingToolbar', () => {
   });
 
   it("offers the name view in a readonly editor too, which switches the reader's own view", async () => {
-    const { root } = await setup(undefined, { readonly: true });
+    let readonly = false;
+    const app = createTestAppContext({ getReadonly: () => readonly });
+    // With the lock off a writer's switch is the document's; a reader's is not.
+    app.store.dispatchSync(
+      changeLockSettingsAction$(LockSettingType.unlockNameViewMode, false)
+    );
+    readonly = true;
+    const { root } = await setup(app, { readonly: true });
+    const switches: unknown[] = [];
+    app.store.subscribe(actions => {
+      for (const { type, payload } of actions) {
+        if (type === changeNameViewModeAction.type) switches.push(payload);
+      }
+    });
 
-    expect(nameViewTrigger(root)).not.toBeNull();
+    click(nameViewTrigger(root));
+    await flush();
+    click(nameViewRows()[2]);
+    await flush();
+
+    expect(switches).toEqual([
+      {
+        value: NameViewMode.both,
+        shared: false,
+        editorId: app.store.state.editor.id,
+      },
+    ]);
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.both);
   });
 
   it('stands left to right in every language, as the canvas under it does', async () => {

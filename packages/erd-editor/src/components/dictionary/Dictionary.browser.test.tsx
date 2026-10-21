@@ -775,9 +775,16 @@ describe('the Dictionary tab', () => {
       counts(warned)[3].classList.contains(String(styles.countWarning))
     ).toBe(true);
 
-    // The check sheet counts what it lists, with no idle wait.
+    // The check sheet counts from the walk it lists by, a frame after a batch
+    // and with no idle wait: a word sharing a name makes two errors more.
     await click(sheetButtons(warned)[3]);
-    expect(counts(warned)[3].textContent).toBe('1');
+    warned.app.store.dispatchSync(word('e', '회원'));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await drawn();
+    expect(counts(warned)[3].textContent).toBe('3');
+    expect(
+      counts(warned)[3].classList.contains(String(styles.countError))
+    ).toBe(true);
   });
 
   it('clears the search by its button and by Escape, the field keeping the keyboard', async () => {
@@ -2079,6 +2086,15 @@ describe('the Dictionary tab in the editor', () => {
     expect(undoButton?.classList.contains('active')).toBe(true);
     await click(undoButton);
 
+    // The press kept the keyboard in the grid, so its own redo still answers.
+    await press(`{${MOD}>}{Shift>}z{/Shift}{/${MOD}}`);
+    await click(toolbarButton(shadow, 'Entity Relationship Diagram'));
+    expect(typeText()).toBe('TEXT');
+
+    await click(toolbarButton(shadow, 'Dictionary'));
+    await click(
+      shadow.querySelector<HTMLElement>('.toolbar [title^="Undo"]') ?? null
+    );
     await click(toolbarButton(shadow, 'Entity Relationship Diagram'));
     expect(typeText()).toBe(before);
   });

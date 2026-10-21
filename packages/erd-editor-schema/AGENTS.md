@@ -5,7 +5,7 @@
 
 ## Purpose
 
-Defines the persisted `.erd` / `.vuerd` document: the v2 and v3 schemas, defensive parsers and the v2 → v3 conversion. It also holds two serializations (the runtime value and the storage form), a query layer over the v3 collections and the LWW operators. Its workspace consumers are `@dineug/erd-editor` and `mcp-server`, which lists it as a devDependency and inlines `parser`, `query`, `toJson`, `toDocumentJson` and `createSchema` into its published bundle (`SchemaV3Constants` only in its specs). The package is private, but the format is public: every document `schemaV3Parser` builds, a converted v2 one included, is stamped with a `$schema` URL pointing at the repo-root `json-schema/schema.json`. A change keeps every file an earlier release saved readable, and keeps `toDocumentJson(parser(f)) === f` for every `f` that `toDocumentJson` wrote.
+Defines the persisted `.erd` / `.vuerd` document: the v2 and v3 schemas, defensive parsers and the v2 → v3 conversion. It also holds two serializations (the runtime value and the storage form), a query layer over the v3 collections and the LWW operators. Its workspace consumers are `@dineug/erd-editor` and `mcp-server`, which lists it as a devDependency and inlines `parser`, `query`, `toJson`, `toDocumentJson`, `createSchema` and `compareByOrder` into its published bundle (`SchemaV3Constants` only in its specs). The package is private, but the format is public: every document `schemaV3Parser` builds, a converted v2 one included, is stamped with a `$schema` URL pointing at the repo-root `json-schema/schema.json`. A change keeps every file an earlier release saved readable, and keeps `toDocumentJson(parser(f)) === f` for every `f` that `toDocumentJson` wrote.
 
 ## Making a Change
 
@@ -21,7 +21,7 @@ Defines the persisted `.erd` / `.vuerd` document: the v2 and v3 schemas, defensi
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Public surface: `parser`, `toJson`, `toDocumentJson`, `schemaV2Parser`, `schemaV3Parser`, `createSchema`, `query`, the three LWW operators, `migrateScrollToOrigin`, the lock reads `isSettingLocked` and `setSettingLock`, the constant sets and types |
+| `src/index.ts` | Public surface: `parser`, `toJson`, `toDocumentJson`, `schemaV2Parser`, `schemaV3Parser`, `createSchema`, `query`, the order keys (`compareByOrder`, `generateOrderKeyBetween`, `generateOrderKeys`, `isOrderKey`, `Ordered`), the three LWW operators, `migrateScrollToOrigin`, the lock reads `isSettingLocked` and `setSettingLock`, the constant sets and types |
 | `src/parser.ts` | Version sniffing (`version === '3.0.0'`, else v2) and `toJson`, the runtime value |
 | `src/storageForm.ts` | `toDocumentJson`, the storage form a file holds, and `toDocument`, the same as an object for the specs |
 | `src/normalizeSettings.ts` | The settings normalization both serializations write through |
@@ -139,7 +139,7 @@ Defines the persisted `.erd` / `.vuerd` document: the v2 and v3 schemas, defensi
 ## Common Patterns
 
 - Constant sets are `as const` objects paired with a `*List` array (`DatabaseList`, `NameCaseList`), re-exported through `SchemaV3Constants` / `SchemaV2Constants`.
-- Collections are `Record<id, Entity>`, ordered separately in `doc`. In a file the three dictionaries are a header and rows instead (Two serializations).
+- Collections are `Record<id, Entity>`, ordered separately in `doc`, but for the three dictionaries, whose `doc` lists are their membership and whose order is each row's key (`compareByOrder`, Entities). In a file the three dictionaries are a header and rows instead (Two serializations).
 - Factories default `id` to `''`, since the editor mints the real one.
 
 ## Dependencies

@@ -515,6 +515,37 @@ describe('the loop that keeps the Flow view placed', () => {
     expect(hoisted.requests).toHaveLength(2);
   });
 
+  // A peer's switch of an unlocked view does reach it, and resizes the cards
+  // as the reader's own does, but the screen is the reader's, as below.
+  it("places the cards again on a peer's shared switch and leaves the reader's screen where it was", async () => {
+    const app = seed();
+    mountFlow(app);
+    await settle();
+    app.store.dispatchSync(
+      viewChangeZoomLevelAction({ value: 1, kind: ViewKind.flow }),
+      viewScrollToAction({ originX: 300, originY: 200, kind: ViewKind.flow })
+    );
+
+    app.store.dispatchSync(
+      shared(
+        changeNameViewModeAction({
+          value: NameViewMode.logical,
+          shared: true,
+          editorId: 'another',
+        })
+      )
+    );
+    await settle();
+
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(hoisted.requests).toHaveLength(2);
+    expect(flowOf(app)).toMatchObject({
+      zoomLevel: 1,
+      originX: 300,
+      originY: 200,
+    });
+  });
+
   it('asks again without a neighbour a peer removed', async () => {
     const app = seed();
     mountFlow(app);

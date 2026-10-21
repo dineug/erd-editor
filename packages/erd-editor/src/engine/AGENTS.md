@@ -210,7 +210,7 @@
 
 ### Dictionaries and derived names
 
-- **Three dictionaries in one module** (owner decisions of 2026-10-20). `engine/modules/dictionary/` holds the words, terms and domains. `dictionary.add`, `dictionary.update` and `dictionary.remove` name the row by its `kind` (`DictionaryKind`: `word`, `term`, `domain`) and `id`. An add or an update carries `values`, the fields `DictionaryFields` lists for the kind. A kind, a field or a value that is no string, which a later release could send, is passed over.
+- **Three dictionaries in one module** (owner decisions of 2026-10-20). `engine/modules/dictionary/` holds the words, terms and domains. `dictionary.add`, `dictionary.update` and `dictionary.remove` name the row by its `kind` (`DictionaryKind`: `word`, `term`, `domain`) and `id`. An add or an update carries `values`, the fields `DictionaryStoredFields` lists for the kind: the `DictionaryFields` values and `order`, the row's key (A sheet's order is its rows' keys, below). A kind, a field or a value that is no string, which a later release could send, is passed over.
 - **An add makes the identity, then writes each field.** `dictionary.add` makes the row with `getOrCreate` and its id alone and lists it through `addOperator`. Then it writes each value it carries through `replaceOperator` at the add's own version, one register per field, as `dictionary.update` does.
   - Never `addOne` with the values: a peer's update that arrives first leaves a stub, `addOne` passes over a row that is there, and the values are lost. `table.add`, `memo.add` and `tableGroup.add` still carry their `ui` that way, so they are no model for a new add.
   - `column.add` carries the identity alone, as the dictionaries do.
@@ -265,6 +265,8 @@
 - **The Dictionary tab's edits undo per sheet** (owner decisions of 2026-10-21). A batch the tab sends carries `Tag.dictionarySheet` (`attachDictionarySheetTag$`), and the store puts its undo into the history of the sheet its dictionary rows are on (`sheetHistories`), never into the document's, so the canvas's undo never takes back a sheet's edit and a sheet's undo never takes back another sheet's or the canvas's. A domain's new type and the column types it carries are one batch, so one undo of the domain sheet takes back both.
   - `editor.dictionaryHistory` holds what each sheet's history can undo and redo, as `hasUndo` and `hasRedo` hold the document's, through `editor.changeHasHistory` with its `sheet`.
   - `undoSheet` and `redoSheet` refuse a read-only document and an active view as `undo` does, and `resetHistory` empties every sheet's history with the document's. Time Travel replays the document's history alone.
+  - A local `editor.loadJson` or `editor.clear` empties every sheet's history (`isDocumentReplace` in `toHistory`): it replaces the document the entries were made on, and an undo would bring an old row back into the new one.
+  - A sheet entry holds its row actions alone (`pushSheetHistory`, `history.actions.ts`). The column writes a domain's type spread to are worked out again at each replay from the domain types the replayed rows set (`toDomainTypeActions`), so an undo or a redo types the columns the domain links then, and leaves a column the canvas linked elsewhere or typed by hand since.
   - A tagged batch with no dictionary row goes into the document's history.
 
 ### Peer store internals

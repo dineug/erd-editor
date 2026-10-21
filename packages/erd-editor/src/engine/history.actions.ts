@@ -1,7 +1,9 @@
 import { AnyAction } from '@dineug/r-html';
-import { cloneDeep } from 'es-toolkit';
+import { cloneDeep, isString } from 'es-toolkit';
 
-import { History } from '@/engine/history';
+import { Command, History } from '@/engine/history';
+import { DictionaryKind } from '@/engine/modules/dictionary/actions';
+import { toDomainTypeActions } from '@/engine/modules/dictionary/domainTypes';
 import {
   dictionaryPushUndoHistoryMap,
   reverseDictionaryListings,
@@ -103,4 +105,65 @@ function cloneAction(version: number) {
 export const pushHistory =
   (store: Store, history: History) => (actions: AnyAction[]) => {
     safeCallback(push, store, history, actions);
+  };
+
+const isDictionaryAction = ({ type }: AnyAction) =>
+  type.startsWith('dictionary.');
+
+/** The data type each domain row of these actions writes, by the row's id. */
+function domainTypesOf(actions: ReadonlyArray<AnyAction>) {
+  const domainTypes = new Map<string, string>();
+  for (const { payload } of actions.filter(isDictionaryAction)) {
+    const dataType = payload?.values?.dataType;
+    if (payload?.kind === DictionaryKind.domain && isString(dataType)) {
+      domainTypes.set(payload.id, dataType);
+    }
+  }
+  return domainTypes;
+}
+
+/**
+ * Replays a sheet entry's row actions with the column writes the domain types
+ * they set call for in the document as it stands at the replay, so a column
+ * linked elsewhere or typed by hand since the entry keeps what it holds now.
+ */
+const replayRows =
+  (store: Store, rows: AnyAction[]): Command[keyof Command] =>
+  (dispatch, getNextVersion) => {
+    const columns = toDomainTypeActions(store.state, {
+      domainTypes: domainTypesOf(rows),
+    });
+    dispatch([...rows, ...columns].map(cloneAction(getNextVersion())));
+  };
+
+function pushSheet(store: Store, history: History, actions: AnyAction[]) {
+  const rows = actions.filter(isDictionaryAction);
+  const undoActions: AnyAction[] = [];
+  const redoActions: AnyAction[] = [];
+
+  for (const action of rows) {
+    const pushUndoHistory = pushUndoHistoryMap[action.type];
+    if (!pushUndoHistory) continue;
+
+    pushUndoHistory(undoActions, action, store.state);
+    redoActions.push(cloneDeep(action));
+  }
+
+  reverseDictionaryListings(undoActions);
+  if (!undoActions.length || !redoActions.length) return;
+
+  history.push({
+    undo: replayRows(store, undoActions),
+    redo: replayRows(store, redoActions),
+  });
+}
+
+/**
+ * Pushes a Dictionary tab batch onto its sheet's history: its row actions
+ * alone, the column writes a domain's type spread to recomputed at each replay
+ * rather than replayed as they stood at the push.
+ */
+export const pushSheetHistory =
+  (store: Store, history: History) => (actions: AnyAction[]) => {
+    safeCallback(pushSheet, store, history, actions);
   };
