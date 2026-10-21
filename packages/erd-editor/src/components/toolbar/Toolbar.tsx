@@ -223,7 +223,7 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
           title={t('common.tab.dictionary')}
           on:click={() => handleChangeCanvasType(CanvasType.dictionary)}
         >
-          <Icon name="book-a" size={16} />
+          <Icon name="book-type" size={16} />
         </div>
         <div
           class={[

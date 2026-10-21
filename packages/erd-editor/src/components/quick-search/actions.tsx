@@ -908,7 +908,7 @@ const TABS: ReadonlyArray<{
   },
   {
     canvasType: CanvasType.dictionary,
-    icon: 'book-a',
+    icon: 'book-type',
     labelKey: 'common.tab.dictionary',
   },
   {

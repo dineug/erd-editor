@@ -257,7 +257,7 @@ describe('Toolbar', () => {
         'share-2',
         'database',
         'code',
-        'book-a',
+        'book-type',
         'settings',
       ]);
     });
