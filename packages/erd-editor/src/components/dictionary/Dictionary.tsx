@@ -946,7 +946,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 aria-label={t('dictionary.addRow')}
                 on:click={handleAddRow}
               >
-                <Icon name="plus" size={16} />
+                <Icon name="list-plus" size={16} />
               </button>
               <button
                 type="button"
@@ -961,7 +961,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 aria-label={t('dictionary.deleteRows')}
                 on:click={handleDeleteRows}
               >
-                <Icon name="trash-2" size={16} />
+                <Icon name="list-x" size={16} />
               </button>
               <span class={styles.divider} aria-hidden="true" />
               <button
@@ -975,7 +975,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 })}
                 on:click={handleImport}
               >
-                <Icon name="file-input" size={16} />
+                <Icon name="file-up" size={16} />
               </button>
               <button
                 type="button"
@@ -988,7 +988,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 })}
                 on:click={handleExport}
               >
-                <Icon name="file-output" size={16} />
+                <Icon name="file-down" size={16} />
               </button>
               <input
                 type="file"
