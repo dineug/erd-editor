@@ -261,7 +261,8 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   countEntries();
   let pending: Pending = null;
   let revealRows: { first: number; last: number } | null = null;
-  // The column a menu opened on, which its sorts order the sheet by.
+  // The column a menu opened on, which its sorts order the sheet by, or none
+  // right of the last column.
   let menuColumn: GridColumn | null = null;
   let checksFrame: number | null = null;
   // While an entry sheet shows, the checks are counted over the idle periods
@@ -594,13 +595,17 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     session.handle.focus();
   };
 
-  /** Opens the menu where a right click on a cell, or the menu key on the active cell, asked for it. */
+  /**
+   * Opens the menu where a right click on a cell or past the last one, or the
+   * menu key on the active cell, asked for it; past the last one it acts on the
+   * selection as it stands.
+   */
   const handleCellContextMenu = ({
     col,
     clientX,
     clientY,
   }: CellContextMenuEvent) => {
-    menuColumn = columns[col] ?? null;
+    menuColumn = col === null ? null : (columns[col] ?? null);
     const menu = contextMenu.state;
     menu.x = clientX;
     menu.y = clientY;
@@ -1056,7 +1061,8 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
         {contextMenu.state.show && entry && !props.readonly ? (
           <DictionaryContextMenu
             count={menuRowCount()}
-            column={menuColumn?.label ?? ''}
+            column={menuColumn?.label ?? null}
+            empty={rowCount === 0}
             insertAboveShortcut={rowChordOf(
               app.value.keyBindingMap,
               RowCommand.insertAbove

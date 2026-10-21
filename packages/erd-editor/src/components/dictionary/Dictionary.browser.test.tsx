@@ -500,17 +500,21 @@ function captureExports() {
   return saved;
 }
 
-/** A real right click on a cell of the first column, which opens the tab's menu. */
-async function rightClick({ shadow }: Fixture, row: number) {
+/** A real right click on the grid's scroller at a point of it. */
+async function rightClickAt(
+  { shadow }: Fixture,
+  position: { x: number; y: number }
+) {
   const scroller = shadow.querySelector(
     '.dineug-grid-scroller'
   ) as HTMLDivElement;
-  await userEvent.click(scroller, {
-    button: 'right',
-    position: cellPoint(row),
-  });
+  await userEvent.click(scroller, { button: 'right', position });
   await drawn();
 }
+
+/** A real right click on a cell of the first column, which opens the tab's menu. */
+const rightClick = (fixture: Fixture, row: number) =>
+  rightClickAt(fixture, cellPoint(row));
 
 const menu = ({ shadow }: Fixture) =>
   shadow.querySelector<HTMLElement>('.context-menu-content');
@@ -1112,6 +1116,68 @@ describe('the Dictionary tab', () => {
     expect(menu(fixture)).toBeNull();
     expect(names(fixture)).toEqual(['A', 'B', 'C']);
     expect(dictionaryBatches(fixture)).toHaveLength(1);
+  });
+
+  it('opens the menu below the rows and right of the columns on the selection as it stands, and on an empty sheet', async () => {
+    const fixture = await setup({
+      seed: [
+        ...WORDS,
+        addDictionaryAction({
+          kind: DictionaryKind.domain,
+          id: 'd',
+          values: { name: 'Short Text', dataType: 'VARCHAR(255)' },
+        }),
+      ],
+    });
+
+    await press('{ArrowDown}{Shift>}{ArrowDown}{/Shift}');
+    await rightClickAt(fixture, { x: 100, y: rowY(8) });
+    expect(status(fixture)).toBe('4 rows 2 selected');
+    expect(menuRows(fixture)).toEqual([
+      'Insert 2 rows above',
+      'Insert 2 rows below',
+      'Delete 2 rows',
+      'Sort by Word, ascending',
+      'Sort by Word, descending',
+      'Import CSV',
+      'Export CSV',
+    ]);
+    await click(menuRow(fixture, 'Delete 2 rows'));
+    expect(names(fixture)).toEqual(['A', 'D']);
+
+    await userEvent.click(search(fixture));
+    await press('zzz');
+    await rightClickAt(fixture, { x: 100, y: rowY(0) });
+    expect(menuRows(fixture)).toEqual([
+      'Insert 1 row below',
+      'Import CSV',
+      'Export CSV',
+    ]);
+    await press('{Escape}');
+
+    // The domain sheet's columns end short of the grid's right edge.
+    await click(sheetButtons(fixture)[2]);
+    await rightClickAt(fixture, { x: WIDTH - 60, y: rowY(0) });
+    expect(menuRows(fixture)).toEqual([
+      'Insert 1 row above',
+      'Insert 1 row below',
+      'Delete 1 row',
+      'Import CSV',
+      'Export CSV',
+    ]);
+    await press('{Escape}');
+
+    await click(sheetButtons(fixture)[1]);
+    expect(status(fixture)).toBe('0 rows');
+    await rightClickAt(fixture, { x: 100, y: rowY(3) });
+    expect(menuRows(fixture)).toEqual([
+      'Insert 1 row below',
+      'Import CSV',
+      'Export CSV',
+    ]);
+    await click(menuRow(fixture, 'Insert 1 row below'));
+    expect(status(fixture)).toBe('1 row 1 selected');
+    expect(fixture.app.store.state.doc.termIds).toHaveLength(1);
   });
 
   it('sorts the whole sheet by the column right clicked, for everyone in one dispatch, and one undo puts it back', async () => {

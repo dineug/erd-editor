@@ -8,6 +8,7 @@ import {
   AUTO_SCROLL_MAX,
   AUTO_SCROLL_MIN,
   autoScrollStep,
+  blankAt,
   cellArea,
   cellNear,
   cellRect,
@@ -115,6 +116,39 @@ describe('hitTest', () => {
       kind: 'track',
       axis: 'horizontal',
       direction: 1,
+    });
+  });
+});
+
+describe('blankAt', () => {
+  it('gives the row or the column a point past the last lies in, and nothing on a cell or off the cell area', () => {
+    const { state } = create({ rowCount: 2, columns: COLUMNS.slice(0, 2) });
+    const below = 28 + 28 * 5;
+
+    expect(blankAt(state, { x: 40 + 130, y: below })).toEqual({
+      row: null,
+      col: 1,
+    });
+    expect(blankAt(state, { x: 40 + 500, y: 28 + 28 + 5 })).toEqual({
+      row: 1,
+      col: null,
+    });
+    expect(blankAt(state, { x: 40 + 500, y: below })).toEqual({
+      row: null,
+      col: null,
+    });
+    expect(blankAt(state, { x: 40 + 130, y: 28 + 5 })).toBeNull();
+    expect(blankAt(state, { x: 40 + 500, y: 10 })).toBeNull();
+    expect(blankAt(state, { x: 10, y: below })).toBeNull();
+    expect(blankAt(state, { x: 40 + 130, y: 900 })).toBeNull();
+  });
+
+  it('takes the whole cell area of a grid with no row', () => {
+    const { state } = create({ rowCount: 0 });
+
+    expect(blankAt(state, { x: 40 + 130, y: 28 + 5 })).toEqual({
+      row: null,
+      col: 1,
     });
   });
 });

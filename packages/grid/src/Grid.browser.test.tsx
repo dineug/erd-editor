@@ -10,6 +10,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
+  cellBox,
   cellPoint,
   centreOf,
   cleanup,
@@ -612,6 +613,56 @@ describe('the pointer', () => {
         .defaultPrevented
     ).toBe(false);
     expect(menu).toHaveBeenCalledTimes(2);
+  });
+
+  it('takes a right click past the last row or column with the selection as it stands, and leaves the headers there to the browser', async () => {
+    const menu = vi.fn<(event: CellContextMenuEvent) => void>();
+    const view = await mount({
+      rowCount: 3,
+      columns: COLUMNS.slice(0, 2),
+      onCellContextMenu: menu,
+    });
+    const rect = view.scroller.getBoundingClientRect();
+    const last = cellBox(view, 2, 1);
+    const below = last.y + last.height + 40;
+    const right = last.x + last.width + 40;
+
+    press(view, cellPoint(view, 1, 1));
+    view.onSelectionChange.mockClear();
+    const opened = (point: { x: number; y: number }) =>
+      mouse(view, 'contextmenu', point, { button: 2 }).defaultPrevented;
+
+    expect(opened({ x: cellPoint(view, 0, 0).x, y: below })).toBe(true);
+    expect(menu).toHaveBeenLastCalledWith({
+      row: null,
+      col: 0,
+      clientX: rect.left + cellPoint(view, 0, 0).x,
+      clientY: rect.top + below,
+    });
+    expect(opened({ x: right, y: cellPoint(view, 2, 0).y })).toBe(true);
+    expect(menu).toHaveBeenLastCalledWith(
+      expect.objectContaining({ row: 2, col: null })
+    );
+    expect(opened({ x: right, y: below })).toBe(true);
+    expect(menu).toHaveBeenLastCalledWith(
+      expect.objectContaining({ row: null, col: null })
+    );
+    expect(view.onSelectionChange).not.toHaveBeenCalled();
+
+    expect(opened({ x: right, y: geometry(view).headerHeight / 2 })).toBe(
+      false
+    );
+    expect(opened({ x: geometry(view).rowHeaderWidth / 2, y: below })).toBe(
+      false
+    );
+    expect(menu).toHaveBeenCalledTimes(3);
+
+    view.props.rowCount = 0;
+    await drawn();
+    expect(opened(cellPoint(view, 0, 1))).toBe(true);
+    expect(menu).toHaveBeenLastCalledWith(
+      expect.objectContaining({ row: null, col: 1 })
+    );
   });
 
   it('leaves the native menu alone when the host takes no right clicks', async () => {

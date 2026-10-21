@@ -9,8 +9,10 @@ import Kbd from '@/components/primitives/kbd/Kbd';
 export type DictionaryContextMenuProps = {
   /** The rows the selection covers, which Insert adds beside it and Delete removes. */
   count: number;
-  /** The header of the column right clicked, which the sorts order the sheet by. */
-  column: string;
+  /** The header of the column right clicked, which the sorts order by; null shows no sort. */
+  column: string | null;
+  /** The grid shows no row, so only Insert below and the file rows show. */
+  empty?: boolean;
   /** The chord that inserts above in the grid, shown beside its row. */
   insertAboveShortcut?: string;
   /** The chord that inserts below in the grid, shown beside its row. */
@@ -27,7 +29,7 @@ export type DictionaryContextMenuProps = {
 };
 
 /**
- * The menu a right click on an entry sheet's cell opens: as many rows as the
+ * The menu a right click on an entry sheet's grid opens: as many rows as the
  * selection covers inserted above or below it or removed, the sheet sorted by
  * the column, and a CSV file in and out, as the bar's buttons do.
  */
@@ -36,23 +38,25 @@ const DictionaryContextMenu: FC<DictionaryContextMenuProps> = (props, ctx) => {
 
   return () => {
     const { t } = i18n.value;
-    const { count, column } = props;
+    const { count, column, empty = false } = props;
     const format = DICTIONARY_FILE_FORMAT;
 
     return (
       <ContextMenu.Root
         children={
           <>
-            <ContextMenu.Item
-              onClick={props.onInsertAbove}
-              children={
-                <ContextMenu.Menu
-                  icon={<Icon name="arrow-up" size={14} />}
-                  name={t('dictionary.menu.insertAbove', { count })}
-                  right={<Kbd shortcut={props.insertAboveShortcut} />}
-                />
-              }
-            />
+            {empty ? null : (
+              <ContextMenu.Item
+                onClick={props.onInsertAbove}
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="arrow-up" size={14} />}
+                    name={t('dictionary.menu.insertAbove', { count })}
+                    right={<Kbd shortcut={props.insertAboveShortcut} />}
+                  />
+                }
+              />
+            )}
             <ContextMenu.Item
               onClick={props.onInsertBelow}
               children={
@@ -63,33 +67,39 @@ const DictionaryContextMenu: FC<DictionaryContextMenuProps> = (props, ctx) => {
                 />
               }
             />
-            <ContextMenu.Item
-              onClick={props.onDeleteRows}
-              children={
-                <ContextMenu.Menu
-                  name={t('dictionary.menu.deleteRows', { count })}
-                  right={<Kbd shortcut={props.deleteShortcut} />}
-                />
-              }
-            />
+            {empty ? null : (
+              <ContextMenu.Item
+                onClick={props.onDeleteRows}
+                children={
+                  <ContextMenu.Menu
+                    name={t('dictionary.menu.deleteRows', { count })}
+                    right={<Kbd shortcut={props.deleteShortcut} />}
+                  />
+                }
+              />
+            )}
             <ContextMenu.Separator />
-            <ContextMenu.Item
-              onClick={props.onSortAscending}
-              children={
-                <ContextMenu.Menu
-                  name={t('dictionary.menu.sortAscending', { column })}
+            {empty || column === null ? null : (
+              <>
+                <ContextMenu.Item
+                  onClick={props.onSortAscending}
+                  children={
+                    <ContextMenu.Menu
+                      name={t('dictionary.menu.sortAscending', { column })}
+                    />
+                  }
                 />
-              }
-            />
-            <ContextMenu.Item
-              onClick={props.onSortDescending}
-              children={
-                <ContextMenu.Menu
-                  name={t('dictionary.menu.sortDescending', { column })}
+                <ContextMenu.Item
+                  onClick={props.onSortDescending}
+                  children={
+                    <ContextMenu.Menu
+                      name={t('dictionary.menu.sortDescending', { column })}
+                    />
+                  }
                 />
-              }
-            />
-            <ContextMenu.Separator />
+                <ContextMenu.Separator />
+              </>
+            )}
             <ContextMenu.Item
               onClick={props.onImport}
               children={

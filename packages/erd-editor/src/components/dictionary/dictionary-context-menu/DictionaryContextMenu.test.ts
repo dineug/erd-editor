@@ -97,6 +97,31 @@ describe('DictionaryContextMenu', () => {
     ]);
   });
 
+  it('shows no sort with no column, and only Insert below and the file rows with no row', async () => {
+    await open({ count: 2, ...handlers(), column: null });
+    expect(rows().map(row => row.textContent?.trim())).toEqual([
+      'Insert 2 rows above',
+      'Insert 2 rows below',
+      'Delete 2 rows',
+      'Import CSV',
+      'Export CSV',
+    ]);
+    expect(
+      (mounted as Mounted).container.querySelectorAll('[role="separator"]')
+    ).toHaveLength(1);
+
+    mounted?.unmount();
+    await open({ count: 1, ...handlers(), empty: true });
+    expect(rows().map(row => row.textContent?.trim())).toEqual([
+      'Insert 1 row below',
+      'Import CSV',
+      'Export CSV',
+    ]);
+    expect(
+      (mounted as Mounted).container.querySelectorAll('[role="separator"]')
+    ).toHaveLength(1);
+  });
+
   it('runs the handler of the row pressed', async () => {
     const spies = handlers();
     await open({ count: 3, ...spies });
