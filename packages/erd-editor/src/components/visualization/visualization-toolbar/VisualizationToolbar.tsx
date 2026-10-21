@@ -14,6 +14,7 @@ import {
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
+import { useNameViewDropdown } from '@/components/erd/floating-toolbar/nameViewDropdown';
 import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
 import { showAllFlowView } from '@/components/flowCenters';
 import { useI18n } from '@/components/localeContext';
@@ -91,6 +92,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   const $bar = createRef<HTMLDivElement>();
   const $trigger = createRef<HTMLDivElement>();
   const $menu = createRef<HTMLDivElement>();
+  const nameView = useNameViewDropdown(ctx);
 
   const state = observable({
     showModeOpen: false,
@@ -104,6 +106,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   const handleMode = (value: VisualizationMode) => () => {
     const { store } = app.value;
     state.showModeOpen = false;
+    nameView.close();
     store.dispatch(changeVisualizationModeAction({ value }));
   };
 
@@ -328,6 +331,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
                 <div class={styles.showModeLabel}>{t(showMode.titleKey)}</div>
                 <Icon name="chevron-down" size={CHEVRON_SIZE} />
               </div>
+              {nameView.trigger()}
             </>
           ) : null}
           {showAll ? (
@@ -348,6 +352,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
             onClick: handleCompass,
           })}
         </div>
+        {flow ? nameView.menu() : null}
         {flow && state.showModeOpen ? (
           <div
             use:ref={ref($menu)}

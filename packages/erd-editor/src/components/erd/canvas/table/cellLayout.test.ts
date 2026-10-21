@@ -49,6 +49,7 @@ import { createEditor, FocusType } from '@/engine/modules/editor/state';
 import {
   getColumnFocusTypes,
   getTableFocusTypes,
+  getViewColumnFocusTypes,
 } from '@/engine/modules/editor/utils/nameView';
 import type { RootState } from '@/engine/state';
 import { viewHeaderNameWidth } from '@/utils/calcTable';
@@ -281,7 +282,7 @@ describe('where a row puts its alternate key mark', () => {
   });
 });
 
-/** AC-4. A view row is the name and the type, and the document's settings cannot change that. */
+/** AC-4. A view row is the cells its name view names, and no show bit or column order changes that. */
 describe('the boxes a view lays out', () => {
   const VIEW_ROW = [
     {
@@ -345,14 +346,124 @@ describe('the boxes a view lays out', () => {
     );
   });
 
-  it('keeps that row in every name view', () => {
+  it('keeps the physical row and header name in the physical view under every bit', () => {
+    const state = createState(ALL_SHOW, NameViewMode.physical);
+
+    expect(getColumnCellSlots(state, WIDTHS, 'flow')).toEqual(VIEW_ROW);
+    expect(getHeaderCellSlots(state, table(), 'flow')).toEqual([
+      expect.objectContaining({ focusType: FocusType.tableName }),
+    ]);
+  });
+
+  it('puts the logical name and the domain in the name and type cells of the logical view, whatever the Domain bit says', () => {
+    for (const show of [0, Show.columnDomain, ALL_SHOW]) {
+      const state = createState(show, NameViewMode.logical);
+
+      expect(getColumnCellSlots(state, WIDTHS, 'flow')).toEqual([
+        { ...VIEW_ROW[0], focusType: FocusType.columnLogicalName },
+        { ...VIEW_ROW[1], focusType: FocusType.columnDomain },
+      ]);
+    }
+  });
+
+  it('lays the logical name, the name, the domain and the type out in the view of both', () => {
+    const state = createState(0, NameViewMode.both);
+    const x = getColumnCellsX('flow');
+
+    expect(getColumnCellSlots(state, WIDTHS, 'flow')).toEqual([
+      {
+        columnType: ColumnType.columnLogicalName,
+        focusType: FocusType.columnLogicalName,
+        x,
+        width: 100,
+      },
+      {
+        columnType: ColumnType.columnName,
+        focusType: FocusType.columnName,
+        x: x + 100 + INPUT_MARGIN_RIGHT,
+        width: 60,
+      },
+      {
+        columnType: ColumnType.columnDomain,
+        focusType: FocusType.columnDomain,
+        x: x + 100 + INPUT_MARGIN_RIGHT + 60 + INPUT_MARGIN_RIGHT,
+        width: 110,
+      },
+      {
+        columnType: ColumnType.columnDataType,
+        focusType: FocusType.columnDataType,
+        x:
+          x +
+          100 +
+          INPUT_MARGIN_RIGHT +
+          60 +
+          INPUT_MARGIN_RIGHT +
+          110 +
+          INPUT_MARGIN_RIGHT,
+        width: 80,
+      },
+    ]);
+  });
+
+  it('sets the header names the name view names, each at the size a view header draws it', () => {
+    const entity = table();
+    entity.logicalName = 'Member';
+    entity.ui.widthName = 60;
+    entity.ui.widthLogicalName = 90;
+    const x = VIEW_TABLE_HEADER_ICON_SIZE + VIEW_TABLE_HEADER_ICON_GAP;
+
+    expect(
+      getHeaderCellSlots(
+        createState(ALL_SHOW, NameViewMode.logical),
+        entity,
+        'flow'
+      )
+    ).toEqual([
+      {
+        focusType: FocusType.tableLogicalName,
+        x,
+        width: viewHeaderNameWidth(90),
+      },
+    ]);
+    expect(
+      getHeaderCellSlots(
+        createState(ALL_SHOW, NameViewMode.both),
+        entity,
+        'flow'
+      )
+    ).toEqual([
+      {
+        focusType: FocusType.tableLogicalName,
+        x,
+        width: viewHeaderNameWidth(90),
+      },
+      {
+        focusType: FocusType.tableName,
+        x: x + viewHeaderNameWidth(90) + INPUT_MARGIN_RIGHT,
+        width: viewHeaderNameWidth(60),
+      },
+    ]);
+
+    // A blank logical name draws the name in its place, at the name's width.
+    entity.logicalName = ' ';
+    expect(
+      getHeaderCellSlots(createState(0, NameViewMode.logical), entity, 'flow')
+    ).toEqual([
+      {
+        focusType: FocusType.tableLogicalName,
+        x,
+        width: viewHeaderNameWidth(60),
+      },
+    ]);
+  });
+
+  it('lays out the cells a peer focus is matched against in every name view', () => {
     for (const nameViewMode of Object.values(NameViewMode)) {
       const state = createState(ALL_SHOW, nameViewMode);
 
-      expect(getColumnCellSlots(state, WIDTHS, 'flow')).toEqual(VIEW_ROW);
-      expect(getHeaderCellSlots(state, table(), 'flow')).toEqual([
-        expect.objectContaining({ focusType: FocusType.tableName }),
-      ]);
+      expect(
+        getColumnCellSlots(state, WIDTHS, 'flow').map(slot => slot.focusType)
+      ).toEqual(getViewColumnFocusTypes(state.settings));
     }
   });
 

@@ -36,6 +36,7 @@ import {
   getTableFocusTypes,
   isBothNameView,
   isLogicalNameView,
+  sceneNameSettings,
 } from '@/engine/modules/editor/utils/nameView';
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
@@ -343,40 +344,66 @@ function calcMaxWidthColumn(
 }
 
 /**
- * The width a view draws a table at: the header name, or the key badge with
- * the widest name and type among the rows given, whichever is wider. The rows
- * are the caller's to name, and the show bits and the column order are the document's, read by no view.
+ * The width a view draws a table at: the header names, or the key badge with
+ * the widest of each cell its name view lays out among the rows given, whichever is wider.
+ * The rows are the caller's to name, and no view reads the show bits or the column order.
  */
 export function calcViewTableWidths(
   table: Table,
   state: RootState,
   columnIds: string[]
 ): ColumnWidth {
+  const { settings } = state;
+  const logical = isLogicalNameView(settings);
+  const both = isBothNameView(settings);
   const columnWidth = createColumnWidth();
   const columns = query(state.collections)
     .collection('tableColumnEntities')
     .selectByIds(columnIds);
 
   // The type is counted whether or not it is drawn, so lighting a table
-  // never changes its width.
+  // never changes its width. The logical view draws the name in a row whose
+  // logical name is blank, and the domain in the type cell of one linking it.
   for (const column of columns) {
-    columnWidth.name = Math.max(columnWidth.name, column.ui.widthName);
+    columnWidth.name = Math.max(
+      columnWidth.name,
+      logical && !drawsNameForLogicalName(settings, column)
+        ? column.ui.widthLogicalName
+        : column.ui.widthName
+    );
     columnWidth.dataType = Math.max(
       columnWidth.dataType,
-      column.ui.widthDataType
+      drawsDomainInTypeCell(state, column, 'flow')
+        ? column.ui.widthDomain
+        : column.ui.widthDataType
     );
+
+    if (both) {
+      columnWidth.logicalName = Math.max(
+        columnWidth.logicalName,
+        column.ui.widthLogicalName
+      );
+      columnWidth.domain = Math.max(columnWidth.domain, column.ui.widthDomain);
+    }
   }
 
+  const cells = both
+    ? [
+        columnWidth.logicalName,
+        columnWidth.name,
+        columnWidth.domain,
+        columnWidth.dataType,
+      ]
+    : [columnWidth.name, columnWidth.dataType];
   const rowWidth = columns.length
-    ? VIEW_COLUMN_ICON_SIZE +
-      VIEW_COLUMN_ICON_GAP +
-      columnWidth.name +
-      INPUT_MARGIN_RIGHT +
-      columnWidth.dataType
+    ? cells.reduce(
+        (acc, width) => acc + INPUT_MARGIN_RIGHT + width,
+        VIEW_COLUMN_ICON_SIZE + VIEW_COLUMN_ICON_GAP - INPUT_MARGIN_RIGHT
+      )
     : 0;
   const chrome = (TABLE_BORDER + TABLE_PADDING) * 2;
   const content = Math.max(
-    viewHeaderWidth(table),
+    viewHeaderWidth(table, state),
     rowWidth,
     VIEW_TABLE_MIN_WIDTH - chrome
   );
@@ -401,16 +428,21 @@ export function viewHeaderNameWidth(widthName: number): number {
 }
 
 /**
- * That name, with the table icon and the gap a view header sets beside it, and
- * the room its two buttons take past the name on a hovered card, so the name
- * ends before them rather than running under them.
+ * The names the name view sets in a view header, each at that size and with
+ * its margin, past the table icon and its gap, and the room the two buttons
+ * take past them on a hovered card, so a name ends before them rather than under them.
  */
-function viewHeaderWidth(table: Table): number {
+function viewHeaderWidth(table: Table, state: RootState): number {
+  const names = getTableFocusTypes(sceneNameSettings(state.settings, 'flow'));
+
   return (
-    VIEW_TABLE_HEADER_NAME_X +
-    viewHeaderNameWidth(table.ui.widthName) +
-    INPUT_MARGIN_RIGHT +
-    VIEW_TABLE_HEADER_BUTTONS_WIDTH
+    names.reduce(
+      (acc, focusType) =>
+        acc +
+        viewHeaderNameWidth(headerCellWidth(state, table, focusType)) +
+        INPUT_MARGIN_RIGHT,
+      VIEW_TABLE_HEADER_NAME_X
+    ) + VIEW_TABLE_HEADER_BUTTONS_WIDTH
   );
 }
 

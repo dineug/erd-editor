@@ -13,7 +13,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import * as styles from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
-import { RelationshipType, Show } from '@/constants/schema';
+import { NameViewMode, RelationshipType, Show } from '@/constants/schema';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
   changeDrawTableGroupAction,
@@ -33,6 +33,7 @@ import {
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { getSceneTransform, toScenePoint } from '@/konva/scene/viewport';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
 let mounted: Mounted | null = null;
 
@@ -77,6 +78,25 @@ const click = (el: Element) =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 const isActive = (el: Element) => el.className.includes('active');
+
+const nameViewTrigger = (root: HTMLElement) =>
+  root.querySelector<HTMLElement>('.name-view-trigger')!;
+
+/** The view the trigger names: the one of its three stacked names not hidden. */
+const shownNameView = (root: HTMLElement) =>
+  Array.from(nameViewTrigger(root).querySelectorAll('span'))
+    .filter(span => span.getAttribute('aria-hidden') === 'false')
+    .map(span => span.textContent);
+
+const nameViewMenu = () =>
+  mounted!.container.querySelector<HTMLElement>(
+    '.name-view-menu .context-menu-content'
+  );
+
+const nameViewRows = () =>
+  Array.from(
+    nameViewMenu()?.querySelectorAll<HTMLElement>(':scope > [data-id]') ?? []
+  );
 
 describe('FloatingToolbar', () => {
   it('draws the two tools, the three adds, the zoom, the four notations and zen mode, in that order', async () => {
@@ -192,7 +212,7 @@ describe('FloatingToolbar', () => {
     expect(addButton(root, 'add-table')).toBeNull();
     expect(addButton(root, 'add-memo')).toBeNull();
     expect(addButton(root, 'add-table-group')).toBeNull();
-    expect(root.querySelectorAll(`.${String(styles.divider)}`)).toHaveLength(3);
+    expect(root.querySelectorAll(`.${String(styles.divider)}`)).toHaveLength(4);
   });
 
   it('offers no New Memo while memos are hidden, nor New Table Group while groups are', async () => {
@@ -386,6 +406,70 @@ describe('FloatingToolbar', () => {
     await flush();
 
     expect(compass(root)).toBeNull();
+  });
+
+  it('lists the three name views over the bar, the one in force checked, and switches to the one picked', async () => {
+    const { app, root } = await setup();
+    const trigger = nameViewTrigger(root);
+
+    expect(trigger.getAttribute('title')).toBe('Name View');
+    expect(shownNameView(root)).toEqual(['Physical Names']);
+    expect(nameViewMenu()).toBeNull();
+
+    click(trigger);
+    await flush();
+    expect(isActive(trigger)).toBe(true);
+    expect(nameViewRows().map(row => row.textContent?.trim())).toEqual([
+      'Physical Names',
+      'Logical Names',
+      'Both Names',
+    ]);
+    expect(
+      nameViewRows().map(row => row.querySelector('svg') !== null)
+    ).toEqual([true, false, false]);
+
+    click(nameViewRows()[2]);
+    await flush();
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.both);
+    expect(nameViewMenu()).toBeNull();
+    expect(shownNameView(root)).toEqual(['Both Names']);
+  });
+
+  it('shuts the name view list on a second press, a press elsewhere and Escape', async () => {
+    const { app, root } = await setup();
+    const trigger = nameViewTrigger(root);
+
+    click(trigger);
+    await flush();
+    click(trigger);
+    await flush();
+    expect(nameViewMenu()).toBeNull();
+
+    click(trigger);
+    await flush();
+    root.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await flush();
+    expect(nameViewMenu()).toBeNull();
+
+    click(trigger);
+    await flush();
+    nameViewMenu()!.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true })
+    );
+    await flush();
+    expect(nameViewMenu()).not.toBeNull();
+    app.shortcut$.next({
+      type: KeyBindingName.stop,
+      event: new KeyboardEvent('keydown'),
+    });
+    await flush();
+    expect(nameViewMenu()).toBeNull();
+  });
+
+  it("offers the name view in a readonly editor too, which switches the reader's own view", async () => {
+    const { root } = await setup(undefined, { readonly: true });
+
+    expect(nameViewTrigger(root)).not.toBeNull();
   });
 
   it('stands left to right in every language, as the canvas under it does', async () => {

@@ -2,7 +2,7 @@ import type { AnyAction } from '@dineug/r-html';
 import { isNil, isString } from 'es-toolkit';
 import { asapScheduler, filter, observeOn, tap, throttle, timer } from 'rxjs';
 
-import { LockSettingType, Show } from '@/constants/schema';
+import { LockSettingType, NameViewMode, Show } from '@/constants/schema';
 import type { Hook, HookEffect } from '@/engine/hooks';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import {
@@ -223,16 +223,21 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
 
 /**
  * Document actions a view's geometry never sees: no memo, alternate key mark,
- * show bit or comment width, and in every name view the physical row and name,
- * which no domain or logical name sizes. A column move resizes no box.
+ * show bit or comment width. A column move resizes no box.
  */
 const isDocumentOnly = arrayHas<string>([
   changeShowAction.type,
   changeMaxWidthCommentAction.type,
   moveMemoAction.type,
   ...alternateKeyActionTypes,
-  changeNameViewModeAction.type,
-  changeLockSettingsAction.type,
+]);
+
+/**
+ * Document actions a view reads outside the physical view alone: a logical
+ * name, a domain link and a domain renamed size the cells the logical view and
+ * the view of both draw, and none the physical view does.
+ */
+const isNameViewOnly = arrayHas<string>([
   changeTableLogicalNameAction.type,
   changeColumnLogicalNameAction.type,
   changeColumnDomainAction.type,
@@ -285,6 +290,7 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [removeTableAction.type]: idOf,
   [moveToTableAction.type]: idOf,
   [changeTableNameAction.type]: idOf,
+  [changeTableLogicalNameAction.type]: idOf,
   [changeTableCommentAction.type]: idOf,
   [addRelationshipAction.type]: idOf,
   [removeRelationshipAction.type]: idOf,
@@ -298,6 +304,8 @@ const namedIds: Record<string, (payload: any) => string[]> = {
   [addColumnAction.type]: tableIdOf,
   [removeColumnAction.type]: tableIdOf,
   [changeColumnNameAction.type]: tableIdOf,
+  [changeColumnLogicalNameAction.type]: tableIdOf,
+  [changeColumnDomainAction.type]: tableIdOf,
   [changeColumnCommentAction.type]: tableIdOf,
   [changeColumnDataTypeAction.type]: tableIdOf,
   [changeColumnDefaultAction.type]: tableIdOf,
@@ -322,6 +330,12 @@ function touchesView(
   source: ViewSource
 ): boolean {
   if (isDocumentOnly(action.type) || isViewTransform(action.type)) return false;
+  if (
+    isNameViewOnly(action.type) &&
+    state.settings.nameViewMode === NameViewMode.physical
+  ) {
+    return false;
+  }
 
   const aimed = aimedKind[action.type];
   if (aimed && aimed(state, action.payload) !== source) return false;

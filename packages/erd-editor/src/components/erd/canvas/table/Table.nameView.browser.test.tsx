@@ -8,7 +8,12 @@ import type { Text } from 'konva/lib/shapes/Text';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestTheme,
+  flush,
+  stepTransitions,
+} from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import {
   getColumnCellSlots,
@@ -21,6 +26,8 @@ import {
   type DiffPaths,
 } from '@/components/erd/diff-viewer/diff';
 import { diffContext } from '@/components/erd/diff-viewer/diffContext';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
+import { TABLE_BORDER } from '@/constants/layout';
 import { NameViewMode, Show } from '@/constants/schema';
 import {
   addDictionaryAction,
@@ -34,7 +41,17 @@ import {
   focusTableAction,
   sharedFocusTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
-import { FocusType, type SharedFocus } from '@/engine/modules/editor/state';
+import {
+  FocusType,
+  type SharedFocus,
+  ShowMode,
+  ViewKind,
+} from '@/engine/modules/editor/state';
+import {
+  viewChangeShowModeAction,
+  viewOpenAction,
+  viewSetLayoutAction,
+} from '@/engine/modules/editor/view.actions';
 import {
   changeShowAction,
   toNameViewModeAction,
@@ -52,14 +69,19 @@ import {
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { Tag } from '@/engine/tag';
-import { getTableWidths } from '@/konva/scene/metrics';
+import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 type Mode = (typeof NameViewMode)[keyof typeof NameViewMode];
 
 type SetupOptions = {
   mode?: Mode;
+  /** The scene the table is drawn in, a Flow card's every row shown for 'flow'. */
+  source?: GeometrySource;
+  /** Whether a Flow card is lit, which is what draws its type and domain cells. */
+  lit?: boolean;
   /** Whether the document holds a word, a term and a domain the first column links. */
   dictionaries?: boolean;
   show?: number;
@@ -93,6 +115,17 @@ const DiffScene: FC<DiffSceneProps> = (props, ctx) => {
   return () => props.children;
 };
 
+type FlowSceneProps = { children: DOMTemplateLiterals };
+
+/** A Flow view's scene, provided the same way before the table reads it. */
+const FlowScene: FC<FlowSceneProps> = (props, ctx) => {
+  useProvider(ctx, sceneSourceContext, ViewKind.flow);
+  return () => props.children;
+};
+
+/** The ticker a lit card fades in on, wound by the cases that light one. */
+const transitions = stepTransitions();
+
 const settle = async () => {
   await flush();
   await whenDrawn();
@@ -105,6 +138,8 @@ const settle = async () => {
  */
 async function setup({
   mode = NameViewMode.physical,
+  source = 'document',
+  lit,
   dictionaries = false,
   show = 0,
   diff,
@@ -172,6 +207,21 @@ async function setup({
   }
 
   store.dispatchSync(toNameViewModeAction(store.state, mode, false));
+  // The view is open and placed but not stood in, so a document edit still
+  // lands while its card draws: a view drops every edit it is stood in.
+  if (source !== 'document') {
+    store.dispatchSync(
+      viewOpenAction({ kind: ViewKind.flow }),
+      viewChangeShowModeAction({
+        value: ShowMode.allFields,
+        kind: ViewKind.flow,
+      }),
+      viewSetLayoutAction({
+        kind: ViewKind.flow,
+        positions: { [TABLE]: { x: 40, y: 40 } },
+      })
+    );
+  }
   prepare?.(app);
 
   const container = document.createElement('div');
@@ -180,14 +230,20 @@ async function setup({
   const table = store.state.collections.tableEntities[TABLE];
   const layer = (
     <k-layer name="scene">
-      <Table table={table} />
+      <Table table={table} lit={lit} />
     </k-layer>
   );
 
   const rendered = renderScene({
     app,
     container,
-    scene: diff ? <DiffScene diffMap={diff}>{layer}</DiffScene> : layer,
+    scene: diff ? (
+      <DiffScene diffMap={diff}>{layer}</DiffScene>
+    ) : source === 'document' ? (
+      layer
+    ) : (
+      <FlowScene>{layer}</FlowScene>
+    ),
     width: 900,
     height: 700,
     theme,
@@ -343,6 +399,198 @@ describe.each([
       );
     }
   );
+});
+
+/** What a Flow card draws in each name view: the cells its view names, whatever the show bits say. */
+describe.each([
+  ['with empty dictionaries', false, 'INT', ''],
+  ['with filled dictionaries', true, 'Identifier', 'Identifier'],
+])(
+  'a Flow card in each name view %s',
+  (_label, dictionaries, typeCell, domainCell) => {
+    const flow = (mode: Mode, show: number = Show.columnDomain) =>
+      setup({ dictionaries, mode, show, source: 'flow' });
+
+    it('draws the physical name and the type, the header name alone, in the physical view', async () => {
+      const { stage } = await flow(NameViewMode.physical);
+
+      expect(drawn(headerCellsOf(stage))).toEqual([
+        [FocusType.tableName, 'member'],
+      ]);
+      expect(drawn(rowCellsOf(stage, NAMED))).toEqual([
+        [FocusType.columnName, 'member_id'],
+        [FocusType.columnDataType, 'INT'],
+      ]);
+    });
+
+    it('draws the logical names and the domain in the type cell of the logical view, under the Domain bit too', async () => {
+      const { stage, theme } = await flow(NameViewMode.logical);
+
+      expect(drawn(headerCellsOf(stage))).toEqual([
+        [FocusType.tableLogicalName, 'Member'],
+      ]);
+      expect(textOf(headerCell(stage, FocusType.tableLogicalName)).fill()).toBe(
+        theme.foreground
+      );
+      expect(drawn(rowCellsOf(stage, NAMED))).toEqual([
+        [FocusType.columnLogicalName, 'Member ID'],
+        [FocusType.columnDomain, typeCell],
+      ]);
+      expect(drawn(rowCellsOf(stage, UNNAMED))).toEqual([
+        [FocusType.columnLogicalName, 'joined_at'],
+        [FocusType.columnDomain, 'DATETIME'],
+      ]);
+    });
+
+    it('draws the logical name and the name in the header of both, the name muted, and four cells a row', async () => {
+      const { stage, theme } = await flow(NameViewMode.both, 0);
+
+      expect(drawn(headerCellsOf(stage))).toEqual([
+        [FocusType.tableLogicalName, 'Member'],
+        [FocusType.tableName, 'member'],
+      ]);
+      expect(textOf(headerCell(stage, FocusType.tableLogicalName)).fill()).toBe(
+        theme.foreground
+      );
+      expect(textOf(headerCell(stage, FocusType.tableName)).fill()).toBe(
+        theme.placeholder
+      );
+      expect(drawn(rowCellsOf(stage, NAMED))).toEqual([
+        [FocusType.columnLogicalName, 'Member ID'],
+        [FocusType.columnName, 'member_id'],
+        [FocusType.columnDomain, domainCell],
+        [FocusType.columnDataType, 'INT'],
+      ]);
+      expect(drawn(rowCellsOf(stage, UNNAMED))).toEqual([
+        [FocusType.columnLogicalName, 'logical'],
+        [FocusType.columnName, 'joined_at'],
+        [FocusType.columnDomain, ''],
+        [FocusType.columnDataType, 'DATETIME'],
+      ]);
+    });
+
+    it.each([NameViewMode.physical, NameViewMode.logical, NameViewMode.both])(
+      'draws each cell of the %s view on its slot, in a card as wide as the box the scene measures',
+      async mode => {
+        const { app, stage } = await flow(mode);
+        const { state } = app.store;
+        const table = state.collections.tableEntities[TABLE];
+        const placed = (cells: Group[]) =>
+          cells.map(cell => [
+            focusTypeOf(cell),
+            cell.x(),
+            textOf(cell).width(),
+          ]);
+
+        expect(placed(headerCellsOf(stage))).toEqual(
+          getHeaderCellSlots(state, table, 'flow').map(slot => [
+            slot.focusType,
+            slot.x,
+            slot.width,
+          ])
+        );
+        expect(placed(rowCellsOf(stage, NAMED))).toEqual(
+          getColumnCellSlots(
+            state,
+            getTableWidths(state, table, 'flow'),
+            'flow'
+          ).map(slot => [slot.focusType, slot.x, slot.width])
+        );
+        expect(tableOf(stage).findOne<Rect>('.table-body')!.width()).toBe(
+          getTableRect(state, table, 'flow').width - TABLE_BORDER
+        );
+      }
+    );
+  }
+);
+
+describe('a Flow card', () => {
+  it('stands the name in, dimmed, for a blank logical name of the logical view', async () => {
+    const { app, stage, theme } = await setup({
+      mode: NameViewMode.logical,
+      source: 'flow',
+    });
+
+    const row = textOf(rowCell(stage, UNNAMED, FocusType.columnLogicalName));
+    expect([row.text(), row.fill()]).toEqual(['joined_at', theme.placeholder]);
+
+    app.store.dispatchSync(
+      changeTableLogicalNameAction({ id: TABLE, value: '  ' })
+    );
+    await settle();
+
+    const header = textOf(headerCell(stage, FocusType.tableLogicalName));
+    expect([header.text(), header.fill()]).toEqual([
+      'member',
+      theme.placeholder,
+    ]);
+  });
+
+  it('lights the domain cell of the view of both with the type cell it stands beside', async () => {
+    const dark = await setup({
+      mode: NameViewMode.both,
+      source: 'flow',
+      dictionaries: true,
+    });
+    const opacities = (stage: Stage) =>
+      [FocusType.columnDomain, FocusType.columnDataType].map(focusType =>
+        rowCell(stage, NAMED, focusType).opacity()
+      );
+
+    expect(opacities(dark.stage)).toEqual([0, 0]);
+
+    const lit = await setup({
+      mode: NameViewMode.both,
+      source: 'flow',
+      dictionaries: true,
+      lit: true,
+    });
+    transitions.settle();
+    await settle();
+
+    expect(opacities(lit.stage)).toEqual([1, 1]);
+  });
+
+  it('draws the cells of the view switched to while it is drawn, at the width the switch gives', async () => {
+    const { app, stage } = await setup({ dictionaries: true, source: 'flow' });
+    const table = app.store.state.collections.tableEntities[TABLE];
+    const bodyWidth = () =>
+      tableOf(stage).findOne<Rect>('.table-body')!.width();
+    const physical = bodyWidth();
+
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, NameViewMode.both, false)
+    );
+    await settle();
+
+    expect(drawn(headerCellsOf(stage))).toEqual([
+      [FocusType.tableLogicalName, 'Member'],
+      [FocusType.tableName, 'member'],
+    ]);
+    expect(drawn(rowCellsOf(stage, NAMED)).map(([type]) => type)).toEqual([
+      FocusType.columnLogicalName,
+      FocusType.columnName,
+      FocusType.columnDomain,
+      FocusType.columnDataType,
+    ]);
+    expect(bodyWidth()).toBe(
+      getTableRect(app.store.state, table, 'flow').width - TABLE_BORDER
+    );
+    expect(bodyWidth()).toBeGreaterThan(physical);
+
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, NameViewMode.logical, false)
+    );
+    await settle();
+
+    expect(drawn(rowCellsOf(stage, NAMED))).toEqual([
+      [FocusType.columnLogicalName, 'Member ID'],
+      [FocusType.columnDomain, 'Identifier'],
+    ]);
+    expect(bodyWidth()).toBe(
+      getTableRect(app.store.state, table, 'flow').width - TABLE_BORDER
+    );
+  });
 });
 
 describe('a blank logical name', () => {

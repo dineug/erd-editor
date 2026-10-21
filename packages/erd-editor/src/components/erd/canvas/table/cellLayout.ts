@@ -27,6 +27,8 @@ import { FocusType } from '@/engine/modules/editor/state';
 import {
   ColumnTypeShown,
   getTableFocusTypes,
+  getViewColumnTypes,
+  sceneNameSettings,
   toNameViewFocusType,
 } from '@/engine/modules/editor/utils/nameView';
 import type { RootState } from '@/engine/state';
@@ -210,30 +212,24 @@ export function getWidthComment(state: RootState, table: Table): number {
 /**
  * The name and comment boxes past a header's table icon. One list feeds the
  * scene that draws them and the overlay that edits them, so an editor never
- * sits anywhere but on the text it replaces. A view draws the name alone.
+ * sits anywhere but on the text it replaces. A view draws the names alone.
  */
 export function getHeaderCellSlots(
   state: RootState,
   table: Table,
   source: GeometrySource = 'document'
 ): CellSlot[] {
-  if (source !== 'document') {
-    return [
-      {
-        focusType: FocusType.tableName,
-        x: VIEW_TABLE_HEADER_NAME_X,
-        width: viewHeaderNameWidth(table.ui.widthName),
-      },
-    ];
-  }
-
+  const view = source !== 'document';
   // The name view picks the name cells, the logical name in the name's place
   // or before it, and each cell starts past the ones before it and a margin.
   const slots: CellSlot[] = [];
-  let cursor = TABLE_HEADER_NAME_X;
+  let cursor = view ? VIEW_TABLE_HEADER_NAME_X : TABLE_HEADER_NAME_X;
 
-  for (const focusType of getTableFocusTypes(state.settings)) {
-    const width = headerCellWidth(state, table, focusType);
+  for (const focusType of getTableFocusTypes(
+    sceneNameSettings(state.settings, source)
+  )) {
+    const measured = headerCellWidth(state, table, focusType);
+    const width = view ? viewHeaderNameWidth(measured) : measured;
     slots.push({ focusType, x: cursor, width });
     cursor += width + INPUT_MARGIN_RIGHT;
   }
@@ -243,8 +239,8 @@ export function getHeaderCellSlots(
 
 /**
  * Where each column type's cell goes in a row. The focus is the physical
- * view's, which a view keeps; the document asks the name view for its own,
- * and lays the cell out only while the visible predicate holds.
+ * view's, which the name view turns into its own; the document lays the cell
+ * out only while the visible predicate holds.
  */
 const COLUMN_SLOTS: Array<{
   columnType: number;
@@ -308,16 +304,10 @@ const COLUMN_SLOTS: Array<{
   },
 ];
 
-/** The cells a view draws in every row, whatever the settings show or order. */
-const VIEW_COLUMN_ORDER: number[] = [
-  ColumnType.columnName,
-  ColumnType.columnDataType,
-];
-
 /**
  * The cells of one column row, in the order the settings put them and at the x
  * each lands on once the ones before it have taken their width. A view lays
- * out the name and the type and reads neither the show bits nor the order.
+ * out the cells its name view names and reads neither the show bits nor the order.
  */
 export function getColumnCellSlots(
   state: RootState,
@@ -325,25 +315,25 @@ export function getColumnCellSlots(
   source: GeometrySource = 'document'
 ): ColumnCellSlot[] {
   const { settings } = state;
+  const inDocument = source === 'document';
+  const shown = sceneNameSettings(settings, source);
   const slots: ColumnCellSlot[] = [];
   let cursor = getColumnCellsX(source);
-  const order =
-    source === 'document' ? settings.columnOrder : VIEW_COLUMN_ORDER;
+  const order = inDocument
+    ? settings.columnOrder
+    : getViewColumnTypes(settings);
 
   for (const columnType of order) {
     const definition = COLUMN_SLOTS.find(
       slot => slot.columnType === columnType
     );
     if (!definition) continue;
-    if (source === 'document' && !definition.visible(settings)) continue;
+    if (inDocument && !definition.visible(settings)) continue;
 
     const width = definition.width(widths);
     slots.push({
       columnType,
-      focusType:
-        source === 'document'
-          ? toNameViewFocusType(settings, definition.focusType)
-          : definition.focusType,
+      focusType: toNameViewFocusType(shown, definition.focusType),
       x: cursor,
       width,
     });

@@ -54,7 +54,7 @@
 
 ### What a view shows
 
-- **`scene/viewLayout.ts` decides what a view shows.** A view shows only the tables in its `positions`, and nothing until a layout lands. It shows no memos and no table groups, only the relationships with both ends shown, and rows per `showMode`. `settings.show` and `columnOrder` do not apply.
+- **`scene/viewLayout.ts` decides what a view shows.** A view shows only the tables in its `positions`, and nothing until a layout lands. It shows no memos and no table groups, only the relationships with both ends shown, and rows per `showMode`. `settings.show` and `columnOrder` do not apply; `settings.nameViewMode` picks a card's cells (`src/components/erd/AGENTS.md`, Name views).
 - **The document shows every list, memos aside while hidden.** `getVisibleIds` gives the document its own lists, the memos left out while `Show.hideMemo` is set (`src/components/erd/AGENTS.md`).
 - **Keep view hover and pin out of actions.** They are module observables keyed on `editor.id`, never actions. So a view hover or pin never reaches the document, the history or a peer.
 

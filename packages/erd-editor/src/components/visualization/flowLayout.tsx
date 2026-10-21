@@ -86,16 +86,18 @@ const slotOf = (view: SceneView): FlowSlot =>
   view.centerIds.length ? 'focused' : 'full';
 
 /**
- * How the view is framed: which tables it draws and how much of each card. A
- * change of either resizes the cards and spreads the layout differently, so
- * the screen has to follow it; the rest of the key below replaces the placement alone.
+ * How the view is framed: which tables it draws, how much of each card and the
+ * names the name view writes on it. A change of any resizes the cards and spreads the
+ * layout differently, so the screen has to follow it; the rest of the key below replaces the placement alone.
  */
-const framingOf = (view: SceneView): string =>
-  [view.centerIds.join(' '), view.showMode].join('|');
+const framingOf = (state: RootState, view: SceneView): string =>
+  [view.centerIds.join(' '), view.showMode, state.settings.nameViewMode].join(
+    '|'
+  );
 
 /**
- * What a placement was computed over: the centers, the show mode, and the
- * document's own lists. Never the positions a landing writes, since the loop
+ * What a placement was computed over: the centers, the show mode, the name
+ * view, and the document's own lists. Never the positions a landing writes, since the loop
  * reading this asks again on a change and would otherwise be reading its own answer.
  */
 function placedKey(state: RootState): string {
@@ -105,7 +107,7 @@ function placedKey(state: RootState): string {
   const { doc } = state;
 
   return [
-    framingOf(view),
+    framingOf(state, view),
     doc.tableIds.join(' '),
     doc.relationshipIds.join(' '),
   ].join('|');
@@ -146,7 +148,7 @@ function standFlowView(
   forced: boolean
 ): void {
   const entry = layoutsOf(view);
-  const framing = framingOf(view);
+  const framing = framingOf(store.state, view);
   const fits = forced || entry.stood !== framing;
   entry.stood = framing;
 

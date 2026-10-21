@@ -647,7 +647,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           ellipsis: true,
           opacity: view ? (props.litAlpha ?? 0) : 1,
           align: view ? 'right' : undefined,
-          fontFamily: view ? SCENE_CODE_FONT_FAMILY : undefined,
+          // A domain's name is measured in the text face, so it keeps it.
+          fontFamily: view && !domainName ? SCENE_CODE_FONT_FAMILY : undefined,
           diffPath: diffPathOf(slot),
         });
       }
@@ -662,7 +663,8 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           null
         );
       case ColumnType.columnDomain:
-        // A column linking no listed domain leaves the cell empty.
+        // A column linking no listed domain leaves the cell empty. A view
+        // lights it with the type it stands for, as its type cell is lit.
         return cell({
           focusType,
           x,
@@ -673,6 +675,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           edit: props.editDomain ?? false,
           sharedFocus: props.sharedFocusDomain ?? null,
           ellipsis: true,
+          opacity: view ? (props.litAlpha ?? 0) : 1,
         });
       case ColumnType.columnNotNull:
         return cell({

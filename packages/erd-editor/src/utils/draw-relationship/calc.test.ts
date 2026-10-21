@@ -288,6 +288,32 @@ describe('tableToObjectPoint for a view', () => {
     expect(after.width).not.toBe(viewWidths(table, state).width);
   });
 
+  /** The names a view header sets follow the name view, which no width generation names. */
+  it('keys a view on the name view and the header logical name', () => {
+    const { state, table } = seed(ShowMode.nameOnly);
+    table.logicalName = 'Members of the club';
+    table.ui.widthLogicalName = 300;
+    const physical = tableToObjectPoint(state, table, 'flow').width;
+
+    state.settings.nameViewMode = NameViewMode.logical;
+    const logical = tableToObjectPoint(state, table, 'flow').width;
+    expect(logical).toBe(viewWidths(table, state).width);
+    expect(logical).toBeGreaterThan(physical);
+
+    table.ui.widthLogicalName = 400;
+    const wider = tableToObjectPoint(state, table, 'flow').width;
+    expect(wider).toBe(viewWidths(table, state).width);
+    expect(wider).toBeGreaterThan(logical);
+
+    state.settings.nameViewMode = NameViewMode.both;
+    expect(tableToObjectPoint(state, table, 'flow').width).toBe(
+      viewWidths(table, state).width
+    );
+    expect(tableToObjectPoint(state, table, 'flow').width).toBeGreaterThan(
+      wider
+    );
+  });
+
   it('follows the show mode from one read to the next', () => {
     const { state, table, view } = seed(ShowMode.nameOnly);
 

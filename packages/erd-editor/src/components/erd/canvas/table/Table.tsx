@@ -90,7 +90,10 @@ import {
   dragstartColumnAction$,
 } from '@/engine/modules/editor/generator.actions';
 import { FocusType } from '@/engine/modules/editor/state';
-import { toNameViewFocusType } from '@/engine/modules/editor/utils/nameView';
+import {
+  sceneNameSettings,
+  toNameViewFocusType,
+} from '@/engine/modules/editor/utils/nameView';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -186,6 +189,17 @@ const nameFill = (theme: Theme, name: string, view: boolean) => {
   if (!name.trim()) return theme.placeholder;
   return view ? theme.foreground : theme.active;
 };
+
+/**
+ * The fill a view's header name takes after the logical name in the view of
+ * both, muted beside it; elsewhere the fill a lone name takes.
+ */
+const viewNameFill = (
+  theme: Theme,
+  name: string,
+  view: boolean,
+  after: boolean
+) => (view && after ? theme.placeholder : nameFill(theme, name, view));
 
 const Table: FC<TableProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -641,7 +655,6 @@ const Table: FC<TableProps> = (props, ctx) => {
       ? null
       : (diffTextColor(theme, diffPaths, FocusType.tableName) ??
         hiddenCommentColor);
-    const logicalNameFilled = table.logicalName.trim() !== '';
 
     // A diff pane writes its changes in colours a check would share, so the
     // marks are the document scene's alone, and a blank cell keeps its dimmed
@@ -658,13 +671,13 @@ const Table: FC<TableProps> = (props, ctx) => {
     const columnIds = getVisibleColumnIds(store.state, table, source);
 
     // A row's name and type cells take the focus the name view gives them,
-    // which a view, keeping the physical row, never does.
-    const nameFocus = view
-      ? FocusType.columnName
-      : toNameViewFocusType(settings, FocusType.columnName);
-    const typeFocus = view
-      ? FocusType.columnDataType
-      : toNameViewFocusType(settings, FocusType.columnDataType);
+    // which a view reads under no show bit.
+    const nameSettings = sceneNameSettings(settings, source);
+    const nameFocus = toNameViewFocusType(nameSettings, FocusType.columnName);
+    const typeFocus = toNameViewFocusType(
+      nameSettings,
+      FocusType.columnDataType
+    );
 
     // A member of a colored group wears the color across its header, the text
     // and icons on it in the black or white that reads best there, and keeps
@@ -823,7 +836,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                     hiddenNameColor ??
                     markFill('logicalName') ??
                     tint?.foreground ??
-                    (logicalNameFilled ? theme.active : theme.placeholder),
+                    nameFill(theme, table.logicalName, view),
                   focus: hasFocus(FocusType.tableLogicalName),
                   edit: cellEdit(FocusType.tableLogicalName),
                   sharedFocus: sharedLogicalNameColor,
@@ -839,7 +852,12 @@ const Table: FC<TableProps> = (props, ctx) => {
                     hiddenCommentColor ??
                     markFill('name') ??
                     tint?.foreground ??
-                    nameFill(theme, table.name, view),
+                    viewNameFill(
+                      theme,
+                      table.name,
+                      view,
+                      logicalNameCell !== undefined
+                    ),
                   focus: hasFocus(FocusType.tableName),
                   edit: cellEdit(FocusType.tableName),
                   sharedFocus: sharedNameColor,

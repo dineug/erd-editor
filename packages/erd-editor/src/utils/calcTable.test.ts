@@ -791,6 +791,117 @@ describe('calcViewTableWidths', () => {
     expect(widths.dataType).toBe(90);
     expect(rowWidth(widths.name, widths.dataType)).toBe(headerWidth(1_000));
   });
+
+  /**
+   * Two key rows: one with a logical name linking a listed domain, the other
+   * with neither, under a table with a logical name of its own.
+   */
+  function namedState(nameViewMode: RootState['settings']['nameViewMode']) {
+    const columns = [
+      createColumn({
+        id: 'key',
+        tableId: 'table-1',
+        logicalName: 'Member ID',
+        domainId: 'domain-1',
+        ui: {
+          keys: ColumnUIKey.primaryKey,
+          widthName: 80,
+          widthLogicalName: 120,
+          widthDataType: 90,
+          widthDomain: 110,
+        },
+      }),
+      createColumn({
+        id: 'plain',
+        tableId: 'table-1',
+        ui: {
+          keys: ColumnUIKey.primaryKey,
+          widthName: 70,
+          widthDataType: 100,
+        },
+      }),
+    ];
+    const table = createTable({
+      id: 'table-1',
+      logicalName: 'Member',
+      columnIds: ['key', 'plain'],
+      ui: { widthName: 40, widthLogicalName: 50 },
+    });
+    const state = createState({ tables: [table], columns });
+    state.settings.nameViewMode = nameViewMode;
+    state.collections.domainEntities['domain-1'] = createDomain({
+      id: 'domain-1',
+      name: 'Identifier',
+    });
+    state.doc.domainIds = ['domain-1'];
+    openKeysOnly(state, table.id);
+
+    return { state, table, columns };
+  }
+
+  it('measures the logical names in the logical view, the name for a blank one, and the domain the type cell draws under any bit', () => {
+    for (const show of [0, Show.columnDomain]) {
+      const { state, table } = namedState(NameViewMode.logical);
+      state.settings.show = show;
+
+      expect(viewWidths(table, state)).toMatchObject({
+        width: CHROME + rowWidth(120, 110),
+        name: 120,
+        logicalName: 0,
+        dataType: 110,
+        domain: 0,
+      });
+    }
+
+    // A domain the sheet no longer lists leaves the type in the cell.
+    const { state, table } = namedState(NameViewMode.logical);
+    state.doc.domainIds = [];
+    expect(viewWidths(table, state).dataType).toBe(100);
+  });
+
+  it('measures the logical name, the name, the domain and the type of each row in the view of both', () => {
+    const { state, table } = namedState(NameViewMode.both);
+    const four =
+      VIEW_COLUMN_ICON_SIZE +
+      VIEW_COLUMN_ICON_GAP +
+      120 +
+      INPUT_MARGIN_RIGHT +
+      80 +
+      INPUT_MARGIN_RIGHT +
+      110 +
+      INPUT_MARGIN_RIGHT +
+      100;
+
+    expect(viewWidths(table, state)).toMatchObject({
+      width: CHROME + four,
+      logicalName: 120,
+      name: 80,
+      domain: 110,
+      dataType: 100,
+    });
+  });
+
+  it('sets the header names the name view names, each at the view header size', () => {
+    const logical = namedState(NameViewMode.logical);
+    logical.table.ui.widthLogicalName = 1_000;
+    expect(viewWidths(logical.table, logical.state).width).toBe(
+      CHROME + headerWidth(1_000)
+    );
+
+    const both = namedState(NameViewMode.both);
+    both.table.ui.widthLogicalName = 1_000;
+    expect(viewWidths(both.table, both.state).width).toBe(
+      CHROME + headerWidth(1_000) + viewHeaderNameWidth(40) + INPUT_MARGIN_RIGHT
+    );
+
+    // The logical view's header draws the name in a blank logical name's place.
+    logical.table.logicalName = '';
+    logical.table.ui.widthName = 1_000;
+    logical.table.ui.widthLogicalName = 0;
+    expect(viewWidths(logical.table, logical.state).width).toBe(
+      CHROME + headerWidth(1_000)
+    );
+  });
 });
 
 describe('recalculateTableWidth', () => {

@@ -32,7 +32,7 @@ const Host: FC<HostProps> = (props, ctx) => {
     </div>`;
 };
 
-/** A host inside a Flow view's scene, whose rows draw the physical cells. */
+/** A host inside a Flow view's scene, whose cells follow the name view under no show bit. */
 const FlowHost: FC<HostProps> = (props, ctx) => {
   useProvider(ctx, sceneSourceContext, 'flow');
   return () =>
@@ -197,7 +197,7 @@ describe('useSharedFocusTable', () => {
     expect(api.sharedFocusColor(FocusType.tableLogicalName)).not.toBeNull();
   });
 
-  it("matches a peer's logical name on the physical name a view's row draws", async () => {
+  async function mountFlowHost() {
     const app = createApp();
     let api!: SharedFocusApi;
     mounted = await mountAndFlush(
@@ -207,30 +207,106 @@ describe('useSharedFocusTable', () => {
       />`,
       app
     );
+    return { app, api };
+  }
+
+  /** Where one peer focus lands on the cells the view draws, by the focus types asked about. */
+  const landsOn = (
+    app: AppContext,
+    api: SharedFocusApi,
+    focus: SharedFocus,
+    candidates: FocusType[]
+  ) => {
+    track(app, 'remote-1', focus);
+    return candidates.filter(
+      focusType =>
+        api.sharedFocusColor(focusType, focus.columnId ?? undefined) !== null
+    );
+  };
+
+  it("matches a peer's logical name on the physical name a view's row draws in the physical view", async () => {
+    const { app, api } = await mountFlowHost();
+    const row = (focusType: FocusType) => ({
+      tableId: 't1',
+      columnId: 'c1',
+      focusType,
+    });
+
+    expect(
+      landsOn(app, api, row(FocusType.columnLogicalName), [
+        FocusType.columnName,
+        FocusType.columnLogicalName,
+      ])
+    ).toEqual([FocusType.columnName]);
+    expect(
+      landsOn(app, api, row(FocusType.columnDomain), [
+        FocusType.columnDataType,
+        FocusType.columnDomain,
+      ])
+    ).toEqual([FocusType.columnDataType]);
+    expect(
+      landsOn(
+        app,
+        api,
+        {
+          tableId: 't1',
+          columnId: null,
+          focusType: FocusType.tableLogicalName,
+        },
+        [FocusType.tableName, FocusType.tableLogicalName]
+      )
+    ).toEqual([FocusType.tableName]);
+  });
+
+  it("matches a peer's focus on the logical cells a view draws in the logical view, the domain in the type cell under any bit", async () => {
+    const { app, api } = await mountFlowHost();
     app.store.dispatchSync(
       toNameViewModeAction(app.store.state, NameViewMode.logical, false)
     );
-
-    track(app, 'remote-1', {
+    const row = (focusType: FocusType) => ({
       tableId: 't1',
       columnId: 'c1',
-      focusType: FocusType.columnLogicalName,
+      focusType,
     });
-    expect(api.sharedFocusColor(FocusType.columnName, 'c1')).not.toBeNull();
+    const names = [FocusType.columnName, FocusType.columnLogicalName];
+    const types = [FocusType.columnDataType, FocusType.columnDomain];
 
-    track(app, 'remote-1', {
-      tableId: 't1',
-      columnId: 'c1',
-      focusType: FocusType.columnDomain,
-    });
-    expect(api.sharedFocusColor(FocusType.columnDataType, 'c1')).not.toBeNull();
+    expect(landsOn(app, api, row(FocusType.columnName), names)).toEqual([
+      FocusType.columnLogicalName,
+    ]);
+    expect(landsOn(app, api, row(FocusType.columnLogicalName), names)).toEqual([
+      FocusType.columnLogicalName,
+    ]);
+    expect(landsOn(app, api, row(FocusType.columnDataType), types)).toEqual([
+      FocusType.columnDomain,
+    ]);
+    expect(
+      landsOn(
+        app,
+        api,
+        { tableId: 't1', columnId: null, focusType: FocusType.tableName },
+        [FocusType.tableName, FocusType.tableLogicalName]
+      )
+    ).toEqual([FocusType.tableLogicalName]);
+  });
 
-    track(app, 'remote-1', {
-      tableId: 't1',
-      columnId: null,
-      focusType: FocusType.tableLogicalName,
-    });
-    expect(api.sharedFocusColor(FocusType.tableName)).not.toBeNull();
+  it("matches a peer's focus on its own cell among the four a view row of both draws", async () => {
+    const { app, api } = await mountFlowHost();
+    app.store.dispatchSync(
+      toNameViewModeAction(app.store.state, NameViewMode.both, false)
+    );
+    const cells = [
+      FocusType.columnLogicalName,
+      FocusType.columnName,
+      FocusType.columnDomain,
+      FocusType.columnDataType,
+    ];
+
+    for (const focusType of cells) {
+      expect(
+        landsOn(app, api, { tableId: 't1', columnId: 'c1', focusType }, cells)
+      ).toEqual([focusType]);
+    }
   });
 
   it('lights up each table for the peer that focused it', async () => {

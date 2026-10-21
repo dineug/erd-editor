@@ -21,7 +21,7 @@ import { getIcon, type IconName } from '@/components/primitives/icon/icons';
 import VisualizationToolbar from '@/components/visualization/visualization-toolbar/VisualizationToolbar';
 import * as styles from '@/components/visualization/visualization-toolbar/VisualizationToolbar.styles';
 import { Open } from '@/constants/open';
-import { CANVAS_ZOOM_MAX } from '@/constants/schema';
+import { CANVAS_ZOOM_MAX, NameViewMode } from '@/constants/schema';
 import { ZOOM_STEP } from '@/constants/zoom';
 import {
   changeOpenMapAction,
@@ -292,6 +292,7 @@ describe('VisualizationToolbar', () => {
       'Fit',
       'Tidy Up',
       'Row display: Name only',
+      'Name View',
     ]);
 
     click(byTitle(root, 'Graph'));
@@ -441,6 +442,7 @@ describe('VisualizationToolbar', () => {
       'Fit',
       'Tidy Up',
       'Row display: Keys only',
+      'Name View',
       'Show all',
     ]);
 
@@ -558,6 +560,33 @@ describe('VisualizationToolbar', () => {
     await flush();
 
     expect(app.store.state.editor.views.flow!.showMode).toBe(ShowMode.nameOnly);
+  });
+
+  it('offers the name view beside the row display in the Flow alone, and shuts its list on a mode switch', async () => {
+    const { app, root } = await setup();
+    const trigger = () => root.querySelector<HTMLElement>('.name-view-trigger');
+    const list = () =>
+      document.querySelector('.name-view-menu .context-menu-content');
+
+    expect(trigger()).toBeNull();
+    click(byTitle(root, 'Flow')!);
+    await flush();
+
+    click(trigger()!);
+    await flush();
+    expect(list()?.textContent).toContain('Logical Names');
+    click(
+      Array.from(list()!.querySelectorAll<HTMLElement>(':scope > [data-id]'))[1]
+    );
+    await flush();
+    expect(app.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+
+    click(trigger()!);
+    await flush();
+    click(byTitle(root, 'Graph')!);
+    await flush();
+    expect(list()).toBeNull();
+    expect(trigger()).toBeNull();
   });
 
   it('closes the show mode menu on the trigger again, on Escape and on a press outside it', async () => {
@@ -678,6 +707,7 @@ describe('VisualizationToolbar', () => {
       'Fit',
       'Tidy Up',
       'Row display: Name only',
+      'Name View',
       'Go to content',
     ]);
 

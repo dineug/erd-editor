@@ -1,12 +1,26 @@
 import { ColumnType, NameViewMode, Show } from '@/constants/schema';
 import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
-import { FocusType } from '@/engine/modules/editor/state';
+import { FocusType, ViewKind } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import type { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 type Settings = RootState['settings'];
 type ViewSettings = Pick<Settings, 'nameViewMode' | 'show'>;
+
+/**
+ * The name view and the show bits a scene lays its cells out by: the document's
+ * settings, and in a view the name view alone, since a view reads no show bit.
+ * So a view's type cell stands for the domain in the logical view whatever the Domain bit says.
+ */
+export const sceneNameSettings = (
+  settings: ViewSettings,
+  source: GeometrySource = 'document'
+): ViewSettings =>
+  source === 'document'
+    ? settings
+    : { nameViewMode: settings.nameViewMode, show: 0 };
 
 /** Whether the document draws each logical name in the place of its name. */
 export const isLogicalNameView = ({
@@ -81,14 +95,15 @@ export const isDomainInTypeCell = (settings: ViewSettings): boolean =>
 
 /**
  * Whether one row's type cell draws its column's domain: while the cell stands
- * for the domain and the column links one the document lists by a name.
- * Otherwise it draws the type, and is measured by it.
+ * for the domain in the source's scene and the column links one the document
+ * lists by a name. Otherwise it draws the type, and is measured by it.
  */
 export const drawsDomainInTypeCell = (
   state: RootState,
-  column: Pick<Column, 'domainId'>
+  column: Pick<Column, 'domainId'>,
+  source: GeometrySource = 'document'
 ): boolean =>
-  isDomainInTypeCell(state.settings) &&
+  isDomainInTypeCell(sceneNameSettings(state.settings, source)) &&
   getLiveDomainName(state, column.domainId) !== '';
 
 /**
@@ -132,7 +147,7 @@ export const ColumnTypeShown: Readonly<
   [ColumnType.columnComment]: shownBy(Show.columnComment),
 };
 
-/** The focus each column type's cell takes in the physical view, as a view keeps it. */
+/** The focus each column type's cell takes in the physical view. */
 const COLUMN_FOCUS_TYPES: Readonly<Record<number, FocusType>> = {
   [ColumnType.columnName]: FocusType.columnName,
   [ColumnType.columnLogicalName]: FocusType.columnLogicalName,
@@ -179,6 +194,33 @@ export function getColumnFocusTypes(
   }
 
   return types;
+}
+
+/**
+ * The cells a view row lays out, whatever the show bits or the column order:
+ * the name and the type, which the logical view fills its own way, and in the
+ * view of both the logical name before them and the domain before the type.
+ */
+export function getViewColumnTypes(
+  settings: Pick<Settings, 'nameViewMode'>
+): number[] {
+  return isBothNameView(settings)
+    ? [
+        ColumnType.columnLogicalName,
+        ColumnType.columnName,
+        ColumnType.columnDomain,
+        ColumnType.columnDataType,
+      ]
+    : [ColumnType.columnName, ColumnType.columnDataType];
+}
+
+/** The focus types of a view row's cells, in that order. */
+export function getViewColumnFocusTypes(settings: ViewSettings): FocusType[] {
+  const shown = sceneNameSettings(settings, ViewKind.flow);
+
+  return getViewColumnTypes(settings).map(columnType =>
+    toNameViewFocusType(shown, COLUMN_FOCUS_TYPES[columnType])
+  );
 }
 
 /** The physical view's cell in the place of each cell the name view adds. */
