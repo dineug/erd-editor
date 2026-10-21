@@ -172,18 +172,21 @@ async function waitFor(check, timeout, interval = 250) {
 
 const alive = () => app.exitCode === null && app.signalCode === null;
 
-/** Tables in a saved document, v3 or the v2 a .vuerd file holds until its first save. */
+/**
+ * Tables in a saved document, v3 or the v2 a .vuerd file holds until its first
+ * save; a v3 file leaves out a list that holds nothing.
+ */
 function tableCount(path) {
   const text = readFileSync(join(vault, path), 'utf8');
   if (!text) return 0;
   const json = JSON.parse(text);
-  return json.doc ? json.doc.tableIds.length : json.table.tables.length;
+  return json.table ? json.table.tables.length : (json.doc?.tableIds ?? []).length;
 }
 
 /** The table ids of a v3 document on disk. */
 function fileIds(path) {
   const text = readFileSync(join(vault, path), 'utf8');
-  return text ? JSON.parse(text).doc.tableIds : [];
+  return text ? (JSON.parse(text).doc.tableIds ?? []) : [];
 }
 
 const lockPath = pid => join(LOCK_DIR, `${pid}.json`);
@@ -338,7 +341,7 @@ async function openDiagram(page, path) {
           editor?.isConnected
           ? {
               title: view.getDisplayText(),
-              tables: JSON.parse(editor.value).doc.tableIds.length,
+              tables: (JSON.parse(editor.value).doc.tableIds ?? []).length,
             }
           : null;
       }, path),
@@ -368,7 +371,7 @@ const tabIds = (page, path) =>
         .map(leaf => {
           const editor = leaf.view.contentEl.querySelector('erd-editor');
           try {
-            return JSON.parse(editor.value).doc.tableIds;
+            return JSON.parse(editor.value).doc.tableIds ?? [];
           } catch {
             return null;
           }
@@ -645,7 +648,9 @@ const editorValue = (page, path) =>
 function columnCounts(text) {
   if (!text) return [];
   const { doc, collections } = JSON.parse(text);
-  return doc.tableIds.map(id => collections.tableEntities[id].columnIds.length);
+  return (doc.tableIds ?? []).map(
+    id => collections.tableEntities[id].columnIds.length
+  );
 }
 
 /** The view type of the active leaf, which decides whose scope Obsidian asks about a key first. */
@@ -826,8 +831,10 @@ try {
     page.evaluate(() =>
       window.__split.map(
         leaf =>
-          JSON.parse(leaf.view.contentEl.querySelector('erd-editor').value).doc
-            .tableIds.length
+          (
+            JSON.parse(leaf.view.contentEl.querySelector('erd-editor').value)
+              .doc.tableIds ?? []
+          ).length
       )
     );
   const pressIn = async index => {
@@ -1730,7 +1737,7 @@ try {
       welcomeOpened,
       welcomeGone,
       tables: JSON.parse((await editorValue(page, 'welcome.erd')) ?? '{}').doc
-        ?.tableIds.length,
+        ?.tableIds?.length,
     })
   );
   await closeDiagram(page, 'welcome.erd');
@@ -2095,9 +2102,10 @@ try {
       .map(leaf => ({
         path: leaf.view.file?.path,
         unsaved: leaf.view.hasUnsavedValue?.(),
-        tables: JSON.parse(
-          leaf.view.contentEl.querySelector('erd-editor').value
-        ).doc.tableIds.length,
+        tables: (
+          JSON.parse(leaf.view.contentEl.querySelector('erd-editor').value).doc
+            .tableIds ?? []
+        ).length,
       }));
   });
   const tokenBeforeReload = readLock(rendererPid)?.token;
@@ -2232,7 +2240,9 @@ try {
             try {
               const full = vault.adapter.getFullPath(path);
               const text = fs.readFileSync(full, 'utf8');
-              return text ? JSON.parse(text).doc.tableIds.length : 0;
+              return text
+                ? (JSON.parse(text).doc.tableIds ?? []).length
+                : 0;
             } catch {
               return null;
             }

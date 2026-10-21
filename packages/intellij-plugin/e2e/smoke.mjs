@@ -520,7 +520,7 @@ const pageFor = file => sessions.get(pageOf.get(file)) ?? null;
 const IDS = `(() => {
   const editor = document.querySelector('erd-editor');
   if (!editor) return null;
-  try { return JSON.parse(editor.value).doc.tableIds; } catch { return null; }
+  try { return JSON.parse(editor.value).doc.tableIds ?? []; } catch { return null; }
 })()`;
 
 async function idsIn(session) {

@@ -156,8 +156,10 @@ describe('peer barrel (AC-B2)', () => {
       entries: 1,
       skipped: [],
     });
-    expect(JSON.parse(store.value).doc.tableIds).toEqual([]);
-    expect(JSON.parse(store.value).collections.tableEntities).toEqual({});
+    expect(JSON.parse(store.value).doc.tableIds ?? []).toEqual([]);
+    expect(JSON.parse(store.value).collections?.tableEntities ?? {}).toEqual(
+      {}
+    );
     expect(
       Object.keys(JSON.parse(store.runtimeValue).collections.tableEntities)
     ).toEqual(report.createdIds);

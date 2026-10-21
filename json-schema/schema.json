@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
   "title": "ERD Editor document",
-  "description": "The storage form an ERD Editor file holds (.erd, .erd.json, .vuerd, .vuerd.json): the live entities alone, each collection keyed in id order but the dictionaries, a header and one row per entry in document order, without what an editor derives on load or keeps while it is open",
+  "description": "The storage form an ERD Editor file holds (.erd, .erd.json, .vuerd, .vuerd.json): the live entities alone, each collection keyed in id order but the dictionaries, a header and one row per entry in document order, without what an editor derives on load or keeps while it is open, without an entity's text field while it is empty, which reads as the empty string, and without an empty list or collection, which reads as none",
   "type": "object",
   "properties": {
     "$schema": {
@@ -19,6 +19,7 @@
       "$ref": "#/$defs/doc"
     },
     "collections": {
+      "description": "The entities of each kind, a kind with none left out",
       "type": "object",
       "properties": {
         "tableEntities": {
@@ -52,18 +53,10 @@
           "$ref": "#/$defs/domainEntities"
         }
       },
-      "required": [
-        "tableEntities",
-        "tableColumnEntities",
-        "relationshipEntities",
-        "indexEntities",
-        "indexColumnEntities",
-        "memoEntities"
-      ],
       "additionalProperties": false
     }
   },
-  "required": ["$schema", "version", "settings", "doc", "collections"],
+  "required": ["$schema", "version", "settings", "doc"],
   "additionalProperties": false,
   "$defs": {
     "settings": {
@@ -186,7 +179,7 @@
       "additionalProperties": false
     },
     "doc": {
-      "description": "The order of each kind of entity, which the DDL, the sort and the draw order read",
+      "description": "The order of each kind of entity, which the DDL, the sort and the draw order read, a kind with none left out. A list goes out whenever its collection holds an entity, since a reader that finds none lists none",
       "type": "object",
       "properties": {
         "tableIds": {
@@ -221,7 +214,6 @@
           }
         }
       },
-      "required": ["tableIds", "relationshipIds", "indexIds", "memoIds"],
       "additionalProperties": false
     },
     "tableEntities": {
@@ -270,11 +262,11 @@
                 "type": "string"
               }
             },
-            "required": ["x", "y", "color"],
+            "required": ["x", "y"],
             "additionalProperties": false
           }
         },
-        "required": ["id", "name", "comment", "columnIds", "ui"],
+        "required": ["id", "columnIds", "ui"],
         "additionalProperties": false
       }
     },
@@ -314,15 +306,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "tableId",
-          "name",
-          "comment",
-          "dataType",
-          "default",
-          "options"
-        ],
+        "required": ["id", "tableId", "options"],
         "additionalProperties": false
       }
     },
@@ -388,7 +372,7 @@
             "type": "boolean"
           }
         },
-        "required": ["id", "name", "tableId", "indexColumnIds", "unique"],
+        "required": ["id", "tableId", "indexColumnIds", "unique"],
         "additionalProperties": false
       }
     },
@@ -445,11 +429,11 @@
                 "type": "string"
               }
             },
-            "required": ["x", "y", "width", "height", "color"],
+            "required": ["x", "y", "width", "height"],
             "additionalProperties": false
           }
         },
-        "required": ["id", "value", "ui"],
+        "required": ["id", "ui"],
         "additionalProperties": false
       }
     },
@@ -488,7 +472,7 @@
             "additionalProperties": false
           }
         },
-        "required": ["id", "name", "color", "ui"],
+        "required": ["id", "ui"],
         "additionalProperties": false
       }
     },

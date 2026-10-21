@@ -900,7 +900,7 @@ describe('<erd-editor>', () => {
 
     el.clear();
     await flush();
-    expect(JSON.parse(el.value).doc.tableIds).toEqual([]);
+    expect(JSON.parse(el.value).doc.tableIds ?? []).toEqual([]);
   });
 
   it('repaints when the preset theme is switched to light', async () => {

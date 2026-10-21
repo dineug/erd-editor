@@ -341,7 +341,7 @@ describe('peer store reseed', () => {
 
     peer.setInitialValue('');
 
-    expect(JSON.parse(peer.value).doc.tableIds).toEqual([]);
+    expect(JSON.parse(peer.value).doc.tableIds ?? []).toEqual([]);
   });
 
   it('drops the focus the old document held', () => {

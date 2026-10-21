@@ -424,8 +424,8 @@ describe('SchemaService', () => {
       const saved = rows.get(row.id)!;
       expect(saved.value).not.toBe(value);
       expect(
-        JSON.parse(saved.value).collections.memoEntities
-      ).not.toHaveProperty('m1');
+        JSON.parse(saved.value).collections?.memoEntities?.m1
+      ).toBeUndefined();
       expect(saved.updateAt).toBe(CREATED);
       expect(postMessage).not.toHaveBeenCalled();
     });
@@ -628,8 +628,10 @@ describe('SchemaService', () => {
       const first = await openTab(row.id);
       const { tableId, columnId } = await removeUsers(first);
       expect(
-        JSON.parse(rows.get(row.id)!.value).collections.tableEntities
-      ).not.toHaveProperty(tableId);
+        JSON.parse(rows.get(row.id)!.value).collections?.tableEntities?.[
+          tableId
+        ]
+      ).toBeUndefined();
 
       const second = await openTab(row.id);
       first.undo();
@@ -674,9 +676,9 @@ describe('SchemaService', () => {
       ];
       for (const value of written.slice(1)) {
         expect(value).not.toBe(runtimeValue);
-        expect(JSON.parse(value).collections.tableEntities).not.toHaveProperty(
-          tableId
-        );
+        expect(
+          JSON.parse(value).collections?.tableEntities?.[tableId]
+        ).toBeUndefined();
       }
       expect(rows.get(copy!.id)!.value).toBe(first.value);
     });

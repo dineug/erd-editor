@@ -12,7 +12,7 @@ describe('createEmptyDocument', () => {
 
     expect(isEditorDocument(json)).toBe(true);
     expect(json.version).toBe('3.0.0');
-    expect(json.doc.tableIds).toEqual([]);
+    expect(json.doc).toEqual({});
   });
 
   it('locks every setting, the view at the start, as a new diagram in the editor', () => {

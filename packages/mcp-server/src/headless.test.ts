@@ -171,7 +171,7 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
     const [tableId] = (await mcp.ok('erd_add_table', { path: DOCUMENT }))
       .createdIds;
     await mcp.ok('erd_undo', { path: DOCUMENT });
-    expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds).toEqual([]);
+    expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds ?? []).toEqual([]);
 
     await mcp.ok('erd_redo', { path: DOCUMENT });
     expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds).toEqual([tableId]);
@@ -300,7 +300,7 @@ describe('headless: no lock, the file itself (AC-M2)', () => {
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
     expect(memo.notes).toEqual([RELOADED_NOTE]);
     const document = JSON.parse(io.read(DOCUMENT));
-    expect(document.doc.tableIds).toEqual([]);
+    expect(document.doc.tableIds ?? []).toEqual([]);
     expect(document.doc.memoIds).toEqual(memo.createdIds);
   });
 });
@@ -374,7 +374,7 @@ describe('headless: what the engine adds after an edit reaches the file', () => 
     );
 
     await mcp.ok('erd_undo', { path: DOCUMENT });
-    expect(onDisk().doc.relationshipIds).toEqual([]);
+    expect(onDisk().doc.relationshipIds ?? []).toEqual([]);
   });
 
   it('writes the key columns a relationship adds, the parent key not-null, and the undo takes them out', async () => {
@@ -504,7 +504,7 @@ describe('headless compare-and-swap (AC-P14)', () => {
 
     expect(memo.notes).toEqual([RELOADED_NOTE]);
     const document = JSON.parse(io.read(DOCUMENT));
-    expect(document.doc.tableIds).toEqual([]);
+    expect(document.doc.tableIds ?? []).toEqual([]);
     expect(document.doc.memoIds).toEqual([
       ...JSON.parse(theirs).doc.memoIds,
       ...memo.createdIds,
@@ -857,7 +857,7 @@ describe('headless on Windows: a document another program holds open', () => {
     // The in-place write's stat is the baseline, so its own write is no change.
     const undone = await winMcp.ok('erd_undo', { path: DOCUMENT });
     expect(undone).not.toHaveProperty('notes');
-    expect(JSON.parse(win.read(DOCUMENT)).doc.tableIds).toEqual([]);
+    expect(JSON.parse(win.read(DOCUMENT)).doc.tableIds ?? []).toEqual([]);
   });
 
   it('retries an in-place write another program holds, as it does a rename', async () => {
@@ -954,7 +954,9 @@ describe('headless on a real file system', () => {
       result: { label: 'erd_add_table' },
       notes: [],
     });
-    expect(JSON.parse(await readFile(path, 'utf8')).doc.tableIds).toEqual([]);
+    expect(JSON.parse(await readFile(path, 'utf8')).doc.tableIds ?? []).toEqual(
+      []
+    );
     await onNode(session.close);
   });
 

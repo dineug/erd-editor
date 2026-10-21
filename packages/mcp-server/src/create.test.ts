@@ -112,7 +112,7 @@ describe('erd_open_document with create (AC-M7)', () => {
       toolName: 'erd_add_table',
     });
     expect(
-      JSON.parse(io.read('/work/kept.erd.json')).doc.tableIds
+      JSON.parse(io.read('/work/kept.erd.json')).doc.tableIds ?? []
     ).not.toContain(tableId);
   });
 

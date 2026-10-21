@@ -413,7 +413,7 @@ keys will tell you nothing was deleted. `ErdEditorPage#tableIds()`,
 The element's `runtimeValue` getter serialises the live store on read, a locked
 setting excepted (Known traps), with what the file form `value` leaves out:
 removed entities, `zIndex`, the measured widths, the relationship anchors and
-flags. `erd.value()` reads it. That is what assertions should compare against —
+flags, and the empty text, lists and collections. `erd.value()` reads it. That is what assertions should compare against —
 the scene is a projection of it. A view (Flow mode's placement, zoom and rows)
 and the selection are never in it: read the first off the stage
 (`window.__erdStages.canvas`), as `visualization-flow.spec.ts` does, and the

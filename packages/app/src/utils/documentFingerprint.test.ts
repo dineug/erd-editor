@@ -206,11 +206,7 @@ describe('the file form both fingerprints read', () => {
     expect(collections.tableColumnEntities['users.id']).not.toHaveProperty(
       'ui'
     );
-    expect(Object.keys(collections.tableEntities.users.ui)).toEqual([
-      'x',
-      'y',
-      'color',
-    ]);
+    expect(Object.keys(collections.tableEntities.users.ui)).toEqual(['x', 'y']);
   });
 
   it.each(fingerprints)(

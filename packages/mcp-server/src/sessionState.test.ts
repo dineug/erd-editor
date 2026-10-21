@@ -128,7 +128,7 @@ describe('LiveSession transitions (AC-P13)', () => {
       saved: true,
       notes: [CLOSED_NOTE],
     });
-    expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds).toEqual([]);
+    expect(JSON.parse(io.read(DOCUMENT)).doc.tableIds ?? []).toEqual([]);
 
     const memo = await mcp.ok('erd_add_memo', { path: DOCUMENT });
     expect(memo.notes).toEqual([CLOSED_NOTE, RESEED_NOTE]);

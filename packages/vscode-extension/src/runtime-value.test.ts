@@ -142,8 +142,9 @@ describe('a removal saved, then a second view and a joining agent seeded from th
     expect(held.collections.tableColumnEntities[USER_NAME].name).toBe('name');
 
     const saved = JSON.parse(new TextDecoder().decode(first.document.content));
-    expect(saved.collections.tableEntities).not.toHaveProperty(USERS);
-    expect(saved.collections.tableColumnEntities).not.toHaveProperty(USER_NAME);
+    // The file form leaves out a collection that holds nothing.
+    expect(saved.collections?.tableEntities?.[USERS]).toBeUndefined();
+    expect(saved.collections?.tableColumnEntities?.[USER_NAME]).toBeUndefined();
   });
 
   it('brings the table back with its name and columns on both when the author undoes', async () => {
@@ -192,7 +193,7 @@ describe('the runtime value on the way out', () => {
     expect(written).toEqual([author.value, author.value, author.value]);
     expect(author.runtimeValue).not.toBe(author.value);
     expect(
-      JSON.parse(written[0]!).collections.tableEntities
-    ).not.toHaveProperty(USERS);
+      JSON.parse(written[0]!).collections?.tableEntities?.[USERS]
+    ).toBeUndefined();
   });
 });

@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vite-plus/test';
 
 import { parser, toJson } from '@/parser';
-import { toDocument, toDocumentJson } from '@/storageForm';
-import { createSchema, SchemaV3Constants } from '@/v3';
+import {
+  type ERDEditorDocumentV3,
+  toDocument as toStorageDocument,
+  toDocumentJson,
+} from '@/storageForm';
+import { createSchema, type ERDEditorSchemaV3, SchemaV3Constants } from '@/v3';
 import { createDomain } from '@/v3/parser/domain.entity';
 import { createTable } from '@/v3/parser/table.entity';
+
+type Written = ERDEditorDocumentV3 & {
+  doc: Required<ERDEditorDocumentV3['doc']>;
+  collections: Required<NonNullable<ERDEditorDocumentV3['collections']>>;
+};
+
+/** What toDocument writes, typed as holding each list and collection a spec reads. */
+const toDocument = (schema: ERDEditorSchemaV3) =>
+  toStorageDocument(schema) as Written;
 
 const V3_SCHEMA_URL =
   'https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json';
@@ -343,17 +356,16 @@ const EXPECTED = {
       ta: {
         id: 'ta',
         name: 'member',
-        comment: '',
         columnIds: ['cd', 'cb'],
         groupId: 'g1',
-        ui: { x: 10.125, y: 20, color: '' },
+        ui: { x: 10.125, y: 20 },
       },
       tb: {
         id: 'tb',
         name: 'order',
         comment: 'placed orders',
         columnIds: ['ca', 'cc'],
-        ui: { x: 400, y: -60.5, color: '' },
+        ui: { x: 400, y: -60.5 },
       },
     },
     tableColumnEntities: {
@@ -361,9 +373,7 @@ const EXPECTED = {
         id: 'cb',
         tableId: 'ta',
         name: 'id',
-        comment: '',
         dataType: 'INT',
-        default: '',
         options: 11,
       },
       cd: {
@@ -379,18 +389,14 @@ const EXPECTED = {
         id: 'ca',
         tableId: 'tb',
         name: 'id',
-        comment: '',
         dataType: 'INT',
-        default: '',
         options: 10,
       },
       cc: {
         id: 'cc',
         tableId: 'tb',
         name: 'member_id',
-        comment: '',
         dataType: 'INT',
-        default: '',
         options: 8,
       },
     },
@@ -421,7 +427,7 @@ const EXPECTED = {
       m1: {
         id: 'm1',
         value: 'billing notes',
-        ui: { x: -80, y: 300, width: 116, height: 100, color: '' },
+        ui: { x: -80, y: 300, width: 116, height: 100 },
       },
     },
     tableGroupEntities: {
@@ -526,6 +532,102 @@ describe('toDocumentJson', () => {
   });
 });
 
+describe('the empty text toDocumentJson leaves out', () => {
+  it('leaves out each text an entity or its ui holds as empty', () => {
+    const schema = legacy();
+    const { collections } = schema;
+    Object.assign(collections.tableEntities.tb, { name: '', comment: '' });
+    Object.assign(collections.tableColumnEntities.cd, {
+      name: '',
+      comment: '',
+      dataType: '',
+      default: '',
+    });
+    collections.indexEntities.ib.name = '';
+    collections.memoEntities.m1.value = '';
+    Object.assign(collections.tableGroupEntities.g1, { name: '', color: '' });
+
+    const out = toDocument(schema).collections;
+
+    expect(out.tableEntities.tb).toEqual({
+      id: 'tb',
+      columnIds: ['ca', 'cc'],
+      ui: { x: 400, y: -60.5 },
+    });
+    expect(out.tableColumnEntities.cd).toEqual({
+      id: 'cd',
+      tableId: 'ta',
+      options: 8,
+    });
+    expect(out.indexEntities.ib).toEqual({
+      id: 'ib',
+      tableId: 'tb',
+      indexColumnIds: ['iy', 'ix'],
+      unique: false,
+    });
+    expect(out.memoEntities.m1).toEqual({
+      id: 'm1',
+      ui: { x: -80, y: 300, width: 116, height: 100 },
+    });
+    expect(out.tableGroupEntities?.g1).toEqual({
+      id: 'g1',
+      ui: { x: -20, y: -40, width: 640, height: 360 },
+    });
+  });
+
+  it('keeps blank text, a zero, false and every id and list as held', () => {
+    const schema = legacy();
+    const { collections } = schema;
+    Object.assign(collections.tableEntities.tb, { name: ' ', comment: '\t' });
+    collections.tableEntities.tb.ui.x = 0;
+    Object.assign(collections.tableColumnEntities.ca, {
+      dataType: ' ',
+      default: ' ',
+      options: 0,
+    });
+    collections.tableEntities.tb.columnIds = ['ca'];
+    collections.memoEntities.m1.ui.color = ' ';
+
+    const out = toDocument(schema).collections;
+
+    expect(out.tableEntities.tb).toEqual({
+      id: 'tb',
+      name: ' ',
+      comment: '\t',
+      columnIds: ['ca'],
+      ui: { x: 0, y: -60.5 },
+    });
+    expect(out.tableColumnEntities.ca).toEqual({
+      id: 'ca',
+      tableId: 'tb',
+      name: 'id',
+      dataType: ' ',
+      default: ' ',
+      options: 0,
+    });
+    expect(out.indexEntities.ib.indexColumnIds).toEqual(['iy']);
+    expect(out.memoEntities.m1.ui.color).toBe(' ');
+    expect(out.relationshipEntities.r1.start).toEqual({
+      tableId: 'ta',
+      columnIds: ['cb'],
+    });
+  });
+
+  it('reads each text it leaves out back as empty', () => {
+    const schema = legacy();
+    schema.collections.tableEntities.tb.name = '';
+    schema.collections.memoEntities.m1.value = '';
+
+    const reopened = parser(toDocumentJson(schema));
+
+    expect(reopened.collections.tableEntities.tb.name).toBe('');
+    expect(reopened.collections.tableEntities.ta.comment).toBe('');
+    expect(reopened.collections.tableEntities.ta.ui.color).toBe('');
+    expect(reopened.collections.tableColumnEntities.cb.default).toBe('');
+    expect(reopened.collections.memoEntities.m1.value).toBe('');
+  });
+});
+
 describe('the live entities toDocument keeps', () => {
   it('keeps each listed table with an entity once, in the order listed', () => {
     const { doc, collections } = toDocument(legacy());
@@ -593,7 +695,9 @@ describe('the live entities toDocument keeps', () => {
       indexColumnIds: [],
       unique: false,
     });
-    expect(toDocument(schema).collections.indexColumnEntities).toEqual({});
+    expect(toDocument(schema).collections).not.toHaveProperty(
+      'indexColumnEntities'
+    );
   });
 
   it('keeps the listed memos and table groups alone', () => {
@@ -628,19 +732,42 @@ describe('the live entities toDocument keeps', () => {
     expect(json.collections.tableEntities.ta).not.toHaveProperty('groupId');
   });
 
-  it('writes an empty document with every collection and no group key', () => {
-    expect(toDocument(createSchema())).toMatchObject({
-      doc: { tableIds: [], relationshipIds: [], indexIds: [], memoIds: [] },
-      collections: {
-        tableEntities: {},
-        tableColumnEntities: {},
-        relationshipEntities: {},
-        indexEntities: {},
-        indexColumnEntities: {},
-        memoEntities: {},
-      },
-    });
-    expect(toDocument(createSchema()).doc).not.toHaveProperty('tableGroupIds');
+  it('writes an empty document as its settings and an empty doc', () => {
+    const written = toDocument(createSchema());
+
+    expect(Object.keys(written)).toEqual([
+      '$schema',
+      'version',
+      'settings',
+      'doc',
+    ]);
+    expect(written.doc).toEqual({});
+  });
+
+  it('leaves out each list and collection that holds nothing, which a parse reads as empty', () => {
+    const schema = legacy();
+    schema.doc.memoIds = [];
+    schema.doc.indexIds = [];
+
+    const json = JSON.parse(toDocumentJson(schema));
+
+    expect(Object.keys(json.doc)).toEqual([
+      'tableIds',
+      'relationshipIds',
+      'tableGroupIds',
+    ]);
+    expect(Object.keys(json.collections)).toEqual([
+      'tableEntities',
+      'tableColumnEntities',
+      'relationshipEntities',
+      'tableGroupEntities',
+    ]);
+
+    const reread = parser(toDocumentJson(schema));
+    expect(reread.doc.memoIds).toEqual([]);
+    expect(reread.doc.indexIds).toEqual([]);
+    expect(reread.collections.memoEntities).toEqual({});
+    expect(reread.collections.indexColumnEntities).toEqual({});
   });
 });
 
@@ -674,7 +801,16 @@ describe('the order toDocumentJson writes', () => {
   });
 
   it('writes the fields of every entity in schema order', () => {
-    const { collections } = JSON.parse(toDocumentJson(legacy()));
+    const schema = legacy();
+    schema.collections.tableEntities.ta.comment = 'members';
+    schema.collections.tableEntities.ta.ui.color = '#0090ff';
+    Object.assign(schema.collections.tableColumnEntities.cb, {
+      comment: 'number',
+      default: '0',
+    });
+    schema.collections.memoEntities.m1.ui.color = '#ffcd00';
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
 
     expect(Object.keys(collections.tableEntities.ta)).toEqual([
       'id',
@@ -748,9 +884,12 @@ describe('the order toDocumentJson writes', () => {
     const schema = legacy();
     Object.assign(schema.collections.tableEntities.ta, {
       logicalName: 'Member',
+      comment: 'members',
       nameDerived: true,
     });
     Object.assign(schema.collections.tableColumnEntities.cb, {
+      comment: 'number',
+      default: '0',
       logicalName: 'Member Number',
       domainId: 'd1',
     });
@@ -1105,10 +1244,7 @@ const DICTIONARY_JSON = lines(
   '  "doc": {',
   '    "tableIds": [',
   '      "t1"',
-  '    ],',
-  '    "relationshipIds": [],',
-  '    "indexIds": [],',
-  '    "memoIds": []',
+  '    ]',
   '  },',
   '  "collections": {',
   '    "tableEntities": {',
@@ -1116,7 +1252,6 @@ const DICTIONARY_JSON = lines(
   '        "id": "t1",',
   '        "name": "member",',
   '        "logicalName": "회원",',
-  '        "comment": "",',
   '        "columnIds": [',
   '          "c1",',
   '          "c2"',
@@ -1124,8 +1259,7 @@ const DICTIONARY_JSON = lines(
   '        "nameDerived": true,',
   '        "ui": {',
   '          "x": 200,',
-  '          "y": 100,',
-  '          "color": ""',
+  '          "y": 100',
   '        }',
   '      }',
   '    },',
@@ -1134,9 +1268,7 @@ const DICTIONARY_JSON = lines(
   '        "id": "c1",',
   '        "tableId": "t1",',
   '        "name": "MBR_NO",',
-  '        "comment": "",',
   '        "dataType": "NUMERIC(10)",',
-  '        "default": "",',
   '        "options": 18,',
   '        "logicalName": "회원 번호",',
   '        "domainId": "d1"',
@@ -1145,16 +1277,10 @@ const DICTIONARY_JSON = lines(
   '        "id": "c2",',
   '        "tableId": "t1",',
   '        "name": "note",',
-  '        "comment": "",',
   '        "dataType": "TEXT",',
-  '        "default": "",',
   '        "options": 0',
   '      }',
   '    },',
-  '    "relationshipEntities": {},',
-  '    "indexEntities": {},',
-  '    "indexColumnEntities": {},',
-  '    "memoEntities": {},',
   '    "wordEntities": {',
   '      "fields": [',
   '        "id",',
@@ -1277,12 +1403,7 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
   it('writes no dictionary order in the doc', () => {
     const { doc } = JSON.parse(toDocumentJson(dictionary()));
 
-    expect(Object.keys(doc)).toEqual([
-      'tableIds',
-      'relationshipIds',
-      'indexIds',
-      'memoIds',
-    ]);
+    expect(Object.keys(doc)).toEqual(['tableIds']);
   });
 
   it('writes the dictionaries after every other collection, words, terms, then domains', () => {
@@ -1291,10 +1412,6 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
     expect(Object.keys(collections)).toEqual([
       'tableEntities',
       'tableColumnEntities',
-      'relationshipEntities',
-      'indexEntities',
-      'indexColumnEntities',
-      'memoEntities',
       'wordEntities',
       'termEntities',
       'domainEntities',
@@ -1331,6 +1448,45 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
     ]);
   });
 
+  it('writes no dictionary row that holds nothing past its id, nor a link to a domain so left out', () => {
+    const schema = dictionary();
+    const { doc, collections } = schema;
+    Object.assign(collections.wordEntities.w1, {
+      name: ' ',
+      abbreviation: '',
+      englishName: '',
+    });
+    // Only a blank domain once left out empties the term that held its link alone.
+    Object.assign(collections.domainEntities.d1, {
+      name: '',
+      category: ' ',
+      dataType: '',
+      description: '',
+    });
+    collections.termEntities.te = {
+      ...collections.termEntities.tm2,
+      id: 'te',
+      name: '',
+      description: '',
+      domainId: 'd1',
+      order: 'z0',
+    };
+    doc.termIds.push('te');
+    collections.tableColumnEntities.c1.domainId = 'd1';
+
+    const out = JSON.parse(toDocumentJson(schema)).collections;
+
+    expect(out.wordEntities.rows.map(([id]: string[]) => id)).toEqual(['w2']);
+    expect(out).not.toHaveProperty('domainEntities');
+    expect(out.termEntities.rows.map(([id]: string[]) => id)).toEqual([
+      'tm1',
+      'tm2',
+    ]);
+    expect(out.tableColumnEntities.c1).not.toHaveProperty('domainId');
+    // The runtime value peers share keeps every listed row as it is.
+    expect(JSON.parse(toJson(schema)).doc.wordIds).toEqual(['w2', 'w1']);
+  });
+
   it('writes no logical name of only blanks, and keeps one with text as it is typed', () => {
     const schema = dictionary();
     schema.collections.tableEntities.t1.logicalName = ' \t ';
@@ -1361,7 +1517,6 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
     expect(Object.keys(collections.tableEntities.t1)).toEqual([
       'id',
       'name',
-      'comment',
       'columnIds',
       'ui',
     ]);
@@ -1369,9 +1524,7 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
       'id',
       'tableId',
       'name',
-      'comment',
       'dataType',
-      'default',
       'options',
     ]);
   });

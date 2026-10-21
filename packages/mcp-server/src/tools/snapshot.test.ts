@@ -329,7 +329,7 @@ describe('the agent snapshot', () => {
       SEED.empty,
     ]);
     expect(snapshot.relationships.map(({ id }) => id)).toEqual(
-      file.doc.relationshipIds
+      file.doc.relationshipIds ?? []
     );
     expect(snapshot.indexes.map(({ id }) => id)).toEqual(file.doc.indexIds);
     expect(

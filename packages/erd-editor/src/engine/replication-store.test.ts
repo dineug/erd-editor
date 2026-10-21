@@ -174,8 +174,8 @@ describe('createReplicationStore', () => {
     const json = parse(store);
 
     expect(json.version).toBe('3.0.0');
-    expect(json.doc.tableIds).toEqual([]);
-    expect(json.collections.tableEntities).toEqual({});
+    expect(json.doc.tableIds ?? []).toEqual([]);
+    expect(json.collections?.tableEntities ?? {}).toEqual({});
     expect(Object.isFrozen(store)).toBe(true);
   });
 
@@ -189,7 +189,7 @@ describe('createReplicationStore', () => {
     store.setInitialValue('   ');
     await settle();
 
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
     expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
   });
 
@@ -199,7 +199,7 @@ describe('createReplicationStore', () => {
     store.setInitialValue(undefined as unknown as string);
     await settle();
 
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
     expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
   });
 
@@ -224,7 +224,7 @@ describe('createReplicationStore', () => {
     await settle();
 
     expect(error).toHaveBeenCalled();
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
     expect(parse(store).settings.lockSettings).toBe(LOCK_ALL);
     error.mockRestore();
   });
@@ -275,7 +275,7 @@ describe('createReplicationStore', () => {
     expect(Object.keys(parseRuntime(store).collections.tableEntities)).toEqual([
       'fresh',
     ]);
-    expect(parse(store).collections.tableEntities).toEqual({});
+    expect(parse(store).collections?.tableEntities ?? {}).toEqual({});
   });
 
   it('dispatchSync applies change actions', () => {
@@ -314,7 +314,7 @@ describe('createReplicationStore', () => {
     const store = make();
 
     store.dispatch(addTable('t1'));
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
 
     await Promise.resolve();
     await Promise.resolve();
@@ -1530,6 +1530,6 @@ describe('createReplicationStore', () => {
     vi.advanceTimersByTime(250);
 
     expect(change).not.toHaveBeenCalled();
-    expect(parse(store).doc.tableIds).toEqual([]);
+    expect(parse(store).doc.tableIds ?? []).toEqual([]);
   });
 });

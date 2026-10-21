@@ -318,7 +318,7 @@ describe('the document list', () => {
     expect(list).toMatchObject({ relationshipCount: 0, indexCount: 1 });
     expect(list.relationships).toEqual([]);
     expect(list.indexes.map(({ id }) => id)).toEqual([kept.usersIndex]);
-    expect(file.doc.relationshipIds).toEqual([]);
+    expect(file.doc.relationshipIds ?? []).toEqual([]);
     expect(file.doc.indexIds).toEqual([kept.usersIndex]);
   });
 

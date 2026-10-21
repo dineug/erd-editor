@@ -25,15 +25,16 @@ CREATE TABLE posts (
 );
 `;
 
+// The file form leaves out a list that holds nothing.
 const storedTableCount = ({ value }: StoredSchema) =>
-  value ? JSON.parse(value).doc.tableIds.length : 0;
+  value ? (JSON.parse(value).doc.tableIds ?? []).length : 0;
 
 const storedSettings = ({ value }: StoredSchema) => JSON.parse(value).settings;
 
 /** The fields each stored connector end holds. */
 const storedEnds = ({ value }: StoredSchema): string[][] => {
   const { doc, collections } = JSON.parse(value);
-  return doc.relationshipIds.flatMap((id: string) => {
+  return (doc.relationshipIds ?? []).flatMap((id: string) => {
     const { start, end } = collections.relationshipEntities[id];
     return [Object.keys(start), Object.keys(end)];
   });

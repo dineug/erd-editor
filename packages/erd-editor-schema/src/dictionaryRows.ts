@@ -123,9 +123,11 @@ const isDictionaryRows = (value: unknown): value is DictionaryRows =>
  * of its own: the rows replace the empty array JSON.stringify writes for each
  * collection, in the order written, so every other byte is its own.
  */
-export function stringifyDocument<T extends { collections: object }>(
+export function stringifyDocument<T extends { collections?: object }>(
   document: T
 ): string {
+  if (!document.collections) return JSON.stringify(document, null, 2);
+
   const blocks: unknown[][][] = [];
   const collections: Record<string, unknown> = { ...document.collections };
 

@@ -171,6 +171,7 @@ function namedProperties(
 /**
  * A document that reaches every saved field: groups, scripts, logical names,
  * an unlocked name view, domain links, a full row in each dictionary and more.
+ * Its second table and column hold no text past a name, which a save leaves out.
  */
 const FULL = toDocumentJson(
   parser(
@@ -196,9 +197,11 @@ const FULL = toDocumentJson(
             id: 't1',
             name: 'users',
             logicalName: 'User',
+            comment: 'who signs in',
             columnIds: ['c1'],
             groupId: 'g1',
             nameDerived: true,
+            ui: { color: '#0090ff' },
           },
           t2: { id: 't2', name: 'orders', columnIds: ['c2'] },
         },
@@ -207,6 +210,9 @@ const FULL = toDocumentJson(
             id: 'c1',
             tableId: 't1',
             name: 'USER_NO',
+            comment: 'the number a user signs in with',
+            dataType: 'NUMERIC(10)',
+            default: '0',
             options: 2 | 16,
             logicalName: 'User Number',
             domainId: 'd1',
@@ -232,8 +238,12 @@ const FULL = toDocumentJson(
             orderType: OrderType.DESC,
           },
         },
-        memoEntities: { m1: { id: 'm1', value: 'note' } },
-        tableGroupEntities: { g1: { id: 'g1', name: 'billing' } },
+        memoEntities: {
+          m1: { id: 'm1', value: 'note', ui: { color: '#ffcd00' } },
+        },
+        tableGroupEntities: {
+          g1: { id: 'g1', name: 'billing', color: '#30a46c' },
+        },
         wordEntities: {
           fields: [...DictionaryFields.wordEntities],
           rows: [['w1', 'user', 'USER', 'user', 'one', 'member', 'client']],
@@ -260,6 +270,75 @@ describe('json-schema/schema.json', () => {
 
   it('accepts the storage form of a new document, which holds no group', () => {
     expect(validate(JSON.parse(toDocumentJson(createSchema())))).toEqual([]);
+  });
+
+  it('accepts the storage form of a document whose empty text it leaves out', () => {
+    const { collections } = full();
+    const document = JSON.parse(
+      toDocumentJson(
+        parser(
+          JSON.stringify({
+            version: '3.0.0',
+            doc: {
+              tableIds: ['t1'],
+              indexIds: ['i1'],
+              memoIds: ['m1'],
+              tableGroupIds: ['g1'],
+            },
+            collections: {
+              tableEntities: { t1: { id: 't1', columnIds: ['c1'] } },
+              tableColumnEntities: { c1: { id: 'c1', tableId: 't1' } },
+              indexEntities: { i1: { id: 'i1', tableId: 't1' } },
+              memoEntities: { m1: { id: 'm1' } },
+              tableGroupEntities: { g1: { id: 'g1' } },
+            },
+          })
+        )
+      )
+    );
+
+    expect(validate(document)).toEqual([]);
+    expect(collections.tableEntities.t2).not.toHaveProperty('comment');
+    expect(collections.tableEntities.t2.ui).not.toHaveProperty('color');
+    expect(Object.keys(document.collections.tableEntities.t1)).toEqual([
+      'id',
+      'columnIds',
+      'ui',
+    ]);
+    expect(Object.keys(document.collections.tableColumnEntities.c1)).toEqual([
+      'id',
+      'tableId',
+      'options',
+    ]);
+    expect(Object.keys(document.collections.indexEntities.i1)).toEqual([
+      'id',
+      'tableId',
+      'indexColumnIds',
+      'unique',
+    ]);
+    expect(Object.keys(document.collections.memoEntities.m1.ui)).toEqual([
+      'x',
+      'y',
+      'width',
+      'height',
+    ]);
+    expect(Object.keys(document.collections.tableGroupEntities.g1)).toEqual([
+      'id',
+      'ui',
+    ]);
+  });
+
+  it('accepts the empty text an earlier release wrote', () => {
+    const document = full();
+    document.collections.tableEntities.t2.comment = '';
+    document.collections.tableEntities.t2.ui.color = '';
+    Object.assign(document.collections.tableColumnEntities.c2, {
+      comment: '',
+      dataType: '',
+      default: '',
+    });
+
+    expect(validate(document)).toEqual([]);
   });
 
   it('names no property the storage form never writes', () => {
@@ -370,11 +449,13 @@ describe('json-schema/schema.json', () => {
   it('refuses a document without a field the storage form always writes', () => {
     const document = full();
     delete document.settings.lockSettings;
-    delete document.collections.tableEntities.t2.ui.color;
+    delete document.collections.tableEntities.t2.ui.x;
+    delete document.collections.tableColumnEntities.c2.options;
 
     expect(validate(document)).toEqual([
       '$.settings: missing lockSettings',
-      '$.collections.tableEntities.t2.ui: missing color',
+      '$.collections.tableEntities.t2.ui: missing x',
+      '$.collections.tableColumnEntities.c2: missing options',
     ]);
   });
 });

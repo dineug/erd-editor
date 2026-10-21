@@ -23,7 +23,7 @@ describe('engine barrel', () => {
     const initial = JSON.parse(store.value);
 
     expect(initial.version).toBe('3.0.0');
-    expect(initial.doc.memoIds).toEqual([]);
+    expect(initial.doc.memoIds ?? []).toEqual([]);
 
     store.dispatchSync({
       type: 'memo.add',
@@ -34,7 +34,7 @@ describe('engine barrel', () => {
 
     store.dispatchSync({ type: 'memo.remove', payload: { id: 'm1' } });
 
-    expect(JSON.parse(store.value).collections.memoEntities).toEqual({});
+    expect(JSON.parse(store.value).collections?.memoEntities ?? {}).toEqual({});
     expect(
       JSON.parse(store.runtimeValue).collections.memoEntities
     ).toHaveProperty('m1');
@@ -62,7 +62,7 @@ describe('engine barrel', () => {
       payload: { id: 'm1', zIndex: 9 },
     });
 
-    expect(JSON.parse(store.value).collections.memoEntities).toEqual({});
+    expect(JSON.parse(store.value).collections?.memoEntities ?? {}).toEqual({});
 
     store.destroy();
   });
