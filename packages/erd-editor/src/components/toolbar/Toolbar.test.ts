@@ -659,8 +659,10 @@ describe('Toolbar', () => {
           addDictionaryAction({ kind: 'word', id, values: { name: id } })
         );
 
+      /** The Dictionary tab on the word sheet, the one the specs below write. */
       async function onDictionary() {
         const mounted = await setup();
+        dictionaryViewOf(mounted.app).sheet = DictionarySheet.word;
         mounted.app.store.dispatchSync(
           changeCanvasTypeAction({ value: CanvasType.dictionary })
         );

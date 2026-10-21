@@ -50,7 +50,7 @@ export function dictionaryViewOf({
 
   if (!view) {
     view = observable<DictionaryView>({
-      sheet: DictionarySheet.word,
+      sheet: DictionarySheet.domain,
       sheets: Object.fromEntries(
         DictionarySheetList.map(sheet => [sheet, createSheetView()])
       ) as Record<DictionarySheet, DictionarySheetView>,

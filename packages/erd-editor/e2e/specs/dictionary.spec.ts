@@ -122,8 +122,11 @@ const countsOf = async (erd: ErdEditorPage) => ({
   term: (await listedRows(erd, 'term')).length,
 });
 
+/** Opens the tab, which a first visit shows on the domain sheet, then the word sheet. */
 async function openTab(erd: ErdEditorPage) {
   await erd.toolbarButton('Dictionary').click();
+  await expect(shownSheet(erd)).toHaveText('Domains');
+  await tabButton(erd, 'Words').click();
   await expect(shownSheet(erd)).toHaveText('Words');
 }
 

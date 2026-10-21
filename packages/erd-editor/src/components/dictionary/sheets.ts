@@ -29,11 +29,14 @@ import type { I18n, PlainMessageKey } from '@/i18n/translate';
 import type { ValuesType } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 
-/** The tab's sheets in the order its bar lists them: the three dictionaries, then their checks. */
+/**
+ * The tab's sheets in the order its bar lists them: the domains, the words
+ * and the terms, as a standard is built up, then their checks.
+ */
 export const DictionarySheet = {
+  domain: DictionaryKind.domain,
   word: DictionaryKind.word,
   term: DictionaryKind.term,
-  domain: DictionaryKind.domain,
   check: 'check',
 } as const;
 export type DictionarySheet = ValuesType<typeof DictionarySheet>;

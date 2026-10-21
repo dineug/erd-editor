@@ -29,6 +29,7 @@ import Dictionary from '@/components/dictionary/Dictionary';
 import * as styles from '@/components/dictionary/Dictionary.styles';
 import { dictionaryViewOf } from '@/components/dictionary/dictionaryView';
 import { toGridTheme } from '@/components/dictionary/gridTheme';
+import { DictionarySheet } from '@/components/dictionary/sheets';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import Theme from '@/components/theme/Theme';
@@ -225,10 +226,19 @@ const memberTable = (tableName: string, columnName: string): AnyAction[] => [
 
 const WORDS = [word('a', 'A'), word('b', 'B'), word('c', 'C'), word('d', 'D')];
 
+/**
+ * Mounts the tab over the rows seeded, on the word sheet most specs drive
+ * unless another is given, or on the sheet a first visit opens with null.
+ */
 async function setup({
   seed = WORDS,
   readonly = false,
-}: { seed?: AnyAction[]; readonly?: boolean } = {}): Promise<Fixture> {
+  sheet = DictionarySheet.word,
+}: {
+  seed?: AnyAction[];
+  readonly?: boolean;
+  sheet?: DictionarySheet | null;
+} = {}): Promise<Fixture> {
   spyTexts();
   host.readonly = false;
   host.shown = true;
@@ -237,6 +247,7 @@ async function setup({
   const app = createTestAppContext({ getReadonly: () => host.readonly });
   if (seed.length) app.store.dispatchSync(seed);
   app.store.history.clear();
+  if (sheet) dictionaryViewOf(app).sheet = sheet;
   host.readonly = readonly;
 
   const theme = observable<ThemeTokens>({ ...DARK }, { shallow: true });
@@ -353,6 +364,11 @@ const sheetButtons = ({ shadow }: Fixture) =>
 /** A sheet button's name, without the count beside it. */
 const sheetName = (button: Element) =>
   button.firstElementChild?.textContent?.trim();
+
+const sheetButton = (fixture: Fixture, name: string) =>
+  sheetButtons(fixture).find(
+    button => sheetName(button) === name
+  ) as HTMLButtonElement;
 
 const pressedSheet = (fixture: Fixture) =>
   sheetButtons(fixture)
@@ -574,17 +590,11 @@ describe('the Dictionary tab', () => {
       ],
     });
 
-    expect(sheetButtons(fixture).map(sheetName)).toEqual([
-      'Words',
-      'Terms',
-      'Domains',
-      'Checks',
-    ]);
     expect(pressedSheet(fixture)).toEqual(['Words']);
     expect(status(fixture)).toBe('2 rows 1 selected');
     drawnTexts();
 
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     expect(pressedSheet(fixture)).toEqual(['Terms']);
     expect(drawnTexts()).toEqual(
       expect.arrayContaining(['Term', 'Physical Name', 'Member Name', 'MBR_NM'])
@@ -592,12 +602,12 @@ describe('the Dictionary tab', () => {
     expect(status(fixture)).toBe('1 row 1 selected');
     expect(fixture.shadow.activeElement).toBe(textarea(fixture));
 
-    await click(sheetButtons(fixture)[2]);
+    await click(sheetButton(fixture, 'Domains'));
     expect(drawnTexts()).toEqual(
       expect.arrayContaining(['Domain', 'Data Type', 'Short Text'])
     );
 
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     expect(pressedSheet(fixture)).toEqual(['Checks']);
     expect(drawnTexts()).toEqual(
       expect.arrayContaining([
@@ -618,13 +628,37 @@ describe('the Dictionary tab', () => {
     expect(buttonNamed(fixture, 'Export CSV')).toBeNull();
     expect(fileInput(fixture)).toBeNull();
 
-    await click(sheetButtons(fixture)[0]);
+    await click(sheetButton(fixture, 'Words'));
     expect(drawnTexts()).toEqual(
       expect.arrayContaining(['Word', 'Abbreviation', 'Member', 'MBR'])
     );
-    await click(sheetButtons(fixture)[0]);
+    await click(sheetButton(fixture, 'Words'));
     expect(pressedSheet(fixture)).toEqual(['Words']);
     expect(dictionaryViewOf(fixture.app).sheet).toBe(DictionaryKind.word);
+  });
+
+  it('lists the domains first, then the words, the terms and the checks, and opens on the domains', async () => {
+    const fixture = await setup({
+      seed: [
+        ...WORDS,
+        addDictionaryAction({
+          kind: DictionaryKind.domain,
+          id: 'd',
+          values: { name: 'Short Text', dataType: 'VARCHAR(255)' },
+        }),
+      ],
+      sheet: null,
+    });
+
+    expect(sheetButtons(fixture).map(sheetName)).toEqual([
+      'Domains',
+      'Words',
+      'Terms',
+      'Checks',
+    ]);
+    expect(pressedSheet(fixture)).toEqual(['Domains']);
+    expect(textarea(fixture).getAttribute('aria-label')).toBe('Domains');
+    expect(status(fixture)).toBe('1 row 1 selected');
   });
 
   it('switches between two empty sheets, the sheet shown taking the writes and the file', async () => {
@@ -632,14 +666,14 @@ describe('the Dictionary tab', () => {
     const saved = captureExports();
     drawnTexts();
 
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     expect(pressedSheet(fixture)).toEqual(['Terms']);
     expect(textarea(fixture).getAttribute('aria-label')).toBe('Terms');
     expect(drawnTexts()).toEqual(
       expect.arrayContaining(['Term', 'Physical Name'])
     );
 
-    await click(sheetButtons(fixture)[2]);
+    await click(sheetButton(fixture, 'Domains'));
     expect(pressedSheet(fixture)).toEqual(['Domains']);
     expect(textarea(fixture).getAttribute('aria-label')).toBe('Domains');
     expect(drawnTexts()).toEqual(
@@ -734,7 +768,7 @@ describe('the Dictionary tab', () => {
       counts(fixture).map(count => count.textContent);
 
     const fixture = await setup({ seed: [...WORDS, word('e', 'A')] });
-    await expect.poll(() => texts(fixture)).toEqual(['5', '0', '0', '2']);
+    await expect.poll(() => texts(fixture)).toEqual(['0', '5', '0', '2']);
     // The count reads out with nothing, since the name is the button's name.
     expect(counts(fixture)[0].getAttribute('aria-hidden')).toBe('true');
     expect(
@@ -743,7 +777,7 @@ describe('the Dictionary tab', () => {
 
     await press('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
     await click(buttonNamed(fixture, 'Delete Rows'));
-    await expect.poll(() => texts(fixture)).toEqual(['4', '0', '0', '0']);
+    await expect.poll(() => texts(fixture)).toEqual(['0', '4', '0', '0']);
     expect(counts(fixture)[3].classList.contains(String(styles.count))).toBe(
       true
     );
@@ -969,7 +1003,7 @@ describe('the Dictionary tab', () => {
         .querySelector('.dictionary-domain-editor [aria-selected="true"]')
         ?.firstElementChild?.textContent?.trim();
 
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     textarea(fixture).focus();
     await press('{ArrowRight}{ArrowRight}{Enter}');
     expect(options()).toEqual(['None', '번호', '금액']);
@@ -1026,7 +1060,7 @@ describe('the Dictionary tab', () => {
         .querySelector('.dictionary-domain-editor [aria-selected="true"]')
         ?.firstElementChild?.textContent?.trim();
 
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     textarea(fixture).focus();
     await press(`${'{ArrowDown}'.repeat(10)}{ArrowRight}{ArrowRight}{Enter}`);
     expect(list()?.style.bottom).toBe('100%');
@@ -1090,7 +1124,7 @@ describe('the Dictionary tab', () => {
 
     host.readonly = false;
     await drawn();
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     textarea(fixture).focus();
     expect(fixture.shadow.activeElement).toBe(textarea(fixture));
     await press('{Alt>}{Enter}{/Alt}{Alt>}{Delete}{/Alt}');
@@ -1156,7 +1190,7 @@ describe('the Dictionary tab', () => {
     await press('{Escape}');
 
     // The domain sheet's columns end short of the grid's right edge.
-    await click(sheetButtons(fixture)[2]);
+    await click(sheetButton(fixture, 'Domains'));
     await rightClickAt(fixture, { x: WIDTH - 60, y: rowY(0) });
     expect(menuRows(fixture)).toEqual([
       'Insert 1 row above',
@@ -1167,7 +1201,7 @@ describe('the Dictionary tab', () => {
     ]);
     await press('{Escape}');
 
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     expect(status(fixture)).toBe('0 rows');
     await rightClickAt(fixture, { x: 100, y: rowY(3) });
     expect(menuRows(fixture)).toEqual([
@@ -1248,7 +1282,7 @@ describe('the Dictionary tab', () => {
     expect(menu(fixture)).toBeNull();
 
     await rightClick(fixture, 0);
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     expect(menu(fixture)).toBeNull();
     expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
   });
@@ -1306,7 +1340,7 @@ describe('the Dictionary tab', () => {
     expect(menu(fixture)).not.toBeNull();
     await press('{Escape}');
 
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     await rightClick(fixture, 0);
     expect(menu(fixture)).toBeNull();
     expect(prevented).toEqual([false, true, false]);
@@ -1402,7 +1436,7 @@ describe('the Dictionary tab', () => {
 
     it('says nothing on the check sheet, whose columns are read-only', async () => {
       const fixture = await setup({ seed: [word('a', 'A'), word('b', 'A')] });
-      await click(sheetButtons(fixture)[3]);
+      await click(sheetButton(fixture, 'Checks'));
       const toasts = toastsOf(fixture);
 
       await paste(fixture, 'X\tY\tZ\tPast\n');
@@ -1679,7 +1713,7 @@ describe('the Dictionary tab', () => {
         word('d', 'Name'),
       ],
     });
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     expect(status(fixture)).toBe('4 rows 1 selected');
 
     await userEvent.click(search(fixture));
@@ -1699,7 +1733,7 @@ describe('the Dictionary tab', () => {
     });
     const rowCount = (count: number) =>
       fixture.i18n.t('dictionary.rowCount', { count });
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     await userEvent.click(search(fixture));
     await press('duplicate');
     expect(status(fixture)).toBe('2 rows 1 selected');
@@ -1717,7 +1751,7 @@ describe('the Dictionary tab', () => {
     const fixture = await setup({
       seed: [word('member', '회원'), ...memberTable('회원', '회원')],
     });
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     expect(status(fixture)).toBe('0 rows');
     await press('{Enter}');
     expect(pressedSheet(fixture)).toEqual(['Checks']);
@@ -1763,7 +1797,7 @@ describe('the Dictionary tab', () => {
     const fixture = await setup({
       seed: [word('member', '회원'), ...memberTable('회원', '회원')],
     });
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     expect(status(fixture)).toBe('0 rows');
     const listChecks = vi.mocked(listDictionaryChecks);
     listChecks.mockClear();
@@ -1797,7 +1831,7 @@ describe('the Dictionary tab', () => {
     await press('W1');
     expect(status(fixture)).toBe('11 rows 1 selected');
 
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     expect(status(fixture)).toBe('2 rows 1 selected');
     drawnTexts();
 
@@ -1813,7 +1847,7 @@ describe('the Dictionary tab', () => {
       'Pair'
     );
 
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     expect(status(fixture)).toBe('0 rows');
     fixture.app.store.dispatchSync(
       updateDictionaryAction({
@@ -1838,7 +1872,7 @@ describe('the Dictionary tab', () => {
       ],
     });
     const { store } = fixture.app;
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     expect(status(fixture)).toBe('2 rows 1 selected');
 
     await press('{Enter}');
@@ -1864,7 +1898,7 @@ describe('the Dictionary tab', () => {
       seed: [word('member', '회원'), ...memberTable('회원정보', '회원주소')],
     });
     const { store } = fixture.app;
-    await click(sheetButtons(fixture)[3]);
+    await click(sheetButton(fixture, 'Checks'));
     const canvasType = store.state.settings.canvasType;
 
     const edge = Array.from({ length: 300 }, (_, x) => x + 40).find(
@@ -1886,7 +1920,7 @@ describe('the Dictionary tab', () => {
     const fixture = await setup({
       seed: [term('t1', { name: '회원주소', domainId: 'gone' })],
     });
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
 
     expect(fillOf('회원주소')).toBe(toGridTheme(DARK).text.toLowerCase());
     expect(fills).not.toContain(DARK.dictionaryWarningBackground.toLowerCase());
@@ -1914,7 +1948,7 @@ describe('the Dictionary tab', () => {
     expect(fills).toContain(errorFill);
 
     fills = [];
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     expect(fillOf('회원주소')).toBe(warningText);
     expect(fillOf('멤버번호')).toBe(warningText);
     expect(fillOf('MBR_ADDR')).toBe(plainText);
@@ -2019,11 +2053,11 @@ describe('the Dictionary tab', () => {
     await undo();
     expect(names(fixture, DictionaryKind.domain)).toHaveLength(2);
 
-    await click(sheetButtons(fixture)[2]);
+    await click(sheetButton(fixture, 'Domains'));
     await undo();
     expect(names(fixture, DictionaryKind.domain)).toEqual([]);
     expect(names(fixture)).toHaveLength(3);
-    await click(sheetButtons(fixture)[0]);
+    await click(sheetButton(fixture, 'Words'));
     await undo();
     expect(names(fixture)).toEqual([]);
   });
@@ -2080,7 +2114,7 @@ describe('the Dictionary tab', () => {
       /^shop-\d{4}-\d\d-\d\dT\d\d_\d\d_\d\d-words\.csv$/
     );
 
-    await click(sheetButtons(fixture)[1]);
+    await click(sheetButton(fixture, 'Terms'));
     await click(buttonNamed(fixture, 'Export CSV'));
     expect(decoder.decode(await saved[1].bytes)).toBe(
       '\uFEFFname,physicalName,domain,description,synonyms\r\n' +
@@ -2143,6 +2177,11 @@ describe('the Dictionary tab in the editor', () => {
   const toolbarButton = (shadow: ShadowRoot, title: string) =>
     shadow.querySelector(`.toolbar [title="${title}"]`) as HTMLElement;
 
+  const sheetOf = (shadow: ShadowRoot, name: string) =>
+    Array.from(
+      shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
+    ).find(button => sheetName(button) === name) ?? null;
+
   it("goes from a column's check to the ERD tab, the canvas taking the keyboard", async () => {
     spyTexts();
     const { el, shadow } = await createEditor();
@@ -2157,10 +2196,7 @@ describe('the Dictionary tab in the editor', () => {
       })
     );
     await click(toolbarButton(shadow, 'Dictionary'));
-    const checks = Array.from(
-      shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
-    ).find(button => sheetName(button) === 'Checks');
-    await click(checks ?? null);
+    await click(sheetOf(shadow, 'Checks'));
     expect(drawnTexts()).toEqual(
       expect.arrayContaining(['Unregistered word', 'users.name', 'Nickname'])
     );
@@ -2175,6 +2211,7 @@ describe('the Dictionary tab in the editor', () => {
     spyTexts();
     const { el, shadow } = await createEditor();
     await click(toolbarButton(shadow, 'Dictionary'));
+    await click(sheetOf(shadow, 'Words'));
     await press('{ArrowRight}Draft');
     const prevented = vi.spyOn(Event.prototype, 'preventDefault');
 
@@ -2205,11 +2242,8 @@ describe('the Dictionary tab in the editor', () => {
     );
     teardowns.push(unsubscribe, sharedStore.destroy);
 
+    // A first visit opens on the domain sheet, its grid taking the keyboard.
     await click(toolbarButton(shadow, 'Dictionary'));
-    const domains = Array.from(
-      shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
-    ).find(button => sheetName(button) === 'Domains');
-    await click(domains ?? null);
     await press('{ArrowRight}{ArrowRight}TEXT{Enter}');
 
     const written = batches.filter(types =>
@@ -2242,11 +2276,8 @@ describe('the Dictionary tab in the editor', () => {
     const before = typeText();
     expect(before).not.toBe('TEXT');
 
+    // A first visit opens on the domain sheet, its grid taking the keyboard.
     await click(toolbarButton(shadow, 'Dictionary'));
-    const domains = Array.from(
-      shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
-    ).find(button => sheetName(button) === 'Domains');
-    await click(domains ?? null);
     await press('{ArrowRight}{ArrowRight}TEXT{Enter}');
 
     await click(toolbarButton(shadow, 'Entity Relationship Diagram'));

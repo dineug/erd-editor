@@ -44,14 +44,14 @@ const selection = (
 });
 
 describe('dictionaryViewOf', () => {
-  it('opens on the words, every sheet with no search, selection, scroll or width of its own', () => {
+  it('opens on the domains, every sheet with no search, selection, scroll or width of its own', () => {
     const view = dictionaryViewOf(createApp());
 
-    expect(view.sheet).toBe('word');
+    expect(view.sheet).toBe('domain');
     expect(Object.keys(view.sheets)).toEqual([
+      'domain',
       'word',
       'term',
-      'domain',
       'check',
     ]);
     for (const sheet of Object.values(view.sheets)) {
@@ -71,9 +71,9 @@ describe('dictionaryViewOf', () => {
     expect(dictionaryViewOf(app)).toBe(dictionaryViewOf({ store: app.store }));
     expect(dictionaryViewOf(other)).not.toBe(dictionaryViewOf(app));
 
-    dictionaryViewOf(app).sheet = 'domain';
+    dictionaryViewOf(app).sheet = 'term';
     changeSearch(dictionaryViewOf(app), 'term', '고객');
-    expect(dictionaryViewOf(other).sheet).toBe('word');
+    expect(dictionaryViewOf(other).sheet).toBe('domain');
     expect(dictionaryViewOf(other).sheets.term.search).toBe('');
   });
 

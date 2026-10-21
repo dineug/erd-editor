@@ -68,20 +68,20 @@ const domain = (id: string, values: Record<string, string>) =>
   addDictionaryAction({ kind: DictionaryKind.domain, id, values });
 
 describe('DictionarySheet', () => {
-  it('lists the words, terms and domains, then the checks, each labelled', () => {
-    expect(DictionarySheetList).toEqual(['word', 'term', 'domain', 'check']);
+  it('lists the domains, words and terms, then the checks, each labelled', () => {
+    expect(DictionarySheetList).toEqual(['domain', 'word', 'term', 'check']);
     expect(
       DictionarySheetList.map(sheet => DictionarySheetLabelKey[sheet])
     ).toEqual([
+      'dictionary.sheet.domains',
       'dictionary.sheet.words',
       'dictionary.sheet.terms',
-      'dictionary.sheet.domains',
       'dictionary.sheet.checks',
     ]);
     expect(DictionarySheetList.filter(isEntrySheet)).toEqual([
+      'domain',
       'word',
       'term',
-      'domain',
     ]);
   });
 });
@@ -400,7 +400,7 @@ describe('sheetRowIds', () => {
 });
 
 describe('bumpedSheets', () => {
-  const ALL = ['word', 'term', 'domain', 'check'];
+  const ALL = ['domain', 'word', 'term', 'check'];
 
   it("raises every sheet for a dictionary's write, whichever dictionary it writes", () => {
     expect(bumpedSheets([word('w', { name: 'a' })])).toEqual(ALL);

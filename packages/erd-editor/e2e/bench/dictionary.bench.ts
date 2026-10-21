@@ -734,7 +734,7 @@ const fileInput = (page: Page) =>
 
 async function openDictionary(page: Page) {
   await page.locator('erd-editor .toolbar [title^="Dictionary"]').click();
-  await expect(shownSheet(page)).toHaveText('Words');
+  await expect(shownSheet(page)).toHaveText('Domains');
 }
 
 const payloadOf = (file: DictionaryFile) => ({
