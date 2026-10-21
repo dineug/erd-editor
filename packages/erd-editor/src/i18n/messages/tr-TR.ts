@@ -455,6 +455,20 @@ export const trTR = {
   'dictionary.deleteRows': 'Satırları sil',
   'dictionary.import': '{format} içe aktar',
   'dictionary.export': '{format} dışa aktar',
+  'dictionary.menu.insertAbove': {
+    one: 'Üste {count} satır ekle',
+    other: 'Üste {count} satır ekle',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Alta {count} satır ekle',
+    other: 'Alta {count} satır ekle',
+  },
+  'dictionary.menu.deleteRows': {
+    one: '{count} satırı sil',
+    other: '{count} satırı sil',
+  },
+  'dictionary.menu.sortAscending': 'Artan sırala: {column}',
+  'dictionary.menu.sortDescending': 'Azalan sırala: {column}',
   'dictionary.rowCount': {
     one: '{count} satır',
     other: '{count} satır',

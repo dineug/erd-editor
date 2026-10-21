@@ -123,7 +123,8 @@ describe('importDictionaryFile', () => {
     const { wordEntities } = opened.app.store.state.collections;
     expect(wordEntities.a.abbreviation).toBe('MBR');
     expect(dictionaryBatches(opened)).toHaveLength(1);
-    expect(opened.app.store.history.size).toBe(1);
+    expect(opened.app.store.sheetHistories.word.size).toBe(1);
+    expect(opened.app.store.history.size).toBe(0);
 
     expect(opened.toasts.map(({ key }) => key)).toEqual([
       'dictionary.toast.imported:1:1:2:0:',
@@ -135,7 +136,8 @@ describe('importDictionaryFile', () => {
 
     expect(await importFile(opened, file)).toBe(DictionaryKind.word);
     expect(dictionaryBatches(opened)).toHaveLength(1);
-    expect(opened.app.store.history.size).toBe(1);
+    expect(opened.app.store.sheetHistories.word.size).toBe(1);
+    expect(opened.app.store.history.size).toBe(0);
     expect((await readToast(opened.toasts[1])).lines).toEqual([
       '0 added · 0 updated · 2 skipped',
     ]);
@@ -278,7 +280,10 @@ describe('toDictionaryCsv', () => {
     expect(
       order.map(kind => toDictionaryCsv(target.app.store.state, kind))
     ).toEqual(exported);
-    expect(target.app.store.history.size).toBe(3);
+    // Each file is one undo on the sheet its header names.
+    expect(
+      order.map(kind => target.app.store.sheetHistories[kind].size)
+    ).toEqual([1, 1, 1]);
   });
 });
 

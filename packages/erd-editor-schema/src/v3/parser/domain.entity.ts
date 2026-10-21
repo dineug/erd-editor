@@ -10,6 +10,7 @@ export const createDomain = (): Domain => ({
   category: '',
   dataType: '',
   description: '',
+  order: '',
 });
 
 /**
@@ -30,6 +31,7 @@ export function createAndMergeDomainEntities(
     assignString('category');
     assignString('dataType');
     assignString('description');
+    assignString('order');
 
     if (target.id) {
       entities[target.id] = target;

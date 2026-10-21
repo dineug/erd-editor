@@ -470,6 +470,26 @@ export const ruRU = {
   'dictionary.deleteRows': 'Удалить строки',
   'dictionary.import': 'Импорт {format}',
   'dictionary.export': 'Экспорт {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Вставить {count} строку выше',
+    few: 'Вставить {count} строки выше',
+    many: 'Вставить {count} строк выше',
+    other: 'Вставить {count} строки выше',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Вставить {count} строку ниже',
+    few: 'Вставить {count} строки ниже',
+    many: 'Вставить {count} строк ниже',
+    other: 'Вставить {count} строки ниже',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Удалить {count} строку',
+    few: 'Удалить {count} строки',
+    many: 'Удалить {count} строк',
+    other: 'Удалить {count} строки',
+  },
+  'dictionary.menu.sortAscending': 'Сортировка по возрастанию: {column}',
+  'dictionary.menu.sortDescending': 'Сортировка по убыванию: {column}',
   'dictionary.rowCount': {
     one: '{count} строка',
     few: '{count} строки',

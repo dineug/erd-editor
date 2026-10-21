@@ -13,7 +13,7 @@ import {
   type RootState,
   Show,
 } from '@dineug/erd-editor/peer.js';
-import { query } from '@dineug/erd-editor-schema';
+import { compareByOrder, query } from '@dineug/erd-editor-schema';
 
 type Names = Readonly<Record<string, string | number>>;
 
@@ -507,14 +507,17 @@ export function toAgentSnapshot(state: RootState): AgentSnapshot {
     words: select
       .collection('wordEntities')
       .selectByIds(doc.wordIds)
+      .sort(compareByOrder)
       .map(toSnapshotWord),
     terms: select
       .collection('termEntities')
       .selectByIds(doc.termIds)
+      .sort(compareByOrder)
       .map(term => toSnapshotTerm(term, domains)),
     domains: select
       .collection('domainEntities')
       .selectByIds(doc.domainIds)
+      .sort(compareByOrder)
       .map(toSnapshotDomain),
   };
 }

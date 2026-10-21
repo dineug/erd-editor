@@ -1,6 +1,7 @@
 import { Reducer } from '@dineug/r-html';
 
 import { EngineContext } from '@/engine/context';
+import type { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import { RootState } from '@/engine/state';
 import { type LWW, Point, ValuesType } from '@/internal-types';
 import { Rect } from '@/utils/dragSelect';
@@ -82,6 +83,8 @@ export type ActionMap = {
   [ActionType.changeHasHistory]: {
     hasUndo: boolean;
     hasRedo: boolean;
+    /** The dictionary sheet whose history this is, none for the document's. */
+    sheet?: DictionaryKind;
   };
   [ActionType.selectAll]: void;
   [ActionType.unselectAll]: void;

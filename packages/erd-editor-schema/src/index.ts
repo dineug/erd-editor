@@ -1,3 +1,10 @@
+export {
+  compareByOrder,
+  generateOrderKeyBetween,
+  generateOrderKeys,
+  isOrderKey,
+  type Ordered,
+} from '@/orderKey';
 export { parser, toJson } from '@/parser';
 export { query } from '@/query';
 export { addOperator, removeOperator, replaceOperator } from '@/query/lww';

@@ -26,11 +26,11 @@ function handle(
 ) {
   const event = press(init);
   const stopped = vi.spyOn(event, 'stopPropagation');
-  const store = { undo: vi.fn(), redo: vi.fn() };
+  const sheet = { undo: vi.fn(), redo: vi.fn() };
 
   handleDictionaryKeydown(event, {
     keyBindingMap: createKeyBindingMap(),
-    store,
+    ...sheet,
     inGrid: true,
     isEditing: () => false,
     ...context,
@@ -38,7 +38,7 @@ function handle(
   return {
     passed: stopped.mock.calls.length === 0,
     prevented: event.defaultPrevented,
-    store,
+    sheet,
   };
 }
 
@@ -73,18 +73,18 @@ describe('handleDictionaryKeydown', () => {
     ).toMatchObject({ passed: true, prevented: false });
   });
 
-  it('runs undo and redo on the document unless an open edit takes them', () => {
+  it("runs undo and redo on the sheet's own history unless an open edit takes them", () => {
     const undone = handle(UNDO);
     expect(undone.passed).toBe(true);
-    expect(undone.store.undo).toHaveBeenCalledTimes(1);
+    expect(undone.sheet.undo).toHaveBeenCalledTimes(1);
 
     const redone = handle(REDO);
     expect(redone.passed).toBe(true);
-    expect(redone.store.redo).toHaveBeenCalledTimes(1);
+    expect(redone.sheet.redo).toHaveBeenCalledTimes(1);
 
     const kept = handle(REDO, { isEditing: () => true });
     expect(kept.passed).toBe(false);
-    expect(kept.store.redo).not.toHaveBeenCalled();
+    expect(kept.sheet.redo).not.toHaveBeenCalled();
   });
 
   it('stops the other chords and the moving keys, unprevented', () => {

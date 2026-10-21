@@ -470,6 +470,24 @@ export const ptPT = {
   'dictionary.deleteRows': 'Eliminar linhas',
   'dictionary.import': 'Importar {format}',
   'dictionary.export': 'Exportar {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Inserir {count} linha acima',
+    many: 'Inserir {count} de linhas acima',
+    other: 'Inserir {count} linhas acima',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Inserir {count} linha abaixo',
+    many: 'Inserir {count} de linhas abaixo',
+    other: 'Inserir {count} linhas abaixo',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Eliminar {count} linha',
+    many: 'Eliminar {count} de linhas',
+    other: 'Eliminar {count} linhas',
+  },
+  'dictionary.menu.sortAscending': 'Ordenar por {column} por ordem crescente',
+  'dictionary.menu.sortDescending':
+    'Ordenar por {column} por ordem decrescente',
   'dictionary.rowCount': {
     one: '{count} linha',
     many: '{count} de linhas',

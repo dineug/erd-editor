@@ -14,6 +14,7 @@ describe('createWord', () => {
       description: '',
       synonyms: '',
       forbiddenWords: '',
+      order: '',
     });
     expect(word.id.length).toBeGreaterThan(0);
   });

@@ -1,3 +1,4 @@
+import { generateOrderKeyBetween, isOrderKey } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
@@ -5,7 +6,10 @@ import { ColumnOption, RelationshipType } from '@/constants/schema';
 import type { GeneratorAction } from '@/engine/generator.actions';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
-import type { DictionaryRowOf } from '@/engine/modules/dictionary/dictionaryIndex';
+import {
+  type DictionaryRowOf,
+  orderedDictionaryRows,
+} from '@/engine/modules/dictionary/dictionaryIndex';
 import { toDomainTypeActions } from '@/engine/modules/dictionary/domainTypes';
 import {
   DictionaryRefusalCode,
@@ -18,12 +22,14 @@ import {
   deriveColumnNameAction$,
   deriveTableNameAction$,
   importDictionaryAction$,
+  insertDictionaryEntriesAction$,
   rederiveNamesAction$,
   RederiveScope,
   removeDictionaryEntriesAction$,
   setColumnDomainAction$,
   setColumnLogicalNameAction$,
   setTableLogicalNameAction$,
+  sortDictionaryAction$,
   updateDictionaryEntryAction$,
 } from '@/engine/modules/dictionary/generator.actions';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
@@ -120,24 +126,44 @@ const relate = (
     end: { tableId: end[0], columnIds: [end[1]] },
   });
 
+// Seeded rows carry keys in the order they are made, as every row a document
+// or a generator lists does.
+let seedKey: string | null = null;
+const nextSeedKey = () => (seedKey = generateOrderKeyBetween(seedKey, null));
+
 const word = (id: string, name: string, abbreviation: string) =>
-  addDictionaryAction({ kind: 'word', id, values: { name, abbreviation } });
+  addDictionaryAction({
+    kind: 'word',
+    id,
+    values: { name, abbreviation, order: nextSeedKey() },
+  });
 
 const term = (id: string, name: string, physicalName = '', domainId = '') =>
   addDictionaryAction({
     kind: 'term',
     id,
-    values: { name, physicalName, domainId },
+    values: { name, physicalName, domainId, order: nextSeedKey() },
   });
 
 const domain = (id: string, name: string, dataType: string) =>
-  addDictionaryAction({ kind: 'domain', id, values: { name, dataType } });
+  addDictionaryAction({
+    kind: 'domain',
+    id,
+    values: { name, dataType, order: nextSeedKey() },
+  });
 
 const WORDS = [
   word('w-member', 'Member', 'MBR'),
   word('w-number', 'Number', 'NO'),
   word('w-name', 'Name', 'NM'),
 ];
+
+/** A sheet's listed rows in the order it shows them. */
+const sheetOf = <K extends DictionaryKind>(peer: PeerStore, kind: K) =>
+  orderedDictionaryRows(peer.state, kind);
+
+const namesOf = (peer: PeerStore) =>
+  sheetOf(peer, 'word').map(({ name }) => name);
 
 const columnOf = (peer: PeerStore, id: string) =>
   peer.state.collections.tableColumnEntities[id];
@@ -897,13 +923,200 @@ describe('dictionary rows', () => {
     expect(named.actions[0].payload.values).toEqual({
       name: 'Name',
       abbreviation: 'NM',
+      order: expect.any(String),
     });
-    expect(empty.actions[0].payload).not.toHaveProperty('values');
+    // An empty row carries its key alone, which places it last.
+    expect(Object.keys(empty.actions[0].payload.values)).toEqual(['order']);
     expect(rowsOf(peer, 'word').map(row => row.name)).toEqual([
       'Member',
       'Name',
       '',
     ]);
+  });
+
+  it('inserts empty rows before or after a row, at the end when it is gone, in one dispatch and one undo', () => {
+    const peer = setup();
+    send(peer, addDictionaryEntryAction$('word', { name: 'A' }));
+    send(peer, addDictionaryEntryAction$('word', { name: 'C' }));
+    const [a, c] = sheetOf(peer, 'word');
+
+    const before = send(
+      peer,
+      insertDictionaryEntriesAction$('word', 2, { id: c.id, place: 'before' })
+    );
+    expect(before.historyEntries).toBe(1);
+    expect(typesOf(before.actions)).toEqual([
+      'dictionary.add',
+      'dictionary.add',
+    ]);
+    expect(namesOf(peer)).toEqual(['A', '', '', 'C']);
+
+    send(
+      peer,
+      insertDictionaryEntriesAction$('word', 1, { id: a.id, place: 'after' })
+    );
+    expect(namesOf(peer)).toEqual(['A', '', '', '', 'C']);
+
+    send(
+      peer,
+      insertDictionaryEntriesAction$('word', 1, { id: 'gone', place: 'before' })
+    );
+    send(peer, insertDictionaryEntriesAction$('word', 1));
+    expect(namesOf(peer)).toEqual(['A', '', '', '', 'C', '', '']);
+    expect(
+      send(peer, insertDictionaryEntriesAction$('word', 0)).actions
+    ).toEqual([]);
+
+    peer.undo();
+    peer.undo();
+    peer.undo();
+    peer.undo();
+    expect(namesOf(peer)).toEqual(['A', 'C']);
+  });
+
+  it('keys again the rows that share the key at the place, so the rows land between them', () => {
+    const peer = setup([
+      addDictionaryAction({
+        kind: 'word',
+        id: 'x',
+        values: { name: 'X', order: 'a0' },
+      }),
+      addDictionaryAction({
+        kind: 'word',
+        id: 'y',
+        values: { name: 'Y', order: 'a0' },
+      }),
+      addDictionaryAction({ kind: 'word', id: 'z', values: { name: 'Z' } }),
+    ]);
+    expect(namesOf(peer)).toEqual(['X', 'Y', 'Z']);
+
+    const report = send(
+      peer,
+      insertDictionaryEntriesAction$('word', 1, { id: 'x', place: 'after' })
+    );
+    expect(namesOf(peer)).toEqual(['X', '', 'Y', 'Z']);
+    expect(
+      report.actions
+        .filter(({ type }) => type === 'dictionary.update')
+        .map(({ payload }) => payload.id)
+    ).toEqual(['y']);
+
+    send(
+      peer,
+      insertDictionaryEntriesAction$('word', 1, { id: 'z', place: 'after' })
+    );
+    expect(namesOf(peer)).toEqual(['X', '', 'Y', 'Z', '']);
+    expect(sheetOf(peer, 'word').every(({ order }) => isOrderKey(order))).toBe(
+      true
+    );
+  });
+
+  it('adds the rows a commit, an import or a single add brings after the last row', () => {
+    const peer = setup([
+      addDictionaryAction({
+        kind: 'word',
+        id: 'x',
+        values: { name: 'X', order: 'b00' },
+      }),
+      addDictionaryAction({
+        kind: 'word',
+        id: 'y',
+        values: { name: 'Y', order: 'a5' },
+      }),
+    ]);
+
+    send(peer, addDictionaryEntryAction$('word', { name: 'A' }));
+    send(
+      peer,
+      commitDictionaryCellsAction$('word', [
+        { values: { name: 'B' } },
+        { values: { name: 'C' } },
+      ])
+    );
+    send(
+      peer,
+      importDictionaryAction$('word', [
+        {
+          name: 'D',
+          abbreviation: '',
+          englishName: '',
+          description: '',
+          synonyms: '',
+          forbiddenWords: '',
+        },
+      ])
+    );
+
+    expect(namesOf(peer)).toEqual(['Y', 'X', 'A', 'B', 'C', 'D']);
+  });
+
+  it('sorts a sheet by a field for everyone in one dispatch, empty cells last and ties as they stood', () => {
+    const peer = setup([
+      domain('d-text', 'Text', 'VARCHAR'),
+      domain('d-amount', 'Amount', 'NUMERIC'),
+      term('t1', 'W10', '', 'd-text'),
+      term('t2', 'w2', '', 'd-amount'),
+      term('t3', '', '', 'd-amount'),
+      term('t4', 'W1', '', ''),
+    ]);
+    send(peer, insertDictionaryEntriesAction$('term', 0));
+
+    const ascending = send(
+      peer,
+      sortDictionaryAction$('term', 'name', 'ascending', 'en')
+    );
+    expect(ascending.historyEntries).toBe(1);
+    expect(sheetOf(peer, 'term').map(({ id }) => id)).toEqual([
+      't4',
+      't2',
+      't1',
+      't3',
+    ]);
+
+    send(peer, sortDictionaryAction$('term', 'name', 'descending', 'en'));
+    expect(sheetOf(peer, 'term').map(({ id }) => id)).toEqual([
+      't1',
+      't2',
+      't4',
+      't3',
+    ]);
+
+    send(peer, sortDictionaryAction$('term', 'domainId', 'ascending', 'en'));
+    expect(sheetOf(peer, 'term').map(({ id }) => id)).toEqual([
+      't2',
+      't3',
+      't1',
+      't4',
+    ]);
+
+    expect(
+      send(peer, sortDictionaryAction$('term', 'domainId', 'ascending', 'en'))
+        .actions
+    ).toEqual([]);
+    expect(
+      send(peer, sortDictionaryAction$('term', 'order', 'ascending')).actions
+    ).toEqual([]);
+
+    peer.undo();
+    expect(sheetOf(peer, 'term').map(({ id }) => id)).toEqual([
+      't1',
+      't2',
+      't4',
+      't3',
+    ]);
+  });
+
+  it('lists a removed row again in its place when the removal is undone', () => {
+    const peer = setup();
+    send(peer, addDictionaryEntryAction$('word', { name: 'A' }));
+    send(peer, addDictionaryEntryAction$('word', { name: 'B' }));
+    send(peer, addDictionaryEntryAction$('word', { name: 'C' }));
+    const [a, b] = sheetOf(peer, 'word');
+
+    send(peer, removeDictionaryEntriesAction$('word', [a.id, b.id]));
+    expect(namesOf(peer)).toEqual(['C']);
+    peer.undo();
+    expect(namesOf(peer)).toEqual(['A', 'B', 'C']);
   });
 
   it('refuses a name another listed row holds, compared trimmed and composed', () => {
@@ -1187,7 +1400,10 @@ describe('importDictionaryAction$', () => {
       report.actions.map(({ type, payload }) => [type, payload.values])
     ).toEqual([
       ['dictionary.update', { abbreviation: 'MEM', englishName: 'Member' }],
-      ['dictionary.add', { name: 'Name', abbreviation: 'NM' }],
+      [
+        'dictionary.add',
+        { name: 'Name', abbreviation: 'NM', order: expect.any(String) },
+      ],
     ]);
 
     peer.undo();

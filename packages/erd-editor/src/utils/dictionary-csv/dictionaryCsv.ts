@@ -12,9 +12,11 @@ export type DictionaryCsvFormat = ValuesType<typeof DictionaryCsvFormat>;
 
 /** What a file's row of each dictionary holds; a term names its domain by the domain's name. */
 export type DictionaryCsvValues = {
-  [DictionaryKind.word]: Omit<Word, 'id'>;
-  [DictionaryKind.term]: Omit<Term, 'id' | 'domainId'> & { domain: string };
-  [DictionaryKind.domain]: Omit<Domain, 'id'>;
+  [DictionaryKind.word]: Omit<Word, 'id' | 'order'>;
+  [DictionaryKind.term]: Omit<Term, 'id' | 'domainId' | 'order'> & {
+    domain: string;
+  };
+  [DictionaryKind.domain]: Omit<Domain, 'id' | 'order'>;
 };
 
 export type DictionaryCsvField<K extends DictionaryKind> = Extract<

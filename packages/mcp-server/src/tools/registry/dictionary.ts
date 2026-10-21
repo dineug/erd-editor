@@ -4,7 +4,7 @@ import {
   type RootState,
   validateDictionaryValues,
 } from '@dineug/erd-editor/peer.js';
-import { query } from '@dineug/erd-editor-schema';
+import { compareByOrder, query } from '@dineug/erd-editor-schema';
 
 import type { ActionTool, ToolArg, ToolArgValues } from '@/tools/registry';
 
@@ -89,10 +89,12 @@ export function domainIdByName(
   const key = normalizeName(name);
   if (!key) return '';
 
-  const domains = query(state.collections).collection('domainEntities');
-  return state.doc.domainIds.find(
-    id => normalizeName(domains.selectById(id)?.name ?? '') === key
-  );
+  // The first in the order the sheet shows, as the editor's domain cell reads.
+  return query(state.collections)
+    .collection('domainEntities')
+    .selectByIds(state.doc.domainIds)
+    .sort(compareByOrder)
+    .find(domain => normalizeName(domain.name) === key)?.id;
 }
 
 /** The domain a call links, by name or by id; undefined where it names none. */

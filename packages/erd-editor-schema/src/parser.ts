@@ -4,6 +4,7 @@ import { v2ToV3 } from '@/convert';
 import {
   DictionaryKey,
   DictionaryKeyList,
+  RuntimeDictionaryFields,
   stringifyDocument,
   toDictionaryRows,
 } from '@/dictionaryRows';
@@ -108,7 +109,11 @@ function withoutEmptyFields({
       delete written.collections[key];
     } else {
       written.doc[idsKey] = ids;
-      written.collections[key] = toDictionaryRows(key, entities);
+      written.collections[key] = toDictionaryRows(
+        key,
+        entities,
+        RuntimeDictionaryFields[key]
+      );
     }
   }
 

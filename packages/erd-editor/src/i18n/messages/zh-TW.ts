@@ -428,6 +428,17 @@ export const zhTW = {
   'dictionary.deleteRows': '刪除所選列',
   'dictionary.import': '匯入 {format}',
   'dictionary.export': '匯出 {format}',
+  'dictionary.menu.insertAbove': {
+    other: '在上方插入 {count} 列',
+  },
+  'dictionary.menu.insertBelow': {
+    other: '在下方插入 {count} 列',
+  },
+  'dictionary.menu.deleteRows': {
+    other: '刪除 {count} 列',
+  },
+  'dictionary.menu.sortAscending': '依{column}遞增排序',
+  'dictionary.menu.sortDescending': '依{column}遞減排序',
   'dictionary.rowCount': {
     other: '{count} 列',
   },

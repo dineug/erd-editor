@@ -1,4 +1,4 @@
-import { query } from '@dineug/erd-editor-schema';
+import { generateOrderKeys, query } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 
 import { GeneratorAction } from '@/engine/generator.actions';
@@ -10,20 +10,22 @@ import type { RootState } from '@/engine/state';
 import type { ValuesType } from '@/internal-types';
 import type { DictionaryCsvRow } from '@/utils/dictionary-csv/dictionaryCsv';
 
-import { DictionaryKind, DictionaryValues } from './actions';
+import { DictionaryFields, DictionaryKind, DictionaryValues } from './actions';
 import {
   dictionaryIds,
   hasDictionaryKind,
   removeDictionaryAction,
 } from './atom.actions';
 import { toColumnNameWrites, toTableNameWrites } from './derivedNames';
+import { orderedDictionaryRows } from './dictionaryIndex';
 import { toDomainTypeActions } from './domainTypes';
 import {
   DictionaryEntryChange,
   toDictionaryCommit,
   toDictionaryImport,
 } from './entryWrites';
-import { isListed } from './membership';
+import { getLiveDomainName, isListed } from './membership';
+import { placeOrderKeys } from './orderKeys';
 
 const tableOf = (state: RootState, id: string) =>
   query(state.collections).collection('tableEntities').selectById(id);
@@ -53,6 +55,97 @@ export const addDictionaryEntryAction$ = <K extends DictionaryKind>(
 ): GeneratorAction =>
   function* (state) {
     yield* commit(state, kind, [{ values }]);
+  };
+
+/** Where inserted rows go: before or after a listed row, or at the end for none. */
+export type DictionaryInsertAnchor = {
+  id: string;
+  place: 'before' | 'after';
+} | null;
+
+/**
+ * Inserts empty rows before or after a row in one dispatch, at the end when it
+ * is gone, keying the rows around the place again where no key fits between
+ * them. Only the editor sends it, so it stays out of the barrel.
+ */
+export const insertDictionaryEntriesAction$ = (
+  kind: DictionaryKind,
+  count: number,
+  anchor: DictionaryInsertAnchor = null
+): GeneratorAction =>
+  function* (state) {
+    if (!hasDictionaryKind(kind) || count <= 0) return;
+
+    const rows = orderedDictionaryRows(state, kind);
+    const index = anchor ? rows.findIndex(({ id }) => id === anchor.id) : -1;
+    const at =
+      index === -1
+        ? rows.length
+        : anchor?.place === 'after'
+          ? index + 1
+          : index;
+    const { keys, rekeyed } = placeOrderKeys(rows, at, count);
+
+    yield* commit(state, kind, [
+      ...rekeyed.map(({ id, order }) => ({ id, values: { order } })),
+      ...keys.map(order => ({ values: { order } })),
+    ]);
+  };
+
+/** Which way a sort runs. */
+export const DictionarySortDirection = {
+  ascending: 'ascending',
+  descending: 'descending',
+} as const;
+export type DictionarySortDirection = ValuesType<
+  typeof DictionarySortDirection
+>;
+
+/**
+ * Orders a sheet by one field for everyone in one dispatch, by the text a cell
+ * shows in the language given, numbers as numbers, empty cells last, ties as
+ * they stood; nothing for a sheet in that order. Only the editor sends it.
+ */
+export const sortDictionaryAction$ = (
+  kind: DictionaryKind,
+  field: string,
+  direction: DictionarySortDirection,
+  locale?: string
+): GeneratorAction =>
+  function* (state) {
+    if (!hasDictionaryKind(kind)) return;
+    const fields: ReadonlyArray<string> = DictionaryFields[kind];
+    if (!fields.includes(field)) return;
+
+    const collator = new Intl.Collator(locale, { numeric: true });
+    const sign = direction === DictionarySortDirection.descending ? -1 : 1;
+    const textOf = (row: object): string =>
+      kind === DictionaryKind.term && field === 'domainId'
+        ? getLiveDomainName(state, Reflect.get(row, 'domainId'))
+        : Reflect.get(row, field);
+
+    const rows = orderedDictionaryRows(state, kind).map((row, index) => ({
+      row,
+      index,
+      text: textOf(row),
+    }));
+    rows.sort((a, b) => {
+      const emptyA = a.text === '';
+      if (emptyA !== (b.text === '')) return emptyA ? 1 : -1;
+      return sign * collator.compare(a.text, b.text) || a.index - b.index;
+    });
+    if (rows.every(({ index }, at) => index === at)) return;
+
+    const keys = generateOrderKeys(null, null, rows.length);
+    yield* commit(
+      state,
+      kind,
+      rows.flatMap(({ row }, at) =>
+        row.order === keys[at]
+          ? []
+          : [{ id: row.id, values: { order: keys[at] } }]
+      )
+    );
   };
 
 /**

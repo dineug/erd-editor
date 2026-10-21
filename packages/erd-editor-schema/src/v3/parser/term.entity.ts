@@ -11,6 +11,7 @@ export const createTerm = (): Term => ({
   domainId: '',
   description: '',
   synonyms: '',
+  order: '',
 });
 
 /**
@@ -32,6 +33,7 @@ export function createAndMergeTermEntities(
     assignString('domainId');
     assignString('description');
     assignString('synonyms');
+    assignString('order');
 
     if (target.id) {
       entities[target.id] = target;

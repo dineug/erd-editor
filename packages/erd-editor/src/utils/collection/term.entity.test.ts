@@ -13,6 +13,7 @@ describe('createTerm', () => {
       domainId: '',
       description: '',
       synonyms: '',
+      order: '',
     });
     expect(term.id.length).toBeGreaterThan(0);
   });

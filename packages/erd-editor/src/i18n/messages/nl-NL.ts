@@ -466,6 +466,20 @@ export const nlNL = {
   'dictionary.deleteRows': 'Rijen verwijderen',
   'dictionary.import': '{format} importeren',
   'dictionary.export': '{format} exporteren',
+  'dictionary.menu.insertAbove': {
+    one: '{count} rij erboven invoegen',
+    other: '{count} rijen erboven invoegen',
+  },
+  'dictionary.menu.insertBelow': {
+    one: '{count} rij eronder invoegen',
+    other: '{count} rijen eronder invoegen',
+  },
+  'dictionary.menu.deleteRows': {
+    one: '{count} rij verwijderen',
+    other: '{count} rijen verwijderen',
+  },
+  'dictionary.menu.sortAscending': 'Sorteren op {column}, oplopend',
+  'dictionary.menu.sortDescending': 'Sorteren op {column}, aflopend',
   'dictionary.rowCount': {
     one: '{count} rij',
     other: '{count} rijen',

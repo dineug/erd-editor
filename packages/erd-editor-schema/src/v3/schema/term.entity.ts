@@ -12,4 +12,9 @@ export type Term = {
   description: string;
   /** Other spellings of the term, comma separated. */
   synonyms: string;
+  /**
+   * Where the row stands in its sheet, a key compared in code unit order;
+   * only the runtime value holds it, a file holding its rows in that order.
+   */
+  order: string;
 };

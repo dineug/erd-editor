@@ -2,6 +2,7 @@ import { isNumber, isPlainObject, isString } from 'es-toolkit';
 
 import { fromDictionaryRows } from '@/dictionaryRows';
 import { DeepPartial } from '@/internal-types';
+import { settleOrderKeys } from '@/orderKey';
 import { createAndMergeDoc } from '@/v3/parser/doc';
 import { createAndMergeDomainEntities } from '@/v3/parser/domain.entity';
 import { createAndMergeIndexEntities } from '@/v3/parser/index.entity';
@@ -57,6 +58,9 @@ export function parser(source: any): ERDEditorSchemaV3 {
   if (!Array.isArray(json.doc?.wordIds)) doc.wordIds = rowIds(words);
   if (!Array.isArray(json.doc?.termIds)) doc.termIds = rowIds(terms);
   if (!Array.isArray(json.doc?.domainIds)) doc.domainIds = rowIds(domains);
+  settleOrderKeys(wordEntities, doc.wordIds);
+  settleOrderKeys(termEntities, doc.termIds);
+  settleOrderKeys(domainEntities, doc.domainIds);
 
   clearUnknownDomains(domainEntities, tableColumnEntities, termEntities);
 

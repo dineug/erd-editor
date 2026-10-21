@@ -4,6 +4,7 @@ import {
   toDictionaryRows,
 } from '@/dictionaryRows';
 import { NormalizedSettings, normalizeSettings } from '@/normalizeSettings';
+import { compareByOrder } from '@/orderKey';
 import { ERDEditorSchemaV3 } from '@/v3/schema';
 import { Doc } from '@/v3/schema/doc';
 import { Index } from '@/v3/schema/index.entity';
@@ -273,14 +274,17 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
 
   const hasGroups = tableGroups.length !== 0;
 
-  const words = liveIds(doc.wordIds ?? [], wordEntities).map(
-    id => wordEntities[id]
-  );
-  const terms = liveIds(doc.termIds ?? [], termEntities).map(id => {
-    const term = termEntities[id];
-    return keptDomains.has(term.domainId) ? term : { ...term, domainId: '' };
-  });
-  const domains = domainIds.map(id => domainEntities[id]);
+  // A file holds a sheet's order in its rows alone, so they go in key order.
+  const words = liveIds(doc.wordIds ?? [], wordEntities)
+    .map(id => wordEntities[id])
+    .sort(compareByOrder);
+  const terms = liveIds(doc.termIds ?? [], termEntities)
+    .map(id => termEntities[id])
+    .sort(compareByOrder)
+    .map(term =>
+      keptDomains.has(term.domainId) ? term : { ...term, domainId: '' }
+    );
+  const domains = domainIds.map(id => domainEntities[id]).sort(compareByOrder);
 
   return {
     $schema: SCHEMA_URL,

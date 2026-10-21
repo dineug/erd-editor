@@ -464,6 +464,20 @@ export const euES = {
   'dictionary.deleteRows': 'Ezabatu errenkadak',
   'dictionary.import': 'Inportatu {format}',
   'dictionary.export': 'Esportatu {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Txertatu errenkada {count} gainean',
+    other: 'Txertatu {count} errenkada gainean',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Txertatu errenkada {count} azpian',
+    other: 'Txertatu {count} errenkada azpian',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Ezabatu errenkada {count}',
+    other: 'Ezabatu {count} errenkada',
+  },
+  'dictionary.menu.sortAscending': 'Ordenatu gorantz: {column}',
+  'dictionary.menu.sortDescending': 'Ordenatu beherantz: {column}',
   'dictionary.rowCount': {
     one: 'Errenkada {count}',
     other: '{count} errenkada',

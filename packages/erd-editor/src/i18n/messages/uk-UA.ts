@@ -472,6 +472,26 @@ export const ukUA = {
   'dictionary.deleteRows': 'Видалити рядки',
   'dictionary.import': 'Імпортувати {format}',
   'dictionary.export': 'Експортувати {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Вставити {count} рядок вище',
+    few: 'Вставити {count} рядки вище',
+    many: 'Вставити {count} рядків вище',
+    other: 'Вставити {count} рядка вище',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Вставити {count} рядок нижче',
+    few: 'Вставити {count} рядки нижче',
+    many: 'Вставити {count} рядків нижче',
+    other: 'Вставити {count} рядка нижче',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Видалити {count} рядок',
+    few: 'Видалити {count} рядки',
+    many: 'Видалити {count} рядків',
+    other: 'Видалити {count} рядка',
+  },
+  'dictionary.menu.sortAscending': 'Сортувати за зростанням: {column}',
+  'dictionary.menu.sortDescending': 'Сортувати за спаданням: {column}',
   'dictionary.rowCount': {
     one: '{count} рядок',
     few: '{count} рядки',

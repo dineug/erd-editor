@@ -457,6 +457,20 @@ export const svSE = {
   'dictionary.deleteRows': 'Ta bort rader',
   'dictionary.import': 'Importera {format}',
   'dictionary.export': 'Exportera {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Infoga {count} rad ovanför',
+    other: 'Infoga {count} rader ovanför',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Infoga {count} rad nedanför',
+    other: 'Infoga {count} rader nedanför',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Ta bort {count} rad',
+    other: 'Ta bort {count} rader',
+  },
+  'dictionary.menu.sortAscending': 'Sortera efter {column}, stigande',
+  'dictionary.menu.sortDescending': 'Sortera efter {column}, fallande',
   'dictionary.rowCount': {
     one: '{count} rad',
     other: '{count} rader',

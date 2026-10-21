@@ -447,6 +447,23 @@ export const heIL = {
   'dictionary.deleteRows': 'מחיקת שורות',
   'dictionary.import': 'ייבוא {format}',
   'dictionary.export': 'ייצוא {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'הוספת {count} שורה מעל',
+    two: 'הוספת {count} שורות מעל',
+    other: 'הוספת {count} שורות מעל',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'הוספת {count} שורה מתחת',
+    two: 'הוספת {count} שורות מתחת',
+    other: 'הוספת {count} שורות מתחת',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'מחיקת {count} שורה',
+    two: 'מחיקת {count} שורות',
+    other: 'מחיקת {count} שורות',
+  },
+  'dictionary.menu.sortAscending': 'מיון לפי {column} בסדר עולה',
+  'dictionary.menu.sortDescending': 'מיון לפי {column} בסדר יורד',
   'dictionary.rowCount': {
     one: '{count} שורה',
     two: '{count} שורות',

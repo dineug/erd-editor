@@ -12,6 +12,7 @@ export const createTerm = (value?: DeepPartial<Term>): Term =>
       domainId: '',
       description: '',
       synonyms: '',
+      order: '',
     },
     value ?? {}
   );

@@ -471,6 +471,23 @@ export const itIT = {
   'dictionary.deleteRows': 'Elimina righe',
   'dictionary.import': 'Importa {format}',
   'dictionary.export': 'Esporta {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Inserisci {count} riga sopra',
+    many: 'Inserisci {count} righe sopra',
+    other: 'Inserisci {count} righe sopra',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Inserisci {count} riga sotto',
+    many: 'Inserisci {count} righe sotto',
+    other: 'Inserisci {count} righe sotto',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Elimina {count} riga',
+    many: 'Elimina {count} righe',
+    other: 'Elimina {count} righe',
+  },
+  'dictionary.menu.sortAscending': 'Ordina per {column}, crescente',
+  'dictionary.menu.sortDescending': 'Ordina per {column}, decrescente',
   'dictionary.rowCount': {
     one: '{count} riga',
     many: '{count} righe',

@@ -1,3 +1,4 @@
+import type { Ordered } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { uuid25 } from '@dineug/uuid';
 import { isString } from 'es-toolkit';
@@ -27,16 +28,19 @@ import {
   getWordIndex,
   NameIndex,
   normalizeDictionaryName,
+  orderedDictionaryRows,
 } from './dictionaryIndex';
 import { toDomainTypeActions } from './domainTypes';
 import { isListed } from './membership';
+import { placeOrderKeys } from './orderKeys';
 
 type DictionaryRow = Word | Term | Domain;
 
 /** A row a write names: a listed row by its id, or a new one with none. */
 export type DictionaryEntryChange<K extends DictionaryKind = DictionaryKind> = {
   id?: string;
-  values: Partial<DictionaryValues[K]>;
+  /** The values to write, and the order key, which only the engine sends, that places the row. */
+  values: Partial<DictionaryValues[K]> & { order?: string };
 };
 
 /** Why a write of a dictionary row is turned away. */
@@ -233,6 +237,37 @@ function toEntryWrites(
   };
 }
 
+/**
+ * Keys each new row that brings none after the sheet's last row, in the order
+ * given, and answers the listed rows that placing them keys again.
+ */
+function placeNewRows(
+  state: RootState,
+  kind: DictionaryKind,
+  rows: ReadonlyArray<EntryRow>
+): Ordered[] {
+  const unplaced = rows.filter(({ existing, values }) => {
+    return !existing && !values.order;
+  });
+  if (!unplaced.length) return [];
+
+  const sheet = orderedDictionaryRows(state, kind);
+  const { keys, rekeyed } = placeOrderKeys(
+    sheet,
+    sheet.length,
+    unplaced.length
+  );
+  unplaced.forEach(({ values }, index) => {
+    values.order = keys[index];
+  });
+  return rekeyed;
+}
+
+const rekeyActions = (kind: DictionaryKind, rekeyed: ReadonlyArray<Ordered>) =>
+  rekeyed.map(({ id, order }) =>
+    updateDictionaryAction({ kind, id, values: { order } })
+  );
+
 /** The row actions of every write and the column actions their domains' types call for. */
 function toWriteActions(
   state: RootState,
@@ -284,12 +319,15 @@ export function toDictionaryCommit<K extends DictionaryKind>(
   changes: ReadonlyArray<DictionaryEntryChange<K>>
 ): DictionaryCommit {
   const rows = resolveChanges(state, kind, changes);
+  const rekeyed = placeNewRows(state, kind, rows);
   const names = commitNamesOf(rows);
   const writes = rows.map(row => toEntryWrites(state, kind, row, names));
   const refusals = writes.flatMap(({ refusals }) => refusals);
 
   return {
-    actions: refusals.length ? [] : toWriteActions(state, writes),
+    actions: refusals.length
+      ? []
+      : [...rekeyActions(kind, rekeyed), ...toWriteActions(state, writes)],
     refusals,
   };
 }
@@ -323,9 +361,7 @@ export function toDictionaryImport<K extends DictionaryKind>(
 
   const names = NAMES[kind](state);
   const unknownDomains = new Map<string, string>();
-  const writes: EntryWrites[] = [];
-  let added = 0;
-  let updated = 0;
+  const entries: EntryRow[] = [];
 
   for (const [name, row] of folded) {
     const values = valuesOf(kind, row);
@@ -341,16 +377,26 @@ export function toDictionaryImport<K extends DictionaryKind>(
     }
 
     const existing = names.byName.get(name)?.[0] ?? null;
-    const write = toEntryWrites(state, kind, { index: 0, existing, values });
+    entries.push({ index: 0, existing, values });
+  }
+
+  // New rows go after the sheet's last, in the file's order.
+  const rekeyed = placeNewRows(state, kind, entries);
+  const writes: EntryWrites[] = [];
+  let added = 0;
+  let updated = 0;
+
+  for (const entry of entries) {
+    const write = toEntryWrites(state, kind, entry);
     if (write.action) {
       writes.push(write);
-      if (existing) updated++;
+      if (entry.existing) updated++;
       else added++;
     }
   }
 
   return {
-    actions: toWriteActions(state, writes),
+    actions: [...rekeyActions(kind, rekeyed), ...toWriteActions(state, writes)],
     added,
     updated,
     folded: rows.length - folded.size,

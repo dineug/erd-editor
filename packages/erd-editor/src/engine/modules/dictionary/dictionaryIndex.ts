@@ -1,3 +1,5 @@
+import { compareByOrder } from '@dineug/erd-editor-schema';
+
 import type { RootState } from '@/engine/state';
 import type { Domain, Term, Word } from '@/internal-types';
 
@@ -59,13 +61,17 @@ type Held<T> = {
 };
 
 /**
- * A reader of what the build makes of a dictionary's listed rows, kept per
- * collection until its generation moves or its id list changes, so a table or
- * column edit builds nothing again. The value is the same object until then.
+ * Keeps what the build makes of a dictionary per collection until its
+ * generation moves or its id list changes, so a table or column edit builds
+ * nothing again. The value is the same object until then.
  */
-export function dictionaryCache<K extends DictionaryKind, T>(
+function heldPerSheet<K extends DictionaryKind, T>(
   kind: K,
-  build: (rows: Array<DictionaryRowOf[K]>) => T
+  build: (
+    state: RootState,
+    collection: Record<string, DictionaryRowOf[K] | undefined>,
+    ids: string[]
+  ) => T
 ): (state: RootState) => T {
   const held = new WeakMap<object, Held<T>>();
 
@@ -87,16 +93,51 @@ export function dictionaryCache<K extends DictionaryKind, T>(
       return entry.value;
     }
 
-    const rows: Array<DictionaryRowOf[K]> = [];
-    for (const id of ids) {
-      const row = collection[id];
-      if (row) rows.push(row);
-    }
-
-    const value = build(rows);
+    const value = build(state, collection, ids);
     held.set(collection, { generation, ids, length: ids.length, value });
     return value;
   };
+}
+
+/** A sheet's listed rows in key order, those of one key by id (compareByOrder). */
+function sortRows<Row extends DictionaryRowOf[DictionaryKind]>(
+  _state: RootState,
+  collection: Record<string, Row | undefined>,
+  ids: string[]
+): ReadonlyArray<Row> {
+  const rows: Row[] = [];
+  for (const id of ids) {
+    const row = collection[id];
+    if (row) rows.push(row);
+  }
+  return rows.sort(compareByOrder);
+}
+
+const SHEET_ROWS = {
+  [DictionaryKind.word]: heldPerSheet(DictionaryKind.word, sortRows),
+  [DictionaryKind.term]: heldPerSheet(DictionaryKind.term, sortRows),
+  [DictionaryKind.domain]: heldPerSheet(DictionaryKind.domain, sortRows),
+};
+
+/**
+ * A dictionary's listed rows in the order its sheet, its file and every reader
+ * show them: by order key. Built once per write of the sheet; never mutate it.
+ */
+export const orderedDictionaryRows = <K extends DictionaryKind>(
+  state: RootState,
+  kind: K
+): ReadonlyArray<DictionaryRowOf[K]> =>
+  SHEET_ROWS[kind](state) as ReadonlyArray<DictionaryRowOf[K]>;
+
+/**
+ * A reader of what the build makes of a dictionary's listed rows in sheet
+ * order, kept until the sheet is written again (heldPerSheet).
+ */
+export function dictionaryCache<K extends DictionaryKind, T>(
+  kind: K,
+  build: (rows: ReadonlyArray<DictionaryRowOf[K]>) => T
+): (state: RootState) => T {
+  return heldPerSheet(kind, state => build(orderedDictionaryRows(state, kind)));
 }
 
 /** A sheet's listed rows, and those of each normalized name, both in sheet order. */

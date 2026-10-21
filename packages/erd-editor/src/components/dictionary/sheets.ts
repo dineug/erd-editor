@@ -200,7 +200,7 @@ type SheetListing<Row> = {
 };
 
 const toListing = <Row extends { id: string }>(
-  rows: Row[]
+  rows: ReadonlyArray<Row>
 ): SheetListing<Row> => ({
   rows,
   ids: Object.freeze(rows.map(({ id }) => id)),
@@ -234,7 +234,7 @@ function searchTextsOf(
 }
 
 /**
- * The ids of a sheet's rows, its listed rows in their order, those whose
+ * The ids of a sheet's rows, its listed rows in key order, those whose
  * searched fields hold the search's text while it holds any; with no search
  * the same frozen array comes back until the sheet is written.
  */

@@ -472,6 +472,25 @@ export const ptBR = {
   'dictionary.deleteRows': 'Excluir linhas',
   'dictionary.import': 'Importar {format}',
   'dictionary.export': 'Exportar {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Inserir {count} linha acima',
+    many: 'Inserir {count} de linhas acima',
+    other: 'Inserir {count} linhas acima',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Inserir {count} linha abaixo',
+    many: 'Inserir {count} de linhas abaixo',
+    other: 'Inserir {count} linhas abaixo',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Excluir {count} linha',
+    many: 'Excluir {count} de linhas',
+    other: 'Excluir {count} linhas',
+  },
+  'dictionary.menu.sortAscending':
+    'Classificar por {column} em ordem crescente',
+  'dictionary.menu.sortDescending':
+    'Classificar por {column} em ordem decrescente',
   'dictionary.rowCount': {
     one: '{count} linha',
     many: '{count} de linhas',

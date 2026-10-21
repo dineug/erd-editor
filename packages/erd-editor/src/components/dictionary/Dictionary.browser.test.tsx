@@ -2,6 +2,7 @@
 // row and file buttons, a paste past the end, one undo per commit, a read-only
 // document, the empty sheet, the chords, a peer's batch, the checks and marks.
 
+import { generateOrderKeyBetween } from '@dineug/erd-editor-schema';
 import {
   addCSSHost,
   type AnyAction,
@@ -39,6 +40,7 @@ import {
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
 import { listDictionaryChecks } from '@/engine/modules/dictionary/checks';
+import { orderedDictionaryRows } from '@/engine/modules/dictionary/dictionaryIndex';
 import { FocusType } from '@/engine/modules/editor/state';
 import {
   changeCanvasTypeAction,
@@ -183,15 +185,24 @@ function drawnTexts(): string[] {
   return found;
 }
 
+// Seeded rows carry keys in the order they are made, as every row a document
+// or a generator lists does.
+let seedKey: string | null = null;
+const nextSeedKey = () => (seedKey = generateOrderKeyBetween(seedKey, null));
+
 const word = (id: string, name: string, values: Record<string, string> = {}) =>
   addDictionaryAction({
     kind: DictionaryKind.word,
     id,
-    values: { name, ...values },
+    values: { name, order: nextSeedKey(), ...values },
   });
 
 const term = (id: string, values: Record<string, string>) =>
-  addDictionaryAction({ kind: DictionaryKind.term, id, values });
+  addDictionaryAction({
+    kind: DictionaryKind.term,
+    id,
+    values: { order: nextSeedKey(), ...values },
+  });
 
 /** A table member, its logical name the one given, with one column mbr_addr of its own. */
 const memberTable = (tableName: string, columnName: string): AnyAction[] => [
@@ -356,18 +367,9 @@ const status = (fixture: Fixture) =>
 const hint = ({ shadow }: Fixture) =>
   shadow.querySelector('.dictionary p')?.textContent ?? null;
 
-const names = (
-  { app }: Fixture,
-  kind: DictionaryKind = DictionaryKind.word
-) => {
-  const { state } = app.store;
-  const ids = state.doc[`${kind}Ids`];
-  const entities = state.collections[`${kind}Entities`] as Record<
-    string,
-    { name: string }
-  >;
-  return ids.map(id => entities[id].name);
-};
+/** A sheet's names in the order it shows them. */
+const names = ({ app }: Fixture, kind: DictionaryKind = DictionaryKind.word) =>
+  orderedDictionaryRows(app.store.state, kind).map(({ name }) => name);
 
 /** The batches that wrote a dictionary row, which a grid commit or a row button sends. */
 const dictionaryBatches = ({ batches }: Fixture) =>
@@ -490,6 +492,32 @@ function captureExports() {
   teardowns.push(() => setExportFileCallback(null));
   return saved;
 }
+
+/** A real right click on a cell of the first column, which opens the tab's menu. */
+async function rightClick({ shadow }: Fixture, row: number) {
+  const scroller = shadow.querySelector(
+    '.dineug-grid-scroller'
+  ) as HTMLDivElement;
+  await userEvent.click(scroller, {
+    button: 'right',
+    position: cellPoint(row),
+  });
+  await drawn();
+}
+
+const menu = ({ shadow }: Fixture) =>
+  shadow.querySelector<HTMLElement>('.context-menu-content');
+
+/** The rows of the open menu, by the text each shows. */
+const menuRows = (fixture: Fixture) =>
+  Array.from(menu(fixture)?.querySelectorAll('[data-id]') ?? [])
+    .filter(row => row !== menu(fixture))
+    .map(row => row.textContent?.trim());
+
+const menuRow = (fixture: Fixture, name: string) =>
+  Array.from(menu(fixture)?.querySelectorAll('[data-id]') ?? []).find(
+    row => row !== menu(fixture) && row.textContent?.trim() === name
+  ) ?? null;
 
 /** A paste on the grid's textarea, as the browser fires one for Cmd or Ctrl with V. */
 async function paste(fixture: Fixture, text: string) {
@@ -669,7 +697,7 @@ describe('the Dictionary tab', () => {
     await press('E{Enter}');
     expect(names(fixture)).toEqual(['A', 'B', 'C', 'D', 'E']);
     expect(dictionaryBatches(fixture)).toHaveLength(2);
-    expect(store.history.size).toBe(2);
+    expect(store.sheetHistories.word.size).toBe(2);
 
     await undo();
     expect(names(fixture)).toEqual(['A', 'B', 'C', 'D', '']);
@@ -723,6 +751,241 @@ describe('the Dictionary tab', () => {
     expect(fixture.app.store.state.collections.wordEntities.b.name).toBe('B');
   });
 
+  it('inserts as many rows as the selection covers above it from the menu, in one dispatch and one undo', async () => {
+    const fixture = await setup();
+
+    await press('{ArrowDown}{Shift>}{ArrowDown}{ArrowDown}{/Shift}');
+    await rightClick(fixture, 2);
+    expect(status(fixture)).toBe('4 rows 3 selected');
+    expect(menuRows(fixture)).toEqual([
+      'Insert 3 rows above',
+      'Insert 3 rows below',
+      'Delete 3 rows',
+      'Sort by Word, ascending',
+      'Sort by Word, descending',
+      'Import CSV',
+      'Export CSV',
+    ]);
+
+    await click(menuRow(fixture, 'Insert 3 rows above'));
+    expect(menu(fixture)).toBeNull();
+    expect(names(fixture)).toEqual(['A', '', '', '', 'B', 'C', 'D']);
+    expect(dictionaryBatches(fixture)).toHaveLength(1);
+    expect(status(fixture)).toBe('7 rows 3 selected');
+    expect(dictionaryViewOf(fixture.app).sheets.word.selection).toEqual({
+      active: { row: 1, col: 0 },
+      ranges: [{ startRow: 1, startCol: 0, endRow: 3, endCol: 0 }],
+    });
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+
+    await press('E{Enter}');
+    expect(names(fixture)).toEqual(['A', 'E', '', '', 'B', 'C', 'D']);
+
+    await undo();
+    await undo();
+    expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('inserts rows below the last row the selection covers, and selects them', async () => {
+    const fixture = await setup();
+
+    await press('{ArrowDown}{Shift>}{ArrowDown}{/Shift}');
+    await rightClick(fixture, 1);
+    await click(menuRow(fixture, 'Insert 2 rows below'));
+
+    expect(names(fixture)).toEqual(['A', 'B', 'C', '', '', 'D']);
+    expect(dictionaryViewOf(fixture.app).sheets.word.selection).toEqual({
+      active: { row: 3, col: 0 },
+      ranges: [{ startRow: 3, startCol: 0, endRow: 4, endCol: 0 }],
+    });
+  });
+
+  it('moves the selection to a cell right clicked outside it, and deletes that one row from the menu', async () => {
+    const fixture = await setup();
+
+    await press('{Shift>}{ArrowDown}{/Shift}');
+    await rightClick(fixture, 3);
+    expect(status(fixture)).toBe('4 rows 1 selected');
+    expect(menuRows(fixture).slice(0, 3)).toEqual([
+      'Insert 1 row above',
+      'Insert 1 row below',
+      'Delete 1 row',
+    ]);
+
+    await click(menuRow(fixture, 'Delete 1 row'));
+    expect(menu(fixture)).toBeNull();
+    expect(names(fixture)).toEqual(['A', 'B', 'C']);
+    expect(dictionaryBatches(fixture)).toHaveLength(1);
+  });
+
+  it('sorts the whole sheet by the column right clicked, for everyone in one dispatch, and one undo puts it back', async () => {
+    const fixture = await setup({
+      seed: [word('a', 'W10'), word('b', 'w2'), word('c', ''), word('d', 'W1')],
+    });
+    await userEvent.click(search(fixture));
+    await press('w1');
+    expect(status(fixture)).toBe('2 rows 1 selected');
+
+    await rightClick(fixture, 0);
+    await click(menuRow(fixture, 'Sort by Word, ascending'));
+    expect(names(fixture)).toEqual(['W1', 'w2', 'W10', '']);
+    expect(dictionaryBatches(fixture)).toHaveLength(1);
+    // The search stays, and shows its rows in the new order.
+    expect(search(fixture).value).toBe('w1');
+    expect(drawnTexts()).toEqual(expect.arrayContaining(['W1', 'W10']));
+
+    await rightClick(fixture, 0);
+    await click(menuRow(fixture, 'Sort by Word, descending'));
+    expect(names(fixture)).toEqual(['W10', 'w2', 'W1', '']);
+
+    await undo();
+    expect(names(fixture)).toEqual(['W1', 'w2', 'W10', '']);
+  });
+
+  it('clears the search to insert rows from the menu, and scrolls a long sheet to them', async () => {
+    const seed = Array.from({ length: 60 }, (_, index) =>
+      word(`w${index}`, `W${index}`)
+    );
+    const fixture = await setup({ seed });
+    await userEvent.click(search(fixture));
+    await press('W5');
+    await userEvent.click(
+      fixture.shadow.querySelector('.dineug-grid-scroller') as HTMLDivElement,
+      { position: cellPoint(0) }
+    );
+    await press('{Shift>}{ArrowDown}{/Shift}');
+
+    await rightClick(fixture, 1);
+    await click(menuRow(fixture, 'Insert 2 rows below'));
+    expect(search(fixture).value).toBe('');
+    expect(status(fixture)).toBe('62 rows 2 selected');
+    expect(names(fixture).slice(49, 54)).toEqual(['W49', 'W50', '', '', 'W51']);
+
+    const { selection, scroll } = dictionaryViewOf(fixture.app).sheets.word;
+    expect(selection?.active).toEqual({ row: 51, col: 0 });
+    expect(scroll?.row).toBeGreaterThan(30);
+    expect(scroll?.row).toBeLessThanOrEqual(51);
+  });
+
+  it('shuts the menu on Escape, a press outside it, a selection change and a sheet switch', async () => {
+    const fixture = await setup();
+
+    await rightClick(fixture, 0);
+    expect(menu(fixture)).not.toBeNull();
+    await press('{Escape}');
+    expect(menu(fixture)).toBeNull();
+    expect(fixture.shortcuts).not.toContain('stop');
+
+    await rightClick(fixture, 0);
+    await press('{ArrowDown}');
+    expect(menu(fixture)).toBeNull();
+
+    await rightClick(fixture, 0);
+    await userEvent.click(search(fixture));
+    await drawn();
+    expect(menu(fixture)).toBeNull();
+
+    await rightClick(fixture, 0);
+    await click(sheetButtons(fixture)[1]);
+    expect(menu(fixture)).toBeNull();
+    expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('keeps the keyboard in the grid on a press on the menu, so Escape still shuts it', async () => {
+    const fixture = await setup();
+
+    await rightClick(fixture, 0);
+    await userEvent.click(
+      menu(fixture)!.querySelector('[role="separator"]') as HTMLElement
+    );
+    await drawn();
+    expect(menu(fixture)).not.toBeNull();
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+
+    await press('{Escape}');
+    expect(menu(fixture)).toBeNull();
+  });
+
+  it('shuts the menu when the document turns read-only, and when a batch moves the rows it counted', async () => {
+    const fixture = await setup();
+
+    await rightClick(fixture, 0);
+    host.readonly = true;
+    await drawn();
+    host.readonly = false;
+    await drawn();
+    expect(menu(fixture)).toBeNull();
+
+    await rightClick(fixture, 0);
+    fixture.app.store.dispatchSync(
+      updateDictionaryAction({
+        kind: DictionaryKind.word,
+        id: 'b',
+        values: { name: 'B2' },
+      })
+    );
+    await drawn();
+    expect(menu(fixture)).toBeNull();
+  });
+
+  it('leaves the browser its own menu on the check sheet and in a read-only document', async () => {
+    const fixture = await setup({ readonly: true });
+    const prevented: boolean[] = [];
+    const record = (event: Event) => prevented.push(event.defaultPrevented);
+    window.addEventListener('contextmenu', record);
+    teardowns.push(() => window.removeEventListener('contextmenu', record));
+
+    await rightClick(fixture, 0);
+    expect(menu(fixture)).toBeNull();
+
+    host.readonly = false;
+    await drawn();
+    await rightClick(fixture, 0);
+    expect(menu(fixture)).not.toBeNull();
+    await press('{Escape}');
+
+    await click(sheetButtons(fixture)[3]);
+    await rightClick(fixture, 0);
+    expect(menu(fixture)).toBeNull();
+    expect(prevented).toEqual([false, true, false]);
+  });
+
+  it('opens the file input and saves the sheet from the menu, as the file buttons do', async () => {
+    const fixture = await setup();
+    const saved = captureExports();
+    const opened = vi
+      .spyOn(fileInput(fixture)!, 'click')
+      .mockImplementation(() => {});
+
+    await rightClick(fixture, 0);
+    await click(menuRow(fixture, 'Import CSV'));
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(menu(fixture)).toBeNull();
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+
+    await rightClick(fixture, 0);
+    await click(menuRow(fixture, 'Export CSV'));
+    expect(saved).toHaveLength(1);
+    expect(saved[0].fileName).toMatch(/-words\.csv$/);
+    expect(menu(fixture)).toBeNull();
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+  });
+
+  it('opens the menu on the active cell from the keyboard', async () => {
+    const fixture = await setup();
+
+    await press('{ArrowDown}');
+    textarea(fixture).dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      })
+    );
+    await drawn();
+    expect(menuRows(fixture)[0]).toBe('Insert 1 row above');
+  });
+
   it('adds the rows a paste reaches past the end, all in one dispatch and one undo', async () => {
     const fixture = await setup({ seed: [word('a', 'A'), word('b', 'B')] });
 
@@ -730,7 +993,7 @@ describe('the Dictionary tab', () => {
     await paste(fixture, 'B2\nC\nD\n');
     expect(names(fixture)).toEqual(['A', 'B2', 'C', 'D']);
     expect(dictionaryBatches(fixture)).toHaveLength(1);
-    expect(fixture.app.store.history.size).toBe(1);
+    expect(fixture.app.store.sheetHistories.word.size).toBe(1);
     expect(fixture.clipboard).toEqual([]);
     expect(drawnTexts()).toEqual(expect.arrayContaining(['B2', 'C', 'D']));
 
@@ -805,7 +1068,7 @@ describe('the Dictionary tab', () => {
       fixture.app.store.state.collections.wordEntities.a.abbreviation
     ).toBe('MB');
     expect(dictionaryBatches(fixture)).toHaveLength(1);
-    expect(fixture.app.store.history.size).toBe(1);
+    expect(fixture.app.store.sheetHistories.word.size).toBe(1);
 
     await undo();
     expect(
@@ -908,7 +1171,7 @@ describe('the Dictionary tab', () => {
 
     await press('xy');
     await undo();
-    expect(store.history.size).toBe(2);
+    expect(store.sheetHistories.word.size).toBe(2);
     expect(abbreviation()).toBe('');
     expect(fixture.shortcuts).toEqual([]);
 
@@ -1378,15 +1641,27 @@ describe('the Dictionary tab', () => {
       expect.arrayContaining(['회원이름', 'MBR_NM', 'Short Text', 'Amount'])
     );
     expect(dictionaryBatches(fixture)).toHaveLength(3);
-    expect(store.history.size).toBe(3);
+    // Each file is one undo on the sheet its header names, never the document's.
+    expect(
+      [DictionaryKind.word, DictionaryKind.term, DictionaryKind.domain].map(
+        kind => store.sheetHistories[kind].size
+      )
+    ).toEqual([1, 1, 1]);
+    expect(store.history.size).toBe(0);
 
     await undo();
     expect(names(fixture, DictionaryKind.term)).toEqual([]);
     expect(hint(fixture)).toBe('Import a CSV file or add a row');
     expect(names(fixture, DictionaryKind.domain)).toHaveLength(2);
+    // The term sheet's history is spent; the others keep theirs.
+    await undo();
+    expect(names(fixture, DictionaryKind.domain)).toHaveLength(2);
+
+    await click(sheetButtons(fixture)[2]);
     await undo();
     expect(names(fixture, DictionaryKind.domain)).toEqual([]);
     expect(names(fixture)).toHaveLength(3);
+    await click(sheetButtons(fixture)[0]);
     await undo();
     expect(names(fixture)).toEqual([]);
   });
@@ -1589,5 +1864,48 @@ describe('the Dictionary tab in the editor', () => {
       ?.findOne(`#column-${SEED.userName}`)
       ?.findOne(`.${FocusType.columnDataType}`);
     expect(cell?.findOne('.cell-text')?.text()).toBe('TEXT');
+  });
+
+  it("keeps a sheet's edit out of the ERD tab's undo, and undoes it from the toolbar on the Dictionary tab", async () => {
+    spyTexts();
+    const { el, shadow } = await createEditor();
+    const tableIds = () =>
+      Object.keys(JSON.parse(el.value).collections.tableEntities);
+    const typeText = () =>
+      Reflect.get(globalThis, '__erdStages')
+        ?.canvas?.findOne(`#column-${SEED.userName}`)
+        ?.findOne(`.${FocusType.columnDataType}`)
+        ?.findOne('.cell-text')
+        ?.text();
+    const before = typeText();
+    expect(before).not.toBe('TEXT');
+
+    await click(toolbarButton(shadow, 'Dictionary'));
+    const domains = Array.from(
+      shadow.querySelectorAll<HTMLButtonElement>('[role="group"] button')
+    ).find(button => button.textContent === 'Domains');
+    await click(domains ?? null);
+    await press('{ArrowRight}{ArrowRight}TEXT{Enter}');
+
+    await click(toolbarButton(shadow, 'Entity Relationship Diagram'));
+    expect(typeText()).toBe('TEXT');
+    const tables = tableIds();
+    await press('{Alt>}n{/Alt}');
+    expect(tableIds()).toHaveLength(tables.length + 1);
+    // The canvas's undo takes back the table, and only the table.
+    await press(`{Escape}{${MOD}>}z{/${MOD}}`);
+    expect(tableIds()).toEqual(tables);
+    await press(`{${MOD}>}z{/${MOD}}`);
+    expect(typeText()).toBe('TEXT');
+
+    await click(toolbarButton(shadow, 'Dictionary'));
+    const undoButton = shadow.querySelector<HTMLElement>(
+      '.toolbar [title^="Undo"]'
+    );
+    expect(undoButton?.classList.contains('active')).toBe(true);
+    await click(undoButton);
+
+    await click(toolbarButton(shadow, 'Entity Relationship Diagram'));
+    expect(typeText()).toBe(before);
   });
 });

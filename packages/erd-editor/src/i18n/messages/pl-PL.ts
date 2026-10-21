@@ -470,6 +470,26 @@ export const plPL = {
   'dictionary.deleteRows': 'Usuń wiersze',
   'dictionary.import': 'Importuj {format}',
   'dictionary.export': 'Eksportuj {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Wstaw {count} wiersz powyżej',
+    few: 'Wstaw {count} wiersze powyżej',
+    many: 'Wstaw {count} wierszy powyżej',
+    other: 'Wstaw {count} wiersza powyżej',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Wstaw {count} wiersz poniżej',
+    few: 'Wstaw {count} wiersze poniżej',
+    many: 'Wstaw {count} wierszy poniżej',
+    other: 'Wstaw {count} wiersza poniżej',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Usuń {count} wiersz',
+    few: 'Usuń {count} wiersze',
+    many: 'Usuń {count} wierszy',
+    other: 'Usuń {count} wiersza',
+  },
+  'dictionary.menu.sortAscending': 'Sortuj rosnąco: {column}',
+  'dictionary.menu.sortDescending': 'Sortuj malejąco: {column}',
   'dictionary.rowCount': {
     one: '{count} wiersz',
     few: '{count} wiersze',

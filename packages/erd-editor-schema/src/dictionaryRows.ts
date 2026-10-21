@@ -35,6 +35,23 @@ export const DictionaryFields = {
 
 export type DictionaryKey = keyof typeof DictionaryFields;
 
+function withOrderKey<const T extends ReadonlyArray<string>>(
+  fields: T
+): ReadonlyArray<string> {
+  return [...fields.slice(0, 2), 'order', ...fields.slice(2)];
+}
+
+/**
+ * The fields the runtime value names: a file's, with each row's order key after
+ * the name, where no trailing empty value pushes it, since a file leaves the
+ * order to its rows.
+ */
+export const RuntimeDictionaryFields = {
+  wordEntities: withOrderKey(DictionaryFields.wordEntities),
+  termEntities: withOrderKey(DictionaryFields.termEntities),
+  domainEntities: withOrderKey(DictionaryFields.domainEntities),
+} as const satisfies Record<DictionaryKey, ReadonlyArray<string>>;
+
 export const DictionaryKeyList = Object.keys(
   DictionaryFields
 ) as ReadonlyArray<DictionaryKey>;
@@ -52,16 +69,15 @@ const isEmptyValue = (value: unknown) =>
   value === '' || (Array.isArray(value) && value.length === 0);
 
 /**
- * The header and rows of the given entities, in the order given: each row holds
- * the values in header order, its trailing empty ones past the name left out,
- * so a field added at the end costs a row that lacks it nothing.
+ * The header and rows of the given entities in the order given, a file's fields
+ * unless others are given: each row holds the values in header order, its
+ * trailing empty ones past the name left out, so a field added costs nothing.
  */
 export function toDictionaryRows(
   key: DictionaryKey,
-  entities: ReadonlyArray<object>
+  entities: ReadonlyArray<object>,
+  fields: ReadonlyArray<string> = DictionaryFields[key]
 ): DictionaryRows {
-  const fields: ReadonlyArray<string> = DictionaryFields[key];
-
   return {
     fields: [...fields],
     rows: entities.map(entity => {

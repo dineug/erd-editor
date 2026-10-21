@@ -472,6 +472,20 @@ export const deDE = {
   'dictionary.deleteRows': 'Zeilen löschen',
   'dictionary.import': '{format} importieren',
   'dictionary.export': '{format} exportieren',
+  'dictionary.menu.insertAbove': {
+    one: '{count} Zeile oberhalb einfügen',
+    other: '{count} Zeilen oberhalb einfügen',
+  },
+  'dictionary.menu.insertBelow': {
+    one: '{count} Zeile unterhalb einfügen',
+    other: '{count} Zeilen unterhalb einfügen',
+  },
+  'dictionary.menu.deleteRows': {
+    one: '{count} Zeile löschen',
+    other: '{count} Zeilen löschen',
+  },
+  'dictionary.menu.sortAscending': 'Nach {column} aufsteigend sortieren',
+  'dictionary.menu.sortDescending': 'Nach {column} absteigend sortieren',
   'dictionary.rowCount': {
     one: '{count} Zeile',
     other: '{count} Zeilen',

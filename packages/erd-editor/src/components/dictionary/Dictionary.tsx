@@ -1,4 +1,5 @@
 import {
+  type CellContextMenuEvent,
   type CellStyleGetter,
   type CommitEvent,
   Grid,
@@ -28,6 +29,7 @@ import {
   checkRows,
   checkSheetColumns,
 } from '@/components/dictionary/checkSheet';
+import DictionaryContextMenu from '@/components/dictionary/dictionary-context-menu/DictionaryContextMenu';
 import {
   commitDictionaryCells,
   createSheetRows,
@@ -37,6 +39,7 @@ import {
 } from '@/components/dictionary/dictionaryCommit';
 import {
   DICTIONARY_FILE_ACCEPT,
+  DICTIONARY_FILE_FORMAT,
   exportDictionarySheet,
   importDictionaryFile,
 } from '@/components/dictionary/dictionaryFile';
@@ -72,6 +75,7 @@ import {
 import { goToErdTarget } from '@/components/erd/goToErdTarget';
 import { useI18n } from '@/components/localeContext';
 import Button from '@/components/primitives/button/Button';
+import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import TextInput from '@/components/primitives/text-input/TextInput';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -79,7 +83,13 @@ import {
   type DictionaryKind,
 } from '@/engine/modules/dictionary/actions';
 import type { DictionaryCheck } from '@/engine/modules/dictionary/checks';
-import { addDictionaryEntryAction$ } from '@/engine/modules/dictionary/generator.actions';
+import {
+  type DictionaryInsertAnchor,
+  DictionarySortDirection,
+  insertDictionaryEntriesAction$,
+  sortDictionaryAction$,
+} from '@/engine/modules/dictionary/generator.actions';
+import { attachDictionarySheetTag$ } from '@/engine/tag';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import type { I18n } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
@@ -91,9 +101,6 @@ import * as styles from './Dictionary.styles';
 export type DictionaryProps = {
   readonly: boolean;
 };
-
-/** The file format the empty sheet's hint and the file buttons name, which no language translates. */
-const CSV = 'CSV';
 
 /**
  * The events that may open an edit, read before the grid's own listeners: a
@@ -128,12 +135,21 @@ const NO_HANDLE: GridHandle = Object.freeze({
   isEditing: () => false,
 });
 
-/** What a row button asked for, which the batch it sent settles. */
-type Pending = 'add' | 'remove' | null;
+/** What a row button or the menu asked for, which the batch it sent settles. */
+type Pending =
+  | { kind: 'add'; count: number; anchor: DictionaryInsertAnchor }
+  | { kind: 'remove' }
+  | null;
 
 const cellSelection = (row: number, col: number): GridSelection => ({
   active: { row, col },
   ranges: [{ startRow: row, startCol: col, endRow: row, endCol: col }],
+});
+
+/** The first column of rows first to last, the active cell on the first. */
+const rowsSelection = (first: number, last: number): GridSelection => ({
+  active: { row: first, col: 0 },
+  ranges: [{ startRow: first, startCol: 0, endRow: last, endCol: 0 }],
 });
 
 /** How many rows a selection covers among the rows a sheet shows, each once. */
@@ -175,6 +191,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   const sheetRef = createRef<HTMLDivElement>();
   const fileRef = createRef<HTMLInputElement>();
+  const contextMenu = useContextMenuRootProvider(ctx);
   const view = dictionaryViewOf(app.value);
 
   // The render reads the sheet shown here, not off the session: two empty
@@ -189,7 +206,9 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
 
   let session = openSession(view.sheet);
   let pending: Pending = null;
-  let revealRow: number | null = null;
+  let revealRows: { first: number; last: number } | null = null;
+  // The column a menu opened on, which its sorts order the sheet by.
+  let menuColumn: GridColumn | null = null;
   let checksFrame: number | null = null;
   let gridTheme: Readonly<GridTheme> | undefined;
 
@@ -309,9 +328,24 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     };
   }
 
+  const closeMenu = () => {
+    contextMenu.state.show = false;
+  };
+
+  /**
+   * A press on the menu keeps the keyboard where it was, so Escape and the
+   * keys after a pick still reach the tab; a press elsewhere in it shuts it.
+   */
+  const handleMousedown = (event: MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.context-menu-content')) event.preventDefault();
+    contextMenu.onMousedown(event);
+  };
+
   const switchSheet = (sheet: DictionarySheet) => {
     if (sheet === session.sheet) return;
 
+    closeMenu();
     view.sheet = sheet;
     session = openSession(sheet);
   };
@@ -351,7 +385,9 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     countSelected();
   };
 
+  // The menu counts the rows of the selection it opened on, so it goes with it.
   const handleSelectionChange = (selection: GridSelection) => {
+    closeMenu();
     session.selection = selection;
     session.rows.activate(selection.active.row);
     rememberSelection(view, session.sheet, selection);
@@ -402,7 +438,8 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     session.handle.scrollTo(0, 0);
   };
 
-  const handleAddRow = () => {
+  /** Inserts empty rows by a row, or at the end for none, in one dispatch. */
+  const insertRows = (count: number, anchor: DictionaryInsertAnchor) => {
     const { sheet } = session;
     if (!isEntrySheet(sheet)) return;
 
@@ -411,18 +448,101 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       changeSearch(view, sheet, '');
       refresh(storedSelection(view, sheet, state.rowCount, columns.length));
     }
-    pending = 'add';
-    app.value.store.dispatch(addDictionaryEntryAction$(sheet));
+    pending = { kind: 'add', count, anchor };
+    app.value.store.dispatch(
+      attachDictionarySheetTag$(
+        insertDictionaryEntriesAction$(sheet, count, anchor)
+      )
+    );
     session.handle.focus();
   };
+
+  const handleAddRow = () => insertRows(1, null);
 
   const handleDeleteRows = () => {
     const { sheet, rows, selection } = session;
     if (!isEntrySheet(sheet)) return;
 
     if (removeSelectedRows(app.value.store, sheet, rows, selection)) {
-      pending = 'remove';
+      pending = { kind: 'remove' };
     }
+    session.handle.focus();
+  };
+
+  /** Opens the menu where a right click on a cell, or the menu key on the active cell, asked for it. */
+  const handleCellContextMenu = ({
+    col,
+    clientX,
+    clientY,
+  }: CellContextMenuEvent) => {
+    menuColumn = columns[col] ?? null;
+    const menu = contextMenu.state;
+    menu.x = clientX;
+    menu.y = clientY;
+    // Shut first, so a menu open elsewhere opens again where it is asked for.
+    menu.show = false;
+    nextTick(() => {
+      menu.show = true;
+    });
+  };
+
+  /** The rows the menu acts on: those the selection covers, the active row at least. */
+  const menuRowCount = () => Math.max(state.selectedRows, 1);
+
+  /** The first and the last row the selection covers, among the rows the grid received. */
+  const selectedEnds = () => {
+    const { selection, rows } = session;
+    const bottom = selection.ranges.reduce(
+      (last, { startRow, endRow }) => Math.max(last, startRow, endRow),
+      selection.active.row
+    );
+    return { top: rows.ids[topRow(selection)], bottom: rows.ids[bottom] };
+  };
+
+  const handleMenuInsertAbove = () => {
+    closeMenu();
+    const { top } = selectedEnds();
+    insertRows(menuRowCount(), top ? { id: top, place: 'before' } : null);
+  };
+
+  const handleMenuInsertBelow = () => {
+    closeMenu();
+    const { bottom } = selectedEnds();
+    insertRows(menuRowCount(), bottom ? { id: bottom, place: 'after' } : null);
+  };
+
+  /** Sorts the whole sheet by the column right clicked, for everyone, in one undo. */
+  const sortRows = (direction: DictionarySortDirection) => {
+    closeMenu();
+    const { sheet } = session;
+    if (!isEntrySheet(sheet) || !menuColumn) return;
+
+    app.value.store.dispatch(
+      attachDictionarySheetTag$(
+        sortDictionaryAction$(
+          sheet,
+          menuColumn.id,
+          direction,
+          i18n.value.locale
+        )
+      )
+    );
+    session.handle.focus();
+  };
+
+  const handleMenuDeleteRows = () => {
+    closeMenu();
+    handleDeleteRows();
+  };
+
+  const handleMenuImport = () => {
+    closeMenu();
+    handleImport();
+  };
+
+  const handleMenuExport = () => {
+    closeMenu();
+    handleExport();
     session.handle.focus();
   };
 
@@ -452,7 +572,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     exportDictionarySheet(app.value.store.state, sheet);
   };
 
-  /** Where the active cell goes once a row button's batch lands: on the added row, last of all, or where the removed rows began. */
+  /** Where the active cell goes once a row button's batch lands: over the added rows, last of all, or where the removed rows began. */
   const selectionAfter = (asked: Pending): GridSelection | undefined => {
     const { sheet, selection } = session;
     if (!asked || !isEntrySheet(sheet)) return;
@@ -464,9 +584,19 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     );
     if (!ids.length) return;
 
-    if (asked === 'add') {
-      revealRow = ids.length - 1;
-      return cellSelection(revealRow, 0);
+    if (asked.kind === 'add') {
+      const { anchor, count } = asked;
+      const at = anchor ? ids.indexOf(anchor.id) : -1;
+      const start =
+        at === -1
+          ? ids.length - count
+          : anchor?.place === 'after'
+            ? at + 1
+            : at - count;
+      const first = Math.min(Math.max(start, 0), ids.length - 1);
+      const last = Math.min(first + count - 1, ids.length - 1);
+      revealRows = { first, last };
+      return rowsSelection(first, last);
     }
     return cellSelection(
       Math.min(topRow(selection), ids.length - 1),
@@ -550,9 +680,21 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
   const handleKeydown = (event: KeyboardEvent) => {
     const { keyBindingMap, store } = app.value;
 
+    // Escape shuts an open menu and goes no further, as the root's stop would.
+    if (contextMenu.state.show && event.key === 'Escape') {
+      event.stopPropagation();
+      closeMenu();
+      return;
+    }
+
     handleDictionaryKeydown(event, {
       keyBindingMap,
-      store,
+      undo: () => {
+        if (isEntrySheet(session.sheet)) store.undoSheet(session.sheet);
+      },
+      redo: () => {
+        if (isEntrySheet(session.sheet)) store.redoSheet(session.sheet);
+      },
       inGrid: event.composedPath().includes(sheetRef.value as EventTarget),
       isEditing: () => session.handle.isEditing(),
     });
@@ -579,6 +721,8 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     addUnsubscribe(
       store.subscribe(actions => {
         if (!bumpedSheets(actions).includes(session.sheet)) return;
+        // The rows the menu counted may have moved under it.
+        closeMenu();
         if (!isEntrySheet(session.sheet)) return refreshChecks();
 
         const asked = pending;
@@ -587,6 +731,10 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       }),
       // The check sheet's search reads its cells in the language shown, which
       // a switch changes in place without a batch.
+      // A document turned read-only takes no row or file command.
+      watch(props).subscribe(name => {
+        if (name === 'readonly') closeMenu();
+      }),
       watch(i18n.value).subscribe(name => {
         if (name === 'locale' && session.sheet === DictionarySheet.check) {
           refresh();
@@ -598,14 +746,18 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
     );
   });
 
-  // The grid takes a new row count a tick after the render that hands it
-  // over, so the added row is scrolled to once that tick has run.
+  // The grid takes a new row count a tick after the render that hands it over,
+  // so the added rows are scrolled to once that tick has run: the last first,
+  // since a scroll goes the least distance, so the first new row stays in view.
   onUpdated(() => {
-    const row = revealRow;
-    if (row === null) return;
+    const rows = revealRows;
+    if (rows === null) return;
 
-    revealRow = null;
-    nextTick(() => session.handle.scrollTo(row, 0));
+    revealRows = null;
+    nextTick(() => {
+      session.handle.scrollTo(rows.last, 0);
+      session.handle.scrollTo(rows.first, 0);
+    });
   });
 
   return () => {
@@ -623,6 +775,7 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       <div
         class={['dictionary', styles.root]}
         on:keydown={handleKeydown}
+        on:mousedown={handleMousedown}
         on:copy={keepClipboard}
         on:cut={keepClipboard}
         on:paste={keepClipboard}
@@ -669,13 +822,17 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
               <Button
                 size="1"
                 variant="soft"
-                text={t('dictionary.import', { format: CSV })}
+                text={t('dictionary.import', {
+                  format: DICTIONARY_FILE_FORMAT,
+                })}
                 onClick={handleImport}
               />
               <Button
                 size="1"
                 variant="soft"
-                text={t('dictionary.export', { format: CSV })}
+                text={t('dictionary.export', {
+                  format: DICTIONARY_FILE_FORMAT,
+                })}
                 onClick={handleExport}
               />
               <input
@@ -708,6 +865,9 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
                 ariaLabel={t(DictionarySheetLabelKey[sheet])}
                 onCommit={handleCommit}
                 onReject={handleReject}
+                onCellContextMenu={
+                  entry && !props.readonly ? handleCellContextMenu : undefined
+                }
                 onSelectionChange={handleSelectionChange}
                 onViewportChange={handleViewportChange}
                 onColumnResize={handleColumnResize}
@@ -716,9 +876,26 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
             )
           )}
           {empty && !props.readonly ? (
-            <p class={styles.empty}>{t('dictionary.empty', { format: CSV })}</p>
+            <p class={styles.empty}>
+              {t('dictionary.empty', { format: DICTIONARY_FILE_FORMAT })}
+            </p>
           ) : null}
         </div>
+        {contextMenu.state.show && entry && !props.readonly ? (
+          <DictionaryContextMenu
+            count={menuRowCount()}
+            column={menuColumn?.label ?? ''}
+            onInsertAbove={handleMenuInsertAbove}
+            onInsertBelow={handleMenuInsertBelow}
+            onDeleteRows={handleMenuDeleteRows}
+            onSortAscending={() => sortRows(DictionarySortDirection.ascending)}
+            onSortDescending={() =>
+              sortRows(DictionarySortDirection.descending)
+            }
+            onImport={handleMenuImport}
+            onExport={handleMenuExport}
+          />
+        ) : null}
         <div class={styles.status}>
           <span>{t('dictionary.rowCount', { count: rowCount })}</span>
           {selectedRows > 0 ? (

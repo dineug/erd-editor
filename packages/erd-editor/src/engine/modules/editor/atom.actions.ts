@@ -51,8 +51,12 @@ export const changeHasHistoryAction = createAction<
 
 const changeHasHistory: ReducerType<typeof ActionType.changeHasHistory> = (
   { editor },
-  { payload: { hasRedo, hasUndo } }
+  { payload: { hasRedo, hasUndo, sheet } }
 ) => {
+  if (sheet) {
+    editor.dictionaryHistory[sheet] = { hasRedo, hasUndo };
+    return;
+  }
   editor.hasRedo = hasRedo;
   editor.hasUndo = hasUndo;
 };

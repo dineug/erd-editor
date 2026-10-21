@@ -1,6 +1,6 @@
+import { generateOrderKeys } from '@dineug/erd-editor-schema';
 // The domain picker in a real Chromium: real keys and presses over its list,
 // and a Korean IME's own composition over CDP while a name is searched.
-
 import { addCSSHost, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cdp, userEvent } from 'vite-plus/test/browser/context';
@@ -78,11 +78,17 @@ async function setup({
   const app = createTestAppContext();
   const { store } = app;
   const linkedType = domains.find(({ id }) => id === linked)?.dataType ?? '';
+  // Each domain keyed in the order given, as a document's rows are.
+  const keys = generateOrderKeys(null, null, domains.length);
   store.dispatchSync(
     addTableAction({ id: TABLE, ui: { x: 0, y: 0, zIndex: 2 } }),
     addColumnAction({ id: COLUMN, tableId: TABLE }),
-    ...domains.map(({ id, ...values }) =>
-      addDictionaryAction({ kind: 'domain', id, values })
+    ...domains.map(({ id, ...values }, index) =>
+      addDictionaryAction({
+        kind: 'domain',
+        id,
+        values: { ...values, order: keys[index] },
+      })
     ),
     changeColumnDomainAction({ tableId: TABLE, id: COLUMN, value: linked }),
     changeColumnDataTypeAction({

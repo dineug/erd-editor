@@ -12,6 +12,7 @@ export const createWord = (): Word => ({
   description: '',
   synonyms: '',
   forbiddenWords: '',
+  order: '',
 });
 
 /**
@@ -34,6 +35,7 @@ export function createAndMergeWordEntities(
     assignString('description');
     assignString('synonyms');
     assignString('forbiddenWords');
+    assignString('order');
 
     if (target.id) {
       entities[target.id] = target;

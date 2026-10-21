@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { DictionaryFields } from '@/dictionaryRows';
 import { parser, toJson } from '@/parser';
 import { toDocumentJson } from '@/storageForm';
 import { createSchema, SchemaV3Constants } from '@/v3';
-import { createDomain } from '@/v3/parser/domain.entity';
-import { createTerm } from '@/v3/parser/term.entity';
-import { createWord } from '@/v3/parser/word.entity';
 
 import schema from '../../../json-schema/schema.json';
 
@@ -237,15 +235,15 @@ const FULL = toDocumentJson(
         memoEntities: { m1: { id: 'm1', value: 'note' } },
         tableGroupEntities: { g1: { id: 'g1', name: 'billing' } },
         wordEntities: {
-          fields: Object.keys(createWord()),
+          fields: [...DictionaryFields.wordEntities],
           rows: [['w1', 'user', 'USER', 'user', 'one', 'member', 'client']],
         },
         termEntities: {
-          fields: Object.keys(createTerm()),
+          fields: [...DictionaryFields.termEntities],
           rows: [['tm1', 'User Number', 'USER_NO', 'd1', 'one', 'user id']],
         },
         domainEntities: {
-          fields: Object.keys(createDomain()),
+          fields: [...DictionaryFields.domainEntities],
           rows: [['d1', 'NumberN10', 'number', 'NUMERIC(10)', 'a count']],
         },
       },
@@ -340,7 +338,7 @@ describe('json-schema/schema.json', () => {
     expect(validate(document)).toEqual([
       '$.collections.wordEntities.rows[1]: fewer than 2 items',
       `$.collections.termEntities.fields: not ${JSON.stringify(
-        Object.keys(createTerm())
+        DictionaryFields.termEntities
       )}`,
       '$.collections.domainEntities.rows[0][5]: is not allowed',
     ]);

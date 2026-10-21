@@ -1,4 +1,3 @@
-import type { RxStore } from '@/engine/rx-store';
 import {
   isComposing,
   type KeyBindingMap,
@@ -11,8 +10,8 @@ import { isEditableTarget } from '@/utils/validation';
 
 /**
  * The editor's chords a press in the Dictionary tab still hands on: the
- * palette, the document's undo and redo, and find, whose chord works on
- * every tab.
+ * palette, undo and redo, which the tab runs on the sheet's own history, and
+ * find, whose chord works on every tab.
  */
 export const DICTIONARY_PASSING_BINDINGS: ReadonlyArray<KeyBindingName> = [
   KeyBindingName.search,
@@ -42,7 +41,9 @@ const keptChord = (
 
 export type DictionaryKeyContext = {
   keyBindingMap: KeyBindingMap;
-  store: Pick<RxStore, 'undo' | 'redo'>;
+  /** Undoes the last edit of the sheet shown, from its own history. */
+  undo: () => void;
+  redo: () => void;
   /** Whether the press came from inside the tab's grid. */
   inGrid: boolean;
   /** Whether the grid holds an open edit, whose own undo takes the press and which keeps the palette and find. */
@@ -50,13 +51,19 @@ export type DictionaryKeyContext = {
 };
 
 /**
- * Reads a press at the tab's root: undo and redo undo the document, which the
- * root does on the ERD tab alone, unless an open edit or a field takes them, an
- * open edit keeps the palette and find, and any other stopsAtPanel names stops.
+ * Reads a press at the tab's root: undo and redo undo the sheet shown, unless
+ * an open edit or a field takes them, an open edit keeps the palette and find,
+ * and any other stopsAtPanel names stops.
  */
 export function handleDictionaryKeydown(
   event: KeyboardEvent,
-  { keyBindingMap, store, inGrid, isEditing }: DictionaryKeyContext
+  {
+    keyBindingMap,
+    undo: undoSheet,
+    redo: redoSheet,
+    inGrid,
+    isEditing,
+  }: DictionaryKeyContext
 ) {
   if (!isComposing(event)) {
     const undo = matchesShortcut(event, keyBindingMap[KeyBindingName.undo]);
@@ -70,7 +77,7 @@ export function handleDictionaryKeydown(
         return;
       }
 
-      undo ? store.undo() : store.redo();
+      undo ? undoSheet() : redoSheet();
       return;
     }
 

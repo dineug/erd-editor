@@ -6,6 +6,7 @@ import { CanvasType, Language, LockSettingType } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
+import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
   clearAction,
   loadJsonAction,
@@ -348,6 +349,78 @@ describe('createRxStore', () => {
 
     expect(store.state.doc.tableIds).toEqual(['t1']);
     expect(store.history.size).toBe(0);
+  });
+
+  describe('the dictionary sheets', () => {
+    const addWord = (id: string, name: string) =>
+      addDictionaryAction({ kind: 'word', id, values: { name } });
+    const addTerm = (id: string, name: string) =>
+      addDictionaryAction({ kind: 'term', id, values: { name } });
+    const fromTab = (action: AnyAction) =>
+      attachActionTag(Tag.dictionarySheet, action);
+
+    it("keeps each sheet's tab edits in its own history, and every other edit in the document's", async () => {
+      const store = make(createContext());
+
+      store.dispatchSync(fromTab(addWord('w1', 'Member')));
+      store.dispatchSync(fromTab(addTerm('t1', 'Member No')));
+      store.dispatchSync(fromTab(addWord('w2', 'Name')));
+      store.dispatchSync(addTable('t1'));
+      store.dispatchSync(addWord('w3', 'Code'));
+      await tick();
+
+      expect(store.sheetHistories.word.size).toBe(2);
+      expect(store.sheetHistories.term.size).toBe(1);
+      expect(store.sheetHistories.domain.size).toBe(0);
+      expect(store.history.size).toBe(2);
+      expect(store.state.editor.dictionaryHistory.word).toEqual({
+        hasUndo: true,
+        hasRedo: false,
+      });
+
+      store.undoSheet('word');
+      expect(store.state.doc.wordIds).toEqual(['w1', 'w3']);
+      expect(store.state.doc.termIds).toEqual(['t1']);
+      expect(store.state.doc.tableIds).toEqual(['t1']);
+
+      store.undo();
+      store.undo();
+      expect(store.state.doc.wordIds).toEqual(['w1']);
+      expect(store.state.doc.tableIds).toEqual([]);
+
+      store.redoSheet('word');
+      expect(store.state.doc.wordIds).toEqual(['w1', 'w2']);
+      await tick();
+      expect(store.state.editor.dictionaryHistory.word).toEqual({
+        hasUndo: true,
+        hasRedo: false,
+      });
+      expect(store.state.editor.hasUndo).toBe(false);
+    });
+
+    it('puts a tagged batch with no dictionary row into the document history', () => {
+      const store = make(createContext());
+
+      store.dispatchSync(fromTab(addTable('t1')));
+
+      expect(store.history.size).toBe(1);
+      expect(store.sheetHistories.word.size).toBe(0);
+    });
+
+    it('refuses a sheet undo in a read-only document, and empties every sheet on reset', () => {
+      let readonly = false;
+      const store = make(createContext(), { getReadonly: () => readonly });
+
+      store.dispatchSync(fromTab(addWord('w1', 'Member')));
+      readonly = true;
+      store.undoSheet('word');
+      store.redoSheet('word');
+      expect(store.state.doc.wordIds).toEqual(['w1']);
+
+      readonly = false;
+      store.resetHistory();
+      expect(store.sheetHistories.word.size).toBe(0);
+    });
   });
 
   describe('readonly', () => {

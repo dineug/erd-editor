@@ -6,10 +6,12 @@ import {
 import { localized } from '@/components/localized/Localized';
 import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { DictionaryKind } from '@/engine/modules/dictionary/actions';
+import { orderedDictionaryRows } from '@/engine/modules/dictionary/dictionaryIndex';
 import { toDictionaryImport } from '@/engine/modules/dictionary/entryWrites';
 import { importDictionaryAction$ } from '@/engine/modules/dictionary/generator.actions';
 import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
 import type { RootState } from '@/engine/state';
+import { attachDictionarySheetTag$ } from '@/engine/tag';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n } from '@/i18n/translate';
 import {
@@ -22,6 +24,9 @@ import { exportCSV } from '@/utils/file/exportFile';
 
 /** What the tab's file input takes: a dictionary comes in one format, whichever layout its header names. */
 export const DICTIONARY_FILE_ACCEPT = '.csv';
+
+/** The file format the buttons, the menu and the empty sheet's hint name, which no language translates. */
+export const DICTIONARY_FILE_FORMAT = 'CSV';
 
 const IMPORTED = 'dictionary.toast.imported';
 const UNKNOWN_DOMAINS = 'dictionary.toast.unknownDomains';
@@ -90,7 +95,9 @@ export async function importDictionaryFile(
     kind,
     rows
   );
-  store.dispatch(importDictionaryAction$(kind, rows));
+  store.dispatch(
+    attachDictionarySheetTag$(importDictionaryAction$(kind, rows))
+  );
 
   reportImport(
     emitter,
@@ -100,46 +107,28 @@ export async function importDictionaryFile(
   return kind;
 }
 
-/** The rows a dictionary lists, in their order. */
-const listedRows = <Row>(
-  ids: ReadonlyArray<string>,
-  entities: Readonly<Record<string, Row | undefined>>
-): Row[] =>
-  ids.flatMap(id => {
-    const row = entities[id];
-    return row ? [row] : [];
-  });
-
 /**
- * A dictionary's listed rows in the editor's own CSV format, in their order,
- * whatever a search shows. A term names its domain by the domain's name, and
- * nothing for one the document does not list.
+ * A dictionary's listed rows in the editor's own CSV format, in the order its
+ * sheet shows them, whatever a search shows. A term names its domain by the
+ * domain's name, and nothing for one the document does not list.
  */
 export function toDictionaryCsv(
   state: RootState,
   kind: DictionaryKind
 ): string {
-  const { doc, collections } = state;
-
   switch (kind) {
     case DictionaryKind.word:
-      return writeDictionaryCsv(
-        kind,
-        listedRows(doc.wordIds, collections.wordEntities)
-      );
+      return writeDictionaryCsv(kind, orderedDictionaryRows(state, kind));
     case DictionaryKind.term:
       return writeDictionaryCsv(
         kind,
-        listedRows(doc.termIds, collections.termEntities).map(term => ({
+        orderedDictionaryRows(state, kind).map(term => ({
           ...term,
           domain: getLiveDomainName(state, term.domainId),
         }))
       );
     case DictionaryKind.domain:
-      return writeDictionaryCsv(
-        kind,
-        listedRows(doc.domainIds, collections.domainEntities)
-      );
+      return writeDictionaryCsv(kind, orderedDictionaryRows(state, kind));
   }
 }
 

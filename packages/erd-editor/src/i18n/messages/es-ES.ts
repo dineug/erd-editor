@@ -472,6 +472,23 @@ export const esES = {
   'dictionary.deleteRows': 'Eliminar filas',
   'dictionary.import': 'Importar {format}',
   'dictionary.export': 'Exportar {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Insertar {count} fila encima',
+    many: 'Insertar {count} de filas encima',
+    other: 'Insertar {count} filas encima',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Insertar {count} fila debajo',
+    many: 'Insertar {count} de filas debajo',
+    other: 'Insertar {count} filas debajo',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Eliminar {count} fila',
+    many: 'Eliminar {count} de filas',
+    other: 'Eliminar {count} filas',
+  },
+  'dictionary.menu.sortAscending': 'Ordenar por {column} de forma ascendente',
+  'dictionary.menu.sortDescending': 'Ordenar por {column} de forma descendente',
   'dictionary.rowCount': {
     one: '{count} fila',
     many: '{count} de filas',

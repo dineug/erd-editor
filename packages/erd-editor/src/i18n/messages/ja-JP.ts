@@ -457,6 +457,17 @@ export const jaJP = {
   'dictionary.deleteRows': '選択した行を削除',
   'dictionary.import': '{format} をインポート',
   'dictionary.export': '{format} をエクスポート',
+  'dictionary.menu.insertAbove': {
+    other: '上に {count} 行を挿入',
+  },
+  'dictionary.menu.insertBelow': {
+    other: '下に {count} 行を挿入',
+  },
+  'dictionary.menu.deleteRows': {
+    other: '{count} 行を削除',
+  },
+  'dictionary.menu.sortAscending': '{column} で昇順に並べ替え',
+  'dictionary.menu.sortDescending': '{column} で降順に並べ替え',
   'dictionary.rowCount': {
     other: '{count} 行',
   },

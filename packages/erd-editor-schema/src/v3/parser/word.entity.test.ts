@@ -15,6 +15,7 @@ describe('createWord', () => {
       description: '',
       synonyms: '',
       forbiddenWords: '',
+      order: '',
     });
   });
 
@@ -36,6 +37,7 @@ describe('createAndMergeWordEntities', () => {
       description: 'a person who joined',
       synonyms: '멤버, 가입자',
       forbiddenWords: '고객',
+      order: 'a0',
     };
 
     expect(createAndMergeWordEntities([word])).toEqual({ w1: word });

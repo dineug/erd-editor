@@ -11,6 +11,7 @@ export const createDomain = (value?: DeepPartial<Domain>): Domain =>
       category: '',
       dataType: '',
       description: '',
+      order: '',
     },
     value ?? {}
   );

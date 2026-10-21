@@ -319,11 +319,19 @@ describe('the index cache', () => {
     expect(words()).toBe(2);
   });
 
-  it('builds over the rows the sheet lists, in its order', () => {
+  it('builds over the rows the sheet lists, in key order', () => {
     const store = newStore();
     store.dispatchSync(
-      addDictionaryAction({ kind: 'term', id: 't2', values: { name: 'B' } }),
-      addDictionaryAction({ kind: 'term', id: 't1', values: { name: 'A' } }),
+      addDictionaryAction({
+        kind: 'term',
+        id: 't1',
+        values: { name: 'A', order: 'a1' },
+      }),
+      addDictionaryAction({
+        kind: 'term',
+        id: 't2',
+        values: { name: 'B', order: 'a0' },
+      }),
       updateDictionaryAction({
         kind: 'term',
         id: 'stub',

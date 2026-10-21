@@ -14,6 +14,7 @@ describe('createTerm', () => {
       domainId: '',
       description: '',
       synonyms: '',
+      order: '',
     });
   });
 });
@@ -27,6 +28,7 @@ describe('createAndMergeTermEntities', () => {
       domainId: 'd1',
       description: 'the number a member is given',
       synonyms: '회원 ID',
+      order: 'a0',
     };
 
     expect(createAndMergeTermEntities([term])).toEqual({ tm1: term });

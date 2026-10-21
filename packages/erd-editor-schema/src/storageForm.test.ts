@@ -1226,6 +1226,7 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
         description: '',
         synonyms: '',
         forbiddenWords: '',
+        order: 'a1',
       },
       w2: {
         id: 'w2',
@@ -1235,6 +1236,7 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
         description: '',
         synonyms: 'NUM',
         forbiddenWords: '',
+        order: 'a0',
       },
     });
     expect(collections.termEntities.tm2).toEqual({
@@ -1244,8 +1246,32 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
       domainId: '',
       description: 'joined at',
       synonyms: '',
+      order: 'a1',
     });
     expect(collections.domainEntities.d1.dataType).toBe('NUMERIC(10)');
+  });
+
+  it('writes the rows in key order whatever order the doc lists them in, and no key', () => {
+    const schema = parser(DICTIONARY_JSON);
+    const { w1, w2 } = schema.collections.wordEntities;
+    w1.order = 'a0';
+    w2.order = 'a0V';
+    schema.collections.termEntities.tm1.order = 'Zz';
+    schema.doc.wordIds.reverse();
+
+    const written = JSON.parse(toDocumentJson(schema));
+    expect(
+      written.collections.wordEntities.rows.map((row: string[]) => row[0])
+    ).toEqual(['w1', 'w2']);
+    expect(written.collections.wordEntities.fields).not.toContain('order');
+    expect(
+      written.collections.termEntities.rows.map((row: string[]) => row[0])
+    ).toEqual(['tm1', 'tm2']);
+
+    const reread = parser(toDocumentJson(schema));
+    expect(reread.doc.wordIds).toEqual(['w1', 'w2']);
+    expect(reread.collections.wordEntities.w1.order).toBe('a0');
+    expect(reread.collections.wordEntities.w2.order).toBe('a1');
   });
 
   it('writes no dictionary order in the doc', () => {

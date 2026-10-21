@@ -122,6 +122,7 @@ describe('the name view a document draws', () => {
       category: '',
       dataType: 'NUMERIC',
       description: '',
+      order: 'a0',
     };
     state.collections.domainEntities.d2 = {
       id: 'd2',
@@ -129,6 +130,7 @@ describe('the name view a document draws', () => {
       category: '',
       dataType: 'INT',
       description: '',
+      order: 'a1',
     };
     state.doc.domainIds = ['d1', 'd2'];
 

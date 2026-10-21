@@ -24,6 +24,10 @@ import {
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import { pushHistory } from '@/engine/history.actions';
+import {
+  DictionaryKind,
+  DictionaryKindList,
+} from '@/engine/modules/dictionary/actions';
 import { changeHasHistoryAction } from '@/engine/modules/editor/atom.actions';
 import { getActiveView } from '@/engine/modules/editor/view';
 import {
@@ -38,13 +42,18 @@ import { viewActionRedirect } from '@/engine/rx-operators/viewActionRedirect';
 import { viewIgnoreFilter } from '@/engine/rx-operators/viewIgnoreFilter';
 import { createStore, Store } from '@/engine/store';
 import { createHooks } from '@/engine/store-hooks';
-import { Tag } from '@/engine/tag';
+import { hasActionTag, Tag } from '@/engine/tag';
 import type { Unsubscribe } from '@/internal-types';
 
 export type RxStore = Store & {
   undo: () => void;
   redo: () => void;
   history: History;
+  /** The history of each dictionary sheet, which holds the Dictionary tab's edits of it. */
+  sheetHistories: Readonly<Record<DictionaryKind, History>>;
+  /** Undoes the last edit the Dictionary tab made on a sheet, as undo does the document's. */
+  undoSheet: (sheet: DictionaryKind) => void;
+  redoSheet: (sheet: DictionaryKind) => void;
   resetHistory: () => void;
   change$: Observable<Array<AnyAction>>;
   /**
@@ -89,6 +98,32 @@ export function createRxStore(
   };
   const history = getHistory?.(historyOptions) ?? createHistory(historyOptions);
   history.setLimit(HISTORY_LIMIT);
+
+  // Each dictionary sheet keeps the Dictionary tab's edits of it apart from the
+  // document's, so an undo on the tab or on the canvas reaches only its own.
+  const sheetHistories = Object.fromEntries(
+    DictionaryKindList.map(sheet => {
+      const sheetHistory = createHistory({
+        ...historyOptions,
+        notify: payload =>
+          store.dispatch(changeHasHistoryAction({ ...payload, sheet })),
+      });
+      sheetHistory.setLimit(HISTORY_LIMIT);
+      return [sheet, sheetHistory];
+    })
+  ) as Record<DictionaryKind, History>;
+  const sheetHistoryOf = (actions: ReadonlyArray<AnyAction>) => {
+    const row = actions.find(({ type }) => type.startsWith('dictionary.'));
+    return row ? sheetHistories[row.payload?.kind as DictionaryKind] : null;
+  };
+  /** A Dictionary tab batch to its sheet's history, every other to the document's. */
+  const toHistory = (actions: Array<AnyAction>) => {
+    const sheetHistory = hasActionTag(actions, Tag.dictionarySheet)
+      ? sheetHistoryOf(actions)
+      : null;
+    if (sheetHistory) pushHistory(store, sheetHistory)(actions);
+    else historyInput$.next(actions);
+  };
 
   const getView = () => getActiveView(store.state);
 
@@ -164,6 +199,7 @@ export function createRxStore(
     store.destroy();
     hooks.destroy();
     history.clear();
+    DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
     dispatch$.complete();
     flush$.complete();
   };
@@ -172,6 +208,7 @@ export function createRxStore(
   const resetHistory = () => {
     historyReset$.next();
     history.clear();
+    DictionaryKindList.forEach(sheet => sheetHistories[sheet].clear());
   };
 
   // A replay reaches the store through historyOptions.dispatch, past the seam
@@ -184,6 +221,16 @@ export function createRxStore(
   const redo = () => {
     if (getReadonly() || getView()) return;
     history.redo();
+  };
+
+  const undoSheet = (sheet: DictionaryKind) => {
+    if (getReadonly() || getView()) return;
+    sheetHistories[sheet]?.undo();
+  };
+
+  const redoSheet = (sheet: DictionaryKind) => {
+    if (getReadonly() || getView()) return;
+    sheetHistories[sheet]?.redo();
   };
 
   // The history groups stream actions in one stage, so a single tick closes it.
@@ -207,7 +254,7 @@ export function createRxStore(
           readonlyIgnoreFilter(getReadonly),
           viewIgnoreFilter(getView)
         )
-        .subscribe(historyInput$)
+        .subscribe(toHistory)
     )
     .add(
       redirected$
@@ -227,6 +274,9 @@ export function createRxStore(
     undo,
     redo,
     history,
+    sheetHistories,
+    undoSheet,
+    redoSheet,
     resetHistory,
     change$,
     flushStreamBuffers,

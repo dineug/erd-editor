@@ -22,11 +22,16 @@ export type DictionaryKind = ValuesType<typeof DictionaryKind>;
 export const DictionaryKindList: ReadonlyArray<DictionaryKind> =
   Object.values(DictionaryKind);
 
-/** What a row of each dictionary holds besides its id. */
+/** What a row of each dictionary holds besides its id and its place in its sheet. */
 export type DictionaryValues = {
-  [DictionaryKind.word]: Omit<Word, 'id'>;
-  [DictionaryKind.term]: Omit<Term, 'id'>;
-  [DictionaryKind.domain]: Omit<Domain, 'id'>;
+  [DictionaryKind.word]: Omit<Word, 'id' | 'order'>;
+  [DictionaryKind.term]: Omit<Term, 'id' | 'order'>;
+  [DictionaryKind.domain]: Omit<Domain, 'id' | 'order'>;
+};
+
+/** What an action writes into a row: its values and its order key, which places it in its sheet. */
+export type DictionaryStoredValues = {
+  [K in DictionaryKind]: DictionaryValues[K] & { order: string };
 };
 
 /**
@@ -54,12 +59,24 @@ export const DictionaryFields = {
   [K in DictionaryKind]: ReadonlyArray<keyof DictionaryValues[K]>;
 };
 
+/**
+ * The fields a reducer writes, a register each: the values and the order key,
+ * which no sheet column, file column or tool shows.
+ */
+export const DictionaryStoredFields = {
+  [DictionaryKind.word]: [...DictionaryFields.word, 'order'],
+  [DictionaryKind.term]: [...DictionaryFields.term, 'order'],
+  [DictionaryKind.domain]: [...DictionaryFields.domain, 'order'],
+} as const satisfies {
+  [K in DictionaryKind]: ReadonlyArray<keyof DictionaryStoredValues[K]>;
+};
+
 /** One row of one dictionary, and the values an action writes into it. */
 export type DictionaryRowPayload = {
   [K in DictionaryKind]: {
     kind: K;
     id: string;
-    values: Partial<DictionaryValues[K]>;
+    values: Partial<DictionaryStoredValues[K]>;
   };
 }[DictionaryKind];
 
@@ -68,7 +85,7 @@ export type DictionaryAddPayload = {
   [K in DictionaryKind]: {
     kind: K;
     id: string;
-    values?: Partial<DictionaryValues[K]>;
+    values?: Partial<DictionaryStoredValues[K]>;
   };
 }[DictionaryKind];
 

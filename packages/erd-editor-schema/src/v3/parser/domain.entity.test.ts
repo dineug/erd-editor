@@ -13,6 +13,7 @@ describe('createDomain', () => {
       category: '',
       dataType: '',
       description: '',
+      order: '',
     });
   });
 });
@@ -25,6 +26,7 @@ describe('createAndMergeDomainEntities', () => {
       category: '금액',
       dataType: 'NUMERIC(15)',
       description: 'an amount of money',
+      order: 'a0',
     };
 
     expect(createAndMergeDomainEntities([domain])).toEqual({ d1: domain });

@@ -49,6 +49,11 @@ import {
   addDictionaryAction,
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
+import { orderedDictionaryRows } from '@/engine/modules/dictionary/dictionaryIndex';
+import {
+  insertDictionaryEntriesAction$,
+  sortDictionaryAction$,
+} from '@/engine/modules/dictionary/generator.actions';
 import {
   changeViewportAction,
   selectAction,
@@ -712,6 +717,10 @@ describe('the dictionaries and the logical names converge on every peer', () => 
 
   const SEED_WORDS = [SEED.memberWord, SEED.nameWord];
 
+  /** The word sheet's ids in the order it shows them. */
+  const sheetIds = ({ state }: HasState) =>
+    orderedDictionaryRows(state, 'word').map(({ id }) => id);
+
   const wordOf = ({ state }: HasState, id: string) =>
     state.collections.wordEntities[id];
 
@@ -826,6 +835,33 @@ describe('the dictionaries and the logical names converge on every peer', () => 
       return document;
     });
     expect(firstDocument).toEqual(secondDocument);
+    // The sheet and the file show the rows by key, the same on both.
+    expect(sheetIds(first)).toEqual(sheetIds(second));
+    expectSame(mesh.peers.map(peer => peer.value));
+  });
+
+  it('shows the rows two peers insert at one place at once in one order on both', async () => {
+    const mesh = await open(2);
+    const [first, second] = mesh.peers;
+
+    first.dispatch([
+      insertDictionaryEntriesAction$('word', 2, {
+        id: SEED.memberWord,
+        place: 'after',
+      }),
+    ]);
+    second.dispatch([
+      insertDictionaryEntriesAction$('word', 1, {
+        id: SEED.memberWord,
+        place: 'after',
+      }),
+      sortDictionaryAction$('word', 'name', 'descending', 'en'),
+    ]);
+    await mesh.deliverAll();
+
+    expect(sheetIds(first)).toHaveLength(SEED_WORDS.length + 3);
+    expect(sheetIds(first)).toEqual(sheetIds(second));
+    expectSame(mesh.peers.map(peer => peer.value));
   });
 
   it.each([

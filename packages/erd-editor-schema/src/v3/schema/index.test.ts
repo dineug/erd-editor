@@ -250,6 +250,7 @@ describe('v3/schema/index', () => {
               description: '',
               synonyms: '',
               forbiddenWords: '',
+              order: 'a0',
             },
           },
           termEntities: {},

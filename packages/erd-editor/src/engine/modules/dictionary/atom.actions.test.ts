@@ -57,6 +57,7 @@ describe('dictionary/atom.actions addDictionary', () => {
       description: '',
       synonyms: '',
       forbiddenWords: '',
+      order: '',
     });
     expect(registers('w1')).toEqual([
       'wordEntities',
@@ -168,6 +169,7 @@ describe('dictionary/atom.actions addDictionary', () => {
       category: '',
       dataType: '',
       description: '',
+      order: '',
     });
     expect(registers('d1')[3]).toEqual({ name: 0 });
     expect(store.state.doc.domainIds).toEqual(['d1']);

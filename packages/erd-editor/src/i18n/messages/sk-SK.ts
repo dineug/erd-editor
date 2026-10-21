@@ -466,6 +466,26 @@ export const skSK = {
   'dictionary.deleteRows': 'Odstrániť riadky',
   'dictionary.import': 'Importovať {format}',
   'dictionary.export': 'Exportovať {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Vložiť {count} riadok nad',
+    few: 'Vložiť {count} riadky nad',
+    many: 'Vložiť {count} riadka nad',
+    other: 'Vložiť {count} riadkov nad',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Vložiť {count} riadok pod',
+    few: 'Vložiť {count} riadky pod',
+    many: 'Vložiť {count} riadka pod',
+    other: 'Vložiť {count} riadkov pod',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Odstrániť {count} riadok',
+    few: 'Odstrániť {count} riadky',
+    many: 'Odstrániť {count} riadka',
+    other: 'Odstrániť {count} riadkov',
+  },
+  'dictionary.menu.sortAscending': 'Zoradiť vzostupne: {column}',
+  'dictionary.menu.sortDescending': 'Zoradiť zostupne: {column}',
   'dictionary.rowCount': {
     one: '{count} riadok',
     few: '{count} riadky',

@@ -12,4 +12,9 @@ export type Word = {
   synonyms: string;
   /** Words that must not be used in its place, comma separated. */
   forbiddenWords: string;
+  /**
+   * Where the row stands in its sheet, a key compared in code unit order;
+   * only the runtime value holds it, a file holding its rows in that order.
+   */
+  order: string;
 };

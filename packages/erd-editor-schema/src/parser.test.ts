@@ -685,19 +685,32 @@ describe('the dictionaries and new fields toJson writes', () => {
 
     expect(json.doc.wordIds).toEqual(['w2']);
     expect(json.doc.termIds).toEqual([]);
-    expect(json.collections.wordEntities.rows).toEqual([
-      ['w1', 'removed', 'RMV'],
-      ['w2', '회원', 'MBR'],
+    // The order key follows the name: the listed entries keyed first, in order.
+    expect(json.collections.wordEntities.fields).toEqual([
+      'id',
+      'name',
+      'order',
+      'abbreviation',
+      'englishName',
+      'description',
+      'synonyms',
+      'forbiddenWords',
     ]);
-    expect(json.collections.termEntities.rows).toEqual([['tm1', 'removed']]);
+    expect(json.collections.wordEntities.rows).toEqual([
+      ['w1', 'removed', 'a1', 'RMV'],
+      ['w2', '회원', 'a0', 'MBR'],
+    ]);
+    expect(json.collections.termEntities.rows).toEqual([
+      ['tm1', 'removed', 'a0'],
+    ]);
     expect(json.collections.domainEntities.rows).toEqual([
-      ['d1', '번호N10', '', 'NUMERIC(10)'],
+      ['d1', '번호N10', 'a0', '', 'NUMERIC(10)'],
     ]);
   });
 
   it('writes one row a line', () => {
     expect(toJson(schema())).toContain(
-      '\n      "rows": [\n        ["w1","removed","RMV"],\n        ["w2","회원","MBR"]\n      ]'
+      '\n      "rows": [\n        ["w1","removed","a1","RMV"],\n        ["w2","회원","a0","MBR"]\n      ]'
     );
   });
 
@@ -732,6 +745,7 @@ describe('the dictionaries and new fields toJson writes', () => {
       fields: [
         'id',
         'name',
+        'order',
         'abbreviation',
         'englishName',
         'description',

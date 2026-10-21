@@ -471,6 +471,23 @@ export const roRO = {
   'dictionary.deleteRows': 'Ștergere rânduri',
   'dictionary.import': 'Import {format}',
   'dictionary.export': 'Export {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Inserare {count} rând deasupra',
+    few: 'Inserare {count} rânduri deasupra',
+    other: 'Inserare {count} de rânduri deasupra',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Inserare {count} rând dedesubt',
+    few: 'Inserare {count} rânduri dedesubt',
+    other: 'Inserare {count} de rânduri dedesubt',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Ștergere {count} rând',
+    few: 'Ștergere {count} rânduri',
+    other: 'Ștergere {count} de rânduri',
+  },
+  'dictionary.menu.sortAscending': 'Sortare după {column}, crescător',
+  'dictionary.menu.sortDescending': 'Sortare după {column}, descrescător',
   'dictionary.rowCount': {
     one: '{count} rând',
     few: '{count} rânduri',

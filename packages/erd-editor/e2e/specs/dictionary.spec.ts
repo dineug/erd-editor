@@ -169,7 +169,7 @@ async function doubleClickRow(scroller: Locator, row: number) {
 }
 
 test.describe('the Dictionary tab', () => {
-  test('imports the domains, the words and the terms in that order, each file taken back by one undo', async ({
+  test('imports the domains, the words and the terms in that order, each file taken back by one undo of its own sheet', async ({
     erd,
   }) => {
     await erd.seed(createSchema({ databaseName: 'shop' }));
@@ -201,29 +201,29 @@ test.describe('the Dictionary tab', () => {
     await expect(toast(erd, '0 added · 0 updated · 0 skipped')).toBeVisible();
 
     // The import left the keyboard in the sheet's grid, where the tab runs
-    // undo itself, a whole file at a time, the last file first.
+    // undo itself, on the history of the sheet shown alone.
     await erd.press(Shortcut.undo);
     await expect
       .poll(() => countsOf(erd))
-      .toEqual({ domain: 3, word: 5, term: 0 });
-    await expect(rowCount(erd, 5)).toBeVisible();
-
-    await erd.press(Shortcut.undo);
-    await expect
-      .poll(() => countsOf(erd))
-      .toEqual({ domain: 3, word: 0, term: 0 });
+      .toEqual({ domain: 3, word: 0, term: 4 });
     await expect(rowCount(erd, 0)).toBeVisible();
     await expect(
       tabOf(erd).getByText('Import a CSV file or add a row', { exact: true })
     ).toBeVisible();
+    await expect(erd.toolbarButton('Undo')).not.toHaveClass(/\bactive\b/);
 
-    await erd.press(Shortcut.undo);
-    await expect
-      .poll(() => countsOf(erd))
-      .toEqual({ domain: 0, word: 0, term: 0 });
+    // Each other sheet keeps its own file, which the toolbar's Undo takes back.
+    for (const [sheet, counts] of [
+      ['Terms', { domain: 3, word: 0, term: 0 }],
+      ['Domains', { domain: 0, word: 0, term: 0 }],
+    ] as const) {
+      await tabButton(erd, sheet).click();
+      await expect(shownSheet(erd)).toHaveText(sheet);
+      await erd.undo();
+      await expect.poll(() => countsOf(erd)).toEqual(counts);
+    }
 
-    // Three files, three entries: the ERD tab, where the toolbar shows undo,
-    // has none left.
+    // The ERD tab, whose history holds no dictionary edit, has none to undo.
     await erd.toolbarButton('Entity Relationship Diagram').click();
     await expect(erd.toolbarButton('Undo')).toBeVisible();
     await expect(erd.toolbarButton('Undo')).not.toHaveClass(/\bactive\b/);

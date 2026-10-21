@@ -5,6 +5,7 @@ import {
   DictionaryFields,
   DictionaryKind,
   DictionaryKindList,
+  DictionaryStoredFields,
 } from '@/engine/modules/dictionary/actions';
 import {
   actions,
@@ -45,9 +46,13 @@ describe('dictionary/actions', () => {
       const { id, ...values } = rows[kind];
 
       expect(id).toBeTruthy();
-      expect([...DictionaryFields[kind]].sort()).toEqual(
+      expect([...DictionaryStoredFields[kind]].sort()).toEqual(
         Object.keys(values).sort()
       );
+      expect(DictionaryStoredFields[kind]).toEqual([
+        ...DictionaryFields[kind],
+        'order',
+      ]);
       expect(Object.values(values).every(value => value === '')).toBe(true);
     }
   });

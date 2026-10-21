@@ -13,6 +13,7 @@ export const createWord = (value?: DeepPartial<Word>): Word =>
       description: '',
       synonyms: '',
       forbiddenWords: '',
+      order: '',
     },
     value ?? {}
   );

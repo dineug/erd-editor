@@ -14,9 +14,9 @@ import { textInRange } from '@/utils/validation';
 import {
   ActionMap,
   ActionType,
-  DictionaryFields,
   DictionaryKind,
   DictionaryKindList,
+  DictionaryStoredFields,
   ReducerType,
 } from './actions';
 import { raiseDictionaryGeneration } from './dictionaryIndex';
@@ -56,7 +56,10 @@ export const selectDictionaryRow = (
 ): Word | Term | Domain | undefined =>
   dictionaryCollection(state, kind).selectById(id);
 
-/** The ids of a dictionary's listed rows, in their order. */
+/**
+ * The ids of a dictionary's listed rows, in the order they were listed, which
+ * membership reads; a sheet shows them in key order (orderedDictionaryIds).
+ */
 export const dictionaryIds = (
   state: RootState,
   kind: DictionaryKind
@@ -73,7 +76,7 @@ export function dictionaryEntries(
   if (!values || typeof values !== 'object') return [];
 
   const entries: Array<[string, string]> = [];
-  for (const field of DictionaryFields[kind]) {
+  for (const field of DictionaryStoredFields[kind]) {
     const value = Reflect.get(values, field);
     if (isString(value)) entries.push([field, value]);
   }

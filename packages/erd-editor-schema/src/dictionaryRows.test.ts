@@ -4,6 +4,7 @@ import {
   DictionaryFields,
   DictionaryKeyList,
   fromDictionaryRows,
+  RuntimeDictionaryFields,
   stringifyDocument,
   toDictionaryRows,
 } from '@/dictionaryRows';
@@ -12,12 +13,29 @@ import { createTerm } from '@/v3/parser/term.entity';
 import { createWord } from '@/v3/parser/word.entity';
 
 describe('DictionaryFields', () => {
-  it('names every field of each entity, id first, in the order it declares them', () => {
+  it('names every field of each entity, id first, in the order it declares them, a file all but the order key', () => {
+    const fieldsOf = (entity: object) => Object.keys(entity);
+    const fileFieldsOf = (entity: object) =>
+      fieldsOf(entity).filter(field => field !== 'order');
+
     expect(DictionaryFields).toEqual({
-      wordEntities: Object.keys(createWord()),
-      termEntities: Object.keys(createTerm()),
-      domainEntities: Object.keys(createDomain()),
+      wordEntities: fileFieldsOf(createWord()),
+      termEntities: fileFieldsOf(createTerm()),
+      domainEntities: fileFieldsOf(createDomain()),
     });
+    const withOrderKey = (fields: ReadonlyArray<string>) => [
+      ...fields.slice(0, 2),
+      'order',
+      ...fields.slice(2),
+    ];
+    expect(RuntimeDictionaryFields).toEqual({
+      wordEntities: withOrderKey(DictionaryFields.wordEntities),
+      termEntities: withOrderKey(DictionaryFields.termEntities),
+      domainEntities: withOrderKey(DictionaryFields.domainEntities),
+    });
+    expect([...RuntimeDictionaryFields.wordEntities].sort()).toEqual(
+      fieldsOf(createWord()).sort()
+    );
     expect(DictionaryKeyList).toEqual([
       'wordEntities',
       'termEntities',

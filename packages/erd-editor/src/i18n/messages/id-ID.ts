@@ -451,6 +451,17 @@ export const idID = {
   'dictionary.deleteRows': 'Hapus baris yang dipilih',
   'dictionary.import': 'Impor {format}',
   'dictionary.export': 'Ekspor {format}',
+  'dictionary.menu.insertAbove': {
+    other: 'Sisipkan {count} baris di atas',
+  },
+  'dictionary.menu.insertBelow': {
+    other: 'Sisipkan {count} baris di bawah',
+  },
+  'dictionary.menu.deleteRows': {
+    other: 'Hapus {count} baris',
+  },
+  'dictionary.menu.sortAscending': 'Urutkan menurut {column}, naik',
+  'dictionary.menu.sortDescending': 'Urutkan menurut {column}, turun',
   'dictionary.rowCount': {
     other: '{count} baris',
   },

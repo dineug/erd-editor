@@ -12,6 +12,7 @@ describe('createDomain', () => {
       category: '',
       dataType: '',
       description: '',
+      order: '',
     });
     expect(domain.id.length).toBeGreaterThan(0);
   });

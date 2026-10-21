@@ -451,6 +451,20 @@ export const faIR = {
   'dictionary.deleteRows': 'حذف ردیف‌ها',
   'dictionary.import': 'وارد کردن {format}',
   'dictionary.export': 'صادر کردن {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'درج {count} ردیف در بالا',
+    other: 'درج {count} ردیف در بالا',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'درج {count} ردیف در پایین',
+    other: 'درج {count} ردیف در پایین',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'حذف {count} ردیف',
+    other: 'حذف {count} ردیف',
+  },
+  'dictionary.menu.sortAscending': 'مرتب‌سازی صعودی بر اساس {column}',
+  'dictionary.menu.sortDescending': 'مرتب‌سازی نزولی بر اساس {column}',
   'dictionary.rowCount': {
     one: '{count} ردیف',
     other: '{count} ردیف',

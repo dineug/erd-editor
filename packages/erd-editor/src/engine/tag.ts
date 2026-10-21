@@ -13,6 +13,11 @@ export const Tag = {
   following: 4,
   /** A step a pointer drag streams, where an undo of the same move is one jump. */
   drag: 8,
+  /**
+   * A batch the Dictionary tab sends, whose undo goes into the history of the
+   * sheet its dictionary rows are on rather than the document's.
+   */
+  dictionarySheet: 16,
 } as const;
 
 export function attachActionTag(tag: number, action: AnyAction): AnyAction {
@@ -41,3 +46,12 @@ const createAttachActionsTag =
     };
 
 export const attachChangeOnlyTag$ = createAttachActionsTag(Tag.changeOnly);
+export const attachDictionarySheetTag$ = createAttachActionsTag(
+  Tag.dictionarySheet
+);
+
+/** Whether a batch carries a tag on any of its actions. */
+export const hasActionTag = (actions: ReadonlyArray<AnyAction>, tag: number) =>
+  actions.some(
+    ({ tags }) => isNumber(tags) && Number.isInteger(tags) && (tags & tag) !== 0
+  );

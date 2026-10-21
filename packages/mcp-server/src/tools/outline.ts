@@ -3,7 +3,7 @@ import {
   measureTableSize,
   type RootState,
 } from '@dineug/erd-editor/peer.js';
-import { query } from '@dineug/erd-editor-schema';
+import { compareByOrder, query } from '@dineug/erd-editor-schema';
 import { omit } from 'es-toolkit';
 
 import { MAX_READ_CHARS } from '@/tools/budget';
@@ -474,11 +474,19 @@ export function toDocumentList(
   const relationships = liveRelationships(state);
   const indexes = liveIndexes(state);
   const members = toTableGroupMembers(state);
-  const words = select.collection('wordEntities').selectByIds(doc.wordIds);
-  const terms = select.collection('termEntities').selectByIds(doc.termIds);
+  // The dictionaries list in the order their sheets show them.
+  const words = select
+    .collection('wordEntities')
+    .selectByIds(doc.wordIds)
+    .sort(compareByOrder);
+  const terms = select
+    .collection('termEntities')
+    .selectByIds(doc.termIds)
+    .sort(compareByOrder);
   const domains = select
     .collection('domainEntities')
-    .selectByIds(doc.domainIds);
+    .selectByIds(doc.domainIds)
+    .sort(compareByOrder);
   const section = <R>(noun: string, rows: () => R[]): Section<R> => ({
     noun,
     rows: searched ? [] : rows(),

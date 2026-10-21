@@ -33,6 +33,7 @@ import {
 } from '@/engine/modules/dictionary/membership';
 import type { RxStore } from '@/engine/rx-store';
 import type { RootState } from '@/engine/state';
+import { attachDictionarySheetTag$ } from '@/engine/tag';
 import { sourceI18n } from '@/i18n/source';
 import { type I18n, isolate, type PlainMessageKey } from '@/i18n/translate';
 
@@ -367,7 +368,9 @@ export function commitDictionaryCells(
     return false;
   }
 
-  store.dispatch(commitDictionaryCellsAction$(kind, changes));
+  store.dispatch(
+    attachDictionarySheetTag$(commitDictionaryCellsAction$(kind, changes))
+  );
   return true;
 }
 
@@ -406,6 +409,8 @@ export function removeSelectedRows(
   const ids = selectedRowIds(rows, selection);
   if (!ids.length) return false;
 
-  store.dispatch(removeDictionaryEntriesAction$(kind, ids));
+  store.dispatch(
+    attachDictionarySheetTag$(removeDictionaryEntriesAction$(kind, ids))
+  );
   return true;
 }

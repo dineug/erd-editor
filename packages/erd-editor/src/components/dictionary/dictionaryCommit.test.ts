@@ -316,7 +316,8 @@ describe('commitDictionaryCells', () => {
     const unsubscribe = store.subscribe(actions => {
       if (bumpedSheets(actions).length) batches.push(actions);
     });
-    const history = store.history.size;
+    const history = store.sheetHistories.word.size;
+    const documentHistory = store.history.size;
 
     expect(
       commit(
@@ -337,9 +338,11 @@ describe('commitDictionaryCells', () => {
     const added = store.state.doc.wordIds[2];
     expect(store.state.collections.wordEntities[added].abbreviation).toBe('CC');
     expect(batches).toHaveLength(1);
-    expect(store.history.size).toBe(history + 1);
+    expect(store.sheetHistories.word.size).toBe(history + 1);
+    // The tab's edit is the sheet's to undo, never the document's.
+    expect(store.history.size).toBe(documentHistory);
 
-    store.undo();
+    store.undoSheet('word');
     expect(wordNames(sheet)).toEqual(['A', 'B']);
   });
 
@@ -675,7 +678,8 @@ describe('removeSelectedRows', () => {
     const unsubscribe = store.subscribe(actions => {
       if (bumpedSheets(actions).length) batches.push(actions);
     });
-    const history = store.history.size;
+    const history = store.sheetHistories.word.size;
+    const documentHistory = store.history.size;
 
     expect(
       removeSelectedRows(
@@ -696,9 +700,11 @@ describe('removeSelectedRows', () => {
       'd',
       'b',
     ]);
-    expect(store.history.size).toBe(history + 1);
+    expect(store.sheetHistories.word.size).toBe(history + 1);
+    // The tab's edit is the sheet's to undo, never the document's.
+    expect(store.history.size).toBe(documentHistory);
 
-    store.undo();
+    store.undoSheet('word');
     expect([...wordNames(sheet)].sort()).toEqual(['A', 'B', 'C', 'D', 'E']);
     expect(store.state.collections.wordEntities.e.abbreviation).toBe('EE');
   });

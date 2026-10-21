@@ -476,6 +476,23 @@ export const frFR = {
   'dictionary.deleteRows': 'Supprimer les lignes',
   'dictionary.import': 'Importer un fichier {format}',
   'dictionary.export': 'Exporter au format {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Insérer {count} ligne au-dessus',
+    many: 'Insérer {count} lignes au-dessus',
+    other: 'Insérer {count} lignes au-dessus',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Insérer {count} ligne en dessous',
+    many: 'Insérer {count} lignes en dessous',
+    other: 'Insérer {count} lignes en dessous',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Supprimer {count} ligne',
+    many: 'Supprimer {count} lignes',
+    other: 'Supprimer {count} lignes',
+  },
+  'dictionary.menu.sortAscending': 'Trier par {column}, ordre croissant',
+  'dictionary.menu.sortDescending': 'Trier par {column}, ordre décroissant',
   'dictionary.rowCount': {
     one: '{count} ligne',
     many: '{count} lignes',

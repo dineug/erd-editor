@@ -304,8 +304,43 @@ describe('the dictionaries a parse reads', () => {
         description: '',
         synonyms: '',
         forbiddenWords: '',
+        order: 'a0',
       },
     });
+  });
+
+  it("keys a file's rows in their order, and keeps the keys a runtime value holds", () => {
+    const file = parser({
+      collections: {
+        wordEntities: {
+          fields: WORD_FIELDS,
+          rows: [
+            ['w2', 'B'],
+            ['w1', 'A'],
+          ],
+        },
+      },
+    });
+    expect(file.collections.wordEntities.w2.order).toBe('a0');
+    expect(file.collections.wordEntities.w1.order).toBe('a1');
+
+    const runtime = parser({
+      doc: { wordIds: ['w1', 'w2', 'w3'] },
+      collections: {
+        wordEntities: {
+          fields: ['id', 'name', 'order'],
+          rows: [
+            ['w1', 'A', 'a0V'],
+            ['w2', 'B', 'a00'],
+            ['w3', 'C', 'Zz'],
+          ],
+        },
+      },
+    });
+    const { w1, w2, w3 } = runtime.collections.wordEntities;
+    expect([w1.order, w3.order]).toEqual(['a0V', 'Zz']);
+    // A key nothing can be placed by is keyed after the greatest held.
+    expect(w2.order).toBe('a1');
   });
 
   it('takes the order of the rows where the doc names none, each id once', () => {

@@ -1,6 +1,6 @@
 /**
- * The Dictionary tab's own text: its four sheets and their column headers, the
- * bar above them, its status line, the six kinds of check and its toasts. The
+ * The Dictionary tab's own text: its sheets and their column headers, the bar,
+ * the grid's menu, the status line, the six kinds of check and the toasts. The
  * file format a button or the empty sheet names enters as a placeholder.
  */
 export const dictionary = {
@@ -12,6 +12,20 @@ export const dictionary = {
   'dictionary.deleteRows': 'Delete Rows',
   'dictionary.import': 'Import {format}',
   'dictionary.export': 'Export {format}',
+  'dictionary.menu.insertAbove': {
+    one: 'Insert {count} row above',
+    other: 'Insert {count} rows above',
+  },
+  'dictionary.menu.insertBelow': {
+    one: 'Insert {count} row below',
+    other: 'Insert {count} rows below',
+  },
+  'dictionary.menu.deleteRows': {
+    one: 'Delete {count} row',
+    other: 'Delete {count} rows',
+  },
+  'dictionary.menu.sortAscending': 'Sort by {column}, ascending',
+  'dictionary.menu.sortDescending': 'Sort by {column}, descending',
   'dictionary.rowCount': {
     one: '{count} row',
     other: '{count} rows',
