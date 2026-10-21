@@ -46,6 +46,7 @@ import {
 import {
   handleDictionaryKeydown,
   keepClipboard,
+  rowChordOf,
 } from '@/components/dictionary/dictionaryKeys';
 import {
   changeSearch,
@@ -94,7 +95,7 @@ import { useUnmounted } from '@/hooks/useUnmounted';
 import type { I18n } from '@/i18n/translate';
 import type { Theme } from '@/themes/tokens';
 import { forceFocusEvent } from '@/utils/internalEvents';
-import { isComposing } from '@/utils/keyboard-shortcut';
+import { isComposing, KeyBindingName } from '@/utils/keyboard-shortcut';
 
 import * as styles from './Dictionary.styles';
 
@@ -697,6 +698,12 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
       },
       inGrid: event.composedPath().includes(sheetRef.value as EventTarget),
       isEditing: () => session.handle.isEditing(),
+      insertRows: () => {
+        if (!props.readonly) handleMenuInsertBelow();
+      },
+      deleteRows: () => {
+        if (!props.readonly) handleMenuDeleteRows();
+      },
     });
   };
 
@@ -885,6 +892,14 @@ const Dictionary: FC<DictionaryProps> = (props, ctx) => {
           <DictionaryContextMenu
             count={menuRowCount()}
             column={menuColumn?.label ?? ''}
+            insertShortcut={rowChordOf(
+              app.value.keyBindingMap,
+              KeyBindingName.addColumn
+            )}
+            deleteShortcut={rowChordOf(
+              app.value.keyBindingMap,
+              KeyBindingName.removeColumn
+            )}
             onInsertAbove={handleMenuInsertAbove}
             onInsertBelow={handleMenuInsertBelow}
             onDeleteRows={handleMenuDeleteRows}

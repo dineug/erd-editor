@@ -302,12 +302,15 @@ its group, and the box grows round it once shown; and the Schema SQL tab's
 Tables leaves out the tables of an unchecked group, writes nothing under its
 hint with no box checked, and All checks every box again.
 
-`dictionary.spec.ts` holds down the Dictionary tab's files and its check
-sheet: three CSV files handed to the dialog Import CSV opens, the domains, the
-words and the terms in that order, each shown on its own sheet with its row
-count and its toast, a term's domain the id of the domain its file named, the
-same file again leaving nothing to undo, and one undo by key taking back one
-whole file, the last first, three entries in all; Export CSV saving each sheet
+`dictionary.spec.ts` holds down the Dictionary tab's files, its row keys and
+its check sheet: three CSV files handed to the dialog Import CSV opens, the
+domains, the words and the terms in that order, each shown on its own sheet
+with its row count and its toast, a term's domain the id of the domain its file
+named, the same file again leaving nothing to undo, and one undo taking back
+one whole file from its own sheet's history, by key on the sheet shown and by
+the toolbar's Undo on the other two, leaving the ERD tab nothing to undo;
+Alt+Enter inserting as many rows below the selection as it covers and
+Alt+Delete deleting those rows, no word of the file; Export CSV saving each sheet
 whole whatever its search shows, as `shop-<time>-words.csv` and the like, in
 the bytes its file came in: the byte order mark, the header and CRLF; and a
 double click on a column's check landing on that column's name on the ERD tab,

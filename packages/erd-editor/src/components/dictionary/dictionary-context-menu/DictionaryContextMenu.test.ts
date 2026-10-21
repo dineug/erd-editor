@@ -44,6 +44,10 @@ const rows = () =>
     )
   ) as HTMLElement[];
 
+/** The chord each row shows beside its name, empty for none. */
+const chords = () =>
+  rows().map(row => row.querySelector('.kbd')?.textContent?.trim() ?? '');
+
 const handlers = () => ({
   column: 'Word',
   onInsertAbove: vi.fn(),
@@ -71,6 +75,17 @@ describe('DictionaryContextMenu', () => {
     expect(
       (mounted as Mounted).container.querySelectorAll('[role="separator"]')
     ).toHaveLength(2);
+  });
+
+  it('shows the chords that insert below and delete in the grid beside their rows', async () => {
+    await open({
+      count: 2,
+      ...handlers(),
+      insertShortcut: 'Alt+Enter',
+      deleteShortcut: 'Alt+Backspace',
+    });
+
+    expect(chords()).toEqual(['', 'Alt + Enter', 'Alt + ⌫', '', '', '', '']);
   });
 
   it('runs the handler of the row pressed', async () => {

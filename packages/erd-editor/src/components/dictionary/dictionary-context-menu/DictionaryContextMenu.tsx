@@ -4,12 +4,17 @@ import { DICTIONARY_FILE_FORMAT } from '@/components/dictionary/dictionaryFile';
 import { useI18n } from '@/components/localeContext';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
 import Icon from '@/components/primitives/icon/Icon';
+import Kbd from '@/components/primitives/kbd/Kbd';
 
 export type DictionaryContextMenuProps = {
   /** The rows the selection covers, which Insert adds beside it and Delete removes. */
   count: number;
   /** The header of the column right clicked, which the sorts order the sheet by. */
   column: string;
+  /** The chord that inserts below in the grid, shown beside its row. */
+  insertShortcut?: string;
+  /** The chord that deletes in the grid, shown beside its row. */
+  deleteShortcut?: string;
   onInsertAbove: () => void;
   onInsertBelow: () => void;
   onDeleteRows: () => void;
@@ -51,6 +56,7 @@ const DictionaryContextMenu: FC<DictionaryContextMenuProps> = (props, ctx) => {
                 <ContextMenu.Menu
                   icon={<Icon name="arrow-down" size={14} />}
                   name={t('dictionary.menu.insertBelow', { count })}
+                  right={<Kbd shortcut={props.insertShortcut} />}
                 />
               }
             />
@@ -59,6 +65,7 @@ const DictionaryContextMenu: FC<DictionaryContextMenuProps> = (props, ctx) => {
               children={
                 <ContextMenu.Menu
                   name={t('dictionary.menu.deleteRows', { count })}
+                  right={<Kbd shortcut={props.deleteShortcut} />}
                 />
               }
             />

@@ -508,16 +508,26 @@ async function rightClick({ shadow }: Fixture, row: number) {
 const menu = ({ shadow }: Fixture) =>
   shadow.querySelector<HTMLElement>('.context-menu-content');
 
-/** The rows of the open menu, by the text each shows. */
+/** A menu row's name, without the chord shown beside it. */
+const rowName = (row: Element) =>
+  (row.textContent ?? '')
+    .replace(row.querySelector('.kbd')?.textContent ?? '', '')
+    .trim();
+
+/** The rows of the open menu, by the name each shows. */
 const menuRows = (fixture: Fixture) =>
   Array.from(menu(fixture)?.querySelectorAll('[data-id]') ?? [])
     .filter(row => row !== menu(fixture))
-    .map(row => row.textContent?.trim());
+    .map(rowName);
 
 const menuRow = (fixture: Fixture, name: string) =>
   Array.from(menu(fixture)?.querySelectorAll('[data-id]') ?? []).find(
-    row => row !== menu(fixture) && row.textContent?.trim() === name
+    row => row !== menu(fixture) && rowName(row) === name
   ) ?? null;
+
+/** The chord a menu row shows beside its name, if any. */
+const menuChord = (fixture: Fixture, name: string) =>
+  menuRow(fixture, name)?.querySelector('.kbd')?.textContent?.trim() ?? '';
 
 /** A paste on the grid's textarea, as the browser fires one for Cmd or Ctrl with V. */
 async function paste(fixture: Fixture, text: string) {
@@ -798,6 +808,64 @@ describe('the Dictionary tab', () => {
       active: { row: 3, col: 0 },
       ranges: [{ startRow: 3, startCol: 0, endRow: 4, endCol: 0 }],
     });
+  });
+
+  it("inserts as many rows below the selection as it covers on the add column chord, and deletes the rows it covers on the remove column chord's", async () => {
+    const fixture = await setup();
+    fixture.shortcuts.length = 0;
+
+    await press('{ArrowDown}{Shift>}{ArrowDown}{/Shift}');
+    await rightClick(fixture, 1);
+    expect(menuChord(fixture, 'Insert 2 rows below')).toMatch(/Enter$/);
+    expect(menuChord(fixture, 'Delete 2 rows')).toMatch(/⌫$/);
+    expect(menuChord(fixture, 'Insert 2 rows above')).toBe('');
+
+    await press('{Alt>}{Enter}{/Alt}');
+    expect(menu(fixture)).toBeNull();
+    expect(names(fixture)).toEqual(['A', 'B', 'C', '', '', 'D']);
+    expect(dictionaryBatches(fixture)).toHaveLength(1);
+    expect(dictionaryViewOf(fixture.app).sheets.word.selection).toEqual({
+      active: { row: 3, col: 0 },
+      ranges: [{ startRow: 3, startCol: 0, endRow: 4, endCol: 0 }],
+    });
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+
+    await press('{Alt>}{Delete}{/Alt}');
+    expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+
+    await press('{Alt>}{Backspace}{/Alt}');
+    expect(names(fixture)).toEqual(['A', 'B', 'C']);
+    expect(dictionaryBatches(fixture)).toHaveLength(3);
+    expect(fixture.shortcuts).toEqual([]);
+  });
+
+  it('leaves the row chords to an open edit, and sends nothing for them in a read-only document or on the check sheet', async () => {
+    const fixture = await setup();
+    fixture.shortcuts.length = 0;
+
+    await press('X{Alt>}{Enter}{/Alt}{Alt>}{Backspace}{/Alt}{Escape}');
+    expect(names(fixture)).toEqual(['A', 'B', 'C', 'D']);
+
+    // An insert clears the search first, so a search kept shows none ran.
+    host.readonly = true;
+    await drawn();
+    await userEvent.click(search(fixture));
+    await press('B');
+    textarea(fixture).focus();
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+    await press('{Alt>}{Enter}{/Alt}{Alt>}{Delete}{/Alt}');
+    expect(search(fixture).value).toBe('B');
+
+    host.readonly = false;
+    await drawn();
+    await click(sheetButtons(fixture)[3]);
+    textarea(fixture).focus();
+    expect(fixture.shadow.activeElement).toBe(textarea(fixture));
+    await press('{Alt>}{Enter}{/Alt}{Alt>}{Delete}{/Alt}');
+
+    expect(fixture.app.store.state.doc.wordIds).toHaveLength(4);
+    expect(dictionaryBatches(fixture)).toHaveLength(0);
+    expect(fixture.shortcuts).toEqual([]);
   });
 
   it('moves the selection to a cell right clicked outside it, and deletes that one row from the menu', async () => {

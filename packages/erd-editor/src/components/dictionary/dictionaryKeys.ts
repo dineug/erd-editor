@@ -4,6 +4,7 @@ import {
   KeyBindingName,
   matchesShortcut,
   type ShortcutOption,
+  shortcutToTuple,
   stopsAtPanel,
 } from '@/utils/keyboard-shortcut';
 import { isEditableTarget } from '@/utils/validation';
@@ -30,14 +31,56 @@ const KEPT_BY_AN_EDIT: ReadonlyArray<KeyBindingName> = [
   KeyBindingName.findReplace,
 ];
 
-/** The option of a chord an open edit keeps that a press matches, if any. */
-const keptChord = (
+/**
+ * The column chords a sheet reads as its rows' own, Insert below and Delete,
+ * as the ERD tab adds and removes a table's columns by them.
+ */
+const ROW_CHORDS: ReadonlyArray<KeyBindingName> = [
+  KeyBindingName.addColumn,
+  KeyBindingName.removeColumn,
+];
+
+/**
+ * The options of a column chord the grid runs: those of one press, since a key
+ * matches a sequence by its last press alone, and the grid keeps no sequence.
+ */
+const rowOptions = (
+  keyBindingMap: KeyBindingMap,
+  name: KeyBindingName
+): ShortcutOption[] =>
+  keyBindingMap[name].filter(
+    ({ shortcut }) => shortcutToTuple(shortcut).length === 1
+  );
+
+/** The chord a menu row shows for a column chord the grid runs, if one is bound. */
+export const rowChordOf = (
+  keyBindingMap: KeyBindingMap,
+  name: KeyBindingName
+): string | undefined => rowOptions(keyBindingMap, name)[0]?.shortcut;
+
+/** The column chord a press runs in the grid, with the option it matched. */
+function rowChord(
   event: KeyboardEvent,
   keyBindingMap: KeyBindingMap
+): { name: KeyBindingName; option: ShortcutOption } | undefined {
+  for (const name of ROW_CHORDS) {
+    const option = rowOptions(keyBindingMap, name).find(option =>
+      matchesShortcut(event, [option])
+    );
+    if (option) return { name, option };
+  }
+  return undefined;
+}
+
+/** The option of one of the bindings named that a press matches, if any. */
+const chordOf = (
+  event: KeyboardEvent,
+  keyBindingMap: KeyBindingMap,
+  names: ReadonlyArray<KeyBindingName>
 ): ShortcutOption | undefined =>
-  KEPT_BY_AN_EDIT.flatMap(name => keyBindingMap[name]).find(option =>
-    matchesShortcut(event, [option])
-  );
+  names
+    .flatMap(name => keyBindingMap[name])
+    .find(option => matchesShortcut(event, [option]));
 
 export type DictionaryKeyContext = {
   keyBindingMap: KeyBindingMap;
@@ -48,12 +91,16 @@ export type DictionaryKeyContext = {
   inGrid: boolean;
   /** Whether the grid holds an open edit, whose own undo takes the press and which keeps the palette and find. */
   isEditing: () => boolean;
+  /** Inserts as many rows below the selection as it covers. */
+  insertRows: () => void;
+  /** Deletes the rows the selection covers. */
+  deleteRows: () => void;
 };
 
 /**
- * Reads a press at the tab's root: undo and redo undo the sheet shown, unless
- * an open edit or a field takes them, an open edit keeps the palette and find,
- * and any other stopsAtPanel names stops.
+ * Reads a press at the tab's root: undo and redo undo the sheet shown unless an
+ * edit or a field takes them, the column chords insert and delete rows in a grid
+ * with no edit open, which keeps find and the palette, and the rest stops.
  */
 export function handleDictionaryKeydown(
   event: KeyboardEvent,
@@ -63,6 +110,8 @@ export function handleDictionaryKeydown(
     redo: redoSheet,
     inGrid,
     isEditing,
+    insertRows,
+    deleteRows,
   }: DictionaryKeyContext
 ) {
   if (!isComposing(event)) {
@@ -81,8 +130,20 @@ export function handleDictionaryKeydown(
       return;
     }
 
+    // An open edit keeps them as text keys: Alt+Backspace deletes a word.
+    const row =
+      inGrid && !isEditing() ? rowChord(event, keyBindingMap) : undefined;
+    if (row) {
+      if (row.option.preventDefault) event.preventDefault();
+      event.stopPropagation();
+      row.name === KeyBindingName.addColumn ? insertRows() : deleteRows();
+      return;
+    }
+
     // Prevented as the root would prevent it, so no host's own find opens.
-    const kept = inGrid ? keptChord(event, keyBindingMap) : undefined;
+    const kept = inGrid
+      ? chordOf(event, keyBindingMap, KEPT_BY_AN_EDIT)
+      : undefined;
     if (kept && isEditing()) {
       if (kept.preventDefault) event.preventDefault();
       event.stopPropagation();

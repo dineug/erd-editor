@@ -8,8 +8,8 @@ import { createSchema, type ErdDocument } from '../support/schema';
 import { Shortcut } from '../support/shortcuts';
 
 // The Dictionary tab in the real element: three CSV files picked in the file
-// dialog its Import CSV opens, one undo per file, the files Export CSV saves,
-// and a double click on a check that goes to its column on the ERD tab.
+// dialog its Import CSV opens, one undo per file on its own sheet, the column
+// chords on rows, the files Export CSV saves, and a check's double click.
 
 type Sheet = 'word' | 'term' | 'domain';
 
@@ -227,6 +227,33 @@ test.describe('the Dictionary tab', () => {
     await erd.toolbarButton('Entity Relationship Diagram').click();
     await expect(erd.toolbarButton('Undo')).toBeVisible();
     await expect(erd.toolbarButton('Undo')).not.toHaveClass(/\bactive\b/);
+  });
+
+  test('inserts as many rows below the selection as it covers on Alt+Enter and deletes them on Alt+Delete, as the column chords do on the ERD tab', async ({
+    erd,
+  }) => {
+    await erd.seed(createSchema({ databaseName: 'shop' }));
+    await openTab(erd);
+    await importCsv(erd, WORDS);
+    await expect(rowCount(erd, WORDS.rows)).toBeVisible();
+
+    await tabOf(erd)
+      .locator('.dineug-grid-scroller')
+      .click({ position: { x: 100, y: ROW_HEIGHT + ROW_HEIGHT / 2 } });
+    await erd.page.keyboard.press('Shift+ArrowDown');
+    await erd.page.keyboard.press('Alt+Enter');
+    await expect(rowCount(erd, WORDS.rows + 2)).toBeVisible();
+    await expect(
+      tabOf(erd).getByText('2 selected', { exact: true })
+    ).toBeVisible();
+
+    // Delete takes the two new rows the insert left selected, no word of the file.
+    const imported = (await listedRows(erd, 'word')).map(({ name }) => name);
+    await erd.page.keyboard.press('Alt+Delete');
+    await expect(rowCount(erd, WORDS.rows)).toBeVisible();
+    expect((await listedRows(erd, 'word')).map(({ name }) => name)).toEqual(
+      imported.filter(name => name !== '')
+    );
   });
 
   test('saves each sheet whole as the bytes its file came in: a byte order mark, the header and CRLF', async ({
