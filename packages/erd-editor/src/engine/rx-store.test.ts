@@ -72,6 +72,7 @@ import {
   changeTableGroupAction,
   changeTableNameAction,
   moveTableAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import {
   pasteTableAction$,
@@ -83,10 +84,19 @@ import {
   changeColumnDomainAction,
   changeColumnNameAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { changeColumnDataTypeAction$ } from '@/engine/modules/table-column/generator.actions';
+import {
+  changeColumnDataTypeAction$,
+  removeColumnAction$,
+} from '@/engine/modules/table-column/generator.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createRxStore, HISTORY_LIMIT, RxStore } from '@/engine/rx-store';
-import { attachActionTag, attachDictionarySheetTag$, Tag } from '@/engine/tag';
+import {
+  attachActionsTag,
+  attachActionTag,
+  attachDictionarySheetTag$,
+  hasActionTag,
+  Tag,
+} from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 
@@ -565,6 +575,74 @@ describe('createRxStore', () => {
       expect(column()).toMatchObject({ domainId: '', dataType: 'INT' });
     });
 
+    describe('a removed domain a sheet replay types', () => {
+      /** Domain D, typed INT on its sheet from TEXT, then c1 linked to it at INT. */
+      function seed(store: RxStore) {
+        store.dispatchSync(
+          addTable('t1'),
+          addColumnAction({ id: 'c1', tableId: 't1' }),
+          changeColumnDataTypeAction({
+            tableId: 't1',
+            id: 'c1',
+            value: 'VARCHAR',
+          }),
+          addDictionaryAction({
+            kind: 'domain',
+            id: 'D',
+            values: { name: 'D', dataType: 'TEXT' },
+          })
+        );
+        store.dispatchSync(
+          attachDictionarySheetTag$(
+            updateDictionaryEntryAction$('domain', 'D', { dataType: 'INT' })
+          )
+        );
+        store.dispatchSync(setColumnDomainAction$('t1', 'c1', 'D'));
+      }
+      const removeD = () => removeDictionaryEntriesAction$('domain', ['D']);
+      const domainOf = (store: RxStore) => ({
+        listed: isListed(store.state.doc.domainIds, 'D'),
+        dataType: store.state.collections.domainEntities.D.dataType,
+      });
+      const c1 = (store: RxStore) =>
+        store.state.collections.tableColumnEntities.c1;
+
+      it('unlinks a column it leaves off that type, so listing the domain again keeps every link at its type', () => {
+        const store = make(createContext());
+        seed(store);
+        store.dispatchSync(removeD());
+
+        store.undoSheet('domain');
+        expect(c1(store)).toMatchObject({ domainId: '', dataType: 'INT' });
+
+        store.undo();
+        expect(domainOf(store)).toEqual({ listed: true, dataType: 'TEXT' });
+        expect(c1(store)).toMatchObject({ domainId: '', dataType: 'INT' });
+
+        store.redoSheet('domain');
+        expect(c1(store)).toMatchObject({ domainId: 'D', dataType: 'INT' });
+      });
+
+      it('unlinks it on both of two peers when the other one lists the domain again from its own sheet', () => {
+        const [a, b] = [make(createContext()), make(createContext())];
+        const forward = (to: RxStore) => (actions: AnyAction[]) => {
+          if (hasActionTag(actions, Tag.shared)) return;
+          to.dispatchSync(attachActionsTag(Tag.shared, actions));
+        };
+        a.subscribe(forward(b));
+        b.subscribe(forward(a));
+        seed(a);
+        b.dispatchSync(attachDictionarySheetTag$(removeD()));
+
+        a.undoSheet('domain');
+        b.undoSheet('domain');
+        for (const store of [a, b]) {
+          expect(domainOf(store)).toEqual({ listed: true, dataType: 'TEXT' });
+          expect(c1(store)).toMatchObject({ domainId: '', dataType: 'INT' });
+        }
+      });
+    });
+
     describe("a domain's type undone from its sheet", () => {
       const domain = (id: string, dataType: string) =>
         addDictionaryAction({
@@ -855,6 +933,13 @@ describe('createRxStore', () => {
         const column = () => store.state.collections.tableColumnEntities.c1;
         return { store, toBigint, column };
       }
+      const batchesOf = (store: RxStore, replay: () => void) => {
+        let batches = 0;
+        const unsubscribe = store.subscribe(() => batches++);
+        replay();
+        unsubscribe();
+        return batches;
+      };
 
       it.each(['TEXT', 'BIGINT'])(
         'gives the column an undone %s type takes off the domain the type the domain holds now',
@@ -908,6 +993,54 @@ describe('createRxStore', () => {
         store.undo();
         expect(store.state.doc.tableIds).toEqual(['t1']);
         expect(column()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it('gives a column brought back on its own the type its domain holds now', () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(removeColumnAction$('t1', ['c1']));
+        toBigint();
+        expect(column().dataType).toBe('INT');
+
+        store.undo();
+        expect(store.state.collections.tableEntities.t1.columnIds).toEqual([
+          'c1',
+        ]);
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it("sends a replay as the one batch it recorded where every column ends at its domain's type, and settles the rest in a second", () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(
+          changeColumnDataTypeAction$({
+            tableId: 't1',
+            id: 'c1',
+            value: 'TEXT',
+          })
+        );
+
+        expect(batchesOf(store, store.undo)).toBe(1);
+        expect(batchesOf(store, store.redo)).toBe(1);
+        toBigint();
+        expect(batchesOf(store, store.undo)).toBe(2);
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it('settles no column of a table a peer removed since, sending the one batch it recorded', () => {
+        const { store, toBigint, column } = seed();
+        store.dispatchSync(
+          changeColumnDataTypeAction$({
+            tableId: 't1',
+            id: 'c1',
+            value: 'TEXT',
+          })
+        );
+        store.dispatchSync(
+          attachActionTag(Tag.shared, removeTableAction({ id: 't1' }))
+        );
+        toBigint();
+
+        expect(batchesOf(store, store.undo)).toBe(1);
+        expect(column()).toMatchObject({ domainId: 'd1', dataType: 'INT' });
       });
 
       const removeD1 = (store: RxStore) =>
@@ -1236,6 +1369,39 @@ describe('createRxStore', () => {
 
         store.redo();
         expect(c2()).toMatchObject({ domainId: 'd1', dataType: 'BIGINT' });
+      });
+
+      it('spreads the type it gives a key brought back over the relationships brought back with it', () => {
+        const { store, columnOf } = seedKeyed(
+          addTable('t3'),
+          addColumnAction({ id: 'fk2', tableId: 't3' }),
+          domain('D1', 'INT'),
+          typed('t1', 'pk', 'INT'),
+          typed('t2', 'fk', 'INT'),
+          typed('t3', 'fk2', 'INT'),
+          addRelationshipAction({
+            id: 'r2',
+            relationshipType: 4,
+            start: { tableId: 't1', columnIds: ['pk'] },
+            end: { tableId: 't3', columnIds: ['fk2'] },
+          })
+        );
+        store.dispatchSync(setColumnDomainAction$('t1', 'pk', 'D1'));
+        store.dispatchSync(removeTableAction$('t1'));
+        store.dispatchSync(
+          attachDictionarySheetTag$(
+            updateDictionaryEntryAction$('domain', 'D1', { dataType: 'BIGINT' })
+          )
+        );
+
+        store.undo();
+        expect(store.state.doc.relationshipIds).toHaveLength(2);
+        expect(columnOf('pk')).toMatchObject({
+          domainId: 'D1',
+          dataType: 'BIGINT',
+        });
+        expect(columnOf('fk').dataType).toBe('BIGINT');
+        expect(columnOf('fk2').dataType).toBe('BIGINT');
       });
 
       it('redoes a paste of a domain cell as recorded, spreading no type to the foreign key', () => {

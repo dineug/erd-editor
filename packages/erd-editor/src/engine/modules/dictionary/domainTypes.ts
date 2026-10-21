@@ -19,15 +19,9 @@ export type DomainTypeWrites = {
   links?: ReadonlyArray<ChangeColumnValuePayload>;
   /** The columns given a data type directly, as a type cell writes one. */
   dataTypes?: ReadonlyArray<ChangeColumnValuePayload>;
-  /**
-   * The columns the same dispatch writes a type to otherwise, as a replay
-   * does, which are sent the type worked out here even where they hold it now.
-   */
-  replaced?: ReadonlySet<string>;
 };
 
 const NO_DOMAIN_TYPES: ReadonlyMap<string, string> = new Map();
-const NO_COLUMNS: ReadonlySet<string> = new Set();
 
 /** A domain's type in one dispatch: the one it writes the domain, else the domain's own. */
 export function domainTypeIn(
@@ -94,7 +88,6 @@ export function toDomainTypeActions(
     domainTypes = NO_DOMAIN_TYPES,
     links = [],
     dataTypes = [],
-    replaced = NO_COLUMNS,
   }: DomainTypeWrites
 ): AnyAction[] {
   const { collections, doc, settings } = state;
@@ -151,9 +144,7 @@ export function toDomainTypeActions(
   const direct = new Set(dataTypes.map(({ id }) => id));
   const written = payloads.filter(
     ({ id, value }) =>
-      direct.has(id) ||
-      replaced.has(id) ||
-      columns.selectById(id)?.dataType !== value
+      direct.has(id) || columns.selectById(id)?.dataType !== value
   );
   const linkActions = sentLinks
     .filter(({ id, value }) => columns.selectById(id)?.domainId !== value)
