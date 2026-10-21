@@ -68,6 +68,7 @@ export const arSA = {
   'common.placeholder.comment': 'تعليق',
   'common.placeholder.default': 'افتراضي',
   'common.placeholder.dataType': 'نوع البيانات',
+  'common.placeholder.domain': 'المجال',
   'common.toast.noTablesToPlace': 'لا توجد جداول لترتيبها',
   'common.toast.couldNotPlaceTables': 'تعذر ترتيب الجداول',
   'common.toast.copied': 'تم النسخ!',

@@ -68,6 +68,7 @@ export const ruRU = {
   'common.placeholder.comment': 'примеч.',
   'common.placeholder.default': 'по умолч.',
   'common.placeholder.dataType': 'тип',
+  'common.placeholder.domain': 'домен',
   'common.toast.noTablesToPlace': 'Нет таблиц для размещения',
   'common.toast.couldNotPlaceTables': 'Не удалось разместить таблицы',
   'common.toast.copied': 'Скопировано!',

@@ -68,6 +68,7 @@ export const faIR = {
   'common.placeholder.comment': 'توضیح',
   'common.placeholder.default': 'پیش‌فرض',
   'common.placeholder.dataType': 'نوع داده',
+  'common.placeholder.domain': 'دامنه',
   'common.toast.noTablesToPlace': 'جدولی برای چیدمان وجود ندارد',
   'common.toast.couldNotPlaceTables': 'چیدمان جدول‌ها ممکن نشد',
   'common.toast.copied': 'کپی شد!',

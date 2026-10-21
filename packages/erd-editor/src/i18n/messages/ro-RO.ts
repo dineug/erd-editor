@@ -68,6 +68,7 @@ export const roRO = {
   'common.placeholder.comment': 'obs.',
   'common.placeholder.default': 'implicit',
   'common.placeholder.dataType': 'tip',
+  'common.placeholder.domain': 'domeniu',
   'common.toast.noTablesToPlace': 'Niciun tabel de plasat',
   'common.toast.couldNotPlaceTables': 'Tabelele nu au putut fi plasate',
   'common.toast.copied': 'Copiat!',

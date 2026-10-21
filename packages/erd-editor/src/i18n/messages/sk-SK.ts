@@ -68,6 +68,7 @@ export const skSK = {
   'common.placeholder.comment': 'komentár',
   'common.placeholder.default': 'predvol.',
   'common.placeholder.dataType': 'typ',
+  'common.placeholder.domain': 'doména',
   'common.toast.noTablesToPlace': 'Žiadne tabuľky na umiestnenie',
   'common.toast.couldNotPlaceTables': 'Tabuľky sa nepodarilo umiestniť',
   'common.toast.copied': 'Skopírované!',

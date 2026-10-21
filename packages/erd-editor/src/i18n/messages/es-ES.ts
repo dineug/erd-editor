@@ -68,6 +68,7 @@ export const esES = {
   'common.placeholder.comment': 'coment.',
   'common.placeholder.default': 'predet.',
   'common.placeholder.dataType': 'tipo',
+  'common.placeholder.domain': 'dominio',
   'common.toast.noTablesToPlace': 'No hay tablas que colocar',
   'common.toast.couldNotPlaceTables': 'No se pudieron colocar las tablas',
   'common.toast.copied': '¡Copiado!',

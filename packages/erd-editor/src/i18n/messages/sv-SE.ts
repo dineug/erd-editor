@@ -68,6 +68,7 @@ export const svSE = {
   'common.placeholder.comment': 'notering',
   'common.placeholder.default': 'standard',
   'common.placeholder.dataType': 'datatyp',
+  'common.placeholder.domain': 'domän',
   'common.toast.noTablesToPlace': 'Inga tabeller att placera',
   'common.toast.couldNotPlaceTables': 'Det gick inte att placera tabellerna',
   'common.toast.copied': 'Kopierat!',

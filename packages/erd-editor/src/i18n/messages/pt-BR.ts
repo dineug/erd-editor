@@ -68,6 +68,7 @@ export const ptBR = {
   'common.placeholder.comment': 'obs.',
   'common.placeholder.default': 'padrão',
   'common.placeholder.dataType': 'tipo',
+  'common.placeholder.domain': 'domínio',
   'common.toast.noTablesToPlace': 'Nenhuma tabela para posicionar',
   'common.toast.couldNotPlaceTables': 'Não foi possível posicionar as tabelas',
   'common.toast.copied': 'Copiado!',

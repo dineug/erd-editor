@@ -350,14 +350,14 @@ describe.each([
   });
 
   it.each([NameViewMode.physical, NameViewMode.logical, NameViewMode.both])(
-    'gives the domain a cell of its own under its bit in the %s view, empty for a row linking none',
+    'gives the domain a cell of its own under its bit in the %s view, its placeholder for a row linking none',
     async mode => {
       const { stage } = await setup({
         dictionaries,
         mode,
         show: Show.columnDomain,
       });
-      const domainName = dictionaries ? 'Identifier' : '';
+      const domainName = dictionaries ? 'Identifier' : 'domain';
 
       expect(drawn(rowCellsOf(stage, NAMED)).slice(-2)).toEqual([
         [FocusType.columnDataType, 'INT'],
@@ -365,7 +365,7 @@ describe.each([
       ]);
       expect(drawn(rowCellsOf(stage, UNNAMED)).slice(-2)).toEqual([
         [FocusType.columnDataType, 'DATETIME'],
-        [FocusType.columnDomain, ''],
+        [FocusType.columnDomain, 'domain'],
       ]);
     }
   );
@@ -403,7 +403,7 @@ describe.each([
 
 /** What a Flow card draws in each name view: the cells its view names, whatever the show bits say. */
 describe.each([
-  ['with empty dictionaries', false, 'INT', ''],
+  ['with empty dictionaries', false, 'INT', 'domain'],
   ['with filled dictionaries', true, 'Identifier', 'Identifier'],
 ])(
   'a Flow card in each name view %s',
@@ -464,7 +464,7 @@ describe.each([
       expect(drawn(rowCellsOf(stage, UNNAMED))).toEqual([
         [FocusType.columnLogicalName, 'logical'],
         [FocusType.columnName, 'joined_at'],
-        [FocusType.columnDomain, ''],
+        [FocusType.columnDomain, 'domain'],
         [FocusType.columnDataType, 'DATETIME'],
       ]);
     });

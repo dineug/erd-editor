@@ -68,6 +68,7 @@ export const zhTW = {
   'common.placeholder.comment': '註解',
   'common.placeholder.default': '預設值',
   'common.placeholder.dataType': '資料類型',
+  'common.placeholder.domain': '定義域',
   'common.toast.noTablesToPlace': '沒有可排列的資料表',
   'common.toast.couldNotPlaceTables': '無法排列資料表',
   'common.toast.copied': '已複製！',

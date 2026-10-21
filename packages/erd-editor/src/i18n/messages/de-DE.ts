@@ -68,6 +68,7 @@ export const deDE = {
   'common.placeholder.comment': 'komm.',
   'common.placeholder.default': 'standard',
   'common.placeholder.dataType': 'datentyp',
+  'common.placeholder.domain': 'domäne',
   'common.toast.noTablesToPlace': 'Keine Tabellen zum Anordnen',
   'common.toast.couldNotPlaceTables':
     'Tabellen konnten nicht angeordnet werden',

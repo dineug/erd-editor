@@ -68,6 +68,7 @@ export const idID = {
   'common.placeholder.comment': 'komentar',
   'common.placeholder.default': 'default',
   'common.placeholder.dataType': 'tipe data',
+  'common.placeholder.domain': 'domain',
   'common.toast.noTablesToPlace': 'Tidak ada tabel untuk ditempatkan',
   'common.toast.couldNotPlaceTables': 'Tidak dapat menempatkan tabel',
   'common.toast.copied': 'Disalin!',

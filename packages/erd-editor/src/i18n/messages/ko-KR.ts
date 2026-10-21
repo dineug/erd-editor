@@ -68,6 +68,7 @@ export const koKR = {
   'common.placeholder.comment': '주석',
   'common.placeholder.default': '기본값',
   'common.placeholder.dataType': '데이터 타입',
+  'common.placeholder.domain': '도메인',
   'common.toast.noTablesToPlace': '배치할 테이블이 없습니다',
   'common.toast.couldNotPlaceTables': '테이블을 배치할 수 없습니다',
   'common.toast.copied': '복사했습니다!',

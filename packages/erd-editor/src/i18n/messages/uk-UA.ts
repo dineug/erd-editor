@@ -68,6 +68,7 @@ export const ukUA = {
   'common.placeholder.comment': 'коментар',
   'common.placeholder.default': 'типове',
   'common.placeholder.dataType': 'тип',
+  'common.placeholder.domain': 'домен',
   'common.toast.noTablesToPlace': 'Немає таблиць для розміщення',
   'common.toast.couldNotPlaceTables': 'Не вдалося розмістити таблиці',
   'common.toast.copied': 'Скопійовано!',

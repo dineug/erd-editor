@@ -68,6 +68,7 @@ export const itIT = {
   'common.placeholder.comment': 'nota',
   'common.placeholder.default': 'predef.',
   'common.placeholder.dataType': 'tipo',
+  'common.placeholder.domain': 'dominio',
   'common.toast.noTablesToPlace': 'Nessuna tabella da posizionare',
   'common.toast.couldNotPlaceTables': 'Impossibile posizionare le tabelle',
   'common.toast.copied': 'Copiato!',

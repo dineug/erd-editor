@@ -68,6 +68,7 @@ export const jaJP = {
   'common.placeholder.comment': 'コメント',
   'common.placeholder.default': '既定値',
   'common.placeholder.dataType': 'データ型',
+  'common.placeholder.domain': 'ドメイン',
   'common.toast.noTablesToPlace': '配置するテーブルがありません',
   'common.toast.couldNotPlaceTables': 'テーブルを配置できませんでした',
   'common.toast.copied': 'コピーしました',

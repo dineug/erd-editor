@@ -68,6 +68,7 @@ export const trTR = {
   'common.placeholder.comment': 'açıklama',
   'common.placeholder.default': 'varsayılan',
   'common.placeholder.dataType': 'veri türü',
+  'common.placeholder.domain': 'alan',
   'common.toast.noTablesToPlace': 'Yerleştirilecek tablo yok',
   'common.toast.couldNotPlaceTables': 'Tablolar yerleştirilemedi',
   'common.toast.copied': 'Kopyalandı!',

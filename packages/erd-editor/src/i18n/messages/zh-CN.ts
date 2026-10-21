@@ -68,6 +68,7 @@ export const zhCN = {
   'common.placeholder.comment': '注释',
   'common.placeholder.default': '默认值',
   'common.placeholder.dataType': '数据类型',
+  'common.placeholder.domain': '域',
   'common.toast.noTablesToPlace': '没有可放置的表',
   'common.toast.couldNotPlaceTables': '无法放置表',
   'common.toast.copied': '已复制！',

@@ -68,6 +68,7 @@ export const nlNL = {
   'common.placeholder.comment': 'opm.',
   'common.placeholder.default': 'standaard',
   'common.placeholder.dataType': 'type',
+  'common.placeholder.domain': 'domein',
   'common.toast.noTablesToPlace': 'Geen tabellen om te plaatsen',
   'common.toast.couldNotPlaceTables': 'Kan tabellen niet plaatsen',
   'common.toast.copied': 'Gekopieerd!',

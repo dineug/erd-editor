@@ -68,6 +68,7 @@ export const frFR = {
   'common.placeholder.comment': 'remarque',
   'common.placeholder.default': 'par défaut',
   'common.placeholder.dataType': 'type',
+  'common.placeholder.domain': 'domaine',
   'common.toast.noTablesToPlace': 'Aucune table à placer',
   'common.toast.couldNotPlaceTables': 'Impossible de placer les tables',
   'common.toast.copied': 'Copié !',

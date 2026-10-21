@@ -68,6 +68,7 @@ export const euES = {
   'common.placeholder.comment': 'iruzkina',
   'common.placeholder.default': 'lehenetsia',
   'common.placeholder.dataType': 'datu mota',
+  'common.placeholder.domain': 'domeinua',
   'common.toast.noTablesToPlace': 'Ez dago kokatzeko taularik',
   'common.toast.couldNotPlaceTables': 'Ezin izan dira taulak kokatu',
   'common.toast.copied': 'Kopiatuta!',

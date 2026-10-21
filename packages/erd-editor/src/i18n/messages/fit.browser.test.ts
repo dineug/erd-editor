@@ -54,6 +54,7 @@ describe('text the editor gives a fixed width', () => {
       'common.placeholder.comment',
       'common.placeholder.default',
       'common.placeholder.dataType',
+      'common.placeholder.domain',
     ]);
   });
 

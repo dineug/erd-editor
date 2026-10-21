@@ -661,19 +661,24 @@ const Column: FC<ColumnProps> = (props, ctx) => {
           },
           null
         );
-      case ColumnType.columnDomain:
-        // A column linking no listed domain leaves the cell empty.
+      case ColumnType.columnDomain: {
+        // A column linking no listed domain shows the placeholder, as an empty type does.
+        const domainName = getLiveDomainName(
+          app.value.store.state,
+          column.domainId
+        );
         return cell({
           focusType,
           x,
           width,
-          text: getLiveDomainName(app.value.store.state, column.domainId),
-          fill: theme.active,
+          text: domainName || i18n.value.t('common.placeholder.domain'),
+          fill: domainName ? theme.active : theme.placeholder,
           focus: props.focusDomain ?? false,
           edit: props.editDomain ?? false,
           sharedFocus: props.sharedFocusDomain ?? null,
           ellipsis: true,
         });
+      }
       case ColumnType.columnNotNull:
         return cell({
           focusType,

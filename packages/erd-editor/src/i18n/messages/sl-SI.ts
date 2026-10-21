@@ -68,6 +68,7 @@ export const slSI = {
   'common.placeholder.comment': 'komentar',
   'common.placeholder.default': 'privzeto',
   'common.placeholder.dataType': 'tip',
+  'common.placeholder.domain': 'domena',
   'common.toast.noTablesToPlace': 'Ni tabel za razporeditev',
   'common.toast.couldNotPlaceTables': 'Tabel ni bilo mogoče razporediti',
   'common.toast.copied': 'Kopirano!',

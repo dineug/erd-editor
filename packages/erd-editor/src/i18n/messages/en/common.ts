@@ -66,6 +66,7 @@ export const common = {
   'common.placeholder.comment': 'comment',
   'common.placeholder.default': 'default',
   'common.placeholder.dataType': 'dataType',
+  'common.placeholder.domain': 'domain',
   'common.toast.noTablesToPlace': 'No tables to place',
   'common.toast.couldNotPlaceTables': 'Could not place tables',
   'common.toast.copied': 'Copied!',

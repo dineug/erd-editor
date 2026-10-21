@@ -68,6 +68,7 @@ export const plPL = {
   'common.placeholder.comment': 'uwagi',
   'common.placeholder.default': 'domyślna',
   'common.placeholder.dataType': 'typ',
+  'common.placeholder.domain': 'domena',
   'common.toast.noTablesToPlace': 'Brak tabel do rozmieszczenia',
   'common.toast.couldNotPlaceTables': 'Nie udało się rozmieścić tabel',
   'common.toast.copied': 'Skopiowano!',

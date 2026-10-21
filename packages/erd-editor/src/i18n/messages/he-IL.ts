@@ -68,6 +68,7 @@ export const heIL = {
   'common.placeholder.comment': 'הערה',
   'common.placeholder.default': 'DEFAULT',
   'common.placeholder.dataType': 'סוג נתונים',
+  'common.placeholder.domain': 'תחום',
   'common.toast.noTablesToPlace': 'אין טבלאות למיקום',
   'common.toast.couldNotPlaceTables': 'לא ניתן היה למקם את הטבלאות',
   'common.toast.copied': 'הועתק!',
