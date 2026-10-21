@@ -23,7 +23,7 @@
     "bench:typecheck": "tsc -p bench/tsconfig.json"
   },
   "dependencies": {
-    "@chenglou/pretext": "^0.0.8",
+    "@chenglou/pretext": "^1.0.0",
     "@dineug/r-html": "workspace:*",
     "@dineug/r-html-konva": "workspace:*"
   },
