@@ -252,9 +252,9 @@ describe('dictionary checks', () => {
     expect(read(checkColumn(store.state, columnOf(store, 'c7')))).toEqual([
       ['domainTypeMismatch', 'domainId', 'INT', ['NUMERIC(10)']],
     ]);
-    // A domain with no type gives its columns none, so it offers nothing to write.
+    // A domain with no type gives its columns none, so it offers that empty type.
     expect(read(checkColumn(store.state, columnOf(store, 'c8')))).toEqual([
-      ['domainTypeMismatch', 'domainId', 'INT', []],
+      ['domainTypeMismatch', 'domainId', 'INT', ['']],
     ]);
     expect(checkColumn(store.state, columnOf(store, 'c1'))).toEqual([]);
     expect(checkColumn(store.state, columnOf(store, 'c9'))).toEqual([]);

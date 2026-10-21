@@ -96,6 +96,11 @@ function targetText(
   }
 }
 
+/** An empty side of a detail, drawn as the diff tree draws an empty value. */
+const EMPTY_SIDE = '—';
+
+const sideText = (text: string) => text || EMPTY_SIDE;
+
 /** What the check found, then after an arrow the words, the name or the type the dictionaries offer instead. */
 function detailText(
   { text, suggestions }: DictionaryCheck,
@@ -104,9 +109,9 @@ function detailText(
   if (!suggestions.length) return text;
 
   const offered = new Intl.ListFormat(i18n.locale, { type: 'unit' }).format(
-    suggestions
+    suggestions.map(sideText)
   );
-  return `${text} → ${offered}`;
+  return `${sideText(text)} → ${offered}`;
 }
 
 /** What a cell of the check sheet shows, nothing for a column the sheet lacks. */

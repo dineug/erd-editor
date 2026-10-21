@@ -210,6 +210,28 @@ describe('checkRows', () => {
     });
   });
 
+  it('draws an empty side of a mismatch as a dash, as the diff tree draws an empty value', () => {
+    const store = seed();
+    store.dispatchSync(
+      row('domain', 'd3', { name: '금액', dataType: 'NUMERIC(15)' }),
+      row('domain', 'd4', { name: '비고' }),
+      addColumnAction({ id: 'c2', tableId: 'member' }),
+      changeColumnNameAction({ id: 'c2', tableId: 'member', value: 'amt' }),
+      changeColumnDomainAction({ id: 'c2', tableId: 'member', value: 'd3' }),
+      addColumnAction({ id: 'c3', tableId: 'member' }),
+      changeColumnNameAction({ id: 'c3', tableId: 'member', value: 'memo' }),
+      changeColumnDomainAction({ id: 'c3', tableId: 'member', value: 'd4' }),
+      changeColumnDataTypeAction({ id: 'c3', tableId: 'member', value: 'TEXT' })
+    );
+
+    expect(cells(store, checkRows(store.state, 'member.'))).toEqual(
+      expect.arrayContaining([
+        ['Domain type mismatch', 'member.amt', '— → NUMERIC(15)'],
+        ['Domain type mismatch', 'member.memo', 'TEXT → —'],
+      ])
+    );
+  });
+
   it('shows nothing of a target the document no longer holds', () => {
     const store = seed();
     const gone = (

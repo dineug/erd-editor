@@ -222,7 +222,7 @@ function domainTypeCheck(
     code: DictionaryCheckCode.domainTypeMismatch,
     field: 'domainId',
     text: dataType,
-    suggestions: domainType ? [domainType] : [],
+    suggestions: [domainType],
   });
 }
 
