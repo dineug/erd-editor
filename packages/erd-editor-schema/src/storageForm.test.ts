@@ -1331,6 +1331,20 @@ describe('the dictionaries and new fields toDocumentJson writes', () => {
     ]);
   });
 
+  it('writes no logical name of only blanks, and keeps one with text as it is typed', () => {
+    const schema = dictionary();
+    schema.collections.tableEntities.t1.logicalName = ' \t ';
+    schema.collections.tableColumnEntities.c1.logicalName = ' 회원 ';
+
+    const { collections } = JSON.parse(toDocumentJson(schema));
+
+    expect(collections.tableEntities.t1).not.toHaveProperty('logicalName');
+    expect(collections.tableColumnEntities.c1.logicalName).toBe(' 회원 ');
+    expect(
+      JSON.parse(toJson(schema)).collections.tableEntities.t1.logicalName
+    ).toBe(' \t ');
+  });
+
   it('writes no logical name, domain or derived flag while they hold none', () => {
     const schema = dictionary();
     Object.assign(schema.collections.tableEntities.t1, {

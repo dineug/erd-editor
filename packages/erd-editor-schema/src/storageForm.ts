@@ -127,6 +127,13 @@ function toDocumentSettings(settings: Settings): NormalizedSettings {
 }
 
 /**
+ * Whether a logical name goes into the file: one of only blanks is none, as
+ * every view reads it, and raw JSON handed over unparsed may hold none at all.
+ */
+const isWritten = (logicalName: unknown): logicalName is string =>
+  typeof logicalName === 'string' && logicalName.trim() !== '';
+
+/**
  * The storage form of a document as an object: the live entities alone, each
  * collection sorted by id but the dictionaries, rows in their own order, and
  * none of the fields an editor derives on load or keeps for one instance.
@@ -155,7 +162,9 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
     return {
       id: table.id,
       name: table.name,
-      ...(table.logicalName ? { logicalName: table.logicalName } : {}),
+      ...(isWritten(table.logicalName)
+        ? { logicalName: table.logicalName }
+        : {}),
       comment: table.comment,
       columnIds,
       ...(keptGroups.has(table.groupId) ? { groupId: table.groupId } : {}),
@@ -176,7 +185,9 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
         dataType: column.dataType,
         default: column.default,
         options: column.options,
-        ...(column.logicalName ? { logicalName: column.logicalName } : {}),
+        ...(isWritten(column.logicalName)
+          ? { logicalName: column.logicalName }
+          : {}),
         ...(keptDomains.has(column.domainId)
           ? { domainId: column.domainId }
           : {}),
