@@ -129,6 +129,7 @@
 - **Open a context menu at the pointer.** It does so in every language.
 - **Open a submenu leftward under right-to-left.** Under a right-to-left language a submenu opens to the left of its row. `ContextMenuItem` passes `openLeft`, which `fitMenu` flips only when the left edge cuts it more. The chevron (`SubmenuChevron`) turns to match.
 - **The toolbar's undo and redo swap glyphs.** So undo points back the way a right-to-left reader goes.
+- **The Flow steps swap what they do.** The Visualization toolbar stays `ltr`, so its `arrow-left` and `arrow-right` keep their places, and under right-to-left the right-pointing one is Previous table and the left-pointing one Next table, back pointing right as the undo above does (`src/components/AGENTS.md`, Scene sources and views).
 - **Give text that may run either way `dir="auto"`.** That covers:
   - the palette's names and keywords, the Explorer search's excerpt rows, Table Properties' chips, Map Columns' column names, the Schema SQL panel's table group choices, the locale picker's System hint;
   - the toolbar's database name and the Settings lock values;
