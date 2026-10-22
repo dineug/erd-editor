@@ -389,6 +389,50 @@ describe('VisualizationToolbar', () => {
     expect(pathsOf(next)).toEqual(iconPaths('arrow-right'));
   });
 
+  it('keeps the arrows where they stand for a right-to-left reader and swaps what they do, so back points right', async () => {
+    const i18n = createTestI18n('en');
+    const provider = provideI18n(document.body, i18n);
+
+    try {
+      const app = seedFlow(createTestAppContext(), ['t1']);
+      const { root } = await setup(app);
+      app.store.dispatchSync(
+        viewSetCentersAction({ tableIds: ['t2'], kind: ViewKind.flow })
+      );
+      await flush();
+      const [left] = menus(root).slice(2, 4);
+
+      expect(pathsOf(left)).toEqual(iconPaths('arrow-left'));
+      expect(left.getAttribute('title')).toMatch(/^Previous table/);
+
+      Object.assign(i18n, createI18n('he-IL', pseudoMessages('he')));
+      await flush();
+      const [rtlLeft, rtlRight] = menus(root).slice(2, 4);
+
+      expect(root.getAttribute('dir')).toBe('ltr');
+      expect(pathsOf(rtlLeft)).toEqual(iconPaths('arrow-left'));
+      expect(pathsOf(rtlRight)).toEqual(iconPaths('arrow-right'));
+      expect(rtlLeft.getAttribute('title')).toBe(
+        toShortcutTitle(app.keyBindingMap, 'he:Next table', KeyBindingName.redo)
+      );
+      expect(rtlRight.getAttribute('title')).toBe(
+        toShortcutTitle(
+          app.keyBindingMap,
+          'he:Previous table',
+          KeyBindingName.undo
+        )
+      );
+      expect(rtlLeft.classList.contains('disabled')).toBe(true);
+
+      click(rtlRight);
+      await flush();
+
+      expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t1']);
+    } finally {
+      provider.destroy();
+    }
+  });
+
   it('dims a step with nothing that way, and steps the view through the centers it stood on', async () => {
     const app = seedFlow(createTestAppContext(), ['t1']);
     const { root } = await setup(app);

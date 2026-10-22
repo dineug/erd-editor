@@ -82,6 +82,34 @@ const SHOW_MODES = [
   titleKey: PlainMessageKey;
 }>;
 
+/** What each step is named and which chord its title names. */
+const STEP_TOOLS = {
+  [CenterStep.previous]: {
+    titleKey: 'visualization.previousTable',
+    keyBindingName: KeyBindingName.undo,
+  },
+  [CenterStep.next]: {
+    titleKey: 'visualization.nextTable',
+    keyBindingName: KeyBindingName.redo,
+  },
+} as const satisfies Record<
+  CenterStep,
+  { titleKey: PlainMessageKey; keyBindingName: KeyBindingName }
+>;
+
+/** The two arrows in the order the bar draws them, left to right in every language. */
+const STEP_ARROWS = ['arrow-left', 'arrow-right'] as const;
+
+/**
+ * The steps in the order of those arrows. The bar never mirrors, so a
+ * right-to-left reader's pair keeps its arrows and swaps what they do: back
+ * points right, as a browser's back and the top toolbar's undo do for them.
+ */
+const stepsOf = (dir: string): CenterStep[] =>
+  dir === 'rtl'
+    ? [CenterStep.next, CenterStep.previous]
+    : [CenterStep.previous, CenterStep.next];
+
 const showModeOf = (value?: ShowMode) =>
   SHOW_MODES.find(mode => mode.value === value) ?? SHOW_MODES[0];
 
@@ -252,7 +280,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
 
   return () => {
     const { store, keyBindingMap } = app.value;
-    const { t } = i18n.value;
+    const { t, dir } = i18n.value;
     const { editor } = store.state;
     const title = (labelKey: PlainMessageKey, keyBindingName: KeyBindingName) =>
       toShortcutTitle(keyBindingMap, t(labelKey), keyBindingName);
@@ -292,31 +320,21 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           {flow ? (
             <>
               <div class={floating.divider}></div>
-              <div
-                class={[
-                  floating.menu,
-                  {
-                    disabled: !canStepFlowView(app.value, CenterStep.previous),
-                  },
-                ]}
-                title={title(
-                  'visualization.previousTable',
-                  KeyBindingName.undo
-                )}
-                on:click={handleStep(CenterStep.previous)}
-              >
-                <Icon name="arrow-left" size={ICON_SIZE} />
-              </div>
-              <div
-                class={[
-                  floating.menu,
-                  { disabled: !canStepFlowView(app.value, CenterStep.next) },
-                ]}
-                title={title('visualization.nextTable', KeyBindingName.redo)}
-                on:click={handleStep(CenterStep.next)}
-              >
-                <Icon name="arrow-right" size={ICON_SIZE} />
-              </div>
+              {stepsOf(dir).map((step, index) => (
+                <div
+                  class={[
+                    floating.menu,
+                    { disabled: !canStepFlowView(app.value, step) },
+                  ]}
+                  title={title(
+                    STEP_TOOLS[step].titleKey,
+                    STEP_TOOLS[step].keyBindingName
+                  )}
+                  on:click={handleStep(step)}
+                >
+                  <Icon name={STEP_ARROWS[index]} size={ICON_SIZE} />
+                </div>
+              ))}
             </>
           ) : null}
           <div class={floating.divider}></div>
