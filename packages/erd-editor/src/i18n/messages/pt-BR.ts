@@ -113,6 +113,8 @@ export const ptBR = {
   'visualization.fit': 'Ajustar à tela',
   'visualization.tidyUp': 'Organizar',
   'visualization.showAll': 'Mostrar tudo',
+  'visualization.previousTable': 'Tabela anterior',
+  'visualization.nextTable': 'Próxima tabela',
   'visualization.rowDisplay': 'Exibição de linhas: {mode}',
   'visualization.showMode.nameOnly': 'Somente nome',
   'visualization.showMode.keysOnly': 'Somente chaves',

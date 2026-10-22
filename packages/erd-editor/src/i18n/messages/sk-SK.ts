@@ -111,6 +111,8 @@ export const skSK = {
   'visualization.fit': 'Prispôsobiť oknu',
   'visualization.tidyUp': 'Usporiadať',
   'visualization.showAll': 'Zobraziť všetko',
+  'visualization.previousTable': 'Predchádzajúca tabuľka',
+  'visualization.nextTable': 'Nasledujúca tabuľka',
   'visualization.rowDisplay': 'Zobrazenie riadkov: {mode}',
   'visualization.showMode.nameOnly': 'Iba názvy',
   'visualization.showMode.keysOnly': 'Iba kľúče',

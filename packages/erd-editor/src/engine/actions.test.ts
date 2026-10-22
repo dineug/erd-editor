@@ -390,6 +390,7 @@ describe('view action types', () => {
     'editor.viewSetLayout',
     'editor.viewChangeShowMode',
     'editor.viewSetCenters',
+    'editor.viewStepCenters',
     'editor.changeVisualizationMode',
   ];
 

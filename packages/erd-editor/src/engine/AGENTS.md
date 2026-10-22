@@ -47,7 +47,7 @@
 - **The `actions$` barrels are `mcp-server`'s catalog.** A new change type also needs a tool or an exclusion reason in `mcp-server`'s reachability spec (`src/tools/reachability.test.ts`). Every generator a module's `actions$` barrel exports is part of the catalog `mcp-server` builds its tools from: its `tools/registry.kind.test.ts` holds a census of every key and a reason for each editor generator, so a helper that the barrel's generators call (`loadSchemaAction$`, `toSchemaImportJson`, `withGridPoints`) is exported by name and stays out of the barrel.
 - **Reducers write through the LWW operators.** Use the operators from `@dineug/erd-editor-schema` with `action.version`. A direct write wins every merge and corrupts collaborative sessions.
 - **A flag undoes to the value it held.** The undo of `table.changeNameDerived` and `column.changeNameDerived` records the flag the entity held before the batch, where the other option bits record the negation of the value sent. So an undo of a write that changed nothing leaves the flag as it was.
-- **Reader-only state stays out of every list.** `editor.views`, `visualizationMode`, `handTool`, `zenMode`, `openMap` and `lastCanvasType` are in no list. So they are never saved, undone or sent to a peer. `engine/actions.test.ts` pins the ten `editor.view*` types and `editor.changeVisualizationMode` out of all of them.
+- **Reader-only state stays out of every list.** `editor.views`, `visualizationMode`, `handTool`, `zenMode`, `openMap` and `lastCanvasType` are in no list. So they are never saved, undone or sent to a peer. `engine/actions.test.ts` pins the eleven `editor.view*` types and `editor.changeVisualizationMode` out of all of them.
 
 ### Settings that travel as changes
 
@@ -151,7 +151,7 @@
 - **While a view is active, two seams act** (`rx-store.ts`). Each applies while `getActiveView` finds a view.
   - `viewActionRedirect` rewrites `settings.scrollTo` / `streamScrollTo` / `changeZoomLevel` / `streamZoomLevel` into their `editor.view*` twin. It leaves a `Tag.shared` or `Tag.following` action as it is, since a peer's placement and a follow of one belong to the document however the reader stands.
   - `viewIgnoreFilter` drops `ViewIgnoreActionTypes` (readonly's list minus `editor.loadJson` / `editor.clear`), letting `Tag.shared` reach the store.
-  - `undo` / `redo` no-op while a view is active.
+  - `undo` / `redo` no-op while a view is active. In the Flow the Visualization tab takes their chords to step through the centers the view stood on (`src/components/AGENTS.md`, Scene sources and views).
 - **Leave a view and move in two dispatches.** Both seams classify a batch by the state it enters with. So leaving a view and moving the document are two dispatches. `goToErdTable` (`components/erd/canvas/table/goToErd.ts`) is the model, and `e2e/specs/visualization-flow.spec.ts` asserts what the host hears.
 
 ### Foreign key columns

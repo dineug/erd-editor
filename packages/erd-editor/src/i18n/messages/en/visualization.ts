@@ -4,6 +4,8 @@ export const visualization = {
   'visualization.fit': 'Fit',
   'visualization.tidyUp': 'Tidy Up',
   'visualization.showAll': 'Show all',
+  'visualization.previousTable': 'Previous table',
+  'visualization.nextTable': 'Next table',
   'visualization.rowDisplay': 'Row display: {mode}',
   'visualization.showMode.nameOnly': 'Name only',
   'visualization.showMode.keysOnly': 'Keys only',

@@ -160,6 +160,13 @@ export const VisualizationMode = {
 } as const;
 export type VisualizationMode = ValuesType<typeof VisualizationMode>;
 
+/** Which way a view steps through the centers it has stood on. */
+export const CenterStep = {
+  previous: 'previous',
+  next: 'next',
+} as const;
+export type CenterStep = ValuesType<typeof CenterStep>;
+
 /**
  * A scene drawn over the document in its own coordinates: the tables it places
  * by id, the placement it is looked at through, and what it shows of each
@@ -174,6 +181,10 @@ export type SceneView = {
   zoomLevel: number;
   /** The tables the view narrows to, and none while it shows the whole document. */
   centerIds: string[];
+  /** The centers it stood on before these, the latest last, which a step back returns to. */
+  previousCenterIds: string[][];
+  /** The centers a step back left, the latest last, which a step forward returns to. */
+  nextCenterIds: string[][];
 };
 
 export type EditorViews = {

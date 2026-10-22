@@ -14,6 +14,7 @@ import {
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
+  CenterStep,
   ShowMode,
   ViewKind,
   VisualizationMode,
@@ -30,6 +31,7 @@ import {
   viewScrollToAction,
   viewSetCentersAction,
   viewSetLayoutAction,
+  viewStepCentersAction,
   viewStreamScrollToAction,
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
@@ -384,6 +386,203 @@ describe('editor.viewSetCenters', () => {
     store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
 
     expect(store.state.editor.views.flow).toBeNull();
+  });
+
+  it('keeps each center set it leaves to step back to, the latest last', () => {
+    const view = openFocused(['t1']);
+
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: [] }));
+
+    expect(view.centerIds).toEqual([]);
+    expect(view.previousCenterIds).toEqual([['t1'], ['t2']]);
+    expect(view.nextCenterIds).toEqual([]);
+  });
+
+  it('keeps nothing for the centers it already stands on, in the same order', () => {
+    const view = openFocused(['t1', 't2']);
+
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t1', 't2'] }));
+
+    expect(view.previousCenterIds).toEqual([]);
+
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2', 't1'] }));
+
+    expect(view.previousCenterIds).toEqual([['t1', 't2']]);
+  });
+
+  it('drops what a step back left once it stands on new centers', () => {
+    ['t1', 't2', 't3'].forEach(id => addTable(id));
+    const view = openFocused(['t1']);
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3'] }));
+
+    expect(view.centerIds).toEqual(['t3']);
+    expect(view.previousCenterIds).toEqual([['t1']]);
+    expect(view.nextCenterIds).toEqual([]);
+  });
+
+  it('keeps the latest hundred center sets, dropping the oldest first', () => {
+    const view = openFocused(['c0']);
+
+    for (let i = 1; i <= 101; i++) {
+      store.dispatchSync(viewSetCentersAction({ tableIds: [`c${i}`] }));
+    }
+
+    expect(view.previousCenterIds).toHaveLength(100);
+    expect(view.previousCenterIds[0]).toEqual(['c1']);
+    expect(view.previousCenterIds.at(-1)).toEqual(['c100']);
+  });
+});
+
+describe('editor.viewStepCenters', () => {
+  /** The tables named here leave the document as a removal leaves it. */
+  function removeTables(...ids: string[]) {
+    store.state.doc.tableIds = store.state.doc.tableIds.filter(
+      id => !ids.includes(id)
+    );
+  }
+
+  /** A view walked from t1 to t2 to t3, standing on t3. */
+  function walked() {
+    ['t1', 't2', 't3', 't4'].forEach(id => addTable(id));
+    const view = openFocused(['t1']);
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3'] }));
+    return view;
+  }
+
+  it('steps back through the centers it stood on, keeping each it leaves to step forward to', () => {
+    const view = walked();
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(view.centerIds).toEqual(['t2']);
+    expect(view.previousCenterIds).toEqual([['t1']]);
+    expect(view.nextCenterIds).toEqual([['t3']]);
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(view.centerIds).toEqual(['t1']);
+    expect(view.previousCenterIds).toEqual([]);
+    expect(view.nextCenterIds).toEqual([['t3'], ['t2']]);
+  });
+
+  it('steps forward again to the centers a step back left', () => {
+    const view = walked();
+    store.dispatchSync(
+      viewStepCentersAction({ step: CenterStep.previous }),
+      viewStepCentersAction({ step: CenterStep.previous })
+    );
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.next }));
+
+    expect(view.centerIds).toEqual(['t2']);
+    expect(view.previousCenterIds).toEqual([['t1']]);
+    expect(view.nextCenterIds).toEqual([['t3']]);
+  });
+
+  it('steps back to the whole document as it does to a table', () => {
+    addTable('t1');
+    const view = openFocused(['t1']);
+    store.dispatchSync(viewSetCentersAction({ tableIds: [] }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(view.centerIds).toEqual([]);
+    expect(view.nextCenterIds).toEqual([['t1']]);
+  });
+
+  it('passes over a set whose tables are all gone, dropping it', () => {
+    const view = walked();
+    removeTables('t2');
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(view.centerIds).toEqual(['t1']);
+    expect(view.previousCenterIds).toEqual([]);
+    expect(view.nextCenterIds).toEqual([['t3']]);
+  });
+
+  it('lands on what the document still holds of a set that lost some of its tables', () => {
+    const view = walked();
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2', 't4'] }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t1'] }));
+    removeTables('t4');
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(view.centerIds).toEqual(['t2']);
+    expect(view.nextCenterIds).toEqual([['t1']]);
+  });
+
+  it('passes over a set that comes to the centers it stands on once its gone tables are left out', () => {
+    const view = walked();
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3', 't4'] }));
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t3'] }));
+    removeTables('t4');
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(view.centerIds).toEqual(['t2']);
+    expect(view.previousCenterIds).toEqual([['t1']]);
+  });
+
+  it('stands where it is once every set that way has gone, and keeps none of them', () => {
+    const view = walked();
+    removeTables('t1', 't2');
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(view.centerIds).toEqual(['t3']);
+    expect(view.previousCenterIds).toEqual([]);
+    expect(view.nextCenterIds).toEqual([]);
+  });
+
+  it('stands where it is with nothing to step to that way', () => {
+    const view = openFocused(['t1']);
+
+    store.dispatchSync(
+      viewStepCentersAction({ step: CenterStep.previous }),
+      viewStepCentersAction({ step: CenterStep.next })
+    );
+
+    expect(view.centerIds).toEqual(['t1']);
+    expect(view.previousCenterIds).toEqual([]);
+    expect(view.nextCenterIds).toEqual([]);
+  });
+
+  it('steps the slot the kind names, whether or not it is the active view', () => {
+    const view = walked();
+    store.dispatchSync(changeCanvasTypeAction({ value: CanvasType.ERD }));
+
+    store.dispatchSync(
+      viewStepCentersAction({ step: CenterStep.previous, kind: ViewKind.flow })
+    );
+
+    expect(getActiveView(store.state)).toBeNull();
+    expect(view.centerIds).toEqual(['t2']);
+  });
+
+  it('does nothing while no view is open', () => {
+    showFlowTab();
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+
+    expect(store.state.editor.views.flow).toBeNull();
+  });
+
+  it('starts a reopened view with nothing to step to', () => {
+    walked();
+    store.dispatchSync(viewCloseAction({ kind: ViewKind.flow }));
+
+    const view = openFocused(['t1']);
+
+    expect(view.previousCenterIds).toEqual([]);
+    expect(view.nextCenterIds).toEqual([]);
   });
 });
 

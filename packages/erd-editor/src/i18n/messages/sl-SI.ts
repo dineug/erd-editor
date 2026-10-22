@@ -112,6 +112,8 @@ export const slSI = {
   'visualization.fit': 'Prilagodi pogledu',
   'visualization.tidyUp': 'Razporedi',
   'visualization.showAll': 'Pokaži vse',
+  'visualization.previousTable': 'Prejšnja tabela',
+  'visualization.nextTable': 'Naslednja tabela',
   'visualization.rowDisplay': 'Prikaz vrstic: {mode}',
   'visualization.showMode.nameOnly': 'Samo ime',
   'visualization.showMode.keysOnly': 'Samo ključi',

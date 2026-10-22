@@ -112,6 +112,8 @@ export const svSE = {
   'visualization.fit': 'Anpassa till vyn',
   'visualization.tidyUp': 'Städa upp',
   'visualization.showAll': 'Visa alla',
+  'visualization.previousTable': 'Föregående tabell',
+  'visualization.nextTable': 'Nästa tabell',
   'visualization.rowDisplay': 'Radvisning: {mode}',
   'visualization.showMode.nameOnly': 'Endast namn',
   'visualization.showMode.keysOnly': 'Endast nycklar',

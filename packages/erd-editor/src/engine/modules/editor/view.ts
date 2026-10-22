@@ -39,6 +39,26 @@ export const getSourceView = (
 ): SceneView | null =>
   source === 'document' ? null : state.editor.views[source];
 
+/** Whether two center sets name the same tables in the same order, which frame a view alike. */
+export const isSameCenters = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every((id, index) => id === b[index]);
+
+/**
+ * What a step to the centers given stands the view on: those of the tables given
+ * that it names, none standing for the whole document. Null where the step passes
+ * them over, all their tables gone or what is left the centers the view stands on.
+ */
+export function toSteppedCenters(
+  tableIds: ReadonlySet<string>,
+  view: SceneView,
+  centerIds: string[]
+): string[] | null {
+  const live = centerIds.filter(id => tableIds.has(id));
+  if (centerIds.length && !live.length) return null;
+
+  return isSameCenters(live, view.centerIds) ? null : live;
+}
+
 /**
  * A view just opened: nothing placed yet, the neutral placement a fit will
  * replace, and the display its centers ask for. Narrowed to a few tables it
@@ -58,5 +78,7 @@ export function createSceneView(
     originY: 0,
     zoomLevel: 1,
     centerIds: centers,
+    previousCenterIds: [],
+    nextCenterIds: [],
   };
 }

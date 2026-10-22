@@ -111,6 +111,8 @@ export const arSA = {
   'visualization.fit': 'ملاءمة للشاشة',
   'visualization.tidyUp': 'تنظيم',
   'visualization.showAll': 'إظهار الكل',
+  'visualization.previousTable': 'الجدول السابق',
+  'visualization.nextTable': 'الجدول التالي',
   'visualization.rowDisplay': 'عرض الصفوف: {mode}',
   'visualization.showMode.nameOnly': 'الاسم فقط',
   'visualization.showMode.keysOnly': 'المفاتيح فقط',

@@ -7,6 +7,7 @@ import { type LWW, Point, ValuesType } from '@/internal-types';
 import { Rect } from '@/utils/dragSelect';
 
 import {
+  CenterStep,
   FocusType,
   MoveKey,
   SelectType,
@@ -67,6 +68,7 @@ export const ActionType = {
   viewSetLayout: 'editor.viewSetLayout',
   viewChangeShowMode: 'editor.viewChangeShowMode',
   viewSetCenters: 'editor.viewSetCenters',
+  viewStepCenters: 'editor.viewStepCenters',
   changeVisualizationMode: 'editor.changeVisualizationMode',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
@@ -227,6 +229,10 @@ export type ActionMap = {
   };
   [ActionType.viewSetCenters]: {
     tableIds: string[];
+    kind?: ViewKind;
+  };
+  [ActionType.viewStepCenters]: {
+    step: CenterStep;
     kind?: ViewKind;
   };
   [ActionType.changeVisualizationMode]: {

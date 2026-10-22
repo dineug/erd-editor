@@ -111,6 +111,8 @@ export const koKR = {
   'visualization.fit': '화면에 맞춤',
   'visualization.tidyUp': '정리',
   'visualization.showAll': '모두 표시',
+  'visualization.previousTable': '이전 테이블',
+  'visualization.nextTable': '다음 테이블',
   'visualization.rowDisplay': '행 표시: {mode}',
   'visualization.showMode.nameOnly': '이름만',
   'visualization.showMode.keysOnly': '키 컬럼만',

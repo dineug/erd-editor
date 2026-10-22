@@ -112,6 +112,8 @@ export const roRO = {
   'visualization.fit': 'Încadrare',
   'visualization.tidyUp': 'Ordonare',
   'visualization.showAll': 'Afișare totală',
+  'visualization.previousTable': 'Tabelul anterior',
+  'visualization.nextTable': 'Tabelul următor',
   'visualization.rowDisplay': 'Afișare rânduri: {mode}',
   'visualization.showMode.nameOnly': 'Doar nume',
   'visualization.showMode.keysOnly': 'Doar chei',

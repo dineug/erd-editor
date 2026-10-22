@@ -112,6 +112,8 @@ export const esES = {
   'visualization.fit': 'Ajustar a la pantalla',
   'visualization.tidyUp': 'Ordenar',
   'visualization.showAll': 'Mostrar todo',
+  'visualization.previousTable': 'Tabla anterior',
+  'visualization.nextTable': 'Tabla siguiente',
   'visualization.rowDisplay': 'Vista de filas: {mode}',
   'visualization.showMode.nameOnly': 'Solo nombre',
   'visualization.showMode.keysOnly': 'Solo claves',

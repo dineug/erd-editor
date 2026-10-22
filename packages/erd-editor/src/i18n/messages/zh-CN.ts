@@ -111,6 +111,8 @@ export const zhCN = {
   'visualization.fit': '适应窗口',
   'visualization.tidyUp': '整理',
   'visualization.showAll': '显示全部',
+  'visualization.previousTable': '上一个表',
+  'visualization.nextTable': '下一个表',
   'visualization.rowDisplay': '行显示：{mode}',
   'visualization.showMode.nameOnly': '仅名称',
   'visualization.showMode.keysOnly': '仅键列',

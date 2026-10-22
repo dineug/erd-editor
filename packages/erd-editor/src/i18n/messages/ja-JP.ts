@@ -111,6 +111,8 @@ export const jaJP = {
   'visualization.fit': '画面に合わせる',
   'visualization.tidyUp': '整列',
   'visualization.showAll': 'すべて表示',
+  'visualization.previousTable': '前のテーブル',
+  'visualization.nextTable': '次のテーブル',
   'visualization.rowDisplay': '行の表示: {mode}',
   'visualization.showMode.nameOnly': '名前のみ',
   'visualization.showMode.keysOnly': 'キーのみ',

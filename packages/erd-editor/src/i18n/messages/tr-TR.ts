@@ -112,6 +112,8 @@ export const trTR = {
   'visualization.fit': 'Sığdır',
   'visualization.tidyUp': 'Toparla',
   'visualization.showAll': 'Tümünü göster',
+  'visualization.previousTable': 'Önceki tablo',
+  'visualization.nextTable': 'Sonraki tablo',
   'visualization.rowDisplay': 'Satır görünümü: {mode}',
   'visualization.showMode.nameOnly': 'Yalnızca ad',
   'visualization.showMode.keysOnly': 'Yalnızca anahtarlar',

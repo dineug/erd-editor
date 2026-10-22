@@ -112,6 +112,8 @@ export const idID = {
   'visualization.fit': 'Paskan ke layar',
   'visualization.tidyUp': 'Rapikan',
   'visualization.showAll': 'Tampilkan semua',
+  'visualization.previousTable': 'Tabel sebelumnya',
+  'visualization.nextTable': 'Tabel berikutnya',
   'visualization.rowDisplay': 'Tampilan baris: {mode}',
   'visualization.showMode.nameOnly': 'Nama saja',
   'visualization.showMode.keysOnly': 'Kunci saja',

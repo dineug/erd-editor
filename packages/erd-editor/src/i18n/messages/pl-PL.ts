@@ -112,6 +112,8 @@ export const plPL = {
   'visualization.fit': 'Dopasuj',
   'visualization.tidyUp': 'Uporządkuj',
   'visualization.showAll': 'Pokaż wszystko',
+  'visualization.previousTable': 'Poprzednia tabela',
+  'visualization.nextTable': 'Następna tabela',
   'visualization.rowDisplay': 'Wyświetlanie wierszy: {mode}',
   'visualization.showMode.nameOnly': 'Tylko nazwa',
   'visualization.showMode.keysOnly': 'Tylko klucze',

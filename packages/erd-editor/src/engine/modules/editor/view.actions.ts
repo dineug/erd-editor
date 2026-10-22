@@ -7,8 +7,13 @@ import { clearSortChannel } from '@/utils/draw-relationship';
 import { zoomLevelInRange } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
-import { Editor, SceneView, ViewKind } from './state';
-import { createSceneView, getActiveView } from './view';
+import { CenterStep, Editor, SceneView, ViewKind } from './state';
+import {
+  createSceneView,
+  getActiveView,
+  isSameCenters,
+  toSteppedCenters,
+} from './view';
 
 /**
  * Retires what a view session routed, so a view reopened on the same centers
@@ -29,6 +34,9 @@ function clearViewGeometry({ collections }: RootState, kind: ViewKind): void {
  */
 const getAimedView = (state: RootState, kind?: ViewKind): SceneView | null =>
   kind ? state.editor.views[kind] : getActiveView(state);
+
+/** How many earlier centers a view keeps to step back to; the oldest goes first. */
+const CENTER_TRAIL_LIMIT = 100;
 
 /** Drops the view, which is what any replacement of the document owes it. */
 export function clearViews(editor: Editor): void {
@@ -177,17 +185,55 @@ export const viewSetCentersAction = createAction<
 >(ActionType.viewSetCenters);
 
 /**
- * Stands the view the kind names, else the active one, on new centers. The ids
- * are copied, so the caller's array is never the one the view holds.
+ * Stands the view the kind names, else the active one, on new centers, keeping
+ * the ones it leaves to step back to and dropping those a step back left. The
+ * ids are copied, so the caller's array is never the one the view holds.
  */
 const viewSetCenters: ReducerType<typeof ActionType.viewSetCenters> = (
   state,
   { payload: { tableIds, kind } }
 ) => {
   const view = getAimedView(state, kind);
+  if (!view || isSameCenters(view.centerIds, tableIds)) return;
+
+  // Copied whole rather than shifted: a shift writes back the observable
+  // proxies it reads, and the state would hold them in place of plain arrays.
+  view.previousCenterIds = [...view.previousCenterIds, view.centerIds]
+    .slice(-CENTER_TRAIL_LIMIT)
+    .map(ids => [...ids]);
+  view.nextCenterIds = [];
+  view.centerIds = [...tableIds];
+};
+
+export const viewStepCentersAction = createAction<
+  ActionMap[typeof ActionType.viewStepCenters]
+>(ActionType.viewStepCenters);
+
+/**
+ * Stands the view the kind names, else the active one, back on the centers it
+ * stood on before, or forward on those a step back left, keeping the ones it
+ * leaves for the step the other way. It drops a set it passes over, and with none left that way it stands.
+ */
+const viewStepCenters: ReducerType<typeof ActionType.viewStepCenters> = (
+  state,
+  { payload: { step, kind } }
+) => {
+  const view = getAimedView(state, kind);
   if (!view) return;
 
-  view.centerIds = [...tableIds];
+  const [from, to] =
+    step === CenterStep.previous
+      ? [view.previousCenterIds, view.nextCenterIds]
+      : [view.nextCenterIds, view.previousCenterIds];
+  const tableIds = new Set(state.doc.tableIds);
+  for (let ids = from.pop(); ids; ids = from.pop()) {
+    const centerIds = toSteppedCenters(tableIds, view, ids);
+    if (!centerIds) continue;
+
+    to.push([...view.centerIds]);
+    view.centerIds = centerIds;
+    return;
+  }
 };
 
 export const changeVisualizationModeAction = createAction<
@@ -211,6 +257,7 @@ export const viewReducers = {
   [ActionType.viewSetLayout]: viewSetLayout,
   [ActionType.viewChangeShowMode]: viewChangeShowMode,
   [ActionType.viewSetCenters]: viewSetCenters,
+  [ActionType.viewStepCenters]: viewStepCenters,
   [ActionType.changeVisualizationMode]: changeVisualizationMode,
 };
 
@@ -225,5 +272,6 @@ export const viewActions = {
   viewSetLayoutAction,
   viewChangeShowModeAction,
   viewSetCentersAction,
+  viewStepCentersAction,
   changeVisualizationModeAction,
 };

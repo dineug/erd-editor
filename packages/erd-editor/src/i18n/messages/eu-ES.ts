@@ -112,6 +112,8 @@ export const euES = {
   'visualization.fit': 'Doitu',
   'visualization.tidyUp': 'Txukundu',
   'visualization.showAll': 'Erakutsi guztiak',
+  'visualization.previousTable': 'Aurreko taula',
+  'visualization.nextTable': 'Hurrengo taula',
   'visualization.rowDisplay': 'Errenkaden bistaratzea: {mode}',
   'visualization.showMode.nameOnly': 'Izena soilik',
   'visualization.showMode.keysOnly': 'Gakoak soilik',

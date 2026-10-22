@@ -112,6 +112,8 @@ export const itIT = {
   'visualization.fit': 'Adatta alla vista',
   'visualization.tidyUp': 'Riordina',
   'visualization.showAll': 'Mostra tutto',
+  'visualization.previousTable': 'Tabella precedente',
+  'visualization.nextTable': 'Tabella successiva',
   'visualization.rowDisplay': 'Visualizzazione righe: {mode}',
   'visualization.showMode.nameOnly': 'Solo nome',
   'visualization.showMode.keysOnly': 'Solo chiavi',

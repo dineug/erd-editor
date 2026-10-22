@@ -91,7 +91,7 @@ import {
   toScreenPoint,
 } from '@/konva/scene/viewport';
 import { calcTableHeight } from '@/utils/calcTable';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 const hoisted = vi.hoisted(() => ({
   requests: [] as Array<{ placement: string; nodes: any[]; edges: any[] }>,
@@ -1386,6 +1386,74 @@ describe('the Flow mode of the visualization tab', () => {
       fitted + 0.04,
       5
     );
+  });
+
+  it('steps back and forward through the centers it stood on, on the undo and redo chords and the two buttons', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    await narrowByRelated('t2');
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t2']);
+    expect(drawnTableIds()).toEqual(['t1', 't2', 't3']);
+
+    chord(app, KeyBindingName.undo);
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t1']);
+    expect(drawnTableIds()).toEqual(['t1', 't2']);
+
+    click(
+      menuOf(
+        mounted,
+        toShortcutTitle(app.keyBindingMap, 'Next table', KeyBindingName.redo)
+      )
+    );
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t2']);
+    expect(drawnTableIds()).toEqual(['t1', 't2', 't3']);
+
+    click(
+      menuOf(
+        mounted,
+        toShortcutTitle(
+          app.keyBindingMap,
+          'Previous table',
+          KeyBindingName.undo
+        )
+      )
+    );
+    await settle();
+    chord(app, KeyBindingName.redo);
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t2']);
+  });
+
+  // Graph draws no view, so the chords step nothing there, and the palette
+  // takes them as it takes the zoom chords.
+  it('steps nothing on the undo chord under Graph or while quick search is open', async () => {
+    const app = createTestAppContext();
+    seedFields(app);
+    const mounted = await mountVisualization(app);
+    await enterFocused(mounted, ['t1']);
+    await narrowByRelated('t2');
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.search]: true }));
+    chord(app, KeyBindingName.undo);
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t2']);
+
+    app.store.dispatchSync(changeOpenMapAction({ [Open.search]: false }));
+    click(menuOf(mounted, 'Graph'));
+    await settle();
+    chord(app, KeyBindingName.undo);
+    await settle();
+
+    expect(app.store.state.editor.views.flow!.centerIds).toEqual(['t2']);
   });
 
   it('leaves the display set and the tab where they stand on the stop chord (AC-49)', async () => {

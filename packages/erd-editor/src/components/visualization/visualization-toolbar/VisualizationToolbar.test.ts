@@ -38,15 +38,17 @@ import {
   viewMoveTableAction,
   viewOpenAction,
   viewScrollToAction,
+  viewSetCentersAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
 import {
   addTableAction,
   changeTableNameAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { PREVIEW_ZOOM_MAX } from '@/konva/scene/fitZoom';
-import { KeyBindingName } from '@/utils/keyboard-shortcut';
+import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 
 const hoisted = vi.hoisted(() => ({ requests: 0 }));
 
@@ -274,7 +276,7 @@ describe('VisualizationToolbar', () => {
     expect(byTitle(root, 'Show all')).toBeNull();
   });
 
-  it('draws the Flow order: modes, zoom, placement, show mode (AC-4, AC-56)', async () => {
+  it('draws the Flow order: modes, steps, zoom, placement, show mode (AC-4, AC-56)', async () => {
     const { app, root } = await setup();
 
     click(byTitle(root, 'Flow'));
@@ -287,6 +289,8 @@ describe('VisualizationToolbar', () => {
     expect(titles(root)).toEqual([
       'Graph',
       'Flow',
+      expect.stringMatching(/^Previous table/),
+      expect.stringMatching(/^Next table/),
       expect.stringMatching(/^Zoom out/),
       expect.stringMatching(/^Zoom in/),
       'Fit',
@@ -313,9 +317,11 @@ describe('VisualizationToolbar', () => {
       Object.assign(i18n, createI18n('ko-KR', pseudoMessages('ko')));
       await flush();
 
-      expect(titles(root).slice(0, 7)).toEqual([
+      expect(titles(root).slice(0, 9)).toEqual([
         'ko:Graph',
         'ko:Flow',
+        expect.stringMatching(/^ko:Previous table \(/),
+        expect.stringMatching(/^ko:Next table \(/),
         expect.stringMatching(/^ko:Zoom out \(/),
         expect.stringMatching(/^ko:Zoom in \(/),
         'ko:Fit',
@@ -365,8 +371,93 @@ describe('VisualizationToolbar', () => {
     expect(root.textContent).not.toMatch(
       /t1|customers|neighbour|neighbor|table/i
     );
-    expect(titles(root)).not.toContain('Back');
-    expect(titles(root)).not.toContain('Forward');
+  });
+
+  it('names the steps after the undo and redo chords, and draws them as arrows', async () => {
+    const app = seedFlow(createTestAppContext(), ['t1']);
+    const { root } = await setup(app);
+    const previous = byTitle(root, 'Previous table');
+    const next = byTitle(root, 'Next table');
+
+    expect(previous?.getAttribute('title')).toBe(
+      toShortcutTitle(app.keyBindingMap, 'Previous table', KeyBindingName.undo)
+    );
+    expect(next?.getAttribute('title')).toBe(
+      toShortcutTitle(app.keyBindingMap, 'Next table', KeyBindingName.redo)
+    );
+    expect(pathsOf(previous)).toEqual(iconPaths('arrow-left'));
+    expect(pathsOf(next)).toEqual(iconPaths('arrow-right'));
+  });
+
+  it('dims a step with nothing that way, and steps the view through the centers it stood on', async () => {
+    const app = seedFlow(createTestAppContext(), ['t1']);
+    const { root } = await setup(app);
+    const isDisabled = (name: string) =>
+      Boolean(byTitle(root, name)?.classList.contains('disabled'));
+    const centers = () => app.store.state.editor.views.flow!.centerIds;
+
+    expect(isDisabled('Previous table')).toBe(true);
+    expect(isDisabled('Next table')).toBe(true);
+
+    app.store.dispatchSync(
+      viewSetCentersAction({ tableIds: ['t2'], kind: ViewKind.flow })
+    );
+    await flush();
+
+    expect(isDisabled('Previous table')).toBe(false);
+    expect(isDisabled('Next table')).toBe(true);
+
+    click(byTitle(root, 'Previous table'));
+    await flush();
+
+    expect(centers()).toEqual(['t1']);
+    expect(isDisabled('Previous table')).toBe(true);
+    expect(isDisabled('Next table')).toBe(false);
+
+    click(byTitle(root, 'Next table'));
+    await flush();
+
+    expect(centers()).toEqual(['t2']);
+
+    // A dimmed step dispatches nothing, so no sort wakes for a press that goes nowhere.
+    const batches: unknown[] = [];
+    const unsubscribe = app.store.subscribe(actions => batches.push(actions));
+    click(byTitle(root, 'Next table'));
+    await flush();
+    unsubscribe();
+
+    expect(centers()).toEqual(['t2']);
+    expect(batches).toEqual([]);
+  });
+
+  it('dims the step back once the tables it would return to are gone', async () => {
+    const app = seedFlow(createTestAppContext(), ['t1']);
+    const { root } = await setup(app);
+    app.store.dispatchSync(
+      viewSetCentersAction({ tableIds: ['t2'], kind: ViewKind.flow })
+    );
+    await flush();
+
+    expect(byTitle(root, 'Previous table')?.className).not.toContain(
+      'disabled'
+    );
+
+    app.store.dispatchSync(removeTableAction({ id: 't1' }));
+    await flush();
+
+    expect(byTitle(root, 'Previous table')?.className).toContain('disabled');
+  });
+
+  it('dims both steps while no Flow view is open', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      changeVisualizationModeAction({ value: VisualizationMode.flow })
+    );
+    const { root } = await setup(app);
+
+    expect(app.store.state.editor.views.flow).toBeNull();
+    expect(byTitle(root, 'Previous table')?.className).toContain('disabled');
+    expect(byTitle(root, 'Next table')?.className).toContain('disabled');
   });
 
   it('steps the Flow zoom on the two buttons and prints it as a percentage (AC-6)', async () => {
@@ -437,6 +528,8 @@ describe('VisualizationToolbar', () => {
     expect(titles(root)).toEqual([
       'Graph',
       'Flow',
+      expect.stringMatching(/^Previous table/),
+      expect.stringMatching(/^Next table/),
       expect.stringMatching(/^Zoom out/),
       expect.stringMatching(/^Zoom in/),
       'Fit',
@@ -445,6 +538,9 @@ describe('VisualizationToolbar', () => {
       'Name View',
       'Show all',
     ]);
+
+    // A funnel struck through, so it never reads as the fit's brackets beside it.
+    expect(pathsOf(byTitle(root, 'Show all'))).toEqual(iconPaths('funnel-x'));
 
     click(byTitle(root, 'Show all'));
     await flush();
@@ -702,6 +798,8 @@ describe('VisualizationToolbar', () => {
     expect(titles(root)).toEqual([
       'Graph',
       'Flow',
+      expect.stringMatching(/^Previous table/),
+      expect.stringMatching(/^Next table/),
       expect.stringMatching(/^Zoom out/),
       expect.stringMatching(/^Zoom in/),
       'Fit',

@@ -42,8 +42,11 @@ function showFlowTab() {
 }
 
 describe('createSceneView', () => {
-  /** AC-50. The exact field list: hop and a walk history are gone, and must not come back. */
-  it('opens on name boxes with nothing placed and a neutral placement, and holds no more', () => {
+  /**
+   * AC-50. The exact field list: hop is gone and must not come back. The centers
+   * it stood on came back for the toolbar's previous and next table (the owner's request of 2026-10-22).
+   */
+  it('opens on name boxes with nothing placed, a neutral placement and nothing to step to, and holds no more', () => {
     const view = createSceneView(ViewKind.flow);
 
     expect(view).toEqual({
@@ -54,13 +57,17 @@ describe('createSceneView', () => {
       originY: 0,
       zoomLevel: 1,
       centerIds: [],
+      previousCenterIds: [],
+      nextCenterIds: [],
     });
     expect(Object.keys(view).sort()).toEqual([
       'centerIds',
       'kind',
+      'nextCenterIds',
       'originX',
       'originY',
       'positions',
+      'previousCenterIds',
       'showMode',
       'zoomLevel',
     ]);

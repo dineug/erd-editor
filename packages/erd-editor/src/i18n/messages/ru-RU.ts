@@ -112,6 +112,8 @@ export const ruRU = {
   'visualization.fit': 'Вписать в окно',
   'visualization.tidyUp': 'Упорядочить',
   'visualization.showAll': 'Показать все',
+  'visualization.previousTable': 'Предыдущая таблица',
+  'visualization.nextTable': 'Следующая таблица',
   'visualization.rowDisplay': 'Отображение строк: {mode}',
   'visualization.showMode.nameOnly': 'Только имя',
   'visualization.showMode.keysOnly': 'Только ключи',
