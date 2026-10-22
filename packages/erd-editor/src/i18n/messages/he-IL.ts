@@ -111,6 +111,8 @@ export const heIL = {
   'visualization.fit': 'התאמה לתצוגה',
   'visualization.tidyUp': 'סידור',
   'visualization.showAll': 'הצגת הכול',
+  'visualization.previousTable': 'הטבלה הקודמת',
+  'visualization.nextTable': 'הטבלה הבאה',
   'visualization.rowDisplay': 'תצוגת שורות: {mode}',
   'visualization.showMode.nameOnly': 'שם בלבד',
   'visualization.showMode.keysOnly': 'מפתחות בלבד',

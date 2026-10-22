@@ -14,6 +14,7 @@ import {
   updateDictionaryAction,
 } from '@/engine/modules/dictionary/atom.actions';
 import {
+  CenterStep,
   ShowMode,
   ViewKind,
   VisualizationMode,
@@ -27,6 +28,7 @@ import {
   viewScrollToAction,
   viewSetCentersAction,
   viewSetLayoutAction,
+  viewStepCentersAction,
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
 import {
@@ -191,6 +193,7 @@ describe('the view sort hook registration', () => {
       'editor.viewSetLayout',
       'editor.viewChangeShowMode',
       'editor.viewSetCenters',
+      'editor.viewStepCenters',
     ]);
   });
 });
@@ -222,6 +225,21 @@ describe('the view sort hook on the view actions', () => {
     store.dispatchSync(action());
     await settle();
 
+    expect(sorts('flow')).toBe(1);
+    expect(sorts('document')).toBe(0);
+  });
+
+  it('runs one view sort and no document sort for a step back to the centers it stood on', async () => {
+    const store = createScene();
+    await openFocused(store);
+    store.dispatchSync(viewSetCentersAction({ tableIds: ['t2'] }));
+    await settle();
+    clearSorts();
+
+    store.dispatchSync(viewStepCentersAction({ step: CenterStep.previous }));
+    await settle();
+
+    expect(store.state.editor.views.flow!.centerIds).toEqual(['t1']);
     expect(sorts('flow')).toBe(1);
     expect(sorts('document')).toBe(0);
   });

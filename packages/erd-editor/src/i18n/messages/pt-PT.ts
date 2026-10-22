@@ -113,6 +113,8 @@ export const ptPT = {
   'visualization.fit': 'Ajustar ao ecrã',
   'visualization.tidyUp': 'Organizar',
   'visualization.showAll': 'Mostrar tudo',
+  'visualization.previousTable': 'Tabela anterior',
+  'visualization.nextTable': 'Tabela seguinte',
   'visualization.rowDisplay': 'Apresentação das linhas: {mode}',
   'visualization.showMode.nameOnly': 'Apenas nome',
   'visualization.showMode.keysOnly': 'Apenas chaves',

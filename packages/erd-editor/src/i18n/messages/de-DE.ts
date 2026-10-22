@@ -113,6 +113,8 @@ export const deDE = {
   'visualization.fit': 'Einpassen',
   'visualization.tidyUp': 'Aufräumen',
   'visualization.showAll': 'Alle anzeigen',
+  'visualization.previousTable': 'Vorherige Tabelle',
+  'visualization.nextTable': 'Nächste Tabelle',
   'visualization.rowDisplay': 'Zeilenanzeige: {mode}',
   'visualization.showMode.nameOnly': 'Nur Name',
   'visualization.showMode.keysOnly': 'Nur Schlüssel',

@@ -113,6 +113,8 @@ export const frFR = {
   'visualization.fit': 'Ajuster',
   'visualization.tidyUp': 'Ranger',
   'visualization.showAll': 'Tout afficher',
+  'visualization.previousTable': 'Table précédente',
+  'visualization.nextTable': 'Table suivante',
   'visualization.rowDisplay': 'Affichage des lignes : {mode}',
   'visualization.showMode.nameOnly': 'Nom uniquement',
   'visualization.showMode.keysOnly': 'Clés uniquement',

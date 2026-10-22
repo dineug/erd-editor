@@ -1,9 +1,10 @@
 import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { stepFlowView } from '@/components/flowCenters';
 import { Open } from '@/constants/open';
 import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
-import { VisualizationMode } from '@/engine/modules/editor/state';
+import { CenterStep, VisualizationMode } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 
@@ -28,15 +29,23 @@ const Visualization: FC<VisualizationProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
 
   /**
-   * The three zoom chords, in the mode that is up. The stop chord is not here
-   * on purpose: it cancels an ELK ask and nothing else, and a reader pressing
-   * it must not find the display set they narrowed to widened under them.
+   * The three zoom chords in either mode, and in the Flow undo and redo, which step
+   * through the centers it stood on while the document's history stands still. Stop
+   * is not here: it cancels an ELK ask and must not widen what the reader narrowed.
    */
   const handleShortcut = ({ type }: { type: KeyBindingName }) => {
+    const { editor } = app.value.store.state;
+
     // Quick search is the one overlay that stands over this tab, and a chord
     // typed into it belongs to the palette, which is what the ERD's own gate
     // says of the same chord over its canvas.
-    if (app.value.store.state.editor.openMap[Open.search]) return;
+    if (editor.openMap[Open.search]) return;
+
+    if (editor.visualizationMode === VisualizationMode.flow) {
+      type === KeyBindingName.undo &&
+        stepFlowView(app.value, CenterStep.previous);
+      type === KeyBindingName.redo && stepFlowView(app.value, CenterStep.next);
+    }
 
     type === KeyBindingName.zoomIn &&
       stepVisualizationZoom(app.value, ZOOM_STEP);

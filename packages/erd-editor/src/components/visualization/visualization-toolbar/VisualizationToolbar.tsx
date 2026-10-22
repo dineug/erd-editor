@@ -16,7 +16,11 @@ import {
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
 import { useNameViewDropdown } from '@/components/erd/floating-toolbar/nameViewDropdown';
 import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
-import { showAllFlowView } from '@/components/flowCenters';
+import {
+  canStepFlowView,
+  showAllFlowView,
+  stepFlowView,
+} from '@/components/flowCenters';
 import { useI18n } from '@/components/localeContext';
 import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
@@ -41,6 +45,7 @@ import {
 import { Open } from '@/constants/open';
 import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
 import {
+  CenterStep,
   ShowMode,
   ViewKind,
   VisualizationMode,
@@ -82,8 +87,8 @@ const showModeOf = (value?: ShowMode) =>
 
 /**
  * The bar over the bottom of the Visualization tab: which of the two modes is
- * up, the zoom, the placement tools of the Flow, how much of a card it draws,
- * the way back to the whole document, and which way the content lies and how far once the screen holds none.
+ * up, the steps through the centers the Flow stood on, the zoom, its placement
+ * tools, how much of a card it draws, the way back to the whole document, and which way the content lies and how far once the screen holds none.
  */
 const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -203,6 +208,10 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
     showAllFlowView(app.value);
   };
 
+  const handleStep = (step: CenterStep) => () => {
+    stepFlowView(app.value, step);
+  };
+
   const handleCompass = () => {
     const { store } = app.value;
 
@@ -280,6 +289,36 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
           >
             <Icon name="waypoints" size={ICON_SIZE} />
           </div>
+          {flow ? (
+            <>
+              <div class={floating.divider}></div>
+              <div
+                class={[
+                  floating.menu,
+                  {
+                    disabled: !canStepFlowView(app.value, CenterStep.previous),
+                  },
+                ]}
+                title={title(
+                  'visualization.previousTable',
+                  KeyBindingName.undo
+                )}
+                on:click={handleStep(CenterStep.previous)}
+              >
+                <Icon name="arrow-left" size={ICON_SIZE} />
+              </div>
+              <div
+                class={[
+                  floating.menu,
+                  { disabled: !canStepFlowView(app.value, CenterStep.next) },
+                ]}
+                title={title('visualization.nextTable', KeyBindingName.redo)}
+                on:click={handleStep(CenterStep.next)}
+              >
+                <Icon name="arrow-right" size={ICON_SIZE} />
+              </div>
+            </>
+          ) : null}
           <div class={floating.divider}></div>
           <div
             class={floating.menu}
@@ -342,7 +381,7 @@ const VisualizationToolbar: FC<VisualizationToolbarProps> = (props, ctx) => {
                 title={t('visualization.showAll')}
                 on:click={handleShowAll}
               >
-                <Icon name="maximize" size={ICON_SIZE} />
+                <Icon name="funnel-x" size={ICON_SIZE} />
               </div>
             </>
           ) : null}

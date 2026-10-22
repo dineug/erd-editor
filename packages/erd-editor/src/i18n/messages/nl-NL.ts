@@ -112,6 +112,8 @@ export const nlNL = {
   'visualization.fit': 'Passend maken',
   'visualization.tidyUp': 'Opruimen',
   'visualization.showAll': 'Alles weergeven',
+  'visualization.previousTable': 'Vorige tabel',
+  'visualization.nextTable': 'Volgende tabel',
   'visualization.rowDisplay': 'Rijweergave: {mode}',
   'visualization.showMode.nameOnly': 'Alleen naam',
   'visualization.showMode.keysOnly': 'Alleen sleutels',

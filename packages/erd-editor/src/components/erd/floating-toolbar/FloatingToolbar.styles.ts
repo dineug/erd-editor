@@ -43,6 +43,13 @@ export const menu = css`
     color: var(--active);
     background-color: var(--context-menu-select);
   }
+
+  &.disabled {
+    cursor: not-allowed;
+    color: var(--foreground);
+    background-color: transparent;
+    opacity: 0.4;
+  }
 `;
 
 /*

@@ -21,6 +21,7 @@ import {
   viewScrollToAction,
   viewSetCentersAction,
   viewSetLayoutAction,
+  viewStepCentersAction,
   viewStreamScrollToAction,
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
@@ -276,6 +277,7 @@ const aimedKind: Record<
   [viewCloseAction.type]: kindOf,
   [viewSetLayoutAction.type]: kindOf,
   [viewSetCentersAction.type]: flowOnly,
+  [viewStepCentersAction.type]: flowOnly,
   [viewChangeShowModeAction.type]: namedOrActiveKind,
   [viewMoveTableAction.type]: namedOrActiveKind,
 };
@@ -455,6 +457,7 @@ const viewLayoutActions = [
   viewSetLayoutAction,
   viewChangeShowModeAction,
   viewSetCentersAction,
+  viewStepCentersAction,
 ];
 
 /**

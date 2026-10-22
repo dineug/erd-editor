@@ -112,6 +112,8 @@ export const ukUA = {
   'visualization.fit': 'Умістити',
   'visualization.tidyUp': 'Упорядкувати',
   'visualization.showAll': 'Показати все',
+  'visualization.previousTable': 'Попередня таблиця',
+  'visualization.nextTable': 'Наступна таблиця',
   'visualization.rowDisplay': 'Відображення рядків: {mode}',
   'visualization.showMode.nameOnly': 'Лише назва',
   'visualization.showMode.keysOnly': 'Лише ключі',

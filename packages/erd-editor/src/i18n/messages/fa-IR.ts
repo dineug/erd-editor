@@ -111,6 +111,8 @@ export const faIR = {
   'visualization.fit': 'متناسب با صفحه',
   'visualization.tidyUp': 'مرتب کردن',
   'visualization.showAll': 'نمایش همه',
+  'visualization.previousTable': 'جدول قبلی',
+  'visualization.nextTable': 'جدول بعدی',
   'visualization.rowDisplay': 'نمایش ردیف: {mode}',
   'visualization.showMode.nameOnly': 'فقط نام',
   'visualization.showMode.keysOnly': 'فقط کلیدها',

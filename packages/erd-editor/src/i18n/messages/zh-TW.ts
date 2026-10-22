@@ -111,6 +111,8 @@ export const zhTW = {
   'visualization.fit': '符合畫面大小',
   'visualization.tidyUp': '整理',
   'visualization.showAll': '全部顯示',
+  'visualization.previousTable': '上一個資料表',
+  'visualization.nextTable': '下一個資料表',
   'visualization.rowDisplay': '列顯示：{mode}',
   'visualization.showMode.nameOnly': '僅名稱',
   'visualization.showMode.keysOnly': '僅鍵欄位',
