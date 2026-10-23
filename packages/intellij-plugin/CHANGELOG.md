@@ -4,6 +4,57 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-23
+
+### Added
+
+- Logical names for tables and columns, and a Name View of Physical, Logical or Both, picked from
+  the floating toolbar, the Visualization bar, the canvas menu or the command palette. Flow, Graph,
+  Table Properties, the Explorer, the Diff Viewer and image export draw names in the view picked.
+- The Dictionary tab holds the diagram's words, terms and domains on sheets you search, sort and
+  edit like a spreadsheet. It imports each from CSV, in its own layout or that of Korea's public
+  data standard, UTF-8 or EUC-KR, and exports it in its own layout. Undo and Redo there walk the
+  sheet's own edits, and an SQL, GraphQL, DBML or AML import keeps the dictionaries.
+- A logical name gives the physical name from the matching term, or from the abbreviations of the
+  words it splits into, until you write the name yourself. The logical name cell completes term
+  names, and Derive Physical Names Again, in the table and canvas menus and the command palette,
+  derives the names again after a word or term changed.
+- A column linked to a domain takes the domain's data type and follows it when it changes; typing
+  another type unlinks the column. View Option → Domain shows each column's domain, and a foreign
+  key column copies its key's domain and logical name.
+- The Checks sheet lists forbidden, unregistered and synonym words, duplicate names, unknown
+  domains, physical names other than a term gives, and columns off their domain's type. A double
+  click goes to the row or column, and the canvas colors the names it flags.
+- Find and Replace and the command palette's `#` search logical names too.
+- The Schema SQL tab can write logical names into empty comments.
+- The Settings tab gains a Name View lock, on by default like the others, so switching the view
+  leaves the file alone, and Logical Name and Domain join its column order.
+- Flow gains Previous table and Next table, which step back and forward through the tables it
+  focused.
+- A coding agent can set logical names and domains, edit the dictionaries, derive physical names
+  again and list the checks, with `@dineug/erd-editor-mcp` updated to this release.
+
+### Changed
+
+- An earlier release, or an earlier `@dineug/erd-editor-mcp` editing a file on its own, saves a
+  diagram without its logical names, domains and dictionaries, so update both wherever you share
+  diagrams.
+- A file leaves out empty text, lists and collections, so a file an earlier release saved changes
+  once, on its next save.
+- A column moves by the handle beside the focused row, just outside the table's left edge, and
+  carries the other selected columns with it. Dragging a column row now moves the selected
+  tables, as the header does.
+- Flow cards show each row's type at rest too, not only when lit.
+
+### Fixed
+
+- SQL Server comments keep text outside the database's code page, such as Korean, written as
+  `N'…'`.
+- An Oracle comment with a blank line no longer loses its `COMMENT` in SQL*Plus, and a SQLite
+  comment on several lines no longer breaks the DDL.
+- Notices such as "Couldn't copy to the clipboard" close on their own again instead of staying on
+  screen.
+
 ## [1.1.0] - 2026-10-16
 
 ### Added
