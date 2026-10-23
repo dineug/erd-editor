@@ -238,6 +238,27 @@ describe('setColumnLogicalNameAction$', () => {
     expect(isDerived(peer, 'c1')).toBe(true);
   });
 
+  it('writes the logical name alone where another column of the table holds the name it derives, in any case', () => {
+    const peer = setup(
+      WORDS,
+      table('users'),
+      column('users', 'c1', { name: 'mbr_no' }),
+      column('users', 'c2')
+    );
+
+    const report = send(
+      peer,
+      setColumnLogicalNameAction$('users', 'c2', 'Member Number')
+    );
+
+    expect(typesOf(report.actions)).toEqual(['column.changeLogicalName']);
+    expect(columnOf(peer, 'c2')).toMatchObject({
+      logicalName: 'Member Number',
+      name: '',
+    });
+    expect(isDerived(peer, 'c2')).toBe(false);
+  });
+
   it('derives again over a name the dictionaries derived before', () => {
     const peer = setup(
       WORDS,
@@ -558,6 +579,40 @@ describe('rederiveNamesAction$', () => {
     expect(tableOf(peer, 't2').name).toBe('NO');
     expect(columnOf(peer, 'c1').name).toBe('MBR_NM');
     expect(columnOf(peer, 'c3').name).toBe('MBR_NO');
+  });
+
+  it('leaves a column whose name another column holds, or took first, with its name and flag', () => {
+    // A key, its self reference and a role name, all copying the key's logical name.
+    const peer = setup(
+      WORDS,
+      table('t1', 'members'),
+      column('t1', 'c1', {
+        name: 'MBR_NO',
+        logicalName: 'Member Number',
+        derived: true,
+      }),
+      column('t1', 'c2', { name: 'MBR_NO_2', logicalName: 'Member Number' }),
+      column('t1', 'c3', { name: 'writer_no', logicalName: 'Member Number' }),
+      table('t2', 'boards'),
+      column('t2', 'c4', { name: 'owner', logicalName: 'Member Number' }),
+      column('t2', 'c5', { name: 'reader', logicalName: 'Member Number' })
+    );
+
+    send(peer, rederiveNamesAction$({ scope: RederiveScope.document }));
+
+    expect(
+      ['c1', 'c2', 'c3', 'c4', 'c5'].map(id => [
+        columnOf(peer, id).name,
+        isDerived(peer, id),
+      ])
+    ).toEqual([
+      ['MBR_NO', true],
+      ['MBR_NO_2', false],
+      ['writer_no', false],
+      // The first of two that both derive one name takes it.
+      ['MBR_NO', true],
+      ['reader', false],
+    ]);
   });
 
   it('sends nothing for a table or a column the document does not hold', () => {

@@ -1,6 +1,7 @@
 import type { AnyAction } from '@dineug/r-html';
 
 import { ColumnOption } from '@/constants/schema';
+import { toNameKey } from '@/engine/modules/relationship/fkColumns';
 import {
   changeTableNameAction,
   changeTableNameDerivedAction,
@@ -52,19 +53,60 @@ function toNameWrites(
   };
 }
 
+/**
+ * The names each table's columns hold, as two names compare, by table then
+ * column id; a dispatch that names several columns moves it as it goes.
+ */
+export type ColumnNameLedger = Map<string, Map<string, string>>;
+
+function namesOfTable(
+  state: RootState,
+  ledger: ColumnNameLedger,
+  tableId: string
+): Map<string, string> {
+  let names = ledger.get(tableId);
+  if (!names) {
+    const { tableEntities, tableColumnEntities } = state.collections;
+    names = new Map();
+    for (const id of tableEntities[tableId]?.columnIds ?? []) {
+      const column = tableColumnEntities[id];
+      if (column) names.set(id, toNameKey(column.name));
+    }
+    ledger.set(tableId, names);
+  }
+  return names;
+}
+
+/** Whether another column of the table holds the name, or took it earlier in the dispatch. */
+function isNameTaken(
+  names: Map<string, string>,
+  columnId: string,
+  key: string
+): boolean {
+  for (const [id, held] of names) {
+    if (id !== columnId && held === key) return true;
+  }
+  return false;
+}
+
 /** A column's name writes, and the link to its term's domain for the caller to settle. */
 export type ColumnNameWrites = {
   actions: AnyAction[];
   link: ChangeColumnValuePayload | null;
 };
 
-/** What the dictionaries write into a column for the logical name given. */
+/**
+ * What the dictionaries write into a column for the logical name given. A
+ * name another column of the table holds, or one an earlier column of the
+ * ledger's dispatch took, derives nothing: the column keeps name, flag and link.
+ */
 export function toColumnNameWrites(
   state: RootState,
   tableId: string,
   column: Column,
   logicalName: string,
-  force = false
+  force = false,
+  ledger: ColumnNameLedger = new Map()
 ): ColumnNameWrites {
   const writes = toNameWrites(
     state,
@@ -74,6 +116,13 @@ export function toColumnNameWrites(
     force
   );
   if (!writes) return { actions: [], link: null };
+
+  if (writes.name !== null) {
+    const names = namesOfTable(state, ledger, tableId);
+    const key = toNameKey(writes.name);
+    if (isNameTaken(names, column.id, key)) return { actions: [], link: null };
+    names.set(column.id, key);
+  }
 
   const target = { tableId, id: column.id };
   const actions: AnyAction[] = [];

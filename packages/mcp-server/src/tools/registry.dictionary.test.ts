@@ -452,6 +452,35 @@ describe('erd_derive_physical_names derives names again as the editor’s comman
     expect(isDerived(peer, SEED.userId)).toBe(true);
   });
 
+  it('keeps a self reference’s numbered name, which its copied logical name would derive again', () => {
+    const peer = seeded();
+    runTool(peer, 'erd_set_column_logical_name', {
+      tableId: SEED.users,
+      columnId: SEED.userId,
+      value: 'Member Number',
+    });
+    runTool(peer, 'erd_derive_physical_names', {
+      scope: 'column',
+      tableId: SEED.users,
+      columnId: SEED.userId,
+    });
+    const [selfKey] = runTool(peer, 'erd_add_relationship', {
+      startTableId: SEED.users,
+      endTableId: SEED.users,
+      relationshipType: 'ZeroN',
+    }).createdIds;
+    expect(columnOf(peer, selfKey)).toMatchObject({
+      name: 'MBR_NO_2',
+      logicalName: 'Member Number',
+    });
+
+    runTool(peer, 'erd_derive_physical_names', { scope: 'document' });
+
+    expect(columnOf(peer, selfKey).name).toBe('MBR_NO_2');
+    expect(isDerived(peer, selfKey)).toBe(false);
+    expect(columnOf(peer, SEED.userId).name).toBe('MBR_NO');
+  });
+
   it('covers every table with scope document, leaving a table with no logical name', () => {
     const peer = seeded();
 

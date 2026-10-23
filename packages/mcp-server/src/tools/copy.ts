@@ -271,7 +271,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { value: 'The comment; an empty string clears it.' },
   },
   erd_set_column_logical_name: {
-    description: `Sets the logical name of a column. While its physical name is empty or derived, the dictionaries derive it: a term of that name gives its physical name and links its domain, otherwise the words of the name compose one, their abbreviations joined with underscores. A physical name written by hand stays. The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Sets the logical name of a column. While its physical name is empty or derived, the dictionaries derive it: a term of that name gives its physical name and links its domain, otherwise the words of the name compose one, their abbreviations joined with underscores. A physical name written by hand stays, and a name another column of the table holds is not given again. The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
     args: { value: 'The logical name; an empty string clears it.' },
   },
   erd_set_column_domain: {
@@ -478,7 +478,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { domainId: DOMAIN_ID },
   },
   erd_derive_physical_names: {
-    description: `Derives physical names again from the logical names, as the editor's Derive Physical Names Again does. Each covered table or column with a logical name goes back under the dictionaries, its nameDerived on, and takes the name they give now, a physical name written by hand included: a term's physical name and, for a column, its domain, else the words' composition. A name with no logical name stays as it is. Changing a word's abbreviation or a term's physical name leaves the names given before as they are, so call this after one; a term's own physical name is never composed again, so update the term first. One erd_undo reverts the call. ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Derives physical names again from the logical names, as the editor's Derive Physical Names Again does. Each covered table or column with a logical name goes back under the dictionaries, its nameDerived on, and takes the name they give now, a physical name written by hand included: a term's physical name and, for a column, its domain, else the words' composition. A name with no logical name stays as it is, and so does a column whose new name another column of its table holds or took first, such as a second foreign key to one table or a role name. Changing a word's abbreviation or a term's physical name leaves the names given before as they are, so call this after one; a term's own physical name is never composed again, so update the term first. One erd_undo reverts the call. ${OLDER_EDITOR_DICTIONARY}`,
     args: {
       scope:
         'column for one column, table for a table name and all its columns, document for every table.',
