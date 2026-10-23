@@ -99,7 +99,7 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
 
 | Group | Tools |
 | --- | --- |
-| Session | `erd_list_documents`, `erd_open_document`, `erd_list`, `erd_get`, `erd_read`, `erd_save`, `erd_undo`, `erd_redo` |
+| Session | `erd_list_documents`, `erd_open_document`, `erd_list`, `erd_get`, `erd_read`, `erd_list_checks`, `erd_save`, `erd_undo`, `erd_redo` |
 | Tables | `erd_add_table`, `erd_remove_table`, `erd_change_table_name`, `erd_change_table_comment`, `erd_set_table_logical_name`, `erd_change_table_color`, `erd_move_table`, `erd_move_tables`, `erd_sort_tables` |
 | Columns | `erd_add_column`, `erd_remove_columns`, `erd_change_column_name`, `erd_change_column_data_type`, `erd_change_column_default`, `erd_change_column_comment`, `erd_set_column_logical_name`, `erd_set_column_domain`, `erd_set_column_primary_key`, `erd_set_column_unique`, `erd_set_column_not_null`, `erd_set_column_auto_increment`, `erd_move_column` |
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
@@ -119,6 +119,9 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
   editor; a name set by hand stays while it is not empty. `erd_derive_physical_names` derives the
   names of a column, a table or the whole document again, as the editor's Derive Physical Names
   Again does, after a word or term changed.
+- `erd_list_checks` lists what the dictionaries find, as the Dictionary tab's Checks sheet does:
+  forbidden words, words no dictionary lists, synonyms, physical names other than a term gives and
+  column types other than their domain's, each with what to use instead.
 - The import tools replace the diagram by default and add to it with `mode: "append"`. The SQL,
   GraphQL, DBML and AML imports keep the dictionaries.
 - The agent sets the database, its name and the Schema SQL scripts; the view and code settings stay

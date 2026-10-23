@@ -8,6 +8,11 @@ import { DatabaseVendorList } from '@/constants/sql/database';
 import { ChangeActionTypes } from '@/engine/actions';
 import { createEngineContext } from '@/engine/context';
 import { actions as dictionaryActions } from '@/engine/modules/dictionary/atom.actions';
+import {
+  DictionaryCheckLevel,
+  DictionaryCheckLevelOf,
+  listDictionaryChecks,
+} from '@/engine/modules/dictionary/checks';
 import { validateDictionaryValues } from '@/engine/modules/dictionary/entryWrites';
 import { actions$ as dictionaryActions$ } from '@/engine/modules/dictionary/generator.actions';
 import { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
@@ -34,7 +39,7 @@ import {
 import { getTablesGroupRect } from '@/utils/tableGroup';
 
 describe('peer barrel (AC-B2)', () => {
-  it('exposes exactly the 55 values the headless peer needs', () => {
+  it('exposes exactly the 58 values the headless peer needs', () => {
     expect(Object.keys(peer).sort()).toEqual(
       [
         'createPeerStore',
@@ -62,6 +67,9 @@ describe('peer barrel (AC-B2)', () => {
         'tableGroupActions',
         'dictionaryActions',
         'validateDictionaryValues',
+        'listDictionaryChecks',
+        'DictionaryCheckLevel',
+        'DictionaryCheckLevelOf',
         'ChangeActionTypes',
         'StreamActionTypes',
         'SharedFollowingActionTypes',
@@ -94,7 +102,7 @@ describe('peer barrel (AC-B2)', () => {
         'getTablesGroupRect',
       ].sort()
     );
-    expect(Object.keys(peer)).toHaveLength(55);
+    expect(Object.keys(peer)).toHaveLength(58);
   });
 
   it('re-exports each name from the module that owns it', () => {
@@ -112,6 +120,9 @@ describe('peer barrel (AC-B2)', () => {
     expect(peer.dictionaryActions$).toBe(dictionaryActions$);
     expect(peer.dictionaryActions).toBe(dictionaryActions);
     expect(peer.validateDictionaryValues).toBe(validateDictionaryValues);
+    expect(peer.listDictionaryChecks).toBe(listDictionaryChecks);
+    expect(peer.DictionaryCheckLevel).toBe(DictionaryCheckLevel);
+    expect(peer.DictionaryCheckLevelOf).toBe(DictionaryCheckLevelOf);
     expect(peer.ChangeActionTypes).toBe(ChangeActionTypes);
     expect(peer.FocusType).toBe(FocusType);
     expect(peer.Database).toBe(Database);

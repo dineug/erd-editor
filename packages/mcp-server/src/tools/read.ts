@@ -9,6 +9,11 @@ import {
 import { query, toDocumentJson } from '@dineug/erd-editor-schema';
 
 import { fitsInRead, MAX_READ_CHARS } from '@/tools/budget';
+import {
+  type CheckListOptions,
+  CHECKS_TOOL,
+  toCheckList,
+} from '@/tools/checks';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import {
   type EntityIds,
@@ -258,4 +263,12 @@ export const listReader = (options: ListOptions = {}): DocumentReader => ({
 export const entityReader = (ids: EntityIds): DocumentReader => ({
   tool: GET_TOOL,
   render: state => JSON.stringify(toEntityDetails(state, ids)),
+});
+
+/** erd_list_checks: what the dictionaries find, a page at a time. */
+export const checksReader = (
+  options: CheckListOptions = {}
+): DocumentReader => ({
+  tool: CHECKS_TOOL,
+  render: state => JSON.stringify(toCheckList(state, options)),
 });

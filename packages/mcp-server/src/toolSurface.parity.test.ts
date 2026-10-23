@@ -21,6 +21,7 @@ const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
   'erd_read',
   'erd_list',
   'erd_get',
+  'erd_list_checks',
 ]);
 
 /** The tools the server gained after the recording was made. */
@@ -37,6 +38,7 @@ const ADDED_TOOLS: readonly string[] = [
   'erd_derive_physical_names',
   'erd_get',
   'erd_list',
+  'erd_list_checks',
   'erd_move_table_group',
   'erd_move_tables',
   'erd_remove_domain',
@@ -145,9 +147,9 @@ const recorded = () =>
 const kept = () => fixture.filter(({ name }) => !REMOVED_TOOLS.includes(name));
 
 describe('the tool surface against the SDK-based server recording', () => {
-  it('holds the 59 recorded tools less the 10 removed, and the 27 added since', () => {
+  it('holds the 59 recorded tools less the 10 removed, and the 28 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(76);
+    expect(tools).toHaveLength(77);
     expect(namesIn(fixture, ADDED_TOOLS)).toEqual([]);
     expect(namesIn(live, ADDED_TOOLS)).toEqual(ADDED_TOOLS);
     expect(namesIn(fixture, REMOVED_TOOLS)).toEqual(REMOVED_TOOLS);

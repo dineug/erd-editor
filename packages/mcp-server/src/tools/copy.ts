@@ -11,7 +11,7 @@ export type ToolCopy = {
 
 /** What the client hands the model once, beside the tool list. */
 export const SERVER_INSTRUCTIONS =
-  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Tables and columns also take a logical name: erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries the physical name and a column’s domain, unless a name that is not empty was set by hand. Never write a document file yourself. When an editor serves the document (the ERD Editor extension in VS Code, or its plugin in Obsidian or a JetBrains IDE), edits appear live in its ERD editor: VS Code keeps them unsaved until erd_save, while Obsidian and JetBrains IDEs save them as they save the user’s edits and erd_save writes them at once. Otherwise they are written to the file at once, and each edit’s result says saved: true.';
+  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Tables and columns also take a logical name: erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries the physical name and a column’s domain, unless a name that is not empty was set by hand; erd_list_checks lists what the dictionaries find wrong, and erd_derive_physical_names derives names again after a word or term changed. Never write a document file yourself. When an editor serves the document (the ERD Editor extension in VS Code, or its plugin in Obsidian or a JetBrains IDE), edits appear live in its ERD editor: VS Code keeps them unsaved until erd_save, while Obsidian and JetBrains IDEs save them as they save the user’s edits and erd_save writes them at once. Otherwise they are written to the file at once, and each edit’s result says saved: true.';
 
 const TABLE_ID = 'Table id, from erd_list or the createdIds of erd_add_table.';
 const COLUMN_ID =
@@ -167,6 +167,20 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
       wordIds: 'Word ids, from erd_list.',
       termIds: 'Term ids, from erd_list.',
       domainIds: 'Domain ids, from erd_list.',
+    },
+  },
+  erd_list_checks: {
+    description:
+      "Lists what the word, term and domain dictionaries find, as the Checks sheet of the editor's Dictionary tab does, and changes nothing. Errors: a name two rows of one dictionary share, a link to a domain the document does not list, a forbidden word in a logical name. Warnings: a word no dictionary lists, a synonym used for a standard word, a physical name other than the one the term of its logical name gives, a column type other than its domain's. Each check names its target (a table, a column with its table, or a word, term or domain row) with its names, the field read, the text found and the suggestions to use instead, and counts gives each code's total. The words, terms and domains come first in sheet order, then each table and its columns in document order. With no dictionary row nothing is checked. A long list comes a page at a time: pass nextOffset.",
+    args: {
+      level: 'error or warning for that level alone; both by default.',
+      tableIds:
+        'Only the checks of these tables and their columns, from erd_list; dictionary rows are left out.',
+      tableNames: 'As tableIds, by table name in any case.',
+      offset:
+        'Where the page starts in the list, 0 by default; pass the nextOffset of the page before, with the same filters.',
+      limit:
+        'At most this many checks in the page, 100 by default; a page also stops where one answer is full.',
     },
   },
   erd_batch: {
