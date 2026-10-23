@@ -73,6 +73,7 @@ export const SaveResult = Schema.Struct({
 export const UndoResult = Schema.Struct({
   tool: Schema.Literals(['erd_undo', 'erd_redo']),
   mode: Mode,
+  saved: Schema.optionalKey(Schema.Boolean),
   toolName: Schema.NullOr(Schema.String),
   entries: Schema.Int,
   skipped: Schema.optionalKey(Schema.Array(Schema.String)),
@@ -87,6 +88,7 @@ const Mismatch = Schema.Struct({
 export const EditResult = Schema.Struct({
   tool: Schema.String,
   mode: Mode,
+  saved: Schema.optionalKey(Schema.Boolean),
   createdIds: Schema.Array(Schema.String),
   batches: Schema.Int,
   historyEntries: Schema.Int,
@@ -99,6 +101,7 @@ export const EditResult = Schema.Struct({
 export const BatchResult = Schema.Struct({
   tool: Schema.Literal(BATCH_TOOL),
   mode: Mode,
+  saved: Schema.optionalKey(Schema.Boolean),
   createdIds: Schema.Array(Schema.String),
   operations: Schema.Array(
     Schema.Struct({

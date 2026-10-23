@@ -77,6 +77,14 @@ export function errorResult(refused: Refusal): McpSchema.CallToolResult {
   });
 }
 
+/**
+ * A headless call has written the file by the time it answers, which an agent
+ * read as an edit still waiting for erd_save; a live one leaves that to the
+ * editor.
+ */
+const savedOf = (mode: WithMode<unknown>['mode']) =>
+  mode === 'headless' ? { saved: true } : {};
+
 /** Why erd_undo will not revert this call, or undefined when it will. */
 function undoNote(tool: ActionTool, outcome: ToolOutcome): string | undefined {
   const { run } = outcome;
@@ -97,6 +105,7 @@ export function toolRunResult(
   return jsonBody({
     tool: run.tool,
     mode,
+    ...savedOf(mode),
     createdIds: run.createdIds,
     batches: run.batches,
     historyEntries: run.historyEntries,
@@ -130,6 +139,7 @@ export function batchResult(outcome: WithMode<BatchOutcome>) {
   return jsonBody({
     tool: run.tool,
     mode,
+    ...savedOf(mode),
     createdIds: run.createdIds,
     operations: run.steps,
     batches: run.batches,
@@ -150,6 +160,7 @@ export function undoResult(
   return jsonBody({
     tool,
     mode,
+    ...savedOf(mode),
     toolName: result.label,
     entries: result.entries,
     ...(result.skipped.length ? { skipped: result.skipped } : {}),
