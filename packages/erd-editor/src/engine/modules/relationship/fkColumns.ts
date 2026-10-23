@@ -9,6 +9,7 @@ import {
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
   changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -139,8 +140,8 @@ export function toForeignKeyNames(
 
 /**
  * Adds a NOT NULL copy of each start column to the end table under the id at
- * the same index of endColumnIds, the caller's, named by toForeignKeyNames and
- * typed by toReferenceDataType, with its default, comment and domain.
+ * the same index of endColumnIds, named by toForeignKeyNames and typed by
+ * toReferenceDataType, with its default, comment, logical name and domain.
  */
 export const toForeignKeyActions = (
   startColumns: Column[],
@@ -195,6 +196,14 @@ export const toForeignKeyActions = (
         ...payload,
         value: startColumn.comment,
       }),
+      ...(startColumn.logicalName
+        ? [
+            changeColumnLogicalNameAction({
+              ...payload,
+              value: startColumn.logicalName,
+            }),
+          ]
+        : []),
       ...(domainId
         ? [changeColumnDomainAction({ ...payload, value: domainId })]
         : []),

@@ -369,9 +369,9 @@ describe('the words on a foreign key data type', () => {
     );
   });
 
-  it('say erd_add_relationship links the key’s domain, unless a serial key changes the type', () => {
+  it('say erd_add_relationship copies the key’s logical name and links its domain, unless a serial key changes the type', () => {
     expect(describeTool('erd_add_relationship')).toContain(
-      "Each foreign key column also links the dictionary domain its key links, unless a serial key gives it another type than the domain's"
+      "Each foreign key column also takes the logical name of its key, whatever name it gets, and links the dictionary domain its key links, unless a serial key gives it another type than the domain's"
     );
   });
 });

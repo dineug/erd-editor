@@ -82,6 +82,27 @@ describe('erd_add_relationship relates two tables in one call (AC-E9′, AC-E7)'
     expect(bHas(foreignKey.options, ColumnOption.notNull)).toBe(true);
   });
 
+  it('gives the foreign key the logical name of its key, the name its own', () => {
+    const peer = seededPeer();
+    runTool(peer, 'erd_set_column_logical_name', {
+      tableId: SEED.users,
+      columnId: SEED.userId,
+      value: 'Member Number',
+    });
+
+    const run = relate(peer, SEED.users, SEED.orders);
+
+    const foreignKey =
+      peer.state.collections.tableColumnEntities[run.createdIds[0]];
+    expect(run).toMatchObject({ batches: 1, historyEntries: 1 });
+    expect(foreignKey).toMatchObject({
+      name: 'users_id',
+      logicalName: 'Member Number',
+      domainId: SEED.domain,
+    });
+    expect(bHas(foreignKey.options, ColumnOption.nameDerived)).toBe(false);
+  });
+
   it('gives a start table without a key one first, in the same batch and entry', () => {
     const peer = seededPeer();
 

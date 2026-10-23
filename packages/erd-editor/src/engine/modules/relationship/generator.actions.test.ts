@@ -37,6 +37,7 @@ import {
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
   changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
   changeColumnPrimaryKeyAction,
@@ -679,6 +680,37 @@ describe('addRelationshipAction$ through a real store', () => {
     expect(rxStore.state.doc.relationshipIds).toEqual([]);
     expect(rxStore.state.collections.tableEntities.t2.columnIds).toEqual([]);
     expect(columnOf(rxStore, 'c1').domainId).toBe('d1');
+  });
+
+  it('gives the foreign key its key logical name with the derived flag off, in the same undo', () => {
+    const rxStore = createRxTestStore();
+    seedTable(rxStore, 't1', [idColumn], 'user');
+    seedTable(rxStore, 't2', [], 'post');
+    rxStore.dispatchSync(
+      changeColumnLogicalNameAction({
+        id: 'c1',
+        tableId: 't1',
+        value: 'User Number',
+      })
+    );
+    vi.advanceTimersByTime(300);
+
+    rxStore.dispatchSync(
+      addRelationshipAction$('t1', 't2', RelationshipType.OneN)
+    );
+
+    const [relationship] = relationshipsOf(rxStore);
+    const foreignKey = columnOf(rxStore, relationship.end.columnIds[0]);
+    expect(foreignKey).toMatchObject({
+      name: 'user_id',
+      logicalName: 'User Number',
+    });
+    expect(bHas(foreignKey.options, ColumnOption.nameDerived)).toBe(false);
+
+    rxStore.undo();
+
+    expect(rxStore.state.collections.tableEntities.t2.columnIds).toEqual([]);
+    expect(columnOf(rxStore, 'c1').logicalName).toBe('User Number');
   });
 
   it('numbers a kept key name on a second relationship and a self reference', () => {
