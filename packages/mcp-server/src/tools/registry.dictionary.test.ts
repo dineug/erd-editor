@@ -381,3 +381,142 @@ describe('a rename by hand turns the derived flag off', () => {
     ]);
   });
 });
+
+describe('erd_derive_physical_names derives names again as the editor’s command does', () => {
+  /** userName composed from the words, then the word Member abbreviated anew. */
+  function afterAbbreviationChange(peer: PeerStore) {
+    runTool(peer, 'erd_set_column_logical_name', {
+      tableId: SEED.users,
+      columnId: SEED.userName,
+      value: 'Number Member',
+    });
+    runTool(peer, 'erd_update_word', {
+      wordId: SEED.memberWord,
+      abbreviation: 'MEM',
+    });
+    return peer;
+  }
+
+  it('names a table and its columns again after an abbreviation changed, in one undo', () => {
+    const agent = afterAbbreviationChange(seeded());
+    const editor = afterAbbreviationChange(seeded());
+    expect(columnOf(agent, SEED.userName).name).toBe('NO_MBR');
+
+    const run = runTool(agent, 'erd_derive_physical_names', {
+      scope: 'table',
+      tableId: SEED.users,
+    });
+    const report = editor.dispatch([
+      dictionaryActions$.rederiveNamesAction$({
+        scope: 'table',
+        tableId: SEED.users,
+      }),
+    ]);
+
+    expect(sentOf(run.actions)).toEqual(sentOf(report.actions));
+    expect(run).toMatchObject({ batches: 1, historyEntries: 1 });
+    expect(tableOf(agent, SEED.users)).toMatchObject({
+      name: 'MEM',
+      nameDerived: true,
+    });
+    expect(columnOf(agent, SEED.userName).name).toBe('NO_MEM');
+    // A column with no logical name keeps its name.
+    expect(columnOf(agent, SEED.userId).name).toBe('id');
+
+    agent.undo();
+
+    expect(tableOf(agent, SEED.users).name).toBe('users');
+    expect(columnOf(agent, SEED.userName).name).toBe('NO_MBR');
+  });
+
+  it('puts a name written by hand back under the dictionaries, its flag on', () => {
+    const peer = seeded();
+    runTool(peer, 'erd_set_column_logical_name', {
+      tableId: SEED.users,
+      columnId: SEED.userId,
+      value: 'Member Number',
+    });
+    expect(isDerived(peer, SEED.userId)).toBe(false);
+
+    runTool(peer, 'erd_derive_physical_names', {
+      scope: 'column',
+      tableId: SEED.users,
+      columnId: SEED.userId,
+    });
+
+    expect(columnOf(peer, SEED.userId)).toMatchObject({
+      name: 'MBR_NO',
+      domainId: SEED.domain,
+      dataType: 'INT',
+    });
+    expect(isDerived(peer, SEED.userId)).toBe(true);
+  });
+
+  it('keeps a self reference’s numbered name, which its copied logical name would derive again', () => {
+    const peer = seeded();
+    runTool(peer, 'erd_set_column_logical_name', {
+      tableId: SEED.users,
+      columnId: SEED.userId,
+      value: 'Member Number',
+    });
+    runTool(peer, 'erd_derive_physical_names', {
+      scope: 'column',
+      tableId: SEED.users,
+      columnId: SEED.userId,
+    });
+    const [selfKey] = runTool(peer, 'erd_add_relationship', {
+      startTableId: SEED.users,
+      endTableId: SEED.users,
+      relationshipType: 'ZeroN',
+    }).createdIds;
+    expect(columnOf(peer, selfKey)).toMatchObject({
+      name: 'MBR_NO_2',
+      logicalName: 'Member Number',
+    });
+
+    runTool(peer, 'erd_derive_physical_names', { scope: 'document' });
+
+    expect(columnOf(peer, selfKey).name).toBe('MBR_NO_2');
+    expect(isDerived(peer, selfKey)).toBe(false);
+    expect(columnOf(peer, SEED.userId).name).toBe('MBR_NO');
+  });
+
+  it('covers every table with scope document, leaving a table with no logical name', () => {
+    const peer = seeded();
+
+    runTool(peer, 'erd_derive_physical_names', { scope: 'document' });
+
+    expect(tableOf(peer, SEED.users).name).toBe('MBR');
+    expect(tableOf(peer, SEED.orders)).toMatchObject({
+      name: 'orders',
+      nameDerived: false,
+    });
+  });
+
+  it('refuses a scope without what it names, or with more, and a column without its table', () => {
+    const peer = seeded();
+    const refusedWith = (args: Record<string, unknown>) =>
+      refusal(() => runTool(peer, 'erd_derive_physical_names', args));
+
+    expect(
+      refusedWith({ scope: 'column', tableId: SEED.users }).message
+    ).toContain('scope column needs tableId and columnId');
+    expect(refusedWith({ scope: 'table' }).message).toContain(
+      'scope table needs tableId'
+    );
+    expect(
+      refusedWith({
+        scope: 'table',
+        tableId: SEED.users,
+        columnId: SEED.userId,
+      }).message
+    ).toContain('columnId takes scope column, not table');
+    expect(
+      refusedWith({ scope: 'document', tableId: SEED.users }).message
+    ).toContain('scope document takes no tableId');
+    expect(
+      refusedWith({ scope: 'document', columnId: SEED.userId }).message
+    ).toContain('columnId needs tableId');
+    expect(tableOf(peer, SEED.users).name).toBe('users');
+  });
+});

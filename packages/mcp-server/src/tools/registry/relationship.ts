@@ -86,6 +86,7 @@ export const relationshipTools: readonly ActionTool[] = [
       'column.changeDataType',
       'column.changeDefault',
       'column.changeComment',
+      'column.changeLogicalName',
       'column.changeDomain',
       'relationship.add',
     ],

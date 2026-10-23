@@ -4,6 +4,7 @@ import { connectMcp, type McpHarness, RpcError } from '@/__test-utils__/mcp';
 import { createMemoryHost } from '@/__test-utils__/memoryHost';
 import { createSeededPeer, createSeedValue, SEED } from '@/__test-utils__/seed';
 import { createWidePeer, wideTableName } from '@/__test-utils__/wide';
+import { toCheckList } from '@/tools/checks';
 import {
   toDocumentList,
   toEntityDetails,
@@ -217,6 +218,42 @@ describe('erd_get', () => {
       expect(error.code, JSON.stringify(args)).toBe(-32602);
     }
     expect(mcp.manager.paths()).toEqual([]);
+  });
+});
+
+describe('erd_list_checks', () => {
+  it('answers the check list of the seed as compact JSON', async () => {
+    const { mcp } = await connect();
+    const text = await mcp.text('erd_list_checks', {
+      path: DOCUMENT,
+      level: 'warning',
+    });
+
+    expect(text).toBe(
+      JSON.stringify(
+        fromSeed(peer => toCheckList(peer.state, { level: 'warning' }))
+      )
+    );
+    expect(JSON.parse(text).total).toBeGreaterThan(0);
+  });
+
+  it('refuses a table it cannot find as a refusal, a level or key it does not take with -32602', async () => {
+    const { mcp } = await connect();
+
+    const refused = await mcp.call('erd_list_checks', {
+      path: DOCUMENT,
+      tableNames: ['nowhere'],
+    });
+    expect(refused.isError).toBe(true);
+    expect(refused.json.error.code).toBe('notFound');
+
+    for (const args of [{ level: 'info' }, { offset: -1 }, { query: 'x' }]) {
+      const error = await rpcError(mcp, 'erd_list_checks', {
+        path: DOCUMENT,
+        ...args,
+      });
+      expect(error.code, JSON.stringify(args)).toBe(-32602);
+    }
   });
 });
 

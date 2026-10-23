@@ -119,12 +119,30 @@ describe('tool results', () => {
     ).toEqual({
       tool: 'erd_undo',
       mode: 'headless',
+      saved: true,
       toolName: 'erd_add_table',
       entries: 1,
       skipped: ['erd_set_database'],
     });
     expect(undoResult('erd_redo', outcome(null, [])).notes).toEqual([
       'Nothing to redo: this agent has no edit left to redo on this document.',
+    ]);
+  });
+
+  it('says saved only where a headless call has written the file', () => {
+    const tool = toolByName.get('erd_add_table')!;
+    const live = run(tool.name, 1, 1);
+
+    expect(toolRunResult(tool, live)).not.toHaveProperty('saved');
+    expect(
+      Object.keys(toolRunResult(tool, { ...live, mode: 'headless' }))
+    ).toEqual([
+      'tool',
+      'mode',
+      'saved',
+      'createdIds',
+      'batches',
+      'historyEntries',
     ]);
   });
 
@@ -317,6 +335,7 @@ describe('the results a client receives', () => {
       referenceText({
         tool: 'erd_add_table',
         mode: 'headless',
+        saved: true,
         createdIds: [tableId],
         batches: 1,
         historyEntries: 1,
@@ -327,6 +346,7 @@ describe('the results a client receives', () => {
       referenceText({
         tool: 'erd_undo',
         mode: 'headless',
+        saved: true,
         toolName: 'erd_add_table',
         entries: 1,
         notes: [],

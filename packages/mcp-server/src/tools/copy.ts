@@ -11,7 +11,7 @@ export type ToolCopy = {
 
 /** What the client hands the model once, beside the tool list. */
 export const SERVER_INSTRUCTIONS =
-  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Tables and columns also take a logical name: erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries the physical name and a column’s domain, unless a name that is not empty was set by hand. Never write a document file yourself. When an editor serves the document (the ERD Editor extension in VS Code, or its plugin in Obsidian or a JetBrains IDE), edits appear live in its ERD editor: VS Code keeps them unsaved until erd_save, while Obsidian and JetBrains IDEs save them as they save the user’s edits and erd_save writes them at once. Otherwise they are written to the file at once.';
+  'Edits erd-editor ERD documents (.erd.json) one operation per tool. Find ids with erd_list, which also gives each table its position and size, and read columns and other details with erd_get; then pass the ids to the edit tools, several at once with erd_batch, such as a table with its columns. On a schema of hundreds or thousands of tables erd_list answers a page at a time: find the tables a task needs with its query or namesOnly, then read just those with erd_get or erd_read sql. Tables and columns also take a logical name: erd_set_table_logical_name and erd_set_column_logical_name write it and derive from the word, term and domain dictionaries the physical name and a column’s domain, unless a name that is not empty was set by hand; erd_list_checks lists what the dictionaries find wrong, and erd_derive_physical_names derives names again after a word or term changed. Never write a document file yourself. When an editor serves the document (the ERD Editor extension in VS Code, or its plugin in Obsidian or a JetBrains IDE), edits appear live in its ERD editor: VS Code keeps them unsaved until erd_save, while Obsidian and JetBrains IDEs save them as they save the user’s edits and erd_save writes them at once. Otherwise they are written to the file at once, and each edit’s result says saved: true.';
 
 const TABLE_ID = 'Table id, from erd_list or the createdIds of erd_add_table.';
 const COLUMN_ID =
@@ -169,6 +169,20 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
       domainIds: 'Domain ids, from erd_list.',
     },
   },
+  erd_list_checks: {
+    description:
+      "Lists what the word, term and domain dictionaries find, as the Checks sheet of the editor's Dictionary tab does, and changes nothing. Errors: a name two rows of one dictionary share, a link to a domain the document does not list, a forbidden word in a logical name or a term's name. Warnings: a word no dictionary lists, a synonym used for a standard word, each in a logical name or a term's name, a physical name other than the one the term of its logical name gives, a column type other than its domain's. Each check names its target (a table, a column with its table, or a word, term or domain row) with its names, the field read, the text found and, where the dictionaries have them, the suggestions to use instead, and counts gives each code's total. The words, terms and domains come first in sheet order, then each table and its columns in document order. With no dictionary row nothing is checked. A long list comes a page at a time: pass nextOffset, or list again from offset 0 after fixing some, since a fixed check leaves the list.",
+    args: {
+      level: 'error or warning for that level alone; both by default.',
+      tableIds:
+        'Only the checks of these tables and their columns, from erd_list; dictionary rows are left out.',
+      tableNames: 'As tableIds, by table name in any case.',
+      offset:
+        'Where the page starts in the list, 0 by default; pass the nextOffset of the page before, with the same filters.',
+      limit:
+        'At most this many checks in the page, 100 by default; a page also stops where one answer is full.',
+    },
+  },
   erd_batch: {
     description:
       'Runs several edit tools in order as one edit, all or none: they are tried on a copy first, so a refusal names the operation and leaves the document as it was. One erd_undo reverts the whole batch. Name an operation with as, then pass $name for its first created id, $name.1 for its second or $name.last for its last, where a later operation takes an entity id.',
@@ -257,7 +271,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     args: { value: 'The comment; an empty string clears it.' },
   },
   erd_set_column_logical_name: {
-    description: `Sets the logical name of a column. While its physical name is empty or derived, the dictionaries derive it: a term of that name gives its physical name and links its domain, otherwise the words of the name compose one, their abbreviations joined with underscores. A physical name written by hand stays. The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Sets the logical name of a column. While its physical name is empty or derived, the dictionaries derive it: a term of that name gives its physical name and links its domain, otherwise the words of the name compose one, their abbreviations joined with underscores. A physical name written by hand stays, and a name another column of the table holds is not given again. The domain a term links gives the column its data type, spread along relationships while relationship data type sync is on. ${SYNC_UNLINK} ${OLDER_EDITOR_DICTIONARY}`,
     args: { value: 'The logical name; an empty string clears it.' },
   },
   erd_set_column_domain: {
@@ -281,7 +295,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
 
   erd_add_relationship: {
     description:
-      "Relates two tables: copies the parent primary key into the child as foreign key columns, creating an unnamed primary key column first if the parent has none (its foreign key column is unnamed too). Each foreign key column is named from its key: a key of one word, only letters and digits with no camelCase break and no switch between cased letters and caseless ones such as Hangul or kana (id, ID, uuid, id2), gets the parent table and an underscore in front (users_id for the key id of users), any other key (member_id, userId, UserID, 회원ID, _id, order-no) or one equal to the table name stays as it is, and a name the child already has is numbered (users_id_2). Each foreign key column copies the data type of its key, but a serial key gives the integer it stores: serial4 integer, smallserial and serial2 smallint, bigserial and serial8 bigint, and a bare serial integer under PostgreSQL, bigint unsigned under MySQL and MariaDB and serial elsewhere, written in capitals when the type of the key is. Each foreign key column also links the dictionary domain its key links, unless a serial key gives it another type than the domain's. Name the parent table first: an unnamed parent gives the key name alone (id), and a later rename leaves these names as they are. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.",
+      "Relates two tables: copies the parent primary key into the child as foreign key columns, creating an unnamed primary key column first if the parent has none (its foreign key column is unnamed too). Each foreign key column is named from its key: a key of one word, only letters and digits with no camelCase break and no switch between cased letters and caseless ones such as Hangul or kana (id, ID, uuid, id2), gets the parent table and an underscore in front (users_id for the key id of users), any other key (member_id, userId, UserID, 회원ID, _id, order-no) or one equal to the table name stays as it is, and a name the child already has is numbered (users_id_2). Each foreign key column copies the data type of its key, but a serial key gives the integer it stores: serial4 integer, smallserial and serial2 smallint, bigserial and serial8 bigint, and a bare serial integer under PostgreSQL, bigint unsigned under MySQL and MariaDB and serial elsewhere, written in capitals when the type of the key is. Each foreign key column also takes the logical name of its key, whatever name it gets, and links the dictionary domain its key links, unless a serial key gives it another type than the domain's. Name the parent table first: an unnamed parent gives the key name alone (id), and a later rename leaves these names as they are. createdIds holds, in order, that new parent key column if one was made, the foreign key columns, then the relationship id last.",
     args: {
       startTableId:
         'Parent table id, the referenced side that holds the primary key.',
@@ -462,6 +476,17 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   erd_remove_domain: {
     description: `Removes a domain; the columns linking it keep their data type and show no domain. ${OLDER_EDITOR_DICTIONARY}`,
     args: { domainId: DOMAIN_ID },
+  },
+  erd_derive_physical_names: {
+    description: `Derives physical names again from the logical names, as the editor's Derive Physical Names Again does. Each covered table or column with a logical name goes back under the dictionaries, its nameDerived on, and takes the name they give now, a physical name written by hand included: a term's physical name and, for a column, its domain, else the words' composition. A name with no logical name stays as it is, and so does a column whose new name another column of its table holds or took first, such as a second foreign key to one table or a role name. Changing a word's abbreviation or a term's physical name leaves the names given before as they are, so call this after one; a term's own physical name is never composed again, so update the term first. One erd_undo reverts the call. ${OLDER_EDITOR_DICTIONARY}`,
+    args: {
+      scope:
+        'column for one column, table for a table name and all its columns, document for every table.',
+      tableId:
+        'Table id, from erd_list; scope table and column take it, scope document none.',
+      columnId:
+        'Column id in that table, from erd_get; scope column alone takes it.',
+    },
   },
 
   erd_set_database_name: setting(

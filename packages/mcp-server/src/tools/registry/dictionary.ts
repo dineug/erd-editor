@@ -245,6 +245,90 @@ const removeTool = (name: string, kind: DictionaryKind): ActionTool => ({
   ],
 });
 
+/** The scopes of the editor's Derive Physical Names Again, but the selection. */
+const DeriveScope = {
+  column: 'column',
+  table: 'table',
+  document: 'document',
+} as const;
+
+/** What a scope must name: a column in its table, a table, or nothing. */
+function refineDeriveScope({
+  scope,
+  tableId,
+  columnId,
+}: ToolArgValues): string | undefined {
+  if (scope === DeriveScope.column) {
+    return columnId === undefined
+      ? 'scope column needs tableId and columnId'
+      : undefined;
+  }
+  if (columnId !== undefined) {
+    return `columnId takes scope column, not ${scope}`;
+  }
+  if (scope === DeriveScope.table) {
+    return tableId === undefined ? 'scope table needs tableId' : undefined;
+  }
+  return tableId === undefined
+    ? undefined
+    : 'scope document takes no tableId; pass scope table for one table';
+}
+
+type DeriveTarget = Parameters<
+  typeof dictionaryActions$.rederiveNamesAction$
+>[0];
+
+const toDeriveTarget = ({
+  scope,
+  tableId,
+  columnId,
+}: ToolArgValues): DeriveTarget =>
+  scope === DeriveScope.column
+    ? { scope, tableId, columnId }
+    : scope === DeriveScope.table
+      ? { scope, tableId }
+      : { scope: DeriveScope.document };
+
+const derivePhysicalNamesTool: ActionTool = {
+  name: 'erd_derive_physical_names',
+  kind: 'generator',
+  actionTypes: [
+    'table.changeName',
+    'table.changeNameDerived',
+    'column.changeName',
+    'column.changeNameDerived',
+    'column.changeDomain',
+    'column.changeDataType',
+  ],
+  undoable: true,
+  stream: false,
+  // Names the dictionaries already give, flags on, send nothing.
+  expectedBatches: { min: 0, max: 1 },
+  expectedHistory: { min: 0, max: 1 },
+  snapshotPaths: ['tables'],
+  args: [
+    {
+      name: 'scope',
+      kind: { type: 'enum', values: DeriveScope },
+      required: true,
+    },
+    {
+      name: 'tableId',
+      kind: { type: 'entityId', entity: 'table' },
+      required: false,
+    },
+    {
+      name: 'columnId',
+      kind: { type: 'entityId', entity: 'column', parentArg: 'tableId' },
+      required: false,
+    },
+  ],
+  refine: refineDeriveScope,
+  toActions: args => [
+    dictionaryActions$.rederiveNamesAction$(toDeriveTarget(args)),
+  ],
+};
+
 export const dictionaryTools: readonly ActionTool[] = [
   addTool('erd_add_word', 'word'),
   updateTool('erd_update_word', 'word'),
@@ -260,4 +344,5 @@ export const dictionaryTools: readonly ActionTool[] = [
     snapshotPaths: ['tables'],
   }),
   removeTool('erd_remove_domain', 'domain'),
+  derivePhysicalNamesTool,
 ];

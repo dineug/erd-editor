@@ -240,6 +240,10 @@ function checkLive(
       ? [value as string].filter(Boolean)
       : (value as string[]);
   const label = ENTITY_LABEL[kind.entity];
+  // An optional parent left out would look the id up in no table at all.
+  if (ids.length && parentArg && values[parentArg.name] === undefined) {
+    throw invalid(tool, `${name} needs ${parentArg.name}`);
+  }
 
   for (const id of ids) {
     if (isLive(state, kind.entity, id, parent)) continue;

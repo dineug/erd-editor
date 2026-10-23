@@ -60,7 +60,7 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the eight session tools, every registry tool and erd_batch: 75 in all', () => {
+  it('is the nine session tools, every registry tool and erd_batch: 77 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [
         ...SESSION_TOOL_NAMES,
@@ -68,9 +68,9 @@ describe('the tool surface (AC-M8)', () => {
         'erd_batch',
       ].sort()
     );
-    expect(SESSION_TOOL_NAMES).toHaveLength(8);
-    expect(actionTools).toHaveLength(66);
-    expect(tools).toHaveLength(75);
+    expect(SESSION_TOOL_NAMES).toHaveLength(9);
+    expect(actionTools).toHaveLength(67);
+    expect(tools).toHaveLength(77);
   });
 
   it('lists the session toolkit, then the read tools, then the registry, in its order, then erd_batch', () => {
@@ -83,6 +83,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_read',
       'erd_list',
       'erd_get',
+      'erd_list_checks',
       ...actionTools.map(({ name }) => name),
       'erd_batch',
     ]);
@@ -212,6 +213,7 @@ describe('the tool surface (AC-M8)', () => {
     expect(tool('erd_read').annotations).toEqual(hints(true, true));
     expect(tool('erd_list').annotations).toEqual(hints(true, true));
     expect(tool('erd_get').annotations).toEqual(hints(true, true));
+    expect(tool('erd_list_checks').annotations).toEqual(hints(true, true));
     expect(tool('erd_list_documents').annotations).toEqual(hints(true, true));
     expect(tool('erd_add_table').annotations).toEqual(hints(false, false));
     expect(tool('erd_save').annotations).toEqual(hints(false, false));
@@ -261,6 +263,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_read',
       'erd_list',
       'erd_get',
+      'erd_list_checks',
       ...actionTools.map(({ name }) => name),
       'erd_batch',
     ]);

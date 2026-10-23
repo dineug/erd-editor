@@ -16,7 +16,11 @@ import {
   hasDictionaryKind,
   removeDictionaryAction,
 } from './atom.actions';
-import { toColumnNameWrites, toTableNameWrites } from './derivedNames';
+import {
+  type ColumnNameLedger,
+  toColumnNameWrites,
+  toTableNameWrites,
+} from './derivedNames';
 import { orderedDictionaryRows } from './dictionaryIndex';
 import { toDomainTypeActions } from './domainTypes';
 import {
@@ -236,6 +240,7 @@ function columnNameActions(
 ): AnyAction[] {
   const actions: AnyAction[] = [];
   const links: ChangeColumnValuePayload[] = [];
+  const ledger: ColumnNameLedger = new Map();
 
   for (const { tableId, columnId, logicalName } of names) {
     const column = columnOf(state, columnId);
@@ -247,7 +252,14 @@ function columnNameActions(
         changeColumnLogicalNameAction({ tableId, id: columnId, value })
       );
     }
-    const writes = toColumnNameWrites(state, tableId, column, value);
+    const writes = toColumnNameWrites(
+      state,
+      tableId,
+      column,
+      value,
+      false,
+      ledger
+    );
     actions.push(...writes.actions);
     if (writes.link) links.push(writes.link);
   }
@@ -383,8 +395,8 @@ function rederivedTableIds(
 
 /**
  * Puts each name the target covers back under the dictionaries, its flag on,
- * and derives it again from its logical name, one dispatch and one undo; a
- * name with no logical name is left as it is.
+ * and derives it again, one dispatch and one undo; a name with no logical
+ * name, or a column whose new name another column holds, is left as it is.
  */
 export const rederiveNamesAction$ = (
   target: RederiveNamesTarget
@@ -392,6 +404,7 @@ export const rederiveNamesAction$ = (
   function* (state) {
     const actions: AnyAction[] = [];
     const links: ChangeColumnValuePayload[] = [];
+    const ledger: ColumnNameLedger = new Map();
     const deriveColumn = (tableId: string, columnId: string) => {
       const column = columnOf(state, columnId);
       if (!column) return;
@@ -401,7 +414,8 @@ export const rederiveNamesAction$ = (
         tableId,
         column,
         column.logicalName,
-        true
+        true,
+        ledger
       );
       actions.push(...writes.actions);
       if (writes.link) links.push(writes.link);

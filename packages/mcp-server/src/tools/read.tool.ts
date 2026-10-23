@@ -6,11 +6,13 @@ import { Cause, Context, Effect, Schema } from 'effect';
 import { McpSchema, McpServer } from 'effect/ai';
 
 import { SessionManager } from '@/session/manager';
+import { CHECK_LEVELS, CHECKS_TOOL } from '@/tools/checks';
 import { describeArg, describeTool } from '@/tools/copy';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
 import { answer } from '@/tools/handlers';
 import type { EntityIds } from '@/tools/outline';
 import {
+  checksReader,
   type DocumentReader,
   documentReader,
   entityReader,
@@ -81,6 +83,23 @@ export const ListParams = Schema.Struct({
   namesOnly: Schema.optionalKey(
     Schema.Boolean.annotate({
       description: describeArg(LIST_TOOL, 'namesOnly'),
+    })
+  ),
+});
+
+export const ChecksParams = Schema.Struct({
+  path: pathField(CHECKS_TOOL),
+  level: literalsField(CHECKS_TOOL, 'level', CHECK_LEVELS),
+  tableIds: stringsField(CHECKS_TOOL, 'tableIds'),
+  tableNames: stringsField(CHECKS_TOOL, 'tableNames'),
+  offset: Schema.optionalKey(
+    Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).annotate({
+      description: describeArg(CHECKS_TOOL, 'offset'),
+    })
+  ),
+  limit: Schema.optionalKey(
+    Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)).annotate({
+      description: describeArg(CHECKS_TOOL, 'limit'),
     })
   ),
 });
@@ -191,7 +210,7 @@ const addReadTool = <
     });
   });
 
-/** erd_read, erd_list and erd_get, in that order. */
+/** erd_read, erd_list, erd_get and erd_list_checks, in that order. */
 export const registerReadTools = Effect.gen(function* () {
   yield* addReadTool(
     READ_TOOL,
@@ -219,4 +238,7 @@ export const registerReadTools = Effect.gen(function* () {
     Effect.succeed(listReader(options))
   );
   yield* addReadTool(GET_TOOL, GetParams, toEntityReader);
+  yield* addReadTool(CHECKS_TOOL, ChecksParams, ({ path: _, ...options }) =>
+    Effect.succeed(checksReader(options))
+  );
 });

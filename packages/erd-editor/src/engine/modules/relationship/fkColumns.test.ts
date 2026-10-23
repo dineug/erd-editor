@@ -14,6 +14,7 @@ import {
   changeColumnDataTypeAction,
   changeColumnDefaultAction,
   changeColumnDomainAction,
+  changeColumnLogicalNameAction,
   changeColumnNameAction,
   changeColumnNotNullAction,
 } from '@/engine/modules/table-column/atom.actions';
@@ -538,6 +539,55 @@ describe('toForeignKeyActions', () => {
       'BIGINT',
       'serial(4)',
     ]);
+  });
+});
+
+describe('the logical name of a copy', () => {
+  it('copies the logical name of its key after the comment, and none for an empty one', () => {
+    const actions = toForeignKeyActions(
+      [
+        makeColumn({
+          id: 'c1',
+          tableId: 't1',
+          name: 'CUST_NO',
+          logicalName: '고객번호',
+        }),
+        makeColumn({ id: 'c2', tableId: 't1', name: 'SEQ' }),
+      ],
+      't2',
+      ['f1', 'f2'],
+      unnamed
+    );
+
+    expect(
+      actions.filter(({ type }) => type === changeColumnLogicalNameAction.type)
+    ).toEqual([
+      changeColumnLogicalNameAction({
+        id: 'f1',
+        tableId: 't2',
+        value: '고객번호',
+      }),
+    ]);
+    expect(actions.slice(5, 7).map(({ type }) => type)).toEqual([
+      changeColumnCommentAction.type,
+      changeColumnLogicalNameAction.type,
+    ]);
+  });
+
+  it('keeps the logical name when the copy takes another name than its key', () => {
+    const actions = toForeignKeyActions(
+      [makeColumn({ id: 'c1', tableId: 't1', name: 'id', logicalName: 'ID' })],
+      't2',
+      ['f1'],
+      { ...unnamed, startTableName: 'users' }
+    );
+
+    expect(actions).toContainEqual(
+      changeColumnNameAction({ id: 'f1', tableId: 't2', value: 'users_id' })
+    );
+    expect(actions).toContainEqual(
+      changeColumnLogicalNameAction({ id: 'f1', tableId: 't2', value: 'ID' })
+    );
   });
 });
 

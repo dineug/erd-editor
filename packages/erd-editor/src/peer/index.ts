@@ -33,6 +33,13 @@ export {
 export { createEngineContext, type EngineContext } from '@/engine/context';
 export type { GeneratorAction } from '@/engine/generator.actions';
 export { actions as dictionaryActions } from '@/engine/modules/dictionary/atom.actions';
+export {
+  type DictionaryCheck,
+  type DictionaryCheckCode,
+  DictionaryCheckLevel,
+  DictionaryCheckLevelOf,
+  listDictionaryChecks,
+} from '@/engine/modules/dictionary/checks';
 export { validateDictionaryValues } from '@/engine/modules/dictionary/entryWrites';
 export { actions$ as dictionaryActions$ } from '@/engine/modules/dictionary/generator.actions';
 export { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
