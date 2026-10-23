@@ -120,8 +120,9 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
   names of a column, a table or the whole document again, as the editor's Derive Physical Names
   Again does, after a word or term changed.
 - `erd_list_checks` lists what the dictionaries find, as the Dictionary tab's Checks sheet does:
-  forbidden words, words no dictionary lists, synonyms, physical names other than a term gives and
-  column types other than their domain's, each with what to use instead.
+  forbidden words, words no dictionary lists, synonyms, names two rows share, links to a removed
+  domain, physical names other than a term gives and column types other than their domain's, with
+  what to use instead where the dictionaries have it.
 - The import tools replace the diagram by default and add to it with `mode: "append"`. The SQL,
   GraphQL, DBML and AML imports keep the dictionaries.
 - The agent sets the database, its name and the Schema SQL scripts; the view and code settings stay

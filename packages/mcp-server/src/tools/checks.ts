@@ -161,7 +161,7 @@ export function toCheckList(
   } else if (offset >= found.length && offset > 0) {
     note = `offset ${offset} is past the end of the ${found.length} checks the filters keep.`;
   } else if (nextOffset !== undefined) {
-    note = `This page lists checks ${offset + 1} to ${at} of ${found.length}; for the next page pass offset ${nextOffset} with the same filters.`;
+    note = `This page lists checks ${offset + 1} to ${at} of ${found.length}; for the next page pass offset ${nextOffset} with the same filters, or offset 0 once you have fixed some, since a fixed check leaves the list.`;
   }
 
   return {

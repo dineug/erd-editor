@@ -228,10 +228,6 @@ function checkLive(
   const parentArg = kind.parentArg
     ? tool.args.find(({ name }) => name === kind.parentArg)
     : undefined;
-  // An optional parent left out would look the id up in no table at all.
-  if (parentArg && values[parentArg.name] === undefined) {
-    throw invalid(tool, `${name} needs ${parentArg.name}`);
-  }
   const parent =
     parentArg?.kind.type === 'entityId'
       ? {
@@ -244,6 +240,10 @@ function checkLive(
       ? [value as string].filter(Boolean)
       : (value as string[]);
   const label = ENTITY_LABEL[kind.entity];
+  // An optional parent left out would look the id up in no table at all.
+  if (ids.length && parentArg && values[parentArg.name] === undefined) {
+    throw invalid(tool, `${name} needs ${parentArg.name}`);
+  }
 
   for (const id of ids) {
     if (isLive(state, kind.entity, id, parent)) continue;

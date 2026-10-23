@@ -158,6 +158,7 @@ describe('erd_list_checks lists what the dictionaries find', () => {
     expect(first.nextOffset).toBe(2);
     expect(first.note).toContain('checks 1 to 2 of 3');
     expect(first.note).toContain('pass offset 2 with the same filters');
+    expect(first.note).toContain('or offset 0 once you have fixed some');
 
     const last = toCheckList(state, { offset: 2, limit: 2 });
     expect(last.checks).toEqual(toCheckList(state).checks.slice(2));
