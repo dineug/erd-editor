@@ -228,6 +228,10 @@ function checkLive(
   const parentArg = kind.parentArg
     ? tool.args.find(({ name }) => name === kind.parentArg)
     : undefined;
+  // An optional parent left out would look the id up in no table at all.
+  if (parentArg && values[parentArg.name] === undefined) {
+    throw invalid(tool, `${name} needs ${parentArg.name}`);
+  }
   const parent =
     parentArg?.kind.type === 'entityId'
       ? {

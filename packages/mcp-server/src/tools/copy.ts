@@ -463,6 +463,17 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     description: `Removes a domain; the columns linking it keep their data type and show no domain. ${OLDER_EDITOR_DICTIONARY}`,
     args: { domainId: DOMAIN_ID },
   },
+  erd_derive_physical_names: {
+    description: `Derives physical names again from the logical names, as the editor's Derive Physical Names Again does. Each covered table or column with a logical name goes back under the dictionaries, its nameDerived on, and takes the name they give now, a physical name written by hand included: a term's physical name and, for a column, its domain, else the words' composition. A name with no logical name stays as it is. Changing a word's abbreviation or a term's physical name leaves the names given before as they are, so call this after one; a term's own physical name is never composed again, so update the term first. One erd_undo reverts the call. ${OLDER_EDITOR_DICTIONARY}`,
+    args: {
+      scope:
+        'column for one column, table for a table name and all its columns, document for every table.',
+      tableId:
+        'Table id, from erd_list; scope table and column take it, scope document none.',
+      columnId:
+        'Column id in that table, from erd_get; scope column alone takes it.',
+    },
+  },
 
   erd_set_database_name: setting(
     'the database name of the document',

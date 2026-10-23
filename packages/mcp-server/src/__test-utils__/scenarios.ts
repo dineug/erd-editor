@@ -162,6 +162,8 @@ export const TOOL_SCENARIOS: Readonly<Record<string, Record<string, unknown>>> =
     // The key of users links the domain, and the data type sync reaches orders.
     erd_update_domain: { domainId: SEED.domain, dataType: 'BIGINT' },
     erd_remove_domain: { domainId: SEED.domain },
+    // The users table's logical name composes MBR from the word Member.
+    erd_derive_physical_names: { scope: 'document' },
     erd_set_database_name: { value: 'shop' },
     erd_set_database: { value: 'PostgreSQL' },
     erd_set_ddl_script: {

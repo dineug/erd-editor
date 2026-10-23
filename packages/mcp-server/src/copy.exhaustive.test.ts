@@ -234,15 +234,18 @@ describe('the words on the dictionaries and logical names', () => {
     'erd_add_domain',
     'erd_update_domain',
     'erd_remove_domain',
+    'erd_derive_physical_names',
   ];
   const OLDER =
     'An ERD Editor extension or plugin released before dictionaries, logical names and domains ignores what this edit writes of them and leaves them out when it saves, so the user should update it.';
 
-  it('reach the nine dictionary tools and the three that set a logical name or a domain', () => {
+  it('reach the nine dictionary tools, the three that set a logical name or a domain and the one that derives names again', () => {
     expect(
       actionTools
         .map(({ name }) => name)
-        .filter(name => /logical_name|domain|word|term/.test(name))
+        .filter(name =>
+          /logical_name|physical_names|domain|word|term/.test(name)
+        )
     ).toEqual(DICTIONARY_TOOLS);
   });
 
