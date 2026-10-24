@@ -107,7 +107,11 @@ function getLastColumnType(state: RootState): FocusType {
   return columnTypes[columnTypes.length - 1];
 }
 
-function getFirstColumnType(state: RootState): FocusType {
+/**
+ * The cell a row's focus starts on, the first the view lays out: the one a
+ * new column takes, the logical name in the view of both under the default order.
+ */
+export function getFirstColumnType(state: RootState): FocusType {
   const columnTypes = getColumnTypes(state);
   return columnTypes[0];
 }

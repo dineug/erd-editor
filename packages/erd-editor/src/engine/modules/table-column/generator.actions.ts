@@ -10,7 +10,10 @@ import {
   focusTableAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
-import { getRemoveFirstColumnId } from '@/engine/modules/editor/utils/focus';
+import {
+  getFirstColumnType,
+  getRemoveFirstColumnId,
+} from '@/engine/modules/editor/utils/focus';
 import { removeIndexAction } from '@/engine/modules/index/atom.actions';
 import { removeRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import { arrayHas } from '@/utils/arrayHas';
@@ -46,7 +49,12 @@ export const isChangeColumnTypes = arrayHas<FocusType>([
 ]);
 
 export const addColumnAction$ = (tableId?: string): GeneratorAction =>
-  function* ({ editor: { selectedMap } }) {
+  function* (state) {
+    const {
+      editor: { selectedMap },
+    } = state;
+    const focusType = getFirstColumnType(state);
+
     if (tableId) {
       const id = uuid25();
       yield addColumnAction({
@@ -56,7 +64,7 @@ export const addColumnAction$ = (tableId?: string): GeneratorAction =>
       yield focusColumnAction({
         tableId,
         columnId: id,
-        focusType: FocusType.columnName,
+        focusType,
         $mod: false,
         shiftKey: false,
       });
@@ -77,7 +85,7 @@ export const addColumnAction$ = (tableId?: string): GeneratorAction =>
       yield focusColumnAction({
         tableId: lastAction.tableId,
         columnId: lastAction.id,
-        focusType: FocusType.columnName,
+        focusType,
         $mod: false,
         shiftKey: false,
       });

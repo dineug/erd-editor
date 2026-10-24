@@ -3,7 +3,7 @@ import { compositionActionsFlat } from '@dineug/r-html';
 import { describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
-import { ColumnOption } from '@/constants/schema';
+import { ColumnOption, ColumnType, NameViewMode } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import {
   addDictionaryAction,
@@ -17,7 +17,11 @@ import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
-import { changeRelationshipDataTypeSyncAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeColumnOrderAction,
+  changeNameViewModeAction,
+  changeRelationshipDataTypeSyncAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import {
   addColumnAction,
@@ -169,6 +173,48 @@ describe('addColumnAction$', () => {
       columnId: table(store, 't2').columnIds[0],
       focusType: FocusType.columnName,
     });
+  });
+
+  it('focuses the logical name, the first cell a row lays out, in the view of both', () => {
+    const store = setup();
+    addTable(store, 't1');
+    addTable(store, 't2');
+    store.dispatchSync(
+      changeNameViewModeAction({
+        value: NameViewMode.both,
+        shared: false,
+        editorId: store.state.editor.id,
+      })
+    );
+
+    store.dispatchSync(addColumnAction$('t1'));
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnLogicalName
+    );
+
+    store.dispatchSync(selectAction({ t2: SelectType.table }));
+    store.dispatchSync(addColumnAction$());
+    expect(store.state.editor.focusTable).toMatchObject({
+      tableId: 't2',
+      focusType: FocusType.columnLogicalName,
+    });
+  });
+
+  it('focuses the first cell of a row whose order puts another before the name', () => {
+    const store = setup();
+    addTable(store, 't1');
+    store.dispatchSync(
+      changeColumnOrderAction({
+        value: ColumnType.columnDataType,
+        target: ColumnType.columnLogicalName,
+      })
+    );
+
+    store.dispatchSync(addColumnAction$('t1'));
+
+    expect(store.state.editor.focusTable?.focusType).toBe(
+      FocusType.columnDataType
+    );
   });
 
   it('does nothing when nothing is selected', () => {
