@@ -1162,6 +1162,75 @@ describe('the Flow mode of the visualization tab', () => {
   });
 
   /**
+   * The marquee and the particles are the two layers the Flow hands its scene,
+   * and nothing else in the tab draws either: the particles under the cards
+   * that hide their connectors, the marquee over them, picking by the view.
+   */
+  it('opens the marquee on a modifier press over the background and selects the card it covers where the view stands it', async () => {
+    const app = createTestAppContext();
+    seed(app);
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const root = flowRootOf(mounted);
+    const rect = root.getBoundingClientRect();
+
+    expect(
+      flowStage()
+        .getLayers()
+        .map(layer => layer.name())
+    ).toEqual([
+      'canvas-background',
+      'view-particles',
+      'scene',
+      'overlay-marquee',
+    ]);
+
+    const { state } = app.store;
+    const view = state.editor.views.flow!;
+    const box = getTableRect(
+      state,
+      state.collections.tableEntities.b,
+      ViewKind.flow
+    );
+    const corner = toScreenPoint(view, { x: box.x, y: box.y });
+    const center = toScreenPoint(view, {
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+    });
+
+    root.dispatchEvent(
+      new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + corner.x - 8,
+        clientY: rect.top + corner.y - 8,
+        ctrlKey: true,
+        metaKey: true,
+      })
+    );
+    root.dispatchEvent(
+      new MouseEvent('mousemove', {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + center.x + 10,
+        clientY: rect.top + center.y + 10,
+      })
+    );
+    await settle();
+
+    expect(
+      flowStage().findOne<Layer>('.overlay-marquee')?.findOne('.drag-select')
+    ).toBeDefined();
+    expect(Object.keys(state.editor.selectedMap)).toEqual(['b']);
+
+    releasePointer();
+    await settle();
+
+    expect(flowStage().findOne('.drag-select')).toBeUndefined();
+    expect(Object.keys(state.editor.selectedMap)).toEqual(['b']);
+  });
+
+  /**
    * AC-19. A hover lights a neighbourhood and dims nothing: every card and
    * every connector the view shows stands at one, hover or no hover, which is
    * what the accent border and the glow are the contrast against instead.

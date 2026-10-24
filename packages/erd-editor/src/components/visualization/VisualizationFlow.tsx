@@ -8,19 +8,30 @@ import {
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import Canvas from '@/components/erd/canvas/Canvas';
+import Canvas, { type CanvasLayers } from '@/components/erd/canvas/Canvas';
+import DragSelect from '@/components/erd/canvas/drag-select/DragSelect';
 import * as styles from '@/components/erd/Erd.styles';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import {
   ensureFlowPlaced,
   keepFlowPlaced,
 } from '@/components/visualization/flowLayout';
+import ParticleLayer from '@/components/visualization/particles/ParticleLayer';
 import { useViewGestures } from '@/components/visualization/useViewGestures';
 import { ViewKind } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
 
 /** The Flow scene reads the flow slot, whichever view is active over it. */
 const SOURCE = ViewKind.flow;
+
+/**
+ * What the Flow adds to the scene: the particles of its lit connectors, under
+ * the cards that hide those connectors, and the marquee a modifier press opens.
+ */
+const FLOW_LAYERS: CanvasLayers = {
+  beneath: ParticleLayer,
+  marquee: DragSelect,
+};
 
 type FlowSceneProps = {
   root: Ref<HTMLDivElement>;
@@ -37,7 +48,9 @@ const FlowScene: FC<FlowSceneProps> = (props, ctx) => {
   const { addUnsubscribe } = useUnmounted();
   addUnsubscribe(() => sceneSource.destroy());
 
-  return () => <Canvas root={props.root} canvas={props.canvas} />;
+  return () => (
+    <Canvas root={props.root} canvas={props.canvas} layers={FLOW_LAYERS} />
+  );
 };
 
 export type VisualizationFlowProps = {};

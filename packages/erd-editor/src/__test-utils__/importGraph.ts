@@ -12,10 +12,11 @@ export const SOURCE_ROOT = join(PACKAGE_ROOT, 'src');
 
 /**
  * A static import or re-export with its type keyword, if any, the bindings it
- * names and its specifier; a bare side effect import; a dynamic import.
+ * names and its specifier; a bare side effect import; a dynamic import. The
+ * last two never follow a dot or a quote, as the key 'common.import' would.
  */
 export const IMPORT_FORM =
-  /\b(import|export)\s+(type\s+)?([^;]*?)\bfrom\s*'([^']+)'|\bimport\s*'([^']+)'|\bimport\s*\(\s*'([^']+)'\s*\)/g;
+  /\b(import|export)\s+(type\s+)?([^;]*?)\bfrom\s*'([^']+)'|(?<![.'"])\bimport\s*'([^']+)'|(?<![.'"])\bimport\s*\(\s*'([^']+)'\s*\)/g;
 
 /** The globals a Node realm lacks, read as a member access or named outright. */
 export const DOM_TOKEN =

@@ -115,6 +115,10 @@ const DOM_TAG = /<(div|svg)\b/;
 const OUTSIDE_REFERENCES = [
   '__test-utils__/index.ts @/components/erd/canvas/highlightTransition',
   'components/erd/Erd.tsx @/components/erd/canvas/Canvas',
+  // The ERD tab hands its canvas the cell editor and the scene's editing and
+  // presence parts, which a canvas that edits nothing is never handed.
+  'components/erd/Erd.tsx @/components/erd/canvas/EditOverlay',
+  'components/erd/Erd.tsx @/components/erd/canvas/editingLayers',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
   'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
   'components/erd/goToErdTarget.test.ts @/components/erd/canvas/table/cellLayout',
@@ -134,6 +138,8 @@ const OUTSIDE_REFERENCES = [
   'components/sceneSourceContext.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/themeContext.browser.test.tsx @/components/erd/canvas/memo/Memo',
   'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/Canvas',
+  // The Flow hands its canvas the marquee a modifier press opens.
+  'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/drag-select/DragSelect',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/memo/Memo',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/relationship-group/RelationshipGroup',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/table/Table',
@@ -172,7 +178,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the twenty-three references that own a reason to', () => {
+  it('is reached from outside by the twenty-six references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

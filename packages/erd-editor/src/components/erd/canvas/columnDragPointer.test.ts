@@ -6,7 +6,7 @@ import {
   endColumnDragPointer,
   getColumnDragPointer,
   moveColumnDragPointer,
-} from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+} from '@/components/erd/canvas/columnDragPointer';
 import { COLUMN_HEIGHT } from '@/constants/layout';
 import { createEditor } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';

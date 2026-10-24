@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # erd
 
@@ -22,13 +22,14 @@
 | `goToErdTarget.ts` | The one jump rule: `planJump`, `scrollIntoView`, `showErdTargetAction$` over tables, column cells, memos, relationships and table groups, `goToErdTarget` |
 | `relationshipHighlight.ts` | The relationship a jump lights, per `editor.id`, out of the store |
 | `useErdShortcut.ts` | The `stop` branch (Escape) and the `removeSelection` branch (Delete and Backspace) |
-| `canvas/Canvas.tsx` | The stage container, on which `listenMiddleButtonPan` binds in the capture phase |
-| `canvas/CanvasScene.tsx` | `renderCanvasScene`, the paint order and the drag layer's `dragIds` |
+| `canvas/Canvas.tsx` | The stage container, on which `listenMiddleButtonPan` binds in the capture phase, and the `dir="ltr"` controller it stands in, which draws the `overlay` its host hands in after it |
+| `canvas/CanvasScene.tsx` | `renderCanvasScene`, the paint order, the drag layer's `dragIds`, and `CanvasLayers`, what a host hands in at each layer: a layer under the scene, a relationship draw's preview, a drop target, the marquee's layer and the presence layer's parts |
+| `canvas/editingLayers.ts` | What `Erd.tsx` hands its canvas as `CanvasLayers`: the relationship draw's preview, where a drag would drop tables into groups, the marquee, and the collaborators' pointers and marquees and the drag ghosts in the presence layer. The Flow hands in its particles and the marquee, and the diff panes, time travel and the placement preview, which edit nothing, hand in none |
 | `canvas/sceneHit.ts` | The hit functions every hit box comes from |
 | `canvas/useMoveEntity.ts` | Entity drags: `clickKinds`, `isMainButtonPress`, and the drop into groups in its finalizer |
 | `canvas/middleButtonPan.ts` | `listenMiddleButtonPan`, the middle button's pan |
 | `canvas/sceneTokens.ts` | `mainButtonClick`, `TABLE_GROUP_FILL_OPACITY` |
-| `canvas/EditOverlay.tsx` | The cell editor, which opens the term list over a logical name and the domain picker over a domain, and `TableGroupNameEditor` |
+| `canvas/EditOverlay.tsx` | The cell editor, which opens the term list over a logical name and the domain picker over a domain, and `TableGroupNameEditor`; `Erd.tsx` hands it to its canvas as the `overlay`, so it stands left to right in every language and no other scene mounts it |
 | `canvas/table/dictionaryMarks.ts` | The colour a name cell's text takes for what the dictionaries' checks find: `tableMarkFill`, `columnMarkFill`, `dictionaryMarkFill` |
 | `canvas/table-group/` | Table groups in the scene: `TableGroups.tsx`, `TableGroupBody.tsx`, `TableGroup.tsx`, `TableGroupSash.tsx`, `TableGroupDropTarget.tsx`, `tableGroupBox.ts`, `titleLayout.ts` |
 | `table-group/` | Table group commands: `useTableGroupDraw.ts`, `TableGroupDraft.tsx`, `tableGroupName.ts` |
@@ -181,7 +182,7 @@
   - They thaw in the finalizer and on unmount.
   - Unfrozen, a drag resizes its own thumb or map.
   - An entity drag in the document also holds each table group's box as it began (Table groups in the scene, below).
-- **Key a module-level per-scene record on `sceneKeyOf(root, source)`.** The key is `${editor.id}:${source}` (`src/konva/scene/viewFreeze.ts`). The freeze, `canvas/entityDrag.ts`, `canvas/column-drag-ghost/columnDragPointer.ts` and the draw target's `draw-target/drawTargetState.ts` key on it. Keyed on the source alone, the diff viewer's two stores, or two elements on a page, share a slot. Only a `WeakMap` over entities (`src/utils/draw-relationship/calc.ts`, the sort channels) may key on the source alone.
+- **Key a module-level per-scene record on `sceneKeyOf(root, source)`.** The key is `${editor.id}:${source}` (`src/konva/scene/viewFreeze.ts`). The freeze, `canvas/entityDrag.ts`, `canvas/columnDragPointer.ts` and the draw target's `draw-target/drawTargetState.ts` key on it. Keyed on the source alone, the diff viewer's two stores, or two elements on a page, share a slot. Only a `WeakMap` over entities (`src/utils/draw-relationship/calc.ts`, the sort channels) may key on the source alone.
 - **Legacy view fields stay out of `settings`.** `erd-editor-schema` owns their rules, in its `AGENTS.md`. `settings` holds no `width`, `height`, `scrollLeft` or `scrollTop`. `erd-editor-schema`'s parser reads them off a file that has no origin and migrates them into it once.
   - `sortTableAction` wraps its rows at `canvasSizeInRange(doc.tableIds.length * 100)` (`src/utils/validation.ts`), the canvas size the importers once wrote (owner decisions of 2026-10-10).
   - The importer `omit` list (`IMPORT_OMIT_SETTINGS` in `src/engine/modules/editor/generator.actions.ts`) names the view.

@@ -18,8 +18,10 @@ import {
   releasePointer,
   whenPainted,
 } from '@/__test-utils__';
-import Canvas from '@/components/erd/canvas/Canvas';
+import Canvas, { type CanvasProps } from '@/components/erd/canvas/Canvas';
 import * as styles from '@/components/erd/canvas/Canvas.styles';
+import { editingLayers } from '@/components/erd/canvas/editingLayers';
+import EditOverlay from '@/components/erd/canvas/EditOverlay';
 import { themeContext } from '@/components/themeContext';
 import {
   changeViewportAction,
@@ -39,14 +41,23 @@ afterEach(async () => {
 const stageRegistry = (): Record<string, Stage> =>
   Reflect.get(globalThis, '__erdStages') ?? {};
 
-async function mountCanvas(grabMove?: boolean): Promise<Mounted> {
+/** The shell alone, or with what a host hands it: a grab move, an overlay, layers. */
+async function mountCanvas(
+  options: Pick<CanvasProps, 'grabMove' | 'overlay' | 'layers'> = {}
+): Promise<Mounted> {
   const $root = document.createElement('div');
   document.body.append($root);
   const root = createRef<HTMLDivElement>($root);
   const canvas = createRef<HTMLDivElement>();
   const app = createTestAppContext();
   const mounted = mount(
-    <Canvas root={root} canvas={canvas} grabMove={grabMove} />,
+    <Canvas
+      root={root}
+      canvas={canvas}
+      grabMove={options.grabMove}
+      overlay={options.overlay}
+      layers={options.layers}
+    />,
     app
   );
   // useProvider takes a bare element at runtime and types only a component
@@ -113,7 +124,7 @@ describe('the canvas shell', () => {
   });
 
   it('disables pointer events on the controller while grab moving', async () => {
-    const mounted = await mountCanvas(true);
+    const mounted = await mountCanvas({ grabMove: true });
 
     expect(controllerOf(mounted).style.pointerEvents).toBe('none');
   });
@@ -127,8 +138,8 @@ describe('the canvas shell', () => {
     expect(stageRegistry().canvas.container()).toBe(el);
   });
 
-  it('mounts one Stage of four layers in the inner box, background first', async () => {
-    await mountCanvas();
+  it('mounts one Stage in the inner box, the layers it is handed among its own', async () => {
+    await mountCanvas({ layers: editingLayers });
     const stage = stageRegistry().canvas;
 
     expect(stage.getLayers().map(layer => layer.name())).toEqual([
@@ -137,6 +148,31 @@ describe('the canvas shell', () => {
       'overlay-marquee',
       'presence',
     ]);
+  });
+
+  it('mounts the bottom layer and the scene alone for a host that hands in none', async () => {
+    await mountCanvas();
+    const stage = stageRegistry().canvas;
+
+    expect(stage.getLayers().map(layer => layer.name())).toEqual([
+      'canvas-background',
+      'scene',
+    ]);
+  });
+
+  it('draws the overlay a host hands in after the Stage container, in the controller', async () => {
+    const mounted = await mountCanvas({ overlay: EditOverlay });
+    const controller = controllerOf(mounted);
+
+    expect(controller.children).toHaveLength(2);
+    expect(controller.firstElementChild).toBe(containerOf(mounted));
+    expect(controller.lastElementChild?.classList).toContain('edit-overlay');
+  });
+
+  it('draws nothing over the Stage without an overlay', async () => {
+    const mounted = await mountCanvas();
+
+    expect([...controllerOf(mounted).children]).toEqual([containerOf(mounted)]);
   });
 
   it('resizes the Stage with the viewport', async () => {

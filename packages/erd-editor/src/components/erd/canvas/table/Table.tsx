@@ -11,7 +11,7 @@ import {
   beginColumnDragPointer,
   endColumnDragPointer,
   moveColumnDragPointer,
-} from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+} from '@/components/erd/canvas/columnDragPointer';
 import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import {
   progressOf,

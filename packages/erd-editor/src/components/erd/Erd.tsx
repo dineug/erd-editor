@@ -17,6 +17,8 @@ import AutomaticTablePlacement, {
 import { toPlacementActions } from '@/components/erd/automatic-table-placement/placementActions';
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
+import { editingLayers } from '@/components/erd/canvas/editingLayers';
+import EditOverlay from '@/components/erd/canvas/EditOverlay';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import DrawTargetButtons from '@/components/erd/draw-target/DrawTargetButtons';
 import ErdContextMenu, {
@@ -636,7 +638,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         on:touchstart={handleDragSelect}
         on:wheel={handleWheel}
       >
-        <Canvas root={root} canvas={canvas} grabMove={handTool || drawsGroup} />
+        <Canvas
+          root={root}
+          canvas={canvas}
+          grabMove={handTool || drawsGroup}
+          overlay={EditOverlay}
+          layers={editingLayers}
+        />
         <DrawTargetButtons root={root} readonly={props.readonly} />
         {drawsGroup ? <TableGroupDraft draw={groupDraw.state} /> : null}
         {zenMode ? null : <VirtualScroll />}
