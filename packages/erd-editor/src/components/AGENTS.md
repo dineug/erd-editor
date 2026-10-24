@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-20 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-24 -->
 
 # components
 
 ## Purpose
 
-`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels, the two code tabs and the Dictionary tab. This file holds the rules that tell a scene component which geometry it draws, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
+`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels, the two code tabs and the Dictionary tab. This file holds the rules that tell a scene component which geometry it draws, how an element class is built and defined, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
 
 ## Making a Change
 
@@ -16,6 +16,7 @@
 
 | File | Description |
 | --- | --- |
+| `customElementClass.ts` | `CustomElementClass`, the type an exported element class is annotated with: the shape of the class `createCustomElement` returns, written here so the declaration files name no `@dineug/r-html` type for it |
 | `sceneSourceContext.ts` | `sceneSourceContext` / `useSceneSource`, through which a scene component reads its `GeometrySource`; default `'document'` |
 | `visualization/flowLayout.tsx` | The one place a Flow placement is asked for: `ensureFlowPlaced`, `keepFlowPlaced`, `fitFlowView` |
 | `visualization/VisualizationFlow.tsx` | `FlowScene`, the scene root of the Flow view |
@@ -51,6 +52,11 @@
 - **Narrow or widen only through `flowCenters.ts` or `focusFlowTableAction$`.** Both dispatch state alone and run no layout. The placement loop in `flowLayout.tsx` reads the display set they name and asks for the layout, so a narrowing and the Flow mount never hold two answers to one question.
 - **A Flow view keeps the centers it stood on** (the owner's request of 2026-10-22). `editor.viewSetCenters` keeps the centers it leaves in `previousCenterIds`, the latest 100, and empties `nextCenterIds`; the centers it already stands on, in the same order, keep nothing. `editor.viewStepCenters` moves one set between the two lists, as a browser's history does, and a view opened again starts with neither. A step lands on what the document still holds of a set and drops a set it passes over, one whose tables are all gone or that comes to the centers the view stands on (`toSteppedCenters` in `src/engine/modules/editor/view.ts`, which also dims the buttons through `canStepFlowView`). In the Flow alone the Visualization toolbar's Previous table and Next table (`arrow-left`, `arrow-right`, dimmed with nothing that way) and the undo and redo chords step it. The bar stands left to right in every language, so under a right-to-left one the two arrows keep their places and swap what they do: Previous table is the right-pointing one, as a browser's back and the top toolbar's undo point for that reader (`stepsOf`, the owner's choice of 2026-10-22). They name the undo and redo chords in their titles, and the document's own undo and redo stand still while a view does (`src/engine/AGENTS.md`, View seams).
 - Coordinate hints for ELK, `toHints` in `src/services/elk-layout/elkGraph.ts`: `src/services/AGENTS.md`.
+
+### Element classes
+
+- **A module that exports an element class has no `export default`.** `vite-plugin-r-html` makes a module whose named exports are all capitalized and which has a default export an HMR boundary, and a hot swap evaluates a boundary again. The module would then build a second class while the tag still holds the first, and the next `defineErdEditor()` would throw. So `erd-editor/ErdEditor.tsx` exports `ErdEditorElement` and `defineErdEditor` beside it and no default, and an edit to it reloads the page.
+- **Build the class with `createCustomElement` under `/* @__PURE__ */`, typed by `customElementClass.ts`.** Nothing at a module's top level defines a tag; the self-registering module (`src/erd-editor.ts`) calls the define function, which leaves a tag the class already holds as it is and throws an `Error` naming a tag another class holds.
 
 ### Icons
 

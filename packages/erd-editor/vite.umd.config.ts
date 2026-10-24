@@ -25,7 +25,7 @@ export default defineConfig({
     // The es build owns dist and has already written it.
     emptyOutDir: false,
     lib: {
-      entry: './src/index.ts',
+      entry: './src/umd/erd-editor.umd.ts',
       name: 'ErdEditor',
       formats: ['umd'],
       fileName: () => 'erd-editor.umd.js',

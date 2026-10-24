@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from '@dineug/r-html/jsx-runtime';
 
-/** Mirrors observedProps on the defineCustomElement('erd-editor', …) call. */
+/** Mirrors observedProps on the createCustomElement call that builds ErdEditorElement. */
 interface ErdEditorAttributes extends HTMLAttributes {
   'enable-locale-picker'?: boolean;
   'enable-theme-builder'?: boolean;

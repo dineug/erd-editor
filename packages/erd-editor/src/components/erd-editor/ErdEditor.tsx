@@ -1,7 +1,7 @@
 import {
   cache,
+  createCustomElement,
   createRef,
-  defineCustomElement,
   FC,
   nextTick,
   observable,
@@ -13,6 +13,7 @@ import {
 import { fromEvent, throttleTime } from 'rxjs';
 
 import { appContext, createAppContext } from '@/components/appContext';
+import type { CustomElementClass } from '@/components/customElementClass';
 import Dictionary from '@/components/dictionary/Dictionary';
 import Erd from '@/components/erd/Erd';
 import { dropRelationshipHighlight } from '@/components/erd/relationshipHighlight';
@@ -452,14 +453,41 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   };
 };
 
-defineCustomElement('erd-editor', {
-  shadow: 'closed',
-  observedProps: {
-    readonly: Boolean,
-    systemDarkMode: Boolean,
-    enableThemeBuilder: Boolean,
-    enableLocalePicker: Boolean,
-    enableWelcomeScreen: Boolean,
-  },
-  render: ErdEditor,
-});
+const TAG_NAME = 'erd-editor';
+
+/**
+ * The element class, which nothing registers until defineErdEditor() runs or
+ * a caller defines it under a tag of its own.
+ */
+export const ErdEditorElement: CustomElementClass<ErdEditorElement> =
+  /* @__PURE__ */ createCustomElement<ErdEditorProps, ErdEditorElement>({
+    shadow: 'closed',
+    observedProps: {
+      readonly: Boolean,
+      systemDarkMode: Boolean,
+      enableThemeBuilder: Boolean,
+      enableLocalePicker: Boolean,
+      enableWelcomeScreen: Boolean,
+    },
+    render: ErdEditor,
+  });
+
+/**
+ * Defines erd-editor as ErdEditorElement. A second call leaves the definition
+ * as it is, and a tag another class already holds throws, naming the tag.
+ */
+export function defineErdEditor(): void {
+  const defined = customElements.get(TAG_NAME);
+
+  if (defined === ErdEditorElement) {
+    return;
+  }
+
+  if (defined) {
+    throw new Error(
+      `Another element class already defines the custom element name ${TAG_NAME}`
+    );
+  }
+
+  customElements.define(TAG_NAME, ErdEditorElement);
+}

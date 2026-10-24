@@ -26,15 +26,28 @@ afterEach(() => {
 describe('@dineug/erd-editor entry point', () => {
   it('exposes exactly the documented public surface', () => {
     expect(Object.keys(index).sort()).toEqual([
+      'ErdEditorElement',
       'createKeyBindingMap',
+      'defineErdEditor',
       'dictionaryRowChords',
       'setExportFileCallback',
       'setImportFileCallback',
     ]);
   });
 
-  it('registers the <erd-editor> custom element as a side effect', () => {
-    expect(customElements.get('erd-editor')).toBeTypeOf('function');
+  it('registers the exported class as <erd-editor> as a side effect', () => {
+    expect(customElements.get('erd-editor')).toBe(index.ErdEditorElement);
+  });
+
+  it('types the exported class by the ErdEditorElement interface it constructs', () => {
+    const editor = new index.ErdEditorElement();
+
+    expect(editor).toBeInstanceOf(index.ErdEditorElement);
+    expectTypeOf(editor).toEqualTypeOf<ErdEditorElement>();
+    expectTypeOf<
+      InstanceType<typeof index.ErdEditorElement>
+    >().toEqualTypeOf<ErdEditorElement>();
+    expectTypeOf(index.defineErdEditor).toEqualTypeOf<() => void>();
   });
 
   it('creates an element that implements the editor API', () => {

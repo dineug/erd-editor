@@ -74,7 +74,7 @@ vi.mock('@/components/quick-search/QuickSearch', async importOriginal => {
   };
 });
 
-await import('@/components/erd-editor/ErdEditor');
+await import('@/erd-editor');
 
 type ResizeCallback = (
   entries: Array<{ contentRect: DOMRectReadOnly }>

@@ -16,7 +16,7 @@ import {
   SYSTEM_APPEARANCE,
 } from '@/themes/radix-ui-theme';
 
-await import('@/components/erd-editor/ErdEditor');
+await import('@/erd-editor');
 
 const TABLE_ID = 'users';
 

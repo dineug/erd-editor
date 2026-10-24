@@ -4,6 +4,9 @@
     "src/**/*.test.{ts,tsx}",
     "src/**/*.test-d.ts",
     "src/**/*.stories.{ts,tsx}",
-    "src/__test-utils__/**"
+    "src/__test-utils__/**",
+    // The umd build's entry ships as a script, never as a module a consumer
+    // types against, so it gets no declarations.
+    "src/umd/**"
   ]
 }

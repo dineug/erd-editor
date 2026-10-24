@@ -83,7 +83,7 @@ vi.mock('@/engine/modules/dictionary/checks', async importOriginal => {
   };
 });
 
-await import('@/components/erd-editor/ErdEditor');
+await import('@/erd-editor');
 
 /** The key $mod names in the browser the spec runs in, which the bindings read too. */
 const MOD = hasAppleDevice() ? 'Meta' : 'Control';

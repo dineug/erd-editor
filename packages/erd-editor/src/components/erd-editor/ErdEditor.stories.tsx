@@ -1,4 +1,4 @@
-import './ErdEditor';
+import '@/erd-editor';
 
 import { render } from '@dineug/r-html';
 import type { Meta, StoryObj } from '@storybook/html-vite';
