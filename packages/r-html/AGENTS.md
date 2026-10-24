@@ -19,7 +19,7 @@
    ```
 
 5. Run root step 4 as `pnpm --filter @dineug/r-html --fail-if-no-match test:coverage`. It measures every `src/**/*.ts` but the specs, `.d.ts` files, `src/internal-types/**`, `src/index.dev.ts` and the types-only `src/jsx-runtime.ts`. A drop under `src/css/` means a rule class no longer runs (Testing Requirements).
-6. Run root step 5 with `pnpm peer-graph` and `pnpm size` for any change to shipping source. `erd-editor` inlines this package and its `peer.js` reaches it (`src/peer/imports.test.ts` there lists it), so the peer graph rules in `packages/erd-editor/src/peer/AGENTS.md` hold for that code too.
+6. Run root step 5 with `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size` for any change to shipping source. `erd-editor` inlines this package and its `peer.js` reaches it (`src/peer/imports.test.ts` there lists it), so the peer graph rules in `packages/erd-editor/src/peer/AGENTS.md` hold for that code too.
 7. For root step 6, run `pnpm --filter @dineug/r-html e2e` after touching `src/template/vCSSStyleSheet.ts`. Run `pnpm --filter @dineug/r-html e2e:typecheck` after touching `e2e/`, `playwright.config.ts` or an export of `src/index.ts`. The fixture imports `@/index`, and no other program covers `e2e/`. A run that cannot start for want of Chromium is not done (root § Making a Change, after step 7). Run `pnpm --filter @dineug/erd-editor e2e` for a change a user would see in the editor.
 8. In the report (root step 7), say whether the r-html e2e ran, and the reason where it did not.
 

@@ -68,6 +68,12 @@ jobs:
       # server runs peer.js in Node: five browser tokens and any import outside
       # its allowlist fail here, first, so a size miss never hides the verdict.
       - run: pnpm peer-graph
+      # The declarations both elements are typed by, the two umd builds run on
+      # happy-dom, the workers' document stubs and the worker url spelling.
+      - run: pnpm dist-shape
+      # Bundles dist as consumers do, with Vite, Rolldown, webpack and Rspack,
+      # and runs each bundle to see which tags it defined.
+      - run: pnpm consumer-bundles
       # Also reads dist. It is a regression watch rather than a cap: the budget
       # is set to catch an abnormal jump, not every byte.
       - run: pnpm size

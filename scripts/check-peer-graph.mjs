@@ -91,6 +91,43 @@ export function filesOf(entry) {
   return [...reached].sort();
 }
 
+/** An import() call, as opposed to an import declaration or an export from. */
+const kindOf = matched => (/^import\s*\(/.test(matched) ? 'dynamic' : 'static');
+
+/**
+ * The graph filesOf walks, with its edges: a static or dynamic import, or a
+ * worker file a script names. A bare edge leads to a package specifier, every
+ * other edge to the path it resolves to. check-dist-shape.mjs reads it.
+ */
+export function edgesOf(entry) {
+  const reached = new Set();
+  const edges = [];
+  const pending = [entry];
+
+  while (pending.length) {
+    const file = pending.pop();
+    if (reached.has(file)) continue;
+    if (!fs.existsSync(file)) {
+      throw new Error(
+        `Missing build output: ${path.relative(root, file)}. ${MISSING_OUTPUT}`
+      );
+    }
+    reached.add(file);
+    const code = fs.readFileSync(file, 'utf8');
+    for (const match of code.matchAll(RELATIVE_SCRIPT)) {
+      const to = path.resolve(path.dirname(file), match[1] ?? match[2]);
+      const kind = match[2] === undefined ? kindOf(match[0]) : 'worker';
+      edges.push({ from: file, to, kind, bare: false });
+      pending.push(to);
+    }
+    for (const match of code.matchAll(BARE_SPECIFIER)) {
+      edges.push({ from: file, to: match[1], kind: kindOf(match[0]), bare: true });
+    }
+  }
+
+  return { files: [...reached].sort(), edges };
+}
+
 const lineOf = (code, index) => code.slice(0, index).split('\n').length;
 
 function scan(files) {
@@ -197,9 +234,9 @@ function main(argv) {
 
 const realpathOf = file => fs.realpathSync(path.resolve(file));
 
-// Run as the gate only, so importing filesOf judges nothing. Both sides go
-// through realpath: the loader resolves symlinks in import.meta.url and not in
-// argv, so a linked path such as macOS /tmp would otherwise skip the gate.
+// Run as the gate only, so importing filesOf or edgesOf judges nothing. Both
+// sides go through realpath: the loader resolves symlinks in import.meta.url
+// and not in argv, so a linked path such as macOS /tmp would skip the gate.
 if (
   process.argv[1] !== undefined &&
   realpathOf(process.argv[1]) === realpathOf(fileURLToPath(import.meta.url))

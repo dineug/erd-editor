@@ -13,7 +13,7 @@
 2. **Write the change with an independent spec.** Its expected values come from outside the code (Testing Requirements). A change to the bit layout or the encoding also updates Key Files here and the package `README.md`, which describes both.
 3. **Run the test task:** `pnpm exec vp run --filter @dineug/uuid --fail-if-no-match test`. For a change to an export or a type, run `pnpm test` as well (root step 3), because `erd-editor-schema`, `erd-editor` and `mcp-server` import this package and type-check against its `dist/index.d.ts`.
 4. **Run `pnpm --filter @dineug/uuid --fail-if-no-match test:coverage`** for a change under `src/` (root step 4).
-5. **Run root step 5 with `pnpm peer-graph` and `pnpm size`.** `erd-editor` inlines this package, so a change under `src/` changes `erd-editor`'s output. `pnpm peer-graph` is the gate that holds this code to the peer graph's rules (Rules, Runtime).
+5. **Run root step 5 with `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size`.** `erd-editor` inlines this package, so a change under `src/` changes `erd-editor`'s output. `pnpm peer-graph` is the gate that holds this code to the peer graph's rules (Rules, Runtime).
 6. **Check the two bundle budgets.** Code added here reaches `erd-editor`'s `budgetGzip`, which `pnpm size` checks (step 5), and `mcp-server`'s `BUNDLE_GZIP_BUDGET`, which its `bin.test.ts` checks on the built file. Run `pnpm exec vp run --filter @dineug/erd-editor-mcp --fail-if-no-match test` unless step 3 ran `pnpm test`. Past either budget, follow root § Making a Change on size gates.
 7. **Finish with root steps 6 and 7.**
 

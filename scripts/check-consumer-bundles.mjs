@@ -1,0 +1,622 @@
+#!/usr/bin/env node
+// Consumer bundle gate for @dineug/erd-editor, wired as pnpm consumer-bundles
+// after pnpm build. Each fixture in consumer-fixtures/ is bundled the way a
+// consumer bundles dist/, by four bundlers, then evaluated on happy-dom.
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
+
+import { evaluateInHappyDom, REALM_TIMEOUT_MS } from './happy-dom-realm.mjs';
+
+const root = path.resolve(import.meta.dirname, '..');
+const packageDir = path.join(root, 'packages', 'erd-editor');
+const fixturesDir = path.join(import.meta.dirname, 'consumer-fixtures');
+const SELF = fileURLToPath(import.meta.url);
+
+/** The library between a fixture and the editor, copied into the fixture's node_modules. */
+const SIDE_EFFECT_FREE_LIB = 'side-effect-free-lib';
+
+/**
+ * Literals a minifier leaves alone, each name read only as the url a new URL(
+ * opens with. A bundler that emits each worker under an id of its own drops
+ * the file names, so there the worker graph decides.
+ */
+const SHARED_WORKER = 'new SharedWorker(';
+const WORKER_NAMES = [
+  'exportPng.shared-worker',
+  'elkLayout.shared-worker',
+  'shiki.shared-worker',
+];
+const WORKER_REFERENCES = WORKER_NAMES.map(name => {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return {
+    name,
+    reference: new RegExp(
+      String.raw`new URL\(\s*(?:\/\*[\s\S]*?\*\/\s*)*(["'\x60])[^"'\x60]*${escaped}[^"'\x60]*\1`
+    ),
+  };
+});
+
+const WORKER_MODULE_PREFIX = 'erd-editor/dist/workers/';
+
+/**
+ * One fixture each. tags is every tag the bundle defines, each once, probe the
+ * value the fixture leaves on globalThis, and workers, where a case sets it,
+ * whether the bundle carries the three SharedWorkers.
+ */
+const CASES = [
+  { id: 'viewer-only', tags: ['erd-viewer'], probe: null, workers: false },
+  { id: 'barrel-named', tags: [], probe: 'function' },
+  {
+    id: 'editor-entry',
+    tags: ['erd-editor'],
+    probe: 'function',
+    workers: true,
+  },
+  {
+    id: 'side-effect-free-lib',
+    tags: ['erd-editor'],
+    probe: 'mounted',
+    workers: true,
+  },
+  {
+    id: 'define-twice',
+    tags: ['erd-editor', 'erd-viewer'],
+    probe: true,
+    workers: true,
+  },
+];
+
+const LANES = {
+  vite: bundleWithVite,
+  rolldown: bundleWithRolldown,
+  webpack: bundleWithWebpack,
+  rspack: bundleWithRspack,
+};
+
+const USAGE = `Usage: node scripts/check-consumer-bundles.mjs [options]
+
+  Bundles each fixture in scripts/consumer-fixtures/ with Vite's build(),
+  vite/rolldown, webpack 5 and Rspack against packages/erd-editor/dist, the
+  dependencies bundled too, into the OS temp directory. Each bundle runs on
+  happy-dom, which reports the tags it defined. The Vite bundle of
+  editor-entry also runs its export worker in a realm with no document.
+
+  --lanes <a,b>   Only these bundlers (${Object.keys(LANES).join(', ')}).
+  --cases <a,b>   Only these fixtures (${CASES.map(c => c.id).join(', ')}).
+  --keep          Leave the temp directory and print where it is.
+  --help          Print this text.`;
+
+/** A module id as a short path: erd-editor/..., a package path or the fixture's own. */
+function shortId(id) {
+  const clean = id.replace(/^\0/, '');
+  const inPackage = path.relative(packageDir, clean);
+  if (!inPackage.startsWith('..') && !path.isAbsolute(inPackage)) {
+    return `erd-editor/${inPackage.split(path.sep).join('/')}`;
+  }
+  const modules = `${path.sep}node_modules${path.sep}`;
+  const store = clean.lastIndexOf(modules);
+  if (store !== -1) {
+    return clean.slice(store + modules.length).split(path.sep).join('/');
+  }
+  return clean.split(path.sep).join('/');
+}
+
+/**
+ * A Rolldown output's modules: the union of every chunk's, a module counted
+ * only where it rendered code, since tree-shaking can keep an id and drop all
+ * it held.
+ */
+function renderedModules(output) {
+  const kept = new Set();
+  for (const item of output) {
+    if (item.type !== 'chunk') continue;
+    for (const id of item.moduleIds) {
+      if ((item.modules[id]?.renderedLength ?? 0) > 0) kept.add(shortId(id));
+    }
+  }
+  return [...kept];
+}
+
+/**
+ * A Rolldown output's own chunks, the entry and what it loads. Vite emits each
+ * worker bundle as an asset, so no worker file is among them.
+ */
+function chunkFilesOf(output, outDir) {
+  return output
+    .filter(item => item.type === 'chunk')
+    .map(item => path.join(outDir, item.fileName));
+}
+
+async function bundleWithVite({ fixtureDir, entry, outDir }) {
+  const { build } = await import('vite');
+  const result = await build({
+    configFile: false,
+    root: fixtureDir,
+    logLevel: 'silent',
+    mode: 'production',
+    publicDir: false,
+    build: {
+      outDir,
+      emptyOutDir: true,
+      minify: false,
+      modulePreload: false,
+      reportCompressedSize: false,
+      rolldownOptions: {
+        input: { main: entry },
+        output: {
+          entryFileNames: '[name].js',
+          chunkFileNames: 'chunks/[name]-[hash].js',
+        },
+      },
+    },
+    // The hosts bundle the editor's workers as module workers.
+    worker: { format: 'es' },
+  });
+  const output = [result].flat().flatMap(r => r.output);
+
+  return {
+    entryFile: path.join(outDir, 'main.js'),
+    files: output.map(o => path.join(outDir, o.fileName)),
+    chunkFiles: chunkFilesOf(output, outDir),
+    modules: renderedModules(output),
+    workerModules: [],
+  };
+}
+
+async function bundleWithRolldown({ fixtureDir, entry, outDir }) {
+  const { rolldown } = await import('vite/rolldown');
+  const bundle = await rolldown({
+    input: { main: entry },
+    cwd: fixtureDir,
+    platform: 'browser',
+    logLevel: 'silent',
+    transform: { define: { 'process.env.NODE_ENV': '"production"' } },
+  });
+  try {
+    const { output } = await bundle.write({
+      dir: outDir,
+      format: 'es',
+      entryFileNames: '[name].js',
+      chunkFileNames: 'chunks/[name]-[hash].js',
+    });
+    return {
+      entryFile: path.join(outDir, 'main.js'),
+      files: output.map(o => path.join(outDir, o.fileName)),
+      chunkFiles: chunkFilesOf(output, outDir),
+      modules: renderedModules(output),
+      workerModules: [],
+    };
+  } finally {
+    await bundle.close();
+  }
+}
+
+/** The shared webpack and Rspack config: an ES module build in production mode. */
+function webpackConfig({ fixtureDir, entry, outDir }) {
+  return {
+    mode: 'production',
+    context: fixtureDir,
+    entry: { main: entry },
+    target: 'web',
+    devtool: false,
+    output: {
+      path: outDir,
+      filename: '[name].js',
+      chunkFilename: 'chunks/[name]-[contenthash].js',
+      module: true,
+      chunkFormat: 'module',
+      clean: true,
+    },
+    // The verdict reads the module graph, so the output need not be minified.
+    optimization: { minimize: false },
+    performance: { hints: false },
+    infrastructureLogging: { level: 'error' },
+  };
+}
+
+/**
+ * Splits webpack's or Rspack's stats into the main graph, the main entry's
+ * chunks and their async children with the files they emit, and the worker
+ * graph. Concatenations flatten; runtime, nameless and orphan modules drop.
+ */
+function graphsOf(json, fixtureDir) {
+  const chunks = new Map((json.chunks ?? []).map(c => [c.id, c]));
+  const mainChunks = new Set();
+  const pending = [...(json.entrypoints?.main?.chunks ?? [])];
+  while (pending.length) {
+    const id = pending.pop();
+    if (mainChunks.has(id)) continue;
+    mainChunks.add(id);
+    pending.push(...(chunks.get(id)?.children ?? []));
+  }
+
+  const main = new Set();
+  const worker = new Set();
+  const visit = (module, graph) => {
+    if (module.modules?.length) {
+      for (const inner of module.modules) visit(inner, graph);
+      return;
+    }
+    const name = module.nameForCondition ?? module.name;
+    if (!name || module.moduleType === 'runtime') return;
+    graph.add(shortId(/^\.\.?\//.test(name) ? path.resolve(fixtureDir, name) : name));
+  };
+  for (const module of json.modules ?? []) {
+    const inChunks = module.orphan ? [] : (module.chunks ?? []);
+    if (inChunks.some(id => mainChunks.has(id))) visit(module, main);
+    else if (inChunks.length) visit(module, worker);
+  }
+
+  const mainFiles = [...mainChunks].flatMap(id => chunks.get(id)?.files ?? []);
+  return { mainFiles, modules: [...main], workerModules: [...worker] };
+}
+
+function run(compiler) {
+  return new Promise((resolve, reject) => {
+    compiler.run((error, stats) => {
+      compiler.close(() => {});
+      if (error) reject(error);
+      else resolve(stats);
+    });
+  });
+}
+
+function finishWebpackLike(stats, { fixtureDir, outDir }) {
+  const json = stats.toJson({
+    all: false,
+    assets: true,
+    chunks: true,
+    chunkRelations: true,
+    entrypoints: true,
+    errors: true,
+    ids: true,
+    modules: true,
+    nestedModules: true,
+    orphanModules: true,
+  });
+  if (json.errors?.length) {
+    throw new Error(
+      json.errors
+        .slice(0, 3)
+        .map(e => e.message ?? String(e))
+        .join('\n')
+    );
+  }
+
+  const { mainFiles, ...graphs } = graphsOf(json, fixtureDir);
+  return {
+    entryFile: path.join(outDir, 'main.js'),
+    files: (json.assets ?? []).map(a => path.join(outDir, a.name)),
+    chunkFiles: mainFiles.map(file => path.join(outDir, file)),
+    ...graphs,
+  };
+}
+
+async function bundleWithWebpack(options) {
+  const { default: webpack } = await import('webpack');
+  const config = webpackConfig(options);
+  config.experiments = { outputModule: true };
+  return finishWebpackLike(await run(webpack(config)), options);
+}
+
+async function bundleWithRspack(options) {
+  const { rspack } = await import('@rspack/core');
+  return finishWebpackLike(await run(rspack(webpackConfig(options))), options);
+}
+
+/**
+ * A consumer project in the temp directory: the editor linked into its
+ * node_modules, since the root links no workspace package, the in-between
+ * library copied there, and each fixture under src/.
+ */
+function writeFixture(fixtureDir) {
+  const modules = path.join(fixtureDir, 'node_modules');
+  fs.mkdirSync(path.join(modules, '@dineug'), { recursive: true });
+  fs.writeFileSync(
+    path.join(fixtureDir, 'package.json'),
+    JSON.stringify({ name: 'consumer-fixture', private: true, type: 'module' })
+  );
+  fs.symlinkSync(
+    packageDir,
+    path.join(modules, '@dineug', 'erd-editor'),
+    'junction'
+  );
+  fs.cpSync(
+    path.join(fixturesDir, SIDE_EFFECT_FREE_LIB),
+    path.join(modules, SIDE_EFFECT_FREE_LIB),
+    { recursive: true }
+  );
+  fs.mkdirSync(path.join(fixtureDir, 'src'));
+  for (const { id } of CASES) {
+    fs.copyFileSync(
+      path.join(fixturesDir, `${id}.mjs`),
+      path.join(fixtureDir, 'src', `${id}.mjs`)
+    );
+  }
+}
+
+/**
+ * The markers in the consumer's own chunks, never in a worker file, which may
+ * name itself: new SharedWorker( anywhere, a worker's name only in a reference.
+ */
+function markersIn(chunkFiles) {
+  const found = new Set();
+  for (const file of chunkFiles) {
+    if (!/\.m?js$/.test(file)) continue;
+    const code = fs.readFileSync(file, 'utf8');
+    if (code.includes(SHARED_WORKER)) found.add(SHARED_WORKER);
+    for (const { name, reference } of WORKER_REFERENCES) {
+      if (reference.test(code)) found.add(name);
+    }
+  }
+  return found;
+}
+
+/**
+ * What a bundle says about the workers. A lane with a worker graph names the
+ * three worker modules in it; the others reference the three files by url.
+ */
+function workerFailures(lane, bundled, markers, want) {
+  const workerModules = bundled.workerModules.filter(id =>
+    id.startsWith(WORKER_MODULE_PREFIX)
+  );
+  if (!want) {
+    return [
+      ...[...markers].map(marker => `the bundle holds ${marker}`),
+      ...workerModules.map(id => `the worker graph holds ${id}`),
+    ];
+  }
+
+  const failures = markers.has(SHARED_WORKER)
+    ? []
+    : [`the bundle holds no ${SHARED_WORKER}`];
+  for (const name of WORKER_NAMES) {
+    const named =
+      lane === 'webpack' || lane === 'rspack'
+        ? workerModules.includes(`${WORKER_MODULE_PREFIX}${name}.js`)
+        : markers.has(name);
+    if (!named) failures.push(`the bundle carries no ${name}`);
+  }
+  return failures;
+}
+
+function judge(lane, testCase, bundled, markers, evaluated) {
+  const failures = [...evaluated.errors.map(error => `threw ${error}`)];
+  const defines = [...evaluated.defines].sort();
+  const want = [...testCase.tags].sort();
+  if (JSON.stringify(defines) !== JSON.stringify(want)) {
+    failures.push(
+      `defined [${defines.join(', ')}], expected [${want.join(', ')}]`
+    );
+  }
+  for (const [tag, defined] of Object.entries(evaluated.defined)) {
+    if (defined !== testCase.tags.includes(tag)) {
+      failures.push(`${tag} is ${defined ? 'defined' : 'undefined'}`);
+    }
+  }
+  if (evaluated.probe !== testCase.probe) {
+    failures.push(
+      `left ${JSON.stringify(evaluated.probe)}, expected ${JSON.stringify(testCase.probe)}`
+    );
+  }
+  if (testCase.workers !== undefined) {
+    failures.push(...workerFailures(lane, bundled, markers, testCase.workers));
+  }
+  return failures;
+}
+
+/**
+ * The export worker, bundled as a host bundles it, run in a worker thread,
+ * which has no document. The stub it carries must hand Konva a canvas.
+ */
+function runExportWorker(file) {
+  return new Promise(resolve => {
+    const worker = new Worker(SELF, { workerData: { exportWorker: file } });
+    const timer = setTimeout(
+      () =>
+        settle([
+          `the realm had not settled after ${REALM_TIMEOUT_MS / 1000} s and was terminated`,
+        ]),
+      REALM_TIMEOUT_MS
+    );
+    function settle(failures) {
+      clearTimeout(timer);
+      resolve(failures);
+      worker.terminate();
+    }
+    worker.once('message', settle);
+    worker.once('error', error =>
+      settle([`the realm threw ${error?.name}: ${error?.message}`])
+    );
+    worker.once('exit', code =>
+      settle([`the realm exited ${code} before its verdict`])
+    );
+  });
+}
+
+/**
+ * Inside that thread. Konva reads the document global when it is called, so a
+ * Konva of the realm's own, imported after the worker ran, has to find the
+ * stub too; its warning about a second Konva instance is expected.
+ */
+async function checkExportWorker(file) {
+  class OffscreenCanvasStub {
+    constructor(width, height) {
+      this.width = width;
+      this.height = height;
+    }
+    getContext() {
+      return null;
+    }
+  }
+  globalThis.OffscreenCanvas = OffscreenCanvasStub;
+  globalThis.self = globalThis;
+  const logged = [];
+  console.error = (...args) => {
+    const message = args.map(String).join(' ');
+    if (!/Several Konva instances/.test(message)) logged.push(message);
+  };
+
+  if (typeof globalThis.document !== 'undefined') {
+    return ['the realm had a document before the worker ran'];
+  }
+  try {
+    await import(pathToFileURL(file).href);
+  } catch (error) {
+    return [`importing the worker threw ${error?.name}: ${error?.message}`];
+  }
+
+  const failures = [];
+  if (
+    !(globalThis.document?.createElement?.('canvas') instanceof OffscreenCanvasStub)
+  ) {
+    failures.push("document.createElement('canvas') is not an OffscreenCanvas");
+  }
+  try {
+    const requireFromPackage = createRequire(path.join(packageDir, 'package.json'));
+    const util = requireFromPackage.resolve('konva/lib/Util.js');
+    const { Util } = await import(pathToFileURL(util).href);
+    if (!(Util.createCanvasElement() instanceof OffscreenCanvasStub)) {
+      failures.push('Konva Util.createCanvasElement() is not an OffscreenCanvas');
+    }
+  } catch (error) {
+    failures.push(
+      `Konva Util.createCanvasElement() threw ${error?.name}: ${String(error?.message).split('\n')[0]}`
+    );
+  }
+  for (const message of logged) {
+    failures.push(`console.error: ${message.split('\n')[0]}`);
+  }
+  return failures;
+}
+
+function parseArgs(argv) {
+  const options = {
+    lanes: Object.keys(LANES),
+    cases: CASES.map(c => c.id),
+    keep: false,
+    help: false,
+  };
+  const listAt = (i, arg, known) => {
+    if (argv[i] === undefined) throw new Error(`${arg} needs a value`);
+    const names = argv[i].split(',');
+    const unknown = names.filter(name => !known.includes(name));
+    if (unknown.length) throw new Error(`${arg}: unknown ${unknown.join(', ')}`);
+    return names;
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--lanes') {
+      options.lanes = listAt(++i, arg, Object.keys(LANES));
+    } else if (arg === '--cases') {
+      options.cases = listAt(++i, arg, CASES.map(c => c.id));
+    } else if (arg === '--keep') {
+      options.keep = true;
+    } else if (arg === '--help' || arg === '-h') {
+      options.help = true;
+    } else {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+  return options;
+}
+
+async function main(argv) {
+  let options;
+  try {
+    options = parseArgs(argv);
+  } catch (error) {
+    console.error(error.message);
+    console.error('');
+    console.error(USAGE);
+    return 2;
+  }
+  if (options.help) {
+    console.log(USAGE);
+    return 0;
+  }
+  if (!fs.existsSync(path.join(packageDir, 'dist', 'index.js'))) {
+    console.error(
+      'Missing build output. Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build'
+    );
+    return 1;
+  }
+
+  const started = performance.now();
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'erd-consumer-'));
+  let failed = 0;
+  try {
+    writeFixture(fixtureDir);
+    for (const lane of options.lanes) {
+      for (const testCase of CASES.filter(c => options.cases.includes(c.id))) {
+        const entry = path.join(fixtureDir, 'src', `${testCase.id}.mjs`);
+        const outDir = path.join(fixtureDir, 'out', lane, testCase.id);
+        const label = `${lane.padEnd(8)} ${testCase.id.padEnd(20)}`;
+        const t0 = performance.now();
+        let bundled;
+        try {
+          bundled = await LANES[lane]({ fixtureDir, entry, outDir });
+        } catch (error) {
+          failed++;
+          console.log(`FAIL ${label} bundling threw: ${String(error?.message ?? error).split('\n')[0]}`);
+          continue;
+        }
+        const evaluated = await evaluateInHappyDom(bundled.entryFile);
+        const markers = markersIn(bundled.chunkFiles);
+        const failures = judge(lane, testCase, bundled, markers, evaluated);
+
+        let realm = '';
+        if (lane === 'vite' && testCase.id === 'editor-entry') {
+          const exportWorker = bundled.files.find(file =>
+            /exportPng\.shared-worker[^/\\]*\.js$/.test(file)
+          );
+          if (exportWorker) {
+            failures.push(...(await runExportWorker(exportWorker)));
+            realm = '; export worker run with no document';
+          } else {
+            failures.push('Vite emitted no export worker file');
+          }
+        }
+
+        const ms = Math.round(performance.now() - t0);
+        const defines = evaluated.defines.join(', ') || 'none';
+        const summary = `${label} defined ${defines}; ${bundled.modules.length} modules, ${bundled.workerModules.length} in worker graphs${realm}; ${ms} ms`;
+        if (failures.length) {
+          failed++;
+          console.log(`FAIL ${summary}`);
+          for (const failure of failures) console.log(`       ${failure}`);
+        } else {
+          console.log(`pass ${summary}`);
+        }
+        for (const message of evaluated.consoleErrors) {
+          console.log(`       console.error: ${message.split('\n')[0]}`);
+        }
+      }
+    }
+  } finally {
+    if (options.keep) {
+      console.log(`Kept ${fixtureDir}`);
+    } else {
+      fs.rmSync(fixtureDir, { recursive: true, force: true });
+    }
+  }
+
+  const seconds = ((performance.now() - started) / 1000).toFixed(1);
+  if (failed) {
+    console.log(`Consumer bundles: FAIL (${failed} failed, ${seconds} s)`);
+    return 1;
+  }
+  console.log(`Consumer bundles: pass (${seconds} s)`);
+  return 0;
+}
+
+if (!isMainThread && workerData?.exportWorker) {
+  parentPort.postMessage(await checkExportWorker(workerData.exportWorker));
+} else {
+  process.exitCode = await main(process.argv.slice(2));
+}

@@ -24,7 +24,7 @@
    pnpm --filter @dineug/r-html-konva --fail-if-no-match test:coverage
    ```
 
-5. **Run root step 5**, `pnpm check` then `pnpm build`, and after it `pnpm peer-graph` and `pnpm size`, since `erd-editor` inlines this package into its scene and its export worker. Then run `pnpm --filter @dineug/erd-editor e2e` for a change a user would see on the canvas (root step 6).
+5. **Run root step 5**, `pnpm check` then `pnpm build`, and after it `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size`, since `erd-editor` inlines this package into its scene and its export worker. Then run `pnpm --filter @dineug/erd-editor e2e` for a change a user would see on the canvas (root step 6).
 6. **Report as root step 7 says.**
 
 ## Key Files
