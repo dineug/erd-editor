@@ -10,6 +10,7 @@ import {
 } from '@/components/erd/canvas/entityDrag';
 import { hasKindAncestor } from '@/components/erd/canvas/sceneKind';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
+import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { CLICK_DRAG_MIN_MOVE } from '@/constants/layout';
 import {
   moveAllAction$,
@@ -42,7 +43,7 @@ export type MoveEntityOptions = {
   clickKinds?: (source: GeometrySource) => readonly string[];
   /**
    * The scene the component already stands in, handed down rather than read
-   * again here, so a leaf pays for one context subscription and not two.
+   * again here, so a leaf subscribes to the source once and not twice.
    */
   source: Ref<GeometrySource>;
   /** Read at the press: false leaves it a selection that lifts nothing. */
@@ -67,6 +68,7 @@ const selectEntityAction$ = (
  */
 export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
   const app = useAppContext(ctx);
+  const interaction = useSceneInteraction(ctx);
 
   const handleMove =
     (source: GeometrySource, gesture: MoveAllGesture) =>
@@ -77,8 +79,10 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     };
 
   const onMoveStart = (event: ScenePointerEvent) => {
-    // A second finger is a pinch's, which neither selects nor lifts what it lands on.
+    // A second finger is a pinch's, which neither selects nor lifts what it
+    // lands on, and a read scene's root takes every press for itself.
     if (!event?.target || isMultiTouch(event.evt)) return;
+    if (interaction.value === 'read') return;
 
     const { store } = app.value;
     const entityId = options.entityId();

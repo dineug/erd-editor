@@ -8,6 +8,7 @@ import {
   KeyBindingNameList,
   matchesShortcut,
   PANEL_PASSING_BINDINGS,
+  pickKeyBindingMap,
   shortcutToTuple,
   simpleShortcutToString,
   stopsAtPanel,
@@ -417,6 +418,68 @@ describe('keyboard-shortcut', () => {
         '$mod+Alt+Digit3',
         '$mod+Alt+Digit4',
       ]);
+    });
+  });
+
+  describe('pickKeyBindingMap', () => {
+    const VIEW = [
+      KeyBindingName.zoomIn,
+      KeyBindingName.zoomOut,
+      KeyBindingName.zoomReset,
+      KeyBindingName.search,
+      KeyBindingName.stop,
+    ];
+
+    const boundNames = (map: ReturnType<typeof createKeyBindingMap>) =>
+      KeyBindingNameList.filter(name => map[name].length);
+
+    it('keeps the chords of the bindings named, as they were', () => {
+      const full = createKeyBindingMap();
+      const map = createKeyBindingMap();
+
+      pickKeyBindingMap(map, VIEW);
+
+      expect(boundNames(map).sort()).toEqual([...VIEW].sort());
+      for (const name of VIEW) expect(map[name]).toEqual(full[name]);
+    });
+
+    it('leaves every other binding an empty list, so each name still reads as one', () => {
+      const map = createKeyBindingMap();
+
+      pickKeyBindingMap(map, VIEW);
+
+      expect(Object.keys(map)).toEqual(KeyBindingNameList);
+      expect(map[KeyBindingName.removeSelection]).toEqual([]);
+      expect(map[KeyBindingName.selectAllTable]).toEqual([]);
+      expect(map[KeyBindingName.findReplace]).toEqual([]);
+      expect(toShortcutTitle(map, 'Undo', KeyBindingName.undo)).toBe('Undo');
+    });
+
+    it('narrows the object it is given, and again to fewer names', () => {
+      const map = createKeyBindingMap();
+      const zoomIn = map[KeyBindingName.zoomIn];
+
+      pickKeyBindingMap(map, VIEW);
+      pickKeyBindingMap(map, [KeyBindingName.zoomIn]);
+
+      expect(boundNames(map)).toEqual([KeyBindingName.zoomIn]);
+      expect(map[KeyBindingName.zoomIn]).toBe(zoomIn);
+    });
+
+    it('matches no press against a binding it emptied', () => {
+      const map = createKeyBindingMap();
+      const deletePress = new KeyboardEvent('keydown', {
+        key: 'Delete',
+        code: 'Delete',
+      });
+
+      expect(stopsAtPanel(deletePress, map, [])).toBe(true);
+      pickKeyBindingMap(map, VIEW);
+
+      expect(
+        matchesShortcut(deletePress, map[KeyBindingName.removeSelection])
+      ).toBe(false);
+      expect(stopsAtPanel(deletePress, map, [])).toBe(false);
     });
   });
 

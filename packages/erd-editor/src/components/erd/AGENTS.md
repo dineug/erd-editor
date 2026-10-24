@@ -23,12 +23,13 @@
 | `erdTarget.ts` | `toErdTarget`, the `ErdTarget` a match of Find and Replace or of the palette's `@` and `:` rows jumps to (The jump rule) |
 | `fieldIcon.tsx` | The icon a row found in a field draws for the kind of text it was found in, which the Explorer's search and the palette share (`src/components/AGENTS.md`, Icons) |
 | `relationshipHighlight.ts` | The relationship a jump lights, per `editor.id`, out of the store |
+| `canvas/highlightTransition.ts` | The highlight ticker, its keys led by `editor.id`: `transitionTo`, `progressOf`, `stopTransitions(editorId)`, which drops one editor's keys, and `countTransitions(editorId)`, the test probe of how many it still holds |
 | `useErdShortcut.ts` | The `stop` branch (Escape) and the `removeSelection` branch (Delete and Backspace) |
 | `canvas/Canvas.tsx` | The stage container, on which `listenMiddleButtonPan` binds in the capture phase, and the `dir="ltr"` controller it stands in, which draws the `overlay` its host hands in after it |
 | `canvas/CanvasScene.tsx` | `renderCanvasScene`, the paint order, the drag layer's `dragIds`, and `CanvasLayers`, what a host hands in at each layer: a layer under the scene, a relationship draw's preview, a drop target, the marquee's layer and the presence layer's parts |
 | `canvas/editingLayers.ts` | What `Erd.tsx` hands its canvas as `CanvasLayers`: the relationship draw's preview, where a drag would drop tables into groups, the marquee, and the collaborators' pointers and marquees and the drag ghosts in the presence layer. The Flow hands in its particles and the marquee, and the diff panes, time travel and the placement preview, which edit nothing, hand in none |
 | `canvas/sceneHit.ts` | The hit functions every hit box comes from |
-| `canvas/useMoveEntity.ts` | Entity drags: `clickKinds`, `isMainButtonPress`, and the drop into groups in its finalizer |
+| `canvas/useMoveEntity.ts` | Entity drags: `clickKinds`, `isMainButtonPress`, the drop into groups in its finalizer, and no press at all in a scene under `'read'` (`src/components/sceneInteractionContext.ts`) |
 | `canvas/middleButtonPan.ts` | `listenMiddleButtonPan`, the middle button's pan |
 | `canvas/sceneTokens.ts` | `mainButtonClick`, `TABLE_GROUP_FILL_OPACITY` |
 | `canvas/EditOverlay.tsx` | The cell editor, which opens the term list over a logical name and the domain picker over a domain, and `TableGroupNameEditor`; `Erd.tsx` hands it to its canvas as the `overlay`, so it stands left to right in every language and no other scene mounts it |
@@ -328,6 +329,7 @@
 - **A node that leaves under the pointer hands its cursor back.** Konva sends no leave to a node unmounted from under the pointer: one removed, hidden or swapped out. So a component that asks the stage for a cursor through `createSceneCursorScope` (`canvas/sceneTokens.ts`) writes the inherited one back on unmount, unless its last request already was. The memo, its sashes, the group sashes, the group's `x` and the column drag handle do. The handle also gives its hover back when the focus leaves its row, which takes it away with no unmount, and fires the leave konva drops on the row and the table it stands outside. The table's header buttons and colour edge, the zoomed-out table's colour edge and a column's remove button do not yet.
 - **Add each canvas overlay to `canDrag`.** That is the `closest()` list in `Erd.tsx` (`.content-compass`, `.floating-toolbar`, `.draw-target`, …); `ErdViewer.tsx` has its own. Otherwise a press on the overlay starts a pan.
 - **Add takeover overlays to `TAKEOVER_CHROME` too.** An overlay a takeover lays over its scene joins it in `Erd.tsx`, or a middle press on it is prevented.
+- **A scene under `'read'` takes no entity press** (`src/components/sceneInteractionContext.ts`). `useMoveEntity` returns before it selects, so a table, memo or group pressed there is neither selected nor carried nor duplicated, and the scene root's own handler takes the press. Every other scene keeps `'edit'`, so a readonly editor's press still selects (`canMove`, Table group pointer).
 - **A header or column row press lifts past `CLICK_DRAG_MIN_MOVE` only.** It lifts the table only once the press travels that far (`clickKinds`, `canvas/useMoveEntity.ts`; `CLICK_KINDS` in `canvas/table/useMoveTable.ts`). The drag layer is off the hit canvas, so lifting at once would keep a double click from opening the cell editor.
 
 ### The column drag handle
@@ -385,6 +387,7 @@
   - `findReplace` stays out of it: in a field, `$mod+F` means only the page's find, which the editor's replaces.
   - `search` stays out of it too: the palette's `$mod+K` opens from any text field but the cell editor's, the Explorer's find field and the database name included, as a command palette does (an owner decision of 2026-10-11).
   - `YIELDS_TO_A_TAKEOVER` beside it, which leaves `findReplace` to the host's find under a takeover: `src/components/explorer/AGENTS.md`, The search.
+- **A read-only view binds five chords** (`src/hooks/useViewShortcut.ts`). The hook narrows its app's map to `VIEW_KEY_BINDINGS`, the three zoom chords, `search` and `stop`, through `pickKeyBindingMap`, which empties every other binding, so `useKeyBindingMap` binds those alone and Delete, Backspace, Space, `$mod+A`, `$mod+F` and every edit chord go on to the page unprevented. The zoom chords zoom as the canvas's do while the palette is closed, and the palette answers `search` and `stop` itself.
 - **Escape is two presses.** The `stop` branch of `useErdShortcut.ts` decides from the state the press arrives in.
   - An open cell, memo or group name editor, a relationship being drawn, or an armed table group draw takes the press alone. Focus, selection and typed text stay.
   - While a logical name cell's term list shows, Escape closes the list alone, prevented and stopped at the input, so the stop branch and the page hear only the next press (an owner decision). The domain picker's list goes with its editor on the first press.

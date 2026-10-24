@@ -53,7 +53,7 @@ const modulePathOf = (file: string) => file.replace(/\.tsx?$/, '');
 
 /**
  * What the view mounts and reads: its canvas, scrollbars, map, controls and
- * palette, its store and its fit.
+ * palette, its store, keys, press mode and measure, its fit and its lights.
  */
 const ROOTS = [
   'components/erd/canvas/Canvas.tsx',
@@ -65,8 +65,13 @@ const ROOTS = [
   'components/erd/view-controls/ToolbarCompass.template.tsx',
   'components/quick-search/QuickSearch.tsx',
   'components/appContext.ts',
+  'hooks/useKeyBindingMap.ts',
+  'hooks/useViewShortcut.ts',
+  'components/sceneInteractionContext.ts',
+  'components/erd-view/viewportMeasure.ts',
   'konva/scene/fitZoom.ts',
   'components/erd/relationshipHighlight.ts',
+  'components/erd/canvas/highlightTransition.ts',
 ];
 
 /**

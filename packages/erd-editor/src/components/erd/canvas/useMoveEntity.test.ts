@@ -18,6 +18,7 @@ import {
 } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
+import { sceneInteractionContext } from '@/components/sceneInteractionContext';
 import {
   sceneSourceContext,
   useSceneSource,
@@ -67,6 +68,15 @@ const Probe: FC<{}> = (props, ctx) => {
 /** A view scene root the way an overlay mounts one: a wrapper of its own, the provider inside. */
 const ViewScope: FC<{ children: any }> = (props, ctx) => {
   const provider = useProvider(ctx, sceneSourceContext, 'flow');
+  const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => provider.destroy());
+
+  return () => html`${props.children}`;
+};
+
+/** A read-only scene root: a wrapper of its own, the read mode provided inside. */
+const ReadScope: FC<{ children: any }> = (props, ctx) => {
+  const provider = useProvider(ctx, sceneInteractionContext, 'read');
   const { addUnsubscribe } = useUnmounted();
   addUnsubscribe(() => provider.destroy());
 
@@ -389,6 +399,77 @@ describe('useMoveEntity', () => {
     expect(selectedIds()).toEqual(['t2']);
     expect(isEntityDragActive(app.store.state)).toBe(false);
     expect(isViewFrozen(app.store.state)).toBe(false);
+  });
+});
+
+describe('useMoveEntity - a scene that reads', () => {
+  const mountRead = async () => {
+    mounted?.unmount();
+    mounted = await mountAndFlush(
+      html`<div><${ReadScope} .children=${html`<${Probe} />`} /></div>`,
+      app
+    );
+  };
+
+  it('selects nothing, so no selection outline is drawn', async () => {
+    app.store.dispatchSync(
+      addTableAction({ id: 't2', ui: { x: 900, y: 200, zIndex: 3 } }),
+      selectAction({ t2: SelectType.table })
+    );
+    await mountRead();
+
+    api.onMoveStart(press());
+    await flush();
+
+    expect(selectedIds()).toEqual(['t2']);
+  });
+
+  it('neither lifts the entity nor holds the view, and the pointer moves nothing', async () => {
+    await mountRead();
+    const before = pointOf('t1');
+
+    api.onMoveStart(press());
+    movePointer(120, 60);
+    await flush();
+
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+    expect(isViewFrozen(app.store.state)).toBe(false);
+    expect(pointOf('t1')).toEqual(before);
+  });
+
+  it('starts no duplicate on an Alt press', async () => {
+    await mountRead();
+    const evt = new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      altKey: true,
+    });
+    window.dispatchEvent(evt);
+
+    api.onMoveStart({ target: sceneNode(), evt } as ScenePointerEvent);
+    await flush();
+
+    expect(evt.defaultPrevented).toBe(false);
+    expect(selectedIds()).toEqual([]);
+  });
+
+  it('leaves a readonly store with no mode provided selecting on a press, as a readonly editor does', async () => {
+    mounted?.unmount();
+    // Seeded before it turns readonly, which would refuse the table itself.
+    let readonly = false;
+    app = createTestAppContext({ getReadonly: () => readonly });
+    app.store.dispatchSync(
+      addTableAction({ id: 't1', ui: { x: 300, y: 200, zIndex: 2 } })
+    );
+    readonly = true;
+    mounted = await mountAndFlush(html`<${Probe} />`, app);
+
+    api.onMoveStart(press());
+    await flush();
+
+    expect(selectedIds()).toEqual(['t1']);
+    expect(isEntityDragActive(app.store.state)).toBe(true);
   });
 });
 

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
+  countTransitions,
   progressOf,
   setTransitionClock,
   stopTransitions,
@@ -222,5 +223,50 @@ describe('the highlight ticker', () => {
 
     expect(progressOf(key)).toBe(1);
     expect(next.isPending()).toBe(false);
+  });
+});
+
+describe('countTransitions', () => {
+  it('counts nothing for an editor that never asked', () => {
+    expect(countTransitions(editorId)).toBe(0);
+  });
+
+  it('counts the keys at rest, moving and landed, and only the editor named', () => {
+    const resting = keyOf('a');
+    const moving = keyOf('b');
+    const theirs = transitionKey('editor-other', 'table', 'a');
+    transitionTo(resting, 1);
+    transitionTo(moving, 0);
+    transitionTo(moving, 1);
+    transitionTo(theirs, 1);
+
+    expect(countTransitions(editorId)).toBe(2);
+
+    clock.step(TRANSITION_MS / 2);
+    expect(countTransitions(editorId)).toBe(2);
+
+    clock.step(TRANSITION_MS);
+    expect(countTransitions(editorId)).toBe(2);
+    expect(countTransitions('editor-other')).toBe(1);
+
+    stopTransitions('editor-other');
+  });
+
+  it('comes back to zero once the editor is torn down, mid walk included', () => {
+    const key = keyOf('a');
+    transitionTo(key, 0);
+    transitionTo(key, 1);
+    clock.step(TRANSITION_MS / 2);
+
+    stopTransitions(editorId);
+
+    expect(countTransitions(editorId)).toBe(0);
+  });
+
+  it('reads an editor id as a whole, so one that only starts another counts none of its keys', () => {
+    transitionTo(keyOf('a'), 1);
+
+    expect(countTransitions(`${editorId}0`)).toBe(0);
+    expect(countTransitions(editorId.slice(0, -1))).toBe(0);
   });
 });

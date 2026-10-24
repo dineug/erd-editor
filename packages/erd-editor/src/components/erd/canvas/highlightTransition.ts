@@ -154,6 +154,22 @@ export function stopTransitions(editorId: string): void {
 }
 
 /**
+ * Test-only probe: how many keys one editor still holds, at rest, moving or
+ * drawn this frame, which a scene that closed must have brought to zero.
+ * Nothing shipping calls it.
+ */
+export function countTransitions(editorId: string): number {
+  const prefix = `${editorId} `;
+  const keys = new Set([
+    ...targets.keys(),
+    ...running.keys(),
+    ...Object.keys(progress),
+  ]);
+
+  return [...keys].filter(key => key.startsWith(prefix)).length;
+}
+
+/**
  * Runs the transitions on the clock given, or on the browser's own again when
  * called with nothing. Whatever was moving lands on its target, since a start
  * time taken from one clock means nothing against another.

@@ -18,6 +18,8 @@
 | --- | --- |
 | `customElementClass.ts` | `CustomElementClass`, the type an exported element class is annotated with: the shape of the class `createCustomElement` returns, written here so the declaration files name no `@dineug/r-html` type for it |
 | `sceneSourceContext.ts` | `sceneSourceContext` / `useSceneSource`, through which a scene component reads its `GeometrySource`; default `'document'` |
+| `sceneInteractionContext.ts` | `sceneInteractionContext` / `useSceneInteraction`, through which `erd/canvas/useMoveEntity.ts` reads how its scene takes a press on a table, memo or group; default `'edit'` (Scene sources and views) |
+| `erd-view/viewportMeasure.ts` | `measureViewport`, which hands the store the size of the element the read-only view fills as its viewport on every resize. It never reaches the Explorer, whose room the editor's `erd-editor/viewportLayout.ts` makes, and its spec drives a `ResizeObserver` of its own, since the one `vitest.setup.ts` installs reports nothing |
 | `visualization/flowLayout.tsx` | The one place a Flow placement is asked for: `ensureFlowPlaced`, `keepFlowPlaced`, `fitFlowView` |
 | `visualization/VisualizationFlow.tsx` | `FlowScene`, the scene root of the Flow view |
 | `flowCenters.ts` | Narrows the Flow view to the tables given and their one hop, widens it back, and steps it through the centers it stood on (`focusFlowView`, `showAllFlowView`, `stepFlowView`, `canStepFlowView`) |
@@ -45,6 +47,7 @@
 
 - **`GeometrySource` picks coordinates, shown set, sort channel.** One value picks all three at once: `GeometrySource = 'document' | 'flow'`, typed in `src/utils/draw-relationship/geometrySource.ts`. Pure functions take it as a trailing `source = 'document'` parameter. Scene components read it with `useSceneSource(ctx)`.
 - **Provide the source inside a wrapper.** Each scene root provides it inside a wrapper, never on the root it returns: `Erd`, `ErdViewer`, `AutomaticTablePlacement`, `TimeTravel`, and `FlowScene` in `VisualizationFlow.tsx`. `useProvider` attaches to the parent element, so a provider on the returned root would reach the root's siblings too.
+- **`sceneInteractionContext` picks how a scene takes an entity press.** Under `'edit'`, the default, a press on a table, memo or group selects it and carries the selection. Under `'read'`, `erd/canvas/useMoveEntity.ts` returns before it selects, so the press draws no selection outline, lifts nothing and starts no Alt duplicate, and the scene root takes it. A read-only scene root provides `'read'` inside its wrapper, as a root provides its source; every other scene, the ERD tab and a readonly editor among them, keeps `'edit'`.
 - **Outside any provider, read `getActiveView`.** Code that must follow the reader and runs outside any provider reads `getActiveView` (`src/engine/modules/editor/view*.ts`). That is the zoom generators, through `getActiveTransform`, and the view reducers.
 - **A scene writes to the slot it reads.** Each write names its source: `sceneScrollToAction(source, …)`, `changeZoomLevelAction$(value, source)`, `moveAllAction$(dx, dy, source)`, and `kind` on a view payload. An unnamed scroll or zoom lands on the active view. An unnamed `moveAllAction$` goes to the document, and an open view drops it.
 - What a view shows, `src/konva/scene/viewLayout.ts`: `src/konva/AGENTS.md`.

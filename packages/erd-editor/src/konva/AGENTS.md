@@ -28,6 +28,7 @@
 | `scene/viewport.ts` | The coordinate canon and the culling rect (rule in `src/components/erd/AGENTS.md`) |
 | `scene/viewFreeze.ts` | `sceneKeyOf` and the freeze a drag holds (rules in `src/components/erd/AGENTS.md`) |
 | `scene/konvaFlip.ts` | The column flip, the one shipped module that names `konva/lib/Tween` |
+| `scene/fitZoom.ts` | Fitting: `previewZoomLevel`, the zoom a fit opens at, and `fitDocument(store, maxZoom = CANVAS_ZOOM_MAX)`, which fits everything the document draws into the screen. It reads `getContentRect`, then that zoom, then the origin `getScrollToCenter` puts the content's middle at, and dispatches the zoom and the scroll; a screen not yet measured or an empty document leaves both as they are. Keep the module out of the engine and peer graphs, which need none of the minimap geometry it reads |
 | `scene/stacking.ts` | `stackTablesAndMemos`, the one order tables and memos paint in (rule in `src/components/erd/AGENTS.md`, The canvas and its presses) |
 | `scene/renderScene.browser.test.tsx` | Pins the `Konva.DD` registration the host package's draw gate makes, on a real scene |
 
