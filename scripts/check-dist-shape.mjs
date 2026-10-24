@@ -1,19 +1,54 @@
 #!/usr/bin/env node
 // Dist shape gate for @dineug/erd-editor, wired as pnpm dist-shape after pnpm
-// build: what the declarations export, what the two umd files define, the
-// worker files' document stubs, and the one worker url spelling hosts rewrite.
+// build: the file-level layout, the declarations, the umd files, the worker
+// stubs and urls, the viewer's graph, and what Obsidian's plugin takes of it.
 import fs from 'node:fs';
+import { builtinModules } from 'node:module';
 import path from 'node:path';
 
 import { edgesOf } from './check-peer-graph.mjs';
 import { evaluateInHappyDom } from './happy-dom-realm.mjs';
+import {
+  forbiddenIn,
+  INLINED_LIBRARIES,
+  matchesEntry,
+  modulePathOf,
+  viewerBoundary,
+} from './viewer-boundary.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const packageDir = path.join(root, 'packages', 'erd-editor');
 const distDir = path.join(packageDir, 'dist');
+const obsidianDir = path.join(root, 'packages', 'obsidian-plugin');
 
 const MISSING_OUTPUT =
   'Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build';
+
+/** The scripts at the top of dist/: the three entries that need a DOM and the two umd builds. */
+const TOP_LEVEL_SCRIPTS = [
+  'erd-editor.js',
+  'erd-editor.umd.js',
+  'erd-viewer.js',
+  'erd-viewer.umd.js',
+  'index.js',
+];
+
+/**
+ * The scripts of dist/ that are no module of src/: Rolldown's helpers, the
+ * inlined libraries, each worker bundled on its own and the umd builds.
+ */
+const NOT_A_MODULE = [
+  /^_virtual\//,
+  new RegExp(`^(?:${INLINED_LIBRARIES.join('|')})/dist/`),
+  /^workers\/[^/]+\.shared-worker\.js$/,
+  /^[^/]+\.umd\.js$/,
+];
+
+/** The one module of Obsidian's plugin that takes the editor in, lazily through erdEditorModule.ts. */
+const OBSIDIAN_LOADER = path.join(obsidianDir, 'src', 'loadErdEditor.ts');
+
+/** The module the loader must reach, so a loader that resolves nothing never passes. */
+const EDITOR_ELEMENT = 'components/erd-editor/ErdEditor';
 
 /** The two elements: the module each lives in, its entry, its umd build and the keys its global holds. */
 const ELEMENTS = [
@@ -299,13 +334,206 @@ function checkWorkerUrls() {
   check(`worker urls (${workers} in ${files.size} files)`, problems);
 }
 
+/** Every script under a directory, relative to it with forward slashes. */
+const scriptsUnder = dir =>
+  fs
+    .readdirSync(dir, { recursive: true })
+    .map(name => name.split(path.sep).join('/'))
+    .filter(name => /\.[cm]?js$/.test(name))
+    .sort();
+
+/**
+ * One file per module: the top of dist/ holds the three entries and the umd
+ * builds, each exports target exists, and every other script is a module of
+ * src/ at the same path beside its declaration, so no shared chunk is left.
+ */
+function checkLayout() {
+  if (!fs.existsSync(path.join(distDir, 'index.js'))) {
+    throw new Error(`Missing build output: packages/erd-editor/dist. ${MISSING_OUTPUT}`);
+  }
+  const problems = [];
+  const scripts = scriptsUnder(distDir);
+
+  const top = scripts.filter(name => !name.includes('/'));
+  if (JSON.stringify(top) !== JSON.stringify(TOP_LEVEL_SCRIPTS)) {
+    problems.push(
+      `the top of dist/ holds [${top.join(', ')}], expected [${TOP_LEVEL_SCRIPTS.join(', ')}]`
+    );
+  }
+
+  const manifest = JSON.parse(read(path.join(packageDir, 'package.json')));
+  for (const [key, target] of Object.entries(manifest.exports)) {
+    for (const file of typeof target === 'string' ? [target] : Object.values(target)) {
+      if (!fs.existsSync(path.join(packageDir, file))) {
+        problems.push(`exports ${key} names ${file}, which the build did not write`);
+      }
+    }
+  }
+
+  for (const library of INLINED_LIBRARIES) {
+    if (!fs.existsSync(path.join(distDir, library, 'dist'))) {
+      problems.push(`no dist/${library}/dist/, though ${library} is listed as inlined`);
+    }
+  }
+
+  let modules = 0;
+  for (const name of scripts) {
+    if (NOT_A_MODULE.some(pattern => pattern.test(name))) continue;
+    modules++;
+    const base = name.replace(/\.js$/, '');
+    if (!['.ts', '.tsx'].some(ext => fs.existsSync(path.join(packageDir, 'src', base + ext)))) {
+      problems.push(
+        `${name} is no module of src/: a shared chunk, or a file a cache replay left (pnpm cache:clear, then build)`
+      );
+    }
+    if (!fs.existsSync(path.join(distDir, `${base}.d.ts`))) {
+      problems.push(`${name} has no ${base}.d.ts beside it`);
+    }
+  }
+
+  check(`file-level layout (${modules} modules of ${scripts.length} scripts)`, problems);
+}
+
+/**
+ * The graph of erd-viewer.js against viewer-boundary.json: no forbidden module
+ * or package, every package import allowed, no dictionary but English in the
+ * static graph, and English, wherever the graph reaches it, in that one.
+ */
+function checkViewerBoundary() {
+  const entry = path.join(distDir, 'erd-viewer.js');
+  const { files, edges } = edgesOf(entry);
+  const problems = [];
+
+  const staticImports = new Map();
+  for (const edge of edges) {
+    if (edge.bare || edge.kind !== 'static') continue;
+    staticImports.set(edge.from, [...(staticImports.get(edge.from) ?? []), edge.to]);
+  }
+  const staticFiles = new Set();
+  const pending = [entry];
+  while (pending.length) {
+    const file = pending.pop();
+    if (staticFiles.has(file)) continue;
+    staticFiles.add(file);
+    pending.push(...(staticImports.get(file) ?? []));
+  }
+
+  const modules = files.map(file => modulePathOf(path.relative(distDir, file)));
+  const packages = [...new Set(edges.filter(edge => edge.bare).map(edge => edge.to))].sort();
+  problems.push(
+    ...forbiddenIn(
+      { modules, packages },
+      {
+        paths: viewerBoundary.forbiddenPaths,
+        packages: viewerBoundary.forbiddenPackages,
+      }
+    )
+  );
+  for (const name of packages) {
+    if (!viewerBoundary.bareAllowlist.some(allowed => matchesEntry(name, allowed.name))) {
+      problems.push(`imports ${name}, which bareAllowlist does not name`);
+    }
+  }
+
+  const { static: english, dynamicOnly } = viewerBoundary.locales;
+  files.forEach((file, index) => {
+    const module = modules[index];
+    const isStatic = staticFiles.has(file);
+    if (matchesEntry(module, english.path)) {
+      if (!isStatic) problems.push(`${module} is reached through import() alone: ${english.why}`);
+    } else if (
+      matchesEntry(module, dynamicOnly.path) &&
+      !dynamicOnly.except.some(except => matchesEntry(module, except)) &&
+      isStatic
+    ) {
+      problems.push(`${module} is in the static graph: ${dynamicOnly.why}`);
+    }
+  });
+
+  check(
+    `viewer boundary of erd-viewer.js (${files.length} files, ${staticFiles.size} static, ${packages.length} packages)`,
+    problems
+  );
+}
+
+/**
+ * Obsidian's loader bundled to CommonJS, as the plugin's build does, with
+ * obsidian and the node builtins external: the modules it renders from dist/
+ * include the editor element and none that viewer-boundary.json keeps out.
+ */
+async function checkObsidianLoader() {
+  const { rolldown } = await import('vite/rolldown');
+  const bundle = await rolldown({
+    input: OBSIDIAN_LOADER,
+    cwd: obsidianDir,
+    platform: 'browser',
+    logLevel: 'silent',
+    resolve: { alias: { '@': path.join(obsidianDir, 'src') } },
+    external: [
+      'obsidian',
+      ...builtinModules,
+      ...builtinModules.map(name => `node:${name}`),
+    ],
+  });
+  let output;
+  try {
+    ({ output } = await bundle.generate({ format: 'cjs' }));
+  } finally {
+    await bundle.close();
+  }
+
+  const modules = new Set();
+  for (const item of output) {
+    if (item.type !== 'chunk') continue;
+    for (const id of item.moduleIds) {
+      if ((item.modules[id]?.renderedLength ?? 0) === 0) continue;
+      const inDist = path.relative(distDir, id.replace(/^\0/, ''));
+      if (!inDist.startsWith('..') && !path.isAbsolute(inDist)) {
+        modules.add(modulePathOf(inDist));
+      }
+    }
+  }
+
+  const problems = forbiddenIn(
+    { modules: [...modules] },
+    { paths: viewerBoundary.obsidianLoaderForbiddenPaths }
+  );
+  if (!modules.has(EDITOR_ELEMENT)) {
+    problems.push(`the bundle renders no ${EDITOR_ELEMENT}, so the loader reached no editor`);
+  }
+  check(
+    `Obsidian loader graph (${modules.size} modules of erd-editor's dist/)`,
+    problems
+  );
+}
+
+/** Obsidian loads main.js alone, so the plugin folder holds no other script. */
+function checkObsidianFolder() {
+  const dir = path.join(obsidianDir, 'dist');
+  if (!fs.existsSync(path.join(dir, 'main.js'))) {
+    throw new Error(
+      `Missing build output: ${path.relative(root, path.join(dir, 'main.js'))}. Run: pnpm exec vp run --filter @dineug/erd-editor-obsidian-plugin --fail-if-no-match build`
+    );
+  }
+  const scripts = scriptsUnder(dir);
+  check(
+    'Obsidian plugin folder',
+    scripts.length === 1
+      ? []
+      : [`packages/obsidian-plugin/dist holds [${scripts.join(', ')}], expected main.js alone`]
+  );
+}
+
 async function main(argv) {
   if (argv[0] === '--help' || argv[0] === '-h') {
     console.log(`Usage: node scripts/check-dist-shape.mjs
 
   Reads packages/erd-editor/dist after pnpm build and exits 1 when a check
-  fails: the declarations of both elements, both umd builds run on happy-dom,
-  the document stubs of the two workers that need one, and the url workers.`);
+  fails: one file per module, the declarations of both elements, both umd
+  builds run on happy-dom, the document stubs of the two workers that need
+  one, the url workers, the graph of erd-viewer.js against
+  scripts/viewer-boundary.json, and Obsidian's loader rebundled from
+  packages/obsidian-plugin with its plugin folder.`);
     return 0;
   }
   if (argv.length) {
@@ -313,10 +541,14 @@ async function main(argv) {
     return 2;
   }
 
+  checkLayout();
   checkDeclarations();
   await checkUmd();
   checkStubs();
   checkWorkerUrls();
+  checkViewerBoundary();
+  await checkObsidianLoader();
+  checkObsidianFolder();
 
   if (failures.length) {
     console.log(`Dist shape: FAIL (${failures.length} of ${failures.length + passes.length})`);

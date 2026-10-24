@@ -29,7 +29,7 @@ Deltas from root § Making a Change.
 | `src/keys.ts` | `scopeKeysOf` / `toScopeKey`: the editor's chords as `Scope.register` modifiers and key, each press once; `editorScopeKeys`, every press the loaded module listens for |
 | `src/readableDiagram.ts` | `isReadableDiagram`: whether a file's text is a diagram the tab can read (Unreadable files open read-only) |
 | `src/icon.ts` | `ERD_ICON` / `ERD_ICON_SVG`, for the tab and the New ERD menu item |
-| `src/loadErdEditor.ts` | Requires `erdEditorModule.ts` and defines `<erd-editor>` once per window (§ Build) |
+| `src/loadErdEditor.ts` | Requires `erdEditorModule.ts` and defines `<erd-editor>` once per window (§ Build). The root's `pnpm dist-shape` bundles it by this path and fails when its graph reaches the viewer or the viewer's dictionary loader (root § Testing Requirements) |
 | `src/erdEditorModule.ts` | The one module that imports `@dineug/erd-editor` as a value: the five members `ErdEditorModule` names, taken by name (§ Build) |
 | `src/hub/registry.ts` | `DocumentRegistry` (§ Coding-agent hub), with `seedWhenQuiet`, `setActive` / `keepActive`, `shutdown` |
 | `src/hub/handlers.ts` | `createDocumentHandler`: `listDocuments`, `openDocument`, `join`, `applyActions`, `leave`, `save`, `disconnect` |

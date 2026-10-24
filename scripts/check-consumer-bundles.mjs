@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Consumer bundle gate for @dineug/erd-editor, wired as pnpm consumer-bundles
 // after pnpm build. Each fixture in consumer-fixtures/ is bundled the way a
-// consumer bundles dist/, by four bundlers, then evaluated on happy-dom.
+// consumer bundles dist/, by four bundlers, then judged by graph and on happy-dom.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 
 import { evaluateInHappyDom, REALM_TIMEOUT_MS } from './happy-dom-realm.mjs';
+import { forbiddenIn, modulePathOf, viewerBoundary } from './viewer-boundary.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const packageDir = path.join(root, 'packages', 'erd-editor');
@@ -40,16 +41,49 @@ const WORKER_REFERENCES = WORKER_NAMES.map(name => {
   };
 });
 
-const WORKER_MODULE_PREFIX = 'erd-editor/dist/workers/';
+const DIST_PREFIX = 'erd-editor/dist/';
+const WORKER_MODULE_PREFIX = `${DIST_PREFIX}workers/`;
+
+/** What the viewer's graph may not reach, from viewer-boundary.json. */
+const VIEWER_BOUNDARY = {
+  paths: viewerBoundary.forbiddenPaths,
+  packages: viewerBoundary.forbiddenPackages,
+};
+
+/** The two element modules, which a helper imported by name from the package root leaves out. */
+const ELEMENT_MODULES = {
+  paths: [
+    {
+      path: 'components/erd-editor',
+      why: 'the editor element, which a named import of a helper never needs.',
+    },
+    {
+      path: 'components/erd-viewer',
+      why: 'the viewer element, which a named import of a helper never needs.',
+    },
+  ],
+};
 
 /**
  * One fixture each. tags is every tag the bundle defines, each once, probe the
- * value the fixture leaves on globalThis, and workers, where a case sets it,
- * whether the bundle carries the three SharedWorkers.
+ * value the fixture leaves on globalThis, workers, where a case sets it, whether
+ * the bundle carries the three SharedWorkers, and forbidden what its graph lacks.
  */
 const CASES = [
-  { id: 'viewer-only', tags: ['erd-viewer'], probe: null, workers: false },
-  { id: 'barrel-named', tags: [], probe: 'function' },
+  {
+    id: 'viewer-only',
+    tags: ['erd-viewer'],
+    probe: null,
+    workers: false,
+    forbidden: VIEWER_BOUNDARY,
+  },
+  {
+    id: 'barrel-named',
+    tags: [],
+    probe: 'function',
+    workers: false,
+    forbidden: ELEMENT_MODULES,
+  },
   {
     id: 'editor-entry',
     tags: ['erd-editor'],
@@ -82,8 +116,10 @@ const USAGE = `Usage: node scripts/check-consumer-bundles.mjs [options]
   Bundles each fixture in scripts/consumer-fixtures/ with Vite's build(),
   vite/rolldown, webpack 5 and Rspack against packages/erd-editor/dist, the
   dependencies bundled too, into the OS temp directory. Each bundle runs on
-  happy-dom, which reports the tags it defined. The Vite bundle of
-  editor-entry also runs its export worker in a realm with no document.
+  happy-dom, which reports the tags it defined, and the bundlers' module
+  graphs of viewer-only and barrel-named must leave out what each forbids.
+  The Vite bundle of editor-entry also runs its export worker in a realm with
+  no document.
 
   --lanes <a,b>   Only these bundlers (${Object.keys(LANES).join(', ')}).
   --cases <a,b>   Only these fixtures (${CASES.map(c => c.id).join(', ')}).
@@ -384,6 +420,25 @@ function workerFailures(lane, bundled, markers, want) {
   return failures;
 }
 
+/**
+ * A bundle's graph, the worker graphs included, against what its case forbids:
+ * erd-editor's dist/ files as module paths, every other module as a package.
+ */
+function graphFailures(bundled, forbidden) {
+  const modules = [];
+  const packages = [];
+  for (const id of [...bundled.modules, ...bundled.workerModules]) {
+    if (id.startsWith(DIST_PREFIX)) {
+      modules.push(modulePathOf(id.slice(DIST_PREFIX.length)));
+    } else {
+      packages.push(id);
+    }
+  }
+  return forbiddenIn({ modules, packages }, forbidden).map(
+    hit => `the graph ${hit}`
+  );
+}
+
 function judge(lane, testCase, bundled, markers, evaluated) {
   const failures = [...evaluated.errors.map(error => `threw ${error}`)];
   const defines = [...evaluated.defines].sort();
@@ -405,6 +460,9 @@ function judge(lane, testCase, bundled, markers, evaluated) {
   }
   if (testCase.workers !== undefined) {
     failures.push(...workerFailures(lane, bundled, markers, testCase.workers));
+  }
+  if (testCase.forbidden) {
+    failures.push(...graphFailures(bundled, testCase.forbidden));
   }
   return failures;
 }
