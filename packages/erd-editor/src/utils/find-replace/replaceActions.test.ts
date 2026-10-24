@@ -32,9 +32,11 @@ import {
   findMatches,
   FindOptions,
   Matcher,
+} from '@/utils/find-replace';
+import {
   toFieldAction,
   toReplaceActions,
-} from '@/utils/find-replace';
+} from '@/utils/find-replace/replaceActions';
 
 let app: AppContext;
 

@@ -9,6 +9,7 @@ import {
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { fieldIcon } from '@/components/erd/fieldIcon';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import Sash, { SashType } from '@/components/primitives/sash/Sash';
@@ -49,7 +50,6 @@ import {
   searchExpanded,
 } from '../explorerTree';
 import { explorerScrollOf, explorerViewOf } from '../explorerView';
-import { fieldIcon } from '../fieldIcon';
 import * as styles from './ExplorerPanel.styles';
 
 const FOLDER_LABEL: Record<ExplorerFolder, PlainMessageKey> = {

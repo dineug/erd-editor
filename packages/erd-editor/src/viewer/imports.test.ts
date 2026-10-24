@@ -74,31 +74,7 @@ const ROOTS = [
  * that cuts one off takes its line out, and one that reaches another entry
  * fails here, so the list only shrinks.
  */
-const PENDING: Record<string, string> = {
-  'components/explorer':
-    "The palette's commands and its document search import the Explorer's commands, field icon and jump target.",
-  'components/generator-code':
-    "The palette's commands import the Code Generator's menus and language settings.",
-  'components/schema-sql':
-    "The palette's commands import the Schema SQL tab's menus.",
-  'components/theme-builder':
-    "The palette's commands import the theme builder.",
-  'components/erd/erd-context-menu':
-    "The palette's commands import the canvas menu's database, relationship and placement lists.",
-  'components/erd/automatic-table-placement':
-    "The palette's import commands place what they import through the placement modules.",
-  'components/erd/table-group':
-    "The palette's commands add a group and open its name editor through the group commands.",
-  'components/erd-editor':
-    "The Explorer's commands, which the palette imports, read the editor shell's viewport layout.",
-  services:
-    "The palette's import and export commands reach the image export and placement services.",
-  workers: 'The services the palette reaches spawn their workers.',
-  'utils/file': "The palette's commands import file import and export.",
-  'utils/schema-sql':
-    "The palette's Schema SQL commands read the DDL options beside the writers.",
-  comlink: 'The worker boundary of the services the palette reaches.',
-};
+const PENDING: Record<string, string> = {};
 
 const manifest = JSON.parse(
   readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8')

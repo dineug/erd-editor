@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-24 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # components
 
@@ -22,7 +22,7 @@
 | `visualization/VisualizationFlow.tsx` | `FlowScene`, the scene root of the Flow view |
 | `flowCenters.ts` | Narrows the Flow view to the tables given and their one hop, widens it back, and steps it through the centers it stood on (`focusFlowView`, `showAllFlowView`, `stepFlowView`, `canStepFlowView`) |
 | `erd/canvas/SceneIcon.template.tsx` | Draws the `getIcon` data in the scene |
-| `explorer/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, and for a logical name, which only the palette's `@` rows list, a column's, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
+| `erd/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, and for a logical name, which only the palette's `@` rows list, a column's, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
 | `primitives/icon/icons.ts` | The registered icons and `getIcon`; `icons.test.ts` beside it |
 
 ## Subdirectories
@@ -61,9 +61,9 @@
 ### Icons
 
 - **Colour an icon with `color`, never `fill`.** An icon is stroked from `currentColor`, so a `fill` aimed at one renders it invisible and fails nothing else. `src/styles/emittedCss.iconPaint.test.ts` fails on a `fill` declared in any style module. The scene draws the same `getIcon` data through `erd/canvas/SceneIcon.template.tsx`.
-- **Draw a table with lucide's `table-2`.** Use it wherever a table shows (an owner decision): the table headers on the canvas and in the Visualization tab, and New Table in the context menu, the palette and the welcome screen. It also marks the diff tree, the palette's table rows and a table name found (`explorer/fieldIcon.tsx`, which the palette's `#` rows share). A table or column comment found draws `message-square`.
+- **Draw a table with lucide's `table-2`.** Use it wherever a table shows (an owner decision): the table headers on the canvas and in the Visualization tab, and New Table in the context menu, the palette and the welcome screen. It also marks the diff tree, the palette's table rows and a table name found (`erd/fieldIcon.tsx`, which the palette's `#` rows share). A table or column comment found draws `message-square`.
 - **Draw a key with lucide's `key-round`.** It is drawn in the key tokens wherever a column's key shows: the scene's key cell, Graph mode's card, Table Properties and the Explorer's rows (the owner's request of 2026-10-14), whose foreign keys take their connector's colour. The diff tree draws its foreign keys with it too, muted like its other glyphs.
-- **The Explorer draws `list-tree`.** The toolbar's Explorer button and the Toggle Explorer rows of the context menu and the palette draw it (the owner's request of 2026-10-15, replacing `text-search` and `panel-left`). An index draws `logs` instead, in the Explorer, the diff tree and an index name found (`explorer/fieldIcon.tsx`), so the two never meet (the owner's request of 2026-10-15). The Explorer search's own Replace button keeps `replace`.
+- **The Explorer draws `list-tree`.** The toolbar's Explorer button and the Toggle Explorer rows of the context menu and the palette draw it (the owner's request of 2026-10-15, replacing `text-search` and `panel-left`). An index draws `logs` instead, in the Explorer, the diff tree and an index name found (`erd/fieldIcon.tsx`), so the two never meet (the owner's request of 2026-10-15). The Explorer search's own Replace button keeps `replace`.
 - **Flow's Show all draws lucide's `funnel-x`** (the owner's choice of 2026-10-22, replacing `maximize`), so it never reads as the bracketed `fullscreen` of Fit beside it; the Previous table and Next table steps draw `arrow-left` and `arrow-right`.
 - **Remove a glyph from `icons.ts` when unused.** A glyph that goes out of use leaves `primitives/icon/icons.ts`, and the bundle, with it. `primitives/icon/icons.test.ts` fails on a registered icon no module names.
 

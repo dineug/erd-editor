@@ -25,6 +25,7 @@ import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import LocalePicker from '@/components/locale-picker/LocalePicker';
 import { localeContext } from '@/components/localeContext';
 import MapColumnsDialog from '@/components/map-columns/MapColumnsDialog';
+import { createScopeActions } from '@/components/quick-search/actions';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import SchemaSQL from '@/components/schema-sql/SchemaSQL';
 import Settings from '@/components/settings/Settings';
@@ -437,6 +438,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           <MapColumnsDialog readonly={props.readonly} isDarkMode={isDarkMode} />
           <ExplorerController />
           <QuickSearch
+            topLevel={createScopeActions}
             appearance={
               props.enableThemeBuilder
                 ? themeState.options.appearance

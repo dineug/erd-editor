@@ -17,6 +17,7 @@ import {
 } from '@/__test-utils__/hangulSeed';
 import type { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
+import { createScopeActions } from '@/components/quick-search/actions';
 import {
   PALETTE_LIST_MAX_HEIGHT,
   PALETTE_ROW_HEIGHT,
@@ -55,7 +56,10 @@ async function setup(seed?: (app: AppContext) => void) {
   const app = createTestAppContext();
   seedHangulDocument(app);
   seed?.(app);
-  mounted = mount(html`<${QuickSearch} />`, app);
+  mounted = mount(
+    html`<${QuickSearch} .topLevel=${createScopeActions} />`,
+    app
+  );
   await flush();
   app.emitter.emit(toggleSearchAction());
   await flush();
@@ -282,7 +286,11 @@ describe('quick search over a long list', () => {
         })
       );
     }
-    mounted = mount(html`<${QuickSearch} />`, app, shadow);
+    mounted = mount(
+      html`<${QuickSearch} .topLevel=${createScopeActions} />`,
+      app,
+      shadow
+    );
     await flush();
     app.emitter.emit(toggleSearchAction());
     await flush();
