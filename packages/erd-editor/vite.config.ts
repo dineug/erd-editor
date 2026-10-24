@@ -21,7 +21,10 @@ const rHtmlPackage: string = '@dineug/vite-plugin-r-html';
 export default defineConfig({
   run: {
     tasks: createLibraryTasks(packageDir, {
-      build: ['vp build -c vite.umd.config.ts'],
+      build: [
+        'vp build -c vite.umd.config.ts',
+        'vp build -c vite.umd.config.ts --mode viewer',
+      ],
     }),
   },
   define: {
@@ -35,6 +38,8 @@ export default defineConfig({
       // declarations and the exports map names one place per entry.
       entry: {
         index: './src/index.ts',
+        'erd-editor': './src/erd-editor.ts',
+        'erd-viewer': './src/erd-viewer.ts',
         'engine/index': './src/engine/index.ts',
         'peer/index': './src/peer/index.ts',
       },

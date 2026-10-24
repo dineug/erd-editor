@@ -298,14 +298,22 @@ test('a jsx library compiles its workers through the r-html plugin too', async (
   assert.equal(withoutJsx.worker?.plugins, undefined);
 });
 
-test('a package may append a build step after the standard one', () => {
-  const tasks = createLibraryTasks(editorDir, {
-    build: ['vp build -c vite.umd.config.ts'],
-  }) as LibraryTasks;
+test('the editor appends both script-tag builds after the standard one', () => {
+  // Read as text: node's loader refuses the config's extensionless
+  // build-target import, and importing it would also set up dts().
+  const config = readFileSync(join(editorDir, 'vite.config.ts'), 'utf8');
+  const list = /createLibraryTasks\(packageDir, \{\s*build: \[([^\]]*)\]/.exec(
+    config
+  )?.[1];
+  assert.ok(list, 'vite.config.ts passes a build list to createLibraryTasks');
+
+  const build = [...list.matchAll(/(['"])(.*?)\1/g)].map(match => match[2]);
+  const tasks = createLibraryTasks(editorDir, { build }) as LibraryTasks;
   assert.deepEqual(tasks.build.command, [
     'tsc --noEmit',
     'vp build',
     'vp build -c vite.umd.config.ts',
+    'vp build -c vite.umd.config.ts --mode viewer',
   ]);
 });
 

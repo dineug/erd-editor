@@ -11,6 +11,14 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./erd-editor.js": {
+      "types": "./dist/erd-editor.d.ts",
+      "default": "./dist/erd-editor.js"
+    },
+    "./erd-viewer.js": {
+      "types": "./dist/erd-viewer.d.ts",
+      "default": "./dist/erd-viewer.js"
+    },
     "./engine.js": {
       "types": "./dist/engine/index.d.ts",
       "default": "./dist/engine/index.js"
