@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import {
   installStageTestHandle,
   registerStage,
+  type StageClaims,
   type StageRegistry,
   unregisterStage,
 } from '@/konva/testHandle';
@@ -38,6 +39,9 @@ function unmountStage(stage: Stage, name: string): void {
 
 const registry = (): StageRegistry =>
   Reflect.get(globalThis, '__erdStages') ?? {};
+
+const claims = (): StageClaims =>
+  Reflect.get(globalThis, '__erdStageClaims') ?? {};
 
 afterEach(() => {
   for (const { stage, name } of mounted.splice(0).reverse()) {
@@ -138,6 +142,35 @@ describe('the stage registry a spec reads the scene back through', () => {
     unregisterStage(CANVAS, stranger);
 
     expect(registry()[CANVAS]).toBe(main);
+  });
+
+  it('installs the claim lists before any stage has mounted', () => {
+    installStageTestHandle();
+
+    expect(Reflect.get(globalThis, '__erdStageClaims')).toEqual({});
+  });
+
+  it('lists every live claim on a name, oldest first', () => {
+    const first = mountStage(CANVAS);
+    const second = mountStage(CANVAS);
+    const minimap = mountStage(MINIMAP);
+
+    expect(claims()[CANVAS]).toEqual([first, second]);
+    expect(claims()[MINIMAP]).toEqual([minimap]);
+    expect(registry()[CANVAS]).toBe(second);
+
+    unmountStage(second, CANVAS);
+
+    expect(claims()[CANVAS]).toEqual([first]);
+    expect(registry()[CANVAS]).toBe(first);
+  });
+
+  it('drops the claim list with the last stage on the name', () => {
+    const main = mountStage(CANVAS);
+
+    unmountStage(main, CANVAS);
+
+    expect(claims()[CANVAS]).toBeUndefined();
   });
 
   it('ignores an unregister for a name nothing has claimed', () => {

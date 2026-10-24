@@ -10,6 +10,7 @@ import {
 import { createTestAppContext } from '@/__test-utils__/index';
 import type {
   ErdEditorElement,
+  ErdViewerElement,
   LocaleCode,
   LocaleOption,
   SchemaSQLOptions,
@@ -27,8 +28,10 @@ describe('@dineug/erd-editor entry point', () => {
   it('exposes exactly the documented public surface', () => {
     expect(Object.keys(index).sort()).toEqual([
       'ErdEditorElement',
+      'ErdViewerElement',
       'createKeyBindingMap',
       'defineErdEditor',
+      'defineErdViewer',
       'dictionaryRowChords',
       'setExportFileCallback',
       'setImportFileCallback',
@@ -48,6 +51,18 @@ describe('@dineug/erd-editor entry point', () => {
       InstanceType<typeof index.ErdEditorElement>
     >().toEqualTypeOf<ErdEditorElement>();
     expectTypeOf(index.defineErdEditor).toEqualTypeOf<() => void>();
+  });
+
+  it('leaves <erd-viewer> undefined, exporting its class and defineErdViewer', () => {
+    expect(customElements.get('erd-viewer')).toBeUndefined();
+    expect(index.ErdViewerElement.observedAttributes).toEqual([
+      'minimap',
+      'controls',
+    ]);
+    expectTypeOf<
+      InstanceType<typeof index.ErdViewerElement>
+    >().toEqualTypeOf<ErdViewerElement>();
+    expectTypeOf(index.defineErdViewer).toEqualTypeOf<() => void>();
   });
 
   it('creates an element that implements the editor API', () => {

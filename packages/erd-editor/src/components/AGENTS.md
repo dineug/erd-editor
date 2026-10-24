@@ -55,8 +55,8 @@
 
 ### Element classes
 
-- **A module that exports an element class has no `export default`.** `vite-plugin-r-html` makes a module whose named exports are all capitalized and which has a default export an HMR boundary, and a hot swap evaluates a boundary again. The module would then build a second class while the tag still holds the first, and the next `defineErdEditor()` would throw. So `erd-editor/ErdEditor.tsx` exports `ErdEditorElement` and `defineErdEditor` beside it and no default, and an edit to it reloads the page.
-- **Build the class with `createCustomElement` under `/* @__PURE__ */`, typed by `customElementClass.ts`.** Nothing at a module's top level defines a tag; the self-registering module (`src/erd-editor.ts`) calls the define function, which leaves a tag the class already holds as it is and throws an `Error` naming a tag another class holds.
+- **A module that exports an element class has no `export default`.** `vite-plugin-r-html` makes a module whose named exports are all capitalized and which has a default export an HMR boundary, and a hot swap evaluates a boundary again. The module would then build a second class while the tag still holds the first, and the next `defineErdEditor()` or `defineErdViewer()` would throw. So `erd-editor/ErdEditor.tsx` exports `ErdEditorElement` and `defineErdEditor` beside it and no default, `erd-viewer/ErdViewer.tsx` exports `ErdViewerElement` and `defineErdViewer` the same way, and an edit to either reloads the page.
+- **Build the class with `createCustomElement` under `/* @__PURE__ */`, typed by `customElementClass.ts`.** Nothing at a module's top level defines a tag; each self-registering module (`src/erd-editor.ts`, `src/erd-viewer.ts`) calls its define function, which leaves a tag the class already holds as it is and throws an `Error` naming a tag another class holds.
 
 ### Icons
 

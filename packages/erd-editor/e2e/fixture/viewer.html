@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!--
+  No lang attribute on purpose: a viewer reads the page's <html lang> before
+  navigator.languages, so the default page has to leave it out for the locale
+  to come from the browser. ?mount=lang&lang=<code> sets it below instead.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>erd-viewer e2e fixture</title>
+    <script>
+      /**
+       * `<erd-viewer>` is defined with `shadow: 'closed'`, like the editor, so
+       * this page reopens every shadow root the way `index.html` does, before
+       * the module below defines the element. A page can hold several viewers,
+       * so each root is published per host on `window.__erdShadowRoots`, a
+       * `Map<Element, ShadowRoot>`, in both modes. With `?closedShadow=1` the
+       * mode is left as production declares it and the map is the only way in.
+       *
+       * `?lang=<code>` writes `<html lang>` here, before any module runs, since
+       * a viewer resolves its locale once, when it first connects.
+       */
+      (function prepareViewerPage() {
+        var params = new URLSearchParams(window.location.search);
+        var closed = params.has('closedShadow');
+        var lang = params.get('lang');
+        var roots = new Map();
+        var attachShadow = Element.prototype.attachShadow;
+
+        if (lang) document.documentElement.lang = lang;
+
+        window.__erdShadowRoots = roots;
+        Element.prototype.attachShadow = function (init) {
+          var root = attachShadow.call(
+            this,
+            closed ? init : Object.assign({}, init, { mode: 'open' })
+          );
+          roots.set(this, root);
+          return root;
+        };
+      })();
+    </script>
+  </head>
+  <!--
+    Layout lives in style attributes, as in index.html, and viewer.ts sets the
+    rest per mode: the long page lets the body scroll, the others do not.
+  -->
+  <body style="margin: 0; padding: 0; overflow: hidden">
+    <div id="app"></div>
+    <script type="module" src="./viewer.ts"></script>
+  </body>
+</html>

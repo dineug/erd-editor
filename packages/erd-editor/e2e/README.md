@@ -55,7 +55,7 @@ for both.
 | `playwright.config.ts`          | Chromium project, pinned 1440x900 viewport, `E2E_PORT` webServer  |
 | `playwright.bench.config.ts`    | The bench project — own testDir, one worker; its few expects check that the page reached what it measures, never a measured number |
 | `e2e/tsconfig.json`             | The `e2e:typecheck` program, with the `@/*` → `src/*` alias the support files use |
-| `e2e/fixture/`                  | The page under test — a deterministic `<erd-editor>` mount, the theme builder, locale picker and welcome screen off until `erd.enable()` |
+| `e2e/fixture/`                  | The pages under test — `index.html`, a deterministic `<erd-editor>` mount, the theme builder, locale picker and welcome screen off until `erd.enable()`; `viewer.html`, the `<erd-viewer>` page in four modes (section 1) |
 | `e2e/support/schema.ts`         | Hand-authored v3 seeds — tables, memos, relationships, indexes, table groups, the three dictionaries, logical names and the name view |
 | `e2e/support/graph.ts`          | A relationship or index read back by the names it joins           |
 | `e2e/support/connectorDrift.ts` | How far each scene draw puts a connector end off its own table    |
@@ -63,7 +63,8 @@ for both.
 | `e2e/support/sceneMirror.ts`    | Projects every live Konva stage into divs a css locator can name  |
 | `e2e/support/shortcuts.ts`      | `Shortcut`, the key strings mirroring `createKeyBindingMap()`; `MOD_KEY`; the zoom steps `ZOOM_STEP` (a shortcut press) and `WHEEL_ZOOM_STEP` (a wheel notch) |
 | `e2e/support/ErdEditorPage.ts`  | Page object: locators, scene coordinates, gesture helpers         |
-| `e2e/support/fixtures.ts`       | The `test` object every spec imports; fails on uncaught errors    |
+| `e2e/support/ErdViewerPage.ts`  | Page object for one viewer on `viewer.html`: `goto(mode)`, `at(index)`, `seed`, its own stage and shadow root |
+| `e2e/support/fixtures.ts`       | The `test` object every spec imports, with `erd` and `viewer`; fails on uncaught errors |
 | `e2e/specs/`                    | The suite's `testDir`: a new `*.spec.ts` goes here and imports `test` from `../support/fixtures` |
 | `e2e/specs/harness.spec.ts`     | Guards the assumptions below — fix this first if it goes red      |
 | `e2e/bench/`                    | The benchmarks, run only by `e2e:bench` through their own config and never in CI: `routing.bench.ts` alone by default, every `*.bench.ts` with `E2E_BENCH_ALL=1`; carries own README |
@@ -72,7 +73,7 @@ for both.
 
 ## What is covered
 
-50 spec files. Ten of the groups exist because the DOM scene got their subject
+51 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -321,6 +322,11 @@ The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
 pass against the canvas; `context-menu` arrived with it.
 
+`viewer.spec.ts` is the one spec on `viewer.html`: each mode mounts what it
+names, every viewer's root is reachable by its host, a closed root stays closed,
+a document goes in through `value`, and the Tab key reaches each viewer's root,
+which no viewer focuses by loading.
+
 `alt-drag-duplicate` and `clipboard` hold down one rule from their two ends: a
 duplicate of whole tables carries a relationship only when **both** its end
 tables are copied, carries every index of a copied table whole, and points every
@@ -352,6 +358,16 @@ tree for an open one, so a reopened root hides every bug built on that
 difference — the row display menu closed itself on its own item's mousedown for
 exactly that reason, green suite and all. Production code and the published
 bundle are untouched.
+
+`viewer.html` reopens the roots the same way and publishes each one by its host
+on `window.__erdShadowRoots`, a `Map<Element, ShadowRoot>`, since a page there
+can hold two viewers. `viewer.goto(mode)` picks the page with `?mount=`:
+`viewer` (one viewer filling the page), `viewers` (two side by side, each with a
+document of its own), `long` (one 960x540 viewer in a body that scrolls) and
+`lang` (one viewer under the `<html lang>` that `?lang=` names, written before
+the viewer connects). The page leaves `<html lang>` out otherwise, so a viewer
+takes its language from the browser. `goto(mode, { closedShadow: true })` keeps
+the root closed, and the map is then the only way in.
 
 `erd.gotoClosedShadow()` loads the same fixture with `?closedShadow=1`, which
 leaves the mode as production declares it. The fixture publishes the root on
@@ -531,8 +547,9 @@ The projection is interactive, not read-only. What it guarantees:
 
 ## Reaching the stage directly
 
-The fixture publishes two globals for the stage, and the page object wraps
-both; beside them it sets `window.erdEditor`, the element, for the browser
+The fixture publishes three globals for the stage: the editor's page object
+wraps `__erdStages` and `__erdWhenDrawn`, and `ErdViewerPage` reads
+`__erdStageClaims`. Beside them it sets `window.erdEditor`, the element, for the browser
 console, and `window.__erdShadowRoot` (section 1). `__erdStages` exists from
 page load. `__erdWhenDrawn` comes with the scene mirror, so only with
 `?sceneMirror=1`: `erd.goto()` adds it, while `erd.gotoClosedShadow()` and
@@ -542,6 +559,7 @@ do not, and there `erd.whenDrawn()` waits two frames only.
 | Handle                    | What it answers                                             |
 | ------------------------- | ----------------------------------------------------------- |
 | `window.__erdStages`      | `{ canvas, minimap, visualization }` — the live stages, newest claim wins. `canvas` is whatever mounted the erd canvas last: the ERD tab, Flow mode, time travel, a diff viewer pane or the placement preview, and every page-object scene helper reads it. `visualization` is Graph mode's, which `mouse-drag.spec.ts` reads its dots off |
+| `window.__erdStageClaims` | The same names, each with every live stage on it, oldest first. Two viewers on one page both claim `canvas`, so `ErdViewerPage` picks the stage whose `container().getRootNode().host` is its own element, which a closed root answers too |
 | `window.__erdWhenDrawn()` | Returns a promise that resolves once tweens are done and the gate has flushed |
 
 | Page object                       | Use it for                                          |

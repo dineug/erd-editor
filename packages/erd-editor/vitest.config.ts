@@ -106,8 +106,8 @@ export default defineConfig({
         'src/konva/testHandle.ts',
         // The umd build's spawn module; the es build and every spec use the url one.
         'src/workers/spawn.inline.ts',
-        // The umd build's entry, which only re-exports what its own modules'
-        // specs cover; the umd build alone evaluates it.
+        // The umd entries, which only re-export what their own modules' specs
+        // cover; a umd build alone evaluates one.
         'src/umd/**',
       ],
       thresholds: {
