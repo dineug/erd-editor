@@ -44,8 +44,8 @@ export const stripComments = (source: string) =>
 
 /**
  * Whether a file binds the name itself, as a parameter or a declaration, so a
- * member access on it is a local and not the global. The graphql importer
- * calls its AST parameter document, which the build renames on the way out.
+ * member access on it is a local and not the global. Unminified, the built text
+ * keeps such a name, which pnpm peer-graph reads as the global.
  */
 export const bindsLocally = (source: string, name: string) =>
   new RegExp(
